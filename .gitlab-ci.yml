@@ -1,13 +1,51 @@
-# You can override the included template(s) by including variable overrides
-# SAST customization: https://docs.gitlab.com/ee/user/application_security/sast/#customizing-the-sast-settings
-# Secret Detection customization: https://docs.gitlab.com/ee/user/application_security/secret_detection/pipeline/#customization
-# Dependency Scanning customization: https://docs.gitlab.com/ee/user/application_security/dependency_scanning/#customizing-the-dependency-scanning-settings
-# Container Scanning customization: https://docs.gitlab.com/ee/user/application_security/container_scanning/#customizing-the-container-scanning-settings
-# Note that environment variables can be set in several places
-# See https://docs.gitlab.com/ee/ci/variables/#cicd-variable-precedence
-stages:
-- test
-sast:
+# GitLab CI for the "Building Agents" course: a static gate, then a client-side Pages build.
+#
+# Two jobs:
+#   test   runs the static gate (layout, skill-meta consistency, link-engine
+#          self-test, grounding/bundle) headless under node. No lab, GPU, or
+#          browser. Notebook EXECUTION tests need the lab and run there.
+#   pages  builds the fully client-side static site and publishes it to GitLab
+#          Pages, which serves it even on a private repo for an access-controlled
+#          pre-release preview.
+
+stages: [test, deploy]
+
+variables:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  GIT_DEPTH: "20"
+
+.with_python_node: &with_python_node
+  image: node:20-bookworm-slim
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 ca-certificates >/dev/null
+
+test:
+  <<: *with_python_node
   stage: test
-include:
-- template: Security/SAST.gitlab-ci.yml
+  script:
+    - python3 scripts/validate_layout.py --quiet
+    - python3 scripts/skill_consistency.py
+    - bash   scripts/run_engine.sh --self-test
+    - python3 scripts/validate_bundle.py --scope ship
+  artifacts:
+    when: always
+    name: "gate-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - docs/validation/
+    expire_in: 30 days
+
+pages:
+  <<: *with_python_node
+  stage: deploy
+  needs: ["test"]
+  script:
+    - bash scripts/build_pages.sh public
+  artifacts:
+    paths:
+      - public
+  rules:
+    # Run on the default branch (when this is its own extracted standalone repo) or on
+    # nemoclaw-only (when the course is served from the shared s-fx-43-v1 repo, whose
+    # default branch is the full bundle). GitLab Pages serves the latest pages artifact.
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_BRANCH == "nemoclaw-only"'
