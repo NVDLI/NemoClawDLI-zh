@@ -531,14 +531,14 @@ def bundle_one(html_path: Path, css_text: str, lite_css: str, shared_js: str) ->
     #    line with the full module body. Same-module scope means the page's
     #    other top-level statements continue to use the same names without
     #    needing the explicit import.
+    # Keep the `import {...} from "./_shared.js"` lines and ship _shared.js as a real
+    # file alongside the pages (copied in main). The imports then resolve, and ES module
+    # caching loads the module once even across multiple module blocks, exactly as the
+    # lab serves it, so each page stays small and the module runs a single time. Only the
+    # off-lab key panel is injected, once, right after the first import; it is a
+    # self-contained IIFE and needs nothing from _shared.js in scope.
     new_html, n_js = IMPORT_LINE_RE.subn(
-        lambda _m: (
-            "// ── Inlined _shared.js (originally imported) ──────────────\n"
-            + shared_js
-            + "\n// ── /Inlined _shared.js ──────────────────────────────────\n"
-            + LITE_KEY_PANEL_JS
-            + LITE_OPEN_PANELS_JS
-        ),
+        lambda m: m.group(0) + "\n" + LITE_KEY_PANEL_JS + LITE_OPEN_PANELS_JS,
         new_html,
         count=1,
     )
@@ -624,6 +624,18 @@ def main() -> int:
         dst.write_text(bundled, encoding="utf-8")
         kb = len(bundled.encode("utf-8")) / 1024
         print(f"  bundled {src.name:<28} → {dst.name}  ({kb:5.1f} KB)")
+
+    # Ship _shared.js as a file so the pages' kept `./_shared.js` imports resolve.
+    shutil.copy2(web / "_shared.js", out / "_shared.js")
+    print(f"  shipped _shared.js  ({(out / '_shared.js').stat().st_size // 1024} KB)")
+
+    # Carry non-inlined assets (images, SVGs) the pages reference by relative path, so the
+    # bundle in --out is complete on its own and callers need no separate asset copy.
+    assets = web / "assets"
+    if assets.is_dir():
+        shutil.copytree(assets, out / "assets", dirs_exist_ok=True)
+        n_assets = sum(1 for p in (out / "assets").rglob("*") if p.is_file())
+        print(f"  copied assets/      ({n_assets} files)")
 
     print(f"\n{len(pages)} pages → {out}/")
     return 0

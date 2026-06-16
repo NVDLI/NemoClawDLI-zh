@@ -1,0 +1,65 @@
+# GitHub Pages for the "Building Agents" course: run the static gate, then build ./public
+# and deploy to Pages. The link engine runs headless under node; no lab, GPU, or browser
+# is needed in CI.
+name: pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Static gate (layout, skill-meta, link-engine self-test, grounding)
+        run: |
+          python3 scripts/validate_layout.py --quiet
+          python3 scripts/skill_consistency.py
+          bash    scripts/run_engine.sh --self-test
+          python3 scripts/validate_bundle.py --scope ship
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gate-report
+          path: docs/validation/
+          if-no-files-found: ignore
+
+  build-and-deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build the client-side static site
+        run: bash scripts/build_pages.sh public
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+      - id: deploy
+        uses: actions/deploy-pages@v4

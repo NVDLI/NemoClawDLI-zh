@@ -21,25 +21,19 @@ echo "[build_pages] task1 root: $T1"
 echo "[build_pages] output:     $OUT"
 rm -rf "$OUT"; mkdir -p "$OUT"
 
-# ── 1. Courses: the self-contained standalone bundles ARE the client-side course ──
-# Each standalone page inlines its CSS/JS and uses relative links, so a course dir is
-# directly browsable from a Pages subpath. Build them fresh if a bundler is present.
+# ── 1. Courses: build the self-contained client-side bundle straight into public/ ──
+# bundle_standalone.py inlines each page's CSS, ships _shared.js, and carries the assets, so
+# one call produces a complete course dir. The bundle is generated from the source under
+# web/<course>/ on every build and is never committed (no intermediate, no stale copy).
 for c in nemoclaw; do
     src="$T1/web/$c"
-    sb="$src/standalone"
-    if [ -d "$src" ] && [ -f "$T1/scripts/bundle_standalone.py" ]; then
-        echo "[build_pages] bundling $c ..."
-        python3 "$T1/scripts/bundle_standalone.py" --src "web/$c" --out "$sb" --clean >/dev/null 2>&1 || true
-        # carry non-html assets (images) the bundler does not inline
-        [ -d "$src/assets" ] && { mkdir -p "$sb/assets"; cp -r "$src/assets/." "$sb/assets/" 2>/dev/null || true; }
+    if [ ! -d "$src" ] || [ ! -f "$T1/scripts/bundle_standalone.py" ]; then
+        echo "[build_pages]   ERROR: need web/$c and scripts/bundle_standalone.py to build $c" >&2
+        exit 1
     fi
-    if [ -d "$sb" ]; then
-        mkdir -p "$OUT/$c"
-        cp -r "$sb/." "$OUT/$c/"
-        echo "[build_pages]   $c -> public/$c/ ($(find "$OUT/$c" -name '*.html' | wc -l) pages)"
-    else
-        echo "[build_pages]   WARNING: no standalone bundle for $c (skipped)"
-    fi
+    echo "[build_pages] bundling $c -> public/$c/ ..."
+    python3 "$T1/scripts/bundle_standalone.py" --src "web/$c" --out "$OUT/$c" --clean
+    echo "[build_pages]   $c -> public/$c/ ($(find "$OUT/$c" -name '*.html' | wc -l) pages)"
 done
 
 # ── 2. Link-graph viewer (engine.js runs client-side; offline = embedded snapshot) ──

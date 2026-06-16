@@ -1,0 +1,30 @@
+# Normalize line endings: store text as LF, check out as LF on every platform.
+# Shell scripts and git hooks MUST be LF or they break when run.
+* text=auto eol=lf
+*.sh   text eol=lf
+*.py   text eol=lf
+
+# SVG is XML/text and worth diffing; keep it as text.
+*.svg  text
+
+# Binary assets: no diff, no merge, no end-of-line rewriting.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.mp4  binary
+*.mp3  binary
+*.wav  binary
+*.parquet binary
+*.tgz  binary
+*.tar  binary
+*.zip  binary
+*.db   binary
+
+# Generated and vendored trees: collapse in diffs and drop from language stats so the
+# repo's reported language reflects authored content, not snapshots or vendored code.
+scripts/link_graph.html linguist-generated=true
+repos/**                linguist-vendored=true
+mats/**                 linguist-documentation=true

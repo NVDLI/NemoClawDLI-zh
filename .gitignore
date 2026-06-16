@@ -1,0 +1,69 @@
+# Python Exclusions
+.venv
+__pycache__
+
+# Sphinx Exclusions
+_build
+
+# Helm Exclusions
+**/charts/*.tgz
+
+# project temp files
+deploy/*.log
+deploy/*.txt
+**/my.*
+**/my-*
+.env-dev
+
+# Next JS Exclusions
+**/.next
+frontend/frontend_js/out
+frontend-sdxl/frontend_js/out
+**/node_modules
+
+# Docker Compose exclusions
+volumes/
+uploaded_files/
+
+**/data
+**/.ipynb_checkpoints
+**/models
+**/results
+__pycache__
+*.tgz
+*.tar
+devonly*
+*.zip
+**/.Trash*
+
+**/demo.gif
+**/dataset.zip
+# Launchable secrets plus the nvapi key. Never commit these.
+CF_ACCESS
+BEARER_TOKEN
+NVIDIA_API_KEY
+
+# Generated from source, never versioned. build_pages.sh bundles each course straight into
+# public/<course> via bundle_standalone.py; web/<course>/standalone only appears if you run
+# the bundler there by hand, so it is ignored too.
+public/
+web/*/standalone/
+
+# ── Lab-generated runtime artifacts (never commit) ──────────────────────────
+# Produced by running notebooks/services in the lab (root-owned in dev), not course
+# content. The link engine already treats these as non-content dirs; ignoring them
+# here keeps them out of the repo when task1/ is the root.
+**/artifacts/
+workspace/export/
+**/grounding_cache/
+**/_paper_cache/
+**/.exec_stage/
+**/.solution/
+**/.jupyter*
+*.parquet
+# Generated validation reports (written by validate_bundle.py / the DGX watcher)
+docs/validation/
+
+# Local env + secrets (never commit)
+.env
+.secret
