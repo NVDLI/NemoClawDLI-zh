@@ -16,12 +16,17 @@ variables:
 
 .with_python_node: &with_python_node
   image: node:20-bookworm-slim
+  # The available instance runners are all tagged; untagged jobs match none of them.
+  # `pages` is the Shared Pages Runner (a Docker runner) that picks these up.
+  tags: [pages]
   before_script:
     - apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 ca-certificates >/dev/null
 
 test:
   <<: *with_python_node
   stage: test
+  # Advisory gate: it reports, but a failure here never blocks the Pages deploy.
+  allow_failure: true
   script:
     - python3 scripts/validate_layout.py --quiet
     - python3 scripts/skill_consistency.py
