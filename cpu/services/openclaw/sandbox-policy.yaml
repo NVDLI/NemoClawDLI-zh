@@ -1,0 +1,129 @@
+version: 1
+filesystem_policy:
+  include_workdir: true
+  read_only:
+  - /usr
+  - /lib
+  - /etc
+  - /bin
+  - /run
+  - /dev/urandom
+  - /proc
+  - /var/log
+  - /sandbox/workspace/SOUL.md
+  - /sandbox/workspace/AGENTS.md
+  - /sandbox/.openclaw/agents/main/agent/SOUL.md
+  read_write:
+  - /sandbox
+  - /dev/null
+landlock:
+  compatibility: best_effort
+process:
+  run_as_user: sandbox
+  run_as_group: sandbox
+network_policies:
+  docker-router:
+    name: docker-bridge
+    endpoints:
+    - host: docker-router
+      port: 8070
+      allowed_ips:
+      - 172.16.0.0/12
+      - 10.0.0.0/8
+    - host: 10.200.0.1
+      port: 8070
+      allowed_ips:
+      - 10.200.0.0/16
+    binaries:
+    - path: /usr/bin/node
+    - path: /usr/local/bin/node
+    - path: /usr/bin/curl
+  llm_inference:
+    name: llm-inference
+    endpoints:
+    - host: llm_client
+      port: 9000
+      allowed_ips:
+      - 172.16.0.0/12
+      - 10.0.0.0/8
+    - host: 10.200.0.1
+      port: 9000
+      allowed_ips:
+      - 10.200.0.0/16
+    - host: 172.18.0.1
+      port: 9000
+      allowed_ips:
+      - 172.16.0.0/12
+    binaries:
+    - path: /usr/bin/node
+    - path: /usr/local/bin/node
+    - path: /usr/bin/curl
+    - path: /usr/bin/python3
+    - path: /usr/bin/python3.13
+  openclaw_pricing:
+    name: openclaw-pricing
+    endpoints:
+    - host: openrouter.ai
+      port: 443
+    binaries:
+    - path: /usr/bin/node
+    - path: /usr/local/bin/node
+  lab_services:
+    name: lab-services
+    endpoints:
+    - host: lab
+      port: 8888
+      allowed_ips:
+      - 172.16.0.0/12
+      - 10.0.0.0/8
+    - host: lab
+      port: 8070
+      allowed_ips:
+      - 172.16.0.0/12
+      - 10.0.0.0/8
+    - host: nginx
+      port: 80
+      allowed_ips:
+      - 172.16.0.0/12
+      - 10.0.0.0/8
+    - host: 10.200.0.1
+      port: 8888
+      allowed_ips:
+      - 10.200.0.0/16
+    - host: 10.200.0.1
+      port: 8070
+      allowed_ips:
+      - 10.200.0.0/16
+    - host: 10.200.0.1
+      port: 80
+      allowed_ips:
+      - 10.200.0.0/16
+    binaries:
+    - path: /usr/bin/node
+    - path: /usr/local/bin/node
+    - path: /usr/bin/curl
+  npm_registry:
+    name: npm-registry
+    endpoints:
+    - host: registry.npmjs.org
+      port: 443
+    binaries:
+    - path: /usr/bin/node
+    - path: /usr/local/bin/node
+    - path: /usr/local/bin/npm
+  pypi:
+    name: pypi
+    endpoints:
+    - host: pypi.org
+      port: 443
+    - host: files.pythonhosted.org
+      port: 443
+    binaries:
+    - path: /usr/bin/python3
+    - path: /usr/bin/python3.13
+    - path: /usr/local/bin/pip3
+    - path: /usr/local/bin/uv
+    - path: /sandbox/.uv/python/**
+tools:
+  npm_install:
+    policy: lockfile_only

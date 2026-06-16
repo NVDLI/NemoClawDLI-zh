@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Service · sandbox-admin</title>
+<!-- AGENT: structured service contract below; parse id="skill-meta". The
+     "tests" array mirrors the executable self-tests rendered on this page. -->
+<script type="application/json" id="skill-meta">
+{
+  "schema": "service-skill/1.0",
+  "service": "sandbox-admin",
+  "title": "sandbox-admin OpenShell control plane",
+  "version": "1.0.0",
+  "source_dir": "cpu/services/sandbox_admin/",
+  "address": "sandbox-admin:8099",
+  "summary": "Control plane for the OpenShell-sandboxed OpenClaw deployment: policy reload, a cron registry, and a bounded read-only sandbox exec console. A policy reload writes the new YAML and restarts openclaw, because OpenShell enforces its policy at boot rather than on SIGHUP. The exec allow-list is the security boundary: argv[0] off the list, or an openclaw subcommand off the read-only prefix list, returns 403 before any process starts.",
+  "interfaces": {
+    "browser_route": "/lab/svc/sandbox-admin/",
+    "auth": "nginx JUPYTER_TOKEN gate + service Bearer dli-openclaw-token. Every endpoint requires the Bearer header except /admin/health.",
+    "endpoints": [
+      "/admin/health (GET, open)",
+      "/admin/policy (GET, returns the policy yaml)",
+      "/admin/policy/preview (POST {policy_yaml}, structural dry-run)",
+      "/admin/policy/reload (POST {policy_yaml}, writes + restarts openclaw)",
+      "/admin/sandbox/exec (POST {argv}, bounded read-only console)",
+      "/admin/cron (GET list, POST register, DELETE /admin/cron/{name})",
+      "/admin/services (GET, docker container inventory)"
+    ],
+    "exec_allowlist": {
+      "generic": ["ls", "cat", "pwd", "id", "whoami", "uname", "ps", "stat", "head", "tail", "wc", "echo"],
+      "openclaw_readonly": ["status", "health", "--version", "-V", "docs", "config get", "config validate", "exec-policy show", "cron list"],
+      "rule": "argv[0] not in the 12 generic verbs, or an openclaw subcommand not matching a read-only prefix, returns HTTP 403 before any process starts"
+    }
+  },
+  "tests": [
+    {"id": "skill-meta-json", "assert": "this skill-meta block parses as JSON"},
+    {"id": "health-up", "assert": "GET /admin/health returns 2xx"},
+    {"id": "services-list", "assert": "GET /admin/services (Bearer) returns a JSON array"},
+    {"id": "policy-readable", "assert": "GET /admin/policy (Bearer) returns a non-empty policy yaml"},
+    {"id": "exec-allowed", "assert": "exec {argv:[whoami]} returns 200, exit_code 0"},
+    {"id": "exec-denied", "assert": "exec {argv:[rm,-rf,/]} returns 403 (not on allow-list)"}
+  ],
+  "change_impact": [
+    {"if_you_change": "the exec allow-list (_ALLOWED_ARGV0 / _ALLOWED_OPENCLAW in app.py)",
+     "also_update": ["services/openclaw/SKILL.html", "web/nemoclaw/04a-safety.html", "this skill-meta interfaces+tests"],
+     "then": "rebuild sandbox-admin; re-run self-tests"},
+    {"if_you_change": "the policy or cron endpoints",
+     "also_update": ["00_sandbox_admin doc", "web/nemoclaw/04a-safety.html sandbox client", "this skill-meta"],
+     "then": "re-run self-tests; note policy reload restarts openclaw"},
+    {"if_you_change": "the browser route or auth",
+     "also_update": ["nginx /lab/svc/sandbox-admin location", "consumers", "this skill-meta"],
+     "then": "docker restart nginx if route moved; re-run self-tests"}
+  ],
+  "related": [
+    "cpu/services/00_sandbox_admin.md",
+    "cpu/services/openclaw/SKILL.html",
+    "web/nemoclaw/04a-safety.html"
+  ]
+}
+</script>
+<style>
+:root{--g:#76b900;--gd:#4a7a00;--gs:#aee23a;--bg:#0d0d0d;--e1:#161616;--e2:#1e1e1e;--bd:#2a2a2a;--tx:#f2f2f2;--td:#b0b0b0;--tf:#8a8a8a;--r:8px;--mono:ui-monospace,"SF Mono",Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:15px;line-height:1.55}
+a{color:var(--g);text-decoration:none}a:hover{text-decoration:underline}
+code{font-family:var(--mono);font-size:.9em;background:var(--e2);padding:1px 6px;border-radius:4px;color:var(--gs)}
+h1{font-size:1.9rem;color:var(--g);font-weight:700;margin:0 0 .4em}
+h2{font-size:1.15rem;color:#fff;border-bottom:1px solid var(--bd);padding-bottom:.3em;margin:1.6em 0 .7em}
+p{margin:.55em 0;color:var(--td)}
+nav{display:flex;align-items:center;gap:14px;padding:14px 28px;background:linear-gradient(180deg,#000,var(--bg));border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:10}
+.logo{font-weight:700;color:var(--g);letter-spacing:.04em}
+.crumb{color:var(--td);font-size:.88rem}.crumb a{color:var(--td)}
+.spacer{flex:1}
+.badge{font-size:.72rem;font-family:var(--mono);padding:3px 9px;border-radius:999px;background:var(--e2);border:1px solid var(--bd);color:var(--td)}
+main{max-width:min(62.5rem,100%);margin:0 auto;padding:clamp(1.5rem,4vw,2.5rem) clamp(1rem,4vw,2rem) 80px}
+table{width:100%;border-collapse:collapse;font-size:.88rem;margin:.7em 0}
+th{text-align:left;padding:7px 12px;color:var(--td);font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--bd)}
+td{padding:7px 12px;border-bottom:1px solid var(--e2);vertical-align:top}
+td:first-child{font-family:var(--mono);font-size:.85em;color:var(--gs);white-space:nowrap}
+.callout{border-left:3px solid var(--g);background:rgba(118,185,0,.07);padding:11px 16px;border-radius:0 var(--r) var(--r) 0;margin:1em 0;font-size:.92rem}
+.agent-note{border:1px solid var(--bd);border-radius:var(--r);background:var(--e1);padding:14px 18px;font-size:.88rem;margin-top:2em}
+.agent-note h3{color:var(--td);font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;margin:0 0 .4em}
+.console{border:1px solid var(--bd);border-radius:var(--r);background:var(--e1);padding:12px 14px;margin:.9em 0}
+.console-head{font-size:.82rem;color:var(--td);margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.console .row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.console input{flex:1;min-width:220px;background:var(--bg);border:1px solid var(--bd);border-radius:6px;color:var(--tx);font-family:var(--mono);font-size:.84rem;padding:8px 10px}
+.console input:focus{outline:none;border-color:var(--g)}
+.console button{background:var(--g);color:#000;border:0;border-radius:6px;font-weight:700;font-size:.8rem;padding:8px 14px;cursor:pointer;font-family:inherit}
+.console button:hover{background:var(--gs)}
+.console button.mini{padding:3px 10px;font-size:.74rem}
+.console button.danger{background:#7a1a1a;color:#ffb3b3}
+.console button.danger:hover{background:#8f1f1f}
+.console .chips{font-size:.72rem;color:var(--tf);margin-bottom:8px;line-height:1.7}
+.console .chip{font-family:var(--mono);background:var(--e2);border:1px solid var(--bd);border-radius:4px;padding:1px 6px;color:var(--gs);font-size:.95em}
+.console .out{background:#0a0a0a;border:1px solid var(--bd);border-radius:6px;padding:9px 11px;font-family:var(--mono);font-size:.8rem;color:#a5d6a7;white-space:pre-wrap;max-height:300px;overflow:auto;margin:0}
+.console .out.err{color:#ff9a9a}
+</style>
+</head>
+<body>
+<nav>
+  <span class="logo">NVIDIA DLI</span>
+  <span class="crumb">/ <a href="/lab/static/SKILL.html">workspace</a> / services / sandbox-admin</span>
+  <span class="spacer"></span>
+  <span class="badge">service-skill</span>
+  <span class="badge">sandbox-admin:8099</span>
+</nav>
+
+<main>
+  <h1>sandbox-admin</h1>
+  <p>
+    The control plane for the OpenShell-sandboxed OpenClaw deployment
+    (<code>sandbox-admin:8099</code>). It manages the sandbox
+    <strong>policy</strong>, a <strong>cron registry</strong>, and a bounded
+    read-only <strong>sandbox exec console</strong>. A notebook drives all three
+    over HTTP, so a student never needs exec access to the sandbox itself.
+  </p>
+  <p>
+    A policy <strong>reload</strong> writes the new YAML and restarts
+    <code>openclaw</code>. OpenShell sets up Landlock, seccomp, and netns at boot
+    before the agent process is forked, so it does not re-read the policy on
+    <code>SIGHUP</code>. Restart is the only way to make a policy change take
+    effect.
+  </p>
+
+  <div class="callout">
+    <strong>The allow-list is the security boundary.</strong> The bounded console
+    (<code>POST /admin/sandbox/exec {argv}</code>) accepts 12 generic read-only
+    verbs plus the <code>openclaw</code> read-only subcommands. An
+    <code>argv[0]</code> off the list, or an <code>openclaw</code> subcommand off
+    the read-only prefix list, returns <code>403</code> before any process starts.
+    The reachable surface is finite and enumerable by design.
+  </div>
+
+  <h2>Interfaces</h2>
+  <table>
+    <thead><tr><th>Surface</th><th>Reach</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>browser route</td><td><code>/lab/svc/sandbox-admin/</code> · <code>sandbox-admin:8099</code></td><td>nginx JUPYTER_TOKEN gate + service <code>Bearer dli-openclaw-token</code>. Every endpoint needs the Bearer header except <code>/admin/health</code>.</td></tr>
+      <tr><td>health</td><td><code>GET /admin/health</code></td><td>Open. Reports <code>policy_exists</code> and <code>docker_available</code>.</td></tr>
+      <tr><td>policy</td><td><code>GET /admin/policy</code> · <code>POST /admin/policy/preview</code> · <code>POST /admin/policy/reload</code></td><td>Read the active yaml; dry-run a candidate; write and restart openclaw (<code>{restart:false}</code> opts out).</td></tr>
+      <tr><td>cron</td><td><code>/admin/cron</code></td><td><code>GET</code> lists entries, <code>POST {name,schedule,prompt}</code> registers, <code>DELETE /admin/cron/{name}</code> removes.</td></tr>
+      <tr><td>services</td><td><code>GET /admin/services</code></td><td>Docker container inventory (name, image, status).</td></tr>
+      <tr><td>bounded exec</td><td><code>POST /admin/sandbox/exec {argv}</code></td><td>Read-only allow-list: 12 generic verbs + <code>openclaw</code> read-only subcommands. Anything else: <code>403</code> before a process starts.</td></tr>
+    </tbody>
+  </table>
+
+  <div id="selftest"></div>
+
+  <h2>Live console</h2>
+  <p>This page is also the service's UI. Everything below talks to
+     <code>sandbox-admin</code> through the gated <code>/lab/svc/sandbox-admin/</code>
+     route with your lab session, so it works in-lab with no key. The service has no
+     UI of its own; this is it.</p>
+
+  <div class="console">
+    <div class="console-head">Bounded shell &middot; <code>POST /admin/sandbox/exec</code></div>
+    <div class="row">
+      <input id="ex-in" value="openclaw --version" spellcheck="false" aria-label="command"/>
+      <button id="ex-run" type="button">Run</button>
+    </div>
+    <div class="chips">read-only allow-list:
+      <span class="chip">ls</span> <span class="chip">cat</span> <span class="chip">pwd</span>
+      <span class="chip">id</span> <span class="chip">whoami</span> <span class="chip">uname</span>
+      <span class="chip">ps</span> <span class="chip">stat</span> <span class="chip">head</span>
+      <span class="chip">tail</span> <span class="chip">wc</span> <span class="chip">echo</span>
+      <span class="chip">openclaw status|health|--version|docs|config get|config validate|exec-policy show|cron list</span>
+    </div>
+    <pre id="ex-out" class="out">Try: <code>openclaw --version</code> &middot; <code>whoami</code> &middot; <code>cat /etc/hostname</code> &middot; <code>rm -rf /</code> (refused 403)</pre>
+  </div>
+
+  <div class="console">
+    <div class="console-head">Active policy &middot; <code>GET /admin/policy</code>
+      <button id="pol-show" class="mini" type="button">Show</button></div>
+    <pre id="pol-out" class="out">The YAML the kernel enforces. Click Show.</pre>
+  </div>
+
+  <div class="console">
+    <div class="console-head">Cron registry &middot; <code>/admin/cron</code></div>
+    <div class="row">
+      <button id="cron-list" type="button">List</button>
+      <button id="cron-add" type="button">Install 1-min demo</button>
+      <button id="cron-del" class="danger" type="button">Delete demo</button>
+    </div>
+    <pre id="cron-out" class="out">List the registry, or install a demo job (it appends a line to the agent's MEMORY.md each minute) and delete it again.</pre>
+  </div>
+
+  <div class="agent-note">
+    <h3>Agent / automation notes</h3>
+    <p>The <code>skill-meta</code> <code>tests</code> array is the machine-readable
+      contract; the rendered list is its executable form. A green run means health
+      answers, the policy is readable, the service inventory returns, and the
+      bounded console enforces its allow-list (an allowed verb passes, a refused
+      verb is <code>403</code>).</p>
+    <p>Full prose lives in <code>00_sandbox_admin.md</code>. The bounded console
+      and the OpenShell policy story are driven by the released course in
+      <code>web/nemoclaw/04a-safety.html</code>; the <code>openclaw</code> service
+      SKILL references the same console.</p>
+  </div>
+</main>
+
+<script src="/lab/static/workspace/_skill_selftest.js"></script>
+<script>
+SkillSelfTest.run("#selftest", [
+  { name: "skill-meta is valid JSON", run: async () => {
+      JSON.parse(document.getElementById("skill-meta").textContent); return { detail: "parsed" }; } },
+  { name: "health endpoint is up", run: async ({ f, A }) => {
+      const r = await f("/lab/svc/sandbox-admin/admin/health"); A(r.ok, "HTTP " + r.status);
+      return { detail: "HTTP " + r.status }; } },
+  { name: "service inventory returns", run: async ({ f, A }) => {
+      const r = await f("/lab/svc/sandbox-admin/admin/services", { headers: { "Authorization": "Bearer dli-openclaw-token" } });
+      A(r.ok, "HTTP " + r.status); const j = await r.json();
+      return { detail: Array.isArray(j) ? j.length + " services" : "HTTP " + r.status }; } },
+  { name: "sandbox policy is readable", run: async ({ f, A }) => {
+      const r = await f("/lab/svc/sandbox-admin/admin/policy", { headers: { "Authorization": "Bearer dli-openclaw-token" } });
+      A(r.ok, "HTTP " + r.status); const t = await r.text(); A(t.length > 0, "empty");
+      return { detail: "policy yaml (" + t.length + " B)" }; } },
+  { name: "bounded console runs an allowed verb", run: async ({ A, execSandbox }) => {
+      const r = await execSandbox(["whoami"]); A(r.ok, "HTTP " + r.status);
+      const j = await r.json(); A(j.exit_code === 0, "exit " + j.exit_code);
+      return { detail: "whoami → " + (j.output || "").trim() }; } },
+  { name: "bounded console refuses a non-listed verb", run: async ({ A, execSandbox }) => {
+      const r = await execSandbox(["rm", "-rf", "/"]); A(r.status === 403, "expected 403, got " + r.status);
+      return { detail: "rm refused (403)" }; } },
+]);
+</script>
+<script>
+// Live console. Reuses the self-test helpers (credentialed fetch + execSandbox)
+// so the page is a working UI for this otherwise-UI-less service.
+(function () {
+  var H = window.SkillSelfTest && window.SkillSelfTest.helpers;
+  var BASE = "/lab/svc/sandbox-admin";
+  var HDR  = { "Authorization": "Bearer dli-openclaw-token", "Content-Type": "application/json" };
+  function $(id) { return document.getElementById(id); }
+  function show(el, txt, ok) { el.textContent = txt; el.className = "out" + (ok === false ? " err" : ""); }
+  if (!H) { show($("ex-out"), "console unavailable (open this page inside the lab)", false); return; }
+
+  // Bounded shell
+  async function runExec() {
+    var argv = ($("ex-in").value || "").trim().split(/\s+/).filter(Boolean);
+    if (!argv.length) return;
+    show($("ex-out"), "running: " + argv.join(" ") + " ...");
+    try {
+      var r = await H.execSandbox(argv);
+      if (r.status === 403) { show($("ex-out"), "403 refused: '" + argv[0] + "' is not on the read-only allow-list.", false); return; }
+      var j = await r.json();
+      show($("ex-out"), "exit " + j.exit_code + "\n" + (j.output || "(no output)"), j.exit_code === 0);
+    } catch (e) { show($("ex-out"), "error: " + e.message, false); }
+  }
+  $("ex-run").addEventListener("click", runExec);
+  $("ex-in").addEventListener("keydown", function (e) { if (e.key === "Enter") runExec(); });
+
+  // Active policy
+  $("pol-show").addEventListener("click", async function () {
+    show($("pol-out"), "loading ...");
+    try {
+      var r = await H.f(BASE + "/admin/policy", { headers: HDR });
+      var t = await r.text();
+      show($("pol-out"), r.ok ? t : ("HTTP " + r.status + "\n" + t), r.ok);
+    } catch (e) { show($("pol-out"), "error: " + e.message, false); }
+  });
+
+  // Cron registry
+  function cron(method, path, body) {
+    return H.f(BASE + path, { method: method, headers: HDR, body: body ? JSON.stringify(body) : undefined });
+  }
+  var DEMO = "sandbox-admin-ui-demo";
+  $("cron-list").addEventListener("click", async function () {
+    show($("cron-out"), "loading ...");
+    try { var r = await cron("GET", "/admin/cron"); var j = await r.json();
+      show($("cron-out"), r.ok ? JSON.stringify(j, null, 2) : ("HTTP " + r.status), r.ok); }
+    catch (e) { show($("cron-out"), "error: " + e.message, false); }
+  });
+  $("cron-add").addEventListener("click", async function () {
+    show($("cron-out"), "installing " + DEMO + " ...");
+    try {
+      var r = await cron("POST", "/admin/cron", { name: DEMO, schedule: "* * * * *",
+        prompt: "Append one short line to MEMORY.md noting the current UTC minute, then exit." });
+      var j = await r.json().catch(function () { return {}; });
+      show($("cron-out"), (r.ok ? "installed:\n" : "HTTP " + r.status + ":\n") + JSON.stringify(j, null, 2) +
+        "\n\nFires every minute. Click Delete demo to remove it.", r.ok);
+    } catch (e) { show($("cron-out"), "error: " + e.message, false); }
+  });
+  $("cron-del").addEventListener("click", async function () {
+    show($("cron-out"), "deleting " + DEMO + " ...");
+    try { var r = await cron("DELETE", "/admin/cron/" + DEMO); var j = await r.json().catch(function () { return {}; });
+      show($("cron-out"), (r.ok ? "deleted:\n" : "HTTP " + r.status + ":\n") + JSON.stringify(j, null, 2), r.ok); }
+    catch (e) { show($("cron-out"), "error: " + e.message, false); }
+  });
+})();
+</script>
+</body>
+</html>

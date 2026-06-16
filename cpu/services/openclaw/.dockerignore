@@ -1,0 +1,12 @@
+# The openclaw image bakes only the entrypoint + Dockerfile from this
+# directory. Every other asset reaches the running container at runtime
+# via the /sandbox/dli bind mount (see openclaw_shell.entrypoint.sh).
+# Keep the build context minimal. A small context means fewer rebuild
+# triggers and no stale in-image copies of mutable assets.
+
+# Ignore everything by default…
+*
+
+# …re-include only what the Dockerfile actually needs.
+!openclaw_shell.Dockerfile
+!openclaw_shell.entrypoint.sh

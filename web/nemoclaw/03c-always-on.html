@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Always-On · Securing Agents</title>
+<link rel="stylesheet" href="_style.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<style>
+  .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
+  .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
+  .CodeMirror-vscrollbar { display: none; }
+  .CodeMirror-gutters { background: #0d0d0d; border-right: 1px solid #2a2a2a; }
+  .CodeMirror-linenumber { color: #6a6a6a; padding: 0 8px 0 6px; font-size: .76rem; }
+  .CodeMirror-lines { padding: 10px 0; }
+  .cm-s-monokai.CodeMirror { background: #0d0d0d; color: #f8f8f2; }
+  .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
+  .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
+</style>
+<style>
+  .knobs-table { width: 100%; border-collapse: collapse; font-size: .88rem; margin: .8em 0; }
+  .knobs-table thead tr { border-bottom: 2px solid var(--bd); }
+  .knobs-table th { text-align: left; padding: 8px 12px; color: var(--td);
+                    font-size: .76rem; text-transform: uppercase; letter-spacing: .05em; }
+  .knobs-table td { padding: 10px 12px; border-bottom: 1px solid var(--e2); vertical-align: top; }
+  .knobs-table tr:last-child td { border-bottom: none; }
+  .knobs-table td:first-child { font-family: var(--mono); color: var(--gs); font-weight: 700; }
+  .knobs-table code { font-size: .82em; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="index.html">NVIDIA · Securing Agents</a>
+  <nav id="nav"></nav>
+  <div class="spacer"></div>
+  <span class="key-pill" id="key-status" onclick="location.href='01a-loop.html#key-panel'">…</span>
+  <span class="key-pill" id="claw-status" onclick="location.href='03a-kickstart.html#probe-claw'">…</span>
+</div>
+
+<main>
+  <div id="journey-map"></div>
+
+  <div class="hero">
+    <div class="eyebrow">Module 3 · Part C of 3</div>
+    <h1>The <span>Always-On</span> Agent</h1>
+    <p class="lead">
+      The agent in 3b only ran when you sent it a chat completion. For
+      most useful agents, the more interesting question is what they do
+      <em>without</em> being asked. OpenClaw has a family of triggers for
+      this: skills the agent picks up mid-turn, heartbeats it runs on a
+      timer, cron jobs that fire in their own sessions on a schedule, and
+      sub-agents a parent spawns to do focused work. They are the same
+      machinery with different knob settings, which the table below lays
+      out. The two you run on this page are the skill and the cron job.
+    </p>
+
+    <svg class="gfx-dark" viewBox="0 0 820 478" xmlns="http://www.w3.org/2000/svg" role="img" 
+    aria-label="A single per-turn loop sits nested inside slower triggers, where skills fire inside the turn while heartbeats, cron, and sub-agent spawns are the outer rhythms."
+    preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:780px;margin:1.5rem auto">
+      <circle cx="300" cy="234" r="190" fill="none" stroke="#4a7a00" stroke-width="2.2"/>
+      <polygon points="306,38 306,50 318,44" fill="#4a7a00"/>
+      <line x1="400" y1="70" x2="516" y2="49" stroke="#d4d4d4" stroke-dasharray="2 3"/>
+      <text x="524" y="49" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" fill="#4a7a00" font-weight="700">sub-agent</text>
+      <text x="524" y="67" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="#5e5e5e">the parent spawns and holds the handle</text>
+      <circle cx="300" cy="234" r="142" fill="none" stroke="#7c3aed" stroke-width="2.2"/>
+      <polygon points="306,86 306,98 318,92" fill="#7c3aed"/>
+      <line x1="388" y1="120" x2="516" y2="97" stroke="#d4d4d4" stroke-dasharray="2 3"/>
+      <text x="524" y="97" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" fill="#7c3aed" font-weight="700">cron</text>
+      <text x="524" y="115" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="#5e5e5e">a schedule spawns a fresh session (daily)</text>
+      <circle cx="300" cy="234" r="94" fill="none" stroke="#9a6700" stroke-width="2.2"/>
+      <polygon points="306,134 306,146 318,140" fill="#9a6700"/>
+      <line x1="370" y1="170" x2="516" y2="145" stroke="#d4d4d4" stroke-dasharray="2 3"/>
+      <text x="524" y="145" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" fill="#9a6700" font-weight="700">heartbeat</text>
+      <text x="524" y="163" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="#5e5e5e">a timer ticks the same session (minutes)</text>
+      <circle cx="300" cy="234" r="46" fill="none" stroke="#0d9488" stroke-width="2.2"/>
+      <polygon points="306,182 306,194 318,188" fill="#0d9488"/>
+      <line x1="346" y1="220" x2="516" y2="193" stroke="#d4d4d4" stroke-dasharray="2 3"/>
+      <text x="524" y="193" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" fill="#0d9488" font-weight="700">turn</text>
+      <text x="524" y="211" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="#5e5e5e">read → reason → act → write back (seconds)</text>
+      <text x="300" y="238" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" font-weight="800" fill="#4a7a00">agent</text>
+      <text x="410" y="458" text-anchor="middle" font-size="13.5" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" fill="#5e5e5e">A single per-turn loop sits nested inside slower triggers, where skills fire inside the turn</text>
+      <text x="410" y="477" text-anchor="middle" font-size="13.5" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" fill="#5e5e5e">while heartbeats, cron, and sub-agent spawns are the outer rhythms.</text>
+    </svg>
+  </div>
+
+  <h2>Skills, heartbeats, cron, and sub-agents share one set of knobs</h2>
+  <p>Every mechanism you will encounter here reduces to the same three
+     knobs: <strong>session</strong> (whose context the run inherits),
+     <strong>directive</strong> (the markdown file that tells the agent
+     what to do), and <strong>trigger</strong> (what causes a run to
+     start). Skills, heartbeats, cron, and sub-agents are all different
+     combinations of these three, and none of them introduces new
+     machinery.</p>
+
+  <table class="knobs-table">
+    <thead><tr><th>Name</th><th>Session</th><th>Directive lives in</th><th>Trigger</th></tr></thead>
+    <tbody>
+      <tr><td>Skill</td>      <td>reuses the caller's</td>          <td><code>workspace/skills/&lt;name&gt;.md</code></td> <td>model picks it mid-turn when the directive matches the user's ask</td></tr>
+      <tr><td>Heartbeat</td>  <td>reuses the caller's</td>          <td><code>HEARTBEAT.md</code></td>                    <td>gateway timer, ~30 min by default</td></tr>
+      <tr><td>Cron</td>       <td>fresh per fire (isolation)</td>   <td>JSON drop-in <code>prompt</code> field</td>       <td>cron schedule, per-minute precision</td></tr>
+      <tr><td>Sub-agent</td>  <td>fresh, parent holds the handle</td><td>inline string at <code>delegate()</code> time</td><td>parent agent decides mid-turn</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    The table is worth reading for what differs across rows rather than
+    what repeats. Session scope, directive location, and trigger type
+    are the only dimensions that vary, so any new mechanism you encounter
+    is just a different value in one of those columns.
+  </div>
+
+  <h2>Step 1 · Add a Skill</h2>
+  <p>A skill is nothing more than a markdown file placed under
+     <code>skills/</code>. The agent picks it up on the next turn by
+     reading its own workspace, with no restart, no redeployment, and no
+     change to the system prompt is required.</p>
+
+<pre><code class="language-md"># skills/triage-incident.md
+
+When the user asks about a production incident, or pastes a log line
+suggesting one, do these things in order:
+
+1. Confirm the affected service and the time window.
+2. Open the runbook for that service from /sandbox/runbooks/.
+3. Suggest the smallest reversible mitigation; do not run it yourself.
+4. Ask the user before opening a Jira ticket.
+</code></pre>
+
+  <p>The widget below asks the agent to install that exact skill, then
+     fires a chat completion designed to match it. The agent matches
+     the request against each skill's description, so the prompt
+     doesn't have to repeat the skill's name. Watch the agent invoke
+     the new skill on the second turn.</p>
+
+  <div id="fig-calls"></div>
+
+  <div class="callout">
+    <p><strong>Same runtime as Kickstart.</strong> This page drives the same OpenClaw
+       agent on your <a href="https://brev.nvidia.com" target="_blank" rel="noopener">Brev launchable</a>. If a cell logs <code>⚠ DEGRADED</code> (the agent loops on
+       <code>tool_search_code</code> instead of acting), shape the runtime with the
+       health-check and recover cells below, then re-run. On a freshly launched
+       instance, run them once before the Skill demo.</p>
+  </div>
+
+  <div id="gw-recover"></div>
+
+  <div id="cell-skill"></div>
+
+  <h2>Step 2 · Inspect your running agent</h2>
+
+  <p>Scheduled jobs live on the gateway, not behind an HTTP REST route. The same
+     WebSocket connection the Control UI uses exposes <code>cron.list</code>,
+     <code>cron.add</code>, and <code>cron.remove</code>. A cron job is one way an
+     always-on agent acts without a human in the loop: work that fires on a
+     schedule, each run in its own fresh session, distinct from the heartbeat in
+     the table above, which ticks the caller's own session on a timer.</p>
+
+  <p>The widget below connects, lists the crons already installed, and walks the
+     full lifecycle of a new one. It installs a demo job that fires every minute
+     and appends a line to <code>MEMORY.md</code>, waits for the first run, shows
+     you the appended line, then removes the job so nothing lingers.</p>
+
+  <div id="probe-cron"></div>
+
+  <div class="callout warn">
+    <strong>Cron jobs run unattended.</strong> A scheduled directive
+    that asks the agent to "send the daily report" will fire whether
+    you are watching or not. The fresh-session-per-fire knob is the
+    safety mechanism: each run starts clean, so a bug in turn 1 can't
+    poison turn 2. Module 4a adds a kernel-level containment layer on
+    top of this: every filesystem access and network connection the
+    cron-fired agent tries to make passes through an explicit allow-list
+    before the syscall runs, so a misbehaving scheduled job can only
+    reach what the policy permits.
+  </div>
+
+  <h2>Where to take this</h2>
+  <p>Skills as memoised trajectories appear across the production ecosystem
+     under different names and shapes:</p>
+  <ul>
+    <li><a href="https://arxiv.org/abs/2305.16291" target="_blank" rel="noopener">Wang et al., <em>Voyager</em> (2023)</a>. The research origin, demonstrated in a Minecraft agent.</li>
+    <li><a href="https://langchain-ai.github.io/langgraph/concepts/persistence/" target="_blank" rel="noopener">LangGraph Persistence</a>. Checkpointed graphs as save-and-resume.</li>
+    <li><a href="https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview" target="_blank" rel="noopener">Anthropic, <em>Agent Skills</em></a>. The production skill-folder layout.</li>
+  </ul>
+
+  <div class="references">
+    <h3>References</h3>
+    <ul>
+      <li><a href="https://arxiv.org/abs/2305.16291" target="_blank" rel="noopener">Wang et al., <em>Voyager: An Open-Ended Embodied Agent</em> (2023)</a>. The skill-library / memoised-trajectory mechanic this page builds on, demonstrated in a Minecraft agent.</li>
+      <li><a href="https://arxiv.org/abs/2304.03442" target="_blank" rel="noopener">Park et al., <em>Generative Agents</em> (2023)</a>. Multi-day autonomous-agent simulation; the reflection and memory-consolidation patterns an always-on loop reuses.</li>
+      <li><a href="https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview" target="_blank" rel="noopener">Anthropic, <em>Agent Skills</em></a>. The production skill-folder layout this page's <code>skills/&lt;name&gt;.md</code> drop-in mirrors.</li>
+      <li><a href="https://langchain-ai.github.io/langgraph/concepts/persistence/" target="_blank" rel="noopener">LangGraph, <em>Persistence</em> (checkpointers)</a>. Checkpointed graphs as the same save-and-resume primitive in a different production shape.</li>
+      <li><a href="https://en.wikipedia.org/wiki/Cron" target="_blank" rel="noopener">cron(8)</a>. The canonical reference for the scheduling primitive the cron drop-in borrows.</li>
+    </ul>
+    <p class="references-note">Comprehensive list at <a href="04c-going-further.html#refs">Going Further · References</a>.</p>
+  </div>
+
+  <h2>Try it · trigger a skill in conversation</h2>
+  <p>
+    Chat with your live agent over the gateway. If you installed the
+    triage-incident skill in Step 1, paste an incident and watch the agent pick the
+    skill up mid-turn without you naming it. That is the same machinery a heartbeat
+    or a cron fire would use, only driven by your message instead.
+  </p>
+  <div id="alwayson-artifact"></div>
+  <script type="module">
+    import { mountChatUI, openclawChat } from "./_shared.js";
+    mountChatUI("#alwayson-artifact", {
+      greeting: "Connect on the Kickstart page, then send something that matches a skill, such as “checkout-service is throwing 502s in us-east-1, what do I do?”",
+      examples: ["checkout-service is throwing 502s in us-east-1", "What skills are you configured with?", "Walk me through your incident runbook"],
+      respond: async (text, ctx) => { await openclawChat(text, { session: "art-" + ctx.thread, view: ctx.view, signal: ctx.signal }); },
+    });
+  </script>
+
+  <div class="foot-nav">
+    <a href="03b-openclaw.html">← Module 3b: OpenClaw</a>
+    <a class="next" href="04a-safety.html">Module 4a: NemoClaw →</a>
+  </div>
+</main>
+
+<script type="module">
+import { buildNav, updateKeyPill, updateClawPill, mountJourneyMap, mountCanvasFlow, GW_CONNECT, mountGwRecover, mountDiagram } from "./_shared.js";
+document.getElementById("nav").innerHTML = buildNav("03c-always-on.html");
+const pill = document.getElementById("key-status");
+updateKeyPill(pill);
+updateClawPill(document.getElementById("claw-status"));
+mountJourneyMap("#journey-map", "3c");
+hljs.highlightAll();
+
+// ── The always-on loop: the agent wakes on a schedule, acts, writes back ──────
+mountDiagram("#fig-calls", {
+  kicker: "NO HUMAN IN THE LOOP",
+  title: "The always-on loop",
+  width: 1060, height: 300, maxWidth: 980, boxW: 230,
+  nodes: [
+    { id: "cron", label: "schedule", kind: "env", x: 0, y: 0, lines: ["cron / heartbeat", "fires on a timer"] },
+    { id: "gw",   label: "gateway",  kind: "agent", x: 1, y: 0,
+      lines: ["model plans, calls", "sandbox tools, repeats"], socket: "wakes in a fresh session" },
+    { id: "logs", label: "workspace / logs", kind: "data", x: 2, y: 0, lines: ["MEMORY.md, logs/"] },
+  ],
+  edges: [
+    { from: "cron", to: "gw",   label: "tick",    side: "top", tint: "env"   },
+    { from: "gw",   to: "logs", label: "results", side: "top", tint: "agent" },
+    { from: "gw",   to: "gw",   tint: "agent" },
+  ],
+  caption: "With no human in the loop, the agent wakes on a schedule, runs its loop, and writes the results back to the workspace.",
+});
+
+// ── Shared WS connect snippet (used as prefix in each connect node) ──────────
+
+// ── Shared chat-turn snippet ───────────────────────────────────────────────────
+// `message` is named once at the top; `_params` references it. The agent's tool
+// calls ride a SEPARATE stream from the chat reply, so each turn subscribes to the
+// session's message stream before firing chat.send. Skip that and only the final
+// prose comes back, with the exec steps underneath staying invisible.
+const gwChat = (sk, msg) => {
+  // sk is normally a literal string. Pass { raw: "<js expr>" } to compute the
+  // sessionKey at run time, say a unique-per-run key so the agent starts from
+  // a clean session every time and actually re-runs its tools (a reused session
+  // answers from memory and the tool trace stays empty).
+  const skExpr = (sk && typeof sk === "object" && sk.raw) ? sk.raw : JSON.stringify(sk);
+  // msg is normally a literal string. Pass { raw: "<js>" } to supply the whole
+  // message-assignment block yourself, say a stack of prompts where the last
+  // uncommented line wins, so students can comment lines to try other prompts.
+  const msgBlock = (msg && typeof msg === "object" && msg.raw)
+    ? msg.raw
+    : ("let message = " + JSON.stringify(msg) + ";");
+  return `if (!state.call) { helpers.log("Run Connect first."); return; }
+
+// ── tune these ──────────────────────────────────────────────────────────────
+${msgBlock}
+const sessionKey      = ${skExpr};   // which agent session to talk to
+const IDLE_TIMEOUT_S  = 90;          // give up if the agent goes silent this long (this model can be slow to first token)
+const TOTAL_TIMEOUT_S = 240;         // hard ceiling for the whole turn
+// ──────────────────────────────────────────────────────────────────────────────
+helpers.log("→ " + message);
+
+// chat.send returns the final prose only. The exec/tool steps underneath arrive
+// as event:"agent" frames, and the gateway forwards those ONLY to sockets that
+// subscribed to this session. Subscribe once per session, then send the turn.
+if (!state._subs) state._subs = {};
+if (!state._subs[sessionKey]) {
+  await state.call("sessions.messages.subscribe", { key: sessionKey });
+  state._subs[sessionKey] = true;
+}
+
+// 🧹 Start fresh? Uncomment the next line to wipe this session's memory before
+//    sending. sessions.reset clears the server-side history, so the agent
+//    answers as a stranger and RE-RUNS its tools instead of replaying an
+//    earlier turn (that is why it can answer "whoami/pwd" without re-checking).
+// await state.call("sessions.reset", { key: sessionKey }); helpers.log("🧹 cleared session memory: " + sessionKey);
+
+const _params = {
+  sessionKey,
+  idempotencyKey: Math.random().toString(36).slice(2) + Date.now().toString(36),
+  message,
+};
+
+// ── stream handler ───────────────────────────────────────────────────────────
+// Frames are tagged by pl.stream. The "tool" stream is the observable trace: on
+// phase "start" it carries the tool's args (its INPUT), and on phase "result" the
+// result + isError (its OUTPUT), for EVERY tool (exec, read, edit, browser, …).
+// The "assistant" stream carries the answer text; "lifecycle" phase:end ends the
+// run. Reasoning (chain-of-thought) is NOT forwarded by the gateway, so the args
+// and results below are the deepest per-step visibility available here; the
+// 📜 logs cell (in Recover) tails the runtime log when even that is not enough.
+// Two timers guard the run: an idle timer (reset only by REAL activity, never by
+// heartbeats) and a global backstop.
+let _text = "", _finalEv, _t0 = performance.now(), _ttft = 0, _myRun = null;
+let _toolStarts = 0, _didResult = false;            // for the degradation check below
+const IDLE_MS = IDLE_TIMEOUT_S * 1000, GLOBAL_MS = TOTAL_TIMEOUT_S * 1000;
+await new Promise((resolve, reject) => {
+  let _idle, _global;
+  function finish(why, stalled) {
+    clearTimeout(_idle); clearTimeout(_global); state._chatCb = null;
+    if (why) helpers.log(why);
+    // On a timeout the run is still alive server-side. Abort it (fire-and-forget)
+    // so it stops burning the single agent and stops leaking frames into the next
+    // turn. Left alone, it keeps running in the background after we have given up.
+    if (stalled) {
+      helpers.log("⛔ aborting the run on " + sessionKey + " so it does not keep running in the background…");
+      state.call("chat.abort", { sessionKey }).catch(() => {});
+    }
+    resolve();
+  }
+  function bumpIdle() { clearTimeout(_idle); _idle = setTimeout(() => finish("⏱ no agent activity for " + (IDLE_MS / 1000) + "s; stopping", true), IDLE_MS); }
+  _global = setTimeout(() => finish("⏱ hit the " + (GLOBAL_MS / 1000) + "s global cap", true), GLOBAL_MS);
+  if (helpers.signal) helpers.signal.addEventListener("abort", () => finish("⏹ stopped", true), { once: true });
+  state._chatCb = d => {
+   try {
+    const pl = d.payload || {};
+    // Heartbeats / keepalives stream the whole time the socket is open. They are
+    // NOT activity, so ignore them and they never reset the idle timer (a stalled
+    // run emits nothing BUT heartbeats, and must still time out).
+    if (pl.isHeartbeat || d.event === "health" || d.event === "tick") return;
+    // One sessionKey can have several runs (your earlier turn may still be
+    // streaming on the server). The gateway forwards them ALL to a subscriber,
+    // so lock onto the runId our own chat.send returned and drop every other
+    // run's frames. Do this before bumpIdle, or a stale run's chatter would keep
+    // resetting our idle timer and mask a real stall.
+    if (_myRun && pl.runId && pl.runId !== _myRun) return;
+    bumpIdle();   // real activity on OUR run pushes the idle deadline back
+    if (d.event === "chat" && pl.state === "final") {
+      // final chat frame: fallback prose if no agent text deltas arrived
+      _finalEv = d;
+      _text = pl.message?.content?.[0]?.text || _text;
+      return;
+    }
+    if (d.event !== "agent") return;
+    const sk = pl.sessionKey || "";
+    if (sk !== sessionKey && !sk.endsWith(":" + sessionKey)) return;   // not our session
+    const data = pl.data || {};
+    const stream = pl.stream || "";
+    if (stream === "assistant" || ("delta" in data && "text" in data)) {
+      // the answer, streamed as cumulative text
+      if (!_ttft) _ttft = performance.now() - _t0;
+      _text = data.text || _text;
+    } else if (stream === "tool" && data.phase === "start") {
+      // a tool was invoked, so show its INPUT (args reveal exactly what was asked,
+      // such as an unexpanded path or a malformed command that makes the tool hang)
+      _toolStarts++;
+      const inp = data.args ? JSON.stringify(data.args) : (data.meta || "");
+      helpers.log.details("⚙️ " + (data.name || "tool") + (inp ? "  " + inp.replace(/\\n/g, " ").slice(0, 160) : ""), d);
+    } else if (stream === "tool" && data.phase === "result") {
+      // a tool finished, so show its OUTPUT (works for exec, read, edit, browser, …)
+      _didResult = true;
+      const r = data.result;
+      const txt = (r && r.content && r.content[0] && r.content[0].text) || (typeof r === "string" ? r : "");
+      const mark = data.isError ? "✗" : "✓";
+      helpers.log.details(mark + " " + (data.name || "tool") + (txt ? "  " + txt.trim().replace(/\\n/g, " ⏎ ").slice(0, 200) : ""), d);
+    } else if (data.phase === "end" && !data.itemId) {
+      // agent run complete (lifecycle end)
+      finish();
+    }
+   } catch (e) {
+    // A throw inside a WS frame handler is otherwise swallowed silently, which
+    // looks exactly like a hang. Surface it so the failure is visible, not hidden.
+    helpers.log("⚠ frame-handler error: " + (e && e.message ? e.message : e));
+   }
+  };
+  bumpIdle();
+  // chat.send returns { runId, status } well before any frame, so lock onto that
+  // runId so the handler can ignore every other run sharing this sessionKey.
+  state.call("chat.send", _params)
+    .then(res => { _myRun = (res && res.runId) || null; })
+    .catch(e => { clearTimeout(_idle); clearTimeout(_global); state._chatCb = null; reject(e); });
+});
+
+// ── response ─────────────────────────────────────────────────────────────────
+helpers.log(_text);
+if (_finalEv) helpers.log.details("← final chat frame", _finalEv);
+const _secs = (performance.now() - _t0) / 1000;
+const _toks = Math.round(_text.length / 4);          // rough estimate: ~4 chars/token
+helpers.log("⏱ " + _secs.toFixed(1) + "s · ~" + _toks + " tok · " +
+            (_secs ? (_toks / _secs).toFixed(1) : "0") + " tok/s" +
+            (_ttft ? " · first token " + (_ttft / 1000).toFixed(2) + "s" : ""));
+state.out = _text;
+
+// Automatic degradation check. A healthy run returns text and/or a tool result.
+// If the agent STARTED tools but none returned a result, a tool is hung or the
+// model is looping, which is a runtime problem, not your code. Note which tools
+// started (above) and whether toolSearch is the cause via the Health check.
+if (!_text.trim() && !_didResult && _toolStarts > 0) {
+  helpers.log("⚠ DEGRADED: started " + _toolStarts + " tool call(s) but none returned a result or answer.");
+  helpers.log("   A tool is hung or the model is looping. The ⚙️ rows above show the exact tool + args it got stuck on.");
+  helpers.log("   Run the 🩺 Health check (it flags toolSearch) + 🛠 Recover; for a deeper look, the 📜 logs cell tails the runtime.");
+}
+`;
+};
+
+// Health / recover / logs flow is shared from _shared.js:
+mountGwRecover("#gw-recover");
+
+mountCanvasFlow("#cell-skill", {
+  label: "Install a skill, then trigger it",
+  intro: "Across one session the agent writes the skill to disk itself, answers a matching question, and the reply is checked against the skill's recipe, with the agent picking the skill up by reading its own workspace rather than because you named it.",
+  edges: [
+    { from: "sk-conn",    to: "sk-install" },
+    { from: "sk-install", to: "sk-trigger" },
+    { from: "sk-trigger", to: "sk-check" },
+  ],
+  nodes: [
+    {
+      id: "sk-conn", icon: "🔌", title: "Connect", x: 0, y: 0,
+      summary: "Open a WebSocket to the gateway and authenticate. This flow stores its connection in state.call so the next three nodes can send chat turns without re-connecting.",
+      code: GW_CONNECT + `state._sk = "quick-3c-skill";`,
+    },
+    {
+      id: "sk-install", icon: "🧩", title: "Turn 1 · install the skill", x: 1, y: 0,
+      summary: "Ask the agent to write skills/triage-incident.md to its own workspace. The skill is a markdown recipe the agent reads automatically on the next turn, without any system-prompt change.",
+      code: gwChat("quick-3c-skill",
+        "Add a skill file at skills/triage-incident.md with this content:\n\n" +
+        "When the user asks about a production incident, or pastes a log line suggesting one, " +
+        "do these things in order: 1) confirm the affected service and time window, " +
+        "2) open the runbook for that service from /sandbox/runbooks/, " +
+        "3) suggest the smallest reversible mitigation, do not run it yourself, " +
+        "4) ask the user before opening a Jira ticket. Confirm when the file is saved."),
+    },
+    {
+      id: "sk-trigger", icon: "🚨", title: "Turn 2 · trigger it", x: 2, y: 0,
+      summary: "Send an incident question that matches the skill's trigger conditions. The prompt doesn't name the skill; the agent matches it against the skill descriptions in its workspace.",
+      code: gwChat("quick-3c-skill",
+        "I just got paged. checkout-service is throwing 502s in us-east-1 for the last 12 minutes. What should I do?"),
+    },
+    {
+      id: "sk-check", icon: "🔬", title: "Did it follow the recipe?", x: 3, y: 0,
+      summary: "Scan the agent's reply for the four steps in the skill: confirming scope, opening the runbook, proposing a reversible mitigation, pausing before Jira.",
+      code: `const r = (state.out || "").toLowerCase();
+const hits = ["runbook", "reversible", "confirm", "jira"].filter(w => r.includes(w));
+helpers.log("skill steps echoed in the reply: " + (hits.join(", ") || "(none this run)"));
+return { matched_steps: hits };
+`,
+    },
+  ],
+});
+
+mountCanvasFlow("#probe-cron", {
+  label: "Gateway · cron management",
+  intro: "Scheduled jobs are listed, installed, and removed over the same WebSocket connection, where cron.add takes an id, a cron schedule string, and a prompt the agent runs on each tick.",
+  edges: [
+    { from: "cr-conn", to: "cr-list" },
+    { from: "cr-list", to: "cr-add"  },
+    { from: "cr-add",  to: "cr-rm"   },
+  ],
+  nodes: [
+    {
+      id: "cr-conn", icon: "🔌", title: "Connect", x: 0, y: 0,
+      summary: "Open the gateway WebSocket and authenticate.",
+      code: GW_CONNECT,
+    },
+    {
+      id: "cr-list", icon: "📋", title: "List current crons", x: 1, y: 0,
+      summary: "Call cron.list to see what is already scheduled. The payload.jobs array holds each job's id, schedule, and prompt.",
+      code: `if (!state.call) { helpers.log("Run Connect first."); return; }
+const pl = await state.call("cron.list");
+const jobs = pl?.jobs || [];
+if (!jobs.length) {
+  helpers.log("(no cron jobs installed)");
+} else {
+  jobs.forEach(j => helpers.log(j.id + "  " + j.schedule + "  " + (j.prompt || "").slice(0, 60)));
+}
+return { count: jobs.length };
+`,
+    },
+    {
+      id: "cr-add", icon: "➕", title: "Install a demo cron", x: 2, y: 0,
+      summary: "Call cron.add with an id, a cron schedule (every minute here), and the prompt the agent will run on each tick. The job fires inside the same sandbox as the normal agent loop.",
+      code: `if (!state.call) { helpers.log("Run Connect first."); return; }
+await state.call("cron.add", {
+  id:       "quick-3c-demo",
+  schedule: "* * * * *",
+  prompt:   "Append one short line to MEMORY.md noting the current UTC minute, then exit.",
+});
+helpers.log("installed quick-3c-demo (fires every minute)");
+const pl = await state.call("cron.list");
+helpers.log("cron jobs now: " + (pl?.jobs || []).map(j => j.id).join(", "));
+return { installed: "quick-3c-demo" };
+`,
+    },
+    {
+      id: "cr-rm", icon: "🗑", title: "Remove the demo cron", x: 3, y: 0,
+      summary: "Call cron.remove to unschedule the job you just added. Verify with cron.list that the id is gone.",
+      code: `if (!state.call) { helpers.log("Run Connect first."); return; }
+await state.call("cron.remove", { id: "quick-3c-demo" });
+helpers.log("removed quick-3c-demo");
+const pl = await state.call("cron.list");
+const remaining = (pl?.jobs || []).map(j => j.id);
+helpers.log("cron jobs remaining: " + (remaining.length ? remaining.join(", ") : "(none)"));
+return { remaining };
+`,
+    },
+  ],
+});
+</script>
+</body>
+</html>

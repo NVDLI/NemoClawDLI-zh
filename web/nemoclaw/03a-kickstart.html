@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Kickstart · Securing Agents</title>
+<link rel="stylesheet" href="_style.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<style>
+  .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
+  .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
+  .CodeMirror-vscrollbar { display: none; }
+  .CodeMirror-gutters { background: #0d0d0d; border-right: 1px solid #2a2a2a; }
+  .CodeMirror-linenumber { color: #6a6a6a; padding: 0 8px 0 6px; font-size: .76rem; }
+  .CodeMirror-lines { padding: 10px 0; }
+  .cm-s-monokai.CodeMirror { background: #0d0d0d; color: #f8f8f2; }
+  .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
+  .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
+</style>
+<style>
+  .url-pair {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 1em 0;
+  }
+  @media (max-width: 700px) { .url-pair { grid-template-columns: 1fr; } }
+  .url-card {
+    display: block; text-decoration: none; color: inherit;
+    background: var(--e1); border: 1px solid var(--bd);
+    border-left: 3px solid var(--g); border-radius: var(--r);
+    padding: 14px 16px; transition: opacity .15s;
+  }
+  .url-card:hover { opacity: .8; }
+  .url-card h3 {
+    margin: 0 0 .35em; font-size: .95rem; color: var(--gs);
+    font-family: var(--mono);
+  }
+  .url-card p { margin: .25em 0; font-size: .84rem; color: var(--td); line-height: 1.55; }
+  .url-card code { font-size: .82em; }
+  figure.lp-video { margin: 1.4em 0; }
+  figure.lp-video .video-wrap { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;
+     border-radius: 8px; border: 1px solid #2a2a2a; background: #161616; }
+  figure.lp-video .video-wrap iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+  figure.lp-video figcaption { font-size: .88rem; color: var(--td,#b0b0b0); line-height: 1.6; margin-top: .55em; }
+  figure.lp-video figcaption b { color: var(--gs,#aee23a); }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="index.html">NVIDIA · Securing Agents</a>
+  <nav id="nav"></nav>
+  <div class="spacer"></div>
+  <span class="key-pill" id="key-status" onclick="location.href='01a-loop.html#key-panel'">…</span>
+  <span class="key-pill" id="claw-status" onclick="location.href='03a-kickstart.html#probe-claw'">…</span>
+</div>
+
+<main>
+  <div id="journey-map"></div>
+
+  <div class="hero">
+    <div class="eyebrow">Module 3 · Part A of 3 · live calls begin</div>
+    <h1>The <span>Kickstart</span></h1>
+    <p class="lead">
+      You just built a branching research agent in the browser: a planner fanned
+      out parallel sub-agents across the web and this course's own sections, then
+      synthesized one grounded answer. But every call underneath it was stateless
+      (messages in, one reply out, nothing carried over) and the orchestration
+      lived in your page. From here you point those same patterns at a real
+      <em>agent runtime</em> that holds its own state: OpenClaw, in your NemoClaw
+      launchable. The model endpoint still speaks the <em>Chat Completions API</em>
+      over plain HTTP POST, but the agent
+      runtime does not speak that protocol to your browser: it answers over a
+      WebSocket gateway at <code>/cli/gateway</code> using JSON-RPC. This page
+      probes both, makes your first OpenClaw call over that gateway, and measures
+      first-token latency on the model side.
+    </p>
+<svg class="gfx-dark" viewBox="0 0 780 384" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two different access protocols: the model endpoint uses HTTP POST for stateless Chat Completions calls; the agent runtime uses a persistent WebSocket at /cli/gateway with JSON-RPC where the sessionKey carries memory across turns." preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:780px;margin:1.5rem auto"><defs></defs><rect x="60" y="20" width="320" height="294" rx="8" fill="var(--gfx-blue,#0969da)" fill-opacity="0.05" stroke="var(--gfx-blue,#0969da)" stroke-width="2"/><text x="220" y="44" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="var(--gfx-blue,#0969da)" text-anchor="middle" font-weight="700">HTTP · Chat Completions API</text><line x1="68" y1="51" x2="372" y2="51" stroke="var(--gfx-blue,#0969da)" stroke-width="1" stroke-opacity="0.35"/><text x="220" y="74" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="14" fill="var(--gfx-blue,#0969da)" text-anchor="middle" font-weight="800">model endpoint</text><text x="220" y="91" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">build.nvidia.com</text><rect x="140" y="104" width="160" height="28" rx="6" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-blue,#0969da)" stroke-width="1.5"/><text x="220" y="122" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="10.5" fill="var(--gfx-blue,#0969da)" text-anchor="middle">POST /chat/completions</text><line x1="220" y1="132" x2="220" y2="144" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="1.5"/><path d="M215,143 L225,143 L220,150 Z" fill="var(--gfx-sub,#5e5e5e)"/><rect x="140" y="150" width="160" height="28" rx="6" fill="var(--gfx-tint-blue,#dfeaf5)" stroke="var(--gfx-blue,#0969da)" stroke-width="1.5"/><text x="220" y="168" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-blue,#0969da)" text-anchor="middle" font-weight="700">model</text><line x1="220" y1="178" x2="220" y2="190" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="1.5"/><path d="M215,189 L225,189 L220,196 Z" fill="var(--gfx-sub,#5e5e5e)"/><rect x="140" y="196" width="160" height="28" rx="6" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-blue,#0969da)" stroke-width="1.5"/><text x="220" y="214" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="var(--gfx-blue,#0969da)" text-anchor="middle">one reply</text><text x="220" y="254" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">new connection per call</text><text x="220" y="270" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">no state between calls</text><rect x="400" y="20" width="320" height="294" rx="8" fill="var(--gfx-green,#4a7a00)" fill-opacity="0.06" stroke="var(--gfx-green,#4a7a00)" stroke-width="2"/><text x="560" y="44" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="var(--gfx-green,#4a7a00)" text-anchor="middle" font-weight="700">WebSocket · /cli/gateway · JSON-RPC</text><line x1="408" y1="51" x2="712" y2="51" stroke="var(--gfx-green,#4a7a00)" stroke-width="1" stroke-opacity="0.35"/><text x="560" y="74" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="14" fill="var(--gfx-green,#4a7a00)" text-anchor="middle" font-weight="800">agent runtime</text><text x="560" y="91" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">NemoClaw · OpenClaw</text><rect x="460" y="104" width="200" height="28" rx="5" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-green,#4a7a00)" stroke-width="1.4"/><text x="560" y="122" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="10.5" fill="var(--gfx-green,#4a7a00)" text-anchor="middle">ws:// persistent connection</text><line x1="560" y1="132" x2="560" y2="144" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="1.5"/><path d="M555,143 L565,143 L560,150 Z" fill="var(--gfx-sub,#5e5e5e)"/><rect x="460" y="150" width="200" height="28" rx="5" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-green,#4a7a00)" stroke-width="1.4"/><text x="560" y="168" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="10.5" fill="var(--gfx-green,#4a7a00)" text-anchor="middle">→ chat.send({ sessionKey })</text><line x1="560" y1="178" x2="560" y2="190" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="1.5"/><path d="M555,189 L565,189 L560,196 Z" fill="var(--gfx-sub,#5e5e5e)"/><rect x="460" y="196" width="200" height="28" rx="5" fill="var(--gfx-tint-green,#e6f3d4)" stroke="var(--gfx-green,#4a7a00)" stroke-width="1.4"/><text x="560" y="214" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-green,#4a7a00)" text-anchor="middle">← events: tool calls · results · text</text><text x="560" y="254" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">sessionKey carries memory across turns</text><text x="560" y="270" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">connection stays open</text><text x="390" y="336" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13" fill="var(--gfx-sub,#5e5e5e)" font-style="italic">Two different protocols: HTTP request-reply for the model, a persistent WebSocket for the agent gateway.</text><text x="390" y="352" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13" fill="var(--gfx-sub,#5e5e5e)" font-style="italic">The rest of this page covers how the gateway channel works.</text></svg>
+
+  </div>
+
+  <figure class="lp-video">
+    <div class="video-wrap">
+      <iframe src="https://www.youtube-nocookie.com/embed/DznyClsBZWY?autoplay=0&rel=0"
+        title="Introduction to Building Autonomous AI Agents" loading="lazy"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    </div>
+    <figcaption><b>Watch:</b> An introduction to designing and deploying long-running, self-evolving
+      autonomous agents with OpenClaw, NemoClaw, and OpenShell. It sets up the kickstart this page runs,
+      so it is a useful companion before you probe the endpoints below. Part of NVIDIA's
+      <a href="https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/how-to-build-safer-autonomous-agent-using-openclaw" target="_blank" rel="noopener">Agentic AI Learning Path</a>.</figcaption>
+  </figure>
+
+  <h2>The two endpoints you work with from here</h2>
+  <p>You work with two addresses from here. The model endpoint handles model
+     calls and the agent runtime handles agent calls; nothing else is involved.</p>
+
+  <div class="url-pair">
+    <a class="url-card" href="https://build.nvidia.com" target="_blank" rel="noopener">
+      <h3>build.nvidia.com</h3>
+      <p>Chat Completions API. Stateless: one POST, one reply,
+         no tools or session. Generate a key at API Keys.</p>
+      <p style="color:var(--tf);font-size:.8rem">Your <code>nvapi-</code> key.
+         The proxy forwards it unchanged.</p>
+    </a>
+    <a class="url-card" href="https://brev.nvidia.com/launchable/deploy/now?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS" target="_blank" rel="noopener" style="border-left-color:#aee23a;background:rgba(118,185,0,.06)">
+      <h3>NemoClaw launchable</h3>
+      <p>The OpenClaw agent runtime on Brev, at
+         <code>https://nemoclaw-&lt;id&gt;.brevlab.com</code>. Identity, tools,
+         session memory, and a kernel-level sandbox. Accessed via WebSocket
+         gateway at <code>/cli/gateway</code>.</p>
+      <p style="color:var(--tf);font-size:.8rem">Gateway token auth. Sessions
+         via <code>x-openclaw-session-key</code>.</p>
+    </a>
+  </div>
+
+  <h2>Step 1 · Probe the endpoints</h2>
+  <p>The widgets below make a small request to each endpoint and show
+     what comes back. Green = ready.</p>
+
+  <div id="probe-llm"></div>
+
+  <h3>Latency and TTFT across models</h3>
+  <p>Before committing to a model, measure it. The flow below pulls matching
+     models from the catalog, streams a short prompt through each one, and
+     records how long each takes to return its first token (TTFT) and to
+     finish. Open any node to read or edit the measurement code.</p>
+
+  <div id="bench-llm"></div>
+
+  <div id="probe-claw"></div>
+
+  <p>If the OpenClaw probe times out or returns a 502, the agent runtime
+     hasn't finished booting. This usually means the launchable started
+     before OpenClaw finished loading its policy YAML. Wait 30 seconds
+     and click Probe again. If it stays down, 03c covers the diagnostic
+     path.</p>
+
+  <h2>Step 2 · The gateway</h2>
+
+  <p>The model endpoint speaks the Chat Completions API: one POST, a JSON body with
+     <code>model</code> and <code>messages</code>, an
+     <code>Authorization</code> header. OpenClaw implements
+     <code>/v1/chat/completions</code> internally too, but that route is
+     not reachable from this page. The launchable's Cloudflare Access
+     layer blocks it from the browser. The channel that <em>is</em> open
+     to you is a different protocol, and this section covers it: a
+     WebSocket gateway at <code>/cli/gateway</code> speaking JSON-RPC.</p>
+
+  <p>The Control UI in your browser tab does not use a special private channel.
+     It talks to the agent over a WebSocket at <code>/cli/gateway</code>, and that
+     same connection is open to you. The token from
+     <code>printenv OPENCLAW_GATEWAY_TOKEN</code> is the only credential it needs.</p>
+
+  <p>That token carries <code>operator.admin</code> scope, the same control
+     the Control UI has. With it you can:</p>
+  <ul>
+    <li><code>models.list</code> enumerates every model the runtime serves.</li>
+    <li><code>cron.add</code> schedules work that runs without you.</li>
+    <li><code>chat.send</code> with a <code>sessionKey</code> drops a message
+        straight into the running agent's loop.</li>
+  </ul>
+
+  <div id="fig-calls"></div>
+
+  <h3>First, shape a fresh launchable</h3>
+  <p>A brand-new NemoClaw launchable ships with <code>tools.toolSearch</code> turned
+     on, and that one flag breaks tool use on a weaker model:</p>
+  <ul>
+    <li><strong>Symptom:</strong> you ask for a command, nothing comes back,
+        the run stalls, and then it times out.</li>
+    <li><strong>Cause:</strong> toolSearch lets the model reach its tools by writing
+        code for a bridge (<code>tool_search_code</code> &middot; &ldquo;run bridge
+        code&rdquo;), and the model loops on that bridge instead of calling
+        <code>exec</code>.</li>
+    <li><strong>Fix:</strong> run the health check; if <code>toolSearch</code> is on,
+        the Recover cell turns it off with <code>config.patch</code> and restarts the
+        runtime. Do this once per fresh instance.</li>
+  </ul>
+
+  <div id="fig-toolsearch"></div>
+
+  <div id="gw-recover"></div>
+
+  <p>With the runtime shaped, drop a message into the agent's loop. The three cells
+     run in order. They connect, list models and crons, then send a chat turn, and
+     the last one streams the trace back:</p>
+  <ul>
+    <li>Each <code>⚙️</code> row is a tool call with its input arguments.</li>
+    <li>Each <code>✓</code>/<code>✗</code> row is that tool's result.</li>
+    <li>The model's reasoning is not forwarded by the gateway, so this input/output
+        trace is the deepest per-step view. When a run stalls with no result, the
+        📜 logs cell above tails the runtime instead.</li>
+  </ul>
+  <p>Every chat run self-checks: if one logs <code>⚠ DEGRADED</code>, come back up
+     here, run Recover, then retry.</p>
+
+  <div id="gw-demo"></div>
+
+  <div class="callout warn">
+    <p>The credential you just used grants full admin. It carries the same control
+       the Control UI has: list models, schedule jobs, rewrite files, redirect the
+       agent. Anyone who can read the launchable environment can read that token,
+       and a reader of the token is an operator. Module 4 turns this from a
+       convenience into the central security question.</p>
+  </div>
+
+  <h2>Step 3 · Memory lives in the session key</h2>
+  <p>Every <code>chat.send</code> takes a <code>sessionKey</code>, and that key is the
+     whole memory model:</p>
+  <ul>
+    <li><strong>Same key, twice:</strong> the gateway rehydrates the first turn's
+        history before the second runs, so the agent answers from a conversation
+        your client never re-sent.</li>
+    <li><strong>Different key:</strong> a clean start, nothing carried over.</li>
+  </ul>
+  <p>The first cell below proves it: it plants a fact, then asks for it back under the
+     same key. (That carried memory is also why a chat can look like it &ldquo;just
+     knows&rdquo; something. It is reading the session, not re-deriving it.) The
+     other two cells manage that state:</p>
+  <ul>
+    <li><strong>Clear</strong> wipes one session in a single call, so the next turn
+        starts from nothing. Every chat cell also carries a commented
+        <code>sessions.reset</code> line to start fresh in place.</li>
+    <li><strong>Clean up</strong> sweeps the throwaway sessions that pile up in the
+        Control UI as you experiment (including Step 2's per-run keys), keeping only
+        the Main Session.</li>
+  </ul>
+
+  <div id="session-call"></div>
+
+  <div class="callout warn">
+    <strong>One key is the whole memory model.</strong> The gateway
+    resolves the session server-side from that single string before
+    every call, so the client never ships the full transcript on each
+    turn. A different key is a different session, even if the content
+    is identical.
+  </div>
+
+  <h2>What's next</h2>
+  <p>You can talk to OpenClaw. The next page goes one level deeper: it
+     shows you the files that decide what OpenClaw <em>is</em>, lets
+     you edit one of them, and watches the same chat-completion start
+     answering differently.</p>
+
+  <div class="references">
+    <h3>References</h3>
+    <ul>
+      <li><a href="https://platform.openai.com/docs/api-reference/chat" target="_blank" rel="noopener">OpenAI Chat Completions API</a>. The wire format the model endpoint speaks, including the <code>finish_reason</code> field this page surfaces.</li>
+      <li><a href="https://build.nvidia.com" target="_blank" rel="noopener">NVIDIA build.nvidia.com</a>. The model API behind the course proxy; paste your nvapi- key in the bearer field to authenticate.</li>
+      <li><a href="https://docs.anthropic.com/en/docs/claude-code/overview" target="_blank" rel="noopener">Anthropic, <em>Claude Code</em> (docs)</a>. The directory-as-session pattern that the next page edits to change what OpenClaw is.</li>
+      <li><a href="https://arxiv.org/abs/2304.03442" target="_blank" rel="noopener">Park et al., <em>Generative Agents</em> (2023)</a>. Establishes server-side memory plus identity as durable runtime structure, the model the session-key header implements.</li>
+    </ul>
+    <p class="references-note">Comprehensive list at <a href="04c-going-further.html#refs">Going Further · References</a>.</p>
+  </div>
+
+  <h2>Try it · talk to your launchable</h2>
+  <p>
+    Once the probe above is green, this artifact opens the same
+    <code>/cli/gateway</code> WebSocket and lets you chat with your live OpenClaw
+    agent. It streams the reply and shows a chip whenever the agent reaches for a
+    tool. This is the gateway, not a mock.
+  </p>
+  <div id="kickstart-artifact"></div>
+  <script type="module">
+    import { mountChatUI, openclawChat } from "./_shared.js";
+    mountChatUI("#kickstart-artifact", {
+      greeting: "Connect your launchable in the probe above, then say hi, or ask me to run `whoami` and `pwd` with my exec tool.",
+      examples: ["Run whoami and pwd with your exec tool", "What model are you running on?", "List the files in your workspace"],
+      respond: async (text, ctx) => { await openclawChat(text, { session: "art-" + ctx.thread, view: ctx.view, signal: ctx.signal }); },
+    });
+  </script>
+
+  <div class="foot-nav">
+    <a href="02c-deep.html">← Module 2c: Deep Agents</a>
+    <a class="next" href="03b-openclaw.html">Module 3b: OpenClaw →</a>
+  </div>
+</main>
+
+<script type="module">
+import { buildNav, updateKeyPill, updateClawPill, mountJourneyMap, mountClawProbe, mountCanvasFlow, GW_CONNECT, mountGwRecover, mountDiagram } from "./_shared.js";
+document.getElementById("nav").innerHTML = buildNav("03a-kickstart.html");
+const pill = document.getElementById("key-status");
+updateKeyPill(pill);
+updateClawPill(document.getElementById("claw-status"));
+mountJourneyMap("#journey-map", "3a");
+hljs.highlightAll();
+
+// ── The call, expanded: one POST drives a loop inside the gateway ────────────
+mountDiagram("#fig-calls", {
+  kicker: "ONE POST · A LOOP INSIDE THE GATEWAY",
+  title: "One agent call, expanded",
+  width: 760, height: 300, maxWidth: 720, boxW: 220, boxH: 132,
+  nodes: [
+    { id: "you", label: "your code", kind: "data", x: 0, y: 0,
+      lines: ["notebook or browser", "one POST per turn"] },
+    { id: "gw", label: "OpenClaw gateway", kind: "agent", x: 1, y: 0,
+      lines: ["plans, calls tools,", "loops until it answers"],
+      socket: "the loop runs here" },
+  ],
+  edges: [
+    { from: "you", to: "gw", label: "POST",  side: "top",    tint: "data"  },
+    { from: "gw", to: "you", label: "reply", side: "bottom", tint: "agent" },
+    { from: "gw", to: "gw",  tint: "agent" },
+  ],
+  caption: "A single POST drives a loop inside the gateway, where the session key carries memory forward to the next call.",
+});
+
+// ── toolSearch trap vs fix (the resilience graphic) ──────────────────────────
+mountDiagram("#fig-toolsearch", {
+  kicker: "ONE FLAG DECIDES WHETHER EXEC RUNS",
+  title: "How toolSearch breaks exec, and how Recover fixes it",
+  width: 940, maxWidth: 880, boxW: 196, boxH: 104, rowGap: 40,
+  nodes: [
+    { id: "on",    label: "toolSearch ON",   kind: "neutral", x: 0, y: 0, lines: ["fresh-launchable default"] },
+    { id: "loop",  label: "tool_search_code", kind: "tool",   x: 1, y: 0, lines: ["model loops on the", "code bridge"] },
+    { id: "stall", label: "no output",       kind: "neutral", x: 2, y: 0, lines: ["exec never runs"] },
+    { id: "off",   label: "toolSearch OFF",  kind: "model",   x: 0, y: 1, lines: ["after Recover"] },
+    { id: "exec",  label: "exec",            kind: "tool",    x: 1, y: 1, lines: ["model calls the", "shell directly"] },
+    { id: "ok",    label: "command output",  kind: "env",     x: 2, y: 1, lines: ["the shell runs"] },
+  ],
+  edges: [
+    { from: "on",  to: "loop",  side: "top",    tint: "tool" },
+    { from: "loop", to: "stall", side: "top",    tint: "tool" },
+    { from: "off", to: "exec",  side: "bottom", tint: "model" },
+    { from: "exec", to: "ok",    side: "bottom", tint: "env" },
+  ],
+  caption: "With toolSearch on a weak model loops instead of calling exec, until Recover flips the flag so exec runs.",
+});
+
+// ── Probe model endpoint ─────────────────────────────────────────────────────
+mountClawProbe("#probe-llm", {
+  label: "Probe model endpoint (build.nvidia.com)",
+  intro: "",
+  defaultUrl:   "https://integrate.api.nvidia.com/v1",
+  proxyBase:    "https://nvidia-api-cors-proxy.vkudlay.workers.dev",
+  defaultToken: localStorage.getItem("nvapi") || "",
+  fieldHelp: {
+    url: `<p><strong>What it is:</strong> The NVIDIA model API base. Pre-filled, no changes needed.</p>
+<p><strong>How requests reach it:</strong> The browser can't call <code>integrate.api.nvidia.com</code> directly because
+of the same-origin policy. Requests route through a hosted Cloudflare Worker that adds CORS headers and
+forwards your key unchanged.</p>
+<p><strong>Running locally (not in the lab):</strong> Call <code>https://integrate.api.nvidia.com/v1</code> directly
+from your script or notebook. No proxy needed outside a browser context, where the same-origin restriction doesn't apply.</p>`,
+    token: `<p><strong>What it is:</strong> Your NVIDIA API key, starting with <code>nvapi-</code>. Autofills from the key
+you saved on the course home page.</p>
+<p><strong>How to get one:</strong> Sign in at <a href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com</a>
+→ API Keys → Generate Key.</p>
+<p><strong>Running locally:</strong> Same key works everywhere. Store it as an environment variable
+(<code>NVIDIA_API_KEY</code>) rather than pasting it into code.</p>`,
+  },
+  actions: [
+    { label: "GET /v1/models", path: "/models", method: "GET",
+      filterModels: ["120b", "glm", "kimi", "minimax"] },
+    { label: "Hello chat",     path: "/chat/completions", method: "POST",
+      body: () => ({
+        model: "nvidia/nemotron-3-nano-30b-a3b",
+        max_tokens: 60,
+        messages: [{ role: "user", content: "In one sentence: who runs you?" }],
+      }) },
+  ],
+});
+
+// ── TTFT / latency benchmark across matching models ──────────────────────────
+mountCanvasFlow("#bench-llm", {
+  label: "Latency benchmark · TTFT across catalog models",
+  intro: "Streams a short prompt through each matching model and records time-to-first-token (TTFT) and total completion time. Runs through the same Cloudflare proxy as the probe above. Open any node to read or edit the code.",
+  edges: [
+    { from: "fetch-models", to: "measure" },
+  ],
+  nodes: [
+    {
+      id: "fetch-models", icon: "📋", title: "Fetch matching models", x: 0, y: 0,
+      summary: "Pull the model catalog from the proxy and keep only models whose ID contains one of the filter substrings. Adjust FILTER to change which models run in the benchmark.",
+      code: `const FILTER = ["120b", "glm", "kimi", "minimax"];
+const PROXY  = "https://nvidia-api-cors-proxy.vkudlay.workers.dev";
+const KEY    = localStorage.getItem("nvapi") || "";
+if (!KEY) {
+  helpers.log("No nvapi- key saved. Go to the course home and save your key first.");
+  return;
+}
+const r = await fetch(PROXY + "/v1/models", {
+  headers: { Authorization: "Bearer " + KEY },
+});
+if (!r.ok) { helpers.log("models fetch failed: HTTP " + r.status); return; }
+const { data } = await r.json();
+const models = data.map(m => m.id).filter(id => FILTER.some(s => id.includes(s)));
+if (!models.length) {
+  helpers.log("No models matched filter: " + FILTER.join(", "));
+  return;
+}
+helpers.log(models.length + " model(s) to bench:\\n  " + models.join("\\n  "));
+state.models = models;
+state.proxy  = PROXY;
+state.key    = KEY;
+return { count: models.length };
+`,
+    },
+    {
+      id: "measure", icon: "⏱", title: "Measure TTFT per model", x: 1, y: 0,
+      summary: "Fires the same short prompt through every matched model at once, then prints results in catalog order. Records time-to-first-token, total time, token count, and the mean gap between tokens. Reasoning models stream their thinking as reasoning_content BEFORE the answer, so we count both kinds (otherwise a model that spends its whole budget thinking looks like it returned zero tokens). A model silent for the full TTFT_TIMEOUT window is abandoned. Open a result to read what it streamed.",
+      code: `if (!state.models?.length) { helpers.log("Run 'Fetch matching models' first."); return; }
+const PROMPT       = "List five prime numbers.";
+const MAX_TOKENS   = 256;     // reasoning models think first; set this too low and they never reach the answer
+const TTFT_TIMEOUT = 30000;   // ms; give up on a model with no first token by now (some are slow to start)
+
+// Bench one model: stream the prompt, time the first token, count tokens, and
+// track the mean gap between them. Reasoning models emit \`reasoning_content\`
+// deltas (their thinking) before any \`content\` (the answer). Both are tokens
+// the model streamed, so TTFT and the token count must include both, or a deep
+// thinker that hits the token cap mid-thought reads as "0 tokens". Never throws.
+async function bench(model) {
+  const ctrl  = new AbortController();
+  const guard = setTimeout(() => ctrl.abort(), TTFT_TIMEOUT);   // first-token watchdog
+  const t0 = performance.now();
+  let ttft = null, total = null, tokens = 0, reasoning = 0, gapSum = 0, last = t0;
+  let text = "", think = "", finish = null, err = null;
+  try {
+    const r = await fetch(state.proxy + "/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + state.key, "Content-Type": "application/json" },
+      body: JSON.stringify({ model, messages: [{ role: "user", content: PROMPT }], max_tokens: MAX_TOKENS, stream: true }),
+      signal: ctrl.signal,
+    });
+    if (!r.ok) { err = "HTTP " + r.status; }
+    else {
+      const reader = r.body.getReader(), dec = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        // Server-sent events: one "data: {json}" line per chunk.
+        let nl;
+        while ((nl = buf.indexOf("\\n")) >= 0) {
+          const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
+          if (!line.startsWith("data:")) continue;
+          const body = line.slice(5).trim();
+          if (body === "[DONE]") continue;
+          let j; try { j = JSON.parse(body); } catch { continue; }
+          const choice  = j.choices?.[0] || {};
+          const delta   = choice.delta || {};
+          if (choice.finish_reason) finish = choice.finish_reason;
+          const answer  = delta.content || "";
+          const thought = delta.reasoning_content || "";
+          if (!answer && !thought) continue;          // role-only / empty keepalive delta
+          const now = performance.now();
+          if (ttft === null) { ttft = Math.round(now - t0); clearTimeout(guard); }  // first token of ANY kind
+          else { gapSum += now - last; }
+          last = now; tokens++;
+          if (thought) { reasoning++; think += thought; }
+          if (answer)  { text += answer; }
+        }
+      }
+      total = Math.round(performance.now() - t0);
+    }
+  } catch (e) {
+    err = e.name === "AbortError" ? ("no first token in " + (TTFT_TIMEOUT / 1000) + "s") : e.message;
+  } finally { clearTimeout(guard); }
+  const avgGap = tokens > 1 ? Math.round(gapSum / (tokens - 1)) : null;   // mean inter-token latency
+  return { model, ttft, total, tokens, reasoning, avgGap, text, think, finish, err };
+}
+
+// Launch every model concurrently, then await them IN ORDER. The requests overlap,
+// but printing follows catalog order, so the log never races between models.
+const pending = state.models.map(bench);
+const results = [];
+for (let i = 0; i < pending.length; i++) {
+  const res = await pending[i];
+  results.push(res);
+  if (res.err) {
+    helpers.log("✗ " + res.model + "  " + res.err);
+    continue;
+  }
+  helpers.log("✓ " + res.model +
+    "  TTFT " + (res.ttft ?? "n/a") + "ms · total " + res.total + "ms · " +
+    res.tokens + " tok" + (res.reasoning ? " (" + res.reasoning + " thinking)" : "") + " · " +
+    (res.avgGap != null ? res.avgGap + "ms/tok" : "n/a") +
+    (res.finish === "length" ? " · hit max_tokens" : ""));
+  // Show the answer; if the model spent its whole budget thinking, show that instead.
+  const raw = res.text
+    ? res.text
+    : (res.think ? "(no answer: the model used all " + MAX_TOKENS + " tokens thinking; raise MAX_TOKENS)\\n\\n" + res.think : "(empty response)");
+  helpers.log.details("raw output · " + res.model, raw);
+}
+
+// Rank survivors by TTFT, the metric that matters when streaming to a user.
+// A model that never produced a token (ttft null) sorts last, not first.
+const ok = results.filter(r => !r.err).sort((a, b) => (a.ttft ?? Infinity) - (b.ttft ?? Infinity));
+if (ok.length) {
+  helpers.log("\\n── ranked by TTFT ──────────────────────────");
+  ok.forEach((r, i) => helpers.log(
+    String(i + 1).padStart(2) + ". " + r.model.padEnd(46) +
+    String(r.ttft ?? "n/a").padStart(5) + "ms · " + String(r.avgGap ?? "n/a").padStart(4) + "ms/tok · " + r.tokens + " tok"));
+}
+state.results = results;
+return { ranked: ok.map(r => r.model), errors: results.filter(r => r.err).length };
+`,
+    },
+  ],
+});
+
+// ── Probe OpenClaw runtime ───────────────────────────────────────────────────
+mountClawProbe("#probe-claw", {
+  label: "Probe OpenClaw (NemoClaw launchable)",
+  intro: "",
+  defaultUrl:   "",
+  defaultToken: "",
+  proxyBase:    "https://openclaw-cors-proxy.vkudlay.workers.dev",
+  proxyMode:    "prefix",
+  syncCanvas:   true,
+  cfAccess:     true,
+  // base URL + CF Access JWT is enough: GET /api/agent returns
+  // agent.dashboardUrl = "/#token=<hex>", which IS the gateway token.
+  autofillToken: (j) => {
+    const m = (j?.agent?.dashboardUrl || "").match(/token=([a-f0-9]+)/i);
+    return m ? m[1] : null;
+  },
+  fieldHelp: {
+    url: `<p><strong>What it is:</strong> The root URL of your NemoClaw launchable, with no trailing <code>/v1</code>.</p>
+<p><strong>How to find it:</strong> Your Brev dashboard shows it as the App URL:
+<code>https://nemoclaw-&lt;id&gt;.brevlab.com</code>.</p>
+<p><strong>Running locally:</strong> Use <code>http://localhost:8088</code> (or the port your OpenClaw container
+exposes). No Cloudflare tunnel, no CF Access layer, so connect directly and leave the CF Access JWT field empty.</p>`,
+    token: `<p><strong>Usually you can leave this blank.</strong> Run <strong>GET /api/agent</strong> below and the probe
+reads the gateway token out of <code>agent.dashboardUrl</code> and fills this field for you. The base URL plus your
+CF Access JWT is all the gateway needs to hand it back.</p>
+<p><strong>Manual fallback:</strong> If autofill doesn't fire, run <code>printenv | grep TOKEN</code> in your
+launchable terminal and paste the <code>OPENCLAW_GATEWAY_TOKEN</code> value (a 64-character hex string) here.</p>`,
+    cfJwt: `<p><strong>What it is:</strong> A short-lived JWT that Cloudflare Access requires before routing
+requests to your launchable. Your browser already holds one. It was set as a cookie when you first opened
+the launchable URL and authenticated.</p>
+<p><strong>Why JavaScript can't read it:</strong> The cookie is marked <code>HttpOnly</code>, which prevents
+<code>document.cookie</code> from seeing it. That restriction is intentional. It blocks XSS attacks from
+stealing session tokens. There is no JS escape hatch; this is by design.</p>
+<p><strong>How to get it:</strong> Open DevTools on your NemoClaw tab →
+<strong>Application → Storage → Cookies → click the nemoclaw domain</strong> →
+find the <code>CF_Authorization</code> row → copy the full Value (a long JWT string).
+Paste it here. Re-copy it if the probe stops working after a long break, since JWTs expire with your session.</p>
+<p><strong>Running locally:</strong> Leave this field empty. Local OpenClaw has no Cloudflare Access layer.</p>
+<p><strong>Why this matters:</strong> The <code>HttpOnly</code> wall is exactly why production systems use
+<em>service tokens</em> for machine-to-machine calls. The browser session flow has no programmatic
+escape hatch by design.</p>`,
+  },
+  actions: [
+    { label: "GET /healthz",   path: "/healthz",   method: "GET" },
+    { label: "GET /api/agent", path: "/api/agent", method: "GET" },
+  ],
+});
+
+// ── Shared WS connect snippet (used as prefix in each connect node) ──────────
+
+// ── Shared chat-turn snippet ───────────────────────────────────────────────────
+// `message` is named once at the top; `_params` references it. The agent's tool
+// calls ride a SEPARATE stream from the chat reply, so each turn subscribes to the
+// session's message stream before firing chat.send. Skip that and only the final
+// prose comes back, with the exec steps underneath staying invisible.
+const gwChat = (sk, msg) => {
+  // sk is normally a literal string. Pass { raw: "<js expr>" } to compute the
+  // sessionKey at run time, say a unique-per-run key so the agent starts from
+  // a clean session every time and actually re-runs its tools (a reused session
+  // answers from memory and the tool trace stays empty).
+  const skExpr = (sk && typeof sk === "object" && sk.raw) ? sk.raw : JSON.stringify(sk);
+  // msg is normally a literal string. Pass { raw: "<js>" } to supply the whole
+  // message-assignment block yourself, say a stack of prompts where the last
+  // uncommented line wins, so students can comment lines to try other prompts.
+  const msgBlock = (msg && typeof msg === "object" && msg.raw)
+    ? msg.raw
+    : ("let message = " + JSON.stringify(msg) + ";");
+  return `if (!state.call) { helpers.log("Run Connect first."); return; }
+
+// ── tune these ──────────────────────────────────────────────────────────────
+${msgBlock}
+const sessionKey      = ${skExpr};   // which agent session to talk to
+const IDLE_TIMEOUT_S  = 90;          // give up if the agent goes silent this long (this model can be slow to first token)
+const TOTAL_TIMEOUT_S = 240;         // hard ceiling for the whole turn
+// ──────────────────────────────────────────────────────────────────────────────
+helpers.log("→ " + message);
+
+// chat.send returns the final prose only. The exec/tool steps underneath arrive
+// as event:"agent" frames, and the gateway forwards those ONLY to sockets that
+// subscribed to this session. Subscribe once per session, then send the turn.
+if (!state._subs) state._subs = {};
+if (!state._subs[sessionKey]) {
+  await state.call("sessions.messages.subscribe", { key: sessionKey });
+  state._subs[sessionKey] = true;
+}
+
+// 🧹 Start fresh? Uncomment the next line to wipe this session's memory before
+//    sending. sessions.reset clears the server-side history, so the agent
+//    answers as a stranger and RE-RUNS its tools instead of replaying an
+//    earlier turn (that is why it can answer "whoami/pwd" without re-checking).
+// await state.call("sessions.reset", { key: sessionKey }); helpers.log("🧹 cleared session memory: " + sessionKey);
+
+const _params = {
+  sessionKey,
+  idempotencyKey: Math.random().toString(36).slice(2) + Date.now().toString(36),
+  message,
+};
+
+// ── stream handler ───────────────────────────────────────────────────────────
+// Frames are tagged by pl.stream. The "tool" stream is the observable trace: on
+// phase "start" it carries the tool's args (its INPUT), and on phase "result" the
+// result + isError (its OUTPUT), for EVERY tool (exec, read, edit, browser, …).
+// The "assistant" stream carries the answer text; "lifecycle" phase:end ends the
+// run. Reasoning (chain-of-thought) is NOT forwarded by the gateway, so the args
+// and results below are the deepest per-step visibility available here; the
+// 📜 logs cell (in Recover) tails the runtime log when even that is not enough.
+// Two timers guard the run: an idle timer (reset only by REAL activity, never by
+// heartbeats) and a global backstop.
+let _text = "", _finalEv, _t0 = performance.now(), _ttft = 0, _myRun = null;
+let _toolStarts = 0, _didResult = false;            // for the degradation check below
+const IDLE_MS = IDLE_TIMEOUT_S * 1000, GLOBAL_MS = TOTAL_TIMEOUT_S * 1000;
+await new Promise((resolve, reject) => {
+  let _idle, _global;
+  function finish(why, stalled) {
+    clearTimeout(_idle); clearTimeout(_global); state._chatCb = null;
+    if (why) helpers.log(why);
+    // On a timeout the run is still alive server-side. Abort it (fire-and-forget)
+    // so it stops burning the single agent and stops leaking frames into the next
+    // turn. Left alone, it keeps running in the background after we have given up.
+    if (stalled) {
+      helpers.log("⛔ aborting the run on " + sessionKey + " so it does not keep running in the background…");
+      state.call("chat.abort", { sessionKey }).catch(() => {});
+    }
+    resolve();
+  }
+  function bumpIdle() { clearTimeout(_idle); _idle = setTimeout(() => finish("⏱ no agent activity for " + (IDLE_MS / 1000) + "s; stopping", true), IDLE_MS); }
+  _global = setTimeout(() => finish("⏱ hit the " + (GLOBAL_MS / 1000) + "s global cap", true), GLOBAL_MS);
+  if (helpers.signal) helpers.signal.addEventListener("abort", () => finish("⏹ stopped", true), { once: true });
+  state._chatCb = d => {
+   try {
+    const pl = d.payload || {};
+    // Heartbeats / keepalives stream the whole time the socket is open. They are
+    // NOT activity, so ignore them and they never reset the idle timer (a stalled
+    // run emits nothing BUT heartbeats, and must still time out).
+    if (pl.isHeartbeat || d.event === "health" || d.event === "tick") return;
+    // One sessionKey can have several runs (your earlier turn may still be
+    // streaming on the server). The gateway forwards them ALL to a subscriber,
+    // so lock onto the runId our own chat.send returned and drop every other
+    // run's frames. Do this before bumpIdle, or a stale run's chatter would keep
+    // resetting our idle timer and mask a real stall.
+    if (_myRun && pl.runId && pl.runId !== _myRun) return;
+    bumpIdle();   // real activity on OUR run pushes the idle deadline back
+    if (d.event === "chat" && pl.state === "final") {
+      // final chat frame: fallback prose if no agent text deltas arrived
+      _finalEv = d;
+      _text = pl.message?.content?.[0]?.text || _text;
+      return;
+    }
+    if (d.event !== "agent") return;
+    const sk = pl.sessionKey || "";
+    if (sk !== sessionKey && !sk.endsWith(":" + sessionKey)) return;   // not our session
+    const data = pl.data || {};
+    const stream = pl.stream || "";
+    if (stream === "assistant" || ("delta" in data && "text" in data)) {
+      // the answer, streamed as cumulative text
+      if (!_ttft) _ttft = performance.now() - _t0;
+      _text = data.text || _text;
+    } else if (stream === "tool" && data.phase === "start") {
+      // a tool was invoked, so show its INPUT (args reveal exactly what was asked,
+      // such as an unexpanded path or a malformed command that makes the tool hang)
+      _toolStarts++;
+      const inp = data.args ? JSON.stringify(data.args) : (data.meta || "");
+      helpers.log.details("⚙️ " + (data.name || "tool") + (inp ? "  " + inp.replace(/\\n/g, " ").slice(0, 160) : ""), d);
+    } else if (stream === "tool" && data.phase === "result") {
+      // a tool finished, so show its OUTPUT (works for exec, read, edit, browser, …)
+      _didResult = true;
+      const r = data.result;
+      const txt = (r && r.content && r.content[0] && r.content[0].text) || (typeof r === "string" ? r : "");
+      const mark = data.isError ? "✗" : "✓";
+      helpers.log.details(mark + " " + (data.name || "tool") + (txt ? "  " + txt.trim().replace(/\\n/g, " ⏎ ").slice(0, 200) : ""), d);
+    } else if (data.phase === "end" && !data.itemId) {
+      // agent run complete (lifecycle end)
+      finish();
+    }
+   } catch (e) {
+    // A throw inside a WS frame handler is otherwise swallowed silently, which
+    // looks exactly like a hang. Surface it so the failure is visible, not hidden.
+    helpers.log("⚠ frame-handler error: " + (e && e.message ? e.message : e));
+   }
+  };
+  bumpIdle();
+  // chat.send returns { runId, status } well before any frame, so lock onto that
+  // runId so the handler can ignore every other run sharing this sessionKey.
+  state.call("chat.send", _params)
+    .then(res => { _myRun = (res && res.runId) || null; })
+    .catch(e => { clearTimeout(_idle); clearTimeout(_global); state._chatCb = null; reject(e); });
+});
+
+// ── response ─────────────────────────────────────────────────────────────────
+helpers.log(_text);
+if (_finalEv) helpers.log.details("← final chat frame", _finalEv);
+const _secs = (performance.now() - _t0) / 1000;
+const _toks = Math.round(_text.length / 4);          // rough estimate: ~4 chars/token
+helpers.log("⏱ " + _secs.toFixed(1) + "s · ~" + _toks + " tok · " +
+            (_secs ? (_toks / _secs).toFixed(1) : "0") + " tok/s" +
+            (_ttft ? " · first token " + (_ttft / 1000).toFixed(2) + "s" : ""));
+state.out = _text;
+
+// Automatic degradation check. A healthy run returns text and/or a tool result.
+// If the agent STARTED tools but none returned a result, a tool is hung or the
+// model is looping, which is a runtime problem, not your code. Note which tools
+// started (above) and whether toolSearch is the cause via the Health check.
+if (!_text.trim() && !_didResult && _toolStarts > 0) {
+  helpers.log("⚠ DEGRADED: started " + _toolStarts + " tool call(s) but none returned a result or answer.");
+  helpers.log("   A tool is hung or the model is looping. The ⚙️ rows above show the exact tool + args it got stuck on.");
+  helpers.log("   Run the 🩺 Health check (it flags toolSearch) + 🛠 Recover; for a deeper look, the 📜 logs cell tails the runtime.");
+}
+`;
+};
+
+// ── Gateway demo: connect → list → chat ──────────────────────────────────────
+mountCanvasFlow("#gw-demo", {
+  label: "Gateway · WebSocket protocol, step by step",
+  intro: "The same WebSocket at /cli/gateway that the Control UI uses is written out here as a challenge/response handshake, a JSON-RPC method call, and then a streaming chat turn.",
+  edges: [
+    { from: "gw-connect", to: "gw-list" },
+    { from: "gw-list",    to: "gw-chat" },
+  ],
+  nodes: [
+    {
+      id: "gw-connect", icon: "🔌", title: "Open the gateway connection", x: 0, y: 0,
+      summary: "Open a WebSocket to /cli/gateway, respond to the server's challenge frame with the operator.admin credential, then store a call() helper on state so subsequent nodes can send typed requests without repeating the handshake.",
+      code: GW_CONNECT,
+    },
+    {
+      id: "gw-list", icon: "📋", title: "Call models.list and cron.list", x: 1, y: 0,
+      summary: "Two JSON-RPC calls go through the open connection, where models.list returns every model the runtime serves and cron.list returns the currently scheduled jobs.",
+      code: `if (!state.call) { helpers.log("Run the Connect node first."); return; }
+
+const models = await state.call("models.list");
+helpers.log("models (" + (models?.models?.length || 0) + "):");
+(models?.models || []).slice(0, 8).forEach(m =>
+  helpers.log("  " + m.id + (m.provider ? "  [" + m.provider + "]" : ""))
+);
+
+const crons = await state.call("cron.list");
+const jobs  = crons?.jobs || [];
+helpers.log("\\ncron jobs: " + (jobs.length
+  ? jobs.map(j => j.id + " @ " + j.schedule).join(", ")
+  : "(none)"));
+return { models: models?.models?.length, cronJobs: jobs.length };
+`,
+    },
+    {
+      id: "gw-chat", icon: "💬", title: "Send a chat message (streaming)", x: 2, y: 0,
+      summary: "Call chat.send with a sessionKey. The gateway routes the message into the running agent loop and streams events back: agent frames carry the tool-execution steps, and the run-end frame closes it out. We use a fresh session key per run (see the suffix) so the agent always starts clean and re-runs its tools. A reused session can answer from memory or get tangled in a polluted history and never call exec. The default prompt makes the agent run a real command; comment the bottom prompt to try the simpler ones above it.",
+      code: gwChat({ raw: `"quick-3a-gw-" + Math.random().toString(36).slice(2, 8)` }, { raw:
+`// Each assignment overrides the one above, so the LAST uncommented line is what
+// runs. Comment out the bottom lines to fall back to the prompts above them.
+let message = "Can you tell me about yourself?";
+message = "What tools do you have access to?";
+message = "Use your exec tool to run \`whoami\` and \`pwd\` in your sandbox, then tell me in one sentence which user you are and where you are.";` }),
+    },
+  ],
+});
+
+// Health / recover / logs flow is shared from _shared.js:
+mountGwRecover("#gw-recover");
+
+// ── One session, carried memory: recall the earlier gw-chat turn ─────────────
+mountCanvasFlow("#session-call", {
+  label: "The sessionKey rehydrates history across turns",
+  intro: "This single cell plants a fact under a dedicated sessionKey, then asks for it back under the same key. The second time, the client sends ONLY the question; the gateway rehydrates the planted turn from the history it holds server-side. The second cell clears that session so recall disappears; the third deletes the throwaway sessions (including the fresh per-run keys Step 2 creates) that pile up in the Control UI.",
+  edges: [
+    { from: "sk-memory", to: "sk-clear" },
+    { from: "sk-clear",  to: "sk-cleanup" },
+  ],
+  nodes: [
+    {
+      id: "sk-memory", icon: "🧠", title: "Plant a fact, then ask it back", x: 0, y: 0,
+      summary: "Two turns under ONE dedicated sessionKey, in a single cell. Turn 1 plants a fact; turn 2 asks for it back, sending only the question. The gateway rehydrates turn 1 server-side before turn 2 runs, so the model answers from a conversation the client never re-sent. Each turn is wrapped in its own { } block so the two snippets keep separate variables. A different key would be a different memory, and that is the whole memory model.",
+      code: GW_CONNECT + `
+helpers.log("turn 1 · plant a fact");
+{
+${gwChat("quick-3a-memory", "Remember this for later: my access code is BLUEJAY-7. Just acknowledge it in a few words.")}
+}
+
+helpers.log("turn 2 · ask it back (only the question is sent)");
+{
+${gwChat("quick-3a-memory", "What access code did I give you earlier? Reply with just the code.")}
+}
+
+helpers.log(/BLUEJAY-7/i.test(state.out)
+  ? "✓ recalled across turns; the gateway rehydrated the planted fact server-side"
+  : "✗ no recall; confirm both turns used the same sessionKey");
+`,
+    },
+    {
+      id: "sk-clear", icon: "🧹", title: "Clear the session memory", x: 1, y: 0,
+      summary: "Wipe a session's server-side history with one call. Run it on the memory session above, then re-run the recall turn: the planted code is gone, because the conversation the gateway held is gone. Change sessionKey to clear any session you like. This is the drop-in to copy anywhere you want a fresh start.",
+      code: GW_CONNECT + `
+// One call wipes the conversation the gateway holds for this key.
+const sessionKey = "quick-3a-memory";
+helpers.log("🧹 clearing session memory for " + sessionKey + " …");
+const res = await state.call("sessions.reset", { key: sessionKey });
+helpers.log(res && res.ok
+  ? "✓ cleared; that session now has no history."
+  : "✗ sessions.reset returned: " + JSON.stringify(res));
+helpers.log("Re-run the recall turn above and the planted code is gone.");
+`,
+    },
+    {
+      id: "sk-cleanup", icon: "🗑", title: "Clean up old sessions", x: 2, y: 0,
+      summary: "Every distinct sessionKey you use leaves a session behind, and they accumulate in the Control UI. This lists them all (paginated) and deletes the throwaway ones, keeping only the Main Session. Edit KEEP to change what survives, e.g. /:(main|quick-3c-skill)$/ to also keep a session you care about.",
+      code: GW_CONNECT + `
+// Keep these; delete the rest. The default keeps only the Main Session.
+const KEEP = /:main$/;
+
+// sessions.list is paginated, so walk every page before deleting anything.
+let offset = 0, all = [];
+for (;;) {
+  const page = await state.call("sessions.list", { limit: 100, offset });
+  all = all.concat(page.sessions || []);
+  if (!page.hasMore) break;
+  offset = page.nextOffset;
+}
+const doomed = all.filter(s => !KEEP.test(s.key));
+helpers.log("found " + all.length + " session(s); keeping " + (all.length - doomed.length) + ", deleting " + doomed.length + ".");
+
+let removed = 0;
+for (const s of doomed) {
+  try { await state.call("sessions.delete", { key: s.key }); helpers.log("  🗑  " + s.key); removed++; }
+  catch (e) { helpers.log("  ✗ " + s.key + ": " + (e.message || e)); }
+}
+helpers.log(removed ? ("✓ removed " + removed + " stale session(s).") : "nothing to remove; already tidy.");
+`,
+    },
+  ],
+});
+</script>
+</body>
+</html>

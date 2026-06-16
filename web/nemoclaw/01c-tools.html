@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tools at Scale · Securing Agents</title>
+<link rel="stylesheet" href="_style.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<style>
+  .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
+  .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
+  .CodeMirror-vscrollbar { display: none; }
+  .CodeMirror-gutters { background: #0d0d0d; border-right: 1px solid #2a2a2a; }
+  .CodeMirror-linenumber { color: #6a6a6a; padding: 0 8px 0 6px; font-size: .76rem; }
+  .CodeMirror-lines { padding: 10px 0; }
+  .cm-s-monokai.CodeMirror { background: #0d0d0d; color: #f8f8f2; }
+  .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
+  .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="index.html">NVIDIA · Securing Agents</a>
+  <nav id="nav"></nav>
+  <div class="spacer"></div>
+  <span class="key-pill" id="key-status" onclick="location.href='01a-loop.html#key-panel'">…</span>
+</div>
+
+<main>
+  <div id="journey-map"></div>
+
+  <div class="hero">
+    <div class="eyebrow">Module 1 · Part C of 3</div>
+    <h1>Tools <span>at Scale</span></h1>
+    <p class="lead">
+      Tools let agents act and query their environments. Whether this includes 
+      databases, search, APIs, or even sub-agents, all we need to do is make 
+      sure the contracts for accessing them is solid and enforced. 
+      This contract is usually JSON Schema for predicting arguments, 
+      though it could be something like code generation (as we will see in later sections). 
+      This page wires the two-call cycle, shows multi-tool routing, calls a real
+      web-search endpoint, hides a sub-agent behind a single tool,
+      and ends with the MCP shape that is becoming the production
+      standard for serving tools.
+    </p>
+  </div>
+
+  <h2>What a tool actually is</h2>
+  <p>
+    A tool is structured output plus an executor. The schema describes what
+    the function takes, the model produces the arguments, your code runs the
+    function, and the result lands as the next message. Multi-tool routing,
+    MCP discovery, and agents-as-tools are all that same cycle with a
+    different source of schemas.
+  </p>
+
+  <div style="display:flex;justify-content:center;margin:1em 0 1.4em">
+    <svg class="gfx-dark" viewBox="0 0 860 454" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The LLM asks, your code answers, the LLM concludes. The model never runs your function; it only requests the call." preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:780px;margin:1.5rem auto"><defs><marker id="sq-a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-ink2,#3b3b3b)"/></marker><marker id="sq-r" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-faint,#8c8c8c)"/></marker></defs><line x1="80" y1="102" x2="80" y2="404" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.5" stroke-dasharray="4 6"/><rect x="30" y="64" width="100" height="34" rx="8" fill="var(--gfx-tint-blue,#dfeaf5)" stroke="var(--gfx-blue,#0969da)" stroke-width="2"/><text x="80" y="86" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="var(--gfx-blue,#0969da)" text-anchor="middle" font-weight="700">user</text><line x1="430" y1="102" x2="430" y2="404" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.5" stroke-dasharray="4 6"/><rect x="380" y="64" width="100" height="34" rx="8" fill="var(--gfx-tint-green,#e6f3d4)" stroke="var(--gfx-green,#4a7a00)" stroke-width="2"/><text x="430" y="86" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="var(--gfx-green,#4a7a00)" text-anchor="middle" font-weight="700">model</text><line x1="780" y1="102" x2="780" y2="404" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.5" stroke-dasharray="4 6"/><rect x="730" y="64" width="100" height="34" rx="8" fill="var(--gfx-tint-amber,#f7e9cf)" stroke="var(--gfx-amber,#9a6700)" stroke-width="2"/><text x="780" y="86" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="var(--gfx-amber,#9a6700)" text-anchor="middle" font-weight="700">your code</text><path d="M 80 130 L 422 130" fill="none" stroke="var(--gfx-ink2,#3b3b3b)" stroke-width="2" marker-end="url(#sq-a)"/><circle cx="80" cy="130" r="10" fill="var(--gfx-ink,#1a1a1a)"/><text x="80" y="134" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-bg,#ffffff)" text-anchor="middle" font-weight="700">1</text><rect x="219.7" y="100.25" width="70.6" height="25.5" rx="6" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="255" y="116.45" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-ink2,#3b3b3b)" text-anchor="middle" font-weight="700">question</text><path d="M 430 188 L 88 188" fill="none" stroke="var(--gfx-faint,#8c8c8c)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#sq-r)"/><circle cx="430" cy="188" r="10" fill="var(--gfx-ink,#1a1a1a)"/><text x="430" y="192" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-bg,#ffffff)" text-anchor="middle" font-weight="700">2</text><rect x="213.95" y="158.25" width="82.1" height="25.5" rx="6" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="255" y="174.45" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" fill="var(--gfx-faint,#8c8c8c)" text-anchor="middle" font-weight="700">tool_call</text><path d="M 80 246 L 772 246" fill="none" stroke="var(--gfx-ink2,#3b3b3b)" stroke-width="2" marker-end="url(#sq-a)"/><circle cx="80" cy="246" r="10" fill="var(--gfx-ink,#1a1a1a)"/><text x="80" y="250" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-bg,#ffffff)" text-anchor="middle" font-weight="700">3</text><rect x="394.7" y="216.25" width="70.6" height="25.5" rx="6" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="430" y="232.45" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-ink2,#3b3b3b)" text-anchor="middle" font-weight="700">run tool</text><path d="M 780 304 L 438 304" fill="none" stroke="var(--gfx-faint,#8c8c8c)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#sq-r)"/><circle cx="780" cy="304" r="10" fill="var(--gfx-ink,#1a1a1a)"/><text x="780" y="308" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-bg,#ffffff)" text-anchor="middle" font-weight="700">4</text><rect x="560.2125" y="274.25" width="89.575" height="25.5" rx="6" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="605" y="290.45" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-faint,#8c8c8c)" text-anchor="middle" font-weight="700">tool result</text><path d="M 430 362 L 88 362" fill="none" stroke="var(--gfx-ink2,#3b3b3b)" stroke-width="2" marker-end="url(#sq-a)"/><circle cx="430" cy="362" r="10" fill="var(--gfx-ink,#1a1a1a)"/><text x="430" y="366" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-bg,#ffffff)" text-anchor="middle" font-weight="700">5</text><rect x="226.025" y="332.25" width="57.95" height="25.5" rx="6" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="255" y="348.45" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-ink2,#3b3b3b)" text-anchor="middle" font-weight="700">answer</text><text x="430" y="424" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13" fill="var(--gfx-sub,#5e5e5e)" font-style="italic">The LLM asks, your code answers, the LLM concludes. The model never runs your function; it only requests the</text><text x="430" y="440" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13" fill="var(--gfx-sub,#5e5e5e)" font-style="italic">call.</text></svg>
+  </div>
+
+  <h2>The schema is the contract the model reads</h2>
+  <p>
+    When you give a model a tool, you publish a contract: a function's name,
+    what it does, and what arguments it accepts. The model reads this and
+    decides whether to call the function instead of answering directly.
+    The cell below sends one question and one tool spec. Watch
+    <code>finish_reason</code> to see whether the model chose to call or to
+    answer directly.
+  </p>
+
+  <div id="cell-m2b-p1"></div>
+
+  <div class="callout">
+    <strong>Why schema-based calling is reliable.</strong>
+    Before structured function calling, developers prompted models to emit
+    tool calls in custom XML or hand-rolled JSON; those broke whenever
+    the model paraphrased. Schema-based calling moves the contract into a
+    first-class API field, and the LLM is forced to generate with <b>server-side enforcement</b>: 
+    <ul>
+      <li>the schema is restructured into a format the model is specifically trained to work well with</li>
+      <li>the serving engine can illegalize token samplings that break contract grammar</li>
+      <li>the server's response bundles the LLM's predicted tool calls into a consistent <code>tool_calls</code> field.</li>
+    </ul>
+    Therefore, your dispatch code can largely rely on <code>tc.function.name</code> and
+    <code>tc.function.arguments</code> being present and parseable.
+  </div>
+
+  <h2>Running the tool and feeding the result back to the model</h2>
+  <p>
+    In most cases, the model cannot execute your function directly. It can only request a call. 
+    You run the function, get the result, and append it to the message history as a
+    <code>"tool"</code> role message. Only then does the model produce its
+    final, user-facing answer. The cell below runs all three steps in sequence:
+    request, execute, respond.
+  </p>
+
+  <div id="cell-m2b-p2"></div>
+
+  <h2>How the model picks between several tools</h2>
+  <p>
+    Agents rarely have a single tool. With more than one, the model decides
+    which to call based on the <code>description</code> field. The cell below 
+    gives the model two tools and a question that requires picking; 
+    the visualization shows which way the model went and why.
+  </p>
+
+  <div id="cell-m2b-p3"></div>
+
+  <h2>Wiring <code>web_search</code> to a live search API</h2>
+  <p>
+    The cell below wires <code>web_search</code> to Wikipedia's free, key-less
+    search API, which runs entirely in the browser (CORS-open) and returns ranked
+    articles with short extracts, enough for the agent to ground its reply without
+    any server-side proxy or key. Part 4b swaps the executor to DuckDuckGo's
+    Instant Answer API behind the <em>same</em> tool contract, so you can watch the
+    contract stay fixed while the backend changes underneath it.
+  </p>
+
+  <div class="callout">
+    <strong>Name tools for what they do, not how they do it.</strong>
+    A tool called <code>duckduckgo_search</code> is brittle: changing the
+    backend forces you to update every prompt that references the name. A tool
+    called <code>web_search</code> is durable. Its name describes a capability
+    rather than an implementation, so you can swap the backend behind it (Wikipedia
+    on this page, an Instant Answer API in the next section, a crawler or proprietary
+    index later) and the schema,
+    description, and every agent prompt stay untouched. The same principle
+    applies to any tool that wraps an external service: name it for what callers
+    ask for, not for the library or API that happens to fulfil the request.
+  </div>
+
+  <div id="cell-m2b-p4"></div>
+
+  <h2>Swapping the backend while the tool contract holds</h2>
+  <p>
+    Part 4 used the canvas-flow canvas. Here the same logic runs in a flat
+    <code>mountRunCell</code> block so you can see it as one contiguous script.
+    DuckDuckGo's <a href="https://api.duckduckgo.com/?q=nemotron&amp;format=json" target="_blank" rel="noopener">Instant Answer API</a>
+    is free, key-less, and CORS-open, and it returns one curated answer (a definition, a
+    computed result, an encyclopedia abstract) plus a few related topics, but only for a
+    query it recognizes as a single named entity. Asking for <a href="https://api.duckduckgo.com/?q=nemotron&amp;format=json" target="_blank" rel="noopener"><code>nemotron</code></a>
+    returns the encyclopedia abstract, while asking for
+    <a href="https://api.duckduckgo.com/?q=nvidia+nemotron&amp;format=json" target="_blank" rel="noopener"><code>nvidia nemotron</code></a>
+    returns nothing, because that phrase is not one entity. Most real research queries land
+    in the empty bucket, which is why this is a demo of a narrow entity lookup rather than a
+    search you would ground an agent on. For ranked web results a production agent wires a
+    real search API (Tavily, Brave, SerpAPI) or a self-hosted crawler.
+  </p>
+  <p>
+    That shape makes it the cleanest kind of <strong>black-box tool</strong>:
+    query in, answer out, nothing to configure. <code>helpers.instantAnswer</code>
+    returns the exact same <code>{ results, count, unreachable }</code> shape as
+    <code>helpers.webSearch</code>, so the tool contract from Part 4 does not
+    change at all. Only the function name at the call site does. The agent still
+    asks for <code>web_search</code> and reads the same numbered result block.
+  </p>
+
+  <div class="callout">
+    <strong>The tool contract stays fixed when the backend changes.</strong>
+    Instant Answers is narrow and curated but runs anywhere with no setup.
+    A richer crawler or a proprietary index can slot in behind the same
+    <code>web_search</code> name when that depth is needed.
+    The model never learns which backend served the answer.
+  </div>
+
+  <div id="cell-m2b-p4b"></div>
+
+  <h2>Hiding a whole agent behind a single tool</h2>
+  <p>
+    Agents are tools. Hide complexity behind a sub-agent. A SQL agent
+    over a database, a code agent over a Python environment, a knowledge
+    agent over a repo: each one is easier to invoke as a single tool than
+    to wire directly into the main loop.
+  </p>
+  <p>
+    The cell below exposes a sub-agent that knows a small customer table
+    as one natural-language tool. The main agent never sees the rows;
+    it only asks questions.
+  </p>
+
+  <div id="cell-m2b-p5"></div>
+
+  <div class="callout">
+    <strong>The cognitive-load lever.</strong>
+    Every additional tool, schema field, and description sentence consumes
+    context the main agent could use for its task. A sprawling flat tool
+    list tends to perform worse than a small set of tools backed by
+    sub-agents, because each loop only sees the tools relevant to its level.
+  </div>
+
+  <h2>Fetching tools from a separate server with MCP</h2>
+  <p>
+    MCP standardises tool serving: <code>tools/list</code> for discovery,
+    <code>tools/call</code> for execution. Tools live in a separate
+    process; the agent fetches them on connect. One agent client speaks
+    one protocol to many servers.
+  </p>
+
+  <svg viewBox="0 0 720 320" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"
+       style="max-width:100%;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;display:block;margin:1.2em auto"
+       role="img" aria-label="A narrow-waist topology centered horizontally. Four agent boxes at the top fan into a slim highlighted protocol band in the middle that lists MCP, Responses, OTel, A2A, REST, and custom. The protocol band fans back out into four tool boxes at the bottom.">
+    <defs>
+      <marker id="mcp-q2-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#a5a5a5"/></marker>
+    </defs>
+    <text x="360" y="22" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="#6f6f6f">M agents · one protocol layer · N tools</text>
+
+    <rect x="96"  y="48" width="120" height="36" rx="6" fill="#1e1e3a" stroke="#3b82f6"/>
+    <text x="156" y="71" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="#7eb8ff">GPT agent</text>
+    <rect x="232" y="48" width="120" height="36" rx="6" fill="#1e1e3a" stroke="#3b82f6"/>
+    <text x="292" y="71" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="#7eb8ff">Claude agent</text>
+    <rect x="368" y="48" width="120" height="36" rx="6" fill="#1e1e3a" stroke="#3b82f6"/>
+    <text x="428" y="71" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="#7eb8ff">Gemini agent</text>
+    <rect x="504" y="48" width="120" height="36" rx="6" fill="#1e1e3a" stroke="#3b82f6"/>
+    <text x="564" y="71" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="#7eb8ff">open agent</text>
+
+    <line x1="156" y1="86" x2="320" y2="138" stroke="#a5a5a5" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
+    <line x1="292" y1="86" x2="345" y2="138" stroke="#a5a5a5" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
+    <line x1="428" y1="86" x2="375" y2="138" stroke="#a5a5a5" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
+    <line x1="564" y1="86" x2="400" y2="138" stroke="#a5a5a5" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
+
+    <rect x="240" y="140" width="240" height="64" rx="10" fill="#0d2a0d" stroke="#aee23a" stroke-width="2.5"/>
+    <text x="360" y="160" text-anchor="middle" font-size="10" font-family="ui-monospace, monospace" fill="#76b900" font-weight="700">protocol layer</text>
+    <text x="360" y="178" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="#aee23a" font-weight="700">MCP  ·  Responses  ·  OTel  ·  A2A</text>
+    <text x="360" y="194" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="#aee23a" font-weight="700">REST of choice  ·  custom JSON-RPC</text>
+
+    <line x1="320" y1="206" x2="156" y2="258" stroke="#a5a5a5" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
+    <line x1="345" y1="206" x2="292" y2="258" stroke="#a5a5a5" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
+    <line x1="375" y1="206" x2="428" y2="258" stroke="#a5a5a5" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
+    <line x1="400" y1="206" x2="564" y2="258" stroke="#a5a5a5" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
+
+    <rect x="96"  y="260" width="120" height="36" rx="6" fill="#3a2e1e" stroke="#d49c2c"/>
+    <text x="156" y="283" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="#e8c87a">search</text>
+    <rect x="232" y="260" width="120" height="36" rx="6" fill="#3a2e1e" stroke="#d49c2c"/>
+    <text x="292" y="283" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="#e8c87a">file ops</text>
+    <rect x="368" y="260" width="120" height="36" rx="6" fill="#3a2e1e" stroke="#d49c2c"/>
+    <text x="428" y="283" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="#e8c87a">shell</text>
+    <rect x="504" y="260" width="120" height="36" rx="6" fill="#3a2e1e" stroke="#d49c2c"/>
+    <text x="564" y="283" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="#e8c87a">custom</text>
+  </svg>
+  <p>
+    The cell below fakes a tiny MCP server in pure JavaScript with the
+    same JSON-RPC shape MCP defines (no transport). The agent fetches
+    the tool list, hands the schemas to the model, then dispatches
+    <code>tool_calls</code> back through the server's
+    <code>tools/call</code> handler. The agent loop is byte-for-byte
+    identical to Part 2; only the source of the tool list changes.
+  </p>
+
+  <div id="cell-m2b-p6"></div>
+
+  <h2>Before you continue</h2>
+  <ol>
+    <li>What happens when the model calls a tool with arguments that fail your validation? The current loop crashes; how would you make it graceful without giving the model false confidence that the call succeeded?</li>
+    <li>The Part 5 sub-agent is opaque to the main agent. What information would you want it to surface back (in addition to the answer) so the main agent can decide whether to trust it on the next turn?</li>
+    <li>The <code>tool_choice</code> parameter can be set to <code>"required"</code> or to a specific tool name. When would forcing a tool call be the right move, and what risk does it create?</li>
+  </ol>
+
+  <div class="references">
+    <h3>References</h3>
+    <ul>
+      <li><a href="https://arxiv.org/abs/2302.04761" target="_blank" rel="noopener">Schick et al., <em>Toolformer: Language Models Can Teach Themselves to Use Tools</em> (2023)</a>. The paper that established self-supervised tool use; what every subsequent function-calling spec is variations on.</li>
+      <li><a href="https://platform.openai.com/docs/guides/function-calling" target="_blank" rel="noopener">OpenAI function-calling guide</a>. The spec your <code>tools=[…]</code> payload conforms to; the hosted build endpoint proxies this shape through to any provider.</li>
+      <li><a href="https://modelcontextprotocol.io/specification" target="_blank" rel="noopener">Model Context Protocol (MCP) specification</a>. The cross-vendor tool-discovery and tool-serving layer covered in Part 6 of this module (originated by Anthropic, now an open project); complements function calling at the agent-runtime layer.</li>
+      <li><a href="https://docs.anthropic.com/en/docs/agents-and-tools/tool-use" target="_blank" rel="noopener">Anthropic tool-use reference</a>. The parallel implementation for Claude, useful as a cross-vendor comparison.</li>
+    </ul>
+    <p class="references-note">Comprehensive list at <a href="04c-going-further.html#refs">Going Further · References</a>.</p>
+  </div>
+
+  <h2>Try it · an agent with two real tools</h2>
+  <p>
+    A LangChain <code>createReactAgent</code> wired to two functions you just saw
+    the contract for: <code>calculate</code> (arithmetic) and <code>web_search</code>
+    (live, key-less Wikipedia search). Ask for a number it cannot know or a factual
+    lookup, and watch the tool chip light up before the answer streams.
+  </p>
+  <div id="tools-artifact"></div>
+  <script type="module">
+    import { mountAgentChat } from "./_shared.js";
+    mountAgentChat("#tools-artifact", {
+      models: [
+        { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
+        { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
+      ],
+      greeting: "I can do arithmetic and search the web. Try 'what is 17% of 2,480?' or 'who won the 2024 Nobel Prize in Physics?'",
+      examples: ["What is 17.5% of 2,480?", "Search: the NVIDIA Nemotron model family", "What is 2^16 minus 1000?"],
+      system: "You are a helpful assistant. Use calculate for any arithmetic and web_search for factual lookups. Ground factual claims in the web_search results; if a search returns nothing, say you could not find it rather than answering from memory. Keep answers brief.",
+      buildTools: ({ tool, z, webSearch, formatSearchResults }) => [
+        tool(async ({ expression }) => {
+          const expr = String(expression).replace(/,/g, "");
+          if (!/^[-+*/().\s^%0-9]+$/.test(expr)) return "calculate only accepts arithmetic.";
+          try { return String(Function('"use strict"; return (' + expr.replace(/\^/g, "**") + ")")()); }
+          catch (e) { return "error: " + e.message; }
+        }, { name: "calculate", description: "Evaluate an arithmetic expression, e.g. (17/100)*2480 or 2^16 - 1000.",
+             schema: z.object({ expression: z.string().describe("an arithmetic expression, e.g. 0.175*2480") }) }),
+        tool(async ({ query }) => formatSearchResults(await webSearch(query, { maxResults: 4 })),
+          { name: "web_search", description: "Search the web for current or factual information.",
+            schema: z.object({ query: z.string() }) }),
+      ],
+    });
+  </script>
+
+  <div class="foot-nav">
+    <a href="01b-react.html">← Module 1b: The ReAct Loop</a>
+    <a class="next" href="02a-routing.html">Module 2a: Workflows →</a>
+  </div>
+</main>
+
+<script type="module">
+import { buildNav, requireKey, hasKey, chat, chatStream, webSearch, formatSearchResults, setRunning, showError, renderOutput, updateKeyPill, mountJourneyMap, mountRunCell, mountCanvasFlow } from "./_shared.js";
+document.getElementById("nav").innerHTML = buildNav("01c-tools.html");
+const pill = document.getElementById("key-status");
+updateKeyPill(pill);
+mountJourneyMap("#journey-map", "1c");
+hljs.highlightAll();
+
+// ── Module 2b Part 1: schema contract for tools ──────────────────────────────
+mountCanvasFlow("#cell-m2b-p1", {
+  label: "Module 1c Part 1 · the JSON-Schema tool contract",
+  intro: "A question and a tool spec both feed into one LLM call where the model reads the schema and chooses whether to emit a tool_calls request or answer directly, and since nothing is actually executed here, what you observe is the routing decision alone.",
+  edges: [
+    { from: "question", to: "llm" },
+    { from: "schema",   to: "llm" },
+  ],
+  nodes: [
+    {
+      id: "question", icon: "👤", title: "User question", x: 0, y: 0,
+      summary: "Try 'What is the capital of France?' to see the model skip the tool.",
+      code: `state.question = "What is 17 times 43?";
+return state.question;
+`,
+    },
+    {
+      id: "schema", icon: "📄", title: "Tool spec (JSON Schema)", x: 2, y: 0,
+      summary: "The spec carries a name, a description, and parameters, and it is the description string that drives the model's choice.",
+      code: `state.CALC_SCHEMA = [{
+  type: "function",
+  function: {
+    name: "calculate",
+    description: "Evaluate a JavaScript arithmetic expression. Supports +,-,*,/, parens, and Math.sqrt/pow/log/exp/sin/cos.",
+    parameters: {
+      type: "object",
+      properties: { expression: { type: "string", description: "e.g. (17*43)+Math.sqrt(144)" } },
+      required: ["expression"],
+    },
+  },
+}];
+return { tool_name: state.CALC_SCHEMA[0].function.name };
+`,
+    },
+    {
+      id: "llm", icon: "🧠", title: "LLM call · routes (+ schema-shape viz)", x: 1, y: 1,
+      summary: "A single model call whose finish_reason in the output reads 'tool_calls' when the model wants to invoke the function or 'stop' when it wrote a direct answer and the loop can exit.",
+      code: `state.s = await helpers.chatStream({
+  messages:   [{ role: "user", content: state.question }],
+  tools:      state.CALC_SCHEMA,
+  max_tokens: 1500,
+});
+
+const fr     = state.s.finish_reason;
+const tcs    = state.s.tool_calls || [];
+const isTool = fr === "tool_calls" || tcs.length > 0;
+const toolName = state.CALC_SCHEMA[0].function.name;
+
+// Build the result line for the model node from what actually came back.
+const modelLines = ["finish_reason: " + (fr || "?")];
+if (isTool) {
+  const args = (tcs[0]?.function?.arguments || "{}");
+  modelLines.push("wants: " + (tcs[0]?.function?.name || "?"));
+  modelLines.push("args: " + (args.length > 32 ? args.slice(0, 31) + "…" : args));
+} else {
+  const c = (state.s.content || "");
+  modelLines.push("answered directly");
+  modelLines.push(c.length > 36 ? c.slice(0, 35) + "…" : (c || "(empty)"));
+}
+
+helpers.viz.diagram({
+  title: "One model call · the schema routes the next step",
+  caption: "A finish_reason of 'tool_calls' means the model, which cannot execute anything itself, is asking your code to run the named function and append the result, while 'stop' means it has written its final answer and the loop can exit.",
+  nodes: [
+    { id: "question", label: "user",  kind: "env",   x: 0, y: 0,
+      lines: [state.question.length > 30 ? state.question.slice(0, 29) + "…" : state.question] },
+    { id: "schema",   label: "tool spec", kind: "tool", x: 2, y: 0,
+      lines: [toolName + "(expression)", "JSON Schema contract"] },
+    { id: "model",    label: "model", kind: "model", x: 1, y: 1, lines: modelLines },
+  ],
+  edges: [
+    { from: "question", to: "model", label: "question" },
+    { from: "schema",   to: "model", label: "tools" },
+  ],
+});
+
+return {
+  finish_reason:       state.s.finish_reason,
+  tool_calls:          state.s.tool_calls,
+  content_or_message:  state.s.content || "(empty; the model called the tool instead)",
+};
+`,
+    },
+  ],
+});
+
+// ── Module 2b Part 2: the two-call cycle ─────────────────────────────────────
+mountCanvasFlow("#cell-m2b-p2", {
+  label: "Module 1c Part 2 · the two-call cycle · request → execute → reply",
+  intro: "The first LLM call decides to call calculate, the local executor runs the expression, and the second LLM call writes the user-facing answer from the tool result, growing messages from 1 to 4 along the way.",
+  edges: [
+    { from: "question", to: "llm1" },
+    { from: "schema",   to: "llm1" },
+    { from: "llm1", to: "calc" },
+    { from: "calc", to: "llm2" },
+  ],
+  nodes: [
+    {
+      id: "question", icon: "👤", title: "User question", x: 0, y: 0,
+      summary: "An arithmetic question the model will defer to the calculator.",
+      code: `state.question = "What is (17 * 43) + Math.sqrt(144)?";
+state.messages = [{ role: "user", content: state.question }];
+return state.question;
+`,
+    },
+    {
+      id: "schema", icon: "📄", title: "calculate spec", x: 2, y: 0,
+      summary: "Same JSON-Schema contract as Part 1.",
+      code: `state.CALC_SCHEMA = [{
+  type: "function",
+  function: {
+    name: "calculate",
+    description: "Evaluate a JavaScript arithmetic expression. Supports +,-,*,/, parens, and Math.sqrt/pow/log/exp/sin/cos.",
+    parameters: { type: "object",
+      properties: { expression: { type: "string" } }, required: ["expression"] },
+  },
+}];
+return { tool: "calculate" };
+`,
+    },
+    {
+      id: "llm1", icon: "🧠", title: "LLM call #1 · decides", x: 1, y: 1,
+      summary: "The first of two model calls sees the question and the tool schema and should respond with a tool_calls request that the executor picks up in the next node.",
+      code: `state.s1 = await helpers.chatStream({
+  messages:   state.messages,
+  tools:      state.CALC_SCHEMA,
+  max_tokens: 1500,
+});
+state.messages.push({
+  role: "assistant",
+  content: state.s1.content || null,
+  tool_calls: state.s1.tool_calls.length ? state.s1.tool_calls : undefined,
+});
+return { finish_reason: state.s1.finish_reason, tool_calls: state.s1.tool_calls };
+`,
+    },
+    {
+      id: "calc", icon: "🛠", title: "calculate (local)", x: 1, y: 2,
+      summary: "Pure JavaScript with no model call. It validates the expression against a safe whitelist (digits, operators, parentheses, and Math.* names), evaluates it, then pushes the result back onto the message history as a 'tool' role message so the second model call can see it.",
+      code: `function doCalc(expr) {
+  const expanded = expr.replace(/(?:Math\\.)?\\b(sqrt|pow|log|exp|sin|cos|abs|floor|ceil|min|max)\\b/g, "Math.$1");
+  const stripped = expanded.replace(/Math\\.[A-Za-z_]+/g, "").replace(/[0-9+\\-*/().,\\s^%]/g, "");
+  if (stripped.length > 0) return \`(unsafe: '\${stripped}')\`;
+  try { return String(Function('"use strict"; return (' + expanded.replace(/\\^/g, "**") + ");")()); }
+  catch (e) { return \`(error: \${e.message})\`; }
+}
+if (!state.s1.tool_calls.length) { state.skipped = true; return { skipped: true }; }
+const tc   = state.s1.tool_calls[0];
+const args = JSON.parse(tc.function.arguments || "{}");
+state.calcResult = doCalc(args.expression || "");
+state.messages.push({ role: "tool", tool_call_id: tc.id, content: state.calcResult });
+return { args, result: state.calcResult };
+`,
+    },
+    {
+      id: "llm2", icon: "🧠", title: "LLM call #2 · replies", x: 1, y: 3,
+      summary: "The second model call now reads a message history that holds both the assistant's tool request and the tool result, so it grounds its final user-facing answer in the actual computed value and grows the messages array from one entry to four.",
+      code: `if (state.skipped) return state.s1.content || "(empty)";
+state.s2 = await helpers.chatStream({
+  messages:   state.messages,
+  tools:      state.CALC_SCHEMA,
+  max_tokens: 1500,
+});
+
+const finalMsg = { role: "assistant", content: state.s2.content || state.s2.reasoning || "" };
+helpers.viz.messageList([...state.messages, finalMsg], "THE TWO-CALL CYCLE");
+helpers.log("messages grew: 1 → " + (state.messages.length + 1));
+
+return state.s2.content || state.s2.reasoning || "(empty)";
+`,
+    },
+  ],
+});
+
+// ── Module 2b Part 3: multi-tool routing ─────────────────────────────────────
+mountCanvasFlow("#cell-m2b-p3", {
+  label: "Module 1c Part 3 · two tools, the model routes",
+  intro: "Three roots feed into one LLM, and editing either tool description shifts how the model routes, because the description string is one of the most consequential prompt-engineering surfaces in any tool-using agent.",
+  edges: [
+    { from: "question", to: "llm" },
+    { from: "tool_a",   to: "llm" },
+    { from: "tool_b",   to: "llm" },
+  ],
+  nodes: [
+    {
+      id: "question", icon: "👤", title: "User question", x: 1, y: 0,
+      summary: "Try an arithmetic, a definition, or something either tool could handle.",
+      code: `state.question = "What is 2 to the power of 10?";
+return state.question;
+`,
+    },
+    {
+      id: "tool_a", icon: "🛠", title: "Tool A · calculate", x: 0, y: 1,
+      summary: "Scoped to arithmetic expressions only. Its description explicitly says not to use it for definitions or conceptual questions, which steers the model toward the other tool when the intent is explanatory.",
+      code: `state.toolA = {
+  type: "function",
+  function: {
+    name: "calculate",
+    description: "Evaluate an arithmetic expression. Use for any computation. Do NOT use for definitions or conceptual questions.",
+    parameters: { type: "object",
+      properties: { expression: { type: "string" } }, required: ["expression"] },
+  },
+};
+return state.toolA.function.name;
+`,
+    },
+    {
+      id: "tool_b", icon: "🛠", title: "Tool B · explain_concept", x: 2, y: 1,
+      summary: "Scoped to definitions and conceptual questions only. Its description tells the model not to use it for arithmetic, which keeps the two tools from competing on overlapping inputs.",
+      code: `state.toolB = {
+  type: "function",
+  function: {
+    name: "explain_concept",
+    description: "Explains a technical or scientific concept in plain English. Use for definitions and conceptual questions. Do NOT use for arithmetic.",
+    parameters: { type: "object",
+      properties: { concept: { type: "string" } }, required: ["concept"] },
+  },
+};
+return state.toolB.function.name;
+`,
+    },
+    {
+      id: "llm", icon: "🧠", title: "LLM call · routes (+ decision viz)", x: 1, y: 2,
+      summary: "Shows which tool the model selected and with what arguments, where the routing depends almost entirely on the description strings in the two specs above, so editing one of them and rerunning watches the model change its mind.",
+      code: `const s = await helpers.chatStream({
+  messages:   [{ role: "user", content: state.question }],
+  tools:      [state.toolA, state.toolB],
+  max_tokens: 1500,
+});
+
+let chosen = null, args = null;
+if (s.tool_calls.length) {
+  const tc = s.tool_calls[0];
+  args = tc.function.arguments;
+  try { args = JSON.parse(args); } catch (_) {}
+  chosen = tc.function.name;
+}
+
+const isA = chosen === "calculate";
+const isB = chosen === "explain_concept";
+const argsLabel = chosen && args ? JSON.stringify(args) : null;
+
+// Build the model node's result line, plus per-tool CHOSEN/rejected markers,
+// straight from what the model actually picked.
+const modelLines = chosen
+  ? ["routed to: " + chosen, argsLabel
+      ? ("args: " + (argsLabel.length > 30 ? argsLabel.slice(0, 29) + "…" : argsLabel))
+      : "(no args)"]
+  : ["answered directly", "(no tool call)"];
+const toolALines = ["arithmetic only", isA ? "✓ CHOSEN" : "rejected"];
+const toolBLines = ["concepts only",  isB ? "✓ CHOSEN" : "rejected"];
+
+helpers.viz.diagram({
+  title: "Two tools · the description string drives the route",
+  caption: "Editing either description shifts how the model routes, since the description field is one of the most consequential prompt-engineering surfaces in any tool-using agent.",
+  nodes: [
+    { id: "question", label: "user",            kind: "env",   x: 1, y: 0,
+      lines: [state.question.length > 30 ? state.question.slice(0, 29) + "…" : state.question] },
+    { id: "tool_a",   label: "calculate",       kind: "tool",  x: 0, y: 1, lines: toolALines },
+    { id: "tool_b",   label: "explain_concept", kind: "tool",  x: 2, y: 1, lines: toolBLines },
+    { id: "model",    label: "model",           kind: "model", x: 1, y: 2, lines: modelLines },
+  ],
+  edges: [
+    { from: "question", to: "tool_a" },
+    { from: "question", to: "tool_b" },
+    ...(isA ? [{ from: "tool_a", to: "model", label: "tool_calls" }] : []),
+    ...(isB ? [{ from: "tool_b", to: "model", label: "tool_calls" }] : []),
+    ...(!chosen ? [{ from: "question", to: "model" }] : []),
+  ],
+});
+helpers.log("routed to: " + (chosen || "no tool"));
+
+return chosen ? { chose: chosen, args } : { chose: "(neither; model answered directly)", content: s.content?.slice(0, 200) };
+`,
+    },
+  ],
+});
+
+// ── Module 1c Part 4: real web_search via Wikipedia's key-less API ───────────
+mountCanvasFlow("#cell-m2b-p4", {
+  label: "Module 1c Part 4 · real web_search via Wikipedia's key-less API",
+  intro: "Each node writes into a shared state object that later nodes read, and you can open any node to edit its JS and rerun it alone or run the whole graph.",
+  edges: [
+    { from: "input", to: "llm1" },
+    { from: "tool",  to: "llm1" },
+    { from: "llm1",  to: "search" },
+    { from: "search", to: "llm2" },
+  ],
+  nodes: [
+    {
+      id: "input", icon: "👤", title: "User input", x: 0, y: 0,
+      summary: "Holds the question the student asks, which you can edit before rerunning.",
+      code: `state.question = "What is the NVIDIA Nemotron model family and what is it good at?";
+return state.question;
+`,
+    },
+    {
+      id: "tool", icon: "📄", title: "Tool spec", x: 2, y: 0,
+      summary: "The web_search JSON Schema the model reads.",
+      code: `state.SEARCH_SCHEMA = [{
+  type: "function",
+  function: {
+    name: "web_search",
+    description: "Search the web for current information. Use for recent events or specific facts.",
+    parameters: {
+      type: "object",
+      properties: { query: { type: "string", description: "3-8 word search query" } },
+      required: ["query"],
+    },
+  },
+}];
+return { name: state.SEARCH_SCHEMA[0].function.name };
+`,
+    },
+    {
+      id: "llm1", icon: "🧠", title: "LLM call #1", x: 1, y: 1,
+      summary: "The first model call. This is a factual question the model should ground rather than recall, so we REQUIRE a web_search call here (tool_choice) to see the full round-trip. Letting the model decide for itself is Part 3's lesson (and what the createReactAgent artifact does); here the model just fills in the search query.",
+      code: `state.messages = [
+  { role: "system", content: "You are a research assistant. Ground answers in web_search results; never answer factual questions from memory." },
+  { role: "user",   content: state.question },
+];
+state.s1 = await helpers.chatStream({
+  messages:    state.messages,
+  tools:       state.SEARCH_SCHEMA,
+  tool_choice: { type: "function", function: { name: "web_search" } },   // require the search; don't let it answer from (stale) memory
+  max_tokens:  4096,   // a reasoning model thinks before it emits the call; too small a budget and it stops mid-thought
+});
+helpers.log("finish_reason:", state.s1.finish_reason, "· tool_calls:", state.s1.tool_calls.length);
+return {
+  finish_reason: state.s1.finish_reason,
+  tool_calls_count: state.s1.tool_calls.length,
+  direct_answer_preview: state.s1.tool_calls.length ? "(tool requested instead)" : (state.s1.content || "").slice(0, 200),
+};
+`,
+    },
+    {
+      id: "search", icon: "🌐", title: "web_search", x: 1, y: 2,
+      summary: "A local executor that calls Wikipedia's free, key-less search API (CORS-open and running in the browser) and returns ranked results.",
+      code: `if (!state.s1.tool_calls.length) {
+  // No tool call: either the model answered from training (it has content), or
+  // call #1 was cut off mid-thought. Distinguish them honestly; never claim a
+  // direct answer when the call simply ran out of tokens.
+  state.skipped = true;
+  state.reason = state.s1.content ? "model answered directly; no search needed"
+            : "call #1 stopped before answering (finish_reason: " + state.s1.finish_reason + "); raise max_tokens";
+  helpers.log(state.reason);
+  return { skipped: true, reason: state.reason };
+}
+const tc      = state.s1.tool_calls[0];
+state.query   = JSON.parse(tc.function.arguments).query;
+state.search  = await helpers.webSearch(state.query, { maxResults: 4 });
+state.toolMsg = helpers.formatSearchResults(state.search);
+state.messages.push({
+  role: "assistant",
+  content: state.s1.content || null,
+  tool_calls: state.s1.tool_calls,
+});
+state.messages.push({ role: "tool", tool_call_id: tc.id, content: state.toolMsg });
+// Steer the synthesis call: answer now, from the results, with no more tool calls.
+state.messages.push({ role: "user", content: "Using only the search results above, write the final answer now. Do not request another search or output any tool-call syntax." });
+helpers.log("got", state.search.count || 0, "results for:", state.query);
+return {
+  query: state.query,
+  count: state.search.count || 0,
+  unreachable: !!state.search.unreachable,
+};
+`,
+    },
+    {
+      id: "llm2", icon: "🧠", title: "LLM call #2", x: 1, y: 3,
+      summary: "Synthesizes the final answer from the search results. Note this call passes NO tools, so it must answer from what call #1 retrieved rather than request another search. That is what turns a tool result into a final reply.",
+      code: `if (state.skipped) {
+  return { final_answer: state.s1.content || "(" + (state.reason || "no answer") + ")",
+           note: "no search was run on this turn" };
+}
+// No \`tools\` here on purpose: with the schema removed, the model cannot ask for
+// another search, so it must synthesize an answer from the results it already has.
+state.s2 = await helpers.chatStream({
+  messages:   state.messages,
+  max_tokens: 4096,   // room for the reasoning model to think AND write the answer
+});
+// Defensive: a reasoning model with no tools sometimes still emits tool-call
+// SYNTAX as text. Strip it so the student sees a clean final answer.
+const answer = (state.s2.content || "")
+  .replace(/<tool_call>[\\s\\S]*?<\\/tool_call>/g, "")
+  .replace(/<\\/?function[^>]*>|<\\/?parameter[^>]*>/g, "").trim();
+return answer || "(the model did not produce a final answer; try Run again)";
+`,
+    },
+  ],
+});
+
+// ── Module 1c Part 4b: the same web_search tool, backed by Instant Answers ────
+mountRunCell("#cell-m2b-p4b", {
+  label: "Module 1c Part 4b · the same web_search tool, swapped to DuckDuckGo Instant Answers",
+  intro: "The tool name, schema, and agent loop stay exactly as they were in Part 4 while instantAnswer() replaces webSearch() as the only change, so that the same fixed contract now returns one curated answer for well-known entities (most queries come back empty) instead of ranked Wikipedia results. Edit the question to see where each key-less, in-page executor wins.",
+  code: `// The agent sees the exact same web_search tool it saw in Part 4.
+const SEARCH_SCHEMA = [{
+  type: "function",
+  function: {
+    name: "web_search",
+    description: "Search the web for current information. Use for recent events or specific facts.",
+    parameters: { type: "object", properties: { query: { type: "string", description: "the bare entity name to look up, e.g. 'Eiffel Tower' (NOT a natural-language question)" } }, required: ["query"] },
+  },
+}];
+
+const messages = [
+  // Instant Answers is keyed by entity, so we tell the model to query the bare
+  // name ("Eiffel Tower"), not a phrase ("how tall is the Eiffel Tower") that
+  // returns nothing. That coupling between a tool's quirk and the prompt is real.
+  { role: "system", content: "You are a research assistant. Ground answers in web_search results; do not answer from memory. web_search is an instant-answer API keyed by entity, so always query the bare entity name (e.g. 'Eiffel Tower'), never a full question." },
+  { role: "user",   content: "What is the Eiffel Tower?" },
+];
+
+// Require the search (same as Part 4) so the swapped backend is always exercised,
+// and give the reasoning model room to think before the call (4096, not 1500).
+const s1 = await chatStream({ messages, tools: SEARCH_SCHEMA, tool_choice: { type: "function", function: { name: "web_search" } }, max_tokens: 4096 });
+log("finish_reason:", s1.finish_reason, "· tool_calls:", s1.tool_calls.length);
+
+const tc    = s1.tool_calls[0];
+const query = JSON.parse(tc.function.arguments).query;
+log.h("web_search · backed by Instant Answers");
+log("query:", query);
+
+// The one line that differs from Part 4: instantAnswer() instead of webSearch().
+const out     = await instantAnswer(query, { maxResults: 4 });
+const toolMsg = formatSearchResults(out);
+log(toolMsg);
+
+messages.push({ role: "assistant", content: s1.content || null, tool_calls: s1.tool_calls });
+messages.push({ role: "tool", tool_call_id: tc.id, content: toolMsg });
+messages.push({ role: "user", content: "Using only the search results above, write the final answer now. Do not request another search or output any tool-call syntax." });
+
+const s2 = await chatStream({ messages, max_tokens: 4096 });
+const answer = (s2.content || "").replace(/<tool_call>[\\s\\S]*?<\\/tool_call>/g, "").replace(/<\\/?function[^>]*>|<\\/?parameter[^>]*>/g, "").trim();
+log.h("final answer");
+log(answer || "(no final answer; try Run again)");
+return { used_search: true, query, results: out.count };
+`,
+});
+
+// ── Module 2b Part 5: agents as tools ────────────────────────────────────────
+mountCanvasFlow("#cell-m2b-p5", {
+  label: "Module 1c Part 5 · agents as tools · hide the database, expose the question",
+  intro: "The main agent gets a single query_customer_db tool backed by a sub-agent that knows the schema (a tiny JS array stands in for SQL), so the main agent never sees the rows and only asks questions and reads natural-language answers.",
+  edges: [
+    { from: "sub_data",  to: "sub_agent" },
+    { from: "tool_spec", to: "main_llm" },
+    { from: "user",      to: "main_llm" },
+    { from: "main_llm",  to: "dispatch" },
+    { from: "sub_agent", to: "dispatch" },
+  ],
+  nodes: [
+    {
+      id: "sub_data", icon: "🗃", title: "Hidden data (the sub-agent's world)", x: 0, y: 0,
+      summary: "An in-page customer table that the main agent will never see and that a real version would replace with a SQL connection plus row-level auth.",
+      code: `state.customers = [
+  { id: 1001, name: "Aiyana Brooks",  plan: "pro",   region: "us-west", joined: "2024-03-12", tickets_30d: 1 },
+  { id: 1002, name: "Boris Müller",   plan: "free",  region: "eu",      joined: "2025-11-04", tickets_30d: 0 },
+  { id: 1003, name: "Chen Wei",       plan: "pro",   region: "apac",    joined: "2023-08-22", tickets_30d: 4 },
+  { id: 1004, name: "Dara Okafor",    plan: "team",  region: "us-east", joined: "2025-01-09", tickets_30d: 2 },
+  { id: 1005, name: "Ezra Goldstein", plan: "team",  region: "us-east", joined: "2024-07-30", tickets_30d: 0 },
+  { id: 1006, name: "Farida Hassan",  plan: "pro",   region: "eu",      joined: "2025-06-15", tickets_30d: 3 },
+];
+return { rows: state.customers.length, schema_fields: Object.keys(state.customers[0]) };
+`,
+    },
+    {
+      id: "sub_agent", icon: "🤖", title: "Sub-agent · query_customer_db", x: 0, y: 1,
+      summary: "Knows the table schema and answers a natural-language question through one LLM call with the rows embedded in its system prompt.",
+      code: `state.queryCustomerDB = async function(question) {
+  // The sub-agent's world: a tight system prompt that hides the table, and the rows as context.
+  const schemaText = "Customer rows have fields: id (int), name (string), plan (free|pro|team), region (us-east|us-west|eu|apac), joined (YYYY-MM-DD), tickets_30d (int).";
+  const rowsText   = state.customers.map(c => JSON.stringify(c)).join("\\n");
+  const sub = await helpers.chatStream({
+    messages: [
+      { role: "system", content:
+        "You are a customer-database analyst. Use ONLY the rows provided. " +
+        "If the rows do not contain the answer, say so. Be concise.\\n\\n" +
+        schemaText + "\\n\\nRows:\\n" + rowsText },
+      { role: "user", content: question },
+    ],
+    max_tokens: 400,
+  });
+  return (sub.content || sub.reasoning || "(empty)").trim();
+};
+helpers.log("sub-agent ready · knows", state.customers.length, "rows");
+return { sub_agent: "query_customer_db", world_rows: state.customers.length };
+`,
+    },
+    {
+      id: "tool_spec", icon: "📄", title: "Tool spec (to the main agent)", x: 2, y: 0,
+      summary: "The schema the main agent sees, which exposes the capability alone and gives zero details about the underlying table.",
+      code: `state.TOOLS = [{
+  type: "function",
+  function: {
+    name: "query_customer_db",
+    description: "Ask a natural-language question about customer accounts. Returns a one-paragraph answer. Use for questions about plans, regions, ticket activity, signup dates, and counts.",
+    parameters: {
+      type: "object",
+      properties: { question: { type: "string", description: "A specific question in natural English." } },
+      required: ["question"],
+    },
+  },
+}];
+return { tool_name: state.TOOLS[0].function.name };
+`,
+    },
+    {
+      id: "user", icon: "👤", title: "User question (to the main agent)", x: 2, y: 1,
+      summary: "Edit this to try a question like 'How many pro-plan customers do we have?' or 'Who has the most tickets in the last 30 days?'",
+      code: `state.userQuestion = "Which EU customers are on the pro plan, and how active are they?";
+return state.userQuestion;
+`,
+    },
+    {
+      id: "main_llm", icon: "🧠", title: "Main agent · plain LLM call", x: 1, y: 2,
+      summary: "Seeing only the one tool, the main agent decides whether to ask the sub-agent or answer directly.",
+      code: `state.mainMessages = [
+  { role: "system", content: "You are a customer-success agent. When the user asks about customer data, call query_customer_db rather than guessing." },
+  { role: "user",   content: state.userQuestion },
+];
+state.s1 = await helpers.chatStream({
+  messages: state.mainMessages,
+  tools:    state.TOOLS,
+  max_tokens: 1500,
+});
+return {
+  finish_reason: state.s1.finish_reason,
+  tool_calls:    state.s1.tool_calls.map(tc => ({ name: tc.function.name, args: tc.function.arguments })),
+};
+`,
+    },
+    {
+      id: "dispatch", icon: "📤", title: "Dispatch to sub-agent · synth final answer", x: 1, y: 3,
+      summary: "If the main agent called the tool, we hand the natural-language question to the sub-agent, append its answer, and ask the main agent for the user-facing reply.",
+      code: `if (!state.s1.tool_calls.length) {
+  helpers.log("main agent answered directly without using the sub-agent");
+  return { final: state.s1.content || "(empty)" };
+}
+state.mainMessages.push({
+  role: "assistant",
+  content: state.s1.content || null,
+  tool_calls: state.s1.tool_calls,
+});
+for (const tc of state.s1.tool_calls) {
+  const args   = JSON.parse(tc.function.arguments || "{}");
+  helpers.log("main → sub: " + (args.question || "?"));
+  const answer = await state.queryCustomerDB(args.question || "");
+  helpers.log("sub → main: " + answer.slice(0, 120));
+  state.mainMessages.push({ role: "tool", tool_call_id: tc.id, content: answer });
+}
+const s2 = await helpers.chatStream({
+  messages: state.mainMessages, tools: state.TOOLS, max_tokens: 4096,
+});
+
+helpers.viz.messageList(state.mainMessages.concat([{ role: "assistant", content: s2.content || "" }]),
+  "MAIN AGENT'S MESSAGE LOG · sub-agent's working memory not shown");
+helpers.log("note: the main agent never saw the rows; only the sub-agent's natural-language summary");
+
+return s2.content || s2.reasoning || "(empty)";
+`,
+    },
+  ],
+});
+
+// ── Module 2b Part 6: MCP-shaped tool server ─────────────────────────────────
+mountCanvasFlow("#cell-m2b-p6", {
+  label: "Module 1c Part 6 · MCP-shaped tool server · discovery + dispatch",
+  intro: "A fake in-page MCP server exposes two tools through tools/list and tools/call with no network, and the agent discovers the tool list, hands the schemas to the LLM, and dispatches the model's tool_calls back through tools/call, so only the tool source changes while the agent loop stays identical to Part 2.",
+  edges: [
+    { from: "server",   to: "discover" },
+    { from: "discover", to: "llm" },
+    { from: "user",     to: "llm" },
+    { from: "llm",      to: "dispatch" },
+  ],
+  nodes: [
+    {
+      id: "server", icon: "🖥", title: "Fake MCP server (in-page)", x: 0, y: 0,
+      summary: "An in-page simulation of an MCP server, exposing the two standard endpoints (tools/list for discovery and tools/call for execution) using the same JSON-RPC-style shape as the real protocol. In production these calls travel over stdio or HTTP transport rather than running in the same JavaScript process.",
+      code: `state.mcpServer = {
+  async request(method, params) {
+    if (method === "tools/list") {
+      return {
+        tools: [
+          { name: "calculate",
+            description: "Evaluate a basic arithmetic expression.",
+            inputSchema: { type: "object",
+              properties: { expression: { type: "string" } }, required: ["expression"] } },
+          { name: "get_current_time",
+            description: "Return the current UTC time as a string.",
+            inputSchema: { type: "object", properties: {}, required: [] } },
+        ],
+      };
+    }
+    if (method === "tools/call") {
+      const { name, arguments: args } = params;
+      if (name === "calculate") {
+        const expr = (args?.expression || "").replace(/[^0-9+\\-*/().\\s]/g, "");
+        try {
+          const v = Function('"use strict"; return (' + expr + ");")();
+          return { content: [{ type: "text", text: String(v) }] };
+        } catch (e) {
+          return { content: [{ type: "text", text: "error: " + e.message }], isError: true };
+        }
+      }
+      if (name === "get_current_time") {
+        return { content: [{ type: "text",
+          text: new Date().toISOString().slice(0, 19).replace("T", " ") + " UTC" }] };
+      }
+      return { content: [{ type: "text", text: "unknown tool: " + name }], isError: true };
+    }
+    throw new Error("unknown method: " + method);
+  },
+};
+return { exposes: ["tools/list", "tools/call"] };
+`,
+    },
+    {
+      id: "discover", icon: "🔎", title: "Client · tools/list", x: 0, y: 1,
+      summary: "The client side of the MCP handshake: it calls tools/list on the server and maps each returned tool's inputSchema to the OpenAI function-calling format so the model can read it as a normal tools array.",
+      code: `const list = await state.mcpServer.request("tools/list");
+helpers.log("discovered " + list.tools.length + " tools");
+state.tools = list.tools.map(t => ({
+  type: "function",
+  function: { name: t.name, description: t.description, parameters: t.inputSchema },
+}));
+return state.tools.map(t => t.function.name);
+`,
+    },
+    {
+      id: "user", icon: "👤", title: "User question", x: 2, y: 1,
+      summary: "The question the model will try to answer using the discovered tools, where an arithmetic question routes to calculate and asking for the current time routes to get_current_time.",
+      code: `state.question = "What is 23 times 17?";
+return state.question;
+`,
+    },
+    {
+      id: "llm", icon: "🧠", title: "LLM (sees discovered tools)", x: 1, y: 2,
+      summary: "The same chatStream call from Part 2 runs unchanged because the agent loop cannot tell whether the tools came from a hardcoded array or a remote MCP server, which is exactly the abstraction the discovery step above buys you.",
+      code: `state.messages = [{ role: "user", content: state.question }];
+state.s1 = await helpers.chatStream({
+  messages:   state.messages,
+  tools:      state.tools,
+  max_tokens: 1500,
+});
+state.messages.push({
+  role: "assistant",
+  content: state.s1.content || null,
+  tool_calls: state.s1.tool_calls.length ? state.s1.tool_calls : undefined,
+});
+return {
+  finish_reason: state.s1.finish_reason,
+  tool_calls: state.s1.tool_calls.map(tc => ({ name: tc.function.name, args: tc.function.arguments })),
+};
+`,
+    },
+    {
+      id: "dispatch", icon: "📤", title: "Client → tools/call → LLM #2", x: 1, y: 3,
+      summary: "Closes the loop: for each tool_call the model requested, this node forwards the call to the server's tools/call endpoint, appends the result as a tool message, then makes one final model call to produce the user-facing answer from whatever the server returned.",
+      code: `if (!state.s1.tool_calls.length) return state.s1.content || "(model answered directly)";
+for (const tc of state.s1.tool_calls) {
+  const args = JSON.parse(tc.function.arguments || "{}");
+  const out  = await state.mcpServer.request("tools/call", { name: tc.function.name, arguments: args });
+  const txt  = out.content?.[0]?.text || "(no text)";
+  helpers.log("server → " + tc.function.name + " · " + txt);
+  state.messages.push({ role: "tool", tool_call_id: tc.id, content: txt });
+}
+const s2 = await helpers.chatStream({
+  messages: state.messages, tools: state.tools, max_tokens: 4096,
+});
+return s2.content || s2.reasoning || "(empty)";
+`,
+    },
+  ],
+});
+</script>
+</body>
+</html>

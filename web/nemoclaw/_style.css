@@ -1,0 +1,1333 @@
+/* ─── nemoclaw web shared stylesheet ──────────────────────────── */
+:root {
+  --g:   #76b900;
+  --gd:  #4a7a00;
+  --gs:  #aee23a;
+  --bg:  #0d0d0d;
+  --e1:  #161616;
+  --e2:  #1e1e1e;
+  --e3:  #262626;
+  --bd:  #2a2a2a;
+  --tx:  #f2f2f2;
+  --td:  #b0b0b0;
+  --tf:  #6a6a6a;
+  --acc: #3b82f6;
+  --err: #ef4444;
+  --r:   8px;
+  --mono: ui-monospace, "SF Mono", Consolas, "Cascadia Mono", monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: #0d0d0d;
+  background: var(--bg);
+  color: #f2f2f2;
+  color: var(--tx);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ── Top bar ────────────────────────────────────────────────────────────────── */
+/* Minimal: brand on the left, key-pill on the right, nothing in between.
+ * All in-course navigation lives in the journey-map widget below this bar.
+ * Contents centre over `main`'s fluid width on wide screens via the
+ * max(gutter, fill) padding pattern. */
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center;
+  height: 52px;
+  padding-left:  max(28px, calc((100vw - min(71.25rem, 100%)) / 2));
+  padding-right: max(28px, calc((100vw - min(71.25rem, 100%)) / 2));
+  background: #0d0d0d;
+  background: var(--bg);
+  border-bottom: 1px solid #2a2a2a;
+  border-bottom-color: var(--bd);
+}
+.topbar .logo {
+  flex-shrink: 0;
+  font-weight: 700; font-size: 1rem;
+  color: #76b900; color: var(--g);
+  text-decoration: none; white-space: nowrap;
+  letter-spacing: .01em;
+}
+.topbar .logo:hover { color: var(--gs); }
+/* The <nav> slot is intentionally empty (see buildNav). It still serves as the
+ * flex spacer that pushes the key-pill to the right edge. */
+.topbar nav { flex: 1; min-width: 0; }
+.topbar .spacer { flex: 0 0 auto; min-width: 8px; }
+#py-mode-topbar-container { display: flex; align-items: center; flex-shrink: 0; margin-right: 12px; }
+.topbar .key-pill {
+  flex-shrink: 0;
+  font-size: .78rem; font-family: var(--mono);
+  padding: 5px 12px;
+  border-radius: 999px; border: 1px solid #2a2a2a; border-color: var(--bd);
+  color: #6a6a6a; color: var(--tf); cursor: pointer;
+  background: transparent;
+  transition: color .15s, border-color .15s;
+}
+.topbar .key-pill:hover { color: var(--td); border-color: var(--tf); }
+.topbar .key-pill.set { color: #aee23a; color: var(--gs); border-color: #4a7a00; border-color: var(--gd); }
+
+@media (max-width: 640px) {
+  .topbar { height: 48px; }
+  .topbar .logo { font-size: .9rem; }
+}
+
+/* ── Page layout ─────────────────────────────────────────────────────────────── */
+main { max-width: min(71.25rem, 100%); margin: 0 auto; padding: clamp(1.5rem, 4vw, 2.5rem) clamp(1rem, 4vw, 2rem) 100px; }
+.hero { margin-bottom: 48px; }
+.hero .eyebrow { font-size: .78rem; text-transform: uppercase; letter-spacing: .12em; color: #76b900; color: var(--g); font-weight: 700; margin-bottom: .4em; }
+.hero h1 { font-size: 2.2rem; line-height: 1.2; font-weight: 800; margin-bottom: .6em; color: #f2f2f2; color: var(--tx); }
+.hero h1 span { color: #76b900; color: var(--g); }
+.hero .lead { font-size: 1.05rem; color: #b0b0b0; color: var(--td); line-height: 1.7; }
+
+h2 { font-size: 1.3rem; font-weight: 700; margin: 2.5em 0 .8em; color: #f2f2f2; color: var(--tx); }
+h3 { font-size: 1.05rem; font-weight: 600; margin: 1.8em 0 .6em; color: #aee23a; color: var(--gs); }
+p { margin: .7em 0; color: #b0b0b0; color: var(--td); }
+p strong { color: #f2f2f2; color: var(--tx); }
+a { color: #76b900; color: var(--g); }
+ul, ol { margin: .6em 0 .6em 1.4em; color: #b0b0b0; color: var(--td); }
+li { margin: .3em 0; }
+
+/* ── Inline code chips in prose ─────────────────────────────────────────────
+   Any <code> not inside a <pre> block gets a subtle chip: green text on a
+   dark background with light padding so identifiers stand out in running
+   prose. <pre><code> blocks (highlight.js) are unaffected. */
+:not(pre) > code {
+  background: #1a1a1a;
+  padding: 1px 6px;
+  border-radius: 3px;
+  color: var(--gs);
+  font-family: var(--mono);
+  font-size: .88em;
+  border: 1px solid #2a2a2a;
+}
+a > code { color: inherit; }
+
+/* ── Code cells ─────────────────────────────────────────────────────────────── */
+.cell {
+  margin: 1.6em 0;
+  border: 1px solid #2a2a2a; border-color: var(--bd);
+  border-radius: var(--r);
+  overflow: hidden;
+  background: #161616; background: var(--e1);
+}
+.cell-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 14px;
+  background: #1e1e1e; background: var(--e2);
+  border-bottom: 1px solid #2a2a2a; border-bottom-color: var(--bd);
+}
+.cell-label { font-size: .72rem; font-family: var(--mono); color: #6a6a6a; color: var(--tf); text-transform: uppercase; letter-spacing: .08em; }
+.cell-run {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 14px; border-radius: 6px;
+  background: #76b900; background: var(--g);
+  color: #000; font-size: .8rem; font-weight: 700;
+  border: none; cursor: pointer;
+}
+.cell-run:hover { background: #aee23a; background: var(--gs); }
+.cell-run:disabled { background: #262626; background: var(--e3); color: #6a6a6a; color: var(--tf); cursor: not-allowed; }
+.cell pre {
+  margin: 0; padding: 16px;
+  font-family: var(--mono); font-size: .82rem; line-height: 1.55;
+  overflow-x: auto;
+  background: transparent;
+  color: #f2f2f2; color: var(--tx);
+}
+.cell-output {
+  border-top: 1px solid #2a2a2a; border-top-color: var(--bd);
+  padding: 14px 16px;
+  font-family: var(--mono); font-size: .82rem; line-height: 1.55;
+  color: #b0b0b0; color: var(--td);
+  white-space: pre-wrap; word-break: break-word;
+  min-height: 40px; max-height: 500px; overflow-y: auto;
+  background: #161616; background: var(--e1);
+}
+.cell-output.empty { color: #6a6a6a; color: var(--tf); font-style: italic; }
+.cell-output.error { color: #ef4444; color: var(--err); }
+.cell-output.streaming { color: #f2f2f2; color: var(--tx); }
+
+/* ── Syntax highlighting (self-contained, needs no external CDN) ─────────── */
+/* Base token color (anything hljs doesn't explicitly class) */
+.hljs { background: transparent !important; padding: 0 !important; color: #abb2bf; }
+.hljs-keyword,
+.hljs-selector-tag   { color: #c792ea; }
+.hljs-string,
+.hljs-attr           { color: #c3e88d; }
+.hljs-comment,
+.hljs-quote          { color: #6a6a6a; font-style: italic; }
+.hljs-title,
+.hljs-function .hljs-title,
+.hljs-title.function_{ color: #82aaff; }
+.hljs-number,
+.hljs-literal        { color: #f78c6c; }
+.hljs-built_in,
+.hljs-type           { color: #89ddff; }
+.hljs-params,
+.hljs-variable,
+.hljs-template-variable { color: #a6accd; }
+.hljs-operator,
+.hljs-punctuation    { color: #89ddff; }
+.hljs-meta           { color: #6a6a6a; }
+.hljs-selector-class,
+.hljs-selector-id    { color: #82aaff; }
+.hljs-deletion       { color: #ef4444; }
+.hljs-addition       { color: #c3e88d; }
+
+/* ── Callout boxes ───────────────────────────────────────────────────────────── */
+.callout {
+  border-left: 3px solid #76b900; border-left-color: var(--g);
+  background: rgba(118,185,0,.06);
+  padding: 12px 16px; border-radius: 0 var(--r) var(--r) 0;
+  margin: 1.4em 0; font-size: .9rem; color: #b0b0b0; color: var(--td);
+}
+.callout strong { color: #f2f2f2; color: var(--tx); }
+.callout.warn { border-left-color: #f59e0b; background: rgba(245,158,11,.06); }
+.callout.info { border-left-color: #3b82f6; border-left-color: var(--acc); background: rgba(59,130,246,.06); }
+
+/* ── Module cards (index) ────────────────────────────────────────────────────── */
+.module-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin: 2em 0;
+}
+/* 4 cards in a row default to 3-up + 1 orphan on this page width. Force 2x2. */
+.module-grid:has(> .module-card:nth-child(4):last-child) {
+  grid-template-columns: repeat(2, 1fr);
+}
+@media (max-width: 640px) {
+  .module-grid:has(> .module-card:nth-child(4):last-child) {
+    grid-template-columns: 1fr;
+  }
+}
+.module-card {
+  display: block; padding: 22px 24px;
+  background: #161616; background: var(--e1);
+  border: 1px solid #2a2a2a; border-color: var(--bd);
+  border-radius: var(--r); text-decoration: none;
+}
+.module-card:hover { border-color: #4a7a00; border-color: var(--gd); background: #1e1e1e; background: var(--e2); }
+.module-card .num {
+  font-size: .7rem; font-family: var(--mono); font-weight: 700;
+  color: #76b900; color: var(--g); text-transform: uppercase; letter-spacing: .1em;
+  margin-bottom: .4em;
+}
+.module-card h3 { margin: 0 0 .5em; font-size: 1rem; color: #f2f2f2; color: var(--tx); }
+.module-card p { margin: 0; font-size: .84rem; color: #b0b0b0; color: var(--td); line-height: 1.5; }
+
+/* ── Key setup panel ─────────────────────────────────────────────────────────── */
+.key-panel {
+  background: #161616; background: var(--e1);
+  border: 1px solid #2a2a2a; border-color: var(--bd);
+  border-radius: var(--r); padding: 28px 32px; margin: 2em 0;
+}
+.key-panel label { display: block; margin-bottom: .4em; font-size: .85rem; color: #b0b0b0; color: var(--td); }
+.key-panel input {
+  width: 100%; padding: 10px 14px;
+  background: #1e1e1e; background: var(--e2);
+  border: 1px solid #2a2a2a; border-color: var(--bd);
+  border-radius: 6px;
+  color: #f2f2f2; color: var(--tx);
+  font-family: var(--mono); font-size: .9rem;
+  outline: none;
+  -webkit-appearance: none; appearance: none;
+}
+.key-panel input:focus { border-color: #76b900; border-color: var(--g); }
+.key-panel .btn {
+  margin-top: 12px; padding: 10px 24px;
+  background: #76b900; background: var(--g);
+  color: #000; font-weight: 700; font-size: .9rem;
+  border: none; border-radius: 6px; cursor: pointer;
+}
+.key-panel .btn:hover { background: #aee23a; background: var(--gs); }
+.key-panel .status { margin-top: 10px; font-size: .82rem; }
+.key-panel .status.ok { color: #aee23a; color: var(--gs); }
+.key-panel .status.err { color: #ef4444; color: var(--err); }
+
+/* ── Cell prompt (editable input above Run button) ───────────────────────────── */
+.cell-prompt {
+  padding: 10px 14px 0;
+  background: #161616; background: var(--e1);
+  border-bottom: 1px solid #2a2a2a; border-bottom-color: var(--bd);
+}
+.cell-prompt label {
+  display: block; font-size: .72rem;
+  color: #6a6a6a; color: var(--tf);
+  text-transform: uppercase; letter-spacing: .07em;
+  margin-bottom: 5px; font-family: var(--mono);
+}
+.cell-prompt input,
+.cell-prompt textarea {
+  width: 100%;
+  background: #1e1e1e; background: var(--e2);
+  border: 1px solid #2a2a2a; border-color: var(--bd);
+  border-radius: 4px;
+  color: #f2f2f2; color: var(--tx);
+  font-family: var(--mono); font-size: .85rem;
+  padding: 7px 10px; outline: none; resize: vertical;
+  -webkit-appearance: none; appearance: none;
+}
+.cell-prompt input:focus,
+.cell-prompt textarea:focus { border-color: #76b900; border-color: var(--g); }
+
+/* ── Diagrams (mermaid) ──────────────────────────────────────────────────────── */
+.mermaid-wrap {
+  margin: 1.6em auto;
+  background: #1e1e1e; background: var(--e2);
+  border: 1px solid #2a2a2a; border-color: var(--bd);
+  border-radius: var(--r); padding: 20px;
+  text-align: center;
+}
+
+/* ── Progress bar ────────────────────────────────────────────────────────────── */
+.page-progress { display: flex; gap: 6px; margin: 2em 0 3em; }
+.page-progress span { flex: 1; height: 3px; border-radius: 2px; background: #262626; background: var(--e3); }
+.page-progress span.done { background: #76b900; background: var(--g); }
+.page-progress span.active { background: #aee23a; background: var(--gs); }
+
+/* ── Per-module References tail ─────────────────────────────────────────────── */
+/* A small block at the bottom of every module page that lists the 3-5 papers
+   / specs / blog posts that module directly builds on. Each entry: linked
+   title + author/year + a one-line relevance note. Cross-links to the
+   going-further hub for the comprehensive list. */
+.references {
+  margin: 3em 0 2em;
+  padding-top: 1.4em;
+  border-top: 1px solid var(--bd);
+}
+.references h3 {
+  color: var(--gs);
+  font-size: .82rem;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  font-weight: 700;
+  margin: 0 0 .9em;
+}
+.references ul { margin: 0; padding-left: 22px; list-style: square; }
+.references li { margin: .55em 0; color: var(--td); font-size: .92rem; line-height: 1.55; }
+.references li a { color: var(--gs); text-decoration: none; font-weight: 600; }
+.references li a:hover { text-decoration: underline; color: var(--g); }
+.references li em { color: var(--tx); font-style: italic; }
+.references-note {
+  margin: 1.1em 0 0; font-size: .82rem; color: var(--tf);
+}
+.references-note a { color: var(--gs); }
+
+/* ── Footer nav ─────────────────────────────────────────────────────────────── */
+.foot-nav {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 4em; padding-top: 2em;
+  border-top: 1px solid #2a2a2a; border-top-color: var(--bd);
+}
+.foot-nav a {
+  padding: 10px 22px; border-radius: 6px;
+  border: 1px solid #2a2a2a; border-color: var(--bd);
+  color: #b0b0b0; color: var(--td);
+  text-decoration: none; font-size: .88rem;
+  background: transparent;
+}
+.foot-nav a:hover { border-color: #76b900; border-color: var(--g); color: #76b900; color: var(--g); }
+.foot-nav a.next {
+  background: #76b900; background: var(--g);
+  color: #000; font-weight: 700;
+  border-color: transparent;
+}
+.foot-nav a.next:hover { background: #aee23a; background: var(--gs); }
+
+@media(max-width:640px) {
+  main { padding: 24px 16px 80px; }
+  .hero h1 { font-size: 1.6rem; }
+  .topbar { padding: 0 14px; gap: 10px; }
+  .topbar nav a { padding: 5px 8px; font-size: .75rem; }
+}
+
+
+
+/* ── mountCanvasFlow: canvas at top, code panels below ─────────────────────── */
+.cf-wrap {
+  background:
+    radial-gradient(circle at 20% 0%, rgba(118,185,0,0.04) 0%, transparent 50%),
+    #0a0a0a;
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  padding: 14px 16px 16px;
+  margin: 1.4em 0;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+.cf-header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin-bottom: 10px;
+}
+.cf-label {
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: .76rem; color: var(--gs);
+  text-transform: uppercase; letter-spacing: .08em; font-weight: 700;
+}
+.cf-actions { display: flex; gap: 8px; }
+
+/* Kernel indicator: only visible in Python mode; shows which kernel this
+   canvas claims for its Python cells. */
+.cf-kernel-indicator {
+  display: none;
+  font-family: var(--mono);
+  font-size: .72rem;
+  color: #c4b5fd;
+  padding: 3px 8px;
+  border: 1px solid rgba(130,80,223,.3);
+  border-radius: 4px;
+  background: rgba(130,80,223,.06);
+}
+body.python-mode .cf-kernel-indicator { display: inline-block; }
+body.python-mode .cf-kernel-indicator:empty::before {
+  content: "no kernel yet";
+  color: var(--tf);
+}
+
+/* Reset-kernel button: only visible in Python mode */
+.cf-btn-reset-kernel { display: none; }
+body.python-mode .cf-btn-reset-kernel {
+  display: inline-block;
+  font-size: .78rem;
+  color: #c4b5fd;
+  background: rgba(130,80,223,.08);
+  border-color: rgba(130,80,223,.3);
+}
+body.python-mode .cf-btn-reset-kernel:hover:not([disabled]) {
+  background: rgba(130,80,223,.18);
+  border-color: rgba(130,80,223,.6);
+}
+
+.cf-btn {
+  background: #161616; color: var(--tx);
+  border: 1px solid var(--bd); padding: 7px 14px; border-radius: 6px;
+  font-weight: 600; font-size: .82rem; cursor: pointer;
+  font-family: ui-monospace, monospace;
+  transition: border-color .12s, background .12s, transform .08s;
+}
+.cf-btn:hover:not([disabled]) { border-color: var(--g); }
+.cf-btn:active { transform: translateY(1px); }
+.cf-btn[disabled] { opacity: .6; cursor: not-allowed; }
+.cf-btn-run {
+  background: linear-gradient(180deg, #8fcd00 0%, #76b900 100%);
+  color: #000; border-color: #4a7a00;
+  box-shadow: 0 2px 6px rgba(118,185,0,0.3);
+}
+.cf-btn-run:hover:not([disabled]) {
+  background: linear-gradient(180deg, #a3dd1f 0%, #8fcd00 100%);
+  border-color: #76b900;
+}
+.cf-intro {
+  font-size: .82rem; color: var(--td); line-height: 1.55;
+  margin: 4px 0 14px;
+  padding: 6px 0 6px 12px;
+  border-left: 2px solid var(--bd);
+}
+
+/* The stage: relative wrapper for the SVG layer + grid of node cards */
+.cf-stage {
+  position: relative;
+  background-color: #0d0d0d;
+  background-image: radial-gradient(circle, #1c1c1c 1px, transparent 1px);
+  background-size: 22px 22px;
+  border: 1px solid #1e1e1e;
+  border-radius: 10px;
+  padding: 28px 32px;
+  overflow: visible;
+}
+.cf-svg {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  display: block;
+  pointer-events: none; z-index: 0;
+}
+.cf-canvas {
+  position: relative; z-index: 1;
+  display: grid;
+  gap: 60px 80px;
+  justify-items: center;
+  align-items: stretch;
+}
+.cf-edge {
+  fill: none; stroke: #4a7a00; stroke-width: 2.2;
+  opacity: 0.5; transition: opacity .25s, stroke .25s;
+}
+.cf-edge.flowing {
+  stroke: #aee23a; opacity: 1;
+  stroke-dasharray: 6 5; animation: cf-edge-flow 1s linear infinite;
+}
+@keyframes cf-edge-flow { to { stroke-dashoffset: -22; } }
+
+/* Compact node cards on the canvas */
+.cf-node {
+  background: linear-gradient(180deg, #1c1c1c 0%, #141414 100%);
+  border: 1.5px solid var(--bd);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+  padding: 14px 18px;
+  display: inline-flex; align-items: center; gap: 10px;
+  cursor: pointer; user-select: none;
+  font: inherit; color: inherit;
+  min-width: 0; white-space: nowrap;
+  transition: border-color .15s, transform .12s, box-shadow .15s;
+  position: relative;
+}
+.cf-node:hover {
+  transform: translateY(-2px); border-color: #4a7a00;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.6),
+              0 0 0 1px rgba(118,185,0,0.15) inset;
+}
+.cf-node.active {
+  border-color: var(--g);
+  box-shadow: 0 6px 22px rgba(0,0,0,0.6),
+              0 0 0 1px rgba(118,185,0,0.4) inset;
+}
+.cf-node.running {
+  border-color: #d49c2c;
+  animation: cf-pulse 1.5s ease-in-out infinite;
+}
+@keyframes cf-pulse {
+  0%, 100% { box-shadow: 0 4px 14px rgba(0,0,0,0.5), 0 0 0 0 rgba(212,156,44,0.6); }
+  50%      { box-shadow: 0 4px 14px rgba(0,0,0,0.5), 0 0 0 6px rgba(212,156,44,0); }
+}
+.cf-node.complete { border-color: var(--g); }
+.cf-node.error    { border-color: #d74e4e; }
+
+.cf-node-icon { font-size: 1.4rem; line-height: 1;
+  filter: drop-shadow(0 0 4px rgba(118,185,0,0.3)); }
+.cf-node-title { font-weight: 700; color: var(--tx); font-size: .92rem; }
+.cf-node-status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #4a4a4a;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.05);
+}
+.cf-node-status-dot.running {
+  background: #d49c2c;
+  animation: cf-dot-pulse 1s ease-in-out infinite;
+}
+.cf-node-status-dot.complete { background: var(--g); box-shadow: 0 0 8px rgba(118,185,0,0.6); }
+.cf-node-status-dot.error    { background: #d74e4e; box-shadow: 0 0 8px rgba(215,78,78,0.6); }
+@keyframes cf-dot-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.4); opacity: 0.7; }
+}
+
+.cf-status-bar {
+  margin: 10px 2px;
+  font-family: ui-monospace, monospace; font-size: .78rem;
+  color: var(--tf); min-height: 1em;
+}
+.cf-status-bar.ok  { color: var(--gs); }
+.cf-status-bar.err { color: #ff6b6b; }
+
+/* Code panels stack below the canvas in declared (run) order. */
+.cf-panels {
+  display: flex; flex-direction: column; gap: 14px;
+  margin-top: 6px;
+}
+.cf-panel {
+  background: #0f0f0f;
+  border: 1px solid var(--bd); border-radius: 8px;
+  padding: 12px 14px 14px;
+  scroll-margin-top: 80px;
+  transition: border-color .2s, box-shadow .2s;
+}
+.cf-panel.focus {
+  border-color: var(--g);
+  box-shadow: 0 0 0 1px rgba(118,185,0,0.3) inset;
+}
+.cf-panel.running { border-color: #d49c2c; }
+.cf-panel.complete { border-color: rgba(118,185,0,0.4); }
+.cf-panel.error    { border-color: #d74e4e; }
+
+.cf-panel-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 8px; flex-wrap: wrap;
+}
+.cf-panel-icon { font-size: 1.3rem; line-height: 1; }
+.cf-panel-title {
+  font-weight: 700; color: var(--gs); font-size: .94rem;
+}
+.cf-panel-summary {
+  font-size: .8rem; color: var(--td); line-height: 1.45;
+  flex: 1; min-width: 200px;
+}
+.cf-panel-status-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: #4a4a4a;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.05);
+}
+.cf-panel-status-dot.running  { background: #d49c2c; animation: cf-dot-pulse 1s infinite; }
+.cf-panel-status-dot.complete { background: var(--g); box-shadow: 0 0 8px rgba(118,185,0,0.6); }
+.cf-panel-status-dot.error    { background: #d74e4e; box-shadow: 0 0 8px rgba(215,78,78,0.6); }
+
+.cf-panel-runone {
+  background: #161616; color: var(--gs);
+  border: 1px solid #4a7a00; border-radius: 5px;
+  padding: 5px 12px; font-size: .78rem; cursor: pointer;
+  font-family: ui-monospace, monospace; font-weight: 600;
+}
+.cf-panel-runone:hover { background: #1a2912; color: var(--tx); border-color: var(--g); }
+
+/* ── Helpers reference (between intro and stage) ─────────────────────────── */
+.cf-helpers {
+  margin: 10px 0 14px;
+  border: 1px solid var(--bd);
+  border-radius: 6px;
+  background: #0f0f0f;
+  overflow: hidden;
+}
+.cf-helpers[open] { border-color: rgba(118,185,0,0.35); }
+.cf-helpers > summary {
+  cursor: pointer;
+  padding: 10px 14px;
+  display: flex; align-items: center; gap: 12px;
+  user-select: none;
+  list-style: none;
+}
+.cf-helpers > summary::-webkit-details-marker,
+.cf-helpers > summary::marker { display: none; content: ""; }
+.cf-helpers > summary::before {
+  content: ""; display: inline-block;
+  width: 6px; height: 6px;
+  border-right: 1.5px solid var(--gs);
+  border-bottom: 1.5px solid var(--gs);
+  transform: rotate(-45deg); margin-right: 2px;
+  transition: transform .18s ease;
+}
+.cf-helpers[open] > summary::before { transform: rotate(45deg); }
+.cf-helpers > summary:hover { background: rgba(118,185,0,0.04); }
+.cf-helpers-chip {
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: .7rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .1em;
+  padding: 3px 9px; border-radius: 4px;
+  background: rgba(118,185,0,0.14); color: var(--gs);
+  border: 1px solid rgba(118,185,0,0.35);
+}
+.cf-helpers-sig {
+  font-size: .82rem; color: var(--td);
+  flex: 1; min-width: 0;
+}
+.cf-helpers-sig code { background: #1a1a1a; padding: 1px 5px; border-radius: 3px; font-size: .82em; color: var(--gs); }
+.cf-helpers-meta {
+  font-size: .74rem; color: var(--tf);
+  white-space: nowrap;
+}
+.cf-helpers-meta code { background: #1a1a1a; padding: 1px 5px; border-radius: 3px; font-size: .9em; color: var(--gs); }
+/* Horizontal scroll wrapper around the helpers table. When the canvas is
+   embedded in a narrow frame (edX iframe, mobile) the two-column table
+   would otherwise overflow and cut off the descriptions. */
+.cf-helpers-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.cf-helpers-table {
+  width: 100%; border-collapse: collapse;
+  font-size: .82rem; line-height: 1.5;
+  border-top: 1px solid var(--bd);
+  min-width: 560px;
+}
+.cf-helpers-table td {
+  padding: 8px 14px;
+  border-bottom: 1px solid #161616;
+  vertical-align: top;
+  color: var(--td);
+}
+.cf-helpers-table tr:last-child td { border-bottom: 0; }
+.cf-helpers-table td:first-child {
+  font-family: ui-monospace, monospace;
+  color: var(--gs);
+  white-space: nowrap;
+  background: #0a0a0a;
+  width: 200px;
+}
+.cf-helpers-table code {
+  background: #1a1a1a; padding: 1px 5px; border-radius: 3px;
+  font-size: .9em; color: var(--gs);
+}
+.cf-helpers-table tr[data-helper] { cursor: pointer; transition: background .12s; }
+.cf-helpers-table tr[data-helper]:hover { background: rgba(118,185,0,0.04); }
+.cf-helpers-table tr[data-helper].selected { background: rgba(118,185,0,0.10); }
+.cf-helpers-table tr[data-helper].selected td:first-child { color: var(--gs); box-shadow: inset 3px 0 0 var(--g); }
+
+/* ── Helpers menu: inline source row that drops directly under its helper ── */
+.cf-helpers-section-head td {
+  padding: 8px 12px 4px;
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: #5a5a5a;
+  border-bottom: 1px solid #1e1e1e;
+}
+.cf-helpers-section-head td code {
+  background: transparent;
+  color: #888;
+  padding: 0;
+}
+.cf-helpers-source-row > td {
+  padding: 0 !important;
+  background: #0a0a0a;
+  border-bottom: 1px solid var(--bd) !important;
+}
+.cf-helpers-src-head {
+  font-family: ui-monospace, monospace; font-size: .74rem;
+  color: var(--tf); padding: 8px 14px;
+  text-transform: uppercase; letter-spacing: .08em;
+  background: #0d0d0d; border-bottom: 1px solid var(--bd);
+  display: flex; align-items: center; gap: 10px;
+}
+.cf-helpers-src-head code { color: var(--gs); text-transform: none; letter-spacing: 0; }
+.cf-helpers-apply,
+.cf-helpers-revert {
+  margin-left: auto;
+  background: #131313;
+  color: var(--td);
+  border: 1px solid var(--bd);
+  font-family: var(--mono);
+  font-size: .72rem;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 3px 9px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.cf-helpers-apply { margin-left: auto; }
+.cf-helpers-revert { margin-left: 0; }
+.cf-helpers-apply:hover  { background: #1a2912; color: var(--gs); border-color: var(--g); }
+.cf-helpers-revert:hover { background: #1a1a1a; color: var(--tx); border-color: var(--tf); }
+.cf-helpers-status {
+  font-family: var(--mono); font-size: .72rem;
+  text-transform: none; letter-spacing: 0;
+  color: var(--td);
+}
+.cf-helpers-status.ok  { color: var(--gs); }
+.cf-helpers-status.err { color: var(--err); }
+.cf-helpers-src-editor {
+  width: 100%; min-height: 60px; max-height: 320px;
+  background: #0a0a0a; color: #f8f8f2;
+  border: 0;
+  padding: 8px 10px;
+  font-family: var(--mono); font-size: .8rem;
+  line-height: 1.55; box-sizing: border-box; resize: vertical;
+  outline: none;
+}
+/* Helper-source editor: grow to content but cap and SCROLL internally. The cap +
+   overflow must live on .CodeMirror-scroll (the inner scroller), not on .CodeMirror
+   itself. That placement is the canonical CodeMirror auto-height pattern. Putting
+   max-height on .CodeMirror just clips, which is why longer sources (e.g. fetch) did not scroll. */
+.cf-helpers-source-row .CodeMirror {
+  border: 0;
+  border-radius: 0;
+  font-size: .82rem;
+  line-height: 1.55;
+  height: auto;
+}
+/* The page-level rule `.CodeMirror-scroll{overflow-y:hidden!important}` is meant for
+   the node cells (which auto-size to their content). Override it here with higher
+   specificity so the capped helper-source editor scrolls instead of clipping. */
+.cf-helpers-source-row .CodeMirror-scroll {
+  max-height: 340px;
+  overflow-y: auto !important;
+}
+.cf-helpers-source-row .CodeMirror-vscrollbar { display: block !important; }
+
+/* ── Panel details (code / results) ────────────────────────────────────── */
+.cf-panel-det {
+  margin: 8px 0 0;
+  border: 1px solid var(--bd);
+  border-radius: 6px;
+  background: #0c0c0c;
+  overflow: hidden;
+}
+.cf-panel-det[open] {
+  border-color: rgba(118,185,0,0.4);
+  box-shadow: 0 0 0 1px rgba(118,185,0,0.08) inset;
+}
+.cf-panel-det > summary {
+  cursor: pointer;
+  padding: 9px 14px;
+  display: flex; align-items: center; gap: 12px;
+  user-select: none;
+  list-style: none;
+  background: linear-gradient(90deg, rgba(118,185,0,0.04) 0%, transparent 60%);
+  transition: background .15s;
+}
+/* Kill ALL native disclosure markers across browsers */
+.cf-panel-det > summary::-webkit-details-marker,
+.cf-panel-det > summary::marker {
+  display: none; content: "";
+}
+.cf-panel-det > summary:hover { background: linear-gradient(90deg, rgba(118,185,0,0.08) 0%, transparent 60%); }
+/* CSS-only chevron via border tricks. Only ONE arrow ever rendered. */
+.cf-panel-det > summary::before {
+  content: ""; display: inline-block;
+  width: 7px; height: 7px;
+  border-right: 1.6px solid var(--gs);
+  border-bottom: 1.6px solid var(--gs);
+  transform: rotate(-45deg); flex-shrink: 0;
+  transition: transform .2s ease;
+}
+.cf-panel-det[open] > summary::before { transform: rotate(45deg); }
+
+.cf-det-chip {
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: .68rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .12em;
+  padding: 3px 10px; border-radius: 4px;
+  background: rgba(118,185,0,0.16); color: var(--gs);
+  border: 1px solid rgba(118,185,0,0.35);
+  flex-shrink: 0;
+}
+.cf-det-chip-alt {
+  background: rgba(88,166,255,0.14); color: #8ec5ff;
+  border-color: rgba(88,166,255,0.35);
+}
+.cf-det-chip-py {
+  background: rgba(130,80,223,0.16); color: #c4b5fd;
+  border-color: rgba(130,80,223,0.35);
+}
+.cf-py-actions {
+  display: flex; align-items: center; gap: 8px; margin-left: auto;
+}
+.cf-py-copy-btn {
+  font-family: var(--mono); font-size: .68rem; font-weight: 700;
+  padding: 2px 8px; border-radius: 4px; cursor: pointer;
+  background: rgba(130,80,223,.16); color: #c4b5fd;
+  border: 1px solid rgba(130,80,223,.35);
+  transition: background .15s;
+}
+.cf-py-copy-btn:hover { background: rgba(130,80,223,.3); }
+.cf-py-nb-link {
+  font-family: var(--mono); font-size: .68rem; font-weight: 700;
+  padding: 2px 8px; border-radius: 4px;
+  background: rgba(118,185,0,.1); color: var(--gs);
+  border: 1px solid rgba(118,185,0,.3);
+  text-decoration: none; white-space: nowrap;
+}
+.cf-py-nb-link:hover { background: rgba(118,185,0,.2); text-decoration: none; }
+.cf-panel-python-pre {
+  margin: 0; padding: 10px 12px;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: .82rem; line-height: 1.55;
+  background: #0d0d0d; color: #f8f8f2;
+  border-top: 1px solid var(--bd);
+  white-space: pre; overflow-x: auto;
+}
+.cf-det-sig {
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: .8rem; color: var(--td);
+  flex: 1; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cf-det-meta {
+  font-size: .72rem; color: var(--tf);
+  font-family: ui-monospace, monospace;
+  white-space: nowrap;
+  padding: 2px 8px; border-radius: 3px;
+  background: #161616; border: 1px solid var(--bd);
+}
+.cf-det-meta.running { color: #f0a500; border-color: rgba(240,165,0,0.4); }
+.cf-det-meta.ok      { color: var(--gs); border-color: rgba(118,185,0,0.4); }
+.cf-det-meta.err     { color: #ff6b6b; border-color: rgba(215,78,78,0.4); }
+
+.cf-panel-code,
+.cf-panel-code-py {
+  width: 100%; min-height: 60px;
+  background: #0d0d0d; color: #f8f8f2;
+  border: 0; border-top: 1px solid var(--bd);
+  padding: 8px 10px;
+  font-family: ui-monospace, monospace; font-size: .82rem;
+  line-height: 1.55; box-sizing: border-box; resize: vertical;
+  outline: none;
+}
+.cf-panel-det .CodeMirror {
+  border: 0; border-top: 1px solid var(--bd);
+  border-radius: 0;
+  font-size: .84rem; line-height: 1.55;
+}
+
+/* Streaming view: tokens flow in as the call progresses. */
+.cf-panel-stream {
+  margin: 0;
+  padding: 10px 14px;
+  font-family: ui-monospace, monospace; font-size: .84rem;
+  color: var(--tx);
+  line-height: 1.55;
+  white-space: pre-wrap; word-break: break-word;
+  background: #0d0d0d;
+  border-top: 1px solid var(--bd);
+  max-height: 320px; overflow-y: auto;
+}
+.cf-panel-stream:empty { display: none; }
+
+.cf-panel-log {
+  margin: 0;
+  padding: 8px 14px;
+  font-family: ui-monospace, monospace; font-size: .78rem;
+  color: var(--gs);
+  background: #0a0a0a;
+  border-top: 1px solid var(--bd);
+}
+.cf-panel-log:empty { display: none; }
+.cf-panel-log-line {
+  padding: 2px 0 2px 10px;
+  border-left: 2px solid #4a7a00;
+  margin: 2px 0;
+  white-space: pre-wrap; word-break: break-word;
+}
+
+.cf-panel-output { padding: 0; margin: 0; }
+.cf-panel-output:empty { display: none; }
+.cf-panel-output-pre {
+  background: #0d0d0d;
+  border-top: 1px solid var(--bd);
+  border-left: 3px solid var(--g);
+  padding: 12px 14px; margin: 0; border-radius: 0;
+  font-family: ui-monospace, monospace; font-size: .84rem;
+  color: var(--tx); line-height: 1.55;
+  white-space: pre-wrap; word-break: break-word;
+  max-height: 360px; overflow-y: auto;
+}
+.cf-panel-error {
+  background: rgba(215,78,78,0.08);
+  border-top: 1px solid var(--bd);
+  border-left: 3px solid #d74e4e;
+  padding: 10px 14px; margin: 0;
+  color: #ff6b6b;
+  font-family: ui-monospace, monospace; font-size: .84rem;
+  white-space: pre-wrap;
+}
+
+/* ── CodeMirror error-line highlighting ─────────────────────────────────────── */
+.cm-err-line  { background: rgba(215,78,78,.13) !important; }
+.cm-err-wrap  { border-left: 2px solid #d74e4e; }
+.cm-err-gutter::before { content: '●'; color: #d74e4e; font-size: 9px; line-height: 1; }
+
+/* ── Debug info collapsible ──────────────────────────────────────────────────── */
+.cf-debug-det {
+  background: rgba(215,78,78,.05);
+  border-left: 3px solid #d74e4e;
+  margin: 0;
+}
+.cf-debug-sum {
+  padding: 5px 14px;
+  font-family: ui-monospace, monospace; font-size: .74rem; font-weight: 700;
+  color: #d74e4e; cursor: pointer; user-select: none; letter-spacing: .04em;
+  list-style: none;
+}
+.cf-debug-sum:hover { color: #ff6b6b; }
+.cf-debug-sum::marker, .cf-debug-sum::-webkit-details-marker { display: none; }
+.cf-debug-sum::before { content: '▶ '; font-size: .65rem; transition: transform .15s; }
+.cf-debug-det[open] > .cf-debug-sum::before { content: '▼ '; }
+.cf-debug-type {
+  padding: 4px 14px 6px;
+  font-family: ui-monospace, monospace; font-size: .8rem;
+  color: #ff9a9a; white-space: pre-wrap;
+}
+.cf-debug-snippet {
+  border-top: 1px solid rgba(215,78,78,.18);
+  border-bottom: 1px solid rgba(215,78,78,.18);
+  padding: 3px 0; font-family: ui-monospace, monospace; font-size: .76rem;
+  background: rgba(0,0,0,.12);
+}
+.cf-debug-codeline {
+  display: flex; gap: 10px; padding: 1px 14px;
+  color: #6a6a6a; white-space: pre; line-height: 1.55;
+}
+.cf-debug-codeline-err { background: rgba(215,78,78,.18); color: #ffaaaa; }
+.cf-debug-lineno {
+  flex-shrink: 0; width: 22px; text-align: right;
+  color: #4a4a4a; user-select: none;
+}
+.cf-debug-codeline-err .cf-debug-lineno { color: #d74e4e; font-weight: 700; }
+.cf-debug-stack {
+  padding: 5px 14px; margin: 0;
+  font-family: ui-monospace, monospace; font-size: .7rem;
+  color: #5a5a5a; white-space: pre-wrap; word-break: break-all;
+  border-top: 1px solid rgba(215,78,78,.12);
+}
+
+@media (max-width: 720px) {
+  .cf-canvas { gap: 40px 30px; }
+  .cf-node { padding: 10px 12px; }
+  .cf-node-title { font-size: .82rem; }
+}
+
+/* Always-visible "wrote into state" overview between panel header and details. */
+.cf-panel-overview {
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex; flex-direction: column;
+}
+.cf-panel-overview:empty { display: none; }
+.cf-overview-label {
+  font-family: ui-monospace, monospace; font-size: .68rem;
+  color: var(--tf); text-transform: uppercase; letter-spacing: .08em;
+  padding: 4px 0 4px 2px;
+}
+.cf-overview-row {
+  display: grid; grid-template-columns: 160px 1fr; gap: 10px;
+  padding: 3px 0;
+  font-family: ui-monospace, monospace; font-size: .8rem;
+  border-top: 1px solid #161616;
+}
+.cf-overview-row:first-of-type { border-top: 0; }
+.cf-overview-key { color: var(--gs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cf-overview-val {
+  color: var(--td); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-style: normal;
+}
+
+/* Per-call header inside the stream view (multiple chatStream calls in one cell) */
+.cf-panel-stream-head {
+  font-family: ui-monospace, monospace; font-size: .72rem;
+  color: var(--tf); padding: 6px 0 2px;
+  text-transform: uppercase; letter-spacing: .08em;
+}
+.cf-panel-stream-head:first-child { padding-top: 0; }
+.cf-panel-stream-tokens { display: inline; }
+/* Inline HTML/SVG appended via log.html needs breathing room. */
+.cf-panel-log-html {
+  margin: 6px 0 4px;
+  padding: 4px 0;
+  color: var(--td);
+}
+.cf-panel-log-html svg { display: block; max-width: 100%; height: auto; }
+
+/* ── Python mode toggle ──────────────────────────────────────────────────── */
+.py-mode-toggle-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: #0f0f0f;
+  border: 1px solid var(--bd);
+  border-radius: 8px;
+  margin: 10px 0 14px;
+}
+
+/* Topbar variant: compact, no card chrome, since it lives inline with other controls */
+#py-mode-topbar-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+#py-mode-topbar-container .py-mode-toggle-wrap {
+  padding: 4px 10px;
+  margin: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  gap: 8px;
+}
+#py-mode-topbar-container .py-mode-toggle-wrap:hover {
+  background: #131313;
+  border-color: var(--bd);
+}
+#py-mode-topbar-container .py-mode-caption { display: none; }
+
+.py-mode-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.py-mode-icon {
+  font-family: var(--mono);
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: var(--tf);
+  transition: color .2s;
+}
+
+.py-mode-label .js-icon { color: var(--gs); }
+.py-mode-label.on .js-icon { color: var(--tf); }
+.py-mode-label.on .py-icon { color: #c4b5fd; }
+
+.py-mode-track {
+  position: relative;
+  width: 38px;
+  height: 20px;
+  background: #2a2a2a;
+  border-radius: 10px;
+  border: 1px solid #3a3a3a;
+  transition: background .2s, border-color .2s;
+}
+
+.py-mode-label.on .py-mode-track {
+  background: rgba(130,80,223,.35);
+  border-color: rgba(130,80,223,.6);
+}
+
+.py-mode-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: var(--gs);
+  border-radius: 50%;
+  transition: transform .2s ease, background .2s;
+}
+
+.py-mode-label.on .py-mode-thumb {
+  transform: translateX(18px);
+  background: #c4b5fd;
+}
+
+.py-mode-caption {
+  font-family: var(--mono);
+  font-size: .74rem;
+  color: var(--td);
+  letter-spacing: .04em;
+}
+
+/* ── Code panel: single <details> that view-switches between JS and Python ── */
+/* Hide the inactive language. The switch is CSS-only and swaps no DOM.
+   Nodes without a Python equivalent (data-has-python="0") keep showing JS
+   even in Python mode, since hiding it would leave them blank. */
+body:not(.python-mode) [data-lang="python"] { display: none; }
+body.python-mode .cf-panel[data-has-python="1"] [data-lang="js"] { display: none; }
+
+/* Code panel body wraps the JS textarea, the Python textarea, and the floating
+   copy button. */
+.cf-panel-code-body {
+  position: relative;
+}
+.cf-panel-no-python {
+  padding: 14px 16px;
+  font-style: italic;
+  color: var(--td);
+  background: #0f0f0f;
+  border-radius: 0 0 var(--r) var(--r);
+}
+
+/* Floating copy button, visible on hover. Top-right of the code body. */
+.cf-code-copy {
+  position: absolute;
+  top: 8px; right: 8px;
+  z-index: 5;
+  background: rgba(20,20,20,.75);
+  border: 1px solid var(--bd);
+  color: var(--td);
+  font-size: .9rem;
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .12s ease, background .12s ease, color .12s ease;
+  display: flex; align-items: center; justify-content: center;
+}
+.cf-panel-code-body:hover .cf-code-copy { opacity: .85; }
+.cf-code-copy:hover { opacity: 1; background: #1a1a1a; color: var(--gs); }
+.cf-code-copy.ok    { opacity: 1; background: #1a2912; color: var(--gs); border-color: var(--g); }
+
+/* Python chip color (only when Python is the active language) */
+body.python-mode .cf-det-chip[data-lang-chip] {
+  background: rgba(130,80,223,.15);
+  color: #c4b5fd;
+  border: 1px solid rgba(130,80,223,.4);
+}
+
+/* Clickable lang chip on nodes that have Python code */
+.cf-det-chip[data-py-toggle] {
+  cursor: pointer;
+  user-select: none;
+}
+.cf-det-chip[data-py-toggle]:hover {
+  background: rgba(118,185,0,.30);
+  border-color: rgba(118,185,0,.6);
+}
+body.python-mode .cf-det-chip[data-py-toggle]:hover {
+  background: rgba(130,80,223,.28);
+  border-color: rgba(130,80,223,.6);
+}
+
+/* Run button color: purple only when actually running Python */
+.cf-panel-runone[data-runmode="python"] {
+  background: rgba(130,80,223,.18);
+  color: #c4b5fd;
+  border-color: rgba(130,80,223,.45);
+}
+.cf-panel-runone[data-runmode="python"]:hover {
+  background: rgba(130,80,223,.3);
+  color: #e9d5ff;
+  border-color: rgba(130,80,223,.7);
+}
+
+/* Topbar JupyterLab link, visible only when Python mode is on. */
+.py-mode-jlab-link {
+  display: none;
+  margin-left: 12px;
+  padding: 4px 10px;
+  font-size: .78rem;
+  color: #c4b5fd;
+  background: rgba(130,80,223,.08);
+  border: 1px solid rgba(130,80,223,.25);
+  border-radius: 6px;
+  text-decoration: none;
+  font-family: var(--mono);
+}
+.py-mode-jlab-link:hover {
+  background: rgba(130,80,223,.18);
+  color: #e9d5ff;
+  border-color: rgba(130,80,223,.5);
+}
+body.python-mode .py-mode-jlab-link { display: inline-block; }
+
+
+/* ── Journey-map · slim bar by default; click section banner to expand ──── */
+.cf-jm-wrap {
+  width: 100%;
+  margin: 0 0 26px;
+  background: #0d0d0d;
+  border: 1px solid var(--bd);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.cf-jm-bar {
+  display: flex;
+  align-items: stretch;
+  min-height: 56px;
+}
+
+/* Left: Module / Section banner button. Clickable; toggles the full map. */
+.cf-jm-mod {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 18px;
+  background: rgba(118, 185, 0, .10);
+  border: none;
+  border-right: 1px solid var(--bd);
+  color: var(--g);
+  font-family: var(--mono);
+  font-size: .82rem; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase;
+  cursor: pointer;
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.cf-jm-mod:hover { background: rgba(118, 185, 0, .18); }
+.cf-jm-mod:focus-visible { outline: 2px solid var(--g); outline-offset: -2px; }
+.cf-jm-mod-chevron { font-size: .85rem; opacity: .75; transition: transform .15s; }
+/* Wide variant used on the index page when there is no current step. */
+.cf-jm-mod-wide { flex: 1; border-right: none; justify-content: flex-start; padding: 14px 20px; }
+
+/* Middle: current page identifier + title + sub. */
+.cf-jm-current {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 6px 18px;
+  gap: 1px;
+}
+.cf-jm-current-id {
+  font-family: var(--mono); font-size: .68rem; font-weight: 700;
+  color: var(--gs);
+  text-transform: uppercase; letter-spacing: .1em;
+  opacity: .85;
+}
+.cf-jm-current-title {
+  font-size: 1rem; font-weight: 700;
+  color: var(--tx); line-height: 1.25;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cf-jm-current-sub {
+  font-size: .8rem; color: var(--td); line-height: 1.3;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Right: prev + next nav. */
+.cf-jm-nav-group {
+  display: flex; align-items: stretch;
+  border-left: 1px solid var(--bd);
+  flex-shrink: 0;
+}
+.cf-jm-prev, .cf-jm-next {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 18px;
+  color: var(--td);
+  text-decoration: none;
+  transition: color .15s, background .15s;
+  min-width: 0;
+}
+.cf-jm-prev { border-right: 1px solid var(--bd); }
+.cf-jm-prev:hover, .cf-jm-next:hover {
+  color: var(--g);
+  background: var(--e2);
+}
+.cf-jm-prev.cf-jm-disabled, .cf-jm-next.cf-jm-disabled {
+  color: var(--tf); cursor: default; opacity: .4;
+}
+.cf-jm-nav-arrow { font-size: 1.1rem; font-weight: 700; color: inherit; }
+.cf-jm-nav-text { display: flex; flex-direction: column; min-width: 0; }
+.cf-jm-nav-id {
+  font-family: var(--mono); font-size: .68rem; font-weight: 700;
+  color: var(--gs);
+  text-transform: uppercase; letter-spacing: .08em;
+}
+.cf-jm-nav-title {
+  font-size: .85rem; font-weight: 500;
+  color: inherit;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+/* Hide the prev/next page title on narrow screens (keep id + arrow only). */
+@media (max-width: 880px) {
+  .cf-jm-nav-title { display: none; }
+  .cf-jm-current-sub { display: none; }
+}
+@media (max-width: 620px) {
+  .cf-jm-mod-label { display: none; }   /* keep chevron + arrows only */
+  .cf-jm-nav-id { display: none; }
+}
+
+/* Expanded panel: the full staircase. Hidden until the section banner click. */
+.cf-jm-full {
+  border-top: 1px solid var(--bd);
+  padding: 12px 12px 14px;
+}
+.cf-jm-full[hidden] { display: none; }
+.cf-jm-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* GFX dark theme: compelling slide-grade graphics, themed for the dark web pages */
+.gfx-dark{
+  --gfx-ink:#e8eaed; --gfx-ink2:#c6cace; --gfx-sub:#9aa0a6; --gfx-faint:#6b7177;
+  --gfx-line:#3a3f45; --gfx-panel:#17191c; --gfx-bg:#0d0d0d;
+  --gfx-blue:#5aa8ff; --gfx-green:#9bd14a; --gfx-purple:#bd9cf7; --gfx-amber:#e3b341; --gfx-teal:#3fd0c0; --gfx-red:#ff6b6b;
+  --gfx-tint-blue:#15273d; --gfx-tint-green:#1d2a12; --gfx-tint-purple:#241a36;
+  --gfx-tint-amber:#33280f; --gfx-tint-teal:#0e2b28; --gfx-tint-red:#3a1414; --gfx-tint-sub:#1c1f22;
+}
+
+/* ── Gateway widget (mountClawGateway) ─────────────────────────────────────── */
+.gw-panel{margin:1.2rem 0}
+.gw-intro{font-size:.88rem;color:var(--td);margin-bottom:.6rem;line-height:1.6}
+.gw-head{display:flex;align-items:center;gap:.75rem;margin:.4rem 0 .6rem}
+.gw-status{font-family:var(--mono,monospace);font-size:.75rem;letter-spacing:.04em;flex:1}
+.gw-disc{color:var(--td,#b0b0b0)}
+.gw-conn{color:var(--gs,#aee23a);opacity:.6}
+.gw-live{color:var(--gs,#aee23a)}
+.gw-err{color:#f87171}
+.gw-err-txt{font-family:var(--mono,monospace);font-size:.8rem;color:#f87171}
+.gw-muted{font-family:var(--mono,monospace);font-size:.8rem;color:var(--td,#b0b0b0)}
+.gw-actions{display:flex;flex-wrap:wrap;gap:.4rem;margin:.3rem 0 .5rem}
+.gw-out{margin-top:.5rem;max-height:340px;overflow-y:auto;border:1px solid var(--bd,#2a2a2a);border-radius:5px;padding:.6rem .8rem;font-size:.82rem;background:var(--cf,#111)}
+.gw-pre{margin:0;font-size:.78rem;white-space:pre-wrap;word-break:break-all;color:var(--gs,#aee23a)}
+.gw-chat-out{font-size:.88rem;line-height:1.65;color:var(--tf,#e0e0e0);white-space:pre-wrap}
+.gw-table{width:100%;border-collapse:collapse;font-family:var(--mono,monospace);font-size:.78rem}
+.gw-table th{text-align:left;color:var(--td,#b0b0b0);padding:.15rem .5rem .15rem 0;border-bottom:1px solid var(--bd,#2a2a2a)}
+.gw-table td{padding:.2rem .5rem .2rem 0;color:var(--tf,#e0e0e0);vertical-align:top}
+.gw-table tr:hover td{background:var(--cf,#111)}

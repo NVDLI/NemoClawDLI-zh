@@ -1,0 +1,227 @@
+## To Build The Repo: Execute the following command from directory ABOVE notebook repository
+## Dev Environment:  docker-compose build && docker-compose up -d
+## Prod Environment: docker-compose -f docker-compose.yml -f docker-compose.deployment.yml build && ...
+##
+## Security contract: .env-dev (NVIDIA_API_KEY, NGC_API_KEY, etc.) is injected
+## ONLY into llm_client via env_file in docker-compose.override.yml.  All other
+## services reach the LLM only through the llm_client gateway, never directly.
+## Do NOT add env_file: .env-dev or a .secret mount to any service except
+## llm_client.
+
+## ── Persistent volumes ──────────────────────────────────────────────────────
+volumes:
+  ## ─── dli: the shared course workspace ────────────────────────────────────
+  ## Mounted into BOTH lab (rw) AND openclaw (ro) at /sandbox/dli so the
+  ## sandboxed agent always sees the same files the student is editing in
+  ## JupyterLab.  openclaw's entrypoint reads
+  ## OPENCLAW_SRC=/sandbox/dli/cpu/services/openclaw, a path that only
+  ## exists because lab and openclaw share THIS volume.
+  ##
+  ## Production: empty named volume on first boot.  lab's entrypoint seeds
+  ## it from /sandbox/dli_seed/ (baked into the lab image via COPY in
+  ## Dockerfile).  Subsequent boots see a populated volume and skip the seed.
+  ##
+  ## Dev: docker-compose.override.yml replaces this volume's driver with a
+  ## bind mount to the host repo root via driver_opts, giving live edits
+  ## without rebuilding the lab image.
+  dli:
+
+  ## Shared workspace mounted into both lab and openclaw (so notebook writes
+  ## are immediately visible to the sandboxed agent).
+  ocspace:
+  openclaw_user:
+  openclaw_logs:
+  ## Read-only corpora shared across lab / openclaw.
+  repo:
+
+
+services:
+
+  ## ── JupyterLab ─────────────────────────────────────────────────────────────
+  ## Student-facing notebook server.  Reads NVIDIA_BASE_URL from the environment
+  ## so all course notebooks talk to llm_client without any hard-coded keys.
+  ##
+  ## NOTE: openclaw below mirrors this volume list verbatim with three modes
+  ## flipped to :ro.  Keep the two blocks aligned. The shared mounts are what
+  ## make any JupyterLab write immediately visible to the sandboxed agent.
+  lab:
+    init: true
+    volumes:
+      ## Shared workspace volume. See the top-level volumes: section.
+      ## Production: empty on first boot; entrypoint seeds from /sandbox/dli_seed/.
+      ## Dev: bind-mounted to repo root via docker-compose.override.yml driver_opts.
+      - dli:/sandbox/dli:rw
+      - repo:/sandbox/repo:rw
+      - ocspace:/sandbox/ocspace:rw
+      - openclaw_user:/sandbox/.openclaw:rw
+    ports:
+      - "127.0.0.1:${GRADIO_PASS_PORT:-7860}:7860"   # loopback only; gradio via nginx /7860/
+      - "127.0.0.1:${RAG_9010_PORT:-9010}:9010"   # loopback only: not reachable by hostname
+      - "127.0.0.1:${RAG_9011_PORT:-9011}:9011"   # loopback only: not reachable by hostname
+      - "127.0.0.1:${RAG_9012_PORT:-9012}:9012"   # loopback only: not reachable by hostname
+    environment:
+      - NVIDIA_DEFAULT_MODE=open
+      - NVIDIA_BASE_URL=http://llm_client:9000/v1
+    healthcheck:
+      ## In prod, JUPYTER_TOKEN is set by the LMS, so `curl -sf` (which fails
+      ## on 401/403) reports the lab unhealthy for the entire session. Accept
+      ## 200, 401, OR 403: jupyter-server 2.x returns 403 (not 401) for a
+      ## tokenless probe against a token-protected server. All three mean
+      ## Jupyter is alive and routing (auth-gated is the healthy steady state).
+      ## Anything else (000, 5xx, connection refused) is still a real failure.
+      test: ["CMD-SHELL", "curl -s -o /dev/null -w '%{http_code}' http://localhost:8888/lab/api/status | grep -qE '^(200|401|403)$'"]
+      interval: 15s
+      timeout: 5s
+      retries: 40
+      start_period: 30s
+    restart: unless-stopped
+
+
+  ## ── LLM Gateway ────────────────────────────────────────────────────────────
+  ## Single ingress point for all LLM/embed/rerank calls.  Every other service
+  ## routes through here. API keys are injected via env_file in the dev overlay
+  ## (docker-compose.override.yml) and never appear in any other container.
+  llm_client:
+    ## SECURITY: no host port in prod. The gateway holds the course's API keys
+    ## (and proxies students' own keys), so it must never be reachable by
+    ## hostname. It stays on the internal docker network. Notebooks reach it at
+    ## llm_client:9000, browser pages via the token-gated nginx /api/llm/ route.
+    ## The dev host port lives in docker-compose.override.yml only.
+    environment:
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
+    ## API keys (NVIDIA_API_KEY etc.) are added via env_file in the dev/prod
+    ## overlays. This base file stays secret-free.
+
+
+  ## ── OpenClaw / OpenShell Sandbox ───────────────────────────────────────────
+  ## Sandboxed agentic shell gateway. Reachable as both `openclaw` (legacy,
+  ## kept for nginx.conf compatibility) and `openshell` (the OpenShell runtime
+  ## name) via the network alias below.
+  ##
+  ## Volume list intentionally mirrors the lab block; diffs:
+  ##   repo -> :ro  (openclaw must not mutate course content)
+  ##   openclaw_logs added for sandbox-internal log capture
+  ## ./:/sandbox/dli:ro is in docker-compose.override.yml only.
+  openclaw:
+    init: false
+    volumes:
+      ## Shared workspace volume, read-only here. This is the same volume lab writes to.
+      ## openclaw's entrypoint reads OPENCLAW_SRC=/sandbox/dli/cpu/services/openclaw
+      ## from this mount; lab seeds it on first boot in production, or a host
+      ## bind-mount overrides it in dev (see docker-compose.override.yml).
+      - dli:/sandbox/dli:ro
+      - repo:/sandbox/repo:ro
+      - ocspace:/sandbox/ocspace:rw
+      - openclaw_user:/sandbox/.openclaw:rw
+      - openclaw_logs:/var/log:rw
+    ## SECURITY: no host port in prod (dev-only, in docker-compose.override.yml).
+    ## openclaw runs privileged and executes agent tool-calls, so it must not be
+    ## reachable by hostname. Students reach it only through the token-gated
+    ## nginx /openclaw route. Internal network access stays available for nginx.
+    depends_on:
+      llm_client:
+        condition: service_started
+      lab:
+        ## service_healthy, NOT service_started. In production the shared `dli`
+        ## volume starts empty and lab's entrypoint seeds it (cp -an of the whole
+        ## workspace) before Jupyter comes up, so the healthcheck comes up only after the seed.
+        ## openclaw reads OPENCLAW_SRC=/sandbox/dli/cpu/services/openclaw
+        ## off that same volume (:ro) and HARD-EXITS under `set -e` if the path
+        ## (or SOUL.md inside it) is not yet present. Gating on service_started
+        ## lets openclaw race the seed and crash-loop on cold boot; gating on
+        ## service_healthy guarantees the seed finished. Dev is unaffected. The
+        ## override bind-mounts an already-populated repo, and lab still reports
+        ## healthy the same way.
+        condition: service_healthy
+    environment:
+      - PORT=8995
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-dli-openclaw-token}
+      - NOTEBOOK_DIR=/sandbox/notebooks
+      - WORKSPACE=/sandbox/ocspace
+      - REPO_DIR=/sandbox/repo
+      - OPENSHELL_SANDBOX_ENABLED=1
+      - NVIDIA_BASE_URL=http://llm_client:9000/v1
+      - LLM_REQUEST_TIMEOUT=180
+      - OPENCLAW_SRC=/sandbox/dli/cpu/services/openclaw
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - DAC_OVERRIDE
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    security_opt:
+      - apparmor=unconfined
+      - seccomp=unconfined
+    networks:
+      default:
+        aliases:
+          - openshell
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8995/health"]   # dedicated 200 endpoint; the token-gated /lab/openclaw UI route flaps 404/401
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  ## Internal control plane that hot-swaps the OpenClaw sandbox policy; the
+  ## released course drives it in Modules 3 and 4. Reached in-network as
+  ## http://sandbox-admin:8099. Build context and dev port are added in
+  ## docker-compose.override.yml.
+  sandbox-admin:
+    environment:
+      - POLICY_PATH=/policy/sandbox-policy.yaml
+    volumes:
+      ## ./cpu/services/openclaw:/policy:rw belongs in override only.
+      ## In production the policy YAML is baked into the image at /policy/.
+      - openclaw_user:/sandbox/.openclaw:rw
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      ## Wait for openclaw to be healthy, not merely started: sandbox-admin's
+      ## control plane targets the openclaw container, and openclaw itself only
+      ## becomes healthy after the lab seed completes (see openclaw.depends_on).
+      openclaw:
+        condition: service_healthy
+    restart: unless-stopped
+
+
+  ## ── Docker host bridge ─────────────────────────────────────────────────────
+  ## Lets notebooks introspect and manage containers (restart sandbox,
+  ## query logs, etc.) via a thin HTTP API instead of bind-mounting the
+  ## Docker socket directly into the lab.
+  docker_router:
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      ## Self-path mount of the project dir so docker_router can `docker compose up`
+      ## an on-demand (profiled) service with the SAME bind-mount paths the host
+      ## daemon expects. Set HOST_PROJECT_DIR=<abs path to the repo root> to enable in-lab
+      ## start of profiled services; unset, it mounts a harmless /tmp and on-demand
+      ## create degrades to a clear "start via orchestrator" message.
+      - ${HOST_PROJECT_DIR:-/tmp}:${HOST_PROJECT_DIR:-/tmp}:ro
+    ports:
+      - "127.0.0.1:${DOCKER_ROUTER_PORT:-8071}:8070"   # loopback only: not reachable by hostname
+    restart: unless-stopped
+
+
+  ## ── Reverse proxy ──────────────────────────────────────────────────────────
+  ## nginx routes /lab to JupyterLab, /openclaw to OpenClaw, /api/* to sidecars,
+  ## and serves the workshop landing page on port 80.
+  nginx:
+    image: nginx:1.15.12-alpine
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      ## lab is the only ordering dep: the LMS health check hits :80/lab and
+      ## :80/healthz, which proxy to it. The other services (llm_client, openclaw,
+      ## docker_router) are reached through runtime DNS resolution in nginx.conf
+      ## (resolver 127.0.0.11 + a set variable in proxy_pass), so nginx starts
+      ## regardless of their state and a transient outage never takes down /lab.
+      - lab
+    restart: unless-stopped
+
+
+networks:
+  default:
+    name: nvidia-llm

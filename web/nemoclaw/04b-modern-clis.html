@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Modern CLIs · Securing Agents</title>
+<link rel="stylesheet" href="_style.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<style>
+  .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
+  .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
+  .CodeMirror-vscrollbar { display: none; }
+  .CodeMirror-gutters { background: #0d0d0d; border-right: 1px solid #2a2a2a; }
+  .CodeMirror-linenumber { color: #6a6a6a; padding: 0 8px 0 6px; font-size: .76rem; }
+  .CodeMirror-lines { padding: 10px 0; }
+  .cm-s-monokai.CodeMirror { background: #0d0d0d; color: #f8f8f2; }
+  .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
+  .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
+</style>
+<style>
+  .cli-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin: 1em 0;
+  }
+  @media (max-width: 720px) { .cli-grid { grid-template-columns: 1fr; } }
+  .cli-card {
+    background: var(--e1); border: 1px solid var(--bd); border-radius: var(--r);
+    padding: 14px 16px; border-left: 3px solid var(--g);
+  }
+  .cli-card h3 { font-size: 1rem; color: var(--gs); margin: 0 0 .35em; }
+  .cli-card p  { font-size: .85rem; color: var(--td); margin: .25em 0; line-height: 1.55; }
+  .cli-card code { font-size: .82em; }
+  .map-table { width: 100%; border-collapse: collapse; font-size: .86rem; margin: 1em 0; }
+  .map-table thead tr { border-bottom: 2px solid var(--bd); }
+  .map-table th { text-align: left; padding: 8px 12px; color: var(--td);
+                  font-size: .76rem; text-transform: uppercase; letter-spacing: .05em; }
+  .map-table td { padding: 9px 12px; border-bottom: 1px solid var(--e2); vertical-align: top; }
+  .map-table tr:last-child td { border-bottom: none; }
+  .map-table td:first-child { font-family: var(--mono); color: var(--gs); font-weight: 600; }
+  .map-table code { font-size: .82em; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="index.html">NVIDIA · Securing Agents</a>
+  <nav id="nav"></nav>
+  <div class="spacer"></div>
+  <span class="key-pill" id="key-status" onclick="location.href='01a-loop.html#key-panel'">…</span>
+  <span class="key-pill" id="claw-status" onclick="location.href='03a-kickstart.html#probe-claw'">…</span>
+</div>
+
+<main>
+  <div id="journey-map"></div>
+
+  <div class="hero">
+    <div class="eyebrow">Module 4 · Part B of 3</div>
+    <h1>Modern <span>CLI Agents</span></h1>
+    <p class="lead">
+      Four modern CLIs run agents from the command line. Each one wires the
+      same five pieces together, and what separates them is the defaults
+      they pick rather than the underlying shape. This page lays the four
+      most influential CLI agents next to OpenClaw and points at which one
+      to reach for given the work you have.
+    </p>
+  </div>
+
+  <h2>Four CLIs, in their own terms</h2>
+  <div class="cli-grid">
+    <div class="cli-card">
+      <h3>Claude Code (Anthropic)</h3>
+      <p>The CLI running in this very environment. Its
+         beacon is <code>CLAUDE.md</code> at the project root, joined by
+         <code>~/.claude/CLAUDE.md</code> for user-wide directives. The
+         tool palette is rich, covering file edit, bash, web search,
+         sub-agents, and long-running tasks, and hooks let you intercept
+         tool calls. Defaults stay conservative, so you opt into broader
+         file and network access.</p>
+    </div>
+    <div class="cli-card">
+      <h3>Codex CLI (OpenAI)</h3>
+      <p>The same shape with a separate vocabulary. Its beacon is
+         <code>AGENTS.md</code>, and the default sandbox is "approval
+         mode," where every write or shell command waits for your nod
+         unless you pass <code>--full-auto</code> to run it
+         autonomously. The tool palette centres on shell, and even
+         file-edit is implemented as shell.</p>
+    </div>
+    <div class="cli-card">
+      <h3>Cursor / Continue (IDE-resident)</h3>
+      <p>The same primitives, except the agent is wired through your
+         editor. Beacons are <code>.cursor/rules/*.mdc</code> (the
+         legacy single-file <code>.cursorrules</code> still works) or
+         <code>.continue/config.yaml</code>, and the tool palette is
+         editor-shaped around moves like "apply this diff to file X."
+         Sessions sit in your editor's project state, and the sandbox
+         is whatever your editor and OS happen to give you.</p>
+    </div>
+    <div class="cli-card" style="border-left-color:#aee23a">
+      <h3>OpenClaw (NVIDIA NemoClaw)</h3>
+      <p>The one you've been using. Its beacon is the whole
+         <code>workspace/</code> folder, where SOUL.md, AGENTS.md,
+         IDENTITY.md, and the rest each surface a different slice of the
+         system prompt. The tool palette runs inside a kernel-level
+         sandbox you can hot-reload, sessions live server-side, and it
+         is the only one of the four built explicitly for unattended
+         operation.</p>
+    </div>
+  </div>
+
+  <h2>The same pattern, in their own vocabulary</h2>
+  <table class="map-table">
+    <thead>
+      <tr>
+        <th>Concept</th>
+        <th>Claude Code</th>
+        <th>Codex CLI</th>
+        <th>Cursor</th>
+        <th>OpenClaw</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Working dir</td>
+        <td>cwd</td>
+        <td>cwd</td>
+        <td>workspace folder</td>
+        <td><code>${WORKSPACE}/</code></td>
+      </tr>
+      <tr>
+        <td>Root beacon</td>
+        <td><code>CLAUDE.md</code></td>
+        <td><code>AGENTS.md</code></td>
+        <td><code>.cursor/rules/</code></td>
+        <td><code>SOUL.md</code> + <code>AGENTS.md</code></td>
+      </tr>
+      <tr>
+        <td>User-wide rules</td>
+        <td><code>~/.claude/CLAUDE.md</code></td>
+        <td><code>~/.codex/config.toml</code></td>
+        <td>Cursor Settings</td>
+        <td><code>IDENTITY.md</code></td>
+      </tr>
+      <tr>
+        <td>Skill bundles</td>
+        <td>Skills (folder of MD)</td>
+        <td>n/a</td>
+        <td>n/a</td>
+        <td><code>skills/&lt;name&gt;.md</code></td>
+      </tr>
+      <tr>
+        <td>Tool refusal layer</td>
+        <td>hooks + prompt rules</td>
+        <td>approval mode</td>
+        <td>OS + editor</td>
+        <td>OpenShell sandbox (kernel)</td>
+      </tr>
+      <tr>
+        <td>Persistent memory</td>
+        <td>auto-memory files</td>
+        <td>session resume</td>
+        <td>editor state</td>
+        <td><code>MEMORY.md</code></td>
+      </tr>
+      <tr>
+        <td>Unattended fire</td>
+        <td>background tasks</td>
+        <td><code>--full-auto</code></td>
+        <td>(manual)</td>
+        <td>cron + heartbeat</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <strong>The pattern is older than the LLM.</strong> Developer tools
+    have long read config from a file at the project root, layered it on
+    top of a per-user config in your home directory, and gated side
+    effects through a separate authorisation step. The main thing the
+    agent shape adds is that the body of the request to the side effect
+    comes from a model rather than from your keyboard.
+  </div>
+
+  <h2>Which one to reach for</h2>
+  <p>The right choice depends on what you trust the agent to do
+     unsupervised and how much friction you want on each action.
+     A rough heuristic:</p>
+  <ul>
+    <li><strong>Claude Code</strong> for interactive work in a real
+        repository where the agent is your pair, with a stable tool
+        palette, good hooks, and fast iteration.</li>
+    <li><strong>Codex CLI</strong> for shell-heavy work where you
+        want explicit approval on every command, since approval mode is
+        the right default for one-off operations on systems you don't
+        fully trust the agent on.</li>
+    <li><strong>Cursor</strong> for inline edits inside an existing
+        codebase. The IDE integration is the value; the agent surface
+        is intentionally smaller than the others.</li>
+    <li><strong>OpenClaw</strong> for unattended deployment: cron
+        jobs, scheduled audits, groups of co-operating agents running
+        in parallel (fleet topology), anything that runs without a
+        human in the loop. The kernel sandbox is what makes unattended
+        operation safe, because each agent's syscalls are gated by a
+        policy regardless of what the model decides to do.</li>
+  </ul>
+
+  <h2>A worked comparison</h2>
+  <p>The same task, namely read <code>oncall.yaml</code>, find next
+     Tuesday's on-call, and write a one-line summary to
+     <code>handoff.md</code>, in each CLI's syntax.</p>
+
+<pre><code class="language-bash"># Claude Code
+$ claude   # interactive; type the prose
+> Read oncall.yaml, find next Tuesday's on-call, write a one-line
+> summary to handoff.md.
+
+# Codex CLI (approval mode)
+$ codex
+> Read oncall.yaml...        # asks before each edit
+
+# Cursor (in-editor)
+Ctrl-K → "read oncall.yaml, write a one-line summary to handoff.md"
+
+# OpenClaw (HTTP)
+$ curl -X POST $GATEWAY/v1/chat/completions \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "x-openclaw-session-key: handoff-$(date +%F)" \
+    -d '{ "model":"openclaw","messages":[{"role":"user",
+          "content":"Read oncall.yaml, find next Tuesday'\''s on-call,
+                     write a one-line summary to handoff.md."}] }'
+</code></pre>
+
+  <h2>The default is the policy</h2>
+  <p>The worked comparison ran the same task four ways. What actually
+     differs between them is one decision: does the side effect, the
+     write to <code>handoff.md</code>, run on its own, or does it wait
+     for you. Codex CLI waits by default (approval mode) until you pass
+     <code>--full-auto</code>; the OpenClaw HTTP call writes without a
+     pause. Below, you hold that switch. Flip
+     <code>APPROVAL_REQUIRED</code> and rerun the write node to feel the
+     difference the default makes.</p>
+
+  <div id="cell-approval"></div>
+
+  <div class="callout">
+    The model produced the same line in both runs. The only thing that
+    changed was whether the runtime applied it without asking. That
+    switch is the default the CLI picks for you, and it is the whole of
+    the agent's blast radius on a write.
+  </div>
+
+  <h2>Run the bare model your CLI wraps</h2>
+  <p>Those CLIs are wrappers. The model doing the reasoning is just a chat-completion
+     endpoint, the same
+     <a href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com</a>
+     model endpoint you used in Kickstart, authenticated with your <code>nvapi-</code>
+     key. Send the same on-call task to a frontier model and read what comes back. A
+     real CLI would add the working directory, the <code>CLAUDE.md</code> beacon, and
+     the file-edit tools around this one call; here you talk to the bare model so the
+     wrapper's job is easy to see.</p>
+
+  <div id="cell-claude"></div>
+
+  <div class="callout warn">
+    Choosing among these tools is choosing a default policy, and
+    defaults persist long after you stop paying attention to them.
+    The defaults of the CLI wrapping the model are what set the agent's
+    blast radius. Approval mode, a read-only sandbox, and an unrestricted
+    shell session all use the same model and produce very different
+    outcomes. Pick the wrapper whose defaults match the level of trust
+    you actually want to extend.
+  </div>
+
+  <div class="references">
+    <h3>References</h3>
+    <ul>
+      <li><a href="https://docs.anthropic.com/en/docs/claude-code/overview" target="_blank" rel="noopener">Claude Code</a>. Anthropic's CLI agent; the reference for the working-directory plus <code>CLAUDE.md</code> beacon plus tool-palette shape this page compares against.</li>
+      <li><a href="https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview" target="_blank" rel="noopener">Anthropic, <em>Claude Skills</em></a>. The file-as-context pattern: a markdown skill file becomes a callable agent capability.</li>
+      <li><a href="https://platform.openai.com/docs/codex" target="_blank" rel="noopener">OpenAI Codex CLI</a>. The <code>AGENTS.md</code> beacon and approval-mode sandbox the comparison table maps directly.</li>
+      <li><a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">Model Context Protocol (MCP)</a>. The cross-vendor wire format CLI agents use to discover tools at runtime.</li>
+    </ul>
+    <p class="references-note">Comprehensive list at <a href="04c-going-further.html#refs">Going Further · References</a>.</p>
+  </div>
+
+  <h2>Try it · which CLI fits your task</h2>
+  <p>
+    Describe what you want an agent to do and where it will run; this artifact asks
+    the model to recommend one of the four CLIs and name the default that matters.
+    It is a single model call against the same endpoint Module 1 used.
+  </p>
+  <div id="clis-artifact"></div>
+  <script type="module">
+    import { mountChatUI, chatStream } from "./_shared.js";
+    const SYS = "You advise on agent CLIs. The four: " +
+      "Claude Code (Anthropic; beacon CLAUDE.md; rich tools + hooks; conservative defaults, opt into more). " +
+      "Codex CLI (OpenAI; beacon AGENTS.md; approval mode by default, --full-auto to skip; shell-centric). " +
+      "Cursor/Continue (.cursor/rules; editor-resident; apply-a-diff moves; sandbox is the editor/OS). " +
+      "OpenClaw (NVIDIA NemoClaw; beacon is the whole workspace/ folder; kernel-level OpenShell sandbox; the one built for unattended cron/heartbeat/fleet operation). " +
+      "Given the user's task, recommend ONE, in 3-4 sentences, and name the specific default that drives the choice.";
+    mountChatUI("#clis-artifact", {
+      greeting: "Tell me the task and where it runs (a repo? unattended on a server? inside your editor?) and I'll point you at one of the four CLIs.",
+      examples: ["Refactor a large repo unattended overnight", "Edit code inside my IDE as I work", "Triage prod incidents on a server 24/7"],
+      respond: async (text, ctx) => {
+        const s = await chatStream({ messages: [{ role: "system", content: SYS }, { role: "user", content: text }], max_tokens: 400, signal: ctx.signal },
+          (t) => ctx.view.token(t), { onReasoning: (r) => ctx.view.reasoning(r) });
+        if (s.usage) ctx.view.usage({ input: s.usage.prompt_tokens, output: s.usage.completion_tokens, model: s.model });
+      },
+    });
+  </script>
+
+  <div class="foot-nav">
+    <a href="04a-safety.html">← Module 4a: NemoClaw</a>
+    <a class="next" href="04c-going-further.html">Module 4c: Going Further →</a>
+  </div>
+</main>
+
+<script type="module">
+import { buildNav, updateKeyPill, updateClawPill, mountJourneyMap, mountCanvasFlow } from "./_shared.js";
+document.getElementById("nav").innerHTML = buildNav("04b-modern-clis.html");
+const pill = document.getElementById("key-status");
+updateKeyPill(pill);
+updateClawPill(document.getElementById("claw-status"));
+mountJourneyMap("#journey-map", "4b");
+hljs.highlightAll();
+
+mountCanvasFlow("#cell-claude", {
+  label: "The on-call task, unwrapped",
+  intro: "The exact task from the worked comparison above runs as the three steps every CLI performs, reading the file, handing it to a frontier model through build.nvidia.com (the model endpoint from Kickstart), and writing the result back, with the read and write nodes a real CLI would supply made explicit so the wrapper's job is visible. Run all three, then flip any node to Python to see the notebook equivalent.",
+  edges: [
+    { from: "read", to: "model" },
+    { from: "model", to: "write" },
+  ],
+  nodes: [
+    {
+      id: "read", icon: "📄", title: "Read oncall.yaml", x: 0, y: 0,
+      summary: "Load the rotation file into state so the model can read it, a step a real CLI would run through its file-read tool but kept here as a single assignment so you can see the content the model will receive before it reasons about it.",
+      code: `state.ONCALL = \`rotation:
+  - week: next Tuesday
+    engineer: Priya Shah
+    pager: "+1-555-0142"
+  - week: following Tuesday
+    engineer: Dana Lee\`;
+
+helpers.log("read oncall.yaml (" + state.ONCALL.split("\\n").length + " lines)");
+return { bytes: state.ONCALL.length };
+`,
+    },
+    {
+      id: "model", icon: "🧠", title: "Ask the model", x: 1, y: 0,
+      summary: "Pass the file contents and the instruction to a frontier model through build.nvidia.com, the same model endpoint you used in Kickstart authenticated with your nvapi- key, as a single chat completion with the file pasted into the user message that is exactly what a real CLI automates around you.",
+      code: `const res = await helpers.chat({
+  messages: [{
+    role: "user",
+    content: "Here is oncall.yaml:\\n\\n" + state.ONCALL +
+      "\\n\\nFind who is on call next Tuesday and write a one-line summary for handoff.md. Reply with only that line.",
+  }],
+  max_tokens: 200,
+});
+
+state.SUMMARY = (res.choices?.[0]?.message?.content || "(no reply)").trim();
+helpers.log("model: " + res.model);
+helpers.log(state.SUMMARY);
+return { model: res.model, summary: state.SUMMARY };
+`,
+    },
+    {
+      id: "write", icon: "✍️", title: "Write handoff.md", x: 2, y: 0,
+      summary: "Write the model's output to handoff.md, the file-write tool step in a real CLI where the model only produces text and the runtime is what actually opens the file and writes the bytes, made explicit here to show what the worked comparison above is about.",
+      code: `const line = state.SUMMARY || "(run the Ask Claude node first)";
+helpers.log("→ handoff.md");
+helpers.log(line);
+return { wrote: "handoff.md", contents: line };
+`,
+    },
+  ],
+});
+
+mountCanvasFlow("#cell-approval", {
+  label: "Approval mode vs full-auto, on the same write",
+  intro: "The model already produced the handoff line. The only open question is whether the runtime writes it on its own or waits for you. The propose node prepares the write; the apply node runs only if APPROVAL_REQUIRED is false, which is exactly what passing --full-auto does. Run apply once with the flag true to see it hold, then set it false and run again to see it go through.",
+  edges: [
+    { from: "propose", to: "apply" },
+  ],
+  nodes: [
+    {
+      id: "propose", icon: "📝", title: "Propose the write", x: 0, y: 0,
+      summary: "Stage the line the model wrote for handoff.md without touching the file yet. A real CLI reaches this point with the diff ready and the write still pending.",
+      code: `state.PENDING = "Next Tuesday's on-call: Priya Shah (+1-555-0142).";
+helpers.log("staged write → handoff.md");
+helpers.log("   " + state.PENDING);
+helpers.log("nothing written yet; the apply node decides.");
+return { pending: state.PENDING };
+`,
+    },
+    {
+      id: "apply", icon: "🛡️", title: "Apply, or hold for approval", x: 1, y: 0,
+      summary: "The write runs only when APPROVAL_REQUIRED is false. Leave it true and the runtime holds, the way Codex CLI waits in approval mode. Set it false and rerun to apply it without a pause, the way --full-auto does.",
+      code: `// ── the one knob the CLI default sets for you ──────────────────────────────
+const APPROVAL_REQUIRED = true;   // true = approval mode (waits) · false = --full-auto
+// ──────────────────────────────────────────────────────────────────────────
+
+if (!state.PENDING) { helpers.log("Run the propose node first."); return; }
+
+if (APPROVAL_REQUIRED) {
+  helpers.log("⏸ approval mode: write to handoff.md is waiting for your nod.");
+  helpers.log("   The line is staged but the file is untouched.");
+  helpers.log("   Set APPROVAL_REQUIRED = false above and rerun to apply it.");
+  return { wrote: false, mode: "approval" };
+}
+
+helpers.log("→ handoff.md (full-auto)");
+helpers.log("   " + state.PENDING);
+helpers.log("✓ written without asking. Same line, no pause.");
+return { wrote: true, mode: "full-auto", contents: state.PENDING };
+`,
+    },
+  ],
+});
+</script>
+</body>
+</html>

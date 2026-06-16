@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>OpenClaw · Securing Agents</title>
+<link rel="stylesheet" href="_style.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<style>
+  .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
+  .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
+  .CodeMirror-vscrollbar { display: none; }
+  .CodeMirror-gutters { background: #0d0d0d; border-right: 1px solid #2a2a2a; }
+  .CodeMirror-linenumber { color: #6a6a6a; padding: 0 8px 0 6px; font-size: .76rem; }
+  .CodeMirror-lines { padding: 10px 0; }
+  .cm-s-monokai.CodeMirror { background: #0d0d0d; color: #f8f8f2; }
+  .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
+  .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
+</style>
+<style>
+  .file-tree {
+    background: #0d0d0d; border: 1px solid var(--bd); border-radius: var(--r);
+    padding: 14px 18px; font-family: var(--mono); font-size: .82rem;
+    line-height: 1.7; color: var(--td); white-space: pre-wrap; margin: 1em 0;
+  }
+  .file-tree .fname { color: var(--gs); font-weight: 700; }
+  .file-tree .ftype { color: var(--tf); font-style: italic; }
+  .scenario {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 1em 0;
+  }
+  @media (max-width: 720px) { .scenario { grid-template-columns: 1fr; } }
+  .scenario .card { background: var(--e1); border: 1px solid var(--bd); border-radius: var(--r); padding: 14px 16px; }
+  .scenario .card h3 { margin: 0 0 .4em; font-size: .92rem; color: var(--gs); }
+  .scenario .card p  { margin: .25em 0; font-size: .85rem; color: var(--td); }
+  .scenario .card code { font-size: .82em; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="index.html">NVIDIA · Securing Agents</a>
+  <nav id="nav"></nav>
+  <div class="spacer"></div>
+  <span class="key-pill" id="key-status" onclick="location.href='01a-loop.html#key-panel'">…</span>
+  <span class="key-pill" id="claw-status" onclick="location.href='03a-kickstart.html#probe-claw'">…</span>
+</div>
+
+<main>
+  <div id="journey-map"></div>
+
+  <div class="hero">
+    <div class="eyebrow">Module 3 · Part B of 3</div>
+    <h1>The <span>OpenClaw</span> Agent</h1>
+    <p class="lead">
+      OpenClaw is an <em>agent runtime</em>: a model wired to a tool
+      palette, a server-side session that remembers across turns, and a
+      workspace of markdown files that is its entire configuration. There
+      is no Python orchestrator. The runtime reads that folder every turn,
+      folds the files into the system prompt, hands the result to the
+      model, and runs whatever the model asks for. The consequence worth
+      dwelling on is that the configuration is just files, so the agent
+      can read its own setup and you can reshape it by editing one file.
+      This page is the introspection tour. You ask the agent to describe
+      its own workspace, then change a single file and watch the next turn
+      read differently.
+    </p>
+<svg class="gfx-dark" viewBox="0 0 780 448" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The agent's workspace is a folder of markdown files. Each file surfaces a different slice of the system prompt; change a file and the next turn reads differently." preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:780px;margin:1.5rem auto"><defs></defs><rect x="60" y="38" width="660" height="26" rx="6" fill="var(--gfx-tint-purple,#eadfff)" stroke="var(--gfx-purple,#6f42c1)" stroke-width="1.8"/><text x="72" y="56" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="var(--gfx-purple,#6f42c1)" text-anchor="start" font-weight="800">project-folder/</text><rect x="60" y="77" width="660" height="32" rx="7" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-red,#d1242f)" stroke-width="1.8"/><rect x="74" y="84" width="16" height="18" rx="2" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-red,#d1242f)" stroke-width="1.5"/><text x="102" y="97" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.5" fill="var(--gfx-red,#d1242f)" text-anchor="start" font-weight="600">SOUL.md</text><text x="706" y="97" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="end">identity + refusal policy, read every turn</text><rect x="60" y="119" width="660" height="32" rx="7" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-red,#d1242f)" stroke-width="1.8"/><rect x="74" y="126" width="16" height="18" rx="2" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-red,#d1242f)" stroke-width="1.5"/><text x="102" y="139" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.5" fill="var(--gfx-red,#d1242f)" text-anchor="start" font-weight="600">AGENTS.md</text><text x="706" y="139" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="end">orchestration rules, folded into the prompt</text><rect x="60" y="161" width="660" height="32" rx="7" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-purple,#6f42c1)" stroke-width="1.8"/><rect x="74" y="168" width="16" height="18" rx="2" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-purple,#6f42c1)" stroke-width="1.5"/><text x="102" y="181" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.5" fill="var(--gfx-purple,#6f42c1)" text-anchor="start" font-weight="600">TOOLS.md</text><text x="706" y="181" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="end">plain-English capability descriptions</text><rect x="60" y="203" width="660" height="32" rx="7" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-blue,#0969da)" stroke-width="1.8"/><rect x="74" y="210" width="16" height="18" rx="2" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-blue,#0969da)" stroke-width="1.5"/><text x="102" y="223" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.5" fill="var(--gfx-blue,#0969da)" text-anchor="start" font-weight="600">USER.md</text><text x="706" y="223" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="end">durable facts about the user, written back</text><rect x="60" y="245" width="660" height="32" rx="7" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-amber,#9a6700)" stroke-width="1.8"/><rect x="74" y="252" width="16" height="18" rx="2" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-amber,#9a6700)" stroke-width="1.5"/><text x="102" y="265" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.5" fill="var(--gfx-amber,#9a6700)" text-anchor="start" font-weight="600">HEARTBEAT.md</text><text x="706" y="265" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="end">the checklist re-verified on every wake</text><rect x="60" y="287" width="660" height="32" rx="7" fill="var(--gfx-tint-teal,#d6f1ee)" stroke="var(--gfx-teal,#0d9488)" stroke-width="1.8"/><path d="M 72 295 h 11 l 3 4 h 12 v 12 h -26 z" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-teal,#0d9488)" stroke-width="1.5"/><text x="102" y="307" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.5" fill="var(--gfx-teal,#0d9488)" text-anchor="start" font-weight="800">skills/</text><text x="706" y="307" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="end">memoised trajectories the agent wrote</text><rect x="90" y="329" width="630" height="32" rx="7" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="1.8"/><rect x="104" y="336" width="16" height="18" rx="2" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="1.5"/><text x="132" y="349" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.5" fill="var(--gfx-sub,#5e5e5e)" text-anchor="start" font-weight="600">*.md</text><text x="706" y="349" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="end">name + paraphrases + numbered recipe</text><rect x="60" y="371" width="660" height="32" rx="7" fill="var(--gfx-tint-teal,#d6f1ee)" stroke="var(--gfx-teal,#0d9488)" stroke-width="1.8"/><path d="M 72 379 h 11 l 3 4 h 12 v 12 h -26 z" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-teal,#0d9488)" stroke-width="1.5"/><text x="102" y="391" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.5" fill="var(--gfx-teal,#0d9488)" text-anchor="start" font-weight="800">memory/</text><text x="706" y="391" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="end">daily YYYY-MM-DD.md logs + curated MEMORY.md</text><text x="390" y="418" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13" fill="var(--gfx-sub,#5e5e5e)" font-style="italic">The directory layout is the configuration, so editing one file changes how the next turn reads.</text><text x="390" y="434" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13" fill="var(--gfx-sub,#5e5e5e)" font-style="italic"></text></svg>
+
+  </div>
+
+  <h2>The workspace, from the agent's point of view</h2>
+  <p>Before every turn, the runtime reads the workspace folder,
+     assembles its contents into the system prompt, and hands that
+     prompt to the model. The folder is the configuration: change a
+     file and the next turn reads differently.</p>
+
+  <div class="file-tree">.openclaw/workspace/
+    <span class="fname">SOUL.md</span>          <span class="ftype">persona, boundaries, tone, values</span>
+    <span class="fname">AGENTS.md</span>        <span class="ftype">operating instructions and rules</span>
+    <span class="fname">IDENTITY.md</span>      <span class="ftype">name, creature, vibe, emoji</span>
+    <span class="fname">USER.md</span>          <span class="ftype">who the human is, preferences</span>
+    <span class="fname">TOOLS.md</span>         <span class="ftype">per-tool usage notes</span>
+    <span class="fname">HEARTBEAT.md</span>     <span class="ftype">periodic autonomous-task checklist</span>
+    <span class="fname">memory/</span>          <span class="ftype">daily logs, one file per day</span>
+      <span class="fname">2026-06-11.md</span> <span class="ftype">raw notes the agent appends as it works</span>
+    <span class="fname">MEMORY.md</span>        <span class="ftype">curated long-term memory (loaded in the main session only)</span>
+    <span class="fname">skills/</span>          <span class="ftype">per-skill markdown bundles (next page)</span></div>
+
+  <p>Memory comes in two tiers, and the distinction is worth holding onto.
+     The agent appends raw notes to a dated file under <code>memory/</code>
+     as it works, then distils what is worth keeping into <code>MEMORY.md</code>,
+     its curated long-term store. The runtime loads <code>MEMORY.md</code>
+     only in the main session, never in a shared or group context, so
+     personal notes do not leak to strangers. You will read both straight
+     off the live sandbox a few steps down.</p>
+
+  <div class="callout">
+    <strong>Because the configuration is just files, the agent can
+    describe its own setup accurately, so you can ask it directly and
+    trust the answer.</strong> If you want to know what persona rules
+    are active, what tools the agent knows about, or what it remembers
+    about you, the answer is always in those files, and the agent can
+    read and report them just like any other content in its context.
+  </div>
+
+  <h2>Step 1 · Ask the agent to describe itself</h2>
+  <p>The cell below asks OpenClaw, in one turn, to list its own workspace
+     files and explain what each one does. The answer reflects the files the
+     runtime folds into its prompt, plus whatever its tools can see when it
+     looks, so editing a file and re-running changes the report.</p>
+
+  <div id="fig-calls"></div>
+
+  <div class="callout">
+    <p><strong>Same runtime as Kickstart.</strong> These cells reach the agent on your
+       <a href="https://brev.nvidia.com" target="_blank" rel="noopener">Brev launchable</a>
+       over the gateway (the launchable's <code>/v1/chat/completions</code> is not
+       reachable directly from the browser here, so the gateway is the channel). If a
+       cell logs
+       <code>⚠ DEGRADED</code> or stalls, shape the runtime with the health-check and
+       recover cells below; run them once on a freshly launched instance.</p>
+  </div>
+
+  <div id="gw-recover"></div>
+
+  <div id="cell-introspect"></div>
+
+  <h2>Step 1b · Read the workspace yourself</h2>
+  <p>Step 1 asked the agent to <em>describe</em> its files. You do not have to
+     take its word for it. Cloudflare puts an operator terminal in front of
+     every launchable, and <code>helpers.terminal()</code> opens it straight
+     from this page. Two entry points:</p>
+  <ul>
+    <li><code>helpers.terminal("bash")</code> opens the host VM shell, where
+        you can run <code>openshell sandbox list</code>.</li>
+    <li><code>helpers.terminal("openshell sandbox connect &lt;agent&gt;")</code>
+        drops you <em>inside</em> the kernel-sandboxed agent, where the
+        workspace lives.</li>
+  </ul>
+  <p>The cell below connects into the sandbox and reads SOUL.md, the daily
+     memory, and MEMORY.md off the running instance. Edit the command list and
+     re-run to poke at anything.</p>
+
+  <div id="cell-workspace-term"></div>
+
+  <div class="callout">
+    <strong>The launchable has two planes of authority.</strong> The terminal
+    runs as the operator, above the sandbox boundary, which is why it can read
+    every file and list the sandboxes. The agent inside runs under the OpenShell
+    policy you meet in Module 4. The two share one machine but hold different
+    authority.
+  </div>
+
+  <h2>Step 2 · Two scenarios, side by side</h2>
+  <p>Because the persona is just a file, swapping SOUL.md is all it
+     takes to produce a fundamentally different agent voice. The widget
+     under each scenario sends a tagged session that the gateway routes
+     to a different SOUL.md, so you can see the same question answered by
+     two different configurations without touching any code.</p>
+
+  <div class="scenario">
+    <div class="card">
+      <h3>Scenario A · Default SOUL.md</h3>
+      <p>Stock OpenClaw: friendly, terse, and willing to use any tool the
+         policy permits, which makes it a good fit for development.</p>
+      <p>Asking it to summarise a doc gets you a tight summary plus a
+         note about what tools it would reach for next.</p>
+    </div>
+    <div class="card" style="border-left:3px solid #76b900">
+      <h3>Scenario B · "Auditor" SOUL.md</h3>
+      <p>A persona slotted in for code review: it refuses to run code
+         until it has named the risk surface, and it cites the file it
+         is reviewing on every claim.</p>
+      <p>Asking it to summarise the same doc gets you a risk list plus
+         pointed questions about what's <em>not</em> in the doc.</p>
+    </div>
+  </div>
+
+  <div id="cell-personas"></div>
+
+  <div class="callout">
+    <strong>You did not edit SOUL.md.</strong> The cell above just
+    tagged each turn with a different session key. Your launchable keeps
+    a stash of pre-built SOUL variants, and the suffix routing that maps
+    a session key to one of them is a lab affordance wired into the
+    NemoClaw image. Outside the lab the gateway has no such stash, so the
+    same two session keys would read the one SOUL.md you have and return
+    two identical replies. In production you get the swap by editing the
+    file itself: the file-as-context mechanic IS the persona change, so
+    you write a new SOUL.md (or skill bundle) and the next turn reads it.
+  </div>
+
+  <h2>Step 3 · The agent edits its own context</h2>
+  <p>Ask the agent to write a preference to MEMORY.md, then ask it back on
+     the next turn. The model itself has no persistent state, so the second
+     turn can only answer because the runtime carried the preference forward:
+     the session history it holds, plus the MEMORY.md the agent saved. The
+     runtime is doing the remembering, not the weights. (MEMORY.md is what
+     would let it survive a brand-new session, where there is no history to
+     fall back on.)</p>
+
+  <div id="cell-memory"></div>
+
+  <div class="callout warn">
+    <strong>Why this matters for safety.</strong> If the agent can
+    write its own context, the containment layer is what stops a
+    bad write from doing harm. The split is doing real work: OpenClaw
+    can freely modify markdown in its own workspace; the OpenShell
+    sandbox beneath it is what prevents the same write call from
+    touching the host filesystem, the network, or another agent's
+    workspace. You will see this boundary tested directly in the next
+    module, where a deliberately over-privileged agent tries to cross it.
+  </div>
+
+  <div class="references">
+    <h3>References</h3>
+    <ul>
+      <li><a href="https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview" target="_blank" rel="noopener">Anthropic, <em>Claude Skills</em> (docs)</a>. The file-as-context pattern OpenClaw uses: a markdown file the runtime folds into the system prompt becomes a callable agent capability.</li>
+      <li><a href="https://docs.anthropic.com/en/docs/claude-code/overview" target="_blank" rel="noopener">Claude Code</a>. The production CLI agent; live reference for how a workspace directory, persistent memory, and a tool surface fit together at scale.</li>
+      <li><a href="https://arxiv.org/abs/2310.08560" target="_blank" rel="noopener">Packer et al., <em>MemGPT: Towards LLMs as Operating Systems</em> (2023)</a>. The explicit-memory hierarchy behind the MEMORY.md write-and-recall loop on this page.</li>
+      <li><a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">Model Context Protocol (MCP)</a>. The cross-vendor wire format CLI agents use to discover tools at runtime instead of hard-coded registration.</li>
+      <li><a href="https://docs.kernel.org/userspace-api/landlock.html" target="_blank" rel="noopener">Landlock LSM</a>. The kernel filesystem-sandbox primitive that bounds the blast radius when the agent writes its own context.</li>
+      <li><a href="https://man7.org/linux/man-pages/man2/seccomp.2.html" target="_blank" rel="noopener">seccomp (man 2)</a>. The syscall-filtering layer in the kernel sandbox you meet in Module 4.</li>
+    </ul>
+    <p class="references-note">Comprehensive list at <a href="04c-going-further.html#refs">Going Further · References</a>.</p>
+  </div>
+
+  <h2>Try it · chat with your live agent</h2>
+  <p>
+    Everything on this page becomes one panel: a real conversation with the
+    OpenClaw agent on your launchable, over the gateway. Ask it to describe its
+    workspace, read a file, or run a command, and watch the tool chips fire as it
+    works. Edit a workspace file and it will read differently on the next turn.
+  </p>
+  <div id="openclaw-artifact"></div>
+  <script type="module">
+    import { mountChatUI, openclawChat } from "./_shared.js";
+    mountChatUI("#openclaw-artifact", {
+      greeting: "Chat with your live agent (connect on the Kickstart page first). Try “list your workspace files and tell me what each is for,” or “read SOUL.md.”",
+      examples: ["List your workspace files and what each is for", "Read SOUL.md and summarize it", "What tools do you have access to?"],
+      respond: async (text, ctx) => { await openclawChat(text, { session: "art-" + ctx.thread, view: ctx.view, signal: ctx.signal }); },
+    });
+  </script>
+
+  <div class="foot-nav">
+    <a href="03a-kickstart.html">← Module 3a: Kickstart</a>
+    <a class="next" href="03c-always-on.html">Module 3c: Always-On →</a>
+  </div>
+</main>
+
+<script type="module">
+import { buildNav, updateKeyPill, updateClawPill, mountJourneyMap, mountCanvasFlow, GW_CONNECT, mountGwRecover, mountDiagram } from "./_shared.js";
+document.getElementById("nav").innerHTML = buildNav("03b-openclaw.html");
+const pill = document.getElementById("key-status");
+updateKeyPill(pill);
+updateClawPill(document.getElementById("claw-status"));
+mountJourneyMap("#journey-map", "3b");
+hljs.highlightAll();
+
+// ── What shapes each reply: the directory is the configuration ────────────────
+mountDiagram("#fig-calls", {
+  kicker: "THE DIRECTORY IS THE CONFIGURATION",
+  title: "What shapes each reply",
+  width: 1160, height: 300, maxWidth: 1040, boxW: 220, boxH: 124,
+  nodes: [
+    { id: "files", label: "workspace files", kind: "data",  x: 0, y: 0, lines: ["SOUL.md, AGENTS.md,", "TOOLS.md, USER.md"] },
+    { id: "gw",    label: "OpenClaw gateway", kind: "agent", x: 1, y: 0, lines: ["folds the folder", "into the prompt"] },
+    { id: "model", label: "the model",        kind: "model", x: 2, y: 0, lines: ["reads, then answers"] },
+  ],
+  edges: [
+    { from: "files", to: "gw",    label: "read every turn", side: "top",    tint: "data"  },
+    { from: "gw",    to: "model", label: "system prompt",   side: "top",    tint: "agent" },
+    { from: "model", to: "gw",    label: "reply",           side: "bottom", tint: "model" },
+    { from: "gw",    to: "files", label: "writes back",     side: "bottom", tint: "agent" },
+  ],
+  caption: "Because the gateway folds the folder into the prompt before every turn, editing a file changes the next reply.",
+});
+
+// ── Shared WS connect snippet (used as prefix in each connect node) ──────────
+
+
+// Setup snippet run by the first node of each flow: connect to the gateway,
+// then store a `turn` helper on `state` so later nodes send chat turns without
+// redefining the plumbing. The connection + streaming reuse the same gateway
+// machinery as Kickstart (3a).
+const setupTurn = GW_CONNECT + `
+// state.turn({ content, session }) sends ONE chat turn through the gateway WS and
+// returns the agent's final text. It goes through chat.send because the launchable's
+// /v1/chat/completions is not reachable directly from the browser here.
+if (!state._subs) state._subs = {};
+// ── tune these (apply to every state.turn call in this flow) ──────────────────
+const TURN_IDLE_S  = 90;    // give up if the agent goes silent this long (this model can be slow to first token)
+const TURN_TOTAL_S = 240;   // hard ceiling per turn
+// ──────────────────────────────────────────────────────────────────────────────
+state.turn = async ({ content, session }) => {
+  if (!state._subs[session]) { await state.call("sessions.messages.subscribe", { key: session }); state._subs[session] = true; }
+  let text = "", myRun = null, toolStarts = 0, didResult = false;
+  await new Promise((resolve, reject) => {
+    let idle, glob;
+    const done = (stalled) => { clearTimeout(idle); clearTimeout(glob); state._chatCb = null; if (stalled) state.call("chat.abort", { sessionKey: session }).catch(() => {}); resolve(); };
+    const bump = () => { clearTimeout(idle); idle = setTimeout(() => done(true), TURN_IDLE_S * 1000); };
+    glob = setTimeout(() => done(true), TURN_TOTAL_S * 1000);
+    if (helpers.signal) helpers.signal.addEventListener("abort", () => done(true), { once: true });
+    state._chatCb = d => {
+      const pl = d.payload || {};
+      if (pl.isHeartbeat || d.event === "health" || d.event === "tick") return;
+      if (myRun && pl.runId && pl.runId !== myRun) return;
+      bump();
+      if (d.event === "chat" && pl.state === "final") { text = (pl.message && pl.message.content && pl.message.content[0] && pl.message.content[0].text) || text; return; }
+      if (d.event !== "agent") return;
+      const sk = pl.sessionKey || ""; if (sk !== session && !sk.endsWith(":" + session)) return;
+      const data = pl.data || {}, stream = pl.stream || "";
+      if (stream === "assistant" || ("delta" in data && "text" in data)) { text = data.text || text; }
+      else if (stream === "tool" && data.phase === "start") { toolStarts++; const inp = data.args ? JSON.stringify(data.args) : (data.meta || ""); helpers.log.details("\u2699\ufe0f " + (data.name || "tool") + (inp ? "  " + inp.slice(0, 160) : ""), d); }
+      else if (stream === "tool" && data.phase === "result") { didResult = true; const r = data.result; const t = (r && r.content && r.content[0] && r.content[0].text) || (typeof r === "string" ? r : ""); helpers.log.details((data.isError ? "\u2717" : "\u2713") + " " + (data.name || "tool") + (t ? "  " + t.trim().slice(0, 200) : ""), d); }
+      else if (data.phase === "end" && !data.itemId) { done(false); }
+    };
+    bump();
+    state.call("chat.send", { sessionKey: session, idempotencyKey: Math.random().toString(36).slice(2) + Date.now().toString(36), message: content })
+      .then(res => { myRun = (res && res.runId) || null; })
+      .catch(e => { clearTimeout(idle); clearTimeout(glob); state._chatCb = null; reject(e); });
+  });
+  if (!text.trim() && !didResult && toolStarts > 0) helpers.log("\u26a0 DEGRADED: started " + toolStarts + " tool(s) but got no result. Shape the runtime in Kickstart (3a): Health check + Recover.");
+  return text;
+};
+`;
+
+// Health / recover / logs flow is shared from _shared.js:
+mountGwRecover("#gw-recover");
+
+mountCanvasFlow("#cell-introspect", {
+  label: "Ask OpenClaw to describe its own configuration",
+  intro: "Asking the agent to survey its own workspace and report works because its setup is files on disk (SOUL.md, tool descriptions, memory) that the runtime folds into the system prompt each turn, so the agent can talk about itself.",
+  nodes: [
+    {
+      id: "introspect", icon: "🔍", title: "Ask it to describe its workspace", x: 0, y: 0,
+      summary: "One chat turn asking the agent to list its workspace files and explain each. It answers from its system prompt plus its own tools (listing a directory is a tool call, not just prompt text), so edit a file and the next run reflects the change.",
+      code: setupTurn + `
+const report = await state.turn({
+  content: "Briefly: list the files in your workspace and tell me what each one is for. " +
+           "One bullet per file. Don't dump file contents.",
+  session: "quick-3b-introspect",
+});
+helpers.log(report);
+`,
+    },
+  ],
+});
+
+mountCanvasFlow("#cell-workspace-term", {
+  label: "Read the live workspace over the operator terminal",
+  intro: "helpers.terminal() opens the launchable's /ws/terminal WebSocket, the same operator terminal the Brev console uses. This connects into the agent's sandbox and reads its configuration files directly, with no model call involved. Edit the command list and re-run to explore.",
+  nodes: [
+    {
+      id: "term", icon: "🖥", title: "Read SOUL.md + memory from the sandbox", x: 0, y: 0,
+      summary: "Connects to the sandbox terminal and runs a few read-only shell lines: list the workspace, print SOUL.md (the persona the runtime folds into every prompt), list the daily memory files, and print the curated MEMORY.md. The transcript is the live truth, straight off your running launchable. Auth rides your browser's Cloudflare Access cookie, so keep the launchable open in another tab.",
+      code: `// ── what to read (edit freely; these run as shell lines INSIDE the sandbox) ──
+const AGENT = "my-assistant";   // your agent's name, from GET /api/agent on the Kickstart page
+const commands = [
+  "ls .openclaw/workspace",
+  "echo '=== SOUL.md ==='; cat .openclaw/workspace/SOUL.md",
+  "echo '=== daily memory ==='; ls -1 .openclaw/workspace/memory/ 2>/dev/null",
+  "echo '=== MEMORY.md ==='; cat .openclaw/workspace/MEMORY.md 2>/dev/null || echo '(no curated MEMORY.md yet; the agent writes it in a main session)'",
+];
+
+helpers.log("opening operator terminal → sandbox '" + AGENT + "' …");
+const { output, frames } = await helpers.terminal(
+  "openshell sandbox connect " + AGENT,
+  { send: commands }
+);
+helpers.log(output);
+helpers.log.details("raw transcript (" + frames + " WebSocket frames)", output);
+`,
+    },
+  ],
+});
+
+mountCanvasFlow("#cell-personas", {
+  label: "Two SOUL personas, same question",
+  intro: "One question runs against two sessions that the gateway routes to different SOUL.md files, and reading the replies side by side shows the persona slot as the only thing that changed while the model and the prompt stayed fixed.",
+  edges: [
+    { from: "ask-a", to: "ask-b" },
+  ],
+  nodes: [
+    {
+      id: "ask-a", icon: "🅰️", title: "Default SOUL", x: 0, y: 0,
+      summary: "Send the question under the default SOUL session, a friendly, concise persona that reaches for tools when they are relevant.",
+      code: setupTurn + `
+state.question =
+  "Summarise this for me in three bullets and tell me what to do next: " +
+  "'We added a script to copy DB rows from prod to staging. It runs on cron at 03:00 UTC. " +
+  "It has no row-count guardrail and runs as the 'admin' SA. Last week it copied 4 hours " +
+  "of data twice; we caught it manually.' ";
+state.a = await state.turn({ content: state.question, session: "quick-3b-soul-default" });
+helpers.log(state.a);
+`,
+    },
+    {
+      id: "ask-b", icon: "🅱️", title: "Auditor SOUL", x: 1, y: 0,
+      summary: "Send the SAME question under the auditor session, whose SOUL.md tells the agent to surface risks first and cite what it is commenting on. Both replies print here so you can read the two voices against one identical input.",
+      code: `const b = await state.turn({ content: state.question, session: "quick-3b-soul-auditor" });
+helpers.log("── default ──"); helpers.log(state.a);
+helpers.log("\\n── auditor ──"); helpers.log(b);
+`,
+    },
+  ],
+});
+
+mountCanvasFlow("#cell-memory", {
+  label: "The agent writes to MEMORY.md, then reads it back",
+  intro: "Two turns on one session: the agent saves a preference to MEMORY.md, then a fresh turn asks for it back. The model is stateless. The preference survives because the runtime carries it forward (the session it holds, plus the MEMORY.md the agent saved), not because the weights changed.",
+  edges: [
+    { from: "write", to: "recall" },
+  ],
+  nodes: [
+    {
+      id: "write", icon: "📝", title: "Turn 1 · ask it to remember", x: 0, y: 0,
+      summary: "Give the agent a preference and ask it to save the note to MEMORY.md so a later turn can see it.",
+      code: setupTurn + `
+state.r1 = await state.turn({
+  content: "Please remember: I prefer code review feedback as a numbered list, " +
+           "and I care most about race conditions. Save this to MEMORY.md so next session knows.",
+  session: "quick-3b-memory",
+});
+helpers.log(state.r1);
+`,
+    },
+    {
+      id: "recall", icon: "💭", title: "Turn 2 · ask it back", x: 1, y: 0,
+      summary: "A fresh turn on the same session asks what the agent remembers. The model has no memory of turn 1; the preference survives because the runtime carried it forward (the session, and the MEMORY.md the agent saved). The check confirms the keywords actually came through.",
+      code: `const r2 = await state.turn({
+  content: "What do you remember about how I like to receive code review?",
+  session: "quick-3b-memory",
+});
+helpers.log(r2);
+helpers.log(/numbered|race/i.test(r2) ? "✓ recalled the preference via MEMORY.md" : "✗ no recall this run");
+`,
+    },
+  ],
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+
+# Production-only overrides. Used with docker-compose.yml on the student VM:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.deployment.yml pull
+#   docker compose -f docker-compose.yml -f docker-compose.deployment.yml up -d
+#
+# Every service that has build: in docker-compose.override.yml MUST have an
+# image: <placeholder> entry here so the CD pipeline can vendor the image to
+# ECR and the VM can pull it. Missing entries cause the service to fail at
+# docker compose pull time, which can cascade to block nginx startup and
+# prevent the LMS health check from ever passing.
+
+services:
+
+  lab:
+    image: <placeholder>
+    environment:
+      - JUPYTER_TOKEN
+
+  nginx:
+    # In production nginx serves on port 80. Readiness probes hit GET :80/lab.
+    ports:
+      - 80:80
+
+  openclaw:
+    # Required: nginx proxies /openclaw and /openclaw/ws to this service.
+    # The released course drives it as the sandboxed agent in Modules 3 and 4.
+    image: <placeholder>
+
+  docker_router:
+    image: <placeholder>
+
+  llm_client:
+    image: <placeholder>
+    ## PRECONDITION: /dli/secrets/.env MUST exist on the VM before
+    ## `docker compose up`. compose v2 treats a missing env_file as a FATAL
+    ## error and aborts the WHOLE stack (lab + nginx included), so :80/lab and
+    ## :80/healthz never answer and the LMS reports a dead lab with no obvious
+    ## cause. This is intentionally fail-loud: the secrets file is required, and
+    ## llm_client must never start keyless. Operator: confirm the platform
+    ## stages /dli/secrets/.env (NVIDIA_API_KEY / NGC_API_KEY / bedrock token)
+    ## ahead of launch. If `up` aborts with "env file /dli/secrets/.env not
+    ## found", the missing step is that file, never the compose config.
+    env_file:
+      - /dli/secrets/.env
+
+  # Internal control plane that hot-swaps the OpenClaw sandbox policy; the
+  # released course drives it in Modules 3 and 4. Not published on a host port
+  # in production; reached only inside the compose network as
+  # http://sandbox-admin:8099.
+  sandbox-admin:
+    image: <placeholder>
+    environment:
+      - POLICY_PATH=/policy/sandbox-policy.yaml
+      ## Token matches openclaw's OPENCLAW_GATEWAY_TOKEN; not a secret.
+      - SANDBOX_ADMIN_TOKEN=dli-openclaw-token
+      ## Container name follows compose v2 naming: <project>-<service>-<replica>,
+      ## where the project name comes from COMPOSE_PROJECT_NAME.
+      - SANDBOX_TARGET_CONTAINER=${COMPOSE_PROJECT_NAME:-task1}-openclaw-1

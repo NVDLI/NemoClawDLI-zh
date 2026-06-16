@@ -1,0 +1,83 @@
+## UNLOCKED (LATEST COMPATIBLE)
+
+# Async / notebook compat
+nest_asyncio                # Jupyter + asyncio.run() in the same event loop
+
+# Networking & Web
+fastapi
+httpx>=0.27.0
+httpx-sse
+requests
+sse-starlette
+starlette>=0.40.0
+streamlit
+uvicorn[standard]
+voila
+protobuf>=5.26.0       # grpcio / transformers require runtime_version added in 5.26
+
+# LangChain & Orchestration
+crewai
+langchain
+langchain-classic>=1.0.0
+langchain-community
+langchain-core
+langchain-mcp-adapters
+langchain-nvidia-ai-endpoints
+langchain-openai
+langchain-text-splitters
+langgraph
+langgraph-cli[inmem]
+langgraph-sdk>=0.1.40
+langserve
+langsmith
+litellm
+mcp>=1.5.0             # Model Context Protocol SDK for agent tool integration
+
+# Data & Retrieval
+duckdb
+faiss-cpu
+nemo-microservices
+pandas
+pydantic
+python-dotenv
+tavily-python
+
+# Document Processing
+arxiv<4  # v4 removed Search.results(); ArxivRetriever in langchain_community requires <4
+pdf2image
+pymupdf
+rank-bm25
+
+# ML / DL / Inference
+docker>=7.1.0          # docker_router + sandbox_admin services drive the agent sandbox
+matplotlib
+networkx               # Graph library
+openai
+scikit-learn
+transformers           # transitive dependency of the langchain / embedding stack
+# NOTE: torch/torchaudio/torchvision installed separately in Dockerfile with
+# --index-url https://download.pytorch.org/whl/cu128 for CUDA 12.8 + ARM64.
+# vllm is a standalone inference server, not a notebook library; it is launched
+# via shell, never imported.
+
+# Observability. Pin to the opentelemetry 1.34 / instrumentation 0.54b line.
+# Do NOT unpin: opentelemetry 1.35+ removed ReadableLogRecord, and the matching
+# instrumentation 0.55b* expects api 1.35+ (it imports PackageNotFoundError from
+# util._importlib_metadata, which exists in 1.35 but not 1.34). Pinning the
+# instrumentation packages to ~=0.54b0 keeps them compatible with the pinned
+# api 1.34 line, avoiding the import error that crashes a FastAPI service at
+# startup before uvicorn can bind.
+opentelemetry-api~=1.34.0
+opentelemetry-sdk~=1.34.0
+opentelemetry-exporter-otlp-proto-grpc~=1.34.0
+opentelemetry-instrumentation-fastapi~=0.54b0
+opentelemetry-instrumentation-requests~=0.54b0
+opentelemetry-semantic-conventions~=0.54b0
+plotly
+
+# Dev Tools & UI
+gradio
+ipywidgets
+jupyter-app-launcher
+jupyterlab
+jupyterlab-git

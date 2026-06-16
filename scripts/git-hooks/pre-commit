@@ -1,0 +1,176 @@
+#!/usr/bin/env bash
+# Pre-commit hook: refuse to commit markdown files corrupted by the IDE
+# buffer-merge race (duplicated H1 banners, doubled identifiers,
+# nvidia/nemotron name interleaves, duplicate Part headers).
+#
+# Install with:
+#     ln -sf ../../scripts/git-hooks/pre-commit .git/hooks/pre-commit
+# or invoke scripts/install-hooks.sh.
+
+set -e
+
+# Resolve repo root and the content root. task1/ is the content root; it is a subdir under
+# the DLI wrapper today and will be the repo root in the open-source release, so detect either.
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+T1="$REPO_ROOT"; [ -d "$REPO_ROOT/task1/scripts" ] && T1="$REPO_ROOT/task1"
+T1REL="${T1#$REPO_ROOT/}"; [ "$T1REL" = "$T1" ] && T1REL="" || T1REL="$T1REL/"
+AUDIT="$T1/scripts/nb_audit.py"
+
+if [ ! -f "$AUDIT" ]; then
+    # Audit script not present in this repo; nothing to check.
+    exit 0
+fi
+
+# Collect staged course/service .md files for the corruption audit. This release
+# is browser-only (the course lives under web/), so cpu/ holds the shared service
+# docs and no per-course notebook tracks; the cpu/dgx match also guards any
+# notebook track a future change reintroduces.
+STAGED_MDS=$(git diff --cached --name-only --diff-filter=ACM \
+    | grep -E "^${T1REL}(cpu|dgx)/[^/]+/.*\.md$" \
+    || true)
+
+if [ -z "$STAGED_MDS" ]; then
+    exit 0
+fi
+
+echo "[pre-commit] auditing staged course markdown..."
+# Audit only the staged files. The audit reads from the working tree
+# (which is what `git commit` would record).
+if ! python3 "$AUDIT" $STAGED_MDS; then
+    echo ""
+    echo "[pre-commit] REFUSING COMMIT: one or more staged markdown files"
+    echo "contain corruption signatures (duplicate H1 banner, duplicate Part"
+    echo "headers, doubled identifiers like 'chatchat', or nvidia/nemotron"
+    echo "name interleaves)."
+    echo ""
+    echo "This is almost certainly the IDE-buffer-merge race. To recover:"
+    echo "  1. Close the affected .md files in VS Code."
+    echo "  2. Restore a clean version (Write tool, or in-place dedupe for"
+    echo "     periodically-duplicated files; see docs/notebook_corruption_prevention.md)."
+    echo "  3. Re-run 'python3 scripts/nb_audit.py' to confirm clean."
+    echo "  4. Re-stage and commit."
+    exit 1
+fi
+
+echo "[pre-commit] all staged course markdown clean."
+
+# ── Playwright runtime check for canvas flow HTML pages ─────────────────────
+# Triggered when a web course page or a shared stylesheet is staged. URLs follow the
+# surface-first layout: web/<course>/ is served at /lab/static/<course>/. The leg skips
+# (does not fail) when the harness, the openclaw container, or the browser is unavailable.
+STAGED_HTML=$(git diff --cached --name-only --diff-filter=ACM \
+    | grep -E '(web/[a-z_]+/[^/]+\.html|_style\.css|_shared\.js)$' \
+    || true)
+
+if [ -n "$STAGED_HTML" ]; then
+    # ── Fast static structural check (no docker needed) ──────────────────────
+    VALIDATOR="$T1/scripts/validate_canvas_html.py"
+    if [ -f "$VALIDATOR" ]; then
+        STAGED_HTML_FILES=$(git diff --cached --name-only --diff-filter=ACM \
+            | grep -E '(web/[a-z_]+/[^/]+\.html)$' \
+            | sed "s|^|$REPO_ROOT/|" || true)
+        if [ -n "$STAGED_HTML_FILES" ]; then
+            echo "[pre-commit] static canvas-html validation..."
+            if ! python3 "$VALIDATOR" $STAGED_HTML_FILES; then
+                echo ""
+                echo "[pre-commit] REFUSING COMMIT: structural issues in canvas HTML."
+                echo "             Fix the issues above (unescaped backticks, missing comma,"
+                echo "             duplicate Python blocks, TDZ, missing state destructuring)"
+                echo "             then re-stage and commit."
+                exit 1
+            fi
+        fi
+    fi
+
+    TEST_SCRIPT="$T1/scripts/test_page_runtime.js"
+    if [ ! -f "$TEST_SCRIPT" ]; then
+        echo "[pre-commit] WARNING: playwright test harness not found at $TEST_SCRIPT, so the runtime check is skipped."
+    else
+        # Detect the running openclaw container by name suffix; the project prefix is set by
+        # the deployment (COMPOSE_PROJECT_NAME), never hardcoded to a course code here.
+        OPENCLAW_CTR="$(docker ps --format '{{.Names}}' 2>/dev/null | grep -- '-openclaw-1' | head -1)"
+
+        if [ -z "$OPENCLAW_CTR" ]; then
+            echo "[pre-commit] WARNING: no openclaw container running, so the playwright runtime check is skipped."
+            echo "             Start the lab ('docker compose up') to enable this check."
+        else
+            echo "[pre-commit] running playwright runtime check (container: $OPENCLAW_CTR)..."
+            docker cp "$TEST_SCRIPT" "$OPENCLAW_CTR:/tmp/test_page_runtime.js" 2>/dev/null
+
+            # Lab-only pages: these POST to /lab/openclaw and require a live student
+            # session cookie. Playwright has no auth, so it always gets 404/401 on them.
+            # Skipping them avoids false positives; they are tested manually in the lab.
+            LAB_ONLY_PAGES="03a-kickstart 03b-openclaw 03c-always-on 04a-safety"
+
+            # Build the list of URLs to test from the staged file paths.
+            PAGES_TO_TEST=""
+            for f in $STAGED_HTML; do
+                # Derive the page basename (without extension).
+                page=$(basename "$f" .html)
+                # Skip _shared.js and _style.css here; the full-suite fallback below handles them.
+                case "$f" in *_shared.js|*_style.css) continue ;; esac
+
+                # Determine the course base URL from the surface-first layout
+                # (web/<course>/ is served at /lab/static/<course>/).
+                case "$f" in
+                    *web/nemoclaw/*.html)   BASE="http://nginx/lab/static/nemoclaw" ;;
+                    *) continue ;;
+                esac
+
+                # Skip lab-only pages that require live auth.
+                skip=0
+                for lab in $LAB_ONLY_PAGES; do
+                    [ "$page" = "$lab" ] && skip=1 && break
+                done
+                [ "$skip" -eq 1 ] && echo "[pre-commit] skipping lab-only page (needs live session): $page.html" && continue
+
+                PAGES_TO_TEST="$PAGES_TO_TEST $BASE/$page.html"
+            done
+
+            # If a course's shared stylesheet/script was staged, sweep that course's non-lab pages.
+            if echo "$STAGED_HTML" | grep -qE 'web/nemoclaw/(_shared\.js|_style\.css)'; then
+                for page in 01a-loop 01b-react 01c-tools 02a-routing 02b-rag 02c-deep 04b-modern-clis 04c-going-further; do
+                    PAGES_TO_TEST="$PAGES_TO_TEST http://nginx/lab/static/nemoclaw/$page.html"
+                done
+            fi
+
+            # Deduplicate and normalise whitespace.
+            PAGES_TO_TEST=$(echo "$PAGES_TO_TEST" | tr ' ' '\n' | sort -u | tr '\n' ' ')
+
+            if [ -z "$(echo "$PAGES_TO_TEST" | tr -d ' ')" ]; then
+                echo "[pre-commit] no course pages to runtime-test; skipping the playwright leg."
+            else
+                FAIL=0; BROWSER_MISSING=0
+                for PAGE_URL in $PAGES_TO_TEST; do
+                    echo "[pre-commit] testing: $PAGE_URL"
+                    if OUT=$(docker exec "$OPENCLAW_CTR" node /tmp/test_page_runtime.js "$PAGE_URL" 2>&1); then
+                        printf '%s\n' "$OUT"
+                    else
+                        printf '%s\n' "$OUT"
+                        # A check that cannot launch a browser is SKIPPED, not failed (same as a
+                        # missing harness or container above). Only real page errors block.
+                        if printf '%s' "$OUT" | grep -qiE 'chrome-headless-shell not found|Executable doesn.t exist|playwright install|please run the following command'; then
+                            BROWSER_MISSING=1; break
+                        fi
+                        echo "[pre-commit] FAIL: runtime errors detected on $PAGE_URL"
+                        FAIL=1
+                    fi
+                done
+
+                if [ "$BROWSER_MISSING" -eq 1 ]; then
+                    echo "[pre-commit] WARNING: playwright browser (chrome-headless-shell) is not installed in $OPENCLAW_CTR, so the runtime check is skipped."
+                    echo "             Enable it with: docker exec $OPENCLAW_CTR npx playwright install chromium-headless-shell"
+                elif [ "$FAIL" -eq 1 ]; then
+                    echo ""
+                    echo "[pre-commit] REFUSING COMMIT: playwright test found canvas node errors."
+                    echo "             Fix the errors reported above, then re-stage and commit."
+                    exit 1
+                else
+                    echo "[pre-commit] playwright runtime check passed."
+                fi
+            fi
+        fi
+    fi
+fi
+
+exit 0

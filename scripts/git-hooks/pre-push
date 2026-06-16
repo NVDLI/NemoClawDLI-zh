@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# task1/scripts/git-hooks/pre-push — canonical content-gate pre-push hook.
+#
+# This is the layout-agnostic half of the pre-push contract and the copy that ships
+# when task1/ is the repo root (the open-source release). It enforces:
+#
+#   RULE 2 — REBASE GUARD: if origin/main is ahead, rebase before pushing so a
+#            concurrently pushed commit is never silently overwritten.
+#   RULE 3 — SKILL CONSISTENCY: refuse a push where a fact duplicated across files
+#            diverged, or a SKILL.html points at a missing file.
+#   RULE 4 — LAYOUT / LINK GLUE: deterministic surface-first layout + link validation,
+#            reading the lab's real config so it cannot drift from what the lab serves.
+#   RULE 5 — PROJECTION LINK GATE: replays how every written link compiles through the
+#            deploy stack to a physical file or service; blocks on any ship-target break.
+#
+# The DLI serving wrapper (s-fx-43-v1) layers a repo-specific RULE 1 (repo lock) in
+# .githooks/pre-push and then delegates here, so RULES 2-5 live in exactly one place.
+# Install it (standalone repo): bash scripts/install-hooks.sh
+set -euo pipefail
+
+REMOTE="${1:-origin}"
+
+# task1 is the CONTENT ROOT: a subdir under the DLI wrapper (s-fx-43-v1/task1) today,
+# the repo root in the open-source release. Detect either layout so the hook keeps
+# working after the repo-root move without edits.
+T1="$(git rev-parse --show-toplevel)"
+[ -d "$T1/task1/scripts" ] && T1="$T1/task1"
+
+# ── RULE 2: rebase guard ─────────────────────────────────────────────────────
+[ "$REMOTE" = "origin" ] || exit 0
+
+git fetch origin main --quiet 2>/dev/null || exit 0
+
+LOCAL=$(git rev-parse HEAD)
+REMOTE_SHA=$(git rev-parse origin/main 2>/dev/null || true)
+
+if [ -n "$REMOTE_SHA" ] && [ "$LOCAL" != "$REMOTE_SHA" ]; then
+    AHEAD=$(git rev-list HEAD..origin/main --count 2>/dev/null || echo 0)
+    if [ "$AHEAD" -gt 0 ]; then
+        echo "pre-push: origin/main is $AHEAD commit(s) ahead — rebasing..."
+        git pull --rebase -X ours --quiet origin main || {
+            echo "pre-push: rebase failed — fix conflicts then push again."
+            exit 1
+        }
+    fi
+fi
+
+# ── RULE 3: SKILL consistency guard ──────────────────────────────────────────
+GUARD="$T1/scripts/skill_consistency.py"
+if [ -f "$GUARD" ]; then
+    if ! python3 "$GUARD" --since origin/main; then
+        echo ""
+        echo "pre-push: REFUSING PUSH — SKILL consistency guard found a divergence."
+        echo "A duplicated fact disagrees across files, or a SKILL.html points at a"
+        echo "missing file. Each FAIL names the file; the change_impact map in that"
+        echo "directory's SKILL.html lists what must move together. Fix, then push."
+        exit 1
+    fi
+fi
+
+# ── RULE 4: layout / link glue guard ──────────────────────────────────────────
+LAYOUT="$T1/scripts/validate_layout.py"
+if [ -f "$LAYOUT" ]; then
+    if ! python3 "$LAYOUT" --quiet; then
+        echo ""
+        echo "pre-push: REFUSING PUSH — layout/link glue validation failed (see above)."
+        echo "A course link is dead/cross/isolated, or a /sandbox/dli path the lab serves"
+        echo "no longer exists on disk. Run:  python3 scripts/validate_layout.py"
+        exit 1
+    fi
+fi
+
+# ── RULE 5: compilation-projection link gate (no live lab needed) ─────────────
+BUNDLE="$T1/scripts/validate_bundle.py"
+if [ -f "$BUNDLE" ]; then
+    # --no-write: gate only; the durable log is written by the cadence / CI / the
+    # DGX-spark watcher, never by the hook (so a push never leaves a dirty tree).
+    if ! python3 "$BUNDLE" --scope ship --no-write; then
+        echo ""
+        echo "pre-push: REFUSING PUSH — projection link gate found a SHIP-blocking issue."
+        echo "A virtual link in a shipped page resolves to nothing, a redirect is dead, an"
+        echo "asset crosses a course boundary, or a course links into another. The blocking"
+        echo "items are listed above and in docs/validation/latest.md. Run:"
+        echo "  python3 scripts/validate_bundle.py --scope ship"
+        exit 1
+    fi
+fi
+
+# ── RULE 6: core-tenets projection present ────────────────────────────────────
+# The operating creed (assumptions, practices, cadences, creeds) is projected into the
+# root SKILL.html skill-meta instead of an agent-tool config file. Refuse a push that
+# drops it, so the projection cannot silently rot out of the brain.
+TENETS="$T1/scripts/tenets.py"
+if [ -f "$TENETS" ]; then
+    if ! python3 "$TENETS" --check; then
+        echo ""
+        echo "pre-push: REFUSING PUSH — the core-tenets projection is missing from SKILL.html."
+        echo "Regenerate it: python3 scripts/gen_skill_hierarchy.py"
+        exit 1
+    fi
+fi
+exit 0

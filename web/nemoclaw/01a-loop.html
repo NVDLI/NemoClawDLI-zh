@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>The Agent · Securing Agents</title>
+<link rel="stylesheet" href="_style.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<style>
+  .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
+  .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
+  .CodeMirror-vscrollbar { display: none; }
+  .CodeMirror-gutters { background: #0d0d0d; border-right: 1px solid #2a2a2a; }
+  .CodeMirror-linenumber { color: #6a6a6a; padding: 0 8px 0 6px; font-size: .76rem; }
+  .CodeMirror-lines { padding: 10px 0; }
+  .cm-s-monokai.CodeMirror { background: #0d0d0d; color: #f8f8f2; }
+  .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
+  .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="index.html">NVIDIA · Securing Agents</a>
+  <nav id="nav"></nav>
+  <div class="spacer"></div>
+  <span class="key-pill" id="key-status" onclick="document.getElementById('key-panel').scrollIntoView({behavior:'smooth'})">…</span>
+</div>
+
+<main>
+  <div id="journey-map"></div>
+
+  <div class="hero">
+    <div class="eyebrow">Module 1 · Part A of 3</div>
+    <h1>The <span>Agent</span></h1>
+    <p class="lead">
+      An agent is a loop: perceive the environment, reason about what to
+      do, act, repeat. The rule inside that loop is a pluggable socket.
+      A thermostat puts a one-liner there. A self-driving car puts a
+      neural network. Every agent in this course puts an LLM. This page
+      builds the smallest possible example with zero LLMs, then shows
+      where the language model plugs in.
+    </p>
+  </div>
+
+  <h2>The shape under everything</h2>
+  <p>Every agent, from a thermostat to a self-driving car, is built from the same three pieces wired to a loop:</p>
+  <ul>
+    <li><strong>Perception.</strong> Some way of sampling the environment.</li>
+    <li><strong>Reasoning.</strong> Whatever turns the perception into a choice.</li>
+    <li><strong>Action.</strong> Some way of changing the environment.</li>
+  </ul>
+
+  <div style="display:flex;justify-content:center;margin:1em 0 1.4em">
+    <svg class="gfx-dark" viewBox="0 0 620 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four parts wired into one loop. Swap any part and the shape still holds." preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:780px;margin:1.5rem auto"><defs><marker id="gw-aw" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-purple,#6f42c1)"/></marker></defs><path d="M 369.9 101.7 A 160 160 0 0 1 458.3 190.1" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.4" marker-end="url(#gw-aw)"/><path d="M 458.3 309.9 A 160 160 0 0 1 369.9 398.3" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.4" marker-end="url(#gw-aw)"/><path d="M 250.1 398.3 A 160 160 0 0 1 161.7 309.9" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.4" marker-end="url(#gw-aw)"/><path d="M 161.7 190.1 A 160 160 0 0 1 250.1 101.7" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.4" marker-end="url(#gw-aw)"/><circle cx="310" cy="90" r="50" fill="var(--gfx-tint-blue,#dfeaf5)" stroke="var(--gfx-blue,#0969da)" stroke-width="2.4"/><text x="310" y="86" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13.5" fill="var(--gfx-blue,#0969da)" text-anchor="middle" font-weight="700">Memory</text><text x="310" y="104" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">messages[]</text><circle cx="470" cy="250" r="50" fill="var(--gfx-tint-green,#e6f3d4)" stroke="var(--gfx-green,#4a7a00)" stroke-width="2.4"/><text x="470" y="246" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13.5" fill="var(--gfx-green,#4a7a00)" text-anchor="middle" font-weight="700">Model</text><text x="470" y="264" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">reasoning</text><circle cx="310" cy="410" r="50" fill="var(--gfx-tint-purple,#eadfff)" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.4"/><text x="310" y="406" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13.5" fill="var(--gfx-purple,#6f42c1)" text-anchor="middle" font-weight="700">Router</text><text x="310" y="424" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">picks next</text><circle cx="150" cy="250.00000000000003" r="50" fill="var(--gfx-tint-amber,#f7e9cf)" stroke="var(--gfx-amber,#9a6700)" stroke-width="2.4"/><text x="150" y="246.00000000000003" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13.5" fill="var(--gfx-amber,#9a6700)" text-anchor="middle" font-weight="700">Tools</text><text x="150" y="264" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">reach out</text><text x="310" y="246" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="14" fill="var(--gfx-ink,#1a1a1a)" text-anchor="middle" font-weight="800">the loop</text><text x="310" y="265" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">swap any part</text><text x="310" y="544" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13" fill="var(--gfx-sub,#5e5e5e)" font-style="italic">Four parts wired into one loop. Swap any part and the shape still holds.</text></svg>
+  </div>
+
+  <div class="callout">
+    <strong>The reasoning step is a pluggable socket.</strong> The
+    perception step and the action step do not care what sits between
+    them. Swap the reasoning step for a rule, a decision tree, a neural
+    network, or an LLM and the outer loop does not have to change. That
+    substitutability is what makes the loop a useful abstraction. The
+    hard questions, like how smart the reasoning is and how broad the
+    actions are, stay separate from the question of how the loop itself
+    is wired.
+  </div>
+
+  <h2>An agent with no language model</h2>
+  <p>The reasoning step is a pluggable socket. The smallest plug is a
+     single <code>if</code> statement. The environment here is a one-dimensional
+     track with walls at positions 0 and 9. Press Run and watch the
+     position number bounce.</p>
+
+  <div id="cell-reflex"></div>
+
+  <p>Two things worth examining in the code above:</p>
+  <ul>
+    <li>The <strong>environment</strong> (wall positions, current
+        position) lives in <code>state.env</code>; the agent's intrinsics
+        (its direction) live in <code>state.agent</code>. Keeping them
+        separate means a different agent with different intrinsic state
+        can operate in the same environment without either one leaking
+        into the other.</li>
+    <li>The <strong>reasoning step</strong> is one <code>if</code>
+        statement. Replacing it with something more powerful, whether a
+        decision tree, a neural network, or a language model, only
+        requires changing what sits between perception and action. The
+        loop structure, the state layout, and the action step all
+        remain identical, which is why the loop is worth writing once
+        and reusing.</li>
+  </ul>
+
+  <h2>What changes when the socket holds an LLM</h2>
+  <p>The chat-completions interface is also a regular function. You
+     hand it a list of messages and a model name; it hands back one
+     assistant message plus metadata.</p>
+
+<pre><code class="language-js">const reply = await chat({
+  model:    "nvidia/nemotron-3-nano-30b-a3b",
+  messages: [{ role: "user", content: "Hi" }],
+});
+// reply.choices[0].message  → { content, reasoning_content }
+// reply.choices[0].finish_reason → "stop" | "tool_calls" | "length"
+</code></pre>
+
+  <p>Three facts about that function shape how agents built on top of it have to work:</p>
+  <ul>
+    <li><strong>Calls do not share state.</strong> The server is not
+        holding context between requests. If you want the model to
+        remember the previous turn, you send the previous turn again.
+        The "memory" of a conversation is a list of messages your code
+        maintains and re-sends each time.</li>
+    <li><strong>The output has two channels.</strong> Reasoning models
+        return their working notes in
+        <code>reasoning_content</code> and their final answer in
+        <code>content</code>. The notes are for you to inspect during
+        development; the answer in <code>content</code> is what the
+        next stage of the loop reads and acts on.</li>
+    <li><strong>finish_reason is the loop's exit condition.</strong>
+        <code>"stop"</code> means the model has written its final
+        answer. <code>"tool_calls"</code> means it wants your code to
+        run a named function and report the result back.
+        <code>"length"</code> means the token budget ran out before
+        the model finished. A loop that drives an LLM-based agent is
+        built entirely around reading this one field and deciding what
+        to do next.</li>
+  </ul>
+
+  <div style="display:flex;justify-content:center;margin:1em 0 1.4em">
+    <svg class="gfx-dark" viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg"
+       style="width:100%;max-width:1100px;display:block;margin:1.2em auto;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:12px"
+       role="img" aria-label="The chat completions interface as a stateless function: model name, messages, tools and budget go in; one assistant message plus metadata (content, reasoning_content, finish_reason, usage) comes out. No hidden memory between calls.">
+  <defs>
+    <marker id="chat-fn-arrow-v2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#a5a5a5"/>
+    </marker>
+    <filter id="chat-fn-shadow-v2" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#f2f2f2" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="chat-input-fill-v2"  x1="0" x2="1"><stop offset="0%" stop-color="#1e1e3a"/><stop offset="100%" stop-color="#1e1e3a"/></linearGradient>
+    <linearGradient id="chat-llm-fill-v2"    x1="0" x2="1"><stop offset="0%" stop-color="#1a1a2e"/><stop offset="100%" stop-color="#1a1a2e"/></linearGradient>
+    <linearGradient id="chat-output-fill-v2" x1="0" x2="1"><stop offset="0%" stop-color="#1e3a1e"/><stop offset="100%" stop-color="#1e3a1e"/></linearGradient>
+  </defs>
+
+  <text x="32" y="32" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#a5a5a5" letter-spacing="1.2">CHAT COMPLETIONS &middot; STATELESS FUNCTION</text>
+  <text x="32" y="58" font-size="17" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" fill="#f2f2f2" font-weight="700">Messages in, one assistant turn out</text>
+  <text x="380" y="78" text-anchor="middle" font-size="12" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" fill="#a5a5a5">To remember prior turns, include them again in messages[].</text>
+
+  <!-- Input card -->
+  <g filter="url(#chat-fn-shadow-v2)"><rect x="48" y="96" width="210" height="118" rx="14" fill="var(--gfx-tint-blue,#dfeaf5)" stroke="#3b82f6" stroke-width="2"/></g>
+  <text x="153" y="130" text-anchor="middle" font-size="15" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3b82f6" font-weight="800">request</text>
+  <text x="153" y="156" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#a5a5a5">model name</text>
+  <text x="153" y="174" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#a5a5a5">messages[]</text>
+  <text x="153" y="192" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#a5a5a5">tools, params, budget</text>
+
+  <!-- LLM card -->
+  <g filter="url(#chat-fn-shadow-v2)"><rect x="315" y="96" width="130" height="118" rx="14" fill="var(--gfx-tint-purple,#eadfff)" stroke="#a78bfa" stroke-width="2"/></g>
+  <text x="380" y="138" text-anchor="middle" font-size="18" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#a78bfa" font-weight="900">LLM</text>
+  <text x="380" y="166" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#a5a5a5">stateless</text>
+  <text x="380" y="184" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#a5a5a5">function call</text>
+
+  <!-- Output card -->
+  <g filter="url(#chat-fn-shadow-v2)"><rect x="502" y="96" width="210" height="118" rx="14" fill="var(--gfx-tint-green,#e6f3d4)" stroke="#aee23a" stroke-width="2"/></g>
+  <text x="607" y="130" text-anchor="middle" font-size="15" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#aee23a" font-weight="800">response</text>
+  <text x="607" y="156" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#a5a5a5">message.content</text>
+  <text x="607" y="174" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#a5a5a5">reasoning_content</text>
+  <text x="607" y="192" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#a5a5a5">finish_reason, usage</text>
+
+  <!-- Arrows, centered on the card midline -->
+  <path d="M 262 155 L 311 155" stroke="#a5a5a5" stroke-width="2.2" fill="none" marker-end="url(#chat-fn-arrow-v2)"/>
+  <path d="M 449 155 L 498 155" stroke="#a5a5a5" stroke-width="2.2" fill="none" marker-end="url(#chat-fn-arrow-v2)"/>
+
+  <!-- Footer annotation -->
+  <rect x="266" y="232" width="228" height="30" rx="15" fill="#161616" stroke="#2a2a2a"/>
+  <text x="380" y="252" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#a5a5a5">no hidden memory between calls</text>
+</svg>
+  </div>
+
+  <h2>A real call, in your browser</h2>
+  <p>The cell below sends one chat-completion to the model. It needs an
+     <a href="https://build.nvidia.com" target="_blank" rel="noopener">NVIDIA API key</a>;
+     the free tier covers every exercise. Enter it once. The course keeps it in your
+     browser and reuses it on every page, so you never paste it twice.</p>
+
+  <div id="key-panel"></div>
+
+  <p>Press Run. One call, no loop, no memory.</p>
+
+  <div id="cell-onecall"></div>
+
+  <h3>What <code>chat()</code> actually sends</h3>
+  <p><code>chat()</code> is a convenience wrapper. Underneath it is one ordinary
+     HTTP <code>POST</code> in the OpenAI-compatible wire format: an endpoint, an
+     <code>Authorization</code> header, and a JSON body with <code>model</code> and
+     <code>messages</code>. The cell below makes that call by hand and shows both
+     sides. Open <em>request</em> to see exactly what leaves your browser, with the
+     key redacted, and <em>raw response</em> to see the full object <code>chat()</code>
+     hands back. Every endpoint in this course speaks this same format, including the
+     OpenClaw agent runtime in Module 3.</p>
+
+  <div id="cell-wire"></div>
+
+  <div class="callout">
+    <strong>What looks like memory is a list your code maintains.</strong>
+    The model itself forgets everything between calls. The illusion of
+    continuity comes from appending each new message to a list and
+    re-sending the whole list on the next call. The next page wraps
+    exactly this function in a loop that does that: it grows the
+    messages array on every turn and uses <code>finish_reason</code>
+    to decide when to stop. That loop and this function are the two
+    pieces an LLM-based agent is built from.
+  </div>
+
+  <h2>Swapping the reasoning step while the loop stays fixed</h2>
+  <p>
+    You now have both halves: the stateless <code>chat()</code> function above, and
+    the reflex agent's perceive-reason-act loop from the top of the page. Before
+    wiring the model into that loop, it helps to see the slot accept brains that
+    are <em>not</em> language models, so the loop's independence from the brain is
+    concrete. A one-dimensional track is too simple to make that point: the single
+    rule "always head for the far wall" already solves it, so swapping brains changes
+    nothing you can see. Two dimensions break that rule. A generated maze has dead ends
+    and forks, and a fixed heading just marches into a wall and stalls. Solving the maze
+    is not what this canvas is for. Watch what holds still instead: the maze, the
+    perception step (<code>validMoves</code>), and the action step (<code>doMove</code>)
+    all stay fixed while you drop a different <em>brain</em> into the slot between them.
+    Run the
+    nodes in order: the first animates a constant "always east" rule on a straight
+    corridor (works) and on the maze (stalls) side by side; then DFS dives and
+    backtracks out of dead ends; BFS fans out in rings before walking the shortest
+    path; A* biases those rings toward the goal.
+    <strong>Only the brain changes.</strong>
+  </p>
+
+  <div id="cell-maze"></div>
+
+  <div class="callout">
+    <strong>The reasoning slot is the only part that varies.</strong>
+    DFS, BFS, and A* are mechanical fillers, dropped into the same slot to prove it
+    accepts any brain that reads state and returns a move. The last node makes that
+    literal: one line chooses the brain, and everything below it (perceive, act, loop)
+    runs the same way whatever you chose. The <code>chat()</code> call you just ran is
+    one more brain for that slot. All it changes is <em>how</em> perception reaches the
+    brain, now as text, and <em>how</em> its answer turns into a move, now an intent
+    signal your code applies. The next section zooms in on those two edges.
+  </div>
+
+  <h2>Putting a language model in the reasoning step to solve the maze</h2>
+  <p>
+    DFS, BFS, and A* read the maze as coordinates and carried their policy in code.
+    Drop a language model into the same slot and the policy moves out of the code and
+    into the <em>prompt</em>: perception renders the maze as an ASCII map, the map
+    becomes the user message, and the model's tool call is the action. The loop, the
+    maze, perception, and action are exactly what the search brains used. The only swap
+    is the brain itself, now a language model, and that swap is what the rest of the
+    course builds on.
+  </p>
+  <p>
+    Run the engine node first; it exports the maze utilities and one shared solver
+    (<code>state.runMaze</code>) that walks corridors automatically and calls the
+    model only at junctions. Then pick a route. The <strong>non-vision</strong> route
+    sends the model only the ASCII map; the <strong>vision</strong> route also attaches
+    a rendered picture of the same maze, so you can test whether a second modality
+    actually helps or whether the text already said everything. Both routes expose the
+    same controls: which <code>model</code> drives the run, the <code>includeText</code> /
+    <code>includeImage</code> / <code>includeHistory</code> switches, the editable system
+    <code>DIRECTIVE</code>, and an <code>ADVANCED</code> toggle for a larger maze. Flip
+    them and watch how modality, context, and the model choice each move the result.
+  </p>
+
+  <div id="cell-llm-maze"></div>
+
+  <div class="callout">
+    <strong>The tool call is the action interface.</strong> The constant rule
+    returned a string; BFS returned a list. <code>choose_direction</code> gives the
+    model the same contract but enforces it through a JSON Schema, so the loop reads a
+    typed value instead of parsing free prose. That single rule, text in and a typed
+    intent out, is what lets a language model take the reasoning slot that BFS and A*
+    held a moment ago.
+  </div>
+
+  <h2>The loop, drawn locally</h2>
+  <p>
+    Set the stateless <code>chat()</code> function inside the loop that re-sends history,
+    and a single turn of any LLM agent in this course takes the same four-stage shape.
+    The stages are worth naming, because
+    every security and reliability question later is really a question about one
+    of these four arrows.
+  </p>
+  <ul>
+    <li><strong>Locally-sample.</strong> Your code reads a slice of the
+        environment: the maze cell and its valid moves, the latest user message,
+        the contents of a file. Not the whole world, just what this turn needs.</li>
+    <li><strong>Locally-perceive.</strong> That slice is rendered into a full
+        engineered context: the system prompt, the running <code>messages[]</code>
+        history, prior tool results, and the slice you just sampled. All of it is plain
+        text. For an LLM agent, perception <em>is</em> context engineering.</li>
+    <li><strong>Locally-act.</strong> The model maps that text to more text: an
+        <em>intent signal</em>, ideally a typed tool call like
+        <code>{ "move": "east" }</code> rather than free prose. That intent is a request
+        to act, not the act itself. Your code reads it and applies one
+        bounded update to the environment (<code>doMove(...)</code>), validating it
+        first.</li>
+    <li><strong>Locally-impact.</strong> The update changes the world. Nothing
+        persisted inside the model; the only durable state is the environment and
+        the context your code will rebuild. The next turn's locally-sample reads
+        the changed world, and the cycle repeats.</li>
+  </ul>
+  <p>
+    The middle is the part to stare at: <strong>locally-perceive → locally-act is a
+    single stateless text-to-text mapping</strong>. A full engineered context goes
+    in; an intent signal comes out. The model only transforms text; perceiving the
+    world and acting on it stay your code's job, on either side of that one mapping.
+    That is why the green
+    box below is the <em>only</em> piece you did not write, and why control over an
+    agent is control over what enters the context and what leaves as intent.
+  </p>
+
+  <div style="display:flex;justify-content:center;margin:1em 0 1.4em">
+<svg class="gfx-dark" viewBox="0 0 920 600" xmlns="http://www.w3.org/2000/svg" role="img"
+  aria-label="The agent loop drawn locally as a cycle. Step one, locally-sample: read a slice of the environment. Step two, locally-perceive: render that slice into a full engineered text context. That context holds the system prompt, the message history, prior tool results, and the sampled slice, all of it as plain text. The context is fed as text into one stateless text-to-text mapping, the LLM, which is the only model in the picture; perceive-to-act is collapsed into that single mapping. Its output is an intent signal, a typed tool call, not the action itself. Step three, locally-act: your code translates the intent into one bounded local environment update. Step four, locally-impact: the update changes the world, and the next local sample reads the changed world. Every box except the model is code you wrote; the model never touches the world, it only emits an intent the loop chooses to honor."
+  preserveAspectRatio="xMidYMid meet"
+  style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:12px;padding:14px;max-width:1000px;margin:1.4rem auto">
+<defs>
+  <marker id="ll-g" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto">
+    <path d="M0,1 L9,5 L0,9 Z" fill="#76b900"/>
+  </marker>
+  <marker id="ll-n" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto">
+    <path d="M0,1 L9,5 L0,9 Z" fill="#7a7a7a"/>
+  </marker>
+  <filter id="ll-sh" x="-20%" y="-20%" width="140%" height="140%">
+    <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.45"/>
+  </filter>
+</defs>
+
+<!-- header -->
+<text x="34" y="34" font-size="11" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" fill="#aee23a" letter-spacing="1.4">THE LOOP, DRAWN LOCALLY</text>
+<text x="34" y="58" font-size="17" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" fill="#f2f2f2" font-weight="700">One turn touches the world once, and the model is just the middle box</text>
+
+<!-- ENVIRONMENT band (top), inset so the left return-lane has room -->
+<rect x="150" y="84" width="710" height="78" rx="12" fill="#10161f" stroke="#1e3a5f" stroke-width="1.6"/>
+<text x="170" y="111" font-size="13" font-family="ui-monospace,monospace" fill="#53c0f0" font-weight="800">ENVIRONMENT · the only durable state</text>
+<text x="170" y="131" font-size="11.5" font-family="system-ui,sans-serif" fill="#9fb6c9">A maze cell, a chat transcript, a folder of files, a sandbox. The agent reads a slice and writes a slice.</text>
+<text x="170" y="149" font-size="11.5" font-family="system-ui,sans-serif" fill="#9fb6c9">Nothing persists in the model between turns. Continuity lives here, in the context your code rebuilds.</text>
+
+<!-- ① locally-sample : ENV down into CONTEXT -->
+<path d="M 258 162 L 258 222" stroke="#7a7a7a" stroke-width="2.2" fill="none" marker-end="url(#ll-n)"/>
+<rect x="182" y="180" width="152" height="22" rx="11" fill="#161616" stroke="#2a2a2a"/>
+<text x="258" y="195" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="#cfcfcf">① locally-sample</text>
+
+<!-- CONTEXT card -->
+<g filter="url(#ll-sh)"><rect x="150" y="228" width="210" height="170" rx="14" fill="#0f1830" stroke="#3b82f6" stroke-width="2"/></g>
+<text x="255" y="256" text-anchor="middle" font-size="14" font-family="ui-monospace,monospace" fill="#7eb8ff" font-weight="800">engineered context</text>
+<text x="255" y="274" text-anchor="middle" font-size="10" font-family="system-ui,sans-serif" fill="#5e6b78">② locally-perceive renders into this</text>
+<text x="255" y="300" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="#9aa6b8">system prompt</text>
+<text x="255" y="319" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="#9aa6b8">history · messages[]</text>
+<text x="255" y="338" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="#9aa6b8">tool results</text>
+<text x="255" y="357" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="#9aa6b8">the sampled slice</text>
+<text x="255" y="382" text-anchor="middle" font-size="10.5" font-family="system-ui,sans-serif" fill="#6f7d8c" font-style="italic">all of it, as plain text</text>
+
+<!-- text into model -->
+<path d="M 360 313 L 416 313" stroke="#76b900" stroke-width="2.4" fill="none" marker-end="url(#ll-g)"/>
+<text x="388" y="303" text-anchor="middle" font-size="10" font-family="ui-monospace,monospace" fill="#aee23a">text →</text>
+
+<!-- MODEL card (center) -->
+<g filter="url(#ll-sh)"><rect x="418" y="228" width="200" height="170" rx="14" fill="#161b22" stroke="#76b900" stroke-width="2.4"/></g>
+<text x="518" y="256" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="#aee23a" letter-spacing="1">REASONING SOCKET</text>
+<text x="518" y="298" text-anchor="middle" font-size="22" font-family="ui-monospace,monospace" fill="#f2f2f2" font-weight="900">LLM</text>
+<text x="518" y="324" text-anchor="middle" font-size="12" font-family="ui-monospace,monospace" fill="#cfcfcf">stateless · text → text</text>
+<text x="518" y="356" text-anchor="middle" font-size="10.5" font-family="system-ui,sans-serif" fill="#8a9a6a" font-style="italic">perceive → act, collapsed</text>
+<text x="518" y="373" text-anchor="middle" font-size="10.5" font-family="system-ui,sans-serif" fill="#8a9a6a" font-style="italic">into one mapping</text>
+
+<!-- text out of model -->
+<path d="M 618 313 L 674 313" stroke="#76b900" stroke-width="2.4" fill="none" marker-end="url(#ll-g)"/>
+<text x="646" y="303" text-anchor="middle" font-size="10" font-family="ui-monospace,monospace" fill="#aee23a">→ text</text>
+
+<!-- INTENT card (right) -->
+<g filter="url(#ll-sh)"><rect x="676" y="228" width="184" height="170" rx="14" fill="#2a1f08" stroke="#d49c2c" stroke-width="2"/></g>
+<text x="768" y="256" text-anchor="middle" font-size="14" font-family="ui-monospace,monospace" fill="#e8c87a" font-weight="800">intent signal</text>
+<text x="768" y="282" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="#bfae8a">a typed tool call</text>
+<text x="768" y="306" text-anchor="middle" font-size="12" font-family="ui-monospace,monospace" fill="#e8c87a">{ "move":"east" }</text>
+<text x="768" y="338" text-anchor="middle" font-size="10.5" font-family="system-ui,sans-serif" fill="#a08e63">not the action yet.</text>
+<text x="768" y="355" text-anchor="middle" font-size="10.5" font-family="system-ui,sans-serif" fill="#a08e63">a request to act, that</text>
+<text x="768" y="372" text-anchor="middle" font-size="10.5" font-family="system-ui,sans-serif" fill="#a08e63">your code reads next</text>
+
+<!-- ③ locally-act : INTENT down, left along bottom lane to UPDATE -->
+<path d="M 768 398 L 768 456 L 552 456" stroke="#7a7a7a" stroke-width="2.2" fill="none" marker-end="url(#ll-n)"/>
+<rect x="660" y="434" width="148" height="22" rx="11" fill="#161616" stroke="#2a2a2a"/>
+<text x="734" y="449" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="#cfcfcf">③ locally-act</text>
+
+<!-- ENV UPDATE card (bottom center) -->
+<g filter="url(#ll-sh)"><rect x="266" y="424" width="286" height="92" rx="14" fill="#102110" stroke="#76b900" stroke-width="2"/></g>
+<text x="409" y="453" text-anchor="middle" font-size="14" font-family="ui-monospace,monospace" fill="#aee23a" font-weight="800">local environment update</text>
+<text x="409" y="477" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="#9fb89f">doMove(grid, pos, intent.move)</text>
+<text x="409" y="499" text-anchor="middle" font-size="10.5" font-family="system-ui,sans-serif" fill="#7f9a7f" font-style="italic">your code applies the intent, validated and bounded</text>
+
+<!-- ④ locally-impact : UPDATE left, up the dedicated left lane (x=90) to ENV band -->
+<path d="M 266 470 L 90 470 L 90 123 L 148 123" stroke="#76b900" stroke-width="2.4" fill="none" marker-end="url(#ll-g)"/>
+<g transform="rotate(-90 90 300)">
+  <rect x="16" y="289" width="148" height="22" rx="11" fill="#161616" stroke="#2a2a2a"/>
+  <text x="90" y="304" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="#aee23a">④ locally-impact</text>
+</g>
+
+<!-- footer -->
+<text x="470" y="556" text-anchor="middle" font-size="13" font-family="system-ui,sans-serif" fill="#9a9a9a" font-style="italic">sample → perceive → (text → text) → act → impact</text>
+<text x="470" y="578" text-anchor="middle" font-size="12" font-family="system-ui,sans-serif" fill="#7a7a7a">Every box but the green LLM is code you wrote. The model never touches the world; it emits an intent your loop chooses to honor.</text>
+</svg>
+  </div>
+
+  <div class="callout">
+    <strong>Why "locally".</strong> Each arrow is local in space and in time. The
+    sample is a slice, not the whole environment; the impact is one bounded update,
+    not arbitrary power; and the text-to-text mapping in the middle carries no state
+    of its own across turns. An agent that looks like it is "doing a lot" is just
+    this small local loop, run again and again, with the environment carrying
+    everything forward between turns. Module 1b builds exactly this cycle in code
+    and lets you watch the context grow on every pass.
+  </div>
+
+  <h2>Before you continue</h2>
+  <p>Each question is answerable by editing a knob in the LLM-maze cell above and rerunning it.</p>
+  <ol>
+    <li><strong>Take the text away from the multimodal model.</strong>
+        In the vision route, set <code>includeText:false</code> and leave
+        <code>includeImage:true</code>, then rerun. The omni model now sees only the
+        rendered picture of the maze. Does it still reach the goal, and does it take
+        more decisions than the text-plus-image run did?</li>
+    <li><strong>Remove the strategy hint from the DIRECTIVE.</strong>
+        Delete the line that says to prefer unvisited branches over visited cells, then
+        rerun the non-vision route. Count the decisions against the run with the hint in
+        place. How much of the model's competence came from that one sentence?</li>
+    <li><strong>Swap the brain in the slot.</strong>
+        Change <code>model:"omni"</code> to <code>model:"super"</code> in the non-vision
+        route and rerun. The loop, the maze, perception, and action do not change; only
+        the reasoning socket does. Does the larger text model reach the goal in fewer
+        decisions?</li>
+  </ol>
+
+  <h2>Try it · the model as a pure function</h2>
+  <p>
+    The smallest artifact in the course: one <code>chat()</code> call per message,
+    straight to the model endpoint, with no tools and no memory. Each turn is
+    independent, which is exactly the stateless function the loop wraps. Type
+    something and watch the reply stream back.
+  </p>
+  <div id="loop-artifact"></div>
+  <script type="module">
+    import { mountChatUI, chatStream } from "./_shared.js";
+    mountChatUI("#loop-artifact", {
+      greeting: "I'm a single, stateless model call. No loop, no tools, no memory yet. Ask me anything (I won't remember your last message).",
+      examples: ["What is the capital of France?", "Explain the agent loop in two sentences", "Write a haiku about an agent"],
+      respond: async (text, ctx) => {
+        // one call: messages in, one message out. No history is passed, so the
+        // model behaves as a pure function, which is the exact piece the agent loop wraps.
+        // chatStream streams the reasoning trace and reports token usage too.
+        const s = await chatStream({ messages: [{ role: "user", content: text }], max_tokens: 1024, signal: ctx.signal },
+          (t) => ctx.view.token(t), { onReasoning: (r) => ctx.view.reasoning(r) });
+        if (s.usage) ctx.view.usage({ input: s.usage.prompt_tokens, output: s.usage.completion_tokens, model: s.model });
+      },
+    });
+  </script>
+
+  <div class="foot-nav">
+    <a href="index.html">← Setup</a>
+    <a class="next" href="01b-react.html">Module 1b: The ReAct Loop →</a>
+  </div>
+</main>
+
+<script type="module">
+import { buildNav, updateKeyPill, mountKeyPanel, mountJourneyMap, mountCanvasFlow, mountRunCell } from "./_shared.js";
+document.getElementById("nav").innerHTML = buildNav("01a-loop.html");
+const pill = document.getElementById("key-status");
+updateKeyPill(pill);
+mountJourneyMap("#journey-map", "1a");
+mountKeyPanel(document.getElementById("key-panel"), { onSave: () => updateKeyPill(pill), onClear: () => updateKeyPill(pill) });
+hljs.highlightAll();
+
+// ── Canvas 1: a reflex agent with zero LLMs ──────────────────────────────────
+mountCanvasFlow("#cell-reflex", {
+  label: "A reflex agent on a 1-D track · no LLM, just an if-statement",
+  intro: "Setup builds the environment and the agent's intrinsics, tick runs one perceive-reason-act cycle, and run repeats that tick 25 times so you can watch the position number bounce between the walls.",
+  edges: [
+    { from: "setup", to: "tick" },
+    { from: "tick",  to: "run"  },
+  ],
+  nodes: [
+    {
+      id: "setup", icon: "🌍", title: "Environment + agent intrinsics", x: 0, y: 0,
+      summary: "Initialises the environment (a 1-D track bounded by walls at positions 0 and 9) and the agent's intrinsic state (its starting position and direction). Separating environment state from agent state makes it easy to swap the reasoning rule without touching the world model.",
+      code: `state.env = {
+  leftWall:  0,
+  rightWall: 9,
+  position:  3,
+};
+state.agent = {
+  direction: +1,  // +1 = right, -1 = left
+};
+helpers.log("env:", JSON.stringify(state.env));
+helpers.log("agent intrinsics:", JSON.stringify(state.agent));
+return { env: state.env, agent: state.agent };
+`,
+    },
+    {
+      id: "tick", icon: "🔁", title: "One perceive-reason-act cycle", x: 0, y: 1,
+      summary: "Reads the environment, decides which way to move, then updates the environment. The entire reasoning step is a single if statement, kept deliberately minimal so the structure of the loop stays clear without a model in the way.",
+      code: `// PERCEIVE
+const perception = {
+  position:    state.env.position,
+  atLeftWall:  state.env.position <= state.env.leftWall,
+  atRightWall: state.env.position >= state.env.rightWall,
+};
+// REASON
+if (perception.atLeftWall)  state.agent.direction = +1;
+if (perception.atRightWall) state.agent.direction = -1;
+const action = { move: state.agent.direction };
+// ACT
+state.env.position += action.move;
+helpers.log("perception:", JSON.stringify(perception));
+helpers.log("action:", JSON.stringify(action));
+helpers.log("new position:", state.env.position);
+return { perception, action, newPosition: state.env.position };
+`,
+    },
+    {
+      id: "run", icon: "▶️", title: "Run the loop for 25 ticks", x: 0, y: 2,
+      summary: "Calls the same perceive-reason-act cycle 25 times in sequence. Watching the position trace in the output makes the bouncing pattern concrete and confirms that the loop, not the reasoning rule, is what drives the behaviour.",
+      code: `const trace = [];
+for (let t = 0; t < 25; t++) {
+  const p = {
+    position:    state.env.position,
+    atLeftWall:  state.env.position <= state.env.leftWall,
+    atRightWall: state.env.position >= state.env.rightWall,
+  };
+  if (p.atLeftWall)  state.agent.direction = +1;
+  if (p.atRightWall) state.agent.direction = -1;
+  state.env.position += state.agent.direction;
+  trace.push(state.env.position);
+}
+helpers.log("position trace:", trace.join(" "));
+return { ticks: trace.length, finalPosition: state.env.position, trace };
+`,
+    },
+  ],
+});
+
+// ── Canvas 1.5: maze + four swappable reasoners (2-D version of the swap above) ─
+// ── Module 1a Part 4: maze + four swappable reasoners ────────────────────────
+mountCanvasFlow("#cell-maze", {
+  label: "The agent loop with a swappable reasoning step",
+  intro: "Run the nodes in order so that node 1 builds the maze and the shared utilities every later node reads from state, with the first three brains being hand-written search routines that warm up the loop and the last brain being the language model this course is headed toward.",
+  edges: [
+    { from: "maze", to: "bfs"   },
+    { from: "maze", to: "dfs"   },
+    { from: "bfs",  to: "astar" },
+    { from: "astar", to: "swap" },
+  ],
+  nodes: [
+    {
+      id: "maze", icon: "🌐", title: "Maze + constant reasoner", x: 0, y: 0,
+      summary: "Generates the maze, defines all utilities, animates a constant 'always east' rule on both the corridor (works) and the random maze (stalls) at the same time.",
+      code: `// ── All maze utilities live here; stored in state for later nodes ──────────────
+
+function lcg(seed) {
+  let s = ((seed | 0) >>> 0) || 42;
+  return () => { s = (Math.imul(1664525, s) + 1013904223) >>> 0; return s / 4294967296; };
+}
+
+function generateMaze(cols, rows, seed, loopFactor = 0.15) {
+  const rng = lcg(seed), W = cols * 2 + 1, H = rows * 2 + 1;
+  const g = Array.from({ length: H }, () => Array(W).fill('#'));
+  function sh(a) { for (let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a; }
+  function carve(cx, cy) {
+    for (const [dx, dy] of sh([[0,-2],[0,2],[-2,0],[2,0]])) {
+      const [nx, ny] = [cx+dx, cy+dy];
+      if (nx>=1 && nx<W-1 && ny>=1 && ny<H-1 && g[ny][nx]==='#') {
+        g[cy+dy/2][cx+dx/2] = '.'; g[ny][nx] = '.'; carve(nx, ny);
+      }
+    }
+  }
+  g[1][1] = '.'; carve(1, 1); g[1][1] = 'S'; g[H-2][W-2] = 'G';
+  // Open some walls between already-open cells to introduce loops.
+  const rng2 = lcg((seed ^ 0x5A5A5A5A) >>> 0);
+  for (let y = 1; y < H-1; y++) {
+    for (let x = 1; x < W-1; x++) {
+      if (g[y][x] !== '#' || rng2() > loopFactor) continue;
+      const horiz = (y%2===0) && (x%2===1) && g[y][x-1]!=='#' && g[y][x+1]!=='#';
+      const vert  = (x%2===0) && (y%2===1) && g[y-1][x]!=='#' && g[y+1][x]!=='#';
+      if (horiz || vert) g[y][x] = '.';
+    }
+  }
+  return g.map(r => r.join(''));
+}
+
+const DIRS = { north:[0,-1], south:[0,1], east:[1,0], west:[-1,0] };
+
+function findCell(grid, ch) {
+  for (let y=0; y<grid.length; y++)
+    for (let x=0; x<grid[y].length; x++)
+      if (grid[y][x] === ch) return [x, y];
+  return null;
+}
+
+function validMoves(grid, [x, y]) {
+  return Object.entries(DIRS)
+    .filter(([, [dx,dy]]) => {
+      const [nx, ny] = [x+dx, y+dy];
+      return ny>=0 && ny<grid.length && nx>=0 && nx<grid[ny].length && grid[ny][nx]!=='#';
+    })
+    .map(([name]) => name);
+}
+
+function doMove(grid, [x, y], dir) {
+  const [dx, dy] = DIRS[dir] || [0,0], [nx, ny] = [x+dx, y+dy];
+  if (ny<0||ny>=grid.length||nx<0||nx>=grid[ny].length||grid[ny][nx]==='#')
+    return { pos:[x,y], ok:false, done:false };
+  return { pos:[nx,ny], ok:true, done: grid[ny][nx]==='G' };
+}
+
+function bfsPath(grid, start, goal) {
+  const [gx,gy]=goal, queue=[[start,[]]], seen=new Set([\`\${start[0]},\${start[1]}\`]);
+  while (queue.length) {
+    const [pos, path] = queue.shift(), [x,y] = pos;
+    if (x===gx && y===gy) return path;
+    for (const dir of validMoves(grid, pos)) {
+      const [dx,dy]=DIRS[dir], npos=[x+dx,y+dy], k=\`\${npos[0]},\${npos[1]}\`;
+      if (!seen.has(k)) { seen.add(k); queue.push([npos,[...path,dir]]); }
+    }
+  }
+  return [];
+}
+
+function astarPath(grid, start, goal) {
+  const [gx,gy]=goal, h=([x,y])=>Math.abs(x-gx)+Math.abs(y-gy);
+  const heap=[[h(start),0,start,[]]], seen={};
+  while (heap.length) {
+    heap.sort((a,b)=>a[0]-b[0]);
+    const [,g,pos,path]=heap.shift(), k=\`\${pos[0]},\${pos[1]}\`;
+    if (seen[k]) continue; seen[k]=true;
+    if (pos[0]===gx && pos[1]===gy) return path;
+    for (const dir of validMoves(grid,pos)) {
+      const [dx,dy]=DIRS[dir], npos=[pos[0]+dx,pos[1]+dy], nk=\`\${npos[0]},\${npos[1]}\`;
+      if (!seen[nk]) { const ng=g+1; heap.push([ng+h(npos),ng,npos,[...path,dir]]); }
+    }
+  }
+  return [];
+}
+
+function runLoop(grid, start, goal, getMove, maxSteps) {
+  let pos=[...start]; const visited=[[...pos]];
+  for (let i=0; i<maxSteps; i++) {
+    const moves=validMoves(grid,pos), dir=getMove(i,pos,moves);
+    if (!dir) break;
+    const r=doMove(grid,pos,dir); pos=r.pos;
+    if (r.ok) visited.push([...pos]);
+    if (r.done) return {pos, visited, steps:i+1, won:true};
+  }
+  return {pos, visited, steps:maxSteps, won:false};
+}
+
+function renderMaze(grid, pos, goal, visited, title, explored) {
+  const [ax,ay]=pos, [gx,gy]=goal, W=Math.max(...grid.map(r=>r.length));
+  const vis=new Set(visited.map(([x,y])=>\`\${x},\${y}\`));
+  const exp=explored||new Set();
+  let cells='';
+  for (let y=0; y<grid.length; y++) for (let x=0; x<grid[y].length; x++) {
+    let s='',i='';
+    if (x===ax&&y===ay)              {s='background:#76b900;color:#000;font-weight:bold';i='◉';}
+    else if (x===gx&&y===gy)         {s='background:#f0a500;color:#000;font-weight:bold';i='★';}
+    else if (grid[y][x]==='#')       {s='background:#0d1117';}
+    else if (vis.has(\`\${x},\${y}\`))   {s='background:#1e3a5f;color:#53c0f0';i='·';}
+    else if (exp.has(\`\${x},\${y}\`))   {s='background:#0d2030';}
+    else                             {s='background:#161b22';}
+    cells+=\`<div class="mc" style="\${s}">\${i}</div>\`;
+  }
+  const hdr=title?\`<div style="font:11px/1.4 ui-monospace,monospace;color:#888;margin-bottom:5px">\${title}</div>\`:'';
+  return \`\${hdr}<style>.mgrid{display:grid;gap:2px;background:#0a0a0f;padding:8px;border-radius:8px;width:fit-content;margin:4px 0}.mc{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:3px;font:13px/1 ui-monospace,monospace}</style><div class="mgrid" style="grid-template-columns:repeat(\${W},26px)">\${cells}</div>\`;
+}
+
+function bfsExplore(grid, start, goal) {
+  const [gx,gy]=goal;
+  const queue=[[start,[]]], seen=new Set([\`\${start[0]},\${start[1]}\`]);
+  const exploreOrder=[start];
+  while (queue.length) {
+    const [pos, path]=queue.shift(), [x,y]=pos;
+    if (x===gx&&y===gy) return {path, exploreOrder};
+    for (const dir of validMoves(grid,pos)) {
+      const [dx,dy]=DIRS[dir], npos=[x+dx,y+dy], k=\`\${npos[0]},\${npos[1]}\`;
+      if (!seen.has(k)) { seen.add(k); exploreOrder.push(npos); queue.push([npos,[...path,dir]]); }
+    }
+  }
+  return {path:[], exploreOrder};
+}
+
+// ── Store shared state ──────────────────────────────────────────────────────
+state.grid  = generateMaze(9, 7, 42);
+state.start = findCell(state.grid, 'S');
+state.goal  = findCell(state.grid, 'G');
+state.fn    = { validMoves, doMove, bfsPath, bfsExplore, astarPath, runLoop, renderMaze, findCell };
+
+// ── Side-by-side animation: corridor and random maze run together ────────────
+const corrId = 'c' + Math.random().toString(36).slice(2, 7);
+const randId = 'r' + Math.random().toString(36).slice(2, 7);
+helpers.log.html(\`<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
+  <div id="\${corrId}" style="flex:0 0 auto"></div>
+  <div id="\${randId}" style="flex:0 0 auto"></div>
+</div>\`);
+
+async function animRun(grid, start, goal, getDir, maxSteps, elId, msPerStep) {
+  let pos = [...start];
+  const visited = [[...pos]];
+  let steps = 0, won = false;
+  for (let i = 0; i < maxSteps; i++) {
+    const el = document.getElementById(elId);
+    if (el) el.innerHTML = renderMaze(grid, pos, goal, visited, \`step \${i + 1}\`);
+    await new Promise(r => setTimeout(r, msPerStep));
+    const dir = getDir(i, pos, validMoves(grid, pos));
+    const rv = doMove(grid, pos, dir);
+    pos = rv.pos; steps++;
+    if (rv.ok) visited.push([...pos]);
+    if (rv.done) { won = true; break; }
+  }
+  const el = document.getElementById(elId);
+  if (el) el.innerHTML = renderMaze(grid, pos, goal, visited, \`\${steps} steps · solved: \${won}\`);
+  return { pos, visited, steps, won };
+}
+
+const CORRIDOR = ["###################","#S...............G#","###################"];
+// Run both at once so the student sees the contrast in real time
+const [corrR, randR] = await Promise.all([
+  animRun(CORRIDOR, findCell(CORRIDOR,'S'), findCell(CORRIDOR,'G'), () => 'east', 40, corrId, 55),
+  animRun(state.grid, state.start, state.goal, () => 'east', 40, randId, 55),
+]);
+
+return { corridorSolved: corrR.won, randomSolved: randR.won };
+`,
+    },
+    {
+      id: "dfs", icon: "🌀", title: "DFS reasoner", x: 1, y: 0,
+      summary: "DFS dives deep and backtracks, and because its step sequence includes the reverse moves, the animation shows the agent entering dead ends and walking back out.",
+      code: `const { fn, grid, start, goal } = state;
+const LDIR = {north:[0,-1],south:[0,1],east:[1,0],west:[-1,0]};
+const REV  = {north:'south',south:'north',east:'west',west:'east'};
+const steps = [];
+const seen  = new Set([\`\${start[0]},\${start[1]}\`]);
+
+function dfs(pos) {
+  const [x, y] = pos;
+  if (x === goal[0] && y === goal[1]) return true;
+  for (const dir of fn.validMoves(grid, pos)) {
+    const [dx, dy] = LDIR[dir];
+    const npos = [x+dx, y+dy];
+    const k = \`\${npos[0]},\${npos[1]}\`;
+    if (!seen.has(k)) {
+      seen.add(k);
+      steps.push(dir);
+      if (dfs(npos)) return true;
+      steps.push(REV[dir]);
+    }
+  }
+  return false;
+}
+dfs([...start]);
+
+let pos = [...start], visited = [[...pos]], stepCount = 0;
+const UID = 'd' + Math.random().toString(36).slice(2, 7);
+helpers.log.html(\`<div id="\${UID}" style="margin:6px 0"></div>\`);
+
+for (const dir of steps) {
+  const el = document.getElementById(UID);
+  if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, visited, \`DFS · step \${stepCount + 1}\`);
+  await new Promise(r => setTimeout(r, 55));
+  const rv = fn.doMove(grid, pos, dir);
+  pos = rv.pos; stepCount++;
+  if (rv.ok) visited.push([...pos]);
+  if (rv.done) break;
+}
+const elF = document.getElementById(UID);
+if (elF) elF.innerHTML = fn.renderMaze(grid, pos, goal, visited,
+  \`DFS · \${stepCount} total steps (incl. backtracks)\`);
+return { stepsTotal: stepCount };
+`,
+    },
+    {
+      id: "bfs", icon: "🔍", title: "BFS reasoner", x: 0, y: 1,
+      summary: "BFS first expands its frontier so you watch every cell get examined in distance order, then the agent walks the shortest path it found.",
+      code: `const { fn, grid, start, goal } = state;
+const { path, exploreOrder } = fn.bfsExplore(grid, start, goal);
+
+const UID = 'b' + Math.random().toString(36).slice(2, 7);
+helpers.log.html(\`<div id="\${UID}" style="margin:6px 0"></div>\`);
+
+// Phase 1: animate frontier expanding
+const explored = new Set();
+let pos = [...start];
+for (const cell of exploreOrder) {
+  explored.add(\`\${cell[0]},\${cell[1]}\`);
+  const el = document.getElementById(UID);
+  if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, [],
+    \`BFS searching · \${explored.size} of \${exploreOrder.length} cells\`, explored);
+  await new Promise(r => setTimeout(r, 32));
+}
+
+// Phase 2: walk the path
+let visited = [[...pos]], steps = 0;
+for (const dir of path) {
+  const el = document.getElementById(UID);
+  if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, visited,
+    \`BFS walking · step \${steps + 1} of \${path.length}\`, explored);
+  await new Promise(r => setTimeout(r, 90));
+  const rv = fn.doMove(grid, pos, dir);
+  pos = rv.pos; steps++;
+  if (rv.ok) visited.push([...pos]);
+  if (rv.done) break;
+}
+const elF = document.getElementById(UID);
+if (elF) elF.innerHTML = fn.renderMaze(grid, pos, goal, visited,
+  \`BFS · \${steps} steps path · \${exploreOrder.length} cells searched\`, explored);
+state.bfsSteps = steps;
+return { steps, examined: exploreOrder.length };
+`,
+    },
+    {
+      id: "astar", icon: "⭐", title: "A* reasoner", x: 1, y: 1,
+      summary: "A* uses a Manhattan heuristic to find the same path length as BFS on this maze while examining fewer cells.",
+      code: `const { fn, grid, start, goal } = state;
+const path = fn.astarPath(grid, start, goal);
+let pos = [...start], visited = [[...pos]], steps = 0;
+
+const UID = 'a' + Math.random().toString(36).slice(2, 7);
+helpers.log.html(\`<div id="\${UID}" style="margin:6px 0"></div>\`);
+
+for (const dir of path) {
+  const el = document.getElementById(UID);
+  if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, visited,
+    \`A* · step \${steps + 1} of \${path.length}\`);
+  await new Promise(r => setTimeout(r, 85));
+  const rv = fn.doMove(grid, pos, dir);
+  pos = rv.pos; steps++;
+  if (rv.ok) visited.push([...pos]);
+  if (rv.done) break;
+}
+const elF = document.getElementById(UID);
+if (elF) elF.innerHTML = fn.renderMaze(grid, pos, goal, visited,
+  \`A* · \${steps} steps · Manhattan heuristic · same path as BFS: \${steps === state.bfsSteps}\`);
+return { steps, won: true };
+`,
+    },
+    {
+      id: "swap", icon: "🔄", title: "Challenge · swap the brain", x: 0, y: 2,
+      summary: "One line picks the brain while everything below it stays the fixed perceive-to-act loop, so changing fn.bfsPath to fn.astarPath and re-running shows how little moves when only the reasoning slot varies.",
+      code: `const { fn, grid, start, goal } = state;
+
+// ── THE BRAIN. The only swappable part of the whole agent. ───────────────────
+// CHALLENGE: change fn.bfsPath to fn.astarPath on the next line and re-run.
+// Then look at every line below it: not one of them changes. Perceive, act,
+// and the loop are fixed; only the reasoning slot is pluggable.
+const plan = fn.bfsPath(grid, start, goal);   // ← swap to fn.astarPath(grid, start, goal)
+
+// ── FIXED LOOP. Identical for BFS, A*, the constant rule, and the LLM. ───────
+let pos = [...start], visited = [[...pos]], steps = 0;
+const UID = 'sw' + Math.random().toString(36).slice(2, 7);
+helpers.log.html(\`<div id="\${UID}" style="margin:6px 0"></div>\`);
+for (const dir of plan) {
+  const el = document.getElementById(UID);
+  if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, visited, \`your brain · step \${steps + 1} of \${plan.length}\`);
+  await new Promise(r => setTimeout(r, 85));
+  const rv = fn.doMove(grid, pos, dir);        // ACT
+  pos = rv.pos; steps++;
+  if (rv.ok) visited.push([...pos]);
+  if (rv.done) break;
+}
+const elF = document.getElementById(UID);
+if (elF) elF.innerHTML = fn.renderMaze(grid, pos, goal, visited,
+  \`solved in \${steps} steps; the loop never changed, only the brain did\`);
+return { steps, lesson: "only the plan line changed; perceive / act / loop are fixed" };
+`,
+    },
+  ],
+});
+
+
+// ── Canvas 1.6: LLM / VLM planner · the model as a brain in the same maze slot ─
+mountCanvasFlow("#cell-llm-maze", {
+  label: "LLM planner · model as the reasoning socket",
+  intro: "Run the engine node first; it exports the maze utilities and one shared solver (state.runMaze) to state. Then pick a route: the non-vision node feeds the model only the ASCII map; the vision node also attaches a rendered picture of the maze. Each route exposes the same runMaze knobs: model (a key from state.MAZE_MODELS), includeText / includeImage / includeHistory, promptFormat, toolSpecInSystem (which restates the exact tool output format in the system prompt), and an ADVANCED toggle for a bigger maze. Same engine, so you can compare modalities, context, and models head-to-head.",
+  nodes: [
+    {
+      id: "helpers", icon: "⚙️", title: "Maze engine",
+      x: 0, y: 0,
+      summary: "Running this node once exports the generator, move executor, ASCII renderer, PNG renderer, DECISION_TOOL, SYS, and the shared solver state.runMaze to state for the route nodes to use.",
+      code: `// ── All maze utilities live here, stored in state so the LLM node can use them ──
+
+function lcg(seed) {
+  let s = ((seed | 0) >>> 0) || 42;
+  return () => { s = (Math.imul(1664525, s) + 1013904223) >>> 0; return s / 4294967296; };
+}
+
+function generateMaze(cols, rows, seed, loopFactor = 0.15) {
+  const rng = lcg(seed), W = cols * 2 + 1, H = rows * 2 + 1;
+  const g = Array.from({ length: H }, () => Array(W).fill('#'));
+  function sh(a) { for (let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a; }
+  function carve(cx, cy) {
+    for (const [dx, dy] of sh([[0,-2],[0,2],[-2,0],[2,0]])) {
+      const [nx, ny] = [cx+dx, cy+dy];
+      if (nx>=1 && nx<W-1 && ny>=1 && ny<H-1 && g[ny][nx]==='#') {
+        g[cy+dy/2][cx+dx/2] = '.'; g[ny][nx] = '.'; carve(nx, ny);
+      }
+    }
+  }
+  g[1][1] = '.'; carve(1, 1); g[1][1] = 'S'; g[H-2][W-2] = 'G';
+  const rng2 = lcg((seed ^ 0x5A5A5A5A) >>> 0);
+  for (let y = 1; y < H-1; y++) {
+    for (let x = 1; x < W-1; x++) {
+      if (g[y][x] !== '#' || rng2() > loopFactor) continue;
+      const horiz = (y%2===0) && (x%2===1) && g[y][x-1]!=='#' && g[y][x+1]!=='#';
+      const vert  = (x%2===0) && (y%2===1) && g[y-1][x]!=='#' && g[y+1][x]!=='#';
+      if (horiz || vert) g[y][x] = '.';
+    }
+  }
+  return g.map(r => r.join(''));
+}
+
+const DIRS = { north:[0,-1], south:[0,1], east:[1,0], west:[-1,0] };
+
+function findCell(grid, ch) {
+  for (let y=0; y<grid.length; y++)
+    for (let x=0; x<grid[y].length; x++)
+      if (grid[y][x] === ch) return [x, y];
+  return null;
+}
+
+function doMove(grid, [x, y], dir) {
+  const [dx, dy] = DIRS[dir] || [0,0], [nx, ny] = [x+dx, y+dy];
+  if (ny<0||ny>=grid.length||nx<0||nx>=grid[ny].length||grid[ny][nx]==='#')
+    return { pos:[x,y], ok:false, done:false };
+  return { pos:[nx,ny], ok:true, done: grid[ny][nx]==='G' };
+}
+
+function validMoves(grid, [x, y]) {
+  return Object.entries(DIRS)
+    .filter(([, [dx,dy]]) => {
+      const [nx, ny] = [x+dx, y+dy];
+      return ny>=0 && ny<grid.length && nx>=0 && nx<grid[ny].length && grid[ny][nx]!=='#';
+    })
+    .map(([name]) => name);
+}
+
+// toAscii: marks visited path as ·, unexplored adjacent open cells as -, current as @.
+function toAscii(grid, pos, goal, visited) {
+  const [ax, ay] = pos, [gx, gy] = goal;
+  const vis = new Set(visited.map(([x, y]) => \`\${x},\${y}\`));
+  const fork = new Set();
+  for (const [vx, vy] of visited) {
+    for (const [dx, dy] of Object.values(DIRS)) {
+      const [nx, ny] = [vx+dx, vy+dy];
+      if (!vis.has(\`\${nx},\${ny}\`) && ny>=0 && ny<grid.length &&
+          nx>=0 && nx<grid[ny].length && grid[ny][nx] !== '#')
+        fork.add(\`\${nx},\${ny}\`);
+    }
+  }
+  return grid.map((row, y) =>
+    [...row].map((cell, x) =>
+      x===ax && y===ay ? '@' :
+      x===gx && y===gy ? 'G' :
+      vis.has(\`\${x},\${y}\`)  ? '\xb7' :
+      fork.has(\`\${x},\${y}\`) ? '-' : cell
+    ).join('')
+  ).join('\\n');
+}
+
+function renderMaze(grid, pos, goal, visited, title) {
+  const [ax, ay] = pos, [gx, gy] = goal, W = Math.max(...grid.map(r => r.length));
+  const vis  = new Set(visited.map(([x, y]) => \`\${x},\${y}\`));
+  const fork = new Set();
+  for (const [vx, vy] of visited) {
+    for (const [dx, dy] of Object.values(DIRS)) {
+      const [nx, ny] = [vx+dx, vy+dy];
+      if (!vis.has(\`\${nx},\${ny}\`) && ny>=0 && ny<grid.length &&
+          nx>=0 && nx<grid[ny].length && grid[ny][nx] !== '#')
+        fork.add(\`\${nx},\${ny}\`);
+    }
+  }
+  let cells = '';
+  for (let y=0; y<grid.length; y++) for (let x=0; x<grid[y].length; x++) {
+    let s='', i='';
+    if      (x===ax && y===ay)           { s='background:#76b900;color:#000;font-weight:bold'; i='&#9689;'; }
+    else if (x===gx && y===gy)           { s='background:#f0a500;color:#000;font-weight:bold'; i='&#9733;'; }
+    else if (grid[y][x]==='#')           { s='background:#0d1117'; }
+    else if (vis.has(\`\${x},\${y}\`))    { s='background:#1e3a5f;color:#53c0f0'; i='\xb7'; }
+    else if (fork.has(\`\${x},\${y}\`))   { s='background:#1e2a1e;color:#4a7a4a'; i='-'; }
+    else                                 { s='background:#161b22'; }
+    cells += \`<div class="mc" style="\${s}">\${i}</div>\`;
+  }
+  const hdr = title ? \`<div style="font:11px/1.4 ui-monospace,monospace;color:#888;margin-bottom:5px">\${title}</div>\` : '';
+  return \`\${hdr}<style>.mgrid{display:grid;gap:2px;background:#0a0a0f;padding:8px;border-radius:8px;width:fit-content;margin:4px 0}.mc{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:3px;font:13px/1 ui-monospace,monospace}</style><div class="mgrid" style="grid-template-columns:repeat(\${W},26px)">\${cells}</div>\`;
+}
+
+// The model sees exactly this tool at every junction, one call per decision point.
+state.DECISION_TOOL = {
+  type: "function",
+  function: {
+    name: "choose_direction",
+    description: "You are at a junction. Return one or more NSEW letters to move. The system executes them one by one, stopping at walls or the goal. Corridors are walked automatically after your moves.",
+    parameters: {
+      type: "object",
+      properties: {
+        direction: {
+          type: "string",
+          description: "NSEW sequence. Single: 'E'. Multi: 'EEN'. Words also accepted: 'east', 'east east north'.",
+        },
+      },
+      required: ["direction"],
+    },
+  },
+};
+
+// SYS_DIRECTIVE is the editable "core" of the system message. The route nodes
+// surface it as a DIRECTIVE constant a student can rewrite. SYS_REFERENCE is the
+// fixed mechanical key. runMaze sends (directive + reference + tool spec).
+state.SYS_DIRECTIVE = [
+  "You are navigating a maze. You are called only at JUNCTIONS, the places where 2+ forward paths branch.",
+  "Corridors (one forward option) are walked for you automatically, so between calls your position can JUMP several cells. The exact list of coordinates you have already travelled is given to you every turn. Use it to connect your moves to where you ended up.",
+  "Each call: study the maze, pick ONE direction, and call choose_direction().",
+  "STRATEGY: prefer unvisited branches (-) over visited cells (·); head toward G when you can see it.",
+].join("\\n");
+
+state.SYS_REFERENCE = [
+  "MAP KEY:",
+  "  #  wall   .  passage   @  you   ·  visited   -  unvisited branch   G  goal",
+  "  col=X increases → (east)   row=Y increases ↓ (south)   top-left=(0,0)",
+  "DIRECTIONS: N=up(-Y)  S=down(+Y)  E=right(+X)  W=left(-X)",
+].join("\\n");
+
+state.SYS = state.SYS_DIRECTIVE + "\\n\\n" + state.SYS_REFERENCE;
+
+// Valid model choices for this tool-calling maze task. Every entry supports tool
+// calls; the entries that read images are marked "reads images" below.
+// Select one in runMaze by key, e.g. state.runMaze(helpers, state, { model: "vision" }).
+state.MAZE_MODELS = {
+  omni:       { id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", maxTok: 2048, temp: 0.6,  // multimodal reasoning model (reads images)
+                extra_body: { reasoning_budget: 1024, chat_template_kwargs: { enable_thinking: true } } },
+  reasoning:  { id: "nvidia/nemotron-3-nano-30b-a3b", maxTok: 1200, temp: 0.6,        // text reasoning model
+                extra_body: { reasoning_budget: 800, chat_template_kwargs: { enable_thinking: true } } },
+  vision:     { id: "nvidia/nemotron-nano-12b-v2-vl", maxTok: 512, temp: 0.3 },      // reads images
+  qwenVision: { id: "qwen/qwen3.5-122b-a10b", maxTok: 1024, temp: 0.4 },             // reads images + tools
+  super:      { id: "nvidia/nemotron-3-super-120b-a12b", maxTok: 1024, temp: 0.4 },  // strong tool-caller
+  gptOss:     { id: "openai/gpt-oss-120b", maxTok: 1500, temp: 0.5 }                 // reasoning + tools
+};
+
+state.generateMaze = generateMaze;
+state.findCell     = findCell;
+state.validMoves   = validMoves;
+state.doMove       = doMove;
+state.toAscii      = toAscii;
+state.renderMaze   = renderMaze;
+state.DIRS         = DIRS;
+
+const { log } = helpers;
+
+// makeReasonStream: returns an onReasoning callback that streams thinking tokens into a live div
+state.makeReasonStream = function(log) {
+  var el = null;
+  var id = 'rsn' + Math.random().toString(36).slice(2, 7);
+  return function(chunk) {
+    if (!el) {
+      log.html('<details open style="margin:2px 0">'
+        + '<summary style="cursor:pointer;color:#555;font-size:11px">thinking…</summary>'
+        + '<div id="' + id + '" style="font:11px/1.5 ui-monospace,monospace;color:#5a8;'
+        + 'background:#040d08;padding:8px;border-radius:4px;max-height:180px;overflow:auto;'
+        + 'white-space:pre-wrap"></div></details>');
+      el = document.getElementById(id);
+    }
+    if (el) el.textContent += chunk;
+  };
+};
+
+// ── Shared maze solver (one copy; every route calls it) ─────────────────────
+// mazeToDataURL: paint a maze state to a PNG data URL (the "graphic" channel).
+state.mazeToDataURL = function(grid, pos, goal, visited, cell) {
+  cell = cell || 24;
+  var H = grid.length, W = 0, r, i, x, y;
+  for (r = 0; r < H; r++) W = Math.max(W, grid[r].length);
+  var cv = document.createElement('canvas');
+  cv.width = W * cell; cv.height = H * cell;
+  var cx = cv.getContext('2d'), vis = {};
+  for (i = 0; i < visited.length; i++) vis[visited[i][0] + ',' + visited[i][1]] = 1;
+  cx.fillStyle = '#0a0a0f'; cx.fillRect(0, 0, cv.width, cv.height);
+  for (y = 0; y < H; y++) for (x = 0; x < grid[y].length; x++) {
+    var fill = '#161b22';
+    if (x === pos[0] && y === pos[1]) fill = '#76b900';
+    else if (x === goal[0] && y === goal[1]) fill = '#f0a500';
+    else if (grid[y][x] === '#') fill = '#0d1117';
+    else if (vis[x + ',' + y]) fill = '#1e3a5f';
+    cx.fillStyle = fill;
+    cx.fillRect(x * cell + 1, y * cell + 1, cell - 2, cell - 2);
+  }
+  return cv.toDataURL('image/png');
+};
+
+// runMaze: ONE corridor-walk + LLM-at-junctions solver, shared by every route.
+//   opts.sendImage : also attach a rendered PNG to each user turn (vision route)
+//   opts.advanced  : use the bigger, loopier 15x11 maze instead of the 11x9 one
+//   opts.model     : { id, maxTok, temp, extra_body }; defaults to the omni model
+// The omni model is multimodal, so it handles BOTH routes (text and image);
+// swap opts.model to compare other models.
+state.runMaze = async function(h, state, opts) {
+  opts = opts || {};
+  var advanced = !!opts.advanced;
+
+  // ── modality / context knobs (all optional) ───────────────────────────────
+  var includeText    = opts.includeText    !== false;                                       // default: send ASCII map
+  var includeImage   = (opts.includeImage  !== undefined) ? !!opts.includeImage : !!opts.sendImage;  // default: from sendImage
+  var includeHistory = opts.includeHistory !== false;                                       // default: keep conversation
+  var toolSpecInSystem = opts.toolSpecInSystem !== false;                                    // default: restate tool format in system
+  var includeCoords  = opts.includeCoords  !== false;                                        // default: list every coordinate travelled
+  if (!includeText && !includeImage) includeText = true;                                     // must send something
+
+  // ── model selection (pick a key from state.MAZE_MODELS, an id string, or an object) ──
+  var MODELS = state.MAZE_MODELS;
+  function resolveModel(m) {
+    if (!m) return MODELS.omni;
+    if (typeof m === 'string') {
+      if (MODELS[m]) return MODELS[m];
+      if (m.indexOf('/') >= 0) return { id: m, maxTok: 2048, temp: 0.6 };
+      return MODELS.omni;
+    }
+    return m;
+  }
+  var MODEL = resolveModel(opts.model);
+
+  var cfg = advanced ? { w: 15, h: 11, seed: 99, loop: 0.55, max: 40 }
+                     : { w: 11, h: 9,  seed: 42, loop: 0.30, max: 20 };
+
+  var log = h.log;
+  var generateMaze = state.generateMaze, findCell = state.findCell, validMoves = state.validMoves,
+      doMove = state.doMove, toAscii = state.toAscii, renderMaze = state.renderMaze, DIRS = state.DIRS,
+      DECISION_TOOL = state.DECISION_TOOL, makeReasonStream = state.makeReasonStream;
+
+  // ── system prompt = base instructions + (optionally) the exact tool spec ───
+  // Restating the tool's name, args, and required fields in the system message
+  // helps smaller models emit the call in the shape the runner expects.
+  function toolSpecText(tool) {
+    var f = tool.function, props = (f.parameters && f.parameters.properties) || {}, lines = [];
+    lines.push('OUTPUT FORMAT. Reply ONLY by calling this function (no prose, no plain text):');
+    lines.push('  ' + f.name + '(' + Object.keys(props).join(', ') + ')');
+    Object.keys(props).forEach(function(k) {
+      lines.push('    - ' + k + ' (' + (props[k].type || 'any') + '): ' + (props[k].description || ''));
+    });
+    if (f.parameters && f.parameters.required && f.parameters.required.length)
+      lines.push('  required: ' + f.parameters.required.join(', '));
+    lines.push('Every turn: emit exactly one ' + f.name + ' call with a non-empty argument.');
+    return lines.join('\\n');
+  }
+  // opts.directive overrides just the editable core; opts.systemPrompt overrides the whole thing.
+  var directive = opts.directive || state.SYS_DIRECTIVE;
+  var sysText = opts.systemPrompt || (directive + '\\n\\n' + state.SYS_REFERENCE);
+  if (toolSpecInSystem) sysText = sysText + '\\n\\n' + toolSpecText(DECISION_TOOL);
+  var sysMsg = { role: 'system', content: sysText };
+
+  // ── prompt format: how each turn's maze is described (override via opts.promptFormat) ──
+  // promptFormat(ctx) -> string, ctx = { ascii, avail, pos, goal, trail, decision, first }.
+  // trail is the list of coordinates travelled (empty unless includeCoords). It lets the
+  // model connect a single direction to a multi-cell move once corridors auto-walk.
+  var promptFormat = opts.promptFormat || function(ctx) {
+    return 'You are at (' + ctx.pos[0] + ',' + ctx.pos[1] + ').\\n'
+      + (ctx.first ? 'Maze:' : 'Current maze:') + '\\n' + ctx.ascii
+      + (ctx.trail ? '\\nPath travelled (move into each cell): ' + ctx.trail : '')
+      + '\\nAvailable moves: ' + ctx.avail
+      + '\\nPick your next move.';
+  };
+
+  var wrapId = 'sw' + Math.random().toString(36).slice(2, 7);
+  log.html('<div id="' + wrapId + '" style="margin:0 0 10px"><button style="padding:4px 12px;border:1px solid #555;border-radius:4px;background:#1a1a1a;color:#ccc;cursor:pointer">stop</button></div>');
+  var ac = new AbortController(), sig = ac.signal;
+  var wrap = document.getElementById(wrapId);
+  if (wrap) wrap.firstChild.onclick = function() { ac.abort(); };
+  function abortable(p) {
+    if (sig.aborted) return Promise.reject(new DOMException('aborted', 'AbortError'));
+    return Promise.race([p, new Promise(function(_res, rej) {
+      sig.addEventListener('abort', function() { rej(new DOMException('aborted', 'AbortError')); }, { once: true });
+    })]);
+  }
+
+  var grid = generateMaze(cfg.w, cfg.h, cfg.seed, cfg.loop);
+  var start = findCell(grid, 'S'), goal = findCell(grid, 'G');
+  var pos = [start[0], start[1]], prevPos = null, visited = [[pos[0], pos[1]]];
+  var actions = [];   // direction letter taken into visited[i] (actions[i-1]); parallel to visited
+  var L2D = { N: 'north', S: 'south', E: 'east', W: 'west' };
+
+  var UID = 'rm' + Math.random().toString(36).slice(2, 7);
+  log.html('<div id="' + UID + '" style="margin:6px 0"></div>');
+  function show(title) { var el = document.getElementById(UID); if (el) el.innerHTML = renderMaze(grid, pos, goal, visited, title); }
+  function info(html) { log.html('<div style="font:12px/1.6 ui-monospace,monospace;color:#aaa;margin:1px 0">' + html + '</div>'); }
+  function availStr(p) { var m = validMoves(grid, p); return m.length ? m.join(', ') : 'none'; }
+
+  // normalizeDir: accept letters OR words ('E', 'EEN', 'east', 'east north') and return NSEW letters.
+  function normalizeDir(raw) {
+    return String(raw || '').toUpperCase()
+      .replace(/NORTH/g, 'N').replace(/SOUTH/g, 'S').replace(/EAST/g, 'E').replace(/WEST/g, 'W')
+      .replace(/[^NSEW]/g, '');
+  }
+  // splitThink: qwen-style models emit reasoning inline as <think>...</think> in the content
+  // rather than as reasoning_content. Pull it out so it is shown and not parsed as the answer.
+  function splitThink(c) {
+    c = c || ''; var rsn = '', lc = c.toLowerCase();
+    var o = lc.indexOf('<think>');
+    if (o >= 0) {
+      var e = lc.indexOf('</think>', o);
+      if (e >= 0) { rsn = c.slice(o + 7, e); c = c.slice(0, o) + c.slice(e + 8); }
+      else { rsn = c.slice(o + 7); c = c.slice(0, o); }
+    }
+    return { reasoning: rsn.trim(), content: c.trim() };
+  }
+
+  // renderRequest: dump EVERYTHING sent to the model this turn into a collapsible
+  // panel. That covers the system message, the full message history, the current
+  // user turn (text + image), the tool list, and the call params. Logged right before each call so it
+  // always sits ABOVE that turn's reasoning and result.
+  function escH(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function fmtContent(c) {
+    if (typeof c === 'string') return '<div style="white-space:pre-wrap">' + escH(c) + '</div>';
+    if (Array.isArray(c)) return c.map(function(p) {
+      if (p.type === 'text') return '<div style="white-space:pre-wrap">' + escH(p.text) + '</div>';
+      if (p.type === 'image_url') return '<img src="' + p.image_url.url + '" style="max-width:220px;border:1px solid #2a2a2a;border-radius:4px;margin:4px 0;display:block"/>';
+      return '<div>' + escH(JSON.stringify(p)) + '</div>';
+    }).join('');
+    return '';
+  }
+  function renderRequest(turn, sent, req) {
+    var rc = { system: '#c89bd6', user: '#7fa8d8', assistant: '#8fd09a', tool: '#d6a86a' };
+    // Explicit "what the model sees this turn" block: text map, accumulated path, image.
+    var ctxBlock = '<div style="color:#76b900;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase">context this turn</div>'
+      + '<div style="color:#9ab">position: (' + turn.pos[0] + ',' + turn.pos[1] + ')</div>'
+      + '<div style="color:#9ab">accumulated path: ' + escH(turn.trail || '(start)') + '</div>'
+      + (turn.ascii ? '<div style="color:#9ab;margin-top:3px">text map:</div><pre style="margin:2px 0;color:#cdd;white-space:pre;font:11px/1.2 ui-monospace,monospace">' + escH(turn.ascii) + '</pre>' : '')
+      + (turn.imageUrl ? '<div style="color:#9ab">rendered image:</div><img src="' + turn.imageUrl + '" style="max-width:240px;border:1px solid #2a2a2a;border-radius:4px;margin:3px 0;display:block"/>' : '')
+      + '<hr style="border:0;border-top:1px solid #1b2530;margin:8px 0">';
+    var rows = sent.map(function(m) {
+      var body = m.content ? fmtContent(m.content) : '';
+      if (m.tool_calls) body += '<div style="color:#7a9">tool_calls: ' + escH(JSON.stringify(m.tool_calls)) + '</div>';
+      return '<div style="margin-top:6px;font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:' + (rc[m.role] || '#aaa') + '">' + m.role + '</div>'
+        + '<div style="color:#ccd;margin-left:2px">' + body + '</div>';
+    }).join('');
+    var meta = 'model: ' + escH(req.model) + '  ·  max_tokens: ' + req.max_tokens + '  ·  temp: ' + req.temperature
+      + (req.extra_body ? '<br>extra_body: ' + escH(JSON.stringify(req.extra_body)) : '')
+      + '<br>tools: ' + escH((req.tools || []).map(function(t) { return t.function.name; }).join(', '));
+    return '<details style="margin:2px 0"><summary style="cursor:pointer;color:#6a9;font-size:11px">→ full context sent to model (' + sent.length + ' msgs)</summary>'
+      + '<div style="font:11px/1.5 ui-monospace,monospace;margin:4px 0;background:#070b0f;padding:8px;border-radius:4px;max-height:420px;overflow:auto">'
+      + ctxBlock + '<div style="color:#778;margin-bottom:4px">raw messages · ' + meta + '</div>' + rows + '</div></details>';
+  }
+
+  // Walk automatically until a REAL decision is needed. A real decision means
+  // 2+ forward options (a junction). One forward option is a corridor, so follow it.
+  // ZERO forward options is a dead end: there is no choice but to reverse, so
+  // walk back out automatically instead of asking the model to "pick" its only move.
+  async function corridorWalk(label) {
+    while (!sig.aborted) {
+      var moves = validMoves(grid, pos);
+      var fwd = moves.filter(function(dir) {
+        if (!prevPos) return true;
+        var d = DIRS[dir];
+        return !(pos[0] + d[0] === prevPos[0] && pos[1] + d[1] === prevPos[1]);
+      });
+      var step;
+      if (fwd.length === 1)                      step = fwd[0];     // corridor: follow it
+      else if (fwd.length === 0 && moves.length) step = moves[0];   // dead end: reverse out
+      else break;                                                   // junction (2+) or stuck (0)
+      var mv = doMove(grid, pos, step);
+      if (!mv.ok) break;
+      prevPos = pos; pos = mv.pos; visited.push([pos[0], pos[1]]); actions.push(step[0].toUpperCase());
+      show((label || 'walk') + ' ' + step[0].toUpperCase());
+      await new Promise(function(res) { setTimeout(res, 60); });
+      if (mv.done) return true;
+    }
+    return false;
+  }
+
+  // build one user turn from the current frame, honoring includeText / includeImage.
+  // imageUrl is passed in (and shown in renderRequest) so we render the PNG only once.
+  function buildUser(text, imageUrl) {
+    var parts = [];
+    if (includeText) parts.push({ type: 'text', text: text });
+    if (includeImage && imageUrl) parts.push({ type: 'image_url', image_url: { url: imageUrl } });
+    if (parts.length === 1 && parts[0].type === 'text') return { role: 'user', content: text };
+    return { role: 'user', content: parts };
+  }
+
+  var modelName = MODEL.id.split('/').pop();
+  var modeStr = [includeText ? 'text' : null, includeImage ? 'image' : null].filter(Boolean).join('+') || 'none';
+  show('ready · ' + modeStr + (includeHistory ? ' · history' : ' · stateless'));
+  info('<strong style="color:#76b900">' + modelName + '</strong> · input: ' + modeStr
+    + ' · ' + (includeHistory ? 'with history' : 'stateless')
+    + ' · ' + (advanced ? 'advanced 15x11' : 'simple 11x9') + ' maze'
+    + ' · tool-spec in system: ' + (toolSpecInSystem ? 'yes' : 'no'));
+
+  var history = [];  // accumulated turns (used only when includeHistory)
+
+  try {
+    if (await corridorWalk('corridor')) {
+      show('goal in corridor · ' + visited.length + ' steps');
+      info('<span style="color:#76b900">goal reached in the opening corridor (no LLM needed)</span>');
+      return { decisions: 0, steps: visited.length, won: true };
+    }
+
+    for (var decision = 1; decision <= cfg.max; decision++) {
+      if (sig.aborted) break;
+      var trail = '';
+      if (includeCoords) {
+        trail = '(' + visited[0][0] + ',' + visited[0][1] + ')';
+        for (var ti = 1; ti < visited.length; ti++)
+          trail += ' -' + (actions[ti - 1] || '?') + '-> (' + visited[ti][0] + ',' + visited[ti][1] + ')';
+      }
+      var ascii = toAscii(grid, pos, goal, visited);
+      var imageUrl = includeImage ? state.mazeToDataURL(grid, pos, goal, visited) : null;
+      var userText = promptFormat({ ascii: ascii, avail: availStr(pos),
+                                    pos: pos, goal: goal, trail: trail, decision: decision, first: decision === 1 });
+      var userMsg = buildUser(userText, imageUrl);
+      var sent = includeHistory ? [sysMsg].concat(history, [userMsg]) : [sysMsg, userMsg];
+
+      var req = { model: MODEL.id, messages: sent, tools: [DECISION_TOOL], max_tokens: MODEL.maxTok, temperature: MODEL.temp };
+      if (MODEL.extra_body) req.extra_body = MODEL.extra_body;
+      info('<strong style="color:#eee">decision ' + decision + '</strong> · ' + modelName + ' at ' + JSON.stringify(pos) + ' avail: [' + availStr(pos) + '] · ' + sent.length + ' msgs');
+      log.html(renderRequest({ pos: pos, trail: trail, ascii: ascii, imageUrl: imageUrl }, sent, req));   // full context BEFORE the model responds
+      show('decision ' + decision + ': asking model...');
+      var summary;
+      try {
+        summary = await abortable(h.chatStream(req, null, { onReasoning: makeReasonStream(log) }));
+      } catch (e) {
+        if (e.name === 'AbortError' || sig.aborted) { info('<span style="color:#777">stopped</span>'); break; }
+        info('<span style="color:#f87171">error: ' + e.message + '</span>');
+        if (includeImage && /image|vision|multimodal|content/i.test(e.message))
+          info('<span style="color:#fbbf24">hint: the image was rejected on this turn. Try again, set includeImage:false to send text alone, or pick another multimodal model (vision / qwenVision).</span>');
+        break;
+      }
+      // ── interpret the reply ───────────────────────────────────────────────
+      var split = splitThink(summary.content || '');   // qwen puts reasoning in <think>...</think>
+      var replyText = split.content;
+      if (split.reasoning && !summary.reasoning)
+        info('<details style="margin:2px 0"><summary style="cursor:pointer;color:#555;font-size:11px">reasoning (' + split.reasoning.length + ' chars)</summary><div style="font:11px/1.5 ui-monospace,monospace;color:#7a9;background:#040d08;padding:8px;border-radius:4px;max-height:200px;overflow:auto;white-space:pre-wrap">' + escH(split.reasoning) + '</div></details>');
+
+      var tcs = summary.tool_calls || [];
+      var toolId = tcs.length ? tcs[0].id : null;
+      var rawDir = '';
+      if (tcs.length) { try { rawDir = JSON.parse(tcs[0].function.arguments || '{}').direction || ''; } catch (e2) {} }
+      // Honor models (e.g. nemotron-nano-12b-vl) that "call" the tool as plain TEXT instead of a
+      // structured tool_call: parse choose_direction(...) out of the reply and use its argument.
+      var fromText = false;
+      if (!rawDir && replyText) {
+        var ci = replyText.toLowerCase().indexOf('choose_direction');
+        if (ci >= 0) {
+          var lp = replyText.indexOf('(', ci), rp = lp >= 0 ? replyText.indexOf(')', lp) : -1;
+          if (lp >= 0 && rp > lp) {
+            var inner = replyText.slice(lp + 1, rp), q = inner.match(/['"]([^'"]*)['"]/);
+            rawDir = q ? q[1] : inner; fromText = true;
+          }
+        }
+      }
+      var steps = normalizeDir(rawDir);
+
+      if (includeHistory) {
+        history.push({ role: 'user', content: userText });
+        var entry = { role: 'assistant', content: replyText || null };
+        if (tcs.length) entry.tool_calls = tcs;
+        history.push(entry);
+      }
+      // feedback is a tool message only when there was a real tool_call; otherwise a user message
+      // (a tool message without a preceding tool_call is invalid and confuses the model).
+      function reply(content) {
+        if (!includeHistory) return;
+        history.push(toolId ? { role: 'tool', tool_call_id: toolId, content: content }
+                            : { role: 'user', content: content });
+      }
+
+      if (!steps) {
+        info('<span style="color:#fbbf24">no usable direction, so asking again</span>');
+        reply('No direction parsed from your reply. Call choose_direction with one of: ' + availStr(pos) + '.');
+        continue;
+      }
+      if (fromText) info('<span style="color:#9cf">honored text-form call → ' + escH(steps) + '</span>');
+
+      var pathStr = '', done = false, walled = null, s;
+      for (s = 0; s < steps.length; s++) {
+        if (sig.aborted) break;
+        var mv2 = doMove(grid, pos, L2D[steps[s]]);
+        if (!mv2.ok) { walled = L2D[steps[s]]; break; }
+        pathStr += steps[s]; prevPos = pos; pos = mv2.pos; visited.push([pos[0], pos[1]]); actions.push(steps[s]);
+        show('decision ' + decision + ' · ' + pathStr);
+        await new Promise(function(res) { setTimeout(res, 80); });
+        if (mv2.done) { done = true; break; }
+      }
+      if (done) {
+        show('solved · ' + decision + ' decisions · ' + visited.length + ' steps');
+        info('<span style="color:#76b900">goal in ' + decision + ' decisions (' + visited.length + ' steps) · path: ' + pathStr + '</span>');
+        reply('Reached G. Done.');
+        return { decisions: decision, steps: visited.length, won: true };
+      }
+      info('moved: <code style="color:#76b900;background:#0d1f00;padding:1px 4px;border-radius:3px">' + (pathStr || '(none)') + '</code>' + (walled ? ' then hit a wall going ' + walled : ''));
+
+      // Auto-walk corridors and reverse out of dead ends BEFORE reporting back, so the
+      // feedback reflects where the agent actually ended up (not a stale pre-walk spot).
+      var pw = [pos[0], pos[1]];
+      if (await corridorWalk('walk')) {
+        show('goal via corridor · ' + visited.length + ' steps');
+        info('<span style="color:#76b900">goal reached while auto-walking</span>');
+        reply('Executed ' + (pathStr || '(none)') + ', then auto-walked to the goal.');
+        return { decisions: decision, steps: visited.length, won: true };
+      }
+      var walkedNote = (pos[0] !== pw[0] || pos[1] !== pw[1])
+        ? ' Then corridors/dead-ends were auto-walked for you.' : '';
+      reply((walled ? 'Executed ' + (pathStr || '(none)') + ', then hit a wall going ' + walled + '.'
+                    : 'Executed ' + (pathStr || '(none)') + '.')
+            + walkedNote + ' Now at ' + JSON.stringify(pos) + '. Available: ' + availStr(pos) + '.');
+      await new Promise(function(res) { setTimeout(res, 200); });
+    }
+  } finally {
+    if (wrap) wrap.style.display = 'none';
+  }
+  if (!sig.aborted) { info('<span style="color:#f87171">gave up after ' + cfg.max + ' decisions</span>'); show('gave up after ' + cfg.max + ' decisions'); }
+  return { decisions: cfg.max, won: false };
+};
+
+log("Maze engine ready.");
+`,
+    },
+    {
+      id: "text", icon: "📝", title: "Non-vision route · text only",
+      x: 1, y: 0,
+      summary: "Calling the shared solver state.runMaze with the ASCII map only, the chosen model streams its chain-of-thought between moves while every knob below stays editable, so flip ADVANCED for the bigger 15×11 maze or change model after running the engine node first.",
+      code: `// Non-vision route. The shared solver lives in the engine node, so run it first.
+// model choices (state.MAZE_MODELS): omni, reasoning, vision, qwenVision, super, gptOss
+const ADVANCED = false;
+
+// ── Edit this freely: it becomes the CORE of the system message. ──
+// (The fixed map-key reference and the tool's output format are appended for you.)
+const DIRECTIVE = \`You are navigating a maze. You are called only at JUNCTIONS (2+ open directions).
+Corridors are auto-walked, so your position can jump several cells between calls. The coordinates
+you have travelled are listed every turn. Study the map, pick ONE direction, call choose_direction().
+Prefer unvisited branches (-) over visited cells (·); head toward G when you can see it.\`;
+
+return await state.runMaze(helpers, state, {
+  model:           "omni",    // which model drives the agent
+  directive:        DIRECTIVE, // editable core of the system message (above)
+  advanced:         ADVANCED,  // false = 11x9 maze, true = 15x11
+  includeText:      true,     // send the ASCII map
+  includeImage:     false,    // no picture on this route
+  includeHistory:   true,     // keep the running conversation across turns
+  includeCoords:    true,     // list every coordinate travelled (connects a move to where it ended)
+  toolSpecInSystem: true,     // restate choose_direction's output format in the system prompt
+  // promptFormat: ctx => ...    // optional: fully customize each turn's user message
+});
+`,
+    },
+    {
+      id: "vision", icon: "🖼️", title: "Vision route · text + graphic",
+      x: 1, y: 1,
+      summary: "The same shared solver also attaches a rendered PNG of the maze each turn so the picture becomes the experiment. The default omni model (nemotron-3-nano-omni-...) is NVIDIA's multimodal reasoning model, so it reads the image as well as the text; switch model to vision or qwenVision to compare other multimodal models, or set includeImage:false to send text alone.",
+      code: `// Vision route: also attaches a rendered PNG of the maze each turn.
+// The default omni model (nemotron-3-nano-omni-...) is NVIDIA's multimodal reasoning
+// model, so it reads the picture along with the ASCII map. Switch to "vision" or
+// "qwenVision" to compare other multimodal models, or set includeImage:false for text only.
+// model choices (state.MAZE_MODELS): omni, reasoning, vision, qwenVision, super, gptOss
+const ADVANCED = false;
+
+// ── Edit this freely: it becomes the CORE of the system message. ──
+const DIRECTIVE = \`You are navigating a maze. You are called only at JUNCTIONS (2+ open directions).
+You get both an ASCII map and a picture of the same maze. Corridors are auto-walked, so your position
+can jump several cells between calls, and the coordinates you have travelled are listed every turn.
+Study the maze, pick ONE direction, call choose_direction(). Prefer unvisited branches (-) over
+visited cells (·); head toward G when you can see it.\`;
+
+return await state.runMaze(helpers, state, {
+  model:           "omni",    // multimodal model; try "vision" or "qwenVision" to compare
+  directive:        DIRECTIVE, // editable core of the system message (above)
+  advanced:         ADVANCED,
+  includeText:      true,     // send the ASCII map alongside the picture
+  includeImage:     true,     // attach the rendered PNG each turn
+  includeHistory:   true,
+  includeCoords:    true,     // list every coordinate travelled
+  toolSpecInSystem: true,
+});
+`,
+    },
+  ],
+  edges: [
+    { from: "helpers", to: "text" },
+    { from: "helpers", to: "vision" },
+  ],
+});
+
+
+// ── Canvas 2: one real chat completion ───────────────────────────────────────
+mountRunCell("#cell-onecall", {
+  label: "One stateless chat completion · a real call to the model",
+  intro: "Pressing Run returns whatever the model produced for that single call, and running it again may give a different response because each call is independent with no shared state between them.",
+  code: `// One call. No loop, no memory.
+const reply = await chat({
+  model: "nvidia/nemotron-3-nano-30b-a3b",
+  messages: [
+    { role: "system", content: "You are a terse assistant. One sentence." },
+    { role: "user",   content: "What does 'stateless' mean for an LLM API?" },
+  ],
+  max_tokens: 600,   // reasoning models think first, so give the answer room
+});
+
+const m  = reply.choices[0].message;
+const fr = reply.choices[0].finish_reason;
+log("finish_reason:", fr);
+log("");
+if (m.reasoning_content) {
+  log.h("reasoning_content (model's notes)");
+  log(m.reasoning_content);
+}
+log.h("content (the actual answer)");
+log(m.content || "(no content; the model used its whole budget thinking, so raise max_tokens)");
+return { finish_reason: fr, content: m.content };
+`,
+});
+
+mountRunCell("#cell-wire", {
+  label: "POST /v1/chat/completions · the wire format under chat()",
+  intro: "The same call as above is written by hand as a raw HTTP request so every field is visible, with the request and response tucked into details blocks you can open to read the exact payloads.",
+  code: `// chat() is a wrapper. Underneath, it makes ONE ordinary HTTP POST in the
+// OpenAI-compatible "wire format". Here is that same call, written out by hand.
+
+// 1) The request: an endpoint, an Authorization header, and a JSON body.
+const KEY = localStorage.getItem("nvapi") || "";
+if (!KEY) { log("Save your nvapi- key on the course home page first."); return; }
+const url = "https://nvidia-api-cors-proxy.vkudlay.workers.dev/v1/chat/completions";
+const headers = { "Content-Type": "application/json", "Authorization": "Bearer " + KEY };
+const body = {
+  model: "nvidia/nemotron-3-nano-30b-a3b",
+  messages: [{ role: "user", content: "In one sentence: who runs you?" }],
+  max_tokens: 200,
+};
+
+// What goes OUT, with the key redacted so a screenshot never leaks it.
+log("→ POST " + url);
+log.details("request (key redacted)", { headers: { ...headers, Authorization: "Bearer nvapi-…redacted" }, body });
+
+// 2) Send it, then read what comes BACK.
+const r = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+log("← HTTP " + r.status + " " + r.statusText);
+const reply = await r.json();
+log.details("raw response", reply);
+
+// The three fields you actually use: the text, why it stopped, and the token bill.
+const c = reply.choices[0];
+log.h("content");        log(c.message.content);
+log.h("finish_reason");  log(c.finish_reason);   // the same loop-exit signal Module 1b builds on
+log.h("usage");          log(JSON.stringify(reply.usage));
+return { finish_reason: c.finish_reason, content: c.message.content, usage: reply.usage };
+`,
+});
+</script>
+</body>
+</html>

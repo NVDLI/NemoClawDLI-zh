@@ -1,0 +1,5 @@
+## Unlocked: track latest compatible versions per project policy.
+fastapi
+uvicorn[standard]
+pyyaml
+docker

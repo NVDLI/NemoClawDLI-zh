@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Services · lab stack index</title>
+<!-- AGENT: directory contract below; parse id="skill-meta". Each service has its
+     own SKILL.html with interface tests; this index tests that they all resolve
+     and the always-on stack answers. -->
+<script type="application/json" id="skill-meta">
+{
+  "schema": "service-index/1.0",
+  "id": "services",
+  "title": "Lab services",
+  "version": "1.0.0",
+  "source_dir": "cpu/services/",
+  "summary": "The always-on docker stack the course calls into. Each service has its own SKILL.html that documents and tests its interface; this index links them and checks the stack is up. Browser pages reach a subset through JUPYTER_TOKEN-gated /lab/svc/<svc>/ routes; keys live only in llm_client.",
+  "services": [
+    {"name": "llm_client",    "address": "llm_client:9000",    "route": "/lab/svc/llm/",            "skill_html": "llm_client/SKILL.html",    "on_demand": false, "role": "OpenAI-compatible chat + embed + rerank gateway; sole keyholder"},
+    {"name": "openclaw",      "address": "openclaw:8995",      "route": "/lab/openclaw",            "skill_html": "openclaw/SKILL.html",      "on_demand": false, "role": "File-as-context agent runtime inside the OpenShell sandbox"},
+    {"name": "sandbox-admin", "address": "sandbox-admin:8099", "route": "/lab/svc/sandbox-admin/",  "skill_html": "sandbox_admin/SKILL.html", "on_demand": false, "role": "OpenShell control plane: policy, cron, bounded exec console"},
+    {"name": "docker_router", "address": "docker_router:8070", "route": "/lab/svc/docker-router/",  "skill_html": "docker_router/SKILL.html", "on_demand": false, "role": "Bounded container lifecycle + diagnostics; holds the Docker socket"},
+    {"name": "jupyter",       "address": "lab:8888",           "route": "/lab",                     "skill_html": "jupyter/SKILL.html",       "on_demand": false, "role": "The lab runtime: student notebooks + static SKILL/foyer/course serving"}
+  ],
+  "tests": [
+    {"id": "skill-meta-json", "assert": "this skill-meta parses as JSON"},
+    {"id": "per-service-skills", "assert": "every service's SKILL.html resolves"},
+    {"id": "stack-health", "assert": "each always-on service answers; on-demand ones skip when down"}
+  ],
+  "change_impact": [
+    {"if_you_change": "the set of services (add / remove / rename)", "also_update": ["services[] in this skill-meta", "the table on this page", "the self-tests below", "workspace/SKILL.html services{}", "docker-compose.yml"], "then": "re-run the self-tests"},
+    {"if_you_change": "a service's address, route, or on-demand status", "also_update": ["that service's own SKILL.html", "this index", "nginx routes if a /lab/svc path moved"], "then": "docker restart nginx if a route moved; re-run the self-tests"}
+  ],
+  "related": ["cpu/services/00_service_map.md", "web/SKILL.html"]
+}
+</script>
+<style>
+:root{--g:#76b900;--gd:#4a7a00;--gs:#aee23a;--bg:#0d0d0d;--e1:#161616;--e2:#1e1e1e;--bd:#2a2a2a;--tx:#f2f2f2;--td:#b0b0b0;--tf:#8a8a8a;--r:8px;--mono:ui-monospace,"SF Mono",Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:15px;line-height:1.55}
+a{color:var(--g);text-decoration:none}a:hover{text-decoration:underline}
+code{font-family:var(--mono);font-size:.9em;background:var(--e2);padding:1px 6px;border-radius:4px;color:var(--gs)}
+h1{font-size:1.9rem;color:var(--g);font-weight:700;margin:0 0 .4em}
+h2{font-size:1.15rem;color:#fff;border-bottom:1px solid var(--bd);padding-bottom:.3em;margin:1.6em 0 .7em}
+p{margin:.55em 0;color:var(--td)}
+nav{display:flex;align-items:center;gap:14px;padding:14px 28px;background:linear-gradient(180deg,#000,var(--bg));border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:10}
+.logo{font-weight:700;color:var(--g);letter-spacing:.04em}
+.crumb{color:var(--td);font-size:.88rem}.crumb a{color:var(--td)}
+.spacer{flex:1}
+.badge{font-size:.72rem;font-family:var(--mono);padding:3px 9px;border-radius:999px;background:var(--e2);border:1px solid var(--bd);color:var(--td)}
+main{max-width:min(62.5rem,100%);margin:0 auto;padding:clamp(1.5rem,4vw,2.5rem) clamp(1rem,4vw,2rem) 80px}
+table{width:100%;border-collapse:collapse;font-size:.88rem;margin:.7em 0}
+th{text-align:left;padding:7px 12px;color:var(--td);font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--bd)}
+td{padding:7px 12px;border-bottom:1px solid var(--e2);vertical-align:top}
+td:first-child{font-family:var(--mono);font-size:.85em;color:var(--gs);white-space:nowrap}
+.s{display:inline-block;font-size:.7rem;padding:1px 7px;border-radius:999px;font-family:var(--mono)}
+.s-on{background:rgba(118,185,0,.15);color:var(--gs);border:1px solid var(--gd)}
+.s-od{background:var(--e2);color:var(--td);border:1px solid var(--bd)}
+.callout{border-left:3px solid var(--g);background:rgba(118,185,0,.07);padding:11px 16px;border-radius:0 var(--r) var(--r) 0;margin:1em 0;font-size:.92rem}
+.agent-note{border:1px solid var(--bd);border-radius:var(--r);background:var(--e1);padding:14px 18px;font-size:.88rem;margin-top:2em}
+.agent-note h3{color:var(--td);font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;margin:0 0 .4em}
+</style>
+</head>
+<body>
+<nav>
+  <span class="logo">NVIDIA DLI</span>
+  <span class="crumb">/ <a href="/lab/static/SKILL.html">workspace</a> / services</span>
+  <span class="spacer"></span>
+  <span class="badge">service-index</span>
+  <span class="badge">5 services</span>
+</nav>
+
+<main>
+  <h1>Lab services</h1>
+  <p>
+    The always-on docker stack the course calls into. Each service carries its
+    own <code>SKILL.html</code> that documents its interface and ships unit tests
+    for it; this page links them and checks the stack is up. Prose per service is
+    in the matching <code>00_*.md</code>; the cross-service map is
+    <a href="00_service_map.md"><code>00_service_map.md</code></a>, and a one-shot
+    stack-health walkthrough is
+    <a href="00_services_check.md"><code>00_services_check.md</code></a>.
+  </p>
+
+  <div class="callout">
+    <strong>Where tests live.</strong> Interface tests belong to the service that
+    owns the interface, not to its consumers. OpenShell tests are in
+    <a href="openclaw/SKILL.html"><code>openclaw/SKILL.html</code></a> and
+    <a href="sandbox_admin/SKILL.html"><code>sandbox_admin/SKILL.html</code></a>.
+  </div>
+
+  <h2>Services</h2>
+  <table>
+    <thead><tr><th>Service</th><th>Address</th><th>Boot</th><th>SKILL</th></tr></thead>
+    <tbody>
+      <tr><td>llm_client</td><td><code>llm_client:9000</code></td><td><span class="s s-on">on boot</span></td><td><a href="llm_client/SKILL.html">llm_client/SKILL.html</a></td></tr>
+      <tr><td>openclaw</td><td><code>openclaw:8995</code></td><td><span class="s s-on">on boot</span></td><td><a href="openclaw/SKILL.html">openclaw/SKILL.html</a></td></tr>
+      <tr><td>sandbox-admin</td><td><code>sandbox-admin:8099</code></td><td><span class="s s-on">on boot</span></td><td><a href="sandbox_admin/SKILL.html">sandbox_admin/SKILL.html</a></td></tr>
+      <tr><td>docker_router</td><td><code>docker_router:8070</code></td><td><span class="s s-on">on boot</span></td><td><a href="docker_router/SKILL.html">docker_router/SKILL.html</a></td></tr>
+      <tr><td>jupyter</td><td><code>lab:8888</code></td><td><span class="s s-on">on boot</span></td><td><a href="jupyter/SKILL.html">jupyter/SKILL.html</a></td></tr>
+    </tbody>
+  </table>
+
+  <div id="selftest"></div>
+
+  <div class="agent-note">
+    <h3>Agent / automation notes</h3>
+    <p>This index tests reachability and that every per-service SKILL resolves.
+      Deep interface tests live in each service's own SKILL. Container lifecycle
+      (restart the sandbox, query logs) runs through
+      <a href="docker_router/SKILL.html"><code>docker_router</code></a>'s bounded
+      allow-list.</p>
+  </div>
+</main>
+
+<script src="/lab/static/workspace/_skill_selftest.js"></script>
+<script>
+(function () {
+  // Per-service SKILLs (every dir with a SKILL.html).
+  var SKILLS = ["llm_client", "openclaw", "sandbox_admin", "docker_router", "jupyter"];
+  var ALWAYS_ON = [
+    ["llm_client",    "/lab/svc/llm/v1/models"],
+    ["openclaw",      "/lab/openclaw"],
+    ["sandbox-admin", "/lab/svc/sandbox-admin/admin/health"],
+    ["docker_router", "/lab/svc/docker-router/health"],
+    ["jupyter (lab)", "/lab/api/status"],
+  ];
+  SkillSelfTest.run("#selftest", [
+    { name: "skill-meta is valid JSON", run: async () => {
+        JSON.parse(document.getElementById("skill-meta").textContent); return { detail: "parsed" }; } },
+    ...SKILLS.map(s => ({ name: "service SKILL resolves: " + s, run: async ({ f, A }) => {
+        const r = await f(s + "/SKILL.html"); A(r.ok, "HTTP " + r.status); return { detail: "HTTP " + r.status }; } })),
+    ...ALWAYS_ON.map(([name, url]) => ({ name: "always-on health: " + name, run: async ({ f, A }) => {
+        const r = await f(url); A(r.ok, "HTTP " + r.status); return { detail: "HTTP " + r.status }; } })),
+  ]);
+})();
+</script>
+</body>
+</html>

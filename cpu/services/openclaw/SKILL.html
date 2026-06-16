@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Service · OpenClaw / OpenShell</title>
+<!-- AGENT: structured service contract below; parse id="skill-meta". The
+     "tests" array mirrors the executable self-tests rendered on this page. -->
+<script type="application/json" id="skill-meta">
+{
+  "schema": "service-skill/1.0",
+  "service": "openclaw",
+  "title": "OpenClaw / OpenShell sandbox runtime",
+  "version": "1.0.0",
+  "source_dir": "cpu/services/openclaw/",
+  "address": "openclaw:8995",
+  "aliases": ["openshell:8995"],
+  "summary": "File-as-context agent runtime inside a kernel-contained sandbox (OpenShell: netns + Landlock + seccomp + OPA proxy). The gateway speaks an OpenAI-compatible API; the sandbox-admin control plane manages policy, cron, and a bounded read-only exec console. OpenShell interface tests live HERE, in the service skill that owns the interface, not with its consumers.",
+  "owns_tests_for": ["openclaw gateway", "openshell sandbox containment", "sandbox-admin control plane", "bounded exec console"],
+  "interfaces": {
+    "gateway": {
+      "browser_route": "/lab/openclaw",
+      "in_network": "http://openshell:8995 (current) / http://openclaw:8995 (legacy)",
+      "endpoints": ["/v1/responses", "/v1/chat/completions", "/ws", "/health"],
+      "auth": "Bearer dli-openclaw-token; conversation via x-openclaw-session-key header; backend override via allow-listed x-openclaw-model",
+      "control_ui": "served at basePath /lab/openclaw; the 2026.5.28 UI reads window.__OPENCLAW_CONTROL_UI_BASE_PATH__ (nginx sub_filter injects it)"
+    },
+    "sandbox_admin": {
+      "address": "sandbox-admin:8099",
+      "browser_route": "/lab/svc/sandbox-admin/",
+      "auth": "nginx JUPYTER_TOKEN gate + service Bearer dli-openclaw-token",
+      "endpoints": ["/admin/policy (GET)", "/admin/policy/preview (POST)", "/admin/policy/reload (POST {policy_yaml}, restarts openclaw)", "/admin/sandbox/exec (POST {argv})", "/admin/cron", "/admin/services", "/admin/health"],
+      "bounded_exec_allowlist": {
+        "generic": ["ls", "cat", "pwd", "id", "whoami", "uname", "ps", "stat", "head", "tail", "wc", "echo"],
+        "openclaw_readonly": ["status", "health", "--version", "docs", "config get", "config validate", "exec-policy show", "cron list"],
+        "rule": "argv[0] off the list, or an openclaw subcommand off the read-only prefix list, returns HTTP 403 before any process starts"
+      }
+    }
+  },
+  "tests": [
+    {"id": "skill-meta-json",   "assert": "this skill-meta block parses as JSON"},
+    {"id": "gateway-up",        "assert": "GET /lab/openclaw returns 2xx (control UI reachable)"},
+    {"id": "exec-allowed",      "assert": "POST /admin/sandbox/exec {argv:[whoami]} returns 200, exit_code 0"},
+    {"id": "exec-denied",       "assert": "POST /admin/sandbox/exec {argv:[rm,-rf,/]} returns 403 (not on allow-list)"},
+    {"id": "openclaw-ro",       "assert": "exec {argv:[openclaw,--version]} returns 200 (read-only verb allowed)"},
+    {"id": "openclaw-mutate",   "assert": "exec {argv:[openclaw,config,set,...]} returns 403 (mutation refused)"},
+    {"id": "policy-readable",   "assert": "GET /admin/policy returns a non-empty policy yaml"}
+  ],
+  "change_impact": [
+    {"if_you_change": "the bounded exec allow-list (_ALLOWED_ARGV0 / _ALLOWED_OPENCLAW in cpu/services/sandbox_admin/app.py)",
+     "when_files": ["cpu/services/sandbox_admin/app.py"],
+     "then_review": ["cpu/services/openclaw/SKILL.html", "cpu/services/sandbox_admin/SKILL.html", "web/nemoclaw/04a-safety.html"],
+     "also_update": ["this skill-meta: tests[] and interfaces.sandbox_admin.bounded_exec_allowlist", "web/nemoclaw/04a-safety.html"],
+     "then": "rebuild sandbox-admin, then re-run this page's self-tests"},
+    {"if_you_change": "the gateway request/response contract, token, or control-UI basePath",
+     "also_update": ["00_openclaw.md", "nginx /lab/openclaw sub_filter (window.__OPENCLAW_CONTROL_UI_BASE_PATH__)", "this skill-meta: interfaces.gateway and tests[]"],
+     "then": "docker restart nginx (bind-mounted conf, inode remount), then re-run the self-tests"},
+    {"if_you_change": "the OpenShell policy mechanism or any sandbox-admin endpoint",
+     "also_update": ["00_sandbox_admin.md", "web/nemoclaw/04a-safety.html sandbox client", "this skill-meta: interfaces.sandbox_admin and tests[]"],
+     "then": "re-run the self-tests; note a policy reload restarts openclaw"}
+  ],
+  "related": [
+    "cpu/services/00_openclaw.md",
+    "web/nemoclaw/04a-safety.html"
+  ]
+}
+</script>
+<style>
+:root{--g:#76b900;--gd:#4a7a00;--gs:#aee23a;--bg:#0d0d0d;--e1:#161616;--e2:#1e1e1e;--bd:#2a2a2a;--tx:#f2f2f2;--td:#b0b0b0;--tf:#8a8a8a;--r:8px;--mono:ui-monospace,"SF Mono",Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:15px;line-height:1.55}
+a{color:var(--g);text-decoration:none}a:hover{text-decoration:underline}
+code{font-family:var(--mono);font-size:.9em;background:var(--e2);padding:1px 6px;border-radius:4px;color:var(--gs)}
+h1{font-size:1.9rem;color:var(--g);font-weight:700;margin:0 0 .4em}
+h2{font-size:1.15rem;color:#fff;border-bottom:1px solid var(--bd);padding-bottom:.3em;margin:1.6em 0 .7em}
+p{margin:.55em 0;color:var(--td)}
+nav{display:flex;align-items:center;gap:14px;padding:14px 28px;background:linear-gradient(180deg,#000,var(--bg));border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:10}
+.logo{font-weight:700;color:var(--g);letter-spacing:.04em}
+.crumb{color:var(--td);font-size:.88rem}.crumb a{color:var(--td)}
+.spacer{flex:1}
+.badge{font-size:.72rem;font-family:var(--mono);padding:3px 9px;border-radius:999px;background:var(--e2);border:1px solid var(--bd);color:var(--td)}
+main{max-width:min(62.5rem,100%);margin:0 auto;padding:clamp(1.5rem,4vw,2.5rem) clamp(1rem,4vw,2rem) 80px}
+table{width:100%;border-collapse:collapse;font-size:.88rem;margin:.7em 0}
+th{text-align:left;padding:7px 12px;color:var(--td);font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--bd)}
+td{padding:7px 12px;border-bottom:1px solid var(--e2);vertical-align:top}
+td:first-child{font-family:var(--mono);font-size:.85em;color:var(--gs);white-space:nowrap}
+.callout{border-left:3px solid var(--g);background:rgba(118,185,0,.07);padding:11px 16px;border-radius:0 var(--r) var(--r) 0;margin:1em 0;font-size:.92rem}
+.agent-note{border:1px solid var(--bd);border-radius:var(--r);background:var(--e1);padding:14px 18px;font-size:.88rem;margin-top:2em}
+.agent-note h3{color:var(--td);font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;margin:0 0 .4em}
+</style>
+</head>
+<body>
+<nav>
+  <span class="logo">NVIDIA DLI</span>
+  <span class="crumb">/ <a href="/lab/static/SKILL.html">workspace</a> / services / openclaw</span>
+  <span class="spacer"></span>
+  <span class="badge">service-skill</span>
+  <span class="badge">openclaw:8995</span>
+</nav>
+
+<main>
+  <h1>OpenClaw / OpenShell</h1>
+  <p>
+    The file-as-context agent runtime, running inside a kernel-contained
+    sandbox. The <strong>gateway</strong> (<code>openclaw:8995</code>, also
+    <code>openshell:8995</code>) speaks an OpenAI-compatible API. The
+    <strong>sandbox-admin</strong> control plane (<code>sandbox-admin:8099</code>)
+    manages policy, cron, and a bounded read-only exec console. OpenShell
+    containment is netns + Landlock + seccomp + an OPA-evaluated CONNECT proxy.
+  </p>
+
+  <div class="callout">
+    <strong>Test scope.</strong> This service skill owns the executable tests for
+    the OpenClaw gateway, the OpenShell sandbox, and the bounded console. The
+    <code>openshell</code> course (a sibling) teaches the same surfaces, but its
+    SKILL tests course self-consistency, not these live interfaces. Interfaces are
+    tested where the interface lives.
+  </div>
+
+  <h2>Interfaces</h2>
+  <table>
+    <thead><tr><th>Surface</th><th>Reach</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>gateway API</td><td><code>/lab/openclaw</code> · <code>openshell:8995</code></td><td><code>/v1/responses</code>, <code>/v1/chat/completions</code>, <code>/ws</code>. Auth: <code>Bearer dli-openclaw-token</code> + <code>x-openclaw-session-key</code>.</td></tr>
+      <tr><td>control UI</td><td><code>/lab/openclaw</code></td><td>basePath served at <code>/lab/openclaw</code>; the UI reads <code>window.__OPENCLAW_CONTROL_UI_BASE_PATH__</code> (nginx injects it).</td></tr>
+      <tr><td>sandbox-admin</td><td><code>/lab/svc/sandbox-admin/</code> · <code>sandbox-admin:8099</code></td><td><code>/admin/policy</code>, <code>/admin/policy/reload</code>, <code>/admin/sandbox/exec</code>, <code>/admin/cron</code>, <code>/admin/services</code>.</td></tr>
+      <tr><td>bounded exec</td><td><code>POST /admin/sandbox/exec {argv}</code></td><td>Read-only allow-list (12 generic verbs + <code>openclaw</code> read-only subcommands). Anything else: <code>403</code> before a process starts.</td></tr>
+    </tbody>
+  </table>
+
+  <div id="selftest"></div>
+
+  <div class="agent-note">
+    <h3>Agent / automation notes</h3>
+    <p>The <code>skill-meta</code> <code>tests</code> array is the machine-readable
+      contract; the rendered list is its executable form. A green run means the
+      gateway answers, the bounded console enforces its allow-list (allowed verb
+      passes, refused verb is <code>403</code>), and the policy is readable.</p>
+    <p>Full prose lives in <code>00_openclaw.md</code>. The released course drives
+      this gateway and its containment in <code>web/nemoclaw/04a-safety.html</code>.</p>
+  </div>
+</main>
+
+<script src="/lab/static/workspace/_skill_selftest.js"></script>
+<script>
+SkillSelfTest.run("#selftest", [
+  { name: "skill-meta is valid JSON", run: async () => {
+      JSON.parse(document.getElementById("skill-meta").textContent); return { detail: "parsed" }; } },
+  { name: "gateway control UI reachable", run: async ({ f, A }) => {
+      const r = await f("/lab/openclaw"); A(r.ok, "HTTP " + r.status); return { detail: "HTTP " + r.status }; } },
+  { name: "bounded console runs an allowed verb", run: async ({ A, execSandbox }) => {
+      const r = await execSandbox(["whoami"]); A(r.ok, "HTTP " + r.status);
+      const j = await r.json(); A(j.exit_code === 0, "exit " + j.exit_code);
+      return { detail: "whoami → " + (j.output || "").trim() }; } },
+  { name: "bounded console refuses a non-listed verb", run: async ({ A, execSandbox }) => {
+      const r = await execSandbox(["rm", "-rf", "/"]); A(r.status === 403, "expected 403, got " + r.status);
+      return { detail: "rm refused (403)" }; } },
+  { name: "openclaw read-only verb is allowed", run: async ({ A, execSandbox }) => {
+      const r = await execSandbox(["openclaw", "--version"]); A(r.ok, "HTTP " + r.status);
+      const j = await r.json(); return { detail: (j.output || "").trim().slice(0, 32) }; } },
+  { name: "openclaw mutating verb is refused", run: async ({ A, execSandbox }) => {
+      const r = await execSandbox(["openclaw", "config", "set", "gateway.port", "9999"]);
+      A(r.status === 403, "expected 403, got " + r.status); return { detail: "config set refused (403)" }; } },
+  { name: "sandbox policy is readable", run: async ({ f, A }) => {
+      const r = await f("/lab/svc/sandbox-admin/admin/policy", { headers: { "Authorization": "Bearer dli-openclaw-token" } });
+      A(r.ok, "HTTP " + r.status); const t = await r.text(); A(t.length > 0, "empty");
+      return { detail: "policy yaml (" + t.length + " B)" }; } },
+]);
+</script>
+</body>
+</html>
