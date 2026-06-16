@@ -21,18 +21,20 @@ echo "[build_pages] task1 root: $T1"
 echo "[build_pages] output:     $OUT"
 rm -rf "$OUT"; mkdir -p "$OUT"
 
-# ── 1. Courses: build the self-contained client-side bundle straight into public/ ──
-# bundle_standalone.py inlines each page's CSS, ships _shared.js, and carries the assets, so
-# one call produces a complete course dir. The bundle is generated from the source under
-# web/<course>/ on every build and is never committed (no intermediate, no stale copy).
+# ── 1. Courses: build the full self-hosted standalone straight into public/ ──
+# --full gives the lab experience (dark theme, topbar + journey-map + nav, interactive panels)
+# made self-contained: bundle_standalone.py inlines each page's CSS, ships _shared.js, carries
+# the assets, and adds the off-lab key panel, so one call produces a complete course dir. (The
+# default, no --full, is the light chrome-free iframe export for the edX navigator.) The bundle
+# is generated from web/<course>/ on every build and is never committed (no intermediate).
 for c in nemoclaw; do
     src="$T1/web/$c"
     if [ ! -d "$src" ] || [ ! -f "$T1/scripts/bundle_standalone.py" ]; then
         echo "[build_pages]   ERROR: need web/$c and scripts/bundle_standalone.py to build $c" >&2
         exit 1
     fi
-    echo "[build_pages] bundling $c -> public/$c/ ..."
-    python3 "$T1/scripts/bundle_standalone.py" --src "web/$c" --out "$OUT/$c" --clean
+    echo "[build_pages] bundling $c -> public/$c/ (full standalone) ..."
+    python3 "$T1/scripts/bundle_standalone.py" --src "web/$c" --out "$OUT/$c" --clean --full
     echo "[build_pages]   $c -> public/$c/ ($(find "$OUT/$c" -name '*.html' | wc -l) pages)"
 done
 

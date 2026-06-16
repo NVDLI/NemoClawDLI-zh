@@ -508,51 +508,66 @@ def _apply_svg_subs(html: str) -> str:
     return "".join(out)
 
 
-def bundle_one(html_path: Path, css_text: str, lite_css: str, shared_js: str) -> str:
+def bundle_one(html_path: Path, css_text: str, lite_css: str, shared_js: str,
+               full: bool = False) -> str:
+    """Bundle one page into a self-contained file.
+
+    The default (lite) build is the light, chrome-free iframe export for the edX navigator.
+    With full=True it is the dark, fully navigable standalone for a self-hosted Pages site:
+    the same content the lab serves, made self-contained, with the off-lab key panel added.
+    """
     html = html_path.read_text(encoding="utf-8")
 
-    # 1) Inline _style.css then append _lite_overlay.css (in that order so the
-    #    lite rules win).
-    style_block = (
-        "<style>\n" + css_text + "\n\n/* ── lite overlay ── */\n" + lite_css + "\n</style>"
-    )
+    # 1) Inline _style.css. The lite export appends _lite_overlay.css to flip the page to a
+    #    light background and hide the nav chrome; the full build keeps the lab's dark theme,
+    #    so it inlines _style.css on its own.
+    if full:
+        style_block = "<style>\n" + css_text + "\n</style>"
+    else:
+        style_block = (
+            "<style>\n" + css_text + "\n\n/* ── lite overlay ── */\n" + lite_css + "\n</style>"
+        )
     new_html, n_css = CSS_LINK_RE.subn(style_block, html, count=1)
     if n_css == 0:
         # Page has no <link rel="stylesheet" href="_style.css"/> (e.g. courses.html).
         # Insert the style block right before </head>.
         new_html = html.replace("</head>", style_block + "\n</head>", 1)
 
-    # 2) Strip the lab-only chrome: topbar / journey map / foot-nav and any
-    #    leftover JS calls that targeted them. Also demote dead /lab/* anchors.
-    new_html = _strip_dead_chrome(new_html)
+    # 2) The lite export strips the lab-only chrome (topbar / journey map / the JS that mounts
+    #    them) because the edX navigator supplies its own; the full build keeps the chrome so
+    #    the course navigates itself. Both demote dead /lab/* anchors, which never resolve
+    #    off-lab.
+    if not full:
+        new_html = _strip_dead_chrome(new_html)
     new_html = _strip_lab_anchors(new_html)
 
-    # 3) Inline _shared.js by replacing the `import {...} from "./_shared.js"`
-    #    line with the full module body. Same-module scope means the page's
-    #    other top-level statements continue to use the same names without
-    #    needing the explicit import.
-    # Keep the `import {...} from "./_shared.js"` lines and ship _shared.js as a real
-    # file alongside the pages (copied in main). The imports then resolve, and ES module
-    # caching loads the module once even across multiple module blocks, exactly as the
-    # lab serves it, so each page stays small and the module runs a single time. Only the
-    # off-lab key panel is injected, once, right after the first import; it is a
-    # self-contained IIFE and needs nothing from _shared.js in scope.
+    # 3) Keep the `import {...} from "./_shared.js"` line and ship _shared.js as a real file
+    #    alongside the pages (copied in main). The imports then resolve, and ES module caching
+    #    loads the module once even across multiple module blocks, exactly as the lab serves
+    #    it, so each page stays small. Inject the off-lab key panel once, right after the first
+    #    import, in both builds; it is a self-contained IIFE that needs nothing from _shared.js
+    #    in scope. The lite export also auto-opens the code panels for reading; the full build
+    #    leaves them closed so the course stays interactive, as the lab serves it.
+    inject = LITE_KEY_PANEL_JS if full else (LITE_KEY_PANEL_JS + LITE_OPEN_PANELS_JS)
     new_html, n_js = IMPORT_LINE_RE.subn(
-        lambda m: m.group(0) + "\n" + LITE_KEY_PANEL_JS + LITE_OPEN_PANELS_JS,
+        lambda m: m.group(0) + "\n" + inject,
         new_html,
         count=1,
     )
     # Pages without _shared.js (e.g. courses.html) get no key panel either.
 
-    # 4) Re-theme SVG diagrams to read on a light background.
-    new_html = _apply_svg_subs(new_html)
+    # 4) The lite export re-themes the SVG figures to read on a light background; the full
+    #    build keeps them dark, their .gfx-dark class resolving against the dark palette in
+    #    _style.css, so it skips the recolor.
+    if not full:
+        new_html = _apply_svg_subs(new_html)
 
-    # 5) Inject the autosize beacon right before </body>. Runs independent
-    #    of _shared.js so pages without a module script still post their
-    #    height to the edX navigator. The IIFE no-ops when the page isn't
-    #    iframed (window.parent === window).
-    autosize_tag = f"<script>{LITE_AUTOSIZE_JS}</script>\n</body>"
-    new_html = new_html.replace("</body>", autosize_tag, 1)
+    # 5) The lite export posts its height to the edX navigator and bridges sibling-page clicks
+    #    back through it. The full build navigates with ordinary relative anchors, so it skips
+    #    the autosize beacon, whose link bridge would otherwise swallow that navigation.
+    if not full:
+        autosize_tag = f"<script>{LITE_AUTOSIZE_JS}</script>\n</body>"
+        new_html = new_html.replace("</body>", autosize_tag, 1)
 
     return new_html
 
@@ -578,6 +593,13 @@ def main() -> int:
         "--clean",
         action="store_true",
         help="Wipe the output directory before bundling.",
+    )
+    ap.add_argument(
+        "--full",
+        action="store_true",
+        help="Build the full standalone for a self-hosted Pages site: the lab's dark theme, "
+             "full nav chrome, and interactive panels, made self-contained. The default is the "
+             "light, chrome-free iframe export for the edX navigator.",
     )
     args = ap.parse_args()
 
@@ -618,8 +640,10 @@ def main() -> int:
         print(f"no *.html under {web}", file=sys.stderr)
         return 1
 
+    mode = "full standalone (dark theme, full nav)" if args.full else "lite iframe export (light)"
+    print(f"  mode: {mode}")
     for src in pages:
-        bundled = bundle_one(src, css_text, lite_css, shared_js)
+        bundled = bundle_one(src, css_text, lite_css, shared_js, full=args.full)
         dst = out / src.name
         dst.write_text(bundled, encoding="utf-8")
         kb = len(bundled.encode("utf-8")) / 1024
