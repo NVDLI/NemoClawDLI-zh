@@ -37,11 +37,11 @@
     <div class="eyebrow">Module 1 · Part C of 3</div>
     <h1>Tools <span>at Scale</span></h1>
     <p class="lead">
-      Tools let agents act and query their environments. Whether this includes 
-      databases, search, APIs, or even sub-agents, all we need to do is make 
-      sure the contracts for accessing them is solid and enforced. 
-      This contract is usually JSON Schema for predicting arguments, 
-      though it could be something like code generation (as we will see in later sections). 
+      Tools let agents act and query their environments. Whether this includes
+      databases, search, APIs, or even sub-agents, all we need to do is make
+      sure the contracts for accessing them is solid and enforced.
+      This contract is usually JSON Schema for predicting arguments,
+      though it could be something like code generation (as we will see in later sections).
       This page wires the two-call cycle, shows multi-tool routing, calls a real
       web-search endpoint, hides a sub-agent behind a single tool,
       and ends with the MCP shape that is becoming the production
@@ -110,27 +110,27 @@
 
   <div id="cell-m2b-p3"></div>
 
-  <h2>Wiring <code>web_search</code> to a live search API</h2>
+  <h2>Wiring <code>glossary_search</code> to a real tool</h2>
   <p>
-    The cell below wires <code>web_search</code> to Wikipedia's free, key-less
-    search API, which runs entirely in the browser (CORS-open) and returns ranked
-    articles with short extracts, enough for the agent to ground its reply without
-    any server-side proxy or key. Part 4b swaps the executor to DuckDuckGo's
-    Instant Answer API behind the <em>same</em> tool contract, so you can watch the
-    contract stay fixed while the backend changes underneath it.
+    The cell below wires <code>glossary_search</code> to the in-page glossary MCP
+    server defined at the top of this page: a catalog of NVIDIA glossary terms with a
+    ranked search over it, running entirely in the browser with no key and no backend.
+    It returns short definitions with source links, enough for the agent to ground its
+    reply. Part 4b swaps the executor to an exact term lookup behind the <em>same</em>
+    tool contract, so you can watch the contract stay fixed while the backend changes
+    underneath it.
   </p>
 
   <div class="callout">
     <strong>Name tools for what they do, not how they do it.</strong>
-    A tool called <code>duckduckgo_search</code> is brittle: changing the
-    backend forces you to update every prompt that references the name. A tool
-    called <code>web_search</code> is durable. Its name describes a capability
-    rather than an implementation, so you can swap the backend behind it (Wikipedia
-    on this page, an Instant Answer API in the next section, a crawler or proprietary
-    index later) and the schema,
-    description, and every agent prompt stay untouched. The same principle
-    applies to any tool that wraps an external service: name it for what callers
-    ask for, not for the library or API that happens to fulfil the request.
+    A tool called <code>nvidia_glossary_api</code> is brittle: changing the backend
+    forces you to update every prompt that references the name. A tool called
+    <code>glossary_search</code> is durable. Its name describes a capability rather than
+    an implementation, so you can swap the backend behind it (a ranked search on this
+    page, an exact term lookup in the next section, a richer index or the NVIDIA blog
+    later) and the schema, description, and every agent prompt stay untouched. The same
+    principle applies to any tool that wraps an external service: name it for what
+    callers ask for, not for the library or API that happens to fulfil the request.
   </div>
 
   <div id="cell-m2b-p4"></div>
@@ -138,32 +138,28 @@
   <h2>Swapping the backend while the tool contract holds</h2>
   <p>
     Part 4 used the canvas-flow canvas. Here the same logic runs in a flat
-    <code>mountRunCell</code> block so you can see it as one contiguous script.
-    DuckDuckGo's <a href="https://api.duckduckgo.com/?q=nemotron&amp;format=json" target="_blank" rel="noopener">Instant Answer API</a>
-    is free, key-less, and CORS-open, and it returns one curated answer (a definition, a
-    computed result, an encyclopedia abstract) plus a few related topics, but only for a
-    query it recognizes as a single named entity. Asking for <a href="https://api.duckduckgo.com/?q=nemotron&amp;format=json" target="_blank" rel="noopener"><code>nemotron</code></a>
-    returns the encyclopedia abstract, while asking for
-    <a href="https://api.duckduckgo.com/?q=nvidia+nemotron&amp;format=json" target="_blank" rel="noopener"><code>nvidia nemotron</code></a>
-    returns nothing, because that phrase is not one entity. Most real research queries land
-    in the empty bucket, which is why this is a demo of a narrow entity lookup rather than a
-    search you would ground an agent on. For ranked web results a production agent wires a
-    real search API (Tavily, Brave, SerpAPI) or a self-hosted crawler.
+    <code>mountRunCell</code> block so you can see it as one contiguous script. The
+    backend swaps from Part 4's ranked search to an exact <code>glossary_lookup</code>:
+    given a term's slug it returns that one entry, and nothing when the slug is not in
+    the catalog. Exact lookup is precise when the caller already knows the term and
+    unforgiving when it does not, the opposite trade-off from ranked search. A real
+    knowledge tool usually offers both, and a richer source (a full docs index, or the
+    NVIDIA blog) can slot in behind the same name when more depth is needed.
   </p>
   <p>
-    That shape makes it the cleanest kind of <strong>black-box tool</strong>:
-    query in, answer out, nothing to configure. <code>helpers.instantAnswer</code>
-    returns the exact same <code>{ results, count, unreachable }</code> shape as
-    <code>helpers.webSearch</code>, so the tool contract from Part 4 does not
-    change at all. Only the function name at the call site does. The agent still
-    asks for <code>web_search</code> and reads the same numbered result block.
+    That shape makes it a clean <strong>black-box tool</strong>: a term in, an entry
+    out. <code>glossaryLookup</code> returns the exact same
+    <code>{ results, count, unreachable }</code> shape as the ranked
+    <code>glossarySearch</code>, so the tool contract from Part 4 does not change at all.
+    Only the executor behind it does. The agent still asks for
+    <code>glossary_search</code> and reads the same numbered result block.
   </p>
 
   <div class="callout">
     <strong>The tool contract stays fixed when the backend changes.</strong>
-    Instant Answers is narrow and curated but runs anywhere with no setup.
-    A richer crawler or a proprietary index can slot in behind the same
-    <code>web_search</code> name when that depth is needed.
+    Exact lookup is precise but narrow; ranked search is forgiving but noisier.
+    A richer index or the NVIDIA blog can slot in behind the same
+    <code>glossary_search</code> name when that depth is needed.
     The model never learns which backend served the answer.
   </div>
 
@@ -273,9 +269,10 @@
   <h2>Try it · an agent with two real tools</h2>
   <p>
     A LangChain <code>createReactAgent</code> wired to two functions you just saw
-    the contract for: <code>calculate</code> (arithmetic) and <code>web_search</code>
-    (live, key-less Wikipedia search). Ask for a number it cannot know or a factual
-    lookup, and watch the tool chip light up before the answer streams.
+    the contract for: <code>calculate</code> (arithmetic) and <code>glossary_search</code>
+    (the in-page NVIDIA glossary, no key, no backend). Ask for a number it cannot work
+    out in its head or a term to define, and watch the tool chip light up before the
+    answer streams.
   </p>
   <div id="tools-artifact"></div>
   <script type="module">
@@ -285,10 +282,10 @@
         { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
         { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
       ],
-      greeting: "I can do arithmetic and search the web. Try 'what is 17% of 2,480?' or 'who won the 2024 Nobel Prize in Physics?'",
-      examples: ["What is 17.5% of 2,480?", "Search: the NVIDIA Nemotron model family", "What is 2^16 minus 1000?"],
-      system: "You are a helpful assistant. Use calculate for any arithmetic and web_search for factual lookups. Ground factual claims in the web_search results; if a search returns nothing, say you could not find it rather than answering from memory. Keep answers brief.",
-      buildTools: ({ tool, z, webSearch, formatSearchResults }) => [
+      greeting: "I can do arithmetic and search NVIDIA's glossary. Try 'what is 17.5% of 2,480?' or 'what is retrieval-augmented generation?'",
+      examples: ["What is 17.5% of 2,480?", "What is a vector database?", "Define agentic AI"],
+      system: "You are a helpful assistant. Use calculate for any arithmetic and glossary_search for definitions of AI and accelerated-computing terms. Ground factual claims in the glossary_search results; if a search returns nothing, say you could not find it rather than answering from memory. Keep answers brief.",
+      buildTools: ({ tool, z }) => [
         tool(async ({ expression }) => {
           const expr = String(expression).replace(/,/g, "");
           if (!/^[-+*/().\s^%0-9]+$/.test(expr)) return "calculate only accepts arithmetic.";
@@ -296,8 +293,8 @@
           catch (e) { return "error: " + e.message; }
         }, { name: "calculate", description: "Evaluate an arithmetic expression, e.g. (17/100)*2480 or 2^16 - 1000.",
              schema: z.object({ expression: z.string().describe("an arithmetic expression, e.g. 0.175*2480") }) }),
-        tool(async ({ query }) => formatSearchResults(await webSearch(query, { maxResults: 4 })),
-          { name: "web_search", description: "Search the web for current or factual information.",
+        tool(async ({ query }) => window.formatGlossaryResults(window.glossarySearch(query, { limit: 4 })),
+          { name: "glossary_search", description: "Search NVIDIA's glossary of AI and accelerated-computing terms.",
             schema: z.object({ query: z.string() }) }),
       ],
     });
@@ -310,12 +307,168 @@
 </main>
 
 <script type="module">
-import { buildNav, requireKey, hasKey, chat, chatStream, webSearch, formatSearchResults, setRunning, showError, renderOutput, updateKeyPill, mountJourneyMap, mountRunCell, mountCanvasFlow } from "./_shared.js";
+import { buildNav, requireKey, hasKey, chat, chatStream, setRunning, showError, renderOutput, updateKeyPill, mountJourneyMap, mountRunCell, mountCanvasFlow } from "./_shared.js";
 document.getElementById("nav").innerHTML = buildNav("01c-tools.html");
 const pill = document.getElementById("key-status");
 updateKeyPill(pill);
 mountJourneyMap("#journey-map", "1c");
 hljs.highlightAll();
+
+// ── In-page NVIDIA glossary MCP server ───────────────────────────────────────
+// The "search" tool this page teaches lives entirely here, in the page: a catalog
+// of NVIDIA glossary terms plus a small MCP-style server (tools/list + tools/call)
+// over it. No API key, no backend, nothing hidden in _shared.js. Read it, edit the
+// catalog, or paste this whole block into an agent as context: on this page, the
+// page IS the tool. Regenerate the catalog from NVIDIA's live glossary with
+// `python3 scripts/vendor_glossary.py --index` (writes mats/glossary_index.json).
+const GLOSSARY = [
+  ["3d-reconstruction","3D Reconstruction","Learn what 3D reconstruction is and how neural reconstruction works.","3D reconstruction;neural reconstruction;computer vision;3D models"],
+  ["ai-agents","AI Agents","AI agents are advanced AI systems designed to autonomously reason, plan, and execute complex tasks based on high-level goals in a secure environment with controls.","AI Agents;Generative AI;LLMs;RAG"],
+  ["ai-factory","AI Factory","An AI factory is a specialized computing infrastructure designed for the entire AI life cycle.","AI Factory;AI Factories;AI Infrastructure"],
+  ["ai-grid","AI Grid","Learn how an AI grid distributes AI infrastructure across regions to balance performance, cost, and latency while routing workloads securely and efficiently.","ai grid;Distributed AI Infrastructure;Telco Edge;Intelligent edge"],
+  ["ai-inference","AI Inference","AI inference helps solve advanced application deployment challenges by bringing machine learning and artificial intelligence technology to the real world.","AI inference;machine learning;large language models"],
+  ["ai-infrastructure","AI Infrastructure","AI infrastructure is designed to support the development, deployment, and management of AI models and applications.","AI infrastructure"],
+  ["ai-reasoning","AI Reasoning","AI reasoning is how AI systems analyze and solve problems by evaluating various outcomes and selecting the best solution, similar to human decision-making.","AI reasoning;Generative AI"],
+  ["ai-training","AI Training","AI training is the process of teaching models to learn patterns from data, enabling reasoning, problem-solving, and content generation beyond explicit programming.","AI training;AI model training"],
+  ["ai-ran","AI-RAN","Learn all about AI Radio Access Networks (AI-RAN) and how they transform 6g mobile networks with AI.","AI-RAN;6G"],
+  ["alphafold2","AlphaFold2","AlphaFold2 is a machine learning model developed by Google DeepMind in 2020 to accurately predict 3D protein structures from amino acid sequences.","AlphaFold2;Machine learning model;3D protein structures"],
+  ["mxnet","Apache MXNet","Machine learning is a subset of artificial intelligence (AI) that uses algorithms or statistical models to automatically learn experiences without explicit programming or human intervention.","Data Science Glossary"],
+  ["apache-spark","Apache Spark","Apache Spark is an open-source framework for processing big data tasks in parallel across clustered computers.","Data Science Glossary"],
+  ["speech-to-text","Automatic Speech Recognition (ASR)","Automatic speech recognition (ASR) is the combination of processes and software that decode human speech and convert it to digitized text.","Data Science Glossary"],
+  ["autonomous-networks","Autonomous Networks","AI-driven systems that analyze telemetry, predict issues, simulate changes in digital twins, and continuously optimize multi-vendor network operations with minimal human input.","AI-driven systems;autonomous network"],
+  ["autonomous-vehicles","Autonomous Vehicles","A robotaxi is a fully driverless, on-demand ride-hailing autonomous vehicle that operates at SAE Level 4 autonomy, navigating passengers or goods safely without a human driver present.","Robotaxi;autonomous vehicles;self driving cars;nvidia automotive drive"],
+  ["bert","BERT","BERT (Bidirectional Encoder Representations from Transformers) is a deep learning model developed by Google for NLP pre-training and fine-tuning.","Data Science Glossary"],
+  ["cot-prompting","Chain of Thought Prompting","Chain of Thought (CoT) is a prompt engineering technique that helps large language models (LLMs) reason more accurately.","Chain of Thought;CoT Prompting;Generative AI"],
+  ["clustering","Cluster Analysis / Clustering","Cluster analysis is the grouping of objects based on their characteristics such that there is high intra-cluster similarity and low inter-cluster similarity.","Data Science Glossary"],
+  ["computer-vision","Computer Vision","As a sub-group of AI and deep learning, computer vision trains convolutional neural networks to develop human-like vision capabilities for applications.","Data Science Glossary"],
+  ["convolutional-neural-network","Convolutional Neural Network","A convolutional neural network (CNN) is a type of deep learning network used primarily to identify and classify images and to recognize objects within images. This deep learning network delivers the best results for mapping image data and has high computational efficiency.","Data Science Glossary"],
+  ["dask","Dask","Dask is an open source flexible library for parallel and distributed computing in Python.","Data Science Glossary"],
+  ["data-flywheel","Data Flywheel","A data flywheel is a feedback loop where data collected from interactions or processes is used to continuously refine AI models, which in turn generates better outcomes and more valuable data.","data flywheel;ai data flywheel;ai models"],
+  ["deep-agents","Deep Agents","Deep agents are AI agents built for complex, long-running tasks. Learn how explicit planning, persistent memory, and subagent delegation power autonomous workflows.","deep agent;AI agent;agentic AI;autonomous agents"],
+  ["deep-learning","Deep Learning","Deep learning is a machine learning method and subset of artificial intelligence (AI). It uses artificial neural networks to recognize patterns in data, similar to the way the human brain operates.","Data Science Glossary"],
+  ["digital-twin","Digital Twin","Digital twins are virtual representations of products, processes, and facilities that enterprises use to design, simulate, and operate their physical counterparts.","Digital Twins"],
+  ["embodied-ai","Embodied AI","Embodied AI refers to the integration of artificial intelligence into physical systems, enabling them to interact with the physical world.","Embodied AI;Humanoid Robots;Generative AI"],
+  ["energy-efficiency","Energy Efficiency","Energy efficiency refers to a system or device\u2019s ability to use as little energy as possible to perform a particular task or function within acceptable limits.","Energy efficiency;Data Center"],
+  ["frontier-models","Frontier Models","Frontier AI models are the most advanced general-purpose models, enabling reasoning, multimodal generation, and agentic workflows with optimized performance.","frontier AI models;NVIDIA Glossary advanced AI models;general-purpose AI models;NVIDIA Nemotron"],
+  ["generative-ai","Generative AI","Generative AI enables users to quickly generate new content based on a variety of inputs. Learn all about the benefits, applications, challenges & more.","Generative AI;Generative AI Models;Large Language Models;ChatGPT"],
+  ["graph-analytics","Graph Analytics","Graph analytics is a package for the Python programming language that\u2019s used to create, manipulate, and study the structure, dynamics, and functions of complex networks.","Data Science Glossary"],
+  ["high-performance-computing","High-Performance Computing","HPC computer systems are characterized by their high-speed processing power, high-performance networks, and large-memory capacity.","HPC;High-Performance Computing"],
+  ["humanoid-robot","Humanoid Robot","Humanoids are general-purpose, bipedal robots modeled after the human form factor and designed to work alongside humans to augment productivity.","Humanoid Robot;Robot learning;Reinforcement Learning"],
+  ["imitation-learning","Imitation Learning","Imitation learning is a machine learning approach in which an agent learns to perform tasks or acquire new skills by observing and mimicking demonstrations provided by an expert.","Imitation learning"],
+  ["industrial-ai","Industrial AI","Industrial AI is a critical enabler of industrial automation, enhancing the ability of machines, systems, and processes to operate with minimal human intervention.","Industrial AI;physical AI;Generative AI"],
+  ["k-means","K-Means Clustering Algorithm","K-means is a clustering algorithm\u2014one of the simplest and most popular unsupervised machine learning (ML) algorithms for data scientists.","Data Science Glossary"],
+  ["kubernetes","Kubernetes","Kubernetes is an open-source orchestration platform for managing workloads and services encapsulated in software containers.","Data Science Glossary"],
+  ["large-language-models","Large Language Models","Large language models (LLMs) are deep learning algorithms that can recognize, summarize, translate, predict, and generate content using very large datasets.","Large Language Models;NVIDIA NeMo LLM Service;NVIDIA NeMo Megatron"],
+  ["machine-learning","Machine Learning","Machine learning is a subset of artificial intelligence (AI) that uses algorithms or statistical models to automatically learn experiences without explicit programming or human intervention.","Data Science Glossary"],
+  ["mlops","Machine Learning Operations (MLOps)","A set of practices and principles that aims to streamline the development, deployment, and maintenance of machine learning (ML) models in production environments.","Machine learning operations;MLOps;AI"],
+  ["mixed-integer-programming","Mixed Integer Programming","MIP is a powerful tool widely used in operations research and decision science to solve complex optimization problems.","Mixed Integer Programming;MIP"],
+  ["mixture-of-transformers","Mixture-of-Transformers","Discover the Mixture of Transformers (MoT) architecture, a unified system for efficient multimodal AI. Learn how MoT provides conditional computation for scalable foundation models.","Mixture of Transformers;MoT;MoT model multimodal AI;MoT model architecture"],
+  ["multi-agent-systems","Multi-Agent Systems","Multi-agent systems are a collection of specialized AI agents that work together to solve a complex problem. Also known as teams of agents.","Multi-Agent System;AI agents;Natural Language Processing"],
+  ["natural-language-processing","Natural Language Processing","NLP is a technology that leverages computers and software to derive meaning from human language.","Data Science Glossary"],
+  ["networkx","NetworkX","NetworkX is a package for the Python programming language that\u2019s used to create, manipulate, and study the structure, dynamics, and functions of complex networks.","Data Science Glossary"],
+  ["numba","Numba","Numba is an open-source, just-in-time compiler for Python code that developers can use to accelerate numerical functions on both CPUs and GPUs using standard Python functions.","Data Science Glossary"],
+  ["numpy","NumPy","NumPy is a free, open-source Python library for n-dimensional array processing and numerical computing.","Data Science Glossary"],
+  ["omni-model","Omni-Model","Define omni-models (multimodal AI) & how NVIDIA platforms like Cosmos and Nemotron power their use in agentic and physical AI applications.","Omni model;Omni model AI multimodal"],
+  ["pandas-python","pandas","Pandas is an open-source software library built on Python for data analysis and data manipulation.","Python"],
+  ["generative-physical-ai","Physical AI","Physical AI enables autonomous machines to perceive, understand, and perform complex actions in the real (physical) world.","Generative physical AI"],
+  ["polars","Polars","Polars is an open-source DataFrame library for data manipulation and analysis. It is implemented in Rust and uses Apache Arrow\u2019s columnar memory format for efficient data processing.","Polars;DataFrame library"],
+  ["power-efficiency","Power Efficiency","Power efficiency is the maximization of how much computing work and data movement is accomplished per unit of electricity consumed.","Power Efficiency;GPUs;DPUs;AI framework"],
+  ["product-configurator","Product Configurator","A product configurator is a visualization tool that allows users to customize products in real time.","Product Configurator;visualization team"],
+  ["pytorch","PyTorch","PyTorch is a fully featured framework for building deep learning models, which is a type of machine learning.","Data Science Glossary"],
+  ["quantum-computing","Quantum Computing","Quantum computing is a paradigm shifting technology that leverages the laws of quantum physics to solve extremely difficult problems.","Quantum Computing"],
+  ["random-forest","Random Forest","Random forests, or random decision forests, are supervised classification algorithms that use a learning method consisting of a multitude of decision trees. The output is the consensus of the best answer to the problem.","Data Science Glossary"],
+  ["reasoning-vision-language-action","Reasoning Vision Language Action","Reasoning VLA (vision-language-action) is a unified artificial intelligence model that integrates visual perception, language understanding, and action generation with step-by-step reasoning.","Reasoning VLA;physical AI;AI reasoning"],
+  ["recommendation-system","Recommendation System","A recommendation system is an artificial intelligence or AI algorithm, usually associated with machine learning.","Data Science Glossary"],
+  ["linear-regression-logistic-regression","Regression","Linear and logistic regression are techniques for determining how a dependent variable is affected by one or more independent variables.","Data Science Glossary"],
+  ["reinforcement-learning","Reinforcement Learning","Reinforcement learning (RL) is a type of machine learning technique that enables robots to make intelligent decisions by learning from experience.","Reinforcement Learning;Robots;NVIDIA Isaac Lab"],
+  ["retrieval-augmented-generation","Retrieval-Augmented Generation (RAG)","RAG enhances large language model prompts with relevant data for more practical, accurate responses. Learn all about the architecture and more.","RAG;Retrieval-Augmented Generation;Generative AI"],
+  ["robot-learning","Robot Learning","Robot learning is a collection of algorithms and methodologies that help a robot learn new skills such as manipulation, locomotion, and more.","Robot learning;Reinforcement Learning;NVIDIA Isaac Lab"],
+  ["scikit-learn","Scikit-learn","scikit-learn is a widely used open-source library in the Python ecosystem, designed specifically for machine learning-related tasks.","scikit-learn;machine learning;Python library"],
+  ["sensor-simulation","Sensor Simulation","Sensor simulation replicates real-world sensor behavior, enabling safe AI training, testing, and validation for robotics, automotive, and industrial use.","Sensor simulation;Robotics;Automotive;AI Training"],
+  ["sentiment-analysis","Sentiment Analysis","Sentiment analysis is the automated interpretation and classification of emotions from textual data such as written reviews and social media posts.","Data Science Glossary"],
+  ["simready","SimReady","SimReady, or \u201csimulation-ready,\u201d refers to a standard for physically accurate 3D assets that incorporate real-world properties, behaviors, and data bindings (e.g., IoT).","SimReady;Universal Scene Description;physical AI"],
+  ["hit-identification","Small-Molecule Hit Identification","Hit identification, also known as hit finding or hit discovery, is the process of discovering small drug-like molecules that can potentially bind to a specific biological target.","small Molecule Hit Identification(Hit ID);Hit Identification"],
+  ["spatial-computing","Spatial Computing","Spatial computing merges digital data with the physical world in real time, enhancing mixed-reality interactions through devices like AR and VR headsets or smart glasses.","Spatial Computing;Mixed Reality;cloud computing;AR"],
+  ["specialized-ai","Specialized AI","Learn about specialized AI, the industries it serves, the types of models it uses, and how it works.","specialized ai;generalized ai;models;applications"],
+  ["speech-ai","Speech AI","Speech AI is a subset of conversational AI and includes automatic speech recognition (ASR) for converting spoken language into text and text-to-speech (TTS).","speech ai;automatic speech recognition;text-to-speech;conversational ai"],
+  ["stream-processing","Stream Processing","Stream processing is the continuous processing of new data events as they are received.","Data Science Glossary"],
+  ["synthetic-data-generation","Synthetic Data","The process of creating text, 2D or 3D images in the visual and non-visual spectrum from computer simulations, generative AI models, or a combination of the two.","Synthetic data generation;Synthetic data;Generative AI models"],
+  ["tensorflow","TensorFlow","TensorFlow is the world\u2019s most popular open-source library designed for developing and deploying state-of-the-art machine learning algorithms.","Data Science Glossary"],
+  ["text-to-speech","Text-to-Speech","Text-to-speech is a form of speech synthesis that converts any string of text characters into spoken output.","Data Science Glossary"],
+  ["vector-database","Vector Database","A vector database is an organized collection of vector embeddings that can be created, read, updated, and deleted at any point in time.","Vector Database;Embedding Model;NVIDIA NeMo"],
+  ["virtual-screening","Virtual Screening","A computational technique used in drug discovery to evaluate large libraries of small molecules or compounds to identify potential drug candidates.","virtual screening;small molecules;generative virtual screening"],
+  ["vision-language-models","Vision Language Models","Vision Language Models (VLMs) are multimodal generative AI models capable of reasoning over text, image and video prompts.","Vision Language Models;Generative AI models;NVIDIA NIM"],
+  ["world-action-model","World Action Model","A world action model (WAM) is a robotics AI model that jointly predicts future world states and robot actions using video pretraining. Learn how WAMs enable zero-shot generalization, cross-embodiment transfer, and real-time control.","world action model;WAM robotics;zero-shot generalization robotics"],
+  ["world-models","World Foundation Models","World models are neural networks that understand the dynamics of the real world, including physics and spatial properties.","World Models;Physical AI"],
+  ["xgboost","XGBoost","XGBoost is an open-source software library that implements machine learning algorithms under the Gradient Boosting framework. XGBoost is growing in popularity and used by many data scientists globally to solve problems in regression, classification, ranking, and user-defined prediction challenges.","Data Science Glossary"],
+];
+const NV_GLOSSARY = "https://www.nvidia.com/en-us/glossary/";
+const _GSTOP = new Set("a an and are as at be by do does for from how in is it of on or the to vs what when where which who why with work works".split(" "));
+function _glossaryRank(query) {
+  const q = (query || "").toLowerCase().trim();
+  const words = q.split(/\s+/).filter(w => w && !_GSTOP.has(w));
+  const scored = [];
+  for (const [slug, term, blurb, tags] of GLOSSARY) {
+    const t = term.toLowerCase(), b = blurb.toLowerCase(), g = tags.toLowerCase();
+    let s = 0;
+    if (t === q) s += 100;
+    if (q.length > 2 && t.includes(q)) s += 40;
+    for (const w of words) {
+      if (t.includes(w)) s += 12;
+      if (g.split(";").some(tag => tag.includes(w))) s += 6;
+      if (new RegExp("\\b" + w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(b)) s += 3;
+    }
+    if (s > 0) scored.push({ slug, term, blurb, score: s });
+  }
+  scored.sort((a, b) => b.score - a.score || a.term.localeCompare(b.term));
+  return scored;
+}
+// Same { results, count, unreachable } shape the rest of the course's tools use.
+function glossarySearch(query, { limit = 5, maxResults } = {}) {
+  const n = maxResults || limit;
+  const results = _glossaryRank(query).slice(0, n).map(h => ({
+    title: h.term, body: h.blurb, href: NV_GLOSSARY + h.slug + "/",
+  }));
+  return { results, count: results.length, unreachable: false, source: "nvidia-glossary" };
+}
+function glossaryLookup(slug) {
+  const row = GLOSSARY.find(r => r[0] === String(slug).toLowerCase());
+  const results = row ? [{ title: row[1], body: row[2], href: NV_GLOSSARY + row[0] + "/" }] : [];
+  return { results, count: results.length, unreachable: false, source: "nvidia-glossary" };
+}
+function formatGlossaryResults(out) {
+  if (!out.results.length) return "No NVIDIA glossary entries matched. Say so rather than guessing.";
+  return out.results.map((r, i) => "[" + (i + 1) + "] " + r.title + "\n" + r.body + "\nSource: " + r.href).join("\n\n");
+}
+// MCP-style server: the same tools/list + tools/call a real MCP server speaks, in-process.
+const glossaryMCP = {
+  async request(method, params = {}) {
+    if (method === "tools/list") {
+      return { tools: [
+        { name: "glossary_search",
+          description: "Search NVIDIA's glossary of AI and accelerated-computing terms. Returns ranked entries, each with a short definition and a source link.",
+          inputSchema: { type: "object", properties: { query: { type: "string", description: "a few keywords, e.g. 'vector database'" }, limit: { type: "integer" } }, required: ["query"] } },
+        { name: "glossary_lookup",
+          description: "Fetch one glossary term by its slug, e.g. 'retrieval-augmented-generation'.",
+          inputSchema: { type: "object", properties: { slug: { type: "string" } }, required: ["slug"] } },
+      ] };
+    }
+    if (method === "tools/call") {
+      const { name, arguments: args = {} } = params;
+      const out = name === "glossary_search" ? glossarySearch(args.query || "", { limit: args.limit || 5 })
+                : name === "glossary_lookup" ? glossaryLookup(args.slug || "")
+                : null;
+      if (!out) return { content: [{ type: "text", text: "unknown tool: " + name }], isError: true };
+      return { content: [{ type: "text", text: formatGlossaryResults(out) }], structuredContent: out };
+    }
+    return { error: { code: -32601, message: "method not found: " + method } };
+  },
+};
+// Expose to this page's cells and the artifact (no _shared.js dependency for search).
+window.glossaryMCP = glossaryMCP;
+window.glossarySearch = glossarySearch;
+window.glossaryLookup = glossaryLookup;
+window.formatGlossaryResults = formatGlossaryResults;
 
 // ── Module 2b Part 1: schema contract for tools ──────────────────────────────
 mountCanvasFlow("#cell-m2b-p1", {
@@ -595,9 +748,9 @@ return chosen ? { chose: chosen, args } : { chose: "(neither; model answered dir
   ],
 });
 
-// ── Module 1c Part 4: real web_search via Wikipedia's key-less API ───────────
+// ── Module 1c Part 4: glossary_search via the in-page NVIDIA glossary server ──
 mountCanvasFlow("#cell-m2b-p4", {
-  label: "Module 1c Part 4 · real web_search via Wikipedia's key-less API",
+  label: "Module 1c Part 4 · glossary_search via the in-page NVIDIA glossary MCP server",
   intro: "Each node writes into a shared state object that later nodes read, and you can open any node to edit its JS and rerun it alone or run the whole graph.",
   edges: [
     { from: "input", to: "llm1" },
@@ -615,15 +768,15 @@ return state.question;
     },
     {
       id: "tool", icon: "📄", title: "Tool spec", x: 2, y: 0,
-      summary: "The web_search JSON Schema the model reads.",
+      summary: "The glossary_search JSON Schema the model reads. It is the same shape any tool takes; only the name and description say what this one does.",
       code: `state.SEARCH_SCHEMA = [{
   type: "function",
   function: {
-    name: "web_search",
-    description: "Search the web for current information. Use for recent events or specific facts.",
+    name: "glossary_search",
+    description: "Search NVIDIA's glossary of AI and accelerated-computing terms. Use for definitions and concepts.",
     parameters: {
       type: "object",
-      properties: { query: { type: "string", description: "3-8 word search query" } },
+      properties: { query: { type: "string", description: "a few keywords, e.g. 'vector database'" } },
       required: ["query"],
     },
   },
@@ -633,15 +786,15 @@ return { name: state.SEARCH_SCHEMA[0].function.name };
     },
     {
       id: "llm1", icon: "🧠", title: "LLM call #1", x: 1, y: 1,
-      summary: "The first model call. This is a factual question the model should ground rather than recall, so we REQUIRE a web_search call here (tool_choice) to see the full round-trip. Letting the model decide for itself is Part 3's lesson (and what the createReactAgent artifact does); here the model just fills in the search query.",
+      summary: "The first model call. This is a factual question the model should ground rather than recall, so we REQUIRE a glossary_search call here (tool_choice) to see the full round-trip. Letting the model decide for itself is Part 3's lesson (and what the createReactAgent artifact does); here the model just fills in the search query.",
       code: `state.messages = [
-  { role: "system", content: "You are a research assistant. Ground answers in web_search results; never answer factual questions from memory." },
+  { role: "system", content: "You are a research assistant. Ground answers in glossary_search results; never answer factual questions from memory." },
   { role: "user",   content: state.question },
 ];
 state.s1 = await helpers.chatStream({
   messages:    state.messages,
   tools:       state.SEARCH_SCHEMA,
-  tool_choice: { type: "function", function: { name: "web_search" } },   // require the search; don't let it answer from (stale) memory
+  tool_choice: { type: "function", function: { name: "glossary_search" } },   // require the search; don't let it answer from (stale) memory
   max_tokens:  4096,   // a reasoning model thinks before it emits the call; too small a budget and it stops mid-thought
 });
 helpers.log("finish_reason:", state.s1.finish_reason, "· tool_calls:", state.s1.tool_calls.length);
@@ -653,8 +806,8 @@ return {
 `,
     },
     {
-      id: "search", icon: "🌐", title: "web_search", x: 1, y: 2,
-      summary: "A local executor that calls Wikipedia's free, key-less search API (CORS-open and running in the browser) and returns ranked results.",
+      id: "search", icon: "🌐", title: "glossary_search", x: 1, y: 2,
+      summary: "The executor. It calls the in-page glossary MCP server (defined at the top of this page) via tools/call and gets back ranked NVIDIA glossary entries. No key, no network: the catalog and the search both run in your browser.",
       code: `if (!state.s1.tool_calls.length) {
   // No tool call: either the model answered from training (it has content), or
   // call #1 was cut off mid-thought. Distinguish them honestly; never claim a
@@ -667,8 +820,10 @@ return {
 }
 const tc      = state.s1.tool_calls[0];
 state.query   = JSON.parse(tc.function.arguments).query;
-state.search  = await helpers.webSearch(state.query, { maxResults: 4 });
-state.toolMsg = helpers.formatSearchResults(state.search);
+// Call the in-page MCP server the same way you would a remote one: tools/call.
+state.search  = await glossaryMCP.request("tools/call", { name: "glossary_search", arguments: { query: state.query, limit: 4 } });
+state.toolMsg = state.search.content[0].text;          // the text block the model reads
+const meta    = state.search.structuredContent;        // { results, count, source }
 state.messages.push({
   role: "assistant",
   content: state.s1.content || null,
@@ -677,12 +832,8 @@ state.messages.push({
 state.messages.push({ role: "tool", tool_call_id: tc.id, content: state.toolMsg });
 // Steer the synthesis call: answer now, from the results, with no more tool calls.
 state.messages.push({ role: "user", content: "Using only the search results above, write the final answer now. Do not request another search or output any tool-call syntax." });
-helpers.log("got", state.search.count || 0, "results for:", state.query);
-return {
-  query: state.query,
-  count: state.search.count || 0,
-  unreachable: !!state.search.unreachable,
-};
+helpers.log("got", meta.count, "glossary entries for:", state.query);
+return { query: state.query, count: meta.count, source: meta.source };
 `,
     },
     {
@@ -709,52 +860,52 @@ return answer || "(the model did not produce a final answer; try Run again)";
   ],
 });
 
-// ── Module 1c Part 4b: the same web_search tool, backed by Instant Answers ────
+// ── Module 1c Part 4b: the same glossary_search tool, swapped to exact lookup ─
 mountRunCell("#cell-m2b-p4b", {
-  label: "Module 1c Part 4b · the same web_search tool, swapped to DuckDuckGo Instant Answers",
-  intro: "The tool name, schema, and agent loop stay exactly as they were in Part 4 while instantAnswer() replaces webSearch() as the only change, so that the same fixed contract now returns one curated answer for well-known entities (most queries come back empty) instead of ranked Wikipedia results. Edit the question to see where each key-less, in-page executor wins.",
-  code: `// The agent sees the exact same web_search tool it saw in Part 4.
+  label: "Module 1c Part 4b · the same glossary_search tool, swapped to an exact term lookup",
+  intro: "The tool name, schema, and agent loop stay exactly as they were in Part 4; the only change is the executor, which now does an exact glossary_lookup by slug instead of a ranked search. The same fixed contract returns one precise entry when the slug matches and nothing when it does not. Edit the slug to see where exact lookup wins and where ranked search would have been more forgiving.",
+  code: `// The agent sees the exact same glossary_search tool it saw in Part 4.
 const SEARCH_SCHEMA = [{
   type: "function",
   function: {
-    name: "web_search",
-    description: "Search the web for current information. Use for recent events or specific facts.",
-    parameters: { type: "object", properties: { query: { type: "string", description: "the bare entity name to look up, e.g. 'Eiffel Tower' (NOT a natural-language question)" } }, required: ["query"] },
+    name: "glossary_search",
+    description: "Look up an NVIDIA glossary term. Use for definitions and concepts.",
+    parameters: { type: "object", properties: { query: { type: "string", description: "the term's slug, lowercase and hyphenated, e.g. 'vector-database'" } }, required: ["query"] },
   },
 }];
 
 const messages = [
-  // Instant Answers is keyed by entity, so we tell the model to query the bare
-  // name ("Eiffel Tower"), not a phrase ("how tall is the Eiffel Tower") that
-  // returns nothing. That coupling between a tool's quirk and the prompt is real.
-  { role: "system", content: "You are a research assistant. Ground answers in web_search results; do not answer from memory. web_search is an instant-answer API keyed by entity, so always query the bare entity name (e.g. 'Eiffel Tower'), never a full question." },
-  { role: "user",   content: "What is the Eiffel Tower?" },
+  // The lookup backend is keyed by exact slug, so we tell the model to query the
+  // slug form ('vector-database'), not a phrase. That coupling between a tool's
+  // quirk and the prompt is real, and it is exactly what Part 4's ranked search avoided.
+  { role: "system", content: "You are a research assistant. Ground answers in glossary_search results; do not answer from memory. glossary_search is keyed by exact term slug, so query the lowercase, hyphenated slug (e.g. 'vector-database'), never a full question." },
+  { role: "user",   content: "What is a vector database?" },
 ];
 
-// Require the search (same as Part 4) so the swapped backend is always exercised,
+// Require the call (same as Part 4) so the swapped backend is always exercised,
 // and give the reasoning model room to think before the call (4096, not 1500).
-const s1 = await chatStream({ messages, tools: SEARCH_SCHEMA, tool_choice: { type: "function", function: { name: "web_search" } }, max_tokens: 4096 });
+const s1 = await chatStream({ messages, tools: SEARCH_SCHEMA, tool_choice: { type: "function", function: { name: "glossary_search" } }, max_tokens: 4096 });
 log("finish_reason:", s1.finish_reason, "· tool_calls:", s1.tool_calls.length);
 
 const tc    = s1.tool_calls[0];
 const query = JSON.parse(tc.function.arguments).query;
-log.h("web_search · backed by Instant Answers");
-log("query:", query);
+log.h("glossary_search · backed by exact glossary_lookup");
+log("slug:", query);
 
-// The one line that differs from Part 4: instantAnswer() instead of webSearch().
-const out     = await instantAnswer(query, { maxResults: 4 });
-const toolMsg = formatSearchResults(out);
+// The one thing that differs from Part 4: glossary_lookup (exact) instead of glossary_search (ranked).
+const out     = await glossaryMCP.request("tools/call", { name: "glossary_lookup", arguments: { slug: query } });
+const toolMsg = out.content[0].text;
 log(toolMsg);
 
 messages.push({ role: "assistant", content: s1.content || null, tool_calls: s1.tool_calls });
 messages.push({ role: "tool", tool_call_id: tc.id, content: toolMsg });
-messages.push({ role: "user", content: "Using only the search results above, write the final answer now. Do not request another search or output any tool-call syntax." });
+messages.push({ role: "user", content: "Using only the results above, write the final answer now. Do not request another search or output any tool-call syntax." });
 
 const s2 = await chatStream({ messages, max_tokens: 4096 });
 const answer = (s2.content || "").replace(/<tool_call>[\\s\\S]*?<\\/tool_call>/g, "").replace(/<\\/?function[^>]*>|<\\/?parameter[^>]*>/g, "").trim();
 log.h("final answer");
 log(answer || "(no final answer; try Run again)");
-return { used_search: true, query, results: out.count };
+return { used_lookup: true, slug: query, results: out.structuredContent.count };
 `,
 });
 
@@ -799,7 +950,7 @@ return { rows: state.customers.length, schema_fields: Object.keys(state.customer
         schemaText + "\\n\\nRows:\\n" + rowsText },
       { role: "user", content: question },
     ],
-    max_tokens: 400,
+    max_tokens: 1024,
   });
   return (sub.content || sub.reasoning || "(empty)").trim();
 };
@@ -895,44 +1046,15 @@ mountCanvasFlow("#cell-m2b-p6", {
   ],
   nodes: [
     {
-      id: "server", icon: "🖥", title: "Fake MCP server (in-page)", x: 0, y: 0,
-      summary: "An in-page simulation of an MCP server, exposing the two standard endpoints (tools/list for discovery and tools/call for execution) using the same JSON-RPC-style shape as the real protocol. In production these calls travel over stdio or HTTP transport rather than running in the same JavaScript process.",
-      code: `state.mcpServer = {
-  async request(method, params) {
-    if (method === "tools/list") {
-      return {
-        tools: [
-          { name: "calculate",
-            description: "Evaluate a basic arithmetic expression.",
-            inputSchema: { type: "object",
-              properties: { expression: { type: "string" } }, required: ["expression"] } },
-          { name: "get_current_time",
-            description: "Return the current UTC time as a string.",
-            inputSchema: { type: "object", properties: {}, required: [] } },
-        ],
-      };
-    }
-    if (method === "tools/call") {
-      const { name, arguments: args } = params;
-      if (name === "calculate") {
-        const expr = (args?.expression || "").replace(/[^0-9+\\-*/().\\s]/g, "");
-        try {
-          const v = Function('"use strict"; return (' + expr + ");")();
-          return { content: [{ type: "text", text: String(v) }] };
-        } catch (e) {
-          return { content: [{ type: "text", text: "error: " + e.message }], isError: true };
-        }
-      }
-      if (name === "get_current_time") {
-        return { content: [{ type: "text",
-          text: new Date().toISOString().slice(0, 19).replace("T", " ") + " UTC" }] };
-      }
-      return { content: [{ type: "text", text: "unknown tool: " + name }], isError: true };
-    }
-    throw new Error("unknown method: " + method);
-  },
-};
-return { exposes: ["tools/list", "tools/call"] };
+      id: "server", icon: "🖥", title: "In-page MCP server", x: 0, y: 0,
+      summary: "Points at the same glossary MCP server defined at the top of this page. It exposes the two standard endpoints (tools/list for discovery and tools/call for execution) in the same JSON-RPC-style shape as the real protocol. In production these calls travel over stdio or HTTP transport rather than running in the same JavaScript process.",
+      code: `// The same in-page glossary server Part 4 called directly, now consumed through
+// MCP discovery. It already speaks tools/list and tools/call (see the block at the
+// top of this page), so the client below can discover and dispatch its tools
+// without knowing anything about the glossary in advance.
+state.mcpServer = window.glossaryMCP;
+const listed = await state.mcpServer.request("tools/list");
+return { exposes: ["tools/list", "tools/call"], tools: listed.tools.map(t => t.name) };
 `,
     },
     {
@@ -949,8 +1071,8 @@ return state.tools.map(t => t.function.name);
     },
     {
       id: "user", icon: "👤", title: "User question", x: 2, y: 1,
-      summary: "The question the model will try to answer using the discovered tools, where an arithmetic question routes to calculate and asking for the current time routes to get_current_time.",
-      code: `state.question = "What is 23 times 17?";
+      summary: "The question the model answers using the discovered glossary tools. A definitional question routes to glossary_search; asking for a specific term by slug routes to glossary_lookup.",
+      code: `state.question = "What is retrieval-augmented generation, and what does a vector database have to do with it?";
 return state.question;
 `,
     },

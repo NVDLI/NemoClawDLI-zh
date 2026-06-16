@@ -357,7 +357,7 @@ you saved on the course home page.</p>
     { label: "Hello chat",     path: "/chat/completions", method: "POST",
       body: () => ({
         model: "nvidia/nemotron-3-nano-30b-a3b",
-        max_tokens: 60,
+        max_tokens: 1024,   // a reasoning model: it thinks before it answers, so leave room past the reasoning for content
         messages: [{ role: "user", content: "In one sentence: who runs you?" }],
       }) },
   ],

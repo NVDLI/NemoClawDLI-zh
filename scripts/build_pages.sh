@@ -42,6 +42,9 @@ done
 cp "$T1/scripts/engine.js" "$OUT/engine.js"
 cp "$T1/scripts/link_graph.html" "$OUT/link-graph.html"
 
+# Favicon at the site root for the foyer + aux pages (the course carries its own under assets/).
+cp "$T1/web/nemoclaw/assets/favicon.ico" "$OUT/favicon.ico"
+
 # ── 3. CI gate artifacts: the authoritative test results, surfaced statically ──
 if [ -f "$T1/docs/validation/latest.json" ]; then
     cp "$T1/docs/validation/latest.json" "$OUT/gate.json"
@@ -68,6 +71,7 @@ body = "".join(rows) or "<tr><td colspan=2>No gate report yet. CI runs validate_
 open(os.path.join(OUT, "validation.html"), "w").write(
 """<!DOCTYPE html><html lang=en><head><meta charset=UTF-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
 <title>Validation report</title>
 <style>body{background:#0d0d0d;color:#f2f2f2;font:15px/1.5 system-ui,sans-serif;max-width:720px;margin:0 auto;padding:2rem}
 a{color:#76b900}h1{color:#76b900}table{border-collapse:collapse;width:100%%;margin:1em 0}
@@ -85,9 +89,12 @@ cat > "$OUT/index.html" <<'HTML'
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<link rel="icon" type="image/x-icon" href="favicon.ico"/>
+<script>(function(){try{var t=localStorage.getItem("theme")||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
 <title>Building Agents · client-side course</title>
 <style>
   :root{--g:#76b900;--gs:#aee23a;--bg:#0d0d0d;--e1:#161616;--e3:#2a2a2a;--tx:#f2f2f2;--td:#b0b0b0;--mono:ui-monospace,"SF Mono",Consolas,monospace}
+  :root[data-theme="light"]{--gs:#4a7a00;--bg:#ffffff;--e1:#f6f8fa;--e3:#e1e6eb;--tx:#1a1a1a;--td:#3b3b3b}
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--tx);font:15px/1.55 system-ui,-apple-system,sans-serif;max-width:60rem;margin:0 auto;padding:clamp(1.5rem,4vw,2.5rem) clamp(1rem,4vw,2rem) 5rem}
   a{color:var(--g);text-decoration:none}a:hover{text-decoration:underline}
@@ -125,6 +132,13 @@ cat > "$OUT/index.html" <<'HTML'
 
   <p class="note">Static build produced by <code>scripts/build_pages.sh</code>. Identical output is
   published to GitLab Pages (private, pre-release) and GitHub Pages (on external release).</p>
+
+  <button id="theme-tgl" type="button" aria-label="Toggle dark or light theme"
+    style="position:fixed;top:14px;right:16px;z-index:50;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;background:transparent;color:var(--td);border:1px solid var(--e3);border-radius:8px">☀</button>
+  <script>(function(){var r=document.documentElement,b=document.getElementById("theme-tgl");
+  function cur(){return r.getAttribute("data-theme")||"dark";}
+  function paint(){var t=cur();b.textContent=t==="light"?"☾":"☀";b.title=t==="light"?"Switch to dark theme":"Switch to light theme";}
+  b.addEventListener("click",function(){var n=cur()==="light"?"dark":"light";r.setAttribute("data-theme",n);try{localStorage.setItem("theme",n);}catch(e){}paint();});paint();})();</script>
 </body>
 </html>
 HTML
@@ -138,6 +152,7 @@ cat > "$OUT/tests.html" <<'HTML'
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<link rel="icon" type="image/x-icon" href="favicon.ico"/>
 <title>Client-side test runner</title>
 <style>
   :root{--g:#76b900;--gs:#aee23a;--bg:#0d0d0d;--e1:#161616;--e3:#2a2a2a;--tx:#f2f2f2;--td:#b0b0b0;--mono:ui-monospace,Consolas,monospace}

@@ -401,7 +401,7 @@
         ctx.view.tool("retrieved top 3 passages", top);   // the exact text handed to the model, in full
         const s = await chatStream({ messages: [
           { role: "system", content: "Answer ONLY from these passages and cite them as [n]. If they do not cover the question, say so.\n\n" + top },
-          { role: "user", content: text }], max_tokens: 350, signal: ctx.signal }, (t) => ctx.view.token(t), { onReasoning: (r) => ctx.view.reasoning(r) });
+          { role: "user", content: text }], max_tokens: 1024, signal: ctx.signal }, (t) => ctx.view.token(t), { onReasoning: (r) => ctx.view.reasoning(r) });
         if (s.usage) ctx.view.usage({ input: s.usage.prompt_tokens, output: s.usage.completion_tokens, model: s.model });
       },
     });
@@ -667,7 +667,7 @@ mountCanvasFlow("#cell-m3b-p4", {
   "NVIDIA Nemotron is a family of NVIDIA's open-weights reasoning models. Nano variants are small and fast; Super and Ultra are larger.",
   "Nemotron-3-Nano-30B-A3B is a text reasoning model with a hybrid mixture-of-experts architecture and 3 billion active parameters. Its Omni sibling, Nemotron-3-Nano-Omni-30B-A3B, is the multimodal variant that also reads images.",
   "This course routes model and embedding calls to build.nvidia.com through a hosted Cloudflare worker proxy. No API key is required in the browser.",
-  "Web search in this course (helpers.webSearch) returns ranked results from the Wikipedia API, called directly from the browser with no key; a separate helpers.instantAnswer wraps DuckDuckGo's Instant Answer API.",
+  "Web search in this course (helpers.webSearch) ranks a glossary of NVIDIA AI terms shipped with the course, searched directly in the browser with no key; a separate helpers.instantAnswer returns one term's definition when the query names it.",
   "Cosine similarity between two embedding vectors measures their semantic closeness. Ranges -1 to 1; higher means more similar.",
   "LangChain.js provides ChatOpenAI for chat completions and OpenAIEmbeddings for embeddings; both accept a custom baseURL.",
 ];

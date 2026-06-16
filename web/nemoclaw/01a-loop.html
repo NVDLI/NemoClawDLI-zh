@@ -1045,7 +1045,7 @@ state.MAZE_MODELS = {
                 extra_body: { reasoning_budget: 1024, chat_template_kwargs: { enable_thinking: true } } },
   reasoning:  { id: "nvidia/nemotron-3-nano-30b-a3b", maxTok: 1200, temp: 0.6,        // text reasoning model
                 extra_body: { reasoning_budget: 800, chat_template_kwargs: { enable_thinking: true } } },
-  vision:     { id: "nvidia/nemotron-nano-12b-v2-vl", maxTok: 512, temp: 0.3 },      // reads images
+  vision:     { id: "nvidia/nemotron-nano-12b-v2-vl", maxTok: 1024, temp: 0.3 },     // reads images (needs room to reach the tool call)
   qwenVision: { id: "qwen/qwen3.5-122b-a10b", maxTok: 1024, temp: 0.4 },             // reads images + tools
   super:      { id: "nvidia/nemotron-3-super-120b-a12b", maxTok: 1024, temp: 0.4 },  // strong tool-caller
   gptOss:     { id: "openai/gpt-oss-120b", maxTok: 1500, temp: 0.5 }                 // reasoning + tools
@@ -1503,7 +1503,7 @@ const reply = await chat({
     { role: "system", content: "You are a terse assistant. One sentence." },
     { role: "user",   content: "What does 'stateless' mean for an LLM API?" },
   ],
-  max_tokens: 600,   // reasoning models think first, so give the answer room
+  max_tokens: 1024,  // reasoning models think first, so give the answer room past the reasoning_content
 });
 
 const m  = reply.choices[0].message;
@@ -1534,7 +1534,7 @@ const headers = { "Content-Type": "application/json", "Authorization": "Bearer "
 const body = {
   model: "nvidia/nemotron-3-nano-30b-a3b",
   messages: [{ role: "user", content: "In one sentence: who runs you?" }],
-  max_tokens: 200,
+  max_tokens: 1024,  // a reasoning model spends tokens thinking first; leave room for the answer
 };
 
 // What goes OUT, with the key redacted so a screenshot never leaks it.

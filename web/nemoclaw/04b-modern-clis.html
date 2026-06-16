@@ -303,7 +303,7 @@ $ curl -X POST $GATEWAY/v1/chat/completions \
       greeting: "Tell me the task and where it runs (a repo? unattended on a server? inside your editor?) and I'll point you at one of the four CLIs.",
       examples: ["Refactor a large repo unattended overnight", "Edit code inside my IDE as I work", "Triage prod incidents on a server 24/7"],
       respond: async (text, ctx) => {
-        const s = await chatStream({ messages: [{ role: "system", content: SYS }, { role: "user", content: text }], max_tokens: 400, signal: ctx.signal },
+        const s = await chatStream({ messages: [{ role: "system", content: SYS }, { role: "user", content: text }], max_tokens: 1024, signal: ctx.signal },
           (t) => ctx.view.token(t), { onReasoning: (r) => ctx.view.reasoning(r) });
         if (s.usage) ctx.view.usage({ input: s.usage.prompt_tokens, output: s.usage.completion_tokens, model: s.model });
       },

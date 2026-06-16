@@ -29,6 +29,7 @@ import os
 import re
 import glob
 import json
+import html
 import hashlib
 import datetime
 import mimetypes
@@ -66,6 +67,81 @@ TERMS = [
 STRIP_SELECTORS = ["script", "style", "header", "nav", "iframe",
                    ".global-footer", ".page-footer-wrapper"]
 STRIP_IDS = ["main-header", "brandFooter", "globalFooter", "country-selector-modal"]
+
+INDEX_JSON = os.path.join(REPO, "mats", "glossary_index.json")
+# The course ships the same index as a static asset and fetches it client-side: it is the
+# key-less, off-lab web_search backend (helpers.webSearch in web/nemoclaw/_shared.js). build_index
+# writes this copy alongside the mats one so a re-vendor keeps both in sync.
+COURSE_INDEX = os.path.join(REPO, "web", "nemoclaw", "assets", "glossary_index.json")
+
+# The full glossary listing (https://www.nvidia.com/en-us/glossary/?itemsPerPage=100).
+# `--index` fetches each page's meta (title, description, keywords) and writes the
+# committed mats/glossary_index.json, so the course's glossary endpoint ships a
+# real, regenerable index without a live fetch. Slugs whose page carries deep
+# vendored markdown in glossary_raw/ are flagged "deep" from _versions.json.
+INDEX_SLUGS = [
+    "3d-reconstruction", "ai-agents", "ai-factory", "ai-grid", "ai-inference",
+    "ai-infrastructure", "ai-reasoning", "ai-training", "ai-ran", "alphafold2",
+    "mxnet", "apache-spark", "speech-to-text", "autonomous-networks", "autonomous-vehicles",
+    "bert", "cot-prompting", "clustering", "computer-vision", "convolutional-neural-network",
+    "dask", "data-flywheel", "deep-agents", "deep-learning", "digital-twin",
+    "embodied-ai", "energy-efficiency", "frontier-models", "generative-ai", "graph-analytics",
+    "high-performance-computing", "humanoid-robot", "imitation-learning", "industrial-ai", "k-means",
+    "kubernetes", "large-language-models", "machine-learning", "mlops", "mixed-integer-programming",
+    "mixture-of-transformers", "multi-agent-systems", "natural-language-processing", "networkx", "numba",
+    "numpy", "omni-model", "pandas-python", "generative-physical-ai", "polars",
+    "power-efficiency", "product-configurator", "pytorch", "quantum-computing", "random-forest",
+    "reasoning-vision-language-action", "recommendation-system", "linear-regression-logistic-regression",
+    "reinforcement-learning", "retrieval-augmented-generation", "robot-learning", "scikit-learn",
+    "sensor-simulation", "sentiment-analysis", "simready", "hit-identification", "spatial-computing",
+    "specialized-ai", "speech-ai", "stream-processing", "synthetic-data-generation", "tensorflow",
+    "text-to-speech", "vector-database", "virtual-screening", "vision-language-models", "world-action-model",
+    "world-models", "xgboost",
+]
+
+# Clean display names from the glossary listing. The per-page og:title is SEO-shaped
+# ("Robotaxis", "Polars? - NVIDIA Glossary"), so the listing name is authoritative.
+NAMES = {
+    "3d-reconstruction": "3D Reconstruction", "ai-agents": "AI Agents",
+    "ai-factory": "AI Factory", "ai-grid": "AI Grid", "ai-inference": "AI Inference",
+    "ai-infrastructure": "AI Infrastructure", "ai-reasoning": "AI Reasoning",
+    "ai-training": "AI Training", "ai-ran": "AI-RAN", "alphafold2": "AlphaFold2",
+    "mxnet": "Apache MXNet", "apache-spark": "Apache Spark",
+    "speech-to-text": "Automatic Speech Recognition (ASR)", "autonomous-networks": "Autonomous Networks",
+    "autonomous-vehicles": "Autonomous Vehicles", "bert": "BERT",
+    "cot-prompting": "Chain of Thought Prompting", "clustering": "Cluster Analysis / Clustering",
+    "computer-vision": "Computer Vision", "convolutional-neural-network": "Convolutional Neural Network",
+    "dask": "Dask", "data-flywheel": "Data Flywheel", "deep-agents": "Deep Agents",
+    "deep-learning": "Deep Learning", "digital-twin": "Digital Twin", "embodied-ai": "Embodied AI",
+    "energy-efficiency": "Energy Efficiency", "frontier-models": "Frontier Models",
+    "generative-ai": "Generative AI", "graph-analytics": "Graph Analytics",
+    "high-performance-computing": "High-Performance Computing", "humanoid-robot": "Humanoid Robot",
+    "imitation-learning": "Imitation Learning", "industrial-ai": "Industrial AI",
+    "k-means": "K-Means Clustering Algorithm", "kubernetes": "Kubernetes",
+    "large-language-models": "Large Language Models", "machine-learning": "Machine Learning",
+    "mlops": "Machine Learning Operations (MLOps)", "mixed-integer-programming": "Mixed Integer Programming",
+    "mixture-of-transformers": "Mixture-of-Transformers", "multi-agent-systems": "Multi-Agent Systems",
+    "natural-language-processing": "Natural Language Processing", "networkx": "NetworkX",
+    "numba": "Numba", "numpy": "NumPy", "omni-model": "Omni-Model", "pandas-python": "pandas",
+    "generative-physical-ai": "Physical AI", "polars": "Polars", "power-efficiency": "Power Efficiency",
+    "product-configurator": "Product Configurator", "pytorch": "PyTorch",
+    "quantum-computing": "Quantum Computing", "random-forest": "Random Forest",
+    "reasoning-vision-language-action": "Reasoning Vision Language Action",
+    "recommendation-system": "Recommendation System",
+    "linear-regression-logistic-regression": "Regression",
+    "reinforcement-learning": "Reinforcement Learning",
+    "retrieval-augmented-generation": "Retrieval-Augmented Generation (RAG)",
+    "robot-learning": "Robot Learning", "scikit-learn": "Scikit-learn",
+    "sensor-simulation": "Sensor Simulation", "sentiment-analysis": "Sentiment Analysis",
+    "simready": "SimReady", "hit-identification": "Small-Molecule Hit Identification",
+    "spatial-computing": "Spatial Computing", "specialized-ai": "Specialized AI",
+    "speech-ai": "Speech AI", "stream-processing": "Stream Processing",
+    "synthetic-data-generation": "Synthetic Data", "tensorflow": "TensorFlow",
+    "text-to-speech": "Text-to-Speech", "vector-database": "Vector Database",
+    "virtual-screening": "Virtual Screening", "vision-language-models": "Vision Language Models",
+    "world-action-model": "World Action Model", "world-models": "World Foundation Models",
+    "xgboost": "XGBoost",
+}
 
 
 def fetch(url: str) -> str:
@@ -174,11 +250,77 @@ def vendor(slug: str, versions: dict, today: str) -> None:
     print(f"  {slug}: {len(out)} bytes, {len(images)} image(s)")
 
 
+def _meta(html: str, key: str, attr: str = "name") -> str:
+    # Extract a <meta> content value, tolerant of attribute order.
+    pat1 = r'<meta[^>]*' + attr + r'=["\']' + re.escape(key) + r'["\'][^>]*content=["\']([^"\']*)'
+    pat2 = r'<meta[^>]*content=["\']([^"\']*)["\'][^>]*' + attr + r'=["\']' + re.escape(key) + r'["\']'
+    m = re.search(pat1, html, re.I) or re.search(pat2, html, re.I)
+    return m.group(1).strip() if m else ""
+
+
+def _clean_term(title: str, slug: str) -> str:
+    # og:title comes in forms like "What are AI Agents?" or "Apache Spark"; reduce
+    # to the bare term, falling back to a title-cased slug.
+    t = re.sub(r"^\s*what\s+(is|are)\s+", "", title, flags=re.I).strip().rstrip("?").strip()
+    t = re.split(r"\s*[|·]\s*", t)[0].strip()
+    return t or slug.replace("-", " ").title()
+
+
+def index_one(slug: str) -> dict:
+    url = BASE.format(slug=slug)
+    page_html = fetch(url)
+    title = html.unescape(_meta(page_html, "og:title", "property"))
+    blurb = " ".join(html.unescape(_meta(page_html, "description")
+                                   or _meta(page_html, "og:description", "property")).split())
+    kw = html.unescape(_meta(page_html, "keywords"))
+    _noise = {"nvidia glossary", "nvidia", "dictionary", "glossary"}
+    tags = [k.strip() for k in kw.split(",")
+            if k.strip() and k.strip().lower() not in _noise
+            and not k.strip().lower().startswith(("definition of", "what is", "what are"))]
+    return {"slug": slug, "term": NAMES.get(slug) or _clean_term(title, slug),
+            "url": url, "blurb": blurb, "tags": tags}
+
+
+def build_index(slugs: list[str]) -> int:
+    versioned: set[str] = set()
+    if os.path.exists(VERSIONS):
+        with open(VERSIONS, encoding="utf-8") as fh:
+            versioned = set(json.load(fh).keys())
+    entries = []
+    for slug in slugs:
+        try:
+            e = index_one(slug)
+            e["deep"] = slug in versioned   # full vendored markdown in glossary_raw/<slug>.md
+            entries.append(e)
+            flag = " [deep]" if e["deep"] else ""
+            print(f"  {slug}: {e['term']} ({len(e['blurb'])} chars, {len(e['tags'])} tags){flag}")
+        except Exception as exc:  # noqa: BLE001 - report and continue
+            print(f"  {slug}: FAILED ({exc})")
+    entries.sort(key=lambda e: e["term"].lower())
+    payload = {
+        "source": "https://www.nvidia.com/en-us/glossary/?itemsPerPage=100",
+        "fetched": datetime.date.today().isoformat(),
+        "count": len(entries),
+        "terms": entries,
+    }
+    for path in (INDEX_JSON, COURSE_INDEX):
+        if not os.path.isdir(os.path.dirname(path)):
+            continue
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(payload, fh, indent=2, ensure_ascii=False)
+            fh.write("\n")
+        print(f"  -> {path} ({len(entries)} terms)")
+    return 0
+
+
 def main() -> int:
     args = sys.argv[1:]
     if "--list" in args:
         print("\n".join(TERMS))
         return 0
+    if "--index" in args:
+        slugs = [a for a in args if not a.startswith("-")] or INDEX_SLUGS
+        return build_index(slugs)
     slugs = [a for a in args if not a.startswith("-")] or TERMS
     os.makedirs(IMG, exist_ok=True)
     versions = {}

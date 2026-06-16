@@ -508,6 +508,18 @@ def _apply_svg_subs(html: str) -> str:
     return "".join(out)
 
 
+# Injected into <head>. The favicon ships under assets/ (relative, both builds). The theme init
+# runs before first paint in the full build: it sets data-theme on <html> from a saved choice or
+# the OS preference, so the page opens in the right palette with no flash. _style.css carries the
+# matching :root[data-theme="light"] palette; the toggle button is mounted by _shared.js.
+FAVICON_LINK = '<link rel="icon" type="image/x-icon" href="./assets/favicon.ico"/>'
+THEME_INIT_JS = (
+    '<script>(function(){try{var t=localStorage.getItem("theme")'
+    '||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");'
+    'document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>'
+)
+
+
 def bundle_one(html_path: Path, css_text: str, lite_css: str, shared_js: str,
                full: bool = False) -> str:
     """Bundle one page into a self-contained file.
@@ -533,6 +545,11 @@ def bundle_one(html_path: Path, css_text: str, lite_css: str, shared_js: str,
         # Insert the style block right before </head>.
         new_html = html.replace("</head>", style_block + "\n</head>", 1)
 
+    # 1b) Favicon on every bundled page. In the full build also inject the pre-paint theme init so
+    #     the page opens in the saved/OS palette without a flash; the lite iframe export stays baked.
+    head_inject = FAVICON_LINK + ("\n" + THEME_INIT_JS if full else "")
+    new_html = new_html.replace("</head>", head_inject + "\n</head>", 1)
+
     # 2) The lite export strips the lab-only chrome (topbar / journey map / the JS that mounts
     #    them) because the edX navigator supplies its own; the full build keeps the chrome so
     #    the course navigates itself. Both demote dead /lab/* anchors, which never resolve
@@ -544,16 +561,17 @@ def bundle_one(html_path: Path, css_text: str, lite_css: str, shared_js: str,
     # 3) Keep the `import {...} from "./_shared.js"` line and ship _shared.js as a real file
     #    alongside the pages (copied in main). The imports then resolve, and ES module caching
     #    loads the module once even across multiple module blocks, exactly as the lab serves
-    #    it, so each page stays small. Inject the off-lab key panel once, right after the first
-    #    import, in both builds; it is a self-contained IIFE that needs nothing from _shared.js
-    #    in scope. The lite export also auto-opens the code panels for reading; the full build
-    #    leaves them closed so the course stays interactive, as the lab serves it.
-    inject = LITE_KEY_PANEL_JS if full else (LITE_KEY_PANEL_JS + LITE_OPEN_PANELS_JS)
-    new_html, n_js = IMPORT_LINE_RE.subn(
-        lambda m: m.group(0) + "\n" + inject,
-        new_html,
-        count=1,
-    )
+    #    it, so each page stays small. The lite export injects its own sessionStorage key form
+    #    and auto-opens the code panels for reading. The full build injects NOTHING here: each
+    #    page already has a native key panel (mountKeyPanel on module pages, the static form on
+    #    the landing) that works off-lab and is styled by _style.css, so injecting the lite form
+    #    would only collide with it on #key-panel and render unstyled.
+    if not full:
+        new_html, n_js = IMPORT_LINE_RE.subn(
+            lambda m: m.group(0) + "\n" + LITE_KEY_PANEL_JS + LITE_OPEN_PANELS_JS,
+            new_html,
+            count=1,
+        )
     # Pages without _shared.js (e.g. courses.html) get no key panel either.
 
     # 4) The lite export re-themes the SVG figures to read on a light background; the full

@@ -12,6 +12,15 @@
     --mono:ui-monospace,"SF Mono",Consolas,monospace;
     --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
   }
+  /* Light theme: <html data-theme="light"> flips the palette (mirrors _lite_overlay.css). The
+     bundler injects the pre-paint init that sets data-theme; _shared.js mounts the toggle. */
+  :root[data-theme="light"] {
+    --g:#76b900; --gd:#2f6a00; --gs:#4a7a00;
+    --bg:#ffffff; --e1:#f6f8fa; --e2:#eef1f4; --e3:#e1e6eb;
+    --tx:#1a1a1a; --td:#3b3b3b; --tf:#57606a;
+  }
+  :root[data-theme="light"] body { background: var(--bg); color: var(--tx); }
+  :root[data-theme="light"] .topbar { background: var(--bg); }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { background: var(--bg); color: var(--tx);
                font-family: var(--sans); font-size: 15px; line-height: 1.55; }
@@ -60,7 +69,7 @@
 
   /* ── Key setup ─────────────────────────────────────────────────────── */
   .key-panel { background: var(--e1); border: 1px solid var(--e3); border-left: 3px solid var(--g);
-               border-radius: 10px; padding: 18px 22px; margin: 1em 0; max-width: 720px; }
+               border-radius: 10px; padding: 18px 22px; margin: 1em 0; }
   .key-panel label { display: block; font-size: .86rem; color: var(--td); margin-bottom: .5em; }
   .key-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
   .key-input { flex: 1; min-width: 220px; background: var(--e2); border: 1px solid var(--e3);
@@ -280,12 +289,12 @@
           hosted Cloudflare proxy. Your <code>nvapi-</code> key is the only thing you bring;
           the proxy keeps it server-side.</div>
       </a>
-      <a class="sys-card search" href="https://api.duckduckgo.com/?q=nemotron&amp;format=json" target="_blank" rel="noopener">
+      <a class="sys-card search" href="https://www.nvidia.com/en-us/glossary/" target="_blank" rel="noopener">
         <div class="sys-label">Search</div>
-        <div class="sys-name">Wikipedia + DuckDuckGo Instant Answer</div>
-        <div class="sys-desc">webSearch returns ranked results from the Wikipedia API; instantAnswer
-          returns a curated card from DuckDuckGo's Instant Answer API for queries it recognizes as an
-          entity. Both are key-less and CORS-open, so they run in the browser with no service to start.</div>
+        <div class="sys-name">NVIDIA glossary index</div>
+        <div class="sys-desc">webSearch ranks a glossary of NVIDIA AI and accelerated-computing terms
+          that ships with the course; instantAnswer returns one term's definition when the query
+          names it. The index is a static file, so both run in the browser with no key and no service.</div>
       </a>
       <a class="sys-card runtime" href="https://brev.nvidia.com" target="_blank" rel="noopener">
         <div class="sys-label">Agent runtime</div>
@@ -377,7 +386,7 @@ input.addEventListener("keydown", e => { if (e.key === "Enter") save(); });
 // The nvapi key set above (and any OpenClaw URL/token set later) now lives in
 // localStorage, so it survives across tabs, reloads, and both courses. Internal course
 // links still navigate in the SAME tab on purpose (cleaner UX: one tab, working back
-// button); only the external links (build.nvidia.com, Brev, DuckDuckGo) open new tabs.
+// button); only the external links (build.nvidia.com, Brev, NVIDIA glossary) open new tabs.
 </script>
 </body>
 </html>

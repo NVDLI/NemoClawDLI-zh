@@ -145,12 +145,12 @@
   </ul>
 
   <!-- ── Part 3: A real ReWOO research pipeline ───────────────────────────── -->
-  <h2>Running a ReWOO pipeline against live web search</h2>
+  <h2>Running a ReWOO pipeline against the NVIDIA glossary</h2>
 
   <p>
     ReWOO writes the full plan in one LLM call, runs every tool in parallel without
     re-querying the model, then synthesizes in a second LLM call. The cell below
-    runs this against Wikipedia's free, key-less search API (via <code>helpers.webSearch</code>, the same executor you wired in Module 1c):
+    runs this against the NVIDIA glossary (via <code>helpers.webSearch</code>, the ranked glossary search you met in Module 1c):
   </p>
   <ol>
     <li><strong>Planner.</strong> One schema-bound LLM call emits a JSON list of 3-5 search queries.</li>
@@ -158,7 +158,7 @@
     <li><strong>Synthesizer.</strong> A second LLM call reads every result and writes the brief, citing each search by index.</li>
   </ol>
   <p>
-    Two LLM calls total, plus N parallel web searches. Edit the research goal and
+    Two LLM calls total, plus N parallel glossary searches. Edit the research goal and
     watch the planner's query list change.
   </p>
 
@@ -282,12 +282,12 @@
       respond: async (text, ctx) => {
         const r = await chat({ messages: [
           { role: "system", content: "Classify the user's question into ONE category and reply with ONLY that word.\nbilling = payments, charges, double charges, refunds, invoices, subscriptions\ntechnical = errors, bugs, setup, configuration, how-to\naccount = login, password, profile, security, access\nother = anything that fits none of the above" },
-          { role: "user", content: text }], max_tokens: 256, signal: ctx.signal });   // nano reasons first; give it room to reach the word
+          { role: "user", content: text }], max_tokens: 1024, signal: ctx.signal });   // nano reasons first; give it room to reach the word
         const raw = ((r.choices && r.choices[0] && r.choices[0].message.content) || "").trim();
         const cat = raw.toLowerCase().match(/billing|technical|account|other/);
         const c = cat ? cat[0] : "other";
         ctx.view.tool("routed → " + c, "classifier replied: " + (raw || "(empty)"));
-        const s = await chatStream({ messages: [{ role: "system", content: SPECIALISTS[c] }, { role: "user", content: text }], max_tokens: 400, signal: ctx.signal },
+        const s = await chatStream({ messages: [{ role: "system", content: SPECIALISTS[c] }, { role: "user", content: text }], max_tokens: 1024, signal: ctx.signal },
           (t) => ctx.view.token(t), { onReasoning: (x) => ctx.view.reasoning(x) });
         const inTok  = (r.usage && r.usage.prompt_tokens || 0)     + (s.usage && s.usage.prompt_tokens || 0);
         const outTok = (r.usage && r.usage.completion_tokens || 0) + (s.usage && s.usage.completion_tokens || 0);
@@ -351,7 +351,7 @@ mountCanvasFlow("#cell-m2a-rewoo", {
     {
       id: "goal", icon: "🎯", title: "Research goal", x: 0, y: 0,
       summary: "The research goal that drives the entire pipeline. Edit it and rerun to see how the planner generates a different set of queries and the synthesizer produces a different brief.",
-      code: `state.goal = "What's new in NVIDIA Nemotron models in 2026?";
+      code: `state.goal = "How do retrieval-augmented generation, vector databases, and AI agents fit together?";
 return state.goal;
 `,
     },
@@ -371,7 +371,7 @@ return state.goal;
 };
 const plan = await helpers.chatStream({
   messages: [
-    { role: "system", content: "You are a research planner. Decompose the goal into 3-5 short, complementary web search queries. Return JSON matching the schema." },
+    { role: "system", content: "You are a research planner. Decompose the goal into 3-5 short, complementary search queries over the NVIDIA glossary of AI terms. Return JSON matching the schema." },
     { role: "user",   content: state.goal },
   ],
   response_format: { type: "json_schema", json_schema: state.PLAN_SCHEMA },

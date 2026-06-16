@@ -433,10 +433,10 @@ body.python-mode .cf-btn-reset-kernel:hover:not([disabled]) {
 /* The stage: relative wrapper for the SVG layer + grid of node cards */
 .cf-stage {
   position: relative;
-  background-color: #0d0d0d;
-  background-image: radial-gradient(circle, #1c1c1c 1px, transparent 1px);
+  background-color: var(--bg);
+  background-image: radial-gradient(circle, var(--e3) 1px, transparent 1px);
   background-size: 22px 22px;
-  border: 1px solid #1e1e1e;
+  border: 1px solid var(--bd);
   border-radius: 10px;
   padding: 28px 32px;
   overflow: visible;
@@ -1190,7 +1190,7 @@ body.python-mode .py-mode-jlab-link { display: inline-block; }
 .cf-jm-wrap {
   width: 100%;
   margin: 0 0 26px;
-  background: #0d0d0d;
+  background: var(--bg);
   border: 1px solid var(--bd);
   border-radius: 10px;
   overflow: hidden;
@@ -1310,6 +1310,34 @@ body.python-mode .py-mode-jlab-link { display: inline-block; }
   --gfx-blue:#5aa8ff; --gfx-green:#9bd14a; --gfx-purple:#bd9cf7; --gfx-amber:#e3b341; --gfx-teal:#3fd0c0; --gfx-red:#ff6b6b;
   --gfx-tint-blue:#15273d; --gfx-tint-green:#1d2a12; --gfx-tint-purple:#241a36;
   --gfx-tint-amber:#33280f; --gfx-tint-teal:#0e2b28; --gfx-tint-red:#3a1414; --gfx-tint-sub:#1c1f22;
+}
+
+/* ── Light theme ──────────────────────────────────────────────────────────────
+   Runtime toggle: <html data-theme="light"> flips the palette; the default (no attribute or
+   data-theme="dark") keeps the dark :root above. The values mirror _lite_overlay.css so the
+   baked light iframe export and this runtime light theme stay one source of truth. The pre-paint
+   init that sets data-theme is injected into <head> by bundle_standalone.py; the topbar toggle
+   button is mounted by _shared.js (mountThemeToggle). Code and output panels keep their dark
+   canvas in both themes, exactly as the light export already renders them. */
+:root[data-theme="light"] {
+  --g:#76b900; --gd:#2f6a00; --gs:#4a7a00;
+  --bg:#ffffff; --e1:#f6f8fa; --e2:#eef1f4; --e3:#e1e6eb;
+  --bd:#d0d7de; --tx:#1a1a1a; --td:#3b3b3b; --tf:#57606a;
+  --acc:#0969da; --err:#d1242f;
+}
+:root[data-theme="light"] body { background: var(--bg); color: var(--tx); }
+/* GFX figures: flip their internal palette, and override the inline dark canvas + border. An
+   author !important beats the figures' normal inline style, so no per-figure edits are needed. */
+:root[data-theme="light"] .gfx-dark {
+  --gfx-ink:#1a1a1a; --gfx-ink2:#3b3b3b; --gfx-sub:#5e5e5e; --gfx-faint:#8b949e;
+  --gfx-line:#d0d7de; --gfx-panel:#f6f8fa; --gfx-bg:#ffffff;
+  --gfx-blue:#0969da; --gfx-green:#4a7a00; --gfx-purple:#6f42c1; --gfx-amber:#9a6700; --gfx-teal:#0d9488; --gfx-red:#d1242f;
+  --gfx-tint-blue:#dfeaf5; --gfx-tint-green:#e6f3d4; --gfx-tint-purple:#eadfff;
+  --gfx-tint-amber:#f7e9cf; --gfx-tint-teal:#d6f1ee; --gfx-tint-red:#fadcdc; --gfx-tint-sub:#eef1f4;
+}
+:root[data-theme="light"] svg.gfx-dark {
+  background: var(--gfx-bg) !important;
+  border-color: var(--gfx-line) !important;
 }
 
 /* ── Gateway widget (mountClawGateway) ─────────────────────────────────────── */
