@@ -21,6 +21,19 @@ echo "[build_pages] task1 root: $T1"
 echo "[build_pages] output:     $OUT"
 rm -rf "$OUT"; mkdir -p "$OUT"
 
+# ── 0. Rebase materials to the web's ground truth (best-effort), then refresh the gate ──
+# pull_materials.py never aborts: a per-source failure keeps the committed snapshot and records
+# status=unreachable, so the build always completes and the failure shows up (loud) on the
+# validator screen rather than breaking the deploy. Then re-run the gate so the report the build
+# publishes reflects exactly what was just pulled. (Run locally too; it refreshes your mats/.)
+echo "[build_pages] rebasing materials from the web (best-effort; falls back to committed snapshots) ..."
+if python3 -c "import requests, bs4, markdownify" >/dev/null 2>&1; then
+    python3 "$T1/scripts/pull_materials.py" || echo "[build_pages]   pull reported issues; see the validator screen / _materials.json"
+else
+    echo "[build_pages]   SKIP pull: vendoring deps (requests beautifulsoup4 markdownify lxml) not installed; using committed snapshots"
+fi
+python3 "$T1/scripts/validate_bundle.py" --scope ship >/dev/null 2>&1 || true   # refresh docs/validation/latest.json post-pull
+
 # ── 1. Courses: build the full self-hosted standalone straight into public/ ──
 # --full gives the lab experience (dark theme, topbar + journey-map + nav, interactive panels)
 # made self-contained: bundle_standalone.py inlines each page's CSS, ships _shared.js, carries
@@ -59,27 +72,88 @@ data = {}
 if os.path.exists(p):
     try: data = json.load(open(p))
     except Exception: data = {}
+esc = lambda x: html.escape(str(x))
+
+# Verdict banner: the same honest verdict validate_bundle prints (clean / advisory / fail / none).
+ok, adv = data.get("ok"), data.get("advisory_total", 0)
+if not data:
+    vclass, vtext = "muted", "No gate report yet. CI runs validate_bundle.py and writes docs/validation/latest.json."
+elif ok is False:
+    vclass, vtext = "fail", "FAIL: ship-blocking issues (see the full log)."
+elif adv:
+    vclass, vtext = "warn", "PASS, but " + str(adv) + " advisory issue(s) logged below."
+else:
+    vclass, vtext = "ok", "Clean: no blocking and no advisory issues."
+
+# Gate metrics table.
 rows = []
-def add(k, v): rows.append("<tr><td>%s</td><td>%s</td></tr>" % (html.escape(str(k)), html.escape(str(v))))
+add = lambda k, v: rows.append("<tr><td>" + esc(k) + "</td><td>" + esc(v) + "</td></tr>")
 g = data.get("grounding", {}) if isinstance(data, dict) else {}
 for k in ("pages", "ungrounded", "em_dash_pages", "mat_associated"):
     if k in g: add("grounding . " + k, g[k])
-for k, v in (data.items() if isinstance(data, dict) else []):
-    if k == "grounding": continue
-    if isinstance(v, (str, int, float, bool)): add(k, v)
-body = "".join(rows) or "<tr><td colspan=2>No gate report yet. CI runs validate_bundle and writes docs/validation/latest.json.</td></tr>"
-open(os.path.join(OUT, "validation.html"), "w").write(
-"""<!DOCTYPE html><html lang=en><head><meta charset=UTF-8>
+pv = data.get("prose_variety", {})
+if pv: add("prose variety flagged", str(pv.get("flagged", "?")) + " / " + str(pv.get("pages", "?")))
+pa = data.get("page_audit", {})
+if pa: add("page audit drift", str(pa.get("pages_with_findings", "?")) + " / " + str(pa.get("pages", "?")))
+gate_tbl = "".join(rows) or "<tr><td colspan=2>No metrics.</td></tr>"
+
+# Materials section: each vendored web source, its tier, and -- if a pull failed -- the exact
+# source and the one-line fix, so a student reading this sees precisely what is wrong and how
+# a contributor repairs it (the same words the CLI and CI use).
+mt = data.get("materials", {})
+if mt:
+    tiers = ", ".join(str(n) + " " + esc(t) for t, n in sorted(mt.get("by_tier", {}).items())) or "none"
+    m = ("<p>" + str(mt.get("count", 0)) + " vendored web sources (" + tiers
+         + "), last pulled " + esc(mt.get("generated") or "?") + ".</p>")
+    un = mt.get("unreachable", [])
+    if un:
+        m += ("<div class=bad><strong>" + str(len(un)) + " unreachable at the last pull.</strong> Fix: <code>"
+              + esc(mt.get("fix", "")) + "</code><ul>")
+        for u in un:
+            m += ("<li><code>" + esc(u.get("name")) + "</code> (" + esc(u.get("host")) + "): "
+                  + esc(u.get("error") or "unreachable")
+                  + " (<a href='" + esc(u.get("url")) + "'>source</a>)</li>")
+        m += "</ul></div>"
+    else:
+        m += ("<p class=good>Every vendored web source pulled cleanly. A contributor refreshes them with "
+              "<code>python3 scripts/pull_materials.py</code> and drift-checks the live web with "
+              "<code>python3 scripts/pull_materials.py --check</code>.</p>")
+else:
+    m = "<p class=muted>No materials provenance recorded.</p>"
+
+tmpl = """<!DOCTYPE html><html lang=en><head><meta charset=UTF-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
 <link rel="icon" type="image/x-icon" href="favicon.ico">
-<title>Validation report</title>
-<style>body{background:#0d0d0d;color:#f2f2f2;font:15px/1.5 system-ui,sans-serif;max-width:720px;margin:0 auto;padding:2rem}
-a{color:#76b900}h1{color:#76b900}table{border-collapse:collapse;width:100%%;margin:1em 0}
-td{border:1px solid #2a2a2a;padding:7px 11px}td:first-child{color:#aee23a;font-family:ui-monospace,monospace;font-size:.85rem}</style>
-</head><body><p><a href="index.html">&larr; back</a></p><h1>Validation gate</h1>
-<p>Generated by <code>validate_bundle.py</code> in CI. The full log is <code>docs/validation/latest.md</code>.</p>
-<table>%s</table></body></html>""" % body)
-print("[build_pages] validation.html written")
+<title>Validation gate</title>
+<style>
+body{background:#0d0d0d;color:#f2f2f2;font:15px/1.55 system-ui,sans-serif;max-width:760px;margin:0 auto;padding:2rem 1.2rem 4rem}
+a{color:#76b900}h1{color:#76b900;margin:.2em 0}h2{font-size:1.15rem;margin:1.6em 0 .4em;border-bottom:1px solid #2a2a2a;padding-bottom:.3em}
+code{font-family:ui-monospace,Consolas,monospace;font-size:.86em;background:#161616;border:1px solid #2a2a2a;border-radius:4px;padding:1px 5px}
+table{border-collapse:collapse;width:100%;margin:.6em 0}td{border:1px solid #2a2a2a;padding:7px 11px}
+td:first-child{color:#aee23a;font-family:ui-monospace,monospace;font-size:.85rem}
+.verdict{font-weight:700;border-radius:8px;padding:12px 16px;margin:1em 0;border:1px solid #2a2a2a}
+.verdict.ok{background:rgba(118,185,0,.12);border-color:#76b900;color:#aee23a}
+.verdict.warn{background:rgba(210,153,34,.12);border-color:#d29922;color:#e3b341}
+.verdict.fail{background:rgba(209,36,47,.14);border-color:#d1242f;color:#ff7b72}
+.verdict.muted{color:#b0b0b0}
+.bad{background:rgba(209,36,47,.10);border:1px solid #d1242f;border-radius:8px;padding:10px 14px;margin:.6em 0}
+.bad code{background:#1c1416}.good{color:#9fce5e}.muted{color:#8a8a8a}
+ul{margin:.4em 0 .2em 1.1em}li{margin:.25em 0}
+</style></head><body>
+<p><a href="index.html">&larr; back</a></p>
+<h1>Validation gate</h1>
+<div class="verdict __VCLASS__">__VTEXT__</div>
+<p>Run by <code>validate_bundle.py</code>; the full log is <code>docs/validation/latest.md</code>.
+Reproduce locally: <code>python3 scripts/validate_bundle.py</code>.</p>
+<h2>Gate metrics</h2>
+<table>__GATE__</table>
+<h2>Materials</h2>
+__MATS__
+</body></html>"""
+out = (tmpl.replace("__VCLASS__", vclass).replace("__VTEXT__", esc(vtext))
+       .replace("__GATE__", gate_tbl).replace("__MATS__", m))
+open(os.path.join(OUT, "validation.html"), "w").write(out)
+print("[build_pages] validation.html written (verdict=%s, %d materials)" % (vclass, mt.get("count", 0)))
 PY
 
 # ── 4. Landing page (Pages-relative links to everything client-side) ──

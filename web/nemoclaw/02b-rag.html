@@ -144,6 +144,54 @@
   
   </div>
 
+  <!-- ── Foundations: the first RAG trained the retriever and the model together ── -->
+  <h2>The first RAG trained the retriever and the model together</h2>
+  <p>
+    The diagram above is how almost everyone runs RAG today. Take a model that
+    already exists, freeze it, and wire a retriever in front so the prompt arrives
+    pre-loaded with evidence. Nothing is trained. You are assembling parts that
+    were each built separately.
+  </p>
+  <p>
+    That is not what the paper that named RAG did. When Lewis and colleagues
+    introduced it in 2020, the retriever and the generator were trained
+    <em>together</em>, end to end, on the downstream task. Read their figure left
+    to right, then look at the arrow across the top.
+  </p>
+
+  <div style="display:flex;justify-content:center;margin:1.4em 0">
+    <figure style="margin:0;max-width:780px;width:100%">
+      <img src="assets/rag_arch_2021.svg" alt="The original RAG architecture from Lewis et al. 2020. A query x is embedded by a query encoder q, then a maximum-inner-product search (MIPS) over a document index retrieves passages z. A generator p-theta conditions on the query together with each retrieved passage and marginalizes over them to produce the output y. An arrow across the top, labelled End-to-End Backprop through q and p-theta, shows that gradients flow back through both the generator and the query encoder, so the retriever and the generator are trained jointly."
+           style="width:100%;height:auto;display:block;background:#fff;border:1px solid #d0d7de;border-radius:8px;padding:16px"/>
+      <figcaption style="text-align:center;font-size:.85rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">
+        The original architecture, from <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al. 2020</a>.
+        The label across the top is the part most systems quietly drop today.
+      </figcaption>
+    </figure>
+  </div>
+
+  <p>
+    That label, <strong>"End-to-End Backprop through q and p<sub>&theta;</sub>"</strong>,
+    is the whole idea. One loss updated both halves, so the query encoder learned
+    which passages would actually help the generator answer, and the generator
+    learned to lean on retrieved evidence instead of its own memory. The retriever
+    was not a fixed search tool sitting in front of a model. It was part of the
+    model, and the task shaped it.
+  </p>
+  <div class="callout">
+    <strong>Why today's RAG usually drops the joint training.</strong> You cannot
+    backprop into a frontier model you reach through an API, and even when you host
+    your own, end-to-end retrieval training is expensive and easy to destabilize. So
+    practice settled on the frozen-model assembly above, and "RAG" came to mean the
+    bolt-on rather than the jointly-optimized system. The cost is a ceiling: a
+    retriever that never sees the generator's loss can only guess what the generator
+    needs. Reranking, query rewriting, and fine-tuning the embedder are all ways to
+    buy back a little of what end-to-end training gave for free, which is why a
+    serious retrieval stack keeps growing stages. The bolt-on you build in this
+    module is the pragmatic version of a system that was first optimized as one
+    piece, and knowing that tells you where its ceiling is and which knobs raise it.
+  </div>
+
   <!-- ── Part 1: The bundle principle ──────────────────────────────────────── -->
   <h2>Naming the context bundle before you pick a store</h2>
   <p>
@@ -338,6 +386,114 @@
     <li><strong>Relational / graph data.</strong> The agent calls a graph-traversal tool (Cypher, GraphQL, or custom) instead of a vector store; the bundle it gets back is a sub-graph, not a chunk list, so explicit edges survive into the prompt.</li>
   </ul>
 
+  <!-- ── Frontier: GraphRAG for global questions ───────────────────────────── -->
+  <h2>When top-K is the wrong tool: GraphRAG and global questions</h2>
+  <p>
+    Every retriever on this page answers a <em>local</em> question, one whose answer
+    sits in a handful of passages: "what does the contract say about termination?",
+    "which paper introduced HyDE?". Top-K similarity finds those passages and the
+    model reads them. A different class of question has no answer in any single
+    passage. Ask "what are the main themes across these thousand documents?" and
+    there is nothing to retrieve, because the answer is a property of the whole
+    corpus rather than of any chunk in it. Top-K hands back its three best matches
+    and the model dutifully summarizes three chunks, blind to the other nine hundred
+    and ninety-seven.
+  </p>
+  <p>
+    GraphRAG (<a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">Edge et al. 2024</a>)
+    changes the shape of the problem instead of raising K. It spends an LLM up front,
+    at indexing time: read the corpus, extract entities and the relationships between
+    them into a knowledge graph, detect the communities in that graph (clusters of
+    densely connected entities), and summarize each community. A global question is
+    then answered at query time by summarizing across the relevant community
+    summaries and reducing those partial answers into one. It is a map-reduce over
+    structure, not a lookup over similarity.
+  </p>
+
+  <div style="display:flex;justify-content:center;margin:1.4em 0">
+    <figure style="margin:0;max-width:720px;width:100%">
+      <img src="assets/graph_rag_2024.svg" alt="The GraphRAG pipeline from Edge et al. 2024. At indexing time, shown in blue, source documents are split into text chunks, an LLM extracts entities and relationships, those become a knowledge graph, and community detection partitions the graph into graph communities. At query time, shown in green, each graph community is summarized, the community summaries produce community answers to the question, and the community answers are summarized into a single global answer."
+           style="width:100%;height:auto;display:block;background:#fff;border:1px solid #d0d7de;border-radius:8px;padding:16px"/>
+      <figcaption style="text-align:center;font-size:.85rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">
+        The GraphRAG pipeline, redrawn from <a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">Edge et al. 2024</a>'s figure. Blue is built once, offline; green runs per question.
+      </figcaption>
+    </figure>
+  </div>
+
+  <p>
+    The widget below makes the difference concrete on a four-document corpus. Pick a
+    question and watch where plain top-K retrieval succeeds and where it quietly
+    misses, against the same question answered over GraphRAG's community summaries.
+  </p>
+  <div id="cell-graphrag-explorer"></div>
+  <script>
+  (function(){
+    var root=document.getElementById("cell-graphrag-explorer"); if(!root) return;
+    var docs=[
+      "Dijkstra and Prim are greedy methods that grow one optimal choice at a time over a weighted graph.",
+      "Kruskal builds a minimum spanning tree by adding the cheapest safe edge, using union-find to avoid cycles.",
+      "Bellman-Ford finds shortest paths by dynamic programming, relaxing every edge repeatedly instead of committing greedily.",
+      "Union-find (disjoint-set) provides the near-constant-time merges Kruskal relies on."
+    ];
+    var comms=[
+      ["Greedy methods","Dijkstra, Prim, Kruskal","commit to a locally optimal edge or node at each step"],
+      ["Dynamic programming","Bellman-Ford","relax edges repeatedly instead of committing greedily"],
+      ["Supporting structures","union-find","data structures the other algorithms depend on"]
+    ];
+    var Q={
+      local:{q:"What does Kruskal use to avoid cycles?",
+        basic:[true,[1,3],"union-find. Chunks 2 and 4 are the most similar to the question and they state it outright, so top-K nails a local question."],
+        graph:[true,null,"union-find, reached through the Supporting-structures community. Correct, but a heavier path than a local question needs."]},
+      global:{q:"What are the main families of algorithms here?",
+        basic:[false,[0,1],"Top-K returns the chunks most similar to the question's words (1 and 2) and summarizes those: Dijkstra, Prim, Kruskal. It never surfaces Bellman-Ford or the greedy-versus-dynamic-programming split, because no single chunk states the theme."],
+        graph:[true,null,"Two families: greedy methods (Dijkstra, Prim, Kruskal) and dynamic programming (Bellman-Ford), with union-find supporting them. Each community is summarized, then summarized across."]}
+    };
+    var E=function(t,s,h){var e=document.createElement(t); if(s)e.style.cssText=s; if(h!=null)e.innerHTML=h; return e;};
+    var BD="var(--bd,#2a2a2a)",E1="var(--e1,#15171a)",E2="var(--e2,#1c1f24)",TD="var(--td,#c9c9c9)",TF="var(--tf,#8a8a8a)",G="var(--g,#76b900)",RED="#d9534f";
+    var wrap=E("div","border:1px solid "+BD+";border-radius:10px;background:"+E1+";padding:16px");
+    wrap.appendChild(E("div","font-size:.82rem;color:"+TF+";margin-bottom:.5em","A four-document corpus. The same question, two ways:"));
+    var strip=E("div","display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px");
+    docs.forEach(function(d,i){strip.appendChild(E("div","flex:1 1 210px;font-size:.75rem;color:"+TD+";background:"+E2+";border:1px solid "+BD+";border-radius:6px;padding:7px 9px","<b style=\"color:"+TF+"\">D"+(i+1)+"</b> "+d));});
+    wrap.appendChild(strip);
+    var btnRow=E("div","display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap"), panels=E("div","display:flex;gap:12px;flex-wrap:wrap"), btns={};
+    function mkBtn(key,label){
+      var b=E("button",null,"<span style=\"font-size:.68rem;letter-spacing:.08em;color:"+TF+"\">"+label+"</span><br>"+Q[key].q);
+      b.style.cssText="flex:1 1 240px;text-align:left;cursor:pointer;font:inherit;font-size:.85rem;line-height:1.3;padding:9px 12px;border-radius:7px;border:1px solid "+BD+";background:"+E2+";color:"+TD;
+      b.onclick=function(){for(var k in btns){btns[k].style.borderColor=BD;btns[k].style.color=TD;} b.style.borderColor=G; b.style.color=G; select(key);};
+      return b;
+    }
+    function methodPanel(title,sub,r,extra){
+      var ok=r[0], bdc=ok?G:RED, p=E("div","flex:1 1 300px;border:1px solid "+BD+";border-left:3px solid "+bdc+";border-radius:8px;background:"+E2+";padding:12px");
+      p.appendChild(E("div","font-weight:700;color:"+TD+";font-size:.9rem","<span style=\"color:"+bdc+"\">"+(ok?"✓":"✗")+"</span> "+title));
+      p.appendChild(E("div","font-size:.74rem;color:"+TF+";margin:.1em 0 .6em",sub));
+      if(extra)p.appendChild(extra);
+      p.appendChild(E("div","font-size:.82rem;color:"+TD+";line-height:1.5",r[2]));
+      return p;
+    }
+    function select(key){
+      panels.innerHTML=""; var d=Q[key];
+      var hit=E("div","display:flex;flex-wrap:wrap;gap:4px;margin-bottom:.6em");
+      d.basic[1].forEach(function(i){hit.appendChild(E("span","font-size:.72rem;color:"+TD+";background:"+E1+";border:1px solid "+BD+";border-radius:5px;padding:2px 7px","retrieved D"+(i+1)));});
+      panels.appendChild(methodPanel("Basic RAG · top-K","retrieve the most similar chunks, then summarize them",d.basic,hit));
+      var cl=E("div","margin-bottom:.6em");
+      comms.forEach(function(c){cl.appendChild(E("div","font-size:.72rem;color:"+TD+";margin-bottom:3px","<b style=\"color:"+TF+"\">"+c[0]+"</b> · "+c[1]));});
+      panels.appendChild(methodPanel("GraphRAG · community summaries","summarize each community, then summarize across them",d.graph,cl));
+    }
+    btns.local=mkBtn("local","LOCAL QUESTION"); btns.global=mkBtn("global","GLOBAL QUESTION");
+    btnRow.appendChild(btns.local); btnRow.appendChild(btns.global);
+    wrap.appendChild(btnRow); wrap.appendChild(panels); root.appendChild(wrap);
+    btns.global.click();
+  })();
+  </script>
+
+  <p>
+    The lesson is the one from the top of this page, turned up a level: the shape of
+    the question picks the architecture. A frozen model with a top-K retriever in
+    front answers local questions well and global ones not at all. Restructuring the
+    corpus into summarized communities is what buys the global answer, paid for by an
+    expensive indexing pass you run once.
+  </p>
+
   <h2>Before you continue</h2>
   <ol>
     <li>The cosine score in Part 4 is symmetric. The NVIDIA embed model used here takes
@@ -359,6 +515,7 @@
       <li><a href="https://arxiv.org/abs/1702.08734" target="_blank" rel="noopener">Johnson, Douze &amp; Jégou, <em>Billion-scale similarity search with GPUs</em> (FAISS, 2017)</a>. The vector-index data structure used by every "vector database" you have ever heard of.</li>
       <li><a href="https://arxiv.org/abs/2212.10496" target="_blank" rel="noopener">Gao et al., <em>HyDE: Precise Zero-Shot Dense Retrieval without Relevance Labels</em> (2022)</a>. Generates a hypothetical answer and embeds that instead of the question; a quick win for short or ambiguous queries.</li>
       <li><a href="https://arxiv.org/abs/2010.06467" target="_blank" rel="noopener">Lin et al., <em>Pretrained Transformers for Text Ranking</em> (2020)</a>. The reranker pattern that a production retrieval stack uses as its second stage.</li>
+      <li><a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">Edge et al., <em>From Local to Global: A Graph RAG Approach to Query-Focused Summarization</em> (2024)</a>. Builds an LLM-derived knowledge graph and pre-summarizes its communities so global, corpus-wide questions can be answered; the pipeline figure above is redrawn from it.</li>
     </ul>
     <p class="references-note">Comprehensive list at <a href="04c-going-further.html#refs">Going Further · References</a>.</p>
   </div>

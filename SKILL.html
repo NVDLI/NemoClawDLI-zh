@@ -25,8 +25,8 @@
   ],
   "reference_layers": [
     {
-      "name": "mats",
-      "role": "curated reference packets; joined to pages by the external URLs they cite and associated through the link graph, never linked as files"
+      "name": "web/nemoclaw/mats",
+      "role": "course-scoped curated reference packets; joined to pages by the external URLs they cite and associated through the link graph, never linked as files"
     },
     {
       "name": "scripts",
@@ -51,7 +51,7 @@
     ],
     "assumptions": [
       "task1 is the canonical root: the open-source, replicable release. Everything worth keeping lives here and is versioned; scratch goes to /tmp and is never committed.",
-      "Content is organized by execution surface: web/ (browser, remote services only) holds the released course; cpu/ holds the shared microservice stack it runs against, with shared mats/, repos/, scripts/, and workspace/.",
+      "Content is organized by execution surface: web/ (browser, remote services only) holds the released course and its course-scoped reference packets under web/nemoclaw/mats/; cpu/ holds the shared microservice stack it runs against, with shared repos/, scripts/, and workspace/.",
       "The brain is each directory's SKILL.html skill-meta JSON, not a SKILL.md. Parse it first, then walk children: task to surface to course to content.",
       "One link engine (scripts/engine.js) is the single source for resolution, crawl, reachability, and the release contract; it runs headless and in-browser, with no second implementation to drift.",
       "The released course is nemoclaw (Securing Agents); the foyer (web/index.html) surfaces only it."
@@ -62,7 +62,7 @@
       "No buzzy marketing cadence: avoid serial antithesis ('not X but Y', 'N X, one Y') and rule-of-three flourishes.",
       "Code-first: fixing a real code cell beats improving prose beats adding navigation. A change that teaches nothing new and prevents no bug is not worth making.",
       "Browser courses stay remote-services-only; never put keys in static files.",
-      "mats/ and repos/ are cited-by-URL reference packets: cite the external URL, never link the packet file.",
+      "The course mats/ (web/nemoclaw/mats/) and repos/ are cited-by-URL reference packets: cite the external URL, never link the packet file.",
       "Never commit lab-generated runtime output (artifacts/, export/, caches, the public/ build)."
     ],
     "cadences": [
@@ -159,7 +159,7 @@ color:var(--td);border-radius:.45rem;padding:.3rem .75rem}.st-actions button:hov
     <div class="hero">
       <div class="eyebrow">BUNDLE INDEX · /lab/static/SKILL.html</div>
       <h1>Building Agents · NVIDIA DLI bundle</h1>
-      <p class="lead">NVIDIA DLI's open-source, replicable release of course material: the narrative, the assets, the agent-friendly deployment that runs it, and the automatic verification that keeps it honest. The root is organised by execution surface, so each piece declares what it needs to run. The browser course lives under <code>web/</code> (remote services only), and the shared microservice stack it runs against lives under <code>cpu/</code>. Alongside the surfaces sit the reference and tooling layers (<code>mats/</code>, <code>scripts/</code>). Every page buds from a SKILL hub, so the whole tree is statically and semantically verifiable. Students enter through the curated <a href="web/index.html">release foyer</a>; this page is the full map for an agent.</p>
+      <p class="lead">NVIDIA DLI's open-source, replicable release of course material: the narrative, the assets, the agent-friendly deployment that runs it, and the automatic verification that keeps it honest. The root is organised by execution surface, so each piece declares what it needs to run. The browser course lives under <code>web/</code> (remote services only), and the shared microservice stack it runs against lives under <code>cpu/</code>. Alongside the surfaces sit the reference and tooling layers (<code>web/nemoclaw/mats/</code>, <code>scripts/</code>). Every page buds from a SKILL hub, so the whole tree is statically and semantically verifiable. Students enter through the curated <a href="web/index.html">release foyer</a>; this page is the full map for an agent.</p>
     </div>
     <div class="actions">
       <a class="primary" href="web/index.html">Open the release foyer →</a>
@@ -175,7 +175,7 @@ color:var(--td);border-radius:.45rem;padding:.3rem .75rem}.st-actions button:hov
     </div>
     <div class="section">
       <h2>Reference &amp; infrastructure layers</h2>
-      <p class="help">Immediate children of the bundle root that are not courses. <code>mats/</code> curated reference packets; joined to pages by the external URLs they cite and associated through the link graph, never linked as files. <code>scripts/</code> bundle tooling: the projection engine, the link-graph viewer, the validation cadence, this SKILL generator.</p>
+      <p class="help">Immediate children of the bundle root that are not courses. <code>web/nemoclaw/mats/</code> course-scoped curated reference packets; joined to pages by the external URLs they cite and associated through the link graph, never linked as files. <code>scripts/</code> bundle tooling: the projection engine, the link-graph viewer, the validation cadence, this SKILL generator.</p>
       <div class="grid">
         <a class="card" href="scripts/link_graph.html"><span class="nm">scripts/link_graph.html</span><span class="ds">Link + topology viewer: an honest projection of how every page resolves and what reaches a SKILL hub.</span></a>
       </div>
@@ -203,8 +203,9 @@ color:var(--td);border-radius:.45rem;padding:.3rem .75rem}.st-actions button:hov
       <p>An open-source, replicable course release: narrative, assets, the deployment that runs
       them, and the verification that keeps them honest. Organised by <strong>execution
       surface</strong> so each piece declares what it needs to run, <code>web/</code> (browser +
-      remote services) holds the released course, <code>cpu/</code> the shared microservice stack
-      it runs against. <code>mats/</code> is the reference layer, <code>scripts/</code> the tooling,
+      remote services) holds the released course and its course-scoped reference layer
+      (<code>web/nemoclaw/mats/</code>), <code>cpu/</code> the shared microservice stack
+      it runs against. <code>scripts/</code> is the tooling,
       <code>workspace/</code> the lab runtime, <code>docker-compose.yml</code> + <code>nginx.conf</code>
       the deployment. This directory is the true root; nothing outside it is referenced from within.</p>
       <h4>Two surfaces: one for students, one for you</h4>
@@ -223,7 +224,7 @@ color:var(--td);border-radius:.45rem;padding:.3rem .75rem}.st-actions button:hov
       <p style="margin:.7em 0 .1em;color:var(--gs);font-size:.86rem">Assumptions (what is true here)</p>
       <ul>
         <li class="tight">task1 is the canonical root: the open-source, replicable release. Everything worth keeping lives here and is versioned; scratch goes to /tmp and is never committed.</li>
-        <li class="tight">Content is organized by execution surface: web/ (browser, remote services only) holds the released course; cpu/ holds the shared microservice stack it runs against, with shared mats/, repos/, scripts/, and workspace/.</li>
+        <li class="tight">Content is organized by execution surface: web/ (browser, remote services only) holds the released course and its course-scoped reference packets under web/nemoclaw/mats/; cpu/ holds the shared microservice stack it runs against, with shared repos/, scripts/, and workspace/.</li>
         <li class="tight">The brain is each directory&#x27;s SKILL.html skill-meta JSON, not a SKILL.md. Parse it first, then walk children: task to surface to course to content.</li>
         <li class="tight">One link engine (scripts/engine.js) is the single source for resolution, crawl, reachability, and the release contract; it runs headless and in-browser, with no second implementation to drift.</li>
         <li class="tight">The released course is nemoclaw (Securing Agents); the foyer (web/index.html) surfaces only it.</li>
@@ -235,7 +236,7 @@ color:var(--td);border-radius:.45rem;padding:.3rem .75rem}.st-actions button:hov
         <li class="tight">No buzzy marketing cadence: avoid serial antithesis (&#x27;not X but Y&#x27;, &#x27;N X, one Y&#x27;) and rule-of-three flourishes.</li>
         <li class="tight">Code-first: fixing a real code cell beats improving prose beats adding navigation. A change that teaches nothing new and prevents no bug is not worth making.</li>
         <li class="tight">Browser courses stay remote-services-only; never put keys in static files.</li>
-        <li class="tight">mats/ and repos/ are cited-by-URL reference packets: cite the external URL, never link the packet file.</li>
+        <li class="tight">The course mats/ (web/nemoclaw/mats/) and repos/ are cited-by-URL reference packets: cite the external URL, never link the packet file.</li>
         <li class="tight">Never commit lab-generated runtime output (artifacts/, export/, caches, the public/ build).</li>
       </ul>
       <p style="margin:.7em 0 .1em;color:var(--gs);font-size:.86rem">Cadences (the rhythm and the gates)</p>
@@ -255,7 +256,7 @@ color:var(--td);border-radius:.45rem;padding:.3rem .75rem}.st-actions button:hov
       <h4>Contracts you must keep</h4>
       <ul>
         <li class="tight"><strong>Hierarchy.</strong> task &#8594; surface &#8594; course &#8594; content. Every page buds from a SKILL hub; nothing floats unreached, and the engine flags any real stray.</li>
-        <li class="tight"><strong>Isolation.</strong> A course never links another course directly. Only <code>_shared</code> infra, SKILL hubs, and bundle-root files may cross. <code>mats/</code> + <code>repos/</code> are cited-by-URL reference packets: cite the underlying external URL, never link the packet file.</li>
+        <li class="tight"><strong>Isolation.</strong> A course never links another course directly. Only <code>_shared</code> infra, SKILL hubs, and bundle-root files may cross. The course mats (<code>web/nemoclaw/mats/</code>) + <code>repos/</code> are cited-by-URL reference packets: cite the underlying external URL, never link the packet file.</li>
         <li class="tight"><strong>Generated, not hand-edited.</strong> These hubs come from <code>scripts/gen_skill_hierarchy.py</code>. Edit the generator and regenerate, then refresh the viewer snapshot with <code>run_engine.sh --embed</code>. A hand edit here is overwritten.</li>
         <li class="tight"><strong>Source of truth is here.</strong> This directory holds everything worth keeping; scratch goes to <code>/tmp</code>, never committed.</li>
       </ul>

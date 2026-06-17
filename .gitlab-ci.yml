@@ -20,7 +20,11 @@ variables:
   # `pages` is the Shared Pages Runner (a Docker runner) that picks these up.
   tags: [pages]
   before_script:
-    - apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 ca-certificates >/dev/null
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 python3-pip ca-certificates >/dev/null
+    # The materials vendorer needs these for the build-time pull + the live drift check; the
+    # offline gate legs (validate_bundle's materials read) do not. Best-effort: if the install
+    # fails, the pull is deps-guarded and falls back to the committed snapshots.
+    - pip install --break-system-packages -q requests beautifulsoup4 markdownify lxml >/dev/null 2>&1 || true
 
 test:
   <<: *with_python_node
@@ -32,6 +36,10 @@ test:
     - python3 scripts/skill_consistency.py
     - bash   scripts/run_engine.sh --self-test
     - python3 scripts/validate_bundle.py --scope ship
+    # Live materials drift check: re-fetch the on-demand sources and compare to the committed
+    # fingerprints. allow_failure keeps a drift/outage from blocking the deploy; it surfaces as a
+    # red (complaining) job here, and as the materials section on the validator screen.
+    - python3 scripts/pull_materials.py --check
   artifacts:
     when: always
     name: "gate-$CI_COMMIT_SHORT_SHA"

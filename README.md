@@ -22,12 +22,12 @@ reproduce the environment a given piece assumes.
 
 | Surface | What it assumes | What's there |
 |---|---|---|
-| [`web/`](web/) | a browser + the lab proxy (remote services only) | the browser course and the foyer |
+| [`web/`](web/) | a browser + the lab proxy (remote services only) | the browser course, the foyer, and the course-scoped reference packets under [`web/nemoclaw/mats/`](web/nemoclaw/mats/) |
 | [`cpu/`](cpu/) | a CPU lab box | the shared microservice stack the course runs against |
 
-Shared peers: [`mats/`](mats/) curated reference packets (joined to pages by the external
-URLs they cite, never linked as files), [`docs/`](docs/) operating docs, and
-[`scripts/`](scripts/) the tooling.
+The course mats ([`web/nemoclaw/mats/`](web/nemoclaw/mats/)) are curated reference packets,
+joined to pages by the external URLs they cite, never linked as files. Shared peers:
+[`docs/`](docs/) operating docs and [`scripts/`](scripts/) the tooling.
 
 ## The released course
 

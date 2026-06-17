@@ -36,16 +36,24 @@
     ".git", ".cache", "dist", "build", "venv", ".venv", "composer", "validation",
     ".Trash-0", "grounding_cache", ".exec_stage", ".solution", ".jupyter"]);
 
+  // mats are the curated reference layer, now COURSE-SCOPED under web/nemoclaw/mats/ (no longer
+  // a top-level peer). They are recognized by the "mats" path SEGMENT anywhere in the path, not
+  // by a top-level dir. MAT_REL is the canonical repo-relative location of the packets.
+  var MAT_REL = "web/nemoclaw/mats";
+  function isMatPath(r) { return r.split("/").indexOf("mats") >= 0; }
+
   var SHIP_PREFIXES = ["web/nemoclaw/", "web/index", "web/courses",
-    "cpu/services/", "mats/", "docs/", "scripts/"];
+    "cpu/services/", "docs/", "scripts/"];
   var SHIP_HUBS = setOf(["SKILL.html", "web/SKILL.html", "cpu/SKILL.html"]);
 
   // Release contract: the courses the release foyer (web/index.html) may surface.
   var RELEASED = ["nemoclaw"];
 
+  // mats now live UNDER web/ (already a crawl root that recurses), so "mats" is no longer a
+  // separate top-level crawl root or shared TOPDIR. It is still shared infra, detected by segment.
   var SHARED_SUBDIRS = setOf(["mats", "repos", "services"]);
-  var SHARED_TOPDIRS = setOf(["mats", "repos", "scripts", "docs"]);
-  var CRAWL_TOP = ["web", "cpu", "mats", "docs", "scripts"];
+  var SHARED_TOPDIRS = setOf(["repos", "scripts", "docs"]);
+  var CRAWL_TOP = ["web", "cpu", "docs", "scripts"];
 
   var TEMPLATE_MARK = ["{{", "}}", "<?", "?>", "<%", "%>", "${", "&lt;", "&gt;", "&#"];
 
@@ -79,6 +87,9 @@
     if (parts.length < 2) return "_shared";
     if (parts[parts.length - 1] === "SKILL.html" && parts.length <= 2) return "_shared";
     if (parts[0] === "docs") return "_shared";
+    // mats are the shared reference layer wherever they sit (now under web/nemoclaw/mats/),
+    // so a mats path classifies as _shared, not as the enclosing course.
+    if (isMatPath(p)) return "_shared";
     if (parts[0] === "web" || parts[0] === "cpu") {
       if (has(SHARED_SUBDIRS, parts[1])) return "_shared";
       if (parts.length === 2 && parts[1].indexOf(".") >= 0) {
@@ -113,7 +124,7 @@
 
   function expectedDetached(rel) {
     var r = rel.split("\\").join("/");
-    if (r.indexOf("mats/") === 0 || r.indexOf("docs/") === 0) return true;
+    if (isMatPath(r) || r.indexOf("docs/") === 0) return true;
     var marks = ["/data/", "/skills/", "/demo/", "/resources/", "/composer/",
       "/clean_notebooks/", "/ocstart/", "/extra_utils/", "/_paper_cache/", "/repos_index/", "/standalone/"];
     for (var i = 0; i < marks.length; i++) if (("/" + r).indexOf(marks[i]) >= 0) return true;
@@ -372,7 +383,7 @@
   };
 
   // ── graph snapshot (viewer DATA + offline embed) ──────────────────────────────
-  function isMat(r) { return r.split("/")[0] === "mats"; }
+  function isMat(r) { return isMatPath(r); }
   function isCross(a, b) { return a !== b && a !== "_shared" && b !== "_shared"; }
 
   function graphJson(proj) {
@@ -519,7 +530,7 @@
         var tgt = r.course;
         if (tgt && tgt !== "_shared" && tgt !== null && tgt !== srcCourse && (r.kind === "static_file" || r.kind === "lab_tree") && !navSource(rel)) {
           var rec = { page: rel, src_course: srcCourse, link: rawk, ship: ship, tgt_course: tgt, resolved: r.physical, exists: r.exists };
-          if (asset) { rec.isolate = "copy/move asset into " + srcCourse + "/ or promote to mats/"; report.asset_leaks.push(rec); }
+          if (asset) { rec.isolate = "copy/move asset into " + srcCourse + "/ or promote to the course mats/"; report.asset_leaks.push(rec); }
           else report.cross_course.push(rec);
         }
       }
@@ -586,7 +597,10 @@
   // off this list because agent-skills legitimately use it; flagging it would be a false
   // positive, and a noisy detector is worse than none.
   var STALE_TOKENS = [
-    { re: /s-fx-43-v1/, why: "course code is an above-task1 wrapper detail; never name it in the content root" },
+    { re: /s-fx-43-v1/, why: "course code is an above-task1 wrapper detail; never name it in the content root",
+      // the DLI-LMS navigator addresses the course's hosted assets by their dli-lms S3 path, which
+      // carries the course code; there it is the functional deployment URL, not a leaked detail.
+      exceptFile: /(^|\/)edx_navigator_quick\.html$/ },
     { re: /archived_courses\//, why: "archived_courses is removed" },
     { re: /\bscaffold\//, why: "scaffold was removed; task1 is canonical" },
     { re: /workspace\/build_agents\//, why: "pre-migration path for a course no longer in this release; flag any regression that reintroduces it" }
@@ -604,9 +618,10 @@
       var raw = io.read(rel); if (raw == null) continue;
       var findings = [];
       // 1) stale tokens (skip mats: vendored reference snapshots are not ours to rewrite)
-      if (parts[0] !== "mats") {
+      if (!isMatPath(rel)) {
         var noScript = raw.replace(/<script[\s\S]*?<\/script>/ig, " ");   // tokens in real content, not JS rules
         for (var s = 0; s < STALE_TOKENS.length; s++) {
+          if (STALE_TOKENS[s].exceptFile && STALE_TOKENS[s].exceptFile.test(rel)) continue;
           if (STALE_TOKENS[s].re.test(noScript)) findings.push({ kind: "stale", token: String(STALE_TOKENS[s].re), detail: STALE_TOKENS[s].why });
         }
       }

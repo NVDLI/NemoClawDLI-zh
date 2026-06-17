@@ -230,7 +230,9 @@ def inv_lifecycle_allowlist():
 # ── DANGLING refs ────────────────────────────────────────────────────────────────
 # dgx/ is kept in the recognizer set on purpose: the release ships no dgx surface, so
 # any dgx/<path> a SKILL declares resolves to a missing file and is flagged dangling.
-_PREFIXES = ("task1/", "cpu/", "web/", "dgx/", "mats/", "repos/",
+# mats are now course-scoped under web/nemoclaw/mats/, so the "web/" prefix already covers
+# them; there is no bare top-level "mats/" path root any more.
+_PREFIXES = ("task1/", "cpu/", "web/", "dgx/", "repos/",
              "docs/", "scripts/", "workspace/")
 
 

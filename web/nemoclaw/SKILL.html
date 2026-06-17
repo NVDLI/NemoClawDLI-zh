@@ -183,7 +183,7 @@ color:var(--td);border-radius:.45rem;padding:.3rem .75rem}.st-actions button:hov
       <h4>Contracts you must keep</h4>
       <ul>
         <li class="tight"><strong>Hierarchy.</strong> task &#8594; surface &#8594; course &#8594; content. Every page buds from a SKILL hub; nothing floats unreached, and the engine flags any real stray.</li>
-        <li class="tight"><strong>Isolation.</strong> A course never links another course directly. Only <code>_shared</code> infra, SKILL hubs, and bundle-root files may cross. <code>mats/</code> + <code>repos/</code> are cited-by-URL reference packets: cite the underlying external URL, never link the packet file.</li>
+        <li class="tight"><strong>Isolation.</strong> A course never links another course directly. Only <code>_shared</code> infra, SKILL hubs, and bundle-root files may cross. The course mats (<code>web/nemoclaw/mats/</code>) + <code>repos/</code> are cited-by-URL reference packets: cite the underlying external URL, never link the packet file.</li>
         <li class="tight"><strong>Generated, not hand-edited.</strong> These hubs come from <code>scripts/gen_skill_hierarchy.py</code>. Edit the generator and regenerate, then refresh the viewer snapshot with <code>run_engine.sh --embed</code>. A hand edit here is overwritten.</li>
         <li class="tight"><strong>Source of truth is here.</strong> This directory holds everything worth keeping; scratch goes to <code>/tmp</code>, never committed.</li>
       </ul>

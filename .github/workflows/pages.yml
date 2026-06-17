@@ -28,12 +28,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Materials vendoring deps (for the live drift check)
+        run: pip install requests beautifulsoup4 markdownify lxml
       - name: Static gate (layout, skill-meta, link-engine self-test, grounding)
         run: |
           python3 scripts/validate_layout.py --quiet
           python3 scripts/skill_consistency.py
           bash    scripts/run_engine.sh --self-test
           python3 scripts/validate_bundle.py --scope ship
+      - name: Materials drift check (advisory; complains on drift, never blocks the deploy)
+        continue-on-error: true
+        run: python3 scripts/pull_materials.py --check
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -55,6 +60,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Materials vendoring deps (for the build-time pull)
+        run: pip install requests beautifulsoup4 markdownify lxml
       - name: Build the client-side static site
         run: bash scripts/build_pages.sh public
       - uses: actions/configure-pages@v5

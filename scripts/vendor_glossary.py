@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Vendor NVIDIA glossary pages into mats/glossary_raw/ as markdown + local images.
+"""Vendor NVIDIA glossary pages into web/nemoclaw/mats/glossary_raw/ as markdown + local images.
 
 For each glossary term it fetches the page, extracts the main article (the AEM
 `div.root.responsivegrid` container, minus the header/nav/footer/script chrome),
 converts it to GitHub-flavored markdown, downloads the page's content images into
-`mats/glossary_raw/images/`, rewrites the image references to those local files,
+`web/nemoclaw/mats/glossary_raw/images/`, rewrites the image references to those local files,
 and records a version log (source URL, fetch date, content hash, image list) in
-`mats/glossary_raw/_versions.json`.
+`web/nemoclaw/mats/glossary_raw/_versions.json`.
 
-These pages are NVIDIA marketing content. See mats/glossary_raw/README.md for why
+These pages are NVIDIA marketing content. See web/nemoclaw/mats/glossary_raw/README.md for why
 they are vendored as primary sources to read critically, not quoted as ground truth.
 
 Dependencies: requests, beautifulsoup4, markdownify, lxml
@@ -41,7 +41,7 @@ from markdownify import markdownify as to_md
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)                       # scripts/ sits directly under the repo root
-RAW = os.path.join(REPO, "mats", "glossary_raw")
+RAW = os.path.join(REPO, "web", "nemoclaw", "mats", "glossary_raw")
 IMG = os.path.join(RAW, "images")
 VERSIONS = os.path.join(RAW, "_versions.json")
 BASE = "https://www.nvidia.com/en-us/glossary/{slug}/"
@@ -68,7 +68,7 @@ STRIP_SELECTORS = ["script", "style", "header", "nav", "iframe",
                    ".global-footer", ".page-footer-wrapper"]
 STRIP_IDS = ["main-header", "brandFooter", "globalFooter", "country-selector-modal"]
 
-INDEX_JSON = os.path.join(REPO, "mats", "glossary_index.json")
+INDEX_JSON = os.path.join(REPO, "web", "nemoclaw", "mats", "glossary_index.json")
 # The course ships the same index as a static asset and fetches it client-side: it is the
 # key-less, off-lab web_search backend (helpers.webSearch in web/nemoclaw/_shared.js). build_index
 # writes this copy alongside the mats one so a re-vendor keeps both in sync.
@@ -76,7 +76,7 @@ COURSE_INDEX = os.path.join(REPO, "web", "nemoclaw", "assets", "glossary_index.j
 
 # The full glossary listing (https://www.nvidia.com/en-us/glossary/?itemsPerPage=100).
 # `--index` fetches each page's meta (title, description, keywords) and writes the
-# committed mats/glossary_index.json, so the course's glossary endpoint ships a
+# committed web/nemoclaw/mats/glossary_index.json, so the course's glossary endpoint ships a
 # real, regenerable index without a live fetch. Slugs whose page carries deep
 # vendored markdown in glossary_raw/ are flagged "deep" from _versions.json.
 INDEX_SLUGS = [

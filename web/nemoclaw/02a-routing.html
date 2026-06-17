@@ -73,11 +73,11 @@
       <h3>ReAct (Reason + Act)</h3>
       <p>
         At each step the model reads the latest observation, picks the next action,
-        runs a tool, reads the new observation, picks again. The agent
+        runs a tool, reads the new observation, and picks again. The agent
         <em>reacts</em> to whatever the previous tool call returned, so the path
-        through tools emerges step by step rather than being decided upfront.
-        Strong when the path depends on intermediate results. Weak when many steps
-        could have run in parallel.
+        through the tools takes shape as it runs. That makes ReAct strong when the
+        path depends on intermediate results, and weak when many steps could have
+        run at once.
         <br><br>
         Paper: <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al., 2022</a>.
       </p>
@@ -87,10 +87,11 @@
       <h3>ReWOO (Reason Without Observation)</h3>
       <p>
         The model writes the full plan upfront in one LLM call, before any tool
-        runs. A deterministic executor runs every tool, often in parallel. A second
-        LLM call synthesizes the results. The plan never sees a tool result, so the
-        model "reasons without observation." Strong when the steps are independent.
-        Weak when later steps need to react to earlier ones.
+        runs. A deterministic executor then runs every tool, often in parallel, and
+        a second LLM call synthesizes the results. Because the plan never sees a tool
+        result, the model "reasons without observation." That makes ReWOO strong when
+        the steps are independent, and weak when later steps need to react to earlier
+        ones.
         <br><br>
         Paper: <a href="https://arxiv.org/abs/2305.18323" target="_blank" rel="noopener">Xu et al., 2023</a>.
       </p>
@@ -168,11 +169,10 @@
   <h2>Routing a ticket to one specialist with a fixed enum</h2>
 
   <p>
-    A different shape of multi-agent: not parallel research, but routing. The triage
-    agent classifies the input and hands it to one specialist. The routing decision is
-    deterministic because the classifier is forced to emit one of a fixed enum of
-    categories. The specialist owns its own narrow system prompt and never sees the
-    triage agent's reasoning.
+    Routing is a different shape of multi-agent. A triage agent classifies the input
+    and hands it to one specialist. Because the classifier must emit one of a fixed
+    enum of categories, that routing decision is deterministic. Each specialist owns a
+    narrow system prompt and never sees the triage agent's reasoning.
   </p>
 
   <div style="display:flex;justify-content:center;margin:1em 0 1.4em">

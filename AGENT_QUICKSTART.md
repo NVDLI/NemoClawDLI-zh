@@ -53,7 +53,7 @@ auditable record.
 | Release picker (student) | `web/index.html` |
 | CPU surface hub (services) | `cpu/SKILL.html` |
 | Shared services | `cpu/services/` |
-| Companion essays | `mats/` |
+| Companion essays (course-scoped) | `web/nemoclaw/mats/` |
 | Vendored reference repos | `repos/` |
 | Tooling | `scripts/` |
 | Test runner + service build infra | `workspace/` |
@@ -78,10 +78,10 @@ auditable record.
 │   ├── index.html          ← release picker
 │   ├── SKILL.html          ← web surface hub
 │   └── nemoclaw/           ← the released browser course (SKILL.html per directory)
+│       └── mats/           ← course-scoped companion essays + vendored reference packets
 ├── cpu/                    ← shared services as notebooks + code
 │   ├── SKILL.html          ← cpu surface hub
 │   └── services/           ← the service stack the course runs against
-├── mats/                   ← companion essays
 ├── repos/                  ← vendored reference repos
 ├── scripts/                ← tooling (validators, link engine, hooks, bundler)
 └── workspace/              ← test runner + service build infra
@@ -102,7 +102,7 @@ companion notebook track. The later modules paste a live OpenClaw URL into the
 browser to drive the lab's sandboxed agent directly. No API keys live in static
 files; the browser reaches services through nginx routes.
 
-The only cross-cutting reference layer is `mats/`, cited by the external URLs
+The course-scoped reference layer is `web/nemoclaw/mats/`, cited by the external URLs
 its essays share with course pages, never linked as files.
 
 ---

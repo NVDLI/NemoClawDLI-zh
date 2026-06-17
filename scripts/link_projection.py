@@ -48,13 +48,25 @@ SKIP_DIR = {"__pycache__", ".ipynb_checkpoints", "node_modules", "export", "stan
 # and enforced there; kept here so gen_skill_hierarchy.py and other python callers share it).
 RELEASED = ("nemoclaw",)
 
+# mats are the curated reference layer, now COURSE-SCOPED under web/nemoclaw/mats/ (no longer a
+# top-level peer). They are recognized by the "mats" path SEGMENT anywhere in the path, mirroring
+# engine.js isMatPath, not as a top-level dir. MAT_REL is the canonical repo-relative location.
+MAT_REL = "web/nemoclaw/mats"
+
+
+def is_mat_path(rel: str) -> bool:
+    return "mats" in rel.replace("\\", "/").split("/")
+
+
 SHIP_PREFIXES = ("web/nemoclaw/", "web/index", "web/courses",
-                 "cpu/services/", "mats/", "docs/", "scripts/")
+                 "cpu/services/", "docs/", "scripts/")
 SHIP_HUBS = {"SKILL.html", "web/SKILL.html", "cpu/SKILL.html"}
 
+# mats now live UNDER web/ (already a crawl root that recurses), so "mats" is no longer a separate
+# top-level crawl root or shared TOPDIR. It is still shared infra, detected by path segment.
 SHARED_SUBDIRS = {"mats", "repos", "services"}
-SHARED_TOPDIRS = {"mats", "repos", "scripts", "docs"}
-CRAWL_TOP = ("web", "cpu", "mats", "docs", "scripts")
+SHARED_TOPDIRS = {"repos", "scripts", "docs"}
+CRAWL_TOP = ("web", "cpu", "docs", "scripts")
 
 _TEMPLATE_MARK = ("{{", "}}", "<?", "?>", "<%", "%>", "${", "&lt;", "&gt;", "&#")
 
@@ -87,6 +99,10 @@ def course_of(p: str) -> str:
     if parts[-1] == "SKILL.html" and len(parts) <= 2:
         return "_shared"
     if parts[0] == "docs":
+        return "_shared"
+    # mats are the shared reference layer wherever they sit (now under web/nemoclaw/mats/),
+    # so a mats path classifies as _shared, not as the enclosing course.
+    if is_mat_path(p):
         return "_shared"
     if parts[0] in ("web", "cpu"):
         if parts[1] in SHARED_SUBDIRS:

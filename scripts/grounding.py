@@ -73,12 +73,13 @@ _MAT_INDEX = None
 
 
 def mat_url_index() -> dict:
-    """{normalized_url: {mat_basename, ...}} built from the curated source set in mats/."""
+    """{normalized_url: {mat_basename, ...}} built from the curated source set in
+    web/nemoclaw/mats/ (the course-scoped reference layer)."""
     global _MAT_INDEX
     if _MAT_INDEX is not None:
         return _MAT_INDEX
     idx: dict[str, set] = {}
-    md = TASK1 / "mats"
+    md = TASK1 / lp.MAT_REL
     if md.is_dir():
         for f in md.rglob("*"):
             if f.suffix.lower() not in (".md", ".html", ".htm"):
@@ -133,13 +134,14 @@ def build_reference(f: Path, rel: str) -> dict:
         for mat in midx.get(u, ()):
             mat_assoc.setdefault(mat, []).append(u)
     uncovered = sorted(u for u in page_urls if u not in midx)
-    # vendored = an external snapshot under mats/ (scraped build.nvidia.com / blog / brev / the
-    # developer-site learning path, or a vendored NVIDIA glossary page under glossary_raw/).
+    # vendored = an external snapshot under the course mats/ (web/nemoclaw/mats/: scraped
+    # build.nvidia.com / blog / brev / the developer-site learning path, a vendored NVIDIA
+    # glossary page under glossary_raw/, or an arxiv- abstract pulled by pull_materials.py).
     # We cite these but do not rewrite their prose, so any em-dashes in them belong to the
     # original author. The sweep still surfaces and labels them so they are visible in the report.
-    vendored = rel.startswith("mats/") and (
-        rel.startswith("mats/glossary_raw/") or
-        bool(re.search(r'(-(com|org|io)-|learning_path|^(build|developer|brev|module|nemoclaw)-)',
+    vendored = rel.startswith(lp.MAT_REL + "/") and (
+        rel.startswith(lp.MAT_REL + "/glossary_raw/") or
+        bool(re.search(r'(-(com|org|io)-|learning_path|^(build|developer|brev|module|nemoclaw|arxiv)-)',
                        rel.rsplit("/", 1)[-1])))
     return {"title": title, "course": course, "vendored": vendored, "headings": heads[:24],
             "em_dash_in_prose": len(_EMDASH.findall(prose)), "prose_chars": len(prose),
@@ -222,18 +224,24 @@ def _findings(recs):
             issues.append("ungrounded (no source citation and no mat URL-association)")
         elif _groundable(r["path"]) and ref.get("uncovered_urls") and not ref.get("mat_grounded"):
             issues.append(f"unvetted sources: cites {len(ref['uncovered_urls'])} external URL(s) no mat covers")
-        if ref.get("em_dash_in_prose"):
-            # the em-dash is a STRUCTURE smell: each one marks an AI-cadenced sentence.
-            # Swapping the dash for ./;/() games the metric and reads worse. Rewrite the
-            # sentence. Vendored mats are external snapshots, surfaced but not ours to rewrite.
-            if ref.get("vendored"):
-                issues.append(f"em-dash x{ref['em_dash_in_prose']} (vendored external reference; not ours to rewrite)")
-            else:
-                issues.append(f"em-dash x{ref['em_dash_in_prose']} "
-                              f"(STRUCTURE smell: rewrite each sentence, never substitute punctuation)")
+        # An authored em-dash is a STRUCTURE smell: each one marks an AI-cadenced sentence. Swapping
+        # the dash for ./;/() games the metric and reads worse, so rewrite the sentence. Vendored mats
+        # are external snapshots whose punctuation is the original author's; we cite them and never
+        # rewrite them, so their em-dashes are surfaced via vendored_em_dash(), not filed as an
+        # advisory we could never honestly clear.
+        if ref.get("em_dash_in_prose") and not ref.get("vendored"):
+            issues.append(f"em-dash x{ref['em_dash_in_prose']} "
+                          f"(STRUCTURE smell: rewrite each sentence, never substitute punctuation)")
         if issues:
             out.append({"path": r["path"], "course": r["course"], "issues": issues})
     return out
+
+
+def vendored_em_dash(recs):
+    """Vendored mats carrying the original author's em-dashes. Surfaced for visibility, never an
+    advisory: we cite these external snapshots, we do not rewrite their prose."""
+    return [(r["path"], r["reference"]["em_dash_in_prose"]) for r in recs
+            if r.get("reference", {}).get("vendored") and r["reference"].get("em_dash_in_prose")]
 
 
 def main():
@@ -254,6 +262,10 @@ def main():
     print(f"grounding: {len(recs)} pages  (cached {cached})")
     print(f"  mat-associated: {grounded}/{len(recs)} pages share an external citation URL with a mat")
     print(f"  ungrounded: {ungrounded} content page(s) grounded in nothing")
+    ved = vendored_em_dash(recs)
+    if ved:
+        print(f"  vendored em-dash: {len(ved)} external snapshot(s) carry the source's em-dashes "
+              f"(surfaced, not advisories)")
     print(f"  findings: {len(findings)} page(s) with issues")
     for fo in findings[:40]:
         print(f"  {fo['path']}")

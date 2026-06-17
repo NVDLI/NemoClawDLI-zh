@@ -72,8 +72,9 @@ TENETS = {
         "task1 is the canonical root: the open-source, replicable release. Everything worth "
         "keeping lives here and is versioned; scratch goes to /tmp and is never committed.",
         "Content is organized by execution surface: web/ (browser, remote services only) "
-        "holds the released course; cpu/ holds the shared microservice stack it runs against, "
-        "with shared mats/, repos/, scripts/, and workspace/.",
+        "holds the released course and its course-scoped reference packets under "
+        "web/nemoclaw/mats/; cpu/ holds the shared microservice stack it runs against, "
+        "with shared repos/, scripts/, and workspace/.",
         "The brain is each directory's SKILL.html skill-meta JSON, not a SKILL.md. Parse it "
         "first, then walk children: task to surface to course to content.",
         "One link engine (scripts/engine.js) is the single source for resolution, crawl, "
@@ -91,8 +92,8 @@ TENETS = {
         "Code-first: fixing a real code cell beats improving prose beats adding navigation. A "
         "change that teaches nothing new and prevents no bug is not worth making.",
         "Browser courses stay remote-services-only; never put keys in static files.",
-        "mats/ and repos/ are cited-by-URL reference packets: cite the external URL, never link "
-        "the packet file.",
+        "The course mats/ (web/nemoclaw/mats/) and repos/ are cited-by-URL reference packets: "
+        "cite the external URL, never link the packet file.",
         "Never commit lab-generated runtime output (artifacts/, export/, caches, the public/ build).",
     ],
     "cadences": [
@@ -326,8 +327,9 @@ def _agent_block(meta, root_prefix):
       <p>An open-source, replicable course release: narrative, assets, the deployment that runs
       them, and the verification that keeps them honest. Organised by <strong>execution
       surface</strong> so each piece declares what it needs to run, <code>web/</code> (browser +
-      remote services) holds the released course, <code>cpu/</code> the shared microservice stack
-      it runs against. <code>mats/</code> is the reference layer, <code>scripts/</code> the tooling,
+      remote services) holds the released course and its course-scoped reference layer
+      (<code>web/nemoclaw/mats/</code>), <code>cpu/</code> the shared microservice stack
+      it runs against. <code>scripts/</code> is the tooling,
       <code>workspace/</code> the lab runtime, <code>docker-compose.yml</code> + <code>nginx.conf</code>
       the deployment. This directory is the true root; nothing outside it is referenced from within.</p>
       <h4>Two surfaces: one for students, one for you</h4>
@@ -345,7 +347,7 @@ def _agent_block(meta, root_prefix):
       <h4>Contracts you must keep</h4>
       <ul>
         <li class="tight"><strong>Hierarchy.</strong> task &#8594; surface &#8594; course &#8594; content. Every page buds from a SKILL hub; nothing floats unreached, and the engine flags any real stray.</li>
-        <li class="tight"><strong>Isolation.</strong> A course never links another course directly. Only <code>_shared</code> infra, SKILL hubs, and bundle-root files may cross. <code>mats/</code> + <code>repos/</code> are cited-by-URL reference packets: cite the underlying external URL, never link the packet file.</li>
+        <li class="tight"><strong>Isolation.</strong> A course never links another course directly. Only <code>_shared</code> infra, SKILL hubs, and bundle-root files may cross. The course mats (<code>web/nemoclaw/mats/</code>) + <code>repos/</code> are cited-by-URL reference packets: cite the underlying external URL, never link the packet file.</li>
         <li class="tight"><strong>Generated, not hand-edited.</strong> These hubs come from <code>scripts/gen_skill_hierarchy.py</code>. Edit the generator and regenerate, then refresh the viewer snapshot with <code>run_engine.sh --embed</code>. A hand edit here is overwritten.</li>
         <li class="tight"><strong>Source of truth is here.</strong> This directory holds everything worth keeping; scratch goes to <code>/tmp</code>, never committed.</li>
       </ul>
@@ -433,13 +435,16 @@ def gen_task():
     items = [(f"{s}/", h, sdesc.get(s, "")) for s, h in surfaces]
 
     # Reference + infrastructure layers: immediate children of task1/ that are NOT courses.
-    # mats/ + repos/ are cited-by-URL reference packets (joined to pages via shared external
-    # citations, never linked as files), so they are DESCRIBED, not carded. scripts/ is the
-    # tooling; the one card is the static verifier itself, on-theme for a verifiable ontology.
+    # repos/ is a cited-by-URL reference packet set (joined to pages via shared external
+    # citations, never linked as files), so it is DESCRIBED, not carded. The mats reference
+    # layer is now COURSE-SCOPED under web/nemoclaw/mats/, so it is documented as part of the
+    # course rather than as a top-level peer. scripts/ is the tooling; the one card is the
+    # static verifier itself, on-theme for a verifiable ontology.
     ref_layers = []
-    if (TASK1 / "mats").is_dir():
-        ref_layers.append({"name": "mats", "role": "curated reference packets; joined to pages by "
-                           "the external URLs they cite and associated through the link graph, never linked as files"})
+    if (TASK1 / "web" / "nemoclaw" / "mats").is_dir():
+        ref_layers.append({"name": "web/nemoclaw/mats", "role": "course-scoped curated reference "
+                           "packets; joined to pages by the external URLs they cite and associated "
+                           "through the link graph, never linked as files"})
     if (TASK1 / "repos").is_dir():
         ref_layers.append({"name": "repos", "role": "vendored external repositories kept for "
                            "context-sharing and retrieval; not student content"})

@@ -2043,6 +2043,20 @@ function _loadGlossaryIndex() {
   }
   return _glossaryIndexP;
 }
+// The unified materials catalog (assets/materials_index.json): the cached glossary terms PLUS the
+// on-demand materials (papers, blogs) pulled by scripts/pull_materials.py, one searchable list with
+// a tier on each. webSearch ranks over THIS, so the on-demand materials are reachable through the
+// same surface; instantAnswer stays glossary-only (it answers with a single definition).
+let _materialsCatalogP = null;
+function _loadMaterialsCatalog() {
+  if (!_materialsCatalogP) {
+    _materialsCatalogP = fetch("assets/materials_index.json")
+      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(d => Array.isArray(d.entries) ? d.entries : [])
+      .catch(e => { _materialsCatalogP = null; throw e; });   // let a later call retry
+  }
+  return _materialsCatalogP;
+}
 // Score one term against the query: an exact or substring name match ranks highest,
 // then per-token hits on the name, tags, and blurb. Zero means no match.
 function _scoreGlossaryTerm(term, query) {
@@ -2063,21 +2077,22 @@ function _scoreGlossaryTerm(term, query) {
 }
 // Exposed for the glossary explorer (web/nemoclaw/glossary.html): it reuses the real ranking
 // and index loader so its simulation is exactly what the agent's web_search runs, not a copy.
-export { _scoreGlossaryTerm as glossaryScore, _loadGlossaryIndex as loadGlossaryIndex };
+export { _scoreGlossaryTerm as glossaryScore, _loadGlossaryIndex as loadGlossaryIndex,
+         _loadMaterialsCatalog as loadMaterialsCatalog };
 
 export async function webSearch(query, { maxResults = 5 } = {}) {
-  /* @doc <code>helpers.webSearch(q, {maxResults})</code> :: Key-less, ranked search over the vendored NVIDIA glossary (<code>assets/glossary_index.json</code>), matching the query against each term's name, tags, and blurb. It runs from any page with no key and no lab. Returns <code>{ results: [{title, body, href}], count, unreachable }</code>, the shape <code>formatSearchResults</code> expects. */
+  /* @doc <code>helpers.webSearch(q, {maxResults})</code> :: Key-less, ranked search over the course's materials catalog (<code>assets/materials_index.json</code>): the cached NVIDIA glossary terms <em>plus</em> the on-demand materials (papers, blogs) vendored from the web. Matches the query against each entry's name, tags, and blurb; runs from any page with no key and no lab. Each result carries a <code>tier</code> (<code>cached</code> = full text shipped; <code>on_demand</code> = follow <code>href</code> for the source). Returns <code>{ results: [{title, body, href, tier, kind}], count, unreachable }</code>. */
   try {
-    const terms = await _loadGlossaryIndex();
-    const results = terms
+    const entries = await _loadMaterialsCatalog();
+    const results = entries
       .map(t => ({ t, s: _scoreGlossaryTerm(t, query) }))
       .filter(x => x.s > 0)
       .sort((a, b) => b.s - a.s)
       .slice(0, maxResults)
-      .map(x => ({ title: x.t.term, body: x.t.blurb || "", href: x.t.url }));
-    return { unreachable: false, source: "glossary", query, results, count: results.length };
+      .map(x => ({ title: x.t.term, body: x.t.blurb || "", href: x.t.url, tier: x.t.tier, kind: x.t.kind }));
+    return { unreachable: false, source: "materials", query, results, count: results.length };
   } catch (e) {
-    return { unreachable: true, source: "glossary", error: e.message, query, results: [], count: 0 };
+    return { unreachable: true, source: "materials", error: e.message, query, results: [], count: 0 };
   }
 }
 
@@ -2696,9 +2711,11 @@ export function formatSearchResults(searchOut) {
   if (!searchOut.results.length) {
     return `(no results for "${searchOut.query}". Tell the user you could not find current information on this; do not answer from memory.)`;
   }
-  return searchOut.results.map((r, i) =>
-    `[${i + 1}] ${r.title}\n    ${r.body}\n    ${r.href}`
-  ).join("\n\n");
+  return searchOut.results.map((r, i) => {
+    const tier = r.tier === "on_demand" ? "  (on-demand: open the link for the full source)"
+               : r.tier === "cached" ? "  (cached)" : "";
+    return `[${i + 1}] ${r.title}${tier}\n    ${r.body}\n    ${r.href}`;
+  }).join("\n\n");
 }
 
 // viz builders, lifted to module scope so the helper menu can enumerate them

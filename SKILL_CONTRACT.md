@@ -91,8 +91,9 @@ surface; `cpu/SKILL.html` indexes the services. The hub carries:
 Per-directory detail does NOT live in the hub. Only the index.
 
 The root `SKILL.html` is the ontology beacon for the whole repo: it documents
-every immediate child (web, cpu, mats, repos, scripts, workspace, docs) so an
-agent can orient from one file.
+every immediate child (web, cpu, repos, scripts, workspace, docs) so an
+agent can orient from one file. The mats reference layer is course-scoped under
+`web/nemoclaw/mats/`, documented as part of the course.
 
 ---
 

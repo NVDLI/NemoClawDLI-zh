@@ -5,16 +5,17 @@ For every text-ish file under web/nemoclaw/, extract anything that looks
 like a file path or import target, resolve it against the filesystem,
 and classify the destination:
 
-  internal       - resolves to a file inside web/nemoclaw/
-  shared         - resolves to a shared-infra dir (cpu/services/, mats/, …)
+  internal       - resolves to a file inside web/nemoclaw/ (this includes the
+                   course-scoped reference layer web/nemoclaw/mats/)
+  shared         - resolves to a shared-infra dir (cpu/services/, …)
   cross_course   - resolves to another course (none ship in this release)
   external_url   - http(s) URL
   missing        - looks like a path but does not resolve
 
 The release ships a single course, so the "cross_course" bucket is expected
 to be empty; any hit is a stray reference to removed content and is the
-action list. A reference under mats/ is the only sanctioned shared-reference
-pattern.
+action list. A reference into the course-scoped mats/ (web/nemoclaw/mats/) is
+the sanctioned reference-layer pattern.
 
 Usage:
 
@@ -58,8 +59,8 @@ SHARED_INFRA = {
     "services", "llm_client", "export",
 }
 
-# Where mats/ lives. It is a top-level peer; refs from mats/ are sanctioned.
-MATS_DIR = TASK1 / "mats"
+# Where mats live. They are course-scoped under web/nemoclaw/; refs from mats are sanctioned.
+MATS_DIR = TASK1 / "web" / "nemoclaw" / "mats"
 
 # Text-ish file types worth scanning.
 TEXT_EXTS = {
@@ -383,7 +384,8 @@ def render_text(rep: Report, *, only: str | None = None) -> str:
         for r in by.get("shared", []):
             if r.resolved:
                 # Surface-first layout: shared infra resolves under task1/cpu/<dir>
-                # (e.g. cpu/services) or a top-level task1 peer (mats/, docs/).
+                # (e.g. cpu/services) or a top-level task1 peer (docs/); the mats
+                # reference layer is now course-scoped under web/nemoclaw/mats/.
                 # Bucket by the meaningful shared-dir segment relative to task1/.
                 try:
                     rel = r.resolved.relative_to(TASK1).parts

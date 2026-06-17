@@ -96,10 +96,11 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None) -> in
         gfind = gr._findings(grecs)
         ungrounded = sum(1 for fo in gfind if any("ungrounded" in i for i in fo["issues"]))
         emdash = sum(1 for fo in gfind if any("em-dash" in i for i in fo["issues"]))
+        vendored_emdash = gr.vendored_em_dash(grecs)   # external snapshots: surfaced, not advisory
         mat_assoc = {r["path"]: r["reference"]["mat_assoc"]
                      for r in grecs if r.get("reference", {}).get("mat_assoc")}
     except Exception as e:                       # grounding must never silently pass the gate
-        grecs, gfind, ungrounded, emdash, mat_assoc = [], [], -1, -1, {}
+        grecs, gfind, ungrounded, emdash, vendored_emdash, mat_assoc = [], [], -1, -1, [], {}
         vl_fail.append(f"grounding sweep error: {e}")
 
     # prose variety (deterministic, advisory): rank the authored narrative by machine-uniformity
@@ -111,8 +112,33 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None) -> in
         pv_rows, pv_flagged = [], []
         vl_fail.append(f"prose variety error: {e}")
 
+    # materials provenance (offline, advisory): read the committed _materials.json so the gate, CI,
+    # and the student validator screen all show the SAME materials health (source, tier, last-fetched,
+    # status) with the SAME one-line fix. This is the always-available view; the live drift re-fetch
+    # is `pull_materials.py --check` (run in CI + by contributors, which needs the network).
+    materials = {"count": 0, "by_tier": {}, "unreachable": [], "generated": None, "fix": ""}
+    try:
+        mp = TASK1 / "web" / "nemoclaw" / "mats" / "_materials.json"
+        if mp.is_file():
+            doc = json.loads(mp.read_text())
+            materials["generated"] = doc.get("generated")
+            mats = doc.get("materials", [])
+            materials["count"] = len(mats)
+            for m in mats:
+                t = m.get("tier", "?")
+                materials["by_tier"][t] = materials["by_tier"].get(t, 0) + 1
+                if m.get("status") != "ok":
+                    materials["unreachable"].append(
+                        {"name": m.get("name"), "url": m.get("url"), "host": m.get("host"),
+                         "error": (m.get("error") or "")[:160]})
+            if materials["unreachable"]:
+                materials["fix"] = ("re-pull with: python3 scripts/pull_materials.py "
+                                    "[--only blogs|papers|glossary]  (then commit)")
+    except Exception as e:                       # a broken provenance file must surface, not pass
+        vl_fail.append(f"materials read error: {e}")
+
     advisory = (total - gate_block) + len(gfind) + max(0, reach.get("real_strays", 0)) \
-        + max(0, audit.get("pages_with_findings", 0)) + len(pv_flagged)
+        + max(0, audit.get("pages_with_findings", 0)) + len(pv_flagged) + len(materials["unreachable"])
 
     summary = {
         "generated": stamp or datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -120,6 +146,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None) -> in
         "link_stats": s, "validate_layout_ok": vl_ok, "validate_layout_failures": vl_fail,
         "grounding": {"pages": len(grecs), "findings": len(gfind),
                       "ungrounded": ungrounded, "em_dash_pages": emdash,
+                      "vendored_em_dash_pages": len(vendored_emdash),
                       "mat_associated": len(mat_assoc)},
         "reachability": reach,
         "foyer_release": foyer,
@@ -127,6 +154,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None) -> in
         "prose_variety": {"pages": len(pv_rows), "flagged": len(pv_flagged), "flag_at": pv.FLAG_AT,
                           "flagged_pages": [{"path": r["path"], "score": r["score"], "tells": r["tells"]}
                                             for r in pv_flagged]},
+        "materials": materials,
         "advisory_total": advisory,
         "report": rep,
     }
@@ -139,6 +167,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None) -> in
     print(f"  validate_layout : {'OK' if vl_ok else 'FAIL ' + '; '.join(vl_fail[:3])}")
     print(f"  grounding       : {len(gfind)} pages w/ issues "
           f"(ungrounded {ungrounded}, em-dash {emdash}) over {len(grecs)} pages")
+    if vendored_emdash:
+        print(f"  vendored em-dash: {len(vendored_emdash)} external snapshot(s) carry the source's "
+              f"em-dashes (surfaced, not advisory)")
     print(f"  reachability    : {reach['reachable']}/{reach['pages']} pages reach a SKILL hub; "
           f"strays {len(reach['strays'])} ({reach['real_strays']} real, {reach['expected_strays']} expected-detached)")
     print(f"  foyer release   : {'OK' if foyer_ok else 'FAIL'} (surfaces {foyer.get('surfaced_courses', [])}; "
@@ -150,6 +181,13 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None) -> in
     if pv_rows:
         print(f"  prose variety   : {len(pv_flagged)}/{len(pv_rows)} narrative pages flagged for a rhythm pass"
               + (f" (worst: {pv_rows[0]['path'].split('/')[-1]} @ score {pv_rows[0]['score']})" if pv_flagged else ""))
+    _tiers = ", ".join(f"{n} {t}" for t, n in sorted(materials["by_tier"].items())) or "none"
+    print(f"  materials       : {materials['count']} vendored web sources ({_tiers}); "
+          f"{len(materials['unreachable'])} unreachable at last pull")
+    for u in materials["unreachable"]:
+        print(f"    ✗ material {u['name']} ({u['host']}): {u['error'] or 'unreachable'}")
+    if materials["unreachable"]:
+        print(f"      fix: {materials['fix']}")
     if not ok:
         for x in (rep["failures"] + rep["asset_leaks"] + rep["cross_course"]):
             if scope == "all" or x.get("ship"):
@@ -211,6 +249,7 @@ def _render_md(summary: dict) -> str:
          f"| strays (unreachable from a SKILL hub) | {len(rc.get('strays',[]))} | {rc.get('real_strays','?')} real |",
          f"| release foyer (surfaces only RELEASED) | {'OK' if fy.get('ok') else 'FAIL'} | {len(fy.get('violations',[]))} blocking |",
          f"| page audit (.html drift) | {pa.get('pages_with_findings','?')} / {pa.get('pages','?')} | advisory |",
+         f"| materials (vendored web sources) | {summary.get('materials',{}).get('count','?')} | {len(summary.get('materials',{}).get('unreachable',[]))} unreachable, advisory |",
          f"| validate_layout | {'OK' if summary['validate_layout_ok'] else 'FAIL'} | |", ""]
 
     # per-.html drift audit: each page auto-verified against the engine (stale tokens, missing
@@ -222,6 +261,21 @@ def _render_md(summary: dict) -> str:
                 L.append(f"- `{pf['page']}` **{fnd.get('kind')}**: {fnd.get('detail') or fnd.get('asset') or fnd.get('token','')}")
     else:
         L.append("\nNo drift: every audited page passes stale-token, asset, and contract checks.")
+    L.append("")
+
+    # materials: the committed snapshot of each web source the bundle vendors. The student
+    # validator screen renders this, so anyone (you, CI, a student) sees exactly which source is
+    # unreachable and the one-line fix, in the same words.
+    mt = summary.get("materials", {})
+    L.append(f"## Materials ({mt.get('count', 0)} vendored web sources, last pulled {mt.get('generated') or '?'})")
+    if mt.get("unreachable"):
+        L.append(f"\n**{len(mt['unreachable'])} unreachable at the last pull.** Fix: `{mt.get('fix', '')}`\n")
+        for u in mt["unreachable"]:
+            L.append(f"- `{u['name']}` ({u.get('host')}) &lt;{u.get('url')}&gt;: {u.get('error') or 'unreachable'}")
+    else:
+        L.append("\nEvery vendored web source pulled cleanly. Refresh with "
+                 "`python3 scripts/pull_materials.py`; drift-check against the live web with "
+                 "`python3 scripts/pull_materials.py --check`.")
     L.append("")
 
     # release-foyer contract: the foyer is the student-facing release surface; it must

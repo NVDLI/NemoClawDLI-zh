@@ -1,8 +1,9 @@
 # Contributing
 
 This repository is the open-source release of NVIDIA DLI's Securing Agents course.
-Content is organized by execution surface: `web/` holds the browser course and `cpu/`
-holds the service stack it runs against, with shared `mats/`, `scripts/`, and `workspace/`.
+Content is organized by execution surface: `web/` holds the browser course and its
+course-scoped reference packets under `web/nemoclaw/mats/`, and `cpu/` holds the service
+stack it runs against, with shared `scripts/` and `workspace/`.
 
 Most of the work here is curation and projection: you shape and re-express knowledge into
 the source under `web/` and `cpu/`, and the generators turn it into the formats the lab
