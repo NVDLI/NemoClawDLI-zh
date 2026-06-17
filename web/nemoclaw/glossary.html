@@ -5,47 +5,31 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>The glossary behind web_search · Securing Agents</title>
 <link rel="stylesheet" href="_style.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 <style>
-  /* Page-specific styles. Every color is a theme var, so the page flips with the
-     dark/light toggle exactly like the rest of the course. */
+  /* Page-specific bits only. The canvas flow, diagram, callouts, and code all come from
+     _style.css and theme with the dark/light toggle; these few rules use theme vars too. */
   main { max-width: min(74rem, 100%); margin: 0 auto; padding: clamp(1.5rem,4vw,2.5rem) clamp(1rem,4vw,2rem) 90px; }
   .gx-eyebrow { font-family: var(--mono); font-size: .72rem; color: var(--gs); text-transform: uppercase; letter-spacing: .12em; margin-bottom: .6em; }
   .gx-hero h1 { font-size: 2.1rem; line-height: 1.12; margin: 0 0 .35em; }
-  .gx-hero h1 code { font-size: .8em; background: var(--e2); padding: 2px 10px; border-radius: 6px; color: var(--gs); }
-  .gx-lead { font-size: 1.05rem; color: var(--td); max-width: 60rem; }
+  .gx-hero h1 code { font-size: .78em; background: var(--e2); padding: 2px 10px; border-radius: 6px; color: var(--gs); }
+  .gx-lead { font-size: 1.05rem; color: var(--td); max-width: 60rem; line-height: 1.65; }
   section { margin: 2.6em 0; }
-  section > h2 { font-size: 1.25rem; color: var(--tx); border-bottom: 1px solid var(--e3); padding-bottom: .35em; margin-bottom: .7em; }
-  .gx-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin: 1em 0; }
-  .gx-card { background: var(--e1); border: 1px solid var(--e3); border-left: 3px solid var(--g); border-radius: 10px; padding: 14px 16px; font-size: .9rem; color: var(--td); }
-  .gx-card b { color: var(--tx); }
-  .gx-card .gx-num { font-family: var(--mono); color: var(--gs); font-size: 1.1rem; font-weight: 700; }
-  .gx-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 1em 0; font-family: var(--mono); font-size: .82rem; }
-  .gx-flow span.step { background: var(--e2); border: 1px solid var(--e3); border-radius: 7px; padding: 7px 12px; color: var(--tx); }
-  .gx-flow span.arrow { color: var(--tf); }
-  .gx-sim-input, .gx-filter { width: 100%; padding: 11px 14px; font-size: .95rem; background: var(--e2); border: 1px solid var(--bd); border-radius: 8px; color: var(--tx); font-family: var(--mono); outline: none; }
-  .gx-sim-input:focus, .gx-filter:focus { border-color: var(--g); }
-  .gx-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px; }
-  @media (max-width: 760px) { .gx-cols { grid-template-columns: 1fr; } }
-  .gx-col h3 { font-size: .82rem; font-family: var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--tf); margin: 0 0 .5em; }
-  .gx-col h3 code { background: transparent; padding: 0; color: var(--gs); }
-  .gx-result { background: var(--e1); border: 1px solid var(--e3); border-radius: 8px; padding: 10px 13px; margin-bottom: 8px; }
-  .gx-result-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-  .gx-result-term { font-weight: 700; color: var(--tx); font-size: .95rem; }
-  .gx-score { font-family: var(--mono); font-size: .7rem; color: var(--gs); white-space: nowrap; }
-  .gx-result-blurb { font-size: .84rem; color: var(--td); line-height: 1.5; margin: .35em 0; }
-  .gx-result-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: .72rem; }
-  .gx-tag { font-family: var(--mono); background: var(--e3); color: var(--td); padding: 1px 7px; border-radius: 999px; }
-  .gx-result-foot a { margin-left: auto; color: var(--g); white-space: nowrap; }
-  .gx-empty { font-size: .86rem; color: var(--tf); font-style: italic; padding: 10px 0; }
-  pre.gx-pre { background: var(--e1); border: 1px solid var(--e3); border-radius: 8px; padding: 12px 14px; font-family: var(--mono); font-size: .8rem; line-height: 1.5; color: var(--tx); overflow-x: auto; white-space: pre-wrap; }
-  details.gx-src { margin-top: 10px; }
-  details.gx-src > summary { cursor: pointer; color: var(--gs); font-size: .85rem; font-family: var(--mono); }
-  table.gx-data { width: 100%; border-collapse: collapse; font-size: .84rem; margin-top: 12px; }
-  table.gx-data th { text-align: left; color: var(--tf); font-family: var(--mono); font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; padding: 6px 10px; border-bottom: 1px solid var(--e3); }
+  .gx-stat { font-family: var(--mono); color: var(--gs); }
+  .gx-filter { width: 100%; padding: 11px 14px; font-size: .95rem; background: var(--e2); border: 1px solid var(--bd); border-radius: 8px; color: var(--tx); font-family: var(--mono); outline: none; margin: 4px 0 12px; }
+  .gx-filter:focus { border-color: var(--g); }
+  table.gx-data { width: 100%; border-collapse: collapse; font-size: .84rem; }
+  table.gx-data th { text-align: left; color: var(--tf); font-family: var(--mono); font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; padding: 6px 10px; border-bottom: 1px solid var(--e3); position: sticky; top: 0; background: var(--bg); }
   table.gx-data td { padding: 8px 10px; border-bottom: 1px solid var(--e3); color: var(--td); vertical-align: top; }
   table.gx-data td.term { color: var(--tx); font-weight: 600; white-space: nowrap; }
   table.gx-data td.term a { color: var(--tx); }
+  .gx-tag { font-family: var(--mono); font-size: .72rem; background: var(--e3); color: var(--td); padding: 1px 7px; border-radius: 999px; }
   .gx-deep { font-family: var(--mono); font-size: .64rem; color: var(--gs); border: 1px solid var(--gd); border-radius: 999px; padding: 1px 6px; margin-left: 6px; }
+  .gx-table-wrap { max-height: 460px; overflow: auto; border: 1px solid var(--e3); border-radius: 10px; }
   .gx-back { color: var(--td); font-size: .85rem; }
 </style>
 </head>
@@ -59,116 +43,172 @@
 <main>
   <div class="gx-hero">
     <div class="gx-eyebrow">NVIDIA · Securing Agents · reference</div>
-    <h1>The glossary behind <code>web_search</code></h1>
+    <h1>Where <code>web_search</code> actually looks</h1>
     <p class="gx-lead">
-      When an agent in this course calls its <code>web_search</code> tool (the one you wire by hand in
-      <a href="01c-tools.html">Module 1c</a>), it does not reach the open web. It searches a curated
-      index of NVIDIA glossary terms that ships with the course and runs
-      entirely in your browser: no API key, no proxy, no lab service. This page shows what is in that
-      index, how it reaches you, and lets you run the exact search the agent runs.
+      When an agent in this course calls the <code>web_search</code> tool you wire by hand in
+      <a href="01c-tools.html">Module 1c</a>, nothing leaves your browser. It ranks a glossary of
+      NVIDIA AI and accelerated-computing terms that shipped with the page. That can sound like a
+      shortcut, but it is the honest version of a tool: a fixed, inspectable corpus an agent can
+      truly ground in, with no key, no network round-trip, and no surprise in what comes back.
+      This page opens it up. Watch the index load, run the exact ranking the agent runs, and read
+      the functions line for line.
     </p>
   </div>
 
   <section>
-    <h2>What is delivered, and how it is cached</h2>
-    <div class="gx-cards">
-      <div class="gx-card"><div class="gx-num" id="gx-count">…</div><b>glossary terms</b> in one file, <code>assets/glossary_index.json</code> (<span id="gx-size">…</span>).</div>
-      <div class="gx-card"><b>Same-origin.</b> The file ships in the same bundle as this page, so the browser loads it with no external request, no key, and no CORS.</div>
-      <div class="gx-card"><b>Fetched once, then cached.</b> <code>_shared.js</code> holds the parsed index in a module-level promise (<code>_glossaryIndexP</code>); every later search reuses it with no second fetch.</div>
-      <div class="gx-card"><b>Reproducible.</b> Regenerated from the live glossary by <code>scripts/vendor_glossary.py&nbsp;--index</code>, so the contents are auditable, not a black box.</div>
-    </div>
-    <div class="gx-flow">
-      <span class="step">agent calls web_search(query)</span><span class="arrow">→</span>
-      <span class="step">score every term (cached index)</span><span class="arrow">→</span>
-      <span class="step">return the top matches</span>
-    </div>
-  </section>
-
-  <section>
-    <h2>The API the tool wraps</h2>
-    <p class="gx-lead">Two functions back the same tool contract. Both return
-      <code>{ results: [{ title, body, href }], count, unreachable }</code>, so the agent code never
-      changes when the backend does:</p>
-    <div class="gx-cards">
-      <div class="gx-card"><b><code>webSearch(query)</code> is the ranked lookup.</b> It scores every term against the query by name, then tags, then blurb, and returns the top matches. The broad search the agent grounds answers in.</div>
-      <div class="gx-card"><b><code>instantAnswer(query)</code> is the narrow lookup.</b> It returns one term's definition only when the query names it, and nothing for a free-form question. The entity-keyed counterpart.</div>
-    </div>
-    <details class="gx-src">
-      <summary>The real source, read live from _shared.js</summary>
-      <pre class="gx-pre"><code id="gx-src"></code></pre>
-    </details>
+    <h2>One file, fetched once</h2>
+    <p class="gx-lead">
+      The whole backend is a single static file, <code>assets/glossary_index.json</code>
+      (<span class="gx-stat" id="gx-count">…</span> terms, <span class="gx-stat" id="gx-size">…</span>).
+      It ships in the same bundle as the page, so the browser loads it same-origin with no key and
+      no CORS. The first search fetches it; <code>_shared.js</code> then holds the parsed index in a
+      module-level promise and every later search reuses it. The contents are regenerated from the
+      live glossary by <code>scripts/vendor_glossary.py</code>, so the corpus is reproducible and
+      auditable rather than a moving target.
+    </p>
+    <div id="gx-delivery"></div>
   </section>
 
   <section>
     <h2>Run the search the agent runs</h2>
-    <p class="gx-lead">Type a query. The left column is <code>webSearch</code>'s exact ranking (with the
-      score for each hit); the right is the narrow <code>instantAnswer</code> lookup. Below is the text
-      block the model actually receives.</p>
-    <input class="gx-sim-input" id="gx-q" value="retrieval augmented generation" spellcheck="false" autocomplete="off"/>
-    <div class="gx-cols">
-      <div class="gx-col"><h3><code>webSearch</code> · ranked results</h3><div id="gx-ranked"></div></div>
-      <div class="gx-col"><h3><code>instantAnswer</code> · single term</h3><div id="gx-instant"></div></div>
-    </div>
-    <details class="gx-src" open>
-      <summary>What the agent actually reads · <code>formatSearchResults(webSearch(query))</code></summary>
-      <pre class="gx-pre" id="gx-formatted"></pre>
-    </details>
+    <p class="gx-lead">
+      This is the real pipeline behind one <code>web_search</code> call, one node per step. Edit the
+      query in the first node and hit <strong>Run all</strong>: the index loads from cache, every
+      term is scored, the top matches survive, and the result is formatted into the exact text block
+      the model reads back. The scoring node holds the same algorithm <code>helpers.webSearch</code>
+      uses, so change a weight and watch the ranking move.
+    </p>
+    <div id="gx-pipeline"></div>
   </section>
 
   <section>
-    <h2>Everything in the index · <span id="gx-tcount">…</span> terms</h2>
-    <p class="gx-lead">The full catalog the search ranks over. Terms flagged <span class="gx-deep">deep</span>
-      also ship full vendored article text under <code>mats/glossary_raw/</code>. Filter to explore.</p>
+    <h2>The functions, in full</h2>
+    <p class="gx-lead">
+      Two functions back the one tool contract, both returning
+      <code>{ results: [{ title, body, href }], count, unreachable }</code>.
+      <code>webSearch</code> is the broad, ranked lookup the agent grounds answers in;
+      <code>instantAnswer</code> is the narrow one that returns a single term's definition only when
+      the query names it. This is their source, read live from <code>_shared.js</code> at load, so
+      what you see here cannot drift from what actually runs.
+    </p>
+    <pre class="hljs" style="background:var(--e1);border:1px solid var(--e3);border-radius:10px;padding:14px 16px;overflow-x:auto;font-size:.8rem;line-height:1.5"><code class="language-js" id="gx-src">loading source…</code></pre>
+  </section>
+
+  <section>
+    <h2>Every term it can find · <span class="gx-stat" id="gx-tcount">…</span></h2>
+    <p class="gx-lead">
+      The full catalog the ranking searches over. A term marked <span class="gx-deep">deep</span>
+      also ships full vendored article text under <code>mats/glossary_raw/</code>. Filter to find
+      what the agent could ground a claim in, and what it could not.
+    </p>
     <input class="gx-filter" id="gx-filter" placeholder="filter by term, tag, or blurb…" spellcheck="false" autocomplete="off"/>
-    <table class="gx-data">
-      <thead><tr><th>Term</th><th>Tags</th><th>Blurb</th></tr></thead>
-      <tbody id="gx-rows"></tbody>
-    </table>
+    <div class="gx-table-wrap">
+      <table class="gx-data">
+        <thead><tr><th>Term</th><th>Tags</th><th>Blurb</th></tr></thead>
+        <tbody id="gx-rows"></tbody>
+      </table>
+    </div>
   </section>
 </main>
 
 <script type="module">
-import { webSearch, instantAnswer, glossaryScore, loadGlossaryIndex, formatSearchResults } from "./_shared.js";
+import { webSearch, instantAnswer, glossaryScore, loadGlossaryIndex, mountDiagram, mountCanvasFlow } from "./_shared.js";
 
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const $ = (id) => document.getElementById(id);
 
+// ── Delivery + caching, as a real themed diagram ────────────────────────────
+mountDiagram("#gx-delivery", {
+  title: "How the index reaches a search",
+  caption: "One static file, fetched once and held in memory; every query ranks the cached copy. No key, no network per call.",
+  nodes: [
+    { id: "file",   label: "glossary_index.json", kind: "data",    x: 0, y: 0, lines: ["static, same-origin", "ships in the bundle"] },
+    { id: "cache",  label: "in-memory cache",     kind: "neutral", x: 1, y: 0, lines: ["_glossaryIndexP", "fetched once"] },
+    { id: "search", label: "webSearch",           kind: "tool",    x: 2, y: 0, lines: ["scores + ranks", "no key, no network"] },
+    { id: "result", label: "tool result",         kind: "model",   x: 3, y: 0, lines: ["top matches", "the model reads"] },
+  ],
+  edges: [
+    { from: "file",   to: "cache",  label: "fetch + parse" },
+    { from: "cache",  to: "search", label: "every query" },
+    { from: "search", to: "result" },
+  ],
+});
+
+// ── The search pipeline, as an editable canvas flow (key-less; no model calls) ──
+mountCanvasFlow("#gx-pipeline", {
+  label: "glossary search · query in, ranked terms out",
+  intro: "Each node is one real step web_search takes. Edit the query, then Run all. No API key: this pipeline only loads a file and sorts it.",
+  edges: [
+    { from: "query", to: "load" },
+    { from: "load",  to: "rank" },
+    { from: "rank",  to: "format" },
+  ],
+  nodes: [
+    {
+      id: "query", icon: "🔎", title: "The query", x: 0, y: 0,
+      summary: "The text the agent passes to web_search. Edit it and rerun to see the ranking change. A short topical phrase beats a full question, because the index is keyed on terms.",
+      code: `state.query = "retrieval augmented generation";
+helpers.log("query:", state.query);
+return state.query;`,
+    },
+    {
+      id: "load", icon: "📚", title: "Load the cached index", x: 0, y: 1,
+      summary: "Fetch the shipped index. The browser hits a same-origin static file with no key. After the first run the parsed index is cached, so this is effectively free on every later query.",
+      code: `const r = await helpers.fetch("assets/glossary_index.json");
+state.terms = (await r.json()).terms;
+helpers.log(state.terms.length, "terms available (cached after the first fetch)");
+return { terms: state.terms.length };`,
+    },
+    {
+      id: "rank", icon: "📊", title: "Score and rank every term", x: 0, y: 2,
+      summary: "The exact scoring helpers.webSearch uses: an exact or substring name match ranks highest, then tag hits, then blurb hits. Tweak a weight and watch the order move; this is the whole 'ranking' behind the tool.",
+      code: `// Same scoring as helpers.webSearch (see "The functions, in full" below).
+function score(t, q) {
+  q = q.trim().toLowerCase();
+  if (!q) return 0;
+  const name  = (t.term  || "").toLowerCase();
+  const blurb = (t.blurb || "").toLowerCase();
+  const tags  = (t.tags  || []).map(x => String(x).toLowerCase());
+  let s = 0;
+  if (name === q) s += 100;
+  else if (name.includes(q) || q.includes(name)) s += 40;
+  for (const tok of q.split(/[^a-z0-9]+/).filter(Boolean)) {
+    if (name.includes(tok))              s += 12;
+    if (tags.some(g => g.includes(tok))) s += 6;
+    if (blurb.includes(tok))             s += 3;
+  }
+  return s;
+}
+state.ranked = state.terms
+  .map(t => ({ t, s: score(t, state.query) }))
+  .filter(x => x.s > 0)
+  .sort((a, b) => b.s - a.s)
+  .slice(0, 5);
+for (const { t, s } of state.ranked) helpers.log(String(s).padStart(4), t.term);
+return { hits: state.ranked.length };`,
+    },
+    {
+      id: "format", icon: "📤", title: "Format for the model", x: 0, y: 3,
+      summary: "Turn the ranked terms into the numbered text block the model receives as the tool result. This string is the agent's whole view of the search; if it is empty, the agent is told to say it found nothing rather than answer from memory.",
+      code: `state.out = helpers.formatSearchResults({
+  source: "glossary", query: state.query, unreachable: false,
+  count: state.ranked.length,
+  results: state.ranked.map(({ t }) => ({ title: t.term, body: t.blurb, href: t.url })),
+});
+helpers.log(state.out);
+return { chars: state.out.length };`,
+    },
+  ],
+});
+
+// ── The real source, highlighted ────────────────────────────────────────────
+const stripDoc = (fn) => fn.toString().replace(/\s*\/\* @doc[\s\S]*?\*\/\s*/, "\n  ").trimEnd();
+const srcEl = $("gx-src");
+srcEl.textContent = [stripDoc(glossaryScore), stripDoc(webSearch), stripDoc(instantAnswer)].join("\n\n");
+if (window.hljs) hljs.highlightElement(srcEl);
+
+// ── The data table ───────────────────────────────────────────────────────────
 let INDEX = [];
-
-// Show the real ranking + loader source so the page documents the actual code, not a paraphrase.
-function showSource() {
-  const strip = (fn) => fn.toString().replace(/\s*\/\* @doc[\s\S]*?\*\/\s*/, "\n  ").trimEnd();
-  $("gx-src").textContent = [strip(glossaryScore), "", strip(webSearch), "", strip(instantAnswer)].join("\n\n");
-}
-
-function rankedHtml(q) {
-  // This is exactly what webSearch does internally; computed here so each hit can show its score.
-  const scored = INDEX.map((t) => ({ t, s: glossaryScore(t, q) }))
-    .filter((x) => x.s > 0).sort((a, b) => b.s - a.s).slice(0, 6);
-  if (!scored.length) return '<p class="gx-empty">No matches. The agent is told it found nothing rather than answer from memory.</p>';
-  return scored.map(({ t, s }) => `
-    <div class="gx-result">
-      <div class="gx-result-head"><span class="gx-result-term">${esc(t.term)}</span><span class="gx-score">score ${s}</span></div>
-      <div class="gx-result-blurb">${esc(t.blurb)}</div>
-      <div class="gx-result-foot">${(t.tags || []).map((g) => `<span class="gx-tag">${esc(g)}</span>`).join("")}<a href="${esc(t.url)}" target="_blank" rel="noopener">glossary &#8599;</a></div>
-    </div>`).join("");
-}
-
-async function simulate() {
-  const q = $("gx-q").value.trim();
-  $("gx-ranked").innerHTML = rankedHtml(q);
-  const inst = await instantAnswer(q);
-  $("gx-instant").innerHTML = inst.results.length
-    ? inst.results.map((r) => `
-      <div class="gx-result">
-        <div class="gx-result-head"><span class="gx-result-term">${esc(r.title)}</span></div>
-        <div class="gx-result-blurb">${esc(r.body)}</div>
-        <div class="gx-result-foot"><a href="${esc(r.href)}" target="_blank" rel="noopener">glossary &#8599;</a></div>
-      </div>`).join("")
-    : '<p class="gx-empty">No single term names this query. instantAnswer returns nothing, the way an instant-answer box ignores a full question.</p>';
-  $("gx-formatted").textContent = formatSearchResults(await webSearch(q));
-}
-
 function renderTable(filter) {
   const f = (filter || "").trim().toLowerCase();
   const rows = INDEX.filter((t) => !f
@@ -180,25 +220,21 @@ function renderTable(filter) {
       <td class="term"><a href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.term)}</a>${t.deep ? '<span class="gx-deep">deep</span>' : ""}</td>
       <td>${(t.tags || []).map((g) => `<span class="gx-tag">${esc(g)}</span>`).join(" ")}</td>
       <td>${esc(t.blurb)}</td>
-    </tr>`).join("") || `<tr><td colspan="3" class="gx-empty">No term matches &ldquo;${esc(filter)}&rdquo;.</td></tr>`;
+    </tr>`).join("") || `<tr><td colspan="3" style="color:var(--tf);font-style:italic;padding:12px">No term matches that filter.</td></tr>`;
 }
-
 const debounce = (fn, ms) => { let h; return (...a) => { clearTimeout(h); h = setTimeout(() => fn(...a), ms); }; };
 
 (async function init() {
-  showSource();
   try {
     const raw = await fetch("assets/glossary_index.json");
-    const sizeKb = Math.round((Number(raw.headers.get("content-length")) || (await raw.clone().text()).length) / 1024);
-    $("gx-size").textContent = sizeKb + " KB";
+    const kb = Math.round((Number(raw.headers.get("content-length")) || (await raw.clone().text()).length) / 1024);
+    $("gx-size").textContent = kb + " KB";
   } catch (_) { $("gx-size").textContent = "one static file"; }
   INDEX = await loadGlossaryIndex();
   $("gx-count").textContent = INDEX.length;
-  $("gx-tcount").textContent = INDEX.length;
+  $("gx-tcount").textContent = INDEX.length + " terms";
   renderTable("");
-  await simulate();
-  $("gx-q").addEventListener("input", debounce(simulate, 180));
-  $("gx-filter").addEventListener("input", debounce((e) => renderTable($("gx-filter").value), 120));
+  $("gx-filter").addEventListener("input", debounce(() => renderTable($("gx-filter").value), 120));
 })();
 </script>
 </body>

@@ -7,7 +7,11 @@ current health without a live lab:
 
   1. link_projection --check (ship scope)  → virtual-link failures-to-get + asset leaks
   2. validate_layout.py                     → static mount paths, notebooks, SKILL beacons
-  3. (skills via validate_layout's skills check / skill_audit)
+  3. grounding.py                           → em-dash / ungrounded / mat-association sweep
+  4. prose_variety.py                       → sentence-variety + buzz signals over the narrative
+  5. reachability, foyer-release, page-audit (via link_projection)
+
+Each suite also runs standalone for detail, e.g. `python3 scripts/prose_variety.py`.
 
 Exit 0 iff there are no SHIP-blocking link failures AND validate_layout passes. Breakage
 outside the shipped surface (anything that is not the released nemoclaw course or its shared
@@ -33,6 +37,7 @@ TASK1 = SCRIPTS.parent
 sys.path.insert(0, str(SCRIPTS))
 import link_projection as lp  # noqa: E402
 import grounding as gr  # noqa: E402
+import prose_variety as pv  # noqa: E402
 
 
 def _git_sha() -> str:
@@ -97,8 +102,17 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None) -> in
         grecs, gfind, ungrounded, emdash, mat_assoc = [], [], -1, -1, {}
         vl_fail.append(f"grounding sweep error: {e}")
 
+    # prose variety (deterministic, advisory): rank the authored narrative by machine-uniformity
+    # (sentence-length spread, staccato triads, enumeration, welded clauses) so monotone pages surface.
+    try:
+        pv_rows = pv.sweep(scope)
+        pv_flagged = [r for r in pv_rows if r["flagged"]]
+    except Exception as e:
+        pv_rows, pv_flagged = [], []
+        vl_fail.append(f"prose variety error: {e}")
+
     advisory = (total - gate_block) + len(gfind) + max(0, reach.get("real_strays", 0)) \
-        + max(0, audit.get("pages_with_findings", 0))
+        + max(0, audit.get("pages_with_findings", 0)) + len(pv_flagged)
 
     summary = {
         "generated": stamp or datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -110,6 +124,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None) -> in
         "reachability": reach,
         "foyer_release": foyer,
         "page_audit": audit,
+        "prose_variety": {"pages": len(pv_rows), "flagged": len(pv_flagged), "flag_at": pv.FLAG_AT,
+                          "flagged_pages": [{"path": r["path"], "score": r["score"], "tells": r["tells"]}
+                                            for r in pv_flagged]},
         "advisory_total": advisory,
         "report": rep,
     }
@@ -130,6 +147,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None) -> in
         print(f"    ✗ foyer {v.get('kind')}: {v.get('detail')}")
     print(f"  page audit      : {audit.get('pages_with_findings', '?')}/{audit.get('pages', '?')} .html show drift "
           f"(stale tokens / missing assets / contract)")
+    if pv_rows:
+        print(f"  prose variety   : {len(pv_flagged)}/{len(pv_rows)} narrative pages flagged for a rhythm pass"
+              + (f" (worst: {pv_rows[0]['path'].split('/')[-1]} @ score {pv_rows[0]['score']})" if pv_flagged else ""))
     if not ok:
         for x in (rep["failures"] + rep["asset_leaks"] + rep["cross_course"]):
             if scope == "all" or x.get("ship"):
@@ -160,6 +180,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None) -> in
     else:
         verdict = "✅ clean. No blocking and no advisory issues."
     print(f"validate_bundle: {verdict}")
+    print("  detail: docs/validation/latest.md   ·   single suite, e.g.: python3 scripts/prose_variety.py")
     return 0 if ok else 1
 
 
@@ -186,6 +207,7 @@ def _render_md(summary: dict) -> str:
          f"| grounding issues | {g.get('findings','?')} | advisory |",
          f"| · ungrounded pages | {g.get('ungrounded','?')} | advisory |",
          f"| · em-dash pages | {g.get('em_dash_pages','?')} | advisory |",
+         f"| prose variety (narrative pages flagged) | {summary.get('prose_variety',{}).get('flagged','?')} / {summary.get('prose_variety',{}).get('pages','?')} | advisory |",
          f"| strays (unreachable from a SKILL hub) | {len(rc.get('strays',[]))} | {rc.get('real_strays','?')} real |",
          f"| release foyer (surfaces only RELEASED) | {'OK' if fy.get('ok') else 'FAIL'} | {len(fy.get('violations',[]))} blocking |",
          f"| page audit (.html drift) | {pa.get('pages_with_findings','?')} / {pa.get('pages','?')} | advisory |",
@@ -251,6 +273,18 @@ def _render_md(summary: dict) -> str:
             L.append(f"- `{x['page']}`")
         if len(exp) > 15:
             L.append(f"- … {len(exp) - 15} more")
+    L.append("")
+
+    # prose variety: narrative pages that read machine-uniform (monotone length, staccato triads,
+    # enumeration, welded clauses). Advisory; it points at pages to give a rhythm pass, not verdicts.
+    pvd = summary.get("prose_variety", {})
+    L.append(f"## Prose variety (machine-uniformity; advisory): {pvd.get('flagged', 0)} of {pvd.get('pages', 0)} narrative pages flagged")
+    if pvd.get("flagged_pages"):
+        L.append(f"\n_at or above score {pvd.get('flag_at')}; `python3 scripts/prose_variety.py` for the full ranked table_:")
+        for r in pvd["flagged_pages"][:20]:
+            L.append(f"- `{r['path']}` score {r['score']}: {'; '.join(r['tells'])}")
+    else:
+        L.append("\nNo page is over the rhythm threshold. Full ranked metrics: `python3 scripts/prose_variety.py`.")
     L.append("")
     return "\n".join(L)
 

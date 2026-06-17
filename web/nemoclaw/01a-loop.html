@@ -37,12 +37,13 @@
     <div class="eyebrow">Module 1 · Part A of 3</div>
     <h1>The <span>Agent</span></h1>
     <p class="lead">
-      An agent is a loop: perceive the environment, reason about what to
-      do, act, repeat. The rule inside that loop is a pluggable socket.
-      A thermostat puts a one-liner there. A self-driving car puts a
-      neural network. Every agent in this course puts an LLM. This page
-      builds the smallest possible example with zero LLMs, then shows
-      where the language model plugs in.
+      An agent is a loop. It perceives its environment, decides what to do,
+      acts on that, and goes around again. What changes from one agent to the
+      next is the rule behind that decision. A thermostat checks whether the
+      temperature has crossed its setpoint. The agents in this course hand that
+      decision to an LLM instead. This page builds the loop with no model in it
+      at all, so you can watch the moving parts, then shows where the language
+      model takes over.
     </p>
   </div>
 
@@ -131,54 +132,60 @@
   </ul>
 
   <div style="display:flex;justify-content:center;margin:1em 0 1.4em">
-    <svg class="gfx-dark" viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg"
-       style="width:100%;max-width:1100px;display:block;margin:1.2em auto;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:12px"
-       role="img" aria-label="The chat completions interface as a stateless function: model name, messages, tools and budget go in; one assistant message plus metadata (content, reasoning_content, finish_reason, usage) comes out. No hidden memory between calls.">
+    <svg class="gfx-dark" viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg"
+       style="width:100%;max-width:1100px;display:block;margin:1.2em auto;background:var(--gfx-bg);border:1px solid var(--gfx-line);border-radius:12px"
+       role="img" aria-label="The chat completions interface as a stateless function: model name, messages, tools and budget go in; one assistant message plus metadata (content, reasoning_content, finish_reason, usage) comes out. No hidden memory between calls. The Responses API wraps the same stateless call and keeps messages for you.">
   <defs>
     <marker id="chat-fn-arrow-v2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
-      <path d="M0,0 L10,5 L0,10 Z" fill="#a5a5a5"/>
+      <path d="M0,0 L10,5 L0,10 Z" fill="var(--gfx-sub)"/>
     </marker>
     <filter id="chat-fn-shadow-v2" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#f2f2f2" flood-opacity="0.13"/>
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.16"/>
     </filter>
-    <linearGradient id="chat-input-fill-v2"  x1="0" x2="1"><stop offset="0%" stop-color="#1e1e3a"/><stop offset="100%" stop-color="#1e1e3a"/></linearGradient>
-    <linearGradient id="chat-llm-fill-v2"    x1="0" x2="1"><stop offset="0%" stop-color="#1a1a2e"/><stop offset="100%" stop-color="#1a1a2e"/></linearGradient>
-    <linearGradient id="chat-output-fill-v2" x1="0" x2="1"><stop offset="0%" stop-color="#1e3a1e"/><stop offset="100%" stop-color="#1e3a1e"/></linearGradient>
   </defs>
 
-  <text x="32" y="32" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#a5a5a5" letter-spacing="1.2">CHAT COMPLETIONS &middot; STATELESS FUNCTION</text>
-  <text x="32" y="58" font-size="17" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" fill="#f2f2f2" font-weight="700">Messages in, one assistant turn out</text>
-  <text x="380" y="78" text-anchor="middle" font-size="12" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" fill="#a5a5a5">To remember prior turns, include them again in messages[].</text>
+  <text x="32" y="30" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="var(--gfx-sub)" letter-spacing="1.2">CHAT COMPLETIONS &middot; STATELESS FUNCTION</text>
+  <text x="32" y="56" font-size="17" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" fill="var(--gfx-ink)" font-weight="700">Messages in, one assistant turn out</text>
+  <text x="32" y="79" font-size="12" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" fill="var(--gfx-sub)">To remember prior turns, include them again in messages[].</text>
 
   <!-- Input card -->
-  <g filter="url(#chat-fn-shadow-v2)"><rect x="48" y="96" width="210" height="118" rx="14" fill="var(--gfx-tint-blue,#dfeaf5)" stroke="#3b82f6" stroke-width="2"/></g>
-  <text x="153" y="130" text-anchor="middle" font-size="15" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3b82f6" font-weight="800">request</text>
-  <text x="153" y="156" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#a5a5a5">model name</text>
-  <text x="153" y="174" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#a5a5a5">messages[]</text>
-  <text x="153" y="192" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#a5a5a5">tools, params, budget</text>
+  <g filter="url(#chat-fn-shadow-v2)"><rect x="48" y="100" width="210" height="118" rx="14" fill="var(--gfx-tint-blue)" stroke="var(--gfx-blue)" stroke-width="2"/></g>
+  <text x="153" y="134" text-anchor="middle" font-size="15" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="var(--gfx-blue)" font-weight="800">request</text>
+  <text x="153" y="160" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="var(--gfx-sub)">model name</text>
+  <text x="153" y="178" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="var(--gfx-sub)">messages[]</text>
+  <text x="153" y="196" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="var(--gfx-sub)">tools, params, budget</text>
 
   <!-- LLM card -->
-  <g filter="url(#chat-fn-shadow-v2)"><rect x="315" y="96" width="130" height="118" rx="14" fill="var(--gfx-tint-purple,#eadfff)" stroke="#a78bfa" stroke-width="2"/></g>
-  <text x="380" y="138" text-anchor="middle" font-size="18" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#a78bfa" font-weight="900">LLM</text>
-  <text x="380" y="166" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#a5a5a5">stateless</text>
-  <text x="380" y="184" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#a5a5a5">function call</text>
+  <g filter="url(#chat-fn-shadow-v2)"><rect x="315" y="100" width="130" height="118" rx="14" fill="var(--gfx-tint-purple)" stroke="var(--gfx-purple)" stroke-width="2"/></g>
+  <text x="380" y="142" text-anchor="middle" font-size="18" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="var(--gfx-purple)" font-weight="900">LLM</text>
+  <text x="380" y="170" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="var(--gfx-sub)">stateless</text>
+  <text x="380" y="188" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="var(--gfx-sub)">function call</text>
 
   <!-- Output card -->
-  <g filter="url(#chat-fn-shadow-v2)"><rect x="502" y="96" width="210" height="118" rx="14" fill="var(--gfx-tint-green,#e6f3d4)" stroke="#aee23a" stroke-width="2"/></g>
-  <text x="607" y="130" text-anchor="middle" font-size="15" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#aee23a" font-weight="800">response</text>
-  <text x="607" y="156" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#a5a5a5">message.content</text>
-  <text x="607" y="174" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#a5a5a5">reasoning_content</text>
-  <text x="607" y="192" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#a5a5a5">finish_reason, usage</text>
+  <g filter="url(#chat-fn-shadow-v2)"><rect x="502" y="100" width="210" height="118" rx="14" fill="var(--gfx-tint-green)" stroke="var(--gfx-green)" stroke-width="2"/></g>
+  <text x="607" y="134" text-anchor="middle" font-size="15" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="var(--gfx-green)" font-weight="800">response</text>
+  <text x="607" y="160" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="var(--gfx-sub)">message.content</text>
+  <text x="607" y="178" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="var(--gfx-sub)">reasoning_content</text>
+  <text x="607" y="196" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="var(--gfx-sub)">finish_reason, usage</text>
 
-  <!-- Arrows, centered on the card midline -->
-  <path d="M 262 155 L 311 155" stroke="#a5a5a5" stroke-width="2.2" fill="none" marker-end="url(#chat-fn-arrow-v2)"/>
-  <path d="M 449 155 L 498 155" stroke="#a5a5a5" stroke-width="2.2" fill="none" marker-end="url(#chat-fn-arrow-v2)"/>
+  <!-- Arrows on the card midline -->
+  <path d="M 262 159 L 311 159" stroke="var(--gfx-sub)" stroke-width="2.2" fill="none" marker-end="url(#chat-fn-arrow-v2)"/>
+  <path d="M 449 159 L 498 159" stroke="var(--gfx-sub)" stroke-width="2.2" fill="none" marker-end="url(#chat-fn-arrow-v2)"/>
 
-  <!-- Footer annotation -->
-  <rect x="266" y="232" width="228" height="30" rx="15" fill="#161616" stroke="#2a2a2a"/>
-  <text x="380" y="252" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#a5a5a5">no hidden memory between calls</text>
+  <!-- Footer: the core constraint, then the Responses API equivalence -->
+  <rect x="266" y="240" width="228" height="30" rx="15" fill="var(--gfx-panel)" stroke="var(--gfx-line)"/>
+  <text x="380" y="260" text-anchor="middle" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="var(--gfx-sub)">no hidden memory between calls</text>
+  <text x="380" y="290" text-anchor="middle" font-size="11.5" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" fill="var(--gfx-sub)">The Responses API wraps the same stateless call and keeps messages[] for you.</text>
 </svg>
   </div>
+
+  <p>
+    If you have reached for the newer Responses API, this is the same picture. It keeps the
+    conversation server-side, so you send a short reference instead of the whole
+    <code>messages[]</code> on each turn, but the call underneath is still this stateless function:
+    the model receives the full context and returns one turn. The convenience changes; the shape
+    does not.
+  </p>
 
   <h2>A real call, in your browser</h2>
   <p>The cell below sends one chat-completion to the model. It needs an
