@@ -121,6 +121,14 @@
     underneath it.
   </p>
 
+  <p>
+    This catalog is wired into the page by hand so the whole server stays readable in one place.
+    The course's shared <code>web_search</code> runs the same ranked search over the full NVIDIA
+    glossary index that ships with the bundle. The <a href="glossary.html">glossary explorer</a>
+    opens that real index: every term, the live <code>webSearch</code> and <code>instantAnswer</code>
+    source, and a box to run the exact search the agents in the modules ahead call.
+  </p>
+
   <div class="callout">
     <strong>Name tools for what they do, not how they do it.</strong>
     A tool called <code>nvidia_glossary_api</code> is brittle: changing the backend

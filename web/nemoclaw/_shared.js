@@ -2061,6 +2061,10 @@ function _scoreGlossaryTerm(term, query) {
   }
   return score;
 }
+// Exposed for the glossary explorer (web/nemoclaw/glossary.html): it reuses the real ranking
+// and index loader so its simulation is exactly what the agent's web_search runs, not a copy.
+export { _scoreGlossaryTerm as glossaryScore, _loadGlossaryIndex as loadGlossaryIndex };
+
 export async function webSearch(query, { maxResults = 5 } = {}) {
   /* @doc <code>helpers.webSearch(q, {maxResults})</code> :: Key-less, ranked search over the vendored NVIDIA glossary (<code>assets/glossary_index.json</code>), matching the query against each term's name, tags, and blurb. It runs from any page with no key and no lab. Returns <code>{ results: [{title, body, href}], count, unreachable }</code>, the shape <code>formatSearchResults</code> expects. */
   try {
@@ -2469,6 +2473,12 @@ export function mountChatUI(container, opts = {}) {
     sendBtn.textContent = "⏹ Stop"; sendBtn.classList.add("stop");
     let cur = null;         // the currently-open streaming block: {kind, el, body?, _t, _raf}
     let answered = false, errored = false;
+    // Per ReAct round the reasoning trace and the answer each live in ONE reused block.
+    // A reasoning model can interleave a stray content token mid-reasoning (or a single
+    // chunk can carry both channels); reusing these keeps a token or two from the content
+    // channel from splitting the reasoning trace into two blocks. A tool call / warn / note
+    // ends the round, so the next reasoning opens a fresh block.
+    let roundThink = null, roundAnswer = null;
     // A reasoning block stays open while it streams, then folds shut once the
     // agent advances to its next act/answer, so you watch it think, then the
     // focus moves to what it did. Still expandable.
@@ -2481,19 +2491,26 @@ export function mountChatUI(container, opts = {}) {
       turn.appendChild(d); cur = { kind: "answer", el: d, _t: "", _raf: 0 }; answered = true; return cur; };
     const flush = () => { if (cur && cur.kind === "answer") { if (cur._raf) { cancelAnimationFrame(cur._raf); cur._raf = 0; } renderMd(cur.el, cur._t); } };
     const view = {
-      reasoning(t) { if (!cur || cur.kind !== "think") newThink(); cur._t += t; cur.body.textContent = cur._t; scroll(); },
-      token(t) { if (!cur || cur.kind !== "answer") newAnswer(); const c = cur; c._t += t;
+      reasoning(t) {
+        if (!roundThink) { newThink(); roundThink = cur; }
+        else if (cur !== roundThink) { cur = roundThink; cur.el.open = true; }   // reasoning resumed after a stray token
+        cur._t += t; cur.body.textContent = cur._t; scroll(); },
+      token(t) {
+        if (cur && cur.kind === "think") endThink();         // fold the reasoning before the answer renders
+        if (!roundAnswer) { newAnswer(); roundAnswer = cur; }
+        else if (cur !== roundAnswer) { cur = roundAnswer; }
+        const c = cur; c._t += t;
         if (!c._raf) c._raf = requestAnimationFrame(() => { c._raf = 0; renderMd(c.el, c._t); scroll(); }); },
       // A tool call closes the current streaming block and appends its own, so a
       // read that happens AFTER some reasoning renders BELOW that reasoning.
-      tool(label, detail) { endThink(); flush(); cur = null; let c;
+      tool(label, detail) { endThink(); flush(); cur = null; roundThink = null; roundAnswer = null; let c;
         if (detail != null) { c = document.createElement("details"); c.className = "chatui-tool";
           c.innerHTML = "<summary>🔧 " + escHtml(String(label)) + "</summary>";
           const b = document.createElement("div"); b.className = "chatui-tool-body"; b.textContent = String(detail); c.appendChild(b);
         } else { c = document.createElement("div"); c.className = "chatui-tool"; c.textContent = "🔧 " + label; }
         turn.appendChild(c); scroll(); return c; },
-      warn(msg) { endThink(); flush(); cur = null; const d = document.createElement("div"); d.className = "chatui-warn"; d.textContent = "⚠ " + msg; turn.appendChild(d); scroll(); return d; },
-      note(msg) { flush(); cur = null; const d = document.createElement("div"); d.className = "chatui-usage"; d.textContent = msg; turn.appendChild(d); scroll(); return d; },
+      warn(msg) { endThink(); flush(); cur = null; roundThink = null; roundAnswer = null; const d = document.createElement("div"); d.className = "chatui-warn"; d.textContent = "⚠ " + msg; turn.appendChild(d); scroll(); return d; },
+      note(msg) { flush(); cur = null; roundThink = null; roundAnswer = null; const d = document.createElement("div"); d.className = "chatui-usage"; d.textContent = msg; turn.appendChild(d); scroll(); return d; },
       usage(u) { u = u || {};
         const f = document.createElement("div"); f.className = "chatui-usage";
         if (u.context != null) {            // absolute context size + (optionally) the source's own window

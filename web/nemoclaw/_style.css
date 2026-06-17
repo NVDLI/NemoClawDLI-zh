@@ -1340,6 +1340,138 @@ body.python-mode .py-mode-jlab-link { display: inline-block; }
   border-color: var(--gfx-line) !important;
 }
 
+/* ── Light theme · canvas-flow, code, and syntax surfaces ─────────────────────
+   The dark theme hard-codes many colors the palette above cannot reach: canvas node
+   cards, code/output panels, the self-contained syntax highlighter, the CodeMirror
+   editors (monokai), and the python-mode purple accents. These re-theme each for light
+   mode. Every selector is prefixed with :root[data-theme="light"], so with no data-theme
+   (or data-theme="dark") none of it applies and the dark theme + lite export are
+   unchanged. */
+
+/* Inline code chips: dark chip -> light chip (green text comes from the palette). */
+:root[data-theme="light"] :not(pre) > code,
+:root[data-theme="light"] .cf-helpers-sig code,
+:root[data-theme="light"] .cf-helpers-meta code,
+:root[data-theme="light"] .cf-helpers-table code { background: var(--e2); border-color: var(--bd); }
+
+/* Self-contained syntax highlighting (.hljs-*): dark pastels -> a light palette. */
+:root[data-theme="light"] .hljs { color: #383a42; }
+:root[data-theme="light"] .hljs-keyword,
+:root[data-theme="light"] .hljs-selector-tag { color: #a626a4; }
+:root[data-theme="light"] .hljs-string,
+:root[data-theme="light"] .hljs-attr,
+:root[data-theme="light"] .hljs-addition { color: #50a14f; }
+:root[data-theme="light"] .hljs-comment,
+:root[data-theme="light"] .hljs-quote,
+:root[data-theme="light"] .hljs-meta { color: #a0a1a7; }
+:root[data-theme="light"] .hljs-title,
+:root[data-theme="light"] .hljs-function .hljs-title,
+:root[data-theme="light"] .hljs-title.function_,
+:root[data-theme="light"] .hljs-selector-class,
+:root[data-theme="light"] .hljs-selector-id { color: #4078f2; }
+:root[data-theme="light"] .hljs-number,
+:root[data-theme="light"] .hljs-literal { color: #986801; }
+:root[data-theme="light"] .hljs-built_in,
+:root[data-theme="light"] .hljs-type,
+:root[data-theme="light"] .hljs-operator,
+:root[data-theme="light"] .hljs-punctuation { color: #0184bc; }
+:root[data-theme="light"] .hljs-params,
+:root[data-theme="light"] .hljs-variable,
+:root[data-theme="light"] .hljs-template-variable { color: #383a42; }
+
+/* Canvas node cards + status dots. */
+:root[data-theme="light"] .cf-node { background: linear-gradient(180deg, #ffffff 0%, #f6f8fa 100%); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+:root[data-theme="light"] .cf-node:hover { box-shadow: 0 6px 16px rgba(0,0,0,0.12), 0 0 0 1px rgba(118,185,0,0.2) inset; }
+:root[data-theme="light"] .cf-node.active { box-shadow: 0 4px 16px rgba(0,0,0,0.1), 0 0 0 1px rgba(118,185,0,0.4) inset; }
+:root[data-theme="light"] .cf-node-status-dot,
+:root[data-theme="light"] .cf-panel-status-dot { background: #c4c9ce; box-shadow: 0 0 0 1px rgba(0,0,0,0.05); }
+
+/* Panel / helper / detail container surfaces. */
+:root[data-theme="light"] .cf-panel,
+:root[data-theme="light"] .cf-helpers,
+:root[data-theme="light"] .py-mode-toggle-wrap,
+:root[data-theme="light"] .cf-panel-no-python { background: var(--e1); }
+:root[data-theme="light"] .cf-panel-det { background: var(--e2); }
+:root[data-theme="light"] .cf-helpers-source-row > td,
+:root[data-theme="light"] .cf-helpers-table td:first-child,
+:root[data-theme="light"] .cf-helpers-src-head { background: var(--e2); }
+:root[data-theme="light"] .cf-helpers-table td,
+:root[data-theme="light"] .cf-helpers-section-head td,
+:root[data-theme="light"] .cf-overview-row { border-color: var(--e3); }
+:root[data-theme="light"] .cf-helpers-section-head td code { color: var(--tf); }
+:root[data-theme="light"] .cf-det-meta { background: var(--e2); }
+:root[data-theme="light"] #py-mode-topbar-container .py-mode-toggle-wrap:hover { background: var(--e2); }
+
+/* Run / apply / revert buttons. */
+:root[data-theme="light"] .cf-panel-runone,
+:root[data-theme="light"] .cf-helpers-apply,
+:root[data-theme="light"] .cf-helpers-revert { background: var(--e2); }
+:root[data-theme="light"] .cf-panel-runone:hover,
+:root[data-theme="light"] .cf-helpers-apply:hover,
+:root[data-theme="light"] .cf-code-copy.ok { background: #e6f3d4; }
+:root[data-theme="light"] .cf-helpers-revert:hover,
+:root[data-theme="light"] .cf-code-copy:hover { background: var(--e3); }
+
+/* Code surfaces: textareas, python pre, stream, output, log -> light bg + dark text. */
+:root[data-theme="light"] .cf-panel-code,
+:root[data-theme="light"] .cf-panel-code-py,
+:root[data-theme="light"] .cf-panel-python-pre,
+:root[data-theme="light"] .cf-panel-stream,
+:root[data-theme="light"] .cf-panel-output-pre,
+:root[data-theme="light"] .cf-helpers-src-editor { background: var(--bg); color: var(--tx); }
+:root[data-theme="light"] .cf-panel-log { background: var(--e2); }
+:root[data-theme="light"] .cf-code-copy { background: rgba(255,255,255,0.85); }
+
+/* CodeMirror editors (mounted with the monokai theme) -> a light editor in light mode. */
+:root[data-theme="light"] .cm-s-monokai.CodeMirror { background: var(--bg); color: #383a42; }
+:root[data-theme="light"] .cm-s-monokai .CodeMirror-gutters { background: var(--e2); border-right-color: var(--bd); }
+:root[data-theme="light"] .cm-s-monokai .CodeMirror-linenumber { color: #a0a1a7; }
+:root[data-theme="light"] .cm-s-monokai .CodeMirror-cursor { border-left-color: #383a42; }
+:root[data-theme="light"] .cm-s-monokai div.CodeMirror-selected { background: #d7e6ff; }
+:root[data-theme="light"] .cm-s-monokai .cm-comment { color: #a0a1a7; }
+:root[data-theme="light"] .cm-s-monokai .cm-keyword,
+:root[data-theme="light"] .cm-s-monokai .cm-builtin { color: #a626a4; }
+:root[data-theme="light"] .cm-s-monokai .cm-string,
+:root[data-theme="light"] .cm-s-monokai .cm-string-2 { color: #50a14f; }
+:root[data-theme="light"] .cm-s-monokai .cm-number,
+:root[data-theme="light"] .cm-s-monokai .cm-atom { color: #986801; }
+:root[data-theme="light"] .cm-s-monokai .cm-def,
+:root[data-theme="light"] .cm-s-monokai .cm-variable,
+:root[data-theme="light"] .cm-s-monokai .cm-variable-2,
+:root[data-theme="light"] .cm-s-monokai .cm-operator { color: #383a42; }
+:root[data-theme="light"] .cm-s-monokai .cm-property { color: #4078f2; }
+:root[data-theme="light"] .cm-s-monokai .cm-tag { color: #e45649; }
+
+/* Python-mode accents: light-on-dark purples -> a dark purple readable on light. */
+:root[data-theme="light"] .py-mode-label.on .py-icon,
+:root[data-theme="light"] .cf-det-chip-py,
+:root[data-theme="light"] .cf-py-copy-btn,
+:root[data-theme="light"] .py-mode-jlab-link,
+:root[data-theme="light"] body.python-mode .cf-det-chip[data-lang-chip],
+:root[data-theme="light"] .cf-panel-runone[data-runmode="python"] { color: #8250df; }
+:root[data-theme="light"] .cf-panel-runone[data-runmode="python"]:hover,
+:root[data-theme="light"] .py-mode-jlab-link:hover { color: #6f42c1; }
+:root[data-theme="light"] .py-mode-label.on .py-mode-thumb { background: #8250df; }
+:root[data-theme="light"] .py-mode-track { background: var(--e3); border-color: var(--bd); }
+:root[data-theme="light"] .cf-det-chip-alt { color: #0969da; }
+
+/* Error / debug surfaces: light-on-dark reds -> readable on light. */
+:root[data-theme="light"] .cf-panel-error,
+:root[data-theme="light"] .cf-status-bar.err,
+:root[data-theme="light"] .cf-det-meta.err,
+:root[data-theme="light"] .cf-debug-type,
+:root[data-theme="light"] .cf-debug-codeline-err { color: #cf222e; }
+
+/* Canvas-flow OUTER container (the backdrop behind the stage + header + code panels),
+   the action buttons, and the python kernel chips. */
+:root[data-theme="light"] .cf-wrap {
+  background: radial-gradient(circle at 20% 0%, rgba(118,185,0,0.05) 0%, transparent 50%), var(--e1);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+:root[data-theme="light"] .cf-btn { background: var(--e2); }
+:root[data-theme="light"] .cf-kernel-indicator,
+:root[data-theme="light"] body.python-mode .cf-btn-reset-kernel { color: #8250df; }
+
 /* ── Gateway widget (mountClawGateway) ─────────────────────────────────────── */
 .gw-panel{margin:1.2rem 0}
 .gw-intro{font-size:.88rem;color:var(--td);margin-bottom:.6rem;line-height:1.6}
