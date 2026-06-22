@@ -154,6 +154,51 @@ def scan_inline(text: str):
     return bad
 
 
+# A color-bearing style fed by a `${var}` interpolation hides a hard-coded default from every literal
+# scan above: `function f(t, color = "#e6edf3")` then `cssText = `...;color:${color};...``. The cssText
+# carries only `${color}`, so scan_inline reads no literal and the frozen default ships. The log-row
+# renderer did exactly this: its panel background is var(--bg) (white in light) while the row text
+# stayed a hard-coded light grey, so output went near-invisible on the light theme.
+_STYLE_INTERP = re.compile(
+    r"(?:background(?:-color)?|(?<![-\w])color|border(?:-[a-z]+)?|outline|box-shadow|fill|stroke|"
+    r"caret-color|text-decoration-color)\s*:\s*\$\{\s*([A-Za-z_$][\w$]*)\s*\}", re.I)
+
+
+def _extreme_ink(tok: str) -> bool:
+    """A near-white or near-black hex: it relies on the opposite-tone background to be legible, so it
+    goes unreadable when the theme flips (light grey on the now-white panel, the _appendText bug). A
+    mid-tone (brand green, semantic amber, a blue) keeps usable contrast on both backgrounds, so it is
+    theme-tolerant and not flagged. Only relative luminance decides it; non-hex tokens are not extreme."""
+    h = tok.lower().lstrip("#")
+    if len(h) == 3:
+        h = "".join(c * 2 for c in h)
+    if len(h) < 6 or not re.fullmatch(r"[0-9a-f]{6}", h):
+        return False
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
+    return lum > 0.78 or lum < 0.16
+
+
+def scan_interpolated_color_defaults(text: str):
+    """Hard-coded colors that reach a style only through a `${var}` interpolation, so the literal lives
+    in the variable's default or binding rather than in the style string the other scanners read. Pairs
+    each `prop:${ident}` color interpolation with a color literal bound to that ident (a default
+    parameter or an assignment) in the same file, and flags it when the literal is an EXTREME ink
+    (near-white/near-black): the style cannot flip with the theme, so the value frozen at the binding
+    goes unreadable on the opposite background. var(--x) binds no literal; neutral inks, the intentional
+    SVG frame palette, and theme-tolerant mid-tones are exempt. This is the gap that let the _appendText
+    log row stay light-grey on the light theme while its panel background flipped to white."""
+    bad = []
+    for ident in set(_STYLE_INTERP.findall(text)):
+        bind = re.compile(r"\b" + re.escape(ident) + r"""\s*=\s*(["'])(#[0-9a-fA-F]{3,8}|rgba?\([^)]*\))\1""")
+        for m in bind.finditer(text):
+            tok = m.group(2)
+            if neutral(tok) or tok.lower() in SVG_FRAME or not _extreme_ink(tok):
+                continue
+            bad.append((tok, ident + "= (extreme ink interpolated into a color style)"))
+    return bad
+
+
 @functools.lru_cache(maxsize=1)
 def svg_sub_sources():
     """The two theme-substitution lists that flip SVG colors to the light palette: the bundler's
@@ -261,8 +306,10 @@ def run(verbose=True):
     for js in chrome_js():                            # every chrome module (whatever _shared.js was split into)
         t = js.read_text(errors="ignore")
         rel = str(js.relative_to(WEB.parent))
-        # inline styles + injected/<style> rulesets + SVG presentation attributes (fill=/stroke=)
-        for tok, prop in scan_inline(t) + scan_style_blocks(t) + scan_svg_attrs(t):
+        # inline styles + injected/<style> rulesets + SVG presentation attributes (fill=/stroke=) +
+        # hard-coded color defaults that reach a style through a ${var} interpolation
+        for tok, prop in (scan_inline(t) + scan_style_blocks(t) + scan_svg_attrs(t)
+                          + scan_interpolated_color_defaults(t)):
             inline.append((rel, tok, prop))
         for snippet, reason in scan_js_theme_bake(t):  # render-time color bakes (output frozen vs the toggle)
             bake.append((rel, snippet, reason))

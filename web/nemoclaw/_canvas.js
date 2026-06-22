@@ -507,6 +507,10 @@ helpers.viz.sideBySide(
     const panel = document.createElement("div");
     panel.className = "cf-panel";
     panel.dataset.id = node.id;
+    // Show short blocks + artifact code expanded; collapse long plumbing (maze generation, prebuilt
+    // index loaders). node.showCode forces it: true = always open, false = always collapsed.
+    const _codeLines = (node.code || "").split("\n").length;
+    const _showCode = node.showCode === true || (node.showCode !== false && _codeLines <= 80);
     panel.innerHTML = `
       <div class="cf-panel-head">
         <span class="cf-panel-icon">${node.icon || "●"}</span>
@@ -516,11 +520,11 @@ helpers.viz.sideBySide(
         <button type="button" class="cf-panel-runone" data-runmode="js">▶ Run</button>
       </div>
       <div class="cf-panel-overview"></div>
-      <details class="cf-panel-det cf-panel-code-det">
+      <details class="cf-panel-det cf-panel-code-det"${_showCode ? " open" : ""}>
         <summary>
           <span class="cf-det-chip" data-lang-chip>JS</span>
           <span class="cf-det-sig" data-lang-sig>"async (state, helpers) =&gt; { … }"</span>
-          <span class="cf-det-meta" data-code-meta>click to expand</span>
+          <span class="cf-det-meta" data-code-meta>${_showCode ? "click to collapse" : "click to expand"}</span>
         </summary>
         <div class="cf-panel-code-body">
           <div class="cf-code-view" data-lang="js">
@@ -574,6 +578,8 @@ helpers.viz.sideBySide(
       ensureCM(node.id);
       if (ns[node.id].cm) setTimeout(() => ns[node.id].cm.refresh(), 30);
     });
+    // A default-open panel never fires the toggle event, so initialize its editor at mount.
+    if (codeDet.open) setTimeout(() => { ensureCM(node.id); if (ns[node.id] && ns[node.id].cm) ns[node.id].cm.refresh(); }, 60);
   }
 
   // ── Lab-only gating ──────────────────────────────────────────────────────
@@ -1344,7 +1350,7 @@ export function mountRunCell(targetSel, opts) {
             const sig = _d.sig || _s.sig || `<code>helpers.${r.row}(…)</code>`;
             const desc = _d.desc || _s.desc || "";
             return `<tr data-helper="${r.row}"${r.extra ? ' data-x="1" style="display:none"' : ''}><td>${sig}</td><td>${desc}</td></tr>
-              <tr class="cf-helpers-source-row" data-helper-source="${r.row}" hidden><td colspan="2"><pre style="margin:0;padding:8px 10px;overflow:auto;max-height:320px;"><code class="language-javascript" style="font-family:ui-monospace,monospace;font-size:.78rem;"></code></pre></td></tr>`;
+              <tr class="cf-helpers-source-row" data-helper-source="${r.row}" hidden><td colspan="2"><textarea class="cf-helpers-src-editor" data-src-for="${r.row}" spellcheck="false" readonly style="width:100%;min-height:120px;max-height:320px;font-family:ui-monospace,monospace;font-size:.78rem;"></textarea></td></tr>`;
           }).join("")}
         </tbody></table>
         </div>
@@ -1379,6 +1385,7 @@ export function mountRunCell(targetSel, opts) {
       _rcHelpers.querySelectorAll("[data-x]").forEach(el => { el.style.display = on ? "" : "none"; });
       _sa.textContent = on ? "− show only this cell's helpers" : `+ show all ${_rcExtraN} more helpers`;
     });
+    const rcHelpCM = {};   // read-only CodeMirror per helper source, created lazily on first open
     _rcHelpers.addEventListener("click", (ev) => {
       const tr = ev.target.closest("tr[data-helper]");
       if (!tr || ev.target.closest("tr.cf-helpers-source-row")) return;
@@ -1388,12 +1395,21 @@ export function mountRunCell(targetSel, opts) {
       _rcHelpers.querySelectorAll("tr.cf-helpers-source-row").forEach(r => r.hidden = true);
       _rcHelpers.querySelectorAll("tr[data-helper]").forEach(r => r.classList.remove("selected"));
       if (wasOpen || !srcRow) return;
-      const codeEl = srcRow.querySelector("code");
-      if (codeEl && !codeEl.dataset.filled) {
-        codeEl.textContent = _helperSource(name); codeEl.dataset.filled = "1";
-        if (window.hljs) { try { window.hljs.highlightElement(codeEl); } catch (_) {} }
+      const ta = srcRow.querySelector("textarea[data-src-for]");
+      if (ta && !ta.dataset.filled) {
+        ta.value = _helperSource(name); ta.dataset.filled = "1";
+        // CodeMirror highlights JS of any size reliably (hljs.highlightElement no-ops on the largest
+        // helper sources); without CodeMirror the readonly textarea still shows the source unhighlighted.
+        if (typeof window.CodeMirror === "function") {
+          rcHelpCM[name] = window.CodeMirror.fromTextArea(ta, {
+            mode: "javascript", theme: "monokai", lineNumbers: true, lineWrapping: true,
+            readOnly: true, viewportMargin: Infinity, tabSize: 2, indentUnit: 2,
+          });
+          rcHelpCM[name].setSize("100%", "auto");
+        }
       }
       srcRow.hidden = false; tr.classList.add("selected");
+      if (rcHelpCM[name]) setTimeout(() => rcHelpCM[name].refresh(), 30);   // re-layout after un-hide
     });
   }
 
@@ -1499,7 +1515,7 @@ export function mountRunCell(targetSel, opts) {
     // ── Structured log API ────────────────────────────────────────────────
     // log(...args), log.h(title), log.json(label?, obj), log.details(summary, body), log.kv(obj), log.html(str), log.clear(). Strings append as-is; objects auto-render as highlighted JSON.
     let outputCount = 0;
-    function _appendText(text, color = "#e6edf3") {
+    function _appendText(text, color = "var(--tx)") {
       const div = document.createElement("div");
       div.style.cssText = `padding:6px 14px;font-family:ui-monospace,monospace;font-size:.84rem;line-height:1.55;color:${color};white-space:pre-wrap;word-break:break-word;`;
       div.textContent = text;

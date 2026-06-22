@@ -42,7 +42,7 @@
     <div class="eyebrow">Module 1 · Part B of 3</div>
     <h1>The <span>ReAct</span> Loop</h1>
     <p class="lead">
-      An agent built on a language model runs the same perceive-decide-act
+      An agent built on a language model runs the same perceive-reason-act
       loop as anything else, with one detail that gives the pattern its name:
       the model reasons in words between the actions it takes.
       <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al. (2022)</a>
@@ -94,21 +94,29 @@
     The model only reads and writes text and never touches the world itself. It sees only what a tool hands back, and its
     only move is to <em>request</em> another tool. That indirection through text is the <strong>ReAct</strong> loop.
   </p>
-  <div style="display:flex;justify-content:center;margin:1.4em 0">
-    <svg class="gfx-dark" viewBox="0 0 1122 480" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The general agent loop from Module 1a becomes the ReAct loop once the reasoning socket holds a language model. On the left, the general cycle: perception reads the world, a dashed swappable socket reasons, action changes the world. A bridge drops a language model into that socket. On the right, the same cycle driven by the model: it reasons, acts by calling a tool, and observes the tool's result, which re-enters the next reasoning step. Because the model works only in text, it reads a tool result in place of perceiving and emits a tool call to act." preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:1140px;margin:1.5rem auto"><defs><marker id="g1-arc" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-purple,#6f42c1)"/></marker><marker id="g1-bridge" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-sub,#5e5e5e)"/></marker></defs><g><path d="M 302.6 99.8 A 172 172 0 0 1 405.8 278.6" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><path d="M 338.2 395.6 A 172 172 0 0 1 131.8 395.6" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><path d="M 64.2 278.6 A 172 172 0 0 1 167.4 99.8" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><circle cx="235.00" cy="86.00" r="62" fill="var(--gfx-tint-blue,#dfeaf5)" stroke="var(--gfx-blue)" stroke-width="2.6"/><text x="235.00" y="81.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-blue)" text-anchor="middle" font-weight="700">Perceive</text><text x="235.00" y="103.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">read the world</text><circle cx="383.96" cy="344.00" r="62" fill="var(--gfx-tint-purple,#eadfff)" stroke="var(--gfx-purple)" stroke-width="3.6" stroke-dasharray="7 4"/><text x="383.96" y="339.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-purple)" text-anchor="middle" font-weight="700">Reason</text><text x="383.96" y="361.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">swappable socket</text><circle cx="86.04" cy="344.00" r="62" fill="var(--gfx-tint-amber,#f7e9cf)" stroke="var(--gfx-amber)" stroke-width="2.6"/><text x="86.04" y="339.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-amber)" text-anchor="middle" font-weight="700">Act</text><text x="86.04" y="361.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">change the world</text><text x="235" y="251" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="15" fill="var(--gfx-ink,#1a1a1a)" text-anchor="middle" font-weight="800">the loop</text><text x="235" y="271" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">from Module 1a</text></g><path d="M 462.0 258 L 660.0 258" fill="none" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="3" marker-end="url(#g1-bridge)"/><text x="561" y="240" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13" fill="var(--gfx-ink2,#3b3b3b)" text-anchor="middle" font-weight="700">put an LLM in the socket</text><text x="561" y="282" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle" font-style="italic">text to text</text><g transform="translate(652,0)"><path d="M 302.6 99.8 A 172 172 0 0 1 405.8 278.6" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><path d="M 338.2 395.6 A 172 172 0 0 1 131.8 395.6" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><path d="M 64.2 278.6 A 172 172 0 0 1 167.4 99.8" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><circle cx="235.00" cy="86.00" r="62" fill="var(--gfx-tint-blue,#dfeaf5)" stroke="var(--gfx-blue)" stroke-width="2.6"/><text x="235.00" y="81.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-blue)" text-anchor="middle" font-weight="700">Observe</text><text x="235.00" y="103.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">read the result</text><circle cx="383.96" cy="344.00" r="62" fill="var(--gfx-tint-purple,#eadfff)" stroke="var(--gfx-purple)" stroke-width="2.6"/><text x="383.96" y="339.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-purple)" text-anchor="middle" font-weight="700">Reason</text><text x="383.96" y="361.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">the LLM thinks</text><circle cx="86.04" cy="344.00" r="62" fill="var(--gfx-tint-amber,#f7e9cf)" stroke="var(--gfx-amber)" stroke-width="2.6"/><text x="86.04" y="339.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-amber)" text-anchor="middle" font-weight="700">Act</text><text x="86.04" y="361.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">call a tool</text><text x="235" y="251" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="15" fill="var(--gfx-ink,#1a1a1a)" text-anchor="middle" font-weight="800">ReAct</text><text x="235" y="271" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">loop until stop</text></g><text x="561" y="460" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="14" fill="var(--gfx-sub,#5e5e5e)" font-style="italic">The loop is unchanged. With a language model in the reasoning step, the agent reads tool results and acts by calling tools.</text></svg>
-  </div>
+  <figure style="margin:1.4em 0">
+    <svg class="gfx-dark" viewBox="0 0 1122 440" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The general agent loop from Module 1a becomes the ReAct loop once the reasoning socket holds a language model. On the left, the general cycle: perception reads the world, a dashed swappable socket reasons, action changes the world. A bridge drops a language model into that socket. On the right, the same cycle driven by the model: it reasons, acts by calling a tool, and observes the tool's result, which re-enters the next reasoning step. Because the model works only in text, it reads a tool result in place of perceiving and emits a tool call to act." preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:1140px;margin:1.5rem auto"><defs><marker id="g1-arc" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-purple,#6f42c1)"/></marker><marker id="g1-bridge" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-sub,#5e5e5e)"/></marker></defs><g><path d="M 302.6 99.8 A 172 172 0 0 1 405.8 278.6" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><path d="M 338.2 395.6 A 172 172 0 0 1 131.8 395.6" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><path d="M 64.2 278.6 A 172 172 0 0 1 167.4 99.8" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><circle cx="235.00" cy="86.00" r="62" fill="var(--gfx-tint-blue,#dfeaf5)" stroke="var(--gfx-blue)" stroke-width="2.6"/><text x="235.00" y="81.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-blue)" text-anchor="middle" font-weight="700">Perceive</text><text x="235.00" y="103.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">read the world</text><circle cx="383.96" cy="344.00" r="62" fill="var(--gfx-tint-purple,#eadfff)" stroke="var(--gfx-purple)" stroke-width="3.6" stroke-dasharray="7 4"/><text x="383.96" y="339.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-purple)" text-anchor="middle" font-weight="700">Reason</text><text x="383.96" y="361.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">swappable socket</text><circle cx="86.04" cy="344.00" r="62" fill="var(--gfx-tint-amber,#f7e9cf)" stroke="var(--gfx-amber)" stroke-width="2.6"/><text x="86.04" y="339.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-amber)" text-anchor="middle" font-weight="700">Act</text><text x="86.04" y="361.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">change the world</text><text x="235" y="251" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="15" fill="var(--gfx-ink,#1a1a1a)" text-anchor="middle" font-weight="800">the loop</text><text x="235" y="271" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">from Module 1a</text></g><path d="M 462.0 258 L 660.0 258" fill="none" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="3" marker-end="url(#g1-bridge)"/><text x="561" y="240" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13" fill="var(--gfx-ink2,#3b3b3b)" text-anchor="middle" font-weight="700">put an LLM in the socket</text><text x="561" y="282" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle" font-style="italic">text to text</text><g transform="translate(652,0)"><path d="M 302.6 99.8 A 172 172 0 0 1 405.8 278.6" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><path d="M 338.2 395.6 A 172 172 0 0 1 131.8 395.6" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><path d="M 64.2 278.6 A 172 172 0 0 1 167.4 99.8" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><circle cx="235.00" cy="86.00" r="62" fill="var(--gfx-tint-blue,#dfeaf5)" stroke="var(--gfx-blue)" stroke-width="2.6"/><text x="235.00" y="81.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-blue)" text-anchor="middle" font-weight="700">Observe</text><text x="235.00" y="103.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">read the result</text><circle cx="383.96" cy="344.00" r="62" fill="var(--gfx-tint-purple,#eadfff)" stroke="var(--gfx-purple)" stroke-width="2.6"/><text x="383.96" y="339.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-purple)" text-anchor="middle" font-weight="700">Reason</text><text x="383.96" y="361.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">the LLM thinks</text><circle cx="86.04" cy="344.00" r="62" fill="var(--gfx-tint-amber,#f7e9cf)" stroke="var(--gfx-amber)" stroke-width="2.6"/><text x="86.04" y="339.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-amber)" text-anchor="middle" font-weight="700">Act</text><text x="86.04" y="361.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">call a tool</text><text x="235" y="251" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="15" fill="var(--gfx-ink,#1a1a1a)" text-anchor="middle" font-weight="800">ReAct</text><text x="235" y="271" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">loop until stop</text></g></svg>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">The loop is unchanged. With a language model in the reasoning step, the agent reads tool results and acts by calling tools.</figcaption>
+  </figure>
 
   <h2>The one field that tells the loop what to do next</h2>
   <p>
     Every chat-completions response carries a <code>finish_reason</code>
     field that tells you why the model stopped generating. Inside an agent
-    loop this field is the only signal you need to decide what to do next:
-    run a tool, return the answer to the user, or handle an error.
+    loop this is the only signal you need to decide what to do next:
+    run a tool, return the answer to the user, or handle an error. Before reading
+    what its values mean, make two calls and watch the field change.
   </p>
+
+  <div id="cell-finish-reason"></div>
+
   <p>
-    Two values cover the common branching. The rest signal trouble that routes the
-    loop into a fallback harness, where the agent might retry the call or hand the
-    conversation off to a human.
+    The first call answered on its own and came back <code>"stop"</code>. The second was
+    offered a tool and asked for something training data cannot supply, so instead of stopping
+    it came back <code>"tool_calls"</code>, handing your code the name of the function to run.
+    Those two values cover the common branching. The rest signal trouble that routes the loop
+    into a fallback harness, where the agent might retry the call or hand the conversation off
+    to a human.
   </p>
   <ul>
     <li><code>"stop"</code> means the model has written its final answer and the loop can exit, delivering <code>content</code> to the user.</li>
@@ -141,8 +149,8 @@
     None of that lives inside the model. It is the harness you build around a single
     text-in, text-out call.
   </p>
-  <div style="display:flex;justify-content:center;margin:1.4em 0">
-    <svg class="gfx-dark" viewBox="0 0 940 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Lilian Weng's 2023 map of an LLM agent. A language model sits at the center as the agent. Memory is above it (branching into short-term and long-term memory), Action is below, Tools are on the left (Calendar, Calculator, CodeInterpreter, Search, and more), and Planning is on the right (reflection, self-critique, chain of thought, subgoal decomposition). The model is the core controller; memory, planning, tools, and action are components wired around it." preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:960px;margin:1.5rem auto">
+  <figure style="margin:1.4em 0">
+    <svg class="gfx-dark" viewBox="0 0 940 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Lilian Weng's 2023 map of an LLM agent. A language model sits at the center as the agent. Memory is above it (branching into short-term and long-term memory), Action is below, Tools are on the left (Calendar, Calculator, CodeInterpreter, Search, and more), and Planning is on the right (reflection, self-critique, chain of thought, subgoal decomposition). The model is the core controller; memory, planning, tools, and action are components wired around it." preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:960px;margin:1.5rem auto">
       <defs>
         <marker id="lil-fwd" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L7,5 L0,9 Z" fill="var(--gfx-sub,#6a6a6a)"/></marker>
         <marker id="lil-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L7,5 L0,9 Z" fill="var(--gfx-green,#76b900)"/></marker>
@@ -201,9 +209,9 @@
       <path d="M 505 116 L 600 116 L 600 174" fill="none" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#lil-fwd)"/>
       <path d="M 586 116 L 752 116 L 752 136" fill="none" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#lil-fwd)"/>
       <path d="M 322 225 L 322 286 L 409 286" fill="none" stroke="var(--gfx-green,#76b900)" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#lil-green)"/>
-      <text x="470" y="348" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-style="italic" fill="var(--gfx-faint,#5e5e5e)">After Lilian Weng (2023): the model is the agent's core controller, with memory, planning, tools, and action wired around it.</text>
     </svg>
-  </div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">After <a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">Lilian Weng (2023)</a>: the model is the agent's core controller, with memory, planning, tools, and action wired around it.</figcaption>
+  </figure>
   <div class="callout">
     <strong>The modules are independent.</strong> You can replace the model or the tools
     or the router on its own, and as long as each one still honors the contract the
@@ -238,8 +246,8 @@
     <li><strong>Exit.</strong> The loop ends when <code>finish_reason</code> reads <code>"stop"</code>.</li>
   </ol>
 
-  <div style="display:flex;justify-content:center;margin:1em 0 1.4em">
-    <svg class="gfx-dark" viewBox="0 38 820 282" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One turn of the ReAct loop as it runs in code. The model produces a Thought and either stops or requests a tool. On a tool request, the Action box runs your function and the Observation box appends the result to the messages array, then the loop returns to Thought. When finish_reason is stop, the turn exits to the final answer instead." style="width:100%;max-width:980px;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;margin:1em auto">
+  <figure style="margin:1.4em 0">
+    <svg class="gfx-dark" viewBox="0 38 820 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One turn of the ReAct loop as it runs in code. The model produces a Thought and either stops or requests a tool. On a tool request, the Action box runs your function and the Observation box appends the result to the messages array, then the loop returns to Thought. When finish_reason is stop, the turn exits to the final answer instead." style="width:100%;max-width:980px;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;margin:1em auto">
       <defs>
         <marker id="rx-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="var(--gfx-sub,#9aa0a6)"></path></marker>
         <marker id="rx-arr-g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="var(--gfx-green,#9bd14a)"></path></marker>
@@ -263,9 +271,9 @@
       <text x="540" y="147" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="var(--gfx-faint,#6b7177)">return</text>
       <path d="M 670 206 L 670 262 L 150 262 L 150 206" stroke="var(--gfx-green,#9bd14a)" stroke-width="1.8" fill="none" stroke-dasharray="6 4" marker-end="url(#rx-arr-g)"></path>
       <text x="410" y="256" text-anchor="middle" font-size="12.5" font-family="ui-monospace, monospace" fill="var(--gfx-green,#9bd14a)">append the result, call the model again</text>
-      <text x="410" y="306" text-anchor="middle" font-size="12.5" font-family="ui-monospace, monospace" fill="var(--gfx-sub,#9aa0a6)" font-style="italic">Think, act, observe, repeat. The turn exits the moment finish_reason is "stop".</text>
     </svg>
-  </div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Think, act, observe, repeat. The turn exits the moment finish_reason is "stop".</figcaption>
+  </figure>
 
   <div id="cell-m2c-p3"></div>
 
@@ -306,8 +314,8 @@
     to send while the model reads it <em>worse</em>. The system prompt stays pinned at the front while the freshest tool result
     sits at the back, so the original request slides toward the middle as turns pile up.
   </p>
-  <div style="display:flex;justify-content:center;margin:1.4em 0">
-    <svg class="gfx-dark" viewBox="0 74 760 366" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Lost in the Middle, redrawn from Liu et al. 2023, mapped onto an agent's growing messages array. A U-shaped curve plots answer accuracy against where the needed text sits in the context. Accuracy is high at the start, where the system prompt is pinned, and at the end, where the latest tool result sits, but dips to its lowest in the middle. As the loop appends turns, the original request is pushed left from the fresh end into the weak middle, which is context rot." preserveAspectRatio="xMidYMid meet" style="width:100%;max-width:920px;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;margin:1.4em auto">
+  <figure style="margin:1.4em 0">
+    <svg class="gfx-dark" viewBox="0 74 760 305" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Lost in the Middle, redrawn from Liu et al. 2023, mapped onto an agent's growing messages array. A U-shaped curve plots answer accuracy against where the needed text sits in the context. Accuracy is high at the start, where the system prompt is pinned, and at the end, where the latest tool result sits, but dips to its lowest in the middle. As the loop appends turns, the original request is pushed left from the fresh end into the weak middle, which is context rot." preserveAspectRatio="xMidYMid meet" style="width:100%;max-width:920px;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;margin:1.4em auto">
       <defs><marker id="litm-arr" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-sub,#9aa0a6)"/></marker></defs>
       <rect x="320" y="90" width="172" height="240" fill="var(--gfx-amber,#e3b341)" opacity="0.09"/>
       <line x1="100" y1="90" x2="100" y2="330" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="1.5"/>
@@ -327,9 +335,9 @@
       <text x="122" y="372" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="10.5" fill="var(--gfx-blue,#0969da)">system prompt</text>
       <text x="406" y="372" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="10.5" fill="var(--gfx-amber,#9a6700)">the original request</text>
       <text x="690" y="372" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="10.5" fill="var(--gfx-green,#4a7a00)">latest tool result</text>
-      <text x="380" y="422" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" font-style="italic" fill="var(--gfx-sub,#5e5e5e)">Redrawn from Liu et al. 2023. As the loop appends turns, the answer you need drifts into the weak middle.</text>
     </svg>
-  </div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Redrawn from <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu et al. (2023)</a>. As the loop appends turns, the answer you need drifts into the weak middle.</figcaption>
+  </figure>
   <p>
     Models reliably under-weight tokens stranded in the middle of a long context and favor whatever sits at the start or the end;
     <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">"Lost in the Middle" (Liu et al., 2023)</a> measured the effect.
@@ -439,12 +447,52 @@
 </main>
 
 <script type="module">
-import { buildNav, updateKeyPill, mountJourneyMap, mountCanvasFlow } from "./_shared.js";
+import { buildNav, updateKeyPill, mountJourneyMap, mountCanvasFlow, mountRunCell } from "./_shared.js";
 document.getElementById("nav").innerHTML = buildNav("01b-react.html");
 const pill = document.getElementById("key-status");
 updateKeyPill(pill);
 mountJourneyMap("#journey-map", "1b");
 hljs.highlightAll();
+
+// ── finish_reason, introduced by two real calls before the prose explains the values ─────────
+mountRunCell("#cell-finish-reason", {
+  label: "finish_reason · the one field the loop reads to decide what to do next",
+  intro: "Two calls to the same model. The first is a plain question it can answer, so it stops. The second offers one tool and asks for something training data cannot supply, so the model asks your code to run the tool instead of answering. Watch finish_reason change between them. The tool here is only a preview to make the field flip; you wire tools up properly in the sections just below.",
+  code: `// Call 1 · no tools offered. The model can answer, so it stops on its own.
+const r1 = await chat({
+  model: "nvidia/nemotron-3-nano-30b-a3b",
+  messages: [{ role: "user", content: "In one sentence, what is an agent's ReAct loop?" }],
+  max_tokens: 8196,  // reasoning models think first; leave room past reasoning_content
+});
+log.h("call 1 · no tools offered");
+log("finish_reason:", r1.choices[0].finish_reason);   // "stop" means the answer is ready and the loop can exit
+log(r1.choices[0].message.content || "(used its whole budget thinking; raise max_tokens)");
+
+// Call 2 · offer one tool and ask for something the model cannot know from training data.
+// It cannot run the tool itself, so instead of stopping it asks YOUR code to run it. This spec is
+// just a preview; the next sections build and run the tool wiring properly.
+const TOOLS = [{
+  type: "function",
+  function: {
+    name: "get_current_time",
+    description: "Returns the current UTC time.",
+    parameters: { type: "object", properties: {}, required: [] },
+  },
+}];
+const r2 = await chat({
+  model: "nvidia/nemotron-3-nano-30b-a3b",
+  messages: [{ role: "user", content: "What time is it right now in UTC?" }],
+  tools: TOOLS,
+  max_tokens: 8196,
+});
+const m2 = r2.choices[0].message;
+log.h("call 2 · one tool offered, on a question training data cannot answer");
+log("finish_reason:", r2.choices[0].finish_reason);   // "tool_calls" means the model is asking you to run a function
+log("it asked you to run:", (m2.tool_calls || []).map(t => t.function.name).join(", ") || "(nothing)");
+
+return { call1: r1.choices[0].finish_reason, call2: r2.choices[0].finish_reason };
+`,
+});
 
 // ── The complete ReAct loop, built from scratch ──────────────────────────────
 mountCanvasFlow("#cell-m2c-p3", {
@@ -537,20 +585,12 @@ return { steps_taken: step, message_count: state.messages.length };
 });
 
 // ── Part 5: running this cell BUILDS a live chat artifact (createReactAgent) ──
-mountCanvasFlow("#cell-react-lab", {
+mountRunCell("#cell-react-lab", {
   label: "Build the artifact · createReactAgent → a live chat panel",
   intro: "This cell renders a working chat panel from LangChain's off-the-shelf createReactAgent loop, " +
          "rather than printing a log. Its one tool is read_course_page; its memory is MemorySaver. " +
          "Edit the agent, the tool, or the prompt and rerun to rebuild the panel.",
-  nodes: [
-    {
-      id: "react-lab", icon: "🧪", title: "createReactAgent → mountChatUI", x: 0, y: 0,
-      summary: "Builds a ChatOpenAI on the course endpoint, gives createReactAgent a read_course_page " +
-               "tool, and renders it as a chat artifact via helpers.mountChatUI. The panel shows the answer " +
-               "as markdown, plus the reasoning trace, token usage, context size, and a chip for every page " +
-               "read (expand it to see the text). It keeps memory per chat and lets you switch models, " +
-               "building one createReactAgent and MemorySaver per model.",
-      code: `// Running this cell renders a live chat panel into #react-artifact below.
+  code: `// Running this cell renders a live chat panel into #react-artifact below.
 const cfg = await helpers.getConfig();
 if (cfg.needsKey && !helpers.getKey()) {
   helpers.log("No API key yet. Add your nvapi- key on the course home, then rerun.");
@@ -696,8 +736,6 @@ helpers.mountChatUI(document.getElementById("react-artifact"), {
 helpers.log("✓ artifact mounted below. Scroll down and chat with it.");
 return "Artifact mounted below. Edit this cell and rerun to rebuild it.";
 `,
-    },
-  ],
 });
 </script>
 </body>

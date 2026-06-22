@@ -164,7 +164,8 @@
         endpoint's first token and then making your opening OpenClaw call over the
         <code>/cli/gateway</code> WebSocket.
       </p>
-      <svg class="gfx-dark" viewBox="0 0 1160 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three layers of access to a model or agent. Left, HTTP REST endpoints: the stateless Chat Completions API where the client resends full history, and the Responses API where the server keeps history under a previous_response_id. Middle, the Model Context Protocol: an agent-side MCP client reaches tool servers over JSON-RPC, standardizing tool access. Right, a persistent WebSocket gateway: a long-lived ws:// duplex connection keyed by a sessionKey streams tool calls and events live." preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; display:block; background:#0d0d0d; border:1px solid #2a2a2a; border-radius:8px; padding:14px; max-width:1100px; margin:1.5rem auto">
+      <figure style="margin:1.4em 0">
+      <svg class="gfx-dark" viewBox="0 0 1160 335" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three layers of access to a model or agent. Left, HTTP REST endpoints: the stateless Chat Completions API where the client resends full history, and the Responses API where the server keeps history under a previous_response_id. Middle, the Model Context Protocol: an agent-side MCP client reaches tool servers over JSON-RPC, standardizing tool access. Right, a persistent WebSocket gateway: a long-lived ws:// duplex connection keyed by a sessionKey streams tool calls and events live." preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; display:block; background:#0d0d0d; border:1px solid #2a2a2a; border-radius:8px; padding:14px; max-width:1100px; margin:1.5rem auto">
   <defs>
     <marker id="arrow-gray" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
       <path d="M0,2 L6,5 L0,8 Z" fill="var(--gfx-sub,#444444)"/>
@@ -250,11 +251,9 @@
   <text x="955" y="260" font-family="Arial, sans-serif" font-size="11" fill="var(--gfx-green,#aee23a)" text-anchor="middle" font-weight="700">← live stream: tool_calls · events</text>
 
   <text x="955" y="295" font-family="Arial, sans-serif" font-size="11" fill="var(--gfx-sub,#6a7a6a)" text-anchor="middle">Connection remains alive indefinitely</text>
-
-
-  <text x="580" y="360" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="var(--gfx-faint,#5e5e5e)" font-style="italic">Three layers of access: stateless HTTP to the model endpoint, the Responses API keeping history server-side,</text>
-  <text x="580" y="376" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="var(--gfx-faint,#5e5e5e)" font-style="italic">the Model Context Protocol for standard tools, and a long-lived WebSocket streaming a live agent session.</text>
 </svg>
+      <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Three layers of access: stateless HTTP to the model endpoint, the Responses API keeping history server-side, the <a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">Model Context Protocol</a> for standard tools, and a long-lived WebSocket streaming a live agent session.</figcaption>
+      </figure>
 
 
     </div>
@@ -364,7 +363,10 @@
         straight into the running agent's loop.</li>
     </ul>
 
-    <div id="fig-calls"></div>
+    <figure style="margin:1.4em 0">
+      <div id="fig-calls"></div>
+      <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">A single POST drives a loop inside the gateway, where the session key carries memory forward to the next call.</figcaption>
+    </figure>
 
     <h3>First, shape a fresh launchable</h3>
     <p>A brand-new NemoClaw launchable ships with <code>tools.toolSearch</code> turned
@@ -382,7 +384,10 @@
         runtime. Do this once per fresh instance.</li>
     </ul>
 
-    <div id="fig-toolsearch"></div>
+    <figure style="margin:1.4em 0">
+      <div id="fig-toolsearch"></div>
+      <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">With toolSearch on a weak model loops instead of calling exec, until Recover flips the flag so exec runs.</figcaption>
+    </figure>
 
     <div id="gw-recover"></div>
 
@@ -531,7 +536,6 @@ helpers.log("rendered below. Edit the config and Run.");
         { from: "gw", to: "you", label: "reply", side: "bottom", tint: "agent" },
         { from: "gw", to: "gw", tint: "agent" },
       ],
-      caption: "A single POST drives a loop inside the gateway, where the session key carries memory forward to the next call.",
     });
 
     // ── toolSearch trap vs fix (the resilience graphic) ──────────────────────────
@@ -554,7 +558,6 @@ helpers.log("rendered below. Edit the config and Run.");
         { from: "off", to: "exec", side: "bottom", tint: "model" },
         { from: "exec", to: "ok", side: "bottom", tint: "env" },
       ],
-      caption: "With toolSearch on a weak model loops instead of calling exec, until Recover flips the flag so exec runs.",
     });
 
     // ── Probe model endpoint ─────────────────────────────────────────────────────

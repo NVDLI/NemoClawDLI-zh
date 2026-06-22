@@ -102,12 +102,12 @@
     <figure style="margin:0;flex:1 1 320px;max-width:430px">
       <img src="assets/fig2_react.svg" alt="The ReAct loop: the model reasons, acts through a tool, observes the result, and repeats until it is done."
            style="width:100%;height:auto;display:block;background:#fff;border:1px solid #d0d7de;border-radius:8px;padding:14px"/>
-      <figcaption style="text-align:center;font-size:.85rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">ReAct interleaves a reasoning step with each tool call, reacting to every observation before deciding the next move.</figcaption>
+      <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">ReAct interleaves a reasoning step with each tool call, reacting to every observation before deciding the next move.</figcaption>
     </figure>
     <figure style="margin:0;flex:1 1 320px;max-width:430px">
       <img src="assets/fig2_rewoo.svg" alt="The ReWOO pattern: the model writes the whole plan upfront, a deterministic executor runs every tool, and one synthesis call closes it out."
            style="width:100%;height:auto;display:block;background:#fff;border:1px solid #d0d7de;border-radius:8px;padding:14px"/>
-      <figcaption style="text-align:center;font-size:.85rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">ReWOO writes the full plan before any tool runs, executes the steps without re-asking the model, then synthesizes once.</figcaption>
+      <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">ReWOO writes the full plan before any tool runs, executes the steps without re-asking the model, then synthesizes once.</figcaption>
     </figure>
   </div>
 
@@ -170,7 +170,10 @@
     watch the planner's query list change.
   </p>
 
-  <div id="cell-m2a-rewoo"></div>
+  <figure style="margin:1.4em 0">
+    <div id="cell-m2a-rewoo"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">The ReWOO pattern plans every tool call up front, runs them in parallel, then synthesizes in one final call. <a href="https://arxiv.org/abs/2305.18323" target="_blank" rel="noopener">Xu et al. (2023)</a>.</figcaption>
+  </figure>
 
   <!-- ── Part 4: Schema-bound triage ──────────────────────────────────────── -->
   <h2>Routing a ticket to one specialist with a fixed enum</h2>
@@ -182,9 +185,10 @@
     downstream owns a narrow system prompt that never sees the triage agent's reasoning.
   </p>
 
-  <div style="display:flex;justify-content:center;margin:1em 0 1.4em">
-    <svg class="gfx-dark" viewBox="0 0 760 292" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The four-value enum picks exactly one specialist to handle the request." preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:780px;margin:1.5rem auto"><defs></defs><path d="M 380 84 C 380 122, 110 122, 110 160" fill="none" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.8"/><path d="M 380 84 C 380 122, 300 122, 300 160" fill="none" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.8"/><path d="M 380 84 C 380 122, 490 122, 490 160" fill="none" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.8"/><path d="M 380 84 C 380 122, 680 122, 680 160" fill="none" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.8"/><rect x="330" y="40" width="100" height="44" rx="8" fill="var(--gfx-tint-purple,#eadfff)" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2"/><text x="380" y="66" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-purple,#6f42c1)" text-anchor="middle" font-weight="700">triage</text><rect x="60" y="160" width="100" height="44" rx="8" fill="var(--gfx-tint-blue,#dfeaf5)" stroke="var(--gfx-blue,#0969da)" stroke-width="2"/><text x="110" y="186" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-blue,#0969da)" text-anchor="middle" font-weight="700">network</text><rect x="250" y="160" width="100" height="44" rx="8" fill="var(--gfx-tint-green,#e6f3d4)" stroke="var(--gfx-green,#4a7a00)" stroke-width="2"/><text x="300" y="186" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-green,#4a7a00)" text-anchor="middle" font-weight="700">hardware</text><rect x="440" y="160" width="100" height="44" rx="8" fill="var(--gfx-tint-teal,#d6f1ee)" stroke="var(--gfx-teal,#0d9488)" stroke-width="2"/><text x="490" y="186" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-teal,#0d9488)" text-anchor="middle" font-weight="700">software</text><rect x="630" y="160" width="100" height="44" rx="8" fill="var(--gfx-tint-amber,#f7e9cf)" stroke="var(--gfx-amber,#9a6700)" stroke-width="2"/><text x="680" y="186" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-amber,#9a6700)" text-anchor="middle" font-weight="700">account</text><text x="380" y="276" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13" fill="var(--gfx-sub,#5e5e5e)" font-style="italic">The four-value enum picks exactly one specialist to handle the request.</text></svg>
-  </div>
+  <figure style="margin:1.4em 0">
+    <svg class="gfx-dark" viewBox="0 0 760 214" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The four-value enum picks exactly one specialist to handle the request." preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:780px;margin:1.5rem auto"><defs></defs><path d="M 380 84 C 380 122, 110 122, 110 160" fill="none" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.8"/><path d="M 380 84 C 380 122, 300 122, 300 160" fill="none" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.8"/><path d="M 380 84 C 380 122, 490 122, 490 160" fill="none" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.8"/><path d="M 380 84 C 380 122, 680 122, 680 160" fill="none" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.8"/><rect x="330" y="40" width="100" height="44" rx="8" fill="var(--gfx-tint-purple,#eadfff)" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2"/><text x="380" y="66" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-purple,#6f42c1)" text-anchor="middle" font-weight="700">triage</text><rect x="60" y="160" width="100" height="44" rx="8" fill="var(--gfx-tint-blue,#dfeaf5)" stroke="var(--gfx-blue,#0969da)" stroke-width="2"/><text x="110" y="186" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-blue,#0969da)" text-anchor="middle" font-weight="700">network</text><rect x="250" y="160" width="100" height="44" rx="8" fill="var(--gfx-tint-green,#e6f3d4)" stroke="var(--gfx-green,#4a7a00)" stroke-width="2"/><text x="300" y="186" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-green,#4a7a00)" text-anchor="middle" font-weight="700">hardware</text><rect x="440" y="160" width="100" height="44" rx="8" fill="var(--gfx-tint-teal,#d6f1ee)" stroke="var(--gfx-teal,#0d9488)" stroke-width="2"/><text x="490" y="186" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-teal,#0d9488)" text-anchor="middle" font-weight="700">software</text><rect x="630" y="160" width="100" height="44" rx="8" fill="var(--gfx-tint-amber,#f7e9cf)" stroke="var(--gfx-amber,#9a6700)" stroke-width="2"/><text x="680" y="186" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-amber,#9a6700)" text-anchor="middle" font-weight="700">account</text></svg>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">The four-value enum picks exactly one specialist to handle the request.</figcaption>
+  </figure>
 
   <div id="cell-m2a-triage"></div>
 
@@ -492,7 +496,6 @@ edges.unshift({ from: "goal", to: "planner" });
 
 helpers.viz.diagram({
   title: "ReWOO pipeline · plan → parallel searches → synthesize",
-  caption: "Total cost: 2 LLM calls + " + N + " parallel search calls. ReWOO pattern: Xu et al., 2023 · arXiv:2305.18323",
   nodes, edges,
 });
 

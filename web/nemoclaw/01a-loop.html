@@ -37,18 +37,16 @@
     <div class="eyebrow">Module 1 · Part A of 3</div>
     <h1>The <span>Agent</span></h1>
     <p class="lead">
-      An <strong>agent</strong> is an entity that interacts with an environment, a description far
-      broader than the software you are about to build. A person going about their day is an agent
-      in this sense, and so is a thermostat holding a room at temperature or a self-driving car
-      making its way through traffic.
+      Before we get too entrenched in modern patterns, let's discuss what agents actually represent.
+      An <strong>agent</strong> is an entity that interacts with an environment at any meaningful level.
+      A person going about their day is an agent in this sense, and so is a thermostat holding a 
+      room at temperature or a self-driving car making its way through traffic.
     </p>
     <p>
-      All of them share one relationship with the world. The
-      entity takes in information about its surroundings and acts in a way that changes them
-      before taking in the altered situation its own action has just produced. Because each action feeds
-      the next observation, perceiving and acting fold into one continuous cycle that
+      All of them share one relationship with the world: they take in information via <b>sensing <i>(or "perceiving")</i></b> and output information via <b>actuating <i>(or "acting")</i></b>.
+      Because each action feeds the next observation, perceiving and acting fold into one continuous cycle that
       lasts as long as the agent is working toward something. This course calls that cycle the
-      <strong>perceive-decide-act loop</strong>. The agents you will build run the same cycle
+      <strong>perceive-reason-act loop</strong>. The agents you will build run the same cycle
       a thermostat does and are set apart only by how much they can perceive and how far their actions reach.
     </p>
   </div>
@@ -57,9 +55,10 @@
   <p>A single trip around the loop runs through three parts, each with a plain name and a
      distinct job.</p>
 
-  <div style="display:flex;justify-content:center;margin:1em 0 1.4em">
+  <figure style="margin:1.4em 0">
     <div id="fig-agent-loop"></div>
-  </div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Only perception and action cross the boundary, and the reasoning between them is a swappable socket.</figcaption>
+  </figure>
 
   <ul>
     <li><strong>Perception</strong> gives the agent everything it knows about its environment.
@@ -95,93 +94,113 @@
     socket carries them toward the goal- and utility-driven designs further along.
   </p>
   <figure style="margin:1.4em 0">
-    <!-- Inlined rather than referenced as a separate file, so the figure picks up the page theme through var(--gfx-*).
-         Adapted from Russell and Norvig, Artificial Intelligence: A Modern Approach, 4th Global ed. (Ch 1). -->
-    <svg class="gfx-dark" viewBox="0 0 1020 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four agent architectures from Russell and Norvig: reflex, goal-based, utility-based, and learning agents. Each names its idea in three lines and carries a small block diagram of its internal data flow from sensors through reasoning to actuators." preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; display:block; border-radius:12px">
-      <defs>
-        <marker id="matrix-arr-v" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto">
-          <path d="M0,2 L8,5 L0,8 Z" fill="var(--gfx-faint,#8b949e)"/>
-        </marker>
-        <marker id="matrix-arr-green-v" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto">
-          <path d="M0,2 L8,5 L0,8 Z" fill="var(--gfx-green,#9bd14a)"/>
-        </marker>
-        <marker id="matrix-arr-blue" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto">
-          <path d="M0,2 L8,5 L0,8 Z" fill="var(--gfx-blue,#5aa8ff)"/>
-        </marker>
-      </defs>
-
-      <rect x="0" y="0" width="1020" height="400" rx="12" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-line,#3a3f45)" stroke-width="1"/>
-
-      <rect x="30" y="25" width="465" height="145" rx="8" fill="var(--gfx-panel,#17191c)" stroke="var(--gfx-line,#3a3f45)" stroke-width="1.5"/>
-      <text x="50" y="52" font-family="ui-monospace, monospace" font-size="13.5" fill="var(--gfx-green,#9bd14a)" font-weight="700">01 . Reflex Agents</text>
-      <text x="50" y="78" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Maps inputs directly to actions, ignoring history.</text>
-      <text x="50" y="96" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Rules match condition states to behaviors.</text>
-      <text x="50" y="114" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Keeps state memory to fill context gaps.</text>
-      <g class="reflex-diagram" transform="translate(320, 52)">
-        <rect x="0" y="0" width="90" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-blue,#5aa8ff)" stroke-width="1"/>
-        <text x="45" y="13" font-family="ui-monospace, monospace" font-size="9" fill="var(--gfx-blue,#5aa8ff)" text-anchor="middle">Sensors</text>
-        <rect x="0" y="32" width="90" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-line,#3a3f45)" stroke-width="1"/>
-        <text x="45" y="45" font-family="Arial, sans-serif" font-size="9" fill="var(--gfx-sub,#9aa0a6)" text-anchor="middle">State / Rules</text>
-        <rect x="0" y="64" width="90" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-green,#9bd14a)" stroke-width="1"/>
-        <text x="45" y="77" font-family="ui-monospace, monospace" font-size="9" fill="var(--gfx-green,#9bd14a)" text-anchor="middle">Actuators</text>
-        <line x1="45" y1="20" x2="45" y2="32" stroke="var(--gfx-faint,#8b949e)" stroke-width="1.2" marker-end="url(#matrix-arr-v)"/>
-        <line x1="45" y1="52" x2="45" y2="64" stroke="var(--gfx-green,#9bd14a)" stroke-width="1.2" marker-end="url(#matrix-arr-green-v)"/>
-        <path d="M 90 10 C 112 28, 112 48, 92 64" fill="none" stroke="var(--gfx-blue,#5aa8ff)" stroke-width="1" stroke-dasharray="2 2" marker-end="url(#matrix-arr-blue)"/>
-        <text x="126" y="34" font-family="Arial, sans-serif" font-size="10" fill="var(--gfx-blue,#5aa8ff)" text-anchor="middle">stateless</text>
-        <text x="126" y="45" font-family="Arial, sans-serif" font-size="10" fill="var(--gfx-blue,#5aa8ff)" text-anchor="middle">bypass</text>
-      </g>
-
-      <rect x="525" y="25" width="465" height="145" rx="8" fill="var(--gfx-panel,#17191c)" stroke="var(--gfx-line,#3a3f45)" stroke-width="1.5"/>
-      <text x="545" y="52" font-family="ui-monospace, monospace" font-size="13.5" fill="var(--gfx-green,#9bd14a)" font-weight="700">02 . Goal-Based Agents</text>
-      <text x="545" y="78" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Combines world tracking with explicit targets.</text>
-      <text x="545" y="96" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Looks ahead to evaluate success paths.</text>
-      <text x="545" y="114" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Swaps simple reflexes for planning loops.</text>
-      <g class="goal-diagram" transform="translate(845, 52)">
-        <rect x="0" y="0" width="95" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-blue,#5aa8ff)" stroke-width="1"/>
-        <text x="47.5" y="13" font-family="ui-monospace, monospace" font-size="9" fill="var(--gfx-blue,#5aa8ff)" text-anchor="middle">Sensors / Model</text>
-        <rect x="0" y="32" width="95" height="20" rx="3" fill="var(--gfx-tint-sub,#1c1f22)" stroke="var(--gfx-line,#3a3f45)" stroke-width="1"/>
-        <text x="47.5" y="45" font-family="Arial, sans-serif" font-size="9" fill="var(--gfx-ink,#e8eaed)" text-anchor="middle">Goals / Planning</text>
-        <rect x="0" y="64" width="95" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-green,#9bd14a)" stroke-width="1"/>
-        <text x="47.5" y="77" font-family="ui-monospace, monospace" font-size="9" fill="var(--gfx-green,#9bd14a)" text-anchor="middle">Actuators</text>
-        <line x1="47.5" y1="20" x2="47.5" y2="32" stroke="var(--gfx-faint,#8b949e)" stroke-width="1.2" marker-end="url(#matrix-arr-v)"/>
-        <line x1="47.5" y1="52" x2="47.5" y2="64" stroke="var(--gfx-green,#9bd14a)" stroke-width="1.2" marker-end="url(#matrix-arr-green-v)"/>
-      </g>
-
-      <rect x="30" y="195" width="465" height="145" rx="8" fill="var(--gfx-panel,#17191c)" stroke="var(--gfx-line,#3a3f45)" stroke-width="1.5"/>
-      <text x="50" y="222" font-family="ui-monospace, monospace" font-size="13.5" fill="var(--gfx-green,#9bd14a)" font-weight="700">03 . Utility-Based Agents</text>
-      <text x="50" y="248" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Uses a preference score to rate world states.</text>
-      <text x="50" y="266" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Balances trade-offs between conflicting goals.</text>
-      <text x="50" y="284" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Maximizes expected utility under uncertainty.</text>
-      <g class="utility-diagram" transform="translate(320, 222)">
-        <rect x="0" y="0" width="90" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-blue,#5aa8ff)" stroke-width="1"/>
-        <text x="45" y="13" font-family="ui-monospace, monospace" font-size="9" fill="var(--gfx-blue,#5aa8ff)" text-anchor="middle">Sensors / Model</text>
-        <rect x="0" y="32" width="90" height="20" rx="3" fill="var(--gfx-tint-green,#1d2a12)" stroke="var(--gfx-green,#9bd14a)" stroke-width="1"/>
-        <text x="45" y="45" font-family="ui-monospace, monospace" font-size="9" fill="var(--gfx-green,#9bd14a)" font-weight="700" text-anchor="middle">Utility U(s)</text>
-        <rect x="0" y="64" width="90" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-green,#9bd14a)" stroke-width="1"/>
-        <text x="45" y="77" font-family="ui-monospace, monospace" font-size="9" fill="var(--gfx-green,#9bd14a)" text-anchor="middle">Actuators</text>
-        <line x1="45" y1="20" x2="45" y2="32" stroke="var(--gfx-faint,#8b949e)" stroke-width="1.2" marker-end="url(#matrix-arr-v)"/>
-        <line x1="45" y1="52" x2="45" y2="64" stroke="var(--gfx-green,#9bd14a)" stroke-width="1.2" marker-end="url(#matrix-arr-green-v)"/>
-      </g>
-
-      <rect x="525" y="195" width="465" height="145" rx="8" fill="var(--gfx-panel,#17191c)" stroke="var(--gfx-green,#9bd14a)" stroke-width="1.5"/>
-      <text x="545" y="222" font-family="ui-monospace, monospace" font-size="13.5" fill="var(--gfx-green,#9bd14a)" font-weight="700">04 . Learning Agents</text>
-      <text x="545" y="248" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Splits execution from evaluation elements.</text>
-      <text x="545" y="266" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Critic checks choices against parameters.</text>
-      <text x="545" y="284" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Dynamically modifies its program to improve.</text>
-      <g class="learning-diagram" transform="translate(845, 222)">
-        <rect x="0" y="0" width="95" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-line,#3a3f45)" stroke-width="1"/>
-        <text x="47.5" y="13" font-family="Arial, sans-serif" font-size="9" fill="var(--gfx-ink,#e8eaed)" text-anchor="middle">Critic Check</text>
-        <rect x="0" y="32" width="95" height="20" rx="3" fill="var(--gfx-tint-green,#1d2a12)" stroke="var(--gfx-green,#9bd14a)" stroke-width="1"/>
-        <text x="47.5" y="45" font-family="ui-monospace, monospace" font-size="9" fill="var(--gfx-green,#9bd14a)" font-weight="700" text-anchor="middle">Learning Element</text>
-        <rect x="0" y="64" width="95" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-line,#3a3f45)" stroke-width="1"/>
-        <text x="47.5" y="77" font-family="Arial, sans-serif" font-size="9" fill="var(--gfx-ink,#e8eaed)" text-anchor="middle">Performance Exec</text>
-        <line x1="47.5" y1="20" x2="47.5" y2="32" stroke="var(--gfx-green,#9bd14a)" stroke-width="1.2" marker-end="url(#matrix-arr-green-v)"/>
-        <line x1="47.5" y1="52" x2="47.5" y2="64" stroke="var(--gfx-green,#9bd14a)" stroke-width="1.2" marker-end="url(#matrix-arr-green-v)"/>
-      </g>
-    </svg>
-    <figcaption style="text-align:center;font-size:.85rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">
-      Four agent architectures in order of growing structure, from a reflex agent that maps inputs straight to actions up to a learning agent that rewrites its own rules.<br>Adapted from Russell and Norvig's <em>Artificial Intelligence: A Modern Approach</em> (Ch 1).
-    </figcaption>
+    <svg class="gfx-dark" viewBox="0 0 1020 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four agent architectures from Russell and Norvig: reflex, goal-based, utility-based, and learning agents. Each names its idea in three lines and carries a small block diagram of its internal data flow from sensors through reasoning to actuators." preserveAspectRatio="xMidYMid meet" style="width:100%; max-width:1400px; height:auto; display:block; margin:1.5rem auto; border-radius:12px">
+    <defs>
+      <marker id="matrix-arr-v" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+        <path d="M0,2 L8,5 L0,8 Z" fill="var(--gfx-faint,#8b949e)"/>
+      </marker>
+      <marker id="matrix-arr-green-v" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+        <path d="M0,2 L8,5 L0,8 Z" fill="var(--gfx-green,#9bd14a)"/>
+      </marker>
+      <marker id="matrix-arr-blue" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+        <path d="M0,2 L8,5 L0,8 Z" fill="var(--gfx-blue,#5aa8ff)"/>
+      </marker>
+    </defs>
+  
+    <rect x="0" y="0" width="1020" height="400" rx="12" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-line,#3a3f45)" stroke-width="1"/>
+  
+    <rect x="30" y="25" width="465" height="145" rx="8" fill="var(--gfx-panel,#17191c)" stroke="var(--gfx-line,#3a3f45)" stroke-width="1.5"/>
+    <text x="50" y="52" font-family="ui-monospace, monospace" font-size="13.5" fill="var(--gfx-green,#9bd14a)" font-weight="700">01 . Reflex Agents</text>
+  
+    <text x="50" y="78" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Maps inputs directly to actions, ignoring history.</text>
+    <text x="50" y="96" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Rules match condition states to behaviors.</text>
+    <text x="50" y="114" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Keeps state memory to fill context gaps.</text>
+  
+    <g class="reflex-diagram" transform="translate(320, 46) scale(1.2)">
+      <rect x="0" y="0" width="90" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-blue,#5aa8ff)" stroke-width="1"/>
+      <text x="45" y="13" font-family="ui-monospace, monospace" font-size="9" fill="var(--gfx-blue,#5aa8ff)" text-anchor="middle">Sensors</text>
+  
+      <rect x="0" y="32" width="90" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-line,#3a3f45)" stroke-width="1"/>
+      <text x="45" y="45" font-family="Arial, sans-serif" font-size="9" fill="var(--gfx-sub,#9aa0a6)" text-anchor="middle">State / Rules</text>
+  
+      <rect x="0" y="64" width="90" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-green,#9bd14a)" stroke-width="1"/>
+      <text x="45" y="77" font-family="ui-monospace, monospace" font-size="9" fill="var(--gfx-green,#9bd14a)" text-anchor="middle">Actuators</text>
+  
+      <line x1="45" y1="20" x2="45" y2="32" stroke="var(--gfx-faint,#8b949e)" stroke-width="1.2" marker-end="url(#matrix-arr-v)"/>
+      <line x1="45" y1="52" x2="45" y2="64" stroke="var(--gfx-green,#9bd14a)" stroke-width="1.2" marker-end="url(#matrix-arr-green-v)"/>
+  
+      <path d="M 90 10 C 100 16, 112 48, 92 64" fill="none" stroke="var(--gfx-blue,#5aa8ff)" stroke-width="1" stroke-dasharray="2 2" marker-end="url(#matrix-arr-blue)"/>
+      <text x="124" y="34" font-family="Arial, sans-serif" font-size="10" fill="var(--gfx-blue,#5aa8ff)" text-anchor="middle">stateless</text>
+      <text x="124" y="45" font-family="Arial, sans-serif" font-size="10" fill="var(--gfx-blue,#5aa8ff)" text-anchor="middle">bypass</text>
+    </g>
+  
+  
+    <rect x="525" y="25" width="465" height="145" rx="8" fill="var(--gfx-panel,#17191c)" stroke="var(--gfx-line,#3a3f45)" stroke-width="1.5"/>
+    <text x="545" y="52" font-family="ui-monospace, monospace" font-size="13.5" fill="var(--gfx-green,#9bd14a)" font-weight="700">02 . Goal-Based Agents</text>
+  
+    <text x="545" y="78" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Combines world tracking with explicit targets.</text>
+    <text x="545" y="96" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Looks ahead to evaluate success paths.</text>
+    <text x="545" y="114" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Swaps simple reflexes for planning loops.</text>
+  
+    <g class="goal-diagram" transform="translate(845, 46) scale(1.2)">
+      <rect x="0" y="0" width="95" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-blue,#5aa8ff)" stroke-width="1"/>
+      <text x="47.5" y="13" font-family="ui-monospace, monospace" font-size="9" fill="var(--gfx-blue,#5aa8ff)" text-anchor="middle">Sensors / Model</text>
+  
+      <rect x="0" y="32" width="95" height="20" rx="3" fill="var(--gfx-tint-sub,#1c1f22)" stroke="var(--gfx-line,#3a3f45)" stroke-width="1"/>
+      <text x="47.5" y="45" font-family="Arial, sans-serif" font-size="9" fill="var(--gfx-ink,#e8eaed)" text-anchor="middle">Goals / Planning</text>
+  
+      <rect x="0" y="64" width="95" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-green,#9bd14a)" stroke-width="1"/>
+      <text x="47.5" y="77" font-family="ui-monospace, monospace" font-size="9" fill="var(--gfx-green,#9bd14a)" text-anchor="middle">Actuators</text>
+  
+      <line x1="47.5" y1="20" x2="47.5" y2="32" stroke="var(--gfx-faint,#8b949e)" stroke-width="1.2" marker-end="url(#matrix-arr-v)"/>
+      <line x1="47.5" y1="52" x2="47.5" y2="64" stroke="var(--gfx-green,#9bd14a)" stroke-width="1.2" marker-end="url(#matrix-arr-green-v)"/>
+    </g>
+  
+  
+    <rect x="30" y="195" width="465" height="145" rx="8" fill="var(--gfx-panel,#17191c)" stroke="var(--gfx-line,#3a3f45)" stroke-width="1.5"/>
+    <text x="50" y="222" font-family="ui-monospace, monospace" font-size="13.5" fill="var(--gfx-green,#9bd14a)" font-weight="700">03 . Utility-Based Agents</text>
+  
+    <text x="50" y="248" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Uses a preference score to rate world states.</text>
+    <text x="50" y="266" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Balances trade-offs between conflicting goals.</text>
+    <text x="50" y="284" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Maximizes expected utility under uncertainty.</text>
+  
+    <g class="utility-diagram" transform="translate(320, 216) scale(1.2)">
+      <rect x="0" y="0" width="90" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-blue,#5aa8ff)" stroke-width="1"/>
+      <text x="45" y="13" font-family="ui-monospace, monospace" font-size="9" fill="var(--gfx-blue,#5aa8ff)" text-anchor="middle">Sensors / Model</text>
+  
+      <rect x="0" y="32" width="90" height="20" rx="3" fill="var(--gfx-tint-green,#1d2a12)" stroke="var(--gfx-green,#9bd14a)" stroke-width="1"/>
+      <text x="45" y="45" font-family="ui-monospace, monospace" font-size="9" fill="var(--gfx-green,#9bd14a)" font-weight="700" text-anchor="middle">Utility U(s)</text>
+  
+      <rect x="0" y="64" width="90" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-green,#9bd14a)" stroke-width="1"/>
+      <text x="45" y="77" font-family="ui-monospace, monospace" font-size="9" fill="var(--gfx-green,#9bd14a)" text-anchor="middle">Actuators</text>
+  
+      <line x1="45" y1="20" x2="45" y2="32" stroke="var(--gfx-faint,#8b949e)" stroke-width="1.2" marker-end="url(#matrix-arr-v)"/>
+      <line x1="45" y1="52" x2="45" y2="64" stroke="var(--gfx-green,#9bd14a)" stroke-width="1.2" marker-end="url(#matrix-arr-green-v)"/>
+    </g>
+  
+  
+    <rect x="525" y="195" width="465" height="145" rx="8" fill="var(--gfx-panel,#17191c)" stroke="var(--gfx-green,#9bd14a)" stroke-width="1.5"/>
+    <text x="545" y="222" font-family="ui-monospace, monospace" font-size="13.5" fill="var(--gfx-green,#9bd14a)" font-weight="700">04 . Learning Agents</text>
+  
+    <text x="545" y="248" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Splits execution from evaluation elements.</text>
+    <text x="545" y="266" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Critic checks choices against parameters.</text>
+    <text x="545" y="284" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Dynamically modifies its program to improve.</text>
+  
+    <g class="learning-diagram" transform="translate(845, 216) scale(1.2)">
+      <rect x="0" y="0" width="95" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-line,#3a3f45)" stroke-width="1"/>
+      <text x="47.5" y="13" font-family="Arial, sans-serif" font-size="9" fill="var(--gfx-ink,#e8eaed)" text-anchor="middle">Critic Check</text>
+  
+      <rect x="0" y="32" width="95" height="20" rx="3" fill="var(--gfx-tint-green,#1d2a12)" stroke="var(--gfx-green,#9bd14a)" stroke-width="1"/>
+      <text x="47.5" y="45" font-family="ui-monospace, monospace" font-size="9" fill="var(--gfx-green,#9bd14a)" font-weight="700" text-anchor="middle">Learning Element</text>
+  
+      <rect x="0" y="64" width="95" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-line,#3a3f45)" stroke-width="1"/>
+      <text x="47.5" y="77" font-family="Arial, sans-serif" font-size="9" fill="var(--gfx-ink,#e8eaed)" text-anchor="middle">Performance Exec</text>
+  
+      <line x1="47.5" y1="20" x2="47.5" y2="32" stroke="var(--gfx-green,#9bd14a)" stroke-width="1.2" marker-end="url(#matrix-arr-green-v)"/>
+      <line x1="47.5" y1="52" x2="47.5" y2="64" stroke="var(--gfx-green,#9bd14a)" stroke-width="1.2" marker-end="url(#matrix-arr-green-v)"/>
+    </g>
+  </svg>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Four agent architectures in order of growing structure, from a reflex agent that maps inputs straight to actions up to a learning agent that rewrites its own rules. Adapted from Russell and Norvig's <a href="https://aima.cs.berkeley.edu/" target="_blank" rel="noopener">Artificial Intelligence: A Modern Approach</a> (Ch 1).</figcaption>
   </figure>
 
   <h2>An agent with no language model</h2>
@@ -252,8 +271,8 @@
         to do next.</li>
   </ul>
 
-  <div style="display:flex;justify-content:center;margin:1em 0 1.4em">
-    <svg class="gfx-dark" viewBox="0 78 840 282" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The same stateless model call, reached through two interfaces. The Chat Completions API: you resend the full messages array each turn and your code keeps the history. The Responses API: you send only new input plus a reference, and the server keeps the thread. Both feed the same stateless model, which receives the full context and returns one assistant turn (content, finish_reason, usage). They differ only in who keeps the conversation between turns." style="width:100%;max-width:980px;height:auto;display:block;margin:1.2em auto;background:var(--gfx-bg);border:1px solid var(--gfx-line);border-radius:12px">
+  <figure style="margin:1.4em 0">
+    <svg class="gfx-dark" viewBox="0 78 840 222" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The same stateless model call, reached through two interfaces. The Chat Completions API: you resend the full messages array each turn and your code keeps the history. The Responses API: you send only new input plus a reference, and the server keeps the thread. Both feed the same stateless model, which receives the full context and returns one assistant turn (content, finish_reason, usage). They differ only in who keeps the conversation between turns." style="width:100%;max-width:980px;height:auto;display:block;margin:1.2em auto;background:var(--gfx-bg);border:1px solid var(--gfx-line);border-radius:12px">
       <defs>
         <marker id="chat2-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="var(--gfx-sub,#5e5e5e)"/></marker>
       </defs>
@@ -278,9 +297,9 @@
       <path d="M 264 138 L 332 168" stroke="var(--gfx-sub)" stroke-width="2.2" fill="none" marker-end="url(#chat2-arrow)"/>
       <path d="M 264 248 L 332 210" stroke="var(--gfx-sub)" stroke-width="2.2" fill="none" marker-end="url(#chat2-arrow)"/>
       <path d="M 508 188 L 576 188" stroke="var(--gfx-sub)" stroke-width="2.2" fill="none" marker-end="url(#chat2-arrow)"/>
-      <text x="420" y="334" text-anchor="middle" font-size="12" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" fill="var(--gfx-sub)" font-style="italic">Both interfaces wrap the same stateless call. They differ only in who keeps the conversation between turns.</text>
     </svg>
-  </div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Both interfaces wrap the same stateless call. They differ only in who keeps the conversation between turns.</figcaption>
+  </figure>
 
   <p>
     Two interfaces reach this same model, and this course uses the industry-standard
@@ -485,8 +504,8 @@
     the intent it returns.
   </p>
 
-  <div style="display:flex;justify-content:center;margin:1em 0 1.4em">
-<svg class="gfx-dark" viewBox="0 70 920 500" xmlns="http://www.w3.org/2000/svg" role="img"
+  <figure style="margin:1.4em 0">
+<svg class="gfx-dark" viewBox="0 70 920 445" xmlns="http://www.w3.org/2000/svg" role="img"
   aria-label="The agent loop drawn locally as a cycle. Step one, locally-sample: read a slice of the environment. Step two, locally-perceive: render that slice into a full engineered text context. That context holds the system prompt, the message history, prior tool results, and the sampled slice, all of it as plain text. The context is fed as text into one stateless text-to-text mapping, the LLM, which is the only model in the picture; perceive-to-act is collapsed into that single mapping. Its output is an intent signal, a typed tool call, not the action itself. Step three, locally-act: your code translates the intent into one bounded local environment update. Step four, locally-impact: the update changes the world, and the next local sample reads the changed world. Every box except the model is code you wrote; the model never touches the world, it only emits an intent the loop chooses to honor."
   preserveAspectRatio="xMidYMid meet"
   style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:12px;padding:14px;max-width:1000px;margin:1.4rem auto">
@@ -569,9 +588,9 @@
 </g>
 
 <!-- footer -->
-<text x="470" y="556" text-anchor="middle" font-size="13" font-family="system-ui,sans-serif" fill="var(--gfx-sub,#9aa0a6)" font-style="italic">sample → perceive → (text → text) → act → impact</text>
 </svg>
-  </div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">sample → perceive → (text → text) → act → impact</figcaption>
+  </figure>
 
   <div class="callout">
     <strong>Each pass of the loop acts only locally.</strong> The model reads one small
@@ -614,26 +633,31 @@
     mountRunCell("#loop-cell", {
       label: "the Try-it artifact, in code",
       autorun: true,
-      code: `// Each turn is one chatStream call with no history, so the model behaves as a
-// pure function: the exact piece the agent loop wraps.
+      code: `// memory:true keeps the conversation: ctx.history holds the earlier turns and each call
+// sees them. Flip the 🧠 memory toggle off and ctx.history goes empty, so the very same
+// respond becomes the pure, stateless function the agent loop will later wrap.
 
 helpers.mountChatUI("#loop-artifact", {
-  greeting: "I'm a single, stateless model call. No loop, no tools, no memory yet. Ask me anything (I won't remember your last message).",
+  memory: true,
+  greeting: "Memory is on, so I follow the whole conversation. Tell me your name, then ask what it is. Flip 🧠 memory off and I answer each message cold, a stateless function with no recall of the last.",
   models: [
     { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
     { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
   ],
-  examples: ["Explain the agent loop in two sentences", "What is the capital of France?", "Write a haiku about an autonomous agent", "What's the difference between an LLM and an agent?", "Why does an agent need a loop instead of one call?", "Name three tools you'd give a coding agent"],
+  examples: ["My name is Ada. Remember it.", "What is my name?", "What is the capital of France?", "Explain the agent loop in two sentences", "Why does an agent need a loop instead of one call?"],
   respond: async (text, ctx) => {
-    const s = await helpers.chatStream({ messages: [{ role: "user", content: text }], model: ctx.model, max_tokens: 8196, signal: ctx.signal },
+    // ctx.history is the prior turns when memory is on, empty when it is off (the || [] also guards
+    // an older build of the widget that does not pass history through).
+    const messages = [...(ctx.history || []), { role: "user", content: text }];
+    const s = await helpers.chatStream({ messages, model: ctx.model, max_tokens: 8196, signal: ctx.signal },
       (t) => ctx.view.token(t), { onReasoning: (r) => ctx.view.reasoning(r) });
     if (s.usage) ctx.view.usage({ input: s.usage.prompt_tokens, output: s.usage.completion_tokens, model: s.model });
   },
 });
 helpers.log("rendered below. Edit the config and Run.");
 
-// Under the hood: mountChatUI renders the whole view, the model picker, markdown,
-// streaming tool chips, and a context meter. You write only respond().
+// Under the hood: mountChatUI renders the whole view, the model picker, markdown, streaming
+// tool chips, the context meter, the memory toggle, and edit-to-rewind. You write only respond().
 // Open the cell's helper menu to read chatStream and the rest.
 `,
     });
@@ -670,7 +694,6 @@ mountDiagram("#fig-agent-loop", {
     { from: "agent", to: "env", label: "act", side: "bottom", tint: "agent" },
     { from: "agent", to: "agent" },
   ],
-  caption: "Only perception and action cross the boundary, and the reasoning between them is a swappable socket.",
 });
 
 // ── Canvas 1: a reflex agent with zero LLMs ──────────────────────────────────

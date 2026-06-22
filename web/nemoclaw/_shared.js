@@ -412,8 +412,8 @@ export const SPECIALS = {
   },
   log: {
     sig: "<code>helpers.log(...args)</code>",
-    desc: `Append a line to this node's <em>log</em> area (under the streamed output). Also exposes <code>log.html(html)</code>, <code>log.svg(svgString)</code>, and <code>log.draw(W, H, body, opts)</code>, which wraps the SVG frame boilerplate so a cell only declares its marks.`,
-    src: `// helpers.log writes to THIS node's log area.\nhelpers.log("retrieved", hits.length, "chunks");\nhelpers.log.html("<b>done</b>");\nhelpers.log.svg("<svg viewBox='0 0 80 80'>...</svg>");\nhelpers.log.draw(320, 120, '<circle cx="60" cy="60" r="40" fill="#76b900"/>', { title: "demo" });`,
+    desc: `Append to this node's <em>log</em> area (under the streamed output). Plain values append as text; objects render as highlighted JSON. The family: <code>log.h(title)</code> heading, <code>log.json(label?, obj)</code>, <code>log.kv(obj)</code> key/value table, <code>log.details(summary, body)</code> collapsible, <code>log.html(html)</code>, <code>log.svg(svgString)</code>, <code>log.draw(W, H, body, opts)</code> (wraps the SVG frame so a cell only declares its marks), and <code>log.clear()</code>.`,
+    src: `// helpers.log writes to THIS node's log area. Plain values append as text; objects render as JSON.\nhelpers.log("retrieved", hits.length, "chunks");   // text line; extra args are space-joined\nhelpers.log.h("rerank");                            // a section heading\nhelpers.log.json("usage", res.usage);               // (label?, obj) pretty, syntax-highlighted JSON\nhelpers.log.kv({ model, tokens, ms });              // key/value table\nhelpers.log.details("raw response", res);           // collapsible block (object or string body)\nhelpers.log.html("<b>done</b>");                    // trusted HTML\nhelpers.log.svg("<svg viewBox='0 0 80 80'>...</svg>");  // inline SVG\nhelpers.log.draw(320, 120, '<circle cx="60" cy="60" r="40" fill="var(--gfx-green)"/>', { title: "demo" });\nhelpers.log.clear();                                // wipe this node's log area`,
   },
   signal: {
     sig: "<code>helpers.signal</code>",

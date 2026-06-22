@@ -83,7 +83,7 @@
     <figure style="margin:0;max-width:940px;width:100%">
       <img src="assets/rag_arch_2021.svg" alt="The original RAG architecture from Lewis et al. 2020. A query x is embedded by a query encoder q, then a maximum-inner-product search (MIPS) over a document index retrieves passages z. A generator p-theta conditions on the query together with each retrieved passage and marginalizes over them to produce the output y. An arrow across the top, labelled End-to-End Backprop through q and p-theta, shows that gradients flow back through both the generator and the query encoder, so the retriever and the generator are trained jointly."
            style="width:100%;height:auto;display:block;background:#fff;border:1px solid #d0d7de;border-radius:8px;padding:16px"/>
-      <figcaption style="text-align:center;font-size:.85rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">
+      <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">
         The original architecture, from <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al. 2020</a>,
         with the top-row backprop label that most systems built today leave out.
       </figcaption>
@@ -295,7 +295,7 @@
 </svg>
 
   </div>
-  <p style="text-align:center;font-size:.85rem;color:var(--gfx-sub,#8a8a8a);margin:-.4em 0 1.4em">
+  <p style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin:-.4em 0 1.4em">
     Adapted from <a href="https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/" target="_blank" rel="noopener">Hayden Wolff, <em>RAG 101</em></a> (NVIDIA, 2023)
     and <a href="https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-with-nvidia-ai-langchain-ai-endpoints/" target="_blank" rel="noopener">Amit Bleiweiss, <em>tips for building a RAG pipeline</em></a> (NVIDIA, 2024).
   </p>
@@ -474,7 +474,10 @@
     sentence-chunks, and a query that returns the matching <em>parent</em>.
   </p>
 
-  <div id="cell-m3b-p3"></div>
+  <figure style="margin:1.4em 0">
+    <div id="cell-m3b-p3"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">We embed and search the small child chunks, and each match hands its full parent document to the LLM.</figcaption>
+  </figure>
 
   <!-- ── Part 6: Retrieval as a tool ──────────────────────────────────────── -->
   <h2>Wrapping the index as a tool the model decides to call</h2>
@@ -704,7 +707,7 @@
 
   </svg>
 
-      <figcaption style="text-align:center;font-size:.85rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">
+      <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">
         The GraphRAG pipeline, redrawn from <a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">Edge et al. 2024</a>'s figure. The blue stages are built once, offline, and the green stages run on every question.
       </figcaption>
     </figure>
@@ -1180,7 +1183,6 @@ state.docs.forEach((d, di) => {
 });
 helpers.viz.diagram({
   title: "Hierarchy · search chunks, return the parent",
-  caption: "We embed and search the small child chunks, and each match hands its full parent document to the LLM.",
   nodes: treeNodes,
   edges: treeEdges,
 });

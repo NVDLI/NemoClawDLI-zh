@@ -63,10 +63,17 @@
   code { font-family: var(--mono); font-size: .9em; background: var(--e2);
          padding: 1px 6px; border-radius: 4px; color: var(--gs); }
 
+  /* Full-width sticky bar; its CONTENT is held to the same column as <main> by .topbar-inner,
+     so the logo/badge line up with the hero and cards. Flat var(--bg) (no black gradient) so it
+     reads correctly in light mode, matching the course pages' topbar. */
   .topbar {
-    display: flex; align-items: center; gap: 16px;
-    padding: 14px 36px; background: linear-gradient(180deg,#000,var(--bg));
+    background: var(--bg);
     border-bottom: 1px solid var(--e3); position: sticky; top: 0; z-index: 10;
+  }
+  .topbar-inner {
+    display: flex; align-items: center; gap: 16px;
+    max-width: min(62.5rem,100%); margin: 0 auto;
+    padding: 14px clamp(1rem,4vw,2rem);
   }
   .topbar .logo { font-weight: 700; font-size: 1rem; color: var(--g);
                   letter-spacing: .04em; }
@@ -117,24 +124,15 @@
   }
   .callout strong { color: var(--gs); }
 
-  /* API key panel */
-  .keybar { background:var(--e1); border:1px solid var(--e3);
-            border-left:3px solid var(--g); border-radius:0 10px 10px 0;
-            padding:14px 18px; margin:1.6em 0 0; }
-  .keybar-row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
-  .keybar-label { font-weight:700; color:var(--gs); font-size:.92rem; }
-  .keybar input { flex:1; min-width:230px; background:var(--bg);
-                  border:1px solid var(--e3); border-radius:7px; color:var(--tx);
-                  font-family:var(--mono); font-size:.86rem; padding:9px 12px; }
-  .keybar input:focus { outline:none; border-color:var(--g); }
-  .keybar button { background:var(--g); color:#000; border:0; border-radius:7px;
-                   font-weight:700; font-size:.86rem; padding:9px 16px; cursor:pointer; }
-  .keybar button:hover { background:var(--gs); }
-  .key-status { font-size:.84rem; font-family:var(--mono); color:var(--tf); }
-  .key-status.ok { color:var(--gs); }
-  .key-status.err { color:var(--err); }
-  .keybar-hint { font-size:.84rem; color:var(--td); margin:.7em 0 0;
-                 max-width:760px; line-height:1.55; }
+  /* Source & tooling: small button-chips */
+  .src-links { display: flex; flex-wrap: wrap; gap: 10px; }
+  .src-links a {
+    font-family: var(--mono); font-size: .82rem; color: var(--gs);
+    background: var(--e1); border: 1px solid var(--e3); border-radius: 8px;
+    padding: 7px 14px; text-decoration: none;
+    transition: border-color .15s, background .15s;
+  }
+  .src-links a:hover { border-color: var(--g); background: rgba(118,185,0,.06); text-decoration: none; }
 
   footer { margin-top: 4em; padding-top: 1.6em; border-top: 1px solid var(--e3);
            color: var(--tf); font-size: .82rem; }
@@ -146,11 +144,13 @@
 </head>
 <body>
 <div class="topbar">
-  <span class="logo">NVIDIA DLI</span>
-  <span class="crumb">/ browser courses · foyer</span>
-  <span class="spacer"></span>
-  <button type="button" class="theme-toggle" aria-label="Toggle dark or light theme"></button>
-  <span class="badge">Building Agents</span>
+  <div class="topbar-inner">
+    <span class="logo">NVIDIA DLI</span>
+    <span class="crumb">/ browser courses · foyer</span>
+    <span class="spacer"></span>
+    <button type="button" class="theme-toggle" aria-label="Toggle dark or light theme"></button>
+    <span class="badge">Building Agents</span>
+  </div>
 </div>
 
 <main>
@@ -167,7 +167,7 @@
   <div class="paths">
     <a class="path-card" href="/lab/static/nemoclaw/index.html">
       <span class="label">Web course</span>
-      <h2>Securing Agents</h2>
+      <h2>Securing Agents with OpenShell and NemoClaw</h2>
       <span class="duration">4 modules</span>
       <p>
         Safety sits at the center the whole way through. You cover the agent loop and
@@ -180,24 +180,8 @@
 
   <div class="callout">
     <strong>No setup needed.</strong> In the lab, every page already routes through the
-    course model gateway, so the cells just work. Reading the same pages inside edX shows
-    the text fine, but the live cells there cannot reach this lab unless you supply your
-    own key below.
-  </div>
-
-  <div class="keybar">
-    <div class="keybar-row">
-      <span class="keybar-label">🔑 API key (optional)</span>
-      <input type="password" id="key-input" placeholder="nvapi-…  /  sk-…  /  Bedrock token"
-             autocomplete="off" spellcheck="false"/>
-      <button id="key-set" type="button">Set for this lab</button>
-      <span id="key-status" class="key-status"></span>
-    </div>
-    <p class="keybar-hint">
-      The lab already holds a course key, so you usually need nothing here. Paste your own
-      <code>nvapi-</code>, <code>sk-</code>, or Bedrock key to bill your own account instead.
-      It goes to the course model gateway, never to the page.
-    </p>
+    course model gateway, so the cells just work. Inside edX the text reads fine, but the
+    live cells there need your own API key, which each course page lets you set.
   </div>
 
   <section class="source" style="margin:1.8em 0">
@@ -206,12 +190,12 @@
       Every folder of the bundle opens in the browser. Read a folder's source in context and ask the
       model about it (bring a key), or inspect how the pieces connect and verify.
     </p>
-    <div class="src-links" style="display:flex;flex-wrap:wrap;gap:10px 20px;font-size:.92rem">
-      <a href="/lab/static/cors-proxy/SKILL.html">CORS proxy workers &rarr;</a>
-      <a href="/lab/static/scripts/SKILL.html">The toolchain &rarr;</a>
-      <a href="/lab/static/docs/SKILL.html">Deploy &amp; agent notes &rarr;</a>
-      <a href="/lab/static/workspace/SKILL.html">The lab image &rarr;</a>
-      <a href="/lab/static/scripts/link_graph.html">Link graph &rarr;</a>
+    <div class="src-links">
+      <a href="/lab/static/cors-proxy/SKILL.html">CORS proxy workers</a>
+      <a href="/lab/static/scripts/SKILL.html">The toolchain</a>
+      <a href="/lab/static/docs/SKILL.html">Deploy &amp; agent notes</a>
+      <a href="/lab/static/workspace/SKILL.html">The lab image</a>
+      <a href="/lab/static/scripts/link_graph.html">Link graph</a>
       <!-- build:deploy-tools : build_pages injects the deploy-only gate + test-runner links here -->
     </div>
   </section>
@@ -277,55 +261,6 @@
     paint();
   });
   paint();
-})();
-
-// API-key panel. Pushes a pasted key to the course model gateway (the lab's sole
-// keyholder) at the JUPYTER_TOKEN-gated /lab/svc/llm/admin/set-key route, which infers
-// the provider from the prefix. Same endpoint the course pages and kickstart use.
-(function () {
-  var inp = document.getElementById("key-input");
-  var btn = document.getElementById("key-set");
-  var st  = document.getElementById("key-status");
-  if (!inp || !btn || !st) return;
-  function provider(k) {
-    if (k.indexOf("nvapi-") === 0) return "nvidia";
-    if (k.indexOf("sk-") === 0)    return "openai";
-    if (k.length >= 20)            return "bedrock";
-    return "";
-  }
-  function setStatus(msg, cls) { st.textContent = msg; st.className = "key-status" + (cls ? " " + cls : ""); }
-  async function submit() {
-    var k = (inp.value || "").trim();
-    var p = provider(k);
-    if (!p) { setStatus("Need an nvapi-, sk-, or Bedrock key.", "err"); return; }
-    setStatus("Setting…");
-    btn.disabled = true;
-    try {
-      var r = await fetch("/lab/svc/llm/admin/set-key", {
-        method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: k, provider: p }),
-      });
-      if (r.status === 409) {
-        // The gateway refused to let this key replace a stronger working one.
-        var d = await r.json().catch(function () { return null; });
-        var why = (d && d.detail && d.detail.error) ? d.detail.error : "it would weaken the shared key";
-        setStatus("Kept the existing key: " + why, "err");
-        return;
-      }
-      if (!r.ok) throw new Error("gateway " + r.status);
-      var out = await r.json();
-      if (out && out.ok === false) { setStatus("Key set, but no models resolved. Check it.", "err"); return; }
-      setStatus("✓ " + p + " key active for this lab.", "ok");
-      inp.value = "";
-    } catch (e) {
-      setStatus("Could not set the key (" + e.message + ").", "err");
-    } finally {
-      btn.disabled = false;
-    }
-  }
-  btn.addEventListener("click", submit);
-  inp.addEventListener("keydown", function (e) { if (e.key === "Enter") submit(); });
 })();
 </script>
 </body>

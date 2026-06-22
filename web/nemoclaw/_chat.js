@@ -16,6 +16,9 @@ export function ensureChatStyles() {
       .chatui-ctx{font-family:var(--mono,monospace);font-size:.7rem;color:var(--tf,#8a8a8a)}
       .chatui-reset{background:var(--e1,#161616);color:var(--td,#b0b0b0);border:1px solid var(--bd,#2a2a2a);border-radius:6px;padding:5px 11px;font-size:.76rem;cursor:pointer}
       .chatui-reset:hover{border-color:var(--g,#76b900);color:var(--gs,#aee23a)}
+      .chatui-mem{background:var(--e1,#161616);color:var(--td,#b0b0b0);border:1px solid var(--bd,#2a2a2a);border-radius:6px;padding:5px 11px;font-size:.76rem;cursor:pointer;font-family:var(--mono,monospace)}
+      .chatui-mem:hover{border-color:var(--g,#76b900)}
+      .chatui-mem.on{background:rgba(118,185,0,.12);color:var(--gs,#aee23a);border-color:var(--g,#76b900)}
       .chatui-mods{display:flex;align-items:center;flex-wrap:wrap;gap:5px;width:100%;margin-top:2px}
       .chatui-modchip{font-family:var(--mono,monospace);font-size:.68rem;color:var(--td,#b0b0b0);background:var(--e1,#161616);border:1px solid var(--bd,#2a2a2a);border-radius:999px;padding:2px 9px;cursor:pointer}
       .chatui-modchip:hover{border-color:var(--g,#76b900)}
@@ -76,14 +79,18 @@ export function mountChatUI(container, opts = {}) {
   /* @doc <code>helpers.mountChatUI(el, opts)</code> ::
        Render a live, observable chat artifact (controls + streaming transcript + input) into
        <code>el</code>. <code>opts</code>: <code>{ modules:[{id,title}], models:[{id,label}],
-       intro, greeting, respond(text, ctx), onReset() }</code>. <code>respond</code> streams
+       intro, greeting, memory, respond(text, ctx), onReset() }</code>. With <code>memory:true</code>
+       the widget keeps the conversation, shows a memory toggle (starts on), offers prior turns as
+       <code>ctx.history</code> (empty while the toggle is off, so the same respond reads as a stateless
+       function), and makes the edit button rewind the transcript to that turn. <code>respond</code> streams
        into <code>ctx.view</code>: <code>view.token(t)</code> (answer, rendered as markdown),
        <code>view.reasoning(t)</code> (a collapsible thinking trace), <code>view.tool(label,
        detail)</code> (a tool chip that expands to show <code>detail</code>),
        <code>view.usage({input, output})</code> (per-turn tokens + running context),
        <code>view.html(h)</code>, <code>view.error(msg)</code>. <code>ctx</code> has <code>{
-       module, modules, model, thread, turn }</code>, where <code>modules</code> is the array of
-       pinned page ids (empty = auto). Returns <code>{ thread, reset(), ctx }</code>.
+       module, modules, model, thread, turn, history, memory }</code>, where <code>modules</code> is the
+       array of pinned page ids (empty = auto) and <code>history</code> is the prior turns to prepend
+       when memory is on. Returns <code>{ thread, reset(), ctx }</code>.
   */
   const el = typeof container === "string" ? document.querySelector(container) : container;
   if (!el) return null;
@@ -98,12 +105,21 @@ export function mountChatUI(container, opts = {}) {
   ensureChatStyles();
   const modules = opts.modules || [];
   const models  = opts.models || [];
+  // Opt-in conversation memory (opts.memory === true): the widget keeps a history of completed turns,
+  // offers it to respond via ctx.history, exposes a toggle (starts on), and rewinds it on edit. Left off
+  // for artifacts that manage their own memory (the createReactAgent path keeps history server-side).
+  const memoryEnabled = opts.memory === true;
+  let memoryOn = memoryEnabled;
+  const history = [];   // [{role,content}] of completed turns, surfaced as ctx.history while memory is on
+  const memToggle = memoryEnabled
+    ? `<button class="chatui-mem on" type="button" aria-pressed="true" title="When on, the model sees the whole conversation. Turn it off to watch it answer each message as a stateless function with no recall.">🧠 memory: on</button>`
+    : "";
   const modelSel = models.length
     ? `<label>Model</label><select class="chatui-model">${models.map(m => `<option value="${escHtml(m.id)}">${escHtml(m.label || m.id)}</option>`).join("")}</select>` : "";
   const modChips = modules.length
     ? `<div class="chatui-mods"><label>Pages</label>${modules.map(m => `<button type="button" class="chatui-modchip" data-id="${escHtml(m.id)}" title="${escHtml(m.title || m.id)}">${escHtml(m.id)}</button>`).join("")}<span class="chatui-ctx" data-pinhint>none pinned = auto-select</span></div>` : "";
   el.innerHTML = `<div class="chatui">
-      <div class="chatui-bar">${modelSel}<span class="chatui-ctx chatui-ctxwrap" data-ctx hidden><span data-ctxtext></span><span class="chatui-ctxbar"><span class="chatui-ctxfill"></span></span></span><span class="sp"></span><button class="chatui-reset" type="button">↺ New chat</button>${modChips}</div>
+      <div class="chatui-bar">${modelSel}<span class="chatui-ctx chatui-ctxwrap" data-ctx hidden><span data-ctxtext></span><span class="chatui-ctxbar"><span class="chatui-ctxfill"></span></span></span><span class="sp"></span>${memToggle}<button class="chatui-reset" type="button">↺ New chat</button>${modChips}</div>
       <div class="chatui-log"></div>
       <div class="chatui-in"><textarea class="chatui-text" rows="1" placeholder="Ask a question…"></textarea><button class="chatui-send" type="button">Send</button></div>
     </div>`;
@@ -116,12 +132,23 @@ export function mountChatUI(container, opts = {}) {
   const ctxEl = el.querySelector("[data-ctx]");
   const chips = [...el.querySelectorAll(".chatui-modchip")];
   chips.forEach(c => c.addEventListener("click", () => c.classList.toggle("on")));
+  const memBtn = el.querySelector(".chatui-mem");
+  if (memBtn) memBtn.addEventListener("click", () => {
+    memoryOn = !memoryOn;
+    memBtn.classList.toggle("on", memoryOn);
+    memBtn.setAttribute("aria-pressed", String(memoryOn));
+    memBtn.textContent = "🧠 memory: " + (memoryOn ? "on" : "off");
+  });
   const selectedModules = () => chips.filter(c => c.classList.contains("on")).map(c => c.dataset.id);
   const ctx = { thread: "chat-" + Math.random().toString(36).slice(2, 9), turn: 0, _ctx: 0,
                 get modules() { return selectedModules(); },
                 get module() { const s = selectedModules(); return s[0] || "auto"; },   // back-compat
                 get model()  { return modelEl ? modelEl.value : (models[0] && models[0].id) || null; },
-                get window() { return contextWindow(ctx.model); } };
+                get window() { return contextWindow(ctx.model); },
+                // Prior turns for respond to prepend, when memory is enabled and on; empty otherwise, so
+                // the same respond renders a stateless function the moment the student flips memory off.
+                get history() { return (memoryEnabled && memoryOn) ? history.map(m => ({ ...m })) : []; },
+                get memory()  { return memoryEnabled && memoryOn; } };
 
   const ctxText = el.querySelector("[data-ctxtext]");
   const ctxFill = el.querySelector(".chatui-ctxfill");
@@ -152,18 +179,28 @@ export function mountChatUI(container, opts = {}) {
   // A control row under a message. It can copy the text.
   // The student's own messages also get edit-and-requeue.
   // That drops the text back in the box to tweak and resend.
-  const addMsgControls = (side, getText, editable) => {
+  const addMsgControls = (side, getText, editable, editHandler) => {
     const row = document.createElement("div"); row.className = "chatui-msgctl " + side;
     const copy = document.createElement("button"); copy.type = "button"; copy.textContent = "⎘ copy";
     copy.addEventListener("click", () => { navigator.clipboard.writeText(getText() || "").then(() => { copy.textContent = "copied ✓"; setTimeout(() => { copy.textContent = "⎘ copy"; }, 1200); }).catch(() => {}); });
     row.appendChild(copy);
     if (editable) {
-      const edit = document.createElement("button"); edit.type = "button"; edit.textContent = "✎ edit & requeue";
-      edit.addEventListener("click", () => { if (running) return; text.value = getText() || ""; text.style.height = "auto"; text.style.height = Math.min(text.scrollHeight, 120) + "px"; text.focus(); });
+      const edit = document.createElement("button"); edit.type = "button";
+      // With memory, edit rewinds the conversation to this point (time travel); otherwise it just
+      // drops the text back in the box to tweak and resend.
+      edit.textContent = editHandler ? "✎ edit · rewind here" : "✎ edit & requeue";
+      edit.addEventListener("click", () => {
+        if (running) return;
+        if (editHandler) editHandler();          // truncate transcript + memory back to this turn, refill the box
+        else text.value = getText() || "";
+        text.style.height = "auto"; text.style.height = Math.min(text.scrollHeight, 120) + "px"; text.focus();
+      });
       row.appendChild(edit);
     }
     log.appendChild(row); scroll(); return row;
   };
+  // Remove a node and every node after it in the log (used to rewind the transcript on edit).
+  const removeFrom = (node) => { let n = node; while (n) { const nx = n.nextSibling; n.remove(); n = nx; } };
   // Clickable starter prompts that invite a real first interaction.
   // One click fills the box, and the student can edit it before sending.
   const addExamples = () => { if (!opts.examples || !opts.examples.length) return;
@@ -178,9 +215,19 @@ export function mountChatUI(container, opts = {}) {
   async function send() {
     const q = text.value.trim();
     if (!q || running) return;
+    const histMark = history.length, turnMark = ctx.turn;   // where "edit · rewind here" rolls back to
     text.value = ""; text.style.height = "auto";
-    bubble("chatui-user", q);
-    addMsgControls("user", () => q, true);   // copy, and edit-and-requeue this message
+    const userBub = bubble("chatui-user", q);
+    // With memory on, editing this message is time travel: drop it and everything after, roll the
+    // history back to before this turn, and refill the box so the resend continues from this point.
+    const editHandler = memoryEnabled ? () => {
+      removeFrom(userBub);
+      history.length = Math.min(history.length, histMark);
+      ctx.turn = turnMark;
+      setBudget(0);
+      text.value = q;
+    } : null;
+    addMsgControls("user", () => q, true, editHandler);   // copy + edit (rewind, or plain requeue)
     // One container per turn, with no fixed slots and no reordering.
     // Reasoning, tool, and answer blocks are appended in the order they stream.
     // The transcript reads exactly as the agent ran: reason, act, observe, answer.
@@ -254,7 +301,7 @@ export function mountChatUI(container, opts = {}) {
       error(msg) { errored = true; flush(); cur = null; const d = document.createElement("div"); d.className = "chatui-msg chatui-bot err"; d.textContent = "⚠ " + msg; turn.appendChild(d); scroll(); },
     };
 
-    try { await opts.respond(q, { module: ctx.module, modules: ctx.modules, model: ctx.model, thread: ctx.thread, turn: ctx.turn, window: ctx.window, signal: curAC.signal, view }); }
+    try { await opts.respond(q, { module: ctx.module, modules: ctx.modules, model: ctx.model, thread: ctx.thread, turn: ctx.turn, window: ctx.window, history: ctx.history, memory: ctx.memory, signal: curAC.signal, view }); }
     catch (e) { if (!curAC.signal.aborted) view.error(e && e.message ? e.message : String(e)); }
     finally {
       flush(); endThink();
@@ -262,6 +309,9 @@ export function mountChatUI(container, opts = {}) {
       if (curAC.signal.aborted) view.note("⏹ stopped");
       else if (!answered && !errored) { const d = document.createElement("div"); d.className = "chatui-msg chatui-bot"; d.textContent = "(no answer)"; turn.appendChild(d); }
       addMsgControls("bot", () => (roundAnswer && roundAnswer._t) || turn.innerText || "", false);   // copy the reply
+      // Record the completed turn so ctx.history can carry it into the next call while memory is on.
+      if (memoryEnabled && !curAC.signal.aborted && !errored)
+        history.push({ role: "user", content: q }, { role: "assistant", content: (roundAnswer && roundAnswer._t) || "" });
       running = false; curAC = null;
       sendBtn.textContent = "Send"; sendBtn.classList.remove("stop");
       ctx.turn++; text.focus();
@@ -277,6 +327,7 @@ export function mountChatUI(container, opts = {}) {
     if (opts.greeting) bubble("chatui-bot", opts.greeting);
     addExamples();
     ctx.thread = "chat-" + Math.random().toString(36).slice(2, 9); ctx.turn = 0; setBudget(0);
+    history.length = 0;
     if (opts.onReset) try { opts.onReset(ctx); } catch (_) {}
   }
   resetBtn.addEventListener("click", reset);
