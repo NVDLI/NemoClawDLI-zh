@@ -83,7 +83,7 @@
   .key-btn-ghost:hover { background: var(--e2); color: var(--gs); }
   .key-status { margin-top: .7em; font-size: .86rem; font-family: var(--mono); min-height: 1.2em; }
   .key-status.ok  { color: var(--gs); }
-  .key-status.err { color: #f87171; }
+  .key-status.err { color: var(--err); }
   .key-note { margin-top: .8em; font-size: .8rem; color: var(--tf); }
 
   /* ── Module map ────────────────────────────────────────────────────── */
@@ -125,8 +125,8 @@
               transition: border-color .12s, background .12s; }
   .sys-card:hover { border-color: var(--g); background: rgba(118,185,0,.04); text-decoration: none; }
   .sys-card.models   { border-top: 3px solid var(--g); }
-  .sys-card.search   { border-top: 3px solid #58a6ff; }
-  .sys-card.runtime  { border-top: 3px solid #8250df; }
+  .sys-card.search   { border-top: 3px solid var(--gfx-blue); }
+  .sys-card.runtime  { border-top: 3px solid var(--gfx-purple); }
   .sys-card .sys-label { font-family: var(--mono); font-size: .7rem; text-transform: uppercase;
                          letter-spacing: .1em; color: var(--tf); margin-bottom: .35em; }
   .sys-card .sys-name { font-weight: 700; font-size: .95rem; color: var(--gs); margin: 0 0 .35em; }
@@ -144,7 +144,7 @@
 </head>
 <body>
 <div class="topbar">
-  <span class="logo">NVIDIA DLI</span>
+  <a class="logo" href="../index.html">NVIDIA DLI</a>
   <span class="crumb">/ Securing Agents with OpenShell and NemoClaw</span>
   <span class="spacer"></span>
   <span class="badge" id="key-badge">no key yet</span>
@@ -155,12 +155,10 @@
     <div class="eyebrow">Course home</div>
     <h1>Securing Agents with <span class="accent">OpenShell</span> and <span class="accent">NemoClaw</span></h1>
     <p class="lead">
-      Modern agents are simple underneath: a model wired to tools, memory, and a
-      routing decision, looping until the task is done. This short course builds
-      that system from a single API call, then layers on coordination and
-      retrieval, deep planning, and safe deployment on NVIDIA OpenClaw inside the
-      NemoClaw sandbox. It runs entirely in your browser; there is no lab to
-      provision and nothing to install.
+      An agent is a model that runs in a loop, calling a tool and feeding the result back to
+      itself until the task is done. You build one here from a single API call and grow it
+      module by module into a planning agent deployed under NVIDIA OpenClaw's sandbox. It runs
+      in your browser, with no lab to provision and nothing to install.
     </p>
   </div>
 
@@ -176,7 +174,7 @@
     <p class="help">
       The key is saved in <code>localStorage</code> on this browser, so it persists
       across reloads and tabs and carries over to both courses until you clear it
-      with the Change button. It is sent to the hosted proxy, never written into any page.
+      with the Change button. The browser sends it to the hosted proxy and never writes it into any page.
     </p>
     <div class="key-panel">
       <label for="key-input">NVIDIA API key (starts with <code>nvapi-</code>)</label>
@@ -196,17 +194,15 @@
   <div class="section">
     <h2>What you'll build</h2>
     <p class="help">
-      Each module is one tight idea. The last two are the payoff: instead of mocked
-      panels, you point the browser at a live OpenClaw runtime and watch the same
-      loop you wrote in Module 1 run against the sandbox.
+      Each module covers one idea. In the last two the runtime is real: you run the same loop
+      you wrote in Module 1 against an OpenClaw sandbox instead of a mock.
     </p>
 
     <p>
-      The four modules build in layers. You write the bare loop by hand, add coordination
-      and retrieval on top of it, then drive the real thing under a policy you can tighten.
-      Each page ends in something you run, and the order is a suggestion: act on what a page
-      gives you, and come back for the next layer when a task needs it. This progression is
-      the shape this course chose, and it is one of the shapes a course can take here.
+      You write the bare loop by hand. Later pages add coordination and retrieval on top of it
+      and then drive the real runtime under a policy you can tighten. Every page ends in something
+      you run. Treat the order as a suggestion. Take what a page gives you and come back for the
+      next layer when a task needs it.
     </p>
 
     <div class="start-row">
@@ -279,21 +275,22 @@
     <h2>What this course runs on</h2>
     <p class="help">
       Every exercise reaches one of three self-contained systems, all from the
-      browser. Nothing else is needed: no DLI lab, no local install.
+      browser. A single tab is the whole environment, so you skip the DLI lab
+      setup and the usual local toolchain.
     </p>
     <div class="sys-grid">
       <a class="sys-card models" href="https://build.nvidia.com" target="_blank" rel="noopener">
         <div class="sys-label">Models</div>
         <div class="sys-name">build.nvidia.com</div>
         <div class="sys-desc">NVIDIA-hosted Nemotron models, OpenAI-compatible, reached through a
-          hosted Cloudflare proxy. Your <code>nvapi-</code> key is the only thing you bring;
-          the proxy keeps it server-side.</div>
+          hosted Cloudflare proxy. Your <code>nvapi-</code> key is the only thing you bring,
+          and the proxy keeps it server-side.</div>
       </a>
       <a class="sys-card search" href="./glossary.html">
         <div class="sys-label">Search</div>
         <div class="sys-name">Materials catalog</div>
-        <div class="sys-desc">webSearch ranks the materials catalog (the cached NVIDIA glossary plus
-          on-demand papers and posts) that ships with the course; instantAnswer returns one glossary
+        <div class="sys-desc">webSearch ranks everything that ships with the course, covering
+          the cached NVIDIA glossary alongside on-demand papers and posts. instantAnswer returns one glossary
           definition when the query names a term. Open the explorer to see every material, its tier,
           the live API, and the search the agent runs.</div>
       </a>
@@ -307,55 +304,18 @@
     </div>
   </div>
 
-  <div class="section">
-    <h2>For the curious: the fundamentals under the patterns</h2>
-    <p class="help">
-      This is a hands-on course, and you can finish every module without opening a
-      single paper. But the patterns you build did not appear from nowhere, and the
-      gap between a foundational idea and its off-the-shelf version is usually where
-      the real engineering lives. If you like knowing why a technique works, a few
-      of these threads are worth pulling.
-    </p>
-    <p class="help">
-      Take retrieval-augmented generation. Today "RAG" almost always means a frozen,
-      off-the-shelf model with a search tool wired in front of it. The paper that
-      named RAG did something more fundamental: it trained the retriever and the
-      generator <em>together</em>, end to end, so the retriever learned what the
-      model needed and the model learned to use what it retrieved. That joint
-      optimization is the part most production systems set aside for practicality,
-      and knowing it tells you where a bolted-on retriever's ceiling sits and which
-      knobs raise it.
-    </p>
-    <div style="display:flex;justify-content:center;margin:1.2em 0">
-      <figure style="margin:0;max-width:680px;width:100%">
-        <img src="assets/rag_arch_2021.svg" alt="The original RAG architecture from Lewis et al. 2020: a query is encoded and used to retrieve passages from a document index, a generator conditions on the query and the retrieved passages to produce an answer, and an arrow across the top labelled End-to-End Backprop through q and p-theta shows the retriever and generator are trained jointly."
-             style="width:100%;height:auto;display:block;background:#fff;border:1px solid #d0d7de;border-radius:8px;padding:14px"/>
-        <figcaption style="text-align:center;font-size:.85rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">
-          The original RAG architecture (<a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al. 2020</a>). The label across the top is the foundational idea today's off-the-shelf RAG quietly drops. <a href="02b-rag.html">Unpacked in Module 2b.</a>
-        </figcaption>
-      </figure>
-    </div>
-    <p class="help">
-      Module 2b follows the thread forward, too, to GraphRAG (Edge et al. 2024), which
-      rebuilds a corpus into a summarized knowledge graph so it can answer global,
-      corpus-wide questions that no amount of top-K retrieval reaches. Foundations and
-      frontier, both shown through the original figures, live in
-      <a href="02b-rag.html">The Index Agent</a>.
-    </p>
-  </div>
 
   <div class="callout">
-    <strong>This course is self-contained.</strong> It does not depend on a DLI lab
-    or its microservices, and there is no separate assessment to sit. Bring an
-    <code>nvapi-</code> key, work the four modules, and finish on
-    <a href="./04c-going-further.html">Going Further</a>,
-    which maps where to take these patterns next.
+    <strong>This course is self-contained.</strong> It runs without any DLI lab or its
+    microservices and asks you to sit no separate assessment. Bring an <code>nvapi-</code>
+    key and work the four modules in order before reaching the closing page
+    <a href="./04c-going-further.html">Going Further</a>, which maps where to take these
+    patterns next.
   </div>
 
   <footer>
     <p>
-      The quick, self-contained path.
-      Issues or feedback:
+      Send issues or feedback through the
       <a href="https://www.nvidia.com/en-us/training/" target="_blank" rel="noopener">NVIDIA DLI training portal</a>.
     </p>
   </footer>
@@ -371,9 +331,8 @@ const status = document.getElementById("key-status");
 const input  = document.getElementById("key-input");
 const saveBtn = document.getElementById("key-save");
 
-// Strip characters the browser's fetch rejects in HTTP headers (non-printable,
-// non-ASCII). Invisible Unicode (zero-width spaces, smart quotes from autocomplete)
-// causes "non ISO-8859-1 code point" fetch errors that students cannot diagnose.
+// Strip non-ASCII before sending: invisible Unicode (zero-width spaces, smart quotes)
+// trips a "non ISO-8859-1 code point" fetch error that students cannot diagnose.
 function sanitizeKey(raw) { return raw.trim().replace(/[^\x20-\x7E]/g, ""); }
 
 function addChangeBtn() {
@@ -405,11 +364,12 @@ async function save() {
   if (!clean.startsWith("nvapi-")) {
     status.className = "key-status err"; status.textContent = "Key should start with nvapi-"; return;
   }
+
   status.className = "key-status"; status.textContent = "Verifying…";
   try {
     // Verify BEFORE storing so a failed verify never locks the input.
     setKey(clean);
-    const r = await chat({ messages: [{ role: "user", content: "Reply with the single word: ready" }], max_tokens: 10 });
+    const r = await chat({ messages: [{ role: "user", content: "Reply with the single word: ready" }], max_tokens: 8196 });
     const reply = r.choices?.[0]?.message?.content?.trim() || "(empty)";
     status.className = "key-status ok"; status.textContent = `✓ Connected. Model replied: "${reply}"`;
     reflectSaved();
@@ -418,13 +378,12 @@ async function save() {
     status.className = "key-status err"; status.textContent = `Connection failed: ${e.message}`;
   }
 }
+
 saveBtn.addEventListener("click", save);
 input.addEventListener("keydown", e => { if (e.key === "Enter") save(); });
 
-// The nvapi key set above (and any OpenClaw URL/token set later) now lives in
-// localStorage, so it survives across tabs, reloads, and both courses. Internal course
-// links still navigate in the SAME tab on purpose (cleaner UX: one tab, working back
-// button); only the external links (build.nvidia.com, Brev) open new tabs.
+// The nvapi key (and any OpenClaw URL/token set later) lives in localStorage, so it
+// survives across tabs, reloads, and both courses.
 </script>
 </body>
 </html>

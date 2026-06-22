@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="page-role" content="tool"/>
 <title>Studio View · Securing Agents</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
@@ -52,7 +53,7 @@ body{
 .tb-btn.danger{border-color:#d1242f;color:#d1242f}
 .tb-spacer{flex:1}
 .tb-status{font-size:.76rem;color:#666;white-space:nowrap}
-.tb-status.ok{color:var(--gd)}.tb-status.warn{color:#c2410c}
+.tb-status.ok{color:var(--gd)}.tb-status.warn{color:var(--warn,#c2410c)}
 
 /* ── Layout ──────────────────────────────────────────────── */
 .studio-layout{display:flex;flex:1;min-height:0;overflow:hidden}
@@ -333,7 +334,7 @@ body{
           <div class="sb-note">Check changes below, then save only those you want.</div>
           <div id="chg-list"><div class="empty-hint">No pending edits.</div></div>
           <button class="sb-btn primary" id="save-sel-btn" disabled>💾 Save checked</button>
-          <div class="sb-note" style="color:#c2410c">Run outputs are never saved. Only the code and text you edit persist.</div>
+          <div class="sb-note" style="color:var(--warn,#c2410c)">Run outputs are never saved. Only the code and text you edit persist.</div>
         </div>
       </div>
 

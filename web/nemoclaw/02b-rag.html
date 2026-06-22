@@ -22,7 +22,7 @@
   .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
   figure.lp-video { margin: 1.4em 0; }
   figure.lp-video .video-wrap { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;
-     border-radius: 8px; border: 1px solid #2a2a2a; background: #161616; }
+     border-radius: 8px; border: 1px solid var(--bd); background: var(--e1); }
   figure.lp-video .video-wrap iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
   figure.lp-video figcaption { font-size: .88rem; color: var(--td,#b0b0b0); line-height: 1.6; margin-top: .55em; }
   figure.lp-video figcaption b { color: var(--gs,#aee23a); }
@@ -43,298 +43,421 @@
     <div class="eyebrow">Module 2 · Part B of 3</div>
     <h1>The <span>Index</span> Agent</h1>
     <p class="lead">
-      Data comes in several shapes, and each shape calls for a different
-      retrieval strategy. Real-world corpora mix them, and matching the
-      wrong strategy to the shape is the most common reason an Index Agent
-      fails silently in production. The Index Agent brings outside knowledge to a
-      Workflow Agent: a corpus indexed for retrieval, plus wiring
-      that turns retrieval into an agent tool. This page covers the
-      four data shapes, builds the fuzzy-prose case end to end
-      (embed, index, retrieve, retrieve-as-tool), and points at
-      where the other three shapes live in depth.
+      Data comes in several shapes, and each shape wants a different retrieval
+      strategy; matching the wrong one to your data is the most common reason an
+      Index Agent fails silently in production.
     </p>
-
-    <figure class="lp-video">
-      <div class="video-wrap">
-        <iframe src="https://www.youtube-nocookie.com/embed/e7Io9dr_WhI?autoplay=0&rel=0"
-          title="Introduction: Agentic RAG" loading="lazy"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
-      </div>
-      <figcaption><b>Watch:</b> An overview of agentic RAG and how a RAG agent reasons, plans, and orchestrates its own retrieval rather than running a fixed lookup. It frames the Index Agent you build below, which is exactly the retrieval tool such an agent decides to call. Part of NVIDIA's <a href="https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/how-to-build-agentic-ai-rag" target="_blank" rel="noopener">Agentic AI Learning Path</a>.</figcaption>
-    </figure>
-
-    <div style="display:flex;justify-content:center;margin:1.4em 0 1.8em">
-      <svg viewBox="0 0 800 460" xmlns="http://www.w3.org/2000/svg"
-         style="width:100%;max-width:1100px;display:block;margin:1.2em auto"
-         font-family="system-ui, -apple-system, sans-serif"
-         role="img" aria-label="Retrieval-augmented generation pipeline. The user query enters the LLM core, which issues an embed-and-retrieve call against the passage index, then generates a grounded answer from the returned top-K passages.">
-    <defs>
-      <marker id="rag-arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
-        <path d="M0,0 L10,5 L0,10 Z" fill="#a5a5a5"/>
-      </marker>
-      <marker id="rag-arrow-purple" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
-        <path d="M0,0 L10,5 L0,10 Z" fill="#a78bfa"/>
-      </marker>
-      <marker id="rag-arrow-orange" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
-        <path d="M0,0 L10,5 L0,10 Z" fill="#cc7a00"/>
-      </marker>
-      <marker id="rag-arrow-green" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
-        <path d="M0,0 L10,5 L0,10 Z" fill="#76b900"/>
-      </marker>
-    </defs>
-  
-    <rect width="800" height="460" fill="#0d0d0d" rx="12"/>
-  
-    <!-- USER QUERY (blue, top-left) -->
-    <rect x="20" y="60" width="180" height="70" fill="#1e1e3a" stroke="#3b82f6" stroke-width="2" rx="8"/>
-    <text x="110" y="88" text-anchor="middle" font-weight="bold" fill="#3b82f6" font-size="13">1. USER QUERY</text>
-    <text x="110" y="108" text-anchor="middle" fill="#a5a5a5" font-size="11">"how does</text>
-    <text x="110" y="122" text-anchor="middle" fill="#a5a5a5" font-size="11">embedding work?"</text>
-  
-    <!-- LLM ENGINE (purple, centre) -->
-    <rect x="290" y="160" width="220" height="130" fill="#1a1a2e" stroke="#a78bfa" stroke-width="2" rx="15"/>
-    <text x="400" y="200" text-anchor="middle" font-weight="bold" fill="#a78bfa" font-size="17">LLM ENGINE</text>
-    <text x="400" y="222" text-anchor="middle" fill="#d2b9ff" font-size="12">Embed query</text>
-    <text x="400" y="240" text-anchor="middle" fill="#d2b9ff" font-size="12">→ retrieve</text>
-    <text x="400" y="258" text-anchor="middle" fill="#d2b9ff" font-size="12">→ generate (grounded)</text>
-  
-    <!-- USER QUERY → LLM (curved) -->
-    <path d="M 200 100 Q 280 100 320 160" stroke="#3b82f6" stroke-width="2" fill="none" marker-end="url(#rag-arrow-purple)"/>
-    <text x="225" y="125" font-size="11" fill="#7eb8ff" transform="rotate(20 225,125)">prompt</text>
-  
-    <!-- LLM → RETRIEVAL CALL (top-right, dashed purple) -->
-    <path d="M 510 195 L 615 145" stroke="#a78bfa" stroke-width="2" fill="none" marker-end="url(#rag-arrow-purple)"/>
-    <rect x="615" y="80" width="160" height="90" fill="#0d0d0d" stroke="#a78bfa" stroke-width="1.5" rx="8" stroke-dasharray="4"/>
-    <text x="695" y="103" text-anchor="middle" font-weight="bold" fill="#a78bfa" font-size="12">EMBED + SEARCH</text>
-    <text x="695" y="122" text-anchor="middle" fill="#d2b9ff" font-size="10" font-family="monospace">vec = embed(query)</text>
-    <text x="695" y="138" text-anchor="middle" fill="#d2b9ff" font-size="10" font-family="monospace">top_k = index.search(vec)</text>
-    <text x="695" y="156" text-anchor="middle" fill="#d2b9ff" font-size="10">K = 3 passages</text>
-  
-    <!-- RETRIEVAL CALL → PASSAGE INDEX (orange) -->
-    <path d="M 695 170 L 695 260" stroke="#cc7a00" stroke-width="2" fill="none" marker-end="url(#rag-arrow-orange)"/>
-    <text x="700" y="220" font-size="10" fill="#e8c87a">cosine</text>
-    <text x="700" y="234" font-size="10" fill="#e8c87a">match</text>
-  
-    <!-- PASSAGE INDEX (orange, bottom-right) -->
-    <rect x="600" y="270" width="190" height="110" fill="#211b12" stroke="#cc7a00" stroke-width="2" rx="8"/>
-    <text x="695" y="296" text-anchor="middle" font-weight="bold" fill="#cc7a00" font-size="13">PASSAGE INDEX</text>
-    <text x="695" y="316" text-anchor="middle" fill="#e8c87a" font-size="11">Precomputed offline:</text>
-    <text x="695" y="333" text-anchor="middle" fill="#e8c87a" font-family="monospace" font-size="11">embed(passage)</text>
-    <text x="695" y="350" text-anchor="middle" fill="#e8c87a" font-size="11">for every passage</text>
-    <text x="695" y="368" text-anchor="middle" fill="#e8c87a" font-size="11">in the corpus</text>
-  
-    <!-- PASSAGE INDEX → LLM (return top-K, curved) -->
-    <path d="M 600 350 Q 400 380 400 295" stroke="#cc7a00" stroke-width="2" fill="none" marker-end="url(#rag-arrow-orange)"/>
-    <text x="440" y="378" font-size="11" fill="#e8c87a">return top-K passages</text>
-  
-    <!-- LLM → FINAL ANSWER (green, curve to bottom-left) -->
-    <path d="M 290 245 Q 110 250 110 320" stroke="#76b900" stroke-width="2" fill="none" marker-end="url(#rag-arrow-green)"/>
-  
-    <!-- FINAL ANSWER (green, bottom-left) -->
-    <rect x="20" y="330" width="180" height="70" fill="#1e3a1e" stroke="#76b900" stroke-width="2" rx="8"/>
-    <text x="110" y="358" text-anchor="middle" font-weight="bold" fill="#76b900" font-size="13">FINAL ANSWER</text>
-    <text x="110" y="378" text-anchor="middle" fill="#8ec444" font-size="11">grounded answer +</text>
-    <text x="110" y="392" text-anchor="middle" fill="#8ec444" font-size="11">passage citations</text>
-  
-    <!-- Caption -->
-    <text x="400" y="435" text-anchor="middle" font-size="11" fill="#a5a5a5" font-style="italic">Retrieve-then-generate · Lewis et al. 2020 · the live request goes top-down; the index is built offline</text>
-  </svg>
-    </div>
-  
+    <p class="lead">
+      The Index Agent brings outside knowledge to a Workflow Agent, supplying a
+      corpus indexed for retrieval together with the wiring that turns retrieval
+      into a tool the model can call. The build walks the fuzzy-prose case from
+      corpus to answer by embedding and indexing the corpus before retrieval is
+      wrapped as a tool. The other three shapes get a pointer to where they go deeper.
+    </p>
   </div>
 
-  <!-- ── Foundations: the first RAG trained the retriever and the model together ── -->
-  <h2>The first RAG trained the retriever and the model together</h2>
-  <p>
-    The diagram above is how almost everyone runs RAG today. Take a model that
-    already exists, freeze it, and wire a retriever in front so the prompt arrives
-    pre-loaded with evidence. Nothing is trained. You are assembling parts that
-    were each built separately.
-  </p>
-  <p>
-    That is not what the paper that named RAG did. When Lewis and colleagues
-    introduced it in 2020, the retriever and the generator were trained
-    <em>together</em>, end to end, on the downstream task. Read their figure left
-    to right, then look at the arrow across the top.
-  </p>
+  <figure class="lp-video">
+    <div class="video-wrap">
+      <iframe src="https://www.youtube-nocookie.com/embed/e7Io9dr_WhI?autoplay=0&rel=0"
+        title="Introduction: Agentic RAG" loading="lazy"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    </div>
+    <figcaption><b>Watch:</b> A walkthrough of agentic RAG, where the model reasons over a query and decides when to retrieve rather than running a fixed lookup on every turn. The narrated version fills in the moving parts that a static page leaves implicit. Part of NVIDIA's <a href="https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/how-to-build-agentic-ai-rag" target="_blank" rel="noopener">Agentic AI Learning Path</a>.</figcaption>
+  </figure>
 
+  <!-- ── Foundations: RAG began as one jointly-trained system ── -->
+  <h2>Where RAG came from: one system, trained end to end</h2>
+  <p>
+    The version of RAG everyone runs today drops most of what the original design did, and knowing that reframes the
+    retriever you are about to wire in.
+  </p>
+  <p>
+    When
+    <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis and colleagues</a> named
+    retrieval-augmented generation in 2020, it was not a model with a search box bolted on. The <strong>retriever and
+    the generator were trained together</strong> on the task they had to perform. Read the figure from left to
+    right before looking at the arrow across the top.
+  </p>
   <div style="display:flex;justify-content:center;margin:1.4em 0">
-    <figure style="margin:0;max-width:780px;width:100%">
+    <figure style="margin:0;max-width:940px;width:100%">
       <img src="assets/rag_arch_2021.svg" alt="The original RAG architecture from Lewis et al. 2020. A query x is embedded by a query encoder q, then a maximum-inner-product search (MIPS) over a document index retrieves passages z. A generator p-theta conditions on the query together with each retrieved passage and marginalizes over them to produce the output y. An arrow across the top, labelled End-to-End Backprop through q and p-theta, shows that gradients flow back through both the generator and the query encoder, so the retriever and the generator are trained jointly."
            style="width:100%;height:auto;display:block;background:#fff;border:1px solid #d0d7de;border-radius:8px;padding:16px"/>
       <figcaption style="text-align:center;font-size:.85rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">
-        The original architecture, from <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al. 2020</a>.
-        The label across the top is the part most systems quietly drop today.
+        The original architecture, from <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al. 2020</a>,
+        with the top-row backprop label that most systems built today leave out.
       </figcaption>
     </figure>
   </div>
-
   <p>
-    That label, <strong>"End-to-End Backprop through q and p<sub>&theta;</sub>"</strong>,
-    is the whole idea. One loss updated both halves, so the query encoder learned
-    which passages would actually help the generator answer, and the generator
-    learned to lean on retrieved evidence instead of its own memory. The retriever
-    was not a fixed search tool sitting in front of a model. It was part of the
-    model, and the task shaped it.
+    The design lives in the arrow labelled "End-to-End Backprop through q and p<sub>&theta;</sub>". One
+    loss updated both halves at once. The query encoder learned which passages the generator could use, and the
+    generator learned to lean on retrieved evidence over its own memory.
+  </p>
+  <p>
+    The retriever began as part of the model,
+    shaped by the task it had to perform, well before anyone described it as a search tool placed in front of one.
+  </p>
+
+  <!-- ── Why production simplified it ── -->
+  <h2>Why today's RAG drops the joint training</h2>
+  <p>Almost nobody trains RAG that way now, for two practical reasons:</p>
+  <ul>
+    <li>you cannot backpropagate into a frontier model you reach through an API;</li>
+    <li>even self-hosted, end-to-end retrieval training is expensive and easy to destabilize.</li>
+  </ul>
+  <p>
+    Practice settled on a simpler assembly. You take a model that already exists, freeze it, and put a retriever in
+    front of it so the prompt arrives pre-loaded with evidence and nothing is trained at all. The parts were built
+    separately and bolted together, and over time "RAG" came to mean that bolt-on rather than the jointly optimized
+    system the paper described.
   </p>
   <div class="callout">
-    <strong>Why today's RAG usually drops the joint training.</strong> You cannot
-    backprop into a frontier model you reach through an API, and even when you host
-    your own, end-to-end retrieval training is expensive and easy to destabilize. So
-    practice settled on the frozen-model assembly above, and "RAG" came to mean the
-    bolt-on rather than the jointly-optimized system. The cost is a ceiling: a
-    retriever that never sees the generator's loss can only guess what the generator
-    needs. Reranking, query rewriting, and fine-tuning the embedder are all ways to
-    buy back a little of what end-to-end training gave for free, which is why a
-    serious retrieval stack keeps growing stages. The bolt-on you build in this
-    module is the pragmatic version of a system that was first optimized as one
-    piece, and knowing that tells you where its ceiling is and which knobs raise it.
+    <strong>The cost of the bolt-on.</strong> A retriever that never sees the generator's loss can only guess what the
+    generator needs, so retrieval quality is capped by how well the embedding model fits your data. Reranking, query
+    rewriting, and a fine-tuned embedder each buy back a little of what end-to-end training gave for free. A serious
+    retrieval stack keeps adding stages to recover the rest. Read the bolt-on as a pragmatic stand-in for a once-unified
+    system, and you can see where its ceiling sits and which knobs raise it.
   </div>
+
+  <!-- ── The practical pipeline you build ── -->
+  <h2>The retrieve-then-generate pipeline you build</h2>
+  <p>
+    With that ceiling in mind, here is the whole assembly. A retriever runs in front of the frozen model across two
+    separate timelines. One timeline builds the index ahead of time so the other can serve a live request against it.
+    The figure below traces both.
+  </p>
+  <div style="display:flex;justify-content:center;margin:1.4em 0 1.8em">
+    <svg class="gfx-dark" viewBox="0 0 1220 480" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A RAG architecture split into two timelines. Timeline 1, indexing, runs offline: a knowledge base of documents is preprocessed, embedded by an embedding model, and stored in a vector database. Timeline 2, serving, runs live: a user query reaches a chat app, is embedded, matched against the vector database, and the retrieved context with the query goes to the LLM engine, which streams back a grounded response." preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; display:block; background:#0d0d0d; border:1px solid #2a2a2a; border-radius:8px; padding:14px; max-width:1100px; margin:1.5rem auto">
+  <defs>
+    <marker id="rag-arr-gray" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,1.5 L8,5 L0,8.5 Z" fill="var(--gfx-faint,#555555)"/>
+    </marker>
+    <marker id="rag-arr-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,1.5 L8,5 L0,8.5 Z" fill="var(--gfx-green,#76b900)"/>
+    </marker>
+
+    <linearGradient id="cylinder-db-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="var(--gfx-tint-green,#112211)"/>
+      <stop offset="50%" stop-color="var(--gfx-tint-green,#1c361c)"/>
+      <stop offset="100%" stop-color="var(--gfx-tint-green,#0f1f0f)"/>
+    </linearGradient>
+    <linearGradient id="cylinder-kb-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="var(--gfx-panel,#161616)"/>
+      <stop offset="50%" stop-color="var(--gfx-panel,#262626)"/>
+      <stop offset="100%" stop-color="var(--gfx-panel,#1a1a1a)"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="430" y="35" width="760" height="360" rx="8" fill="var(--gfx-panel,#121212)" stroke="var(--gfx-line,#222222)" stroke-width="1.5"/>
+  <text x="1170" y="58" font-family="ui-monospace, monospace" font-size="11" fill="var(--gfx-sub,#444444)" text-anchor="end" letter-spacing="0.05em">SYSTEM RUNTIME ENVIRONMENT</text>
+
+  <circle cx="35" cy="55" r="11" fill="var(--gfx-green,#76b900)"/>
+  <text x="35" y="59" font-family="Arial, sans-serif" font-size="11.5" font-weight="bold" fill="var(--gfx-bg,#0d0d0d)" text-anchor="middle">1</text>
+  <text x="54" y="51" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="var(--gfx-green,#76b900)">Doc Retrieval</text>
+  <text x="54" y="65" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="var(--gfx-green,#76b900)">and Ingestion</text>
+
+  <g transform="translate(40, 95)">
+    <ellipse cx="45" cy="12" rx="45" ry="10" fill="url(#cylinder-kb-grad)" stroke="var(--gfx-line,#3a3a3a)" stroke-width="1.2"/>
+    <path d="M 0 12 L 0 62 A 45 10 0 0 0 90 62 L 90 12 Z" fill="url(#cylinder-kb-grad)" stroke="var(--gfx-line,#3a3a3a)" stroke-width="1.2"/>
+    <ellipse cx="45" cy="62" rx="45" ry="10" fill="none" stroke="var(--gfx-line,#3a3a3a)" stroke-width="1.2"/>
+    <path d="M 0 28 A 45 10 0 0 0 90 28" fill="none" stroke="var(--gfx-line,#3a3a3a)" stroke-width="1" stroke-dasharray="3 3"/>
+    <path d="M 0 45 A 45 10 0 0 0 90 45" fill="none" stroke="var(--gfx-line,#3a3a3a)" stroke-width="1" stroke-dasharray="3 3"/>
+    
+    <line x1="30" y1="4" x2="60" y2="4" stroke="var(--gfx-faint,#555555)" stroke-width="1.5"/>
+    <line x1="25" y1="22" x2="65" y2="22" stroke="var(--gfx-sub,#444444)" stroke-width="1.2"/>
+    <line x1="25" y1="39" x2="65" y2="39" stroke="var(--gfx-sub,#444444)" stroke-width="1.2"/>
+    
+    <text x="45" y="88" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="var(--gfx-ink2,#cccccc)" text-anchor="middle">Knowledge Base</text>
+  </g>
+
+  <line x1="135" y1="135" x2="185" y2="135" stroke="var(--gfx-sub,#444444)" stroke-width="1.5" marker-end="url(#rag-arr-gray)"/>
+
+  <rect x="190" y="90" width="165" height="75" rx="4" fill="var(--gfx-panel,#161616)" stroke="var(--gfx-line,#2c2c2c)" stroke-width="1.2"/>
+  <text x="272.5" y="110" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="var(--gfx-ink2,#cccccc)" text-anchor="middle">Preprocess Docs</text>
+  
+  <g transform="translate(228, 123) scale(1.2)">
+    <rect x="0" y="0" width="20" height="26" rx="1" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-sub,#444444)" stroke-width="1"/>
+    <line x1="4" y1="6" x2="16" y2="6" stroke="var(--gfx-line,#333333)" stroke-width="1"/>
+    <line x1="4" y1="12" x2="16" y2="12" stroke="var(--gfx-line,#333333)" stroke-width="1"/>
+    <line x1="4" y1="18" x2="12" y2="18" stroke="var(--gfx-line,#333333)" stroke-width="1"/>
+    <path d="M 26 13 L 34 13" fill="none" stroke="var(--gfx-green,#76b900)" stroke-width="1.2" marker-end="url(#rag-arr-green)"/>
+    <rect x="40" y="0" width="14" height="6" rx="1" fill="var(--gfx-tint-green,#1c2e1c)" stroke="var(--gfx-green,#76b900)" stroke-width="0.8"/>
+    <rect x="58" y="0" width="16" height="6" rx="1" fill="var(--gfx-tint-green,#1c2e1c)" stroke="var(--gfx-green,#76b900)" stroke-width="0.8"/>
+    <rect x="40" y="10" width="22" height="6" rx="1" fill="var(--gfx-tint-green,#1c2e1c)" stroke="var(--gfx-green,#76b900)" stroke-width="0.8"/>
+    <rect x="45" y="20" width="18" height="6" rx="1" fill="var(--gfx-tint-green,#1c2e1c)" stroke="var(--gfx-green,#76b900)" stroke-width="0.8"/>
+  </g>
+
+  <line x1="355" y1="135" x2="445" y2="135" stroke="var(--gfx-sub,#444444)" stroke-width="1.5" marker-end="url(#rag-arr-gray)"/>
+  <text x="395" y="124" font-family="Arial, sans-serif" font-size="11" font-style="italic" fill="var(--gfx-sub,#888888)" text-anchor="middle">Documents</text>
+
+
+  <circle cx="35" cy="255" r="11" fill="var(--gfx-green,#76b900)"/>
+  <text x="35" y="259" font-family="Arial, sans-serif" font-size="11.5" font-weight="bold" fill="var(--gfx-bg,#0d0d0d)" text-anchor="middle">2</text>
+  <text x="54" y="251" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="var(--gfx-green,#76b900)">User Query and</text>
+  <text x="54" y="265" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="var(--gfx-green,#76b900)">Response Run</text>
+
+  <g transform="translate(65, 290)">
+    <circle cx="20" cy="12" r="7" fill="none" stroke="var(--gfx-sub,#888888)" stroke-width="2"/>
+    <path d="M4,31 C4,23 36,23 36,31" fill="none" stroke="var(--gfx-sub,#888888)" stroke-width="2" stroke-linecap="round"/>
+    <text x="20" y="48" font-family="Arial, sans-serif" font-size="11.5" font-weight="700" fill="var(--gfx-faint,#6a6a6a)" text-anchor="middle">User</text>
+  </g>
+
+  <line x1="135" y1="320" x2="185" y2="320" stroke="var(--gfx-sub,#444444)" stroke-width="1.5" marker-end="url(#rag-arr-gray)"/>
+
+  <rect x="190" y="280" width="165" height="75" rx="4" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-ink2,#cccccc)" stroke-width="1.5"/>
+  <line x1="190" y1="298" x2="355" y2="298" stroke="var(--gfx-ink2,#cccccc)" stroke-width="1.2"/>
+  <circle cx="200" cy="289" r="2" fill="var(--gfx-faint,#6a6a6a)"/>
+  <circle cx="208" cy="289" r="2" fill="var(--gfx-faint,#6a6a6a)"/>
+  <circle cx="216" cy="289" r="2" fill="var(--gfx-faint,#6a6a6a)"/>
+  <text x="272.5" y="322" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="var(--gfx-ink,#ffffff)" text-anchor="middle">Chat Bot</text>
+  <text x="272.5" y="337" font-family="Arial, sans-serif" font-size="11" fill="var(--gfx-sub,#888888)" text-anchor="middle">Web App</text>
+
+  <line x1="355" y1="320" x2="445" y2="320" stroke="var(--gfx-sub,#444444)" stroke-width="1.5" marker-end="url(#rag-arr-gray)"/>
+  <text x="395" y="309" font-family="Arial, sans-serif" font-size="11" font-style="italic" fill="var(--gfx-sub,#888888)" text-anchor="middle">User query</text>
+
+
+  <rect x="450" y="85" width="200" height="275" rx="6" fill="var(--gfx-tint-green,#132413)" stroke="var(--gfx-green,#76b900)" stroke-width="1.5"/>
+  <text x="550" y="225" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="var(--gfx-green,#aee23a)" text-anchor="middle">Embedding Model</text>
+  
+  <g transform="translate(462, 133) scale(1.15)">
+    <rect x="5" y="20" width="44" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-green,#334433)" stroke-width="1"/>
+    <text x="27" y="34" font-family="Arial, sans-serif" font-size="11" fill="var(--gfx-sub,#888888)" text-anchor="middle">"text"</text>
+    
+    <path d="M 64 30 L 85 30" fill="none" stroke="var(--gfx-green,#76b900)" stroke-width="1.5" marker-end="url(#rag-arr-green)"/>
+    <rect x="100" y="5" width="50" height="50" rx="4" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-green,#76b900)" stroke-width="1.2"/>
+    <line x1="105" y1="15" x2="145" y2="15" stroke="var(--gfx-green,#335533)" stroke-width="1"/>
+    <line x1="105" y1="25" x2="145" y2="25" stroke="var(--gfx-green,#335533)" stroke-width="1"/>
+    <line x1="105" y1="35" x2="145" y2="35" stroke="var(--gfx-green,#335533)" stroke-width="1"/>
+    <line x1="105" y1="45" x2="145" y2="45" stroke="var(--gfx-green,#335533)" stroke-width="1"/>
+    <circle cx="112" cy="15" r="2" fill="var(--gfx-green,#aee23a)"/><circle cx="128" cy="25" r="2" fill="var(--gfx-green,#aee23a)"/><circle cx="120" cy="35" r="2" fill="var(--gfx-green,#aee23a)"/><circle cx="138" cy="45" r="2" fill="var(--gfx-green,#aee23a)"/>
+    <line x1="112" y1="15" x2="128" y2="25" stroke="var(--gfx-faint,#555555)" stroke-width="0.8"/>
+    <line x1="128" y1="25" x2="120" y2="35" stroke="var(--gfx-faint,#555555)" stroke-width="0.8"/>
+    <line x1="120" y1="35" x2="138" y2="45" stroke="var(--gfx-faint,#555555)" stroke-width="0.8"/>
+    
+    <rect x="20" y="95" width="120" height="22" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-green,#334433)" stroke-width="1"/>
+    <text x="80" y="110" font-family="ui-monospace, monospace" font-size="11" fill="var(--gfx-green,#aee23a)" text-anchor="middle">[0.14, -0.82, ...]</text>
+  </g>
+
+  <line x1="650" y1="135" x2="745" y2="135" stroke="var(--gfx-faint,#555555)" stroke-width="1.5" marker-end="url(#rag-arr-gray)"/>
+  <text x="697" y="112" font-family="Arial, sans-serif" font-size="10.5" font-style="italic" fill="var(--gfx-sub,#888888)" text-anchor="middle">Document</text>
+  <text x="697" y="126" font-family="Arial, sans-serif" font-size="10.5" font-style="italic" fill="var(--gfx-sub,#888888)" text-anchor="middle">embeddings</text>
+
+  <line x1="650" y1="320" x2="745" y2="320" stroke="var(--gfx-green,#76b900)" stroke-width="1.5" marker-end="url(#rag-arr-green)"/>
+  <text x="697" y="297" font-family="Arial, sans-serif" font-size="10.5" font-style="italic" fill="var(--gfx-green,#aee23a)" text-anchor="middle">Query and</text>
+  <text x="697" y="311" font-family="Arial, sans-serif" font-size="10.5" font-style="italic" fill="var(--gfx-green,#aee23a)" text-anchor="middle">embedded query</text>
+
+
+  <g transform="translate(750, 79) scale(1.08)">
+    <ellipse cx="65" cy="16" rx="65" ry="14" fill="url(#cylinder-db-grad)" stroke="var(--gfx-green,#76b900)" stroke-width="1.5"/>
+    <path d="M 0 16 L 0 244 A 65 14 0 0 0 130 244 L 65 244 L 130 244 L 130 16 Z" fill="url(#cylinder-db-grad)" stroke="var(--gfx-green,#76b900)" stroke-width="1.5"/>
+    <ellipse cx="65" cy="244" rx="65" ry="14" fill="none" stroke="var(--gfx-green,#76b900)" stroke-width="1.5"/>
+    <ellipse cx="65" cy="16" rx="65" ry="14" fill="none" stroke="var(--gfx-green,#76b900)" stroke-width="1.5"/>
+    
+    <text x="65" y="141" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="var(--gfx-green,#aee23a)" text-anchor="middle">Vector DB</text>
+    
+    <g transform="translate(26, 156) scale(1.2)">
+      <circle cx="16" cy="16" r="14" fill="var(--gfx-tint-green,#0d140d)" stroke="var(--gfx-green,#223a22)" stroke-width="1" stroke-dasharray="2 2"/>
+      <circle cx="50" cy="36" r="14" fill="var(--gfx-tint-blue,#0a121a)" stroke="var(--gfx-tint-blue,#1d344d)" stroke-width="1" stroke-dasharray="2 2"/>
+      <circle cx="12" cy="14" r="2.5" fill="var(--gfx-green,#76b900)"/>
+      <circle cx="22" cy="20" r="2" fill="var(--gfx-green,#76b900)"/>
+      <circle cx="44" cy="32" r="2.5" fill="var(--gfx-blue,#3b82f6)"/>
+      <circle cx="54" cy="40" r="2" fill="var(--gfx-blue,#3b82f6)"/>
+      <line x1="22" y1="20" x2="44" y2="32" stroke="var(--gfx-sub,#444444)" stroke-width="1" stroke-dasharray="2 1"/>
+    </g>
+  </g>
+
+  <line x1="892" y1="320" x2="985" y2="320" stroke="var(--gfx-faint,#555555)" stroke-width="1.5" marker-end="url(#rag-arr-gray)"/>
+  <text x="942" y="297" font-family="Arial, sans-serif" font-size="10.5" font-style="italic" fill="var(--gfx-sub,#888888)" text-anchor="middle">Prompt + query</text>
+  <text x="942" y="311" font-family="Arial, sans-serif" font-size="10.5" font-style="italic" fill="var(--gfx-sub,#888888)" text-anchor="middle">+ enhanced context</text>
+
+  <rect x="1000" y="259" width="175" height="95" rx="4" fill="var(--gfx-panel,#141414)" stroke="var(--gfx-line,#3a3a3a)" stroke-width="1.5"/>
+  <text x="1087.5" y="290" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="var(--gfx-ink,#ffffff)" text-anchor="middle">LLM Engine</text>
+  
+  <g transform="translate(1038, 305) scale(1.5)">
+    <circle cx="10" cy="10" r="2.5" fill="var(--gfx-sub,#444444)"/>
+    <circle cx="25" cy="5" r="2.5" fill="var(--gfx-faint,#666666)"/>
+    <circle cx="25" cy="15" r="2.5" fill="var(--gfx-faint,#666666)"/>
+    <circle cx="40" cy="10" r="2.5" fill="var(--gfx-green,#76b900)"/>
+    <line x1="12" y1="10" x2="23" y2="5" stroke="var(--gfx-line,#333333)" stroke-width="1"/>
+    <line x1="12" y1="10" x2="23" y2="15" stroke="var(--gfx-line,#333333)" stroke-width="1"/>
+    <line x1="27" y1="5" x2="38" y2="10" stroke="var(--gfx-sub,#444444)" stroke-width="1"/>
+    <line x1="27" y1="15" x2="38" y2="10" stroke="var(--gfx-sub,#444444)" stroke-width="1"/>
+    <path d="M 46 10 L 54 10" fill="none" stroke="var(--gfx-green,#76b900)" stroke-width="1" marker-end="url(#rag-arr-green)"/>
+  </g>
+
+
+  <path d="M 1087.5 355 L 1087.5 400 L 272.5 400 L 272.5 357" fill="none" stroke="var(--gfx-green,#76b900)" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#rag-arr-green)"/>
+  <text x="680" y="420" font-family="Arial, sans-serif" font-size="12" font-style="italic" fill="var(--gfx-green,#76b900)" text-anchor="middle" font-weight="700">Streamed text response (generative)</text>
+
+
+  <text x="610" y="458" text-anchor="middle" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-faint,#5e5e5e)" font-style="italic">The top row builds the index offline, and the bottom row serves each live request from it.</text>
+</svg>
+
+  </div>
+  <p style="text-align:center;font-size:.85rem;color:var(--gfx-sub,#8a8a8a);margin:-.4em 0 1.4em">
+    Adapted from <a href="https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/" target="_blank" rel="noopener">Hayden Wolff, <em>RAG 101</em></a> (NVIDIA, 2023)
+    and <a href="https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-with-nvidia-ai-langchain-ai-endpoints/" target="_blank" rel="noopener">Amit Bleiweiss, <em>tips for building a RAG pipeline</em></a> (NVIDIA, 2024).
+  </p>
+  <p>Two timelines share that picture:</p>
+  <ul>
+    <li><strong>The index is built once, offline.</strong> Every passage in the corpus is embedded and stored for fast lookup.</li>
+    <li><strong>The live request runs top-down.</strong> Embed the question, search the index for the top-K passages, and hand them to the model alongside the question.</li>
+  </ul>
+  <p>
+    The rest of this page builds the live path one stage at a time, starting with the decision that comes before you
+    pick a store.
+  </p>
 
   <!-- ── Part 1: The bundle principle ──────────────────────────────────────── -->
   <h2>Naming the context bundle before you pick a store</h2>
   <p>
-    Before picking a retrieval primitive, the Index Agent has to
-    name its <strong>bundle</strong>: the complete, bounded set of
-    context it needs in one package to do its job. For a single-turn
-    QA system the bundle is small (one user question, one retrieved
-    paragraph, one answer). For an autonomous agent the bundle is
-    the working memory across many turns: constraints, prior
-    decisions, partial results, tool surfaces, rules. Two things go
-    wrong when the bundle is badly designed:
+    Before picking a retrieval primitive, the Index Agent has to name its <strong>bundle</strong>. The bundle is the
+    complete and bounded set of context it needs in one package to do its job. A single-turn QA system keeps that
+    bundle small: the user question, the paragraph retrieved to answer it, and the answer itself.
+  </p>
+  <p>
+    For an autonomous agent, the bundle is the working memory it carries across many
+    turns. That memory stores the agent's constraints, prior decisions, and partial
+    results, along with the tool surfaces and rules it operates under. When that bundle
+    is badly designed, two things go wrong:
   </p>
   <ul>
     <li><strong>Rediscovery tax.</strong> The agent re-fetches the same piece of the bundle on every turn because the running state does not carry it forward. Cost scales linearly with turn count.</li>
-    <li><strong>Stale bundle.</strong> The agent acts on a piece of the bundle that was true earlier but is no longer true. The decision is confidently wrong.</li>
+    <li><strong>Stale bundle.</strong> The agent acts on a piece of the bundle that was true earlier and has since changed, so it commits with full confidence to a decision the current state no longer supports.</li>
   </ul>
   <p>
     The bundle principle is a planning discipline: <em>define the bundle before
     you pick the database</em>. Picking a vector store first and hoping it covers
     everything is the origin of most "worked in demo but failed in production"
-    stories. The four-shape taxonomy below is how you check whether your
+    stories. The four-shape taxonomy below checks whether your
     candidate primitive can deliver the bundle for your task.
   </p>
 
   <!-- ── Part 2: Four data shapes ──────────────────────────────────────────── -->
   <h2>Matching a retrieval primitive to the shape of your data</h2>
   <p>
-    Each data shape maps to a different retrieval primitive.
-    Mismatching the lane to the shape produces a <em>silent
-    retrieval miss</em>, not a loud error. The four answers in the
-    table below tell you which primitive to reach for.
+    Each data shape calls for its own retrieval primitive. Pick the
+    wrong lane and retrieval keeps returning results that look fine while
+    quietly missing what the query wanted, with no error to warn
+    you. The table below tells you which primitive each shape calls for.
   </p>
 
   <table style="width:100%;border-collapse:collapse;font-size:.9rem;margin:.8em 0">
-    <thead><tr style="border-bottom:2px solid #2a2a2a">
-      <th style="text-align:left;padding:8px 12px;color:#b0b0b0;font-size:.78rem;text-transform:uppercase">Shape</th>
-      <th style="text-align:left;padding:8px 12px;color:#b0b0b0;font-size:.78rem;text-transform:uppercase">Examples</th>
-      <th style="text-align:left;padding:8px 12px;color:#b0b0b0;font-size:.78rem;text-transform:uppercase">Right primitive</th>
+    <thead><tr style="border-bottom:2px solid var(--bd)">
+      <th style="text-align:left;padding:8px 12px;color:var(--td);font-size:.78rem;text-transform:uppercase">Shape</th>
+      <th style="text-align:left;padding:8px 12px;color:var(--td);font-size:.78rem;text-transform:uppercase">Examples</th>
+      <th style="text-align:left;padding:8px 12px;color:var(--td);font-size:.78rem;text-transform:uppercase">Right primitive</th>
     </tr></thead>
     <tbody>
-      <tr><td style="padding:8px 12px"><strong>Fuzzy prose</strong></td><td style="padding:8px 12px">Docs, articles, code comments, transcripts</td><td style="padding:8px 12px">Dense vector + cross-encoder rerank</td></tr>
+      <tr><td style="padding:8px 12px"><strong>Fuzzy prose</strong></td><td style="padding:8px 12px">Docs, articles, code comments, transcripts</td><td style="padding:8px 12px">Dense vector + <a href="https://arxiv.org/abs/1908.10084" target="_blank" rel="noopener">cross-encoder</a> rerank</td></tr>
       <tr><td style="padding:8px 12px"><strong>Hierarchical docs</strong></td><td style="padding:8px 12px">Legal contracts, technical manuals, nested specs</td><td style="padding:8px 12px">Tree index with parent pointers</td></tr>
-      <tr><td style="padding:8px 12px"><strong>Governed tables</strong></td><td style="padding:8px 12px">Customer records, financial ledgers, HR tables</td><td style="padding:8px 12px">Semantic layer (dbt / LookML) over the source of truth</td></tr>
-      <tr><td style="padding:8px 12px"><strong>Relational / graph</strong></td><td style="padding:8px 12px">Org charts, code dependencies, knowledge graphs</td><td style="padding:8px 12px">Graph traversal (Cypher, GraphQL, custom)</td></tr>
+      <tr><td style="padding:8px 12px"><strong>Governed tables</strong></td><td style="padding:8px 12px">Customer records, financial ledgers, HR tables</td><td style="padding:8px 12px">Semantic layer (<a href="https://docs.getdbt.com/" target="_blank" rel="noopener">dbt</a> / LookML) over the source of truth</td></tr>
+      <tr><td style="padding:8px 12px"><strong>Relational / graph</strong></td><td style="padding:8px 12px">Org charts, code dependencies, knowledge graphs</td><td style="padding:8px 12px">Graph traversal (<a href="https://opencypher.org/" target="_blank" rel="noopener">Cypher</a>, GraphQL, custom)</td></tr>
     </tbody>
   </table>
 
   <p>
-    The rest of this module builds the
-    <strong>retrieve-then-generate</strong> pattern, also called
-    <strong>Retrieval-Augmented Generation (RAG)</strong>, formalised by
-    <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis
-    et al., <em>Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks</em>
-    (NeurIPS 2020)</a>. The core idea is that, rather than relying solely on
-    what the model learned during training, you retrieve relevant passages from an
-    external corpus at inference time and inject them into the prompt. In theory, the
-    model's answer is grounded in that specific evidence rather than in a
-    possibly-stale memory. Concretely: 
-    <ul>
-      <li>the query is embedded</li>
-      <li>the embedding runs through a retriever over a passage index,</li>
-      <li>the top-K passages are concatenated onto the prompt,</li> 
-      <li>and the generator produces an answer grounded in those passages.</li>
-    </ul>
-
-    <svg class="gfx-dark" viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Live request runs left to right; passage index built offline, once." preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:1080px;margin:1.5rem auto"><defs><marker id="pl-a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-sub,#5e5e5e)"/></marker></defs><path d="M 154 196 C 203.33333333333331 196, 203.33333333333331 196, 250.66666666666663 196" fill="none" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="2.2" marker-end="url(#pl-a)"/><path d="M 400.66666666666663 196 C 449.99999999999994 196, 449.99999999999994 196, 497.33333333333326 196" fill="none" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="2.2" marker-end="url(#pl-a)"/><path d="M 647.3333333333333 196 C 696.6666666666666 196, 696.6666666666666 196, 744 196" fill="none" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="2.2" marker-end="url(#pl-a)"/><path d="M 400.66666666666663 280 C 326.66666666666663 280, 326.66666666666663 196, 250.66666666666663 196" fill="none" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="2.2" stroke-dasharray="5 4" marker-end="url(#pl-a)"/><rect x="178.20833333333331" y="146.5" width="50.25" height="25" rx="5" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="203.33333333333331" y="162.3" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle" font-weight="700">embed</text><rect x="424.87499999999994" y="146.5" width="50.25" height="25" rx="5" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="449.99999999999994" y="162.3" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle" font-weight="700">top-K</text><rect x="662.4666666666666" y="146.5" width="68.4" height="25" rx="5" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="696.6666666666666" y="162.3" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle" font-weight="700">grounded</text><rect x="295.4916666666666" y="225.5" width="62.35" height="25" rx="5" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="326.66666666666663" y="241.3" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle" font-weight="700">indexed</text><rect x="6" y="173" width="148" height="46" rx="9" fill="var(--gfx-tint-blue,#dfeaf5)" stroke="var(--gfx-blue,#0969da)" stroke-width="2.2"/><text x="80" y="193" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-blue,#0969da)" text-anchor="middle" font-weight="700">query</text><text x="80" y="211" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">embed</text><rect x="252.66666666666663" y="173" width="148" height="46" rx="9" fill="var(--gfx-tint-teal,#d6f1ee)" stroke="var(--gfx-teal,#0d9488)" stroke-width="2.2"/><text x="326.66666666666663" y="193" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-teal,#0d9488)" text-anchor="middle" font-weight="700">retrieve</text><text x="326.66666666666663" y="211" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">top-K</text><rect x="499.33333333333326" y="173" width="148" height="46" rx="9" fill="var(--gfx-tint-green,#e6f3d4)" stroke="var(--gfx-green,#4a7a00)" stroke-width="2.2"/><text x="573.3333333333333" y="193" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-green,#4a7a00)" text-anchor="middle" font-weight="700">generate</text><text x="573.3333333333333" y="211" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">grounded</text><rect x="746" y="173" width="148" height="46" rx="9" fill="var(--gfx-tint-purple,#eadfff)" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.2"/><text x="820" y="200" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-purple,#6f42c1)" text-anchor="middle" font-weight="700">answer</text><rect x="252.66666666666663" y="257" width="148" height="46" rx="9" fill="var(--gfx-tint-amber,#f7e9cf)" stroke="var(--gfx-amber,#9a6700)" stroke-width="2.2"/><text x="326.66666666666663" y="277" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-amber,#9a6700)" text-anchor="middle" font-weight="700">corpus</text><text x="326.66666666666663" y="295" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">indexed offline</text><text x="450" y="408" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13" fill="var(--gfx-sub,#5e5e5e)" font-style="italic">Live request runs left to right; passage index built offline, once.</text></svg>
-
-    Every Index Agent in this course is a variant of this diagram with different
-    retrieval primitives swapped in.
+    This module follows the <strong>fuzzy-prose</strong> shape from corpus to answer. It runs the
+    retrieve-then-generate flow (RAG) that
+    <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al.</a> formalized in
+    <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener"><em>Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks</em> (NeurIPS 2020)</a>, drawn here as the
+    template the other shapes vary.
+  </p>
+  <div style="display:flex;justify-content:center;margin:1.4em 0">
+    <svg class="gfx-dark" viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The live request runs left to right, over a passage index that was built offline, once." preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:1080px;margin:1.5rem auto"><defs><marker id="pl-a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-sub,#5e5e5e)"/></marker></defs><path d="M 154 196 C 203.33333333333331 196, 203.33333333333331 196, 250.66666666666663 196" fill="none" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="2.2" marker-end="url(#pl-a)"/><path d="M 400.66666666666663 196 C 449.99999999999994 196, 449.99999999999994 196, 497.33333333333326 196" fill="none" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="2.2" marker-end="url(#pl-a)"/><path d="M 647.3333333333333 196 C 696.6666666666666 196, 696.6666666666666 196, 744 196" fill="none" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="2.2" marker-end="url(#pl-a)"/><path d="M 400.66666666666663 280 C 326.66666666666663 280, 326.66666666666663 196, 250.66666666666663 196" fill="none" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="2.2" stroke-dasharray="5 4" marker-end="url(#pl-a)"/><rect x="178.20833333333331" y="146.5" width="50.25" height="25" rx="5" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="203.33333333333331" y="162.3" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle" font-weight="700">embed</text><rect x="424.87499999999994" y="146.5" width="50.25" height="25" rx="5" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="449.99999999999994" y="162.3" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle" font-weight="700">top-K</text><rect x="662.4666666666666" y="146.5" width="68.4" height="25" rx="5" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="696.6666666666666" y="162.3" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle" font-weight="700">grounded</text><rect x="295.4916666666666" y="225.5" width="62.35" height="25" rx="5" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="326.66666666666663" y="241.3" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle" font-weight="700">indexed</text><rect x="6" y="173" width="148" height="46" rx="9" fill="var(--gfx-tint-blue,#dfeaf5)" stroke="var(--gfx-blue,#0969da)" stroke-width="2.2"/><text x="80" y="193" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-blue,#0969da)" text-anchor="middle" font-weight="700">query</text><text x="80" y="211" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">embed</text><rect x="252.66666666666663" y="173" width="148" height="46" rx="9" fill="var(--gfx-tint-teal,#d6f1ee)" stroke="var(--gfx-teal,#0d9488)" stroke-width="2.2"/><text x="326.66666666666663" y="193" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-teal,#0d9488)" text-anchor="middle" font-weight="700">retrieve</text><text x="326.66666666666663" y="211" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">top-K</text><rect x="499.33333333333326" y="173" width="148" height="46" rx="9" fill="var(--gfx-tint-green,#e6f3d4)" stroke="var(--gfx-green,#4a7a00)" stroke-width="2.2"/><text x="573.3333333333333" y="193" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-green,#4a7a00)" text-anchor="middle" font-weight="700">generate</text><text x="573.3333333333333" y="211" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">grounded</text><rect x="746" y="173" width="148" height="46" rx="9" fill="var(--gfx-tint-purple,#eadfff)" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.2"/><text x="820" y="200" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-purple,#6f42c1)" text-anchor="middle" font-weight="700">answer</text><rect x="252.66666666666663" y="257" width="148" height="46" rx="9" fill="var(--gfx-tint-amber,#f7e9cf)" stroke="var(--gfx-amber,#9a6700)" stroke-width="2.2"/><text x="326.66666666666663" y="277" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-amber,#9a6700)" text-anchor="middle" font-weight="700">corpus</text><text x="326.66666666666663" y="295" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">indexed offline</text><text x="450" y="408" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13" fill="var(--gfx-sub,#5e5e5e)" font-style="italic">The live request runs left to right, over a passage index that was built offline, once.</text></svg>
+  </div>
+  <p>Every request walks the same four steps:</p>
+  <ul>
+    <li><strong>Embed</strong> the query into a vector.</li>
+    <li><strong>Search</strong> the passage index for the top-K nearest passages.</li>
+    <li><strong>Concatenate</strong> those passages onto the prompt.</li>
+    <li><strong>Generate</strong> an answer grounded in them.</li>
+  </ul>
+  <p>
+    Every Index Agent in this course is that diagram with a different retrieval primitive swapped in.
   </p>
 
   <p>
-    Part 3 introduces the embedder. Part 4 builds the smallest possible retriever:
-    top-K cosine in thirty lines. Part 5 wires retrieval into the agent as a tool.
+    From here the build runs bottom-up. Part 3 introduces the embedder, Part 4 writes the smallest retriever that
+    works in thirty lines of top-K cosine, and Part 5 wires that retrieval into the agent as a tool.
   </p>
 
   <!-- ── Part 3: Embeddings ────────────────────────────────────────────────── -->
   <h2>The embedding, the primitive everything else is built on</h2>
   <p>
-    Every Index Agent in the fuzzy-prose lane starts from the same
-    primitive. An embedding is a learned numerical address: text
-    in, a fixed-length vector out, where semantically similar
+    Each fuzzy-prose Index Agent starts from the same
+    primitive. An embedding is a learned numerical address for a piece of text,
+    a fixed-length vector placed so that semantically similar
     texts land near each other in vector space. Two practical
     consequences follow:
   </p>
   <ol>
-    <li>You can <em>compare</em> texts cheaply: cosine similarity over the two vectors is one dot product plus two magnitudes.</li>
+    <li>You can <em>compare</em> texts cheaply: <a href="https://en.wikipedia.org/wiki/Cosine_similarity" target="_blank" rel="noopener">cosine similarity</a> over the two vectors is one dot product plus two magnitudes.</li>
     <li>You can <em>store</em> texts by where they live in that space; a vector index is a data structure tuned for nearest-neighbour search.</li>
   </ol>
   <p>
-    Both follow from one primitive: the embedding model. This course routes embedding
-    calls through <code>helpers.embed</code>, which proxies to build.nvidia.com via the
-    course's hosted worker. No lab path, no local server required.
+    Both rest on a single primitive, the embedding model. This course routes embedding
+    calls through <code>helpers.embed</code>, which proxies to the hosted NVIDIA embedding endpoint
+    so everything runs in the browser without a lab path or local server.
   </p>
 
   <div id="cell-m3b-p1"></div>
 
   <div class="callout">
-    <strong>Embeddings API contract.</strong> The embeddings endpoint takes
-    <code>{input: string[], model: string, input_type: "query"|"passage"}</code>
-    and returns <code>{data: [{embedding: number[]}]}</code>. The NVIDIA
-    embed models distinguish between query and passage embeddings: the same
-    text gets a different vector depending on its role, because the training
-    objective aligns query vectors toward their relevant passage vectors rather
-    than toward identical texts. That asymmetry is what makes cosine similarity
-    a reliable relevance signal. Embedding a query using the
-    <code>"passage"</code> type (or the reverse) breaks the score function
-    silently, producing lower recall with no error message.
+    <strong>Embeddings API contract.</strong>
+    <p>The embeddings endpoint takes a JSON request with three fields and returns one array of vectors:</p>
+    <ul>
+      <li><code>input</code> is the batch of texts to embed, typed <code>string[]</code>.</li>
+      <li><code>model</code> names the embedding model, typed <code>string</code>.</li>
+      <li><code>input_type</code> is either <code>"query"</code> or <code>"passage"</code>.</li>
+      <li>The response carries a <code>data</code> array whose entries each hold an <code>embedding</code> of <code>number[]</code>.</li>
+    </ul>
+    <p>The NVIDIA embed models assign the same text a different vector depending on the
+    <code>input_type</code> you pass. The training objective pulls a question
+    toward the passages that answer it rather than toward texts that merely
+    repeat its words, so a cosine score between two correctly typed inputs
+    tracks relevance well. Embedding a query with the
+    <code>"passage"</code> type or the reverse breaks the score function
+    silently and produces lower recall with no error message.</p>
   </div>
 
   <!-- ── Part 4: Vector index ──────────────────────────────────────────────── -->
   <h2>A whole retriever in thirty lines of top-K cosine</h2>
   <p>
-    A "vector database" is a fancy way to say what the Index Agent
-    actually does: store passages alongside their embedding;
-    given a query embedding, return the top-K closest passages by
-    cosine similarity. In the browser, that fits in thirty lines
-    of JavaScript. The cell below builds an Index Agent over a
+    A "vector database" dresses up a plain job the Index Agent
+    already does. It stores each passage beside its embedding and
+    returns the top-K closest passages to any query embedding by
+    cosine similarity. In the browser that fits in thirty lines
+    of JavaScript.
+  </p>
+  <p>
+    The cell below builds an Index Agent over a
     handful of documents and queries it. Edit the corpus and the
-    query; watch which passages bubble to the top and why.
+    query, then watch which passages bubble to the top and why.
   </p>
 
   <div id="cell-m3b-p2"></div>
 
   <div class="callout warn">
     <strong>Failure mode: stale embeddings.</strong>
-    A vector index is a cache of an embedding model's outputs. Production systems
-    have to defend against a few specific failures:
+    <p>A vector index is a cache of an embedding model's outputs. Production systems
+    have to defend against a few specific failures:</p>
     <ul style="margin:8px 0 0 22px">
       <li>Swap the embedding model and every cached vector becomes meaningless until you re-embed every passage.</li>
-      <li>The provider silently upgrades the model; scores drift without any error.</li>
+      <li>The provider silently upgrades the model, and scores drift with no error raised.</li>
       <li>Two services share an index but pin different model ids; the index returns nonsense to one of them.</li>
     </ul>
-    Production systems pin the embedding model id alongside each cached vector
-    and refuse to mix versions. The canonical pin for this course is
+    <p>A reliable index pins the embedding model id alongside each cached vector
+    and refuses to mix versions. The canonical pin for this course is
     <code>nvidia/llama-nemotron-embed-1b-v2</code>, served through the
-    course's hosted proxy at build.nvidia.com.
+    course's hosted proxy at build.nvidia.com.</p>
   </div>
 
   <!-- ── Part 5: Hierarchies ──────────────────────────────────────────────── -->
   <h2>Searching small chunks but returning the parent document</h2>
   <p>
-    A plain top-K Index Agent has a recall-precision trade-off no embedding model
+    A bare top-K Index Agent has a recall-precision trade-off no embedding model
     solves. You must choose between short chunks and long documents:
   </p>
   <ul>
@@ -342,10 +465,13 @@
     <li>Long documents have context (every fact lands in its setting) but embed fuzzily (the vector is the average of many ideas).</li>
   </ul>
   <p>
-    The production fix is a hierarchy: index small chunks (precise retrieval),
-    but on a hit, fetch the parent document (full context). Same primitives,
-    two levels. The exercise below shows it with three parent docs split into
-    short sentence-chunks and a query that returns the matching <em>parent</em>.
+    The production pattern indexes at two levels. You embed the small chunks so retrieval stays
+    precise, and when one matches you return its parent document so the model still sees the full
+    context around it.
+  </p>
+  <p>
+    The exercise below builds this with three parent docs, each split into short
+    sentence-chunks, and a query that returns the matching <em>parent</em>.
   </p>
 
   <div id="cell-m3b-p3"></div>
@@ -353,9 +479,10 @@
   <!-- ── Part 6: Retrieval as a tool ──────────────────────────────────────── -->
   <h2>Wrapping the index as a tool the model decides to call</h2>
   <p>
-    A retrieval index by itself is not an agent. The Index Agent is
-    what you get when the index is wrapped as a tool the model can
-    choose to call. The cell below does exactly that:
+    A retrieval index on its own only answers when something queries it.
+    It becomes an <strong>Index Agent</strong> once you wrap it as a tool the
+    model can choose to call, letting the model decide when retrieval is worth
+    running. The cell below does it in five steps:
   </p>
   <ol>
     <li>A corpus is embedded once and held in an in-memory index.</li>
@@ -365,140 +492,353 @@
     <li>A second LLM call writes the final answer grounded in the retrieved passages.</li>
   </ol>
   <p>
-    This is the canonical "retriever-as-tool" pattern. The same shape scales
-    to production: swap the in-memory cosine function for a server-side
-    FAISS+BM25+rerank pipeline, and only the executor changes. The tool
-    schema, the agent loop, and the final answer step stay identical.
+    The "retriever-as-tool" shape you just wired scales straight to production.
+    Swapping the in-memory cosine function for a server-side FAISS+<a href="https://en.wikipedia.org/wiki/Okapi_BM25" target="_blank" rel="noopener">BM25</a>+rerank pipeline
+    changes only the executor; the tool schema, the agent loop, and the final
+    answer step all stay identical.
   </p>
 
   <div id="cell-m3b-p4"></div>
 
   <h2>How the other three shapes are built</h2>
   <p>
-    This lab builds the fuzzy-prose lane end to end. The other three are named
-    here so you can recognise them in the wild and reach for the right primitive;
-    each is a known production pattern, not a mystery.
+    You just built the fuzzy-prose lane from corpus to answer. The other three are named
+    here so you can recognise them in the wild and reach for the right primitive.
+    Each one has a well-worn production pattern, sketched below.
   </p>
   <ul>
-    <li><strong>Hierarchical docs.</strong> A chunker that preserves the heading hierarchy, plus atomic table extraction, parent pointers, and a dual index for structural and semantic search. You index the small child chunks for recall and fetch the enclosing parent on a hit, so the model sees the clause in its section, not stranded.</li>
-    <li><strong>Page-image retrieval for figures and charts.</strong> A dual-vector setup that embeds the rendered page image alongside its text, so a query can pull a figure or a slide, not just the prose around it.</li>
+    <li><strong>Hierarchical docs.</strong> A chunker that preserves the heading hierarchy, plus atomic table extraction, parent pointers, and a dual index for structural and semantic search. You index the small child chunks for recall and fetch the enclosing parent on a hit, so the model reads the matched clause together with the section it belongs to.</li>
+    <li><strong>Page-image retrieval for figures and charts.</strong> A dual-vector setup that embeds the rendered page image alongside its text, so a query can also pull a figure or a slide when the answer lives there.</li>
     <li><strong>Governed tables.</strong> Not built in this course. The standard production pattern is a semantic layer (dbt, LookML, or a hand-rolled equivalent) sitting between the agent and the row-level data, exposing only the curated metrics the bundle requires.</li>
-    <li><strong>Relational / graph data.</strong> The agent calls a graph-traversal tool (Cypher, GraphQL, or custom) instead of a vector store; the bundle it gets back is a sub-graph, not a chunk list, so explicit edges survive into the prompt.</li>
+    <li><strong>Relational / graph data.</strong> The agent calls a graph-traversal tool (Cypher, GraphQL, or custom) in place of a vector store. The bundle it gets back is a sub-graph whose explicit edges carry into the prompt, so the relationships between entities reach the model intact.</li>
   </ul>
 
   <!-- ── Frontier: GraphRAG for global questions ───────────────────────────── -->
   <h2>When top-K is the wrong tool: GraphRAG and global questions</h2>
   <p>
-    Every retriever on this page answers a <em>local</em> question, one whose answer
-    sits in a handful of passages: "what does the contract say about termination?",
-    "which paper introduced HyDE?". Top-K similarity finds those passages and the
-    model reads them. A different class of question has no answer in any single
-    passage. Ask "what are the main themes across these thousand documents?" and
-    there is nothing to retrieve, because the answer is a property of the whole
-    corpus rather than of any chunk in it. Top-K hands back its three best matches
-    and the model dutifully summarizes three chunks, blind to the other nine hundred
-    and ninety-seven.
+    Every retriever on this page answers a <em>local</em> question whose answer sits in a handful of passages that Top-K
+    similarity can find for the model to read, the way asking what the contract says about termination or which paper
+    introduced <a href="https://arxiv.org/abs/2212.10496" target="_blank" rel="noopener">HyDE</a> does. A whole different
+    class of question has no answer in any single passage at all. Ask what the main themes are across a thousand documents
+    and you find that the answer is too diffuse to live in any one passage and emerges only from the corpus taken as a whole.
   </p>
   <p>
-    GraphRAG (<a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">Edge et al. 2024</a>)
-    changes the shape of the problem instead of raising K. It spends an LLM up front,
-    at indexing time: read the corpus, extract entities and the relationships between
-    them into a knowledge graph, detect the communities in that graph (clusters of
-    densely connected entities), and summarize each community. A global question is
-    then answered at query time by summarizing across the relevant community
-    summaries and reducing those partial answers into one. It is a map-reduce over
-    structure, not a lookup over similarity.
+    Top-K hands back only its three best matches, so the model summarizes those three chunks while staying completely
+    blind to the other nine hundred and ninety-seven passages in the corpus. GraphRAG
+    (<a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">Edge et al. 2024</a>)
+    changes the shape of that problem instead of raising K. It spends an LLM up front at indexing time to:
+  </p>
+  <ul>
+    <li>read the corpus and extract entities and the relationships between them into a knowledge graph;</li>
+    <li>detect the <a href="https://en.wikipedia.org/wiki/Community_structure" target="_blank" rel="noopener">communities</a> in that graph, the clusters of densely connected entities;</li>
+    <li>summarize each community on its own.</li>
+  </ul>
+  <p>
+    A global question is then answered at query time, by summarizing across the relevant community summaries and
+    reducing those partial answers into one. The work is a map-reduce over structure rather than a lookup over similarity.
   </p>
 
   <div style="display:flex;justify-content:center;margin:1.4em 0">
-    <figure style="margin:0;max-width:720px;width:100%">
-      <img src="assets/graph_rag_2024.svg" alt="The GraphRAG pipeline from Edge et al. 2024. At indexing time, shown in blue, source documents are split into text chunks, an LLM extracts entities and relationships, those become a knowledge graph, and community detection partitions the graph into graph communities. At query time, shown in green, each graph community is summarized, the community summaries produce community answers to the question, and the community answers are summarized into a single global answer."
-           style="width:100%;height:auto;display:block;background:#fff;border:1px solid #d0d7de;border-radius:8px;padding:16px"/>
+    <figure style="margin:0;max-width:1200px;width:100%">
+      <svg class="gfx-dark" viewBox="0 0 1160 660" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The GraphRAG pipeline. Indexing, shown in blue, runs offline: source documents are split into text chunks, an LLM extracts entities and relationships into a knowledge graph, and community detection partitions it into communities. Query time, shown in green, runs per question: each community is summarized, the summaries produce partial community answers, and those answers are reduced into one global answer." preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; display:block; background:#0d0d0d; border:1px solid #2a2a2a; border-radius:8px; padding:16px; max-width:1000px; margin:1.5rem auto">
+  <defs>
+    <marker id="arr-gray" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,1 L8,5 L0,9 Z" fill="var(--gfx-sub,#444444)"/>
+    </marker>
+    <marker id="arr-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,1 L8,5 L0,9 Z" fill="var(--gfx-green,#76b900)"/>
+    </marker>
+  </defs>
+
+  <line x1="310" y1="40" x2="310" y2="530" stroke="var(--gfx-panel,#141414)" stroke-width="1.5" stroke-dasharray="4 6"/>
+  <line x1="850" y1="40" x2="850" y2="530" stroke="var(--gfx-tint-green,#141c14)" stroke-width="1.5" stroke-dasharray="4 6"/>
+
+  <rect x="170" y="35" width="280" height="54" rx="6" fill="var(--gfx-panel,#141414)" stroke="var(--gfx-line,#2a2a2a)" stroke-width="1.5"/>
+  <text x="310" y="67" font-family="Arial, sans-serif" font-size="14" fill="var(--gfx-ink,#e6e6e6)" text-anchor="middle" font-weight="700">Source Documents</text>
+
+  <rect x="170" y="155" width="280" height="54" rx="6" fill="var(--gfx-panel,#141414)" stroke="var(--gfx-line,#2a2a2a)" stroke-width="1.5"/>
+  <text x="310" y="187" font-family="Arial, sans-serif" font-size="14" fill="var(--gfx-ink,#e6e6e6)" text-anchor="middle" font-weight="700">Text Chunks</text>
+
+  <rect x="170" y="275" width="280" height="54" rx="6" fill="var(--gfx-panel,#141414)" stroke="var(--gfx-line,#2a2a2a)" stroke-width="1.5"/>
+  <text x="310" y="307" font-family="Arial, sans-serif" font-size="14" fill="var(--gfx-ink,#e6e6e6)" text-anchor="middle" font-weight="700">Entities &amp; Relationships</text>
+
+  <rect x="170" y="395" width="280" height="54" rx="6" fill="var(--gfx-panel,#141414)" stroke="var(--gfx-line,#3a3a3a)" stroke-width="1.5"/>
+  <text x="310" y="427" font-family="Arial, sans-serif" font-size="14" fill="var(--gfx-ink,#e6e6e6)" text-anchor="middle" font-weight="700">Knowledge Graph Index</text>
+
+
+  <rect x="710" y="395" width="280" height="54" rx="6" fill="var(--gfx-tint-green,#112211)" stroke="var(--gfx-green,#224422)" stroke-width="1.5"/>
+  <text x="850" y="427" font-family="Arial, sans-serif" font-size="14" fill="var(--gfx-green,#aee23a)" text-anchor="middle" font-weight="700">Graph Communities</text>
+
+
+  <rect x="710" y="275" width="280" height="54" rx="6" fill="var(--gfx-tint-green,#112211)" stroke="var(--gfx-green,#224422)" stroke-width="1.5"/>
+  <text x="850" y="307" font-family="Arial, sans-serif" font-size="14" fill="var(--gfx-green,#aee23a)" text-anchor="middle" font-weight="700">Community Summaries</text>
+
+  <rect x="710" y="155" width="280" height="54" rx="6" fill="var(--gfx-tint-green,#112211)" stroke="var(--gfx-green,#76b900)" stroke-width="1.5"/>
+  <text x="850" y="187" font-family="Arial, sans-serif" font-size="14" fill="var(--gfx-green,#aee23a)" text-anchor="middle" font-weight="700">Intermediate Answers (Map)</text>
+
+  <rect x="710" y="35" width="280" height="54" rx="6" fill="var(--gfx-tint-green,#1c331c)" stroke="var(--gfx-green,#76b900)" stroke-width="2"/>
+  <text x="850" y="67" font-family="Arial, sans-serif" font-size="14" fill="var(--gfx-green,#aee23a)" text-anchor="middle" font-weight="800">Global Aggregation (Reduce)</text>
+
+
+  <rect x="170" y="535" width="280" height="48" rx="4" fill="var(--gfx-panel,#111111)" stroke="var(--gfx-line,#2a2a2a)" stroke-width="1.2"/>
+  <text x="310" y="564" font-family="ui-monospace, monospace" font-size="13" fill="var(--gfx-sub,#888888)" text-anchor="middle" letter-spacing="0.05em">STAGE 01 · OFFLINE INDEXING</text>
+
+  <rect x="710" y="535" width="280" height="48" rx="4" fill="var(--gfx-tint-green,#142214)" stroke="var(--gfx-green,#224422)" stroke-width="1.2"/>
+  <text x="850" y="564" font-family="ui-monospace, monospace" font-size="13" fill="var(--gfx-green,#76b900)" text-anchor="middle" letter-spacing="0.05em">STAGE 02 · ONLINE GENERATION</text>
+
+  <text x="580" y="564" font-family="Arial, sans-serif" font-size="13" fill="var(--gfx-faint,#5e5e5e)" text-anchor="middle" font-weight="700">PIPELINE TRANSITION</text>
+
+
+  <line x1="310" y1="89" x2="310" y2="154" stroke="var(--gfx-sub,#444444)" stroke-width="1.5" marker-end="url(#arr-gray)"/>
+  <rect x="220" y="104" width="180" height="34" rx="4" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-line,#222222)" stroke-width="1"/>
+  <text x="310" y="121" font-family="ui-monospace, monospace" font-size="11" fill="var(--gfx-sub,#aaaaaa)" text-anchor="middle">text slicing &amp; chunking</text>
+
+  <line x1="310" y1="209" x2="310" y2="274" stroke="var(--gfx-sub,#444444)" stroke-width="1.5" marker-end="url(#arr-gray)"/>
+  <rect x="200" y="224" width="220" height="34" rx="4" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-line,#222222)" stroke-width="1"/>
+  <text x="310" y="241" font-family="ui-monospace, monospace" font-size="11" fill="var(--gfx-sub,#aaaaaa)" text-anchor="middle">LLM entity-relation harvest</text>
+
+  <line x1="310" y1="329" x2="310" y2="394" stroke="var(--gfx-sub,#444444)" stroke-width="1.5" marker-end="url(#arr-gray)"/>
+  <rect x="210" y="344" width="200" height="34" rx="4" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-line,#222222)" stroke-width="1"/>
+  <text x="310" y="361" font-family="ui-monospace, monospace" font-size="11" fill="var(--gfx-sub,#aaaaaa)" text-anchor="middle">graph topology layout</text>
+
+  <line x1="450" y1="422" x2="704" y2="422" stroke="var(--gfx-green,#76b900)" stroke-width="1.5" marker-end="url(#arr-green)"/>
+  <rect x="500" y="405" width="160" height="34" rx="4" fill="var(--gfx-tint-green,#0f1a0f)" stroke="var(--gfx-green,#224422)" stroke-width="1"/>
+  <text x="580" y="422" font-family="ui-monospace, monospace" font-size="11" fill="var(--gfx-green,#aee23a)" text-anchor="middle" font-weight="600">Leiden clustering</text>
+
+  <line x1="850" y1="395" x2="850" y2="336" stroke="var(--gfx-green,#76b900)" stroke-width="1.5" marker-end="url(#arr-green)"/>
+  <rect x="740" y="344" width="220" height="34" rx="4" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-green,#223322)" stroke-width="1"/>
+  <text x="850" y="361" font-family="ui-monospace, monospace" font-size="11" fill="var(--gfx-sub,#8a9a8a)" text-anchor="middle">hierarchical synthesis</text>
+
+  <line x1="850" y1="275" x2="850" y2="216" stroke="var(--gfx-green,#76b900)" stroke-width="1.5" marker-end="url(#arr-green)"/>
+  <rect x="730" y="224" width="240" height="34" rx="4" fill="var(--gfx-tint-green,#0f1a0f)" stroke="var(--gfx-green,#224422)" stroke-width="1"/>
+  <text x="850" y="241" font-family="ui-monospace, monospace" font-size="11" fill="var(--gfx-green,#aee23a)" text-anchor="middle" font-weight="600">parallel community maps</text>
+
+  <line x1="850" y1="155" x2="850" y2="96" stroke="var(--gfx-green,#76b900)" stroke-width="1.5" marker-end="url(#arr-green)"/>
+  <rect x="740" y="104" width="220" height="34" rx="4" fill="var(--gfx-tint-green,#0f1a0f)" stroke="var(--gfx-green,#224422)" stroke-width="1"/>
+  <text x="850" y="121" font-family="ui-monospace, monospace" font-size="11" fill="var(--gfx-green,#aee23a)" text-anchor="middle" font-weight="600">global corpus reduce</text>
+
+
+  <g transform="translate(45,25)">
+    <rect x="10" y="10" width="50" height="60" rx="3" fill="var(--gfx-panel,#141414)" stroke="var(--gfx-sub,#444444)" stroke-width="1.2"/>
+    <rect x="16" y="4" width="50" height="60" rx="3" fill="var(--gfx-panel,#1c1c1c)" stroke="var(--gfx-faint,#555555)" stroke-width="1.2"/>
+    <line x1="26" y1="16" x2="52" y2="16" stroke="var(--gfx-faint,#666666)" stroke-width="1.5"/>
+    <line x1="26" y1="28" x2="56" y2="28" stroke="var(--gfx-faint,#666666)" stroke-width="1.5"/>
+    <line x1="26" y1="40" x2="44" y2="40" stroke="var(--gfx-faint,#666666)" stroke-width="1.5"/>
+    <text x="40" y="82" font-family="Arial, sans-serif" font-size="11" fill="var(--gfx-faint,#6a6a6a)" text-anchor="middle">source files</text>
+  </g>
+
+  <g transform="translate(45,145)">
+    <rect x="12" y="10" width="55" height="50" rx="4" fill="var(--gfx-panel,#111111)" stroke="var(--gfx-line,#333333)" stroke-width="1"/>
+    <rect x="20" y="18" width="38" height="8" rx="2" fill="var(--gfx-tint-blue,#1c3344)" stroke="var(--gfx-blue,#2d5977)" stroke-width="1"/>
+    <rect x="20" y="32" width="28" height="8" rx="2" fill="var(--gfx-tint-blue,#1c3344)" stroke="var(--gfx-blue,#2d5977)" stroke-width="1"/>
+    <rect x="20" y="46" width="34" height="8" rx="2" fill="var(--gfx-tint-blue,#1c3344)" stroke="var(--gfx-blue,#2d5977)" stroke-width="1"/>
+    <text x="40" y="80" font-family="Arial, sans-serif" font-size="11" fill="var(--gfx-faint,#6a6a6a)" text-anchor="middle">text chunks</text>
+  </g>
+
+  <g transform="translate(45,265)">
+    <rect x="12" y="8" width="55" height="55" rx="4" fill="var(--gfx-panel,#111111)" stroke="var(--gfx-line,#333333)" stroke-width="1"/>
+    <line x1="26" y1="24" x2="54" y2="44" stroke="var(--gfx-sub,#444444)" stroke-width="1.2"/>
+    <line x1="54" y1="22" x2="32" y2="48" stroke="var(--gfx-sub,#444444)" stroke-width="1.2"/>
+    <circle cx="26" cy="24" r="5" fill="var(--gfx-tint-blue,#142233)" stroke="var(--gfx-blue,#3b82f6)" stroke-width="1"/>
+    <circle cx="54" cy="22" r="5" fill="var(--gfx-tint-purple,#221433)" stroke="var(--gfx-purple,#8b5cf6)" stroke-width="1"/>
+    <circle cx="32" cy="48" r="5" fill="var(--gfx-panel,#1c1c1c)" stroke="var(--gfx-sub,#888888)" stroke-width="1"/>
+    <circle cx="54" cy="44" r="5" fill="var(--gfx-panel,#1c1c1c)" stroke="var(--gfx-sub,#888888)" stroke-width="1"/>
+    <text x="40" y="82" font-family="Arial, sans-serif" font-size="11" fill="var(--gfx-faint,#6a6a6a)" text-anchor="middle">extracted graph</text>
+  </g>
+
+  <g transform="translate(45,385)">
+    <rect x="12" y="8" width="55" height="55" rx="4" fill="var(--gfx-panel,#111111)" stroke="var(--gfx-sub,#444444)" stroke-width="1.2"/>
+    <path d="M 24,24 L 40,16 L 56,28 L 48,48 L 28,44 Z M 40,16 L 48,48 M 56,28 L 28,44" stroke="var(--gfx-sub,#444444)" stroke-width="1" fill="none"/>
+    <circle cx="24" cy="24" r="4.5" fill="var(--gfx-tint-green,#0f1a0f)" stroke="var(--gfx-green,#76b900)" stroke-width="1"/>
+    <circle cx="40" cy="16" r="4.5" fill="var(--gfx-tint-blue,#1c3344)" stroke="var(--gfx-blue,#3b82f6)" stroke-width="1"/>
+    <circle cx="56" cy="28" r="4.5" fill="var(--gfx-tint-green,#0f1a0f)" stroke="var(--gfx-green,#76b900)" stroke-width="1"/>
+    <circle cx="48" cy="48" r="4.5" fill="var(--gfx-panel,#1c1c1c)" stroke="var(--gfx-sub,#888888)" stroke-width="1"/>
+    <circle cx="28" cy="44" r="4.5" fill="var(--gfx-panel,#1c1c1c)" stroke="var(--gfx-sub,#888888)" stroke-width="1"/>
+    <text x="40" y="82" font-family="Arial, sans-serif" font-size="11" fill="var(--gfx-faint,#6a6a6a)" text-anchor="middle">graph index</text>
+  </g>
+
+
+  <g transform="translate(1030,385)">
+    <rect x="12" y="8" width="55" height="55" rx="4" fill="var(--gfx-panel,#111111)" stroke="var(--gfx-green,#224422)" stroke-width="1.2"/>
+    <circle cx="32" cy="26" r="13" fill="var(--gfx-tint-green,#142214)" stroke="var(--gfx-green,#76b900)" stroke-width="1" stroke-dasharray="2 2"/>
+    <circle cx="48" cy="42" r="13" fill="var(--gfx-tint-blue,#142233)" stroke="var(--gfx-blue,#3b82f6)" stroke-width="1" stroke-dasharray="2 2"/>
+    <circle cx="30" cy="24" r="3" fill="var(--gfx-green,#76b900)"/>
+    <circle cx="36" cy="30" r="3" fill="var(--gfx-green,#76b900)"/>
+    <circle cx="44" cy="40" r="3" fill="var(--gfx-blue,#3b82f6)"/>
+    <circle cx="52" cy="46" r="3" fill="var(--gfx-blue,#3b82f6)"/>
+    <text x="40" y="82" font-family="Arial, sans-serif" font-size="11" fill="var(--gfx-sub,#6a7a6a)" text-anchor="middle">communities</text>
+  </g>
+
+  <g transform="translate(1030,265)">
+    <rect x="12" y="8" width="55" height="55" rx="4" fill="var(--gfx-panel,#111111)" stroke="var(--gfx-green,#224422)" stroke-width="1.2"/>
+    <line x1="22" y1="20" x2="58" y2="20" stroke="var(--gfx-green,#445544)" stroke-width="1.5"/>
+    <line x1="22" y1="30" x2="50" y2="30" stroke="var(--gfx-green,#445544)" stroke-width="1.5"/>
+    <line x1="22" y1="40" x2="54" y2="40" stroke="var(--gfx-green,#445544)" stroke-width="1.5"/>
+    <rect x="22" y="48" width="28" height="6" rx="1.5" fill="var(--gfx-tint-green,#142b14)" stroke="var(--gfx-green,#76b900)" stroke-width="0.8"/>
+    <text x="40" y="82" font-family="Arial, sans-serif" font-size="11" fill="var(--gfx-sub,#6a7a6a)" text-anchor="middle">summaries</text>
+  </g>
+
+  <g transform="translate(1030,145)">
+    <rect x="12" y="10" width="55" height="50" rx="4" fill="var(--gfx-panel,#111111)" stroke="var(--gfx-green,#76b900)" stroke-width="1.2"/>
+    <rect x="20" y="18" width="40" height="12" rx="3" fill="var(--gfx-tint-green,#142b14)" stroke="var(--gfx-green,#76b900)" stroke-width="1"/>
+    <rect x="20" y="36" width="40" height="12" rx="3" fill="var(--gfx-tint-green,#142b14)" stroke="var(--gfx-green,#76b900)" stroke-width="1"/>
+    <circle cx="26" cy="24" r="2" fill="var(--gfx-green,#aee23a)"/>
+    <circle cx="26" cy="42" r="2" fill="var(--gfx-green,#aee23a)"/>
+    <text x="40" y="80" font-family="Arial, sans-serif" font-size="11" fill="var(--gfx-green,#76b900)" text-anchor="middle">map splits</text>
+  </g>
+
+  <g transform="translate(1030,25)">
+    <rect x="12" y="10" width="55" height="60" rx="4" fill="var(--gfx-tint-green,#142214)" stroke="var(--gfx-green,#76b900)" stroke-width="1.5"/>
+    <path d="M40 22 L44 34 L56 34 L46 42 L50 54 L40 46 L30 54 L34 42 L24 34 L36 34 Z" fill="var(--gfx-green,#1e3a1e)" stroke="var(--gfx-green,#aee23a)" stroke-width="1"/>
+    <text x="40" y="85" font-family="Arial, sans-serif" font-size="11" fill="var(--gfx-green,#aee23a)" text-anchor="middle" font-weight="700">reduce text</text>
+  </g>
+
+  <g transform="translate(518,446)">
+    <rect x="0" y="0" width="124" height="42" rx="4" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-green,#223322)" stroke-width="1"/>
+    <circle cx="28" cy="21" r="11" fill="none" stroke="var(--gfx-line,#333333)" stroke-dasharray="2 2"/>
+    <circle cx="96" cy="21" r="11" fill="none" stroke="var(--gfx-green,#76b900)" stroke-dasharray="2 2"/>
+    <line x1="62" y1="8" x2="62" y2="34" stroke="var(--gfx-line,#222222)" stroke-width="1"/>
+    <text x="62" y="54" font-family="Arial, sans-serif" font-size="11" fill="var(--gfx-faint,#5e5e5e)" text-anchor="middle" font-style="italic">partition topology</text>
+  </g>
+
+
+  </svg>
+
       <figcaption style="text-align:center;font-size:.85rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">
-        The GraphRAG pipeline, redrawn from <a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">Edge et al. 2024</a>'s figure. Blue is built once, offline; green runs per question.
+        The GraphRAG pipeline, redrawn from <a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">Edge et al. 2024</a>'s figure. The blue stages are built once, offline, and the green stages run on every question.
       </figcaption>
     </figure>
   </div>
 
   <p>
-    The widget below makes the difference concrete on a four-document corpus. Pick a
-    question and watch where plain top-K retrieval succeeds and where it quietly
-    misses, against the same question answered over GraphRAG's community summaries.
+    The cell below makes the difference concrete on a small corpus, and it
+    runs the real pipeline rather than playing back a script. It asks one global
+    question two ways: plain top-K retrieval, and GraphRAG's map-reduce over named
+    communities. Watch top-K answer from whichever chunks happen to match the
+    question's words while the community pass recovers the corpus-wide theme. Edit the
+    corpus, the communities, or the question and run it again.
   </p>
-  <div id="cell-graphrag-explorer"></div>
-  <script>
-  (function(){
-    var root=document.getElementById("cell-graphrag-explorer"); if(!root) return;
-    var docs=[
-      "Dijkstra and Prim are greedy methods that grow one optimal choice at a time over a weighted graph.",
-      "Kruskal builds a minimum spanning tree by adding the cheapest safe edge, using union-find to avoid cycles.",
-      "Bellman-Ford finds shortest paths by dynamic programming, relaxing every edge repeatedly instead of committing greedily.",
-      "Union-find (disjoint-set) provides the near-constant-time merges Kruskal relies on."
-    ];
-    var comms=[
-      ["Greedy methods","Dijkstra, Prim, Kruskal","commit to a locally optimal edge or node at each step"],
-      ["Dynamic programming","Bellman-Ford","relax edges repeatedly instead of committing greedily"],
-      ["Supporting structures","union-find","data structures the other algorithms depend on"]
-    ];
-    var Q={
-      local:{q:"What does Kruskal use to avoid cycles?",
-        basic:[true,[1,3],"union-find. Chunks 2 and 4 are the most similar to the question and they state it outright, so top-K nails a local question."],
-        graph:[true,null,"union-find, reached through the Supporting-structures community. Correct, but a heavier path than a local question needs."]},
-      global:{q:"What are the main families of algorithms here?",
-        basic:[false,[0,1],"Top-K returns the chunks most similar to the question's words (1 and 2) and summarizes those: Dijkstra, Prim, Kruskal. It never surfaces Bellman-Ford or the greedy-versus-dynamic-programming split, because no single chunk states the theme."],
-        graph:[true,null,"Two families: greedy methods (Dijkstra, Prim, Kruskal) and dynamic programming (Bellman-Ford), with union-find supporting them. Each community is summarized, then summarized across."]}
-    };
-    var E=function(t,s,h){var e=document.createElement(t); if(s)e.style.cssText=s; if(h!=null)e.innerHTML=h; return e;};
-    var BD="var(--bd,#2a2a2a)",E1="var(--e1,#15171a)",E2="var(--e2,#1c1f24)",TD="var(--td,#c9c9c9)",TF="var(--tf,#8a8a8a)",G="var(--g,#76b900)",RED="#d9534f";
-    var wrap=E("div","border:1px solid "+BD+";border-radius:10px;background:"+E1+";padding:16px");
-    wrap.appendChild(E("div","font-size:.82rem;color:"+TF+";margin-bottom:.5em","A four-document corpus. The same question, two ways:"));
-    var strip=E("div","display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px");
-    docs.forEach(function(d,i){strip.appendChild(E("div","flex:1 1 210px;font-size:.75rem;color:"+TD+";background:"+E2+";border:1px solid "+BD+";border-radius:6px;padding:7px 9px","<b style=\"color:"+TF+"\">D"+(i+1)+"</b> "+d));});
-    wrap.appendChild(strip);
-    var btnRow=E("div","display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap"), panels=E("div","display:flex;gap:12px;flex-wrap:wrap"), btns={};
-    function mkBtn(key,label){
-      var b=E("button",null,"<span style=\"font-size:.68rem;letter-spacing:.08em;color:"+TF+"\">"+label+"</span><br>"+Q[key].q);
-      b.style.cssText="flex:1 1 240px;text-align:left;cursor:pointer;font:inherit;font-size:.85rem;line-height:1.3;padding:9px 12px;border-radius:7px;border:1px solid "+BD+";background:"+E2+";color:"+TD;
-      b.onclick=function(){for(var k in btns){btns[k].style.borderColor=BD;btns[k].style.color=TD;} b.style.borderColor=G; b.style.color=G; select(key);};
-      return b;
-    }
-    function methodPanel(title,sub,r,extra){
-      var ok=r[0], bdc=ok?G:RED, p=E("div","flex:1 1 300px;border:1px solid "+BD+";border-left:3px solid "+bdc+";border-radius:8px;background:"+E2+";padding:12px");
-      p.appendChild(E("div","font-weight:700;color:"+TD+";font-size:.9rem","<span style=\"color:"+bdc+"\">"+(ok?"✓":"✗")+"</span> "+title));
-      p.appendChild(E("div","font-size:.74rem;color:"+TF+";margin:.1em 0 .6em",sub));
-      if(extra)p.appendChild(extra);
-      p.appendChild(E("div","font-size:.82rem;color:"+TD+";line-height:1.5",r[2]));
-      return p;
-    }
-    function select(key){
-      panels.innerHTML=""; var d=Q[key];
-      var hit=E("div","display:flex;flex-wrap:wrap;gap:4px;margin-bottom:.6em");
-      d.basic[1].forEach(function(i){hit.appendChild(E("span","font-size:.72rem;color:"+TD+";background:"+E1+";border:1px solid "+BD+";border-radius:5px;padding:2px 7px","retrieved D"+(i+1)));});
-      panels.appendChild(methodPanel("Basic RAG · top-K","retrieve the most similar chunks, then summarize them",d.basic,hit));
-      var cl=E("div","margin-bottom:.6em");
-      comms.forEach(function(c){cl.appendChild(E("div","font-size:.72rem;color:"+TD+";margin-bottom:3px","<b style=\"color:"+TF+"\">"+c[0]+"</b> · "+c[1]));});
-      panels.appendChild(methodPanel("GraphRAG · community summaries","summarize each community, then summarize across them",d.graph,cl));
-    }
-    btns.local=mkBtn("local","LOCAL QUESTION"); btns.global=mkBtn("global","GLOBAL QUESTION");
-    btnRow.appendChild(btns.local); btnRow.appendChild(btns.global);
-    wrap.appendChild(btnRow); wrap.appendChild(panels); root.appendChild(wrap);
-    btns.global.click();
-  })();
+  <div id="cell-graphrag"></div>
+  <script type="module">
+    import { mountRunCell } from "./_shared.js";
+    mountRunCell("#cell-graphrag", {
+      label: "top-K versus GraphRAG, in code",
+      autorun: true,
+      code: `// Two retrieval strategies, same corpus, same global question.
+// BASIC top-K embeds and cosine-ranks, then answers from the K best chunks.
+// GRAPHRAG summarizes each community (map), then answers from those
+// summaries (reduce). Edit anything below and Run to re-render.
+
+// Six algorithm docs in three "community" families.
+// Top-K never sees the labels; GraphRAG retrieves by them.
+// TOP_K below is 2, so top-K reaches two families at most, never all three.
+const CORPUS = [
+  { text: "Dijkstra grows shortest paths from a source by greedily picking the nearest unvisited vertex.", community: "Greedy methods" },
+  { text: "Kruskal builds a minimum spanning tree by adding the cheapest safe edge while avoiding cycles.", community: "Greedy methods" },
+  { text: "Bellman-Ford finds shortest paths by relaxing every edge V-1 times, which also detects negative cycles.", community: "Dynamic programming" },
+  { text: "Floyd-Warshall computes all-pairs shortest paths by considering each vertex as an intermediate step.", community: "Dynamic programming" },
+  { text: "Merge sort splits the array in half, sorts each half, then merges the two sorted halves in linear time.", community: "Divide and conquer" },
+  { text: "Quicksort partitions around a pivot, then recursively sorts the elements below and above it.", community: "Divide and conquer" },
+];
+
+// A GLOBAL question: no single chunk states the answer, so top-K is at a
+// disadvantage and the community pass should win.
+const QUESTION = "What are the main families of algorithms in this corpus, and how do they differ?";
+
+const TOP_K = 2;
+
+
+// ── 1 · BASIC top-K ──────────────────────────────────────────────────────────
+// Embed the question and every chunk, rank by cosine similarity, keep the top K,
+// and answer from only those chunks.
+const chunkVecs = await helpers.embed(CORPUS.map(d => d.text), { model: "nvidia/llama-nemotron-embed-1b-v2", inputType: "passage" });
+const [qVec]    = await helpers.embed(QUESTION, { model: "nvidia/llama-nemotron-embed-1b-v2", inputType: "query" });
+
+const ranked = CORPUS
+  .map((d, i) => ({ ...d, score: helpers.cosineSim(qVec, chunkVecs[i]) }))
+  .sort((a, b) => b.score - a.score);
+
+const topK = ranked.slice(0, TOP_K);
+helpers.log("top-K retrieved:", topK.map(d => d.text.slice(0, 40) + "…"));
+
+const basicResp = await helpers.chat({
+  messages: [
+    { role: "system", content: "Answer the question using ONLY the passages below. Be concise.\\n\\n" + topK.map((d, i) => "[" + (i + 1) + "] " + d.text).join("\\n") },
+    { role: "user", content: QUESTION },
+  ],
+  max_tokens: 8196,
+});
+const basicAnswer = basicResp.choices[0].message.content;
+
+
+// ── 2 · GRAPHRAG map-reduce ────────────────────────────────────────────────────
+// MAP: summarize each community's chunks into one community summary.
+const communities = [...new Set(CORPUS.map(d => d.community))];
+
+const summaries = [];
+for (const name of communities) {
+  const members = CORPUS.filter(d => d.community === name);
+  const resp = await helpers.chat({
+    messages: [
+      { role: "system", content: "Summarize this group of related documents in one sentence, naming what they have in common." },
+      { role: "user", content: "Community \\"" + name + "\\":\\n" + members.map(d => "- " + d.text).join("\\n") },
+    ],
+    max_tokens: 8196,
+  });
+  summaries.push({ name, summary: resp.choices[0].message.content });
+}
+helpers.log("community summaries:", summaries.map(s => s.name));
+
+// REDUCE: answer from the community summaries only, never the raw chunks.
+// Every family rides in through its summary, so the answer covers all of them.
+const graphResp = await helpers.chat({
+  messages: [
+    { role: "system", content: "Answer the question using ONLY these community summaries. Be concise.\\n\\n" + summaries.map(s => s.name + ": " + s.summary).join("\\n") },
+    { role: "user", content: QUESTION },
+  ],
+  max_tokens: 8196,
+});
+const graphAnswer = graphResp.choices[0].message.content;
+
+
+// ── 3 · render both answers side by side ────────────────────────────────────────
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+const panel = (title, sub, body) =>
+  '<div style="flex:1 1 320px;border:1px solid var(--bd,#2a2a2a);border-radius:8px;background:var(--e2,#1c1f24);padding:12px;max-height:340px;overflow:auto">' +
+    '<div style="font-weight:700;color:var(--td,#c9c9c9);font-size:.9rem">' + title + '</div>' +
+    '<div style="font-size:.74rem;color:var(--tf,#8a8a8a);margin:.1em 0 .7em">' + sub + '</div>' +
+    '<div style="font-size:.84rem;color:var(--td,#c9c9c9);line-height:1.55;white-space:pre-wrap">' + esc(body) + '</div>' +
+  '</div>';
+
+helpers.log.html(
+  '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">' +
+    panel("Basic RAG · top-" + TOP_K, "answer from the " + TOP_K + " chunks nearest the question", basicAnswer) +
+    panel("GraphRAG · map-reduce", "summarize each community, then answer from the summaries", graphAnswer) +
+  '</div>'
+);
+
+helpers.log("Notice the global theme top-K misses but the community pass recovers.");
+`,
+    });
   </script>
 
   <p>
     The lesson is the one from the top of this page, turned up a level: the shape of
-    the question picks the architecture. A frozen model with a top-K retriever in
+    the question picks the architecture.
+  </p>
+  <p>
+    A frozen model with a top-K retriever in
     front answers local questions well and global ones not at all. Restructuring the
-    corpus into summarized communities is what buys the global answer, paid for by an
+    corpus into summarized communities buys the global answer, paid for by an
     expensive indexing pass you run once.
   </p>
 
   <h2>Before you continue</h2>
   <ol>
-    <li>The cosine score in Part 4 is symmetric. The NVIDIA embed model used here takes
-        <code>input_type</code> to distinguish query from passage. What does that
-        asymmetry buy you that pure cosine could not?</li>
+    <li>Cosine in Part 4 scores any two vectors the same way regardless of which is the
+        query, yet the NVIDIA embed model used here takes <code>input_type</code> to
+        distinguish query from passage. What does that asymmetry buy you that pure cosine
+        could not?</li>
     <li>Part 5 indexes child chunks but fetches the parent on a hit. What is the
         failure mode if the parent document is too large to fit in the LLM's
         context window? Which of the four shapes' primitives would you reach for
@@ -522,45 +862,98 @@
 
   <h2>Try it · retrieval, live</h2>
   <p>
-    Ask a question. The artifact embeds it with the same embedding endpoint from
-    this page, ranks a small built-in corpus by cosine similarity (the bars show
-    every score), then answers grounded in the top passages and cites them. Change
-    the question and watch the ranking shift.
+    Ask a question. The artifact embeds it with the same endpoint from this page and
+    ranks a small built-in corpus by cosine similarity. The bars show every score. It
+    then answers from the top passages and cites them. Change the question and watch
+    the ranking shift.
   </p>
+  <p>
+    The corpus is embedded offline and shipped beside the page as a prebuilt index so that only your question gets
+    embedded live. You are watching the indexing-versus-serving split from the diagram above run here. The example
+    questions even carry prebuilt vectors and retrieve before you add a key, while editing a passage re-embeds only that
+    one passage.
+  </p>
+  <div id="rag-cell"></div>
   <div id="rag-artifact"></div>
   <script type="module">
-    import { mountChatUI, embed, cosineSim, chatStream } from "./_shared.js";
-    const CORPUS = [
-      "An agent loop wraps a stateless model in a cycle: read the messages, decide, call a tool, append the result, repeat until finish_reason is stop.",
-      "ReAct interleaves reasoning and acting: the model thinks, optionally calls a tool, reads the observation, and re-plans before answering.",
-      "A tool is structured output plus an executor: the model emits a tool_calls request, your code runs the function, and the result returns as a tool message.",
-      "Retrieval-augmented generation embeds a query and the documents into the same vector space, retrieves the nearest chunks, and feeds them to the model as grounding.",
-      "Cosine similarity scores two embedding vectors by the angle between them; closer to 1 means more semantically related.",
-      "A deep or research agent plans a task, spawns sub-agents in fresh contexts, and shares work through a virtual filesystem to avoid context overflow.",
-      "OpenClaw is an agent runtime whose configuration is a folder of markdown files the runtime folds into the system prompt every turn.",
-      "OpenShell is the kernel-level sandbox around the agent: netns, Landlock, seccomp, and an OPA-evaluated proxy decide what each tool call may touch.",
-    ];
-    let docVecs = null;
-    mountChatUI("#rag-artifact", {
-      greeting: "Ask about anything from this course. I embed your question, rank a small corpus by cosine similarity, and answer from the best matches.",
-      examples: ["What does reranking do?", "How does chunking work?", "Why use cosine similarity?"],
-      respond: async (text, ctx) => {
-        if (!docVecs) { ctx.view.tool("embedding the corpus once…"); docVecs = await embed(CORPUS, { inputType: "passage" }); }
-        const [qv] = await embed(text, { inputType: "query" });
-        const ranked = CORPUS.map((t, i) => ({ t, s: cosineSim(qv, docVecs[i]) })).sort((a, b) => b.s - a.s);
-        const max = ranked[0].s || 1;
-        ctx.view.html('<table><tr><th>passage</th><th>cosine</th></tr>' + ranked.map(r =>
-          '<tr><td><div style="display:flex;align-items:center;gap:8px"><div style="background:var(--g,#76b900);height:10px;border-radius:3px;width:' +
-          Math.max(4, Math.round(80 * r.s / max)) + 'px"></div><span style="color:var(--td,#b0b0b0)">' +
-          r.t.slice(0, 56).replace(/</g, "&lt;") + '…</span></div></td><td style="font-family:var(--mono,monospace);color:var(--gs,#aee23a)">' +
-          r.s.toFixed(3) + '</td></tr>').join("") + '</table>');
-        const top = ranked.slice(0, 3).map((r, i) => "[" + (i + 1) + "] " + r.t).join("\n");
-        ctx.view.tool("retrieved top 3 passages", top);   // the exact text handed to the model, in full
-        const s = await chatStream({ messages: [
-          { role: "system", content: "Answer ONLY from these passages and cite them as [n]. If they do not cover the question, say so.\n\n" + top },
-          { role: "user", content: text }], max_tokens: 1024, signal: ctx.signal }, (t) => ctx.view.token(t), { onReasoning: (r) => ctx.view.reasoning(r) });
-        if (s.usage) ctx.view.usage({ input: s.usage.prompt_tokens, output: s.usage.completion_tokens, model: s.model });
-      },
+    import { mountRunCell } from "./_shared.js";
+    mountRunCell("#rag-cell", {
+      label: "the Try-it artifact, in code",
+      autorun: true,
+      code: `// Try-it artifact: loads a PREBUILT vector index (corpus embedded offline by
+// scripts/build_rag_index.py), then embeds only your live question each turn,
+// ranks the corpus by cosine similarity, and answers from the top 3 passages.
+// Edit a passage or the prompt and Run; an edit re-embeds only what the index misses.
+const MODEL_PIN = "nvidia/llama-nemotron-embed-1b-v2";   // the prebuilt index is valid only for this model
+const CORPUS = [
+  "An agent loop wraps a stateless model in a cycle: read the messages, decide, call a tool, append the result, repeat until finish_reason is stop.",
+  "ReAct interleaves reasoning and acting: the model thinks, optionally calls a tool, reads the observation, and re-plans before answering.",
+  "A tool is structured output plus an executor: the model emits a tool_calls request, your code runs the function, and the result returns as a tool message.",
+  "Retrieval-augmented generation embeds a query and the documents into the same vector space, retrieves the nearest chunks, and feeds them to the model as grounding.",
+  "Cosine similarity scores two embedding vectors by the angle between them; closer to 1 means more semantically related.",
+  "A deep or research agent plans a task, spawns sub-agents in fresh contexts, and shares work through a virtual filesystem to avoid context overflow.",
+  "OpenClaw is an agent runtime whose configuration is a folder of markdown files the runtime folds into the system prompt every turn.",
+  "OpenShell is the kernel-level sandbox around the agent: netns, Landlock, seccomp, and an OPA-evaluated proxy decide what each tool call may touch.",
+];
+
+// Load the prebuilt index once.
+// The index carries the embedding model id, so a model swap is caught here
+// (the index drops and vectors recompute) rather than scoring against stale vectors.
+// With no manifest reachable, it falls back to live embeds.
+let _index = null;
+async function loadIndex() {
+  if (_index) return _index;
+  try {
+    const m = await (await helpers.fetch("assets/rag_index.json")).json();
+    const ok = m.model === MODEL_PIN;
+    if (!ok) helpers.log("prebuilt index was built for " + m.model + ", not " + MODEL_PIN + "; embedding live instead.");
+    _index = ok
+      ? { byDoc: new Map(m.docs.map(d => [d.text, d.vec])), byQuery: new Map(m.queries.map(q => [q.text, q.vec])) }
+      : { byDoc: new Map(), byQuery: new Map() };
+  } catch (e) {
+    _index = { byDoc: new Map(), byQuery: new Map() };
+  }
+  return _index;
+}
+
+helpers.mountChatUI("#rag-artifact", {
+  greeting: "Ask about anything from this course. I embed your question, rank a small corpus by cosine similarity, and answer from the best matches.",
+  models: [
+    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
+    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
+  ],
+  examples: ["What is retrieval-augmented generation?", "Why use cosine similarity?", "How does the ReAct loop work?", "What is a tool, mechanically?", "What does the OpenShell sandbox do?", "What is a deep research agent?"],
+  respond: async (text, ctx) => {
+    const idx = await loadIndex();
+    // corpus vectors come from the prebuilt index; only passages it does not cover (edits) embed live
+    const miss = CORPUS.filter(t => !idx.byDoc.has(t));
+    if (miss.length) { ctx.view.tool("embedding " + miss.length + " edited passage(s); the rest load from the prebuilt index"); (await helpers.embed(miss, { inputType: "passage" })).forEach((v, i) => idx.byDoc.set(miss[i], v)); }
+    const docVecs = CORPUS.map(t => idx.byDoc.get(t));
+    // the example questions are prebuilt too, so they retrieve with no embed call; anything you type embeds live
+    let qv = idx.byQuery.get(text);
+    if (!qv) { [qv] = await helpers.embed(text, { inputType: "query" }); }
+    const ranked = CORPUS.map((t, i) => ({ t, s: helpers.cosineSim(qv, docVecs[i]) })).sort((a, b) => b.s - a.s);
+    const max = ranked[0].s || 1;
+    ctx.view.html('<table><tr><th>passage</th><th>cosine</th></tr>' + ranked.map(r =>
+      '<tr><td><div style="display:flex;align-items:center;gap:8px"><div style="background:var(--g,#76b900);height:10px;border-radius:3px;width:' +
+      Math.max(4, Math.round(80 * r.s / max)) + 'px"></div><span style="color:var(--td,#b0b0b0)">' +
+      r.t.slice(0, 56).replace(/</g, "&lt;") + '…</span></div></td><td style="font-family:var(--mono,monospace);color:var(--gs,#aee23a)">' +
+      r.s.toFixed(3) + '</td></tr>').join("") + '</table>');
+    const top = ranked.slice(0, 3).map((r, i) => "[" + (i + 1) + "] " + r.t).join("\\n");
+    ctx.view.tool("retrieved top 3 passages", top);   // the exact text handed to the model, in full
+    const s = await helpers.chatStream({ messages: [
+      { role: "system", content: "Answer ONLY from these passages and cite them as [n]. If they do not cover the question, say so.\\n\\n" + top },
+      { role: "user", content: text }], model: ctx.model, max_tokens: 8196, signal: ctx.signal }, (t) => ctx.view.token(t), { onReasoning: (r) => ctx.view.reasoning(r) });
+    if (s.usage) ctx.view.usage({ input: s.usage.prompt_tokens, output: s.usage.completion_tokens, model: s.model });
+  },
+});
+helpers.log("rendered below. Edit the config and Run.");
+
+// Under the hood: the panel is the full helpers.mountChatUI view; you write only respond().
+// The raw calls it makes, embed then rank:
+//     const [v] = await helpers.embed("a query", { inputType: "query" });
+//     const score = helpers.cosineSim(v, otherVector);
+`,
     });
   </script>
 
@@ -571,7 +964,7 @@
 </main>
 
 <script type="module">
-import { buildNav, requireKey, hasKey, chat, chatStream, setRunning, showError, updateKeyPill, mountJourneyMap, mountCanvasFlow } from "./_shared.js";
+import { buildNav, chat, chatStream, updateKeyPill, mountJourneyMap, mountCanvasFlow } from "./_shared.js";
 document.getElementById("nav").innerHTML = buildNav("02b-rag.html");
 const pill = document.getElementById("key-status");
 updateKeyPill(pill);
@@ -613,7 +1006,7 @@ return {
 // ── M3b P2: in-memory vector index ───────────────────────────────────────────
 mountCanvasFlow("#cell-m3b-p2", {
   label: "Module 2b Part 4 · in-memory vector index · top-K cosine retrieval",
-  intro: "A tiny corpus is embedded once and held in memory, and each submitted query is embedded and scored against every stored passage by cosine similarity so the top-K closest passages come back, which is the complete production retrieval shape running at toy scale where every step stays visible.",
+  intro: "A tiny corpus is embedded once and held in memory. Each query is embedded and scored against every passage by cosine similarity, returning the top-K closest. This is the full production retrieval shape at toy scale, with every step visible.",
   edges: [
     { from: "corpus", to: "index" },
     { from: "query",  to: "retrieve" },
@@ -713,7 +1106,7 @@ return { n_chunks: state.chunks.length, per_doc: state.docs.map(d => ({ id: d.id
     },
     {
       id: "index", icon: "🗂", title: "Embed chunks", x: 0, y: 2,
-      summary: "Embeds every child chunk so they can be searched by cosine similarity, but when a chunk matches, the retriever hands the LLM the full parent document, not the chunk alone.",
+      summary: "Embeds every child chunk so they can be searched by cosine similarity. On a chunk match, the retriever hands the LLM the whole parent document that chunk came from, restoring the surrounding context.",
       code: `const vecs = await helpers.embed(state.chunks.map(c => c.text), {
   model:     "nvidia/llama-nemotron-embed-1b-v2",
   inputType: "passage",
@@ -742,8 +1135,8 @@ const top = ranked[0];
 const parent = state.docs.find(d => d.id === top.parent);
 state.hit = { matched_chunk: top.text, score: top.score, parent_id: parent.id, parent_body: parent.body };
 
-// Score bars, ordered best-first. The top chunk is the single hit; everything
-// below it is the rest of the distribution.
+// Score bars, ordered best-first.
+// The top chunk is the single hit; everything below it is the rest of the distribution.
 helpers.viz.retrievalBars(
   ranked.map(c => ({
     score: c.score,
@@ -753,8 +1146,8 @@ helpers.viz.retrievalBars(
   "Chunk cosine scores · ★ is the single hit",
 );
 
-// Hierarchy as a diagram: parents on the top row, their child chunks fanned out
-// in the column below. We SEARCH chunks but RETURN the winning chunk's parent.
+// Hierarchy as a diagram: parents on the top row, child chunks fanned out below.
+// We SEARCH the chunks but RETURN the winning chunk's parent.
 const treeNodes = [];
 const treeEdges = [];
 state.docs.forEach((d, di) => {
@@ -787,7 +1180,7 @@ state.docs.forEach((d, di) => {
 });
 helpers.viz.diagram({
   title: "Hierarchy · search chunks, return the parent",
-  caption: "We embed and search the child chunks; the matched chunk hands its full parent document to the LLM.",
+  caption: "We embed and search the small child chunks, and each match hands its full parent document to the LLM.",
   nodes: treeNodes,
   edges: treeEdges,
 });
@@ -808,7 +1201,7 @@ return {
 // ── M3b P4: RAG agent (retrieval as a tool) ──────────────────────────────────
 mountCanvasFlow("#cell-m3b-p4", {
   label: "Module 2b Part 6 · RAG agent · retrieve via tool + answer with context",
-  intro: "A corpus is indexed once and held in memory while the user\'s question enters a chat call with a retrieve tool exposed, the model decides on its own whether retrieval is worth invoking and, when it is, cosine similarity runs over the in-memory index to return the top passages before a second model call writes the final answer grounded in whatever was retrieved.",
+  intro: "A corpus is indexed once and held in memory, then the question goes to a chat call with a retrieve tool exposed. The model decides whether to retrieve; if it does, cosine similarity returns the top passages and a second call writes the answer grounded in them.",
   edges: [
     { from: "build_corpus", to: "agent" },
     { from: "tool",         to: "agent" },
@@ -856,7 +1249,7 @@ return { tool: state.RETRIEVE_SCHEMA[0].function.name };
     },
     {
       id: "query", icon: "❓", title: "User query", x: 1, y: 0,
-      summary: "The user's question, plus a system prompt that instructs the model to use the retrieve tool only when it needs specific facts it cannot answer confidently from training knowledge. That instruction is what makes this an agent decision rather than an unconditional retrieval step.",
+      summary: "The user's question, plus a system prompt that instructs the model to use the retrieve tool only when it needs specific facts it cannot answer confidently from training knowledge. With that instruction in place, the model weighs each turn and chooses whether to retrieve, instead of retrieving on every call.",
       code: `state.query = "What model does this course use, and does it need an API key?";
 state.messages = [
   { role: "system", content: "You are a helpful assistant with a knowledge base accessible via the 'retrieve' tool. Use the tool when the user asks about specific facts you don't already know with high confidence; otherwise answer directly." },
@@ -871,7 +1264,7 @@ return state.query;
       code: `state.s1 = await helpers.chatStream({
   messages:   state.messages,
   tools:      state.RETRIEVE_SCHEMA,
-  max_tokens: 4096,   // a reasoning model thinks before it emits the tool call; 1500 can truncate mid-thought
+  max_tokens: 8196,   // a reasoning model thinks before it emits the tool call; 1500 can truncate mid-thought
 });
 state.messages.push({
   role: "assistant",
@@ -919,8 +1312,10 @@ return { question, k, top_scores: state.retrieved.map(r => r.score.toFixed(3)) }
 // passages, not ask to retrieve again.
 state.s2 = await helpers.chatStream({
   messages:   state.messages,
-  max_tokens: 4096,
+  max_tokens: 8196,
 });
+// Some reasoning models still emit tool-call markup as text even when no tools
+// are bound, so strip any stray <tool_call>/<function>/<parameter> tags.
 const answer = (state.s2.content || "")
   .replace(/<tool_call>[\\s\\S]*?<\\/tool_call>/g, "")
   .replace(/<\\/?function[^>]*>|<\\/?parameter[^>]*>/g, "").trim();

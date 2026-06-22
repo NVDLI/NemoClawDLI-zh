@@ -31,8 +31,8 @@ from bedrock_stream import iter_eventstream, ConverseStreamAccumulator
 logger, tracer, propagator, traced = get_observability("llm-client")
 
 SPAN_ATTR_LIMIT = int(os.getenv("LLM_CLIENT_SPAN_ATTR_LIMIT", "8000"))
-# Hard cap so a runaway 10MB payload doesn't bloat every trace. When this
-# trips, the leading slice is recoverable; the tail is dropped on purpose.
+# Hard cap so a runaway 10MB payload doesn't bloat every trace.
+# When this trips, the leading slice is recoverable; the tail is dropped on purpose.
 SPAN_ATTR_MAX_CHUNKS = int(os.getenv("LLM_CLIENT_SPAN_ATTR_MAX_CHUNKS", "32"))
 
 def _set_span_text(span, name: str, value, limit: int = SPAN_ATTR_LIMIT):
@@ -91,8 +91,8 @@ BEDROCK_MAX_RETRIES = int(os.getenv("BEDROCK_MAX_RETRIES", "2"))
 BEDROCK_RETRY_DELAY = float(os.getenv("BEDROCK_RETRY_DELAY", "1.0"))
 BEDROCK_DEFAULT_MAX_TOKENS = int(os.getenv("BEDROCK_DEFAULT_MAX_TOKENS", "16384"))
 BEDROCK_MODEL_ALIASES = {
-    # Stable learner-facing aliases used by OpenClaw. Keep these stable even
-    # when the real Bedrock model revision changes.
+    # Stable learner-facing aliases used by OpenClaw.
+    # Keep these stable even when the real Bedrock model revision changes.
     "bedrock-proxy/global.anthropic.claude-sonnet-4-6": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
     "bedrock-proxy/global.anthropic.claude-opus-4-6-v1": "us.anthropic.claude-opus-4-1-20250805-v1:0",
     "aws/anthropic/bedrock-claude-sonnet-4-6": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
@@ -1705,8 +1705,8 @@ def _responses_to_chat_body(body_json: dict) -> dict:
     chat_body["messages"] = _responses_input_to_messages(body_json.get("input"), body_json.get("instructions", ""))
     if "max_output_tokens" in body_json and "max_tokens" not in chat_body:
         chat_body["max_tokens"] = body_json["max_output_tokens"]
-    # The Responses API has a different stream event schema. Until that is
-    # explicitly implemented, fallback translation is non-streaming only.
+    # The Responses API has a different stream event schema.
+    # Until that is explicitly implemented, fallback translation is non-streaming only.
     chat_body.pop("stream", None)
     return chat_body
 

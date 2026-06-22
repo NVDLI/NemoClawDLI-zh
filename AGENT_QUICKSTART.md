@@ -38,8 +38,10 @@ Keys    → llm_client only, never any other service.
 ```
 
 Worth-keeping agent docs live in the repo by plain name (`AGENT_QUICKSTART.md`,
-`SKILL_CONTRACT.md`, `QUALITY_DIRECTIVES.md`, `docs/`). Git history is the
-auditable record.
+`AGENTS.md`, `SKILL_CONTRACT.md`, `QUALITY_DIRECTIVES.md`, `docs/`). Git history is
+the auditable record. [`AGENTS.md`](AGENTS.md) is the cross-harness entry: it carries
+the instruction-precedence ladder (what wins when rules conflict) and the ownership
+discipline, so read it when an instruction collides with another.
 
 ---
 

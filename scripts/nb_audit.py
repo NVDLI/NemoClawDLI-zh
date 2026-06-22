@@ -39,8 +39,8 @@ NEMOTRON_INTERLEAVE_RX = re.compile(r"nvidia/nemotron-[a-z0-9-]{0,50}nvidia/nemo
 # Known false-positive doubled tokens (legitimate in our corpus).
 DOUBLED_FALSE_POSITIVES = {"rw-rw-"}
 
-# Identifiers we've actually seen the IDE corrupt by doubling. Any of these
-# appearing as `tokentoken` is a hard-fail regardless of length filter.
+# Identifiers we've actually seen the IDE corrupt by doubling.
+# Any of these appearing as `tokentoken` is a hard-fail regardless of length filter.
 CORRUPTION_PRONE_IDS = {
     "chat", "think", "prompt", "reply", "invoke", "stream",
     "content", "client", "model", "llm", "user", "agent",

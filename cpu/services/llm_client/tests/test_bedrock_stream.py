@@ -67,7 +67,7 @@ class TestTextOnly:
         assert acc.to_bedrock_response()["stopReason"] == "end_turn"
 
 
-# ── Reasoning + text (the headline gap) ─────────────────────────────────────
+# ── Reasoning + text gap ────────────────────────────────────────────────────
 
 
 class TestReasoningStreaming:

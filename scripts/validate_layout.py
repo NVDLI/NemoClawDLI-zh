@@ -124,6 +124,10 @@ def _clamp(base_dir, tgt):
 
 
 def check_links(res: Result):
+    """Verify every page-link the lab serves resolves to a real served file. This is the check that
+    catches a dead link a student would click and hit a 404, after a file was moved or renamed. It
+    prefers a LIVE crawl of the running lab (the only fully accurate source); if the lab is down (CI)
+    it falls back to the offline projection gate so links are never left unvalidated."""
     base = _lab_base()
     if not base:
         # When the lab is down, fall back to the offline compilation-projection gate so
@@ -143,7 +147,7 @@ def check_links(res: Result):
             res.fail("links", f"lab down AND offline projection fallback failed: {e}")
         return
     files, q, seen = set(), deque([""]), set()
-    while q:
+    while q:                                       # BFS over the lab contents API to enumerate every served file
         d = q.popleft()
         if d in seen: continue
         seen.add(d)
@@ -151,22 +155,22 @@ def check_links(res: Result):
         if not j or j.get("type") != "directory": continue
         for it in j.get("content", []):
             if it["type"] == "directory":
-                if it["name"] not in SKIP_DIR: q.append(it["path"])
+                if it["name"] not in SKIP_DIR: q.append(it["path"])   # descend, skipping build/cache dirs
             else:
                 files.add(it["path"])
-    pages = {f for f in files if f.lower().endswith(PAGE_EXT)}
+    pages = {f for f in files if f.lower().endswith(PAGE_EXT)}   # the pages whose links we will follow
 
-    def in_files(p): return any(v in files for v in _pair(p))
+    def in_files(p): return any(v in files for v in _pair(p))   # served? (honour .md<->.ipynb pairing)
 
     dead = []
     for p in sorted(pages):
         txt = _text(base, p)
         if not txt: continue
-        d = "/".join(p.split("/")[:-1])
-        for raw in set(_HREF.findall(txt)) | set(_MDL.findall(txt)):
+        d = "/".join(p.split("/")[:-1])            # the page's own directory, for resolving relative links
+        for raw in set(_HREF.findall(txt)) | set(_MDL.findall(txt)):   # every href/src + markdown link
             t = raw.split("#")[0].split("?")[0].strip()
             if not t or t.startswith(("http://", "https://", "mailto:", "//", "data:", "tel:")):
-                continue
+                continue                           # external / non-file targets are out of scope
             if t.startswith("/"):
                 m = re.match(r"/lab/(?:lab/)?tree/(.+)", t)
                 ms = re.match(r"/lab/static/(.+)", t)
@@ -178,9 +182,9 @@ def check_links(res: Result):
                 else:
                     continue  # runtime /lab/svc, /lab/api, etc.
             else:
-                resv = _clamp(d, t)
+                resv = _clamp(d, t)                # relative link: resolve against the page's directory
             if resv.lower().endswith(PAGE_EXT) and not in_files(resv):
-                dead.append((p, raw))
+                dead.append((p, raw))              # a page-link that resolves to nothing the lab serves
     res.note(f"links: live crawl of {base} reached {len(files)} files across {len(pages)} pages")
     if dead:
         res.fail("links", f"{len(dead)} dead page-link(s); first: {dead[:5]}")
@@ -205,10 +209,13 @@ def _config_paths():
 
 
 def check_static(res: Result):
-    for src, cpath in _config_paths():
+    """Verify every load-bearing static/mount path the lab is configured to serve maps to a real host
+    path. This is the check that catches a directory moved or renamed without updating the entrypoint
+    or compose config, which would otherwise leave the lab serving (or mounting) nothing at that path."""
+    for src, cpath in _config_paths():            # each (config file, /sandbox/dli/... path) it declares
         if any(cpath == a or cpath.startswith(a) for a in STATIC_ALLOW_MISSING):
-            continue
-        host = _container_to_host(cpath)
+            continue                              # paths allowed to be absent (seed/export dirs)
+        host = _container_to_host(cpath)          # translate the container path to its host location
         if host is None:
             res.fail("static", f"{src}: path '{cpath}' is not under {DLI}")
         elif not host.exists():
@@ -216,24 +223,31 @@ def check_static(res: Result):
 
 
 def check_skills(res: Result):
+    """Verify every SKILL.html beacon still matches its directory, by delegating to skill_audit.py. A
+    drifted beacon (a file listed that no longer exists, or one present but undocumented) means the
+    machine-readable directory map an agent ingests first is lying; this surfaces each such mismatch."""
     import subprocess
     r = subprocess.run([sys.executable, str(HERE.parent / "skill_audit.py")],
                        capture_output=True, text=True)
-    if r.returncode != 0:
+    if r.returncode != 0:                         # skill_audit exits nonzero and prints each mismatch
         for line in r.stderr.splitlines():
             line = line.strip()
-            if line and not line.startswith("skill_audit:"):
+            if line and not line.startswith("skill_audit:"):   # skip its summary line, keep the per-item failures
                 res.fail("skills", line)
 
 
 def main():
+    """Run the full fixed battery (links, static paths, skill beacons) and exit nonzero naming each
+    failing item. This is the deterministic layout gate: it exists so a broken link, a moved served
+    directory, or a drifted SKILL beacon is reported with the exact bad path, not left for someone to
+    hunt down. Notes (skips, crawl counts) print on success; failures print to stderr and return 1."""
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--quiet", action="store_true")
     a = ap.parse_args()
     res = Result()
-    check_links(res)
-    check_static(res)
-    check_skills(res)
+    check_links(res)                              # dead page-links (live crawl, else offline projection)
+    check_static(res)                             # configured static/mount paths that no longer exist
+    check_skills(res)                             # SKILL.html beacons that drifted from their directory
 
     if not a.quiet:
         for nt in res.notes:

@@ -99,4 +99,22 @@ if [ -f "$TENETS" ]; then
         exit 1
     fi
 fi
+
+# ── RULE 7: web module-graph integrity ────────────────────────────────────────
+# Static ES-module import/export check (no browser, milliseconds): every page/module import
+# resolves to a real export and every re-export is honest. Catches the class where a _shared.js
+# extraction drops a re-export and importing pages break at load, the way glossary.html once lost
+# glossaryScore. The render-time twin is scripts/render_check.py --all.
+MODCHECK="$T1/scripts/module_check.py"
+if [ -f "$MODCHECK" ]; then
+    for d in web/nemoclaw web; do
+        if [ -d "$T1/$d" ] && ! python3 "$MODCHECK" --dir "$T1/$d"; then
+            echo ""
+            echo "pre-push: REFUSING PUSH. The web module-graph integrity check failed (see above)."
+            echo "An import names an export that no longer exists, or a re-export is dangling. Run:"
+            echo "  python3 scripts/module_check.py"
+            exit 1
+        fi
+    done
+fi
 exit 0

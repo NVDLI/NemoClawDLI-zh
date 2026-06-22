@@ -110,8 +110,8 @@ class TestOpenAIToBedrock:
             {"role": "tool", "tool_call_id": "t1", "content": "12:00 UTC"},
         ]}
         bedrock = _openai_to_bedrock(body)
-        # Two user messages get merged into one because Bedrock requires
-        # alternating roles. The tool result becomes a toolResult block.
+        # Two user messages get merged into one because Bedrock requires alternating roles.
+        # The tool result becomes a toolResult block.
         roles = [m["role"] for m in bedrock["messages"]]
         assert roles == ["user", "assistant", "user"]
         # tool_use block on the assistant

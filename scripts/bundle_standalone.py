@@ -34,8 +34,8 @@ from pathlib import Path
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 DEFAULT_OUT = Path(__file__).resolve().parent.parent / "web_standalone"
-# The released course is web/nemoclaw/. Pass --src web/nemoclaw to bundle it
-# into --out web/nemoclaw_standalone (the auto-derive convention below).
+# The released course is web/nemoclaw/.
+# Pass --src web/nemoclaw to bundle it into --out web/nemoclaw_standalone (the auto-derive convention below).
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -461,9 +461,9 @@ LITE_OPEN_PANELS_JS = r"""
 """
 
 
-# /lab/lab/... is the JupyterLab tree URL only resolvable inside the lab
-# container. /lab/static/ ditto. In an external iframe these 404. Convert
-# any anchor with such an href into plain text so the prose still reads.
+# /lab/lab/... is the JupyterLab tree URL only resolvable inside the lab container. /lab/static/ ditto.
+# In an external iframe these 404.
+# Convert any anchor with such an href into plain text so the prose still reads.
 LAB_ANCHOR_RE = re.compile(
     r'<a([^>]*?)href="/lab/(?:lab|static)/[^"]*"([^>]*)>(.*?)</a>',
     re.DOTALL,
@@ -621,8 +621,7 @@ def main() -> int:
     )
     args = ap.parse_args()
 
-    # Resolve --src: accept either an absolute path or a name relative to the
-    # task1/ root.
+    # Resolve --src: accept either an absolute path or a name relative to the task1/ root.
     web = args.src
     if not web.is_absolute():
         web = Path(__file__).resolve().parent.parent / web
@@ -667,9 +666,28 @@ def main() -> int:
         kb = len(bundled.encode("utf-8")) / 1024
         print(f"  bundled {src.name:<28} → {dst.name}  ({kb:5.1f} KB)")
 
-    # Ship _shared.js as a file so the pages' kept `./_shared.js` imports resolve.
-    shutil.copy2(web / "_shared.js", out / "_shared.js")
-    print(f"  shipped _shared.js  ({(out / '_shared.js').stat().st_size // 1024} KB)")
+    # Ship the shared ES modules as real files so the pages' kept `./_shared.js` import and the
+    # per-section modules _shared.js imports in turn (e.g. _openshell.js) all resolve as siblings,
+    # loaded once via ES-module caching exactly as the lab serves them. Globbing _*.js carries any
+    # module the split adds without a per-module edit here.
+    for mod in sorted(web.glob("_*.js")):
+        shutil.copy2(mod, out / mod.name)
+        print(f"  shipped {mod.name}  ({(out / mod.name).stat().st_size // 1024} KB)")
+
+    # Ship any LOCAL js a bundled page loads by relative <script src> (tool modules such as
+    # studio.html's studio_main.js) so the page resolves its scripts and works standalone. Found by
+    # scanning the pages rather than by naming the files, so a new tool module needs no edit here.
+    # CDN srcs (http...) do not match the local pattern; _shared.js is already shipped above.
+    js_refs = set()
+    for src in pages:
+        for m in re.finditer(r'<script[^>]+src=["\']\.?/?([\w./-]+\.m?js)["\']', src.read_text(encoding="utf-8")):
+            js_refs.add(m.group(1))
+    for ref in sorted(js_refs):
+        cand = web / ref
+        if cand.is_file() and not (out / ref).exists():
+            (out / ref).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(cand, out / ref)
+            print(f"  shipped {ref}  ({cand.stat().st_size // 1024} KB)")
 
     # Carry non-inlined assets (images, SVGs) the pages reference by relative path, so the
     # bundle in --out is complete on its own and callers need no separate asset copy.

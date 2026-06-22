@@ -292,7 +292,7 @@ async def get_key():
 # ── Assessment runner ─────────────────────────────────────────────────────────
 
 class AssessmentRequest(BaseModel):
-    # First-class research-agent assessment (ported from c-fx-25-v1):
+    # Research-agent assessment (ported from c-fx-25-v1):
     # `submission` is the list of {question, trace, answer} cases.
     submission: List[Dict[str, Any]] = Field(..., description="Graded cases")
     model_specs: Dict[str, str] = Field(

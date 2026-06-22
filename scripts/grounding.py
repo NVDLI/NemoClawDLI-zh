@@ -93,8 +93,11 @@ def mat_url_index() -> dict:
 
 
 def _text_of(f: Path):
+    """Extract (title, headings, prose) from a page for the prose signal. Pulls them apart so the
+    em-dash count is measured on PROSE only: diagram text, markup, and headings are not authored
+    sentences, and counting dashes in them would file false advisories that can never be cleared."""
     raw, suf = lp._read_for_links(f)
-    body = lp._strip_noncontent(raw, suf)
+    body = lp._strip_noncontent(raw, suf)         # drop scripts/styles/frontmatter before parsing
     if suf in (".html", ".htm"):
         body = _SVG.sub(" ", body)                    # exclude diagram text from the prose signal
         heads = [re.sub(_TAG, "", h).strip() for h in _HEADING_HTML.findall(body)]
@@ -114,26 +117,30 @@ _SRC_EXT = (".py", ".yaml", ".yml", ".json", ".toml", ".cfg", ".sh", ".js", ".ts
 
 
 def build_reference(f: Path, rel: str) -> dict:
+    """The compact, reproducible grounding fingerprint of one page, cached by content hash. It is
+    what lets the gate answer 'is this page grounded, and does its prose carry em-dashes' without an
+    LLM or the network: every field here is deterministic, so the same page always yields the same
+    record and a re-run only recomputes pages whose bytes changed."""
     title, heads, prose = _text_of(f)
     course = lp.course_of(rel)
     raw, suf = lp._read_for_links(f)
     txt = lp._strip_noncontent(raw, suf)
-    base_dir = "/".join(rel.split("/")[:-1])
+    base_dir = "/".join(rel.split("/")[:-1])           # the page's own directory, for relative links
     cites = 0                                          # resolvable source-file citations
     for m in set(lp._HREF.findall(txt)) | set(lp._MDL.findall(txt)):
         if lp._is_template_link(m) or m.startswith(("http", "//", "#", "mailto:", "data:", "tel:")):
-            continue
+            continue                                   # external / templated / anchor links are not source-file cites
         clean = m.split("#")[0].split("?")[0]
         resolved = clean[len("/lab/static/"):] if clean.startswith("/lab/static/") else lp._clamp(base_dir, clean)
         if resolved.lower().endswith(_SRC_EXT) and (TASK1 / resolved).is_file():
-            cites += 1
-    page_urls = {u for u in (_norm_url(x) for x in _URL_RE.findall(txt)) if _is_citation(u)}
-    midx = mat_url_index()
+            cites += 1                                 # links to a real code/config file in the tree
+    page_urls = {u for u in (_norm_url(x) for x in _URL_RE.findall(txt)) if _is_citation(u)}  # external citation URLs
+    midx = mat_url_index()                             # {url: {mats that also cite it}}
     mat_assoc: dict[str, list] = {}
-    for u in page_urls:
+    for u in page_urls:                                # associate page->mat through each shared URL
         for mat in midx.get(u, ()):
             mat_assoc.setdefault(mat, []).append(u)
-    uncovered = sorted(u for u in page_urls if u not in midx)
+    uncovered = sorted(u for u in page_urls if u not in midx)  # cited URLs no mat vouches for
     # vendored = an external snapshot under the course mats/ (web/nemoclaw/mats/: scraped
     # build.nvidia.com / blog / brev / the developer-site learning path, a vendored NVIDIA
     # glossary page under glossary_raw/, or an arxiv- abstract pulled by pull_materials.py).
@@ -174,8 +181,15 @@ def ground_page(rel: str, force: bool = False) -> dict:
     rec = {"path": rel, "course": course, "hash": h, "ref_version": REF_VERSION,
            "generated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
            "reference": build_reference(f, rel), "cached": False}
-    cf.parent.mkdir(parents=True, exist_ok=True)
-    cf.write_text(json.dumps(rec, indent=2, ensure_ascii=False))
+    # The cache is an optimization, never a dependency: if the entry cannot be written (a stale
+    # file left root-owned by an earlier in-container run, a read-only mount), use the record we
+    # just computed in memory and move on. A cache glitch must never turn the whole check into a
+    # crash that reads as "did not run"; the data is correct either way, only the speedup is lost.
+    try:
+        cf.parent.mkdir(parents=True, exist_ok=True)
+        cf.write_text(json.dumps(rec, indent=2, ensure_ascii=False))
+    except OSError:
+        pass
     return rec
 
 
@@ -189,16 +203,20 @@ def _ship_pages():
 
 
 def sweep(course, scope, limit=None, force=False):
+    """Build one reference record per content page so a re-run only re-hashes CHANGED pages.
+    Without this cache-backed pass, every gate run would re-parse every page from scratch and
+    the report could not say which pages are ungrounded or carry authored em-dashes. The records
+    it returns feed _findings (the advisories) and the mat-association JSON in the report."""
     recs = []
     for rel in _ship_pages():
         c = lp.course_of(rel)
-        if course and c != course:
+        if course and c != course:                # --course filter: only that one course
             continue
         if not course and scope == "ship" and not lp.ship_relevant(rel):
-            continue
+            continue                              # scope=ship drops pages the bundle never ships
         if not rel.lower().endswith((".html", ".htm", ".md", ".ipynb")):
-            continue
-        recs.append(ground_page(rel, force=force))
+            continue                              # only content surfaces carry groundable prose
+        recs.append(ground_page(rel, force=force))  # cache hit unless content hash / ref schema changed
         if limit and len(recs) >= limit:
             break
     return recs
@@ -216,12 +234,19 @@ def _groundable(rel: str) -> bool:
 
 
 def _findings(recs):
+    """Turn the reference records into the advisory list the gate reports. This is the check that
+    catches a teaching page making claims with NO traceable source (a student cannot verify it) and
+    authored em-dashes (the AI-cadence structure smell). Only claim-bearing explainers are held to
+    the grounding bar; everything else is correctly ungrounded by type, so it never files an issue."""
     out = []
     for r in recs:
         ref = r.get("reference", {})
         issues = []
+        # A substantial explainer that cites no source file AND shares no citation URL with a mat
+        # is grounded in nothing, so a reader cannot trace its claims.
         if _groundable(r["path"]) and ref.get("prose_chars", 0) > 800 and not ref.get("cites") and not ref.get("mat_grounded"):
             issues.append("ungrounded (no source citation and no mat URL-association)")
+        # Cites external URLs, but no mat vouches for any of them: the sources are unvetted.
         elif _groundable(r["path"]) and ref.get("uncovered_urls") and not ref.get("mat_grounded"):
             issues.append(f"unvetted sources: cites {len(ref['uncovered_urls'])} external URL(s) no mat covers")
         # An authored em-dash is a STRUCTURE smell: each one marks an AI-cadenced sentence. Swapping

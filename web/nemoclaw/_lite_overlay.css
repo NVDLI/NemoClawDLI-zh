@@ -20,6 +20,13 @@
   --tf:  #57606a;
   --acc: #0969da;
   --err: #d1242f;
+  --warn: #9a6700;
+  --reason: #8250df;
+  /* Diagram arrow + kind hues (mountDiagram / viz.diagram emits var(--dg-*)); light values so a
+     runtime-injected diagram in the baked export renders light, not the dark pastels. */
+  --dg-arrow:#57606a;
+  --dg-env:#0969da; --dg-agent:#4a7a00; --dg-tool:#7c3aed;
+  --dg-data:#9a6700; --dg-model:#0d9488; --dg-neutral:#57606a;
 }
 
 /* GFX graphics: force the light palette in the standalone.

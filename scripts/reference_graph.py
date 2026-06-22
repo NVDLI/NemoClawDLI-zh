@@ -82,8 +82,8 @@ SKIP_DIRS = {
 # Reference extraction
 # ───────────────────────────────────────────────────────────────────────
 
-# Token that looks like a path: a sequence of [\w./-] containing a slash
-# OR ending in a known extension. Trailing punctuation stripped later.
+# Token that looks like a path: a sequence of [\w./-] containing a slash OR ending in a known extension.
+# Trailing punctuation stripped later.
 PATH_TOKEN = re.compile(
     r"""
     (?:                                # path is either:

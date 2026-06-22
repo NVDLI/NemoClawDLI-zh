@@ -37,38 +37,46 @@
     <div class="eyebrow">Module 2 · Part C of 3</div>
     <h1><span>Deep</span> Agents</h1>
     <p class="lead">
-      A <em>deep agent</em> (also called a Research Agent) is a
-      multi-level agent system: one orchestrating agent that plans a
-      task and breaks it into subtasks, plus one or more sub-agents
-      that each execute a single subtask in a fresh, isolated context,
-      with a shared filesystem that carries work between them.
-      Reach for this pattern when tasks exceed one context window, when
-      subtasks must run in isolated contexts to avoid cross-contamination,
-      or when results need to persist across the agent's own runs via
-      files on disk. This page explains why a flat ReAct loop breaks
-      for long tasks, introduces the four structural pillars of the
-      deep agent, wires
+      A <em>deep agent</em>, sometimes called a research agent, is one that works on
+      more than a single level at once. An orchestrator at the top takes a task, breaks
+      it into smaller subtasks, and hands each one to a separate sub-agent that runs in
+      its own fresh, isolated context, while a shared filesystem carries results back and
+      forth between them. Reach for this pattern when one context can no longer hold the
+      work, which tends to happen under any of the following conditions.
+    </p>
+    <ul>
+      <li>A task may be too large to fit in one context window.</li>
+      <li>Its subtasks may need to stay isolated so they cannot contaminate one another.</li>
+      <li>Its results may have to outlive a single run and persist as files on disk.</li>
+    </ul>
+    <p class="lead">
+      We build up to it in three steps. The first shows why a flat ReAct loop breaks
+      down once a task runs long. The second introduces the four structural pillars that
+      hold a deep agent together. The third wires
       <a href="https://www.langchain.com/langgraph" target="_blank" rel="noopener">LangGraph</a>
-      <code>createReactAgent</code> for the single-agent case, and then
-      hand-rolls the full deep agent so every step is observable.
+      <code>createReactAgent</code> for the single-agent case and then hand-rolls the full
+      version so that every step stays observable.
     </p>
   </div>
 
   <div class="callout warn">
-    <strong>Network warning.</strong> This module imports modules at runtime from
-    <code>esm.sh</code> and <code>cdn.jsdelivr.net</code>. Inside your NemoClaw launchable,
-    these are reachable via the host's outbound DNS. If your environment blocks
-    outbound traffic, the imports fail with a network error and the cells stop at
-    node 1. The first cell below is the connectivity check.
+    <strong>Network warning.</strong> The cells below import libraries at runtime from
+    <code>esm.sh</code> and <code>cdn.jsdelivr.net</code>, which resolve via the host's
+    outbound DNS when you run inside a NemoClaw launchable. An environment that blocks
+    outbound traffic will make the imports fail with a network error and the cells stop
+    at node 1, so the first cell below is the connectivity check.
   </div>
 
   <!-- ── Why deep agents · shallow vs deep ── -->
   <h2>Where a single growing context breaks down</h2>
   <p>
-    The modules so far built single-context agents, where one ReAct loop
-    and one model work through a single stack of tool calls, all
-    accumulating in a single growing context. That shape has three
-    failure modes that grow worse as tasks get longer:
+    Every module so far has built single-context agents, a single
+    <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">ReAct</a>
+    loop driving one model through a steadily growing stack of tool calls, with
+    everything the agent does landing in that same context.
+  </p>
+  <p>
+    That shape has three failure modes, and each one gets worse the longer a task runs:
   </p>
   <ul>
     <li><strong>Context overflow.</strong> The accumulated history plus tool results plus retrieved chunks crosses the model's context window, and tokens at the bottom of the array start to get dropped or compressed.</li>
@@ -76,22 +84,26 @@
     <li><strong>Cross-task interference.</strong> Reasoning about subtask N pollutes the context the agent has for subtask N+1. Specialists running in dedicated, isolated contexts would each do better.</li>
   </ul>
   <p>
-    The deep agent addresses all three by splitting responsibility:
-    a dedicated <em>orchestrator</em> agent produces a plan and then
-    delegates each subtask to a fresh <em>sub-agent</em> that sees only
-    its own task. A shared filesystem carries work between them, so
-    results produced by one sub-agent are available to the next without
-    flowing through the orchestrator's context window.
+    The deep agent fixes all three by splitting responsibility. A dedicated
+    <em>orchestrator</em> writes a plan, then hands each subtask to a fresh
+    <em>sub-agent</em> that sees only its own work.
+  </p>
+  <p>
+    Sub-agents exchange results through a shared filesystem, so one sub-agent's
+    output reaches the next without routing back through the orchestrator's
+    context window.
   </p>
   <div style="display:flex;justify-content:center;margin:1em 0 1.4em">
     <svg class="gfx-dark" viewBox="0 0 680 430" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="An orchestrator plans subtasks and delegates each to a fresh sub-agent; a shared filesystem carries work between them." preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:780px;margin:1.5rem auto"><defs><marker id="da-a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-sub,#5e5e5e)"/></marker></defs><path d="M 340 100 C 340 138, 130 138, 130 178" fill="none" stroke="var(--gfx-line,#d4d4d4)" stroke-width="2" marker-end="url(#da-a)"/><path d="M 340 100 C 340 138, 340 138, 340 178" fill="none" stroke="var(--gfx-line,#d4d4d4)" stroke-width="2" marker-end="url(#da-a)"/><path d="M 340 100 C 340 138, 550 138, 550 178" fill="none" stroke="var(--gfx-line,#d4d4d4)" stroke-width="2" marker-end="url(#da-a)"/><path d="M 130 234 C 130 290, 240 290, 240 334" fill="none" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#da-a)"/><path d="M 340 234 C 340 290, 340 290, 340 334" fill="none" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#da-a)"/><path d="M 550 234 C 550 290, 440 290, 440 334" fill="none" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#da-a)"/><rect x="252" y="46" width="176" height="54" rx="9" fill="var(--gfx-tint-purple,#eadfff)" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.4"/><text x="340" y="69" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13" fill="var(--gfx-purple,#6f42c1)" text-anchor="middle" font-weight="800">orchestrator</text><text x="340" y="87" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">plans subtasks, delegates</text><rect x="62" y="178" width="136" height="56" rx="9" fill="var(--gfx-tint-blue,#dfeaf5)" stroke="var(--gfx-blue,#0969da)" stroke-width="2"/><text x="130" y="201" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-blue,#0969da)" text-anchor="middle" font-weight="700">sub-agent</text><text x="130" y="219" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">clean context</text><rect x="272" y="178" width="136" height="56" rx="9" fill="var(--gfx-tint-green,#e6f3d4)" stroke="var(--gfx-green,#4a7a00)" stroke-width="2"/><text x="340" y="201" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-green,#4a7a00)" text-anchor="middle" font-weight="700">sub-agent</text><text x="340" y="219" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">clean context</text><rect x="482" y="178" width="136" height="56" rx="9" fill="var(--gfx-tint-teal,#d6f1ee)" stroke="var(--gfx-teal,#0d9488)" stroke-width="2"/><text x="550" y="201" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-teal,#0d9488)" text-anchor="middle" font-weight="700">sub-agent</text><text x="550" y="219" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">clean context</text><rect x="200" y="334" width="280" height="56" rx="9" fill="var(--gfx-tint-amber,#f7e9cf)" stroke="var(--gfx-amber,#9a6700)" stroke-width="2.4"/><text x="340" y="357" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12.5" fill="var(--gfx-amber,#9a6700)" text-anchor="middle" font-weight="700">shared virtual filesystem</text><text x="340" y="375" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">read and write · carries work between sub-agents</text></svg>
   </div>
   <p style="font-size:.88rem;color:var(--td)">
-    The orchestrator plans the subtasks and delegates each to a fresh sub-agent
-    whose context holds only the plan and its single task, free of any accumulated
-    junk from the orchestrator's prior turns. The sub-agents never share a context,
-    so the shared filesystem is how their work reaches a final synthesis step that
-    reads those files and writes one combined report. Topology comes from LangChain's
+    Each sub-agent's context holds only the plan and its one task, with none
+    of the orchestrator's accumulated history. The sub-agents never share a
+    context, so a final synthesis step reads the shared files and writes one
+    combined report.
+  </p>
+  <p style="font-size:.88rem;color:var(--td)">
+    Topology comes from LangChain's
     <a href="https://blog.langchain.com/deep-agents/" target="_blank" rel="noopener">"Deep
     Agents"</a> framing (Bryk, Hwchase17 et al., 2025) and the
     <a href="https://build.nvidia.com/nvidia/aiq" target="_blank" rel="noopener">NVIDIA AI-Q
@@ -101,21 +113,21 @@
 
   <h2>The four pieces a deep agent is built from</h2>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:1em 0 1.4em">
-    <div style="background:var(--e1);border:1px solid var(--bd);border-left:3px solid #76b900;border-radius:6px;padding:12px 14px">
+    <div style="background:var(--e1);border:1px solid var(--bd);border-left:3px solid var(--g);border-radius:6px;padding:12px 14px">
       <div style="font-family:ui-monospace,monospace;font-size:.7rem;color:var(--gs);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Pillar 1 · Planning</div>
       <p style="margin:0;font-size:.84rem;color:var(--td);line-height:1.5">A dedicated <code>write_todos</code> step runs before any execution begins, producing a structured list of subtasks. Writing the plan to shared memory first matters because it makes the decomposition inspectable and reusable: every sub-agent can read the same plan without the orchestrator having to re-explain the goal in each call.</p>
     </div>
-    <div style="background:var(--e1);border:1px solid var(--bd);border-left:3px solid #aee23a;border-radius:6px;padding:12px 14px">
+    <div style="background:var(--e1);border:1px solid var(--bd);border-left:3px solid var(--gs);border-radius:6px;padding:12px 14px">
       <div style="font-family:ui-monospace,monospace;font-size:.7rem;color:var(--gs);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Pillar 2 · Delegation</div>
-      <p style="margin:0;font-size:.84rem;color:var(--td);line-height:1.5">A <code>task</code> tool spawns a fresh sub-agent for each TODO item in the plan. Because each sub-agent is a brand-new agent invocation, the orchestrator's accumulated context (prior reasoning, intermediate results, earlier tool calls) never leaks into the sub-agent's context window. This is the mechanism that prevents cross-task interference.</p>
+      <p style="margin:0;font-size:.84rem;color:var(--td);line-height:1.5">A <code>task</code> tool spawns a new sub-agent for each TODO item, and every one of them starts from a clean slate. None of the orchestrator's accumulated context reaches it, so no subtask can interfere with another.</p>
     </div>
-    <div style="background:var(--e1);border:1px solid var(--bd);border-left:3px solid #3b82f6;border-radius:6px;padding:12px 14px">
+    <div style="background:var(--e1);border:1px solid var(--bd);border-left:3px solid var(--acc);border-radius:6px;padding:12px 14px">
       <div style="font-family:ui-monospace,monospace;font-size:.7rem;color:var(--gs);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Pillar 3 · Memory</div>
-      <p style="margin:0;font-size:.84rem;color:var(--td);line-height:1.5">A virtual filesystem, implemented here as a plain map from file paths to file contents, persists across all agent calls and is visible to every sub-agent. Without it, each fresh sub-agent context would start blank; the filesystem is how completed work survives the context boundary between one sub-agent and the next.</p>
+      <p style="margin:0;font-size:.84rem;color:var(--td);line-height:1.5">A virtual filesystem, implemented here as a plain map from file paths to file contents, persists across all agent calls and is visible to every sub-agent. Without it, each fresh sub-agent would start blank; the filesystem preserves completed work across the context boundary from one sub-agent to the next.</p>
     </div>
-    <div style="background:var(--e1);border:1px solid var(--bd);border-left:3px solid #d49c2c;border-radius:6px;padding:12px 14px">
+    <div style="background:var(--e1);border:1px solid var(--bd);border-left:3px solid var(--warn);border-radius:6px;padding:12px 14px">
       <div style="font-family:ui-monospace,monospace;font-size:.7rem;color:var(--gs);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Pillar 4 · Sandbox</div>
-      <p style="margin:0;font-size:.84rem;color:var(--td);line-height:1.5">Shell-grade work runs inside an isolated container boundary, so a sub-agent that writes files or runs commands cannot affect the host. In the browser exercises on this page, the sandbox is the virtual filesystem itself: there is no real shell available from a browser tab. In a full NemoClaw launchable, the <code>openshell</code> service provides that container boundary and executes commands on the agent's behalf.</p>
+      <p style="margin:0;font-size:.84rem;color:var(--td);line-height:1.5">Shell-grade work runs inside an isolated container boundary. A sub-agent that writes files or runs commands cannot reach the host from there. The browser exercises on this page run with no real shell available and fall back to the virtual filesystem as their sandbox. Inside a full NemoClaw launchable the <code>openshell</code> service supplies the real container boundary and executes commands on the agent's behalf.</p>
     </div>
   </div>
   <ul>
@@ -129,18 +141,18 @@
   <p>
     <code>ChatOpenAI</code> is a model wrapper that speaks the OpenAI
     HTTP protocol. All that changes between environments is the
-    <code>baseURL</code> it points at:
-    <code>https://integrate.api.nvidia.com/v1</code> on build.nvidia.com,
-    or any self-hosted NIM endpoint. Everything downstream (chains,
-    graphs, retrieval pipelines) is written once and works against any
-    of those targets.
+    <code>baseURL</code> it points at, whether that is
+    <code>https://integrate.api.nvidia.com/v1</code> on build.nvidia.com
+    or any self-hosted NIM endpoint you choose to run instead. Everything
+    downstream, including chains, graphs, and retrieval pipelines, is
+    written once and works against any of those targets.
   </p>
   <p>
     The node below calls <code>helpers.getConfig()</code>, which
     returns whichever endpoint is currently active. On build.nvidia.com
-    that resolves to the NVIDIA API and uses your API key; inside a
-    NemoClaw launchable it resolves to the local model worker. No manual
-    swap needed.
+    that resolves to the NVIDIA API and uses your API key, while inside a
+    NemoClaw launchable the same call resolves to the local model worker
+    with no manual swap needed.
   </p>
 
   <div id="cell-m3c-p1"></div>
@@ -151,41 +163,46 @@
       <li><code>.invoke(messages)</code> returns an <code>AIMessage</code> with the complete parsed reply. Use this when you need the full response before continuing.</li>
       <li><code>.stream(messages)</code> returns an <code>AsyncIterable</code> of partial messages, one chunk per token batch. Use this when you want to display output incrementally.</li>
     </ul>
-    Both methods satisfy the LangChain <code>Runnable</code> interface, which means you
-    can slot a <code>ChatOpenAI</code> instance anywhere a <code>Runnable</code> is
-    expected, whether inside a chain, as a LangGraph node, or at the end of a
-    retrieval pipeline, without any glue code. That uniformity is what makes composition
-    possible across very different pipeline shapes.
+    Both methods satisfy the LangChain <code>Runnable</code> interface. A
+    <code>ChatOpenAI</code> instance can therefore drop into any spot that expects
+    a <code>Runnable</code>. A chain slot, a LangGraph node, and the tail of a
+    retrieval pipeline all accept it through that one shared interface and need no glue code.
   </div>
 
   <!-- ── Part 4: LangGraph createReactAgent ───────────────────────────────── -->
   <h2>Building the same ReAct loop as a LangGraph state graph</h2>
   <p>
-    LangGraph models ReAct as a graph: nodes decide or execute; edges loop.
-    In JavaScript, <code>createReactAgent({llm, tools})</code> assembles that
-    graph. In Python, <code>langchain.agents.create_agent(model, tools)</code>
-    exposes the same shape with a cleaner interface. It accepts either a model
+    LangGraph models ReAct as a graph in which nodes decide or execute and
+    edges loop. The cells on this page are JavaScript, where
+    <code>createReactAgent({llm, tools})</code> assembles that
+    graph. (In Python, <code>langchain.agents.create_agent(model, tools)</code>
+    exposes the same shape with a cleaner interface.)
+  </p>
+  <p>
+    It accepts either a model
     string like <code>"openai:gpt-4o"</code> or a <code>BaseChatModel</code>
-    instance, which is how we pass our custom <code>baseURL</code>-configured
-    <code>ChatOpenAI</code> below. Either way, the result is a compiled
+    instance, and we pass our <code>baseURL</code>-configured <code>ChatOpenAI</code>
+    as that second form. Either way, the result is a compiled
     <code>StateGraph</code> you can invoke, stream, or nest inside a larger graph.
   </p>
 
   <div id="cell-m3c-p2"></div>
 
   <div class="callout">
-    <strong>Why a graph and not a loop?</strong>
-    Once your control flow gets more complex than "model decides, tool runs,
-    repeat" the graph is easier to read than the loop. Common reasons to switch:
+    <strong>A graph is worth the extra structure once the control flow outgrows a
+    simple loop.</strong> Once the flow grows past "model decides, tool runs, repeat"
+    a graph reads more clearly than a loop. The usual triggers for making the switch
+    are these.
     <ul style="margin:8px 0 0 22px">
       <li>A human-approval gate before destructive tool calls.</li>
       <li>A router that sends some messages to a different sub-graph.</li>
       <li>A checkpointer that persists state across crashes.</li>
       <li>Parallel branches that converge back into a single answer.</li>
     </ul>
-    LangGraph's <code>StateGraph</code> exposes the typed channels the loop was
-    passing implicitly; nodes are pure functions of state; edges are routing
-    predicates. The shape matches the canvases you have been editing all course.
+    LangGraph's <code>StateGraph</code> exposes the typed channels the loop was passing
+    implicitly so that every node now reads as a pure function of that state and every
+    edge as a routing predicate the runtime follows. The shape matches the canvases you
+    have been editing all course.
   </div>
 
   <!-- ── Part 5: Deep agent (planner + sub-agents + VFS) ──────────────────── -->
@@ -193,7 +210,10 @@
   <p>
     The cell below is the four-pillar deep agent hand-rolled from
     <a href="https://www.langchain.com/" target="_blank" rel="noopener">LangChain</a>
-    primitives, with all four nodes observable in the canvas log. The
+    primitives, with all four nodes observable in the canvas log.
+  </p>
+  <p>
+    The
     <a href="https://github.com/langchain-ai/deepagentsjs" target="_blank" rel="noopener"><code>deepagents</code></a>
     npm package wraps the same shape behind <code>createDeepAgent</code>, but
     imports <code>node:fs</code> and other Node-only modules.
@@ -218,13 +238,15 @@
   </ol>
 
   <div class="callout info" style="margin-top:2em">
-    <strong>Where this goes next.</strong> The later modules in this course
-    take the agent patterns you have built here and ask the operational
-    questions that arise when agents run in production: how do you know an
-    agent is doing what it claims? How do you replay a failure to diagnose
-    it? Which behaviors should be blocked at the boundary before they reach
-    a tool? How does a fleet of agents improve over time as it accumulates
-    experience?
+    <strong>The later modules build on the patterns you have here.</strong> They take
+    the agent patterns you have built and turn to the operational questions that arise
+    once agents run in production:
+    <ul style="margin:8px 0 0 22px">
+      <li>How do you know an agent is doing what it claims?</li>
+      <li>How do you replay a failure to diagnose it?</li>
+      <li>Which behaviors should be blocked at the boundary before they ever reach a tool?</li>
+      <li>How does a fleet of agents improve over time as it accumulates experience?</li>
+    </ul>
   </div>
 
   <div class="references">
@@ -235,29 +257,38 @@
       <li><a href="https://arxiv.org/abs/2305.16291" target="_blank" rel="noopener">Wang et al., <em>Voyager: An Open-Ended Embodied Agent</em> (2023)</a>. The skill-library pattern this module touches and Module 3c (Always-On) returns to.</li>
       <li><a href="https://arxiv.org/abs/2303.17651" target="_blank" rel="noopener">Madaan et al., <em>Self-Refine</em> (2023)</a>. The iterative-refinement primitive deep agents loop with when an answer is incomplete.</li>
       <li><a href="https://arxiv.org/abs/2304.03442" target="_blank" rel="noopener">Park et al., <em>Generative Agents</em> (2023)</a>. Large-scale autonomous agent simulation; a broader companion to the deep-agent runtime.</li>
+      <li><a href="https://developer.nvidia.com/blog/add-a-specialized-deep-research-skill-to-agent-harnesses/" target="_blank" rel="noopener">NVIDIA AI-Q</a>: the deep-agent pattern this module builds, packaged as a service that gives an agent harness one deep-research skill (retrieval, reasoning, synthesis, and grounded citation) instead of making every agent rebuild it, with the <a href="https://github.com/NVIDIA-AI-Blueprints/aiq" target="_blank" rel="noopener">AI-Q blueprint</a> as its runnable reference.</li>
+      <li><a href="https://developer.nvidia.com/case-studies/scientific-literature-ai-nvidia-nemotron" target="_blank" rel="noopener">Kosmos, an autonomous AI scientist</a>. A coordinated set of literature, analysis, and molecule agents that runs the orchestrator-and-sub-agents shape against real genetics and drug-discovery research.</li>
     </ul>
     <p class="references-note">Comprehensive list at <a href="04c-going-further.html#refs">Going Further · References</a>.</p>
   </div>
 
   <h2>Try it · a branching research agent (plan → fan out → synthesize)</h2>
   <p>
-    This is the deep pattern from Part 5, made live. Ask a question and the agent
-    <strong>plans</strong> a few independent sub-investigations, runs them
-    <strong>in parallel</strong>. Some search the web, some read specific
-    sections of this course. Then it <strong>synthesizes</strong> one grounded
-    answer with citations. The branch tree and the concurrency chart it draws are
-    measured from the run itself, not mocked: that fan-out, and the fresh context
-    each sub-agent gets, is exactly the context-rot mitigation Part 1 opened with.
+    This runs the full deep pattern from Part 5. Ask a question and the agent
+    <strong>plans</strong> a few independent sub-investigations, then runs them
+    <strong>in parallel</strong> so that some search the web while others read
+    specific sections of this course. Finally it <strong>synthesizes</strong>
+    one grounded answer with citations.
   </p>
+  <p>
+    The branch tree and the concurrency chart it draws come
+    straight from the run itself, and they show the context-rot mitigation Part 1
+    opened with: the work fans out wide, and each sub-agent starts from a fresh context.
+  </p>
+  <div id="deep-cell"></div>
   <div id="deep-artifact"></div>
-  <script type="module">
-    import { mountChatUI, chatStream, webSearch, coursePage, coursePages, formatSearchResults, diagramSVG, ganttBarsSVG } from "./_shared.js";
-    const helpers = { chatStream, webSearch, coursePage, coursePages, formatSearchResults, diagramSVG, ganttBarsSVG };
+  <script type="text/plain" id="deep-src">
+// Try-it artifact: a hand-rolled deep-research agent.
+// Plans 3-4 parallel sub-investigations (web + this course's sections),
+// fans out one sub-agent per branch, then synthesizes one cited answer.
+// Every stage is a chatStream call; edit a stage and Run to re-render.
+
     const PAGES = helpers.coursePages();
     const INDEX = PAGES.map(p => "  " + p.id + " · " + p.title).join("\n");
     const FAST  = "nvidia/nemotron-3-nano-30b-a3b";   // sub-agents are cheap workers: always the fast model
 
-    mountChatUI("#deep-artifact", {
+    helpers.mountChatUI("#deep-artifact", {
       models: [
         { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
         { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
@@ -267,7 +298,11 @@
         "How does this course's OpenShell sandbox relate to agent safety in general?",
         "What is RAG, and how does this course build it?",
         "Compare the ReAct loop with the deep-agent pattern",
+        "What are the main failure modes of autonomous agents?",
+        "How do production CLI agents sandbox themselves?",
+        "Trace this course from a single LLM call to an always-on agent",
       ],
+
       respond: async (text, ctx) => {
         const sig = ctx.signal;
 
@@ -283,19 +318,23 @@
           "outside/general facts. Pick the sections whose titles are most relevant to the question. " +
           "Return ONLY JSON: {\"branches\":[{\"source\":\"web\"|\"section\",\"target\":\"...\",\"goal\":\"...\"}]}.\n\n" +
           "Course sections:\n" + INDEX;
+
         const planRes = await helpers.chatStream(
           { messages: [{ role: "system", content: planSys }, { role: "user", content: text }],
-            model: ctx.model, max_tokens: 4096, signal: sig }, null);
+            model: ctx.model, max_tokens: 8196, signal: sig }, null);
+
         let branches = [];
         try { branches = JSON.parse(planRes.content.match(/\{[\s\S]*\}/)[0]).branches || []; } catch (_) {}
         const ids = new Set(PAGES.map(p => p.id));
         branches = branches
           .filter(b => b && b.goal && (b.source === "web" || (b.source === "section" && ids.has(b.target))));
-        // Guarantee the fan-out spans BOTH the web and this course's own sections,
-        // even if the planner under-specified. Section pick = title/id keyword overlap.
+
+        // Guarantee the fan-out spans both the web and this course's sections,
+        // even if the planner under-specified.
+        // Section pick uses title/id keyword overlap.
         const pickSection = () => {
           const words = text.toLowerCase().match(/[a-z]{4,}/g) || [];
-          let best = PAGES.find(p => p.id === "overview"), score = 0;
+          let best = PAGES.find(p => p.id === "overview") || PAGES[0], score = 0;
           for (const p of PAGES) {
             const hay = (p.id + " " + p.title).toLowerCase();
             const s = words.filter(w => hay.includes(w)).length;
@@ -303,9 +342,14 @@
           }
           return best.id;
         };
+
         if (!branches.some(b => b.source === "section")) branches.push({ source: "section", target: pickSection(), goal: text });
         if (!branches.some(b => b.source === "web"))     branches.push({ source: "web", target: text, goal: text });
         branches = branches.slice(0, 4);
+
+        // Surface the actual parsed plan (highlighted object), not only the tree,
+        // so the student can read each branch's source/target/goal verbatim.
+        ctx.view.tool("plan", { branches });
 
         // draw the plan as a branch tree, straight from the chosen branches
         const cx = Math.floor((branches.length - 1) / 2);
@@ -320,6 +364,7 @@
               lines: [b.source, String(b.target).slice(0, 18)] })),
             { id: "synth", label: "synthesize",  kind: "model", x: cx, y: 3 },
           ],
+
           edges: [
             { from: "q", to: "plan" },
             ...branches.map((b, i) => ({ from: "plan", to: "b" + i })),
@@ -332,35 +377,58 @@
         const runBranch = async (b) => {
           const bt0 = performance.now();
           const label = (b.source === "web" ? "web · " : "section · ") + b.target;
-          let finding;
+          let finding, src = "";
           try {
-            const src = b.source === "web"
+            src = b.source === "web"
               ? helpers.formatSearchResults(await helpers.webSearch(b.target, { maxResults: 4 }))
               : (await helpers.coursePage(b.target)).slice(0, 6000);
+
             const r = await helpers.chatStream({ messages: [
               { role: "system", content: "You are a sub-agent. From the SOURCE, extract ONLY what answers the GOAL, in 2-4 sentences. If the source does not cover it, reply exactly 'not covered'." },
               { role: "user", content: "GOAL: " + b.goal + "\n\nSOURCE:\n" + src }],
-              model: FAST, max_tokens: 4096, signal: sig }, null);
+              model: FAST, max_tokens: 8196, signal: sig }, null);
             finding = (r.content || "").trim() || "(no finding)";
           } catch (e) { finding = "(branch failed: " + (e.message || e) + ")"; }
-          return { finding, label, dt: (performance.now() - bt0) / 1000 };
+          return { finding, label, src, goal: b.goal, dt: (performance.now() - bt0) / 1000 };
         };
+
         const results = await Promise.all(branches.map(runBranch));
         const wall = (performance.now() - t0) / 1000;
-        results.forEach(r => ctx.view.tool(r.label + " · " + r.dt.toFixed(1) + "s", r.finding));
+        results.forEach(r => {
+          // Show what each sub-agent actually read alongside what it concluded,
+          // so a finding can be checked against its own source material.
+          ctx.view.tool(r.label + " · source", { goal: r.goal, source: r.src });
+          ctx.view.tool(r.label + " · " + r.dt.toFixed(1) + "s", r.finding);
+        });
         ctx.view.html(helpers.ganttBarsSVG(
           results.map(r => ({ label: r.label.slice(0, 16), dt: r.dt })), wall,
           branches.length + " sub-agents · parallel vs serial"));
 
         // ── 3. SYNTHESIZE: one grounded answer from the findings ────────────
         const findings = results.map((r, i) => "[" + (i + 1) + "] (" + r.label + ")\n" + r.finding).join("\n\n");
+        // Surface the exact findings corpus the synthesizer is grounded on, so the
+        // student can see every [n] the answer cites mapped back to its finding.
+        ctx.view.tool("findings corpus", { findings: results.map((r, i) => ({ n: i + 1, branch: r.label, finding: r.finding })) });
         const s = await helpers.chatStream({ messages: [
           { role: "system", content: "You are a research assistant. Answer the user's question using ONLY the findings below, citing each claim with its [n]. If a finding is 'not covered' or empty, do not invent; say what you could not find." },
           { role: "user", content: "QUESTION: " + text + "\n\nFINDINGS:\n" + findings }],
-          model: ctx.model, max_tokens: 4096, signal: sig },
+          model: ctx.model, max_tokens: 8196, signal: sig },
           (tok) => ctx.view.token(tok));   // no reasoning here: the sub-agents did the thinking; keep the synthesis one clean answer
         if (s.usage) ctx.view.usage({ input: s.usage.prompt_tokens, output: s.usage.completion_tokens, model: s.model });
       },
+    });
+    helpers.log("rendered below. Edit the config and Run.");
+
+    // You write only respond().
+    // The helpers it calls (chatStream, webSearch, coursePage) do the work.
+    // Three steps above: plan, fan out, synthesize.
+  </script>
+  <script type="module">
+    import { mountRunCell } from "./_shared.js";
+    mountRunCell("#deep-cell", {
+      label: "the Try-it artifact, in code",
+      autorun: true,
+      code: document.getElementById("deep-src").textContent.trim(),
     });
   </script>
 
@@ -371,7 +439,7 @@
 </main>
 
 <script type="module">
-import { buildNav, requireKey, hasKey, chat, chatStream, setRunning, showError, updateKeyPill, mountJourneyMap, mountCanvasFlow } from "./_shared.js";
+import { buildNav, chatStream, updateKeyPill, mountJourneyMap, mountCanvasFlow } from "./_shared.js";
 document.getElementById("nav").innerHTML = buildNav("02c-deep.html");
 const pill = document.getElementById("key-status");
 updateKeyPill(pill);
@@ -390,6 +458,7 @@ mountCanvasFlow("#cell-m3c-p1", {
       code: `helpers.log("importing @langchain/openai ...");
 const { ChatOpenAI } = await import("https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm");
 helpers.log("import OK");
+
 const cfg = await helpers.getConfig();
 // LangChain calls new URL(baseURL) internally, so it needs an absolute URL, not a relative path.
 const baseURL = cfg.url.startsWith("http") ? cfg.url : (window.location.origin + cfg.url);
@@ -403,6 +472,7 @@ state.llm = new ChatOpenAI({
 return { ready: true, baseURL, model: cfg.model };
 `,
     },
+
     {
       id: "invoke", icon: "🧠", title: "Invoke the model", x: 0, y: 1,
       summary: "Calls the model using .invoke() on the ChatOpenAI Runnable. The call shape matches the chatStream you have been using throughout the course, but the response is now a typed AIMessage rather than a raw JSON object.",
@@ -410,6 +480,7 @@ return { ready: true, baseURL, model: cfg.model };
   { role: "system", content: "You are a concise tutor. 2 sentences max." },
   { role: "user",   content: "What is the difference between LangChain Runnable.invoke() and our chatStream()?" },
 ];
+
 const result = await state.llm.invoke(messages);
 return {
   content: result.content,
@@ -430,6 +501,7 @@ mountCanvasFlow("#cell-m3c-p2", {
     { from: "tool",   to: "build" },
     { from: "build",  to: "invoke" },
   ],
+
   nodes: [
     {
       id: "import", icon: "📦", title: "Import LangGraph + tools", x: 0, y: 0,
@@ -441,6 +513,7 @@ const { createReactAgent } = await import("https://cdn.jsdelivr.net/npm/@langcha
 const { z }                = await import("https://cdn.jsdelivr.net/npm/zod@3/+esm");
 state.deps = { ChatOpenAI, tool, createReactAgent, z };
 helpers.log("imports OK");
+
 const cfg = await helpers.getConfig();
 const baseURL = cfg.url.startsWith("http") ? cfg.url : (window.location.origin + cfg.url);
 state.llm = new ChatOpenAI({
@@ -452,6 +525,7 @@ state.llm = new ChatOpenAI({
 return { imports: Object.keys(state.deps) };
 `,
     },
+
     {
       id: "tool", icon: "🛠", title: "Define a tool", x: 0, y: 1,
       summary: "Defines a get_current_time tool using LangChain's tool() decorator and a zod schema for the argument shape. Declaring the schema explicitly rather than relying on a docstring means LangGraph can validate arguments before invoking the function and expose a typed contract to the model via the tool's JSON schema.",
@@ -467,6 +541,7 @@ state.getCurrentTime = tool(
 return { name: state.getCurrentTime.name, description: state.getCurrentTime.description };
 `,
     },
+
     {
       id: "build", icon: "📐", title: "createReactAgent({llm, tools})", x: 0, y: 2,
       summary: "Compiles and returns a StateGraph that encodes the same model-decides / tool-runs / loop structure as the hand-rolled ReAct loop from Module 1c, except that the control flow is now explicit graph edges rather than an imperative while loop.",
@@ -477,6 +552,7 @@ return { name: state.getCurrentTime.name, description: state.getCurrentTime.desc
 return { graph_compiled: true };
 `,
     },
+
     {
       id: "invoke", icon: "🚀", title: "Run the agent (+ trajectory viz)", x: 0, y: 3,
       summary: "Calls .invoke() on the compiled graph with a single user message. LangGraph runs the full ReAct loop internally (model decides, tool runs, observation appended, model reads observation and decides again) and returns the complete message list when finish_reason is 'stop'. The trajectory visualisation shows every message in order, so you can see exactly which steps the model took and how many tool calls it made.",
@@ -510,7 +586,7 @@ return {
 // ── M3c P3: hand-rolled deep agent (planner + sub-agents + VFS) ─────────────
 mountCanvasFlow("#cell-m3c-p3", {
   label: "Module 2c Part 5 · deep agent, hand-rolled · planner + sub-agents + virtual FS",
-  intro: "A schema-bound planner emits a structured list of subtasks in a single LLM call, so the decomposition is parseable without any regex. A virtual filesystem (a plain JS object shared across the whole run) plus write, read, and list tools let sub-agents persist and retrieve work. The dispatcher then loops the subtask list and spawns a fresh createReactAgent for each one, so every sub-agent starts with a clean context that holds only its own task. A final synthesiser reads the files they left behind and writes one combined report back to the filesystem.",
+  intro: "A schema-bound planner emits the subtasks, then a fresh sub-agent runs each one against a shared virtual filesystem. A final synthesiser reads the files they left behind and writes one combined report. Per-node summaries carry the detail.",
   edges: [
     { from: "setup",      to: "planner" },
     { from: "vfs",        to: "dispatcher" },
@@ -518,6 +594,7 @@ mountCanvasFlow("#cell-m3c-p3", {
     { from: "dispatcher", to: "synth" },
     { from: "synth",      to: "render" },
   ],
+
   nodes: [
     {
       id: "setup", icon: "📦", title: "Imports + ChatOpenAI", x: 0, y: 0,
@@ -528,6 +605,7 @@ const { tool }             = await import("https://cdn.jsdelivr.net/npm/@langcha
 const { createReactAgent } = await import("https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/prebuilt/+esm");
 const { z }                = await import("https://cdn.jsdelivr.net/npm/zod@3/+esm");
 state.deps = { ChatOpenAI, tool, createReactAgent, z };
+
 const cfg = await helpers.getConfig();
 const baseURL = cfg.url.startsWith("http") ? cfg.url : (window.location.origin + cfg.url);
 state.llm = new ChatOpenAI({
@@ -540,22 +618,26 @@ state.llm = new ChatOpenAI({
 return { imports: Object.keys(state.deps) };
 `,
     },
+
     {
       id: "vfs", icon: "🗂", title: "Virtual filesystem + tools", x: 2, y: 0,
       summary: "The virtual filesystem is a plain JS object shared across the entire run. The write_file, read_file, and list_files tools give every sub-agent a consistent interface to store and retrieve work without any sub-agent needing to know about the others.",
       code: `const { tool, z } = state.deps;
 state.vfs = {};
+
 state.writeFile = tool(
   async ({ path, content }) => { state.vfs[path] = content; return "wrote " + path + " (" + content.length + " chars)"; },
   { name: "write_file",
     description: "Save text to a file. Call this whenever you finish a deliverable. Files persist across sub-agent calls.",
     schema: z.object({ path: z.string(), content: z.string() }) },
 );
+
 state.readFile = tool(
   async ({ path }) => state.vfs[path] || ("(file " + path + " not found)"),
   { name: "read_file", description: "Read a previously-saved file.",
     schema: z.object({ path: z.string() }) },
 );
+
 state.listFiles = tool(
   async () => Object.keys(state.vfs).length ? Object.keys(state.vfs).join(", ") : "(no files saved yet)",
   { name: "list_files", description: "List paths of every saved file.", schema: z.object({}) },
@@ -563,6 +645,7 @@ state.listFiles = tool(
 return { tools: ["write_file", "read_file", "list_files"], vfs_state: Object.keys(state.vfs) };
 `,
     },
+
     {
       id: "planner", icon: "🧠", title: "Planner (schema-bound)", x: 1, y: 1,
       summary: "A single LLM call that uses withStructuredOutput to bind the response to a declared JSON schema, so the subtask list arrives as a typed object rather than a string you would have to parse and validate manually.",
@@ -573,11 +656,16 @@ return { tools: ["write_file", "read_file", "list_files"], vfs_state: Object.key
   "nim_vs_hosting.md, a short comparison of using a managed NIM endpoint versus self-hosting a model directly, ",
   "covering latency, operational overhead, and when each makes sense.",
 ].join("");
+
+// withStructuredOutput is LangChain's wrapper over the same response_format
+// json_schema you passed by hand in module 2a; it binds the output to this
+// schema and returns a parsed object instead of a string.
 const planner = state.llm.withStructuredOutput({
   type: "object", additionalProperties: false,
   properties: { subtasks: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 4 } },
   required: ["subtasks"],
 }, { name: "plan" });
+
 const out = await planner.invoke([
   { role: "system", content: "Decompose the user goal into 3-4 self-contained subtasks. Each subtask is one imperative sentence a sub-agent can execute independently. Every subtask must produce a file via write_file." },
   { role: "user",   content: state.goal },
@@ -586,11 +674,13 @@ state.subtasks = out.subtasks;
 return out;
 `,
     },
+
     {
       id: "dispatcher", icon: "🚀", title: "Dispatch sub-agents (fresh context each)", x: 1, y: 2,
-      summary: "Loops over the planner's subtask list and spawns a brand-new createReactAgent for each one. Each sub-agent starts with a clean context window that contains only its assigned task and a brief note of which files already exist on the virtual filesystem. There is no accumulated reasoning from earlier subtasks, no intermediate tool results from the orchestrator, nothing that could pull the sub-agent's attention away from its job. The full reply from each sub-agent is logged and stored; there is no truncation.",
+      summary: "Loops over the planner's subtask list and spawns a brand-new createReactAgent for each one. Each sub-agent starts with a clean context window that contains only its assigned task and a brief note of which files already exist on the virtual filesystem. Earlier reasoning, intermediate orchestrator results, and prior tool calls stay out of that window, so nothing distracts the sub-agent from its job. The complete reply from each sub-agent is logged and stored in full.",
       code: `const { createReactAgent } = state.deps;
 state.subResults = [];
+
 for (let i = 0; i < state.subtasks.length; i++) {
   const sub = createReactAgent({
     llm: state.llm,
@@ -605,6 +695,7 @@ for (let i = 0; i < state.subtasks.length; i++) {
       content: state.subtasks[i] + "\\n\\nContext: " + ctx + ". Use write_file when saving deliverables.",
     }],
   });
+
   const last = r.messages.at(-1).content || "";
   helpers.log("subtask " + (i+1) + " · " + state.subtasks[i].slice(0, 80));
   helpers.log("  reply: " + last);
@@ -613,6 +704,7 @@ for (let i = 0; i < state.subtasks.length; i++) {
 return state.subResults;
 `,
     },
+
     {
       id: "synth", icon: "🧠", title: "Synthesiser (reads VFS, one LLM call)", x: 1, y: 3,
       summary: "The synthesis step the orchestrator never sees mid-run. It reads every file the sub-agents left on the virtual filesystem and makes one LLM call that combines them into a single deliverable, then writes that back to the filesystem as final_report.md. This is where the separate sub-agent outputs actually come together; the sub-agents shared no context, so the only thing they have in common is the files on disk.",
@@ -623,25 +715,29 @@ if (!paths.length) {
   return { synthesised: false };
 }
 const corpus = paths.map(p => "### " + p + "\\n" + state.vfs[p]).join("\\n\\n");
+
 const out = await helpers.chatStream({
   messages: [
     { role: "system", content: "You are the synthesiser for a research agent. Read every file below and write one combined deliverable that answers the original goal. Reference each source file by name. Do not invent facts that are not in the files." },
     { role: "user",   content: "Goal: " + state.goal + "\\n\\nFiles on the virtual filesystem:\\n\\n" + corpus },
   ],
-  max_tokens: 2048,
+  max_tokens: 8196,
 });
+
 state.synthesis = (out.content || out.reasoning || "").trim() || "(synthesiser produced no text)";
 state.vfs["final_report.md"] = state.synthesis;
 helpers.log("synthesised " + paths.length + " files into final_report.md (" + state.synthesis.length + " chars)");
 return { synthesised: true, source_files: paths, report_chars: state.synthesis.length };
 `,
     },
+
     {
       id: "render", icon: "📊", title: "Render the deep-agent tree", x: 1, y: 4,
-      summary: "Builds a diagram from the actual run data: the orchestrator node at the top, one worker node per subtask in the middle row labelled with the subtask text and message count, and a synthesiser node at the bottom showing the combined report it wrote back to the virtual filesystem. The diagram makes the data-flow visible: work produced by workers reaches the synthesiser through the shared filesystem, not through any direct message between agents.",
+      summary: "Builds a diagram from the actual run data: the orchestrator node at the top, one worker node per subtask in the middle row labelled with the subtask text and message count, and a synthesiser node at the bottom showing the combined report it wrote back to the virtual filesystem. The diagram makes the data-flow visible: work produced by workers reaches the synthesiser through the shared filesystem, with no agent ever messaging another directly.",
       code: `// Build a diagram spec straight from the run: orchestrator (row 0) fans out
 // to one worker per subtask (row 1, x = index), each feeding the synthesiser
 // (row 2). Each worker's label/lines come from its subtask + result.
+
 const workers = state.subResults.map((r, i) => ({
   id: "w" + i,
   label: "worker " + (i + 1),
@@ -653,11 +749,12 @@ const workers = state.subResults.map((r, i) => ({
     r.message_count + " msgs",
   ],
 }));
+
 const sourceCount = Object.keys(state.vfs).filter(p => p !== "final_report.md").length;
 const reportChars = (state.synthesis || "").length;
 const spec = {
   title: "Deep agent · one orchestrator, " + workers.length + " sub-agents, shared VFS",
-  caption: "Each worker runs in a fresh context; the synthesiser reads the files they left behind and writes one combined report.",
+  caption: "Each worker runs in its own fresh context, and the synthesiser reads the files they leave behind to write one combined report.",
   nodes: [
     { id: "orch", label: "orchestrator", kind: "model", x: Math.max(0, (workers.length - 1) / 2), y: 0,
       lines: ["plans " + workers.length + " subtasks"] },
@@ -665,11 +762,13 @@ const spec = {
     { id: "synth", label: "synthesiser", kind: "model", x: Math.max(0, (workers.length - 1) / 2), y: 2,
       lines: ["reads " + sourceCount + " files", "writes final_report.md (" + reportChars + " chars)"] },
   ],
+
   edges: [
     ...workers.map(w => ({ from: "orch", to: w.id })),
     ...workers.map(w => ({ from: w.id, to: "synth" })),
   ],
 };
+
 helpers.viz.diagram(spec);
 
 return {

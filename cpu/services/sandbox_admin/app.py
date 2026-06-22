@@ -186,8 +186,8 @@ def cron_delete(name: str) -> dict:
 
 # ─── sandbox exec ──────────────────────────────────────────────────────────
 
-# Only a small allowlist of obviously read-only commands. The point of
-# /admin/sandbox/exec is introspection from the notebook, not a generic shell.
+# Only a small allowlist of obviously read-only commands.
+# The point of /admin/sandbox/exec is introspection from the notebook, not a generic shell.
 _ALLOWED_ARGV0 = frozenset({
     "ls", "cat", "pwd", "id", "whoami", "uname",
     "ps", "stat", "head", "tail", "wc", "echo",

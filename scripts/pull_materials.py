@@ -238,9 +238,9 @@ def cmd_glossary(check):
     """Delegate the glossary host to the proven vendor_glossary.py (cached tier)."""
     vg = os.path.join(HERE, "vendor_glossary.py")
     if check:
-        # The glossary index is committed + shipped; a deep drift check would re-fetch 79
-        # pages. Keep CHECK fast + deterministic here: verify the committed index parses and
-        # is non-empty. A full glossary re-pull is the explicit refresh below.
+        # The glossary index is committed + shipped; a deep drift check would re-fetch 79 pages.
+        # Keep CHECK fast + deterministic here: verify the committed index parses and is non-empty.
+        # A full glossary re-pull is the explicit refresh below.
         idx = os.path.join(MATS, "glossary_index.json")
         try:
             with open(idx, encoding="utf-8") as fh:
@@ -288,6 +288,11 @@ def build_catalog():
 
 
 def main():
+    """Entry point for both modes. CHECK (--check) is what the gate and pre-push run: it re-fetches
+    each source, recomputes the fingerprint, and fails if any material DRIFTED from its committed
+    snapshot or is UNREACHABLE, so a stale or vanished citation is caught before it misleads a student.
+    PULL (the default, contributors + deploy build) re-fetches and rewrites the committed markdown and
+    provenance. A per-material failure never aborts the run; it is recorded as unreachable, loudly."""
     ap = argparse.ArgumentParser(
         description="Pull course materials from their web sources into committed markdown.",
         formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
@@ -302,35 +307,35 @@ def main():
     ap.add_argument("--json", action="store_true", help="machine-readable status (for the gate)")
     a = ap.parse_args()
 
-    if a.catalog:
+    if a.catalog:                                 # --catalog: rebuild the searchable index from existing data, no fetch
         build_catalog()
         return 0
 
-    if a.list:
+    if a.list:                                    # --list: print the manifest and exit
         for m in MANIFEST:
             print(f"  {m['tier']:10} {m['host']:8} {m['name']}\n             {m['url']}")
         print(f"  glossary   cached   (delegated to vendor_glossary.py: 79-term index + deep articles)")
         return 0
 
-    if not _need_deps():
+    if not _need_deps():                          # the extractors need requests/bs4/markdownify
         return 2
 
-    sel = _selected(a.only)
+    sel = _selected(a.only)                        # the manifest rows in scope (all, or one --only host)
     # The glossary is the heavy cached tier (86 nvidia.com fetches); refresh it only on explicit
     # --all or --only glossary, never on the default pull the deploy build runs (kept fast + reliable).
     do_glossary = a.all or a.only == "glossary"
 
     # ── CHECK mode (the gate + pre-push) ──────────────────────────────────────
     if a.check:
-        prov = _load_provenance()
+        prov = _load_provenance()                 # the committed fingerprints to compare against
         rows, drifted, unreachable = [], [], []
         for mat in sel:
-            status, detail = check_one(mat, prov)
+            status, detail = check_one(mat, prov)  # re-fetch + compare; never writes
             rows.append({"name": mat["name"], "url": mat["url"], "host": mat["host"],
                          "tier": mat["tier"], "status": status, "detail": detail})
-            if status == "drifted":
+            if status == "drifted":               # source text changed since it was vendored
                 drifted.append(mat)
-            elif status == "unreachable":
+            elif status == "unreachable":         # source could not be fetched (kept the snapshot)
                 unreachable.append(mat)
         gstat = cmd_glossary(check=True) if do_glossary else None
         if gstat and gstat != "ok":
@@ -358,12 +363,12 @@ def main():
 
     # ── PULL mode (contributors + the deploy build) ───────────────────────────
     os.makedirs(MATS, exist_ok=True)
-    prov = _load_provenance()
+    prov = _load_provenance()                     # start from existing provenance so kept snapshots persist
     print(f"pulling {len(sel)} material(s)" + (f" (--only {a.only})" if a.only else "") + ":")
     for mat in sel:
-        prov[mat["name"]] = pull_one(mat)
+        prov[mat["name"]] = pull_one(mat)         # fetch + rewrite markdown; records ok / unreachable
     if do_glossary:
-        cmd_glossary(check=False)
+        cmd_glossary(check=False)                 # refresh the heavy cached glossary tier only when asked
     payload = {"generated": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
                "materials": [prov[m["name"]] for m in MANIFEST if m["name"] in prov]}
     with open(MATERIALS_JSON, "w", encoding="utf-8") as fh:

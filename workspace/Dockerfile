@@ -43,6 +43,13 @@ RUN pip3 install --no-cache-dir \
 # already at the right version.
 RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
+# Headless Chromium for in-lab browser/render experiments. playwright (the driver) is
+# pinned in requirements.txt and installed above; this pulls the browser binary plus the
+# system libraries it needs to launch, so a notebook or the render-check harness
+# (scripts/render_check.py) can drive a real browser with no manual setup. A repo pull
+# builds this in; the capability is documented in workspace/SKILL.html.
+RUN playwright install --with-deps chromium
+
 RUN pip install --no-cache-dir --root-user-action ignore \
     uv jupyterlab==4.5.5 jupyterlab-widgets jupyter-archive ipywidgets \
     jupyter-resource-usage jupytext jupyter-server-proxy \

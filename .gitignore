@@ -67,3 +67,4 @@ docs/validation/
 # Local env + secrets (never commit)
 .env
 .secret
+scripts/.figtools/

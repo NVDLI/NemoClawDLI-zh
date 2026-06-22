@@ -2,7 +2,7 @@
 
 *NVIDIA's canonical definitions for the terms this course leans on, distilled for quick lookup. Entries are grouped by what they do (agents and reasoning; models, inference, and serving; retrieval and grounding; safety and control), and each one gives the core definition with its source, a line on where the term lands in the course, and links to the related entries. The deeper reading map, with the primary papers behind each move, is in [the agent builder's field guide](./agent_field_guide.md).*
 
-> **How to read this.** Treat this as a lookup table rather than a piece to read through. Each entry is paraphrased from NVIDIA's published pages, cited inline and listed in full under [Sources](#sources). The *Related* line under an entry points to the other terms it leans on, so you can follow a concept to its parts without leaving the page. For the research behind a term, follow the field guide; for the opinionated reading of where the stack is settling, read [the agentic equilibrium](./agentic_equilibrium.md).
+> **How to read this.** Treat this as a lookup table rather than a piece to read through. Each entry is paraphrased from NVIDIA's published pages, cited inline and listed in full under [Sources](#sources). The source pages are vendored under [`glossary_raw/`](./glossary_raw/README.md), so every definition keeps a primary source you can read in full and check the paraphrase against. The *Related* line under an entry points to the other terms it leans on, so you can follow a concept to its parts without leaving the page. For the research behind a term, follow the field guide; for the opinionated reading of where the stack is settling, read [the agentic equilibrium](./agentic_equilibrium.md).
 
 ---
 

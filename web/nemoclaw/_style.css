@@ -13,6 +13,8 @@
   --tf:  #6a6a6a;
   --acc: #3b82f6;
   --err: #ef4444;
+  --warn: #e3b341;
+  --reason: #c4b5fd;
   --r:   8px;
   --mono: ui-monospace, "SF Mono", Consolas, "Cascadia Mono", monospace;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
@@ -40,6 +42,7 @@ body {
 .topbar {
   position: sticky; top: 0; z-index: 100;
   display: flex; align-items: center;
+  gap: 18px;
   height: 52px;
   padding-left:  max(28px, calc((100vw - min(71.25rem, 100%)) / 2));
   padding-right: max(28px, calc((100vw - min(71.25rem, 100%)) / 2));
@@ -58,19 +61,29 @@ body {
 .topbar .logo:hover { color: var(--gs); }
 /* The <nav> slot is intentionally empty (see buildNav). It still serves as the
  * flex spacer that pushes the key-pill to the right edge. */
-.topbar nav { flex: 1; min-width: 0; }
+.topbar nav { flex: 1; min-width: 0; display: flex; gap: 7px; overflow-x: auto; scrollbar-width: thin; }
+.topbar nav::-webkit-scrollbar { height: 4px; }
+/* Clean block-buttons: a real hit-area (6px tall), even spacing, a soft surface that lifts on
+   hover. Block radius (not a thin pill) so the label sits centered with room on every side. */
+.topbar .navpill { flex: 0 0 auto; display: inline-flex; align-items: center; line-height: 1;
+  font-family: var(--mono); font-size: .75rem; color: var(--td);
+  background: var(--e2); border: 1px solid var(--bd); border-radius: 7px; padding: 6px 11px;
+  text-decoration: none; white-space: nowrap;
+  transition: background .15s, border-color .15s, color .15s; }
+.topbar .navpill:hover { border-color: var(--g); color: var(--gs); background: var(--e3); }
+.topbar .navpill.cur { background: var(--g); color: #0a0a0a; border-color: var(--g); font-weight: 700; }
 .topbar .spacer { flex: 0 0 auto; min-width: 8px; }
 #py-mode-topbar-container { display: flex; align-items: center; flex-shrink: 0; margin-right: 12px; }
 .topbar .key-pill {
-  flex-shrink: 0;
+  flex-shrink: 0; display: inline-flex; align-items: center; line-height: 1;
   font-size: .78rem; font-family: var(--mono);
-  padding: 5px 12px;
-  border-radius: 999px; border: 1px solid #2a2a2a; border-color: var(--bd);
+  padding: 7px 13px;
+  border-radius: 7px; border: 1px solid #2a2a2a; border-color: var(--bd);
   color: #6a6a6a; color: var(--tf); cursor: pointer;
   background: transparent;
-  transition: color .15s, border-color .15s;
+  transition: color .15s, border-color .15s, background .15s;
 }
-.topbar .key-pill:hover { color: var(--td); border-color: var(--tf); }
+.topbar .key-pill:hover { color: var(--td); border-color: var(--tf); background: var(--e2); }
 .topbar .key-pill.set { color: #aee23a; color: var(--gs); border-color: #4a7a00; border-color: var(--gd); }
 
 @media (max-width: 640px) {
@@ -344,8 +357,8 @@ a > code { color: inherit; }
 @media(max-width:640px) {
   main { padding: 24px 16px 80px; }
   .hero h1 { font-size: 1.6rem; }
-  .topbar { padding: 0 14px; gap: 10px; }
-  .topbar nav a { padding: 5px 8px; font-size: .75rem; }
+  .topbar { padding: 0 14px; gap: 12px; }
+  .topbar .navpill { padding: 5px 9px; font-size: .72rem; }
 }
 
 
@@ -799,7 +812,7 @@ body.python-mode .cf-btn-reset-kernel:hover:not([disabled]) {
 }
 .cf-py-copy-btn {
   font-family: var(--mono); font-size: .68rem; font-weight: 700;
-  padding: 2px 8px; border-radius: 4px; cursor: pointer;
+  padding: 4px 9px; border-radius: 6px; cursor: pointer;
   background: rgba(130,80,223,.16); color: #c4b5fd;
   border: 1px solid rgba(130,80,223,.35);
   transition: background .15s;
@@ -883,6 +896,16 @@ body.python-mode .cf-btn-reset-kernel:hover:not([disabled]) {
   margin: 2px 0;
   white-space: pre-wrap; word-break: break-word;
 }
+/* A dict / list logged from a cell, pretty-printed and syntax-highlighted. The highlight.js
+   theme colors the tokens; this only owns the block frame. Sits inline in a log line, so a
+   label logged alongside it reads above the JSON. */
+.cf-panel-log-json, .cf-log-json {
+  margin: 4px 0 6px; padding: 9px 11px;
+  background: var(--bg, #0d0d0d); border: 1px solid var(--bd); border-radius: 5px;
+  font-family: ui-monospace, monospace; font-size: .78rem; line-height: 1.5;
+  overflow-x: auto; white-space: pre;
+}
+.cf-log-json code { background: none; padding: 0; font: inherit; color: inherit; }
 
 .cf-panel-output { padding: 0; margin: 0; }
 .cf-panel-output:empty { display: none; }
@@ -1312,6 +1335,16 @@ body.python-mode .py-mode-jlab-link { display: inline-block; }
   --gfx-tint-amber:#33280f; --gfx-tint-teal:#0e2b28; --gfx-tint-red:#3a1414; --gfx-tint-sub:#1c1f22;
 }
 
+/* Diagram (mountDiagram / viz.diagram) arrow + kind hues. diagramSVG emits var(--dg-*) instead of
+   resolving colors at render time, so a diagram follows the theme toggle live (page figures and
+   cell output alike). Box/canvas tones reuse the page palette; these are the curated extras. The
+   light values live in the :root[data-theme="light"] block below and in _lite_overlay.css. */
+:root {
+  --dg-arrow:#8a8a8a;
+  --dg-env:#4b9fff; --dg-agent:#8ecc2f; --dg-tool:#a78bfa;
+  --dg-data:#e0a83a; --dg-model:#2dd4bf; --dg-neutral:#9aa0a6;
+}
+
 /* ── Light theme ──────────────────────────────────────────────────────────────
    Runtime toggle: <html data-theme="light"> flips the palette; the default (no attribute or
    data-theme="dark") keeps the dark :root above. The values mirror _lite_overlay.css so the
@@ -1320,10 +1353,17 @@ body.python-mode .py-mode-jlab-link { display: inline-block; }
    button is mounted by _shared.js (mountThemeToggle). Code and output panels keep their dark
    canvas in both themes, exactly as the light export already renders them. */
 :root[data-theme="light"] {
+  /* Flip the UA color-scheme so native scrollbars, form controls, and the default canvas render
+     light. Without this the :root `color-scheme: dark` keeps every scrollbar thumb dark on the
+     light page. */
+  color-scheme: light;
+  --dg-arrow:#57606a;
+  --dg-env:#0969da; --dg-agent:#4a7a00; --dg-tool:#7c3aed;
+  --dg-data:#9a6700; --dg-model:#0d9488; --dg-neutral:#57606a;
   --g:#76b900; --gd:#2f6a00; --gs:#4a7a00;
   --bg:#ffffff; --e1:#f6f8fa; --e2:#eef1f4; --e3:#e1e6eb;
   --bd:#d0d7de; --tx:#1a1a1a; --td:#3b3b3b; --tf:#57606a;
-  --acc:#0969da; --err:#d1242f;
+  --acc:#0969da; --err:#d1242f; --warn:#9a6700; --reason:#8250df;
 }
 :root[data-theme="light"] body { background: var(--bg); color: var(--tx); }
 /* GFX figures: flip their internal palette, and override the inline dark canvas + border. An
@@ -1480,14 +1520,14 @@ body.python-mode .py-mode-jlab-link { display: inline-block; }
 .gw-disc{color:var(--td,#b0b0b0)}
 .gw-conn{color:var(--gs,#aee23a);opacity:.6}
 .gw-live{color:var(--gs,#aee23a)}
-.gw-err{color:#f87171}
-.gw-err-txt{font-family:var(--mono,monospace);font-size:.8rem;color:#f87171}
+.gw-err{color:var(--err)}
+.gw-err-txt{font-family:var(--mono,monospace);font-size:.8rem;color:var(--err)}
 .gw-muted{font-family:var(--mono,monospace);font-size:.8rem;color:var(--td,#b0b0b0)}
 .gw-actions{display:flex;flex-wrap:wrap;gap:.4rem;margin:.3rem 0 .5rem}
-.gw-out{margin-top:.5rem;max-height:340px;overflow-y:auto;border:1px solid var(--bd,#2a2a2a);border-radius:5px;padding:.6rem .8rem;font-size:.82rem;background:var(--cf,#111)}
+.gw-out{margin-top:.5rem;max-height:340px;overflow-y:auto;border:1px solid var(--bd,#2a2a2a);border-radius:5px;padding:.6rem .8rem;font-size:.82rem;background:var(--e1)}
 .gw-pre{margin:0;font-size:.78rem;white-space:pre-wrap;word-break:break-all;color:var(--gs,#aee23a)}
 .gw-chat-out{font-size:.88rem;line-height:1.65;color:var(--tf,#e0e0e0);white-space:pre-wrap}
 .gw-table{width:100%;border-collapse:collapse;font-family:var(--mono,monospace);font-size:.78rem}
 .gw-table th{text-align:left;color:var(--td,#b0b0b0);padding:.15rem .5rem .15rem 0;border-bottom:1px solid var(--bd,#2a2a2a)}
 .gw-table td{padding:.2rem .5rem .2rem 0;color:var(--tf,#e0e0e0);vertical-align:top}
-.gw-table tr:hover td{background:var(--cf,#111)}
+.gw-table tr:hover td{background:var(--e1)}

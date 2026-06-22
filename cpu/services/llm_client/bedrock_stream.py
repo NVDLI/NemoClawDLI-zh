@@ -290,8 +290,7 @@ class ConverseStreamAccumulator:
         elif tool_call_args_delta is not None:
             delta["tool_calls"] = [tool_call_args_delta]
         else:
-            # Reasoning channels are additive (text and signature can both
-            # appear in a single Bedrock delta).
+            # Reasoning channels are additive (text and signature can both appear in a single Bedrock delta).
             if reasoning_delta is not None:
                 delta["reasoning_content"] = reasoning_delta
             if reasoning_signature is not None:

@@ -17,7 +17,7 @@ structure from disk. Hand-authored course SKILLs are NOT overwritten (only files
 carrying the generated marker are refreshed).
 """
 from __future__ import annotations
-import html, json, sys
+import html, json, os, re, sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve()
@@ -31,8 +31,7 @@ try:
 except Exception:
     RELEASED = ("nemoclaw",)
 
-# Human-facing one-liner for the web bundle's released course. nemoclaw is what the
-# release foyer surfaces.
+# Human-facing one-liner for the web bundle's released course. nemoclaw is what the release foyer surfaces.
 WEB_COURSE_DESC = {
     "nemoclaw":      "Securing Agents: the browser course.",
 }
@@ -136,283 +135,59 @@ def courses_in(surface: str):
     return out
 
 
-# ONE content bound, and everything flows to it. The <main> container is the single content
-# width (a sane rem max that never exceeds the viewport via min(...,100%)); the hero lead, the
-# section help, the note, and the card grid ALL fill it, so prose and cards line up at the same
-# left+right edge instead of prose sitting in a narrow half-column under a full-width grid. No
-# per-element width locks (the previous 800px lead and 68ch measure were exactly that mistake).
-# Type scales fluidly (clamp). The only literal px are idioms: 1px borders, the 999px pill, and
-# the clamp font floor.
-_CSS = """:root{--g:#76b900;--gs:#aee23a;--bg:#0d0d0d;--e1:#161616;--e2:#1e1e1e;--e3:#2a2a2a;
---tx:#f2f2f2;--td:#b0b0b0;--tf:#8a8a8a;--mono:ui-monospace,"SF Mono",Consolas,monospace;
---sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
---pad:clamp(1rem,4vw,2rem);--r:.6rem}
-*{box-sizing:border-box;margin:0;padding:0}
-html{font-size:clamp(15px,0.94rem + 0.25vw,17.5px)}
-body{background:var(--bg);color:var(--tx);font-family:var(--sans);line-height:1.6}
-a{color:var(--g);text-decoration:none}a:hover{text-decoration:underline}
-code{font-family:var(--mono);font-size:.9em;background:var(--e2);padding:.05em .4em;border-radius:.25rem;color:var(--gs)}
-.topbar{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;padding:.8rem var(--pad);
-background:linear-gradient(180deg,#000,var(--bg));border-bottom:1px solid var(--e3);position:sticky;top:0;z-index:10}
-.topbar .logo{font-weight:700;color:var(--g);letter-spacing:.04em}
-.topbar .crumb{color:var(--td);font-size:.88rem}.topbar .crumb a{color:var(--td)}
-.topbar .spacer{flex:1}
-.topbar .badge{font-size:.7rem;font-family:var(--mono);padding:.2rem .6rem;border-radius:999px;
-background:var(--e2);border:1px solid var(--e3);color:var(--td)}
-main{max-width:min(60rem,100%);margin:0 auto;padding:clamp(1.5rem,4vw,2.5rem) var(--pad) 5rem}
-.hero{margin:.4em 0 1.6em}
-.hero .eyebrow{font-family:var(--mono);font-size:.72rem;color:var(--gs);text-transform:uppercase;
-letter-spacing:.12em;margin-bottom:.6em}
-.hero h1{font-size:clamp(1.7rem,1.3rem + 2vw,2.45rem);font-weight:700;line-height:1.12;margin:0 0 .35em;letter-spacing:-.01em}
-.hero h1 .accent{color:var(--g)}
-.hero p.lead{font-size:1.04rem;color:var(--td)}
-.actions{display:flex;gap:.7rem;flex-wrap:wrap;margin:1.3em 0 .2em}
-.actions a{display:inline-flex;align-items:center;gap:.45rem;padding:.65rem 1.25rem;border-radius:.55rem;font-weight:600;
-font-size:.92rem;border:1px solid var(--e3);background:var(--e2);color:var(--td);transition:.13s}
-.actions a:hover{border-color:var(--g);color:var(--gs);text-decoration:none}
-.actions a.primary{background:var(--g);color:#000;border-color:var(--g)}.actions a.primary:hover{background:var(--gs)}
-.section{margin:2.3em 0 1em}
-.section h2{font-size:1.1rem;color:var(--tx);border-bottom:1px solid var(--e3);padding-bottom:.35em;margin-bottom:.3em}
-.section .help{font-size:.92rem;color:var(--td);margin:.55em 0 .2em}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(16rem,100%),1fr));gap:clamp(.6rem,1.5vw,1rem);margin-top:.9em}
-.card{display:block;background:var(--e1);border:1px solid var(--e3);border-radius:var(--r);padding:.9rem 1rem;transition:.13s}
-.card:hover{border-color:var(--g);background:rgba(118,185,0,.05);text-decoration:none;transform:translateY(-1px)}
-.card .nm{font-family:var(--mono);font-size:.95rem;color:var(--gs);display:block;margin-bottom:.25em;word-break:break-word}
-.card .ds{font-size:.85rem;color:var(--td);line-height:1.5}
-.card .st-flag{font-size:.74em;color:#f85149;font-family:var(--mono);margin-left:.4rem}
-.note{font-size:.85rem;color:var(--tf);margin-top:2.4em;border-left:3px solid var(--e3);padding:.45em 0 .45em .9rem}
-details.fold{margin-top:1.5em;border:1px solid var(--e3);border-radius:var(--r);background:var(--e1);overflow:hidden}
-details.fold>summary{cursor:pointer;padding:.7rem 1rem;font-weight:600;color:var(--gs);font-size:.92rem;
-list-style:none;display:flex;align-items:center;gap:.6rem}
-details.fold>summary::-webkit-details-marker{display:none}
-details.fold>summary::before{content:"▸";color:var(--tf);font-size:.8em}
-details.fold[open]>summary::before{content:"▾"}
-.foldbody{padding:.15rem 1.15rem 1rem;font-size:.9rem;color:var(--td)}
-.foldbody h4{color:var(--tx);font-size:.92rem;margin:1.1em 0 .35em}
-.foldbody h4:first-child{margin-top:.3em}
-.foldbody ul{margin:.4em 0 .7em 1.1em;padding:0}.foldbody li{margin:.35em 0;list-style:disc}
-.foldbody li.tight{margin:.22em 0}
-.metamap{font-family:var(--mono);font-size:.8rem;color:var(--tf);background:var(--bg);border:1px solid var(--e3);
-border-radius:.5rem;padding:.65rem .8rem;margin-top:.7em;overflow:auto;white-space:pre-wrap;line-height:1.5}
-.metamap b{color:var(--gs)}
-.st-badge{font-family:var(--mono);font-size:.7rem;border-radius:999px;padding:.05rem .6rem;margin-left:auto;
-background:var(--e2);border:1px solid var(--e3);color:var(--td)}
-.st-badge.ok{color:#3fb950;border-color:#234} .st-badge.warn{color:#d29922} .st-badge.fail{color:#f85149;border-color:#522}
-.st-actions{margin:.2em 0 .8em}
-.st-actions button{font:inherit;font-size:.82rem;cursor:pointer;background:var(--e2);border:1px solid var(--e3);
-color:var(--td);border-radius:.45rem;padding:.3rem .75rem}.st-actions button:hover{border-color:var(--g);color:var(--gs)}
-.st-row{display:flex;gap:.5rem;padding:.1rem 0}.st-mark{width:1.1em;flex:0 0 auto}
-.st-row.ok{color:var(--td)}.st-row.warn{color:#d2a64a}.st-row.fail{color:#f08a82}
-.st-hint{color:var(--tf)}"""
+def _nav(hub_dir, up_path=None, up_label=None):
+    """Topbar nav for a framer hub: home -> the release foyer, up -> the parent SKILL, both
+    as paths relative to this hub's directory so they resolve in the lab (served at /lab/static)."""
+    nav = {"home": os.path.relpath("web/index.html", hub_dir) if hub_dir else "web/index.html"}
+    if up_path:
+        nav["up"] = {"label": up_label, "href": os.path.relpath(up_path, hub_dir) if hub_dir else up_path}
+    return nav
 
 
-# Self-test harness. Runs in the browser on load (and on the "re-run" button): checks every
-# card link on the hub resolves, flags stray SKILL.md links and inconsistencies, and pins a
-# ⚠ hint onto any broken card. Raw string so the JS regex backslashes survive verbatim.
-_SELFTEST_JS = r'''<script>
-(function(){
-  var STALE=/SKILL\.md(?:$|["'\s<])/;
-  var SKIP=/^(https?:|mailto:|tel:|data:|#)|(AGENT_QUICKSTART|QUALITY_DIRECTIVES|SKILL_CONTRACT)\.md$|(^|\/)docs\//;
-  function runSelfTest(){
-    var out=document.getElementById("selftest-out"), badge=document.getElementById("st-badge");
-    if(!out) return;
-    [].forEach.call(document.querySelectorAll(".st-flag"),function(e){e.parentNode&&e.parentNode.removeChild(e);});
-    var meta={}; try{ meta=JSON.parse(document.getElementById("skill-meta").textContent); }catch(e){}
-    var cards=[].slice.call(document.querySelectorAll("a.card"));
-    var kids=(meta.children||[]).map(function(c){return c.path;});
-    var rows=[];
-    function add(s,l,h){ rows.push({s:s,l:l,h:h||""}); }
-    add(meta.node_type?"ok":"warn","skill-meta present"+(meta.level?(" · "+meta.level):""), meta.node_type?"":"missing node_type");
-    add(kids.length?"ok":"warn", kids.length+" children declared", kids.length?"":"hub declares no children");
-    var seen={},dups=[]; kids.forEach(function(p){ if(seen[p])dups.push(p); seen[p]=1; });
-    add(dups.length?"fail":"ok","no duplicate children", dups.length?dups.join(", "):"");
-    // normalise a path (collapse ./ and ../) for comparing card hrefs to declared child paths
-    function norm(p){ var a=[]; (p||"").split("/").forEach(function(s){ if(s===""||s===".")return; if(s===".."){a.pop();} else a.push(s); }); return a.join("/"); }
-    var selfp=meta.self_path||"", dir=selfp.indexOf("/")<0?"":selfp.slice(0,selfp.lastIndexOf("/"));
-    // SCOPE: every declared child must live under this hub's own directory (isolation:
-    // a hub must not claim a child outside its scope, e.g. a course hub reaching a sibling).
-    var outside=kids.filter(function(p){ return dir && norm(p).indexOf(dir+"/")!==0; });
-    add(outside.length?"fail":"ok","children scoped under "+(dir||"task root")+"/", outside.length?("out of scope: "+outside.join(", ")):"");
-    // CONSISTENCY: every declared child is actually rendered as a card here (skill-meta ↔ DOM).
-    var targets={}; cards.forEach(function(a){ var h=a.getAttribute("href")||"";
-      if(/^(https?:|mailto:|tel:|#|\/)/.test(h))return; targets[norm((dir?dir+"/":"")+h)]=1; });
-    var missing=kids.filter(function(p){ return !targets[norm(p)]; });
-    add(missing.length?"fail":"ok","every declared child has a card", missing.length?("no card for: "+missing.join(", ")):"");
-    var hrefs=cards.map(function(a){return a.getAttribute("href");}).concat(kids);
-    var stale=hrefs.filter(function(h){return h&&STALE.test(h);}); stale=stale.filter(function(h,i){return stale.indexOf(h)===i;});
-    add(stale.length?"warn":"ok","no deprecated / stale path patterns", stale.length?stale.join(", "):"");
-    var check=cards.filter(function(a){ var h=a.getAttribute("href"); return h && !SKIP.test(h); });
-    function paint(){
-      var fail=rows.filter(function(r){return r.s==="fail";}).length, warn=rows.filter(function(r){return r.s==="warn";}).length;
-      var cls=fail?"fail":(warn?"warn":"ok"), head=fail?("✗ "+fail+" issue"+(fail>1?"s":"")):(warn?("⚠ "+warn+" hint"+(warn>1?"s":"")):"✓ all checks pass");
-      if(badge){ badge.className="st-badge "+cls; badge.textContent=head; }
-      out.innerHTML=rows.map(function(r){return '<div class="st-row '+r.s+'"><span class="st-mark">'+
-        (r.s==="ok"?"✓":(r.s==="warn"?"⚠":"✗"))+'</span><span>'+r.l+(r.h?' <span class="st-hint">· '+r.h+'</span>':'')+'</span></div>';}).join("");
-    }
-    if(!check.length){ paint(); return; }
-    var pending=check.length, broken=0, neterr=0;
-    check.forEach(function(a){
-      var h=a.getAttribute("href");
-      fetch(h,{method:"HEAD",credentials:"same-origin",cache:"no-store"}).then(function(r){
-        if(!r.ok){ broken++; flag(a,r.status); }
-      })["catch"](function(){ neterr++; }).then(function(){
-        if(!--pending){
-          if(neterr===check.length) add("warn","link resolution","not checked; open this hub inside the lab to verify");
-          else add(broken?"fail":"ok",(check.length-neterr)+" links checked", broken?(broken+" broken; see the ⚠ hints pinned above"):"all resolve");
-          paint();
-        }
-      });
-    });
-    function flag(a,c){ var s=document.createElement("span"); s.className="st-flag"; s.textContent="⚠ "+c;
-      s.title="This link does not resolve ("+c+"). Likely a moved or deprecated page; fix the href in the source."; a.appendChild(s); }
-  }
-  if(document.readyState!=="loading") runSelfTest(); else window.addEventListener("DOMContentLoaded",runSelfTest);
-  document.addEventListener("click",function(e){ if(e.target && e.target.id==="st-run") runSelfTest(); });
-})();
-</script>'''
-
-_SELFTEST_HTML = """  <details class="fold" open>
-    <summary>Self-test <span class="st-badge" id="st-badge">running…</span></summary>
-    <div class="foldbody">
-      <p style="color:var(--tf);font-size:.84rem;margin:.2em 0 .2em">Runs in your browser on load: every card link
-      on this page is fetched, deprecated path patterns + inconsistencies are flagged, and a ⚠ hint is pinned onto
-      any broken card above. Fix the source, hit re-run (or reload), and watch the hints clear.</p>
-      <div class="st-actions"><button id="st-run" type="button">↻ re-run tests</button></div>
-      <div id="selftest-out"></div>
-    </div>
-  </details>
-"""
-
-
-def _tenets_html(tenets):
-    """Render the core-tenets projection (assumptions/practices/cadences/creeds) as prose.
-    The same data lives in skill-meta, so scripts/tenets.py can report it and map the
-    checkable tenets to the gate that enforces each. No agent-tool config file ships."""
-    if not tenets:
-        return ""
-    label = {"assumptions": "Assumptions (what is true here)",
-             "practices": "Practices (how to work)",
-             "cadences": "Cadences (the rhythm and the gates)",
-             "creeds": "Creeds (the quality bar)"}
-    out = ['\n      <h4>Core tenets, projected into this brain</h4>',
-           '      <p style="color:var(--tf);font-size:.84rem;margin:.1em 0 .4em">This bundle ships '
-           'no agent-tool config file. The operating creed lives here and in <code>skill-meta.tenets</code>; '
-           '<code>python3 scripts/tenets.py</code> reports it and names the gate that enforces each.</p>']
-    for key in ("assumptions", "practices", "cadences", "creeds"):
-        items = tenets.get(key) or []
-        if not items:
-            continue
-        lis = "\n".join(f'        <li class="tight">{html.escape(t)}</li>' for t in items)
-        out.append(f'      <p style="margin:.7em 0 .1em;color:var(--gs);font-size:.86rem">{label[key]}</p>'
-                   f'\n      <ul>\n{lis}\n      </ul>')
-    return "\n".join(out)
-
-
-def _agent_block(meta, root_prefix):
-    r = root_prefix
-    is_root = meta.get("level") == "task"
-    tenets_html = _tenets_html(meta.get("tenets")) if is_root else ""
-    scalars = "  ".join(f"<b>{k}</b>: {html.escape(str(meta[k]))}"
-                        for k in ("node_type", "level", "surface", "course", "role", "served_at") if meta.get(k))
-    kids = meta.get("children", [])
-    kid_lines = "\n".join(f"  • {html.escape(c.get('name', ''))} → {html.escape(c.get('path', ''))}" for c in kids)
-    metamap = scalars + (f"\nchildren ({len(kids)}):\n{kid_lines}" if kids else "")
-
-    # The ROOT beacon is the highest-leverage agent page (the first thing read), so it gets a
-    # full operating manual; sub-hubs get the scoped contract. This block is the agent directive
-    # rendered IN the page; the canonical docs (AGENT_QUICKSTART / SKILL_CONTRACT / QUALITY) are
-    # linked at the end.
-    root_extra = f"""
-      <h4>The ontology in one read</h4>
-      <p>An open-source, replicable course release: narrative, assets, the deployment that runs
-      them, and the verification that keeps them honest. Organised by <strong>execution
-      surface</strong> so each piece declares what it needs to run, <code>web/</code> (browser +
-      remote services) holds the released course and its course-scoped reference layer
-      (<code>web/nemoclaw/mats/</code>), <code>cpu/</code> the shared microservice stack
-      it runs against. <code>scripts/</code> is the tooling,
-      <code>workspace/</code> the lab runtime, <code>docker-compose.yml</code> + <code>nginx.conf</code>
-      the deployment. This directory is the true root; nothing outside it is referenced from within.</p>
-      <h4>Two surfaces: one for students, one for you</h4>
-      <ul>
-        <li class="tight"><strong>The foyer</strong> (<a href="{r}web/index.html">web/index.html</a>) is the student RELEASE surface: it discovers only the released courses, nothing else.</li>
-        <li class="tight"><strong>This beacon</strong> is the agent ONTOLOGY surface: it maps the WHOLE bundle. Parse <code>skill-meta</code>, walk <code>children</code> into the surface hubs, then course hubs, then content.</li>
-      </ul>
-      <h4>Verify before you trust: one engine, two runtimes</h4>
-      <ul>
-        <li class="tight">The link graph is ONE engine, <a href="{r}scripts/engine.js">scripts/engine.js</a> (resolution, crawl, reachability, the release contract), run in the browser viewer AND headless via node. No second implementation to drift.</li>
-        <li class="tight">Headless: <code>bash scripts/run_engine.sh --check</code> (links + reachability + foyer contract) and <code>--self-test</code> (pinned projection facts). In-browser: <a href="{r}scripts/link_graph.html">link_graph.html</a> (⟳ Rescan).</li>
-        <li class="tight">Full cadence + content grounding: <code>python3 scripts/validate_bundle.py --scope ship</code>. The same gates run at pre-push.</li>
-      </ul>"""
-    contract = f"""
-      <h4>Contracts you must keep</h4>
-      <ul>
-        <li class="tight"><strong>Hierarchy.</strong> task &#8594; surface &#8594; course &#8594; content. Every page buds from a SKILL hub; nothing floats unreached, and the engine flags any real stray.</li>
-        <li class="tight"><strong>Isolation.</strong> A course never links another course directly. Only <code>_shared</code> infra, SKILL hubs, and bundle-root files may cross. The course mats (<code>web/nemoclaw/mats/</code>) + <code>repos/</code> are cited-by-URL reference packets: cite the underlying external URL, never link the packet file.</li>
-        <li class="tight"><strong>Generated, not hand-edited.</strong> These hubs come from <code>scripts/gen_skill_hierarchy.py</code>. Edit the generator and regenerate, then refresh the viewer snapshot with <code>run_engine.sh --embed</code>. A hand edit here is overwritten.</li>
-        <li class="tight"><strong>Source of truth is here.</strong> This directory holds everything worth keeping; scratch goes to <code>/tmp</code>, never committed.</li>
-      </ul>
-      <h4>Canonical directives</h4>
-      <p><a href="{r}README.md">README.md</a> &middot; <a href="{r}AGENT_QUICKSTART.md">AGENT_QUICKSTART.md</a> &middot; <a href="{r}SKILL_CONTRACT.md">SKILL_CONTRACT.md</a> &middot; <a href="{r}QUALITY_DIRECTIVES.md">QUALITY_DIRECTIVES.md</a>.</p>"""
-    return f"""  <details class="fold"{' open' if is_root else ''}>
-    <summary>For agents &middot; {'operating manual' if is_root else 'directives'} &amp; machine map</summary>
-    <div class="foldbody">
-      <p>This page is the <strong>brain</strong> for its scope: human prose above, a
-      machine-readable <code>skill-meta</code> JSON in the page head (mirrored at the bottom),
-      and an auto-running self-test. Agents parse <code>skill-meta</code> first, then read the prose.</p>{root_extra if is_root else ""}{tenets_html}{contract}
-      <div class="metamap">{metamap}</div>
-    </div>
-  </details>
-"""
-
-
-def _actions(actions):
-    if not actions:
-        return ""
-    out = '    <div class="actions">\n'
-    for label, href, primary in actions:
-        cls = ' class="primary"' if primary else ""
-        out += f'      <a{cls} href="{href}">{html.escape(label)}</a>\n'
-    return out + "    </div>\n"
-
-
-def _sections(sections):
-    out = ""
-    for title, help_html, items in sections:
-        out += f'    <div class="section">\n      <h2>{html.escape(title)}</h2>\n'
-        if help_html:
-            out += f'      <p class="help">{help_html}</p>\n'   # help is trusted HTML (may hold links)
-        out += '      <div class="grid">\n'
-        for name, href, desc in items:
-            ds = f'<span class="ds">{html.escape(desc)}</span>' if desc else ""
-            out += f'        <a class="card" href="{href}"><span class="nm">{html.escape(name)}</span>{ds}</a>\n'
-        out += "      </div>\n    </div>\n"
-    return out
-
-
-def page(title, eyebrow, lead_html, crumb_html, sections, meta, actions=None, note=None, root_prefix=""):
-    note = note or (f"Generated by <code>scripts/{MARKER}</code>. The machine-readable map is the "
-                    "<code>skill-meta</code> JSON in this page's head. Hierarchy: task → surface → course → content.")
+def framer_page(meta, title, sections, actions=None, readme=None, summary=None, nav=None,
+                framer_rel="web/_skill_explorer.js", model="nvidia/nemotron-3-nano-30b-a3b"):
+    """Emit a SKILL hub as a framer-driven page: the skill-meta contract plus an explorer-config
+    (hub mode) that the ONE renderer (web/_skill_explorer.js) turns into a live README reflection,
+    repo linkage, and a build-guided query. The child links are mirrored as plain <a href> in
+    <noscript>, so the link engine crawls them (it reads raw <a href>, never the JSON config) and a
+    no-JS reader still navigates. Replaces the bespoke per-hub HTML, CSS, and self-test: the chrome
+    and the link self-assess now live once, in the framer."""
+    summary = summary or meta.get("thesis") or meta.get("title", "")
+    groups = []
+    if actions:
+        groups.append({"title": "Start here", "items": [{"label": lbl, "href": href, "desc": ""}
+                                                         for (lbl, href, _primary) in actions]})
+    for (t, _help, items) in sections:
+        if items:
+            groups.append({"title": t, "items": [{"label": n, "href": h, "desc": d} for (n, h, d) in items]})
+    cfg = {"mode": "hub", "title": title, "summary": summary, "ties": ["build"], "model": model, "links": groups}
+    if readme:
+        cfg["readme"] = readme
+    if nav:
+        cfg["nav"] = nav
+    ns = []
+    for g in groups:
+        lis = "\n".join(f'    <li><a href="{it["href"]}">{html.escape(it["label"])}</a></li>' for it in g["items"])
+        ns.append(f'  <h2>{html.escape(g["title"])}</h2>\n  <ul>\n{lis}\n  </ul>')
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- generated by scripts/{MARKER}; edit the generator and regenerate, do not hand-edit -->
 <title>{html.escape(title)}</title>
 <script type="application/json" id="skill-meta">
 {json.dumps(meta, indent=2)}
 </script>
-<style>{_CSS}</style></head>
+<script type="application/json" id="explorer-config">
+{json.dumps(cfg, indent=2)}
+</script>
+</head>
 <body>
-  <div class="topbar"><span class="logo">NVIDIA DLI</span>
-    <span class="crumb">{crumb_html}</span><span class="spacer"></span>
-    <span class="badge">skill-meta · {html.escape(meta.get("level", "hub"))}</span></div>
-  <main>
-    <div class="hero">
-      <div class="eyebrow">{html.escape(eyebrow)}</div>
-      <h1>{html.escape(title)}</h1>
-      <p class="lead">{lead_html}</p>
-    </div>
-{_actions(actions)}{_sections(sections)}{_agent_block(meta, root_prefix)}{_SELFTEST_HTML}    <p class="note">{note}</p>
-  </main>
-{_SELFTEST_JS}
+<div id="explorer"></div>
+<noscript>
+  <h1>{html.escape(title)}</h1>
+{chr(10).join(ns)}
+</noscript>
+<script src="{framer_rel}"></script>
 </body></html>
 """
 
@@ -455,11 +230,28 @@ def gen_task():
     layers_html = ", ".join(f"<code>{r['name']}/</code>" for r in ref_layers) or "none present"
     ref_help = ("Immediate children of the bundle root that are not courses. "
                 + " ".join(f"<code>{r['name']}/</code> {r['role']}." for r in ref_layers))
-    ref_items = []
+    # Source & tooling: the folder explorers (top-level dirs whose SKILL.html is a
+    # directory-explorer: cors-proxy, scripts, docs, workspace) plus the topology viewer.
+    # Linked from the root so the WHOLE source substrate is discoverable and explorable,
+    # not just the courses. Discovered from disk so a new explorer folder appears automatically.
+    import re as _re
+    explorers = []
+    for d in sorted(p for p in TASK1.iterdir() if p.is_dir() and not p.name.startswith(".")):
+        sk = d / "SKILL.html"
+        if d.name in SURFACES or not sk.is_file():
+            continue
+        m = _re.search(r'<script type="application/json" id="skill-meta">(.*?)</script>', sk.read_text(), _re.S)
+        try:
+            em = json.loads(m.group(1)) if m else {}
+        except Exception:
+            em = {}
+        if em.get("node_type") == "directory-explorer":
+            explorers.append((f"{d.name}/", f"{d.name}/SKILL.html",
+                              (em.get("summary", "") or "").split(". ")[0][:140]))
+    src_items = list(explorers)
     if (TASK1 / "scripts" / "link_graph.html").is_file():
-        ref_items.append(("scripts/link_graph.html", "scripts/link_graph.html",
-                          "Link + topology viewer: an honest projection of how every page resolves "
-                          "and what reaches a SKILL hub."))
+        src_items.append(("scripts/link_graph.html", "scripts/link_graph.html",
+                          "Link + topology viewer: how every page resolves and what reaches a SKILL hub."))
 
     docs = [("README.md", "README.md", "What the release is and how to run it (start here)."),
             ("AGENT_QUICKSTART.md", "AGENT_QUICKSTART.md", "Agent orientation: layout, services, rules."),
@@ -470,8 +262,8 @@ def gen_task():
     for p in (sorted((TASK1 / "docs").glob("*.md")) if (TASK1 / "docs").is_dir() else []):
         docs.append((f"docs/{p.name}", f"docs/{p.name}", ""))
 
-    # The release foyer is the CURATED student entry: it surfaces only the released courses
-    # (RELEASED). This beacon documents the whole ontology; the foyer ships a subset.
+    # The release foyer is the CURATED student entry: it surfaces only the released courses (RELEASED).
+    # This beacon documents the whole ontology; the foyer ships a subset.
     rel_courses = [c for c in RELEASED if (TASK1 / "web" / c).is_dir()]
     actions = [("Open the release foyer →", "web/index.html", True)]
     if (TASK1 / "web" / "nemoclaw" / "01a-loop.html").is_file():
@@ -490,27 +282,15 @@ def gen_task():
             "release": {"surface": "web/index.html", "courses": rel_courses,
                         "note": "the foyer surfaces only these released courses; this beacon maps the whole bundle"},
             "tenets": TENETS,
-            "children": [{"name": s, "path": f"{s}/SKILL.html"} for s, _ in surfaces]}
+            "children": ([{"name": s, "path": f"{s}/SKILL.html"} for s, _ in surfaces]
+                         + [{"name": n.rstrip("/"), "path": h} for (n, h, _d) in explorers])}
 
     write(TASK1 / "SKILL.html",
-          page("Building Agents · NVIDIA DLI bundle", "BUNDLE INDEX · /lab/static/SKILL.html",
-               "NVIDIA DLI's open-source, replicable release of course material: the narrative, the "
-               "assets, the agent-friendly deployment that runs it, and the automatic verification that "
-               "keeps it honest. The root is organised by execution surface, so each piece declares what "
-               "it needs to run. "
-               "The browser course lives under <code>web/</code> (remote services only), and the shared "
-               "microservice stack it runs against lives under <code>cpu/</code>. "
-               f"Alongside the surfaces sit the reference and tooling layers ({layers_html}). "
-               "Every page buds from a SKILL hub, so the whole tree is "
-               'statically and semantically verifiable. Students enter through the curated '
-               '<a href="web/index.html">release foyer</a>; this page is the full map for an agent.',
-               "task1 (root)",
-               [("Execution surfaces", "Each surface declares its environment assumptions; open a "
-                 "surface hub to reach its courses.", items),
-                ("Reference & infrastructure layers", ref_help, ref_items),
-                ("Agent docs", "Operating docs for agents working in this repo "
-                 "(shipped in git, not seeded into the student lab image).", docs)],
-               meta, actions=actions))
+          framer_page(meta, "Building Agents · NVIDIA DLI bundle",
+               [("Execution surfaces", None, items),
+                ("Source & tooling", None, src_items),
+                ("Agent docs", None, docs)],
+               actions=actions, readme="README.md", nav=_nav(""), framer_rel="web/_skill_explorer.js"))
 
 
 def gen_surface(surface: str):
@@ -537,9 +317,20 @@ def gen_surface(surface: str):
             "self_path": f"{surface}/SKILL.html",
             "children": [{"name": n, "path": f"{surface}/{h}"} for n, h in cs]}
     write(TASK1 / surface / "SKILL.html",
-          page(f"{surface}/ · surface hub", f"SURFACE HUB · {len(cs)} COURSES",
-               lead, '<a href="../SKILL.html">task1</a> / ' + surface,
-               sections, meta, root_prefix="../"))
+          framer_page(meta, f"{surface}/ · surface hub", sections, summary=lead,
+                      nav=_nav(surface, "SKILL.html", "task1"),
+                      framer_rel=os.path.relpath("web/_skill_explorer.js", surface)))
+
+
+def _declares_tool_role(path: Path) -> bool:
+    """A page is a tool (carded separately from the student module flow) iff it says so in its
+    own head: <meta name="page-role" content="tool">. The page self-declares; there is no central
+    filename list to drift against the engine."""
+    try:
+        head = path.read_text(encoding="utf-8", errors="ignore")[:2000]
+    except OSError:
+        return False
+    return bool(re.search(r'<meta\s+name=["\']page-role["\']\s+content=["\']tool["\']', head))
 
 
 def gen_web_course_hubs():
@@ -553,11 +344,16 @@ def gen_web_course_hubs():
         sk = d / "SKILL.html"
         if sk.is_file() and MARKER not in sk.read_text():
             continue
-        # NON-NAV files (authoring tools) and BUILD-OUTPUT dirs are served on disk but are NOT
-        # part of the navigable SKILL graph (engine.js graphNavigable + SKIP_DIR drop them). The
-        # hub must not card them, or it emits links the live crawl reports as dead.
-        NON_NAV = {"studio.html", "link_graph.html"}
-        flat = [p for p in d.glob("*.html") if not p.name.startswith("_") and p.name not in NON_NAV]
+        # Authoring/inspection tools (the studio view, the link-graph viewer) are real pages but
+        # not part of the student MODULE flow, so they are carded under a separate "Tools" section
+        # rather than mixed into the page grid. A tool DECLARES itself with <meta name="page-role"
+        # content="tool"> in its own head, so there is no central list of tool filenames to keep in
+        # sync with the engine (a new tool needs no edit here, an old one needs no carve-out). They
+        # ARE linked (crawlable): engine.js treats every non-underscore page as an ordinary graph
+        # node, so a hub link to a tool is a valid edge, not a dead one.
+        htmls = [p for p in d.glob("*.html") if not p.name.startswith("_")]
+        tools = sorted(p for p in htmls if _declares_tool_role(p))
+        flat = [p for p in htmls if p not in tools]
         nested = [p for p in (d / "web").glob("*.html")] if (d / "web").is_dir() else []
         edx = sorted((d / "edx").glob("*.html")) if (d / "edx").is_dir() else []
         shared_docs = sorted((d / "_shared").glob("*.md")) if (d / "_shared").is_dir() else []
@@ -571,7 +367,7 @@ def gen_web_course_hubs():
         subindex = sorted(p for p in d.glob("*/index.html")
                           if p.parent.name not in SKIP_SUB and not p.parent.name.startswith((".", "_")))
         primary = sorted(flat or nested)
-        pages = primary + subindex + edx + shared_docs
+        pages = primary + subindex + edx + shared_docs + tools
         if not pages:
             continue
 
@@ -587,12 +383,17 @@ def gen_web_course_hubs():
             sections.append(("edX delivery", None, [(p.stem, p.relative_to(d).as_posix(), "") for p in edx]))
         if shared_docs:
             sections.append(("Shared", None, [(p.stem, p.relative_to(d).as_posix(), "") for p in shared_docs]))
+        if tools:
+            sections.append(("Tools", "Authoring and inspection tools for this course; open one to work "
+                             "with the material directly. Not part of the student module flow.",
+                             [(p.stem, p.relative_to(d).as_posix(), "") for p in tools]))
         meta = {"node_type": "hub", "level": "course", "surface": "web", "course": d.name,
                 "self_path": f"web/{d.name}/SKILL.html",
                 "children": [{"name": _label(p), "path": p.relative_to(TASK1).as_posix()} for p in pages]}
         lead = WEB_COURSE_DESC.get(d.name, f"The {d.name} browser course, {len(primary)} pages.")
-        write(sk, page(f"web/{d.name} · course hub", f"COURSE HUB · {len(primary)} PAGES",
-                       lead, '<a href="../SKILL.html">web</a> / ' + d.name, sections, meta, root_prefix="../../"))
+        write(sk, framer_page(meta, f"web/{d.name} · course hub", sections, summary=lead,
+                              nav=_nav("web/" + d.name, "web/SKILL.html", "web"),
+                              framer_rel=os.path.relpath("web/_skill_explorer.js", "web/" + d.name)))
 
 
 if __name__ == "__main__":

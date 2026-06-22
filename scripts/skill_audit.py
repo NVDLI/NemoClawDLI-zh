@@ -29,7 +29,9 @@ TASK1 = HERE.parents[1]
 # the repo root, so there is no prefix. Same detection the hooks use.
 PREFIX = "task1/" if (TASK1.name == "task1" and (TASK1.parent / ".git").exists()) else ""
 META_RE = re.compile(r'(<script type="application/json" id="skill-meta">)(.*?)(</script>)', re.S)
-SKIP = ("__pycache__", ".ipynb_checkpoints")
+# public/, standalone/, export/ are GENERATED build output (gitignored), never source.
+# Auditing a bundled copy's source_dir against its build path is a false drift, so skip them.
+SKIP = ("__pycache__", ".ipynb_checkpoints", "public", "standalone", "export")
 # top-level course-content notebooks: *.md not under an asset subdir
 ASSET_SUB = {"code", "data", "images", "imgs", "exercises", "demo", "skills", "ocstart",
              "_paper_cache", "repos_index", "docstore_index", "composer", "chat_helpers",

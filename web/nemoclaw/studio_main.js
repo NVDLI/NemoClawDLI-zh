@@ -1,7 +1,7 @@
 import { chat, getConfig, hasKey } from './_shared.js';
 
 // ═══════════════════════════════════════════════════════════════
-// Constants
+// CONSTANTS
 // ═══════════════════════════════════════════════════════════════
 
 const MODULES = [
@@ -28,7 +28,7 @@ this output demonstrates about LLM or agent behavior, and the key takeaway. Be c
 is shown. No bullet points or headers. Do not repeat the output verbatim.`;
 
 // ═══════════════════════════════════════════════════════════════
-// State
+// STATE
 // ═══════════════════════════════════════════════════════════════
 
 let currentFile   = null;   // e.g. '01a-agents.html'
@@ -44,7 +44,7 @@ let diffSnap      = null;   // element-text snapshot before a reload
 let changedEls    = [];     // elements highlighted after diff
 
 // ═══════════════════════════════════════════════════════════════
-// DOM refs
+// DOM REFS
 // ═══════════════════════════════════════════════════════════════
 
 const frame     = document.getElementById('studio-frame');
@@ -64,7 +64,7 @@ const saveSelBtn= document.getElementById('save-sel-btn');
 const liteBtn   = document.getElementById('lite-btn');
 
 // ═══════════════════════════════════════════════════════════════
-// Utilities
+// UTILITIES
 // ═══════════════════════════════════════════════════════════════
 
 function xsrf() {
@@ -83,12 +83,10 @@ function getIdoc() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Light / export mode
-// Fetches _lite_overlay.css once (same dir as studio.html), then
-// injects / removes it as a <style> tag in the iframe so you can
-// compare the dark lab view against the light edX-export view.
+// LIGHT / EXPORT MODE
 // ═══════════════════════════════════════════════════════════════
 
+// Caches _lite_overlay.css once for the light-mode (edX export) toggle.
 async function fetchLiteCSS() {
   if (_liteCss !== null) return _liteCss;
   try {
@@ -124,7 +122,7 @@ liteBtn.addEventListener('click', async () => {
   liteBtn.textContent = liteMode ? '🌙 Dark' : '☀️ Light';
   liteBtn.title = liteMode
     ? 'Switch back to dark lab mode'
-    : 'Toggle light (export) mode — applies _lite_overlay.css so you can compare dark lab vs light edX export';
+    : 'Toggle light (export) mode. It applies _lite_overlay.css so you can compare the dark lab against the light edX export';
   const idoc = getIdoc();
   if (idoc) {
     if (liteMode) await applyLiteMode(idoc);
@@ -133,13 +131,13 @@ liteBtn.addEventListener('click', async () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// Block editor
+// BLOCK EDITOR
 // ═══════════════════════════════════════════════════════════════
 
 let blockEditActive = false;
 let _beEl           = null;   // currently selected iframe element
 let _beOrigHTML     = null;   // outerHTML at selection time (display/revert baseline)
-let _beFileLoc      = null;   // { content, start, end, raw } — block's exact slice in the source file
+let _beFileLoc      = null;   // block's exact slice in the source file: { content, start, end, raw }
 let _beCm           = null;   // CodeMirror instance for block editor
 
 const blockEditorPanel = document.getElementById('block-editor');
@@ -155,19 +153,15 @@ const _BLOCK_SEL =
   'div[id^="cell-"],div[id^="fig-"],.lead,.note,td,th';
 
 function _nearestBlock(el) {
-  // SVG content: anchor on the <svg> element itself — its viewBox/class
-  // attributes are unique in the file, so _locateBlockInFile can find it.
-  // If there's a semantic ancestor with an id directly wrapping the svg
-  // (e.g. <div id="fig-…">) prefer that instead.
+  // Anchor on the <svg> itself: its viewBox/class attributes are unique.
+  // An id-bearing semantic ancestor is preferred when one wraps it.
   const svgEl = el.closest('svg');
   if (svgEl) {
     const p = svgEl.parentElement;
     // Prefer a <figure> ancestor (may contain caption + svg together)
     if (p && p.tagName === 'FIGURE') return p;
-    // Prefer a parent with an id — BUT only if it has real content in the FILE.
-    // If the parent is an empty JS-mount placeholder (fig-*) the save would be
-    // overwritten on reload; we still return it so the warning fires via the
-    // isEmpty check in _locateBlockInFile's callback.
+    // Prefer an id-bearing parent, even an empty JS-mount placeholder (fig-*).
+    // The locate callback then warns that a save here is overwritten on reload.
     if (p && p.id) return p;
     return svgEl;
   }
@@ -243,11 +237,9 @@ function _beSetMsg(txt, cls='') {
 }
 
 // ── File-location helpers ────────────────────────────────────────
-// outerHTML ≠ raw file text: browser normalises whitespace, SVG
-// self-closing tags, xmlns attributes, etc.  Instead of comparing
-// outerHTML to file content, we fetch the file at selection time
-// and locate the block by its opening-tag prefix + balanced close-
-// tag walk.  _beFileLoc.raw is the authoritative save target.
+
+// outerHTML differs from raw file text (normalised whitespace, self-closing tags, xmlns reorder).
+// So we fetch the file and locate the block by its opening-tag prefix plus a balanced close-tag walk.
 
 function _beClosingTagEnd(src, from, tag) {
   const t = tag.toLowerCase();
@@ -280,7 +272,7 @@ function _beClosingTagEnd(src, from, tag) {
       i = lt + 1;
     } else if (slice.startsWith(t) &&
                /[\s>/]/.test(src[lt + 1 + t.length] || '')) {
-      // Same tag nested — count depth, but only if not self-closing
+      // A nested same-name tag deepens the count, unless it is self-closing.
       const gt = src.indexOf('>', lt);
       if (gt >= 0 && src[gt-1] !== '/') depth++;
       i = gt >= 0 ? gt + 1 : lt + 1;
@@ -300,17 +292,14 @@ async function _locateBlockInFile(el) {
     if (!tagName) return null;
     const t = tagName.toLowerCase();
 
-    // S1 — exact match (works for plain HTML blocks whose attributes aren't reordered)
+    // S1: exact match, for plain HTML blocks whose attributes are not reordered.
     if (content.includes(outer)) {
       const s = content.indexOf(outer);
       return { content, start: s, end: s + outer.length };
     }
 
-    // S2 — attribute-value fingerprint (immune to attribute reordering).
-    // Browsers move xmlns to position-1 for SVG elements, so the opening-tag
-    // prefix differs from the source.  Instead, find a stable attr VALUE
-    // (id, viewBox, class) that appears verbatim in the file, then walk back
-    // to the opening < and forward to the closing tag.
+    // S2: attribute-value fingerprint, immune to SVG attribute reordering.
+    // Find a stable attr value present verbatim, then walk back to the opening < and out to the close tag.
     const fps = [];
     if (el.id)
       fps.push(`id="${el.id}"`);
@@ -338,7 +327,7 @@ async function _locateBlockInFile(el) {
       }
     }
 
-    // S3 — opening-tag prefix (fallback when attr order is preserved, non-SVG)
+    // S3: opening-tag prefix, the non-SVG fallback when attribute order is preserved.
     const firstGt = outer.indexOf('>');
     if (firstGt >= 0) {
       const openTag = outer.slice(0, firstGt + 1);
@@ -385,14 +374,11 @@ function openBlockEditor(el) {
       return;
     }
     if (!loc) {
-      _beSetMsg('⚠ could not locate block in source — tag: <' + el.tagName.toLowerCase() + '> · Apply works, Save disabled');
+      _beSetMsg('⚠ could not locate the <' + el.tagName.toLowerCase() + '> block in source. Apply works, Save disabled');
       return;
     }
-    // Definitive mounted-target check: does the file contain a mount call
-    // that targets this element's id?  If yes, mountDiagram() / mountCanvasFlow()
-    // regenerates the content on EVERY page load, so any save is silently
-    // overwritten.  This is reliable even after a previous save already wrote
-    // SVG content into the placeholder (which is why the isEmpty heuristic failed).
+    // A mount call targeting this id regenerates the content on every load, so any save is overwritten.
+    // Checking for the call is reliable even after a prior save wrote SVG into the placeholder.
     if (el.id) {
       const id = el.id;
       const src = loc.content;
@@ -404,7 +390,7 @@ function openBlockEditor(el) {
       if (isMounted) {
         _beFileLoc = null; // block Save
         _beSetMsg(
-          '✗ JS-mounted — a mountDiagram() / mountCanvasFlow() call regenerates ' +
+          '✗ JS-mounted by a mountDiagram() / mountCanvasFlow() call that regenerates ' +
           '#' + id + ' on every page load. Any save is overwritten on refresh. ' +
           'To change this diagram edit the spec object in the page <script> tag.'
         );
@@ -450,12 +436,11 @@ document.getElementById('be-save').addEventListener('click', async () => {
   const newHTML = (_beCm ? _beCm.getValue() : beTa.value).trim();
   _beSetMsg('💾 saving…');
   try {
-    // Use the location established at selection time (anchored to original DOM element).
-    // Do NOT re-call _locateBlockInFile(_beEl) here — if Apply was clicked first,
-    // _beEl now has the edited content which won't match the file.
+    // Use the location found at selection time, anchored to the original element.
+    // Re-locating after Apply would fail: _beEl holds edited content by then.
     const loc = _beFileLoc;
     if (!loc) throw new Error(
-      'block not found in source file — the status bar shows the tag name; ' +
+      'block not found in source file. The status bar shows the tag name; ' +
       'try clicking a different ancestor (e.g. the parent <figure> or a div with an id)'
     );
 
@@ -518,6 +503,7 @@ function _injectBlockPick(idoc) {
     `;
     idoc.head.appendChild(s);
   }
+
   idoc._beOver = e => {
     const b = _nearestBlock(e.target);
     if (b && !b.classList.contains('_beSelected')) b.classList.add('_beHover');
@@ -535,6 +521,7 @@ function _injectBlockPick(idoc) {
     b.classList.add('_beSelected');
     openBlockEditor(b);
   };
+
   idoc.addEventListener('mouseover', idoc._beOver,  true);
   idoc.addEventListener('mouseout',  idoc._beOut,   true);
   idoc.addEventListener('click',     idoc._beClick, true);
@@ -551,7 +538,7 @@ function _removeBlockPick(idoc) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Module selector & navigation
+// MODULE SELECTOR & NAVIGATION
 // ═══════════════════════════════════════════════════════════════
 
 MODULES.forEach(m => {
@@ -561,7 +548,7 @@ MODULES.forEach(m => {
 });
 
 modSel.addEventListener('change', () => { if (modSel.value) loadPage(modSel.value); });
-// Clicking the same option again doesn't fire 'change' — clicking the select itself reloads
+// Re-selecting the same option fires no 'change', so a click on the select reloads it.
 modSel.addEventListener('click', () => {
   if (modSel.value && modSel.value === currentFile) loadPage(currentFile, true);
 });
@@ -571,7 +558,7 @@ document.getElementById('reload-btn').addEventListener('click', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// Page loading
+// PAGE LOADING
 // ═══════════════════════════════════════════════════════════════
 
 function loadPage(file, forceReload=false) {
@@ -592,8 +579,7 @@ function loadPage(file, forceReload=false) {
 
   loadingEl.style.display = 'flex';
   setStatus('loading ' + file + '…');
-  // Use an absolute URL so the iframe resolves correctly regardless of how
-  // studio.html is accessed (e.g. /lab/static/... vs /lab/tree/...).
+  // Absolute URL so the iframe resolves under either /lab/static or /lab/tree.
   const base = new URL('.', location.href).href;
   frame.src = base + file + '?studio=1&t=' + Date.now();
 }
@@ -606,7 +592,7 @@ frame.addEventListener('load', () => {
   if (!idoc) {
     // contentDocument is null → cross-origin block or sandbox restriction.
     // The page is visible but studio tooling cannot reach into it.
-    setStatus('⚠ cannot access page — cross-origin or iframe sandbox block. '
+    setStatus('⚠ cannot access page. A cross-origin or iframe sandbox is blocking it. '
       + 'Make sure studio.html and the notebooks are served from the same origin '
       + '(e.g. both at /lab/static/nemoclaw/).', 'warn');
     return;
@@ -644,7 +630,7 @@ frame.addEventListener('load', () => {
       jumpBtn.disabled = changedEls.length===0;
       if (changedEls.length) {
         highlightEls(changedEls, idoc);
-        setStatus(`↑ ${changedEls.length} changed section(s) — use sidebar to jump`, 'ok');
+        setStatus(`↑ ${changedEls.length} changed section(s). Use the sidebar to jump`, 'ok');
       }
     } else {
       setStatus('loaded · ' + currentFile);
@@ -653,7 +639,7 @@ frame.addEventListener('load', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// JupyterLab API
+// JUPYTERLAB API
 // ═══════════════════════════════════════════════════════════════
 
 async function checkLastModified() {
@@ -673,11 +659,11 @@ async function checkLastModified() {
 }
 
 async function fetchContent() {
-  // Must include type=file&format=text&content=1 — a bare GET returns content:null.
+  // The type=file&format=text&content=1 query is required; a bare GET returns content:null.
   const r = await fetch(API + currentFile + '?type=file&format=text&content=1&t=' + Date.now());
   if (!r.ok) throw new Error('fetch ' + r.status);
   const meta = await r.json();
-  if (typeof meta.content !== 'string') throw new Error('content not a string — got ' + typeof meta.content);
+  if (typeof meta.content !== 'string') throw new Error('content must be a string but got ' + typeof meta.content);
   return meta.content;
 }
 
@@ -691,7 +677,7 @@ async function putContent(content) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Auto-refresh / polling
+// AUTO-REFRESH / POLLING
 // ═══════════════════════════════════════════════════════════════
 
 document.getElementById('poll-on').addEventListener('change', e => {
@@ -721,7 +707,7 @@ async function pollTick() {
       lastModified = lm;
       const idoc = getIdoc();
       if (idoc) diffSnap = snapshotEls(idoc);
-      setStatus('↺ file changed — reloading…', 'warn');
+      setStatus('↺ reloading the changed file…', 'warn');
       frame.src = currentFile + '?studio=1&t=' + Date.now();
     }
     lastModified = lm;
@@ -729,7 +715,7 @@ async function pollTick() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Diff / change highlighting
+// DIFF / CHANGE HIGHLIGHTING
 // ═══════════════════════════════════════════════════════════════
 
 function snapshotEls(idoc) {
@@ -781,7 +767,7 @@ jumpBtn.addEventListener('click', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// Comment system
+// COMMENT SYSTEM
 // ═══════════════════════════════════════════════════════════════
 
 async function loadComments() {
@@ -1013,7 +999,7 @@ function showPop(anchorEl, cx, cy) {
 function hidePop(){ pop.style.display='none'; _popAnchorEl=null; }
 
 // ═══════════════════════════════════════════════════════════════
-// Auto-run
+// AUTO-RUN
 // ═══════════════════════════════════════════════════════════════
 
 document.getElementById('run-btn').addEventListener('click', () => {
@@ -1031,7 +1017,7 @@ function triggerRunAll(idoc) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Auto-annotate
+// AUTO-ANNOTATE
 // ═══════════════════════════════════════════════════════════════
 
 function watchRunCompletion(idoc) {
@@ -1098,7 +1084,7 @@ async function annotateEl(outEl, outputText) {
         {role:'system', content:ANNOTATE_SYS},
         {role:'user',   content:outputText.slice(0,2500)},
       ],
-      max_tokens:220,
+      max_tokens:8196,
       temperature:0.3,
     });
     const content = resp.choices?.[0]?.message?.content || '(no response)';
@@ -1111,7 +1097,7 @@ async function annotateEl(outEl, outputText) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Edit mode & selective save
+// EDIT MODE & SELECTIVE SAVE
 // ═══════════════════════════════════════════════════════════════
 
 document.getElementById('edit-btn').addEventListener('click', () => {
@@ -1158,12 +1144,9 @@ function disableEditMode(idoc) {
   });
 }
 
-// Inject "💾 Save cell" into every code panel head (idempotent)
-// Save a canvas-flow node's code directly into its template literal in the
-// source file.  We never compare against ta.defaultValue (which has escape
-// sequences like \n already interpreted by the JS engine) — instead we
-// navigate the file by the mountCanvasFlow() selector + node id, extract
-// the backtick-delimited template literal, and replace its raw content.
+// Save a canvas-flow node's code into its template literal in the source.
+// We navigate by mountCanvasFlow() selector plus node id and replace the raw backtick content.
+// ta.defaultValue is unusable here: its escapes have already been spent by the JS engine.
 async function _saveNodeCode(cellSel, nodeId, newCode) {
   let content = await fetchContent();
   const bare = cellSel.replace(/^#/, '');
@@ -1189,12 +1172,10 @@ async function _saveNodeCode(cellSel, nodeId, newCode) {
     if (content[litEnd] === '`' && content[litEnd - 1] !== '\\') break;
     litEnd++;
   }
-  if (litEnd >= content.length) throw new Error('no closing backtick found — file may be malformed');
+  if (litEnd >= content.length) throw new Error('no closing backtick found, so the file may be malformed');
 
-  // Re-escape the new code for storage inside a JS template literal:
-  // \  → \\   (must come first to avoid double-escaping)
-  // `  → \`
-  // ${ → \${
+  // Re-escape the new code for storage inside a JS template literal.
+  // Backslash is escaped first so the later escapes do not double up.
   const escaped = newCode
     .replace(/\\/g, '\\\\')
     .replace(/`/g, '\\`')
@@ -1209,8 +1190,8 @@ function injectSaveBtns(idoc) {
     const nodeId = panel.dataset.id; if (!nodeId) return;
     const head   = panel.querySelector('.cf-panel-head'); if (!head) return;
 
-    // Resolve the mountCanvasFlow() cell selector from the mount-target's id
-    // (the <div id="cell-…"> that contains this .cf-wrap)
+    // Resolve the mountCanvasFlow() cell selector from the mount-target id.
+    // That target is the <div id="cell-…"> wrapping this .cf-wrap.
     const mountDiv = panel.closest('[id^="cell-"]');
     const cellSel  = mountDiv ? '#' + mountDiv.id : null;
 
@@ -1306,13 +1287,13 @@ saveSelBtn.addEventListener('click', async()=>{
 async function doSingleSave(oldVal, newVal) {
   let content = await fetchContent();
   if (!content.includes(oldVal))
-    throw new Error('original text not found — reload and try again');
+    throw new Error('original text not found. Reload and try again');
   content = content.replace(oldVal, newVal);
   await putContent(content);
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Sidebar toggle & section collapsing
+// SIDEBAR TOGGLE & SECTION COLLAPSING
 // ═══════════════════════════════════════════════════════════════
 
 document.getElementById('sidebar-btn').addEventListener('click',()=>{
@@ -1325,7 +1306,7 @@ document.querySelectorAll('.sb-head[data-sec]').forEach(head=>{
 });
 
 // ═══════════════════════════════════════════════════════════════
-// Init
+// INIT
 // ═══════════════════════════════════════════════════════════════
 
 async function init() {

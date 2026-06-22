@@ -21,7 +21,7 @@
   .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
   .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
   figure.lp-video { margin: 1.4em 0; }
-  figure.lp-video .video-wrap { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 8px; border: 1px solid #2a2a2a; background: #161616; }
+  figure.lp-video .video-wrap { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 8px; border: 1px solid var(--bd); background: var(--e1); }
   figure.lp-video .video-wrap iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
   figure.lp-video figcaption { font-size: .88rem; color: var(--td,#b0b0b0); line-height: 1.6; margin-top: .55em; }
   figure.lp-video figcaption b { color: var(--gs,#aee23a); }
@@ -42,22 +42,38 @@
     <div class="eyebrow">Module 1 · Part B of 3</div>
     <h1>The <span>ReAct</span> Loop</h1>
     <p class="lead">
-      Observe, reason, act, repeat. Coined in the LLM context by
-      <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al. (2022)</a>,
-      who showed that interleaving reasoning steps with tool calls
-      outperforms either reasoning alone or tool use alone on a range of
-      tasks. The key property is that the model can update its plan after
-      each observation: if a tool returns something unexpected, the next
-      reasoning step incorporates that before deciding what to do next.
+      An agent built on a language model runs the same perceive-decide-act
+      loop as anything else, with one detail that gives the pattern its name:
+      the model reasons in words between the actions it takes.
+      <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al. (2022)</a>
+      called this <strong>ReAct</strong>, for reasoning and acting. They found that
+      a model which interleaves short stretches of reasoning with calls to its tools
+      handles a wide range of tasks more reliably than one that only plans in advance
+      or only acts without thinking it through.
+    </p>
+    <p>
+      The arrangement is strong because the model is never bound to the plan it
+      started with. Whenever a tool returns something it did not expect, that result
+      joins the next round of reasoning, and the model can reconsider where it stands
+      before deciding what to do next.
     </p><p>
-      The signal is one field on every chat response:
-      <code>finish_reason</code>. A six-line router reads it, the
-      model picks a tool, your code runs it, the model reads the
-      result, and this repeats until the model says done. Simple as it is,
-      this loop is the core of most general-purpose agent frameworks;
-      LangChain's <code>createReactAgent</code>, which this module uses later,
-      is one. This page builds the four moving parts
-      end-to-end and adds the safety belt that keeps it from running indefinitely.
+      Every chat response carries one signal field,
+      <code>finish_reason</code>. A six-line router reads it and runs the loop:
+    </p>
+    <ol>
+      <li>the model picks a tool,</li>
+      <li>your code runs it,</li>
+      <li>the result goes back,</li>
+      <li>the loop repeats until the model says done.</li>
+    </ol>
+    <p>
+      This loop is the foundation that most general-purpose agent frameworks
+      are built on, LangChain's <a href="https://docs.langchain.com/oss/javascript/langchain/agents" target="_blank" rel="noopener"><code>createReactAgent</code></a>
+      among them, and the rest of this module works up to it.
+    </p>
+    <p>
+      Its four moving parts come together in the cell below, along with a guard
+      that keeps the loop from running forever.
     </p>
   </div>
 
@@ -70,6 +86,17 @@
     </div>
     <figcaption><b>Watch:</b> A recorded livestream that walks through the building blocks of an agent: the model, its tools, and the instructions that steer it. It is optional companion viewing for the loop and the four moving parts you build by hand on this page. Part of NVIDIA's <a href="https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/how-to-build-an-ai-agent" target="_blank" rel="noopener">Agentic AI Learning Path</a>.</figcaption>
   </figure>
+  <p>
+    Module 1a built the loop with the reasoning step left open: a socket that held an <code>if</code>-statement or a
+    search routine. Fill that socket with a language model and the same loop takes on a specific, named shape.
+  </p>
+  <p>
+    The model only reads and writes text and never touches the world itself. It sees only what a tool hands back, and its
+    only move is to <em>request</em> another tool. That indirection through text is the <strong>ReAct</strong> loop.
+  </p>
+  <div style="display:flex;justify-content:center;margin:1.4em 0">
+    <svg class="gfx-dark" viewBox="0 0 1122 480" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The general agent loop from Module 1a becomes the ReAct loop once the reasoning socket holds a language model. On the left, the general cycle: perception reads the world, a dashed swappable socket reasons, action changes the world. A bridge drops a language model into that socket. On the right, the same cycle driven by the model: it reasons, acts by calling a tool, and observes the tool's result, which re-enters the next reasoning step. Because the model works only in text, it reads a tool result in place of perceiving and emits a tool call to act." preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:1140px;margin:1.5rem auto"><defs><marker id="g1-arc" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-purple,#6f42c1)"/></marker><marker id="g1-bridge" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-sub,#5e5e5e)"/></marker></defs><g><path d="M 302.6 99.8 A 172 172 0 0 1 405.8 278.6" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><path d="M 338.2 395.6 A 172 172 0 0 1 131.8 395.6" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><path d="M 64.2 278.6 A 172 172 0 0 1 167.4 99.8" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><circle cx="235.00" cy="86.00" r="62" fill="var(--gfx-tint-blue,#dfeaf5)" stroke="var(--gfx-blue)" stroke-width="2.6"/><text x="235.00" y="81.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-blue)" text-anchor="middle" font-weight="700">Perceive</text><text x="235.00" y="103.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">read the world</text><circle cx="383.96" cy="344.00" r="62" fill="var(--gfx-tint-purple,#eadfff)" stroke="var(--gfx-purple)" stroke-width="3.6" stroke-dasharray="7 4"/><text x="383.96" y="339.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-purple)" text-anchor="middle" font-weight="700">Reason</text><text x="383.96" y="361.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">swappable socket</text><circle cx="86.04" cy="344.00" r="62" fill="var(--gfx-tint-amber,#f7e9cf)" stroke="var(--gfx-amber)" stroke-width="2.6"/><text x="86.04" y="339.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-amber)" text-anchor="middle" font-weight="700">Act</text><text x="86.04" y="361.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">change the world</text><text x="235" y="251" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="15" fill="var(--gfx-ink,#1a1a1a)" text-anchor="middle" font-weight="800">the loop</text><text x="235" y="271" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">from Module 1a</text></g><path d="M 462.0 258 L 660.0 258" fill="none" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="3" marker-end="url(#g1-bridge)"/><text x="561" y="240" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13" fill="var(--gfx-ink2,#3b3b3b)" text-anchor="middle" font-weight="700">put an LLM in the socket</text><text x="561" y="282" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle" font-style="italic">text to text</text><g transform="translate(652,0)"><path d="M 302.6 99.8 A 172 172 0 0 1 405.8 278.6" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><path d="M 338.2 395.6 A 172 172 0 0 1 131.8 395.6" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><path d="M 64.2 278.6 A 172 172 0 0 1 167.4 99.8" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><circle cx="235.00" cy="86.00" r="62" fill="var(--gfx-tint-blue,#dfeaf5)" stroke="var(--gfx-blue)" stroke-width="2.6"/><text x="235.00" y="81.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-blue)" text-anchor="middle" font-weight="700">Observe</text><text x="235.00" y="103.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">read the result</text><circle cx="383.96" cy="344.00" r="62" fill="var(--gfx-tint-purple,#eadfff)" stroke="var(--gfx-purple)" stroke-width="2.6"/><text x="383.96" y="339.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-purple)" text-anchor="middle" font-weight="700">Reason</text><text x="383.96" y="361.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">the LLM thinks</text><circle cx="86.04" cy="344.00" r="62" fill="var(--gfx-tint-amber,#f7e9cf)" stroke="var(--gfx-amber)" stroke-width="2.6"/><text x="86.04" y="339.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-amber)" text-anchor="middle" font-weight="700">Act</text><text x="86.04" y="361.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">call a tool</text><text x="235" y="251" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="15" fill="var(--gfx-ink,#1a1a1a)" text-anchor="middle" font-weight="800">ReAct</text><text x="235" y="271" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">loop until stop</text></g><text x="561" y="460" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="14" fill="var(--gfx-sub,#5e5e5e)" font-style="italic">The loop is unchanged. With a language model in the reasoning step, the agent reads tool results and acts by calling tools.</text></svg>
+  </div>
 
   <h2>The one field that tells the loop what to do next</h2>
   <p>
@@ -78,73 +105,131 @@
     loop this field is the only signal you need to decide what to do next:
     run a tool, return the answer to the user, or handle an error.
   </p>
-  <p>Two values cover the common branching:</p>
+  <p>
+    Two values cover the common branching. The rest signal trouble that routes the
+    loop into a fallback harness, where the agent might retry the call or hand the
+    conversation off to a human.
+  </p>
   <ul>
     <li><code>"stop"</code> means the model has written its final answer and the loop can exit, delivering <code>content</code> to the user.</li>
     <li><code>"tool_calls"</code> means the model is asking your code to run the named function and append the result before calling back.</li>
+    <li><code>"length"</code> fires when the model hits its token cap before it finishes.</li>
+    <li><code>"content_filter"</code> fires when a safety classifier trips on the output.</li>
   </ul>
+
+  
+  <h2>The pieces an LLM agent is built from</h2>
   <p>
-    There are also some values that may prompt fallback harnesses, retry loops, and human intervention. This might include:
+    Zoom in on the agent and you find the decomposition
+    <a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">Lilian Weng drew in
+    2023</a>. A language model sits at the center. Around it sit <strong>memory</strong>, <strong>planning</strong>, <strong>tools</strong>,
+    and the <strong>actions</strong> that reach the world. The model itself stays a stateless text
+    function: what the agent remembers and what it can do are pieces you wire up around it, while the weights
+    stay frozen. The loop survives every technique ahead because you keep rebuilding the same components
+    with stronger parts.
+  </p>
+  <p>
+    This course's minimal agent fills each slot with the simplest thing that works:
+  </p>
   <ul>
-    <li><code>"length"</code>, which fires when the model hits its token cap.</li>
-    <li><code>"content_filter"</code>, which fires when a safety classifier trips.</li>
+    <li>the <code>messages[]</code> array holds the memory,</li>
+    <li>the <code>finish_reason</code> router does the planning,</li>
+    <li>your functions are the tools,</li>
+    <li>and a tool call is how it acts.</li>
   </ul>
-  </p>
-
-  <div style="display:flex;justify-content:center;margin:1.4em 0">
-    <svg class="gfx-dark" viewBox="0 0 620 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Reason, act, observe, and repeat until finish_reason is stop." preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:780px;margin:1.5rem auto"><defs><marker id="gw-aw" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-purple,#6f42c1)"/></marker></defs><path d="M 369.9 101.7 A 160 160 0 0 1 468.4 272.3" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.4" marker-end="url(#gw-aw)"/><path d="M 408.5 376.1 A 160 160 0 0 1 211.5 376.1" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.4" marker-end="url(#gw-aw)"/><path d="M 151.6 272.3 A 160 160 0 0 1 250.1 101.7" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.4" marker-end="url(#gw-aw)"/><circle cx="310" cy="90" r="50" fill="var(--gfx-tint-purple,#eadfff)" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.4"/><text x="310" y="86" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13.5" fill="var(--gfx-purple,#6f42c1)" text-anchor="middle" font-weight="700">Reason</text><text x="310" y="104" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">plan next step</text><circle cx="448.5640646055102" cy="330" r="50" fill="var(--gfx-tint-amber,#f7e9cf)" stroke="var(--gfx-amber,#9a6700)" stroke-width="2.4"/><text x="448.5640646055102" y="326" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13.5" fill="var(--gfx-amber,#9a6700)" text-anchor="middle" font-weight="700">Act</text><text x="448.5640646055102" y="344" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">call a tool</text><circle cx="171.4359353944898" cy="330" r="50" fill="var(--gfx-tint-teal,#d6f1ee)" stroke="var(--gfx-teal,#0d9488)" stroke-width="2.4"/><text x="171.4359353944898" y="326" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13.5" fill="var(--gfx-teal,#0d9488)" text-anchor="middle" font-weight="700">Observe</text><text x="171.4359353944898" y="344" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">read the result</text><text x="310" y="246" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="14" fill="var(--gfx-ink,#1a1a1a)" text-anchor="middle" font-weight="800">ReAct</text><text x="310" y="265" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">until stop</text><text x="310" y="544" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13" fill="var(--gfx-sub,#5e5e5e)" font-style="italic">Reason, act, observe, and repeat until finish_reason is stop.</text></svg>
-  </div>
-
-  <h2>The four pieces every LLM agent is built from</h2>
   <p>
-    There are typically four pieces needed to compose a modern LLM agent.
+    None of that lives inside the model. It is the harness you build around a single
+    text-in, text-out call.
   </p>
   <div style="display:flex;justify-content:center;margin:1.4em 0">
-    <svg viewBox="0 0 720 180" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px" role="img" aria-label="The four engineering pieces of an LLM-based agent: the model on the chat-completions endpoint, memory as a messages array, tools as functions in your code, and a router that reads finish_reason and either calls a tool or stops.">
-
-      <rect x="40"  y="30"  width="150" height="120" rx="8" fill="#1e3a1e" stroke="#76b900" stroke-width="2"/>
-      <text x="115" y="62"  text-anchor="middle" font-size="12" font-family="ui-monospace, monospace" fill="#aee23a" font-weight="700">model</text>
-      <text x="115" y="86" text-anchor="middle" font-size="10" font-family="ui-monospace, monospace" fill="#a5a5a5">chat-completions</text>
-      <text x="115" y="102" text-anchor="middle" font-size="10" font-family="ui-monospace, monospace" fill="#a5a5a5">endpoint</text>
-      <text x="115" y="128" text-anchor="middle" font-size="9" font-family="ui-monospace, monospace" fill="#76b900">stateless on its own</text>
-
-      <rect x="210" y="30"  width="150" height="120" rx="8" fill="#1e1e3a" stroke="#3b82f6" stroke-width="2"/>
-      <text x="285" y="62"  text-anchor="middle" font-size="12" font-family="ui-monospace, monospace" fill="#7eb8ff" font-weight="700">memory</text>
-      <text x="285" y="86" text-anchor="middle" font-size="10" font-family="ui-monospace, monospace" fill="#a5a5a5">messages array,</text>
-      <text x="285" y="102" text-anchor="middle" font-size="10" font-family="ui-monospace, monospace" fill="#a5a5a5">grows each turn</text>
-      <text x="285" y="128" text-anchor="middle" font-size="9" font-family="ui-monospace, monospace" fill="#3b82f6">append-only buffer</text>
-
-      <rect x="380" y="30"  width="150" height="120" rx="8" fill="#3a2e1e" stroke="#d49c2c" stroke-width="2"/>
-      <text x="455" y="62"  text-anchor="middle" font-size="12" font-family="ui-monospace, monospace" fill="#e8c87a" font-weight="700">tools</text>
-      <text x="455" y="86" text-anchor="middle" font-size="10" font-family="ui-monospace, monospace" fill="#a5a5a5">functions in your</text>
-      <text x="455" y="102" text-anchor="middle" font-size="10" font-family="ui-monospace, monospace" fill="#a5a5a5">code + JSON specs</text>
-      <text x="455" y="128" text-anchor="middle" font-size="9" font-family="ui-monospace, monospace" fill="#d49c2c">reach beyond text</text>
-
-      <rect x="550" y="30"  width="150" height="120" rx="8" fill="#1a1a2e" stroke="#a78bfa" stroke-width="2"/>
-      <text x="625" y="62"  text-anchor="middle" font-size="12" font-family="ui-monospace, monospace" fill="#c084fc" font-weight="700">router</text>
-      <text x="625" y="86" text-anchor="middle" font-size="10" font-family="ui-monospace, monospace" fill="#a5a5a5">reads finish_reason,</text>
-      <text x="625" y="102" text-anchor="middle" font-size="10" font-family="ui-monospace, monospace" fill="#a5a5a5">loops or returns</text>
-      <text x="625" y="128" text-anchor="middle" font-size="9" font-family="ui-monospace, monospace" fill="#a78bfa">six lines, total</text>
-
+    <svg class="gfx-dark" viewBox="0 0 940 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Lilian Weng's 2023 map of an LLM agent. A language model sits at the center as the agent. Memory is above it (branching into short-term and long-term memory), Action is below, Tools are on the left (Calendar, Calculator, CodeInterpreter, Search, and more), and Planning is on the right (reflection, self-critique, chain of thought, subgoal decomposition). The model is the core controller; memory, planning, tools, and action are components wired around it." preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:960px;margin:1.5rem auto">
+      <defs>
+        <marker id="lil-fwd" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L7,5 L0,9 Z" fill="var(--gfx-sub,#6a6a6a)"/></marker>
+        <marker id="lil-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L7,5 L0,9 Z" fill="var(--gfx-green,#76b900)"/></marker>
+      </defs>
+      <rect x="415" y="180" width="90" height="45" rx="4" fill="var(--gfx-tint-green,#112511)" stroke="var(--gfx-green,#76b900)" stroke-width="2"/>
+      <text x="460" y="208" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="var(--gfx-green,#aee23a)" font-weight="700">Agent</text>
+      <rect x="415" y="95" width="90" height="42" rx="4" fill="var(--gfx-panel,#161616)" stroke="var(--gfx-line,#444444)" stroke-width="1.5"/>
+      <text x="460" y="121" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="var(--gfx-ink,#e6e6e6)">Memory</text>
+      <rect x="415" y="265" width="90" height="42" rx="4" fill="var(--gfx-panel,#161616)" stroke="var(--gfx-line,#444444)" stroke-width="1.5"/>
+      <text x="460" y="291" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="var(--gfx-ink,#e6e6e6)">Action</text>
+      <rect x="280" y="180" width="85" height="45" rx="4" fill="var(--gfx-panel,#161616)" stroke="var(--gfx-line,#444444)" stroke-width="1.5"/>
+      <text x="322" y="207" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="var(--gfx-ink,#e6e6e6)">Tools</text>
+      <rect x="555" y="180" width="90" height="45" rx="4" fill="var(--gfx-panel,#161616)" stroke="var(--gfx-line,#444444)" stroke-width="1.5"/>
+      <text x="600" y="207" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="var(--gfx-ink,#e6e6e6)">Planning</text>
+      <rect x="260" y="30" width="160" height="36" rx="4" fill="var(--gfx-panel,#161616)" stroke="var(--gfx-line,#444444)" stroke-width="1.5"/>
+      <text x="340" y="53" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="var(--gfx-ink,#e6e6e6)">Short-term memory</text>
+      <rect x="480" y="30" width="160" height="36" rx="4" fill="var(--gfx-panel,#161616)" stroke="var(--gfx-line,#444444)" stroke-width="1.5"/>
+      <text x="560" y="53" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="var(--gfx-ink,#e6e6e6)">Long-term memory</text>
+      <rect x="40" y="86" width="170" height="32" rx="4" fill="var(--gfx-panel,#111111)" stroke="var(--gfx-line,#3a3a3a)" stroke-width="1.2"/>
+      <text x="55" y="107" font-family="ui-monospace, monospace" font-size="12.5" fill="var(--gfx-green,#aee23a)" font-weight="600">Calendar()</text>
+      <rect x="40" y="136" width="170" height="32" rx="4" fill="var(--gfx-panel,#111111)" stroke="var(--gfx-line,#3a3a3a)" stroke-width="1.2"/>
+      <text x="55" y="157" font-family="ui-monospace, monospace" font-size="12.5" fill="var(--gfx-green,#aee23a)" font-weight="600">Calculator()</text>
+      <rect x="40" y="186" width="170" height="32" rx="4" fill="var(--gfx-panel,#111111)" stroke="var(--gfx-line,#3a3a3a)" stroke-width="1.2"/>
+      <text x="55" y="207" font-family="ui-monospace, monospace" font-size="12.5" fill="var(--gfx-green,#aee23a)" font-weight="600">CodeInterpreter()</text>
+      <rect x="40" y="236" width="170" height="32" rx="4" fill="var(--gfx-panel,#111111)" stroke="var(--gfx-line,#3a3a3a)" stroke-width="1.2"/>
+      <text x="55" y="257" font-family="ui-monospace, monospace" font-size="12.5" fill="var(--gfx-green,#aee23a)" font-weight="600">Search()</text>
+      <rect x="40" y="286" width="170" height="32" rx="4" fill="var(--gfx-panel,#111111)" stroke="var(--gfx-line,#3a3a3a)" stroke-width="1.2"/>
+      <text x="70" y="307" text-anchor="middle" font-family="Arial, sans-serif" font-size="12.5" fill="var(--gfx-faint,#888888)">...more</text>
+      <rect x="710" y="140" width="190" height="32" rx="4" fill="var(--gfx-panel,#161616)" stroke="var(--gfx-line,#3a3a3a)" stroke-width="1.2"/>
+      <text x="725" y="161" font-family="Arial, sans-serif" font-size="13" fill="var(--gfx-ink,#e6e6e6)">Reflection</text>
+      <rect x="710" y="186" width="190" height="32" rx="4" fill="var(--gfx-panel,#161616)" stroke="var(--gfx-line,#3a3a3a)" stroke-width="1.2"/>
+      <text x="725" y="207" font-family="Arial, sans-serif" font-size="13" fill="var(--gfx-ink,#e6e6e6)">Self-critique</text>
+      <rect x="710" y="233" width="190" height="32" rx="4" fill="var(--gfx-panel,#161616)" stroke="var(--gfx-line,#3a3a3a)" stroke-width="1.2"/>
+      <text x="725" y="254" font-family="Arial, sans-serif" font-size="13" fill="var(--gfx-ink,#e6e6e6)">Chain of thought</text>
+      <rect x="710" y="280" width="190" height="32" rx="4" fill="var(--gfx-panel,#161616)" stroke="var(--gfx-line,#3a3a3a)" stroke-width="1.2"/>
+      <text x="725" y="301" font-family="Arial, sans-serif" font-size="13" fill="var(--gfx-ink,#e6e6e6)">Subgoal decomposition</text>
+      <line x1="460" y1="175" x2="460" y2="144" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.5" marker-end="url(#lil-fwd)"/>
+      <line x1="460" y1="230" x2="460" y2="259" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.5" marker-end="url(#lil-fwd)"/>
+      <line x1="410" y1="202" x2="371" y2="202" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.5" marker-end="url(#lil-fwd)"/>
+      <line x1="510" y1="202" x2="549" y2="202" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.5" marker-end="url(#lil-fwd)"/>
+      <path d="M 460 95 L 460 82 L 340 82 L 340 68" fill="none" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.5" marker-end="url(#lil-fwd)"/>
+      <path d="M 460 82 L 560 82 L 560 68" fill="none" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.5" marker-end="url(#lil-fwd)"/>
+      <line x1="280" y1="202" x2="242" y2="202" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.5"/>
+      <line x1="242" y1="102" x2="242" y2="302" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.5"/>
+      <line x1="242" y1="102" x2="216" y2="102" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.5" marker-end="url(#lil-fwd)"/>
+      <line x1="242" y1="152" x2="216" y2="152" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.5" marker-end="url(#lil-fwd)"/>
+      <line x1="242" y1="202" x2="216" y2="202" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.5" marker-end="url(#lil-fwd)"/>
+      <line x1="242" y1="252" x2="216" y2="253" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.5" marker-end="url(#lil-fwd)"/>
+      <line x1="242" y1="302" x2="216" y2="302" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.5" marker-end="url(#lil-fwd)"/>
+      <line x1="645" y1="202" x2="678" y2="202" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.5"/>
+      <line x1="678" y1="156" x2="678" y2="296" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.5"/>
+      <line x1="678" y1="156" x2="704" y2="156" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.5" marker-end="url(#lil-fwd)"/>
+      <line x1="678" y1="202" x2="704" y2="202" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.5" marker-end="url(#lil-fwd)"/>
+      <line x1="678" y1="250" x2="704" y2="250" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.5" marker-end="url(#lil-fwd)"/>
+      <line x1="678" y1="296" x2="704" y2="296" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.5" marker-end="url(#lil-fwd)"/>
+      <path d="M 505 116 L 600 116 L 600 174" fill="none" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#lil-fwd)"/>
+      <path d="M 586 116 L 752 116 L 752 136" fill="none" stroke="var(--gfx-sub,#6a6a6a)" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#lil-fwd)"/>
+      <path d="M 322 225 L 322 286 L 409 286" fill="none" stroke="var(--gfx-green,#76b900)" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#lil-green)"/>
+      <text x="470" y="348" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-style="italic" fill="var(--gfx-faint,#5e5e5e)">After Lilian Weng (2023): the model is the agent's core controller, with memory, planning, tools, and action wired around it.</text>
     </svg>
   </div>
+  <div class="callout">
+    <strong>The modules are independent.</strong> You can replace the model or the tools
+    or the router on its own, and as long as each one still honors the contract the
+    others expect of it, the rest of the loop keeps working.
+  </div>
   <p>
-    Keep in mind that each of these modules is independent. Swap the model, swap the tools, swap the router; the others should keep working <b>IF they have stable contracts</b>.
-  </p><p>
     That independence also matters for how you read agent code you didn't
-    write. Any LLM-based agent, however it is packaged, must contain these
-    four pieces. When something breaks you can ask: is the model returning
-    the wrong <code>finish_reason</code>? Is the messages array missing a
-    turn? Is the tool executor returning an unexpected value? Is the router
-    misreading the signal? The four-piece frame gives you a checklist that
-    applies regardless of how the surrounding code is organized.
+    write. Whatever framework wraps it, any LLM-based agent must contain these
+    four pieces, and when something breaks the cause is usually in one of them:
+  </p>
+  <ul>
+    <li>the model returning the wrong <code>finish_reason</code>,</li>
+    <li>a missing turn in the messages array,</li>
+    <li>the tool executor handing back an unexpected value,</li>
+    <li>or the router misreading the signal.</li>
+  </ul>
+  <p>
+    The four-piece frame gives you a checklist that applies regardless of how the
+    surrounding code is organized.
   </p>
 
   <h2>Building the loop from scratch with one tool</h2>
   <p>
-    As an exercise, we can try to create a simple loop from scratch. 
-    All we need is one tool (<code>get_current_time</code>), one system prompt, and one
-    <code>while</code> loop. Run it with "What time is it right now in UTC?" to start, and see what else you can ask:
+    As an exercise, we can try to create a simple loop from scratch.
+    All we need is a single tool named <code>get_current_time</code> plus one system prompt
+    and one <code>while</code> loop. Run it with "What time is it in UTC?" to start, and see what else you can ask:
   </p>
   <ol>
     <li><strong>Step 1.</strong> The model asks for the tool.</li>
@@ -154,99 +239,43 @@
   </ol>
 
   <div style="display:flex;justify-content:center;margin:1em 0 1.4em">
-    <svg viewBox="0 0 720 360" xmlns="http://www.w3.org/2000/svg"
-         style="width:100%;max-width:760px;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;display:block;margin:1em auto"
-         role="img"
-         aria-label="The ReAct loop alternates thought, action, observation. The model emits a thought, optionally requests a tool action, the executor runs it, the result returns as an observation, the model thinks again. Loops until the model finishes without requesting an action.">
+    <svg class="gfx-dark" viewBox="0 38 820 282" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One turn of the ReAct loop as it runs in code. The model produces a Thought and either stops or requests a tool. On a tool request, the Action box runs your function and the Observation box appends the result to the messages array, then the loop returns to Thought. When finish_reason is stop, the turn exits to the final answer instead." style="width:100%;max-width:980px;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;margin:1em auto">
       <defs>
-        <marker id="rx-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-          <path d="M0,0 L10,5 L0,10 Z" fill="#a5a5a5"/>
-        </marker>
-        <marker id="rx-arr-g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-          <path d="M0,0 L10,5 L0,10 Z" fill="#4a7a30"/>
-        </marker>
+        <marker id="rx-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="var(--gfx-sub,#9aa0a6)"></path></marker>
+        <marker id="rx-arr-g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="var(--gfx-green,#9bd14a)"></path></marker>
       </defs>
-      <text x="360" y="22" text-anchor="middle" font-size="10" font-family="ui-monospace, monospace"
-            fill="#6f6f6f" letter-spacing="0.1em">REACT · ALTERNATING THOUGHT · ACTION · OBSERVATION</text>
-
-      <!-- Thought (left, blue) -->
-      <rect x="40" y="60" width="200" height="80" rx="8" fill="#1e1e3a" stroke="#3b82f6" stroke-width="2"/>
-      <text x="140" y="86" text-anchor="middle" font-size="13" font-family="ui-monospace, monospace"
-            fill="#7eb8ff" font-weight="700">Thought</text>
-      <text x="140" y="105" text-anchor="middle" font-size="9" font-family="ui-monospace, monospace"
-            fill="#4a4a6a">model reads messages,</text>
-      <text x="140" y="118" text-anchor="middle" font-size="9" font-family="ui-monospace, monospace"
-            fill="#4a4a6a">decides what to do next</text>
-      <text x="140" y="132" text-anchor="middle" font-size="9" font-family="ui-monospace, monospace"
-            fill="#4a4a6a">→ finish_reason</text>
-
-      <!-- Action (center, green) -->
-      <rect x="280" y="60" width="200" height="80" rx="8" fill="#1a3a2a" stroke="#76b900" stroke-width="2"/>
-      <text x="380" y="86" text-anchor="middle" font-size="13" font-family="ui-monospace, monospace"
-            fill="#aee23a" font-weight="700">Action</text>
-      <text x="380" y="105" text-anchor="middle" font-size="9" font-family="ui-monospace, monospace"
-            fill="#4a7a30">executor runs the tool</text>
-      <text x="380" y="118" text-anchor="middle" font-size="9" font-family="ui-monospace, monospace"
-            fill="#4a7a30">named in tool_calls</text>
-      <text x="380" y="132" text-anchor="middle" font-size="9" font-family="ui-monospace, monospace"
-            fill="#4a7a30">(your code, not the LLM)</text>
-
-      <!-- Observation (right, amber) -->
-      <rect x="520" y="60" width="200" height="80" rx="8" fill="#211b12" stroke="#cc7a00" stroke-width="2"/>
-      <text x="620" y="86" text-anchor="middle" font-size="13" font-family="ui-monospace, monospace"
-            fill="#e8c87a" font-weight="700">Observation</text>
-      <text x="620" y="105" text-anchor="middle" font-size="9" font-family="ui-monospace, monospace"
-            fill="#7a5020">tool's return value</text>
-      <text x="620" y="118" text-anchor="middle" font-size="9" font-family="ui-monospace, monospace"
-            fill="#7a5020">→ messages.append({</text>
-      <text x="620" y="132" text-anchor="middle" font-size="9" font-family="ui-monospace, monospace"
-            fill="#7a5020">role:"tool", content:…})</text>
-
-      <!-- Arrows between the three boxes -->
-      <line x1="240" y1="100" x2="278" y2="100" stroke="#a5a5a5" stroke-width="1.6" marker-end="url(#rx-arr)"/>
-      <line x1="480" y1="100" x2="518" y2="100" stroke="#a5a5a5" stroke-width="1.6" marker-end="url(#rx-arr)"/>
-      <!-- labels above arrows -->
-      <text x="260" y="92" text-anchor="middle" font-size="9" font-family="ui-monospace, monospace"
-            fill="#6f6f6f">tool_calls</text>
-      <text x="500" y="92" text-anchor="middle" font-size="9" font-family="ui-monospace, monospace"
-            fill="#6f6f6f">return</text>
-
-      <!-- Loop-back: Observation → Thought (curves back) -->
-      <path d="M 620 144 L 620 200 L 140 200 L 140 144"
-            stroke="#4a7a30" stroke-width="1.8" fill="none" stroke-dasharray="6 4"
-            marker-end="url(#rx-arr-g)"/>
-      <text x="380" y="194" text-anchor="middle" font-size="10" font-family="ui-monospace, monospace"
-            fill="#4a7a30">append tool result, re-call the model</text>
-
-      <!-- Exit path: when finish_reason === "stop" -->
-      <line x1="140" y1="60" x2="140" y2="40" stroke="#a5a5a5" stroke-width="1.6"/>
-      <line x1="140" y1="40" x2="540" y2="40" stroke="#a5a5a5" stroke-width="1.6"/>
-      <line x1="540" y1="40" x2="540" y2="244" stroke="#a5a5a5" stroke-width="1.6" marker-end="url(#rx-arr)"/>
-      <text x="340" y="36" text-anchor="middle" font-size="9" font-family="ui-monospace, monospace"
-            fill="#6f6f6f">if finish_reason === "stop": break</text>
-
-      <!-- Final answer box -->
-      <rect x="440" y="244" width="200" height="56" rx="8" fill="#1e3a1e" stroke="#aee23a" stroke-width="1.5"/>
-      <text x="540" y="268" text-anchor="middle" font-size="12" font-family="ui-monospace, monospace"
-            fill="#aee23a" font-weight="700">final answer</text>
-      <text x="540" y="284" text-anchor="middle" font-size="9" font-family="ui-monospace, monospace"
-            fill="#4a7a30">message.content,</text>
-      <text x="540" y="296" text-anchor="middle" font-size="9" font-family="ui-monospace, monospace"
-            fill="#4a7a30">no further tool_calls</text>
-
-      <!-- caption -->
-      <text x="360" y="338" text-anchor="middle" font-size="9" font-family="ui-monospace, monospace"
-            fill="#5a5a5a">redrawn from Yao et al. 2022 · alternating reason/act steps</text>
+      <rect x="70" y="46" width="170" height="32" rx="16" fill="var(--gfx-tint-green,#1d2a12)" stroke="var(--gfx-green,#9bd14a)" stroke-width="1.6"></rect>
+      <text x="155" y="67" text-anchor="middle" font-size="13" font-family="ui-monospace, monospace" fill="var(--gfx-green,#9bd14a)" font-weight="700">✓ final answer</text>
+      <path d="M 150 104 L 150 80" stroke="var(--gfx-sub,#9aa0a6)" stroke-width="1.8" fill="none" marker-end="url(#rx-arr)"></path>
+      <text x="170" y="97" text-anchor="start" font-size="11.5" font-family="ui-monospace, monospace" fill="var(--gfx-faint,#6b7177)">finish_reason "stop"</text>
+      <rect x="60" y="106" width="185" height="100" rx="11" fill="var(--gfx-tint-blue,#15273d)" stroke="var(--gfx-blue,#5aa8ff)" stroke-width="2"></rect>
+      <text x="150" y="150" text-anchor="middle" font-size="18" font-family="ui-monospace, monospace" fill="var(--gfx-blue,#5aa8ff)" font-weight="700">Thought</text>
+      <text x="150" y="174" text-anchor="middle" font-size="13" font-family="ui-monospace, monospace" fill="var(--gfx-sub,#9aa0a6)">the model decides</text>
+      <rect x="315" y="106" width="190" height="100" rx="11" fill="var(--gfx-tint-green,#1d2a12)" stroke="var(--gfx-green,#9bd14a)" stroke-width="2"></rect>
+      <text x="410" y="150" text-anchor="middle" font-size="18" font-family="ui-monospace, monospace" fill="var(--gfx-green,#9bd14a)" font-weight="700">Action</text>
+      <text x="410" y="174" text-anchor="middle" font-size="13" font-family="ui-monospace, monospace" fill="var(--gfx-sub,#9aa0a6)">your code runs the tool</text>
+      <rect x="575" y="106" width="190" height="100" rx="11" fill="var(--gfx-tint-amber,#33280f)" stroke="var(--gfx-amber,#e3b341)" stroke-width="2"></rect>
+      <text x="670" y="150" text-anchor="middle" font-size="18" font-family="ui-monospace, monospace" fill="var(--gfx-amber,#e3b341)" font-weight="700">Observation</text>
+      <text x="670" y="174" text-anchor="middle" font-size="13" font-family="ui-monospace, monospace" fill="var(--gfx-sub,#9aa0a6)">result → messages[]</text>
+      <path d="M 250 156 L 310 156" stroke="var(--gfx-sub,#9aa0a6)" stroke-width="1.8" fill="none" marker-end="url(#rx-arr)"></path>
+      <text x="280" y="147" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="var(--gfx-faint,#6b7177)">tool_calls</text>
+      <path d="M 510 156 L 570 156" stroke="var(--gfx-sub,#9aa0a6)" stroke-width="1.8" fill="none" marker-end="url(#rx-arr)"></path>
+      <text x="540" y="147" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="var(--gfx-faint,#6b7177)">return</text>
+      <path d="M 670 206 L 670 262 L 150 262 L 150 206" stroke="var(--gfx-green,#9bd14a)" stroke-width="1.8" fill="none" stroke-dasharray="6 4" marker-end="url(#rx-arr-g)"></path>
+      <text x="410" y="256" text-anchor="middle" font-size="12.5" font-family="ui-monospace, monospace" fill="var(--gfx-green,#9bd14a)">append the result, call the model again</text>
+      <text x="410" y="306" text-anchor="middle" font-size="12.5" font-family="ui-monospace, monospace" fill="var(--gfx-sub,#9aa0a6)" font-style="italic">Think, act, observe, repeat. The turn exits the moment finish_reason is "stop".</text>
     </svg>
   </div>
 
   <div id="cell-m2c-p3"></div>
 
   <p>
-    Try both variants the canvas suggests. "What time is it right now in
-    UTC?" routes through the tool, because the model genuinely does not know
-    the answer. "What is the capital of France?" routes around the tool: the
-    model knows Paris from training and skips the call entirely. The
+    Try both variants the canvas suggests. Asking "What time is it in UTC?" routes
+    through the tool, because the model does not know the answer on its own.
+  </p>
+  <p>
+    Asking "What is the capital of France?" routes around the tool instead, since the
+    model already knows Paris from training and skips the call entirely. The
     difference shows up in <code>finish_reason</code> on step 1.
   </p>
 
@@ -256,7 +285,7 @@
     prompt (turn 0),</li><li>the user question (turn 1),</li><li>an assistant message with a
     <code>tool_calls</code> field (turn 2, the request),</li><li>and a
     <code>tool</code>-role message holding the function's return value (turn
-    3).</li></ul> The second LLM call read all four, including the new tool result, and
+    3).</li></ul> The second LLM call read all four of those including the new tool result and
     wrote the final answer. <br>The growing array is the only "memory" this
     agent has. If you saved that array to disk and reloaded it next week, the
     model would resume the conversation without noticing the gap.
@@ -271,87 +300,83 @@
     the right failure mode should be when the agent cannot converge.
   </p>
 
-  <div class="callout info">
-    <strong>Context rot, briefly.</strong>
-    The messages array grows on every turn. After enough turns the original
-    user request is buried in the middle of the array, and models tend to
-    under-weight tokens stranded in the middle of a long context while
-    favoring the beginning and the end. That effect is documented in
-    <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">"Lost in the Middle" (Liu et al., 2023)</a>.
-    A 6-step cap is the cheap fix and does not solve the underlying problem.
-    The structural mitigations each trade something away. Having the model
-    plan ahead before it accumulates observations, delegating sub-tasks so
-    each sub-agent works on a short context, or rolling earlier turns into a
-    summary all cost latency, fidelity, or complexity, and each is worth
-    evaluating against the task at hand. For now,
-    <code>MAX_STEPS</code> is the dumb-but-effective backstop that keeps a
-    confused agent from quietly spending far more than you intended.
-  </div>
-
-  <div style="display:flex;justify-content:center;margin:1em 0 1.4em">
-    <svg viewBox="0 0 620 320" xmlns="http://www.w3.org/2000/svg" role="img"
-         aria-label="Lost in the Middle, redrawn from Liu et al. 2023. A U-shaped curve plots answer accuracy against the position of the relevant document in a long context. Accuracy is high when the relevant document sits at the start, dips to its lowest when the document is buried in the middle, and recovers when the document sits at the end."
-         preserveAspectRatio="xMidYMid meet"
-         style="width:100%;max-width:620px;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px">
-
-      <text x="310" y="30" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="14" font-weight="800" fill="var(--gfx-ink,#e6e6e6)">Lost in the Middle</text>
-
-      <!-- axes -->
-      <line x1="70" y1="60" x2="70" y2="230" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="1.5"/>
-      <line x1="70" y1="230" x2="580" y2="230" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="1.5"/>
-
-      <!-- y axis label -->
-      <text x="40" y="148" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#a5a5a5)" transform="rotate(-90 40 148)">accuracy</text>
-      <text x="64" y="68" text-anchor="end" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="10" fill="var(--gfx-sub,#5e5e5e)">high</text>
-      <text x="64" y="228" text-anchor="end" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="10" fill="var(--gfx-sub,#5e5e5e)">low</text>
-
-      <!-- x axis label and ticks -->
-      <text x="325" y="285" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#a5a5a5)">position of relevant information in context</text>
-      <text x="90"  y="250" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#a5a5a5)">start</text>
-      <text x="325" y="250" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#a5a5a5)">middle</text>
-      <text x="560" y="250" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#a5a5a5)">end</text>
-
-      <!-- U-shaped curve: high at start, dips in the middle, recovers at the end -->
-      <path d="M 90 78 C 190 92, 250 200, 325 200 C 400 200, 460 92, 560 78"
-            fill="none" stroke="var(--gfx-purple,#a78bfa)" stroke-width="3" stroke-linecap="round"/>
-
-      <!-- markers at the two strong ends and the weak middle -->
-      <circle cx="90"  cy="78"  r="4.5" fill="var(--gfx-purple,#a78bfa)"/>
-      <circle cx="325" cy="200" r="4.5" fill="var(--gfx-amber,#d49c2c)"/>
-      <circle cx="560" cy="78"  r="4.5" fill="var(--gfx-purple,#a78bfa)"/>
-
-      <!-- caption -->
-      <text x="310" y="310" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" font-style="italic" fill="var(--gfx-sub,#5e5e5e)">Redrawn from Liu et al., 2023; accuracy dips when the answer is buried mid-context.</text>
+  <h2>Context rot: why a longer loop reads worse</h2>
+  <p>
+    Cost is not the only reason to cap the loop. The messages array grows on every turn, and a long context costs more
+    to send while the model reads it <em>worse</em>. The system prompt stays pinned at the front while the freshest tool result
+    sits at the back, so the original request slides toward the middle as turns pile up.
+  </p>
+  <div style="display:flex;justify-content:center;margin:1.4em 0">
+    <svg class="gfx-dark" viewBox="0 74 760 366" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Lost in the Middle, redrawn from Liu et al. 2023, mapped onto an agent's growing messages array. A U-shaped curve plots answer accuracy against where the needed text sits in the context. Accuracy is high at the start, where the system prompt is pinned, and at the end, where the latest tool result sits, but dips to its lowest in the middle. As the loop appends turns, the original request is pushed left from the fresh end into the weak middle, which is context rot." preserveAspectRatio="xMidYMid meet" style="width:100%;max-width:920px;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;margin:1.4em auto">
+      <defs><marker id="litm-arr" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-sub,#9aa0a6)"/></marker></defs>
+      <rect x="320" y="90" width="172" height="240" fill="var(--gfx-amber,#e3b341)" opacity="0.09"/>
+      <line x1="100" y1="90" x2="100" y2="330" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="1.5"/>
+      <line x1="100" y1="330" x2="712" y2="330" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="1.5"/>
+      <text x="60" y="210" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#9aa0a6)" transform="rotate(-90 60 210)">answer accuracy</text>
+      <text x="94" y="100" text-anchor="end" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="10" fill="var(--gfx-sub,#5e5e5e)">high</text>
+      <text x="94" y="328" text-anchor="end" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="10" fill="var(--gfx-sub,#5e5e5e)">low</text>
+      <path d="M 122 108 C 250 132, 332 306, 406 308 C 480 310, 562 132, 690 108" fill="none" stroke="var(--gfx-purple,#a78bfa)" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="122" cy="108" r="6" fill="var(--gfx-blue,#5aa8ff)"/>
+      <circle cx="406" cy="308" r="6" fill="var(--gfx-amber,#e3b341)"/>
+      <circle cx="690" cy="108" r="6" fill="var(--gfx-green,#9bd14a)"/>
+      <line x1="582" y1="128" x2="382" y2="128" stroke="var(--gfx-sub,#9aa0a6)" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#litm-arr)"/>
+      <text x="482" y="116" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="10.5" fill="var(--gfx-faint,#6b7177)">each new turn pushes the request left</text>
+      <text x="122" y="352" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)" font-weight="700">start</text>
+      <text x="406" y="352" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)" font-weight="700">middle</text>
+      <text x="690" y="352" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)" font-weight="700">end</text>
+      <text x="122" y="372" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="10.5" fill="var(--gfx-blue,#0969da)">system prompt</text>
+      <text x="406" y="372" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="10.5" fill="var(--gfx-amber,#9a6700)">the original request</text>
+      <text x="690" y="372" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="10.5" fill="var(--gfx-green,#4a7a00)">latest tool result</text>
+      <text x="380" y="422" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" font-style="italic" fill="var(--gfx-sub,#5e5e5e)">Redrawn from Liu et al. 2023. As the loop appends turns, the answer you need drifts into the weak middle.</text>
     </svg>
   </div>
+  <p>
+    Models reliably under-weight tokens stranded in the middle of a long context and favor whatever sits at the start or the end;
+    <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">"Lost in the Middle" (Liu et al., 2023)</a> measured the effect.
+    This is <strong>context rot</strong>, the failure
+    <a href="https://www.trychroma.com/research/context-rot" target="_blank" rel="noopener">Chroma measured across many models</a>,
+    and the longer the loop runs the deeper your original question sinks into the weak zone. <code>MAX_STEPS</code> is the
+    dumb-but-effective floor, and it does not solve the underlying problem. The structural mitigations each trade something away:
+  </p>
+  <ul>
+    <li>having the model plan ahead before it accumulates observations,</li>
+    <li>delegating sub-tasks so each sub-agent works on a short context,</li>
+    <li>or rolling earlier turns into a summary.</li>
+  </ul>
+  <p>
+    Each of those costs something in latency or fidelity or complexity, and each is worth weighing against the task at hand. The step
+    cap just keeps a confused agent from quietly spending far more than you intended.
+  </p>
 
   <h2>The same loop, prebuilt and pointed at this course</h2>
   <p>
-    The loop above hard-wires one tiny tool. Here is the same machinery made
-    general, using LangChain's <code>createReactAgent</code> (the prebuilt ReAct
-    loop you will meet again in Module 2c) wired to one tool,
-    <code>read_course_page</code>, that hands the agent any page of this course as
-    markdown. The model decides which pages to read to answer your question.
+    The loop above hard-wires one tiny tool. LangChain's <a href="https://docs.langchain.com/oss/javascript/langchain/agents" target="_blank" rel="noopener"><code>createReactAgent</code></a>
+    generalizes the same machinery; you meet this prebuilt ReAct
+    loop again in Module 1c and build it up in detail in Module 2c. Here it is wired to one tool,
+    <code>read_course_page</code>, which hands
+    the agent any page of this course as markdown. The model decides which pages
+    to read to answer your question.
   </p>
 
   <div class="callout">
-    <strong>What the cell produces is an artifact.</strong> Run it and you do not
-    get a wall of logs: you get a working chat panel, rendered from the agent's own
-    code, that you can talk to. The word predates the buzz; build pipelines have
-    shipped "artifacts," and ML training has emitted "model artifacts," for years.
-    Anthropic's recent <a href="https://support.claude.com/en/articles/14729249-use-live-artifacts-in-claude-cowork" target="_blank" rel="noopener">live artifacts</a>
-    sharpened the idea for agents: a persistent, interactive HTML surface an agent
-    builds and you keep using, not a one-shot answer. The panel below is exactly
-    that on a small scale. An agent that can emit an interface, not just text, is
-    the through-line into the rest of this course.
+    <strong>The cell produces an artifact.</strong> When you run it, you get a working
+    chat panel rather than a wall of logs, rendered from the agent's own code, that you
+    can hold a conversation with. The word itself is older than its current use, since
+    build pipelines and machine-learning training runs have produced "artifacts" and
+    "model artifacts" for years. Anthropic's recent <a href="https://support.claude.com/en/articles/14729249-use-live-artifacts-in-claude-cowork" target="_blank" rel="noopener">live artifacts</a>
+    sharpened the idea for agents, where an artifact becomes a persistent, interactive
+    HTML surface that the agent builds and that you keep using long after the reply which
+    produced it. The panel below builds one on a small scale, and an agent that can hand
+    back a full interface rather than plain text is a thread that runs through the rest of
+    this course.
   </div>
 
   <p>
-    Run the cell to build the panel, then chat with it. Pin one or more pages with
+    Run the cell to build the panel, then chat with it. Pin one or more with
     the <b>Pages</b> chips to ground every answer in them, or pin nothing and let the
-    agent pick what to read. The reply renders as markdown; a chip opens for each page
-    it reads (expand it to see the text it pulled back); the reasoning trace and the
-    token usage sit right alongside the answer. It remembers the conversation per chat.
+    agent choose what to read. The reply renders as markdown, with a chip for each source
+    the agent read so you can expand it to see the text it pulled back. Alongside the answer,
+    you also get the reasoning trace and the token usage. It remembers the conversation per chat.
     Edit the cell and rerun to rebuild the artifact.
   </p>
   <div id="cell-react-lab"></div>
@@ -377,7 +402,11 @@
         and how would you discourage that in the system prompt?</li>
     <li><strong>Make the safety belt smaller.</strong>
         Set <code>MAX_STEPS</code> to 2 and ask a question that would
-        normally take 3 steps. The loop exits with no final answer. Will it do better next time? Will it show self-awareness and adapt to this harness limitation?</li>
+        normally take 3 steps. The loop exits with no final answer. Look at what
+        <code>state.finalContent</code> holds when that happens, and decide what a
+        production agent should return to the caller instead of an empty result:
+        a partial answer, an explicit "I ran out of steps" error, or a request to
+        continue.</li>
   </ol>
 
   <div class="callout info" style="margin-top:2em">
@@ -385,8 +414,8 @@
     structural pieces an LLM-based agent is built from: a stateless
     chat-completions call and a loop that reads
     <code>finish_reason</code> to decide when to keep going. The
-    remaining modules build on exactly this foundation; the core
-    machinery does not change, but subsequent methods add
+    remaining modules build on this foundation. The core
+    machinery stays the same, while later methods add
     structure to how the model communicates, widen the tool surface,
     and eventually compose multiple loops together.
   </div>
@@ -396,6 +425,7 @@
     <ul>
       <li><a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al., <em>ReAct: Synergizing Reasoning and Acting in Language Models</em> (2022)</a>. The original alternating thought / action / observation pattern; the figure above is redrawn from this paper.</li>
       <li><a href="https://arxiv.org/abs/2201.11903" target="_blank" rel="noopener">Wei et al., <em>Chain-of-Thought Prompting</em> (2022)</a>. The "reason" half of ReAct; what the model is doing inside <code>reasoning_content</code> when it deliberates before acting.</li>
+      <li><a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">Lilian Weng, <em>LLM Powered Autonomous Agents</em> (2023)</a>. The decomposition the figure above adapts: a language model as the agent's core controller, surrounded by memory, planning, and tool use.</li>
       <li><a href="https://arxiv.org/abs/2305.18323" target="_blank" rel="noopener">Xu et al., <em>ReWOO: Decoupling Reasoning from Observations</em> (2023)</a>. A deliberate contrast to ReAct: the model writes the whole plan up front and a separate executor runs it without re-querying the model between steps. Comparing the two reveals the trade-off between reactive replanning and pre-committed execution.</li>
       <li><a href="https://arxiv.org/abs/2302.04761" target="_blank" rel="noopener">Schick et al., <em>Toolformer</em> (2023)</a>. Covered again in 1c's references; revisit here for the underlying mechanism the ReAct loop exploits.</li>
     </ul>
@@ -416,10 +446,12 @@ updateKeyPill(pill);
 mountJourneyMap("#journey-map", "1b");
 hljs.highlightAll();
 
-// ── Module 2c Part 3: the complete ReAct loop ────────────────────────────────
+// ── The complete ReAct loop, built from scratch ──────────────────────────────
 mountCanvasFlow("#cell-m2c-p3", {
-  label: "Module 1b Part 3 · the complete ReAct loop",
-  intro: "The user node provides the prompt and system instructions, the tool node registers the available function, and the loop node drives the full ReAct cycle by calling the model, running any requested tools, appending observations, and continuing until finish_reason reaches 'stop', with each iteration logged so you can follow exactly what the model decided at every step.",
+  label: "The complete ReAct loop, built from scratch",
+  intro: "The user node sets the prompt and system instructions; the tool node registers the function. " +
+         "The loop calls the model, runs any requested tools, appends the observations, and repeats " +
+         "until finish_reason is 'stop'. Every step is logged, so you can see what the model decided.",
   edges: [
     { from: "user", to: "loop" },
     { from: "tool", to: "loop" },
@@ -428,15 +460,19 @@ mountCanvasFlow("#cell-m2c-p3", {
   nodes: [
     {
       id: "user", icon: "👤", title: "User input", x: 0, y: 0,
-      summary: "Sets the system prompt and the user question, where swapping in 'What is the capital of France?' makes the model answer directly from training data so the tool call never happens and finish_reason on step 1 reads 'stop' rather than 'tool_calls'.",
-      code: `state.systemPrompt = "You are a helpful assistant. Use the tools available when the user asks for something you cannot answer from training data alone.";
-state.userPrompt   = "What time is it right now in UTC?";
+      summary: "Sets the system prompt and the user question. Swap in 'What is the capital of France?' " +
+               "and the model answers from training data, so no tool call fires and step 1's finish_reason " +
+               "is 'stop', not 'tool_calls'.",
+      code: `state.systemPrompt = "You are a helpful assistant. Use the tools available "
+  + "when the user asks for something you cannot answer from training data alone.";
+state.userPrompt   = "What time is it in UTC?";
 return state.userPrompt;
 `,
     },
     {
       id: "tool", icon: "🛠", title: "Tool spec", x: 2, y: 0,
-      summary: "Registers get_current_time as the one available tool and wires up a local JavaScript executor that runs it, which makes plain that the model only names the call while your code does the actual work.",
+      summary: "Registers get_current_time as the one tool and wires a JavaScript executor to run it. " +
+               "The model only names the call; your code does the work.",
       code: `state.TOOLS = [{
   type: "function",
   function: {
@@ -454,7 +490,9 @@ return { tool_count: state.TOOLS.length };
     },
     {
       id: "loop", icon: "🔄", title: "ReAct loop", x: 1, y: 1,
-      summary: "Runs the full ReAct cycle: calls the model, checks finish_reason, runs any requested tools and appends their results as observations, then calls the model again. The loop exits cleanly when finish_reason reaches 'stop', and MAX_STEPS=6 acts as a hard backstop so a confused or looping model cannot run indefinitely.",
+      summary: "Runs the ReAct cycle: call the model, check finish_reason, run any requested tools, append " +
+               "the results as observations, then loop. It exits when finish_reason is 'stop'; MAX_STEPS=6 " +
+               "is the backstop against a model that loops forever.",
       code: `const MAX_STEPS = 6;
 state.messages = [
   { role: "system", content: state.systemPrompt },
@@ -465,7 +503,7 @@ let step = 0;
 while (step++ < MAX_STEPS) {
   helpers.log(\`── step \${step} ──────────────────────\`);
   const s = await helpers.chatStream({
-    messages: state.messages, tools: state.TOOLS, max_tokens: 1500,
+    messages: state.messages, tools: state.TOOLS, max_tokens: 8196,
   });
   helpers.log("finish_reason:", s.finish_reason, "· tool_calls:", s.tool_calls.length);
   state.messages.push({
@@ -490,7 +528,8 @@ return { steps_taken: step, message_count: state.messages.length };
     },
     {
       id: "final", icon: "✅", title: "Final answer", x: 1, y: 2,
-      summary: "Surfaces the model's last user-facing message from state.finalContent, which is the value you would return to the caller in a real application and the single answer the whole loop was working toward.",
+      summary: "Surfaces the model's last user-facing message from state.finalContent. In a real app this " +
+               "is the value you return to the caller, the one answer the loop was working toward.",
       code: `return state.finalContent || "(no final answer; the loop hit MAX_STEPS or errored)";
 `,
     },
@@ -500,11 +539,17 @@ return { steps_taken: step, message_count: state.messages.length };
 // ── Part 5: running this cell BUILDS a live chat artifact (createReactAgent) ──
 mountCanvasFlow("#cell-react-lab", {
   label: "Build the artifact · createReactAgent → a live chat panel",
-  intro: "Rather than printing a log, this cell renders a working chat panel just below from LangChain's off-the-shelf createReactAgent loop, whose one tool is read_course_page and whose memory comes from MemorySaver, and editing the agent, the tool, or the prompt before rerunning rebuilds the panel.",
+  intro: "This cell renders a working chat panel from LangChain's off-the-shelf createReactAgent loop, " +
+         "rather than printing a log. Its one tool is read_course_page; its memory is MemorySaver. " +
+         "Edit the agent, the tool, or the prompt and rerun to rebuild the panel.",
   nodes: [
     {
       id: "react-lab", icon: "🧪", title: "createReactAgent → mountChatUI", x: 0, y: 0,
-      summary: "Builds a ChatOpenAI on the course endpoint, gives createReactAgent a read_course_page tool, and renders the agent as an interactive chat artifact via helpers.mountChatUI whose panel shows the answer as markdown, surfaces the reasoning trace, opens a chip for every page it reads (expand it to see the text it pulled back), reports token usage and running context size, remembers the conversation per chat, and lets you pick the model and pin several pages at once, with one createReactAgent and its own MemorySaver per model.",
+      summary: "Builds a ChatOpenAI on the course endpoint, gives createReactAgent a read_course_page " +
+               "tool, and renders it as a chat artifact via helpers.mountChatUI. The panel shows the answer " +
+               "as markdown, plus the reasoning trace, token usage, context size, and a chip for every page " +
+               "read (expand it to see the text). It keeps memory per chat and lets you switch models, " +
+               "building one createReactAgent and MemorySaver per model.",
       code: `// Running this cell renders a live chat panel into #react-artifact below.
 const cfg = await helpers.getConfig();
 if (cfg.needsKey && !helpers.getKey()) {
@@ -560,8 +605,7 @@ function getAgent(model) {
   return agents[model];
 }
 
-// The artifact: a live chat panel wired to the agent. The agent's run produces
-// a user interface, not a transcript dump.
+// The artifact is a live chat panel, not a transcript dump.
 helpers.mountChatUI(document.getElementById("react-artifact"), {
   modules: PAGES,
   models: [
@@ -569,7 +613,14 @@ helpers.mountChatUI(document.getElementById("react-artifact"), {
     { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
   ],
   greeting: "Ask me anything about the course. I read the relevant pages before I answer.",
-  examples: ["Summarize the whole course", "What is the ReAct loop?", "Compare RAG and Deep Agents"],
+  examples: [
+    "What is the ReAct loop?",
+    "Summarize the whole course",
+    "Compare RAG and deep-agent patterns",
+    "How does the OpenShell sandbox contain an agent?",
+    "When should I route to specialists instead of one agent?",
+    "Walk me from the basic loop to an always-on agent",
+  ],
   respond: async (text, ctx) => {
     const agent = getAgent(ctx.model);
     const messages = [];
@@ -593,11 +644,10 @@ helpers.mountChatUI(document.getElementById("react-artifact"), {
     // can't spin forever. Each reason+read is ~2 graph steps, so 12 ≈ 6 reads.
     const stream = await agent.stream({ messages },
       { streamMode: "messages", configurable: { thread_id: ctx.thread }, recursionLimit: 12, signal: ctx.signal });
-    // Hand each event to ctx.view AS IT ARRIVES, like pushing onto a stack: the
-    // view appends reasoning, tool chips, and answer text in stream order, and a
-    // chip is NEVER reused. Every read pushes its own chip (keyed by the tool
-    // call's unique id, because the arg-delta chunks reset index to 0 each model
-    // message, so keying by index would let a later read overwrite an earlier one).
+    // Hand each event to ctx.view as it arrives: it appends reasoning, tool
+    // chips, and answer text in stream order. Every read pushes its OWN chip,
+    // keyed by the tool call's id, not its index: arg-delta chunks reset the
+    // index to 0 per message, so an index key would overwrite an earlier read.
     const byId = {}, activeByIndex = {};
     let lastInput = 0, totalOut = 0, sawUsage = false;
     for await (const part of stream) {
@@ -632,7 +682,10 @@ helpers.mountChatUI(document.getElementById("react-artifact"), {
       if (r && node === "agent") ctx.view.reasoning(r);
       // token usage rolls up across the ReAct loop's LLM calls
       if (chunk.usage_metadata) { sawUsage = true; lastInput = chunk.usage_metadata.input_tokens || lastInput; totalOut += chunk.usage_metadata.output_tokens || 0; }
-      // answer tokens (agent node only; never the tool-result markdown)
+      // Answer tokens, gated to the "agent" node. Both the agent and "tools"
+      // nodes emit chunks with string .content, but the tools node's content is
+      // the full page text a read returned. The guard keeps that markdown out of
+      // the answer panel (tool results get their own chips, handled above).
       if (typeof chunk.content === "string" && chunk.content && node === "agent")
         ctx.view.token(chunk.content);
     }

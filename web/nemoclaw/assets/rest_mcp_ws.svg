@@ -1,0 +1,113 @@
+<!-- This schematic maps the networking paradigms and interface layers used to deploy modern LLM applications and multi-turn autonomous agents, breaking production systems into three distinct architectural layers:
+
+1. The Transactional HTTP Layer (Model Endpoints)
+The baseline infrastructure communicates entirely over stateless request-response web protocols. Applications choose between two primary REST-based strategies:
+
+Chat Completions API (/v1/completions): Direct, low-level, and completely stateless. The model endpoint processes each request in absolute isolation. The client-side application must store, maintain, and append the entire multi-turn conversation log, transmitting the full history payload to the server on every single invocation.
+
+Responses API (/v1/responses): A stateful orchestrator wrapper operating over the same HTTP/REST transport. Instead of requiring massive history payload transfers from the client, the conversation history is persisted server-side. The client simply transmits the newest message along with a persistent token tracking reference (previous_response_id). The server dynamically resolves context memory, triggers the underlying stateless inference execution core, handles agentic sub-loops (such as native web search or code execution tracking), and returns the final delivery packet back as an atomic REST response byproduct over the ephemeral connection.
+
+2. The Abstracted Abstraction Layer (Model Context Protocol)
+The integration tier acts as an architectural firewall, decoupling the underlying model engine from specialized environment extensions via the open Model Context Protocol (MCP). Running over generic communication buses (such as standard input/output streams or standard JSON-RPC wrappers), it eliminates hardcoded integration debt.
+
+The host framework operates an internal protocol client that connects seamlessly to standardized tool servers. This standardizes how access layers, security contexts, business APIs, and real-time knowledge graphs are queried, preventing platform lock-in and simplifying runtime deployment.
+
+3. The Stateful Gateway Layer (Persistent Agent Runtimes)
+The production runtime layer bypasses discrete request-response roundtrips in favor of continuous, event-driven agent orchestration (e.g., NemoClaw or OpenClaw architectures). Rather than continuously re-establishing short-lived HTTP handshakes, the application establishes a long-lived, full-duplex WebSocket connection (ws://).
+
+The session's context is bound directly to a secure tracking identifier (sessionKey), unlocking immediate, real-time bi-directional telemetry. High-frequency agent actions, step-by-step reasoning streams, intermediate execution logs, and reactive tool interventions flow uninterrupted across a single network channel without the latency overhead of state serialization and re-injection. -->
+<svg class="gfx-dark" viewBox="0 0 1160 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three distinct access protocol layers: Transactional HTTP REST interfaces (Chat Completions vs. stateful Responses API), the Model Context Protocol (MCP) tool abstraction layer, and the persistent, stateful WebSocket runtime gateway." preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; display:block; background:#0d0d0d; border:1px solid #2a2a2a; border-radius:8px; padding:14px; max-width:1400px; margin:1.5rem auto">
+  <defs>
+    <marker id="arrow-gray" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,2 L6,5 L0,8 Z" fill="#444444"/>
+    </marker>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,2 L6,5 L0,8 Z" fill="#3b82f6"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,2 L6,5 L0,8 Z" fill="#76b900"/>
+    </marker>
+  </defs>
+
+  <rect x="30" y="25" width="350" height="300" rx="8" fill="#141414" stroke="#2a2a2a" stroke-width="1.5"/>
+  <text x="205" y="48" font-family="ui-monospace, monospace" font-size="11" fill="#888888" text-anchor="middle" font-weight="700">HTTP · REST ENDPOINTS</text>
+  <line x1="40" y1="56" x2="370" y2="56" stroke="#2a2a2a" stroke-width="1"/>
+  
+  <text x="205" y="80" font-family="Arial, sans-serif" font-size="15" fill="#e6e6e6" text-anchor="middle" font-weight="800">model endpoints</text>
+  <text x="205" y="95" font-family="ui-monospace, monospace" font-size="10" fill="#6a6a6a" text-anchor="middle">short-lived connection lifecycle</text>
+
+  <rect x="45" y="115" width="150" height="65" rx="4" fill="#0d0d0d" stroke="#3a3a3a" stroke-width="1.2"/>
+  <text x="120" y="133" font-family="ui-monospace, monospace" font-size="10" fill="#cccccc" text-anchor="middle" font-weight="700">/chat/completions</text>
+  <text x="120" y="150" font-family="Arial, sans-serif" font-size="9" fill="#6a6a6a" text-anchor="middle">Stateless Execution</text>
+  <text x="120" y="162" font-family="Arial, sans-serif" font-size="8.5" fill="#888888" text-anchor="middle">Client resends full history</text>
+
+  <rect x="215" y="115" width="150" height="65" rx="4" fill="#0d0d0d" stroke="#223322" stroke-width="1.2"/>
+  <text x="290" y="133" font-family="ui-monospace, monospace" font-size="10" fill="#aee23a" text-anchor="middle" font-weight="700">/responses</text>
+  <text x="290" y="150" font-family="Arial, sans-serif" font-size="9" fill="#76b900" text-anchor="middle">Stateful Orchestrator</text>
+  <text x="290" y="162" font-family="Arial, sans-serif" font-size="8.5" fill="#a5a5a5" text-anchor="middle">Uses previous_response_id</text>
+
+  <path d="M 120 180 L 120 205 L 190 205" fill="none" stroke="#444444" stroke-width="1.2" marker-end="url(#arrow-gray)"/>
+  <path d="M 290 180 L 290 205 L 220 205" fill="none" stroke="#76b900" stroke-width="1.2" marker-end="url(#arrow-green)"/>
+
+  <rect x="105" y="215" width="200" height="26" rx="4" fill="#1c1c1c" stroke="#3a3a3a" stroke-width="1"/>
+  <text x="205" y="231" font-family="Arial, sans-serif" font-size="11" fill="#888888" text-anchor="middle">stateless model inference core</text>
+
+  <line x1="205" y1="241" x2="205" y2="264" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+
+  <rect x="65" y="265" width="280" height="32" rx="4" fill="#142233" stroke="#3b82f6" stroke-width="1.2"/>
+  <text x="205" y="285" font-family="ui-monospace, monospace" font-size="11" fill="#7eb8ff" text-anchor="middle" font-weight="600">← static REST response byproduct</text>
+
+
+  <rect x="405" y="25" width="350" height="300" rx="8" fill="#151915" stroke="#335533" stroke-width="1.5"/>
+  <text x="580" y="48" font-family="ui-monospace, monospace" font-size="11" fill="#76b900" text-anchor="middle" font-weight="700">MCP · MODEL CONTEXT PROTOCOL</text>
+  <line x1="415" y1="56" x2="745" y2="56" stroke="#223a22" stroke-width="1"/>
+  
+  <text x="580" y="80" font-family="Arial, sans-serif" font-size="15" fill="#e6e6e6" text-anchor="middle" font-weight="800">protocol layer</text>
+  <text x="580" y="95" font-family="ui-monospace, monospace" font-size="10" fill="#6a7a6a" text-anchor="middle">decoupled tool &amp; context integration</text>
+
+  <rect x="450" y="120" width="260" height="32" rx="4" fill="#0d0d0d" stroke="#2a3a2a" stroke-width="1.2"/>
+  <text x="580" y="140" font-family="ui-monospace, monospace" font-size="11" fill="#cccccc" text-anchor="middle">MCP Client (Agent Core)</text>
+  
+  <line x1="580" y1="152" x2="580" y2="179" stroke="#76b900" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+
+  <rect x="450" y="180" width="260" height="32" rx="4" fill="#142414" stroke="#76b900" stroke-width="1.2"/>
+  <text x="580" y="200" font-family="ui-monospace, monospace" font-size="11" fill="#aee23a" text-anchor="middle" font-weight="700">JSON-RPC (stdio / HTTP)</text>
+
+  <line x1="580" y1="212" x2="580" y2="239" stroke="#76b900" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+
+  <rect x="450" y="240" width="260" height="32" rx="4" fill="#0d0d0d" stroke="#2a3a2a" stroke-width="1.2"/>
+  <text x="580" y="260" font-family="ui-monospace, monospace" font-size="11" fill="#cccccc" text-anchor="middle">MCP Server (Tools &amp; Resources)</text>
+
+  <text x="580" y="295" font-family="Arial, sans-serif" font-size="11" fill="#6a7a6a" text-anchor="middle">Standardizes multi-vendor runtime contracts</text>
+
+
+  <rect x="780" y="25" width="350" height="300" rx="8" fill="#111c11" stroke="#76b900" stroke-width="2"/>
+  <text x="955" y="48" font-family="ui-monospace, monospace" font-size="11" fill="#76b900" text-anchor="middle" font-weight="700">WEBSOCKET · PERSISTENT STATE</text>
+  <line x1="790" y1="56" x2="1120" y2="56" stroke="#1e3a1e" stroke-width="1"/>
+  
+  <text x="955" y="80" font-family="Arial, sans-serif" font-size="15" fill="#aee23a" text-anchor="middle" font-weight="800">agent runtime</text>
+  <text x="955" y="95" font-family="ui-monospace, monospace" font-size="10" fill="#6a7a6a" text-anchor="middle">continuous connection state</text>
+
+  <rect x="825" y="120" width="260" height="32" rx="4" fill="#0d0d0d" stroke="#224422" stroke-width="1.2"/>
+  <text x="955" y="140" font-family="ui-monospace, monospace" font-size="11" fill="#cccccc" text-anchor="middle">ws:// interactive duplex gateway</text>
+  
+  <line x1="955" y1="152" x2="955" y2="179" stroke="#76b900" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+
+  <rect x="825" y="180" width="260" height="32" rx="4" fill="#0d0d0d" stroke="#224422" stroke-width="1.2"/>
+  <text x="955" y="200" font-family="ui-monospace, monospace" font-size="11" fill="#a5a5a5" text-anchor="middle">→ chat.send({ sessionKey })</text>
+
+  <line x1="955" y1="212" x2="955" y2="239" stroke="#76b900" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+
+  <rect x="825" y="240" width="260" height="32" rx="4" fill="#1e321e" stroke="#76b900" stroke-width="1.2"/>
+  <text x="955" y="260" font-family="Arial, sans-serif" font-size="11" fill="#aee23a" text-anchor="middle" font-weight="700">← live stream: tool_calls · events</text>
+
+  <text x="955" y="295" font-family="Arial, sans-serif" font-size="11" fill="#6a7a6a" text-anchor="middle">Connection remains alive indefinitely</text>
+
+
+  <text x="580" y="360" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#5e5e5e" font-style="italic">
+    Network abstraction topologies: From stateless and server-orchestrated HTTP REST exchanges yielding response byproducts,
+  </text>
+  <text x="580" y="376" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#5e5e5e" font-style="italic">
+    through standardized client-server MCP middleware, to active full-duplex WebSocket session gateways.
+  </text>
+</svg>

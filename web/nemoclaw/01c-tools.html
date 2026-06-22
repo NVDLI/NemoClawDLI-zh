@@ -37,29 +37,45 @@
     <div class="eyebrow">Module 1 · Part C of 3</div>
     <h1>Tools <span>at Scale</span></h1>
     <p class="lead">
-      Tools let agents act and query their environments. Whether this includes
-      databases, search, APIs, or even sub-agents, all we need to do is make
-      sure the contracts for accessing them is solid and enforced.
-      This contract is usually JSON Schema for predicting arguments,
-      though it could be something like code generation (as we will see in later sections).
-      This page wires the two-call cycle, shows multi-tool routing, calls a real
-      web-search endpoint, hides a sub-agent behind a single tool,
-      and ends with the MCP shape that is becoming the production
-      standard for serving tools.
+      A tool extends an agent beyond text, letting it query databases, run searches,
+      call APIs, and hand work to other agents. The model can lean on a
+      tool dependably because every tool comes with a contract describing how it is
+      called, most often a <a href="https://json-schema.org/" target="_blank" rel="noopener">JSON Schema</a> laid over its arguments,
+      though later sections reach for generated code instead.
     </p>
+    <p>
+      The real difficulty is one of number rather than of any single tool. One well-described tool is easy
+      for the model to route to, but a flat list of dozens starts to crowd the
+      context and nudges the model toward the wrong call, or toward no call at all.
+    </p>
+    <p>
+      Most of this page is about keeping that routing reliable as the list of tools grows.
+    </p>
+    <ul>
+      <li>It wires the two-call cycle, then shows multi-tool routing.</li>
+      <li>It calls a real web-search endpoint and hides a sub-agent behind a single tool.</li>
+      <li>It ends with the <a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">MCP</a> shape that is becoming the production standard for serving tools.</li>
+    </ul>
   </div>
 
   <h2>What a tool actually is</h2>
   <p>
-    A tool is structured output plus an executor. The schema describes what
-    the function takes, the model produces the arguments, your code runs the
-    function, and the result lands as the next message. Multi-tool routing,
-    MCP discovery, and agents-as-tools are all that same cycle with a
+    Every tool combines a schema with an executor that runs behind it, and a single call
+    moves through four hands in turn:
+  </p>
+  <ul>
+    <li>the schema describes what the function takes</li>
+    <li>the model produces the arguments</li>
+    <li>your code runs the function</li>
+    <li>the result lands as the next message</li>
+  </ul>
+  <p>
+    Multi-tool routing, MCP discovery, and agents-as-tools are all that same cycle with a
     different source of schemas.
   </p>
 
   <div style="display:flex;justify-content:center;margin:1em 0 1.4em">
-    <svg class="gfx-dark" viewBox="0 0 860 454" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The LLM asks, your code answers, the LLM concludes. The model never runs your function; it only requests the call." preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:780px;margin:1.5rem auto"><defs><marker id="sq-a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-ink2,#3b3b3b)"/></marker><marker id="sq-r" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-faint,#8c8c8c)"/></marker></defs><line x1="80" y1="102" x2="80" y2="404" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.5" stroke-dasharray="4 6"/><rect x="30" y="64" width="100" height="34" rx="8" fill="var(--gfx-tint-blue,#dfeaf5)" stroke="var(--gfx-blue,#0969da)" stroke-width="2"/><text x="80" y="86" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="var(--gfx-blue,#0969da)" text-anchor="middle" font-weight="700">user</text><line x1="430" y1="102" x2="430" y2="404" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.5" stroke-dasharray="4 6"/><rect x="380" y="64" width="100" height="34" rx="8" fill="var(--gfx-tint-green,#e6f3d4)" stroke="var(--gfx-green,#4a7a00)" stroke-width="2"/><text x="430" y="86" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="var(--gfx-green,#4a7a00)" text-anchor="middle" font-weight="700">model</text><line x1="780" y1="102" x2="780" y2="404" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.5" stroke-dasharray="4 6"/><rect x="730" y="64" width="100" height="34" rx="8" fill="var(--gfx-tint-amber,#f7e9cf)" stroke="var(--gfx-amber,#9a6700)" stroke-width="2"/><text x="780" y="86" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="var(--gfx-amber,#9a6700)" text-anchor="middle" font-weight="700">your code</text><path d="M 80 130 L 422 130" fill="none" stroke="var(--gfx-ink2,#3b3b3b)" stroke-width="2" marker-end="url(#sq-a)"/><circle cx="80" cy="130" r="10" fill="var(--gfx-ink,#1a1a1a)"/><text x="80" y="134" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-bg,#ffffff)" text-anchor="middle" font-weight="700">1</text><rect x="219.7" y="100.25" width="70.6" height="25.5" rx="6" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="255" y="116.45" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-ink2,#3b3b3b)" text-anchor="middle" font-weight="700">question</text><path d="M 430 188 L 88 188" fill="none" stroke="var(--gfx-faint,#8c8c8c)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#sq-r)"/><circle cx="430" cy="188" r="10" fill="var(--gfx-ink,#1a1a1a)"/><text x="430" y="192" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-bg,#ffffff)" text-anchor="middle" font-weight="700">2</text><rect x="213.95" y="158.25" width="82.1" height="25.5" rx="6" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="255" y="174.45" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" fill="var(--gfx-faint,#8c8c8c)" text-anchor="middle" font-weight="700">tool_call</text><path d="M 80 246 L 772 246" fill="none" stroke="var(--gfx-ink2,#3b3b3b)" stroke-width="2" marker-end="url(#sq-a)"/><circle cx="80" cy="246" r="10" fill="var(--gfx-ink,#1a1a1a)"/><text x="80" y="250" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-bg,#ffffff)" text-anchor="middle" font-weight="700">3</text><rect x="394.7" y="216.25" width="70.6" height="25.5" rx="6" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="430" y="232.45" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-ink2,#3b3b3b)" text-anchor="middle" font-weight="700">run tool</text><path d="M 780 304 L 438 304" fill="none" stroke="var(--gfx-faint,#8c8c8c)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#sq-r)"/><circle cx="780" cy="304" r="10" fill="var(--gfx-ink,#1a1a1a)"/><text x="780" y="308" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-bg,#ffffff)" text-anchor="middle" font-weight="700">4</text><rect x="560.2125" y="274.25" width="89.575" height="25.5" rx="6" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="605" y="290.45" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-faint,#8c8c8c)" text-anchor="middle" font-weight="700">tool result</text><path d="M 430 362 L 88 362" fill="none" stroke="var(--gfx-ink2,#3b3b3b)" stroke-width="2" marker-end="url(#sq-a)"/><circle cx="430" cy="362" r="10" fill="var(--gfx-ink,#1a1a1a)"/><text x="430" y="366" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-bg,#ffffff)" text-anchor="middle" font-weight="700">5</text><rect x="226.025" y="332.25" width="57.95" height="25.5" rx="6" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="255" y="348.45" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-ink2,#3b3b3b)" text-anchor="middle" font-weight="700">answer</text><text x="430" y="424" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13" fill="var(--gfx-sub,#5e5e5e)" font-style="italic">The LLM asks, your code answers, the LLM concludes. The model never runs your function; it only requests the</text><text x="430" y="440" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13" fill="var(--gfx-sub,#5e5e5e)" font-style="italic">call.</text></svg>
+    <svg class="gfx-dark" viewBox="0 0 860 454" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The LLM asks, your code answers, the LLM concludes. The model never runs your function; it only requests the call." preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:780px;margin:1.5rem auto"><defs><marker id="sq-a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-ink2,#3b3b3b)"/></marker><marker id="sq-r" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-faint,#8c8c8c)"/></marker></defs><line x1="80" y1="102" x2="80" y2="404" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.5" stroke-dasharray="4 6"/><rect x="30" y="64" width="100" height="34" rx="8" fill="var(--gfx-tint-blue,#dfeaf5)" stroke="var(--gfx-blue,#0969da)" stroke-width="2"/><text x="80" y="86" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="var(--gfx-blue,#0969da)" text-anchor="middle" font-weight="700">user</text><line x1="430" y1="102" x2="430" y2="404" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.5" stroke-dasharray="4 6"/><rect x="380" y="64" width="100" height="34" rx="8" fill="var(--gfx-tint-green,#e6f3d4)" stroke="var(--gfx-green,#4a7a00)" stroke-width="2"/><text x="430" y="86" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="var(--gfx-green,#4a7a00)" text-anchor="middle" font-weight="700">model</text><line x1="780" y1="102" x2="780" y2="404" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.5" stroke-dasharray="4 6"/><rect x="730" y="64" width="100" height="34" rx="8" fill="var(--gfx-tint-amber,#f7e9cf)" stroke="var(--gfx-amber,#9a6700)" stroke-width="2"/><text x="780" y="86" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="var(--gfx-amber,#9a6700)" text-anchor="middle" font-weight="700">your code</text><path d="M 80 130 L 422 130" fill="none" stroke="var(--gfx-ink2,#3b3b3b)" stroke-width="2" marker-end="url(#sq-a)"/><circle cx="80" cy="130" r="10" fill="var(--gfx-ink,#1a1a1a)"/><text x="80" y="134" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-bg,#ffffff)" text-anchor="middle" font-weight="700">1</text><rect x="219.7" y="100.25" width="70.6" height="25.5" rx="6" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="255" y="116.45" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-ink2,#3b3b3b)" text-anchor="middle" font-weight="700">question</text><path d="M 430 188 L 88 188" fill="none" stroke="var(--gfx-faint,#8c8c8c)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#sq-r)"/><circle cx="430" cy="188" r="10" fill="var(--gfx-ink,#1a1a1a)"/><text x="430" y="192" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-bg,#ffffff)" text-anchor="middle" font-weight="700">2</text><rect x="213.95" y="158.25" width="82.1" height="25.5" rx="6" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="255" y="174.45" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" fill="var(--gfx-faint,#8c8c8c)" text-anchor="middle" font-weight="700">tool_call</text><path d="M 80 246 L 772 246" fill="none" stroke="var(--gfx-ink2,#3b3b3b)" stroke-width="2" marker-end="url(#sq-a)"/><circle cx="80" cy="246" r="10" fill="var(--gfx-ink,#1a1a1a)"/><text x="80" y="250" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-bg,#ffffff)" text-anchor="middle" font-weight="700">3</text><rect x="394.7" y="216.25" width="70.6" height="25.5" rx="6" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="430" y="232.45" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-ink2,#3b3b3b)" text-anchor="middle" font-weight="700">run tool</text><path d="M 780 304 L 438 304" fill="none" stroke="var(--gfx-faint,#8c8c8c)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#sq-r)"/><circle cx="780" cy="304" r="10" fill="var(--gfx-ink,#1a1a1a)"/><text x="780" y="308" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-bg,#ffffff)" text-anchor="middle" font-weight="700">4</text><rect x="560.2125" y="274.25" width="89.575" height="25.5" rx="6" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="605" y="290.45" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-faint,#8c8c8c)" text-anchor="middle" font-weight="700">tool result</text><path d="M 430 362 L 88 362" fill="none" stroke="var(--gfx-ink2,#3b3b3b)" stroke-width="2" marker-end="url(#sq-a)"/><circle cx="430" cy="362" r="10" fill="var(--gfx-ink,#1a1a1a)"/><text x="430" y="366" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-bg,#ffffff)" text-anchor="middle" font-weight="700">5</text><rect x="226.025" y="332.25" width="57.95" height="25.5" rx="6" fill="var(--gfx-bg,#ffffff)" stroke="var(--gfx-line,#d4d4d4)" stroke-width="1.6"/><text x="255" y="348.45" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-ink2,#3b3b3b)" text-anchor="middle" font-weight="700">answer</text><text x="430" y="424" text-anchor="middle" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13" fill="var(--gfx-sub,#5e5e5e)" font-style="italic">The LLM asks, your code answers, and the LLM concludes, but it never runs your function itself.</text></svg>
   </div>
 
   <h2>The schema is the contract the model reads</h2>
@@ -75,27 +91,38 @@
   <div id="cell-m2b-p1"></div>
 
   <div class="callout">
-    <strong>Why schema-based calling is reliable.</strong>
-    Before structured function calling, developers prompted models to emit
-    tool calls in custom XML or hand-rolled JSON; those broke whenever
-    the model paraphrased. Schema-based calling moves the contract into a
-    first-class API field, and the LLM is forced to generate with <b>server-side enforcement</b>: 
+    <p>
+      <strong>Schema-based calling is reliable because the contract is enforced rather
+      than requested.</strong> Before structured function calling, developers prompted
+      models to emit tool calls in custom XML or hand-rolled JSON, and those broke
+      whenever the model paraphrased its output.
+    </p>
+    <p>
+      The schema-based approach moves that
+      contract into a first-class API field, and the model must now generate against
+      <b>server-side enforcement</b>:
+    </p>
     <ul>
       <li>the schema is restructured into a format the model is specifically trained to work well with</li>
       <li>the serving engine can illegalize token samplings that break contract grammar</li>
       <li>the server's response bundles the LLM's predicted tool calls into a consistent <code>tool_calls</code> field.</li>
     </ul>
-    Therefore, your dispatch code can largely rely on <code>tc.function.name</code> and
-    <code>tc.function.arguments</code> being present and parseable.
+    <p>
+      Therefore, your dispatch code can largely rely on <code>tc.function.name</code> and
+      <code>tc.function.arguments</code> being present and parseable.
+    </p>
   </div>
 
   <h2>Running the tool and feeding the result back to the model</h2>
   <p>
-    In most cases, the model cannot execute your function directly. It can only request a call. 
-    You run the function, get the result, and append it to the message history as a
-    <code>"tool"</code> role message. Only then does the model produce its
-    final, user-facing answer. The cell below runs all three steps in sequence:
-    request, execute, respond.
+    In most cases the model cannot execute your function directly and can only request a call.
+    You run the function and append its result to the message history as a
+    <code>"tool"</code> role message, and only then does the model produce its
+    final, user-facing answer.
+  </p>
+  <p>
+    The cell below runs the request, the execution, and the
+    response as one sequence.
   </p>
 
   <div id="cell-m2b-p2"></div>
@@ -103,87 +130,91 @@
   <h2>How the model picks between several tools</h2>
   <p>
     Agents rarely have a single tool. With more than one, the model decides
-    which to call based on the <code>description</code> field. The cell below 
-    gives the model two tools and a question that requires picking; 
-    the visualization shows which way the model went and why.
+    which to call based on the <code>description</code> field.
+  </p>
+  <p>
+    The cell below gives the model two tools and a question that requires picking,
+    and the visualization shows which way the model went and why.
   </p>
 
   <div id="cell-m2b-p3"></div>
 
   <h2>Wiring <code>glossary_search</code> to a real tool</h2>
   <p>
-    The cell below wires <code>glossary_search</code> to the in-page glossary MCP
-    server defined at the top of this page: a catalog of NVIDIA glossary terms with a
-    ranked search over it, running entirely in the browser with no key and no backend.
-    It returns short definitions with source links, enough for the agent to ground its
-    reply. Part 4b swaps the executor to an exact term lookup behind the <em>same</em>
+    The cell below wires <code>glossary_search</code> to the in-page MCP
+    server defined at the top of this page. That server is a catalog of NVIDIA terms with a
+    ranked search over it that runs entirely in the browser with no key and no backend,
+    returning short definitions with source links that are enough for the agent to ground its
+    reply. The catalog is wired in by hand so the whole server stays readable in one place, and
+    the course's shared <code>web_search</code> runs that same ranked query against the full NVIDIA
+    glossary index shipped with the bundle. The <a href="glossary.html">glossary explorer</a>
+    opens that real index: every term, the live <code>webSearch</code> and <code>instantAnswer</code>
+    source, and a box to run the exact query the agents call in the modules ahead.
+  </p>
+  <p>
+    Part 4b swaps the executor to an exact term lookup behind the <em>same</em>
     tool contract, so you can watch the contract stay fixed while the backend changes
     underneath it.
   </p>
 
-  <p>
-    This catalog is wired into the page by hand so the whole server stays readable in one place.
-    The course's shared <code>web_search</code> runs the same ranked search over the full NVIDIA
-    glossary index that ships with the bundle. The <a href="glossary.html">glossary explorer</a>
-    opens that real index: every term, the live <code>webSearch</code> and <code>instantAnswer</code>
-    source, and a box to run the exact search the agents in the modules ahead call.
-  </p>
-
   <div class="callout">
-    <strong>Name tools for what they do, not how they do it.</strong>
+    <strong>A tool name should describe a capability.</strong>
     A tool called <code>nvidia_glossary_api</code> is brittle: changing the backend
     forces you to update every prompt that references the name. A tool called
-    <code>glossary_search</code> is durable. Its name describes a capability rather than
-    an implementation, so you can swap the backend behind it (a ranked search on this
-    page, an exact term lookup in the next section, a richer index or the NVIDIA blog
-    later) and the schema, description, and every agent prompt stay untouched. The same
-    principle applies to any tool that wraps an external service: name it for what
-    callers ask for, not for the library or API that happens to fulfil the request.
+    <code>glossary_search</code> is durable. Its name describes what the caller
+    wants done, leaving the API that fulfils the request free to change. Behind that name you can run the
+    ranked search on this page, the exact lookup in the next section, or a richer index
+    added later. The schema, the description, and every agent prompt stay untouched.
+    Any tool that wraps an external service earns the same durability when you name it
+    for the capability callers depend on.
   </div>
 
   <div id="cell-m2b-p4"></div>
 
   <h2>Swapping the backend while the tool contract holds</h2>
   <p>
-    Part 4 used the canvas-flow canvas. Here the same logic runs in a flat
-    <code>mountRunCell</code> block so you can see it as one contiguous script. The
-    backend swaps from Part 4's ranked search to an exact <code>glossary_lookup</code>:
-    given a term's slug it returns that one entry, and nothing when the slug is not in
-    the catalog. Exact lookup is precise when the caller already knows the term and
+    Part 4 used the canvas-flow widget. Here the same logic runs in a flat
+    <code>mountRunCell</code> block so you can read it as one contiguous script. The
+    backend swaps from Part 4's ranked search to an exact <code>glossary_lookup</code>
+    that returns the one entry matching a term's slug and returns nothing whenever the
+    slug is absent from the catalog. Exact lookup is precise when the caller already knows the term and
     unforgiving when it does not, the opposite trade-off from ranked search. A real
-    knowledge tool usually offers both, and a richer source (a full docs index, or the
-    NVIDIA blog) can slot in behind the same name when more depth is needed.
+    knowledge tool usually offers both, and when you need more depth, a richer source like a
+    full docs index or the NVIDIA blog can slot in behind the same name.
   </p>
   <p>
-    That shape makes it a clean <strong>black-box tool</strong>: a term in, an entry
-    out. <code>glossaryLookup</code> returns the exact same
+    That shape makes it a clean <strong>black-box tool</strong> that takes a term in and
+    hands an entry back, and <code>glossaryLookup</code> returns the same
     <code>{ results, count, unreachable }</code> shape as the ranked
-    <code>glossarySearch</code>, so the tool contract from Part 4 does not change at all.
-    Only the executor behind it does. The agent still asks for
+    <code>glossarySearch</code>. The tool contract from Part 4 does not change while only
+    the executor behind it does, so the agent still asks for
     <code>glossary_search</code> and reads the same numbered result block.
   </p>
 
   <div class="callout">
-    <strong>The tool contract stays fixed when the backend changes.</strong>
-    Exact lookup is precise but narrow; ranked search is forgiving but noisier.
-    A richer index or the NVIDIA blog can slot in behind the same
-    <code>glossary_search</code> name when that depth is needed.
-    The model never learns which backend served the answer.
+    <strong>The model is the consumer the contract protects.</strong>
+    Across this swap the agent kept asking for <code>glossary_search</code> and reading the
+    same numbered block, with no hint that a different function produced it.
+    <p>
+      Design for that property, because when the model couples only to the contract you stay
+      free to upgrade the backend whenever the task outgrows it.
+    </p>
   </div>
 
   <div id="cell-m2b-p4b"></div>
 
   <h2>Hiding a whole agent behind a single tool</h2>
   <p>
-    Agents are tools. Hide complexity behind a sub-agent. A SQL agent
-    over a database, a code agent over a Python environment, a knowledge
-    agent over a repo: each one is easier to invoke as a single tool than
-    to wire directly into the main loop.
+    A tool need not be a small function. An entire sub-agent can sit behind a single
+    tool call. To the calling model it still looks like one tool, even though the agent
+    on the other side may be answering questions about a SQL database, running code in a
+    Python environment, or searching through a repository. Wrapping that capability as one
+    tool is easier for the main loop to work with than wiring the whole sub-agent into it directly.
   </p>
   <p>
     The cell below exposes a sub-agent that knows a small customer table
-    as one natural-language tool. The main agent never sees the rows;
-    it only asks questions.
+    as one natural-language tool. The main agent never sees the rows
+    and can only ask questions.
   </p>
 
   <div id="cell-m2b-p5"></div>
@@ -198,60 +229,62 @@
 
   <h2>Fetching tools from a separate server with MCP</h2>
   <p>
-    MCP standardises tool serving: <code>tools/list</code> for discovery,
-    <code>tools/call</code> for execution. Tools live in a separate
-    process; the agent fetches them on connect. One agent client speaks
-    one protocol to many servers.
+    MCP gives tool serving a standard shape. The agent retrieves the list of tools a
+    server offers with a <code>tools/list</code> call, then invokes any one of them with
+    <code>tools/call</code>. Those tools live in a separate process that the agent
+    connects to and queries when it starts up. Because the protocol is the same
+    everywhere, the agent can connect to additional servers without learning a new
+    interface for each one.
   </p>
 
-  <svg viewBox="0 0 720 320" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"
+  <svg class="gfx-dark" viewBox="0 0 720 320" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"
        style="max-width:100%;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;display:block;margin:1.2em auto"
        role="img" aria-label="A narrow-waist topology centered horizontally. Four agent boxes at the top fan into a slim highlighted protocol band in the middle that lists MCP, Responses, OTel, A2A, REST, and custom. The protocol band fans back out into four tool boxes at the bottom.">
     <defs>
-      <marker id="mcp-q2-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#a5a5a5"/></marker>
+      <marker id="mcp-q2-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="var(--gfx-sub,#9aa0a6)"/></marker>
     </defs>
-    <text x="360" y="22" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="#6f6f6f">M agents · one protocol layer · N tools</text>
+    <text x="360" y="22" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="var(--gfx-faint,#6b7177)">M agents · one protocol layer · N tools</text>
 
-    <rect x="96"  y="48" width="120" height="36" rx="6" fill="#1e1e3a" stroke="#3b82f6"/>
-    <text x="156" y="71" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="#7eb8ff">GPT agent</text>
-    <rect x="232" y="48" width="120" height="36" rx="6" fill="#1e1e3a" stroke="#3b82f6"/>
-    <text x="292" y="71" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="#7eb8ff">Claude agent</text>
-    <rect x="368" y="48" width="120" height="36" rx="6" fill="#1e1e3a" stroke="#3b82f6"/>
-    <text x="428" y="71" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="#7eb8ff">Gemini agent</text>
-    <rect x="504" y="48" width="120" height="36" rx="6" fill="#1e1e3a" stroke="#3b82f6"/>
-    <text x="564" y="71" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="#7eb8ff">open agent</text>
+    <rect x="96"  y="48" width="120" height="36" rx="6" fill="var(--gfx-tint-blue,#15273d)" stroke="var(--gfx-blue,#5aa8ff)"/>
+    <text x="156" y="71" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="var(--gfx-blue,#5aa8ff)">GPT agent</text>
+    <rect x="232" y="48" width="120" height="36" rx="6" fill="var(--gfx-tint-blue,#15273d)" stroke="var(--gfx-blue,#5aa8ff)"/>
+    <text x="292" y="71" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="var(--gfx-blue,#5aa8ff)">Claude agent</text>
+    <rect x="368" y="48" width="120" height="36" rx="6" fill="var(--gfx-tint-blue,#15273d)" stroke="var(--gfx-blue,#5aa8ff)"/>
+    <text x="428" y="71" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="var(--gfx-blue,#5aa8ff)">Gemini agent</text>
+    <rect x="504" y="48" width="120" height="36" rx="6" fill="var(--gfx-tint-blue,#15273d)" stroke="var(--gfx-blue,#5aa8ff)"/>
+    <text x="564" y="71" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="var(--gfx-blue,#5aa8ff)">open agent</text>
 
-    <line x1="156" y1="86" x2="320" y2="138" stroke="#a5a5a5" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
-    <line x1="292" y1="86" x2="345" y2="138" stroke="#a5a5a5" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
-    <line x1="428" y1="86" x2="375" y2="138" stroke="#a5a5a5" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
-    <line x1="564" y1="86" x2="400" y2="138" stroke="#a5a5a5" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
+    <line x1="156" y1="86" x2="320" y2="138" stroke="var(--gfx-sub,#9aa0a6)" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
+    <line x1="292" y1="86" x2="345" y2="138" stroke="var(--gfx-sub,#9aa0a6)" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
+    <line x1="428" y1="86" x2="375" y2="138" stroke="var(--gfx-sub,#9aa0a6)" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
+    <line x1="564" y1="86" x2="400" y2="138" stroke="var(--gfx-sub,#9aa0a6)" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
 
-    <rect x="240" y="140" width="240" height="64" rx="10" fill="#0d2a0d" stroke="#aee23a" stroke-width="2.5"/>
-    <text x="360" y="160" text-anchor="middle" font-size="10" font-family="ui-monospace, monospace" fill="#76b900" font-weight="700">protocol layer</text>
-    <text x="360" y="178" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="#aee23a" font-weight="700">MCP  ·  Responses  ·  OTel  ·  A2A</text>
-    <text x="360" y="194" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="#aee23a" font-weight="700">REST of choice  ·  custom JSON-RPC</text>
+    <rect x="240" y="140" width="240" height="64" rx="10" fill="var(--gfx-tint-green,#1d2a12)" stroke="var(--gfx-green,#9bd14a)" stroke-width="2.5"/>
+    <text x="360" y="160" text-anchor="middle" font-size="10" font-family="ui-monospace, monospace" fill="var(--gfx-green,#9bd14a)" font-weight="700">protocol layer</text>
+    <text x="360" y="178" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="var(--gfx-green,#9bd14a)" font-weight="700">MCP  ·  Responses  ·  OTel  ·  A2A</text>
+    <text x="360" y="194" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="var(--gfx-green,#9bd14a)" font-weight="700">REST of choice  ·  custom JSON-RPC</text>
 
-    <line x1="320" y1="206" x2="156" y2="258" stroke="#a5a5a5" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
-    <line x1="345" y1="206" x2="292" y2="258" stroke="#a5a5a5" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
-    <line x1="375" y1="206" x2="428" y2="258" stroke="#a5a5a5" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
-    <line x1="400" y1="206" x2="564" y2="258" stroke="#a5a5a5" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
+    <line x1="320" y1="206" x2="156" y2="258" stroke="var(--gfx-sub,#9aa0a6)" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
+    <line x1="345" y1="206" x2="292" y2="258" stroke="var(--gfx-sub,#9aa0a6)" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
+    <line x1="375" y1="206" x2="428" y2="258" stroke="var(--gfx-sub,#9aa0a6)" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
+    <line x1="400" y1="206" x2="564" y2="258" stroke="var(--gfx-sub,#9aa0a6)" stroke-width="1.2" marker-end="url(#mcp-q2-arr)"/>
 
-    <rect x="96"  y="260" width="120" height="36" rx="6" fill="#3a2e1e" stroke="#d49c2c"/>
-    <text x="156" y="283" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="#e8c87a">search</text>
-    <rect x="232" y="260" width="120" height="36" rx="6" fill="#3a2e1e" stroke="#d49c2c"/>
-    <text x="292" y="283" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="#e8c87a">file ops</text>
-    <rect x="368" y="260" width="120" height="36" rx="6" fill="#3a2e1e" stroke="#d49c2c"/>
-    <text x="428" y="283" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="#e8c87a">shell</text>
-    <rect x="504" y="260" width="120" height="36" rx="6" fill="#3a2e1e" stroke="#d49c2c"/>
-    <text x="564" y="283" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="#e8c87a">custom</text>
+    <rect x="96"  y="260" width="120" height="36" rx="6" fill="var(--gfx-tint-amber,#33280f)" stroke="var(--gfx-amber,#e3b341)"/>
+    <text x="156" y="283" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="var(--gfx-amber,#e3b341)">search</text>
+    <rect x="232" y="260" width="120" height="36" rx="6" fill="var(--gfx-tint-amber,#33280f)" stroke="var(--gfx-amber,#e3b341)"/>
+    <text x="292" y="283" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="var(--gfx-amber,#e3b341)">file ops</text>
+    <rect x="368" y="260" width="120" height="36" rx="6" fill="var(--gfx-tint-amber,#33280f)" stroke="var(--gfx-amber,#e3b341)"/>
+    <text x="428" y="283" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="var(--gfx-amber,#e3b341)">shell</text>
+    <rect x="504" y="260" width="120" height="36" rx="6" fill="var(--gfx-tint-amber,#33280f)" stroke="var(--gfx-amber,#e3b341)"/>
+    <text x="564" y="283" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="var(--gfx-amber,#e3b341)">custom</text>
   </svg>
   <p>
     The cell below fakes a tiny MCP server in pure JavaScript with the
-    same JSON-RPC shape MCP defines (no transport). The agent fetches
+    same <a href="https://www.jsonrpc.org/specification" target="_blank" rel="noopener">JSON-RPC</a> shape MCP defines (no transport). The agent fetches
     the tool list, hands the schemas to the model, then dispatches
     <code>tool_calls</code> back through the server's
     <code>tools/call</code> handler. The agent loop is byte-for-byte
-    identical to Part 2; only the source of the tool list changes.
+    identical to Part 2 while only the source of the tool list changes.
   </p>
 
   <div id="cell-m2b-p6"></div>
@@ -276,35 +309,49 @@
 
   <h2>Try it · an agent with two real tools</h2>
   <p>
-    A LangChain <code>createReactAgent</code> wired to two functions you just saw
-    the contract for: <code>calculate</code> (arithmetic) and <code>glossary_search</code>
-    (the in-page NVIDIA glossary, no key, no backend). Ask for a number it cannot work
+    This artifact runs a <a href="https://python.langchain.com/" target="_blank" rel="noopener">LangChain</a> <code>createReactAgent</code> wired to the two functions whose
+    contracts you just read: <code>calculate</code> for arithmetic and <code>glossary_search</code>
+    against the in-page NVIDIA glossary that runs in the browser without a key. Ask for a number it cannot work
     out in its head or a term to define, and watch the tool chip light up before the
     answer streams.
   </p>
+  <div id="tools-cell"></div>
   <div id="tools-artifact"></div>
   <script type="module">
-    import { mountAgentChat } from "./_shared.js";
-    mountAgentChat("#tools-artifact", {
-      models: [
-        { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
-        { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
-      ],
-      greeting: "I can do arithmetic and search NVIDIA's glossary. Try 'what is 17.5% of 2,480?' or 'what is retrieval-augmented generation?'",
-      examples: ["What is 17.5% of 2,480?", "What is a vector database?", "Define agentic AI"],
-      system: "You are a helpful assistant. Use calculate for any arithmetic and glossary_search for definitions of AI and accelerated-computing terms. Ground factual claims in the glossary_search results; if a search returns nothing, say you could not find it rather than answering from memory. Keep answers brief.",
-      buildTools: ({ tool, z }) => [
-        tool(async ({ expression }) => {
-          const expr = String(expression).replace(/,/g, "");
-          if (!/^[-+*/().\s^%0-9]+$/.test(expr)) return "calculate only accepts arithmetic.";
-          try { return String(Function('"use strict"; return (' + expr.replace(/\^/g, "**") + ")")()); }
-          catch (e) { return "error: " + e.message; }
-        }, { name: "calculate", description: "Evaluate an arithmetic expression, e.g. (17/100)*2480 or 2^16 - 1000.",
-             schema: z.object({ expression: z.string().describe("an arithmetic expression, e.g. 0.175*2480") }) }),
-        tool(async ({ query }) => window.formatGlossaryResults(window.glossarySearch(query, { limit: 4 })),
-          { name: "glossary_search", description: "Search NVIDIA's glossary of AI and accelerated-computing terms.",
-            schema: z.object({ query: z.string() }) }),
-      ],
+    import { mountRunCell } from "./_shared.js";
+    mountRunCell("#tools-cell", {
+      label: "the agent + your tools, in code",
+      autorun: true,
+      code: `// Two tools: calculate (guarded arithmetic) and glossary_search (in-page server).
+// Edit the system prompt or the tools, then Run to re-render.
+helpers.mountAgentChat("#tools-artifact", {
+  models: [
+    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
+    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
+  ],
+  greeting: "I can do arithmetic and search NVIDIA's glossary. Try 'what is 17.5% of 2,480?' or 'what is retrieval-augmented generation?'",
+  examples: ["What is 17.5% of 2,480?", "What is a vector database?", "Define agentic AI", "What is 1,234 times 56?", "What does GPU stand for, and what is it for?", "What is 2,480 divided by 17, rounded?"],
+  system: "You are a helpful assistant. Use calculate for any arithmetic and glossary_search for definitions of AI and accelerated-computing terms. Ground factual claims in the glossary_search results; if a search returns nothing, say you could not find it rather than answering from memory. Keep answers brief.",
+  buildTools: ({ tool, z }) => [
+    tool(async ({ expression }) => {
+      const expr = String(expression).replace(/,/g, "");
+      if (!/^[-+*/().\\s^%0-9]+$/.test(expr)) return "calculate only accepts arithmetic.";
+      try { return String(Function('"use strict"; return (' + expr.replace(/\\^/g, "**") + ")")()); }
+      catch (e) { return "error: " + e.message; }
+    }, { name: "calculate", description: "Evaluate an arithmetic expression, e.g. (17/100)*2480 or 2^16 - 1000.",
+         schema: z.object({ expression: z.string().describe("an arithmetic expression, e.g. 0.175*2480") }) }),
+    tool(async ({ query }) => window.formatGlossaryResults(window.glossarySearch(query, { limit: 4 })),
+      { name: "glossary_search", description: "Search NVIDIA's glossary of AI and accelerated-computing terms.",
+        schema: z.object({ query: z.string() }) }),
+  ],
+});
+helpers.log("rendered below. Edit the config and Run.");
+
+/* Under the hood, the artifact above is a real LangChain createReactAgent (one per
+   model, each with its own memory) wired to the tools you declare. mountAgentChat loads
+   LangChain, builds a ChatOpenAI on the course endpoint, wraps your tools, and streams
+   the tool calls and answer into the same view a hand-rolled loop would drive. */
+`,
     });
   </script>
 
@@ -315,20 +362,17 @@
 </main>
 
 <script type="module">
-import { buildNav, requireKey, hasKey, chat, chatStream, setRunning, showError, renderOutput, updateKeyPill, mountJourneyMap, mountRunCell, mountCanvasFlow } from "./_shared.js";
+import { buildNav, chatStream, updateKeyPill, mountJourneyMap, mountRunCell, mountCanvasFlow } from "./_shared.js";
 document.getElementById("nav").innerHTML = buildNav("01c-tools.html");
 const pill = document.getElementById("key-status");
 updateKeyPill(pill);
 mountJourneyMap("#journey-map", "1c");
 hljs.highlightAll();
 
-// ── In-page NVIDIA glossary MCP server ───────────────────────────────────────
-// The "search" tool this page teaches lives entirely here, in the page: a catalog
-// of NVIDIA glossary terms plus a small MCP-style server (tools/list + tools/call)
-// over it. No API key, no backend, nothing hidden in _shared.js. Read it, edit the
-// catalog, or paste this whole block into an agent as context: on this page, the
-// page IS the tool. Regenerate the catalog from NVIDIA's live glossary with
-// `python3 scripts/vendor_glossary.py --index` (writes mats/glossary_index.json).
+// In-page NVIDIA glossary MCP server: a catalog plus a small MCP-style server
+// (tools/list + tools/call) over it, with no API key and no backend.
+// On this page, the page IS the tool.
+// Regenerate the catalog with `python3 scripts/vendor_glossary.py --index`.
 const GLOSSARY = [
   ["3d-reconstruction","3D Reconstruction","Learn what 3D reconstruction is and how neural reconstruction works.","3D reconstruction;neural reconstruction;computer vision;3D models"],
   ["ai-agents","AI Agents","AI agents are advanced AI systems designed to autonomously reason, plan, and execute complex tasks based on high-level goals in a secure environment with controls.","AI Agents;Generative AI;LLMs;RAG"],
@@ -478,10 +522,10 @@ window.glossarySearch = glossarySearch;
 window.glossaryLookup = glossaryLookup;
 window.formatGlossaryResults = formatGlossaryResults;
 
-// ── Module 2b Part 1: schema contract for tools ──────────────────────────────
+// ── Module 1c Part 1: schema contract for tools ──────────────────────────────
 mountCanvasFlow("#cell-m2b-p1", {
   label: "Module 1c Part 1 · the JSON-Schema tool contract",
-  intro: "A question and a tool spec both feed into one LLM call where the model reads the schema and chooses whether to emit a tool_calls request or answer directly, and since nothing is actually executed here, what you observe is the routing decision alone.",
+  intro: "A question and a tool spec both feed into one LLM call. The model reads the schema and chooses whether to emit a tool_calls request or answer directly. Nothing is actually executed here, so what you observe is the routing decision alone.",
   edges: [
     { from: "question", to: "llm" },
     { from: "schema",   to: "llm" },
@@ -518,7 +562,7 @@ return { tool_name: state.CALC_SCHEMA[0].function.name };
       code: `state.s = await helpers.chatStream({
   messages:   [{ role: "user", content: state.question }],
   tools:      state.CALC_SCHEMA,
-  max_tokens: 1500,
+  max_tokens: 8196,
 });
 
 const fr     = state.s.finish_reason;
@@ -564,10 +608,10 @@ return {
   ],
 });
 
-// ── Module 2b Part 2: the two-call cycle ─────────────────────────────────────
+// ── Module 1c Part 2: the two-call cycle ─────────────────────────────────────
 mountCanvasFlow("#cell-m2b-p2", {
   label: "Module 1c Part 2 · the two-call cycle · request → execute → reply",
-  intro: "The first LLM call decides to call calculate, the local executor runs the expression, and the second LLM call writes the user-facing answer from the tool result, growing messages from 1 to 4 along the way.",
+  intro: "The first LLM call decides to call calculate, then the local executor runs the expression. The second LLM call writes the user-facing answer from the tool result, growing messages from 1 to 4 along the way.",
   edges: [
     { from: "question", to: "llm1" },
     { from: "schema",   to: "llm1" },
@@ -604,7 +648,7 @@ return { tool: "calculate" };
       code: `state.s1 = await helpers.chatStream({
   messages:   state.messages,
   tools:      state.CALC_SCHEMA,
-  max_tokens: 1500,
+  max_tokens: 8196,
 });
 state.messages.push({
   role: "assistant",
@@ -639,7 +683,7 @@ return { args, result: state.calcResult };
 state.s2 = await helpers.chatStream({
   messages:   state.messages,
   tools:      state.CALC_SCHEMA,
-  max_tokens: 1500,
+  max_tokens: 8196,
 });
 
 const finalMsg = { role: "assistant", content: state.s2.content || state.s2.reasoning || "" };
@@ -652,10 +696,10 @@ return state.s2.content || state.s2.reasoning || "(empty)";
   ],
 });
 
-// ── Module 2b Part 3: multi-tool routing ─────────────────────────────────────
+// ── Module 1c Part 3: multi-tool routing ─────────────────────────────────────
 mountCanvasFlow("#cell-m2b-p3", {
   label: "Module 1c Part 3 · two tools, the model routes",
-  intro: "Three roots feed into one LLM, and editing either tool description shifts how the model routes, because the description string is one of the most consequential prompt-engineering surfaces in any tool-using agent.",
+  intro: "Three roots feed into one LLM, and editing either tool description shifts how the model routes. The description string is one of the most consequential prompt-engineering surfaces in any tool-using agent.",
   edges: [
     { from: "question", to: "llm" },
     { from: "tool_a",   to: "llm" },
@@ -705,7 +749,7 @@ return state.toolB.function.name;
       code: `const s = await helpers.chatStream({
   messages:   [{ role: "user", content: state.question }],
   tools:      [state.toolA, state.toolB],
-  max_tokens: 1500,
+  max_tokens: 8196,
 });
 
 let chosen = null, args = null;
@@ -759,7 +803,7 @@ return chosen ? { chose: chosen, args } : { chose: "(neither; model answered dir
 // ── Module 1c Part 4: glossary_search via the in-page NVIDIA glossary server ──
 mountCanvasFlow("#cell-m2b-p4", {
   label: "Module 1c Part 4 · glossary_search via the in-page NVIDIA glossary MCP server",
-  intro: "Each node writes into a shared state object that later nodes read, and you can open any node to edit its JS and rerun it alone or run the whole graph.",
+  intro: "Each node writes into a shared state object that later nodes read. Open any node to edit its JS and rerun it alone, or run the whole graph.",
   edges: [
     { from: "input", to: "llm1" },
     { from: "tool",  to: "llm1" },
@@ -803,7 +847,7 @@ state.s1 = await helpers.chatStream({
   messages:    state.messages,
   tools:       state.SEARCH_SCHEMA,
   tool_choice: { type: "function", function: { name: "glossary_search" } },   // require the search; don't let it answer from (stale) memory
-  max_tokens:  4096,   // a reasoning model thinks before it emits the call; too small a budget and it stops mid-thought
+  max_tokens:  8196,   // a reasoning model thinks before it emits the call; too small a budget and it stops mid-thought
 });
 helpers.log("finish_reason:", state.s1.finish_reason, "· tool_calls:", state.s1.tool_calls.length);
 return {
@@ -815,11 +859,11 @@ return {
     },
     {
       id: "search", icon: "🌐", title: "glossary_search", x: 1, y: 2,
-      summary: "The executor. It calls the in-page glossary MCP server (defined at the top of this page) via tools/call and gets back ranked NVIDIA glossary entries. No key, no network: the catalog and the search both run in your browser.",
+      summary: "The executor. It calls the in-page glossary MCP server (defined at the top of this page) via tools/call and gets back ranked NVIDIA glossary entries. The catalog and the search both run locally in your browser, with no key and no network call.",
       code: `if (!state.s1.tool_calls.length) {
-  // No tool call: either the model answered from training (it has content), or
-  // call #1 was cut off mid-thought. Distinguish them honestly; never claim a
-  // direct answer when the call simply ran out of tokens.
+  // No tool call here: the model either answered from training (it has content)
+  // or ran out of tokens mid-call.
+  // Distinguish the two so we never report a direct answer for a truncated call.
   state.skipped = true;
   state.reason = state.s1.content ? "model answered directly; no search needed"
             : "call #1 stopped before answering (finish_reason: " + state.s1.finish_reason + "); raise max_tokens";
@@ -855,7 +899,7 @@ return { query: state.query, count: meta.count, source: meta.source };
 // another search, so it must synthesize an answer from the results it already has.
 state.s2 = await helpers.chatStream({
   messages:   state.messages,
-  max_tokens: 4096,   // room for the reasoning model to think AND write the answer
+  max_tokens: 8196,   // room for the reasoning model to think AND write the answer
 });
 // Defensive: a reasoning model with no tools sometimes still emits tool-call
 // SYNTAX as text. Strip it so the student sees a clean final answer.
@@ -871,7 +915,7 @@ return answer || "(the model did not produce a final answer; try Run again)";
 // ── Module 1c Part 4b: the same glossary_search tool, swapped to exact lookup ─
 mountRunCell("#cell-m2b-p4b", {
   label: "Module 1c Part 4b · the same glossary_search tool, swapped to an exact term lookup",
-  intro: "The tool name, schema, and agent loop stay exactly as they were in Part 4; the only change is the executor, which now does an exact glossary_lookup by slug instead of a ranked search. The same fixed contract returns one precise entry when the slug matches and nothing when it does not. Edit the slug to see where exact lookup wins and where ranked search would have been more forgiving.",
+  intro: "Part 4's tool name, schema, and agent loop carry over unchanged. The one thing that moves is the executor, which now does an exact glossary_lookup by slug instead of a ranked search. The same fixed contract returns one precise entry when the slug matches and nothing when it does not. Edit the slug to see where exact lookup wins and where ranked search would have been more forgiving.",
   code: `// The agent sees the exact same glossary_search tool it saw in Part 4.
 const SEARCH_SCHEMA = [{
   type: "function",
@@ -884,15 +928,15 @@ const SEARCH_SCHEMA = [{
 
 const messages = [
   // The lookup backend is keyed by exact slug, so we tell the model to query the
-  // slug form ('vector-database'), not a phrase. That coupling between a tool's
-  // quirk and the prompt is real, and it is exactly what Part 4's ranked search avoided.
+  // slug form ('vector-database'), never a phrase.
+  // That coupling between a tool's quirk and its prompt is what Part 4's ranked search avoided.
   { role: "system", content: "You are a research assistant. Ground answers in glossary_search results; do not answer from memory. glossary_search is keyed by exact term slug, so query the lowercase, hyphenated slug (e.g. 'vector-database'), never a full question." },
   { role: "user",   content: "What is a vector database?" },
 ];
 
 // Require the call (same as Part 4) so the swapped backend is always exercised,
 // and give the reasoning model room to think before the call (4096, not 1500).
-const s1 = await chatStream({ messages, tools: SEARCH_SCHEMA, tool_choice: { type: "function", function: { name: "glossary_search" } }, max_tokens: 4096 });
+const s1 = await chatStream({ messages, tools: SEARCH_SCHEMA, tool_choice: { type: "function", function: { name: "glossary_search" } }, max_tokens: 8196 });
 log("finish_reason:", s1.finish_reason, "· tool_calls:", s1.tool_calls.length);
 
 const tc    = s1.tool_calls[0];
@@ -908,19 +952,20 @@ log(toolMsg);
 messages.push({ role: "assistant", content: s1.content || null, tool_calls: s1.tool_calls });
 messages.push({ role: "tool", tool_call_id: tc.id, content: toolMsg });
 messages.push({ role: "user", content: "Using only the results above, write the final answer now. Do not request another search or output any tool-call syntax." });
+log.details("messages", messages);
 
-const s2 = await chatStream({ messages, max_tokens: 4096 });
+const s2 = await chatStream({ messages, max_tokens: 8196 });
 const answer = (s2.content || "").replace(/<tool_call>[\\s\\S]*?<\\/tool_call>/g, "").replace(/<\\/?function[^>]*>|<\\/?parameter[^>]*>/g, "").trim();
 log.h("final answer");
 log(answer || "(no final answer; try Run again)");
-return { used_lookup: true, slug: query, results: out.structuredContent.count };
+return { used_lookup: true, slug: query, results: out.structuredContent };
 `,
 });
 
-// ── Module 2b Part 5: agents as tools ────────────────────────────────────────
+// ── Module 1c Part 5: agents as tools ────────────────────────────────────────
 mountCanvasFlow("#cell-m2b-p5", {
   label: "Module 1c Part 5 · agents as tools · hide the database, expose the question",
-  intro: "The main agent gets a single query_customer_db tool backed by a sub-agent that knows the schema (a tiny JS array stands in for SQL), so the main agent never sees the rows and only asks questions and reads natural-language answers.",
+  intro: "The top-level agent gets a single query_customer_db tool backed by a sub-agent that knows the schema (a tiny JS array stands in for SQL). Raw rows never reach the caller, which poses a question and receives a natural-language answer in return.",
   edges: [
     { from: "sub_data",  to: "sub_agent" },
     { from: "tool_spec", to: "main_llm" },
@@ -958,7 +1003,7 @@ return { rows: state.customers.length, schema_fields: Object.keys(state.customer
         schemaText + "\\n\\nRows:\\n" + rowsText },
       { role: "user", content: question },
     ],
-    max_tokens: 1024,
+    max_tokens: 8196,
   });
   return (sub.content || sub.reasoning || "(empty)").trim();
 };
@@ -1001,7 +1046,7 @@ return state.userQuestion;
 state.s1 = await helpers.chatStream({
   messages: state.mainMessages,
   tools:    state.TOOLS,
-  max_tokens: 1500,
+  max_tokens: 8196,
 });
 return {
   finish_reason: state.s1.finish_reason,
@@ -1011,7 +1056,7 @@ return {
     },
     {
       id: "dispatch", icon: "📤", title: "Dispatch to sub-agent · synth final answer", x: 1, y: 3,
-      summary: "If the main agent called the tool, we hand the natural-language question to the sub-agent, append its answer, and ask the main agent for the user-facing reply.",
+      summary: "Once the top-level agent calls the tool, we hand the natural-language question to the sub-agent, append its answer, and ask for the user-facing reply.",
       code: `if (!state.s1.tool_calls.length) {
   helpers.log("main agent answered directly without using the sub-agent");
   return { final: state.s1.content || "(empty)" };
@@ -1025,11 +1070,11 @@ for (const tc of state.s1.tool_calls) {
   const args   = JSON.parse(tc.function.arguments || "{}");
   helpers.log("main → sub: " + (args.question || "?"));
   const answer = await state.queryCustomerDB(args.question || "");
-  helpers.log("sub → main: " + answer.slice(0, 120));
+  helpers.log.details("sub → main", answer);
   state.mainMessages.push({ role: "tool", tool_call_id: tc.id, content: answer });
 }
 const s2 = await helpers.chatStream({
-  messages: state.mainMessages, tools: state.TOOLS, max_tokens: 4096,
+  messages: state.mainMessages, tools: state.TOOLS, max_tokens: 8196,
 });
 
 helpers.viz.messageList(state.mainMessages.concat([{ role: "assistant", content: s2.content || "" }]),
@@ -1042,10 +1087,10 @@ return s2.content || s2.reasoning || "(empty)";
   ],
 });
 
-// ── Module 2b Part 6: MCP-shaped tool server ─────────────────────────────────
+// ── Module 1c Part 6: MCP-shaped tool server ─────────────────────────────────
 mountCanvasFlow("#cell-m2b-p6", {
   label: "Module 1c Part 6 · MCP-shaped tool server · discovery + dispatch",
-  intro: "A fake in-page MCP server exposes two tools through tools/list and tools/call with no network, and the agent discovers the tool list, hands the schemas to the LLM, and dispatches the model's tool_calls back through tools/call, so only the tool source changes while the agent loop stays identical to Part 2.",
+  intro: "A fake in-page MCP server exposes two tools through tools/list and tools/call with no network. The agent discovers the tool list, hands the schemas to the LLM, and dispatches the model's tool_calls back through tools/call. Only the tool source changes; the agent loop stays identical to Part 2.",
   edges: [
     { from: "server",   to: "discover" },
     { from: "discover", to: "llm" },
@@ -1056,10 +1101,10 @@ mountCanvasFlow("#cell-m2b-p6", {
     {
       id: "server", icon: "🖥", title: "In-page MCP server", x: 0, y: 0,
       summary: "Points at the same glossary MCP server defined at the top of this page. It exposes the two standard endpoints (tools/list for discovery and tools/call for execution) in the same JSON-RPC-style shape as the real protocol. In production these calls travel over stdio or HTTP transport rather than running in the same JavaScript process.",
-      code: `// The same in-page glossary server Part 4 called directly, now consumed through
-// MCP discovery. It already speaks tools/list and tools/call (see the block at the
-// top of this page), so the client below can discover and dispatch its tools
-// without knowing anything about the glossary in advance.
+      code: `// The same in-page glossary server Part 4 called directly, now reached through
+// MCP discovery rather than a direct call.
+// The client below discovers and dispatches its tools with no advance knowledge,
+// because the server already speaks tools/list and tools/call (defined up top).
 state.mcpServer = window.glossaryMCP;
 const listed = await state.mcpServer.request("tools/list");
 return { exposes: ["tools/list", "tools/call"], tools: listed.tools.map(t => t.name) };
@@ -1079,19 +1124,19 @@ return state.tools.map(t => t.function.name);
     },
     {
       id: "user", icon: "👤", title: "User question", x: 2, y: 1,
-      summary: "The question the model answers using the discovered glossary tools. A definitional question routes to glossary_search; asking for a specific term by slug routes to glossary_lookup.",
+      summary: "The question the model answers using the discovered glossary tools. A definitional ask is served by glossary_search, while a request for a specific term by slug goes to glossary_lookup.",
       code: `state.question = "What is retrieval-augmented generation, and what does a vector database have to do with it?";
 return state.question;
 `,
     },
     {
       id: "llm", icon: "🧠", title: "LLM (sees discovered tools)", x: 1, y: 2,
-      summary: "The same chatStream call from Part 2 runs unchanged because the agent loop cannot tell whether the tools came from a hardcoded array or a remote MCP server, which is exactly the abstraction the discovery step above buys you.",
+      summary: "The same chatStream call from Part 2 runs unchanged because the agent loop cannot tell whether the tools came from a hardcoded array or a remote MCP server. The discovery step above lets you swap that source without touching the loop at all.",
       code: `state.messages = [{ role: "user", content: state.question }];
 state.s1 = await helpers.chatStream({
   messages:   state.messages,
   tools:      state.tools,
-  max_tokens: 1500,
+  max_tokens: 8196,
 });
 state.messages.push({
   role: "assistant",
@@ -1111,12 +1156,13 @@ return {
 for (const tc of state.s1.tool_calls) {
   const args = JSON.parse(tc.function.arguments || "{}");
   const out  = await state.mcpServer.request("tools/call", { name: tc.function.name, arguments: args });
+  helpers.log.details("tools/call result", out);
   const txt  = out.content?.[0]?.text || "(no text)";
-  helpers.log("server → " + tc.function.name + " · " + txt);
+  helpers.log.details("server → " + tc.function.name, out);
   state.messages.push({ role: "tool", tool_call_id: tc.id, content: txt });
 }
 const s2 = await helpers.chatStream({
-  messages: state.messages, tools: state.tools, max_tokens: 4096,
+  messages: state.messages, tools: state.tools, max_tokens: 8196,
 });
 return s2.content || s2.reasoning || "(empty)";
 `,

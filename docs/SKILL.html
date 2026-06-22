@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>docs/ · agent + deploy notes · explore</title>
+
+<script type="application/json" id="skill-meta">
+{
+  "schema": "dir-skill/1.0",
+  "node_type": "directory-explorer",
+  "title": "docs/ agent and deploy notes",
+  "source_dir": "docs/",
+  "summary": "The longer-form notes that do not belong in a SKILL beacon: how the static Pages site is built and published, and the notebook-corruption pattern to avoid. (docs/validation/ holds the generated gate log, surfaced through the validation report, not here.) A live explorer: open a note, read it, and ask the model about it.",
+  "related": [
+    "docs/pages_deploy.md",
+    "docs/notebook_corruption_prevention.md"
+  ],
+  "explorer": "../web/_skill_explorer.js"
+}
+</script>
+
+<script type="application/json" id="explorer-config">
+{
+  "title": "docs/ \u00b7 agent and deploy notes",
+  "summary": "Longer-form notes that back the SKILL beacons. Open one and ask about it; the generated gate log under docs/validation/ is read through the validation report instead.",
+  "model": "nvidia/nemotron-3-nano-30b-a3b",
+  "ties": [
+    "build"
+  ],
+  "nav": {
+    "home": "../web/index.html",
+    "up": {
+      "label": "task1",
+      "href": "../SKILL.html"
+    }
+  },
+  "files": [
+    {
+      "path": "pages_deploy.md",
+      "role": "how the deploy works",
+      "desc": "How build_pages.sh assembles the static, fully client-side site into public/ and how it is published to the Pages vendor."
+    },
+    {
+      "path": "notebook_corruption_prevention.md",
+      "role": "notebook edit hazard",
+      "desc": "The VS Code buffer-merge corruption pattern on notebook markdown edits, and the discipline (nb_audit, close the file) that avoids it."
+    }
+  ],
+  "related": [
+    {
+      "label": "root SKILL (ontology)",
+      "href": "../SKILL.html"
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<div id="explorer"></div>
+<noscript>
+  <h1>docs/ agent and deploy notes</h1>
+  <ul>
+    <li><a href="pages_deploy.md">pages_deploy.md</a></li>
+    <li><a href="notebook_corruption_prevention.md">notebook_corruption_prevention.md</a></li>
+  </ul>
+</noscript>
+<script src="../web/_skill_explorer.js"></script>
+</body>
+</html>

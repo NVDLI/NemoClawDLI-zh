@@ -30,11 +30,19 @@
   var PAGE_EXT = [".md", ".ipynb", ".html", ".htm"];
   var ASSET_EXT = [".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico", ".css", ".js",
     ".mjs", ".woff", ".woff2", ".ttf", ".mp4", ".webm", ".json", ".pdf"];
-  var SKIP_DIR = setOf(["__pycache__", ".ipynb_checkpoints", "node_modules", "export", "standalone",
-    "_paper_cache", "repos_index", "docstore_index", "artifacts", ".pytest_cache",
-    "skills-seed", "generated_images", "sample_videos", "_offloaded_tracks",
-    ".git", ".cache", "dist", "build", "venv", ".venv", "composer", "validation",
-    ".Trash-0", "grounding_cache", ".exec_stage", ".solution", ".jupyter"]);
+  // The crawl boundary: which directories are NOT a source of navigable pages. This is by KIND,
+  // not by which course a path belongs to (the page extension and reachability decide everything
+  // about content; this only keeps non-source bytes out of the candidate set):
+  //   - dependency / build / cache dirs that recur in any repo (node_modules, __pycache__, the
+  //     dot-prefixed tool caches, dist/build/venv);
+  //   - generated output this bundle writes and gitignores (export, standalone, grounding_cache,
+  //     docs/validation), all regenerated, never authored, surfaced live through the gate report;
+  //   - service seed data (skills-seed: the openclaw agent's own SKILL.md skill definitions),
+  //     which the service loads at runtime and is not part of the course's navigable graph.
+  // It is deliberately NOT a list of "these course dirs are assets"; that assumption is gone.
+  var SKIP_DIR = setOf(["__pycache__", ".ipynb_checkpoints", ".pytest_cache", ".jupyter",
+    "node_modules", ".figtools", "export", "standalone", "dist", "build", "venv", ".venv",
+    "skills-seed", "grounding_cache", "validation", ".git", ".cache"]);
 
   // mats are the curated reference layer, now COURSE-SCOPED under web/nemoclaw/mats/ (no longer
   // a top-level peer). They are recognized by the "mats" path SEGMENT anywhere in the path, not
@@ -56,11 +64,6 @@
   var CRAWL_TOP = ["web", "cpu", "docs", "scripts"];
 
   var TEMPLATE_MARK = ["{{", "}}", "<?", "?>", "<%", "%>", "${", "&lt;", "&gt;", "&#"];
-
-  var GRAPH_ASSET_DIR = setOf(["data", "code", "skills", "demo", "artifacts", "vendor", "teach_kit",
-    "export", "__pycache__", "repos", "repos_index", "skills-seed", "_paper_cache",
-    "docstore_index", "img-files", "audio-files", "images", "imgs", "public", "composer",
-    "microservices", "extra_utils", "ocstart", "backend"]);
 
   var NOISE_HOST = setOf(["localhost", "127.0.0.1", "0.0.0.0", "example.com", "bring-up.sh", "skill.md",
     "cdnjs.cloudflare.com", "cdn.jsdelivr.net", "unpkg.com",
@@ -122,23 +125,13 @@
     return false;
   }
 
-  function expectedDetached(rel) {
-    var r = rel.split("\\").join("/");
-    if (isMatPath(r) || r.indexOf("docs/") === 0) return true;
-    var marks = ["/data/", "/skills/", "/demo/", "/resources/", "/composer/",
-      "/clean_notebooks/", "/ocstart/", "/extra_utils/", "/_paper_cache/", "/repos_index/", "/standalone/"];
-    for (var i = 0; i < marks.length; i++) if (("/" + r).indexOf(marks[i]) >= 0) return true;
-    var base = baseName(r);
-    return base.indexOf("_") === 0 || base.indexOf("example") === 0 || base.indexOf("template") === 0
-      || base === "SKILL.md" || base === "studio.html";
-  }
-
+  // Structural only: a page is a graph node unless some path segment is "private" (leading
+  // underscore: _shared, _tools, a leading-underscore file). No list of which dir names are
+  // "assets" or "relevant" (that overfits to whatever courses happened to exist); the page
+  // extension already decides page-vs-asset, and reachability decides connectedness.
   function graphNavigable(rel) {
     var parts = rel.split("/");
-    for (var i = 0; i < parts.length; i++) if (has(GRAPH_ASSET_DIR, parts[i])) return false;
-    var b = parts[parts.length - 1];
-    if (b.indexOf("_") === 0 || b === "studio.html" || b === "link_graph.html") return false;
-    for (var j = 0; j < parts.length; j++) { if (parts[j] === "standalone") return false; if (parts[j].length >= 11 && parts[j].slice(-11) === "_standalone") return false; }
+    for (var i = 0; i < parts.length; i++) if (parts[i].charAt(0) === "_") return false;
     return true;
   }
 
@@ -166,6 +159,32 @@
     var host = m[1].toLowerCase();
     if (has(NOISE_HOST, host) || host.indexOf("w3.org") >= 0 || /^\d+\.\d+\.\d+\.\d+$/.test(host)) return false;
     return host.indexOf(".") >= 0;
+  }
+
+  // A materials index (the *_materials.json / *materials_index.json / *glossary_index.json a page
+  // fetches) is the manifest of the reference packets that page surfaces. A page that loads one is,
+  // in effect, citing every source URL the index lists, so we fold those URLs into the page's
+  // citation set. Citation-sharing then connects each listed packet (every mat carries its own
+  // source URL) to the page that surfaces it. This is the materials mechanism's real structure,
+  // not a "mats/ is special" path assumption: a packet no index names stays an honest stray.
+  function collectUrls(node, out) {
+    if (node == null) return;
+    if (typeof node === "string") { if (/^https?:\/\//.test(node)) out.push(node); return; }
+    if (typeof node === "object") { for (var k in node) if (has(node, k)) collectUrls(node[k], out); }
+  }
+  function indexCitations(proj, rel, raw) {
+    if (raw == null) return [];
+    var reIdx = /([\w./-]*(?:materials_index|glossary_index|_materials)\.json)/g;
+    var refs = findAll(reIdx, raw), urls = [], seenF = {};
+    for (var i = 0; i < refs.length; i++) {
+      var p = refs[i]; if (has(seenF, p)) continue; seenF[p] = 1;
+      var r = proj.resolve(p, rel);
+      if (!(r.kind === "static_file" && r.exists && r.physical)) continue;
+      var js = proj.io.read(r.physical); if (js == null) continue;
+      var data; try { data = JSON.parse(js); } catch (e) { continue; }
+      collectUrls(data, urls);
+    }
+    return urls;
   }
 
   // ── link extraction / non-content stripping ────────────────────────────────
@@ -415,9 +434,9 @@
         }
         if (!tr || !has(pset, tr)) {
           // dead ONLY for a missing NAVIGABLE content page. A target under a skipped/build dir
-          // (standalone/, node_modules, ...) or a non-nav tool (studio.html) is outside the
-          // graph by design: it is served on disk but not crawled, so node (fs) and the browser
-          // (crawl pageset) must agree to SKIP it, not flag it dead.
+          // (standalone/, node_modules, ...) or a private path (leading-underscore segment) is
+          // outside the graph by the same structural rule graphNavigable uses, so node (fs) and
+          // the browser (crawl pageset) agree to SKIP it rather than flag it dead.
           if (r.kind === "static_file" && !r.exists && /\.(html?|md|ipynb)$/.test(r.physical || "") && graphNavigable(r.physical)) dead.push({ from: rel, to: r.physical || m });
           continue;
         }
@@ -425,6 +444,8 @@
         if (isMat(tr) && !mat) { dead.push({ from: rel, to: tr, note: "links a mats/ packet directly; link the underlying URL instead" }); continue; }
         edges.push({ f: rel, t: tr, x: isCross(courseOf(rel), courseOf(tr)), s: skill });
       }
+      var iu = indexCitations(proj, rel, raw);
+      for (var z = 0; z < iu.length; z++) { var cz = normUrl(iu[z]); if (isCitation(cz)) { if (!ext[rel]) ext[rel] = {}; ext[rel][cz] = 1; } }
     }
     // shared-citation edges: a mat joins only by sharing an external URL with content
     var url2mat = {}, url2content = {};
@@ -458,7 +479,7 @@
     var pages = [], all = iterPages(io);
     for (i = 0; i < all.length; i++) { var e = lc(extOf(all[i])); if (e === ".html" || e === ".htm" || e === ".md" || e === ".ipynb") pages.push(all[i]); }
     var pset = setOf(pages);
-    var adjO = {}, adjI = {};
+    var adjO = {}, adjI = {}, ext = {};
     for (i = 0; i < pages.length; i++) { adjO[pages[i]] = {}; adjI[pages[i]] = {}; }
     for (i = 0; i < pages.length; i++) {
       var rel = pages[i], rl = readForLinks(io, rel), raw = rl[0], suf = rl[1];
@@ -468,15 +489,27 @@
       var seenH = {};
       for (var k = 0; k < hs.length; k++) {
         var m = hs[k]; if (has(seenH, m)) continue; seenH[m] = 1;
+        if (m.indexOf("http") === 0) { var cu = normUrl(m); if (isCitation(cu)) { if (!ext[rel]) ext[rel] = {}; ext[rel][cu] = 1; } continue; }
         var t = m.split("#")[0].split("?")[0].replace(/^\s+|\s+$/g, "");
-        if (!t || /^(http|\/\/|#|mailto:|data:|tel:)/.test(t) || isTemplateLink(m)) continue;
+        if (!t || /^(\/\/|#|mailto:|data:|tel:)/.test(t) || isTemplateLink(m)) continue;
         var r = proj.resolve(m, rel);
         if ((r.kind !== "static_file" && r.kind !== "lab_tree") || !r.exists || !r.physical) continue;
         var tr = r.physical;
         if (tr && !has(pset, tr)) { var alt = (tr.slice(-6) === ".ipynb") ? tr.slice(0, -6) + ".md" : (tr.slice(-3) === ".md" ? tr.slice(0, -3) + ".ipynb" : null); tr = (alt && has(pset, alt)) ? alt : tr; }
         if (tr && has(pset, tr) && tr !== rel) { adjO[rel][tr] = 1; adjI[tr][rel] = 1; }
       }
+      var iu = indexCitations(proj, rel, raw);
+      for (var z = 0; z < iu.length; z++) { var cz = normUrl(iu[z]); if (isCitation(cz)) { if (!ext[rel]) ext[rel] = {}; ext[rel][cz] = 1; } }
     }
+    // A reference packet (mats/) is never linked; its real structural tie to the course is the
+    // external citation URL it shares with a page that cites the same source. Treat that shared
+    // citation as a (bidirectional) connection, exactly as the graph view draws it, so a packet
+    // inherits reachability from the content it documents. This replaces any "these directories
+    // are expected to be detached" assumption: a page is reachable iff it is actually connected,
+    // by a link or by a citation it genuinely shares.
+    var url2mat = {}, url2content = {};
+    for (var rel2 in ext) { if (!has(ext, rel2)) continue; var tgt = isMat(rel2) ? url2mat : url2content; for (var u2 in ext[rel2]) { if (!tgt[u2]) tgt[u2] = {}; tgt[u2][rel2] = 1; } }
+    for (var u3 in url2mat) { if (!has(url2content, u3)) continue; for (var cc in url2content[u3]) for (var mt in url2mat[u3]) { adjO[cc][mt] = 1; adjI[mt][cc] = 1; adjO[mt][cc] = 1; adjI[cc][mt] = 1; } }
     var skills = pages.filter(function (p) { return baseName(p) === "SKILL.html"; });
     var reach = setOf(skills), st = skills.slice();
     while (st.length) { var u = st.pop(); for (var v in adjO[u]) if (!has(reach, v)) { reach[v] = 1; st.push(v); } }
@@ -494,10 +527,11 @@
     for (i = 0; i < pages.length; i++) {
       var pg = pages[i]; if (has(reach, pg)) continue;
       var reason = !hasSkill[comp[pg]] ? "detached cluster (no SKILL hub)" : (objEmpty(adjI[pg]) ? "no inbound link" : "only sideways/upward; no SKILL path");
-      strays.push({ page: pg, course: courseOf(pg), reason: reason, expected: expectedDetached(pg), cluster: cmem[comp[pg]].length });
+      strays.push({ page: pg, course: courseOf(pg), reason: reason, cluster: cmem[comp[pg]].length });
     }
-    var real = strays.filter(function (s) { return !s.expected; });
-    return { pages: pages.length, reachable: objLen(reach), strays: strays, real_strays: real.length, expected_strays: strays.length - real.length };
+    // Every surviving stray is real: it is connected by neither a link nor a shared citation.
+    // There is no "expected to be detached" class; expected_strays stays 0 for report compatibility.
+    return { pages: pages.length, reachable: objLen(reach), strays: strays, real_strays: strays.length, expected_strays: 0 };
   }
   function objEmpty(o) { for (var k in o) if (has(o, k)) return false; return true; }
   function objLen(o) { var n = 0; for (var k in o) if (has(o, k)) n++; return n; }
@@ -753,7 +787,7 @@
       process.stdout.write("  · page audit: " + au.pages + " .html, " + au.pages_with_findings + " with drift\n");
       for (var ai = 0; ai < au.findings.length; ai++) {
         var pf = au.findings[ai];
-        for (var fj = 0; fj < pf.findings.length; fj++) process.stdout.write("    [" + pf.findings[fj].kind + "] " + pf.page + " — " + (pf.findings[fj].detail || pf.findings[fj].asset || pf.findings[fj].token) + "\n");
+        for (var fj = 0; fj < pf.findings.length; fj++) process.stdout.write("    " + pf.page + " [" + pf.findings[fj].kind + "] " + (pf.findings[fj].detail || pf.findings[fj].asset || pf.findings[fj].token) + "\n");
       }
       if (au.pages_with_findings) rc = 1;
     }
@@ -775,7 +809,7 @@
 
   var api = {
     DLI: DLI, RELEASED: RELEASED, Projection: Projection, Resolution: Resolution,
-    courseOf: courseOf, shipRelevant: shipRelevant, navSource: navSource, expectedDetached: expectedDetached,
+    courseOf: courseOf, shipRelevant: shipRelevant, navSource: navSource,
     graphNavigable: graphNavigable, normUrl: normUrl, isCitation: isCitation,
     parseEntrypoint: parseEntrypoint, parseCompose: parseCompose, parseNginx: parseNginx,
     graphJson: graphJson, reachability: reachability, check: check, foyerReleaseCheck: foyerReleaseCheck,

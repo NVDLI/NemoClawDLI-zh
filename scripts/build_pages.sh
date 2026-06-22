@@ -58,256 +58,86 @@ cp "$T1/scripts/link_graph.html" "$OUT/link-graph.html"
 # Favicon at the site root for the foyer + aux pages (the course carries its own under assets/).
 cp "$T1/web/nemoclaw/assets/favicon.ico" "$OUT/favicon.ico"
 
+# ── 2b. SKILL explorers: the reusable framer + each explorer folder, source shipped
+# as read-only assets so a student with a key can read AND ask about the real code on
+# the live site without leaving the HTML space. Each folder's SKILL.html references the
+# framer as ../web/_skill_explorer.js and its files as ./<file>, which resolve here too
+# because the deploy mirrors that relative shape (public/web/_skill_explorer.js + public/<dir>/).
+mkdir -p "$OUT/web"
+cp "$T1/web/_skill_explorer.js" "$OUT/web/_skill_explorer.js"
+for d in cors-proxy scripts docs workspace; do
+    if [ -d "$T1/$d" ]; then
+        mkdir -p "$OUT/$d"
+        # the explorer + the documented source it shows (read-only); skip caches + subdirs
+        for f in "$T1/$d"/*.html "$T1/$d"/*.js "$T1/$d"/*.mjs "$T1/$d"/*.py \
+                 "$T1/$d"/*.sh "$T1/$d"/*.md "$T1/$d"/*.txt "$T1/$d"/Dockerfile; do
+            [ -f "$f" ] && cp "$f" "$OUT/$d"/
+        done
+        echo "[build_pages] explorer $d -> public/$d/ ($(find "$OUT/$d" -maxdepth 1 -type f | wc -l) files, source shipped read-only)"
+    fi
+done
+
+# ── 2c. Validated course SOURCE, mirrored read-only at its repo-relative path ──
+# The validation report names offenders by repo-relative path (e.g. web/nemoclaw/01a-loop.html)
+# and previews the exact source the validator checked. The course itself deploys as the bundled
+# standalone under public/nemoclaw/, which is TRANSFORMED, so the report would otherwise have no
+# way to show what the validator actually saw. Mirror the source text files (no binary assets) to
+# public/web/nemoclaw/ so those paths resolve. These are fetched as text by the report, never
+# navigated to as pages, so the /lab/static and _shared.js references inside them do not matter.
+if [ -d "$T1/web/nemoclaw" ]; then
+    ( cd "$T1" && find web/nemoclaw -type f \
+        \( -name '*.html' -o -name '*.md' -o -name '*.css' -o -name '*.js' -o -name '*.svg' -o -name '*.json' \) -print0 \
+      | tar --null -cf - -T - ) | ( cd "$OUT" && tar -xf - )
+    echo "[build_pages] validated source -> public/web/nemoclaw/ ($(find "$OUT/web/nemoclaw" -type f | wc -l) text files, read-only for the report preview)"
+fi
+
 # ── 3. CI gate artifacts: the authoritative test results, surfaced statically ──
 if [ -f "$T1/docs/validation/latest.json" ]; then
     cp "$T1/docs/validation/latest.json" "$OUT/gate.json"
 else
     printf '{"note":"no gate report; run validate_bundle in CI"}\n' > "$OUT/gate.json"
 fi
-python3 - "$T1" "$OUT" <<'PY'
-import json, os, sys, html
-T1, OUT = sys.argv[1], sys.argv[2]
-p = os.path.join(T1, "docs/validation/latest.json")
-data = {}
-if os.path.exists(p):
-    try: data = json.load(open(p))
-    except Exception: data = {}
-esc = lambda x: html.escape(str(x))
-
-# Verdict banner: the same honest verdict validate_bundle prints (clean / advisory / fail / none).
-ok, adv = data.get("ok"), data.get("advisory_total", 0)
-if not data:
-    vclass, vtext = "muted", "No gate report yet. CI runs validate_bundle.py and writes docs/validation/latest.json."
-elif ok is False:
-    vclass, vtext = "fail", "FAIL: ship-blocking issues (see the full log)."
-elif adv:
-    vclass, vtext = "warn", "PASS, but " + str(adv) + " advisory issue(s) logged below."
-else:
-    vclass, vtext = "ok", "Clean: no blocking and no advisory issues."
-
-# Gate metrics table.
-rows = []
-add = lambda k, v: rows.append("<tr><td>" + esc(k) + "</td><td>" + esc(v) + "</td></tr>")
-g = data.get("grounding", {}) if isinstance(data, dict) else {}
-for k in ("pages", "ungrounded", "em_dash_pages", "mat_associated"):
-    if k in g: add("grounding . " + k, g[k])
-pv = data.get("prose_variety", {})
-if pv: add("prose variety flagged", str(pv.get("flagged", "?")) + " / " + str(pv.get("pages", "?")))
-pa = data.get("page_audit", {})
-if pa: add("page audit drift", str(pa.get("pages_with_findings", "?")) + " / " + str(pa.get("pages", "?")))
-gate_tbl = "".join(rows) or "<tr><td colspan=2>No metrics.</td></tr>"
-
-# Materials section: each vendored web source, its tier, and -- if a pull failed -- the exact
-# source and the one-line fix, so a student reading this sees precisely what is wrong and how
-# a contributor repairs it (the same words the CLI and CI use).
-mt = data.get("materials", {})
-if mt:
-    tiers = ", ".join(str(n) + " " + esc(t) for t, n in sorted(mt.get("by_tier", {}).items())) or "none"
-    m = ("<p>" + str(mt.get("count", 0)) + " vendored web sources (" + tiers
-         + "), last pulled " + esc(mt.get("generated") or "?") + ".</p>")
-    un = mt.get("unreachable", [])
-    if un:
-        m += ("<div class=bad><strong>" + str(len(un)) + " unreachable at the last pull.</strong> Fix: <code>"
-              + esc(mt.get("fix", "")) + "</code><ul>")
-        for u in un:
-            m += ("<li><code>" + esc(u.get("name")) + "</code> (" + esc(u.get("host")) + "): "
-                  + esc(u.get("error") or "unreachable")
-                  + " (<a href='" + esc(u.get("url")) + "'>source</a>)</li>")
-        m += "</ul></div>"
-    else:
-        m += ("<p class=good>Every vendored web source pulled cleanly. A contributor refreshes them with "
-              "<code>python3 scripts/pull_materials.py</code> and drift-checks the live web with "
-              "<code>python3 scripts/pull_materials.py --check</code>.</p>")
-else:
-    m = "<p class=muted>No materials provenance recorded.</p>"
-
-tmpl = """<!DOCTYPE html><html lang=en><head><meta charset=UTF-8>
-<meta name=viewport content="width=device-width,initial-scale=1">
-<link rel="icon" type="image/x-icon" href="favicon.ico">
-<title>Validation gate</title>
-<style>
-body{background:#0d0d0d;color:#f2f2f2;font:15px/1.55 system-ui,sans-serif;max-width:760px;margin:0 auto;padding:2rem 1.2rem 4rem}
-a{color:#76b900}h1{color:#76b900;margin:.2em 0}h2{font-size:1.15rem;margin:1.6em 0 .4em;border-bottom:1px solid #2a2a2a;padding-bottom:.3em}
-code{font-family:ui-monospace,Consolas,monospace;font-size:.86em;background:#161616;border:1px solid #2a2a2a;border-radius:4px;padding:1px 5px}
-table{border-collapse:collapse;width:100%;margin:.6em 0}td{border:1px solid #2a2a2a;padding:7px 11px}
-td:first-child{color:#aee23a;font-family:ui-monospace,monospace;font-size:.85rem}
-.verdict{font-weight:700;border-radius:8px;padding:12px 16px;margin:1em 0;border:1px solid #2a2a2a}
-.verdict.ok{background:rgba(118,185,0,.12);border-color:#76b900;color:#aee23a}
-.verdict.warn{background:rgba(210,153,34,.12);border-color:#d29922;color:#e3b341}
-.verdict.fail{background:rgba(209,36,47,.14);border-color:#d1242f;color:#ff7b72}
-.verdict.muted{color:#b0b0b0}
-.bad{background:rgba(209,36,47,.10);border:1px solid #d1242f;border-radius:8px;padding:10px 14px;margin:.6em 0}
-.bad code{background:#1c1416}.good{color:#9fce5e}.muted{color:#8a8a8a}
-ul{margin:.4em 0 .2em 1.1em}li{margin:.25em 0}
-</style></head><body>
-<p><a href="index.html">&larr; back</a></p>
-<h1>Validation gate</h1>
-<div class="verdict __VCLASS__">__VTEXT__</div>
-<p>Run by <code>validate_bundle.py</code>; the full log is <code>docs/validation/latest.md</code>.
-Reproduce locally: <code>python3 scripts/validate_bundle.py</code>.</p>
-<h2>Gate metrics</h2>
-<table>__GATE__</table>
-<h2>Materials</h2>
-__MATS__
-</body></html>"""
-out = (tmpl.replace("__VCLASS__", vclass).replace("__VTEXT__", esc(vtext))
-       .replace("__GATE__", gate_tbl).replace("__MATS__", m))
-open(os.path.join(OUT, "validation.html"), "w").write(out)
-print("[build_pages] validation.html written (verdict=%s, %d materials)" % (vclass, mt.get("count", 0)))
-PY
-
-# ── 4. Landing page (Pages-relative links to everything client-side) ──
-cat > "$OUT/index.html" <<'HTML'
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
+cat > "$OUT/validation.html" <<'HTML'
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <link rel="icon" type="image/x-icon" href="favicon.ico"/>
-<script>(function(){try{var t=localStorage.getItem("theme")||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
-<title>Building Agents · client-side course</title>
-<style>
-  :root{--g:#76b900;--gs:#aee23a;--bg:#0d0d0d;--e1:#161616;--e3:#2a2a2a;--tx:#f2f2f2;--td:#b0b0b0;--mono:ui-monospace,"SF Mono",Consolas,monospace}
-  :root[data-theme="light"]{--gs:#4a7a00;--bg:#ffffff;--e1:#f6f8fa;--e3:#e1e6eb;--tx:#1a1a1a;--td:#3b3b3b}
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--tx);font:15px/1.55 system-ui,-apple-system,sans-serif;max-width:60rem;margin:0 auto;padding:clamp(1.5rem,4vw,2.5rem) clamp(1rem,4vw,2rem) 5rem}
-  a{color:var(--g);text-decoration:none}a:hover{text-decoration:underline}
-  .eyebrow{font-family:var(--mono);font-size:.72rem;color:var(--gs);text-transform:uppercase;letter-spacing:.12em}
-  h1{font-size:2.3rem;margin:.3em 0 .3em;line-height:1.1}
-  p.lead{color:var(--td);font-size:1.05rem;max-width:48rem}
-  .grid{display:grid;grid-template-columns:1fr;gap:14px;margin:1.6em 0}
-  .card{background:var(--e1);border:1px solid var(--e3);border-radius:10px;padding:18px 20px;display:block}
-  .card:hover{border-color:var(--g);text-decoration:none}
-  .card h3{color:var(--gs);font-size:1.05rem;margin:0 0 .35em}
-  .card p{color:var(--td);font-size:.9rem;margin:0}
-  .tools{margin:1.4em 0;font-size:.92rem}.tools a{margin-right:18px}
-  .note{color:#8a8a8a;font-size:.82rem;margin-top:2em;border-top:1px solid var(--e3);padding-top:1em}
-</style>
-</head>
-<body>
-  <div class="eyebrow">NVIDIA · open-source release</div>
-  <h1>Building <span style="color:var(--g)">Agents</span></h1>
-  <p class="lead">The full course, served as static files and run entirely in your browser.
-  Bring an NVIDIA API key on a course page to run the live cells; everything else (navigation,
-  diagrams, the link graph, and the test harnesses) needs no server.</p>
-
-  <div class="grid">
-    <a class="card" href="nemoclaw/index.html">
-      <h3>Securing Agents</h3>
-      <p>Build the loop, then contain it with OpenClaw, OpenShell, and the NemoClaw sandbox.</p>
-    </a>
-  </div>
-
-  <div class="tools">
-    <a href="tests.html">Run the test harness &rarr;</a>
-    <a href="link-graph.html">Link graph &rarr;</a>
-    <a href="validation.html">Validation report &rarr;</a>
-  </div>
-
-  <p class="note">Static build produced by <code>scripts/build_pages.sh</code>. Identical output is
-  published to GitLab Pages (private, pre-release) and GitHub Pages (on external release).</p>
-
-  <button id="theme-tgl" type="button" aria-label="Toggle dark or light theme"
-    style="position:fixed;top:14px;right:16px;z-index:50;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;background:transparent;color:var(--td);border:1px solid var(--e3);border-radius:8px">☀</button>
-  <script>(function(){var r=document.documentElement,b=document.getElementById("theme-tgl");
-  function cur(){return r.getAttribute("data-theme")||"dark";}
-  function paint(){var t=cur();b.textContent=t==="light"?"☾":"☀";b.title=t==="light"?"Switch to dark theme":"Switch to light theme";}
-  b.addEventListener("click",function(){var n=cur()==="light"?"dark":"light";r.setAttribute("data-theme",n);try{localStorage.setItem("theme",n);}catch(e){}paint();});paint();})();</script>
-</body>
-</html>
+<title>Validation gate &middot; review</title></head><body>
+<div id="explorer"></div>
+<script type="application/json" id="explorer-config">{"mode":"report","title":"Validation gate","nav":{"home":"index.html"}}</script>
+<script src="web/_skill_explorer.js"></script>
+</body></html>
 HTML
+echo "[build_pages] validation.html (framer report mode) written"
+
+# ── 4. Landing page: the authoritative foyer (web/index.html), PROJECTED to Pages ──
+# ONE source. web/index.html is the Jupyter/lab authoritative foyer and links repo files via
+# /lab/static/ (resolved there by Jupyter extra_static_paths). For the standalone Pages site
+# we strip that prefix to relative paths and inject the Pages-only tool links at the
+# build:deploy-tools marker. The Pages site never points at /lab.
+cp "$T1/web/index.html" "$OUT/index.html"
+python3 - "$OUT/index.html" <<'PROJ'
+import sys, re
+p = sys.argv[1]; s = open(p).read()
+s = s.replace("/lab/static/", "")   # authoritative /lab/static -> Pages-relative
+tools = ('      <a href="validation.html">Validation report &rarr;</a>\n'
+         '      <a href="tests.html">Test harness &rarr;</a>')
+s = re.sub(r'<!-- build:deploy-tools[^>]*-->', tools, s)
+open(p, "w").write(s)
+PROJ
 
 # ── 5. Client-side test runner ──
 # Three live, in-browser layers: an engine smoke test, the course SKILL self-test
 # harnesses (which auto-run and badge themselves), and the CI gate summary.
 cat > "$OUT/tests.html" <<'HTML'
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <link rel="icon" type="image/x-icon" href="favicon.ico"/>
-<title>Client-side test runner</title>
-<style>
-  :root{--g:#76b900;--gs:#aee23a;--bg:#0d0d0d;--e1:#161616;--e3:#2a2a2a;--tx:#f2f2f2;--td:#b0b0b0;--mono:ui-monospace,Consolas,monospace}
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--tx);font:15px/1.55 system-ui,sans-serif;max-width:60rem;margin:0 auto;padding:2rem 1.2rem 5rem}
-  a{color:var(--g)}h1{color:var(--g);margin-bottom:.2em}h2{font-size:1.1rem;margin:1.4em 0 .5em;border-bottom:1px solid var(--e3);padding-bottom:.3em}
-  .badge{font-family:var(--mono);font-size:.78rem;padding:2px 9px;border-radius:999px;border:1px solid var(--e3);color:var(--td)}
-  .badge.ok{background:var(--g);color:#000;border-color:var(--g)}.badge.err{background:#d1242f;color:#fff;border-color:#d1242f}.badge.run{color:var(--gs)}
-  .row{display:flex;align-items:center;gap:10px;margin:.4em 0}
-  pre{background:var(--e1);border:1px solid var(--e3);border-radius:8px;padding:12px;font:12px/1.5 var(--mono);overflow:auto;white-space:pre-wrap}
-  iframe{width:100%;height:320px;border:1px solid var(--e3);border-radius:8px;background:#fff;margin:.4em 0}
-  table{border-collapse:collapse;width:100%;margin:.4em 0}td{border:1px solid var(--e3);padding:6px 10px;font-size:.86rem}
-  td:first-child{font-family:var(--mono);color:var(--gs);font-size:.8rem}
-</style>
-</head>
-<body>
-  <p><a href="index.html">&larr; back</a></p>
-  <h1>Test harness</h1>
-  <p style="color:var(--td)">Runs in your browser, no server. Three layers: the engine smoke test and the
-  course SKILL self-tests run live here; the full gate (engine self-test, layout, grounding) is run by CI
-  and surfaced below.</p>
-
-  <h2>1 &middot; Engine smoke test <span id="eng-badge" class="badge run">running</span></h2>
-  <pre id="eng-out">loading engine.js ...</pre>
-
-  <h2>2 &middot; Course SKILL self-tests (live)</h2>
-  <p style="color:var(--td);font-size:.9rem">Each SKILL hub auto-runs its own unit tests on load and badges the result at the top.</p>
-  <iframe src="nemoclaw/SKILL.html" title="nemoclaw SKILL self-test"></iframe>
-
-  <h2>3 &middot; CI gate report <span id="gate-badge" class="badge run">loading</span></h2>
-  <div id="gate-out"><a href="validation.html">open the full validation report &rarr;</a></div>
-
+<title>Client-side test runner</title></head><body>
+<div id="explorer"></div>
+<script type="application/json" id="explorer-config">{"mode":"tests","title":"Test harness","nav":{"home":"index.html"}}</script>
 <script src="engine.js"></script>
-<script>
-(function () {
-  // ── Layer 1: engine smoke test. The engine is UMD; in the browser it attaches as
-  // a global (module.exports in node, the factory return otherwise). Assert the
-  // public surface that the viewer and CI both depend on is present and callable.
-  var out = document.getElementById("eng-out"), badge = document.getElementById("eng-badge");
-  var E = (typeof window !== "undefined" && (window.engine || window.LinkEngine)) || (typeof linkEngine !== "undefined" ? linkEngine : null);
-  // engine.js (UMD) assigns to module.exports under node and returns the factory otherwise;
-  // when loaded as a plain <script> the factory result is on the global it defines.
-  if (!E && typeof globalThis !== "undefined") { E = globalThis.engine || globalThis.LinkEngine || null; }
-  var checks = [], pass = 0;
-  function check(name, ok) { checks.push([name, !!ok]); if (ok) pass++; }
-  if (!E) {
-    check("engine module is exposed on the page", false);
-  } else {
-    check("engine module loaded", true);
-    ["selfTest", "check", "pageAudit", "iterPages", "readForLinks"].forEach(function (fn) {
-      check("exports " + fn + "()", typeof E[fn] === "function");
-    });
-  }
-  var lines = checks.map(function (c) { return (c[1] ? "✓" : "✗") + "  " + c[0]; });
-  out.textContent = lines.join("\n") + "\n\nengine smoke: " + pass + "/" + checks.length + " pass";
-  var ok = pass === checks.length && checks.length > 0;
-  badge.textContent = ok ? (pass + "/" + checks.length + " pass") : (pass + "/" + checks.length + " FAIL");
-  badge.className = "badge " + (ok ? "ok" : "err");
-
-  // ── Layer 3: surface the CI gate summary (authoritative; needs node + filesystem). ──
-  var gb = document.getElementById("gate-badge"), go = document.getElementById("gate-out");
-  fetch("gate.json").then(function (r) { return r.json(); }).then(function (d) {
-    var g = d.grounding || {};
-    var dead = (d.reachability && d.reachability.real_strays);
-    var rows = "";
-    function add(k, v) { rows += "<tr><td>" + k + "</td><td>" + v + "</td></tr>"; }
-    if (d.note) { gb.textContent = "no report"; gb.className = "badge"; go.innerHTML = "<p>" + d.note + "</p>"; return; }
-    if (g.pages != null) add("pages", g.pages);
-    if (g.ungrounded != null) add("ungrounded", g.ungrounded);
-    if (g.em_dash_pages != null) add("em-dash pages (vendored)", g.em_dash_pages);
-    if (g.mat_associated != null) add("mat-associated", g.mat_associated);
-    go.innerHTML = "<table>" + rows + "</table><p><a href='validation.html'>full report &rarr;</a></p>";
-    gb.textContent = "loaded"; gb.className = "badge ok";
-  }).catch(function () {
-    gb.textContent = "unavailable"; gb.className = "badge";
-    go.innerHTML = "<p style='color:#8a8a8a'>No gate.json (CI has not run yet). The engine self-test and the full layout/grounding gate run in CI; see the README for the local command.</p>";
-  });
-})();
-</script>
-</body>
-</html>
+<script src="web/_skill_explorer.js"></script>
+</body></html>
 HTML
 
 echo "[build_pages] done -> $OUT"

@@ -81,3 +81,8 @@ ipywidgets
 jupyter-app-launcher
 jupyterlab
 jupyterlab-git
+
+# Browser automation for in-lab render/UI experiments. The Chromium browser + its
+# system libs are installed in the Dockerfile (playwright install --with-deps chromium);
+# the render-check harness is scripts/render_check.py. Discoverable via workspace/SKILL.html.
+playwright

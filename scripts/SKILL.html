@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>scripts/ · the bundle toolchain · explore</title>
+
+<script type="application/json" id="skill-meta">
+{
+  "schema": "dir-skill/1.0",
+  "node_type": "directory-explorer",
+  "title": "scripts/ bundle toolchain",
+  "source_dir": "scripts/",
+  "summary": "Every tool that builds, validates, vendors, and deploys the bundle, grouped by what it is for: the one link engine, the validation suite, the SKILL + consistency checks, build and deploy, materials vendoring, the edX surfaces, and the dev harness. This SKILL.html is a live explorer: open any tool, read it in context, take a tour, and ask the model about it with your build.nvidia.com key. The files stay where the toolchain imports them; the grouping is the navigation.",
+  "related": [
+    "scripts/engine.js",
+    "scripts/validate_bundle.py",
+    "scripts/build_pages.sh"
+  ],
+  "explorer": "../web/_skill_explorer.js"
+}
+</script>
+
+<script type="application/json" id="explorer-config">
+{
+  "title": "scripts/ \u00b7 the bundle toolchain",
+  "summary": "The tools that build, check, and ship the course, organized by concern. Files are not moved (the toolchain imports them by path); the groups below are how you read them. Open one, walk a tour, and ask about the code with your build.nvidia.com key.",
+  "model": "nvidia/nemotron-3-nano-30b-a3b",
+  "ties": [
+    "build"
+  ],
+  "nav": {
+    "home": "../web/index.html",
+    "up": {
+      "label": "task1",
+      "href": "../SKILL.html"
+    }
+  },
+  "groups": [
+    {
+      "title": "Link & topology engine",
+      "files": [
+        {
+          "path": "engine.js",
+          "role": "the one link engine",
+          "desc": "Resolution, crawl, the page/edge graph, reachability, and the release contract. Runs in the browser viewer and headless via node. The single source; there is no second engine to drift."
+        },
+        {
+          "path": "link_projection.py",
+          "role": "python shim over the engine",
+          "desc": "Crawl/classification helpers grounding.py reuses, plus thin shims (check / reachability / foyer contract / embed) that forward to engine.js. No python graph engine."
+        },
+        {
+          "path": "link_graph.html",
+          "role": "topology viewer",
+          "desc": "Loads engine.js and computes the graph live in the browser; the offline default is an embedded snapshot. The radial depth-ring layout of how pages resolve and what reaches a SKILL hub."
+        },
+        {
+          "path": "run_engine.sh",
+          "role": "headless engine runner",
+          "desc": "Resolves a node (host PATH, else the lab container) and runs engine.js with --check / --self-test / --reach / --graph."
+        },
+        {
+          "path": "run_node.sh",
+          "role": "node resolver",
+          "desc": "Shared node-resolution helper the other runners build on."
+        }
+      ]
+    },
+    {
+      "title": "Validation suite",
+      "files": [
+        {
+          "path": "validate_bundle.py",
+          "role": "the gate (single CI entrypoint)",
+          "desc": "Composes every validator into one gate, advertises a three-tier severity gradient with an inline fix per finding, and writes the durable log (docs/validation/latest.{json,md})."
+        },
+        {
+          "path": "grounding.py",
+          "role": "em-dash + citation grounding",
+          "desc": "Deterministic sweep: em-dash detection, claim-bearing pages grounded in a cited source, and page/material citation-URL association."
+        },
+        {
+          "path": "prose_variety.py",
+          "role": "rhythm + buzz cadence",
+          "desc": "Sentence-length spread, staccato triads, enumeration, and the antithesis/numeric buzz constructions that read as marketing."
+        },
+        {
+          "path": "color_theme.py",
+          "role": "theme-dynamic color check",
+          "desc": "Flags inline color literals and undefined CSS vars that cannot flip between light and dark."
+        },
+        {
+          "path": "figure_audit.py",
+          "role": "static figure legibility/a11y",
+          "desc": "Tiny text at render size, label overflow past figure bounds, and missing aria-label / alt / rel=noopener on inline SVGs and images."
+        },
+        {
+          "path": "cell_audit.py",
+          "role": "runnable-cell contract",
+          "desc": "Cells show their work, log via helpers.log not console, await model calls, inline no key, and keep cell-only code in an editable cell."
+        },
+        {
+          "path": "check_figures.mjs",
+          "role": "runtime figure geometry",
+          "desc": "Renders the JS-drawn figures (mountDiagram, the policy map) under jsdom and flags overlap, out-of-bounds text, stray connectors, and edgeless relational diagrams. Self-tests each detector."
+        },
+        {
+          "path": "run_figcheck.sh",
+          "role": "figure-geometry runner",
+          "desc": "Resolves node + installs jsdom once, then runs check_figures.mjs."
+        },
+        {
+          "path": "validate_layout.py",
+          "role": "static mount/layout check",
+          "desc": "Mount selectors, asset paths, and per-course SKILL beacons are present and wired. A typo'd mount id renders nothing with no console error."
+        },
+        {
+          "path": "validate_canvas_html.py",
+          "role": "canvas page linter",
+          "desc": "Structural checks for the interactive canvas pages."
+        },
+        {
+          "path": "reference_graph.py",
+          "role": "cross-course reference audit",
+          "desc": "Surfaces references that cross course boundaries (build_agents must not depend on a sibling)."
+        },
+        {
+          "path": "tenets.py",
+          "role": "platform-tenet check",
+          "desc": "Checks the platform tenets that the SKILL beacons and narrative are supposed to uphold."
+        },
+        {
+          "path": "nb_audit.py",
+          "role": "notebook buffer audit",
+          "desc": "Catches the VS Code buffer-merge corruption pattern after edits to notebook markdown."
+        }
+      ]
+    },
+    {
+      "title": "SKILL & consistency",
+      "files": [
+        {
+          "path": "skill_consistency.py",
+          "role": "SKILL invariant + dangling check",
+          "desc": "Facts duplicated across files must agree, every concrete path a skill-meta points at must exist, and a service SKILL must have a tester. Absence where expected is a FAIL, not a pass."
+        },
+        {
+          "path": "skill_audit.py",
+          "role": "SKILL coverage audit",
+          "desc": "Audits the SKILL beacons for the directory-observability contract."
+        },
+        {
+          "path": "gen_skill_hierarchy.py",
+          "role": "SKILL hub generator",
+          "desc": "Generates the hub SKILL.html files from the live tree so the documented hierarchy cannot drift from reality."
+        }
+      ]
+    },
+    {
+      "title": "Build & deploy",
+      "files": [
+        {
+          "path": "build_pages.sh",
+          "role": "static site assembler",
+          "desc": "Assembles the fully client-side site into public/: the standalone course, the link-graph viewer, the validation report, and the SKILL explorers with their source shipped read-only."
+        },
+        {
+          "path": "bundle_standalone.py",
+          "role": "standalone course bundler",
+          "desc": "Inlines each page's CSS, ships _shared.js, carries the assets, and adds the off-lab key panel, producing a self-contained course directory."
+        },
+        {
+          "path": "push_pages.sh",
+          "role": "pages push helper",
+          "desc": "Pushes the assembled public/ to the Pages vendor."
+        },
+        {
+          "path": "publish_edx.py",
+          "role": "edX export",
+          "desc": "Produces the light, chrome-free iframe export for the edX navigator."
+        },
+        {
+          "path": "install-hooks.sh",
+          "role": "git hook installer",
+          "desc": "Installs the pre-commit / pre-push hooks that run the same gates locally."
+        }
+      ]
+    },
+    {
+      "title": "Materials & vendoring",
+      "files": [
+        {
+          "path": "pull_materials.py",
+          "role": "materials rebase",
+          "desc": "Re-pulls each vendored web source (glossary, papers, posts) to its ground truth, never aborting: a failed source keeps the committed snapshot and records status=unreachable."
+        },
+        {
+          "path": "build_rag_index.py",
+          "role": "rag index build",
+          "desc": "Embeds the Module 2b Index Agent corpus and example queries offline through llm_client into assets/rag_index.json (model-pinned, fingerprinted), so #rag-cell loads a prebuilt index instead of re-embedding on every view. Run --check to catch drift between the script seed, the manifest, and the cell's CORPUS."
+        },
+        {
+          "path": "build_cli_readmes.py",
+          "role": "cli readme vendoring",
+          "desc": "Vendors the framework READMEs the Module 4b 'weigh the harnesses' artifact grounds on into assets/cli_readme_*.txt plus assets/cli_readmes.json (a grounding extract per CLI). Closed-source frameworks (Cursor, OpenClaw) are authored in-script. Run --check to confirm the index covers every framework."
+        },
+        {
+          "path": "vendor_glossary.py",
+          "role": "glossary vendoring",
+          "desc": "Vendors the NVIDIA glossary the in-page tool searches."
+        },
+        {
+          "path": "vendor_navigator.py",
+          "role": "navigator vendoring",
+          "desc": "Vendors the edX navigator surface."
+        }
+      ]
+    },
+    {
+      "title": "edX surfaces",
+      "files": [
+        {
+          "path": "edx_getting_started.html",
+          "role": "edX getting-started page",
+          "desc": "The static getting-started surface shown in the edX shell."
+        },
+        {
+          "path": "edx_navigator_quick.html",
+          "role": "edX quick navigator",
+          "desc": "The compact LMS navigator the edX export links to."
+        }
+      ]
+    },
+    {
+      "title": "Dev harness",
+      "files": [
+        {
+          "path": "render_check.py",
+          "role": "in-lab render check",
+          "desc": "Loads each course page in the lab's bundled headless Chromium (playwright, baked into workspace/Dockerfile) over a local server, and reports what mounted: canvas panels, run-cells, run-button labels, leftover python views, and real script errors. Exits non-zero on breakage, so it gates. Run --all to also render the aux pages (glossary, index, courses, cert, studio, SKILL), which share the module graph but mount few cells; the missing aux coverage is how glossary.html once shipped broken. The in-lab counterpart to test_page_runtime.js."
+        },
+        {
+          "path": "module_check.py",
+          "role": "static module-graph drift check",
+          "desc": "Parses every page and _*.js module and confirms each import-from a sibling module resolves to a real export (re-exports counted) and each re-export is honest (the name is defined or imported in that module). Catches the class where an extraction drops a re-export and every importing page breaks at load, like glossary.html's missing glossaryScore, statically in milliseconds with no browser. --dead also lists never-referenced imports (advisory). Enforced at push as pre-push RULE 7; the fast static twin of render_check --all."
+        },
+        {
+          "path": "test_page_runtime.js",
+          "role": "playwright runtime test",
+          "desc": "Loads a canvas page under playwright/chromium in the openclaw container and clicks through it, driving the gateway nodes and catching runtime ReferenceErrors a syntax check misses."
+        },
+        {
+          "path": "push",
+          "role": "safe devbox push",
+          "desc": "Run instead of git push: stashes modified tracked files, absorbs the DGX Spark CI-report commits with a pull --rebase, pushes, then restores the stash, so a non-fast-forward rejection never interrupts you."
+        }
+      ]
+    }
+  ],
+  "tour": [
+    {
+      "title": "Start here: one engine",
+      "file": "engine.js",
+      "lines": [
+        1,
+        16
+      ],
+      "note": "Everything topological routes through this file. The header states the contract: resolution, crawl, graph, reachability, and the release foyer, all here, run both in the browser viewer and headless via node, with no second implementation to drift."
+    },
+    {
+      "title": "The gate, top to bottom",
+      "file": "validate_bundle.py",
+      "lines": [
+        1,
+        28
+      ],
+      "note": "The single CI entrypoint. Read the module docstring: it composes the deterministic validators, writes the durable log, and (the recent change) advertises a severity gradient with an inline fix per finding."
+    },
+    {
+      "title": "The severity gradient",
+      "file": "validate_bundle.py",
+      "lines": [
+        187,
+        200
+      ],
+      "note": "Where flat 'advisory' became required / recommended / consider, and where each finding gets the concrete change to make. This is what turned the validator from an arguer-against into a recommender."
+    },
+    {
+      "title": "How a SKILL stays honest",
+      "file": "skill_consistency.py",
+      "lines": [
+        256,
+        281
+      ],
+      "note": "The dangling check: every concrete repo path a skill-meta points at must exist, or it is a FAIL. This is the contract that makes a folder explorer's file index trustworthy."
+    }
+  ],
+  "related": [
+    {
+      "label": "topology viewer",
+      "href": "link_graph.html"
+    },
+    {
+      "label": "root SKILL (ontology)",
+      "href": "../SKILL.html"
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<div id="explorer"></div>
+<noscript>
+  <h1>scripts/ bundle toolchain</h1>
+  <p>The tools that build, validate, vendor, and deploy the bundle. Enable JavaScript to
+     explore them grouped by concern, or read the source directly in this folder. Start with
+     <a href="engine.js">engine.js</a> (the link engine) and
+     <a href="validate_bundle.py">validate_bundle.py</a> (the gate).</p>
+</noscript>
+<script src="../web/_skill_explorer.js"></script>
+</body>
+</html>

@@ -233,7 +233,7 @@ def inv_lifecycle_allowlist():
 # mats are now course-scoped under web/nemoclaw/mats/, so the "web/" prefix already covers
 # them; there is no bare top-level "mats/" path root any more.
 _PREFIXES = ("task1/", "cpu/", "web/", "dgx/", "repos/",
-             "docs/", "scripts/", "workspace/")
+             "docs/", "scripts/", "workspace/", "cors-proxy/")
 
 
 def _resolve(ref: str, base: Path | None = None) -> Path | None:
@@ -288,6 +288,10 @@ def check_harness_wiring():
         h = read(p)
         rel = str(p.relative_to(REPO))
         meta = skill_meta(p) or {}
+        # A directory-explorer documents files (it may LIST _skill_selftest.js in its index)
+        # but does not host the self-test harness, so the half-wired heuristic does not apply.
+        if meta.get("node_type") == "directory-explorer":
+            continue
         mount = 'id="selftest"' in h
         inc = "_skill_selftest.js" in h
         call = "SkillSelfTest.run(" in h

@@ -15,7 +15,7 @@
 //
 // WebSocket monitoring: every /cli/gateway frame is parsed. The run is only
 // considered to exercise the agent loop if event:"agent" tool/command frames
-// actually arrive — a green page with zero tool frames is reported as a WARN,
+// actually arrive. A green page with zero tool frames is reported as a WARN,
 // because that is exactly the silent-failure mode this harness exists to catch.
 //
 // Deps (one-time, inside openclaw):
@@ -32,8 +32,8 @@ const url = process.argv[2] || 'http://nginx/lab/static/nemoclaw/01a-loop.html';
 const CLAW_URL = process.env.CLAW_URL || '';
 const CLAW_TOKEN = process.env.CLAW_TOKEN || '';
 
-// Locate the chromium-headless-shell binary. The install path moves between
-// playwright versions, so glob the known roots instead of hardcoding one.
+// Locate the chromium-headless-shell binary.
+// The install path moves between playwright versions, so glob the known roots instead of hardcoding one.
 function findChrome() {
   if (process.env.CHROME_BIN && fs.existsSync(process.env.CHROME_BIN)) return process.env.CHROME_BIN;
   const roots = [
@@ -126,7 +126,7 @@ function findChrome() {
   // wild, but the lab ships a keyless LLM proxy at /lab/svc/llm. Pre-seed getConfig's cache
   // (CONFIG_KEY = __nv_slim_cfg_v1) to point at it, so this harness can actually
   // run model cells (helpers.chat / ChatOpenAI / createReactAgent) without a
-  // student key. We are validating the cell LOGIC — tool calls, loops, agents —
+  // student key. We are validating the cell LOGIC, namely tool calls, loops, and agents,
   // not the production auth path. Set before any page script reads the config.
   await page.addInitScript(() => {
     try {
@@ -199,7 +199,7 @@ function findChrome() {
   const toolsMissing = expectedTools && ws.toolStarts.length === 0 && ws.cmdEnds.length === 0;
 
   if (hardFail) console.log('RESULT: FAIL (errors / unsettled nodes)');
-  else if (toolsMissing) console.log('RESULT: WARN (page green but NO tool/command frames — agent loop not observed)');
+  else if (toolsMissing) console.log('RESULT: WARN (page green but NO tool/command frames, so the agent loop was not observed)');
   else console.log('RESULT: PASS' + (expectedTools ? ` (${ws.toolStarts.length} tool starts, ${ws.cmdEnds.length} command ends)` : ''));
 
   await browser.close();

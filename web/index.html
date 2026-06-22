@@ -37,6 +37,24 @@
     --mono:ui-monospace,"SF Mono",Consolas,monospace;
     --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
   }
+  /* Light theme: the same shared tokens flipped, on the same data-theme + localStorage contract as
+     the course and framer pages, so the foyer toggles with the rest of the stack. Forced by the
+     topbar toggle (data-theme), or applied automatically when the OS prefers light. */
+  :root[data-theme="light"] {
+    --g:#76b900; --gd:#2f6a00; --gs:#4a7a00;
+    --bg:#ffffff; --e1:#f6f8fa; --e2:#eef1f4; --e3:#e1e6eb;
+    --tx:#1a1a1a; --td:#3b3b3b; --tf:#57606a; color-scheme:light;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]):not([data-theme="light"]) {
+      --g:#76b900; --gd:#2f6a00; --gs:#4a7a00;
+      --bg:#ffffff; --e1:#f6f8fa; --e2:#eef1f4; --e3:#e1e6eb;
+      --tx:#1a1a1a; --td:#3b3b3b; --tf:#57606a; color-scheme:light;
+    }
+  }
+  .theme-toggle { width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center;
+    font-size:15px; line-height:1; cursor:pointer; background:transparent; color:var(--td);
+    border:1px solid var(--e3); border-radius:7px; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { background: var(--bg); color: var(--tx);
                font-family: var(--sans); font-size: 15px; line-height: 1.55; }
@@ -114,7 +132,7 @@
   .keybar button:hover { background:var(--gs); }
   .key-status { font-size:.84rem; font-family:var(--mono); color:var(--tf); }
   .key-status.ok { color:var(--gs); }
-  .key-status.err { color:#ff7a7a; }
+  .key-status.err { color:var(--err); }
   .keybar-hint { font-size:.84rem; color:var(--td); margin:.7em 0 0;
                  max-width:760px; line-height:1.55; }
 
@@ -122,12 +140,16 @@
            color: var(--tf); font-size: .82rem; }
   footer a { color: var(--td); }
 </style>
+<script>/* Pre-paint: apply a saved manual theme so the foyer opens in the right palette with no flash;
+   with no saved choice the @media rule above follows the OS. */
+(function(){try{var t=localStorage.getItem("theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
 </head>
 <body>
 <div class="topbar">
   <span class="logo">NVIDIA DLI</span>
   <span class="crumb">/ browser courses · foyer</span>
   <span class="spacer"></span>
+  <button type="button" class="theme-toggle" aria-label="Toggle dark or light theme"></button>
   <span class="badge">Building Agents</span>
 </div>
 
@@ -178,13 +200,27 @@
     </p>
   </div>
 
+  <section class="source" style="margin:1.8em 0">
+    <h2 style="font-size:1.05rem;color:var(--g);margin:0 0 .4em">Source &amp; tooling</h2>
+    <p style="color:var(--td);font-size:.92rem;max-width:48rem;margin:0 0 .9em">
+      Every folder of the bundle opens in the browser. Read a folder's source in context and ask the
+      model about it (bring a key), or inspect how the pieces connect and verify.
+    </p>
+    <div class="src-links" style="display:flex;flex-wrap:wrap;gap:10px 20px;font-size:.92rem">
+      <a href="/lab/static/cors-proxy/SKILL.html">CORS proxy workers &rarr;</a>
+      <a href="/lab/static/scripts/SKILL.html">The toolchain &rarr;</a>
+      <a href="/lab/static/docs/SKILL.html">Deploy &amp; agent notes &rarr;</a>
+      <a href="/lab/static/workspace/SKILL.html">The lab image &rarr;</a>
+      <a href="/lab/static/scripts/link_graph.html">Link graph &rarr;</a>
+      <!-- build:deploy-tools : build_pages injects the deploy-only gate + test-runner links here -->
+    </div>
+  </section>
+
   <footer>
     <p>
       Securing Agents is the browser course released on this foyer.
       Feedback:
       <a href="https://www.nvidia.com/en-us/training/" target="_blank" rel="noopener">NVIDIA DLI training portal</a>.
-      Bundle index for an agent reading this page:
-      <a href="/lab/static/SKILL.html"><code>web/SKILL.html</code></a>.
     </p>
   </footer>
 </main>
@@ -226,6 +262,21 @@
       u.searchParams.delete("token");
       window.history.replaceState({}, "", u.toString());
     });
+})();
+
+// Theme toggle: same data-theme + localStorage("theme") contract as the course and framer pages.
+(function () {
+  var btn = document.querySelector(".theme-toggle"); if (!btn) return;
+  var root = document.documentElement;
+  function cur() { return root.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"); }
+  function paint() { var t = cur(); btn.textContent = t === "light" ? "☾" : "☀"; btn.title = t === "light" ? "Switch to dark theme" : "Switch to light theme"; }
+  btn.addEventListener("click", function () {
+    var next = cur() === "light" ? "dark" : "light";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("theme", next); } catch (e) {}
+    paint();
+  });
+  paint();
 })();
 
 // API-key panel. Pushes a pasted key to the course model gateway (the lab's sole

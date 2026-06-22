@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CORS proxy workers · explore</title>
+
+<script type="application/json" id="skill-meta">
+{
+  "schema": "dir-skill/1.0",
+  "node_type": "directory-explorer",
+  "title": "CORS proxy workers",
+  "source_dir": "cors-proxy/",
+  "summary": "The two Cloudflare Workers that let the browser-only course reach hosted services it otherwise could not, because of cross-origin rules. cors-proxy-worker-build.js fronts build.nvidia.com for model calls; cors-proxy-worker-openclaw.js fronts a student's NemoClaw launchable gateway. Both are the exact source deployed to Cloudflare. This SKILL.html is a live explorer: open either file, take the guided tour, and ask the model about the code with your own build.nvidia.com key.",
+  "related": [
+    "cors-proxy/cors-proxy-worker-build.js",
+    "cors-proxy/cors-proxy-worker-openclaw.js"
+  ],
+  "explorer": "../web/_skill_explorer.js"
+}
+</script>
+
+<script type="application/json" id="explorer-config">
+{
+  "title": "CORS proxy workers",
+  "summary": "A browser cannot call build.nvidia.com or a launchable gateway directly: those origins do not return the cross-origin headers a page needs, so the browser blocks the response. These two Cloudflare Workers sit in front and add exactly the right headers, nothing more. Open a file, walk the tour, and ask the model anything about the code. You need a build.nvidia.com key (nvapi-...), the same key the course uses.",
+  "proxy": "https://nvidia-api-cors-proxy.vkudlay.workers.dev/v1",
+  "model": "nvidia/nemotron-3-nano-30b-a3b",
+  "nav": {
+    "home": "../web/index.html",
+    "up": {
+      "label": "task1",
+      "href": "../SKILL.html"
+    }
+  },
+  "files": [
+    {
+      "path": "cors-proxy-worker-build.js",
+      "role": "build.nvidia.com proxy",
+      "desc": "Browser to build.nvidia.com. Replaces the doubled Access-Control-Allow-Origin header the edX platform injects with exactly one value, and allows the X-BILLING-SOURCE header so course spend is attributed. Deployed at nvidia-api-cors-proxy.vkudlay.workers.dev.",
+      "bytes": 2387
+    },
+    {
+      "path": "cors-proxy-worker-openclaw.js",
+      "role": "launchable gateway proxy",
+      "desc": "Browser to a student's NemoClaw launchable over a tight brevlab.com host allowlist, forwarding the Cloudflare Access JWT as the cookie Access checks. The allowlist is what keeps it from being an open relay for the forwarded service token. Deployed at openclaw-cors-proxy.vkudlay.workers.dev.",
+      "bytes": 2568
+    }
+  ],
+  "tour": [
+    {
+      "title": "Why this worker exists",
+      "file": "cors-proxy-worker-build.js",
+      "lines": [
+        9,
+        12
+      ],
+      "note": "The whole reason for the proxy. The platform adds its own Access-Control-Allow-Origin on top of the API's, so the browser sees two values and rejects the response. The worker strips the upstream header and sets exactly one."
+    },
+    {
+      "title": "The CORS preflight",
+      "file": "cors-proxy-worker-build.js",
+      "lines": [
+        22,
+        35
+      ],
+      "note": "Before a real POST, the browser sends an OPTIONS preflight. The worker answers it with the allowed methods and headers. X-BILLING-SOURCE has to be listed here or the browser blocks the real request; the worker then forwards it upstream unchanged."
+    },
+    {
+      "title": "Forwarding to NVIDIA",
+      "file": "cors-proxy-worker-build.js",
+      "lines": [
+        37,
+        52
+      ],
+      "note": "The actual proxy: rebuild the URL against integrate.api.nvidia.com, drop the host header, and pass the body and the caller's bearer key straight through. A network failure returns a clean 502 with CORS still set, so the browser can read the error."
+    },
+    {
+      "title": "One origin, no credentials",
+      "file": "cors-proxy-worker-build.js",
+      "lines": [
+        54,
+        61
+      ],
+      "note": "Replace the upstream Access-Control-Allow-Origin rather than add to it. There is deliberately no Allow-Credentials: the proxy carries the caller's key in the request, never cookies, so enabling credentialed CORS would let any origin make cookie-bearing calls."
+    },
+    {
+      "title": "Host allowlist, not an open relay",
+      "file": "cors-proxy-worker-openclaw.js",
+      "lines": [
+        21,
+        28
+      ],
+      "note": "The launchable proxy forwards a Cloudflare Access service token to the target host. Without this allowlist it would relay that token to any host an attacker names in the path. The check pins the target to brevlab.com and its subdomains."
+    },
+    {
+      "title": "Carrying the Access JWT",
+      "file": "cors-proxy-worker-openclaw.js",
+      "lines": [
+        30,
+        40
+      ],
+      "note": "Cloudflare Access in front of the launchable checks a CF_Authorization cookie. The browser cannot set that cookie cross-origin, so it sends the JWT as a header and the worker rewrites it into the cookie Access expects, optionally adding a service-token pair from the worker env."
+    }
+  ],
+  "related": [
+    {
+      "label": "build worker (live)",
+      "href": "https://nvidia-api-cors-proxy.vkudlay.workers.dev/"
+    },
+    {
+      "label": "openclaw worker (live)",
+      "href": "https://openclaw-cors-proxy.vkudlay.workers.dev/"
+    },
+    {
+      "label": "where the course uses it: Kickstart",
+      "href": "../web/nemoclaw/03a-kickstart.html"
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<div id="explorer"></div>
+
+<noscript>
+  <h1>CORS proxy workers</h1>
+  <p>This folder holds the two Cloudflare Workers the browser-only course routes through.
+     Enable JavaScript to open and explore them in context, or read the source directly:</p>
+  <ul>
+    <li>The build.nvidia.com proxy: <a href="cors-proxy-worker-build.js">cors-proxy-worker-build.js</a></li>
+    <li>The launchable gateway proxy: <a href="cors-proxy-worker-openclaw.js">cors-proxy-worker-openclaw.js</a></li>
+  </ul>
+</noscript>
+
+<script src="../web/_skill_explorer.js"></script>
+</body>
+</html>
