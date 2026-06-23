@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>NVIDIA DLI · Browser courses · Foyer</title>
+
+<!--
+  RELEASE FOYER.
+  This page is the release surface for the bundle's browser course. It is the one
+  place a student lands first, and it discovers ONLY the course that is currently
+  released: nemoclaw (Securing Agents). Everything else in the bundle (shared
+  services, observability) is reachable from inside that course or from the SKILL
+  beacons, NOT from this foyer.
+
+  The released set is declared once, machine-readably, in the <script id="foyer-release">
+  block below and enforced by link_projection.foyer_release_check (RELEASED constant).
+  To release another course: add it to RELEASED, add its card here, re-run the cadence.
+-->
+<script type="application/json" id="foyer-release">
+{
+  "kind": "release-foyer",
+  "bundle": "building-agents",
+  "released": ["nemoclaw"],
+  "entries": {
+    "nemoclaw": "/lab/static/nemoclaw/index.html"
+  },
+  "contract": "The foyer surfaces only the courses listed in 'released'. Enforced by link_projection.foyer_release_check."
+}
+</script>
+
+<style>
+  :root {
+    --g:#76b900; --gd:#4a7a00; --gs:#aee23a;
+    --bg:#0d0d0d; --e1:#161616; --e2:#1e1e1e; --e3:#2a2a2a;
+    --tx:#f2f2f2; --td:#b0b0b0; --tf:#8a8a8a;
+    --mono:ui-monospace,"SF Mono",Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  }
+  /* Light theme: the same shared tokens flipped, on the same data-theme + localStorage contract as
+     the course and framer pages, so the foyer toggles with the rest of the stack. Forced by the
+     topbar toggle (data-theme), or applied automatically when the OS prefers light. */
+  :root[data-theme="light"] {
+    --g:#76b900; --gd:#2f6a00; --gs:#4a7a00;
+    --bg:#ffffff; --e1:#f6f8fa; --e2:#eef1f4; --e3:#e1e6eb;
+    --tx:#1a1a1a; --td:#3b3b3b; --tf:#57606a; color-scheme:light;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]):not([data-theme="light"]) {
+      --g:#76b900; --gd:#2f6a00; --gs:#4a7a00;
+      --bg:#ffffff; --e1:#f6f8fa; --e2:#eef1f4; --e3:#e1e6eb;
+      --tx:#1a1a1a; --td:#3b3b3b; --tf:#57606a; color-scheme:light;
+    }
+  }
+  .theme-toggle { width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center;
+    font-size:15px; line-height:1; cursor:pointer; background:transparent; color:var(--td);
+    border:1px solid var(--e3); border-radius:7px; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--tx);
+               font-family: var(--sans); font-size: 15px; line-height: 1.55; }
+  a { color: var(--g); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code { font-family: var(--mono); font-size: .9em; background: var(--e2);
+         padding: 1px 6px; border-radius: 4px; color: var(--gs); }
+
+  /* Full-width sticky bar; its CONTENT is held to the same column as <main> by .topbar-inner,
+     so the logo/badge line up with the hero and cards. Flat var(--bg) (no black gradient) so it
+     reads correctly in light mode, matching the course pages' topbar. */
+  .topbar {
+    background: var(--bg);
+    border-bottom: 1px solid var(--e3); position: sticky; top: 0; z-index: 10;
+  }
+  .topbar-inner {
+    display: flex; align-items: center; gap: 16px;
+    max-width: min(62.5rem,100%); margin: 0 auto;
+    padding: 14px clamp(1rem,4vw,2rem);
+  }
+  .topbar .logo { font-weight: 700; font-size: 1rem; color: var(--g);
+                  letter-spacing: .04em; }
+  .topbar .crumb { color: var(--td); font-size: .88rem; }
+  .topbar .spacer { flex: 1; }
+  .topbar .badge { font-size: .72rem; font-family: var(--mono);
+                   padding: 3px 9px; border-radius: 999px;
+                   background: var(--e2); border: 1px solid var(--e3); color: var(--td); }
+
+  main { max-width: min(62.5rem,100%); margin: 0 auto;
+         padding: clamp(1.5rem,4vw,2.5rem) clamp(1rem,4vw,2rem) 80px; }
+
+  .hero { margin: .8em 0 2em; }
+  .hero .eyebrow { font-family: var(--mono); font-size: .72rem;
+                   color: var(--gs); text-transform: uppercase;
+                   letter-spacing: .12em; margin-bottom: .6em; }
+  .hero h1 { font-size: 2.6rem; font-weight: 700; line-height: 1.1;
+             margin: 0 0 .4em; letter-spacing: -0.01em; }
+  .hero h1 .accent { color: var(--g); }
+  .hero p.lead { font-size: 1.08rem; color: var(--td); }
+
+  /* Single-card release row */
+  .paths { display: grid; grid-template-columns: 1fr; gap: 18px;
+           margin: 1.8em 0 1.6em; }
+
+  .path-card {
+    background: var(--e1); border: 1px solid var(--e3); border-radius: 12px;
+    border-left: 3px solid var(--g);
+    padding: 22px 24px; text-decoration: none;
+    transition: border-color .15s, transform .15s, background .15s;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .path-card:hover { border-color: var(--g); background: rgba(118,185,0,.06);
+                     transform: translateY(-2px); text-decoration: none; }
+  .path-card .label { font-family: var(--mono); font-size: .76rem;
+                      color: var(--gs); text-transform: uppercase;
+                      letter-spacing: .08em; }
+  .path-card h2 { font-size: 1.35rem; color: var(--tx); margin: .1em 0 .2em; }
+  .path-card .duration { color: var(--tf); font-size: .82rem; font-family: var(--mono); }
+  .path-card p { font-size: .92rem; color: var(--td); margin: .4em 0 0; line-height: 1.6; }
+  .path-card .arrow { margin-top: 1em; color: var(--g); font-weight: 700;
+                      font-size: .92rem; }
+
+  .callout {
+    border-left: 3px solid var(--g); background: rgba(118,185,0,.07);
+    padding: 12px 18px; border-radius: 0 8px 8px 0; margin: 1.6em 0;
+    font-size: .92rem; color: var(--td);
+  }
+  .callout strong { color: var(--gs); }
+
+  /* Source & tooling: small button-chips */
+  .src-links { display: flex; flex-wrap: wrap; gap: 10px; }
+  .src-links a {
+    font-family: var(--mono); font-size: .82rem; color: var(--gs);
+    background: var(--e1); border: 1px solid var(--e3); border-radius: 8px;
+    padding: 7px 14px; text-decoration: none;
+    transition: border-color .15s, background .15s;
+  }
+  .src-links a:hover { border-color: var(--g); background: rgba(118,185,0,.06); text-decoration: none; }
+
+  footer { margin-top: 4em; padding-top: 1.6em; border-top: 1px solid var(--e3);
+           color: var(--tf); font-size: .82rem; }
+  footer a { color: var(--td); }
+</style>
+<script>/* Pre-paint: apply a saved manual theme so the foyer opens in the right palette with no flash;
+   with no saved choice the @media rule above follows the OS. */
+(function(){try{var t=localStorage.getItem("theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <span class="logo">NVIDIA DLI</span>
+    <span class="crumb">/ browser courses · foyer</span>
+    <span class="spacer"></span>
+    <button type="button" class="theme-toggle" aria-label="Toggle dark or light theme"></button>
+    <span class="badge">Building Agents</span>
+  </div>
+</div>
+
+<main>
+  <div class="hero">
+    <div class="eyebrow">Live in your browser</div>
+    <h1>Build an agent, then <span class="accent">secure</span> it</h1>
+    <p class="lead">
+      Securing Agents runs live in this lab over its remote model and sandbox
+      services, so there is nothing to install and an API key is optional. Open the
+      course to begin; the pages stay in this tab.
+    </p>
+  </div>
+
+  <div class="paths">
+    <a class="path-card" href="/lab/static/nemoclaw/index.html">
+      <span class="label">Web course</span>
+      <h2>Securing Agents with OpenShell and NemoClaw</h2>
+      <span class="duration">4 modules</span>
+      <p>
+        Safety sits at the center the whole way through. You cover the agent loop and
+        ReAct, routing and retrieval, then an always-on agent and the sandboxing that
+        contains the code it runs on your behalf. Every canvas cell runs against this lab.
+      </p>
+      <span class="arrow">Start the course →</span>
+    </a>
+  </div>
+
+  <div class="callout">
+    <strong>No setup needed.</strong> In the lab, every page already routes through the
+    course model gateway, so the cells just work. Inside edX the text reads fine, but the
+    live cells there need your own API key, which each course page lets you set.
+  </div>
+
+  <section class="source" style="margin:1.8em 0">
+    <h2 style="font-size:1.05rem;color:var(--g);margin:0 0 .4em">Source &amp; tooling</h2>
+    <p style="color:var(--td);font-size:.92rem;max-width:48rem;margin:0 0 .9em">
+      Every folder of the bundle opens in the browser. Read a folder's source in context and ask the
+      model about it (bring a key), or inspect how the pieces connect and verify.
+    </p>
+    <div class="src-links">
+      <a href="/lab/static/cors-proxy/SKILL.html">CORS proxy workers</a>
+      <a href="/lab/static/scripts/SKILL.html">The toolchain</a>
+      <a href="/lab/static/docs/SKILL.html">Deploy &amp; agent notes</a>
+      <a href="/lab/static/workspace/SKILL.html">The lab image</a>
+      <a href="/lab/static/scripts/link_graph.html">Link graph</a>
+      <!-- build:deploy-tools : build_pages injects the deploy-only gate + test-runner links here -->
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      Securing Agents is the browser course released on this foyer.
+      Feedback:
+      <a href="https://www.nvidia.com/en-us/training/" target="_blank" rel="noopener">NVIDIA DLI training portal</a>.
+    </p>
+  </footer>
+</main>
+
+<script>
+// Launch token + cookie handoff.
+// The LMS opens this foyer at the lab's default_url with the session token appended:
+// .../lab/static/index.html?token=XXXX. Jupyter's static-file handler serves the foyer
+// WITHOUT turning that token into a session cookie, so left alone the student is
+// authenticated-in-the-URL-only and the course pages' live cells (which call the
+// token-gated /lab/svc/* routes) would bounce to login. Two things make the handoff
+// reliable, so neither a slow cookie nor a missed one strands the user:
+//   1. A background request to an authenticated endpoint sets the /lab/ cookie for
+//      everything else (the static course pages reached from the cards above).
+//   2. Any link to an authenticated Jupyter destination carries the token so a click
+//      authenticates the normal Jupyter ?token= way (defensive; the cards are static
+//      pages that navigate SAME-TAB and rely on the cookie from step 1).
+// Course PAGES under /lab/static/ navigate SAME-TAB on purpose: a new tab gets a fresh
+// in-memory context and drops the saved key, and same-tab keeps the back button working.
+(function () {
+  var token = new URL(window.location.href).searchParams.get("token");
+  var NEW_TAB     = /^\/(lab(?:\/(?!static\/)|$))/;            // live app routes, not /lab/static/
+  var NEEDS_TOKEN = /^\/(lab\/lab\/|lab\/openclaw|lab\/svc\/)/;  // authed
+  document.querySelectorAll('a[href^="/"]').forEach(function (a) {
+    var href = a.getAttribute("href");
+    if (NEW_TAB.test(href)) { a.target = "_blank"; a.rel = "noopener"; }
+    if (token && NEEDS_TOKEN.test(href) && href.indexOf("token=") < 0) {
+      a.setAttribute("href", href + (href.indexOf("?") < 0 ? "?" : "&") + "token=" + encodeURIComponent(token));
+    }
+  });
+  if (!token) return;
+  // Best-effort cookie exchange (an @web.authenticated endpoint; Jupyter reads ?token=
+  // from the query and sets the /lab/ cookie). Strip the token from the address bar once
+  // it resolves.
+  fetch("/lab/api/status?token=" + encodeURIComponent(token), { credentials: "include" })
+    .catch(function () {})
+    .then(function () {
+      var u = new URL(window.location.href);
+      u.searchParams.delete("token");
+      window.history.replaceState({}, "", u.toString());
+    });
+})();
+
+// Theme toggle: same data-theme + localStorage("theme") contract as the course and framer pages.
+(function () {
+  var btn = document.querySelector(".theme-toggle"); if (!btn) return;
+  var root = document.documentElement;
+  function cur() { return root.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"); }
+  function paint() { var t = cur(); btn.textContent = t === "light" ? "☾" : "☀"; btn.title = t === "light" ? "Switch to dark theme" : "Switch to light theme"; }
+  btn.addEventListener("click", function () {
+    var next = cur() === "light" ? "dark" : "light";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("theme", next); } catch (e) {}
+    paint();
+  });
+  paint();
+})();
+</script>
+</body>
+</html>

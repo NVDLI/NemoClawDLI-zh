@@ -70,58 +70,52 @@ Step 5 is the loop a translation lives in. Run the status, act on the delta, adv
 
 ## CI/CD on a `translate-` branch
 
-A `translate-<lang>` branch is **never merged into the source**. It lives on its own, and its
-material reaches the live site because the **source build aggregates every language into one Pages
-site**: `build_pages.sh` builds the source language at the site root and each `translate-<lang>`
-branch it can see (a throwaway git worktree of the branch) into `public/<lang>/`. The site's links
-are relative, so a language served at `/<lang>/` resolves correctly with no build-time base change.
+A `translate-<lang>` branch is **never merged into the source**. The build never reads the branch
+directly either: instead each translation is **staged as content** under `i18n/<lang>/` (its `web/`
+tree only), and `build_pages.sh` turns every `i18n/<lang>/` into `public/<lang>/`. One Pages site
+then serves the source at the root and every language at `/<lang>/`; relative links resolve under the
+subpath with no build-time base change. Staging from a branch (not pushing it) is deliberate: a raw
+branch push carries this repo's deep history, whose old big blobs the production mirror rejects (a
+5 MiB pre-receive limit). `git archive <branch> web` carries only the current `web/` tree, with no
+history and no big files.
 
-- On a **`translate-<lang>` branch**, CI derives the language from the branch name (`translate-pt`
-  to `pt`) and runs **test**: the same structural gate as the source plus `validate_bundle --lang
-  <code>` (English-prose suites marked not-applicable) and `translation_status.py --check` (the
-  re-translate list, advisory, so drift never blocks). It does not deploy on its own.
-- On the **source branch**, the **pages** job runs `build_pages.sh`, which aggregates the source
-  language plus every `translate-*` branch into one `public/` tree and deploys it.
+- On a **`translate-<lang>` branch**, CI derives the language from the branch name and runs **test**:
+  the same structural gate as the source plus `validate_bundle --lang <code>` (English-prose suites
+  marked not-applicable) and `translation_status.py --check` (the re-translate list, advisory). It
+  does not deploy on its own.
+- On the **source branch**, the **pages** job stages every `translate-*` branch into `i18n/<lang>/`
+  (`git archive`), then runs `build_pages.sh`, which aggregates the source plus every staged language
+  into one `public/` tree and deploys it.
 
-So a contributor opens a merge request **into** `translate-pt` (not into the source), the pipeline
-proves the translation is still structurally whole and shows what is left to sync. The translation
-goes live the next time the source build runs and picks the branch up (see the publish recipe below).
+So a contributor opens a merge request **into** `translate-pt` (not into the source); the pipeline
+proves the translation is still structurally whole and shows what is left to sync.
 
 ## Publishing to the live site (the rsync-mirror production flow)
 
 The production site (the `NemoClawDLIOS` Pages vendor on gitlab-master) is a single-branch mirror
-that rebuilds Pages with `build_pages.sh`. For it to serve a language, two things must hold: the
-mirror's `build_pages.sh` is this language-aware one (it already fetches `translate-*` from its
-`origin` before building), and each `translate-<lang>` branch lives on the mirror's remote so the
-build can see it.
-
-One-time setup: give the source repo a remote that points at the mirror.
+that rebuilds Pages with `build_pages.sh` from content the publish step rsyncs in. The translation
+reaches it the same way the source does, as filtered content: stage each language under `i18n/<lang>/`
+before the rsync, and the mirror's `build_pages.sh` builds `/<lang>/` from it. No branch is ever
+pushed to the mirror (its history would reject this repo's big blobs).
 
 ```bash
 SRC="$HOME/s-fx-43-v1"        # source, branch nemoclaw-only
-DST="$HOME/NemoClawDLIOS"     # Pages vendor, branch main
-git -C "$SRC" remote add mirror "$(git -C "$DST" remote get-url origin)" 2>/dev/null || true
-```
 
-Then, to publish (source plus every language):
-
-```bash
-# 1. Publish the source language exactly as today (rsync nemoclaw-only -> DST main, commit, push).
-~/publish-pages.sh "sync course source"
-
-# 2. Push each language branch to the mirror so its build_pages can build it.
+# 1. Stage each translation's web/ tree under i18n/<lang>/ (web only: no history, no big files).
+git -C "$SRC" fetch origin
 for lang in pt; do
-  git -C "$SRC" push mirror "translate-$lang"
+  rm -rf "$SRC/i18n/$lang"; mkdir -p "$SRC/i18n/$lang"
+  git -C "$SRC" archive "origin/translate-$lang" web | tar -x -C "$SRC/i18n/$lang"
 done
 
-# 3. Trigger the mirror's pages pipeline so build_pages re-aggregates the source plus every
-#    translate-* branch now on the mirror (an empty commit on main is the simplest trigger).
-git -C "$DST" commit --allow-empty -m "rebuild Pages: pick up translations" && git -C "$DST" push
+# 2. Publish exactly as today. The rsync carries i18n/<lang>/ to the mirror (it strips nothing here:
+#    web/ has no >5 MiB files), the mirror commits + pushes main, and its build_pages builds /<lang>/.
+bash ~/publish-pages.sh "sync course source + translations"
 ```
 
-The mirror's pipeline then rebuilds Pages with the source at the root and each language at
-`/<lang>/`. The translation branch is never merged; pushing it to the mirror plus a source rebuild
-is what integrates it.
+`i18n/` is build staging, not source: leave it untracked on `nemoclaw-only` (do not commit it there),
+and the rsync still carries it to the mirror, where it becomes the translation content the live site
+serves at `/<lang>/`.
 
 ## Files here
 

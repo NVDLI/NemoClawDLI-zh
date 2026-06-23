@@ -16,9 +16,8 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 T1="$(dirname "$HERE")"            # task1 root (scripts/ is directly under it)
 OUT="${1:-$T1/public}"
-# Build the source language at $OUT root, then each translate-<lang> branch into $OUT/<lang>/ so one
-# Pages site serves every language. BUILD_PAGES_LANGS=0 disables that loop; it is set on the
-# recursive per-language build so a language build never tries to build languages of its own.
+# Build the source language at $OUT root, then each staged translation under i18n/<lang>/ into
+# $OUT/<lang>/, so one Pages site serves every language. BUILD_PAGES_LANGS=0 disables that loop.
 LANGS="${BUILD_PAGES_LANGS:-1}"
 
 echo "[build_pages] task1 root: $T1"
@@ -167,32 +166,36 @@ cat > "$OUT/tests.html" <<'HTML'
 </body></html>
 HTML
 
-# ── 6. Translations: each translate-<lang> branch built into public/<lang>/ ──
-# A translation is a never-merged overlay branch with identical structure, so it builds with this
-# same script from a throwaway worktree of the branch, into $OUT/<lang>/. One Pages site then serves
-# the source at root and every language at /<lang>/, with relative links resolving under the subpath.
-# This is how a translation reaches the rsync-mirror production site (NemoClawDLIOS): publish pushes
-# the translate-* branches to that remote, and this loop builds each one it can see.
-if [ "$LANGS" = 1 ] && git -C "$T1" rev-parse --git-dir >/dev/null 2>&1; then
-    # CI checks out only the branch being built, so fetch the language branches into remote-tracking
-    # refs first (best-effort: offline / a local checkout that already has them is fine).
-    git -C "$T1" fetch origin '+refs/heads/translate-*:refs/remotes/origin/translate-*' --quiet 2>/dev/null || true
-    refs="$(git -C "$T1" for-each-ref --format='%(refname:short)' \
-            'refs/heads/translate-*' 'refs/remotes/*/translate-*' 2>/dev/null \
-            | sed 's#^.*/##' | sort -u)"
-    for br in $refs; do
-        lang="${br#translate-}"
-        [ -n "$lang" ] || continue
-        wt="$(mktemp -d)"
-        if git -C "$T1" worktree add -q --detach "$wt" "$br" 2>/dev/null \
-           || git -C "$T1" worktree add -q --detach "$wt" "origin/$br" 2>/dev/null; then
-            echo "[build_pages] language $lang -> $OUT/$lang/ (from branch $br) ..."
-            BUILD_PAGES_LANGS=0 bash "$wt/scripts/build_pages.sh" "$OUT/$lang" \
-                || echo "[build_pages]   WARN: $lang build failed; the other languages still ship"
-            git -C "$T1" worktree remove --force "$wt" 2>/dev/null || rm -rf "$wt"
-        else
-            echo "[build_pages]   WARN: cannot check out $br; skipping $lang"; rm -rf "$wt"
+# ── 6. Translations: each staged language overlay built into public/<lang>/ ──
+# A translation is a never-merged overlay branch, but its content reaches the rsync-mirror production
+# site (NemoClawDLIOS) the SAME way the source does: as filtered content, not as a branch. A raw
+# branch push carries this repo's deep history, whose old big blobs the mirror's clean history
+# rejects (the 5 MiB pre-receive limit). So the publish step stages each translation's web/ tree
+# under i18n/<lang>/ (git archive, web only: no history, no big files), the rsync carries it to the
+# mirror, and this loop builds each i18n/<lang>/ into $OUT/<lang>/. Relative links resolve under the
+# subpath, so one Pages site serves the source at root and every language at /<lang>/.
+if [ "$LANGS" = 1 ] && [ -d "$T1/i18n" ]; then
+    for d in "$T1"/i18n/*/; do
+        [ -d "${d}web/nemoclaw" ] || continue
+        lang="$(basename "$d")"
+        echo "[build_pages] language $lang -> $OUT/$lang/ (from i18n/$lang) ..."
+        mkdir -p "$OUT/$lang"
+        if ! python3 "$T1/scripts/bundle_standalone.py" --src "i18n/$lang/web/nemoclaw" \
+                --out "$OUT/$lang/nemoclaw" --clean --full; then
+            echo "[build_pages]   WARN: $lang course build failed; the other languages still ship"; continue
         fi
+        # the language foyer is its own translated web/index.html, /lab/static -> relative
+        if [ -f "${d}web/index.html" ]; then
+            python3 - "${d}web/index.html" "$OUT/$lang/index.html" <<'PROJ'
+import sys, re
+src, out = sys.argv[1], sys.argv[2]
+s = open(src).read().replace("/lab/static/", "")
+s = re.sub(r'<!-- build:deploy-tools[^>]*-->', '', s)   # the Pages-only tool links are root-only
+open(out, "w").write(s)
+PROJ
+        fi
+        fav="${d}web/nemoclaw/assets/favicon.ico"; [ -f "$fav" ] || fav="$T1/web/nemoclaw/assets/favicon.ico"
+        [ -f "$fav" ] && cp "$fav" "$OUT/$lang/favicon.ico" || true
     done
 fi
 

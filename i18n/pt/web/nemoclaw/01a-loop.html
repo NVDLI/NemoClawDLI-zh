@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>O Agente · Protegendo Agentes</title>
+<link rel="stylesheet" href="_style.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<style>
+  .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
+  .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
+  .CodeMirror-vscrollbar { display: none; }
+  .CodeMirror-gutters { background: #0d0d0d; border-right: 1px solid #2a2a2a; }
+  .CodeMirror-linenumber { color: #6a6a6a; padding: 0 8px 0 6px; font-size: .76rem; }
+  .CodeMirror-lines { padding: 10px 0; }
+  .cm-s-monokai.CodeMirror { background: #0d0d0d; color: #f8f8f2; }
+  .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
+  .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="index.html">NVIDIA · Protegendo Agentes</a>
+  <nav id="nav"></nav>
+  <div class="spacer"></div>
+  <span class="key-pill" id="key-status" onclick="document.getElementById('key-panel').scrollIntoView({behavior:'smooth'})">…</span>
+</div>
+
+<main>
+  <div id="journey-map"></div>
+
+  <div class="hero">
+    <div class="eyebrow">Módulo 1 · Parte A de 3</div>
+    <h1>O <span>Agente</span></h1>
+    <p class="lead">
+      Um <strong>agente</strong> é uma entidade que interage com um ambiente em qualquer nível
+      significativo. Uma pessoa em seu dia a dia é um agente nesse sentido, assim como um termostato
+      que mantém a temperatura de uma sala ou um carro autônomo que se desloca pelo trânsito.
+    </p>
+    <p>
+      Todos eles <b>percebem</b> seu ambiente por meio de sensores e <b>agem</b> sobre ele por meio de atuadores.
+      Como cada ação alimenta a próxima observação, perceber e agir se unem em um único ciclo contínuo que
+      dura enquanto o agente busca algum objetivo. Este curso chama esse ciclo de
+      <strong>laço perceber-raciocinar-agir</strong>. Os agentes que você vai construir executam o mesmo ciclo
+      de um termostato e se distinguem apenas por quanto conseguem perceber e até onde suas ações alcançam.
+    </p>
+  </div>
+
+  <h2>As três partes do laço</h2>
+  <p>Uma única volta no laço passa por três partes, cada uma com um nome simples e uma
+     função distinta.</p>
+
+  <figure style="margin:1.4em 0">
+    <div id="fig-agent-loop"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Apenas a percepção e a ação cruzam a fronteira; o raciocínio entre elas é um soquete substituível.</figcaption>
+  </figure>
+
+  <ul>
+    <li><strong>A percepção</strong> dá ao agente tudo o que ele sabe sobre seu ambiente.
+        Um termostato lê um único número, a temperatura atual; um carro autônomo combina
+        câmeras, radar e um mapa em um modelo da via. O que quer que a percepção capte é tudo
+        com que o agente tem para trabalhar, já que nada mais adiante toca o mundo diretamente. Uma
+        lacuna na percepção vira uma lacuna que o resto do agente não consegue contornar.</li>
+    <li><strong>O raciocínio</strong> transforma uma percepção em uma decisão, e isso varia muito entre agentes.
+        Um termostato compara a temperatura com um alvo e
+        para por aí, enquanto um motor de xadrez busca milhões de jogadas e um carro autônomo executa uma
+        política aprendida. Os agentes que você constrói aqui raciocinam chamando um modelo de linguagem, e quase
+        tudo o que o curso acrescenta depois (ferramentas/memória/planejamento) se apoia nesse único passo.</li>
+    <li><strong>A ação</strong> muda o ambiente para o próprio agente e para os demais participantes.
+        Uma ação pode ser tão pequena quanto acionar um relé ou tão complexa quanto guiar um carro ou chamar uma ferramenta.
+        Ela também marca o limite externo do alcance de um agente, porque por mais afiado que seja o raciocínio,
+        o agente só afeta o mundo por meio de seu espaço de ações.</li>
+  </ul>
+
+  <div class="callout">
+    <strong>O passo de raciocínio é um soquete plugável.</strong> A percepção e a ação não
+    se importam com o que está entre elas. Qualquer coisa, de uma regra simples a uma árvore de decisão a uma
+    rede neural completa, pode ocupar o encaixe sem mudar o laço ao seu redor. Construir
+    o laço uma vez como uma moldura fixa e reaproveitá-lo mantém duas
+    perguntas claramente separadas: quão capaz é o raciocínio e até onde as ações alcançam.
+  </div>
+
+  <p>
+    Esse soquete substituível é a costura ao longo da qual os projetos clássicos de agente diferem. O livro
+    <a href="https://aima.cs.berkeley.edu/" target="_blank" rel="noopener">Artificial Intelligence: A Modern Approach</a>, de Russell e Norvig,
+    os apresenta como um espectro, de um agente reflexo puro até um agente de aprendizado que aprimora as próprias
+    regras. Os agentes que você constrói aqui começam na ponta reflexa, e colocar um modelo de linguagem no
+    soquete os leva em direção aos projetos posteriores.
+  </p>
+  <figure style="margin:1.4em 0">
+    <div class="fig-embed" data-svg-src="assets/figures/01a-loop-1.svg" style="aspect-ratio:1020 / 400"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Quatro arquiteturas de agente em ordem crescente de estrutura, de um agente reflexo que mapeia entradas diretamente em ações até um agente de aprendizado que reescreve as próprias regras. Adaptado de Artificial Intelligence: A Modern Approach, de Russell e Norvig (<a href="https://aima.cs.berkeley.edu/" target="_blank" rel="noopener">cap. 1</a>).</figcaption>
+  </figure>
+
+  <h2>Um agente sem modelo de linguagem</h2>
+  <p>A menor coisa que cabe no soquete de raciocínio é uma única instrução <code>if</code>.
+     Aqui ela conduz uma pista unidimensional limitada por paredes nas posições 0
+     e 9, o que deixa o agente inteiro tão enxuto quanto é possível. Pressione Run
+     e observe o número da posição saltar entre essas duas paredes enquanto o laço roda.</p>
+
+  <div id="cell-reflex"></div>
+
+  <p>Duas coisas que vale a pena examinar no código acima:</p>
+  <ul>
+    <li>O <strong>ambiente</strong> (posições das paredes, posição
+        atual) vive em <code>state.env</code>, enquanto as características intrínsecas do agente
+        (sua direção) vivem em <code>state.agent</code>. Mantê-los
+        separados significa que um agente diferente, com estado intrínseco diferente,
+        pode operar no mesmo ambiente sem atrito.</li>
+    <li>O <strong>passo de raciocínio</strong> é uma única instrução <code>if</code>.
+        Substituí-lo por algo mais poderoso, seja uma
+        árvore de decisão, uma rede neural ou um modelo de linguagem, exige
+        apenas mudar o que está entre a percepção e a ação. A
+        estrutura do laço, a organização do estado e o passo de ação
+        permanecem idênticos.</li>
+  </ul>
+
+  <h2>O que muda quando o soquete abriga um LLM</h2>
+  <p>Você chama a interface de chat-completions como qualquer outra função: entregue
+     a ela uma lista de mensagens e um nome de modelo, e ela devolve uma
+     mensagem do assistente mais metadados.</p>
+
+  <div class="callout">
+    <strong>Sobre o <code>chat()</code>.</strong> É o wrapper fornecido pelo curso
+    que você executa ao vivo um pouco mais adiante nesta página. O trecho abaixo prevê o
+    formato de chamada e os campos que ele retorna, para que os nomes já sejam familiares quando
+    você chegar à célula executável.
+  </div>
+
+<pre><code class="language-js">const reply = await chat({
+  model:    "nvidia/nemotron-3-nano-30b-a3b",
+  messages: [{ role: "user", content: "Hi" }],
+});
+// reply.choices[0].message  → { content, reasoning_content }
+// reply.choices[0].finish_reason → "stop" | "tool_calls" | "length"
+</code></pre>
+
+  <p>Três fatos sobre essa função moldam como os agentes construídos sobre ela precisam funcionar:</p>
+  <ul>
+    <li><strong>As chamadas não compartilham estado.</strong> Entre requisições o
+        servidor não guarda nada para você. Se quiser que o modelo
+        lembre do turno anterior, você envia esse turno de novo.
+        A "memória" de uma conversa é uma lista de mensagens que seu código
+        mantém e reenvia a cada vez.</li>
+    <li><strong>A saída tem dois canais.</strong> Modelos de raciocínio
+        retornam suas anotações de trabalho em
+        <code>reasoning_content</code> e sua resposta final em
+        <code>content</code>. Você inspeciona essas anotações durante o
+        desenvolvimento, enquanto o próximo estágio do laço lê e age sobre a
+        resposta em <code>content</code>.</li>
+    <li><strong>finish_reason é a condição de saída do laço.</strong>
+        <code>"stop"</code> significa que o modelo escreveu sua resposta
+        final. <code>"tool_calls"</code> significa que ele quer que seu código
+        execute uma função nomeada e reporte o resultado de volta.
+        <code>"length"</code> significa que o orçamento de tokens acabou antes
+        de o modelo terminar. Um laço que conduz um agente baseado em LLM é
+        construído inteiramente em torno de ler esse único campo e decidir o que
+        fazer em seguida.</li>
+  </ul>
+
+  <p>
+    Este curso usa a
+    <a href="https://platform.openai.com/docs/api-reference/chat" target="_blank" rel="noopener">Chat Completions API</a>
+    o tempo todo: você mantém a conversa como um array <code>messages[]</code> no seu próprio código e reenvia
+    o array completo a cada turno. A mais recente
+    <a href="https://platform.openai.com/docs/api-reference/responses" target="_blank" rel="noopener">Responses API</a>
+    pode, em vez disso, manter a thread no servidor, de modo que você envia apenas a nova entrada e uma referência ao
+    turno anterior. De qualquer forma, o modelo permanece sem estado e inalterado entre as chamadas. A conversa vive fora
+    dele, em um estado que seu código ou o servidor guarda.
+  </p>
+
+  <figure style="margin:1.4em 0">
+    <div class="fig-embed" data-svg-src="assets/figures/01a-loop-2.svg" style="aspect-ratio:840 / 222"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">As duas interfaces envolvem a mesma chamada sem estado. Elas diferem apenas em quem guarda a conversa entre os turnos.</figcaption>
+  </figure>
+
+  <h2>Uma chamada de verdade, no seu navegador</h2>
+  <p>A célula abaixo envia uma chat-completion ao modelo. Ela precisa de uma
+     <a href="https://build.nvidia.com" target="_blank" rel="noopener">chave de API da NVIDIA</a>,
+     mas o nível gratuito cobre todos os exercícios. Você a insere uma vez, e o curso então
+     a mantém no seu navegador e a reutiliza em todas as páginas, para que você nunca a cole duas vezes.</p>
+
+  <div id="key-panel"></div>
+
+  <p>Pressione Run para enviar uma única requisição. Ela se sustenta inteiramente sozinha, sem nenhum laço em
+     volta e sem carregar nada de um turno anterior.</p>
+
+  <div id="cell-onecall"></div>
+
+  <h3>O que o <code>chat()</code> realmente envia</h3>
+  <p><code>chat()</code> é um wrapper de conveniência em torno de um único
+     <code>POST</code> HTTP comum no formato de transmissão compatível com a OpenAI. Essa requisição carrega três coisas:</p>
+  <ul>
+    <li>o endpoint para onde enviar,</li>
+    <li>um cabeçalho <code>Authorization</code> que carrega sua chave,</li>
+    <li>e um corpo JSON com <code>model</code> e <code>messages</code>.</li>
+  </ul>
+  <p>A célula abaixo faz essa chamada manualmente e mostra os dois lados. Abra <em>request</em> para
+     ver o que sai do seu navegador com a chave omitida, e <em>raw response</em> para ver
+     o objeto completo que o <code>chat()</code> devolve.</p>
+  <p>Todos os endpoints deste curso falam esse mesmo formato, incluindo o runtime do agente
+     OpenClaw no Módulo 3.</p>
+
+  <div id="cell-wire"></div>
+
+  <div class="callout">
+  <strong>Duas coisas que essa chamada faz discretamente, e por quê.</strong> Nenhuma é
+  mágica, e vale a pena entender ambas antes de confiar nelas.
+  <ul>
+    <li><strong>Ela passa por um proxy.</strong> A requisição não atinge
+        <code>build.nvidia.com</code> diretamente, porque um navegador não pode: esse
+        endpoint não retorna os cabeçalhos de <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS" target="_blank" rel="noopener">origem cruzada (CORS)</a> que um
+        <code>fetch</code> do navegador exige, então a chamada é roteada por um pequeno
+        proxy de passagem que os adiciona. Esse mesmo proxy carrega um cabeçalho
+        <code>X-BILLING-SOURCE: dli-nemoclaw-web</code> que o curso
+        anexa a cada requisição, para que o uso seja cobrado deste curso em vez
+        de uma conta pessoal. Sua chave não é escondida nem trocada: ela viaja
+        na mesma requisição direto para a NVIDIA por TLS e nunca é armazenada em nenhum lugar
+        além do seu próprio navegador.</li>
+    <li><strong>O streaming é encapsulado em um helper.</strong>
+        <code>chatStream()</code> é o mesmo <code>POST</code> com
+        <code>stream: true</code>, mas a resposta volta como um fluxo de <a href="https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events" target="_blank" rel="noopener">Server-Sent-Events</a>:
+        muitos quadros <code>data:</code>, uma separação entre a resposta e o
+        <code>reasoning_content</code> do modelo, um quadro final de uso e um
+        marcador <code>[DONE]</code>. O helper faz a análise disso, encaminha os dois canais
+        para o painel, tenta de novo uma conexão perdida antes do primeiro token chegar
+        e respeita o botão Stop, para que uma célula possa se concentrar na lição em vez
+        do encanamento de SSE. Também não é uma caixa-preta: abra o menu de helpers de qualquer célula
+        para ler o código exato de <code>chat</code>, <code>chatStream</code> e
+        todos os outros helpers.</li>
+    </ul>
+  </div>
+
+  <h2>Trocar o passo de raciocínio enquanto o laço permanece fixo</h2>
+  <p>
+    Você agora tem as duas metades de um agente, e a função sem estado <code>chat()</code> acima vai se encaixar bem
+    com o laço perceber-raciocinar-agir do agente reflexo anterior. Antes de
+    conectar o modelo a esse laço, ajuda primeiro ver o encaixe de raciocínio aceitar cérebros
+    que <em>não</em> são modelos de linguagem.
+  </p>
+
+  <p>Execute os nós em ordem. Cada um troca um cérebro diferente no mesmo laço de resolução do labirinto:</p>
+  <ul>
+    <li>A regra constante "sempre leste" alcança o objetivo em um corredor reto, depois trava na primeira parede do labirinto, já que um rumo fixo não consegue virar.</li>
+    <li>A <a href="https://en.wikipedia.org/wiki/Depth-first_search" target="_blank" rel="noopener">DFS</a> mergulha e retrocede para sair de becos sem saída.</li>
+    <li>A <a href="https://en.wikipedia.org/wiki/Breadth-first_search" target="_blank" rel="noopener">BFS</a> se espalha em anéis antes de percorrer o caminho mais curto.</li>
+    <li>A <a href="https://en.wikipedia.org/wiki/A*_search_algorithm" target="_blank" rel="noopener">A*</a> enviesa esses mesmos anéis em direção ao objetivo.</li>
+  </ul>
+
+  <div id="cell-maze"></div>
+
+  <div class="callout">
+    <strong>O encaixe de raciocínio é a única parte que varia.</strong>
+    DFS, BFS e A* são preenchimentos mecânicos, colocados no mesmo encaixe para provar que ele
+    aceita qualquer cérebro que leia o estado e retorne um movimento. O último nó torna isso
+    literal: uma linha escolhe o cérebro, e os passos abaixo dela rodam do mesmo jeito,
+    qualquer que seja a sua escolha. A chamada <code>chat()</code> que você acabou de rodar é mais um cérebro para
+    esse encaixe. Ela muda apenas duas coisas. A percepção agora chega ao cérebro como texto, e
+    a resposta do cérebro volta como um sinal de intenção que seu código aplica. A próxima seção
+    se aprofunda nessas duas bordas.
+  </div>
+
+  <h2>Colocar um modelo de linguagem no passo de raciocínio para resolver o labirinto</h2>
+  <p>
+    Coloque um modelo de linguagem no encaixe de raciocínio e a política deixa de viver no seu código. Ela agora vive nos pesos fixos do modelo e no prompt que você fornece a eles.
+    A percepção renderiza o labirinto como um mapa ASCII que vira a mensagem do usuário, e a chamada de ferramenta do modelo para se mover faz as vezes da ação, enquanto todo o resto permanece inalterado.
+  </p>
+  <p>
+    Execute o nó do motor primeiro; ele exporta os utilitários do labirinto e um resolvedor compartilhado
+    (<code>state.runMaze</code>) que percorre corredores automaticamente e chama o
+    modelo apenas nas junções. Depois escolha uma rota:
+  </p>
+  <ul>
+    <li>a rota <strong>sem visão</strong> envia ao modelo apenas o mapa ASCII,</li>
+    <li>a rota <strong>com visão</strong> também anexa uma imagem renderizada do mesmo labirinto.</li>
+  </ul>
+  <p>
+    Comparar as duas rotas mostra se uma segunda modalidade ajuda; só o texto ASCII pode já
+    carregar tudo o que o modelo precisa. Os dois modos entregam a você o
+    mesmo painel de controles, cada um isolando uma variável diferente:
+  </p>
+  <ul>
+    <li>o seletor <code>model</code> troca o cérebro que conduz a execução;</li>
+    <li>as chaves <code>includeText</code>, <code>includeImage</code> e <code>includeHistory</code> decidem o que é mostrado ao modelo;</li>
+    <li>a <code>DIRECTIVE</code> de sistema editável reescreve as instruções sob as quais ele trabalha;</li>
+    <li>e o botão <code>ADVANCED</code> faz o labirinto crescer em um teste mais difícil.</li>
+  </ul>
+
+  <div id="cell-llm-maze"></div>
+
+  <div class="callout">
+    <strong>Um schema transforma a resposta em uma ação tipada.</strong> A regra constante
+    retornava uma string; a BFS devolvia uma lista. <code>choose_direction</code> dá ao
+    modelo o mesmo contrato, mas o impõe por meio de um JSON Schema, então o laço lê um
+    valor tipado em vez de analisar prosa livre. Com ele, um modelo de linguagem pode ocupar o
+    encaixe de raciocínio que a BFS e a A* ocupavam há pouco.
+  </div>
+
+  <h2>O laço, desenhado localmente</h2>
+  <p>
+    Coloque a chamada <code>chat()</code> dentro do laço que reenvia o histórico, e um único
+    turno de qualquer agente LLM neste curso assume o mesmo formato de quatro estágios. Nomeie os estágios
+    agora, porque toda questão de segurança e confiabilidade mais à frente remete a uma destas
+    quatro setas.
+  </p>
+  <ul>
+    <li><strong>Amostrar localmente.</strong> Seu código lê uma fatia do
+        ambiente, que pode ser a célula do labirinto e seus movimentos válidos, ou a última mensagem
+        do usuário, ou o conteúdo de um arquivo. Ele nunca tenta abarcar o mundo inteiro de uma vez,
+        porque tudo o que o turno exige é o pedaço estreito de estado que o modelo precisa para agir
+        desta vez.</li>
+    <li><strong>Perceber localmente.</strong> Essa fatia é renderizada em um contexto
+        completo e construído: o prompt de sistema, o histórico <code>messages[]</code>
+        em andamento, resultados de ferramentas anteriores e a fatia que você acabou de amostrar. Tudo isso é texto
+        puro. Para um agente LLM, a percepção <em>é</em> engenharia de contexto.</li>
+    <li><strong>Agir localmente.</strong> O modelo mapeia esse texto em mais texto: um
+        <em>sinal de intenção</em>, idealmente uma chamada de ferramenta tipada como
+        <code>{ "move": "east" }</code> em vez de prosa livre. A intenção apenas solicita
+        uma ação, e nunca executa uma. Seu código a lê e aplica uma
+        atualização limitada ao ambiente (<code>doMove(...)</code>), validando-a
+        primeiro.</li>
+    <li><strong>Impactar localmente.</strong> A atualização muda o mundo. Nada
+        persistiu dentro do modelo; o único estado durável é o ambiente e
+        o contexto que seu código vai reconstruir. O amostrar-localmente do próximo turno lê
+        o mundo modificado, e o ciclo se repete.</li>
+  </ul>
+  <p>
+    Olhe de perto o meio dessa lista. O <strong>passo de perceber-a-agir é um único
+    mapeamento texto-para-texto sem estado</strong>, no qual um contexto completo e construído entra e
+    um sinal de intenção volta. O modelo apenas transforma texto, então perceber o mundo
+    e transformar uma intenção em uma mudança real continuam sendo trabalho do seu código nos dois lados desse mapeamento.
+  </p>
+  <p>
+    Isso deixa a caixa verde abaixo como a <em>única</em> parte que você não escreveu. Um agente,
+    portanto, tem apenas duas escolhas: o que você alimenta em seu contexto e o que você faz com
+    a intenção que ele retorna.
+  </p>
+
+  <figure style="margin:1.4em 0">
+<div class="fig-embed" data-svg-src="assets/figures/01a-loop-3.svg" style="aspect-ratio:920 / 450"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">amostrar → perceber → (texto → texto) → agir → impactar</figcaption>
+  </figure>
+
+  <div class="callout">
+    <strong>Cada passagem do laço age apenas localmente.</strong> O modelo lê um pequeno
+    pedaço do mundo, como uma única célula do labirinto, e devolve uma ação limitada antes que o passo texto-para-texto sem estado entre eles esqueça tudo o que acabou de ver. Um agente
+    que realiza muita coisa é apenas esse ciclo modesto repetido muitas vezes, enquanto o
+    ambiente carrega o estado adiante de uma passagem para a próxima.
+    O Módulo 1b constrói esse ciclo em código, onde você pode ver o contexto crescer a cada turno.
+  </div>
+
+  <h2>Antes de continuar</h2>
+  <p>Cada pergunta pode ser respondida ajustando um controle na célula do labirinto-LLM acima e rodando de novo.</p>
+  <ol>
+    <li><strong>Tire o texto do modelo multimodal.</strong>
+        Na rota com visão, defina <code>includeText:false</code> e deixe
+        <code>includeImage:true</code>, depois rode de novo. O modelo omni agora vê apenas a
+        imagem renderizada do labirinto. Ele ainda alcança o objetivo, e toma
+        mais decisões do que a execução com texto mais imagem?</li>
+    <li><strong>Remova a dica de estratégia da DIRECTIVE.</strong>
+        Apague a linha que manda preferir ramos não visitados a células já visitadas, depois
+        rode de novo a rota sem visão. Conte as decisões em relação à execução com a dica
+        presente. Quanto da competência do modelo veio daquela única frase?</li>
+    <li><strong>Troque o cérebro no encaixe.</strong>
+        Mude <code>model:"omni"</code> para <code>model:"super"</code> na rota sem
+        visão e rode de novo. O laço, o labirinto, a percepção e a ação não mudam; apenas
+        o soquete de raciocínio muda. O modelo de texto maior alcança o objetivo em menos
+        decisões?</li>
+  </ol>
+
+  <h2>Experimente · o modelo como uma função pura</h2>
+  <p>
+    O menor artefato do curso é uma única chamada <code>chat()</code> sem ferramentas
+    e sem memória ao redor. Cada mensagem que você envia se sustenta sozinha, executando a
+    função pura e sem estado que o laço vai depois envolver. Digite algo abaixo e observe
+    a resposta chegar em streaming.
+  </p>
+  <div id="loop-cell"></div>
+  <div id="loop-artifact"></div>
+  <script type="module">
+    import { mountRunCell } from "./_shared.js";
+    mountRunCell("#loop-cell", {
+      label: "o artefato Experimente, em código",
+      autorun: true,
+      code: `// memory:true mantém a conversa: ctx.history guarda os turnos anteriores e cada chamada
+// os enxerga. Desligue o botão 🧠 de memória e ctx.history fica vazio, então o mesmíssimo
+// respond vira a função pura e sem estado que o laço do agente vai depois envolver.
+
+helpers.mountChatUI("#loop-artifact", {
+  memory: true,
+  greeting: "A memória está ligada, então acompanho a conversa inteira. Diga seu nome e depois pergunte qual é. Desligue a memória 🧠 e respondo cada mensagem do zero, uma função sem estado que não lembra da anterior.",
+  models: [
+    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · rápido" },
+    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · mais forte" },
+  ],
+  examples: ["Meu nome é Ada. Lembre-se disso.", "Qual é o meu nome?", "Qual é a capital da França?", "Explique o laço do agente em duas frases", "Por que um agente precisa de um laço em vez de uma única chamada?"],
+  respond: async (text, ctx) => {
+    // ctx.history são os turnos anteriores quando a memória está ligada, vazio quando está desligada (o || []
+    // também protege uma versão mais antiga do widget que não repassa o histórico).
+    const messages = [...(ctx.history || []), { role: "user", content: text }];
+    const s = await helpers.chatStream({ messages, model: ctx.model, max_tokens: 8196, signal: ctx.signal },
+      (t) => ctx.view.token(t), { onReasoning: (r) => ctx.view.reasoning(r) });
+    if (s.usage) ctx.view.usage({ input: s.usage.prompt_tokens, output: s.usage.completion_tokens, model: s.model });
+  },
+});
+helpers.log("renderizado abaixo. Edite a configuração e rode (Run).");
+
+// Por baixo dos panos: mountChatUI renderiza a view inteira, o seletor de modelos, markdown, chips de
+// ferramentas em streaming, o medidor de contexto, o botão de memória e o editar-para-retroceder. Você escreve só respond().
+// Abra o menu de helpers da célula para ler chatStream e o resto.
+`,
+    });
+  </script>
+
+  <div class="foot-nav">
+    <a href="index.html">← Configuração</a>
+    <a class="next" href="01b-react.html">Módulo 1b: O Laço ReAct →</a>
+  </div>
+</main>
+
+<script type="module">
+import { buildNav, updateKeyPill, mountKeyPanel, mountJourneyMap, mountCanvasFlow, mountRunCell, mountDiagram } from "./_shared.js";
+document.getElementById("nav").innerHTML = buildNav("01a-loop.html");
+const pill = document.getElementById("key-status");
+updateKeyPill(pill);
+mountJourneyMap("#journey-map", "1a");
+mountKeyPanel(document.getElementById("key-panel"), { onSave: () => updateKeyPill(pill), onClear: () => updateKeyPill(pill) });
+hljs.highlightAll();
+
+// The agent loop (Environment | Agent), rendered from a spec via mountDiagram.
+mountDiagram("#fig-agent-loop", {
+  title: "O laço do agente", kicker: "PERCEBER · RACIOCINAR · AGIR", width: 760, height: 280,
+  aria: "O laço do agente. O ambiente carrega o estado do mundo, e o agente escolhe a próxima ação por meio de um soquete de raciocínio. As percepções fluem em direção ao agente e as ações fluem de volta, e só elas cruzam a fronteira, enquanto o raciocínio interno permanece substituível.",
+  nodes: [
+    { id: "env", kind: "env", label: "Ambiente", x: 0, y: 0,
+      lines: ["o estado do mundo", "sensores o leem", "ações o mudam"] },
+    { id: "agent", kind: "agent", label: "Agente", x: 1, y: 0,
+      lines: ["escolhe a próxima ação", "a partir do que percebe"], socket: "raciocínio substituível" },
+  ],
+
+  edges: [
+    { from: "env", to: "agent", label: "perceber", side: "top", tint: "env" },
+    { from: "agent", to: "env", label: "agir", side: "bottom", tint: "agent" },
+    { from: "agent", to: "agent" },
+  ],
+});
+
+// ── Canvas 1: a reflex agent with zero LLMs ──────────────────────────────────
+mountCanvasFlow("#cell-reflex", {
+  label: "Um agente reflexo numa pista 1-D · sem LLM, apenas um if",
+  intro: "Setup constrói o ambiente e as características intrínsecas do agente, tick roda um ciclo perceber-raciocinar-agir, e run repete esse tick 25 vezes para você ver o número da posição saltar entre as paredes.",
+  edges: [
+    { from: "setup", to: "tick" },
+    { from: "tick",  to: "run"  },
+  ],
+
+  nodes: [
+    {
+      id: "setup", icon: "🌍", title: "Ambiente + características do agente", x: 0, y: 0,
+      summary: "Inicializa o ambiente (uma pista 1-D limitada por paredes nas posições 0 e 9) e o estado intrínseco do agente (sua posição inicial e direção). Separar o estado do ambiente do estado do agente facilita trocar a regra de raciocínio sem tocar no modelo do mundo.",
+      code: `state.env = {
+    leftWall:  0, 
+    rightWall: 9,
+    position:  3,
+};
+
+state.agent = {
+    direction: +1,  // +1 = direita, -1 = esquerda
+};
+return { env: state.env, agent: state.agent };
+`,
+    },
+
+    {
+      id: "tick", icon: "🔁", title: "Um ciclo perceber-raciocinar-agir", x: 0, y: 1,
+      summary: "Lê o ambiente, decide para que lado mover e então atualiza o ambiente. Todo o passo de raciocínio é uma única instrução if, mantida deliberadamente mínima para que a estrutura do laço fique clara sem um modelo no caminho.",
+      code: `// PERCEBER
+const perception = {
+  position:    state.env.position,
+  atLeftWall:  state.env.position <= state.env.leftWall,
+  atRightWall: state.env.position >= state.env.rightWall,
+};
+
+// RACIOCINAR
+if (perception.atLeftWall)  state.agent.direction = +1;
+if (perception.atRightWall) state.agent.direction = -1;
+const action = { move: state.agent.direction };
+// AGIR
+state.env.position += action.move;
+return { perception, action, newPosition: state.env.position };
+`,
+    },
+
+    {
+      id: "run", icon: "▶️", title: "Rode o laço por 25 ticks", x: 0, y: 2,
+      summary: "Chama o mesmo ciclo perceber-raciocinar-agir 25 vezes em sequência. O rastro de posições na saída torna concreto o padrão de salto e mostra como o laço repetido conduz o comportamento enquanto a regra de raciocínio continua trivial.",
+      code: `const trace = [];
+for (let t = 0; t < 25; t++) {
+  const p = {
+    position:    state.env.position,
+    atLeftWall:  state.env.position <= state.env.leftWall,
+    atRightWall: state.env.position >= state.env.rightWall,
+  };
+  if (p.atLeftWall)  state.agent.direction = +1;
+  if (p.atRightWall) state.agent.direction = -1;
+  state.env.position += state.agent.direction;
+  trace.push(state.env.position);
+}
+
+return { ticks: trace.length, finalPosition: state.env.position, trace };
+`,
+    },
+  ],
+});
+
+// ── Canvas 1.5: maze + four swappable reasoners (2-D version of the swap above) ─
+// ── Module 1a Part 4: maze + four swappable reasoners ────────────────────────
+mountCanvasFlow("#cell-maze", {
+  label: "O laço do agente com um passo de raciocínio substituível",
+  intro: "Execute os nós em ordem, de modo que o nó 1 construa o labirinto e os utilitários compartilhados que todo nó posterior lê de state, sendo os três primeiros cérebros rotinas de busca escritas à mão que aquecem o laço e o último cérebro o modelo de linguagem em direção ao qual este curso caminha.",
+  edges: [
+    { from: "maze", to: "bfs"   },
+    { from: "maze", to: "dfs"   },
+    { from: "bfs",  to: "astar" },
+    { from: "astar", to: "swap" },
+  ],
+
+  nodes: [
+    {
+      id: "maze", icon: "🌐", title: "Labirinto + raciocinador constante", x: 0, y: 0,
+      summary: "Gera o labirinto e os utilitários de movimento que todo nó posterior lê, depois roda a mesma regra constante 'sempre leste' tanto num corredor reto quanto no labirinto. Um rumo fixo percorre o corredor até o objetivo, mas trava numa parede do labirinto, e é por isso que os nós de raciocínio abaixo colocam uma rotina de busca de verdade no encaixe.",
+      code: `// Encanamento da geração do labirinto: constrói a grade e os utilitários de movimento que todo nó
+// posterior lê de state. A lição é a troca de cérebro nos nós seguintes.
+
+// lcg is a tiny seeded random-number generator, so a given seed always builds
+// the same maze (reproducible runs).
+function lcg(seed) {
+  let s = ((seed | 0) >>> 0) || 42;
+  return () => { s = (Math.imul(1664525, s) + 1013904223) >>> 0; return s / 4294967296; };
+}
+
+function generateMaze(cols, rows, seed, loopFactor = 0.15) {
+  const rng = lcg(seed), W = cols * 2 + 1, H = rows * 2 + 1;
+  const g = Array.from({ length: H }, () => Array(W).fill('#'));
+  function sh(a) { for (let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a; }
+  function carve(cx, cy) {
+    for (const [dx, dy] of sh([[0,-2],[0,2],[-2,0],[2,0]])) {
+      const [nx, ny] = [cx+dx, cy+dy];
+      if (nx>=1 && nx<W-1 && ny>=1 && ny<H-1 && g[ny][nx]==='#') {
+        g[cy+dy/2][cx+dx/2] = '.'; g[ny][nx] = '.'; carve(nx, ny);
+      }
+    }
+  }
+  g[1][1] = '.'; carve(1, 1); g[1][1] = 'S'; g[H-2][W-2] = 'G';
+
+  // Loop-carving pass: a perfect maze has just one path between any two cells,
+  // so knock down a few extra walls between open cells to add forks and junctions.
+  const rng2 = lcg((seed ^ 0x5A5A5A5A) >>> 0);
+  for (let y = 1; y < H-1; y++) {
+    for (let x = 1; x < W-1; x++) {
+      if (g[y][x] !== '#' || rng2() > loopFactor) continue;
+      const horiz = (y%2===0) && (x%2===1) && g[y][x-1]!=='#' && g[y][x+1]!=='#';
+      const vert  = (x%2===0) && (y%2===1) && g[y-1][x]!=='#' && g[y+1][x]!=='#';
+      if (horiz || vert) g[y][x] = '.';
+    }
+  }
+  return g.map(r => r.join(''));
+}
+
+const DIRS = { north:[0,-1], south:[0,1], east:[1,0], west:[-1,0] };
+
+function findCell(grid, ch) {
+  for (let y=0; y<grid.length; y++)
+    for (let x=0; x<grid[y].length; x++)
+      if (grid[y][x] === ch) return [x, y];
+  return null;
+}
+
+function validMoves(grid, [x, y]) {
+  return Object.entries(DIRS)
+    .filter(([, [dx,dy]]) => {
+      const [nx, ny] = [x+dx, y+dy];
+      return ny>=0 && ny<grid.length && nx>=0 && nx<grid[ny].length && grid[ny][nx]!=='#';
+    })
+    .map(([name]) => name);
+}
+
+function doMove(grid, [x, y], dir) {
+  const [dx, dy] = DIRS[dir] || [0,0], [nx, ny] = [x+dx, y+dy];
+  if (ny<0||ny>=grid.length||nx<0||nx>=grid[ny].length||grid[ny][nx]==='#')
+    return { pos:[x,y], ok:false, done:false };
+  return { pos:[nx,ny], ok:true, done: grid[ny][nx]==='G' };
+}
+
+function bfsPath(grid, start, goal) {
+  const [gx,gy]=goal, queue=[[start,[]]], seen=new Set([\`\${start[0]},\${start[1]}\`]);
+  while (queue.length) {
+    const [pos, path] = queue.shift(), [x,y] = pos;
+    if (x===gx && y===gy) return path;
+    for (const dir of validMoves(grid, pos)) {
+      const [dx,dy]=DIRS[dir], npos=[x+dx,y+dy], k=\`\${npos[0]},\${npos[1]}\`;
+      if (!seen.has(k)) { seen.add(k); queue.push([npos,[...path,dir]]); }
+    }
+  }
+  return [];
+}
+
+function astarPath(grid, start, goal) {
+  const [gx,gy]=goal, h=([x,y])=>Math.abs(x-gx)+Math.abs(y-gy);
+  const heap=[[h(start),0,start,[]]], seen={};
+  while (heap.length) {
+    heap.sort((a,b)=>a[0]-b[0]);
+    const [,g,pos,path]=heap.shift(), k=\`\${pos[0]},\${pos[1]}\`;
+    if (seen[k]) continue; seen[k]=true;
+    if (pos[0]===gx && pos[1]===gy) return path;
+    for (const dir of validMoves(grid,pos)) {
+      const [dx,dy]=DIRS[dir], npos=[pos[0]+dx,pos[1]+dy], nk=\`\${npos[0]},\${npos[1]}\`;
+      if (!seen[nk]) { const ng=g+1; heap.push([ng+h(npos),ng,npos,[...path,dir]]); }
+    }
+  }
+  return [];
+}
+
+function runLoop(grid, start, goal, getMove, maxSteps) {
+  let pos=[...start]; const visited=[[...pos]];
+  for (let i=0; i<maxSteps; i++) {
+    const moves=validMoves(grid,pos), dir=getMove(i,pos,moves);
+    if (!dir) break;
+    const r=doMove(grid,pos,dir); pos=r.pos;
+    if (r.ok) visited.push([...pos]);
+    if (r.done) return {pos, visited, steps:i+1, won:true};
+  }
+  return {pos, visited, steps:maxSteps, won:false};
+}
+
+function renderMaze(grid, pos, goal, visited, title, explored) {
+  const [ax,ay]=pos, [gx,gy]=goal, W=Math.max(...grid.map(r=>r.length));
+  const vis=new Set(visited.map(([x,y])=>\`\${x},\${y}\`));
+  const exp=explored||new Set();
+  let cells='';
+  for (let y=0; y<grid.length; y++) for (let x=0; x<grid[y].length; x++) {
+    let s='',i='';
+    if (x===ax&&y===ay)              {s='background:#76b900;color:#000;font-weight:bold';i='◉';}
+    else if (x===gx&&y===gy)         {s='background:#f0a500;color:#000;font-weight:bold';i='★';}
+    else if (grid[y][x]==='#')       {s='background:#0d1117';}
+    else if (vis.has(\`\${x},\${y}\`))   {s='background:#1e3a5f;color:#53c0f0';i='·';}
+    else if (exp.has(\`\${x},\${y}\`))   {s='background:#0d2030';}
+    else                             {s='background:#161b22';}
+    cells+=\`<div class="mc" style="\${s}">\${i}</div>\`;
+  }
+
+  const hdr=title?\`<div style="font:11px/1.4 ui-monospace,monospace;color:#888;margin-bottom:5px">\${title}</div>\`:'';
+  return \`\${hdr}<style>.mgrid{display:grid;gap:2px;background:#0a0a0f;padding:8px;border-radius:8px;width:fit-content;margin:4px 0}.mc{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:3px;font:13px/1 ui-monospace,monospace}</style><div class="mgrid" style="grid-template-columns:repeat(\${W},26px)">\${cells}</div>\`;
+}
+
+function bfsExplore(grid, start, goal) {
+  const [gx,gy]=goal;
+  const queue=[[start,[]]], seen=new Set([\`\${start[0]},\${start[1]}\`]);
+  const exploreOrder=[start];
+  while (queue.length) {
+    const [pos, path]=queue.shift(), [x,y]=pos;
+    if (x===gx&&y===gy) return {path, exploreOrder};
+    for (const dir of validMoves(grid,pos)) {
+      const [dx,dy]=DIRS[dir], npos=[x+dx,y+dy], k=\`\${npos[0]},\${npos[1]}\`;
+      if (!seen.has(k)) { seen.add(k); exploreOrder.push(npos); queue.push([npos,[...path,dir]]); }
+    }
+  }
+  return {path:[], exploreOrder};
+}
+
+// ── Store shared state ──────────────────────────────────────────────────────
+state.grid  = generateMaze(9, 7, 42);
+state.start = findCell(state.grid, 'S');
+state.goal  = findCell(state.grid, 'G');
+state.fn    = { validMoves, doMove, bfsPath, bfsExplore, astarPath, runLoop, renderMaze, findCell };
+
+// ── Side-by-side animation: corridor and random maze run together ────────────
+const corrId = 'c' + Math.random().toString(36).slice(2, 7);
+const randId = 'r' + Math.random().toString(36).slice(2, 7);
+helpers.log.html(\`<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
+  <div id="\${corrId}" style="flex:0 0 auto"></div>
+  <div id="\${randId}" style="flex:0 0 auto"></div>
+</div>\`);
+
+async function animRun(grid, start, goal, getDir, maxSteps, elId, msPerStep) {
+  let pos = [...start];
+  const visited = [[...pos]];
+  let steps = 0, won = false;
+  for (let i = 0; i < maxSteps; i++) {
+    const el = document.getElementById(elId);
+    if (el) el.innerHTML = renderMaze(grid, pos, goal, visited, \`step \${i + 1}\`);
+    await new Promise(r => setTimeout(r, msPerStep));
+    const dir = getDir(i, pos, validMoves(grid, pos));
+    const rv = doMove(grid, pos, dir);
+    pos = rv.pos; steps++;
+    if (rv.ok) visited.push([...pos]);
+    if (rv.done) { won = true; break; }
+  }
+
+  const el = document.getElementById(elId);
+  if (el) el.innerHTML = renderMaze(grid, pos, goal, visited, \`\${steps} steps · solved: \${won}\`);
+  return { pos, visited, steps, won };
+}
+
+const CORRIDOR = ["###################","#S...............G#","###################"];
+// Um rumo fixo basta num corredor reto, então 'sempre leste' o percorre direto até o objetivo.
+const corrR = await animRun(CORRIDOR, findCell(CORRIDOR,'S'), findCell(CORRIDOR,'G'), () => 'east', 40, corrId, 55);
+
+// O mesmo rumo fixo não consegue navegar o labirinto. Ele anda para leste até uma parede o deter e então
+// não tem para onde ir: uma regra constante não tem como virar. Essa parada morta é o motivo de os nós
+// de raciocínio abaixo colocarem uma rotina de busca de verdade nesse mesmo encaixe.
+async function animStall(grid, start, goal, dir, elId, msPerStep) {
+  let pos = [...start]; const visited = [[...pos]]; let moves = 0;
+  for (;;) {
+    const el = document.getElementById(elId);
+    if (el) el.innerHTML = renderMaze(grid, pos, goal, visited, \`'always \${dir}' · move \${moves + 1}\`);
+    await new Promise(r => setTimeout(r, msPerStep));
+    const rv = doMove(grid, pos, dir);
+    if (!rv.ok) break;
+    pos = rv.pos; visited.push([...pos]); moves++;
+    if (rv.done) break;
+  }
+  const el = document.getElementById(elId);
+  if (el) el.innerHTML = renderMaze(grid, pos, goal, visited,
+    \`'sempre \${dir}' trava após \${moves} movimento\${moves === 1 ? '' : 's'} · um rumo fixo não resolve um labirinto\`);
+  return { moves };
+}
+const mazeR = await animStall(state.grid, state.start, state.goal, 'east', randId, 120);
+
+return { corridorSolved: corrR.won, mazeStalledAfter: mazeR.moves };
+`,
+    },
+    {
+      id: "dfs", icon: "🌀", title: "Raciocinador DFS", x: 1, y: 0,
+      summary: "A DFS mergulha fundo e retrocede, e como sua sequência de passos inclui os movimentos de volta, a animação mostra o agente entrando em becos sem saída e voltando por eles.",
+      code: `if (!state.fn) { helpers.log("Rode primeiro o nó 'Labirinto + raciocinador constante'."); return; }
+const { fn, grid, start, goal } = state;
+const LDIR = {north:[0,-1],south:[0,1],east:[1,0],west:[-1,0]};
+const REV  = {north:'south',south:'north',east:'west',west:'east'};
+const steps = [];
+const seen  = new Set([\`\${start[0]},\${start[1]}\`]);
+
+function dfs(pos) {
+  const [x, y] = pos;
+  if (x === goal[0] && y === goal[1]) return true;
+
+  for (const dir of fn.validMoves(grid, pos)) {
+    const [dx, dy] = LDIR[dir];
+    const npos = [x+dx, y+dy];
+    const k = \`\${npos[0]},\${npos[1]}\`;
+    if (!seen.has(k)) {
+      seen.add(k);
+      steps.push(dir);
+      if (dfs(npos)) return true;
+      steps.push(REV[dir]);
+    }
+  }
+  return false;
+}
+dfs([...start]);
+
+let pos = [...start], visited = [[...pos]], stepCount = 0;
+const UID = 'd' + Math.random().toString(36).slice(2, 7);
+helpers.log.html(\`<div id="\${UID}" style="margin:6px 0"></div>\`);
+
+for (const dir of steps) {
+  const el = document.getElementById(UID);
+  if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, visited, \`DFS · step \${stepCount + 1}\`);
+  await new Promise(r => setTimeout(r, 55));
+  const rv = fn.doMove(grid, pos, dir);
+  pos = rv.pos; stepCount++;
+  if (rv.ok) visited.push([...pos]);
+  if (rv.done) break;
+}
+
+const elF = document.getElementById(UID);
+if (elF) elF.innerHTML = fn.renderMaze(grid, pos, goal, visited,
+  \`DFS · \${stepCount} total steps (incl. backtracks)\`);
+return { stepsTotal: stepCount };
+`,
+    },
+    {
+      id: "bfs", icon: "🔍", title: "Raciocinador BFS", x: 0, y: 1,
+      summary: "A BFS primeiro expande sua fronteira, então você vê cada célula ser examinada em ordem de distância, e depois o agente percorre o caminho mais curto que encontrou.",
+      code: `if (!state.fn) { helpers.log("Rode primeiro o nó 'Labirinto + raciocinador constante'."); return; }
+const { fn, grid, start, goal } = state;
+const { path, exploreOrder } = fn.bfsExplore(grid, start, goal);
+
+const UID = 'b' + Math.random().toString(36).slice(2, 7);
+helpers.log.html(\`<div id="\${UID}" style="margin:6px 0"></div>\`);
+
+// Phase 1: animate frontier expanding
+const explored = new Set();
+let pos = [...start];
+for (const cell of exploreOrder) {
+  explored.add(\`\${cell[0]},\${cell[1]}\`);
+  const el = document.getElementById(UID);
+  if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, [],
+    \`BFS searching · \${explored.size} of \${exploreOrder.length} cells\`, explored);
+  await new Promise(r => setTimeout(r, 32));
+}
+
+// Phase 2: walk the path
+let visited = [[...pos]], steps = 0;
+for (const dir of path) {
+  const el = document.getElementById(UID);
+  if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, visited,
+    \`BFS walking · step \${steps + 1} of \${path.length}\`, explored);
+  await new Promise(r => setTimeout(r, 90));
+  const rv = fn.doMove(grid, pos, dir);
+  pos = rv.pos; steps++;
+  if (rv.ok) visited.push([...pos]);
+  if (rv.done) break;
+}
+
+const elF = document.getElementById(UID);
+if (elF) elF.innerHTML = fn.renderMaze(grid, pos, goal, visited,
+  \`BFS · \${steps} steps path · \${exploreOrder.length} cells searched\`, explored);
+state.bfsSteps = steps;
+return { steps, examined: exploreOrder.length };
+`,
+    },
+    {
+      id: "astar", icon: "⭐", title: "Raciocinador A*", x: 1, y: 1,
+      summary: "A A* usa uma heurística de Manhattan para encontrar o mesmo comprimento de caminho que a BFS neste labirinto, examinando menos células.",
+      code: `if (!state.fn) { helpers.log("Rode primeiro o nó 'Labirinto + raciocinador constante'."); return; }
+const { fn, grid, start, goal } = state;
+const path = fn.astarPath(grid, start, goal);
+let pos = [...start], visited = [[...pos]], steps = 0;
+
+const UID = 'a' + Math.random().toString(36).slice(2, 7);
+helpers.log.html(\`<div id="\${UID}" style="margin:6px 0"></div>\`);
+
+for (const dir of path) {
+  const el = document.getElementById(UID);
+  if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, visited,
+    \`A* · step \${steps + 1} of \${path.length}\`);
+  await new Promise(r => setTimeout(r, 85));
+  const rv = fn.doMove(grid, pos, dir);
+  pos = rv.pos; steps++;
+  if (rv.ok) visited.push([...pos]);
+  if (rv.done) break;
+}
+
+const elF = document.getElementById(UID);
+if (elF) elF.innerHTML = fn.renderMaze(grid, pos, goal, visited,
+  \`A* · \${steps} steps · Manhattan heuristic · same path as BFS: \${steps === state.bfsSteps}\`);
+return { steps, won: true };
+`,
+    },
+    {
+      id: "swap", icon: "🔄", title: "Desafio · troque o cérebro", x: 0, y: 2,
+      summary: "Uma linha escolhe o cérebro enquanto tudo abaixo dela permanece o laço fixo de perceber-a-agir, então trocar fn.bfsPath por fn.astarPath e rodar de novo mostra como pouca coisa muda quando só o encaixe de raciocínio varia.",
+      code: `if (!state.fn) { helpers.log("Rode primeiro o nó 'Labirinto + raciocinador constante'."); return; }
+const { fn, grid, start, goal } = state;
+
+// ── O CÉREBRO · a única parte substituível de todo o agente ──────────────────
+// DESAFIO: troque fn.bfsPath por fn.astarPath na próxima linha, depois rode de novo.
+// Nada abaixo dela muda; perceber, agir e o laço são todos fixos.
+const plan = fn.bfsPath(grid, start, goal);   // ← troque por fn.astarPath(grid, start, goal)
+
+// ── LAÇO FIXO · idêntico para BFS, A*, a regra constante e o LLM ─────────────
+let pos = [...start], visited = [[...pos]], steps = 0;
+const UID = 'sw' + Math.random().toString(36).slice(2, 7);
+helpers.log.html(\`<div id="\${UID}" style="margin:6px 0"></div>\`);
+for (const dir of plan) {
+  const el = document.getElementById(UID);
+  if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, visited, \`your brain · step \${steps + 1} of \${plan.length}\`);
+  await new Promise(r => setTimeout(r, 85));
+  const rv = fn.doMove(grid, pos, dir);        // AGIR
+  pos = rv.pos; steps++;
+  if (rv.ok) visited.push([...pos]);
+  if (rv.done) break;
+}
+
+const elF = document.getElementById(UID);
+if (elF) elF.innerHTML = fn.renderMaze(grid, pos, goal, visited,
+  \`resolvido em \${steps} passos; o laço nunca mudou, só o cérebro mudou\`);
+return { steps, lesson: "só a linha do plano mudou; perceber / agir / laço são fixos" };
+`,
+    },
+  ],
+});
+
+
+// ── Canvas 1.6: LLM / VLM planner · the model as a brain in the same maze slot ─
+mountCanvasFlow("#cell-llm-maze", {
+  label: "Planejador LLM · o modelo como soquete de raciocínio",
+  intro: "Rode primeiro o nó do motor; ele exporta para state os utilitários do labirinto e um resolvedor compartilhado (state.runMaze). Depois escolha uma rota: a rota só-texto alimenta o modelo apenas com o mapa ASCII, enquanto a rota com visão também anexa uma imagem renderizada do labirinto. Cada rota expõe os mesmos controles de runMaze: model (uma chave de state.MAZE_MODELS), includeText / includeImage / includeHistory, promptFormat, toolSpecInSystem (que reafirma o formato exato de saída da ferramenta no prompt de sistema) e um botão ADVANCED para um labirinto maior. Mesmo motor, então você pode comparar modalidades, contexto e modelos lado a lado.",
+  nodes: [
+    {
+      id: "helpers", icon: "⚙️", title: "Motor do labirinto",
+      x: 0, y: 0,
+      summary: "Rodar este nó uma vez exporta para state o gerador, o executor de movimentos, o renderizador ASCII, o renderizador PNG, o DECISION_TOOL, o SYS e o resolvedor compartilhado state.runMaze, para os nós de rota usarem.",
+      code: `// Encanamento da geração do labirinto, guardado em state para os nós de rota usarem.
+// A lição é a troca de cérebro: o mesmo laço que rodou DFS, BFS e A* agora
+// conduz um modelo de linguagem por este labirinto.
+
+// lcg is a tiny seeded random-number generator, so a given seed always builds
+// the same maze (reproducible runs).
+function lcg(seed) {
+  let s = ((seed | 0) >>> 0) || 42;
+  return () => { s = (Math.imul(1664525, s) + 1013904223) >>> 0; return s / 4294967296; };
+}
+
+function generateMaze(cols, rows, seed, loopFactor = 0.15) {
+  const rng = lcg(seed), W = cols * 2 + 1, H = rows * 2 + 1;
+  const g = Array.from({ length: H }, () => Array(W).fill('#'));
+  function sh(a) { for (let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a; }
+  function carve(cx, cy) {
+    for (const [dx, dy] of sh([[0,-2],[0,2],[-2,0],[2,0]])) {
+      const [nx, ny] = [cx+dx, cy+dy];
+      if (nx>=1 && nx<W-1 && ny>=1 && ny<H-1 && g[ny][nx]==='#') {
+        g[cy+dy/2][cx+dx/2] = '.'; g[ny][nx] = '.'; carve(nx, ny);
+      }
+    }
+  }
+  g[1][1] = '.'; carve(1, 1); g[1][1] = 'S'; g[H-2][W-2] = 'G';
+
+  // Loop-carving pass: a perfect maze has just one path between any two cells,
+  // so knock down a few extra walls between open cells to add forks and junctions.
+  const rng2 = lcg((seed ^ 0x5A5A5A5A) >>> 0);
+  for (let y = 1; y < H-1; y++) {
+    for (let x = 1; x < W-1; x++) {
+      if (g[y][x] !== '#' || rng2() > loopFactor) continue;
+      const horiz = (y%2===0) && (x%2===1) && g[y][x-1]!=='#' && g[y][x+1]!=='#';
+      const vert  = (x%2===0) && (y%2===1) && g[y-1][x]!=='#' && g[y+1][x]!=='#';
+      if (horiz || vert) g[y][x] = '.';
+    }
+  }
+  return g.map(r => r.join(''));
+}
+
+const DIRS = { north:[0,-1], south:[0,1], east:[1,0], west:[-1,0] };
+
+function findCell(grid, ch) {
+  for (let y=0; y<grid.length; y++)
+    for (let x=0; x<grid[y].length; x++)
+      if (grid[y][x] === ch) return [x, y];
+  return null;
+}
+
+function doMove(grid, [x, y], dir) {
+  const [dx, dy] = DIRS[dir] || [0,0], [nx, ny] = [x+dx, y+dy];
+  if (ny<0||ny>=grid.length||nx<0||nx>=grid[ny].length||grid[ny][nx]==='#')
+    return { pos:[x,y], ok:false, done:false };
+  return { pos:[nx,ny], ok:true, done: grid[ny][nx]==='G' };
+}
+
+function validMoves(grid, [x, y]) {
+  return Object.entries(DIRS)
+    .filter(([, [dx,dy]]) => {
+      const [nx, ny] = [x+dx, y+dy];
+      return ny>=0 && ny<grid.length && nx>=0 && nx<grid[ny].length && grid[ny][nx]!=='#';
+    })
+    .map(([name]) => name);
+}
+
+// toAscii: marks visited path as ·, unexplored adjacent open cells as -, current as @.
+function toAscii(grid, pos, goal, visited) {
+  const [ax, ay] = pos, [gx, gy] = goal;
+  const vis = new Set(visited.map(([x, y]) => \`\${x},\${y}\`));
+  const fork = new Set();
+  for (const [vx, vy] of visited) {
+    for (const [dx, dy] of Object.values(DIRS)) {
+      const [nx, ny] = [vx+dx, vy+dy];
+      if (!vis.has(\`\${nx},\${ny}\`) && ny>=0 && ny<grid.length &&
+          nx>=0 && nx<grid[ny].length && grid[ny][nx] !== '#')
+        fork.add(\`\${nx},\${ny}\`);
+    }
+  }
+
+  return grid.map((row, y) =>
+    [...row].map((cell, x) =>
+      x===ax && y===ay ? '@' :
+      x===gx && y===gy ? 'G' :
+      vis.has(\`\${x},\${y}\`)  ? '\xb7' :
+      fork.has(\`\${x},\${y}\`) ? '-' : cell
+    ).join('')
+  ).join('\\n');
+}
+
+function renderMaze(grid, pos, goal, visited, title) {
+  const [ax, ay] = pos, [gx, gy] = goal, W = Math.max(...grid.map(r => r.length));
+  const vis  = new Set(visited.map(([x, y]) => \`\${x},\${y}\`));
+  const fork = new Set();
+  for (const [vx, vy] of visited) {
+    for (const [dx, dy] of Object.values(DIRS)) {
+      const [nx, ny] = [vx+dx, vy+dy];
+      if (!vis.has(\`\${nx},\${ny}\`) && ny>=0 && ny<grid.length &&
+          nx>=0 && nx<grid[ny].length && grid[ny][nx] !== '#')
+        fork.add(\`\${nx},\${ny}\`);
+    }
+  }
+
+  let cells = '';
+  for (let y=0; y<grid.length; y++) for (let x=0; x<grid[y].length; x++) {
+    let s='', i='';
+    if      (x===ax && y===ay)           { s='background:#76b900;color:#000;font-weight:bold'; i='&#9689;'; }
+    else if (x===gx && y===gy)           { s='background:#f0a500;color:#000;font-weight:bold'; i='&#9733;'; }
+    else if (grid[y][x]==='#')           { s='background:#0d1117'; }
+    else if (vis.has(\`\${x},\${y}\`))    { s='background:#1e3a5f;color:#53c0f0'; i='\xb7'; }
+    else if (fork.has(\`\${x},\${y}\`))   { s='background:#1e2a1e;color:#4a7a4a'; i='-'; }
+    else                                 { s='background:#161b22'; }
+    cells += \`<div class="mc" style="\${s}">\${i}</div>\`;
+  }
+  const hdr = title ? \`<div style="font:11px/1.4 ui-monospace,monospace;color:#888;margin-bottom:5px">\${title}</div>\` : '';
+  return \`\${hdr}<style>.mgrid{display:grid;gap:2px;background:#0a0a0f;padding:8px;border-radius:8px;width:fit-content;margin:4px 0}.mc{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:3px;font:13px/1 ui-monospace,monospace}</style><div class="mgrid" style="grid-template-columns:repeat(\${W},26px)">\${cells}</div>\`;
+}
+
+// The model sees exactly this tool at every junction, one call per decision point.
+state.DECISION_TOOL = {
+  type: "function",
+  function: {
+    name: "choose_direction",
+    description: "You are at a junction. Return one or more NSEW letters to move. The system executes them one by one, stopping at walls or the goal. Corridors are walked automatically after your moves.",
+
+    parameters: {
+      type: "object",
+      properties: {
+        direction: {
+          type: "string",
+          description: "NSEW sequence. Single: 'E'. Multi: 'EEN'. Words also accepted: 'east', 'east east north'.",
+        },
+      },
+      required: ["direction"],
+    },
+  },
+};
+
+// SYS_DIRECTIVE is the editable "core" of the system message.
+// A route node surfaces it as a DIRECTIVE constant a student can rewrite.
+// SYS_REFERENCE holds the fixed map key; runMaze sends directive, reference, tool spec.
+state.SYS_DIRECTIVE = [
+  "You are navigating a maze. You are called only at JUNCTIONS, the places where 2+ forward paths branch.",
+  "Corridors (one forward option) are walked for you automatically, so between calls your position can JUMP several cells. The exact list of coordinates you have already travelled is given to you every turn. Use it to connect your moves to where you ended up.",
+  "Each call: study the maze, pick ONE direction, and call choose_direction().",
+  "STRATEGY: prefer unvisited branches (-) over visited cells (·); head toward G when you can see it.",
+].join("\\n");
+
+state.SYS_REFERENCE = [
+  "MAP KEY:",
+  "  #  wall   .  passage   @  you   ·  visited   -  unvisited branch   G  goal",
+  "  col=X increases → (east)   row=Y increases ↓ (south)   top-left=(0,0)",
+  "DIRECTIONS: N=up(-Y)  S=down(+Y)  E=right(+X)  W=left(-X)",
+].join("\\n");
+
+state.SYS = state.SYS_DIRECTIVE + "\\n\\n" + state.SYS_REFERENCE;
+
+// Model choices for this tool-calling maze task; every entry supports tool calls.
+// Image-capable entries are marked below. Pick one in runMaze by key,
+// e.g. state.runMaze(helpers, state, { model: "vision" }).
+state.MAZE_MODELS = {
+  omni:       { id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", maxTok: 2048, temp: 0.6,  // multimodal reasoning model (reads images)
+                extra_body: { reasoning_budget: 1024, chat_template_kwargs: { enable_thinking: true } } },
+  reasoning:  { id: "nvidia/nemotron-3-nano-30b-a3b", maxTok: 1200, temp: 0.6,        // text reasoning model
+                extra_body: { reasoning_budget: 800, chat_template_kwargs: { enable_thinking: true } } },
+  vision:     { id: "nvidia/nemotron-nano-12b-v2-vl", maxTok: 1024, temp: 0.3 },     // reads images (needs room to reach the tool call)
+  qwenVision: { id: "qwen/qwen3.5-122b-a10b", maxTok: 1024, temp: 0.4 },             // reads images + tools
+  super:      { id: "nvidia/nemotron-3-super-120b-a12b", maxTok: 1024, temp: 0.4 },  // strong tool-caller
+  gptOss:     { id: "openai/gpt-oss-120b", maxTok: 1500, temp: 0.5 }                 // reasoning + tools
+};
+
+state.generateMaze = generateMaze;
+state.findCell     = findCell;
+state.validMoves   = validMoves;
+state.doMove       = doMove;
+state.toAscii      = toAscii;
+state.renderMaze   = renderMaze;
+state.DIRS         = DIRS;
+
+const { log } = helpers;
+
+// makeReasonStream: returns an onReasoning callback that streams thinking tokens into a live div
+state.makeReasonStream = function(log) {
+  var el = null;
+  var id = 'rsn' + Math.random().toString(36).slice(2, 7);
+
+  return function(chunk) {
+    if (!el) {
+      log.html('<details open style="margin:2px 0">'
+        + '<summary style="cursor:pointer;color:#555;font-size:11px">thinking…</summary>'
+        + '<div id="' + id + '" style="font:11px/1.5 ui-monospace,monospace;color:#5a8;'
+        + 'background:#040d08;padding:8px;border-radius:4px;max-height:180px;overflow:auto;'
+        + 'white-space:pre-wrap"></div></details>');
+      el = document.getElementById(id);
+    }
+    if (el) el.textContent += chunk;
+  };
+};
+
+// ── Shared maze solver (one copy; every route calls it) ─────────────────────
+// mazeToDataURL: paint a maze state to a PNG data URL (the "graphic" channel).
+state.mazeToDataURL = function(grid, pos, goal, visited, cell) {
+  cell = cell || 24;
+  var H = grid.length, W = 0, r, i, x, y;
+  for (r = 0; r < H; r++) W = Math.max(W, grid[r].length);
+  var cv = document.createElement('canvas');
+  cv.width = W * cell; cv.height = H * cell;
+  var cx = cv.getContext('2d'), vis = {};
+  for (i = 0; i < visited.length; i++) vis[visited[i][0] + ',' + visited[i][1]] = 1;
+  cx.fillStyle = '#0a0a0f'; cx.fillRect(0, 0, cv.width, cv.height);
+
+  for (y = 0; y < H; y++) for (x = 0; x < grid[y].length; x++) {
+    var fill = '#161b22';
+    if (x === pos[0] && y === pos[1]) fill = '#76b900';
+    else if (x === goal[0] && y === goal[1]) fill = '#f0a500';
+    else if (grid[y][x] === '#') fill = '#0d1117';
+    else if (vis[x + ',' + y]) fill = '#1e3a5f';
+    cx.fillStyle = fill;
+    cx.fillRect(x * cell + 1, y * cell + 1, cell - 2, cell - 2);
+  }
+  return cv.toDataURL('image/png');
+};
+
+// runMaze: ONE corridor-walk + LLM-at-junctions solver, shared by every route.
+// All knobs are optional. opts.model defaults to the multimodal omni model
+// (handles both routes); opts.advanced swaps in the bigger, loopier maze.
+state.runMaze = async function(h, state, opts) {
+  opts = opts || {};
+  var advanced = !!opts.advanced;
+
+  // ── modality / context knobs (all optional) ───────────────────────────────
+  var includeText    = opts.includeText    !== false;                                       // default: send ASCII map
+  var includeImage   = (opts.includeImage  !== undefined) ? !!opts.includeImage : !!opts.sendImage;  // default: from sendImage
+  var includeHistory = opts.includeHistory !== false;                                       // default: keep conversation
+  var toolSpecInSystem = opts.toolSpecInSystem !== false;                                    // default: restate tool format in system
+  var includeCoords  = opts.includeCoords  !== false;                                        // default: list every coordinate travelled
+  if (!includeText && !includeImage) includeText = true;                                     // must send something
+
+  // ── model selection (pick a key from state.MAZE_MODELS, an id string, or an object) ──
+  var MODELS = state.MAZE_MODELS;
+  function resolveModel(m) {
+    if (!m) return MODELS.omni;
+    if (typeof m === 'string') {
+      if (MODELS[m]) return MODELS[m];
+      if (m.indexOf('/') >= 0) return { id: m, maxTok: 2048, temp: 0.6 };
+      return MODELS.omni;
+    }
+    return m;
+  }
+  var MODEL = resolveModel(opts.model);
+
+  var cfg = advanced ? { w: 15, h: 11, seed: 99, loop: 0.55, max: 40 }
+                     : { w: 11, h: 9,  seed: 42, loop: 0.30, max: 20 };
+
+  var log = h.log;
+  var generateMaze = state.generateMaze, findCell = state.findCell, validMoves = state.validMoves,
+      doMove = state.doMove, toAscii = state.toAscii, renderMaze = state.renderMaze, DIRS = state.DIRS,
+      DECISION_TOOL = state.DECISION_TOOL, makeReasonStream = state.makeReasonStream;
+
+  // ── system prompt = base instructions + (optionally) the exact tool spec ───
+  // Restating the tool's name, args, and required fields in the system message
+  // helps smaller models emit the call in the shape the runner expects.
+  function toolSpecText(tool) {
+    var f = tool.function, props = (f.parameters && f.parameters.properties) || {}, lines = [];
+    lines.push('OUTPUT FORMAT. Reply ONLY by calling this function (no prose, no plain text):');
+    lines.push('  ' + f.name + '(' + Object.keys(props).join(', ') + ')');
+    Object.keys(props).forEach(function(k) {
+      lines.push('    - ' + k + ' (' + (props[k].type || 'any') + '): ' + (props[k].description || ''));
+    });
+    if (f.parameters && f.parameters.required && f.parameters.required.length)
+      lines.push('  required: ' + f.parameters.required.join(', '));
+    lines.push('Every turn: emit exactly one ' + f.name + ' call with a non-empty argument.');
+    return lines.join('\\n');
+  }
+
+  // opts.directive overrides just the editable core; opts.systemPrompt overrides the whole thing.
+  var directive = opts.directive || state.SYS_DIRECTIVE;
+  var sysText = opts.systemPrompt || (directive + '\\n\\n' + state.SYS_REFERENCE);
+  if (toolSpecInSystem) sysText = sysText + '\\n\\n' + toolSpecText(DECISION_TOOL);
+  var sysMsg = { role: 'system', content: sysText };
+
+  // ── prompt format: how each turn's maze is described (override via opts.promptFormat) ──
+  // promptFormat(ctx) -> string, ctx = { ascii, avail, pos, goal, trail, decision, first }.
+  // trail = coordinates travelled (empty unless includeCoords), so the model can map
+  // one direction to a multi-cell move once corridors auto-walk.
+  var promptFormat = opts.promptFormat || function(ctx) {
+    return 'You are at (' + ctx.pos[0] + ',' + ctx.pos[1] + ').\\n'
+      + (ctx.first ? 'Maze:' : 'Current maze:') + '\\n' + ctx.ascii
+      + (ctx.trail ? '\\nPath travelled (move into each cell): ' + ctx.trail : '')
+      + '\\nAvailable moves: ' + ctx.avail
+      + '\\nPick your next move.';
+  };
+
+  var wrapId = 'sw' + Math.random().toString(36).slice(2, 7);
+  log.html('<div id="' + wrapId + '" style="margin:0 0 10px"><button style="padding:4px 12px;border:1px solid #555;border-radius:4px;background:#1a1a1a;color:#ccc;cursor:pointer">stop</button></div>');
+  var ac = new AbortController(), sig = ac.signal;
+  var wrap = document.getElementById(wrapId);
+  if (wrap) wrap.firstChild.onclick = function() { ac.abort(); };
+  function abortable(p) {
+    if (sig.aborted) return Promise.reject(new DOMException('aborted', 'AbortError'));
+    return Promise.race([p, new Promise(function(_res, rej) {
+      sig.addEventListener('abort', function() { rej(new DOMException('aborted', 'AbortError')); }, { once: true });
+    })]);
+  }
+
+  var grid = generateMaze(cfg.w, cfg.h, cfg.seed, cfg.loop);
+  var start = findCell(grid, 'S'), goal = findCell(grid, 'G');
+  var pos = [start[0], start[1]], prevPos = null, visited = [[pos[0], pos[1]]];
+  var actions = [];   // direction letter taken into visited[i] (actions[i-1]); parallel to visited
+  var L2D = { N: 'north', S: 'south', E: 'east', W: 'west' };
+
+  var UID = 'rm' + Math.random().toString(36).slice(2, 7);
+  log.html('<div id="' + UID + '" style="margin:6px 0"></div>');
+  function show(title) { var el = document.getElementById(UID); if (el) el.innerHTML = renderMaze(grid, pos, goal, visited, title); }
+  function info(html) { log.html('<div style="font:12px/1.6 ui-monospace,monospace;color:#aaa;margin:1px 0">' + html + '</div>'); }
+  function availStr(p) { var m = validMoves(grid, p); return m.length ? m.join(', ') : 'none'; }
+
+  // normalizeDir: accept letters OR words ('E', 'EEN', 'east', 'east north') and return NSEW letters.
+  function normalizeDir(raw) {
+    return String(raw || '').toUpperCase()
+      .replace(/NORTH/g, 'N').replace(/SOUTH/g, 'S').replace(/EAST/g, 'E').replace(/WEST/g, 'W')
+      .replace(/[^NSEW]/g, '');
+  }
+
+  // splitThink: qwen-style models emit reasoning inline as <think>...</think> in
+  // the content, not as reasoning_content; pull it out so it is shown, not parsed.
+  function splitThink(c) {
+    c = c || ''; var rsn = '', lc = c.toLowerCase();
+    var o = lc.indexOf('<think>');
+    if (o >= 0) {
+      var e = lc.indexOf('</think>', o);
+      if (e >= 0) { rsn = c.slice(o + 7, e); c = c.slice(0, o) + c.slice(e + 8); }
+      else { rsn = c.slice(o + 7); c = c.slice(0, o); }
+    }
+    return { reasoning: rsn.trim(), content: c.trim() };
+  }
+
+  // renderRequest: dump everything sent to the model this turn into a collapsible
+  // panel: system message, full history, current user turn (text + image),
+  // the tool list, and call params.
+  // Logged right before each call, so it sits above the reasoning and result.
+  function escH(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function fmtContent(c) {
+    if (typeof c === 'string') return '<div style="white-space:pre-wrap">' + escH(c) + '</div>';
+    if (Array.isArray(c)) return c.map(function(p) {
+      if (p.type === 'text') return '<div style="white-space:pre-wrap">' + escH(p.text) + '</div>';
+      if (p.type === 'image_url') return '<img src="' + p.image_url.url + '" style="max-width:220px;border:1px solid #2a2a2a;border-radius:4px;margin:4px 0;display:block"/>';
+      return '<div>' + escH(JSON.stringify(p)) + '</div>';
+    }).join('');
+    return '';
+  }
+
+  function renderRequest(turn, sent, req) {
+    var rc = { system: '#c89bd6', user: '#7fa8d8', assistant: '#8fd09a', tool: '#d6a86a' };
+    // Explicit "what the model sees this turn" block: text map, accumulated path, image.
+    var ctxBlock = '<div style="color:#76b900;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase">context this turn</div>'
+      + '<div style="color:#9ab">position: (' + turn.pos[0] + ',' + turn.pos[1] + ')</div>'
+      + '<div style="color:#9ab">accumulated path: ' + escH(turn.trail || '(start)') + '</div>'
+      + (turn.ascii ? '<div style="color:#9ab;margin-top:3px">text map:</div><pre style="margin:2px 0;color:#cdd;white-space:pre;font:11px/1.2 ui-monospace,monospace">' + escH(turn.ascii) + '</pre>' : '')
+      + (turn.imageUrl ? '<div style="color:#9ab">rendered image:</div><img src="' + turn.imageUrl + '" style="max-width:240px;border:1px solid #2a2a2a;border-radius:4px;margin:3px 0;display:block"/>' : '')
+      + '<hr style="border:0;border-top:1px solid #1b2530;margin:8px 0">';
+
+    var rows = sent.map(function(m) {
+      var body = m.content ? fmtContent(m.content) : '';
+      if (m.tool_calls) body += '<div style="color:#7a9">tool_calls: ' + escH(JSON.stringify(m.tool_calls)) + '</div>';
+      return '<div style="margin-top:6px;font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:' + (rc[m.role] || '#aaa') + '">' + m.role + '</div>'
+        + '<div style="color:#ccd;margin-left:2px">' + body + '</div>';
+    }).join('');
+    var meta = 'model: ' + escH(req.model) + '  ·  max_tokens: ' + req.max_tokens + '  ·  temp: ' + req.temperature
+      + (req.extra_body ? '<br>extra_body: ' + escH(JSON.stringify(req.extra_body)) : '')
+      + '<br>tools: ' + escH((req.tools || []).map(function(t) { return t.function.name; }).join(', '));
+    return '<details style="margin:2px 0"><summary style="cursor:pointer;color:#6a9;font-size:11px">→ full context sent to model (' + sent.length + ' msgs)</summary>'
+      + '<div style="font:11px/1.5 ui-monospace,monospace;margin:4px 0;background:#070b0f;padding:8px;border-radius:4px;max-height:420px;overflow:auto">'
+      + ctxBlock + '<div style="color:#778;margin-bottom:4px">raw messages · ' + meta + '</div>' + rows + '</div></details>';
+  }
+
+  // Walk automatically until a REAL decision: a junction with 2+ forward options.
+  // One forward option is a corridor (follow it); zero is a dead end (reverse out),
+  // so the model is asked to "pick" only when there is a genuine choice.
+  async function corridorWalk(label) {
+    while (!sig.aborted) {
+      var moves = validMoves(grid, pos);
+      var fwd = moves.filter(function(dir) {
+        if (!prevPos) return true;
+        var d = DIRS[dir];
+        return !(pos[0] + d[0] === prevPos[0] && pos[1] + d[1] === prevPos[1]);
+      });
+
+      var step;
+      if (fwd.length === 1)                      step = fwd[0];     // corridor: follow it
+      else if (fwd.length === 0 && moves.length) step = moves[0];   // dead end: reverse out
+      else break;                                                   // junction (2+) or stuck (0)
+      var mv = doMove(grid, pos, step);
+      if (!mv.ok) break;
+      prevPos = pos; pos = mv.pos; visited.push([pos[0], pos[1]]); actions.push(step[0].toUpperCase());
+      show((label || 'walk') + ' ' + step[0].toUpperCase());
+      await new Promise(function(res) { setTimeout(res, 60); });
+      if (mv.done) return true;
+    }
+    return false;
+  }
+
+  // build one user turn from the current frame, honoring includeText / includeImage.
+  // imageUrl is passed in (and shown in renderRequest) so we render the PNG only once.
+  function buildUser(text, imageUrl) {
+    var parts = [];
+    if (includeText) parts.push({ type: 'text', text: text });
+    if (includeImage && imageUrl) parts.push({ type: 'image_url', image_url: { url: imageUrl } });
+    if (parts.length === 1 && parts[0].type === 'text') return { role: 'user', content: text };
+    return { role: 'user', content: parts };
+  }
+
+  var modelName = MODEL.id.split('/').pop();
+  var modeStr = [includeText ? 'text' : null, includeImage ? 'image' : null].filter(Boolean).join('+') || 'none';
+  show('ready · ' + modeStr + (includeHistory ? ' · history' : ' · stateless'));
+  info('<strong style="color:#76b900">' + modelName + '</strong> · input: ' + modeStr
+    + ' · ' + (includeHistory ? 'with history' : 'stateless')
+    + ' · ' + (advanced ? 'advanced 15x11' : 'simple 11x9') + ' maze'
+    + ' · tool-spec in system: ' + (toolSpecInSystem ? 'yes' : 'no'));
+
+  var history = [];  // accumulated turns (used only when includeHistory)
+
+  try {
+    if (await corridorWalk('corridor')) {
+      show('goal in corridor · ' + visited.length + ' steps');
+      info('<span style="color:#76b900">goal reached in the opening corridor (no LLM needed)</span>');
+      return { decisions: 0, steps: visited.length, won: true };
+    }
+
+    for (var decision = 1; decision <= cfg.max; decision++) {
+      if (sig.aborted) break;
+      var trail = '';
+      if (includeCoords) {
+        trail = '(' + visited[0][0] + ',' + visited[0][1] + ')';
+        for (var ti = 1; ti < visited.length; ti++)
+          trail += ' -' + (actions[ti - 1] || '?') + '-> (' + visited[ti][0] + ',' + visited[ti][1] + ')';
+      }
+      var ascii = toAscii(grid, pos, goal, visited);
+      var imageUrl = includeImage ? state.mazeToDataURL(grid, pos, goal, visited) : null;
+      var userText = promptFormat({ ascii: ascii, avail: availStr(pos),
+                                    pos: pos, goal: goal, trail: trail, decision: decision, first: decision === 1 });
+      var userMsg = buildUser(userText, imageUrl);
+      var sent = includeHistory ? [sysMsg].concat(history, [userMsg]) : [sysMsg, userMsg];
+
+      var req = { model: MODEL.id, messages: sent, tools: [DECISION_TOOL], max_tokens: MODEL.maxTok, temperature: MODEL.temp };
+      if (MODEL.extra_body) req.extra_body = MODEL.extra_body;
+      info('<strong style="color:#eee">decision ' + decision + '</strong> · ' + modelName + ' at ' + JSON.stringify(pos) + ' avail: [' + availStr(pos) + '] · ' + sent.length + ' msgs');
+      log.html(renderRequest({ pos: pos, trail: trail, ascii: ascii, imageUrl: imageUrl }, sent, req));   // full context BEFORE the model responds
+      show('decision ' + decision + ': asking model...');
+      var summary;
+      try {
+        summary = await abortable(h.chatStream(req, null, { onReasoning: makeReasonStream(log) }));
+      } catch (e) {
+        if (e.name === 'AbortError' || sig.aborted) { info('<span style="color:#777">stopped</span>'); break; }
+        info('<span style="color:#f87171">error: ' + e.message + '</span>');
+        if (includeImage && /image|vision|multimodal|content/i.test(e.message))
+          info('<span style="color:#fbbf24">hint: the image was rejected on this turn. Try again, set includeImage:false to send text alone, or pick another multimodal model (vision / qwenVision).</span>');
+        break;
+      }
+
+      // ── interpret the reply ───────────────────────────────────────────────
+      var split = splitThink(summary.content || '');   // qwen puts reasoning in <think>...</think>
+      var replyText = split.content;
+      if (split.reasoning && !summary.reasoning)
+        info('<details style="margin:2px 0"><summary style="cursor:pointer;color:#555;font-size:11px">reasoning (' + split.reasoning.length + ' chars)</summary><div style="font:11px/1.5 ui-monospace,monospace;color:#7a9;background:#040d08;padding:8px;border-radius:4px;max-height:200px;overflow:auto;white-space:pre-wrap">' + escH(split.reasoning) + '</div></details>');
+
+      var tcs = summary.tool_calls || [];
+      var toolId = tcs.length ? tcs[0].id : null;
+      var rawDir = '';
+      if (tcs.length) { try { rawDir = JSON.parse(tcs[0].function.arguments || '{}').direction || ''; } catch (e2) {} }
+
+      // Honor models (e.g. nemotron-nano-12b-vl) that "call" the tool as plain TEXT instead of a
+      // structured tool_call: parse choose_direction(...) out of the reply and use its argument.
+      var fromText = false;
+      if (!rawDir && replyText) {
+        var ci = replyText.toLowerCase().indexOf('choose_direction');
+        if (ci >= 0) {
+          var lp = replyText.indexOf('(', ci), rp = lp >= 0 ? replyText.indexOf(')', lp) : -1;
+          if (lp >= 0 && rp > lp) {
+            var inner = replyText.slice(lp + 1, rp), q = inner.match(/['"]([^'"]*)['"]/);
+            rawDir = q ? q[1] : inner; fromText = true;
+          }
+        }
+      }
+      var steps = normalizeDir(rawDir);
+
+      if (includeHistory) {
+        history.push({ role: 'user', content: userText });
+        var entry = { role: 'assistant', content: replyText || null };
+        if (tcs.length) entry.tool_calls = tcs;
+        history.push(entry);
+      }
+      // feedback is a tool message only when there was a real tool_call; otherwise a user message
+      // (a tool message without a preceding tool_call is invalid and confuses the model).
+      function reply(content) {
+        if (!includeHistory) return;
+        history.push(toolId ? { role: 'tool', tool_call_id: toolId, content: content }
+                            : { role: 'user', content: content });
+      }
+
+      if (!steps) {
+        info('<span style="color:#fbbf24">no usable direction, so asking again</span>');
+        reply('No direction parsed from your reply. Call choose_direction with one of: ' + availStr(pos) + '.');
+        continue;
+      }
+      if (fromText) info('<span style="color:#9cf">honored text-form call → ' + escH(steps) + '</span>');
+
+      var pathStr = '', done = false, walled = null, s;
+      for (s = 0; s < steps.length; s++) {
+        if (sig.aborted) break;
+        var mv2 = doMove(grid, pos, L2D[steps[s]]);
+        if (!mv2.ok) { walled = L2D[steps[s]]; break; }
+        pathStr += steps[s]; prevPos = pos; pos = mv2.pos; visited.push([pos[0], pos[1]]); actions.push(steps[s]);
+        show('decision ' + decision + ' · ' + pathStr);
+        await new Promise(function(res) { setTimeout(res, 80); });
+        if (mv2.done) { done = true; break; }
+      }
+
+      if (done) {
+        show('solved · ' + decision + ' decisions · ' + visited.length + ' steps');
+        info('<span style="color:#76b900">goal in ' + decision + ' decisions (' + visited.length + ' steps) · path: ' + pathStr + '</span>');
+        reply('Reached G. Done.');
+        return { decisions: decision, steps: visited.length, won: true };
+      }
+      info('moved: <code style="color:#76b900;background:#0d1f00;padding:1px 4px;border-radius:3px">' + (pathStr || '(none)') + '</code>' + (walled ? ' then hit a wall going ' + walled : ''));
+
+      // Auto-walk corridors and reverse out of dead ends BEFORE reporting back, so the
+      // feedback reflects where the agent actually ended up (not a stale pre-walk spot).
+      var pw = [pos[0], pos[1]];
+      if (await corridorWalk('walk')) {
+        show('goal via corridor · ' + visited.length + ' steps');
+        info('<span style="color:#76b900">goal reached while auto-walking</span>');
+        reply('Executed ' + (pathStr || '(none)') + ', then auto-walked to the goal.');
+        return { decisions: decision, steps: visited.length, won: true };
+      }
+
+      var walkedNote = (pos[0] !== pw[0] || pos[1] !== pw[1])
+        ? ' Then corridors/dead-ends were auto-walked for you.' : '';
+      reply((walled ? 'Executed ' + (pathStr || '(none)') + ', then hit a wall going ' + walled + '.'
+                    : 'Executed ' + (pathStr || '(none)') + '.')
+            + walkedNote + ' Now at ' + JSON.stringify(pos) + '. Available: ' + availStr(pos) + '.');
+      await new Promise(function(res) { setTimeout(res, 200); });
+    }
+  } finally {
+    if (wrap) wrap.style.display = 'none';
+  }
+  if (!sig.aborted) { info('<span style="color:#f87171">gave up after ' + cfg.max + ' decisions</span>'); show('gave up after ' + cfg.max + ' decisions'); }
+  return { decisions: cfg.max, won: false };
+};
+
+log("Motor do labirinto pronto.");
+`,
+    },
+    {
+      id: "text", icon: "📝", title: "Rota sem visão · só texto",
+      x: 1, y: 0,
+      summary: "Chamando o resolvedor compartilhado state.runMaze apenas com o mapa ASCII, o modelo escolhido transmite sua cadeia de raciocínio entre os movimentos, enquanto todo controle abaixo permanece editável; ligue ADVANCED para o labirinto maior 15×11 ou mude model depois de rodar o nó do motor primeiro.",
+      code: `if (!state.runMaze) { helpers.log("Rode primeiro o nó 'Motor do labirinto'."); return; }
+// Rota sem visão, usando o resolvedor compartilhado do nó do motor (rode-o primeiro).
+// opções de model (state.MAZE_MODELS): omni, reasoning, vision, qwenVision, super, gptOss
+const ADVANCED = false;
+
+// ── Edite à vontade: isto vira o NÚCLEO da mensagem de sistema. ──
+// (A referência fixa da legenda do mapa e o formato de saída da ferramenta são anexados para você.)
+const DIRECTIVE = \`You are navigating a maze. You are called only at JUNCTIONS (2+ open directions).
+Corridors are auto-walked, so your position can jump several cells between calls. The coordinates
+you have travelled are listed every turn. Study the map, pick ONE direction, call choose_direction().
+Prefer unvisited branches (-) over visited cells (·); head toward G when you can see it.\`;
+
+return await state.runMaze(helpers, state, {
+  model:           "omni",    // qual modelo conduz o agente
+  directive:        DIRECTIVE, // núcleo editável da mensagem de sistema (acima)
+  advanced:         ADVANCED,  // false = labirinto 11x9, true = 15x11
+  includeText:      true,     // envia o mapa ASCII
+  includeImage:     false,    // sem imagem nesta rota
+  includeHistory:   true,     // mantém a conversa em andamento entre os turnos
+  includeCoords:    true,     // lista cada coordenada percorrida (liga um movimento a onde ele terminou)
+  toolSpecInSystem: true,     // reafirma o formato de saída de choose_direction no prompt de sistema
+  // promptFormat: ctx => ...    // opcional: personalize totalmente a mensagem do usuário de cada turno
+});
+`,
+    },
+
+    {
+      id: "vision", icon: "🖼️", title: "Rota com visão · texto + imagem",
+      x: 1, y: 1,
+      summary: "O mesmo resolvedor compartilhado também anexa um PNG renderizado do labirinto a cada turno, então a imagem vira o experimento. O modelo omni padrão (nemotron-3-nano-omni-...) é o modelo de raciocínio multimodal da NVIDIA, então ele lê tanto a imagem quanto o texto; troque model por vision ou qwenVision para comparar outros modelos multimodais, ou defina includeImage:false para enviar só o texto.",
+      code: `if (!state.runMaze) { helpers.log("Rode primeiro o nó 'Motor do labirinto'."); return; }
+// Rota com visão: também anexa um PNG renderizado do labirinto a cada turno.
+// O modelo omni padrão é multimodal, então ele lê a imagem e o mapa ASCII.
+// Experimente "vision" ou "qwenVision" para comparar, ou includeImage:false para só texto.
+// opções de model (state.MAZE_MODELS): omni, reasoning, vision, qwenVision, super, gptOss
+const ADVANCED = false;
+
+// ── Edite à vontade: isto vira o NÚCLEO da mensagem de sistema. ──
+const DIRECTIVE = \`You are navigating a maze. You are called only at JUNCTIONS (2+ open directions).
+You get both an ASCII map and a picture of the same maze. Corridors are auto-walked, so your position
+can jump several cells between calls, and the coordinates you have travelled are listed every turn.
+Study the maze, pick ONE direction, call choose_direction(). Prefer unvisited branches (-) over
+visited cells (·); head toward G when you can see it.\`;
+
+return await state.runMaze(helpers, state, {
+  model:           "omni",    // modelo multimodal; experimente "vision" ou "qwenVision" para comparar
+  directive:        DIRECTIVE, // núcleo editável da mensagem de sistema (acima)
+  advanced:         ADVANCED,
+  includeText:      true,     // envia o mapa ASCII junto com a imagem
+  includeImage:     true,     // anexa o PNG renderizado a cada turno
+  includeHistory:   true,
+  includeCoords:    true,     // lista cada coordenada percorrida
+  toolSpecInSystem: true,
+});
+`,
+    },
+  ],
+
+  edges: [
+    { from: "helpers", to: "text" },
+    { from: "helpers", to: "vision" },
+  ],
+});
+
+
+// ── Canvas 2: one real chat completion ───────────────────────────────────────
+mountRunCell("#cell-onecall", {
+  label: "Uma chat completion sem estado · uma chamada de verdade ao modelo",
+  intro: "Pressionar Run retorna o que o modelo produziu para aquela única chamada, e rodar de novo pode dar uma resposta diferente, porque cada chamada é independente, sem estado compartilhado entre elas.",
+  code: `// Uma chamada. Sem laço, sem memória.
+const reply = await chat({
+  model: "nvidia/nemotron-3-nano-30b-a3b",
+  messages: [
+    { role: "system", content: "Você é um assistente conciso. Uma frase." },
+    { role: "user",   content: "O que 'sem estado' significa para uma API de LLM?" },
+  ],
+  max_tokens: 8196,  // modelos de raciocínio pensam primeiro, então deixe espaço para a resposta além do reasoning_content
+});
+
+const m  = reply.choices[0].message;
+const fr = reply.choices[0].finish_reason;
+log("finish_reason:", fr);
+log("");
+if (m.reasoning_content) {
+  log.h("reasoning_content (anotações do modelo)");
+  log(m.reasoning_content);
+}
+log.h("content (a resposta de fato)");
+log(m.content || "(sem content; o modelo gastou todo o orçamento pensando, então aumente max_tokens)");
+return { finish_reason: fr, content: m.content };
+`,
+});
+
+mountRunCell("#cell-wire", {
+  label: "POST /v1/chat/completions · o formato de transmissão sob o chat()",
+  intro: "A mesma chamada acima é escrita à mão como uma requisição HTTP crua, para que cada campo fique visível, com a requisição e a resposta guardadas em blocos de detalhes que você pode abrir para ler os payloads exatos.",
+  code: `// chat() é um wrapper. Por baixo, ele faz um único POST HTTP comum no
+// "formato de transmissão" compatível com a OpenAI, escrito à mão aqui.
+
+// 1) A requisição: um endpoint, um cabeçalho Authorization, uma etiqueta de cobrança e um corpo JSON.
+const KEY = localStorage.getItem("nvapi") || "";
+if (!KEY) { log("Salve sua chave nvapi- na página inicial do curso primeiro."); return; }
+// integrate.api.nvidia.com é a URL direta da maioria dos modelos de build.nvidia.com. Um navegador dentro
+// do iframe da DLI não pode chamá-la diretamente (CORS), então este endpoint passa por um pequeno proxy CORS.
+// Fora do iframe, troque para a linha comentada para acessar o host do modelo diretamente.
+// X-BILLING-SOURCE atribui o uso a este curso.
+const url = "https://nvidia-api-cors-proxy.vkudlay.workers.dev/v1/chat/completions";
+// const url = "https://integrate.api.nvidia.com/v1/chat/completions";
+const headers = {
+  "Content-Type": "application/json",
+  "Authorization": "Bearer " + KEY,
+  "X-BILLING-SOURCE": "dli-nemoclaw-web",
+};
+const body = {
+  model: "nvidia/nemotron-3-nano-30b-a3b",
+  messages: [{ role: "user", content: "Em uma frase: quem te opera?" }],
+  max_tokens: 8196,  // um modelo de raciocínio gasta tokens pensando primeiro; deixe espaço para a resposta
+};
+
+// O que SAI, com a chave omitida para que uma captura de tela nunca a vaze.
+log("→ POST " + url);
+log.details("request (chave omitida)", { headers: { ...headers, Authorization: "Bearer nvapi-…omitida" }, body });
+
+// 2) Envie, depois leia o que VOLTA.
+const r = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+log("← HTTP " + r.status + " " + r.statusText);
+// Verifique o status ANTES de analisar. Um corpo não-2xx muitas vezes é texto puro ou uma página de erro HTML, não
+// JSON, então r.json() lançaria um críptico "Unexpected ... after JSON" sem nenhuma linha para culpar. Leia
+// como texto e exponha o status mais o corpo, para que um 404 apareça como um erro HTTP claro aqui mesmo.
+if (!r.ok) {
+  const errText = await r.text();
+  log.details("corpo do erro", errText);
+  throw new Error("HTTP " + r.status + " " + r.statusText + ": " + errText.slice(0, 300));
+}
+const reply = await r.json();
+log.details("resposta crua", reply);
+
+// Os três campos que você de fato usa: o texto, por que ele parou e a conta de tokens.
+const c = reply.choices[0];
+log.h("content");        log(c.message.content);
+log.h("finish_reason");  log(c.finish_reason);   // o mesmo sinal de saída do laço sobre o qual o Módulo 1b se apoia
+log.h("usage");          log(JSON.stringify(reply.usage));
+return { finish_reason: c.finish_reason, content: c.message.content, usage: reply.usage };
+`,
+});
+</script>
+</body>
+</html>

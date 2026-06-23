@@ -83,7 +83,7 @@
     {
       "title": "5 · CI/CD and deploy",
       "file": "README.md",
-      "note": "On a translate-* branch CI runs the gate with --lang plus the drift report (advisory) and does not deploy on its own. Deploy is one aggregating build: build_pages.sh builds the source at the site root and each translate-<lang> branch (a throwaway worktree of it) into public/<lang>/, so one Pages site serves every language. On the rsync-mirror production site, publish pushes the translate-* branches to that remote and the source rebuild picks them up. See README.md for the publish recipe; the branch is never merged."
+      "note": "On a translate-* branch CI runs the gate with --lang plus the drift report (advisory) and does not deploy on its own. Each translation is staged as CONTENT under i18n/<lang>/ (git archive of its web/ tree: no history, no big files), and build_pages.sh turns every i18n/<lang>/ into public/<lang>/, so one Pages site serves the source at root and every language at /<lang>/. The source CI stages i18n from the branches; the rsync-mirror production site gets i18n via the publish rsync. No branch is pushed to the mirror (its clean history rejects this repo's big blobs). See README.md for the publish recipe; the branch is never merged."
     }
   ],
   "related": [

@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="page-role" content="tool"/>
+<title>Studio View · Securing Agents</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --g:#76b900;--gd:#4a7a00;--gs:#aee23a;
+  --sidebar-w:290px;--topbar-h:48px;
+}
+
+body{
+  font-family:Arial,Helvetica,sans-serif;
+  background:#e9edf1;color:#1a1a1a;
+  height:100vh;display:flex;flex-direction:column;overflow:hidden;
+}
+
+/* ── Topbar ─────────────────────────────────────────────── */
+.studio-topbar{
+  height:var(--topbar-h);background:#fff;
+  border-bottom:2px solid var(--g);
+  display:flex;align-items:center;gap:8px;padding:0 12px;
+  flex-shrink:0;z-index:10;
+}
+.tb-brand{font-weight:700;font-size:.88rem;white-space:nowrap}
+.tb-brand span{color:var(--g)}
+.tb-sep{width:1px;height:22px;background:#ddd;flex-shrink:0}
+.tb-select,.tb-input{
+  font:inherit;font-size:.8rem;padding:4px 8px;
+  border:1px solid #ccc;border-radius:6px;
+}
+.tb-select{max-width:180px}
+.tb-input{flex:1;min-width:0;max-width:380px}
+.tb-btn{
+  font:inherit;font-size:.78rem;padding:4px 10px;
+  border-radius:6px;border:1px solid #ccc;
+  background:#f6f8fa;cursor:pointer;white-space:nowrap;
+  transition:background .1s;
+}
+.tb-btn:hover{background:#eef0f3}
+.tb-btn.active{background:var(--g);color:#fff;border-color:var(--gd)}
+.tb-btn.danger{border-color:#d1242f;color:#d1242f}
+.tb-spacer{flex:1}
+.tb-status{font-size:.76rem;color:#666;white-space:nowrap}
+.tb-status.ok{color:var(--gd)}.tb-status.warn{color:var(--warn,#c2410c)}
+
+/* ── Layout ──────────────────────────────────────────────── */
+.studio-layout{display:flex;flex:1;min-height:0;overflow:hidden}
+
+/* ── Sidebar ─────────────────────────────────────────────── */
+.studio-sidebar{
+  width:var(--sidebar-w);flex-shrink:0;
+  background:#fff;border-right:1px solid #d0d7de;
+  display:flex;flex-direction:column;overflow:hidden;
+  transition:width .18s;
+}
+.studio-sidebar.collapsed{width:0;border-right:none;overflow:hidden}
+
+.sb-scroll{
+  flex:1;overflow-y:auto;padding:10px;
+  display:flex;flex-direction:column;gap:10px;
+}
+
+.sb-section{border:1px solid #e8ecf0;border-radius:7px;overflow:hidden}
+.sb-head{
+  background:#f6f8fa;padding:7px 10px;
+  font-size:.78rem;font-weight:700;color:#444;
+  display:flex;align-items:center;gap:6px;
+  cursor:pointer;user-select:none;
+}
+.sb-head:hover{background:#eef0f3}
+.sb-head .badge{
+  display:inline-block;background:#d1242f;color:#fff;
+  font-size:.68rem;font-weight:700;border-radius:10px;
+  padding:1px 6px;margin-left:auto;
+}
+.sb-body{padding:10px;display:flex;flex-direction:column;gap:7px}
+.sb-body.hidden{display:none}
+
+/* toggle switch */
+.tog{display:flex;align-items:center;gap:7px;font-size:.78rem;color:#555}
+.tog-label{flex:1}
+.tog-sw{position:relative;width:32px;height:16px;flex-shrink:0;cursor:pointer}
+.tog-sw input{display:none}
+.tog-track{
+  position:absolute;inset:0;background:#ccc;
+  border-radius:8px;transition:background .15s;
+}
+.tog-thumb{
+  position:absolute;top:2px;left:2px;
+  width:12px;height:12px;background:#fff;
+  border-radius:6px;transition:left .15s;
+  box-shadow:0 1px 3px rgba(0,0,0,.2);
+}
+.tog-sw input:checked ~ .tog-track{background:var(--g)}
+.tog-sw input:checked ~ .tog-thumb{left:18px}
+
+.sb-row{display:flex;align-items:center;gap:6px;font-size:.78rem;color:#555}
+.sb-row input[type=number]{
+  width:48px;padding:2px 5px;border:1px solid #ccc;
+  border-radius:4px;font:inherit;font-size:.78rem;
+}
+.sb-note{font-size:.72rem;color:#999;line-height:1.3}
+.empty-hint{font-size:.76rem;color:#999;padding:2px 0}
+
+/* comment items */
+.cmt-item{
+  border:1px solid #e8ecf0;border-left:3px solid #d1242f;
+  border-radius:0 5px 5px 0;padding:6px 8px;font-size:.76rem;
+}
+.cmt-item.done{border-left-color:var(--gd);opacity:.6}
+.cmt-text{color:#1a1a1a;line-height:1.35;margin-bottom:2px}
+.cmt-meta{
+  display:flex;justify-content:space-between;
+  font-size:.7rem;color:#999;
+}
+.cmt-resolve{
+  color:var(--gd);font-weight:700;cursor:pointer;
+  background:none;border:none;padding:0;font:inherit;font-size:.7rem;
+}
+
+/* change items */
+.chg-item{
+  border:1px solid #e8ecf0;border-left:3px solid #d49c2c;
+  border-radius:0 5px 5px 0;padding:5px 8px;
+  font-size:.75rem;display:flex;align-items:flex-start;gap:6px;
+}
+.chg-item input[type=checkbox]{margin-top:2px;flex-shrink:0}
+.chg-label{flex:1;color:#1a1a1a;line-height:1.3}
+.chg-diff{color:#888;font-size:.68rem}
+
+/* buttons */
+.sb-btn{
+  width:100%;font:inherit;font-size:.78rem;padding:6px 8px;
+  border-radius:6px;border:1px solid #ccc;background:#f6f8fa;
+  cursor:pointer;font-weight:600;text-align:center;
+}
+.sb-btn:hover{background:#eef0f3}
+.sb-btn.primary{background:var(--g);border-color:var(--gd);color:#fff}
+.sb-btn.primary:hover{background:var(--gd)}
+.sb-btn:disabled{opacity:.45;cursor:default}
+
+/* ── Main / iframe area ──────────────────────────────────── */
+.studio-main{
+  flex:1;min-width:0;display:flex;flex-direction:column;
+  overflow:hidden;position:relative;
+}
+#studio-frame{
+  flex:1;border:none;width:100%;height:100%;
+  background:#0d0d0d;display:block;
+}
+.loading-overlay{
+  position:absolute;inset:0;
+  background:rgba(13,13,13,.55);
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:.9rem;z-index:20;pointer-events:none;
+}
+/* pick-mode overlay sits over iframe; we intercept clicks here */
+.pick-overlay{
+  position:absolute;inset:0;z-index:15;cursor:crosshair;
+  background:rgba(118,185,0,.04);border:2px dashed var(--g);
+  display:none;
+}
+.pick-hint{
+  position:absolute;top:12px;left:50%;transform:translateX(-50%);
+  background:var(--g);color:#fff;font-size:.8rem;font-weight:700;
+  padding:5px 16px;border-radius:20px;white-space:nowrap;pointer-events:none;
+}
+
+/* ── Block editor panel (slides in from right) ───────────────── */
+.block-editor{
+  width:0;flex-shrink:0;overflow:hidden;
+  background:#111;border-left:1px solid #2a2a2a;
+  display:flex;flex-direction:column;
+  transition:width .18s;
+  font-family:Arial,Helvetica,sans-serif;
+}
+.block-editor.open{width:440px}
+
+.be-header{
+  display:flex;align-items:center;gap:7px;
+  padding:7px 10px;background:#1a1a1a;
+  border-bottom:1px solid #2a2a2a;flex-shrink:0;
+}
+.be-path{
+  flex:1;font-family:ui-monospace,monospace;font-size:.7rem;
+  color:#6a6a6a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.be-close{
+  background:none;border:none;color:#6a6a6a;
+  cursor:pointer;font-size:1.1rem;padding:1px 5px;line-height:1;
+}
+.be-close:hover{color:#f2f2f2}
+.be-badge{
+  font-size:.66rem;padding:2px 7px;border-radius:4px;
+  font-weight:700;flex-shrink:0;text-transform:uppercase;letter-spacing:.04em;
+}
+.be-badge.html  {background:rgba(118,185,0,.14);color:#76b900;border:1px solid rgba(118,185,0,.3)}
+.be-badge.canvas{background:rgba(100,100,255,.12);color:#9999ff;border:1px solid rgba(100,100,255,.25)}
+.be-badge.svg   {background:rgba(200,150,0,.12);color:#d4ac0c;border:1px solid rgba(200,150,0,.25)}
+
+.be-editor-wrap{flex:1;min-height:0;overflow:hidden;position:relative}
+.be-editor-wrap .CodeMirror{height:100%;font-size:.78rem;line-height:1.5}
+.be-editor-wrap .CodeMirror-scroll{overflow-y:auto !important}
+
+.be-actions{
+  display:flex;gap:6px;padding:7px 10px;
+  border-top:1px solid #2a2a2a;background:#1a1a1a;
+  flex-shrink:0;flex-wrap:wrap;align-items:center;
+}
+.be-btn{
+  font:inherit;font-size:.75rem;padding:5px 10px;
+  border-radius:5px;border:1px solid #2a2a2a;
+  background:#262626;color:#b0b0b0;cursor:pointer;
+}
+.be-btn:hover{background:#2f2f2f;color:#f2f2f2}
+.be-btn.primary{background:#76b900;border-color:#4a7a00;color:#000;font-weight:700}
+.be-btn.primary:hover{background:#5a8e00}
+.be-btn.danger{border-color:#d1242f;color:#ff6b6b}
+.be-spacer{flex:1}
+
+.be-msg{
+  font-size:.72rem;padding:4px 10px 5px;
+  color:#6a6a6a;background:#1a1a1a;flex-shrink:0;
+  border-top:1px solid #1e1e1e;min-height:22px;
+}
+.be-msg.ok{color:#76b900}.be-msg.err{color:#ff6b6b}
+</style>
+</head>
+<body>
+
+<div class="studio-topbar">
+  <div class="tb-brand">Studio <span>View</span></div>
+  <div class="tb-sep"></div>
+  <select id="mod-sel" class="tb-select">
+    <option value="">module…</option>
+  </select>
+  <input id="url-bar" class="tb-input" type="text" placeholder="01a-agents.html  (Enter to load)"/>
+  <button class="tb-btn" id="reload-btn" title="Reload current page">↺</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="sidebar-btn" title="Toggle sidebar">☰</button>
+  <button class="tb-btn" id="comment-btn" title="Click an element in the frame to anchor a comment">💬 Comment</button>
+  <button class="tb-btn" id="edit-btn"    title="Toggle content-edit mode">✏️ Edit</button>
+  <button class="tb-btn" id="run-btn"     title="Trigger all Run-all buttons in the loaded page">▶ Run all</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="block-edit-btn" title="Click any block in the frame to open its HTML in the editor">🧩 Block</button>
+  <button class="tb-btn" id="lite-btn"   title="Toggle light (export) mode. Applies _lite_overlay.css so you can compare dark lab vs light edX export">☀️ Light</button>
+  <div class="tb-spacer"></div>
+  <span class="tb-status" id="tb-status">no module loaded</span>
+</div>
+
+<div class="studio-layout">
+
+  <aside class="studio-sidebar" id="sidebar">
+    <div class="sb-scroll">
+
+      <!-- Refresh -->
+      <div class="sb-section">
+        <div class="sb-head" data-sec="refresh">🔄 Auto-refresh</div>
+        <div class="sb-body" id="sec-refresh">
+          <div class="tog">
+            <span class="tog-label">Poll for file changes</span>
+            <label class="tog-sw">
+              <input type="checkbox" id="poll-on"/>
+              <span class="tog-track"></span><span class="tog-thumb"></span>
+            </label>
+          </div>
+          <div class="sb-row">
+            <span>Interval</span>
+            <input type="number" id="poll-secs" value="8" min="3" max="300"/>
+            <span>s</span>
+          </div>
+          <div class="sb-note" id="lm-row">Last modified: not set</div>
+          <button class="sb-btn" id="jump-btn" disabled>↓ Jump to changes</button>
+        </div>
+      </div>
+
+      <!-- Comments -->
+      <div class="sb-section">
+        <div class="sb-head" data-sec="comments">
+          💬 Comments
+          <span class="badge" id="cmt-badge" style="display:none">0</span>
+        </div>
+        <div class="sb-body" id="sec-comments">
+          <div id="cmt-list"><div class="empty-hint">No comments for this page.</div></div>
+          <button class="sb-btn primary" id="add-cmt-btn">+ Anchor comment (click element)</button>
+        </div>
+      </div>
+
+      <!-- Run / Annotate -->
+      <div class="sb-section">
+        <div class="sb-head" data-sec="run">▶ Run &amp; Annotate</div>
+        <div class="sb-body" id="sec-run">
+          <div class="tog">
+            <span class="tog-label">Auto-run on load</span>
+            <label class="tog-sw">
+              <input type="checkbox" id="autorun-on" checked/>
+              <span class="tog-track"></span><span class="tog-thumb"></span>
+            </label>
+          </div>
+          <div class="tog">
+            <span class="tog-label">Auto-annotate outputs</span>
+            <label class="tog-sw">
+              <input type="checkbox" id="autoannotate-on"/>
+              <span class="tog-track"></span><span class="tog-thumb"></span>
+            </label>
+          </div>
+          <div class="sb-note" id="run-note">not run yet</div>
+        </div>
+      </div>
+
+      <!-- Edit & Save -->
+      <div class="sb-section">
+        <div class="sb-head" data-sec="edit">✏️ Edit &amp; Save</div>
+        <div class="sb-body" id="sec-edit">
+          <div class="tog">
+            <span class="tog-label">Edit mode (text &amp; code)</span>
+            <label class="tog-sw">
+              <input type="checkbox" id="editmode-on"/>
+              <span class="tog-track"></span><span class="tog-thumb"></span>
+            </label>
+          </div>
+          <div class="sb-note">Check changes below, then save only those you want.</div>
+          <div id="chg-list"><div class="empty-hint">No pending edits.</div></div>
+          <button class="sb-btn primary" id="save-sel-btn" disabled>💾 Save checked</button>
+          <div class="sb-note" style="color:var(--warn,#c2410c)">Run outputs are never saved. Only the code and text you edit persist.</div>
+        </div>
+      </div>
+
+    </div><!-- sb-scroll -->
+  </aside>
+
+  <div class="studio-main" id="smain">
+    <div class="loading-overlay" id="loading" style="display:none">Loading…</div>
+    <div class="pick-overlay" id="pick-ov">
+      <div class="pick-hint">Click any element to anchor a comment · Esc to cancel</div>
+    </div>
+    <iframe id="studio-frame"></iframe>
+  </div>
+
+  <!-- Block editor: slides in from the right when 🧩 Block is active -->
+  <div class="block-editor" id="block-editor">
+    <div class="be-header">
+      <span class="be-badge html" id="be-badge">html</span>
+      <span class="be-path" id="be-path">click a block in the frame</span>
+      <button class="be-close" id="be-close" title="Close block editor">×</button>
+    </div>
+    <div class="be-editor-wrap" id="be-editor-wrap">
+      <textarea id="be-ta" spellcheck="false"></textarea>
+    </div>
+    <div class="be-actions">
+      <button class="be-btn primary" id="be-apply">▶ Apply to page</button>
+      <button class="be-btn" id="be-save">💾 Save to file</button>
+      <button class="be-btn" id="be-revert">↺ Revert</button>
+      <div class="be-spacer"></div>
+      <button class="be-btn danger" id="be-close2">✕</button>
+    </div>
+    <div class="be-msg" id="be-msg"></div>
+  </div>
+
+</div><!-- studio-layout -->
+
+<!-- In-page comment popover (rendered in main doc, not iframe) -->
+<div id="studio-pop" style="display:none;position:fixed;z-index:9999;background:#fff;
+  border:1px solid #ccc;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.22);
+  padding:12px;width:270px;font-family:Arial,sans-serif;font-size:13px;">
+  <div id="pop-anchor" style="font-size:.78rem;color:#555;margin-bottom:6px;
+    max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+  <textarea id="pop-ta" rows="3" placeholder="What needs changing or noting here?"
+    style="width:100%;border:1px solid #ccc;border-radius:5px;padding:6px;
+    font:inherit;font-size:12px;resize:vertical;box-sizing:border-box"></textarea>
+  <div style="display:flex;gap:6px;margin-top:8px">
+    <button id="pop-save" style="flex:1;font:inherit;font-size:12px;padding:5px;
+      border-radius:5px;border:1px solid #4a7a00;background:#76b900;
+      color:#fff;cursor:pointer;font-weight:700">Save</button>
+    <button id="pop-cancel" style="font:inherit;font-size:12px;padding:5px 10px;
+      border-radius:5px;border:1px solid #ccc;background:#f6f8fa;cursor:pointer">Cancel</button>
+  </div>
+</div>
+
+<script type="module" src="studio_main.js"></script>
+</body>
+</html>

@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Going Further · Securing Agents</title>
+<link rel="stylesheet" href="_style.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<style>
+  .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
+  .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
+  .CodeMirror-vscrollbar { display: none; }
+  .CodeMirror-gutters { background: #0d0d0d; border-right: 1px solid #2a2a2a; }
+  .CodeMirror-linenumber { color: #6a6a6a; padding: 0 8px 0 6px; font-size: .76rem; }
+  .CodeMirror-lines { padding: 10px 0; }
+  .cm-s-monokai.CodeMirror { background: #0d0d0d; color: #f8f8f2; }
+  .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
+  .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
+</style>
+<style>
+  .video-wrap {
+    position: relative; padding-bottom: 56.25%; height: 0;
+    overflow: hidden; border-radius: var(--r);
+    border: 1px solid var(--bd); background: var(--e2); margin: .8em 0 1.4em;
+  }
+  .video-wrap iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+
+  .section { margin: 2.4em 0 1em; padding-top: .5em; border-top: 1px solid var(--bd); }
+  .section-eyebrow { font-family: var(--mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .12em; color: var(--tf); margin-bottom: .3em; }
+  .section h2 { margin: 0 0 .7em; font-size: 1.25rem; }
+
+  .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 1em 0; }
+  @media (max-width: 720px) { .card-grid { grid-template-columns: 1fr; } }
+  .step-card { background: var(--e1); border: 1px solid var(--bd); border-left: 3px solid var(--g); border-radius: 6px; padding: 14px 16px; }
+  .step-card h3 { margin: 0 0 .35em; font-size: .98rem; color: var(--gs); }
+  .step-card p { margin: .25em 0; font-size: .86rem; color: var(--td); line-height: 1.55; }
+  .step-card a.btn { display: inline-block; margin-top: .6em; padding: 6px 12px; font-size: .8rem;
+                     font-family: var(--mono); background: var(--e2); color: var(--gs); border: 1px solid var(--bd); border-radius: 4px; text-decoration: none; }
+  .step-card a.btn:hover { background: var(--e3); border-color: var(--g); }
+
+  .action-btn {
+    display: inline-block; padding: 9px 20px; border-radius: 6px;
+    font-weight: 700; font-size: .9rem; text-decoration: none;
+    background: var(--g); color: #000; margin: .4em 0 1em;
+  }
+  .action-btn:hover { background: var(--gs); text-decoration: none; }
+  .action-btn.secondary {
+    background: var(--e2); color: var(--td);
+    border: 1px solid var(--bd); margin-left: 8px;
+  }
+  .action-btn.secondary:hover { border-color: var(--g); color: var(--g); }
+  .small-links { margin: .3em 0 1em; font-size: .82rem; }
+  .small-links a { color: var(--td); margin-right: 14px; }
+  .small-links a:hover { color: var(--g); }
+
+  .pattern { margin: 1.2em 0; padding: 14px 18px; background: rgba(118,185,0,.06); border-left: 3px solid var(--g); border-radius: var(--r); }
+  .pattern h3 { margin: 0 0 .4em; font-size: 1rem; color: var(--gs); }
+  .pattern p { margin: .4em 0; font-size: .92rem; color: var(--td); line-height: 1.6; }
+
+  figure.video { margin: 0 0 1.8em; }
+  figure.video figcaption { font-size: .88rem; color: var(--td); line-height: 1.6; margin-top: -.4em; }
+  figure.video figcaption b { color: var(--gs); }
+  .mat-pointer { font-size: .88rem; color: var(--td); margin: 1.4em 0 .2em; }
+
+  .lp-grid { grid-template-columns: 1fr 1fr 1fr; }
+  @media (max-width: 980px) { .lp-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 720px) { .lp-grid { grid-template-columns: 1fr; } }
+  .lp-helpers { font-size: .88rem; color: var(--td); line-height: 1.7; margin: .4em 0 0; padding-left: 1.2em; }
+  .lp-helpers li { margin: .4em 0; }
+  .lp-helpers a { color: var(--gs); }
+  .lp-helpers a:hover { color: var(--g); }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="index.html">NVIDIA · Securing Agents</a>
+  <nav id="nav"></nav>
+  <div class="spacer"></div>
+  <span class="key-pill" id="key-status">…</span>
+</div>
+
+<main>
+  <div id="journey-map"></div>
+
+  <div class="hero">
+    <div class="eyebrow">Securing Agents · Going Further</div>
+    <h1>Going <span>Further</span></h1>
+    <p class="lead">
+      By now you have built an agent loop from scratch, put it behind a
+      kernel-level sandbox, and measured the blast radius the policy leaves.
+    </p>
+    <p class="lead">
+      A real deployment adds its own data and its own users, and bringing it
+      that far takes a few more decisions.
+    </p>
+    <ul class="lead" style="font-size:1.05rem;color:var(--td);line-height:1.7">
+      <li>where to deploy what you built</li>
+      <li>how to bring your own knowledge in</li>
+      <li>which open problems are worth pushing on once the basics hold</li>
+    </ul>
+  </div>
+
+  <!-- ── Deploy what you built ─────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-eyebrow">Deploy what you built</div>
+    <h2>Moving the exercises onto a real runtime</h2>
+    <p>
+      The in-browser exercises were sized for learning, with proxied
+      endpoints and sessions that reset between runs. Taking the same
+      work to a setup you can ship means choosing a runtime
+      that handles GPU provisioning, model serving, and long-running
+      sessions. The options below cover the range of cases you are likely to
+      encounter.
+    </p>
+    <ul style="font-size:.9rem;color:var(--td);line-height:1.7">
+      <li>
+        <a href="https://brev.nvidia.com/launchable/deploy/now?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS" target="_blank" rel="noopener">NVIDIA Brev launchables</a>
+        give you one-click GPU environments preloaded with the runtime
+        components you saw in your launchable. Pre-built launchables exist
+        for the <a href="https://blog.langchain.com/deep-agents/" target="_blank" rel="noopener">LangChain deep-agents</a> stack, OpenClaw-style
+        file-as-context runtimes, and NemoClaw with kernel-level
+        containment. The launchable handles GPU provisioning, the
+        model server, and a Jupyter front end; you bring the repo.
+      </li>
+      <li>
+        <a href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com</a>
+        hosts OpenAI-compatible endpoints for every NVIDIA-hosted model.
+        The Python and JS examples in this course paste in here
+        unchanged; swap the <code>baseURL</code> from your launchable's
+        proxy to <code>https://integrate.api.nvidia.com/v1</code>
+        and supply an NVIDIA API key. Free credits cover the
+        experimentation phase.
+      </li>
+      <li>
+        <a href="https://build.nvidia.com/spark/nemoclaw-applications" target="_blank" rel="noopener">NemoClaw applications</a>
+        is the companion gallery for the launchable you ran. NVIDIA's
+        DGX Spark playbook walks complete NemoClaw agents end to end,
+        including a daily news digest, a software-development agent, a
+        deck reviewer, and a calendar negotiator, each carrying the
+        same policy setup Module 4 covered. Read one as a worked
+        blueprint for the always-on agent you packaged in Module 3.
+      </li>
+      <li>
+        <a href="https://docs.nvidia.com/nim/" target="_blank" rel="noopener">Self-host with NIM</a>
+        when the model needs to run on-prem or in your VPC.
+        NVIDIA Inference Microservices package the model,
+        tokenizer, and an OpenAI-compatible HTTP server into one
+        container. The Persona, Tooled, and ReAct agents in
+        Modules 1 and 2 ship unchanged against a NIM endpoint.
+      </li>
+      <li>
+        Frameworks worth comparing:
+        <a href="https://www.langchain.com/langgraph" target="_blank" rel="noopener">LangGraph</a>
+        for typed state machines, the
+        <code>deepagents</code> npm package for the planner,
+        VFS, and sub-agents shape from 2c, plus
+        <a href="https://www.crewai.com/" target="_blank" rel="noopener">CrewAI</a> and
+        <a href="https://microsoft.github.io/autogen/" target="_blank" rel="noopener">AutoGen</a>
+        for role-based fleets. The agent-type vocabulary the course built
+        is the right vocabulary for comparing them to your problem.
+      </li>
+    </ul>
+  </div>
+
+  <!-- ── Add new knowledge ──────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-eyebrow">Add new knowledge</div>
+    <h2>Bringing your data in</h2>
+    <p>
+      The Index Agent in Module 2b ran against a small in-page corpus.
+      A production deployment needs more work and considerations, so the following references may be of interest.
+    </p>
+    <ul style="font-size:.9rem;color:var(--td);line-height:1.7">
+      <li>
+        <a href="https://developer.nvidia.com/nemo-retriever" target="_blank" rel="noopener">NeMo Retriever</a>
+        is the production successor to the cosine similarity retrieval
+        from Module 2b. Sparse keyword search and dense vector search
+        run in parallel and their scores are merged, a reranker
+        re-orders the candidates by relevance, and configurable
+        chunking primitives let you control how documents are split
+        before indexing. Pair it with NIM-served embeddings for a fully
+        on-prem retrieval stack that keeps data inside your VPC.
+      </li>
+      <li>
+        <a href="https://build.nvidia.com/blueprints" target="_blank" rel="noopener">NVIDIA AI Blueprints</a>
+        give reference implementations for common agent shapes: a RAG
+        chatbot, a multimodal PDF extractor, a research
+        assistant. Each blueprint is the Research Agent (2c)
+        configuration for one domain, fully deployable. They work
+        both as starting templates and as a sanity check on
+        your own architecture.
+      </li>
+      <li>
+        <a href="https://github.com/NVIDIA/NeMo-Curator" target="_blank" rel="noopener">NeMo Data Curator</a>
+        treats bringing your own corpus in cleanly as a project of its own.
+        It handles deduplication, language
+        filtering, PII removal, and exact-match scoring at the
+        scales where doing it by hand stops working. Retrieval
+        quality compounds on data quality, so cleaning the corpus
+        once pays off across every query the agent ever makes
+        against it.
+      </li>
+      <li>
+        <a href="https://github.com/NVIDIA/NeMo-Guardrails" target="_blank" rel="noopener">NeMo Guardrails</a>
+        adds programmable input and output filters, topic policies, and
+        fact-checks that run at the application layer, above the
+        model. It complements kernel containment without replacing
+        it: the two layers catch different failure classes, and you
+        want both running together.
+      </li>
+    </ul>
+  </div>
+
+  <!-- ── Where to push next ──────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-eyebrow">Where to push next</div>
+    <h2>Three axes the agent vocabulary opens up</h2>
+    <p>Production work pushes on three independent axes. Use the
+       vocabulary from this course for each:</p>
+    <ul>
+      <li><strong>The knowledge layer.</strong> Production-grade retrieval: structural chunking, page-image retrieval, faithfulness eval on real heterogeneous corpora. NeMo Retriever and the RAG AI Blueprints are where this gets built for real.</li>
+      <li><strong>The substrate.</strong> Wire-format protocols (MCP, the Responses API, OTel GenAI conventions, A2A) that keep tool capabilities portable across providers and frameworks.</li>
+      <li><strong>Fleet dynamics and containment.</strong> What changes when N agents run in parallel: each agent redundantly re-discovers the same context (rediscovery cost), topologies with too many hops lose coherence, and an agent grading a peer's output can shift its verdicts based on social context rather than content. How to bound any single agent in the fleet with kernel-level containment (<a href="https://docs.kernel.org/userspace-api/landlock.html" target="_blank" rel="noopener">Landlock</a>, <a href="https://man7.org/linux/man-pages/man2/seccomp.2.html" target="_blank" rel="noopener">seccomp</a>, network namespaces) when prompt rules and guardrails are not enough to limit blast radius.</li>
+    </ul>
+    <p>
+      Pick the axis that matches the problem your current project keeps
+      running into. The NVIDIA Developer Blog tracks the latest
+      reference work on all three.
+    </p>
+    <a class="action-btn" href="https://developer.nvidia.com/blog/category/generative-ai/" target="_blank" rel="noopener">NVIDIA Developer Blog →</a>
+  </div>
+
+  <!-- ── Resources by topic ────────────────────────────────────────── -->
+  <div class="section" id="refs">
+    <div class="section-eyebrow">References hub</div>
+    <h2>Reading list, organised by module</h2>
+    <p>
+      This hub gathers every source the modules' "References" tails
+      point back to, and every entry is freely available through arxiv or
+      the org's own docs and GitHub repositories.
+    </p>
+    <p>
+      Modules 1 through 4 map directly to this course, while the sections
+      below cover the longer course for anyone who continues.
+    </p>
+
+    <h3 id="refs-m1" style="font-size:.95rem;color:var(--gs);margin:1.2em 0 .4em">Module 1 · Foundations · Agents and LLMs</h3>
+    <ul style="font-size:.88rem;color:var(--td);line-height:1.7">
+      <li>Russell &amp; Norvig (2020). <a href="https://aima.cs.berkeley.edu/" target="_blank" rel="noopener"><em>Artificial Intelligence: A Modern Approach</em></a>, 4th ed. Where the PEAS framework and agent taxonomy live.</li>
+      <li>Bratman (1987). <em>Intention, Plans, and Practical Reason</em> (the BDI tuple; <a href="https://en.wikipedia.org/wiki/Belief%E2%80%93desire%E2%80%93intention_software_model" target="_blank" rel="noopener">summary</a>).</li>
+      <li>Vaswani et al. (2017). <a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">Attention Is All You Need.</a> <code>arXiv:1706.03762</code>. The transformer.</li>
+      <li>Sennrich et al. (2015). <a href="https://arxiv.org/abs/1508.07909" target="_blank" rel="noopener">Neural Machine Translation of Rare Words with Subword Units.</a> <code>arXiv:1508.07909</code>. BPE tokenisation.</li>
+      <li>Brown et al. (2020). <a href="https://arxiv.org/abs/2005.14165" target="_blank" rel="noopener">Language Models are Few-Shot Learners.</a> <code>arXiv:2005.14165</code>. Introduces in-context learning.</li>
+      <li>Wei et al. (2022). <a href="https://arxiv.org/abs/2201.11903" target="_blank" rel="noopener">Chain-of-Thought Prompting Elicits Reasoning in LLMs.</a> <code>arXiv:2201.11903</code>.</li>
+      <li>Park et al. (2023). <a href="https://arxiv.org/abs/2304.03442" target="_blank" rel="noopener">Generative Agents.</a> <code>arXiv:2304.03442</code> (referenced across M1c, M4, M6).</li>
+    </ul>
+
+    <h3 id="refs-m2" style="font-size:.95rem;color:var(--gs);margin:1.2em 0 .4em">Module 2 · Output discipline · JSON, Tooled, ReAct</h3>
+    <ul style="font-size:.88rem;color:var(--td);line-height:1.7">
+      <li>Willard &amp; Louf (2023). <a href="https://arxiv.org/abs/2307.09702" target="_blank" rel="noopener">Efficient Guided Generation for LLMs.</a> <code>arXiv:2307.09702</code>. The FSM theory behind Outlines.</li>
+      <li>Schick et al. (2023). <a href="https://arxiv.org/abs/2302.04761" target="_blank" rel="noopener">Toolformer.</a> <code>arXiv:2302.04761</code> (self-supervised tool use).</li>
+      <li>Yao et al. (2022). <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">ReAct: Synergizing Reasoning and Acting in LLMs.</a> <code>arXiv:2210.03629</code>. Module 1b's figure is redrawn from this.</li>
+      <li>OpenAI <a href="https://platform.openai.com/docs/guides/structured-outputs" target="_blank" rel="noopener">Structured Outputs</a> · <a href="https://platform.openai.com/docs/guides/function-calling" target="_blank" rel="noopener">function calling</a>.</li>
+      <li>Anthropic <a href="https://docs.anthropic.com/en/docs/agents-and-tools/tool-use" target="_blank" rel="noopener">tool-use reference</a>.</li>
+      <li><a href="https://modelcontextprotocol.io/specification" target="_blank" rel="noopener">Model Context Protocol</a> · <a href="https://github.com/dottxt-ai/outlines" target="_blank" rel="noopener">Outlines</a> · <a href="https://github.com/mlc-ai/xgrammar" target="_blank" rel="noopener">XGrammar</a>.</li>
+      <li>JSON Schema <a href="https://json-schema.org/specification" target="_blank" rel="noopener">draft 2020-12 spec</a>.</li>
+    </ul>
+
+    <h3 id="refs-m3" style="font-size:.95rem;color:var(--gs);margin:1.2em 0 .4em">Module 3 · Composition · Workflow, Index, Research</h3>
+    <ul style="font-size:.88rem;color:var(--td);line-height:1.7">
+      <li>Xu et al. (2023). <a href="https://arxiv.org/abs/2305.18323" target="_blank" rel="noopener">ReWOO: Decoupling Reasoning from Observations.</a> <code>arXiv:2305.18323</code>.</li>
+      <li>Wang et al. (2023). <a href="https://arxiv.org/abs/2305.04091" target="_blank" rel="noopener">Plan-and-Solve Prompting.</a> <code>arXiv:2305.04091</code>.</li>
+      <li>Madaan et al. (2023). <a href="https://arxiv.org/abs/2303.17651" target="_blank" rel="noopener">Self-Refine.</a> <code>arXiv:2303.17651</code>.</li>
+      <li>Lewis et al. (2020). <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Retrieval-Augmented Generation.</a> <code>arXiv:2005.11401</code>. Module 2b's figure is redrawn from this.</li>
+      <li>Karpukhin et al. (2020). <a href="https://arxiv.org/abs/2004.04906" target="_blank" rel="noopener">Dense Passage Retrieval.</a> <code>arXiv:2004.04906</code>.</li>
+      <li>Johnson, Douze, Jégou (2017). <a href="https://arxiv.org/abs/1702.08734" target="_blank" rel="noopener">Billion-scale similarity search with GPUs</a> <code>arXiv:1702.08734</code> (FAISS).</li>
+      <li>Gao et al. (2022). <a href="https://arxiv.org/abs/2212.10496" target="_blank" rel="noopener">HyDE.</a> <code>arXiv:2212.10496</code>.</li>
+      <li>Hsieh et al. (2024). <a href="https://arxiv.org/abs/2404.06654" target="_blank" rel="noopener">RULER.</a> <code>arXiv:2404.06654</code> (long-context benchmark).</li>
+      <li>Wang et al. (2023). <a href="https://arxiv.org/abs/2305.16291" target="_blank" rel="noopener">Voyager.</a> <code>arXiv:2305.16291</code>.</li>
+      <li><a href="https://blog.langchain.com/deep-agents/" target="_blank" rel="noopener">LangChain Deep Agents</a> · <a href="https://github.com/langchain-ai/deepagents" target="_blank" rel="noopener">deepagents</a> · <a href="https://www.langchain.com/langgraph" target="_blank" rel="noopener">LangGraph</a>.</li>
+    </ul>
+
+    <h3 id="refs-m4" style="font-size:.95rem;color:var(--gs);margin:1.2em 0 .4em">Module 4 · Persistence · Directory, CLI, CRON</h3>
+    <ul style="font-size:.88rem;color:var(--td);line-height:1.7">
+      <li>Packer et al. (2023). <a href="https://arxiv.org/abs/2310.08560" target="_blank" rel="noopener">MemGPT.</a> <code>arXiv:2310.08560</code>.</li>
+      <li>Karpas et al. (2022). <a href="https://arxiv.org/abs/2205.00445" target="_blank" rel="noopener">MRKL Systems.</a> <code>arXiv:2205.00445</code>.</li>
+      <li>Liu et al. (2023). <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Lost in the Middle.</a> <code>arXiv:2307.03172</code>. Long-context degradation; motivates compaction.</li>
+      <li>Park et al. (2023). <a href="https://arxiv.org/abs/2304.03442" target="_blank" rel="noopener">Generative Agents.</a> <code>arXiv:2304.03442</code>.</li>
+      <li>Wang et al. (2023). <a href="https://arxiv.org/abs/2305.16291" target="_blank" rel="noopener">Voyager.</a> <code>arXiv:2305.16291</code> (always-on skill-library agent).</li>
+      <li>Anthropic <a href="https://docs.anthropic.com/en/docs/claude-code/overview" target="_blank" rel="noopener">Claude Code</a> · <a href="https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview" target="_blank" rel="noopener">Agent Skills</a>.</li>
+      <li>OpenAI <a href="https://platform.openai.com/docs/codex" target="_blank" rel="noopener">Codex CLI</a>.</li>
+      <li><a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes Agent (Nous Research)</a> and its <a href="https://hermes-agent.nousresearch.com/docs/user-guide/security" target="_blank" rel="noopener">security guide</a>. The self-improving, always-on sibling to OpenClaw: skills from experience, persistent memory, built-in cron, and a messaging gateway. Run one locally to see the persistence story end to end.</li>
+      <li><a href="https://github.com/NVIDIA/NeMo-Curator" target="_blank" rel="noopener">NeMo Curator</a> (data-quality pipeline).</li>
+    </ul>
+
+    <p style="font-size:.84rem;color:var(--tf);margin:1.8em 0 .2em;border-top:1px solid var(--bd);padding-top:1em">Beyond this course (the longer track). This short course ends at Module 4; the two sections below are reading for the longer course and have no page here.</p>
+
+    <h3 id="refs-m5" style="font-size:.95rem;color:var(--gs);margin:1.2em 0 .4em">Going further · Reliability · Monitor, Judge, Sandbox</h3>
+    <ul style="font-size:.88rem;color:var(--td);line-height:1.7">
+      <li><a href="https://opentelemetry.io/docs/specs/semconv/gen-ai/" target="_blank" rel="noopener">OpenTelemetry GenAI semantic conventions</a>.</li>
+      <li>Zheng et al. (2023). <a href="https://arxiv.org/abs/2306.05685" target="_blank" rel="noopener">Judging LLM-as-a-Judge with MT-Bench.</a> <code>arXiv:2306.05685</code>.</li>
+      <li>Liu et al. (2023). <a href="https://arxiv.org/abs/2303.16634" target="_blank" rel="noopener">G-Eval.</a> <code>arXiv:2303.16634</code>.</li>
+      <li>Liang et al. (2022). <a href="https://arxiv.org/abs/2211.09110" target="_blank" rel="noopener">Holistic Evaluation of Language Models (HELM).</a> <code>arXiv:2211.09110</code>.</li>
+      <li>Saad-Falcon et al. (2024). <a href="https://arxiv.org/abs/2403.02419" target="_blank" rel="noopener">ARES: Automated Eval for RAG.</a> <code>arXiv:2403.02419</code>.</li>
+      <li>Greshake et al. (2023). <a href="https://arxiv.org/abs/2302.12173" target="_blank" rel="noopener">Not what you've signed up for.</a> <code>arXiv:2302.12173</code> (indirect prompt injection).</li>
+      <li>Inan et al. (2023). <a href="https://arxiv.org/abs/2312.06674" target="_blank" rel="noopener">Llama Guard.</a> <code>arXiv:2312.06674</code>.</li>
+      <li>Willison (2025). <a href="https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/" target="_blank" rel="noopener">The lethal trifecta</a>.</li>
+      <li><a href="https://genai.owasp.org/" target="_blank" rel="noopener">OWASP GenAI Top 10</a> · <a href="https://docs.kernel.org/userspace-api/landlock.html" target="_blank" rel="noopener">Landlock</a> · <a href="https://docs.kernel.org/userspace-api/seccomp_filter.html" target="_blank" rel="noopener">seccomp-BPF</a>.</li>
+      <li><a href="https://github.com/NVIDIA/NeMo-Guardrails" target="_blank" rel="noopener">NeMo Guardrails</a> · <a href="https://docs.smith.langchain.com/" target="_blank" rel="noopener">LangSmith</a> · <a href="https://phoenix.arize.com/" target="_blank" rel="noopener">Arize Phoenix</a> · <a href="https://www.jaegertracing.io/" target="_blank" rel="noopener">Jaeger</a>.</li>
+    </ul>
+
+    <h3 id="refs-m6" style="font-size:.95rem;color:var(--gs);margin:1.2em 0 .4em">Going further · Fleets · Fleet, Brain, Flywheel</h3>
+    <ul style="font-size:.88rem;color:var(--td);line-height:1.7">
+      <li>Cemri et al. (2025). <a href="https://arxiv.org/abs/2503.13657" target="_blank" rel="noopener">Why Do Multi-Agent LLM Systems Fail? (MAST).</a> <code>arXiv:2503.13657</code>.</li>
+      <li>Wu et al. (2023). <a href="https://arxiv.org/abs/2308.08155" target="_blank" rel="noopener">AutoGen.</a> <code>arXiv:2308.08155</code>.</li>
+      <li>Hong et al. (2023). <a href="https://arxiv.org/abs/2308.00352" target="_blank" rel="noopener">MetaGPT.</a> <code>arXiv:2308.00352</code>.</li>
+      <li>Chen et al. (2024). <a href="https://arxiv.org/abs/2403.02419" target="_blank" rel="noopener">Are More LLM Calls All You Need? Towards Scaling Laws of Compound Inference Systems</a> <code>arXiv:2403.02419</code>.</li>
+      <li>Xu et al. (2025). <a href="https://arxiv.org/abs/2502.12110" target="_blank" rel="noopener">A-MEM: Atomic Notes for Agent Memory.</a> <code>arXiv:2502.12110</code>.</li>
+      <li>Christiano et al. (2017). <a href="https://arxiv.org/abs/1706.03741" target="_blank" rel="noopener">Deep RL from Human Preferences (RLHF).</a> <code>arXiv:1706.03741</code>.</li>
+      <li>Rafailov et al. (2023). <a href="https://arxiv.org/abs/2305.18290" target="_blank" rel="noopener">Direct Preference Optimization (DPO).</a> <code>arXiv:2305.18290</code>.</li>
+      <li>Bai et al. (2022). <a href="https://arxiv.org/abs/2212.08073" target="_blank" rel="noopener">Constitutional AI.</a> <code>arXiv:2212.08073</code>.</li>
+      <li><a href="https://build.nvidia.com/nvidia/aiq" target="_blank" rel="noopener">NVIDIA AI-Q Blueprint</a> · <a href="https://github.com/langchain-ai/deepagents" target="_blank" rel="noopener">deepagents</a>.</li>
+    </ul>
+  </div>
+
+  <!-- ── NVIDIA Agentic AI Learning Path ───────────────────────────── -->
+  <div class="section" id="learning-path">
+    <div class="section-eyebrow">Learning path</div>
+    <h2>Continue with the NVIDIA Agentic AI Learning Path</h2>
+    <p>
+      This course is the hands-on companion to Lesson 6 of NVIDIA's
+      <a href="https://developer.nvidia.com/topics/ai/agentic-ai-learning-path" target="_blank" rel="noopener">Agentic AI Learning Path</a>,
+      <em>How to Build a Safer Autonomous Agent using OpenClaw</em>. The full
+      path begins with building a first agent and ends at the safety work this
+      course covers in depth. In between it moves through retrieval, evaluation,
+      model customization, and deep agents that delegate and persist memory.
+      Each lesson below pairs a concept you met here with the place the path
+      develops it further.
+    </p>
+    <div class="card-grid lp-grid">
+      <div class="step-card">
+        <h3>Lesson 1 · How to Build an AI Agent</h3>
+        <p>The plan-act-observe loop you built from scratch in Module 1, here assembled with NVIDIA Nemotron models and LangGraph into a report-generation agent.</p>
+        <a class="btn" href="https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/how-to-build-an-ai-agent" target="_blank" rel="noopener">Start →</a>
+      </div>
+      <div class="step-card">
+        <h3>Lesson 2 · How to Build an Agentic RAG Application</h3>
+        <p>The retrieval agent from Module 2b, scaled up: dense and sparse search, reranking, and a vector store wired into a ReAct agent that plans its own queries.</p>
+        <a class="btn" href="https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/how-to-build-agentic-ai-rag" target="_blank" rel="noopener">Start →</a>
+      </div>
+      <div class="step-card">
+        <h3>Lesson 3 · How to Evaluate AI Agents</h3>
+        <p>The verification half of the loop. Measuring task success, tool-use quality, and trajectory efficiency with RAGAS metrics and LLM-as-judge pipelines, the discipline behind every reliability decision in this course.</p>
+        <a class="btn" href="https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/how-to-evaluate-ai-agents" target="_blank" rel="noopener">Start →</a>
+      </div>
+      <div class="step-card">
+        <h3>Lesson 4 · How to Customize AI Agents</h3>
+        <p>When prompting and skills hit their limit, this lesson writes domain knowledge into the weights themselves: synthetic data with NeMo Data Designer, then fine-tuning Nemotron with GRPO and LoRA.</p>
+        <a class="btn" href="https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/how-to-customize-ai-agents" target="_blank" rel="noopener">Start →</a>
+      </div>
+      <div class="step-card">
+        <h3>Lesson 5 · How to Build Deep AI Agents</h3>
+        <p>The planner, sub-agent delegation, and virtual-filesystem memory you hand-rolled in Module 2c, built here with LangChain's deepagents library and the NVIDIA AI-Q Blueprint.</p>
+        <a class="btn" href="https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/how-to-build-deep-ai-agents" target="_blank" rel="noopener">Start →</a>
+      </div>
+      <div class="step-card" style="border-left-color:var(--gs)">
+        <h3>Lesson 6 · How to Build a Safer Autonomous Agent using OpenClaw</h3>
+        <p>This course. The containment work from Modules 3 and 4: deny-by-default network, Landlock filesystem, seccomp hardening, credential isolation, and continuous safety evaluation on a long-running claw.</p>
+        <a class="btn" href="https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/how-to-build-safer-autonomous-agent-using-openclaw" target="_blank" rel="noopener">Start →</a>
+      </div>
+    </div>
+
+    <h3 style="font-size:.95rem;color:var(--gs);margin:1.4em 0 .4em">Helper articles worth reading</h3>
+    <ul class="lp-helpers">
+      <li><a href="https://blogs.nvidia.com/blog/what-is-agentic-ai/" target="_blank" rel="noopener">What Is Agentic AI?</a> The plain-language definition the whole path starts from: reasoning and iterative planning to solve multi-step problems autonomously.</li>
+      <li><a href="https://www.nvidia.com/en-us/glossary/deep-agents/" target="_blank" rel="noopener">Deep Agents glossary</a> Names the four pillars (planning, sub-agent delegation, filesystem memory, skills) that separate a deep agent from the shallow ReAct loop, the same split Module 2c draws.</li>
+      <li><a href="https://developer.nvidia.com/blog/traditional-rag-vs-agentic-rag-why-ai-agents-need-dynamic-knowledge-to-get-smarter/" target="_blank" rel="noopener">Traditional RAG vs. agentic RAG</a> Why an agent that plans its own retrieval beats a single fixed lookup, the reasoning behind the Index Agent in Module 2b.</li>
+      <li><a href="https://developer.nvidia.com/blog/run-autonomous-self-evolving-agents-more-safely-with-nvidia-openshell/" target="_blank" rel="noopener">Run autonomous agents more safely with NVIDIA OpenShell</a> The OpenShell sandbox layer that backs the kernel-level containment you study in Modules 3 and 4.</li>
+      <li><a href="https://developer.nvidia.com/blog/build-a-secure-always-on-local-ai-agent-with-nvidia-nemoclaw-and-openclaw/" target="_blank" rel="noopener">Build a secure always-on local AI agent with NemoClaw</a> A step-by-step install of NemoClaw on DGX Spark, showing how OpenClaw, OpenShell, and the claw fit together end to end.</li>
+      <li><a href="https://blogs.nvidia.com/blog/what-openclaw-agents-mean-for-every-organization/" target="_blank" rel="noopener">What OpenClaw agents mean for every organization</a> When to reach for a long-running claw on your own infrastructure rather than a one-shot prompt, the design question Module 4 keeps returning to.</li>
+    </ul>
+  </div>
+
+  <!-- ── The harness around the model ─────────────────────────────── -->
+  <div class="section">
+    <div class="section-eyebrow">What you actually built</div>
+    <h2>The course built a harness around a swappable model</h2>
+    <p>
+      The model never changed across these modules. The same frozen and stateless
+      model that filled the reasoning slot in Module 1 is the one running under
+      the deep agent, the OpenClaw persona, and the sandboxed claw.
+    </p>
+    <p>
+      Everything else you wrote is the <em>harness</em>, the system that wraps a
+      raw model and makes it useful for sustained, autonomous work. Each module
+      added one layer of it.
+    </p>
+    <ul style="font-size:.9rem;color:var(--td);line-height:1.7">
+      <li>
+        <strong>The loop.</strong> Module 1 turned a single
+        <a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noopener">chat call into an agent</a>
+        by wrapping it in a cycle that calls a tool, feeds the result back, and
+        runs again until the model is done. That cycle is the execution layer,
+        the part a runtime like OpenClaw or a framework like LangGraph gives you
+        so you do not hand-roll it.
+      </li>
+      <li>
+        <strong>The context.</strong> Modules 2 and 3 curated what the model
+        sees at inference time: retrieved knowledge, a SOUL file, skills, and
+        memory carried across turns. Choosing what to fold in and what to keep
+        out is
+        <a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents" target="_blank" rel="noopener">context engineering</a>,
+        and it shapes output quality at least as much as the wording of any one
+        prompt (<a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">Weng, 2023</a>).
+      </li>
+      <li>
+        <strong>The containment.</strong> Module 4 added the layer that does not
+        read the prompt at all. OpenShell enforces its rules at the syscall
+        boundary, so a successful injection still cannot exceed the policy.
+      </li>
+    </ul>
+    <p>
+      Your engineering accumulates in these layers rather than in the model
+      itself. A stronger model drops into the same harness with little rework,
+      so you carry these layers forward across upgrades.
+    </p>
+    <p>
+      When an agent keeps failing the same way, the gap is usually a layer you
+      have not built yet, and a check enforced beneath it fixes the failure more
+      durably than another pass at the prompt. The patterns below show what that
+      work looks like in practice.
+    </p>
+  </div>
+
+  <!-- ── Four patterns worth carrying ─────────────────────────────── -->
+  <div class="section">
+    <div class="section-eyebrow">Four patterns worth carrying</div>
+    <h2>What to remember when you ship one of these</h2>
+
+    <div class="pattern">
+      <h3>Forecasts about agent productivity are systematically wrong.</h3>
+      <p>
+        <a href="https://metr.org/" target="_blank" rel="noopener">METR</a>'s randomised trial of experienced open-source developers
+        found a meaningful slowdown from using a coding agent, even though
+        they expected to go faster and reported afterward that they had.
+        That distance between forecast and measured result is the finding to
+        carry forward, so weigh it when scoping the value of any agent you ship.
+      </p>
+    </div>
+
+    <div class="pattern">
+      <h3>A single strong agent is the default.</h3>
+      <p>
+        A single strong agent beats a multi-agent system once a task crosses a
+        threshold of complexity (<a href="https://arxiv.org/abs/2403.02419" target="_blank" rel="noopener">Chen et al., 2024</a>).
+        Push N higher and the emergent behaviours can hurt more than the
+        failure modes you set out to fix. Before adding one more to the
+        topology, name the specific failure mode it is meant to fix. If you
+        can't name it, the extra complexity is unlikely to help.
+      </p>
+    </div>
+
+    <div class="pattern">
+      <h3>Kernel containment is the answer to "what survives a successful prompt injection."</h3>
+      <p>
+        Prompt rules and application guardrails help, but they only act on
+        what the model exposes to them, and an injected instruction that
+        looks valid will pass straight through.
+      </p>
+      <p>
+        Any agent that can touch a real shell or filesystem or reach the
+        network therefore needs a layer beneath the prompt. That layer
+        enforces its rules at the syscall boundary, below the level any
+        instruction can reach.
+      </p>
+    </div>
+
+    <div class="pattern">
+      <h3>The agent's admin token is a higher perimeter than the sandbox.</h3>
+      <p>
+        The kernel sandbox bounds what the agent can do to the world, yet it
+        says nothing about whoever holds the agent's operator token. That
+        holder sits above the boundary entirely, free to do any of the
+        following:
+      </p>
+      <ul>
+        <li>read the persona</li>
+        <li>plant cron jobs</li>
+        <li>patch the model and its tools</li>
+        <li>inject a turn into the conversation</li>
+      </ul>
+      <p>
+        The hardness of the box and the scope of that token are separate
+        measurements.
+      </p>
+      <p>
+        Module 4b showed the token reaching past the checkpoint
+        the sandbox never sees. Treat an <code>operator.admin</code> credential
+        like a root password: tight storage and regular rotation. For that
+        agent it reaches further than root does inside the box.
+      </p>
+    </div>
+  </div>
+
+  <h2>Try it · ask the whole course</h2>
+  <p>
+    The capstone artifact is a <code>createReactAgent</code> whose one tool reads any
+    page of this course as markdown. It is the same shape you built in Module 1b,
+    now pointed at everything you learned. You can ask it to compare modules, refresh a detail, or even quiz you on the material.
+  </p>
+  <p>
+    On each turn it reads the relevant page before answering and keeps the whole
+    conversation in memory. Pin a module to focus on one, or leave it on
+    Auto-select.
+  </p>
+  <div class="callout">
+    <strong>The shape you built runs in production.</strong> The OpenClaw agent you drove in Modules 3 and
+    4 is built on the <a href="https://github.com/earendil-works/pi-mono" target="_blank" rel="noopener">Pi
+    agent runtime</a> (pi-mono, by Mario Zechner), which OpenClaw internalized and wrapped with a
+    multi-channel gateway, the skills you ran, and the persisted memory you watched it keep. The core under
+    all of that is the same perceive-reason-act loop, tool calls, and growing message history you wrote by
+    hand in Module 1.
+  </div>
+  <div id="capstone-cell"></div>
+  <div id="capstone-artifact"></div>
+  <script type="module">
+    import { mountRunCell } from "./_shared.js";
+    mountRunCell("#capstone-cell", {
+      label: "the panel + the agent + your tool, in code",
+      autorun: true,
+      code: `// The read tool's enum is every page of this course; the agent reads on demand
+// and cites the page id.
+// Edit the prompt or the tool, then Run to re-render.
+
+helpers.mountAgentChat("#capstone-artifact", {
+  models: [
+    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
+    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
+  ],
+
+  modules: helpers.coursePages(),
+  greeting: "You finished the course. Ask me anything you learned, like “how does the OpenShell sandbox differ from prompt rules?” or “quiz me on the ReAct loop,” and I'll read the relevant page and answer.",
+  examples: ["Quiz me on the ReAct loop", "Compare RAG with a deep-research agent", "Summarize Module 3 in five bullets", "How does OpenClaw's agent loop relate to the one I built in 1b?", "What is Pi, the runtime OpenClaw is built on?", "List the ways an agent can be attacked, with the page that covers each"],
+  system: "You are this course's teaching assistant. Answer from pages you read with read_course_page; cite the page id you used. Take commands: quiz the user, compare two topics, summarize one module, or walk the path from a single call to an always-on agent. For a course-wide question (summarize the course, what will I build), read the 'overview' page first. If a page does not cover it, say so.",
+  recursionLimit: 24,   // the capstone reads several pages per answer; match 01b/01c's headroom
+  growLog: true,        // the recap chat runs long; let it flow with the page instead of trapping the scroll
+  buildTools: ({ tool, z, coursePage, coursePages }) => [
+    tool(async ({ page }) => await coursePage(page),
+      { name: "read_course_page", description: "Read a page of THIS course and return its text as markdown.",
+        schema: z.object({ page: z.enum(coursePages().map(p => p.id)).describe("which page, e.g. 03b-openclaw") }) }),
+  ],
+});
+helpers.log("rendered below. Edit the config and Run.");
+
+// helpers.mountAgentChat runs one real LangChain createReactAgent per model (each
+// with its own memory); you supply the tools and prompt, the helper runs the loop.
+// read_course_page fetches one course page as markdown; the agent picks the page.
+`,
+    });
+  </script>
+
+  <div class="foot-nav">
+    <a href="04b-modern-clis.html">← Module 4b: Modern CLIs</a>
+    <a class="next" href="../index.html">↩ Back to course home</a>
+  </div>
+</main>
+
+<script type="module">
+import { buildNav, updateKeyPill, mountJourneyMap } from "./_shared.js";
+mountJourneyMap("#journey-map", "4c");
+document.getElementById("nav").innerHTML = buildNav("04c-going-further.html");
+updateKeyPill(document.getElementById("key-status"));
+hljs.highlightAll();
+</script>
+</body>
+</html>

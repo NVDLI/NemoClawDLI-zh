@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>The ReAct Loop · Securing Agents</title>
+<link rel="stylesheet" href="_style.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<style>
+  .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
+  .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
+  .CodeMirror-vscrollbar { display: none; }
+  .CodeMirror-gutters { background: #0d0d0d; border-right: 1px solid #2a2a2a; }
+  .CodeMirror-linenumber { color: #6a6a6a; padding: 0 8px 0 6px; font-size: .76rem; }
+  .CodeMirror-lines { padding: 10px 0; }
+  .cm-s-monokai.CodeMirror { background: #0d0d0d; color: #f8f8f2; }
+  .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
+  .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
+  figure.lp-video { margin: 1.4em 0; }
+  figure.lp-video .video-wrap { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 8px; border: 1px solid var(--bd); background: var(--e1); }
+  figure.lp-video .video-wrap iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+  figure.lp-video figcaption { font-size: .88rem; color: var(--td,#b0b0b0); line-height: 1.6; margin-top: .55em; }
+  figure.lp-video figcaption b { color: var(--gs,#aee23a); }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="index.html">NVIDIA · Securing Agents</a>
+  <nav id="nav"></nav>
+  <div class="spacer"></div>
+  <span class="key-pill" id="key-status" onclick="location.href='01a-loop.html#key-panel'">…</span>
+</div>
+
+<main>
+  <div id="journey-map"></div>
+
+  <div class="hero">
+    <div class="eyebrow">Module 1 · Part B of 3</div>
+    <h1>The <span>ReAct</span> Loop</h1>
+    <p class="lead">
+      An agent built on a language model runs the same perceive-reason-act
+      loop as anything else, with one detail that gives the pattern its name:
+      the model reasons in words between the actions it takes.
+      <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al. (2022)</a>
+      called this <strong>ReAct</strong>, for reasoning and acting. They found that
+      a model which interleaves short stretches of reasoning with calls to its tools
+      handles a wide range of tasks more reliably than one that only plans in advance
+      or only acts without thinking it through.
+    </p>
+    <p>
+      This loop is the foundation that most general-purpose agent frameworks
+      are built on, LangChain's <a href="https://docs.langchain.com/oss/javascript/langchain/agents" target="_blank" rel="noopener"><code>createReactAgent</code></a>
+      among them, and the rest of this module works up to it.
+    </p>
+  </div>
+
+  <figure style="margin:1.4em 0">
+    <div class="fig-embed" data-svg-src="assets/figures/01b-react-1.svg" style="aspect-ratio:1122 / 440"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">The loop is unchanged. With a language model in the reasoning step, the agent reads tool results and acts by calling tools.</figcaption>
+  </figure>
+
+  <h2>The one field that tells the loop what to do next</h2>
+
+  <p>
+    Every chat-completions response carries a <code>finish_reason</code>
+    field that tells you why the model stopped generating. Inside an agent
+    loop, this is the only signal you need to decide what to do next:
+    run a tool, return the answer to the user, or handle an error. Before reading
+    what its values mean, make two calls and watch the field change.
+  </p> 
+
+  <div id="cell-finish-reason"></div>
+
+  <p>
+    The first call answered on its own and came back <code>"stop"</code>. The second was
+    offered a tool and asked for something training data cannot supply, so instead of stopping
+    it came back <code>"tool_calls"</code>, handing your code the name of the function to run.
+    Those two values cover the common branching. The rest signal trouble that routes the loop
+    into a fallback harness, where the agent might retry the call or hand the conversation off
+    to a human.
+  </p>
+  <ul>
+    <li><code>"stop"</code> means the model has written its final answer and the loop can exit, delivering <code>content</code> to the user.</li>
+    <li><code>"tool_calls"</code> means the model is asking your code to run the named function and append the result before calling back.</li>
+    <li><code>"length"</code> fires when the model hits its token cap before it finishes.</li>
+    <li><code>"content_filter"</code> fires when a safety classifier trips on the output.</li>
+  </ul>
+
+  <p>In modern ReAct, a short router reads it and runs the following loop:</p>
+  <ol>
+    <li>the model picks a tool,</li>
+    <li>your code runs it,</li>
+    <li>the result goes back,</li>
+    <li>the loop repeats until the model says done.</li>
+  </ol>
+  <p>
+    The arrangement is strong because the model is never bound to the plan it
+    started with. Whenever a tool returns something it did not expect, that result
+    joins the next round of reasoning, and the model can reconsider where it stands
+    before deciding what to do next.
+  </p>
+
+  
+  <h2>The pieces an LLM agent is built from</h2>
+  <p>
+    Zoom in on the agent and you find the decomposition
+    <a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">Lilian Weng drew in
+    2023</a>. A language model sits at the center. Around it sit <strong>memory</strong>, <strong>planning</strong>, <strong>tools</strong>,
+    and the <strong>actions</strong> that reach the world. 
+  </p>
+  <p>
+    This course's minimal agent fills each slot with the simplest thing that works:
+  </p>
+  <ul>
+    <li>the <code>messages[]</code> array holds the memory,</li>
+    <li>the <code>finish_reason</code> router does the planning,</li>
+    <li>your functions are the tools,</li>
+    <li>and a tool call is how it acts.</li>
+  </ul>
+  <p>
+    None of that lives inside the model. It is the harness you build around a single
+    text-in, text-out call.
+  </p>
+  <figure style="margin:1.4em 0">
+    <div class="fig-embed" data-svg-src="assets/figures/01b-react-2.svg" style="aspect-ratio:940 / 320"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">After <a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">Lilian Weng (2023)</a>: the model is the agent's core controller, with memory, planning, tools, and action wired around it.</figcaption>
+  </figure>
+  <div class="callout">
+    <strong>The modules are independent.</strong> You can replace the model or the tools
+    or the router on its own, and as long as each one still honors the contract the
+    others expect of it, the rest of the loop keeps working.
+  </div>
+  <p>
+    That independence also matters for how you read agent code you didn't
+    write. Whatever framework wraps it, any LLM-based agent must contain these
+    four pieces, and when something breaks the cause is usually in one of them:
+  </p>
+  <ul>
+    <li>the model returning the wrong <code>finish_reason</code>,</li>
+    <li>a missing turn in the messages array,</li>
+    <li>the tool executor handing back an unexpected value,</li>
+    <li>or the router misreading the signal.</li>
+  </ul>
+  <p>
+    The four-piece frame gives you a checklist that applies regardless of how the
+    surrounding code is organized.
+  </p>
+
+  <h2>Building the loop from scratch with one tool</h2>
+  <p>
+    As an exercise, we can try to create a simple loop from scratch.
+    All we need is a single tool named <code>get_current_time</code> plus one system prompt
+    and one <code>while</code> loop. Run it with "What time is it in UTC?" to start, and see what else you can ask:
+  </p>
+  <ol>
+    <li><strong>Step 1.</strong> The model asks for the tool.</li>
+    <li><strong>Tool run.</strong> The executor runs the function and appends the timestamp as a <code>tool</code>-role message.</li>
+    <li><strong>Step 2.</strong> The model reads the timestamp and writes the user-facing answer.</li>
+    <li><strong>Exit.</strong> The loop ends when <code>finish_reason</code> reads <code>"stop"</code>.</li>
+  </ol>
+
+  <figure style="margin:1.4em 0">
+    <div class="fig-embed" data-svg-src="assets/figures/01b-react-3.svg" style="aspect-ratio:820 / 234"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Think, act, observe, repeat. The turn exits the moment finish_reason is "stop".</figcaption>
+  </figure>
+
+  <div id="cell-m2c-p3"></div>
+
+  <div class="callout">
+    <strong>What just happened inside the messages array.</strong><br>
+    The loop pushed four things into <code>state.messages</code>: <ul><li>the system
+    prompt (turn 0),</li><li>the user question (turn 1),</li><li>an assistant message with a
+    <code>tool_calls</code> field (turn 2, the request),</li><li>and a
+    <code>tool</code>-role message holding the function's return value (turn
+    3).</li></ul> The second LLM call read all four of those including the new tool result and
+    wrote the final answer. The growing array is the only "memory" this
+    agent has. If you saved that array to disk and reloaded it next week, the
+    model would resume the conversation without noticing the gap.
+  </div>
+
+  <h2>Context rot: why a longer loop reads worse</h2>
+  <p>
+    As each step costs tokens and bloats the messages array, <code>MAX_STEPS = 6</code> is set as
+    a cheap backstop to cap the agent's efforts. A confused agent
+    (one that misreads its tool spec or gets stuck retrying) keeps going
+    as long as the endpoint answers, which may lead to a never-ending interaction loop. 
+  </p>
+  
+  <p>
+    This issue actually becomes more likely as the context grows due in part to a larger phenomena known as <b>context rot</b>. 
+    Simply put, context rot is the tendency for contradictions and poor performance to manifest as the model inputs grow. 
+    There are many soft reasons for this, which include: 
+    <ul>
+      <li>Accumulating poor or ambiguous conventions, logical contraditions, and historical/stale environment observations in the context history (constituting an increase in cognitive load).</li>
+      <li>Inherent model tendencies to focus more on the tails of dialog (front and back) as assessed by <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">"Lost in the Middle" (Liu et al., 2023)</a></li>
+    </ul>
+    In general, you can largely assume that the further an important signal strays into the middle of a long-running prompt, the more likely it is to be ignored or contradicted. 
+  </p>
+
+  <figure style="margin:1.4em 0">
+    <div class="fig-embed" data-svg-src="assets/figures/01b-react-4.svg" style="aspect-ratio:760 / 305"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Redrawn from <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu et al. (2023)</a>. As the loop appends turns, the answer you need drifts into the weak middle.</figcaption>
+  </figure>
+  <p>
+    Some mitigations for this issue include:
+  </p>
+  <ul>
+    <li>having the model plan ahead before it accumulates observations,</li>
+    <li>delegating sub-tasks so each sub-agent works on a short context,</li>
+    <li>or rolling earlier turns into a summary.</li>
+  </ul>
+  <p>
+    Each of those costs something in latency or fidelity or complexity, and each is worth weighing against the task at hand.
+  </p>
+
+  <h2>The same loop, prebuilt and pointed at this course</h2>
+  <p>
+    The loop above hard-wires one tiny tool. LangChain's <a href="https://docs.langchain.com/oss/javascript/langchain/agents" target="_blank" rel="noopener"><code>createReactAgent</code></a>
+    generalizes the same machinery to support more tools, standard interfaces, and observability integrations. An instance of this class is wired below to a single tool,
+    <code>read_course_page</code>, which hands the agent any page of this course as markdown. The model should decides which pages to read to answer your question, so give it a try.
+  </p>
+
+  <div class="callout">
+    <strong>The cell produces an artifact.</strong> When you run it, you get a working
+    chat panel rather than a wall of logs, rendered from the agent's own code, that you
+    can hold a conversation with. The word itself is older than its current use, since
+    build pipelines and machine-learning training runs have produced "artifacts" and
+    "model artifacts" for years. Anthropic's recent <a href="https://support.claude.com/en/articles/14729249-use-live-artifacts-in-claude-cowork" target="_blank" rel="noopener">live artifacts</a>
+    sharpened the idea for agents, where an artifact becomes a persistent, interactive
+    HTML surface that the agent builds and that you keep using long after the reply which
+    produced it. The panel below builds one on a small scale, and an agent that can hand
+    back a full interface rather than plain text is a thread that runs through the rest of
+    this course.
+  </div>
+
+  <p>
+    Run the cell to build the panel, then chat with it. Pin one or more with
+    the <b>Pages</b> chips to ground every answer in them, or pin nothing and let the
+    agent choose what to read. The reply renders as markdown, with a chip for each source
+    the agent read so you can expand it to see the text it pulled back. Alongside the answer,
+    you also get the reasoning trace and the token usage. It remembers the conversation per chat.
+    Edit the cell and rerun to rebuild the artifact.
+  </p>
+  <div id="cell-react-lab"></div>
+  <div id="react-artifact" style="margin:1em 0"></div>
+
+  <h2>Before you continue</h2>
+  <p>Each question is answerable by editing inputs in the canvas above and rerunning.</p>
+  <ol>
+    <li><strong>Force the model to call the tool even when it does not need to.</strong>
+        Try a question the tool genuinely cannot answer ("capital of France?")
+        and watch <code>finish_reason</code> on step 1. Was it
+        <code>"stop"</code> or <code>"tool_calls"</code>? Now edit the system
+        prompt to <em>require</em> a tool call before answering ("You must
+        always call get_current_time once, then answer."). Does the model
+        comply? What does that tell you about how strongly the system prompt
+        steers a model that has training-data confidence in another
+        direction?</li>
+    <li><strong>Count the steps on a genuinely tool-needing question.</strong>
+        "How many minutes until 17:00 UTC?" takes more than one tool call.
+        Run it a few times. Did the model call
+        <code>get_current_time</code> once, twice, or three times? Why
+        would a model re-call a tool whose output it already has,
+        and how would you discourage that in the system prompt?</li>
+    <li><strong>Make the safety belt smaller.</strong>
+        Set <code>MAX_STEPS</code> to 2 and ask a question that would
+        normally take 3 steps. The loop exits with no final answer. Look at what
+        <code>state.finalContent</code> holds when that happens, and decide what a
+        production agent should return to the caller instead of an empty result:
+        a partial answer, an explicit "I ran out of steps" error, or a request to
+        continue.</li>
+  </ol>
+
+  <div class="references">
+    <h3>References</h3>
+    <ul>
+      <li><a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al., <em>ReAct: Synergizing Reasoning and Acting in Language Models</em> (2022)</a>. The original alternating thought / action / observation pattern; the figure above is redrawn from this paper.</li>
+      <li><a href="https://arxiv.org/abs/2201.11903" target="_blank" rel="noopener">Wei et al., <em>Chain-of-Thought Prompting</em> (2022)</a>. The "reason" half of ReAct; what the model is doing inside <code>reasoning_content</code> when it deliberates before acting.</li>
+      <li><a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">Lilian Weng, <em>LLM Powered Autonomous Agents</em> (2023)</a>. The decomposition the figure above adapts: a language model as the agent's core controller, surrounded by memory, planning, and tool use.</li>
+      <li><a href="https://arxiv.org/abs/2305.18323" target="_blank" rel="noopener">Xu et al., <em>ReWOO: Decoupling Reasoning from Observations</em> (2023)</a>. A deliberate contrast to ReAct: the model writes the whole plan up front and a separate executor runs it without re-querying the model between steps. Comparing the two reveals the trade-off between reactive replanning and pre-committed execution.</li>
+      <li><a href="https://arxiv.org/abs/2302.04761" target="_blank" rel="noopener">Schick et al., <em>Toolformer</em> (2023)</a>. Covered again in 1c's references; revisit here for the underlying mechanism the ReAct loop exploits.</li>
+    </ul>
+    <p class="references-note">Comprehensive list at <a href="04c-going-further.html#refs">Going Further · References</a>.</p>
+  </div>
+
+  <div class="foot-nav">
+    <a href="01a-loop.html">← Module 1a: The Agent</a>
+    <a class="next" href="01c-tools.html">Module 1c: Tools at Scale →</a>
+  </div>
+</main>
+
+<script type="module">
+import { buildNav, updateKeyPill, mountJourneyMap, mountCanvasFlow, mountRunCell } from "./_shared.js";
+document.getElementById("nav").innerHTML = buildNav("01b-react.html");
+const pill = document.getElementById("key-status");
+updateKeyPill(pill);
+mountJourneyMap("#journey-map", "1b");
+hljs.highlightAll();
+
+// ── finish_reason, introduced by two real calls before the prose explains the values ─────────
+mountRunCell("#cell-finish-reason", {
+  label: "finish_reason · the one field the loop reads to decide what to do next",
+  intro: "Two calls to the same model. The first is a plain question it can answer, so it stops. The second offers one tool and asks for something training data cannot supply, so the model asks your code to run the tool instead of answering. Watch finish_reason change between them. The tool here is only a preview to make the field flip; you wire tools up properly in the sections just below.",
+  code: `// MODEL is the swappable brain. Change it and rerun to see whether a stronger model
+// stops or asks for the tool on these same two questions.
+const MODEL = "nvidia/nemotron-3-nano-30b-a3b";   // or "nvidia/nemotron-3-super-120b-a12b" for a stronger brain
+
+// Call 1 · no tools offered. The model can answer, so it stops on its own.
+const r1 = await chat({
+  model: MODEL,
+  messages: [{ role: "user", content: "In one sentence, what is an agent's ReAct loop?" }],
+  max_tokens: 8196,  // reasoning models think first; leave room past reasoning_content
+});
+log.h("call 1 · no tools offered");
+log("finish_reason:", r1.choices[0].finish_reason);   // "stop" means the answer is ready and the loop can exit
+log(r1.choices[0].message.content || "(used its whole budget thinking; raise max_tokens)");
+
+// Call 2 · offer one tool and ask for something the model cannot know from training data.
+// It cannot run the tool itself, so instead of stopping it asks YOUR code to run it. This spec is
+// just a preview; the next sections build and run the tool wiring properly.
+const TOOLS = [{
+  type: "function",
+  function: {
+    name: "get_current_time",
+    description: "Returns the current UTC time.",
+    parameters: { type: "object", properties: {}, required: [] },
+  },
+}];
+const r2 = await chat({
+  model: MODEL,
+  messages: [{ role: "user", content: "What time is it right now in UTC?" }],
+  tools: TOOLS,
+  max_tokens: 8196,
+});
+const m2 = r2.choices[0].message;
+log.h("call 2 · one tool offered, on a question training data cannot answer");
+log("finish_reason:", r2.choices[0].finish_reason);   // "tool_calls" means the model is asking you to run a function
+log("it asked you to run:", (m2.tool_calls || []).map(t => t.function.name).join(", ") || "(nothing)");
+
+return { call1: r1.choices[0].finish_reason, call2: r2.choices[0].finish_reason };
+`,
+});
+
+// ── The complete ReAct loop, built from scratch ──────────────────────────────
+mountCanvasFlow("#cell-m2c-p3", {
+  label: "The complete ReAct loop, built from scratch",
+  intro: "The user node sets the prompt and system instructions; the tool node registers the function. " +
+         "The loop calls the model, runs any requested tools, appends the observations, and repeats " +
+         "until finish_reason is 'stop'. Every step is logged, so you can see what the model decided.",
+  edges: [
+    { from: "user", to: "loop" },
+    { from: "tool", to: "loop" },
+  ],
+  nodes: [
+    {
+      id: "user", icon: "👤", title: "User input", x: 0, y: 0,
+      summary: "Sets the system prompt and the user question. Swap in 'What is the capital of France?' " +
+               "and the model answers from training data, so no tool call fires and step 1's finish_reason " +
+               "is 'stop', not 'tool_calls'.",
+      code: `state.systemPrompt = "You are a helpful assistant. Use the tools available "
+  + "when the user asks for something you cannot answer from training data alone.";
+// state.userPrompt   = "What time is it in UTC?";
+// state.userPrompt   = "What is the capital of France?";
+state.userPrompt   = "I have a meeting tomorrow morning at 10am in France. How many hours do I have to prepare?";
+return state.userPrompt;
+`,
+    },
+    {
+      id: "tool", icon: "🛠", title: "Tool spec", x: 2, y: 0,
+      summary: "Registers get_current_time as the one tool and wires a JavaScript executor to run it. " +
+               "The model only names the call; your code does the work.",
+      code: `state.TOOLS = [{
+  type: "function",
+  function: {
+    name: "get_current_time",
+    description: "Returns the current UTC time as 'YYYY-MM-DD HH:MM:SS UTC'.",
+    parameters: { type: "object", properties: {}, required: [] },
+  },
+}];
+state.execTool = (name) =>
+  name === "get_current_time"
+    ? new Date().toISOString().slice(0, 19).replace("T", " ") + " UTC"
+    : \`(tool "\${name}" not found)\`;
+
+return state.execTool("get_current_time");
+`,
+    },
+    {
+      id: "loop", icon: "🔄", title: "ReAct loop", x: 1, y: 1,
+      summary: "Runs the ReAct cycle: call the model, check finish_reason, run any requested tools, append " +
+               "the results as observations, then loop. It exits when finish_reason is 'stop'; MAX_STEPS=6 " +
+               "is the backstop against a model that loops forever. Edit MODEL at the top to swap the brain.",
+      code: `// MODEL is the swappable brain in the reasoning slot. Change it and rerun to drive the
+// same loop with a different model.
+const MODEL = "nvidia/nemotron-3-nano-30b-a3b";   // or "nvidia/nemotron-3-super-120b-a12b" for a stronger brain
+const MAX_STEPS = 6;
+
+state.messages = [
+  { role: "system", content: state.systemPrompt },
+  { role: "user",   content: state.userPrompt   },
+];
+
+let step = 0, answered = false;
+while (step++ < MAX_STEPS) {
+  helpers.log(\`── step \${step} ──────────────────────\`);
+  // The second argument is null, so the raw token stream is suppressed and the curated
+  // trace below is the only output, which keeps the loop's logic readable.
+  const s = await helpers.chatStream({
+    messages: state.messages, tools: state.TOOLS, model: MODEL, max_tokens: 8196,
+  }, null);
+  helpers.log("finish_reason:", s.finish_reason, "· tool_calls:", s.tool_calls.length);
+  state.messages.push({
+    role: "assistant",
+    content: s.content || null,
+    tool_calls: s.tool_calls.length ? s.tool_calls : undefined,
+  });
+  if (s.finish_reason === "stop" && !s.tool_calls.length) {
+    state.finalContent = s.content;
+    answered = true;
+    helpers.log("✓ final answer:", s.content);
+    break;
+  }
+  for (const tc of s.tool_calls) {
+    const result = state.execTool(tc.function.name);
+    helpers.log("tool ran:", tc.function.name, "→", result);
+    state.messages.push({ role: "tool", tool_call_id: tc.id, content: result });
+  }
+}
+if (!answered) helpers.log("⚠ step cap reached · safety belt fired");
+return { model: MODEL, steps_taken: step, messages: state.messages };
+`,
+    },
+  ],
+});
+
+// ── Part 5: running this cell BUILDS a live chat artifact (createReactAgent) ──
+mountRunCell("#cell-react-lab", {
+  label: "Build the artifact · createReactAgent → a live chat panel",
+  intro: "This cell renders a working chat panel from LangChain's off-the-shelf createReactAgent loop, " +
+         "rather than printing a log. Its one tool is read_course_page; its memory is MemorySaver. " +
+         "Edit the agent, the tool, or the prompt and rerun to rebuild the panel.",
+  code: `// Running this cell renders a live chat panel into #react-artifact below.
+const cfg = await helpers.getConfig();
+if (cfg.needsKey && !helpers.getKey()) {
+  helpers.log("No API key yet. Add your nvapi- key on the course home, then rerun.");
+  return "Add your nvapi- key on the course home, then rerun.";
+}
+
+helpers.log("loading LangChain ...");
+const { ChatOpenAI }       = await import("https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm");
+const { tool }             = await import("https://cdn.jsdelivr.net/npm/@langchain/core@1.1.48/tools/+esm");
+const { createReactAgent } = await import("https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/prebuilt/+esm");
+const { MemorySaver }      = await import("https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/+esm");
+const { z }                = await import("https://cdn.jsdelivr.net/npm/zod@3/+esm");
+
+const PAGES   = helpers.coursePages();             // includes "overview" (the course home)
+const baseURL = cfg.url.startsWith("http") ? cfg.url : (window.location.origin + cfg.url);
+const WINDOW  = helpers.contextWindow;             // advertised context window per model
+const INDEX   = PAGES.map(p => "  " + p.id + " - " + p.title).join("\\n");
+const SYSTEM  =
+  "You are a teaching assistant for this agents course. Ground every answer in pages " +
+  "you read with read_course_page; if the pages do not cover it, say so. Read as many " +
+  "pages as the question needs, one reason/read step at a time, then answer. For a " +
+  "course-wide question (\\"summarize the course\\", \\"what will I build\\"), read the " +
+  "'overview' page first. Name the page id(s) you used.\\n\\nPages:\\n" + INDEX;
+
+// One createReactAgent per model; each keeps its own MemorySaver for multi-turn.
+const agents = {};
+function getAgent(model) {
+  if (!agents[model]) {
+    // The OpenAI SDK adds x-stainless-* platform headers that the CORS proxy
+    // rejects in preflights. Strip them with a custom fetch wrapper.
+    const _fetchNoStainless = (url, init) => {
+      if (init && init.headers) {
+        const h = init.headers instanceof Headers ? init.headers : new Headers(init.headers);
+        for (const k of [...h.keys()]) { if (k.startsWith("x-stainless")) h.delete(k); }
+        init = { ...init, headers: h };
+      }
+      return fetch(url, init);
+    };
+    const llm = new ChatOpenAI({
+      configuration: { baseURL, dangerouslyAllowBrowser: true, fetch: _fetchNoStainless },
+      apiKey: cfg.needsKey ? helpers.getKey() : "no-key-needed",
+      model, temperature: 0, maxTokens: 16384,
+    });
+    const readCoursePage = tool(
+      async ({ page }) => await helpers.coursePage(page),
+      { name: "read_course_page",
+        description: "Read a page of THIS course and return its text as markdown.",
+        schema: z.object({ page: z.enum(PAGES.map(p => p.id)).describe("which page, e.g. 01b-react") }) },
+    );
+    agents[model] = createReactAgent({ llm, tools: [readCoursePage], checkpointer: new MemorySaver() });
+  }
+  return agents[model];
+}
+
+// The artifact is a live chat panel, not a transcript dump.
+helpers.mountChatUI(document.getElementById("react-artifact"), {
+  modules: PAGES,
+  models: [
+    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
+    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
+  ],
+  greeting: "Ask me anything about the course. I read the relevant pages before I answer.",
+  examples: [
+    "What is the ReAct loop?",
+    "Summarize the whole course",
+    "Compare RAG and deep-agent patterns",
+    "How does the OpenShell sandbox contain an agent?",
+    "When should I route to specialists instead of one agent?",
+    "Walk me from the basic loop to an always-on agent",
+  ],
+  respond: async (text, ctx) => {
+    const agent = getAgent(ctx.model);
+    const messages = [];
+    if (ctx.turn === 0) {
+      messages.push({ role: "system", content: SYSTEM });
+      // Pin every page selected with the "Pages" chips (multi-select). The whole
+      // page is pinned, and the whole page is what the chip shows; expand it.
+      for (const id of ctx.modules) {
+        const body = await helpers.coursePage(id);
+        ctx.view.tool("pinned " + id + " · " + helpers.estimateTokens(body) + " tok", body);
+        messages.push({ role: "system", content: "Pinned page (" + id + "):\\n\\n" + body });
+      }
+      // Context-budget check: warn (don't silently clip) if the prompt overflows.
+      const est = helpers.estimateTokens(messages);
+      if (est > WINDOW(ctx.model)) ctx.view.warn("Prompt ~" + est + " tok > " + ctx.model + " window ~" + WINDOW(ctx.model) + ". Unpin a page.");
+    }
+    messages.push({ role: "user", content: text });
+
+    // recursionLimit is this loop's MAX_STEPS safety belt (Part 4): the agent
+    // reasons and reads as many times as it needs, capped so a confused run
+    // can't spin forever. Each reason+read is ~2 graph steps, so 12 ≈ 6 reads.
+    const stream = await agent.stream({ messages },
+      { streamMode: "messages", configurable: { thread_id: ctx.thread }, recursionLimit: 24, signal: ctx.signal });
+    // Hand each event to ctx.view as it arrives: it appends reasoning, tool
+    // chips, and answer text in stream order. Every read pushes its OWN chip,
+    // keyed by the tool call's id, not its index: arg-delta chunks reset the
+    // index to 0 per message, so an index key would overwrite an earlier read.
+    const byId = {}, activeByIndex = {};
+    let lastInput = 0, totalOut = 0, sawUsage = false;
+    for await (const part of stream) {
+      const chunk = Array.isArray(part) ? part[0] : part;
+      const meta  = Array.isArray(part) ? part[1] : null;
+      const node  = meta && meta.langgraph_node;
+      // tool RESULT (the full page text, or an error) comes back on the "tools"
+      // node → its own chip. A failed read is shown as failed, not hidden.
+      if (node === "tools" && chunk.tool_call_id && byId[chunk.tool_call_id]) {
+        const c = byId[chunk.tool_call_id];
+        c.body.textContent = String(chunk.content);
+        if (chunk.status === "error" || /^\\(unknown page/.test(String(chunk.content).trim())) {
+          c.classList.add("err"); c.sum.textContent = c.sum.textContent.replace("🔧", "✗");
+        }
+        continue;
+      }
+      // tool CALL: each new call (tc.id present) PUSHES a fresh chip; arg deltas
+      // (no id) extend the call currently open at that index.
+      for (const tc of (chunk.tool_call_chunks || [])) {
+        const idx = tc.index == null ? 0 : tc.index;
+        let c;
+        if (tc.id) { c = ctx.view.tool("read_course_page …", "(reading)");
+          c.body = c.querySelector(".chatui-tool-body"); c.sum = c.querySelector("summary"); c.args = "";
+          byId[tc.id] = c; activeByIndex[idx] = c; }
+        else { c = activeByIndex[idx]; }
+        if (!c) continue;
+        c.args += (tc.args || "");
+        try { const p = JSON.parse(c.args).page; if (p) c.sum.textContent = "🔧 read page · " + p; } catch (_) {}
+      }
+      // reasoning trace (nemotron streams it on additional_kwargs.reasoning_content)
+      const r = chunk.additional_kwargs && chunk.additional_kwargs.reasoning_content;
+      if (r && node === "agent") ctx.view.reasoning(r);
+      // token usage rolls up across the ReAct loop's LLM calls
+      if (chunk.usage_metadata) { sawUsage = true; lastInput = chunk.usage_metadata.input_tokens || lastInput; totalOut += chunk.usage_metadata.output_tokens || 0; }
+      // Answer tokens, gated to the "agent" node. Both the agent and "tools"
+      // nodes emit chunks with string .content, but the tools node's content is
+      // the full page text a read returned. The guard keeps that markdown out of
+      // the answer panel (tool results get their own chips, handled above).
+      if (typeof chunk.content === "string" && chunk.content && node === "agent")
+        ctx.view.token(chunk.content);
+    }
+    if (sawUsage) ctx.view.usage({ input: lastInput, output: totalOut });
+  },
+});
+
+helpers.log("✓ artifact mounted below. Scroll down and chat with it.");
+return "Artifact mounted below. Edit this cell and rerun to rebuild it.";
+`,
+});
+</script>
+</body>
+</html>

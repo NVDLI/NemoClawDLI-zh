@@ -60,10 +60,19 @@ pages:
   stage: deploy
   needs: ["test"]
   script:
-    # build_pages builds the source language at the site root AND each translate-<lang> branch it can
-    # see into public/<lang>/, so this one deploy serves every language. On the rsync-mirror
-    # production site (NemoClawDLIOS), publish pushes the translate-* branches to that remote first,
-    # then this job (running there from the default branch) aggregates them into the one Pages site.
+    # Stage each translation under i18n/<lang>/ from its translate-<lang> branch (web/ only: no
+    # history, no big files), then build. build_pages turns each i18n/<lang>/ into public/<lang>/, so
+    # this one deploy serves the source at root and every language at /<lang>/. On the rsync-mirror
+    # production site (NemoClawDLIOS) there are no translate-* branches; its i18n/<lang>/ arrives via
+    # the publish rsync instead, and this loop simply finds nothing to stage and leaves it in place.
+    - |
+      git fetch origin '+refs/heads/translate-*:refs/remotes/origin/translate-*' --quiet 2>/dev/null || true
+      for ref in $(git for-each-ref --format='%(refname:short)' 'refs/remotes/origin/translate-*' 2>/dev/null); do
+        lang="${ref##*translate-}"
+        echo "staging i18n/$lang from $ref"
+        mkdir -p "i18n/$lang"
+        git archive "$ref" web | tar -x -C "i18n/$lang"
+      done
     - bash scripts/build_pages.sh public
   artifacts:
     paths:
