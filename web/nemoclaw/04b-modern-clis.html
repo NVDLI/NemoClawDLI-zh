@@ -35,6 +35,19 @@
   .dof-table tr:last-child td, .map-table tr:last-child td { border-bottom: none; }
   .dof-table td:first-child, .map-table td:first-child { font-family: var(--mono); color: var(--gs); font-weight: 600; }
   .dof-table code, .map-table code { font-size: .82em; }
+  .da-term { background: #0b0b0b; border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.5; color: #d6d6d6; margin: 1em 0; }
+  .da-term .da-out { white-space: pre-wrap; word-break: break-word; }
+  .da-term .da-out > div { padding: 1px 0; }
+  .da-term .da-cmd { color: var(--gs, #aee23a); }
+  .da-term .da-err { color: #ff6b6b; }
+  .da-term .da-dim { color: #8a8a8a; }
+  .da-term .da-line { display: flex; align-items: flex-start; gap: 8px; margin-top: 2px; }
+  .da-term .da-ps { color: var(--gs, #aee23a); flex: none; }
+  .da-term .da-in { flex: 1; background: transparent; border: 0; outline: 0; color: #d6d6d6; font: inherit; padding: 0; }
+  .da-term .da-in:disabled { opacity: .6; }
+  .da-term .da-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; border-top: 1px solid #1c1c1c; padding-top: 8px; }
+  .da-term .da-chip { background: #161616; border: 1px solid #2a2a2a; color: #b9d76a; font: inherit; font-size: .76rem; padding: 2px 9px; border-radius: 999px; cursor: pointer; }
+  .da-term .da-chip:hover { background: #1f1f1f; border-color: var(--gs, #aee23a); }
 </style>
 </head>
 <body>
@@ -273,31 +286,48 @@ async function runJS(code) {
 helpers.mountChatUI("#jsagent-artifact", {
   growLog: true,   // flow with the page instead of an internal 480px scroll that traps the wheel
   greeting: "Give me a goal. My shell is this page's JavaScript runtime, so I act by running JS right here in your tab.",
-  examples: ["How many code editors are on this page?", "Fetch assets/rag_index.json and report how many docs and which embed model it pins.", "What is the page title, and how many H2 sections does it have?"],
+  examples: ["How many code editors are on this page?", "List the H2 section headings on this page.", "Fetch assets/rag_index.json and report the embed model and how many docs it pins.", "How many links on this page open in a new tab?", "Compute the 12th Fibonacci number and return it.", "Which keys are in localStorage right now?"],
   respond: async (goal, ctx) => {
     const messages = [
-      { role: "system", content: "You are a CLI agent whose shell is this browser's JavaScript runtime. To do anything, call the js tool with code that runs in the live page. Never claim a result you did not run. Inspect each result, then run more js or give a short final answer. Keep each snippet small and end it with a return statement." },
+      { role: "system", content: "You are a CLI agent whose shell is this browser's JavaScript runtime. To learn anything, call the js tool with code that runs in the live page and ends with a return statement; never claim a result you did not run. Editable code cells on this page render as .CodeMirror elements, not .code-editor. If a selector returns 0 or nothing, inspect the DOM (its tag and class names) before concluding. Keep each snippet small. When you have enough, reply with a short plain-text answer and no tool call." },
       { role: "user", content: goal },
     ];
 
-    for (let step = 0; step < 6; step++) {
+    let answered = false;
+    for (let step = 0; step < 8; step++) {
       const r = await helpers.chat({ messages, tools: [JS_TOOL], max_tokens: 8196 });
       const m = r.choices[0].message;
       messages.push(m);
 
       const calls = m.tool_calls || [];
-      if (!calls.length) { ctx.view.token(m.content || "(no answer)"); break; }
+      if (!calls.length) {
+        const txt = (m.content || "").trim();
+        if (txt) { ctx.view.token(txt); answered = true; break; }
+        messages.push({ role: "user", content: "Run js to gather what you need, or give your final plain-text answer." });
+        continue;
+      }
       for (const tc of calls) {
         let code = "";
         try { code = JSON.parse(tc.function.arguments || "{}").code || ""; } catch (_) {}
+        if (!code.trim()) {
+          ctx.view.tool("$ js", "(empty)");
+          ctx.view.tool("returned", "no code submitted");
+          messages.push({ role: "tool", tool_call_id: tc.id, content: "Error: no code submitted. Put JavaScript in the code argument and end with a return statement." });
+          continue;
+        }
         ctx.view.tool("$ js", code);                       // the JS the agent chose to run
 
         let out;
         try { out = await runJS(code); } catch (e) { out = "Error: " + ((e && e.message) || e); }
-        const text = out === undefined ? "undefined" : (typeof out === "object" ? JSON.stringify(out) : String(out));
+        const text = out === undefined ? "undefined (did the snippet end with a return?)" : (typeof out === "object" ? JSON.stringify(out) : String(out));
         ctx.view.tool("returned", text.slice(0, 700));     // what the runtime handed back
         messages.push({ role: "tool", tool_call_id: tc.id, content: text.slice(0, 1500) });
       }
+    }
+    // Always land on a plain-text answer instead of dead-ending at "(no answer)".
+    if (!answered) {
+      const r = await helpers.chat({ messages: messages.concat([{ role: "user", content: "Give your best final answer now in one or two plain-text sentences, using only what the tool returned." }]), max_tokens: 8196 });
+      ctx.view.token((r.choices[0].message.content || "I could not determine that from the page.").trim());
     }
   },
 });
@@ -306,36 +336,134 @@ helpers.log("CLI agent mounted below. Give it a goal and watch it drive the runt
     });
   </script>
 
+  <h2>Open a real shell on your launchable</h2>
+  <p>Your nemoclaw launchable gives you a real host shell over the same <code>/ws/terminal</code>
+     connection Module 4a's policy probes use. That host carries the <strong>openshell</strong> CLI, the
+     operator tool that manages your sandboxed agent. Every line you type below runs on the launchable, and
+     the output is its own.</p>
+  <p>Connect your launchable on <a href="03a-kickstart.html">Module 3a</a> first, then type into the terminal
+     or click a chip to drop a command in. On the host, <code>openshell sandbox list</code> shows your agent
+     and <code>openshell status</code> reports the gateway. Your agent runs inside a sandbox, so prefix a
+     command with <code>agent</code> to run it there: <code>agent ls</code> lists its files through
+     <code>openshell sandbox exec</code>. To compare a different coding CLI on your own machine,
+     <a href="https://github.com/langchain-ai/deepagentsjs/tree/main/libs/cli" target="_blank" rel="noopener"><code>deepagents-cli</code></a>
+     installs with <code>npm install -g deepagents-cli</code>.</p>
+  <div id="cell-deepagents"></div>
+  <div id="deepagents-artifact"></div>
+  <script type="module">
+    import { mountRunCell } from "./_shared.js";
+    mountRunCell("#cell-deepagents", {
+      label: "a real terminal on your launchable, with an agent-sandbox shortcut",
+      autorun: true,
+      code: `// A real shell on your nemoclaw launchable, over the same /ws/terminal PTY Module 4a's probes use
+// (helpers.terminal). The host carries the openshell CLI (sandbox + gateway management). Your agent runs
+// inside a sandbox, so "agent <cmd>" runs a command in it via openshell sandbox exec (helpers.sandboxExec).
+
+function launchableUrl() {
+  let u = localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl") || "";
+  while (u.length && u[u.length - 1] === "/") u = u.slice(0, -1);
+  return u;
+}
+
+// One-click commands, dropped into the prompt when the student clicks a chip.
+const SUGGESTIONS = ["help", "openshell sandbox list", "openshell status", "agent ls", "agent pwd", "openshell --help"];
+
+// Host command lines that open interactive UIs a line terminal cannot drive.
+const INTERACTIVE = ["openshell term", "openshell sandbox connect", "openclaw chat", "openclaw configure"];
+
+const HELP = 'This is your launchable host shell. The host carries the openshell CLI; your agent runs inside a sandbox. On the host, try: openshell sandbox list, openshell status, openshell --help. To run a command inside your agent, prefix it with "agent", for example: agent ls. Click a chip below to drop a command in. Type clear to empty the screen.';
+
+function hintFor(output) {
+  if (/execvp|command not found|No such file or directory/i.test(String(output || ""))) {
+    return "Not a command on the launchable host. The host carries openshell, so try openshell --help or openshell sandbox list, or run it inside your agent with: agent <command>.";
+  }
+  return "";
+}
+
+async function run(cmd, term) {
+  const t = cmd.trim();
+  if (t === "/help" || t === "help" || t === "?") return term.write(HELP, "da-dim");
+  if (t === "/clear" || t === "clear") return term.clear();
+  if (t === "agent" || t.indexOf("agent ") === 0) {
+    const inner = t.slice(5).trim();
+    if (!inner) return term.write('usage: agent <command>   runs <command> inside your agent sandbox, for example: agent ls', "da-dim");
+    let r;
+    try { r = await helpers.sandboxExec(inner); } catch (e) { return term.write(String((e && e.message) || e), "da-err"); }
+    term.write((r.output || "").trimEnd() || "(no output)");
+    const h = hintFor(r.output); if (h) term.write(h, "da-dim");
+    return;
+  }
+  if (INTERACTIVE.some(function (x) { return t.indexOf(x) === 0; })) return term.write('That opens an interactive UI a line terminal cannot drive. For a one-shot command in your agent, use: agent <command>. For host info, try openshell status or openshell sandbox list.', "da-dim");
+  let got = false, captured = "";
+  try {
+    await helpers.terminal(t, { totalMs: 120000, idleMs: 8000, onChunk: function (c) { if (c) { got = true; captured += c; term.raw(c); } } });
+  } catch (e) {
+    return term.write(String((e && e.message) || e), "da-err");
+  }
+  if (!got) term.write("(no output)", "da-dim");
+  const h = hintFor(captured); if (h) term.write(h, "da-dim");
+}
+
+function mountTerminal(sel) {
+  const root = document.querySelector(sel);
+  root.innerHTML = '<div class="da-term"><div class="da-out"></div><div class="da-line"><span class="da-ps">$</span><input class="da-in" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="terminal input"/></div><div class="da-chips"></div></div>';
+  const out = root.querySelector(".da-out");
+  const input = root.querySelector(".da-in");
+  const chips = root.querySelector(".da-chips");
+  const hist = []; let hi = 0;
+  const term = {
+    write: function (text, cls) { const d = document.createElement("div"); if (cls) d.className = cls; d.textContent = (text == null ? "" : String(text)); out.appendChild(d); },
+    raw: function (text) { if (text == null || text === "") return; out.appendChild(document.createTextNode(String(text))); },
+    clear: function () { out.innerHTML = ""; },
+  };
+  root.addEventListener("click", function (e) { if (e.target === root || e.target === out) input.focus(); });
+  if (!launchableUrl()) {
+    term.write("No launchable connected. Open Module 3a (Kickstart), connect your launchable, then come back here.", "da-dim");
+    input.disabled = true;
+    return term;
+  }
+  SUGGESTIONS.forEach(function (s) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "da-chip"; b.textContent = s;
+    b.addEventListener("click", function () { input.value = s; input.focus(); });
+    chips.appendChild(b);
+  });
+  term.write("Connected to your launchable host shell. It carries the openshell CLI; your agent runs in a sandbox. Type help, or click a chip below.", "da-dim");
+  input.addEventListener("keydown", async function (e) {
+    if (e.key === "Enter") {
+      const cmd = input.value.trim(); input.value = "";
+      term.write("$ " + cmd, "da-cmd");
+      if (!cmd) return;
+      hist.push(cmd); hi = hist.length;
+      input.disabled = true;
+      try { await run(cmd, term); } catch (err) { term.write("error: " + ((err && err.message) || err), "da-err"); }
+      input.disabled = false; input.focus(); input.scrollIntoView({ block: "nearest" });
+    } else if (e.key === "ArrowUp") { if (hi > 0) { hi--; input.value = hist[hi] || ""; } e.preventDefault(); }
+    else if (e.key === "ArrowDown") { if (hi < hist.length) { hi++; input.value = hist[hi] || ""; } e.preventDefault(); }
+  });
+  return term;
+}
+
+mountTerminal("#deepagents-artifact");
+helpers.log("launchable terminal mounted below. If it says no launchable, connect on Module 3a.");
+`,
+    });
+  </script>
+
   <div class="callout">
-    <p><strong>The same agent shape, a heavier harness.</strong> Run the comparison on your own
-    machine. <code>deepagents-cli</code> installs a CLI coding agent whose shell is your operating
-    system instead of a browser tab.</p>
-    <pre>npm install -g deepagents-cli
-deepagents          # then configure your model provider as its README describes</pre>
-    <p>This local agent runs the same loop you just watched in the browser. It still reasons about its
-    goal so that it can run a command and read back the result before deciding what to run next. Its runtime
-    is now your real filesystem and network rather than a sandboxed page. Stand the two beside each other
-    and weigh the harness.</p>
+    <p><strong>The terminal above is the operator plane.</strong> From your launchable's host shell,
+    openshell manages the sandboxed agent, so the host is the control plane that sits above the policy, the
+    perimeter <a href="04a-safety.html">Module 4a</a> flagged. Commands you push into the agent with
+    <code>agent &lt;cmd&gt;</code> run under its deny-by-default policy. The host shell answers to the
+    operator instead.</p>
     <ul>
-      <li><strong>Cost to stand up.</strong> The browser agent was already running. The local one takes an install and a configured runtime before its first turn.</li>
-      <li><strong>Reach.</strong> The browser agent is bounded by the page origin and the browser sandbox. The local one can read and write your files and reach your whole network.</li>
-      <li><strong>Blast radius.</strong> A prompt injection in the browser agent stays inside a tab. The same injection in the local CLI runs against your machine, which is the degrees-of-freedom argument from the top of this page, now in your own hands.</li>
+      <li><strong>Cost to stand up.</strong> The launchable was provisioned for you and is already running. On your own machine a CLI takes an install and a configured runtime before its first turn.</li>
+      <li><strong>Reach.</strong> Inside the agent the kernel policy gates every call, the deny-by-default rules you read in Module 4a. On your own machine the CLI can read and write your files and reach your whole network.</li>
+      <li><strong>Blast radius.</strong> A prompt injection inside the agent hits that sandbox and its audit trail. The same injection on your own machine runs against your real files, which is the degrees-of-freedom argument from the top of this page, now in your hands.</li>
     </ul>
     <p>A heavier harness earns its weight whenever a task calls for persistence and real work that a tab
     cannot carry. The skill worth building is reading a task well enough to pick the weight it needs, which
     is the layered view <a href="04c-going-further.html">Module 4c</a> closes on.</p>
-  </div>
-
-  <div class="references">
-    <h3>References</h3>
-    <ul>
-      <li><a href="https://docs.anthropic.com/en/docs/claude-code/overview" target="_blank" rel="noopener">Claude Code</a>. The working-directory plus <code>CLAUDE.md</code> beacon plus tool-palette shape this page compares against.</li>
-      <li><a href="https://platform.openai.com/docs/codex" target="_blank" rel="noopener">OpenAI Codex CLI</a>. The <code>AGENTS.md</code> beacon and approval-mode default.</li>
-      <li><a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes Agent (Nous Research)</a>. The self-improving terminal agent: skills from experience, persistent memory, built-in cron, and a messaging gateway. See its <a href="https://hermes-agent.nousresearch.com/docs/user-guide/security" target="_blank" rel="noopener">security guide</a> for the allowed-user-IDs and localhost-only guidance.</li>
-      <li><a href="https://developer.nvidia.com/blog/run-autonomous-self-evolving-agents-more-safely-with-nvidia-openshell/" target="_blank" rel="noopener">NVIDIA, <em>Run autonomous, self-evolving agents more safely with OpenShell</em></a>. Out-of-process, deny-by-default policy enforcement, granular at the binary, destination, method, and path level, with a full audit trail.</li>
-      <li><a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">Model Context Protocol (MCP)</a>. The cross-vendor wire format CLI agents use to discover tools at runtime.</li>
-    </ul>
-    <p class="references-note">Comprehensive list at <a href="04c-going-further.html#refs">Going Further · References</a>.</p>
   </div>
 
   <div class="foot-nav">

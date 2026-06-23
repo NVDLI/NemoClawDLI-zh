@@ -39,21 +39,27 @@ function _loadMaterialsCatalog() {
 }
 // Score one term against the query: an exact or substring name match ranks highest,
 // then per-token hits on the name, tags, and blurb. Zero means no match.
+//
+// A match must touch the term's identity (its name or tags). A query token that only
+// appears in the blurb refines the ranking but cannot make a match on its own, so a
+// research query about a topic the glossary does not name comes back empty instead of
+// surfacing whichever definition happens to share one word. ("production cli sandboxing"
+// used to return Machine Learning Operations on the lone word "production" in its blurb.)
 function _scoreGlossaryTerm(term, query) {
   const q = query.trim().toLowerCase();
   if (!q) return 0;
   const name  = (term.term  || "").toLowerCase();
   const blurb = (term.blurb || "").toLowerCase();
   const tags  = (term.tags  || []).map(t => String(t).toLowerCase());
-  let score = 0;
-  if (name === q) score += 100;
-  else if (name.includes(q) || q.includes(name)) score += 40;
+  let identity = 0, blurb_score = 0;
+  if (name === q) identity += 100;
+  else if (name.includes(q) || q.includes(name)) identity += 40;
   for (const tok of q.split(/[^a-z0-9]+/).filter(Boolean)) {
-    if (name.includes(tok))               score += 12;
-    if (tags.some(t => t.includes(tok)))  score += 6;
-    if (blurb.includes(tok))              score += 3;
+    if (name.includes(tok))               identity += 12;
+    if (tags.some(t => t.includes(tok)))  identity += 6;
+    if (blurb.includes(tok))              blurb_score += 3;
   }
-  return score;
+  return identity > 0 ? identity + blurb_score : 0;
 }
 // Exposed for the glossary explorer (web/nemoclaw/glossary.html): it reuses the real ranking
 // and index loader so its simulation is exactly what the agent's web_search runs, not a copy.

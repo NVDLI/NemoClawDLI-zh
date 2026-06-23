@@ -284,144 +284,149 @@
 // fans out one sub-agent per branch, then synthesizes one cited answer.
 // Every stage is a chatStream call; edit a stage and Run to re-render.
 
-    const PAGES = helpers.coursePages();
-    const INDEX = PAGES.map(p => "  " + p.id + " · " + p.title).join("\n");
-    const FAST  = "nvidia/nemotron-3-nano-30b-a3b";   // sub-agents are cheap workers: always the fast model
+const PAGES = helpers.coursePages();
+const INDEX = PAGES.map(p => "  " + p.id + " · " + p.title).join("\n");
+const FAST  = "nvidia/nemotron-3-nano-30b-a3b";   // sub-agents are cheap workers: always the fast model
 
-    helpers.mountChatUI("#deep-artifact", {
-      models: [
-        { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
-        { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
+helpers.mountChatUI("#deep-artifact", {
+  models: [
+    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
+    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
+  ],
+  greeting: (
+    "I'm a deep research agent. Ask me something and I'll plan a few parallel sub-investigations"
+    + " across the web and this course's own sections, then synthesize a grounded answer."
+  ),
+  examples: [
+    "How does this course's OpenShell sandbox relate to agent safety in general?",
+    "What is RAG, and how does this course build it?",
+    "Compare the ReAct loop with the deep-agent pattern",
+    "What are the main failure modes of autonomous agents?",
+    "How do production CLI agents sandbox themselves?",
+    "Trace this course from a single LLM call to an always-on agent",
+  ],
+
+  respond: async (text, ctx) => {
+    const sig = ctx.signal;
+
+    // ── 1. PLAN: decompose into parallel sub-investigations ──────────────
+    ctx.view.tool("planning sub-investigations…");
+    const planSys =
+      "You are a research planner. Break the user's question into 3 to 4 INDEPENDENT " +
+      "sub-investigations that can run in parallel. Each is either:\n" +
+      "  - source \"web\": a web search for external/general facts; target = a short query.\n" +
+      "  - source \"section\": read ONE section of THIS course; target = a page id below.\n" +
+      "You MUST include AT LEAST ONE \"section\" branch AND AT LEAST ONE \"web\" branch: " +
+      "use course sections for what THIS course teaches and how it implements things, web for " +
+      "outside/general facts. Pick the sections whose titles are most relevant to the question. " +
+      "Return ONLY JSON: {\"branches\":[{\"source\":\"web\"|\"section\",\"target\":\"...\",\"goal\":\"...\"}]}.\n\n" +
+      "Course sections:\n" + INDEX;
+
+    const planRes = await helpers.chatStream(
+      { messages: [{ role: "system", content: planSys }, { role: "user", content: text }],
+        model: ctx.model, max_tokens: 8196, signal: sig }, null);
+
+    let branches = [];
+    try { branches = JSON.parse(planRes.content.match(/\{[\s\S]*\}/)[0]).branches || []; } catch (_) {}
+    const ids = new Set(PAGES.map(p => p.id));
+    branches = branches
+      .filter(b => b && b.goal && (b.source === "web" || (b.source === "section" && ids.has(b.target))));
+
+    // Guarantee the fan-out spans both the web and this course's sections,
+    // even if the planner under-specified.
+    // Section pick uses title/id keyword overlap.
+    const pickSection = () => {
+      const words = text.toLowerCase().match(/[a-z]{4,}/g) || [];
+      let best = PAGES.find(p => p.id === "overview") || PAGES[0], score = 0;
+      for (const p of PAGES) {
+        const hay = (p.id + " " + p.title).toLowerCase();
+        const s = words.filter(w => hay.includes(w)).length;
+        if (s > score) { score = s; best = p; }
+      }
+      return best.id;
+    };
+
+    if (!branches.some(b => b.source === "section")) branches.push({ source: "section", target: pickSection(), goal: text });
+    if (!branches.some(b => b.source === "web"))     branches.push({ source: "web", target: text, goal: text });
+    branches = branches.slice(0, 4);
+
+    // Surface the actual parsed plan (highlighted object), not only the tree,
+    // so the student can read each branch's source/target/goal verbatim.
+    ctx.view.tool("plan", { branches });
+
+    // draw the plan as a branch tree, straight from the chosen branches
+    const cx = Math.floor((branches.length - 1) / 2);
+    ctx.view.html(helpers.diagramSVG({
+      title: "Plan → parallel sub-agents → synthesis",
+      nodes: [
+        { id: "q",     label: "question",    kind: "env",   x: cx, y: 0 },
+        { id: "plan",  label: "planner",     kind: "model", x: cx, y: 1 },
+        ...branches.map((b, i) => ({ id: "b" + i,
+          label: b.source === "web" ? "web_search" : b.target,
+          kind:  b.source === "web" ? "tool" : "data", x: i, y: 2,
+          lines: [b.source, String(b.target).slice(0, 18)] })),
+        { id: "synth", label: "synthesize",  kind: "model", x: cx, y: 3 },
       ],
-      greeting: "I'm a deep research agent. Ask me something and I'll plan a few parallel sub-investigations across the web and this course's own sections, then synthesize a grounded answer.",
-      examples: [
-        "How does this course's OpenShell sandbox relate to agent safety in general?",
-        "What is RAG, and how does this course build it?",
-        "Compare the ReAct loop with the deep-agent pattern",
-        "What are the main failure modes of autonomous agents?",
-        "How do production CLI agents sandbox themselves?",
-        "Trace this course from a single LLM call to an always-on agent",
+
+      edges: [
+        { from: "q", to: "plan" },
+        ...branches.map((b, i) => ({ from: "plan", to: "b" + i })),
+        ...branches.map((b, i) => ({ from: "b" + i, to: "synth" })),
       ],
+    }));
 
-      respond: async (text, ctx) => {
-        const sig = ctx.signal;
+    // ── 2. FAN OUT: one sub-agent per branch, all at once ───────────────
+    const t0 = performance.now();
+    const runBranch = async (b) => {
+      const bt0 = performance.now();
+      const label = (b.source === "web" ? "web · " : "section · ") + b.target;
+      let finding, src = "";
+      try {
+        src = b.source === "web"
+          ? helpers.formatSearchResults(await helpers.webSearch(b.target, { maxResults: 4 }))
+          : (await helpers.coursePage(b.target)).slice(0, 6000);
 
-        // ── 1. PLAN: decompose into parallel sub-investigations ──────────────
-        ctx.view.tool("planning sub-investigations…");
-        const planSys =
-          "You are a research planner. Break the user's question into 3 to 4 INDEPENDENT " +
-          "sub-investigations that can run in parallel. Each is either:\n" +
-          "  - source \"web\": a web search for external/general facts; target = a short query.\n" +
-          "  - source \"section\": read ONE section of THIS course; target = a page id below.\n" +
-          "You MUST include AT LEAST ONE \"section\" branch AND AT LEAST ONE \"web\" branch: " +
-          "use course sections for what THIS course teaches and how it implements things, web for " +
-          "outside/general facts. Pick the sections whose titles are most relevant to the question. " +
-          "Return ONLY JSON: {\"branches\":[{\"source\":\"web\"|\"section\",\"target\":\"...\",\"goal\":\"...\"}]}.\n\n" +
-          "Course sections:\n" + INDEX;
+        const r = await helpers.chatStream({ messages: [
+          { role: "system", content: (
+            "You are a sub-agent. From the SOURCE, extract ONLY what answers the GOAL, in 2-4 sentences."
+            + " If the source does not cover it, reply exactly 'not covered'."
+          ) },
+          { role: "user", content: "GOAL: " + b.goal + "\n\nSOURCE:\n" + src }],
+          model: FAST, max_tokens: 8196, signal: sig }, null);
+        finding = (r.content || "").trim() || "(no finding)";
+      } catch (e) { finding = "(branch failed: " + (e.message || e) + ")"; }
+      return { finding, label, src, goal: b.goal, dt: (performance.now() - bt0) / 1000 };
+    };
 
-        const planRes = await helpers.chatStream(
-          { messages: [{ role: "system", content: planSys }, { role: "user", content: text }],
-            model: ctx.model, max_tokens: 8196, signal: sig }, null);
-
-        let branches = [];
-        try { branches = JSON.parse(planRes.content.match(/\{[\s\S]*\}/)[0]).branches || []; } catch (_) {}
-        const ids = new Set(PAGES.map(p => p.id));
-        branches = branches
-          .filter(b => b && b.goal && (b.source === "web" || (b.source === "section" && ids.has(b.target))));
-
-        // Guarantee the fan-out spans both the web and this course's sections,
-        // even if the planner under-specified.
-        // Section pick uses title/id keyword overlap.
-        const pickSection = () => {
-          const words = text.toLowerCase().match(/[a-z]{4,}/g) || [];
-          let best = PAGES.find(p => p.id === "overview") || PAGES[0], score = 0;
-          for (const p of PAGES) {
-            const hay = (p.id + " " + p.title).toLowerCase();
-            const s = words.filter(w => hay.includes(w)).length;
-            if (s > score) { score = s; best = p; }
-          }
-          return best.id;
-        };
-
-        if (!branches.some(b => b.source === "section")) branches.push({ source: "section", target: pickSection(), goal: text });
-        if (!branches.some(b => b.source === "web"))     branches.push({ source: "web", target: text, goal: text });
-        branches = branches.slice(0, 4);
-
-        // Surface the actual parsed plan (highlighted object), not only the tree,
-        // so the student can read each branch's source/target/goal verbatim.
-        ctx.view.tool("plan", { branches });
-
-        // draw the plan as a branch tree, straight from the chosen branches
-        const cx = Math.floor((branches.length - 1) / 2);
-        ctx.view.html(helpers.diagramSVG({
-          title: "Plan → parallel sub-agents → synthesis",
-          nodes: [
-            { id: "q",     label: "question",    kind: "env",   x: cx, y: 0 },
-            { id: "plan",  label: "planner",     kind: "model", x: cx, y: 1 },
-            ...branches.map((b, i) => ({ id: "b" + i,
-              label: b.source === "web" ? "web_search" : b.target,
-              kind:  b.source === "web" ? "tool" : "data", x: i, y: 2,
-              lines: [b.source, String(b.target).slice(0, 18)] })),
-            { id: "synth", label: "synthesize",  kind: "model", x: cx, y: 3 },
-          ],
-
-          edges: [
-            { from: "q", to: "plan" },
-            ...branches.map((b, i) => ({ from: "plan", to: "b" + i })),
-            ...branches.map((b, i) => ({ from: "b" + i, to: "synth" })),
-          ],
-        }));
-
-        // ── 2. FAN OUT: one sub-agent per branch, all at once ───────────────
-        const t0 = performance.now();
-        const runBranch = async (b) => {
-          const bt0 = performance.now();
-          const label = (b.source === "web" ? "web · " : "section · ") + b.target;
-          let finding, src = "";
-          try {
-            src = b.source === "web"
-              ? helpers.formatSearchResults(await helpers.webSearch(b.target, { maxResults: 4 }))
-              : (await helpers.coursePage(b.target)).slice(0, 6000);
-
-            const r = await helpers.chatStream({ messages: [
-              { role: "system", content: "You are a sub-agent. From the SOURCE, extract ONLY what answers the GOAL, in 2-4 sentences. If the source does not cover it, reply exactly 'not covered'." },
-              { role: "user", content: "GOAL: " + b.goal + "\n\nSOURCE:\n" + src }],
-              model: FAST, max_tokens: 8196, signal: sig }, null);
-            finding = (r.content || "").trim() || "(no finding)";
-          } catch (e) { finding = "(branch failed: " + (e.message || e) + ")"; }
-          return { finding, label, src, goal: b.goal, dt: (performance.now() - bt0) / 1000 };
-        };
-
-        const results = await Promise.all(branches.map(runBranch));
-        const wall = (performance.now() - t0) / 1000;
-        results.forEach(r => {
-          // Show what each sub-agent actually read alongside what it concluded,
-          // so a finding can be checked against its own source material.
-          ctx.view.tool(r.label + " · source", { goal: r.goal, source: r.src });
-          ctx.view.tool(r.label + " · " + r.dt.toFixed(1) + "s", r.finding);
-        });
-        ctx.view.html(helpers.ganttBarsSVG(
-          results.map(r => ({ label: r.label.slice(0, 16), dt: r.dt })), wall,
-          branches.length + " sub-agents · parallel vs serial"));
-
-        // ── 3. SYNTHESIZE: one grounded answer from the findings ────────────
-        const findings = results.map((r, i) => "[" + (i + 1) + "] (" + r.label + ")\n" + r.finding).join("\n\n");
-        // Surface the exact findings corpus the synthesizer is grounded on, so the
-        // student can see every [n] the answer cites mapped back to its finding.
-        ctx.view.tool("findings corpus", { findings: results.map((r, i) => ({ n: i + 1, branch: r.label, finding: r.finding })) });
-        const s = await helpers.chatStream({ messages: [
-          { role: "system", content: "You are a research assistant. Answer the user's question using ONLY the findings below, citing each claim with its [n]. If a finding is 'not covered' or empty, do not invent; say what you could not find." },
-          { role: "user", content: "QUESTION: " + text + "\n\nFINDINGS:\n" + findings }],
-          model: ctx.model, max_tokens: 8196, signal: sig },
-          (tok) => ctx.view.token(tok));   // no reasoning here: the sub-agents did the thinking; keep the synthesis one clean answer
-        if (s.usage) ctx.view.usage({ input: s.usage.prompt_tokens, output: s.usage.completion_tokens, model: s.model });
-      },
+    const results = await Promise.all(branches.map(runBranch));
+    const wall = (performance.now() - t0) / 1000;
+    results.forEach(r => {
+      // Show what each sub-agent actually read alongside what it concluded,
+      // so a finding can be checked against its own source material.
+      ctx.view.tool(r.label + " · source", { goal: r.goal, source: r.src });
+      ctx.view.tool(r.label + " · " + r.dt.toFixed(1) + "s", r.finding);
     });
-    helpers.log("rendered below. Edit the config and Run.");
+    ctx.view.html(helpers.ganttBarsSVG(
+      results.map(r => ({ label: r.label.slice(0, 16), dt: r.dt })), wall,
+      branches.length + " sub-agents · parallel vs serial"));
 
-    // You write only respond().
-    // The helpers it calls (chatStream, webSearch, coursePage) do the work.
-    // Three steps above: plan, fan out, synthesize.
+    // ── 3. SYNTHESIZE: one grounded answer from the findings ────────────
+    const findings = results.map((r, i) => "[" + (i + 1) + "] (" + r.label + ")\n" + r.finding).join("\n\n");
+    // Surface the exact findings corpus the synthesizer is grounded on, so the
+    // student can see every [n] the answer cites mapped back to its finding.
+    ctx.view.tool("findings corpus", { findings: results.map((r, i) => ({ n: i + 1, branch: r.label, finding: r.finding })) });
+    const s = await helpers.chatStream({ messages: [
+      { role: "system", content: (
+        "You are a research assistant. Answer the user's question using ONLY the findings below, citing each claim with its [n]."
+        + " If a finding is 'not covered' or empty, do not invent; say what you could not find."
+      ) },
+      { role: "user", content: "QUESTION: " + text + "\n\nFINDINGS:\n" + findings }],
+      model: ctx.model, max_tokens: 8196, signal: sig },
+      (tok) => ctx.view.token(tok));   // no reasoning here: the sub-agents did the thinking; keep the synthesis one clean answer
+    if (s.usage) ctx.view.usage({ input: s.usage.prompt_tokens, output: s.usage.completion_tokens, model: s.model });
+  },
+});
+helpers.log("rendered below. Edit the config and Run.");
   </script>
   <script type="module">
     import { mountRunCell } from "./_shared.js";

@@ -165,94 +165,134 @@
         <code>/cli/gateway</code> WebSocket.
       </p>
       <figure style="margin:1.4em 0">
-      <svg class="gfx-dark" viewBox="0 0 1160 335" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three layers of access to a model or agent. Left, HTTP REST endpoints: the stateless Chat Completions API where the client resends full history, and the Responses API where the server keeps history under a previous_response_id. Middle, the Model Context Protocol: an agent-side MCP client reaches tool servers over JSON-RPC, standardizing tool access. Right, a persistent WebSocket gateway: a long-lived ws:// duplex connection keyed by a sessionKey streams tool calls and events live." preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; display:block; background:#0d0d0d; border:1px solid #2a2a2a; border-radius:8px; padding:14px; max-width:1100px; margin:1.5rem auto">
-  <defs>
-    <marker id="arrow-gray" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-      <path d="M0,2 L6,5 L0,8 Z" fill="var(--gfx-sub,#444444)"/>
-    </marker>
-    <marker id="arrow-blue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-      <path d="M0,2 L6,5 L0,8 Z" fill="var(--gfx-blue,#3b82f6)"/>
-    </marker>
-    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-      <path d="M0,2 L6,5 L0,8 Z" fill="var(--gfx-green,#76b900)"/>
-    </marker>
-  </defs>
-
-  <rect x="30" y="25" width="350" height="300" rx="8" fill="var(--gfx-panel,#141414)" stroke="var(--gfx-line,#2a2a2a)" stroke-width="1.5"/>
-  <text x="205" y="48" font-family="ui-monospace, monospace" font-size="11" fill="var(--gfx-sub,#888888)" text-anchor="middle" font-weight="700">HTTP · REST ENDPOINTS</text>
-  <line x1="40" y1="56" x2="370" y2="56" stroke="var(--gfx-line,#2a2a2a)" stroke-width="1"/>
-  
-  <text x="205" y="80" font-family="Arial, sans-serif" font-size="15" fill="var(--gfx-ink,#e6e6e6)" text-anchor="middle" font-weight="800">model endpoints</text>
-  <text x="205" y="95" font-family="ui-monospace, monospace" font-size="10" fill="var(--gfx-faint,#6a6a6a)" text-anchor="middle">short-lived connection lifecycle</text>
-
-  <rect x="45" y="115" width="150" height="65" rx="4" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-line,#3a3a3a)" stroke-width="1.2"/>
-  <text x="120" y="133" font-family="ui-monospace, monospace" font-size="10" fill="var(--gfx-ink2,#cccccc)" text-anchor="middle" font-weight="700">/chat/completions</text>
-  <text x="120" y="150" font-family="Arial, sans-serif" font-size="10" fill="var(--gfx-faint,#6a6a6a)" text-anchor="middle">Stateless Execution</text>
-  <text x="120" y="162" font-family="Arial, sans-serif" font-size="10" fill="var(--gfx-sub,#888888)" text-anchor="middle">Client resends full history</text>
-
-  <rect x="215" y="115" width="150" height="65" rx="4" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-green,#223322)" stroke-width="1.2"/>
-  <text x="290" y="133" font-family="ui-monospace, monospace" font-size="10" fill="var(--gfx-green,#aee23a)" text-anchor="middle" font-weight="700">/responses</text>
-  <text x="290" y="150" font-family="Arial, sans-serif" font-size="10" fill="var(--gfx-green,#76b900)" text-anchor="middle">Stateful Orchestrator</text>
-  <text x="290" y="162" font-family="Arial, sans-serif" font-size="10" fill="var(--gfx-sub,#a5a5a5)" text-anchor="middle">Uses previous_response_id</text>
-
-  <path d="M 120 180 L 120 205 L 190 205" fill="none" stroke="var(--gfx-sub,#444444)" stroke-width="1.2" marker-end="url(#arrow-gray)"/>
-  <path d="M 290 180 L 290 205 L 220 205" fill="none" stroke="var(--gfx-green,#76b900)" stroke-width="1.2" marker-end="url(#arrow-green)"/>
-
-  <rect x="105" y="215" width="200" height="26" rx="4" fill="var(--gfx-panel,#1c1c1c)" stroke="var(--gfx-line,#3a3a3a)" stroke-width="1"/>
-  <text x="205" y="231" font-family="Arial, sans-serif" font-size="11" fill="var(--gfx-sub,#888888)" text-anchor="middle">stateless model inference core</text>
-
-  <line x1="205" y1="241" x2="205" y2="264" stroke="var(--gfx-blue,#3b82f6)" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
-
-  <rect x="65" y="265" width="280" height="32" rx="4" fill="var(--gfx-tint-blue,#142233)" stroke="var(--gfx-blue,#3b82f6)" stroke-width="1.2"/>
-  <text x="205" y="285" font-family="ui-monospace, monospace" font-size="11" fill="var(--gfx-blue,#7eb8ff)" text-anchor="middle" font-weight="600">← static REST response byproduct</text>
-
-
-  <rect x="405" y="25" width="350" height="300" rx="8" fill="var(--gfx-panel,#151915)" stroke="var(--gfx-green,#335533)" stroke-width="1.5"/>
-  <text x="580" y="48" font-family="ui-monospace, monospace" font-size="11" fill="var(--gfx-green,#76b900)" text-anchor="middle" font-weight="700">MCP · MODEL CONTEXT PROTOCOL</text>
-  <line x1="415" y1="56" x2="745" y2="56" stroke="var(--gfx-line,#223a22)" stroke-width="1"/>
-  
-  <text x="580" y="80" font-family="Arial, sans-serif" font-size="15" fill="var(--gfx-ink,#e6e6e6)" text-anchor="middle" font-weight="800">protocol layer</text>
-  <text x="580" y="95" font-family="ui-monospace, monospace" font-size="10" fill="var(--gfx-sub,#6a7a6a)" text-anchor="middle">decoupled tool &amp; context integration</text>
-
-  <rect x="450" y="120" width="260" height="32" rx="4" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-line,#2a3a2a)" stroke-width="1.2"/>
-  <text x="580" y="140" font-family="ui-monospace, monospace" font-size="11" fill="var(--gfx-ink2,#cccccc)" text-anchor="middle">MCP Client (Agent Core)</text>
-  
-  <line x1="580" y1="152" x2="580" y2="179" stroke="var(--gfx-green,#76b900)" stroke-width="1.5" marker-end="url(#arrow-green)"/>
-
-  <rect x="450" y="180" width="260" height="32" rx="4" fill="var(--gfx-tint-green,#142414)" stroke="var(--gfx-green,#76b900)" stroke-width="1.2"/>
-  <text x="580" y="200" font-family="ui-monospace, monospace" font-size="11" fill="var(--gfx-green,#aee23a)" text-anchor="middle" font-weight="700">JSON-RPC (stdio / HTTP)</text>
-
-  <line x1="580" y1="212" x2="580" y2="239" stroke="var(--gfx-green,#76b900)" stroke-width="1.5" marker-end="url(#arrow-green)"/>
-
-  <rect x="450" y="240" width="260" height="32" rx="4" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-line,#2a3a2a)" stroke-width="1.2"/>
-  <text x="580" y="260" font-family="ui-monospace, monospace" font-size="11" fill="var(--gfx-ink2,#cccccc)" text-anchor="middle">MCP Server (Tools &amp; Resources)</text>
-
-  <text x="580" y="295" font-family="Arial, sans-serif" font-size="11" fill="var(--gfx-sub,#6a7a6a)" text-anchor="middle">Standardizes multi-vendor runtime contracts</text>
-
-
-  <rect x="780" y="25" width="350" height="300" rx="8" fill="var(--gfx-tint-green,#111c11)" stroke="var(--gfx-green,#76b900)" stroke-width="2"/>
-  <text x="955" y="48" font-family="ui-monospace, monospace" font-size="11" fill="var(--gfx-green,#76b900)" text-anchor="middle" font-weight="700">WEBSOCKET · PERSISTENT STATE</text>
-  <line x1="790" y1="56" x2="1120" y2="56" stroke="var(--gfx-line,#1e3a1e)" stroke-width="1"/>
-  
-  <text x="955" y="80" font-family="Arial, sans-serif" font-size="15" fill="var(--gfx-green,#aee23a)" text-anchor="middle" font-weight="800">agent runtime</text>
-  <text x="955" y="95" font-family="ui-monospace, monospace" font-size="10" fill="var(--gfx-sub,#6a7a6a)" text-anchor="middle">continuous connection state</text>
-
-  <rect x="825" y="120" width="260" height="32" rx="4" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-line,#224422)" stroke-width="1.2"/>
-  <text x="955" y="140" font-family="ui-monospace, monospace" font-size="11" fill="var(--gfx-ink2,#cccccc)" text-anchor="middle">ws:// interactive duplex gateway</text>
-  
-  <line x1="955" y1="152" x2="955" y2="179" stroke="var(--gfx-green,#76b900)" stroke-width="1.5" marker-end="url(#arrow-green)"/>
-
-  <rect x="825" y="180" width="260" height="32" rx="4" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-line,#224422)" stroke-width="1.2"/>
-  <text x="955" y="200" font-family="ui-monospace, monospace" font-size="11" fill="var(--gfx-sub,#a5a5a5)" text-anchor="middle">→ chat.send({ sessionKey })</text>
-
-  <line x1="955" y1="212" x2="955" y2="239" stroke="var(--gfx-green,#76b900)" stroke-width="1.5" marker-end="url(#arrow-green)"/>
-
-  <rect x="825" y="240" width="260" height="32" rx="4" fill="var(--gfx-tint-green,#1e321e)" stroke="var(--gfx-green,#76b900)" stroke-width="1.2"/>
-  <text x="955" y="260" font-family="Arial, sans-serif" font-size="11" fill="var(--gfx-green,#aee23a)" text-anchor="middle" font-weight="700">← live stream: tool_calls · events</text>
-
-  <text x="955" y="295" font-family="Arial, sans-serif" font-size="11" fill="var(--gfx-sub,#6a7a6a)" text-anchor="middle">Connection remains alive indefinitely</text>
-</svg>
-      <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Three layers of access: stateless HTTP to the model endpoint, the Responses API keeping history server-side, the <a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">Model Context Protocol</a> for standard tools, and a long-lived WebSocket streaming a live agent session.</figcaption>
+        <svg class="gfx-dark" viewBox="0 0 1300 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three layers of access to a model or agent separated by clean vertical dividing lines with scaled text and nested g-group components." preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; display:block; background:var(--gfx-bg); border:1px solid var(--gfx-line); border-radius:12px; padding:16px; max-width:1400px; margin:1.5rem auto">
+          <defs>
+            <marker id="arrow-gray" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,2 L6,5 L0,8 Z" fill="var(--gfx-line)"/>
+            </marker>
+            <marker id="arrow-blue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,2 L6,5 L0,8 Z" fill="var(--gfx-blue)"/>
+            </marker>
+            <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,2 L6,5 L0,8 Z" fill="var(--gfx-green)"/>
+            </marker>
+          </defs>
+        
+          <line x1="435" y1="20" x2="435" y2="345" stroke="var(--gfx-line)" stroke-width="1.5"/>
+          <line x1="865" y1="20" x2="865" y2="345" stroke="var(--gfx-line)" stroke-width="1.5"/>
+        
+          <g class="protocol-column" id="col-http-rest" transform="translate(-9, -34) scale(1.3)">
+            <g class="column-header" transform="translate(0, 0)">
+              <text x="175" y="44" font-family="ui-monospace, monospace" font-size="12.5" fill="var(--gfx-sub)" text-anchor="middle" font-weight="700" letter-spacing="0.05em">HTTP · REST ENDPOINTS</text>
+              <line x1="15" y1="52" x2="335" y2="52" stroke="var(--gfx-line)" stroke-width="1"/>
+              <rect x="75" y="60" width="200" height="52" rx="4" fill="var(--gfx-panel)" stroke="var(--gfx-line)" stroke-width="1.2"/>
+              <text x="175" y="82" font-family="Arial, sans-serif" font-size="17" fill="var(--gfx-ink)" text-anchor="middle" font-weight="800">model endpoints</text>
+              <text x="175" y="100" font-family="ui-monospace, monospace" font-size="11" fill="var(--gfx-faint)" text-anchor="middle">short-lived connection lifecycle</text>
+            </g>
+        
+            <g class="node-card" id="node-chat-completions" transform="translate(25, 120)">
+              <rect x="10" y="0" width="135" height="72" rx="4" fill="var(--gfx-panel)" stroke="var(--gfx-line)" stroke-width="1.2"/>
+              <text x="77.5" y="22" font-family="ui-monospace, monospace" font-size="12" fill="var(--gfx-ink2)" text-anchor="middle" font-weight="700">/chat/completions</text>
+              <text x="77.5" y="42" font-family="Arial, sans-serif" font-size="11" fill="var(--gfx-faint)" text-anchor="middle">Stateless Execution</text>
+              <text x="77.5" y="56" font-family="Arial, sans-serif" font-size="11" fill="var(--gfx-sub)" text-anchor="middle">Client resends history</text>
+            </g>
+        
+            <g class="node-card" id="node-responses-api" transform="translate(170, 120)">
+              <rect x="10" y="0" width="135" height="72" rx="4" fill="var(--gfx-panel)" stroke="var(--gfx-tint-green)" stroke-width="1.2"/>
+              <text x="77.5" y="22" font-family="ui-monospace, monospace" font-size="12" fill="var(--gfx-green)" text-anchor="middle" font-weight="700">/responses</text>
+              <text x="77.5" y="42" font-family="Arial, sans-serif" font-size="11" fill="var(--gfx-green)" text-anchor="middle">Stateful Orchestrator</text>
+              <text x="77.5" y="56" font-family="Arial, sans-serif" font-size="11" fill="var(--gfx-sub)" text-anchor="middle">previous_response_id</text>
+            </g>
+        
+            <g class="routing-infrastructure" id="http-internal-routing">
+              <path d="M 92.5 192 L 92.5 198 L 175 198" fill="none" stroke="var(--gfx-line)" stroke-width="1.2"/>
+              <path d="M 257.5 192 L 257.5 198 L 175 198" fill="none" stroke="var(--gfx-green)" stroke-width="1.2"/>
+              
+              <line x1="175" y1="202" x2="175" y2="214" stroke="var(--gfx-line)" stroke-width="1.5" marker-end="url(#arrow-gray)"/>
+              
+              <rect x="70" y="205" width="210" height="30" rx="4" fill="var(--gfx-panel)" stroke="var(--gfx-line)" stroke-width="1"/>
+              <text x="175" y="224" font-family="Arial, sans-serif" font-size="12" fill="var(--gfx-sub)" text-anchor="middle">stateless model inference core</text>
+              
+              <line x1="175" y1="235" x2="175" y2="248" stroke="var(--gfx-blue)" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+              
+              <rect x="50" y="250" width="250" height="36" rx="4" fill="var(--gfx-tint-blue)" stroke="var(--gfx-blue)" stroke-width="1.2"/>
+              <text x="175" y="273" font-family="ui-monospace, monospace" font-size="12" fill="var(--gfx-blue)" text-anchor="middle" font-weight="600">← static REST response byproduct</text>
+            </g>
+        
+            <g class="column-footer" transform="translate(0, 320)">
+              <text x="175" y="0" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-faint)" text-anchor="middle">Transactional request/response network lifecycle</text>
+            </g>
+          </g>
+        
+        
+          <g class="protocol-column" id="col-mcp" transform="translate(423, -33) scale(1.3)">
+            <g class="column-header" transform="translate(0, 0)">
+              <text x="175" y="44" font-family="ui-monospace, monospace" font-size="12.5" fill="var(--gfx-green)" text-anchor="middle" font-weight="700" letter-spacing="0.05em">MCP · MODEL CONTEXT PROTOCOL</text>
+              <line x1="15" y1="52" x2="335" y2="52" stroke="var(--gfx-tint-green)" stroke-width="1"/>
+              <rect x="75" y="60" width="200" height="52" rx="4" fill="var(--gfx-panel)" stroke="var(--gfx-line)" stroke-width="1.2"/>
+              <text x="175" y="82" font-family="Arial, sans-serif" font-size="16" fill="var(--gfx-ink)" text-anchor="middle" font-weight="800">protocol layer</text>
+              <text x="175" y="100" font-family="ui-monospace, monospace" font-size="11" fill="var(--gfx-faint)" text-anchor="middle">decoupled tool &amp; context integration</text>
+            </g>
+        
+            <g class="node-card" id="node-mcp-client" transform="translate(20, 120)">
+              <rect x="40" y="0" width="230" height="36" rx="4" fill="var(--gfx-panel)" stroke="var(--gfx-tint-green)" stroke-width="1.2"/>
+              <text x="155" y="22" font-family="ui-monospace, monospace" font-size="12.5" fill="var(--gfx-ink2)" text-anchor="middle">MCP Client (Agent Core)</text>
+            </g>
+        
+            <line x1="175" y1="156" x2="175" y2="185" stroke="var(--gfx-green)" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+        
+            <g class="node-card" id="node-mcp-transport" transform="translate(20, 185)">
+              <rect x="40" y="0" width="230" height="36" rx="4" fill="var(--gfx-tint-green)" stroke="var(--gfx-green)" stroke-width="1.2"/>
+              <text x="155" y="22" font-family="ui-monospace, monospace" font-size="12.5" fill="var(--gfx-green)" text-anchor="middle" font-weight="700">JSON-RPC (stdio / HTTP)</text>
+            </g>
+        
+            <line x1="175" y1="221" x2="175" y2="250" stroke="var(--gfx-green)" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+        
+            <g class="node-card" id="node-mcp-server" transform="translate(20, 250)">
+              <rect x="40" y="0" width="230" height="36" rx="4" fill="var(--gfx-panel)" stroke="var(--gfx-tint-green)" stroke-width="1.2"/>
+              <text x="155" y="22" font-family="ui-monospace, monospace" font-size="12.5" fill="var(--gfx-ink2)" text-anchor="middle">MCP Server (Tools &amp; Resources)</text>
+            </g>
+        
+            <g class="column-footer" transform="translate(0, 320)">
+              <text x="175" y="0" font-family="Arial, sans-serif" font-size="12" fill="var(--gfx-faint)" text-anchor="middle">Standardizes multi-vendor runtime contracts</text>
+            </g>
+          </g>
+        
+        
+          <g class="protocol-column" id="col-websockets" transform="translate(851, -33) scale(1.3)">
+            <g class="column-header" transform="translate(0, 0)">
+              <text x="175" y="44" font-family="ui-monospace, monospace" font-size="12.5" fill="var(--gfx-green)" text-anchor="middle" font-weight="700" letter-spacing="0.05em">WEBSOCKET · PERSISTENT STATE</text>
+              <line x1="15" y1="52" x2="335" y2="52" stroke="var(--gfx-tint-green)" stroke-width="1"/>
+              <rect x="75" y="60" width="200" height="52" rx="4" fill="var(--gfx-panel)" stroke="var(--gfx-line)" stroke-width="1.2"/>
+              <text x="175" y="82" font-family="Arial, sans-serif" font-size="16" fill="var(--gfx-green)" text-anchor="middle" font-weight="800">agent runtime</text>
+              <text x="175" y="100" font-family="ui-monospace, monospace" font-size="11" fill="var(--gfx-faint)" text-anchor="middle">continuous connection state</text>
+            </g>
+        
+            <g class="node-card" id="node-ws-gateway" transform="translate(20, 120)">
+              <rect x="40" y="0" width="230" height="36" rx="4" fill="var(--gfx-panel)" stroke="var(--gfx-tint-green)" stroke-width="1.2"/>
+              <text x="155" y="22" font-family="ui-monospace, monospace" font-size="12.5" fill="var(--gfx-ink2)" text-anchor="middle">ws:// interactive duplex gateway</text>
+            </g>
+        
+            <line x1="175" y1="156" x2="175" y2="185" stroke="var(--gfx-green)" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+        
+            <g class="node-card" id="node-ws-dispatch" transform="translate(20, 185)">
+              <rect x="40" y="0" width="230" height="36" rx="4" fill="var(--gfx-panel)" stroke="var(--gfx-tint-green)" stroke-width="1.2"/>
+              <text x="155" y="22" font-family="ui-monospace, monospace" font-size="12.5" fill="var(--gfx-sub)" text-anchor="middle">→ chat.send({ sessionKey })</text>
+            </g>
+        
+            <line x1="175" y1="221" x2="175" y2="250" stroke="var(--gfx-green)" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+        
+            <g class="node-card" id="node-ws-stream" transform="translate(20, 250)">
+              <rect x="40" y="0" width="230" height="36" rx="4" fill="var(--gfx-tint-green)" stroke="var(--gfx-green)" stroke-width="1.2"/>
+              <text x="155" y="22" font-family="Arial, sans-serif" font-size="12.5" fill="var(--gfx-green)" text-anchor="middle" font-weight="700">← live stream: tool_calls · events</text>
+            </g>
+        
+            <g class="column-footer" transform="translate(0, 320)">
+              <text x="175" y="0" font-family="Arial, sans-serif" font-size="12" fill="var(--gfx-faint)" text-anchor="middle">Connection remains alive indefinitely</text>
+            </g>
+          </g>
+        </svg>        
+        <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Three layers of access: stateless HTTP to the model endpoint, the Responses API keeping history server-side, the <a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">Model Context Protocol</a> for standard tools, and a long-lived WebSocket streaming a live agent session.</figcaption>
       </figure>
 
 
@@ -329,6 +369,24 @@
     <p>Wait 30 seconds and then click Probe again to give the runtime time to
       come up, and if it stays down after that, 03c covers the diagnostic
       path.</p>
+
+    <h3>The probe's request, as editable code</h3>
+    <p>This cell makes the same call the probe does, with the code exposed. It reuses the
+      URL, token, and CF JWT the probe saved. Edit <code>PATH</code>, <code>METHOD</code>,
+      and <code>BODY</code> to send other requests. The status, headers, and body come back
+      below.</p>
+    <p><code>TRANSPORT</code> controls how the credential reaches the launchable.
+      <code>"proxy"</code> routes through the CORS worker and sends the CF Access JWT as a
+      header. <code>"direct"</code> calls the launchable origin with
+      <code>credentials:&nbsp;"include"</code> and no JWT. It relies on the CF Access cookie
+      your browser already holds. Try both. Then open the page in a browser that never
+      signed in to the launchable, and try again. <code>"direct"</code> fails every time.
+      The cookie is <code>HttpOnly</code> and scoped to the launchable origin, so the
+      browser attaches it but the launchable sends no CORS header for this page, and you
+      never see the response. Only the explicit JWT, through the proxy, returns the
+      body.</p>
+
+    <div id="claw-raw-cell"></div>
 
     <h2>Step 2 · The gateway</h2>
 
@@ -490,7 +548,14 @@
 // streams the reply into the view and fires a chip per tool call.
 helpers.mountChatUI("#kickstart-artifact", {
   greeting: "Connect your launchable in the probe above, then say hi, or ask me to run whoami and pwd with my exec tool.",
-  examples: ["Run whoami and pwd with your exec tool", "List the files in your workspace and what each is for", "What model are you running on?", "What tools can you call?", "Read your SOUL.md and summarize who you are", "Try to curl https://example.com and tell me what happened"],
+  examples: [
+    "Run whoami and pwd with your exec tool", 
+    "List the files in your workspace and what each is for", 
+    "What model are you running on?", 
+    "What tools can you call?", 
+    "Read your SOUL.md and summarize who you are", 
+    "Try to curl https://example.com and tell me what happened"
+  ],
   respond: async (text, ctx) => { await helpers.openclawChat(text, { session: "art-" + ctx.thread, view: ctx.view, signal: ctx.signal }); },
 });
 helpers.log("rendered below. Edit the config and Run.");
@@ -508,7 +573,7 @@ helpers.log("rendered below. Edit the config and Run.");
   </main>
 
   <script type="module">
-    import { buildNav, updateKeyPill, updateClawPill, mountJourneyMap, mountClawProbe, mountCanvasFlow, GW_CONNECT, mountGwRecover, mountDiagram } from "./_shared.js";
+    import { buildNav, updateKeyPill, updateClawPill, mountJourneyMap, mountClawProbe, mountCanvasFlow, mountRunCell, GW_CONNECT, mountGwRecover, mountDiagram } from "./_shared.js";
     document.getElementById("nav").innerHTML = buildNav("03a-kickstart.html");
     const pill = document.getElementById("key-status");
     updateKeyPill(pill);
@@ -800,6 +865,41 @@ escape hatch by design.</p>`,
         { label: "GET /healthz", path: "/healthz", method: "GET" },
         { label: "GET /api/agent", path: "/api/agent", method: "GET" },
       ],
+    });
+
+    // ── Raw request console: the probe's fetch as editable code ───────────────────
+    mountRunCell("#claw-raw-cell", {
+      label: "the probe's request, as editable code",
+      autorun: false,
+      code: `// The probe saved its URL, token, and CF JWT in localStorage. Reuse them here.
+const proxy = localStorage.getItem('nemoclaw_clawurl')    || '';  // launchable via CORS worker
+const url   = localStorage.getItem('nemoclaw_clawrawurl') || '';  // launchable origin, direct
+const token = localStorage.getItem('nemoclaw_clawtoken')  || '';
+const jwt   = localStorage.getItem('nemoclaw_clawcfjwt')  || '';
+if (!url) return helpers.log('Run the probe above first.');
+
+const METHOD    = 'GET';
+const PATH      = '/api/agent';   // any route the runtime serves
+const BODY      = null;           // e.g. { key: 'value' }
+const TRANSPORT = 'proxy';        // 'proxy': CORS worker, JWT header. 'direct': launchable, browser CF cookie.
+
+const direct  = TRANSPORT === 'direct';
+const headers = { Accept: 'application/json, text/html, */*' };
+if (token)            headers.Authorization = 'Bearer ' + token;
+if (!direct && jwt)   headers['CF-Access-Jwt-Assertion'] = jwt;
+if (BODY)             headers['Content-Type'] = 'application/json';
+
+const res = await helpers.fetch((direct ? url : proxy) + PATH, {
+  method: METHOD,
+  headers,
+  body: BODY ? JSON.stringify(BODY) : null,
+  credentials: direct ? 'include' : 'same-origin',   // 'include' sends the CF cookie this browser holds
+});
+
+helpers.log.kv({ status: res.status + ' ' + res.statusText, type: res.type });
+helpers.log.details('headers', Object.fromEntries(res.headers));
+helpers.log.details('body', await res.text());
+`,
     });
 
     // ── Shared chat-turn snippet ───────────────────────────────────────────────────
