@@ -381,6 +381,7 @@ async function run(cmd, con) {
   const t = cmd.trim();
   if (t === "/help" || t === "help" || t === "?") return con.write(HELP, "da-dim");
   if (t === "/clear" || t === "clear") return con.clear();
+  if (t.charAt(0) === "/") return con.write("Slash commands belong to the chat panel below or the openclaw tui, not this host shell. Type a command without the slash, or help.", "da-dim");
   if (t === "agent" || t.indexOf("agent ") === 0) {
     const inner = t.slice(5).trim();
     if (!inner) return con.write('usage: agent <command>   runs <command> inside your agent sandbox, for example: agent ls', "da-dim");
@@ -430,29 +431,201 @@ helpers.log("launchable terminal mounted below. If it says no launchable, connec
     mountRunCell("#cell-agentchat", {
       label: "chat with your live agent over the OpenClaw gateway",
       autorun: true,
-      code: `// Chat with your live OpenClaw agent over the /cli/gateway (helpers.openclawChat). Browser-native,
-// no tui: the gateway streams the agent's reply and reports each tool or command it runs. Reads the
-// launchable URL + token from the Module 3a probe.
+      code: `// Chat with your live OpenClaw agent over the /cli/gateway (helpers.openclawChat). It streams the
+// agent's reply AND each tool call with its result, a Stop button interrupts a run, the slash vocabulary
+// is the real openclaw command set (sampled from the launchable binary), and slash commands query the
+// gateway LIVE (no caching). Reads the launchable URL + token from the Module 3a probe.
 function connected() {
   return !!(localStorage.getItem("nemoclaw_clawtoken") && (localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl")));
 }
-const PROMPTS = ["What can you do?", "Summarize your workspace and your SOUL.md", "What tools can you call?", "List the files in your workspace", "Walk me through your last few actions"];
-helpers.mountConsole("#agent-chat", {
+
+// One operator socket, reused across calls, same handshake openclawChat uses. Every slash query hits
+// the gateway fresh, nothing is cached.
+let _gw = null;
+function gwUrl() {
+  let u = localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl") || "";
+  while (u.length && u[u.length - 1] === "/") u = u.slice(0, -1);
+  if (u.indexOf("https") === 0) u = "wss" + u.slice(5); else if (u.indexOf("http") === 0) u = "ws" + u.slice(4);
+  return u + "/cli/gateway";
+}
+function gwCall(method, params) {
+  return new Promise(function (resolve, reject) {
+    const token = localStorage.getItem("nemoclaw_clawtoken") || "";
+    if (!token) return reject(new Error("Connect on Module 3a first (URL + token)."));
+    function send(sock) {
+      const id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      const tm = setTimeout(function () { delete sock.pend[id]; reject(new Error(method + " timed out")); }, 20000);
+      sock.pend[id] = { resolve: resolve, reject: reject, tm: tm };
+      sock.ws.send(JSON.stringify({ type: "req", id: id, method: method, params: params || {} }));
+    }
+    if (_gw && _gw.ws.readyState === 1 && _gw.ready) return send(_gw);
+    let ws; try { ws = new WebSocket(gwUrl()); } catch (e) { return reject(e); }
+    const sock = { ws: ws, pend: {}, ready: false };
+    const ot = setTimeout(function () { if (!sock.ready) { try { ws.close(); } catch (e) {} reject(new Error("gateway did not respond in 15s; reopen your launchable URL to re-authenticate.")); } }, 15000);
+    ws.onmessage = function (ev) {
+      let d; try { d = JSON.parse(ev.data); } catch (e) { return; }
+      if (!sock.ready && d.event === "connect.challenge") {
+        const cid = "c" + Math.random().toString(36).slice(2);
+        sock.pend[cid] = { resolve: function () { sock.ready = true; clearTimeout(ot); _gw = sock; send(sock); }, reject: reject, tm: setTimeout(function () { reject(new Error("connect timed out")); }, 15000) };
+        ws.send(JSON.stringify({ type: "req", id: cid, method: "connect", params: { minProtocol: 4, maxProtocol: 4, client: { id: "openclaw-control-ui", version: "0.1.0", platform: "browser", mode: "webchat" }, caps: ["tool-events"], role: "operator", scopes: ["operator.read", "operator.write", "operator.admin"], auth: { token: token } } }));
+        return;
+      }
+      if (d.type === "res" && d.id && sock.pend[d.id]) { const pr = sock.pend[d.id]; clearTimeout(pr.tm); delete sock.pend[d.id]; if (d.ok) pr.resolve(d.payload); else pr.reject(new Error((d.error && d.error.message) || "gateway error")); }
+    };
+    ws.onerror = function () {};
+    ws.onclose = function () { if (_gw === sock) _gw = null; sock.ready = false; };
+  });
+}
+// Verified live against the gateway: the agent's model is agents.defaults.model.primary (+ fallbacks),
+// and the available models are models.providers.<provider>.models[].id.
+function parsedOf(cfg) { return (cfg && cfg.parsed) || cfg || {}; }
+function modelOf(cfg) { const a = parsedOf(cfg).agents; return (a && a.defaults && a.defaults.model && a.defaults.model.primary) || ""; }
+function fallbacksOf(cfg) { const a = parsedOf(cfg).agents; return (a && a.defaults && a.defaults.model && a.defaults.model.fallbacks) || []; }
+function availModels(cfg) {
+  const provs = (parsedOf(cfg).models && parsedOf(cfg).models.providers) || {};
+  const out = [];
+  Object.keys(provs).forEach(function (k) { ((provs[k] && provs[k].models) || []).forEach(function (mm) { if (mm && mm.id) out.push(mm.id); }); });
+  return out;
+}
+
+const SLASH = ["/help", "/clear", "/reset", "/new", "/compact", "/model", "/models", "/usage", "/status", "/context", "/think", "/config", "/agents", "/subagents", "/mcp", "/tasks", "/review", "/whoami", "/commands"];
+const FRESH = ["/reset", "/new", "/compact"];
+const CHIPS = ["/help", "/model", "/status", "/reset", "What can you do?", "Summarize your workspace and your SOUL.md", "List the files in your workspace"];
+let session = "main", _ac = null, stopBtn = null;
+
+function makeView() {
+  const o = document.querySelector("#agent-chat .da-out");
+  let ans = null;
+  const v = { streamed: false };
+  v.token = function (delta) { v.streamed = true; if (!ans) { ans = document.createElement("div"); o.appendChild(ans); } ans.textContent += delta; };
+  v.tool = function (label, body) {
+    ans = null;
+    const d = document.createElement("details"); d.style.cssText = "margin:3px 0;";
+    const sm = document.createElement("summary"); sm.textContent = "\uD83D\uDD27 " + label; sm.style.cssText = "cursor:pointer;";
+    const b = document.createElement("div"); b.className = "chatui-tool-body"; b.textContent = body || ""; b.style.cssText = "white-space:pre-wrap;font-size:.8rem;opacity:.8;margin:3px 0 0 14px;max-height:240px;overflow:auto;";
+    d.appendChild(sm); d.appendChild(b); o.appendChild(d); return d;
+  };
+  v.usage = function (u) { const e = document.createElement("div"); e.className = "da-dim"; e.textContent = "tokens " + (u.context || "?") + (u.window ? (" / " + u.window) : "") + (u.model ? (" · " + u.model) : ""); o.appendChild(e); };
+  return v;
+}
+
+const con = helpers.mountConsole("#agent-chat", {
   prompt: "you",
-  suggestions: PROMPTS,
+  suggestions: CHIPS,
   disabled: !connected(),
   disabledMsg: "Connect your launchable on Module 3a first (its URL and token), then your agent is reachable here.",
-  greeting: connected() ? "Connected to your agent over the gateway. Ask it anything, click a prompt, or press Tab to autocomplete." : "",
-  onSubmit: async (msg, con) => {
-    try {
-      await helpers.openclawChat(msg, {
-        session: "main",
-        onToken: function (tok) { con.raw(tok); },
-        onTool: function (name, info) { con.write("tool: " + name + (info && info.args ? " " + JSON.stringify(info.args).slice(0, 100) : ""), "da-dim"); },
-      });
-    } catch (e) { con.write((e && e.message) || String(e), "da-err"); }
+  greeting: connected() ? "Connected to your agent over the gateway. Ask it anything, type /help for commands, click a prompt, or press Tab to autocomplete." : "",
+  onSubmit: async (msg, c) => {
+    const m = msg.trim();
+    if (m === "/help" || m === "?" || m === "/commands") return c.write("This panel: /help, /clear, /reset (or /new, /compact) start a fresh conversation; /model, /status, /config, /agents query the gateway live. Type / to autocomplete the OpenClaw command set; anything else goes to your agent.", "da-dim");
+    if (m === "/clear") return c.clear();
+    if (FRESH.indexOf(m) >= 0) { session = "main-" + Date.now(); return c.write("Started a fresh conversation; the agent will not see earlier turns in this panel.", "da-dim"); }
+    if (m === "/model" || m === "/models" || m.indexOf("/model ") === 0) {
+      const arg = m.indexOf("/model ") === 0 ? m.slice(7).trim() : "";
+      c.write("config.get ...", "da-dim");
+      try {
+        const cfg = await gwCall("config.get", {});
+        const mdl = modelOf(cfg), fb = fallbacksOf(cfg), avail = availModels(cfg);
+        if (m === "/models") {
+          if (!avail.length) { c.write("No models found in the live config.", "da-dim"); return; }
+          c.write("Models in the live config:", "da-dim");
+          avail.forEach(function (id) { c.write("  " + id + (id === mdl ? "  (current)" : ""), "da-dim"); });
+          return;
+        }
+        if (arg) {
+          if (avail.indexOf(arg) < 0) { c.write(arg + " is not in the available models. Type /models to list them.", "da-dim"); return; }
+          c.write("config.patch: agents.defaults.model.primary -> " + arg + " ...", "da-dim");
+          const r = await gwCall("config.patch", { raw: JSON.stringify({ agents: { defaults: { model: { primary: arg } } } }), baseHash: cfg.hash });
+          if (r && r.ok) c.write(r.noop ? ("Already on " + arg + ".") : ("Model set to " + arg + ". New turns use it; run /reset to start the conversation fresh on it."), "da-dim");
+          else c.write("config.patch returned: " + JSON.stringify(r).slice(0, 160), "da-dim");
+          return;
+        }
+        c.write("Current model (live): " + (mdl || "(not set)"), "da-dim");
+        if (fb.length) c.write("Fallbacks: " + fb.join(", "), "da-dim");
+        if (avail.length) c.write(avail.length + " models available. /models to list, /model <id> to switch.", "da-dim");
+      } catch (e) { c.write("config.get/patch failed: " + ((e && e.message) || e), "da-err"); }
+      return;
+    }
+    if (m === "/status") {
+      c.write("environments.list ...", "da-dim");
+      try { const r = await gwCall("environments.list", {}); const envs = (r && r.environments) || [];
+        if (!envs.length) c.write("No environments reported.", "da-dim"); else envs.forEach(function (e) { c.write("· " + (e.id || "env") + ": " + (e.status || "?"), "da-dim"); });
+      } catch (e) { c.write("environments.list failed: " + ((e && e.message) || e), "da-err"); }
+      return;
+    }
+    if (m === "/config") {
+      c.write("config.get ...", "da-dim");
+      try { const cfg = await gwCall("config.get", {}); const pp = (cfg && cfg.parsed) || cfg || {}; c.write(JSON.stringify(pp, null, 2).slice(0, 2000)); }
+      catch (e) { c.write("config.get failed: " + ((e && e.message) || e), "da-err"); }
+      return;
+    }
+    if (m.charAt(0) === "/") {
+      const cmd = m.split(" ")[0];
+      if (SLASH.indexOf(cmd) >= 0) return c.write(cmd + " is an OpenClaw command that runs in openclaw tui on your launchable, not in this gateway chat.", "da-dim");
+      return c.write("Not a command this panel handles. Type /help, or / to autocomplete the OpenClaw commands.", "da-dim");
+    }
+    _ac = new AbortController();
+    if (stopBtn) stopBtn.style.display = "";
+    const view = makeView();
+    try { const r = await helpers.openclawChat(msg, { session: session, view: view, signal: _ac.signal }); if (!view.streamed && r) c.write(r); }
+    catch (e) { c.write((e && e.message) || String(e), "da-err"); }
+    finally { if (stopBtn) stopBtn.style.display = "none"; _ac = null; }
   },
 });
+
+const dl = document.querySelector("#agent-chat datalist");
+if (dl) SLASH.filter(function (s2) { return CHIPS.indexOf(s2) < 0; }).forEach(function (s2) { const o2 = document.createElement("option"); o2.value = s2; dl.appendChild(o2); });
+
+const line = document.querySelector("#agent-chat .da-line");
+if (line) {
+  stopBtn = document.createElement("button");
+  stopBtn.type = "button"; stopBtn.className = "da-chip"; stopBtn.textContent = "\u25A0 stop";
+  stopBtn.style.cssText = "display:none;margin-left:auto;";
+  stopBtn.addEventListener("click", function () { if (_ac) _ac.abort(); });
+  line.appendChild(stopBtn);
+}
+// Session/branch tabs: each tab is an independent agent session (a branch). Switching swaps the visible
+// log and the session key openclawChat sends to; "+ branch" starts a new one; "×" deletes it (sessions.delete).
+const termEl = document.querySelector("#agent-chat .da-term");
+const outEl = document.querySelector("#agent-chat .da-out");
+let tabs = ["main"], branchN = 0;
+const logs = { main: "" };
+const tabBar = document.createElement("div");
+tabBar.style.cssText = "display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;";
+function renderTabs() {
+  tabBar.innerHTML = "";
+  tabs.forEach(function (name) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "da-chip"; b.textContent = name;
+    b.style.fontWeight = (name === session) ? "700" : "400"; b.style.opacity = (name === session) ? "1" : ".6";
+    b.addEventListener("click", function () { switchTab(name); });
+    tabBar.appendChild(b);
+    if (tabs.length > 1) {
+      const x = document.createElement("button"); x.type = "button"; x.className = "da-chip"; x.textContent = "×";
+      x.title = "close " + name; x.style.padding = "2px 8px";
+      x.addEventListener("click", function (ev) { ev.stopPropagation(); closeTab(name); });
+      tabBar.appendChild(x);
+    }
+  });
+  const plus = document.createElement("button"); plus.type = "button"; plus.className = "da-chip"; plus.textContent = "+ branch";
+  plus.addEventListener("click", addBranch); tabBar.appendChild(plus);
+}
+function switchTab(name) {
+  if (name === session || !outEl) return;
+  logs[session] = outEl.innerHTML;
+  session = name;
+  outEl.innerHTML = logs[name] || "";
+  if (!logs[name]) con.write("Branch '" + name + "': a fresh agent session. Other branches are kept; switch tabs to revisit them.", "da-dim");
+  renderTabs();
+}
+function addBranch() { branchN += 1; const name = "branch-" + branchN; tabs.push(name); logs[name] = ""; switchTab(name); }
+async function closeTab(name) {
+  if (tabs.length <= 1) return;
+  try { await gwCall("sessions.delete", { key: name }); } catch (e) {}
+  tabs = tabs.filter(function (t) { return t !== name; }); delete logs[name];
+  if (session === name) { session = tabs[0]; if (outEl) outEl.innerHTML = logs[session] || ""; }
+  renderTabs();
+}
+if (connected() && termEl && outEl) { termEl.insertBefore(tabBar, termEl.firstChild); renderTabs(); }
 helpers.log("agent chat mounted below.");
 `,
     });

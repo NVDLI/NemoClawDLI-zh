@@ -44,3 +44,81 @@ export function ganttBarsSVG(workers, wallSeconds, title = "Concurrency vs seria
     <text x="${W / 2}" y="38" text-anchor="middle" font-size="10" font-family="ui-monospace,monospace" fill="#6a6a6a">parallel speedup: ${speedup.toFixed(2)}x  (serial ${serialTotal.toFixed(2)}s / wall ${wallSeconds.toFixed(2)}s)</text>
     ${body}</svg>`;
 }
+
+// ── mountFigures + fit-to-screen lightbox ────────────────────────────────────
+// Figures live in assets/figures/*.svg and are fetched + injected INLINE here (not via <img>), so the
+// page's var(--gfx-*) / .gfx-dark theme cascade reaches them. Each injected figure is click/Enter to
+// open a fit-to-screen lightbox. Idempotent; fetches are deduped.
+const _figCache = {};
+function _fetchSvg(src) {
+  if (!_figCache[src]) {
+    _figCache[src] = fetch(src).then(r => { if (!r.ok) throw new Error(r.status + " " + src); return r.text(); });
+  }
+  return _figCache[src];
+}
+
+let _lb = null;
+function _lightbox() {
+  if (_lb) return _lb;
+  const root = document.createElement("div");
+  root.className = "fig-lightbox";
+  root.hidden = true;
+  root.innerHTML = '<button class="fig-lightbox-x" type="button" aria-label="Close (Esc)">✕</button>'
+                 + '<div class="fig-lightbox-stage" role="dialog" aria-modal="true" aria-label="Enlarged figure"></div>';
+  const stage = root.querySelector(".fig-lightbox-stage");
+  const close = () => { root.hidden = true; stage.innerHTML = ""; document.body.style.overflow = ""; };
+  root.addEventListener("click", e => { if (e.target === root || e.target === stage) close(); });
+  root.querySelector(".fig-lightbox-x").addEventListener("click", close);
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !root.hidden) close(); });
+  document.body.appendChild(root);
+  _lb = {
+    open(svg) {
+      stage.innerHTML = "";
+      svg.removeAttribute("style");
+      svg.style.display = "block";
+      svg.style.background = "var(--gfx-bg)";
+      svg.style.borderRadius = "8px";
+      const vb = (svg.getAttribute("viewBox") || "").split(/[\s,]+/).map(Number);
+      if (vb.length === 4 && vb[2] > 0 && vb[3] > 0) {
+        const s = Math.min(window.innerWidth * 0.92 / vb[2], window.innerHeight * 0.9 / vb[3]);
+        svg.style.width = Math.round(vb[2] * s) + "px";
+        svg.style.height = Math.round(vb[3] * s) + "px";
+      } else {
+        svg.style.maxWidth = "92vw"; svg.style.maxHeight = "90vh";
+      }
+      stage.appendChild(svg);
+      root.hidden = false;
+      document.body.style.overflow = "hidden";
+      root.querySelector(".fig-lightbox-x").focus();
+    }
+  };
+  return _lb;
+}
+
+export function mountFigures(rootSel) {
+  /* @doc <code>helpers.mountFigures(rootSel?)</code> ::
+       Replace each <code>[data-svg-src]</code> placeholder under <code>rootSel</code> (default the whole
+       document) with the SVG fetched from that path, injected inline so <code>var(--gfx-*)</code> theming
+       applies, and made click/Enter to open a fit-to-screen lightbox. Auto-mounted on page load.
+  */
+  if (typeof document === "undefined") return;
+  const scope = (rootSel && document.querySelector(rootSel)) || document;
+  scope.querySelectorAll("[data-svg-src]:not([data-fig-done])").forEach(host => {
+    host.dataset.figDone = "1";
+    const src = host.getAttribute("data-svg-src");
+    _fetchSvg(src).then(txt => {
+      host.innerHTML = txt;
+      const svg = host.querySelector("svg");
+      if (!svg) throw new Error("no <svg> in " + src);
+      host.style.aspectRatio = "";   // the injected SVG now sets its own height
+      host.setAttribute("role", "button");
+      host.setAttribute("tabindex", "0");
+      host.setAttribute("aria-label", (svg.getAttribute("aria-label") || "Figure") + ", click to enlarge");
+      const open = () => _lightbox().open(svg.cloneNode(true));
+      host.addEventListener("click", open);
+      host.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
+    }).catch(() => {
+      host.innerHTML = '<a href="' + src + '" target="_blank" rel="noopener">Open figure in a new tab</a>';
+    });
+  });
+}

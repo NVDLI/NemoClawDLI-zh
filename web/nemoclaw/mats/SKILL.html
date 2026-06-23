@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Companion-material provenance · Securing Agents</title>
+<link rel="stylesheet" href="../_style.css"/>
+<style>
+  main { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+  table.prov { width: 100%; border-collapse: collapse; font-size: .82rem; margin: 1em 0; }
+  table.prov th, table.prov td { text-align: left; padding: 6px 9px; border-bottom: 1px solid var(--bd); vertical-align: top; }
+  table.prov th { color: var(--td); font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; }
+  table.prov td:first-child { font-family: var(--mono); color: var(--gs); white-space: nowrap; }
+  .lvl { font-family: var(--mono); font-size: .76rem; }
+  .legend code { color: var(--gs); }
+</style>
+<script type="application/json" id="skill-meta">
+{
+  "node_type": "leaf",
+  "level": "asset",
+  "surface": "web",
+  "course": "nemoclaw",
+  "title": "Companion-material provenance (mats/)",
+  "source_dir": "web/nemoclaw/mats/",
+  "self_path": "web/nemoclaw/mats/SKILL.html",
+  "summary": "Source, source terms, and connection level for every companion essay and reference under web/nemoclaw/mats/. Course-authored prose is Apache-2.0; cached source mirrors keep their source's terms."
+}
+</script>
+<script type="application/json" id="provenance">
+{
+  "repo_license": "Apache-2.0 (LICENSE.md). Course-authored prose is Apache-2.0; cached NVIDIA mirrors and arXiv abstracts retain their source's ownership.",
+  "connection_levels": {
+    "original": "course-authored essay or guide",
+    "summary": "course-authored notes/card that cite a source (no source text reproduced)",
+    "compilation": "course-authored collection of source links/terms",
+    "conversion": "cached markdown mirror of a source page"
+  },
+  "mats": [
+    {"file": "agent_field_guide.md", "type": "annotated reading map", "source": "~20 papers + standards (cited inline)", "url": "", "terms": "Apache-2.0 prose", "connection": "original"},
+    {"file": "agentic_equilibrium.md", "type": "essay", "source": "original thesis", "url": "", "terms": "Apache-2.0", "connection": "original"},
+    {"file": "agentic_safety_in_production.md", "type": "essay", "source": "original thesis", "url": "", "terms": "Apache-2.0", "connection": "original"},
+    {"file": "deep_research_refs.md", "type": "reference list", "source": "various (cited)", "url": "", "terms": "Apache-2.0", "connection": "compilation"},
+    {"file": "agentic_ai_learning_path_links.md", "type": "link index", "source": "NVIDIA Agentic AI Learning Path", "url": "https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/", "terms": "NVIDIA", "connection": "compilation"},
+    {"file": "nvidia_agent_glossary.md", "type": "glossary terms", "source": "NVIDIA AI glossary", "url": "https://www.nvidia.com/en-us/glossary/", "terms": "NVIDIA", "connection": "compilation"},
+    {"file": "nvidia_openshell_nemoclaw.md", "type": "OpenShell/NemoClaw notes", "source": "NVIDIA", "url": "", "terms": "NVIDIA", "connection": "original"},
+    {"file": "arxiv-2005.11401-rag.md", "type": "paper summary card", "source": "Lewis et al. 2020 (RAG)", "url": "https://arxiv.org/abs/2005.11401", "terms": "arXiv", "connection": "summary"},
+    {"file": "arxiv-2210.03629-react.md", "type": "paper summary card", "source": "Yao et al. 2022 (ReAct)", "url": "https://arxiv.org/abs/2210.03629", "terms": "arXiv", "connection": "summary"},
+    {"file": "arxiv-2305.18323-rewoo.md", "type": "paper summary card", "source": "Xu et al. 2023 (ReWOO)", "url": "https://arxiv.org/abs/2305.18323", "terms": "arXiv", "connection": "summary"},
+    {"file": "arxiv-2404.16130-graphrag.md", "type": "paper summary card", "source": "Edge et al. 2024 (GraphRAG)", "url": "https://arxiv.org/abs/2404.16130", "terms": "arXiv", "connection": "summary"},
+    {"file": "build-nvidia-com-spark-hermes-agent-overview.md", "type": "cached NVIDIA doc", "source": "build.nvidia.com (Hermes agent)", "url": "https://build.nvidia.com/", "terms": "NVIDIA", "connection": "conversion"},
+    {"file": "build-nvidia-com-spark-nemoclaw-applications.md", "type": "cached NVIDIA doc", "source": "build.nvidia.com (NemoClaw applications)", "url": "https://build.nvidia.com/", "terms": "NVIDIA", "connection": "conversion"},
+    {"file": "build-nvidia-com-spark-nemoclaw-instructions.md", "type": "cached NVIDIA doc", "source": "build.nvidia.com (NemoClaw instructions)", "url": "https://build.nvidia.com/", "terms": "NVIDIA", "connection": "conversion"},
+    {"file": "developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md", "type": "cached NVIDIA blog", "source": "developer.nvidia.com blog (self-evolving agents)", "url": "https://developer.nvidia.com/blog/deploy-self-evolving-agents-for-faster-more-secure-research-with-a-hermes-agent-and-nvidia-nemoclaw/", "terms": "NVIDIA", "connection": "conversion"},
+    {"file": "glossary_raw/*.md", "type": "cached glossary article bodies (8)", "source": "NVIDIA AI glossary", "url": "https://www.nvidia.com/en-us/glossary/", "terms": "NVIDIA", "connection": "conversion"}
+  ]
+}
+</script>
+</head>
+<body>
+<main>
+  <h1>Companion-material provenance</h1>
+  <p>Source, terms, and connection level for everything under <code>web/nemoclaw/mats/</code>. The repo
+     is <strong>Apache-2.0</strong> (LICENSE.md): course-authored essays and summaries are Apache-2.0,
+     while cached NVIDIA pages and arXiv references keep their source's ownership. Connection levels are a
+     best-effort read of each file's relationship to its source. Image provenance is in
+     <a href="../assets/SKILL.html">assets/SKILL.html</a>.</p>
+  <p class="legend"><strong>Connection levels.</strong>
+     <code>original</code>: course-authored essay or guide.
+     <code>summary</code>: course-authored notes/card citing a source, no source text reproduced.
+     <code>compilation</code>: course-authored collection of source links/terms.
+     <code>conversion</code>: cached markdown mirror of a source page.</p>
+
+  <table class="prov">
+    <thead><tr><th>file</th><th>type</th><th>source</th><th>source terms</th><th>connection</th></tr></thead>
+    <tbody>
+      <tr><td>agent_field_guide.md</td><td>annotated reading map</td><td>~20 papers + standards (cited inline)</td><td>Apache-2.0 prose</td><td class="lvl">original</td></tr>
+      <tr><td>agentic_equilibrium.md</td><td>essay</td><td>original thesis</td><td>Apache-2.0</td><td class="lvl">original</td></tr>
+      <tr><td>agentic_safety_in_production.md</td><td>essay</td><td>original thesis</td><td>Apache-2.0</td><td class="lvl">original</td></tr>
+      <tr><td>deep_research_refs.md</td><td>reference list</td><td>various (cited)</td><td>Apache-2.0</td><td class="lvl">compilation</td></tr>
+      <tr><td>agentic_ai_learning_path_links.md</td><td>link index</td><td>NVIDIA Agentic AI Learning Path</td><td>NVIDIA</td><td class="lvl">compilation</td></tr>
+      <tr><td>nvidia_agent_glossary.md</td><td>glossary terms</td><td>NVIDIA AI glossary</td><td>NVIDIA</td><td class="lvl">compilation</td></tr>
+      <tr><td>nvidia_openshell_nemoclaw.md</td><td>OpenShell / NemoClaw notes</td><td>NVIDIA</td><td>NVIDIA</td><td class="lvl">original</td></tr>
+      <tr><td>arxiv-2005.11401-rag.md</td><td>paper summary card</td><td>Lewis et al. 2020 (RAG)</td><td>arXiv</td><td class="lvl">summary</td></tr>
+      <tr><td>arxiv-2210.03629-react.md</td><td>paper summary card</td><td>Yao et al. 2022 (ReAct)</td><td>arXiv</td><td class="lvl">summary</td></tr>
+      <tr><td>arxiv-2305.18323-rewoo.md</td><td>paper summary card</td><td>Xu et al. 2023 (ReWOO)</td><td>arXiv</td><td class="lvl">summary</td></tr>
+      <tr><td>arxiv-2404.16130-graphrag.md</td><td>paper summary card</td><td>Edge et al. 2024 (GraphRAG)</td><td>arXiv</td><td class="lvl">summary</td></tr>
+      <tr><td>build-nvidia-com-spark-hermes-agent-overview.md</td><td>cached NVIDIA doc</td><td>build.nvidia.com (Hermes agent)</td><td>NVIDIA</td><td class="lvl">conversion</td></tr>
+      <tr><td>build-nvidia-com-spark-nemoclaw-applications.md</td><td>cached NVIDIA doc</td><td>build.nvidia.com (NemoClaw apps)</td><td>NVIDIA</td><td class="lvl">conversion</td></tr>
+      <tr><td>build-nvidia-com-spark-nemoclaw-instructions.md</td><td>cached NVIDIA doc</td><td>build.nvidia.com (NemoClaw setup)</td><td>NVIDIA</td><td class="lvl">conversion</td></tr>
+      <tr><td>developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md</td><td>cached NVIDIA blog</td><td>developer.nvidia.com blog</td><td>NVIDIA</td><td class="lvl">conversion</td></tr>
+      <tr><td>glossary_raw/*.md</td><td>cached glossary bodies (8)</td><td>NVIDIA AI glossary</td><td>NVIDIA</td><td class="lvl">conversion</td></tr>
+    </tbody>
+  </table>
+</main>
+</body>
+</html>

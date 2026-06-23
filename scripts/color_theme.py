@@ -344,6 +344,13 @@ def run(verbose=True):
         # both paint by attribute and both rely on SVG_SUBS to flip, so both are in scope here.
         for tok, prop in scan_inline(body) + scan_style_blocks(body) + scan_svg_attrs(raw):
             inline.append((rel, tok, prop))
+    # Externalized figures (assets/figures/*.svg, fetched + injected inline by mountFigures) are no
+    # longer inline in any page, so the loop above no longer sees them. Scan each so a hard-coded
+    # fill/stroke regression in an extracted figure is still caught (they ride var(--gfx-*)).
+    for f in sorted((NEMO / "assets" / "figures").glob("*.svg")):
+        rel = str(f.relative_to(WEB.parent))
+        for tok, prop in scan_svg_attrs(f.read_text(errors="ignore")):
+            inline.append((rel, tok, prop))
     # Second pass: every var() REFERENCE whose name is never defined anywhere (its lone fallback
     # never flips), scanned across the stylesheets, the chrome, and the pages.
     for f in style_files() + chrome_js() + sorted(NEMO.glob("*.html")) + sorted(WEB.glob("*.html")):
