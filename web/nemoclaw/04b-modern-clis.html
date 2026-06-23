@@ -205,6 +205,7 @@ document.querySelector("#clis-artifact").before(bar);
 const clearSel = () => { selected.clear(); FW.forEach((f) => btnFor[f.id].classList.remove("on")); };
 
 helpers.mountChatUI("#clis-artifact", {
+  growLog: true,   // flow with the page instead of an internal 480px scroll that traps the wheel
   greeting: "Tell me a task and where it runs. I will show the one core loop all of these CLIs would run for it, then weigh each from its docs, rather than crowning a single winner. Toggle a README above to hand me its full text for your next question.",
   examples: ["Refactor a large repo unattended overnight", "A personal assistant I message from my phone", "Triage prod incidents on a server 24/7"],
 
@@ -270,6 +271,7 @@ async function runJS(code) {
 }
 
 helpers.mountChatUI("#jsagent-artifact", {
+  growLog: true,   // flow with the page instead of an internal 480px scroll that traps the wheel
   greeting: "Give me a goal. My shell is this page's JavaScript runtime, so I act by running JS right here in your tab.",
   examples: ["How many code editors are on this page?", "Fetch assets/rag_index.json and report how many docs and which embed model it pins.", "What is the page title, and how many H2 sections does it have?"],
   respond: async (goal, ctx) => {

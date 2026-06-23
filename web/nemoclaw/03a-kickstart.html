@@ -265,6 +265,7 @@
       <li><strong>A persistent gateway.</strong> The agent runtime keeps a <code>/cli/gateway</code> <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API" target="_blank" rel="noopener">WebSocket</a> open and streams events back over <a href="https://www.jsonrpc.org/specification" target="_blank" rel="noopener">JSON-RPC</a> instead of answering one request at a time.</li>
     </ul>
 
+    <!-- video removed: hour-long NemoClaw session, too long and distracting for an inline companion. Re-enable by uncommenting.
     <figure class="lp-video">
       <div class="video-wrap">
         <iframe src="https://www.youtube-nocookie.com/embed/DznyClsBZWY?autoplay=0&rel=0"
@@ -279,6 +280,7 @@
           target="_blank" rel="noopener">Agentic AI Learning Path</a>.
       </figcaption>
     </figure>
+    -->
 
     <h2>The two endpoints you work with from here</h2>
     <p>The model endpoint answers chat completions; the agent runtime runs OpenClaw's loop.</p>
@@ -642,6 +644,9 @@ return { count: models.length };
           summary: "Fires the same short prompt through every matched model at once, then prints results in catalog order. For each model it records time-to-first-token, total time, token count, and the mean gap between tokens. Reasoning models stream their thinking as reasoning_content before the answer, so we count both kinds; otherwise a model that spends its whole budget thinking looks like it returned zero tokens. A model silent for the full TTFT_TIMEOUT window is abandoned. Open a result to read what it streamed.",
           code: `if (!state.models?.length) { helpers.log("Run 'Fetch matching models' first."); return; }
 const PROMPT       = "List five prime numbers.";
+// Try another prompt (uncomment one) to compare how the models behave on different work:
+// const PROMPT    = "Explain step by step why the sky is blue.";                // a reasoning task
+// const PROMPT    = "Write a haiku about GPUs, then one line on what it means."; // a longer generation
 const MAX_TOKENS   = 256;     // reasoning models think first; too low and they never answer
 const TTFT_TIMEOUT = 30000;   // ms; give up on a model with no first token by now (some are slow to start)
 

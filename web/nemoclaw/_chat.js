@@ -24,6 +24,7 @@ export function ensureChatStyles() {
       .chatui-modchip:hover{border-color:var(--g,#76b900)}
       .chatui-modchip.on{background:var(--g,#76b900);color:#0a0a0a;border-color:var(--g,#76b900);font-weight:700}
       .chatui-log{padding:14px 14px 6px;max-height:480px;overflow-y:auto;display:flex;flex-direction:column;gap:9px}
+      .chatui-grow .chatui-log,.chatui-grow .chatui-tool-body,.chatui-grow .chatui-think-body,.chatui-grow .chatui-bot pre{max-height:none}
       .chatui-intro{font-size:.84rem;color:var(--tf,#8a8a8a);line-height:1.5}
       .chatui-examples{display:flex;flex-wrap:wrap;gap:6px;align-self:flex-start;max-width:100%}
       .chatui-ex{text-align:left;font-size:.78rem;color:var(--gs,#aee23a);background:rgba(118,185,0,.06);border:1px solid rgba(118,185,0,.28);border-radius:14px;padding:5px 11px;cursor:pointer;line-height:1.35}
@@ -118,7 +119,7 @@ export function mountChatUI(container, opts = {}) {
     ? `<label>Model</label><select class="chatui-model">${models.map(m => `<option value="${escHtml(m.id)}">${escHtml(m.label || m.id)}</option>`).join("")}</select>` : "";
   const modChips = modules.length
     ? `<div class="chatui-mods"><label>Pages</label>${modules.map(m => `<button type="button" class="chatui-modchip" data-id="${escHtml(m.id)}" title="${escHtml(m.title || m.id)}">${escHtml(m.id)}</button>`).join("")}<span class="chatui-ctx" data-pinhint>none pinned = auto-select</span></div>` : "";
-  el.innerHTML = `<div class="chatui">
+  el.innerHTML = `<div class="chatui${opts.growLog ? " chatui-grow" : ""}">
       <div class="chatui-bar">${modelSel}<span class="chatui-ctx chatui-ctxwrap" data-ctx hidden><span data-ctxtext></span><span class="chatui-ctxbar"><span class="chatui-ctxfill"></span></span></span><span class="sp"></span>${memToggle}<button class="chatui-reset" type="button">↺ New chat</button>${modChips}</div>
       <div class="chatui-log"></div>
       <div class="chatui-in"><textarea class="chatui-text" rows="1" placeholder="Ask a question…"></textarea><button class="chatui-send" type="button">Send</button></div>
@@ -342,7 +343,8 @@ export async function mountAgentChat(container, opts = {}) {
        Live chat artifact on LangChain <code>createReactAgent</code>. <code>opts</code>: <code>{
        models:[{id,label}], system,
        buildTools({tool,z,coursePage,coursePages,webSearch,formatSearchResults}), greeting,
-       modules, recursionLimit }</code>. Loads LangChain from a CDN, builds one agent per model
+       modules, recursionLimit, growLog }</code>. <code>growLog:true</code> drops the panel's internal
+       scroll caps so a long transcript flows with the page instead of trapping the wheel. Loads LangChain from a CDN, builds one agent per model
        (MemorySaver for multi-turn), streams tokens + tool chips, guards the missing key. The
        off-the-shelf companion to <code>mountChatUI</code>.
   */
@@ -388,7 +390,7 @@ export async function mountAgentChat(container, opts = {}) {
     return agents[model];
   }
   return mountChatUI(el, {
-    modules: opts.modules, models: opts.models, intro: opts.intro, greeting: opts.greeting, examples: opts.examples,
+    modules: opts.modules, models: opts.models, intro: opts.intro, greeting: opts.greeting, examples: opts.examples, growLog: opts.growLog,
     respond: async (text, ctx) => {
       const cfg = await getConfig();
       if (cfg.needsKey && !getKey()) { ctx.view.error("Add your nvapi- key on the course home, then chat."); return; }

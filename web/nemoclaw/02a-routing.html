@@ -291,7 +291,8 @@ const SPECIALISTS = {
 };
 
 helpers.mountChatUI("#router-artifact", {
-  greeting: "Ask a support question (billing, a technical error, your account…). I classify it, route it to a specialist, and answer in that voice.",
+  memory: true,
+  greeting: "Ask a support question (billing, a technical error, your account…). I classify it, route it to a specialist, and answer in that voice. Follow-ups keep the conversation; the 🧠 toggle clears it, and ✎ edit rewinds.",
   models: [
     { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
     { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
@@ -306,7 +307,7 @@ helpers.mountChatUI("#router-artifact", {
     const c = cat ? cat[0] : "other";
     ctx.view.tool("routed → " + c, "classifier replied: " + (raw || "(empty)"));
 
-    const s = await helpers.chatStream({ messages: [{ role: "system", content: SPECIALISTS[c] }, { role: "user", content: text }], model: ctx.model, max_tokens: 8196, signal: ctx.signal },
+    const s = await helpers.chatStream({ messages: [{ role: "system", content: SPECIALISTS[c] }, ...(ctx.history || []), { role: "user", content: text }], model: ctx.model, max_tokens: 8196, signal: ctx.signal },
       (t) => ctx.view.token(t), { onReasoning: (x) => ctx.view.reasoning(x) });
     const inTok  = (r.usage && r.usage.prompt_tokens || 0)     + (s.usage && s.usage.prompt_tokens || 0);
     const outTok = (r.usage && r.usage.completion_tokens || 0) + (s.usage && s.usage.completion_tokens || 0);

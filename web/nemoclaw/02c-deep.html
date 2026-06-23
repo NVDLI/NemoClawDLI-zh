@@ -556,8 +556,12 @@ return { graph_compiled: true };
     {
       id: "invoke", icon: "🚀", title: "Run the agent (+ trajectory viz)", x: 0, y: 3,
       summary: "Calls .invoke() on the compiled graph with a single user message. LangGraph runs the full ReAct loop internally (model decides, tool runs, observation appended, model reads observation and decides again) and returns the complete message list when finish_reason is 'stop'. The trajectory visualisation shows every message in order, so you can see exactly which steps the model took and how many tool calls it made.",
-      code: `const result = await state.agent.invoke({
-  messages: [{ role: "user", content: "What time is it right now in UTC?" }],
+      code: `const question = "What time is it right now in UTC?";
+// Try another (uncomment one) and rerun to watch the trajectory change:
+// const question = "What is the capital of France?";               // answered directly, no tool call
+// const question = "What time is it, and is that AM or PM in UTC?"; // one tool call, a longer answer
+const result = await state.agent.invoke({
+  messages: [{ role: "user", content: question }],
 });
 
 // Map LangGraph message objects to the role-tagged shape viz.messageList wants.
@@ -656,6 +660,9 @@ return { tools: ["write_file", "read_file", "list_files"], vfs_state: Object.key
   "nim_vs_hosting.md, a short comparison of using a managed NIM endpoint versus self-hosting a model directly, ",
   "covering latency, operational overhead, and when each makes sense.",
 ].join("");
+// Try a different multi-file research goal (uncomment one) and rerun:
+// state.goal = "Research vector databases and produce two files: vdb_basics.md, explaining what they are and how embeddings index data; and vdb_when.md, on when a vector database beats keyword search.";
+// state.goal = "Research the ReAct pattern and write two files: react_loop.md on how the loop works, and react_vs_workflow.md on when to use it versus a fixed workflow.";
 
 // withStructuredOutput is LangChain's wrapper over the same response_format
 // json_schema you passed by hand in module 2a; it binds the output to this

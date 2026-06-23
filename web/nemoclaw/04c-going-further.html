@@ -517,6 +517,14 @@
     conversation in memory. Pin a module to focus on one, or leave it on
     Auto-select.
   </p>
+  <div class="callout">
+    <strong>The shape you built runs in production.</strong> The OpenClaw agent you drove in Modules 3 and
+    4 is built on the <a href="https://github.com/earendil-works/pi-mono" target="_blank" rel="noopener">Pi
+    agent runtime</a> (pi-mono, by Mario Zechner), which OpenClaw internalized and wrapped with a
+    multi-channel gateway, the skills you ran, and the persisted memory you watched it keep. The core under
+    all of that is the same perceive-reason-act loop, tool calls, and growing message history you wrote by
+    hand in Module 1.
+  </div>
   <div id="capstone-cell"></div>
   <div id="capstone-artifact"></div>
   <script type="module">
@@ -536,8 +544,10 @@ helpers.mountAgentChat("#capstone-artifact", {
 
   modules: helpers.coursePages(),
   greeting: "You finished the course. Ask me anything you learned, like “how does the OpenShell sandbox differ from prompt rules?” or “quiz me on the ReAct loop,” and I'll read the relevant page and answer.",
-  examples: ["Quiz me on the ReAct loop", "How does the OpenShell sandbox differ from prompt rules?", "Summarize the whole course", "What's the difference between RAG and a deep-research agent?", "Walk me from a single LLM call to an always-on agent", "What are the main ways an agent can be attacked?"],
-  system: "You are this course's teaching assistant. Answer from pages you read with read_course_page; cite the page id you used. For a course-wide question (summarize the course, what will I build), read the 'overview' page first. If a page does not cover it, say so. You can also quiz the user when asked.",
+  examples: ["Quiz me on the ReAct loop", "Compare RAG with a deep-research agent", "Summarize Module 3 in five bullets", "How does OpenClaw's agent loop relate to the one I built in 1b?", "What is Pi, the runtime OpenClaw is built on?", "List the ways an agent can be attacked, with the page that covers each"],
+  system: "You are this course's teaching assistant. Answer from pages you read with read_course_page; cite the page id you used. Take commands: quiz the user, compare two topics, summarize one module, or walk the path from a single call to an always-on agent. For a course-wide question (summarize the course, what will I build), read the 'overview' page first. If a page does not cover it, say so.",
+  recursionLimit: 24,   // the capstone reads several pages per answer; match 01b/01c's headroom
+  growLog: true,        // the recap chat runs long; let it flow with the page instead of trapping the scroll
   buildTools: ({ tool, z, coursePage, coursePages }) => [
     tool(async ({ page }) => await coursePage(page),
       { name: "read_course_page", description: "Read a page of THIS course and return its text as markdown.",
