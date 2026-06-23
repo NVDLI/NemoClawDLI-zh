@@ -51,9 +51,9 @@
       "Keep contribution low-barrier with the quality bar held: the content discipline in QUALITY_DIRECTIVES.md and these tenets. The path is still forming."
     ],
     "assumptions": [
-      "The repository root is the canonical, open-source, replicable release. Everything worth keeping lives here and is versioned; scratch goes to /tmp and is never committed.",
+      "task1 is the canonical root: the open-source, replicable release. Everything worth keeping lives here and is versioned; scratch goes to /tmp and is never committed.",
       "Content is organized by execution surface: web/ (browser, remote services only) holds the released course and its course-scoped reference packets under web/nemoclaw/mats/; cpu/ holds the shared microservice stack it runs against, with shared repos/, scripts/, and workspace/.",
-      "The brain is each directory's SKILL.html skill-meta JSON, not a SKILL.md. Parse it first, then walk children: root to surface to course to content.",
+      "The brain is each directory's SKILL.html skill-meta JSON, not a SKILL.md. Parse it first, then walk children: task to surface to course to content.",
       "One link engine (scripts/engine.js) is the single source for resolution, crawl, reachability, and the release contract; it runs headless and in-browser, with no second implementation to drift.",
       "The released course is nemoclaw (Securing Agents); the foyer (web/index.html) surfaces only it."
     ],
@@ -191,11 +191,6 @@
           "desc": "Agent orientation: layout, services, rules."
         },
         {
-          "label": "AGENTS.md",
-          "href": "AGENTS.md",
-          "desc": "Cross-harness entry: instruction-precedence ladder and ownership discipline."
-        },
-        {
           "label": "CONTRIBUTING.md",
           "href": "CONTRIBUTING.md",
           "desc": "How to contribute: hooks, the validation gate, conventions."
@@ -256,7 +251,6 @@
   <ul>
     <li><a href="README.md">README.md</a></li>
     <li><a href="AGENT_QUICKSTART.md">AGENT_QUICKSTART.md</a></li>
-    <li><a href="AGENTS.md">AGENTS.md</a></li>
     <li><a href="CONTRIBUTING.md">CONTRIBUTING.md</a></li>
     <li><a href="QUALITY_DIRECTIVES.md">QUALITY_DIRECTIVES.md</a></li>
     <li><a href="SKILL_CONTRACT.md">SKILL_CONTRACT.md</a></li>

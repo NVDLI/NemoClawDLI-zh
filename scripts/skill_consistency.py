@@ -40,13 +40,29 @@ from pathlib import Path
 TASK1 = Path(__file__).resolve().parent.parent
 REPO = TASK1.parent if (TASK1.parent / ".git").exists() else TASK1
 SKIP_PARTS = {"__pycache__", ".ipynb_checkpoints", "node_modules", ".git", ".cache",
-              "export", "standalone", "dist", "build",
+              # generated build output (gitignored): public/ is the Pages build, the rest are
+              # bundler/export trees. Never source, and a build mid-flight makes subdirs appear
+              # and vanish under us, so walking into them crashes the scan. Prune them.
+              "public", "export", "standalone", "dist", "build",
               # gitignored lab-runtime cruft: never validate it (and do not rely on
               # filesystem permissions to skip it, e.g. a root-owned .Trash-0).
               ".Trash-0", "artifacts", "grounding_cache", "_paper_cache",
               ".exec_stage", ".solution"}
 # config/source suffixes worth scanning for duplicated facts
 SCAN_SUFFIX = (".html", ".md", ".py", ".js", ".yaml", ".yml", ".conf", ".json")
+
+
+def walk_files(root: Path, suffixes=None):
+    """os.walk with SKIP_PARTS pruned at the DIRECTORY level. Pruning beats rglob's
+    post-filter twice over: we never descend into a generated/cache tree, and we never
+    crash when a build dir vanishes mid-scan (the public/ FileNotFoundError this fixes)."""
+    import os
+    for dp, dns, fns in os.walk(root):
+        dns[:] = [d for d in dns if d not in SKIP_PARTS]
+        for fn in fns:
+            p = Path(dp) / fn
+            if suffixes is None or p.suffix in suffixes:
+                yield p
 
 
 def read(p: Path) -> str:
@@ -101,11 +117,7 @@ def warn(msg): WARNS.append(msg)
 def inv_openclaw_token():
     """Every <prefix>-openclaw-token literal in the tree must be dli-openclaw-token."""
     found: dict[str, list[str]] = {}
-    for p in TASK1.rglob("*"):
-        if not p.is_file() or p.suffix not in SCAN_SUFFIX:
-            continue
-        if any(s in p.parts for s in SKIP_PARTS):
-            continue
+    for p in walk_files(TASK1, SCAN_SUFFIX):
         for tok in re.findall(r'\b([a-z0-9][a-z0-9_-]*-openclaw-token)\b', read(p)):
             found.setdefault(tok, []).append(str(p.relative_to(REPO)))
     distinct = set(found)

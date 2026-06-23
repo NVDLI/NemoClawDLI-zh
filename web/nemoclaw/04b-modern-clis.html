@@ -179,12 +179,25 @@
       code: `// "Weigh the harnesses" artifact. Grounds on the vendored framework READMEs
 // (scripts/build_cli_readmes.py): an extract per CLI seeds the prompt; the toggles
 // inject a full README for the next question only.
-const META = await (await helpers.fetch("assets/cli_readmes.json")).json();
+// Metadata ships INLINE so the artifact never depends on a load-time fetch. Some serves do not deploy
+// assets/*.json, and a 404 there returns the HTML index, on which .json() throws and crashes the cell. The
+// full READMEs stay on demand (the toggles) and fall back to the inline extract when they are not served.
+const META = { frameworks: [
+  { id: "claude-code", name: "Claude Code", note: "Anthropic. Beacon CLAUDE.md.", source: "https://raw.githubusercontent.com/anthropics/claude-code/main/README.md", extract: "Claude Code is an agentic coding tool that lives in your terminal, understands your codebase, and helps you code faster by executing routine tasks, explaining complex code, and handling git workflows -- all through natural language commands. Use it in your terminal, IDE, or tag @claude on Github." },
+  { id: "codex", name: "Codex CLI", note: "OpenAI. Beacon AGENTS.md.", source: "https://raw.githubusercontent.com/openai/codex/main/README.md", extract: "Codex CLI is a coding agent from OpenAI that runs locally on your computer. If you want Codex in your code editor (VS Code, Cursor, Windsurf), install in your IDE. If you want the desktop app experience, run codex app or visit the Codex App page." },
+  { id: "cursor", name: "Cursor", note: "Closed-source editor agent. No public repo; described from the course.", source: "course-authored (no public repo)", extract: "Cursor is a closed-source AI code editor with a built-in agent. It has no public repository, so this description stands in for a README." },
+  { id: "hermes", name: "Hermes", note: "Nous Research. Self-modification and a messaging gateway turned on.", source: "https://raw.githubusercontent.com/NousResearch/hermes-agent/main/README.md", extract: "The self-improving AI agent built by Nous Research. It's the only one here with a built-in learning loop. It creates skills from experience, improves them during use, nudges itself to persist knowledge, searches its own past conversations, and builds a deepening model of who you are across sessions. Run it on a $5 VPS, a GPU cluster, or serverless infrastructure that costs nearly nothing when idle." },
+  { id: "openclaw", name: "OpenClaw", note: "In NVIDIA NemoClaw. No public repo; described from the course.", source: "course-authored (no public repo)", extract: "OpenClaw is the agent runtime this course drives. It runs a model in a loop with tools, the same application shape as the other CLI agents, with a few defaults turned up for unattended, long-running operation." }
+] };
 const FW = META.frameworks;                       // [{ id, name, note, source, extract }]
 const nameOf = (id) => (FW.find((f) => f.id === id) || {}).name || id;
 const _cache = {};
 async function readme(id) {
-  if (!_cache[id]) _cache[id] = await (await helpers.fetch("assets/cli_readme_" + id + ".txt")).text();
+  const fallback = () => (FW.find((f) => f.id === id) || {}).extract || "";
+  if (_cache[id] == null) {
+    try { const r = await helpers.fetch("assets/cli_readme_" + id + ".txt"); _cache[id] = r.ok ? await r.text() : fallback(); }
+    catch (e) { _cache[id] = fallback(); }
+  }
   return _cache[id];
 }
 
@@ -476,22 +489,24 @@ function gwCall(method, params) {
     ws.onclose = function () { if (_gw === sock) _gw = null; sock.ready = false; };
   });
 }
-// Verified live against the gateway: the agent's model is agents.defaults.model.primary (+ fallbacks),
-// and the available models are models.providers.<provider>.models[].id.
-function parsedOf(cfg) { return (cfg && cfg.parsed) || cfg || {}; }
-function modelOf(cfg) { const a = parsedOf(cfg).agents; return (a && a.defaults && a.defaults.model && a.defaults.model.primary) || ""; }
-function fallbacksOf(cfg) { const a = parsedOf(cfg).agents; return (a && a.defaults && a.defaults.model && a.defaults.model.fallbacks) || []; }
-function availModels(cfg) {
-  const provs = (parsedOf(cfg).models && parsedOf(cfg).models.providers) || {};
-  const out = [];
-  Object.keys(provs).forEach(function (k) { ((provs[k] && provs[k].models) || []).forEach(function (mm) { if (mm && mm.id) out.push(mm.id); }); });
-  return out;
-}
-
-const SLASH = ["/help", "/clear", "/reset", "/new", "/compact", "/model", "/models", "/usage", "/status", "/context", "/think", "/config", "/agents", "/subagents", "/mcp", "/tasks", "/review", "/whoami", "/commands"];
-const FRESH = ["/reset", "/new", "/compact"];
-const CHIPS = ["/help", "/model", "/status", "/reset", "What can you do?", "Summarize your workspace and your SOUL.md", "List the files in your workspace"];
+const SLASH =["/help", "/clear", "/branch", "/reset", "/new", "/compact", "/model", "/models", "/usage", "/status", "/context", "/think", "/config", "/agents", "/subagents", "/mcp", "/tasks", "/review", "/whoami", "/commands"];
+const CHIPS =["/help", "/model", "/status", "/reset", "What can you do?", "Summarize your workspace and your SOUL.md", "List the files in your workspace"];
 let session = "main", _ac = null, stopBtn = null;
+// A brand-new agent session runs an onboarding turn on its FIRST message (it greets and asks who you are),
+// which would otherwise consume the student's first real question. Warm each session once with a throwaway
+// turn (sent with no view, so it is not shown) so the first real message gets a real answer. Warmed sessions
+// are remembered across reloads; a /reset makes a session fresh again, so it is re-warmed.
+const _warmP = {};
+function _warmedList() { try { return JSON.parse(localStorage.getItem("nemoclaw_warmed") || "[]"); } catch (e) { return []; } }
+function isWarmed(s) { return _warmedList().indexOf(s) >= 0; }
+function markWarmed(s) { try { const d = _warmedList(); if (d.indexOf(s) < 0) { d.push(s); localStorage.setItem("nemoclaw_warmed", JSON.stringify(d)); } } catch (e) {} }
+function unmarkWarmed(s) { try { localStorage.setItem("nemoclaw_warmed", JSON.stringify(_warmedList().filter(function (x) { return x !== s; }))); } catch (e) {} delete _warmP[s]; }
+function warm(s) {
+  if (_warmP[s]) return _warmP[s];
+  if (isWarmed(s) || !connected()) { _warmP[s] = Promise.resolve(); return _warmP[s]; }
+  _warmP[s] = helpers.openclawChat("Hello", { session: s }).then(function () { markWarmed(s); }).catch(function () { delete _warmP[s]; });
+  return _warmP[s];
+}
 
 function makeView() {
   const o = document.querySelector("#agent-chat .da-out");
@@ -517,64 +532,66 @@ const con = helpers.mountConsole("#agent-chat", {
   greeting: connected() ? "Connected to your agent over the gateway. Ask it anything, type /help for commands, click a prompt, or press Tab to autocomplete." : "",
   onSubmit: async (msg, c) => {
     const m = msg.trim();
-    if (m === "/help" || m === "?" || m === "/commands") return c.write("This panel: /help, /clear, /reset (or /new, /compact) start a fresh conversation; /model, /status, /config, /agents query the gateway live. Type / to autocomplete the OpenClaw command set; anything else goes to your agent.", "da-dim");
-    if (m === "/clear") return c.clear();
-    if (FRESH.indexOf(m) >= 0) { session = "main-" + Date.now(); return c.write("Started a fresh conversation; the agent will not see earlier turns in this panel.", "da-dim"); }
-    if (m === "/model" || m === "/models" || m.indexOf("/model ") === 0) {
-      const arg = m.indexOf("/model ") === 0 ? m.slice(7).trim() : "";
-      c.write("config.get ...", "da-dim");
+    if (m === "/help" || m === "?") return c.write("This panel runs every OpenClaw command live over the gateway. Local helpers drive the panel itself: /clear empties this screen, /commands lists the full gateway set, and /new plus /branch manage the tabs above (your branches): /branch new opens one, /branch <name> switches to or creates one, /branch list shows them, /branch close <name> drops one. Anything without a slash is sent to your agent as chat.", "da-dim");
+    if (m === "/commands") {
+      c.write("commands.list ...", "da-dim");
       try {
-        const cfg = await gwCall("config.get", {});
-        const mdl = modelOf(cfg), fb = fallbacksOf(cfg), avail = availModels(cfg);
-        if (m === "/models") {
-          if (!avail.length) { c.write("No models found in the live config.", "da-dim"); return; }
-          c.write("Models in the live config:", "da-dim");
-          avail.forEach(function (id) { c.write("  " + id + (id === mdl ? "  (current)" : ""), "da-dim"); });
-          return;
-        }
-        if (arg) {
-          if (avail.indexOf(arg) < 0) { c.write(arg + " is not in the available models. Type /models to list them.", "da-dim"); return; }
-          c.write("config.patch: agents.defaults.model.primary -> " + arg + " ...", "da-dim");
-          const r = await gwCall("config.patch", { raw: JSON.stringify({ agents: { defaults: { model: { primary: arg } } } }), baseHash: cfg.hash });
-          if (r && r.ok) c.write(r.noop ? ("Already on " + arg + ".") : ("Model set to " + arg + ". New turns use it; run /reset to start the conversation fresh on it."), "da-dim");
-          else c.write("config.patch returned: " + JSON.stringify(r).slice(0, 160), "da-dim");
-          return;
-        }
-        c.write("Current model (live): " + (mdl || "(not set)"), "da-dim");
-        if (fb.length) c.write("Fallbacks: " + fb.join(", "), "da-dim");
-        if (avail.length) c.write(avail.length + " models available. /models to list, /model <id> to switch.", "da-dim");
-      } catch (e) { c.write("config.get/patch failed: " + ((e && e.message) || e), "da-err"); }
+        const r = await gwCall("commands.list", {}); const cmds = (r && r.commands) || [];
+        if (!cmds.length) { c.write("No commands reported by the gateway.", "da-dim"); return; }
+        let cat = "";
+        cmds.slice().sort(function (a, b) { return (a.category || "").localeCompare(b.category || "") || (a.name || "").localeCompare(b.name || ""); }).forEach(function (cmd) {
+          if ((cmd.category || "") !== cat) { cat = cmd.category || ""; c.write((cat || "other") + ":", "da-cmd"); }
+          const alias = (cmd.textAliases && cmd.textAliases[0]) || ("/" + cmd.name);
+          c.write("  " + alias + (cmd.acceptsArgs ? " <args>" : "") + (cmd.description ? "  " + cmd.description : ""), "da-dim");
+        });
+      } catch (e) { c.write("commands.list failed: " + ((e && e.message) || e), "da-err"); }
       return;
     }
-    if (m === "/status") {
-      c.write("environments.list ...", "da-dim");
-      try { const r = await gwCall("environments.list", {}); const envs = (r && r.environments) || [];
-        if (!envs.length) c.write("No environments reported.", "da-dim"); else envs.forEach(function (e) { c.write("· " + (e.id || "env") + ": " + (e.status || "?"), "da-dim"); });
-      } catch (e) { c.write("environments.list failed: " + ((e && e.message) || e), "da-err"); }
+    if (m === "/clear") return c.clear();
+    // Branches ARE this panel's tabs (one agent session each), so /new and /branch are handled locally: the
+    // gateway has no /branch command (it returns empty) and a server-side /new would not surface as a tab.
+    if (m === "/new") { addBranch(); return; }
+    if (m === "/branch" || m.indexOf("/branch ") === 0) {
+      const arg = m.indexOf("/branch ") === 0 ? m.slice(8).trim() : "";
+      if (!arg || arg === "new") { addBranch(); return; }
+      if (arg === "list" || arg === "ls") { c.write("branches: " + tabs.map(function (t) { return t === session ? t + " (active)" : t; }).join(", "), "da-dim"); return; }
+      if (arg.indexOf("close") === 0) { const nm = arg.slice(5).trim() || session; if (tabs.indexOf(nm) < 0) return c.write("no branch named '" + nm + "'", "da-err"); if (tabs.length <= 1) return c.write("cannot close the last branch.", "da-err"); closeTab(nm); return; }
+      if (tabs.indexOf(arg) < 0) { tabs.push(arg); logs[arg] = ""; saveBranches(); }
+      switchTab(arg); warm(arg);
       return;
     }
-    if (m === "/config") {
-      c.write("config.get ...", "da-dim");
-      try { const cfg = await gwCall("config.get", {}); const pp = (cfg && cfg.parsed) || cfg || {}; c.write(JSON.stringify(pp, null, 2).slice(0, 2000)); }
-      catch (e) { c.write("config.get failed: " + ((e && e.message) || e), "da-err"); }
-      return;
-    }
-    if (m.charAt(0) === "/") {
-      const cmd = m.split(" ")[0];
-      if (SLASH.indexOf(cmd) >= 0) return c.write(cmd + " is an OpenClaw command that runs in openclaw tui on your launchable, not in this gateway chat.", "da-dim");
-      return c.write("Not a command this panel handles. Type /help, or / to autocomplete the OpenClaw commands.", "da-dim");
-    }
+    // Everything else, slash command or chat, runs on the agent over the gateway: it executes the real
+    // slash commands (/whoami, /model, /reset, /usage, /status, /tools, /think, ...) and answers chat alike.
+    // A chat (not a command) to a not-yet-warmed session waits for the one-time onboarding to be absorbed.
+    if (m.charAt(0) !== "/") { if (!isWarmed(session)) c.write("setting up this session (the first reply takes a moment)…", "da-dim"); await warm(session); }
     _ac = new AbortController();
     if (stopBtn) stopBtn.style.display = "";
+    const isCmd = m.charAt(0) === "/";
+    if (isCmd) c.write("running " + m.split(" ")[0] + " ...", "da-dim");
     const view = makeView();
-    try { const r = await helpers.openclawChat(msg, { session: session, view: view, signal: _ac.signal }); if (!view.streamed && r) c.write(r); }
-    catch (e) { c.write((e && e.message) || String(e), "da-err"); }
+    try {
+      const r = await helpers.openclawChat(msg, { session: session, view: view, signal: _ac.signal });
+      if (!view.streamed) c.write(r || (isCmd ? "(done)" : "(no reply)"));
+    } catch (e) { c.write((e && e.message) || String(e), "da-err"); }
     finally { if (stopBtn) stopBtn.style.display = "none"; _ac = null; }
+    // /reset wipes the session back to fresh, so it will onboard again: re-warm it in the background.
+    if (m === "/reset") { unmarkWarmed(session); warm(session); }
   },
 });
 
 const dl = document.querySelector("#agent-chat datalist");
-if (dl) SLASH.filter(function (s2) { return CHIPS.indexOf(s2) < 0; }).forEach(function (s2) { const o2 = document.createElement("option"); o2.value = s2; dl.appendChild(o2); });
+function addOpt(v) { if (dl && v) { const o2 = document.createElement("option"); o2.value = v; dl.appendChild(o2); } }
+SLASH.filter(function (s2) { return CHIPS.indexOf(s2) < 0; }).forEach(addOpt);   // static fallback; replaced by the live list below
+if (connected()) (async function () {
+  try {
+    const r = await gwCall("commands.list", {}); const cmds = (r && r.commands) || [];
+    if (dl && cmds.length) {
+      dl.innerHTML = ""; const seen = {};
+      cmds.forEach(function (cmd) { const a = (cmd.textAliases && cmd.textAliases[0]) || ("/" + cmd.name); if (a && !seen[a]) { seen[a] = 1; addOpt(a); } });
+      ["/clear", "/reset", "/model", "/models", "/status", "/config", "/help", "/commands"].forEach(function (a) { if (!seen[a]) { seen[a] = 1; addOpt(a); } });
+    }
+  } catch (e) {}
+})();
 
 const line = document.querySelector("#agent-chat .da-line");
 if (line) {
@@ -590,6 +607,7 @@ const termEl = document.querySelector("#agent-chat .da-term");
 const outEl = document.querySelector("#agent-chat .da-out");
 let tabs = ["main"], branchN = 0;
 const logs = { main: "" };
+function saveBranches() { try { localStorage.setItem("nemoclaw_branches", JSON.stringify(tabs)); } catch (e) {} }
 const tabBar = document.createElement("div");
 tabBar.style.cssText = "display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;";
 function renderTabs() {
@@ -617,15 +635,47 @@ function switchTab(name) {
   if (!logs[name]) con.write("Branch '" + name + "': a fresh agent session. Other branches are kept; switch tabs to revisit them.", "da-dim");
   renderTabs();
 }
-function addBranch() { branchN += 1; const name = "branch-" + branchN; tabs.push(name); logs[name] = ""; switchTab(name); }
+function addBranch() { do { branchN += 1; } while (tabs.indexOf("branch-" + branchN) >= 0); const name = "branch-" + branchN; tabs.push(name); logs[name] = ""; saveBranches(); switchTab(name); warm(name); }
 async function closeTab(name) {
   if (tabs.length <= 1) return;
   try { await gwCall("sessions.delete", { key: name }); } catch (e) {}
-  tabs = tabs.filter(function (t) { return t !== name; }); delete logs[name];
+  tabs = tabs.filter(function (t) { return t !== name; }); delete logs[name]; saveBranches();
   if (session === name) { session = tabs[0]; if (outEl) outEl.innerHTML = logs[session] || ""; }
   renderTabs();
 }
-if (connected() && termEl && outEl) { termEl.insertBefore(tabBar, termEl.firstChild); renderTabs(); }
+if (connected() && termEl && outEl) {
+  termEl.insertBefore(tabBar, termEl.firstChild);
+  // Branches persist in this browser: the panel owns its own tab list. We do NOT scrape the gateway's
+  // session list, which surfaces junk keys (e.g. a stale main-<timestamp> left by another client) as tabs.
+  // A branch's context still lives on the gateway under its name; switching back resumes it.
+  try {
+    const saved = JSON.parse(localStorage.getItem("nemoclaw_branches") || "[]");
+    if (Array.isArray(saved)) saved.forEach(function (n) { if (n && typeof n === "string" && tabs.indexOf(n) < 0) { tabs.push(n); if (!(n in logs)) logs[n] = ""; } });
+  } catch (e) {}
+  renderTabs();
+  warm(session);   // pre-warm the active session in the background so the first real message is instant
+}
+// Hide this cell's JavaScript by default (the panel is the artifact); a header toggle reveals it.
+(function () {
+  const box = document.querySelector("#cell-agentchat");
+  if (!box) return;
+  if (!document.getElementById("ac-hidecode")) {
+    const st = document.createElement("style"); st.id = "ac-hidecode";
+    st.textContent = "#cell-agentchat .rc-helpers,#cell-agentchat .rc-schemas,#cell-agentchat .rc-code,#cell-agentchat .CodeMirror,#cell-agentchat .rc-out{display:none;}#cell-agentchat.rc-show .rc-helpers,#cell-agentchat.rc-show .rc-schemas,#cell-agentchat.rc-show .rc-code,#cell-agentchat.rc-show .CodeMirror,#cell-agentchat.rc-show .rc-out{display:block;}";
+    document.head.appendChild(st);
+  }
+  const runBtn = box.querySelector(".rc-run"); const hdr = runBtn && runBtn.parentNode;
+  if (hdr && !hdr.querySelector(".ac-codetoggle")) {
+    const tg = document.createElement("button"); tg.type = "button"; tg.className = "ac-codetoggle"; tg.textContent = "show code";
+    tg.style.cssText = "margin-right:8px;background:var(--e1);color:var(--td);border:1px solid var(--bd);border-radius:4px;padding:4px 10px;font-family:var(--mono);font-size:.75rem;cursor:pointer;";
+    tg.addEventListener("click", function () {
+      const on = box.classList.toggle("rc-show");
+      tg.textContent = on ? "hide code" : "show code";
+      if (on) { const cm = box.querySelector(".CodeMirror"); if (cm && cm.CodeMirror) setTimeout(function () { cm.CodeMirror.refresh(); }, 0); }
+    });
+    hdr.insertBefore(tg, runBtn);
+  }
+})();
 helpers.log("agent chat mounted below.");
 `,
     });

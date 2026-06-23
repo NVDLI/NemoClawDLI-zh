@@ -32,14 +32,22 @@ test:
   # Advisory gate: it reports, but a failure here never blocks the Pages deploy.
   allow_failure: true
   script:
+    # The structural gate is identical on every branch. A translate-<lang> branch additionally
+    # passes --lang so validate_bundle skips the English-prose style suites (which would
+    # false-positive on correct target-language text); the language is derived from the branch name.
+    # The lang is derived inline per command so it does not depend on env persisting across lines.
     - python3 scripts/validate_layout.py --quiet
     - python3 scripts/skill_consistency.py
+    - python3 scripts/skill_contract.py
     - bash   scripts/run_engine.sh --self-test
-    - python3 scripts/validate_bundle.py --scope ship
+    - 'L=""; case "$CI_COMMIT_BRANCH" in translate-*) L="--lang ${CI_COMMIT_BRANCH#translate-}";; esac; python3 scripts/validate_bundle.py --scope ship $L'
     # Live materials drift check: re-fetch the on-demand sources and compare to the committed
     # fingerprints. allow_failure keeps a drift/outage from blocking the deploy; it surfaces as a
     # red (complaining) job here, and as the materials section on the validator screen.
     - python3 scripts/pull_materials.py --check
+    # On a translation branch, report what changed on the source since this translation's base so the
+    # job log shows the re-translate list. Advisory: a translator syncs at their own cadence.
+    - 'case "$CI_COMMIT_BRANCH" in translate-*) python3 scripts/translate/translation_status.py --check || echo "translation drift is advisory; sync at your cadence";; esac'
   artifacts:
     when: always
     name: "gate-$CI_COMMIT_SHORT_SHA"
@@ -52,13 +60,17 @@ pages:
   stage: deploy
   needs: ["test"]
   script:
+    # build_pages builds the source language at the site root AND each translate-<lang> branch it can
+    # see into public/<lang>/, so this one deploy serves every language. On the rsync-mirror
+    # production site (NemoClawDLIOS), publish pushes the translate-* branches to that remote first,
+    # then this job (running there from the default branch) aggregates them into the one Pages site.
     - bash scripts/build_pages.sh public
   artifacts:
     paths:
       - public
   rules:
-    # Run on the default branch (when this is its own extracted standalone repo) or on
-    # nemoclaw-only (when the course is served from the shared s-fx-43-v1 repo, whose
-    # default branch is the full bundle). GitLab Pages serves the latest pages artifact.
+    # The source deploy: the default branch (standalone repo) or nemoclaw-only (served from the
+    # s-fx-43-v1 bundle). It aggregates every language, so translate-* branches do not deploy on their
+    # own; they run the test gate (validate --lang + the drift report) and ship through this build.
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
     - if: '$CI_COMMIT_BRANCH == "nemoclaw-only"'

@@ -710,9 +710,9 @@ export async function openclawChat(message, { session = "main", onToken, onTool,
   const argSummary = (a) => { if (a == null) return ""; if (typeof a === "string") return a;
     const v = a.command || a.path || a.query || a.file || Object.values(a)[0]; return v == null ? "" : String(v); };
   return await new Promise((resolve, reject) => {
-    let text = "", myRun = null, idle, glob, toolStarts = 0, usedTok = 0, winTok = 0, lastModel = "";
+    let text = "", myRun = null, idle, glob, toolStarts = 0, usedTok = 0, winTok = 0, lastModel = "", finished = false, sawAgent = false;
     const chips = {};   // toolCallId -> chip element (stack-ordered, never reused)
-    const done = (stalled) => { clearTimeout(idle); clearTimeout(glob); sock.setCb(null);
+    const done = (stalled) => { if (finished) return; finished = true; clearTimeout(idle); clearTimeout(glob); sock.setCb(null);
       if (stalled) sock.call("chat.abort", { sessionKey: session }).catch(() => {});
       if (!text.trim() && toolStarts > 0) text = "(the agent ran " + toolStarts + " tool(s) but returned no text. Try the Health check / Recover cells on Kickstart)";
       if (view && usedTok) view.usage({ context: usedTok, window: winTok || undefined, model: lastModel });
@@ -733,9 +733,10 @@ export async function openclawChat(message, { session = "main", onToken, onTool,
       if (pl.totalTokens) usedTok = pl.totalTokens;
       if (pl.contextTokens) winTok = pl.contextTokens;
       if (pl.model) lastModel = pl.model;
-      if (d.event === "chat" && pl.state === "final") { text = (pl.message && pl.message.content && pl.message.content[0] && pl.message.content[0].text) || text; return; }
+      if (d.event === "chat" && pl.state === "final") { const ft = (pl.message && pl.message.content && pl.message.content[0] && pl.message.content[0].text) || ""; if (ft) text = ft; if (!sawAgent && ft) done(false); return; }
       if (d.event !== "agent") return;
       const sk = pl.sessionKey || ""; if (sk !== session && !sk.endsWith(":" + session)) return;
+      sawAgent = true;
       const data = pl.data || {}, stream = pl.stream || "";
       const id = data.toolCallId;
       if (stream === "assistant" || ("delta" in data && "text" in data)) {

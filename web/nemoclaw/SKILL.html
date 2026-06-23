@@ -82,6 +82,14 @@
     {
       "name": "studio",
       "path": "web/nemoclaw/studio.html"
+    },
+    {
+      "name": "assets",
+      "path": "web/nemoclaw/assets/SKILL.html"
+    },
+    {
+      "name": "mats",
+      "path": "web/nemoclaw/mats/SKILL.html"
     }
   ]
 }
@@ -90,7 +98,7 @@
 {
   "mode": "hub",
   "title": "web/nemoclaw \u00b7 course hub",
-  "summary": "Securing Agents: the browser course.",
+  "summary": "Securing Agents: the browser course. Build an agent from the loop up (reasoning, tools, retrieval, memory), then contain it with the OpenShell sandbox and weigh the modern CLI agents that wrap it.",
   "ties": [
     "build"
   ],
@@ -102,62 +110,62 @@
         {
           "label": "01a-loop",
           "href": "01a-loop.html",
-          "desc": ""
+          "desc": "The agent loop: a stateless model wrapped in a read, decide, act cycle."
         },
         {
           "label": "01b-react",
           "href": "01b-react.html",
-          "desc": ""
+          "desc": "ReAct: the model reasons, then calls tools, and how context rot creeps in."
         },
         {
           "label": "01c-tools",
           "href": "01c-tools.html",
-          "desc": ""
+          "desc": "Tool calling: the model requests, your code runs, the model reads the result."
         },
         {
           "label": "02a-routing",
           "href": "02a-routing.html",
-          "desc": ""
+          "desc": "Route a request to one specialist with a typed enum."
         },
         {
           "label": "02b-rag",
           "href": "02b-rag.html",
-          "desc": ""
+          "desc": "The Index Agent: retrieval wired as a tool, from corpus to grounded answer."
         },
         {
           "label": "02c-deep",
           "href": "02c-deep.html",
-          "desc": ""
+          "desc": "Deep agents: a planner delegating to sub-agents over a shared filesystem."
         },
         {
           "label": "03a-kickstart",
           "href": "03a-kickstart.html",
-          "desc": ""
+          "desc": "Kickstart: the model and agent-runtime endpoints you drive from here."
         },
         {
           "label": "03b-openclaw",
           "href": "03b-openclaw.html",
-          "desc": ""
+          "desc": "OpenClaw: the workspace folder is the agent's live configuration."
         },
         {
           "label": "03c-always-on",
           "href": "03c-always-on.html",
-          "desc": ""
+          "desc": "Always-on agents: a per-turn loop nested inside slower triggers."
         },
         {
           "label": "04a-safety",
           "href": "04a-safety.html",
-          "desc": ""
+          "desc": "The NemoClaw sandbox: kernel-enforced policy the prompt cannot talk past."
         },
         {
           "label": "04b-modern-clis",
           "href": "04b-modern-clis.html",
-          "desc": ""
+          "desc": "Modern CLI agents compared, plus a real terminal on your launchable."
         },
         {
           "label": "04c-going-further",
           "href": "04c-going-further.html",
-          "desc": ""
+          "desc": "Going further: the layered view and where to take it next."
         },
         {
           "label": "SKILL",
@@ -167,22 +175,22 @@
         {
           "label": "cert",
           "href": "cert.html",
-          "desc": ""
+          "desc": "Course completion certificate."
         },
         {
           "label": "courses",
           "href": "courses.html",
-          "desc": ""
+          "desc": "Catalog redirect stub."
         },
         {
           "label": "glossary",
           "href": "glossary.html",
-          "desc": ""
+          "desc": "Searchable glossary of the course's agent terms."
         },
         {
           "label": "index",
           "href": "index.html",
-          "desc": ""
+          "desc": "Human entry: the course landing and API-key setup."
         }
       ]
     },
@@ -192,7 +200,22 @@
         {
           "label": "studio",
           "href": "studio.html",
-          "desc": ""
+          "desc": "Authoring and inspection studio for the course pages."
+        }
+      ]
+    },
+    {
+      "title": "Provenance",
+      "items": [
+        {
+          "label": "image provenance",
+          "href": "assets/SKILL.html",
+          "desc": "Source, license, and connection level for every image."
+        },
+        {
+          "label": "material provenance",
+          "href": "mats/SKILL.html",
+          "desc": "Source and connection level for every companion essay."
         }
       ]
     }
@@ -234,6 +257,11 @@
   <h2>Tools</h2>
   <ul>
     <li><a href="studio.html">studio</a></li>
+  </ul>
+  <h2>Provenance</h2>
+  <ul>
+    <li><a href="assets/SKILL.html">image provenance</a></li>
+    <li><a href="mats/SKILL.html">material provenance</a></li>
   </ul>
 </noscript>
 <script src="../_skill_explorer.js"></script>

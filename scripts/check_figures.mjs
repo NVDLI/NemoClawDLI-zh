@@ -12,15 +12,22 @@
 // SELF-TESTS every detector against a known-bad input and refuses to report clean if any
 // fails to fire (a check that cannot fail is a lie). --json prints {checked, findings};
 // exits nonzero on any finding.
-import fs from "fs"; import os from "os"; import path from "path"; import { fileURLToPath } from "url";
+import fs from "fs"; import path from "path"; import { fileURLToPath } from "url";
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const NEMO = process.env.FIG_NEMO || path.resolve(HERE, "..", "web", "nemoclaw");
-const tmp = path.join(os.tmpdir(), "_shared_figcheck.mjs");
+// _shared.js must load as ESM (node reads a bare .js as CJS without a package "type"), so we stage
+// a .mjs shim of it. The shim has to sit BESIDE the real course modules, not in /tmp: _shared.js
+// imports siblings (./_diagram.js, ./_chat.js, ...) by relative path, and those resolve only from
+// inside the course dir. Staging in /tmp is what broke once _shared.js was split into modules
+// (ERR_MODULE_NOT_FOUND ./_diagram.js). Write it here, import it, and always remove it.
+const tmp = path.join(NEMO, ".figcheck_shared.mjs");
 fs.writeFileSync(tmp, fs.readFileSync(path.join(NEMO, "_shared.js")));
-const shared = await import("file://" + tmp);
+let shared;
+try { shared = await import("file://" + tmp); }
+finally { try { fs.unlinkSync(tmp); } catch { /* best-effort cleanup */ } }
 const { diagramSVG } = shared;
 
 // jsdom is CJS and ESM import() ignores NODE_PATH, so resolve it via require (FIG_JSDOM = its

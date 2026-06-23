@@ -58,6 +58,24 @@ if [ -f "$GUARD" ]; then
     fi
 fi
 
+# ── RULE 3b: SKILL contract conformance ──────────────────────────────────────
+# Parity with RULE 3: where the consistency guard proves duplicated facts agree and paths
+# resolve, this proves each skill-meta is a WELL-FORMED contract of its kind (classifies into a
+# known kind, carries that kind's required keys, valid schema/node_type, semver, notebook status).
+# A malformed beacon is what an agent samples and is misled by, so block the push. Drift (a beacon
+# that no longer matches its directory) is advisory and surfaces in the gate, not here.
+CONTRACT="$T1/scripts/skill_contract.py"
+if [ -f "$CONTRACT" ]; then
+    if ! python3 "$CONTRACT"; then
+        echo ""
+        echo "pre-push: REFUSING PUSH — a SKILL contract is malformed."
+        echo "A skill-meta does not classify into a known kind, drops a required key, or carries an"
+        echo "invalid schema/node_type/version/status. Each FAIL names the SKILL and the field. See"
+        echo "SKILL_CONTRACT.md, then run:  python3 scripts/skill_contract.py"
+        exit 1
+    fi
+fi
+
 # ── RULE 4: layout / link glue guard ──────────────────────────────────────────
 LAYOUT="$T1/scripts/validate_layout.py"
 if [ -f "$LAYOUT" ]; then

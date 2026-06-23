@@ -16,6 +16,10 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 T1="$(dirname "$HERE")"            # task1 root (scripts/ is directly under it)
 OUT="${1:-$T1/public}"
+# Build the source language at $OUT root, then each translate-<lang> branch into $OUT/<lang>/ so one
+# Pages site serves every language. BUILD_PAGES_LANGS=0 disables that loop; it is set on the
+# recursive per-language build so a language build never tries to build languages of its own.
+LANGS="${BUILD_PAGES_LANGS:-1}"
 
 echo "[build_pages] task1 root: $T1"
 echo "[build_pages] output:     $OUT"
@@ -162,6 +166,35 @@ cat > "$OUT/tests.html" <<'HTML'
 <script src="web/_skill_explorer.js"></script>
 </body></html>
 HTML
+
+# ── 6. Translations: each translate-<lang> branch built into public/<lang>/ ──
+# A translation is a never-merged overlay branch with identical structure, so it builds with this
+# same script from a throwaway worktree of the branch, into $OUT/<lang>/. One Pages site then serves
+# the source at root and every language at /<lang>/, with relative links resolving under the subpath.
+# This is how a translation reaches the rsync-mirror production site (NemoClawDLIOS): publish pushes
+# the translate-* branches to that remote, and this loop builds each one it can see.
+if [ "$LANGS" = 1 ] && git -C "$T1" rev-parse --git-dir >/dev/null 2>&1; then
+    # CI checks out only the branch being built, so fetch the language branches into remote-tracking
+    # refs first (best-effort: offline / a local checkout that already has them is fine).
+    git -C "$T1" fetch origin '+refs/heads/translate-*:refs/remotes/origin/translate-*' --quiet 2>/dev/null || true
+    refs="$(git -C "$T1" for-each-ref --format='%(refname:short)' \
+            'refs/heads/translate-*' 'refs/remotes/*/translate-*' 2>/dev/null \
+            | sed 's#^.*/##' | sort -u)"
+    for br in $refs; do
+        lang="${br#translate-}"
+        [ -n "$lang" ] || continue
+        wt="$(mktemp -d)"
+        if git -C "$T1" worktree add -q --detach "$wt" "$br" 2>/dev/null \
+           || git -C "$T1" worktree add -q --detach "$wt" "origin/$br" 2>/dev/null; then
+            echo "[build_pages] language $lang -> $OUT/$lang/ (from branch $br) ..."
+            BUILD_PAGES_LANGS=0 bash "$wt/scripts/build_pages.sh" "$OUT/$lang" \
+                || echo "[build_pages]   WARN: $lang build failed; the other languages still ship"
+            git -C "$T1" worktree remove --force "$wt" 2>/dev/null || rm -rf "$wt"
+        else
+            echo "[build_pages]   WARN: cannot check out $br; skipping $lang"; rm -rf "$wt"
+        fi
+    done
+fi
 
 echo "[build_pages] done -> $OUT"
 echo "[build_pages] preview locally: python3 -m http.server -d $OUT 8000"

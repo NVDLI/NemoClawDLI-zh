@@ -141,6 +141,11 @@
       "title": "SKILL & consistency",
       "files": [
         {
+          "path": "skill_contract.py",
+          "role": "SKILL contract conformance",
+          "desc": "Every skill-meta is a well-formed contract of its kind (required keys, known schema/node_type, semver, valid notebook status) and matches its directory (drift, reused from skill_audit). The agent-facing leg the link engine and consistency check did not cover. Rides the gate as the skill_schema + skill_drift suites; --fix repairs mechanical drift."
+        },
+        {
           "path": "skill_consistency.py",
           "role": "SKILL invariant + dangling check",
           "desc": "Facts duplicated across files must agree, every concrete path a skill-meta points at must exist, and a service SKILL must have a tester. Absence where expected is a FAIL, not a pass."
@@ -148,12 +153,22 @@
         {
           "path": "skill_audit.py",
           "role": "SKILL coverage audit",
-          "desc": "Audits the SKILL beacons for the directory-observability contract."
+          "desc": "Audits the SKILL beacons for the directory-observability contract; the drift detector skill_contract reuses, and the --fix engine behind skill_contract --fix."
         },
         {
           "path": "gen_skill_hierarchy.py",
           "role": "SKILL hub generator",
           "desc": "Generates the hub SKILL.html files from the live tree so the documented hierarchy cannot drift from reality."
+        }
+      ]
+    },
+    {
+      "title": "Language branches",
+      "files": [
+        {
+          "path": "translate/SKILL.html",
+          "role": "translation toolchain (its own beacon)",
+          "desc": "How a translate-<lang> branch overlays the source: translate the reader-facing prose under web/, carry code/assets/contracts verbatim. Holds translation_status.py (the drift tool: what changed upstream since the base, split re-translate vs merge-verbatim) and the translation_base.json sync marker. validate_bundle --lang and the translate-* CI/CD routine deploy each language under /<lang>/. Open translate/SKILL.html for the full process."
         }
       ]
     },
@@ -294,6 +309,15 @@
         281
       ],
       "note": "The dangling check: every concrete repo path a skill-meta points at must exist, or it is a FAIL. This is the contract that makes a folder explorer's file index trustworthy."
+    },
+    {
+      "title": "Is the beacon a valid contract?",
+      "file": "skill_contract.py",
+      "lines": [
+        72,
+        110
+      ],
+      "note": "The conformance leg the other checks left open. KINDS encodes the de-facto contract read off the shipped tree (service-skill, service-index, dir-skill, hub, leaf); a meta that classifies into none, or drops a required key, is a beacon an agent cannot trust. Rides the gate as skill_schema + skill_drift."
     }
   ],
   "related": [

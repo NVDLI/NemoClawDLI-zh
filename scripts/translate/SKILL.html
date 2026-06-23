@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>scripts/translate/ · language branches · explore</title>
+
+<script type="application/json" id="skill-meta">
+{
+  "schema": "dir-skill/1.0",
+  "node_type": "directory-explorer",
+  "title": "scripts/translate/ language branches",
+  "source_dir": "scripts/translate/",
+  "summary": "How a language branch (translate-<lang>, the first is translate-pt) is built and kept in sync. A translation is a full overlay of the source branch: the same files, with the reader-facing prose under web/ rendered in the target language and everything else (code, assets, the skill-meta machine contracts) carried verbatim, so every build, gate, and deploy that runs on the source runs on the translation too. The one abstraction is a sync marker (translation_base.json) recording the source commit the translation reflects; translation_status.py diffs the source against it and splits the change into a re-translate list (prose) and a merge-verbatim list (code/asset/contract). validate_bundle --lang skips the English-prose style suites that would false-positive on correct target-language text while the structural suites still gate, and one aggregating build_pages run serves the source at the site root and every translate-<lang> branch under /<lang>/.",
+  "related": [
+    "scripts/translate/translation_status.py",
+    "scripts/translate/translation_base.json",
+    "scripts/translate/README.md",
+    "scripts/validate_bundle.py"
+  ],
+  "explorer": "../../web/_skill_explorer.js"
+}
+</script>
+
+<script type="application/json" id="explorer-config">
+{
+  "title": "scripts/translate/ · language branches",
+  "summary": "A translation is the same course in another language: a translate-<lang> branch that overlays the source, translating the reader-facing prose under web/ and carrying code, assets, and every skill-meta contract verbatim. This folder is the toolchain that keeps that overlay in step with the source. Open the README for the full process, the status tool to see what a sync needs, and walk the guided tour for the contributor loop. Ask the model about any of it with your build.nvidia.com key.",
+  "model": "nvidia/nemotron-3-nano-30b-a3b",
+  "ties": [
+    "build"
+  ],
+  "nav": {
+    "home": "../../web/index.html",
+    "up": {
+      "label": "the bundle toolchain",
+      "href": "../SKILL.html"
+    }
+  },
+  "groups": [
+    {
+      "title": "Translation toolchain",
+      "files": [
+        {
+          "path": "README.md",
+          "role": "the process, in full",
+          "desc": "What a language branch is (a full overlay of the source), what gets translated vs carried verbatim, the sync marker, the contributor workflow end to end, and how translate-* CI/CD validates and deploys under /<lang>/. Start here."
+        },
+        {
+          "path": "translation_status.py",
+          "role": "the drift tool",
+          "desc": "What changed on the source since this translation's base, split into TO RE-TRANSLATE (prose the reader sees) and TO MERGE VERBATIM (code, assets, the skill-meta contract). The loop a translation lives in: read the status, act on the delta, advance the base (--set-base). --json and --check (CI) too."
+        },
+        {
+          "path": "translation_base.json",
+          "role": "the sync marker",
+          "desc": "Records the source commit this translation reflects (lang + upstream + base_sha). On the source branch lang is null (nothing to sync). The whole drift abstraction is git diff base_sha..upstream, classified per file."
+        }
+      ]
+    }
+  ],
+  "tour": [
+    {
+      "title": "1 · The overlay and the split",
+      "file": "translation_status.py",
+      "note": "A translation overlays the source: prose under web/ is translated, everything else is carried verbatim so the code and the skill-meta contract never fork. classify() encodes that split; a web/ SKILL.html has its prose translated but its skill-meta JSON block stays byte-identical."
+    },
+    {
+      "title": "2 · The sync marker",
+      "file": "translation_base.json",
+      "note": "Set lang and upstream (main in the standalone release, nemoclaw-only when served from the s-fx-43-v1 bundle), then pin base_sha to the source commit your first pass matches with: translation_status.py --set-base origin/<upstream>."
+    },
+    {
+      "title": "3 · See what a sync needs",
+      "file": "translation_status.py",
+      "note": "When the source moves, run translation_status.py. It prints the re-translate list (prose) and the merge-verbatim list (code/asset/contract) with the exact files, so you update only the delta, then --set-base to advance."
+    },
+    {
+      "title": "4 · Validate like any branch",
+      "file": "README.md",
+      "note": "validate_bundle --lang <code> runs the identical structural gate (links, layout, SKILL contract, modules, figures, cells) and marks the English-prose style suites (rhythm, buzz, branding, em-dash) not-applicable, because they encode English norms that false-positive on correct target-language text."
+    },
+    {
+      "title": "5 · CI/CD and deploy",
+      "file": "README.md",
+      "note": "On a translate-* branch CI runs the gate with --lang plus the drift report (advisory) and does not deploy on its own. Deploy is one aggregating build: build_pages.sh builds the source at the site root and each translate-<lang> branch (a throwaway worktree of it) into public/<lang>/, so one Pages site serves every language. On the rsync-mirror production site, publish pushes the translate-* branches to that remote and the source rebuild picks them up. See README.md for the publish recipe; the branch is never merged."
+    }
+  ],
+  "related": [
+    "../SKILL.html",
+    "../validate_bundle.py",
+    "../../web/index.html"
+  ]
+}
+</script>
+</head>
+<body>
+<div id="sx-app"></div>
+<noscript>
+  <h1>scripts/translate/ : language branches</h1>
+  <p>A translation of this course is a <code>translate-&lt;lang&gt;</code> branch (the first is
+     <code>translate-pt</code>) that overlays the source: the reader-facing prose under
+     <code>web/</code> is rendered in the target language, and the code, assets, and every
+     <code>skill-meta</code> contract are carried over unchanged. Because the structure is identical,
+     every build, gate, and deploy that runs on the source runs on the translation too.</p>
+  <p>The sync abstraction is one marker, <a href="translation_base.json">translation_base.json</a>,
+     recording the source commit the translation reflects. <a href="translation_status.py">translation_status.py</a>
+     diffs the source against it and splits the change into a re-translate list (prose) and a
+     merge-verbatim list (code, assets, the contract). Validate with
+     <code>validate_bundle.py --scope ship --lang &lt;code&gt;</code>, which skips the English-prose
+     style suites while the structural suites still gate.</p>
+  <p>Read <a href="README.md">README.md</a> for the full process.</p>
+</noscript>
+<script src="../../web/_skill_explorer.js"></script>
+</body>
+</html>

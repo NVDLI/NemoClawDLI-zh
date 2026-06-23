@@ -22,6 +22,30 @@ No AUDIT.md beacons; audit findings go to /tmp or git history.
 
 ---
 
+## skill-meta kinds (enforced by skill_contract.py)
+
+A skill-meta classifies into exactly one kind, by its `schema` first and its `node_type`
+second. `scripts/skill_contract.py` checks that every beacon is a valid contract of its
+kind: the required keys are present, the `schema` / `node_type` value is known, `version`
+is semver where the kind carries one, and notebook `status` values are valid. It rides the
+gate as the `skill_schema` and `skill_drift` suites and runs in CI; `--fix` repairs
+mechanical drift. The kinds below are the de-facto contract, read off the shipped tree.
+
+| Kind | Selector | Required keys | Used by |
+|---|---|---|---|
+| `service-skill/1.0` | `schema` | schema, service, address, source_dir, summary, interfaces, tests, title, version | `cpu/services/<svc>/` |
+| `service-index/1.0` | `schema` | schema, id, source_dir, summary, services, tests, title, version | `cpu/services/` |
+| `dir-skill/1.0` | `schema` (node_type `directory-explorer`) | schema, node_type, source_dir, summary, title, explorer | `scripts/`, `docs/`, `workspace/`, `cors-proxy/` |
+| hub | `node_type: hub` | node_type, children, and a label (`title` or `course`) | root, `web/`, `cpu/`, `web/nemoclaw/` |
+| leaf | `node_type: leaf` | node_type, source_dir, summary, self_path, label | `web/nemoclaw/assets/`, `web/nemoclaw/mats/` |
+
+The two example schemas below (`course-skill/1.0`, `surface-skill/1.0`) are kept as the
+reference shape for a notebook course and a notebook-surface hub. No directory in this
+bundle currently uses them (the short course is web pages, not notebooks), but the tester
+accepts them so a notebook course added later validates without a code change.
+
+---
+
 ## skill-meta schema (course / directory)
 
 ```json

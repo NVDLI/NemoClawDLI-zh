@@ -95,6 +95,7 @@ import code_hygiene as ch  # noqa: E402
 import color_theme as ct  # noqa: E402
 import figure_audit as fa  # noqa: E402
 import cell_audit as ca  # noqa: E402
+import skill_contract as skc  # noqa: E402
 from collections import defaultdict  # noqa: E402
 
 
@@ -215,6 +216,12 @@ SUITE_META = [
     ("cell_audit", "Cell & artifact contract", "recommended",
      "Every runnable cell shows its work in the panel, writes via helpers.log not console, awaits its model calls, inlines no key, keeps cell-only code in an editable cell, and is syntax-highlighted by default (the page loads CodeMirror core, the javascript mode, and the editor css, or the editor degrades to a plain textarea). A hard-coded key is required-tier (it ships to every student); the rest are recommended.",
      "scripts/cell_audit.py", "run"),
+    ("skill_schema", "SKILL contract", "recommended",
+     "Every SKILL.html skill-meta must be a well-formed contract of its kind: it classifies into one known kind (service-skill, service-index, dir-skill, hub, leaf), carries that kind's required keys, uses a known schema/node_type value and a semver version where the kind has one, and only valid notebook status values. An agent samples this block to work in a directory, so a malformed beacon is a contract an agent cannot trust. Each entry names the SKILL and the missing or invalid field.",
+     "scripts/skill_contract.py", "schema_findings"),
+    ("skill_drift", "SKILL drift", "recommended",
+     "Every SKILL.html beacon must match its directory: source_dir / human_landing point at the real location, the notebook list is complete, and hub children exist on disk. Drift means the brain describes a directory it no longer reflects. python3 scripts/skill_contract.py --fix repairs the mechanical cases.",
+     "scripts/skill_contract.py", "run"),
     ("diagram_geom", "Figure geometry", "recommended",
      "mountDiagram and the policy map are drawn by JavaScript at runtime, so the static figure audit never sees them. This renders each and flags overlapping text, text past the bounds, a connector crossing a box it does not link, and a relational diagram that draws no edges.",
      "scripts/check_figures.mjs", "svgProblems"),
@@ -299,7 +306,24 @@ def _build_suites(findings_detail: dict):
     return suites, gaps
 
 
-def run(scope: str = "ship", write: bool = True, stamp: str | None = None) -> int:
+# English-prose style suites: rhythm, buzz cadence, branding, grammar, the em-dash tell. These
+# encode ENGLISH writing norms (an em-dash reads as an AI tell in English, but the dash is ordinary
+# punctuation in Spanish, German, French, ...). On a translation branch they would false-positive on
+# correct target-language text, so a non-English run marks them "n/a" instead of running them. The
+# STRUCTURAL suites (links, layout, SKILL contract, modules, figures, cells, color, materials) are
+# language-agnostic and always gate, so a translation must still keep the course structurally whole.
+_EN_PROSE_SUITES = ("prose_variety", "prose_buzz", "redundancy", "grammar", "structure", "headings",
+                    "assertions", "word_echo", "comma_weight", "branding", "defer_copula",
+                    "dense_repeats", "over_verbage", "padding", "hollow_intro", "repeated_phrase",
+                    "vacuous_meta", "staccato_cadence")
+
+
+def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang: str = "en") -> int:
+    # lang is the human language of the content under test. "en" (the source) runs the full gate;
+    # any other code (es, fr, de, ...) is a translation branch and skips the English-prose suites.
+    lang = (lang or "en").lower().split("-")[0]
+    lang_en = lang == "en"
+    na_suites = set() if lang_en else set(_EN_PROSE_SUITES)
     proj = lp.Projection(TASK1)
     rep = lp.check(proj)
     s = rep["stats"]
@@ -436,6 +460,17 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None) -> in
     except Exception as e:
         ca_find, ca_total = {}, 0
         suite_errors["cell_audit"] = str(e); vl_fail.append(f"cell audit error: {e}")
+
+    # SKILL contract (advisory): every skill-meta is a well-formed beacon of its kind (schema leg)
+    # and matches its directory (drift leg, reused from skill_audit). The agent-facing half of the
+    # contract: a malformed or stale beacon is what an agent samples and is misled by.
+    try:
+        skc_find = skc.run(verbose=False)
+        skc_scanned = sum(1 for _ in skc.sa.skills())   # skills() is a generator, not a list
+    except Exception as e:
+        skc_find, skc_scanned = {"schema": [], "drift": []}, 0
+        suite_errors["skill_schema"] = suite_errors["skill_drift"] = str(e)
+        vl_fail.append(f"skill contract error: {e}")
 
     # figure geometry (advisory): render the runtime figures (mountDiagram + mountPolicyMap) and flag overlapping text, out-of-bounds text, stray connectors, and edgeless diagrams.
     # figure_audit only sees inline <svg>, so these runtime figures went UNCHECKED before.
@@ -660,6 +695,15 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None) -> in
                            for f, snippet, reason in ct_find.get("bake", [])]),
         "figure_audit": [_fig(k, t) for k, items in fa_find.items() for t in items],
         "cell_audit": [_cell(k, t) for k, items in ca_find.items() for t in items],
+        "skill_schema": [D(p, d, RECOMMENDED,
+                           "Make the skill-meta a valid contract of its kind: add the missing required key, "
+                           "correct the schema/node_type value, give version a semver MAJOR.MINOR.PATCH, or set a "
+                           "valid notebook status (ready/setup/wip/ref). See SKILL_CONTRACT.md.")
+                         for p, d in skc_find.get("schema", [])],
+        "skill_drift": [D(p, d, RECOMMENDED,
+                          "The beacon no longer matches its directory. Run python3 scripts/skill_contract.py --fix "
+                          "to repair source_dir / human_landing / the notebook list, or fix the hub child path by hand.")
+                        for p, d in skc_find.get("drift", [])],
         "diagram_geom": [D(d.get("page"), f"{d.get('sel','')}: {d.get('detail','')}", RECOMMENDED,
                            "Adjust the runtime figure: keep labels from overlapping, text inside the bounds, connectors "
                            "only crossing boxes they link, and a relational diagram actually drawing its edges.")
@@ -671,6 +715,16 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None) -> in
                            "Link this page from a SKILL hub so it appears in the navigation and the agent's map of the course.")
                          for x in reach.get("strays", []) if isinstance(x, dict) and not x.get("expected")],
     }
+
+    # Translation branch: drop the English-prose suites' findings (they do not apply to the target
+    # language) and strip the em-dash signal from grounding (the dash is ordinary punctuation in most
+    # languages). The structural suites are left untouched, so a translation is still fully gated on
+    # links, layout, the SKILL contract, modules, figures, and cells.
+    if not lang_en:
+        for sid in na_suites:
+            findings_detail[sid] = []
+        findings_detail["grounding"] = [fo for fo in findings_detail.get("grounding", [])
+                                        if "em-dash" not in (fo.get("detail") or "")]
 
     # Roll the per-finding severities up into the advertised gradient.
     # Layout and foyer failures are required-tier too, but live outside findings_detail.
@@ -700,10 +754,13 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None) -> in
         "code_comments": ch_scanned, "code_walls": ch_scanned, "code_dup": ch_scanned,
         "code_size": ch_scanned, "code_const": ch_scanned,
         "materials": materials.get("count", 0),
+        "skill_schema": skc_scanned, "skill_drift": skc_scanned,
     }
     _layout_own = [x for x in vl_fail if x.startswith("[")]
 
     def _suite_status(sid):
+        if sid in na_suites:
+            return "skipped", f"not applicable to a '{lang}' translation (English-prose style check)", None
         if sid in suite_errors:
             return "degraded", suite_errors[sid], _scanned.get(sid)
         scanned = _scanned.get(sid)
@@ -722,7 +779,10 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None) -> in
             su["note"] = note
         if scanned is not None:
             su["scanned"] = scanned
-    degraded = [su["id"] for su in suites if su["status"] in ("degraded", "skipped")]
+    # "degraded" is for checks that could not run cleanly. A suite deliberately skipped because it
+    # does not apply to this language is not degraded, so keep na_suites out of that list.
+    degraded = [su["id"] for su in suites
+                if su["status"] in ("degraded", "skipped") and su["id"] not in na_suites]
 
     if not vl_ok:
         gradient[REQUIRED] += max(1, len(vl_fail))
@@ -732,7 +792,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None) -> in
 
     summary = {
         "generated": stamp or datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "git_sha": _git_sha(), "scope": scope, "ok": ok,
+        "git_sha": _git_sha(), "scope": scope, "lang": lang,
+        "translation_na_suites": sorted(na_suites), "ok": ok,
         "link_stats": s, "validate_layout_ok": vl_ok, "validate_layout_failures": vl_fail,
         "grounding": {"pages": len(grecs), "findings": len(gfind),
                       "ungrounded": ungrounded, "em_dash_pages": emdash,
@@ -752,6 +813,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None) -> in
         "figure_audit": {k: len(v) for k, v in fa_find.items()},
         "cell_audit": {k: len(v) for k, v in ca_find.items()},
         "diagram_geom": {"findings": len(dg_find)},
+        "skill_contract": {"skills": skc_scanned,
+                           "schema": len(skc_find.get("schema", [])),
+                           "drift": len(skc_find.get("drift", []))},
         "materials": materials,
         "advisory_total": advisory,
         "degraded": degraded,
@@ -761,14 +825,15 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None) -> in
         "suites": suites,
     }
 
-    print(f"validate_bundle [{summary['git_sha']}] scope={scope}")
+    print(f"validate_bundle [{summary['git_sha']}] scope={scope}"
+          + ("" if lang_en else f" lang={lang} (translation: English-prose suites n/a)"))
     print(f"  links: {s['pages']} pages / {s['links']} links")
     print(f"  failures-to-get : {s['failures']} (blocking {s['blocking_failures']})")
     print(f"  asset leaks     : {s['asset_leaks']} (blocking {s['blocking_asset_leaks']})")
     print(f"  cross-course    : {s['cross_course']} (blocking {s['blocking_cross_course']})")
     print(f"  validate_layout : {'OK' if vl_ok else 'FAIL ' + '; '.join(vl_fail[:3])}")
     print(f"  grounding       : {len(gfind)} pages w/ issues "
-          f"(ungrounded {ungrounded}, em-dash {emdash}) over {len(grecs)} pages")
+          f"(ungrounded {ungrounded}, em-dash {emdash if lang_en else 'n/a'}) over {len(grecs)} pages")
     if vendored_emdash:
         print(f"  vendored em-dash: {len(vendored_emdash)} external snapshot(s) carry the source's "
               f"em-dashes (surfaced, not advisory)")
@@ -780,7 +845,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None) -> in
         print(f"    ✗ foyer {v.get('kind')}: {v.get('detail')}")
     print(f"  page audit      : {audit.get('pages_with_findings', '?')}/{audit.get('pages', '?')} .html show drift "
           f"(stale tokens / missing assets / contract)")
-    if pv_rows:
+    if not lang_en:
+        print(f"  prose / buzz / branding : n/a for '{lang}' (English-prose style suites do not gate a translation)")
+    if pv_rows and lang_en:
         print(f"  prose variety   : {len(pv_flagged)}/{len(pv_rows)} narrative pages flagged for a rhythm pass"
               + (f" (worst: {pv_rows[0]['path'].split('/')[-1]} @ score {pv_rows[0]['score']})" if pv_flagged else ""))
         if pv_antithesis:
@@ -1048,8 +1115,11 @@ def main():
     ap.add_argument("--scope", choices=["ship", "all"], default="ship")
     ap.add_argument("--no-write", action="store_true")
     ap.add_argument("--stamp", help="ISO timestamp to embed (for reproducible CI logs)")
+    ap.add_argument("--lang", default="en",
+                    help="content language. 'en' runs the full gate; a translation code (es, fr, de, ...) "
+                         "skips the English-prose style suites that do not apply to the target language.")
     a = ap.parse_args()
-    return run(scope=a.scope, write=not a.no_write, stamp=a.stamp)
+    return run(scope=a.scope, write=not a.no_write, stamp=a.stamp, lang=a.lang)
 
 
 if __name__ == "__main__":

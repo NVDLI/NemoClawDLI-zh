@@ -530,6 +530,10 @@ def bundle_one(html_path: Path, css_text: str, lite_css: str, shared_js: str,
     """
     html = html_path.read_text(encoding="utf-8")
 
+    # 0) A generated SKILL hub loads ../_skill_explorer.js (the renderer lives one dir up so it serves
+    #    every surface). The bundle is flat, so point it at the sibling copy shipped alongside the pages.
+    html = html.replace('src="../_skill_explorer.js"', 'src="_skill_explorer.js"')
+
     # 1) Inline _style.css. The lite export appends _lite_overlay.css to flip the page to a
     #    light background and hide the nav chrome; the full build keeps the lab's dark theme,
     #    so it inlines _style.css on its own.
@@ -674,6 +678,14 @@ def main() -> int:
         shutil.copy2(mod, out / mod.name)
         print(f"  shipped {mod.name}  ({(out / mod.name).stat().st_size // 1024} KB)")
 
+    # The SKILL hubs render via web/_skill_explorer.js, which lives one level ABOVE --src (one renderer
+    # serves every surface), and the copied subdir SKILLs link ../_style.css. Neither is caught by the
+    # globs above, so ship both flat: the hubs then render and the provenance pages style in the bundle.
+    for extra in (web.parent / "_skill_explorer.js", web / "_style.css"):
+        if extra.is_file() and not (out / extra.name).exists():
+            shutil.copy2(extra, out / extra.name)
+            print(f"  shipped {extra.name}")
+
     # Ship any LOCAL js a bundled page loads by relative <script src> (tool modules such as
     # studio.html's studio_main.js) so the page resolves its scripts and works standalone. Found by
     # scanning the pages rather than by naming the files, so a new tool module needs no edit here.
@@ -710,6 +722,14 @@ def main() -> int:
             shutil.copy2(md, dst / md.name)
             n_raw += 1
         print(f"  copied mats/glossary_raw/  ({n_raw} full glossary articles)")
+
+    # Ship the mats provenance hub so it is reachable in the bundle; the rest of mats/ stays out to keep
+    # the bundle lean. (assets/SKILL.html already ships via the copytree(assets) above.)
+    msk = web / "mats" / "SKILL.html"
+    if msk.is_file():
+        (out / "mats").mkdir(parents=True, exist_ok=True)
+        shutil.copy2(msk, out / "mats" / "SKILL.html")
+        print("  copied mats/SKILL.html")
 
     print(f"\n{len(pages)} pages → {out}/")
     return 0

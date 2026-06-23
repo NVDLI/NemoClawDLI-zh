@@ -44,7 +44,10 @@ AUX_PAGES = ["index", "courses", "cert", "glossary", "studio", "SKILL"]
 # Execution-time errors that mean broken CODE (a helper out of scope, a typo), as opposed to the
 # offline fetch failures that are expected here (no backend wired to the static server).
 _CODE_ERR = ("is not defined", "is not a function", "is not iterable", "SyntaxError",
-             "Cannot read properties", "Cannot access")
+             "Cannot read properties", "Cannot access",
+             # A fetched asset that 404s returns the HTML index; .json() on it throws this. The message
+             # carries none of the names above, so without these a crashed cell read as ok (the 04b miss).
+             "Unexpected token", "is not valid JSON")
 _NET_NOISE = ("fetch", "NetworkError", "Failed to load", "ERR_", "/api/", "/lab/", "Load failed",
               "AbortError", "timed out", "timeout", "ECONN", "ERR_NETWORK")
 
