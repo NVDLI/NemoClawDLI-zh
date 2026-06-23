@@ -361,8 +361,8 @@ export {
 
 // The chat-artifact widgets (ensureChatStyles / mountChatUI / mountAgentChat) live in _chat.js.
 // The _chat.js -> _shared.js import cycle is load-safe because the refs sit inside function bodies, which run only after both modules finish loading.
-import { ensureChatStyles, mountChatUI, mountAgentChat } from "./_chat.js";
-export { ensureChatStyles, mountChatUI, mountAgentChat };
+import { ensureChatStyles, mountChatUI, mountAgentChat, mountConsole } from "./_chat.js";
+export { ensureChatStyles, mountChatUI, mountAgentChat, mountConsole };
 
 // Render search results into one text blob (numbered snippets with title + body + url) that the LLM can read as a tool result.
 export function formatSearchResults(searchOut) {
@@ -398,7 +398,7 @@ export const VIZ_BUILDERS = makeViz(() => {});
 export const HELPER_FNS = {
   chat, chatStream, webSearch, instantAnswer, formatSearchResults,
   embed, cosineSim, fetchRetry, getConfig, getKey, terminal,
-  coursePage, coursePages, contextWindow, estimateTokens, browserChatFetch, diagramSVG, ganttBarsSVG, mountChatUI, mountAgentChat, mountKeyPanel, openclawChat,
+  coursePage, coursePages, contextWindow, estimateTokens, browserChatFetch, diagramSVG, ganttBarsSVG, mountChatUI, mountAgentChat, mountConsole, mountKeyPanel, openclawChat,
   evalSandboxNetwork, evalSandboxFs, sandboxExec, policyGet, mountPolicyMap,
 };
 // SPECIALS: the menu entries that are not plain module functions, namely a value (state),

@@ -468,3 +468,57 @@ export async function mountAgentChat(container, opts = {}) {
     onReset: opts.onReset,
   });
 }
+
+// A reusable text console: a scrolling log, a prompt line with command history (arrow keys),
+// click-to-fill suggestion chips, a <datalist> for autocomplete, and Tab to complete the first
+// matching suggestion. onSubmit(line, console) handles each entered line; the console object
+// exposes write(text, cls) for a labelled line, raw(text) to append streamed text, and clear().
+export function mountConsole(container, { prompt = "$", greeting = "", suggestions = [], onSubmit, disabled = false, disabledMsg = "" } = {}) {
+  const root = typeof container === "string" ? document.querySelector(container) : container;
+  if (!root) return null;
+  const id = "dl" + Math.random().toString(36).slice(2, 8);
+  const opts = (suggestions || []).map(s => '<option value="' + String(s).replace(/"/g, "&quot;") + '"></option>').join("");
+  root.innerHTML =
+    '<div class="da-term">' +
+      '<div class="da-out"></div>' +
+      '<div class="da-line"><span class="da-ps">' + prompt + '</span>' +
+        '<input class="da-in" list="' + id + '" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="console input"/>' +
+        '<datalist id="' + id + '">' + opts + '</datalist>' +
+      '</div>' +
+      '<div class="da-chips"></div>' +
+    '</div>';
+  const out = root.querySelector(".da-out");
+  const input = root.querySelector(".da-in");
+  const chipRow = root.querySelector(".da-chips");
+  const con = {
+    write(text, cls) { const d = document.createElement("div"); if (cls) d.className = cls; d.textContent = (text == null ? "" : String(text)); out.appendChild(d); },
+    raw(text) { if (text == null || text === "") return; out.appendChild(document.createTextNode(String(text))); },
+    clear() { out.innerHTML = ""; },
+  };
+  root.addEventListener("click", e => { if (e.target.tagName !== "BUTTON" && e.target.tagName !== "INPUT") input.focus(); });
+  if (disabled) { if (disabledMsg) con.write(disabledMsg, "da-dim"); input.disabled = true; return con; }
+  (suggestions || []).forEach(s => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "da-chip"; b.textContent = s;
+    b.addEventListener("click", () => { input.value = s; input.focus(); });
+    chipRow.appendChild(b);
+  });
+  if (greeting) con.write(greeting, "da-dim");
+  const hist = []; let hi = 0;
+  input.addEventListener("keydown", async e => {
+    if (e.key === "Enter") {
+      const line = input.value.trim(); input.value = "";
+      con.write(prompt + " " + line, "da-cmd");
+      if (!line) return;
+      hist.push(line); hi = hist.length;
+      input.disabled = true;
+      try { if (onSubmit) await onSubmit(line, con); } catch (err) { con.write("error: " + ((err && err.message) || err), "da-err"); }
+      input.disabled = false; input.focus(); input.scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Tab") {
+      const v = input.value.toLowerCase();
+      const hit = (suggestions || []).find(s => s.toLowerCase().startsWith(v) && s.toLowerCase() !== v);
+      if (v && hit) { input.value = hit; e.preventDefault(); }
+    } else if (e.key === "ArrowUp") { if (hi > 0) { hi--; input.value = hist[hi] || ""; } e.preventDefault(); }
+    else if (e.key === "ArrowDown") { if (hi < hist.length) { hi++; input.value = hist[hi] || ""; } e.preventDefault(); }
+  });
+  return con;
+}

@@ -341,13 +341,12 @@ helpers.log("CLI agent mounted below. Give it a goal and watch it drive the runt
      connection Module 4a's policy probes use. That host carries the <strong>openshell</strong> CLI, the
      operator tool that manages your sandboxed agent. Every line you type below runs on the launchable, and
      the output is its own.</p>
-  <p>Connect your launchable on <a href="03a-kickstart.html">Module 3a</a> first, then type into the terminal
-     or click a chip to drop a command in. On the host, <code>openshell sandbox list</code> shows your agent
+  <p>Connect your launchable on <a href="03a-kickstart.html">Module 3a</a> first. Type a command, click a
+     chip, or press Tab to autocomplete. On the host, <code>openshell sandbox list</code> shows your agent
      and <code>openshell status</code> reports the gateway. Your agent runs inside a sandbox, so prefix a
      command with <code>agent</code> to run it there: <code>agent ls</code> lists its files through
-     <code>openshell sandbox exec</code>. To compare a different coding CLI on your own machine,
-     <a href="https://github.com/langchain-ai/deepagentsjs/tree/main/libs/cli" target="_blank" rel="noopener"><code>deepagents-cli</code></a>
-     installs with <code>npm install -g deepagents-cli</code>.</p>
+     <code>openshell sandbox exec</code>. Each command runs in its own short-lived shell, so to chat with the
+     agent interactively, use the panel below rather than the <code>openclaw tui</code>.</p>
   <div id="cell-deepagents"></div>
   <div id="deepagents-artifact"></div>
   <script type="module">
@@ -356,8 +355,9 @@ helpers.log("CLI agent mounted below. Give it a goal and watch it drive the runt
       label: "a real terminal on your launchable, with an agent-sandbox shortcut",
       autorun: true,
       code: `// A real shell on your nemoclaw launchable, over the same /ws/terminal PTY Module 4a's probes use
-// (helpers.terminal). The host carries the openshell CLI (sandbox + gateway management). Your agent runs
-// inside a sandbox, so "agent <cmd>" runs a command in it via openshell sandbox exec (helpers.sandboxExec).
+// (helpers.terminal). The host carries openshell; your agent runs in a sandbox, so "agent <cmd>" runs
+// there via openshell sandbox exec (helpers.sandboxExec). Interactive sessions (openclaw tui) need a
+// persistent connection a one-shot terminal cannot hold, so chatting lives in the panel below.
 
 function launchableUrl() {
   let u = localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl") || "";
@@ -365,13 +365,10 @@ function launchableUrl() {
   return u;
 }
 
-// One-click commands, dropped into the prompt when the student clicks a chip.
-const SUGGESTIONS = ["help", "openshell sandbox list", "openshell status", "agent ls", "agent pwd", "openshell --help"];
-
-// Host command lines that open interactive UIs a line terminal cannot drive.
-const INTERACTIVE = ["openshell term", "openshell sandbox connect", "openclaw chat", "openclaw configure"];
-
-const HELP = 'This is your launchable host shell. The host carries the openshell CLI; your agent runs inside a sandbox. On the host, try: openshell sandbox list, openshell status, openshell --help. To run a command inside your agent, prefix it with "agent", for example: agent ls. Click a chip below to drop a command in. Type clear to empty the screen.';
+const SUGGESTIONS = ["help", "openshell sandbox list", "openshell status", "openshell --help", "agent ls", "agent ls -a", "agent pwd"];
+// Interactive sessions a one-shot terminal cannot drive: steer the student to the chat panel or to exec.
+const INTERACTIVE = ["openshell term", "openshell sandbox connect", "nemoclaw", "openclaw chat", "openclaw tui", "openclaw configure"];
+const HELP = 'This is your launchable host shell. The host carries the openshell CLI; your agent runs inside a sandbox. On the host, try: openshell sandbox list, openshell status, openshell --help. To run a command inside your agent, prefix it with "agent", for example: agent ls. To chat with the agent, use the panel below this terminal. Type clear to empty the screen.';
 
 function hintFor(output) {
   if (/execvp|command not found|No such file or directory/i.test(String(output || ""))) {
@@ -380,72 +377,83 @@ function hintFor(output) {
   return "";
 }
 
-async function run(cmd, term) {
+async function run(cmd, con) {
   const t = cmd.trim();
-  if (t === "/help" || t === "help" || t === "?") return term.write(HELP, "da-dim");
-  if (t === "/clear" || t === "clear") return term.clear();
+  if (t === "/help" || t === "help" || t === "?") return con.write(HELP, "da-dim");
+  if (t === "/clear" || t === "clear") return con.clear();
   if (t === "agent" || t.indexOf("agent ") === 0) {
     const inner = t.slice(5).trim();
-    if (!inner) return term.write('usage: agent <command>   runs <command> inside your agent sandbox, for example: agent ls', "da-dim");
+    if (!inner) return con.write('usage: agent <command>   runs <command> inside your agent sandbox, for example: agent ls', "da-dim");
     let r;
-    try { r = await helpers.sandboxExec(inner); } catch (e) { return term.write(String((e && e.message) || e), "da-err"); }
-    term.write((r.output || "").trimEnd() || "(no output)");
-    const h = hintFor(r.output); if (h) term.write(h, "da-dim");
+    try { r = await helpers.sandboxExec(inner); } catch (e) { return con.write(String((e && e.message) || e), "da-err"); }
+    con.write((r.output || "").trimEnd() || "(no output)");
+    const h = hintFor(r.output); if (h) con.write(h, "da-dim");
     return;
   }
-  if (INTERACTIVE.some(function (x) { return t.indexOf(x) === 0; })) return term.write('That opens an interactive UI a line terminal cannot drive. For a one-shot command in your agent, use: agent <command>. For host info, try openshell status or openshell sandbox list.', "da-dim");
+  if (INTERACTIVE.some(function (x) { return t.indexOf(x) === 0; })) return con.write('That starts an interactive session this one-shot terminal cannot hold open. To chat with your agent, use the panel below. For a one-shot command inside the agent, use: agent <command>.', "da-dim");
   let got = false, captured = "";
   try {
-    await helpers.terminal(t, { totalMs: 120000, idleMs: 8000, onChunk: function (c) { if (c) { got = true; captured += c; term.raw(c); } } });
+    await helpers.terminal(t, { totalMs: 120000, idleMs: 8000, onChunk: function (c) { if (c) { got = true; captured += c; con.raw(c); } } });
   } catch (e) {
-    return term.write(String((e && e.message) || e), "da-err");
+    return con.write(String((e && e.message) || e), "da-err");
   }
-  if (!got) term.write("(no output)", "da-dim");
-  const h = hintFor(captured); if (h) term.write(h, "da-dim");
+  if (!got) con.write("(no output)", "da-dim");
+  const h = hintFor(captured); if (h) con.write(h, "da-dim");
 }
 
-function mountTerminal(sel) {
-  const root = document.querySelector(sel);
-  root.innerHTML = '<div class="da-term"><div class="da-out"></div><div class="da-line"><span class="da-ps">$</span><input class="da-in" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="terminal input"/></div><div class="da-chips"></div></div>';
-  const out = root.querySelector(".da-out");
-  const input = root.querySelector(".da-in");
-  const chips = root.querySelector(".da-chips");
-  const hist = []; let hi = 0;
-  const term = {
-    write: function (text, cls) { const d = document.createElement("div"); if (cls) d.className = cls; d.textContent = (text == null ? "" : String(text)); out.appendChild(d); },
-    raw: function (text) { if (text == null || text === "") return; out.appendChild(document.createTextNode(String(text))); },
-    clear: function () { out.innerHTML = ""; },
-  };
-  root.addEventListener("click", function (e) { if (e.target === root || e.target === out) input.focus(); });
-  if (!launchableUrl()) {
-    term.write("No launchable connected. Open Module 3a (Kickstart), connect your launchable, then come back here.", "da-dim");
-    input.disabled = true;
-    return term;
-  }
-  SUGGESTIONS.forEach(function (s) {
-    const b = document.createElement("button");
-    b.type = "button"; b.className = "da-chip"; b.textContent = s;
-    b.addEventListener("click", function () { input.value = s; input.focus(); });
-    chips.appendChild(b);
-  });
-  term.write("Connected to your launchable host shell. It carries the openshell CLI; your agent runs in a sandbox. Type help, or click a chip below.", "da-dim");
-  input.addEventListener("keydown", async function (e) {
-    if (e.key === "Enter") {
-      const cmd = input.value.trim(); input.value = "";
-      term.write("$ " + cmd, "da-cmd");
-      if (!cmd) return;
-      hist.push(cmd); hi = hist.length;
-      input.disabled = true;
-      try { await run(cmd, term); } catch (err) { term.write("error: " + ((err && err.message) || err), "da-err"); }
-      input.disabled = false; input.focus(); input.scrollIntoView({ block: "nearest" });
-    } else if (e.key === "ArrowUp") { if (hi > 0) { hi--; input.value = hist[hi] || ""; } e.preventDefault(); }
-    else if (e.key === "ArrowDown") { if (hi < hist.length) { hi++; input.value = hist[hi] || ""; } e.preventDefault(); }
-  });
-  return term;
-}
-
-mountTerminal("#deepagents-artifact");
+const connected = !!launchableUrl();
+helpers.mountConsole("#deepagents-artifact", {
+  prompt: "$",
+  suggestions: SUGGESTIONS,
+  disabled: !connected,
+  disabledMsg: "No launchable connected. Open Module 3a (Kickstart), connect your launchable, then return here.",
+  greeting: connected ? "Connected to your launchable host shell. It carries the openshell CLI; your agent runs in a sandbox. Type help, click a chip, or press Tab to autocomplete." : "",
+  onSubmit: run,
+});
 helpers.log("launchable terminal mounted below. If it says no launchable, connect on Module 3a.");
+`,
+    });
+  </script>
+
+  <h2>Chat with your agent</h2>
+  <p>The <code>openclaw tui</code> is an interactive, full-screen chat that a one-shot terminal cannot hold
+     open. The panel below talks to the same live agent over the OpenClaw gateway, the
+     <code>/cli/gateway</code> connection Modules <a href="03b-openclaw.html">3b</a> and
+     <a href="03c-always-on.html">3c</a> use, so you can chat with it without leaving the page. It streams the agent's
+     reply and shows each tool or command the agent runs. Connect your launchable on
+     <a href="03a-kickstart.html">Module 3a</a> first (its URL and token). Ask it anything, click a prompt,
+     or press Tab to autocomplete.</p>
+  <div id="cell-agentchat"></div>
+  <div id="agent-chat"></div>
+  <script type="module">
+    import { mountRunCell } from "./_shared.js";
+    mountRunCell("#cell-agentchat", {
+      label: "chat with your live agent over the OpenClaw gateway",
+      autorun: true,
+      code: `// Chat with your live OpenClaw agent over the /cli/gateway (helpers.openclawChat). Browser-native,
+// no tui: the gateway streams the agent's reply and reports each tool or command it runs. Reads the
+// launchable URL + token from the Module 3a probe.
+function connected() {
+  return !!(localStorage.getItem("nemoclaw_clawtoken") && (localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl")));
+}
+const PROMPTS = ["What can you do?", "Summarize your workspace and your SOUL.md", "What tools can you call?", "List the files in your workspace", "Walk me through your last few actions"];
+helpers.mountConsole("#agent-chat", {
+  prompt: "you",
+  suggestions: PROMPTS,
+  disabled: !connected(),
+  disabledMsg: "Connect your launchable on Module 3a first (its URL and token), then your agent is reachable here.",
+  greeting: connected() ? "Connected to your agent over the gateway. Ask it anything, click a prompt, or press Tab to autocomplete." : "",
+  onSubmit: async (msg, con) => {
+    try {
+      await helpers.openclawChat(msg, {
+        session: "main",
+        onToken: function (tok) { con.raw(tok); },
+        onTool: function (name, info) { con.write("tool: " + name + (info && info.args ? " " + JSON.stringify(info.args).slice(0, 100) : ""), "da-dim"); },
+      });
+    } catch (e) { con.write((e && e.message) || String(e), "da-err"); }
+  },
+});
+helpers.log("agent chat mounted below.");
 `,
     });
   </script>
