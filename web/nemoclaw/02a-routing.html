@@ -52,20 +52,13 @@
       <li>and routing decisions that must not depend on whatever the last tool returned.</li>
     </ul>
     <p>
-      Four patterns follow. ReAct and ReWOO come first, contrasting plan-as-you-go
-      with plan-up-front against a live parallel research pipeline. A triage router
-      then locks its output to a fixed enum, so routing stays deterministic. The
-      factory pattern closes the page by stamping out specialists without per-agent
-      boilerplate.
+      A <b>workflow agent</b> is flexible agent which between can straddle between these classes of problems, usually by having tools which offload the context management and synchronization to dedicated loops and sequences. 
+      This notebook will not dig too deep into the many options, but they should be understood and we will motivate some surface-level support mechanisms to tackle some more advanced problems.
     </p>
   </div>
 
   <!-- ── Part 1: ReAct vs ReWOO ───────────────────────────────────────────── -->
-  <h2>Two patterns that differ in when the model decides</h2>
-  <p>
-    Two named patterns cover most production Workflow Agents.
-    They differ in <em>when the model decides what to do</em>:
-  </p>
+  <h2>Two key patterns that differ in when the model decides</h2>
 
   <div class="pattern-grid">
     <div class="pattern-card">
@@ -157,7 +150,7 @@
   <h2>Running a ReWOO pipeline against the NVIDIA glossary</h2>
 
   <p>
-    The cell below runs a real ReWOO pipeline against the NVIDIA glossary, using
+    The cell below runs a ReWOO pipeline against the NVIDIA glossary, using
     <code>helpers.webSearch</code> (the ranked glossary search you met in Module 1c) for every retrieval the plan calls for. The <a href="glossary.html">glossary explorer</a> shows the full index this searches and lets you run any query the planner might emit:
   </p>
   <ol>
@@ -181,8 +174,8 @@
   <p>
     Routing is a different shape of multi-agent in which a triage agent classifies the
     input and hands it to one specialist. Because the classifier must emit one of a fixed
-    enum of categories, that routing decision stays deterministic. Each specialist
-    downstream owns a narrow system prompt that never sees the triage agent's reasoning.
+    enum of categories, the output must be sufficiently constrained with a tight contract to avoid a service-level agreement failure. 
+    Each specialist downstream owns a narrow system prompt that might never sees the triage agent's reasoning by design.
   </p>
 
   <figure style="margin:1.4em 0">

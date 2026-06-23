@@ -37,41 +37,25 @@
     <div class="eyebrow">Module 1 · Part C of 3</div>
     <h1>Tools <span>at Scale</span></h1>
     <p class="lead">
-      A tool extends an agent beyond text, letting it query databases, run searches,
-      call APIs, and hand work to other agents. The model can lean on a
-      tool dependably because every tool comes with a contract describing how it is
-      called, most often a <a href="https://json-schema.org/" target="_blank" rel="noopener">JSON Schema</a> laid over its arguments,
-      though later sections reach for generated code instead.
+      In Module 1b you wired a single tool into the agent loop. That round-trip does not change here. The
+      number of tools grows, though, and routing reliably gets harder with every one you add.
     </p>
     <p>
-      The real difficulty is one of number rather than of any single tool. One well-described tool is easy
-      for the model to route to, but a flat list of dozens starts to crowd the
-      context and nudges the model toward the wrong call, or toward no call at all.
-    </p>
-    <p>
-      Most of this page is about keeping that routing reliable as the list of tools grows.
+      One well-described tool is easy for the model to route to. A flat list of dozens crowds the context
+      and nudges the model toward the wrong call, or toward no call at all.
     </p>
     <ul>
-      <li>It wires the two-call cycle, then shows multi-tool routing.</li>
-      <li>It calls a real web-search endpoint and hides a sub-agent behind a single tool.</li>
+      <li>It scales the loop from one tool to many, where the model has to route.</li>
+      <li>It calls a real search endpoint and hides a sub-agent behind a single tool.</li>
       <li>It ends with the <a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">MCP</a> shape that is becoming the production standard for serving tools.</li>
     </ul>
   </div>
 
-  <h2>What a tool actually is</h2>
+  <h2>Every tool is the same round-trip</h2>
   <p>
-    Every tool combines a schema with an executor that runs behind it, and a single call
-    moves through four hands in turn:
-  </p>
-  <ul>
-    <li>the schema describes what the function takes</li>
-    <li>the model produces the arguments</li>
-    <li>your code runs the function</li>
-    <li>the result lands as the next message</li>
-  </ul>
-  <p>
-    Multi-tool routing, MCP discovery, and agents-as-tools are all that same cycle with a
-    different source of schemas.
+    Whatever sits behind it, a tool runs the same four-step cycle you built in 1b, drawn below. Everything
+    this page adds (multi-tool routing, real search backends, agents-as-tools, MCP) is that one cycle with
+    a different source of schemas.
   </p>
 
   <figure style="margin:1.4em 0">
@@ -79,57 +63,14 @@
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">The LLM asks, your code answers, and the LLM concludes, but it never runs your function itself.</figcaption>
   </figure>
 
-  <h2>The schema is the contract the model reads</h2>
-  <p>
-    When you give a model a tool, you publish a contract: a function's name,
-    what it does, and what arguments it accepts. The model reads this and
-    decides whether to call the function instead of answering directly.
-    The cell below sends one question and one tool spec. Watch
-    <code>finish_reason</code> to see whether the model chose to call or to
-    answer directly.
-  </p>
-
-  <figure style="margin:1.4em 0">
-    <div id="cell-m2b-p1"></div>
-    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">A finish_reason of 'tool_calls' means the model, which cannot execute anything itself, is asking your code to run the named function and append the result, while 'stop' means it has written its final answer and the loop can exit.</figcaption>
-  </figure>
-
   <div class="callout">
-    <p>
-      <strong>Schema-based calling is reliable because the contract is enforced rather
-      than requested.</strong> Before structured function calling, developers prompted
-      models to emit tool calls in custom XML or hand-rolled JSON, and those broke
-      whenever the model paraphrased its output.
-    </p>
-    <p>
-      The schema-based approach moves that
-      contract into a first-class API field, and the model must now generate against
-      <b>server-side enforcement</b>:
-    </p>
-    <ul>
-      <li>the schema is restructured into a format the model is specifically trained to work well with</li>
-      <li>the serving engine can illegalize token samplings that break contract grammar</li>
-      <li>the server's response bundles the LLM's predicted tool calls into a consistent <code>tool_calls</code> field.</li>
-    </ul>
-    <p>
-      Therefore, your dispatch code can largely rely on <code>tc.function.name</code> and
-      <code>tc.function.arguments</code> being present and parseable.
-    </p>
+    <strong>The server enforces the schema.</strong> Before structured
+    function calling, you prompted the model to emit calls as custom XML or hand-rolled JSON, which broke
+    the moment it paraphrased. Now the contract lives in a first-class API field. The serving engine
+    constrains generation to the schema's grammar and delivers a consistent
+    <code>tool_calls</code> field. Your dispatch code can then count on <code>tc.function.name</code> and
+    <code>tc.function.arguments</code> being present and parseable.
   </div>
-
-  <h2>Running the tool and feeding the result back to the model</h2>
-  <p>
-    In most cases the model cannot execute your function directly and can only request a call.
-    You run the function and append its result to the message history as a
-    <code>"tool"</code> role message, and only then does the model produce its
-    final, user-facing answer.
-  </p>
-  <p>
-    The cell below runs the request, the execution, and the
-    response as one sequence.
-  </p>
-
-  <div id="cell-m2b-p2"></div>
 
   <h2>How the model picks between several tools</h2>
   <p>
@@ -159,7 +100,7 @@
     source, and a box to run the exact query the agents call in the modules ahead.
   </p>
   <p>
-    Part 4b swaps the executor to an exact term lookup behind the <em>same</em>
+    The next section swaps the executor to an exact term lookup behind the <em>same</em>
     tool contract, so you can watch the contract stay fixed while the backend changes
     underneath it.
   </p>
@@ -180,32 +121,17 @@
 
   <h2>Swapping the backend while the tool contract holds</h2>
   <p>
-    Part 4 used the canvas-flow widget. Here the same logic runs in a flat
-    <code>mountRunCell</code> block so you can read it as one contiguous script. The
-    backend swaps from Part 4's ranked search to an exact <code>glossary_lookup</code>
-    that returns the one entry matching a term's slug and returns nothing whenever the
-    slug is absent from the catalog. Exact lookup is precise when the caller already knows the term and
-    unforgiving when it does not, the opposite trade-off from ranked search. A real
-    knowledge tool usually offers both, and when you need more depth, a richer source like a
-    full docs index or the NVIDIA blog can slot in behind the same name.
-  </p>
-  <p>
-    That shape makes it a clean <strong>black-box tool</strong> that takes a term in and
-    hands an entry back, and <code>glossaryLookup</code> returns the same
-    <code>{ results, count, unreachable }</code> shape as the ranked
-    <code>glossarySearch</code>. The tool contract from Part 4 does not change while only
-    the executor behind it does, so the agent still asks for
-    <code>glossary_search</code> and reads the same numbered result block.
+    The same loop runs here as a flat <code>mountRunCell</code> script, with one change: the executor.
+    The earlier search returned a short blurb for each of several matches. This backend returns the whole
+    article for the single best match, fetched from the term's cached glossary page. The schema and the
+    loop do not move; only the source behind <code>glossary_search</code> got richer.
   </p>
 
   <div class="callout">
-    <strong>The model is the consumer the contract protects.</strong>
-    Across this swap the agent kept asking for <code>glossary_search</code> and reading the
-    same numbered block, with no hint that a different function produced it.
-    <p>
-      Design for that property, because when the model couples only to the contract you stay
-      free to upgrade the backend whenever the task outgrows it.
-    </p>
+    <strong>The model only sees the contract.</strong> It asks for <code>glossary_search</code> with a
+    natural query and reads whatever comes back, unaware which backend answered. You can start with a blurb
+    index and later swap in full articles or a live search without touching the loop. Accuracy may drift
+    when a backend resolves a match differently, but the contract holds.
   </div>
 
   <div id="cell-m2b-p4b"></div>
@@ -291,7 +217,7 @@
     the tool list, hands the schemas to the model, then dispatches
     <code>tool_calls</code> back through the server's
     <code>tools/call</code> handler. The agent loop is byte-for-byte
-    identical to Part 2 while only the source of the tool list changes.
+    identical to a normal tool call while only the source of the tool list changes.
   </p>
 
   <div id="cell-m2b-p6"></div>
@@ -299,7 +225,7 @@
   <h2>Before you continue</h2>
   <ol>
     <li>What happens when the model calls a tool with arguments that fail your validation? The current loop crashes; how would you make it graceful without giving the model false confidence that the call succeeded?</li>
-    <li>The Part 5 sub-agent is opaque to the main agent. What information would you want it to surface back (in addition to the answer) so the main agent can decide whether to trust it on the next turn?</li>
+    <li>The agents-as-tools sub-agent is opaque to the main agent. What information would you want it to surface back (in addition to the answer) so the main agent can decide whether to trust it on the next turn?</li>
     <li>The <code>tool_choice</code> parameter can be set to <code>"required"</code> or to a specific tool name. When would forcing a tool call be the right move, and what risk does it create?</li>
   </ol>
 
@@ -308,7 +234,7 @@
     <ul>
       <li><a href="https://arxiv.org/abs/2302.04761" target="_blank" rel="noopener">Schick et al., <em>Toolformer: Language Models Can Teach Themselves to Use Tools</em> (2023)</a>. The paper that established self-supervised tool use; what every subsequent function-calling spec is variations on.</li>
       <li><a href="https://platform.openai.com/docs/guides/function-calling" target="_blank" rel="noopener">OpenAI function-calling guide</a>. The spec your <code>tools=[…]</code> payload conforms to; the hosted build endpoint proxies this shape through to any provider.</li>
-      <li><a href="https://modelcontextprotocol.io/specification" target="_blank" rel="noopener">Model Context Protocol (MCP) specification</a>. The cross-vendor tool-discovery and tool-serving layer covered in Part 6 of this module (originated by Anthropic, now an open project); complements function calling at the agent-runtime layer.</li>
+      <li><a href="https://modelcontextprotocol.io/specification" target="_blank" rel="noopener">Model Context Protocol (MCP) specification</a>. The cross-vendor tool-discovery and tool-serving layer covered in this module's MCP section (originated by Anthropic, now an open project); complements function calling at the agent-runtime layer.</li>
       <li><a href="https://docs.anthropic.com/en/docs/agents-and-tools/tool-use" target="_blank" rel="noopener">Anthropic tool-use reference</a>. The parallel implementation for Claude, useful as a cross-vendor comparison.</li>
     </ul>
     <p class="references-note">Comprehensive list at <a href="04c-going-further.html#refs">Going Further · References</a>.</p>
@@ -336,9 +262,10 @@ helpers.mountAgentChat("#tools-artifact", {
     { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
     { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
   ],
-  greeting: "I can do arithmetic and search NVIDIA's glossary. Try 'what is 17.5% of 2,480?' or 'what is retrieval-augmented generation?'",
-  examples: ["What is 17.5% of 2,480?", "What is a vector database?", "Define agentic AI", "What is 1,234 times 56?", "What does GPU stand for, and what is it for?", "What is 2,480 divided by 17, rounded?"],
-  system: "You are a helpful assistant. Use calculate for any arithmetic and glossary_search for definitions of AI and accelerated-computing terms. Ground factual claims in the glossary_search results; if a search returns nothing, say you could not find it rather than answering from memory. Keep answers brief.",
+  greeting: "I can do arithmetic and search NVIDIA's glossary. Try 'what is 17.5% of 2,480?', 'what is a vector database?', or 'explain vector databases in depth'.",
+  examples: ["What is 17.5% of 2,480?", "What is a vector database?", "Explain vector databases in depth", "Define agentic AI", "What does GPU stand for, and what is it for?", "What is 2,480 divided by 17, rounded?"],
+  system: "You are a helpful assistant. Use calculate for any arithmetic and glossary_search for definitions of AI and accelerated-computing terms. For a quick definition, call glossary_search normally; when the user wants depth on a single term, call it with full=true to read the whole article. Ground factual claims in the results; if a search returns nothing, say so rather than answering from memory. Keep answers brief unless the user asks for depth.",
+  recursionLimit: 24,   // room for several search-then-read rounds before the safety cap
   buildTools: ({ tool, z }) => [
     tool(async ({ expression }) => {
       const expr = String(expression).replace(/,/g, "");
@@ -347,9 +274,19 @@ helpers.mountAgentChat("#tools-artifact", {
       catch (e) { return "error: " + e.message; }
     }, { name: "calculate", description: "Evaluate an arithmetic expression, e.g. (17/100)*2480 or 2^16 - 1000.",
          schema: z.object({ expression: z.string().describe("an arithmetic expression, e.g. 0.175*2480") }) }),
-    tool(async ({ query }) => window.formatGlossaryResults(window.glossarySearch(query, { limit: 4 })),
-      { name: "glossary_search", description: "Search NVIDIA's glossary of AI and accelerated-computing terms.",
-        schema: z.object({ query: z.string() }) }),
+    // One glossary tool, two modes: ranked blurbs from several terms, or the full article for one.
+    tool(async ({ query, full }) => {
+      if (full) {
+        const article = await window.glossaryFull(query);
+        if (article) return article.body;   // the whole NVIDIA glossary article
+      }
+      return window.formatGlossaryResults(window.glossarySearch(query, { limit: 4 }));
+    }, { name: "glossary_search",
+         description: "Search NVIDIA's glossary. Returns short blurbs for several matching terms; set full=true to fetch the complete article for the single best match.",
+         schema: z.object({
+           query: z.string().describe("a term or keywords, e.g. 'vector database'"),
+           full:  z.boolean().optional().describe("true to read the full article for the best match instead of short blurbs"),
+         }) }),
   ],
 });
 helpers.log("rendered below. Edit the config and Run.");
@@ -495,6 +432,18 @@ function glossaryLookup(slug) {
   const results = row ? [{ title: row[1], body: row[2], href: NV_GLOSSARY + row[0] + "/" }] : [];
   return { results, count: results.length, unreachable: false, source: "nvidia-glossary" };
 }
+// The full article for a "deep" term: a cached copy of the live NVIDIA glossary page, shipped at
+// mats/glossary_raw/<slug>.md. Most terms carry only the one-line blurb above; the deep terms carry
+// the whole body, which is what a richer retrieval backend returns for a single, confident match.
+async function glossaryFull(query) {
+  const top = _glossaryRank(query)[0];
+  if (!top) return null;
+  try {
+    const r = await fetch("mats/glossary_raw/" + top.slug + ".md");
+    if (r.ok) return { slug: top.slug, term: top.term, body: await r.text() };
+  } catch (_) { /* same-origin file; only the deep terms have one cached */ }
+  return null;   // matched a term, but no full article is cached for it
+}
 function formatGlossaryResults(out) {
   if (!out.results.length) return "No NVIDIA glossary entries matched. Say so rather than guessing.";
   return out.results.map((r, i) => "[" + (i + 1) + "] " + r.title + "\n" + r.body + "\nSource: " + r.href).join("\n\n");
@@ -527,184 +476,12 @@ const glossaryMCP = {
 window.glossaryMCP = glossaryMCP;
 window.glossarySearch = glossarySearch;
 window.glossaryLookup = glossaryLookup;
+window.glossaryFull   = glossaryFull;
 window.formatGlossaryResults = formatGlossaryResults;
 
-// ── Module 1c Part 1: schema contract for tools ──────────────────────────────
-mountCanvasFlow("#cell-m2b-p1", {
-  label: "Module 1c Part 1 · the JSON-Schema tool contract",
-  intro: "A question and a tool spec both feed into one LLM call. The model reads the schema and chooses whether to emit a tool_calls request or answer directly. Nothing is actually executed here, so what you observe is the routing decision alone.",
-  edges: [
-    { from: "question", to: "llm" },
-    { from: "schema",   to: "llm" },
-  ],
-  nodes: [
-    {
-      id: "question", icon: "👤", title: "User question", x: 0, y: 0,
-      summary: "Try 'What is the capital of France?' to see the model skip the tool.",
-      code: `state.question = "What is 17 times 43?";
-return state.question;
-`,
-    },
-    {
-      id: "schema", icon: "📄", title: "Tool spec (JSON Schema)", x: 2, y: 0,
-      summary: "The spec carries a name, a description, and parameters, and it is the description string that drives the model's choice.",
-      code: `state.CALC_SCHEMA = [{
-  type: "function",
-  function: {
-    name: "calculate",
-    description: "Evaluate a JavaScript arithmetic expression. Supports +,-,*,/, parens, and Math.sqrt/pow/log/exp/sin/cos.",
-    parameters: {
-      type: "object",
-      properties: { expression: { type: "string", description: "e.g. (17*43)+Math.sqrt(144)" } },
-      required: ["expression"],
-    },
-  },
-}];
-return { tool_name: state.CALC_SCHEMA[0].function.name };
-`,
-    },
-    {
-      id: "llm", icon: "🧠", title: "LLM call · routes (+ schema-shape viz)", x: 1, y: 1,
-      summary: "A single model call whose finish_reason in the output reads 'tool_calls' when the model wants to invoke the function or 'stop' when it wrote a direct answer and the loop can exit.",
-      code: `state.s = await helpers.chatStream({
-  messages:   [{ role: "user", content: state.question }],
-  tools:      state.CALC_SCHEMA,
-  max_tokens: 8196,
-});
-
-const fr     = state.s.finish_reason;
-const tcs    = state.s.tool_calls || [];
-const isTool = fr === "tool_calls" || tcs.length > 0;
-const toolName = state.CALC_SCHEMA[0].function.name;
-
-// Build the result line for the model node from what actually came back.
-const modelLines = ["finish_reason: " + (fr || "?")];
-if (isTool) {
-  const args = (tcs[0]?.function?.arguments || "{}");
-  modelLines.push("wants: " + (tcs[0]?.function?.name || "?"));
-  modelLines.push("args: " + (args.length > 32 ? args.slice(0, 31) + "…" : args));
-} else {
-  const c = (state.s.content || "");
-  modelLines.push("answered directly");
-  modelLines.push(c.length > 36 ? c.slice(0, 35) + "…" : (c || "(empty)"));
-}
-
-helpers.viz.diagram({
-  title: "One model call · the schema routes the next step",
-  nodes: [
-    { id: "question", label: "user",  kind: "env",   x: 0, y: 0,
-      lines: [state.question.length > 30 ? state.question.slice(0, 29) + "…" : state.question] },
-    { id: "schema",   label: "tool spec", kind: "tool", x: 2, y: 0,
-      lines: [toolName + "(expression)", "JSON Schema contract"] },
-    { id: "model",    label: "model", kind: "model", x: 1, y: 1, lines: modelLines },
-  ],
-  edges: [
-    { from: "question", to: "model", label: "question" },
-    { from: "schema",   to: "model", label: "tools" },
-  ],
-});
-
-return {
-  finish_reason:       state.s.finish_reason,
-  tool_calls:          state.s.tool_calls,
-  content_or_message:  state.s.content || "(empty; the model called the tool instead)",
-};
-`,
-    },
-  ],
-});
-
-// ── Module 1c Part 2: the two-call cycle ─────────────────────────────────────
-mountCanvasFlow("#cell-m2b-p2", {
-  label: "Module 1c Part 2 · the two-call cycle · request → execute → reply",
-  intro: "The first LLM call decides to call calculate, then the local executor runs the expression. The second LLM call writes the user-facing answer from the tool result, growing messages from 1 to 4 along the way.",
-  edges: [
-    { from: "question", to: "llm1" },
-    { from: "schema",   to: "llm1" },
-    { from: "llm1", to: "calc" },
-    { from: "calc", to: "llm2" },
-  ],
-  nodes: [
-    {
-      id: "question", icon: "👤", title: "User question", x: 0, y: 0,
-      summary: "An arithmetic question the model will defer to the calculator.",
-      code: `state.question = "What is (17 * 43) + Math.sqrt(144)?";
-state.messages = [{ role: "user", content: state.question }];
-return state.question;
-`,
-    },
-    {
-      id: "schema", icon: "📄", title: "calculate spec", x: 2, y: 0,
-      summary: "Same JSON-Schema contract as Part 1.",
-      code: `state.CALC_SCHEMA = [{
-  type: "function",
-  function: {
-    name: "calculate",
-    description: "Evaluate a JavaScript arithmetic expression. Supports +,-,*,/, parens, and Math.sqrt/pow/log/exp/sin/cos.",
-    parameters: { type: "object",
-      properties: { expression: { type: "string" } }, required: ["expression"] },
-  },
-}];
-return { tool: "calculate" };
-`,
-    },
-    {
-      id: "llm1", icon: "🧠", title: "LLM call #1 · decides", x: 1, y: 1,
-      summary: "The first of two model calls sees the question and the tool schema and should respond with a tool_calls request that the executor picks up in the next node.",
-      code: `state.s1 = await helpers.chatStream({
-  messages:   state.messages,
-  tools:      state.CALC_SCHEMA,
-  max_tokens: 8196,
-});
-state.messages.push({
-  role: "assistant",
-  content: state.s1.content || null,
-  tool_calls: state.s1.tool_calls.length ? state.s1.tool_calls : undefined,
-});
-return { finish_reason: state.s1.finish_reason, tool_calls: state.s1.tool_calls };
-`,
-    },
-    {
-      id: "calc", icon: "🛠", title: "calculate (local)", x: 1, y: 2,
-      summary: "Pure JavaScript with no model call. It validates the expression against a safe whitelist (digits, operators, parentheses, and Math.* names), evaluates it, then pushes the result back onto the message history as a 'tool' role message so the second model call can see it.",
-      code: `function doCalc(expr) {
-  const expanded = expr.replace(/(?:Math\\.)?\\b(sqrt|pow|log|exp|sin|cos|abs|floor|ceil|min|max)\\b/g, "Math.$1");
-  const stripped = expanded.replace(/Math\\.[A-Za-z_]+/g, "").replace(/[0-9+\\-*/().,\\s^%]/g, "");
-  if (stripped.length > 0) return \`(unsafe: '\${stripped}')\`;
-  try { return String(Function('"use strict"; return (' + expanded.replace(/\\^/g, "**") + ");")()); }
-  catch (e) { return \`(error: \${e.message})\`; }
-}
-if (!state.s1.tool_calls.length) { state.skipped = true; return { skipped: true }; }
-const tc   = state.s1.tool_calls[0];
-const args = JSON.parse(tc.function.arguments || "{}");
-state.calcResult = doCalc(args.expression || "");
-state.messages.push({ role: "tool", tool_call_id: tc.id, content: state.calcResult });
-return { args, result: state.calcResult };
-`,
-    },
-    {
-      id: "llm2", icon: "🧠", title: "LLM call #2 · replies", x: 1, y: 3,
-      summary: "The second model call now reads a message history that holds both the assistant's tool request and the tool result, so it grounds its final user-facing answer in the actual computed value and grows the messages array from one entry to four.",
-      code: `if (state.skipped) return state.s1.content || "(empty)";
-state.s2 = await helpers.chatStream({
-  messages:   state.messages,
-  tools:      state.CALC_SCHEMA,
-  max_tokens: 8196,
-});
-
-const finalMsg = { role: "assistant", content: state.s2.content || state.s2.reasoning || "" };
-helpers.viz.messageList([...state.messages, finalMsg], "THE TWO-CALL CYCLE");
-helpers.log("messages grew: 1 → " + (state.messages.length + 1));
-
-return state.s2.content || state.s2.reasoning || "(empty)";
-`,
-    },
-  ],
-});
-
-// ── Module 1c Part 3: multi-tool routing ─────────────────────────────────────
+// ── multi-tool routing ─────────────────────────────────────
 mountCanvasFlow("#cell-m2b-p3", {
-  label: "Module 1c Part 3 · two tools, the model routes",
+  label: "two tools, the model routes",
   intro: "Three roots feed into one LLM, and editing either tool description shifts how the model routes. The description string is one of the most consequential prompt-engineering surfaces in any tool-using agent.",
   edges: [
     { from: "question", to: "llm" },
@@ -716,6 +493,11 @@ mountCanvasFlow("#cell-m2b-p3", {
       id: "question", icon: "👤", title: "User question", x: 1, y: 0,
       summary: "Try an arithmetic, a definition, or something either tool could handle.",
       code: `state.question = "What is 2 to the power of 10?";
+// Swap in another question (or write your own) and rerun to watch the route change:
+// state.question = "Evaluate (17 * 43) + Math.sqrt(144) / Math.log(2).";                 // heavier arithmetic, routes to calculate
+// state.question = "What does raising a number to a real, non-integer power mean?";       // a concept, routes to explain_concept
+// state.question = "Approximate pi with 4 * (1 - 1/3 + 1/5 - 1/7 + 1/9 - 1/11).";         // a pi series to compute, routes to calculate
+// state.question = "Explain the Chudnovsky formula for pi and why it converges so fast."; // a concept about pi, routes to explain_concept
 return state.question;
 `,
     },
@@ -750,64 +532,27 @@ return state.toolB.function.name;
 `,
     },
     {
-      id: "llm", icon: "🧠", title: "LLM call · routes (+ decision viz)", x: 1, y: 2,
-      summary: "Shows which tool the model selected and with what arguments, where the routing depends almost entirely on the description strings in the two specs above, so editing one of them and rerunning watches the model change its mind.",
+      id: "llm", icon: "🧠", title: "LLM call · the model routes", x: 1, y: 2,
+      summary: "Streams the model as it reasons over the two tool descriptions, then returns the routing decision. The route turns almost entirely on the description strings, so edit one and rerun to watch the model change its mind.",
       code: `const s = await helpers.chatStream({
-  messages:   [{ role: "user", content: state.question }],
-  tools:      [state.toolA, state.toolB],
+  messages: [{ role: "user", content: state.question }],
+  tools:    [state.toolA, state.toolB],
   max_tokens: 8196,
 });
 
-let chosen = null, args = null;
-if (s.tool_calls.length) {
-  const tc = s.tool_calls[0];
-  args = tc.function.arguments;
-  try { args = JSON.parse(args); } catch (_) {}
-  chosen = tc.function.name;
-}
-
-const isA = chosen === "calculate";
-const isB = chosen === "explain_concept";
-const argsLabel = chosen && args ? JSON.stringify(args) : null;
-
-// Build the model node's result line, plus per-tool CHOSEN/rejected markers,
-// straight from what the model actually picked.
-const modelLines = chosen
-  ? ["routed to: " + chosen, argsLabel
-      ? ("args: " + (argsLabel.length > 30 ? argsLabel.slice(0, 29) + "…" : argsLabel))
-      : "(no args)"]
-  : ["answered directly", "(no tool call)"];
-const toolALines = ["arithmetic only", isA ? "✓ CHOSEN" : "rejected"];
-const toolBLines = ["concepts only",  isB ? "✓ CHOSEN" : "rejected"];
-
-helpers.viz.diagram({
-  title: "Two tools · the description string drives the route",
-  nodes: [
-    { id: "question", label: "user",            kind: "env",   x: 1, y: 0,
-      lines: [state.question.length > 30 ? state.question.slice(0, 29) + "…" : state.question] },
-    { id: "tool_a",   label: "calculate",       kind: "tool",  x: 0, y: 1, lines: toolALines },
-    { id: "tool_b",   label: "explain_concept", kind: "tool",  x: 2, y: 1, lines: toolBLines },
-    { id: "model",    label: "model",           kind: "model", x: 1, y: 2, lines: modelLines },
-  ],
-  edges: [
-    { from: "question", to: "tool_a" },
-    { from: "question", to: "tool_b" },
-    ...(isA ? [{ from: "tool_a", to: "model", label: "tool_calls" }] : []),
-    ...(isB ? [{ from: "tool_b", to: "model", label: "tool_calls" }] : []),
-    ...(!chosen ? [{ from: "question", to: "model" }] : []),
-  ],
-});
-helpers.log("routed to: " + (chosen || "no tool"));
-
-return chosen ? { chose: chosen, args } : { chose: "(neither; model answered directly)", content: s.content?.slice(0, 200) };
+// The reasoning streamed above. A returned value renders on its own, so just hand back the
+// decision: the tool the model chose (if any) and the arguments it filled in.
+if (!s.tool_calls.length) return { routed_to: "(answered directly)", answer: s.content };
+const tc = s.tool_calls[0];
+return { routed_to: tc.function.name, arguments: JSON.parse(tc.function.arguments || "{}") };
 `,
     },
   ],
 });
 
-// ── Module 1c Part 4: glossary_search via the in-page NVIDIA glossary server ──
+// ── glossary_search via the in-page NVIDIA glossary server ──
 mountCanvasFlow("#cell-m2b-p4", {
-  label: "Module 1c Part 4 · glossary_search via the in-page NVIDIA glossary MCP server",
+  label: "glossary_search via the in-page NVIDIA glossary MCP server",
   intro: "Each node writes into a shared state object that later nodes read. Open any node to edit its JS and rerun it alone, or run the whole graph.",
   edges: [
     { from: "input", to: "llm1" },
@@ -843,7 +588,7 @@ return { name: state.SEARCH_SCHEMA[0].function.name };
     },
     {
       id: "llm1", icon: "🧠", title: "LLM call #1", x: 1, y: 1,
-      summary: "The first model call. This is a factual question the model should ground rather than recall, so we REQUIRE a glossary_search call here (tool_choice) to see the full round-trip. Letting the model decide for itself is Part 3's lesson (and what the createReactAgent artifact does); here the model just fills in the search query.",
+      summary: "The first model call. This is a factual question the model should ground rather than recall, so we REQUIRE a glossary_search call here (tool_choice) to see the full round-trip. Letting the model decide for itself is the routing lesson above (and what the createReactAgent artifact does); here the model just fills in the search query.",
       code: `state.messages = [
   { role: "system", content: "You are a research assistant. Ground answers in glossary_search results; never answer factual questions from memory." },
   { role: "user",   content: state.question },
@@ -854,7 +599,6 @@ state.s1 = await helpers.chatStream({
   tool_choice: { type: "function", function: { name: "glossary_search" } },   // require the search; don't let it answer from (stale) memory
   max_tokens:  8196,   // a reasoning model thinks before it emits the call; too small a budget and it stops mid-thought
 });
-helpers.log("finish_reason:", state.s1.finish_reason, "· tool_calls:", state.s1.tool_calls.length);
 return {
   finish_reason: state.s1.finish_reason,
   tool_calls_count: state.s1.tool_calls.length,
@@ -889,7 +633,6 @@ state.messages.push({
 state.messages.push({ role: "tool", tool_call_id: tc.id, content: state.toolMsg });
 // Steer the synthesis call: answer now, from the results, with no more tool calls.
 state.messages.push({ role: "user", content: "Using only the search results above, write the final answer now. Do not request another search or output any tool-call syntax." });
-helpers.log("got", meta.count, "glossary entries for:", state.query);
 return { query: state.query, count: meta.count, source: meta.source };
 `,
     },
@@ -917,59 +660,49 @@ return answer || "(the model did not produce a final answer; try Run again)";
   ],
 });
 
-// ── Module 1c Part 4b: the same glossary_search tool, swapped to exact lookup ─
+// ── the same glossary_search tool, swapped to exact lookup ─
 mountRunCell("#cell-m2b-p4b", {
-  label: "Module 1c Part 4b · the same glossary_search tool, swapped to an exact term lookup",
-  intro: "Part 4's tool name, schema, and agent loop carry over unchanged. The one thing that moves is the executor, which now does an exact glossary_lookup by slug instead of a ranked search. The same fixed contract returns one precise entry when the slug matches and nothing when it does not. Edit the slug to see where exact lookup wins and where ranked search would have been more forgiving.",
-  code: `// The agent sees the exact same glossary_search tool it saw in Part 4.
+  label: "the same glossary_search tool, swapped to a full-article backend",
+  intro: "Same glossary_search, same loop, but a richer backend: instead of a one-line blurb, it returns the term's whole NVIDIA glossary article. The model asks with a natural query and the backend fetches the full cached page. Edit the question and rerun (the 'deep' terms with a full article cached include vector database, RAG, LLMs, AI agents, and deep agents).",
+  code: `// Same glossary_search the model already knows, but a richer backend behind it: instead of a
+// one-line blurb, it returns the term's full NVIDIA glossary article (mats/glossary_raw/<slug>.md).
 const SEARCH_SCHEMA = [{
   type: "function",
   function: {
     name: "glossary_search",
-    description: "Look up an NVIDIA glossary term. Use for definitions and concepts.",
-    parameters: { type: "object", properties: { query: { type: "string", description: "the term's slug, lowercase and hyphenated, e.g. 'vector-database'" } }, required: ["query"] },
+    description: "Look up an NVIDIA glossary term and return its full article.",
+    parameters: { type: "object", properties: { query: { type: "string", description: "the term, e.g. 'vector database'" } }, required: ["query"] },
   },
 }];
 
 const messages = [
-  // The lookup backend is keyed by exact slug, so we tell the model to query the
-  // slug form ('vector-database'), never a phrase.
-  // That coupling between a tool's quirk and its prompt is what Part 4's ranked search avoided.
-  { role: "system", content: "You are a research assistant. Ground answers in glossary_search results; do not answer from memory. glossary_search is keyed by exact term slug, so query the lowercase, hyphenated slug (e.g. 'vector-database'), never a full question." },
-  { role: "user",   content: "What is a vector database?" },
+  { role: "system", content: "You are a research assistant. Ground answers in glossary_search results; do not answer factual questions from memory." },
+  { role: "user",   content: "What is a vector database, and how does it use embeddings?" },
 ];
 
-// Require the call (same as Part 4) so the swapped backend is always exercised,
-// and give the reasoning model room to think before the call (4096, not 1500).
-const s1 = await chatStream({ messages, tools: SEARCH_SCHEMA, tool_choice: { type: "function", function: { name: "glossary_search" } }, max_tokens: 8196 });
-log("finish_reason:", s1.finish_reason, "· tool_calls:", s1.tool_calls.length);
+// Require the call so the swapped backend is always exercised. The model streams its reasoning.
+const s1   = await chatStream({ messages, tools: SEARCH_SCHEMA, tool_choice: { type: "function", function: { name: "glossary_search" } }, max_tokens: 8196 });
+const args = JSON.parse(s1.tool_calls[0].function.arguments || "{}");
 
-const tc    = s1.tool_calls[0];
-const query = JSON.parse(tc.function.arguments).query;
-log.h("glossary_search · backed by exact glossary_lookup");
-log("slug:", query);
-
-// The one thing that differs from Part 4: glossary_lookup (exact) instead of glossary_search (ranked).
-const out     = await glossaryMCP.request("tools/call", { name: "glossary_lookup", arguments: { slug: query } });
-const toolMsg = out.content[0].text;
-log(toolMsg);
+// Richer backend: fetch the whole article, not the blurb. Falls back gracefully for a term that has
+// no cached full page (only the "deep" terms have one).
+const article = await glossaryFull(args.query || "");
+const toolMsg = article ? article.body : "(no full article cached for that term)";
 
 messages.push({ role: "assistant", content: s1.content || null, tool_calls: s1.tool_calls });
-messages.push({ role: "tool", tool_call_id: tc.id, content: toolMsg });
-messages.push({ role: "user", content: "Using only the results above, write the final answer now. Do not request another search or output any tool-call syntax." });
-log.details("messages", messages);
+messages.push({ role: "tool", tool_call_id: s1.tool_calls[0].id, content: toolMsg });
+messages.push({ role: "user", content: "Using only the article above, write the final answer now." });
 
-const s2 = await chatStream({ messages, max_tokens: 8196 });
-const answer = (s2.content || "").replace(/<tool_call>[\\s\\S]*?<\\/tool_call>/g, "").replace(/<\\/?function[^>]*>|<\\/?parameter[^>]*>/g, "").trim();
-log.h("final answer");
-log(answer || "(no final answer; try Run again)");
-return { used_lookup: true, slug: query, results: out.structuredContent };
+// Streams the grounded answer; the return surfaces the full article the model actually read.
+await chatStream({ messages, max_tokens: 8196 });
+return article ? { term: article.term, slug: article.slug, chars: article.body.length, full_entry: article.body }
+               : { error: "no full article cached for that term" };
 `,
 });
 
-// ── Module 1c Part 5: agents as tools ────────────────────────────────────────
+// ── agents as tools ────────────────────────────────────────
 mountCanvasFlow("#cell-m2b-p5", {
-  label: "Module 1c Part 5 · agents as tools · hide the database, expose the question",
+  label: "agents as tools · hide the database, expose the question",
   intro: "The top-level agent gets a single query_customer_db tool backed by a sub-agent that knows the schema (a tiny JS array stands in for SQL). Raw rows never reach the caller, which poses a question and receives a natural-language answer in return.",
   edges: [
     { from: "sub_data",  to: "sub_agent" },
@@ -1012,7 +745,6 @@ return { rows: state.customers.length, schema_fields: Object.keys(state.customer
   });
   return (sub.content || sub.reasoning || "(empty)").trim();
 };
-helpers.log("sub-agent ready · knows", state.customers.length, "rows");
 return { sub_agent: "query_customer_db", world_rows: state.customers.length };
 `,
     },
@@ -1082,8 +814,6 @@ const s2 = await helpers.chatStream({
   messages: state.mainMessages, tools: state.TOOLS, max_tokens: 8196,
 });
 
-helpers.viz.messageList(state.mainMessages.concat([{ role: "assistant", content: s2.content || "" }]),
-  "MAIN AGENT'S MESSAGE LOG · sub-agent's working memory not shown");
 helpers.log("note: the main agent never saw the rows; only the sub-agent's natural-language summary");
 
 return s2.content || s2.reasoning || "(empty)";
@@ -1092,10 +822,10 @@ return s2.content || s2.reasoning || "(empty)";
   ],
 });
 
-// ── Module 1c Part 6: MCP-shaped tool server ─────────────────────────────────
+// ── MCP-shaped tool server ─────────────────────────────────
 mountCanvasFlow("#cell-m2b-p6", {
-  label: "Module 1c Part 6 · MCP-shaped tool server · discovery + dispatch",
-  intro: "A fake in-page MCP server exposes two tools through tools/list and tools/call with no network. The agent discovers the tool list, hands the schemas to the LLM, and dispatches the model's tool_calls back through tools/call. Only the tool source changes; the agent loop stays identical to Part 2.",
+  label: "MCP-shaped tool server · discovery + dispatch",
+  intro: "A fake in-page MCP server exposes two tools through tools/list and tools/call with no network. The agent discovers the tool list, hands the schemas to the LLM, and dispatches the model's tool_calls back through tools/call. Only the tool source changes; the agent loop stays identical to a normal tool call.",
   edges: [
     { from: "server",   to: "discover" },
     { from: "discover", to: "llm" },
@@ -1106,7 +836,7 @@ mountCanvasFlow("#cell-m2b-p6", {
     {
       id: "server", icon: "🖥", title: "In-page MCP server", x: 0, y: 0,
       summary: "Points at the same glossary MCP server defined at the top of this page. It exposes the two standard endpoints (tools/list for discovery and tools/call for execution) in the same JSON-RPC-style shape as the real protocol. In production these calls travel over stdio or HTTP transport rather than running in the same JavaScript process.",
-      code: `// The same in-page glossary server Part 4 called directly, now reached through
+      code: `// The same in-page glossary server the search cell called directly, now reached through
 // MCP discovery rather than a direct call.
 // The client below discovers and dispatches its tools with no advance knowledge,
 // because the server already speaks tools/list and tools/call (defined up top).
@@ -1136,7 +866,7 @@ return state.question;
     },
     {
       id: "llm", icon: "🧠", title: "LLM (sees discovered tools)", x: 1, y: 2,
-      summary: "The same chatStream call from Part 2 runs unchanged because the agent loop cannot tell whether the tools came from a hardcoded array or a remote MCP server. The discovery step above lets you swap that source without touching the loop at all.",
+      summary: "The same single chatStream call runs unchanged because the agent loop cannot tell whether the tools came from a hardcoded array or a remote MCP server. The discovery step above lets you swap that source without touching the loop at all.",
       code: `state.messages = [{ role: "user", content: state.question }];
 state.s1 = await helpers.chatStream({
   messages:   state.messages,
@@ -1161,7 +891,6 @@ return {
 for (const tc of state.s1.tool_calls) {
   const args = JSON.parse(tc.function.arguments || "{}");
   const out  = await state.mcpServer.request("tools/call", { name: tc.function.name, arguments: args });
-  helpers.log.details("tools/call result", out);
   const txt  = out.content?.[0]?.text || "(no text)";
   helpers.log.details("server → " + tc.function.name, out);
   state.messages.push({ role: "tool", tool_call_id: tc.id, content: txt });

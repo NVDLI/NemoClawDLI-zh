@@ -52,61 +52,26 @@
       or only acts without thinking it through.
     </p>
     <p>
-      The arrangement is strong because the model is never bound to the plan it
-      started with. Whenever a tool returns something it did not expect, that result
-      joins the next round of reasoning, and the model can reconsider where it stands
-      before deciding what to do next.
-    </p><p>
-      Every chat response carries one signal field,
-      <code>finish_reason</code>. A six-line router reads it and runs the loop:
-    </p>
-    <ol>
-      <li>the model picks a tool,</li>
-      <li>your code runs it,</li>
-      <li>the result goes back,</li>
-      <li>the loop repeats until the model says done.</li>
-    </ol>
-    <p>
       This loop is the foundation that most general-purpose agent frameworks
       are built on, LangChain's <a href="https://docs.langchain.com/oss/javascript/langchain/agents" target="_blank" rel="noopener"><code>createReactAgent</code></a>
       among them, and the rest of this module works up to it.
     </p>
-    <p>
-      Its four moving parts come together in the cell below, along with a guard
-      that keeps the loop from running forever.
-    </p>
   </div>
 
-  <figure class="lp-video">
-    <div class="video-wrap">
-      <iframe src="https://www.youtube-nocookie.com/embed/zqulxdcPZLk?autoplay=0&rel=0"
-        title="Start Building AI Agents With Nemotron: Core Concepts for Developers" loading="lazy"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
-    </div>
-    <figcaption><b>Watch:</b> A recorded livestream that walks through the building blocks of an agent: the model, its tools, and the instructions that steer it. It is optional companion viewing for the loop and the four moving parts you build by hand on this page. Part of NVIDIA's <a href="https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/how-to-build-an-ai-agent" target="_blank" rel="noopener">Agentic AI Learning Path</a>.</figcaption>
-  </figure>
-  <p>
-    Module 1a built the loop with the reasoning step left open: a socket that held an <code>if</code>-statement or a
-    search routine. Fill that socket with a language model and the same loop takes on a specific, named shape.
-  </p>
-  <p>
-    The model only reads and writes text and never touches the world itself. It sees only what a tool hands back, and its
-    only move is to <em>request</em> another tool. That indirection through text is the <strong>ReAct</strong> loop.
-  </p>
   <figure style="margin:1.4em 0">
     <svg class="gfx-dark" viewBox="0 0 1122 440" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The general agent loop from Module 1a becomes the ReAct loop once the reasoning socket holds a language model. On the left, the general cycle: perception reads the world, a dashed swappable socket reasons, action changes the world. A bridge drops a language model into that socket. On the right, the same cycle driven by the model: it reasons, acts by calling a tool, and observes the tool's result, which re-enters the next reasoning step. Because the model works only in text, it reads a tool result in place of perceiving and emits a tool call to act." preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:1140px;margin:1.5rem auto"><defs><marker id="g1-arc" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-purple,#6f42c1)"/></marker><marker id="g1-bridge" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-sub,#5e5e5e)"/></marker></defs><g><path d="M 302.6 99.8 A 172 172 0 0 1 405.8 278.6" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><path d="M 338.2 395.6 A 172 172 0 0 1 131.8 395.6" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><path d="M 64.2 278.6 A 172 172 0 0 1 167.4 99.8" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><circle cx="235.00" cy="86.00" r="62" fill="var(--gfx-tint-blue,#dfeaf5)" stroke="var(--gfx-blue)" stroke-width="2.6"/><text x="235.00" y="81.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-blue)" text-anchor="middle" font-weight="700">Perceive</text><text x="235.00" y="103.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">read the world</text><circle cx="383.96" cy="344.00" r="62" fill="var(--gfx-tint-purple,#eadfff)" stroke="var(--gfx-purple)" stroke-width="3.6" stroke-dasharray="7 4"/><text x="383.96" y="339.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-purple)" text-anchor="middle" font-weight="700">Reason</text><text x="383.96" y="361.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">swappable socket</text><circle cx="86.04" cy="344.00" r="62" fill="var(--gfx-tint-amber,#f7e9cf)" stroke="var(--gfx-amber)" stroke-width="2.6"/><text x="86.04" y="339.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-amber)" text-anchor="middle" font-weight="700">Act</text><text x="86.04" y="361.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">change the world</text><text x="235" y="251" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="15" fill="var(--gfx-ink,#1a1a1a)" text-anchor="middle" font-weight="800">the loop</text><text x="235" y="271" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">from Module 1a</text></g><path d="M 462.0 258 L 660.0 258" fill="none" stroke="var(--gfx-sub,#5e5e5e)" stroke-width="3" marker-end="url(#g1-bridge)"/><text x="561" y="240" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13" fill="var(--gfx-ink2,#3b3b3b)" text-anchor="middle" font-weight="700">put an LLM in the socket</text><text x="561" y="282" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle" font-style="italic">text to text</text><g transform="translate(652,0)"><path d="M 302.6 99.8 A 172 172 0 0 1 405.8 278.6" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><path d="M 338.2 395.6 A 172 172 0 0 1 131.8 395.6" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><path d="M 64.2 278.6 A 172 172 0 0 1 167.4 99.8" fill="none" stroke="var(--gfx-purple,#6f42c1)" stroke-width="2.6" marker-end="url(#g1-arc)"/><circle cx="235.00" cy="86.00" r="62" fill="var(--gfx-tint-blue,#dfeaf5)" stroke="var(--gfx-blue)" stroke-width="2.6"/><text x="235.00" y="81.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-blue)" text-anchor="middle" font-weight="700">Observe</text><text x="235.00" y="103.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">read the result</text><circle cx="383.96" cy="344.00" r="62" fill="var(--gfx-tint-purple,#eadfff)" stroke="var(--gfx-purple)" stroke-width="2.6"/><text x="383.96" y="339.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-purple)" text-anchor="middle" font-weight="700">Reason</text><text x="383.96" y="361.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">the LLM thinks</text><circle cx="86.04" cy="344.00" r="62" fill="var(--gfx-tint-amber,#f7e9cf)" stroke="var(--gfx-amber)" stroke-width="2.6"/><text x="86.04" y="339.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="16" fill="var(--gfx-amber)" text-anchor="middle" font-weight="700">Act</text><text x="86.04" y="361.00" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">call a tool</text><text x="235" y="251" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="15" fill="var(--gfx-ink,#1a1a1a)" text-anchor="middle" font-weight="800">ReAct</text><text x="235" y="271" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11.5" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">loop until stop</text></g></svg>
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">The loop is unchanged. With a language model in the reasoning step, the agent reads tool results and acts by calling tools.</figcaption>
   </figure>
 
   <h2>The one field that tells the loop what to do next</h2>
+
   <p>
     Every chat-completions response carries a <code>finish_reason</code>
     field that tells you why the model stopped generating. Inside an agent
-    loop this is the only signal you need to decide what to do next:
+    loop, this is the only signal you need to decide what to do next:
     run a tool, return the answer to the user, or handle an error. Before reading
     what its values mean, make two calls and watch the field change.
-  </p>
+  </p> 
 
   <div id="cell-finish-reason"></div>
 
@@ -125,16 +90,27 @@
     <li><code>"content_filter"</code> fires when a safety classifier trips on the output.</li>
   </ul>
 
+  <p>In modern ReAct, a short router reads it and runs the following loop:</p>
+  <ol>
+    <li>the model picks a tool,</li>
+    <li>your code runs it,</li>
+    <li>the result goes back,</li>
+    <li>the loop repeats until the model says done.</li>
+  </ol>
+  <p>
+    The arrangement is strong because the model is never bound to the plan it
+    started with. Whenever a tool returns something it did not expect, that result
+    joins the next round of reasoning, and the model can reconsider where it stands
+    before deciding what to do next.
+  </p>
+
   
   <h2>The pieces an LLM agent is built from</h2>
   <p>
     Zoom in on the agent and you find the decomposition
     <a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">Lilian Weng drew in
     2023</a>. A language model sits at the center. Around it sit <strong>memory</strong>, <strong>planning</strong>, <strong>tools</strong>,
-    and the <strong>actions</strong> that reach the world. The model itself stays a stateless text
-    function: what the agent remembers and what it can do are pieces you wire up around it, while the weights
-    stay frozen. The loop survives every technique ahead because you keep rebuilding the same components
-    with stronger parts.
+    and the <strong>actions</strong> that reach the world. 
   </p>
   <p>
     This course's minimal agent fills each slot with the simplest thing that works:
@@ -277,16 +253,6 @@
 
   <div id="cell-m2c-p3"></div>
 
-  <p>
-    Try both variants the canvas suggests. Asking "What time is it in UTC?" routes
-    through the tool, because the model does not know the answer on its own.
-  </p>
-  <p>
-    Asking "What is the capital of France?" routes around the tool instead, since the
-    model already knows Paris from training and skips the call entirely. The
-    difference shows up in <code>finish_reason</code> on step 1.
-  </p>
-
   <div class="callout">
     <strong>What just happened inside the messages array.</strong><br>
     The loop pushed four things into <code>state.messages</code>: <ul><li>the system
@@ -294,26 +260,30 @@
     <code>tool_calls</code> field (turn 2, the request),</li><li>and a
     <code>tool</code>-role message holding the function's return value (turn
     3).</li></ul> The second LLM call read all four of those including the new tool result and
-    wrote the final answer. <br>The growing array is the only "memory" this
+    wrote the final answer. The growing array is the only "memory" this
     agent has. If you saved that array to disk and reloaded it next week, the
     model would resume the conversation without noticing the gap.
   </div>
 
-  <h2>Why the loop needs a step cap</h2>
-  <p>
-    Each step costs tokens and bloats the messages array. A confused agent
-    (one that misreads its tool spec or gets stuck retrying) keeps going
-    as long as the endpoint answers. <code>MAX_STEPS = 6</code> is the
-    cheap backstop: it caps total cost and forces you to think about what
-    the right failure mode should be when the agent cannot converge.
-  </p>
-
   <h2>Context rot: why a longer loop reads worse</h2>
   <p>
-    Cost is not the only reason to cap the loop. The messages array grows on every turn, and a long context costs more
-    to send while the model reads it <em>worse</em>. The system prompt stays pinned at the front while the freshest tool result
-    sits at the back, so the original request slides toward the middle as turns pile up.
+    As each step costs tokens and bloats the messages array, <code>MAX_STEPS = 6</code> is set as
+    a cheap backstop to cap the agent's efforts. A confused agent
+    (one that misreads its tool spec or gets stuck retrying) keeps going
+    as long as the endpoint answers, which may lead to a never-ending interaction loop. 
   </p>
+  
+  <p>
+    This issue actually becomes more likely as the context grows due in part to a larger phenomena known as <b>context rot</b>. 
+    Simply put, context rot is the tendency for contradictions and poor performance to manifest as the model inputs grow. 
+    There are many soft reasons for this, which include: 
+    <ul>
+      <li>Accumulating poor or ambiguous conventions, logical contraditions, and historical/stale environment observations in the context history (constituting an increase in cognitive load).</li>
+      <li>Inherent model tendencies to focus more on the tails of dialog (front and back) as assessed by <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">"Lost in the Middle" (Liu et al., 2023)</a></li>
+    </ul>
+    In general, you can largely assume that the further an important signal strays into the middle of a long-running prompt, the more likely it is to be ignored or contradicted. 
+  </p>
+
   <figure style="margin:1.4em 0">
     <svg class="gfx-dark" viewBox="0 74 760 305" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Lost in the Middle, redrawn from Liu et al. 2023, mapped onto an agent's growing messages array. A U-shaped curve plots answer accuracy against where the needed text sits in the context. Accuracy is high at the start, where the system prompt is pinned, and at the end, where the latest tool result sits, but dips to its lowest in the middle. As the loop appends turns, the original request is pushed left from the fresh end into the weak middle, which is context rot." preserveAspectRatio="xMidYMid meet" style="width:100%;max-width:920px;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;margin:1.4em auto">
       <defs><marker id="litm-arr" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-sub,#9aa0a6)"/></marker></defs>
@@ -339,12 +309,7 @@
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Redrawn from <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu et al. (2023)</a>. As the loop appends turns, the answer you need drifts into the weak middle.</figcaption>
   </figure>
   <p>
-    Models reliably under-weight tokens stranded in the middle of a long context and favor whatever sits at the start or the end;
-    <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">"Lost in the Middle" (Liu et al., 2023)</a> measured the effect.
-    This is <strong>context rot</strong>, the failure
-    <a href="https://www.trychroma.com/research/context-rot" target="_blank" rel="noopener">Chroma measured across many models</a>,
-    and the longer the loop runs the deeper your original question sinks into the weak zone. <code>MAX_STEPS</code> is the
-    dumb-but-effective floor, and it does not solve the underlying problem. The structural mitigations each trade something away:
+    Some mitigations for this issue include:
   </p>
   <ul>
     <li>having the model plan ahead before it accumulates observations,</li>
@@ -352,18 +317,14 @@
     <li>or rolling earlier turns into a summary.</li>
   </ul>
   <p>
-    Each of those costs something in latency or fidelity or complexity, and each is worth weighing against the task at hand. The step
-    cap just keeps a confused agent from quietly spending far more than you intended.
+    Each of those costs something in latency or fidelity or complexity, and each is worth weighing against the task at hand.
   </p>
 
   <h2>The same loop, prebuilt and pointed at this course</h2>
   <p>
     The loop above hard-wires one tiny tool. LangChain's <a href="https://docs.langchain.com/oss/javascript/langchain/agents" target="_blank" rel="noopener"><code>createReactAgent</code></a>
-    generalizes the same machinery; you meet this prebuilt ReAct
-    loop again in Module 1c and build it up in detail in Module 2c. Here it is wired to one tool,
-    <code>read_course_page</code>, which hands
-    the agent any page of this course as markdown. The model decides which pages
-    to read to answer your question.
+    generalizes the same machinery to support more tools, standard interfaces, and observability integrations. An instance of this class is wired below to a single tool,
+    <code>read_course_page</code>, which hands the agent any page of this course as markdown. The model should decides which pages to read to answer your question, so give it a try.
   </p>
 
   <div class="callout">
@@ -417,17 +378,6 @@
         continue.</li>
   </ol>
 
-  <div class="callout info" style="margin-top:2em">
-    <strong>Module 1 closes here.</strong> You now have the two
-    structural pieces an LLM-based agent is built from: a stateless
-    chat-completions call and a loop that reads
-    <code>finish_reason</code> to decide when to keep going. The
-    remaining modules build on this foundation. The core
-    machinery stays the same, while later methods add
-    structure to how the model communicates, widen the tool surface,
-    and eventually compose multiple loops together.
-  </div>
-
   <div class="references">
     <h3>References</h3>
     <ul>
@@ -458,9 +408,13 @@ hljs.highlightAll();
 mountRunCell("#cell-finish-reason", {
   label: "finish_reason · the one field the loop reads to decide what to do next",
   intro: "Two calls to the same model. The first is a plain question it can answer, so it stops. The second offers one tool and asks for something training data cannot supply, so the model asks your code to run the tool instead of answering. Watch finish_reason change between them. The tool here is only a preview to make the field flip; you wire tools up properly in the sections just below.",
-  code: `// Call 1 · no tools offered. The model can answer, so it stops on its own.
+  code: `// MODEL is the swappable brain. Change it and rerun to see whether a stronger model
+// stops or asks for the tool on these same two questions.
+const MODEL = "nvidia/nemotron-3-nano-30b-a3b";   // or "nvidia/nemotron-3-super-120b-a12b" for a stronger brain
+
+// Call 1 · no tools offered. The model can answer, so it stops on its own.
 const r1 = await chat({
-  model: "nvidia/nemotron-3-nano-30b-a3b",
+  model: MODEL,
   messages: [{ role: "user", content: "In one sentence, what is an agent's ReAct loop?" }],
   max_tokens: 8196,  // reasoning models think first; leave room past reasoning_content
 });
@@ -480,7 +434,7 @@ const TOOLS = [{
   },
 }];
 const r2 = await chat({
-  model: "nvidia/nemotron-3-nano-30b-a3b",
+  model: MODEL,
   messages: [{ role: "user", content: "What time is it right now in UTC?" }],
   tools: TOOLS,
   max_tokens: 8196,
@@ -503,7 +457,6 @@ mountCanvasFlow("#cell-m2c-p3", {
   edges: [
     { from: "user", to: "loop" },
     { from: "tool", to: "loop" },
-    { from: "loop", to: "final" },
   ],
   nodes: [
     {
@@ -513,7 +466,9 @@ mountCanvasFlow("#cell-m2c-p3", {
                "is 'stop', not 'tool_calls'.",
       code: `state.systemPrompt = "You are a helpful assistant. Use the tools available "
   + "when the user asks for something you cannot answer from training data alone.";
-state.userPrompt   = "What time is it in UTC?";
+// state.userPrompt   = "What time is it in UTC?";
+// state.userPrompt   = "What is the capital of France?";
+state.userPrompt   = "I have a meeting tomorrow morning at 10am in France. How many hours do I have to prepare?";
 return state.userPrompt;
 `,
     },
@@ -533,26 +488,33 @@ state.execTool = (name) =>
   name === "get_current_time"
     ? new Date().toISOString().slice(0, 19).replace("T", " ") + " UTC"
     : \`(tool "\${name}" not found)\`;
-return { tool_count: state.TOOLS.length };
+
+return state.execTool("get_current_time");
 `,
     },
     {
       id: "loop", icon: "🔄", title: "ReAct loop", x: 1, y: 1,
       summary: "Runs the ReAct cycle: call the model, check finish_reason, run any requested tools, append " +
                "the results as observations, then loop. It exits when finish_reason is 'stop'; MAX_STEPS=6 " +
-               "is the backstop against a model that loops forever.",
-      code: `const MAX_STEPS = 6;
+               "is the backstop against a model that loops forever. Edit MODEL at the top to swap the brain.",
+      code: `// MODEL is the swappable brain in the reasoning slot. Change it and rerun to drive the
+// same loop with a different model.
+const MODEL = "nvidia/nemotron-3-nano-30b-a3b";   // or "nvidia/nemotron-3-super-120b-a12b" for a stronger brain
+const MAX_STEPS = 6;
+
 state.messages = [
   { role: "system", content: state.systemPrompt },
   { role: "user",   content: state.userPrompt   },
 ];
 
-let step = 0;
+let step = 0, answered = false;
 while (step++ < MAX_STEPS) {
   helpers.log(\`── step \${step} ──────────────────────\`);
+  // The second argument is null, so the raw token stream is suppressed and the curated
+  // trace below is the only output, which keeps the loop's logic readable.
   const s = await helpers.chatStream({
-    messages: state.messages, tools: state.TOOLS, max_tokens: 8196,
-  });
+    messages: state.messages, tools: state.TOOLS, model: MODEL, max_tokens: 8196,
+  }, null);
   helpers.log("finish_reason:", s.finish_reason, "· tool_calls:", s.tool_calls.length);
   state.messages.push({
     role: "assistant",
@@ -561,7 +523,8 @@ while (step++ < MAX_STEPS) {
   });
   if (s.finish_reason === "stop" && !s.tool_calls.length) {
     state.finalContent = s.content;
-    helpers.log("✓ model issued a final answer");
+    answered = true;
+    helpers.log("✓ final answer:", s.content);
     break;
   }
   for (const tc of s.tool_calls) {
@@ -570,15 +533,8 @@ while (step++ < MAX_STEPS) {
     state.messages.push({ role: "tool", tool_call_id: tc.id, content: result });
   }
 }
-if (step >= MAX_STEPS) helpers.log("⚠ step cap reached · safety belt fired");
-return { steps_taken: step, message_count: state.messages.length };
-`,
-    },
-    {
-      id: "final", icon: "✅", title: "Final answer", x: 1, y: 2,
-      summary: "Surfaces the model's last user-facing message from state.finalContent. In a real app this " +
-               "is the value you return to the caller, the one answer the loop was working toward.",
-      code: `return state.finalContent || "(no final answer; the loop hit MAX_STEPS or errored)";
+if (!answered) helpers.log("⚠ step cap reached · safety belt fired");
+return { model: MODEL, steps_taken: step, messages: state.messages };
 `,
     },
   ],
@@ -683,7 +639,7 @@ helpers.mountChatUI(document.getElementById("react-artifact"), {
     // reasons and reads as many times as it needs, capped so a confused run
     // can't spin forever. Each reason+read is ~2 graph steps, so 12 ≈ 6 reads.
     const stream = await agent.stream({ messages },
-      { streamMode: "messages", configurable: { thread_id: ctx.thread }, recursionLimit: 12, signal: ctx.signal });
+      { streamMode: "messages", configurable: { thread_id: ctx.thread }, recursionLimit: 24, signal: ctx.signal });
     // Hand each event to ctx.view as it arrives: it appends reasoning, tool
     // chips, and answer text in stream order. Every read pushes its OWN chip,
     // keyed by the tool call's id, not its index: arg-delta chunks reset the

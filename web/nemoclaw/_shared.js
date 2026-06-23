@@ -94,11 +94,22 @@ export function browserChatFetch() {
        headers (the build CORS proxy rejects them in preflight) and attaches the
        <code>X-BILLING-SOURCE</code> tag. Pass it as <code>configuration.fetch</code> when
        constructing a browser <code>ChatOpenAI</code>. */
-  return (url, init = {}) => {
+  return async (url, init = {}) => {
     const h = init.headers instanceof Headers ? init.headers : new Headers(init.headers || {});
     for (const k of [...h.keys()]) { if (k.startsWith("x-stainless")) h.delete(k); }
     h.set("X-BILLING-SOURCE", BILLING_SOURCE);
-    return fetch(url, { ...init, headers: h });
+    const r = await fetch(url, { ...init, headers: h });
+    // A non-2xx body is often plain text or an HTML error page; the OpenAI SDK calls r.json() on it
+    // and throws a cryptic "Unexpected ... after JSON" with no sign it was an HTTP error. When the
+    // error body is not JSON, re-wrap it as a JSON error the SDK can surface as a clear HTTP message.
+    if (!r.ok && !(r.headers.get("content-type") || "").toLowerCase().includes("application/json")) {
+      const txt = await r.text().catch(() => "");
+      return new Response(
+        JSON.stringify({ error: { message: "HTTP " + r.status + " " + r.statusText + ": " + txt.slice(0, 300), type: "http_error", code: r.status } }),
+        { status: r.status, statusText: r.statusText, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    return r;
   };
 }
 

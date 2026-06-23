@@ -213,7 +213,7 @@ SUITE_META = [
      "SVG text must be legible at its render size, no label may overflow its figure, and figures/images must carry aria-label / alt / rel=noopener. A figure too small to read or clipped at the frame is a silent defect no prose check sees.",
      "scripts/figure_audit.py", "run"),
     ("cell_audit", "Cell & artifact contract", "recommended",
-     "Every runnable cell shows its work in the panel, writes via helpers.log not console, awaits its model calls, inlines no key, keeps cell-only code in an editable cell, and never animates a stalling demo (a fixed-direction policy on the maze marches into a wall and freezes). A hard-coded key is required-tier (it ships to every student); the rest are recommended.",
+     "Every runnable cell shows its work in the panel, writes via helpers.log not console, awaits its model calls, inlines no key, keeps cell-only code in an editable cell, and is syntax-highlighted by default (the page loads CodeMirror core, the javascript mode, and the editor css, or the editor degrades to a plain textarea). A hard-coded key is required-tier (it ships to every student); the rest are recommended.",
      "scripts/cell_audit.py", "run"),
     ("diagram_geom", "Figure geometry", "recommended",
      "mountDiagram and the policy map are drawn by JavaScript at runtime, so the static figure audit never sees them. This renders each and flags overlapping text, text past the bounds, a connector crossing a box it does not link, and a relational diagram that draws no edges.",
@@ -510,10 +510,10 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None) -> in
                    "element); a modal dialog blocks the whole lab tab."),
         "static_cell_code": (RECOMMENDED, "Move the cell-only code into an editable cell so the student can read "
                              "and run it, not just watch its output appear."),
-        "stall_demo": (RECOMMENDED, "A fixed-direction policy ( () => 'east' ) animated on the maze cannot navigate "
-                       "it: the agent marches into a wall and freezes for the rest of the run, which reads as a "
-                       "broken cell. Drive the maze with a real policy, or render the maze statically and leave it "
-                       "for the reasoner nodes. A constant heading is fine only on the straight corridor."),
+        "unhighlighted": (RECOMMENDED, "The page mounts an editable cell but does not load the syntax highlighter, so "
+                          "the editor degrades to a plain textarea. Load CodeMirror core, the javascript mode, and the "
+                          "editor css (codemirror.min.css + codemirror.min.js + mode/javascript/javascript.min.js) so "
+                          "every editable cell is syntax-highlighted by default."),
     }
     _FIG_FIX = {
         "tiny": (RECOMMENDED, "Raise the text to a rendered font-size of at least 11px; below that it is "
@@ -798,7 +798,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None) -> in
           f"(opaque {len(ca_find.get('opaque', []))}, console {len(ca_find.get('console', []))}, "
           f"unawaited {len(ca_find.get('unawaited', []))}, dialog {len(ca_find.get('dialog', []))}, "
           f"inline-key {len(ca_find.get('inline_key', []))}, static {len(ca_find.get('static_cell_code', []))}, "
-          f"stall {len(ca_find.get('stall_demo', []))})")
+          f"unhighlighted {len(ca_find.get('unhighlighted', []))})")
     print(f"  figure geometry : {len(dg_find)} runtime-figure finding(s) (text overlap / past bounds / connector-crosses-box / useless)")
     _cg = {k: len(v) for k, v in ch_fam.items()}
     print(f"  code hygiene    : {len(ch_rows)} finding(s) over {ch_scanned} code file(s) "

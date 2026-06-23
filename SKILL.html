@@ -51,9 +51,9 @@
       "Keep contribution low-barrier with the quality bar held: the content discipline in QUALITY_DIRECTIVES.md and these tenets. The path is still forming."
     ],
     "assumptions": [
-      "task1 is the canonical root: the open-source, replicable release. Everything worth keeping lives here and is versioned; scratch goes to /tmp and is never committed.",
+      "The repository root is the canonical, open-source, replicable release. Everything worth keeping lives here and is versioned; scratch goes to /tmp and is never committed.",
       "Content is organized by execution surface: web/ (browser, remote services only) holds the released course and its course-scoped reference packets under web/nemoclaw/mats/; cpu/ holds the shared microservice stack it runs against, with shared repos/, scripts/, and workspace/.",
-      "The brain is each directory's SKILL.html skill-meta JSON, not a SKILL.md. Parse it first, then walk children: task to surface to course to content.",
+      "The brain is each directory's SKILL.html skill-meta JSON, not a SKILL.md. Parse it first, then walk children: root to surface to course to content.",
       "One link engine (scripts/engine.js) is the single source for resolution, crawl, reachability, and the release contract; it runs headless and in-browser, with no second implementation to drift.",
       "The released course is nemoclaw (Securing Agents); the foyer (web/index.html) surfaces only it."
     ],

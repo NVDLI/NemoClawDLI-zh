@@ -697,6 +697,20 @@ def main() -> int:
         n_assets = sum(1 for p in (out / "assets").rglob("*") if p.is_file())
         print(f"  copied assets/      ({n_assets} files)")
 
+    # Carry the "deep" glossary articles the course fetches by relative path
+    # (mats/glossary_raw/<slug>.md, the full term bodies behind glossary_search's full=true mode).
+    # Only the .md bodies are read, as text by the agent, so skip the images and other mats/
+    # subtrees to keep the bundle lean. Without this the live full-article retrieval 404s.
+    raw = web / "mats" / "glossary_raw"
+    if raw.is_dir():
+        dst = out / "mats" / "glossary_raw"
+        dst.mkdir(parents=True, exist_ok=True)
+        n_raw = 0
+        for md in sorted(raw.glob("*.md")):
+            shutil.copy2(md, dst / md.name)
+            n_raw += 1
+        print(f"  copied mats/glossary_raw/  ({n_raw} full glossary articles)")
+
     print(f"\n{len(pages)} pages → {out}/")
     return 0
 

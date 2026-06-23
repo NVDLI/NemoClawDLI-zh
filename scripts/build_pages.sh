@@ -77,6 +77,29 @@ for d in cors-proxy scripts docs workspace; do
     fi
 done
 
+# Project each shipped explorer's topbar nav to the Pages layout. In the lab/source tree the
+# logo home is ../web/index.html and the up-breadcrumb is the root SKILL.html hub; neither path
+# exists on Pages (the foyer is the site-root index.html and the root hub is a source-layout dev
+# artifact that is not deployed). Point the logo at the foyer and drop the redundant up-link so
+# the topbar has no dead targets on the live site.
+for d in cors-proxy scripts docs workspace; do
+    f="$OUT/$d/SKILL.html"
+    [ -f "$f" ] || continue
+    python3 - "$f" <<'PROJ'
+import sys, re, json
+p = sys.argv[1]; s = open(p).read()
+m = re.search(r'(<script[^>]*id="explorer-config"[^>]*>)(.*?)(</script>)', s, re.S)
+if m:
+    cfg = json.loads(m.group(2))
+    nav = cfg.get("nav", {})
+    nav["home"] = "../index.html"   # the foyer is the bundle front door on Pages
+    nav.pop("up", None)             # no source-layout root hub on the live site
+    cfg["nav"] = nav
+    s = s[:m.start(2)] + json.dumps(cfg, indent=2) + s[m.end(2):]
+    open(p, "w").write(s)
+PROJ
+done
+
 # ── 2c. Validated course SOURCE, mirrored read-only at its repo-relative path ──
 # The validation report names offenders by repo-relative path (e.g. web/nemoclaw/01a-loop.html)
 # and previews the exact source the validator checked. The course itself deploys as the bundled

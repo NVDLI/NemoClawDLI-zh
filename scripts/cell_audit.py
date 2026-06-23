@@ -23,19 +23,15 @@ PRE_RE = re.compile(r"<pre\b.*?</pre>", re.S | re.I)
 CELL_API = re.compile(r"\bhelpers\.|\bctx\.view\b")
 
 MODEL_CALL = re.compile(r"(?<![\w.])(chat|chatStream)\s*\(|\.\s*stream\s*\(", re.I)
-# Any one of these clears the transparency bar: house logger, view method, maze, artifact.
+# Any one of these clears the transparency bar: house logger, view method, maze, artifact, or a
+# returned value (the cell panel renders whatever a cell returns, so a stream-then-return cell with
+# no explicit log is still transparent). An unsuppressed chatStream also streams into the panel.
 SURFACE = re.compile(
     r"\blog\s*\(|\blog\.|helpers\.log|ctx\.view|\.view\.|view\.(token|reasoning|usage|tool|warn|html)"
-    r"|\binfo\s*\(|\bshow\s*\(|\.html\s*\(|mountChatUI|runMaze", re.I)
+    r"|\binfo\s*\(|\bshow\s*\(|\.html\s*\(|mountChatUI|runMaze|\breturn\s+\S", re.I)
 CONSOLE = re.compile(r"\bconsole\s*\.\s*(log|error|warn|info|debug)\b")
 DIALOG = re.compile(r"\b(alert|confirm)\s*\(|\bwindow\s*\.\s*prompt\s*\(|document\s*\.\s*write\s*\(")
 INLINE_KEY = re.compile(r"nvapi-(?!…|123|FAKE|xxx|redacted|FILL|YOUR)[A-Za-z0-9_-]{8,}")
-# A fixed-direction policy ( () => 'east' ) animated against the maze grid cannot navigate it: the
-# agent marches into a wall and freezes for the rest of the run. Animating that stall is a degenerate
-# demo (a "reasoner" that never reasons). Run a real policy, or render the maze statically and leave
-# it for the reasoner nodes. The straight corridor (a non-state literal first arg) is exempt: a fixed
-# heading genuinely solves it. Scanned on raw code, since the direction literal is what identifies it.
-STALL_DEMO = re.compile(r"\banimRun\s*\(\s*state\.\w+[^\n]*?\(\)\s*=>\s*['\"](?:north|south|east|west)['\"]")
 
 
 def strip_noise(c: str) -> str:
@@ -60,14 +56,12 @@ def audit_page(path: Path):
     """Check every runnable cell on one page against the cell contract. This catches the cells that
     would frustrate or mislead a student: a model call that prints nothing, console.* output they
     never see, an un-awaited call that no-ops, a blocking alert/confirm, a real API key baked into the
-    cell, and cell-only API left in a non-editable <pre>. Returns the six finding lists run() merges."""
+    cell, and cell-only API left in a non-editable <pre>. Returns the finding lists run() merges."""
     text = path.read_text(errors="ignore")
     rel = str(path.relative_to(WEB.parent))
-    opaque, console, unawaited, dialog, key, stall = [], [], [], [], [], []
+    opaque, console, unawaited, dialog, key = [], [], [], [], []
     for m in CODE.finditer(text):                 # each `code:` cell literal on the page
         code = m.group(1)
-        for sm in STALL_DEMO.finditer(code):      # constant-direction policy animated on the maze (it stalls at a wall)
-            stall.append((rel, sm.group(0)[:46].replace("\n", " ").strip() + "…"))
         clean = strip_noise(code)                 # blank strings/comments so keywords inside them are ignored
         calls = list(MODEL_CALL.finditer(clean))
         if calls and not SURFACE.search(clean):   # makes a model call but never surfaces its output
@@ -86,18 +80,31 @@ def audit_page(path: Path):
     body = SCRIPT_RE.sub("", text)
     static = [(rel, "static <pre> uses cell-only API (helpers./ctx.view); should be a runnable, editable cell")
               for pm in PRE_RE.finditer(body) if CELL_API.search(pm.group(0))]
-    return opaque, console, unawaited, dialog, key, static, stall
+    # An editable cell renders in CodeMirror with the javascript mode for syntax highlighting; with the
+    # highlighter not loaded the editor silently falls back to a plain, unhighlighted textarea. So any
+    # page that mounts an editable cell must load CodeMirror core + the javascript mode + the editor css.
+    unhighlighted = []
+    if re.search(r"mountRunCell\s*\(|mountCanvasFlow\s*\(", text):
+        miss = [n for n, ok in (
+            ("CodeMirror core js", bool(re.search(r"codemirror(?:\.min)?\.js", text, re.I))),
+            ("javascript mode",    "mode/javascript" in text.lower()),
+            ("editor css",         bool(re.search(r"codemirror(?:\.min)?\.css", text, re.I))),
+        ) if not ok]
+        if miss:
+            unhighlighted.append((rel, "editable cells but the syntax highlighter is not loaded (missing: "
+                                  + ", ".join(miss) + "); the editor falls back to a plain, unhighlighted textarea"))
+    return opaque, console, unawaited, dialog, key, static, unhighlighted
 
 
 def run(verbose=True):
     """Driver: audit every numbered lesson page's runnable cells and aggregate the findings. It exists
     so the gate and a reviewer get one accounting of cells that violate the runnable-cell contract.
-    Returns the six finding lists; the report and exit code are derived from them."""
+    Returns the finding lists; the report and exit code are derived from them."""
     pages = sorted((WEB / "nemoclaw").glob("0*.html"))   # the numbered lesson pages carry the runnable cells
-    opaque, console, unawaited, dialog, key, static, stall = [], [], [], [], [], [], []
+    opaque, console, unawaited, dialog, key, static, unhi = [], [], [], [], [], [], []
     for p in pages:
-        o, c, u, d, k, st, sl = audit_page(p)     # per-page findings, by category
-        opaque += o; console += c; unawaited += u; dialog += d; key += k; static += st; stall += sl
+        o, c, u, d, k, st, uh = audit_page(p)  # per-page findings, by category
+        opaque += o; console += c; unawaited += u; dialog += d; key += k; static += st; unhi += uh
     if verbose:
         def show(name, items, fmt):
             if items:
@@ -110,13 +117,15 @@ def run(verbose=True):
         show("blocking dialog in cell", dialog, lambda it: f"{it[0]}  {it[1]}")
         show("inlined API key in cell", key, lambda it: f"{it[0]}  {it[1]}")
         show("cell-only code shown statically (not editable)", static, lambda it: f"{it[0]}  {it[1]}")
-        show("stalling demo · fixed-direction policy animated on the maze", stall, lambda it: f"{it[0]}  «{it[1]}»")
-        total = len(opaque) + len(console) + len(unawaited) + len(dialog) + len(key) + len(static) + len(stall)
+        show("editable cells without the syntax highlighter loaded", unhi, lambda it: f"{it[0]}  {it[1]}")
+        total = (len(opaque) + len(console) + len(unawaited) + len(dialog) + len(key) + len(static)
+                 + len(unhi))
         print(f"\ncell_audit: {total} finding(s) (opaque {len(opaque)}, console {len(console)}, "
               f"unawaited {len(unawaited)}, dialog {len(dialog)}, inline-key {len(key)}, static {len(static)}, "
-              f"stall {len(stall)})")
+              f"unhighlighted {len(unhi)})")
     return {"opaque": opaque, "console": console, "unawaited": unawaited,
-            "dialog": dialog, "inline_key": key, "static_cell_code": static, "stall_demo": stall}
+            "dialog": dialog, "inline_key": key, "static_cell_code": static,
+            "unhighlighted": unhi}
 
 
 if __name__ == "__main__":

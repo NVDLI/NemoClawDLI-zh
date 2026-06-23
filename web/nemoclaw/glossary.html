@@ -17,7 +17,7 @@
   .gx-eyebrow { font-family: var(--mono); font-size: .72rem; color: var(--gs); text-transform: uppercase; letter-spacing: .12em; margin-bottom: .6em; }
   .gx-hero h1 { font-size: 2.1rem; line-height: 1.12; margin: 0 0 .35em; }
   .gx-hero h1 code { font-size: .78em; background: var(--e2); padding: 2px 10px; border-radius: 6px; color: var(--gs); }
-  .gx-lead { font-size: 1.05rem; color: var(--td); max-width: 60rem; line-height: 1.65; }
+  .gx-lead { font-size: 1.05rem; color: var(--td); line-height: 1.65; }
   section { margin: 2.6em 0; }
   .gx-stat { font-family: var(--mono); color: var(--gs); }
   .gx-filter { width: 100%; padding: 11px 14px; font-size: .95rem; background: var(--e2); border: 1px solid var(--bd); border-radius: 8px; color: var(--tx); font-family: var(--mono); outline: none; margin: 4px 0 12px; }
@@ -128,14 +128,15 @@
   </section>
 
   <section>
-    <h2>The functions, in full</h2>
+    <h2>Call the functions, edit and run</h2>
     <p class="gx-lead">
       Two functions back the one tool contract. <code>webSearch</code> is the broad, ranked lookup over
       the whole catalog the agent grounds answers in; <code>instantAnswer</code> is the narrow one that
-      returns a single glossary definition only when the query names a term. This is their source, read
-      live from <code>_shared.js</code> at load, so what you see here cannot drift from what runs.
+      returns a single glossary definition only when the query names a term. Both run key-less against
+      the cached catalog: edit the queries below and Run, then open the helpers tab to read each
+      function's real source, pulled live from <code>_shared.js</code> so it cannot drift from what runs.
     </p>
-    <pre class="hljs" style="background:var(--e1);border:1px solid var(--e3);border-radius:10px;padding:14px 16px;overflow-x:auto;font-size:.8rem;line-height:1.5"><code class="language-js" id="gx-src">loading source…</code></pre>
+    <div id="gx-src-cell"></div>
   </section>
 
   <section>
@@ -157,7 +158,7 @@
 </main>
 
 <script type="module">
-import { webSearch, instantAnswer, glossaryScore, loadMaterialsCatalog, mountDiagram, mountCanvasFlow } from "./_shared.js";
+import { webSearch, instantAnswer, loadMaterialsCatalog, mountDiagram, mountCanvasFlow, mountRunCell } from "./_shared.js";
 
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const $ = (id) => document.getElementById(id);
@@ -168,10 +169,10 @@ mountDiagram("#gx-delivery", {
   caption: "Vendored from the web into one static file that is fetched once and held in memory, so every query ranks the cached copy without touching the network or needing a key.",
   nodes: [
     { id: "web",    label: "web sources",        kind: "env",     x: 0, y: 0, lines: ["glossary, arXiv, blog"] },
-    { id: "pull",   label: "pull_materials.py",  kind: "tool",    x: 1, y: 0, lines: ["fetch + fingerprint", "on build / on demand"] },
-    { id: "file",   label: "materials_index.json", kind: "data",  x: 2, y: 0, lines: ["cached + on-demand", "ships in the bundle"] },
-    { id: "cache",  label: "in-memory cache",    kind: "neutral", x: 3, y: 0, lines: ["fetched once"] },
-    { id: "search", label: "webSearch",          kind: "model",   x: 4, y: 0, lines: ["ranks both tiers", "no key, no network"] },
+    { id: "pull",   label: "pull_materials.py",  kind: "tool",    x: 1, y: 1, lines: ["fetch + fingerprint", "on build / on demand"] },
+    { id: "file",   label: "materials_index.json", kind: "data",  x: 2, y: 2, lines: ["cached + on-demand", "ships in the bundle"] },
+    { id: "cache",  label: "in-memory cache",    kind: "neutral", x: 3, y: 3, lines: ["fetched once"] },
+    { id: "search", label: "webSearch",          kind: "model",   x: 4, y: 4, lines: ["ranks both tiers", "no key, no network"] },
   ],
 
   edges: [
@@ -190,9 +191,9 @@ mountDiagram("#gx-pipeline-doc", {
            "validator screen, with the one-line fix.",
   nodes: [
     { id: "pull",  label: "pull",          kind: "tool",    x: 0, y: 0, lines: ["pull_materials.py", "rebase to the web"] },
-    { id: "prov",  label: "_materials.json", kind: "data",  x: 1, y: 0, lines: ["url + sha256", "per source"] },
-    { id: "check", label: "--check",        kind: "tool",   x: 2, y: 0, lines: ["re-fetch + compare", "ok / drifted / unreachable"] },
-    { id: "screen",label: "validator screen", kind: "model",x: 3, y: 0, lines: ["names the source", "+ the fix command"] },
+    { id: "prov",  label: "_materials.json", kind: "data",  x: 1, y: 1, lines: ["url + sha256", "per source"] },
+    { id: "check", label: "--check",        kind: "tool",   x: 2, y: 2, lines: ["re-fetch + compare", "ok / drifted / unreachable"] },
+    { id: "screen",label: "validator screen", kind: "model",x: 3, y: 3, lines: ["names the source", "+ the fix command"] },
   ],
 
   edges: [
@@ -284,11 +285,19 @@ return { chars: state.out.length };`,
   ],
 });
 
-// ── The real source, highlighted ────────────────────────────────────────────
-const stripDoc = (fn) => fn.toString().replace(/\s*\/\* @doc[\s\S]*?\*\/\s*/, "\n  ").trimEnd();
-const srcEl = $("gx-src");
-srcEl.textContent = [stripDoc(glossaryScore), stripDoc(webSearch), stripDoc(instantAnswer)].join("\n\n");
-if (window.hljs) hljs.highlightElement(srcEl);
+// ── The two functions, as an editable + runnable cell (key-less; reads the cached catalog) ──
+// Source stays inspectable via the cell's helpers tab (click webSearch / instantAnswer to read it),
+// so it still cannot drift from what runs, and now you can edit the queries and run them.
+mountRunCell("#gx-src-cell", {
+  code: `// webSearch ranks the whole catalog; instantAnswer returns one term's definition.
+// Edit the queries and Run. Open the helpers tab above to read each one's real source.
+const hits = await helpers.webSearch("retrieval augmented generation");
+helpers.log("webSearch found " + hits.count + ":");
+helpers.log(helpers.formatSearchResults(hits));
+
+const card = await helpers.instantAnswer("deep agents");
+helpers.log("instantAnswer:", card);`,
+});
 
 // ── The catalog table ──────────────────────────────────────────────────────────
 let CATALOG = [];

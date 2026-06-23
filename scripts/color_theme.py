@@ -57,8 +57,12 @@ def chrome_js() -> list:
     scanned the same way with nothing to update here, and the theme audit cannot silently go dark on
     code that just moved. Recurses, so a split into a subdir is covered too. Excludes node_modules,
     the studio tool (its own palette, out of theme scope), and minified vendor bundles."""
-    return [f for f in sorted(NEMO.rglob("*.js"))
-            if _usable(f) and not f.name.startswith("studio") and not f.name.endswith(".min.js")]
+    # Includes the framer (web/_skill_explorer.js) so the SKILL / tooling pages it renders are in
+    # scope; its hard-coded code-well background (#0a0a0a) stayed invisible while only web/nemoclaw
+    # was scanned.
+    files = sorted(NEMO.rglob("*.js")) + [WEB / "_skill_explorer.js"]
+    return [f for f in files
+            if f.exists() and _usable(f) and not f.name.startswith("studio") and not f.name.endswith(".min.js")]
 
 
 def style_files() -> list:
@@ -94,7 +98,14 @@ def bad_in_style_body(body: str, on_svg=False):
         prop, _, val = decl.partition(":")
         if not COLOR_PROPS.search(prop + ":"):        # only properties that actually paint color
             continue
+        is_bg = bool(re.match(r"\s*background", prop, re.I))
         for tok in HEX.findall(val) + RGB.findall(val):
+            # A near-black BACKGROUND literal does not flip with the theme, so dark text on it
+            # vanishes in light mode (the .sx-code code-well bug). The same literal as ink
+            # (color / fill) stays neutral and fine.
+            if is_bg and tok.lower() in ("#000", "#000000", "#0a0a0a") and not (on_svg and tok.lower() in SVG_FRAME):
+                out.append((tok, prop.strip()))
+                continue
             if neutral(tok) or (on_svg and tok.lower() in SVG_FRAME):
                 continue                              # theme-tolerant ink, or the svg frame that flips by rule
             out.append((tok, prop.strip()))           # a literal that will not flip: report it
@@ -118,6 +129,11 @@ def scan_style_blocks(text: str):
     blocks = list(STYLE_BLOCK.findall(text))
     blocks += [css for css in STYLE_TEXTCONTENT.findall(text)
                if "{" in css and COLOR_PROPS.search(css)]   # CSS rulesets, not prose templates
+    # Framer-style injection: an array of quoted rule strings ("selector{decls}") joined and set
+    # as a <style>. Each quoted rule is scanned, so a stylesheet built this way (web/_skill_explorer.js)
+    # is covered like a real <style> block.
+    blocks += [css for css in re.findall(r'"((?:[^"\\]|\\.)*?\{[^"{}]*\})"', text)
+               if COLOR_PROPS.search(css)]
     bad = []
     for blk in blocks:
         for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", blk):

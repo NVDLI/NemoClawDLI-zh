@@ -172,15 +172,8 @@
     <h2>Bringing your data in</h2>
     <p>
       The Index Agent in Module 2b ran against a small in-page corpus.
-      A production deployment immediately needs four answers, and the
-      three NVIDIA pieces below address each one.
+      A production deployment needs more work and considerations, so the following references may be of interest.
     </p>
-    <ul style="font-size:.9rem;color:var(--td);line-height:1.7;margin:.6em 0 1em">
-      <li>what the corpus is</li>
-      <li>who maintains it</li>
-      <li>how it stays fresh</li>
-      <li>how to measure the agent's accuracy on it</li>
-    </ul>
     <ul style="font-size:.9rem;color:var(--td);line-height:1.7">
       <li>
         <a href="https://developer.nvidia.com/nemo-retriever" target="_blank" rel="noopener">NeMo Retriever</a>
@@ -494,7 +487,7 @@
         holder sits above the boundary entirely, free to do any of the
         following:
       </p>
-      <ul style="font-size:.92rem;color:var(--td);line-height:1.6;margin:.5em 0">
+      <ul>
         <li>read the persona</li>
         <li>plant cron jobs</li>
         <li>patch the model and its tools</li>
@@ -517,13 +510,8 @@
   <p>
     The capstone artifact is a <code>createReactAgent</code> whose one tool reads any
     page of this course as markdown. It is the same shape you built in Module 1b,
-    now pointed at everything you learned. You can ask it to:
+    now pointed at everything you learned. You can ask it to compare modules, refresh a detail, or even quiz you on the material.
   </p>
-  <ul style="font-size:.92rem;color:var(--td);line-height:1.6;margin:.5em 0">
-    <li>compare modules</li>
-    <li>refresh a detail</li>
-    <li>quiz you</li>
-  </ul>
   <p>
     On each turn it reads the relevant page before answering and keeps the whole
     conversation in memory. Pin a module to focus on one, or leave it on

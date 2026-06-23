@@ -37,13 +37,12 @@
     <div class="eyebrow">Module 1 · Part A of 3</div>
     <h1>The <span>Agent</span></h1>
     <p class="lead">
-      Before we get too entrenched in modern patterns, let's discuss what agents actually represent.
       An <strong>agent</strong> is an entity that interacts with an environment at any meaningful level.
       A person going about their day is an agent in this sense, and so is a thermostat holding a 
       room at temperature or a self-driving car making its way through traffic.
     </p>
     <p>
-      All of them share one relationship with the world: they take in information via <b>sensing <i>(or "perceiving")</i></b> and output information via <b>actuating <i>(or "acting")</i></b>.
+      All of them <b>perceive</b> their environment through sensors and <b>act</b> on it through actuators.
       Because each action feeds the next observation, perceiving and acting fold into one continuous cycle that
       lasts as long as the agent is working toward something. This course calls that cycle the
       <strong>perceive-reason-act loop</strong>. The agents you will build run the same cycle
@@ -66,16 +65,15 @@
         cameras, radar, and a map into a model of the road. Whatever perception captures is all
         the agent has to work from, since nothing downstream ever touches the world directly. A
         gap in perception becomes a gap the rest of the agent cannot see around.</li>
-    <li><strong>Reasoning</strong> turns a perception into a decision, and of the three parts it
-        varies the most between agents. A thermostat compares the temperature against a target and
+    <li><strong>Reasoning</strong> turns a perception into a decision, which can vary widely between agents. 
+        A thermostat compares the temperature against a target and
         stops there, while a chess engine searches millions of moves and a self-driving car runs a
         learned policy. The agents you build here reason by calling a language model, and almost
-        everything the course adds later, tools and memory and planning, hangs off this single step.</li>
-    <li><strong>Action</strong> changes the environment, and that change becomes what the agent
-        perceives on its next turn, closing the loop. An action can be as small as flipping a relay
-        or as involved as steering a car or calling a tool. It also marks the outer edge of an
-        agent's reach, because however sharp the reasoning, the agent affects the world only through
-        the actions you give it.</li>
+        everything the course adds later (tools/memory/planning) hangs off this single step.</li>
+    <li><strong>Action</strong> changes the environment for itself and other participants.
+        An action can be as small as flipping a relay or as involved as steering a car or calling a tool. 
+        It also marks the outer edge of an agent's reach, because however sharp the reasoning,
+        the agent affects the world only through its action space.</li>
   </ul>
 
   <div class="callout">
@@ -91,7 +89,7 @@
     Norvig's <a href="https://aima.cs.berkeley.edu/" target="_blank" rel="noopener">Artificial Intelligence: A Modern Approach</a>
     lays them out as a spectrum, from a bare reflex agent up to a learning agent that improves its own
     rules. The agents you build here start at the reflex end, and dropping a language model into the
-    socket carries them toward the goal- and utility-driven designs further along.
+    socket carries them toward the later designs.
   </p>
   <figure style="margin:1.4em 0">
     <svg class="gfx-dark" viewBox="0 0 1020 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four agent architectures from Russell and Norvig: reflex, goal-based, utility-based, and learning agents. Each names its idea in three lines and carries a small block diagram of its internal data flow from sensors through reasoning to actuators." preserveAspectRatio="xMidYMid meet" style="width:100%; max-width:1400px; height:auto; display:block; margin:1.5rem auto; border-radius:12px">
@@ -112,9 +110,9 @@
     <rect x="30" y="25" width="465" height="145" rx="8" fill="var(--gfx-panel,#17191c)" stroke="var(--gfx-line,#3a3f45)" stroke-width="1.5"/>
     <text x="50" y="52" font-family="ui-monospace, monospace" font-size="13.5" fill="var(--gfx-green,#9bd14a)" font-weight="700">01 . Reflex Agents</text>
   
-    <text x="50" y="78" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Maps inputs directly to actions, ignoring history.</text>
-    <text x="50" y="96" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Rules match condition states to behaviors.</text>
-    <text x="50" y="114" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Keeps state memory to fill context gaps.</text>
+    <text x="50" y="78" font-family="Arial, sans-serif" font-size="12" fill="var(--gfx-sub,#9aa0a6)">• Maps inputs directly to actions, ignoring history.</text>
+    <text x="50" y="96" font-family="Arial, sans-serif" font-size="12" fill="var(--gfx-sub,#9aa0a6)">• Rules match condition states to behaviors.</text>
+    <text x="50" y="114" font-family="Arial, sans-serif" font-size="12" fill="var(--gfx-sub,#9aa0a6)">• Keeps state memory to fill context gaps.</text>
   
     <g class="reflex-diagram" transform="translate(320, 46) scale(1.2)">
       <rect x="0" y="0" width="90" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-blue,#5aa8ff)" stroke-width="1"/>
@@ -138,9 +136,9 @@
     <rect x="525" y="25" width="465" height="145" rx="8" fill="var(--gfx-panel,#17191c)" stroke="var(--gfx-line,#3a3f45)" stroke-width="1.5"/>
     <text x="545" y="52" font-family="ui-monospace, monospace" font-size="13.5" fill="var(--gfx-green,#9bd14a)" font-weight="700">02 . Goal-Based Agents</text>
   
-    <text x="545" y="78" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Combines world tracking with explicit targets.</text>
-    <text x="545" y="96" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Looks ahead to evaluate success paths.</text>
-    <text x="545" y="114" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Swaps simple reflexes for planning loops.</text>
+    <text x="545" y="78" font-family="Arial, sans-serif" font-size="12" fill="var(--gfx-sub,#9aa0a6)">• Combines world tracking with explicit targets.</text>
+    <text x="545" y="96" font-family="Arial, sans-serif" font-size="12" fill="var(--gfx-sub,#9aa0a6)">• Looks ahead to evaluate success paths.</text>
+    <text x="545" y="114" font-family="Arial, sans-serif" font-size="12" fill="var(--gfx-sub,#9aa0a6)">• Swaps simple reflexes for planning loops.</text>
   
     <g class="goal-diagram" transform="translate(845, 46) scale(1.2)">
       <rect x="0" y="0" width="95" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-blue,#5aa8ff)" stroke-width="1"/>
@@ -160,9 +158,9 @@
     <rect x="30" y="195" width="465" height="145" rx="8" fill="var(--gfx-panel,#17191c)" stroke="var(--gfx-line,#3a3f45)" stroke-width="1.5"/>
     <text x="50" y="222" font-family="ui-monospace, monospace" font-size="13.5" fill="var(--gfx-green,#9bd14a)" font-weight="700">03 . Utility-Based Agents</text>
   
-    <text x="50" y="248" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Uses a preference score to rate world states.</text>
-    <text x="50" y="266" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Balances trade-offs between conflicting goals.</text>
-    <text x="50" y="284" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Maximizes expected utility under uncertainty.</text>
+    <text x="50" y="248" font-family="Arial, sans-serif" font-size="12" fill="var(--gfx-sub,#9aa0a6)">• Uses a preference score to rate world states.</text>
+    <text x="50" y="266" font-family="Arial, sans-serif" font-size="12" fill="var(--gfx-sub,#9aa0a6)">• Balances trade-offs between conflicting goals.</text>
+    <text x="50" y="284" font-family="Arial, sans-serif" font-size="12" fill="var(--gfx-sub,#9aa0a6)">• Maximizes expected utility under uncertainty.</text>
   
     <g class="utility-diagram" transform="translate(320, 216) scale(1.2)">
       <rect x="0" y="0" width="90" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-blue,#5aa8ff)" stroke-width="1"/>
@@ -182,9 +180,9 @@
     <rect x="525" y="195" width="465" height="145" rx="8" fill="var(--gfx-panel,#17191c)" stroke="var(--gfx-green,#9bd14a)" stroke-width="1.5"/>
     <text x="545" y="222" font-family="ui-monospace, monospace" font-size="13.5" fill="var(--gfx-green,#9bd14a)" font-weight="700">04 . Learning Agents</text>
   
-    <text x="545" y="248" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Splits execution from evaluation elements.</text>
-    <text x="545" y="266" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Critic checks choices against parameters.</text>
-    <text x="545" y="284" font-family="Arial, sans-serif" font-size="11.5" fill="var(--gfx-sub,#9aa0a6)">• Dynamically modifies its program to improve.</text>
+    <text x="545" y="248" font-family="Arial, sans-serif" font-size="12" fill="var(--gfx-sub,#9aa0a6)">• Splits execution from evaluation elements.</text>
+    <text x="545" y="266" font-family="Arial, sans-serif" font-size="12" fill="var(--gfx-sub,#9aa0a6)">• Critic checks choices against parameters.</text>
+    <text x="545" y="284" font-family="Arial, sans-serif" font-size="12" fill="var(--gfx-sub,#9aa0a6)">• Dynamically modifies its program to improve.</text>
   
     <g class="learning-diagram" transform="translate(845, 216) scale(1.2)">
       <rect x="0" y="0" width="95" height="20" rx="3" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-line,#3a3f45)" stroke-width="1"/>
@@ -214,18 +212,16 @@
   <p>Two things worth examining in the code above:</p>
   <ul>
     <li>The <strong>environment</strong> (wall positions, current
-        position) lives in <code>state.env</code>; the agent's intrinsics
+        position) lives in <code>state.env</code>, while the agent's intrinsics
         (its direction) live in <code>state.agent</code>. Keeping them
         separate means a different agent with different intrinsic state
-        can operate in the same environment without either one leaking
-        into the other.</li>
+        can operate in the same environment cleanly.</li>
     <li>The <strong>reasoning step</strong> is one <code>if</code>
         statement. Replacing it with something more powerful, whether a
         decision tree, a neural network, or a language model, only
         requires changing what sits between perception and action. The
         loop structure, the state layout, and the action step all
-        remain identical, which is why the loop is worth writing once
-        and reusing.</li>
+        remain identical.</li>
   </ul>
 
   <h2>What changes when the socket holds an LLM</h2>
@@ -271,6 +267,17 @@
         to do next.</li>
   </ul>
 
+  <p>
+    This course uses the
+    <a href="https://platform.openai.com/docs/api-reference/chat" target="_blank" rel="noopener">Chat Completions API</a>
+    throughout: you keep the conversation as a <code>messages[]</code> array in your own code and resend
+    the full array on every turn. The newer
+    <a href="https://platform.openai.com/docs/api-reference/responses" target="_blank" rel="noopener">Responses API</a>
+    can hold the thread server-side instead, so you send only the new input and a reference to the prior
+    turn. Either way the model stays stateless and unchanged between calls. The conversation lives outside
+    it, in state your code or the server keeps.
+  </p>
+
   <figure style="margin:1.4em 0">
     <svg class="gfx-dark" viewBox="0 78 840 222" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The same stateless model call, reached through two interfaces. The Chat Completions API: you resend the full messages array each turn and your code keeps the history. The Responses API: you send only new input plus a reference, and the server keeps the thread. Both feed the same stateless model, which receives the full context and returns one assistant turn (content, finish_reason, usage). They differ only in who keeps the conversation between turns." style="width:100%;max-width:980px;height:auto;display:block;margin:1.2em auto;background:var(--gfx-bg);border:1px solid var(--gfx-line);border-radius:12px">
       <defs>
@@ -300,20 +307,6 @@
     </svg>
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Both interfaces wrap the same stateless call. They differ only in who keeps the conversation between turns.</figcaption>
   </figure>
-
-  <p>
-    Two interfaces reach this same model, and this course uses the industry-standard
-    <a href="https://platform.openai.com/docs/api-reference/chat" target="_blank" rel="noopener">Chat Completions API</a>
-    throughout. With it you keep the conversation as a <code>messages[]</code>
-    array in your own code and resend that full array on every turn. The newer
-    <a href="https://platform.openai.com/docs/api-reference/responses" target="_blank" rel="noopener">Responses API</a>
-    instead keeps the conversation on the server so that each turn sends only the new input plus a reference to the previous
-    response.
-  </p>
-  <p>
-    The two interfaces differ only in convenience and in the exact shape of the data on the wire. One returns a
-    list of message <em>choices</em> and the other a list of typed output <em>items</em>. Underneath they behave identically by receiving the full context and producing a single turn while holding no state of their own. You can therefore pick whichever interface suits your stack without ever changing how the agent itself works.
-  </p>
 
   <h2>A real call, in your browser</h2>
   <p>The cell below sends one chat-completion to the model. It needs an
@@ -345,69 +338,44 @@
   <div id="cell-wire"></div>
 
   <div class="callout">
-    <strong>Two things that call is quietly doing, and why.</strong> Neither is
-    magic, and both are worth understanding before you trust them.
-    <ul>
-      <li><strong>It goes through a proxy.</strong> The request does not hit
-          <code>build.nvidia.com</code> directly, because a browser cannot: that
-          endpoint does not return the <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS" target="_blank" rel="noopener">cross-origin (CORS)</a> headers a browser
-          <code>fetch</code> requires, so the call is routed through a small
-          pass-through proxy that adds them. The same proxy carries an
-          <code>X-BILLING-SOURCE: dli-nemoclaw-web</code> header the course
-          attaches to every request, so the usage is billed to this course rather
-          than to a personal account. Your key is not hidden or swapped: it rides
-          the same request straight to NVIDIA over TLS and is never stored anywhere
-          but your own browser.</li>
-      <li><strong>Streaming is wrapped in a helper.</strong>
-          <code>chatStream()</code> is the same <code>POST</code> with
-          <code>stream: true</code>, but the reply comes back as a <a href="https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events" target="_blank" rel="noopener">Server-Sent-Events</a>
-          feed: many <code>data:</code> frames, a split between the answer and the
-          model's <code>reasoning_content</code>, a closing usage frame, and a
-          <code>[DONE]</code> marker. The helper parses that, routes the two channels
-          to the panel, retries a dropped connection before the first token arrives,
-          and honours the Stop button, so a cell can stay about the lesson instead of
-          the SSE plumbing. It is not a black box either: open any cell's helper menu
-          to read the exact source of <code>chat</code>, <code>chatStream</code>, and
-          every other helper.</li>
+  <strong>Two things that call is quietly doing, and why.</strong> Neither is
+  magic, and both are worth understanding before you trust them.
+  <ul>
+    <li><strong>It goes through a proxy.</strong> The request does not hit
+        <code>build.nvidia.com</code> directly, because a browser cannot: that
+        endpoint does not return the <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS" target="_blank" rel="noopener">cross-origin (CORS)</a> headers a browser
+        <code>fetch</code> requires, so the call is routed through a small
+        pass-through proxy that adds them. The same proxy carries an
+        <code>X-BILLING-SOURCE: dli-nemoclaw-web</code> header the course
+        attaches to every request, so the usage is billed to this course rather
+        than to a personal account. Your key is not hidden or swapped: it rides
+        the same request straight to NVIDIA over TLS and is never stored anywhere
+        but your own browser.</li>
+    <li><strong>Streaming is wrapped in a helper.</strong>
+        <code>chatStream()</code> is the same <code>POST</code> with
+        <code>stream: true</code>, but the reply comes back as a <a href="https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events" target="_blank" rel="noopener">Server-Sent-Events</a>
+        feed: many <code>data:</code> frames, a split between the answer and the
+        model's <code>reasoning_content</code>, a closing usage frame, and a
+        <code>[DONE]</code> marker. The helper parses that, routes the two channels
+        to the panel, retries a dropped connection before the first token arrives,
+        and honours the Stop button, so a cell can stay about the lesson instead of
+        the SSE plumbing. It is not a black box either: open any cell's helper menu
+        to read the exact source of <code>chat</code>, <code>chatStream</code>, and
+        every other helper.</li>
     </ul>
-  </div>
-
-  <div class="callout">
-    <strong>The model has no memory of its own; your code keeps it.</strong>
-    Between one call and the next, the model forgets everything. Any sense of an ongoing
-    conversation is therefore something you build by hand: you hold a list of messages,
-    append each new one, and send the whole list back on every turn. The next page wraps
-    that bookkeeping in a loop that extends the <code>messages</code> list and checks
-    <code>finish_reason</code> each turn to decide when to stop. That loop and this
-    function are the two pieces every LLM-based agent is built from.
   </div>
 
   <h2>Swapping the reasoning step while the loop stays fixed</h2>
   <p>
-    You now have both halves of an agent. The stateless <code>chat()</code> function above pairs with
-    the <a href="https://aima.cs.berkeley.edu/" target="_blank" rel="noopener">reflex agent's</a> perceive-reason-act loop from the top of the page. Before
-    wiring the model into that loop it helps to watch the reasoning slot accept brains
-    that are <em>not</em> language models at all. Seeing that makes the loop's independence from any one brain concrete.
-  </p>
-  <p>
-    A one-dimensional track is too simple to make that point, since the single
-    rule "always head for the far wall" already solves it and swapping brains changes
-    nothing you can see. Two dimensions break that rule. A generated maze has dead ends
-    and forks where a fixed heading marches straight into a wall and stalls.
+    You now have both halves of an agent, and the stateless <code>chat()</code> function above will pair nicely
+    with the previous reflex agent's perceive-reason-act loop. Before
+    wiring the model into that loop, it helps to watch the reasoning slot accept brains
+    that are <em>not</em> language models first.
   </p>
 
-  <div class="callout">
-    <strong>What holds still from run to run matters more here than whether the agent reaches the goal.</strong>
-    As you drop a different <em>brain</em> into the slot, the maze, the
-    <code>validMoves</code> perception step, and the <code>doMove</code> action step all hold still.
-    The only part that changes from one run to the next is the brain itself.
-  </div>
-
-  <p>Run the nodes in order. Each brain works the same fixed loop:</p>
+  <p>Run the nodes in order. Each swaps a different brain into the same maze-solving loop:</p>
   <ul>
-    <li>The constant "always east" rule animates on a straight corridor, where a fixed
-        heading reaches the goal. The same heading cannot navigate the maze beside it, which
-        is the puzzle the reasoners below take on.</li>
+    <li>The constant "always east" rule reaches the goal on a straight corridor, then stalls at the first wall in the maze, since a fixed heading cannot turn.</li>
     <li><a href="https://en.wikipedia.org/wiki/Depth-first_search" target="_blank" rel="noopener">DFS</a> dives and backtracks out of dead ends.</li>
     <li><a href="https://en.wikipedia.org/wiki/Breadth-first_search" target="_blank" rel="noopener">BFS</a> fans out in rings before walking the shortest path.</li>
     <li><a href="https://en.wikipedia.org/wiki/A*_search_algorithm" target="_blank" rel="noopener">A*</a> biases those same rings toward the goal.</li>
@@ -428,9 +396,8 @@
 
   <h2>Putting a language model in the reasoning step to solve the maze</h2>
   <p>
-    Drop a language model into the reasoning slot and the policy those earlier solvers
-    kept in code now moves into the <em>prompt</em>. Perception renders the maze as an
-    ASCII map that becomes the user message, and the model's tool call to move stands in for the action while everything else carries over unchanged. A language model now fills that slot and every later page of the course builds on the swap.
+    Drop a language model into the reasoning slot and the policy stops living in your code. It now lives in the fixed model weights and the prompt you feed them.
+    Perception renders the maze as an ASCII map that becomes the user message, and the model's tool call to move stands in for the action while everything else carries over unchanged.
   </p>
   <p>
     Run the engine node first; it exports the maze utilities and one shared solver
@@ -442,8 +409,8 @@
     <li>the <strong>vision</strong> route also attaches a rendered picture of the same maze.</li>
   </ul>
   <p>
-    Comparing the two routes is the honest test of whether a second modality earns its keep.
-    The ASCII text alone may already carry everything the model needs. Both runs hand you the
+    Comparing the two routes shows whether a second modality helps; the ASCII text alone may already
+    carry everything the model needs. Both runs hand you the
     same panel of controls, each one isolating a different variable:
   </p>
   <ul>
@@ -452,7 +419,6 @@
     <li>the editable system <code>DIRECTIVE</code> rewrites the instructions it works under;</li>
     <li>and the <code>ADVANCED</code> toggle grows the maze into a harder test.</li>
   </ul>
-  <p>Flip any one of them and watch how modality, context, and the model choice each move the result.</p>
 
   <div id="cell-llm-maze"></div>
 
@@ -505,10 +471,10 @@
   </p>
 
   <figure style="margin:1.4em 0">
-<svg class="gfx-dark" viewBox="0 70 920 445" xmlns="http://www.w3.org/2000/svg" role="img"
+<svg class="gfx-dark" viewBox="0 70 920 450" xmlns="http://www.w3.org/2000/svg" role="img"
   aria-label="The agent loop drawn locally as a cycle. Step one, locally-sample: read a slice of the environment. Step two, locally-perceive: render that slice into a full engineered text context. That context holds the system prompt, the message history, prior tool results, and the sampled slice, all of it as plain text. The context is fed as text into one stateless text-to-text mapping, the LLM, which is the only model in the picture; perceive-to-act is collapsed into that single mapping. Its output is an intent signal, a typed tool call, not the action itself. Step three, locally-act: your code translates the intent into one bounded local environment update. Step four, locally-impact: the update changes the world, and the next local sample reads the changed world. Every box except the model is code you wrote; the model never touches the world, it only emits an intent the loop chooses to honor."
   preserveAspectRatio="xMidYMid meet"
-  style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:12px;padding:14px;max-width:1000px;margin:1.4rem auto">
+  style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:12px;padding:14px;">
 <defs>
   <marker id="ll-g" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto">
     <path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-green,#9bd14a)"/>
@@ -526,8 +492,8 @@
 <!-- ENVIRONMENT band (top), inset so the left return-lane has room -->
 <rect x="150" y="84" width="710" height="78" rx="12" fill="var(--gfx-tint-blue,#15273d)" stroke="var(--gfx-line,#3a3f45)" stroke-width="1.6"/>
 <text x="170" y="111" font-size="13" font-family="ui-monospace,monospace" fill="var(--gfx-blue,#5aa8ff)" font-weight="800">ENVIRONMENT · the only durable state</text>
-<text x="170" y="131" font-size="11.5" font-family="system-ui,sans-serif" fill="var(--gfx-sub,#9aa0a6)">A maze cell, a chat transcript, a folder of files, a sandbox. The agent reads a slice and writes a slice.</text>
-<text x="170" y="149" font-size="11.5" font-family="system-ui,sans-serif" fill="var(--gfx-sub,#9aa0a6)">Nothing persists in the model between turns. Continuity lives here, in the context your code rebuilds.</text>
+<text x="170" y="131" font-size="12" font-family="system-ui,sans-serif" fill="var(--gfx-sub,#9aa0a6)">A maze cell, a chat transcript, a folder of files, a sandbox. The agent reads a slice and writes a slice.</text>
+<text x="170" y="149" font-size="12" font-family="system-ui,sans-serif" fill="var(--gfx-sub,#9aa0a6)">Nothing persists in the model between turns. Continuity lives here, in the context your code rebuilds.</text>
 
 <!-- ① locally-sample : ENV down into CONTEXT -->
 <path d="M 258 162 L 258 222" stroke="var(--gfx-sub,#9aa0a6)" stroke-width="2.2" fill="none" marker-end="url(#ll-n)"/>
@@ -680,7 +646,7 @@ hljs.highlightAll();
 
 // The agent loop (Environment | Agent), rendered from a spec via mountDiagram.
 mountDiagram("#fig-agent-loop", {
-  title: "The agent loop", kicker: "PERCEIVE · REASON · ACT", width: 760, height: 300,
+  title: "The agent loop", kicker: "PERCEIVE · REASON · ACT", width: 760, height: 280,
   aria: "The agent loop. The environment carries the world state, and the agent picks the next action through a reasoning socket. Perceptions flow agent-ward and actions flow back, and only those cross the boundary, while the reasoning inside stays swappable.",
   nodes: [
     { id: "env", kind: "env", label: "Environment", x: 0, y: 0,
@@ -709,17 +675,15 @@ mountCanvasFlow("#cell-reflex", {
     {
       id: "setup", icon: "🌍", title: "Environment + agent intrinsics", x: 0, y: 0,
       summary: "Initialises the environment (a 1-D track bounded by walls at positions 0 and 9) and the agent's intrinsic state (its starting position and direction). Separating environment state from agent state makes it easy to swap the reasoning rule without touching the world model.",
-      code: `state.env = {
-  leftWall:  0,
-  rightWall: 9,
-  position:  3,
+      code: `state.env = { 
+    leftWall:  0, 
+    rightWall: 9,
+    position:  3,
 };
 
 state.agent = {
-  direction: +1,  // +1 = right, -1 = left
+    direction: +1,  // +1 = right, -1 = left
 };
-helpers.log("env:", JSON.stringify(state.env));
-helpers.log("agent intrinsics:", JSON.stringify(state.agent));
 return { env: state.env, agent: state.agent };
 `,
     },
@@ -740,9 +704,6 @@ if (perception.atRightWall) state.agent.direction = -1;
 const action = { move: state.agent.direction };
 // ACT
 state.env.position += action.move;
-helpers.log("perception:", JSON.stringify(perception));
-helpers.log("action:", JSON.stringify(action));
-helpers.log("new position:", state.env.position);
 return { perception, action, newPosition: state.env.position };
 `,
     },
@@ -763,7 +724,6 @@ for (let t = 0; t < 25; t++) {
   trace.push(state.env.position);
 }
 
-helpers.log("position trace:", trace.join(" "));
 return { ticks: trace.length, finalPosition: state.env.position, trace };
 `,
     },
@@ -785,7 +745,7 @@ mountCanvasFlow("#cell-maze", {
   nodes: [
     {
       id: "maze", icon: "🌐", title: "Maze + constant reasoner", x: 0, y: 0,
-      summary: "Generates the maze and the move utilities every later node reads, then animates the constant 'always east' rule on a straight corridor, where a fixed heading reaches the goal. The maze is rendered beside it as the puzzle the reasoner nodes below have to solve.",
+      summary: "Generates the maze and the move utilities every later node reads, then runs the same constant 'always east' rule on both a straight corridor and the maze. A fixed heading walks the corridor to the goal but stalls at a wall in the maze, which is why the reasoner nodes below swap a real search routine into the slot.",
       code: `// Maze-generation plumbing: builds the grid and the move utilities every later
 // node reads from state. The lesson is the brain swap in the later nodes.
 
@@ -960,14 +920,31 @@ async function animRun(grid, start, goal, getDir, maxSteps, elId, msPerStep) {
 }
 
 const CORRIDOR = ["###################","#S...............G#","###################"];
-// On a straight corridor a fixed heading reaches the goal, so the constant rule is worth animating
-// there. That same heading cannot navigate the maze; driving it east would only march into a wall
-// and freeze, so we render the maze as the puzzle the reasoner nodes below have to solve.
+// A fixed heading is enough on a straight corridor, so 'always east' walks it straight to the goal.
 const corrR = await animRun(CORRIDOR, findCell(CORRIDOR,'S'), findCell(CORRIDOR,'G'), () => 'east', 40, corrId, 55);
-const mazeEl = document.getElementById(randId);
-if (mazeEl) mazeEl.innerHTML = renderMaze(state.grid, state.start, state.goal, [], 'the maze the reasoners below must solve');
 
-return { corridorSolved: corrR.won };
+// The same fixed heading cannot navigate the maze. It walks east until a wall stops it and then has
+// nowhere to go: a constant rule has no way to turn. That dead stop is the reason the reasoner nodes
+// below swap a real search routine into the very same slot.
+async function animStall(grid, start, goal, dir, elId, msPerStep) {
+  let pos = [...start]; const visited = [[...pos]]; let moves = 0;
+  for (;;) {
+    const el = document.getElementById(elId);
+    if (el) el.innerHTML = renderMaze(grid, pos, goal, visited, \`'always \${dir}' · move \${moves + 1}\`);
+    await new Promise(r => setTimeout(r, msPerStep));
+    const rv = doMove(grid, pos, dir);
+    if (!rv.ok) break;
+    pos = rv.pos; visited.push([...pos]); moves++;
+    if (rv.done) break;
+  }
+  const el = document.getElementById(elId);
+  if (el) el.innerHTML = renderMaze(grid, pos, goal, visited,
+    \`'always \${dir}' stalls after \${moves} move\${moves === 1 ? '' : 's'} · a fixed heading cannot solve a maze\`);
+  return { moves };
+}
+const mazeR = await animStall(state.grid, state.start, state.goal, 'east', randId, 120);
+
+return { corridorSolved: corrR.won, mazeStalledAfter: mazeR.moves };
 `,
     },
     {
@@ -1789,11 +1766,17 @@ mountRunCell("#cell-wire", {
 // 1) The request: an endpoint, an Authorization header, a billing tag, and a JSON body.
 const KEY = localStorage.getItem("nvapi") || "";
 if (!KEY) { log("Save your nvapi- key on the course home page first."); return; }
-// The endpoint is a CORS proxy in front of build.nvidia.com (a browser cannot
-// reach the model directly).
+// integrate.api.nvidia.com is the direct URL for most build.nvidia.com models. A browser inside
+// the DLI iframe cannot call it directly (CORS), so this endpoint goes through a small CORS proxy.
+// Outside the iframe, swap to the commented line to hit the model host directly.
 // X-BILLING-SOURCE attributes the usage to this course.
 const url = "https://nvidia-api-cors-proxy.vkudlay.workers.dev/v1/chat/completions";
-const headers = { "Content-Type": "application/json", "Authorization": "Bearer " + KEY, "X-BILLING-SOURCE": "dli-nemoclaw-web" };
+// const url = "https://integrate.api.nvidia.com/v1/chat/completions";
+const headers = {
+  "Content-Type": "application/json",
+  "Authorization": "Bearer " + KEY,
+  "X-BILLING-SOURCE": "dli-nemoclaw-web",
+};
 const body = {
   model: "nvidia/nemotron-3-nano-30b-a3b",
   messages: [{ role: "user", content: "In one sentence: who runs you?" }],
@@ -1807,6 +1790,14 @@ log.details("request (key redacted)", { headers: { ...headers, Authorization: "B
 // 2) Send it, then read what comes BACK.
 const r = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
 log("← HTTP " + r.status + " " + r.statusText);
+// Check the status BEFORE parsing. A non-2xx body is often plain text or an HTML error page, not
+// JSON, so r.json() would throw a cryptic "Unexpected ... after JSON" with no line to blame. Read
+// it as text and surface the status plus the body, so a 404 reads as a clear HTTP error right here.
+if (!r.ok) {
+  const errText = await r.text();
+  log.details("error body", errText);
+  throw new Error("HTTP " + r.status + " " + r.statusText + ": " + errText.slice(0, 300));
+}
 const reply = await r.json();
 log.details("raw response", reply);
 
