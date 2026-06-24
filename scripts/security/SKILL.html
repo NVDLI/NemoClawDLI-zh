@@ -11,9 +11,10 @@
   "node_type": "directory-explorer",
   "title": "scripts/security iframe proxy audit",
   "source_dir": "scripts/security/",
-  "summary": "Security checks for the course browser runtime. Main keeps iframe execution support, but proxy execution is an explicit learner or host-page opt-in. The audit guards the carve-outs: direct build.nvidia.com remains default, hosted workers require exact origin allowlists, and the launchable proxy stays pinned to approved upstream hosts.",
+  "summary": "Security checks for the course browser runtime. Main keeps iframe execution support, but proxy execution is an explicit learner or host-page opt-in. This branch does not change Cloudflare Worker source; it documents worker follow-up findings for deployment-owner review.",
   "related": [
     "scripts/security/audit_iframe_proxy_opt_in.py",
+    "scripts/security/iframe_proxy_worker_findings.md",
     "web/nemoclaw/_shared.js",
     "cors-proxy/cors-proxy-worker-build.js",
     "cors-proxy/cors-proxy-worker-openclaw.js"
@@ -25,7 +26,7 @@
 <script type="application/json" id="explorer-config">
 {
   "title": "scripts/security iframe proxy audit",
-  "summary": "Main supports LMS/static iframe execution, but it is not the silent default. The browser runtime exposes an explicit toggle and URL flag; the Cloudflare Workers enforce origin allowlists; the launchable worker also enforces an upstream host allowlist. Use this folder when changing proxy behavior, key handling, or LMS embedding support.",
+  "summary": "Main supports LMS/static iframe execution, but it is not the silent default. The browser runtime exposes an explicit toggle and URL flag. Worker source changes are out of scope for this branch, so this folder records follow-up findings rather than patching deployed-worker code.",
   "model": "nvidia/nemotron-3-nano-30b-a3b",
   "ties": ["build", "security"],
   "nav": {
@@ -36,7 +37,12 @@
     {
       "path": "audit_iframe_proxy_opt_in.py",
       "role": "iframe proxy source audit",
-      "desc": "Checks that direct API use is default, iframe proxy mode is explicit, billing headers are always present for tracking, and both Cloudflare Workers keep origin/upstream allowlists."
+      "desc": "Checks that direct API use is default, iframe proxy mode is explicit, billing headers are always present for tracking, and worker follow-up findings are documented."
+    },
+    {
+      "path": "iframe_proxy_worker_findings.md",
+      "role": "worker follow-up findings",
+      "desc": "Documents proxy-worker concerns for a later deployment-owner MR without changing worker source in this branch."
     }
   ],
   "tour": [
@@ -47,10 +53,10 @@
       "note": "The audit treats direct build.nvidia.com as the default and the hosted worker as the explicit iframe path."
     },
     {
-      "title": "Worker carve-outs",
-      "file": "audit_iframe_proxy_opt_in.py",
-      "lines": [52, 65],
-      "note": "Both workers must have an origin allowlist. The launchable proxy also needs an upstream allowlist so it cannot become a general relay."
+      "title": "Worker findings stay documentation-only",
+      "file": "iframe_proxy_worker_findings.md",
+      "lines": [1, 15],
+      "note": "This branch leaves Cloudflare Worker source unchanged and records follow-up concerns for owner review."
     }
   ]
 }

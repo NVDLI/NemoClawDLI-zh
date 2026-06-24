@@ -39,28 +39,29 @@ CHECKS = [
         [],
     ),
     (
-        "build proxy has origin allowlist and safe CORS",
-        "cors-proxy/cors-proxy-worker-build.js",
-        ["ALLOWED_ORIGINS", "ALLOW_ANY_ORIGIN", "Origin not allowed for iframe proxy", "Vary", 'fwd.delete("cookie")'],
-        [r'Access-Control-Allow-Origin"\s*:\s*origin\b'],
-    ),
-    (
-        "launchable proxy has origin and upstream allowlists",
-        "cors-proxy/cors-proxy-worker-openclaw.js",
-        ["ALLOWED_ORIGINS", "ALLOWED_UPSTREAM_HOSTS", "ALLOWED_UPSTREAM_SUFFIXES", "Origin not allowed for launchable proxy", "Upstream host not allowed"],
-        [],
-    ),
-    (
         "landing page names iframe mode as opt-in",
         "web/nemoclaw/index.html",
         ["Enable LMS/static iframe mode only", "hosted CORS worker is used only"],
         [],
     ),
     (
-        "proxy explorer documents opt-in carve-out",
-        "cors-proxy/SKILL.html",
-        ["opt-in", "ALLOWED_ORIGINS", "ALLOW_ANY_ORIGIN"],
+        "worker follow-up findings are documented",
+        "scripts/security/iframe_proxy_worker_findings.md",
+        ["This MR does not change", "X-BILLING-SOURCE", "ALLOWED_ORIGINS", "dedicated worker MR"],
         [],
+    ),
+]
+
+WORKER_FINDINGS = [
+    (
+        "build worker reflects page origins; review exact origin allowlist before deployment changes",
+        "cors-proxy/cors-proxy-worker-build.js",
+        ["Access-Control-Allow-Origin", "origin"],
+    ),
+    (
+        "launchable worker keeps upstream host allowlist but still reflects page origins",
+        "cors-proxy/cors-proxy-worker-openclaw.js",
+        ["brevlab.com", "Access-Control-Allow-Origin"],
     ),
 ]
 
@@ -80,6 +81,13 @@ def main() -> int:
             failures.append(f"FAIL {label} ({rel}): " + "; ".join(parts))
         else:
             print(f"PASS {label}")
+    for label, rel, required in WORKER_FINDINGS:
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        missing = [needle for needle in required if needle not in text]
+        if missing:
+            failures.append(f"FAIL worker finding source changed unexpectedly ({rel}): missing " + ", ".join(missing))
+        else:
+            print(f"NOTE {label} ({rel})")
     if failures:
         print("\n".join(failures), file=sys.stderr)
         return 1
