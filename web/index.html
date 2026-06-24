@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<link rel="icon" type="image/x-icon" href="/lab/static/nemoclaw/assets/favicon.ico"/>
 <title>NVIDIA DLI · Browser courses · Foyer</title>
 
 <!--
@@ -352,7 +353,14 @@
   var meta = document.getElementById("branch-meta");
   if (!box || !sel || !open || !meta) return;
   function cleanUrl(u) {
-    if (!u || /(^|\/)\.\.(\/|$)/.test(u) || /^[a-z]+:/i.test(u)) return null;
+    if (!u || /^[a-z]+:/i.test(u)) return null;
+    var parts = u.split("/");
+    var depth = 0;
+    for (var i = 0; i < parts.length; i += 1) {
+      if (!parts[i] || parts[i] === ".") continue;
+      if (parts[i] === "..") { depth -= 1; if (depth < -1) return null; }
+      else { depth += 1; }
+    }
     return u;
   }
   function cleanSlug(s) {
@@ -364,10 +372,11 @@
     if (last === "index.html") last = parts[parts.length - 2] || "";
     return currentSlug && last === currentSlug ? "../" : "";
   }
-  function targetUrl(branch, prefix) {
+  function targetUrl(branch, prefix, currentSlug) {
     if (!branch) return null;
     if (branch.kind === "production") return prefix + "nemoclaw/";
     var slug = cleanSlug(branch.slug);
+    if (slug && currentSlug && slug === currentSlug) return "web/nemoclaw/";
     return slug ? prefix + slug + "/web/nemoclaw/" : cleanUrl(branch.url);
   }
   fetch("branches.json", { cache: "no-store" }).then(function (r) {
@@ -376,19 +385,19 @@
   }).then(function (data) {
     var currentSlug = data.current && cleanSlug(data.current.slug);
     var prefix = branchRootPrefix(currentSlug);
-    var branches = Array.isArray(data.branches) ? data.branches.filter(function (b) { return targetUrl(b, prefix); }) : [];
+    var branches = Array.isArray(data.branches) ? data.branches.filter(function (b) { return targetUrl(b, prefix, currentSlug); }) : [];
     if (!branches.length) return;
     sel.innerHTML = "";
     branches.forEach(function (b) {
       var opt = document.createElement("option");
-      opt.value = targetUrl(b, prefix);
+      opt.value = targetUrl(b, prefix, currentSlug);
       opt.textContent = (b.current ? "current: " : "") + b.name + " · " + (b.kind || "preview");
       opt.dataset.name = b.name || "";
       opt.dataset.kind = b.kind || "preview";
       sel.appendChild(opt);
     });
     var current = branches.find(function (b) { return b.current; });
-    if (current) sel.value = targetUrl(current, prefix);
+    if (current) sel.value = targetUrl(current, prefix, currentSlug);
     if (prod) prod.href = prefix + "nemoclaw/";
     function paint() {
       var opt = sel.options[sel.selectedIndex];

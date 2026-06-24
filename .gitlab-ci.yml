@@ -91,6 +91,8 @@ pages:
         test -f "public/$CI_COMMIT_REF_SLUG/web/nemoclaw/index.html"
         test -f "public/$CI_COMMIT_REF_SLUG/validated-source/web/nemoclaw/index.html"
         grep -q 'href="web/nemoclaw/index.html"' "public/$CI_COMMIT_REF_SLUG/index.html"
+        grep -q 'href="web/nemoclaw/assets/favicon.ico"' "public/$CI_COMMIT_REF_SLUG/index.html"
+        grep -q 'return "web/nemoclaw/"' "public/$CI_COMMIT_REF_SLUG/index.html"
         grep -q 'web/nemoclaw/' "public/$CI_COMMIT_REF_SLUG/languages.json"
         if [ -d i18n/pt/web/nemoclaw ]; then test -f "public/$CI_COMMIT_REF_SLUG/pt/nemoclaw/index.html"; grep -q 'pt/nemoclaw/' "public/$CI_COMMIT_REF_SLUG/languages.json"; fi
       }
