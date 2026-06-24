@@ -2,9 +2,9 @@
 # build_pages.sh assembles a static, fully client-side site into ./public/.
 #
 # Driven by .gitlab-ci.yml or .github/workflows/pages.yml, or run by hand.
-# In GitLab staging, CI passes OUT=public/<branch-slug> and
-# BUILD_PAGES_COURSE_PREFIX=web, so the course preview is written to
-# public/<branch-slug>/web/nemoclaw and served at /<branch-slug>/web/nemoclaw/.
+# In GitLab staging, CI passes BUILD_PAGES_COURSE_PREFIX=web, so the course
+# preview is written to public/web/nemoclaw. The CI job may mirror that output
+# under public/<branch-slug>/ as a classic-Pages compatibility layer.
 # Do not bake branch names into the bundle; relative links keep previews portable
 # and avoid a preview artifact that can accidentally masquerade as production.
 #
@@ -16,6 +16,8 @@
 #   public/tests.html          client-side test runner (engine smoke + SKILL self-tests + CI gate)
 #   public/validation.html     the CI gate report rendered from docs/validation/latest.json
 #   public/gate.json           machine-readable gate summary (for tests.html)
+#   public/branches.json       build-time branch preview manifest for the foyer dropdown
+#   public/languages.json      build-time language manifest for the foyer dropdown
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -169,15 +171,26 @@ echo "[build_pages] validation.html (framer report mode) written"
 # we strip that prefix to relative paths and inject the Pages-only tool links at the
 # build:deploy-tools marker. The Pages site never points at /lab.
 cp "$T1/web/index.html" "$OUT/index.html"
-python3 - "$OUT/index.html" <<'PROJ'
+python3 - "$OUT/index.html" "$COURSE_PREFIX" <<'PROJ'
 import sys, re
-p = sys.argv[1]; s = open(p).read()
-s = s.replace("/lab/static/", "")   # authoritative /lab/static -> Pages-relative
+p, course_prefix = sys.argv[1], sys.argv[2].strip("/")
+s = open(p).read().replace("/lab/static/", "")   # authoritative /lab/static -> Pages-relative
+if course_prefix:
+    s = s.replace('href="nemoclaw/', 'href="' + course_prefix + '/nemoclaw/')
+    s = s.replace('"nemoclaw": "nemoclaw/', '"nemoclaw": "' + course_prefix + '/nemoclaw/')
 tools = ('      <a href="validation.html">Validation report &rarr;</a>\n'
          '      <a href="tests.html">Test harness &rarr;</a>')
 s = re.sub(r'<!-- build:deploy-tools[^>]*-->', tools, s)
 open(p, "w").write(s)
 PROJ
+
+# ── 4b. Branch manifest for the foyer dropdown ──────────────────────────────
+# Static Pages cannot discover Git refs at runtime. In a real checkout (CI or local
+# dev), write the refs we can see; archive-only production-root rebuilds skip this
+# and the outer Pages job writes the manifest after it adds the branch preview.
+if git -C "$T1" rev-parse --git-dir >/dev/null 2>&1 && [ -f "$T1/scripts/build_branch_manifest.py" ]; then
+    python3 "$T1/scripts/build_branch_manifest.py" --out "$OUT/branches.json" || echo "[build_pages] branch manifest skipped"
+fi
 
 # ── 5. Client-side test runner ──
 # Three live, in-browser layers: an engine smoke test, the course SKILL self-test
@@ -225,6 +238,14 @@ PROJ
         fav="${d}web/nemoclaw/assets/favicon.ico"; [ -f "$fav" ] || fav="$T1/web/nemoclaw/assets/favicon.ico"
         [ -f "$fav" ] && cp "$fav" "$OUT/$lang/favicon.ico" || true
     done
+fi
+
+# -- 7. Language manifest for the foyer dropdown -----------------------------
+# Generate this after translations are built so the manifest lists only languages
+# that actually exist in this artifact. The English URL follows COURSE_PREFIX;
+# translation courses live under <lang>/nemoclaw/.
+if [ -f "$T1/scripts/build_language_manifest.py" ]; then
+    python3 "$T1/scripts/build_language_manifest.py" --out "$OUT/languages.json" --site-root "$OUT" --course-prefix "$COURSE_PREFIX" || echo "[build_pages] language manifest skipped"
 fi
 
 echo "[build_pages] done -> $OUT"

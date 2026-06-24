@@ -8,6 +8,7 @@
 # Isolation contract:
 #   - branch previews are manual and live under public/<branch-slug>/web/nemoclaw;
 #   - preview Pages artifacts rebuild the production root from a protected ref, then add the branch preview;
+#   - the branch foyer at public/<branch-slug>/index.html reads a static branch manifest;
 #   - production refs still require a manual job start;
 #   - branch names are normalized through CI_COMMIT_REF_SLUG before becoming URLs.
 
@@ -83,8 +84,17 @@ pages:
         case "$CI_COMMIT_REF_SLUG" in *..*|*/*|*\*) echo "unsafe CI_COMMIT_REF_SLUG=$CI_COMMIT_REF_SLUG" >&2; exit 1;; esac
         export BUILD_PAGES_COURSE_PREFIX="web"
         bash scripts/build_pages.sh "public/$CI_COMMIT_REF_SLUG"
+        python3 scripts/build_branch_manifest.py --out "public/$CI_COMMIT_REF_SLUG/branches.json"
+        test -f "public/$CI_COMMIT_REF_SLUG/index.html"
+        test -f "public/$CI_COMMIT_REF_SLUG/branches.json"
+        test -f "public/$CI_COMMIT_REF_SLUG/languages.json"
         test -f "public/$CI_COMMIT_REF_SLUG/web/nemoclaw/index.html"
         test -f "public/$CI_COMMIT_REF_SLUG/validated-source/web/nemoclaw/index.html"
+        grep -q 'href="web/nemoclaw/index.html"' "public/$CI_COMMIT_REF_SLUG/index.html"
+        grep -q 'href="web/nemoclaw/assets/favicon.ico"' "public/$CI_COMMIT_REF_SLUG/index.html"
+        grep -q 'return "web/nemoclaw/"' "public/$CI_COMMIT_REF_SLUG/index.html"
+        grep -q 'web/nemoclaw/' "public/$CI_COMMIT_REF_SLUG/languages.json"
+        if [ -d i18n/pt/web/nemoclaw ]; then test -f "public/$CI_COMMIT_REF_SLUG/pt/nemoclaw/index.html"; grep -q 'pt/nemoclaw/' "public/$CI_COMMIT_REF_SLUG/languages.json"; fi
       }
       build_production_root_from_ref() {
         prod_ref="${PROD_PAGES_REF:-$CI_DEFAULT_BRANCH}"
@@ -109,7 +119,6 @@ pages:
         rm -rf public
         build_production_root_from_ref
         build_branch_preview
-        printf '%s' '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=web/nemoclaw/"><a href="web/nemoclaw/">Open NemoClaw preview</a>' > "public/$CI_COMMIT_REF_SLUG/index.html"
       else
         stage_translations
         bash scripts/build_pages.sh public
@@ -123,7 +132,7 @@ pages:
     url: "$PAGES_ENVIRONMENT_URL"
   rules:
     # Branch previews are real GitLab Pages deploys, but production root is rebuilt from the
-    # protected production ref and the branch only gets /<slug>/web/nemoclaw/.
+    # protected production ref and the branch only gets /<slug>/ plus /<slug>/web/nemoclaw/.
     - if: '$CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_BRANCH != "nemoclaw-only" && $CI_COMMIT_BRANCH !~ /^translate-/ && $CI_PIPELINE_SOURCE != "schedule"'
       variables:
         PAGES_PREVIEW: "1"
