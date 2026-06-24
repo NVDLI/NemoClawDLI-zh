@@ -745,8 +745,11 @@ return { synthesised: true, source_files: paths, report_chars: state.synthesis.l
 
     {
       id: "render", icon: "📊", title: "Render the deep-agent tree", x: 1, y: 4,
-      summary: "Builds a diagram from the actual run data: the orchestrator node at the top, one worker node per subtask in the middle row labelled with the subtask text and message count, and a synthesiser node at the bottom showing the combined report it wrote back to the virtual filesystem. The diagram makes the data-flow visible: work produced by workers reaches the synthesiser through the shared filesystem, with no agent ever messaging another directly.",
-      code: `// Build a diagram spec straight from the run: orchestrator (row 0) fans out
+      showCode: false,
+      summary: "Builds a diagram from the actual run data. The code is collapsed by default because it is mostly diagram-spec plumbing: orchestrator, workers, synthesiser, and the edges between them.",
+      code: `// Reading guide: this block does not run another model call. It turns state.subResults
+// and state.vfs into a diagram spec so the worker fan-out and shared-filesystem join are visible.
+// Build a diagram spec straight from the run: orchestrator (row 0) fans out
 // to one worker per subtask (row 1, x = index), each feeding the synthesiser
 // (row 2). Each worker's label/lines come from its subtask + result.
 

@@ -132,9 +132,52 @@ def audit_runtime_contract():
          "canvas-flow nodes need per-node Reset so one step can be restored without resetting the whole flow")
     need('if (codeDet && !codeDet.open) codeDet.open = true;' in src,
          "run-cell errors should open the code panel when a failing line is marked")
-    need('out.scrollIntoView({ block: "nearest", behavior: "smooth" });' in src,
-         "run-cell output should stay visible after Run so students do not hunt below a large code block")
+    need('out.scrollIntoView({ block: "nearest", behavior: "smooth" });' not in src,
+         "run-cell output must not auto-scroll on Run; hidden code should reduce page jumps, not move the viewport")
     return findings
+
+
+
+CANVAS_MOUNT_RE = re.compile(r"mount(?:CanvasFlow|RunCell)\s*\(")
+CANVAS_LONG_DEFAULT_OPEN_LINES = 40
+
+
+def audit_code_surface():
+    """Find canvas-flow nodes whose code starts open despite being long enough to dominate the page.
+    mountCanvasFlow opens node code automatically up to 80 lines; that is useful for small teaching
+    steps but rough for plumbing-heavy visualization or orchestration blocks. Anything at or above
+    CANVAS_LONG_DEFAULT_OPEN_LINES must choose deliberately: add showCode:false for plumbing, or
+    shrink/split the code if students really need to read it inline."""
+    findings = []
+    pages = sorted((WEB / "nemoclaw").glob("0*.html"))
+    for path in pages:
+        text = path.read_text(errors="ignore")
+        rel = str(path.relative_to(WEB.parent))
+        mounts = list(CANVAS_MOUNT_RE.finditer(text))
+        for i, mount in enumerate(mounts):
+            if not text.startswith("mountCanvasFlow", mount.start()):
+                continue
+            start = mount.start()
+            end = mounts[i + 1].start() if i + 1 < len(mounts) else len(text)
+            block = text[start:end]
+            label_m = re.search(r'label:\s*"([^"]+)"', block[:800])
+            canvas = label_m.group(1) if label_m else "canvas"
+            for m in CODE.finditer(block):
+                code = m.group(1)
+                lines = code.count("\n") + 1
+                pre = block[max(0, m.start() - 700):m.start()]
+                show_false = "showCode: false" in pre[-350:]
+                show_true = "showCode: true" in pre[-350:]
+                default_open = show_true or (lines <= 80 and not show_false)
+                if not default_open or lines < CANVAS_LONG_DEFAULT_OPEN_LINES:
+                    continue
+                title_m = re.search(r'title:\s*"([^"]+)"', pre)
+                id_m = re.search(r'id:\s*"([^"]+)"', pre)
+                name = title_m.group(1) if title_m else (id_m.group(1) if id_m else "node")
+                line_no = text[:start + m.start()].count("\n") + 1
+                findings.append((rel, f"line {line_no}: default-open canvas node '{name}' has {lines} code lines in '{canvas}'; add showCode:false for plumbing-heavy code or split the node"))
+    return findings
+
 
 def run(verbose=True):
     """Driver: audit every numbered lesson page's runnable cells and aggregate the findings. It exists
@@ -143,6 +186,7 @@ def run(verbose=True):
     pages = sorted((WEB / "nemoclaw").glob("0*.html"))   # the numbered lesson pages carry the runnable cells
     opaque, console, unawaited, dialog, key, static, unhi = [], [], [], [], [], [], []
     ui_contract = audit_runtime_contract()
+    code_surface = audit_code_surface()
     for p in pages:
         o, c, u, d, k, st, uh = audit_page(p)  # per-page findings, by category
         opaque += o; console += c; unawaited += u; dialog += d; key += k; static += st; unhi += uh
@@ -160,14 +204,16 @@ def run(verbose=True):
         show("cell-only code shown statically (not editable)", static, lambda it: f"{it[0]}  {it[1]}")
         show("editable cells without the syntax highlighter loaded", unhi, lambda it: f"{it[0]}  {it[1]}")
         show("learner-facing cell UI contract", ui_contract, lambda it: f"{it[0]}  {it[1]}")
+        show("default-open canvas code surface", code_surface, lambda it: f"{it[0]}  {it[1]}")
         total = (len(opaque) + len(console) + len(unawaited) + len(dialog) + len(key) + len(static)
-                 + len(unhi) + len(ui_contract))
+                 + len(unhi) + len(ui_contract) + len(code_surface))
         print(f"\ncell_audit: {total} finding(s) (opaque {len(opaque)}, console {len(console)}, "
               f"unawaited {len(unawaited)}, dialog {len(dialog)}, inline-key {len(key)}, static {len(static)}, "
-              f"unhighlighted {len(unhi)}, ui-contract {len(ui_contract)})")
+              f"unhighlighted {len(unhi)}, ui-contract {len(ui_contract)}, code-surface {len(code_surface)})")
     return {"opaque": opaque, "console": console, "unawaited": unawaited,
             "dialog": dialog, "inline_key": key, "static_cell_code": static,
-            "unhighlighted": unhi, "ui_contract": ui_contract}
+            "unhighlighted": unhi, "ui_contract": ui_contract,
+            "code_surface": code_surface}
 
 
 if __name__ == "__main__":

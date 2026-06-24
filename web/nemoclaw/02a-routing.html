@@ -451,8 +451,11 @@ return {
 
     {
       id: "synth", icon: "🧠", title: "Synthesizer (LLM) + pipeline viz", x: 0, y: 3,
-      summary: "The second and final model call. It reads all of the search results together and writes a 4-6 sentence brief, citing each source by index. The diagram drawn here reconstructs the full ReWOO pipeline from the plan the planner emitted, so you can see the actual queries and hit counts alongside the text.",
-      code: `const synth = await helpers.chatStream({
+      showCode: false,
+      summary: "The second and final model call reads the search results and writes the brief. The code is collapsed by default because most of the block builds the pipeline diagram from the plan and search counts.",
+      code: `// Reading guide: the first block is the actual synthesis call. The rest converts the
+// planner/search data into a diagram spec so the page can show the pipeline beside the answer.
+const synth = await helpers.chatStream({
   messages: [
     { role: "system", content: "You are a research synthesizer. Write a 4-6 sentence brief grounded in the sources. Cite as [search N] when referencing a result." },
     { role: "user",   content: \`Topic: \${state.plan.topic}\\n\\n\${state.context}\` },
