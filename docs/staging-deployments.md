@@ -21,6 +21,7 @@ The preview path intentionally mirrors the source path segment `web/nemoclaw` fo
 - Branch previews are manual, so a branch push cannot deploy to Pages by itself.
 - Failed branch preview jobs do not publish a new Pages artifact.
 - Branch preview jobs rebuild `public/index.html` and `public/nemoclaw/` from `PROD_PAGES_REF`, which is restricted to `$CI_DEFAULT_BRANCH` or `nemoclaw-only`.
+- Branch preview jobs regenerate root `public/branches.json` from the real checkout after the protected-root archive build, so the production foyer branch browser does not disappear when a branch preview deploys.
 - Branch content is built only under `public/$CI_COMMIT_REF_SLUG/`; its course lives at `public/$CI_COMMIT_REF_SLUG/web/nemoclaw/`, and its foyer link is checked in CI so it cannot point at the production-only `nemoclaw/` path.
 - `CI_COMMIT_REF_SLUG` is checked before it becomes a path.
 - The branch foyer dropdown reads only static `branches.json`, and the language dropdown reads only static `languages.json`; neither calls GitLab at runtime or requires tokens.
