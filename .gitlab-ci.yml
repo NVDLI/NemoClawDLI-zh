@@ -7,7 +7,8 @@
 #
 # Isolation contract:
 #   - branch previews are manual and build the course at public/web/nemoclaw;
-#   - this Pages runner serves non-default ref artifacts under /<branch-slug>/;
+#   - preview builds also mirror that shape under public/<branch-slug>/ for Pages runners
+#     that expose the artifact without automatically prefixing non-default refs;
 #   - production refs still require a manual job start;
 #   - branch names are normalized through CI_COMMIT_REF_SLUG before becoming URLs.
 
@@ -64,9 +65,10 @@ pages:
   needs: ["test"]
   resource_group: pages-site
   script:
-    # This GitLab Pages runner serves non-default branch Pages artifacts under
-    # /<branch-slug>/. Use that isolation directly: branch preview artifacts put
-    # the foyer at artifact root and the course at web/nemoclaw/.
+    # This GitLab Pages runner has classic Pages behavior, and branch URL handling has
+    # varied by artifact shape. Build the preview at artifact root, then mirror the
+    # same browser surface under public/<branch-slug>/ so both pages-like forms work:
+    # /<branch-slug>/ and /<branch-slug>/web/nemoclaw/.
     - |
       set -euo pipefail
       refresh_branch_refs() {
@@ -88,10 +90,18 @@ pages:
         export BUILD_PAGES_COURSE_PREFIX="web"
         bash scripts/build_pages.sh public
         python3 scripts/build_branch_manifest.py --out public/branches.json
+        mkdir -p "public/$CI_COMMIT_REF_SLUG"
+        for path in index.html branches.json favicon.ico engine.js gate.json link-graph.html tests.html validation.html web validated-source cors-proxy docs scripts workspace; do
+          test -e "public/$path" || continue
+          tar -C public -cf - "$path" | tar -C "public/$CI_COMMIT_REF_SLUG" -xf -
+        done
         test -f public/index.html
         test -f public/branches.json
         test -f public/web/nemoclaw/index.html
         test -f public/validated-source/web/nemoclaw/index.html
+        test -f "public/$CI_COMMIT_REF_SLUG/index.html"
+        test -f "public/$CI_COMMIT_REF_SLUG/branches.json"
+        test -f "public/$CI_COMMIT_REF_SLUG/web/nemoclaw/index.html"
       else
         stage_translations
         bash scripts/build_pages.sh public

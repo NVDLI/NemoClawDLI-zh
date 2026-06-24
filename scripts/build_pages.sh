@@ -2,9 +2,9 @@
 # build_pages.sh assembles a static, fully client-side site into ./public/.
 #
 # Driven by .gitlab-ci.yml or .github/workflows/pages.yml, or run by hand.
-# In GitLab staging, CI passes OUT=public/<branch-slug> and
-# BUILD_PAGES_COURSE_PREFIX=web, so the course preview is written to
-# public/<branch-slug>/web/nemoclaw and served at /<branch-slug>/web/nemoclaw/.
+# In GitLab staging, CI passes BUILD_PAGES_COURSE_PREFIX=web, so the course
+# preview is written to public/web/nemoclaw. The CI job may mirror that output
+# under public/<branch-slug>/ as a classic-Pages compatibility layer.
 # Do not bake branch names into the bundle; relative links keep previews portable
 # and avoid a preview artifact that can accidentally masquerade as production.
 #
