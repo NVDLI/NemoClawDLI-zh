@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>scripts/security iframe proxy audit</title>
+
+<script type="application/json" id="skill-meta">
+{
+  "schema": "dir-skill/1.0",
+  "node_type": "directory-explorer",
+  "title": "scripts/security iframe proxy audit",
+  "source_dir": "scripts/security/",
+  "summary": "Security checks for the course browser runtime. Main keeps iframe execution support, but proxy execution is an explicit learner or host-page opt-in. This branch does not change Cloudflare Worker source; it documents worker follow-up findings for deployment-owner review.",
+  "related": [
+    "scripts/security/audit_iframe_proxy_opt_in.py",
+    "scripts/security/iframe_proxy_worker_findings.md",
+    "web/nemoclaw/_shared.js",
+    "cors-proxy/cors-proxy-worker-build.js",
+    "cors-proxy/cors-proxy-worker-openclaw.js"
+  ],
+  "explorer": "../../web/_skill_explorer.js"
+}
+</script>
+
+<script type="application/json" id="explorer-config">
+{
+  "title": "scripts/security iframe proxy audit",
+  "summary": "Main supports LMS/static iframe execution, but it is not the silent default. The browser runtime exposes an explicit toggle and URL flag. Worker source changes are out of scope for this branch, so this folder records follow-up findings rather than patching deployed-worker code.",
+  "model": "nvidia/nemotron-3-nano-30b-a3b",
+  "ties": ["build", "security"],
+  "nav": {
+    "home": "../../web/index.html",
+    "up": { "label": "scripts", "href": "../SKILL.html" }
+  },
+  "files": [
+    {
+      "path": "audit_iframe_proxy_opt_in.py",
+      "role": "iframe proxy source audit",
+      "desc": "Checks that direct API use is default, iframe proxy mode is explicit, billing headers are always present for tracking, and worker follow-up findings are documented."
+    },
+    {
+      "path": "iframe_proxy_worker_findings.md",
+      "role": "worker follow-up findings",
+      "desc": "Documents proxy-worker concerns for a later deployment-owner MR without changing worker source in this branch."
+    }
+  ],
+  "tour": [
+    {
+      "title": "Default versus iframe mode",
+      "file": "audit_iframe_proxy_opt_in.py",
+      "lines": [24, 38],
+      "note": "The audit treats direct build.nvidia.com as the default and the hosted worker as the explicit iframe path."
+    },
+    {
+      "title": "Worker findings stay documentation-only",
+      "file": "iframe_proxy_worker_findings.md",
+      "lines": [1, 15],
+      "note": "This branch leaves Cloudflare Worker source unchanged and records follow-up concerns for owner review."
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<div id="explorer"></div>
+<noscript>
+  <h1>scripts/security iframe proxy audit</h1>
+  <p>Main supports iframe execution by opt-in. Read <a href="audit_iframe_proxy_opt_in.py">audit_iframe_proxy_opt_in.py</a> for the guardrail checks.</p>
+</noscript>
+<script src="../../web/_skill_explorer.js"></script>
+</body>
+</html>

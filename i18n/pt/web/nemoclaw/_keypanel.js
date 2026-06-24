@@ -1,5 +1,5 @@
 // _keypanel.js holds the inline API-key setup panel (mountKeyPanel) that used to live in _shared.js.
-import { chat, hasKey, setKey, updateKeyPill } from "./_shared.js";
+import { chat, hasKey, setKey, updateKeyPill, iframeProxyModeEnabled, setIframeProxyMode } from "./_shared.js";
 
 export function mountKeyPanel(container, opts = {}) {
   /* @doc <code>helpers.mountKeyPanel(el)</code> ::
@@ -12,11 +12,22 @@ export function mountKeyPanel(container, opts = {}) {
   if (!el) return null;
   const _clean = raw => raw.trim().replace(/[^\x20-\x7E]/g, "");
   function _draw() {
+    const proxyChecked = iframeProxyModeEnabled();
     if (hasKey()) {
       el.innerHTML = `<div class="key-panel" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:16px 24px">
-        <span style="color:var(--gs,#aee23a);font-family:var(--mono,monospace);font-size:.88rem">&#10003; API key saved for this session</span>
+        <span style="color:var(--gs,#aee23a);font-family:var(--mono,monospace);font-size:.88rem">&#10003; API key saved for this browser</span>
+        <label style="display:flex;align-items:center;gap:8px;margin:0;color:var(--td,#b0b0b0);font-size:.82rem">
+          <input type="checkbox" class="iframe-proxy-toggle" ${proxyChecked ? "checked" : ""}/>
+          Enable LMS/static iframe execution
+        </label>
         <button class="btn" style="margin:0;padding:7px 16px;font-size:.82rem">Change</button>
       </div>`;
+      const toggle = el.querySelector(".iframe-proxy-toggle");
+      if (toggle) toggle.onchange = () => {
+        setIframeProxyMode(toggle.checked);
+        const pill = document.getElementById("key-status");
+        if (pill) updateKeyPill(pill);
+      };
       el.querySelector(".btn").onclick = () => {
         localStorage.removeItem("nvapi");
         const pill = document.getElementById("key-status");
@@ -28,14 +39,18 @@ export function mountKeyPanel(container, opts = {}) {
       el.innerHTML = `<div class="key-panel">
         <label>NVIDIA API key (starts with <code>nvapi-</code>)</label>
         <input type="password" placeholder="nvapi-&hellip;" autocomplete="off" spellcheck="false"/>
+        <label style="display:flex;align-items:center;gap:8px;margin:.7em 0;color:var(--td,#b0b0b0);font-size:.86rem">
+          <input type="checkbox" class="iframe-proxy-toggle" ${proxyChecked ? "checked" : ""}/>
+          Enable LMS/static iframe execution through the hosted proxy
+        </label>
         <button class="btn">Save &amp; verify</button>
         <div class="status"></div>
         <p style="margin:.8em 0 0;font-size:.8rem;color:var(--tf,#8a8a8a)">
           No key yet? <a href="https://build.nvidia.com" target="_blank" rel="noopener">Sign up at build.nvidia.com &rarr;</a>
-          Free-tier models cover every exercise.
+          Free-tier models cover every exercise. Leave iframe mode off unless your host page needs it.
         </p>
       </div>`;
-      const input = el.querySelector("input");
+      const input = el.querySelector("input[type='password']");
       const status = el.querySelector(".status");
       const btn = el.querySelector(".btn");
       async function save() {
@@ -45,6 +60,8 @@ export function mountKeyPanel(container, opts = {}) {
         }
         status.className = "status"; status.textContent = "Verifying…";
         try {
+          const toggle = el.querySelector(".iframe-proxy-toggle");
+          setIframeProxyMode(!!toggle?.checked);
           setKey(key);
           // The default model is a reasoning model: it spends tokens on a private
           // reasoning_content channel before writing its answer to content. A tight

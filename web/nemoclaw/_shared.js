@@ -1,12 +1,15 @@
 // ─── Shared runtime for the nemoclaw web course (frontend track) ─────────────
 
-// Remote-service-only. Model calls go to build.nvidia.com via the Cloudflare CORS worker.
-// The OpenClaw launchable on Brev is the only other remote; auth is the student's own key.
+// Remote-service-only. Model calls normally go straight to build.nvidia.com with the
+// student's own key. LMS/static iframe execution is still supported through the hosted
+// Cloudflare CORS worker, but it must be explicitly enabled by the learner or host page.
 // No lab proxy, no llm_client:9000, no Python kernel.
 
-const DIRECT_URL = "https://nvidia-api-cors-proxy.vkudlay.workers.dev/v1";
-// Billing attribution: the X-BILLING-SOURCE header attributes spend to this DLI course.
-// The CORS proxy must allow it in preflight and forward it upstream (attached in _apiHeaders below).
+const API_URL = "https://integrate.api.nvidia.com/v1";
+const IFRAME_PROXY_URL = "https://nvidia-api-cors-proxy.vkudlay.workers.dev/v1";
+const IFRAME_PROXY_OPT_IN_KEY = "nemoclaw_iframe_proxy_opt_in";
+// Billing attribution is sent on both direct and iframe-proxy calls. The hosted
+// worker must allow and forward it; build.nvidia.com also accepts it directly.
 const BILLING_SOURCE = "dli-nemoclaw-web";
 // Web-cell model contract: the short course uses the fast reasoning-capable Nemotron nano.
 // DEFAULT_MODEL is chat()'s fallback when a cell passes no model. REASONING_MODEL is the
@@ -41,32 +44,58 @@ export { diagramSVG, mountDiagram };
 import { ganttBarsSVG, mountFigures } from "./_figures.js";
 export { ganttBarsSVG, mountFigures };
 
-const LAB_MODEL     = "nvidia/nemotron-3-nano-30b-a3b"; // proxy-mode default (cfg.model in the lab)
+const LAB_MODEL     = "nvidia/nemotron-3-nano-30b-a3b"; // legacy helper default; getConfig().model is the active course default
 const CONFIG_KEY    = "__nv_slim_cfg_v1";
 
 // The web course runs JavaScript only.
 // The in-browser Python / JupyterLab-kernel path was removed; Python lives in the notebooks.
 
-// ── Endpoint discovery ────────────────────────────────────────────────────────
+// Endpoint discovery
 let _cfgPromise = null;
+
+function _syncIframeProxyOptInFromUrl() {
+  try {
+    const params = new URLSearchParams(location.search || "");
+    const val = params.get("iframe_proxy") || params.get("lms_proxy");
+    if (val === "1" || val === "true") localStorage.setItem(IFRAME_PROXY_OPT_IN_KEY, "1");
+    if (val === "0" || val === "false") localStorage.removeItem(IFRAME_PROXY_OPT_IN_KEY);
+  } catch (_) {}
+}
+
+export function iframeProxyModeEnabled() {
+  _syncIframeProxyOptInFromUrl();
+  try { return localStorage.getItem(IFRAME_PROXY_OPT_IN_KEY) === "1"; }
+  catch (_) { return false; }
+}
+
+export function setIframeProxyMode(enabled) {
+  try {
+    if (enabled) localStorage.setItem(IFRAME_PROXY_OPT_IN_KEY, "1");
+    else localStorage.removeItem(IFRAME_PROXY_OPT_IN_KEY);
+    sessionStorage.removeItem(CONFIG_KEY);
+  } catch (_) {}
+  _cfgPromise = null;
+}
 
 export async function getConfig() {
   /* @doc <code>helpers.getConfig()</code> ::
-       Returns the active endpoint config <code>{ mode, url, model, needsKey }</code>. This
-       course resolves it to build.nvidia.com through the hosted proxy, so you rarely need
-       it directly. */
+       Returns the active endpoint config <code>{ mode, url, model, needsKey, iframeProxy }</code>.
+       By default the course calls build.nvidia.com directly. If a host page or learner enables
+       LMS/static iframe mode, calls route through the hosted CORS worker instead. */
   if (_cfgPromise) return _cfgPromise;
   _cfgPromise = (async () => {
-    // Return cached result for this tab
+    const useIframeProxy = iframeProxyModeEnabled();
     try {
       const c = sessionStorage.getItem(CONFIG_KEY);
-      if (c) return JSON.parse(c);
+      if (c) {
+        const cached = JSON.parse(c);
+        if (!!cached.iframeProxy === useIframeProxy) return cached;
+      }
     } catch (_) {}
 
-    // Self-contained course: no DLI lab and no proxy to probe.
-    // Every model call goes to build.nvidia.com through the hosted Cloudflare worker.
-    // Auth is the student's own nvapi- key, kept in localStorage.
-    const cfg = { mode: "direct", url: DIRECT_URL, model: DEFAULT_MODEL, needsKey: true };
+    const cfg = useIframeProxy
+      ? { mode: "direct", url: IFRAME_PROXY_URL, model: DEFAULT_MODEL, needsKey: true, iframeProxy: true }
+      : { mode: "direct", url: API_URL,          model: DEFAULT_MODEL, needsKey: true, iframeProxy: false };
 
     try { sessionStorage.setItem(CONFIG_KEY, JSON.stringify(cfg)); } catch (_) {}
     return cfg;
@@ -74,7 +103,7 @@ export async function getConfig() {
   return _cfgPromise;
 }
 
-// ── Key management (used in direct mode only) ─────────────────────────────────
+// Key management
 export function getKey() {
   /* @doc <code>helpers.getKey()</code> ::
        Returns the <code>nvapi-</code> key saved in this browser (<code>localStorage</code>),
@@ -86,14 +115,13 @@ export function setKey(k) { localStorage.setItem("nvapi", k.trim()); }
 export function hasKey() { return !!getKey(); }
 
 // The OpenAI JS SDK (what ChatOpenAI uses) attaches x-stainless-* headers.
-// The build CORS proxy rejects them in preflight, so the browser blocks the call.
-// This wrapper strips them; pass it as configuration.fetch when constructing ChatOpenAI.
+// Some browser hosts reject these headers during preflight. This wrapper strips them;
+// pass it as configuration.fetch when constructing ChatOpenAI.
 export function browserChatFetch() {
   /* @doc <code>helpers.browserChatFetch()</code> ::
        Returns a <code>fetch</code> that strips the OpenAI SDK's <code>x-stainless-*</code>
-       headers (the build CORS proxy rejects them in preflight) and attaches the
-       <code>X-BILLING-SOURCE</code> tag. Pass it as <code>configuration.fetch</code> when
-       constructing a browser <code>ChatOpenAI</code>. */
+       headers and attaches the <code>X-BILLING-SOURCE</code> tracking tag. Pass it as
+       <code>configuration.fetch</code> when constructing a browser <code>ChatOpenAI</code>. */
   return async (url, init = {}) => {
     const h = init.headers instanceof Headers ? init.headers : new Headers(init.headers || {});
     for (const k of [...h.keys()]) { if (k.startsWith("x-stainless")) h.delete(k); }
@@ -114,7 +142,7 @@ export function browserChatFetch() {
 }
 
 export function requireKey(returnUrl) {
-  // In proxy mode a key is never required, so skip the check
+  // Both direct and iframe-proxy modes use the learner's nvapi key.
   getConfig().then(cfg => {
     if (!cfg.needsKey) return;
     if (!hasKey()) location.href = `index.html?next=${encodeURIComponent(returnUrl || location.pathname)}`;
@@ -163,8 +191,8 @@ async function fetchRetry(url, opts = {}, { retries = 2, backoffMs = 250, timeou
 }
 export { fetchRetry };
 
-// Headers shared by every model request: JSON content type, the BILLING_SOURCE tag, and the student's key in direct mode.
-// Built in one place so chat / chatStream / embed stay consistent and the billing tag is never dropped on a new call.
+// Headers shared by every model request: JSON content type, billing tag, and the student's key.
+// Built in one place so chat / chatStream / embed stay consistent.
 export function _apiHeaders(cfg) {
   const h = { "Content-Type": "application/json", "X-BILLING-SOURCE": BILLING_SOURCE };
   if (cfg.needsKey) h["Authorization"] = `Bearer ${getKey()}`;
