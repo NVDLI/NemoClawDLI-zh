@@ -8,8 +8,8 @@
 const API_URL = "https://integrate.api.nvidia.com/v1";
 const IFRAME_PROXY_URL = "https://nvidia-api-cors-proxy.vkudlay.workers.dev/v1";
 const IFRAME_PROXY_OPT_IN_KEY = "nemoclaw_iframe_proxy_opt_in";
-// Billing attribution is only sent in iframe-proxy mode, where the hosted worker allows
-// and forwards it upstream. Direct browser calls stay as close as possible to the API.
+// Billing attribution is sent on both direct and iframe-proxy calls. The hosted
+// worker must allow and forward it; build.nvidia.com also accepts it directly.
 const BILLING_SOURCE = "dli-nemoclaw-web";
 // Web-cell model contract: the short course uses the fast reasoning-capable Nemotron nano.
 // DEFAULT_MODEL is chat()'s fallback when a cell passes no model. REASONING_MODEL is the
@@ -120,13 +120,12 @@ export function hasKey() { return !!getKey(); }
 export function browserChatFetch() {
   /* @doc <code>helpers.browserChatFetch()</code> ::
        Returns a <code>fetch</code> that strips the OpenAI SDK's <code>x-stainless-*</code>
-       headers. In LMS/static iframe mode it also attaches the <code>X-BILLING-SOURCE</code>
-       tag expected by the hosted worker. Pass it as <code>configuration.fetch</code> when
-       constructing a browser <code>ChatOpenAI</code>. */
+       headers and attaches the <code>X-BILLING-SOURCE</code> tracking tag. Pass it as
+       <code>configuration.fetch</code> when constructing a browser <code>ChatOpenAI</code>. */
   return async (url, init = {}) => {
     const h = init.headers instanceof Headers ? init.headers : new Headers(init.headers || {});
     for (const k of [...h.keys()]) { if (k.startsWith("x-stainless")) h.delete(k); }
-    if (iframeProxyModeEnabled()) h.set("X-BILLING-SOURCE", BILLING_SOURCE);
+    h.set("X-BILLING-SOURCE", BILLING_SOURCE);
     const r = await fetch(url, { ...init, headers: h });
     // A non-2xx body is often plain text or an HTML error page; the OpenAI SDK calls r.json() on it
     // and throws a cryptic "Unexpected ... after JSON" with no sign it was an HTTP error. When the
@@ -192,11 +191,10 @@ async function fetchRetry(url, opts = {}, { retries = 2, backoffMs = 250, timeou
 }
 export { fetchRetry };
 
-// Headers shared by every model request: JSON content type, optional iframe-proxy billing tag, and the student's key.
+// Headers shared by every model request: JSON content type, billing tag, and the student's key.
 // Built in one place so chat / chatStream / embed stay consistent.
 export function _apiHeaders(cfg) {
-  const h = { "Content-Type": "application/json" };
-  if (cfg.iframeProxy) h["X-BILLING-SOURCE"] = BILLING_SOURCE;
+  const h = { "Content-Type": "application/json", "X-BILLING-SOURCE": BILLING_SOURCE };
   if (cfg.needsKey) h["Authorization"] = `Bearer ${getKey()}`;
   return h;
 }
