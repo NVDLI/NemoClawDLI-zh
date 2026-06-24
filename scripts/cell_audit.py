@@ -23,9 +23,9 @@ PRE_RE = re.compile(r"<pre\b.*?</pre>", re.S | re.I)
 CELL_API = re.compile(r"\bhelpers\.|\bctx\.view\b")
 
 MODEL_CALL = re.compile(r"(?<![\w.])(chat|chatStream)\s*\(|\.\s*stream\s*\(", re.I)
-# Any one of these clears the transparency bar: house logger, view method, maze, artifact, or a
-# returned value (the cell panel renders whatever a cell returns, so a stream-then-return cell with
-# no explicit log is still transparent). An unsuppressed chatStream also streams into the panel.
+# Any one of these clears the transparency bar: house logger, view method, maze, artifact, or return.
+# A returned value counts because the cell panel renders it.
+# An unsuppressed chatStream also streams into the panel.
 SURFACE = re.compile(
     r"\blog\s*\(|\blog\.|helpers\.log|ctx\.view|\.view\.|view\.(token|reasoning|usage|tool|warn|html)"
     r"|\binfo\s*\(|\bshow\s*\(|\.html\s*\(|mountChatUI|runMaze|\breturn\s+\S", re.I)
@@ -80,9 +80,8 @@ def audit_page(path: Path):
     body = SCRIPT_RE.sub("", text)
     static = [(rel, "static <pre> uses cell-only API (helpers./ctx.view); should be a runnable, editable cell")
               for pm in PRE_RE.finditer(body) if CELL_API.search(pm.group(0))]
-    # An editable cell renders in CodeMirror with the javascript mode for syntax highlighting; with the
-    # highlighter not loaded the editor silently falls back to a plain, unhighlighted textarea. So any
-    # page that mounts an editable cell must load CodeMirror core + the javascript mode + the editor css.
+    # Editable cells need CodeMirror core, javascript mode, and editor CSS.
+    # Otherwise the cell falls back to a plain, unhighlighted textarea.
     unhighlighted = []
     if re.search(r"mountRunCell\s*\(|mountCanvasFlow\s*\(", text):
         miss = [n for n, ok in (
@@ -96,12 +95,42 @@ def audit_page(path: Path):
     return opaque, console, unawaited, dialog, key, static, unhighlighted
 
 
+
+def audit_runtime_contract():
+    """Guard the shared learner-facing cell UI against regressions that make code dominate again.
+    This intentionally checks the runtime contract, not a validator tag: students should see results
+    first, reveal code only when they ask or when an error points at a line, and reset one cell or node
+    without rebuilding the whole page."""
+    src = (WEB / "nemoclaw" / "_canvas.js").read_text(errors="ignore")
+    findings = []
+
+    def need(ok: bool, msg: str):
+        if not ok:
+            findings.append(("web/nemoclaw/_canvas.js", msg))
+
+    rc_out = src.find('class="rc-out"')
+    rc_code = src.find('class="rc-code-det"')
+    need(rc_out >= 0 and rc_code >= 0 and rc_out < rc_code,
+         "run-cell output must render before the code editor so results are visible without scrolling through code")
+    need(not re.search(r'<details class="rc-code-det"[^>]*\sopen\b', src),
+         "run-cell code must be collapsed by default; open it on demand or on error")
+    need(not re.search(r'<details class="rc-schemas-det"[^>]*\sopen\b', src),
+         "run-cell schemas must be collapsed by default; schema plumbing should not lead the lesson")
+    need('class="rc-reset"' in src and "function resetCell" in src,
+         "run-cells need a per-cell Reset that restores original code/schema and clears output")
+    need('class="cf-panel-reset"' in src and "function resetNode" in src,
+         "canvas-flow nodes need per-node Reset so one step can be restored without resetting the whole flow")
+    need('if (codeDet && !codeDet.open) codeDet.open = true;' in src,
+         "run-cell errors should open the code panel when a failing line is marked")
+    return findings
+
 def run(verbose=True):
     """Driver: audit every numbered lesson page's runnable cells and aggregate the findings. It exists
     so the gate and a reviewer get one accounting of cells that violate the runnable-cell contract.
     Returns the finding lists; the report and exit code are derived from them."""
     pages = sorted((WEB / "nemoclaw").glob("0*.html"))   # the numbered lesson pages carry the runnable cells
     opaque, console, unawaited, dialog, key, static, unhi = [], [], [], [], [], [], []
+    ui_contract = audit_runtime_contract()
     for p in pages:
         o, c, u, d, k, st, uh = audit_page(p)  # per-page findings, by category
         opaque += o; console += c; unawaited += u; dialog += d; key += k; static += st; unhi += uh
@@ -118,14 +147,15 @@ def run(verbose=True):
         show("inlined API key in cell", key, lambda it: f"{it[0]}  {it[1]}")
         show("cell-only code shown statically (not editable)", static, lambda it: f"{it[0]}  {it[1]}")
         show("editable cells without the syntax highlighter loaded", unhi, lambda it: f"{it[0]}  {it[1]}")
+        show("learner-facing cell UI contract", ui_contract, lambda it: f"{it[0]}  {it[1]}")
         total = (len(opaque) + len(console) + len(unawaited) + len(dialog) + len(key) + len(static)
-                 + len(unhi))
+                 + len(unhi) + len(ui_contract))
         print(f"\ncell_audit: {total} finding(s) (opaque {len(opaque)}, console {len(console)}, "
               f"unawaited {len(unawaited)}, dialog {len(dialog)}, inline-key {len(key)}, static {len(static)}, "
-              f"unhighlighted {len(unhi)})")
+              f"unhighlighted {len(unhi)}, ui-contract {len(ui_contract)})")
     return {"opaque": opaque, "console": console, "unawaited": unawaited,
             "dialog": dialog, "inline_key": key, "static_cell_code": static,
-            "unhighlighted": unhi}
+            "unhighlighted": unhi, "ui_contract": ui_contract}
 
 
 if __name__ == "__main__":
