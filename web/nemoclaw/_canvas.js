@@ -1584,7 +1584,6 @@ export function mountRunCell(targetSel, opts) {
     btn.onclick = () => ac.abort();
     out.innerHTML = "";
     if (autoCollapseCode && codeDet && codeDet.open) codeDet.open = false;
-    setTimeout(() => { try { out.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch (_) {} }, 30);
 
     // Parse schemas first; if any fails, show the parse error and bail.
     const schemaVars = {};
