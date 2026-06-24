@@ -1545,25 +1545,22 @@ return { finish_reason: fr, content: m.content };
 });
 
 mountRunCell("#cell-wire", {
+  openCode: true,
   label: "POST /v1/chat/completions · the wire format under chat()",
   intro: "The same call as above is written by hand as a raw HTTP request so every field is visible, with the request and response tucked into details blocks you can open to read the exact payloads.",
   code: `// chat() is a wrapper. Underneath, it makes one ordinary HTTP POST in the
 // OpenAI-compatible "wire format", written out by hand here.
 
-// 1) The request: an endpoint, an Authorization header, a billing tag, and a JSON body.
-const KEY = localStorage.getItem("nvapi") || "";
-if (!KEY) { log("Save your nvapi- key on the course home page first."); return; }
-// integrate.api.nvidia.com is the direct URL for most build.nvidia.com models. A browser inside
-// the DLI iframe cannot call it directly (CORS), so this endpoint goes through a small CORS proxy.
-// Outside the iframe, swap to the commented line to hit the model host directly.
-// X-BILLING-SOURCE attributes the usage to this course.
-const url = "https://nvidia-api-cors-proxy.vkudlay.workers.dev/v1/chat/completions";
-// const url = "https://integrate.api.nvidia.com/v1/chat/completions";
-const headers = {
-  "Content-Type": "application/json",
-  "Authorization": "Bearer " + KEY,
-  "X-BILLING-SOURCE": "dli-nemoclaw-web",
-};
+// 1) The request: an endpoint, headers, and a JSON body.
+// helpers.getConfig() keeps this web page on the course's browser-safe endpoint.
+const cfg = await helpers.getConfig();
+const url = cfg.url + "/chat/completions";
+const headers = { "Content-Type": "application/json" };
+if (cfg.needsKey) {
+  const KEY = helpers.getKey();
+  if (!KEY) { log("Save your nvapi- key on the course home page first."); return; }
+  headers.Authorization = "Bearer " + KEY;
+}
 const body = {
   model: "nvidia/nemotron-3-nano-30b-a3b",
   messages: [{ role: "user", content: "In one sentence: who runs you?" }],
@@ -1572,7 +1569,7 @@ const body = {
 
 // What goes OUT, with the key redacted so a screenshot never leaks it.
 log("→ POST " + url);
-log.details("request (key redacted)", { headers: { ...headers, Authorization: "Bearer nvapi-…redacted" }, body });
+log.details("request (key redacted)", { headers: { ...headers, Authorization: "Bearer nvapi-...redacted" }, body });
 
 // 2) Send it, then read what comes BACK.
 const r = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });

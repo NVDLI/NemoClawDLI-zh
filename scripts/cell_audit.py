@@ -114,6 +114,8 @@ def audit_runtime_contract():
          "run-cell code controls must stay above output, with the code editor collapsed by default")
     need('const codeOpenAttr = opts.openCode === true ? " open" : "";' in src,
          "run-cell code visibility must be an explicit openCode opt-in, not a default-open editor")
+    need('const autoCollapseCode = opts.autoCollapseCode !== false && opts.openCode !== true;' in src,
+         "run-cell code should collapse after Run unless the cell explicitly starts open for student editing")
     need('class="rc-code-det"${codeOpenAttr}' in src,
          "run-cell code details must use the openCode opt-in so most cells hide code while selected cells can show it")
     need(not re.search(r'<details class="rc-code-det"\s+open\b', src),
@@ -122,10 +124,16 @@ def audit_runtime_contract():
          "run-cell schemas must be collapsed by default; schema plumbing should not lead the lesson")
     need('class="rc-reset"' in src and "function resetCell" in src,
          "run-cells need a per-cell Reset that restores original code/schema and clears output")
+    need('class="cf-code-copy rc-code-copy"' in src,
+         "run-cells need a copy affordance for students who want to take edited code elsewhere")
+    need('cm = attachCM(ta, "javascript");' in src,
+         "run-cell JavaScript editors must remain editable by default")
     need('class="cf-panel-reset"' in src and "function resetNode" in src,
          "canvas-flow nodes need per-node Reset so one step can be restored without resetting the whole flow")
     need('if (codeDet && !codeDet.open) codeDet.open = true;' in src,
          "run-cell errors should open the code panel when a failing line is marked")
+    need('out.scrollIntoView({ block: "nearest", behavior: "smooth" });' in src,
+         "run-cell output should stay visible after Run so students do not hunt below a large code block")
     return findings
 
 def run(verbose=True):

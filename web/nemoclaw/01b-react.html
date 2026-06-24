@@ -303,6 +303,7 @@ hljs.highlightAll();
 
 // ── finish_reason, introduced by two real calls before the prose explains the values ─────────
 mountRunCell("#cell-finish-reason", {
+  openCode: true,
   label: "finish_reason · the one field the loop reads to decide what to do next",
   intro: "Two calls to the same model. The first is a plain question it can answer, so it stops. The second offers one tool and asks for something training data cannot supply, so the model asks your code to run the tool instead of answering. Watch finish_reason change between them. The tool here is only a preview to make the field flip; you wire tools up properly in the sections just below.",
   code: `// MODEL is the swappable brain. Change it and rerun to see whether a stronger model

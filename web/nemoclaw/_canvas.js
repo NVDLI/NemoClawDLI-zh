@@ -1366,6 +1366,7 @@ export function mountRunCell(targetSel, opts) {
   const showSchemas = Object.keys(schemas).length > 0;
   const codeLines = Math.max(1, String(code).split("\n").length);
   const codeOpenAttr = opts.openCode === true ? " open" : "";
+  const autoCollapseCode = opts.autoCollapseCode !== false && opts.openCode !== true;
 
   // Helpers tab, shown whenever a cell has helpers. Scoped to the helpers this cell's code uses, with a "show all" toggle and click-to-read-source.
   // It is the run-cell twin of the canvas menu, so a Try-it cell's helpers are as discoverable as a canvas node's.
@@ -1409,7 +1410,8 @@ export function mountRunCell(targetSel, opts) {
       ${showSchemas ? `<details class="rc-schemas-det" style="border-top:1px solid var(--bd);"><summary style="padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:.78rem;color:var(--td);">schemas <span style="color:var(--tf);">json, editable</span></summary><div class="rc-schemas"></div></details>` : ""}
       <details class="rc-code-det"${codeOpenAttr} style="border-top:1px solid var(--bd);">
         <summary style="padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:.78rem;color:var(--td);">code <span style="color:var(--tf);">javascript, editable, ${codeLines} lines</span></summary>
-        <div style="padding:0;">
+        <div class="rc-code-body" style="padding:0;position:relative;">
+          <button type="button" class="cf-code-copy rc-code-copy" title="Copy current code" aria-label="Copy current code">copy</button>
           <textarea class="rc-code" spellcheck="false"
             style="width:100%;min-height:140px;background:var(--e2,#0d0d0d);color:var(--tx,#e6edf3);border:none;outline:none;padding:12px 14px;
                    font-family:ui-monospace,monospace;font-size:.84rem;line-height:1.55;resize:vertical;tab-size:2;"></textarea>
@@ -1531,6 +1533,7 @@ export function mountRunCell(targetSel, opts) {
   _emptyState("empty until you Run");
   const btn = target.querySelector(".rc-run");
   const resetBtn = target.querySelector(".rc-reset");
+  const copyBtn = target.querySelector(".rc-code-copy");
   const codeDet = target.querySelector(".rc-code-det");
   const schemaDet = target.querySelector(".rc-schemas-det");
   if (codeDet) codeDet.addEventListener("toggle", () => {
@@ -1539,6 +1542,18 @@ export function mountRunCell(targetSel, opts) {
   if (schemaDet) schemaDet.addEventListener("toggle", () => {
     if (!schemaDet.open) return;
     setTimeout(() => Object.values(schemaEditors).forEach(ed => { try { ed && ed.refresh(); } catch (_) {} }), 30);
+  });
+  if (copyBtn) copyBtn.addEventListener("click", async () => {
+    const text = cm ? cm.getValue() : ta.value;
+    try {
+      await navigator.clipboard.writeText(text);
+      copyBtn.textContent = "copied";
+      setTimeout(() => { copyBtn.textContent = "copy"; }, 900);
+    } catch (_) {
+      copyBtn.textContent = "select";
+      if (codeDet && !codeDet.open) codeDet.open = true;
+      setTimeout(() => ta.focus(), 40);
+    }
   });
   function resetCell() {
     const live = _runCellAborts.get(cellId);
@@ -1568,6 +1583,8 @@ export function mountRunCell(targetSel, opts) {
     btn.textContent = "⏹ Stop";
     btn.onclick = () => ac.abort();
     out.innerHTML = "";
+    if (autoCollapseCode && codeDet && codeDet.open) codeDet.open = false;
+    setTimeout(() => { try { out.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch (_) {} }, 30);
 
     // Parse schemas first; if any fails, show the parse error and bail.
     const schemaVars = {};
