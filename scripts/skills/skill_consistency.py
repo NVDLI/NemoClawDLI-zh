@@ -43,6 +43,8 @@ from _bootstrap import add_script_paths, find_repo_root
 # the repo root in the open-source release. So the content root is scripts/..; the git repo
 # (the wrapper that holds .git) is its parent while task1 is still a subdir.
 TASK1 = find_repo_root(Path(__file__).resolve())
+add_script_paths(TASK1 / "scripts")
+import scripts_hierarchy as sh  # noqa: E402
 REPO = TASK1.parent if (TASK1.parent / ".git").exists() else TASK1
 SKIP_PARTS = {"__pycache__", ".ipynb_checkpoints", "node_modules", ".git", ".cache",
               # generated build output (gitignored): public/ is the Pages build, the rest are
@@ -322,6 +324,15 @@ def check_harness_wiring():
             fail(f"harness wiring in {rel}: half-wired tester, missing {missing}")
 
 
+def check_scripts_hierarchy():
+    rows = sh.findings()
+    if rows:
+        for row in rows:
+            fail(f"scripts hierarchy: {row}")
+    else:
+        ok("scripts hierarchy: implementations live in grouped subdirectories; root keeps compatibility entrypoints")
+
+
 # ── PROPAGATION (advisory) ───────────────────────────────────────────────────────
 def changed_files(since: str) -> set[str]:
     try:
@@ -364,6 +375,7 @@ def main():
     inv_lifecycle_allowlist()
     check_dangling()
     check_harness_wiring()
+    check_scripts_hierarchy()
     if args.since:
         check_propagation(args.since)
 

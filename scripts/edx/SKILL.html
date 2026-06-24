@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>scripts/edx quick reference pages</title>
+
+<script type="application/json" id="skill-meta">
+{
+  "schema": "dir-skill/1.0",
+  "node_type": "directory-explorer",
+  "title": "scripts/edx quick reference pages",
+  "source_dir": "scripts/edx/",
+  "summary": "Small HTML helpers for edX navigation and getting-started surfaces. They are content artifacts, not course runtime code.",
+  "related": [
+    "scripts/edx/edx_getting_started.html",
+    "scripts/edx/edx_navigator_quick.html"
+  ],
+  "explorer": "../../web/_skill_explorer.js"
+}
+</script>
+
+<script type="application/json" id="explorer-config">
+{
+  "title": "scripts/edx quick reference pages",
+  "summary": "Small HTML helpers for edX navigation and getting-started surfaces. They are content artifacts, not course runtime code.",
+  "model": "nvidia/nemotron-3-nano-30b-a3b",
+  "ties": [
+    "build"
+  ],
+  "nav": {
+    "home": "../../web/index.html",
+    "up": {
+      "label": "scripts",
+      "href": "../SKILL.html"
+    }
+  },
+  "files": [
+    {
+      "path": "edx_getting_started.html",
+      "role": "getting-started page",
+      "desc": "Short edX launch helper page."
+    },
+    {
+      "path": "edx_navigator_quick.html",
+      "role": "navigator quick page",
+      "desc": "Short edX navigator helper page."
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<div id="explorer"></div>
+<noscript>
+  <h1>scripts/edx quick reference pages</h1>
+  <p>Small HTML helpers for edX navigation and getting-started surfaces. They are content artifacts, not course runtime code. Start with <a href="edx_getting_started.html">edx_getting_started.html</a>.</p>
+</noscript>
+<script src="../../web/_skill_explorer.js"></script>
+</body>
+</html>

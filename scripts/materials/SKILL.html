@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>scripts/materials reference material tooling</title>
+
+<script type="application/json" id="skill-meta">
+{
+  "schema": "dir-skill/1.0",
+  "node_type": "directory-explorer",
+  "title": "scripts/materials reference material tooling",
+  "source_dir": "scripts/materials/",
+  "summary": "Material vendoring and indexing tools for curated course references, glossary data, RAG indexes, and CLI readmes.",
+  "related": [
+    "scripts/materials/pull_materials.py",
+    "scripts/materials/vendor_glossary.py",
+    "scripts/materials/vendor_navigator.py",
+    "scripts/materials/build_rag_index.py",
+    "scripts/materials/build_cli_readmes.py"
+  ],
+  "explorer": "../../web/_skill_explorer.js"
+}
+</script>
+
+<script type="application/json" id="explorer-config">
+{
+  "title": "scripts/materials reference material tooling",
+  "summary": "Material vendoring and indexing tools for curated course references, glossary data, RAG indexes, and CLI readmes.",
+  "model": "nvidia/nemotron-3-nano-30b-a3b",
+  "ties": [
+    "build"
+  ],
+  "nav": {
+    "home": "../../web/index.html",
+    "up": {
+      "label": "scripts",
+      "href": "../SKILL.html"
+    }
+  },
+  "files": [
+    {
+      "path": "pull_materials.py",
+      "role": "material puller",
+      "desc": "Fetches and records curated web materials with provenance."
+    },
+    {
+      "path": "vendor_glossary.py",
+      "role": "glossary vendor",
+      "desc": "Vendors glossary source material into the course reference layer."
+    },
+    {
+      "path": "vendor_navigator.py",
+      "role": "navigator vendor",
+      "desc": "Vendors navigator material used by course pages."
+    },
+    {
+      "path": "build_rag_index.py",
+      "role": "RAG index builder",
+      "desc": "Builds the local reference index for retrieval examples."
+    },
+    {
+      "path": "build_cli_readmes.py",
+      "role": "CLI readme builder",
+      "desc": "Generates readable CLI reference material from source artifacts."
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<div id="explorer"></div>
+<noscript>
+  <h1>scripts/materials reference material tooling</h1>
+  <p>Material vendoring and indexing tools for curated course references, glossary data, RAG indexes, and CLI readmes. Start with <a href="pull_materials.py">pull_materials.py</a>.</p>
+</noscript>
+<script src="../../web/_skill_explorer.js"></script>
+</body>
+</html>

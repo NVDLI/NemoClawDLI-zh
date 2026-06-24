@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>scripts/validation deterministic gates</title>
+
+<script type="application/json" id="skill-meta">
+{
+  "schema": "dir-skill/1.0",
+  "node_type": "directory-explorer",
+  "title": "scripts/validation deterministic gates",
+  "source_dir": "scripts/validation/",
+  "summary": "Static validators for links, layout, prose, code hygiene, figures, cells, and course contracts. These are gates, not prompt guidance.",
+  "related": [
+    "scripts/validation/validate_bundle.py",
+    "scripts/validation/validate_layout.py",
+    "scripts/validation/grounding.py",
+    "scripts/validation/prose_variety.py",
+    "scripts/validation/code_hygiene.py",
+    "scripts/validation/color_theme.py"
+  ],
+  "explorer": "../../web/_skill_explorer.js"
+}
+</script>
+
+<script type="application/json" id="explorer-config">
+{
+  "title": "scripts/validation deterministic gates",
+  "summary": "Static validators for links, layout, prose, code hygiene, figures, cells, and course contracts. These are gates, not prompt guidance.",
+  "model": "nvidia/nemotron-3-nano-30b-a3b",
+  "ties": [
+    "build"
+  ],
+  "nav": {
+    "home": "../../web/index.html",
+    "up": {
+      "label": "scripts",
+      "href": "../SKILL.html"
+    }
+  },
+  "files": [
+    {
+      "path": "validate_bundle.py",
+      "role": "ship gate",
+      "desc": "Composes every validator into the release gate and durable report."
+    },
+    {
+      "path": "validate_layout.py",
+      "role": "layout gate",
+      "desc": "Checks links, static mounts, and SKILL beacons."
+    },
+    {
+      "path": "grounding.py",
+      "role": "grounding sweep",
+      "desc": "Checks cited material association and source-grounding signals."
+    },
+    {
+      "path": "prose_variety.py",
+      "role": "prose cadence",
+      "desc": "Finds rhythm, buzz, grammar, and structural prose issues."
+    },
+    {
+      "path": "code_hygiene.py",
+      "role": "code bloat and style",
+      "desc": "Scans code comments, walls, duplication, size, constants, and prose tells in code."
+    },
+    {
+      "path": "color_theme.py",
+      "role": "theme check",
+      "desc": "Flags inline or non-theme-dynamic colors."
+    },
+    {
+      "path": "figure_audit.py",
+      "role": "figure audit",
+      "desc": "Checks static figure legibility and accessibility."
+    },
+    {
+      "path": "cell_audit.py",
+      "role": "cell contract",
+      "desc": "Checks runnable-cell transparency, logging, awaits, keys, and UI contract."
+    },
+    {
+      "path": "reference_graph.py",
+      "role": "reference graph",
+      "desc": "Audits cross-course reference coupling."
+    },
+    {
+      "path": "tenets.py",
+      "role": "tenet check",
+      "desc": "Checks platform tenets reflected in course files."
+    },
+    {
+      "path": "nb_audit.py",
+      "role": "notebook audit",
+      "desc": "Detects notebook buffer corruption patterns."
+    },
+    {
+      "path": "fix_comment_hygiene.py",
+      "role": "comment fixer",
+      "desc": "Applies safe comment-formatting fixes reported by code_hygiene.py."
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<div id="explorer"></div>
+<noscript>
+  <h1>scripts/validation deterministic gates</h1>
+  <p>Static validators for links, layout, prose, code hygiene, figures, cells, and course contracts. These are gates, not prompt guidance. Start with <a href="validate_bundle.py">validate_bundle.py</a>.</p>
+</noscript>
+<script src="../../web/_skill_explorer.js"></script>
+</body>
+</html>

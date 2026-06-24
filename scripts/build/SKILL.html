@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>scripts/build packaging and deploy helpers</title>
+
+<script type="application/json" id="skill-meta">
+{
+  "schema": "dir-skill/1.0",
+  "node_type": "directory-explorer",
+  "title": "scripts/build packaging and deploy helpers",
+  "source_dir": "scripts/build/",
+  "summary": "Build and publishing helpers for the static bundle, branch manifests, language manifests, hooks, and edX export.",
+  "related": [
+    "scripts/build/build_pages.sh",
+    "scripts/build/bundle_standalone.py",
+    "scripts/build/push_pages.sh",
+    "scripts/build/publish_edx.py",
+    "scripts/build/install-hooks.sh",
+    "scripts/build/build_branch_manifest.py"
+  ],
+  "explorer": "../../web/_skill_explorer.js"
+}
+</script>
+
+<script type="application/json" id="explorer-config">
+{
+  "title": "scripts/build packaging and deploy helpers",
+  "summary": "Build and publishing helpers for the static bundle, branch manifests, language manifests, hooks, and edX export.",
+  "model": "nvidia/nemotron-3-nano-30b-a3b",
+  "ties": [
+    "build"
+  ],
+  "nav": {
+    "home": "../../web/index.html",
+    "up": {
+      "label": "scripts",
+      "href": "../SKILL.html"
+    }
+  },
+  "files": [
+    {
+      "path": "build_pages.sh",
+      "role": "site assembler",
+      "desc": "Builds public/ from the client-side course and validation assets."
+    },
+    {
+      "path": "bundle_standalone.py",
+      "role": "standalone bundler",
+      "desc": "Copies and inlines the course into a self-contained web bundle."
+    },
+    {
+      "path": "push_pages.sh",
+      "role": "Pages pusher",
+      "desc": "Pushes the assembled public/ output to the Pages target."
+    },
+    {
+      "path": "publish_edx.py",
+      "role": "edX export",
+      "desc": "Creates the iframe-friendly edX surface."
+    },
+    {
+      "path": "install-hooks.sh",
+      "role": "hook installer",
+      "desc": "Installs local git hooks that run repo gates."
+    },
+    {
+      "path": "build_branch_manifest.py",
+      "role": "branch manifest",
+      "desc": "Builds branch metadata for release and translation workflows."
+    },
+    {
+      "path": "build_language_manifest.py",
+      "role": "language manifest",
+      "desc": "Builds language-branch metadata for translated bundles."
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<div id="explorer"></div>
+<noscript>
+  <h1>scripts/build packaging and deploy helpers</h1>
+  <p>Build and publishing helpers for the static bundle, branch manifests, language manifests, hooks, and edX export. Start with <a href="build_pages.sh">build_pages.sh</a>.</p>
+</noscript>
+<script src="../../web/_skill_explorer.js"></script>
+</body>
+</html>

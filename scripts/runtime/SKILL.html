@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>scripts/runtime link and browser runtime</title>
+
+<script type="application/json" id="skill-meta">
+{
+  "schema": "dir-skill/1.0",
+  "node_type": "directory-explorer",
+  "title": "scripts/runtime link and browser runtime",
+  "source_dir": "scripts/runtime/",
+  "summary": "Runtime-facing tooling: the single JavaScript link engine, the browser topology viewer, and the thin Python and shell shims that run the same engine in CI.",
+  "related": [
+    "scripts/runtime/engine.js",
+    "scripts/runtime/link_projection.py",
+    "scripts/runtime/link_graph.html",
+    "scripts/runtime/run_engine.sh",
+    "scripts/runtime/run_node.sh",
+    "scripts/runtime/test_page_runtime.js"
+  ],
+  "explorer": "../../web/_skill_explorer.js"
+}
+</script>
+
+<script type="application/json" id="explorer-config">
+{
+  "title": "scripts/runtime link and browser runtime",
+  "summary": "Runtime-facing tooling: the single JavaScript link engine, the browser topology viewer, and the thin Python and shell shims that run the same engine in CI.",
+  "model": "nvidia/nemotron-3-nano-30b-a3b",
+  "ties": [
+    "build"
+  ],
+  "nav": {
+    "home": "../../web/index.html",
+    "up": {
+      "label": "scripts",
+      "href": "../SKILL.html"
+    }
+  },
+  "files": [
+    {
+      "path": "engine.js",
+      "role": "single link engine",
+      "desc": "Resolves links, builds the page graph, checks reachability, and enforces the release foyer contract."
+    },
+    {
+      "path": "link_projection.py",
+      "role": "Python interface",
+      "desc": "Classification helpers plus thin subprocess shims over engine.js."
+    },
+    {
+      "path": "link_graph.html",
+      "role": "topology viewer",
+      "desc": "Browser view of the same graph, with an embedded offline snapshot."
+    },
+    {
+      "path": "run_engine.sh",
+      "role": "engine runner",
+      "desc": "Finds Node and runs engine.js with CI arguments."
+    },
+    {
+      "path": "run_node.sh",
+      "role": "Node resolver",
+      "desc": "Shared runner for Node-based scripts."
+    },
+    {
+      "path": "test_page_runtime.js",
+      "role": "page runtime smoke test",
+      "desc": "Exercises browser runtime behavior outside a full lab session."
+    },
+    {
+      "path": "render_check.py",
+      "role": "render check",
+      "desc": "Headless render helper used by validation and local checks."
+    },
+    {
+      "path": "module_check.py",
+      "role": "module check",
+      "desc": "Checks module wiring and importability for page scripts."
+    }
+  ],
+  "tour": [
+    {
+      "title": "Single engine boundary",
+      "file": "engine.js",
+      "lines": [
+        1,
+        40
+      ],
+      "note": "Link behavior belongs here. Python callers should delegate instead of reimplementing graph rules."
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<div id="explorer"></div>
+<noscript>
+  <h1>scripts/runtime link and browser runtime</h1>
+  <p>Runtime-facing tooling: the single JavaScript link engine, the browser topology viewer, and the thin Python and shell shims that run the same engine in CI. Start with <a href="engine.js">engine.js</a>.</p>
+</noscript>
+<script src="../../web/_skill_explorer.js"></script>
+</body>
+</html>

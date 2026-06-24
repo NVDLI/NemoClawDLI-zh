@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>scripts/skills SKILL contract tooling</title>
+
+<script type="application/json" id="skill-meta">
+{
+  "schema": "dir-skill/1.0",
+  "node_type": "directory-explorer",
+  "title": "scripts/skills SKILL contract tooling",
+  "source_dir": "scripts/skills/",
+  "summary": "Tools that keep every SKILL.html beacon accurate: schema checks, consistency checks, hierarchy generation, and the script-layout guardrail.",
+  "related": [
+    "scripts/skills/skill_contract.py",
+    "scripts/skills/skill_consistency.py",
+    "scripts/skills/skill_audit.py",
+    "scripts/skills/gen_skill_hierarchy.py",
+    "scripts/skills/scripts_hierarchy.py"
+  ],
+  "explorer": "../../web/_skill_explorer.js"
+}
+</script>
+
+<script type="application/json" id="explorer-config">
+{
+  "title": "scripts/skills SKILL contract tooling",
+  "summary": "Tools that keep every SKILL.html beacon accurate: schema checks, consistency checks, hierarchy generation, and the script-layout guardrail.",
+  "model": "nvidia/nemotron-3-nano-30b-a3b",
+  "ties": [
+    "build"
+  ],
+  "nav": {
+    "home": "../../web/index.html",
+    "up": {
+      "label": "scripts",
+      "href": "../SKILL.html"
+    }
+  },
+  "files": [
+    {
+      "path": "skill_contract.py",
+      "role": "schema and drift gate",
+      "desc": "Validates skill-meta kind, required fields, and directory drift."
+    },
+    {
+      "path": "skill_consistency.py",
+      "role": "cross-file invariant gate",
+      "desc": "Checks duplicated facts, dangling references, and harness wiring."
+    },
+    {
+      "path": "skill_audit.py",
+      "role": "coverage audit",
+      "desc": "Audits SKILL beacons against directory contents."
+    },
+    {
+      "path": "gen_skill_hierarchy.py",
+      "role": "hub generator",
+      "desc": "Generates hub SKILL pages from the live tree."
+    },
+    {
+      "path": "scripts_hierarchy.py",
+      "role": "script layout guardrail",
+      "desc": "Ensures implementation files stay in subdirectories and root files remain compatibility entrypoints."
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<div id="explorer"></div>
+<noscript>
+  <h1>scripts/skills SKILL contract tooling</h1>
+  <p>Tools that keep every SKILL.html beacon accurate: schema checks, consistency checks, hierarchy generation, and the script-layout guardrail. Start with <a href="skill_contract.py">skill_contract.py</a>.</p>
+</noscript>
+<script src="../../web/_skill_explorer.js"></script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>scripts/figures runtime figure checks</title>
+
+<script type="application/json" id="skill-meta">
+{
+  "schema": "dir-skill/1.0",
+  "node_type": "directory-explorer",
+  "title": "scripts/figures runtime figure checks",
+  "source_dir": "scripts/figures/",
+  "summary": "Node and jsdom checks for JavaScript-drawn figures. Static SVG audits cannot see these runtime diagrams.",
+  "related": [
+    "scripts/figures/check_figures.mjs",
+    "scripts/figures/run_figcheck.sh"
+  ],
+  "explorer": "../../web/_skill_explorer.js"
+}
+</script>
+
+<script type="application/json" id="explorer-config">
+{
+  "title": "scripts/figures runtime figure checks",
+  "summary": "Node and jsdom checks for JavaScript-drawn figures. Static SVG audits cannot see these runtime diagrams.",
+  "model": "nvidia/nemotron-3-nano-30b-a3b",
+  "ties": [
+    "build"
+  ],
+  "nav": {
+    "home": "../../web/index.html",
+    "up": {
+      "label": "scripts",
+      "href": "../SKILL.html"
+    }
+  },
+  "files": [
+    {
+      "path": "check_figures.mjs",
+      "role": "runtime geometry check",
+      "desc": "Renders diagrams and flags text overlap, overflow, bad connectors, and edgeless diagrams."
+    },
+    {
+      "path": "run_figcheck.sh",
+      "role": "figure check runner",
+      "desc": "Resolves Node and jsdom, then runs check_figures.mjs."
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<div id="explorer"></div>
+<noscript>
+  <h1>scripts/figures runtime figure checks</h1>
+  <p>Node and jsdom checks for JavaScript-drawn figures. Static SVG audits cannot see these runtime diagrams. Start with <a href="check_figures.mjs">check_figures.mjs</a>.</p>
+</noscript>
+<script src="../../web/_skill_explorer.js"></script>
+</body>
+</html>
