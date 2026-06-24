@@ -17,6 +17,7 @@
 #   public/validation.html     the CI gate report rendered from docs/validation/latest.json
 #   public/gate.json           machine-readable gate summary (for tests.html)
 #   public/branches.json       build-time branch preview manifest for the foyer dropdown
+#   public/languages.json      build-time language manifest for the foyer dropdown
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -175,7 +176,8 @@ import sys, re
 p, course_prefix = sys.argv[1], sys.argv[2].strip("/")
 s = open(p).read().replace("/lab/static/", "")   # authoritative /lab/static -> Pages-relative
 if course_prefix:
-    s = s.replace('"nemoclaw/', '"' + course_prefix + '/nemoclaw/')
+    s = s.replace('href="nemoclaw/', 'href="' + course_prefix + '/nemoclaw/')
+    s = s.replace('"nemoclaw": "nemoclaw/', '"nemoclaw": "' + course_prefix + '/nemoclaw/')
 tools = ('      <a href="validation.html">Validation report &rarr;</a>\n'
          '      <a href="tests.html">Test harness &rarr;</a>')
 s = re.sub(r'<!-- build:deploy-tools[^>]*-->', tools, s)
@@ -236,6 +238,14 @@ PROJ
         fav="${d}web/nemoclaw/assets/favicon.ico"; [ -f "$fav" ] || fav="$T1/web/nemoclaw/assets/favicon.ico"
         [ -f "$fav" ] && cp "$fav" "$OUT/$lang/favicon.ico" || true
     done
+fi
+
+# -- 7. Language manifest for the foyer dropdown -----------------------------
+# Generate this after translations are built so the manifest lists only languages
+# that actually exist in this artifact. The English URL follows COURSE_PREFIX;
+# translation courses live under <lang>/nemoclaw/.
+if [ -f "$T1/scripts/build_language_manifest.py" ]; then
+    python3 "$T1/scripts/build_language_manifest.py" --out "$OUT/languages.json" --site-root "$OUT" --course-prefix "$COURSE_PREFIX" || echo "[build_pages] language manifest skipped"
 fi
 
 echo "[build_pages] done -> $OUT"
