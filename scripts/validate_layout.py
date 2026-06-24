@@ -46,7 +46,8 @@ LAB_URLS = ("http://localhost:8888", "http://127.0.0.1:8888", "http://lab:8888")
 PAGE_EXT = (".md", ".ipynb", ".html", ".htm")
 SKIP_DIR = {"__pycache__", ".ipynb_checkpoints", "node_modules", "export", "standalone",
             "_paper_cache", "repos_index", "docstore_index", "artifacts", ".pytest_cache",
-            "skills-seed", "generated_images", "sample_videos", "_offloaded_tracks", ".git", ".cache"}
+            "skills-seed", "generated_images", "sample_videos", "_offloaded_tracks", ".git", ".cache",
+            "i18n"}   # staged translation content (a copy of web/), validated on its own branch, not here
 # static-search roots the lab serves under /lab/static/ (entrypoint extra_static_paths)
 STATIC_SUBROOTS = ("web/nemoclaw", "web")
 

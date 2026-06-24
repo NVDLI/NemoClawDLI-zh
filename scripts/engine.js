@@ -42,7 +42,8 @@
   // It is deliberately NOT a list of "these course dirs are assets"; that assumption is gone.
   var SKIP_DIR = setOf(["__pycache__", ".ipynb_checkpoints", ".pytest_cache", ".jupyter",
     "node_modules", ".figtools", "export", "standalone", "dist", "build", "venv", ".venv",
-    "skills-seed", "grounding_cache", "validation", ".git", ".cache"]);
+    "skills-seed", "grounding_cache", "validation", ".git", ".cache",
+    "i18n"]);   // staged translation content (a copy of web/), not part of the source graph
 
   // mats are the curated reference layer, now COURSE-SCOPED under web/nemoclaw/mats/ (no longer
   // a top-level peer). They are recognized by the "mats" path SEGMENT anywhere in the path, not

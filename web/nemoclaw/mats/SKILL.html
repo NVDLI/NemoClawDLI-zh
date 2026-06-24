@@ -6,13 +6,33 @@
 <title>Companion-material provenance · Securing Agents</title>
 <link rel="stylesheet" href="../_style.css"/>
 <style>
-  main { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
-  table.prov { width: 100%; border-collapse: collapse; font-size: .82rem; margin: 1em 0; }
-  table.prov th, table.prov td { text-align: left; padding: 6px 9px; border-bottom: 1px solid var(--bd); vertical-align: top; }
-  table.prov th { color: var(--td); font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; }
-  table.prov td:first-child { font-family: var(--mono); color: var(--gs); white-space: nowrap; }
-  .lvl { font-family: var(--mono); font-size: .76rem; }
+  main { max-width: 1180px; margin: 0 auto; padding: 1.5rem; }
   .legend code { color: var(--gs); }
+  .pv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin: 1em 0; }
+  .pv-card { border: 1px solid var(--bd); border-radius: var(--r); padding: 11px 12px; background: var(--e1); font-size: .8rem; }
+  .pv-card .pv-prev { margin: 0 0 9px; min-height: 60px; max-height: 160px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--bg); border-radius: 6px; }
+  .pv-card .pv-prev svg { width: auto !important; max-width: 100%; max-height: 150px; height: auto; display: block; }
+  .pv-card .pv-prev::after { content: none; }
+  .pv-file { font-family: var(--mono); color: var(--gs); font-size: .76rem; word-break: break-all; }
+  .pv-dep { color: var(--tx); margin: 3px 0 6px; line-height: 1.4; }
+  .pv-use { color: #e3b341; font-size: .72rem; margin: 0 0 6px; }
+  .pv-meta { color: var(--td); font-size: .74rem; margin: 2px 0; }
+  .pv-meta span:first-child { display: inline-block; min-width: 52px; color: #8a8a8a; text-transform: uppercase; font-size: .64rem; letter-spacing: .04em; }
+  .pv-meta a { color: var(--gs); word-break: break-word; }
+  .lvl { font-family: var(--mono); }
+  .md-wrap { margin-top: 9px; border-top: 1px solid var(--bd); padding-top: 7px; }
+  .md-wrap summary { cursor: pointer; color: var(--gs); font-size: .74rem; }
+  .md-body { max-height: 320px; overflow: auto; background: var(--bg); border-radius: 6px; padding: 8px 10px; margin: 7px 0 0; font-size: .72rem; line-height: 1.45; white-space: pre-wrap; word-break: break-word; color: var(--tx); }
+  table.prov { width: 100%; border-collapse: collapse; font-size: .8rem; margin: 1em 0; }
+  table.prov th, table.prov td { text-align: left; padding: 6px 9px; border-bottom: 1px solid var(--bd); vertical-align: top; }
+  table.prov th { color: var(--td); font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; }
+  table.prov td:first-child { font-family: var(--mono); color: var(--gs); }
+  table.prov td a { color: var(--gs); }
+  .pv-lb { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.86); padding: 2vmin; }
+  .pv-lb[hidden] { display: none; }
+  .pv-stage { display: flex; align-items: center; justify-content: center; max-width: 92vw; max-height: 92vh; }
+  .pv-stage svg { box-shadow: 0 10px 50px rgba(0,0,0,.55); border-radius: 8px; }
+  .pv-x { position: fixed; top: 14px; right: 18px; width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--bd); background: var(--e1); color: var(--td); font-size: 1.1rem; line-height: 1; cursor: pointer; }
 </style>
 <script type="application/json" id="skill-meta">
 {
@@ -23,35 +43,239 @@
   "title": "Companion-material provenance (mats/)",
   "source_dir": "web/nemoclaw/mats/",
   "self_path": "web/nemoclaw/mats/SKILL.html",
-  "summary": "Source, source terms, and connection level for every companion essay and reference under web/nemoclaw/mats/. Course-authored prose is Apache-2.0; cached source mirrors keep their source's terms."
+  "summary": "Previewable source, license, and connection level for every companion essay, card, cached mirror, figure, and index under web/nemoclaw/mats/. Course-authored prose is Apache-2.0; cached NVIDIA mirrors keep NVIDIA's terms; arXiv cards cite the paper's listing."
 }
 </script>
 <script type="application/json" id="provenance">
 {
-  "repo_license": "Apache-2.0 (LICENSE.md). Course-authored prose is Apache-2.0; cached NVIDIA mirrors and arXiv abstracts retain their source's ownership.",
+  "repo_license": "Apache-2.0 (LICENSE.md). Course-authored essays, cards, and index JSON are Apache-2.0. arXiv summary cards are our own prose (no paper text reproduced); the paper's own license is on its arXiv listing. Cached NVIDIA pages keep NVIDIA's ownership. Where terms are not stated by a source they are not presumed.",
   "connection_levels": {
-    "original": "course-authored essay or guide",
-    "summary": "course-authored notes/card that cite a source (no source text reproduced)",
-    "compilation": "course-authored collection of source links/terms",
+    "original": "course-authored essay, guide, or index",
+    "summary": "course-authored card citing a source, no source text reproduced",
+    "compilation": "course-authored collection of source links",
     "conversion": "cached markdown mirror of a source page"
   },
+  "preview_note": "Every .md and .svg here is previewable: click 'preview' to lazy-load a local excerpt, click an SVG to enlarge it. External sources are hyperlinks (their pages set X-Frame-Options, so they cannot be iframed; the link opens them). md previews need the file served, so they work in the dev server and the full bundle and fall back to a link otherwise.",
+  "svg_note": "rag_arch_2021.svg and graph_rag_2024.svg are paper figures parked beside their summary cards; both are unreferenced. mats/rag_arch_2021.svg is byte-identical to assets/rag_arch_2021.svg (a duplicate); mats/graph_rag_2024.svg is a smaller variant of the assets copy. Both are removable in a cleanup.",
   "mats": [
-    {"file": "agent_field_guide.md", "type": "annotated reading map", "source": "~20 papers + standards (cited inline)", "url": "", "terms": "Apache-2.0 prose", "connection": "original"},
-    {"file": "agentic_equilibrium.md", "type": "essay", "source": "original thesis", "url": "", "terms": "Apache-2.0", "connection": "original"},
-    {"file": "agentic_safety_in_production.md", "type": "essay", "source": "original thesis", "url": "", "terms": "Apache-2.0", "connection": "original"},
-    {"file": "deep_research_refs.md", "type": "reference list", "source": "various (cited)", "url": "", "terms": "Apache-2.0", "connection": "compilation"},
-    {"file": "agentic_ai_learning_path_links.md", "type": "link index", "source": "NVIDIA Agentic AI Learning Path", "url": "https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/", "terms": "NVIDIA", "connection": "compilation"},
-    {"file": "nvidia_agent_glossary.md", "type": "glossary terms", "source": "NVIDIA AI glossary", "url": "https://www.nvidia.com/en-us/glossary/", "terms": "NVIDIA", "connection": "compilation"},
-    {"file": "nvidia_openshell_nemoclaw.md", "type": "OpenShell/NemoClaw notes", "source": "NVIDIA", "url": "", "terms": "NVIDIA", "connection": "original"},
-    {"file": "arxiv-2005.11401-rag.md", "type": "paper summary card", "source": "Lewis et al. 2020 (RAG)", "url": "https://arxiv.org/abs/2005.11401", "terms": "arXiv", "connection": "summary"},
-    {"file": "arxiv-2210.03629-react.md", "type": "paper summary card", "source": "Yao et al. 2022 (ReAct)", "url": "https://arxiv.org/abs/2210.03629", "terms": "arXiv", "connection": "summary"},
-    {"file": "arxiv-2305.18323-rewoo.md", "type": "paper summary card", "source": "Xu et al. 2023 (ReWOO)", "url": "https://arxiv.org/abs/2305.18323", "terms": "arXiv", "connection": "summary"},
-    {"file": "arxiv-2404.16130-graphrag.md", "type": "paper summary card", "source": "Edge et al. 2024 (GraphRAG)", "url": "https://arxiv.org/abs/2404.16130", "terms": "arXiv", "connection": "summary"},
-    {"file": "build-nvidia-com-spark-hermes-agent-overview.md", "type": "cached NVIDIA doc", "source": "build.nvidia.com (Hermes agent)", "url": "https://build.nvidia.com/", "terms": "NVIDIA", "connection": "conversion"},
-    {"file": "build-nvidia-com-spark-nemoclaw-applications.md", "type": "cached NVIDIA doc", "source": "build.nvidia.com (NemoClaw applications)", "url": "https://build.nvidia.com/", "terms": "NVIDIA", "connection": "conversion"},
-    {"file": "build-nvidia-com-spark-nemoclaw-instructions.md", "type": "cached NVIDIA doc", "source": "build.nvidia.com (NemoClaw instructions)", "url": "https://build.nvidia.com/", "terms": "NVIDIA", "connection": "conversion"},
-    {"file": "developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md", "type": "cached NVIDIA blog", "source": "developer.nvidia.com blog (self-evolving agents)", "url": "https://developer.nvidia.com/blog/deploy-self-evolving-agents-for-faster-more-secure-research-with-a-hermes-agent-and-nvidia-nemoclaw/", "terms": "NVIDIA", "connection": "conversion"},
-    {"file": "glossary_raw/*.md", "type": "cached glossary article bodies (8)", "source": "NVIDIA AI glossary", "url": "https://www.nvidia.com/en-us/glossary/", "terms": "NVIDIA", "connection": "conversion"}
+    {
+      "file": "agentic_equilibrium.md",
+      "type": "essay",
+      "source": "original thesis",
+      "source_url": "",
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+      "connection": "original",
+      "kind": "md"
+    },
+    {
+      "file": "agentic_safety_in_production.md",
+      "type": "essay",
+      "source": "original thesis",
+      "source_url": "",
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+      "connection": "original",
+      "kind": "md"
+    },
+    {
+      "file": "agent_field_guide.md",
+      "type": "annotated reading map",
+      "source": "~20 papers + standards (links inside; open the preview)",
+      "source_url": "",
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+      "connection": "original",
+      "kind": "md"
+    },
+    {
+      "file": "deep_research_refs.md",
+      "type": "reference list",
+      "source": "various sources (links inside; open the preview)",
+      "source_url": "",
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+      "connection": "compilation",
+      "kind": "md"
+    },
+    {
+      "file": "agentic_ai_learning_path_links.md",
+      "type": "link index",
+      "source": "NVIDIA Agentic AI Learning Path",
+      "source_url": "https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/",
+      "license": "\u00a9 NVIDIA (proprietary)",
+      "license_url": "https://www.nvidia.com/en-us/about-nvidia/legal-info/",
+      "connection": "compilation",
+      "kind": "md"
+    },
+    {
+      "file": "nvidia_agent_glossary.md",
+      "type": "glossary terms",
+      "source": "NVIDIA AI glossary",
+      "source_url": "https://www.nvidia.com/en-us/glossary/",
+      "license": "\u00a9 NVIDIA (proprietary)",
+      "license_url": "https://www.nvidia.com/en-us/about-nvidia/legal-info/",
+      "connection": "compilation",
+      "kind": "md"
+    },
+    {
+      "file": "nvidia_openshell_nemoclaw.md",
+      "type": "OpenShell / NemoClaw notes",
+      "source": "NVIDIA",
+      "source_url": "https://www.nvidia.com/",
+      "license": "\u00a9 NVIDIA (proprietary)",
+      "license_url": "https://www.nvidia.com/en-us/about-nvidia/legal-info/",
+      "connection": "original",
+      "kind": "md"
+    },
+    {
+      "file": "arxiv-2005.11401-rag.md",
+      "type": "paper summary card",
+      "source": "Lewis et al. 2020 (RAG)",
+      "source_url": "https://arxiv.org/abs/2005.11401",
+      "license": "card Apache-2.0; paper: see arXiv listing",
+      "license_url": "https://arxiv.org/abs/2005.11401",
+      "connection": "summary",
+      "kind": "md"
+    },
+    {
+      "file": "arxiv-2210.03629-react.md",
+      "type": "paper summary card",
+      "source": "Yao et al. 2022 (ReAct)",
+      "source_url": "https://arxiv.org/abs/2210.03629",
+      "license": "card Apache-2.0; paper: see arXiv listing",
+      "license_url": "https://arxiv.org/abs/2210.03629",
+      "connection": "summary",
+      "kind": "md"
+    },
+    {
+      "file": "arxiv-2305.18323-rewoo.md",
+      "type": "paper summary card",
+      "source": "Xu et al. 2023 (ReWOO)",
+      "source_url": "https://arxiv.org/abs/2305.18323",
+      "license": "card Apache-2.0; paper: see arXiv listing",
+      "license_url": "https://arxiv.org/abs/2305.18323",
+      "connection": "summary",
+      "kind": "md"
+    },
+    {
+      "file": "arxiv-2404.16130-graphrag.md",
+      "type": "paper summary card",
+      "source": "Edge et al. 2024 (GraphRAG)",
+      "source_url": "https://arxiv.org/abs/2404.16130",
+      "license": "card Apache-2.0; paper: see arXiv listing",
+      "license_url": "https://arxiv.org/abs/2404.16130",
+      "connection": "summary",
+      "kind": "md"
+    },
+    {
+      "file": "build-nvidia-com-spark-hermes-agent-overview.md",
+      "type": "cached NVIDIA doc",
+      "source": "build.nvidia.com (Hermes agent overview)",
+      "source_url": "https://build.nvidia.com/",
+      "license": "\u00a9 NVIDIA (proprietary)",
+      "license_url": "https://www.nvidia.com/en-us/about-nvidia/legal-info/",
+      "connection": "conversion",
+      "kind": "md",
+      "usage": "cached mirror"
+    },
+    {
+      "file": "build-nvidia-com-spark-nemoclaw-applications.md",
+      "type": "cached NVIDIA doc",
+      "source": "build.nvidia.com (NemoClaw applications)",
+      "source_url": "https://build.nvidia.com/",
+      "license": "\u00a9 NVIDIA (proprietary)",
+      "license_url": "https://www.nvidia.com/en-us/about-nvidia/legal-info/",
+      "connection": "conversion",
+      "kind": "md",
+      "usage": "cached mirror"
+    },
+    {
+      "file": "build-nvidia-com-spark-nemoclaw-instructions.md",
+      "type": "cached NVIDIA doc",
+      "source": "build.nvidia.com (NemoClaw instructions)",
+      "source_url": "https://build.nvidia.com/",
+      "license": "\u00a9 NVIDIA (proprietary)",
+      "license_url": "https://www.nvidia.com/en-us/about-nvidia/legal-info/",
+      "connection": "conversion",
+      "kind": "md",
+      "usage": "cached mirror"
+    },
+    {
+      "file": "developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md",
+      "type": "cached NVIDIA blog",
+      "source": "developer.nvidia.com blog (self-evolving agents + Hermes + NeMoClaw)",
+      "source_url": "https://developer.nvidia.com/blog/deploy-self-evolving-agents-for-faster-more-secure-research-with-a-hermes-agent-and-nvidia-nemoclaw/",
+      "license": "\u00a9 NVIDIA (proprietary)",
+      "license_url": "https://www.nvidia.com/en-us/about-nvidia/legal-info/",
+      "connection": "conversion",
+      "kind": "md",
+      "usage": "cached mirror"
+    },
+    {
+      "file": "rag_arch_2021.svg",
+      "type": "paper figure (RAG architecture)",
+      "source": "Lewis et al. 2020",
+      "source_url": "https://arxiv.org/abs/2005.11401",
+      "license": "see arXiv listing",
+      "license_url": "https://arxiv.org/abs/2005.11401",
+      "connection": "recreation",
+      "kind": "svg",
+      "usage": "UNREFERENCED; identical to assets/rag_arch_2021.svg (duplicate)"
+    },
+    {
+      "file": "graph_rag_2024.svg",
+      "type": "paper figure (GraphRAG)",
+      "source": "Edge et al. 2024",
+      "source_url": "https://arxiv.org/abs/2404.16130",
+      "license": "see arXiv listing",
+      "license_url": "https://arxiv.org/abs/2404.16130",
+      "connection": "recreation",
+      "kind": "svg",
+      "usage": "UNREFERENCED; variant of assets/graph_rag_2024.svg"
+    }
+  ],
+  "data_and_bundles": [
+    {
+      "file": "glossary_raw/*.md",
+      "type": "cached glossary bodies (8, incl README)",
+      "source": "NVIDIA AI glossary",
+      "source_url": "https://www.nvidia.com/en-us/glossary/",
+      "license": "\u00a9 NVIDIA (proprietary)",
+      "license_url": "https://www.nvidia.com/en-us/about-nvidia/legal-info/",
+      "connection": "conversion",
+      "usage": "rendered by glossary.html"
+    },
+    {
+      "file": "_materials.json",
+      "type": "materials catalog (index data)",
+      "source": "course-authored",
+      "source_url": "",
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+      "connection": "original",
+      "usage": "drives the materials UI"
+    },
+    {
+      "file": "materials_index.json",
+      "type": "materials index (index data)",
+      "source": "course-authored",
+      "source_url": "",
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+      "connection": "original",
+      "usage": "drives the materials UI"
+    },
+    {
+      "file": "glossary_index.json",
+      "type": "glossary index (index data)",
+      "source": "course-authored",
+      "source_url": "",
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+      "connection": "original",
+      "usage": "drives glossary.html"
+    }
   ]
 }
 </script>
@@ -59,41 +283,111 @@
 <body>
 <main>
   <h1>Companion-material provenance</h1>
-  <p>Source, terms, and connection level for everything under <code>web/nemoclaw/mats/</code>. The repo
-     is <strong>Apache-2.0</strong> (LICENSE.md): course-authored essays and summaries are Apache-2.0,
-     while cached NVIDIA pages and arXiv references keep their source's ownership. Connection levels are a
-     best-effort read of each file's relationship to its source. Image provenance is in
-     <a href="../assets/SKILL.html">assets/SKILL.html</a>.</p>
+  <p>Previewable source, license, and connection level for everything under <code>web/nemoclaw/mats/</code>.
+     Click <em>preview</em> on any essay to lazy-load a local excerpt, and click any figure to enlarge it.
+     The repo is <strong>Apache-2.0</strong> (LICENSE.md): course-authored essays, cards, and index JSON are
+     Apache-2.0; cached NVIDIA pages keep NVIDIA's ownership; arXiv summary cards are our own prose and link
+     out to the paper's listing for its license. External sources are hyperlinks (their pages set
+     X-Frame-Options and cannot be embedded in an iframe, so the link opens them in a new tab).</p>
   <p class="legend"><strong>Connection levels.</strong>
-     <code>original</code>: course-authored essay or guide.
-     <code>summary</code>: course-authored notes/card citing a source, no source text reproduced.
-     <code>compilation</code>: course-authored collection of source links/terms.
+     <code>original</code>: course-authored essay, guide, or index.
+     <code>summary</code>: course-authored card citing a source, no source text reproduced.
+     <code>compilation</code>: course-authored collection of source links.
      <code>conversion</code>: cached markdown mirror of a source page.</p>
-  <p class="legend"><strong>Operations.</strong> Agents read the <code>provenance</code> JSON block in
-     the head for the machine manifest; humans read the table below. When you add or change a companion
-     file, update its row (file, type, source, terms, connection) so the provenance stays current.</p>
 
+  <h2>Essays, cards, and cached docs</h2>
+  <div class="pv-grid">
+<div class="pv-card"><div class="pv-file">agentic_equilibrium.md</div><div class="pv-dep">essay</div><div class="pv-meta"><span>source</span> original thesis</div><div class="pv-meta"><span>license</span> <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache-2.0</a></div><div class="pv-meta"><span>link</span> <span class="lvl">original</span></div><details class="md-wrap"><summary>preview</summary><div class="md-prev" data-md-src="agentic_equilibrium.md">…</div></details></div>
+<div class="pv-card"><div class="pv-file">agentic_safety_in_production.md</div><div class="pv-dep">essay</div><div class="pv-meta"><span>source</span> original thesis</div><div class="pv-meta"><span>license</span> <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache-2.0</a></div><div class="pv-meta"><span>link</span> <span class="lvl">original</span></div><details class="md-wrap"><summary>preview</summary><div class="md-prev" data-md-src="agentic_safety_in_production.md">…</div></details></div>
+<div class="pv-card"><div class="pv-file">agent_field_guide.md</div><div class="pv-dep">annotated reading map</div><div class="pv-meta"><span>source</span> ~20 papers + standards (links inside; open the preview)</div><div class="pv-meta"><span>license</span> <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache-2.0</a></div><div class="pv-meta"><span>link</span> <span class="lvl">original</span></div><details class="md-wrap"><summary>preview</summary><div class="md-prev" data-md-src="agent_field_guide.md">…</div></details></div>
+<div class="pv-card"><div class="pv-file">deep_research_refs.md</div><div class="pv-dep">reference list</div><div class="pv-meta"><span>source</span> various sources (links inside; open the preview)</div><div class="pv-meta"><span>license</span> <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache-2.0</a></div><div class="pv-meta"><span>link</span> <span class="lvl">compilation</span></div><details class="md-wrap"><summary>preview</summary><div class="md-prev" data-md-src="deep_research_refs.md">…</div></details></div>
+<div class="pv-card"><div class="pv-file">agentic_ai_learning_path_links.md</div><div class="pv-dep">link index</div><div class="pv-meta"><span>source</span> <a href="https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/" target="_blank" rel="noopener">NVIDIA Agentic AI Learning Path</a></div><div class="pv-meta"><span>license</span> <a href="https://www.nvidia.com/en-us/about-nvidia/legal-info/" target="_blank" rel="noopener">© NVIDIA (proprietary)</a></div><div class="pv-meta"><span>link</span> <span class="lvl">compilation</span></div><details class="md-wrap"><summary>preview</summary><div class="md-prev" data-md-src="agentic_ai_learning_path_links.md">…</div></details></div>
+<div class="pv-card"><div class="pv-file">nvidia_agent_glossary.md</div><div class="pv-dep">glossary terms</div><div class="pv-meta"><span>source</span> <a href="https://www.nvidia.com/en-us/glossary/" target="_blank" rel="noopener">NVIDIA AI glossary</a></div><div class="pv-meta"><span>license</span> <a href="https://www.nvidia.com/en-us/about-nvidia/legal-info/" target="_blank" rel="noopener">© NVIDIA (proprietary)</a></div><div class="pv-meta"><span>link</span> <span class="lvl">compilation</span></div><details class="md-wrap"><summary>preview</summary><div class="md-prev" data-md-src="nvidia_agent_glossary.md">…</div></details></div>
+<div class="pv-card"><div class="pv-file">nvidia_openshell_nemoclaw.md</div><div class="pv-dep">OpenShell / NemoClaw notes</div><div class="pv-meta"><span>source</span> <a href="https://www.nvidia.com/" target="_blank" rel="noopener">NVIDIA</a></div><div class="pv-meta"><span>license</span> <a href="https://www.nvidia.com/en-us/about-nvidia/legal-info/" target="_blank" rel="noopener">© NVIDIA (proprietary)</a></div><div class="pv-meta"><span>link</span> <span class="lvl">original</span></div><details class="md-wrap"><summary>preview</summary><div class="md-prev" data-md-src="nvidia_openshell_nemoclaw.md">…</div></details></div>
+<div class="pv-card"><div class="pv-file">arxiv-2005.11401-rag.md</div><div class="pv-dep">paper summary card</div><div class="pv-meta"><span>source</span> <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al. 2020 (RAG)</a></div><div class="pv-meta"><span>license</span> <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">card Apache-2.0; paper: see arXiv listing</a></div><div class="pv-meta"><span>link</span> <span class="lvl">summary</span></div><details class="md-wrap"><summary>preview</summary><div class="md-prev" data-md-src="arxiv-2005.11401-rag.md">…</div></details></div>
+<div class="pv-card"><div class="pv-file">arxiv-2210.03629-react.md</div><div class="pv-dep">paper summary card</div><div class="pv-meta"><span>source</span> <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al. 2022 (ReAct)</a></div><div class="pv-meta"><span>license</span> <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">card Apache-2.0; paper: see arXiv listing</a></div><div class="pv-meta"><span>link</span> <span class="lvl">summary</span></div><details class="md-wrap"><summary>preview</summary><div class="md-prev" data-md-src="arxiv-2210.03629-react.md">…</div></details></div>
+<div class="pv-card"><div class="pv-file">arxiv-2305.18323-rewoo.md</div><div class="pv-dep">paper summary card</div><div class="pv-meta"><span>source</span> <a href="https://arxiv.org/abs/2305.18323" target="_blank" rel="noopener">Xu et al. 2023 (ReWOO)</a></div><div class="pv-meta"><span>license</span> <a href="https://arxiv.org/abs/2305.18323" target="_blank" rel="noopener">card Apache-2.0; paper: see arXiv listing</a></div><div class="pv-meta"><span>link</span> <span class="lvl">summary</span></div><details class="md-wrap"><summary>preview</summary><div class="md-prev" data-md-src="arxiv-2305.18323-rewoo.md">…</div></details></div>
+<div class="pv-card"><div class="pv-file">arxiv-2404.16130-graphrag.md</div><div class="pv-dep">paper summary card</div><div class="pv-meta"><span>source</span> <a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">Edge et al. 2024 (GraphRAG)</a></div><div class="pv-meta"><span>license</span> <a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">card Apache-2.0; paper: see arXiv listing</a></div><div class="pv-meta"><span>link</span> <span class="lvl">summary</span></div><details class="md-wrap"><summary>preview</summary><div class="md-prev" data-md-src="arxiv-2404.16130-graphrag.md">…</div></details></div>
+<div class="pv-card"><div class="pv-file">build-nvidia-com-spark-hermes-agent-overview.md</div><div class="pv-dep">cached NVIDIA doc</div><div class="pv-use">cached mirror</div><div class="pv-meta"><span>source</span> <a href="https://build.nvidia.com/" target="_blank" rel="noopener">build.nvidia.com (Hermes agent overview)</a></div><div class="pv-meta"><span>license</span> <a href="https://www.nvidia.com/en-us/about-nvidia/legal-info/" target="_blank" rel="noopener">© NVIDIA (proprietary)</a></div><div class="pv-meta"><span>link</span> <span class="lvl">conversion</span></div><details class="md-wrap"><summary>preview</summary><div class="md-prev" data-md-src="build-nvidia-com-spark-hermes-agent-overview.md">…</div></details></div>
+<div class="pv-card"><div class="pv-file">build-nvidia-com-spark-nemoclaw-applications.md</div><div class="pv-dep">cached NVIDIA doc</div><div class="pv-use">cached mirror</div><div class="pv-meta"><span>source</span> <a href="https://build.nvidia.com/" target="_blank" rel="noopener">build.nvidia.com (NemoClaw applications)</a></div><div class="pv-meta"><span>license</span> <a href="https://www.nvidia.com/en-us/about-nvidia/legal-info/" target="_blank" rel="noopener">© NVIDIA (proprietary)</a></div><div class="pv-meta"><span>link</span> <span class="lvl">conversion</span></div><details class="md-wrap"><summary>preview</summary><div class="md-prev" data-md-src="build-nvidia-com-spark-nemoclaw-applications.md">…</div></details></div>
+<div class="pv-card"><div class="pv-file">build-nvidia-com-spark-nemoclaw-instructions.md</div><div class="pv-dep">cached NVIDIA doc</div><div class="pv-use">cached mirror</div><div class="pv-meta"><span>source</span> <a href="https://build.nvidia.com/" target="_blank" rel="noopener">build.nvidia.com (NemoClaw instructions)</a></div><div class="pv-meta"><span>license</span> <a href="https://www.nvidia.com/en-us/about-nvidia/legal-info/" target="_blank" rel="noopener">© NVIDIA (proprietary)</a></div><div class="pv-meta"><span>link</span> <span class="lvl">conversion</span></div><details class="md-wrap"><summary>preview</summary><div class="md-prev" data-md-src="build-nvidia-com-spark-nemoclaw-instructions.md">…</div></details></div>
+<div class="pv-card"><div class="pv-file">developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md</div><div class="pv-dep">cached NVIDIA blog</div><div class="pv-use">cached mirror</div><div class="pv-meta"><span>source</span> <a href="https://developer.nvidia.com/blog/deploy-self-evolving-agents-for-faster-more-secure-research-with-a-hermes-agent-and-nvidia-nemoclaw/" target="_blank" rel="noopener">developer.nvidia.com blog (self-evolving agents + Hermes + NeMoClaw)</a></div><div class="pv-meta"><span>license</span> <a href="https://www.nvidia.com/en-us/about-nvidia/legal-info/" target="_blank" rel="noopener">© NVIDIA (proprietary)</a></div><div class="pv-meta"><span>link</span> <span class="lvl">conversion</span></div><details class="md-wrap"><summary>preview</summary><div class="md-prev" data-md-src="developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md">…</div></details></div>
+<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="rag_arch_2021.svg"></div><div class="pv-file">rag_arch_2021.svg</div><div class="pv-dep">paper figure (RAG architecture)</div><div class="pv-use">UNREFERENCED; identical to assets/rag_arch_2021.svg (duplicate)</div><div class="pv-meta"><span>source</span> <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al. 2020</a></div><div class="pv-meta"><span>license</span> <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">see arXiv listing</a></div><div class="pv-meta"><span>link</span> <span class="lvl">recreation</span></div></div>
+<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="graph_rag_2024.svg"></div><div class="pv-file">graph_rag_2024.svg</div><div class="pv-dep">paper figure (GraphRAG)</div><div class="pv-use">UNREFERENCED; variant of assets/graph_rag_2024.svg</div><div class="pv-meta"><span>source</span> <a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">Edge et al. 2024</a></div><div class="pv-meta"><span>license</span> <a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">see arXiv listing</a></div><div class="pv-meta"><span>link</span> <span class="lvl">recreation</span></div></div>
+  </div>
+
+  <h2>Companion figures (in mats/)</h2>
+  <div class="callout">
+    These two SVGs sit in <code>mats/</code> rather than <code>assets/figures/</code> because they are the
+    paper figures kept beside their summary cards, not page diagrams. Both are unreferenced:
+    <code>mats/rag_arch_2021.svg</code> is byte-identical to <code>assets/rag_arch_2021.svg</code> (a
+    duplicate), and <code>mats/graph_rag_2024.svg</code> is a smaller variant of the assets copy. They are
+    safe to remove in a cleanup. Figure provenance for the pages lives in
+    <a href="../assets/SKILL.html">assets/SKILL.html</a>.
+  </div>
+
+  <h2>Data and cached bundles</h2>
   <table class="prov">
-    <thead><tr><th>file</th><th>type</th><th>source</th><th>source terms</th><th>connection</th></tr></thead>
+    <thead><tr><th>file</th><th>type</th><th>source</th><th>license</th><th>connection</th><th>used by</th></tr></thead>
     <tbody>
-      <tr><td>agent_field_guide.md</td><td>annotated reading map</td><td>~20 papers + standards (cited inline)</td><td>Apache-2.0 prose</td><td class="lvl">original</td></tr>
-      <tr><td>agentic_equilibrium.md</td><td>essay</td><td>original thesis</td><td>Apache-2.0</td><td class="lvl">original</td></tr>
-      <tr><td>agentic_safety_in_production.md</td><td>essay</td><td>original thesis</td><td>Apache-2.0</td><td class="lvl">original</td></tr>
-      <tr><td>deep_research_refs.md</td><td>reference list</td><td>various (cited)</td><td>Apache-2.0</td><td class="lvl">compilation</td></tr>
-      <tr><td>agentic_ai_learning_path_links.md</td><td>link index</td><td>NVIDIA Agentic AI Learning Path</td><td>NVIDIA</td><td class="lvl">compilation</td></tr>
-      <tr><td>nvidia_agent_glossary.md</td><td>glossary terms</td><td>NVIDIA AI glossary</td><td>NVIDIA</td><td class="lvl">compilation</td></tr>
-      <tr><td>nvidia_openshell_nemoclaw.md</td><td>OpenShell / NemoClaw notes</td><td>NVIDIA</td><td>NVIDIA</td><td class="lvl">original</td></tr>
-      <tr><td>arxiv-2005.11401-rag.md</td><td>paper summary card</td><td>Lewis et al. 2020 (RAG)</td><td>arXiv</td><td class="lvl">summary</td></tr>
-      <tr><td>arxiv-2210.03629-react.md</td><td>paper summary card</td><td>Yao et al. 2022 (ReAct)</td><td>arXiv</td><td class="lvl">summary</td></tr>
-      <tr><td>arxiv-2305.18323-rewoo.md</td><td>paper summary card</td><td>Xu et al. 2023 (ReWOO)</td><td>arXiv</td><td class="lvl">summary</td></tr>
-      <tr><td>arxiv-2404.16130-graphrag.md</td><td>paper summary card</td><td>Edge et al. 2024 (GraphRAG)</td><td>arXiv</td><td class="lvl">summary</td></tr>
-      <tr><td>build-nvidia-com-spark-hermes-agent-overview.md</td><td>cached NVIDIA doc</td><td>build.nvidia.com (Hermes agent)</td><td>NVIDIA</td><td class="lvl">conversion</td></tr>
-      <tr><td>build-nvidia-com-spark-nemoclaw-applications.md</td><td>cached NVIDIA doc</td><td>build.nvidia.com (NemoClaw apps)</td><td>NVIDIA</td><td class="lvl">conversion</td></tr>
-      <tr><td>build-nvidia-com-spark-nemoclaw-instructions.md</td><td>cached NVIDIA doc</td><td>build.nvidia.com (NemoClaw setup)</td><td>NVIDIA</td><td class="lvl">conversion</td></tr>
-      <tr><td>developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md</td><td>cached NVIDIA blog</td><td>developer.nvidia.com blog</td><td>NVIDIA</td><td class="lvl">conversion</td></tr>
-      <tr><td>glossary_raw/*.md</td><td>cached glossary bodies (8)</td><td>NVIDIA AI glossary</td><td>NVIDIA</td><td class="lvl">conversion</td></tr>
+<tr><td>glossary_raw/*.md</td><td>cached glossary bodies (8, incl README)</td><td><a href="https://www.nvidia.com/en-us/glossary/" target="_blank" rel="noopener">NVIDIA AI glossary</a></td><td><a href="https://www.nvidia.com/en-us/about-nvidia/legal-info/" target="_blank" rel="noopener">© NVIDIA (proprietary)</a></td><td class="lvl">conversion</td><td>rendered by glossary.html</td></tr>
+<tr><td>_materials.json</td><td>materials catalog (index data)</td><td>course-authored</td><td><a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache-2.0</a></td><td class="lvl">original</td><td>drives the materials UI</td></tr>
+<tr><td>materials_index.json</td><td>materials index (index data)</td><td>course-authored</td><td><a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache-2.0</a></td><td class="lvl">original</td><td>drives the materials UI</td></tr>
+<tr><td>glossary_index.json</td><td>glossary index (index data)</td><td>course-authored</td><td><a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache-2.0</a></td><td class="lvl">original</td><td>drives glossary.html</td></tr>
     </tbody>
   </table>
+  <p class="legend"><strong>Operations.</strong> Agents read the <code>provenance</code> JSON in the head for
+     the machine manifest; humans use the cards above. When you add or change a companion file, add its row
+     (file, type, source, license, connection) and, for a new external source, link its terms or say plainly
+     that none are stated.</p>
 </main>
+<script>
+(function(){
+  // SVG previewer + lightbox
+  var cache={};
+  function get(src){return cache[src]||(cache[src]=fetch(src).then(function(r){if(!r.ok)throw r.status;return r.text();}));}
+  var lb=null;
+  function box(){
+    if(lb)return lb;
+    var root=document.createElement("div");root.className="pv-lb";root.hidden=true;
+    root.innerHTML='<button class="pv-x" type="button" aria-label="Close (Esc)">✕</button><div class="pv-stage" role="dialog" aria-modal="true"></div>';
+    var stage=root.querySelector(".pv-stage");
+    function close(){root.hidden=true;stage.innerHTML="";document.body.style.overflow="";}
+    root.addEventListener("click",function(e){if(e.target===root||e.target===stage)close();});
+    root.querySelector(".pv-x").addEventListener("click",close);
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!root.hidden)close();});
+    document.body.appendChild(root);
+    lb={open:function(svg){stage.innerHTML="";svg.removeAttribute("style");svg.style.background="var(--gfx-bg)";svg.style.borderRadius="8px";var vb=(svg.getAttribute("viewBox")||"").split(/[\s,]+/).map(Number);if(vb.length===4&&vb[2]>0&&vb[3]>0){var s=Math.min(window.innerWidth*0.92/vb[2],window.innerHeight*0.9/vb[3]);svg.style.width=Math.round(vb[2]*s)+"px";svg.style.height=Math.round(vb[3]*s)+"px";}else{svg.style.maxWidth="92vw";svg.style.maxHeight="90vh";}stage.appendChild(svg);root.hidden=false;document.body.style.overflow="hidden";}};
+    return lb;
+  }
+  document.querySelectorAll("[data-svg-src]").forEach(function(host){
+    var src=host.getAttribute("data-svg-src");
+    get(src).then(function(txt){
+      host.innerHTML=txt;var svg=host.querySelector("svg");if(!svg)return;
+      host.style.cursor="zoom-in";host.setAttribute("role","button");host.tabIndex=0;
+      host.setAttribute("aria-label",(svg.getAttribute("aria-label")||"figure")+", click to enlarge");
+      function open(){box().open(svg.cloneNode(true));}
+      host.addEventListener("click",open);
+      host.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();open();}});
+    }).catch(function(){host.innerHTML='<a href="'+src+'" target="_blank" rel="noopener">open '+src+'</a>';});
+  });
+  // lazy markdown excerpt previews
+  document.querySelectorAll("details.md-wrap").forEach(function(d){
+    d.addEventListener("toggle",function(){
+      if(!d.open)return;
+      var host=d.querySelector("[data-md-src]");if(!host||host.dataset.loaded)return;
+      host.dataset.loaded="1";
+      var src=host.getAttribute("data-md-src");
+      fetch(src).then(function(r){if(!r.ok)throw r.status;return r.text();}).then(function(txt){
+        var pre=document.createElement("pre");pre.className="md-body";
+        pre.textContent=txt.length>2200?txt.slice(0,2200)+"\n\n… (truncated) open the full file: "+src:txt;
+        host.innerHTML="";host.appendChild(pre);
+        var a=document.createElement("a");a.href=src;a.target="_blank";a.rel="noopener";a.textContent="open full file";a.style.fontSize=".72rem";
+        host.appendChild(a);
+      }).catch(function(){host.innerHTML='<a href="'+src+'" target="_blank" rel="noopener">open '+src+'</a> (live preview needs the file served)';});
+    });
+  });
+})();
+</script>
 </body>
 </html>

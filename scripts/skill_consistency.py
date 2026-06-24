@@ -43,7 +43,7 @@ SKIP_PARTS = {"__pycache__", ".ipynb_checkpoints", "node_modules", ".git", ".cac
               # generated build output (gitignored): public/ is the Pages build, the rest are
               # bundler/export trees. Never source, and a build mid-flight makes subdirs appear
               # and vanish under us, so walking into them crashes the scan. Prune them.
-              "public", "export", "standalone", "dist", "build",
+              "public", "export", "standalone", "dist", "build", "i18n",
               # gitignored lab-runtime cruft: never validate it (and do not rely on
               # filesystem permissions to skip it, e.g. a root-owned .Trash-0).
               ".Trash-0", "artifacts", "grounding_cache", "_paper_cache",

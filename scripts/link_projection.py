@@ -42,7 +42,8 @@ ASSET_EXT = (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico", ".css", "
 SKIP_DIR = {"__pycache__", ".ipynb_checkpoints", "node_modules", "export", "standalone",
             "_paper_cache", "repos_index", "docstore_index", "artifacts", ".pytest_cache",
             "skills-seed", "generated_images", "sample_videos", "_offloaded_tracks",
-            ".git", ".cache", "dist", "build", "venv", ".venv", "composer", "validation"}
+            ".git", ".cache", "dist", "build", "venv", ".venv", "composer", "validation",
+            "i18n"}   # i18n/<lang>/ is staged translation content (a copy of web/), not source to crawl
 
 # Release contract: the courses the release foyer may surface (mirrored in engine.js RELEASED
 # and enforced there; kept here so gen_skill_hierarchy.py and other python callers share it).

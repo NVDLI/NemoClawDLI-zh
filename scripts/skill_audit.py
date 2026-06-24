@@ -31,7 +31,7 @@ PREFIX = "task1/" if (TASK1.name == "task1" and (TASK1.parent / ".git").exists()
 META_RE = re.compile(r'(<script type="application/json" id="skill-meta">)(.*?)(</script>)', re.S)
 # public/, standalone/, export/ are GENERATED build output (gitignored), never source.
 # Auditing a bundled copy's source_dir against its build path is a false drift, so skip them.
-SKIP = ("__pycache__", ".ipynb_checkpoints", "public", "standalone", "export")
+SKIP = ("__pycache__", ".ipynb_checkpoints", "public", "standalone", "export", "i18n")
 # top-level course-content notebooks: *.md not under an asset subdir
 ASSET_SUB = {"code", "data", "images", "imgs", "exercises", "demo", "skills", "ocstart",
              "_paper_cache", "repos_index", "docstore_index", "composer", "chat_helpers",

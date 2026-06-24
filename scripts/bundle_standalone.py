@@ -723,13 +723,20 @@ def main() -> int:
             n_raw += 1
         print(f"  copied mats/glossary_raw/  ({n_raw} full glossary articles)")
 
-    # Ship the mats provenance hub so it is reachable in the bundle; the rest of mats/ stays out to keep
-    # the bundle lean. (assets/SKILL.html already ships via the copytree(assets) above.)
-    msk = web / "mats" / "SKILL.html"
+    # Ship the mats provenance hub AND the top-level companion .md it previews, so the hub is reachable
+    # and its lazy "preview" excerpts resolve in the bundle (each fetches the local .md by relative path).
+    # The index JSON and the two unreferenced figure duplicates stay out to keep the bundle lean; their
+    # previews fall back to a link, and the canonical figures already ship via copytree(assets) above.
+    matsdir = web / "mats"
+    msk = matsdir / "SKILL.html"
     if msk.is_file():
         (out / "mats").mkdir(parents=True, exist_ok=True)
         shutil.copy2(msk, out / "mats" / "SKILL.html")
-        print("  copied mats/SKILL.html")
+        n_mats = 0
+        for md in sorted(matsdir.glob("*.md")):
+            shutil.copy2(md, out / "mats" / md.name)
+            n_mats += 1
+        print(f"  copied mats/SKILL.html + {n_mats} companion .md")
 
     print(f"\n{len(pages)} pages → {out}/")
     return 0
