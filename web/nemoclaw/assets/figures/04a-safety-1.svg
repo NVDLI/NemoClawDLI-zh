@@ -1,1 +1,36 @@
-<svg class="gfx-dark" viewBox="0 0 620 502" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OpenClaw runs inside nested kernel sandboxes, each a smaller blast radius." preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:780px;margin:1.5rem auto"><defs></defs><circle cx="310" cy="278" r="214" fill="var(--gfx-blue,#0969da)" fill-opacity="0.05" stroke="var(--gfx-blue,#0969da)" stroke-width="2.2"/><circle cx="310" cy="278" r="176" fill="var(--gfx-green,#4a7a00)" fill-opacity="0.10" stroke="var(--gfx-green,#4a7a00)" stroke-width="2.2"/><circle cx="310" cy="278" r="138" fill="var(--gfx-red,#d1242f)" fill-opacity="0.14" stroke="var(--gfx-red,#d1242f)" stroke-width="2.2"/><circle cx="310" cy="278" r="100" fill="var(--gfx-amber,#9a6700)" fill-opacity="0.18" stroke="var(--gfx-amber,#9a6700)" stroke-width="2.2"/><rect x="266.725" y="68.5" width="86.55000000000001" height="35" rx="6" fill="var(--gfx-tint-blue,#dfeaf5)" stroke="var(--gfx-blue,#0969da)" stroke-width="1.6"/><text x="310" y="83.1" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-blue,#0969da)" text-anchor="middle" font-weight="700">network</text><text x="310" y="96.3" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">deny egress</text><rect x="267" y="106.5" width="86" height="35" rx="6" fill="var(--gfx-tint-green,#e6f3d4)" stroke="var(--gfx-green,#4a7a00)" stroke-width="1.6"/><text x="310" y="121.1" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-green,#4a7a00)" text-anchor="middle" font-weight="700">filesystem</text><text x="310" y="134.3" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">Landlock</text><rect x="276.9" y="144.5" width="66.2" height="35" rx="6" fill="var(--gfx-tint-red,#fadcdc)" stroke="var(--gfx-red,#d1242f)" stroke-width="1.6"/><text x="310" y="159.1" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-red,#d1242f)" text-anchor="middle" font-weight="700">syscall</text><text x="310" y="172.3" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">seccomp</text><rect x="275.8" y="182.5" width="68.4" height="35" rx="6" fill="var(--gfx-tint-amber,#f7e9cf)" stroke="var(--gfx-amber,#9a6700)" stroke-width="1.6"/><text x="310" y="197.1" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="12" fill="var(--gfx-amber,#9a6700)" text-anchor="middle" font-weight="700">process</text><text x="310" y="210.3" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">non-root</text><circle cx="310" cy="278" r="54" fill="var(--gfx-red,#d1242f)" fill-opacity="0.95"/><text x="310" y="276" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13" fill="var(--gfx-bg,#ffffff)" text-anchor="middle" font-weight="800">openclaw</text><text x="310" y="294" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-bg,#ffffff)" text-anchor="middle">the CLI</text></svg>
+<svg class="gfx-dark" viewBox="0 0 720 320" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"
+     style="width:100%;height:auto;display:block;background:var(--bg,#0d0d0d);border:1px solid var(--e3,#2a2a2a);border-radius:8px;padding:14px;max-width:780px;margin:1.5rem auto"
+     role="img" aria-label="Three concentric defense rings around an agent core, with side labels connected by leader lines. From inside to outside the rings are prompt rules, application guardrails, and kernel containment. An outbound action arrow leaves the agent and is stopped at the outermost ring. An outside-world box sits beyond the rings on the right.">
+  <defs>
+    <marker id="ring-q6-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="var(--gfx-red,#d74e4e)"/></marker>
+  </defs>
+
+  <circle cx="200" cy="158" r="120" fill="var(--gfx-tint-blue,#0d1828)" stroke="var(--gfx-blue,#3b82f6)" stroke-width="1.5"/>
+  <circle cx="200" cy="158" r="88"  fill="var(--gfx-bg-soft,#141f3a)" stroke="var(--gfx-blue,#3b82f6)" stroke-width="1.5"/>
+  <circle cx="200" cy="158" r="56"  fill="var(--e2,#1a2850)" stroke="var(--gfx-blue,#3b82f6)" stroke-width="1.5"/>
+  <circle cx="200" cy="158" r="28"  fill="var(--e1,#fef9ee)" stroke="var(--gfx-amber,#cc7a00)" stroke-width="2.5"/>
+
+  <text x="200" y="155" text-anchor="middle" font-size="12" font-family="ui-monospace, monospace" fill="var(--tx,#1a1a1a)" font-weight="800">agent</text>
+  <text x="200" y="168" text-anchor="middle" font-size="9" font-family="ui-monospace, monospace" fill="var(--tx,#1a1a1a)">process</text>
+
+  <line x1="290" y1="88" x2="380" y2="68"  stroke="var(--gfx-sub,#a5a5a5)" stroke-width="1" stroke-dasharray="2 2"/>
+  <line x1="265" y1="108" x2="380" y2="136" stroke="var(--gfx-sub,#a5a5a5)" stroke-width="1" stroke-dasharray="2 2"/>
+  <line x1="235" y1="126" x2="380" y2="204" stroke="var(--gfx-sub,#a5a5a5)" stroke-width="1" stroke-dasharray="2 2"/>
+
+  <rect x="380" y="48"  width="220" height="40" rx="6" fill="var(--gfx-tint-blue,#0d1828)" stroke="var(--gfx-blue,#3b82f6)" stroke-width="1.5"/>
+  <text x="490" y="66"  text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="var(--gfx-blue,#c8d8f0)" font-weight="700">kernel containment</text>
+  <text x="490" y="80"  text-anchor="middle" font-size="9"  font-family="ui-monospace, monospace" fill="var(--gfx-sub,#6888aa)">Landlock · seccomp · netns</text>
+
+  <rect x="380" y="116" width="220" height="40" rx="6" fill="var(--gfx-bg-soft,#141f3a)" stroke="var(--gfx-blue,#3b82f6)" stroke-width="1.5"/>
+  <text x="490" y="134" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="var(--gfx-blue,#c8d8f0)" font-weight="700">application guardrails</text>
+  <text x="490" y="148" text-anchor="middle" font-size="9"  font-family="ui-monospace, monospace" fill="var(--gfx-sub,#6888aa)">model-based · rule-based filters</text>
+
+  <rect x="380" y="184" width="220" height="40" rx="6" fill="var(--e2,#1a2850)" stroke="var(--gfx-blue,#3b82f6)" stroke-width="1.5"/>
+  <text x="490" y="202" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="var(--gfx-blue,#c8d8f0)" font-weight="700">prompt rules</text>
+  <text x="490" y="216" text-anchor="middle" font-size="9"  font-family="ui-monospace, monospace" fill="var(--gfx-sub,#6888aa)">in-context instructions</text>
+
+  <line x1="228" y1="158" x2="317" y2="158" stroke="var(--gfx-red,#d74e4e)" stroke-width="2.5" stroke-dasharray="4 3" marker-end="url(#ring-q6-fail)"/>
+
+  <rect x="380" y="254" width="220" height="32" rx="6" fill="var(--e1,#161616)" stroke="var(--e3,#555)"/>
+  <text x="490" y="275" text-anchor="middle" font-size="11" font-family="ui-monospace, monospace" fill="var(--tx,#e8e8e8)">outside world  ·  disk · network</text>
+</svg>

@@ -4,23 +4,23 @@ import { chat, hasKey, setKey, updateKeyPill, iframeProxyModeEnabled, setIframeP
 export function mountKeyPanel(container, opts = {}) {
   /* @doc <code>helpers.mountKeyPanel(el)</code> ::
        Renders an inline API-key setup panel using the existing <code>.key-panel</code> CSS
-       classes. When a key is saved it shows a compact "✓ saved" row with a Change button. On
+       classes. When a key is saved it shows a compact "? saved" row with a Change button. On
        save, strips invisible Unicode, verifies live, then updates the topbar
        <code>#key-status</code> pill.
   */
   const el = typeof container === "string" ? document.querySelector(container) : container;
   if (!el) return null;
-  const _clean = raw => raw.trim().replace(/[^\x20-\x7E]/g, "");
+  const _clean = raw => raw.trim().replace(/[^ -~]/g, "");
   function _draw() {
     const proxyChecked = iframeProxyModeEnabled();
     if (hasKey()) {
-      el.innerHTML = `<div class="key-panel" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:16px 24px">
-        <span style="color:var(--gs,#aee23a);font-family:var(--mono,monospace);font-size:.88rem">&#10003; API key saved for this browser</span>
-        <label style="display:flex;align-items:center;gap:8px;margin:0;color:var(--td,#b0b0b0);font-size:.82rem">
+      el.innerHTML = `<div class="key-panel key-panel-saved">
+        <span class="key-saved-label">&#10003; API key saved for this browser</span>
+        <label class="iframe-proxy-toggle-row">
           <input type="checkbox" class="iframe-proxy-toggle" ${proxyChecked ? "checked" : ""}/>
           Enable LMS/static iframe execution
         </label>
-        <button class="btn" style="margin:0;padding:7px 16px;font-size:.82rem">Change</button>
+        <button class="btn key-change-btn">Change</button>
       </div>`;
       const toggle = el.querySelector(".iframe-proxy-toggle");
       if (toggle) toggle.onchange = () => {
@@ -39,7 +39,7 @@ export function mountKeyPanel(container, opts = {}) {
       el.innerHTML = `<div class="key-panel">
         <label>NVIDIA API key (starts with <code>nvapi-</code>)</label>
         <input type="password" placeholder="nvapi-&hellip;" autocomplete="off" spellcheck="false"/>
-        <label style="display:flex;align-items:center;gap:8px;margin:.7em 0;color:var(--td,#b0b0b0);font-size:.86rem">
+        <label class="iframe-proxy-toggle-row">
           <input type="checkbox" class="iframe-proxy-toggle" ${proxyChecked ? "checked" : ""}/>
           Enable LMS/static iframe execution through the hosted proxy
         </label>
@@ -58,7 +58,7 @@ export function mountKeyPanel(container, opts = {}) {
         if (!key.startsWith("nvapi-")) {
           status.className = "status err"; status.textContent = "Key should start with nvapi-"; return;
         }
-        status.className = "status"; status.textContent = "Verifying…";
+        status.className = "status"; status.textContent = "Verifying?";
         try {
           const toggle = el.querySelector(".iframe-proxy-toggle");
           setIframeProxyMode(!!toggle?.checked);
@@ -70,7 +70,7 @@ export function mountKeyPanel(container, opts = {}) {
           const r = await chat({ messages: [{ role: "user", content: "Reply with the single word: ready" }], max_tokens: 8196 });
           const reply = r.choices?.[0]?.message?.content?.trim();
           status.className = "status ok";
-          status.textContent = reply ? `✓ Connected. Model replied: "${reply}"` : "✓ Connected.";
+          status.textContent = reply ? `? Connected. Model replied: "${reply}"` : "? Connected.";
           const pill = document.getElementById("key-status");
           if (pill) updateKeyPill(pill);
           if (opts.onSave) opts.onSave(key);
@@ -85,5 +85,19 @@ export function mountKeyPanel(container, opts = {}) {
     }
   }
   _draw();
+  try {
+    sessionStorage.removeItem("nemoclaw_open_key_panel");
+    const params = new URLSearchParams(location.search || "");
+    const openKeyPanel = params.get("openKeyPanel") === "1";
+    if (openKeyPanel) {
+      params.delete("openKeyPanel");
+      const qs = params.toString();
+      history.replaceState(null, "", location.pathname + (qs ? `?${qs}` : "") + location.hash);
+      requestAnimationFrame(() => el.scrollIntoView({ behavior: "smooth", block: "center" }));
+    } else if (location.hash === "#key-panel" && hasKey()) {
+      history.replaceState(null, "", location.pathname + location.search);
+      requestAnimationFrame(() => scrollTo({ top: 0, behavior: "auto" }));
+    }
+  } catch (_) {}
   return { update: _draw };
 }
