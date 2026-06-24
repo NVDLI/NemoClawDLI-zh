@@ -124,6 +124,9 @@ def audit_runtime_contract():
          "run-cell schemas must be collapsed by default; schema plumbing should not lead the lesson")
     need('class="rc-reset"' in src and "function resetCell" in src,
          "run-cells need a per-cell Reset that restores original code/schema and clears output")
+    need("const _runCellState = {};" in src and "\"state\",       ...Object.keys(schemaVars)" in src
+         and "_runCellState, ...Object.values(schemaVars)" in src,
+         "run-cells must inject a shared state object so one cell can hand data to the next")
     need('class="cf-code-copy rc-code-copy"' in src,
          "run-cells need a copy affordance for students who want to take edited code elsewhere")
     need('cm = attachCM(ta, "javascript");' in src,

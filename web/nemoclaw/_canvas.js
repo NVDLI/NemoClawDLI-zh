@@ -1351,6 +1351,7 @@ function _buildHelperRows(allow) {
 
 // Call: mountRunCell("#cell-1", { code, schemas }). Each `schemas` entry becomes an editable JSON block passed to the sandboxed code as a named variable (e.g. CALC_SCHEMA); a parse error shows in place instead of running, so the student sees the actual message.
 const _runCellAborts = new Map();
+const _runCellState = {};
 
 export function mountRunCell(targetSel, opts) {
   const target = typeof targetSel === "string" ? document.querySelector(targetSel) : targetSel;
@@ -1711,8 +1712,8 @@ export function mountRunCell(targetSel, opts) {
       // `helpers` mirrors the canvas-cell convention (helpers.embed, helpers.log, helpers.mountChatUI) so a run-cell can mount a full artifact, not only call chat().
       // The bare names below stay for back-compat with older cells.
       const helpers = Object.assign({}, HELPER_FNS, { log, clear, fetch: (...a) => window.fetch(...a) });
-      const argNames = ["chat", "chatStream", "webSearch", "instantAnswer", "formatSearchResults", "log", "clear", "MODEL", "REASONING_MODEL", "AbortSignal", "helpers", ...Object.keys(schemaVars)];
-      const argVals  = [chat,    chatStream,   webSearch,   instantAnswer,   formatSearchResults,   log,   clear,   null,    REASONING_MODEL,  ac.signal,    helpers,   ...Object.values(schemaVars)];
+      const argNames = ["chat", "chatStream", "webSearch", "instantAnswer", "formatSearchResults", "log", "clear", "MODEL", "REASONING_MODEL", "AbortSignal", "helpers", "state",       ...Object.keys(schemaVars)];
+      const argVals  = [chat,    chatStream,   webSearch,   instantAnswer,   formatSearchResults,   log,   clear,   null,    REASONING_MODEL,  ac.signal,    helpers,   _runCellState, ...Object.values(schemaVars)];
       // Read from CodeMirror if present; otherwise from the textarea.
       const codeText = cm ? cm.getValue() : ta.value;
       jsBuffer = codeText;  // preserve the student's edits across re-runs/toggles
