@@ -2,6 +2,11 @@
 # build_pages.sh assembles a static, fully client-side site into ./public/.
 #
 # Driven by .gitlab-ci.yml or .github/workflows/pages.yml, or run by hand.
+# In GitLab staging, CI passes OUT=public/<branch-slug> and
+# BUILD_PAGES_COURSE_PREFIX=web, so the course preview is written to
+# public/<branch-slug>/web/nemoclaw and served at /<branch-slug>/web/nemoclaw/.
+# Do not bake branch names into the bundle; relative links keep previews portable
+# and avoid a preview artifact that can accidentally masquerade as production.
 #
 # What it produces (everything experienceable in a browser, no server logic):
 #   public/index.html         landing page (the release picker, Pages-relative links)
@@ -19,9 +24,31 @@ OUT="${1:-$T1/public}"
 # Build the source language at $OUT root, then each staged translation under i18n/<lang>/ into
 # $OUT/<lang>/, so one Pages site serves every language. BUILD_PAGES_LANGS=0 disables that loop.
 LANGS="${BUILD_PAGES_LANGS:-1}"
-
+COURSE_PREFIX="${BUILD_PAGES_COURSE_PREFIX:-}"
+COURSE_PREFIX="${COURSE_PREFIX#/}"; COURSE_PREFIX="${COURSE_PREFIX%/}"
+SOURCE_MIRROR_PREFIX="${BUILD_PAGES_SOURCE_MIRROR_PREFIX:-}"
+# If the course bundle is intentionally staged at web/nemoclaw, keep the read-only
+# validator source mirror somewhere else so it cannot overwrite the runnable preview.
+if [ -z "${BUILD_PAGES_SOURCE_MIRROR_PREFIX+x}" ] && [ "$COURSE_PREFIX" = "web" ]; then
+    SOURCE_MIRROR_PREFIX="validated-source"
+fi
+SOURCE_MIRROR_PREFIX="${SOURCE_MIRROR_PREFIX#/}"; SOURCE_MIRROR_PREFIX="${SOURCE_MIRROR_PREFIX%/}"
+case "$COURSE_PREFIX:$SOURCE_MIRROR_PREFIX" in
+    *..*|*//*|*\*)
+        echo "[build_pages]   ERROR: refusing unsafe path prefix: '$COURSE_PREFIX' / '$SOURCE_MIRROR_PREFIX'" >&2
+        exit 1
+        ;;
+esac
 echo "[build_pages] task1 root: $T1"
 echo "[build_pages] output:     $OUT"
+[ -n "$COURSE_PREFIX" ] && echo "[build_pages] course path: $COURSE_PREFIX/nemoclaw"
+[ -n "$SOURCE_MIRROR_PREFIX" ] && echo "[build_pages] source mirror: $SOURCE_MIRROR_PREFIX/web/nemoclaw"
+case "$OUT" in
+    /|""|.)
+        echo "[build_pages]   ERROR: refusing unsafe output path: '$OUT'" >&2
+        exit 1
+        ;;
+esac
 rm -rf "$OUT"; mkdir -p "$OUT"
 
 # ── 0. Rebase materials to the web's ground truth (best-effort), then refresh the gate ──
@@ -49,9 +76,10 @@ for c in nemoclaw; do
         echo "[build_pages]   ERROR: need web/$c and scripts/bundle_standalone.py to build $c" >&2
         exit 1
     fi
-    echo "[build_pages] bundling $c -> public/$c/ (full standalone) ..."
-    python3 "$T1/scripts/bundle_standalone.py" --src "web/$c" --out "$OUT/$c" --clean --full
-    echo "[build_pages]   $c -> public/$c/ ($(find "$OUT/$c" -name '*.html' | wc -l) pages)"
+    course_out="$OUT/${COURSE_PREFIX:+$COURSE_PREFIX/}$c"
+    echo "[build_pages] bundling $c -> $course_out/ (full standalone) ..."
+    python3 "$T1/scripts/bundle_standalone.py" --src "web/$c" --out "$course_out" --clean --full
+    echo "[build_pages]   $c -> $course_out/ ($(find "$course_out" -name '*.html' | wc -l) pages)"
 done
 
 # ── 2. Link-graph viewer (engine.js runs client-side; offline = embedded snapshot) ──
@@ -111,10 +139,10 @@ done
 # public/web/nemoclaw/ so those paths resolve. These are fetched as text by the report, never
 # navigated to as pages, so the /lab/static and _shared.js references inside them do not matter.
 if [ -d "$T1/web/nemoclaw" ]; then
-    ( cd "$T1" && find web/nemoclaw -type f \
-        \( -name '*.html' -o -name '*.md' -o -name '*.css' -o -name '*.js' -o -name '*.svg' -o -name '*.json' \) -print0 \
-      | tar --null -cf - -T - ) | ( cd "$OUT" && tar -xf - )
-    echo "[build_pages] validated source -> public/web/nemoclaw/ ($(find "$OUT/web/nemoclaw" -type f | wc -l) text files, read-only for the report preview)"
+    mirror_out="$OUT/${SOURCE_MIRROR_PREFIX:+$SOURCE_MIRROR_PREFIX/}"
+    mkdir -p "$mirror_out"
+    ( cd "$T1" && find web/nemoclaw -type f         \( -name '*.html' -o -name '*.md' -o -name '*.css' -o -name '*.js' -o -name '*.svg' -o -name '*.json' \) -print0       | tar --null -cf - -T - ) | ( cd "$mirror_out" && tar -xf - )
+    echo "[build_pages] validated source -> ${mirror_out%/}/web/nemoclaw/ ($(find "$mirror_out/web/nemoclaw" -type f | wc -l) text files, read-only for the report preview)"
 fi
 
 # ── 3. CI gate artifacts: the authoritative test results, surfaced statically ──
