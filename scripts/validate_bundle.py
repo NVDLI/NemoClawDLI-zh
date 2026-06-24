@@ -549,9 +549,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                           "the editor degrades to a plain textarea. Load CodeMirror core, the javascript mode, and the "
                           "editor css (codemirror.min.css + codemirror.min.js + mode/javascript/javascript.min.js) so "
                           "every editable cell is syntax-highlighted by default."),
-        "ui_contract": (RECOMMENDED, "Fix the shared cell UI contract instead of hiding the finding. Results must lead, "
-                        "code and schemas must stay collapsed until needed, reset must be local, and error paths must "
-                        "open the code only when line-level debugging matters."),
+        "ui_contract": (RECOMMENDED, "Fix the shared cell UI contract instead of hiding the finding. Helpers and code "
+                        "must remain discoverable above output, code must be collapsed by default unless a cell opts in, "
+                        "reset must be local, and error paths must open the code only when line-level debugging matters."),
     }
     _FIG_FIX = {
         "tiny": (RECOMMENDED, "Raise the text to a rendered font-size of at least 11px; below that it is "

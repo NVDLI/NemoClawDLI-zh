@@ -1365,6 +1365,7 @@ export function mountRunCell(targetSel, opts) {
   const label = opts.label || "editable cell";
   const showSchemas = Object.keys(schemas).length > 0;
   const codeLines = Math.max(1, String(code).split("\n").length);
+  const codeOpenAttr = opts.openCode === true ? " open" : "";
 
   // Helpers tab, shown whenever a cell has helpers. Scoped to the helpers this cell's code uses, with a "show all" toggle and click-to-read-source.
   // It is the run-cell twin of the canvas menu, so a Try-it cell's helpers are as discoverable as a canvas node's.
@@ -1404,10 +1405,9 @@ export function mountRunCell(targetSel, opts) {
         <button class="rc-reset" title="Restore this cell's original code and clear its output" style="background:transparent;color:var(--td);border:1px solid var(--bd);border-radius:4px;padding:5px 10px;font-family:var(--mono);font-weight:700;font-size:.82rem;cursor:pointer;">Reset</button>
         <button class="rc-run" style="background:var(--g);color:#0a0a0a;border:none;border-radius:4px;padding:5px 14px;font-family:var(--mono);font-weight:700;font-size:.82rem;cursor:pointer;">${runLabel()}</button>
       </div>
-      <div class="rc-out" style="background:var(--bg);padding:10px 14px;font-family:ui-monospace,monospace;font-size:.82rem;color:var(--td);white-space:pre-wrap;min-height:48px;">empty until you Run</div>
-      ${showSchemas ? `<details class="rc-schemas-det" style="border-top:1px solid var(--bd);"><summary style="padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:.78rem;color:var(--td);">schemas <span style="color:var(--tf);">json, editable</span></summary><div class="rc-schemas"></div></details>` : ""}
       ${_rcHelpersHTML}
-      <details class="rc-code-det" style="border-top:1px solid var(--bd);">
+      ${showSchemas ? `<details class="rc-schemas-det" style="border-top:1px solid var(--bd);"><summary style="padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:.78rem;color:var(--td);">schemas <span style="color:var(--tf);">json, editable</span></summary><div class="rc-schemas"></div></details>` : ""}
+      <details class="rc-code-det"${codeOpenAttr} style="border-top:1px solid var(--bd);">
         <summary style="padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:.78rem;color:var(--td);">code <span style="color:var(--tf);">javascript, editable, ${codeLines} lines</span></summary>
         <div style="padding:0;">
           <textarea class="rc-code" spellcheck="false"
@@ -1415,6 +1415,7 @@ export function mountRunCell(targetSel, opts) {
                    font-family:ui-monospace,monospace;font-size:.84rem;line-height:1.55;resize:vertical;tab-size:2;"></textarea>
         </div>
       </details>
+      <div class="rc-out" style="background:var(--bg);padding:10px 14px;font-family:ui-monospace,monospace;font-size:.82rem;color:var(--td);white-space:pre-wrap;min-height:48px;">empty until you Run</div>
     </div>`;
   // Wire the helpers tab: "show all" toggle + click-a-row-to-read-its-source (read-only, highlighted).
   const _rcHelpers = target.querySelector(".rc-helpers .cf-helpers-table");

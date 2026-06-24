@@ -98,9 +98,9 @@ def audit_page(path: Path):
 
 def audit_runtime_contract():
     """Guard the shared learner-facing cell UI against regressions that make code dominate again.
-    This intentionally checks the runtime contract, not a validator tag: students should see results
-    first, reveal code only when they ask or when an error points at a line, and reset one cell or node
-    without rebuilding the whole page."""
+    This intentionally checks the runtime contract, not a validator tag: students should find helpers
+    and editable code above the output, keep code collapsed by default unless a cell opts in, and reset
+    one cell or node without rebuilding the whole page."""
     src = (WEB / "nemoclaw" / "_canvas.js").read_text(errors="ignore")
     findings = []
 
@@ -110,10 +110,14 @@ def audit_runtime_contract():
 
     rc_out = src.find('class="rc-out"')
     rc_code = src.find('class="rc-code-det"')
-    need(rc_out >= 0 and rc_code >= 0 and rc_out < rc_code,
-         "run-cell output must render before the code editor so results are visible without scrolling through code")
-    need(not re.search(r'<details class="rc-code-det"[^>]*\sopen\b', src),
-         "run-cell code must be collapsed by default; open it on demand or on error")
+    need(rc_out >= 0 and rc_code >= 0 and rc_code < rc_out,
+         "run-cell code controls must stay above output, with the code editor collapsed by default")
+    need('const codeOpenAttr = opts.openCode === true ? " open" : "";' in src,
+         "run-cell code visibility must be an explicit openCode opt-in, not a default-open editor")
+    need('class="rc-code-det"${codeOpenAttr}' in src,
+         "run-cell code details must use the openCode opt-in so most cells hide code while selected cells can show it")
+    need(not re.search(r'<details class="rc-code-det"\s+open\b', src),
+         "run-cell code must not be hard-coded open by default")
     need(not re.search(r'<details class="rc-schemas-det"[^>]*\sopen\b', src),
          "run-cell schemas must be collapsed by default; schema plumbing should not lead the lesson")
     need('class="rc-reset"' in src and "function resetCell" in src,
