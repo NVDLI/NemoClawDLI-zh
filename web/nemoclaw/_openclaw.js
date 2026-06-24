@@ -300,6 +300,20 @@ export function mountClawProbe(targetSel, opts = {}) {
   const label        = opts.label || "Live OpenClaw probe";
   const intro        = opts.intro !== undefined ? opts.intro : "Paste the base URL of a running OpenClaw service. Your launchable's proxy is the default; to reach a remote launchable, paste its URL (https://nemoclaw-<id>.brevlab.com) instead.";
 
+  function _normalizeBaseUrl(raw) {
+    const text = String(raw || "").trim();
+    if (!text) return "";
+    try {
+      const u = new URL(text);
+      u.hash = "";
+      // Brev launchables are rooted at the origin. Trim pasted app paths like /chat?session=main.
+      if (/\.brevlab\.com$/i.test(u.hostname)) return u.origin;
+      return u.href.replace(/\/+$/, "");
+    } catch (_) {
+      return text.replace(/\/+$/, "");
+    }
+  }
+
   // Key saved url+token by base URL so probes for different services do not share auth.
   // Same-URL openclaw probes (3a/3b/3c) still share with each other.
   // llm_client and sandbox-admin keep their own key, so no token bleeds into llm_client.
@@ -320,7 +334,7 @@ export function mountClawProbe(targetSel, opts = {}) {
     : _storedUrl;
   if (_strippedUrl !== _storedUrl && _strippedUrl)
     localStorage.setItem(keyUrl, _strippedUrl); // heal stale storage
-  const savedUrl   = _strippedUrl || defaultUrl;
+  const savedUrl   = _normalizeBaseUrl(_strippedUrl || defaultUrl);
   let savedToken = localStorage.getItem(keyToken) || defaultToken;
   // A no-bearer probe must never inherit a stale openclaw token from before key scoping.
   // Blank it so llm_client sends no bearer.
@@ -478,14 +492,15 @@ export function mountClawProbe(targetSel, opts = {}) {
   }
 
   urlInp.addEventListener("input", () => {
-    const raw = urlInp.value.trim();
+    const raw = _normalizeBaseUrl(urlInp.value);
+    if (urlInp.value.trim() !== raw) urlInp.value = raw;
     localStorage.setItem(keyUrl, raw);
     _syncCanvasKeys(raw, tokenInp.value.trim(), cfJwtInp?.value.trim());
   });
   tokenInp.addEventListener("input", () => {
     const tok = tokenInp.value.trim();
     localStorage.setItem(keyToken, tok);
-    _syncCanvasKeys(urlInp.value.trim(), tok, cfJwtInp?.value.trim());
+    _syncCanvasKeys(_normalizeBaseUrl(urlInp.value), tok, cfJwtInp?.value.trim());
   });
   // Initialise canvas keys on page load with whatever is already stored.
   _syncCanvasKeys(savedUrl, savedToken, savedCfJwt);
@@ -519,7 +534,8 @@ export function mountClawProbe(targetSel, opts = {}) {
   }
 
   async function runAction(action) {
-    const base = (urlInp.value || "").trim().replace(/\/+$/, "");
+    const base = _normalizeBaseUrl(urlInp.value);
+    if (urlInp.value.trim() !== base) urlInp.value = base;
     if (!base) { setOutput("Set a base URL above first.", "err"); return; }
     const token = (tokenInp.value || "").trim();
     const displayUrl = base + (action.path || "/");
@@ -602,7 +618,7 @@ export function mountClawProbe(targetSel, opts = {}) {
               if (found && found !== tokenInp.value.trim()) {
                 tokenInp.value = found;
                 localStorage.setItem(keyToken, found);
-                _syncCanvasKeys(urlInp.value.trim(), found, cfJwtInp ? cfJwtInp.value.trim() : "");
+                _syncCanvasKeys(_normalizeBaseUrl(urlInp.value), found, cfJwtInp ? cfJwtInp.value.trim() : "");
                 printed += "\n\n↳ bearer token auto-filled from this response (" + found.slice(0, 8) + "…). Ready for the gateway steps below.";
               }
             } catch (_) { /* response shape didn't match; leave the field as-is */ }
@@ -639,7 +655,7 @@ export function mountClawProbe(targetSel, opts = {}) {
   });
 
   return {
-    getUrl:   () => urlInp.value.trim(),
+    getUrl:   () => _normalizeBaseUrl(urlInp.value),
     getToken: () => tokenInp.value.trim(),
     run:      runAction,
   };
