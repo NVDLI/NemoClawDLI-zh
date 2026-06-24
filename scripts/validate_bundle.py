@@ -549,6 +549,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                           "the editor degrades to a plain textarea. Load CodeMirror core, the javascript mode, and the "
                           "editor css (codemirror.min.css + codemirror.min.js + mode/javascript/javascript.min.js) so "
                           "every editable cell is syntax-highlighted by default."),
+        "ui_contract": (RECOMMENDED, "Fix the shared cell UI contract instead of hiding the finding. Helpers and code "
+                        "must remain discoverable above output, code must be collapsed by default unless a cell opts in, "
+                        "reset must be local, and error paths must open the code only when line-level debugging matters."),
     }
     _FIG_FIX = {
         "tiny": (RECOMMENDED, "Raise the text to a rendered font-size of at least 11px; below that it is "
@@ -865,7 +868,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
           f"(opaque {len(ca_find.get('opaque', []))}, console {len(ca_find.get('console', []))}, "
           f"unawaited {len(ca_find.get('unawaited', []))}, dialog {len(ca_find.get('dialog', []))}, "
           f"inline-key {len(ca_find.get('inline_key', []))}, static {len(ca_find.get('static_cell_code', []))}, "
-          f"unhighlighted {len(ca_find.get('unhighlighted', []))})")
+          f"unhighlighted {len(ca_find.get('unhighlighted', []))}, "
+          f"ui-contract {len(ca_find.get('ui_contract', []))})")
     print(f"  figure geometry : {len(dg_find)} runtime-figure finding(s) (text overlap / past bounds / connector-crosses-box / useless)")
     _cg = {k: len(v) for k, v in ch_fam.items()}
     print(f"  code hygiene    : {len(ch_rows)} finding(s) over {ch_scanned} code file(s) "

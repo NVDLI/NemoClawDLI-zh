@@ -275,6 +275,7 @@ helpers.log("rendered below. Toggle a README to add it as context, then ask.");
   <script type="module">
     import { mountRunCell } from "./_shared.js";
     mountRunCell("#cell-jsagent", {
+      openCode: true,
       label: "a CLI agent bound to the browser runtime, in code",
       autorun: true,
       code: `// A CLI agent whose shell is THIS browser's JS runtime. Its one tool, js, runs

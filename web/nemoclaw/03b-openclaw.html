@@ -426,6 +426,7 @@ helpers.log(report);
 });
 
 mountRunCell("#cell-workspace-term", {
+  openCode: true,
   label: "Read the live workspace over the operator terminal",
   intro: "helpers.terminal() opens the launchable's /ws/terminal WebSocket, the same operator terminal the Brev console uses. This connects into the agent's sandbox and reads its configuration files directly, with no model call involved. Edit the command list and re-run to explore.",
   code: `// ── what to read (edit freely; these run as shell lines INSIDE the sandbox) ──

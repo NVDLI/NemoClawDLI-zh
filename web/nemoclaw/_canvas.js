@@ -517,7 +517,8 @@ helpers.viz.sideBySide(
         <span class="cf-panel-title">${node.title || ""}</span>
         ${node.summary ? `<span class="cf-panel-summary">${node.summary}</span>` : ""}
         <span class="cf-panel-status-dot" data-status></span>
-        <button type="button" class="cf-panel-runone" data-runmode="js">▶ Run</button>
+        <button type="button" class="cf-panel-reset" title="Restore this node\'s original code and clear its output">Reset</button>
+        <button type="button" class="cf-panel-runone" data-runmode="js">Run</button>
       </div>
       <div class="cf-panel-overview"></div>
       <details class="cf-panel-det cf-panel-code-det"${_showCode ? " open" : ""}>
@@ -569,6 +570,12 @@ helpers.viz.sideBySide(
       // The Run-all button flips to "⏹ Stop" so it can abort even a single-node run.
       beginRun();
       try { await runNode(node.id); } catch (_) {} finally { endRun(); }
+    });
+
+    panel.querySelector(".cf-panel-reset").addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (running) stopRun();
+      resetNode(node.id);
     });
 
     // Initialize CodeMirror lazily on the first open of the code dropdown, then refresh it so wrapped lines render correctly.
@@ -650,6 +657,36 @@ helpers.viz.sideBySide(
     dots.forEach(d => { d.dataset.status = s.status || "idle"; });
     const card = canvas.querySelector(`.cf-node[data-id="${nodeId}"] [data-status]`);
     if (card) card.dataset.status = s.status || "idle";
+  }
+
+  function resetNode(nodeId) {
+    const node = nodes.find(n => n.id === nodeId);
+    const s = ns[nodeId];
+    const panel = panelsHost.querySelector(`.cf-panel[data-id="${nodeId}"]`);
+    if (!node || !s || !panel) return;
+
+    s.code = node.code || "";
+    s.output = null;
+    s.logs = [];
+    if (s.cm) { s.cm.setValue(s.code); _clearCMErrs(s.cm); }
+    else {
+      const ta = panel.querySelector('.cf-code-view[data-lang="js"] .cf-panel-code');
+      if (ta) ta.value = s.code;
+    }
+
+    const overview = panel.querySelector(".cf-panel-overview");
+    const stream = panel.querySelector(".cf-panel-stream");
+    const logEl = panel.querySelector(".cf-panel-log");
+    const outEl = panel.querySelector(".cf-panel-output");
+    if (overview) overview.innerHTML = "";
+    if (stream) stream.textContent = "";
+    if (logEl) logEl.innerHTML = "";
+    if (outEl) outEl.innerHTML = "";
+
+    const meta = panel.querySelector("[data-results-meta]");
+    if (meta) { meta.textContent = "reset"; meta.className = "cf-det-meta"; }
+    setStatus(nodeId, "idle");
+    flowEdgesInto(nodeId, false);
   }
 
   function ensureCM(nodeId) {
@@ -1327,6 +1364,9 @@ export function mountRunCell(targetSel, opts) {
   const schemas = opts.schemas || {};
   const label = opts.label || "editable cell";
   const showSchemas = Object.keys(schemas).length > 0;
+  const codeLines = Math.max(1, String(code).split("\n").length);
+  const codeOpenAttr = opts.openCode === true ? " open" : "";
+  const autoCollapseCode = opts.autoCollapseCode !== false && opts.openCode !== true;
 
   // Helpers tab, shown whenever a cell has helpers. Scoped to the helpers this cell's code uses, with a "show all" toggle and click-to-read-source.
   // It is the run-cell twin of the canvas menu, so a Try-it cell's helpers are as discoverable as a canvas node's.
@@ -1335,7 +1375,7 @@ export function mountRunCell(targetSel, opts) {
   const _rcHasHelpers = _rcRows.some(r => !r.sectionHead && !r.extra);
   const _rcExtraN = _rcRows.filter(r => r.extra && !r.sectionHead).length;
   const _rcHelpersHTML = !_rcHasHelpers ? "" : `
-      <details class="cf-helpers rc-helpers" style="border-bottom:1px solid var(--bd);">
+      <details class="cf-helpers rc-helpers" style="border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);">
         <summary>
           <span class="cf-helpers-chip">helpers</span>
           <span class="cf-helpers-sig">in scope for this cell. Click a row to read its source</span>
@@ -1363,16 +1403,21 @@ export function mountRunCell(targetSel, opts) {
         <span style="color:var(--gs);text-transform:uppercase;letter-spacing:.06em;">${label}</span>
         <span class="rc-lang" style="color:var(--tf);">${langSub()}</span>
         <span style="flex:1;"></span>
+        <button class="rc-reset" title="Restore this cell's original code and clear its output" style="background:transparent;color:var(--td);border:1px solid var(--bd);border-radius:4px;padding:5px 10px;font-family:var(--mono);font-weight:700;font-size:.82rem;cursor:pointer;">Reset</button>
         <button class="rc-run" style="background:var(--g);color:#0a0a0a;border:none;border-radius:4px;padding:5px 14px;font-family:var(--mono);font-weight:700;font-size:.82rem;cursor:pointer;">${runLabel()}</button>
       </div>
       ${_rcHelpersHTML}
-      ${showSchemas ? `<div class="rc-schemas" style="border-bottom:1px solid var(--bd);"></div>` : ""}
-      <div style="padding:0;">
-        <textarea class="rc-code" spellcheck="false"
-          style="width:100%;min-height:140px;background:var(--e2,#0d0d0d);color:var(--tx,#e6edf3);border:none;outline:none;padding:12px 14px;
-                 font-family:ui-monospace,monospace;font-size:.84rem;line-height:1.55;resize:vertical;tab-size:2;"></textarea>
-      </div>
-      <div class="rc-out" style="background:var(--bg);border-top:1px solid var(--bd);padding:10px 14px;font-family:ui-monospace,monospace;font-size:.82rem;color:var(--td);white-space:pre-wrap;min-height:48px;">empty until you Run</div>
+      ${showSchemas ? `<details class="rc-schemas-det" style="border-top:1px solid var(--bd);"><summary style="padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:.78rem;color:var(--td);">schemas <span style="color:var(--tf);">json, editable</span></summary><div class="rc-schemas"></div></details>` : ""}
+      <details class="rc-code-det"${codeOpenAttr} style="border-top:1px solid var(--bd);">
+        <summary style="padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:.78rem;color:var(--td);">code <span style="color:var(--tf);">javascript, editable, ${codeLines} lines</span></summary>
+        <div class="rc-code-body" style="padding:0;position:relative;">
+          <button type="button" class="cf-code-copy rc-code-copy" title="Copy current code" aria-label="Copy current code">copy</button>
+          <textarea class="rc-code" spellcheck="false"
+            style="width:100%;min-height:140px;background:var(--e2,#0d0d0d);color:var(--tx,#e6edf3);border:none;outline:none;padding:12px 14px;
+                   font-family:ui-monospace,monospace;font-size:.84rem;line-height:1.55;resize:vertical;tab-size:2;"></textarea>
+        </div>
+      </details>
+      <div class="rc-out" style="background:var(--bg);padding:10px 14px;font-family:ui-monospace,monospace;font-size:.82rem;color:var(--td);white-space:pre-wrap;min-height:48px;">empty until you Run</div>
     </div>`;
   // Wire the helpers tab: "show all" toggle + click-a-row-to-read-its-source (read-only, highlighted).
   const _rcHelpers = target.querySelector(".rc-helpers .cf-helpers-table");
@@ -1487,6 +1532,49 @@ export function mountRunCell(targetSel, opts) {
   }
   _emptyState("empty until you Run");
   const btn = target.querySelector(".rc-run");
+  const resetBtn = target.querySelector(".rc-reset");
+  const copyBtn = target.querySelector(".rc-code-copy");
+  const codeDet = target.querySelector(".rc-code-det");
+  const schemaDet = target.querySelector(".rc-schemas-det");
+  if (codeDet) codeDet.addEventListener("toggle", () => {
+    if (codeDet.open && cm) setTimeout(() => cm.refresh(), 30);
+  });
+  if (schemaDet) schemaDet.addEventListener("toggle", () => {
+    if (!schemaDet.open) return;
+    setTimeout(() => Object.values(schemaEditors).forEach(ed => { try { ed && ed.refresh(); } catch (_) {} }), 30);
+  });
+  if (copyBtn) copyBtn.addEventListener("click", async () => {
+    const text = cm ? cm.getValue() : ta.value;
+    try {
+      await navigator.clipboard.writeText(text);
+      copyBtn.textContent = "copied";
+      setTimeout(() => { copyBtn.textContent = "copy"; }, 900);
+    } catch (_) {
+      copyBtn.textContent = "select";
+      if (codeDet && !codeDet.open) codeDet.open = true;
+      setTimeout(() => ta.focus(), 40);
+    }
+  });
+  function resetCell() {
+    const live = _runCellAborts.get(cellId);
+    if (live) live.abort();
+    jsBuffer = code;
+    if (cm) { cm.setValue(code); _clearCMErrs(cm); }
+    else ta.value = code;
+    ta.style.height = "auto";
+    ta.style.height = (Math.max(140, ta.scrollHeight + 6)) + "px";
+
+    for (const [name, value] of Object.entries(schemas)) {
+      const next = JSON.stringify(value, null, 2);
+      if (schemaEditors[name]) schemaEditors[name].setValue(next);
+      if (schemaTAs[name]) schemaTAs[name].value = next;
+    }
+
+    _emptyState("reset. empty until you Run");
+    btn.textContent = runLabel();
+    btn.onclick = run;
+  }
+  if (resetBtn) resetBtn.addEventListener("click", resetCell);
 
   async function run() {
     if (_runCellAborts.get(cellId)) { _runCellAborts.get(cellId).abort(); }
@@ -1495,6 +1583,8 @@ export function mountRunCell(targetSel, opts) {
     btn.textContent = "⏹ Stop";
     btn.onclick = () => ac.abort();
     out.innerHTML = "";
+    if (autoCollapseCode && codeDet && codeDet.open) codeDet.open = false;
+    setTimeout(() => { try { out.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch (_) {} }, 30);
 
     // Parse schemas first; if any fails, show the parse error and bail.
     const schemaVars = {};
@@ -1649,6 +1739,7 @@ export function mountRunCell(targetSel, opts) {
         const _ep = _parseErrLine(e);
         const _rcCode = cm ? cm.getValue() : ta.value;
         if (_ep !== null && cm) {
+          if (codeDet && !codeDet.open) codeDet.open = true;
           _clearCMErrs(cm); _markCMErr(cm, _ep);
           setTimeout(() => { try { cm.refresh(); cm.scrollIntoView({ line: _ep.cmLine, ch: 0 }, 100); } catch (_) {} }, 60);
         }
