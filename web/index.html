@@ -124,6 +124,27 @@
   }
   .callout strong { color: var(--gs); }
 
+  .branch-switcher {
+    display:none; margin:1.6em 0; padding:14px 16px; background:var(--e1);
+    border:1px solid var(--e3); border-radius:8px;
+  }
+  .branch-switcher.ready { display:block; }
+  .branch-switcher h2 { font-size:.98rem; color:var(--g); margin:0 0 .35em; }
+  .branch-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:.75em; }
+  .branch-row select {
+    min-width:min(28rem,100%); flex:1; background:var(--bg); color:var(--tx);
+    border:1px solid var(--e3); border-radius:7px; padding:8px 10px;
+    font-family:var(--mono); font-size:.82rem;
+  }
+  .branch-row button, .branch-row a {
+    font-family:var(--mono); font-size:.82rem; color:#0a0a0a; background:var(--g);
+    border:1px solid var(--g); border-radius:7px; padding:8px 12px; cursor:pointer;
+    text-decoration:none; line-height:1.2;
+  }
+  .branch-row a.secondary { color:var(--td); background:transparent; border-color:var(--e3); }
+  .branch-meta { color:var(--tf); font-size:.82rem; margin-top:.5em; }
+
+
   /* Source & tooling: small button-chips */
   .src-links { display: flex; flex-wrap: wrap; gap: 10px; }
   .src-links a {
@@ -183,6 +204,20 @@
     course model gateway, so the cells just work. Inside edX the text reads fine, but the
     live cells there need your own API key, which each course page lets you set.
   </div>
+
+  <section class="branch-switcher" id="branch-switcher" aria-live="polite">
+    <h2>Branch preview</h2>
+    <p style="color:var(--td);font-size:.9rem;margin:0;max-width:48rem">
+      Open a detected Pages build without guessing the URL. Preview entries appear after a branch has been published.
+    </p>
+    <div class="branch-row">
+      <select id="branch-select" aria-label="Detected branch previews"></select>
+      <button type="button" id="branch-open">Open</button>
+      <a class="secondary" id="branch-prod" href="nemoclaw/">Production</a>
+    </div>
+    <div class="branch-meta" id="branch-meta"></div>
+  </section>
+
 
   <section class="source" style="margin:1.8em 0">
     <h2 style="font-size:1.05rem;color:var(--g);margin:0 0 .4em">Source &amp; tooling</h2>
@@ -246,6 +281,52 @@
       u.searchParams.delete("token");
       window.history.replaceState({}, "", u.toString());
     });
+})();
+
+
+// Branch preview selector: populated from build-time branches.json. Static Pages cannot
+// ask GitLab for branches at runtime, so missing JSON simply hides the control.
+(function () {
+  var box = document.getElementById("branch-switcher");
+  var sel = document.getElementById("branch-select");
+  var open = document.getElementById("branch-open");
+  var prod = document.getElementById("branch-prod");
+  var meta = document.getElementById("branch-meta");
+  if (!box || !sel || !open || !meta) return;
+  function cleanUrl(u) {
+    if (!u || /(^|\/)\.\.(\/|$)/.test(u) || /^[a-z]+:/i.test(u)) return null;
+    return u;
+  }
+  fetch("branches.json", { cache: "no-store" }).then(function (r) {
+    if (!r.ok) throw new Error("no branch manifest");
+    return r.json();
+  }).then(function (data) {
+    var branches = Array.isArray(data.branches) ? data.branches.filter(function (b) { return b && cleanUrl(b.url); }) : [];
+    if (!branches.length) return;
+    sel.innerHTML = "";
+    branches.forEach(function (b) {
+      var opt = document.createElement("option");
+      opt.value = b.url;
+      opt.textContent = (b.current ? "current: " : "") + b.name + " · " + (b.kind || "preview");
+      opt.dataset.name = b.name || "";
+      opt.dataset.kind = b.kind || "preview";
+      sel.appendChild(opt);
+    });
+    var current = branches.find(function (b) { return b.current; });
+    if (current) sel.value = current.url;
+    if (prod && data.production_url) prod.href = cleanUrl(data.production_url) || "nemoclaw/";
+    function paint() {
+      var opt = sel.options[sel.selectedIndex];
+      meta.textContent = opt ? ("Selected: " + opt.dataset.name + " (" + opt.dataset.kind + ")") : "";
+    }
+    sel.addEventListener("change", paint);
+    open.addEventListener("click", function () {
+      var url = cleanUrl(sel.value);
+      if (url) window.location.href = url;
+    });
+    paint();
+    box.classList.add("ready");
+  }).catch(function () {});
 })();
 
 // Theme toggle: same data-theme + localStorage("theme") contract as the course and framer pages.

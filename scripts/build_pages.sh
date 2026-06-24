@@ -16,6 +16,7 @@
 #   public/tests.html          client-side test runner (engine smoke + SKILL self-tests + CI gate)
 #   public/validation.html     the CI gate report rendered from docs/validation/latest.json
 #   public/gate.json           machine-readable gate summary (for tests.html)
+#   public/branches.json       build-time branch preview manifest for the foyer dropdown
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -178,6 +179,14 @@ tools = ('      <a href="validation.html">Validation report &rarr;</a>\n'
 s = re.sub(r'<!-- build:deploy-tools[^>]*-->', tools, s)
 open(p, "w").write(s)
 PROJ
+
+# ── 4b. Branch manifest for the foyer dropdown ──────────────────────────────
+# Static Pages cannot discover Git refs at runtime. In a real checkout (CI or local
+# dev), write the refs we can see; archive-only production-root rebuilds skip this
+# and the outer Pages job writes the manifest after it adds the branch preview.
+if git -C "$T1" rev-parse --git-dir >/dev/null 2>&1 && [ -f "$T1/scripts/build_branch_manifest.py" ]; then
+    python3 "$T1/scripts/build_branch_manifest.py" --out "$OUT/branches.json" || echo "[build_pages] branch manifest skipped"
+fi
 
 # ── 5. Client-side test runner ──
 # Three live, in-browser layers: an engine smoke test, the course SKILL self-test
