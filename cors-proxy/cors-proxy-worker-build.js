@@ -1,62 +1,89 @@
 // https://nvidia-api-cors-proxy.vkudlay.workers.dev/
 /**
- * Cloudflare Worker for the NVIDIA API CORS proxy (paste-and-deploy format)
+ * Cloudflare Worker for the NVIDIA API CORS proxy.
  *
- * DEPLOY (no wrangler needed):
- *   1. workers.cloudflare.com → Create Worker → paste this file → Deploy
- *   2. Note your URL: https://your-name.your-subdomain.workers.dev
- *
- * WHY: The edX platform injects its own ACAO header on top of the API's,
- * producing two values which browsers reject. This worker strips the
- * upstream header and sets exactly one correct value.
+ * The course does not use this path by default. It exists for LMS/static iframe
+ * hosts where a direct browser call is blocked by injected or missing CORS headers.
+ * Set ALLOWED_ORIGINS to a comma-separated list of exact origins. Set
+ * ALLOW_ANY_ORIGIN=1 only for a temporary local test worker.
  */
 
-addEventListener("fetch", event => {
-  event.respondWith(handle(event.request));
-});
+const UPSTREAM_ORIGIN = "https://integrate.api.nvidia.com";
+const DEFAULT_ALLOWED_ORIGINS = [
+  "https://vkudlay.gitlab-master-pages.nvidia.com",
+  "https://vkudlay.gitlab.io",
+  "https://nvidia.github.io",
+];
+const ALLOWED_METHODS = "GET, POST, OPTIONS";
+const ALLOWED_HEADERS = "Content-Type, Authorization, X-BILLING-SOURCE";
 
-async function handle(request) {
-  const origin = request.headers.get("Origin") || "*";
-
-  // Handle CORS preflight
-  if (request.method === "OPTIONS") {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        "Access-Control-Allow-Origin":  origin,
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        // X-BILLING-SOURCE lets the DLI web client tag usage (e.g. dli-nemoclaw-web)
-        // so spend is attributed to the course. It must be allowed here or the
-        // browser blocks the request; the worker forwards it upstream unchanged.
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-BILLING-SOURCE",
-        "Access-Control-Max-Age":       "86400",
-      },
-    });
-  }
-
-  // Forward to NVIDIA API
-  const url      = new URL(request.url);
-  const upstream = "https://integrate.api.nvidia.com" + url.pathname + url.search;
-
-  const fwd = new Headers(request.headers);
-  fwd.delete("host");
-
-  let resp;
-  try {
-    resp = await fetch(upstream, { method: request.method, headers: fwd, body: request.body });
-  } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), {
-      status: 502,
-      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": origin },
-    });
-  }
-
-  // Replace (not add to) the upstream ACAO header. No Allow-Credentials: this
-  // proxy carries the caller's bearer key in the request, never cookies, so
-  // credentialed CORS is intentionally not enabled (it would let any origin make
-  // cookie-bearing calls). The preflight above already omits it.
-  const out = new Headers(resp.headers);
-  out.set("Access-Control-Allow-Origin", origin);
-
-  return new Response(resp.body, { status: resp.status, statusText: resp.statusText, headers: out });
+function allowedOrigins(env) {
+  const extra = String(env?.ALLOWED_ORIGINS || "")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+  return new Set([...DEFAULT_ALLOWED_ORIGINS, ...extra]);
 }
+
+function originAllowed(origin, env) {
+  if (!origin) return false;
+  if (env?.ALLOW_ANY_ORIGIN === "1") return true;
+  return allowedOrigins(env).has(origin);
+}
+
+function corsHeaders(origin, env) {
+  const allowed = originAllowed(origin, env);
+  return {
+    "Access-Control-Allow-Origin": allowed ? origin : "null",
+    "Access-Control-Allow-Methods": ALLOWED_METHODS,
+    "Access-Control-Allow-Headers": ALLOWED_HEADERS,
+    "Access-Control-Max-Age": "86400",
+    "Vary": "Origin",
+  };
+}
+
+function jsonError(message, status, origin, env) {
+  return new Response(JSON.stringify({ error: message }), {
+    status,
+    headers: { "Content-Type": "application/json", ...corsHeaders(origin, env) },
+  });
+}
+
+export default {
+  async fetch(request, env) {
+    const origin = request.headers.get("Origin") || "";
+    const cors = corsHeaders(origin, env);
+
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: originAllowed(origin, env) ? 204 : 403, headers: cors });
+    }
+    if (!originAllowed(origin, env)) {
+      return jsonError("Origin not allowed for iframe proxy.", 403, origin, env);
+    }
+    if (!ALLOWED_METHODS.split(/, */).includes(request.method)) {
+      return jsonError("Method not allowed.", 405, origin, env);
+    }
+
+    const url = new URL(request.url);
+    const upstream = UPSTREAM_ORIGIN + url.pathname + url.search;
+    const fwd = new Headers(request.headers);
+    fwd.delete("host");
+    fwd.delete("cookie");
+
+    let resp;
+    try {
+      resp = await fetch(upstream, {
+        method: request.method,
+        headers: fwd,
+        body: ["GET", "HEAD"].includes(request.method) ? undefined : request.body,
+      });
+    } catch (e) {
+      return jsonError(String(e), 502, origin, env);
+    }
+
+    const out = new Headers(resp.headers);
+    for (const [k, v] of Object.entries(cors)) out.set(k, v);
+    out.delete("Access-Control-Allow-Credentials");
+    return new Response(resp.body, { status: resp.status, statusText: resp.statusText, headers: out });
+  },
+};

@@ -131,7 +131,7 @@
   </div>
 
   <div class="howto">
-    <div class="step"><span class="n">1</span><span><b>Drop in your key</b> below. Model calls go to <a href="https://build.nvidia.com" target="_blank" rel="noopener"><code>build.nvidia.com</code></a> through a hosted proxy; a free <code>nvapi-</code> key unlocks every exercise.</span></div>
+    <div class="step"><span class="n">1</span><span><b>Drop in your key</b> below. Model calls go to <a href="https://build.nvidia.com" target="_blank" rel="noopener"><code>build.nvidia.com</code></a>; a free <code>nvapi-</code> key unlocks every exercise. Enable LMS/static iframe mode only when your host page needs the CORS worker.</span></div>
     <div class="step"><span class="n">2</span><span><b>Work the four modules</b> in order. Every cell runs live in the browser, in JavaScript.</span></div>
     <div class="step"><span class="n">3</span><span><b>For the agent runtime</b> in Modules 3&ndash;4, deploy your own NemoClaw launchable on Brev when a page asks for it.</span></div>
   </div>
@@ -142,7 +142,7 @@
     <p class="help">
       The key is saved in <code>localStorage</code> on this browser, so it persists
       across reloads and tabs and carries over to both courses until you clear it
-      with the Change button. The browser sends it to the hosted proxy and never writes it into any page.
+      with the Change button. The browser sends it to build.nvidia.com and never writes it into any page. The hosted CORS worker is used only when LMS/static iframe mode is enabled.
     </p>
     <div id="key-panel"></div>
   </div>

@@ -11,7 +11,7 @@
   "node_type": "directory-explorer",
   "title": "CORS proxy workers",
   "source_dir": "cors-proxy/",
-  "summary": "The two Cloudflare Workers that let the browser-only course reach hosted services it otherwise could not, because of cross-origin rules. cors-proxy-worker-build.js fronts build.nvidia.com for model calls; cors-proxy-worker-openclaw.js fronts a student's NemoClaw launchable gateway. Both are the exact source deployed to Cloudflare. This SKILL.html is a live explorer: open either file, take the guided tour, and ask the model about the code with your own build.nvidia.com key.",
+  "summary": "Cloudflare Workers for explicit LMS/static iframe support. Main browser traffic calls build.nvidia.com directly; a learner or host page opts into these workers when iframe CORS behavior blocks direct calls. The build proxy requires an allowed origin. The OpenClaw proxy also restricts upstream launchable hosts so it cannot become a general relay.",
   "related": [
     "cors-proxy/cors-proxy-worker-build.js",
     "cors-proxy/cors-proxy-worker-openclaw.js"
@@ -23,7 +23,7 @@
 <script type="application/json" id="explorer-config">
 {
   "title": "CORS proxy workers",
-  "summary": "A browser cannot call build.nvidia.com or a launchable gateway directly: those origins do not return the cross-origin headers a page needs, so the browser blocks the response. These two Cloudflare Workers sit in front and add exactly the right headers, nothing more. Open a file, walk the tour, and ask the model anything about the code. You need a build.nvidia.com key (nvapi-...), the same key the course uses.",
+  "summary": "These workers preserve iframe execution as an opt-in path. They add CORS headers only for allowed origins; the launchable proxy also pins upstream hosts to NemoClaw launchables unless the worker owner expands the allowlist. Open a file, walk the tour, and inspect the carve-outs before deploying a worker.",
   "proxy": "https://nvidia-api-cors-proxy.vkudlay.workers.dev/v1",
   "model": "nvidia/nemotron-3-nano-30b-a3b",
   "nav": {
@@ -37,70 +37,61 @@
     {
       "path": "cors-proxy-worker-build.js",
       "role": "build.nvidia.com proxy",
-      "desc": "Browser to build.nvidia.com. Replaces the doubled Access-Control-Allow-Origin header the edX platform injects with exactly one value, and allows the X-BILLING-SOURCE header so course spend is attributed. Deployed at nvidia-api-cors-proxy.vkudlay.workers.dev.",
-      "bytes": 2387
+      "desc": "Opt-in browser to build.nvidia.com worker. It answers CORS only for allowed origins, forwards the learner bearer key, and accepts X-BILLING-SOURCE for course attribution.",
+      "bytes": 2972
     },
     {
       "path": "cors-proxy-worker-openclaw.js",
       "role": "launchable gateway proxy",
-      "desc": "Browser to a student's NemoClaw launchable over a tight brevlab.com host allowlist, forwarding the Cloudflare Access JWT as the cookie Access checks. The allowlist is what keeps it from being an open relay for the forwarded service token. Deployed at openclaw-cors-proxy.vkudlay.workers.dev.",
-      "bytes": 2568
+      "desc": "Opt-in browser to NemoClaw launchable worker. It requires an allowed origin and an allowed upstream host before forwarding Cloudflare Access material.",
+      "bytes": 3812
     }
   ],
   "tour": [
     {
-      "title": "Why this worker exists",
+      "title": "Opt-in path, not the default",
       "file": "cors-proxy-worker-build.js",
       "lines": [
-        9,
-        12
+        3,
+        8
       ],
-      "note": "The whole reason for the proxy. The platform adds its own Access-Control-Allow-Origin on top of the API's, so the browser sees two values and rejects the response. The worker strips the upstream header and sets exactly one."
+      "note": "Main calls the API directly. This worker is for LMS/static iframe hosts that need a CORS fix."
     },
     {
-      "title": "The CORS preflight",
+      "title": "Exact origin allowlist",
       "file": "cors-proxy-worker-build.js",
       "lines": [
-        22,
-        35
+        19,
+        42
       ],
-      "note": "Before a real POST, the browser sends an OPTIONS preflight. The worker answers it with the allowed methods and headers. X-BILLING-SOURCE has to be listed here or the browser blocks the real request; the worker then forwards it upstream unchanged."
+      "note": "Origins come from built-in defaults plus ALLOWED_ORIGINS. ALLOW_ANY_ORIGIN is documented as temporary test-only behavior."
     },
     {
-      "title": "Forwarding to NVIDIA",
+      "title": "No credentialed CORS",
       "file": "cors-proxy-worker-build.js",
       "lines": [
-        37,
-        52
+        68,
+        88
       ],
-      "note": "The actual proxy: rebuild the URL against integrate.api.nvidia.com, drop the host header, and pass the body and the caller's bearer key straight through. A network failure returns a clean 502 with CORS still set, so the browser can read the error."
+      "note": "The worker deletes cookies before forwarding and removes Access-Control-Allow-Credentials from the response."
     },
     {
-      "title": "One origin, no credentials",
-      "file": "cors-proxy-worker-build.js",
-      "lines": [
-        54,
-        61
-      ],
-      "note": "Replace the upstream Access-Control-Allow-Origin rather than add to it. There is deliberately no Allow-Credentials: the proxy carries the caller's key in the request, never cookies, so enabling credentialed CORS would let any origin make cookie-bearing calls."
-    },
-    {
-      "title": "Host allowlist, not an open relay",
+      "title": "Launchable host allowlist",
       "file": "cors-proxy-worker-openclaw.js",
       "lines": [
-        21,
-        28
+        42,
+        47
       ],
-      "note": "The launchable proxy forwards a Cloudflare Access service token to the target host. Without this allowlist it would relay that token to any host an attacker names in the path. The check pins the target to brevlab.com and its subdomains."
+      "note": "The launchable proxy checks the target host before forwarding Cloudflare Access material."
     },
     {
-      "title": "Carrying the Access JWT",
+      "title": "Access JWT handling",
       "file": "cors-proxy-worker-openclaw.js",
       "lines": [
-        30,
-        40
+        80,
+        91
       ],
-      "note": "Cloudflare Access in front of the launchable checks a CF_Authorization cookie. The browser cannot set that cookie cross-origin, so it sends the JWT as a header and the worker rewrites it into the cookie Access expects, optionally adding a service-token pair from the worker env."
+      "note": "A caller-provided Access JWT becomes the CF_Authorization cookie expected by the target launchable; otherwise cookies are stripped."
     }
   ],
   "related": [

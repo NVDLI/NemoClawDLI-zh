@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>scripts/security iframe proxy audit</title>
+
+<script type="application/json" id="skill-meta">
+{
+  "schema": "dir-skill/1.0",
+  "node_type": "directory-explorer",
+  "title": "scripts/security iframe proxy audit",
+  "source_dir": "scripts/security/",
+  "summary": "Security checks for the course browser runtime. Main keeps iframe execution support, but proxy execution is an explicit learner or host-page opt-in. The audit guards the carve-outs: direct build.nvidia.com remains default, hosted workers require exact origin allowlists, and the launchable proxy stays pinned to approved upstream hosts.",
+  "related": [
+    "scripts/security/audit_iframe_proxy_opt_in.py",
+    "web/nemoclaw/_shared.js",
+    "cors-proxy/cors-proxy-worker-build.js",
+    "cors-proxy/cors-proxy-worker-openclaw.js"
+  ],
+  "explorer": "../../web/_skill_explorer.js"
+}
+</script>
+
+<script type="application/json" id="explorer-config">
+{
+  "title": "scripts/security iframe proxy audit",
+  "summary": "Main supports LMS/static iframe execution, but it is not the silent default. The browser runtime exposes an explicit toggle and URL flag; the Cloudflare Workers enforce origin allowlists; the launchable worker also enforces an upstream host allowlist. Use this folder when changing proxy behavior, key handling, or LMS embedding support.",
+  "model": "nvidia/nemotron-3-nano-30b-a3b",
+  "ties": ["build", "security"],
+  "nav": {
+    "home": "../../web/index.html",
+    "up": { "label": "scripts", "href": "../SKILL.html" }
+  },
+  "files": [
+    {
+      "path": "audit_iframe_proxy_opt_in.py",
+      "role": "iframe proxy source audit",
+      "desc": "Checks that direct API use is default, iframe proxy mode is explicit, billing headers are conditional, and both Cloudflare Workers keep origin/upstream allowlists."
+    }
+  ],
+  "tour": [
+    {
+      "title": "Default versus iframe mode",
+      "file": "audit_iframe_proxy_opt_in.py",
+      "lines": [24, 38],
+      "note": "The audit treats direct build.nvidia.com as the default and the hosted worker as the explicit iframe path."
+    },
+    {
+      "title": "Worker carve-outs",
+      "file": "audit_iframe_proxy_opt_in.py",
+      "lines": [52, 65],
+      "note": "Both workers must have an origin allowlist. The launchable proxy also needs an upstream allowlist so it cannot become a general relay."
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<div id="explorer"></div>
+<noscript>
+  <h1>scripts/security iframe proxy audit</h1>
+  <p>Main supports iframe execution by opt-in. Read <a href="audit_iframe_proxy_opt_in.py">audit_iframe_proxy_opt_in.py</a> for the guardrail checks.</p>
+</noscript>
+<script src="../../web/_skill_explorer.js"></script>
+</body>
+</html>
