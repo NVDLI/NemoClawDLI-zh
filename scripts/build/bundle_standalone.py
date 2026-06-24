@@ -37,8 +37,9 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
         sys.path.insert(0, str(_p / "scripts")); break
 from _bootstrap import add_script_paths, find_repo_root
 
-WEB_DIR = Path(__file__).resolve().parent.parent / "web"
-DEFAULT_OUT = Path(__file__).resolve().parent.parent / "web_standalone"
+TASK1 = find_repo_root(Path(__file__).resolve())
+WEB_DIR = TASK1 / "web"
+DEFAULT_OUT = TASK1 / "web_standalone"
 # The released course is web/nemoclaw/.
 # Pass --src web/nemoclaw to bundle it into --out web/nemoclaw_standalone (the auto-derive convention below).
 
@@ -633,7 +634,7 @@ def main() -> int:
     # Resolve --src: accept either an absolute path or a name relative to the task1/ root.
     web = args.src
     if not web.is_absolute():
-        web = Path(__file__).resolve().parent.parent / web
+        web = TASK1 / web
     if args.out is not None:
         out = args.out
     else:
