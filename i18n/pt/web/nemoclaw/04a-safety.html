@@ -126,7 +126,7 @@
   <p>OpenShell enforces its policy through four kernel-level mechanisms.
      None of them is new on its own. The value comes from using all four
      together, with one policy file as the single source of truth.</p>
-<figure style="margin:1.4em 0"><div class="fig-embed" data-svg-src="assets/figures/04a-safety-1.svg" style="aspect-ratio:620 / 502"></div><figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">OpenClaw runs inside nested kernel sandboxes, each a smaller blast radius.</figcaption></figure>
+<figure style="margin:1.4em 0"><div class="fig-embed" data-svg-src="assets/figures/04a-safety-1.svg" style="aspect-ratio:720 / 320"></div><figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Prompt rules and application guardrails shape the agent before kernel containment enforces the final boundary. The blocked arrow shows an outbound action stopped before it reaches disk or network.</figcaption></figure>
 
 
   <div class="layers">
@@ -185,7 +185,7 @@
 
   <figure style="margin:1.4em 0">
     <div id="fig-calls"></div>
-    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Regardless of what the model intends, the policy decides what actually runs, and denied calls fail before the syscall executes.</figcaption>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Prompt rules and application guardrails shape the agent before kernel containment enforces the final boundary. The blocked arrow shows an outbound action stopped before it reaches disk or network.</figcaption>
   </figure>
 
   <h2>Watch the kernel decide</h2>
@@ -430,7 +430,7 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
   <p>Untrusted input, a reachable secret, and an open channel out together form the lethal trifecta.
      None is dangerous in isolation, yet once all three are present the untrusted input can steer the
      agent into reading the secret and then sending it back out through the channel.</p>
-<figure style="margin:0"><div class="fig-embed" data-svg-src="assets/figures/04a-safety-2.svg" style="aspect-ratio:720 / 422"></div><figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">The <a href="https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/" target="_blank" rel="noopener">lethal trifecta</a>, drawn as the overlap of three capabilities.</figcaption></figure>
+<figure style="margin:0"><div class="fig-embed" data-svg-src="assets/figures/04a-safety-2.svg" style="aspect-ratio:720 / 320"></div><figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Prompt rules and application guardrails shape the agent before kernel containment enforces the final boundary. The blocked arrow shows an outbound action stopped before it reaches disk or network.</figcaption></figure>
   <p>These gaps are real on a default box, and none of them is decidable by the network and
      filesystem policy:</p>
   <ul>
