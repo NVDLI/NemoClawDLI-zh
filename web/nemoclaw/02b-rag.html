@@ -801,8 +801,12 @@ return state.query;
     },
     {
       id: "lookup", icon: "🎯", title: "Hit on chunk → return parent (+ score viz)", x: 1, y: 1,
-      summary: "Takes the top chunk by cosine and returns its FULL parent document, rendering score bars and a hierarchy diagram that shows chunks being searched while parents are returned.",
-      code: `const [qv] = await helpers.embed(state.query, {
+      showCode: false,
+      summary: "Takes the top chunk by cosine and returns its full parent document. The code is collapsed by default because the retrieval step is short and the rest builds score bars and hierarchy cards.",
+      code: `// Reading guide: the retrieval happens first: embed the query, score chunks, pick the
+// top hit, then return that hit's parent document. The longer lower half renders the score
+// bars and parent/child cards.
+const [qv] = await helpers.embed(state.query, {
   model:     "nvidia/llama-nemotron-embed-1b-v2",
   inputType: "query",
 });

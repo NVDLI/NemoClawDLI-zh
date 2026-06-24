@@ -517,23 +517,26 @@ return { ticks: trace.length, finalPosition: state.env.position, trace };
   ],
 });
 
-// ── Canvas 1.5: maze + four swappable reasoners (2-D version of the swap above) ─
-// ── Module 1a Part 4: maze + four swappable reasoners ────────────────────────
+// ── Canvas 1.5: maze + search reasoners (2-D version of the swap above) ───
+// ── Module 1a Part 4: maze + search reasoners ───────────────────────────────
 mountCanvasFlow("#cell-maze", {
   label: "The agent loop with a swappable reasoning step",
-  intro: "Run the nodes in order so that node 1 builds the maze and the shared utilities every later node reads from state, with the first three brains being hand-written search routines that warm up the loop and the last brain being the language model this course is headed toward.",
+  intro: "Run the nodes in order so that node 1 builds the maze and the shared utilities every later node reads from state. The hand-written search routines warm up the loop before the language-model route takes over. The implementation is collapsed by default because the point is the behavior; expand code only when you want to inspect how a planner is wired into the loop.",
   edges: [
     { from: "maze", to: "bfs"   },
     { from: "maze", to: "dfs"   },
     { from: "bfs",  to: "astar" },
-    { from: "astar", to: "swap" },
   ],
 
   nodes: [
     {
       id: "maze", icon: "🌐", title: "Maze + constant reasoner", x: 0, y: 0,
-      summary: "Generates the maze and the move utilities every later node reads, then runs the same constant 'always east' rule on both a straight corridor and the maze. A fixed heading walks the corridor to the goal but stalls at a wall in the maze, which is why the reasoner nodes below swap a real search routine into the slot.",
-      code: `// Maze-generation plumbing: builds the grid and the move utilities every later
+      showCode: false,
+      summary: "This node hides the maze plumbing by default. If you expand it, read from the bottom: it stores shared helpers in state, then runs the corridor and maze animations that show why a fixed rule is not enough.",
+      code: `// Reading guide: most of this block is support code. Start near the bottom where state.fn is
+// assigned, then read the two animations: a corridor that 'always east' can solve and a maze
+// where that same fixed rule stalls. The search nodes reuse these helpers instead of redefining them.
+// Maze-generation plumbing: builds the grid and the move utilities every later
 // node reads from state. The lesson is the brain swap in the later nodes.
 
 // lcg is a tiny seeded random-number generator, so a given seed always builds
@@ -736,8 +739,11 @@ return { corridorSolved: corrR.won, mazeStalledAfter: mazeR.moves };
     },
     {
       id: "dfs", icon: "🌀", title: "DFS reasoner", x: 1, y: 0,
-      summary: "DFS dives deep and backtracks, and because its step sequence includes the reverse moves, the animation shows the agent entering dead ends and walking back out.",
-      code: `if (!state.fn) { helpers.log("Run the 'Maze + constant reasoner' node first."); return; }
+      showCode: false,
+      summary: "DFS code is collapsed by default. If you expand it, look for the recursive dfs(pos) function: it pushes a move when it enters a branch and pushes the reverse move when it backs out.",
+      code: `// DFS is the depth-first version of the same agent loop. It first builds a full
+// move list, including backtracking moves, then replays that list as an animation.
+if (!state.fn) { helpers.log("Run the 'Maze + constant reasoner' node first."); return; }
 const { fn, grid, start, goal } = state;
 const LDIR = {north:[0,-1],south:[0,1],east:[1,0],west:[-1,0]};
 const REV  = {north:'south',south:'north',east:'west',west:'east'};
@@ -785,8 +791,11 @@ return { stepsTotal: stepCount };
     },
     {
       id: "bfs", icon: "🔍", title: "BFS reasoner", x: 0, y: 1,
-      summary: "BFS first expands its frontier so you watch every cell get examined in distance order, then the agent walks the shortest path it found.",
-      code: `if (!state.fn) { helpers.log("Run the 'Maze + constant reasoner' node first."); return; }
+      showCode: false,
+      summary: "BFS code is collapsed by default. If you expand it, read the two phases: first it marks every cell the search examined, then it walks the shortest path BFS found.",
+      code: `// BFS is split into two readable phases: show the expanding frontier, then walk
+// the shortest path that came back from fn.bfsExplore(...).
+if (!state.fn) { helpers.log("Run the 'Maze + constant reasoner' node first."); return; }
 const { fn, grid, start, goal } = state;
 const { path, exploreOrder } = fn.bfsExplore(grid, start, goal);
 
@@ -826,8 +835,11 @@ return { steps, examined: exploreOrder.length };
     },
     {
       id: "astar", icon: "⭐", title: "A* reasoner", x: 1, y: 1,
-      summary: "A* uses a Manhattan heuristic to find the same path length as BFS on this maze while examining fewer cells.",
-      code: `if (!state.fn) { helpers.log("Run the 'Maze + constant reasoner' node first."); return; }
+      showCode: false,
+      summary: "A* code is collapsed by default. If you expand it, notice that the animation loop is almost the same as BFS; the difference is the planner that produced the path.",
+      code: `// A* reuses the same animation loop shape as BFS. The planner changed, not the
+// surrounding perceive-act loop that displays each move.
+if (!state.fn) { helpers.log("Run the 'Maze + constant reasoner' node first."); return; }
 const { fn, grid, start, goal } = state;
 const path = fn.astarPath(grid, start, goal);
 let pos = [...start], visited = [[...pos]], steps = 0;
@@ -852,37 +864,6 @@ if (elF) elF.innerHTML = fn.renderMaze(grid, pos, goal, visited,
 return { steps, won: true };
 `,
     },
-    {
-      id: "swap", icon: "🔄", title: "Challenge · swap the brain", x: 0, y: 2,
-      summary: "One line picks the brain while everything below it stays the fixed perceive-to-act loop, so changing fn.bfsPath to fn.astarPath and re-running shows how little moves when only the reasoning slot varies.",
-      code: `if (!state.fn) { helpers.log("Run the 'Maze + constant reasoner' node first."); return; }
-const { fn, grid, start, goal } = state;
-
-// ── THE BRAIN · the only swappable part of the whole agent ───────────────────
-// CHALLENGE: change fn.bfsPath to fn.astarPath on the next line, then re-run.
-// Nothing below it changes; perceive, act, and the loop are all fixed.
-const plan = fn.bfsPath(grid, start, goal);   // ← swap to fn.astarPath(grid, start, goal)
-
-// ── FIXED LOOP · identical for BFS, A*, the constant rule, and the LLM ───────
-let pos = [...start], visited = [[...pos]], steps = 0;
-const UID = 'sw' + Math.random().toString(36).slice(2, 7);
-helpers.log.html(\`<div id="\${UID}" style="margin:6px 0"></div>\`);
-for (const dir of plan) {
-  const el = document.getElementById(UID);
-  if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, visited, \`your brain · step \${steps + 1} of \${plan.length}\`);
-  await new Promise(r => setTimeout(r, 85));
-  const rv = fn.doMove(grid, pos, dir);        // ACT
-  pos = rv.pos; steps++;
-  if (rv.ok) visited.push([...pos]);
-  if (rv.done) break;
-}
-
-const elF = document.getElementById(UID);
-if (elF) elF.innerHTML = fn.renderMaze(grid, pos, goal, visited,
-  \`solved in \${steps} steps; the loop never changed, only the brain did\`);
-return { steps, lesson: "only the plan line changed; perceive / act / loop are fixed" };
-`,
-    },
   ],
 });
 
@@ -895,8 +876,12 @@ mountCanvasFlow("#cell-llm-maze", {
     {
       id: "helpers", icon: "⚙️", title: "Maze engine",
       x: 0, y: 0,
-      summary: "Running this node once exports the generator, move executor, ASCII renderer, PNG renderer, DECISION_TOOL, SYS, and the shared solver state.runMaze to state for the route nodes to use.",
-      code: `// Maze-generation plumbing, stored in state so the route nodes can use it.
+      showCode: false,
+      summary: "The engine code is collapsed by default because it is mostly web plumbing. If you expand it, scan the exported names at the bottom: state.runMaze is the shared solver that the route nodes call.",
+      code: `// Reading guide: this is infrastructure, not a required coding exercise. The route
+// nodes below are the intended surface. Expand this only if you want to inspect how
+// maps, images, tool calls, and corridor auto-walking are wired together.
+// Maze-generation plumbing, stored in state so the route nodes can use it.
 // The lesson is the brain swap: the same loop that ran DFS, BFS, and A* now
 // drives a language model over this maze instead.
 
@@ -1450,8 +1435,11 @@ log("Maze engine ready.");
     {
       id: "text", icon: "📝", title: "Non-vision route · text only",
       x: 1, y: 0,
-      summary: "Calling the shared solver state.runMaze with the ASCII map only, the chosen model streams its chain-of-thought between moves while every knob below stays editable, so flip ADVANCED for the bigger 15×11 maze or change model after running the engine node first.",
-      code: `if (!state.runMaze) { helpers.log("Run the 'Maze engine' node first."); return; }
+      showCode: false,
+      summary: "The route code is collapsed by default. If you expand it, the important part is the final state.runMaze call: it sends the ASCII map, keeps history, and leaves image input off.",
+      code: `// Text-only route. The readable part is the state.runMaze(...) options object at
+// the bottom: includeText is on, includeImage is off, and the solver keeps history.
+if (!state.runMaze) { helpers.log("Run the 'Maze engine' node first."); return; }
 // Non-vision route, using the shared solver from the engine node (run it first).
 // model choices (state.MAZE_MODELS): omni, reasoning, vision, qwenVision, super, gptOss
 const ADVANCED = false;
@@ -1480,8 +1468,11 @@ return await state.runMaze(helpers, state, {
     {
       id: "vision", icon: "🖼️", title: "Vision route · text + graphic",
       x: 1, y: 1,
-      summary: "The same shared solver also attaches a rendered PNG of the maze each turn so the picture becomes the experiment. The default omni model (nemotron-3-nano-omni-...) is NVIDIA's multimodal reasoning model, so it reads the image as well as the text; switch model to vision or qwenVision to compare other multimodal models, or set includeImage:false to send text alone.",
-      code: `if (!state.runMaze) { helpers.log("Run the 'Maze engine' node first."); return; }
+      showCode: false,
+      summary: "The route code is collapsed by default. If you expand it, compare the final state.runMaze options with the text-only route: this one keeps text on and also attaches a rendered maze image.",
+      code: `// Vision route. The key difference from the text-only route is includeImage:true,
+// which adds a rendered maze PNG to each model turn.
+if (!state.runMaze) { helpers.log("Run the 'Maze engine' node first."); return; }
 // Vision route: also attaches a rendered PNG of the maze each turn.
 // The default omni model is multimodal, so it reads the picture and the ASCII map.
 // Try "vision" or "qwenVision" to compare, or includeImage:false for text only.

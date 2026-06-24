@@ -228,10 +228,11 @@
     <div id="probe-llm"></div>
 
     <h3>Latency and TTFT across models</h3>
-    <p>Before committing to a model, measure it. The flow below pulls matching
-      models from the catalog, streams a short prompt through each one, and
-      records how long each takes to return its first token (TTFT) and to
-      finish. Open any node to read or edit the measurement code.</p>
+    <p>Before committing to a model, measure it. The cells below pull matching
+      models from the catalog, stream a short prompt through each one, and
+      record how long each takes to return its first token (TTFT) and to
+      finish. The catalog-fetching cell starts open so the filter list is visible
+      before you run the benchmark.</p>
 
     <div id="bench-llm"></div>
 
@@ -541,17 +542,13 @@ you saved on the course home page.</p>
     });
 
     // ── TTFT / latency benchmark across matching models ──────────────────────────
-    mountCanvasFlow("#bench-llm", {
-      label: "Latency benchmark · TTFT across catalog models",
-      intro: "Streams a short prompt through each matching model and records time-to-first-token (TTFT) and total completion time. Runs through the same Cloudflare proxy as the probe above. Open any node to read or edit the code.",
-      edges: [
-        { from: "fetch-models", to: "measure" },
-      ],
-      nodes: [
-        {
-          id: "fetch-models", icon: "📋", title: "Fetch matching models", x: 0, y: 0,
-          summary: "Pull the model catalog from the proxy and keep only models whose ID contains one of the filter substrings. Adjust FILTER to change which models run in the benchmark.",
-          code: `const FILTER = ["120b", "glm", "kimi", "minimax"];
+    const bench = document.querySelector("#bench-llm");
+    bench.innerHTML = `<div id="bench-fetch-models"></div><div id="bench-measure-models" style="margin-top:12px"></div>`;
+
+    mountRunCell("#bench-fetch-models", {
+      label: "Fetch matching models",
+      openCode: true,
+      code: `const FILTER = ["120b", "glm", "kimi", "minimax"];
 const PROXY  = "https://nvidia-api-cors-proxy.vkudlay.workers.dev";
 const KEY    = localStorage.getItem("nvapi") || "";
 
@@ -574,14 +571,12 @@ helpers.log(models.length + " model(s) to bench:\\n  " + models.join("\\n  "));
 state.models = models;
 state.proxy  = PROXY;
 state.key    = KEY;
-return { count: models.length };
-`,
-        },
+return { count: models.length };`,
+    });
 
-        {
-          id: "measure", icon: "⏱", title: "Measure TTFT per model", x: 1, y: 0,
-          summary: "Fires the same short prompt through every matched model at once, then prints results in catalog order. For each model it records time-to-first-token, total time, token count, and the mean gap between tokens. Reasoning models stream their thinking as reasoning_content before the answer, so we count both kinds; otherwise a model that spends its whole budget thinking looks like it returned zero tokens. A model silent for the full TTFT_TIMEOUT window is abandoned. Open a result to read what it streamed.",
-          code: `if (!state.models?.length) { helpers.log("Run 'Fetch matching models' first."); return; }
+    mountRunCell("#bench-measure-models", {
+      label: "Measure TTFT per model",
+      code: `if (!state.models?.length) { helpers.log("Run 'Fetch matching models' first."); return; }
 const PROMPT       = "List five prime numbers.";
 // Try another prompt (uncomment one) to compare how the models behave on different work:
 // const PROMPT    = "Explain step by step why the sky is blue.";                // a reasoning task
@@ -683,11 +678,9 @@ if (ok.length) {
     String(r.ttft ?? "n/a").padStart(5) + "ms · " + String(r.avgGap ?? "n/a").padStart(4) + "ms/tok · " + r.tokens + " tok"));
 }
 state.results = results;
-return { ranked: ok.map(r => r.model), errors: results.filter(r => r.err).length };
-`,
-        },
-      ],
+return { ranked: ok.map(r => r.model), errors: results.filter(r => r.err).length };`,
     });
+
 
     // ── Probe OpenClaw runtime ───────────────────────────────────────────────────
     mountClawProbe("#probe-claw", {
