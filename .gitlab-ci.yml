@@ -6,9 +6,9 @@
 #                   same Pages host under $CI_PAGES_URL/$CI_COMMIT_REF_SLUG/web/nemoclaw/.
 #
 # Isolation contract:
-#   - branch previews are manual and build the course at public/web/nemoclaw;
-#   - preview builds also mirror that shape under public/<branch-slug>/ for Pages runners
-#     that expose the artifact without automatically prefixing non-default refs;
+#   - branch previews are manual and live under public/<branch-slug>/web/nemoclaw;
+#   - preview Pages artifacts rebuild the production root from a protected ref, then add the branch preview;
+#   - the branch foyer at public/<branch-slug>/index.html reads a static branch manifest;
 #   - production refs still require a manual job start;
 #   - branch names are normalized through CI_COMMIT_REF_SLUG before becoming URLs.
 
@@ -65,17 +65,13 @@ pages:
   needs: ["test"]
   resource_group: pages-site
   script:
-    # This GitLab Pages runner has classic Pages behavior, and branch URL handling has
-    # varied by artifact shape. Build the preview at artifact root, then mirror the
-    # same browser surface under public/<branch-slug>/ so both pages-like forms work:
-    # /<branch-slug>/ and /<branch-slug>/web/nemoclaw/.
+    # Classic GitLab Pages supports only one `pages` job. To make branch staging experiential
+    # without replacing production, branch pipelines publish one combined Pages artifact:
+    # production root rebuilt from a protected ref, plus this branch under /<slug>/web/nemoclaw/.
     - |
       set -euo pipefail
-      refresh_branch_refs() {
-        git fetch origin '+refs/heads/*:refs/remotes/origin/*' --quiet 2>/dev/null || true
-      }
       stage_translations() {
-        refresh_branch_refs
+        git fetch origin '+refs/heads/translate-*:refs/remotes/origin/translate-*' --quiet 2>/dev/null || true
         for ref in $(git for-each-ref --format='%(refname:short)' 'refs/remotes/origin/translate-*' 2>/dev/null); do
           lang="${ref##*translate-}"
           echo "staging i18n/$lang from $ref"
@@ -83,29 +79,44 @@ pages:
           git archive "$ref" web | tar -x -C "i18n/$lang"
         done
       }
-      if [ "${PAGES_PREVIEW:-0}" = "1" ]; then
+      build_branch_preview() {
         test -n "$CI_COMMIT_REF_SLUG"
         case "$CI_COMMIT_REF_SLUG" in *..*|*/*|*\*) echo "unsafe CI_COMMIT_REF_SLUG=$CI_COMMIT_REF_SLUG" >&2; exit 1;; esac
-        refresh_branch_refs
         export BUILD_PAGES_COURSE_PREFIX="web"
-        bash scripts/build_pages.sh public
-        python3 scripts/build_branch_manifest.py --out public/branches.json
-        mkdir -p "public/$CI_COMMIT_REF_SLUG"
-        for path in index.html branches.json favicon.ico engine.js gate.json link-graph.html tests.html validation.html web validated-source cors-proxy docs scripts workspace; do
-          test -e "public/$path" || continue
-          tar -C public -cf - "$path" | tar -C "public/$CI_COMMIT_REF_SLUG" -xf -
-        done
-        test -f public/index.html
-        test -f public/branches.json
-        test -f public/web/nemoclaw/index.html
-        test -f public/validated-source/web/nemoclaw/index.html
+        bash scripts/build_pages.sh "public/$CI_COMMIT_REF_SLUG"
+        python3 scripts/build_branch_manifest.py --out "public/$CI_COMMIT_REF_SLUG/branches.json"
         test -f "public/$CI_COMMIT_REF_SLUG/index.html"
         test -f "public/$CI_COMMIT_REF_SLUG/branches.json"
         test -f "public/$CI_COMMIT_REF_SLUG/web/nemoclaw/index.html"
+        test -f "public/$CI_COMMIT_REF_SLUG/validated-source/web/nemoclaw/index.html"
+        grep -q 'href="web/nemoclaw/index.html"' "public/$CI_COMMIT_REF_SLUG/index.html"
+      }
+      build_production_root_from_ref() {
+        prod_ref="${PROD_PAGES_REF:-$CI_DEFAULT_BRANCH}"
+        case "$prod_ref" in "$CI_DEFAULT_BRANCH"|nemoclaw-only) ;; *) echo "refusing unapproved PROD_PAGES_REF=$prod_ref" >&2; exit 1;; esac
+        echo "building production root from protected ref: $prod_ref"
+        rm -rf /tmp/nemoclaw-prod-root
+        mkdir -p /tmp/nemoclaw-prod-root
+        git fetch origin "$prod_ref:refs/remotes/origin/$prod_ref" --quiet
+        git archive "origin/$prod_ref" | tar -x -C /tmp/nemoclaw-prod-root
+        git fetch origin '+refs/heads/translate-*:refs/remotes/origin/translate-*' --quiet 2>/dev/null || true
+        for ref in $(git for-each-ref --format='%(refname:short)' 'refs/remotes/origin/translate-*' 2>/dev/null); do
+          lang="${ref##*translate-}"
+          echo "staging production i18n/$lang from $ref"
+          mkdir -p "/tmp/nemoclaw-prod-root/i18n/$lang"
+          git archive "$ref" web | tar -x -C "/tmp/nemoclaw-prod-root/i18n/$lang"
+        done
+        (cd /tmp/nemoclaw-prod-root && bash scripts/build_pages.sh "$CI_PROJECT_DIR/public")
+        test -f public/nemoclaw/index.html
+        test -f public/index.html
+      }
+      if [ "${PAGES_PREVIEW:-0}" = "1" ]; then
+        rm -rf public
+        build_production_root_from_ref
+        build_branch_preview
       else
         stage_translations
         bash scripts/build_pages.sh public
-        python3 scripts/build_branch_manifest.py --out public/branches.json
         test -f public/nemoclaw/index.html
       fi
   artifacts:
@@ -115,8 +126,8 @@ pages:
     name: "$PAGES_ENVIRONMENT_NAME"
     url: "$PAGES_ENVIRONMENT_URL"
   rules:
-    # Branch previews are real GitLab Pages deploys. On this runner, non-default refs are
-    # served under /<branch-slug>/, so a branch preview cannot replace the production root.
+    # Branch previews are real GitLab Pages deploys, but production root is rebuilt from the
+    # protected production ref and the branch only gets /<slug>/ plus /<slug>/web/nemoclaw/.
     - if: '$CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_BRANCH != "nemoclaw-only" && $CI_COMMIT_BRANCH !~ /^translate-/ && $CI_PIPELINE_SOURCE != "schedule"'
       variables:
         PAGES_PREVIEW: "1"

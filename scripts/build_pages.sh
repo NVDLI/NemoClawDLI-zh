@@ -170,10 +170,12 @@ echo "[build_pages] validation.html (framer report mode) written"
 # we strip that prefix to relative paths and inject the Pages-only tool links at the
 # build:deploy-tools marker. The Pages site never points at /lab.
 cp "$T1/web/index.html" "$OUT/index.html"
-python3 - "$OUT/index.html" <<'PROJ'
+python3 - "$OUT/index.html" "$COURSE_PREFIX" <<'PROJ'
 import sys, re
-p = sys.argv[1]; s = open(p).read()
-s = s.replace("/lab/static/", "")   # authoritative /lab/static -> Pages-relative
+p, course_prefix = sys.argv[1], sys.argv[2].strip("/")
+s = open(p).read().replace("/lab/static/", "")   # authoritative /lab/static -> Pages-relative
+if course_prefix:
+    s = s.replace('"nemoclaw/', '"' + course_prefix + '/nemoclaw/')
 tools = ('      <a href="validation.html">Validation report &rarr;</a>\n'
          '      <a href="tests.html">Test harness &rarr;</a>')
 s = re.sub(r'<!-- build:deploy-tools[^>]*-->', tools, s)
