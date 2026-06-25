@@ -303,7 +303,7 @@ export function mountClawProbe(targetSel, opts = {}) {
     : (defaultToken || "(none needed in your launchable)");
   const actions      = opts.actions || [];
   const label        = opts.label || "Live OpenClaw probe";
-  const intro        = opts.intro !== undefined ? opts.intro : "Paste the base URL of a running OpenClaw service. Your launchable's proxy is the default; to reach a remote launchable, paste its URL (https://nemoclaw-<id>.brevlab.com) instead.";
+  const intro        = opts.intro !== undefined ? opts.intro : "Paste the base URL of a running OpenClaw service. If local OpenClaw fails, stops booting, or reports EPERM, stop local probing and use the backup Brev session URL plus CF_Authorization.";
 
   function _normalizeBaseUrl(raw) {
     const text = String(raw || "").trim();
@@ -635,14 +635,18 @@ export function mountClawProbe(targetSel, opts = {}) {
       }
     } catch (e) {
       const dt = Math.round(performance.now() - t0);
+      const fallback = /EPERM|Failed to fetch|NetworkError|Load failed|ECONN|ERR_CONNECTION|timed out|502|503/i.test(e?.message || "")
+        ? "\nBackup: if local OpenClaw failed to start or logs EPERM, stop local probing. Paste your NemoClaw Brev session URL (https://nemoclaw-<id>.brevlab.com), then paste CF_Authorization from DevTools into the CF Access JWT field.\n"
+        : "";
       const hint = "Possible causes:\n" +
+        "• OpenClaw did not start cleanly. Local EPERM means use the Brev backup URL plus CF_Authorization.\n" +
         "• CORS blocked, because a header is not in the Access-Control-Allow-Headers preflight response.\n" +
         "• Wrong URL, so confirm no trailing /v1 on the base URL.\n" +
         "• Service offline. If the launchable just started, wait 30 s and try again.\n" +
         "• 502 on /v1/chat/completions, so the model backend isn't responding; check that\n" +
         "  NVIDIA_API_KEY resolved correctly in the launchable environment.\n\n" +
         "Gateway token: once the URL and CF Access JWT check out, GET /api/agent above fills it in for you from agent.dashboardUrl.";
-      setOutput(`✗ network error after ${dt}ms\n   ${String(e?.message || e)}\n\n${hint}`, "err");
+      setOutput(`✗ network error after ${dt}ms\n   ${String(e?.message || e)}\n\n${fallback}${hint}`, "err");
     }
   }
 
@@ -792,7 +796,7 @@ const rawUrl = localStorage.getItem("nemoclaw_clawrawurl") ||
                localStorage.getItem("nemoclaw_clawurl") || "";
 const token  = localStorage.getItem("nemoclaw_clawtoken") || "";
 if (!rawUrl || !token) {
-  helpers.log("Fill in the OpenClaw probe above (URL + token) first.");
+  helpers.log("Fill in the OpenClaw probe above first. If local OpenClaw failed or showed EPERM, use the backup Brev session URL plus CF_Authorization.");
   return;
 }
 const wsUrl = rawUrl.replace(/\\/+$/, "").replace(/^https/, "wss").replace(/^http(?!s)/, "ws") + "/cli/gateway";
@@ -844,7 +848,7 @@ await new Promise((resolve, reject) => {
       resolve(pl);
     }).catch(reject);
   };
-  setTimeout(() => reject(new Error("no challenge arrived within 15s. Your Cloudflare Access session most likely expired. Open your launchable URL (https://nemoclaw-<id>.brevlab.com) in a new tab to re-authenticate, then re-run Connect. (Less often, the launchable is still booting, so wait 30s and retry.)")), 15000);
+  setTimeout(() => reject(new Error("no challenge arrived within 15s. Open the Brev launchable URL (https://nemoclaw-<id>.brevlab.com), re-authenticate, copy CF_Authorization, and re-run Connect. If local OpenClaw logs EPERM, stop local probing and use that Brev backup path.")), 15000);
 });
 `;
 

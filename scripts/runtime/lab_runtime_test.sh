@@ -26,11 +26,16 @@ Examples:
   scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html
   CLAW_URL=http://openclaw:8995 CLAW_TOKEN=dli-openclaw-token \
     scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/03a-kickstart.html
+  CLAW_URL=https://nemoclaw-<id>.brevlab.com CLAW_TOKEN=<gateway-token> CLAW_CF=<CF_Authorization> \
+    scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/03a-kickstart.html
 
 Environment:
   CONTAINER_ENGINE=podman|docker     Force engine; default prefers podman.
   LAB_RUNTIME_IMAGE=name:tag         Override image tag.
   LAB_RUNTIME_NETWORK=nvidia-llm     Network for full lab tests; default matches docker-compose.yml.
+  CLAW_URL=url                       OpenClaw base URL. Use Brev URL if local OpenClaw fails or shows EPERM.
+  CLAW_TOKEN=token                   OpenClaw gateway bearer token.
+  CLAW_CF=jwt                        CF_Authorization value for remote Brev launchables.
   PLAYWRIGHT_VERSION=1.55.0          Override build arg for the runtime image.
 USAGE
 }

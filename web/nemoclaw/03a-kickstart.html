@@ -703,7 +703,8 @@ return { ranked: ok.map(r => r.model), errors: results.filter(r => r.err).length
 <p><strong>How to find it:</strong> Your Brev dashboard shows it as the App URL:
 <code>https://nemoclaw-&lt;id&gt;.brevlab.com</code>.</p>
 <p><strong>Running locally:</strong> Use <code>http://localhost:8088</code> (or the port your OpenClaw container
-exposes). No Cloudflare tunnel, no CF Access layer, so connect directly and leave the CF Access JWT field empty.</p>`,
+exposes). No Cloudflare tunnel, no CF Access layer, so connect directly and leave the CF Access JWT field empty.</p>
+<p><strong>Fail-fast backup:</strong> If local OpenClaw fails to start, returns connection errors, or logs <code>EPERM</code>, stop local probing. Use the Brev App URL instead, then paste <code>CF_Authorization</code> below.</p>`,
 
         token: `<p><strong>Usually you can leave this blank.</strong> Run <strong>GET /api/agent</strong> below and the probe
 reads the gateway token out of <code>agent.dashboardUrl</code> and fills this field for you. The base URL plus your
@@ -722,6 +723,7 @@ stealing session tokens. There is no JS escape hatch; this is by design.</p>
 find the <code>CF_Authorization</code> row → copy the full Value (a long JWT string).
 Paste it here. Re-copy it if the probe stops working after a long break, since JWTs expire with your session.</p>
 <p><strong>Running locally:</strong> Leave this field empty. Local OpenClaw has no Cloudflare Access layer.</p>
+<p><strong>Backup mode:</strong> Required for the Brev URL when local OpenClaw is wedged or shows <code>EPERM</code>.</p>
 <p><strong>Why this matters:</strong> The <code>HttpOnly</code> wall is exactly why production systems use
 <em>service tokens</em> for machine-to-machine calls. The browser session flow has no programmatic
 escape hatch by design.</p>`,

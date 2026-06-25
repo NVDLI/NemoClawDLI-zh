@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Browser runtime harness. Host entrypoint: scripts/runtime/lab_runtime_test.sh [--smoke] [url].
 // Set CLAW_URL + CLAW_TOKEN to exercise OpenClaw gateway nodes.
-// A green page with zero tool frames reports WARN, not PASS.
+// With OpenClaw credentials, zero tool frames is a hard failure.
 
 const fs = require('fs');
 const http = require('http');
@@ -23,8 +23,10 @@ const LOOPBACK_ORIGIN = 'http:' + '//127.0.0.1';
 const url = args.find(a => a !== '--smoke' && a !== '--render-only' && a !== '--serve-static') || DEFAULT_LAB_URL;
 const CLAW_URL = process.env.CLAW_URL || '';
 const CLAW_TOKEN = process.env.CLAW_TOKEN || '';
+const CLAW_CF = process.env.CLAW_CF || '';
 const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY || '';
 const DIRECT_API_URL = process.env.NVIDIA_API_URL || 'https://integrate.api.nvidia.com/v1';
+const OPENCLAW_BACKUP_HINT = 'Use backup OpenClaw: set CLAW_URL=https://nemoclaw-<id>.brevlab.com CLAW_TOKEN=<gateway token> CLAW_CF=<CF_Authorization>. If local OpenClaw shows EPERM, stop local probing and use the Brev session URL plus CF_Authorization.';
 
 // Locate the chromium-headless-shell binary.
 // The install path moves between playwright versions, so glob the known roots instead of hardcoding one.
@@ -68,6 +70,42 @@ function startStaticServer() {
   return new Promise(resolve => {
     server.listen(4173, '127.0.0.1', () => resolve(server));
   });
+}
+
+
+function withTimeout(ms) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new Error(`timeout after ${ms}ms`)), ms);
+  return { signal: controller.signal, done: () => clearTimeout(timer) };
+}
+
+function joinUrl(base, pathPart) {
+  return base.replace(/\/+$/, '') + pathPart;
+}
+
+async function preflightOpenClaw() {
+  if (!(CLAW_URL && CLAW_TOKEN)) return;
+  const headers = { Accept: 'application/json, text/plain, */*', Authorization: `Bearer ${CLAW_TOKEN}` };
+  if (CLAW_CF) headers['CF-Access-Jwt-Assertion'] = CLAW_CF;
+  const targets = ['/health', '/healthz', '/api/agent'];
+  const attempts = [];
+  for (const pathPart of targets) {
+    const timeout = withTimeout(6000);
+    const target = joinUrl(CLAW_URL, pathPart);
+    try {
+      const resp = await fetch(target, { headers, signal: timeout.signal });
+      attempts.push(`${resp.status} ${target}`);
+      if (resp.ok || [401, 403].includes(resp.status)) {
+        console.log('OPENCLAW_PREFLIGHT:', attempts.join(' | '));
+        return;
+      }
+    } catch (e) {
+      attempts.push(`${target} -> ${e && e.message ? e.message : String(e)}`);
+    } finally {
+      timeout.done();
+    }
+  }
+  throw new Error(`OpenClaw preflight failed. ${attempts.join(' | ')}. ${OPENCLAW_BACKUP_HINT}`);
 }
 
 function findChrome() {
@@ -135,6 +173,8 @@ function findChrome() {
     return route.continue();
   });
 
+  if (!smoke && !renderOnly) await preflightOpenClaw();
+
   if (smoke) {
     await page.goto('data:text/html,<main id="ok">lab runtime smoke</main>');
     const ok = await page.textContent('#ok');
@@ -197,12 +237,12 @@ function findChrome() {
 
   // For a remote *.brevlab.com launchable, the browser needs the CF_Authorization cookie to clear Cloudflare Access before the WS upgrade.
   // Set it for the launchable host (derived from CLAW_URL) so the headless browser authenticates exactly like a logged-in student.
-  if (process.env.CLAW_CF && CLAW_URL) {
+  if (CLAW_CF && CLAW_URL) {
     try {
       const host = new URL(CLAW_URL).hostname;
       // SameSite=None + Secure so the browser sends it on the cross-site wss upgrade (the page origin differs from the launchable).
       // A Lax cookie is withheld cross-site and CF 302s the handshake, so no challenge arrives.
-      await page.context().addCookies([{ name: 'CF_Authorization', value: process.env.CLAW_CF, domain: host, path: '/', secure: true, sameSite: 'None' }]);
+      await page.context().addCookies([{ name: 'CF_Authorization', value: CLAW_CF, domain: host, path: '/', secure: true, sameSite: 'None' }]);
       console.log('CF_COOKIE: set for', host);
     } catch (e) { console.log('CF_COOKIE: skipped (' + e.message + ')'); }
   }
@@ -304,10 +344,10 @@ function findChrome() {
   const toolsMissing = expectedTools && ws.toolStarts.length === 0 && ws.cmdEnds.length === 0;
 
   if (hardFail) console.log('RESULT: FAIL (errors / unsettled nodes / no flows)');
-  else if (toolsMissing) console.log('RESULT: WARN (page green but NO tool/command frames, so the agent loop was not observed)');
+  else if (toolsMissing) console.log('RESULT: FAIL (OpenClaw credentials supplied but NO tool/command frames observed). ' + OPENCLAW_BACKUP_HINT);
   else console.log('RESULT: PASS' + (expectedTools ? ` (${ws.toolStarts.length} tool starts, ${ws.cmdEnds.length} command ends)` : ''));
 
   await browser.close();
   if (staticServer) staticServer.close();
-  process.exit(hardFail ? 1 : 0);
+  process.exit((hardFail || toolsMissing) ? 1 : 0);
 })().catch(e => { console.error('FATAL:', e.message); process.exit(1); });

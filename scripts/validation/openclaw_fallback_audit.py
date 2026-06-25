@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+"""Audit OpenClaw fail-fast and Brev backup guidance."""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
+    if (_p / "scripts" / "_bootstrap.py").exists():
+        sys.path.insert(0, str(_p / "scripts"))
+        break
+from _bootstrap import find_repo_root
+
+ROOT = find_repo_root(Path(__file__).resolve())
+FILES = {
+    "kickstart": ROOT / "web" / "nemoclaw" / "03a-kickstart.html",
+    "openclaw_js": ROOT / "web" / "nemoclaw" / "scripts" / "_openclaw.js",
+    "runtime_js": ROOT / "scripts" / "runtime" / "test_page_runtime.js",
+    "runtime_sh": ROOT / "scripts" / "runtime" / "lab_runtime_test.sh",
+    "runtime_skill": ROOT / "scripts" / "runtime" / "SKILL.html",
+    "scripts_skill": ROOT / "scripts" / "SKILL.html",
+    "validation_skill": ROOT / "scripts" / "validation" / "SKILL.html",
+}
+
+REQUIRED = {
+    "kickstart": ["EPERM", "Brev App URL", "CF_Authorization", "Fail-fast backup"],
+    "openclaw_js": ["EPERM", "CF_Authorization", "Brev session URL", "stop local probing", "${fallback}${hint}"],
+    "runtime_js": ["OPENCLAW_BACKUP_HINT", "preflightOpenClaw", "RESULT: FAIL (OpenClaw credentials supplied", "toolsMissing) ? 1 : 0", "'/health'"],
+    "runtime_sh": ["CLAW_CF=<CF_Authorization>", "Use Brev URL if local OpenClaw fails or shows EPERM"],
+    "runtime_skill": ["OpenClaw fallback", "CF_Authorization", "EPERM", "CLAW_CF"],
+    "scripts_skill": ["OpenClaw fallback", "python3 scripts/validation/openclaw_fallback_audit.py"],
+    "validation_skill": ["openclaw_fallback_audit.py", "OpenClaw fallback"],
+}
+
+
+def read(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def audit() -> list[str]:
+    findings: list[str] = []
+    for key, tokens in REQUIRED.items():
+        path = FILES[key]
+        if not path.is_file():
+            findings.append(f"missing {path.relative_to(ROOT)}")
+            continue
+        raw = read(path)
+        for token in tokens:
+            if token not in raw:
+                findings.append(f"{path.relative_to(ROOT)} missing {token}")
+    return findings
+
+
+def main() -> int:
+    findings = audit()
+    if findings:
+        for item in findings:
+            print(item)
+        return 1
+    print("openclaw fallback audit: ok")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

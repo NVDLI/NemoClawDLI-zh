@@ -102,6 +102,7 @@ import figure_audit as fa  # noqa: E402
 import cell_audit as ca  # noqa: E402
 import helper_notebook_runtime_audit as hna  # noqa: E402
 import studio_interface_audit as sia  # noqa: E402
+import openclaw_fallback_audit as ofa  # noqa: E402
 import skill_contract as skc  # noqa: E402
 from collections import defaultdict  # noqa: E402
 
@@ -231,6 +232,9 @@ SUITE_META = [
     ("studio_interface", "Studio interface contract", "required",
      "Studio is the operator console for authoring and validation. Its controls must remain reachable at layout extremes, its sidebar lists must scroll internally, and its documented test commands must stay synchronized with the validators.",
      "scripts/validation/studio_interface_audit.py", "audit"),
+    ("openclaw_fallback", "OpenClaw fallback contract", "required",
+     "Credentialed OpenClaw tests must fail fast when the runtime is unreachable, and the kickstart path must point learners to the Brev URL plus CF_Authorization backup instead of silently passing a dead local service.",
+     "scripts/validation/openclaw_fallback_audit.py", "audit"),
     ("skill_schema", "SKILL contract", "recommended",
      "Every SKILL.html skill-meta must be a well-formed contract of its kind: it classifies into one known kind (service-skill, service-index, dir-skill, hub, leaf), carries that kind's required keys, uses a known schema/node_type value and a semver version where the kind has one, and only valid notebook status values. An agent samples this block to work in a directory, so a malformed beacon is a contract an agent cannot trust. Each entry names the SKILL and the missing or invalid field.",
      "scripts/skills/skill_contract.py", "schema_findings"),
@@ -498,6 +502,17 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         ok = False
         vl_fail.extend(f"studio interface: {x}" for x in studio_interface_find)
 
+    # OpenClaw fallback contract (required): credentialed harness fails hard and docs point to Brev backup.
+    try:
+        openclaw_fallback_find = ofa.audit()
+    except Exception as e:
+        openclaw_fallback_find = [f"OpenClaw fallback audit error: {e}"]
+        suite_errors["openclaw_fallback"] = str(e)
+    if openclaw_fallback_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(f"OpenClaw fallback: {x}" for x in openclaw_fallback_find)
+
     # SKILL contract (advisory): every skill-meta is a well-formed beacon of its kind (schema leg)
     # and matches its directory (drift leg, reused from skill_audit). The agent-facing half of the
     # contract: a malformed or stale beacon is what an agent samples and is misled by.
@@ -640,6 +655,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "studio_interface": [D("web/nemoclaw/studio.html", x, REQUIRED,
                                "Keep Studio controls reachable at narrow/short viewports and keep validator commands synchronized across Studio and SKILL docs.")
                              for x in studio_interface_find],
+        "openclaw_fallback": [D("web/nemoclaw/03a-kickstart.html", x, REQUIRED,
+                                "Keep the credentialed harness fail-fast and keep the kickstart backup path explicit: Brev session URL, gateway token, and CF_Authorization.")
+                              for x in openclaw_fallback_find],
         "prose_variety": [D(r["path"], f"score {r['score']} · {', '.join(r['tells'])}", CONSIDER,
                             "Give the page a rhythm pass: vary sentence length, break the staccato triads, turn enumerations back into prose.")
                           for r in pv_flagged],
