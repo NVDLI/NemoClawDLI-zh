@@ -174,7 +174,9 @@ if (!JSDOM) {
 } else {
   try {
     const dom = new JSDOM('<!doctype html><div id="pm"></div>', { pretendToBeVisual: true });
-    global.window = dom.window; global.document = dom.window.document; global.navigator = dom.window.navigator;
+    globalThis.window = dom.window;
+    globalThis.document = dom.window.document;
+    Object.defineProperty(globalThis, "navigator", { value: dom.window.navigator, configurable: true });
     shared.mountPolicyMap("#pm");
     const wrap = dom.window.document.querySelector("#pm .pmap-svg");
     const svg = wrap ? wrap.innerHTML : "";

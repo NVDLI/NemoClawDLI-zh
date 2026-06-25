@@ -104,6 +104,18 @@ const TEST_COMMANDS = [
     cmd: 'python3 scripts/validation/studio_interface_audit.py',
   },
   {
+    name: 'Browser environment probe',
+    mode: 'podman image, no lab stack',
+    desc: 'Finds Podman or Docker, reports podman-compose-via-python availability, and proves container Node/Playwright/Chromium.',
+    cmd: 'scripts/runtime/browser_env_probe.sh',
+  },
+  {
+    name: 'Browser runtime smoke',
+    mode: 'podman image, no lab stack',
+    desc: 'Runs the direct Node/Playwright/Chromium smoke test in the browser-test container.',
+    cmd: 'CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --smoke',
+  },
+  {
     name: 'Static browser render',
     mode: 'podman image, no lab stack',
     desc: 'Runs Chromium in the browser-test container against a static course page.',
