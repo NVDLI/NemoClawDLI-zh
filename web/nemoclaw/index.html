@@ -124,9 +124,16 @@
   <div class="hero">
     <div class="eyebrow">Course home</div>
     <h1 id="course-title">Securing Agents with <span class="accent">OpenShell</span> and <span class="accent">NemoClaw</span></h1>
+    <h2>Abstract</h2>
     <p class="lead" id="course-abstract">
       Modern agents are everywhere, and they’re conceptually simple: a model wired to tools, memory, and a routing decision that keeps running until the task is done. This course starts by building such a system from scratch, then connects those ideas to modern frameworks used by software engineers and non‑technical users alike. You’ll go from a single API call to agent coordination, grounded retrieval, deep planning, and safe deployment using NVIDIA OpenClaw and NemoClaw™.
     </p>
+  </div>
+
+  <div class="howto">
+    <div class="step"><span class="n">1</span><span><b>Drop in your key</b> below. Model calls go to <a href="https://build.nvidia.com" target="_blank" rel="noopener"><code>build.nvidia.com</code></a>; a free <code>nvapi-</code> key unlocks every exercise. Enable LMS/static iframe mode only when your host page needs the CORS worker.</span></div>
+    <div class="step"><span class="n">2</span><span><b>Work the four modules</b> in order. Every cell runs live in the browser, in JavaScript.</span></div>
+    <div class="step"><span class="n">3</span><span><b>For the agent stack</b> in Modules 3&ndash;4, deploy the NemoClaw Brev launchable when a page asks for it; it hosts the course's OpenClaw-in-OpenShell stack.</span></div>
   </div>
 
   <div class="section" id="learning-objectives">
@@ -140,12 +147,6 @@
       <li id="learning-objective-5">Utilize OpenShell to configure agent identities and ensure safe, sandboxed operations.</li>
       <li id="learning-objective-6">Deploy and manage autonomous agents while building persistent skill libraries.</li>
     </ul>
-  </div>
-
-  <div class="howto">
-    <div class="step"><span class="n">1</span><span><b>Drop in your key</b> below. Model calls go to <a href="https://build.nvidia.com" target="_blank" rel="noopener"><code>build.nvidia.com</code></a>; a free <code>nvapi-</code> key unlocks every exercise. Enable LMS/static iframe mode only when your host page needs the CORS worker.</span></div>
-    <div class="step"><span class="n">2</span><span><b>Work the four modules</b> in order. Every cell runs live in the browser, in JavaScript.</span></div>
-    <div class="step"><span class="n">3</span><span><b>For the agent runtime</b> in Modules 3&ndash;4, deploy your own NemoClaw launchable on Brev when a page asks for it.</span></div>
   </div>
 
   <!-- ── Key setup ─────────────────────────────────────────────────────── -->
@@ -172,9 +173,8 @@
       <div class="module-card">
         <a class="mc-main" href="./01a-loop.html">
           <div class="num">Module 1 · ~1 hour · 3 pages</div>
-          <h3>The Loop · Agent · ReAct · Tools</h3>
-          <p>Core ideas from agent systems, comment patterns in practice, and 
-            some artifacts to show what they can do. </p>
+          <h3>Agent Basics · Loop · ReAct · Tools</h3>
+          <p>Build the smallest agent loop, add ReAct reasoning, and turn plain functions into tool calls the model can request.</p>
         </a>
         <div class="pages">
           <a href="./01a-loop.html">1a Loop</a> ·
@@ -185,9 +185,8 @@
       <div class="module-card">
         <a class="mc-main" href="./02a-routing.html">
           <div class="num">Module 2 · ~1 hour · 3 pages</div>
-          <h3>Coordination · Workflows · RAG · Deep Agents</h3>
-          <p>More advanced patterns used in custom workflow/environment design. 
-            Routing, index creation, and planners that spawns sub-agents.</p>
+          <h3>Advanced Patterns · Workflows · RAG · Deep Agents</h3>
+          <p>Route work across calls, retrieve course material as a tool, and use planners that spawn sub-agents.</p>
         </a>
         <div class="pages">
           <a href="./02a-routing.html">2a Workflows</a> ·
@@ -198,8 +197,8 @@
       <div class="module-card live">
         <a class="mc-main" href="./03a-kickstart.html">
           <div class="num">Module 3 · ~1 hour · 3 pages</div>
-          <h3>Environment · Kickstart · OpenClaw · Always-On</h3>
-          <p>Kickstart your NemoClaw launchable and explore some of its core features and interfaces.</p>
+          <h3>NemoClaw Setup · OpenClaw · Always-On</h3>
+          <p>Connect the NemoClaw launchable, then explore OpenClaw's gateway, workspace, skills, and scheduled runs inside OpenShell.</p>
         </a>
         <div class="pages">
           <a href="./03a-kickstart.html">3a Kickstart</a> ·
@@ -210,12 +209,11 @@
       <div class="module-card live">
         <a class="mc-main" href="./04a-safety.html">
           <div class="num">Module 4 · ~1 hour · 3 pages</div>
-          <h3>Safety · NemoClaw · Modern CLIs · Going Further</h3>
-          <p>Shifting focus to NemoClaw policy and security considerations. 
-            Then a tour of modern CLI agent and current patterns/concerns.</p>
+          <h3>OpenShell Safety · Modern CLIs · Going Further</h3>
+          <p>Shift from OpenClaw behavior to the OpenShell policy boundary that NemoClaw assembles around it, then compare modern CLI agents and current safety patterns.</p>
         </a>
         <div class="pages">
-          <a href="./04a-safety.html">4a NemoClaw</a> ·
+          <a href="./04a-safety.html">4a OpenShell</a> ·
           <a href="./04b-modern-clis.html">4b Modern CLIs</a> ·
           <a href="./04c-going-further.html">4c Going Further</a>
         </div>
@@ -248,11 +246,11 @@
           the live API, and the search the agent runs.</div>
       </a>
       <a class="sys-card runtime" href="https://brev.nvidia.com/launchable/deploy/now?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS" target="_blank" rel="noopener">
-        <div class="sys-label">Agent runtime</div>
-        <div class="sys-name">NemoClaw launchable (Brev)</div>
-        <div class="sys-desc">OpenClaw is the sandboxed agent runtime used in Modules 3 and 4.
-          Deploy your launchable on Brev, paste its gateway URL into the exercise, and the
-          browser drives it directly.</div>
+        <div class="sys-label">Agent stack</div>
+        <div class="sys-name">NemoClaw stack on Brev</div>
+        <div class="sys-desc">NemoClaw supplies the hardened assembly: OpenClaw as the agent harness,
+          OpenShell as the sandbox, and deployment policy around both. The Brev launchable is the hosted copy
+          this course asks your browser to drive.</div>
       </a>
     </div>
   </div>

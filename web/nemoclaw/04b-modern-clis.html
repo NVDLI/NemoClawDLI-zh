@@ -73,13 +73,13 @@
       <li>a working directory</li>
       <li>a tool palette</li>
       <li>a memory</li>
-      <li>a way to fire unattended</li>
+      <li>optional ways to run without a person actively typing, such as cron, long tasks, or queued jobs</li>
       <li>a network</li>
     </ul>
     <p class="lead">
       Security turns on which of
-      those a wrapper leaves open by default, and whether the runtime underneath
-      catches a bad call. The brand on the CLI rarely changes that answer.
+      those a wrapper leaves open by default, whether unattended execution is enabled at all,
+      and whether the runtime underneath catches a bad call. The brand on the CLI rarely changes that answer.
     </p>
     <p class="lead">
       That runtime is the OpenShell sandbox you drove in Module 4a, and in this
@@ -93,10 +93,10 @@
      interchangeable for almost any task you hand them however much their defaults diverge.
      They part ways on harness weight. Harness weight measures how much each one hides for
      you and how far its defaults reach before you ever ask.</p>
-  <p>Hermes earns its place by making self-modification a default and writing and revising its
-     own skills as a matter of routine. The others can do the same within reason because any
-     agent that can edit files can rewrite its own beacon or skills. Hermes simply foregrounds
-     the behavior as a security trajectory in its own right.</p>
+  <p>Hermes differs from the editor CLIs because skill creation, persistent memory,
+     cron, and the messaging gateway are normal operating paths in its public docs.
+     Other agents can still rewrite their own beacons or skills when file edits are
+     allowed, so the risk is not unique to Hermes.</p>
   <ul class="cli-list">
     <li><a href="https://docs.claude.com/en/docs/claude-code" target="_blank" rel="noopener"><strong>Claude Code</strong></a> (Anthropic).
         Beacon <code>CLAUDE.md</code> at the project root, plus <code>~/.claude/CLAUDE.md</code> for user-wide rules.
@@ -115,13 +115,14 @@
         shape as OpenClaw, with self-modification and a messaging surface turned on.</li>
     <li><a href="https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/how-to-build-safer-autonomous-agent-using-openclaw" target="_blank" rel="noopener"><strong>OpenClaw</strong></a> (in NVIDIA NemoClaw).
         The one you have been driving. Its beacon is the whole <code>workspace/</code> folder (SOUL.md, AGENTS.md,
-        IDENTITY.md, and the rest). Built for unattended operation, and in NemoClaw it runs <em>inside</em> the OpenShell
-        sandbox, so its tool palette is gated by a kernel policy regardless of what the model decides.</li>
+        IDENTITY.md, and the rest). It supports unattended operation through gateway-managed triggers, and in the
+        NemoClaw reference stack it runs <em>inside</em> the OpenShell sandbox, so its tool palette is gated by a kernel policy
+        regardless of what the model decides.</li>
   </ul>
 
   <div class="callout">
-    <strong>OpenShell hosts all of them, so the runtime you are learning is
-    not OpenClaw-specific.</strong> The same OpenShell integration is documented by
+    <strong>OpenShell can host this class of agent application; NemoClaw is the
+    reference stack this course runs.</strong> The same OpenShell integration is documented by
     NVIDIA for Codex, Cursor, and OpenCode. The CLI you pick decides the starting
     defaults, while the OpenShell wrapper around it finally governs how far
     any of those defaults are permitted to reach.
@@ -183,7 +184,7 @@ const META = { frameworks: [
   { id: "codex", name: "Codex CLI", note: "OpenAI. Beacon AGENTS.md.", source: "https://raw.githubusercontent.com/openai/codex/main/README.md", extract: "Codex CLI is a coding agent from OpenAI that runs locally on your computer. If you want Codex in your code editor (VS Code, Cursor, Windsurf), install in your IDE. If you want the desktop app experience, run codex app or visit the Codex App page." },
   { id: "cursor", name: "Cursor", note: "Closed-source editor agent. No public repo; described from the course.", source: "course-authored (no public repo)", extract: "Cursor is a closed-source AI code editor with a built-in agent. It has no public repository, so this description stands in for a README." },
   { id: "hermes", name: "Hermes", note: "Nous Research. Self-modification and a messaging gateway turned on.", source: "https://raw.githubusercontent.com/NousResearch/hermes-agent/main/README.md", extract: "The self-improving AI agent built by Nous Research. It's the only one here with a built-in learning loop. It creates skills from experience, improves them during use, nudges itself to persist knowledge, searches its own past conversations, and builds a deepening model of who you are across sessions. Run it on a $5 VPS, a GPU cluster, or serverless infrastructure that costs nearly nothing when idle." },
-  { id: "openclaw", name: "OpenClaw", note: "In NVIDIA NemoClaw. No public repo; described from the course.", source: "course-authored (no public repo)", extract: "OpenClaw is the agent runtime this course drives. It runs a model in a loop with tools, the same application shape as the other CLI agents, with a few defaults turned up for unattended, long-running operation." },
+  { id: "openclaw", name: "OpenClaw", note: "In NVIDIA NemoClaw. No public repo; described from the course.", source: "course-authored (no public repo)", extract: "OpenClaw is the agent harness this course drives. It runs a model in a loop with tools, the same application shape as the other CLI agents, with a few defaults turned up for unattended, long-running operation." }
 ] };
 const FW = META.frameworks;                       // [{ id, name, note, source, extract }]
 const nameOf = (id) => (FW.find((f) => f.id === id) || {}).name || id;
@@ -368,7 +369,7 @@ helpers.log("CLI agent mounted below. Give it a goal and watch it drive the runt
   </script>
 
   <h2>Open a real shell on your launchable</h2>
-  <p>Your nemoclaw launchable gives you a real host shell over the same <code>/ws/terminal</code>
+  <p>Your Brev launchable gives you a real host shell over the same <code>/ws/terminal</code>
      connection Module 4a's policy probes use. That host carries the <strong>openshell</strong> CLI, the
      operator tool that manages your sandboxed agent. Every line you type below runs on the launchable, and
      the output is its own.</p>
@@ -385,10 +386,10 @@ helpers.log("CLI agent mounted below. Give it a goal and watch it drive the runt
     mountRunCell("#cell-deepagents", {
       label: "a real terminal on your launchable, with an agent-sandbox shortcut",
       autorun: true,
-      code: `// A real shell on your nemoclaw launchable, over the same /ws/terminal PTY Module 4a's probes use
-// (helpers.terminal).
-// The host carries openshell; your agent runs in a sandbox, so "agent <cmd>" runs there via openshell sandbox exec (helpers.sandboxExec).
-// Interactive sessions (openclaw tui) need a persistent connection a one-shot terminal cannot hold, so chatting lives in the panel below.
+      code: `// A real shell on your Brev launchable, over the same /ws/terminal PTY Module 4a's probes use
+// (helpers.terminal). The host carries openshell; your agent runs in a sandbox, so "agent <cmd>" runs
+// there via openshell sandbox exec (helpers.sandboxExec). Interactive sessions (openclaw tui) need a
+// persistent connection a one-shot terminal cannot hold, so chatting lives in the panel below.
 
 function launchableUrl() {
   let u = localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl") || "";
@@ -707,7 +708,7 @@ helpers.log("agent chat mounted below.");
   </div>
 
   <div class="foot-nav">
-    <a href="04a-safety.html">← Module 4a: NemoClaw</a>
+    <a href="04a-safety.html">← Module 4a: OpenShell</a>
     <a class="next" href="04c-going-further.html">Module 4c: Going Further →</a>
   </div>
 </main>

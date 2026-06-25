@@ -53,11 +53,11 @@ WEB_PAGE_DESC = {
         "02a-routing":       "Routing: planner, workers, and synthesis as separate calls with visible bounded orchestration.",
         "02b-rag":           "RAG: retrieval wired as a tool, from corpus chunks to grounded answer.",
         "02c-deep":          "Deep agents: a planner delegating to sub-agents over a shared filesystem.",
-        "03a-kickstart":     "Kickstart: connect the browser course to the lab launchable and check the runtime endpoints.",
+        "03a-kickstart":     "Connect NemoClaw: connect the browser course to the NemoClaw launchable and check the runtime endpoints.",
         "03b-openclaw":      "OpenClaw: the workspace folder is the agent's live configuration.",
         "03c-always-on":     "Always-on agents: a per-turn loop nested inside slower triggers.",
-        "04a-safety":        "NemoClaw safety: policy and sandbox boundaries the prompt cannot talk past.",
-        "04b-modern-clis":   "Modern CLI agents compared, plus a real terminal on the NemoClaw launchable.",
+        "04a-safety":        "OpenShell in NemoClaw: policy and sandbox boundaries the prompt cannot talk past.",
+        "04b-modern-clis":   "Modern CLI agents compared against the OpenShell/NemoClaw containment model.",
         "04c-going-further": "Going further: the layered view and where to take the lab next.",
         "index":             "Human entry: course landing, API-key setup, and iframe opt-in control.",
         "glossary":          "Searchable glossary of the course's agent terms.",
@@ -93,7 +93,7 @@ TENETS = {
         "return for the next layer.",
         "Keep the release open: Apache 2.0, no gate or paywall, the foyer surfacing only the "
         "released courses, and mats cited by public URL.",
-        "Ship the services a course drives (a model gateway, a sandboxed agent runtime, a policy "
+        "Ship the services a course drives (a model gateway, a sandboxed agent harness, a policy "
         "control plane) and let them carry the mechanical work, so a reader's attention stays on "
         "the decision the exercise is about.",
         "Keep contribution low-barrier with the quality bar held: the content discipline in "

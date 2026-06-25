@@ -830,7 +830,9 @@ def hollow_intro(f: Path) -> list:
 
 
 # Vacuous meta-writing: filler that comments on the course or the idea instead of conveying it.
-# These clichés read as marketing and carry no information.
+# These clichés read as marketing and carry no information. Keep this phrase-level and strict:
+# a single "Don't X; do Y" frame or unsupported category/status label can make a paragraph sound
+# researched when it only gestures at authority.
 _FILLER = re.compile(
     r"\b(?:where the (?:real|hard|interesting|actual) \w+ (?:lives|happens|is)\b"
     r"|the shape (?:this|the|that) \w+ chose\b"
@@ -839,20 +841,31 @@ _FILLER = re.compile(
     r"|quietly (?:drops|ignores|skips|hides|sheds)\b|(?:boils|comes) down to\b"
     r"|at its (?:core|heart)\b|the (?:real|hard) (?:work|engineering) (?:lives|happens|is)\b"
     r"|the (?:whole|entire) (?:point|thing|shape|story|idea|picture|game)\b"
-    r"|everything (?:\w+ ){0,5}lives in\b)", re.I)
+    r"|everything (?:\w+ ){0,5}lives in\b"
+    r"|(?:do not|don['’]t)\s+[^.;!?]{3,160}?[;.]\s*(?:do|treat|use|call|write|replace|say|name)\b"
+    r"|(?:closest|clearest|natural)\s+(?:public\s+)?(?:sibling|example)\b"
+    r"|first[- ]class\s+(?:part|parts|citizen|feature|features)\b"
+    r"|peer\s+runtime\b|makes?\s+[^.;!?]{1,80}?\s+explicit\b"
+    r"|shipping\s+product\s+categor(?:y|ies)\b)", re.I)
+
+
+def _vacuous_meta_text(chunks) -> list:
+    out = []
+    seen = set()
+    for c in chunks if isinstance(chunks, (list, tuple)) else [chunks]:
+        for s, _ in _sentences(c):
+            for m in _FILLER.finditer(s):
+                key = (m.group(0).strip(), s)
+                if key not in seen:
+                    out.append(key); seen.add(key)
+    return out
 
 
 def vacuous_meta(f: Path) -> list:
     """(phrase, sentence) for vacuous meta-writing: filler that comments on the course or the idea
-    instead of conveying it ('where the real engineering lives', 'the shape this course chose').
+    instead of conveying it ('where the real engineering lives', 'Don't X; do Y', 'first-class part').
     Reads as marketing and carries no information; cut the sentence or replace it with the fact."""
-    out = []
-    for c in narrative(f):
-        for s, _ in _sentences(c):
-            m = _FILLER.search(s)
-            if m:
-                out.append((m.group(0).strip(), s))
-    return out
+    return _vacuous_meta_text(narrative(f))
 
 
 # A copular definitional appositive ("This is the smallest artifact in the course, a single chat() call",
@@ -1159,13 +1172,24 @@ def main() -> int:
 
     if a.text is not None:
         m = metrics(a.text)
+        meta = [{"phrase": p, "sentence": sent} for p, sent in _vacuous_meta_text(a.text)]
         if not m:
-            print("(need at least 5 sentences to measure variety)"); return 0
-        out = {"score": _score(m), "flagged": _score(m) >= FLAG_AT, "metrics": m, "tells": tells(m)}
+            out = {"score": None, "flagged": bool(meta), "metrics": None, "tells": [], "vacuous_meta": meta}
+            if a.json:
+                print(json.dumps(out, indent=2))
+            else:
+                print("(need at least 5 sentences to measure variety)")
+                for x in meta:
+                    print(f"  vacuous-meta: {x['phrase']} -> {x['sentence']}")
+            return 0
+        out = {"score": _score(m), "flagged": _score(m) >= FLAG_AT or bool(meta),
+               "metrics": m, "tells": tells(m), "vacuous_meta": meta}
         if a.json:
             print(json.dumps(out, indent=2))
         else:
             print(f"score {out['score']}  {m}\n  tells: {out['tells'] or 'none'}")
+            for x in meta:
+                print(f"  vacuous-meta: {x['phrase']} -> {x['sentence']}")
             if m["sentences"] < 12:
                 print(f"  note: only {m['sentences']} sentences; cv and rule-of-three density are noisy "
                       f"on short snippets, so read this as a rough signal, not a verdict")

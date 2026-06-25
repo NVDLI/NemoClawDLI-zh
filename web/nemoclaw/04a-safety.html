@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>NemoClaw · Securing Agents</title>
+<title>OpenShell · Securing Agents</title>
 <link rel="stylesheet" href="styles/_style.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
@@ -50,12 +50,12 @@
 
   <div class="hero">
     <div class="eyebrow">Module 4 · Part A of 3</div>
-    <h1>The <span>NemoClaw</span> Sandbox</h1>
+    <h1>The <span>OpenShell</span> Sandbox</h1>
     <p class="lead">
       Prompt rules alone cannot contain an agent, so the containment has to
-      live in infrastructure the model cannot talk its way past. Every
-      NemoClaw launchable ships with OpenShell, a kernel-level sandbox that
-      decides what the agent may do whatever its prompt says.
+      live in infrastructure the model cannot talk its way past. The NemoClaw stack
+      ships the OpenClaw agent harness inside OpenShell, a kernel-level sandbox that decides what
+      the agent may do whatever its prompt says.
     </p>
     <p class="lead">
       From here you drive the box yourself, watching the kernel allow and
@@ -110,16 +110,17 @@
   </ul>
 
   <div class="callout">
-    <strong>The OpenClaw / OpenShell split.</strong> OpenClaw is the
-    agent runtime that chooses what to do given the room it has to move.
+    <strong>The OpenClaw / OpenShell / NemoClaw split.</strong> OpenClaw is the
+    agent harness that chooses what to do given the room it has to move.
     OpenShell is the kernel sandbox in front of it that sets the bounds
     of that room, enforcing one policy on every filesystem access,
     network connection, and syscall the agent attempts. Each piece stays
     small and testable because neither does the other's job. OpenShell is
-    also agent-agnostic, so it can enclose OpenClaw just as readily as a peer like
+    also agent-agnostic: it can sit in front of OpenClaw,
     <a href="https://nousresearch.com/" target="_blank" rel="noopener">Hermes from Nous Research</a>,
-    the self-improving agent you met in Module 3c. Any agent that matches that shape
-    works under it, whatever its brand.
+    or a deep-agent workflow that needs OS-level containment. NemoClaw is the
+    reference stack that packages OpenClaw and OpenShell with lifecycle commands,
+    policy presets, and deployment defaults.
   </div>
 
   <h2>Four mechanisms OpenShell composes</h2>
@@ -174,7 +175,7 @@
   <div class="callout">
     <p><strong>Same runtime as Kickstart.</strong> Every cell here drives the same
        OpenClaw agent on your
-       <a href="https://brev.nvidia.com/launchable/deploy/now?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS" target="_blank" rel="noopener">Brev launchable</a>,
+       <a href="https://brev.nvidia.com/launchable/deploy/now?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS" target="_blank" rel="noopener">NemoClaw launchable on Brev</a>,
        so if one logs <code>⚠ DEGRADED</code> the agent is looping on
        <code>tool_search_code</code> instead of acting.</p>
     <p>Shape the runtime with the recover cell below and then re-run, and on a freshly launched

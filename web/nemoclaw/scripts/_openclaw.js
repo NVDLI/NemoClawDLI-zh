@@ -856,7 +856,7 @@ await new Promise((resolve, reject) => {
 export function mountGwRecover(sel) {
   mountCanvasFlow(sel, {
   label: "Detect & recover · health check, then escalating reset",
-  intro: "Health check, recover, and logs for the shared agent runtime. Health check tests whether the agent can run a command and whether toolSearch is on; Recover disables toolSearch and clears sessions (the restart that applies it is opt-in, so Run-all is safe); Runtime logs tails the log when a run stalls. Run these on a fresh launchable, or whenever a chat logs ⚠ DEGRADED.",
+  intro: "Health check, recover, and logs for the shared OpenClaw harness. Health check tests whether the agent can run a command and whether toolSearch is on; Recover disables toolSearch and clears sessions (the restart that applies it is opt-in, so Run-all is safe); Runtime logs tails the log when a run stalls. Run these on a fresh launchable, or whenever a chat logs ⚠ DEGRADED.",
   edges: [
     { from: "gw-health", to: "gw-fix" },
   ],

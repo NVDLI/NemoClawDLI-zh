@@ -52,8 +52,10 @@
       <li>and routing decisions that must not depend on whatever the last tool returned.</li>
     </ul>
     <p>
-      A <b>workflow agent</b> is flexible agent which between can straddle between these classes of problems, usually by having tools which offload the context management and synchronization to dedicated loops and sequences.
-      This notebook will not dig too deep into the many options, but they should be understood and we will motivate some surface-level support mechanisms to tackle some more advanced problems.
+      A <b>workflow agent</b> can span these problem classes by moving context management
+      and synchronization into dedicated loops, routers, and planned sequences. This page
+      stays at the pattern level: you will see how routing, fan-out, and plan-then-execute
+      structures help when a single ReAct loop becomes awkward.
     </p>
   </div>
 
