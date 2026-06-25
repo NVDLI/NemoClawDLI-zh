@@ -1,5 +1,5 @@
 <svg class="gfx-dark" viewBox="0 0 720 320" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"
-     style="width:100%;height:auto;display:block;background:var(--bg,#0d0d0d);border:1px solid var(--e3,#2a2a2a);border-radius:8px;padding:14px;max-width:780px;margin:1.5rem auto"
+     style="width:100%;height:auto;display:block;background:var(--bg,#0d0d0d);border:1px solid var(--e3,#2a2a2a);border-radius:8px;padding:14px;max-width:1040px;margin:1.5rem auto"
      role="img" aria-label="Three concentric defense rings around an agent core, with side labels connected by leader lines. From inside to outside the rings are prompt rules, application guardrails, and kernel containment. An outbound action arrow leaves the agent and is stopped at the outermost ring. An outside-world box sits beyond the rings on the right.">
   <defs>
     <marker id="ring-q6-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="var(--gfx-red,#d74e4e)"/></marker>

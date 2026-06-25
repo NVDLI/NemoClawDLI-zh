@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Static legibility / formatting checks the prose suites miss.
 
-Figures are inline SVG with a fixed viewBox and max-width, so on-screen text size is
+Figures are inline or fetched SVG with a fixed viewBox and max-width, so on-screen text size is
 computable: rendered_px = font_size * render_width / viewBox_width. Flags text under a
-legibility floor, text spilling past the figure bounds, and missing a11y affordances
-(svg aria-label, img alt, rel=noopener on new-tab links). All advisory.
+legibility floor, full-width course figures capped too small, text spilling past the figure
+bounds, and missing a11y affordances (svg aria-label, img alt, rel=noopener on new-tab links).
+All advisory.
 
-Checks: tiny-text, text-overflow, no-aria, img-no-alt, blank-link.
+Checks: tiny-text, small-render, text-overflow, no-aria, img-no-alt, blank-link.
 Run:  python3 scripts/validation/figure_audit.py
 """
 from __future__ import annotations
@@ -22,6 +23,7 @@ HERE = Path(__file__).resolve()
 TASK1 = find_repo_root(HERE)
 WEB = TASK1 / "web"
 FLOOR = 9.0                 # px: below this, text is hard to read
+MIN_RENDER_W = 900           # px: full-width text figures below this read like thumbnails
 # Content column (px) a figure renders into. main: 71.25rem ~ 1140px - padding; index: 62.5rem.
 COLUMN = {"index.html": 936, "_default": 1076}
 SCRIPT = re.compile(r"<script\b.*?</script>", re.S | re.I)
@@ -45,31 +47,60 @@ def fonts_in(svg: str):
     return out
 
 
+def _resolve_asset(page: Path, src: str) -> Path | None:
+    """Resolve a data-svg-src/img src the way the browser does for lesson pages."""
+    if not src or src.startswith(("http://", "https://", "data:")):
+        return None
+    cand = (page.parent / src).resolve()
+    try:
+        cand.relative_to(TASK1.resolve())
+    except ValueError:
+        return None
+    return cand if cand.exists() else None
+
+
+def _svg_cases(path: Path, body: str):
+    """Yield (svg, label, fetched) for inline SVGs and fetched data-svg-src placeholders."""
+    rel = str(path.relative_to(WEB.parent))
+    for m in SVG.finditer(body):
+        yield m.group(0), rel, False
+    for m in re.finditer(r'<[^>]+data-svg-src\s*=\s*"([^"]+)"[^>]*>', body):
+        src = m.group(1)
+        asset = _resolve_asset(path, src)
+        if not asset or asset.suffix.lower() != ".svg":
+            continue
+        try:
+            svg = asset.read_text(errors="ignore")
+        except OSError:
+            continue
+        yield svg, f"{rel} -> {src}", True
+
+
 def audit_file(path: Path):
-    """Run the per-figure legibility and a11y checks on one page. This is where a figure with text
-    too small to read on screen, text spilling past the figure frame, or an SVG with no screen-reader
-    label gets caught before it ships. Returns the five finding lists (tiny, no-aria, overflow,
-    img-no-alt, blank-link) that run() aggregates."""
+    """Run render-size, legibility, and a11y checks on one page. This catches both inline
+    SVG and fetched <div data-svg-src=...> course figures before they ship."""
     body = SCRIPT.sub("", path.read_text(errors="ignore"))  # skip lesson/canvas code
     col = column_for(path)
     rel = str(path.relative_to(WEB.parent))
-    tiny, noaria, over = [], [], []
-    for m in SVG.finditer(body):
-        svg = m.group(0)
+    tiny, small, noaria, over = [], [], [], []
+    for svg, where, fetched in _svg_cases(path, body):
         # viewBox="minx miny width height" -> width is 3rd token
         vbm = re.search(r'viewBox\s*=\s*"\s*[\d.-]+\s+[\d.-]+\s+([\d.]+)\s+([\d.]+)', svg)
         vbw = float(vbm.group(1)) if vbm else None      # viewBox width: the SVG's own coordinate scale
         mw = re.search(r"max-width\s*:\s*([\d.]+)px", svg)
         render_w = min(float(mw.group(1)), col) if mw else col  # actual on-screen width: capped by max-width or column
         label = (re.search(r'aria-label\s*=\s*"([^"]{0,42})', svg) or [None, "(no aria-label)"])[1]
+        has_text = "<text" in svg
         if vbw:
             scale = render_w / vbw                      # px-per-viewBox-unit: converts font size to rendered px
             smallest = min((fs for fs, _ in fonts_in(svg)), default=None)
             if smallest is not None and smallest * scale < FLOOR:
-                tiny.append((rel, round(smallest * scale, 1), smallest, int(vbw), int(render_w), label))  # below legibility floor
+                tiny.append((where, round(smallest * scale, 1), smallest, int(vbw), int(render_w), label))  # below legibility floor
+            if fetched and has_text and render_w < MIN_RENDER_W:
+                small.append((where, int(render_w), MIN_RENDER_W, label))
         if "role=\"img\"" not in svg or "aria-label" not in svg:
-            if "<text" in svg:                          # decorative markers (no text) need no label
-                noaria.append((rel, label))             # a figure with text but no screen-reader label
+            if has_text:                                # decorative markers (no text) need no label
+                noaria.append((where, label))           # a figure with text but no screen-reader label
         # text past the figure's horizontal bounds (clipped / hits the frame); width est. from chars
         if vbw:
             for tm in re.finditer(r"<text\b([^>]*)>([^<]+)</text>", svg):
@@ -84,16 +115,16 @@ def audit_file(path: Path):
                 w = len(content) * fs2 * 0.58           # estimate label width from char count and font size
                 anchor = "middle" if 'text-anchor="middle"' in attrs or "text-anchor:middle" in attrs else \
                          ("end" if 'text-anchor="end"' in attrs or "text-anchor:end" in attrs else "start")
-                left = x - (w if anchor == "end" else w / 2 if anchor == "middle" else 0)   # leftmost x given the anchor
-                right = x + (0 if anchor == "end" else w / 2 if anchor == "middle" else w)  # rightmost x given the anchor
-                if left < -8 or right > vbw + 8:        # spills past the viewBox (clipped / hits the frame)
-                    over.append((rel, content[:34], int(left), int(right), int(vbw)))
+                left = x - (w if anchor == "end" else w / 2 if anchor == "middle" else 0)
+                right = x + (0 if anchor == "end" else w / 2 if anchor == "middle" else w)
+                if left < -8 or right > vbw + 8:
+                    over.append((where, content[:34], int(left), int(right), int(vbw)))
     # body-only: page <script> is lesson code with functional imgs
     imgs = [rel for m in re.finditer(r"<img\b[^>]*>", body)
             if not re.search(r'\balt\s*=\s*"[^"]+"', m.group(0))]
     blanks = [rel for m in re.finditer(r"<a\b[^>]*target\s*=\s*\"_blank\"[^>]*>", body)
               if "noopener" not in m.group(0)]
-    return tiny, noaria, over, imgs, blanks
+    return tiny, small, noaria, over, imgs, blanks
 
 
 def run(verbose=True):
@@ -101,15 +132,19 @@ def run(verbose=True):
     exists so the gate and a reviewer get one accounting of unreadable figure text, overflow, and
     missing a11y across the bundle. Returns the five finding lists; the report and exit code use them."""
     files = sorted((WEB / "nemoclaw").glob("*.html")) + sorted(WEB.glob("*.html"))
-    tiny, noaria, over, imgs, blanks = [], [], [], [], []
+    tiny, small, noaria, over, imgs, blanks = [], [], [], [], [], []
     for f in files:
-        t, n, o, i, b = audit_file(f)             # per-page findings, by category
-        tiny += t; noaria += n; over += o; imgs += i; blanks += b
+        t, s, n, o, i, b = audit_file(f)          # per-page findings, by category
+        tiny += t; small += s; noaria += n; over += o; imgs += i; blanks += b
     if verbose:
         if tiny:
             print(f"[tiny text · rendered < {FLOOR}px] {len(tiny)}")
             for rel, rpx, fs, vbw, rw, lab in sorted(tiny, key=lambda x: x[1]):
                 print(f"   {rpx:4}px  (font {fs} @ viewBox {vbw}->{rw}px)  {rel}  «{lab}…»")
+        if small:
+            print(f"[small rendered figure · rendered < {MIN_RENDER_W}px] {len(small)}")
+            for rel, rw, floor, lab in sorted(small, key=lambda x: x[1]):
+                print(f"   {rw:4}px  (< {floor}px)  {rel}  «{lab}…»")
         if over:
             print(f"[text overflows figure bounds] {len(over)}")
             for rel, txt, lf, rt, vbw in over:
@@ -122,11 +157,11 @@ def run(verbose=True):
             print(f"[img missing alt] {len(imgs)}: {sorted(set(imgs))}")
         if blanks:
             print(f"[target=_blank missing rel=noopener] {len(blanks)}: {sorted(set(blanks))}")
-        total = len(tiny) + len(noaria) + len(over) + len(imgs) + len(blanks)
+        total = len(tiny) + len(small) + len(noaria) + len(over) + len(imgs) + len(blanks)
         print(f"\nfigure_audit: {total} finding(s) "
-              f"(tiny {len(tiny)}, overflow {len(over)}, no-aria {len(noaria)}, "
+              f"(tiny {len(tiny)}, small {len(small)}, overflow {len(over)}, no-aria {len(noaria)}, "
               f"img-alt {len(imgs)}, blank-link {len(blanks)})")
-    return {"tiny": tiny, "overflow": over, "no_aria": noaria, "img_no_alt": imgs, "blank_link": blanks}
+    return {"tiny": tiny, "small_render": small, "overflow": over, "no_aria": noaria, "img_no_alt": imgs, "blank_link": blanks}
 
 
 if __name__ == "__main__":
