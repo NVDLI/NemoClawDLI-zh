@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Kickstart · Securing Agents</title>
+  <title>Connect NemoClaw · Securing Agents</title>
   <link rel="stylesheet" href="styles/_style.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
@@ -155,11 +155,13 @@
 
     <div class="hero">
       <div class="eyebrow">Module 3 · Part A of 3 · live calls begin</div>
-      <h1>The <span>Kickstart</span></h1>
+      <h1>Connect the <span>NemoClaw</span> Stack</h1>
       <p class="lead">
         The research agent you just built ran on stateless calls, with all the orchestration living in
-        your page. Now you point those same patterns at OpenClaw, a real <em>agent runtime</em> that holds
-        its own state inside your NemoClaw launchable. Reaching it means moving along the spectrum of
+        your page. Now you point those same patterns at OpenClaw, the stateful <em>agent harness</em>
+        inside the NemoClaw stack. OpenShell supplies the sandbox underneath it. NemoClaw supplies
+        the reference blueprint, lifecycle commands, and policy packaging around that runtime-and-sandbox pair.
+        Reaching OpenClaw means moving along the spectrum of
         access protocols sketched below. You work the two ends of that spectrum here by timing the model
         endpoint's first token and then making your opening OpenClaw call over the
         <code>/cli/gateway</code> WebSocket.
@@ -176,7 +178,7 @@
     <ul>
       <li><strong>HTTP REST endpoints.</strong> The model answers each call in isolation: the <a href="https://platform.openai.com/docs/api-reference/chat" target="_blank" rel="noopener"><em>Chat Completions API</em></a>, where your code carries the history, or the <em>Responses API</em>, where the server keeps it for you.</li>
       <li><strong>The <a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">Model Context Protocol</a>.</strong> A standard wire that lets a runtime reach tools without writing bespoke glue for each one.</li>
-      <li><strong>A persistent gateway.</strong> The agent runtime keeps a <code>/cli/gateway</code> <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API" target="_blank" rel="noopener">WebSocket</a> open and streams events back over <a href="https://www.jsonrpc.org/specification" target="_blank" rel="noopener">JSON-RPC</a> instead of answering one request at a time.</li>
+      <li><strong>A persistent gateway.</strong> The agent harness keeps a <code>/cli/gateway</code> <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API" target="_blank" rel="noopener">WebSocket</a> open and streams events back over <a href="https://www.jsonrpc.org/specification" target="_blank" rel="noopener">JSON-RPC</a> instead of answering one request at a time.</li>
     </ul>
 
     <!-- video removed: hour-long NemoClaw session, too long and distracting for an inline companion. Re-enable by uncommenting.
@@ -197,7 +199,7 @@
     -->
 
     <h2>The two endpoints you work with from here</h2>
-    <p>The model endpoint answers chat completions; the agent runtime runs OpenClaw's loop.</p>
+    <p>The model endpoint answers chat completions; the agent harness runs OpenClaw's loop.</p>
 
     <div class="url-pair">
       <a class="url-card" href="https://build.nvidia.com" target="_blank" rel="noopener">
@@ -210,8 +212,8 @@
       <a class="url-card"
         href="https://brev.nvidia.com/launchable/deploy/now?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS"
         target="_blank" rel="noopener" style="border-left-color:var(--gs);background:rgba(118,185,0,.06)">
-        <h3>NemoClaw launchable</h3>
-        <p>The OpenClaw agent runtime on Brev, at
+        <h3>NemoClaw stack on Brev</h3>
+        <p>The course launchable runs OpenClaw inside OpenShell, at
           <code>https://nemoclaw-&lt;id&gt;.brevlab.com</code>. Identity, tools,
           session memory, and a kernel-level sandbox. Accessed via WebSocket
           gateway at <code>/cli/gateway</code>.
@@ -238,7 +240,7 @@
 
     <div id="probe-claw"></div>
 
-    <p>If the OpenClaw probe times out or returns a 502, the agent runtime
+    <p>If the OpenClaw probe times out or returns a 502, the agent harness
       hasn't finished booting, which usually means the launchable started
       before OpenClaw finished loading its policy YAML.</p>
     <p>Wait 30 seconds and then click Probe again to give the runtime time to
@@ -700,7 +702,7 @@ return { ranked: ok.map(r => r.model), errors: results.filter(r => r.err).length
         return m ? m[1] : null;
       },
       fieldHelp: {
-        url: `<p><strong>What it is:</strong> The root URL of your NemoClaw launchable, with no trailing <code>/v1</code>.</p>
+        url: `<p><strong>What it is:</strong> The root URL of your NemoClaw launchable running OpenClaw inside OpenShell, with no trailing <code>/v1</code>.</p>
 <p><strong>How to find it:</strong> Your Brev dashboard shows it as the App URL:
 <code>https://nemoclaw-&lt;id&gt;.brevlab.com</code>.</p>
 <p><strong>Running locally:</strong> Use <code>http://localhost:8088</code> (or the port your OpenClaw container

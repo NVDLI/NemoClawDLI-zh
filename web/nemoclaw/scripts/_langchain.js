@@ -15,7 +15,7 @@ export const COURSE_PAGES = [
   { id: "03a-kickstart",     title: "3a · Kickstart" },
   { id: "03b-openclaw",      title: "3b · The OpenClaw Agent" },
   { id: "03c-always-on",     title: "3c · The Always-On Agent" },
-  { id: "04a-safety",        title: "4a · The NemoClaw Sandbox" },
+  { id: "04a-safety",        title: "4a · The OpenShell Sandbox" },
   { id: "04b-modern-clis",   title: "4b · Modern CLI Agents" },
   { id: "04c-going-further", title: "4c · Going Further" },
 ];

@@ -8,7 +8,8 @@ agent contract.
 ## First move
 
 1. Read [`AGENT_QUICKSTART.md`](AGENT_QUICKSTART.md) once per session for orientation.
-2. Open the `SKILL.html` for the directory you are working in and parse its
+2. For issue, MR, taxonomy, or broad prose work, read [`docs/agent_process.md`](docs/agent_process.md). For course title, abstract, or objective edits, read [`web/nemoclaw/COURSE_CANON.md`](web/nemoclaw/COURSE_CANON.md) first; that copy is immutable.
+3. Open the `SKILL.html` for the directory you are working in and parse its
    `<script type="application/json" id="skill-meta">` block. That JSON is the brain:
    `web/nemoclaw/SKILL.html` for the course, `web/SKILL.html` for the bundle, the
    root `SKILL.html` for the whole repo.
