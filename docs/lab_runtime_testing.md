@@ -45,10 +45,17 @@ COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD \
   podman compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
 ```
 
-If your host uses `podman-compose`, use the same flags with that command. If Docker
-is available, `docker compose` works with the same compose files. This repo does not
-vendor a compose binary; install one on the host or in a temporary venv when a clean
-agent machine only has `podman`.
+If your host uses `podman-compose`, use the same flags with that command. The
+Python module form is also valid and is the podman-compose-via-python fallback:
+
+```bash
+COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD \
+  python3 -m podman_compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
+```
+
+If Docker is available, `docker compose` works with the same compose files. This
+repo does not vendor a compose binary; install one on the host or in a temporary
+venv when a clean agent machine only has `podman`.
 
 Then run a browser-page test on the same container network:
 

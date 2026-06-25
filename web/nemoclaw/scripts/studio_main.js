@@ -19,8 +19,13 @@ const MODULES = [
   { label:'04c · Going Further',     file:'04c-going-further.html' },
 ];
 
-const API           = '/lab/api/contents/nemoclaw/';
+const API_CANDIDATES = [
+  '/lab/api/contents/web/nemoclaw/',
+  '/lab/api/contents/nemoclaw/',
+];
 const COMMENT_FILE  = 'studio_comments.json';
+let contentApiBase  = null;
+let contentApiReady = false;
 const SNAPSHOT_SEL  = 'h1,h2,h3,p,li,td,.callout,.hero .lead,.cf-panel-title';
 const ANNOTATE_SYS  = `You are a concise teaching assistant for an AI agent engineering course.
 A student just ran a code exercise and got the following output. In 2–4 sentences explain what
@@ -62,6 +67,9 @@ const chgList   = document.getElementById('chg-list');
 const jumpBtn   = document.getElementById('jump-btn');
 const saveSelBtn= document.getElementById('save-sel-btn');
 const liteBtn   = document.getElementById('lite-btn');
+const refList   = document.getElementById('ref-list');
+const writeNote = document.getElementById('write-note');
+const testList  = document.getElementById('test-list');
 
 // ═══════════════════════════════════════════════════════════════
 // UTILITIES
@@ -72,7 +80,12 @@ function xsrf() {
   return m ? decodeURIComponent(m[1]) : '';
 }
 function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
 }
 function setStatus(msg, cls='') {
   tbStatus.textContent = msg;
@@ -80,6 +93,61 @@ function setStatus(msg, cls='') {
 }
 function getIdoc() {
   try { return frame.contentDocument; } catch { return null; }
+}
+
+
+const TEST_COMMANDS = [
+  {
+    name: 'Static studio contract',
+    mode: 'no lab stack',
+    desc: 'Checks studio controls, self-hosted assets, read-only fallback, and script SKILL testing docs.',
+    cmd: 'python3 scripts/validation/studio_interface_audit.py',
+  },
+  {
+    name: 'Static browser render',
+    mode: 'podman image, no lab stack',
+    desc: 'Runs Chromium in the browser-test container against a static course page.',
+    cmd: 'CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only',
+  },
+  {
+    name: 'Lab stack via Python Podman Compose',
+    mode: 'podman deployment',
+    desc: 'Starts nginx/lab services with the Python podman-compose module when podman compose is unavailable.',
+    cmd: 'COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD python3 -m podman_compose -f docker-compose.yml -f docker-compose.override.yml up -d --build',
+  },
+  {
+    name: 'Full lab browser path',
+    mode: 'podman deployment',
+    desc: 'Runs the browser harness on the compose network after the lab stack is up.',
+    cmd: 'CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html',
+  },
+];
+
+function renderTestCommands() {
+  if (!testList) return;
+  testList.innerHTML = '';
+  TEST_COMMANDS.forEach((row, idx) => {
+    const item = document.createElement('div');
+    item.className = 'test-item';
+    item.innerHTML = `
+      <div class="test-name">${esc(row.name)}</div>
+      <div class="test-desc">${esc(row.mode)} - ${esc(row.desc)}</div>
+      <code class="test-cmd">${esc(row.cmd)}</code>
+      <button type="button" class="test-copy" data-test-i="${idx}">Copy</button>`;
+    testList.appendChild(item);
+  });
+  testList.querySelectorAll('.test-copy').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const row = TEST_COMMANDS[Number(btn.dataset.testI)];
+      try {
+        await navigator.clipboard.writeText(row.cmd);
+        btn.textContent = 'Copied';
+      } catch {
+        btn.textContent = 'Copy failed';
+      }
+      setTimeout(() => { btn.textContent = 'Copy'; }, 1400);
+    });
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -90,7 +158,7 @@ function getIdoc() {
 async function fetchLiteCSS() {
   if (_liteCss !== null) return _liteCss;
   try {
-    const r = await fetch('styles/styles/_lite_overlay.css?t=' + Date.now());
+    const r = await fetch('styles/_lite_overlay.css?t=' + Date.now());
     _liteCss = r.ok ? await r.text() : '';
   } catch { _liteCss = ''; }
   return _liteCss;
@@ -119,10 +187,10 @@ function removeLiteMode(idoc) {
 liteBtn.addEventListener('click', async () => {
   liteMode = !liteMode;
   liteBtn.classList.toggle('active', liteMode);
-  liteBtn.textContent = liteMode ? '🌙 Dark' : '☀️ Light';
+  liteBtn.textContent = liteMode ? 'Dark' : 'Light';
   liteBtn.title = liteMode
     ? 'Switch back to dark lab mode'
-    : 'Toggle light (export) mode. It applies styles/_lite_overlay.css so you can compare the dark lab against the light edX export';
+    : 'Toggle light export mode';
   const idoc = getIdoc();
   if (idoc) {
     if (liteMode) await applyLiteMode(idoc);
@@ -138,7 +206,7 @@ let blockEditActive = false;
 let _beEl           = null;   // currently selected iframe element
 let _beOrigHTML     = null;   // outerHTML at selection time (display/revert baseline)
 let _beFileLoc      = null;   // block's exact slice in the source file: { content, start, end, raw }
-let _beCm           = null;   // CodeMirror instance for block editor
+let _beCm           = null;   // optional editor instance when an embedding page provides one
 
 const blockEditorPanel = document.getElementById('block-editor');
 const beBadge = document.getElementById('be-badge');
@@ -212,7 +280,7 @@ function _fmtHTML(html) {
   return out.trim();
 }
 
-// Init CodeMirror inside the panel (lazy, once)
+// Init optional rich editor inside the panel (lazy, once)
 function _ensureBeCM() {
   if (_beCm) return _beCm;
   if (typeof window.CodeMirror !== 'function') return null;
@@ -370,11 +438,11 @@ function openBlockEditor(el) {
   _locateBlockInFile(el).then(loc => {
     _beFileLoc = loc;
     if (type === 'canvas') {
-      _beSetMsg('⚠ Canvas flow: edits update the live DOM only. The mountCanvasFlow() call in the script is the save target.');
+      _beSetMsg('Canvas flow: edits update the live DOM only. Edit the mountCanvasFlow() source to persist.');
       return;
     }
     if (!loc) {
-      _beSetMsg('⚠ could not locate the <' + el.tagName.toLowerCase() + '> block in source. Apply works, Save disabled');
+      _beSetMsg('Could not locate the <' + el.tagName.toLowerCase() + '> block in source. Apply works, Save disabled');
       return;
     }
     // A mount call targeting this id regenerates the content on every load, so any save is overwritten.
@@ -390,7 +458,7 @@ function openBlockEditor(el) {
       if (isMounted) {
         _beFileLoc = null; // block Save
         _beSetMsg(
-          '✗ JS-mounted by a mountDiagram() / mountCanvasFlow() call that regenerates ' +
+          'JS-mounted by a mountDiagram() / mountCanvasFlow() call that regenerates ' +
           '#' + id + ' on every page load. Any save is overwritten on refresh. ' +
           'To change this diagram edit the spec object in the page <script> tag.'
         );
@@ -424,9 +492,9 @@ document.getElementById('be-apply').addEventListener('click', () => {
     _beEl.replaceWith(newEl);
     _beEl = newEl;
     newEl.classList.add('_beSelected');
-    _beSetMsg('✓ applied to page', 'ok');
+    _beSetMsg('applied to page', 'ok');
   } catch(e) {
-    _beSetMsg('✗ ' + e.message.slice(0,70), 'err');
+    _beSetMsg(e.message.slice(0,70), 'err');
   }
 });
 
@@ -434,7 +502,7 @@ document.getElementById('be-apply').addEventListener('click', () => {
 document.getElementById('be-save').addEventListener('click', async () => {
   if (!_beEl || !currentFile) return;
   const newHTML = (_beCm ? _beCm.getValue() : beTa.value).trim();
-  _beSetMsg('💾 saving…');
+  _beSetMsg('saving');
   try {
     // Use the location found at selection time, anchored to the original element.
     // Re-locating after Apply would fail: _beEl holds edited content by then.
@@ -456,9 +524,9 @@ document.getElementById('be-save').addEventListener('click', async () => {
     // Update baseline so the next save diffs against the new content
     _beFileLoc = { content: newContent, start: loc.start, end: loc.start + cleanHTML.length };
     _beOrigHTML = cleanHTML;
-    _beSetMsg('✓ saved to ' + currentFile, 'ok');
+    _beSetMsg('saved to ' + currentFile, 'ok');
   } catch(e) {
-    _beSetMsg('✗ ' + e.message.slice(0,80), 'err');
+    _beSetMsg(e.message.slice(0,80), 'err');
   }
 });
 
@@ -578,10 +646,9 @@ function loadPage(file, forceReload=false) {
   modSel.value = match ? match.file : '';
 
   loadingEl.style.display = 'flex';
-  setStatus('loading ' + file + '…');
-  // Absolute URL so the iframe resolves under either /lab/static or /lab/tree.
-  const base = new URL('.', location.href).href;
-  frame.src = base + file + '?studio=1&t=' + Date.now();
+  setStatus('loading ' + file);
+  // Absolute URL so the iframe resolves in the lab, Pages, and local static previews.
+  frame.src = directPageUrl(file) + '?studio=1&t=' + Date.now();
 }
 
 // After iframe loads: inject studio tooling and trigger auto-features
@@ -592,14 +659,13 @@ frame.addEventListener('load', () => {
   if (!idoc) {
     // contentDocument is null → cross-origin block or sandbox restriction.
     // The page is visible but studio tooling cannot reach into it.
-    setStatus('⚠ cannot access page. A cross-origin or iframe sandbox is blocking it. '
-      + 'Make sure studio.html and the notebooks are served from the same origin '
-      + '(e.g. both at /lab/static/nemoclaw/).', 'warn');
+    setStatus('cannot access page: same-origin frame access is blocked', 'warn');
     return;
   }
 
   checkLastModified();
   renderComments();
+  renderReferences(idoc);
 
   // Module scripts are type=module (async). Give them ~700ms to finish mounting.
   setTimeout(() => {
@@ -630,7 +696,7 @@ frame.addEventListener('load', () => {
       jumpBtn.disabled = changedEls.length===0;
       if (changedEls.length) {
         highlightEls(changedEls, idoc);
-        setStatus(`↑ ${changedEls.length} changed section(s). Use the sidebar to jump`, 'ok');
+        setStatus(`${changedEls.length} changed section(s). Use the sidebar to jump`, 'ok');
       }
     } else {
       setStatus('loaded · ' + currentFile);
@@ -638,20 +704,96 @@ frame.addEventListener('load', () => {
   }, 700);
 });
 
+
+function directPageUrl(file) {
+  return new URL(file, new URL('.', location.href)).href;
+}
+
+async function resolveContentApi(file=currentFile) {
+  if (contentApiReady) return contentApiBase;
+  if (!file) return null;
+  for (const base of API_CANDIDATES) {
+    try {
+      const r = await fetch(base + encodeURIComponent(file) + '?content=0&t=' + Date.now(), {cache:'no-store'});
+      if (r.ok) {
+        contentApiBase = base;
+        contentApiReady = true;
+        if (writeNote) writeNote.textContent = 'Write access: Jupyter contents API at ' + base;
+        return contentApiBase;
+      }
+    } catch { /**/ }
+  }
+  contentApiBase = null;
+  contentApiReady = true;
+  if (writeNote) writeNote.textContent = 'Read-only preview: Jupyter contents API not available on this origin.';
+  return null;
+}
+
+function contentApiUrl(file=currentFile, query='') {
+  return contentApiBase + encodeURIComponent(file) + query;
+}
+
+function commentStorageKey() {
+  return 'nemoclaw.studio.comments.v2';
+}
+
+function classifyReference(href) {
+  if (/^https?:\/\//i.test(href)) return 'external';
+  if (href.includes('/mats/') || href.includes('mats/')) return 'material';
+  if (/\.html(?:$|[?#])/i.test(href)) return 'page';
+  if (/\.(js|css|json|png|svg|jpg|jpeg|webp|ico)(?:$|[?#])/i.test(href)) return 'asset';
+  return 'link';
+}
+
+function renderReferences(idoc) {
+  if (!refList) return;
+  if (!idoc) {
+    refList.innerHTML = '<div class="empty-hint">References unavailable for this frame.</div>';
+    return;
+  }
+  const seen = new Set();
+  const rows = [];
+  idoc.querySelectorAll('a[href]').forEach(a => {
+    const raw = a.getAttribute('href') || '';
+    if (!raw || raw.startsWith('#') || raw.startsWith('javascript:')) return;
+    const abs = new URL(raw, directPageUrl(currentFile || '')).href;
+    const key = abs.replace(/[?#].*$/, '');
+    if (seen.has(key)) return;
+    seen.add(key);
+    rows.push({raw, abs, text:(a.textContent || raw).trim().replace(/\s+/g,' ').slice(0,90), kind:classifyReference(raw)});
+  });
+  if (!rows.length) {
+    refList.innerHTML = '<div class="empty-hint">No page references found.</div>';
+    return;
+  }
+  rows.sort((a,b) => a.kind.localeCompare(b.kind) || a.text.localeCompare(b.text));
+  refList.innerHTML = '';
+  rows.slice(0,24).forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'ref-item';
+    div.innerHTML = `<span class="ref-kind">${esc(r.kind)}</span><a target="_blank" rel="noopener" href="${esc(r.abs)}">${esc(r.text || r.raw)}</a><div class="ref-meta">${esc(r.raw)}</div>`;
+    refList.appendChild(div);
+  });
+}
+
 // ═══════════════════════════════════════════════════════════════
 // JUPYTERLAB API
 // ═══════════════════════════════════════════════════════════════
 
 async function checkLastModified() {
   if (!currentFile) return;
+  const base = await resolveContentApi(currentFile);
+  if (!base) {
+    lmRow.textContent = 'Read-only static preview';
+    return;
+  }
   try {
-    const r = await fetch(API + currentFile + '?content=0&t=' + Date.now());
+    const r = await fetch(contentApiUrl(currentFile, '?content=0&t=' + Date.now()));
     if (!r.ok) return;
     const meta = await r.json();
     if (meta.last_modified) {
       const lm = meta.last_modified;
-      if (lastModified && lm !== lastModified)
-        setStatus('⚠ file changed externally since load', 'warn');
+      if (lastModified && lm !== lastModified) setStatus('file changed externally since load', 'warn');
       lastModified = lm;
       lmRow.textContent = 'Last modified: ' + lm.replace('T',' ').slice(0,16) + ' UTC';
     }
@@ -659,16 +801,23 @@ async function checkLastModified() {
 }
 
 async function fetchContent() {
-  // The type=file&format=text&content=1 query is required; a bare GET returns content:null.
-  const r = await fetch(API + currentFile + '?type=file&format=text&content=1&t=' + Date.now());
-  if (!r.ok) throw new Error('fetch ' + r.status);
-  const meta = await r.json();
-  if (typeof meta.content !== 'string') throw new Error('content must be a string but got ' + typeof meta.content);
-  return meta.content;
+  const base = await resolveContentApi(currentFile);
+  if (base) {
+    const r = await fetch(contentApiUrl(currentFile, '?type=file&format=text&content=1&t=' + Date.now()));
+    if (!r.ok) throw new Error('fetch ' + r.status);
+    const meta = await r.json();
+    if (typeof meta.content !== 'string') throw new Error('content must be a string but got ' + typeof meta.content);
+    return meta.content;
+  }
+  const r = await fetch(directPageUrl(currentFile) + '?source=1&t=' + Date.now(), {cache:'no-store'});
+  if (!r.ok) throw new Error('static fetch ' + r.status);
+  return await r.text();
 }
 
 async function putContent(content) {
-  const r = await fetch(API + currentFile, {
+  const base = await resolveContentApi(currentFile);
+  if (!base) throw new Error('write API unavailable on this origin');
+  const r = await fetch(contentApiUrl(currentFile), {
     method:'PUT',
     headers:{'Content-Type':'application/json','X-XSRFToken':xsrf()},
     body:JSON.stringify({type:'file',format:'text',content}),
@@ -697,7 +846,9 @@ function stopPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer=nu
 async function pollTick() {
   if (!currentFile) return;
   try {
-    const r = await fetch(API + currentFile + '?content=0&t=' + Date.now());
+    const base = await resolveContentApi(currentFile);
+    if (!base) return;
+    const r = await fetch(contentApiUrl(currentFile, '?content=0&t=' + Date.now()));
     if (!r.ok) return;
     const meta = await r.json();
     const lm = meta.last_modified;
@@ -707,8 +858,8 @@ async function pollTick() {
       lastModified = lm;
       const idoc = getIdoc();
       if (idoc) diffSnap = snapshotEls(idoc);
-      setStatus('↺ reloading the changed file…', 'warn');
-      frame.src = currentFile + '?studio=1&t=' + Date.now();
+      setStatus('reloading changed file', 'warn');
+      frame.src = directPageUrl(currentFile) + '?studio=1&t=' + Date.now();
     }
     lastModified = lm;
   } catch { /**/ }
@@ -771,8 +922,14 @@ jumpBtn.addEventListener('click', () => {
 // ═══════════════════════════════════════════════════════════════
 
 async function loadComments() {
+  const base = await resolveContentApi(MODULES[0]?.file || 'index.html');
+  if (!base) {
+    try { comments = JSON.parse(localStorage.getItem(commentStorageKey()) || '[]'); }
+    catch { comments = []; }
+    return;
+  }
   try {
-    const r = await fetch(API + COMMENT_FILE + '?type=file&format=text&content=1&t=' + Date.now());
+    const r = await fetch(contentApiBase + COMMENT_FILE + '?type=file&format=text&content=1&t=' + Date.now());
     if (!r.ok) { comments=[]; return; }
     const meta = await r.json();
     comments = JSON.parse(typeof meta.content === 'string' ? meta.content : '[]');
@@ -780,7 +937,12 @@ async function loadComments() {
 }
 
 async function saveComments() {
-  const r = await fetch(API + COMMENT_FILE, {
+  const base = await resolveContentApi(MODULES[0]?.file || 'index.html');
+  if (!base) {
+    localStorage.setItem(commentStorageKey(), JSON.stringify(comments, null, 2));
+    return;
+  }
+  const r = await fetch(contentApiBase + COMMENT_FILE, {
     method:'PUT',
     headers:{'Content-Type':'application/json','X-XSRFToken':xsrf()},
     body:JSON.stringify({type:'file',format:'text',content:JSON.stringify(comments,null,2)}),
@@ -813,7 +975,7 @@ function renderComments() {
       <div class="cmt-meta">
         <span>${esc(c.anchor?.textStart?.slice(0,28)||'(page-level)')}…</span>
         ${!c.done
-          ? `<button class="cmt-resolve" data-i="${idx}">✓ resolve</button>`
+          ? `<button class="cmt-resolve" data-i="${idx}">resolve</button>`
           : `<span style="color:var(--gd)">resolved</span>`}
       </div>`;
     cmtList.appendChild(div);
@@ -895,7 +1057,7 @@ function injectCommentBadges(idoc) {
       if (!el) return;
       const badge = idoc.createElement('span');
       badge.className='_stBadge';
-      badge.textContent='💬';
+      badge.textContent='note';
       badge.title=c.text;
       el.appendChild(badge);
     });
@@ -1003,16 +1165,18 @@ function hidePop(){ pop.style.display='none'; _popAnchorEl=null; }
 // ═══════════════════════════════════════════════════════════════
 
 document.getElementById('run-btn').addEventListener('click', () => {
-  const idoc=getIdoc(); if(idoc) triggerRunAll(idoc);
+  const idoc=getIdoc();
+  if (idoc) triggerRunAll(idoc);
+  else setStatus('no accessible frame loaded', 'warn');
 });
 
 function triggerRunAll(idoc) {
-  const btns = Array.from(idoc.querySelectorAll('.cf-btn-run'));
+  const btns = Array.from(new Set(idoc.querySelectorAll('.cf-btn-run,.cell-run')));
   const ready = btns.filter(b=>!b.disabled);
   ready.forEach(b=>b.click());
   runNote.textContent = ready.length
-    ? `▶ triggered ${ready.length} canvas flow(s)`
-    : 'No canvas flows on this page.';
+    ? `triggered ${ready.length} runnable block(s)`
+    : 'No runnable blocks on this page.';
   return ready.length;
 }
 
@@ -1025,7 +1189,7 @@ function watchRunCompletion(idoc) {
     const bar = wrap.querySelector('.cf-status-bar');
     if (!bar) return;
     const obs = new MutationObserver(() => {
-      if (bar.textContent.startsWith('✓ ran')) {
+      if (/ran|done|complete/i.test(bar.textContent)) {
         obs.disconnect();
         wrap.querySelectorAll('.cf-panel-output').forEach(outEl => {
           const text = outEl.textContent.trim();
@@ -1038,7 +1202,7 @@ function watchRunCompletion(idoc) {
   });
 }
 
-// Inject a "🤖 Annotate" button into each results summary (idempotent)
+// Inject an annotate button into each results summary (idempotent)
 function injectAnnotateBtns(idoc) {
   idoc.querySelectorAll('.cf-panel-results-det').forEach(det => {
     if (det.querySelector('._stAnnBtn')) return;
@@ -1046,17 +1210,17 @@ function injectAnnotateBtns(idoc) {
     if (!summary) return;
     const btn = idoc.createElement('button');
     btn.className='_stAnnBtn';
-    btn.textContent='🤖 Annotate';
+    btn.textContent='Annotate';
     btn.title='Ask the LLM to annotate this output';
     btn.addEventListener('click', async ev => {
       ev.stopPropagation();
       const outEl = det.querySelector('.cf-panel-output');
       if (!outEl) return;
       const text=outEl.textContent.trim();
-      if (!text){btn.textContent='(no output yet)';setTimeout(()=>btn.textContent='🤖 Annotate',1500);return;}
-      btn.disabled=true; btn.textContent='🤖…';
+      if (!text){btn.textContent='no output';setTimeout(()=>btn.textContent='Annotate',1500);return;}
+      btn.disabled=true; btn.textContent='Annotating';
       await annotateEl(outEl, text);
-      btn.textContent='🤖 Annotate'; btn.disabled=false;
+      btn.textContent='Annotate'; btn.disabled=false;
     });
     summary.appendChild(btn);
   });
@@ -1074,7 +1238,7 @@ async function annotateEl(outEl, outputText) {
 
   const ann = outEl.ownerDocument.createElement('div');
   ann.className='studio-annotation ann-loading';
-  ann.innerHTML='<div class="ann-head">🤖 Studio Annotation</div><span>annotating…</span>';
+  ann.innerHTML='<div class="ann-head">Studio Annotation</div><span>annotating</span>';
   outEl.appendChild(ann);
 
   try {
@@ -1084,14 +1248,14 @@ async function annotateEl(outEl, outputText) {
         {role:'system', content:ANNOTATE_SYS},
         {role:'user',   content:outputText.slice(0,2500)},
       ],
-      max_tokens:8196,
+      max_tokens:1024,
       temperature:0.3,
     });
     const content = resp.choices?.[0]?.message?.content || '(no response)';
-    ann.innerHTML = `<div class="ann-head">🤖 Studio Annotation</div>${esc(content)}`;
+    ann.innerHTML = `<div class="ann-head">Studio Annotation</div>${esc(content)}`;
     ann.classList.remove('ann-loading');
   } catch(e) {
-    ann.innerHTML = `<div class="ann-head">🤖 Studio Annotation</div><span style="opacity:.5">LLM unavailable: ${esc(e.message.slice(0,60))}</span>`;
+    ann.innerHTML = `<div class="ann-head">Studio Annotation</div><span style="opacity:.5">LLM unavailable: ${esc(e.message.slice(0,60))}</span>`;
     ann.classList.remove('ann-loading');
   }
 }
@@ -1199,17 +1363,18 @@ function injectSaveBtns(idoc) {
 
     const btn = idoc.createElement('button');
     btn.className='_stSaveBtn'; btn.dataset.nodeId=nodeId;
-    btn.textContent='💾 Save cell';
+    btn.textContent='Save cell';
     btn.title='Save this cell\'s code to the source file (only this cell)';
     head.appendChild(btn);
 
     btn.addEventListener('click', async () => {
       const cmEl = panel.querySelector('.cf-code-view[data-lang="js"] .CodeMirror');
       const cm   = cmEl?.CodeMirror;
-      const newCode = cm ? cm.getValue() : (ta?.value || '');
-      if (!newCode) { btn.textContent='✓ no change'; setTimeout(()=>btn.textContent='💾 Save cell',1500); return; }
+      const codeEl = panel.querySelector('.cf-panel-code code, .cf-code-view code');
+      const newCode = cm ? cm.getValue() : (ta?.value || codeEl?.textContent || '');
+      if (!newCode) { btn.textContent='no change'; setTimeout(()=>btn.textContent='Save cell',1500); return; }
 
-      btn.disabled=true; btn.textContent='💾 saving…';
+      btn.disabled=true; btn.textContent='saving';
       try {
         if (cellSel) {
           await _saveNodeCode(cellSel, nodeId, newCode);
@@ -1218,10 +1383,10 @@ function injectSaveBtns(idoc) {
           const orig = ta ? ta.defaultValue : '';
           await doSingleSave(orig, newCode);
         }
-        btn.textContent='✓ saved!'; btn.classList.add('ok');
-        setTimeout(()=>{btn.textContent='💾 Save cell';btn.classList.remove('ok');btn.disabled=false;},2000);
+        btn.textContent='saved'; btn.classList.add('ok');
+        setTimeout(()=>{btn.textContent='Save cell';btn.classList.remove('ok');btn.disabled=false;},2000);
       } catch(e) {
-        btn.textContent='✗ '+e.message.slice(0,40); btn.disabled=false;
+        btn.textContent=e.message.slice(0,40); btn.disabled=false;
       }
     });
   });
@@ -1266,7 +1431,7 @@ function renderPending() {
 saveSelBtn.addEventListener('click', async()=>{
   const toSave = pendingChgs.filter(c=>c.checked);
   if (!toSave.length||!currentFile) return;
-  saveSelBtn.disabled=true; saveSelBtn.textContent='💾 saving…';
+  saveSelBtn.disabled=true; saveSelBtn.textContent='saving';
   try {
     let content = await fetchContent();
     for (const ch of toSave) {
@@ -1280,7 +1445,7 @@ saveSelBtn.addEventListener('click', async()=>{
   } catch(e) {
     setStatus('save failed: '+e.message, 'warn');
   }
-  saveSelBtn.textContent='💾 Save checked';
+  saveSelBtn.textContent='Save checked';
   saveSelBtn.disabled=pendingChgs.length===0;
 });
 
@@ -1310,7 +1475,9 @@ document.querySelectorAll('.sb-head[data-sec]').forEach(head=>{
 // ═══════════════════════════════════════════════════════════════
 
 async function init() {
+  await resolveContentApi(MODULES[0]?.file || 'index.html');
   await loadComments();
+  renderTestCommands();
 
   // Honour ?page= query param
   const p = new URLSearchParams(location.search).get('page');
