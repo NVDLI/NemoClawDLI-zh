@@ -272,23 +272,19 @@
   <p>
     Run the engine node first; it exports the maze utilities and one shared solver
     (<code>state.runMaze</code>) that walks corridors automatically and calls the
-    model only at junctions. Then pick a route:
+    model only at junctions. Then run the editable maze-agent node below.
   </p>
-  <ul>
-    <li>the <strong>non-vision</strong> route sends the model only the ASCII map,</li>
-    <li>the <strong>vision</strong> route also attaches a rendered picture of the same maze.</li>
-  </ul>
   <p>
-    Comparing the two routes shows whether a second modality helps; the ASCII text alone may already
-    carry everything the model needs. Both runs hand you the
-    same panel of controls, each one isolating a different variable:
+    That second node is the student surface. Its <code>DIRECTIVE</code> is the core system
+    instruction, written as normal multiline text so you can edit it comfortably. The options
+    object underneath controls the experiment: model, maze size, text map, image attachment,
+    move history, coordinate trail, and whether the tool schema is repeated in the system prompt.
   </p>
-  <ul>
-    <li>the <code>model</code> selector swaps the brain driving the run;</li>
-    <li>the <code>includeText</code>, <code>includeImage</code>, and <code>includeHistory</code> switches decide what the model is shown;</li>
-    <li>the editable system <code>DIRECTIVE</code> rewrites the instructions it works under;</li>
-    <li>and the <code>ADVANCED</code> toggle grows the maze into a harder test.</li>
-  </ul>
+  <p>
+    Start with the working defaults, then change one knob at a time. Turn on
+    <code>includeImage</code> to test the rendered maze, switch <code>model</code> to compare brains,
+    or set <code>advanced</code> to grow the maze after the simple case works.
+  </p>
 
   <div id="cell-llm-maze"></div>
 
@@ -357,19 +353,17 @@
   <p>Each question is answerable by editing a knob in the LLM-maze cell above and rerunning it.</p>
   <ol>
     <li><strong>Take the text away from the multimodal model.</strong>
-        In the vision route, set <code>includeText:false</code> and leave
-        <code>includeImage:true</code>, then rerun. The omni model now sees only the
-        rendered picture of the maze. Does it still reach the goal, and does it take
-        more decisions than the text-plus-image run did?</li>
+        Set <code>includeText:false</code> and <code>includeImage:true</code>, then rerun.
+        The model now sees only the rendered picture of the maze. Does it still reach
+        the goal, and does it take more decisions than the text-plus-image run did?</li>
     <li><strong>Remove the strategy hint from the DIRECTIVE.</strong>
         Delete the line that says to prefer unvisited branches over visited cells, then
-        rerun the non-vision route. Count the decisions against the run with the hint in
-        place. How much of the model's competence came from that one sentence?</li>
+        rerun the same cell. Count the decisions against the run with the hint in place.
+        How much of the model's competence came from that one sentence?</li>
     <li><strong>Swap the brain in the slot.</strong>
-        Change <code>model:"omni"</code> to <code>model:"super"</code> in the non-vision
-        route and rerun. The loop, the maze, perception, and action do not change; only
-        the reasoning socket does. Does the larger text model reach the goal in fewer
-        decisions?</li>
+        Change <code>model:"vision"</code> to <code>model:"super"</code> and rerun.
+        The loop, maze, perception, and action do not change; only the reasoning socket
+        does. Does the larger text model reach the goal in fewer decisions?</li>
   </ol>
 
   <h2>Try it · the model as a pure function</h2>
@@ -873,17 +867,17 @@ return { steps, won: true };
 // ── Canvas 1.6: LLM / VLM planner · the model as a brain in the same maze slot ─
 mountCanvasFlow("#cell-llm-maze", {
   label: "LLM planner · model as the reasoning socket",
-  intro: "Run the engine node first; it exports the maze utilities and one shared solver (state.runMaze) to state. Then pick a route: the text-only route feeds the model just the ASCII map, while the vision route also attaches a rendered picture of the maze. Each route exposes the same runMaze knobs: model (a key from state.MAZE_MODELS), includeText / includeImage / includeHistory, promptFormat, toolSpecInSystem (which restates the exact tool output format in the system prompt), and an ADVANCED toggle for a bigger maze. Same engine, so you can compare modalities, context, and models head-to-head.",
+  intro: "Run the engine node first; it exports the maze utilities and one shared solver (state.runMaze) to state. Then run the editable maze-agent node. The run node is open by default because it is the exercise surface: edit DIRECTIVE, then change model, advanced, includeText, includeImage, includeHistory, includeCoords, or toolSpecInSystem one at a time.",
   nodes: [
     {
       id: "helpers", icon: "⚙️", title: "Maze engine",
       x: 0, y: 0,
       showCode: false,
-      summary: "The engine code is collapsed by default because it is mostly web plumbing. If you expand it, scan the exported names at the bottom: state.runMaze is the shared solver that the route nodes call.",
-      code: `// Reading guide: this is infrastructure, not a required coding exercise. The route
-// nodes below are the intended surface. Expand this only if you want to inspect how
-// maps, images, tool calls, and corridor auto-walking are wired together.
-// Maze-generation plumbing, stored in state so the route nodes can use it.
+      summary: "The engine code is collapsed by default because it is mostly web plumbing. If you expand it, scan the exported names at the bottom: state.runMaze is the shared solver that the editable run node calls.",
+      code: `// Reading guide: this is infrastructure, not a required coding exercise. The run
+// node below is the intended student surface. Expand this only if you want to inspect
+// how maps, images, tool calls, and corridor auto-walking are wired together.
+// Maze-generation plumbing, stored in state so the run node can use it.
 // The lesson is the brain swap: the same loop that ran DFS, BFS, and A* now
 // drives a language model over this maze instead.
 
@@ -1020,7 +1014,7 @@ state.DECISION_TOOL = {
 };
 
 // SYS_DIRECTIVE is the editable "core" of the system message.
-// A route node surfaces it as a DIRECTIVE constant a student can rewrite.
+// The run node surfaces it as a DIRECTIVE constant a student can rewrite.
 // SYS_REFERENCE holds the fixed map key; runMaze sends directive, reference, tool spec.
 state.SYS_DIRECTIVE = [
   "You are navigating a maze. You are called only at JUNCTIONS, the places where 2+ forward paths branch.",
@@ -1042,14 +1036,14 @@ state.SYS = state.SYS_DIRECTIVE + "\\n\\n" + state.SYS_REFERENCE;
 // Image-capable entries are marked below. Pick one in runMaze by key,
 // e.g. state.runMaze(helpers, state, { model: "vision" }).
 state.MAZE_MODELS = {
-  omni:       { id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", maxTok: 2048, temp: 0.6,  // multimodal reasoning model (reads images)
-                extra_body: { reasoning_budget: 1024, chat_template_kwargs: { enable_thinking: true } } },
-  reasoning:  { id: "nvidia/nemotron-3-nano-30b-a3b", maxTok: 1200, temp: 0.6,        // text reasoning model
-                extra_body: { reasoning_budget: 800, chat_template_kwargs: { enable_thinking: true } } },
-  vision:     { id: "nvidia/nemotron-nano-12b-v2-vl", maxTok: 1024, temp: 0.3 },     // reads images (needs room to reach the tool call)
-  qwenVision: { id: "qwen/qwen3.5-122b-a10b", maxTok: 1024, temp: 0.4 },             // reads images + tools
-  super:      { id: "nvidia/nemotron-3-super-120b-a12b", maxTok: 1024, temp: 0.4 },  // strong tool-caller
-  gptOss:     { id: "openai/gpt-oss-120b", maxTok: 1500, temp: 0.5 }                 // reasoning + tools
+  omni:       { id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", maxTok: 16384, temp: 0.6,  // multimodal reasoning model (reads images)
+                extra_body: { reasoning_budget: 4096, chat_template_kwargs: { enable_thinking: true } } },
+  reasoning:  { id: "nvidia/nemotron-3-nano-30b-a3b", maxTok: 16384, temp: 0.6,       // text reasoning model
+                extra_body: { reasoning_budget: 4096, chat_template_kwargs: { enable_thinking: true } } },
+  vision:     { id: "nvidia/nemotron-nano-12b-v2-vl", maxTok: 4096, temp: 0.3 },     // reads images (needs room to reach the tool call)
+  qwenVision: { id: "qwen/qwen3.5-122b-a10b", maxTok: 4096, temp: 0.4 },             // reads images + tools
+  super:      { id: "nvidia/nemotron-3-super-120b-a12b", maxTok: 16384, temp: 0.4 }, // reasoning model; give it room to think and call tools
+  gptOss:     { id: "openai/gpt-oss-120b", maxTok: 16384, temp: 0.5 }                // reasoning + tools
 };
 
 state.generateMaze = generateMaze;
@@ -1435,76 +1429,38 @@ log("Maze engine ready.");
 `,
     },
     {
-      id: "text", icon: "📝", title: "Non-vision route · text only",
+      id: "run", icon: "🧭", title: "Maze agent · editable run",
       x: 1, y: 0,
-      showCode: false,
-      summary: "The route code is collapsed by default. If you expand it, the important part is the final state.runMaze call: it sends the ASCII map, keeps history, and leaves image input off.",
-      code: `// Text-only route. The readable part is the state.runMaze(...) options object at
-// the bottom: includeText is on, includeImage is off, and the solver keeps history.
-if (!state.runMaze) { helpers.log("Run the 'Maze engine' node first."); return; }
-// Non-vision route, using the shared solver from the engine node (run it first).
-// model choices (state.MAZE_MODELS): omni, reasoning, vision, qwenVision, super, gptOss
-const ADVANCED = false;
+      showCode: true,
+      summary: "This is the student-facing maze run. Edit DIRECTIVE first, then change one option at a time: model, advanced, includeText, includeImage, includeHistory, includeCoords, or toolSpecInSystem.",
+      code: `if (!state.runMaze) { helpers.log("Run the 'Maze engine' node first."); return; }
 
 // ── Edit this freely: it becomes the CORE of the system message. ──
-// (The fixed map-key reference and the tool's output format are appended for you.)
-const DIRECTIVE = \`You are navigating a maze. You are called only at JUNCTIONS (2+ open directions).
-Corridors are auto-walked, so your position can jump several cells between calls. The coordinates
-you have travelled are listed every turn. Study the map, pick ONE direction, call choose_direction().
-Prefer unvisited branches (-) over visited cells (·); head toward G when you can see it.\`;
+const DIRECTIVE = \`You are navigating a maze.
+You are called only at JUNCTIONS (2+ open directions).
+You get both an ASCII map and a picture of the same maze.
+Corridors are auto-walked, so your position can jump several cells between calls,
+and the coordinates you have travelled are listed every turn.
+Study the maze, pick ONE direction, call choose_direction().
+Prefer unvisited branches (-) over visited cells (·); head toward G when you can see it.
+Minimize reasoning efforts and make immediate moves.\`;
 
 return await state.runMaze(helpers, state, {
-  model:           "omni",    // which model drives the agent
-  directive:        DIRECTIVE, // editable core of the system message (above)
-  advanced:         ADVANCED,  // false = 11x9 maze, true = 15x11
-  includeText:      true,     // send the ASCII map
-  includeImage:     false,    // no picture on this route
-  includeHistory:   true,     // keep the running conversation across turns
-  includeCoords:    true,     // list every coordinate travelled (connects a move to where it ended)
-  toolSpecInSystem: true,     // restate choose_direction's output format in the system prompt
-  // promptFormat: ctx => ...    // optional: fully customize each turn's user message
-});
-`,
-    },
-
-    {
-      id: "vision", icon: "🖼️", title: "Vision route · text + graphic",
-      x: 1, y: 1,
-      showCode: false,
-      summary: "The route code is collapsed by default. If you expand it, compare the final state.runMaze options with the text-only route: this one keeps text on and also attaches a rendered maze image.",
-      code: `// Vision route. The key difference from the text-only route is includeImage:true,
-// which adds a rendered maze PNG to each model turn.
-if (!state.runMaze) { helpers.log("Run the 'Maze engine' node first."); return; }
-// Vision route: also attaches a rendered PNG of the maze each turn.
-// The default omni model is multimodal, so it reads the picture and the ASCII map.
-// Try "vision" or "qwenVision" to compare, or includeImage:false for text only.
-// model choices (state.MAZE_MODELS): omni, reasoning, vision, qwenVision, super, gptOss
-const ADVANCED = false;
-
-// ── Edit this freely: it becomes the CORE of the system message. ──
-const DIRECTIVE = \`You are navigating a maze. You are called only at JUNCTIONS (2+ open directions).
-You get both an ASCII map and a picture of the same maze. Corridors are auto-walked, so your position
-can jump several cells between calls, and the coordinates you have travelled are listed every turn.
-Study the maze, pick ONE direction, call choose_direction(). Prefer unvisited branches (-) over
-visited cells (·); head toward G when you can see it.\`;
-
-return await state.runMaze(helpers, state, {
-  model:           "omni",    // multimodal model; try "vision" or "qwenVision" to compare
-  directive:        DIRECTIVE, // editable core of the system message (above)
-  advanced:         ADVANCED,
-  includeText:      true,     // send the ASCII map alongside the picture
-  includeImage:     true,     // attach the rendered PNG each turn
-  includeHistory:   true,
-  includeCoords:    true,     // list every coordinate travelled
-  toolSpecInSystem: true,
+  model:           "vision",   // multimodal model; try "super", "omni", or "qwenVision" to compare
+  directive:        DIRECTIVE,  // editable core of the system message (above)
+  advanced:         false,      // false = simple 11x9 maze; true = larger 15x11 maze with more loops
+  includeText:      true,       // send the ASCII map alongside the picture
+  includeImage:     false,      // attach the rendered PNG each turn. Try true on "omni" and "vision"
+  includeHistory:   true,       // include the history of past moves
+  includeCoords:    true,       // list every coordinate travelled
+  toolSpecInSystem: true,       // repeat the tool spec in the system message when the server does not inject it clearly
 });
 `,
     },
   ],
 
   edges: [
-    { from: "helpers", to: "text" },
-    { from: "helpers", to: "vision" },
+    { from: "helpers", to: "run" },
   ],
 });
 
