@@ -56,12 +56,12 @@
 
   <figure style="margin:1.4em 0">
     <div id="fig-agent-loop"></div>
-    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Only perception and action cross the boundary; the decision step between them can change.</figcaption>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Only perception and action cross the boundary. The decision step between them can change.</figcaption>
   </figure>
 
   <ul>
     <li><strong>Perception</strong> gives the agent everything it knows about its environment.
-        A thermostat reads a single number, the current temperature; a self-driving car fuses
+        A thermostat reads a single number: the current temperature. A self-driving car fuses
         cameras, radar, and a map into a model of the road. Whatever perception captures is all
         the agent has to work from, since nothing downstream ever touches the world directly. A
         gap in perception becomes a gap the rest of the agent cannot see around.</li>
@@ -77,19 +77,20 @@
   </ul>
 
   <div class="callout">
-    <strong>The reasoning step is a pluggable socket.</strong> Perception and action do
-    not care what sits between them. Anything from a simple rule to a decision tree to a full
-    neural network can fill the slot without changing the loop around it. Building
-    the loop once as a fixed frame and reusing it keeps two
-    questions cleanly apart: how capable the reasoning is, and how far the actions reach.
+    <strong>The reasoning step is replaceable.</strong> Perception and action do
+    not care which decision function sits between them. A simple rule, a decision tree,
+    a search routine, or a neural network can drive the same loop. Building the loop
+    once as a fixed frame keeps two questions cleanly apart: how capable the reasoning is,
+    and how far the actions reach.
   </div>
 
   <p>
     The decision step is where the classic agent designs differ. Russell and
     Norvig's <a href="https://aima.cs.berkeley.edu/" target="_blank" rel="noopener">Artificial Intelligence: A Modern Approach</a>
     lays them out as a spectrum, from a bare reflex agent up to a learning agent that improves its own
-    rules. The agents you build here start at the reflex end, then use a language model as one possible
-    decision function inside the same loop.
+    rules. This course starts with rigid logic, then adds a language model and engineered context
+    to move toward a model-based, goal-oriented loop. Later modules keep that loop running over
+    changing state, which is the pattern learning agents build on.
   </p>
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/01a-loop-1.svg" style="aspect-ratio:1020 / 400"></div>
@@ -119,7 +120,7 @@
         remain identical.</li>
   </ul>
 
-  <h2>What changes when the socket holds an LLM</h2>
+  <h2>What changes when reasoning calls an LLM</h2>
   <p>You call the chat-completions interface like any other function: hand
      it a list of messages and a model name, and it hands back one
      assistant message plus metadata.</p>
@@ -270,7 +271,7 @@
     and asks your code to call <code>choose_direction</code>.
   </p>
   <p>
-    Run the engine node first; it exports the maze utilities and one shared solver
+    Run the engine node first. It exports the maze utilities and one shared solver
     (<code>state.runMaze</code>) that walks corridors automatically and calls the
     model only at junctions. Then run the editable maze-agent node below.
   </p>
@@ -290,7 +291,7 @@
 
   <div class="callout">
     <strong>A schema turns the answer into a typed action.</strong> The constant rule
-    returned a string; BFS handed back a list. <code>choose_direction</code> gives the
+    returned a string. BFS handed back a list. <code>choose_direction</code> gives the
     model the same contract but enforces it through a JSON Schema, so the loop reads a
     typed value instead of parsing free prose. With it, a language model can take the
     decision step that BFS and A* held a moment ago.
@@ -320,7 +321,7 @@
         bounded update to the environment (<code>doMove(...)</code>), validating it
         first.</li>
     <li><strong>Locally-impact.</strong> The update changes the world. Nothing
-        persisted inside the model; the only durable state is the environment and
+        persisted inside the model. The only durable state is the environment and
         the context your code will rebuild. The next turn's locally-sample reads
         the changed world, and the cycle repeats.</li>
   </ul>
@@ -362,7 +363,7 @@
         How much of the model's competence came from that one sentence?</li>
     <li><strong>Swap the decision model.</strong>
         Change <code>model:"vision"</code> to <code>model:"super"</code> and rerun.
-        The loop, maze, perception, and action do not change; only the model making
+        The loop, maze, perception, and action do not change. Only the model making
         the move does. Does the larger text model reach the goal in fewer decisions?</li>
   </ol>
 
@@ -433,7 +434,7 @@ mountDiagram("#fig-agent-loop", {
     { id: "env", kind: "env", label: "Environment", x: 0, y: 0,
       lines: ["the world state", "sensors read it", "actions change it"] },
     { id: "agent", kind: "agent", label: "Agent", x: 1, y: 0,
-      lines: ["picks the next action", "from what it perceives"], socket: "swappable reasoning" },
+      lines: ["picks the next action", "from what it perceives"], socket: "replaceable reasoning" },
   ],
 
   edges: [
@@ -517,7 +518,7 @@ return { ticks: trace.length, finalPosition: state.env.position, trace };
 // ── Module 1a Part 4: maze + search reasoners ───────────────────────────────
 mountCanvasFlow("#cell-maze", {
   label: "The agent loop with a swappable reasoning step",
-  intro: "Run the nodes in order so that node 1 builds the maze and the shared utilities every later node reads from state. The hand-written search routines warm up the loop before the language-model run takes over. The implementation is collapsed by default because the point is the behavior; expand code only when you want to inspect how a decision rule is wired into the loop.",
+  intro: "Run the nodes in order so that node 1 builds the maze and the shared utilities every later node reads from state. The hand-written search routines warm up the loop before the language-model run takes over. The implementation is collapsed by default because the point is the behavior. Expand code only when you want to inspect how a decision rule is wired into the loop.",
   edges: [
     { from: "maze", to: "bfs"   },
     { from: "maze", to: "dfs"   },
@@ -832,7 +833,7 @@ return { steps, examined: exploreOrder.length };
     {
       id: "astar", icon: "⭐", title: "A* reasoner", x: 1, y: 1,
       showCode: false,
-      summary: "A* code is collapsed by default. If you expand it, notice that the animation loop is almost the same as BFS; the difference is the planner that produced the path.",
+      summary: "A* code is collapsed by default. If you expand it, notice that the animation loop is almost the same as BFS. The difference is the planner that produced the path.",
       code: `// A* reuses the same animation loop shape as BFS. The planner changed, not the
 // surrounding perceive-act loop that displays each move.
 if (!state.fn) { helpers.log("Run the 'Maze + constant reasoner' node first."); return; }
@@ -1042,7 +1043,7 @@ state.MAZE_MODELS = {
                 extra_body: { reasoning_budget: 4096, chat_template_kwargs: { enable_thinking: true } } },
   vision:     { id: "nvidia/nemotron-nano-12b-v2-vl", maxTok: 4096, temp: 0.3 },     // reads images (needs room to reach the tool call)
   qwenVision: { id: "qwen/qwen3.5-122b-a10b", maxTok: 4096, temp: 0.4 },             // reads images + tools
-  super:      { id: "nvidia/nemotron-3-super-120b-a12b", maxTok: 16384, temp: 0.4 }, // reasoning model; give it room to think and call tools
+  super:      { id: "nvidia/nemotron-3-super-120b-a12b", maxTok: 16384, temp: 0.4 }, // reasoning model. Give it room to think and call tools
   gptOss:     { id: "openai/gpt-oss-120b", maxTok: 16384, temp: 0.5 }                // reasoning + tools
 };
 
@@ -1099,7 +1100,7 @@ state.mazeToDataURL = function(grid, pos, goal, visited, cell) {
 };
 
 // runMaze: ONE corridor-walk + LLM-at-junctions solver, shared by the run node.
-// All knobs are optional. opts.model defaults to the multimodal omni model;
+// All knobs are optional. opts.model defaults to the multimodal omni model.
 // opts.advanced swaps in the bigger, loopier maze.
 state.runMaze = async function(h, state, opts) {
   opts = opts || {};
@@ -1448,7 +1449,7 @@ Minimize reasoning efforts and make immediate moves.\`;
 return await state.runMaze(helpers, state, {
   model:           "vision",   // multimodal model; try "super", "omni", or "qwenVision" to compare
   directive:        DIRECTIVE,  // editable core of the system message (above)
-  advanced:         false,      // false = simple 11x9 maze; true = larger 15x11 maze with more loops
+  advanced:         false,      // false = simple 11x9 maze. true = larger 15x11 maze with more loops
   includeText:      true,       // send the ASCII map alongside the picture
   includeImage:     false,      // attach the rendered PNG each turn. Try true on "omni" and "vision"
   includeHistory:   true,       // include the history of past moves
@@ -1513,7 +1514,7 @@ if (cfg.needsKey) {
 const body = {
   model: "nvidia/nemotron-3-nano-30b-a3b",
   messages: [{ role: "user", content: "In one sentence: who runs you?" }],
-  max_tokens: 8196,  // a reasoning model spends tokens thinking first; leave room for the answer
+  max_tokens: 8196,  // a reasoning model spends tokens thinking first. Leave room for the answer
 };
 
 // What goes OUT, with the key redacted so a screenshot never leaks it.
