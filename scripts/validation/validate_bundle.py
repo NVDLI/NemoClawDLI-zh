@@ -104,6 +104,7 @@ import helper_notebook_runtime_audit as hna  # noqa: E402
 import studio_interface_audit as sia  # noqa: E402
 import openclaw_fallback_audit as ofa  # noqa: E402
 import agent_process_audit as apa  # noqa: E402
+import course_contract as cca  # noqa: E402
 import skill_contract as skc  # noqa: E402
 from collections import defaultdict  # noqa: E402
 
@@ -239,6 +240,9 @@ SUITE_META = [
     ("agent_process", "Agent process contract", "required",
      "Issue/MR, taxonomy, validation, and safe-auth guardrails must be discoverable from the repo beacons so broad agent work starts from a durable process instead of ad hoc transcript memory.",
      "scripts/validation/agent_process_audit.py", "audit"),
+    ("course_contract", "Course title and abstract contract", "required",
+     "The English source-course title, abstract, and learning objectives are canonical DLI copy. They must stay verbatim across the course home, foyer, and canonical contract files.",
+     "scripts/validation/course_contract.py", "audit"),
     ("skill_schema", "SKILL contract", "recommended",
      "Every SKILL.html skill-meta must be a well-formed contract of its kind: it classifies into one known kind (service-skill, service-index, dir-skill, hub, leaf), carries that kind's required keys, uses a known schema/node_type value and a semver version where the kind has one, and only valid notebook status values. An agent samples this block to work in a directory, so a malformed beacon is a contract an agent cannot trust. Each entry names the SKILL and the missing or invalid field.",
      "scripts/skills/skill_contract.py", "schema_findings"),
@@ -528,6 +532,17 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         ok = False
         vl_fail.extend(f"agent process: {x}" for x in agent_process_find)
 
+    # Course contract (required): canonical DLI title, abstract, and objectives are immutable.
+    try:
+        course_contract_find = cca.audit()
+    except Exception as e:
+        course_contract_find = [f"course contract audit error: {e}"]
+        suite_errors["course_contract"] = str(e)
+    if course_contract_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(f"course contract: {x}" for x in course_contract_find)
+
     # SKILL contract (advisory): every skill-meta is a well-formed beacon of its kind (schema leg)
     # and matches its directory (drift leg, reused from skill_audit). The agent-facing half of the
     # contract: a malformed or stale beacon is what an agent samples and is misled by.
@@ -676,6 +691,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "agent_process": [D("docs/agent_process.md", x, REQUIRED,
                             "Keep issue/MR, taxonomy, validation, and safe-auth guardrails documented and linked from the repo beacons.")
                           for x in agent_process_find],
+        "course_contract": [D("web/nemoclaw/COURSE_CANON.md", x, REQUIRED,
+                              "Restore the canonical DLI title, abstract, and learning objectives verbatim. Do not paraphrase, retitle, reorder, or translate the English source copy.")
+                            for x in course_contract_find],
         "prose_variety": [D(r["path"], f"score {r['score']} · {', '.join(r['tells'])}", CONSIDER,
                             "Give the page a rhythm pass: vary sentence length, break the staccato triads, turn enumerations back into prose.")
                           for r in pv_flagged],

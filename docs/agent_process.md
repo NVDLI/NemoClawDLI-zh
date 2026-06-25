@@ -8,6 +8,12 @@ This note is for agents and maintainers working across issues, merge requests, a
 - Tie the MR to the tracker with `Addresses #N` unless the user explicitly says the change closes the issue. Do not write `Closes #N` for partial hygiene, exploratory prose, or a blast-radius pass.
 - Keep the branch name, commit message, and MR note aligned with the issue scope. If the work intentionally touches related issues, name those as related, not solved.
 
+## Course title, abstract, and objectives
+
+- `web/nemoclaw/COURSE_CANON.md` is canonical for the English source course title, abstract, and learning objectives. Do not rewrite, shorten, paraphrase, translate, retitle, or reorder that copy.
+- Run `python3 scripts/validation/course_contract.py` after touching the course home, foyer, generated course metadata, title text, abstract text, or learning objectives.
+- The required `course_contract` suite in `validate_bundle.py` must fail if this copy drifts. Treat that as a release blocker, not an advisory prose issue.
+
 ## Broad prose and taxonomy passes
 
 - Define the vocabulary before rewriting pages. For this course the current split is: NemoClaw is the reference stack, OpenClaw is the agent harness, OpenShell is the sandbox boundary, and the Brev launchable is the hosted course deployment.
