@@ -333,6 +333,33 @@ def check_scripts_hierarchy():
         ok("scripts hierarchy: implementations live in grouped subdirectories; root keeps compatibility entrypoints")
 
 
+def check_scripts_skill_static_body():
+    """scripts/* SKILL pages are user interfaces, not metadata shells.
+
+    Keep this scoped to the scripts tree. Other directory SKILL pages can adopt the
+    same pattern on their own cadence, but this MR owns the scripts hierarchy.
+    """
+    required = {
+        "static section": 'class="skill-static"',
+        "executable checks": "Executable checks",
+        "linkage map": "Linkage map",
+        "interactive explorer": 'id="explorer"',
+        "explorer script": "_skill_explorer.js",
+    }
+    for p in skill_files():
+        rel_task = p.relative_to(TASK1)
+        if rel_task.parts[0] != "scripts":
+            continue
+        meta = skill_meta(p) or {}
+        if meta.get("node_type") != "directory-explorer":
+            continue
+        h = read(p)
+        missing = [name for name, needle in required.items() if needle not in h]
+        if missing:
+            fail(f"scripts SKILL UI body in {p.relative_to(REPO)}: missing {missing}")
+        else:
+            ok(f"scripts SKILL UI body: {p.relative_to(REPO)}")
+
 # ── PROPAGATION (advisory) ───────────────────────────────────────────────────────
 def changed_files(since: str) -> set[str]:
     try:
@@ -376,6 +403,7 @@ def main():
     check_dangling()
     check_harness_wiring()
     check_scripts_hierarchy()
+    check_scripts_skill_static_body()
     if args.since:
         check_propagation(args.since)
 
