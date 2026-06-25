@@ -268,6 +268,19 @@ def check_course_assets(res: Result):
     if stale:
         res.fail("course-assets", "; ".join(stale[:8]))
 
+
+def check_skill_asset_coverage(res: Result):
+    """Verify assets/SKILL.html and mats/SKILL.html directly link every local file they govern.
+    This keeps provenance pages usable as file indexes in the deployed course and catches the
+    exact regression where a SKILL page names a class of files without providing direct tabs."""
+    import subprocess
+    r = subprocess.run([sys.executable, str(TASK1 / "scripts" / "validation" / "skill_asset_coverage.py"), "--quiet"],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        lines = [ln.strip() for ln in (r.stdout + "\n" + r.stderr).splitlines() if ln.strip()]
+        for line in lines or ["skill_asset_coverage.py failed without output"]:
+            res.fail("skill-asset-coverage", line)
+
 def check_skills(res: Result):
     """Verify every SKILL.html beacon still matches its directory, by delegating to scripts/skills/skill_audit.py. A
     drifted beacon (a file listed that no longer exists, or one present but undocumented) means the
@@ -294,6 +307,7 @@ def main():
     check_links(res)                              # dead page-links (live crawl, else offline projection)
     check_static(res)                             # configured static/mount paths that no longer exist
     check_course_assets(res)                      # course runtime scripts/styles interface
+    check_skill_asset_coverage(res)               # asset/mat SKILL pages directly link governed files
     check_skills(res)                             # SKILL.html beacons that drifted from their directory
 
     if not a.quiet:

@@ -33,6 +33,19 @@
   .pv-stage { display: flex; align-items: center; justify-content: center; max-width: 92vw; max-height: 92vh; }
   .pv-stage svg { box-shadow: 0 10px 50px rgba(0,0,0,.55); border-radius: 8px; }
   .pv-x { position: fixed; top: 14px; right: 18px; width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--bd); background: var(--e1); color: var(--td); font-size: 1.1rem; line-height: 1; cursor: pointer; }
+
+  .file-index { columns: 2 260px; padding-left: 1.1rem; font-size: .78rem; line-height: 1.55; }
+  .file-index li { break-inside: avoid; margin: .08rem 0; }
+  .file-index a { color: var(--gs); font-family: var(--mono); word-break: break-all; }
+  .file-index .kind { color: var(--td); font-size: .68rem; margin-left: .35rem; }
+  .pv-card svg.gfx-dark, .pv-stage svg.gfx-dark {
+    --gfx-ink:#1a1a1a; --gfx-ink2:#3b3b3b; --gfx-sub:#5e5e5e; --gfx-faint:#8b949e;
+    --gfx-line:#d0d7de; --gfx-panel:#f6f8fa; --gfx-bg:#ffffff;
+    --gfx-blue:#0969da; --gfx-green:#4a7a00; --gfx-purple:#6f42c1; --gfx-amber:#9a6700; --gfx-teal:#0d9488; --gfx-red:#d1242f;
+    --gfx-tint-blue:#dfeaf5; --gfx-tint-green:#e6f3d4; --gfx-tint-purple:#eadfff;
+    --gfx-tint-amber:#f7e9cf; --gfx-tint-teal:#d6f1ee; --gfx-tint-red:#fadcdc; --gfx-tint-sub:#eef1f4;
+    background: var(--gfx-bg) !important; border-color: var(--gfx-line) !important;
+  }
 </style>
 <script type="application/json" id="skill-meta">
 {
@@ -56,7 +69,7 @@
     "conversion": "cached markdown mirror of a source page"
   },
   "preview_note": "Every .md and .svg here is previewable: click 'preview' to lazy-load a local excerpt, click an SVG to enlarge it. External sources are hyperlinks (their pages set X-Frame-Options, so they cannot be iframed; the link opens them). md previews need the file served, so they work in the dev server and the full bundle and fall back to a link otherwise.",
-  "svg_note": "rag_arch_2021.svg and graph_rag_2024.svg are paper figures parked beside their summary cards; both are unreferenced. mats/rag_arch_2021.svg is byte-identical to assets/rag_arch_2021.svg (a duplicate); mats/graph_rag_2024.svg is a smaller variant of the assets copy. Both are removable in a cleanup.",
+  "svg_note": "rag_arch_2021.svg and graph_rag_2024.svg are paper-figure SVG conversions parked beside their summary cards; both are unreferenced. mats/rag_arch_2021.svg is byte-identical to assets/rag_arch_2021.svg (a duplicate); mats/graph_rag_2024.svg is a smaller variant of the assets copy. Both are removable in a cleanup.",
   "mats": [
     {
       "file": "agentic_equilibrium.md",
@@ -219,7 +232,7 @@
       "source_url": "https://arxiv.org/abs/2005.11401",
       "license": "see arXiv listing",
       "license_url": "https://arxiv.org/abs/2005.11401",
-      "connection": "recreation",
+      "connection": "conversion",
       "kind": "svg",
       "usage": "UNREFERENCED; identical to assets/rag_arch_2021.svg (duplicate)"
     },
@@ -295,6 +308,65 @@
      <code>compilation</code>: course-authored collection of source links.
      <code>conversion</code>: cached markdown mirror of a source page.</p>
 
+<!-- file-index:start -->
+  <h2>File index</h2>
+  <p class="legend">Every companion material file is directly linked here, including cached glossary bodies and JSON indexes. Open the file in a new tab, or link to the row id when you want the browser to scroll to a specific material.</p>
+  <ul class="file-index">
+<li id="mat-materials-json"><a href="_materials.json" target="_blank" rel="noopener">_materials.json</a><span class="kind">json</span></li>
+<li id="mat-agent-field-guide-md"><a href="agent_field_guide.md" target="_blank" rel="noopener">agent_field_guide.md</a><span class="kind">md</span></li>
+<li id="mat-agentic-ai-learning-path-links-md"><a href="agentic_ai_learning_path_links.md" target="_blank" rel="noopener">agentic_ai_learning_path_links.md</a><span class="kind">md</span></li>
+<li id="mat-agentic-equilibrium-md"><a href="agentic_equilibrium.md" target="_blank" rel="noopener">agentic_equilibrium.md</a><span class="kind">md</span></li>
+<li id="mat-agentic-safety-in-production-md"><a href="agentic_safety_in_production.md" target="_blank" rel="noopener">agentic_safety_in_production.md</a><span class="kind">md</span></li>
+<li id="mat-arxiv-2005-11401-rag-md"><a href="arxiv-2005.11401-rag.md" target="_blank" rel="noopener">arxiv-2005.11401-rag.md</a><span class="kind">md</span></li>
+<li id="mat-arxiv-2210-03629-react-md"><a href="arxiv-2210.03629-react.md" target="_blank" rel="noopener">arxiv-2210.03629-react.md</a><span class="kind">md</span></li>
+<li id="mat-arxiv-2305-18323-rewoo-md"><a href="arxiv-2305.18323-rewoo.md" target="_blank" rel="noopener">arxiv-2305.18323-rewoo.md</a><span class="kind">md</span></li>
+<li id="mat-arxiv-2404-16130-graphrag-md"><a href="arxiv-2404.16130-graphrag.md" target="_blank" rel="noopener">arxiv-2404.16130-graphrag.md</a><span class="kind">md</span></li>
+<li id="mat-build-nvidia-com-spark-hermes-agent-overview-md"><a href="build-nvidia-com-spark-hermes-agent-overview.md" target="_blank" rel="noopener">build-nvidia-com-spark-hermes-agent-overview.md</a><span class="kind">md</span></li>
+<li id="mat-build-nvidia-com-spark-nemoclaw-applications-md"><a href="build-nvidia-com-spark-nemoclaw-applications.md" target="_blank" rel="noopener">build-nvidia-com-spark-nemoclaw-applications.md</a><span class="kind">md</span></li>
+<li id="mat-build-nvidia-com-spark-nemoclaw-instructions-md"><a href="build-nvidia-com-spark-nemoclaw-instructions.md" target="_blank" rel="noopener">build-nvidia-com-spark-nemoclaw-instructions.md</a><span class="kind">md</span></li>
+<li id="mat-deep-research-refs-md"><a href="deep_research_refs.md" target="_blank" rel="noopener">deep_research_refs.md</a><span class="kind">md</span></li>
+<li id="mat-developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa-md"><a href="developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md" target="_blank" rel="noopener">developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md</a><span class="kind">md</span></li>
+<li id="mat-glossary-index-json"><a href="glossary_index.json" target="_blank" rel="noopener">glossary_index.json</a><span class="kind">json</span></li>
+<li id="mat-glossary-raw-readme-md"><a href="glossary_raw/README.md" target="_blank" rel="noopener">glossary_raw/README.md</a><span class="kind">md</span></li>
+<li id="mat-glossary-raw-versions-json"><a href="glossary_raw/_versions.json" target="_blank" rel="noopener">glossary_raw/_versions.json</a><span class="kind">json</span></li>
+<li id="mat-glossary-raw-ai-agents-md"><a href="glossary_raw/ai-agents.md" target="_blank" rel="noopener">glossary_raw/ai-agents.md</a><span class="kind">md</span></li>
+<li id="mat-glossary-raw-ai-inference-md"><a href="glossary_raw/ai-inference.md" target="_blank" rel="noopener">glossary_raw/ai-inference.md</a><span class="kind">md</span></li>
+<li id="mat-glossary-raw-ai-reasoning-md"><a href="glossary_raw/ai-reasoning.md" target="_blank" rel="noopener">glossary_raw/ai-reasoning.md</a><span class="kind">md</span></li>
+<li id="mat-glossary-raw-deep-agents-md"><a href="glossary_raw/deep-agents.md" target="_blank" rel="noopener">glossary_raw/deep-agents.md</a><span class="kind">md</span></li>
+<li id="mat-glossary-raw-images-ai-agents-1-jpeg"><a href="glossary_raw/images/ai-agents-1.jpeg" target="_blank" rel="noopener">glossary_raw/images/ai-agents-1.jpeg</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-ai-agents-2-svg"><a href="glossary_raw/images/ai-agents-2.svg" target="_blank" rel="noopener">glossary_raw/images/ai-agents-2.svg</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-ai-agents-3-svg"><a href="glossary_raw/images/ai-agents-3.svg" target="_blank" rel="noopener">glossary_raw/images/ai-agents-3.svg</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-ai-agents-4-svg"><a href="glossary_raw/images/ai-agents-4.svg" target="_blank" rel="noopener">glossary_raw/images/ai-agents-4.svg</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-ai-inference-1-jpeg"><a href="glossary_raw/images/ai-inference-1.jpeg" target="_blank" rel="noopener">glossary_raw/images/ai-inference-1.jpeg</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-ai-inference-2-svg"><a href="glossary_raw/images/ai-inference-2.svg" target="_blank" rel="noopener">glossary_raw/images/ai-inference-2.svg</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-ai-inference-3-jpeg"><a href="glossary_raw/images/ai-inference-3.jpeg" target="_blank" rel="noopener">glossary_raw/images/ai-inference-3.jpeg</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-ai-reasoning-1-jpeg"><a href="glossary_raw/images/ai-reasoning-1.jpeg" target="_blank" rel="noopener">glossary_raw/images/ai-reasoning-1.jpeg</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-ai-reasoning-2-jpeg"><a href="glossary_raw/images/ai-reasoning-2.jpeg" target="_blank" rel="noopener">glossary_raw/images/ai-reasoning-2.jpeg</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-ai-reasoning-3-jpeg"><a href="glossary_raw/images/ai-reasoning-3.jpeg" target="_blank" rel="noopener">glossary_raw/images/ai-reasoning-3.jpeg</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-deep-agents-1-png"><a href="glossary_raw/images/deep-agents-1.png" target="_blank" rel="noopener">glossary_raw/images/deep-agents-1.png</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-deep-agents-2-png"><a href="glossary_raw/images/deep-agents-2.png" target="_blank" rel="noopener">glossary_raw/images/deep-agents-2.png</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-large-language-models-1-svg"><a href="glossary_raw/images/large-language-models-1.svg" target="_blank" rel="noopener">glossary_raw/images/large-language-models-1.svg</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-large-language-models-2-svg"><a href="glossary_raw/images/large-language-models-2.svg" target="_blank" rel="noopener">glossary_raw/images/large-language-models-2.svg</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-large-language-models-3-svg"><a href="glossary_raw/images/large-language-models-3.svg" target="_blank" rel="noopener">glossary_raw/images/large-language-models-3.svg</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-retrieval-augmented-generation-1-jpeg"><a href="glossary_raw/images/retrieval-augmented-generation-1.jpeg" target="_blank" rel="noopener">glossary_raw/images/retrieval-augmented-generation-1.jpeg</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-retrieval-augmented-generation-2-jpeg"><a href="glossary_raw/images/retrieval-augmented-generation-2.jpeg" target="_blank" rel="noopener">glossary_raw/images/retrieval-augmented-generation-2.jpeg</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-retrieval-augmented-generation-3-jpeg"><a href="glossary_raw/images/retrieval-augmented-generation-3.jpeg" target="_blank" rel="noopener">glossary_raw/images/retrieval-augmented-generation-3.jpeg</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-retrieval-augmented-generation-4-jpeg"><a href="glossary_raw/images/retrieval-augmented-generation-4.jpeg" target="_blank" rel="noopener">glossary_raw/images/retrieval-augmented-generation-4.jpeg</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-vector-database-1-jpeg"><a href="glossary_raw/images/vector-database-1.jpeg" target="_blank" rel="noopener">glossary_raw/images/vector-database-1.jpeg</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-vector-database-2-jpeg"><a href="glossary_raw/images/vector-database-2.jpeg" target="_blank" rel="noopener">glossary_raw/images/vector-database-2.jpeg</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-vector-database-3-jpeg"><a href="glossary_raw/images/vector-database-3.jpeg" target="_blank" rel="noopener">glossary_raw/images/vector-database-3.jpeg</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-vector-database-4-jpeg"><a href="glossary_raw/images/vector-database-4.jpeg" target="_blank" rel="noopener">glossary_raw/images/vector-database-4.jpeg</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-images-vector-database-5-jpeg"><a href="glossary_raw/images/vector-database-5.jpeg" target="_blank" rel="noopener">glossary_raw/images/vector-database-5.jpeg</a><span class="kind">image</span></li>
+<li id="mat-glossary-raw-large-language-models-md"><a href="glossary_raw/large-language-models.md" target="_blank" rel="noopener">glossary_raw/large-language-models.md</a><span class="kind">md</span></li>
+<li id="mat-glossary-raw-retrieval-augmented-generation-md"><a href="glossary_raw/retrieval-augmented-generation.md" target="_blank" rel="noopener">glossary_raw/retrieval-augmented-generation.md</a><span class="kind">md</span></li>
+<li id="mat-glossary-raw-vector-database-md"><a href="glossary_raw/vector-database.md" target="_blank" rel="noopener">glossary_raw/vector-database.md</a><span class="kind">md</span></li>
+<li id="mat-graph-rag-2024-svg"><a href="graph_rag_2024.svg" target="_blank" rel="noopener">graph_rag_2024.svg</a><span class="kind">image</span></li>
+<li id="mat-materials-index-json"><a href="materials_index.json" target="_blank" rel="noopener">materials_index.json</a><span class="kind">json</span></li>
+<li id="mat-nvidia-agent-glossary-md"><a href="nvidia_agent_glossary.md" target="_blank" rel="noopener">nvidia_agent_glossary.md</a><span class="kind">md</span></li>
+<li id="mat-nvidia-openshell-nemoclaw-md"><a href="nvidia_openshell_nemoclaw.md" target="_blank" rel="noopener">nvidia_openshell_nemoclaw.md</a><span class="kind">md</span></li>
+<li id="mat-rag-arch-2021-svg"><a href="rag_arch_2021.svg" target="_blank" rel="noopener">rag_arch_2021.svg</a><span class="kind">image</span></li>
+  </ul>
+<!-- file-index:end -->
   <h2>Essays, cards, and cached docs</h2>
   <div class="pv-grid">
 <div class="pv-card"><div class="pv-file">agentic_equilibrium.md</div><div class="pv-dep">essay</div><div class="pv-meta"><span>source</span> original thesis</div><div class="pv-meta"><span>license</span> <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache-2.0</a></div><div class="pv-meta"><span>link</span> <span class="lvl">original</span></div><details class="md-wrap"><summary>preview</summary><div class="md-prev" data-md-src="agentic_equilibrium.md">…</div></details></div>
@@ -312,7 +384,7 @@
 <div class="pv-card"><div class="pv-file">build-nvidia-com-spark-nemoclaw-applications.md</div><div class="pv-dep">cached NVIDIA doc</div><div class="pv-use">cached mirror</div><div class="pv-meta"><span>source</span> <a href="https://build.nvidia.com/" target="_blank" rel="noopener">build.nvidia.com (NemoClaw applications)</a></div><div class="pv-meta"><span>license</span> <a href="https://www.nvidia.com/en-us/about-nvidia/legal-info/" target="_blank" rel="noopener">© NVIDIA (proprietary)</a></div><div class="pv-meta"><span>link</span> <span class="lvl">conversion</span></div><details class="md-wrap"><summary>preview</summary><div class="md-prev" data-md-src="build-nvidia-com-spark-nemoclaw-applications.md">…</div></details></div>
 <div class="pv-card"><div class="pv-file">build-nvidia-com-spark-nemoclaw-instructions.md</div><div class="pv-dep">cached NVIDIA doc</div><div class="pv-use">cached mirror</div><div class="pv-meta"><span>source</span> <a href="https://build.nvidia.com/" target="_blank" rel="noopener">build.nvidia.com (NemoClaw instructions)</a></div><div class="pv-meta"><span>license</span> <a href="https://www.nvidia.com/en-us/about-nvidia/legal-info/" target="_blank" rel="noopener">© NVIDIA (proprietary)</a></div><div class="pv-meta"><span>link</span> <span class="lvl">conversion</span></div><details class="md-wrap"><summary>preview</summary><div class="md-prev" data-md-src="build-nvidia-com-spark-nemoclaw-instructions.md">…</div></details></div>
 <div class="pv-card"><div class="pv-file">developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md</div><div class="pv-dep">cached NVIDIA blog</div><div class="pv-use">cached mirror</div><div class="pv-meta"><span>source</span> <a href="https://developer.nvidia.com/blog/deploy-self-evolving-agents-for-faster-more-secure-research-with-a-hermes-agent-and-nvidia-nemoclaw/" target="_blank" rel="noopener">developer.nvidia.com blog (self-evolving agents + Hermes + NeMoClaw)</a></div><div class="pv-meta"><span>license</span> <a href="https://www.nvidia.com/en-us/about-nvidia/legal-info/" target="_blank" rel="noopener">© NVIDIA (proprietary)</a></div><div class="pv-meta"><span>link</span> <span class="lvl">conversion</span></div><details class="md-wrap"><summary>preview</summary><div class="md-prev" data-md-src="developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md">…</div></details></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="rag_arch_2021.svg"></div><div class="pv-file">rag_arch_2021.svg</div><div class="pv-dep">paper figure (RAG architecture)</div><div class="pv-use">UNREFERENCED; identical to assets/rag_arch_2021.svg (duplicate)</div><div class="pv-meta"><span>source</span> <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al. 2020</a></div><div class="pv-meta"><span>license</span> <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">see arXiv listing</a></div><div class="pv-meta"><span>link</span> <span class="lvl">recreation</span></div></div>
+<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="rag_arch_2021.svg"></div><div class="pv-file">rag_arch_2021.svg</div><div class="pv-dep">paper figure (RAG architecture)</div><div class="pv-use">UNREFERENCED; identical to assets/rag_arch_2021.svg (duplicate)</div><div class="pv-meta"><span>source</span> <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al. 2020</a></div><div class="pv-meta"><span>license</span> <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">see arXiv listing</a></div><div class="pv-meta"><span>link</span> <span class="lvl">conversion</span></div></div>
 <div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="graph_rag_2024.svg"></div><div class="pv-file">graph_rag_2024.svg</div><div class="pv-dep">paper figure (GraphRAG)</div><div class="pv-use">UNREFERENCED; variant of assets/graph_rag_2024.svg</div><div class="pv-meta"><span>source</span> <a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">Edge et al. 2024</a></div><div class="pv-meta"><span>license</span> <a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">see arXiv listing</a></div><div class="pv-meta"><span>link</span> <span class="lvl">recreation</span></div></div>
   </div>
 

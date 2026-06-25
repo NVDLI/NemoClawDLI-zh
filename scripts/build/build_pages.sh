@@ -86,6 +86,12 @@ for c in nemoclaw; do
     course_out="$OUT/${COURSE_PREFIX:+$COURSE_PREFIX/}$c"
     echo "[build_pages] bundling $c -> $course_out/ (full standalone) ..."
     python3 "$T1/scripts/build/bundle_standalone.py" --src "web/$c" --out "$course_out" --clean --full
+    for required in scripts/SKILL.html styles/SKILL.html styles/_style.css assets/SKILL.html mats/SKILL.html; do
+        if [ ! -f "$course_out/$required" ]; then
+            echo "[build_pages]   ERROR: bundled course is missing $c/$required" >&2
+            exit 1
+        fi
+    done
     echo "[build_pages]   $c -> $course_out/ ($(find "$course_out" -name '*.html' | wc -l) pages)"
 done
 
