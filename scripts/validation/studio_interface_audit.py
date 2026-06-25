@@ -23,6 +23,7 @@ COURSE = ROOT / "web" / "nemoclaw"
 STUDIO_HTML = COURSE / "studio.html"
 STUDIO_JS = COURSE / "scripts" / "studio_main.js"
 SCRIPT_SKILL = COURSE / "scripts" / "SKILL.html"
+ROOT_SCRIPT_SKILL = ROOT / "scripts" / "SKILL.html"
 
 REQUIRED_IDS = {
     "mod-sel", "url-bar", "reload-btn", "sidebar-btn", "comment-btn",
@@ -41,7 +42,10 @@ REQUIRED_JS = {
     "local comment fallback": "localStorage.setItem(commentStorageKey()",
     "reference inspector": "function renderReferences",
     "light export CSS": "styles/_lite_overlay.css",
-    "run-all selector": ".cf-btn-run,.cell-run",
+    "run-all selector": ".cf-btn-run,.rc-run,.cell-run",
+    "ordered run queue": "async function triggerRunAll",
+    "run completion waiter": "function waitForRunComplete",
+    "default page load": "loadPage(p || MODULES[0].file)",
     "block editor locator": "function _locateBlockInFile",
     "no stale lite CSS path": "styles/styles/_lite_overlay.css",
 }
@@ -56,6 +60,11 @@ REQUIRED_SKILL = {
     "render-only harness": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only",
     "python podman compose": "python3 -m podman_compose",
     "full lab harness": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html",
+    "helper notebook heading": "Helper notebook",
+    "helper map cell": "helper-map-cell",
+    "helper retrieval cell": "helper-retrieval-cell",
+    "helper live cell": "helper-live-cell",
+    "helper UI cell": "helper-ui-cell",
 }
 
 
@@ -80,6 +89,7 @@ def audit() -> list[str]:
     html = read(STUDIO_HTML)
     js = read(STUDIO_JS)
     skill = read(SCRIPT_SKILL)
+    root_skill = read(ROOT_SCRIPT_SKILL)
 
     missing_ids = sorted(REQUIRED_IDS - html_ids(html))
     for item in missing_ids:
@@ -127,6 +137,10 @@ def audit() -> list[str]:
 
     if "Write access: Jupyter contents API" not in js or "Read-only static preview" not in js:
         findings.append("studio_main.js must surface lab-write versus static-read-only state")
+
+    for token in ("web/nemoclaw/scripts/SKILL.html", "Studio helper audit", "runnable notebook"):
+        if token not in root_skill:
+            findings.append(f"scripts/SKILL.html missing helper notebook reference: {token}")
 
     return findings
 
