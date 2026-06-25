@@ -40,16 +40,16 @@ test:
     # passes --lang so validate_bundle skips the English-prose style suites (which would
     # false-positive on correct target-language text); the language is derived from the branch name.
     # The lang is derived inline per command so it does not depend on env persisting across lines.
-    - python3 scripts/validate_layout.py --quiet
-    - python3 scripts/skill_consistency.py
-    - python3 scripts/skill_contract.py
-    - python3 scripts/source_gate.py
-    - bash   scripts/run_engine.sh --self-test
-    - 'L=""; case "$CI_COMMIT_BRANCH" in translate-*) L="--lang ${CI_COMMIT_BRANCH#translate-}";; esac; python3 scripts/validate_bundle.py --scope ship $L'
+    - python3 scripts/validation/validate_layout.py --quiet
+    - python3 scripts/skills/skill_consistency.py
+    - python3 scripts/skills/skill_contract.py
+    - python3 scripts/compliance/source_gate.py
+    - bash   scripts/runtime/run_engine.sh --self-test
+    - 'L=""; case "$CI_COMMIT_BRANCH" in translate-*) L="--lang ${CI_COMMIT_BRANCH#translate-}";; esac; python3 scripts/validation/validate_bundle.py --scope ship $L'
     # Live materials drift check: re-fetch the on-demand sources and compare to the committed
     # fingerprints. allow_failure keeps a drift/outage from blocking the deploy; it surfaces as a
     # red (complaining) job here, and as the materials section on the validator screen.
-    - python3 scripts/pull_materials.py --check
+    - python3 scripts/materials/pull_materials.py --check
     # On a translation branch, report what changed on the source since this translation's base so the
     # job log shows the re-translate list. Advisory: a translator syncs at their own cadence.
     - 'case "$CI_COMMIT_BRANCH" in translate-*) python3 scripts/translate/translation_status.py --check || echo "translation drift is advisory; sync at your cadence";; esac'
@@ -88,8 +88,8 @@ pages:
         case "$CI_COMMIT_REF_SLUG" in *..*|*/*|*\*) echo "unsafe CI_COMMIT_REF_SLUG=$CI_COMMIT_REF_SLUG" >&2; exit 1;; esac
         refresh_branch_refs
         export BUILD_PAGES_COURSE_PREFIX="web"
-        bash scripts/build_pages.sh "public/$CI_COMMIT_REF_SLUG"
-        python3 scripts/build_branch_manifest.py --out "public/$CI_COMMIT_REF_SLUG/branches.json"
+        bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"
+        python3 scripts/build/build_branch_manifest.py --out "public/$CI_COMMIT_REF_SLUG/branches.json"
         test -f "public/$CI_COMMIT_REF_SLUG/index.html"
         test -f "public/$CI_COMMIT_REF_SLUG/branches.json"
         test -f "public/$CI_COMMIT_REF_SLUG/languages.json"
@@ -116,9 +116,9 @@ pages:
           mkdir -p "/tmp/nemoclaw-prod-root/i18n/$lang"
           git archive "$ref" web | tar -x -C "/tmp/nemoclaw-prod-root/i18n/$lang"
         done
-        (cd /tmp/nemoclaw-prod-root && bash scripts/build_pages.sh "$CI_PROJECT_DIR/public")
+        (cd /tmp/nemoclaw-prod-root && bash scripts/build/build_pages.sh "$CI_PROJECT_DIR/public")
         refresh_branch_refs
-        python3 scripts/build_branch_manifest.py --out public/branches.json --current-ref "$prod_ref" --current-slug "$prod_ref"
+        python3 scripts/build/build_branch_manifest.py --out public/branches.json --current-ref "$prod_ref" --current-slug "$prod_ref"
         test -f public/nemoclaw/index.html
         test -f public/index.html
         test -f public/branches.json
@@ -132,7 +132,7 @@ pages:
         build_branch_preview
       else
         stage_translations
-        bash scripts/build_pages.sh public
+        bash scripts/build/build_pages.sh public
         test -f public/nemoclaw/index.html
         test -f public/branches.json
         test -f public/languages.json

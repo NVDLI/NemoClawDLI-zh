@@ -33,12 +33,12 @@ build_pages.sh projects to the student-facing validator screen (validation.html 
 a materials problem reads identically to you, to CI, and to a student who opens the validator.
 
 Usage:
-  python3 scripts/pull_materials.py                 # pull the light on-demand materials (deploy-build default)
-  python3 scripts/pull_materials.py --all            # also refresh the heavy glossary tier (index + deep articles)
-  python3 scripts/pull_materials.py --only papers   # one host: glossary | blogs | papers
-  python3 scripts/pull_materials.py --check          # drift check, no writes (CI / pre-push)
-  python3 scripts/pull_materials.py --check --json    # machine-readable status (the gate reads this)
-  python3 scripts/pull_materials.py --list           # print the manifest and exit
+  python3 scripts/materials/pull_materials.py                 # pull the light on-demand materials (deploy-build default)
+  python3 scripts/materials/pull_materials.py --all            # also refresh the heavy glossary tier (index + deep articles)
+  python3 scripts/materials/pull_materials.py --only papers   # one host: glossary | blogs | papers
+  python3 scripts/materials/pull_materials.py --check          # drift check, no writes (CI / pre-push)
+  python3 scripts/materials/pull_materials.py --check --json    # machine-readable status (the gate reads this)
+  python3 scripts/materials/pull_materials.py --list           # print the manifest and exit
 
 Dependencies: requests, beautifulsoup4, markdownify, lxml (the same set vendor_glossary.py uses).
 """
@@ -220,7 +220,7 @@ def pull_one(mat):
                    fetched=datetime.date.today().isoformat())
         print(f"  UNREACHABLE  {mat['name']}  ({exc})")
         print(f"               kept the committed snapshot; fix with: "
-              f"python3 scripts/pull_materials.py --only {FIX_ONLY[mat['host']]}")
+              f"python3 scripts/materials/pull_materials.py --only {FIX_ONLY[mat['host']]}")
     return rec
 
 
@@ -255,7 +255,7 @@ def cmd_glossary(check):
             return "ok"
         except Exception as exc:  # noqa: BLE001
             print(f"  UNREACHABLE  glossary index ({exc})  "
-                  f"-> rebuild: python3 scripts/vendor_glossary.py --index")
+                  f"-> rebuild: python3 scripts/materials/vendor_glossary.py --index")
             return "unreachable"
     print("  glossary: delegating to vendor_glossary.py (deep articles + --index)")
     subprocess.run([sys.executable, vg], check=False)
@@ -355,7 +355,7 @@ def main():
                 if r["status"] != "ok":
                     fix = FIX_ONLY[r["host"]]
                     print(f"               {r['detail']}")
-                    print(f"               fix: python3 scripts/pull_materials.py --only {fix}   (then commit)")
+                    print(f"               fix: python3 scripts/materials/pull_materials.py --only {fix}   (then commit)")
             print(f"\n  {ok}/{len(rows)} ok"
                   + (f" · {len(drifted)} drifted" if drifted else "")
                   + (f" · {len(unreachable)} unreachable" if unreachable else ""))

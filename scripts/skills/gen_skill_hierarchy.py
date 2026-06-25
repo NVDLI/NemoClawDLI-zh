@@ -82,7 +82,7 @@ SURFACE_LEAD = {
 # ── Core tenets: the operating creed, projected INTO the brain ──────────────────────────
 # This bundle ships no agent-tool config file (no CLAUDE.md or equivalent). The learnings
 # that such a file would hold live here, in the root skill-meta, so any agent or person who
-# reads SKILL.html inherits them, and `scripts/tenets.py` reports them + their enforcement.
+# reads SKILL.html inherits them, and `scripts/validation/tenets.py` reports them + their enforcement.
 # Keep these tool-agnostic and load-bearing; the gate scripts enforce the checkable ones.
 # The `purpose` group is the platform philosophy (what this repo is for); its long form is
 # PHILOSOPHY.md. The other groups are engineering discipline.
@@ -115,7 +115,7 @@ TENETS = {
         "with shared repos/, scripts/, and workspace/.",
         "The brain is each directory's SKILL.html skill-meta JSON, not a SKILL.md. Parse it "
         "first, then walk children: task to surface to course to content.",
-        "One link engine (scripts/engine.js) is the single source for resolution, crawl, "
+        "One link engine (scripts/runtime/engine.js) is the single source for resolution, crawl, "
         "reachability, and the release contract; it runs headless and in-browser, with no "
         "second implementation to drift.",
         "The released course is nemoclaw (Securing Agents); the foyer "
@@ -139,7 +139,7 @@ TENETS = {
     "cadences": [
         "Validate before pushing: validate_layout, skill_consistency, source_gate, run_engine --self-test, "
         "validate_bundle --scope ship. The same gates run at pre-push (install: "
-        "bash scripts/install-hooks.sh).",
+        "bash scripts/build/install-hooks.sh).",
         "A reported defect is a SAMPLE of a class: grep the whole repo across every course, "
         "surface, and duplicated copy before fixing, then fix every instance or name the deferrals.",
         "Improve one, improve all: a fix in one course propagates to its siblings.",
@@ -291,7 +291,7 @@ def gen_task():
                               (em.get("summary", "") or "").split(". ")[0][:140]))
     src_items = list(explorers)
     if (TASK1 / "scripts" / "link_graph.html").is_file():
-        src_items.append(("scripts/link_graph.html", "scripts/link_graph.html",
+        src_items.append(("scripts/runtime/link_graph.html", "scripts/runtime/link_graph.html",
                           "Link + topology viewer: how every page resolves and what reaches a SKILL hub."))
 
     docs = [("README.md", "README.md", "What the release is and how to run it (start here)."),

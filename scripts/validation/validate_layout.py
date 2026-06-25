@@ -9,7 +9,7 @@ The link check is a LIVE CRAWL of the running lab, which is the only accurate so
 The old static link_graph analyzer was retired because it mis-resolved links and
 silently hid whole directories. If the lab is not reachable it is SKIPPED with a
 note, never a false pass/fail. The canonical link tool is the self-contained
-viewer scripts/link_graph.html (⟳ Rescan), which crawls the same way in-browser.
+viewer scripts/runtime/link_graph.html (⟳ Rescan), which crawls the same way in-browser.
 
 Checks
   links     LIVE: every page-link (.md/.ipynb/.html) the lab serves resolves to a
@@ -148,7 +148,7 @@ def check_links(res: Result):
             blocking = s["blocking_failures"] + s["blocking_asset_leaks"] + s["blocking_cross_course"]
             if blocking:
                 res.fail("links", f"{blocking} ship-blocking link issue(s) via offline projection; "
-                                  f"run: python3 scripts/link_projection.py --check")
+                                  f"run: python3 scripts/runtime/link_projection.py --check")
         except Exception as e:
             res.fail("links", f"lab down AND offline projection fallback failed: {e}")
         return
@@ -269,11 +269,11 @@ def check_course_assets(res: Result):
         res.fail("course-assets", "; ".join(stale[:8]))
 
 def check_skills(res: Result):
-    """Verify every SKILL.html beacon still matches its directory, by delegating to skill_audit.py. A
+    """Verify every SKILL.html beacon still matches its directory, by delegating to scripts/skills/skill_audit.py. A
     drifted beacon (a file listed that no longer exists, or one present but undocumented) means the
     machine-readable directory map an agent ingests first is lying; this surfaces each such mismatch."""
     import subprocess
-    r = subprocess.run([sys.executable, str(TASK1 / "scripts" / "skill_audit.py")],
+    r = subprocess.run([sys.executable, str(TASK1 / "scripts" / "skills" / "skill_audit.py")],
                        capture_output=True, text=True)
     if r.returncode != 0:                         # skill_audit exits nonzero and prints each mismatch
         for line in r.stderr.splitlines():

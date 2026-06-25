@@ -8,8 +8,8 @@ a static manifest the browser cell loads instead of re-embedding on every page v
 Keys rule: embeds go through llm_client (the key-injecting proxy), never another service.
 
 Usage:
-    python3 scripts/build_rag_index.py            # refresh the manifest
-    python3 scripts/build_rag_index.py --check     # verify the manifest matches the seed (CI)
+    python3 scripts/materials/build_rag_index.py            # refresh the manifest
+    python3 scripts/materials/build_rag_index.py --check     # verify the manifest matches the seed (CI)
 
 If you edit the seed CORPUS / QUERIES below, keep them identical to the literals in
 #rag-cell and rerun this script. The cell re-embeds any text the manifest does not cover,

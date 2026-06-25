@@ -15,8 +15,8 @@ Two checks per directory:
      it (no re-exporting a name you never brought in).
 
 Usage:
-    python3 scripts/module_check.py                  # web/nemoclaw (default)
-    python3 scripts/module_check.py --dir web        # the bundle root
+    python3 scripts/runtime/module_check.py                  # web/nemoclaw (default)
+    python3 scripts/runtime/module_check.py --dir web        # the bundle root
 Exit non-zero on any unresolved import or dangling re-export, so it works as a gate.
 """
 import argparse, os, re, sys, glob

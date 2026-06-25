@@ -3,7 +3,7 @@
 
 The student-facing edX page is a single HtmlBlock that iframes module
 pages out of S3. This script keeps the S3 prefix in sync with whatever
-the latest `scripts/bundle_standalone.py` run produced.
+the latest `scripts/build/bundle_standalone.py` run produced.
 
 Pass the local source directory with --src; the S3 sub-prefix is derived
 from the directory name by stripping `_standalone`:
@@ -18,14 +18,14 @@ fetch it without auth.
 Usage:
 
   # Bundle + publish:
-  python3 scripts/bundle_standalone.py --src web/nemoclaw --clean
-  python3 scripts/publish_edx.py --src web/nemoclaw_standalone
+  python3 scripts/build/bundle_standalone.py --src web/nemoclaw --clean
+  python3 scripts/build/publish_edx.py --src web/nemoclaw_standalone
 
   # Dry-run (prints what would upload, no S3 calls):
-  python3 scripts/publish_edx.py --src web/nemoclaw_standalone --dry-run
+  python3 scripts/build/publish_edx.py --src web/nemoclaw_standalone --dry-run
 
   # Skip the zip:
-  python3 scripts/publish_edx.py --no-zip
+  python3 scripts/build/publish_edx.py --no-zip
 
 Credentials come from the standard AWS chain (env, ~/.aws/credentials,
 instance profile). The dev box this script runs from has a
@@ -140,7 +140,7 @@ def main() -> int:
         src = Path(__file__).resolve().parent.parent / src
     if not src.is_dir():
         sys.stderr.write(f"source directory not found: {src}\n")
-        sys.stderr.write("Run scripts/bundle_standalone.py first.\n")
+        sys.stderr.write("Run scripts/build/bundle_standalone.py first.\n")
         return 1
 
     key_prefix = args.prefix or _derive_prefix(src)

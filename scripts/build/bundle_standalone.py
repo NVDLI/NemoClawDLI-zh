@@ -22,8 +22,8 @@ What gets transformed:
      legible on a light background
 
 Usage:
-  python3 scripts/bundle_standalone.py --src web/nemoclaw
-  python3 scripts/bundle_standalone.py --src web/nemoclaw --out /tmp/nemoclaw_iframe --clean
+  python3 scripts/build/bundle_standalone.py --src web/nemoclaw
+  python3 scripts/build/bundle_standalone.py --src web/nemoclaw --out /tmp/nemoclaw_iframe --clean
 """
 from __future__ import annotations
 import argparse

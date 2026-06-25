@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run scripts/check_figures.mjs with jsdom available (mountPolicyMap needs a DOM).
+# Run scripts/figures/check_figures.mjs with jsdom available (mountPolicyMap needs a DOM).
 # Resolves node like run_node.sh (host / docker node:20 / guarded lab) and installs jsdom
 # once into scripts/.figtools/ (gitignored, persists across runs via the host mount).
 # All args forward to check_figures.mjs (e.g. --json).
@@ -12,7 +12,7 @@ if command -v node >/dev/null 2>&1; then
   if [ ! -d "$TOOLS/node_modules/jsdom" ]; then
     mkdir -p "$TOOLS"; ( cd "$TOOLS" && npm i jsdom >/dev/null 2>&1 ) || true
   fi
-  exec env FIG_JSDOM="$TOOLS/node_modules/jsdom" node "$HERE/figures/check_figures.mjs" "$@"
+  exec env FIG_JSDOM="$TOOLS/node_modules/jsdom" node "$HERE/check_figures.mjs" "$@"
 fi
 
 if command -v docker >/dev/null 2>&1; then

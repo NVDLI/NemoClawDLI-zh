@@ -11,13 +11,14 @@
   "node_type": "directory-explorer",
   "title": "scripts/ bundle toolchain",
   "source_dir": "scripts/",
-  "summary": "The script tree is hierarchical. Implementations live in named subdirectories; root files are compatibility entrypoints for existing commands. Use runtime for the link engine, validation for gates, skills for SKILL contracts, build for packaging, materials for vendored references, figures for runtime diagram checks, edx for export helper pages, dev for local operator helpers, security for iframe proxy audits, and translate for language branches.",
+  "summary": "The script tree is hierarchical. Implementations live in named subdirectories; the root holds only the directory beacon, bootstrap helper, and placeholder. Use runtime for the link engine, validation for gates, skills for SKILL contracts, build for packaging, compliance for source governance, materials for vendored references, figures for runtime diagram checks, edx for export helper pages, dev for local operator helpers, security for iframe proxy audits, git-hooks for local hooks, and translate for language branches.",
   "related": [
     "scripts/runtime/SKILL.html",
     "scripts/validation/SKILL.html",
     "scripts/skills/SKILL.html",
     "scripts/build/SKILL.html",
     "scripts/compliance/SKILL.html",
+    "scripts/git-hooks/SKILL.html",
     "scripts/materials/SKILL.html",
     "scripts/figures/SKILL.html",
     "scripts/edx/SKILL.html",
@@ -32,7 +33,7 @@
 <script type="application/json" id="explorer-config">
 {
   "title": "scripts/ bundle toolchain",
-  "summary": "The script tree is hierarchical. Implementations live in named subdirectories; root files are compatibility entrypoints for existing commands. Use runtime for the link engine, validation for gates, skills for SKILL contracts, build for packaging, materials for vendored references, figures for runtime diagram checks, edx for export helper pages, dev for local operator helpers, security for iframe proxy audits, and translate for language branches.",
+  "summary": "The script tree is hierarchical. Implementations live in named subdirectories; the root holds only the directory beacon, bootstrap helper, and placeholder. Use runtime for the link engine, validation for gates, skills for SKILL contracts, build for packaging, compliance for source governance, materials for vendored references, figures for runtime diagram checks, edx for export helper pages, dev for local operator helpers, security for iframe proxy audits, git-hooks for local hooks, and translate for language branches.",
   "model": "nvidia/nemotron-3-nano-30b-a3b",
   "ties": [
     "build"
@@ -74,6 +75,11 @@
           "desc": "Source licensing, private-link, and vendor-ingestion checks."
         },
         {
+          "path": "git-hooks/SKILL.html",
+          "role": "Git hooks",
+          "desc": "Local pre-commit and pre-push hooks for source and release checks."
+        },
+        {
           "path": "materials/SKILL.html",
           "role": "Materials",
           "desc": "Vendored reference sources and indexing helpers."
@@ -104,41 +110,6 @@
           "desc": "Language-branch sync and validation tooling."
         }
       ]
-    },
-    {
-      "title": "Root compatibility entrypoints",
-      "files": [
-        {
-          "path": "validate_bundle.py",
-          "role": "existing command path",
-          "desc": "Imports scripts/validation/validate_bundle.py."
-        },
-        {
-          "path": "run_engine.sh",
-          "role": "existing command path",
-          "desc": "Execs scripts/runtime/run_engine.sh."
-        },
-        {
-          "path": "link_graph.html",
-          "role": "existing viewer path",
-          "desc": "Redirects to scripts/runtime/link_graph.html."
-        },
-        {
-          "path": "scripts_hierarchy.py",
-          "role": "existing command path",
-          "desc": "Imports scripts/skills/scripts_hierarchy.py."
-        },
-        {
-          "path": "test_page_runtime.js",
-          "role": "existing command path",
-          "desc": "Imports scripts/runtime/test_page_runtime.js."
-        },
-        {
-          "path": "lab_runtime_test.sh",
-          "role": "existing command path",
-          "desc": "Execs scripts/runtime/lab_runtime_test.sh; the harness preserves the web course direct integrate.nvidia.com model path."
-        }
-      ]
     }
   ],
   "tour": [
@@ -149,7 +120,7 @@
         1,
         80
       ],
-      "note": "The hierarchy guardrail defines the allowed implementation paths and compatibility wrappers."
+      "note": "The hierarchy guardrail rejects root-level scripts and requires each grouped directory to carry a SKILL beacon."
     },
     {
       "title": "The release gate",
@@ -173,12 +144,12 @@
 <section class="skill-static" aria-labelledby="skill-title">
   <nav class="skill-nav"><a href="../web/index.html">Home</a><a href="../SKILL.html">repo root</a></nav>
   <h1 id="skill-title">scripts/ bundle toolchain</h1>
-  <p>The script tree is hierarchical. Implementations live in named subdirectories; root files are compatibility entrypoints for existing commands. Use runtime for the link engine, validation for gates, skills for SKILL contracts, build for packaging, materials for vendored references, figures for runtime diagram checks, edx for export helper pages, dev for local operator helpers, security for iframe proxy audits, and translate for language branches.</p>
-  <div class="skill-note">Run commands from the repository root. Root-level script paths remain compatibility entrypoints; implementation files live in this directory tree.</div>
+  <p>The script tree is hierarchical. Implementations live in named subdirectories; the root holds only the directory beacon, bootstrap helper, and placeholder. Use runtime for the link engine, validation for gates, skills for SKILL contracts, build for packaging, compliance for source governance, materials for vendored references, figures for runtime diagram checks, edx for export helper pages, dev for local operator helpers, security for iframe proxy audits, git-hooks for local hooks, and translate for language branches.</p>
+  <div class="skill-note">Run commands from the repository root. Use grouped paths directly; new root-level scripts are rejected by the hierarchy guard.</div>
   <h2>Executable checks</h2>
-  <div class="skill-cmds"><div class="skill-cmd"><b>Hierarchy guard</b><code>python3 scripts/scripts_hierarchy.py</code></div><div class="skill-cmd"><b>SKILL schema</b><code>python3 scripts/skill_contract.py</code></div><div class="skill-cmd"><b>Source gate</b><code>python3 scripts/source_gate.py</code></div><div class="skill-cmd"><b>Cross-file consistency</b><code>python3 scripts/skill_consistency.py</code></div><div class="skill-cmd"><b>Layout links</b><code>python3 scripts/validate_layout.py --quiet</code></div><div class="skill-cmd"><b>Engine self-test</b><code>bash scripts/run_engine.sh --self-test</code></div><div class="skill-cmd"><b>Ship gate</b><code>python3 scripts/validate_bundle.py --no-write --scope ship</code></div></div>
+  <div class="skill-cmds"><div class="skill-cmd"><b>Hierarchy guard</b><code>python3 scripts/skills/scripts_hierarchy.py</code></div><div class="skill-cmd"><b>SKILL schema</b><code>python3 scripts/skills/skill_contract.py</code></div><div class="skill-cmd"><b>Source gate</b><code>python3 scripts/compliance/source_gate.py</code></div><div class="skill-cmd"><b>Cross-file consistency</b><code>python3 scripts/skills/skill_consistency.py</code></div><div class="skill-cmd"><b>Layout links</b><code>python3 scripts/validation/validate_layout.py --quiet</code></div><div class="skill-cmd"><b>Engine self-test</b><code>bash scripts/runtime/run_engine.sh --self-test</code></div><div class="skill-cmd"><b>Ship gate</b><code>python3 scripts/validation/validate_bundle.py --no-write --scope ship</code></div></div>
   <h2>Linkage map</h2>
-  <div class="skill-grid"><a class="skill-card" href="runtime/SKILL.html"><b>runtime/SKILL.html</b><span>Link and runtime. The single link engine, topology viewer, and runtime shims.</span></a><a class="skill-card" href="validation/SKILL.html"><b>validation/SKILL.html</b><span>Validation gates. Ship gate and deterministic validators.</span></a><a class="skill-card" href="skills/SKILL.html"><b>skills/SKILL.html</b><span>SKILL tooling. Beacon schema, consistency, hierarchy generation, and script-layout guardrails.</span></a><a class="skill-card" href="build/SKILL.html"><b>build/SKILL.html</b><span>Build and deploy. Static bundle, edX export, manifests, and hooks.</span></a><a class="skill-card" href="compliance/SKILL.html"><b>compliance/SKILL.html</b><span>Compliance gates. Source licensing, private-link, and vendor-ingestion checks.</span></a><a class="skill-card" href="materials/SKILL.html"><b>materials/SKILL.html</b><span>Materials. Vendored reference sources and indexing helpers.</span></a><a class="skill-card" href="figures/SKILL.html"><b>figures/SKILL.html</b><span>Figure checks. Runtime diagram geometry checks.</span></a><a class="skill-card" href="edx/SKILL.html"><b>edx/SKILL.html</b><span>edX helper pages. Small exported helper pages for LMS surfaces.</span></a><a class="skill-card" href="dev/SKILL.html"><b>dev/SKILL.html</b><span>Developer helpers. Local operator command helpers.</span></a><a class="skill-card" href="security/SKILL.html"><b>security/SKILL.html</b><span>Security audits. Iframe proxy opt-in audit and worker follow-up notes.</span></a><a class="skill-card" href="translate/SKILL.html"><b>translate/SKILL.html</b><span>Translation branches. Language-branch sync and validation tooling.</span></a><a class="skill-card" href="validate_bundle.py"><b>validate_bundle.py</b><span>existing command path. Imports scripts/validation/validate_bundle.py.</span></a><a class="skill-card" href="run_engine.sh"><b>run_engine.sh</b><span>existing command path. Execs scripts/runtime/run_engine.sh.</span></a></div>
+  <div class="skill-grid"><a class="skill-card" href="runtime/SKILL.html"><b>runtime/SKILL.html</b><span>Link and runtime. The single link engine, topology viewer, and runtime shims.</span></a><a class="skill-card" href="validation/SKILL.html"><b>validation/SKILL.html</b><span>Validation gates. Ship gate and deterministic validators.</span></a><a class="skill-card" href="skills/SKILL.html"><b>skills/SKILL.html</b><span>SKILL tooling. Beacon schema, consistency, hierarchy generation, and script-layout guardrails.</span></a><a class="skill-card" href="build/SKILL.html"><b>build/SKILL.html</b><span>Build and deploy. Static bundle, edX export, manifests, and hooks.</span></a><a class="skill-card" href="compliance/SKILL.html"><b>compliance/SKILL.html</b><span>Compliance gates. Source licensing, private-link, and vendor-ingestion checks.</span></a><a class="skill-card" href="materials/SKILL.html"><b>materials/SKILL.html</b><span>Materials. Vendored reference sources and indexing helpers.</span></a><a class="skill-card" href="figures/SKILL.html"><b>figures/SKILL.html</b><span>Figure checks. Runtime diagram geometry checks.</span></a><a class="skill-card" href="edx/SKILL.html"><b>edx/SKILL.html</b><span>edX helper pages. Small exported helper pages for LMS surfaces.</span></a><a class="skill-card" href="dev/SKILL.html"><b>dev/SKILL.html</b><span>Developer helpers. Local operator command helpers.</span></a><a class="skill-card" href="security/SKILL.html"><b>security/SKILL.html</b><span>Security audits. Iframe proxy opt-in audit and worker follow-up notes.</span></a><a class="skill-card" href="translate/SKILL.html"><b>translate/SKILL.html</b><span>Translation branches. Language-branch sync and validation tooling.</span></a></div>
   <h2>Interactive explorer</h2>
   <p>The explorer below opens source files, tours important sections, and checks documented paths against the repository tree.</p>
 </section>

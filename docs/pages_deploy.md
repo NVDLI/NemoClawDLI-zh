@@ -10,13 +10,13 @@ and GitHub Pages serves it as the external public release.
 Build and preview the site locally any time:
 
 ```
-bash scripts/build_pages.sh public
+bash scripts/build/build_pages.sh public
 python3 -m http.server -d public 8000      # then open http://localhost:8000
 ```
 
 ## The static site
 
-`scripts/build_pages.sh` assembles a `public/` directory that runs entirely in a
+`scripts/build/build_pages.sh` assembles a `public/` directory that runs entirely in a
 browser, with no server logic:
 
 | Path | What it is |
@@ -38,10 +38,10 @@ The **static gate** runs in CI on every push, with no lab, GPU, or browser (the 
 engine runs headless under node):
 
 ```
-python3 scripts/validate_layout.py --quiet     # surface-first layout + link glue
-python3 scripts/skill_consistency.py            # skill-meta vs the real tree
-bash    scripts/run_engine.sh --self-test       # link-engine self-test (resolution, picker contract)
-python3 scripts/validate_bundle.py --scope ship # grounding, reachability, page audit, em-dash
+python3 scripts/validation/validate_layout.py --quiet     # surface-first layout + link glue
+python3 scripts/skills/skill_consistency.py            # skill-meta vs the real tree
+bash    scripts/runtime/run_engine.sh --self-test       # link-engine self-test (resolution, picker contract)
+python3 scripts/validation/validate_bundle.py --scope ship # grounding, reachability, page audit, em-dash
 ```
 
 The **client-side test runner** (`tests.html`) covers three layers in the browser:
@@ -62,7 +62,7 @@ The pipeline has two jobs, defined once and shared by both CI providers.
    the link-engine self-test, and the grounding/bundle audit. It writes the gate
    report to `docs/validation/` as a build artifact.
 2. **Pages build** runs only on the default branch after the gate passes. It calls
-   `scripts/build_pages.sh public` and publishes the `public/` artifact.
+   `scripts/build/build_pages.sh public` and publishes the `public/` artifact.
 
 ### GitLab Pages (private pre-release)
 
@@ -77,6 +77,6 @@ experience behind the same access control as any internal Pages site.
 deploys via the official GitHub Pages actions on pushes to the default branch. This
 is the public external release.
 
-Both providers call the same `scripts/build_pages.sh`, so the GitLab pre-release and
+Both providers call the same `scripts/build/build_pages.sh`, so the GitLab pre-release and
 the GitHub external site are byte-identical builds. Only one course ships: the
 `web/nemoclaw/` browser course, bundled into `public/nemoclaw/`.

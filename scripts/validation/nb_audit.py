@@ -15,9 +15,9 @@ Catches the IDE-buffer-merge corruption patterns we've actually seen:
        intentionally identical between cells), so we only warn.
 
 Usage:
-    python3 scripts/nb_audit.py            # exit 1 on REAL issue, 0 otherwise
-    python3 scripts/nb_audit.py --strict   # also fail on soft signals
-    python3 scripts/nb_audit.py PATH ...   # audit specific files
+    python3 scripts/validation/nb_audit.py            # exit 1 on REAL issue, 0 otherwise
+    python3 scripts/validation/nb_audit.py --strict   # also fail on soft signals
+    python3 scripts/validation/nb_audit.py PATH ...   # audit specific files
 
 Run after every edit.
 """

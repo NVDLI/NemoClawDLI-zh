@@ -11,7 +11,7 @@ current health without a live lab:
   4. prose_variety.py                       → sentence-variety + buzz signals over the narrative
   5. reachability, foyer-release, page-audit (via link_projection)
 
-Each suite also runs standalone for detail, e.g. `python3 scripts/prose_variety.py`.
+Each suite also runs standalone for detail, e.g. `python3 scripts/validation/prose_variety.py`.
 
 Exit 0 iff there are no SHIP-blocking link failures AND validate_layout passes. Breakage
 outside the shipped surface (anything that is not the released nemoclaw course or its shared
@@ -22,9 +22,9 @@ Outputs (overwritten each run, committable as "current known state"):
   docs/validation/latest.md     human summary
 
 Usage:
-  python3 scripts/validate_bundle.py            # gate + write log
-  python3 scripts/validate_bundle.py --scope all  # gate on the whole tree, not just shipped (strict)
-  python3 scripts/validate_bundle.py --no-write   # gate only, no log file
+  python3 scripts/validation/validate_bundle.py            # gate + write log
+  python3 scripts/validation/validate_bundle.py --scope all  # gate on the whole tree, not just shipped (strict)
+  python3 scripts/validation/validate_bundle.py --no-write   # gate only, no log file
 """
 from __future__ import annotations
 import argparse, json, subprocess, sys
@@ -225,7 +225,7 @@ SUITE_META = [
      "Every SKILL.html skill-meta must be a well-formed contract of its kind: it classifies into one known kind (service-skill, service-index, dir-skill, hub, leaf), carries that kind's required keys, uses a known schema/node_type value and a semver version where the kind has one, and only valid notebook status values. An agent samples this block to work in a directory, so a malformed beacon is a contract an agent cannot trust. Each entry names the SKILL and the missing or invalid field.",
      "scripts/skills/skill_contract.py", "schema_findings"),
     ("skill_drift", "SKILL drift", "recommended",
-     "Every SKILL.html beacon must match its directory: source_dir / human_landing point at the real location, the notebook list is complete, and hub children exist on disk. Drift means the brain describes a directory it no longer reflects. python3 scripts/skill_contract.py --fix repairs the mechanical cases.",
+     "Every SKILL.html beacon must match its directory: source_dir / human_landing point at the real location, the notebook list is complete, and hub children exist on disk. Drift means the brain describes a directory it no longer reflects. python3 scripts/skills/skill_contract.py --fix repairs the mechanical cases.",
      "scripts/skills/skill_contract.py", "run"),
     ("diagram_geom", "Figure geometry", "recommended",
      "mountDiagram and the policy map are drawn by JavaScript at runtime, so the static figure audit never sees them. This renders each and flags overlapping text, text past the bounds, a connector crossing a box it does not link, and a relational diagram that draws no edges.",
@@ -334,7 +334,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     s = rep["stats"]
 
     # validate_layout (static mount paths + notebooks + SKILL beacons; live-links skip if lab down)
-    vl = subprocess.run([sys.executable, str(SCRIPTS / "validate_layout.py"), "--quiet"],
+    vl = subprocess.run([sys.executable, str(SCRIPTS / "validation" / "validate_layout.py"), "--quiet"],
                         capture_output=True, text=True)
     vl_ok = vl.returncode == 0
     vl_fail = [ln for ln in vl.stdout.splitlines() + vl.stderr.splitlines()
@@ -479,10 +479,10 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
 
     # figure geometry (advisory): render the runtime figures (mountDiagram + mountPolicyMap) and flag overlapping text, out-of-bounds text, stray connectors, and edgeless diagrams.
     # figure_audit only sees inline <svg>, so these runtime figures went UNCHECKED before.
-    # Self-tests each detector; node + jsdom via run_figcheck.sh.
+    # Self-tests each detector; node + jsdom via scripts/figures/run_figcheck.sh.
     dg_find = []
     try:
-        dg = subprocess.run(["bash", str(SCRIPTS / "run_figcheck.sh"), "--json"],
+        dg = subprocess.run(["bash", str(SCRIPTS / "figures" / "run_figcheck.sh"), "--json"],
                             capture_output=True, text=True)
         line = [l for l in dg.stdout.splitlines() if l.strip().startswith("{")]
         if line:
@@ -511,7 +511,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                         {"name": m.get("name"), "url": m.get("url"), "host": m.get("host"),
                          "error": (m.get("error") or "")[:160]})
             if materials["unreachable"]:
-                materials["fix"] = ("re-pull with: python3 scripts/pull_materials.py "
+                materials["fix"] = ("re-pull with: python3 scripts/materials/pull_materials.py "
                                     "[--only blogs|papers|glossary]  (then commit)")
     except Exception as e:                       # a broken provenance file must surface, not pass
         suite_errors["materials"] = str(e); vl_fail.append(f"materials read error: {e}")
@@ -709,7 +709,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                            "valid notebook status (ready/setup/wip/ref). See SKILL_CONTRACT.md.")
                          for p, d in skc_find.get("schema", [])],
         "skill_drift": [D(p, d, RECOMMENDED,
-                          "The beacon no longer matches its directory. Run python3 scripts/skill_contract.py --fix "
+                          "The beacon no longer matches its directory. Run python3 scripts/skills/skill_contract.py --fix "
                           "to repair source_dir / human_landing / the notebook list, or fix the hub child path by hand.")
                         for p, d in skc_find.get("drift", [])],
         "diagram_geom": [D(d.get("page"), f"{d.get('sel','')}: {d.get('detail','')}", RECOMMENDED,
@@ -717,7 +717,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                            "only crossing boxes they link, and a relational diagram actually drawing its edges.")
                          for d in dg_find],
         "materials": [D(u.get("name"), u.get("error") or "unreachable", RECOMMENDED,
-                        materials.get("fix") or "Re-pull the source with python3 scripts/pull_materials.py, then commit.")
+                        materials.get("fix") or "Re-pull the source with python3 scripts/materials/pull_materials.py, then commit.")
                       for u in materials.get("unreachable", [])],
         "reachability": [D(x.get("page"), x.get("reason", "unreachable from a SKILL hub"), RECOMMENDED,
                            "Link this page from a SKILL hub so it appears in the navigation and the agent's map of the course.")
@@ -923,7 +923,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     else:
         verdict = "✅ clean. Nothing outstanding at any tier (required, recommended, or consider)."
     print(f"validate_bundle: {verdict}")
-    print("  detail: docs/validation/latest.md  ·  review UI: validation.html  ·  one suite: python3 scripts/prose_variety.py")
+    print("  detail: docs/validation/latest.md  ·  review UI: validation.html  ·  one suite: python3 scripts/validation/prose_variety.py")
     return 0 if ok else 1
 
 
@@ -1043,8 +1043,8 @@ def _render_md(summary: dict) -> str:
             L.append(f"- `{u['name']}` ({u.get('host')}) &lt;{u.get('url')}&gt;: {u.get('error') or 'unreachable'}")
     else:
         L.append("\nEvery vendored web source pulled cleanly. Refresh with "
-                 "`python3 scripts/pull_materials.py`; drift-check against the live web with "
-                 "`python3 scripts/pull_materials.py --check`.")
+                 "`python3 scripts/materials/pull_materials.py`; drift-check against the live web with "
+                 "`python3 scripts/materials/pull_materials.py --check`.")
     L.append("")
 
     # release-foyer contract: the foyer is the student-facing release surface; it must
@@ -1103,11 +1103,11 @@ def _render_md(summary: dict) -> str:
     pvd = summary.get("prose_variety", {})
     L.append(f"## Prose variety (machine-uniformity; advisory): {pvd.get('flagged', 0)} of {pvd.get('pages', 0)} narrative pages flagged")
     if pvd.get("flagged_pages"):
-        L.append(f"\n_at or above score {pvd.get('flag_at')}; `python3 scripts/prose_variety.py` for the full ranked table_:")
+        L.append(f"\n_at or above score {pvd.get('flag_at')}; `python3 scripts/validation/prose_variety.py` for the full ranked table_:")
         for r in pvd["flagged_pages"][:20]:
             L.append(f"- `{r['path']}` score {r['score']}: {'; '.join(r['tells'])}")
     else:
-        L.append("\nNo page is over the rhythm threshold. Full ranked metrics: `python3 scripts/prose_variety.py`.")
+        L.append("\nNo page is over the rhythm threshold. Full ranked metrics: `python3 scripts/validation/prose_variety.py`.")
     anti = pvd.get("antithesis", [])
     if anti:
         L.append(f"\n### Buzz cadence: {len(anti)} antithesis/numeric construction(s) to rewrite")

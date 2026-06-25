@@ -48,7 +48,7 @@ Before committing new material:
 1. Put the file in the correct governed root.
 2. Add or update the directory `SKILL.html` provenance record.
 3. If the material is not represented by an existing provenance beacon, add an entry to `scripts/compliance/docs/source_inventory.json`.
-4. Run `python3 scripts/source_gate.py`.
+4. Run `python3 scripts/compliance/source_gate.py`.
 5. Run the normal ship gate.
 6. Include the source and license disposition in the merge request description.
 
@@ -64,7 +64,7 @@ Use clear labels. Do not invent permission.
 
 ## Gate Behavior
 
-`python3 scripts/source_gate.py` blocks on these classes:
+`python3 scripts/compliance/source_gate.py` blocks on these classes:
 
 - missing or non-Apache root license
 - contribution terms missing Apache-2.0 inbound language

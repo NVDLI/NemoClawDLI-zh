@@ -99,7 +99,7 @@
     <h2>How it stays current (and how you would fix it)</h2>
     <p class="gx-lead">
       A vendored corpus drifts away from its sources over time unless something actively keeps it
-      honest. That job belongs to a single script, <code>scripts/pull_materials.py</code>, which is
+      honest. That job belongs to a single script, <code>scripts/materials/pull_materials.py</code>, which is
       written so that any drift it finds is surfaced to everyone at once and described in exactly
       the same words.
     </p>
@@ -108,7 +108,7 @@
       The loop runs like this. A contributor (or the deploy build) runs the pull, and every source gets
       fingerprinted in <code>_materials.json</code>. Passing <code>--check</code> re-fetches each source
       and flags any drift or outage. That same status lands on the validation screen, reachable from the
-      site's landing page or reproduced locally with <code>python3 scripts/validate_bundle.py</code>, and
+      site's landing page or reproduced locally with <code>python3 scripts/validation/validate_bundle.py</code>, and
       it names the exact command to fix whatever broke. Nothing about the corpus is a moving target you
       have to trust.
     </p>

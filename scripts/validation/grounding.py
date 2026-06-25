@@ -14,9 +14,9 @@ No LLM, no network: every signal is deterministic and reproducible. An earlier 3
 manage its noise, defaulted toward pass, and added vibes rather than honest signal.
 
 Usage:
-  python3 scripts/grounding.py --scope ship       # all ship-target pages
-  python3 scripts/grounding.py --course nemoclaw  # one course
-  python3 scripts/grounding.py --report PATH      # aggregate findings + mat-association JSON
+  python3 scripts/validation/grounding.py --scope ship       # all ship-target pages
+  python3 scripts/validation/grounding.py --course nemoclaw  # one course
+  python3 scripts/validation/grounding.py --report PATH      # aggregate findings + mat-association JSON
 """
 from __future__ import annotations
 import argparse, hashlib, json, re, sys
