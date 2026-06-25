@@ -1,32 +1,7 @@
 #!/usr/bin/env node
-// Runtime test for browser course pages via playwright-core.
-// Preferred host entrypoint:
-//   scripts/lab_runtime_test.sh [--smoke] [url]
-// Legacy openclaw-container entrypoint:
-//   docker cp test_page_runtime.js <stack>-task1-openclaw-1:/tmp/
-//   docker exec \
-//     -e CLAW_URL=http://localhost:8995 -e CLAW_TOKEN=dli-openclaw-token \
-//     <stack>-task1-openclaw-1 node /tmp/test_page_runtime.js [url]
-// Default URL: http://nginx/lab/static/nemoclaw/01a-loop.html
-// Static render check: scripts/lab_runtime_test.sh --render-only
-//
-// Credentials: set CLAW_URL + CLAW_TOKEN to drive the OpenClaw gateway nodes
-// (03a/03c/04a). They are injected into sessionStorage under the keys the pages
-// read (nemoclaw_clawrawurl / _clawtoken) before any script runs, so
-// the Connect nodes succeed against the local gateway instead of stalling on the
-// "fill in the probe" guard.
-//
-// WebSocket monitoring: every /cli/gateway frame is parsed. The run is only
-// considered to exercise the agent loop if event:"agent" tool/command frames
-// actually arrive. A green page with zero tool frames is reported as a WARN,
-// because that is exactly the silent-failure mode this harness exists to catch.
-//
-// Legacy deps when running directly inside openclaw:
-//   apt-get install -y libglib2.0-0 libnspr4 libnss3 libatk1.0-0 libatk-bridge2.0-0 \
-//     libcups2 libdrm2 libgbm1 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 \
-//     libxrandr2 libxext6 libx11-6 libpangocairo-1.0-0 libasound2t64 fonts-liberation
-//   PLAYWRIGHT_BROWSERS_PATH=/tmp/pw-browsers \
-//     npx playwright install chromium-headless-shell
+// Browser runtime harness. Host entrypoint: scripts/lab_runtime_test.sh [--smoke] [url].
+// Set CLAW_URL + CLAW_TOKEN to exercise OpenClaw gateway nodes.
+// A green page with zero tool frames reports WARN, not PASS.
 
 const fs = require('fs');
 const http = require('http');
@@ -167,11 +142,7 @@ function findChrome() {
     process.exit(0);
   }
 
-  // Local-test only: the gateway's controlUi.allowedOrigins won't contain the
-  // origin nginx serves the page from (http://nginx), so the WS handshake is
-  // rejected with "origin not allowed". On the real interface the page is served
-  // from an allowed origin, so this never triggers. CLAW_ORIGIN lets the harness
-  // present an allowlisted Origin (e.g. http://localhost:8088) for the handshake.
+  // Local harness may need an allowlisted Origin for gateway WS handshakes.
   if (process.env.CLAW_ORIGIN) {
     await page.setExtraHTTPHeaders({ Origin: process.env.CLAW_ORIGIN });
     console.log('ORIGIN: overridden ->', process.env.CLAW_ORIGIN);
@@ -199,9 +170,7 @@ function findChrome() {
     page.on('websocket', s => console.log('  [ws.open]', s.url()));
   }
 
-  // ── WebSocket frame monitoring ──────────────────────────────────────────────
-  // Tally gateway frames by kind. Tool/command frames are the signal that the
-  // agent loop actually ran; their absence is the bug this harness guards.
+  // Gateway frame counts prove the agent loop actually ran.
   const ws = { sockets: 0, allFrames: 0, evtKinds: {}, resErr: [], agentFrames: 0, toolStarts: [], cmdEnds: [], chatFinals: 0, errors: 0 };
   page.on('websocket', sock => {
     if (!/\/cli\/gateway/.test(sock.url())) return;
@@ -275,9 +244,7 @@ function findChrome() {
     process.exit(fail ? 1 : 0);
   }
 
-  // Inject gateway credentials AFTER the probe widget mounts. The widget rewrites
-  // the token key to "" on mount, so an addInitScript value gets clobbered; set
-  // the keys here, after it has settled and before we click Run.
+  // Inject credentials after the probe widget mounts, or it clears them.
   if (CLAW_URL && CLAW_TOKEN) {
     await page.evaluate(([u, t]) => {
       sessionStorage.setItem('nemoclaw_clawrawurl', u);

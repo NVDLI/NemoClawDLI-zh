@@ -1,25 +1,5 @@
 "use strict";
-/*
- * engine.js: the SINGLE link-graph engine for the task1 bundle.
- *
- * One implementation, two runtimes:
- *   - BROWSER: scripts/link_graph.html loads this and computes the graph live from the
- *     JupyterLab contents API (the viewer is what humans + agents actually read).
- *   - NODE:    `node scripts/engine.js --check | --self-test | --graph PATH | --embed`
- *     runs the exact same code headless for CI (pre-push, the DGX watcher). The dli
- *     volume is bind-mounted to the host tree, so the lab container's node sees the same
- *     files being pushed; the CI wrapper resolves `node` on PATH, else `docker exec` lab.
- *
- * It REPLACES the python link_projection.py graph engine. There is no second engine to
- * drift from: resolution, crawl, graph, reachability, the foyer contract, and the
- * self-test all live here. v12-compatible (no optional chaining / nullish coalescing),
- * since the lab container ships node v12.
- *
- * Models how a WRITTEN link projects through the deploy "compiler": nginx routes +
- * redirects, Jupyter extra_static_paths, the dli bind, docker-compose topology, down to a
- * physical repo-relative file or a service. Paths are repo-relative throughout (rooted at
- * task1), which is what the browser already works in.
- */
+/* Link-graph engine for browser viewer and Node gates. Keep Node v12-compatible. */
 (function (root, factory) {
   if (typeof module !== "undefined" && module.exports) module.exports = factory();
   else root.LinkEngine = factory();
@@ -30,24 +10,14 @@
   var PAGE_EXT = [".md", ".ipynb", ".html", ".htm"];
   var ASSET_EXT = [".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico", ".css", ".js",
     ".mjs", ".woff", ".woff2", ".ttf", ".mp4", ".webm", ".json", ".pdf"];
-  // The crawl boundary: which directories are NOT a source of navigable pages. This is by KIND,
-  // not by which course a path belongs to (the page extension and reachability decide everything
-  // about content; this only keeps non-source bytes out of the candidate set):
-  //   - dependency / build / cache dirs that recur in any repo (node_modules, __pycache__, the
-  //     dot-prefixed tool caches, dist/build/venv);
-  //   - generated output this bundle writes and gitignores (export, standalone, grounding_cache,
-  //     docs/validation), all regenerated, never authored, surfaced live through the gate report;
-  //   - service seed data (skills-seed: the openclaw agent's own SKILL.md skill definitions),
-  //     which the service loads at runtime and is not part of the course's navigable graph.
-  // It is deliberately NOT a list of "these course dirs are assets"; that assumption is gone.
+  // Crawl boundary: skip generated, dependency, cache, and service-seed dirs.
+  // Course ownership comes from page reachability, not from this skip list.
   var SKIP_DIR = setOf(["__pycache__", ".ipynb_checkpoints", ".pytest_cache", ".jupyter",
     "node_modules", ".figtools", "export", "standalone", "dist", "build", "venv", ".venv",
     "skills-seed", "grounding_cache", "validation", ".git", ".cache",
     "i18n"]);   // staged translation content (a copy of web/), not part of the source graph
 
-  // mats are the curated reference layer, now COURSE-SCOPED under web/nemoclaw/mats/ (no longer a top-level peer).
-  // They are recognized by the "mats" path SEGMENT anywhere in the path, not by a top-level dir.
-  // MAT_REL is the canonical repo-relative location of the packets.
+  // mats are course-scoped reference packets; detect the path segment, not a top-level dir.
   var MAT_REL = "web/nemoclaw/mats";
   function isMatPath(r) { return r.split("/").indexOf("mats") >= 0; }
 

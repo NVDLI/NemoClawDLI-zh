@@ -53,9 +53,7 @@ VERSIONS = os.path.join(RAW, "_versions.json")
 BASE = "https://www.nvidia.com/en-us/glossary/{slug}/"
 UA = {"User-Agent": "Mozilla/5.0 (NVIDIA DLI course glossary vendoring)"}
 
-# The glossary terms that back an entry in ../nvidia_agent_glossary.md. Add a slug
-# here to vendor more (e.g. "generative-ai", "artificial-intelligence", "cot-prompting"
-# are discoverable cross-references, left out of the default to keep the set lean).
+# Deep-vendored glossary terms. Keep the default set lean.
 TERMS = [
     "ai-agents",
     "ai-reasoning",
@@ -66,25 +64,16 @@ TERMS = [
     "vector-database",
 ]
 
-# Chrome to drop before converting: by CSS selector and by element id.
-# NOTE: <noscript> is NOT stripped here. NVIDIA lazy-loads images with JS and puts
-# the real <img src> in a <noscript> fallback, so those tags are unwrapped (their
-# children promoted) before extraction; deleting them drops the page's diagrams.
+# Drop chrome before conversion. Keep <noscript>; it carries lazy-loaded images.
 STRIP_SELECTORS = ["script", "style", "header", "nav", "iframe",
                    ".global-footer", ".page-footer-wrapper"]
 STRIP_IDS = ["main-header", "brandFooter", "globalFooter", "country-selector-modal"]
 
 INDEX_JSON = os.path.join(REPO, "web", "nemoclaw", "mats", "glossary_index.json")
-# The course ships the same index as a static asset and fetches it client-side: it is the
-# key-less, off-lab web_search backend (helpers.webSearch in web/nemoclaw/_shared.js). build_index
-# writes this copy alongside the mats one so a re-vendor keeps both in sync.
+# Static asset copy backs keyless client-side glossary search.
 COURSE_INDEX = os.path.join(REPO, "web", "nemoclaw", "assets", "glossary_index.json")
 
-# The full glossary listing (https://www.nvidia.com/en-us/glossary/?itemsPerPage=100).
-# `--index` fetches each page's meta (title, description, keywords) and writes the
-# committed web/nemoclaw/mats/glossary_index.json, so the course's glossary endpoint ships a
-# real, regenerable index without a live fetch. Slugs whose page carries deep
-# vendored markdown in glossary_raw/ are flagged "deep" from _versions.json.
+# Full glossary index. --index fetches metadata and flags deep-vendored slugs.
 INDEX_SLUGS = [
     "3d-reconstruction", "ai-agents", "ai-factory", "ai-grid", "ai-inference",
     "ai-infrastructure", "ai-reasoning", "ai-training", "ai-ran", "alphafold2",
@@ -105,8 +94,7 @@ INDEX_SLUGS = [
     "world-models", "xgboost",
 ]
 
-# Clean display names from the glossary listing. The per-page og:title is SEO-shaped
-# ("Robotaxis", "Polars? - NVIDIA Glossary"), so the listing name is authoritative.
+# Listing names beat SEO-shaped per-page titles.
 NAMES = {
     "3d-reconstruction": "3D Reconstruction", "ai-agents": "AI Agents",
     "ai-factory": "AI Factory", "ai-grid": "AI Grid", "ai-inference": "AI Inference",

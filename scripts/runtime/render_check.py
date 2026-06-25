@@ -34,15 +34,10 @@ DEFAULT_PAGES = ["01a-loop", "01b-react", "01c-tools", "02a-routing", "02b-rag",
                  "03a-kickstart", "03b-openclaw", "03c-always-on", "04a-safety",
                  "04b-modern-clis", "04c-going-further"]
 
-# Non-numbered pages that share _shared.js and the module graph. They mount fewer (or no)
-# canvas cells, so the gate that matters for them is "loads without a JS error or a failed
-# module import" rather than panel count. They are checked under --all. glossary.html broke
-# once because the _glossary.js extraction dropped a re-export and no gate covered it; this
-# list closes that gap.
+# Aux pages check module-load health, not canvas panel count.
 AUX_PAGES = ["index", "courses", "cert", "glossary", "studio", "SKILL"]
 
-# Execution-time errors that mean broken CODE (a helper out of scope, a typo), as opposed to the
-# offline fetch failures that are expected here (no backend wired to the static server).
+# Code errors fail; expected offline fetch noise does not.
 _CODE_ERR = ("is not defined", "is not a function", "is not iterable", "SyntaxError",
              "Cannot read properties", "Cannot access",
              # A fetched asset that 404s returns the HTML index; .json() on it throws this.

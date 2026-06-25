@@ -50,8 +50,7 @@ SKIP_PARTS = {"__pycache__", ".ipynb_checkpoints", "node_modules", ".git", ".cac
               # Never source, and a build mid-flight makes subdirs appear and vanish under us, so walking into them crashes the scan.
               # Prune them.
               "public", "export", "standalone", "dist", "build", "i18n",
-              # gitignored lab-runtime cruft: never validate it (and do not rely on
-              # filesystem permissions to skip it, e.g. a root-owned .Trash-0).
+              # Skip gitignored lab-runtime cruft explicitly.
               ".Trash-0", "artifacts", "grounding_cache", "_paper_cache",
               ".exec_stage", ".solution"}
 # config/source suffixes worth scanning for duplicated facts
@@ -128,8 +127,7 @@ def inv_openclaw_token():
             found.setdefault(tok, []).append(str(p.relative_to(REPO)))
     distinct = set(found)
     if not distinct:
-        # the token is a load-bearing literal across nginx + service SKILLs; its total
-        # absence means the scan surface is wrong again, not that all is well.
+        # Total absence means the scan surface broke, not that token refs are clean.
         fail("openclaw token: NOT FOUND anywhere. The scan surface is wrong or the refs were dropped.")
     elif distinct == {"dli-openclaw-token"}:
         ok(f"openclaw token: single value across {sum(len(v) for v in found.values())} refs")

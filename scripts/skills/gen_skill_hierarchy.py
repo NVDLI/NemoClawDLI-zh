@@ -65,8 +65,7 @@ WEB_PAGE_DESC = {
         "courses":           "Catalog redirect stub.",
     },
 }
-# Provenance hubs (hand-authored, in generator-skipped asset dirs): carded under their own section and
-# linked as children so they are reachable from the course hub.
+# Hand-authored provenance hubs stay reachable from the course hub.
 WEB_PROV = {
     "assets": ("image provenance",    "Source, license, and connection level for every image."),
     "mats":   ("material provenance",  "Source and connection level for every companion essay."),
@@ -76,13 +75,7 @@ SURFACE_LEAD = {
            "browser course runs against. Open the service hub below.",
 }
 
-# ── Core tenets: the operating creed, projected INTO the brain ──────────────────────────
-# This bundle ships no agent-tool config file (no CLAUDE.md or equivalent). The learnings
-# that such a file would hold live here, in the root skill-meta, so any agent or person who
-# reads SKILL.html inherits them, and `scripts/tenets.py` reports them + their enforcement.
-# Keep these tool-agnostic and load-bearing; the gate scripts enforce the checkable ones.
-# The `purpose` group is the platform philosophy (what this repo is for); its long form is
-# PHILOSOPHY.md. The other groups are engineering discipline.
+# Core tenets projected into root skill-meta; scripts/tenets.py reports enforceable ones.
 TENETS = {
     "purpose": [
         "Content is curated once and projected: pages live under web/ and cpu/, and "
@@ -245,12 +238,7 @@ def gen_task():
                     "course runs against. Assumes a CPU lab box."}
     items = [(f"{s}/", h, sdesc.get(s, "")) for s, h in surfaces]
 
-    # Reference + infrastructure layers: immediate children of task1/ that are NOT courses.
-    # repos/ is a cited-by-URL reference packet set (joined to pages via shared external
-    # citations, never linked as files), so it is DESCRIBED, not carded. The mats reference
-    # layer is now COURSE-SCOPED under web/nemoclaw/mats/, so it is documented as part of the
-    # course rather than as a top-level peer. scripts/ is the tooling; the one card is the
-    # static verifier itself, on-theme for a verifiable ontology.
+    # Non-course root layers: describe references, card tooling.
     ref_layers = []
     if (TASK1 / "web" / "nemoclaw" / "mats").is_dir():
         ref_layers.append({"name": "web/nemoclaw/mats", "role": "course-scoped curated reference "
@@ -266,10 +254,7 @@ def gen_task():
     layers_html = ", ".join(f"<code>{r['name']}/</code>" for r in ref_layers) or "none present"
     ref_help = ("Immediate children of the bundle root that are not courses. "
                 + " ".join(f"<code>{r['name']}/</code> {r['role']}." for r in ref_layers))
-    # Source & tooling: the folder explorers (top-level dirs whose SKILL.html is a
-    # directory-explorer: cors-proxy, scripts, docs, workspace) plus the topology viewer.
-    # Linked from the root so the WHOLE source substrate is discoverable and explorable,
-    # not just the courses. Discovered from disk so a new explorer folder appears automatically.
+    # Source explorers and topology tools are discovered from disk.
     import re as _re
     explorers = []
     for d in sorted(p for p in TASK1.iterdir() if p.is_dir() and not p.name.startswith(".")):
@@ -380,24 +365,14 @@ def gen_web_course_hubs():
         sk = d / "SKILL.html"
         if sk.is_file() and MARKER not in sk.read_text():
             continue
-        # Authoring/inspection tools (the studio view, the link-graph viewer) are real pages but
-        # not part of the student MODULE flow, so they are carded under a separate "Tools" section
-        # rather than mixed into the page grid. A tool DECLARES itself with <meta name="page-role"
-        # content="tool"> in its own head, so there is no central list of tool filenames to keep in
-        # sync with the engine (a new tool needs no edit here, an old one needs no carve-out). They
-        # ARE linked (crawlable): engine.js treats every non-underscore page as an ordinary graph
-        # node, so a hub link to a tool is a valid edge, not a dead one.
+        # Tool pages self-declare via page-role=tool and live outside the student module grid.
         htmls = [p for p in d.glob("*.html") if not p.name.startswith("_")]
         tools = sorted(p for p in htmls if _declares_tool_role(p))
         flat = [p for p in htmls if p not in tools]
         nested = [p for p in (d / "web").glob("*.html")] if (d / "web").is_dir() else []
         edx = sorted((d / "edx").glob("*.html")) if (d / "edx").is_dir() else []
         shared_docs = sorted((d / "_shared").glob("*.md")) if (d / "_shared").is_dir() else []
-        # Sub-collection launchers (e.g. slides/index.html): a subdir's index.html is the hub
-        # FOR that collection and links every page inside it, so linking the launcher from the
-        # course hub pulls the whole collection into the SKILL tree in one edge. Without this a
-        # collection (decks + their speaker scripts) is a detached cluster with no SKILL path.
-        # SKIP_SUB excludes delivery/asset/build dirs (standalone is regenerated bundle output).
+        # Subdir index.html files pull whole sub-collections into the SKILL tree.
         SKIP_SUB = {"edx", "web", "_shared", "assets", "scripts", "_tools",
                     "standalone", "node_modules", "__pycache__", ".ipynb_checkpoints"}
         subindex = sorted(p for p in d.glob("*/index.html")

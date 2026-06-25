@@ -1,28 +1,13 @@
 #!/usr/bin/env node
-// Checks the runtime-rendered figures (mountDiagram + mountPolicyMap) that the static
-// figure_audit never sees, because they are built by _shared.js in the browser.
-//
-// Detects:
-//   - text that overlaps other text (the policy-map label collision)
-//   - text that runs past the figure's own bounds
-//   - a connector that crosses a box it does not link, or overlapping node boxes
-//   - a "useless" diagram: >=3 boxes, no edges, but framing that implies a relationship
-//     (path / trajectory / flow / sequence) and shows none -- a bordered list, not a diagram
-//
-// SELF-TESTS every detector against a known-bad input and refuses to report clean if any
-// fails to fire (a check that cannot fail is a lie). --json prints {checked, findings};
-// exits nonzero on any finding.
+// Browser-rendered figure gate. Detects overlap, bounds, connector, and no-edge diagram issues.
+// Self-tests each detector before reporting clean.
 import fs from "fs"; import path from "path"; import { fileURLToPath } from "url";
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const NEMO = process.env.FIG_NEMO || path.resolve(HERE, "..", "web", "nemoclaw");
-// _shared.js must load as ESM (node reads a bare .js as CJS without a package "type"), so we stage
-// a .mjs shim of it. The shim has to sit BESIDE the real course modules, not in /tmp: _shared.js
-// imports siblings (./_diagram.js, ./_chat.js, ...) by relative path, and those resolve only from
-// inside the course dir. Staging in /tmp is what broke once _shared.js was split into modules
-// (ERR_MODULE_NOT_FOUND ./_diagram.js). Write it here, import it, and always remove it.
+// Stage an ESM shim beside course modules so relative imports resolve under Node.
 const tmp = path.join(NEMO, ".figcheck_shared.mjs");
 fs.writeFileSync(tmp, fs.readFileSync(path.join(NEMO, "_shared.js")));
 let shared;
@@ -36,9 +21,7 @@ let JSDOM = null;
 try { ({ JSDOM } = require(process.env.FIG_JSDOM || "jsdom")); } catch (e) { /* surfaced as a finding below */ }
 
 const MONO = 0.6, SANS = 0.52;       // em-width per char; monospace is wider
-// Parse each <text> into an estimated rendered bounding box {l,r,t,b}. The overlap and out-of-bounds
-// checks need where text actually lands on screen, which the SVG only gives indirectly (anchor + font
-// size + char count), so this reconstructs it. Width is char-count * font-size * an em-width factor.
+// Estimate text boxes from SVG anchors, font size, and character count.
 function textBoxes(svg) {
   const out = [];
   for (const m of svg.matchAll(/<text\b([^>]*)>([^<]*)<\/text>/g)) {
@@ -66,10 +49,7 @@ function bez(P, t) { const m = 1 - t; return [
   m*m*m*P[0][0] + 3*m*m*t*P[1][0] + 3*m*t*t*P[2][0] + t*t*t*P[3][0],
   m*m*m*P[0][1] + 3*m*m*t*P[1][1] + 3*m*t*t*P[2][1] + t*t*t*P[3][1]]; }
 
-// Geometry checks on one rendered figure's SVG. This is the core detector: it catches the visual
-// defects a student would see but no static text scan can (labels colliding, text spilling past the
-// frame, a connector cutting through an unrelated box, overlapping node boxes). Returns a list of
-// human-readable problem strings; edge checks run only when the figure is a relational diagram.
+// Visual geometry checks static text scans cannot see.
 function svgProblems(svg, { checkEdges = false } = {}) {
   const out = [], T = textBoxes(svg), E = 1.5;   // erode 1.5px so merely-touching text is fine
   // every pair of text boxes: report if their eroded rectangles intersect (a label collision)
@@ -106,9 +86,7 @@ function svgProblems(svg, { checkEdges = false } = {}) {
 }
 
 const FLOW = /\b(path|paths|trajector\w*|flow|pipeline|sequence|steps?|then|leads?|chain|into|through|cycle|loop|stages?)\b/i;
-// Catch a "diagram" that is really a bordered list: 3+ boxes, zero edges, yet its title/caption
-// promises a relationship (path, flow, sequence...). Drawing no edges there teaches the student
-// nothing the prose did not, so this flags it for either real edges or a plain list instead.
+// Flag framed lists that claim to be relationship diagrams but draw no edges.
 function uselessSpec(spec) {
   const nodes = spec.nodes || [], edges = spec.edges || [];
   if (nodes.length >= 3 && edges.length === 0) {                 // enough boxes to imply structure, but no connections

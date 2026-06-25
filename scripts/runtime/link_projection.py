@@ -45,13 +45,10 @@ SKIP_DIR = {"__pycache__", ".ipynb_checkpoints", "node_modules", "export", "stan
             ".git", ".cache", "dist", "build", "venv", ".venv", "composer", "validation",
             "i18n"}   # i18n/<lang>/ is staged translation content (a copy of web/), not source to crawl
 
-# Release contract: the courses the release foyer may surface (mirrored in engine.js RELEASED
-# and enforced there; kept here so gen_skill_hierarchy.py and other python callers share it).
+# Release contract mirrored from engine.js for Python callers.
 RELEASED = ("nemoclaw",)
 
-# mats are the curated reference layer, now COURSE-SCOPED under web/nemoclaw/mats/ (no longer a top-level peer).
-# They are recognized by the "mats" path SEGMENT anywhere in the path, mirroring engine.js isMatPath, not as a top-level dir.
-# MAT_REL is the canonical repo-relative location.
+# mats are course-scoped reference packets; match engine.js segment detection.
 MAT_REL = "web/nemoclaw/mats"
 
 

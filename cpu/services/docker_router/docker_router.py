@@ -147,22 +147,12 @@ async def restart_container(container_name: str):
         return {"ok": False, "error": f"Container {container_name} not found"}
 
 
-# ── Bounded service lifecycle ─────────────────────────────────────────────────
-# A deliberately narrow control surface. The lab kernel cannot reach the host
-# Docker socket; only this service can, and this endpoint can act on ONLY the
-# services in LIFECYCLE_SERVICES, with ONLY the verbs in LIFECYCLE_ACTIONS. That
-# bound is the point: an agent that can run arbitrary `docker` (or hold the raw
-# socket) has an unbounded, unprovable blast radius on the host. Here the worst
-# case is enumerable, so it is provable: toggle one of these on-demand services,
-# and nothing else. The essential services (lab, nginx, llm_client) are
-# intentionally absent, so this path can never take the lab down. See
-# services/00_openclaw.md.
+# Bounded lifecycle surface. Only allow-listed services and verbs reach Docker.
+# Essential services stay off-list, so this endpoint cannot take the lab down.
 LIFECYCLE_SERVICES = {"openclaw"}
 LIFECYCLE_ACTIONS  = {"start", "stop", "restart", "status"}
 
-# The allow-list above is the security boundary: a service off it, or an action off LIFECYCLE_ACTIONS, returns 403 before any Docker call.
-# Essential services (lab, nginx, llm_client) are intentionally absent, so this path can never take the lab down.
-# The bounded allow-list lesson lives in the lifecycle endpoint below.
+# The allow-list is the boundary: off-list service or action returns 403 before Docker.
 
 
 def _service_container(client, service: str):
@@ -290,8 +280,7 @@ async def get_key():
 # ── Assessment runner ─────────────────────────────────────────────────────────
 
 class AssessmentRequest(BaseModel):
-    # Research-agent assessment (ported from c-fx-25-v1):
-    # `submission` is the list of {question, trace, answer} cases.
+    # Research-agent assessment cases: {question, trace, answer}.
     submission: List[Dict[str, Any]] = Field(..., description="Graded cases")
     model_specs: Dict[str, str] = Field(
         default_factory=lambda: {
