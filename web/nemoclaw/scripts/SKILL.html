@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Course runtime scripts ? Securing Agents</title>
+<title>Course runtime scripts - Securing Agents</title>
 <link rel="stylesheet" href="../styles/_style.css"/>
 <style>
   main { max-width: 1080px; margin: 0 auto; padding: 1.5rem; }
@@ -12,6 +12,7 @@
   th { color: var(--td); font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; }
   td:first-child { font-family: var(--mono); color: var(--gs); white-space: nowrap; }
   code { color: var(--gs); }
+  .note { border-left: 3px solid var(--g); background: rgba(118,185,0,.08); padding: .8rem 1rem; color: var(--td); }
 </style>
 <script type="application/json" id="skill-meta">
 {
@@ -22,7 +23,41 @@
   "title": "Course runtime scripts",
   "source_dir": "web/nemoclaw/scripts/",
   "self_path": "web/nemoclaw/scripts/SKILL.html",
-  "summary": "Browser modules that power the Securing Agents course: shared page chrome, runnable cells, canvas flows, OpenClaw controls, chat widgets, diagrams, retrieval helpers, and the studio tool. These files are source assets, not generated bundle output."
+  "summary": "Browser modules that power the Securing Agents course: shared page chrome, runnable cells, canvas flows, OpenClaw controls, chat widgets, diagrams, retrieval helpers, and the studio authoring interface. These files are source assets, not generated bundle output.",
+  "interfaces": [
+    {
+      "name": "Course pages",
+      "entry": "scripts/_shared.js",
+      "style": "Imported by lesson HTML. Keep page code declarative and route larger behavior through the shared modules."
+    },
+    {
+      "name": "Canvas flows",
+      "entry": "scripts/_canvas.js",
+      "style": "Use mountCanvasFlow or mountRunCell for runnable teaching cells. Keep code visible when it is the lesson, collapsed when it is support infrastructure."
+    },
+    {
+      "name": "OpenClaw controls",
+      "entry": "scripts/_openclaw.js",
+      "style": "Use only for lab-facing OpenClaw probes, chat, logs, and sandbox-policy controls. It must degrade clearly outside the launchable."
+    },
+    {
+      "name": "Chat and retrieval",
+      "entry": "scripts/_chat.js, scripts/_rag.js, scripts/_glossary.js",
+      "style": "Use browser-safe helpers with explicit key/proxy state. Do not add hidden key paths."
+    },
+    {
+      "name": "Studio",
+      "entry": "scripts/studio_main.js",
+      "style": "Use as an authoring and inspection shell. Lab mode may write through Jupyter contents API; static mode is read-only and stores comments in localStorage."
+    }
+  ],
+  "tests": [
+    "python3 scripts/validation/studio_interface_audit.py",
+    "python3 scripts/validation/validate_layout.py --quiet",
+    "python3 scripts/skills/skill_contract.py",
+    "python3 scripts/skills/skill_consistency.py",
+    "python3 scripts/validation/validate_bundle.py --no-write --scope ship"
+  ]
 }
 </script>
 </head>
@@ -30,7 +65,21 @@
 <main>
   <p><a href="../SKILL.html">Back to course hub</a></p>
   <h1>Course runtime scripts</h1>
-  <p>These modules support the browser course pages. Page HTML imports <code>scripts/_shared.js</code>; that shared module re-exports the page-facing APIs and delegates larger subsystems to smaller siblings.</p>
+  <p>These modules support the browser course pages. Page HTML imports <code>scripts/_shared.js</code>; that shared module re-exports page-facing APIs and delegates larger subsystems to smaller siblings.</p>
+
+  <h2>Use style</h2>
+  <table>
+    <thead><tr><th>Interface</th><th>Use style</th><th>Test focus</th></tr></thead>
+    <tbody>
+      <tr><td>Course pages</td><td>Import <code>scripts/_shared.js</code> from lesson HTML. Keep lesson markup readable, with runtime behavior behind named helpers.</td><td>Layout links, bundle gate, page audit.</td></tr>
+      <tr><td>Canvas flows</td><td>Use <code>mountCanvasFlow</code> or <code>mountRunCell</code>. Code starts collapsed unless the code itself is the lesson artifact.</td><td>Cell audit, canvas HTML validation, runtime page harness.</td></tr>
+      <tr><td>OpenClaw controls</td><td>Use <code>_openclaw.js</code> for launchable-only probes, chat, logs, and sandbox policy controls. Outside the launchable, controls must explain the missing service instead of failing silently.</td><td>Browser runtime harness against <code>/lab/static/nemoclaw/</code>.</td></tr>
+      <tr><td>Chat and retrieval</td><td>Use explicit model/key/proxy state through shared helpers. Static pages must not add hidden key paths or private service assumptions.</td><td>Security audit plus ship gate.</td></tr>
+      <tr><td>Studio</td><td>Use <code>studio.html</code> as the authoring shell. Lab authoring writes through the Jupyter contents API; Read-only static preview can inspect pages, add local comments, inspect references, run cells, and compare Light export review styles.</td><td><code>python3 scripts/validation/studio_interface_audit.py</code>.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Files</h2>
   <table>
     <thead><tr><th>File</th><th>Role</th></tr></thead>
     <tbody>
@@ -44,6 +93,19 @@
       <tr><td>_keypanel.js</td><td>API-key panel and explicit iframe-proxy opt-in controls.</td></tr>
       <tr><td>_langchain.js</td><td>Lightweight LangChain-style teaching helpers for comparison cells.</td></tr>
       <tr><td>studio_main.js</td><td>Authoring and inspection studio runtime.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Validation</h2>
+  <p class="note">Run commands from the repository root. Use the studio audit before changing <code>studio.html</code> or <code>scripts/studio_main.js</code>; use the full ship gate before opening an MR.</p>
+  <table>
+    <thead><tr><th>Command</th><th>What it catches</th></tr></thead>
+    <tbody>
+      <tr><td><code>python3 scripts/validation/studio_interface_audit.py</code></td><td>Studio controls, local assets, lesson coverage, lab-write versus static-read-only behavior, references panel, and this SKILL documentation.</td></tr>
+      <tr><td><code>python3 scripts/validation/validate_layout.py --quiet</code></td><td>Page wiring, links, and misplaced runtime files.</td></tr>
+      <tr><td><code>python3 scripts/skills/skill_contract.py</code></td><td>Well-formed <code>skill-meta</code> JSON and directory drift.</td></tr>
+      <tr><td><code>python3 scripts/skills/skill_consistency.py</code></td><td>Cross-file SKILL and runtime invariants.</td></tr>
+      <tr><td><code>python3 scripts/validation/validate_bundle.py --no-write --scope ship</code></td><td>Ship-level static course gate.</td></tr>
     </tbody>
   </table>
 </main>
