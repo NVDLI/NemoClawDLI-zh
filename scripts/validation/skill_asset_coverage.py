@@ -17,6 +17,7 @@ from _bootstrap import find_repo_root  # noqa: E402
 ROOT = find_repo_root(Path(__file__).resolve())
 IMAGE_EXT = {".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico"}
 ATTR_RE = re.compile(r"(?:href|src|data-svg-src|data-md-src)=[\"']([^\"']+)[\"']", re.I)
+ASSET_CARD_RE = re.compile(r"<article[^>]+data-asset=[\"\']([^\"\']+)[\"\'][^>]*data-course-use=[\"\']([^\"\']+)[\"\']", re.I | re.S)
 
 
 def local_targets(skill: Path) -> set[str]:
@@ -39,10 +40,16 @@ def resolve(skill: Path, rel: str) -> Path:
     return (skill.parent / rel).resolve()
 
 
+def asset_course_uses(skill: Path) -> dict[str, str]:
+    text = skill.read_text(encoding="utf-8", errors="replace")
+    return {unquote(asset): unquote(use) for asset, use in ASSET_CARD_RE.findall(text)}
+
+
 def check_asset_images(fail: list[str]) -> tuple[int, int]:
     skill = ROOT / "web/nemoclaw/assets/SKILL.html"
     base = ROOT / "web/nemoclaw/assets"
     targets = local_targets(skill)
+    uses = asset_course_uses(skill)
     images = sorted(
         p.relative_to(base).as_posix()
         for p in base.rglob("*")
@@ -50,6 +57,12 @@ def check_asset_images(fail: list[str]) -> tuple[int, int]:
     )
     for rel in [rel for rel in images if rel not in targets]:
         fail.append(f"assets/SKILL.html missing direct link for image: {rel}")
+    for rel in images:
+        use = uses.get(rel, "")
+        if rel != "favicon.ico" and (not use or use == "not-used"):
+            fail.append(f"assets/SKILL.html missing course-use link for image: {rel}")
+        elif use and use != "not-used" and not (ROOT / "web/nemoclaw" / use).is_file():
+            fail.append(f"assets/SKILL.html course-use target does not exist for {rel}: {use}")
     for rel in sorted(targets):
         if rel.startswith("../"):
             continue
