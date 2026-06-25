@@ -57,7 +57,7 @@
     {
       "path": "lab_runtime_testing.md",
       "role": "containerized browser runtime",
-      "desc": "How agents run the Podman/Docker Playwright harness for smoke, render-only, and full lab-network browser checks."
+      "desc": "How agents run scripts/runtime/browser_env_probe.sh plus the Podman/Docker Playwright harness for smoke, render-only, and full lab-network browser checks."
     }
   ],
   "related": [
@@ -73,6 +73,7 @@
 <div id="explorer"></div>
 <noscript>
   <h1>docs/ agent and deploy notes</h1>
+  <p>For browser-runtime discovery, start with <code>scripts/runtime/browser_env_probe.sh</code>; host Node.js, Chromium, and Playwright are optional.</p>
   <ul>
     <li><a href="pages_deploy.md">pages_deploy.md</a></li>
     <li><a href="staging-deployments.md">staging-deployments.md</a></li>

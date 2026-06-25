@@ -23,6 +23,10 @@ COURSE = ROOT / "web" / "nemoclaw"
 STUDIO_HTML = COURSE / "studio.html"
 STUDIO_JS = COURSE / "scripts" / "studio_main.js"
 SCRIPT_SKILL = COURSE / "scripts" / "SKILL.html"
+RUNTIME_SKILL = ROOT / "scripts" / "runtime" / "SKILL.html"
+ROOT_SCRIPT_SKILL = ROOT / "scripts" / "SKILL.html"
+LAB_RUNTIME_DOC = ROOT / "docs" / "lab_runtime_testing.md"
+BROWSER_PROBE = ROOT / "scripts" / "runtime" / "browser_env_probe.sh"
 
 REQUIRED_IDS = {
     "mod-sel", "url-bar", "reload-btn", "sidebar-btn", "comment-btn",
@@ -53,6 +57,8 @@ REQUIRED_SKILL = {
     "light export mode": "Light export review",
     "openclaw mode": "OpenClaw controls",
     "studio testing split": "operator console for running or copying checks",
+    "browser env probe": "scripts/runtime/browser_env_probe.sh",
+    "browser smoke harness": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --smoke",
     "render-only harness": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only",
     "python podman compose": "python3 -m podman_compose",
     "full lab harness": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html",
@@ -80,6 +86,9 @@ def audit() -> list[str]:
     html = read(STUDIO_HTML)
     js = read(STUDIO_JS)
     skill = read(SCRIPT_SKILL)
+    runtime_skill = read(RUNTIME_SKILL)
+    root_script_skill = read(ROOT_SCRIPT_SKILL)
+    lab_doc = read(LAB_RUNTIME_DOC)
 
     missing_ids = sorted(REQUIRED_IDS - html_ids(html))
     for item in missing_ids:
@@ -124,6 +133,37 @@ def audit() -> list[str]:
     for label, token in REQUIRED_SKILL.items():
         if token not in skill:
             findings.append(f"web/nemoclaw/scripts/SKILL.html missing {label}: {token}")
+
+    runtime_tokens = {
+        "probe file": "browser_env_probe.sh",
+        "probe command": "scripts/runtime/browser_env_probe.sh",
+        "browser smoke": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --smoke",
+        "host deps optional": "host Node, Chromium, and Playwright are optional",
+        "python compose": "python3 -m podman_compose",
+    }
+    for label, token in runtime_tokens.items():
+        if token not in runtime_skill:
+            findings.append(f"scripts/runtime/SKILL.html missing {label}: {token}")
+
+    for label, token in {
+        "scripts beacon probe": "scripts/runtime/browser_env_probe.sh",
+        "scripts beacon browser note": "browser smoke is unavailable",
+    }.items():
+        if token not in root_script_skill:
+            findings.append(f"scripts/SKILL.html missing {label}: {token}")
+
+    for label, token in {
+        "lab doc probe": "scripts/runtime/browser_env_probe.sh",
+        "lab doc optional host deps": "Host Node.js, Playwright, and Chromium are not",
+        "lab doc python compose": "python3 -m podman_compose",
+    }.items():
+        if token not in lab_doc:
+            findings.append(f"docs/lab_runtime_testing.md missing {label}: {token}")
+
+    if not BROWSER_PROBE.is_file():
+        findings.append("scripts/runtime/browser_env_probe.sh missing")
+    elif not (BROWSER_PROBE.stat().st_mode & 0o111):
+        findings.append("scripts/runtime/browser_env_probe.sh is not executable")
 
     if "Write access: Jupyter contents API" not in js or "Read-only static preview" not in js:
         findings.append("studio_main.js must surface lab-write versus static-read-only state")

@@ -18,12 +18,22 @@ the lab stack, and a normal URL run for the full lab-network path.
 
 ## Verify the runtime image
 
+Start with the discovery probe. It is the one-command check for agents: it finds
+Podman or Docker, reports whether `python3 -m podman_compose` is available, and
+runs the browser smoke test. Host Node.js, Playwright, and Chromium are not
+required.
+
+```bash
+scripts/runtime/browser_env_probe.sh
+```
+
+The underlying smoke command launches Node.js, Playwright, and Chromium inside
+the container and loads a `data:` page. It does not need the lab stack or network
+access.
+
 ```bash
 scripts/runtime/lab_runtime_test.sh --smoke
 ```
-
-The smoke test launches Node.js, Playwright, and Chromium inside the container and
-loads a `data:` page. It does not need the lab stack or network access.
 
 ```bash
 scripts/runtime/lab_runtime_test.sh --render-only
