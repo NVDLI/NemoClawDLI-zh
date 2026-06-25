@@ -412,6 +412,7 @@ mountCanvasFlow("#cell-introspect", {
   nodes: [
     {
       id: "introspect", icon: "🔍", title: "Ask it to describe its workspace", x: 0, y: 0,
+      showCode: false,
       summary: "One chat turn asking the agent to list its workspace files and explain each. It answers from its system prompt and its own tools, since listing a directory is itself a tool call. Edit a file and the next run reflects the change.",
       code: setupTurn + `
 const report = await state.turn({
@@ -459,6 +460,7 @@ mountCanvasFlow("#cell-personas", {
   nodes: [
     {
       id: "ask-a", icon: "🅰️", title: "Default SOUL", x: 0, y: 0,
+      showCode: false,
       summary: "Send the question under the default SOUL session, a friendly, concise persona that reaches for tools when they are relevant.",
       code: setupTurn + `
 state.question =
@@ -472,6 +474,7 @@ helpers.log(state.a);
     },
     {
       id: "ask-b", icon: "🅱️", title: "Auditor SOUL", x: 1, y: 0,
+      showCode: false,
       summary: "Send the SAME question under the auditor session, whose SOUL.md tells the agent to surface risks first and cite what it is commenting on. Both replies print here so you can read the two voices against one identical input.",
       code: `// Reuses state.question + state.turn from the Default-SOUL node above. Run that first.
 const b = await state.turn({ content: state.question, session: "quick-3b-soul-auditor" });
@@ -493,6 +496,7 @@ mountCanvasFlow("#cell-memory", {
   nodes: [
     {
       id: "write", icon: "📝", title: "Turn 1 · ask it to remember", x: 0, y: 0,
+      showCode: false,
       summary: "Give the agent a preference and ask it to save the note to MEMORY.md so a later turn can see it.",
       code: setupTurn + `
 state.r1 = await state.turn({
@@ -505,6 +509,7 @@ helpers.log(state.r1);
     },
     {
       id: "recall", icon: "💭", title: "Turn 2 · ask it back", x: 1, y: 0,
+      showCode: false,
       summary: "A fresh turn on the same session asks what the agent remembers. The model has no memory of turn 1; the preference survives because the runtime carried it forward (the session, and the MEMORY.md the agent saved). The check confirms the keywords actually came through.",
       code: `const r2 = await state.turn({
   content: "What do you remember about how I like to receive code review?",

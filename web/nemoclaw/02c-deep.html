@@ -460,7 +460,8 @@ mountCanvasFlow("#cell-m3c-p1", {
     {
       id: "import", icon: "📦", title: "Import + wire ChatOpenAI", x: 0, y: 0,
       summary: "Dynamically imports @langchain/openai from a CDN that pre-bundles npm packages for browser use, then constructs a ChatOpenAI instance. The baseURL is read from getConfig() at run time, so the same code works against build.nvidia.com, a NemoClaw local model worker, or any self-hosted NIM endpoint; nothing in the chain, graph, or retrieval pipeline below needs to know which one is active.",
-      code: `helpers.log("importing @langchain/openai ...");
+      code: `// Load the external package bundle used by this example.
+helpers.log("importing @langchain/openai ...");
 const { ChatOpenAI } = await import("https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm");
 helpers.log("import OK");
 
@@ -481,7 +482,8 @@ return { ready: true, baseURL, model: cfg.model };
     {
       id: "invoke", icon: "🧠", title: "Invoke the model", x: 0, y: 1,
       summary: "Calls the model using .invoke() on the ChatOpenAI Runnable. The call shape matches the chatStream you have been using throughout the course, but the response is now a typed AIMessage rather than a raw JSON object.",
-      code: `const messages = [
+      code: `// Send the prepared messages and stream the model response.
+const messages = [
   { role: "system", content: "You are a concise tutor. 2 sentences max." },
   { role: "user",   content: "What is the difference between LangChain Runnable.invoke() and our chatStream()?" },
 ];
@@ -511,7 +513,8 @@ mountCanvasFlow("#cell-m3c-p2", {
     {
       id: "import", icon: "📦", title: "Import LangGraph + tools", x: 0, y: 0,
       summary: "Dynamically imports three packages at runtime from a CDN: @langchain/openai for the model wrapper, @langchain/core/tools for the tool() decorator, and @langchain/langgraph for createReactAgent. Zod is imported alongside them to provide schema validation for tool arguments.",
-      code: `helpers.log("importing langchain ecosystem...");
+      code: `// Load the external package bundle used by this example.
+helpers.log("importing langchain ecosystem...");
 const { ChatOpenAI }       = await import("https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm");
 const { tool }             = await import("https://cdn.jsdelivr.net/npm/@langchain/core@1.1.48/tools/+esm");
 const { createReactAgent } = await import("https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/prebuilt/+esm");
@@ -534,7 +537,8 @@ return { imports: Object.keys(state.deps) };
     {
       id: "tool", icon: "🛠", title: "Define a tool", x: 0, y: 1,
       summary: "Defines a get_current_time tool using LangChain's tool() decorator and a zod schema for the argument shape. Declaring the schema explicitly rather than relying on a docstring means LangGraph can validate arguments before invoking the function and expose a typed contract to the model via the tool's JSON schema.",
-      code: `const { tool, z } = state.deps;
+      code: `// Pull the LangChain helpers this agent cell needs.
+const { tool, z } = state.deps;
 state.getCurrentTime = tool(
   async () => new Date().toISOString().slice(0, 19).replace("T", " ") + " UTC",
   {
@@ -550,7 +554,8 @@ return { name: state.getCurrentTime.name, description: state.getCurrentTime.desc
     {
       id: "build", icon: "📐", title: "createReactAgent({llm, tools})", x: 0, y: 2,
       summary: "Compiles and returns a StateGraph that encodes the same model-decides / tool-runs / loop structure as the hand-rolled ReAct loop from Module 1c, except that the control flow is now explicit graph edges rather than an imperative while loop.",
-      code: `state.agent = state.deps.createReactAgent({
+      code: `// Construct the agent from the model, tools, and prompt.
+state.agent = state.deps.createReactAgent({
   llm:   state.llm,
   tools: [state.getCurrentTime],
 });
@@ -561,7 +566,8 @@ return { graph_compiled: true };
     {
       id: "invoke", icon: "🚀", title: "Run the agent (+ trajectory viz)", x: 0, y: 3,
       summary: "Calls .invoke() on the compiled graph with a single user message. LangGraph runs the full ReAct loop internally (model decides, tool runs, observation appended, model reads observation and decides again) and returns the complete message list when finish_reason is 'stop'. The trajectory visualisation shows every message in order, so you can see exactly which steps the model took and how many tool calls it made.",
-      code: `const question = "What time is it right now in UTC?";
+      code: `// Ask the agent a concrete question to drive the loop.
+const question = "What time is it right now in UTC?";
 // Try another (uncomment one) and rerun to watch the trajectory change:
 // const question = "What is the capital of France?";               // answered directly, no tool call
 // const question = "What time is it, and is that AM or PM in UTC?"; // one tool call, a longer answer
@@ -608,7 +614,8 @@ mountCanvasFlow("#cell-m3c-p3", {
     {
       id: "setup", icon: "📦", title: "Imports + ChatOpenAI", x: 0, y: 0,
       summary: "Imports the same four packages used in Part 4 (ChatOpenAI, tool, createReactAgent, zod) and constructs a ChatOpenAI instance using getConfig() to resolve the active endpoint. This node is reproduced here so the deep-agent canvas is fully self-contained, and you can run it without having run the earlier canvases first.",
-      code: `helpers.log("importing LangChain bundles...");
+      code: `// Load the external package bundle used by this example.
+helpers.log("importing LangChain bundles...");
 const { ChatOpenAI }       = await import("https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm");
 const { tool }             = await import("https://cdn.jsdelivr.net/npm/@langchain/core@1.1.48/tools/+esm");
 const { createReactAgent } = await import("https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/prebuilt/+esm");
@@ -631,7 +638,8 @@ return { imports: Object.keys(state.deps) };
     {
       id: "vfs", icon: "🗂", title: "Virtual filesystem + tools", x: 2, y: 0,
       summary: "The virtual filesystem is a plain JS object shared across the entire run. The write_file, read_file, and list_files tools give every sub-agent a consistent interface to store and retrieve work without any sub-agent needing to know about the others.",
-      code: `const { tool, z } = state.deps;
+      code: `// Pull the LangChain helpers this agent cell needs.
+const { tool, z } = state.deps;
 state.vfs = {};
 
 state.writeFile = tool(
@@ -658,7 +666,8 @@ return { tools: ["write_file", "read_file", "list_files"], vfs_state: Object.key
     {
       id: "planner", icon: "🧠", title: "Planner (schema-bound)", x: 1, y: 1,
       summary: "A single LLM call that uses withStructuredOutput to bind the response to a declared JSON schema, so the subtask list arrives as a typed object rather than a string you would have to parse and validate manually.",
-      code: `state.goal = [
+      code: `// Set the student-editable prompt/input for the next step.
+state.goal = [
   "Research NVIDIA NIM (NVIDIA Inference Microservices) and produce three files: ",
   "nim_overview.md, a technical overview of what NIM is and how it works; ",
   "nim_use_cases.md, three concrete deployment scenarios with a sentence on why NIM fits each one; ",
@@ -690,7 +699,8 @@ return out;
     {
       id: "dispatcher", icon: "🚀", title: "Dispatch sub-agents (fresh context each)", x: 1, y: 2,
       summary: "Loops over the planner's subtask list and spawns a brand-new createReactAgent for each one. Each sub-agent starts with a clean context window that contains only its assigned task and a brief note of which files already exist on the virtual filesystem. Earlier reasoning, intermediate orchestrator results, and prior tool calls stay out of that window, so nothing distracts the sub-agent from its job. The complete reply from each sub-agent is logged and stored in full.",
-      code: `const { createReactAgent } = state.deps;
+      code: `// Pull the LangChain helpers this agent cell needs.
+const { createReactAgent } = state.deps;
 state.subResults = [];
 
 for (let i = 0; i < state.subtasks.length; i++) {
@@ -720,7 +730,8 @@ return state.subResults;
     {
       id: "synth", icon: "🧠", title: "Synthesiser (reads VFS, one LLM call)", x: 1, y: 3,
       summary: "The synthesis step the orchestrator never sees mid-run. It reads every file the sub-agents left on the virtual filesystem and makes one LLM call that combines them into a single deliverable, then writes that back to the filesystem as final_report.md. This is where the separate sub-agent outputs actually come together; the sub-agents shared no context, so the only thing they have in common is the files on disk.",
-      code: `const paths = Object.keys(state.vfs);
+      code: `// Inspect the virtual files the deep agent can read.
+const paths = Object.keys(state.vfs);
 if (!paths.length) {
   state.synthesis = "(no files on the virtual filesystem to synthesise)";
   helpers.log("nothing to synthesise: the sub-agents wrote no files");

@@ -165,7 +165,7 @@
         <code>/cli/gateway</code> WebSocket.
       </p>
       <figure style="margin:1.4em 0">
-        <div class="fig-embed" data-svg-src="assets/figures/03a-kickstart-1.svg" style="aspect-ratio:1300 / 400"></div>        
+        <div class="fig-embed" data-svg-src="assets/figures/03a-kickstart-1.svg" style="aspect-ratio:1300 / 400"></div>
         <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Three layers of access: stateless HTTP to the model endpoint, the Responses API keeping history server-side, the <a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">Model Context Protocol</a> for standard tools, and a long-lived WebSocket streaming a live agent session.</figcaption>
       </figure>
 
@@ -424,11 +424,11 @@
 helpers.mountChatUI("#kickstart-artifact", {
   greeting: "Connect your launchable in the probe above, then say hi, or ask me to run whoami and pwd with my exec tool.",
   examples: [
-    "Run whoami and pwd with your exec tool", 
-    "List the files in your workspace and what each is for", 
-    "What model are you running on?", 
-    "What tools can you call?", 
-    "Read your SOUL.md and summarize who you are", 
+    "Run whoami and pwd with your exec tool",
+    "List the files in your workspace and what each is for",
+    "What model are you running on?",
+    "What tools can you call?",
+    "Read your SOUL.md and summarize who you are",
     "Try to curl https://example.com and tell me what happened"
   ],
   respond: async (text, ctx) => { await helpers.openclawChat(text, { session: "art-" + ctx.thread, view: ctx.view, signal: ctx.signal }); },
@@ -737,6 +737,7 @@ escape hatch by design.</p>`,
     // ── Raw request console: the probe's fetch as editable code ───────────────────
     mountRunCell("#claw-raw-cell", {
       label: "the probe's request, as editable code",
+      openCode: true,
       autorun: false,
       code: `// The probe saved its URL, token, and CF JWT in localStorage. Reuse them here.
 const proxy = localStorage.getItem('nemoclaw_clawurl')    || '';  // launchable via CORS worker
@@ -954,6 +955,7 @@ if (!_text.trim() && !_didResult && _toolStarts > 0) {
 
         {
           id: "gw-list", icon: "📋", title: "Call models.list and cron.list", x: 1, y: 0,
+          showCode: false,
           summary: "Two JSON-RPC calls go through the open connection: models.list names every model the runtime serves, while cron.list reports the currently scheduled jobs.",
           code: `if (!state.call) { helpers.log("Run the Connect node first."); return; }
 
@@ -976,6 +978,7 @@ return { models: models?.models?.length, cronJobs: jobs.length };
 
         {
           id: "gw-chat", icon: "💬", title: "Send a chat message (streaming)", x: 2, y: 0,
+          showCode: false,
           summary: "Call chat.send with a sessionKey. The gateway routes the message into the running agent loop and streams events back: agent frames carry the tool-execution steps, and the run-end frame closes it out. We use a fresh session key per run (see the suffix) so the agent always starts clean and re-runs its tools. A reused session can answer from memory or get tangled in a polluted history and never call exec. The default prompt makes the agent run a real command; comment the bottom prompt to try the simpler ones above it.",
           code: gwChat({ raw: `"quick-3a-gw-" + Math.random().toString(36).slice(2, 8)` }, {
             raw:
@@ -1002,6 +1005,7 @@ message = "Use your exec tool to run \`whoami\` and \`pwd\` in your sandbox, the
       nodes: [
         {
           id: "sk-memory", icon: "🧠", title: "Plant a fact, then ask it back", x: 0, y: 0,
+          showCode: false,
           summary: "Two turns under ONE dedicated sessionKey, in a single cell. Turn 1 plants a fact; turn 2 asks for it back, sending only the question. The gateway rehydrates turn 1 server-side before turn 2 runs, so the model answers from a conversation the client never re-sent. Each turn is wrapped in its own { } block so the two snippets keep separate variables. A different key would be a different memory, and that is the whole memory model.",
           code: GW_CONNECT + `
 helpers.log("turn 1 · plant a fact");
@@ -1022,6 +1026,7 @@ helpers.log(/BLUEJAY-7/i.test(state.out)
 
         {
           id: "sk-clear", icon: "🧹", title: "Clear the session memory", x: 1, y: 0,
+          showCode: false,
           summary: "Wipe a session's server-side history with one call. Run it on the memory session above, then re-run the recall turn: the planted code is gone, because the conversation the gateway held is gone. Change sessionKey to clear any session you like. This is the drop-in to copy anywhere you want a fresh start.",
           code: GW_CONNECT + `
 // One call wipes the conversation the gateway holds for this key.
@@ -1038,6 +1043,7 @@ helpers.log("Re-run the recall turn above and the planted code is gone.");
 
         {
           id: "sk-cleanup", icon: "🗑", title: "Clean up old sessions", x: 2, y: 0,
+          showCode: false,
           summary: "Every distinct sessionKey you use leaves a session behind, and they accumulate in the Control UI. This lists them all (paginated) and deletes the throwaway ones, keeping only the Main Session. Edit KEEP to change what survives, e.g. /:(main|quick-3c-skill)$/ to also keep a session you care about.",
           code: GW_CONNECT + `
 // Keep these; delete the rest. The default keeps only the Main Session.

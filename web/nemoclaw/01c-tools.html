@@ -452,7 +452,8 @@ mountCanvasFlow("#cell-m2b-p3", {
     {
       id: "question", icon: "👤", title: "User question", x: 1, y: 0,
       summary: "Try an arithmetic, a definition, or something either tool could handle.",
-      code: `state.question = "What is 2 to the power of 10?";
+      code: `// Set the student-editable prompt/input for the next step.
+state.question = "What is 2 to the power of 10?";
 // Swap in another question (or write your own) and rerun to watch the route change:
 // state.question = "Evaluate (17 * 43) + Math.sqrt(144) / Math.log(2).";                 // heavier arithmetic, routes to calculate
 // state.question = "What does raising a number to a real, non-integer power mean?";       // a concept, routes to explain_concept
@@ -464,7 +465,8 @@ return state.question;
     {
       id: "tool_a", icon: "🛠", title: "Tool A · calculate", x: 0, y: 1,
       summary: "Scoped to arithmetic expressions only. Its description explicitly says not to use it for definitions or conceptual questions, which steers the model toward the other tool when the intent is explanatory.",
-      code: `state.toolA = {
+      code: `// Describe the calculator tool so the model knows when to route to it.
+state.toolA = {
   type: "function",
   function: {
     name: "calculate",
@@ -479,7 +481,8 @@ return state.toolA.function.name;
     {
       id: "tool_b", icon: "🛠", title: "Tool B · explain_concept", x: 2, y: 1,
       summary: "Scoped to definitions and conceptual questions only. Its description tells the model not to use it for arithmetic, which keeps the two tools from competing on overlapping inputs.",
-      code: `state.toolB = {
+      code: `// Describe the explainer tool so conceptual questions route here.
+state.toolB = {
   type: "function",
   function: {
     name: "explain_concept",
@@ -494,7 +497,8 @@ return state.toolB.function.name;
     {
       id: "llm", icon: "🧠", title: "LLM call · the model routes", x: 1, y: 2,
       summary: "Streams the model as it reasons over the two tool descriptions, then returns the routing decision. The route turns almost entirely on the description strings, so edit one and rerun to watch the model change its mind.",
-      code: `const s = await helpers.chatStream({
+      code: `// Ask the model to choose one of the two tool descriptions above.
+const s = await helpers.chatStream({
   messages: [{ role: "user", content: state.question }],
   tools:    [state.toolA, state.toolB],
   max_tokens: 8196,
@@ -524,14 +528,16 @@ mountCanvasFlow("#cell-m2b-p4", {
     {
       id: "input", icon: "👤", title: "User input", x: 0, y: 0,
       summary: "Holds the question the student asks, which you can edit before rerunning.",
-      code: `state.question = "What is the NVIDIA Nemotron model family and what is it good at?";
+      code: `// Set the student-editable prompt/input for the next step.
+state.question = "What is the NVIDIA Nemotron model family and what is it good at?";
 return state.question;
 `,
     },
     {
       id: "tool", icon: "📄", title: "Tool spec", x: 2, y: 0,
       summary: "The glossary_search JSON Schema the model reads. It is the same shape any tool takes; only the name and description say what this one does.",
-      code: `state.SEARCH_SCHEMA = [{
+      code: `// Define the tool schema the model can choose from next.
+state.SEARCH_SCHEMA = [{
   type: "function",
   function: {
     name: "glossary_search",
@@ -549,7 +555,8 @@ return { name: state.SEARCH_SCHEMA[0].function.name };
     {
       id: "llm1", icon: "🧠", title: "LLM call #1", x: 1, y: 1,
       summary: "The first model call. This is a factual question the model should ground rather than recall, so we REQUIRE a glossary_search call here (tool_choice) to see the full round-trip. Letting the model decide for itself is the routing lesson above (and what the createReactAgent artifact does); here the model just fills in the search query.",
-      code: `state.messages = [
+      code: `// Send the prepared messages and stream the model response.
+state.messages = [
   { role: "system", content: "You are a research assistant. Ground answers in glossary_search results; never answer factual questions from memory." },
   { role: "user",   content: state.question },
 ];
@@ -569,7 +576,8 @@ return {
     {
       id: "search", icon: "🌐", title: "glossary_search", x: 1, y: 2,
       summary: "The executor. It calls the in-page glossary MCP server (defined at the top of this page) via tools/call and gets back ranked NVIDIA glossary entries. The catalog and the search both run locally in your browser, with no key and no network call.",
-      code: `if (!state.s1.tool_calls.length) {
+      code: `// Handle the tool-call result from the previous model turn.
+if (!state.s1.tool_calls.length) {
   // No tool call here: the model either answered from training (it has content)
   // or ran out of tokens mid-call.
   // Distinguish the two so we never report a direct answer for a truncated call.
@@ -599,7 +607,8 @@ return { query: state.query, count: meta.count, source: meta.source };
     {
       id: "llm2", icon: "🧠", title: "LLM call #2", x: 1, y: 3,
       summary: "Synthesizes the final answer from the search results. Note this call passes NO tools, so it must answer from what call #1 retrieved rather than request another search. That is what turns a tool result into a final reply.",
-      code: `if (state.skipped) {
+      code: `// Handle the tool-call result from the previous model turn.
+if (state.skipped) {
   return { final_answer: state.s1.content || "(" + (state.reason || "no answer") + ")",
            note: "no search was run on this turn" };
 }
@@ -675,7 +684,8 @@ mountCanvasFlow("#cell-m2b-p5", {
     {
       id: "sub_data", icon: "🗃", title: "Hidden data (the sub-agent's world)", x: 0, y: 0,
       summary: "An in-page customer table that the main agent will never see and that a real version would replace with a SQL connection plus row-level auth.",
-      code: `state.customers = [
+      code: `// Seed the small dataset this retrieval example searches.
+state.customers = [
   { id: 1001, name: "Aiyana Brooks",  plan: "pro",   region: "us-west", joined: "2024-03-12", tickets_30d: 1 },
   { id: 1002, name: "Boris Müller",   plan: "free",  region: "eu",      joined: "2025-11-04", tickets_30d: 0 },
   { id: 1003, name: "Chen Wei",       plan: "pro",   region: "apac",    joined: "2023-08-22", tickets_30d: 4 },
@@ -689,7 +699,8 @@ return { rows: state.customers.length, schema_fields: Object.keys(state.customer
     {
       id: "sub_agent", icon: "🤖", title: "Sub-agent · query_customer_db", x: 0, y: 1,
       summary: "Knows the table schema and answers a natural-language question through one LLM call with the rows embedded in its system prompt.",
-      code: `state.queryCustomerDB = async function(question) {
+      code: `// Define the mock database tool the agent may call.
+state.queryCustomerDB = async function(question) {
   // The sub-agent's world: a tight system prompt that hides the table, and the rows as context.
   const schemaText = "Customer rows have fields: id (int), name (string), plan (free|pro|team), region (us-east|us-west|eu|apac), joined (YYYY-MM-DD), tickets_30d (int).";
   const rowsText   = state.customers.map(c => JSON.stringify(c)).join("\\n");
@@ -711,7 +722,8 @@ return { sub_agent: "query_customer_db", world_rows: state.customers.length };
     {
       id: "tool_spec", icon: "📄", title: "Tool spec (to the main agent)", x: 2, y: 0,
       summary: "The schema the main agent sees, which exposes the capability alone and gives zero details about the underlying table.",
-      code: `state.TOOLS = [{
+      code: `// Define the tool schema the model can choose from next.
+state.TOOLS = [{
   type: "function",
   function: {
     name: "query_customer_db",
@@ -729,14 +741,16 @@ return { tool_name: state.TOOLS[0].function.name };
     {
       id: "user", icon: "👤", title: "User question (to the main agent)", x: 2, y: 1,
       summary: "Edit this to try a question like 'How many pro-plan customers do we have?' or 'Who has the most tickets in the last 30 days?'",
-      code: `state.userQuestion = "Which EU customers are on the pro plan, and how active are they?";
+      code: `// Set the student-editable prompt/input for the next step.
+state.userQuestion = "Which EU customers are on the pro plan, and how active are they?";
 return state.userQuestion;
 `,
     },
     {
       id: "main_llm", icon: "🧠", title: "Main agent · plain LLM call", x: 1, y: 2,
       summary: "Seeing only the one tool, the main agent decides whether to ask the sub-agent or answer directly.",
-      code: `state.mainMessages = [
+      code: `// Send the prepared messages and stream the model response.
+state.mainMessages = [
   { role: "system", content: "You are a customer-success agent. When the user asks about customer data, call query_customer_db rather than guessing." },
   { role: "user",   content: state.userQuestion },
 ];
@@ -754,7 +768,8 @@ return {
     {
       id: "dispatch", icon: "📤", title: "Dispatch to sub-agent · synth final answer", x: 1, y: 3,
       summary: "Once the top-level agent calls the tool, we hand the natural-language question to the sub-agent, append its answer, and ask for the user-facing reply.",
-      code: `if (!state.s1.tool_calls.length) {
+      code: `// Handle the tool-call result from the previous model turn.
+if (!state.s1.tool_calls.length) {
   helpers.log("main agent answered directly without using the sub-agent");
   return { final: state.s1.content || "(empty)" };
 }
@@ -808,7 +823,8 @@ return { exposes: ["tools/list", "tools/call"], tools: listed.tools.map(t => t.n
     {
       id: "discover", icon: "🔎", title: "Client · tools/list", x: 0, y: 1,
       summary: "The client side of the MCP handshake: it calls tools/list on the server and maps each returned tool's inputSchema to the OpenAI function-calling format so the model can read it as a normal tools array.",
-      code: `const list = await state.mcpServer.request("tools/list");
+      code: `// Ask the mock MCP server which tools it exposes.
+const list = await state.mcpServer.request("tools/list");
 helpers.log("discovered " + list.tools.length + " tools");
 state.tools = list.tools.map(t => ({
   type: "function",
@@ -820,14 +836,16 @@ return state.tools.map(t => t.function.name);
     {
       id: "user", icon: "👤", title: "User question", x: 2, y: 1,
       summary: "The question the model answers using the discovered glossary tools. A definitional ask is served by glossary_search, while a request for a specific term by slug goes to glossary_lookup.",
-      code: `state.question = "What is retrieval-augmented generation, and what does a vector database have to do with it?";
+      code: `// Set the student-editable prompt/input for the next step.
+state.question = "What is retrieval-augmented generation, and what does a vector database have to do with it?";
 return state.question;
 `,
     },
     {
       id: "llm", icon: "🧠", title: "LLM (sees discovered tools)", x: 1, y: 2,
       summary: "The same single chatStream call runs unchanged because the agent loop cannot tell whether the tools came from a hardcoded array or a remote MCP server. The discovery step above lets you swap that source without touching the loop at all.",
-      code: `state.messages = [{ role: "user", content: state.question }];
+      code: `// Send the prepared messages and stream the model response.
+state.messages = [{ role: "user", content: state.question }];
 state.s1 = await helpers.chatStream({
   messages:   state.messages,
   tools:      state.tools,
@@ -847,7 +865,8 @@ return {
     {
       id: "dispatch", icon: "📤", title: "Client → tools/call → LLM #2", x: 1, y: 3,
       summary: "Closes the loop: for each tool_call the model requested, this node forwards the call to the server's tools/call endpoint, appends the result as a tool message, then makes one final model call to produce the user-facing answer from whatever the server returned.",
-      code: `if (!state.s1.tool_calls.length) return state.s1.content || "(model answered directly)";
+      code: `// Handle the tool-call result from the previous model turn.
+if (!state.s1.tool_calls.length) return state.s1.content || "(model answered directly)";
 for (const tc of state.s1.tool_calls) {
   const args = JSON.parse(tc.function.arguments || "{}");
   const out  = await state.mcpServer.request("tools/call", { name: tc.function.name, arguments: args });

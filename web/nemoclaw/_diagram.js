@@ -105,6 +105,17 @@ function _dgEdge(e, g, t) {
     return { path: `<path d="M ${rx} ${a.y + 74} C ${rx + 40} ${a.y + 80}, ${rx + 40} ${a.y + 118}, ${rx} ${a.y + 122}" ` +
       `stroke="${kc}" stroke-width="1.8" fill="none" marker-end="url(#fig-arrow)"/>`, chip: "" };
   }
+  if (Math.abs(a.cx - b.cx) < 1) {
+    const down = a.cy <= b.cy;
+    const ax = a.cx, bx = b.cx;
+    const ay = down ? a.y + a.h : a.y;
+    const by = down ? b.y : b.y + b.h;
+    const bend = down ? 34 : -34;
+    const my = (ay + by) / 2;
+    const path = `<path d="M ${ax} ${ay} C ${ax} ${ay + bend}, ${bx} ${by - bend}, ${bx} ${by}" ` +
+      `stroke="${t.arrow}" stroke-width="2.2" fill="none" marker-end="url(#fig-arrow)"/>`;
+    return { path, chip: _dgEdgeLabelChip(ax, my, e.label, kc, t) };
+  }
   const aLeftOfB = a.cx <= b.cx;
   const top = e.side !== "bottom";
   const ay = top ? a.y + 32 : a.y + a.h - 32;
