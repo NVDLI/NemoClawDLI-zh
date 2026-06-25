@@ -45,7 +45,10 @@ REQUIRED_JS = {
     "local comment fallback": "localStorage.setItem(commentStorageKey()",
     "reference inspector": "function renderReferences",
     "light export CSS": "styles/_lite_overlay.css",
-    "run-all selector": ".cf-btn-run,.cell-run",
+    "run-all selector": ".cf-btn-run,.rc-run,.cell-run",
+    "ordered run queue": "async function triggerRunAll",
+    "run completion waiter": "function waitForRunComplete",
+    "default page load": "loadPage(p || MODULES[0].file)",
     "block editor locator": "function _locateBlockInFile",
     "no stale lite CSS path": "styles/styles/_lite_overlay.css",
 }
@@ -62,6 +65,11 @@ REQUIRED_SKILL = {
     "render-only harness": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only",
     "python podman compose": "python3 -m podman_compose",
     "full lab harness": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html",
+    "helper notebook heading": "Helper notebook",
+    "helper map cell": "helper-map-cell",
+    "helper retrieval cell": "helper-retrieval-cell",
+    "helper live cell": "helper-live-cell",
+    "helper UI cell": "helper-ui-cell",
 }
 
 
@@ -117,11 +125,12 @@ def audit() -> list[str]:
         if token not in js:
             findings.append(f"studio_main.js missing {label}: {token}")
 
-
     required_studio_tokens = {
         "test command model": "const TEST_COMMANDS",
         "test command renderer": "function renderTestCommands",
         "static audit command": "python3 scripts/validation/studio_interface_audit.py",
+        "browser env probe command": "scripts/runtime/browser_env_probe.sh",
+        "browser smoke command": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --smoke",
         "render-only test command": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only",
         "python podman compose command": "python3 -m podman_compose",
         "full lab test command": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html",
@@ -148,6 +157,9 @@ def audit() -> list[str]:
     for label, token in {
         "scripts beacon probe": "scripts/runtime/browser_env_probe.sh",
         "scripts beacon browser note": "browser smoke is unavailable",
+        "scripts helper notebook link": "web/nemoclaw/scripts/SKILL.html",
+        "scripts helper notebook audit": "Studio helper audit",
+        "scripts helper notebook style": "runnable notebook",
     }.items():
         if token not in root_script_skill:
             findings.append(f"scripts/SKILL.html missing {label}: {token}")

@@ -104,6 +104,18 @@ const TEST_COMMANDS = [
     cmd: 'python3 scripts/validation/studio_interface_audit.py',
   },
   {
+    name: 'Browser environment probe',
+    mode: 'podman image, no lab stack',
+    desc: 'Finds Podman or Docker, reports podman-compose-via-python availability, and proves container Node/Playwright/Chromium.',
+    cmd: 'scripts/runtime/browser_env_probe.sh',
+  },
+  {
+    name: 'Browser runtime smoke',
+    mode: 'podman image, no lab stack',
+    desc: 'Runs the direct Node/Playwright/Chromium smoke test in the browser-test container.',
+    cmd: 'CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --smoke',
+  },
+  {
     name: 'Static browser render',
     mode: 'podman image, no lab stack',
     desc: 'Runs Chromium in the browser-test container against a static course page.',
@@ -679,10 +691,11 @@ frame.addEventListener('load', () => {
 
     // Auto-run
     if (document.getElementById('autorun-on').checked) {
-      const count = triggerRunAll(idoc);
-      if (count > 0 && document.getElementById('autoannotate-on').checked) {
-        watchRunCompletion(idoc);
-      }
+      triggerRunAll(idoc).then(count => {
+        if (count > 0 && document.getElementById('autoannotate-on').checked) {
+          watchRunCompletion(idoc);
+        }
+      });
     }
 
     // Always inject per-panel annotate buttons and save buttons
@@ -1164,20 +1177,61 @@ function hidePop(){ pop.style.display='none'; _popAnchorEl=null; }
 // AUTO-RUN
 // ═══════════════════════════════════════════════════════════════
 
-document.getElementById('run-btn').addEventListener('click', () => {
+document.getElementById('run-btn').addEventListener('click', async () => {
   const idoc=getIdoc();
-  if (idoc) triggerRunAll(idoc);
+  if (idoc) await triggerRunAll(idoc);
   else setStatus('no accessible frame loaded', 'warn');
 });
 
-function triggerRunAll(idoc) {
-  const btns = Array.from(new Set(idoc.querySelectorAll('.cf-btn-run,.cell-run')));
-  const ready = btns.filter(b=>!b.disabled);
-  ready.forEach(b=>b.click());
-  runNote.textContent = ready.length
-    ? `triggered ${ready.length} runnable block(s)`
-    : 'No runnable blocks on this page.';
-  return ready.length;
+function isRunnableButton(btn) {
+  if (!btn || btn.disabled) return false;
+  if (btn.closest('.cf-helpers,.studio-annotation,._stBadge')) return false;
+  const txt = (btn.textContent || '').toLowerCase();
+  return !/stop|stopping|saving|annotating/.test(txt);
+}
+
+function waitFrame() {
+  return new Promise(resolve => requestAnimationFrame(() => resolve()));
+}
+
+async function waitForRunComplete(btn, timeoutMs = 180000) {
+  const start = performance.now();
+  await waitFrame();
+  while (performance.now() - start < timeoutMs) {
+    const txt = (btn.textContent || '').toLowerCase();
+    if (!btn.isConnected) return;
+    if (!btn.disabled && !/stop|stopping|running|saving/.test(txt)) return;
+    await new Promise(resolve => setTimeout(resolve, 250));
+  }
+  throw new Error('timed out waiting for ' + ((btn.textContent || 'run button').trim()));
+}
+
+async function triggerRunAll(idoc) {
+  const btns = Array.from(idoc.querySelectorAll('.cf-btn-run,.rc-run,.cell-run'))
+    .filter((btn, idx, arr) => arr.indexOf(btn) === idx)
+    .filter(isRunnableButton);
+  if (!btns.length) {
+    runNote.textContent = 'No runnable blocks on this page.';
+    return 0;
+  }
+  let ran = 0;
+  runNote.textContent = `running 0/${btns.length} runnable block(s)`;
+  for (const btn of btns) {
+    if (!isRunnableButton(btn)) continue;
+    btn.scrollIntoView({block:'center', behavior:'smooth'});
+    btn.click();
+    ran++;
+    runNote.textContent = `running ${ran}/${btns.length}: ${(btn.closest('.cf-wrap,.rc-wrap,[id]')?.id || btn.textContent || 'cell').trim()}`;
+    try { await waitForRunComplete(btn); }
+    catch (e) {
+      runNote.textContent = `stopped at ${ran}/${btns.length}: ${e.message}`;
+      setStatus('run all stopped: ' + e.message, 'warn');
+      return ran;
+    }
+  }
+  runNote.textContent = `ran ${ran}/${btns.length} runnable block(s)`;
+  setStatus('run all complete: ' + ran + ' runnable block(s)', 'ok');
+  return ran;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1481,8 +1535,7 @@ async function init() {
 
   // Honour ?page= query param
   const p = new URLSearchParams(location.search).get('page');
-  if (p) loadPage(p);
-  else setStatus('select a module above to begin');
+  loadPage(p || MODULES[0].file);
 }
 
 init();
