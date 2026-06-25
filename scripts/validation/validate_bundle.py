@@ -103,6 +103,7 @@ import cell_audit as ca  # noqa: E402
 import helper_notebook_runtime_audit as hna  # noqa: E402
 import studio_interface_audit as sia  # noqa: E402
 import openclaw_fallback_audit as ofa  # noqa: E402
+import agent_process_audit as apa  # noqa: E402
 import skill_contract as skc  # noqa: E402
 from collections import defaultdict  # noqa: E402
 
@@ -235,6 +236,9 @@ SUITE_META = [
     ("openclaw_fallback", "OpenClaw fallback contract", "required",
      "Credentialed OpenClaw tests must fail fast when the runtime is unreachable, and the kickstart path must point learners to the Brev URL plus CF_Authorization backup instead of silently passing a dead local service.",
      "scripts/validation/openclaw_fallback_audit.py", "audit"),
+    ("agent_process", "Agent process contract", "required",
+     "Issue/MR, taxonomy, validation, and safe-auth guardrails must be discoverable from the repo beacons so broad agent work starts from a durable process instead of ad hoc transcript memory.",
+     "scripts/validation/agent_process_audit.py", "audit"),
     ("skill_schema", "SKILL contract", "recommended",
      "Every SKILL.html skill-meta must be a well-formed contract of its kind: it classifies into one known kind (service-skill, service-index, dir-skill, hub, leaf), carries that kind's required keys, uses a known schema/node_type value and a semver version where the kind has one, and only valid notebook status values. An agent samples this block to work in a directory, so a malformed beacon is a contract an agent cannot trust. Each entry names the SKILL and the missing or invalid field.",
      "scripts/skills/skill_contract.py", "schema_findings"),
@@ -513,6 +517,17 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         ok = False
         vl_fail.extend(f"OpenClaw fallback: {x}" for x in openclaw_fallback_find)
 
+    # Agent process contract (required): keep broad-work guardrails visible from repo beacons.
+    try:
+        agent_process_find = apa.audit()
+    except Exception as e:
+        agent_process_find = [f"agent process audit error: {e}"]
+        suite_errors["agent_process"] = str(e)
+    if agent_process_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(f"agent process: {x}" for x in agent_process_find)
+
     # SKILL contract (advisory): every skill-meta is a well-formed beacon of its kind (schema leg)
     # and matches its directory (drift leg, reused from skill_audit). The agent-facing half of the
     # contract: a malformed or stale beacon is what an agent samples and is misled by.
@@ -658,6 +673,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "openclaw_fallback": [D("web/nemoclaw/03a-kickstart.html", x, REQUIRED,
                                 "Keep the credentialed harness fail-fast and keep the kickstart backup path explicit: Brev session URL, gateway token, and CF_Authorization.")
                               for x in openclaw_fallback_find],
+        "agent_process": [D("docs/agent_process.md", x, REQUIRED,
+                            "Keep issue/MR, taxonomy, validation, and safe-auth guardrails documented and linked from the repo beacons.")
+                          for x in agent_process_find],
         "prose_variety": [D(r["path"], f"score {r['score']} · {', '.join(r['tells'])}", CONSIDER,
                             "Give the page a rhythm pass: vary sentence length, break the staccato triads, turn enumerations back into prose.")
                           for r in pv_flagged],

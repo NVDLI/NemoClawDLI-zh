@@ -1,6 +1,6 @@
 # Agent quickstart: Building Agents
 
-Read this once per session. Then sample `SKILL.html` in the directory you're working in.
+Read this once per session. Then sample `SKILL.html` in the directory you're working in. For issue, MR, taxonomy, or broad prose work, read [`docs/agent_process.md`](docs/agent_process.md) before editing.
 
 This is the standalone open-source release of NVIDIA's Building Agents course. Every
 path is relative to the repository root. The repo IS the release.
