@@ -15,7 +15,8 @@
   "related": [
     "docs/pages_deploy.md",
     "docs/staging-deployments.md",
-    "docs/notebook_corruption_prevention.md"
+    "docs/notebook_corruption_prevention.md",
+    "docs/lab_runtime_testing.md"
   ],
   "explorer": "../web/_skill_explorer.js"
 }
@@ -24,7 +25,7 @@
 <script type="application/json" id="explorer-config">
 {
   "title": "docs/ \u00b7 agent and deploy notes",
-  "summary": "Longer-form notes that back the SKILL beacons, including the temporary staging-preview/prod-lock design. Open one and ask about it; the generated gate log under docs/validation/ is read through the validation report instead.",
+  "summary": "Longer-form notes that back the SKILL beacons, including the temporary staging-preview/prod-lock design and the containerized browser runtime harness. Open one and ask about it; the generated gate log under docs/validation/ is read through the validation report instead.",
   "model": "nvidia/nemotron-3-nano-30b-a3b",
   "ties": [
     "build"
@@ -51,6 +52,11 @@
       "path": "notebook_corruption_prevention.md",
       "role": "notebook edit hazard",
       "desc": "The VS Code buffer-merge corruption pattern on notebook markdown edits, and the discipline (nb_audit, close the file) that avoids it."
+    },
+    {
+      "path": "lab_runtime_testing.md",
+      "role": "containerized browser runtime",
+      "desc": "How agents run the Podman/Docker Playwright harness for smoke, render-only, and full lab-network browser checks."
     }
   ],
   "related": [
@@ -70,6 +76,7 @@
     <li><a href="pages_deploy.md">pages_deploy.md</a></li>
     <li><a href="staging-deployments.md">staging-deployments.md</a></li>
     <li><a href="notebook_corruption_prevention.md">notebook_corruption_prevention.md</a></li>
+    <li><a href="lab_runtime_testing.md">lab_runtime_testing.md</a></li>
   </ul>
 </noscript>
 <script src="../web/_skill_explorer.js"></script>
