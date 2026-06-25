@@ -664,8 +664,9 @@ messages.push({ role: "user", content: "Using only the article above, write the 
 
 // Streams the grounded answer; the return surfaces the full article the model actually read.
 await chatStream({ messages, max_tokens: 8196 });
-return article ? { term: article.term, slug: article.slug, chars: article.body.length, full_entry: article.body }
-               : { error: "no full article cached for that term" };
+return article
+  ? { term: article.term, slug: article.slug, chars: article.body.length, full_entry: article.body }
+  : { error: "no full article cached for that term" };
 `,
 });
 

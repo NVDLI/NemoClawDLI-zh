@@ -511,7 +511,8 @@ helpers.log(state.r1);
       id: "recall", icon: "💭", title: "Turn 2 · ask it back", x: 1, y: 0,
       showCode: false,
       summary: "A fresh turn on the same session asks what the agent remembers. The model has no memory of turn 1; the preference survives because the runtime carried it forward (the session, and the MEMORY.md the agent saved). The check confirms the keywords actually came through.",
-      code: `const r2 = await state.turn({
+      code: `// Ask the same session what it retained after the write turn.
+const r2 = await state.turn({
   content: "What do you remember about how I like to receive code review?",
   session: "quick-3b-memory",
 });

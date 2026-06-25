@@ -429,7 +429,7 @@ helpers.mountChatUI("#kickstart-artifact", {
     "What model are you running on?",
     "What tools can you call?",
     "Read your SOUL.md and summarize who you are",
-    "Try to curl https://example.com and tell me what happened"
+    "Try to curl https://example.com and tell me what happened",
   ],
   respond: async (text, ctx) => { await helpers.openclawChat(text, { session: "art-" + ctx.thread, view: ctx.view, signal: ctx.signal }); },
 });
@@ -548,7 +548,8 @@ you saved on the course home page.</p>
     mountRunCell("#bench-fetch-models", {
       label: "Fetch matching models",
       openCode: true,
-      code: `const FILTER = ["120b", "glm", "kimi", "minimax"];
+      code: `// Fetch the model catalog and keep only the IDs this benchmark compares.
+const FILTER = ["120b", "glm", "kimi", "minimax"];
 const PROXY  = "https://nvidia-api-cors-proxy.vkudlay.workers.dev";
 const KEY    = localStorage.getItem("nvapi") || "";
 
@@ -576,7 +577,8 @@ return { count: models.length };`,
 
     mountRunCell("#bench-measure-models", {
       label: "Measure TTFT per model",
-      code: `if (!state.models?.length) { helpers.log("Run 'Fetch matching models' first."); return; }
+      code: `// Stream one prompt through each selected model and measure first-token latency.
+if (!state.models?.length) { helpers.log("Run 'Fetch matching models' first."); return; }
 const PROMPT       = "List five prime numbers.";
 // Try another prompt (uncomment one) to compare how the models behave on different work:
 // const PROMPT    = "Explain step by step why the sky is blue.";                // a reasoning task
@@ -957,7 +959,8 @@ if (!_text.trim() && !_didResult && _toolStarts > 0) {
           id: "gw-list", icon: "📋", title: "Call models.list and cron.list", x: 1, y: 0,
           showCode: false,
           summary: "Two JSON-RPC calls go through the open connection: models.list names every model the runtime serves, while cron.list reports the currently scheduled jobs.",
-          code: `if (!state.call) { helpers.log("Run the Connect node first."); return; }
+          code: `// Use the existing gateway socket to list models and scheduled jobs.
+if (!state.call) { helpers.log("Run the Connect node first."); return; }
 
 const models = await state.call("models.list");
 helpers.log("models (" + (models?.models?.length || 0) + "):");

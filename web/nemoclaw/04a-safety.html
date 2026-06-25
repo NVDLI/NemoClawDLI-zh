@@ -657,7 +657,8 @@ return verdict;
       id: "confirm", icon: "🛂", title: "Confirm (live, in the sandbox)", x: 1, y: 0,
       showCode: false,
       summary: "Run the candidate connection inside your live OpenShell box via openshell sandbox exec and read back what the kernel did. A blocked egress comes back as a CONNECT tunnel 403 or a 000 code, while an allowed one returns a real HTTP status.",
-      code: `if (!state.action) { helpers.log("Run the predict node first."); return; }
+      code: `// Execute the selected network action inside the live sandbox and read the verdict.
+if (!state.action) { helpers.log("Run the predict node first."); return; }
 const a = state.action;
 
 // One clean curl inside the sandbox; the proxy answers a denied CONNECT fast.
@@ -690,7 +691,8 @@ return { observed: state.observed, exitCode: res.exitCode };
       id: "compare", icon: "✅", title: "Do they agree?", x: 2, y: 0,
       showCode: false,
       summary: "Compare the static prediction with the live kernel result. Agreement means the policy behaves exactly as the static analysis says. Disagreement means an unexpected policy or a real gap worth investigating.",
-      code: `if (!state.predicted || !state.observed) { helpers.log("Run predict and confirm first."); return; }
+      code: `// Compare the browser-side prediction with the kernel result from Confirm.
+if (!state.predicted || !state.observed) { helpers.log("Run predict and confirm first."); return; }
 const match = state.predicted === state.observed;
 helpers.log("predicted: " + state.predicted.toUpperCase());
 helpers.log("observed:  " + state.observed.toUpperCase());
@@ -724,7 +726,8 @@ mountCanvasFlow("#cell-token", {
       id: "tok-survey", icon: "🗝️", title: "Survey the reach", x: 1, y: 0,
       showCode: false,
       summary: "Call the read side of the admin surface: the persona on disk, the cron schedule, the live sessions, the served models, and the full config. Every line you see traces to the same token, and all of it reaches past the sandbox checkpoint.",
-      code: `if (!state.call) { helpers.log("Run Connect first."); return; }
+      code: `// Survey the read-only admin surface reachable by the current gateway token.
+if (!state.call) { helpers.log("Run Connect first."); return; }
 const soul = await state.call("agents.files.get", { agentId: "main", name: "SOUL.md" });
 helpers.log("agents.files.get SOUL.md  -> " + ((soul?.file?.content || "").length) + " bytes of the live persona (readable, and writable via set)");
 

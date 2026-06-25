@@ -1042,14 +1042,18 @@ state.SYS = state.SYS_DIRECTIVE + "\\n\\n" + state.SYS_REFERENCE;
 // Image-capable entries are marked below. Pick one in runMaze by key,
 // e.g. state.runMaze(helpers, state, { model: "vision" }).
 state.MAZE_MODELS = {
-  omni:       { id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", maxTok: 2048, temp: 0.6,  // multimodal reasoning model (reads images)
-                extra_body: { reasoning_budget: 1024, chat_template_kwargs: { enable_thinking: true } } },
-  reasoning:  { id: "nvidia/nemotron-3-nano-30b-a3b", maxTok: 1200, temp: 0.6,        // text reasoning model
-                extra_body: { reasoning_budget: 800, chat_template_kwargs: { enable_thinking: true } } },
-  vision:     { id: "nvidia/nemotron-nano-12b-v2-vl", maxTok: 1024, temp: 0.3 },     // reads images (needs room to reach the tool call)
-  qwenVision: { id: "qwen/qwen3.5-122b-a10b", maxTok: 1024, temp: 0.4 },             // reads images + tools
-  super:      { id: "nvidia/nemotron-3-super-120b-a12b", maxTok: 1024, temp: 0.4 },  // strong tool-caller
-  gptOss:     { id: "openai/gpt-oss-120b", maxTok: 1500, temp: 0.5 }                 // reasoning + tools
+  omni: {
+    id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", maxTok: 2048, temp: 0.6,
+    extra_body: { reasoning_budget: 1024, chat_template_kwargs: { enable_thinking: true } },
+  },
+  reasoning: {
+    id: "nvidia/nemotron-3-nano-30b-a3b", maxTok: 1200, temp: 0.6,
+    extra_body: { reasoning_budget: 800, chat_template_kwargs: { enable_thinking: true } },
+  },
+  vision: { id: "nvidia/nemotron-nano-12b-v2-vl", maxTok: 1024, temp: 0.3 },
+  qwenVision: { id: "qwen/qwen3.5-122b-a10b", maxTok: 1024, temp: 0.4 },
+  super: { id: "nvidia/nemotron-3-super-120b-a12b", maxTok: 1024, temp: 0.4 },
+  gptOss: { id: "openai/gpt-oss-120b", maxTok: 1500, temp: 0.5 },
 };
 
 state.generateMaze = generateMaze;
@@ -1132,8 +1136,9 @@ state.runMaze = async function(h, state, opts) {
   }
   var MODEL = resolveModel(opts.model);
 
-  var cfg = advanced ? { w: 15, h: 11, seed: 99, loop: 0.55, max: 40 }
-                     : { w: 11, h: 9,  seed: 42, loop: 0.30, max: 20 };
+  var cfg = advanced
+    ? { w: 15, h: 11, seed: 99, loop: 0.55, max: 40 }
+    : { w: 11, h: 9, seed: 42, loop: 0.30, max: 20 };
 
   var log = h.log;
   var generateMaze = state.generateMaze, findCell = state.findCell, validMoves = state.validMoves,
@@ -1320,8 +1325,15 @@ state.runMaze = async function(h, state, opts) {
       }
       var ascii = toAscii(grid, pos, goal, visited);
       var imageUrl = includeImage ? state.mazeToDataURL(grid, pos, goal, visited) : null;
-      var userText = promptFormat({ ascii: ascii, avail: availStr(pos),
-                                    pos: pos, goal: goal, trail: trail, decision: decision, first: decision === 1 });
+      var userText = promptFormat({
+        ascii: ascii,
+        avail: availStr(pos),
+        pos: pos,
+        goal: goal,
+        trail: trail,
+        decision: decision,
+        first: decision === 1,
+      });
       var userMsg = buildUser(userText, imageUrl);
       var sent = includeHistory ? [sysMsg].concat(history, [userMsg]) : [sysMsg, userMsg];
 
@@ -1377,8 +1389,9 @@ state.runMaze = async function(h, state, opts) {
       // (a tool message without a preceding tool_call is invalid and confuses the model).
       function reply(content) {
         if (!includeHistory) return;
-        history.push(toolId ? { role: 'tool', tool_call_id: toolId, content: content }
-                            : { role: 'user', content: content });
+        history.push(toolId
+          ? { role: 'tool', tool_call_id: toolId, content: content }
+          : { role: 'user', content: content });
       }
 
       if (!steps) {
@@ -1419,9 +1432,10 @@ state.runMaze = async function(h, state, opts) {
 
       var walkedNote = (pos[0] !== pw[0] || pos[1] !== pw[1])
         ? ' Then corridors/dead-ends were auto-walked for you.' : '';
-      reply((walled ? 'Executed ' + (pathStr || '(none)') + ', then hit a wall going ' + walled + '.'
-                    : 'Executed ' + (pathStr || '(none)') + '.')
-            + walkedNote + ' Now at ' + JSON.stringify(pos) + '. Available: ' + availStr(pos) + '.');
+      const stepNote = walled
+        ? 'Executed ' + (pathStr || '(none)') + ', then hit a wall going ' + walled + '.'
+        : 'Executed ' + (pathStr || '(none)') + '.';
+      reply(stepNote + walkedNote + ' Now at ' + JSON.stringify(pos) + '. Available: ' + availStr(pos) + '.');
       await new Promise(function(res) { setTimeout(res, 200); });
     }
   } finally {

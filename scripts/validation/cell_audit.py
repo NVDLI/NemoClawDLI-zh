@@ -149,6 +149,8 @@ def audit_runtime_contract():
 
 CANVAS_MOUNT_RE = re.compile(r"mount(?:CanvasFlow|RunCell)\s*\(")
 CANVAS_LONG_DEFAULT_OPEN_LINES = 40
+READABLE_INDENT_LIMIT = 12
+DATA_ENTRY_RE = re.compile(r"^\s*(?:\{.*\}|['\"].*['\"])\s*$")
 
 
 def audit_code_surface():
@@ -188,6 +190,57 @@ def audit_code_surface():
     return findings
 
 
+def _first_meaningful(lines):
+    """Return (1-based index, stripped line) for the first nonblank line in a cell code block."""
+    for i, line in enumerate(lines, 1):
+        if line.strip():
+            return i, line.strip()
+    return 0, ""
+
+
+def _needs_data_trailing_comma(lines, idx):
+    """Low-noise trailing-comma rule: data entries in multi-line lists should end with a comma."""
+    line = lines[idx].rstrip()
+    stripped = line.strip()
+    if stripped.endswith((",", ";", "{")) or not DATA_ENTRY_RE.match(line):
+        return False
+    if stripped.startswith(("if ", "for ", "while ", "switch ", "try", "catch", "function")):
+        return False
+    for nxt in lines[idx + 1:]:
+        ns = nxt.strip()
+        if not ns:
+            continue
+        return ns.startswith(("{", "'", '"', "]"))
+    return False
+
+
+def audit_readability():
+    """Guard learner-facing cell code readability. Cells should open with a short // comment,
+    avoid tabs and column-alignment indentation, and keep simple data entries comma-terminated.
+    These are intentionally cell-scoped: they shape code students see or can expand, without
+    turning repo-wide implementation cleanup into a blocker."""
+    findings = []
+    for path in sorted((WEB / "nemoclaw").glob("0*.html")):
+        text = path.read_text(errors="ignore")
+        rel = str(path.relative_to(WEB.parent))
+        for m in CODE.finditer(text):
+            cell_line = text[:m.start()].count("\n") + 1
+            lines = m.group(1).splitlines()
+            first_idx, first = _first_meaningful(lines)
+            if first and not first.startswith("//"):
+                findings.append((rel, f"line {cell_line + first_idx - 1}: cell code should start with a one-line // comment that explains the block"))
+            for i, line in enumerate(lines, 1):
+                if "\t" in line:
+                    findings.append((rel, f"line {cell_line + i - 1}: tab indentation in learner cell code; use spaces"))
+                indent = len(line) - len(line.lstrip(" "))
+                stripped = line.strip()
+                if indent > READABLE_INDENT_LIMIT and stripped and not stripped.startswith("//"):
+                    findings.append((rel, f"line {cell_line + i - 1}: {indent} leading spaces; avoid column alignment deeper than {READABLE_INDENT_LIMIT} spaces"))
+                if _needs_data_trailing_comma(lines, i - 1):
+                    findings.append((rel, f"line {cell_line + i - 1}: multi-line data entry should end with a trailing comma"))
+    return findings
+
+
 def run(verbose=True):
     """Driver: audit every numbered lesson page's runnable cells and aggregate the findings. It exists
     so the gate and a reviewer get one accounting of cells that violate the runnable-cell contract.
@@ -196,6 +249,7 @@ def run(verbose=True):
     opaque, console, unawaited, dialog, key, static, unhi = [], [], [], [], [], [], []
     ui_contract = audit_runtime_contract()
     code_surface = audit_code_surface()
+    readability = audit_readability()
     for p in pages:
         o, c, u, d, k, st, uh = audit_page(p)  # per-page findings, by category
         opaque += o; console += c; unawaited += u; dialog += d; key += k; static += st; unhi += uh
@@ -214,15 +268,16 @@ def run(verbose=True):
         show("editable cells without the syntax highlighter loaded", unhi, lambda it: f"{it[0]}  {it[1]}")
         show("learner-facing cell UI contract", ui_contract, lambda it: f"{it[0]}  {it[1]}")
         show("default-open canvas code surface", code_surface, lambda it: f"{it[0]}  {it[1]}")
+        show("learner cell code readability", readability, lambda it: f"{it[0]}  {it[1]}")
         total = (len(opaque) + len(console) + len(unawaited) + len(dialog) + len(key) + len(static)
-                 + len(unhi) + len(ui_contract) + len(code_surface))
+                 + len(unhi) + len(ui_contract) + len(code_surface) + len(readability))
         print(f"\ncell_audit: {total} finding(s) (opaque {len(opaque)}, console {len(console)}, "
               f"unawaited {len(unawaited)}, dialog {len(dialog)}, inline-key {len(key)}, static {len(static)}, "
-              f"unhighlighted {len(unhi)}, ui-contract {len(ui_contract)}, code-surface {len(code_surface)})")
+              f"unhighlighted {len(unhi)}, ui-contract {len(ui_contract)}, code-surface {len(code_surface)}, readability {len(readability)})")
     return {"opaque": opaque, "console": console, "unawaited": unawaited,
             "dialog": dialog, "inline_key": key, "static_cell_code": static,
             "unhighlighted": unhi, "ui_contract": ui_contract,
-            "code_surface": code_surface}
+            "code_surface": code_surface, "readability": readability}
 
 
 if __name__ == "__main__":

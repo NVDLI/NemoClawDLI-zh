@@ -470,7 +470,8 @@ mountCanvasFlow("#cell-skill", {
       id: "sk-check", icon: "🔬", title: "Did it follow the recipe?", x: 0, y: 3,
       showCode: false,
       summary: "Scan the agent's reply for the four steps in the skill: confirming scope, opening the runbook, proposing a reversible mitigation, pausing before Jira.",
-      code: `helpers.log.details("agent reply", state.out);
+      code: `// Inspect the latest reply for signs that the skill recipe shaped it.
+helpers.log.details("agent reply", state.out);
 const r = (state.out || "").toLowerCase();
 const hits = ["runbook", "reversible", "confirm", "jira"].filter(w => r.includes(w));
 helpers.log("skill steps echoed in the reply: " + (hits.join(", ") || "(none this run)"));
@@ -500,7 +501,8 @@ mountCanvasFlow("#probe-cron", {
       id: "cr-list", icon: "📋", title: "List current crons", x: 0, y: 1,
       showCode: false,
       summary: "Call cron.list to see what is already scheduled. The payload.jobs array holds each job's id, schedule, and prompt.",
-      code: `if (!state.call) { helpers.log("Run Connect first."); return; }
+      code: `// Use the gateway socket to list scheduled jobs without changing anything.
+if (!state.call) { helpers.log("Run Connect first."); return; }
 const pl = await state.call("cron.list");
 const jobs = pl?.jobs || [];
 if (!jobs.length) {
@@ -516,7 +518,8 @@ return { count: jobs.length };
       id: "cr-add", icon: "➕", title: "Install a demo cron", x: 0, y: 2,
       showCode: false,
       summary: "Call cron.add with an id, a cron schedule (every minute here), and the prompt the agent will run on each tick. The job fires inside the same sandbox as the normal agent loop.",
-      code: `if (!state.call) { helpers.log("Run Connect first."); return; }
+      code: `// Install one short-lived demo cron job so the unattended path is visible.
+if (!state.call) { helpers.log("Run Connect first."); return; }
 const added = await state.call("cron.add", {
   id:       "quick-3c-demo",
   schedule: "* * * * *",
@@ -555,7 +558,8 @@ helpers.log("the line(s) above were appended by the cron-fired agent, not by you
       id: "cr-rm", icon: "🗑", title: "Remove the demo cron", x: 0, y: 4,
       showCode: false,
       summary: "Call cron.remove to unschedule the job you just added. Verify with cron.list that the id is gone.",
-      code: `if (!state.call) { helpers.log("Run Connect first."); return; }
+      code: `// Remove the demo cron so the launchable does not keep running it.
+if (!state.call) { helpers.log("Run Connect first."); return; }
 const removed = await state.call("cron.remove", { id: "quick-3c-demo" });
 helpers.log("removed quick-3c-demo");
 helpers.log.details("raw cron.remove", removed);
