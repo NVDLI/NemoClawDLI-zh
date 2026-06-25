@@ -83,7 +83,7 @@
   </p>
   <div style="display:flex;justify-content:center;margin:1.4em 0">
     <figure style="margin:0;max-width:940px;width:100%">
-      <img src="assets/rag_arch_2021.svg" alt="The original RAG architecture from Lewis et al. 2020. A query x is embedded by a query encoder q, then a maximum-inner-product search (MIPS) over a document index retrieves passages z. A generator p-theta conditions on the query together with each retrieved passage and marginalizes over them to produce the output y. An arrow across the top, labelled End-to-End Backprop through q and p-theta, shows that gradients flow back through both the generator and the query encoder, so the retriever and the generator are trained jointly."
+      <img src="assets/figures/rag_arch_2021.svg" alt="The original RAG architecture from Lewis et al. 2020. A query x is embedded by a query encoder q, then a maximum-inner-product search (MIPS) over a document index retrieves passages z. A generator p-theta conditions on the query together with each retrieved passage and marginalizes over them to produce the output y. An arrow across the top, labelled End-to-End Backprop through q and p-theta, shows that gradients flow back through both the generator and the query encoder, so the retriever and the generator are trained jointly."
            style="width:100%;height:auto;display:block;background:#fff;border:1px solid #d0d7de;border-radius:8px;padding:16px"/>
       <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">
         The original architecture, from <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al. 2020</a>,
