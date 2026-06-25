@@ -112,6 +112,8 @@ if ! "$ENGINE" network inspect "$NETWORK" >/dev/null 2>&1; then
 FATAL: container network '$NETWORK' not found.
 Start the lab stack first, for example:
   COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$ROOT podman compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
+or, with podman-compose-via-python:
+  COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$ROOT python3 -m podman_compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
 or set LAB_RUNTIME_NETWORK to the network that contains nginx/openclaw.
 EOF
   exit 2

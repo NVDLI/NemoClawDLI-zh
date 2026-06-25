@@ -69,6 +69,7 @@ const saveSelBtn= document.getElementById('save-sel-btn');
 const liteBtn   = document.getElementById('lite-btn');
 const refList   = document.getElementById('ref-list');
 const writeNote = document.getElementById('write-note');
+const testList  = document.getElementById('test-list');
 
 // ═══════════════════════════════════════════════════════════════
 // UTILITIES
@@ -92,6 +93,61 @@ function setStatus(msg, cls='') {
 }
 function getIdoc() {
   try { return frame.contentDocument; } catch { return null; }
+}
+
+
+const TEST_COMMANDS = [
+  {
+    name: 'Static studio contract',
+    mode: 'no lab stack',
+    desc: 'Checks studio controls, self-hosted assets, read-only fallback, and script SKILL testing docs.',
+    cmd: 'python3 scripts/validation/studio_interface_audit.py',
+  },
+  {
+    name: 'Static browser render',
+    mode: 'podman image, no lab stack',
+    desc: 'Runs Chromium in the browser-test container against a static course page.',
+    cmd: 'CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only',
+  },
+  {
+    name: 'Lab stack via Python Podman Compose',
+    mode: 'podman deployment',
+    desc: 'Starts nginx/lab services with the Python podman-compose module when podman compose is unavailable.',
+    cmd: 'COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD python3 -m podman_compose -f docker-compose.yml -f docker-compose.override.yml up -d --build',
+  },
+  {
+    name: 'Full lab browser path',
+    mode: 'podman deployment',
+    desc: 'Runs the browser harness on the compose network after the lab stack is up.',
+    cmd: 'CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html',
+  },
+];
+
+function renderTestCommands() {
+  if (!testList) return;
+  testList.innerHTML = '';
+  TEST_COMMANDS.forEach((row, idx) => {
+    const item = document.createElement('div');
+    item.className = 'test-item';
+    item.innerHTML = `
+      <div class="test-name">${esc(row.name)}</div>
+      <div class="test-desc">${esc(row.mode)} - ${esc(row.desc)}</div>
+      <code class="test-cmd">${esc(row.cmd)}</code>
+      <button type="button" class="test-copy" data-test-i="${idx}">Copy</button>`;
+    testList.appendChild(item);
+  });
+  testList.querySelectorAll('.test-copy').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const row = TEST_COMMANDS[Number(btn.dataset.testI)];
+      try {
+        await navigator.clipboard.writeText(row.cmd);
+        btn.textContent = 'Copied';
+      } catch {
+        btn.textContent = 'Copy failed';
+      }
+      setTimeout(() => { btn.textContent = 'Copy'; }, 1400);
+    });
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1421,6 +1477,7 @@ document.querySelectorAll('.sb-head[data-sec]').forEach(head=>{
 async function init() {
   await resolveContentApi(MODULES[0]?.file || 'index.html');
   await loadComments();
+  renderTestCommands();
 
   // Honour ?page= query param
   const p = new URLSearchParams(location.search).get('page');

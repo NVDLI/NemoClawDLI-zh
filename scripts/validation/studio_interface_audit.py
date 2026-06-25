@@ -3,7 +3,7 @@
 
 This is a static gate for the authoring studio. It checks that studio.html remains
 self-hosted, that studio_main.js still supports lab writes plus static read-only
-preview, and that the scripts SKILL documents those modes.
+preview, exposes automated-test commands, and that the scripts SKILL documents those modes.
 """
 from __future__ import annotations
 
@@ -52,6 +52,10 @@ REQUIRED_SKILL = {
     "static review mode": "Read-only static preview",
     "light export mode": "Light export review",
     "openclaw mode": "OpenClaw controls",
+    "studio testing split": "operator console for running or copying checks",
+    "render-only harness": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only",
+    "python podman compose": "python3 -m podman_compose",
+    "full lab harness": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html",
 }
 
 
@@ -101,6 +105,19 @@ def audit() -> list[str]:
             if token in js:
                 findings.append("studio_main.js still has stale styles/styles/_lite_overlay.css path")
             continue
+        if token not in js:
+            findings.append(f"studio_main.js missing {label}: {token}")
+
+
+    required_studio_tokens = {
+        "test command model": "const TEST_COMMANDS",
+        "test command renderer": "function renderTestCommands",
+        "static audit command": "python3 scripts/validation/studio_interface_audit.py",
+        "render-only test command": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only",
+        "python podman compose command": "python3 -m podman_compose",
+        "full lab test command": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html",
+    }
+    for label, token in required_studio_tokens.items():
         if token not in js:
             findings.append(f"studio_main.js missing {label}: {token}")
 

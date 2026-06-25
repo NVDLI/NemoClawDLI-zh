@@ -23,7 +23,7 @@
   "title": "Course runtime scripts",
   "source_dir": "web/nemoclaw/scripts/",
   "self_path": "web/nemoclaw/scripts/SKILL.html",
-  "summary": "Browser modules that power the Securing Agents course: shared page chrome, runnable cells, canvas flows, OpenClaw controls, chat widgets, diagrams, retrieval helpers, and the studio authoring interface. These files are source assets, not generated bundle output.",
+  "summary": "Browser modules that power the Securing Agents course: shared page chrome, runnable cells, canvas flows, OpenClaw controls, chat widgets, diagrams, retrieval helpers, and the studio testing and authoring interface. These files are source assets, not generated bundle output.",
   "interfaces": [
     {
       "name": "Course pages",
@@ -48,11 +48,14 @@
     {
       "name": "Studio",
       "entry": "scripts/studio_main.js",
-      "style": "Use as an authoring and inspection shell. Lab mode may write through Jupyter contents API; static mode is read-only and stores comments in localStorage."
+      "style": "Use as the operator console for authoring plus automated test kickoff. Static mode is read-only and exposes no-lab checks; lab mode may write through Jupyter contents API and points to podman-backed browser tests."
     }
   ],
   "tests": [
     "python3 scripts/validation/studio_interface_audit.py",
+    "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only",
+    "COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD python3 -m podman_compose -f docker-compose.yml -f docker-compose.override.yml up -d --build",
+    "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html",
     "python3 scripts/validation/validate_layout.py --quiet",
     "python3 scripts/skills/skill_contract.py",
     "python3 scripts/skills/skill_consistency.py",
@@ -65,7 +68,7 @@
 <main>
   <p><a href="../SKILL.html">Back to course hub</a></p>
   <h1>Course runtime scripts</h1>
-  <p>These modules support the browser course pages. Page HTML imports <code>scripts/_shared.js</code>; that shared module re-exports page-facing APIs and delegates larger subsystems to smaller siblings.</p>
+  <p>These modules support the browser course pages. Page HTML imports <code>scripts/_shared.js</code>; that shared module re-exports page-facing APIs and delegates larger subsystems to smaller siblings. The studio and this SKILL page split the testing job: <code>studio.html</code> is the operator console for running or copying checks, while this beacon is the machine-readable test map agents should parse before changing runtime interfaces.</p>
 
   <h2>Use style</h2>
   <table>
@@ -75,7 +78,7 @@
       <tr><td>Canvas flows</td><td>Use <code>mountCanvasFlow</code> or <code>mountRunCell</code>. Code starts collapsed unless the code itself is the lesson artifact.</td><td>Cell audit, canvas HTML validation, runtime page harness.</td></tr>
       <tr><td>OpenClaw controls</td><td>Use <code>_openclaw.js</code> for launchable-only probes, chat, logs, and sandbox policy controls. Outside the launchable, controls must explain the missing service instead of failing silently.</td><td>Browser runtime harness against <code>/lab/static/nemoclaw/</code>.</td></tr>
       <tr><td>Chat and retrieval</td><td>Use explicit model/key/proxy state through shared helpers. Static pages must not add hidden key paths or private service assumptions.</td><td>Security audit plus ship gate.</td></tr>
-      <tr><td>Studio</td><td>Use <code>studio.html</code> as the authoring shell. Lab authoring writes through the Jupyter contents API; Read-only static preview can inspect pages, add local comments, inspect references, run cells, and compare Light export review styles.</td><td><code>python3 scripts/validation/studio_interface_audit.py</code>.</td></tr>
+      <tr><td>Studio</td><td>Use <code>studio.html</code> as the authoring and test console. Read-only static preview supports inspection, comments, references, Light export review, and no-lab test commands. Lab authoring adds Jupyter contents writes and podman-backed browser checks.</td><td><code>python3 scripts/validation/studio_interface_audit.py</code>; browser harness commands below.</td></tr>
     </tbody>
   </table>
 
@@ -101,7 +104,10 @@
   <table>
     <thead><tr><th>Command</th><th>What it catches</th></tr></thead>
     <tbody>
-      <tr><td><code>python3 scripts/validation/studio_interface_audit.py</code></td><td>Studio controls, local assets, lesson coverage, lab-write versus static-read-only behavior, references panel, and this SKILL documentation.</td></tr>
+      <tr><td><code>python3 scripts/validation/studio_interface_audit.py</code></td><td>Studio controls, local assets, lesson coverage, lab-write versus static-read-only behavior, references panel, testing sidebar commands, and this SKILL documentation.</td></tr>
+      <tr><td><code>CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only</code></td><td>No-lab browser-container check. Uses the runtime image to render a static page without the podman deployment network.</td></tr>
+      <tr><td><code>COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD python3 -m podman_compose -f docker-compose.yml -f docker-compose.override.yml up -d --build</code></td><td>Podman deployment startup through the Python podman-compose module. Same compose files as <code>podman compose</code>; useful when only podman plus the Python package are available.</td></tr>
+      <tr><td><code>CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html</code></td><td>Full lab-network browser check after the podman stack is running.</td></tr>
       <tr><td><code>python3 scripts/validation/validate_layout.py --quiet</code></td><td>Page wiring, links, and misplaced runtime files.</td></tr>
       <tr><td><code>python3 scripts/skills/skill_contract.py</code></td><td>Well-formed <code>skill-meta</code> JSON and directory drift.</td></tr>
       <tr><td><code>python3 scripts/skills/skill_consistency.py</code></td><td>Cross-file SKILL and runtime invariants.</td></tr>
