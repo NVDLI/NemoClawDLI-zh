@@ -228,6 +228,46 @@ def check_static(res: Result):
             res.fail("static", f"{src}: '{cpath}' -> '{host}' does not exist (moved dir? stale config)")
 
 
+
+# -- check: course runtime asset layout ---------------------------------------
+def check_course_assets(res: Result):
+    """The NemoClaw course runtime has an intentional interface: pages import browser modules
+    from web/nemoclaw/scripts/ and styles from web/nemoclaw/styles/. Keep this in the
+    layout gate so a future script or asset migration cannot leave a source page pointing at
+    the old root-level _shared.js / _style.css paths while the files live elsewhere."""
+    course = TASK1 / "web" / "nemoclaw"
+    if not course.is_dir():
+        return
+    required = [
+        course / "scripts" / "_shared.js",
+        course / "scripts" / "_canvas.js",
+        course / "scripts" / "SKILL.html",
+        course / "styles" / "_style.css",
+        course / "styles" / "_lite_overlay.css",
+        course / "styles" / "SKILL.html",
+    ]
+    for path in required:
+        if not path.is_file():
+            res.fail("course-assets", f"missing course runtime asset: {path.relative_to(TASK1)}")
+
+    stale = []
+    patterns = (
+        'href="_style.css"',
+        'from "./_shared.js"',
+        "from './_shared.js'",
+        'src="studio_main.js"',
+    )
+    for html in sorted(course.glob("*.html")):
+        text = html.read_text(errors="ignore")
+        for pat in patterns:
+            if pat in text:
+                stale.append(f"{html.relative_to(TASK1)} still contains {pat}")
+    for old in sorted(course.glob("_*.js")) + sorted(course.glob("_*.css")) + [course / "studio_main.js"]:
+        if old.exists():
+            stale.append(f"old root-level course asset still exists: {old.relative_to(TASK1)}")
+    if stale:
+        res.fail("course-assets", "; ".join(stale[:8]))
+
 def check_skills(res: Result):
     """Verify every SKILL.html beacon still matches its directory, by delegating to skill_audit.py. A
     drifted beacon (a file listed that no longer exists, or one present but undocumented) means the
@@ -253,6 +293,7 @@ def main():
     res = Result()
     check_links(res)                              # dead page-links (live crawl, else offline projection)
     check_static(res)                             # configured static/mount paths that no longer exist
+    check_course_assets(res)                      # course runtime scripts/styles interface
     check_skills(res)                             # SKILL.html beacons that drifted from their directory
 
     if not a.quiet:

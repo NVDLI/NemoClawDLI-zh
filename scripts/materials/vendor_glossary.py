@@ -76,7 +76,7 @@ STRIP_IDS = ["main-header", "brandFooter", "globalFooter", "country-selector-mod
 
 INDEX_JSON = os.path.join(REPO, "web", "nemoclaw", "mats", "glossary_index.json")
 # The course ships the same index as a static asset and fetches it client-side: it is the
-# key-less, off-lab web_search backend (helpers.webSearch in web/nemoclaw/_shared.js). build_index
+# key-less, off-lab web_search backend (helpers.webSearch in web/nemoclaw/scripts/_shared.js). build_index
 # writes this copy alongside the mats one so a re-vendor keeps both in sync.
 COURSE_INDEX = os.path.join(REPO, "web", "nemoclaw", "assets", "glossary_index.json")
 

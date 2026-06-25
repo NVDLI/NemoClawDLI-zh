@@ -39,7 +39,7 @@ let pendingChgs   = [];     // { id, type, label, oldVal, newVal, checked }
 let pickActive    = false;
 let editActive    = false;
 let liteMode      = false;  // true = light/export overlay active
-let _liteCss      = null;   // cached _lite_overlay.css text
+let _liteCss      = null;   // cached styles/_lite_overlay.css text
 let diffSnap      = null;   // element-text snapshot before a reload
 let changedEls    = [];     // elements highlighted after diff
 
@@ -86,11 +86,11 @@ function getIdoc() {
 // LIGHT / EXPORT MODE
 // ═══════════════════════════════════════════════════════════════
 
-// Caches _lite_overlay.css once for the light-mode (edX export) toggle.
+// Caches styles/_lite_overlay.css once for the light-mode (edX export) toggle.
 async function fetchLiteCSS() {
   if (_liteCss !== null) return _liteCss;
   try {
-    const r = await fetch('_lite_overlay.css?t=' + Date.now());
+    const r = await fetch('styles/styles/_lite_overlay.css?t=' + Date.now());
     _liteCss = r.ok ? await r.text() : '';
   } catch { _liteCss = ''; }
   return _liteCss;
@@ -122,7 +122,7 @@ liteBtn.addEventListener('click', async () => {
   liteBtn.textContent = liteMode ? '🌙 Dark' : '☀️ Light';
   liteBtn.title = liteMode
     ? 'Switch back to dark lab mode'
-    : 'Toggle light (export) mode. It applies _lite_overlay.css so you can compare the dark lab against the light edX export';
+    : 'Toggle light (export) mode. It applies styles/_lite_overlay.css so you can compare the dark lab against the light edX export';
   const idoc = getIdoc();
   if (idoc) {
     if (liteMode) await applyLiteMode(idoc);

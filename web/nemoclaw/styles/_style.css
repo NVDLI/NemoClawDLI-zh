@@ -1361,7 +1361,7 @@ body.python-mode .py-mode-jlab-link { display: inline-block; }
 /* Diagram (mountDiagram / viz.diagram) arrow + kind hues. diagramSVG emits var(--dg-*) instead of
    resolving colors at render time, so a diagram follows the theme toggle live (page figures and
    cell output alike). Box/canvas tones reuse the page palette; these are the curated extras. The
-   light values live in the :root[data-theme="light"] block below and in _lite_overlay.css. */
+   light values live in the :root[data-theme="light"] block below and in styles/_lite_overlay.css. */
 :root {
   --dg-arrow:#8a8a8a;
   --dg-env:#4b9fff; --dg-agent:#8ecc2f; --dg-tool:#a78bfa;
@@ -1370,10 +1370,10 @@ body.python-mode .py-mode-jlab-link { display: inline-block; }
 
 /* ── Light theme ──────────────────────────────────────────────────────────────
    Runtime toggle: <html data-theme="light"> flips the palette; the default (no attribute or
-   data-theme="dark") keeps the dark :root above. The values mirror _lite_overlay.css so the
+   data-theme="dark") keeps the dark :root above. The values mirror styles/_lite_overlay.css so the
    baked light iframe export and this runtime light theme stay one source of truth. The pre-paint
    init that sets data-theme is injected into <head> by bundle_standalone.py; the topbar toggle
-   button is mounted by _shared.js (mountThemeToggle). Code and output panels keep their dark
+   button is mounted by scripts/_shared.js (mountThemeToggle). Code and output panels keep their dark
    canvas in both themes, exactly as the light export already renders them. */
 :root[data-theme="light"] {
   /* Flip the UA color-scheme so native scrollbars, form controls, and the default canvas render

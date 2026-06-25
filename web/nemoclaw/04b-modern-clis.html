@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Modern CLIs · Securing Agents</title>
-<link rel="stylesheet" href="_style.css"/>
+<link rel="stylesheet" href="styles/_style.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
@@ -172,7 +172,7 @@
   <div id="clis-cell"></div>
   <div id="clis-artifact"></div>
   <script type="module">
-    import { mountRunCell } from "./_shared.js";
+    import { mountRunCell } from "./scripts/_shared.js";
     mountRunCell("#clis-cell", {
       label: "the Try-it artifact, in code",
       autorun: true,
@@ -273,7 +273,7 @@ helpers.log("rendered below. Toggle a README to add it as context, then ask.");
   <div id="cell-jsagent"></div>
   <div id="jsagent-artifact"></div>
   <script type="module">
-    import { mountRunCell } from "./_shared.js";
+    import { mountRunCell } from "./scripts/_shared.js";
     mountRunCell("#cell-jsagent", {
       openCode: true,
       label: "a CLI agent bound to the browser runtime, in code",
@@ -364,7 +364,7 @@ helpers.log("CLI agent mounted below. Give it a goal and watch it drive the runt
   <div id="cell-deepagents"></div>
   <div id="deepagents-artifact"></div>
   <script type="module">
-    import { mountRunCell } from "./_shared.js";
+    import { mountRunCell } from "./scripts/_shared.js";
     mountRunCell("#cell-deepagents", {
       label: "a real terminal on your launchable, with an agent-sandbox shortcut",
       autorun: true,
@@ -441,7 +441,7 @@ helpers.log("launchable terminal mounted below. If it says no launchable, connec
   <div id="cell-agentchat"></div>
   <div id="agent-chat"></div>
   <script type="module">
-    import { mountRunCell } from "./_shared.js";
+    import { mountRunCell } from "./scripts/_shared.js";
     mountRunCell("#cell-agentchat", {
       label: "chat with your live agent over the OpenClaw gateway",
       autorun: true,
@@ -705,7 +705,7 @@ helpers.log("agent chat mounted below.");
 </main>
 
 <script type="module">
-import { buildNav, updateKeyPill, updateClawPill, mountJourneyMap } from "./_shared.js";
+import { buildNav, updateKeyPill, updateClawPill, mountJourneyMap } from "./scripts/_shared.js";
 document.getElementById("nav").innerHTML = buildNav("04b-modern-clis.html");
 updateKeyPill(document.getElementById("key-status"));
 updateClawPill(document.getElementById("claw-status"));

@@ -25,7 +25,7 @@ function _dgWrap(text, maxChars) {
 // rendered into cell output, which a render-time bake (the old getComputedStyle read) would leave
 // frozen on whatever theme was active when the cell ran. Box/canvas tones reuse the page palette
 // (--bg/--e1/--e2/--bd/--tx/--td/--tf); arrow and the kind hues are curated extras defined as --dg-*
-// in _style.css (dark :root + the light override) and _lite_overlay.css (the baked edX export). The
+// in styles/_style.css (dark :root + the light override) and styles/_lite_overlay.css (the baked edX export). The
 // hex fallbacks hold a sane dark palette where no stylesheet is present (headless geometry checks).
 function _dgTheme() {
   return {

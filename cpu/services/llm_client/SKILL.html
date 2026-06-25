@@ -33,10 +33,10 @@
   ],
   "change_impact": [
     {"if_you_change": "the model catalog or default models",
-     "also_update": ["this skill-meta", "web/nemoclaw/_shared.js model constants (DEFAULT_MODEL/REASONING_MODEL)", "any page that pins a model"],
+     "also_update": ["this skill-meta", "web/nemoclaw/scripts/_shared.js model constants (DEFAULT_MODEL/REASONING_MODEL)", "any page that pins a model"],
      "then": "re-run the self-tests"},
     {"if_you_change": "the /admin/set-key contract or provider inference",
-     "also_update": ["web/index.html key panel", "web/nemoclaw/_shared.js setLabKey", "the llm_client service doc"],
+     "also_update": ["web/index.html key panel", "web/nemoclaw/scripts/_shared.js setLabKey", "the llm_client service doc"],
      "then": "rebuild llm_client; re-run self-tests"},
     {"if_you_change": "a browser route or endpoint path",
      "also_update": ["nginx /lab/svc/llm location", "every consumer (_shared.js, notebooks)", "this skill-meta interfaces+tests"],
@@ -45,7 +45,7 @@
   "related": [
     "cpu/services/00_llm_client.md",
     "cpu/services/00_service_map.md",
-    "web/nemoclaw/_shared.js"
+    "web/nemoclaw/scripts/_shared.js"
   ]
 }
 </script>
@@ -126,7 +126,7 @@ td:first-child{font-family:var(--mono);font-size:.85em;color:var(--gs);white-spa
       <code>/lab/svc/llm/</code> browser route.</p>
     <p>Full prose lives in <code>00_llm_client.md</code>. When the default
       models change, also update the model constants in
-      <code>web/nemoclaw/_shared.js</code>.</p>
+      <code>web/nemoclaw/scripts/_shared.js</code>.</p>
   </div>
 </main>
 

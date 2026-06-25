@@ -84,6 +84,14 @@
       "path": "web/nemoclaw/studio.html"
     },
     {
+      "name": "scripts",
+      "path": "web/nemoclaw/scripts/SKILL.html"
+    },
+    {
+      "name": "styles",
+      "path": "web/nemoclaw/styles/SKILL.html"
+    },
+    {
       "name": "assets",
       "path": "web/nemoclaw/assets/SKILL.html"
     },
@@ -98,7 +106,7 @@
 {
   "mode": "hub",
   "title": "web/nemoclaw \u00b7 course hub",
-  "summary": "Securing Agents: the browser course. Build an agent from the loop up (reasoning, tools, retrieval, memory), then contain it with the OpenShell sandbox and weigh the modern CLI agents that wrap it.",
+  "summary": "Securing Agents: a browser-first course that runs against the lab's model gateway and OpenClaw runtime. The pages build the agent loop, tools, retrieval, planning, and sandbox controls as live artifacts, with course code collapsed when it is supporting infrastructure rather than the lesson focus.",
   "ties": [
     "build"
   ],
@@ -110,27 +118,27 @@
         {
           "label": "01a-loop",
           "href": "01a-loop.html",
-          "desc": "The agent loop: a stateless model wrapped in a read, decide, act cycle."
+          "desc": "The agent loop: a model call wrapped in a repeated perceive, reason, act cycle."
         },
         {
           "label": "01b-react",
           "href": "01b-react.html",
-          "desc": "ReAct: the model reasons, then calls tools, and how context rot creeps in."
+          "desc": "ReAct: reason, act, observe, repeat, with a maze artifact that keeps the code available but quiet."
         },
         {
           "label": "01c-tools",
           "href": "01c-tools.html",
-          "desc": "Tool calling: the model requests, your code runs, the model reads the result."
+          "desc": "Tool calling: the model requests work, browser code runs it, and the model reads the result."
         },
         {
           "label": "02a-routing",
           "href": "02a-routing.html",
-          "desc": "Route a request to one specialist with a typed enum."
+          "desc": "Routing: planner, workers, and synthesis as separate calls with visible bounded orchestration."
         },
         {
           "label": "02b-rag",
           "href": "02b-rag.html",
-          "desc": "The Index Agent: retrieval wired as a tool, from corpus to grounded answer."
+          "desc": "RAG: retrieval wired as a tool, from corpus chunks to grounded answer."
         },
         {
           "label": "02c-deep",
@@ -140,7 +148,7 @@
         {
           "label": "03a-kickstart",
           "href": "03a-kickstart.html",
-          "desc": "Kickstart: the model and agent-runtime endpoints you drive from here."
+          "desc": "Kickstart: connect the browser course to the lab launchable and check the runtime endpoints."
         },
         {
           "label": "03b-openclaw",
@@ -155,17 +163,17 @@
         {
           "label": "04a-safety",
           "href": "04a-safety.html",
-          "desc": "The NemoClaw sandbox: kernel-enforced policy the prompt cannot talk past."
+          "desc": "NemoClaw safety: policy and sandbox boundaries the prompt cannot talk past."
         },
         {
           "label": "04b-modern-clis",
           "href": "04b-modern-clis.html",
-          "desc": "Modern CLI agents compared, plus a real terminal on your launchable."
+          "desc": "Modern CLI agents compared, plus a real terminal on the NemoClaw launchable."
         },
         {
           "label": "04c-going-further",
           "href": "04c-going-further.html",
-          "desc": "Going further: the layered view and where to take it next."
+          "desc": "Going further: the layered view and where to take the lab next."
         },
         {
           "label": "SKILL",
@@ -190,7 +198,7 @@
         {
           "label": "index",
           "href": "index.html",
-          "desc": "Human entry: the course landing and API-key setup."
+          "desc": "Human entry: course landing, API-key setup, and iframe opt-in control."
         }
       ]
     },
@@ -201,6 +209,21 @@
           "label": "studio",
           "href": "studio.html",
           "desc": "Authoring and inspection studio for the course pages."
+        }
+      ]
+    },
+    {
+      "title": "Implementation",
+      "items": [
+        {
+          "label": "runtime scripts",
+          "href": "scripts/SKILL.html",
+          "desc": "Browser modules for page chrome, runnable cells, canvas flows, OpenClaw controls, chat widgets, diagrams, retrieval helpers, and the studio tool."
+        },
+        {
+          "label": "course styles",
+          "href": "styles/SKILL.html",
+          "desc": "Shared course CSS plus the light iframe/export overlay."
         }
       ]
     },
@@ -257,6 +280,11 @@
   <h2>Tools</h2>
   <ul>
     <li><a href="studio.html">studio</a></li>
+  </ul>
+  <h2>Implementation</h2>
+  <ul>
+    <li><a href="scripts/SKILL.html">runtime scripts</a></li>
+    <li><a href="styles/SKILL.html">course styles</a></li>
   </ul>
   <h2>Provenance</h2>
   <ul>

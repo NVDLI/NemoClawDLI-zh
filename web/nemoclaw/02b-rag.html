@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>The Index Agent · Securing Agents</title>
-<link rel="stylesheet" href="_style.css"/>
+<link rel="stylesheet" href="styles/_style.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
@@ -391,7 +391,7 @@
   </p>
   <div id="cell-graphrag"></div>
   <script type="module">
-    import { mountRunCell } from "./_shared.js";
+    import { mountRunCell } from "./scripts/_shared.js";
     mountRunCell("#cell-graphrag", {
       label: "top-K versus GraphRAG, in code",
       autorun: true,
@@ -543,7 +543,7 @@ helpers.log("Notice the global theme top-K misses but the community pass recover
   <div id="rag-cell"></div>
   <div id="rag-artifact"></div>
   <script type="module">
-    import { mountRunCell } from "./_shared.js";
+    import { mountRunCell } from "./scripts/_shared.js";
     mountRunCell("#rag-cell", {
       label: "the Try-it artifact, in code",
       autorun: true,
@@ -633,7 +633,7 @@ helpers.log("rendered below. Edit the config and Run.");
 </main>
 
 <script type="module">
-import { buildNav, chat, chatStream, updateKeyPill, mountJourneyMap, mountCanvasFlow } from "./_shared.js";
+import { buildNav, chat, chatStream, updateKeyPill, mountJourneyMap, mountCanvasFlow } from "./scripts/_shared.js";
 document.getElementById("nav").innerHTML = buildNav("02b-rag.html");
 const pill = document.getElementById("key-status");
 updateKeyPill(pill);

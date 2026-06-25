@@ -16,25 +16,25 @@ ROOT = Path(__file__).resolve().parents[2]
 CHECKS = [
     (
         "runtime exports iframe opt-in controls",
-        "web/nemoclaw/_shared.js",
+        "web/nemoclaw/scripts/_shared.js",
         ["iframeProxyModeEnabled", "setIframeProxyMode", "nemoclaw_iframe_proxy_opt_in"],
         [],
     ),
     (
         "runtime defaults direct and reserves worker for opt-in",
-        "web/nemoclaw/_shared.js",
+        "web/nemoclaw/scripts/_shared.js",
         ["https://integrate.api.nvidia.com/v1", "IFRAME_PROXY_URL", "iframe_proxy", "lms_proxy", "iframeProxy: false", "iframeProxy: true"],
         [r'const\s+DIRECT_URL\s*=\s*"https://nvidia-api-cors-proxy'],
     ),
     (
         "billing header is sent on both direct and iframe-proxy paths",
-        "web/nemoclaw/_shared.js",
+        "web/nemoclaw/scripts/_shared.js",
         ['h.set("X-BILLING-SOURCE", BILLING_SOURCE)', 'const h = { "Content-Type": "application/json", "X-BILLING-SOURCE": BILLING_SOURCE }'],
         [r'if\s*\(cfg\.iframeProxy\).*X-BILLING-SOURCE', r'if\s*\(iframeProxyModeEnabled\(\)\).*X-BILLING-SOURCE'],
     ),
     (
         "key panel exposes explicit learner toggle",
-        "web/nemoclaw/_keypanel.js",
+        "web/nemoclaw/scripts/_keypanel.js",
         ["iframe-proxy-toggle", "Enable LMS/static iframe execution", "setIframeProxyMode"],
         [],
     ),

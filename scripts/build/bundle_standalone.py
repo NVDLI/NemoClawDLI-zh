@@ -11,9 +11,9 @@ Every transform happens here. The lab view source files stay untouched.
 
 What gets transformed:
 
-  1. Inline _style.css (so the file is self-contained)
-  2. Append _lite_overlay.css (flips theme to light, hides nav chrome)
-  3. Inline _shared.js, with the import line removed
+  1. Inline styles/_style.css (so the file is self-contained)
+  2. Append styles/_lite_overlay.css (flips theme to light, hides nav chrome)
+  3. Inline scripts/_shared.js, with the import line removed
   4. Strip the topbar element entirely (auto-mount code bails when missing)
   5. Strip the #journey-map and .foot-nav containers (no cross-page nav)
   6. Inject an inline <div id="key-panel"></div> just inside <main> + lite-
@@ -48,11 +48,11 @@ DEFAULT_OUT = TASK1 / "web_standalone"
 # Regex catalogue. Tested against every page in web/.
 # ────────────────────────────────────────────────────────────────────────────
 CSS_LINK_RE = re.compile(
-    r'<link\s+rel="stylesheet"\s+href="_style\.css"\s*/?>',
+    r'<link\s+rel="stylesheet"\s+href="styles/_style\.css"\s*/?>',
     re.IGNORECASE,
 )
 IMPORT_LINE_RE = re.compile(
-    r'^\s*import\s+\{[^}]*\}\s+from\s+["\']\./_shared\.js["\'];?\s*$',
+    r'^\s*import\s+\{[^}]*\}\s+from\s+["\']\./scripts/_shared\.js["\'];?\s*$',
     re.MULTILINE,
 )
 TOPBAR_RE = re.compile(
@@ -540,9 +540,9 @@ def bundle_one(html_path: Path, css_text: str, lite_css: str, shared_js: str,
     #    every surface). The bundle is flat, so point it at the sibling copy shipped alongside the pages.
     html = html.replace('src="../_skill_explorer.js"', 'src="_skill_explorer.js"')
 
-    # 1) Inline _style.css. The lite export appends _lite_overlay.css to flip the page to a
+    # 1) Inline styles/_style.css. The lite export appends styles/_lite_overlay.css to flip the page to a
     #    light background and hide the nav chrome; the full build keeps the lab's dark theme,
-    #    so it inlines _style.css on its own.
+    #    so it inlines styles/_style.css on its own.
     if full:
         style_block = "<style>\n" + css_text + "\n</style>"
     else:
@@ -551,7 +551,7 @@ def bundle_one(html_path: Path, css_text: str, lite_css: str, shared_js: str,
         )
     new_html, n_css = CSS_LINK_RE.subn(style_block, html, count=1)
     if n_css == 0:
-        # Page has no <link rel="stylesheet" href="_style.css"/> (e.g. courses.html).
+        # Page has no <link rel="stylesheet" href="styles/_style.css"/> (e.g. courses.html).
         # Insert the style block right before </head>.
         new_html = html.replace("</head>", style_block + "\n</head>", 1)
 
@@ -568,7 +568,7 @@ def bundle_one(html_path: Path, css_text: str, lite_css: str, shared_js: str,
         new_html = _strip_dead_chrome(new_html)
     new_html = _strip_lab_anchors(new_html)
 
-    # 3) Keep the `import {...} from "./_shared.js"` line and ship _shared.js as a real file
+    # 3) Keep the `import {...} from "./scripts/_shared.js"` line and ship scripts/_shared.js as a real file
     #    alongside the pages (copied in main). The imports then resolve, and ES module caching
     #    loads the module once even across multiple module blocks, exactly as the lab serves
     #    it, so each page stays small. The lite export injects its own sessionStorage key form
@@ -658,9 +658,9 @@ def main() -> int:
                 pass
     out.mkdir(parents=True, exist_ok=True)
 
-    css_text = (web / "_style.css").read_text(encoding="utf-8")
-    lite_css = (web / "_lite_overlay.css").read_text(encoding="utf-8")
-    shared_js = (web / "_shared.js").read_text(encoding="utf-8")
+    css_text = (web / "styles" / "_style.css").read_text(encoding="utf-8")
+    lite_css = (web / "styles" / "_lite_overlay.css").read_text(encoding="utf-8")
+    shared_js = (web / "scripts" / "_shared.js").read_text(encoding="utf-8")
 
     pages = sorted(p for p in web.glob("*.html") if not p.name.startswith("."))
     if not pages:
@@ -676,18 +676,20 @@ def main() -> int:
         kb = len(bundled.encode("utf-8")) / 1024
         print(f"  bundled {src.name:<28} → {dst.name}  ({kb:5.1f} KB)")
 
-    # Ship the shared ES modules as real files so the pages' kept `./_shared.js` import and the
-    # per-section modules _shared.js imports in turn (e.g. _openshell.js) all resolve as siblings,
+    # Ship the shared ES modules as real files so the pages' kept `./scripts/_shared.js` import and the
+    # per-section modules scripts/_shared.js imports in turn (e.g. _openshell.js) all resolve as siblings,
     # loaded once via ES-module caching exactly as the lab serves them. Globbing _*.js carries any
     # module the split adds without a per-module edit here.
-    for mod in sorted(web.glob("_*.js")):
-        shutil.copy2(mod, out / mod.name)
-        print(f"  shipped {mod.name}  ({(out / mod.name).stat().st_size // 1024} KB)")
+    for mod in sorted((web / "scripts").glob("_*.js")):
+        dst = out / "scripts" / mod.name
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(mod, dst)
+        print(f"  shipped scripts/{mod.name}  ({dst.stat().st_size // 1024} KB)")
 
     # The SKILL hubs render via web/_skill_explorer.js, which lives one level ABOVE --src (one renderer
     # serves every surface), and the copied subdir SKILLs link ../_style.css. Neither is caught by the
     # globs above, so ship both flat: the hubs then render and the provenance pages style in the bundle.
-    for extra in (web.parent / "_skill_explorer.js", web / "_style.css"):
+    for extra in (web.parent / "_skill_explorer.js", web / "styles" / "_style.css"):
         if extra.is_file() and not (out / extra.name).exists():
             shutil.copy2(extra, out / extra.name)
             print(f"  shipped {extra.name}")

@@ -20,6 +20,7 @@ Usage:
 Exit non-zero on any unresolved import or dangling re-export, so it works as a gate.
 """
 import argparse, os, re, sys, glob
+from pathlib import Path
 
 _DECL = re.compile(r'\bexport\s+(?:async\s+)?(?:function|const|let|var|class)\s+([A-Za-z_$][\w$]*)')
 _EXPORT_BLOCK = re.compile(r'\bexport\s*\{([^}]*)\}')
@@ -90,36 +91,42 @@ def main():
     ap.add_argument("--dir", default="web/nemoclaw")
     ap.add_argument("--dead", action="store_true", help="also report dead (never-referenced) imports, advisory only")
     a = ap.parse_args()
-    root = os.path.abspath(a.dir)
-    if not os.path.isdir(root):
-        sys.exit("module_check: no such dir: " + root)
+    root = Path(a.dir).resolve()
+    if not root.is_dir():
+        sys.exit("module_check: no such dir: " + str(root))
+    module_root = root / "scripts" if (root / "scripts").is_dir() else root
 
-    # Export table for every module in the dir.
+    # Export table for every module in the module dir.
     exports = {}
-    for f in glob.glob(os.path.join(root, "*.js")):
-        exports[os.path.basename(f)] = parse_exports(open(f, encoding="utf-8").read())
+    for f in sorted(module_root.glob("*.js")):
+        exports[f.name] = parse_exports(f.read_text(encoding="utf-8"))
 
     problems = []
 
     # Check 1: every relative-import name resolves.
-    for f in sorted(glob.glob(os.path.join(root, "*.html")) + glob.glob(os.path.join(root, "*.js"))):
-        src = open(f, encoding="utf-8").read()
+    files = sorted(root.glob("*.html")) + sorted(module_root.glob("*.js"))
+    for f in files:
+        src = f.read_text(encoding="utf-8")
         for mod, names in parse_imports(src):
             if not mod.startswith("."):
                 continue  # external (CDN) import
-            target = os.path.basename(mod)
+            target_path = (f.parent / mod).resolve()
+            try:
+                target = target_path.relative_to(module_root).name if target_path.parent == module_root else target_path.name
+            except ValueError:
+                target = target_path.name
             if target not in exports:
-                problems.append("%s imports from %s, which is not a module in this dir" % (os.path.basename(f), mod))
+                problems.append("%s imports from %s, which is not a module in %s" % (f.name, mod, module_root))
                 continue
             for n in names:
                 if n not in exports[target]:
                     problems.append("%s imports `%s` from %s, but %s does not export it"
-                                    % (os.path.basename(f), n, mod, target))
+                                    % (f.name, n, mod, target))
 
     # Check 2: re-exported names are actually present in the module.
-    for f in glob.glob(os.path.join(root, "*.js")):
-        name = os.path.basename(f)
-        src = open(f, encoding="utf-8").read()
+    for f in sorted(module_root.glob("*.js")):
+        name = f.name
+        src = f.read_text(encoding="utf-8")
         local = local_bindings(src)
         for blk in _EXPORT_BLOCK.finditer(src):
             # `export { x } from "./y"` brings x straight through; not a dangling re-export.
@@ -132,11 +139,11 @@ def main():
 
     if a.dead:
         dead_any = False
-        for f in sorted(glob.glob(os.path.join(root, "*.js")) + glob.glob(os.path.join(root, "*.html"))):
-            dead = unused_imports(open(f, encoding="utf-8").read())
+        for f in files:
+            dead = unused_imports(f.read_text(encoding="utf-8"))
             if dead:
                 dead_any = True
-                print("  · %s: dead import(s): %s" % (os.path.basename(f), ", ".join(dead)))
+                print("  · %s: dead import(s): %s" % (f.name, ", ".join(dead)))
         if not dead_any:
             print("  · no dead imports")
 
