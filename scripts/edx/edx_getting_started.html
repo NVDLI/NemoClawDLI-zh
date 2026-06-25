@@ -307,8 +307,7 @@ li { margin: .25em 0; }
       try { real = getBtn(); } catch(e){}
       if (real){
         try { real.scrollIntoView({ behavior:'smooth', block:'center' }); } catch(e){}
-        // Let the scroll begin before the click; some xblocks ignore a click
-        // on a control that is still off-screen.
+        // Let the scroll begin before the click; some xblocks ignore a click on a control that is still off-screen.
         setTimeout(function(){ try { real.click(); } catch(e){} }, 160);
         return;
       }

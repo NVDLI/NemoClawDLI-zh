@@ -155,8 +155,8 @@ for (const f of fs.readdirSync(NEMO).filter((f) => /\.html$/.test(f)).sort()) {
   for (const { sel, spec, err } of extract(pageSrc)) {
     checked++; const page = "web/nemoclaw/" + f;
     if (err) { findings.push({ page, sel, detail: "spec did not parse: " + err }); continue; }
-    // a mount whose target div is absent renders nothing -- a dead call, or a leftover after
-    // the figure was replaced (e.g. by a table). Flag it and do not "validate" a phantom.
+    // a mount whose target div is absent renders nothing -- a dead call, or a leftover after the figure was replaced (e.g. by a table).
+    // Flag it and do not "validate" a phantom.
     if (sel.startsWith("#") && !pageSrc.includes(`id="${sel.slice(1)}"`)) {
       findings.push({ page, sel, detail: `mount target ${sel} has no element on the page; this figure never renders (dead mount or leftover after a replacement)` });
       continue;

@@ -45,9 +45,9 @@
     "skills-seed", "grounding_cache", "validation", ".git", ".cache",
     "i18n"]);   // staged translation content (a copy of web/), not part of the source graph
 
-  // mats are the curated reference layer, now COURSE-SCOPED under web/nemoclaw/mats/ (no longer
-  // a top-level peer). They are recognized by the "mats" path SEGMENT anywhere in the path, not
-  // by a top-level dir. MAT_REL is the canonical repo-relative location of the packets.
+  // mats are the curated reference layer, now COURSE-SCOPED under web/nemoclaw/mats/ (no longer a top-level peer).
+  // They are recognized by the "mats" path SEGMENT anywhere in the path, not by a top-level dir.
+  // MAT_REL is the canonical repo-relative location of the packets.
   var MAT_REL = "web/nemoclaw/mats";
   function isMatPath(r) { return r.split("/").indexOf("mats") >= 0; }
 
@@ -58,8 +58,8 @@
   // Release contract: the courses the release foyer (web/index.html) may surface.
   var RELEASED = ["nemoclaw"];
 
-  // mats now live UNDER web/ (already a crawl root that recurses), so "mats" is no longer a
-  // separate top-level crawl root or shared TOPDIR. It is still shared infra, detected by segment.
+  // mats now live UNDER web/ (already a crawl root that recurses), so "mats" is no longer a separate top-level crawl root or shared TOPDIR.
+  // It is still shared infra, detected by segment.
   var SHARED_SUBDIRS = setOf(["mats", "repos", "services"]);
   var SHARED_TOPDIRS = setOf(["repos", "scripts", "docs"]);
   var CRAWL_TOP = ["web", "cpu", "docs", "scripts"];
@@ -118,8 +118,8 @@
   function navSource(rel) {
     var parts = rel.split("/").filter(function (x) { return x; });
     var base = lc(parts.length ? parts[parts.length - 1] : "");
-    // bundle-root files (README.md, SKILL.html, AGENT_QUICKSTART.md, ...) are bundle-level
-    // indexes: they may reference any course. The isolation rule is course<->course.
+    // bundle-root files (README.md, SKILL.html, AGENT_QUICKSTART.md, ...) are bundle-level indexes: they may reference any course.
+    // The isolation rule is course<->course.
     if (parts.length === 1) return true;
     if (["skill.html", "courses.html", "index.html"].indexOf(base) >= 0) return true;
     if (parts.indexOf("mats") >= 0) return true;

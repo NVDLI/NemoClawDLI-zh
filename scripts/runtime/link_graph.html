@@ -714,8 +714,9 @@
 
     // ── force layout ──────────────────────────────────────────────────────────
     let heat = 1, hl = null, drag = null, raf = null;
-    // Schedule a redraw. The loop runs only while WARM or interacting, then parks itself
-    // (raf=null) so a settled graph costs zero CPU. Any interaction calls kick() to wake it.
+    // Schedule a redraw.
+    // The loop runs only while WARM or interacting, then parks itself (raf=null) so a settled graph costs zero CPU.
+    // Any interaction calls kick() to wake it.
     function kick(h) { if (h != null) heat = Math.max(heat, h); if (raf === null) raf = requestAnimationFrame(draw); }
     function tick() {
       // BOUNDED force layout. The old code used f=K/d2 with d2 floored at only .01, so two

@@ -39,17 +39,16 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
         sys.path.insert(0, str(_p / "scripts")); break
 from _bootstrap import add_script_paths, find_repo_root
 
-# scripts/ sits directly under the CONTENT ROOT: task1 today (a subdir of the DLI wrapper),
-# the repo root in the open-source release. So the content root is scripts/..; the git repo
-# (the wrapper that holds .git) is its parent while task1 is still a subdir.
+# scripts/ sits directly under the CONTENT ROOT: task1 today (a subdir of the DLI wrapper), the repo root in the open-source release.
+# So the content root is scripts/..; the git repo (the wrapper that holds .git) is its parent while task1 is still a subdir.
 TASK1 = find_repo_root(Path(__file__).resolve())
 add_script_paths(TASK1 / "scripts")
 import scripts_hierarchy as sh  # noqa: E402
 REPO = TASK1.parent if (TASK1.parent / ".git").exists() else TASK1
 SKIP_PARTS = {"__pycache__", ".ipynb_checkpoints", "node_modules", ".git", ".cache",
-              # generated build output (gitignored): public/ is the Pages build, the rest are
-              # bundler/export trees. Never source, and a build mid-flight makes subdirs appear
-              # and vanish under us, so walking into them crashes the scan. Prune them.
+              # generated build output (gitignored): public/ is the Pages build, the rest are bundler/export trees.
+              # Never source, and a build mid-flight makes subdirs appear and vanish under us, so walking into them crashes the scan.
+              # Prune them.
               "public", "export", "standalone", "dist", "build", "i18n",
               # gitignored lab-runtime cruft: never validate it (and do not rely on
               # filesystem permissions to skip it, e.g. a root-owned .Trash-0).

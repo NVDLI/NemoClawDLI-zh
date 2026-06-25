@@ -42,8 +42,8 @@ WEB_COURSE_DESC = {
                      "tools, retrieval, memory), then contain it with the OpenShell sandbox and weigh the "
                      "modern CLI agents that wrap it.",
 }
-# One-line purpose per course page, so the rendered hub documents what each page does instead of listing
-# bare filenames. Keyed by course then page stem; a missing entry just renders an empty desc.
+# One-line purpose per course page, so the rendered hub documents what each page does instead of listing bare filenames.
+# Keyed by course then page stem; a missing entry just renders an empty desc.
 WEB_PAGE_DESC = {
     "nemoclaw": {
         "01a-loop":          "The agent loop: a stateless model wrapped in a read, decide, act cycle.",

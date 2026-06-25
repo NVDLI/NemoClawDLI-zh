@@ -223,23 +223,20 @@ function findChrome() {
     });
   });
 
-  // For a remote *.brevlab.com launchable, the browser needs the CF_Authorization
-  // cookie to clear Cloudflare Access before the WS upgrade. Set it for the
-  // launchable host (derived from CLAW_URL) so the headless browser authenticates
-  // exactly like a logged-in student.
+  // For a remote *.brevlab.com launchable, the browser needs the CF_Authorization cookie to clear Cloudflare Access before the WS upgrade.
+  // Set it for the launchable host (derived from CLAW_URL) so the headless browser authenticates exactly like a logged-in student.
   if (process.env.CLAW_CF && CLAW_URL) {
     try {
       const host = new URL(CLAW_URL).hostname;
-      // SameSite=None + Secure so the browser sends it on the cross-site wss
-      // upgrade (the page origin differs from the launchable). A Lax cookie is
-      // withheld cross-site and CF 302s the handshake, so no challenge arrives.
+      // SameSite=None + Secure so the browser sends it on the cross-site wss upgrade (the page origin differs from the launchable).
+      // A Lax cookie is withheld cross-site and CF 302s the handshake, so no challenge arrives.
       await page.context().addCookies([{ name: 'CF_Authorization', value: process.env.CLAW_CF, domain: host, path: '/', secure: true, sameSite: 'None' }]);
       console.log('CF_COOKIE: set for', host);
     } catch (e) { console.log('CF_COOKIE: skipped (' + e.message + ')'); }
   }
 
-  // The web course is remote-service-only: browser pages call integrate.api.nvidia.com
-  // directly with the learner's nvapi key. The harness mirrors that path.
+  // The web course is remote-service-only: browser pages call integrate.api.nvidia.com directly with the learner's nvapi key.
+  // The harness mirrors that path.
   await page.addInitScript(({ apiKey, apiUrl }) => {
     try {
       sessionStorage.setItem("__nv_slim_cfg_v1", JSON.stringify({
@@ -292,8 +289,8 @@ function findChrome() {
     console.log('CREDS: none (gateway nodes will short-circuit on the probe guard)');
   }
 
-  // Click "Run all" on every canvas flow. Each flow runs its nodes sequentially
-  // (connect → … → chat) on a shared state, so this drives the full handshake.
+  // Click "Run all" on every canvas flow.
+  // Each flow runs its nodes sequentially (connect → … → chat) on a shared state, so this drives the full handshake.
   const flowCount = await page.evaluate(() => {
     const btns = document.querySelectorAll('.cf-btn-run');
     btns.forEach(b => b.click());
@@ -301,8 +298,7 @@ function findChrome() {
   });
   console.log('FLOWS:', flowCount);
 
-  // Settle: agent runs that call tools take longer than plain LLM calls, and the
-  // chat node's own timeout is 90s, so allow up to 120s.
+  // Settle: agent runs that call tools take longer than plain LLM calls, and the chat node's own timeout is 90s, so allow up to 120s.
   let settled = false;
   for (let i = 0; i < 240; i++) {
     await page.waitForTimeout(500);

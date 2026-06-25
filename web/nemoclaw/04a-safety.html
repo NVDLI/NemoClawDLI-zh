@@ -515,8 +515,7 @@ mountRunCell("#cell-layers", {
   label: "ask the box anything, in code",
   code: `// You write the COMMAND; probe() runs it in your sandbox.
 // It prints the verdict (the exit code), the deciding mechanism, and a line of evidence.
-// For egress it also reads the HTTP status: a denied tunnel exits non-zero,
-// while a denied plain request returns 403 at exit 0.
+// For egress it also reads the HTTP status: a denied tunnel exits non-zero, while a denied plain request returns 403 at exit 0.
 const _esc = (x) => String(x).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
 async function probe(command, mechanism) {
   const res = await helpers.sandboxExec(command);
@@ -661,8 +660,7 @@ if (!state.action) { helpers.log("Run the predict node first."); return; }
 const a = state.action;
 
 // One clean curl inside the sandbox; the proxy answers a denied CONNECT fast.
-// A blocked egress yields code=000 with a 'tunnel failed' note;
-// an allowed one returns a real HTTP status (200/401/404...).
+// A blocked egress yields code=000 with a 'tunnel failed' note; an allowed one returns a real HTTP status (200/401/404...).
 const scheme = a.port === 443 ? "https://" : "http://";
 const probe = "curl -sS -o /dev/null -w 'code=%{http_code}' " + scheme + a.host + (a.path || "/");
 helpers.log("-> openshell sandbox exec -- " + probe);

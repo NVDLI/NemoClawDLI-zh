@@ -504,8 +504,8 @@ const s = await helpers.chatStream({
   max_tokens: 8196,
 });
 
-// The reasoning streamed above. A returned value renders on its own, so just hand back the
-// decision: the tool the model chose (if any) and the arguments it filled in.
+// The reasoning streamed above.
+// A returned value renders on its own, so just hand back the decision: the tool the model chose (if any) and the arguments it filled in.
 if (!s.tool_calls.length) return { routed_to: "(answered directly)", answer: s.content };
 const tc = s.tool_calls[0];
 return { routed_to: tc.function.name, arguments: JSON.parse(tc.function.arguments || "{}") };
@@ -578,8 +578,7 @@ return {
       summary: "The executor. It calls the in-page glossary MCP server (defined at the top of this page) via tools/call and gets back ranked NVIDIA glossary entries. The catalog and the search both run locally in your browser, with no key and no network call.",
       code: `// Handle the tool-call result from the previous model turn.
 if (!state.s1.tool_calls.length) {
-  // No tool call here: the model either answered from training (it has content)
-  // or ran out of tokens mid-call.
+  // No tool call here: the model either answered from training (it has content) or ran out of tokens mid-call.
   // Distinguish the two so we never report a direct answer for a truncated call.
   state.skipped = true;
   state.reason = state.s1.content ? "model answered directly; no search needed"

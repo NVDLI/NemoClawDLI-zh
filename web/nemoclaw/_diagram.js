@@ -67,8 +67,7 @@ function _dgBox(n, g, t) {
     `font-family="${_DG_MONO}" fill="${t.td}">${_dgEsc(s)}</text>`).join("");
   const socket = (() => {
     if (!n.socket) return "";
-    // Size the pill to the label (not a fixed inset) so it never clips,
-    // centered on the box and capped so it stays inside the card.
+    // Size the pill to the label (not a fixed inset) so it never clips, centered on the box and capped so it stays inside the card.
     const sw = Math.min(w - 12, Math.max(w - 84, n.socket.length * 7.0 + 24));
     const sx = cx - sw / 2;
     return `<rect x="${sx}" y="${y + g.boxH - 39}" width="${sw}" height="36" rx="18" ` +
@@ -89,8 +88,7 @@ function _dgBox(n, g, t) {
 // _dgEdge returns { path, chip } and diagramSVG composites the layers.
 function _dgEdgeLabelChip(mx, my, label, kc, t) {
   if (!label) return "";
-  // Size the pill to the text instead of a fixed 64px, so longer labels
-  // ("read every turn", "denied: EACCES / 403") are not clipped.
+  // Size the pill to the text instead of a fixed 64px, so longer labels ("read every turn", "denied: EACCES / 403") are not clipped.
   const w = Math.max(46, label.length * 7.1 + 18);
   return `<rect x="${mx - w / 2}" y="${my - 13}" width="${w}" height="26" rx="13" fill="${t.e1}" stroke="${t.bd}"/>` +
     `<text x="${mx}" y="${my + 4}" text-anchor="middle" font-size="12" font-family="${_DG_MONO}" ` +

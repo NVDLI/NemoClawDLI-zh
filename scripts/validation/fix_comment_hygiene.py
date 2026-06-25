@@ -35,7 +35,7 @@ SCRIPTS = TASK1 / "scripts"
 add_script_paths(SCRIPTS)
 import code_hygiene as ch  # noqa: E402
 
-MAX_LINE = 110                                   # a reflowed comment line longer than this is left alone.
+MAX_LINE = 140                                   # a reflowed comment line longer than this is left alone.
 _SENT_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z(\"'])")   # split on sentence ends only, never on a colon.
 _ABBR = re.compile(r"\b(?:e\.g|i\.e|vs|etc|al|Inc|cf|Dr|Mr|Ms|Fig|No)\.$", re.I)
 
@@ -125,6 +125,23 @@ def fix_html_text(text: str):
     return text, total_blocks, total_inline
 
 
+def fix_one_pass(targets, apply: bool):
+    """Run one deterministic pass across targets and return (files, blocks, inline, changed)."""
+    tot_files = tot_blocks = tot_inline = 0
+    changed = False
+    for f, rel, suf in targets:
+        text = f.read_text(encoding="utf-8", errors="ignore")
+        new, blocks, inline = fix_html_text(text) if suf in (".html", ".htm") else fix_text(suf, text)
+        if not blocks and not inline:
+            continue
+        tot_files += 1; tot_blocks += blocks; tot_inline += inline
+        print(f"  {rel}: {blocks} block(s) reflowed, {inline} inline spacing")
+        if apply and new != text:
+            f.write_text(new, encoding="utf-8")
+            changed = True
+    return tot_files, tot_blocks, tot_inline, changed
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Auto-fix mechanical comment-formatting findings.",
                                  formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
@@ -136,19 +153,21 @@ def main() -> int:
     targets = [(f, rel, suf) for f, rel, suf in ch._iter_files(a.scope) if suf in (".py", ".js", ".mjs", ".html", ".htm")]
     if a.file:
         targets = [t for t in targets if a.file in t[1]]
-    tot_files = tot_blocks = tot_inline = 0
-    for f, rel, suf in targets:
-        text = f.read_text(encoding="utf-8", errors="ignore")
-        new, blocks, inline = fix_html_text(text) if suf in (".html", ".htm") else fix_text(suf, text)
-        if not blocks and not inline:
-            continue
-        tot_files += 1; tot_blocks += blocks; tot_inline += inline
-        print(f"  {rel}: {blocks} block(s) reflowed, {inline} inline spacing")
-        if a.apply and new != text:
-            f.write_text(new, encoding="utf-8")
+    total_files = total_blocks = total_inline = 0
+    passes = 0
+    while True:
+        files, blocks, inline, changed = fix_one_pass(targets, a.apply)
+        passes += 1
+        total_files += files
+        total_blocks += blocks
+        total_inline += inline
+        if not a.apply or not changed:
+            break
     verb = "fixed" if a.apply else "would fix"
-    print(f"\n{verb}: {tot_blocks} comment block(s) + {tot_inline} inline spacing across {tot_files} file(s)"
+    print(f"\n{verb}: {total_blocks} comment block(s) + {total_inline} inline spacing across {total_files} file-pass(es)"
           + ("" if a.apply else "  (dry run; pass --apply to write)"))
+    if a.apply:
+        print(f"passes: {passes}")
     return 0
 
 

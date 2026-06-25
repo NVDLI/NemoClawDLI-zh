@@ -265,8 +265,7 @@ def _meta(html: str, key: str, attr: str = "name") -> str:
 
 
 def _clean_term(title: str, slug: str) -> str:
-    # og:title comes in forms like "What are AI Agents?" or "Apache Spark"; reduce
-    # to the bare term, falling back to a title-cased slug.
+    # og:title comes in forms like "What are AI Agents?" or "Apache Spark"; reduce to the bare term, falling back to a title-cased slug.
     t = re.sub(r"^\s*what\s+(is|are)\s+", "", title, flags=re.I).strip().rstrip("?").strip()
     t = re.split(r"\s*[|·]\s*", t)[0].strip()
     return t or slug.replace("-", " ").title()

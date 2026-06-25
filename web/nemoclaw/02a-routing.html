@@ -465,10 +465,8 @@ const synth = await helpers.chatStream({
   max_tokens: 8196,
 });
 
-// Build a node/edge spec from the plan the planner emitted, then let
-// helpers.viz.diagram lay it out and theme it. The N search queries become
-// N tool nodes in one grid row; the planner fans out to each, each fans
-// back into the synthesizer.
+// Build a node/edge spec from the plan the planner emitted, then let helpers.viz.diagram lay it out and theme it.
+// The N search queries become N tool nodes in one grid row; the planner fans out to each, each fans back into the synthesizer.
 const queries = state.plan.queries || [];
 const N = queries.length;
 const nodes = [

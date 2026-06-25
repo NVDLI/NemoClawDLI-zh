@@ -435,8 +435,7 @@ helpers.mountChatUI("#kickstart-artifact", {
 });
 helpers.log("rendered below. Edit the config and Run.");
 
-// The panel is helpers.mountChatUI and it streams through helpers.openclawChat;
-// open the helpers tab above to read either one's source.
+// The panel is helpers.mountChatUI and it streams through helpers.openclawChat; open the helpers tab above to read either one's source.
 `,
       });
     </script>
@@ -646,8 +645,7 @@ async function bench(model) {
   return { model, ttft, total, tokens, reasoning, avgGap, text, think, finish, err };
 }
 
-// Launch every model concurrently, then await them in catalog order, so the
-// log prints in a stable order even though the requests overlap.
+// Launch every model concurrently, then await them in catalog order, so the log prints in a stable order even though the requests overlap.
 const pending = state.models.map(bench);
 const results = [];
 for (let i = 0; i < pending.length; i++) {
@@ -829,8 +827,7 @@ const _params = {
 // Reasoning is NOT forwarded by the gateway, so these args and results are the
 // deepest per-step view; the 📜 logs cell (in Recover) tails the runtime log.
 
-// Two timers guard the run: an idle timer (reset only by REAL activity, never
-// by heartbeats) and a global backstop.
+// Two timers guard the run: an idle timer (reset only by REAL activity, never by heartbeats) and a global backstop.
 let _text = "", _finalEv, _t0 = performance.now(), _ttft = 0, _myRun = null;
 let _toolStarts = 0, _didResult = false;            // for the degradation check below
 const IDLE_MS = IDLE_TIMEOUT_S * 1000, GLOBAL_MS = TOTAL_TIMEOUT_S * 1000;
@@ -855,13 +852,11 @@ await new Promise((resolve, reject) => {
    try {
     const pl = d.payload || {};
     // Heartbeats stream the whole time the socket is open, and are NOT activity.
-    // Ignore them; otherwise a stalled run emitting only heartbeats would keep
-    // the idle timer alive and never time out.
+    // Ignore them; otherwise a stalled run emitting only heartbeats would keep the idle timer alive and never time out.
     if (pl.isHeartbeat || d.event === "health" || d.event === "tick") return;
 
     // One sessionKey can have several runs (an earlier turn may still be streaming).
-    // The gateway forwards them ALL to subscribers, so lock onto the runId that
-    // chat.send returned and drop every other run's frames.
+    // The gateway forwards them ALL to subscribers, so lock onto the runId that chat.send returned and drop every other run's frames.
     // Do this before bumpIdle, or stale chatter resets the idle timer.
     if (_myRun && pl.runId && pl.runId !== _myRun) return;
     bumpIdle();   // real activity on OUR run pushes the idle deadline back
@@ -902,8 +897,7 @@ await new Promise((resolve, reject) => {
       finish();
     }
    } catch (e) {
-    // A throw inside a WS frame handler is otherwise swallowed silently and looks
-    // like a hang, so surface it instead of hiding the failure.
+    // A throw inside a WS frame handler is otherwise swallowed silently and looks like a hang, so surface it instead of hiding the failure.
     helpers.log("⚠ frame-handler error: " + (e && e.message ? e.message : e));
    }
   };
@@ -927,8 +921,7 @@ helpers.log("⏱ " + _secs.toFixed(1) + "s · ~" + _toks + " tok · " +
 state.out = _text;
 
 // Degradation check: a healthy run returns text and/or a tool result.
-// If tools STARTED but none returned a result, a tool is hung or the model is
-// looping, a runtime problem rather than your code.
+// If tools STARTED but none returned a result, a tool is hung or the model is looping, a runtime problem rather than your code.
 // The ⚙️ rows show which tools ran; the Health check flags toolSearch.
 if (!_text.trim() && !_didResult && _toolStarts > 0) {
   helpers.log("⚠ DEGRADED: started " + _toolStarts + " tool call(s) but none returned a result or answer.");

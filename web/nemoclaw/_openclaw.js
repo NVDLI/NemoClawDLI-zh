@@ -986,8 +986,7 @@ const lines = lg.lines || [];
 helpers.log("runtime log · last " + lines.length + " line(s)" + (lg.file ? " · " + lg.file : ""));
 lines.slice(-LOG_LINES).forEach(raw => {
   // Each line is a JSON STRING: { "0": "{subsystem…}", "1": <message>, …, _meta }.
-  // Parse it, read the level + subsystem, and join the numeric arg keys (skip "0",
-  // the subsystem tag) into one message.
+  // Parse it, read the level + subsystem, and join the numeric arg keys (skip "0", the subsystem tag) into one message.
   let L; try { L = typeof raw === "string" ? JSON.parse(raw) : raw; } catch (_) { return; }
   const lvl = ((L._meta && L._meta.logLevelName) || "?").padEnd(5);
   let sub = ""; try { sub = JSON.parse(L["0"] || "{}").subsystem || ""; } catch (_) {}

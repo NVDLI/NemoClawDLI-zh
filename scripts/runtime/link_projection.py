@@ -49,9 +49,9 @@ SKIP_DIR = {"__pycache__", ".ipynb_checkpoints", "node_modules", "export", "stan
 # and enforced there; kept here so gen_skill_hierarchy.py and other python callers share it).
 RELEASED = ("nemoclaw",)
 
-# mats are the curated reference layer, now COURSE-SCOPED under web/nemoclaw/mats/ (no longer a
-# top-level peer). They are recognized by the "mats" path SEGMENT anywhere in the path, mirroring
-# engine.js isMatPath, not as a top-level dir. MAT_REL is the canonical repo-relative location.
+# mats are the curated reference layer, now COURSE-SCOPED under web/nemoclaw/mats/ (no longer a top-level peer).
+# They are recognized by the "mats" path SEGMENT anywhere in the path, mirroring engine.js isMatPath, not as a top-level dir.
+# MAT_REL is the canonical repo-relative location.
 MAT_REL = "web/nemoclaw/mats"
 
 
@@ -63,8 +63,8 @@ SHIP_PREFIXES = ("web/nemoclaw/", "web/index", "web/courses",
                  "cpu/services/", "docs/", "scripts/")
 SHIP_HUBS = {"SKILL.html", "web/SKILL.html", "cpu/SKILL.html"}
 
-# mats now live UNDER web/ (already a crawl root that recurses), so "mats" is no longer a separate
-# top-level crawl root or shared TOPDIR. It is still shared infra, detected by path segment.
+# mats now live UNDER web/ (already a crawl root that recurses), so "mats" is no longer a separate top-level crawl root or shared TOPDIR.
+# It is still shared infra, detected by path segment.
 SHARED_SUBDIRS = {"mats", "repos", "services"}
 SHARED_TOPDIRS = {"repos", "scripts", "docs"}
 CRAWL_TOP = ("web", "cpu", "docs", "scripts")

@@ -761,9 +761,8 @@ def _openai_to_bedrock(body: dict) -> dict:
 
         if role == "assistant" and (msg.get("tool_calls") or msg.get("reasoning_content")):
             content_blocks = []
-            # Reasoning blocks must come FIRST in Anthropic's block ordering
-            # when present. Without a signature we can't safely round-trip
-            # (Anthropic rejects unsigned reasoning), so drop in that case.
+            # Reasoning blocks must come FIRST in Anthropic's block ordering when present.
+            # Without a signature we can't safely round-trip (Anthropic rejects unsigned reasoning), so drop in that case.
             r_text = msg.get("reasoning_content")
             r_sig = msg.get("reasoning_signature")
             if r_text and r_sig:
@@ -2140,8 +2139,7 @@ async def _call_chat_backend_for_adapter(
         adapted = response_builder(chat_resp, body_json, elapsed_ms)
         dispatch_span.set_status(trace.StatusCode.OK)
         span.set_status(trace.StatusCode.OK)
-        # Chunked write so large adapted responses stay recoverable from
-        # the span; never silently truncated at OTel's per-attribute cap.
+        # Chunked write so large adapted responses stay recoverable from the span; never silently truncated at OTel's per-attribute cap.
         _set_span_text(span, "content", json.dumps(adapted))
         su = adapted.get("usage", {})
         input_tokens = su.get("inputTokens", su.get("input_tokens", 0)) or 0

@@ -541,8 +541,7 @@ mountCanvasFlow("#cell-maze", {
 // Maze-generation plumbing: builds the grid and the move utilities every later
 // node reads from state. The lesson is the brain swap in the later nodes.
 
-// lcg is a tiny seeded random-number generator, so a given seed always builds
-// the same maze (reproducible runs).
+// lcg is a tiny seeded random-number generator, so a given seed always builds the same maze (reproducible runs).
 function lcg(seed) {
   let s = ((seed | 0) >>> 0) || 42;
   return () => { s = (Math.imul(1664525, s) + 1013904223) >>> 0; return s / 4294967296; };
@@ -886,8 +885,7 @@ mountCanvasFlow("#cell-llm-maze", {
 // The lesson is the brain swap: the same loop that ran DFS, BFS, and A* now
 // drives a language model over this maze instead.
 
-// lcg is a tiny seeded random-number generator, so a given seed always builds
-// the same maze (reproducible runs).
+// lcg is a tiny seeded random-number generator, so a given seed always builds the same maze (reproducible runs).
 function lcg(seed) {
   let s = ((seed | 0) >>> 0) || 42;
   return () => { s = (Math.imul(1664525, s) + 1013904223) >>> 0; return s / 4294967296; };

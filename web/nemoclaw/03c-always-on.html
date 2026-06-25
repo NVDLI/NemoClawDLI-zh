@@ -238,8 +238,7 @@ helpers.mountChatUI("#alwayson-artifact", {
 });
 helpers.log("rendered below. Edit the config and Run.");
 
-// The panel is helpers.mountChatUI and it streams through helpers.openclawChat;
-// open the helpers tab above to read either one's source.
+// The panel is helpers.mountChatUI and it streams through helpers.openclawChat; open the helpers tab above to read either one's source.
 `,
     });
   </script>
@@ -288,8 +287,8 @@ const gwChat = (sk, msg) => {
   // run time, e.g. a unique key per run so the agent re-runs its tools instead of
   // answering a reused session from memory.
   const skExpr = (sk && typeof sk === "object" && sk.raw) ? sk.raw : JSON.stringify(sk);
-  // msg is usually a literal. Pass { raw: "<js>" } to supply the whole
-  // message-assignment block, e.g. a stack of prompts where the last line wins.
+  // msg is usually a literal.
+  // Pass { raw: "<js>" } to supply the whole message-assignment block, e.g. a stack of prompts where the last line wins.
   const msgBlock = (msg && typeof msg === "object" && msg.raw)
     ? msg.raw
     : ("let message = " + JSON.stringify(msg) + ";");
@@ -352,8 +351,7 @@ await new Promise((resolve, reject) => {
    try {
     const pl = d.payload || {};
     // Heartbeats stream the whole time the socket is open but are NOT activity.
-    // Ignore them so they never reset the idle timer (a stalled run emits only
-    // heartbeats and must still time out).
+    // Ignore them so they never reset the idle timer (a stalled run emits only heartbeats and must still time out).
     if (pl.isHeartbeat || d.event === "health" || d.event === "tick") return;
     // One sessionKey can have several runs; keep only this runId before bumpIdle.
     // Otherwise stale frames can mask a real stall.

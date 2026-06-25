@@ -287,9 +287,8 @@
     }
   });
   if (!token) return;
-  // Best-effort cookie exchange (an @web.authenticated endpoint; Jupyter reads ?token=
-  // from the query and sets the /lab/ cookie). Strip the token from the address bar once
-  // it resolves.
+  // Best-effort cookie exchange (an @web.authenticated endpoint; Jupyter reads ?token= from the query and sets the /lab/ cookie).
+  // Strip the token from the address bar once it resolves.
   fetch("/lab/api/status?token=" + encodeURIComponent(token), { credentials: "include" })
     .catch(function () {})
     .then(function () {
@@ -300,8 +299,8 @@
 })();
 
 
-// Language selector: populated from build-time languages.json after the build has
-// produced translated course bundles. Missing or single-language JSON keeps it hidden.
+// Language selector: populated from build-time languages.json after the build has produced translated course bundles.
+// Missing or single-language JSON keeps it hidden.
 (function () {
   var box = document.getElementById("language-switcher");
   var sel = document.getElementById("language-select");

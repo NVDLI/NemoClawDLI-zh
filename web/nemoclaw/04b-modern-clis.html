@@ -290,8 +290,7 @@ const JS_TOOL = {
   },
 };
 
-// Run agent-written code against the live runtime. helpers is injected; document,
-// window, and fetch are ambient.
+// Run agent-written code against the live runtime. helpers is injected; document, window, and fetch are ambient.
 async function runJS(code) {
   const fn = new Function("helpers", "return (async () => { " + code + " })();");
   return await fn(helpers);
@@ -369,9 +368,9 @@ helpers.log("CLI agent mounted below. Give it a goal and watch it drive the runt
       label: "a real terminal on your launchable, with an agent-sandbox shortcut",
       autorun: true,
       code: `// A real shell on your nemoclaw launchable, over the same /ws/terminal PTY Module 4a's probes use
-// (helpers.terminal). The host carries openshell; your agent runs in a sandbox, so "agent <cmd>" runs
-// there via openshell sandbox exec (helpers.sandboxExec). Interactive sessions (openclaw tui) need a
-// persistent connection a one-shot terminal cannot hold, so chatting lives in the panel below.
+// (helpers.terminal).
+// The host carries openshell; your agent runs in a sandbox, so "agent <cmd>" runs there via openshell sandbox exec (helpers.sandboxExec).
+// Interactive sessions (openclaw tui) need a persistent connection a one-shot terminal cannot hold, so chatting lives in the panel below.
 
 function launchableUrl() {
   let u = localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl") || "";
@@ -601,8 +600,8 @@ if (line) {
   stopBtn.addEventListener("click", function () { if (_ac) _ac.abort(); });
   line.appendChild(stopBtn);
 }
-// Session/branch tabs: each tab is an independent agent session (a branch). Switching swaps the visible
-// log and the session key openclawChat sends to; "+ branch" starts a new one; "×" deletes it (sessions.delete).
+// Session/branch tabs: each tab is an independent agent session (a branch).
+// Switching swaps the visible log and the session key openclawChat sends to; "+ branch" starts a new one; "×" deletes it (sessions.delete).
 const termEl = document.querySelector("#agent-chat .da-term");
 const outEl = document.querySelector("#agent-chat .da-out");
 let tabs = ["main"], branchN = 0;
@@ -645,8 +644,8 @@ async function closeTab(name) {
 }
 if (connected() && termEl && outEl) {
   termEl.insertBefore(tabBar, termEl.firstChild);
-  // Branches persist in this browser: the panel owns its own tab list. We do NOT scrape the gateway's
-  // session list, which surfaces junk keys (e.g. a stale main-<timestamp> left by another client) as tabs.
+  // Branches persist in this browser: the panel owns its own tab list.
+  // We do NOT scrape the gateway's session list, which surfaces junk keys (e.g. a stale main-<timestamp> left by another client) as tabs.
   // A branch's context still lives on the gateway under its name; switching back resumes it.
   try {
     const saved = JSON.parse(localStorage.getItem("nemoclaw_branches") || "[]");

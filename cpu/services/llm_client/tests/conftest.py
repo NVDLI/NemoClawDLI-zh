@@ -50,9 +50,8 @@ else:
     )
 
 
-# Side-channel envs that llm_client.py looks at at import time. Set
-# conservative defaults so the module loads cleanly under pytest without
-# trying to phone home or expect a real Bedrock token.
+# Side-channel envs that llm_client.py looks at at import time.
+# Set conservative defaults so the module loads cleanly under pytest without trying to phone home or expect a real Bedrock token.
 os.environ.setdefault("LLM_CLIENT_SPAN_ATTR_LIMIT", "8000")
 os.environ.setdefault("LLM_CLIENT_SPAN_ATTR_MAX_CHUNKS", "32")
 os.environ.setdefault("BEDROCK_MAX_RETRIES", "0")
@@ -78,9 +77,8 @@ def event_text_with_reasoning():
     """Realistic Claude-with-thinking shape: reasoning block first, then text."""
     return [
         ("messageStart", {"role": "assistant"}),
-        # Reasoning content block. Anthropic via Bedrock emits this BEFORE
-        # the text block; signature arrives at the end of the reasoning
-        # block stream.
+        # Reasoning content block.
+        # Anthropic via Bedrock emits this BEFORE the text block; signature arrives at the end of the reasoning block stream.
         ("contentBlockStart", {"contentBlockIndex": 0, "start": {}}),
         ("contentBlockDelta", {"contentBlockIndex": 0,
                                 "delta": {"reasoningContent": {"text": "Let me think. "}}}),

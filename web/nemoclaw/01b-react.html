@@ -556,8 +556,7 @@ helpers.mountChatUI(document.getElementById("react-artifact"), {
         }
         continue;
       }
-      // tool CALL: each new call (tc.id present) PUSHES a fresh chip; arg deltas
-      // (no id) extend the call currently open at that index.
+      // tool CALL: each new call (tc.id present) PUSHES a fresh chip; arg deltas (no id) extend the call currently open at that index.
       for (const tc of (chunk.tool_call_chunks || [])) {
         const idx = tc.index == null ? 0 : tc.index;
         let c;

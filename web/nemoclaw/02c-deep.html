@@ -332,8 +332,7 @@ helpers.mountChatUI("#deep-artifact", {
     branches = branches
       .filter(b => b && b.goal && (b.source === "web" || (b.source === "section" && ids.has(b.target))));
 
-    // Guarantee the fan-out spans both the web and this course's sections,
-    // even if the planner under-specified.
+    // Guarantee the fan-out spans both the web and this course's sections, even if the planner under-specified.
     // Section pick uses title/id keyword overlap.
     const pickSection = () => {
       const words = text.toLowerCase().match(/[a-z]{4,}/g) || [];
@@ -401,8 +400,7 @@ helpers.mountChatUI("#deep-artifact", {
     const results = await Promise.all(branches.map(runBranch));
     const wall = (performance.now() - t0) / 1000;
     results.forEach(r => {
-      // Show what each sub-agent actually read alongside what it concluded,
-      // so a finding can be checked against its own source material.
+      // Show what each sub-agent actually read alongside what it concluded, so a finding can be checked against its own source material.
       ctx.view.tool(r.label + " · source", { goal: r.goal, source: r.src });
       ctx.view.tool(r.label + " · " + r.dt.toFixed(1) + "s", r.finding);
     });
