@@ -6,10 +6,11 @@ import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const NEMO = process.env.FIG_NEMO || path.resolve(HERE, "..", "web", "nemoclaw");
+const NEMO = process.env.FIG_NEMO || path.resolve(HERE, "..", "..", "web", "nemoclaw");
+const COURSE_SCRIPTS = path.join(NEMO, "scripts");
 // Stage an ESM shim beside course modules so relative imports resolve under Node.
-const tmp = path.join(NEMO, ".figcheck_shared.mjs");
-fs.writeFileSync(tmp, fs.readFileSync(path.join(NEMO, "_shared.js")));
+const tmp = path.join(COURSE_SCRIPTS, ".figcheck_shared.mjs");
+fs.writeFileSync(tmp, fs.readFileSync(path.join(COURSE_SCRIPTS, "_shared.js")));
 let shared;
 try { shared = await import("file://" + tmp); }
 finally { try { fs.unlinkSync(tmp); } catch { /* best-effort cleanup */ } }
@@ -145,7 +146,7 @@ for (const f of fs.readdirSync(NEMO).filter((f) => /\.html$/.test(f)).sort()) {
 }
 
 // mountPolicyMap is built from the DOM, so it needs jsdom; failing to check it is loud, not silent.
-const PM = { page: "web/nemoclaw/_shared.js", sel: "mountPolicyMap" };
+const PM = { page: "web/nemoclaw/scripts/_shared.js", sel: "mountPolicyMap" };
 if (!JSDOM) {
   findings.push({ ...PM, detail: "could not check: jsdom unavailable (install it so the policy map is rendered and verified)" });
 } else {

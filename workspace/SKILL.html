@@ -11,11 +11,11 @@
   "node_type": "directory-explorer",
   "title": "workspace/ lab image and test runner",
   "source_dir": "workspace/",
-  "summary": "What the lab runs inside: the image build, its entrypoint and python deps, the surface-aware notebook test runner, and the SKILL self-test harness. The image also ships headless Chromium (playwright) so notebooks and the render-check harness (scripts/render_check.py) can drive a real browser with no setup. A live explorer: open a file, read it in context, and ask the model about it.",
+  "summary": "What the lab runs inside: the image build, its entrypoint and python deps, the surface-aware notebook test runner, and the SKILL self-test harness. The image also ships headless Chromium (playwright) so notebooks and the render-check harness (scripts/runtime/render_check.py) can drive a real browser with no setup. A live explorer: open a file, read it in context, and ask the model about it.",
   "related": [
     "workspace/Dockerfile",
     "workspace/run_tests.py",
-    "scripts/render_check.py"
+    "scripts/runtime/render_check.py"
   ],
   "explorer": "../web/_skill_explorer.js"
 }
@@ -51,7 +51,7 @@
     {
       "path": "requirements.txt",
       "role": "python deps",
-      "desc": "The python packages the lab image installs (always latest, since the host defines the environment) — including playwright, the driver for the bundled Chromium used by scripts/render_check.py."
+      "desc": "The python packages the lab image installs (always latest, since the host defines the environment) — including playwright, the driver for the bundled Chromium used by scripts/runtime/render_check.py."
     },
     {
       "path": "run_tests.py",

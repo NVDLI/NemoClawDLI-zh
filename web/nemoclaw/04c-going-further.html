@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Going Further · Securing Agents</title>
-<link rel="stylesheet" href="_style.css"/>
+<link rel="stylesheet" href="styles/_style.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
@@ -528,7 +528,7 @@
   <div id="capstone-cell"></div>
   <div id="capstone-artifact"></div>
   <script type="module">
-    import { mountRunCell } from "./_shared.js";
+    import { mountRunCell } from "./scripts/_shared.js";
     mountRunCell("#capstone-cell", {
       label: "the panel + the agent + your tool, in code",
       autorun: true,
@@ -556,9 +556,7 @@ helpers.mountAgentChat("#capstone-artifact", {
 });
 helpers.log("rendered below. Edit the config and Run.");
 
-// helpers.mountAgentChat runs one real LangChain createReactAgent per model (each
-// with its own memory); you supply the tools and prompt, the helper runs the loop.
-// read_course_page fetches one course page as markdown; the agent picks the page.
+// mountAgentChat runs one LangChain agent per model; you supply tools and prompt.
 `,
     });
   </script>
@@ -570,7 +568,7 @@ helpers.log("rendered below. Edit the config and Run.");
 </main>
 
 <script type="module">
-import { buildNav, updateKeyPill, mountJourneyMap } from "./_shared.js";
+import { buildNav, updateKeyPill, mountJourneyMap } from "./scripts/_shared.js";
 mountJourneyMap("#journey-map", "4c");
 document.getElementById("nav").innerHTML = buildNav("04c-going-further.html");
 updateKeyPill(document.getElementById("key-status"));

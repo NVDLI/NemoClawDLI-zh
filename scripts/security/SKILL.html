@@ -15,7 +15,7 @@
   "related": [
     "scripts/security/audit_iframe_proxy_opt_in.py",
     "scripts/security/iframe_proxy_worker_findings.md",
-    "web/nemoclaw/_shared.js",
+    "web/nemoclaw/scripts/_shared.js",
     "cors-proxy/cors-proxy-worker-build.js",
     "cors-proxy/cors-proxy-worker-openclaw.js"
   ],
@@ -74,7 +74,7 @@
   <p>Main supports LMS/static iframe execution, but it is not the silent default. The browser runtime exposes an explicit toggle and URL flag. Worker source changes are out of scope for this branch, so this folder records follow-up findings rather than patching deployed-worker code.</p>
   <div class="skill-note">Run commands from the repository root. Root-level script paths remain compatibility entrypoints; implementation files live in this directory tree.</div>
   <h2>Executable checks</h2>
-  <div class="skill-cmds"><div class="skill-cmd"><b>Iframe proxy audit</b><code>python3 scripts/security/audit_iframe_proxy_opt_in.py</code></div><div class="skill-cmd"><b>Ship gate includes audit</b><code>python3 scripts/validate_bundle.py --no-write --scope ship</code></div></div>
+  <div class="skill-cmds"><div class="skill-cmd"><b>Iframe proxy audit</b><code>python3 scripts/security/audit_iframe_proxy_opt_in.py</code></div><div class="skill-cmd"><b>Ship gate includes audit</b><code>python3 scripts/validation/validate_bundle.py --no-write --scope ship</code></div></div>
   <h2>Linkage map</h2>
   <div class="skill-grid"><a class="skill-card" href="audit_iframe_proxy_opt_in.py"><b>audit_iframe_proxy_opt_in.py</b><span>iframe proxy source audit. Checks that direct API use is default, iframe proxy mode is explicit, billing headers are always present for tracking, and worker follow-up findings are documented.</span></a><a class="skill-card" href="iframe_proxy_worker_findings.md"><b>iframe_proxy_worker_findings.md</b><span>worker follow-up findings. Documents proxy-worker concerns for a later deployment-owner MR without changing worker source in this branch.</span></a></div>
   <h2>Interactive explorer</h2>

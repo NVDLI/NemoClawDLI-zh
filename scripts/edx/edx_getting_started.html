@@ -108,17 +108,7 @@ li { margin: .25em 0; }
 </div>
 
 <script>
-/* ── DLI environment widget (v10) ──────────────────────────────────────
- *  - Detects the xblock state (none / launch / loading / running / etc.)
- *  - The big green "Start Lab" button in the .launch-box above forwards
- *    its click to the xblock's real ▶ LAUNCH button. The button's label
- *    + the hint line below it reflect the current state (Start / Cancel
- *    / Open Lab / Restart / etc.) so it stays useful all the way through.
- *  - The pinned status card in the top-right is the persistent control
- *    surface (deep links, stop, assess, restart).
- *  - URL capture: window.open hook + MutationObserver + deep DOM scan
- *    in a 30s post-click watch window.
- * ──────────────────────────────────────────────────────────────────── */
+/* DLI environment widget: mirrors xblock state, forwards launch clicks, and captures lab URLs. */
 (function () {
   'use strict';
   var POLL=1000, CARD_W=200;
@@ -127,8 +117,7 @@ li { margin: .25em 0; }
   var card=null, bodyEl=null, collapsed=false, lastSt=null, lastTimer=null, pmState='';
   var LAB_KEY='_dli_lab_url';
 
-  /* Aggressive URL-watch state. While Date.now() < waitUntil we run a
-     deep DOM scan every tick AND have a MutationObserver on the xblock. */
+  /* Fast-poll iframe/src changes until waitUntil expires. */
   var waitUntil = 0;
   var mo = null;
 
@@ -278,10 +267,7 @@ li { margin: .25em 0; }
     }catch(e){}
   }
 
-  // ── In-page launch-callout button ─────────────────────────────────
-  // The big green button inside .launch-box. We re-label it based on
-  // the current xblock state so it stays useful through the whole
-  // session: "Start Lab" → "Cancel" → "Open Lab" → "Restart" → etc.
+  // In-page launch button: relabel from current xblock state.
   var lbBtn    = document.getElementById('_lbBtn');
   var lbIcon   = document.getElementById('_lbBtnIcon');
   var lbLabel  = document.getElementById('_lbBtnLabel');
@@ -297,9 +283,7 @@ li { margin: .25em 0; }
     return bestXBtn('launch') || bestXBtn('start') || null;
   }
 
-  // Forward to the real xblock control even when it has not rendered yet or is
-  // below the fold: find it (retrying briefly), scroll it into view, then click
-  // it. Runs ONLY from a user click, so it never auto-provisions on page load.
+  // User-click only: find the real xblock control, scroll, then click.
   function clickReal(getBtn){
     var deadline = Date.now() + 4000;
     (function attempt(){
@@ -343,10 +327,7 @@ li { margin: .25em 0; }
     };
     var s = spec[state] || spec.unknown;
     if ((state === 'running' || state === 'assess') && !base) {
-      // Lab is up but we have not captured its URL yet (the xblock does not put
-      // it in the DOM; it surfaces on LAUNCH/window.open or a postMessage). Make
-      // the button OPEN the lab via the xblock's LAUNCH control, which both opens
-      // it and lets our window.open hook capture the URL for the deep-links.
+      // Open the lab through LAUNCH so window.open can capture deep links.
       s = { icon:'↗', label:'Open Lab', action:'launch', hint:'Opens the running lab', dis:false, busy:'Running' };
     }
     lbIcon.textContent  = s.icon;
@@ -459,8 +440,7 @@ li { margin: .25em 0; }
     if(st==='restart') btn('&#8635; Restart',         '_eg','restart');
     if(st==='launch'){var lc=ctrl&&ctrl.querySelector('.xblock-control-launch');
       btn('&#9654; Start Lab','_eg',vis(lc)?'launch':'start');}
-    // Always offer the play action, even before the xblock state is detected,
-    // so the card mirrors the real ▶ button. clickReal finds + scrolls + clicks.
+    // Keep a play action visible before xblock state resolves.
     if(st==='none'||st==='unknown'){
       var sb=document.createElement('button');sb.className='_eab _eg';
       sb.innerHTML='&#9654; Start Lab';

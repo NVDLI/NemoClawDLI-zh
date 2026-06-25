@@ -26,7 +26,7 @@ The preview path intentionally mirrors the source path segment `web/nemoclaw` fo
 - `CI_COMMIT_REF_SLUG` is checked before it becomes a path.
 - The branch foyer dropdown reads only static `branches.json`, and the language dropdown reads only static `languages.json`; neither calls GitLab at runtime or requires tokens.
 - `resource_group: pages-site` serializes Pages deploys so preview and production jobs cannot race.
-- `scripts/build_pages.sh` refuses empty, current-directory, or root output paths before deleting and rebuilding the artifact directory. It rejects unsafe course and source-mirror prefixes, and moves the validator source mirror to `validated-source/web/nemoclaw` when the preview course itself occupies `web/nemoclaw`.
+- `scripts/build/build_pages.sh` refuses empty, current-directory, or root output paths before deleting and rebuilding the artifact directory. It rejects unsafe course and source-mirror prefixes, and moves the validator source mirror to `validated-source/web/nemoclaw` when the preview course itself occupies `web/nemoclaw`.
 
 ## Limits
 

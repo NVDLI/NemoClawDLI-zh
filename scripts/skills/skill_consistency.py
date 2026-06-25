@@ -21,9 +21,9 @@ PROPAGATION (advisory, --since REF) change_impact when_files moved without then_
 
 Usage
 -----
-  scripts/skill_consistency.py                 # invariants + dangling + harness; exit 1 on FAIL
-  scripts/skill_consistency.py --since origin/main   # + propagation reminders
-  scripts/skill_consistency.py --json          # machine-readable
+  scripts/skills/skill_consistency.py                 # invariants + dangling + harness; exit 1 on FAIL
+  scripts/skills/skill_consistency.py --since origin/main   # + propagation reminders
+  scripts/skills/skill_consistency.py --json          # machine-readable
 """
 from __future__ import annotations
 
@@ -243,11 +243,7 @@ def inv_lifecycle_allowlist():
         fail(f"lifecycle allow-list DIVERGENCE: missing {sorted(missing)} extra {sorted(extra)}")
 
 
-# ── DANGLING refs ────────────────────────────────────────────────────────────────
-# dgx/ is kept in the recognizer set on purpose: the release ships no dgx surface, so
-# any dgx/<path> a SKILL declares resolves to a missing file and is flagged dangling.
-# mats are now course-scoped under web/nemoclaw/mats/, so the "web/" prefix already covers
-# them; there is no bare top-level "mats/" path root any more.
+# Dangling refs: dgx/ and mats paths stay recognized so stale SKILL links fail loudly.
 _PREFIXES = ("task1/", "cpu/", "web/", "dgx/", "repos/",
              "docs/", "scripts/", "workspace/", "cors-proxy/")
 
@@ -304,8 +300,7 @@ def check_harness_wiring():
         h = read(p)
         rel = str(p.relative_to(REPO))
         meta = skill_meta(p) or {}
-        # A directory-explorer documents files (it may LIST _skill_selftest.js in its index)
-        # but does not host the self-test harness, so the half-wired heuristic does not apply.
+        # Directory explorers may list harness files without mounting them.
         if meta.get("node_type") == "directory-explorer":
             continue
         mount = 'id="selftest"' in h
@@ -327,7 +322,7 @@ def check_scripts_hierarchy():
         for row in rows:
             fail(f"scripts hierarchy: {row}")
     else:
-        ok("scripts hierarchy: implementations live in grouped subdirectories; root keeps compatibility entrypoints")
+        ok("scripts hierarchy: implementations live in grouped subdirectories; root has no compatibility wrappers")
 
 
 def check_scripts_skill_static_body():

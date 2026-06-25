@@ -19,11 +19,11 @@ Detector families (each is a validate_bundle suite, auditable from the report):
   - constants:   the same literal hard-coded three or more times, and embedded URLs / hosts / ports.
 
 Usage:
-  python3 scripts/code_hygiene.py                 # scan our code, grouped summary
-  python3 scripts/code_hygiene.py --scope all     # include workspace + service code
-  python3 scripts/code_hygiene.py --file scripts/engine.js   # one file, every finding
-  python3 scripts/code_hygiene.py --kind comments # one family only
-  python3 scripts/code_hygiene.py --json          # machine-readable (the gate reads this)
+  python3 scripts/validation/code_hygiene.py                 # scan our code, grouped summary
+  python3 scripts/validation/code_hygiene.py --scope all     # include workspace + service code
+  python3 scripts/validation/code_hygiene.py --file scripts/runtime/engine.js   # one file, every finding
+  python3 scripts/validation/code_hygiene.py --kind comments # one family only
+  python3 scripts/validation/code_hygiene.py --json          # machine-readable (the gate reads this)
 """
 from __future__ import annotations
 import argparse, ast, io, json, re, sys, tokenize
@@ -640,8 +640,8 @@ def constant_findings(scope: str):
 # ── family 6: prose tells in code (em-dash anywhere, vanity inside user-facing strings) ──
 # These validators define and quote the tell-patterns by necessity, so the prose family would only
 # flag its own detection machinery there.
-_PROSE_EXEMPT = {"scripts/code_hygiene.py", "scripts/prose_variety.py",
-                 "scripts/grounding.py", "scripts/validate_bundle.py"}
+_PROSE_EXEMPT = {"scripts/validation/code_hygiene.py", "scripts/validation/prose_variety.py",
+                 "scripts/validation/grounding.py", "scripts/validation/validate_bundle.py"}
 
 
 def prose_findings(scope: str):

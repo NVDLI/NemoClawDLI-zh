@@ -6,7 +6,7 @@ raw-request <details>, not silence), uses helpers.log not console.* (which stude
 never see), and is correct: awaited model calls, keys from helpers.getKey() not inlined,
 no blocking dialog. Flags cells below that bar. Advisory.
 
-Run:  python3 scripts/cell_audit.py
+Run:  python3 scripts/validation/cell_audit.py
 """
 from __future__ import annotations
 import re, sys
@@ -107,12 +107,12 @@ def audit_runtime_contract():
     This intentionally checks the runtime contract, not a validator tag: students should find helpers
     and editable code above the output, keep code collapsed by default unless a cell opts in, and reset
     one cell or node without rebuilding the whole page."""
-    src = (WEB / "nemoclaw" / "_canvas.js").read_text(errors="ignore")
+    src = (WEB / "nemoclaw" / "scripts" / "_canvas.js").read_text(errors="ignore")
     findings = []
 
     def need(ok: bool, msg: str):
         if not ok:
-            findings.append(("web/nemoclaw/_canvas.js", msg))
+            findings.append(("web/nemoclaw/scripts/_canvas.js", msg))
 
     rc_out = src.find('class="rc-out"')
     rc_code = src.find('class="rc-code-det"')

@@ -144,16 +144,16 @@ The static gate runs with no lab, GPU, or browser (the link engine runs headless
 under node):
 
 ```bash
-python3 scripts/validate_layout.py --quiet      # layout + link glue
-python3 scripts/skill_consistency.py             # skill-meta vs the real tree
-bash    scripts/run_engine.sh --self-test        # link-engine self-test
-python3 scripts/validate_bundle.py --scope ship  # grounding, reachability, page audit, em-dash
+python3 scripts/validation/validate_layout.py --quiet      # layout + link glue
+python3 scripts/skills/skill_consistency.py             # skill-meta vs the real tree
+bash    scripts/runtime/run_engine.sh --self-test        # link-engine self-test
+python3 scripts/validation/validate_bundle.py --scope ship  # grounding, reachability, page audit, em-dash
 ```
 
 Install the hooks so the gate runs locally:
 
 ```bash
-bash scripts/install-hooks.sh
+bash scripts/build/install-hooks.sh
 ```
 
 This symlinks `scripts/git-hooks/{pre-commit,pre-push}` into `.git/hooks/`.
@@ -162,7 +162,7 @@ pre-push runs the rebase guard, skill_consistency, validate_layout, and the
 link-projection gate.
 
 CI: `.gitlab-ci.yml` and `.github/workflows/pages.yml` run the same gate, then
-`scripts/build_pages.sh` publishes a fully client-side site to GitLab Pages
+`scripts/build/build_pages.sh` publishes a fully client-side site to GitLab Pages
 (private / pre-release) and GitHub Pages (external release). See
 [`docs/pages_deploy.md`](docs/pages_deploy.md).
 

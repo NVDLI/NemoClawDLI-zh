@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>The ReAct Loop · Securing Agents</title>
-<link rel="stylesheet" href="_style.css"/>
+<link rel="stylesheet" href="styles/_style.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
@@ -294,7 +294,7 @@
 </main>
 
 <script type="module">
-import { buildNav, updateKeyPill, mountJourneyMap, mountCanvasFlow, mountRunCell } from "./_shared.js";
+import { buildNav, updateKeyPill, mountJourneyMap, mountCanvasFlow, mountRunCell } from "./scripts/_shared.js";
 document.getElementById("nav").innerHTML = buildNav("01b-react.html");
 const pill = document.getElementById("key-status");
 updateKeyPill(pill);
@@ -409,8 +409,7 @@ state.messages = [
 let step = 0, answered = false;
 while (step++ < MAX_STEPS) {
   helpers.log(\`── step \${step} ──────────────────────\`);
-  // The second argument is null, so the raw token stream is suppressed and the curated
-  // trace below is the only output, which keeps the loop's logic readable.
+  // Suppress raw tokens so only the curated trace appears.
   const s = await helpers.chatStream({
     messages: state.messages, tools: state.TOOLS, model: MODEL, max_tokens: 8196,
   }, null);
@@ -532,15 +531,10 @@ helpers.mountChatUI(document.getElementById("react-artifact"), {
     }
     messages.push({ role: "user", content: text });
 
-    // recursionLimit is this loop's MAX_STEPS safety belt (Part 4): the agent
-    // reasons and reads as many times as it needs, capped so a confused run
-    // can't spin forever. Each reason+read is ~2 graph steps, so 12 ≈ 6 reads.
+    // Bound the loop so a confused agent cannot spin forever.
     const stream = await agent.stream({ messages },
       { streamMode: "messages", configurable: { thread_id: ctx.thread }, recursionLimit: 24, signal: ctx.signal });
-    // Hand each event to ctx.view as it arrives: it appends reasoning, tool
-    // chips, and answer text in stream order. Every read pushes its OWN chip,
-    // keyed by the tool call's id, not its index: arg-delta chunks reset the
-    // index to 0 per message, so an index key would overwrite an earlier read.
+    // Render each event as it streams; key tool chips by tool-call id.
     const byId = {}, activeByIndex = {};
     let lastInput = 0, totalOut = 0, sawUsage = false;
     for await (const part of stream) {
@@ -573,10 +567,7 @@ helpers.mountChatUI(document.getElementById("react-artifact"), {
       if (r && node === "agent") ctx.view.reasoning(r);
       // token usage rolls up across the ReAct loop's LLM calls
       if (chunk.usage_metadata) { sawUsage = true; lastInput = chunk.usage_metadata.input_tokens || lastInput; totalOut += chunk.usage_metadata.output_tokens || 0; }
-      // Answer tokens, gated to the "agent" node. Both the agent and "tools"
-      // nodes emit chunks with string .content, but the tools node's content is
-      // the full page text a read returned. The guard keeps that markdown out of
-      // the answer panel (tool results get their own chips, handled above).
+      // Show answer tokens from the agent node; tool output stays in tool chips.
       if (typeof chunk.content === "string" && chunk.content && node === "agent")
         ctx.view.token(chunk.content);
     }

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Thin python interface to the SINGLE link engine (scripts/engine.js).
+"""Thin python interface to the SINGLE link engine (scripts/runtime/engine.js).
 
 The graph engine (link resolution, crawl, nodes/edges, reachability, the foyer contract)
-lives in scripts/engine.js and runs in BOTH the browser viewer and headless via node
-(scripts/run_engine.sh prefers a host node, else the lab container where `dli` is bind-mounted
+lives in scripts/runtime/engine.js and runs in BOTH the browser viewer and headless via node
+(scripts/runtime/run_engine.sh prefers a host node, else the lab container where `dli` is bind-mounted
 to the host tree). There is no second python graph engine to drift from.
 
 This module keeps only:
@@ -13,8 +13,8 @@ This module keeps only:
     that invoke engine.js and return its JSON, so the cadence validators read the same numbers
     the viewer and CI do.
 
-Run the engine directly with `python3 scripts/link_projection.py --self-test` (it forwards to
-run_engine.sh) or, equivalently, `bash scripts/run_engine.sh --self-test`.
+Run the engine directly with `python3 scripts/runtime/link_projection.py --self-test` (it forwards to
+run_engine.sh) or, equivalently, `bash scripts/runtime/run_engine.sh --self-test`.
 """
 from __future__ import annotations
 import json
@@ -98,8 +98,7 @@ def course_of(p: str) -> str:
         return "_shared"
     if parts[0] == "docs":
         return "_shared"
-    # mats are the shared reference layer wherever they sit (now under web/nemoclaw/mats/),
-    # so a mats path classifies as _shared, not as the enclosing course.
+    # Mats are shared references, even when stored under a course path.
     if is_mat_path(p):
         return "_shared"
     if parts[0] in ("web", "cpu"):

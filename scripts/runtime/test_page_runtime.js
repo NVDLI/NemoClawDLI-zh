@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Browser runtime harness. Host entrypoint: scripts/lab_runtime_test.sh [--smoke] [url].
+// Browser runtime harness. Host entrypoint: scripts/runtime/lab_runtime_test.sh [--smoke] [url].
 // Set CLAW_URL + CLAW_TOKEN to exercise OpenClaw gateway nodes.
 // A green page with zero tool frames reports WARN, not PASS.
 

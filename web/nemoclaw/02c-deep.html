@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Deep Agents · Securing Agents</title>
-<link rel="stylesheet" href="_style.css"/>
+<link rel="stylesheet" href="styles/_style.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
@@ -279,10 +279,7 @@
   <div id="deep-cell"></div>
   <div id="deep-artifact"></div>
   <script type="text/plain" id="deep-src">
-// Try-it artifact: a hand-rolled deep-research agent.
-// Plans 3-4 parallel sub-investigations (web + this course's sections),
-// fans out one sub-agent per branch, then synthesizes one cited answer.
-// Every stage is a chatStream call; edit a stage and Run to re-render.
+// Deep-research artifact: plan, fan out sub-agents, then synthesize a cited answer.
 
 const PAGES = helpers.coursePages();
 const INDEX = PAGES.map(p => "  " + p.id + " · " + p.title).join("\n");
@@ -349,8 +346,7 @@ helpers.mountChatUI("#deep-artifact", {
     if (!branches.some(b => b.source === "web"))     branches.push({ source: "web", target: text, goal: text });
     branches = branches.slice(0, 4);
 
-    // Surface the actual parsed plan (highlighted object), not only the tree,
-    // so the student can read each branch's source/target/goal verbatim.
+    // Show the parsed plan so each branch's source, target, and goal are visible.
     ctx.view.tool("plan", { branches });
 
     // draw the plan as a branch tree, straight from the chosen branches
@@ -410,8 +406,7 @@ helpers.mountChatUI("#deep-artifact", {
 
     // ── 3. SYNTHESIZE: one grounded answer from the findings ────────────
     const findings = results.map((r, i) => "[" + (i + 1) + "] (" + r.label + ")\n" + r.finding).join("\n\n");
-    // Surface the exact findings corpus the synthesizer is grounded on, so the
-    // student can see every [n] the answer cites mapped back to its finding.
+    // Show the findings corpus that each [n] citation maps back to.
     ctx.view.tool("findings corpus", { findings: results.map((r, i) => ({ n: i + 1, branch: r.label, finding: r.finding })) });
     const s = await helpers.chatStream({ messages: [
       { role: "system", content: (
@@ -427,7 +422,7 @@ helpers.mountChatUI("#deep-artifact", {
 helpers.log("rendered below. Edit the config and Run.");
   </script>
   <script type="module">
-    import { mountRunCell } from "./_shared.js";
+    import { mountRunCell } from "./scripts/_shared.js";
     mountRunCell("#deep-cell", {
       label: "the Try-it artifact, in code",
       autorun: true,
@@ -442,7 +437,7 @@ helpers.log("rendered below. Edit the config and Run.");
 </main>
 
 <script type="module">
-import { buildNav, chatStream, updateKeyPill, mountJourneyMap, mountCanvasFlow } from "./_shared.js";
+import { buildNav, chatStream, updateKeyPill, mountJourneyMap, mountCanvasFlow } from "./scripts/_shared.js";
 document.getElementById("nav").innerHTML = buildNav("02c-deep.html");
 const pill = document.getElementById("key-status");
 updateKeyPill(pill);
@@ -676,9 +671,7 @@ state.goal = [
 // state.goal = "Research vector databases and produce two files: vdb_basics.md, explaining what they are and how embeddings index data; and vdb_when.md, on when a vector database beats keyword search.";
 // state.goal = "Research the ReAct pattern and write two files: react_loop.md on how the loop works, and react_vs_workflow.md on when to use it versus a fixed workflow.";
 
-// withStructuredOutput is LangChain's wrapper over the same response_format
-// json_schema you passed by hand in module 2a; it binds the output to this
-// schema and returns a parsed object instead of a string.
+// withStructuredOutput binds model output to this schema and returns an object.
 const planner = state.llm.withStructuredOutput({
   type: "object", additionalProperties: false,
   properties: { subtasks: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 4 } },
@@ -757,10 +750,7 @@ return { synthesised: true, source_files: paths, report_chars: state.synthesis.l
       showCode: false,
       summary: "Builds a diagram from the actual run data. The code is collapsed by default because it is mostly diagram-spec plumbing: orchestrator, workers, synthesiser, and the edges between them.",
       code: `// Reading guide: this block does not run another model call. It turns state.subResults
-// and state.vfs into a diagram spec so the worker fan-out and shared-filesystem join are visible.
-// Build a diagram spec straight from the run: orchestrator (row 0) fans out
-// to one worker per subtask (row 1, x = index), each feeding the synthesiser
-// (row 2). Each worker's label/lines come from its subtask + result.
+// Build the diagram directly from the run: orchestrator, workers, synthesizer.
 
 const workers = state.subResults.map((r, i) => ({
   id: "w" + i,

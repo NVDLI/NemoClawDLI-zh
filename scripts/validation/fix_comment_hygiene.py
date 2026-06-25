@@ -15,10 +15,10 @@ is idempotent.
 It reuses code_hygiene's lexer, so the fixer and the validator always agree on what a comment is.
 
 Usage:
-  python3 scripts/fix_comment_hygiene.py                      # dry run (default): count, write nothing
-  python3 scripts/fix_comment_hygiene.py --apply              # fix .py/.js/.mjs plus HTML script cells
-  python3 scripts/fix_comment_hygiene.py --apply --scope all  # include workspace + service code
-  python3 scripts/fix_comment_hygiene.py --apply --file scripts/engine.js   # one file
+  python3 scripts/validation/fix_comment_hygiene.py                      # dry run; count only
+  python3 scripts/validation/fix_comment_hygiene.py --apply              # fix ship-surface .py/.js/.mjs
+  python3 scripts/validation/fix_comment_hygiene.py --apply --scope all  # include workspace + service code
+  python3 scripts/validation/fix_comment_hygiene.py --apply --file scripts/runtime/engine.js
 """
 from __future__ import annotations
 import argparse, re, sys

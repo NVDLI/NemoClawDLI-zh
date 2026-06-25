@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Wrap scripts/edx_navigator_quick.html in a full HTML5 document and publish
+"""Wrap scripts/edx/edx_navigator_quick.html in a full HTML5 document and publish
 to S3 as a standalone, shareable entry point to the nemoclaw course.
 
 The navigator was originally an edX HtmlBlock fragment (no <html>/<body>
@@ -16,9 +16,9 @@ prefix URL resolves; navigator.html for an explicit name).
 
 Usage:
 
-  python3 scripts/vendor_navigator.py            # build + upload
-  python3 scripts/vendor_navigator.py --dry-run  # build local only
-  python3 scripts/vendor_navigator.py --local    # build local, no S3
+  python3 scripts/materials/vendor_navigator.py            # build + upload
+  python3 scripts/materials/vendor_navigator.py --dry-run  # build local only
+  python3 scripts/materials/vendor_navigator.py --local    # build local, no S3
 """
 from __future__ import annotations
 import argparse
@@ -75,10 +75,7 @@ HTML_SHELL_TAIL = """
 """
 
 
-# The fragment is always supposed to start with this HTML comment. If we
-# find anything before it, that's IDE-buffer-race detritus (a known issue:
-# editors with a stale buffer can append-merge over an external edit) and
-# we slice it off so the vendored output is always clean.
+# Strip stale editor-prefixed document copies before ingest.
 FRAGMENT_MARKER = "<!-- ─── edX HtmlBlock"
 
 

@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>The Index Agent · Securing Agents</title>
-<link rel="stylesheet" href="_style.css"/>
+<link rel="stylesheet" href="styles/_style.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
@@ -391,7 +391,7 @@
   </p>
   <div id="cell-graphrag"></div>
   <script type="module">
-    import { mountRunCell } from "./_shared.js";
+    import { mountRunCell } from "./scripts/_shared.js";
     mountRunCell("#cell-graphrag", {
       label: "top-K versus GraphRAG, in code",
       autorun: true,
@@ -419,9 +419,7 @@ const QUESTION = "What are the main families of algorithms in this corpus, and h
 const TOP_K = 2;
 
 
-// ── 1 · BASIC top-K ──────────────────────────────────────────────────────────
-// Embed the question and every chunk, rank by cosine similarity, keep the top K,
-// and answer from only those chunks.
+// Basic top-K: embed, rank by cosine similarity, answer from the top chunks.
 const chunkVecs = await helpers.embed(CORPUS.map(d => d.text), { model: "nvidia/llama-nemotron-embed-1b-v2", inputType: "passage" });
 const [qVec]    = await helpers.embed(QUESTION, { model: "nvidia/llama-nemotron-embed-1b-v2", inputType: "query" });
 
@@ -543,14 +541,12 @@ helpers.log("Notice the global theme top-K misses but the community pass recover
   <div id="rag-cell"></div>
   <div id="rag-artifact"></div>
   <script type="module">
-    import { mountRunCell } from "./_shared.js";
+    import { mountRunCell } from "./scripts/_shared.js";
     mountRunCell("#rag-cell", {
       label: "the Try-it artifact, in code",
       autorun: true,
       code: `// Try-it artifact: loads a PREBUILT vector index (corpus embedded offline by
-// scripts/build_rag_index.py), then embeds only your live question each turn,
-// ranks the corpus by cosine similarity, and answers from the top 3 passages.
-// Edit a passage or the prompt and Run; an edit re-embeds only what the index misses.
+// Use the prebuilt corpus index, then embed only the live question each turn.
 const MODEL_PIN = "nvidia/llama-nemotron-embed-1b-v2";   // the prebuilt index is valid only for this model
 const CORPUS = [
   "An agent loop wraps a stateless model in a cycle: read the messages, decide, call a tool, append the result, repeat until finish_reason is stop.",
@@ -563,10 +559,7 @@ const CORPUS = [
   "OpenShell is the kernel-level sandbox around the agent: netns, Landlock, seccomp, and an OPA-evaluated proxy decide what each tool call may touch.",
 ];
 
-// Load the prebuilt index once.
-// The index carries the embedding model id, so a model swap is caught here
-// (the index drops and vectors recompute) rather than scoring against stale vectors.
-// With no manifest reachable, it falls back to live embeds.
+// Load the index once; recompute vectors if the embedding model changed.
 let _index = null;
 async function loadIndex() {
   if (_index) return _index;
@@ -618,10 +611,7 @@ helpers.mountChatUI("#rag-artifact", {
 });
 helpers.log("rendered below. Edit the config and Run.");
 
-// Under the hood: the panel is the full helpers.mountChatUI view; you write only respond().
-// The raw calls it makes, embed then rank:
-//     const [v] = await helpers.embed("a query", { inputType: "query" });
-//     const score = helpers.cosineSim(v, otherVector);
+// The panel calls helpers.embed(), ranks with helpers.cosineSim(), then answers.
 `,
     });
   </script>
@@ -633,7 +623,7 @@ helpers.log("rendered below. Edit the config and Run.");
 </main>
 
 <script type="module">
-import { buildNav, chat, chatStream, updateKeyPill, mountJourneyMap, mountCanvasFlow } from "./_shared.js";
+import { buildNav, chat, chatStream, updateKeyPill, mountJourneyMap, mountCanvasFlow } from "./scripts/_shared.js";
 document.getElementById("nav").innerHTML = buildNav("02b-rag.html");
 const pill = document.getElementById("key-status");
 updateKeyPill(pill);
@@ -718,10 +708,9 @@ return { indexed: state.index.length, dim: vecs[0].length };
       summary: "The question to retrieve against. Changing it changes which passages rank highest, because the query is embedded using the 'query' input type, which produces a vector that the model has trained to point toward relevant passages rather than toward identical text.",
       code: `// Set the student-editable prompt/input for the next step.
 state.query = "what is the difference between react and rewoo?";
-// Try another query (uncomment one) and rerun to watch the ranking shift:
-// state.query = "what does the openshell sandbox do?";            // a single-fact lookup
-// state.query = "how do RAG and a deep-research agent compare?";  // spans several passages
-// state.query = "what is the capital of France?";                 // out of corpus; watch it rank low
+// Try another query and rerun to watch the ranking shift:
+// state.query = "what does the openshell sandbox do?";           // single-fact lookup
+// state.query = "how do RAG and a deep-research agent compare?"; // spans several passages
 return state.query;
 `,
     },
@@ -802,10 +791,9 @@ return { indexed: state.chunkIndex.length };
       summary: "The question being asked, structured the same way as in the previous canvas. Edit it and re-run to see which parent document rises to the top.",
       code: `// Set the student-editable prompt/input for the next step.
 state.query = "When does each retrieval pattern beat the other?";
-// Other queries to try (each hits one chunk but returns its full parent document):
+// Other queries to try; each returns the full parent document:
 // state.query = "how does chunking change what the model sees?";
 // state.query = "what is a reranker, and when is it worth the step?";
-// state.query = "what does the ReAct loop do?";
 return state.query;
 `,
     },
@@ -923,11 +911,9 @@ return { tool: state.RETRIEVE_SCHEMA[0].function.name };
       summary: "The user's question, plus a system prompt that instructs the model to use the retrieve tool only when it needs specific facts it cannot answer confidently from training knowledge. With that instruction in place, the model weighs each turn and chooses whether to retrieve, instead of retrieving on every call.",
       code: `// Set the student-editable prompt/input for the next step.
 state.query = "What model does this course use, and does it need an API key?";
-// Swap in a question the model can answer WITHOUT retrieving (it should skip the tool),
-// or one that clearly needs the corpus (it should retrieve):
-// state.query = "What is 12 times 8?";                              // no retrieval needed
+// Try a question that should skip retrieval, then one that should retrieve:
+// state.query = "What is 12 times 8?";                             // no retrieval needed
 // state.query = "What does this course's OpenShell sandbox block?"; // needs the corpus
-// state.query = "Explain cosine similarity in one sentence.";       // model can answer directly
 state.messages = [
   { role: "system", content: "You are a helpful assistant with a knowledge base accessible via the 'retrieve' tool. Use the tool when the user asks about specific facts you don't already know with high confidence; otherwise answer directly." },
   { role: "user",   content: state.query },
@@ -993,8 +979,7 @@ state.s2 = await helpers.chatStream({
   messages:   state.messages,
   max_tokens: 8196,
 });
-// Some reasoning models still emit tool-call markup as text even when no tools
-// are bound, so strip any stray <tool_call>/<function>/<parameter> tags.
+// Strip stray tool-call markup from models that emit it as text.
 const answer = (state.s2.content || "")
   .replace(/<tool_call>[\\s\\S]*?<\\/tool_call>/g, "")
   .replace(/<\\/?function[^>]*>|<\\/?parameter[^>]*>/g, "").trim();

@@ -9,8 +9,8 @@ OpenClaw has no public repo, so its entry is authored here from the course's own
 Pages-safe: assets are static and same-origin; the cell never calls GitHub at runtime.
 
 Usage:
-    python3 scripts/build_cli_readmes.py            # refresh the vendored READMEs + index
-    python3 scripts/build_cli_readmes.py --check     # verify the index covers every framework
+    python3 scripts/materials/build_cli_readmes.py            # refresh the vendored READMEs + index
+    python3 scripts/materials/build_cli_readmes.py --check     # verify the index covers every framework
 """
 import sys, json, re, urllib.request
 from datetime import date

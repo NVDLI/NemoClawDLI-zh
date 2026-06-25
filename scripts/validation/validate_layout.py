@@ -9,7 +9,7 @@ The link check is a LIVE CRAWL of the running lab, which is the only accurate so
 The old static link_graph analyzer was retired because it mis-resolved links and
 silently hid whole directories. If the lab is not reachable it is SKIPPED with a
 note, never a false pass/fail. The canonical link tool is the self-contained
-viewer scripts/link_graph.html (⟳ Rescan), which crawls the same way in-browser.
+viewer scripts/runtime/link_graph.html (⟳ Rescan), which crawls the same way in-browser.
 
 Checks
   links     LIVE: every page-link (.md/.ipynb/.html) the lab serves resolves to a
@@ -148,7 +148,7 @@ def check_links(res: Result):
             blocking = s["blocking_failures"] + s["blocking_asset_leaks"] + s["blocking_cross_course"]
             if blocking:
                 res.fail("links", f"{blocking} ship-blocking link issue(s) via offline projection; "
-                                  f"run: python3 scripts/link_projection.py --check")
+                                  f"run: python3 scripts/runtime/link_projection.py --check")
         except Exception as e:
             res.fail("links", f"lab down AND offline projection fallback failed: {e}")
         return
@@ -228,12 +228,52 @@ def check_static(res: Result):
             res.fail("static", f"{src}: '{cpath}' -> '{host}' does not exist (moved dir? stale config)")
 
 
+
+# -- check: course runtime asset layout ---------------------------------------
+def check_course_assets(res: Result):
+    """The NemoClaw course runtime has an intentional interface: pages import browser modules
+    from web/nemoclaw/scripts/ and styles from web/nemoclaw/styles/. Keep this in the
+    layout gate so a future script or asset migration cannot leave a source page pointing at
+    the old root-level _shared.js / _style.css paths while the files live elsewhere."""
+    course = TASK1 / "web" / "nemoclaw"
+    if not course.is_dir():
+        return
+    required = [
+        course / "scripts" / "_shared.js",
+        course / "scripts" / "_canvas.js",
+        course / "scripts" / "SKILL.html",
+        course / "styles" / "_style.css",
+        course / "styles" / "_lite_overlay.css",
+        course / "styles" / "SKILL.html",
+    ]
+    for path in required:
+        if not path.is_file():
+            res.fail("course-assets", f"missing course runtime asset: {path.relative_to(TASK1)}")
+
+    stale = []
+    patterns = (
+        'href="_style.css"',
+        'from "./_shared.js"',
+        "from './_shared.js'",
+        'src="studio_main.js"',
+    )
+    for html in sorted(course.glob("*.html")):
+        text = html.read_text(errors="ignore")
+        for pat in patterns:
+            if pat in text:
+                stale.append(f"{html.relative_to(TASK1)} still contains {pat}")
+    for old in sorted(course.glob("_*.js")) + sorted(course.glob("_*.css")) + [course / "studio_main.js"]:
+        if old.exists():
+            stale.append(f"old root-level course asset still exists: {old.relative_to(TASK1)}")
+    if stale:
+        res.fail("course-assets", "; ".join(stale[:8]))
+
 def check_skills(res: Result):
-    """Verify every SKILL.html beacon still matches its directory, by delegating to skill_audit.py. A
+    """Verify every SKILL.html beacon still matches its directory, by delegating to scripts/skills/skill_audit.py. A
     drifted beacon (a file listed that no longer exists, or one present but undocumented) means the
     machine-readable directory map an agent ingests first is lying; this surfaces each such mismatch."""
     import subprocess
-    r = subprocess.run([sys.executable, str(TASK1 / "scripts" / "skill_audit.py")],
+    r = subprocess.run([sys.executable, str(TASK1 / "scripts" / "skills" / "skill_audit.py")],
                        capture_output=True, text=True)
     if r.returncode != 0:                         # skill_audit exits nonzero and prints each mismatch
         for line in r.stderr.splitlines():
@@ -253,6 +293,7 @@ def main():
     res = Result()
     check_links(res)                              # dead page-links (live crawl, else offline projection)
     check_static(res)                             # configured static/mount paths that no longer exist
+    check_course_assets(res)                      # course runtime scripts/styles interface
     check_skills(res)                             # SKILL.html beacons that drifted from their directory
 
     if not a.quiet:

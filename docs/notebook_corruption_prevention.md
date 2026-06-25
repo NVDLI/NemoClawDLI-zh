@@ -36,7 +36,7 @@ Four layers, in order of where they catch the problem:
 | :--- | :--- | :--- |
 | **L1: IDE doesn't auto-save** | `.vscode/settings.json` | the trigger event. With `files.autoSave: off`, the buffer doesn't dump unless the user explicitly saves. |
 | **L2: External-change reload, not merge** | `.vscode/settings.json` `files.hotExit: off` plus markdown-specific formatting disabled | the merge step. When disk changes, the editor prompts/reloads rather than appending. |
-| **L3: Post-edit audit** | `scripts/nb_audit.py` | corruption already on disk. Fast structural scan that exits non-zero if any signal fires. Run after every edit. |
+| **L3: Post-edit audit** | `scripts/validation/nb_audit.py` | corruption already on disk. Fast structural scan that exits non-zero if any signal fires. Run after every edit. |
 | **L4: Pre-commit hook** | `scripts/git-hooks/pre-commit` (linked to `.git/hooks/pre-commit`) | corruption from reaching the repo. Refuses to commit any staged course `.md` that fails the audit. |
 
 L1 and L2 are workspace-scoped (every contributor opening this repo in
@@ -47,9 +47,9 @@ to the authored `.md` files under `cpu/`.
 
 ### Run the audit
 
-    python3 scripts/nb_audit.py            # exit 1 on real corruption
-    python3 scripts/nb_audit.py --strict   # also flag soft signals (repeated paragraphs)
-    python3 scripts/nb_audit.py PATH ...   # audit specific files
+    python3 scripts/validation/nb_audit.py            # exit 1 on real corruption
+    python3 scripts/validation/nb_audit.py --strict   # also flag soft signals (repeated paragraphs)
+    python3 scripts/validation/nb_audit.py PATH ...   # audit specific files
 
 By default the audit auto-discovers every folder containing `.md`
 files under `cpu/`. New material there is picked up with no script change.
@@ -69,7 +69,7 @@ The audit catches:
 
 ### Install the pre-commit hook
 
-    bash scripts/install-hooks.sh
+    bash scripts/build/install-hooks.sh
 
 The hook symlinks `.git/hooks/pre-commit` to the source in
 `scripts/git-hooks/pre-commit`. Re-running the installer is
@@ -117,5 +117,5 @@ go wrong, with a tested allowlist for the known false positives
 (Markdown links containing model names, the legitimate `-rw-rw-`
 substring in file-permission output). If a new corruption shape
 appears, extend `CORRUPTION_PRONE_IDS` or the relevant regex in
-`scripts/nb_audit.py` and add a synthetic test case alongside
+`scripts/validation/nb_audit.py` and add a synthetic test case alongside
 the existing eight in the script's self-test.

@@ -7,7 +7,7 @@ legibility floor, text spilling past the figure bounds, and missing a11y afforda
 (svg aria-label, img alt, rel=noopener on new-tab links). All advisory.
 
 Checks: tiny-text, text-overflow, no-aria, img-no-alt, blank-link.
-Run:  python3 scripts/figure_audit.py
+Run:  python3 scripts/validation/figure_audit.py
 """
 from __future__ import annotations
 import re, sys

@@ -15,7 +15,7 @@
 #
 # The DLI serving wrapper (s-fx-43-v1) layers a repo-specific RULE 1 (repo lock) in
 # .githooks/pre-push and then delegates here, so RULES 2-5 live in exactly one place.
-# Install it (standalone repo): bash scripts/install-hooks.sh
+# Install it (standalone repo): bash scripts/build/install-hooks.sh
 set -euo pipefail
 
 REMOTE="${1:-origin}"
@@ -46,7 +46,7 @@ if [ -n "$REMOTE_SHA" ] && [ "$LOCAL" != "$REMOTE_SHA" ]; then
 fi
 
 # ── RULE 3: SKILL consistency guard ──────────────────────────────────────────
-GUARD="$T1/scripts/skill_consistency.py"
+GUARD="$T1/scripts/skills/skill_consistency.py"
 if [ -f "$GUARD" ]; then
     if ! python3 "$GUARD" --since origin/main; then
         echo ""
@@ -64,32 +64,45 @@ fi
 # known kind, carries that kind's required keys, valid schema/node_type, semver, notebook status).
 # A malformed beacon is what an agent samples and is misled by, so block the push. Drift (a beacon
 # that no longer matches its directory) is advisory and surfaces in the gate, not here.
-CONTRACT="$T1/scripts/skill_contract.py"
+CONTRACT="$T1/scripts/skills/skill_contract.py"
 if [ -f "$CONTRACT" ]; then
     if ! python3 "$CONTRACT"; then
         echo ""
         echo "pre-push: REFUSING PUSH — a SKILL contract is malformed."
         echo "A skill-meta does not classify into a known kind, drops a required key, or carries an"
         echo "invalid schema/node_type/version/status. Each FAIL names the SKILL and the field. See"
-        echo "SKILL_CONTRACT.md, then run:  python3 scripts/skill_contract.py"
+        echo "SKILL_CONTRACT.md, then run:  python3 scripts/skills/skill_contract.py"
         exit 1
     fi
 fi
 
+# ── RULE 3c: source and vendor-ingestion guard ───────────────────────────────
+# The root license, contribution terms, internal-link sweep, and governed-material
+# provenance all need to be clean before a source change leaves the workstation.
+SOURCE_GATE="$T1/scripts/compliance/source_gate.py"
+if [ -f "$SOURCE_GATE" ]; then
+    if ! python3 "$SOURCE_GATE"; then
+        echo ""
+        echo "pre-push: REFUSING PUSH - source/vendor compliance gate failed."
+        echo "Fix the private link, missing provenance, license, or contribution-term"
+        echo "finding above. Policy: scripts/compliance/docs/vendor_policy.md"
+        exit 1
+    fi
+fi
 # ── RULE 4: layout / link glue guard ──────────────────────────────────────────
-LAYOUT="$T1/scripts/validate_layout.py"
+LAYOUT="$T1/scripts/validation/validate_layout.py"
 if [ -f "$LAYOUT" ]; then
     if ! python3 "$LAYOUT" --quiet; then
         echo ""
         echo "pre-push: REFUSING PUSH — layout/link glue validation failed (see above)."
         echo "A course link is dead/cross/isolated, or a /sandbox/dli path the lab serves"
-        echo "no longer exists on disk. Run:  python3 scripts/validate_layout.py"
+        echo "no longer exists on disk. Run:  python3 scripts/validation/validate_layout.py"
         exit 1
     fi
 fi
 
 # ── RULE 5: compilation-projection link gate (no live lab needed) ─────────────
-BUNDLE="$T1/scripts/validate_bundle.py"
+BUNDLE="$T1/scripts/validation/validate_bundle.py"
 if [ -f "$BUNDLE" ]; then
     # --no-write: gate only; the durable log is written by the cadence / CI / the
     # DGX-spark watcher, never by the hook (so a push never leaves a dirty tree).
@@ -99,7 +112,7 @@ if [ -f "$BUNDLE" ]; then
         echo "A virtual link in a shipped page resolves to nothing, a redirect is dead, an"
         echo "asset crosses a course boundary, or a course links into another. The blocking"
         echo "items are listed above and in docs/validation/latest.md. Run:"
-        echo "  python3 scripts/validate_bundle.py --scope ship"
+        echo "  python3 scripts/validation/validate_bundle.py --scope ship"
         exit 1
     fi
 fi
@@ -108,12 +121,12 @@ fi
 # The operating creed (assumptions, practices, cadences, creeds) is projected into the
 # root SKILL.html skill-meta instead of an agent-tool config file. Refuse a push that
 # drops it, so the projection cannot silently rot out of the brain.
-TENETS="$T1/scripts/tenets.py"
+TENETS="$T1/scripts/validation/tenets.py"
 if [ -f "$TENETS" ]; then
     if ! python3 "$TENETS" --check; then
         echo ""
         echo "pre-push: REFUSING PUSH — the core-tenets projection is missing from SKILL.html."
-        echo "Regenerate it: python3 scripts/gen_skill_hierarchy.py"
+        echo "Regenerate it: python3 scripts/skills/gen_skill_hierarchy.py"
         exit 1
     fi
 fi
@@ -122,15 +135,15 @@ fi
 # Static ES-module import/export check (no browser, milliseconds): every page/module import
 # resolves to a real export and every re-export is honest. Catches the class where a _shared.js
 # extraction drops a re-export and importing pages break at load, the way glossary.html once lost
-# glossaryScore. The render-time twin is scripts/render_check.py --all.
-MODCHECK="$T1/scripts/module_check.py"
+# glossaryScore. The render-time twin is scripts/runtime/render_check.py --all.
+MODCHECK="$T1/scripts/runtime/module_check.py"
 if [ -f "$MODCHECK" ]; then
     for d in web/nemoclaw web; do
         if [ -d "$T1/$d" ] && ! python3 "$MODCHECK" --dir "$T1/$d"; then
             echo ""
             echo "pre-push: REFUSING PUSH. The web module-graph integrity check failed (see above)."
             echo "An import names an export that no longer exists, or a re-export is dangling. Run:"
-            echo "  python3 scripts/module_check.py"
+            echo "  python3 scripts/runtime/module_check.py"
             exit 1
         fi
     done

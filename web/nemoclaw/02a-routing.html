@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Workflows · Securing Agents</title>
-<link rel="stylesheet" href="_style.css"/>
+<link rel="stylesheet" href="styles/_style.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
@@ -276,7 +276,7 @@
   <div id="router-cell"></div>
   <div id="router-artifact"></div>
   <script type="module">
-    import { mountRunCell } from "./_shared.js";
+    import { mountRunCell } from "./scripts/_shared.js";
     mountRunCell("#router-cell", {
       label: "the Try-it artifact, in code",
       autorun: true,
@@ -315,13 +315,7 @@ helpers.mountChatUI("#router-artifact", {
 });
 helpers.log("rendered below. Edit the config and Run.");
 
-/* helpers.mountChatUI renders the whole panel: model picker, markdown answers,
-   streaming tool chips, context meter. You write only respond(). It reaches the
-   model through two raw calls, one to classify and one to answer:
-
-     const r = await helpers.chat({ messages });                 // one-shot
-     const s = await helpers.chatStream({ messages }, onToken);  // streamed
-*/
+/* mountChatUI renders the panel; respond() makes one classify call and one answer call. */
 `,
     });
   </script>
@@ -333,15 +327,14 @@ helpers.log("rendered below. Edit the config and Run.");
 </main>
 
 <script type="module">
-import { buildNav, chat, chatStream, updateKeyPill, mountJourneyMap, mountCanvasFlow } from "./_shared.js";
+import { buildNav, chat, chatStream, updateKeyPill, mountJourneyMap, mountCanvasFlow } from "./scripts/_shared.js";
 document.getElementById("nav").innerHTML = buildNav("02a-routing.html");
 const pill = document.getElementById("key-status");
 updateKeyPill(pill);
 mountJourneyMap("#journey-map", "2a");
 hljs.highlightAll();
 
-// Robust JSON extractor used by ReWOO and triage cells: handles markdown
-// fences, prose around the JSON, and JSON that leaked into reasoning_content.
+// Extract JSON even when the model wraps it in prose or fences.
 function extractJson(text) {
   if (!text) return null;
   let t = text.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
@@ -437,8 +430,7 @@ if (unreachable.length) {
 }
 helpers.log("ran", state.searches.length, "searches concurrently in", wall + "s");
 
-// Show the full, structured search hits in a collapsible highlighted block so
-// the [search N] citations the synthesizer writes can be checked against them.
+// Show structured search hits so [search N] citations can be checked.
 helpers.log.details("searches", state.searches);
 state.context = state.searches.map((s, i) =>
   \`### search \${i + 1}: "\${s.query}"\\n\${helpers.formatSearchResults(s)}\`
@@ -622,8 +614,7 @@ return state.topic;
       code: `// Fetch evidence the specialists will use for grounded answers.
 state.search  = await helpers.webSearch(state.topic, { maxResults: 4 });
 state.context = helpers.formatSearchResults(state.search);
-// One shared search, fanned to every specialist; show its full structured hits
-// so each specialist's claims can be traced back to the sources they share.
+// Share one search across specialists so their claims trace to the same sources.
 helpers.log.details("search", state.search);
 return { count: state.search.count || 0, unreachable: !!state.search.unreachable };
 `,
@@ -662,8 +653,7 @@ return state.specialists.map(s => ({ label: s.label, wall_s: s.dt.toFixed(2), pr
       code: `// Compare the routed work against a serial baseline.
 const serial = state.specialists.reduce((s, x) => s + x.dt, 0);
 
-// helpers.viz.ganttBars draws per-worker bars, a serial-total bar, and the
-// wall-clock bar, plus the speedup, from the same per-specialist durations.
+// Draw worker, serial-total, wall-clock, and speedup bars from the same timings.
 helpers.viz.ganttBars(
   state.specialists.map(s => ({ label: s.label.split(" · ")[0], dt: s.dt })),
   state.wall,

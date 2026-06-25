@@ -1,0 +1,75 @@
+# Vendor and Source-Ingestion Policy
+
+This policy controls new material added to course content, assets, datasets, reference packets, and generated bundles.
+
+## Default Placement
+
+Use these locations unless a more specific `SKILL.html` says otherwise.
+
+| Material | Location | Required record |
+|---|---|---|
+| Course page or authored courseware | `web/<course>/` | course `SKILL.html` |
+| Course image or diagram | `web/<course>/assets/` | `web/<course>/assets/SKILL.html` provenance |
+| Companion essay or source packet | `web/<course>/mats/` | `web/<course>/mats/SKILL.html` provenance |
+| Browser runtime code | `web/<course>/scripts/` | course scripts `SKILL.html` |
+| Course styles | `web/<course>/styles/` | course styles `SKILL.html` |
+| Shared service code or notebooks | `cpu/services/<service>/` | service `SKILL.html` |
+| Build, validation, or import tooling | `scripts/<group>/` | scripts group `SKILL.html` |
+| General compliance evidence | `scripts/compliance/docs/` | this directory and source inventory |
+| Datasets or model artifacts | `datasets/`, `web/<course>/datasets/`, or documented external URL | explicit inventory entry and approval disposition |
+
+Do not add a new top-level content root without a `SKILL.html`, a source inventory update, and a gate update.
+
+## What May Be Committed
+
+Allowed with provenance:
+
+- authored course prose and code under Apache-2.0
+- authored diagrams under Apache-2.0
+- generated indexes that can be reproduced from committed sources
+- source cards or summaries that cite public URLs without copying protected text
+- cached public material only when the source, owner, license, and redistribution disposition are recorded
+- datasets or model references only when approval and intended use are recorded
+
+Blocked unless explicitly approved and recorded:
+
+- internal-only URLs, private ticket links, private wiki links, and private repository URLs
+- copied third-party text or images with no redistribution permission
+- datasets without approval for the intended release path
+- model outputs used as synthetic data without approval for that use
+- secrets, credentials, tokens, private endpoints, or live key material
+- material whose owner or source cannot be identified
+- generated runtime outputs, caches, and local lab artifacts
+
+## New-Source Workflow
+
+Before committing new material:
+
+1. Put the file in the correct governed root.
+2. Add or update the directory `SKILL.html` provenance record.
+3. If the material is not represented by an existing provenance beacon, add an entry to `scripts/compliance/docs/source_inventory.json`.
+4. Run `python3 scripts/compliance/source_gate.py`.
+5. Run the normal ship gate.
+6. Include the source and license disposition in the merge request description.
+
+## License Labels
+
+Use clear labels. Do not invent permission.
+
+- `Apache-2.0`: authored project material intended to ship under this repository license.
+- `generated-from-authored-source`: generated artifact derived from repository source.
+- `source-summary-only`: an authored summary or card that cites a public source without copying protected text.
+- `external-terms`: source terms apply and must be reviewed before external publication.
+- `approval-required`: dataset, model, cached source, or other material that cannot ship until disposition is approved.
+
+## Gate Behavior
+
+`python3 scripts/compliance/source_gate.py` blocks on these classes:
+
+- missing or non-Apache root license
+- contribution terms missing Apache-2.0 inbound language
+- tracked internal URLs or private process links
+- new files under governed material roots that are not represented by a provenance beacon or source inventory entry
+- inventory entries that point at missing files
+
+The gate does not replace legal review. It narrows the space of mistakes before review.

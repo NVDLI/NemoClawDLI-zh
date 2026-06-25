@@ -46,7 +46,7 @@ RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 # Headless Chromium for in-lab browser/render experiments. playwright (the driver) is
 # pinned in requirements.txt and installed above; this pulls the browser binary plus the
 # system libraries it needs to launch, so a notebook or the render-check harness
-# (scripts/render_check.py) can drive a real browser with no manual setup. A repo pull
+# (scripts/runtime/render_check.py) can drive a real browser with no manual setup. A repo pull
 # builds this in; the capability is documented in workspace/SKILL.html.
 RUN playwright install --with-deps chromium
 

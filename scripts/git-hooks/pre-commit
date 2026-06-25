@@ -5,7 +5,7 @@
 #
 # Install with:
 #     ln -sf ../../scripts/git-hooks/pre-commit .git/hooks/pre-commit
-# or invoke scripts/install-hooks.sh.
+# or invoke scripts/build/install-hooks.sh.
 
 set -e
 
@@ -14,7 +14,7 @@ set -e
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 T1="$REPO_ROOT"; [ -d "$REPO_ROOT/task1/scripts" ] && T1="$REPO_ROOT/task1"
 T1REL="${T1#$REPO_ROOT/}"; [ "$T1REL" = "$T1" ] && T1REL="" || T1REL="$T1REL/"
-AUDIT="$T1/scripts/nb_audit.py"
+AUDIT="$T1/scripts/validation/nb_audit.py"
 
 if [ ! -f "$AUDIT" ]; then
     # Audit script not present in this repo; nothing to check.
@@ -47,7 +47,7 @@ if ! python3 "$AUDIT" $STAGED_MDS; then
     echo "  1. Close the affected .md files in VS Code."
     echo "  2. Restore a clean version (Write tool, or in-place dedupe for"
     echo "     periodically-duplicated files; see docs/notebook_corruption_prevention.md)."
-    echo "  3. Re-run 'python3 scripts/nb_audit.py' to confirm clean."
+    echo "  3. Re-run 'python3 scripts/validation/nb_audit.py' to confirm clean."
     echo "  4. Re-stage and commit."
     exit 1
 fi
@@ -64,7 +64,7 @@ STAGED_HTML=$(git diff --cached --name-only --diff-filter=ACM \
 
 if [ -n "$STAGED_HTML" ]; then
     # ── Fast static structural check (no docker needed) ──────────────────────
-    VALIDATOR="$T1/scripts/validate_canvas_html.py"
+    VALIDATOR="$T1/scripts/validation/validate_canvas_html.py"
     if [ -f "$VALIDATOR" ]; then
         STAGED_HTML_FILES=$(git diff --cached --name-only --diff-filter=ACM \
             | grep -E '(web/[a-z_]+/[^/]+\.html)$' \
@@ -82,7 +82,7 @@ if [ -n "$STAGED_HTML" ]; then
         fi
     fi
 
-    TEST_SCRIPT="$T1/scripts/test_page_runtime.js"
+    TEST_SCRIPT="$T1/scripts/runtime/test_page_runtime.js"
     if [ ! -f "$TEST_SCRIPT" ]; then
         echo "[pre-commit] WARNING: playwright test harness not found at $TEST_SCRIPT, so the runtime check is skipped."
     else

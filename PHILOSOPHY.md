@@ -28,4 +28,4 @@ Contribution follows from the same aim. Tools and agents have made useful materi
 
 ---
 
-The short, operational form of these commitments is the `purpose` group of tenets projected into [`SKILL.html`](SKILL.html). Run `python3 scripts/tenets.py` to read the full operating creed.
+The short, operational form of these commitments is the `purpose` group of tenets projected into [`SKILL.html`](SKILL.html). Run `python3 scripts/validation/tenets.py` to read the full operating creed.

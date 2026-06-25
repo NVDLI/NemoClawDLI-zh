@@ -13,4 +13,4 @@ ENV NODE_PATH=/opt/nemoclaw-runtime/node_modules \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 WORKDIR /workspace
-ENTRYPOINT ["node", "scripts/test_page_runtime.js"]
+ENTRYPOINT ["node", "scripts/runtime/test_page_runtime.js"]

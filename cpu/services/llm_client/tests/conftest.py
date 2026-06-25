@@ -19,16 +19,7 @@ from pathlib import Path
 import pytest
 
 
-# Allow `from bedrock_stream import ...` and `from llm_client import ...`
-# without a project install. The llm_client service code is flat (no
-# package), so we just put its dir on sys.path before any tests run.
-#
-# Candidate locations, in priority order:
-#   1. ./src/ is a local mirror inside scaffold, so tests can be
-#      self-contained for CI.
-#   2. ../../cpu/services/llm_client/ is the live source of truth
-#      relative to the scaffold tree.
-#   3. $LLM_CLIENT_SRC is an explicit override for unusual layouts.
+# Find llm_client source for flat-service imports during tests.
 _CANDIDATES = [
     Path(__file__).resolve().parents[1],              # tests/../ = services/llm_client/
     Path(__file__).resolve().parent / "src",           # tests/src/ (local mirror for CI)

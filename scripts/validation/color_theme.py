@@ -8,7 +8,7 @@ name is never defined (the lone fallback never flips). Scope: every course-shipp
 script (discovered by glob, so a split of _shared.js into several modules stays covered) plus
 each page body and inline SVG; inline <script> in a page is excluded for the CSS scan
 (lesson/canvas content with its own palette), but SVG attribute literals are scanned everywhere.
-Advisory.  Run:  python3 scripts/color_theme.py
+Advisory.  Run:  python3 scripts/validation/color_theme.py
 """
 from __future__ import annotations
 import re, sys, functools

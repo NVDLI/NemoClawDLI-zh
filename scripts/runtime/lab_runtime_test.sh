@@ -12,17 +12,17 @@ URL=""
 
 usage() {
   cat <<'USAGE'
-Usage: scripts/lab_runtime_test.sh [--smoke] [--render-only] [--no-build] [URL]
+Usage: scripts/runtime/lab_runtime_test.sh [--smoke] [--render-only] [--no-build] [URL]
 
 Builds a small browser-test image with Node.js, playwright-core, and Chromium,
-then runs scripts/test_page_runtime.js from the repo bind-mounted read-only.
+then runs scripts/runtime/test_page_runtime.js from the repo bind-mounted read-only.
 
 Examples:
-  scripts/lab_runtime_test.sh --smoke
-  scripts/lab_runtime_test.sh --render-only
-  scripts/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html
+  scripts/runtime/lab_runtime_test.sh --smoke
+  scripts/runtime/lab_runtime_test.sh --render-only
+  scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html
   CLAW_URL=http://openclaw:8995 CLAW_TOKEN=dli-openclaw-token \
-    scripts/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/03a-kickstart.html
+    scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/03a-kickstart.html
 
 Environment:
   CONTAINER_ENGINE=podman|docker     Force engine; default prefers podman.
@@ -73,6 +73,7 @@ if [[ "$BUILD" == "1" ]]; then
 fi
 
 run_args=(run --rm -v "$ROOT:/workspace:ro" -w /workspace -e NODE_PATH=/opt/nemoclaw-runtime/node_modules)
+test_cmd=(--entrypoint node "$IMAGE" scripts/runtime/test_page_runtime.js)
 for env_name in NVIDIA_API_KEY CLAW_URL CLAW_TOKEN CLAW_CF CLAW_ORIGIN DEBUG_WS CHROME_BIN PLAYWRIGHT_BROWSERS_PATH; do
   if [[ -n "${!env_name:-}" ]]; then
     run_args+=(-e "$env_name=${!env_name}")
@@ -80,7 +81,7 @@ for env_name in NVIDIA_API_KEY CLAW_URL CLAW_TOKEN CLAW_CF CLAW_ORIGIN DEBUG_WS 
 done
 
 if [[ "$SMOKE" == "1" ]]; then
-  exec "$ENGINE" "${run_args[@]}" --network none "$IMAGE" --smoke
+  exec "$ENGINE" "${run_args[@]}" --network none "${test_cmd[@]}" --smoke
 fi
 
 node_args=()
@@ -96,15 +97,15 @@ URL=${URL:-http://nginx/lab/static/nemoclaw/01a-loop.html}
 
 case "$URL" in
   file://*|data:*)
-    exec "$ENGINE" "${run_args[@]}" --network none "$IMAGE" "${node_args[@]}" "$URL"
+    exec "$ENGINE" "${run_args[@]}" --network none "${test_cmd[@]}" "${node_args[@]}" "$URL"
     ;;
   http://127.0.0.1:*|http://localhost:*)
-    exec "$ENGINE" "${run_args[@]}" "$IMAGE" "${node_args[@]}" "$URL"
+    exec "$ENGINE" "${run_args[@]}" "${test_cmd[@]}" "${node_args[@]}" "$URL"
     ;;
 esac
 
 if [[ "$RENDER_ONLY" == "1" ]]; then
-  exec "$ENGINE" "${run_args[@]}" "$IMAGE" "${node_args[@]}" "$URL"
+  exec "$ENGINE" "${run_args[@]}" "${test_cmd[@]}" "${node_args[@]}" "$URL"
 fi
 
 if ! "$ENGINE" network inspect "$NETWORK" >/dev/null 2>&1; then
@@ -117,4 +118,4 @@ EOF
   exit 2
 fi
 
-exec "$ENGINE" "${run_args[@]}" --network "$NETWORK" "$IMAGE" "${node_args[@]}" "$URL"
+exec "$ENGINE" "${run_args[@]}" --network "$NETWORK" "${test_cmd[@]}" "${node_args[@]}" "$URL"

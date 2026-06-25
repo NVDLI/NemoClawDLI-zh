@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>The materials catalog behind web_search · Securing Agents</title>
-<link rel="stylesheet" href="_style.css"/>
+<link rel="stylesheet" href="styles/_style.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
@@ -99,7 +99,7 @@
     <h2>How it stays current (and how you would fix it)</h2>
     <p class="gx-lead">
       A vendored corpus drifts away from its sources over time unless something actively keeps it
-      honest. That job belongs to a single script, <code>scripts/pull_materials.py</code>, which is
+      honest. That job belongs to a single script, <code>scripts/materials/pull_materials.py</code>, which is
       written so that any drift it finds is surfaced to everyone at once and described in exactly
       the same words.
     </p>
@@ -108,7 +108,7 @@
       The loop runs like this. A contributor (or the deploy build) runs the pull, and every source gets
       fingerprinted in <code>_materials.json</code>. Passing <code>--check</code> re-fetches each source
       and flags any drift or outage. That same status lands on the validation screen, reachable from the
-      site's landing page or reproduced locally with <code>python3 scripts/validate_bundle.py</code>, and
+      site's landing page or reproduced locally with <code>python3 scripts/validation/validate_bundle.py</code>, and
       it names the exact command to fix whatever broke. Nothing about the corpus is a moving target you
       have to trust.
     </p>
@@ -158,7 +158,7 @@
 </main>
 
 <script type="module">
-import { webSearch, instantAnswer, loadMaterialsCatalog, mountDiagram, mountCanvasFlow, mountRunCell } from "./_shared.js";
+import { webSearch, instantAnswer, loadMaterialsCatalog, mountDiagram, mountCanvasFlow, mountRunCell } from "./scripts/_shared.js";
 
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const $ = (id) => document.getElementById(id);
@@ -285,9 +285,7 @@ return { chars: state.out.length };`,
   ],
 });
 
-// ── The two functions, as an editable + runnable cell (key-less; reads the cached catalog) ──
-// Source stays inspectable via the cell's helpers tab (click webSearch / instantAnswer to read it),
-// so it still cannot drift from what runs, and now you can edit the queries and run them.
+// Editable keyless cell: helpers expose webSearch and instantAnswer source.
 mountRunCell("#gx-src-cell", {
   code: `// webSearch ranks the whole catalog; instantAnswer returns one term's definition.
 // Edit the queries and Run. Open the helpers tab above to read each one's real source.

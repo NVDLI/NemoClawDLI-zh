@@ -15,9 +15,9 @@ Dependencies: requests, beautifulsoup4, markdownify, lxml
   pip install requests beautifulsoup4 markdownify lxml
 
 Usage:
-  python3 scripts/vendor_glossary.py                 # vendor the default TERMS list
-  python3 scripts/vendor_glossary.py deep-agents      # vendor one or more named slugs
-  python3 scripts/vendor_glossary.py --list           # print the default TERMS and exit
+  python3 scripts/materials/vendor_glossary.py                 # vendor the default TERMS list
+  python3 scripts/materials/vendor_glossary.py deep-agents      # vendor one or more named slugs
+  python3 scripts/materials/vendor_glossary.py --list           # print the default TERMS and exit
 
 Static-HTML limitation: images injected by client-side JavaScript (some inline
 step diagrams) are not in the fetched HTML and are not captured. The hero image,

@@ -23,7 +23,7 @@ services, and the conventions. Every directory carries a `SKILL.html` whose
 ## Install the hooks (once)
 
 ```
-bash scripts/install-hooks.sh
+bash scripts/build/install-hooks.sh
 ```
 
 This symlinks two hooks into `.git/hooks/`:
@@ -38,11 +38,12 @@ This symlinks two hooks into `.git/hooks/`:
 The pre-push gates, on demand:
 
 ```
-python3 scripts/validate_layout.py                # surface layout + link glue
-python3 scripts/skill_consistency.py              # skill-meta vs the real tree
-bash    scripts/run_engine.sh --self-test         # link-engine self-test
-python3 scripts/validate_bundle.py --scope ship   # grounding, reachability, page audit
-python3 scripts/tenets.py --check                 # core-tenets projection present
+python3 scripts/validation/validate_layout.py                # surface layout + link glue
+python3 scripts/skills/skill_consistency.py              # skill-meta vs the real tree
+python3 scripts/compliance/source_gate.py                     # Apache/source/vendor compliance
+bash    scripts/runtime/run_engine.sh --self-test         # link-engine self-test
+python3 scripts/validation/validate_bundle.py --scope ship   # grounding, reachability, page audit
+python3 scripts/validation/tenets.py --check                 # core-tenets projection present
 ```
 
 The service-stack notebooks need the lab services running (no GPU required):
@@ -54,7 +55,7 @@ python3 workspace/run_tests.py services --notebook <notebook>
 ## Conventions
 
 The full operating creed (assumptions, practices, cadences, creeds) is projected into the
-root `SKILL.html` skill-meta, not a separate agent-config file. Run `python3 scripts/tenets.py`
+root `SKILL.html` skill-meta, not a separate agent-config file. Run `python3 scripts/validation/tenets.py`
 to read it with the gate that enforces each. The highlights:
 
 - Edit content in place. Scratch work goes to `/tmp` and is never committed.
@@ -62,3 +63,13 @@ to read it with the gate that enforces each. The highlights:
 - The browser course under `web/` stays remote-services-only, with no keys in static files.
 - Do not commit lab-generated runtime output (`artifacts/`, `export/`, caches, the
   `public/` Pages build). `.gitignore` covers these classes.
+
+## Contribution terms
+
+This repository is licensed under Apache-2.0. Unless you clearly mark a submission as `Not a Contribution`, any contribution intentionally submitted for inclusion is offered under Apache-2.0, with the contribution terms in `LICENSE.md`.
+
+Do not submit material you do not have the right to contribute. Third-party text, images, datasets, model artifacts, copied examples, cached web pages, and generated assets need source and license disposition before they are committed. The governing process is [`scripts/compliance/docs/vendor_policy.md`](scripts/compliance/docs/vendor_policy.md), and the required gate is:
+
+```bash
+python3 scripts/compliance/source_gate.py
+```
