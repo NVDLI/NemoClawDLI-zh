@@ -48,6 +48,7 @@ import datetime
 import hashlib
 import json
 import os
+import sys
 from pathlib import Path
 
 for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
@@ -56,7 +57,6 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
 from _bootstrap import add_script_paths, find_repo_root
 import re
 import subprocess
-import sys
 import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
