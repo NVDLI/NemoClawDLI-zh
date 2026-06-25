@@ -93,23 +93,28 @@
   ]
 }
 </script>
+
+<style data-skill-static="1">
+.skill-static{padding:24px clamp(18px,4vw,44px);border-bottom:1px solid #2a2a2a;background:#0d0d0d;color:#f2f2f2;font:15px/1.55 system-ui,sans-serif}
+.skill-static a{color:#76b900}.skill-static h1{margin:.1em 0 .25em;color:#76b900;font-size:1.65rem}.skill-static h2{font-size:1.02rem;margin:1.2rem 0 .45rem}.skill-static p{max-width:76rem;color:#b0b0b0}.skill-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:.7rem 0}.skill-card{border:1px solid #2a2a2a;background:#161616;border-radius:8px;padding:12px 14px}.skill-card b{display:block;color:#aee23a;margin-bottom:4px}.skill-card code,.skill-cmd code{font-family:ui-monospace,Consolas,monospace}.skill-card span{color:#b0b0b0;font-size:.9rem}.skill-cmds{display:grid;gap:8px;margin:.7rem 0}.skill-cmd{display:grid;grid-template-columns:minmax(140px,220px) 1fr;gap:8px;align-items:center;border:1px solid #2a2a2a;border-radius:8px;background:#111;padding:9px 11px}.skill-cmd b{color:#aee23a}.skill-cmd code{display:block;overflow:auto;white-space:nowrap;color:#f2f2f2}.skill-note{border-left:3px solid #76b900;background:rgba(118,185,0,.08);padding:10px 13px;margin:.8rem 0;color:#ddd}.skill-nav{display:flex;gap:12px;flex-wrap:wrap;margin:.8rem 0}.skill-nav a{border:1px solid #2a2a2a;border-radius:999px;padding:5px 10px;text-decoration:none}.skill-nav a:hover{border-color:#76b900}@media(max-width:700px){.skill-cmd{grid-template-columns:1fr}.skill-static{padding:18px}}
+</style>
 </head>
 <body>
-<div id="sx-app"></div>
+<section class="skill-static" aria-labelledby="skill-title">
+  <nav class="skill-nav"><a href="../../web/index.html">Home</a><a href="../SKILL.html">the bundle toolchain</a></nav>
+  <h1 id="skill-title">scripts/translate/ · language branches</h1>
+  <p>A translation is the same course in another language: a translate-&lt;lang&gt; branch that overlays the source, translating the reader-facing prose under web/ and carrying code, assets, and every skill-meta contract verbatim. This folder is the toolchain that keeps that overlay in step with the source. Open the README for the full process, the status tool to see what a sync needs, and walk the guided tour for the contributor loop. Ask the model about any of it with your build.nvidia.com key.</p>
+  <div class="skill-note">Translation branches skip English prose-style suites but still run structural gates.</div>
+  <h2>Executable checks</h2>
+  <div class="skill-cmds"><div class="skill-cmd"><b>Translation status</b><code>python3 scripts/translate/translation_status.py</code></div><div class="skill-cmd"><b>Ship gate for English</b><code>python3 scripts/validate_bundle.py --no-write --scope ship</code></div></div>
+  <h2>Linkage map</h2>
+  <div class="skill-grid"><a class="skill-card" href="README.md"><b>README.md</b><span>the process, in full. What a language branch is (a full overlay of the source), what gets translated vs carried verbatim, the sync marker, the contributor workflow end to end, and how translate-* CI/CD validates and deploys under /&lt;lang&gt;/. Start here.</span></a><a class="skill-card" href="translation_status.py"><b>translation_status.py</b><span>the drift tool. What changed on the source since this translation&#x27;s base, split into TO RE-TRANSLATE (prose the reader sees) and TO MERGE VERBATIM (code, assets, the skill-meta contract). The loop a translation lives in: read the status, act on the delta, advance the base (--set-base). --json and --check (CI) too.</span></a><a class="skill-card" href="translation_base.json"><b>translation_base.json</b><span>the sync marker. Records the source commit this translation reflects (lang + upstream + base_sha). On the source branch lang is null (nothing to sync). The whole drift abstraction is git diff base_sha..upstream, classified per file.</span></a></div>
+  <h2>Interactive explorer</h2>
+  <p>The explorer below opens source files, tours important sections, and checks documented paths against the repository tree.</p>
+</section>
+<div id="explorer"></div>
 <noscript>
-  <h1>scripts/translate/ : language branches</h1>
-  <p>A translation of this course is a <code>translate-&lt;lang&gt;</code> branch (the first is
-     <code>translate-pt</code>) that overlays the source: the reader-facing prose under
-     <code>web/</code> is rendered in the target language, and the code, assets, and every
-     <code>skill-meta</code> contract are carried over unchanged. Because the structure is identical,
-     every build, gate, and deploy that runs on the source runs on the translation too.</p>
-  <p>The sync abstraction is one marker, <a href="translation_base.json">translation_base.json</a>,
-     recording the source commit the translation reflects. <a href="translation_status.py">translation_status.py</a>
-     diffs the source against it and splits the change into a re-translate list (prose) and a
-     merge-verbatim list (code, assets, the contract). Validate with
-     <code>validate_bundle.py --scope ship --lang &lt;code&gt;</code>, which skips the English-prose
-     style suites while the structural suites still gate.</p>
-  <p>Read <a href="README.md">README.md</a> for the full process.</p>
+  <section class="skill-static"><h2>JavaScript disabled</h2><p>The static command list and file links above remain usable. Enable JavaScript for source viewing and guided tours.</p></section>
 </noscript>
 <script src="../../web/_skill_explorer.js"></script>
 </body>

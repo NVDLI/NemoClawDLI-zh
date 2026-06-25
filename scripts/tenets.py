@@ -1,101 +1,16 @@
 #!/usr/bin/env python3
-"""Report the bundle's core tenets and the gate that enforces each.
-
-This bundle ships no agent-tool config file (no CLAUDE.md or equivalent). The operating
-creed is PROJECTED into the root SKILL.html skill-meta (key: tenets) by
-gen_skill_hierarchy.py, so there is one source that any agent or person reading the brain
-inherits. This script reads it back, prints it grouped (purpose / assumptions / practices /
-cadences / creeds), and names the validator that enforces each checkable tenet.
-
-  python3 scripts/tenets.py            report the tenets + their enforcement
-  python3 scripts/tenets.py --check    verify the projection is present (exit 1 if gone)
-
-The --check form is cheap enough to run in the validate cadence, so a regeneration can
-never silently drop the projection.
-"""
-from __future__ import annotations
-import json
-import re
-import sys
-from pathlib import Path
-
-TASK1 = Path(__file__).resolve().parents[1]
-SKILL = TASK1 / "SKILL.html"
-ORDER = ("purpose", "assumptions", "practices", "cadences", "creeds")
-
-# Theme -> the gate that enforces tenets of that theme. Keyed by a substring that appears
-# in the tenet text, so the mapping survives small wording changes. A tenet with no gate
-# relies on discipline; this script labels it that way instead of claiming it is enforced.
-ENFORCED_BY = [
-    ("em-dash",               "validate_bundle.py --scope ship  (grounding em-dash check)"),
-    ("corruption markers",    "validate_bundle.py --scope ship  (page audit)"),
-    ("buzzy",                 "validate_bundle.py --scope ship  (page audit, advisory)"),
-    ("isolation",             "validate_layout.py + run_engine.sh --check  (cross-course gate)"),
-    ("links another course",  "validate_layout.py + run_engine.sh --check  (cross-course gate)"),
-    ("released courses",      "run_engine.sh --self-test  (release/foyer contract)"),
-    ("foyer",                 "run_engine.sh --self-test  (release/foyer contract)"),
-    ("skill-meta json",       "skill_consistency.py  (skill-meta vs the real tree)"),
-    ("validate before",       "install-hooks.sh wires the pre-push gate that runs all four"),
-    ("runtime output",        ".gitignore + the pre-commit / pre-push hooks"),
-    ("single source",         "run_engine.sh --self-test  (one engine, pinned facts)"),
-    ("lead-page parity",      "manual review (lead-page-parity); not auto-gated"),
-    ("sample of a class",     "discipline (grep the repo before fixing); not auto-gated"),
-]
-
-
-def load_tenets():
-    try:
-        text = SKILL.read_text()
-    except FileNotFoundError:
-        return None
-    m = re.search(r'<script type="application/json" id="skill-meta">(.*?)</script>', text, re.S)
-    if not m:
-        return None
-    try:
-        return json.loads(m.group(1)).get("tenets")
-    except json.JSONDecodeError:
-        return None
-
-
-def gate_for(text: str):
-    low = text.lower()
-    for needle, gate in ENFORCED_BY:
-        if needle in low:
-            return gate
-    return None
-
-
-def main(argv) -> int:
-    check = "--check" in argv
-    tenets = load_tenets()
-    if not tenets:
-        print("tenets: FAIL. SKILL.html has no skill-meta.tenets projection.")
-        print("        regenerate it: python3 scripts/gen_skill_hierarchy.py")
-        return 1
-    if check:
-        n = sum(len(tenets.get(k) or []) for k in ORDER)
-        print(f"tenets: OK. The projection is present in SKILL.html with {n} tenets across {len(ORDER)} groups.")
-        return 0
-    label = {"purpose": "PURPOSE (what this platform is for)",
-             "assumptions": "ASSUMPTIONS (what is true here)",
-             "practices": "PRACTICES (how to work)",
-             "cadences": "CADENCES (the rhythm and the gates)",
-             "creeds": "CREEDS (the quality bar)"}
-    total = 0
-    for key in ORDER:
-        items = tenets.get(key) or []
-        if not items:
-            continue
-        print(f"\n== {label[key]} ==")
-        for t in items:
-            total += 1
-            print(f"  - {t}")
-            gate = gate_for(t)
-            if gate:
-                print(f"      enforced by: {gate}")
-    print(f"\n{total} tenets projected from SKILL.html skill-meta (no agent-tool config file ships).")
-    return 0
-
+"""Compatibility entrypoint for scripts/tenets.py. Implementation lives in scripts/validation/tenets.py."""
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    import runpy as _runpy
+    _runpy.run_module("validation.tenets", run_name="__main__")
+else:
+    import importlib as _importlib
+
+    _impl = _importlib.import_module("validation.tenets")
+    _exported = {
+        _name: getattr(_impl, _name)
+        for _name in dir(_impl)
+        if _name not in {"__builtins__", "__cached__", "__loader__", "__name__", "__package__", "__spec__"}
+    }
+    globals().update(_exported)
