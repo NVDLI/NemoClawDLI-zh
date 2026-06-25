@@ -451,8 +451,16 @@ export const SPECIALS = {
   },
   log: {
     sig: "<code>helpers.log(...args)</code>",
-    desc: `Append to this node's <em>log</em> area (under the streamed output). Plain values append as text; objects render as highlighted JSON. The family: <code>log.h(title)</code> heading, <code>log.json(label?, obj)</code>, <code>log.kv(obj)</code> key/value table, <code>log.details(summary, body)</code> collapsible, <code>log.html(html)</code>, <code>log.svg(svgString)</code>, <code>log.draw(W, H, body, opts)</code> (wraps the SVG frame so a cell only declares its marks), and <code>log.clear()</code>.`,
-    src: `// helpers.log writes to THIS node's log area. Plain values append as text; objects render as JSON.\nhelpers.log("retrieved", hits.length, "chunks");   // text line; extra args are space-joined\nhelpers.log.h("rerank");                            // a section heading\nhelpers.log.json("usage", res.usage);               // (label?, obj) pretty, syntax-highlighted JSON\nhelpers.log.kv({ model, tokens, ms });              // key/value table\nhelpers.log.details("raw response", res);           // collapsible block (object or string body)\nhelpers.log.html("<b>done</b>");                    // trusted HTML\nhelpers.log.svg("<svg viewBox='0 0 80 80'>...</svg>");  // inline SVG\nhelpers.log.draw(320, 120, '<circle cx="60" cy="60" r="40" fill="var(--gfx-green)"/>', { title: "demo" });\nhelpers.log.clear();                                // wipe this node's log area`,
+    desc: `Append to this CanvasFlow node's <em>log</em> area under streamed output. Plain values append as text; objects render as highlighted JSON. CanvasFlow supports <code>log(...args)</code>, <code>log.details(summary, body)</code>, <code>log.html(html)</code>, <code>log.svg(svgString)</code>, and <code>log.draw(W, H, body, opts)</code>. The richer run-cell-only family (<code>log.h</code>, <code>log.json</code>, <code>log.kv</code>, <code>log.clear</code>) is available inside <code>mountRunCell</code>, not here.`,
+    src: `// helpers.log writes to THIS CanvasFlow node's log area. Plain values append as text; objects render as JSON.
+helpers.log("retrieved", hits.length, "chunks");   // text line; extra args are space-joined
+helpers.log("usage", res.usage);                   // object-aware JSON rendering
+helpers.log.details("raw response", res);           // collapsible block (object or string body)
+helpers.log.html("<b>done</b>");                    // trusted HTML
+helpers.log.svg("<svg viewBox='0 0 80 80'>...</svg>");  // inline SVG
+helpers.log.draw(320, 120, '<circle cx="60" cy="60" r="40" fill="var(--gfx-green)"/>', { title: "demo" });
+
+// mountRunCell has a different log object with helpers.log.h/json/kv/clear.`,
   },
   signal: {
     sig: "<code>helpers.signal</code>",

@@ -104,6 +104,24 @@ const TEST_COMMANDS = [
     cmd: 'python3 scripts/validation/studio_interface_audit.py',
   },
   {
+    name: 'Helper notebook static contract',
+    mode: 'no lab stack',
+    desc: 'Checks helper notebook examples, validation command parity, syntax asset hooks, and CanvasFlow versus RunCell helper surfaces.',
+    cmd: 'python3 scripts/validation/helper_notebook_runtime_audit.py --no-container',
+  },
+  {
+    name: 'Helper notebook browser contract',
+    mode: 'podman image, no lab stack',
+    desc: 'Clicks every helper notebook run control and verifies CodeMirror, highlighted JSON logs, table layout, and page overflow.',
+    cmd: 'CONTAINER_ENGINE=podman python3 scripts/validation/helper_notebook_runtime_audit.py',
+  },
+  {
+    name: 'Studio responsive contract',
+    mode: 'podman image, no lab stack',
+    desc: 'Stress-tests narrow and short Studio viewports for topbar scrolling, usable controls, sidebar list floors, and internal scrolling.',
+    cmd: 'CONTAINER_ENGINE=podman python3 scripts/validation/studio_responsive_audit.py',
+  },
+  {
     name: 'Browser environment probe',
     mode: 'podman image, no lab stack',
     desc: 'Finds Podman or Docker, reports podman-compose-via-python availability, and proves container Node/Playwright/Chromium.',

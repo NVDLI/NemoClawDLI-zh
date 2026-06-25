@@ -100,6 +100,8 @@ import code_hygiene as ch  # noqa: E402
 import color_theme as ct  # noqa: E402
 import figure_audit as fa  # noqa: E402
 import cell_audit as ca  # noqa: E402
+import helper_notebook_runtime_audit as hna  # noqa: E402
+import studio_interface_audit as sia  # noqa: E402
 import skill_contract as skc  # noqa: E402
 from collections import defaultdict  # noqa: E402
 
@@ -221,6 +223,12 @@ SUITE_META = [
     ("cell_audit", "Cell & artifact contract", "recommended",
      "Every runnable cell shows its work in the panel, writes via helpers.log not console, awaits its model calls, inlines no key, keeps cell-only code in an editable cell, and is syntax-highlighted by default (the page loads CodeMirror core, the javascript mode, and the editor css, or the editor degrades to a plain textarea). A hard-coded key is required-tier (it ships to every student); the rest are recommended.",
      "scripts/validation/cell_audit.py", "run"),
+    ("helper_notebook", "Helper notebook contract", "required",
+     "The runnable helper notebook must use the helper API exposed by its actual runtime surface. Static examples must not mix CanvasFlow-only and RunCell-only log helpers, because that ships a TypeError directly to students.",
+     "scripts/validation/helper_notebook_runtime_audit.py", "static_audit"),
+    ("studio_interface", "Studio interface contract", "required",
+     "Studio is the operator console for authoring and validation. Its controls must remain reachable at layout extremes, its sidebar lists must scroll internally, and its documented test commands must stay synchronized with the validators.",
+     "scripts/validation/studio_interface_audit.py", "audit"),
     ("skill_schema", "SKILL contract", "recommended",
      "Every SKILL.html skill-meta must be a well-formed contract of its kind: it classifies into one known kind (service-skill, service-index, dir-skill, hub, leaf), carries that kind's required keys, uses a known schema/node_type value and a semver version where the kind has one, and only valid notebook status values. An agent samples this block to work in a directory, so a malformed beacon is a contract an agent cannot trust. Each entry names the SKILL and the missing or invalid field.",
      "scripts/skills/skill_contract.py", "schema_findings"),
@@ -466,6 +474,28 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         ca_find, ca_total = {}, 0
         suite_errors["cell_audit"] = str(e); vl_fail.append(f"cell audit error: {e}")
 
+    # helper notebook static contract (required): no container, catches CanvasFlow / RunCell API drift.
+    try:
+        helper_notebook_find = hna.static_audit()
+    except Exception as e:
+        helper_notebook_find = [f"helper notebook audit error: {e}"]
+        suite_errors["helper_notebook"] = str(e)
+    if helper_notebook_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(f"helper notebook: {x}" for x in helper_notebook_find)
+
+    # Studio interface static contract (required): catches control/list layout drift and docs/test command skew.
+    try:
+        studio_interface_find = sia.audit()
+    except Exception as e:
+        studio_interface_find = [f"studio interface audit error: {e}"]
+        suite_errors["studio_interface"] = str(e)
+    if studio_interface_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(f"studio interface: {x}" for x in studio_interface_find)
+
     # SKILL contract (advisory): every skill-meta is a well-formed beacon of its kind (schema leg)
     # and matches its directory (drift leg, reused from skill_audit). The agent-facing half of the
     # contract: a malformed or stale beacon is what an agent samples and is misled by.
@@ -598,6 +628,12 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "page_audit": [D(x.get("page"), "; ".join((fi.get("detail") or fi.get("token") or "") for fi in x.get("findings", [])),
                          RECOMMENDED, "Update the flagged token or restore the missing asset so the page matches the shared HTML contract.")
                        for x in audit.get("findings", [])],
+        "helper_notebook": [D("web/nemoclaw/scripts/SKILL.html", x, REQUIRED,
+                              "Use the helper API exposed by that runtime surface: CanvasFlow supports log/details/html/svg/draw; RunCell supports log.h/json/kv/html/clear.")
+                            for x in helper_notebook_find],
+        "studio_interface": [D("web/nemoclaw/studio.html", x, REQUIRED,
+                               "Keep Studio controls reachable at narrow/short viewports and keep validator commands synchronized across Studio and SKILL docs.")
+                             for x in studio_interface_find],
         "prose_variety": [D(r["path"], f"score {r['score']} · {', '.join(r['tells'])}", CONSIDER,
                             "Give the page a rhythm pass: vary sentence length, break the staccato triads, turn enumerations back into prose.")
                           for r in pv_flagged],
@@ -765,6 +801,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "staccato_cadence": len(pv_rows),
         "code_comments": ch_scanned, "code_walls": ch_scanned, "code_dup": ch_scanned,
         "code_size": ch_scanned, "code_const": ch_scanned,
+        "helper_notebook": 1,
+        "studio_interface": 1,
         "materials": materials.get("count", 0),
         "skill_schema": skc_scanned, "skill_drift": skc_scanned,
     }
