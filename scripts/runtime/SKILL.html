@@ -18,7 +18,9 @@
     "scripts/runtime/link_graph.html",
     "scripts/runtime/run_engine.sh",
     "scripts/runtime/run_node.sh",
-    "scripts/runtime/test_page_runtime.js"
+    "scripts/runtime/test_page_runtime.js",
+    "scripts/runtime/lab-runtime/Containerfile",
+    "scripts/runtime/lab_runtime_test.sh"
   ],
   "explorer": "../../web/_skill_explorer.js"
 }
@@ -66,9 +68,19 @@
       "desc": "Shared runner for Node-based scripts."
     },
     {
+      "path": "lab_runtime_test.sh",
+      "role": "podman/docker browser runtime implementation",
+      "desc": "Builds and runs the dedicated Playwright/Chromium test container from scripts/runtime/lab-runtime/Containerfile. Supports smoke, render-only, and full lab-network checks while keeping model calls on the web course direct integrate.nvidia.com path."
+    },
+    {
+      "path": "lab-runtime/Containerfile",
+      "role": "browser-test container image",
+      "desc": "Runtime image for the course browser harness: Node.js, playwright-core, and Chromium with the repo mounted read-only at /workspace."
+    },
+    {
       "path": "test_page_runtime.js",
       "role": "page runtime smoke test",
-      "desc": "Exercises browser runtime behavior outside a full lab session."
+      "desc": "Exercises browser runtime behavior outside a full lab session, with smoke and render-only modes available through the shell wrapper."
     },
     {
       "path": "render_check.py",

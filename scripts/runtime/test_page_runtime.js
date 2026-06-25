@@ -1,11 +1,14 @@
 #!/usr/bin/env node
-// Runtime test for browser course pages via playwright-core in the openclaw container.
-// Run from the HOST (not inside the container):
+// Runtime test for browser course pages via playwright-core.
+// Preferred host entrypoint:
+//   scripts/lab_runtime_test.sh [--smoke] [url]
+// Legacy openclaw-container entrypoint:
 //   docker cp test_page_runtime.js <stack>-task1-openclaw-1:/tmp/
 //   docker exec \
 //     -e CLAW_URL=http://localhost:8995 -e CLAW_TOKEN=dli-openclaw-token \
 //     <stack>-task1-openclaw-1 node /tmp/test_page_runtime.js [url]
 // Default URL: http://nginx/lab/static/nemoclaw/01a-loop.html
+// Static render check: scripts/lab_runtime_test.sh --render-only
 //
 // Credentials: set CLAW_URL + CLAW_TOKEN to drive the OpenClaw gateway nodes
 // (03a/03c/04a). They are injected into sessionStorage under the keys the pages
@@ -18,7 +21,7 @@
 // actually arrive. A green page with zero tool frames is reported as a WARN,
 // because that is exactly the silent-failure mode this harness exists to catch.
 //
-// Deps (one-time, inside openclaw):
+// Legacy deps when running directly inside openclaw:
 //   apt-get install -y libglib2.0-0 libnspr4 libnss3 libatk1.0-0 libatk-bridge2.0-0 \
 //     libcups2 libdrm2 libgbm1 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 \
 //     libxrandr2 libxext6 libx11-6 libpangocairo-1.0-0 libasound2t64 fonts-liberation
@@ -26,14 +29,69 @@
 //     npx playwright install chromium-headless-shell
 
 const fs = require('fs');
-const pw = require('/usr/lib/node_modules/openclaw/node_modules/playwright-core');
+const http = require('http');
+const path = require('path');
+let pw;
+try {
+  pw = require('/usr/lib/node_modules/openclaw/node_modules/playwright-core');
+} catch (_) {
+  pw = require('playwright-core');
+}
 
-const url = process.argv[2] || 'http://nginx/lab/static/nemoclaw/01a-loop.html';
+const args = process.argv.slice(2);
+const smoke = args.includes('--smoke');
+const renderOnly = args.includes('--render-only');
+const serveStatic = args.includes('--serve-static');
+const url = args.find(a => a !== '--smoke' && a !== '--render-only' && a !== '--serve-static') || 'http://nginx/lab/static/nemoclaw/01a-loop.html';
 const CLAW_URL = process.env.CLAW_URL || '';
 const CLAW_TOKEN = process.env.CLAW_TOKEN || '';
+const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY || '';
+const DIRECT_API_URL = process.env.NVIDIA_API_URL || 'https://integrate.api.nvidia.com/v1';
 
 // Locate the chromium-headless-shell binary.
 // The install path moves between playwright versions, so glob the known roots instead of hardcoding one.
+function contentType(file) {
+  if (/\.html?$/.test(file)) return 'text/html; charset=utf-8';
+  if (/\.m?js$/.test(file)) return 'text/javascript; charset=utf-8';
+  if (/\.css$/.test(file)) return 'text/css; charset=utf-8';
+  if (/\.json$/.test(file)) return 'application/json; charset=utf-8';
+  if (/\.svg$/.test(file)) return 'image/svg+xml';
+  if (/\.png$/.test(file)) return 'image/png';
+  if (/\.jpe?g$/.test(file)) return 'image/jpeg';
+  if (/\.webp$/.test(file)) return 'image/webp';
+  return 'application/octet-stream';
+}
+
+function startStaticServer() {
+  const roots = ['/workspace/web', '/workspace'];
+  const server = http.createServer((req, res) => {
+    try {
+      const parsed = new URL(req.url, 'http://127.0.0.1');
+      let rel = decodeURIComponent(parsed.pathname);
+      if (rel.startsWith('/lab/static/')) rel = rel.slice('/lab/static/'.length);
+      else rel = rel.replace(/^\/+/, '');
+      if (!rel || rel.endsWith('/')) rel += 'index.html';
+      for (const root of roots) {
+        const candidate = path.resolve(root, rel);
+        if (!candidate.startsWith(root + path.sep) && candidate !== root) continue;
+        if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+          res.writeHead(200, { 'Content-Type': contentType(candidate) });
+          fs.createReadStream(candidate).pipe(res);
+          return;
+        }
+      }
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('not found');
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end(e.message);
+    }
+  });
+  return new Promise(resolve => {
+    server.listen(4173, '127.0.0.1', () => resolve(server));
+  });
+}
+
 function findChrome() {
   if (process.env.CHROME_BIN && fs.existsSync(process.env.CHROME_BIN)) return process.env.CHROME_BIN;
   const roots = [
@@ -45,25 +103,69 @@ function findChrome() {
     let dirs = [];
     try { dirs = fs.readdirSync(root); } catch { continue; }
     for (const d of dirs) {
-      if (!d.startsWith('chromium_headless_shell')) continue;
-      const bin = `${root}/${d}/chrome-headless-shell-linux64/chrome-headless-shell`;
-      if (fs.existsSync(bin)) return bin;
+      const candidates = [
+        `${root}/${d}/chrome-headless-shell-linux64/chrome-headless-shell`,
+        `${root}/${d}/chrome-linux/chrome`,
+        `${root}/${d}/chrome-linux64/chrome`,
+      ];
+      for (const bin of candidates) if (fs.existsSync(bin)) return bin;
     }
+  }
+  for (const bin of ['/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome']) {
+    if (fs.existsSync(bin)) return bin;
   }
   return null;
 }
 
 (async () => {
+  let staticServer = null;
+  if (serveStatic) {
+    staticServer = await startStaticServer();
+    console.log('STATIC_SERVER: http://127.0.0.1:4173');
+  }
+
   const executablePath = findChrome();
   if (!executablePath) {
     console.error('FATAL: chrome-headless-shell not found. Install with:');
     console.error('  PLAYWRIGHT_BROWSERS_PATH=/tmp/pw-browsers npx playwright install chromium-headless-shell');
     process.exit(1);
   }
-  console.log('CHROME:', executablePath);
+  console.log('CHROME:', executablePath || 'playwright default');
 
-  const browser = await pw.chromium.launch({ headless: true, executablePath, args: ['--no-sandbox'] });
+  const launchOptions = { headless: true, args: ['--no-sandbox'] };
+  if (executablePath) launchOptions.executablePath = executablePath;
+  const browser = await pw.chromium.launch(launchOptions);
   const page = await browser.newPage();
+
+  await page.route('**/*', route => {
+    const reqUrl = route.request().url();
+    try {
+      const host = new URL(reqUrl).hostname;
+      if (/^(cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net|unpkg\.com)$/.test(host)) {
+        if (/\.css(?:$|\?)/.test(reqUrl)) {
+          return route.fulfill({ status: 200, contentType: 'text/css', body: '' });
+        }
+        if (/highlight\.min\.js/.test(reqUrl)) {
+          return route.fulfill({ status: 200, contentType: 'text/javascript', body: 'window.hljs={highlightAll(){},highlightElement(){},highlight(){return {value:""}}};' });
+        }
+        if (/codemirror\.min\.js/.test(reqUrl)) {
+          return route.fulfill({ status: 200, contentType: 'text/javascript', body: 'window.CodeMirror={fromTextArea(){return {setValue(){},getValue(){return ""},on(){},refresh(){},setSize(){}}}};' });
+        }
+        return route.fulfill({ status: 200, contentType: 'text/javascript', body: '' });
+      }
+    } catch (_) {}
+    return route.continue();
+  });
+
+  if (smoke) {
+    await page.goto('data:text/html,<main id="ok">lab runtime smoke</main>');
+    const ok = await page.textContent('#ok');
+    console.log('SMOKE_TEXT:', ok);
+    console.log('RESULT: PASS (node + playwright + chromium runtime)');
+    await browser.close();
+    if (staticServer) staticServer.close();
+    process.exit(0);
+  }
 
   // Local-test only: the gateway's controlUi.allowedOrigins won't contain the
   // origin nginx serves the page from (http://nginx), so the WS handshake is
@@ -76,8 +178,22 @@ function findChrome() {
   }
 
   const errors = [];
-  page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
+  const resourceErrors = [];
+  page.on('console', msg => {
+    if (msg.type() !== 'error') return;
+    const text = msg.text();
+    if (/^Failed to load resource:/.test(text)) return;
+    if (/integrate\.api\.nvidia\.com\/v1\/models/.test(text)) return;
+    errors.push(text);
+  });
   page.on('pageerror', err => errors.push('PAGE_ERROR: ' + err.message));
+  page.on('requestfailed', req => {
+    const failure = req.failure();
+    resourceErrors.push(`FAILED ${req.url()} ${failure ? failure.errorText : ''}`.trim());
+  });
+  page.on('response', resp => {
+    if (resp.status() >= 400) resourceErrors.push(`${resp.status()} ${resp.url()}`);
+  });
   if (process.env.DEBUG_WS) {
     page.on('console', msg => console.log('  [console.' + msg.type() + ']', msg.text()));
     page.on('websocket', s => console.log('  [ws.open]', s.url()));
@@ -122,23 +238,45 @@ function findChrome() {
     } catch (e) { console.log('CF_COOKIE: skipped (' + e.message + ')'); }
   }
 
-  // Model endpoint: the released course is "direct + your nvapi- key" out in the
-  // wild, but the lab ships a keyless LLM proxy at /lab/svc/llm. Pre-seed getConfig's cache
-  // (CONFIG_KEY = __nv_slim_cfg_v1) to point at it, so this harness can actually
-  // run model cells (helpers.chat / ChatOpenAI / createReactAgent) without a
-  // student key. We are validating the cell LOGIC, namely tool calls, loops, and agents,
-  // not the production auth path. Set before any page script reads the config.
-  await page.addInitScript(() => {
+  // The web course is remote-service-only: browser pages call integrate.api.nvidia.com
+  // directly with the learner's nvapi key. The harness mirrors that path.
+  await page.addInitScript(({ apiKey, apiUrl }) => {
     try {
       sessionStorage.setItem("__nv_slim_cfg_v1", JSON.stringify({
-        mode: "proxy", url: "/lab/svc/llm/v1",
-        model: "nvidia/nemotron-3-nano-30b-a3b", needsKey: false,
+        mode: "direct", url: apiUrl,
+        model: "nvidia/nemotron-3-nano-30b-a3b", needsKey: true, iframeProxy: false,
       }));
+      if (apiKey) localStorage.setItem("nvapi", apiKey);
     } catch (_) {}
-  });
+  }, { apiKey: NVIDIA_API_KEY, apiUrl: DIRECT_API_URL });
 
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
   await page.waitForTimeout(2000);
+
+  if (renderOnly) {
+    const pageInfo = await page.evaluate(() => {
+      const main = document.querySelector('main');
+      const title = document.title || '';
+      const heading = (document.querySelector('h1') || document.querySelector('h2') || {}).textContent || '';
+      return {
+        title: title.trim(),
+        heading: heading.trim(),
+        hasMain: !!main,
+        flows: document.querySelectorAll('.cf-btn-run').length,
+        panels: document.querySelectorAll('.cf-panel').length,
+        codeBlocks: document.querySelectorAll('pre code, pre').length,
+      };
+    });
+    console.log('PAGE_INFO:', JSON.stringify(pageInfo, null, 2));
+    console.log('PAGE_ERRORS:', JSON.stringify(errors));
+    console.log('RESOURCE_ERRORS:', JSON.stringify(resourceErrors));
+    const significantResourceErrors = resourceErrors.filter(x => !/favicon\.ico/.test(x) && !/integrate\.api\.nvidia\.com\/v1\/models/.test(x));
+    const fail = errors.length > 0 || significantResourceErrors.length > 0 || !pageInfo.hasMain;
+    console.log(fail ? 'RESULT: FAIL (render errors)' : 'RESULT: PASS (static render)');
+    await browser.close();
+    if (staticServer) staticServer.close();
+    process.exit(fail ? 1 : 0);
+  }
 
   // Inject gateway credentials AFTER the probe widget mounts. The widget rewrites
   // the token key to "" on mount, so an addInitScript value gets clobbered; set
@@ -193,15 +331,17 @@ function findChrome() {
   console.log('WS_STATS:', JSON.stringify(ws, null, 2));
 
   const nodeErr = Object.values(nodeStatus).some(v => v.error);
-  const hardFail = errors.length > 0 || nodeErr || !settled;
+  const noFlows = flowCount === 0;
+  const hardFail = errors.length > 0 || nodeErr || !settled || noFlows;
   // If credentials were supplied, the run should have produced tool frames.
   const expectedTools = !!(CLAW_URL && CLAW_TOKEN);
   const toolsMissing = expectedTools && ws.toolStarts.length === 0 && ws.cmdEnds.length === 0;
 
-  if (hardFail) console.log('RESULT: FAIL (errors / unsettled nodes)');
+  if (hardFail) console.log('RESULT: FAIL (errors / unsettled nodes / no flows)');
   else if (toolsMissing) console.log('RESULT: WARN (page green but NO tool/command frames, so the agent loop was not observed)');
   else console.log('RESULT: PASS' + (expectedTools ? ` (${ws.toolStarts.length} tool starts, ${ws.cmdEnds.length} command ends)` : ''));
 
   await browser.close();
+  if (staticServer) staticServer.close();
   process.exit(hardFail ? 1 : 0);
 })().catch(e => { console.error('FATAL:', e.message); process.exit(1); });

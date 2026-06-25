@@ -42,6 +42,7 @@ WRAPPERS = {
     "run_engine.sh": "runtime/run_engine.sh",
     "run_node.sh": "runtime/run_node.sh",
     "test_page_runtime.js": "runtime/test_page_runtime.js",
+    "lab_runtime_test.sh": "runtime/lab_runtime_test.sh",
     "check_figures.mjs": "figures/check_figures.mjs",
     "run_figcheck.sh": "figures/run_figcheck.sh",
     "edx_getting_started.html": "edx/edx_getting_started.html",
@@ -69,6 +70,7 @@ WRAPPERS = {
 
 ROOT_ALLOW = {".gitkeep", "SKILL.html", "_bootstrap.py", *WRAPPERS}
 SKIP_DIRS = {"__pycache__", ".figtools", "git-hooks", "grounding_cache"}
+REQUIRED_RUNTIME_ASSETS = ("runtime/lab-runtime/Containerfile",)
 
 
 def _ok_wrapper(name: str, target: str, text: str) -> bool:
@@ -89,6 +91,9 @@ def findings() -> list[str]:
     for dirname in GROUP_SKILLS:
         if not (SCRIPTS / dirname / "SKILL.html").is_file():
             out.append(f"missing scripts/{dirname}/SKILL.html")
+    for rel in REQUIRED_RUNTIME_ASSETS:
+        if not (SCRIPTS / rel).is_file():
+            out.append(f"missing required runtime asset scripts/{rel}")
     for root_name, target in sorted(WRAPPERS.items()):
         root = SCRIPTS / root_name
         impl = SCRIPTS / target
