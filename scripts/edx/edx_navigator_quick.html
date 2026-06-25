@@ -231,8 +231,7 @@
   var BASE = "https://dli-lms.s3.us-east-1.amazonaws.com/assets/s-fx-43-v1/nemoclaw/";
 
   // Estimated per-page heights captured by scripts/measure_heights.mjs.
-  // PostMessage refines each on first paint. Re-measure when bundles
-  // change shape.
+  // PostMessage refines each height on first paint; re-measure after bundle shape changes.
   var HEIGHTS = {
     "index.html":             3100,
     "01a-loop.html":          7800,

@@ -453,8 +453,7 @@ function connected() {
   return !!(localStorage.getItem("nemoclaw_clawtoken") && (localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl")));
 }
 
-// One operator socket, reused across calls, same handshake openclawChat uses. Every slash query hits
-// the gateway fresh, nothing is cached.
+// Reuse one operator socket; every slash query still hits the gateway fresh.
 let _gw = null;
 function gwUrl() {
   let u = localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl") || "";

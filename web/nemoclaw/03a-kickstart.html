@@ -840,9 +840,7 @@ await new Promise((resolve, reject) => {
     clearTimeout(_idle); clearTimeout(_global); state._chatCb = null;
     if (why) helpers.log(why);
 
-    // On a timeout the run is still alive server-side.
-    // Abort it (fire-and-forget) so it stops burning the agent and leaking
-    // frames into the next turn.
+    // Abort timed-out runs server-side so they stop consuming work and leaking frames.
     if (stalled) {
       helpers.log("⛔ aborting the run on " + sessionKey + " so it does not keep running in the background…");
       state.call("chat.abort", { sessionKey }).catch(() => {});

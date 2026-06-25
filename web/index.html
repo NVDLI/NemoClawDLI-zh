@@ -343,8 +343,7 @@
   }).catch(function () {});
 })();
 
-// Branch preview selector: populated from build-time branches.json. Static Pages cannot
-// ask GitLab for branches at runtime, so missing JSON simply hides the control.
+// Branch preview selector from build-time branches.json; missing JSON hides the static Pages control.
 (function () {
   var box = document.getElementById("branch-switcher");
   var sel = document.getElementById("branch-select");

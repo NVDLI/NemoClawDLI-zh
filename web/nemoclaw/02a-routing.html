@@ -281,8 +281,7 @@
       label: "the Try-it artifact, in code",
       autorun: true,
       code: `// This is the Try-it artifact. Each turn is two calls: one classify call that
-// returns a single category word, then a specialist call in that category's
-// voice. Edit the categories, prompts, or routing, then Run to re-render.
+// returns a category word, then calls the matching specialist. Edit the routes and rerun.
 const SPECIALISTS = {
   billing:   "You are a billing specialist. Answer only billing, payment, and refund questions, crisply.",
   technical: "You are a technical support engineer. Answer setup, error, and how-to questions with concrete steps.",
@@ -763,8 +762,7 @@ const [arithRes, transRes] = await Promise.all([
 helpers.log("[" + arithRes.role + "]", arithRes.reply.slice(0, 200));
 helpers.log("[" + transRes.role + "]", transRes.reply.slice(0, 200));
 
-// helpers.viz.sideBySide renders two text columns. Wrap each reply into
-// short lines so the same factory's two instances sit side by side.
+// Wrap replies before helpers.viz.sideBySide renders the two columns.
 const wrap = (text, width = 52) => {
   const out = [];
   for (const para of String(text).split(/\\n+/)) {

@@ -814,8 +814,7 @@ return state.query;
       showCode: false,
       summary: "Takes the top chunk by cosine and returns its full parent document. The code is collapsed by default because the retrieval step is short and the rest builds score bars and hierarchy cards.",
       code: `// Reading guide: the retrieval happens first: embed the query, score chunks, pick the
-// top hit, then return that hit's parent document. The longer lower half renders the score
-// bars and parent/child cards.
+// top hit, then return that hit's parent document. The lower half renders the score bars and cards.
 const [qv] = await helpers.embed(state.query, {
   model:     "nvidia/llama-nemotron-embed-1b-v2",
   inputType: "query",
@@ -837,8 +836,7 @@ helpers.viz.retrievalBars(
   "Chunk cosine scores · ★ is the single hit",
 );
 
-// Hierarchy as HTML, not a fixed-size SVG: each parent is a card listing its chunks in full
-// (no truncation). We SEARCH the chunks but RETURN the winning chunk's whole parent document.
+// Render hierarchy as HTML cards. Search chunks, then return the winning chunk's parent document.
 const esc = (x) => String(x).replace(/[&<>]/g, c => c === "&" ? "&amp;" : c === "<" ? "&lt;" : "&gt;");
 const cards = state.docs.map((d) => {
   const docChunks = scored.filter(c => c.parent === d.id);
@@ -990,8 +988,7 @@ return { question, k, top_scores: state.retrieved.map(r => r.score.toFixed(3)) }
       summary: "The second LLM call, made after the tool message is appended. The model now has the original user question alongside the retrieved passages and can write a grounded answer rather than relying on its training knowledge alone.",
       code: `// Handle the tool-call result from the previous model turn.
 if (state.skipped) return state.s1.content || "(model answered directly but produced no text; raise max_tokens)";
-// No tools here on purpose: the model must synthesize from the retrieved
-// passages, not ask to retrieve again.
+// No tools here: the model must synthesize from retrieved passages.
 state.s2 = await helpers.chatStream({
   messages:   state.messages,
   max_tokens: 8196,

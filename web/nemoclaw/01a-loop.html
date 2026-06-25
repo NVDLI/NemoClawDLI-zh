@@ -715,9 +715,8 @@ const CORRIDOR = ["###################","#S...............G#","#################
 // A fixed heading is enough on a straight corridor, so 'always east' walks it straight to the goal.
 const corrR = await animRun(CORRIDOR, findCell(CORRIDOR,'S'), findCell(CORRIDOR,'G'), () => 'east', 40, corrId, 55);
 
-// The same fixed heading cannot navigate the maze. It walks east until a wall stops it and then has
-// nowhere to go: a constant rule has no way to turn. That dead stop is the reason the reasoner nodes
-// below swap a real search routine into the very same slot.
+// A fixed heading stalls in the maze because it cannot turn after the first wall.
+// The reasoner nodes below swap a real search routine into the same slot.
 async function animStall(grid, start, goal, dir, elId, msPerStep) {
   let pos = [...start]; const visited = [[...pos]]; let moves = 0;
   for (;;) {
@@ -1039,8 +1038,7 @@ state.SYS_REFERENCE = [
 state.SYS = state.SYS_DIRECTIVE + "\\n\\n" + state.SYS_REFERENCE;
 
 // Model choices for this tool-calling maze task; every entry supports tool calls.
-// Image-capable entries are marked below. Pick one in runMaze by key,
-// e.g. state.runMaze(helpers, state, { model: "vision" }).
+// Image-capable entries are marked below; pass one key to runMaze, e.g. { model: "vision" }.
 state.MAZE_MODELS = {
   omni: {
     id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", maxTok: 2048, temp: 0.6,

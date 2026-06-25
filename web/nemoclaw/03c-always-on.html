@@ -303,8 +303,7 @@ const TOTAL_TIMEOUT_S = 240;         // hard ceiling for the whole turn
 // ──────────────────────────────────────────────────────────────────────────────
 helpers.log("→ " + message);
 
-// The exec/tool steps arrive as event:"agent" frames, forwarded ONLY to sockets
-// subscribed to this session. Subscribe once per session, then send the turn.
+// Agent frames go only to sockets subscribed to this session; subscribe before sending the turn.
 if (!state._subs) state._subs = {};
 if (!state._subs[sessionKey]) {
   await state.call("sessions.messages.subscribe", { key: sessionKey });
@@ -339,8 +338,7 @@ await new Promise((resolve, reject) => {
   function finish(why, stalled) {
     clearTimeout(_idle); clearTimeout(_global); state._chatCb = null;
     if (why) helpers.log(why);
-    // On a timeout the run is still alive server-side. Abort it (fire-and-forget)
-    // so it stops burning the agent and leaking frames into the next turn.
+    // Abort timed-out runs server-side so they stop consuming work and leaking frames.
     if (stalled) {
       helpers.log("⛔ aborting the run on " + sessionKey + " so it does not keep running in the background…");
       state.call("chat.abort", { sessionKey }).catch(() => {});
@@ -357,9 +355,8 @@ await new Promise((resolve, reject) => {
     // Ignore them so they never reset the idle timer (a stalled run emits only
     // heartbeats and must still time out).
     if (pl.isHeartbeat || d.event === "health" || d.event === "tick") return;
-    // One sessionKey can have several runs. The gateway forwards them ALL, so lock
-    // onto the runId our chat.send returned and drop the rest. Do this before
-    // bumpIdle, or a stale run's chatter would mask a real stall.
+    // One sessionKey can have several runs; keep only this runId before bumpIdle.
+    // Otherwise stale frames can mask a real stall.
     if (_myRun && pl.runId && pl.runId !== _myRun) return;
     bumpIdle();   // real activity on OUR run pushes the idle deadline back
     if (d.event === "chat" && pl.state === "final") {
@@ -395,8 +392,7 @@ await new Promise((resolve, reject) => {
       finish();
     }
    } catch (e) {
-    // A throw inside a WS frame handler is otherwise swallowed silently, which
-    // looks exactly like a hang. Surface it so the failure is visible, not hidden.
+    // Surface WS handler errors; swallowed exceptions look like hangs.
     helpers.log("⚠ frame-handler error: " + (e && e.message ? e.message : e));
    }
   };

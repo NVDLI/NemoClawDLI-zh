@@ -321,8 +321,7 @@ log("finish_reason:", r1.choices[0].finish_reason);   // "stop" means the answer
 log(r1.choices[0].message.content || "(used its whole budget thinking; raise max_tokens)");
 
 // Call 2 · offer one tool and ask for something the model cannot know from training data.
-// It cannot run the tool itself, so instead of stopping it asks YOUR code to run it. This spec is
-// just a preview; the next sections build and run the tool wiring properly.
+// The model cannot run the tool itself; this preview asks your code to run it.
 const TOOLS = [{
   type: "function",
   function: {
@@ -475,8 +474,7 @@ const SYSTEM  =
 const agents = {};
 function getAgent(model) {
   if (!agents[model]) {
-    // The OpenAI SDK adds x-stainless-* platform headers that the CORS proxy
-    // rejects in preflights. Strip them with a custom fetch wrapper.
+    // Strip OpenAI SDK x-stainless-* headers before CORS preflight.
     const _fetchNoStainless = (url, init) => {
       if (init && init.headers) {
         const h = init.headers instanceof Headers ? init.headers : new Headers(init.headers);
@@ -522,8 +520,7 @@ helpers.mountChatUI(document.getElementById("react-artifact"), {
     const messages = [];
     if (ctx.turn === 0) {
       messages.push({ role: "system", content: SYSTEM });
-      // Pin every page selected with the "Pages" chips (multi-select). The whole
-      // page is pinned, and the whole page is what the chip shows; expand it.
+      // Pin each selected page in full so the chip reflects the actual context.
       for (const id of ctx.modules) {
         const body = await helpers.coursePage(id);
         ctx.view.tool("pinned " + id + " · " + helpers.estimateTokens(body) + " tok", body);
@@ -550,8 +547,7 @@ helpers.mountChatUI(document.getElementById("react-artifact"), {
       const chunk = Array.isArray(part) ? part[0] : part;
       const meta  = Array.isArray(part) ? part[1] : null;
       const node  = meta && meta.langgraph_node;
-      // tool RESULT (the full page text, or an error) comes back on the "tools"
-      // node → its own chip. A failed read is shown as failed, not hidden.
+      // Tool results get their own chip, including failed reads.
       if (node === "tools" && chunk.tool_call_id && byId[chunk.tool_call_id]) {
         const c = byId[chunk.tool_call_id];
         c.body.textContent = String(chunk.content);

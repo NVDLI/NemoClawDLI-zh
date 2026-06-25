@@ -631,8 +631,7 @@ const policy = window.__SBX_POLICY;
 if (!policy) { helpers.log("Run the 'Read your launchable's live policy' cell above first, so this predicts from YOUR box's policy."); return; }
 
 // The candidate action comes from the buttons above the cell (window.__sbxAction).
-// A network attempt is { binary, host, port, method?, path? }; the default is curl to
-// example.com:443. You can also edit this line to try your own.
+// A network attempt is { binary, host, port, method?, path? }; edit this default to try another target.
 const action = window.__sbxAction || { binary: "/usr/bin/curl", host: "example.com", port: 443 };
 // evalSandboxNetwork runs the same allow/deny rule evaluation OpenShell's proxy uses, now over
 // YOUR live policy, so the confirm node can check this verdict against the live kernel.

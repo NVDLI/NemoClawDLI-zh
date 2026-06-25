@@ -8,8 +8,7 @@
 const API_URL = "https://integrate.api.nvidia.com/v1";
 const IFRAME_PROXY_URL = "https://nvidia-api-cors-proxy.vkudlay.workers.dev/v1";
 const IFRAME_PROXY_OPT_IN_KEY = "nemoclaw_iframe_proxy_opt_in";
-// Billing attribution is sent on both direct and iframe-proxy calls. The hosted
-// worker must allow and forward it; build.nvidia.com also accepts it directly.
+// Billing attribution is sent on direct and iframe-proxy calls.
 const BILLING_SOURCE = "dli-nemoclaw-web";
 // Web-cell model contract: the short course uses the fast reasoning-capable Nemotron nano.
 // DEFAULT_MODEL is chat()'s fallback when a cell passes no model. REASONING_MODEL is the
@@ -115,8 +114,7 @@ export function setKey(k) { localStorage.setItem("nvapi", k.trim()); }
 export function hasKey() { return !!getKey(); }
 
 // The OpenAI JS SDK (what ChatOpenAI uses) attaches x-stainless-* headers.
-// Some browser hosts reject these headers during preflight. This wrapper strips them;
-// pass it as configuration.fetch when constructing ChatOpenAI.
+// Strip x-stainless-* headers for browser hosts that reject them during preflight.
 export function browserChatFetch() {
   /* @doc <code>helpers.browserChatFetch()</code> ::
        Returns a <code>fetch</code> that strips the OpenAI SDK's <code>x-stainless-*</code>

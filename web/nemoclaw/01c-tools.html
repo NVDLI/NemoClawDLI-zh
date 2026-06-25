@@ -653,8 +653,7 @@ const messages = [
 const s1   = await chatStream({ messages, tools: SEARCH_SCHEMA, tool_choice: { type: "function", function: { name: "glossary_search" } }, max_tokens: 8196 });
 const args = JSON.parse(s1.tool_calls[0].function.arguments || "{}");
 
-// Richer backend: fetch the whole article, not the blurb. Falls back gracefully for a term that has
-// no cached full page (only the "deep" terms have one).
+// Fetch the full article when cached; shallow glossary terms fall back to their blurb.
 const article = await glossaryFull(args.query || "");
 const toolMsg = article ? article.body : "(no full article cached for that term)";
 
