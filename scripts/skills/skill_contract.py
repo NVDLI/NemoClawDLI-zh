@@ -42,11 +42,7 @@ TASK1 = sa.TASK1
 _SEMVER = re.compile(r"^\d+\.\d+\.\d+([.\-+].*)?$")
 _STATUS = {"ready", "setup", "wip", "ref"}
 
-# ── The de-facto contract, one entry per kind. (required keys, the field that labels it) ──
-# A meta is classified by `schema` first, then `node_type`. Required keys are the intersection
-# observed across every shipped beacon of that kind, so a conformant tree is green and a dropped
-# key is a finding. `label_any` lists keys of which AT LEAST ONE must be present (the human name:
-# hubs carry either `title` or `course`).
+# Contract matrix: classify by schema/node_type and require stable beacon keys.
 KINDS = {
     "service-skill/1.0":   {"req": ["schema", "service", "address", "source_dir", "summary",
                                     "interfaces", "tests", "title", "version"], "label_any": []},

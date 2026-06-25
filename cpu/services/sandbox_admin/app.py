@@ -124,13 +124,7 @@ def policy_reload(body: dict = Body(...)) -> Response:
     if do_restart and _docker_client is not None:
         try:
             container = _docker_client.containers.get(TARGET)
-            # Synchronous stop+start. We do it manually rather than
-            # container.restart() because we want fast stop semantics
-            # (openclaw doesn't gracefully terminate on SIGTERM; let it
-            # SIGKILL after 5s instead of the default 30s wait), and we
-            # want callers to know the container is actually back when
-            # the response returns. The gateway inside still needs ~10s
-            # to be ready, so callers should also poll the gateway URL.
+            # Manual stop/start gives fast SIGKILL fallback and returns after the container is back.
             container.stop(timeout=5)
             container.start()
             reload_effected = "restarted"
@@ -193,12 +187,7 @@ _ALLOWED_ARGV0 = frozenset({
     "ps", "stat", "head", "tail", "wc", "echo",
 })
 
-# `openclaw` is the in-sandbox control CLI (the openshell runtime). We expose
-# ONLY its read-only introspection verbs, matched as exact subcommand-path
-# prefixes, so a student can ask "what is configured in here?" through the same
-# bounded channel without ever reaching a verb that mutates state (config set,
-# exec-policy set, cron add/rm, doctor, agent, gateway run, …). The reachable
-# openclaw surface is exactly the verbs listed in the tuple below.
+# Expose only read-only openclaw introspection verbs through this bounded channel.
 _ALLOWED_OPENCLAW = (
     ("status",),
     ("health",),

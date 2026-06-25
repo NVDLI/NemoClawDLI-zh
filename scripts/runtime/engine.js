@@ -1,25 +1,5 @@
 "use strict";
-/*
- * engine.js: the SINGLE link-graph engine for the task1 bundle.
- *
- * One implementation, two runtimes:
- *   - BROWSER: scripts/runtime/link_graph.html loads this and computes the graph live from the
- *     JupyterLab contents API (the viewer is what humans + agents actually read).
- *   - NODE:    `node scripts/runtime/engine.js --check | --self-test | --graph PATH | --embed`
- *     runs the exact same code headless for CI (pre-push, the DGX watcher). The dli
- *     volume is bind-mounted to the host tree, so the lab container's node sees the same
- *     files being pushed; the CI wrapper resolves `node` on PATH, else `docker exec` lab.
- *
- * It REPLACES the python link_projection.py graph engine. There is no second engine to
- * drift from: resolution, crawl, graph, reachability, the foyer contract, and the
- * self-test all live here. v12-compatible (no optional chaining / nullish coalescing),
- * since the lab container ships node v12.
- *
- * Models how a WRITTEN link projects through the deploy "compiler": nginx routes +
- * redirects, Jupyter extra_static_paths, the dli bind, docker-compose topology, down to a
- * physical repo-relative file or a service. Paths are repo-relative throughout (rooted at
- * task1), which is what the browser already works in.
- */
+/* Link-graph engine for browser viewer and Node gates. Keep Node v12-compatible. */
 (function (root, factory) {
   if (typeof module !== "undefined" && module.exports) module.exports = factory();
   else root.LinkEngine = factory();
@@ -30,24 +10,14 @@
   var PAGE_EXT = [".md", ".ipynb", ".html", ".htm"];
   var ASSET_EXT = [".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico", ".css", ".js",
     ".mjs", ".woff", ".woff2", ".ttf", ".mp4", ".webm", ".json", ".pdf"];
-  // The crawl boundary: which directories are NOT a source of navigable pages. This is by KIND,
-  // not by which course a path belongs to (the page extension and reachability decide everything
-  // about content; this only keeps non-source bytes out of the candidate set):
-  //   - dependency / build / cache dirs that recur in any repo (node_modules, __pycache__, the
-  //     dot-prefixed tool caches, dist/build/venv);
-  //   - generated output this bundle writes and gitignores (export, standalone, grounding_cache,
-  //     docs/validation), all regenerated, never authored, surfaced live through the gate report;
-  //   - service seed data (skills-seed: the openclaw agent's own SKILL.md skill definitions),
-  //     which the service loads at runtime and is not part of the course's navigable graph.
-  // It is deliberately NOT a list of "these course dirs are assets"; that assumption is gone.
+  // Crawl boundary: skip generated, dependency, cache, and service-seed dirs.
+  // Course ownership comes from page reachability, not from this skip list.
   var SKIP_DIR = setOf(["__pycache__", ".ipynb_checkpoints", ".pytest_cache", ".jupyter",
     "node_modules", ".figtools", "export", "standalone", "dist", "build", "venv", ".venv",
     "skills-seed", "grounding_cache", "validation", ".git", ".cache",
     "i18n"]);   // staged translation content (a copy of web/), not part of the source graph
 
-  // mats are the curated reference layer, now COURSE-SCOPED under web/nemoclaw/mats/ (no longer
-  // a top-level peer). They are recognized by the "mats" path SEGMENT anywhere in the path, not
-  // by a top-level dir. MAT_REL is the canonical repo-relative location of the packets.
+  // mats are course-scoped reference packets; detect the path segment, not a top-level dir.
   var MAT_REL = "web/nemoclaw/mats";
   function isMatPath(r) { return r.split("/").indexOf("mats") >= 0; }
 
@@ -58,8 +28,8 @@
   // Release contract: the courses the release foyer (web/index.html) may surface.
   var RELEASED = ["nemoclaw"];
 
-  // mats now live UNDER web/ (already a crawl root that recurses), so "mats" is no longer a
-  // separate top-level crawl root or shared TOPDIR. It is still shared infra, detected by segment.
+  // mats now live UNDER web/ (already a crawl root that recurses), so "mats" is no longer a separate top-level crawl root or shared TOPDIR.
+  // It is still shared infra, detected by segment.
   var SHARED_SUBDIRS = setOf(["mats", "repos", "services"]);
   var SHARED_TOPDIRS = setOf(["repos", "scripts", "docs"]);
   var CRAWL_TOP = ["web", "cpu", "docs", "scripts"];
@@ -91,8 +61,7 @@
     if (parts.length < 2) return "_shared";
     if (parts[parts.length - 1] === "SKILL.html" && parts.length <= 2) return "_shared";
     if (parts[0] === "docs") return "_shared";
-    // mats are the shared reference layer wherever they sit (now under web/nemoclaw/mats/),
-    // so a mats path classifies as _shared, not as the enclosing course.
+    // mats classify as shared reference packets, not as the enclosing course.
     if (isMatPath(p)) return "_shared";
     if (parts[0] === "web" || parts[0] === "cpu") {
       if (has(SHARED_SUBDIRS, parts[1])) return "_shared";
@@ -118,18 +87,14 @@
   function navSource(rel) {
     var parts = rel.split("/").filter(function (x) { return x; });
     var base = lc(parts.length ? parts[parts.length - 1] : "");
-    // bundle-root files (README.md, SKILL.html, AGENT_QUICKSTART.md, ...) are bundle-level
-    // indexes: they may reference any course. The isolation rule is course<->course.
+    // Bundle-root indexes may reference any course; isolation applies course-to-course.
     if (parts.length === 1) return true;
     if (["skill.html", "courses.html", "index.html"].indexOf(base) >= 0) return true;
     if (parts.indexOf("mats") >= 0) return true;
     return false;
   }
 
-  // Structural only: a page is a graph node unless some path segment is "private" (leading
-  // underscore: _shared, _tools, a leading-underscore file). No list of which dir names are
-  // "assets" or "relevant" (that overfits to whatever courses happened to exist); the page
-  // extension already decides page-vs-asset, and reachability decides connectedness.
+  // Structural rule: underscore path segments are private; page extension decides page-vs-asset.
   function graphNavigable(rel) {
     var parts = rel.split("/");
     for (var i = 0; i < parts.length; i++) if (parts[i].charAt(0) === "_") return false;
@@ -162,12 +127,7 @@
     return host.indexOf(".") >= 0;
   }
 
-  // A materials index (the *_materials.json / *materials_index.json / *glossary_index.json a page
-  // fetches) is the manifest of the reference packets that page surfaces. A page that loads one is,
-  // in effect, citing every source URL the index lists, so we fold those URLs into the page's
-  // citation set. Citation-sharing then connects each listed packet (every mat carries its own
-  // source URL) to the page that surfaces it. This is the materials mechanism's real structure,
-  // not a "mats/ is special" path assumption: a packet no index names stays an honest stray.
+  // Materials indexes expose source URLs; shared citations connect pages to packets.
   function collectUrls(node, out) {
     if (node == null) return;
     if (typeof node === "string") { if (/^https?:\/\//.test(node)) out.push(node); return; }
@@ -434,10 +394,7 @@
           tr = (alt && has(pset, alt)) ? alt : tr;
         }
         if (!tr || !has(pset, tr)) {
-          // dead ONLY for a missing NAVIGABLE content page. A target under a skipped/build dir
-          // (standalone/, node_modules, ...) or a private path (leading-underscore segment) is
-          // outside the graph by the same structural rule graphNavigable uses, so node (fs) and
-          // the browser (crawl pageset) agree to SKIP it rather than flag it dead.
+          // Only missing navigable content is dead; skipped/private paths stay outside the graph.
           if (r.kind === "static_file" && !r.exists && /\.(html?|md|ipynb)$/.test(r.physical || "") && graphNavigable(r.physical)) dead.push({ from: rel, to: r.physical || m });
           continue;
         }
@@ -502,12 +459,7 @@
       var iu = indexCitations(proj, rel, raw);
       for (var z = 0; z < iu.length; z++) { var cz = normUrl(iu[z]); if (isCitation(cz)) { if (!ext[rel]) ext[rel] = {}; ext[rel][cz] = 1; } }
     }
-    // A reference packet (mats/) is never linked; its real structural tie to the course is the
-    // external citation URL it shares with a page that cites the same source. Treat that shared
-    // citation as a (bidirectional) connection, exactly as the graph view draws it, so a packet
-    // inherits reachability from the content it documents. This replaces any "these directories
-    // are expected to be detached" assumption: a page is reachable iff it is actually connected,
-    // by a link or by a citation it genuinely shares.
+    // Reference packets inherit reachability through real shared citations.
     var url2mat = {}, url2content = {};
     for (var rel2 in ext) { if (!has(ext, rel2)) continue; var tgt = isMat(rel2) ? url2mat : url2content; for (var u2 in ext[rel2]) { if (!tgt[u2]) tgt[u2] = {}; tgt[u2][rel2] = 1; } }
     for (var u3 in url2mat) { if (!has(url2content, u3)) continue; for (var cc in url2content[u3]) for (var mt in url2mat[u3]) { adjO[cc][mt] = 1; adjI[mt][cc] = 1; adjO[mt][cc] = 1; adjI[cc][mt] = 1; } }
@@ -622,23 +574,14 @@
     return out;
   }
 
-  // ── per-page drift audit (every .html auto-verifies against the same engine) ──
-  // Detects, for EACH .html in the tree: stale tokens (course code + deprecated paths that
-  // should never appear in the content root), missing local assets (img/css/js it loads),
-  // and contract drift (skill-meta children that no longer resolve; a foyer-release block
-  // that disagrees with RELEASED). This is the tree-wide "is this page up to date" check; it
-  // runs in CI (--audit) and the in-page self-tests call the same rules in the browser.
-  // Only patterns that are UNAMBIGUOUSLY stale anywhere in the content root. SKILL.md stays
-  // off this list because agent-skills legitimately use it; flagging it would be a false
-  // positive, and a noisy detector is worse than none.
+  // Per-page drift audit: stale tokens, missing local assets, and skill-meta contract drift.
   var STALE_TOKENS = [
     { re: /s-fx-43-v1/, why: "course code is an above-task1 wrapper detail; never name it in the content root",
-      // the DLI-LMS navigator addresses the course's hosted assets by their dli-lms S3 path, which
-      // carries the course code; there it is the functional deployment URL, not a leaked detail.
+      // DLI-LMS asset URLs legitimately carry the course code.
       exceptFile: /(^|\/)edx_navigator_quick\.html$/ },
     { re: /archived_courses\//, why: "archived_courses is removed" },
     { re: /\bscaffold\//, why: "scaffold was removed; task1 is canonical" },
-    { re: /workspace\/build_agents\//, why: "pre-migration path for a course no longer in this release; flag any regression that reintroduces it" }
+    { re: new RegExp("workspace/build_agents/"), why: "removed pre-migration path" }
   ];
   var AUDIT_ASSET_EXT = [".css", ".js", ".mjs", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico"];
 
@@ -803,8 +746,7 @@
       var block = (scope === "all") ? (s.failures + s.asset_leaks + s.cross_course) : (s.blocking_failures + s.blocking_asset_leaks + s.blocking_cross_course);
       if (block) rc = 1;
     }
-    // set exitCode (do NOT process.exit) so large stdout writes (e.g. --graph-json) fully
-    // drain to the pipe before node exits; process.exit() truncates at the pipe buffer.
+    // Set exitCode so large stdout writes drain before Node exits.
     process.exitCode = rc;
   }
 

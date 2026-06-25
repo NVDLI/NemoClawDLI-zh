@@ -34,12 +34,7 @@ HERE = Path(__file__).resolve().parent
 TASK1 = HERE.parent.parent                       # scripts/translate -> scripts -> content root
 MARKER = HERE / "translation_base.json"
 
-# Prose the reader sees lives under web/ (the served course, the foyer, the slides, the mats
-# companions, and the human text of the web SKILL hubs). Translate it. Everything else is carried
-# verbatim so the code and the skill-meta contract never fork: that includes agent/dev docs
-# (CLAUDE.md, AGENT_QUICKSTART.md), the service SKILL beacons, and all scripts. A web SKILL.html is
-# prose-bearing BUT its skill-meta JSON block stays identical to the source; the SKILL.html here
-# documents that split. Classification is by extension + path, which is all the file-level view needs.
+# Translate reader-facing web prose only; keep code, metadata, and agent docs verbatim.
 TRANSLATE_EXT = {".html", ".md"}
 TRANSLATE_ROOT = "web/"                          # reader-facing content only; dev docs stay English
 # Paths that never carry reader prose even under web/ (generated data / binary assets).

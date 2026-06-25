@@ -535,13 +535,11 @@
 
     // ── derived model (recomputable) ──────────────────────────────────────────
     let N, byId, E, adjOut, adjUnd, adjIn, courses, courseColor, comp, compInfo, reach, strayInfo, issueMembers, root;
-    // mat overlay (opt-in 'mat links' toggle): page -> the mats it shares a citation
-    // URL with, from the last cadence run (docs/validation/mat_association.json).
+    // Optional mat overlay links pages to mats with shared citations.
     const MAT_ASSOC = { "web/nemoclaw/index.html": ["developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md"], "web/index.html": ["developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md"], "web/nemoclaw/01a-loop.html": ["developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md"], "web/nemoclaw/01b-react.html": ["agentic_equilibrium.md"], "web/nemoclaw/01c-tools.html": ["agentic_equilibrium.md"], "web/nemoclaw/02a-routing.html": ["agentic_equilibrium.md"], "web/nemoclaw/02b-rag.html": ["agentic_equilibrium.md"], "web/nemoclaw/02c-deep.html": ["agentic_equilibrium.md", "module-deep-research.html", "nemoclaw-brev-dashboard.html"], "web/nemoclaw/03a-kickstart.html": ["agentic_equilibrium.md", "developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md"], "web/nemoclaw/03b-openclaw.html": ["agentic_equilibrium.md"], "web/nemoclaw/03c-always-on.html": ["agentic_equilibrium.md"], "web/nemoclaw/04a-safety.html": ["agentic_equilibrium.md"], "web/nemoclaw/04b-modern-clis.html": ["agentic_equilibrium.md", "developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md"], "web/nemoclaw/04c-going-further.html": ["agentic_equilibrium.md", "developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md", "module-deep-research.html", "nemoclaw-brev-dashboard.html"], "cpu/services/00_hermes.md": ["build-nvidia-com-spark-nemoclaw-instructions.md"], "web/nemoclaw/mats/agentic_equilibrium.md": ["agentic_equilibrium.md"], "web/nemoclaw/mats/agentic_safety_in_production.md": ["agentic_safety_in_production.md", "module-nemoclaw.html"], "web/nemoclaw/mats/build-nvidia-com-spark-hermes-agent-overview.md": ["build-nvidia-com-spark-hermes-agent-overview.md", "build-nvidia-com-spark-nemoclaw-applications.md", "build-nvidia-com-spark-nemoclaw-instructions.md"], "web/nemoclaw/mats/build-nvidia-com-spark-nemoclaw-applications.md": ["build-nvidia-com-spark-hermes-agent-overview.md", "build-nvidia-com-spark-nemoclaw-applications.md", "build-nvidia-com-spark-nemoclaw-instructions.md", "developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md", "module-nemoclaw.html", "nemoclaw-brev-overview.html"], "web/nemoclaw/mats/build-nvidia-com-spark-nemoclaw-instructions.md": ["build-nvidia-com-spark-hermes-agent-overview.md", "build-nvidia-com-spark-nemoclaw-applications.md", "build-nvidia-com-spark-nemoclaw-instructions.md", "developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md", "module-nemoclaw.html", "nemoclaw-brev-overview.html"], "web/nemoclaw/mats/developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md": ["developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md", "module-nemoclaw.html"], "web/nemoclaw/mats/module-deep-research.html": ["module-deep-research.html", "module-nemoclaw.html"], "web/nemoclaw/mats/module-nemoclaw.html": ["agentic_safety_in_production.md", "build-nvidia-com-spark-nemoclaw-applications.md", "build-nvidia-com-spark-nemoclaw-instructions.md", "developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md", "module-deep-research.html", "module-nemoclaw.html", "nemoclaw-brev-overview.html"], "web/nemoclaw/mats/nemoclaw-brev-dashboard.html": ["nemoclaw-brev-dashboard.html"], "web/nemoclaw/mats/nemoclaw-brev-onboard.html": ["nemoclaw-brev-onboard.html"], "web/nemoclaw/mats/nemoclaw-brev-overview.html": ["build-nvidia-com-spark-nemoclaw-applications.md", "build-nvidia-com-spark-nemoclaw-instructions.md", "developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md", "module-nemoclaw.html", "nemoclaw-brev-overview.html"] };
     const MAT_COLOR = "#56d4c0";
     const BRIDGE_COLOR = "#ff8c42";
-    // mats are course-scoped under web/nemoclaw/mats/; the overlay node id is that path + basename,
-    // so a synthesized overlay node matches the real mat node id from the engine graph.
+    // Overlay mat node ids match engine graph mat ids.
     const MAT_PREFIX = "web/nemoclaw/mats/";
     function build() {
       courses = [...new Set(DATA.nodes.map(n => n.course))].sort();
@@ -556,8 +554,7 @@
       });
       byId = new Map(N.map(n => [n.id, n]));
       E = DATA.edges.filter(e => byId.has(e.f) && byId.has(e.t)).map(e => ({ s: byId.get(e.f), d: byId.get(e.t), x: e.x, sk: e.s }));
-      // mat overlay (opt-in): one node per referenced mat + page->mat association edges, kept
-      // OUT of E/adjacency so components/reachability/depth are unaffected.
+      // Mat overlay stays out of adjacency so reachability does not change.
       EM = [];
       {
         const matIds = [...new Set(Object.values(MAT_ASSOC).flat())];
@@ -614,14 +611,10 @@
         const reason = !ci.hasSkill ? "detached cluster (component has NO SKILL hub)"
           : n.in === 0 ? "no inbound links; nothing points here"
             : "only upward/sideways links; no SKILL→…→here directed path";
-        // A navigable page not reachable from a SKILL hub is a real navigation gap. There is no
-        // "expected to be detached" class: reference packets (mats) are non-navigable (n.nav is
-        // false, skipped above) and join the graph by the citations they share with content, so a
-        // page that reaches strayInfo is genuinely disconnected.
+        // Navigable pages outside SKILL reachability are real navigation gaps.
         strayInfo.set(n, { reason: reason });
       }
-      // hierarchy DEPTH from the root SKILL (task hub) drives the radial layout: depth 0 at
-      // the centre, each level pushed one ring further out. BFS over directed (hierarchy) edges.
+      // Hierarchy depth from the root SKILL drives radial rings.
       root = byId.get("SKILL.html") || N.find(n => n.skill) || null;
       N.forEach(n => n.depth = Infinity);
       if (root) {
@@ -630,15 +623,11 @@
       }
       let maxd = 0; N.forEach(n => { if (isFinite(n.depth)) maxd = Math.max(maxd, n.depth); });
       N.forEach(n => { if (!isFinite(n.depth)) n.depth = maxd + 1; });   // hierarchy-unreachable → outermost ring
-      // CROSS-CUTTING nodes: real-edge neighbours span >=2 distinct non-shared course clusters
-      // (a service linked from many courses, a cross-course page). These get super-elastic
-      // springs and are flung to the outer ring so they stop pulling clusters together.
+      // Cross-cutting nodes span course clusters and move to the outer ring.
       maxDepth = maxd;
       const _shared = new Set(["_shared", "·mats"]);
       const _cang = c => courses.indexOf(c) / Math.max(1, courses.length) * Math.PI * 2;
-      // bundle-level navigation/docs are cross-cutting BY DESIGN (every course hub links back to
-      // the picker + agent docs); they belong on their shallow depth ring near the root, NOT on
-      // the outer bridge ring. Only services + cross-course CONTENT pages get flung outward.
+      // Bundle nav/docs stay near the root; only services and cross-course content move outward.
       const _navDoc = n => {
         const b = n.id.split("/").pop();
         return n.skill || n.id.indexOf("/") < 0 || n.id.indexOf("docs/") === 0
@@ -653,12 +642,9 @@
           _xs.push([n, Math.atan2(ss, sc)]);
         }
       }
-      // spread cross-cutting nodes EVENLY around the outer ring, ORDERED by the clusters they
-      // bridge: a uniform angular distribution, so the outer ring is a full loop, never a line.
+      // Spread cross-cutting nodes evenly around the outer ring.
       _xs.sort((a, b) => a[1] - b[1]); _xs.forEach(([n], k) => n.bridgeAngle = k / Math.max(1, _xs.length) * Math.PI * 2);
-      // RADIAL RING per node. Course content shares ONE ring (its course hub depth + 1) so a
-      // course's pages cluster at a single level instead of scattering by per-page link depth
-      // (the floaters). Hubs keep their hierarchy depth; the root holds the centre.
+      // Course pages share one ring; hubs keep hierarchy depth.
       const hubDepth = {};
       for (const n of N) { if (n.skill) hubDepth[n.course] = Math.min(hubDepth[n.course] ?? 99, n.depth); }
       N.forEach(n => {
@@ -714,20 +700,13 @@
 
     // ── force layout ──────────────────────────────────────────────────────────
     let heat = 1, hl = null, drag = null, raf = null;
-    // Schedule a redraw. The loop runs only while WARM or interacting, then parks itself
-    // (raf=null) so a settled graph costs zero CPU. Any interaction calls kick() to wake it.
+    // Run redraws only while warm or interacting.
     function kick(h) { if (h != null) heat = Math.max(heat, h); if (raf === null) raf = requestAnimationFrame(draw); }
     function tick() {
-      // BOUNDED force layout. The old code used f=K/d2 with d2 floored at only .01, so two
-      // nodes seeded near each other produced f≈90,000 → velocities → Infinity → the tab hung
-      // before it ever cooled. Now: distance is floored (MIND2), repulsion is capped (MAXF),
-      // velocity is clamped (MAXV), and a NaN guard resets any node that still escapes.
+      // Bounded force layout caps distance, force, and velocity to avoid runaway nodes.
       if (heat < .02) return false;
       const K = 900, MAXF = 30, MAXV = 22, MIND2 = 100, CELL = 220;
-      // SPATIAL-GRID repulsion: repel each node only against nodes in its own + 8 neighbouring
-      // cells. Repulsion is negligible past ~CELL px (f=K/d² caps out), so this is visually
-      // identical to all-pairs but turns the old O(N²) (~54k iters/frame at 330 nodes, the main
-      // source of jank/crashes) into ~O(N). Each pair is applied once via the n._i>i guard.
+      // Spatial-grid repulsion approximates all-pairs at near-linear cost.
       const live = n => !(n.isMat && !F.matLinks);   // hidden mat nodes take no part in the force
       const grid = new Map(), LN = [];
       for (let i = 0; i < N.length; i++) {
@@ -749,9 +728,7 @@
           }
         }
       }
-      // link springs: cross-cutting nodes get SUPER-ELASTIC (weak + long) springs so a shared
-      // service stops dragging two clusters together; intra-cluster links stay stiff. Bridges
-      // are dropped entirely when 'hide bridges' is on.
+      // Weak cross-cutting springs keep shared services from pulling clusters together.
       const isBridge = e => colorKey(e.s) !== colorKey(e.d);
       for (const e of E) {
         if (F.hideBridges && isBridge(e)) continue;
@@ -765,15 +742,7 @@
         const d = Math.sqrt(d2), f = (d - 130) * .012, ux = dx / d, uy = dy / d;
         e.s.vx += ux * f; e.s.vy += uy * f; e.d.vx -= ux * f; e.d.vy -= uy * f;
       }
-      // colour-cluster gravity: each node drifts toward the centroid of its OWN colour group
-      // (same course / reachability / component), so like colours attract and the global
-      // repulsion keeps unlike colours apart. Weak vs the radial spring, so depth still sets the
-      // RADIUS and colour mostly sets the ANGLE. Every group settles into its own wedge.
-      // RADIAL layout: DEPTH sets the RADIUS, with the root at the centre and one ring further out per
-      // directory step ("1 removed", "2 removed", ...). COURSE sets a uniformly-spaced wedge
-      // ANGLE; the strong repulsion then spreads nodes WITHIN the wedge so each ring fills a
-      // FULL loop instead of collapsing into a line. Cross-cutting nodes are flung to the OUTER
-      // ring (their links are already super-elastic) so they never pull clusters together.
+      // Radial gravity sets depth by radius and course grouping by angle.
       const STEP = 185, KR = .05, KTH = 1.7, ROUT = (maxDepth + 2) * STEP, RMAT = (maxDepth + 3.4) * STEP, nc = Math.max(1, courses.length);
       N.forEach(n => {
         if (n === drag) { n.vx = n.vy = 0; return; }
@@ -784,8 +753,7 @@
           // radius: mats outermost ring, bridges on the outer ring, everything else on its course ring
           const rt = n.isMat ? RMAT : n.xcut ? ROUT : (n.ring || 1) * STEP;
           const pull = (rt - r) * KR; n.vx += (n.x / r) * pull; n.vy += (n.y / r) * pull;
-          // tangential pull spreads each ring around the FULL loop (not a line): course nodes
-          // toward their course wedge; bridges and mats toward evenly-spaced slots on their ring.
+          // Tangential pull spreads each ring around a full loop.
           const ta = n.isMat ? (n.matAngle || th) : n.xcut ? (n.bridgeAngle || th) : courses.indexOf(n.course) / nc * Math.PI * 2;
           let d = ta - th; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
           const kth = (n.xcut || n.isMat) ? 2.6 : KTH;            // bridges and mats spread harder around the loop
@@ -965,15 +933,7 @@
     function renderAll() { renderStats(); renderConn(); renderLists(); renderLegend(); }
 
 
-    // ════════════════════════════════════════════════════════════════════════
-    // LIVE analyzer that crawls the lab tree via the JupyterLab contents API and
-    // compute the WHOLE link graph in-browser. No python process required: the
-    // "Rescan lab" button does everything the python tool does, live.
-    // ════════════════════════════════════════════════════════════════════════
-    // The viewer no longer carries its own resolver: engine.js (loaded above) is the SINGLE
-    // engine for resolution + graph + reachability, shared verbatim with CI (node) and the
-    // browser here. The viewer only gathers the file tree + page texts (crawl/fetchText below)
-    // and hands a cache-backed IO adapter to LinkEngine. One engine, no second logic to drift.
+    // Live analyzer: crawl via JupyterLab, then delegate graph logic to engine.js.
     const SKIP_DIR = /^(\.|__pycache__|node_modules|export|standalone|_paper_cache|repos_index|docstore_index|artifacts|skills-seed|generated_images|sample_videos|_offloaded_tracks|dist|build|venv|composer|validation)$/;
     const PAGE_RE = /\.(html?|md|ipynb)$/i;
     const CRAWL_TOP = ["web", "cpu", "docs", "scripts"];   // matches engine.iterPages (mats now recurse under web/)
@@ -1000,9 +960,7 @@
       return files;
     }
     async function fetchText(path) {
-      // Force RAW text: jupytext registers .md as a notebook, so a plain content=1 returns
-      // parsed notebook JSON (cells[]), not markdown, so the link regexes find NOTHING and every
-      // .md page looks edge-less. type=file&format=text bypasses the format handler.
+      // Force raw text so Jupytext markdown files do not come back as notebook JSON.
       try {
         const r = await fetch("/lab/api/contents/" + path + "?content=1&type=file&format=text", { credentials: "same-origin", cache: "no-store" });
         if (r.ok) { const j = await r.json(); if (typeof j.content === "string") return j.content; }
@@ -1019,10 +977,7 @@
 
     async function liveAnalyze(onProg) {
       onProg("crawling…");
-      // Crawl exactly the engine's roots (web/cpu/docs/scripts + root files; mats recurse under web/), load the
-      // page texts plus the config files the resolver replays, then run the SINGLE engine on the
-      // cache. Resolution, edges, dead links, and reachability are all engine.js, so the live view
-      // is byte-identical to CI. No second analyzer to drift.
+      // Crawl engine roots, load page/config text, then run the shared engine.
       const files = await crawl(CRAWL_TOP, (d, f) => onProg(`crawled ${d} dirs · ${f} pages`));
       try { const rootList = await capi(""); for (const it of (rootList.content || [])) if (it.type !== "directory" && PAGE_RE.test(it.name)) files.push(it.name); } catch (e) { }
       const cache = new Map(), pageset = new Set(files);

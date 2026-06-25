@@ -29,9 +29,9 @@ from _bootstrap import add_script_paths, find_repo_root
 
 HERE = Path(__file__).resolve()
 TASK1 = find_repo_root(HERE)
-# Wrapper layout: task1/ is a subdir of the git repo, so a SKILL's source_dir and
-# human_landing carry the leading 'task1/' segment. Promoted standalone: task1 IS
-# the repo root, so there is no prefix. Same detection the hooks use.
+# Wrapper layout: task1/ is a subdir of the git repo, so a SKILL's source_dir and human_landing carry the leading 'task1/' segment.
+# Promoted standalone: task1 IS the repo root, so there is no prefix.
+# Same detection the hooks use.
 PREFIX = "task1/" if (TASK1.name == "task1" and (TASK1.parent / ".git").exists()) else ""
 META_RE = re.compile(r'(<script type="application/json" id="skill-meta">)(.*?)(</script>)', re.S)
 # public/, standalone/, export/ are GENERATED build output (gitignored), never source.

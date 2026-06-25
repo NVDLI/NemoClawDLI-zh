@@ -1,19 +1,14 @@
 // ─── Shared runtime for the nemoclaw web course (frontend track) ─────────────
 
-// Remote-service-only. Model calls normally go straight to build.nvidia.com with the
-// student's own key. LMS/static iframe execution is still supported through the hosted
-// Cloudflare CORS worker, but it must be explicitly enabled by the learner or host page.
+// Remote-service-only. Direct calls use the learner key; LMS iframe proxy is opt-in.
 // No lab proxy, no llm_client:9000, no Python kernel.
 
 const API_URL = "https://integrate.api.nvidia.com/v1";
 const IFRAME_PROXY_URL = "https://nvidia-api-cors-proxy.vkudlay.workers.dev/v1";
 const IFRAME_PROXY_OPT_IN_KEY = "nemoclaw_iframe_proxy_opt_in";
-// Billing attribution is sent on both direct and iframe-proxy calls. The hosted
-// worker must allow and forward it; build.nvidia.com also accepts it directly.
+// Billing attribution is sent on direct and iframe-proxy calls.
 const BILLING_SOURCE = "dli-nemoclaw-web";
-// Web-cell model contract: the short course uses the fast reasoning-capable Nemotron nano.
-// DEFAULT_MODEL is chat()'s fallback when a cell passes no model. REASONING_MODEL is the
-// explicit reasoning-lesson handle; both are injected into every run-cell sandbox.
+// Web-cell model contract. DEFAULT_MODEL is chat() fallback; REASONING_MODEL is explicit.
 
 // Keep DEFAULT_MODEL / REASONING_MODEL in sync with the skill-meta models in SKILL.html.
 const DEFAULT_MODEL   = "nvidia/nemotron-3-nano-30b-a3b";
@@ -33,14 +28,12 @@ export function _labOnlyService(node) {
 }
 
 // ── Data-driven diagram grammar → _diagram.js ───────────────────────────────
-// The node/edge SVG engine (diagramSVG / mountDiagram) lives in _diagram.js.
-// Re-exported here so HELPER_FNS, the helper menu, viz.diagram, and page imports are unchanged.
+// Re-export diagram helpers so page imports and helper menus stay stable.
 import { diagramSVG, mountDiagram } from "./_diagram.js";
 export { diagramSVG, mountDiagram };
 
 // ── ganttBarsSVG (02c concurrency figure) → _figures.js ──────────────────────
-// The 02c concurrency figure generator lives in _figures.js.
-// Re-exported here so HELPER_FNS, the menu, viz.ganttBars, and 02c's import are unchanged.
+// Re-export figure helpers so page imports and helper menus stay stable.
 import { ganttBarsSVG, mountFigures } from "./_figures.js";
 export { ganttBarsSVG, mountFigures };
 
@@ -115,8 +108,7 @@ export function setKey(k) { localStorage.setItem("nvapi", k.trim()); }
 export function hasKey() { return !!getKey(); }
 
 // The OpenAI JS SDK (what ChatOpenAI uses) attaches x-stainless-* headers.
-// Some browser hosts reject these headers during preflight. This wrapper strips them;
-// pass it as configuration.fetch when constructing ChatOpenAI.
+// Strip x-stainless-* headers for browser hosts that reject them during preflight.
 export function browserChatFetch() {
   /* @doc <code>helpers.browserChatFetch()</code> ::
        Returns a <code>fetch</code> that strips the OpenAI SDK's <code>x-stainless-*</code>
@@ -127,9 +119,7 @@ export function browserChatFetch() {
     for (const k of [...h.keys()]) { if (k.startsWith("x-stainless")) h.delete(k); }
     h.set("X-BILLING-SOURCE", BILLING_SOURCE);
     const r = await fetch(url, { ...init, headers: h });
-    // A non-2xx body is often plain text or an HTML error page; the OpenAI SDK calls r.json() on it
-    // and throws a cryptic "Unexpected ... after JSON" with no sign it was an HTTP error. When the
-    // error body is not JSON, re-wrap it as a JSON error the SDK can surface as a clear HTTP message.
+    // Wrap non-JSON HTTP errors so the SDK surfaces the real status and body.
     if (!r.ok && !(r.headers.get("content-type") || "").toLowerCase().includes("application/json")) {
       const txt = await r.text().catch(() => "");
       return new Response(
@@ -429,28 +419,41 @@ export const HELPER_FNS = {
   coursePage, coursePages, contextWindow, estimateTokens, browserChatFetch, diagramSVG, ganttBarsSVG, mountFigures, mountChatUI, mountAgentChat, mountConsole, mountKeyPanel, openclawChat,
   evalSandboxNetwork, evalSandboxFs, sandboxExec, policyGet, mountPolicyMap,
 };
-// SPECIALS: the menu entries that are not plain module functions, namely a value (state),
-// the platform primitive (fetch), and per-node closures (trace, log). Each carries the
-// row's sig + desc and the source shown in the editor. The menu reads sig/desc from a
-// function's @doc, and from here otherwise, so each row has exactly one source.
+// Menu entries that are values or closures rather than plain exported functions.
+// Each row owns one signature, description, and source example.
 export const SPECIALS = {
   state: {
     sig: "<code>state</code>",
     desc: `Plain object shared across every node. Set a field in one node (e.g. <code>state.question = "…"</code>) and any later node reads it. Reset when you click <strong>▶ Run all</strong>.`,
-    src: `// 'state' is a plain object, created fresh for each Run-all.\n// Write a field in one node, read it from any later node:\nstate.docVectors = await helpers.embed(chunks, { inputType: "passage" });\n// ...then, in a downstream node:\nconst hits = rank(state.docVectors, queryVector);`,
+    src: `// Shared object for this Run-all.
+// Write in one node, read in later nodes.
+state.docVectors = await helpers.embed(chunks, { inputType: "passage" });
+const hits = rank(state.docVectors, queryVector);`,
   },
   fetch: {
     sig: "<code>helpers.fetch(url, opts)</code>",
     desc: `The browser's native <code>fetch</code>, exposed unchanged so a node can call any HTTP endpoint directly. Same arguments and same <code>Response</code> as the platform API. It does <em>not</em> retry and does <em>not</em> attach a key: for flaky upstreams use <code>helpers.fetchRetry</code>, and for model, search, or embedding calls prefer the dedicated helpers above (they add the route and the key for you).`,
-    src: `// helpers.fetch === the browser fetch, unwrapped. You own retries and auth.\nconst r = await helpers.fetch("https://api.example.com/v1/items", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({ q: "hello" }),\n});\nif (!r.ok) throw new Error("HTTP " + r.status);\nconst data = await r.json();\n\n// Prefer the purpose-built helpers when you can:\n//   helpers.chat / chatStream  for model calls (key + route attached)\n//   helpers.webSearch / embed   for search + embeddings\n//   helpers.fetchRetry          like fetch, but retries 5xx / network errors`,
+    src: `// Browser fetch, unchanged. You own retries and auth.
+const r = await helpers.fetch("https://api.example.com/v1/items", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ q: "hello" }),
+});
+if (!r.ok) throw new Error("HTTP " + r.status);
+const data = await r.json();
+
+// Prefer helpers.chat, webSearch, embed, or fetchRetry when they fit.`,
   },
   trace: {
     sig: "<code>helpers.trace(name, attrs)</code>",
     desc: `Emit an OTel-shaped span event into a per-canvas trace store. Instrument any step that does work, not just LLM calls. Read <code>state.__trace</code> from a later node to inspect every emit.`,
-    src: `// helpers.trace(name, attrs) appends a span to state.__trace.\nhelpers.trace("retrieve", { k: 5, ms: 42, hits: hits.length });\n// ...inspect them later:\nconsole.table(state.__trace);`,
+    src: `// Add a span to state.__trace.
+helpers.trace("retrieve", { k: 5, ms: 42, hits: hits.length });
+console.table(state.__trace);`,
   },
   log: {
     sig: "<code>helpers.log(...args)</code>",
+
     desc: `Append to this CanvasFlow node's <em>log</em> area under streamed output. Plain values append as text; objects render as highlighted JSON. CanvasFlow supports <code>log(...args)</code>, <code>log.details(summary, body)</code>, <code>log.html(html)</code>, <code>log.svg(svgString)</code>, and <code>log.draw(W, H, body, opts)</code>. The richer run-cell-only family (<code>log.h</code>, <code>log.json</code>, <code>log.kv</code>, <code>log.clear</code>) is available inside <code>mountRunCell</code>, not here.`,
     src: `// helpers.log writes to THIS CanvasFlow node's log area. Plain values append as text; objects render as JSON.
 helpers.log("retrieved", hits.length, "chunks");   // text line; extra args are space-joined
@@ -461,17 +464,18 @@ helpers.log.svg("<svg viewBox='0 0 80 80'>...</svg>");  // inline SVG
 helpers.log.draw(320, 120, '<circle cx="60" cy="60" r="40" fill="var(--gfx-green)"/>', { title: "demo" });
 
 // mountRunCell has a different log object with helpers.log.h/json/kv/clear.`,
+
   },
   signal: {
     sig: "<code>helpers.signal</code>",
     desc: `The <code>AbortSignal</code> for this run, wired to the Stop button. Pass it to <code>helpers.chat</code>/<code>chatStream</code> (they accept it automatically), to <code>helpers.fetch</code>, or to your own <code>WebSocket</code> cleanup so a long run actually cancels when the student hits Stop.`,
-    src: `// helpers.signal aborts when the student clicks Stop.\nconst r = await helpers.fetch(url, { signal: helpers.signal });\n// ...or react to it directly:\nhelpers.signal.addEventListener("abort", () => ws.close(), { once: true });`,
+    src: `// AbortSignal for this run.
+const r = await helpers.fetch(url, { signal: helpers.signal });
+helpers.signal.addEventListener("abort", () => ws.close(), { once: true });`,
   },
 };
 
-// A helper's self-doc is a leading `/* @doc <sig> :: <desc> */` comment in its body, read
-// via Function.toString() so it stays tied to the code in both the lab and the standalone
-// build. The menu prefers it over any curated fallback, so the docs cannot drift.
+// Helper docs live beside the helper bodies, then fall back to SPECIALS here.
 
 // ── UI helpers ────────────────────────────────────────────────────────────────
 export function $ (sel) { return document.querySelector(sel); }

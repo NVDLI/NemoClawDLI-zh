@@ -178,11 +178,7 @@
       label: "the Try-it artifact, in code",
       autorun: true,
       code: `// "Weigh the harnesses" artifact. Grounds on the vendored framework READMEs
-// (scripts/materials/build_cli_readmes.py): an extract per CLI seeds the prompt; the toggles
-// inject a full README for the next question only.
-// Metadata ships INLINE so the artifact never depends on a load-time fetch. Some serves do not deploy
-// assets/*.json, and a 404 there returns the HTML index, on which .json() throws and crashes the cell. The
-// full READMEs stay on demand (the toggles) and fall back to the inline extract when they are not served.
+// Inline CLI extracts seed the prompt; README toggles add full docs for one turn.
 const META = { frameworks: [
   { id: "claude-code", name: "Claude Code", note: "Anthropic. Beacon CLAUDE.md.", source: "https://raw.githubusercontent.com/anthropics/claude-code/main/README.md", extract: "Claude Code is an agentic coding tool that lives in your terminal, understands your codebase, and helps you code faster by executing routine tasks, explaining complex code, and handling git workflows -- all through natural language commands. Use it in your terminal, IDE, or tag @claude on Github." },
   { id: "codex", name: "Codex CLI", note: "OpenAI. Beacon AGENTS.md.", source: "https://raw.githubusercontent.com/openai/codex/main/README.md", extract: "Codex CLI is a coding agent from OpenAI that runs locally on your computer. If you want Codex in your code editor (VS Code, Cursor, Windsurf), install in your IDE. If you want the desktop app experience, run codex app or visit the Codex App page." },
@@ -252,11 +248,7 @@ helpers.mountChatUI("#clis-artifact", {
 });
 helpers.log("rendered below. Toggle a README to add it as context, then ask.");
 
-/* Under the hood: mountChatUI supplies the model picker, markdown, tool chips,
-   and context meter. You write only respond(). The raw call it makes:
-     const s = await helpers.chatStream(
-       { messages: [{ role: "user", content: "hi" }] },
-       (t) => helpers.log(t)); */
+/* mountChatUI renders the panel; respond() streams one chat call. */
 `,
     });
   </script>
@@ -299,8 +291,7 @@ const JS_TOOL = {
   },
 };
 
-// Run agent-written code against the live runtime. helpers is injected; document,
-// window, and fetch are ambient.
+// Run agent-written code against the live runtime. helpers is injected; document, window, and fetch are ambient.
 async function runJS(code) {
   const fn = new Function("helpers", "return (async () => { " + code + " })();");
   return await fn(helpers);
@@ -473,15 +464,12 @@ helpers.log("launchable terminal mounted below. If it says no launchable, connec
       label: "chat with your live agent over the OpenClaw gateway",
       autorun: true,
       code: `// Chat with your live OpenClaw agent over the /cli/gateway (helpers.openclawChat). It streams the
-// agent's reply AND each tool call with its result, a Stop button interrupts a run, the slash vocabulary
-// is the real openclaw command set (sampled from the launchable binary), and slash commands query the
-// gateway LIVE (no caching). Reads the launchable URL + token from the Module 3a probe.
+// The terminal streams replies, tool calls, slash commands, and live gateway results.
 function connected() {
   return !!(localStorage.getItem("nemoclaw_clawtoken") && (localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl")));
 }
 
-// One operator socket, reused across calls, same handshake openclawChat uses. Every slash query hits
-// the gateway fresh, nothing is cached.
+// Reuse one operator socket; every slash query still hits the gateway fresh.
 let _gw = null;
 function gwUrl() {
   let u = localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl") || "";
@@ -520,10 +508,7 @@ function gwCall(method, params) {
 const SLASH =["/help", "/clear", "/branch", "/reset", "/new", "/compact", "/model", "/models", "/usage", "/status", "/context", "/think", "/config", "/agents", "/subagents", "/mcp", "/tasks", "/review", "/whoami", "/commands"];
 const CHIPS =["/help", "/model", "/status", "/reset", "What can you do?", "Summarize your workspace and your SOUL.md", "List the files in your workspace"];
 let session = "main", _ac = null, stopBtn = null;
-// A brand-new agent session runs an onboarding turn on its FIRST message (it greets and asks who you are),
-// which would otherwise consume the student's first real question. Warm each session once with a throwaway
-// turn (sent with no view, so it is not shown) so the first real message gets a real answer. Warmed sessions
-// are remembered across reloads; a /reset makes a session fresh again, so it is re-warmed.
+// Warm new sessions once so onboarding does not consume the first real question.
 const _warmP = {};
 function _warmedList() { try { return JSON.parse(localStorage.getItem("nemoclaw_warmed") || "[]"); } catch (e) { return []; } }
 function isWarmed(s) { return _warmedList().indexOf(s) >= 0; }
@@ -576,8 +561,7 @@ const con = helpers.mountConsole("#agent-chat", {
       return;
     }
     if (m === "/clear") return c.clear();
-    // Branches ARE this panel's tabs (one agent session each), so /new and /branch are handled locally: the
-    // gateway has no /branch command (it returns empty) and a server-side /new would not surface as a tab.
+    // Tabs are local agent sessions; handle /new and /branch here.
     if (m === "/new") { addBranch(); return; }
     if (m === "/branch" || m.indexOf("/branch ") === 0) {
       const arg = m.indexOf("/branch ") === 0 ? m.slice(8).trim() : "";
@@ -588,9 +572,7 @@ const con = helpers.mountConsole("#agent-chat", {
       switchTab(arg); warm(arg);
       return;
     }
-    // Everything else, slash command or chat, runs on the agent over the gateway: it executes the real
-    // slash commands (/whoami, /model, /reset, /usage, /status, /tools, /think, ...) and answers chat alike.
-    // A chat (not a command) to a not-yet-warmed session waits for the one-time onboarding to be absorbed.
+    // Send slash commands and chat through the gateway; warm chats wait for onboarding.
     if (m.charAt(0) !== "/") { if (!isWarmed(session)) c.write("setting up this session (the first reply takes a moment)…", "da-dim"); await warm(session); }
     _ac = new AbortController();
     if (stopBtn) stopBtn.style.display = "";
@@ -629,8 +611,8 @@ if (line) {
   stopBtn.addEventListener("click", function () { if (_ac) _ac.abort(); });
   line.appendChild(stopBtn);
 }
-// Session/branch tabs: each tab is an independent agent session (a branch). Switching swaps the visible
-// log and the session key openclawChat sends to; "+ branch" starts a new one; "×" deletes it (sessions.delete).
+// Session/branch tabs: each tab is an independent agent session (a branch).
+// Switching swaps the visible log and the session key openclawChat sends to; "+ branch" starts a new one; "×" deletes it (sessions.delete).
 const termEl = document.querySelector("#agent-chat .da-term");
 const outEl = document.querySelector("#agent-chat .da-out");
 let tabs = ["main"], branchN = 0;
@@ -673,8 +655,8 @@ async function closeTab(name) {
 }
 if (connected() && termEl && outEl) {
   termEl.insertBefore(tabBar, termEl.firstChild);
-  // Branches persist in this browser: the panel owns its own tab list. We do NOT scrape the gateway's
-  // session list, which surfaces junk keys (e.g. a stale main-<timestamp> left by another client) as tabs.
+  // Branches persist in this browser: the panel owns its own tab list.
+  // We do NOT scrape the gateway's session list, which surfaces junk keys (e.g. a stale main-<timestamp> left by another client) as tabs.
   // A branch's context still lives on the gateway under its name; switching back resumes it.
   try {
     const saved = JSON.parse(localStorage.getItem("nemoclaw_branches") || "[]");

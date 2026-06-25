@@ -18,6 +18,8 @@ import pytest
 
 from llm_client import _bedrock_to_openai, _openai_to_bedrock, _is_bedrock_routable
 
+THINKING_BUDGET_TOKENS = 12345
+
 
 # ── _bedrock_to_openai ──────────────────────────────────────────────────────
 
@@ -217,10 +219,10 @@ class TestOpenAIToBedrock:
         """If the caller already shaped a `thinking` dict (Anthropic-native),
         it round-trips into additionalModelRequestFields untouched."""
         body = {"messages": [{"role": "user", "content": "hi"}],
-                "thinking": {"type": "enabled", "budget_tokens": 12345}}
+                "thinking": {"type": "enabled", "budget_tokens": THINKING_BUDGET_TOKENS}}
         bedrock = _openai_to_bedrock(body)
         thinking = bedrock["additionalModelRequestFields"]["thinking"]
-        assert thinking == {"type": "enabled", "budget_tokens": 12345}
+        assert thinking == {"type": "enabled", "budget_tokens": THINKING_BUDGET_TOKENS}
 
     def test_additional_model_request_fields_passthrough(self):
         body = {"messages": [{"role": "user", "content": "hi"}],
@@ -304,10 +306,10 @@ class TestAnthropicDefaultReasoning:
         monkeypatch.setenv("LLM_CLIENT_BEDROCK_DEFAULT_REASONING", "high")
         body = {"model": "bedrock-proxy/global.anthropic.claude-sonnet-4-6",
                 "messages": [{"role": "user", "content": "hi"}],
-                "thinking": {"type": "enabled", "budget_tokens": 12345}}
+                "thinking": {"type": "enabled", "budget_tokens": THINKING_BUDGET_TOKENS}}
         bedrock = _openai_to_bedrock(body)
         # Caller-supplied thinking block wins
-        assert bedrock["additionalModelRequestFields"]["thinking"]["budget_tokens"] == 12345
+        assert bedrock["additionalModelRequestFields"]["thinking"]["budget_tokens"] == THINKING_BUDGET_TOKENS
 
     def test_invalid_env_value_treated_as_unset(self, monkeypatch):
         monkeypatch.setenv("LLM_CLIENT_BEDROCK_DEFAULT_REASONING", "supreme")

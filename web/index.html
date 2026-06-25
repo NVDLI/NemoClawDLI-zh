@@ -161,8 +161,7 @@
            color: var(--tf); font-size: .82rem; }
   footer a { color: var(--td); }
 </style>
-<script>/* Pre-paint: apply a saved manual theme so the foyer opens in the right palette with no flash;
-   with no saved choice the @media rule above follows the OS. */
+<script>/* Pre-paint the saved manual theme before the foyer renders. */
 (function(){try{var t=localStorage.getItem("theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
 </head>
 <body>
@@ -259,20 +258,8 @@
 </main>
 
 <script>
-// Launch token + cookie handoff.
-// The LMS opens this foyer at the lab's default_url with the session token appended:
-// .../lab/static/index.html?token=XXXX. Jupyter's static-file handler serves the foyer
-// WITHOUT turning that token into a session cookie, so left alone the student is
-// authenticated-in-the-URL-only and the course pages' live cells (which call the
-// token-gated /lab/svc/* routes) would bounce to login. Two things make the handoff
-// reliable, so neither a slow cookie nor a missed one strands the user:
-//   1. A background request to an authenticated endpoint sets the /lab/ cookie for
-//      everything else (the static course pages reached from the cards above).
-//   2. Any link to an authenticated Jupyter destination carries the token so a click
-//      authenticates the normal Jupyter ?token= way (defensive; the cards are static
-//      pages that navigate SAME-TAB and rely on the cookie from step 1).
-// Course PAGES under /lab/static/ navigate SAME-TAB on purpose: a new tab gets a fresh
-// in-memory context and drops the saved key, and same-tab keeps the back button working.
+// Persist LMS launch tokens into Jupyter cookies before course modules load.
+// Keep static course pages same-tab so browser state and back navigation survive.
 (function () {
   var token = new URL(window.location.href).searchParams.get("token");
   var NEW_TAB     = /^\/(lab(?:\/(?!static\/)|$))/;            // live app routes, not /lab/static/
@@ -285,9 +272,7 @@
     }
   });
   if (!token) return;
-  // Best-effort cookie exchange (an @web.authenticated endpoint; Jupyter reads ?token=
-  // from the query and sets the /lab/ cookie). Strip the token from the address bar once
-  // it resolves.
+  // Exchange token for a lab cookie, then hide it from the address bar.
   fetch("/lab/api/status?token=" + encodeURIComponent(token), { credentials: "include" })
     .catch(function () {})
     .then(function () {
@@ -298,8 +283,8 @@
 })();
 
 
-// Language selector: populated from build-time languages.json after the build has
-// produced translated course bundles. Missing or single-language JSON keeps it hidden.
+// Language selector: populated from build-time languages.json after the build has produced translated course bundles.
+// Missing or single-language JSON keeps it hidden.
 (function () {
   var box = document.getElementById("language-switcher");
   var sel = document.getElementById("language-select");
@@ -341,8 +326,7 @@
   }).catch(function () {});
 })();
 
-// Branch preview selector: populated from build-time branches.json. Static Pages cannot
-// ask GitLab for branches at runtime, so missing JSON simply hides the control.
+// Branch preview selector from build-time branches.json; missing JSON hides the static Pages control.
 (function () {
   var box = document.getElementById("branch-switcher");
   var sel = document.getElementById("branch-select");

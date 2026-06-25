@@ -285,9 +285,7 @@ return { chars: state.out.length };`,
   ],
 });
 
-// ── The two functions, as an editable + runnable cell (key-less; reads the cached catalog) ──
-// Source stays inspectable via the cell's helpers tab (click webSearch / instantAnswer to read it),
-// so it still cannot drift from what runs, and now you can edit the queries and run them.
+// Editable keyless cell: helpers expose webSearch and instantAnswer source.
 mountRunCell("#gx-src-cell", {
   code: `// webSearch ranks the whole catalog; instantAnswer returns one term's definition.
 // Edit the queries and Run. Open the helpers tab above to read each one's real source.

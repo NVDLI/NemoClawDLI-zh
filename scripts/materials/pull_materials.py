@@ -64,17 +64,14 @@ REPO = str(find_repo_root(Path(__file__).resolve()))
 MATS = os.path.join(REPO, "web", "nemoclaw", "mats")
 MATERIALS_JSON = os.path.join(MATS, "_materials.json")          # on-demand provenance (this script)
 GLOSSARY_INDEX = os.path.join(MATS, "glossary_index.json")       # cached glossary index (vendor_glossary)
-# The unified materials catalog the surface searches: the cached glossary terms + the on-demand
-# materials, one searchable list with a tier on each entry. Dual-written to mats/ (source of truth,
-# committed) and assets/ (shipped; the webSearch/instantAnswer + explorer backend), exactly like
-# glossary_index.json. This is what "elevates the glossary into the course's materials surface".
+# Unified searchable catalog. Source copy lives in mats/; shipped copy lives in assets/.
 CATALOG_MATS = os.path.join(MATS, "materials_index.json")
 CATALOG_ASSET = os.path.join(REPO, "web", "nemoclaw", "assets", "materials_index.json")
 UA = {"User-Agent": "Mozilla/5.0 (NVIDIA DLI course materials vendoring)"}
+ARXIV_API_URL = "https://export.arxiv.org/api/query?id_list="
 
 # ── manifest ──────────────────────────────────────────────────────────────────
-# name: output stem under web/nemoclaw/mats/   host: which extractor   tier: cached|on_demand
-# To add a material: add a row. To change a source: edit its url and re-pull. Nothing else.
+# Add or change a material here, then re-run the matching extractor.
 MANIFEST = [
     {"name": "developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa", "host": "devblog",
      "tier": "on_demand",
@@ -154,7 +151,7 @@ def extract_arxiv(url):
     if not m:
         raise ValueError("no arXiv id in " + url)
     aid = m.group(1)
-    xml = _fetch("https://export.arxiv.org/api/query?id_list=" + aid)
+    xml = _fetch(ARXIV_API_URL + aid)
     ns = {"a": "http://www.w3.org/2005/Atom"}
     entry = ET.fromstring(xml).find("a:entry", ns)
     if entry is None or entry.findtext("a:title", "", ns).strip().lower() == "error":
@@ -327,8 +324,7 @@ def main():
         return 2
 
     sel = _selected(a.only)                        # the manifest rows in scope (all, or one --only host)
-    # The glossary is the heavy cached tier (86 nvidia.com fetches); refresh it only on explicit
-    # --all or --only glossary, never on the default pull the deploy build runs (kept fast + reliable).
+    # Glossary refresh is expensive, so only --all or --only glossary runs it.
     do_glossary = a.all or a.only == "glossary"
 
     # ── CHECK mode (the gate + pre-push) ──────────────────────────────────────

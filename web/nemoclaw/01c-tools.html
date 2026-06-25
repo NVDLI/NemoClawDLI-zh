@@ -251,10 +251,7 @@ helpers.mountAgentChat("#tools-artifact", {
 });
 helpers.log("rendered below. Edit the config and Run.");
 
-/* Under the hood, the artifact above is a real LangChain createReactAgent (one per
-   model, each with its own memory) wired to the tools you declare. mountAgentChat loads
-   LangChain, builds a ChatOpenAI on the course endpoint, wraps your tools, and streams
-   the tool calls and answer into the same view a hand-rolled loop would drive. */
+/* mountAgentChat builds one LangChain agent per model and streams tool calls plus answers. */
 `,
     });
   </script>
@@ -273,10 +270,7 @@ updateKeyPill(pill);
 mountJourneyMap("#journey-map", "1c");
 hljs.highlightAll();
 
-// In-page NVIDIA glossary MCP server: a catalog plus a small MCP-style server
-// (tools/list + tools/call) over it, with no API key and no backend.
-// On this page, the page IS the tool.
-// Regenerate the catalog with `python3 scripts/materials/vendor_glossary.py --index`.
+// In-page glossary MCP server: static catalog, no key, no backend.
 const GLOSSARY = [
   ["3d-reconstruction","3D Reconstruction","Learn what 3D reconstruction is and how neural reconstruction works.","3D reconstruction;neural reconstruction;computer vision;3D models"],
   ["ai-agents","AI Agents","AI agents are advanced AI systems designed to autonomously reason, plan, and execute complex tasks based on high-level goals in a secure environment with controls.","AI Agents;Generative AI;LLMs;RAG"],
@@ -392,9 +386,7 @@ function glossaryLookup(slug) {
   const results = row ? [{ title: row[1], body: row[2], href: NV_GLOSSARY + row[0] + "/" }] : [];
   return { results, count: results.length, unreachable: false, source: "nvidia-glossary" };
 }
-// The full article for a "deep" term: a cached copy of the live NVIDIA glossary page, shipped at
-// mats/glossary_raw/<slug>.md. Most terms carry only the one-line blurb above; the deep terms carry
-// the whole body, which is what a richer retrieval backend returns for a single, confident match.
+// Deep glossary terms load cached full articles from mats/glossary_raw/.
 async function glossaryFull(query) {
   const top = _glossaryRank(query)[0];
   if (!top) return null;
@@ -453,6 +445,7 @@ mountCanvasFlow("#cell-m2b-p3", {
       id: "question", icon: "👤", title: "User question", x: 1, y: 0,
       summary: "Try an arithmetic, a definition, or something either tool could handle.",
       code: `// Set the student-editable prompt/input for the next step.
+
 const EXAMPLES = {
   default: "What is 2 to the power of 10?",
   arithmetic: "Evaluate (17 * 43) + Math.sqrt(144) / Math.log(2).",
@@ -460,6 +453,7 @@ const EXAMPLES = {
   series: "Approximate pi with 4 * (1 - 1/3 + 1/5 - 1/7 + 1/9 - 1/11).",
 };
 state.question = EXAMPLES.default;
+
 return state.question;
 `,
     },
@@ -505,8 +499,8 @@ const s = await helpers.chatStream({
   max_tokens: 8196,
 });
 
-// The reasoning streamed above. A returned value renders on its own, so just hand back the
-// decision: the tool the model chose (if any) and the arguments it filled in.
+// The reasoning streamed above.
+// Return the chosen tool, if any, plus the arguments the model filled in.
 if (!s.tool_calls.length) return { routed_to: "(answered directly)", answer: s.content };
 const tc = s.tool_calls[0];
 return { routed_to: tc.function.name, arguments: JSON.parse(tc.function.arguments || "{}") };
@@ -579,8 +573,7 @@ return {
       summary: "The executor. It calls the in-page glossary MCP server (defined at the top of this page) via tools/call and gets back ranked NVIDIA glossary entries. The catalog and the search both run locally in your browser, with no key and no network call.",
       code: `// Handle the tool-call result from the previous model turn.
 if (!state.s1.tool_calls.length) {
-  // No tool call here: the model either answered from training (it has content)
-  // or ran out of tokens mid-call.
+  // No tool call here: the model either answered from training (it has content) or ran out of tokens mid-call.
   // Distinguish the two so we never report a direct answer for a truncated call.
   state.skipped = true;
   state.reason = state.s1.content ? "model answered directly; no search needed"
@@ -613,14 +606,12 @@ if (state.skipped) {
   return { final_answer: state.s1.content || "(" + (state.reason || "no answer") + ")",
            note: "no search was run on this turn" };
 }
-// No \`tools\` here on purpose: with the schema removed, the model cannot ask for
-// another search, so it must synthesize an answer from the results it already has.
+// No tools here; the model must answer from the search results it already has.
 state.s2 = await helpers.chatStream({
   messages:   state.messages,
   max_tokens: 8196,   // room for the reasoning model to think AND write the answer
 });
-// Defensive: a reasoning model with no tools sometimes still emits tool-call
-// SYNTAX as text. Strip it so the student sees a clean final answer.
+// Strip stray tool-call text from reasoning models that emit it anyway.
 const answer = (state.s2.content || "")
   .replace(/<tool_call>[\\s\\S]*?<\\/tool_call>/g, "")
   .replace(/<\\/?function[^>]*>|<\\/?parameter[^>]*>/g, "").trim();
@@ -654,8 +645,7 @@ const messages = [
 const s1   = await chatStream({ messages, tools: SEARCH_SCHEMA, tool_choice: { type: "function", function: { name: "glossary_search" } }, max_tokens: 8196 });
 const args = JSON.parse(s1.tool_calls[0].function.arguments || "{}");
 
-// Richer backend: fetch the whole article, not the blurb. Falls back gracefully for a term that has
-// no cached full page (only the "deep" terms have one).
+// Fetch the full article when cached; shallow glossary terms fall back to their blurb.
 const article = await glossaryFull(args.query || "");
 const toolMsg = article ? article.body : "(no full article cached for that term)";
 
@@ -665,8 +655,9 @@ messages.push({ role: "user", content: "Using only the article above, write the 
 
 // Streams the grounded answer; the return surfaces the full article the model actually read.
 await chatStream({ messages, max_tokens: 8196 });
-return article ? { term: article.term, slug: article.slug, chars: article.body.length, full_entry: article.body }
-               : { error: "no full article cached for that term" };
+return article
+  ? { term: article.term, slug: article.slug, chars: article.body.length, full_entry: article.body }
+  : { error: "no full article cached for that term" };
 `,
 });
 
@@ -816,9 +807,7 @@ mountCanvasFlow("#cell-m2b-p6", {
       id: "server", icon: "🖥", title: "In-page MCP server", x: 0, y: 0,
       summary: "Points at the same glossary MCP server defined at the top of this page. It exposes the two standard endpoints (tools/list for discovery and tools/call for execution) in the same JSON-RPC-style shape as the real protocol. In production these calls travel over stdio or HTTP transport rather than running in the same JavaScript process.",
       code: `// The same in-page glossary server the search cell called directly, now reached through
-// MCP discovery rather than a direct call.
-// The client below discovers and dispatches its tools with no advance knowledge,
-// because the server already speaks tools/list and tools/call (defined up top).
+// Discover tools through MCP instead of hard-coding direct calls.
 state.mcpServer = window.glossaryMCP;
 const listed = await state.mcpServer.request("tools/list");
 return { exposes: ["tools/list", "tools/call"], tools: listed.tools.map(t => t.name) };

@@ -115,14 +115,7 @@ def _bedrock_proxy_model_records() -> list[dict]:
     return records
 
 
-# =============================================================================
-# CONTEXT TRACKER. Deduplicates traces along a conversation chain.
-#
-# Models KV-cache preservation: when request N shares a message prefix with
-# request N-1, only the delta (new messages) is stored on the span.  Traces
-# are linked into a causal chain via parent_trace_id / parent_span_id, and
-# cumulative token usage is tracked across the chain.
-# =============================================================================
+# Context tracker: link repeated conversation prefixes and record only each request delta.
 
 class ContextTracker:
     """Track conversation context chains across LLM proxy requests."""
@@ -235,13 +228,11 @@ class ContextTracker:
 
         if ctx.get("cache_hit"):
             span.set_attribute("context.cache_hit", True)
-            span.set_attribute("context.parent_trace_id", ctx["parent_trace_id"])
-            span.set_attribute("context.parent_span_id", ctx["parent_span_id"])
-            span.set_attribute("context.cached_messages", ctx["cached_messages"])
-            span.set_attribute("context.new_messages", ctx["new_messages"])
-            span.set_attribute("context.cache_ratio", ctx["cache_ratio"])
-            span.set_attribute("context.cum_input_tokens", ctx["cum_input_tokens"])
-            span.set_attribute("context.cum_output_tokens", ctx["cum_output_tokens"])
+            for key in (
+                "parent_trace_id", "parent_span_id", "cached_messages", "new_messages",
+                "cache_ratio", "cum_input_tokens", "cum_output_tokens",
+            ):
+                span.set_attribute(f"context.{key}", ctx[key])
 
             # Store only delta (new messages since prefix)
             delta = messages[ctx["cached_messages"]:]
@@ -598,6 +589,8 @@ class CompletionLog:
 
 ctx_tracker = ContextTracker()
 completion_log = CompletionLog()
+OTEL_FORCE_FLUSH_TIMEOUT_MS = 2000
+BEDROCK_HTTP_TIMEOUT_SECONDS = 600
 
 def get_missing_model_msg(model):
     return {"error": {
@@ -607,6 +600,8 @@ def get_missing_model_msg(model):
         "code": "model_not_found"}}
 
 # ── Backend configs (static, validated on startup) ────────────────────────
+NVIDIA_INTEGRATE_URL = "https://integrate.api.nvidia.com/v1"
+
 BACKEND_CONFIGS = [
     {
         "url": "https://inference-api.nvidia.com/v1",
@@ -614,7 +609,7 @@ BACKEND_CONFIGS = [
         "exclude": [],
     },
     {
-        "url": "https://integrate.api.nvidia.com/v1",
+        "url": NVIDIA_INTEGRATE_URL,
         "key_env": "NVIDIA_API_KEY",
         "exclude": [],
     },
@@ -761,9 +756,8 @@ def _openai_to_bedrock(body: dict) -> dict:
 
         if role == "assistant" and (msg.get("tool_calls") or msg.get("reasoning_content")):
             content_blocks = []
-            # Reasoning blocks must come FIRST in Anthropic's block ordering
-            # when present. Without a signature we can't safely round-trip
-            # (Anthropic rejects unsigned reasoning), so drop in that case.
+            # Reasoning blocks must come FIRST in Anthropic's block ordering when present.
+            # Without a signature we can't safely round-trip (Anthropic rejects unsigned reasoning), so drop in that case.
             r_text = msg.get("reasoning_content")
             r_sig = msg.get("reasoning_signature")
             if r_text and r_sig:
@@ -837,18 +831,7 @@ def _openai_to_bedrock(body: dict) -> dict:
         if tool_config:
             result.update(tool_config)
 
-    # Pass-through for Anthropic extended thinking. Four ways the caller
-    # can ask for thinking, in priority order, most specific wins:
-    #   1. `additional_model_request_fields` (raw passthrough; advanced)
-    #   2. `thinking` at body root (Anthropic-native dict)
-    #   3. `reasoning_effort` (OpenAI standard low/medium/high -> budget)
-    #   4. Env default: `LLM_CLIENT_BEDROCK_DEFAULT_REASONING` (low|medium|
-    #      high). Only fires for Anthropic-on-Bedrock when the caller said
-    #      nothing about reasoning, and is the lever that lets the openclaw
-    #      gateway path surface reasoning_content without forwarding its
-    #      own thinking config into the OpenAI-shaped body.
-    # When none of these is set, `additionalModelRequestFields` is omitted
-    # entirely so requests without thinking stay byte-identical to before.
+    # Anthropic thinking pass-through. Caller config wins; the env default only fills silent Anthropic chats.
     BUDGETS = {"low": 2000, "medium": 8000, "high": 32000}
 
     amrf: dict = {}
@@ -871,17 +854,7 @@ def _openai_to_bedrock(body: dict) -> dict:
             if b is not None:
                 amrf["thinking"] = {"type": "enabled", "budget_tokens": b}
 
-    # Default for Anthropic-on-Bedrock when the caller is silent. The
-    # openclaw gateway's `thinking=adaptive` config does not propagate
-    # into the OpenAI-shaped body it sends llm_client, so this env-driven
-    # default is what makes reasoning_content surface on that path.
-    # Restricted to Anthropic models because thinking blocks are an
-    # Anthropic feature; applying them to Meta/Amazon Nova on Bedrock
-    # would 4xx.
-    # Skip the env default on tool exchanges. When thinking is on, Bedrock requires
-    # the post-tool-result assistant message to start with a thinking block, but the
-    # openclaw gateway rebuilds it text-first and Bedrock 400s. Plain chats still
-    # surface reasoning_content; a caller that asks for thinking explicitly still wins.
+    # Default only for plain Anthropic chats; tool exchanges stay text-first or Bedrock 400s.
     msgs = body.get("messages") or []
     is_tool_exchange = bool(body.get("tools")) or any(
         isinstance(m, dict) and (m.get("role") == "tool" or m.get("tool_calls")) for m in msgs)
@@ -895,11 +868,7 @@ def _openai_to_bedrock(body: dict) -> dict:
 
     if amrf:
         result["additionalModelRequestFields"] = amrf
-        # Anthropic constraint: max_tokens must exceed thinking.budget_tokens
-        # (the budget is part of the response budget; with no headroom there's
-        # no room left for the actual answer). Clamp here so callers don't
-        # have to coordinate the two values manually. Every other path that
-        # sets thinking via this translation then works without extra steps.
+        # Bedrock counts thinking inside max_tokens; leave answer headroom.
         budget = (amrf.get("thinking") or {}).get("budget_tokens", 0)
         if isinstance(budget, int) and budget > 0:
             current_max = result.get("inferenceConfig", {}).get("maxTokens", 0)
@@ -937,9 +906,7 @@ def _bedrock_to_openai(resp: dict, model: str) -> dict:
                 }
             })
         elif "reasoningContent" in block:
-            # Bedrock format is `{reasoningContent: {reasoningText: {text, signature}}}`;
-            # older drafts used a flat `{reasoningContent: {text, signature}}` shape.
-            # Accept both so we don't break against a Bedrock version skew.
+            # Accept both Bedrock reasoningContent shapes.
             rc = block["reasoningContent"]
             if isinstance(rc, dict) and "reasoningText" in rc:
                 rt = rc["reasoningText"] or {}
@@ -953,11 +920,7 @@ def _bedrock_to_openai(resp: dict, model: str) -> dict:
     message = {"role": "assistant", "content": text or None}
     if tool_calls:
         message["tool_calls"] = tool_calls
-    # Surface reasoning on the OpenAI-format message so downstream consumers
-    # (LangChain `additional_kwargs.reasoning_content`, Nemotron-shaped
-    # clients, any streaming parser that reads the reasoning channel) can see it.
-    # Keep the signature so the round-trip back into Bedrock for the next
-    # tool_use turn can re-emit a valid reasoning block.
+    # Keep reasoning text/signature visible and round-trippable.
     if reasoning_text:
         message["reasoning_content"] = reasoning_text
     if reasoning_signature:
@@ -982,11 +945,7 @@ def _is_bedrock_available() -> bool:
     return bool(os.getenv("AWS_BEARER_TOKEN_BEDROCK"))
 
 
-# Known Bedrock model-id shapes accepted by the AWS Converse endpoint and
-# our `BEDROCK_MODEL_ALIASES`. The first two are our naming convention; the
-# rest match Anthropic on Bedrock directly. A name that matches no pattern
-# below is not forwarded speculatively. AWS responds to a bad name with a 4xx,
-# or with a 200 carrying an empty response, which we have observed in practice.
+# Route only ids that look like Bedrock names; unknown ids should fail cleanly here.
 _BEDROCK_PREFIXES = ("bedrock-proxy/", "aws/")
 _BEDROCK_PATTERN_HINTS = (
     "global.anthropic.",
@@ -1043,7 +1002,7 @@ async def _bedrock_converse(
     """
     for attempt in range(BEDROCK_MAX_RETRIES + 1):
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(600)) as c:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(BEDROCK_HTTP_TIMEOUT_SECONDS)) as c:
                 r = await c.post(
                     url=converse_url,
                     content=json.dumps(bedrock_body).encode(),
@@ -1167,9 +1126,7 @@ async def proxy_bedrock(body_json: dict, model: str, stream: bool, span, ctx: di
         Always sets status_code + content/error on owner_span.
         Creates a child dispatch_span that wraps the actual Bedrock call.
         """
-        # ── dispatch_span wraps the real call, not just intent ────────
-        # Use explicit link to ensure parent-child relationship survives
-        # across async generator boundaries (StreamingResponse detaches context)
+        # Wrap the real Bedrock call and keep the parent link across StreamingResponse boundaries.
         from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags
         parent_ctx = trace.set_span_in_context(owner_span)
         dispatch_span = tracer.start_span(
@@ -1245,16 +1202,13 @@ async def proxy_bedrock(body_json: dict, model: str, stream: bool, span, ctx: di
             from opentelemetry.sdk.trace import TracerProvider as _TP
             provider = trace.get_tracer_provider()
             if isinstance(provider, _TP):
-                provider.force_flush(timeout_millis=2000)
+                provider.force_flush(timeout_millis=OTEL_FORCE_FLUSH_TIMEOUT_MS)
         except Exception:
             pass
 
         owner_span.set_status(trace.StatusCode.OK)
 
-        # ── Full response bodies ─
-        # Both attributes use the chunking writer so a long response body
-        # is recoverable from the span (chunks .chunk.1 / .chunk.2 / …),
-        # not silently truncated by OTel's per-attribute byte cap.
+        # Store long response bodies with chunking so OTel caps do not truncate them.
         _set_span_json(owner_span, "bedrock.response", bedrock_resp)
         _set_span_text(owner_span, "content", json.dumps(openai_resp))
 
@@ -1318,7 +1272,7 @@ async def proxy_bedrock(body_json: dict, model: str, stream: bool, span, ctx: di
         acc = ConverseStreamAccumulator(model)
         fallback = False
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(600)) as client:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(BEDROCK_HTTP_TIMEOUT_SECONDS)) as client:
                 async with client.stream(
                     "POST", url=converse_stream_url,
                     content=json.dumps(bedrock_body).encode(),
@@ -1358,7 +1312,7 @@ async def proxy_bedrock(body_json: dict, model: str, stream: bool, span, ctx: di
                 _t0_fb = time.monotonic()
                 task = asyncio.create_task(_call_and_translate(span))
                 while not task.done():
-                    if time.monotonic() - _t0_fb > 600:
+                    if time.monotonic() - _t0_fb > BEDROCK_HTTP_TIMEOUT_SECONDS:
                         task.cancel()
                         completion_log.finish(req_id=_req_id, elapsed_ms=int((time.monotonic() - t0) * 1000))
                         yield f"data: {json.dumps({'error': {'message': 'Bedrock timeout', 'type': 'timeout_error'}})}\n\n".encode()
@@ -1394,7 +1348,7 @@ async def proxy_bedrock(body_json: dict, model: str, stream: bool, span, ctx: di
                 from opentelemetry.sdk.trace import TracerProvider as _TP
                 provider = trace.get_tracer_provider()
                 if isinstance(provider, _TP):
-                    provider.force_flush(timeout_millis=2000)
+                    provider.force_flush(timeout_millis=OTEL_FORCE_FLUSH_TIMEOUT_MS)
             except Exception:
                 pass
             span.set_status(trace.StatusCode.OK)
@@ -1471,13 +1425,8 @@ async def validate_backend(config: Dict) -> bool:
     BACKENDS[url] = {"models": models, "key_env": key_env}
     MODEL_MAP.update({mid: url for mid in models.keys()})
 
-    if url == "https://integrate.api.nvidia.com/v1":
-        # Reranker models each hit a dedicated ai.api.nvidia.com endpoint, not the
-        # standard /chat/completions path. Pattern (from NIM docs):
-        #   https://ai.api.nvidia.com/v1/retrieval/{vendor}/{model_name}/reranking
-        # where model_name has dots replaced by underscores in the URL.
-        # Try langchain MODEL_TABLE first (present in lab, absent in this container),
-        # then fall back to the static table derived from the same source.
+    if url == NVIDIA_INTEGRATE_URL:
+        # Rerankers use dedicated retrieval endpoints; MODEL_TABLE wins, static table backs it up.
         try:
             from langchain_nvidia_ai_endpoints._statics import MODEL_TABLE
             FORCE_MODELS = {
@@ -2140,8 +2089,7 @@ async def _call_chat_backend_for_adapter(
         adapted = response_builder(chat_resp, body_json, elapsed_ms)
         dispatch_span.set_status(trace.StatusCode.OK)
         span.set_status(trace.StatusCode.OK)
-        # Chunked write so large adapted responses stay recoverable from
-        # the span; never silently truncated at OTel's per-attribute cap.
+        # Chunked write so large adapted responses stay recoverable from the span; never silently truncated at OTel's per-attribute cap.
         _set_span_text(span, "content", json.dumps(adapted))
         su = adapted.get("usage", {})
         input_tokens = su.get("inputTokens", su.get("input_tokens", 0)) or 0
@@ -2248,10 +2196,7 @@ async def proxy(request: Request, path: str):
         ctx = ctx_tracker.analyze(messages, model or "")
         ctx_tracker.set_span_attrs(span, ctx, messages, body_json)
 
-        # ── Request-level validation ──────────────────────────────────
-        # Catch obviously-invalid inputs at our boundary rather than
-        # forwarding them. The upstream NIM/Bedrock errors here are
-        # generic 5xx-shaped strings that are hard to read.
+        # Reject bad inputs here; upstream errors are harder to read.
         mt = body_json.get("max_tokens")
         if mt is not None and (not isinstance(mt, int) or mt < 1):
             span.set_attribute("error", f"invalid max_tokens: {mt!r}")
@@ -2265,12 +2210,7 @@ async def proxy(request: Request, path: str):
 
         url = MODEL_MAP.get(model)
 
-        # ── Path 1: Bedrock Converse fallback ─────────────────────────
-        # Only fall through to Bedrock for model names that *look* like
-        # Bedrock targets. Without this guard, arbitrary unknown model
-        # names get forwarded to AWS and the Converse endpoint sometimes
-        # returns 200 with empty content. That fake success is worse
-        # than a clean 404.
+        # Forward only Bedrock-shaped misses; arbitrary unknown models stay clean 404s.
         if not url and _is_bedrock_available() and _is_bedrock_routable(model):
             logger.info(f"Bedrock fallback for unknown model: {model}")
             span.set_attribute("bedrock_fallback", True)
@@ -2514,11 +2454,7 @@ async def proxy(request: Request, path: str):
                                 continue
                         if parsed:
                             summary = merge_openai_chunks(parsed)
-                            # _set_span_text already records full_length and
-                            # chunk count internally; the manual truncated/
-                            # full_length attributes below would be stale
-                            # (they don't account for the chunking) and now
-                            # contradict the chunked write.
+                            # _set_span_text already records chunk count and full_length.
                             _set_span_text(stream_span, "content", json.dumps(summary))
                             # Extract usage for structured attributes
                             su = summary.get("usage") or {}
@@ -2618,20 +2554,8 @@ async def set_key(request: Request):
     if not env_var:
         raise HTTPException(status_code=400, detail={"error": f"unknown provider '{provider}'"})
 
-    # Downgrade guard. This is a SHARED gateway: a single os.environ key serves
-    # every student and the no-key proxy default. A per-student set-key must
-    # never weaken that shared key. The subtlety: integrate.api's GET /models
-    # accepts ANY key string and returns the full catalog, so discovery alone
-    # cannot tell a working key from a scope-limited or expired one. Both list
-    # 120 models, but only one can actually run a completion. So we verify with
-    # a real 1-token inference call, not just a re-discovery:
-    #   - probe the CURRENT key first (only a key that actually worked is worth
-    #     protecting; if the gateway was already broken, any candidate is fine),
-    #   - swap the candidate in, re-discover, probe it,
-    #   - roll back and reject if the candidate drops models the old key served
-    #     OR cannot infer while the old one could.
-    # A candidate may add capability but must never remove it. This is what
-    # stops one student's limited key from 403-ing chat/completions class-wide.
+    # Shared-key guard: a student key may add capability, never remove working class-wide access.
+    # Discovery is not enough because integrate.api lists models for bad keys; prove inference too.
     before = set(MODEL_MAP)
     old_key = os.environ.get(env_var)
     old_ok = bool(old_key) and (await _probe_key_inference(env_var, old_key))[0]
