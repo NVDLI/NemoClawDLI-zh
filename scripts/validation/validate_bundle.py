@@ -563,6 +563,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                  "unreadable at the figure's display scale."),
         "small_render": (RECOMMENDED, "Raise the figure's display cap or host width so full-width course diagrams render at "
                          "least 900px wide in the lesson column."),
+        "flex_parent": (RECOMMENDED, "Do not wrap fetched SVG figures in an un-sized flex container. Use a block <figure> "
+                        "or give the flex parent and flex item explicit widths so the SVG cannot shrink-wrap."),
         "overflow": (RECOMMENDED, "Widen the viewBox or wrap the label onto two centered lines so it stays "
                      "inside the frame."),
         "no_aria": (RECOMMENDED, "Add an aria-label (or role=img plus a <title>) that states what the figure shows."),
@@ -870,7 +872,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
           f"(inline {ct_inline}, undefined-var {ct_undef}, render-bake {ct_bake})")
     print(f"  figure audit    : {fa_total} legibility/format finding(s) "
           f"(tiny-text {len(fa_find.get('tiny', []))}, small-render {len(fa_find.get('small_render', []))}, "
-          f"overflow {len(fa_find.get('overflow', []))}, "
+          f"flex-parent {len(fa_find.get('flex_parent', []))}, overflow {len(fa_find.get('overflow', []))}, "
           f"a11y {len(fa_find.get('no_aria', [])) + len(fa_find.get('img_no_alt', [])) + len(fa_find.get('blank_link', []))})")
     print(f"  cell audit      : {ca_total} cell-contract finding(s) "
           f"(opaque {len(ca_find.get('opaque', []))}, console {len(ca_find.get('console', []))}, "
