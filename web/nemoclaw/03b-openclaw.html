@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>OpenClaw · Securing Agents</title>
-<link rel="stylesheet" href="_style.css"/>
+<link rel="stylesheet" href="styles/_style.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
@@ -272,7 +272,7 @@
   <div id="openclaw-cell"></div>
   <div id="openclaw-artifact"></div>
   <script type="module">
-    import { mountRunCell } from "./_shared.js";
+    import { mountRunCell } from "./scripts/_shared.js";
     mountRunCell("#openclaw-cell", {
       label: "the Try-it artifact, in code",
       autorun: true,
@@ -299,7 +299,7 @@ helpers.log("rendered below. Edit the config and Run.");
 </main>
 
 <script type="module">
-import { buildNav, updateKeyPill, updateClawPill, mountJourneyMap, mountCanvasFlow, mountRunCell, GW_CONNECT, mountGwRecover, mountDiagram } from "./_shared.js";
+import { buildNav, updateKeyPill, updateClawPill, mountJourneyMap, mountCanvasFlow, mountRunCell, GW_CONNECT, mountGwRecover, mountDiagram } from "./scripts/_shared.js";
 document.getElementById("nav").innerHTML = buildNav("03b-openclaw.html");
 const pill = document.getElementById("key-status");
 updateKeyPill(pill);

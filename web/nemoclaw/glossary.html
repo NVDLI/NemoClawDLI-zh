@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>The materials catalog behind web_search · Securing Agents</title>
-<link rel="stylesheet" href="_style.css"/>
+<link rel="stylesheet" href="styles/_style.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
@@ -158,7 +158,7 @@
 </main>
 
 <script type="module">
-import { webSearch, instantAnswer, loadMaterialsCatalog, mountDiagram, mountCanvasFlow, mountRunCell } from "./_shared.js";
+import { webSearch, instantAnswer, loadMaterialsCatalog, mountDiagram, mountCanvasFlow, mountRunCell } from "./scripts/_shared.js";
 
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const $ = (id) => document.getElementById(id);

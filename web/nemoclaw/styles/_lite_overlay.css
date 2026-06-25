@@ -6,7 +6,7 @@
 */
 
 :root {
-  /* Light theme. Overrides the dark-theme vars in _style.css. */
+  /* Light theme. Overrides the dark-theme vars in styles/_style.css. */
   --g:   #76b900;
   --gd:  #2f6a00;
   --gs:  #4a7a00;
@@ -30,14 +30,14 @@
 }
 
 /* GFX graphics: force the light palette in the standalone.
-   _style.css defines --gfx-* only under `.gfx-dark`, and the bundler strips
+   styles/_style.css defines --gfx-* only under `.gfx-dark`, and the bundler strips
    that class from inline figure bodies, so the var() fallbacks (the light
    values) take over. This block is belt-and-braces. If any gfx node keeps
    its class (a parent wrapper, a future figure the stripper misses, a
    runtime-injected diagram), its vars still resolve to these light values
    instead of the dark pastels (#bd9cf7, #5aa8ff, #ff6b6b) that wash out on a
    white card. The lab view never loads this overlay, so its dark palette in
-   _style.css stays intact.
+   styles/_style.css stays intact.
    NOTE: keep the literal token s-v-g out of this comment; the bundler's
    recolor pass scans for figure open-tags and a stray one here would drag
    the head style block into the substitution. */
@@ -277,7 +277,7 @@ table th { background: #f6f8fa; color: #1a1a1a !important; }
 }
 
 /* Key panel (lite-mode inline form). Override the dark .key-panel rule
-   from _style.css so the outer container doesn't double up its own
+   from styles/_style.css so the outer container doesn't double up its own
    dark background around our inner .key-form. */
 .key-panel, #key-panel {
   background: transparent !important;
@@ -700,7 +700,7 @@ pre .hljs                { color: #1f2328 !important; background: transparent !i
 .cf-panel-output-pre .hljs-punctuation,
 .cf-panel-output-pre .hljs-operator { color: #c9d1d9 !important; }
 
-/* Helpers scroll wrapper (defined in _style.css). edX may apply
+/* Helpers scroll wrapper (defined in styles/_style.css). edX may apply
    margin: 0 to the table; keep the wrapper handling overflow. */
 .cf-helpers-scroll { overflow-x: auto !important; }
 .cf-helpers-table  { min-width: 560px !important; }

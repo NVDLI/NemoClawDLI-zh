@@ -38,38 +38,41 @@ except Exception:
 
 # Human-facing one-liner for the web bundle's released course. nemoclaw is what the release foyer surfaces.
 WEB_COURSE_DESC = {
-    "nemoclaw":      "Securing Agents: the browser course. Build an agent from the loop up (reasoning, "
-                     "tools, retrieval, memory), then contain it with the OpenShell sandbox and weigh the "
-                     "modern CLI agents that wrap it.",
+    "nemoclaw":      "Securing Agents: a browser-first course that runs against the lab's model gateway "
+                     "and OpenClaw runtime. The pages build the agent loop, tools, retrieval, planning, "
+                     "and sandbox controls as live artifacts, with course code collapsed when it is "
+                     "supporting infrastructure rather than the lesson focus.",
 }
 # One-line purpose per course page, so the rendered hub documents what each page does instead of listing
 # bare filenames. Keyed by course then page stem; a missing entry just renders an empty desc.
 WEB_PAGE_DESC = {
     "nemoclaw": {
-        "01a-loop":          "The agent loop: a stateless model wrapped in a read, decide, act cycle.",
-        "01b-react":         "ReAct: the model reasons, then calls tools, and how context rot creeps in.",
-        "01c-tools":         "Tool calling: the model requests, your code runs, the model reads the result.",
-        "02a-routing":       "Route a request to one specialist with a typed enum.",
-        "02b-rag":           "The Index Agent: retrieval wired as a tool, from corpus to grounded answer.",
+        "01a-loop":          "The agent loop: a model call wrapped in a repeated perceive, reason, act cycle.",
+        "01b-react":         "ReAct: reason, act, observe, repeat, with a maze artifact that keeps the code available but quiet.",
+        "01c-tools":         "Tool calling: the model requests work, browser code runs it, and the model reads the result.",
+        "02a-routing":       "Routing: planner, workers, and synthesis as separate calls with visible bounded orchestration.",
+        "02b-rag":           "RAG: retrieval wired as a tool, from corpus chunks to grounded answer.",
         "02c-deep":          "Deep agents: a planner delegating to sub-agents over a shared filesystem.",
-        "03a-kickstart":     "Kickstart: the model and agent-runtime endpoints you drive from here.",
+        "03a-kickstart":     "Kickstart: connect the browser course to the lab launchable and check the runtime endpoints.",
         "03b-openclaw":      "OpenClaw: the workspace folder is the agent's live configuration.",
         "03c-always-on":     "Always-on agents: a per-turn loop nested inside slower triggers.",
-        "04a-safety":        "The NemoClaw sandbox: kernel-enforced policy the prompt cannot talk past.",
-        "04b-modern-clis":   "Modern CLI agents compared, plus a real terminal on your launchable.",
-        "04c-going-further": "Going further: the layered view and where to take it next.",
-        "index":             "Human entry: the course landing and API-key setup.",
+        "04a-safety":        "NemoClaw safety: policy and sandbox boundaries the prompt cannot talk past.",
+        "04b-modern-clis":   "Modern CLI agents compared, plus a real terminal on the NemoClaw launchable.",
+        "04c-going-further": "Going further: the layered view and where to take the lab next.",
+        "index":             "Human entry: course landing, API-key setup, and iframe opt-in control.",
         "glossary":          "Searchable glossary of the course's agent terms.",
         "studio":            "Authoring and inspection studio for the course pages.",
         "cert":              "Course completion certificate.",
         "courses":           "Catalog redirect stub.",
     },
 }
-# Provenance hubs (hand-authored, in generator-skipped asset dirs): carded under their own section and
-# linked as children so they are reachable from the course hub.
-WEB_PROV = {
-    "assets": ("image provenance",    "Source, license, and connection level for every image."),
-    "mats":   ("material provenance",  "Source and connection level for every companion essay."),
+# Course support directories with hand-authored SKILL beacons. The course hub links them so
+# assets, materials, runtime modules, and styles are all reachable through the same skill tree.
+WEB_SUPPORT = {
+    "scripts": ("runtime scripts", "Browser modules for page chrome, runnable cells, canvas flows, OpenClaw controls, chat widgets, diagrams, retrieval helpers, and the studio tool."),
+    "styles":  ("course styles", "Shared course CSS plus the light iframe/export overlay."),
+    "assets":  ("image provenance", "Source, license, and connection level for every image."),
+    "mats":    ("material provenance", "Source and connection level for every companion essay."),
 }
 SURFACE_LEAD = {
     "cpu": "The shared microservice stack (llm_client, openclaw, sandbox-admin, docker_router) that the "
@@ -411,7 +414,10 @@ def gen_web_course_hubs():
             return p.parent.name if p.name == "index.html" else p.stem
 
         pd = WEB_PAGE_DESC.get(d.name, {})
-        prov_files = [p for p in (d / "assets" / "SKILL.html", d / "mats" / "SKILL.html") if p.is_file()]
+        support_files = [d / name / "SKILL.html" for name in WEB_SUPPORT]
+        support_files = [p for p in support_files if p.is_file()]
+        implementation = [p for p in support_files if p.parent.name in {"scripts", "styles"}]
+        provenance = [p for p in support_files if p.parent.name in {"assets", "mats"}]
         sections = [("Pages", None, [(p.stem, p.relative_to(d).as_posix(), pd.get(p.stem, "")) for p in primary])]
         if subindex:
             sections.append(("Collections", "Sub-collections with their own launcher; open one to "
@@ -425,15 +431,19 @@ def gen_web_course_hubs():
             sections.append(("Tools", "Authoring and inspection tools for this course; open one to work "
                              "with the material directly. Not part of the student module flow.",
                              [(p.stem, p.relative_to(d).as_posix(), pd.get(p.stem, "")) for p in tools]))
-        if prov_files:
+        if implementation:
+            sections.append(("Implementation", "Course-owned runtime assets that pages import or the bundler inlines.",
+                             [(WEB_SUPPORT[p.parent.name][0], p.relative_to(d).as_posix(), WEB_SUPPORT[p.parent.name][1])
+                              for p in implementation]))
+        if provenance:
             sections.append(("Provenance", "Source, license, and connection level for the course's images "
                              "and companion materials.",
-                             [(WEB_PROV[p.parent.name][0], p.relative_to(d).as_posix(), WEB_PROV[p.parent.name][1])
-                              for p in prov_files]))
+                             [(WEB_SUPPORT[p.parent.name][0], p.relative_to(d).as_posix(), WEB_SUPPORT[p.parent.name][1])
+                              for p in provenance]))
         meta = {"node_type": "hub", "level": "course", "surface": "web", "course": d.name,
                 "self_path": f"web/{d.name}/SKILL.html",
                 "children": [{"name": _label(p), "path": p.relative_to(TASK1).as_posix()} for p in pages]
-                            + [{"name": p.parent.name, "path": p.relative_to(TASK1).as_posix()} for p in prov_files]}
+                            + [{"name": p.parent.name, "path": p.relative_to(TASK1).as_posix()} for p in support_files]}
         lead = WEB_COURSE_DESC.get(d.name, f"The {d.name} browser course, {len(primary)} pages.")
         write(sk, framer_page(meta, f"web/{d.name} · course hub", sections, summary=lead,
                               nav=_nav("web/" + d.name, "web/SKILL.html", "web"),

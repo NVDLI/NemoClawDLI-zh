@@ -785,7 +785,7 @@ export {
 // ── Theme toggle ─────────────────────────────────────────────────────────────
 
 // A dark/light switch in the topbar. The active theme is data-theme on <html>, remembered in localStorage.
-// The standalone sets data-theme before paint (a <head> script injected by bundle_standalone.py) so the page opens in the right palette with no flash; _style.css carries the matching light palette.
+// The standalone sets data-theme before paint (a <head> script injected by bundle_standalone.py) so the page opens in the right palette with no flash; styles/_style.css carries the matching light palette.
 // No-ops in the topbar-less iframe.
 export function mountThemeToggle() {
   /* @doc <code>helpers.mountThemeToggle()</code> ::

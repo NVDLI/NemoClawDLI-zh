@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Course runtime scripts ? Securing Agents</title>
+<link rel="stylesheet" href="../styles/_style.css"/>
+<style>
+  main { max-width: 1080px; margin: 0 auto; padding: 1.5rem; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: .9rem; }
+  th, td { text-align: left; vertical-align: top; border-bottom: 1px solid var(--bd); padding: .55rem .65rem; }
+  th { color: var(--td); font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; }
+  td:first-child { font-family: var(--mono); color: var(--gs); white-space: nowrap; }
+  code { color: var(--gs); }
+</style>
+<script type="application/json" id="skill-meta">
+{
+  "node_type": "leaf",
+  "level": "implementation",
+  "surface": "web",
+  "course": "nemoclaw",
+  "title": "Course runtime scripts",
+  "source_dir": "web/nemoclaw/scripts/",
+  "self_path": "web/nemoclaw/scripts/SKILL.html",
+  "summary": "Browser modules that power the Securing Agents course: shared page chrome, runnable cells, canvas flows, OpenClaw controls, chat widgets, diagrams, retrieval helpers, and the studio tool. These files are source assets, not generated bundle output."
+}
+</script>
+</head>
+<body>
+<main>
+  <p><a href="../SKILL.html">Back to course hub</a></p>
+  <h1>Course runtime scripts</h1>
+  <p>These modules support the browser course pages. Page HTML imports <code>scripts/_shared.js</code>; that shared module re-exports the page-facing APIs and delegates larger subsystems to smaller siblings.</p>
+  <table>
+    <thead><tr><th>File</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td>_shared.js</td><td>Page chrome, model gateway helpers, service config, exported API surface for lesson pages.</td></tr>
+      <tr><td>_canvas.js</td><td>Runnable code cells and canvas-flow orchestration, including collapsed-code behavior and per-node reset.</td></tr>
+      <tr><td>_openclaw.js</td><td>OpenClaw chat, probe, recovery, logs, and sandbox-policy controls.</td></tr>
+      <tr><td>_openshell.js</td><td>OpenShell command and file-system helpers used by the lab-facing agent runtime.</td></tr>
+      <tr><td>_chat.js</td><td>Chat widgets and artifact panels used by interactive lesson sections.</td></tr>
+      <tr><td>_diagram.js, _viz.js, _figures.js</td><td>Diagram grammar, visualization helpers, and page-specific figure builders.</td></tr>
+      <tr><td>_rag.js, _glossary.js</td><td>Retrieval and glossary helpers for local materials and live web-search flows.</td></tr>
+      <tr><td>_keypanel.js</td><td>API-key panel and explicit iframe-proxy opt-in controls.</td></tr>
+      <tr><td>_langchain.js</td><td>Lightweight LangChain-style teaching helpers for comparison cells.</td></tr>
+      <tr><td>studio_main.js</td><td>Authoring and inspection studio runtime.</td></tr>
+    </tbody>
+  </table>
+</main>
+</body>
+</html>
