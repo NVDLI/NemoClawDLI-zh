@@ -27,6 +27,8 @@ RUNTIME_SKILL = ROOT / "scripts" / "runtime" / "SKILL.html"
 ROOT_SCRIPT_SKILL = ROOT / "scripts" / "SKILL.html"
 LAB_RUNTIME_DOC = ROOT / "docs" / "lab_runtime_testing.md"
 BROWSER_PROBE = ROOT / "scripts" / "runtime" / "browser_env_probe.sh"
+HELPER_NOTEBOOK_AUDIT = ROOT / "scripts" / "validation" / "helper_notebook_runtime_audit.py"
+STUDIO_RESPONSIVE_AUDIT = ROOT / "scripts" / "validation" / "studio_responsive_audit.py"
 
 REQUIRED_IDS = {
     "mod-sel", "url-bar", "reload-btn", "sidebar-btn", "comment-btn",
@@ -55,6 +57,8 @@ REQUIRED_JS = {
 
 REQUIRED_SKILL = {
     "audit command": "python3 scripts/validation/studio_interface_audit.py",
+    "helper notebook static audit": "python3 scripts/validation/helper_notebook_runtime_audit.py --no-container",
+    "helper notebook runtime audit": "CONTAINER_ENGINE=podman python3 scripts/validation/helper_notebook_runtime_audit.py",
     "lab authoring mode": "Lab authoring",
     "static review mode": "Read-only static preview",
     "light export mode": "Light export review",
@@ -117,6 +121,21 @@ def audit() -> list[str]:
     for item in sorted(modules - pages):
         findings.append(f"studio_main.js MODULES references non-lesson page {item}")
 
+    required_studio_css = {
+        "topbar horizontal scroll": ".studio-topbar{height:var(--studio-top);display:flex;align-items:center;gap:.55rem;padding:0 max(1rem,calc((100vw - min(92rem,100%))/2));border-bottom:1px solid var(--bd);background:var(--bg);position:relative;z-index:20;overflow-x:auto",
+        "topbar children no shrink": ".studio-topbar>*{flex-shrink:0}",
+        "button min width": ".tb-btn{height:var(--studio-min-control);min-width:3.25rem;flex:0 0 auto",
+        "sidebar min width": ".studio-sidebar{width:var(--studio-side);min-width:min(16rem,72vw);max-width:82vw",
+        "sidebar scroll min height": ".sb-scroll{flex:1;overflow:auto",
+        "section flex floor": ".sb-section{border:1px solid var(--bd);border-radius:8px;background:var(--bg);overflow:hidden;display:flex;flex-direction:column;min-height:2.1rem;flex:0 0 auto",
+        "body min height": ".sb-body{padding:.7rem;display:flex;flex-direction:column;gap:.65rem;min-height:0}",
+        "list scroll floors": "#cmt-list,#ref-list,#test-list,#chg-list{min-height:7rem;max-height:clamp(7rem,30vh,20rem);overflow-y:auto",
+        "small viewport sidebar floor": "@media(max-width:900px){.tb-input{display:none}.tb-status{display:none}.studio-sidebar{width:17rem;min-width:min(15rem,78vw)}",
+    }
+    for label, token in required_studio_css.items():
+        if token not in html:
+            findings.append(f"studio.html missing responsive layout CSS {label}: {token}")
+
     for label, token in REQUIRED_JS.items():
         if label == "no stale lite CSS path":
             if token in js:
@@ -129,6 +148,9 @@ def audit() -> list[str]:
         "test command model": "const TEST_COMMANDS",
         "test command renderer": "function renderTestCommands",
         "static audit command": "python3 scripts/validation/studio_interface_audit.py",
+        "helper notebook static command": "python3 scripts/validation/helper_notebook_runtime_audit.py --no-container",
+        "helper notebook browser command": "CONTAINER_ENGINE=podman python3 scripts/validation/helper_notebook_runtime_audit.py",
+        "studio responsive browser command": "CONTAINER_ENGINE=podman python3 scripts/validation/studio_responsive_audit.py",
         "browser env probe command": "scripts/runtime/browser_env_probe.sh",
         "browser smoke command": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --smoke",
         "render-only test command": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only",
@@ -176,6 +198,20 @@ def audit() -> list[str]:
         findings.append("scripts/runtime/browser_env_probe.sh missing")
     elif not (BROWSER_PROBE.stat().st_mode & 0o111):
         findings.append("scripts/runtime/browser_env_probe.sh is not executable")
+
+    if not HELPER_NOTEBOOK_AUDIT.is_file():
+        findings.append("scripts/validation/helper_notebook_runtime_audit.py missing")
+    elif not (HELPER_NOTEBOOK_AUDIT.stat().st_mode & 0o111):
+        findings.append("scripts/validation/helper_notebook_runtime_audit.py is not executable")
+    else:
+        import helper_notebook_runtime_audit
+        for item in helper_notebook_runtime_audit.static_audit():
+            findings.append(item)
+
+    if not STUDIO_RESPONSIVE_AUDIT.is_file():
+        findings.append("scripts/validation/studio_responsive_audit.py missing")
+    elif not (STUDIO_RESPONSIVE_AUDIT.stat().st_mode & 0o111):
+        findings.append("scripts/validation/studio_responsive_audit.py is not executable")
 
     if "Write access: Jupyter contents API" not in js or "Read-only static preview" not in js:
         findings.append("studio_main.js must surface lab-write versus static-read-only state")
