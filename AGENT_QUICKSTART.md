@@ -150,6 +150,25 @@ bash    scripts/runtime/run_engine.sh --self-test        # link-engine self-test
 python3 scripts/validation/validate_bundle.py --scope ship  # grounding, reachability, page audit, em-dash
 ```
 
+When a change affects Studio, runnable cells, browser modules, OpenClaw pages, or
+page rendering, do not stop at the static gate. Host `node`, Chromium, and
+Playwright are optional because the browser harness carries them in a small
+Podman/Docker image:
+
+```bash
+scripts/runtime/browser_env_probe.sh                       # proves container Node + Playwright + Chromium
+CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only
+```
+
+For full lab-network browser tests, start the stack first. If `podman compose`
+is unavailable, use the Python module form:
+
+```bash
+COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD \
+  python3 -m podman_compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
+CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html
+```
+
 Install the hooks so the gate runs locally:
 
 ```bash

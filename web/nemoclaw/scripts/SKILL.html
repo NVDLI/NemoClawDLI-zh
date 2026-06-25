@@ -53,6 +53,8 @@
   ],
   "tests": [
     "python3 scripts/validation/studio_interface_audit.py",
+    "scripts/runtime/browser_env_probe.sh",
+    "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --smoke",
     "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only",
     "COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD python3 -m podman_compose -f docker-compose.yml -f docker-compose.override.yml up -d --build",
     "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html",
@@ -68,7 +70,7 @@
 <main>
   <p><a href="../SKILL.html">Back to course hub</a></p>
   <h1>Course runtime scripts</h1>
-  <p>These modules support the browser course pages. Page HTML imports <code>scripts/_shared.js</code>; that shared module re-exports page-facing APIs and delegates larger subsystems to smaller siblings. The studio and this SKILL page split the testing job: <code>studio.html</code> is the operator console for running or copying checks, while this beacon is the machine-readable test map agents should parse before changing runtime interfaces.</p>
+  <p>These modules support the browser course pages. Page HTML imports <code>scripts/_shared.js</code>; that shared module re-exports page-facing APIs and delegates larger subsystems to smaller siblings. The studio and this SKILL page split the testing job: <code>studio.html</code> is the operator console for running or copying checks, while this beacon is the machine-readable test map agents should parse before changing runtime interfaces. Before claiming browser smoke is unavailable, run <code>scripts/runtime/browser_env_probe.sh</code>; host Node, Chromium, and Playwright are not prerequisites.</p>
 
   <h2>Use style</h2>
   <table>
@@ -105,6 +107,8 @@
     <thead><tr><th>Command</th><th>What it catches</th></tr></thead>
     <tbody>
       <tr><td><code>python3 scripts/validation/studio_interface_audit.py</code></td><td>Studio controls, local assets, lesson coverage, lab-write versus static-read-only behavior, references panel, testing sidebar commands, and this SKILL documentation.</td></tr>
+      <tr><td><code>scripts/runtime/browser_env_probe.sh</code></td><td>First browser-runtime discovery command. Finds Podman or Docker, reports podman-compose-via-python availability, and proves container Node.js, Playwright, and Chromium through smoke.</td></tr>
+      <tr><td><code>CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --smoke</code></td><td>Direct browser runtime smoke. No lab stack, no host Node, no host Chromium, no host Playwright.</td></tr>
       <tr><td><code>CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only</code></td><td>No-lab browser-container check. Uses the runtime image to render a static page without the podman deployment network.</td></tr>
       <tr><td><code>COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD python3 -m podman_compose -f docker-compose.yml -f docker-compose.override.yml up -d --build</code></td><td>Podman deployment startup through the Python podman-compose module. Same compose files as <code>podman compose</code>; useful when only podman plus the Python package are available.</td></tr>
       <tr><td><code>CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html</code></td><td>Full lab-network browser check after the podman stack is running.</td></tr>

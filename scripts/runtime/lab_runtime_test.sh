@@ -16,8 +16,11 @@ Usage: scripts/runtime/lab_runtime_test.sh [--smoke] [--render-only] [--no-build
 
 Builds a small browser-test image with Node.js, playwright-core, and Chromium,
 then runs scripts/runtime/test_page_runtime.js from the repo bind-mounted read-only.
+Host Node.js, Chromium, and Playwright are not required. For one-command
+discovery, run scripts/runtime/browser_env_probe.sh first.
 
 Examples:
+  scripts/runtime/browser_env_probe.sh
   scripts/runtime/lab_runtime_test.sh --smoke
   scripts/runtime/lab_runtime_test.sh --render-only
   scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html
