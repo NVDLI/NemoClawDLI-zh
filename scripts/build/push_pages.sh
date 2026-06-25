@@ -5,8 +5,8 @@
 # site plus a trivial `pages` job, keeping it independent of the source repo's own CI.
 # This script builds public/ and pushes that artifact (no source) to it.
 #
-# One-time setup of the dedicated project (e.g. on the internal instance so the URL is
-# https://<group>.gitlab-master-pages.nvidia.com/<project>/):
+# One-time setup of the dedicated project (for example, a private Pages host URL):
+# https://<pages-host>/<group>/<project>/
 #   1. Create an empty GitLab project, e.g. <group>/agents-pages.
 #   2. Settings > General > Visibility > Pages: "Only project members" (keeps it private).
 #   3. Create a token with write_repository (Project Access Token or a PAT).
@@ -16,7 +16,7 @@
 #
 # Example:
 #   GITLAB_TOKEN=glpat-xxx scripts/push_pages.sh \
-#     https://gitlab-master.nvidia.com/dli/agents-pages.git
+#     https://<git-host>/<group>/agents-pages.git
 #
 # branch defaults to the project default branch name passed as $2 (default: main). The
 # generated pages job runs on the default branch, so push to whatever that project uses.

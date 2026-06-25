@@ -64,10 +64,11 @@
       "Code-first: fixing a real code cell beats improving prose beats adding navigation. A change that teaches nothing new and prevents no bug is not worth making.",
       "Browser courses stay remote-services-only; never put keys in static files.",
       "The course mats/ (web/nemoclaw/mats/) and repos/ are cited-by-URL reference packets: cite the external URL, never link the packet file.",
+      "Run source_gate before adding assets, mats, datasets, cached references, or copied examples; every new source needs provenance and license disposition.",
       "Never commit lab-generated runtime output (artifacts/, export/, caches, the public/ build)."
     ],
     "cadences": [
-      "Validate before pushing: validate_layout, skill_consistency, run_engine --self-test, validate_bundle --scope ship. The same gates run at pre-push (install: bash scripts/install-hooks.sh).",
+      "Validate before pushing: validate_layout, skill_consistency, source_gate, run_engine --self-test, validate_bundle --scope ship. The same gates run at pre-push (install: bash scripts/install-hooks.sh).",
       "A reported defect is a SAMPLE of a class: grep the whole repo across every course, surface, and duplicated copy before fixing, then fix every instance or name the deferrals.",
       "Improve one, improve all: a fix in one course propagates to its siblings.",
       "When scope is ambiguous, escalate; never truncate. If literal compliance is worse than the better thing, do the better thing and say so."
@@ -196,14 +197,34 @@
           "desc": "How to contribute: hooks, the validation gate, conventions."
         },
         {
+          "label": "NOTICE.md",
+          "href": "NOTICE.md",
+          "desc": "Apache notice and third-party provenance pointer."
+        },
+        {
           "label": "QUALITY_DIRECTIVES.md",
           "href": "QUALITY_DIRECTIVES.md",
           "desc": "Pedagogical quality bar."
         },
         {
+          "label": "scripts/compliance/docs/open_source_readiness.md",
+          "href": "scripts/compliance/docs/open_source_readiness.md",
+          "desc": "Release-safe readiness checklist and roles."
+        },
+        {
+          "label": "scripts/compliance/docs/vendor_policy.md",
+          "href": "scripts/compliance/docs/vendor_policy.md",
+          "desc": "Source and vendor-ingestion policy."
+        },
+        {
           "label": "SKILL_CONTRACT.md",
           "href": "SKILL_CONTRACT.md",
           "desc": "The SKILL.html beacon spec."
+        },
+        {
+          "label": "docs/lab_runtime_testing.md",
+          "href": "docs/lab_runtime_testing.md",
+          "desc": ""
         },
         {
           "label": "docs/notebook_corruption_prevention.md",
@@ -257,8 +278,12 @@
     <li><a href="README.md">README.md</a></li>
     <li><a href="AGENT_QUICKSTART.md">AGENT_QUICKSTART.md</a></li>
     <li><a href="CONTRIBUTING.md">CONTRIBUTING.md</a></li>
+    <li><a href="NOTICE.md">NOTICE.md</a></li>
     <li><a href="QUALITY_DIRECTIVES.md">QUALITY_DIRECTIVES.md</a></li>
+    <li><a href="scripts/compliance/docs/open_source_readiness.md">scripts/compliance/docs/open_source_readiness.md</a></li>
+    <li><a href="scripts/compliance/docs/vendor_policy.md">scripts/compliance/docs/vendor_policy.md</a></li>
     <li><a href="SKILL_CONTRACT.md">SKILL_CONTRACT.md</a></li>
+    <li><a href="docs/lab_runtime_testing.md">docs/lab_runtime_testing.md</a></li>
     <li><a href="docs/notebook_corruption_prevention.md">docs/notebook_corruption_prevention.md</a></li>
     <li><a href="docs/pages_deploy.md">docs/pages_deploy.md</a></li>
     <li><a href="docs/staging-deployments.md">docs/staging-deployments.md</a></li>

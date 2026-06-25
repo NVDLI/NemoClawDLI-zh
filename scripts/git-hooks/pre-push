@@ -76,6 +76,19 @@ if [ -f "$CONTRACT" ]; then
     fi
 fi
 
+# ── RULE 3c: source and vendor-ingestion guard ───────────────────────────────
+# The root license, contribution terms, internal-link sweep, and governed-material
+# provenance all need to be clean before a source change leaves the workstation.
+SOURCE_GATE="$T1/scripts/source_gate.py"
+if [ -f "$SOURCE_GATE" ]; then
+    if ! python3 "$SOURCE_GATE"; then
+        echo ""
+        echo "pre-push: REFUSING PUSH - source/vendor compliance gate failed."
+        echo "Fix the private link, missing provenance, license, or contribution-term"
+        echo "finding above. Policy: scripts/compliance/docs/vendor_policy.md"
+        exit 1
+    fi
+fi
 # ── RULE 4: layout / link glue guard ──────────────────────────────────────────
 LAYOUT="$T1/scripts/validate_layout.py"
 if [ -f "$LAYOUT" ]; then

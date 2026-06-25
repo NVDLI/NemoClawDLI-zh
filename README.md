@@ -77,6 +77,16 @@ It resolves every written link through the deploy "compiler" (nginx routes, Jupy
 which pages reach a SKILL hub; and enforces that the foyer surfaces only the released course.
 The same gate runs at pre-push and in CI.
 
+## Source and licensing governance
+
+The repository license is [Apache-2.0](LICENSE.md), and inbound contributions are handled under the Apache-2.0 contribution language unless a submission is clearly marked `Not a Contribution`.
+
+New course assets, mats, datasets, cached references, generated files, or copied examples must carry source and license disposition before they are committed. Start with [`scripts/compliance/docs/open_source_readiness.md`](scripts/compliance/docs/open_source_readiness.md) and [`scripts/compliance/docs/vendor_policy.md`](scripts/compliance/docs/vendor_policy.md), then run:
+
+```bash
+python3 scripts/source_gate.py
+```
+
 ## Layout
 
 ```

@@ -1,0 +1,210 @@
+{
+  "schema": "source-inventory/1.0",
+  "default_license": "Apache-2.0",
+  "contribution_terms": "Inbound contributions are Apache-2.0 unless explicitly marked Not a Contribution.",
+  "policy_docs": [
+    "scripts/compliance/docs/open_source_readiness.md",
+    "scripts/compliance/docs/vendor_policy.md"
+  ],
+  "provenance_beacons": [
+    {
+      "root": "web/nemoclaw/assets",
+      "beacon": "web/nemoclaw/assets/SKILL.html",
+      "arrays": [
+        "figures",
+        "assets"
+      ]
+    },
+    {
+      "root": "web/nemoclaw/mats",
+      "beacon": "web/nemoclaw/mats/SKILL.html",
+      "arrays": [
+        "mats",
+        "figures",
+        "assets"
+      ]
+    }
+  ],
+  "inventory_entries": [
+    {
+      "path": "LICENSE.md",
+      "kind": "license",
+      "license": "Apache-2.0",
+      "disposition": "required root license"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "kind": "contribution_terms",
+      "license": "Apache-2.0",
+      "disposition": "inbound terms"
+    },
+    {
+      "path": "scripts/compliance/docs",
+      "kind": "compliance_docs",
+      "license": "Apache-2.0",
+      "disposition": "release-safe process docs"
+    },
+    {
+      "path": "scripts/compliance",
+      "kind": "compliance_tools",
+      "license": "Apache-2.0",
+      "disposition": "release gate tooling"
+    },
+    {
+      "path": "web/nemoclaw/mats/glossary_raw",
+      "kind": "cached_public_reference",
+      "license": "external-terms",
+      "disposition": "recorded in mats provenance; review before external publication"
+    },
+    {
+      "path": "web/nemoclaw/assets/cli_readmes.json",
+      "kind": "generated-index",
+      "license": "generated-from-authored-source",
+      "disposition": "derived asset index"
+    },
+    {
+      "path": "web/nemoclaw/assets/glossary_index.json",
+      "kind": "generated-index",
+      "license": "generated-from-authored-source",
+      "disposition": "derived glossary index"
+    },
+    {
+      "path": "web/nemoclaw/assets/materials_index.json",
+      "kind": "generated-index",
+      "license": "generated-from-authored-source",
+      "disposition": "derived materials index"
+    },
+    {
+      "path": "web/nemoclaw/assets/rag_index.json",
+      "kind": "generated-index",
+      "license": "generated-from-authored-source",
+      "disposition": "derived RAG index"
+    },
+    {
+      "path": "web/nemoclaw/mats/_materials.json",
+      "kind": "generated-provenance",
+      "license": "generated-from-authored-source",
+      "disposition": "materials pull provenance"
+    },
+    {
+      "path": "web/nemoclaw/mats/glossary_index.json",
+      "kind": "generated-index",
+      "license": "generated-from-authored-source",
+      "disposition": "derived glossary index"
+    },
+    {
+      "path": "web/nemoclaw/mats/materials_index.json",
+      "kind": "generated-index",
+      "license": "generated-from-authored-source",
+      "disposition": "derived materials index"
+    },
+    {
+      "path": "NOTICE.md",
+      "kind": "notice",
+      "license": "Apache-2.0",
+      "disposition": "Apache distribution notice"
+    },
+    {
+      "path": "web/nemoclaw/assets/agent_types.svg",
+      "kind": "course-asset",
+      "license": "Apache-2.0",
+      "disposition": "authored diagram"
+    },
+    {
+      "path": "web/nemoclaw/assets/fig2_react.svg",
+      "kind": "course-asset",
+      "license": "Apache-2.0",
+      "disposition": "authored or redrawn course figure; see asset provenance"
+    },
+    {
+      "path": "web/nemoclaw/assets/fig2_rewoo.svg",
+      "kind": "course-asset",
+      "license": "Apache-2.0",
+      "disposition": "authored or redrawn course figure; see asset provenance"
+    },
+    {
+      "path": "web/nemoclaw/assets/graph_rag_2024.svg",
+      "kind": "course-asset",
+      "license": "external-terms",
+      "disposition": "paper figure redraw or variant; review before external publication"
+    },
+    {
+      "path": "web/nemoclaw/assets/lillog_agent.svg",
+      "kind": "course-asset",
+      "license": "external-terms",
+      "disposition": "source-inspired redraw; review before external publication"
+    },
+    {
+      "path": "web/nemoclaw/assets/rag_arch_2021.svg",
+      "kind": "course-asset",
+      "license": "external-terms",
+      "disposition": "paper figure redraw or variant; review before external publication"
+    },
+    {
+      "path": "web/nemoclaw/assets/rag_two_phase.svg",
+      "kind": "course-asset",
+      "license": "Apache-2.0",
+      "disposition": "authored course diagram"
+    },
+    {
+      "path": "web/nemoclaw/assets/rest_mcp_ws.svg",
+      "kind": "course-asset",
+      "license": "Apache-2.0",
+      "disposition": "authored course diagram"
+    },
+    {
+      "path": "web/nemoclaw/assets/favicon.ico",
+      "kind": "course-asset",
+      "license": "Apache-2.0",
+      "disposition": "course favicon"
+    },
+    {
+      "path": "web/nemoclaw/assets/cli_readme_claude-code.txt",
+      "kind": "generated-reference",
+      "license": "generated-from-authored-source",
+      "disposition": "generated CLI README excerpt"
+    },
+    {
+      "path": "web/nemoclaw/assets/cli_readme_codex.txt",
+      "kind": "generated-reference",
+      "license": "generated-from-authored-source",
+      "disposition": "generated CLI README excerpt"
+    },
+    {
+      "path": "web/nemoclaw/assets/cli_readme_cursor.txt",
+      "kind": "generated-reference",
+      "license": "generated-from-authored-source",
+      "disposition": "generated CLI README excerpt"
+    },
+    {
+      "path": "web/nemoclaw/assets/cli_readme_hermes.txt",
+      "kind": "generated-reference",
+      "license": "generated-from-authored-source",
+      "disposition": "generated CLI README excerpt"
+    },
+    {
+      "path": "web/nemoclaw/assets/cli_readme_openclaw.txt",
+      "kind": "generated-reference",
+      "license": "generated-from-authored-source",
+      "disposition": "generated CLI README excerpt"
+    }
+  ],
+  "forbidden_private_link_regexes": [
+    {
+      "name": "company shortlink",
+      "pattern": "https?://nv/[^\\s)\"<>]+"
+    },
+    {
+      "name": "internal wiki host",
+      "pattern": "https?://[^\\s)\"<>]*atlassian\\.net/[^\\s)\"<>]*"
+    },
+    {
+      "name": "private git host",
+      "pattern": "https?://[^\\s)\"<>]*(gitlab-master|github-onboarding)[^\\s)\"<>]*"
+    },
+    {
+      "name": "internal approval or bug host",
+      "pattern": "https?://[^\\s)\"<>]*(nvbugs|nspect)[^\\s)\"<>]*"
+    }
+  ]
+}

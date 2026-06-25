@@ -132,10 +132,12 @@ TENETS = {
         "Browser courses stay remote-services-only; never put keys in static files.",
         "The course mats/ (web/nemoclaw/mats/) and repos/ are cited-by-URL reference packets: "
         "cite the external URL, never link the packet file.",
+        "Run source_gate before adding assets, mats, datasets, cached references, or copied examples; "
+        "every new source needs provenance and license disposition.",
         "Never commit lab-generated runtime output (artifacts/, export/, caches, the public/ build).",
     ],
     "cadences": [
-        "Validate before pushing: validate_layout, skill_consistency, run_engine --self-test, "
+        "Validate before pushing: validate_layout, skill_consistency, source_gate, run_engine --self-test, "
         "validate_bundle --scope ship. The same gates run at pre-push (install: "
         "bash scripts/install-hooks.sh).",
         "A reported defect is a SAMPLE of a class: grep the whole repo across every course, "
@@ -295,7 +297,10 @@ def gen_task():
     docs = [("README.md", "README.md", "What the release is and how to run it (start here)."),
             ("AGENT_QUICKSTART.md", "AGENT_QUICKSTART.md", "Agent orientation: layout, services, rules."),
             ("CONTRIBUTING.md", "CONTRIBUTING.md", "How to contribute: hooks, the validation gate, conventions."),
+            ("NOTICE.md", "NOTICE.md", "Apache notice and third-party provenance pointer."),
             ("QUALITY_DIRECTIVES.md", "QUALITY_DIRECTIVES.md", "Pedagogical quality bar."),
+            ("scripts/compliance/docs/open_source_readiness.md", "scripts/compliance/docs/open_source_readiness.md", "Release-safe readiness checklist and roles."),
+            ("scripts/compliance/docs/vendor_policy.md", "scripts/compliance/docs/vendor_policy.md", "Source and vendor-ingestion policy."),
             ("SKILL_CONTRACT.md", "SKILL_CONTRACT.md", "The SKILL.html beacon spec.")]
     docs = [(n, h, d) for n, h, d in docs if (TASK1 / h).is_file()]
     for p in (sorted((TASK1 / "docs").glob("*.md")) if (TASK1 / "docs").is_dir() else []):
