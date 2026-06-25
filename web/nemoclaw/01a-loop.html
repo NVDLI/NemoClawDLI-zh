@@ -56,7 +56,7 @@
 
   <figure style="margin:1.4em 0">
     <div id="fig-agent-loop"></div>
-    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Only perception and action cross the boundary, and the reasoning between them is a swappable socket.</figcaption>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Only perception and action cross the boundary; the decision step between them can change.</figcaption>
   </figure>
 
   <ul>
@@ -85,11 +85,11 @@
   </div>
 
   <p>
-    That swappable socket is the seam along which the classic agent designs differ. Russell and
+    The decision step is where the classic agent designs differ. Russell and
     Norvig's <a href="https://aima.cs.berkeley.edu/" target="_blank" rel="noopener">Artificial Intelligence: A Modern Approach</a>
     lays them out as a spectrum, from a bare reflex agent up to a learning agent that improves its own
-    rules. The agents you build here start at the reflex end, and dropping a language model into the
-    socket carries them toward the later designs.
+    rules. The agents you build here start at the reflex end, then use a language model as one possible
+    decision function inside the same loop.
   </p>
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/01a-loop-1.svg" style="aspect-ratio:1020 / 400"></div>
@@ -97,7 +97,7 @@
   </figure>
 
   <h2>An agent with no language model</h2>
-  <p>The smallest thing that can fit the reasoning socket is a single <code>if</code>
+  <p>The smallest decision function is a single <code>if</code>
      statement. Here it drives a one-dimensional track bounded by walls at positions 0
      and 9, which leaves the whole agent about as stripped down as one can get. Press Run
      and watch the position number bounce between those two walls as the loop runs.</p>
@@ -239,11 +239,11 @@
   <p>
     You now have both halves of an agent, and the stateless <code>chat()</code> function above will pair nicely
     with the previous reflex agent's perceive-reason-act loop. Before
-    wiring the model into that loop, it helps to watch the reasoning slot accept brains
+    wiring the model into that loop, it helps to watch the decision step use routines
     that are <em>not</em> language models first.
   </p>
 
-  <p>Run the nodes in order. Each swaps a different brain into the same maze-solving loop:</p>
+  <p>Run the nodes in order. Each puts a different decision rule into the same maze-solving loop:</p>
   <ul>
     <li>The constant "always east" rule reaches the goal on a straight corridor, then stalls at the first wall in the maze, since a fixed heading cannot turn.</li>
     <li><a href="https://en.wikipedia.org/wiki/Depth-first_search" target="_blank" rel="noopener">DFS</a> dives and backtracks out of dead ends.</li>
@@ -254,20 +254,20 @@
   <div id="cell-maze"></div>
 
   <div class="callout">
-    <strong>The reasoning slot is the only part that varies.</strong>
-    DFS, BFS, and A* are mechanical fillers, dropped into the same slot to prove it
-    accepts any brain that reads state and returns a move. The last node makes that
-    literal: one line chooses the brain, and the steps below it run the same way
-    whatever you chose. The <code>chat()</code> call you just ran is one more brain for
-    that slot. It changes only two things. Perception now reaches the brain as text, and
-    the brain's answer comes back as an intent signal your code applies. The next section
-    zooms in on those two edges.
+    <strong>The decision step is the only part that varies.</strong>
+    DFS, BFS, and A* all read the current maze state and return a move. The last node
+    makes that explicit: one line chooses the decision function, and the loop below it
+    runs the same way either way. The <code>chat()</code> call you just ran can fill that
+    same step. It changes two edges: your code renders perception as text, and the
+    model returns a tool call that your code applies. The next section zooms in on those
+    two edges.
   </div>
 
-  <h2>Putting a language model in the reasoning step to solve the maze</h2>
+  <h2>Using a language model to choose maze moves</h2>
   <p>
-    Drop a language model into the reasoning slot and the policy stops living in your code. It now lives in the fixed model weights and the prompt you feed them.
-    Perception renders the maze as an ASCII map that becomes the user message, and the model's tool call to move stands in for the action while everything else carries over unchanged.
+    The maze loop still samples the world and applies one validated move. Only the
+    decision step changes. Instead of DFS, BFS, or A*, the model reads the rendered maze
+    and asks your code to call <code>choose_direction</code>.
   </p>
   <p>
     Run the engine node first; it exports the maze utilities and one shared solver
@@ -275,14 +275,14 @@
     model only at junctions. Then run the editable maze-agent node below.
   </p>
   <p>
-    That second node is the student surface. Its <code>DIRECTIVE</code> is the core system
-    instruction, written as normal multiline text so you can edit it comfortably. The options
-    object underneath controls the experiment: model, maze size, text map, image attachment,
-    move history, coordinate trail, and whether the tool schema is repeated in the system prompt.
+    In the second node, <code>DIRECTIVE</code> is the core system instruction. It is
+    normal multiline text, so you can edit it comfortably. The options object underneath
+    controls the experiment: model, maze size, text map, image attachment, move history,
+    coordinate trail, and whether the tool schema is repeated in the system prompt.
   </p>
   <p>
     Start with the working defaults, then change one knob at a time. Turn on
-    <code>includeImage</code> to test the rendered maze, switch <code>model</code> to compare brains,
+    <code>includeImage</code> to test the rendered maze, switch <code>model</code> to compare models,
     or set <code>advanced</code> to grow the maze after the simple case works.
   </p>
 
@@ -293,7 +293,7 @@
     returned a string; BFS handed back a list. <code>choose_direction</code> gives the
     model the same contract but enforces it through a JSON Schema, so the loop reads a
     typed value instead of parsing free prose. With it, a language model can take the
-    reasoning slot that BFS and A* held a moment ago.
+    decision step that BFS and A* held a moment ago.
   </div>
 
   <h2>The loop, drawn locally</h2>
@@ -360,10 +360,10 @@
         Delete the line that says to prefer unvisited branches over visited cells, then
         rerun the same cell. Count the decisions against the run with the hint in place.
         How much of the model's competence came from that one sentence?</li>
-    <li><strong>Swap the brain in the slot.</strong>
+    <li><strong>Swap the decision model.</strong>
         Change <code>model:"vision"</code> to <code>model:"super"</code> and rerun.
-        The loop, maze, perception, and action do not change; only the reasoning socket
-        does. Does the larger text model reach the goal in fewer decisions?</li>
+        The loop, maze, perception, and action do not change; only the model making
+        the move does. Does the larger text model reach the goal in fewer decisions?</li>
   </ol>
 
   <h2>Try it · the model as a pure function</h2>
@@ -428,7 +428,7 @@ hljs.highlightAll();
 // The agent loop (Environment | Agent), rendered from a spec via mountDiagram.
 mountDiagram("#fig-agent-loop", {
   title: "The agent loop", kicker: "PERCEIVE · REASON · ACT", width: 760, height: 280,
-  aria: "The agent loop. The environment carries the world state, and the agent picks the next action through a reasoning socket. Perceptions flow agent-ward and actions flow back, and only those cross the boundary, while the reasoning inside stays swappable.",
+  aria: "The agent loop. The environment carries the world state, and the agent picks the next action through a decision step. Perceptions flow agent-ward and actions flow back, and only those cross the boundary, while the decision logic stays swappable.",
   nodes: [
     { id: "env", kind: "env", label: "Environment", x: 0, y: 0,
       lines: ["the world state", "sensors read it", "actions change it"] },
@@ -517,7 +517,7 @@ return { ticks: trace.length, finalPosition: state.env.position, trace };
 // ── Module 1a Part 4: maze + search reasoners ───────────────────────────────
 mountCanvasFlow("#cell-maze", {
   label: "The agent loop with a swappable reasoning step",
-  intro: "Run the nodes in order so that node 1 builds the maze and the shared utilities every later node reads from state. The hand-written search routines warm up the loop before the language-model route takes over. The implementation is collapsed by default because the point is the behavior; expand code only when you want to inspect how a planner is wired into the loop.",
+  intro: "Run the nodes in order so that node 1 builds the maze and the shared utilities every later node reads from state. The hand-written search routines warm up the loop before the language-model run takes over. The implementation is collapsed by default because the point is the behavior; expand code only when you want to inspect how a decision rule is wired into the loop.",
   edges: [
     { from: "maze", to: "bfs"   },
     { from: "maze", to: "dfs"   },
@@ -533,7 +533,7 @@ mountCanvasFlow("#cell-maze", {
 // assigned, then read the two animations: a corridor that 'always east' can solve and a maze
 // where that same fixed rule stalls. The search nodes reuse these helpers instead of redefining them.
 // Maze-generation plumbing: builds the grid and the move utilities every later
-// node reads from state. The lesson is the brain swap in the later nodes.
+// node reads from state. The later nodes swap the decision rule.
 
 // lcg is a tiny seeded random-number generator, so a given seed always builds
 // the same maze (reproducible runs).
@@ -864,10 +864,10 @@ return { steps, won: true };
 });
 
 
-// ── Canvas 1.6: LLM / VLM planner · the model as a brain in the same maze slot ─
+// ── Canvas 1.6: LLM / VLM run · the model chooses moves in the same maze loop ─
 mountCanvasFlow("#cell-llm-maze", {
-  label: "LLM planner · model as the reasoning socket",
-  intro: "Run the engine node first; it exports the maze utilities and one shared solver (state.runMaze) to state. Then run the editable maze-agent node. The run node is open by default because it is the exercise surface: edit DIRECTIVE, then change model, advanced, includeText, includeImage, includeHistory, includeCoords, or toolSpecInSystem one at a time.",
+  label: "LLM maze run · model chooses moves",
+  intro: "Run the engine node first; it exports the maze utilities and one shared solver (state.runMaze) to state. Then run the editable maze-agent node. The run node is open by default because it is the part to edit: change DIRECTIVE, then adjust model, advanced, includeText, includeImage, includeHistory, includeCoords, or toolSpecInSystem one at a time.",
   nodes: [
     {
       id: "helpers", icon: "⚙️", title: "Maze engine",
@@ -875,11 +875,11 @@ mountCanvasFlow("#cell-llm-maze", {
       showCode: false,
       summary: "The engine code is collapsed by default because it is mostly web plumbing. If you expand it, scan the exported names at the bottom: state.runMaze is the shared solver that the editable run node calls.",
       code: `// Reading guide: this is infrastructure, not a required coding exercise. The run
-// node below is the intended student surface. Expand this only if you want to inspect
+// node below is the intended editing surface. Expand this only if you want to inspect
 // how maps, images, tool calls, and corridor auto-walking are wired together.
 // Maze-generation plumbing, stored in state so the run node can use it.
-// The lesson is the brain swap: the same loop that ran DFS, BFS, and A* now
-// drives a language model over this maze instead.
+// The lesson is the decision-step swap: the same loop that ran DFS, BFS, and A*
+// now drives a language model over this maze instead.
 
 // lcg is a tiny seeded random-number generator, so a given seed always builds
 // the same maze (reproducible runs).
@@ -1074,7 +1074,7 @@ state.makeReasonStream = function(log) {
   };
 };
 
-// ── Shared maze solver (one copy; every route calls it) ─────────────────────
+// ── Shared maze solver (one copy; the run node calls it) ────────────────────
 // mazeToDataURL: paint a maze state to a PNG data URL (the "graphic" channel).
 state.mazeToDataURL = function(grid, pos, goal, visited, cell) {
   cell = cell || 24;
@@ -1098,9 +1098,9 @@ state.mazeToDataURL = function(grid, pos, goal, visited, cell) {
   return cv.toDataURL('image/png');
 };
 
-// runMaze: ONE corridor-walk + LLM-at-junctions solver, shared by every route.
-// All knobs are optional. opts.model defaults to the multimodal omni model
-// (handles both routes); opts.advanced swaps in the bigger, loopier maze.
+// runMaze: ONE corridor-walk + LLM-at-junctions solver, shared by the run node.
+// All knobs are optional. opts.model defaults to the multimodal omni model;
+// opts.advanced swaps in the bigger, loopier maze.
 state.runMaze = async function(h, state, opts) {
   opts = opts || {};
   var advanced = !!opts.advanced;
@@ -1432,7 +1432,7 @@ log("Maze engine ready.");
       id: "run", icon: "🧭", title: "Maze agent · editable run",
       x: 1, y: 0,
       showCode: true,
-      summary: "This is the student-facing maze run. Edit DIRECTIVE first, then change one option at a time: model, advanced, includeText, includeImage, includeHistory, includeCoords, or toolSpecInSystem.",
+      summary: "This is the editable maze run. Edit DIRECTIVE first, then change one option at a time: model, advanced, includeText, includeImage, includeHistory, includeCoords, or toolSpecInSystem.",
       code: `if (!state.runMaze) { helpers.log("Run the 'Maze engine' node first."); return; }
 
 // ── Edit this freely: it becomes the CORE of the system message. ──
