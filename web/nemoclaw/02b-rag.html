@@ -83,7 +83,7 @@
   </p>
   <div style="display:flex;justify-content:center;margin:1.4em 0">
     <figure style="margin:0;max-width:940px;width:100%">
-      <img src="assets/rag_arch_2021.svg" alt="The original RAG architecture from Lewis et al. 2020. A query x is embedded by a query encoder q, then a maximum-inner-product search (MIPS) over a document index retrieves passages z. A generator p-theta conditions on the query together with each retrieved passage and marginalizes over them to produce the output y. An arrow across the top, labelled End-to-End Backprop through q and p-theta, shows that gradients flow back through both the generator and the query encoder, so the retriever and the generator are trained jointly."
+      <img src="assets/figures/rag_arch_2021.svg" alt="The original RAG architecture from Lewis et al. 2020. A query x is embedded by a query encoder q, then a maximum-inner-product search (MIPS) over a document index retrieves passages z. A generator p-theta conditions on the query together with each retrieved passage and marginalizes over them to produce the output y. An arrow across the top, labelled End-to-End Backprop through q and p-theta, shows that gradients flow back through both the generator and the query encoder, so the retriever and the generator are trained jointly."
            style="width:100%;height:auto;display:block;background:#fff;border:1px solid #d0d7de;border-radius:8px;padding:16px"/>
       <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">
         The original architecture, from <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al. 2020</a>,
@@ -129,10 +129,9 @@
     separate timelines. One timeline builds the index ahead of time so the other can serve a live request against it.
     The figure below traces both.
   </p>
-  <div style="display:flex;justify-content:center;margin:1.4em 0 1.8em">
+  <figure style="margin:1.4em 0 1.8em">
     <div class="fig-embed" data-svg-src="assets/figures/02b-rag-1.svg" style="aspect-ratio:1220 / 480"></div>
-
-  </div>
+  </figure>
   <p style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin:-.4em 0 1.4em">
     Adapted from <a href="https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/" target="_blank" rel="noopener">Hayden Wolff, <em>RAG 101</em></a> (NVIDIA, 2023)
     and <a href="https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-with-nvidia-ai-langchain-ai-endpoints/" target="_blank" rel="noopener">Amit Bleiweiss, <em>tips for building a RAG pipeline</em></a> (NVIDIA, 2024).
@@ -199,9 +198,9 @@
     This module follows the <strong>fuzzy-prose</strong> shape from corpus to answer, and runs the
     basic retrieve-then-generate flow for our example purposes.
   </p>
-  <div style="display:flex;justify-content:center;margin:1.4em 0">
+  <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/02b-rag-2.svg" style="aspect-ratio:900 / 420"></div>
-  </div>
+  </figure>
   <p>Every request walks the same four steps:</p>
   <ul>
     <li><strong>Embed</strong> the query into a vector.</li>
@@ -750,6 +749,7 @@ mountCanvasFlow("#cell-m3b-p3", {
   nodes: [
     {
       id: "docs", icon: "📄", title: "Parent documents", x: 0, y: 0,
+      showCode: false,
       summary: "Three documents on different topics sit in the store, where the full document is what the LLM eventually reads.",
       code: `// Seed the small dataset this retrieval example searches.
 state.docs = [
@@ -869,6 +869,7 @@ mountCanvasFlow("#cell-m3b-p4", {
   nodes: [
     {
       id: "build_corpus", icon: "📚", title: "Corpus + index", x: 0, y: 0,
+      showCode: false,
       summary: "Embed every passage and store each one alongside its vector. The index is built once here and held in memory for the rest of the flow; every subsequent query reads from this same structure without re-embedding the corpus.",
       code: `// Seed the small dataset this retrieval example searches.
 state.corpus = [
@@ -886,6 +887,7 @@ return { indexed: state.index.length, dim: vecs[0].length };
     },
     {
       id: "tool", icon: "📄", title: "Retrieve tool spec", x: 2, y: 0,
+      showCode: false,
       summary: "Declares the retrieve tool as a JSON schema the model can read. The model sees only the name, description, and parameter types. It has no visibility into the cosine implementation behind it. That separation matters: you can swap the retrieval backend later without changing any model-facing contract.",
       code: `// Define the tool schema the model can choose from next.
 state.RETRIEVE_SCHEMA = [{
@@ -910,13 +912,25 @@ return { tool: state.RETRIEVE_SCHEMA[0].function.name };
       id: "query", icon: "❓", title: "User query", x: 1, y: 0,
       summary: "The user's question, plus a system prompt that instructs the model to use the retrieve tool only when it needs specific facts it cannot answer confidently from training knowledge. With that instruction in place, the model weighs each turn and chooses whether to retrieve, instead of retrieving on every call.",
       code: `// Set the student-editable prompt/input for the next step.
-state.query = "What model does this course use, and does it need an API key?";
-// Try a question that should skip retrieval, then one that should retrieve:
-// state.query = "What is 12 times 8?";                             // no retrieval needed
-// state.query = "What does this course's OpenShell sandbox block?"; // needs the corpus
+
+const EXAMPLES = {
+  default: "What model does this course use, and does it need an API key?",
+  skip: "What is 12 times 8?",
+  retrieve: "What does this course's OpenShell sandbox block?",
+  direct: "Explain cosine similarity in one sentence.",
+};
+state.query = EXAMPLES.default;
+
 state.messages = [
-  { role: "system", content: "You are a helpful assistant with a knowledge base accessible via the 'retrieve' tool. Use the tool when the user asks about specific facts you don't already know with high confidence; otherwise answer directly." },
-  { role: "user",   content: state.query },
+  {
+    role: "system",
+    content: [
+      "You are a helpful assistant with a knowledge base accessible via the retrieve tool.",
+      "Use the tool for specific facts you do not already know with high confidence.",
+      "Otherwise answer directly.",
+    ].join(" "),
+  },
+  { role: "user", content: state.query },
 ];
 return state.query;
 `,

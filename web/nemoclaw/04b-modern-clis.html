@@ -277,8 +277,16 @@ const JS_TOOL = {
   type: "function",
   function: {
     name: "js",
-    description: "Run JavaScript in this browser page and return a value. You have the full window: document, fetch, location, and the course helpers object. End with a return statement to report the result.",
-    parameters: { type: "object", properties: { code: { type: "string", description: "JavaScript to run. Use return to hand a value back." } }, required: ["code"] },
+    description: [
+      "Run JavaScript in this browser page and return a value.",
+      "You have the full window: document, fetch, location, and the course helpers object.",
+      "End with a return statement to report the result.",
+    ].join(" "),
+    parameters: {
+      type: "object",
+      properties: { code: { type: "string", description: "JavaScript to run. Use return." } },
+      required: ["code"],
+    },
   },
 };
 
@@ -291,10 +299,28 @@ async function runJS(code) {
 helpers.mountChatUI("#jsagent-artifact", {
   growLog: true,   // flow with the page instead of an internal 480px scroll that traps the wheel
   greeting: "Give me a goal. My shell is this page's JavaScript runtime, so I act by running JS right here in your tab.",
-  examples: ["How many code editors are on this page?", "List the H2 section headings on this page.", "Fetch assets/rag_index.json and report the embed model and how many docs it pins.", "How many links on this page open in a new tab?", "Compute the 12th Fibonacci number and return it.", "Which keys are in localStorage right now?"],
+  examples: [
+    "How many code editors are on this page?",
+    "List the H2 section headings on this page.",
+    "Fetch assets/rag_index.json and report the embed model and how many docs it pins.",
+    "How many links on this page open in a new tab?",
+    "Compute the 12th Fibonacci number and return it.",
+    "Which keys are in localStorage right now?",
+  ],
   respond: async (goal, ctx) => {
     const messages = [
-      { role: "system", content: "You are a CLI agent whose shell is this browser's JavaScript runtime. To learn anything, call the js tool with code that runs in the live page and ends with a return statement; never claim a result you did not run. Editable code cells on this page render as .CodeMirror elements, not .code-editor. If a selector returns 0 or nothing, inspect the DOM (its tag and class names) before concluding. Keep each snippet small. When you have enough, reply with a short plain-text answer and no tool call." },
+      {
+        role: "system",
+        content: [
+          "You are a CLI agent whose shell is this browser's JavaScript runtime.",
+          "To learn anything, call the js tool with code that runs in the live page.",
+          "End each code snippet with a return statement.",
+          "Never claim a result you did not run.",
+          "Editable code cells render as .CodeMirror elements, not .code-editor.",
+          "If a selector returns nothing, inspect the DOM before concluding.",
+          "When you have enough, reply with a short plain-text answer and no tool call.",
+        ].join(" "),
+      },
       { role: "user", content: goal },
     ];
 

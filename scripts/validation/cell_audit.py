@@ -149,8 +149,47 @@ def audit_runtime_contract():
 
 CANVAS_MOUNT_RE = re.compile(r"mount(?:CanvasFlow|RunCell)\s*\(")
 CANVAS_LONG_DEFAULT_OPEN_LINES = 40
-READABLE_INDENT_LIMIT = 12
-DATA_ENTRY_RE = re.compile(r"^\s*(?:\{.*\}|['\"].*['\"])\s*$")
+
+VISIBLE_COMMENT_WALL = 4
+VISIBLE_LINE_LIMIT = 180
+VISIBLE_INDENT_LIMIT = 24
+
+
+def _is_visible_cell(block: str, code_start: int, lines: int, canvas: bool) -> bool:
+    """Return whether the code is visible by default. Collapsed cells can still be opened,
+    but this rule is for code that occupies the learner's first view."""
+    pre = block[max(0, code_start - 700):code_start]
+    if "showCode: false" in pre[-350:]:
+        return False
+    if "showCode: true" in pre[-350:] or "openCode: true" in pre[-350:]:
+        return True
+    return canvas and lines <= 80
+
+
+def _visible_hygiene(rel: str, cell_line: int, code: str):
+    """Low-noise checks for code students see by default: no tabs, no giant comment
+    wall, no extreme indentation, and no very long lines that force horizontal reading."""
+    findings = []
+    comment_run = 0
+    for i, line in enumerate(code.splitlines(), 1):
+        stripped = line.strip()
+        if stripped.startswith("//"):
+            comment_run += 1
+            if len(line) > 130:
+                findings.append((rel, f"line {cell_line + i - 1}: visible comment line is too long; wrap or shorten it"))
+            if comment_run == VISIBLE_COMMENT_WALL + 1:
+                findings.append((rel, f"line {cell_line + i - 1}: visible code opens with more than {VISIBLE_COMMENT_WALL} consecutive // lines; move detail into prose or a helper note"))
+        elif stripped:
+            comment_run = 0
+        if "\t" in line:
+            findings.append((rel, f"line {cell_line + i - 1}: tab indentation in visible learner code; use spaces"))
+        indent = len(line) - len(line.lstrip(" "))
+        if indent > VISIBLE_INDENT_LIMIT and stripped and not stripped.startswith("//"):
+            findings.append((rel, f"line {cell_line + i - 1}: {indent} leading spaces in visible learner code; split or unnest the block"))
+        if len(line) > VISIBLE_LINE_LIMIT and not stripped.startswith(("const ", "let ", "var ")):
+            findings.append((rel, f"line {cell_line + i - 1}: visible learner code line exceeds {VISIBLE_LINE_LIMIT} characters"))
+    return findings
+
 
 
 def audit_code_surface():
@@ -190,54 +229,29 @@ def audit_code_surface():
     return findings
 
 
-def _first_meaningful(lines):
-    """Return (1-based index, stripped line) for the first nonblank line in a cell code block."""
-    for i, line in enumerate(lines, 1):
-        if line.strip():
-            return i, line.strip()
-    return 0, ""
 
-
-def _needs_data_trailing_comma(lines, idx):
-    """Low-noise trailing-comma rule: data entries in multi-line lists should end with a comma."""
-    line = lines[idx].rstrip()
-    stripped = line.strip()
-    if stripped.endswith((",", ";", "{")) or not DATA_ENTRY_RE.match(line):
-        return False
-    if stripped.startswith(("if ", "for ", "while ", "switch ", "try", "catch", "function")):
-        return False
-    for nxt in lines[idx + 1:]:
-        ns = nxt.strip()
-        if not ns:
-            continue
-        return ns.startswith(("{", "'", '"', "]"))
-    return False
-
-
-def audit_readability():
-    """Guard learner-facing cell code readability. Cells should open with a short // comment,
-    avoid tabs and column-alignment indentation, and keep simple data entries comma-terminated.
-    These are intentionally cell-scoped: they shape code students see or can expand, without
-    turning repo-wide implementation cleanup into a blocker."""
+def audit_visible_code_hygiene():
+    """Find hygiene problems in code that is visible by default. This intentionally does
+    not force first-line comments or formatting churn across collapsed implementation cells."""
     findings = []
-    for path in sorted((WEB / "nemoclaw").glob("0*.html")):
+    pages = sorted((WEB / "nemoclaw").glob("0*.html"))
+    for path in pages:
         text = path.read_text(errors="ignore")
         rel = str(path.relative_to(WEB.parent))
-        for m in CODE.finditer(text):
-            cell_line = text[:m.start()].count("\n") + 1
-            lines = m.group(1).splitlines()
-            first_idx, first = _first_meaningful(lines)
-            if first and not first.startswith("//"):
-                findings.append((rel, f"line {cell_line + first_idx - 1}: cell code should start with a one-line // comment that explains the block"))
-            for i, line in enumerate(lines, 1):
-                if "\t" in line:
-                    findings.append((rel, f"line {cell_line + i - 1}: tab indentation in learner cell code; use spaces"))
-                indent = len(line) - len(line.lstrip(" "))
-                stripped = line.strip()
-                if indent > READABLE_INDENT_LIMIT and stripped and not stripped.startswith("//"):
-                    findings.append((rel, f"line {cell_line + i - 1}: {indent} leading spaces; avoid column alignment deeper than {READABLE_INDENT_LIMIT} spaces"))
-                if _needs_data_trailing_comma(lines, i - 1):
-                    findings.append((rel, f"line {cell_line + i - 1}: multi-line data entry should end with a trailing comma"))
+        mounts = list(CANVAS_MOUNT_RE.finditer(text))
+        for i, mount in enumerate(mounts):
+            start = mount.start()
+            end = mounts[i + 1].start() if i + 1 < len(mounts) else len(text)
+            block = text[start:end]
+            is_canvas = text.startswith("mountCanvasFlow", start)
+            for m in CODE.finditer(block):
+                code = m.group(1)
+                lines = code.count("\n") + 1
+                if not _is_visible_cell(block, m.start(), lines, is_canvas):
+                    continue
+                cell_line = text[:start + m.start()].count("\n") + 1
+                findings.extend(_visible_hygiene(rel, cell_line, code))
+
     return findings
 
 
@@ -249,7 +263,9 @@ def run(verbose=True):
     opaque, console, unawaited, dialog, key, static, unhi = [], [], [], [], [], [], []
     ui_contract = audit_runtime_contract()
     code_surface = audit_code_surface()
-    readability = audit_readability()
+
+    readability = audit_visible_code_hygiene()
+
     for p in pages:
         o, c, u, d, k, st, uh = audit_page(p)  # per-page findings, by category
         opaque += o; console += c; unawaited += u; dialog += d; key += k; static += st; unhi += uh
@@ -268,12 +284,17 @@ def run(verbose=True):
         show("editable cells without the syntax highlighter loaded", unhi, lambda it: f"{it[0]}  {it[1]}")
         show("learner-facing cell UI contract", ui_contract, lambda it: f"{it[0]}  {it[1]}")
         show("default-open canvas code surface", code_surface, lambda it: f"{it[0]}  {it[1]}")
-        show("learner cell code readability", readability, lambda it: f"{it[0]}  {it[1]}")
+
+        show("visible learner code hygiene", readability, lambda it: f"{it[0]}  {it[1]}")
+
         total = (len(opaque) + len(console) + len(unawaited) + len(dialog) + len(key) + len(static)
                  + len(unhi) + len(ui_contract) + len(code_surface) + len(readability))
         print(f"\ncell_audit: {total} finding(s) (opaque {len(opaque)}, console {len(console)}, "
               f"unawaited {len(unawaited)}, dialog {len(dialog)}, inline-key {len(key)}, static {len(static)}, "
-              f"unhighlighted {len(unhi)}, ui-contract {len(ui_contract)}, code-surface {len(code_surface)}, readability {len(readability)})")
+
+              f"unhighlighted {len(unhi)}, ui-contract {len(ui_contract)}, code-surface {len(code_surface)}, "
+              f"readability {len(readability)})")
+
     return {"opaque": opaque, "console": console, "unawaited": unawaited,
             "dialog": dialog, "inline_key": key, "static_cell_code": static,
             "unhighlighted": unhi, "ui_contract": ui_contract,

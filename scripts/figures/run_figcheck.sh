@@ -10,21 +10,29 @@ TOOLS="$HERE/.figtools"
 
 if command -v node >/dev/null 2>&1; then
   if [ ! -d "$TOOLS/node_modules/jsdom" ]; then
-    mkdir -p "$TOOLS"; ( cd "$TOOLS" && npm i jsdom >/dev/null 2>&1 ) || true
+    mkdir -p "$TOOLS"; ( cd "$TOOLS" && npm i jsdom@24.1.3 >/dev/null 2>&1 ) || true
   fi
   exec env FIG_JSDOM="$TOOLS/node_modules/jsdom" node "$HERE/check_figures.mjs" "$@"
 fi
 
-if command -v docker >/dev/null 2>&1; then
+ENGINE="${CONTAINER_ENGINE:-}"
+if [ -z "$ENGINE" ]; then
+  for c in podman docker; do
+    if command -v "$c" >/dev/null 2>&1 && "$c" info >/dev/null 2>&1; then ENGINE="$c"; break; fi
+  done
+fi
+if [ -n "$ENGINE" ] && command -v "$ENGINE" >/dev/null 2>&1; then
   IMG=""
-  for c in node:20-slim node:20-bookworm-slim node:20 node:lts-slim node:lts; do
-    if docker image inspect "$c" >/dev/null 2>&1; then IMG="$c"; break; fi
+  for c in localhost/nemoclaw/lab-runtime-test:local nemoclaw/lab-runtime-test:local mcr.microsoft.com/playwright:v1.55.0-noble node:20-slim node:20-bookworm-slim node:20 node:lts-slim node:lts; do
+    if "$ENGINE" image inspect "$c" >/dev/null 2>&1; then IMG="$c"; break; fi
   done
   [ -z "$IMG" ] && IMG="node:20-slim"
-  exec docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -e npm_config_cache=/tmp/.npm \
-    -v "$REPO":/work -w /work "$IMG" sh -c '
+  run_user=()
+  if [ "$ENGINE" = "podman" ]; then run_user+=(--userns=keep-id); else run_user+=(-u "$(id -u):$(id -g)"); fi
+  exec "$ENGINE" run --rm --entrypoint sh "${run_user[@]}" -e HOME=/tmp -e npm_config_cache=/tmp/.npm \
+    -v "$REPO":/work -w /work "$IMG" -c '
       T=/work/scripts/.figtools
-      if [ ! -d "$T/node_modules/jsdom" ]; then mkdir -p "$T"; ( cd "$T" && npm i jsdom >/dev/null 2>&1 ) || true; fi
+      if [ ! -d "$T/node_modules/jsdom" ]; then mkdir -p "$T"; ( cd "$T" && npm i jsdom@24.1.3 >/dev/null 2>&1 ) || true; fi
       FIG_JSDOM="$T/node_modules/jsdom" node /work/scripts/figures/check_figures.mjs "$@"
     ' _ "$@"
 fi

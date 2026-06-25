@@ -18,12 +18,22 @@ the lab stack, and a normal URL run for the full lab-network path.
 
 ## Verify the runtime image
 
+Start with the discovery probe. It is the one-command check for agents: it finds
+Podman or Docker, reports whether `python3 -m podman_compose` is available, and
+runs the browser smoke test. Host Node.js, Playwright, and Chromium are not
+required.
+
+```bash
+scripts/runtime/browser_env_probe.sh
+```
+
+The underlying smoke command launches Node.js, Playwright, and Chromium inside
+the container and loads a `data:` page. It does not need the lab stack or network
+access.
+
 ```bash
 scripts/runtime/lab_runtime_test.sh --smoke
 ```
-
-The smoke test launches Node.js, Playwright, and Chromium inside the container and
-loads a `data:` page. It does not need the lab stack or network access.
 
 ```bash
 scripts/runtime/lab_runtime_test.sh --render-only
@@ -45,10 +55,17 @@ COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD \
   podman compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
 ```
 
-If your host uses `podman-compose`, use the same flags with that command. If Docker
-is available, `docker compose` works with the same compose files. This repo does not
-vendor a compose binary; install one on the host or in a temporary venv when a clean
-agent machine only has `podman`.
+If your host uses `podman-compose`, use the same flags with that command. The
+Python module form is also valid and is the podman-compose-via-python fallback:
+
+```bash
+COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD \
+  python3 -m podman_compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
+```
+
+If Docker is available, `docker compose` works with the same compose files. This
+repo does not vendor a compose binary; install one on the host or in a temporary
+venv when a clean agent machine only has `podman`.
 
 Then run a browser-page test on the same container network:
 

@@ -100,6 +100,8 @@ import code_hygiene as ch  # noqa: E402
 import color_theme as ct  # noqa: E402
 import figure_audit as fa  # noqa: E402
 import cell_audit as ca  # noqa: E402
+import helper_notebook_runtime_audit as hna  # noqa: E402
+import studio_interface_audit as sia  # noqa: E402
 import skill_contract as skc  # noqa: E402
 from collections import defaultdict  # noqa: E402
 
@@ -219,8 +221,16 @@ SUITE_META = [
      "SVG text must be legible at its render size, no label may overflow its figure, and figures/images must carry aria-label / alt / rel=noopener. A figure too small to read or clipped at the frame is a silent defect no prose check sees.",
      "scripts/validation/figure_audit.py", "run"),
     ("cell_audit", "Cell & artifact contract", "recommended",
-     "Every runnable cell shows its work in the panel, writes via helpers.log not console, awaits its model calls, inlines no key, keeps cell-only code in an editable cell, is syntax-highlighted by default, and keeps learner-expanded code readable: a first-line // comment, no tabs, no column-alignment indentation, and trailing commas for simple multi-line data entries. A hard-coded key is required-tier (it ships to every student); the rest are recommended.",
+
+     "Every runnable cell shows its work in the panel, writes via helpers.log not console, awaits its model calls, inlines no key, keeps cell-only code in an editable cell, is syntax-highlighted by default, and keeps default-visible learner code readable. A hard-coded key is required-tier (it ships to every student); the rest are recommended.",
+
      "scripts/validation/cell_audit.py", "run"),
+    ("helper_notebook", "Helper notebook contract", "required",
+     "The runnable helper notebook must use the helper API exposed by its actual runtime surface. Static examples must not mix CanvasFlow-only and RunCell-only log helpers, because that ships a TypeError directly to students.",
+     "scripts/validation/helper_notebook_runtime_audit.py", "static_audit"),
+    ("studio_interface", "Studio interface contract", "required",
+     "Studio is the operator console for authoring and validation. Its controls must remain reachable at layout extremes, its sidebar lists must scroll internally, and its documented test commands must stay synchronized with the validators.",
+     "scripts/validation/studio_interface_audit.py", "audit"),
     ("skill_schema", "SKILL contract", "recommended",
      "Every SKILL.html skill-meta must be a well-formed contract of its kind: it classifies into one known kind (service-skill, service-index, dir-skill, hub, leaf), carries that kind's required keys, uses a known schema/node_type value and a semver version where the kind has one, and only valid notebook status values. An agent samples this block to work in a directory, so a malformed beacon is a contract an agent cannot trust. Each entry names the SKILL and the missing or invalid field.",
      "scripts/skills/skill_contract.py", "schema_findings"),
@@ -466,6 +476,28 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         ca_find, ca_total = {}, 0
         suite_errors["cell_audit"] = str(e); vl_fail.append(f"cell audit error: {e}")
 
+    # helper notebook static contract (required): no container, catches CanvasFlow / RunCell API drift.
+    try:
+        helper_notebook_find = hna.static_audit()
+    except Exception as e:
+        helper_notebook_find = [f"helper notebook audit error: {e}"]
+        suite_errors["helper_notebook"] = str(e)
+    if helper_notebook_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(f"helper notebook: {x}" for x in helper_notebook_find)
+
+    # Studio interface static contract (required): catches control/list layout drift and docs/test command skew.
+    try:
+        studio_interface_find = sia.audit()
+    except Exception as e:
+        studio_interface_find = [f"studio interface audit error: {e}"]
+        suite_errors["studio_interface"] = str(e)
+    if studio_interface_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(f"studio interface: {x}" for x in studio_interface_find)
+
     # SKILL contract (advisory): every skill-meta is a well-formed beacon of its kind (schema leg)
     # and matches its directory (drift leg, reused from skill_audit). The agent-facing half of the
     # contract: a malformed or stale beacon is what an agent samples and is misled by.
@@ -478,7 +510,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         vl_fail.append(f"skill contract error: {e}")
 
     # figure geometry (advisory): render the runtime figures (mountDiagram + mountPolicyMap) and flag overlapping text, out-of-bounds text, stray connectors, and edgeless diagrams.
-    # figure_audit only sees inline <svg>, so these runtime figures went UNCHECKED before.
+    # figure_audit handles static inline/fetched SVGs; this suite covers JS-built runtime diagrams.
     # Self-tests each detector; node + jsdom via scripts/figures/run_figcheck.sh.
     dg_find = []
     try:
@@ -557,10 +589,18 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "ui_contract": (RECOMMENDED, "Fix the shared cell UI contract instead of hiding the finding. Helpers and code "
                         "must remain discoverable above output, code must be collapsed by default unless a cell opts in, "
                         "reset must be local, and error paths must open the code only when line-level debugging matters."),
+        "code_surface": (RECOMMENDED, "Collapse plumbing-heavy canvas code with showCode:false, or split it until the "
+                         "default-open cell is short enough to teach from."),
+        "readability": (RECOMMENDED, "Clean the default-visible learner code. Avoid tab indentation, giant opening "
+                        "comment walls, extreme nesting, and lines too long to read in the cell editor."),
     }
     _FIG_FIX = {
         "tiny": (RECOMMENDED, "Raise the text to a rendered font-size of at least 11px; below that it is "
                  "unreadable at the figure's display scale."),
+        "small_render": (RECOMMENDED, "Raise the figure's display cap or host width so full-width course diagrams render at "
+                         "least 900px wide in the lesson column."),
+        "flex_parent": (RECOMMENDED, "Do not wrap fetched SVG figures in an un-sized flex container. Use a block <figure> "
+                        "or give the flex parent and flex item explicit widths so the SVG cannot shrink-wrap."),
         "overflow": (RECOMMENDED, "Widen the viewBox or wrap the label onto two centered lines so it stays "
                      "inside the frame."),
         "no_aria": (RECOMMENDED, "Add an aria-label (or role=img plus a <title>) that states what the figure shows."),
@@ -594,6 +634,12 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "page_audit": [D(x.get("page"), "; ".join((fi.get("detail") or fi.get("token") or "") for fi in x.get("findings", [])),
                          RECOMMENDED, "Update the flagged token or restore the missing asset so the page matches the shared HTML contract.")
                        for x in audit.get("findings", [])],
+        "helper_notebook": [D("web/nemoclaw/scripts/SKILL.html", x, REQUIRED,
+                              "Use the helper API exposed by that runtime surface: CanvasFlow supports log/details/html/svg/draw; RunCell supports log.h/json/kv/html/clear.")
+                            for x in helper_notebook_find],
+        "studio_interface": [D("web/nemoclaw/studio.html", x, REQUIRED,
+                               "Keep Studio controls reachable at narrow/short viewports and keep validator commands synchronized across Studio and SKILL docs.")
+                             for x in studio_interface_find],
         "prose_variety": [D(r["path"], f"score {r['score']} · {', '.join(r['tells'])}", CONSIDER,
                             "Give the page a rhythm pass: vary sentence length, break the staccato triads, turn enumerations back into prose.")
                           for r in pv_flagged],
@@ -761,6 +807,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "staccato_cadence": len(pv_rows),
         "code_comments": ch_scanned, "code_walls": ch_scanned, "code_dup": ch_scanned,
         "code_size": ch_scanned, "code_const": ch_scanned,
+        "helper_notebook": 1,
+        "studio_interface": 1,
         "materials": materials.get("count", 0),
         "skill_schema": skc_scanned, "skill_drift": skc_scanned,
     }
@@ -867,7 +915,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     print(f"  color theme     : {ct_inline + ct_undef + ct_bake} non-theme-dynamic color(s) "
           f"(inline {ct_inline}, undefined-var {ct_undef}, render-bake {ct_bake})")
     print(f"  figure audit    : {fa_total} legibility/format finding(s) "
-          f"(tiny-text {len(fa_find.get('tiny', []))}, overflow {len(fa_find.get('overflow', []))}, "
+          f"(tiny-text {len(fa_find.get('tiny', []))}, small-render {len(fa_find.get('small_render', []))}, "
+          f"flex-parent {len(fa_find.get('flex_parent', []))}, overflow {len(fa_find.get('overflow', []))}, "
           f"a11y {len(fa_find.get('no_aria', [])) + len(fa_find.get('img_no_alt', [])) + len(fa_find.get('blank_link', []))})")
     print(f"  cell audit      : {ca_total} cell-contract finding(s) "
           f"(opaque {len(ca_find.get('opaque', []))}, console {len(ca_find.get('console', []))}, "

@@ -1,0 +1,365 @@
+#!/usr/bin/env python3
+"""Validate the runnable helper notebook in web/nemoclaw/scripts/SKILL.html.
+
+Default mode runs two checks:
+- static API-surface audit for the notebook source
+- containerized Playwright smoke that clicks every notebook Run control
+
+Use --no-container when only the deterministic source audit is available.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
+    if (_p / "scripts" / "_bootstrap.py").exists():
+        sys.path.insert(0, str(_p / "scripts"))
+        break
+from _bootstrap import find_repo_root
+
+ROOT = find_repo_root(Path(__file__).resolve())
+SKILL = ROOT / "web" / "nemoclaw" / "scripts" / "SKILL.html"
+DEFAULT_IMAGE = "nemoclaw/lab-runtime-test:local"
+DEFAULT_PATH = "/nemoclaw/scripts/SKILL.html"
+
+CANVAS_UNSUPPORTED = (
+    "helpers.log.h(",
+    "helpers.log.json(",
+    "helpers.log.kv(",
+    "helpers.log.clear(",
+)
+RUN_CELL_UNSUPPORTED = (
+    "helpers.log.draw(",
+    "helpers.log.svg(",
+    "helpers.viz.",
+)
+REQUIRED_IDS = (
+    "helper-map-cell",
+    "helper-retrieval-cell",
+    "helper-live-cell",
+    "helper-ui-cell",
+)
+RUNTIME_JS = r"""
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const { chromium } = require('playwright-core');
+
+const root = process.env.SITE_ROOT || '/site';
+const pagePath = process.env.PAGE_PATH || '/nemoclaw/scripts/SKILL.html';
+const port = Number(process.env.SITE_PORT || 4188);
+const timeoutMs = Number(process.env.AUDIT_TIMEOUT_MS || 120000);
+const mime = {
+  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+  '.woff2': 'font/woff2'
+};
+
+function safeJoin(base, urlPath) {
+  const clean = decodeURIComponent(urlPath.split('?')[0]).replace(/^\/+/, '');
+  const out = path.resolve(base, clean);
+  if (!out.startsWith(path.resolve(base))) throw new Error('path escape');
+  return out;
+}
+
+const server = http.createServer((req, res) => {
+  let file;
+  try { file = safeJoin(root, req.url || '/'); } catch (e) { res.writeHead(403); res.end('forbidden'); return; }
+  if (fs.existsSync(file) && fs.statSync(file).isDirectory()) file = path.join(file, 'index.html');
+  fs.readFile(file, (err, data) => {
+    if (err) { res.writeHead(404); res.end('not found'); return; }
+    res.writeHead(200, { 'content-type': mime[path.extname(file)] || 'application/octet-stream' });
+    res.end(data);
+  });
+});
+
+function waitForListen(srv) {
+  return new Promise(resolve => srv.listen(port, '127.0.0.1', resolve));
+}
+function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+(async () => {
+  await waitForListen(server);
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const pageErrors = [];
+  const consoleErrors = [];
+  page.on('pageerror', err => pageErrors.push(err.message || String(err)));
+  page.on('console', msg => {
+    if (msg.type() === 'error') consoleErrors.push(msg.text());
+  });
+  const url = `http://127.0.0.1:${port}${pagePath}`;
+  await page.goto(url, { waitUntil: 'networkidle', timeout: timeoutMs });
+  await page.waitForSelector('.helper-notebook', { timeout: timeoutMs });
+  await page.waitForFunction(() => typeof window.CodeMirror === 'function', null, { timeout: timeoutMs });
+  await page.waitForFunction(() => {
+    const expected = document.querySelectorAll('.helper-notebook .cf-panel-code, .helper-notebook .rc-code').length;
+    return expected > 0 && document.querySelectorAll('.helper-notebook .CodeMirror').length >= expected;
+  }, null, { timeout: timeoutMs });
+  const surface = await page.evaluate(() => {
+    const table = document.querySelector('#validation-table');
+    const rows = table ? Array.from(table.querySelectorAll('tbody tr')) : [];
+    const tb = table && table.getBoundingClientRect();
+    const validationRows = rows.map((tr, idx) => {
+      const first = tr.querySelector('td:first-child');
+      const second = tr.querySelector('td:nth-child(2)');
+      const code = first && first.querySelector('code');
+      const fb = first && first.getBoundingClientRect();
+      const sb = second && second.getBoundingClientRect();
+      const cs = code && getComputedStyle(code);
+      return {
+        idx,
+        command: code ? code.textContent.trim() : '',
+        commandRatio: tb && fb ? fb.width / tb.width : 1,
+        descRatio: tb && sb ? sb.width / tb.width : 0,
+        commandWhiteSpace: cs && cs.whiteSpace,
+        commandOverflowWrap: cs && cs.overflowWrap,
+        commandScrolls: code ? code.scrollWidth > code.clientWidth + 2 : false,
+      };
+    });
+    const unupgradedEditors = Array.from(document.querySelectorAll('.helper-notebook .cf-code-view > textarea, .helper-notebook .rc-code-body > textarea')).filter(ta => {
+      const host = ta.closest('.cf-code-view,.rc-code-body');
+      return host && !host.querySelector('.CodeMirror');
+    }).map(ta => ta.className || ta.getAttribute('data-src-for') || 'textarea');
+    return {
+      codeMirrorCount: document.querySelectorAll('.helper-notebook .CodeMirror').length,
+      expectedEditors: document.querySelectorAll('.helper-notebook .cf-panel-code, .helper-notebook .rc-code').length,
+      cmTokenCount: document.querySelectorAll('.helper-notebook .CodeMirror .cm-keyword, .helper-notebook .CodeMirror .cm-string, .helper-notebook .CodeMirror .cm-property').length,
+      hasHljs: typeof window.hljs !== 'undefined',
+      validationTable: !!table,
+      validationRows,
+      unupgradedEditors,
+      pageOverflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    };
+  });
+  if (!surface.hasHljs) throw new Error('highlight.js not loaded on helper notebook page');
+  if (!surface.validationTable) throw new Error('validation table missing #validation-table');
+  if (surface.codeMirrorCount < surface.expectedEditors) throw new Error(`not every helper notebook editor upgraded to CodeMirror: ${JSON.stringify(surface)}`);
+  if (surface.cmTokenCount < surface.expectedEditors) throw new Error(`CodeMirror mounted without visible syntax tokens: ${JSON.stringify(surface)}`);
+  if (surface.unupgradedEditors.length) throw new Error(`raw editors did not upgrade to CodeMirror: ${JSON.stringify(surface.unupgradedEditors)}`);
+  const badRows = surface.validationRows.filter(r => r.commandRatio > 0.46 || r.descRatio < 0.50 || r.commandWhiteSpace !== 'pre-wrap' || !['anywhere', 'break-word'].includes(r.commandOverflowWrap) || r.commandScrolls);
+  if (badRows.length) throw new Error(`validation table rows fail wrapping/proportion checks: ${JSON.stringify(badRows)}`);
+  if (surface.pageOverflowX > 2) throw new Error(`page has horizontal overflow: ${surface.pageOverflowX}px`);
+  const selectors = [
+    '#helper-map-cell .cf-btn-run',
+    '#helper-retrieval-cell .cf-btn-run',
+    '#helper-live-cell .cf-btn-run',
+    '#helper-ui-cell .rc-run'
+  ];
+  const results = [];
+  for (const sel of selectors) {
+    const count = await page.locator(sel).count();
+    if (!count) throw new Error(`missing run control: ${sel}`);
+    const button = page.locator(sel).first();
+    const before = await button.innerText().catch(() => '');
+    await button.click();
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const text = await button.innerText().catch(() => '');
+      if (!/stop|running|⏹/i.test(text)) break;
+      await wait(250);
+    }
+    const after = await button.innerText().catch(() => '');
+    if (/stop|running|⏹/i.test(after)) throw new Error(`run did not finish: ${sel}`);
+    const cellText = await page.locator(sel.replace(/ .*/, '')).innerText().catch(() => '');
+    results.push({ selector: sel, before, after, failed: /✗ stopped:|TypeError|ReferenceError|helpers\.log\.h is not a function/.test(cellText) });
+  }
+  const body = await page.locator('body').innerText();
+  const runtimeFailures = results.filter(r => r.failed);
+  const textFailure = body.match(/✗ stopped:[^\n]*|TypeError[^\n]*|ReferenceError[^\n]*/g) || [];
+  await browser.close();
+  server.close();
+  if (runtimeFailures.length || pageErrors.length || textFailure.length) {
+    console.error(JSON.stringify({ ok: false, url, results, pageErrors, consoleErrors, textFailure }, null, 2));
+    process.exit(1);
+  }
+  console.log(JSON.stringify({ ok: true, url, ran: results.map(r => r.selector), consoleErrors }, null, 2));
+})().catch(async (err) => {
+  try { server.close(); } catch (_) {}
+  console.error(err && err.stack || String(err));
+  process.exit(1);
+});
+"""
+
+
+
+def _skill_meta(raw: str) -> dict:
+    m = re.search(r'<script[^>]+id=["\']skill-meta["\'][^>]*>(.*?)</script>', raw, re.S | re.I)
+    if not m:
+        return {}
+    try:
+        return json.loads(m.group(1))
+    except json.JSONDecodeError:
+        return {}
+
+
+def _table_commands(raw: str) -> list[str]:
+    m = re.search(r'<table[^>]+id=["\']validation-table["\'][^>]*>(.*?)</table>', raw, re.S | re.I)
+    if not m:
+        return []
+    return [re.sub(r"\s+", " ", x).strip() for x in re.findall(r'<td>\s*<code>(.*?)</code>\s*</td>', m.group(1), re.S | re.I)]
+
+
+def _mount_targets(raw: str, marker: str) -> list[str]:
+    return re.findall(rf'{marker}\(\s*["\']#([^"\']+)["\']', raw)
+
+def _line_for(raw: str, token: str, start: int = 0) -> int:
+    idx = raw.find(token, start)
+    return raw.count("\n", 0, idx) + 1 if idx >= 0 else 0
+
+
+def _regions(raw: str, marker: str) -> list[tuple[int, str]]:
+    starts = [m.start() for m in re.finditer(re.escape(marker), raw)]
+    all_starts = sorted(starts + [m.start() for m in re.finditer(r"mount(?:CanvasFlow|RunCell)\(", raw)])
+    out: list[tuple[int, str]] = []
+    for start in starts:
+        end_candidates = [x for x in all_starts if x > start]
+        end = end_candidates[0] if end_candidates else len(raw)
+        out.append((start, raw[start:end]))
+    return out
+
+
+def static_audit(skill_path: Path = SKILL) -> list[str]:
+    raw = skill_path.read_text(encoding="utf-8")
+    findings: list[str] = []
+    for item in REQUIRED_IDS:
+        if item not in raw:
+            findings.append(f"missing helper notebook cell #{item}")
+
+    meta_tests = _skill_meta(raw).get("tests", [])
+    table_cmds = _table_commands(raw)
+    for cmd in meta_tests:
+        if cmd not in table_cmds:
+            findings.append(f"skill-meta test missing from Validation table: {cmd}")
+    for cmd in table_cmds:
+        if cmd not in meta_tests:
+            findings.append(f"Validation table command missing from skill-meta tests: {cmd}")
+
+    ids = set(re.findall(r"id=[\"\']([^\"\']+)[\"\']", raw))
+    for target in _mount_targets(raw, "mountCanvasFlow") + _mount_targets(raw, "mountRunCell"):
+        if target not in ids:
+            findings.append(f"runtime mount target #{target} has no matching DOM id")
+    if len(_mount_targets(raw, "mountCanvasFlow")) < 3:
+        findings.append("helper notebook should keep at least three CanvasFlow examples")
+    if len(_mount_targets(raw, "mountRunCell")) < 1:
+        findings.append("helper notebook should keep at least one RunCell example")
+    for required in (
+        "python3 scripts/validation/helper_notebook_runtime_audit.py --no-container",
+        "CONTAINER_ENGINE=podman python3 scripts/validation/helper_notebook_runtime_audit.py",
+        "scripts/runtime/browser_env_probe.sh",
+        "podman-compose-via-python",
+        "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js",
+        "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js",
+        "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js",
+        'id="validation-table"',
+        "validation-command-col",
+        "overflow-wrap: anywhere",
+        "table-layout: fixed",
+        "white-space: pre-wrap",
+        "hljs.highlightAll",
+    ):
+        if required not in raw:
+            findings.append(f"web/nemoclaw/scripts/SKILL.html missing validation token: {required}")
+    for start, block in _regions(raw, "mountCanvasFlow("):
+        for token in CANVAS_UNSUPPORTED:
+            if token in block:
+                findings.append(f"CanvasFlow block uses RunCell-only API {token} at line {_line_for(raw, token, start)}")
+    for start, block in _regions(raw, "mountRunCell("):
+        for token in RUN_CELL_UNSUPPORTED:
+            if token in block:
+                findings.append(f"RunCell block uses CanvasFlow-only API {token} at line {_line_for(raw, token, start)}")
+    if "helpers.log.h(\"UI helper dry run\")" not in raw:
+        findings.append("RunCell example must retain helpers.log.h coverage")
+    if "helpers.log.draw(" not in raw:
+        findings.append("CanvasFlow example must retain helpers.log.draw coverage")
+    if "helpers.viz.scoreBarChart(" not in raw or "helpers.viz.diffTable(" not in raw:
+        findings.append("CanvasFlow visualization examples must retain chart and diff coverage")
+    if "helpers.coursePages()" not in raw or "helpers.formatSearchResults(" not in raw:
+        findings.append("retrieval/context examples must retain coursePages and formatSearchResults coverage")
+    if "helpers.fetchRetry(" not in raw or "helpers.browserChatFetch()" not in raw:
+        findings.append("network examples must retain fetchRetry and browserChatFetch coverage")
+    return findings
+
+
+def run_container(args: argparse.Namespace) -> int:
+    site_root = (ROOT / args.site_root).resolve() if not Path(args.site_root).is_absolute() else Path(args.site_root).resolve()
+    if not site_root.exists():
+        print(f"helper_notebook_runtime_audit: FAIL\n  - site root missing: {site_root}", file=sys.stderr)
+        return 1
+    engine = args.engine or os.environ.get("CONTAINER_ENGINE") or "podman"
+    with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as fh:
+        fh.write(RUNTIME_JS)
+        script = Path(fh.name)
+    cmd = [engine, "run", "--rm", "--entrypoint", "node"]
+    if engine.endswith("podman"):
+        cmd.append("--userns=keep-id")
+    cmd += [
+        "-e", "NODE_PATH=/opt/nemoclaw-runtime/node_modules",
+        "-e", "SITE_ROOT=/site",
+        "-e", f"PAGE_PATH={args.page_path}",
+        "-e", f"AUDIT_TIMEOUT_MS={args.timeout_ms}",
+        "-v", f"{site_root}:/site:ro",
+        "-v", f"{script}:/tmp/helper_notebook_runtime_audit.js:ro",
+        args.image,
+        "/tmp/helper_notebook_runtime_audit.js",
+    ]
+    try:
+        proc = subprocess.run(cmd, cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=(args.timeout_ms / 1000) + 30)
+    except FileNotFoundError:
+        print(f"helper_notebook_runtime_audit: FAIL\n  - container engine not found: {engine}")
+        return 1
+    except subprocess.TimeoutExpired as exc:
+        print("helper_notebook_runtime_audit: FAIL")
+        print(f"  - container audit timed out after {exc.timeout}s")
+        if exc.stdout:
+            print(exc.stdout)
+        return 1
+    finally:
+        try:
+            script.unlink()
+        except OSError:
+            pass
+    print(proc.stdout.rstrip())
+    return proc.returncode
+
+
+def parse_args() -> argparse.Namespace:
+    ap = argparse.ArgumentParser(description="Validate web/nemoclaw/scripts/SKILL.html helper notebook")
+    ap.add_argument("--no-container", action="store_true", help="run deterministic static audit only")
+    ap.add_argument("--site-root", default="web", help="site root to serve inside Playwright container")
+    ap.add_argument("--page-path", default=DEFAULT_PATH, help="page path under served site root")
+    ap.add_argument("--image", default=DEFAULT_IMAGE, help="browser runtime image")
+    ap.add_argument("--engine", default=os.environ.get("CONTAINER_ENGINE"), help="container engine, default CONTAINER_ENGINE or podman")
+    ap.add_argument("--timeout-ms", type=int, default=120000, help="per-run browser timeout")
+    return ap.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    findings = static_audit()
+    if findings:
+        print("helper_notebook_runtime_audit: FAIL")
+        for row in findings:
+            print(f"  - {row}")
+        return 1
+    if args.no_container:
+        print("helper_notebook_runtime_audit: OK (static)")
+        return 0
+    rc = run_container(args)
+    if rc == 0:
+        print("helper_notebook_runtime_audit: OK (runtime)")
+    else:
+        print("helper_notebook_runtime_audit: FAIL (runtime)")
+    return rc
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

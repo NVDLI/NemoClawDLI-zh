@@ -16,8 +16,11 @@ Usage: scripts/runtime/lab_runtime_test.sh [--smoke] [--render-only] [--no-build
 
 Builds a small browser-test image with Node.js, playwright-core, and Chromium,
 then runs scripts/runtime/test_page_runtime.js from the repo bind-mounted read-only.
+Host Node.js, Chromium, and Playwright are not required. For one-command
+discovery, run scripts/runtime/browser_env_probe.sh first.
 
 Examples:
+  scripts/runtime/browser_env_probe.sh
   scripts/runtime/lab_runtime_test.sh --smoke
   scripts/runtime/lab_runtime_test.sh --render-only
   scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html
@@ -113,6 +116,8 @@ if ! "$ENGINE" network inspect "$NETWORK" >/dev/null 2>&1; then
 FATAL: container network '$NETWORK' not found.
 Start the lab stack first, for example:
   COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$ROOT podman compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
+or, with podman-compose-via-python:
+  COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$ROOT python3 -m podman_compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
 or set LAB_RUNTIME_NETWORK to the network that contains nginx/openclaw.
 EOF
   exit 2

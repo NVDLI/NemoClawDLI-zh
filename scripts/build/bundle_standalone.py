@@ -687,12 +687,29 @@ def main() -> int:
         print(f"  shipped scripts/{mod.name}  ({dst.stat().st_size // 1024} KB)")
 
     # The SKILL hubs render via web/_skill_explorer.js, which lives one level ABOVE --src (one renderer
-    # serves every surface), and the copied subdir SKILLs link ../_style.css. Neither is caught by the
-    # globs above, so ship both flat: the hubs then render and the provenance pages style in the bundle.
-    for extra in (web.parent / "_skill_explorer.js", web / "styles" / "_style.css"):
-        if extra.is_file() and not (out / extra.name).exists():
-            shutil.copy2(extra, out / extra.name)
-            print(f"  shipped {extra.name}")
+    # serves every surface). Subdir SKILLs live at scripts/SKILL.html, styles/SKILL.html, assets/SKILL.html,
+    # and mats/SKILL.html, and they link ../styles/_style.css plus ../_skill_explorer.js. Ship those paths
+    # exactly; a flat _style.css at the bundle root makes the link checker happy nowhere and becomes a
+    # Pages 404 when strict MIME checking rejects the HTML fallback as a stylesheet.
+    explorer = web.parent / "_skill_explorer.js"
+    if explorer.is_file() and not (out / explorer.name).exists():
+        shutil.copy2(explorer, out / explorer.name)
+        print(f"  shipped {explorer.name}")
+
+    styles = web / "styles"
+    if styles.is_dir():
+        dst_styles = out / "styles"
+        dst_styles.mkdir(parents=True, exist_ok=True)
+        for f in sorted(styles.glob("*")):
+            if f.is_file():
+                shutil.copy2(f, dst_styles / f.name)
+        print(f"  copied styles/      ({sum(1 for p in dst_styles.iterdir() if p.is_file())} files)")
+
+    scripts_skill = web / "scripts" / "SKILL.html"
+    if scripts_skill.is_file():
+        (out / "scripts").mkdir(parents=True, exist_ok=True)
+        shutil.copy2(scripts_skill, out / "scripts" / "SKILL.html")
+        print("  copied scripts/SKILL.html")
 
     # Ship any LOCAL js a bundled page loads by relative <script src> (tool modules such as
     # studio.html's studio_main.js) so the page resolves its scripts and works standalone. Found by
@@ -717,34 +734,13 @@ def main() -> int:
         n_assets = sum(1 for p in (out / "assets").rglob("*") if p.is_file())
         print(f"  copied assets/      ({n_assets} files)")
 
-    # Carry the "deep" glossary articles the course fetches by relative path
-    # (mats/glossary_raw/<slug>.md, the full term bodies behind glossary_search's full=true mode).
-    # Only the .md bodies are read, as text by the agent, so skip the images and other mats/
-    # subtrees to keep the bundle lean. Without this the live full-article retrieval 404s.
-    raw = web / "mats" / "glossary_raw"
-    if raw.is_dir():
-        dst = out / "mats" / "glossary_raw"
-        dst.mkdir(parents=True, exist_ok=True)
-        n_raw = 0
-        for md in sorted(raw.glob("*.md")):
-            shutil.copy2(md, dst / md.name)
-            n_raw += 1
-        print(f"  copied mats/glossary_raw/  ({n_raw} full glossary articles)")
-
-    # Ship the mats provenance hub AND the top-level companion .md it previews, so the hub is reachable
-    # and its lazy "preview" excerpts resolve in the bundle (each fetches the local .md by relative path).
-    # The index JSON and the two unreferenced figure duplicates stay out to keep the bundle lean; their
-    # previews fall back to a link, and the canonical figures already ship via copytree(assets) above.
+    # Ship the complete mats directory. mats/SKILL.html is a direct file index now, so every linked
+    # cached markdown body, JSON index, and companion SVG must resolve in the deployed bundle.
     matsdir = web / "mats"
-    msk = matsdir / "SKILL.html"
-    if msk.is_file():
-        (out / "mats").mkdir(parents=True, exist_ok=True)
-        shutil.copy2(msk, out / "mats" / "SKILL.html")
-        n_mats = 0
-        for md in sorted(matsdir.glob("*.md")):
-            shutil.copy2(md, out / "mats" / md.name)
-            n_mats += 1
-        print(f"  copied mats/SKILL.html + {n_mats} companion .md")
+    if matsdir.is_dir():
+        shutil.copytree(matsdir, out / "mats", dirs_exist_ok=True)
+        n_mats = sum(1 for p in (out / "mats").rglob("*") if p.is_file())
+        print(f"  copied mats/        ({n_mats} files)")
 
     print(f"\n{len(pages)} pages → {out}/")
     return 0

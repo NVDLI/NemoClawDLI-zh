@@ -17,6 +17,7 @@
     "docs/staging-deployments.md",
     "docs/notebook_corruption_prevention.md",
     "docs/lab_runtime_testing.md",
+    "docs/validation_remediation.md",
     "scripts/compliance/docs/SKILL.html"
   ],
   "explorer": "../web/_skill_explorer.js"
@@ -57,7 +58,12 @@
     {
       "path": "lab_runtime_testing.md",
       "role": "containerized browser runtime",
-      "desc": "How agents run the Podman/Docker Playwright harness for smoke, render-only, and full lab-network browser checks."
+      "desc": "How agents run scripts/runtime/browser_env_probe.sh plus the Podman/Docker Playwright harness for smoke, render-only, and full lab-network browser checks."
+    },
+    {
+      "path": "validation_remediation.md",
+      "role": "remaining validation findings",
+      "desc": "Grouped remediation plan for recommended and consider findings, with safe approaches and sample fixes."
     }
   ],
   "related": [
@@ -73,11 +79,13 @@
 <div id="explorer"></div>
 <noscript>
   <h1>docs/ agent and deploy notes</h1>
+  <p>For browser-runtime discovery, start with <code>scripts/runtime/browser_env_probe.sh</code>; host Node.js, Chromium, and Playwright are optional.</p>
   <ul>
     <li><a href="pages_deploy.md">pages_deploy.md</a></li>
     <li><a href="staging-deployments.md">staging-deployments.md</a></li>
     <li><a href="notebook_corruption_prevention.md">notebook_corruption_prevention.md</a></li>
     <li><a href="lab_runtime_testing.md">lab_runtime_testing.md</a></li>
+    <li><a href="validation_remediation.md">validation_remediation.md</a></li>
     <li><a href="../scripts/compliance/docs/SKILL.html">scripts/compliance/docs/SKILL.html</a></li>
   </ul>
 </noscript>
