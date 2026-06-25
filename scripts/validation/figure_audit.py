@@ -7,7 +7,7 @@ legibility floor, full-width course figures capped too small, text spilling past
 bounds, and missing a11y affordances (svg aria-label, img alt, rel=noopener on new-tab links).
 All advisory.
 
-Checks: tiny-text, small-render, text-overflow, no-aria, img-no-alt, blank-link.
+Checks: tiny-text, small-render, flex-parent, text-overflow, no-aria, img-no-alt, blank-link.
 Run:  python3 scripts/validation/figure_audit.py
 """
 from __future__ import annotations
@@ -122,9 +122,16 @@ def audit_file(path: Path):
     # body-only: page <script> is lesson code with functional imgs
     imgs = [rel for m in re.finditer(r"<img\b[^>]*>", body)
             if not re.search(r'\balt\s*=\s*"[^"]+"', m.group(0))]
+    flex_parent = []
+    for m in re.finditer(r'<(?P<tag>\w+)\b(?P<attrs>[^>]*)>\s*<[^>]+data-svg-src\s*=\s*"([^"]+)"', body, re.S):
+        attrs = m.group('attrs')
+        sm = re.search(r'style\s*=\s*"([^"]*)"', attrs, re.I)
+        style = sm.group(1) if sm else ''
+        if re.search(r'display\s*:\s*flex', style, re.I) and not re.search(r'\bwidth\s*:', style, re.I):
+            flex_parent.append((rel, m.group(3), style[:90]))
     blanks = [rel for m in re.finditer(r"<a\b[^>]*target\s*=\s*\"_blank\"[^>]*>", body)
               if "noopener" not in m.group(0)]
-    return tiny, small, noaria, over, imgs, blanks
+    return tiny, small, flex_parent, noaria, over, imgs, blanks
 
 
 def run(verbose=True):
@@ -132,10 +139,10 @@ def run(verbose=True):
     exists so the gate and a reviewer get one accounting of unreadable figure text, overflow, and
     missing a11y across the bundle. Returns the five finding lists; the report and exit code use them."""
     files = sorted((WEB / "nemoclaw").glob("*.html")) + sorted(WEB.glob("*.html"))
-    tiny, small, noaria, over, imgs, blanks = [], [], [], [], [], []
+    tiny, small, flex_parent, noaria, over, imgs, blanks = [], [], [], [], [], [], []
     for f in files:
-        t, s, n, o, i, b = audit_file(f)          # per-page findings, by category
-        tiny += t; small += s; noaria += n; over += o; imgs += i; blanks += b
+        t, s, fp, n, o, i, b = audit_file(f)      # per-page findings, by category
+        tiny += t; small += s; flex_parent += fp; noaria += n; over += o; imgs += i; blanks += b
     if verbose:
         if tiny:
             print(f"[tiny text · rendered < {FLOOR}px] {len(tiny)}")
@@ -145,6 +152,10 @@ def run(verbose=True):
             print(f"[small rendered figure · rendered < {MIN_RENDER_W}px] {len(small)}")
             for rel, rw, floor, lab in sorted(small, key=lambda x: x[1]):
                 print(f"   {rw:4}px  (< {floor}px)  {rel}  «{lab}…»")
+        if flex_parent:
+            print(f"[shrink-prone flex figure parent] {len(flex_parent)}")
+            for rel, src, style in flex_parent:
+                print(f'        {rel} -> {src}  parent style="{style}"')
         if over:
             print(f"[text overflows figure bounds] {len(over)}")
             for rel, txt, lf, rt, vbw in over:
@@ -157,11 +168,11 @@ def run(verbose=True):
             print(f"[img missing alt] {len(imgs)}: {sorted(set(imgs))}")
         if blanks:
             print(f"[target=_blank missing rel=noopener] {len(blanks)}: {sorted(set(blanks))}")
-        total = len(tiny) + len(small) + len(noaria) + len(over) + len(imgs) + len(blanks)
+        total = len(tiny) + len(small) + len(flex_parent) + len(noaria) + len(over) + len(imgs) + len(blanks)
         print(f"\nfigure_audit: {total} finding(s) "
-              f"(tiny {len(tiny)}, small {len(small)}, overflow {len(over)}, no-aria {len(noaria)}, "
-              f"img-alt {len(imgs)}, blank-link {len(blanks)})")
-    return {"tiny": tiny, "small_render": small, "overflow": over, "no_aria": noaria, "img_no_alt": imgs, "blank_link": blanks}
+              f"(tiny {len(tiny)}, small {len(small)}, flex-parent {len(flex_parent)}, "
+              f"overflow {len(over)}, no-aria {len(noaria)}, img-alt {len(imgs)}, blank-link {len(blanks)})")
+    return {"tiny": tiny, "small_render": small, "flex_parent": flex_parent, "overflow": over, "no_aria": noaria, "img_no_alt": imgs, "blank_link": blanks}
 
 
 if __name__ == "__main__":
