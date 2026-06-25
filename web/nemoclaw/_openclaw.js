@@ -793,15 +793,13 @@ if (!rawUrl || !token) {
 const wsUrl = rawUrl.replace(/\\/+$/, "").replace(/^https/, "wss").replace(/^http(?!s)/, "ws") + "/cli/gateway";
 helpers.log("→ " + wsUrl);
 
-// Close any socket a previous Connect on this flow left open, so re-running a
-// node (or running another Connect) does not pile up live WebSockets in the
-// background. We keep ONE socket per flow on state._ws.
+// Keep one live gateway socket per flow.
 if (state._ws) { try { state._ws.close(); } catch (_) {} state._chatCb = null; }
 
 const _pend = {};
 const _ws = new WebSocket(wsUrl);
 state._ws = _ws;
-// Stop button: abort the run → close the socket and reject any in-flight call.
+// Stop closes the socket and rejects in-flight calls.
 if (typeof helpers !== "undefined" && helpers.signal) helpers.signal.addEventListener("abort", () => {
   try { _ws.close(); } catch (_) {}
   for (const _id in _pend) { try { clearTimeout(_pend[_id].tmo); _pend[_id].reject(new Error("stopped")); } catch (_) {} delete _pend[_id]; }
@@ -843,9 +841,7 @@ await new Promise((resolve, reject) => {
 });
 `;
 
-// ── Shared recover flow (health check + toolSearch repair) ───────────────────
-// One mountGwRecover("#gw-recover") call mounts the same detect-and-recover cells.
-// Synced across 03a/03c/04a.
+// Shared recover flow, reused across 03a/03c/04a.
 export function mountGwRecover(sel) {
   mountCanvasFlow(sel, {
   label: "Detect & recover · health check, then escalating reset",
@@ -870,9 +866,7 @@ try {
   (envs.environments || []).forEach(e => helpers.log("  env " + e.id + ": " + e.status));
 } catch (e) { helpers.log("  environments.list failed: " + e.message); }
 
-// 2. The #1 cause of the tool_search_code loop: tools.toolSearch is ON, so the
-//    model uses the code bridge to find tools and gets stuck instead of calling
-//    exec. The Recover cell turns it off.
+// 2. tools.toolSearch can trap weaker models in bridge-code loops; Recover turns it off.
 let toolSearch = null;
 try {
   const cfg = await state.call("config.get", {});
@@ -888,10 +882,7 @@ try {
   helpers.log("  pending exec approvals: " + pending);
 } catch (e) { helpers.log("  exec.approval.list failed: " + e.message); }
 
-// 3. Behavioral probe: ask the agent to echo a marker through its exec tool. This is the
-//    real test, since the tool_search_code loop breaks exactly this, so it costs one model
-//    turn. We stream what the agent does as it happens, and conclude THE MOMENT the marker
-//    comes back rather than waiting for the model's closing prose, which is most of the wait.
+// 3. Echo probe proves exec works; finish as soon as the marker returns.
 const PROBE = "quick-health-" + Math.random().toString(36).slice(2, 8);
 await state.call("sessions.messages.subscribe", { key: PROBE });
 let ok = false, sawTool = false, runId = null;
@@ -939,10 +930,7 @@ return { healthy: ok, outcome, pendingApprovals: pending, toolSearch };
       code: GW_CONNECT + `
 helpers.log("Repairing the runtime");
 
-// 1. THE KEY FIX. tools.toolSearch lets the model run a code "bridge" to find and
-//    invoke tools. A weaker model (e.g. nemotron-3-super-120b) loops on that
-//    bridge ("tool_search_code · run bridge code") and never calls exec. Turn it
-//    off with a config merge-patch so the agent uses the native exec tool.
+// 1. Disable toolSearch so the agent uses native exec instead of bridge code.
 const cfg = await state.call("config.get", {});
 if (cfg.parsed && cfg.parsed.tools && cfg.parsed.tools.toolSearch) {
   await state.call("config.patch", { raw: JSON.stringify({ tools: { toolSearch: false } }), baseHash: cfg.hash });
@@ -959,11 +947,7 @@ let removed = 0;
 for (const s of all.filter(s => !/:main$/.test(s.key))) { try { await state.call("sessions.delete", { key: s.key }); removed++; } catch (e) {} }
 helpers.log("  ✓ reset agent:main:main and deleted " + removed + " throwaway session(s)");
 
-// 3. Applying the toolSearch change needs a runtime restart, which DROPS the
-//    connection for ~40s, so it is opt-in, never automatic. Leave DO_RESTART
-//    false (config is patched and applies on the next restart); flip it to true
-//    and re-run ONLY this cell when you want to restart now. Default-false keeps
-//    "Run all" from knocking the runtime out from under the cells after it.
+// 3. Restart applies the config patch but drops the socket, so it stays opt-in.
 const DO_RESTART = false;
 if (DO_RESTART) {
   await state.call("gateway.restart.request", { reason: "course recovery: disable toolSearch" }).catch(e => helpers.log("  restart failed: " + e.message));

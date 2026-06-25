@@ -19,14 +19,8 @@ function _dgWrap(text, maxChars) {
   return lines;
 }
 
-// Diagram colors are emitted as CSS var() references, never resolved at render time, so a figure
-// re-themes the instant <html data-theme> flips, with no re-render. This is the same mechanism the
-// inline var(--gfx-*) page figures use, and it covers BOTH always-on page diagrams AND diagrams
-// rendered into cell output, which a render-time bake (the old getComputedStyle read) would leave
-// frozen on whatever theme was active when the cell ran. Box/canvas tones reuse the page palette
-// (--bg/--e1/--e2/--bd/--tx/--td/--tf); arrow and the kind hues are curated extras defined as --dg-*
-// in _style.css (dark :root + the light override) and _lite_overlay.css (the baked edX export). The
-// hex fallbacks hold a sane dark palette where no stylesheet is present (headless geometry checks).
+// Emit CSS vars, not resolved colors, so diagrams re-theme without re-rendering.
+// Hex fallbacks keep headless geometry checks readable.
 function _dgTheme() {
   return {
     bg: "var(--bg,#0d0d0d)", e1: "var(--e1,#161616)", e2: "var(--e2,#1e1e1e)",
@@ -83,12 +77,10 @@ function _dgBox(n, g, t) {
   );
 }
 
-// An edge renders in two layers: the connector path (drawn under the boxes)
-// and the label chip (drawn over the boxes so a tight layout never hides it).
-// _dgEdge returns { path, chip } and diagramSVG composites the layers.
+// Edges render paths below boxes and label chips above them.
 function _dgEdgeLabelChip(mx, my, label, kc, t) {
   if (!label) return "";
-  // Size the pill to the text instead of a fixed 64px, so longer labels ("read every turn", "denied: EACCES / 403") are not clipped.
+  // Size the pill to the text so long labels do not clip.
   const w = Math.max(46, label.length * 7.1 + 18);
   return `<rect x="${mx - w / 2}" y="${my - 13}" width="${w}" height="26" rx="13" fill="${t.e1}" stroke="${t.bd}"/>` +
     `<text x="${mx}" y="${my + 4}" text-anchor="middle" font-size="12" font-family="${_DG_MONO}" ` +
@@ -148,8 +140,7 @@ export function diagramSVG(spec) {
   const t = _dgTheme();
   const g = _dgLayout(spec);
   const capLines = spec.caption ? _dgWrap(spec.caption, Math.floor(g.W / 6.6)) : [];
-  // Grow the canvas downward if the caption wrapped past the one line the
-  // default height budgets for, so extra lines never collide with the boxes.
+  // Grow downward when captions wrap past one line.
   const capH = capLines.length > 1 ? (capLines.length - 1) * 17 : 0;
   const H = g.H + capH;
   const capTop = H - 24 - (capLines.length - 1) * 17;
@@ -165,8 +156,7 @@ export function diagramSVG(spec) {
     `aria-label="${_dgEsc(spec.aria || spec.title || "diagram")}" ` +
     `style="width:100%;max-width:${spec.maxWidth || 1100}px;height:auto;display:block;margin:1.2em auto;border-radius:12px">` +
     _dgDefs(t) +
-    // explicit bg rect: a CSS `background:` on the <svg> is dropped by some
-    // renderers/exporters, and a hardcoded light bg would fight the dark lab.
+    // Explicit background survives SVG export and respects dark theme.
     `<rect x="0" y="0" width="${g.W}" height="${H}" rx="12" fill="${t.bg}" stroke="${t.bd}"/>` +
     // paths under boxes, boxes, then chips on top so no label hides behind a node.
     edgePaths + boxes + edgeChips + caption + `</svg>`

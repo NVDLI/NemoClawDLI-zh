@@ -328,13 +328,9 @@ mountDiagram("#fig-calls", {
 // ── Shared WS connect snippet (used as prefix in each connect node) ──────────
 
 
-// Setup snippet for the first node of each flow: connect to the gateway, then
-// store a `turn` helper on `state` so later nodes send chat turns without
-// re-wiring the plumbing (same gateway machinery as Kickstart 3a).
+// Connect once, then store state.turn for later nodes.
 const setupTurn = GW_CONNECT + `
-// state.turn({ content, session }) sends ONE chat turn over the gateway WS and
-// returns the agent's final text, routed through chat.send because the
-// launchable's /v1/chat/completions is not reachable directly from the browser.
+// state.turn sends one gateway chat turn and returns final text.
 if (!state._subs) state._subs = {};
 
 // ── tune these (apply to every state.turn call in this flow) ──────────────────
@@ -356,8 +352,7 @@ state.turn = async ({ content, session }) => {
       const pl = d.payload || {};
       // ignore heartbeats / keepalives: not real activity, never reset the idle timer
       if (pl.isHeartbeat || d.event === "health" || d.event === "tick") return;
-      // one sessionKey can host several runs; lock onto ours (myRun) and drop the
-      // rest so a stale run's chatter can't reset our idle timer and mask a stall
+      // Keep only our runId so stale frames cannot reset the idle timer.
       if (myRun && pl.runId && pl.runId !== myRun) return;
       bump();   // real activity on OUR run pushes the idle deadline back
       if (d.event === "chat" && pl.state === "final") {

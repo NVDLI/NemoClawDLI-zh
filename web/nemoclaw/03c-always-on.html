@@ -280,12 +280,9 @@ mountDiagram("#fig-calls", {
 // ── Shared WS connect snippet (used as prefix in each connect node) ──────────
 
 // ── Shared chat-turn snippet ───────────────────────────────────────────────────
-// Tool calls ride a separate stream from the chat reply. Each turn subscribes to
-// the session's message stream before chat.send, or only the final prose returns.
+// Subscribe before chat.send, or tool events stay invisible.
 const gwChat = (sk, msg) => {
-  // sk is usually a literal. Pass { raw: "<js expr>" } to compute the sessionKey at
-  // run time, e.g. a unique key per run so the agent re-runs its tools instead of
-  // answering a reused session from memory.
+  // Pass { raw: "<js expr>" } when sessionKey must be computed at run time.
   const skExpr = (sk && typeof sk === "object" && sk.raw) ? sk.raw : JSON.stringify(sk);
   // msg is usually a literal.
   // Pass { raw: "<js>" } to supply the whole message-assignment block, e.g. a stack of prompts where the last line wins.
@@ -309,9 +306,7 @@ if (!state._subs[sessionKey]) {
   state._subs[sessionKey] = true;
 }
 
-// 🧹 Start fresh? Uncomment the next line to wipe this session before sending.
-//    sessions.reset clears server-side history, so the agent re-runs its tools
-//    instead of replaying an earlier turn.
+// Uncomment to clear this session and force fresh tool work.
 // await state.call("sessions.reset", { key: sessionKey }); helpers.log("🧹 cleared session memory: " + sessionKey);
 
 const _params = {
@@ -320,15 +315,8 @@ const _params = {
   message,
 };
 
-// ── stream handler ───────────────────────────────────────────────────────────
-// Frames are tagged by pl.stream. The "tool" stream is the observable trace:
-// phase "start" carries args (INPUT), phase "result" carries result + isError
-// (OUTPUT), for every tool. The "assistant" stream carries the answer text;
-// lifecycle phase:end ends the run. Reasoning is NOT forwarded, so these args and
-// results are the deepest per-step view here (the 📜 logs cell tails the runtime).
-//
-// Two timers guard the run: an idle timer (reset only by REAL activity, never by
-// heartbeats) and a global backstop.
+// Stream handler: tool frames show args/results; assistant frames show answer text.
+// Idle and global timers stop stalled runs; heartbeats never reset the idle timer.
 let _text = "", _finalEv, _t0 = performance.now(), _ttft = 0, _myRun = null;
 let _toolStarts = 0, _didResult = false;            // for the degradation check below
 const IDLE_MS = IDLE_TIMEOUT_S * 1000, GLOBAL_MS = TOTAL_TIMEOUT_S * 1000;
@@ -373,8 +361,7 @@ await new Promise((resolve, reject) => {
       if (!_ttft) _ttft = performance.now() - _t0;
       _text = data.text || _text;
     } else if (stream === "tool" && data.phase === "start") {
-      // a tool was invoked, so show its INPUT (args reveal exactly what was asked,
-      // such as an unexpanded path or a malformed command that makes the tool hang)
+      // Show tool input; bad args often explain hangs.
       _toolStarts++;
       const inp = data.args ? JSON.stringify(data.args) : (data.meta || "");
       helpers.log.details("⚙️ " + (data.name || "tool") + (inp ? "  " + inp.replace(/\\n/g, " ").slice(0, 160) : ""), d);
@@ -395,8 +382,7 @@ await new Promise((resolve, reject) => {
    }
   };
   bumpIdle();
-  // chat.send returns { runId, status } well before any frame, so lock onto that
-  // runId so the handler can ignore every other run sharing this sessionKey.
+  // Lock onto this runId so shared-session chatter is ignored.
   state.call("chat.send", _params)
     .then(res => { _myRun = (res && res.runId) || null; })
     .catch(e => { clearTimeout(_idle); clearTimeout(_global); state._chatCb = null; reject(e); });
@@ -413,8 +399,7 @@ helpers.log("⏱ " + _secs.toFixed(1) + "s · ~" + _toks + " tok · " +
 state.out = _text;
 
 // Automatic degradation check. A healthy run returns text and/or a tool result.
-// If tools STARTED but none returned, a tool is hung or the model is looping (a
-// runtime problem, not your code). The Health check flags whether toolSearch is it.
+// Started-without-result means a hung tool or model loop; Health check can flag toolSearch.
 if (!_text.trim() && !_didResult && _toolStarts > 0) {
   helpers.log("⚠ DEGRADED: started " + _toolStarts + " tool call(s) but none returned a result or answer.");
   helpers.log("   A tool is hung or the model is looping. The ⚙️ rows above show the exact tool + args it got stuck on.");

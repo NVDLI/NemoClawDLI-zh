@@ -585,10 +585,7 @@ const PROMPT       = "List five prime numbers.";
 const MAX_TOKENS   = 256;     // reasoning models think first; too low and they never answer
 const TTFT_TIMEOUT = 30000;   // ms; give up on a model with no first token by now (some are slow to start)
 
-// Stream the prompt; time the first token; count tokens and the mean gap.
-// Reasoning models emit \`reasoning_content\` (thinking) before \`content\`
-// (the answer); count both, or a deep thinker that caps mid-thought reads
-// as "0 tokens".
+// Time first-token latency and count both reasoning and answer tokens.
 async function bench(model) {
   const ctrl  = new AbortController();
   const guard = setTimeout(() => ctrl.abort(), TTFT_TIMEOUT);   // first-token watchdog
@@ -693,8 +690,7 @@ return { ranked: ok.map(r => r.model), errors: results.filter(r => r.err).length
       syncCanvas: true,
       cfAccess: true,
 
-      // base URL + CF Access JWT is enough: GET /api/agent returns
-      // agent.dashboardUrl = "/#token=<hex>", which IS the gateway token.
+      // GET /api/agent returns agent.dashboardUrl with the gateway token.
       autofillToken: (j) => {
         const m = (j?.agent?.dashboardUrl || "").match(/token=([a-f0-9]+)/i);
         return m ? m[1] : null;
@@ -770,18 +766,14 @@ helpers.log.details('body', await res.text());
 `,
     });
 
-    // ── Shared chat-turn snippet ───────────────────────────────────────────────────
-    // Tool calls ride a SEPARATE stream from the chat reply.
-    // Each turn subscribes to the session's message stream before chat.send;
-    // skip it and only the final prose comes back, with the exec steps invisible.
+    // Shared chat-turn snippet. Subscribe first or tool events stay invisible.
     const gwChat = (sk, msg) => {
       // sk is normally a literal string.
       // Pass { raw: "<js expr>" } to compute the sessionKey at run time.
       // A fresh unique-per-run key makes the agent re-run its tools; reuse replays.
       const skExpr = (sk && typeof sk === "object" && sk.raw) ? sk.raw : JSON.stringify(sk);
       // msg is normally a literal string.
-      // Pass { raw: "<js>" } to supply the whole message-assignment block yourself,
-      // like a stack of prompts where the last uncommented line wins.
+      // Pass { raw: "<js>" } for a custom message-assignment block.
       const msgBlock = (msg && typeof msg === "object" && msg.raw)
         ? msg.raw
         : ("let message = " + JSON.stringify(msg) + ";");
@@ -796,18 +788,14 @@ const TOTAL_TIMEOUT_S = 240;         // hard ceiling for the whole turn
 // ──────────────────────────────────────────────────────────────────────────────
 helpers.log("→ " + message);
 
-// chat.send returns the final prose only.
-// The exec/tool steps arrive as event:"agent" frames, forwarded ONLY to
-// sockets subscribed to this session; subscribe once, then send the turn.
+// chat.send returns prose; subscribed agent frames carry tool steps.
 if (!state._subs) state._subs = {};
 if (!state._subs[sessionKey]) {
   await state.call("sessions.messages.subscribe", { key: sessionKey });
   state._subs[sessionKey] = true;
 }
 
-// 🧹 Start fresh: uncomment the line below to wipe this session's memory.
-//    sessions.reset clears the server-side history, so the agent answers as a
-//    stranger and re-runs its tools instead of replaying the earlier turn.
+// Uncomment to clear this session and force fresh tool work.
 // await state.call("sessions.reset", { key: sessionKey }); helpers.log("🧹 cleared session memory: " + sessionKey);
 
 const _params = {
@@ -824,8 +812,7 @@ const _params = {
 
 // The "assistant" stream is the answer text; "lifecycle" phase:end ends the run.
 
-// Reasoning is NOT forwarded by the gateway, so these args and results are the
-// deepest per-step view; the 📜 logs cell (in Recover) tails the runtime log.
+// Gateway omits reasoning; tool args/results are the deepest step view here.
 
 // Two timers guard the run: an idle timer (reset only by REAL activity, never by heartbeats) and a global backstop.
 let _text = "", _finalEv, _t0 = performance.now(), _ttft = 0, _myRun = null;
@@ -855,9 +842,7 @@ await new Promise((resolve, reject) => {
     // Ignore them; otherwise a stalled run emitting only heartbeats would keep the idle timer alive and never time out.
     if (pl.isHeartbeat || d.event === "health" || d.event === "tick") return;
 
-    // One sessionKey can have several runs (an earlier turn may still be streaming).
-    // The gateway forwards them ALL to subscribers, so lock onto the runId that chat.send returned and drop every other run's frames.
-    // Do this before bumpIdle, or stale chatter resets the idle timer.
+    // Keep only this runId before bumpIdle, or stale frames can mask a stall.
     if (_myRun && pl.runId && pl.runId !== _myRun) return;
     bumpIdle();   // real activity on OUR run pushes the idle deadline back
     if (d.event === "chat" && pl.state === "final") {
@@ -878,8 +863,7 @@ await new Promise((resolve, reject) => {
       if (!_ttft) _ttft = performance.now() - _t0;
       _text = data.text || _text;
     } else if (stream === "tool" && data.phase === "start") {
-      // a tool was invoked, so show its INPUT (args reveal exactly what was asked,
-      // such as an unexpanded path or a malformed command that makes the tool hang)
+      // Show tool input; bad args often explain hangs.
       _toolStarts++;
       const inp = data.args ? JSON.stringify(data.args) : (data.meta || "");
       helpers.log.details("⚙️ " + (data.name || "tool") + (inp ? "  " + inp.replace(/\\n/g, " ").slice(0, 160) : ""), d);
@@ -903,8 +887,7 @@ await new Promise((resolve, reject) => {
   };
 
   bumpIdle();
-  // chat.send returns { runId, status } well before any frame, so lock onto that
-  // runId so the handler can ignore every other run sharing this sessionKey.
+  // Lock onto this runId so shared-session chatter is ignored.
   state.call("chat.send", _params)
     .then(res => { _myRun = (res && res.runId) || null; })
     .catch(e => { clearTimeout(_idle); clearTimeout(_global); state._chatCb = null; reject(e); });

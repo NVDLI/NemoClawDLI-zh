@@ -229,13 +229,12 @@ export function mountCanvasFlow(targetSel, opts) {
   const panelsHost = wrap.querySelector(".cf-panels");
 
   // Click a helpers-table row to reveal that helper's source.
-  // Live functions use Function.prototype.toString; `state` and `log` are described inline since they are not module-level functions.
+  // Live functions use toString; values and closures use inline examples.
   const HELPER_SRC = {
-    state: `// 'state' is a plain object created fresh for each Run-all.
-// Set a field in one node, read it from any later node.
-// Example:
-//   state.question = "What is the capital of France?";  // in node 1
-//   await helpers.chat({ messages: [{role:"user", content: state.question}] });  // in node 2`,
+    state: `// Shared object for this Run-all.
+// Write in one node, read in later nodes.
+state.question = "What is the capital of France?";
+// Later: use state.question in a chat call.`,
     chat:                chat.toString(),
     chatStream:          chatStream.toString(),
     webSearch:           webSearch.toString(),
@@ -243,38 +242,23 @@ export function mountCanvasFlow(targetSel, opts) {
     formatSearchResults: formatSearchResults.toString(),
     embed:               embed.toString(),
     cosineSim:           cosineSim.toString(),
-    trace: `// 'helpers.trace' is per-node and appends to a shared in-page trace store.
-// Each emit becomes a span: { ts, name, attrs }.
-// Read state.__trace from any later node to see every emit so far.
-// Visualized in Module 5 (Observability).
+    trace: `// Add a lightweight span to state.__trace.
+// Later nodes can inspect or render the full trace.
 helpers.trace("llm.chat", { model, tokens: usage.total_tokens });`,
-    log: `// 'helpers.log' is per-node: it appends a line to THIS panel's log area
-// (under the streamed content, above the final returned value).
-// Pass any number of args; objects are JSON-stringified.
+    log: `// Write to this node's log area.
+// Objects render as JSON; extra values join as text.
 helpers.log("step 1 done", { count: 42 });`,
-    "viz.scoreBarChart": `// helpers.viz.scoreBarChart(scored, opts)
-// scored: array of { score: 1-5, label?: string, note?: string }
-// opts:   { threshold?: number (default 3), title?: string, width?: number }
-// Renders an SVG bar chart via helpers.log.svg().
-// Bars: green (>=threshold), amber (=3), red (<3). Threshold + mean overlay.
-// Example:
+    "viz.scoreBarChart": `// Draw rubric scores as an SVG bar chart.
+// Green meets threshold; amber is borderline; red is below.
 helpers.viz.scoreBarChart(
   [{ score: 5, label: "accuracy" }, { score: 3, label: "relevance" }, { score: 2, label: "concision" }],
   { threshold: 3, title: "Rubric scores" }
 );`,
-    "viz.messageList": `// helpers.viz.messageList(messages, title?)
-// messages: array with same shape as the LLM API messages array:
-//   [{ role: "user"|"assistant"|"tool"|"system", content?: string, tool_calls?: [...] }]
-// Renders color-coded cards: USER=blue, ASSISTANT=green, TOOL=amber, SYSTEM=purple.
-// Calls helpers.log.svg() internally.
-// Example:
+    "viz.messageList": `// Render LLM messages as color-coded cards.
+// Pass the same message objects you send to the LLM API.
 helpers.viz.messageList(state.messages, "Memory grows with each turn");`,
-    "viz.ganttBars": `// helpers.viz.ganttBars(workers, wallSeconds, title?)
-// workers:     array of { label: string, dt: number } (duration in seconds each)
-// wallSeconds: total elapsed wall-clock time (from Date.now() or performance.now())
-// Renders a Gantt-style chart showing per-worker time + serial total + wall time.
-// speedup = serialTotal / wallSeconds is overlaid.
-// Example:
+    "viz.ganttBars": `// Draw worker time, serial total, and wall time.
+// Use seconds for each worker duration and for wallSeconds.
 const t0 = performance.now();
 const results = await Promise.all(tasks.map(doWork));
 helpers.viz.ganttBars(
@@ -282,12 +266,8 @@ helpers.viz.ganttBars(
   (performance.now() - t0) / 1000,
   "Parallel vs serial"
 );`,
-    "viz.retrievalBars": `// helpers.viz.retrievalBars(scored, topK?, title?)
-// scored: array of { text: string, score: number, parent?: string }
-//         sorted descending by score (the retrieval order).
-// topK:   how many top entries to highlight green (default 3).
-// Renders horizontal bars; top-k green, rest dimmed.
-// Example:
+    "viz.retrievalBars": `// Draw retrieval scores in sorted order.
+// Top-k bars are green; the rest stay muted.
 helpers.viz.retrievalBars(
   results.map(r => ({ text: r.chunk.slice(0, 80), score: r.similarity })),
   3, "Cosine similarity · top-3 retrieved"
@@ -295,24 +275,16 @@ helpers.viz.retrievalBars(
     fetchRetry:          fetchRetry.toString(),
     getConfig:           getConfig.toString(),
     getKey:              getKey.toString(),
-    "viz.diagram": `// helpers.viz.diagram(spec)
-// Render a node/edge figure from a data spec (no hand-written SVG).
-// spec: { title?, caption?, kicker?, nodes:[{id, label, kind, x, y, lines?, socket?}],
-//         edges:[{from, to, label?, side?, tint?}] }
-//   kind ∈ env | agent | tool | data | model | neutral ; x/y are grid columns/rows.
-// Auto-themed and laid out. Example:
+    "viz.diagram": `// Render a node/edge figure from data, not hand-written SVG.
+// Use x/y grid coordinates and kind-based styling.
 helpers.viz.diagram({
   title: "One agent call",
   nodes: [{ id: "you", label: "your code", kind: "data",  x: 0, y: 0 },
           { id: "gw",  label: "gateway",   kind: "agent", x: 1, y: 0 }],
   edges: [{ from: "you", to: "gw", label: "POST" }],
 });`,
-    "viz.diffTable": `// helpers.viz.diffTable(spec, opts?)
-// Before/after comparison table. spec.rows entries are either:
-//   { kind: "check", label, left, right }                                   // ✓/✗ booleans
-//   { kind: "num", label, left, right, betterWhen: "up"|"down", fmt? }       // colored deltas
-// opts: { leftTitle?, rightTitle?, footer?, verdict?({rows}) -> {ok, text} }
-// Example:
+    "viz.diffTable": `// Render a before/after table.
+// Rows can be boolean checks or numeric deltas.
 helpers.viz.diffTable({ rows: [
   { kind: "num",   label: "latency (s)", left: 4.1,   right: 1.2,  betterWhen: "down" },
   { kind: "check", label: "schema ok",   left: false, right: true },

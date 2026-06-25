@@ -106,9 +106,7 @@ export function mountChatUI(container, opts = {}) {
   ensureChatStyles();
   const modules = opts.modules || [];
   const models  = opts.models || [];
-  // Opt-in conversation memory (opts.memory === true): the widget keeps a history of completed turns,
-  // offers it to respond via ctx.history, exposes a toggle (starts on), and rewinds it on edit. Left off
-  // for artifacts that manage their own memory (the createReactAgent path keeps history server-side).
+  // Opt-in memory keeps completed turns in ctx.history and rewinds them on edit.
   const memoryEnabled = opts.memory === true;
   let memoryOn = memoryEnabled;
   const history = [];   // [{role,content}] of completed turns, surfaced as ctx.history while memory is on
@@ -146,8 +144,7 @@ export function mountChatUI(container, opts = {}) {
                 get module() { const s = selectedModules(); return s[0] || "auto"; },   // back-compat
                 get model()  { return modelEl ? modelEl.value : (models[0] && models[0].id) || null; },
                 get window() { return contextWindow(ctx.model); },
-                // Prior turns for respond to prepend, when memory is enabled and on; empty otherwise, so
-                // the same respond renders a stateless function the moment the student flips memory off.
+                // Prior turns for respond; empty when memory is off.
                 get history() { return (memoryEnabled && memoryOn) ? history.map(m => ({ ...m })) : []; },
                 get memory()  { return memoryEnabled && memoryOn; } };
 
@@ -187,8 +184,7 @@ export function mountChatUI(container, opts = {}) {
     row.appendChild(copy);
     if (editable) {
       const edit = document.createElement("button"); edit.type = "button";
-      // With memory, edit rewinds the conversation to this point (time travel); otherwise it just
-      // drops the text back in the box to tweak and resend.
+      // With memory, edit rewinds here; otherwise it just requeues text.
       edit.textContent = editHandler ? "✎ edit · rewind here" : "✎ edit & requeue";
       edit.addEventListener("click", () => {
         if (running) return;
@@ -219,8 +215,7 @@ export function mountChatUI(container, opts = {}) {
     const histMark = history.length, turnMark = ctx.turn;   // where "edit · rewind here" rolls back to
     text.value = ""; text.style.height = "auto";
     const userBub = bubble("chatui-user", q);
-    // With memory on, editing this message is time travel: drop it and everything after, roll the
-    // history back to before this turn, and refill the box so the resend continues from this point.
+    // Memory edit drops later turns and restarts from this message.
     const editHandler = memoryEnabled ? () => {
       removeFrom(userBub);
       history.length = Math.min(history.length, histMark);
