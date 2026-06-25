@@ -105,52 +105,22 @@
       "disposition": "Apache distribution notice"
     },
     {
-      "path": "web/nemoclaw/assets/agent_types.svg",
+      "path": "web/nemoclaw/assets/figures/fig2_react.svg",
       "kind": "course-asset",
       "license": "Apache-2.0",
-      "disposition": "authored diagram"
+      "disposition": "paper figure conversion or cited course figure; see asset provenance"
     },
     {
-      "path": "web/nemoclaw/assets/fig2_react.svg",
+      "path": "web/nemoclaw/assets/figures/fig2_rewoo.svg",
       "kind": "course-asset",
       "license": "Apache-2.0",
-      "disposition": "authored or redrawn course figure; see asset provenance"
+      "disposition": "paper figure conversion or cited course figure; see asset provenance"
     },
     {
-      "path": "web/nemoclaw/assets/fig2_rewoo.svg",
-      "kind": "course-asset",
-      "license": "Apache-2.0",
-      "disposition": "authored or redrawn course figure; see asset provenance"
-    },
-    {
-      "path": "web/nemoclaw/assets/graph_rag_2024.svg",
+      "path": "web/nemoclaw/assets/figures/rag_arch_2021.svg",
       "kind": "course-asset",
       "license": "external-terms",
-      "disposition": "paper figure redraw or variant; review before external publication"
-    },
-    {
-      "path": "web/nemoclaw/assets/lillog_agent.svg",
-      "kind": "course-asset",
-      "license": "external-terms",
-      "disposition": "source-inspired redraw; review before external publication"
-    },
-    {
-      "path": "web/nemoclaw/assets/rag_arch_2021.svg",
-      "kind": "course-asset",
-      "license": "external-terms",
-      "disposition": "paper figure redraw or variant; review before external publication"
-    },
-    {
-      "path": "web/nemoclaw/assets/rag_two_phase.svg",
-      "kind": "course-asset",
-      "license": "Apache-2.0",
-      "disposition": "authored course diagram"
-    },
-    {
-      "path": "web/nemoclaw/assets/rest_mcp_ws.svg",
-      "kind": "course-asset",
-      "license": "Apache-2.0",
-      "disposition": "authored course diagram"
+      "disposition": "paper figure conversion or cited course figure; see asset provenance"
     },
     {
       "path": "web/nemoclaw/assets/favicon.ico",

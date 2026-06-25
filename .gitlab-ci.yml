@@ -46,10 +46,16 @@ test:
     - python3 scripts/compliance/source_gate.py
     - bash   scripts/runtime/run_engine.sh --self-test
     - 'L=""; case "$CI_COMMIT_BRANCH" in translate-*) L="--lang ${CI_COMMIT_BRANCH#translate-}";; esac; python3 scripts/validation/validate_bundle.py --scope ship $L'
-    # Live materials drift check: re-fetch the on-demand sources and compare to the committed
-    # fingerprints. allow_failure keeps a drift/outage from blocking the deploy; it surfaces as a
-    # red (complaining) job here, and as the materials section on the validator screen.
-    - python3 scripts/materials/pull_materials.py --check
+    # Live materials drift check: keep ordinary branch pipelines offline so arXiv/devblog rate
+    # limits do not make feature work noisy. validate_bundle still checks committed provenance on
+    # every branch; production refs and schedules perform the live re-fetch.
+    - |
+      if [ "${CI_PIPELINE_SOURCE:-}" = "schedule" ] || [ "${CI_COMMIT_BRANCH:-}" = "${CI_DEFAULT_BRANCH:-main}" ] || [ "${CI_COMMIT_BRANCH:-}" = "nemoclaw-only" ]; then
+        python3 scripts/materials/pull_materials.py --check
+      else
+        echo "Skipping live materials drift check on branch '${CI_COMMIT_BRANCH:-detached}' to avoid rate-limiting external sources."
+        echo "Offline provenance still runs inside scripts/validation/validate_bundle.py."
+      fi
     # On a translation branch, report what changed on the source since this translation's base so the
     # job log shows the re-translate list. Advisory: a translator syncs at their own cadence.
     - 'case "$CI_COMMIT_BRANCH" in translate-*) python3 scripts/translate/translation_status.py --check || echo "translation drift is advisory; sync at your cadence";; esac'
@@ -128,6 +134,7 @@ pages:
       }
       if [ "${PAGES_PREVIEW:-0}" = "1" ]; then
         rm -rf public
+        export BUILD_PAGES_PULL_MATERIALS=0
         build_production_root_from_ref
         build_branch_preview
       else

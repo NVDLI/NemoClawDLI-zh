@@ -26,6 +26,7 @@ OUT="${1:-$T1/public}"
 # Build the source language at $OUT root, then each staged translation under i18n/<lang>/ into
 # $OUT/<lang>/, so one Pages site serves every language. BUILD_PAGES_LANGS=0 disables that loop.
 LANGS="${BUILD_PAGES_LANGS:-1}"
+PULL_MATERIALS="${BUILD_PAGES_PULL_MATERIALS:-1}"
 COURSE_PREFIX="${BUILD_PAGES_COURSE_PREFIX:-}"
 COURSE_PREFIX="${COURSE_PREFIX#/}"; COURSE_PREFIX="${COURSE_PREFIX%/}"
 SOURCE_MIRROR_PREFIX="${BUILD_PAGES_SOURCE_MIRROR_PREFIX:-}"
@@ -58,11 +59,15 @@ rm -rf "$OUT"; mkdir -p "$OUT"
 # status=unreachable, so the build always completes and the failure shows up (loud) on the
 # validator screen rather than breaking the deploy. Then re-run the gate so the report the build
 # publishes reflects exactly what was just pulled. (Run locally too; it refreshes your mats/.)
-echo "[build_pages] rebasing materials from the web (best-effort; falls back to committed snapshots) ..."
-if python3 -c "import requests, bs4, markdownify" >/dev/null 2>&1; then
-    python3 "$T1/scripts/materials/pull_materials.py" || echo "[build_pages]   pull reported issues; see the validator screen / _materials.json"
+if [ "$PULL_MATERIALS" = "0" ]; then
+    echo "[build_pages] skipping live materials pull (BUILD_PAGES_PULL_MATERIALS=0); using committed snapshots"
 else
-    echo "[build_pages]   SKIP pull: vendoring deps (requests beautifulsoup4 markdownify lxml) not installed; using committed snapshots"
+    echo "[build_pages] rebasing materials from the web (best-effort; falls back to committed snapshots) ..."
+    if python3 -c "import requests, bs4, markdownify" >/dev/null 2>&1; then
+        python3 "$T1/scripts/materials/pull_materials.py" || echo "[build_pages]   pull reported issues; see the validator screen / _materials.json"
+    else
+        echo "[build_pages]   SKIP pull: vendoring deps (requests beautifulsoup4 markdownify lxml) not installed; using committed snapshots"
+    fi
 fi
 python3 "$T1/scripts/validation/validate_bundle.py" --scope ship >/dev/null 2>&1 || true   # refresh docs/validation/latest.json post-pull
 
@@ -81,6 +86,12 @@ for c in nemoclaw; do
     course_out="$OUT/${COURSE_PREFIX:+$COURSE_PREFIX/}$c"
     echo "[build_pages] bundling $c -> $course_out/ (full standalone) ..."
     python3 "$T1/scripts/build/bundle_standalone.py" --src "web/$c" --out "$course_out" --clean --full
+    for required in scripts/SKILL.html styles/SKILL.html styles/_style.css assets/SKILL.html mats/SKILL.html; do
+        if [ ! -f "$course_out/$required" ]; then
+            echo "[build_pages]   ERROR: bundled course is missing $c/$required" >&2
+            exit 1
+        fi
+    done
     echo "[build_pages]   $c -> $course_out/ ($(find "$course_out" -name '*.html' | wc -l) pages)"
 done
 

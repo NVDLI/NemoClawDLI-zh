@@ -1,63 +1,93 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Image provenance · Securing Agents</title>
+<title>Image provenance - Securing Agents</title>
 <link rel="stylesheet" href="../styles/_style.css"/>
 <style>
+  :root[data-theme="light"] {
+    --bg:#ffffff; --e1:#f6f8fa; --e2:#eef1f4; --e3:#e5e8ec; --bd:#d0d7de;
+    --tx:#1a1f24; --td:#4b5563; --tf:#6b7280; --g:#4a7a00; --gd:#3f6900; --gs:#4a7a00;
+    color-scheme: light;
+  }
+  :root[data-theme="dark"] { color-scheme: dark; }
+  body { background: var(--bg); }
   main { max-width: 1180px; margin: 0 auto; padding: 1.5rem; }
-  .legend code { color: var(--gs); }
-  .pv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; margin: 1em 0; }
-  .pv-card { border: 1px solid var(--bd); border-radius: var(--r); padding: 11px 12px; background: var(--e1); font-size: .8rem; }
-  .pv-card .pv-prev { margin: 0 0 9px; min-height: 60px; max-height: 160px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--bg); border-radius: 6px; }
-  .pv-card .pv-prev svg { width: auto !important; max-width: 100%; max-height: 150px; height: auto; display: block; }
-  .pv-card .pv-prev::after { content: none; }
-  .pv-file { font-family: var(--mono); color: var(--gs); font-size: .76rem; word-break: break-all; }
-  .pv-dep { color: var(--tx); margin: 3px 0 6px; line-height: 1.4; }
-  .pv-use { color: #e3b341; font-size: .72rem; margin: 0 0 6px; }
-  .pv-meta { color: var(--td); font-size: .74rem; margin: 2px 0; }
-  .pv-meta span:first-child { display: inline-block; min-width: 52px; color: #8a8a8a; text-transform: uppercase; font-size: .64rem; letter-spacing: .04em; }
-  .pv-meta a { color: var(--gs); }
-  .lvl { font-family: var(--mono); }
-  .pv-lb { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.86); padding: 2vmin; }
-  .pv-lb[hidden] { display: none; }
-  .pv-stage { display: flex; align-items: center; justify-content: center; max-width: 92vw; max-height: 92vh; }
-  .pv-stage svg { box-shadow: 0 10px 50px rgba(0,0,0,.55); border-radius: 8px; }
-  .pv-x { position: fixed; top: 14px; right: 18px; width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--bd); background: var(--e1); color: var(--td); font-size: 1.1rem; line-height: 1; cursor: pointer; }
+  .skill-head { display:flex; gap:1rem; align-items:flex-start; justify-content:space-between; margin-bottom:1rem; }
+  .skill-head h1 { margin:.1rem 0 .25rem; font-size:1.65rem; }
+  .skill-head p { max-width: 880px; }
+  .theme-toggle { display:inline-flex; gap:4px; padding:4px; border:1px solid var(--bd); border-radius:8px; background:var(--e1); }
+  .theme-toggle button { border:0; border-radius:6px; padding:7px 10px; cursor:pointer; font:700 .76rem var(--mono); color:var(--td); background:transparent; }
+  .theme-toggle button[aria-pressed="true"] { background:var(--g); color:#0a0a0a; }
+  .note { border:1px solid var(--bd); border-radius:8px; padding:10px 12px; background:var(--e1); color:var(--td); }
+  .pv-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:14px; margin:1em 0; }
+  .pv-card { border:1px solid var(--bd); border-radius:8px; padding:11px 12px; background:var(--e1); font-size:.8rem; }
+  .pv-prev { margin:0 0 9px; min-height:120px; max-height:210px; overflow:hidden; display:flex; align-items:center; justify-content:center; background:var(--bg); border:1px solid var(--bd); border-radius:6px; padding:8px; }
+  .pv-prev img, .pv-prev svg { width:100%; max-height:190px; height:auto; display:block; }
+  .paper-preview { background:#fff; }
+  .paper-preview img { background:#fff; color-scheme:light; }
+  .pv-file { font-family:var(--mono); color:var(--gs); font-size:.76rem; word-break:break-all; }
+  .pv-dep { color:var(--tx); margin:3px 0 6px; line-height:1.4; }
+  .pv-use { color:var(--warn,#e3b341); font-size:.74rem; margin:0 0 6px; }
+  .pv-meta { color:var(--td); font-size:.74rem; margin:2px 0; }
+  .pv-meta span:first-child { display:inline-block; min-width:82px; color:var(--tf); text-transform:uppercase; font-size:.64rem; letter-spacing:.04em; }
+  .pv-meta a, .pv-use a { color:var(--g); }
+  .file-index { columns:2 260px; padding-left:1.1rem; font-size:.78rem; line-height:1.55; }
+  .file-index li { break-inside:avoid; margin:.08rem 0; }
+  .file-index a { color:var(--g); font-family:var(--mono); word-break:break-all; }
+  .file-index .kind { color:var(--td); font-size:.68rem; margin-left:.35rem; }
+  .md-wrap { margin-top:9px; border-top:1px solid var(--bd); padding-top:7px; }
+  .md-wrap summary { cursor:pointer; color:var(--g); font-size:.74rem; }
+  .md-body { max-height:280px; overflow:auto; background:var(--bg); border-radius:6px; padding:8px 10px; margin:7px 0 0; font-size:.72rem; line-height:1.45; white-space:pre-wrap; word-break:break-word; color:var(--tx); }
+  :root[data-theme="light"] .pv-prev svg.gfx-dark {
+    --gfx-ink:#1a1a1a; --gfx-ink2:#3b3b3b; --gfx-sub:#5e5e5e; --gfx-faint:#8b949e;
+    --gfx-line:#d0d7de; --gfx-panel:#f6f8fa; --gfx-bg:#ffffff;
+    --gfx-blue:#0969da; --gfx-green:#4a7a00; --gfx-purple:#6f42c1; --gfx-amber:#9a6700; --gfx-teal:#0d9488; --gfx-red:#d1242f;
+    --gfx-tint-blue:#dfeaf5; --gfx-tint-green:#e6f3d4; --gfx-tint-purple:#eadfff;
+    --gfx-tint-amber:#f7e9cf; --gfx-tint-teal:#d6f1ee; --gfx-tint-red:#fadcdc; --gfx-tint-sub:#eef1f4;
+  }
+  :root[data-theme="dark"] .pv-prev svg.gfx-dark { background:var(--gfx-bg,#0d0d0d); }
 </style>
-<script type="application/json" id="skill-meta">
-{
+<script type="application/json" id="skill-meta">{
   "node_type": "leaf",
   "level": "asset",
   "surface": "web",
   "course": "nemoclaw",
-  "title": "Image provenance (figures + assets)",
+  "title": "Image provenance",
   "source_dir": "web/nemoclaw/assets/",
   "self_path": "web/nemoclaw/assets/SKILL.html",
-  "summary": "Previewable source, license, and connection level for every image under web/nemoclaw/assets/. Every SVG is hand-authored for this course (Apache-2.0); sources are redrawn or cited, never reproduced."
-}
-</script>
-<script type="application/json" id="provenance">
-{
-  "repo_license": "Apache-2.0 (LICENSE.md). Every SVG is an original hand-authored redraw; the 'source license' is the cited source's own terms, informational only, since figures are redrawn or cited, never reproduced. Where a source states no reuse license, that is said plainly rather than presumed.",
+  "summary": "Every course image has a direct asset link, source/license metadata, and a lesson link showing where it appears."
+}</script>
+<script type="application/json" id="provenance">{
+  "repo_license": "Apache-2.0. Course-authored diagrams and support files are contributed under the repository license unless a row marks external terms.",
   "connection_levels": {
-    "recreation": "faithful redraw of a specific published figure",
-    "inspiration": "original drawing of a concept taken from a source",
-    "conversion": "format change or mirror of an existing source asset",
-    "original": "authored for this course, no external source figure"
+    "original": "authored for this course",
+    "inspiration": "original drawing of a sourced concept",
+    "recreation": "course redraw of a source figure or layout",
+    "conversion": "paper figure converted to SVG and used as a fixed white image"
   },
-  "figures_dir": "assets/figures/*.svg: the 19 themed (var(--gfx-*)) diagrams, fetched + injected inline by mountFigures so they follow the light/dark theme",
-  "root_assets_note": "assets/*.svg at root are NOT in figures/ because they are either baked-color <img> paper redraws (hardcoded hex; <img>-loaded SVGs cannot read the page's CSS vars) or unreferenced legacy standalones superseded by the inline figures",
+  "layout_note": "All SVG course graphics now live under assets/figures/. Paper conversions such as ReAct, ReWOO, and the original RAG architecture stay fixed-white because the course renders them as img elements, not theme-aware inline SVGs.",
   "figures": [
     {
+      "file": "favicon.ico",
+      "depicts": "course favicon",
+      "source": "original course asset",
+      "source_url": "",
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+      "connection": "original",
+      "used_by": "index.html"
+    },
+    {
       "file": "figures/01a-loop-1.svg",
-      "depicts": "four agent architectures (reflex to learning)",
+      "depicts": "four agent architectures",
       "source": "Russell & Norvig, AIMA ch.1",
       "source_url": "https://aima.cs.berkeley.edu/",
-      "license": "\u00a9 Pearson, no reuse license",
+      "license": "(c) Pearson; no reuse license stated",
       "license_url": "https://aima.cs.berkeley.edu/",
-      "connection": "inspiration"
+      "connection": "inspiration",
+      "used_by": "01a-loop.html"
     },
     {
       "file": "figures/01a-loop-2.svg",
@@ -65,337 +95,563 @@
       "source": "OpenAI API docs",
       "source_url": "https://platform.openai.com/docs",
       "license": "OpenAI terms",
-      "license_url": "https://openai.com/policies/terms-of-use",
-      "connection": "inspiration"
+      "license_url": "https://platform.openai.com/docs",
+      "connection": "inspiration",
+      "used_by": "01a-loop.html"
     },
     {
       "file": "figures/01a-loop-3.svg",
       "depicts": "the agent loop as a cycle",
-      "source": "original",
+      "source": "original course diagram",
       "source_url": "",
       "license": "Apache-2.0",
       "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
-      "connection": "original"
+      "connection": "original",
+      "used_by": "01a-loop.html"
     },
     {
       "file": "figures/01b-react-1.svg",
       "depicts": "general loop becomes the ReAct loop",
-      "source": "original; ReAct (Yao 2022)",
+      "source": "original course diagram; ReAct (Yao et al. 2022)",
       "source_url": "https://arxiv.org/abs/2210.03629",
       "license": "Apache-2.0",
       "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
-      "connection": "original"
+      "connection": "original",
+      "used_by": "01b-react.html"
     },
     {
       "file": "figures/01b-react-2.svg",
-      "depicts": "LLM-agent map (controller + memory/planning/tools)",
-      "source": "Lilian Weng, LLM-Powered Autonomous Agents (2023)",
+      "depicts": "LLM-agent map",
+      "source": "Lilian Weng, LLM-Powered Autonomous Agents",
       "source_url": "https://lilianweng.github.io/posts/2023-06-23-agent/",
-      "license": "no reuse license stated (\u00a9 Lil'Log)",
-      "license_url": "",
-      "connection": "recreation"
+      "license": "no reuse license stated",
+      "license_url": "https://lilianweng.github.io/posts/2023-06-23-agent/",
+      "connection": "recreation",
+      "used_by": "01b-react.html"
     },
     {
       "file": "figures/01b-react-3.svg",
       "depicts": "one turn of the ReAct loop",
-      "source": "original; ReAct (Yao 2022)",
+      "source": "original course diagram; ReAct (Yao et al. 2022)",
       "source_url": "https://arxiv.org/abs/2210.03629",
       "license": "Apache-2.0",
       "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
-      "connection": "inspiration"
+      "connection": "inspiration",
+      "used_by": "01b-react.html"
     },
     {
       "file": "figures/01b-react-4.svg",
       "depicts": "Lost-in-the-Middle U-curve",
-      "source": "Liu et al. 2023",
+      "source": "original course diagram; inspired by Liu et al. 2023",
       "source_url": "https://arxiv.org/abs/2307.03172",
-      "license": "see arXiv listing",
-      "license_url": "https://arxiv.org/abs/2307.03172",
-      "connection": "recreation"
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+      "connection": "inspiration",
+      "used_by": "01b-react.html"
     },
     {
       "file": "figures/01c-tools-1.svg",
-      "depicts": "tool round-trip (LLM asks, code answers)",
-      "source": "original",
+      "depicts": "tool round-trip",
+      "source": "original course diagram",
       "source_url": "",
       "license": "Apache-2.0",
       "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
-      "connection": "original"
+      "connection": "original",
+      "used_by": "01c-tools.html"
     },
     {
       "file": "figures/01c-tools-2.svg",
       "depicts": "narrow-waist MCP topology",
-      "source": "original; MCP",
+      "source": "original course diagram; MCP",
       "source_url": "https://modelcontextprotocol.io",
-      "license": "open standard",
-      "license_url": "https://modelcontextprotocol.io",
-      "connection": "original"
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+      "connection": "original",
+      "used_by": "01c-tools.html"
     },
     {
       "file": "figures/02a-routing-1.svg",
-      "depicts": "four-value enum picks one specialist",
-      "source": "original",
+      "depicts": "four-value enum router",
+      "source": "original course diagram",
       "source_url": "",
       "license": "Apache-2.0",
       "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
-      "connection": "original"
+      "connection": "original",
+      "used_by": "02a-routing.html"
     },
     {
       "file": "figures/02b-rag-1.svg",
-      "depicts": "RAG split timeline (offline index, online query)",
-      "source": "NVIDIA devblogs (Wolff 2023, Bleiweiss 2024)",
+      "depicts": "RAG split timeline",
+      "source": "NVIDIA developer blogs",
       "source_url": "https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/",
-      "license": "\u00a9 NVIDIA (proprietary)",
-      "license_url": "https://www.nvidia.com/en-us/about-nvidia/legal-info/",
-      "connection": "inspiration"
+      "license": "(c) NVIDIA",
+      "license_url": "https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/",
+      "connection": "inspiration",
+      "used_by": "02b-rag.html"
     },
     {
       "file": "figures/02b-rag-2.svg",
       "depicts": "live request pipeline over an offline index",
-      "source": "original",
+      "source": "original course diagram",
       "source_url": "",
       "license": "Apache-2.0",
       "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
-      "connection": "original"
+      "connection": "original",
+      "used_by": "02b-rag.html"
     },
     {
       "file": "figures/02b-rag-3.svg",
-      "depicts": "GraphRAG pipeline (offline graph, online query)",
+      "depicts": "GraphRAG pipeline",
       "source": "Edge et al. 2024",
       "source_url": "https://arxiv.org/abs/2404.16130",
       "license": "see arXiv listing",
       "license_url": "https://arxiv.org/abs/2404.16130",
-      "connection": "recreation"
+      "connection": "recreation",
+      "used_by": "02b-rag.html"
     },
     {
       "file": "figures/02c-deep-1.svg",
-      "depicts": "orchestrator delegates to sub-agents over a shared filesystem",
-      "source": "original; deep-agents pattern",
+      "depicts": "orchestrator and sub-agents over shared files",
+      "source": "original course diagram",
       "source_url": "",
       "license": "Apache-2.0",
       "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
-      "connection": "original"
+      "connection": "original",
+      "used_by": "02c-deep.html"
     },
     {
       "file": "figures/03a-kickstart-1.svg",
-      "depicts": "three access layers (REST / MCP / gateway)",
-      "source": "original",
+      "depicts": "three access layers",
+      "source": "original course diagram",
       "source_url": "",
       "license": "Apache-2.0",
       "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
-      "connection": "original"
+      "connection": "original",
+      "used_by": "03a-kickstart.html"
     },
     {
       "file": "figures/03b-openclaw-1.svg",
-      "depicts": "the workspace folder is the configuration",
-      "source": "original",
+      "depicts": "workspace folder as configuration",
+      "source": "original course diagram",
       "source_url": "",
       "license": "Apache-2.0",
       "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
-      "connection": "original"
+      "connection": "original",
+      "used_by": "03b-openclaw.html"
     },
     {
       "file": "figures/03c-always-on-1.svg",
-      "depicts": "per-turn loop nested inside slower triggers",
-      "source": "original",
+      "depicts": "per-turn loop inside slower triggers",
+      "source": "original course diagram",
       "source_url": "",
       "license": "Apache-2.0",
       "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
-      "connection": "original"
+      "connection": "original",
+      "used_by": "03c-always-on.html"
     },
     {
       "file": "figures/04a-safety-1.svg",
-      "depicts": "OpenShell kernel controls around an OpenClaw agent process",
-      "source": "original",
+      "depicts": "OpenShell containment rings",
+      "source": "original course diagram",
       "source_url": "",
       "license": "Apache-2.0",
       "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
-      "connection": "original"
+      "connection": "original",
+      "used_by": "04a-safety.html"
     },
     {
       "file": "figures/04a-safety-2.svg",
-      "depicts": "the lethal trifecta as a three-circle overlap",
-      "source": "Simon Willison (2025)",
-      "source_url": "https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/",
-      "license": "not stated on the post; see colophon",
-      "license_url": "https://simonwillison.net/about/",
-      "connection": "recreation"
-    }
-  ],
-  "root_assets": [
-    {
-      "file": "rag_arch_2021.svg",
-      "depicts": "original end-to-end RAG architecture",
-      "source": "Lewis et al. 2020",
-      "source_url": "https://arxiv.org/abs/2005.11401",
-      "license": "see arXiv listing",
-      "license_url": "https://arxiv.org/abs/2005.11401",
-      "connection": "recreation",
-      "usage": "used by 02b (&lt;img&gt;)"
+      "depicts": "tool-call policy path",
+      "source": "original course diagram",
+      "source_url": "",
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+      "connection": "original",
+      "used_by": "04a-safety.html"
     },
     {
-      "file": "fig2_react.svg",
+      "file": "figures/fig2_react.svg",
       "depicts": "ReAct loop",
-      "source": "Yao et al. 2022",
+      "source": "Yao et al. 2022; figure conversion",
       "source_url": "https://arxiv.org/abs/2210.03629",
       "license": "see arXiv listing",
       "license_url": "https://arxiv.org/abs/2210.03629",
-      "connection": "inspiration",
-      "usage": "used by 02a (&lt;img&gt;)"
+      "connection": "conversion",
+      "used_by": "02a-routing.html"
     },
     {
-      "file": "fig2_rewoo.svg",
+      "file": "figures/fig2_rewoo.svg",
       "depicts": "ReWOO plan-then-execute",
-      "source": "Xu et al. 2023",
+      "source": "Xu et al. 2023; figure conversion",
       "source_url": "https://arxiv.org/abs/2305.18323",
       "license": "see arXiv listing",
       "license_url": "https://arxiv.org/abs/2305.18323",
-      "connection": "inspiration",
-      "usage": "used by 02a (&lt;img&gt;)"
+      "connection": "conversion",
+      "used_by": "02a-routing.html"
     },
     {
-      "file": "agent_types.svg",
-      "depicts": "agent architectures (themed)",
-      "source": "Russell & Norvig",
-      "source_url": "https://aima.cs.berkeley.edu/",
-      "license": "\u00a9 Pearson, no reuse license",
-      "license_url": "https://aima.cs.berkeley.edu/",
-      "connection": "inspiration",
-      "usage": "UNREFERENCED legacy, superseded by figures/01a-loop-1.svg"
-    },
-    {
-      "file": "graph_rag_2024.svg",
-      "depicts": "GraphRAG",
-      "source": "Edge et al. 2024",
-      "source_url": "https://arxiv.org/abs/2404.16130",
+      "file": "figures/rag_arch_2021.svg",
+      "depicts": "original end-to-end RAG architecture",
+      "source": "Lewis et al. 2020; figure conversion",
+      "source_url": "https://arxiv.org/abs/2005.11401",
       "license": "see arXiv listing",
-      "license_url": "https://arxiv.org/abs/2404.16130",
-      "connection": "recreation",
-      "usage": "UNREFERENCED legacy, superseded by figures/02b-rag-3.svg"
-    },
+      "license_url": "https://arxiv.org/abs/2005.11401",
+      "connection": "conversion",
+      "used_by": "02b-rag.html"
+    }
+  ],
+  "assets": [
     {
-      "file": "lillog_agent.svg",
-      "depicts": "LLM-agent map",
-      "source": "Lilian Weng 2023",
-      "source_url": "https://lilianweng.github.io/posts/2023-06-23-agent/",
-      "license": "no reuse license stated (\u00a9 Lil'Log)",
-      "license_url": "",
-      "connection": "recreation",
-      "usage": "UNREFERENCED legacy, superseded by figures/01b-react-2.svg"
-    },
-    {
-      "file": "rag_two_phase.svg",
-      "depicts": "RAG two-phase",
-      "source": "original / NVIDIA",
-      "source_url": "",
+      "file": "cli_readme_claude-code.txt",
+      "type": "txt",
+      "source": "course generated/support asset",
       "license": "Apache-2.0",
-      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
-      "connection": "original",
-      "usage": "UNREFERENCED legacy"
+      "connection": "original"
     },
     {
-      "file": "rest_mcp_ws.svg",
-      "depicts": "access layers",
-      "source": "original",
-      "source_url": "",
+      "file": "cli_readme_codex.txt",
+      "type": "txt",
+      "source": "course generated/support asset",
       "license": "Apache-2.0",
-      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
-      "connection": "original",
-      "usage": "UNREFERENCED legacy, superseded by figures/03a-kickstart-1.svg"
+      "connection": "original"
+    },
+    {
+      "file": "cli_readme_cursor.txt",
+      "type": "txt",
+      "source": "course generated/support asset",
+      "license": "Apache-2.0",
+      "connection": "original"
+    },
+    {
+      "file": "cli_readme_hermes.txt",
+      "type": "txt",
+      "source": "course generated/support asset",
+      "license": "Apache-2.0",
+      "connection": "original"
+    },
+    {
+      "file": "cli_readme_openclaw.txt",
+      "type": "txt",
+      "source": "course generated/support asset",
+      "license": "Apache-2.0",
+      "connection": "original"
+    },
+    {
+      "file": "cli_readmes.json",
+      "type": "json",
+      "source": "course generated/support asset",
+      "license": "Apache-2.0",
+      "connection": "original"
+    },
+    {
+      "file": "glossary_index.json",
+      "type": "json",
+      "source": "course generated/support asset",
+      "license": "Apache-2.0",
+      "connection": "original"
+    },
+    {
+      "file": "materials_index.json",
+      "type": "json",
+      "source": "course generated/support asset",
+      "license": "Apache-2.0",
+      "connection": "original"
+    },
+    {
+      "file": "rag_index.json",
+      "type": "json",
+      "source": "course generated/support asset",
+      "license": "Apache-2.0",
+      "connection": "original"
     }
   ]
-}
-</script>
+}</script>
 </head>
 <body>
 <main>
-  <h1>Image provenance</h1>
-  <p>Previewable source, license, and connection level for every image under <code>web/nemoclaw/assets/</code>.
-     Click any preview to enlarge it. The repo is <strong>Apache-2.0</strong> (LICENSE.md), and every SVG here
-     is an original hand-authored redraw: nothing is copied pixel-for-pixel. The license column names the cited
-     source's own terms (informational), and where a source states no reuse license it says so rather than
-     presuming one.</p>
-  <p class="legend"><strong>Connection levels.</strong>
-     <code>recreation</code>: faithful redraw of a specific published figure.
-     <code>inspiration</code>: original drawing of a concept taken from a source.
-     <code>conversion</code>: format change or mirror of an existing source asset.
-     <code>original</code>: authored for this course, no external source figure.</p>
-
-  <div class="callout">
-    <strong>Why some SVGs are not in <code>assets/figures/</code>.</strong> <code>figures/*.svg</code> holds the
-    19 themed diagrams (they ride <code>var(--gfx-*)</code> and are fetched + injected inline so they follow the
-    light/dark theme). The root <code>assets/*.svg</code> are out of that pipeline for two reasons: three are
-    baked-color <code>&lt;img&gt;</code> paper redraws still in use (hardcoded hex, because an
-    <code>&lt;img&gt;</code>-loaded SVG cannot read the page's CSS variables), and five are unreferenced legacy
-    standalones superseded by the inline figures (flagged in amber below; removable in a cleanup).
+<div class="skill-head">
+  <div><h1>Image provenance</h1><p>Theme-aware course diagrams follow the toggle. Paper conversions render on white because the lessons display them that way.</p></div>
+  <div class="theme-toggle" role="group" aria-label="Color mode">
+    <button type="button" data-theme-choice="dark" aria-pressed="true">Dark</button>
+    <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
   </div>
+</div><section class="note"><strong>Directory policy.</strong> Image assets live in <code>assets/figures/</code>. Root <code>assets/</code> is reserved for indexes, CLI readme snapshots, and favicon/support files.</section>
+<h2>Files</h2><ul class="file-index"><li><a href="cli_readme_claude-code.txt">cli_readme_claude-code.txt</a><span class="kind">txt</span></li>
+<li><a href="cli_readme_codex.txt">cli_readme_codex.txt</a><span class="kind">txt</span></li>
+<li><a href="cli_readme_cursor.txt">cli_readme_cursor.txt</a><span class="kind">txt</span></li>
+<li><a href="cli_readme_hermes.txt">cli_readme_hermes.txt</a><span class="kind">txt</span></li>
+<li><a href="cli_readme_openclaw.txt">cli_readme_openclaw.txt</a><span class="kind">txt</span></li>
+<li><a href="cli_readmes.json">cli_readmes.json</a><span class="kind">json</span></li>
+<li><a href="favicon.ico">favicon.ico</a><span class="kind">ico</span></li>
+<li><a href="figures/01a-loop-1.svg">figures/01a-loop-1.svg</a><span class="kind">svg</span></li>
+<li><a href="figures/01a-loop-2.svg">figures/01a-loop-2.svg</a><span class="kind">svg</span></li>
+<li><a href="figures/01a-loop-3.svg">figures/01a-loop-3.svg</a><span class="kind">svg</span></li>
+<li><a href="figures/01b-react-1.svg">figures/01b-react-1.svg</a><span class="kind">svg</span></li>
+<li><a href="figures/01b-react-2.svg">figures/01b-react-2.svg</a><span class="kind">svg</span></li>
+<li><a href="figures/01b-react-3.svg">figures/01b-react-3.svg</a><span class="kind">svg</span></li>
+<li><a href="figures/01b-react-4.svg">figures/01b-react-4.svg</a><span class="kind">svg</span></li>
+<li><a href="figures/01c-tools-1.svg">figures/01c-tools-1.svg</a><span class="kind">svg</span></li>
+<li><a href="figures/01c-tools-2.svg">figures/01c-tools-2.svg</a><span class="kind">svg</span></li>
+<li><a href="figures/02a-routing-1.svg">figures/02a-routing-1.svg</a><span class="kind">svg</span></li>
+<li><a href="figures/02b-rag-1.svg">figures/02b-rag-1.svg</a><span class="kind">svg</span></li>
+<li><a href="figures/02b-rag-2.svg">figures/02b-rag-2.svg</a><span class="kind">svg</span></li>
+<li><a href="figures/02b-rag-3.svg">figures/02b-rag-3.svg</a><span class="kind">svg</span></li>
+<li><a href="figures/02c-deep-1.svg">figures/02c-deep-1.svg</a><span class="kind">svg</span></li>
+<li><a href="figures/03a-kickstart-1.svg">figures/03a-kickstart-1.svg</a><span class="kind">svg</span></li>
+<li><a href="figures/03b-openclaw-1.svg">figures/03b-openclaw-1.svg</a><span class="kind">svg</span></li>
+<li><a href="figures/03c-always-on-1.svg">figures/03c-always-on-1.svg</a><span class="kind">svg</span></li>
+<li><a href="figures/04a-safety-1.svg">figures/04a-safety-1.svg</a><span class="kind">svg</span></li>
+<li><a href="figures/04a-safety-2.svg">figures/04a-safety-2.svg</a><span class="kind">svg</span></li>
+<li><a href="figures/fig2_react.svg">figures/fig2_react.svg</a><span class="kind">svg</span></li>
+<li><a href="figures/fig2_rewoo.svg">figures/fig2_rewoo.svg</a><span class="kind">svg</span></li>
+<li><a href="figures/rag_arch_2021.svg">figures/rag_arch_2021.svg</a><span class="kind">svg</span></li>
+<li><a href="glossary_index.json">glossary_index.json</a><span class="kind">json</span></li>
+<li><a href="materials_index.json">materials_index.json</a><span class="kind">json</span></li>
+<li><a href="rag_index.json">rag_index.json</a><span class="kind">json</span></li></ul>
+<h2>Image cards</h2><div class="pv-grid"><article class="pv-card" data-asset="favicon.ico" data-course-use="index.html">
+  <div class="pv-prev"><img src="favicon.ico" alt="course favicon"/></div>
+  <div class="pv-file"><a href="favicon.ico">favicon.ico</a></div>
+  <div class="pv-dep">course favicon</div>
+  <div class="pv-use"><span>Used in</span> <a href="../index.html">index.html</a></div>
+  <div class="pv-meta"><span>Connection</span>original</div>
+  <div class="pv-meta"><span>Source</span>original course asset</div>
+  <div class="pv-meta"><span>License</span>Apache-2.0</div>
+</article>
+<article class="pv-card" data-asset="figures/01a-loop-1.svg" data-course-use="01a-loop.html">
+  <div class="pv-prev"><div data-svg-src="figures/01a-loop-1.svg"></div></div>
+  <div class="pv-file"><a href="figures/01a-loop-1.svg">figures/01a-loop-1.svg</a></div>
+  <div class="pv-dep">four agent architectures</div>
+  <div class="pv-use"><span>Used in</span> <a href="../01a-loop.html">01a-loop.html</a></div>
+  <div class="pv-meta"><span>Connection</span>inspiration</div>
+  <div class="pv-meta"><span>Source</span><a href="https://aima.cs.berkeley.edu/" target="_blank" rel="noopener">Russell &amp; Norvig, AIMA ch.1</a></div>
+  <div class="pv-meta"><span>License</span>(c) Pearson; no reuse license stated</div>
+</article>
+<article class="pv-card" data-asset="figures/01a-loop-2.svg" data-course-use="01a-loop.html">
+  <div class="pv-prev"><div data-svg-src="figures/01a-loop-2.svg"></div></div>
+  <div class="pv-file"><a href="figures/01a-loop-2.svg">figures/01a-loop-2.svg</a></div>
+  <div class="pv-dep">Chat Completions vs Responses API</div>
+  <div class="pv-use"><span>Used in</span> <a href="../01a-loop.html">01a-loop.html</a></div>
+  <div class="pv-meta"><span>Connection</span>inspiration</div>
+  <div class="pv-meta"><span>Source</span><a href="https://platform.openai.com/docs" target="_blank" rel="noopener">OpenAI API docs</a></div>
+  <div class="pv-meta"><span>License</span>OpenAI terms</div>
+</article>
+<article class="pv-card" data-asset="figures/01a-loop-3.svg" data-course-use="01a-loop.html">
+  <div class="pv-prev"><div data-svg-src="figures/01a-loop-3.svg"></div></div>
+  <div class="pv-file"><a href="figures/01a-loop-3.svg">figures/01a-loop-3.svg</a></div>
+  <div class="pv-dep">the agent loop as a cycle</div>
+  <div class="pv-use"><span>Used in</span> <a href="../01a-loop.html">01a-loop.html</a></div>
+  <div class="pv-meta"><span>Connection</span>original</div>
+  <div class="pv-meta"><span>Source</span>original course diagram</div>
+  <div class="pv-meta"><span>License</span>Apache-2.0</div>
+</article>
+<article class="pv-card" data-asset="figures/01b-react-1.svg" data-course-use="01b-react.html">
+  <div class="pv-prev"><div data-svg-src="figures/01b-react-1.svg"></div></div>
+  <div class="pv-file"><a href="figures/01b-react-1.svg">figures/01b-react-1.svg</a></div>
+  <div class="pv-dep">general loop becomes the ReAct loop</div>
+  <div class="pv-use"><span>Used in</span> <a href="../01b-react.html">01b-react.html</a></div>
+  <div class="pv-meta"><span>Connection</span>original</div>
+  <div class="pv-meta"><span>Source</span><a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">original course diagram; ReAct (Yao et al. 2022)</a></div>
+  <div class="pv-meta"><span>License</span>Apache-2.0</div>
+</article>
+<article class="pv-card" data-asset="figures/01b-react-2.svg" data-course-use="01b-react.html">
+  <div class="pv-prev"><div data-svg-src="figures/01b-react-2.svg"></div></div>
+  <div class="pv-file"><a href="figures/01b-react-2.svg">figures/01b-react-2.svg</a></div>
+  <div class="pv-dep">LLM-agent map</div>
+  <div class="pv-use"><span>Used in</span> <a href="../01b-react.html">01b-react.html</a></div>
+  <div class="pv-meta"><span>Connection</span>recreation</div>
+  <div class="pv-meta"><span>Source</span><a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">Lilian Weng, LLM-Powered Autonomous Agents</a></div>
+  <div class="pv-meta"><span>License</span>no reuse license stated</div>
+</article>
+<article class="pv-card" data-asset="figures/01b-react-3.svg" data-course-use="01b-react.html">
+  <div class="pv-prev"><div data-svg-src="figures/01b-react-3.svg"></div></div>
+  <div class="pv-file"><a href="figures/01b-react-3.svg">figures/01b-react-3.svg</a></div>
+  <div class="pv-dep">one turn of the ReAct loop</div>
+  <div class="pv-use"><span>Used in</span> <a href="../01b-react.html">01b-react.html</a></div>
+  <div class="pv-meta"><span>Connection</span>inspiration</div>
+  <div class="pv-meta"><span>Source</span><a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">original course diagram; ReAct (Yao et al. 2022)</a></div>
+  <div class="pv-meta"><span>License</span>Apache-2.0</div>
+</article>
+<article class="pv-card" data-asset="figures/01b-react-4.svg" data-course-use="01b-react.html">
+  <div class="pv-prev"><div data-svg-src="figures/01b-react-4.svg"></div></div>
+  <div class="pv-file"><a href="figures/01b-react-4.svg">figures/01b-react-4.svg</a></div>
+  <div class="pv-dep">Lost-in-the-Middle U-curve</div>
+  <div class="pv-use"><span>Used in</span> <a href="../01b-react.html">01b-react.html</a></div>
+  <div class="pv-meta"><span>Connection</span>inspiration</div>
+  <div class="pv-meta"><span>Source</span><a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">original course diagram; inspired by Liu et al. 2023</a></div>
+  <div class="pv-meta"><span>License</span>Apache-2.0</div>
+</article>
+<article class="pv-card" data-asset="figures/01c-tools-1.svg" data-course-use="01c-tools.html">
+  <div class="pv-prev"><div data-svg-src="figures/01c-tools-1.svg"></div></div>
+  <div class="pv-file"><a href="figures/01c-tools-1.svg">figures/01c-tools-1.svg</a></div>
+  <div class="pv-dep">tool round-trip</div>
+  <div class="pv-use"><span>Used in</span> <a href="../01c-tools.html">01c-tools.html</a></div>
+  <div class="pv-meta"><span>Connection</span>original</div>
+  <div class="pv-meta"><span>Source</span>original course diagram</div>
+  <div class="pv-meta"><span>License</span>Apache-2.0</div>
+</article>
+<article class="pv-card" data-asset="figures/01c-tools-2.svg" data-course-use="01c-tools.html">
+  <div class="pv-prev"><div data-svg-src="figures/01c-tools-2.svg"></div></div>
+  <div class="pv-file"><a href="figures/01c-tools-2.svg">figures/01c-tools-2.svg</a></div>
+  <div class="pv-dep">narrow-waist MCP topology</div>
+  <div class="pv-use"><span>Used in</span> <a href="../01c-tools.html">01c-tools.html</a></div>
+  <div class="pv-meta"><span>Connection</span>original</div>
+  <div class="pv-meta"><span>Source</span><a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">original course diagram; MCP</a></div>
+  <div class="pv-meta"><span>License</span>Apache-2.0</div>
+</article>
+<article class="pv-card" data-asset="figures/02a-routing-1.svg" data-course-use="02a-routing.html">
+  <div class="pv-prev"><div data-svg-src="figures/02a-routing-1.svg"></div></div>
+  <div class="pv-file"><a href="figures/02a-routing-1.svg">figures/02a-routing-1.svg</a></div>
+  <div class="pv-dep">four-value enum router</div>
+  <div class="pv-use"><span>Used in</span> <a href="../02a-routing.html">02a-routing.html</a></div>
+  <div class="pv-meta"><span>Connection</span>original</div>
+  <div class="pv-meta"><span>Source</span>original course diagram</div>
+  <div class="pv-meta"><span>License</span>Apache-2.0</div>
+</article>
+<article class="pv-card" data-asset="figures/02b-rag-1.svg" data-course-use="02b-rag.html">
+  <div class="pv-prev"><div data-svg-src="figures/02b-rag-1.svg"></div></div>
+  <div class="pv-file"><a href="figures/02b-rag-1.svg">figures/02b-rag-1.svg</a></div>
+  <div class="pv-dep">RAG split timeline</div>
+  <div class="pv-use"><span>Used in</span> <a href="../02b-rag.html">02b-rag.html</a></div>
+  <div class="pv-meta"><span>Connection</span>inspiration</div>
+  <div class="pv-meta"><span>Source</span><a href="https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/" target="_blank" rel="noopener">NVIDIA developer blogs</a></div>
+  <div class="pv-meta"><span>License</span>(c) NVIDIA</div>
+</article>
+<article class="pv-card" data-asset="figures/02b-rag-2.svg" data-course-use="02b-rag.html">
+  <div class="pv-prev"><div data-svg-src="figures/02b-rag-2.svg"></div></div>
+  <div class="pv-file"><a href="figures/02b-rag-2.svg">figures/02b-rag-2.svg</a></div>
+  <div class="pv-dep">live request pipeline over an offline index</div>
+  <div class="pv-use"><span>Used in</span> <a href="../02b-rag.html">02b-rag.html</a></div>
+  <div class="pv-meta"><span>Connection</span>original</div>
+  <div class="pv-meta"><span>Source</span>original course diagram</div>
+  <div class="pv-meta"><span>License</span>Apache-2.0</div>
+</article>
+<article class="pv-card" data-asset="figures/02b-rag-3.svg" data-course-use="02b-rag.html">
+  <div class="pv-prev"><div data-svg-src="figures/02b-rag-3.svg"></div></div>
+  <div class="pv-file"><a href="figures/02b-rag-3.svg">figures/02b-rag-3.svg</a></div>
+  <div class="pv-dep">GraphRAG pipeline</div>
+  <div class="pv-use"><span>Used in</span> <a href="../02b-rag.html">02b-rag.html</a></div>
+  <div class="pv-meta"><span>Connection</span>recreation</div>
+  <div class="pv-meta"><span>Source</span><a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">Edge et al. 2024</a></div>
+  <div class="pv-meta"><span>License</span>see arXiv listing</div>
+</article>
+<article class="pv-card" data-asset="figures/02c-deep-1.svg" data-course-use="02c-deep.html">
+  <div class="pv-prev"><div data-svg-src="figures/02c-deep-1.svg"></div></div>
+  <div class="pv-file"><a href="figures/02c-deep-1.svg">figures/02c-deep-1.svg</a></div>
+  <div class="pv-dep">orchestrator and sub-agents over shared files</div>
+  <div class="pv-use"><span>Used in</span> <a href="../02c-deep.html">02c-deep.html</a></div>
+  <div class="pv-meta"><span>Connection</span>original</div>
+  <div class="pv-meta"><span>Source</span>original course diagram</div>
+  <div class="pv-meta"><span>License</span>Apache-2.0</div>
+</article>
+<article class="pv-card" data-asset="figures/03a-kickstart-1.svg" data-course-use="03a-kickstart.html">
+  <div class="pv-prev"><div data-svg-src="figures/03a-kickstart-1.svg"></div></div>
+  <div class="pv-file"><a href="figures/03a-kickstart-1.svg">figures/03a-kickstart-1.svg</a></div>
+  <div class="pv-dep">three access layers</div>
+  <div class="pv-use"><span>Used in</span> <a href="../03a-kickstart.html">03a-kickstart.html</a></div>
+  <div class="pv-meta"><span>Connection</span>original</div>
+  <div class="pv-meta"><span>Source</span>original course diagram</div>
+  <div class="pv-meta"><span>License</span>Apache-2.0</div>
+</article>
+<article class="pv-card" data-asset="figures/03b-openclaw-1.svg" data-course-use="03b-openclaw.html">
+  <div class="pv-prev"><div data-svg-src="figures/03b-openclaw-1.svg"></div></div>
+  <div class="pv-file"><a href="figures/03b-openclaw-1.svg">figures/03b-openclaw-1.svg</a></div>
+  <div class="pv-dep">workspace folder as configuration</div>
+  <div class="pv-use"><span>Used in</span> <a href="../03b-openclaw.html">03b-openclaw.html</a></div>
+  <div class="pv-meta"><span>Connection</span>original</div>
+  <div class="pv-meta"><span>Source</span>original course diagram</div>
+  <div class="pv-meta"><span>License</span>Apache-2.0</div>
+</article>
+<article class="pv-card" data-asset="figures/03c-always-on-1.svg" data-course-use="03c-always-on.html">
+  <div class="pv-prev"><div data-svg-src="figures/03c-always-on-1.svg"></div></div>
+  <div class="pv-file"><a href="figures/03c-always-on-1.svg">figures/03c-always-on-1.svg</a></div>
+  <div class="pv-dep">per-turn loop inside slower triggers</div>
+  <div class="pv-use"><span>Used in</span> <a href="../03c-always-on.html">03c-always-on.html</a></div>
+  <div class="pv-meta"><span>Connection</span>original</div>
+  <div class="pv-meta"><span>Source</span>original course diagram</div>
+  <div class="pv-meta"><span>License</span>Apache-2.0</div>
+</article>
+<article class="pv-card" data-asset="figures/04a-safety-1.svg" data-course-use="04a-safety.html">
+  <div class="pv-prev"><div data-svg-src="figures/04a-safety-1.svg"></div></div>
+  <div class="pv-file"><a href="figures/04a-safety-1.svg">figures/04a-safety-1.svg</a></div>
+  <div class="pv-dep">OpenShell containment rings</div>
+  <div class="pv-use"><span>Used in</span> <a href="../04a-safety.html">04a-safety.html</a></div>
+  <div class="pv-meta"><span>Connection</span>original</div>
+  <div class="pv-meta"><span>Source</span>original course diagram</div>
+  <div class="pv-meta"><span>License</span>Apache-2.0</div>
+</article>
+<article class="pv-card" data-asset="figures/04a-safety-2.svg" data-course-use="04a-safety.html">
+  <div class="pv-prev"><div data-svg-src="figures/04a-safety-2.svg"></div></div>
+  <div class="pv-file"><a href="figures/04a-safety-2.svg">figures/04a-safety-2.svg</a></div>
+  <div class="pv-dep">tool-call policy path</div>
+  <div class="pv-use"><span>Used in</span> <a href="../04a-safety.html">04a-safety.html</a></div>
+  <div class="pv-meta"><span>Connection</span>original</div>
+  <div class="pv-meta"><span>Source</span>original course diagram</div>
+  <div class="pv-meta"><span>License</span>Apache-2.0</div>
+</article>
+<article class="pv-card" data-asset="figures/fig2_react.svg" data-course-use="02a-routing.html">
+  <div class="pv-prev paper-preview"><img src="figures/fig2_react.svg" alt="ReAct loop"/></div>
+  <div class="pv-file"><a href="figures/fig2_react.svg">figures/fig2_react.svg</a></div>
+  <div class="pv-dep">ReAct loop</div>
+  <div class="pv-use"><span>Used in</span> <a href="../02a-routing.html">02a-routing.html</a></div>
+  <div class="pv-meta"><span>Connection</span>conversion</div>
+  <div class="pv-meta"><span>Source</span><a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al. 2022; figure conversion</a></div>
+  <div class="pv-meta"><span>License</span>see arXiv listing</div>
+</article>
+<article class="pv-card" data-asset="figures/fig2_rewoo.svg" data-course-use="02a-routing.html">
+  <div class="pv-prev paper-preview"><img src="figures/fig2_rewoo.svg" alt="ReWOO plan-then-execute"/></div>
+  <div class="pv-file"><a href="figures/fig2_rewoo.svg">figures/fig2_rewoo.svg</a></div>
+  <div class="pv-dep">ReWOO plan-then-execute</div>
+  <div class="pv-use"><span>Used in</span> <a href="../02a-routing.html">02a-routing.html</a></div>
+  <div class="pv-meta"><span>Connection</span>conversion</div>
+  <div class="pv-meta"><span>Source</span><a href="https://arxiv.org/abs/2305.18323" target="_blank" rel="noopener">Xu et al. 2023; figure conversion</a></div>
+  <div class="pv-meta"><span>License</span>see arXiv listing</div>
+</article>
+<article class="pv-card" data-asset="figures/rag_arch_2021.svg" data-course-use="02b-rag.html">
+  <div class="pv-prev paper-preview"><img src="figures/rag_arch_2021.svg" alt="original end-to-end RAG architecture"/></div>
+  <div class="pv-file"><a href="figures/rag_arch_2021.svg">figures/rag_arch_2021.svg</a></div>
+  <div class="pv-dep">original end-to-end RAG architecture</div>
+  <div class="pv-use"><span>Used in</span> <a href="../02b-rag.html">02b-rag.html</a></div>
+  <div class="pv-meta"><span>Connection</span>conversion</div>
+  <div class="pv-meta"><span>Source</span><a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al. 2020; figure conversion</a></div>
+  <div class="pv-meta"><span>License</span>see arXiv listing</div>
+</article></div>
 
-  <h2>Inline-injected figures (assets/figures/)</h2>
-  <div class="pv-grid">
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="figures/01a-loop-1.svg"></div><div class="pv-file">figures/01a-loop-1.svg</div><div class="pv-dep">four agent architectures (reflex to learning)</div><div class="pv-meta"><span>source</span> <a href="https://aima.cs.berkeley.edu/" target="_blank" rel="noopener">Russell &amp; Norvig, AIMA ch.1</a></div><div class="pv-meta"><span>license</span> <a href="https://aima.cs.berkeley.edu/" target="_blank" rel="noopener">© Pearson, no reuse license</a></div><div class="pv-meta"><span>link</span> <span class="lvl">inspiration</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="figures/01a-loop-2.svg"></div><div class="pv-file">figures/01a-loop-2.svg</div><div class="pv-dep">Chat Completions vs Responses API</div><div class="pv-meta"><span>source</span> <a href="https://platform.openai.com/docs" target="_blank" rel="noopener">OpenAI API docs</a></div><div class="pv-meta"><span>license</span> <a href="https://openai.com/policies/terms-of-use" target="_blank" rel="noopener">OpenAI terms</a></div><div class="pv-meta"><span>link</span> <span class="lvl">inspiration</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="figures/01a-loop-3.svg"></div><div class="pv-file">figures/01a-loop-3.svg</div><div class="pv-dep">the agent loop as a cycle</div><div class="pv-meta"><span>source</span> original</div><div class="pv-meta"><span>license</span> <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache-2.0</a></div><div class="pv-meta"><span>link</span> <span class="lvl">original</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="figures/01b-react-1.svg"></div><div class="pv-file">figures/01b-react-1.svg</div><div class="pv-dep">general loop becomes the ReAct loop</div><div class="pv-meta"><span>source</span> <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">original; ReAct (Yao 2022)</a></div><div class="pv-meta"><span>license</span> <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache-2.0</a></div><div class="pv-meta"><span>link</span> <span class="lvl">original</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="figures/01b-react-2.svg"></div><div class="pv-file">figures/01b-react-2.svg</div><div class="pv-dep">LLM-agent map (controller + memory/planning/tools)</div><div class="pv-meta"><span>source</span> <a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">Lilian Weng, LLM-Powered Autonomous Agents (2023)</a></div><div class="pv-meta"><span>license</span> no reuse license stated (© Lil&#x27;Log)</div><div class="pv-meta"><span>link</span> <span class="lvl">recreation</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="figures/01b-react-3.svg"></div><div class="pv-file">figures/01b-react-3.svg</div><div class="pv-dep">one turn of the ReAct loop</div><div class="pv-meta"><span>source</span> <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">original; ReAct (Yao 2022)</a></div><div class="pv-meta"><span>license</span> <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache-2.0</a></div><div class="pv-meta"><span>link</span> <span class="lvl">inspiration</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="figures/01b-react-4.svg"></div><div class="pv-file">figures/01b-react-4.svg</div><div class="pv-dep">Lost-in-the-Middle U-curve</div><div class="pv-meta"><span>source</span> <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu et al. 2023</a></div><div class="pv-meta"><span>license</span> <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">see arXiv listing</a></div><div class="pv-meta"><span>link</span> <span class="lvl">recreation</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="figures/01c-tools-1.svg"></div><div class="pv-file">figures/01c-tools-1.svg</div><div class="pv-dep">tool round-trip (LLM asks, code answers)</div><div class="pv-meta"><span>source</span> original</div><div class="pv-meta"><span>license</span> <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache-2.0</a></div><div class="pv-meta"><span>link</span> <span class="lvl">original</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="figures/01c-tools-2.svg"></div><div class="pv-file">figures/01c-tools-2.svg</div><div class="pv-dep">narrow-waist MCP topology</div><div class="pv-meta"><span>source</span> <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">original; MCP</a></div><div class="pv-meta"><span>license</span> <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">open standard</a></div><div class="pv-meta"><span>link</span> <span class="lvl">original</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="figures/02a-routing-1.svg"></div><div class="pv-file">figures/02a-routing-1.svg</div><div class="pv-dep">four-value enum picks one specialist</div><div class="pv-meta"><span>source</span> original</div><div class="pv-meta"><span>license</span> <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache-2.0</a></div><div class="pv-meta"><span>link</span> <span class="lvl">original</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="figures/02b-rag-1.svg"></div><div class="pv-file">figures/02b-rag-1.svg</div><div class="pv-dep">RAG split timeline (offline index, online query)</div><div class="pv-meta"><span>source</span> <a href="https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/" target="_blank" rel="noopener">NVIDIA devblogs (Wolff 2023, Bleiweiss 2024)</a></div><div class="pv-meta"><span>license</span> <a href="https://www.nvidia.com/en-us/about-nvidia/legal-info/" target="_blank" rel="noopener">© NVIDIA (proprietary)</a></div><div class="pv-meta"><span>link</span> <span class="lvl">inspiration</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="figures/02b-rag-2.svg"></div><div class="pv-file">figures/02b-rag-2.svg</div><div class="pv-dep">live request pipeline over an offline index</div><div class="pv-meta"><span>source</span> original</div><div class="pv-meta"><span>license</span> <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache-2.0</a></div><div class="pv-meta"><span>link</span> <span class="lvl">original</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="figures/02b-rag-3.svg"></div><div class="pv-file">figures/02b-rag-3.svg</div><div class="pv-dep">GraphRAG pipeline (offline graph, online query)</div><div class="pv-meta"><span>source</span> <a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">Edge et al. 2024</a></div><div class="pv-meta"><span>license</span> <a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">see arXiv listing</a></div><div class="pv-meta"><span>link</span> <span class="lvl">recreation</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="figures/02c-deep-1.svg"></div><div class="pv-file">figures/02c-deep-1.svg</div><div class="pv-dep">orchestrator delegates to sub-agents over a shared filesystem</div><div class="pv-meta"><span>source</span> original; deep-agents pattern</div><div class="pv-meta"><span>license</span> <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache-2.0</a></div><div class="pv-meta"><span>link</span> <span class="lvl">original</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="figures/03a-kickstart-1.svg"></div><div class="pv-file">figures/03a-kickstart-1.svg</div><div class="pv-dep">three access layers (REST / MCP / gateway)</div><div class="pv-meta"><span>source</span> original</div><div class="pv-meta"><span>license</span> <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache-2.0</a></div><div class="pv-meta"><span>link</span> <span class="lvl">original</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="figures/03b-openclaw-1.svg"></div><div class="pv-file">figures/03b-openclaw-1.svg</div><div class="pv-dep">the workspace folder is the configuration</div><div class="pv-meta"><span>source</span> original</div><div class="pv-meta"><span>license</span> <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache-2.0</a></div><div class="pv-meta"><span>link</span> <span class="lvl">original</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="figures/03c-always-on-1.svg"></div><div class="pv-file">figures/03c-always-on-1.svg</div><div class="pv-dep">per-turn loop nested inside slower triggers</div><div class="pv-meta"><span>source</span> original</div><div class="pv-meta"><span>license</span> <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache-2.0</a></div><div class="pv-meta"><span>link</span> <span class="lvl">original</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="figures/04a-safety-1.svg"></div><div class="pv-file">figures/04a-safety-1.svg</div><div class="pv-dep">nested kernel sandboxes, shrinking blast radius</div><div class="pv-meta"><span>source</span> original</div><div class="pv-meta"><span>license</span> <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache-2.0</a></div><div class="pv-meta"><span>link</span> <span class="lvl">original</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="figures/04a-safety-2.svg"></div><div class="pv-file">figures/04a-safety-2.svg</div><div class="pv-dep">the lethal trifecta as a three-circle overlap</div><div class="pv-meta"><span>source</span> <a href="https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/" target="_blank" rel="noopener">Simon Willison (2025)</a></div><div class="pv-meta"><span>license</span> <a href="https://simonwillison.net/about/" target="_blank" rel="noopener">not stated on the post; see colophon</a></div><div class="pv-meta"><span>link</span> <span class="lvl">recreation</span></div></div>
-  </div>
-
-  <h2>Root assets (assets/*.svg)</h2>
-  <div class="pv-grid">
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="rag_arch_2021.svg"></div><div class="pv-file">rag_arch_2021.svg</div><div class="pv-dep">original end-to-end RAG architecture</div><div class="pv-use">used by 02b (&lt;img&gt;)</div><div class="pv-meta"><span>source</span> <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al. 2020</a></div><div class="pv-meta"><span>license</span> <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">see arXiv listing</a></div><div class="pv-meta"><span>link</span> <span class="lvl">recreation</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="fig2_react.svg"></div><div class="pv-file">fig2_react.svg</div><div class="pv-dep">ReAct loop</div><div class="pv-use">used by 02a (&lt;img&gt;)</div><div class="pv-meta"><span>source</span> <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al. 2022</a></div><div class="pv-meta"><span>license</span> <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">see arXiv listing</a></div><div class="pv-meta"><span>link</span> <span class="lvl">inspiration</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="fig2_rewoo.svg"></div><div class="pv-file">fig2_rewoo.svg</div><div class="pv-dep">ReWOO plan-then-execute</div><div class="pv-use">used by 02a (&lt;img&gt;)</div><div class="pv-meta"><span>source</span> <a href="https://arxiv.org/abs/2305.18323" target="_blank" rel="noopener">Xu et al. 2023</a></div><div class="pv-meta"><span>license</span> <a href="https://arxiv.org/abs/2305.18323" target="_blank" rel="noopener">see arXiv listing</a></div><div class="pv-meta"><span>link</span> <span class="lvl">inspiration</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="agent_types.svg"></div><div class="pv-file">agent_types.svg</div><div class="pv-dep">agent architectures (themed)</div><div class="pv-use">UNREFERENCED legacy, superseded by figures/01a-loop-1.svg</div><div class="pv-meta"><span>source</span> <a href="https://aima.cs.berkeley.edu/" target="_blank" rel="noopener">Russell &amp; Norvig</a></div><div class="pv-meta"><span>license</span> <a href="https://aima.cs.berkeley.edu/" target="_blank" rel="noopener">© Pearson, no reuse license</a></div><div class="pv-meta"><span>link</span> <span class="lvl">inspiration</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="graph_rag_2024.svg"></div><div class="pv-file">graph_rag_2024.svg</div><div class="pv-dep">GraphRAG</div><div class="pv-use">UNREFERENCED legacy, superseded by figures/02b-rag-3.svg</div><div class="pv-meta"><span>source</span> <a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">Edge et al. 2024</a></div><div class="pv-meta"><span>license</span> <a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">see arXiv listing</a></div><div class="pv-meta"><span>link</span> <span class="lvl">recreation</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="lillog_agent.svg"></div><div class="pv-file">lillog_agent.svg</div><div class="pv-dep">LLM-agent map</div><div class="pv-use">UNREFERENCED legacy, superseded by figures/01b-react-2.svg</div><div class="pv-meta"><span>source</span> <a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">Lilian Weng 2023</a></div><div class="pv-meta"><span>license</span> no reuse license stated (© Lil&#x27;Log)</div><div class="pv-meta"><span>link</span> <span class="lvl">recreation</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="rag_two_phase.svg"></div><div class="pv-file">rag_two_phase.svg</div><div class="pv-dep">RAG two-phase</div><div class="pv-use">UNREFERENCED legacy</div><div class="pv-meta"><span>source</span> original / NVIDIA</div><div class="pv-meta"><span>license</span> <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache-2.0</a></div><div class="pv-meta"><span>link</span> <span class="lvl">original</span></div></div>
-<div class="pv-card"><div class="fig-embed pv-prev" data-svg-src="rest_mcp_ws.svg"></div><div class="pv-file">rest_mcp_ws.svg</div><div class="pv-dep">access layers</div><div class="pv-use">UNREFERENCED legacy, superseded by figures/03a-kickstart-1.svg</div><div class="pv-meta"><span>source</span> original</div><div class="pv-meta"><span>license</span> <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache-2.0</a></div><div class="pv-meta"><span>link</span> <span class="lvl">original</span></div></div>
-  </div>
-  <p style="font-size:.8rem;color:var(--td)">Companion-material provenance is in <a href="../mats/SKILL.html">mats/SKILL.html</a>.</p>
-</main>
 <script>
 (function(){
-  var cache={};
-  function get(src){return cache[src]||(cache[src]=fetch(src).then(function(r){if(!r.ok)throw r.status;return r.text();}));}
-  var lb=null;
-  function box(){
-    if(lb)return lb;
-    var root=document.createElement("div");root.className="pv-lb";root.hidden=true;
-    root.innerHTML='<button class="pv-x" type="button" aria-label="Close (Esc)">✕</button><div class="pv-stage" role="dialog" aria-modal="true"></div>';
-    var stage=root.querySelector(".pv-stage");
-    function close(){root.hidden=true;stage.innerHTML="";document.body.style.overflow="";}
-    root.addEventListener("click",function(e){if(e.target===root||e.target===stage)close();});
-    root.querySelector(".pv-x").addEventListener("click",close);
-    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!root.hidden)close();});
-    document.body.appendChild(root);
-    lb={open:function(svg){stage.innerHTML="";svg.removeAttribute("style");svg.style.background="var(--gfx-bg)";svg.style.borderRadius="8px";var vb=(svg.getAttribute("viewBox")||"").split(/[\s,]+/).map(Number);if(vb.length===4&&vb[2]>0&&vb[3]>0){var s=Math.min(window.innerWidth*0.92/vb[2],window.innerHeight*0.9/vb[3]);svg.style.width=Math.round(vb[2]*s)+"px";svg.style.height=Math.round(vb[3]*s)+"px";}else{svg.style.maxWidth="92vw";svg.style.maxHeight="90vh";}stage.appendChild(svg);root.hidden=false;document.body.style.overflow="hidden";}};
-    return lb;
+  const key = 'nemoclaw-skill-theme';
+  const root = document.documentElement;
+  function setTheme(mode){
+    root.dataset.theme = mode;
+    localStorage.setItem(key, mode);
+    document.querySelectorAll('[data-theme-choice]').forEach(btn => btn.setAttribute('aria-pressed', String(btn.dataset.themeChoice === mode)));
   }
-  document.querySelectorAll("[data-svg-src]").forEach(function(host){
-    var src=host.getAttribute("data-svg-src");
-    get(src).then(function(txt){
-      host.innerHTML=txt;var svg=host.querySelector("svg");if(!svg)return;
-      host.style.cursor="zoom-in";host.setAttribute("role","button");host.tabIndex=0;
-      host.setAttribute("aria-label",(svg.getAttribute("aria-label")||"figure")+", click to enlarge");
-      function open(){box().open(svg.cloneNode(true));}
-      host.addEventListener("click",open);
-      host.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();open();}});
-    }).catch(function(){host.innerHTML='<a href="'+src+'" target="_blank" rel="noopener">open '+src+'</a>';});
+  document.querySelectorAll('[data-theme-choice]').forEach(btn => btn.addEventListener('click', () => setTheme(btn.dataset.themeChoice)));
+  setTheme(localStorage.getItem(key) || 'dark');
+  document.querySelectorAll('[data-svg-src]').forEach(async host => {
+    try {
+      const r = await fetch(host.dataset.svgSrc);
+      if (!r.ok) throw new Error(String(r.status));
+      host.innerHTML = await r.text();
+    } catch (err) {
+      host.innerHTML = '<a href="' + host.dataset.svgSrc + '">Open SVG</a>';
+    }
+  });
+  document.querySelectorAll('[data-md-src]').forEach(details => {
+    details.addEventListener('toggle', async () => {
+      if (!details.open || details.dataset.loaded) return;
+      details.dataset.loaded = '1';
+      const body = details.querySelector('.md-body');
+      try {
+        const r = await fetch(details.dataset.mdSrc);
+        if (!r.ok) throw new Error(String(r.status));
+        body.textContent = (await r.text()).slice(0, 12000);
+      } catch (err) {
+        body.innerHTML = '<a href="' + details.dataset.mdSrc + '">Open file</a>';
+      }
+    });
   });
 })();
 </script>
+</main>
 </body>
 </html>
