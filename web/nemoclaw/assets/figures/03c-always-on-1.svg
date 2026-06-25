@@ -1,6 +1,6 @@
 <svg class="gfx-dark" viewBox="0 0 820 478" xmlns="http://www.w3.org/2000/svg" role="img" 
     aria-label="A single per-turn loop sits nested inside slower triggers, where skills fire inside the turn while heartbeats, cron, and sub-agent spawns are the outer rhythms."
-    preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:780px;margin:1.5rem auto">
+    preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:1040px;margin:1.5rem auto">
       <circle cx="300" cy="234" r="190" fill="none" stroke="var(--gfx-green,#9bd14a)" stroke-width="2.2"/>
       <polygon points="306,38 306,50 318,44" fill="var(--gfx-green,#9bd14a)"/>
       <line x1="400" y1="70" x2="516" y2="49" stroke="var(--gfx-faint,#6b7177)" stroke-dasharray="2 3"/>

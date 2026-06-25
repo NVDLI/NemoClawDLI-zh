@@ -478,7 +478,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         vl_fail.append(f"skill contract error: {e}")
 
     # figure geometry (advisory): render the runtime figures (mountDiagram + mountPolicyMap) and flag overlapping text, out-of-bounds text, stray connectors, and edgeless diagrams.
-    # figure_audit only sees inline <svg>, so these runtime figures went UNCHECKED before.
+    # figure_audit handles static inline/fetched SVGs; this suite covers JS-built runtime diagrams.
     # Self-tests each detector; node + jsdom via scripts/figures/run_figcheck.sh.
     dg_find = []
     try:
@@ -561,6 +561,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     _FIG_FIX = {
         "tiny": (RECOMMENDED, "Raise the text to a rendered font-size of at least 11px; below that it is "
                  "unreadable at the figure's display scale."),
+        "small_render": (RECOMMENDED, "Raise the figure's display cap or host width so full-width course diagrams render at "
+                         "least 900px wide in the lesson column."),
         "overflow": (RECOMMENDED, "Widen the viewBox or wrap the label onto two centered lines so it stays "
                      "inside the frame."),
         "no_aria": (RECOMMENDED, "Add an aria-label (or role=img plus a <title>) that states what the figure shows."),
@@ -867,7 +869,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     print(f"  color theme     : {ct_inline + ct_undef + ct_bake} non-theme-dynamic color(s) "
           f"(inline {ct_inline}, undefined-var {ct_undef}, render-bake {ct_bake})")
     print(f"  figure audit    : {fa_total} legibility/format finding(s) "
-          f"(tiny-text {len(fa_find.get('tiny', []))}, overflow {len(fa_find.get('overflow', []))}, "
+          f"(tiny-text {len(fa_find.get('tiny', []))}, small-render {len(fa_find.get('small_render', []))}, "
+          f"overflow {len(fa_find.get('overflow', []))}, "
           f"a11y {len(fa_find.get('no_aria', [])) + len(fa_find.get('img_no_alt', [])) + len(fa_find.get('blank_link', []))})")
     print(f"  cell audit      : {ca_total} cell-contract finding(s) "
           f"(opaque {len(ca_find.get('opaque', []))}, console {len(ca_find.get('console', []))}, "
