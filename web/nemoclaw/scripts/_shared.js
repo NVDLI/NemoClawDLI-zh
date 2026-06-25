@@ -525,20 +525,20 @@ export function buildNav(currentFile) {
 // Per-page progression: one box per sub-page, three per row, each row offset right by STAIR pixels so the figure cascades down a staircase. Call mountJourneyMap(sel, id) with the current step id to highlight its box.
 // Done boxes get a dim "✓ Done"; the current box a green "★ You are here"; pending boxes stay neutral. A missing target element makes the call a no-op.
 const _JM_STEPS = [
-  // Row 1 · Module 1 · The Loop
+  // Row 1 · Module 1 · Agent basics
   { id: "1a",   href: "01a-loop.html",        title: "The Agent",       sub: "loop · LLM as function" },
   { id: "1b",   href: "01b-react.html",       title: "The ReAct Loop",  sub: "tools · finish_reason" },
   { id: "1c",   href: "01c-tools.html",       title: "Tools at Scale",  sub: "JSON · MCP · routing" },
-  // Row 2 · Module 2 · Coordination
+  // Row 2 · Module 2 · Advanced patterns
   { id: "2a",   href: "02a-routing.html",     title: "Workflows",       sub: "router · planner · ReWOO" },
   { id: "2b",   href: "02b-rag.html",         title: "The Index Agent", sub: "embed · retrieve · bundle" },
   { id: "2c",   href: "02c-deep.html",        title: "Deep Agents",     sub: "planner · sub-agents · VFS" },
-  // Row 3 · Module 3 · Environment + OpenClaw
-  { id: "3a",   href: "03a-kickstart.html",   title: "Kickstart",       sub: "paste key · first call" },
+  // Row 3 · Module 3 · NemoClaw + OpenClaw
+  { id: "3a",   href: "03a-kickstart.html",   title: "Connect NemoClaw", sub: "launchable · first call" },
   { id: "3b",   href: "03b-openclaw.html",    title: "OpenClaw",        sub: "file-as-context · paste URL" },
   { id: "3c",   href: "03c-always-on.html",   title: "Always-On",       sub: "skills · cron" },
   // Row 4 · Module 4 · Safety + Modern CLIs
-  { id: "4a",   href: "04a-safety.html",      title: "NemoClaw",        sub: "sandbox · policy · CI gate" },
+  { id: "4a",   href: "04a-safety.html",      title: "OpenShell",       sub: "sandbox · policy · CI gate" },
   { id: "4b",   href: "04b-modern-clis.html", title: "Modern CLIs",     sub: "Claude Code · Codex · Cursor" },
   { id: "4c",   href: "04c-going-further.html", title: "Going Further", sub: "Brev · NIMs · Blueprints" },
 ];

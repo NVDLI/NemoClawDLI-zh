@@ -102,6 +102,7 @@ import figure_audit as fa  # noqa: E402
 import cell_audit as ca  # noqa: E402
 import helper_notebook_runtime_audit as hna  # noqa: E402
 import studio_interface_audit as sia  # noqa: E402
+import course_contract as cca  # noqa: E402
 import skill_contract as skc  # noqa: E402
 from collections import defaultdict  # noqa: E402
 
@@ -209,7 +210,7 @@ SUITE_META = [
      "A three-word content phrase that recurs across the page (beyond word-echo's within-five-words pair): a crutch phrase a reader notices on the second pass. Vary or cut the second use. A deliberately repeated term of art is fine; judgment call.",
      "scripts/validation/prose_variety.py", "repeated_phrase"),
     ("vacuous_meta", "Vacuous meta-writing", "recommended",
-     "Filler that comments on the course or the idea instead of conveying it ('where the real engineering lives', 'the shape this course chose', 'one of the shapes a course can take', 'something more fundamental'). It reads as marketing and carries no information. Cut the sentence, or replace it with the concrete fact.",
+     "Filler that comments on the course or the idea instead of conveying it ('where the real engineering lives', 'the shape this course chose', 'Don't X; do Y', 'first-class part', 'peer runtime'). It reads as marketing and carries no information. Cut the sentence, or replace it with the concrete fact.",
      "scripts/validation/prose_variety.py", "vacuous_meta"),
     ("staccato_cadence", "Staccato cadence", "consider",
      "Prose that reads choppy even when sentence lengths vary: a copular 'X is the Y, a Z' appositive, two-plus setup/payoff reveals (mid-sentence colons or comma-appositives), short clauses welded dense, or breaks spaced so evenly the cadence turns mechanical. The sentence-length rhythm score is blind to it. Resolution per kind: a paragraph under 5 clauses cannot trip uniform-breaks (split it), lists are removed from the scan (lift a real enumeration into a substantive <ul>), combine choppy clauses for break-dense, and dismiss break-dense that is only code/URL tokens. Each finding carries its specific recipe.",
@@ -229,6 +230,9 @@ SUITE_META = [
     ("studio_interface", "Studio interface contract", "required",
      "Studio is the operator console for authoring and validation. Its controls must remain reachable at layout extremes, its sidebar lists must scroll internally, and its documented test commands must stay synchronized with the validators.",
      "scripts/validation/studio_interface_audit.py", "audit"),
+    ("course_contract", "Course title and abstract contract", "required",
+     "The English source-course title, abstract, and learning objectives are canonical DLI copy. They must stay verbatim across the course home, foyer, and canonical contract files.",
+     "scripts/validation/course_contract.py", "audit"),
     ("skill_schema", "SKILL contract", "recommended",
      "Every SKILL.html skill-meta must be a well-formed contract of its kind: it classifies into one known kind (service-skill, service-index, dir-skill, hub, leaf), carries that kind's required keys, uses a known schema/node_type value and a semver version where the kind has one, and only valid notebook status values. An agent samples this block to work in a directory, so a malformed beacon is a contract an agent cannot trust. Each entry names the SKILL and the missing or invalid field.",
      "scripts/skills/skill_contract.py", "schema_findings"),
@@ -496,6 +500,17 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         ok = False
         vl_fail.extend(f"studio interface: {x}" for x in studio_interface_find)
 
+    # Course contract (required): canonical DLI title, abstract, and objectives are immutable.
+    try:
+        course_contract_find = cca.audit()
+    except Exception as e:
+        course_contract_find = [f"course contract audit error: {e}"]
+        suite_errors["course_contract"] = str(e)
+    if course_contract_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(f"course contract: {x}" for x in course_contract_find)
+
     # SKILL contract (advisory): every skill-meta is a well-formed beacon of its kind (schema leg)
     # and matches its directory (drift leg, reused from skill_audit). The agent-facing half of the
     # contract: a malformed or stale beacon is what an agent samples and is misled by.
@@ -638,6 +653,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "studio_interface": [D("web/nemoclaw/studio.html", x, REQUIRED,
                                "Keep Studio controls reachable at narrow/short viewports and keep validator commands synchronized across Studio and SKILL docs.")
                              for x in studio_interface_find],
+        "course_contract": [D("web/nemoclaw/COURSE_CANON.md", x, REQUIRED,
+                              "Restore the canonical DLI title, abstract, and learning objectives verbatim. Do not paraphrase, retitle, reorder, or translate the English source copy.")
+                            for x in course_contract_find],
         "prose_variety": [D(r["path"], f"score {r['score']} · {', '.join(r['tells'])}", CONSIDER,
                             "Give the page a rhythm pass: vary sentence length, break the staccato triads, turn enumerations back into prose.")
                           for r in pv_flagged],
@@ -807,6 +825,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "code_size": ch_scanned, "code_const": ch_scanned,
         "helper_notebook": 1,
         "studio_interface": 1,
+        "course_contract": 1,
         "materials": materials.get("count", 0),
         "skill_schema": skc_scanned, "skill_drift": skc_scanned,
     }
@@ -925,6 +944,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
           f"code-surface {len(ca_find.get('code_surface', []))}, "
           f"readability {len(ca_find.get('readability', []))})")
     print(f"  figure geometry : {len(dg_find)} runtime-figure finding(s) (text overlap / past bounds / connector-crosses-box / useless)")
+    print(f"  course contract : {len(course_contract_find)} finding(s) (title / abstract / learning objectives)")
     _cg = {k: len(v) for k, v in ch_fam.items()}
     print(f"  code hygiene    : {len(ch_rows)} finding(s) over {ch_scanned} code file(s) "
           f"(comments {_cg.get('comments', 0)}, walls {_cg.get('walls', 0)}, dup {_cg.get('duplication', 0)}, "

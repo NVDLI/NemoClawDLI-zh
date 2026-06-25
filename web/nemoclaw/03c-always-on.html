@@ -92,10 +92,11 @@
   </div>
 
   <h2>Step 1 · Add a Skill</h2>
-  <p>A skill is nothing more than a markdown file placed under
-     <code>skills/</code>. The agent picks it up on the next turn when it
-     reads its own workspace. You do not restart it, redeploy it, or touch
-     the system prompt yourself.</p>
+  <p>A skill starts as a markdown file placed under <code>skills/</code>, usually with a
+     short front-matter or heading block that lets the runtime decide when to reveal it.
+     The agent does not load every instruction at once; it progressively discloses the
+     matching skill when the next turn asks for it. You do not restart it, redeploy it,
+     or touch the system prompt yourself.</p>
 
 <pre><code class="language-md"># skills/triage-incident.md
 
@@ -168,14 +169,17 @@ suggesting one, do these things in order:
   </div>
 
   <h2>Where to take this</h2>
-  <p>The self-improving, always-on agent has moved from course exercise to shipping
-     product category, and
-     <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes</a>
-     from Nous Research is the clearest example.</p>
-  <p>Hermes runs on the identical skill, heartbeat, and cron machinery that this page taught
-     you. It ships packaged for an NVIDIA DGX Spark, a piece of hardware built to stay on.</p>
+  <p>
+    Public
+    <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes</a>
+    docs describe four behaviors this page just exercised: creating skills from
+    experience, keeping memory across sessions, running cron jobs, and exposing
+    chat gateways for Telegram, Discord, and Slack. Hermes sits at the agent-application
+    layer, like OpenClaw. NemoClaw is the stack that puts an agent application inside
+    OpenShell with policy and lifecycle tooling around it.
+  </p>
   <ul>
-    <li>It creates skills from experience and persists memory across sessions.</li>
+    <li>It creates and improves skills from experience, then persists memory across sessions.</li>
     <li>It runs scheduled work through a built-in cron.</li>
     <li>Its gateway installs as a system service, so it stays reachable from
         Telegram, Discord, or Slack across reboots with nobody logged in.</li>
@@ -206,6 +210,7 @@ suggesting one, do these things in order:
       <li><a href="https://arxiv.org/abs/2304.03442" target="_blank" rel="noopener">Park et al., <em>Generative Agents</em> (2023)</a>. Multi-day autonomous-agent simulation; the reflection and memory-consolidation patterns an always-on loop reuses.</li>
       <li><a href="https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview" target="_blank" rel="noopener">Anthropic, <em>Agent Skills</em></a>. The production skill-folder layout this page's <code>skills/&lt;name&gt;.md</code> drop-in mirrors.</li>
       <li><a href="https://langchain-ai.github.io/langgraph/concepts/persistence/" target="_blank" rel="noopener">LangGraph, <em>Persistence</em> (checkpointers)</a>. Checkpointed graphs as the same save-and-resume primitive in a different production shape.</li>
+      <li><a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes Agent</a>. Agent application with self-improving skills, persistent memory, cron, and a messaging gateway; its DGX Spark playbook installs it separately from NemoClaw.</li>
       <li><a href="https://en.wikipedia.org/wiki/Cron" target="_blank" rel="noopener">cron(8)</a>. The canonical reference for the scheduling primitive the cron drop-in borrows.</li>
     </ul>
     <p class="references-note">Comprehensive list at <a href="04c-going-further.html#refs">Going Further · References</a>.</p>
@@ -246,7 +251,7 @@ helpers.log("rendered below. Edit the config and Run.");
 
   <div class="foot-nav">
     <a href="03b-openclaw.html">← Module 3b: OpenClaw</a>
-    <a class="next" href="04a-safety.html">Module 4a: NemoClaw →</a>
+    <a class="next" href="04a-safety.html">Module 4a: OpenShell in NemoClaw →</a>
   </div>
 </main>
 
