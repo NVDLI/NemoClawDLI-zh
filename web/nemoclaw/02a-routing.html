@@ -52,7 +52,7 @@
       <li>and routing decisions that must not depend on whatever the last tool returned.</li>
     </ul>
     <p>
-      A <b>workflow agent</b> is flexible agent which between can straddle between these classes of problems, usually by having tools which offload the context management and synchronization to dedicated loops and sequences. 
+      A <b>workflow agent</b> is flexible agent which between can straddle between these classes of problems, usually by having tools which offload the context management and synchronization to dedicated loops and sequences.
       This notebook will not dig too deep into the many options, but they should be understood and we will motivate some surface-level support mechanisms to tackle some more advanced problems.
     </p>
   </div>
@@ -174,7 +174,7 @@
   <p>
     Routing is a different shape of multi-agent in which a triage agent classifies the
     input and hands it to one specialist. Because the classifier must emit one of a fixed
-    enum of categories, the output must be sufficiently constrained with a tight contract to avoid a service-level agreement failure. 
+    enum of categories, the output must be sufficiently constrained with a tight contract to avoid a service-level agreement failure.
     Each specialist downstream owns a narrow system prompt that might never sees the triage agent's reasoning by design.
   </p>
 
@@ -384,7 +384,8 @@ mountCanvasFlow("#cell-m2a-rewoo", {
     {
       id: "goal", icon: "🎯", title: "Research goal", x: 0, y: 0,
       summary: "The research goal that drives the entire pipeline. Edit it and rerun to see how the planner generates a different set of queries and the synthesizer produces a different brief.",
-      code: `state.goal = "How do retrieval-augmented generation, vector databases, and AI agents fit together?";
+      code: `// Set the student-editable prompt/input for the next step.
+state.goal = "How do retrieval-augmented generation, vector databases, and AI agents fit together?";
 return state.goal;
 `,
     },
@@ -392,7 +393,8 @@ return state.goal;
     {
       id: "planner", icon: "🧠", title: "Planner (LLM, JSON schema)", x: 0, y: 1,
       summary: "A single model call constrained by response_format to emit a JSON object with a topic field and a queries array of three to five search strings. Because the output is schema-bound, the executor can iterate over it programmatically without any parsing guesswork.",
-      code: `state.PLAN_SCHEMA = {
+      code: `// Define the planner output shape the model must fill in.
+state.PLAN_SCHEMA = {
   name: "research_plan", strict: true,
   schema: {
     type: "object", additionalProperties: false,
@@ -413,8 +415,8 @@ const plan = await helpers.chatStream({
   max_tokens: 8196,
 });
 state.plan = (
-  window.__extractJson(plan.content) 
-  || window.__extractJson(plan.reasoning) 
+  window.__extractJson(plan.content)
+  || window.__extractJson(plan.reasoning)
   || { topic: state.goal, queries: [state.goal] }
 );
 `,
@@ -423,7 +425,8 @@ state.plan = (
     {
       id: "executor", icon: "🌐", title: "Executor (parallel searches)", x: 0, y: 2,
       summary: "A purely deterministic step with no model calls. It fans out all of the planner's queries in parallel using Promise.all, so every search runs concurrently and the wall time tracks the slowest query while the rest overlap inside it.",
-      code: `const t0 = performance.now();
+      code: `// Call the model and time the routed response.
+const t0 = performance.now();
 state.searches = await Promise.all(
   state.plan.queries.map(q => helpers.webSearch(q, { maxResults: 3 }))
 );
@@ -518,7 +521,8 @@ mountCanvasFlow("#cell-m2a-triage", {
     {
       id: "ticket", icon: "👤", title: "User ticket", x: 0, y: 0,
       summary: "The support ticket the triage agent will classify. Edit it to try different problem types and watch the router pick a different specialist each time.",
-      code: `state.ticket = "My laptop won't connect to the VPN. I've tried restarting and re-installing the client.";
+      code: `// Set the student-editable prompt/input for the next step.
+state.ticket = "My laptop won't connect to the VPN. I've tried restarting and re-installing the client.";
 return state.ticket;
 `,
     },
@@ -526,7 +530,8 @@ return state.ticket;
     {
       id: "schema", icon: "📄", title: "Triage schema", x: 2, y: 0,
       summary: "The JSON schema that locks the triage model's output to three fields: category (one of four fixed enum values), priority (high, medium, or low), and a one-line summary. Without this schema the router would need to parse free text and would break on any paraphrase; the enum makes routing fully deterministic.",
-      code: `state.TRIAGE_SCHEMA = {
+      code: `// Define the support-ticket routing fields the model must return.
+state.TRIAGE_SCHEMA = {
   name: "triage", strict: true,
   schema: {
     type: "object", additionalProperties: false,
@@ -546,7 +551,8 @@ return state.TRIAGE_SCHEMA.schema.properties.category.enum;
     {
       id: "triage", icon: "🧠", title: "Triage (LLM)", x: 1, y: 1,
       summary: "The first model call, constrained by response_format to emit the triage schema. The extractJson helper is used rather than a raw JSON.parse because reasoning models sometimes wrap JSON in markdown fences or place it inside the reasoning channel. This step needs to succeed reliably in all of those cases.",
-      code: `const t = await helpers.chatStream({
+      code: `// Send the prepared messages and stream the model response.
+const t = await helpers.chatStream({
   messages: [
     { role: "system", content: "You are a help desk triage agent. Classify the ticket into one category (network, hardware, software, account), assign priority, and restate the problem in one line." },
     { role: "user",   content: state.ticket },
@@ -564,7 +570,8 @@ return state.classification;
     {
       id: "router", icon: "🔀", title: "Router (plain JS)", x: 1, y: 2,
       summary: "A plain JavaScript lookup with no model call. It reads the category field from the triage result and selects the matching specialist system prompt, which is the only thing that changes between specialists. Keeping this step code-only means it cannot hallucinate a route.",
-      code: `const SPECIALISTS = {
+      code: `// Register the specialist prompts this router can choose.
+const SPECIALISTS = {
   network:  "You are a network support specialist. Give 3-5 concise, numbered troubleshooting steps for the network issue.",
   hardware: "You are a hardware support specialist. Give 3-5 concise, numbered troubleshooting steps for the hardware problem.",
   software: "You are a software support specialist. Give 3-5 concise, numbered steps to resolve the software issue.",
@@ -578,7 +585,8 @@ return { picked: state.classification.category };
     {
       id: "specialist", icon: "🧠", title: "Specialist (LLM)", x: 1, y: 3,
       summary: "The second model call, running under whichever specialist system prompt the router selected. Because each specialist prompt is narrow and category-specific, the model never has to hedge between support domains. It answers as if that is the only kind of problem it handles.",
-      code: `const r = await helpers.chatStream({
+      code: `// Send the prepared messages and stream the model response.
+const r = await helpers.chatStream({
   messages: [
     { role: "system", content: state.specialistPrompt },
     { role: "user",   content: state.ticket },
@@ -605,7 +613,8 @@ mountCanvasFlow("#cell-m2a-parallel", {
     {
       id: "topic", icon: "👤", title: "Topic", x: 0, y: 0,
       summary: "The question that all three specialists will receive. Because every specialist reads the same input, you can compare their outputs directly and see how the system prompt alone shapes the response.",
-      code: `state.topic = "Why does the transformer architecture need positional encoding?";
+      code: `// Set the student-editable prompt/input for the next step.
+state.topic = "Why does the transformer architecture need positional encoding?";
 return state.topic;
 `,
     },
@@ -613,7 +622,8 @@ return state.topic;
     {
       id: "search", icon: "🌐", title: "Shared search (1 call)", x: 0, y: 1,
       summary: "A single web search whose results are shared across all three specialists. Running it once and fanning the output out keeps the cost bounded regardless of how many specialists you add downstream.",
-      code: `state.search  = await helpers.webSearch(state.topic, { maxResults: 4 });
+      code: `// Fetch evidence the specialists will use for grounded answers.
+state.search  = await helpers.webSearch(state.topic, { maxResults: 4 });
 state.context = helpers.formatSearchResults(state.search);
 // One shared search, fanned to every specialist; show its full structured hits
 // so each specialist's claims can be traced back to the sources they share.
@@ -625,7 +635,8 @@ return { count: state.search.count || 0, unreachable: !!state.search.unreachable
     {
       id: "parallel", icon: "⚡", title: "Three specialists · Promise.all", x: 0, y: 2,
       summary: "Three model calls dispatched simultaneously with Promise.all, each under its own system prompt. Total wall time tracks the slowest specialist while the other two overlap inside that window. That gap widens as you add more specialists or as individual calls get slower.",
-      code: `async function specialist(label, systemPrompt) {
+      code: `// Build one reusable specialist wrapper around a prompt and tools.
+async function specialist(label, systemPrompt) {
   const t0 = performance.now();
   const s = await helpers.chatStream({
     messages: [
@@ -651,7 +662,8 @@ return state.specialists.map(s => ({ label: s.label, wall_s: s.dt.toFixed(2), pr
     {
       id: "summary", icon: "📊", title: "Timing Gantt + speedup", x: 0, y: 3,
       summary: "Renders a Gantt bar chart showing each specialist's duration alongside the total wall-clock window. This makes the concurrency benefit concrete: the three bars fit inside a dashed window that is shorter than their combined length.",
-      code: `const serial = state.specialists.reduce((s, x) => s + x.dt, 0);
+      code: `// Compare the routed work against a serial baseline.
+const serial = state.specialists.reduce((s, x) => s + x.dt, 0);
 
 // helpers.viz.ganttBars draws per-worker bars, a serial-total bar, and the
 // wall-clock bar, plus the speedup, from the same per-specialist durations.
@@ -686,7 +698,8 @@ mountCanvasFlow("#cell-m2a-factory", {
     {
       id: "factory", icon: "🏭", title: "Define the factory", x: 0, y: 0,
       summary: "Defines the factory function that closes over a role, a system prompt, and an optional tools list, and returns a callable object with a run method. Every specialist built from this factory has the same internal loop; only the three parameters you pass in change its behaviour.",
-      code: `state.createSpecialist = function({ role, systemPrompt, tools = [] }) {
+      code: `// Build one reusable specialist wrapper around a prompt and tools.
+state.createSpecialist = function({ role, systemPrompt, tools = [] }) {
   return {
     role,
     async run(input) {
@@ -717,7 +730,8 @@ return { factory: "createSpecialist" };
     {
       id: "specialists", icon: "👥", title: "Build two specialists", x: 0, y: 1,
       summary: "Two specialists stamped out from the same factory, differing only in their role label and system prompt. Neither needs tools for this exercise, but in production you would pass a distinct tools array to each one so its capabilities match its domain.",
-      code: `state.arithmetician = state.createSpecialist({
+      code: `// Instantiate one specialist with its own role, prompt, and tools.
+state.arithmetician = state.createSpecialist({
   role: "arithmetician",
   systemPrompt:
     "You are an arithmetic tutor. For any math question, show your work in one or two short steps and end with FINAL: <integer>. Refuse non-math questions politely.",
@@ -737,7 +751,8 @@ return { specialists: [state.arithmetician.role, state.translator.role] };
     {
       id: "run", icon: "🚀", title: "Run both on the same input", x: 0, y: 2,
       summary: "Sends the same input to both specialists concurrently and renders their replies side by side. The factory body is identical for both, so any divergence in the two responses traces back to their system prompts, and the side-by-side view lets you spot that divergence at a glance.",
-      code: `state.input = "Translate 'thirty-seven times eleven' and then evaluate the arithmetic.";
+      code: `// Set the student-editable prompt/input for the next step.
+state.input = "Translate 'thirty-seven times eleven' and then evaluate the arithmetic.";
 helpers.log("input:", state.input);
 
 const [arithRes, transRes] = await Promise.all([

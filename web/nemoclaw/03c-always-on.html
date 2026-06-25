@@ -263,12 +263,12 @@ hljs.highlightAll();
 mountDiagram("#fig-calls", {
   kicker: "NO HUMAN IN THE LOOP",
   title: "The always-on loop",
-  width: 1060, height: 300, maxWidth: 980, boxW: 230,
+  width: 560, maxWidth: 560, boxW: 250, rowGap: 36,
   nodes: [
     { id: "cron", label: "schedule", kind: "env", x: 0, y: 0, lines: ["cron / heartbeat", "fires on a timer"] },
-    { id: "gw",   label: "gateway",  kind: "agent", x: 1, y: 0,
+    { id: "gw",   label: "gateway",  kind: "agent", x: 0, y: 1,
       lines: ["model plans, calls", "sandbox tools, repeats"], socket: "wakes in a fresh session" },
-    { id: "logs", label: "workspace / logs", kind: "data", x: 2, y: 0, lines: ["MEMORY.md, logs/"] },
+    { id: "logs", label: "workspace / logs", kind: "data", x: 0, y: 2, lines: ["MEMORY.md, logs/"] },
   ],
   edges: [
     { from: "cron", to: "gw",   label: "tick",    side: "top", tint: "env"   },
@@ -443,11 +443,13 @@ mountCanvasFlow("#cell-skill", {
   nodes: [
     {
       id: "sk-conn", icon: "🔌", title: "Connect", x: 0, y: 0,
+      showCode: false,
       summary: "Open a WebSocket to the gateway and authenticate. This flow stores its connection in state.call so the next three nodes can send chat turns without re-connecting.",
       code: GW_CONNECT + `state._sk = "quick-3c-skill";`,
     },
     {
-      id: "sk-install", icon: "🧩", title: "Turn 1 · install the skill", x: 1, y: 0,
+      id: "sk-install", icon: "🧩", title: "Turn 1 · install the skill", x: 0, y: 1,
+      showCode: false,
       summary: "Ask the agent to write skills/triage-incident.md to its own workspace. The skill is a markdown recipe the agent reads automatically on the next turn, without any system-prompt change.",
       code: gwChat("quick-3c-skill",
         "Add a skill file at skills/triage-incident.md with this content:\n\n" +
@@ -458,13 +460,15 @@ mountCanvasFlow("#cell-skill", {
         "4) ask the user before opening a Jira ticket. Confirm when the file is saved."),
     },
     {
-      id: "sk-trigger", icon: "🚨", title: "Turn 2 · trigger it", x: 2, y: 0,
+      id: "sk-trigger", icon: "🚨", title: "Turn 2 · trigger it", x: 0, y: 2,
+      showCode: false,
       summary: "Send an incident question that matches the skill's trigger conditions. The prompt doesn't name the skill; the agent matches it against the skill descriptions in its workspace.",
       code: gwChat("quick-3c-skill",
         "I just got paged. checkout-service is throwing 502s in us-east-1 for the last 12 minutes. What should I do?"),
     },
     {
-      id: "sk-check", icon: "🔬", title: "Did it follow the recipe?", x: 3, y: 0,
+      id: "sk-check", icon: "🔬", title: "Did it follow the recipe?", x: 0, y: 3,
+      showCode: false,
       summary: "Scan the agent's reply for the four steps in the skill: confirming scope, opening the runbook, proposing a reversible mitigation, pausing before Jira.",
       code: `helpers.log.details("agent reply", state.out);
 const r = (state.out || "").toLowerCase();
@@ -488,11 +492,13 @@ mountCanvasFlow("#probe-cron", {
   nodes: [
     {
       id: "cr-conn", icon: "🔌", title: "Connect", x: 0, y: 0,
+      showCode: false,
       summary: "Open the gateway WebSocket and authenticate.",
       code: GW_CONNECT,
     },
     {
-      id: "cr-list", icon: "📋", title: "List current crons", x: 1, y: 0,
+      id: "cr-list", icon: "📋", title: "List current crons", x: 0, y: 1,
+      showCode: false,
       summary: "Call cron.list to see what is already scheduled. The payload.jobs array holds each job's id, schedule, and prompt.",
       code: `if (!state.call) { helpers.log("Run Connect first."); return; }
 const pl = await state.call("cron.list");
@@ -507,7 +513,8 @@ return { count: jobs.length };
 `,
     },
     {
-      id: "cr-add", icon: "➕", title: "Install a demo cron", x: 2, y: 0,
+      id: "cr-add", icon: "➕", title: "Install a demo cron", x: 0, y: 2,
+      showCode: false,
       summary: "Call cron.add with an id, a cron schedule (every minute here), and the prompt the agent will run on each tick. The job fires inside the same sandbox as the normal agent loop.",
       code: `if (!state.call) { helpers.log("Run Connect first."); return; }
 const added = await state.call("cron.add", {
@@ -524,7 +531,8 @@ return { installed: "quick-3c-demo" };
 `,
     },
     {
-      id: "cr-watch", icon: "⏳", title: "Wait, then read MEMORY.md", x: 3, y: 0,
+      id: "cr-watch", icon: "⏳", title: "Wait, then read MEMORY.md", x: 0, y: 3,
+      showCode: false,
       summary: "This is the unattended write in the flesh. The job is registered and you are not driving it, yet it fires on its own minute boundary. This cell waits about 70 seconds, long enough for one tick to cross a minute, then reads the tail of MEMORY.md straight off the sandbox over the operator terminal. No chat turn is involved. The cron-fired agent wrote that new line while nothing was watching. Auth rides your browser's Cloudflare Access cookie, so keep the launchable open in another tab.",
       code: `// The cron job is live and you are not driving it. Give it time to cross a
 // minute boundary so at least one tick fires, then read what it appended.
@@ -544,7 +552,8 @@ helpers.log("the line(s) above were appended by the cron-fired agent, not by you
 `,
     },
     {
-      id: "cr-rm", icon: "🗑", title: "Remove the demo cron", x: 4, y: 0,
+      id: "cr-rm", icon: "🗑", title: "Remove the demo cron", x: 0, y: 4,
+      showCode: false,
       summary: "Call cron.remove to unschedule the job you just added. Verify with cron.list that the id is gone.",
       code: `if (!state.call) { helpers.log("Run Connect first."); return; }
 const removed = await state.call("cron.remove", { id: "quick-3c-demo" });

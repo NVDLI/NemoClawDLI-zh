@@ -285,7 +285,7 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
      The cell below calls <code>helpers.policyGet()</code>, which runs <code>openshell policy get</code>
      over the operator terminal and parses the result for you.</p>
   <p>From here the page computes from <em>your</em> box's policy rather than from a baked example, and
-     the cell's code is shown alongside it so you can see the exact call that produced the policy.</p>
+     the cell keeps the code in a dropdown, so you can inspect the exact call without making it the main lesson.</p>
 
   <div id="cell-live-policy"></div>
 
@@ -580,19 +580,9 @@ helpers.log("Edit any command, add a probe('your command') line, or ask a new qu
 }
 
 // ── Read your live policy, draw the map from it ───────────────────────────────
-// Reveal a node's code by default so the call is visible without a click.
-// Setting .open alone does not trigger the lazy CodeMirror init,
-// so dispatch the toggle the panel already listens for.
-function revealCode(sel, ids) {
-  ids.forEach((id) => {
-    const cd = document.querySelector(sel + " .cf-panel[data-id='" + id + "'] .cf-panel-code-det");
-    if (cd && !cd.open) { cd.open = true; cd.dispatchEvent(new Event("toggle")); }
-  });
-}
-
 mountRunCell("#cell-live-policy", {
   label: "Read your launchable's live policy",
-  intro: "The map computes its edges from a saved snapshot. This is the live request that snapshot stands in for. It runs openshell policy get on your launchable through the operator terminal and prints the raw policy YAML, so you can confirm the snapshot matches your real box. Keep your launchable open in another tab, since its Cloudflare Access session is what authorises the terminal; connect on the Kickstart page first if you have not. The cell's code is shown below, so the call is in plain view.",
+  intro: "The map computes its edges from a saved snapshot. This is the live request that snapshot stands in for. It runs openshell policy get on your launchable through the operator terminal and prints the raw policy YAML, so you can confirm the snapshot matches your real box. Keep your launchable open in another tab, since its Cloudflare Access session is what authorises the terminal; connect on the Kickstart page first if you have not. The code stays available in the dropdown for anyone who wants the exact call.",
   code: `// helpers.policyGet() reads YOUR launchable's live policy and parses it. One intuitive call
 // that hands back exactly what it ran and what came back, so the retrieval is never opaque:
 //   { agent, command, raw, status, policy }
@@ -624,7 +614,7 @@ return { agent, networks: nets };
 // ── Predict, then confirm against the live kernel ─────────────────────────────
 mountCanvasFlow("#cell-predict-confirm", {
   label: "Static verdict vs the live sandbox",
-  intro: "First run the live-policy cell above so this reads YOUR box's policy. Then pick an action from the buttons and its static verdict appears at once: predict computes the OpenShell verdict in the browser from that live policy, the same allow/deny logic the proxy runs. Then run Confirm to execute the action inside your live sandbox with openshell sandbox exec and read back the kernel's real result, and Compare to check the two agree. Each node's code is shown, so the exact call stays in view.",
+  intro: "First run the live-policy cell above so this reads YOUR box's policy. Then pick an action from the buttons and its static verdict appears at once: predict computes the OpenShell verdict in the browser from that live policy, the same allow/deny logic the proxy runs. Then run Confirm to execute the action inside your live sandbox with openshell sandbox exec and read back the kernel's real result, and Compare to check the two agree. The code remains one dropdown away, but the default view keeps the verdicts first.",
   edges: [
     { from: "predict", to: "confirm" },
     { from: "confirm", to: "compare" },
@@ -633,6 +623,7 @@ mountCanvasFlow("#cell-predict-confirm", {
   nodes: [
     {
       id: "predict", icon: "🧮", title: "Predict (static, in-browser)", x: 0, y: 0,
+      showCode: false,
       summary: "Compute the policy verdict for the action you picked above, without touching the network. The buttons set window.__sbxAction; this node reads it and runs the same allow/deny evaluation the proxy uses, computing the verdict live in your browser rather than reading a baked example.",
       code: `// This predicts from YOUR launchable's live policy. Run the live-policy cell above first
 // so window.__SBX_POLICY is set; there is one policy here, not a baked copy.
@@ -664,6 +655,7 @@ return verdict;
     },
     {
       id: "confirm", icon: "🛂", title: "Confirm (live, in the sandbox)", x: 1, y: 0,
+      showCode: false,
       summary: "Run the candidate connection inside your live OpenShell box via openshell sandbox exec and read back what the kernel did. A blocked egress comes back as a CONNECT tunnel 403 or a 000 code, while an allowed one returns a real HTTP status.",
       code: `if (!state.action) { helpers.log("Run the predict node first."); return; }
 const a = state.action;
@@ -696,6 +688,7 @@ return { observed: state.observed, exitCode: res.exitCode };
 
     {
       id: "compare", icon: "✅", title: "Do they agree?", x: 2, y: 0,
+      showCode: false,
       summary: "Compare the static prediction with the live kernel result. Agreement means the policy behaves exactly as the static analysis says. Disagreement means an unexpected policy or a real gap worth investigating.",
       code: `if (!state.predicted || !state.observed) { helpers.log("Run predict and confirm first."); return; }
 const match = state.predicted === state.observed;
@@ -713,7 +706,6 @@ return { predicted: state.predicted, observed: state.observed, agree: match };
   ],
 });
 
-revealCode("#cell-predict-confirm", ["predict", "confirm"]);
 
 // ── Enumerate the token's reach (read-only) ──────────────────────────────────
 mountCanvasFlow("#cell-token", {
@@ -724,11 +716,13 @@ mountCanvasFlow("#cell-token", {
   nodes: [
     {
       id: "tok-conn", icon: "🔌", title: "Connect as operator.admin", x: 0, y: 0,
+      showCode: false,
       summary: "Open the gateway WebSocket and claim operator.admin with the same token the Control UI uses. No extra credential is needed: the one chat token already carries it.",
       code: GW_CONNECT,
     },
     {
       id: "tok-survey", icon: "🗝️", title: "Survey the reach", x: 1, y: 0,
+      showCode: false,
       summary: "Call the read side of the admin surface: the persona on disk, the cron schedule, the live sessions, the served models, and the full config. Every line you see traces to the same token, and all of it reaches past the sandbox checkpoint.",
       code: `if (!state.call) { helpers.log("Run Connect first."); return; }
 const soul = await state.call("agents.files.get", { agentId: "main", name: "SOUL.md" });
@@ -750,7 +744,6 @@ return { soulBytes: (soul?.content || "").length, crons: (crons?.jobs || []).len
     },
   ],
 });
-revealCode("#cell-token", ["tok-conn", "tok-survey"]);
 </script>
 </body>
 </html>

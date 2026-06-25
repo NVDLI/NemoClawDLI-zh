@@ -38,7 +38,7 @@
     <h1>The <span>Agent</span></h1>
     <p class="lead">
       An <strong>agent</strong> is an entity that interacts with an environment at any meaningful level.
-      A person going about their day is an agent in this sense, and so is a thermostat holding a 
+      A person going about their day is an agent in this sense, and so is a thermostat holding a
       room at temperature or a self-driving car making its way through traffic.
     </p>
     <p>
@@ -65,13 +65,13 @@
         cameras, radar, and a map into a model of the road. Whatever perception captures is all
         the agent has to work from, since nothing downstream ever touches the world directly. A
         gap in perception becomes a gap the rest of the agent cannot see around.</li>
-    <li><strong>Reasoning</strong> turns a perception into a decision, which can vary widely between agents. 
+    <li><strong>Reasoning</strong> turns a perception into a decision, which can vary widely between agents.
         A thermostat compares the temperature against a target and
         stops there, while a chess engine searches millions of moves and a self-driving car runs a
         learned policy. The agents you build here reason by calling a language model, and almost
         everything the course adds later (tools/memory/planning) hangs off this single step.</li>
     <li><strong>Action</strong> changes the environment for itself and other participants.
-        An action can be as small as flipping a relay or as involved as steering a car or calling a tool. 
+        An action can be as small as flipping a relay or as involved as steering a car or calling a tool.
         It also marks the outer edge of an agent's reach, because however sharp the reasoning,
         the agent affects the world only through its action space.</li>
   </ul>
@@ -462,8 +462,9 @@ mountCanvasFlow("#cell-reflex", {
     {
       id: "setup", icon: "🌍", title: "Environment + agent intrinsics", x: 0, y: 0,
       summary: "Initialises the environment (a 1-D track bounded by walls at positions 0 and 9) and the agent's intrinsic state (its starting position and direction). Separating environment state from agent state makes it easy to swap the reasoning rule without touching the world model.",
-      code: `state.env = { 
-    leftWall:  0, 
+      code: `// Set up the tiny world the loop will inspect.
+state.env = {
+    leftWall:  0,
     rightWall: 9,
     position:  3,
 };
@@ -498,7 +499,8 @@ return { perception, action, newPosition: state.env.position };
     {
       id: "run", icon: "▶️", title: "Run the loop for 25 ticks", x: 0, y: 2,
       summary: "Calls the same perceive-reason-act cycle 25 times in sequence. The position trace in the output makes the bouncing pattern concrete and shows how the repeated loop drives the behaviour while the reasoning rule stays trivial.",
-      code: `const trace = [];
+      code: `// Run the loop and collect a step-by-step trace.
+const trace = [];
 for (let t = 0; t < 25; t++) {
   const p = {
     position:    state.env.position,
