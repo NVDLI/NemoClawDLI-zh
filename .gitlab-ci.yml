@@ -43,6 +43,7 @@ test:
     - python3 scripts/validate_layout.py --quiet
     - python3 scripts/skill_consistency.py
     - python3 scripts/skill_contract.py
+    - python3 scripts/source_gate.py
     - bash   scripts/run_engine.sh --self-test
     - 'L=""; case "$CI_COMMIT_BRANCH" in translate-*) L="--lang ${CI_COMMIT_BRANCH#translate-}";; esac; python3 scripts/validate_bundle.py --scope ship $L'
     # Live materials drift check: re-fetch the on-demand sources and compare to the committed

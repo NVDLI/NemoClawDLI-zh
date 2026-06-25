@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
 
 GROUP_SKILLS = (
-    "build", "dev", "edx", "figures", "materials", "runtime", "security",
+    "build", "compliance", "dev", "edx", "figures", "materials", "runtime", "security",
     "skills", "translate", "validation",
 )
 
@@ -34,6 +34,7 @@ WRAPPERS = {
     "pull_materials.py": "materials/pull_materials.py",
     "vendor_glossary.py": "materials/vendor_glossary.py",
     "vendor_navigator.py": "materials/vendor_navigator.py",
+    "source_gate.py": "compliance/source_gate.py",
     "engine.js": "runtime/engine.js",
     "link_graph.html": "runtime/link_graph.html",
     "link_projection.py": "runtime/link_projection.py",
