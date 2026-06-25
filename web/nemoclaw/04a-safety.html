@@ -533,7 +533,12 @@ async function probe(command, mechanism) {
     : /permission denied|EACCES/i.test(out) ? "Landlock"
     : "kernel"));
   const col = blocked ? "var(--err)" : "var(--g)";
-  helpers.log.html("<span style='color:" + col + ";font-weight:700'>" + (blocked ? "✗ DENIED" : "✓ ALLOW ") + "</span>  <span style='color:var(--tf)'>[" + _esc(mech) + "]</span>  " + _esc(command));
+  helpers.log.html(
+    "<span style='color:" + col + ";font-weight:700'>" +
+    (blocked ? "✗ DENIED" : "✓ ALLOW ") +
+    "</span>  <span style='color:var(--tf)'>[" + _esc(mech) + "]</span>  " +
+    _esc(command)
+  );
   const ev = out.replace(/\\s+/g, " ").trim().slice(0, 110);
   if (ev) helpers.log.html("<span style='color:var(--td)'>&nbsp;&nbsp;&nbsp;&nbsp;" + _esc(ev) + "</span>");
   return { command, blocked, mechanism: mech };
@@ -544,27 +549,43 @@ question("Can I reach the open internet?");
 await probe("curl -sS -m 8 -o /dev/null -w 'code=%{http_code}' https://example.com", "network");
 await probe("curl -sS -m 8 -o /dev/null -w 'code=%{http_code}' https://en.wikipedia.org", "network");
 await probe("curl -sS -m 6 -o /dev/null -w 'code=%{http_code}' http://169.254.169.254/latest/meta-data/", "network");
-helpers.log("→ The network namespace plus the OPA egress proxy refuse every curl. The allowlist is bound to the openclaw binary, so a plain curl reaches nothing: most hosts fail the CONNECT tunnel (exit 56), and the metadata IP comes back as a 403 the proxy returns (exit 0).");
+helpers.log([
+  "→ The network namespace plus the OPA egress proxy refuse every curl.",
+  "The allowlist is bound to the openclaw binary, so a plain curl reaches nothing.",
+  "Most hosts fail the CONNECT tunnel (exit 56), and the metadata IP returns proxy 403.",
+].join(" "));
 
 question("Can I install software, to pull in new code?");
 await probe("apt-get install -y cowsay", "non-root");
 await probe("pip install --break-system-packages --retries 0 --timeout 5 --no-input cowsay", "network");
 await probe("npm install --no-audit --no-fund left-pad", "network");
-helpers.log("→ No. apt needs root it does not have; pip and npm run, but the egress proxy refuses their download. A supply-chain attack has to get code in, and every download path is closed.");
+helpers.log([
+  "→ No. apt needs root it does not have.",
+  "pip and npm run, but the egress proxy refuses their downloads.",
+  "A supply-chain attack has to get code in, and every download path is closed.",
+].join(" "));
 
 question("Can I become root, or escape the container?");
 await probe("sudo id", "not installed");
 await probe("nsenter -t 1 -m -- id", "seccomp / non-root");
 await probe("docker ps", "not installed");
 await probe("cat /proc/1/environ", "non-root");
-helpers.log("→ No path up or out. sudo and docker are absent, entering the host's namespace is denied, and the host init's environment is unreadable, so a compromise of this agent stays this agent.");
+helpers.log([
+  "→ No path up or out.",
+  "sudo and docker are absent, entering the host namespace is denied,",
+  "and the host init environment is unreadable.",
+].join(" "));
 
 question("Can I rewrite my own persona, and is locking it real?");
 await probe("ls -la /sandbox/.openclaw/workspace/SOUL.md", "Landlock");
 await probe("chmod 0444 /sandbox/.openclaw/workspace/SOUL.md", "Landlock");
 await probe("chmod 0644 /sandbox/.openclaw/workspace/SOUL.md", "Landlock");
 await probe("chattr +i /sandbox/.openclaw/workspace/SOUL.md", "non-root");
-helpers.log("→ SOUL.md sits in a writable tree and the agent owns it, so a chmod lock it just chmods back. The one lock it cannot pick is chattr +i (immutable), and that needs root. The policy has no per-file read-only rule, so persona tamper is a standing liability the operator closes from outside the sandbox. The control-plane section below is the other half of that story.");
+helpers.log([
+  "→ SOUL.md sits in a writable tree and the agent owns it, so it can undo chmod.",
+  "The lock it cannot pick is chattr +i, which needs root.",
+  "With no per-file read-only rule, persona tamper stays an operator-side liability.",
+].join(" "));
 
 helpers.log("");
 helpers.log("Edit any command, add a probe('your command') line, or ask a new question. One program per line: no shell, so no pipes or &&.");

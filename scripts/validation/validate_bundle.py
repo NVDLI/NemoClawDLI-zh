@@ -219,7 +219,7 @@ SUITE_META = [
      "SVG text must be legible at its render size, no label may overflow its figure, and figures/images must carry aria-label / alt / rel=noopener. A figure too small to read or clipped at the frame is a silent defect no prose check sees.",
      "scripts/validation/figure_audit.py", "run"),
     ("cell_audit", "Cell & artifact contract", "recommended",
-     "Every runnable cell shows its work in the panel, writes via helpers.log not console, awaits its model calls, inlines no key, keeps cell-only code in an editable cell, and is syntax-highlighted by default (the page loads CodeMirror core, the javascript mode, and the editor css, or the editor degrades to a plain textarea). A hard-coded key is required-tier (it ships to every student); the rest are recommended.",
+     "Every runnable cell shows its work in the panel, writes via helpers.log not console, awaits its model calls, inlines no key, keeps cell-only code in an editable cell, is syntax-highlighted by default, and keeps default-visible learner code readable. A hard-coded key is required-tier (it ships to every student); the rest are recommended.",
      "scripts/validation/cell_audit.py", "run"),
     ("skill_schema", "SKILL contract", "recommended",
      "Every SKILL.html skill-meta must be a well-formed contract of its kind: it classifies into one known kind (service-skill, service-index, dir-skill, hub, leaf), carries that kind's required keys, uses a known schema/node_type value and a semver version where the kind has one, and only valid notebook status values. An agent samples this block to work in a directory, so a malformed beacon is a contract an agent cannot trust. Each entry names the SKILL and the missing or invalid field.",
@@ -557,6 +557,10 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "ui_contract": (RECOMMENDED, "Fix the shared cell UI contract instead of hiding the finding. Helpers and code "
                         "must remain discoverable above output, code must be collapsed by default unless a cell opts in, "
                         "reset must be local, and error paths must open the code only when line-level debugging matters."),
+        "code_surface": (RECOMMENDED, "Collapse plumbing-heavy canvas code with showCode:false, or split it until the "
+                         "default-open cell is short enough to teach from."),
+        "readability": (RECOMMENDED, "Clean the default-visible learner code. Avoid tab indentation, giant opening "
+                        "comment walls, extreme nesting, and lines too long to read in the cell editor."),
     }
     _FIG_FIX = {
         "tiny": (RECOMMENDED, "Raise the text to a rendered font-size of at least 11px; below that it is "
@@ -879,7 +883,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
           f"unawaited {len(ca_find.get('unawaited', []))}, dialog {len(ca_find.get('dialog', []))}, "
           f"inline-key {len(ca_find.get('inline_key', []))}, static {len(ca_find.get('static_cell_code', []))}, "
           f"unhighlighted {len(ca_find.get('unhighlighted', []))}, "
-          f"ui-contract {len(ca_find.get('ui_contract', []))})")
+          f"ui-contract {len(ca_find.get('ui_contract', []))}, "
+          f"code-surface {len(ca_find.get('code_surface', []))}, "
+          f"readability {len(ca_find.get('readability', []))})")
     print(f"  figure geometry : {len(dg_find)} runtime-figure finding(s) (text overlap / past bounds / connector-crosses-box / useless)")
     _cg = {k: len(v) for k, v in ch_fam.items()}
     print(f"  code hygiene    : {len(ch_rows)} finding(s) over {ch_scanned} code file(s) "

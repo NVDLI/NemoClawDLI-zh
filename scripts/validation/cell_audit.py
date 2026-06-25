@@ -149,6 +149,45 @@ def audit_runtime_contract():
 
 CANVAS_MOUNT_RE = re.compile(r"mount(?:CanvasFlow|RunCell)\s*\(")
 CANVAS_LONG_DEFAULT_OPEN_LINES = 40
+VISIBLE_COMMENT_WALL = 4
+VISIBLE_LINE_LIMIT = 180
+VISIBLE_INDENT_LIMIT = 24
+
+
+def _is_visible_cell(block: str, code_start: int, lines: int, canvas: bool) -> bool:
+    """Return whether the code is visible by default. Collapsed cells can still be opened,
+    but this rule is for code that occupies the learner's first view."""
+    pre = block[max(0, code_start - 700):code_start]
+    if "showCode: false" in pre[-350:]:
+        return False
+    if "showCode: true" in pre[-350:] or "openCode: true" in pre[-350:]:
+        return True
+    return canvas and lines <= 80
+
+
+def _visible_hygiene(rel: str, cell_line: int, code: str):
+    """Low-noise checks for code students see by default: no tabs, no giant comment
+    wall, no extreme indentation, and no very long lines that force horizontal reading."""
+    findings = []
+    comment_run = 0
+    for i, line in enumerate(code.splitlines(), 1):
+        stripped = line.strip()
+        if stripped.startswith("//"):
+            comment_run += 1
+            if len(line) > 130:
+                findings.append((rel, f"line {cell_line + i - 1}: visible comment line is too long; wrap or shorten it"))
+            if comment_run == VISIBLE_COMMENT_WALL + 1:
+                findings.append((rel, f"line {cell_line + i - 1}: visible code opens with more than {VISIBLE_COMMENT_WALL} consecutive // lines; move detail into prose or a helper note"))
+        elif stripped:
+            comment_run = 0
+        if "\t" in line:
+            findings.append((rel, f"line {cell_line + i - 1}: tab indentation in visible learner code; use spaces"))
+        indent = len(line) - len(line.lstrip(" "))
+        if indent > VISIBLE_INDENT_LIMIT and stripped and not stripped.startswith("//"):
+            findings.append((rel, f"line {cell_line + i - 1}: {indent} leading spaces in visible learner code; split or unnest the block"))
+        if len(line) > VISIBLE_LINE_LIMIT and not stripped.startswith(("const ", "let ", "var ")):
+            findings.append((rel, f"line {cell_line + i - 1}: visible learner code line exceeds {VISIBLE_LINE_LIMIT} characters"))
+    return findings
 
 
 def audit_code_surface():
@@ -188,6 +227,30 @@ def audit_code_surface():
     return findings
 
 
+def audit_visible_code_hygiene():
+    """Find hygiene problems in code that is visible by default. This intentionally does
+    not force first-line comments or formatting churn across collapsed implementation cells."""
+    findings = []
+    pages = sorted((WEB / "nemoclaw").glob("0*.html"))
+    for path in pages:
+        text = path.read_text(errors="ignore")
+        rel = str(path.relative_to(WEB.parent))
+        mounts = list(CANVAS_MOUNT_RE.finditer(text))
+        for i, mount in enumerate(mounts):
+            start = mount.start()
+            end = mounts[i + 1].start() if i + 1 < len(mounts) else len(text)
+            block = text[start:end]
+            is_canvas = text.startswith("mountCanvasFlow", start)
+            for m in CODE.finditer(block):
+                code = m.group(1)
+                lines = code.count("\n") + 1
+                if not _is_visible_cell(block, m.start(), lines, is_canvas):
+                    continue
+                cell_line = text[:start + m.start()].count("\n") + 1
+                findings.extend(_visible_hygiene(rel, cell_line, code))
+    return findings
+
+
 def run(verbose=True):
     """Driver: audit every numbered lesson page's runnable cells and aggregate the findings. It exists
     so the gate and a reviewer get one accounting of cells that violate the runnable-cell contract.
@@ -196,6 +259,7 @@ def run(verbose=True):
     opaque, console, unawaited, dialog, key, static, unhi = [], [], [], [], [], [], []
     ui_contract = audit_runtime_contract()
     code_surface = audit_code_surface()
+    readability = audit_visible_code_hygiene()
     for p in pages:
         o, c, u, d, k, st, uh = audit_page(p)  # per-page findings, by category
         opaque += o; console += c; unawaited += u; dialog += d; key += k; static += st; unhi += uh
@@ -214,15 +278,17 @@ def run(verbose=True):
         show("editable cells without the syntax highlighter loaded", unhi, lambda it: f"{it[0]}  {it[1]}")
         show("learner-facing cell UI contract", ui_contract, lambda it: f"{it[0]}  {it[1]}")
         show("default-open canvas code surface", code_surface, lambda it: f"{it[0]}  {it[1]}")
+        show("visible learner code hygiene", readability, lambda it: f"{it[0]}  {it[1]}")
         total = (len(opaque) + len(console) + len(unawaited) + len(dialog) + len(key) + len(static)
-                 + len(unhi) + len(ui_contract) + len(code_surface))
+                 + len(unhi) + len(ui_contract) + len(code_surface) + len(readability))
         print(f"\ncell_audit: {total} finding(s) (opaque {len(opaque)}, console {len(console)}, "
               f"unawaited {len(unawaited)}, dialog {len(dialog)}, inline-key {len(key)}, static {len(static)}, "
-              f"unhighlighted {len(unhi)}, ui-contract {len(ui_contract)}, code-surface {len(code_surface)})")
+              f"unhighlighted {len(unhi)}, ui-contract {len(ui_contract)}, code-surface {len(code_surface)}, "
+              f"readability {len(readability)})")
     return {"opaque": opaque, "console": console, "unawaited": unawaited,
             "dialog": dialog, "inline_key": key, "static_cell_code": static,
             "unhighlighted": unhi, "ui_contract": ui_contract,
-            "code_surface": code_surface}
+            "code_surface": code_surface, "readability": readability}
 
 
 if __name__ == "__main__":

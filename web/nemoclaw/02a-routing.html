@@ -408,7 +408,14 @@ state.PLAN_SCHEMA = {
 
 const plan = await helpers.chatStream({
   messages: [
-    { role: "system", content: "You are a research planner. Decompose the goal into 3-5 short, complementary search queries over the NVIDIA glossary of AI terms. Return JSON matching the schema." },
+    {
+      role: "system",
+      content: [
+        "You are a research planner.",
+        "Decompose the goal into 3-5 short, complementary search queries over the NVIDIA glossary.",
+        "Return JSON matching the schema.",
+      ].join(" "),
+    },
     { role: "user",   content: state.goal },
   ],
   response_format: { type: "json_schema", json_schema: state.PLAN_SCHEMA },
@@ -554,7 +561,14 @@ return state.TRIAGE_SCHEMA.schema.properties.category.enum;
       code: `// Send the prepared messages and stream the model response.
 const t = await helpers.chatStream({
   messages: [
-    { role: "system", content: "You are a help desk triage agent. Classify the ticket into one category (network, hardware, software, account), assign priority, and restate the problem in one line." },
+    {
+      role: "system",
+      content: [
+        "You are a help desk triage agent.",
+        "Classify the ticket into one category: network, hardware, software, or account.",
+        "Assign priority and restate the problem in one line.",
+      ].join(" "),
+    },
     { role: "user",   content: state.ticket },
   ],
   response_format: { type: "json_schema", json_schema: state.TRIAGE_SCHEMA },
@@ -739,8 +753,12 @@ state.arithmetician = state.createSpecialist({
 
 state.translator = state.createSpecialist({
   role: "translator",
-  systemPrompt:
-    "You translate the user's input from any language into French, then back into the original language. Output exactly two lines: 'FR: <french>' and 'BACK: <original-language>'. Refuse non-translation requests politely.",
+  systemPrompt: [
+    "You translate the user's input from any language into French,",
+    "then back into the original language.",
+    "Output exactly two lines: 'FR: <french>' and 'BACK: <original-language>'.",
+    "Refuse non-translation requests politely.",
+  ].join(" "),
 });
 
 helpers.log("built 2 specialists ·", state.arithmetician.role, "·", state.translator.role);

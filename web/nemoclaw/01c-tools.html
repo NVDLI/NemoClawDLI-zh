@@ -453,12 +453,13 @@ mountCanvasFlow("#cell-m2b-p3", {
       id: "question", icon: "👤", title: "User question", x: 1, y: 0,
       summary: "Try an arithmetic, a definition, or something either tool could handle.",
       code: `// Set the student-editable prompt/input for the next step.
-state.question = "What is 2 to the power of 10?";
-// Swap in another question (or write your own) and rerun to watch the route change:
-// state.question = "Evaluate (17 * 43) + Math.sqrt(144) / Math.log(2).";                 // heavier arithmetic, routes to calculate
-// state.question = "What does raising a number to a real, non-integer power mean?";       // a concept, routes to explain_concept
-// state.question = "Approximate pi with 4 * (1 - 1/3 + 1/5 - 1/7 + 1/9 - 1/11).";         // a pi series to compute, routes to calculate
-// state.question = "Explain the Chudnovsky formula for pi and why it converges so fast."; // a concept about pi, routes to explain_concept
+const EXAMPLES = {
+  default: "What is 2 to the power of 10?",
+  arithmetic: "Evaluate (17 * 43) + Math.sqrt(144) / Math.log(2).",
+  concept: "What does raising a number to a real, non-integer power mean?",
+  series: "Approximate pi with 4 * (1 - 1/3 + 1/5 - 1/7 + 1/9 - 1/11).",
+};
+state.question = EXAMPLES.default;
 return state.question;
 `,
     },
@@ -727,7 +728,10 @@ state.TOOLS = [{
   type: "function",
   function: {
     name: "query_customer_db",
-    description: "Ask a natural-language question about customer accounts. Returns a one-paragraph answer. Use for questions about plans, regions, ticket activity, signup dates, and counts.",
+    description: [
+      "Ask a natural-language question about customer accounts.",
+      "Use for questions about plans, regions, ticket activity, signup dates, and counts.",
+    ].join(" "),
     parameters: {
       type: "object",
       properties: { question: { type: "string", description: "A specific question in natural English." } },

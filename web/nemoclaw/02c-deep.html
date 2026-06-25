@@ -674,21 +674,26 @@ state.goal = [
   "nim_vs_hosting.md, a short comparison of using a managed NIM endpoint versus self-hosting a model directly, ",
   "covering latency, operational overhead, and when each makes sense.",
 ].join("");
-// Try a different multi-file research goal (uncomment one) and rerun:
-// state.goal = "Research vector databases and produce two files: vdb_basics.md, explaining what they are and how embeddings index data; and vdb_when.md, on when a vector database beats keyword search.";
-// state.goal = "Research the ReAct pattern and write two files: react_loop.md on how the loop works, and react_vs_workflow.md on when to use it versus a fixed workflow.";
+// Edit this string to try a different multi-file research goal.
 
-// withStructuredOutput is LangChain's wrapper over the same response_format
-// json_schema you passed by hand in module 2a; it binds the output to this
-// schema and returns a parsed object instead of a string.
+// withStructuredOutput binds the output to this schema and returns a parsed object.
 const planner = state.llm.withStructuredOutput({
   type: "object", additionalProperties: false,
-  properties: { subtasks: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 4 } },
+  properties: {
+    subtasks: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 4 },
+  },
   required: ["subtasks"],
 }, { name: "plan" });
 
 const out = await planner.invoke([
-  { role: "system", content: "Decompose the user goal into 3-4 self-contained subtasks. Each subtask is one imperative sentence a sub-agent can execute independently. Every subtask must produce a file via write_file." },
+  {
+    role: "system",
+    content: [
+      "Decompose the user goal into 3-4 self-contained subtasks.",
+      "Each subtask is one imperative sentence a sub-agent can execute independently.",
+      "Every subtask must produce a file via write_file.",
+    ].join(" "),
+  },
   { role: "user",   content: state.goal },
 ]);
 state.subtasks = out.subtasks;
@@ -741,7 +746,15 @@ const corpus = paths.map(p => "### " + p + "\\n" + state.vfs[p]).join("\\n\\n");
 
 const out = await helpers.chatStream({
   messages: [
-    { role: "system", content: "You are the synthesiser for a research agent. Read every file below and write one combined deliverable that answers the original goal. Reference each source file by name. Do not invent facts that are not in the files." },
+    {
+      role: "system",
+      content: [
+        "You are the synthesiser for a research agent.",
+        "Read every file below and write one combined deliverable that answers the original goal.",
+        "Reference each source file by name.",
+        "Do not invent facts that are not in the files.",
+      ].join(" "),
+    },
     { role: "user",   content: "Goal: " + state.goal + "\\n\\nFiles on the virtual filesystem:\\n\\n" + corpus },
   ],
   max_tokens: 8196,
