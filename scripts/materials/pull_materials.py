@@ -68,6 +68,7 @@ GLOSSARY_INDEX = os.path.join(MATS, "glossary_index.json")       # cached glossa
 CATALOG_MATS = os.path.join(MATS, "materials_index.json")
 CATALOG_ASSET = os.path.join(REPO, "web", "nemoclaw", "assets", "materials_index.json")
 UA = {"User-Agent": "Mozilla/5.0 (NVIDIA DLI course materials vendoring)"}
+ARXIV_API_URL = "https://export.arxiv.org/api/query?id_list="
 
 # ── manifest ──────────────────────────────────────────────────────────────────
 # Add or change a material here, then re-run the matching extractor.
@@ -150,7 +151,7 @@ def extract_arxiv(url):
     if not m:
         raise ValueError("no arXiv id in " + url)
     aid = m.group(1)
-    xml = _fetch("https://export.arxiv.org/api/query?id_list=" + aid)
+    xml = _fetch(ARXIV_API_URL + aid)
     ns = {"a": "http://www.w3.org/2005/Atom"}
     entry = ET.fromstring(xml).find("a:entry", ns)
     if entry is None or entry.findtext("a:title", "", ns).strip().lower() == "error":

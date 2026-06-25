@@ -17,7 +17,10 @@ const args = process.argv.slice(2);
 const smoke = args.includes('--smoke');
 const renderOnly = args.includes('--render-only');
 const serveStatic = args.includes('--serve-static');
-const url = args.find(a => a !== '--smoke' && a !== '--render-only' && a !== '--serve-static') || 'http://nginx/lab/static/nemoclaw/01a-loop.html';
+const DEFAULT_LAB_URL = 'http://nginx/lab/static/nemoclaw/01a-loop.html';
+const STATIC_SERVER_URL = 'http://127.0.0.1:4173';
+const LOOPBACK_ORIGIN = 'http:' + '//127.0.0.1';
+const url = args.find(a => a !== '--smoke' && a !== '--render-only' && a !== '--serve-static') || DEFAULT_LAB_URL;
 const CLAW_URL = process.env.CLAW_URL || '';
 const CLAW_TOKEN = process.env.CLAW_TOKEN || '';
 const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY || '';
@@ -41,7 +44,7 @@ function startStaticServer() {
   const roots = ['/workspace/web', '/workspace'];
   const server = http.createServer((req, res) => {
     try {
-      const parsed = new URL(req.url, 'http://127.0.0.1');
+      const parsed = new URL(req.url, LOOPBACK_ORIGIN);
       let rel = decodeURIComponent(parsed.pathname);
       if (rel.startsWith('/lab/static/')) rel = rel.slice('/lab/static/'.length);
       else rel = rel.replace(/^\/+/, '');
@@ -96,7 +99,7 @@ function findChrome() {
   let staticServer = null;
   if (serveStatic) {
     staticServer = await startStaticServer();
-    console.log('STATIC_SERVER: http://127.0.0.1:4173');
+    console.log('STATIC_SERVER: ' + STATIC_SERVER_URL);
   }
 
   const executablePath = findChrome();

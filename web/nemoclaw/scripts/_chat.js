@@ -1,6 +1,9 @@
 // _chat.js holds the live chat-artifact widgets (ensureChatStyles, mountChatUI, mountAgentChat) that used to live in _shared.js.
 import { CONTEXT_WINDOWS, contextWindow, coursePage, coursePages, escHtml, estimateTokens, formatSearchResults, getConfig, getKey, webSearch } from "./_shared.js";
 
+const RANDOM_ID_RADIX = 36;
+const MARKED_CDN_URL = "https://cdn.jsdelivr.net/npm/marked@14/+esm";
+
 // Inject the shared .chatui-* stylesheet once; idempotent.
 // Kept separate from mountChatUI so a run-cell that inspects the panel still mounts it.
 // Such a cell calls helpers.mountChatUI.toString() and gets the styles intact.
@@ -96,7 +99,7 @@ export function mountChatUI(container, opts = {}) {
   const el = typeof container === "string" ? document.querySelector(container) : container;
   if (!el) return null;
   // Markdown: load marked once (cached on window); render answers as HTML + hljs.
-  if (!window.__markedP) window.__markedP = import("https://cdn.jsdelivr.net/npm/marked@14/+esm").then(m => m.marked || m.default).catch(() => null);
+  if (!window.__markedP) window.__markedP = import(MARKED_CDN_URL).then(m => m.marked || m.default).catch(() => null);
   let MARKED = null; window.__markedP.then(m => { MARKED = m; });
   const _sanitize = (html) => { const d = document.createElement("div"); d.innerHTML = html;
     d.querySelectorAll("script,iframe,style,object,embed,link,meta,form").forEach(n => n.remove());
@@ -139,7 +142,7 @@ export function mountChatUI(container, opts = {}) {
     memBtn.textContent = "🧠 memory: " + (memoryOn ? "on" : "off");
   });
   const selectedModules = () => chips.filter(c => c.classList.contains("on")).map(c => c.dataset.id);
-  const ctx = { thread: "chat-" + Math.random().toString(36).slice(2, 9), turn: 0, _ctx: 0,
+  const ctx = { thread: "chat-" + Math.random().toString(RANDOM_ID_RADIX).slice(2, 9), turn: 0, _ctx: 0,
                 get modules() { return selectedModules(); },
                 get module() { const s = selectedModules(); return s[0] || "auto"; },   // back-compat
                 get model()  { return modelEl ? modelEl.value : (models[0] && models[0].id) || null; },
@@ -322,7 +325,7 @@ export function mountChatUI(container, opts = {}) {
     log.querySelectorAll(".chatui-msg, .chatui-turn, .chatui-examples, .chatui-msgctl").forEach(n => n.remove());
     if (opts.greeting) bubble("chatui-bot", opts.greeting);
     addExamples();
-    ctx.thread = "chat-" + Math.random().toString(36).slice(2, 9); ctx.turn = 0; setBudget(0);
+    ctx.thread = "chat-" + Math.random().toString(RANDOM_ID_RADIX).slice(2, 9); ctx.turn = 0; setBudget(0);
     history.length = 0;
     if (opts.onReset) try { opts.onReset(ctx); } catch (_) {}
   }
@@ -348,13 +351,14 @@ export async function mountAgentChat(container, opts = {}) {
   let LC = null;
   async function deps() {
     if (!LC) {
-      const [oai, core, prebuilt, lg, zod] = await Promise.all([
-        import("https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm"),
-        import("https://cdn.jsdelivr.net/npm/@langchain/core@1.1.48/tools/+esm"),
-        import("https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/prebuilt/+esm"),
-        import("https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/+esm"),
-        import("https://cdn.jsdelivr.net/npm/zod@3/+esm"),
-      ]);
+      const LANGCHAIN_IMPORT_URLS = [
+        "https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm",
+        "https://cdn.jsdelivr.net/npm/@langchain/core@1.1.48/tools/+esm",
+        "https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/prebuilt/+esm",
+        "https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/+esm",
+        "https://cdn.jsdelivr.net/npm/zod@3/+esm",
+      ];
+      const [oai, core, prebuilt, lg, zod] = await Promise.all(LANGCHAIN_IMPORT_URLS.map(url => import(url)));
       LC = { ChatOpenAI: oai.ChatOpenAI, tool: core.tool, createReactAgent: prebuilt.createReactAgent, MemorySaver: lg.MemorySaver, z: zod.z };
     }
     return LC;
@@ -468,7 +472,7 @@ export async function mountAgentChat(container, opts = {}) {
 export function mountConsole(container, { prompt = "$", greeting = "", suggestions = [], onSubmit, disabled = false, disabledMsg = "" } = {}) {
   const root = typeof container === "string" ? document.querySelector(container) : container;
   if (!root) return null;
-  const id = "dl" + Math.random().toString(36).slice(2, 8);
+  const id = "dl" + Math.random().toString(RANDOM_ID_RADIX).slice(2, 8);
   const opts = (suggestions || []).map(s => '<option value="' + String(s).replace(/"/g, "&quot;") + '"></option>').join("");
   root.innerHTML =
     '<div class="da-term">' +

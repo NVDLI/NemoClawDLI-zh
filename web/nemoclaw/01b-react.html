@@ -452,11 +452,19 @@ if (cfg.needsKey && !helpers.getKey()) {
 }
 
 helpers.log("loading LangChain ...");
-const { ChatOpenAI }       = await import("https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm");
-const { tool }             = await import("https://cdn.jsdelivr.net/npm/@langchain/core@1.1.48/tools/+esm");
-const { createReactAgent } = await import("https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/prebuilt/+esm");
-const { MemorySaver }      = await import("https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/+esm");
-const { z }                = await import("https://cdn.jsdelivr.net/npm/zod@3/+esm");
+const LANGCHAIN_IMPORT_URLS = [
+  "https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm",
+  "https://cdn.jsdelivr.net/npm/@langchain/core@1.1.48/tools/+esm",
+  "https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/prebuilt/+esm",
+  "https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/+esm",
+  "https://cdn.jsdelivr.net/npm/zod@3/+esm",
+];
+const [oai, core, prebuilt, langgraph, zod] = await Promise.all(LANGCHAIN_IMPORT_URLS.map(url => import(url)));
+const { ChatOpenAI }       = oai;
+const { tool }             = core;
+const { createReactAgent } = prebuilt;
+const { MemorySaver }      = langgraph;
+const { z }                = zod;
 
 const PAGES   = helpers.coursePages();             // includes "overview" (the course home)
 const baseURL = cfg.url.startsWith("http") ? cfg.url : (window.location.origin + cfg.url);

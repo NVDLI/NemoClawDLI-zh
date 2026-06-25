@@ -228,13 +228,11 @@ class ContextTracker:
 
         if ctx.get("cache_hit"):
             span.set_attribute("context.cache_hit", True)
-            span.set_attribute("context.parent_trace_id", ctx["parent_trace_id"])
-            span.set_attribute("context.parent_span_id", ctx["parent_span_id"])
-            span.set_attribute("context.cached_messages", ctx["cached_messages"])
-            span.set_attribute("context.new_messages", ctx["new_messages"])
-            span.set_attribute("context.cache_ratio", ctx["cache_ratio"])
-            span.set_attribute("context.cum_input_tokens", ctx["cum_input_tokens"])
-            span.set_attribute("context.cum_output_tokens", ctx["cum_output_tokens"])
+            for key in (
+                "parent_trace_id", "parent_span_id", "cached_messages", "new_messages",
+                "cache_ratio", "cum_input_tokens", "cum_output_tokens",
+            ):
+                span.set_attribute(f"context.{key}", ctx[key])
 
             # Store only delta (new messages since prefix)
             delta = messages[ctx["cached_messages"]:]
@@ -591,6 +589,8 @@ class CompletionLog:
 
 ctx_tracker = ContextTracker()
 completion_log = CompletionLog()
+OTEL_FORCE_FLUSH_TIMEOUT_MS = 2000
+BEDROCK_HTTP_TIMEOUT_SECONDS = 600
 
 def get_missing_model_msg(model):
     return {"error": {
@@ -600,6 +600,8 @@ def get_missing_model_msg(model):
         "code": "model_not_found"}}
 
 # ── Backend configs (static, validated on startup) ────────────────────────
+NVIDIA_INTEGRATE_URL = "https://integrate.api.nvidia.com/v1"
+
 BACKEND_CONFIGS = [
     {
         "url": "https://inference-api.nvidia.com/v1",
@@ -607,7 +609,7 @@ BACKEND_CONFIGS = [
         "exclude": [],
     },
     {
-        "url": "https://integrate.api.nvidia.com/v1",
+        "url": NVIDIA_INTEGRATE_URL,
         "key_env": "NVIDIA_API_KEY",
         "exclude": [],
     },
@@ -1000,7 +1002,7 @@ async def _bedrock_converse(
     """
     for attempt in range(BEDROCK_MAX_RETRIES + 1):
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(600)) as c:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(BEDROCK_HTTP_TIMEOUT_SECONDS)) as c:
                 r = await c.post(
                     url=converse_url,
                     content=json.dumps(bedrock_body).encode(),
@@ -1200,7 +1202,7 @@ async def proxy_bedrock(body_json: dict, model: str, stream: bool, span, ctx: di
             from opentelemetry.sdk.trace import TracerProvider as _TP
             provider = trace.get_tracer_provider()
             if isinstance(provider, _TP):
-                provider.force_flush(timeout_millis=2000)
+                provider.force_flush(timeout_millis=OTEL_FORCE_FLUSH_TIMEOUT_MS)
         except Exception:
             pass
 
@@ -1270,7 +1272,7 @@ async def proxy_bedrock(body_json: dict, model: str, stream: bool, span, ctx: di
         acc = ConverseStreamAccumulator(model)
         fallback = False
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(600)) as client:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(BEDROCK_HTTP_TIMEOUT_SECONDS)) as client:
                 async with client.stream(
                     "POST", url=converse_stream_url,
                     content=json.dumps(bedrock_body).encode(),
@@ -1310,7 +1312,7 @@ async def proxy_bedrock(body_json: dict, model: str, stream: bool, span, ctx: di
                 _t0_fb = time.monotonic()
                 task = asyncio.create_task(_call_and_translate(span))
                 while not task.done():
-                    if time.monotonic() - _t0_fb > 600:
+                    if time.monotonic() - _t0_fb > BEDROCK_HTTP_TIMEOUT_SECONDS:
                         task.cancel()
                         completion_log.finish(req_id=_req_id, elapsed_ms=int((time.monotonic() - t0) * 1000))
                         yield f"data: {json.dumps({'error': {'message': 'Bedrock timeout', 'type': 'timeout_error'}})}\n\n".encode()
@@ -1346,7 +1348,7 @@ async def proxy_bedrock(body_json: dict, model: str, stream: bool, span, ctx: di
                 from opentelemetry.sdk.trace import TracerProvider as _TP
                 provider = trace.get_tracer_provider()
                 if isinstance(provider, _TP):
-                    provider.force_flush(timeout_millis=2000)
+                    provider.force_flush(timeout_millis=OTEL_FORCE_FLUSH_TIMEOUT_MS)
             except Exception:
                 pass
             span.set_status(trace.StatusCode.OK)
@@ -1423,7 +1425,7 @@ async def validate_backend(config: Dict) -> bool:
     BACKENDS[url] = {"models": models, "key_env": key_env}
     MODEL_MAP.update({mid: url for mid in models.keys()})
 
-    if url == "https://integrate.api.nvidia.com/v1":
+    if url == NVIDIA_INTEGRATE_URL:
         # Rerankers use dedicated retrieval endpoints; MODEL_TABLE wins, static table backs it up.
         try:
             from langchain_nvidia_ai_endpoints._statics import MODEL_TABLE

@@ -248,7 +248,7 @@ export async function policyGet(agent = null, { idleMs = 8000, totalMs = 30000, 
   let policy = null;
   if (body.trim()) {
     try {
-      const yaml = await import("https://cdn.jsdelivr.net/npm/js-yaml@4/+esm");
+      const yaml = await import(JS_YAML_CDN_URL);
       policy = (yaml.load || (yaml.default && yaml.default.load))(body);
     } catch (_) { /* parser or CDN unavailable: the caller still gets raw + status */ }
   }

@@ -51,6 +51,7 @@ RAW = os.path.join(REPO, "web", "nemoclaw", "mats", "glossary_raw")
 IMG = os.path.join(RAW, "images")
 VERSIONS = os.path.join(RAW, "_versions.json")
 BASE = "https://www.nvidia.com/en-us/glossary/{slug}/"
+GLOSSARY_SOURCE_URL = "https://www.nvidia.com/en-us/glossary/?itemsPerPage=100"
 UA = {"User-Agent": "Mozilla/5.0 (NVIDIA DLI course glossary vendoring)"}
 
 # Deep-vendored glossary terms. Keep the default set lean.
@@ -291,7 +292,7 @@ def build_index(slugs: list[str]) -> int:
             print(f"  {slug}: FAILED ({exc})")
     entries.sort(key=lambda e: e["term"].lower())
     payload = {
-        "source": "https://www.nvidia.com/en-us/glossary/?itemsPerPage=100",
+        "source": GLOSSARY_SOURCE_URL,
         "fetched": datetime.date.today().isoformat(),
         "count": len(entries),
         "terms": entries,

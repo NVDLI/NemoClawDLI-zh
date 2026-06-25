@@ -1,6 +1,8 @@
 // Canvas viz.* builders (makeViz).
 import { diagramSVG, ganttBarsSVG } from "./_shared.js";
 
+const DEFAULT_CHART_WIDTH = 560;
+
 // makeViz binds the per-node `log` so runNode can wire output to a node.
 // The helper menu instead reads names and source from a no-op-log instance.
 export function makeViz(log) {
@@ -12,7 +14,7 @@ export function makeViz(log) {
       },
       scoreBarChart(scored, opts = {}) {
         /* @doc <code>helpers.viz.scoreBarChart(scored, opts)</code> :: 1-to-5 score bar chart with threshold and mean overlay. <code>scored</code> is an array of <code>{score, label?}</code>; <code>opts</code> is <code>{threshold, title, width}</code>. */
-        const { threshold = 3, title = "Score comparison", width = 560 } = opts;
+        const { threshold = 3, title = "Score comparison", width = DEFAULT_CHART_WIDTH } = opts;
         const BAR_H = 28, GAP = 8, PAD_L = 130, PAD_T = 48, PAD_B = 40, PAD_R = 80;
         const maxBarW = width - PAD_L - PAD_R;
         const H = PAD_T + scored.length * (BAR_H + GAP) + PAD_B;
@@ -48,7 +50,7 @@ export function makeViz(log) {
 
       messageList(messages, title = "Message sequence") {
         /* @doc <code>helpers.viz.messageList(messages, title)</code> :: Color-coded message sequence (USER=blue, ASSISTANT=green, TOOL=amber). Takes an OpenAI <code>messages</code> array as-is. */
-        const W = 560, ROW_H = 58, PAD_T = 36, PAD_L = 20;
+        const W = DEFAULT_CHART_WIDTH, ROW_H = 58, PAD_T = 36, PAD_L = 20;
         const H = PAD_T + messages.length * ROW_H + 28;
         const esc = t => String(t || "").replace(/[<>&]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
         const colorFor = role => {
@@ -92,7 +94,7 @@ export function makeViz(log) {
 
       retrievalBars(scored, topK = 3, title = "Retrieval scores") {
         /* @doc <code>helpers.viz.retrievalBars(scored, topK, title)</code> :: Horizontal score bars for retrieval results, with the top-k entries highlighted green and the rest dimmed. */
-        const W = 560, BAR_H = 26, GAP = 8, PAD_L = 20, PAD_T = 48, PAD_B = 24, PAD_R = 70;
+        const W = DEFAULT_CHART_WIDTH, BAR_H = 26, GAP = 8, PAD_L = 20, PAD_T = 48, PAD_B = 24, PAD_R = 70;
         const maxBarW = W - PAD_L - PAD_R;
         const maxScore = Math.max(...scored.map(x => x.score || 0), 1);
         const H = PAD_T + scored.length * (BAR_H + GAP) + PAD_B;

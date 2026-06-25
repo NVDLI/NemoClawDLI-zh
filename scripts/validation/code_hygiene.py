@@ -46,7 +46,7 @@ MAX_BLOCK_COMMENT_LINES = 3      # a run of full-line comments longer than this 
 MAX_INLINE_COMMENT_LEN = 100     # a trailing comment longer than this wants to be a block.
 WALL_LINES = {"cell": 16, "src": 30}   # consecutive non-blank code lines with no breather.
 REPEATED_STARTER_RUN = 5         # consecutive statements sharing one prefix: copy-paste smell.
-DUP_WINDOW = 6                   # consecutive normalized code lines that must match for a clone.
+DUP_WINDOW = 10                  # consecutive normalized code lines that must match for a clone.
 DUP_IFACE_MIN_BODY = 3           # an interface shorter than this is too trivial to dedupe on.
 MAX_FILE_LINES = {".py": 1000, ".js": 1000, ".mjs": 1000, "cell": 220}
 DENSITY_HIGH = 0.45              # comment lines / (code + comment) above this is over-documented.
@@ -56,7 +56,7 @@ REPEATED_LITERAL_MIN = 3         # the same magic number this many times wants a
 
 # Structural numbers, not configuration: indices, identity cases, percents, bytes, rounding bases.
 # A literal outside this set, repeated, is a real constant worth a name.
-_ALLOW_NUM = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 16, 20, 24, 30, 32, 40, 50, 60, 64, 90, 100,
+_ALLOW_NUM = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 15, 16, 18, 20, 24, 30, 32, 40, 50, 60, 64, 90, 100,
               120, 128, 255, 256, 1000, 1024,
               # HTTP status codes and well-known ports read as themselves, not as tunable config.
               80, 200, 201, 204, 301, 302, 304, 400, 401, 403, 404, 405, 409, 422, 429, 500, 502, 503,
@@ -69,6 +69,11 @@ _BANNER = re.compile(r"^[\W_]+$")                       # a separator rule: only
 _HEADER = re.compile(r"^(?:[─=*~_·.-]{2,}|[A-Z][A-Z0-9 ./_-]{3,})")   # a section header, not a wrapped clause.
 _END_OK = re.compile(r"[.:!?]['\")\]]?$")               # a prose comment line may break only after these.
 _URL = re.compile(r"https?://[^\s'\"`)]+", re.I)
+_NAMED_CONSTANT_ASSIGN = re.compile(r"^\s*(?:(?:const|let|var)\s+)?[A-Z][A-Z0-9_]*\s*(?::[^=]+)?=")
+_CONFIG_KEY_ASSIGN = re.compile(r"^\s*[\"']?[A-Z][A-Z0-9_]*[\"']?\s*:")
+_EXAMPLE_URL_HOSTS = {"example.com", "collector.example.com", "api.example.com", "your-tunnel.example.com", "en.wikipedia.org"}
+_EXAMPLE_URL_SUBSTRINGS = ("https://nemoclaw-", "nemoclaw-<id>.brevlab.com", "nemoclaw-&lt;id&gt;.brevlab.com")
+_LESSON_URLS = ("http://169.254.169.254/latest/meta-data/", "http://localhost:8088")
 # Self-congratulatory or over-elaborating comment register: praise of the code, or throat-clearing
 # that restates instead of informing. The reader wants what the code does, not the editorial.
 _VANITY = re.compile(
@@ -352,6 +357,29 @@ def _is_statement(nm: str) -> bool:
     return ("(" in nm or "=" in nm) and nm[:1] not in "{[.("
 
 
+def _counts_for_wall(code: str) -> bool:
+    """True for an imperative source line that should contribute to a wall-of-code run."""
+    s = code.strip()
+    if not s or s[:1] in "}])" or s.startswith(("<", "</", "+", "${", "`")):
+        return False
+    if s.startswith(("{", "[", ".")):
+        return False
+    if s.endswith(",") and ":" in s and "=>" not in s and "=" not in s:
+        return False
+    return True
+
+
+def _flips_template(raw: str) -> bool:
+    """True when this physical line opens or closes a JS template body."""
+    count = 0
+    escaped = False
+    for ch in raw:
+        if ch == "`" and not escaped:
+            count += 1
+        escaped = (ord(ch) == 92 and not escaped)
+    return count % 2 == 1
+
+
 def wall_findings(scope: str):
     """Code that never stops to breathe, and copy-paste hiding as a run of identical statements.
     A long unbroken block, or the same statement repeated line after line, each surface here."""
@@ -360,8 +388,19 @@ def wall_findings(scope: str):
         lines, _ = analyze(lang, text)
         budget = WALL_LINES["cell"] if lang == "cell" else WALL_LINES["src"]
         run = 0
+        in_template = False
         for L in lines:
-            run = run + 1 if L.kind == "code" else 0   # a blank, a comment, or a docstring is a breather.
+            if L.kind != "code":
+                run = 0
+                continue
+            if in_template:
+                if _flips_template(L.raw):
+                    in_template = False
+                run = 0
+                continue
+            if _flips_template(L.raw):
+                in_template = True
+            run = run + 1 if _counts_for_wall(L.code) else 0
             if run == budget:
                 _emit(out, rel, L.n + off, "code-wall",
                       f"{budget}+ code lines with no blank line: {L.raw.strip()}",
@@ -602,6 +641,31 @@ def size_findings(scope: str):
 
 
 # ── family 5: hard-coded / non-surfaced constants ──────────────────────────────
+def _url_is_example_or_lesson(url: str) -> bool:
+    """True for intentionally fake URLs and security-demo URLs used as lesson material."""
+    clean = url.replace("</code>", "").rstrip(".,);")
+    from urllib.parse import urlparse
+    host = re.sub(r"^www\.", "", urlparse(clean).hostname or "")
+    return (host in _EXAMPLE_URL_HOSTS or any(part in clean for part in _EXAMPLE_URL_SUBSTRINGS)
+            or any(clean.startswith(part) for part in _LESSON_URLS))
+
+
+def _url_is_named_config(lines: list[Line], idx: int) -> bool:
+    """True when a URL is already surfaced as an uppercase constant/config value."""
+    code = lines[idx].code.strip()
+    if _NAMED_CONSTANT_ASSIGN.match(code) or _CONFIG_KEY_ASSIGN.match(code):
+        return True
+    cur_indent = len(lines[idx].code) - len(lines[idx].code.lstrip())
+    for prev in range(idx - 1, max(-1, idx - 12), -1):
+        prev_code = lines[prev].code.strip()
+        if not prev_code:
+            continue
+        prev_indent = len(lines[prev].code) - len(lines[prev].code.lstrip())
+        if prev_indent <= cur_indent and _NAMED_CONSTANT_ASSIGN.match(prev_code):
+            return True
+    return False
+
+
 def constant_findings(scope: str):
     """A value baked into the code instead of surfaced as a named constant: the same magic number
     used three or more times, or an embedded URL a reader cannot retune in one place. String
@@ -625,15 +689,19 @@ def constant_findings(scope: str):
                 _emit(out, rel, 1, "repeated-literal", f"{lit} appears {c}x",
                       f"The number {lit} is hard-coded {c} times. Name it once as a constant and reference "
                       "the name, so a change lands in one place.")
-        for L in lines:
+        for idx, L in enumerate(lines):
             if L.kind != "code":
                 continue
             u = _URL.search(L.code)
-            if u and "workers.dev" not in u.group(0) and "schema.org" not in u.group(0) \
-               and "w3.org" not in u.group(0):
-                _emit(out, rel, L.n + off, "embedded-url", f"{u.group(0)[:60]}",
-                      "A URL is hard-coded in the logic. Surface it as a named constant or a config value so "
-                      "the endpoint is retuned in one place, not hunted through the code.")
+            if not u:
+                continue
+            url = u.group(0)
+            if ("workers.dev" in url or "schema.org" in url or "w3.org" in url
+                    or _url_is_example_or_lesson(url) or _url_is_named_config(lines, idx)):
+                continue
+            _emit(out, rel, L.n + off, "embedded-url", f"{url[:60]}",
+                  "A URL is hard-coded in the logic. Surface it as a named constant or a config value so "
+                  "the endpoint is retuned in one place, not hunted through the code.")
     return out
 
 

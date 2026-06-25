@@ -15,6 +15,10 @@ from pydantic import BaseModel, Field, field_validator
 
 app = FastAPI(title="DLI Docker Router", version="1.1")
 
+LLM_CLIENT_BASE_URL = "http://llm_client:9000/v1"
+ASSESSMENT_MODEL = "nvidia/nemotron-3-nano-30b-a3b"
+RUBRIC_MODEL = "nvidia/nemotron-nano-12b-v2-vl"
+
 
 def docker_client():
     return docker.from_env()
@@ -284,8 +288,8 @@ class AssessmentRequest(BaseModel):
     submission: List[Dict[str, Any]] = Field(..., description="Graded cases")
     model_specs: Dict[str, str] = Field(
         default_factory=lambda: {
-            "model":    "nvidia/nemotron-3-nano-30b-a3b",
-            "base_url": "http://llm_client:9000/v1",
+            "model": ASSESSMENT_MODEL,
+            "base_url": LLM_CLIENT_BASE_URL,
         }
     )
     visualization_file: str = Field("/dli/outputs/assessment_traces.html")
@@ -296,8 +300,8 @@ class RerunRequest(BaseModel):
     indices: Optional[List[int]] = None
     model_specs: Dict[str, str] = Field(
         default_factory=lambda: {
-            "model":    "nvidia/nemotron-3-nano-30b-a3b",
-            "base_url": "http://llm_client:9000/v1",
+            "model": ASSESSMENT_MODEL,
+            "base_url": LLM_CLIENT_BASE_URL,
         }
     )
 
@@ -306,8 +310,8 @@ class RubricRequest(BaseModel):
     submission: Any                     # student's answer object (any JSON)
     model_specs: Dict[str, str] = Field(
         default_factory=lambda: {
-            "model":    "nvidia/nemotron-nano-12b-v2-vl",
-            "base_url": "http://llm_client:9000/v1",
+            "model": RUBRIC_MODEL,
+            "base_url": LLM_CLIENT_BASE_URL,
         }
     )
     rubric: Optional[str] = None        # optional grading rubric
@@ -361,8 +365,8 @@ async def grade_rubric(req: RubricRequest):
     standalone self-check endpoint; the first-class graded assessment is
     /run_assessment above.
     """
-    base_url = req.model_specs.get("base_url", "http://llm_client:9000/v1")
-    model    = req.model_specs.get("model",    "nvidia/nemotron-nano-12b-v2-vl")
+    base_url = req.model_specs.get("base_url", LLM_CLIENT_BASE_URL)
+    model    = req.model_specs.get("model",    RUBRIC_MODEL)
     rubric   = req.rubric or (
         "Evaluate the following AI agent submission.  Provide:\n"
         "1. A score out of 10.\n"

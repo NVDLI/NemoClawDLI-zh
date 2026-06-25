@@ -501,11 +501,14 @@ helpers.log("rendered below. Edit the config and Run.");
       ],
     });
 
+    const NVIDIA_API_BASE_URL = "https://integrate.api.nvidia.com/v1";
+    const NVIDIA_BUILD_URL = "https://build.nvidia.com";
+
     // ── Probe model endpoint ─────────────────────────────────────────────────────
     mountClawProbe("#probe-llm", {
       label: "Probe model endpoint (build.nvidia.com)",
       intro: "",
-      defaultUrl: "https://integrate.api.nvidia.com/v1",
+      defaultUrl: NVIDIA_API_BASE_URL,
       proxyBase: "https://nvidia-api-cors-proxy.vkudlay.workers.dev",
       defaultToken: localStorage.getItem("nvapi") || "",
       fieldHelp: {
@@ -513,12 +516,12 @@ helpers.log("rendered below. Edit the config and Run.");
 <p><strong>How requests reach it:</strong> The browser can't call <code>integrate.api.nvidia.com</code> directly because
 of the same-origin policy. Requests route through a hosted Cloudflare Worker that adds CORS headers and
 forwards your key unchanged.</p>
-<p><strong>Running locally (not in the lab):</strong> Call <code>https://integrate.api.nvidia.com/v1</code> directly
+<p><strong>Running locally (not in the lab):</strong> Call <code>${NVIDIA_API_BASE_URL}</code> directly
 from your script or notebook. No proxy needed outside a browser context, where the same-origin restriction doesn't apply.</p>`,
 
         token: `<p><strong>What it is:</strong> Your NVIDIA API key, starting with <code>nvapi-</code>. Autofills from the key
 you saved on the course home page.</p>
-<p><strong>How to get one:</strong> Sign in at <a href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com</a>
+<p><strong>How to get one:</strong> Sign in at <a href="${NVIDIA_BUILD_URL}" target="_blank" rel="noopener">build.nvidia.com</a>
 → API Keys → Generate Key.</p>
 <p><strong>Running locally:</strong> Same key works everywhere. Store it as an environment variable
 (<code>NVIDIA_API_KEY</code>) rather than pasting it into code.</p>`,

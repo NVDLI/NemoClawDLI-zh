@@ -109,7 +109,7 @@ def main():
             page.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
             page.on("pageerror", lambda e: errs.append("PAGEERROR: " + str(e)))
             try:
-                page.goto("http://127.0.0.1:%d/%s.html" % (a.port, name), wait_until="load", timeout=20000)
+                page.goto(LOCAL_PAGE_URL_TEMPLATE % (a.port, name), wait_until="load", timeout=20000)
                 page.wait_for_timeout(2800)
                 panels = page.eval_on_selector_all(".cf-panel", "e=>e.length")
                 btns = page.eval_on_selector_all(".cf-panel-runone", "e=>[...new Set(e.map(x=>x.textContent.trim()))]")

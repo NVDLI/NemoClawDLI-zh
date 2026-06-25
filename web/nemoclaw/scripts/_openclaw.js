@@ -4,6 +4,11 @@
 
 import { updateClawPill, escHtml, _escAttr, mountCanvasFlow } from "./_shared.js";
 
+const RANDOM_ID_RADIX = 36;
+function _uniqueId(prefix = "") {
+  return prefix + Math.random().toString(RANDOM_ID_RADIX).slice(2) + Date.now().toString(RANDOM_ID_RADIX);
+}
+
 // ── ClawGateway widget ───────────────────────────────────────────────────────
 // Live WebSocket client to wss://rawUrl/cli/gateway, reading URL + token from localStorage.
 // The browser CF_Authorization cookie covers Cloudflare Access, so no proxy hop is needed.
@@ -46,7 +51,7 @@ export function mountClawGateway(targetSel, opts = {}) {
 
   function _call(method, params) {
     return new Promise((resolve, reject) => {
-      const id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      const id = _uniqueId();
       const tmo = setTimeout(() => {
         delete _pending[id];
         reject(new Error(`${method} timed out`));
@@ -72,7 +77,7 @@ export function mountClawGateway(targetSel, opts = {}) {
         const typ = d.type  || "";
 
         if (evt === "connect.challenge") {
-          _connId = Math.random().toString(36).slice(2) + Date.now().toString(36);
+          _connId = _uniqueId();
           // Resolve the outer promise on connect response
           _pending[_connId] = {
             resolve: r => {
@@ -211,7 +216,7 @@ export function mountClawGateway(targetSel, opts = {}) {
       try {
         if (action.chat) {
           // Streaming chat
-          const ikey = Math.random().toString(36).slice(2) + Date.now().toString(36);
+          const ikey = _uniqueId();
           let fullText = "";
           outEl.hidden  = false;
           outEl.innerHTML = `<div class="gw-chat-out"></div>`;
@@ -692,7 +697,7 @@ export async function openclawChat(message, { session = "main", onToken, onTool,
       const pend = {}, ws = new WebSocket(wsUrl);
       let chatCb = null;
       const call = (method, params) => new Promise((res, rej) => {
-        const id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+        const id = _uniqueId();
         const tmo = setTimeout(() => { delete pend[id]; rej(new Error(method + " timed out")); }, 20000);
         pend[id] = { res, rej, tmo };
         ws.send(JSON.stringify({ type: "req", id, method, params: params || {} }));
@@ -776,7 +781,7 @@ export async function openclawChat(message, { session = "main", onToken, onTool,
     });
 
     bump();
-    sock.call("chat.send", { sessionKey: session, idempotencyKey: Math.random().toString(36).slice(2) + Date.now().toString(36), message })
+    sock.call("chat.send", { sessionKey: session, idempotencyKey: _uniqueId(), message })
       .then(res => { myRun = (res && res.runId) || null; })
       .catch(e => { clearTimeout(idle); clearTimeout(glob); sock.setCb(null); reject(e); });
   });
@@ -797,6 +802,8 @@ helpers.log("→ " + wsUrl);
 if (state._ws) { try { state._ws.close(); } catch (_) {} state._chatCb = null; }
 
 const _pend = {};
+const RANDOM_ID_RADIX = 36;
+const nextId = () => Math.random().toString(RANDOM_ID_RADIX).slice(2) + Date.now().toString(RANDOM_ID_RADIX);
 const _ws = new WebSocket(wsUrl);
 state._ws = _ws;
 // Stop closes the socket and rejects in-flight calls.
@@ -815,7 +822,7 @@ _ws.onmessage = ev => {
 _ws.onerror = () => {};
 state._chatCb = null;
 state.call = (method, params) => new Promise((resolve, reject) => {
-  const id  = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const id  = nextId();
   const tmo = setTimeout(() => { delete _pend[id]; reject(new Error(method + " timed out")); }, 20000);
   _pend[id] = { resolve, reject, tmo };
   _ws.send(JSON.stringify({ type: "req", id, method, params: params || {} }));
@@ -883,7 +890,7 @@ try {
 } catch (e) { helpers.log("  exec.approval.list failed: " + e.message); }
 
 // 3. Echo probe proves exec works; finish as soon as the marker returns.
-const PROBE = "quick-health-" + Math.random().toString(36).slice(2, 8);
+const PROBE = _uniqueId("quick-health-").slice(0, 21);
 await state.call("sessions.messages.subscribe", { key: PROBE });
 let ok = false, sawTool = false, runId = null;
 const trace = [], t0 = performance.now();

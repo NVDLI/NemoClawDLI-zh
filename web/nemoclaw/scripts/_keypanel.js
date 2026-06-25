@@ -1,6 +1,8 @@
 // _keypanel.js holds the inline API-key setup panel (mountKeyPanel) that used to live in _shared.js.
 import { chat, hasKey, setKey, updateKeyPill, iframeProxyModeEnabled, setIframeProxyMode } from "./_shared.js";
 
+const BUILD_SIGNUP_URL = "https://build.nvidia.com";
+
 export function mountKeyPanel(container, opts = {}) {
   /* @doc <code>helpers.mountKeyPanel(el)</code> ::
        Renders an inline API-key setup panel using the existing <code>.key-panel</code> CSS
@@ -46,7 +48,7 @@ export function mountKeyPanel(container, opts = {}) {
         <button class="btn">Save &amp; verify</button>
         <div class="status"></div>
         <p style="margin:.8em 0 0;font-size:.8rem;color:var(--tf,#8a8a8a)">
-          No key yet? <a href="https://build.nvidia.com" target="_blank" rel="noopener">Sign up at build.nvidia.com &rarr;</a>
+          No key yet? <a href="${BUILD_SIGNUP_URL}" target="_blank" rel="noopener">Sign up at build.nvidia.com &rarr;</a>
           Free-tier models cover every exercise. Leave iframe mode off unless your host page needs it.
         </p>
       </div>`;

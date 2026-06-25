@@ -132,7 +132,7 @@ def main() -> int:
     upload(OUT, PREFIX + "navigator.html", dry_run=args.dry_run)
     upload(OUT, PREFIX + "index.html",     dry_run=args.dry_run)
 
-    base = f"https://{BUCKET}.s3.us-east-1.amazonaws.com/{PREFIX}"
+    base = S3_STATIC_BASE.format(BUCKET=BUCKET, PREFIX=PREFIX)
     print()
     print(f"Live:")
     print(f"  {base}navigator.html")
