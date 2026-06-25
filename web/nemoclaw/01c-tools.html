@@ -500,7 +500,7 @@ const s = await helpers.chatStream({
 });
 
 // The reasoning streamed above.
-// A returned value renders on its own, so just hand back the decision: the tool the model chose (if any) and the arguments it filled in.
+// Return the chosen tool, if any, plus the arguments the model filled in.
 if (!s.tool_calls.length) return { routed_to: "(answered directly)", answer: s.content };
 const tc = s.tool_calls[0];
 return { routed_to: tc.function.name, arguments: JSON.parse(tc.function.arguments || "{}") };
