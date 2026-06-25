@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 // Runtime test for browser course pages via playwright-core.
 // Preferred host entrypoint:
-//   scripts/lab_runtime_test.sh [--smoke] [url]
+//   scripts/runtime/lab_runtime_test.sh [--smoke] [url]
 // Legacy openclaw-container entrypoint:
 //   docker cp test_page_runtime.js <stack>-task1-openclaw-1:/tmp/
 //   docker exec \
 //     -e CLAW_URL=http://localhost:8995 -e CLAW_TOKEN=dli-openclaw-token \
 //     <stack>-task1-openclaw-1 node /tmp/test_page_runtime.js [url]
 // Default URL: http://nginx/lab/static/nemoclaw/01a-loop.html
-// Static render check: scripts/lab_runtime_test.sh --render-only
+// Static render check: scripts/runtime/lab_runtime_test.sh --render-only
 //
 // Credentials: set CLAW_URL + CLAW_TOKEN to drive the OpenClaw gateway nodes
 // (03a/03c/04a). They are injected into sessionStorage under the keys the pages

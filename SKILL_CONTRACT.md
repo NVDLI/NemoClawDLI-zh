@@ -25,7 +25,7 @@ No AUDIT.md beacons; audit findings go to /tmp or git history.
 ## skill-meta kinds (enforced by skill_contract.py)
 
 A skill-meta classifies into exactly one kind, by its `schema` first and its `node_type`
-second. `scripts/skill_contract.py` checks that every beacon is a valid contract of its
+second. `scripts/skills/skill_contract.py` checks that every beacon is a valid contract of its
 kind: the required keys are present, the `schema` / `node_type` value is known, `version`
 is semver where the kind carries one, and notebook `status` values are valid. It rides the
 gate as the `skill_schema` and `skill_drift` suites and runs in CI; `--fix` repairs

@@ -23,7 +23,7 @@
 <script type="application/json" id="explorer-config">
 {
   "title": "scripts/compliance/docs - release readiness",
-  "summary": "Release-safe process docs for scope, licensing, vendor ingestion, execution evidence, maintenance, contribution terms, and security review. Use with scripts/source_gate.py before adding new material.",
+  "summary": "Release-safe process docs for scope, licensing, vendor ingestion, execution evidence, maintenance, contribution terms, and security review. Use with scripts/compliance/source_gate.py before adding new material.",
   "model": "nvidia/nemotron-3-nano-30b-a3b",
   "ties": [
     "build"
@@ -49,7 +49,7 @@
     {
       "path": "source_inventory.json",
       "role": "machine inventory",
-      "desc": "Inputs consumed by scripts/source_gate.py."
+      "desc": "Inputs consumed by scripts/compliance/source_gate.py."
     }
   ],
   "related": [
@@ -74,9 +74,9 @@
   <nav class="skill-nav"><a href="../../../web/index.html">Home</a><a href="../SKILL.html">scripts/compliance</a></nav>
   <h1 id="skill-title">scripts/compliance/docs release readiness</h1>
   <p>Release-safe process docs live here so source governance stays with the scripts that enforce it. These files avoid private process links and describe contributor-facing requirements only.</p>
-  <div class="skill-note">Use these docs with <code>python3 scripts/source_gate.py</code> before adding assets, mats, datasets, cached references, or copied examples.</div>
+  <div class="skill-note">Use these docs with <code>python3 scripts/compliance/source_gate.py</code> before adding assets, mats, datasets, cached references, or copied examples.</div>
   <h2>Executable checks</h2>
-  <div class="skill-note"><code>python3 scripts/source_gate.py</code> checks the inventory before review.</div>
+  <div class="skill-note"><code>python3 scripts/compliance/source_gate.py</code> checks the inventory before review.</div>
   <h2>Linkage map</h2>
   <div class="skill-grid"><a class="skill-card" href="open_source_readiness.md"><b>open_source_readiness.md</b><span>Release checklist and review evidence.</span></a><a class="skill-card" href="vendor_policy.md"><b>vendor_policy.md</b><span>Source placement, allowed material, and provenance rules.</span></a><a class="skill-card" href="source_inventory.json"><b>source_inventory.json</b><span>Machine-readable inventory consumed by the source gate.</span></a></div>
   <h2>Interactive explorer</h2>

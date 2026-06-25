@@ -62,14 +62,14 @@ id="skill-meta">` block is the machine-readable contract for that directory. The
 
 ## Automatic verification
 
-The bundle verifies itself. One link-graph engine, [`scripts/engine.js`](scripts/engine.js),
-runs in **both** the browser viewer ([`scripts/link_graph.html`](scripts/link_graph.html))
+The bundle verifies itself. One link-graph engine, [`scripts/runtime/engine.js`](scripts/runtime/engine.js),
+runs in **both** the browser viewer ([`scripts/runtime/link_graph.html`](scripts/runtime/link_graph.html))
 and headless `node`, so what a human sees and what CI gates on are the same computation:
 
 ```bash
-bash scripts/run_engine.sh --check        # link resolution + reachability + the release contract
-bash scripts/run_engine.sh --self-test    # pin the engine to known projection facts
-python3 scripts/validate_bundle.py --scope ship   # the full cadence (links + grounding + foyer)
+bash scripts/runtime/run_engine.sh --check        # link resolution + reachability + the release contract
+bash scripts/runtime/run_engine.sh --self-test    # pin the engine to known projection facts
+python3 scripts/validation/validate_bundle.py --scope ship   # the full cadence (links + grounding + foyer)
 ```
 
 It resolves every written link through the deploy "compiler" (nginx routes, Jupyter
@@ -84,7 +84,7 @@ The repository license is [Apache-2.0](LICENSE.md), and inbound contributions ar
 New course assets, mats, datasets, cached references, generated files, or copied examples must carry source and license disposition before they are committed. Start with [`scripts/compliance/docs/open_source_readiness.md`](scripts/compliance/docs/open_source_readiness.md) and [`scripts/compliance/docs/vendor_policy.md`](scripts/compliance/docs/vendor_policy.md), then run:
 
 ```bash
-python3 scripts/source_gate.py
+python3 scripts/compliance/source_gate.py
 ```
 
 ## Layout

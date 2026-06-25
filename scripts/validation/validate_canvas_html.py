@@ -8,7 +8,7 @@ duplicate blocks) without needing docker or playwright. Runs in <100ms.
 Exit 0 = clean. Exit 1 = structural problems found (with details).
 
 Usage:
-    python3 scripts/validate_canvas_html.py path/to/page.html [...]
+    python3 scripts/validation/validate_canvas_html.py path/to/page.html [...]
 """
 
 import re

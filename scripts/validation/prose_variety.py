@@ -28,11 +28,11 @@ Per page it reports:
             the table sorts worst-first. A page at or above FLAG_AT is marked for a rhythm pass.
 
 Usage:
-  python3 scripts/prose_variety.py                 # rank the course narrative pages (table)
-  python3 scripts/prose_variety.py --scope all     # also include the repo's prose .md docs
-  python3 scripts/prose_variety.py --page web/nemoclaw/01a-loop.html   # one page + its sentences
-  python3 scripts/prose_variety.py --text "..."    # score a snippet (handy while rewriting)
-  python3 scripts/prose_variety.py --json          # machine-readable (the gate reads this)
+  python3 scripts/validation/prose_variety.py                 # rank the course narrative pages (table)
+  python3 scripts/validation/prose_variety.py --scope all     # also include the repo's prose .md docs
+  python3 scripts/validation/prose_variety.py --page web/nemoclaw/01a-loop.html   # one page + its sentences
+  python3 scripts/validation/prose_variety.py --text "..."    # score a snippet (handy while rewriting)
+  python3 scripts/validation/prose_variety.py --json          # machine-readable (the gate reads this)
 """
 from __future__ import annotations
 import argparse
@@ -801,11 +801,11 @@ def padding_phrases(f: Path) -> list:
     return out
 
 
-# ── Cell-code hygiene MOVED to scripts/code_hygiene.py ──
+# ── Cell-code hygiene MOVED to scripts/validation/code_hygiene.py ──
 # The code validator lives in its own module now; the prose and code bars are separate concerns.
 # This thin re-export keeps older pv.code_hygiene callers working; the gate calls scan() directly.
 def code_hygiene(f: Path) -> list:
-    """Deprecated shim: code hygiene moved to scripts/code_hygiene.py. Forwards one page's cell
+    """Deprecated shim: code hygiene moved to scripts/validation/code_hygiene.py. Forwards one page's cell
     comments and walls to code_hygiene.cell_hygiene; the full suite is code_hygiene.scan()."""
     import code_hygiene as _ch
     return _ch.cell_hygiene(f)

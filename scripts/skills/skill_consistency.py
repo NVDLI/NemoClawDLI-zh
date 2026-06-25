@@ -21,9 +21,9 @@ PROPAGATION (advisory, --since REF) change_impact when_files moved without then_
 
 Usage
 -----
-  scripts/skill_consistency.py                 # invariants + dangling + harness; exit 1 on FAIL
-  scripts/skill_consistency.py --since origin/main   # + propagation reminders
-  scripts/skill_consistency.py --json          # machine-readable
+  scripts/skills/skill_consistency.py                 # invariants + dangling + harness; exit 1 on FAIL
+  scripts/skills/skill_consistency.py --since origin/main   # + propagation reminders
+  scripts/skills/skill_consistency.py --json          # machine-readable
 """
 from __future__ import annotations
 
@@ -330,7 +330,7 @@ def check_scripts_hierarchy():
         for row in rows:
             fail(f"scripts hierarchy: {row}")
     else:
-        ok("scripts hierarchy: implementations live in grouped subdirectories; root keeps compatibility entrypoints")
+        ok("scripts hierarchy: implementations live in grouped subdirectories; root has no compatibility wrappers")
 
 
 def check_scripts_skill_static_body():

@@ -25,6 +25,6 @@
 
 # Generated and vendored trees: collapse in diffs and drop from language stats so the
 # repo's reported language reflects authored content, not snapshots or vendored code.
-scripts/link_graph.html linguist-generated=true
+scripts/runtime/link_graph.html linguist-generated=true
 repos/**                linguist-vendored=true
 mats/**                 linguist-documentation=true

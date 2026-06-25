@@ -3,9 +3,9 @@
  * engine.js: the SINGLE link-graph engine for the task1 bundle.
  *
  * One implementation, two runtimes:
- *   - BROWSER: scripts/link_graph.html loads this and computes the graph live from the
+ *   - BROWSER: scripts/runtime/link_graph.html loads this and computes the graph live from the
  *     JupyterLab contents API (the viewer is what humans + agents actually read).
- *   - NODE:    `node scripts/engine.js --check | --self-test | --graph PATH | --embed`
+ *   - NODE:    `node scripts/runtime/engine.js --check | --self-test | --graph PATH | --embed`
  *     runs the exact same code headless for CI (pre-push, the DGX watcher). The dli
  *     volume is bind-mounted to the host tree, so the lab container's node sees the same
  *     files being pushed; the CI wrapper resolves `node` on PATH, else `docker exec` lab.
@@ -776,7 +776,7 @@
       if (st.npass !== st.checks.length) rc = 1;
     }
     if (argv.indexOf("--graph") >= 0) { var p = arg("--graph"); fs.writeFileSync(p, JSON.stringify(graphJson(proj), null, 2)); process.stdout.write("viewer DATA snapshot -> " + p + "\n"); }
-    if (argv.indexOf("--embed") >= 0) { var ok = embedSnapshot(proj, "scripts/link_graph.html"); process.stdout.write("link_graph.html embedded snapshot " + (ok ? "refreshed" : "NOT updated (DATA line not found)") + "\n"); }
+    if (argv.indexOf("--embed") >= 0) { var ok = embedSnapshot(proj, "scripts/runtime/link_graph.html"); process.stdout.write("link_graph.html embedded snapshot " + (ok ? "refreshed" : "NOT updated (DATA line not found)") + "\n"); }
     if (argv.indexOf("--resolve") >= 0) { var rr = proj.resolve(arg("--resolve"), arg("--from") || ""); process.stdout.write(JSON.stringify(rr, null, 2) + "\n"); }
     if (argv.indexOf("--reach") >= 0) { process.stdout.write(JSON.stringify(reachability(proj)) + "\n"); }
     if (argv.indexOf("--check-json") >= 0) { process.stdout.write(JSON.stringify(check(proj)) + "\n"); }

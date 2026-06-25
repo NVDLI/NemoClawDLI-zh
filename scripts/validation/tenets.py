@@ -7,8 +7,8 @@ gen_skill_hierarchy.py, so there is one source that any agent or person reading 
 inherits. This script reads it back, prints it grouped (purpose / assumptions / practices /
 cadences / creeds), and names the validator that enforces each checkable tenet.
 
-  python3 scripts/tenets.py            report the tenets + their enforcement
-  python3 scripts/tenets.py --check    verify the projection is present (exit 1 if gone)
+  python3 scripts/validation/tenets.py            report the tenets + their enforcement
+  python3 scripts/validation/tenets.py --check    verify the projection is present (exit 1 if gone)
 
 The --check form is cheap enough to run in the validate cadence, so a regeneration can
 never silently drop the projection.
@@ -80,7 +80,7 @@ def main(argv) -> int:
     tenets = load_tenets()
     if not tenets:
         print("tenets: FAIL. SKILL.html has no skill-meta.tenets projection.")
-        print("        regenerate it: python3 scripts/gen_skill_hierarchy.py")
+        print("        regenerate it: python3 scripts/skills/gen_skill_hierarchy.py")
         return 1
     if check:
         n = sum(len(tenets.get(k) or []) for k in ORDER)

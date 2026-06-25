@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>scripts/git-hooks local hooks</title>
+<script type="application/json" id="skill-meta">
+{
+  "schema": "dir-skill/1.0",
+  "node_type": "directory-explorer",
+  "title": "scripts/git-hooks local hooks",
+  "source_dir": "scripts/git-hooks/",
+  "summary": "Local git hook scripts that run source and release checks before commits or pushes. Install them from scripts/build/install-hooks.sh.",
+  "related": [
+    "scripts/git-hooks/pre-commit",
+    "scripts/git-hooks/pre-push",
+    "scripts/build/install-hooks.sh",
+    "scripts/compliance/source_gate.py"
+  ],
+  "explorer": "../../web/_skill_explorer.js"
+}
+</script>
+<script type="application/json" id="explorer-config">
+{
+  "title": "scripts/git-hooks local hooks",
+  "summary": "Local git hook scripts that run source and release checks before commits or pushes.",
+  "model": "nvidia/nemotron-3-nano-30b-a3b",
+  "nav": {"home": "../../web/index.html", "up": {"label": "scripts", "href": "../SKILL.html"}},
+  "groups": [{"title": "Hook entrypoints", "files": [
+    {"path": "pre-commit", "role": "commit hook", "desc": "Runs the local pre-commit checks."},
+    {"path": "pre-push", "role": "push hook", "desc": "Runs the local pre-push checks."}
+  ]}],
+  "tour": [{"title": "Install hooks", "file": "../build/install-hooks.sh", "lines": [1, 80], "note": "Installer that copies these hooks into .git/hooks."}]
+}
+</script>
+
+<style data-skill-static="1">
+.skill-static{padding:24px clamp(18px,4vw,44px);border-bottom:1px solid #2a2a2a;background:#0d0d0d;color:#f2f2f2;font:15px/1.55 system-ui,sans-serif}
+.skill-static a{color:#76b900}.skill-static h1{margin:.1em 0 .25em;color:#76b900;font-size:1.65rem}.skill-static h2{font-size:1.02rem;margin:1.2rem 0 .45rem}.skill-static p{max-width:76rem;color:#b0b0b0}.skill-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:.7rem 0}.skill-card{border:1px solid #2a2a2a;background:#161616;border-radius:8px;padding:12px 14px}.skill-card b{display:block;color:#aee23a;margin-bottom:4px}.skill-card span{color:#b0b0b0;font-size:.9rem}.skill-cmds{display:grid;gap:8px;margin:.7rem 0}.skill-cmd{display:grid;grid-template-columns:minmax(140px,220px) 1fr;gap:8px;align-items:center;border:1px solid #2a2a2a;border-radius:8px;background:#111;padding:9px 11px}.skill-cmd b{color:#aee23a}.skill-cmd code{display:block;overflow:auto;white-space:nowrap;color:#f2f2f2}.skill-nav{display:flex;gap:12px;flex-wrap:wrap;margin:.8rem 0}.skill-nav a{border:1px solid #2a2a2a;border-radius:999px;padding:5px 10px;text-decoration:none}@media(max-width:700px){.skill-cmd{grid-template-columns:1fr}.skill-static{padding:18px}}
+</style>
+</head>
+<body>
+<section class="skill-static" aria-labelledby="skill-title">
+  <nav class="skill-nav"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a></nav>
+  <h1 id="skill-title">scripts/git-hooks local hooks</h1>
+  <p>Local git hooks live here. Install them from the grouped build tools.</p>
+  <h2>Executable checks</h2>
+  <div class="skill-cmds"><div class="skill-cmd"><b>Install hooks</b><code>bash scripts/build/install-hooks.sh</code></div><div class="skill-cmd"><b>Source gate</b><code>python3 scripts/compliance/source_gate.py</code></div></div>
+  <h2>Linkage map</h2>
+  <div class="skill-grid"><a class="skill-card" href="pre-commit"><b>pre-commit</b><span>Local commit hook.</span></a><a class="skill-card" href="pre-push"><b>pre-push</b><span>Local push hook.</span></a><a class="skill-card" href="../build/install-hooks.sh"><b>install-hooks.sh</b><span>Copies hooks into .git/hooks.</span></a></div>
+</section>
+<div id="explorer"></div>
+<script src="../../web/_skill_explorer.js"></script>
+</body>
+</html>

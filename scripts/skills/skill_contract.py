@@ -21,9 +21,9 @@ SKILL_CONTRACT.md (whose schema section predates the surface-first taxonomy and 
 beacons are the contract; this encodes them so future drift from them surfaces.
 
 Usage:
-  python3 scripts/skill_contract.py            # schema + drift; exit 1 on any schema finding
-  python3 scripts/skill_contract.py --json     # machine-readable {schema:[...], drift:[...]}
-  python3 scripts/skill_contract.py --fix      # mechanical drift fixes (delegated to skill_audit)
+  python3 scripts/skills/skill_contract.py            # schema + drift; exit 1 on any schema finding
+  python3 scripts/skills/skill_contract.py --json     # machine-readable {schema:[...], drift:[...]}
+  python3 scripts/skills/skill_contract.py --fix      # mechanical drift fixes (delegated to skill_audit)
 """
 from __future__ import annotations
 import argparse, json, re, sys

@@ -4,11 +4,11 @@
 The lab image ships playwright + chromium (workspace/Dockerfile installs them, pinned in
 workspace/requirements.txt), so this runs in the lab with no setup:
 
-    python3 scripts/render_check.py                       # the course pages, web/nemoclaw
-    python3 scripts/render_check.py --all                 # course pages + the aux pages (glossary, index, ...)
-    python3 scripts/render_check.py --all --run           # + click Run on a cell per page (catches execution-time errors)
-    python3 scripts/render_check.py --screenshot 01a-loop # + full-page PNG next to the page
-    python3 scripts/render_check.py --dir web/nemoclaw 02b-rag 04b-modern-clis
+    python3 scripts/runtime/render_check.py                       # the course pages, web/nemoclaw
+    python3 scripts/runtime/render_check.py --all                 # course pages + the aux pages (glossary, index, ...)
+    python3 scripts/runtime/render_check.py --all --run           # + click Run on a cell per page (catches execution-time errors)
+    python3 scripts/runtime/render_check.py --screenshot 01a-loop # + full-page PNG next to the page
+    python3 scripts/runtime/render_check.py --dir web/nemoclaw 02b-rag 04b-modern-clis
 
 For each page it serves the directory over a local HTTP server (ES-module imports need a real
 origin, not file://), loads it in Chromium, and reports: canvas panels mounted, run-cell count,
@@ -24,7 +24,7 @@ Run. --run clicks Run on the first canvas node and run-cell of each page and fla
 CODE errors (ReferenceError / not-a-function / SyntaxError), ignoring the expected offline fetch
 failures. This is the gap that let a dropped `webSearch` import ship past a mount-only check.
 
-This is the in-lab counterpart to scripts/test_page_runtime.js (which drives the OpenClaw
+This is the in-lab counterpart to scripts/runtime/test_page_runtime.js (which drives the OpenClaw
 gateway nodes from the openclaw container); this one verifies that pages mount and render.
 """
 import argparse, http.server, os, socketserver, sys, threading

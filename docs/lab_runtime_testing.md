@@ -19,14 +19,14 @@ the lab stack, and a normal URL run for the full lab-network path.
 ## Verify the runtime image
 
 ```bash
-scripts/lab_runtime_test.sh --smoke
+scripts/runtime/lab_runtime_test.sh --smoke
 ```
 
 The smoke test launches Node.js, Playwright, and Chromium inside the container and
 loads a `data:` page. It does not need the lab stack or network access.
 
 ```bash
-scripts/lab_runtime_test.sh --render-only
+scripts/runtime/lab_runtime_test.sh --render-only
 ```
 
 The render-only check starts a tiny static server inside the browser-test
@@ -53,13 +53,13 @@ agent machine only has `podman`.
 Then run a browser-page test on the same container network:
 
 ```bash
-NVIDIA_API_KEY=$NVIDIA_API_KEY scripts/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html
+NVIDIA_API_KEY=$NVIDIA_API_KEY scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html
 ```
 
 For OpenClaw gateway pages, pass the local gateway URL and token explicitly:
 
 ```bash
-NVIDIA_API_KEY=$NVIDIA_API_KEY CLAW_URL=http://openclaw:8995 CLAW_TOKEN=dli-openclaw-token scripts/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/03a-kickstart.html
+NVIDIA_API_KEY=$NVIDIA_API_KEY CLAW_URL=http://openclaw:8995 CLAW_TOKEN=dli-openclaw-token scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/03a-kickstart.html
 ```
 
 For a remote launchable behind Cloudflare Access, also pass `CLAW_CF` and, when the

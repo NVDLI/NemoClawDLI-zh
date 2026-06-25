@@ -12,17 +12,17 @@ URL=""
 
 usage() {
   cat <<'USAGE'
-Usage: scripts/lab_runtime_test.sh [--smoke] [--render-only] [--no-build] [URL]
+Usage: scripts/runtime/lab_runtime_test.sh [--smoke] [--render-only] [--no-build] [URL]
 
 Builds a small browser-test image with Node.js, playwright-core, and Chromium,
-then runs scripts/test_page_runtime.js from the repo bind-mounted read-only.
+then runs scripts/runtime/test_page_runtime.js from the repo bind-mounted read-only.
 
 Examples:
-  scripts/lab_runtime_test.sh --smoke
-  scripts/lab_runtime_test.sh --render-only
-  scripts/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html
+  scripts/runtime/lab_runtime_test.sh --smoke
+  scripts/runtime/lab_runtime_test.sh --render-only
+  scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html
   CLAW_URL=http://openclaw:8995 CLAW_TOKEN=dli-openclaw-token \
-    scripts/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/03a-kickstart.html
+    scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/03a-kickstart.html
 
 Environment:
   CONTAINER_ENGINE=podman|docker     Force engine; default prefers podman.

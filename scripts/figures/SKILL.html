@@ -62,7 +62,7 @@
   <p>Node and jsdom checks for JavaScript-drawn figures. Static SVG audits cannot see these runtime diagrams.</p>
   <div class="skill-note">Run commands from the repository root. Root-level script paths remain compatibility entrypoints; implementation files live in this directory tree.</div>
   <h2>Executable checks</h2>
-  <div class="skill-cmds"><div class="skill-cmd"><b>Runtime geometry</b><code>bash scripts/run_figcheck.sh</code></div><div class="skill-cmd"><b>Figure audit</b><code>python3 scripts/figure_audit.py</code></div></div>
+  <div class="skill-cmds"><div class="skill-cmd"><b>Runtime geometry</b><code>bash scripts/figures/run_figcheck.sh</code></div><div class="skill-cmd"><b>Figure audit</b><code>python3 scripts/validation/figure_audit.py</code></div></div>
   <h2>Linkage map</h2>
   <div class="skill-grid"><a class="skill-card" href="check_figures.mjs"><b>check_figures.mjs</b><span>runtime geometry check. Renders diagrams and flags text overlap, overflow, bad connectors, and edgeless diagrams.</span></a><a class="skill-card" href="run_figcheck.sh"><b>run_figcheck.sh</b><span>figure check runner. Resolves Node and jsdom, then runs check_figures.mjs.</span></a></div>
   <h2>Interactive explorer</h2>

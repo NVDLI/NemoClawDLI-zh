@@ -60,11 +60,11 @@ rm -rf "$OUT"; mkdir -p "$OUT"
 # publishes reflects exactly what was just pulled. (Run locally too; it refreshes your mats/.)
 echo "[build_pages] rebasing materials from the web (best-effort; falls back to committed snapshots) ..."
 if python3 -c "import requests, bs4, markdownify" >/dev/null 2>&1; then
-    python3 "$T1/scripts/pull_materials.py" || echo "[build_pages]   pull reported issues; see the validator screen / _materials.json"
+    python3 "$T1/scripts/materials/pull_materials.py" || echo "[build_pages]   pull reported issues; see the validator screen / _materials.json"
 else
     echo "[build_pages]   SKIP pull: vendoring deps (requests beautifulsoup4 markdownify lxml) not installed; using committed snapshots"
 fi
-python3 "$T1/scripts/validate_bundle.py" --scope ship >/dev/null 2>&1 || true   # refresh docs/validation/latest.json post-pull
+python3 "$T1/scripts/validation/validate_bundle.py" --scope ship >/dev/null 2>&1 || true   # refresh docs/validation/latest.json post-pull
 
 # ── 1. Courses: build the full self-hosted standalone straight into public/ ──
 # --full gives the lab experience (dark theme, topbar + journey-map + nav, interactive panels)
@@ -74,19 +74,19 @@ python3 "$T1/scripts/validate_bundle.py" --scope ship >/dev/null 2>&1 || true   
 # is generated from web/<course>/ on every build and is never committed (no intermediate).
 for c in nemoclaw; do
     src="$T1/web/$c"
-    if [ ! -d "$src" ] || [ ! -f "$T1/scripts/bundle_standalone.py" ]; then
-        echo "[build_pages]   ERROR: need web/$c and scripts/bundle_standalone.py to build $c" >&2
+    if [ ! -d "$src" ] || [ ! -f "$T1/scripts/build/bundle_standalone.py" ]; then
+        echo "[build_pages]   ERROR: need web/$c and scripts/build/bundle_standalone.py to build $c" >&2
         exit 1
     fi
     course_out="$OUT/${COURSE_PREFIX:+$COURSE_PREFIX/}$c"
     echo "[build_pages] bundling $c -> $course_out/ (full standalone) ..."
-    python3 "$T1/scripts/bundle_standalone.py" --src "web/$c" --out "$course_out" --clean --full
+    python3 "$T1/scripts/build/bundle_standalone.py" --src "web/$c" --out "$course_out" --clean --full
     echo "[build_pages]   $c -> $course_out/ ($(find "$course_out" -name '*.html' | wc -l) pages)"
 done
 
 # ── 2. Link-graph viewer (engine.js runs client-side; offline = embedded snapshot) ──
-cp "$T1/scripts/engine.js" "$OUT/engine.js"
-cp "$T1/scripts/link_graph.html" "$OUT/link-graph.html"
+cp "$T1/scripts/runtime/engine.js" "$OUT/engine.js"
+cp "$T1/scripts/runtime/link_graph.html" "$OUT/link-graph.html"
 
 # Favicon at the site root for the foyer + aux pages (the course carries its own under assets/).
 cp "$T1/web/nemoclaw/assets/favicon.ico" "$OUT/favicon.ico"
@@ -188,8 +188,8 @@ PROJ
 # Static Pages cannot discover Git refs at runtime. In a real checkout (CI or local
 # dev), write the refs we can see; archive-only production-root rebuilds skip this
 # and the outer Pages job writes the manifest after it adds the branch preview.
-if git -C "$T1" rev-parse --git-dir >/dev/null 2>&1 && [ -f "$T1/scripts/build_branch_manifest.py" ]; then
-    python3 "$T1/scripts/build_branch_manifest.py" --out "$OUT/branches.json" || echo "[build_pages] branch manifest skipped"
+if git -C "$T1" rev-parse --git-dir >/dev/null 2>&1 && [ -f "$T1/scripts/build/build_branch_manifest.py" ]; then
+    python3 "$T1/scripts/build/build_branch_manifest.py" --out "$OUT/branches.json" || echo "[build_pages] branch manifest skipped"
 fi
 
 # ── 5. Client-side test runner ──
@@ -221,7 +221,7 @@ if [ "$LANGS" = 1 ] && [ -d "$T1/i18n" ]; then
         lang="$(basename "$d")"
         echo "[build_pages] language $lang -> $OUT/$lang/ (from i18n/$lang) ..."
         mkdir -p "$OUT/$lang"
-        if ! python3 "$T1/scripts/bundle_standalone.py" --src "i18n/$lang/web/nemoclaw" \
+        if ! python3 "$T1/scripts/build/bundle_standalone.py" --src "i18n/$lang/web/nemoclaw" \
                 --out "$OUT/$lang/nemoclaw" --clean --full; then
             echo "[build_pages]   WARN: $lang course build failed; the other languages still ship"; continue
         fi
@@ -244,8 +244,8 @@ fi
 # Generate this after translations are built so the manifest lists only languages
 # that actually exist in this artifact. The English URL follows COURSE_PREFIX;
 # translation courses live under <lang>/nemoclaw/.
-if [ -f "$T1/scripts/build_language_manifest.py" ]; then
-    python3 "$T1/scripts/build_language_manifest.py" --out "$OUT/languages.json" --site-root "$OUT" --course-prefix "$COURSE_PREFIX" || echo "[build_pages] language manifest skipped"
+if [ -f "$T1/scripts/build/build_language_manifest.py" ]; then
+    python3 "$T1/scripts/build/build_language_manifest.py" --out "$OUT/languages.json" --site-root "$OUT" --course-prefix "$COURSE_PREFIX" || echo "[build_pages] language manifest skipped"
 fi
 
 echo "[build_pages] done -> $OUT"

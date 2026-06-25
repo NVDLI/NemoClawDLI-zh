@@ -19,10 +19,10 @@ the sanctioned reference-layer pattern.
 
 Usage:
 
-  python3 scripts/reference_graph.py                  # human report to stdout
-  python3 scripts/reference_graph.py --json out.json  # machine-readable
-  python3 scripts/reference_graph.py --only-cross     # just the action list
-  python3 scripts/reference_graph.py --only-missing   # broken refs
+  python3 scripts/validation/reference_graph.py                  # human report to stdout
+  python3 scripts/validation/reference_graph.py --json out.json  # machine-readable
+  python3 scripts/validation/reference_graph.py --only-cross     # just the action list
+  python3 scripts/validation/reference_graph.py --only-missing   # broken refs
 """
 from __future__ import annotations
 

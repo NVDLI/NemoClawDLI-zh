@@ -58,7 +58,7 @@ python3 scripts/translate/translation_status.py --set-base origin/main
 # 4. Validate exactly like any branch. --lang skips the English-prose style suites
 #    (rhythm, buzz, branding, em-dash) that would false-positive on correct Portuguese;
 #    the structural suites (links, layout, SKILL contract, modules, figures, cells) still gate.
-python3 scripts/validate_bundle.py --scope ship --lang pt
+python3 scripts/validation/validate_bundle.py --scope ship --lang pt
 
 # 5. Later, when the source has moved, see what to update and re-translate just the delta.
 python3 scripts/translate/translation_status.py

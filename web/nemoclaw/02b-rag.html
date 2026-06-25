@@ -548,7 +548,7 @@ helpers.log("Notice the global theme top-K misses but the community pass recover
       label: "the Try-it artifact, in code",
       autorun: true,
       code: `// Try-it artifact: loads a PREBUILT vector index (corpus embedded offline by
-// scripts/build_rag_index.py), then embeds only your live question each turn,
+// scripts/materials/build_rag_index.py), then embeds only your live question each turn,
 // ranks the corpus by cosine similarity, and answers from the top 3 passages.
 // Edit a passage or the prompt and Run; an edit re-embeds only what the index misses.
 const MODEL_PIN = "nvidia/llama-nemotron-embed-1b-v2";   // the prebuilt index is valid only for this model

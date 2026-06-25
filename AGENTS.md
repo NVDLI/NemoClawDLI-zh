@@ -46,7 +46,7 @@ whoever ships the change.
 - Be able to explain every surviving line. A line you cannot account for does not ship.
 - Prefer the deterministic gate over the prompt. When the same mistake keeps recurring,
   the durable fix is a check that makes it impossible (a validator rule, a type, a hook),
-  not a sharper instruction. This repo already runs that way: `scripts/engine.js` is the
+  not a sharper instruction. This repo already runs that way: `scripts/runtime/engine.js` is the
   one source of truth, the validators are the gates, and each `SKILL.html` carries the
   brain.
 - Encode a constraint where a parser can catch it, so the space left for the model to be
