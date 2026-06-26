@@ -35,7 +35,7 @@ def run(verbose: bool = True) -> list[tuple[str, str]]:
     p02b = _read("web/nemoclaw/02b-rag.html")
     p04a = _read("web/nemoclaw/04a-safety.html")
     svg02b = _read("web/nemoclaw/assets/figures/02b-retrieval-boundaries.svg")
-    svg04a = _read("web/nemoclaw/assets/figures/04a-safety-2.svg")
+    svg04a = _read("web/nemoclaw/assets/figures/lethal-trifecta.svg")
     askill = _read("web/nemoclaw/assets/SKILL.html")
 
     if "assets/figures/02b-retrieval-boundaries.svg" not in p02b:
@@ -47,18 +47,18 @@ def run(verbose: bool = True) -> list[tuple[str, str]]:
     if not _has_all(svg02b, ("Provenance", "MCP", "A2A", "Agent Skills", "Generative UX")):
         findings.append(("web/nemoclaw/assets/figures/02b-retrieval-boundaries.svg", "retrieval boundary SVG lost provenance or core boundary labels"))
 
-    if "assets/figures/04a-safety-2.svg" not in p04a:
-        findings.append(("web/nemoclaw/04a-safety.html", "missing lethal trifecta figure"))
+    if "assets/figures/lethal-trifecta.svg" not in p04a:
+        findings.append(("web/nemoclaw/04a-safety.html", "missing real lethal trifecta figure"))
     if not _has_all(p04a, ("Untrusted input", "private data", "external communication", "full-duplex")):
         findings.append(("web/nemoclaw/04a-safety.html", "lethal trifecta prose must define all three terms and the full-duplex risk"))
-    fig_idx = p04a.find("assets/figures/04a-safety-2.svg")
+    fig_idx = p04a.find("assets/figures/lethal-trifecta.svg")
     fig_tail = p04a[fig_idx:fig_idx + 1200] if fig_idx >= 0 else ""
     if "Prompt rules and application guardrails shape the agent before kernel containment" in fig_tail:
         findings.append(("web/nemoclaw/04a-safety.html", "lethal trifecta caption regressed to the old sandbox-boundary caption"))
     if not _has_all(fig_tail + p04a, ("network allowlist", "allowed connection", "private data", "untrusted input")):
         findings.append(("web/nemoclaw/04a-safety.html", "lethal trifecta caption/prose must explain why an allowlist alone is insufficient"))
-    if not _has_all(svg04a, ("Lethal trifecta", "Private data", "Untrusted input", "External communication", "Allowed endpoint", "response returns as new input")):
-        findings.append(("web/nemoclaw/assets/figures/04a-safety-2.svg", "lethal trifecta SVG lost definitions or full-duplex loop"))
+    if not _has_all(svg04a, ("Lethal Trifecta", "Access to Secrets", "Protected Private Data", "Untrusted Input", "A Way Out", "Permitted Egress Path")):
+        findings.append(("web/nemoclaw/assets/figures/lethal-trifecta.svg", "real lethal trifecta SVG lost its core labels"))
     if "Simon Willison" not in p04a or "simonwillison.net/2025/Jun/16/the-lethal-trifecta" not in p04a:
         findings.append(("web/nemoclaw/04a-safety.html", "lethal trifecta section must keep canonical Simon Willison reference"))
 
@@ -66,11 +66,11 @@ def run(verbose: bool = True) -> list[tuple[str, str]]:
     for rel, text in (
         ("web/nemoclaw/assets/SKILL.html", askill),
         ("web/nemoclaw/assets/figures/02b-retrieval-boundaries.svg", svg02b),
-        ("web/nemoclaw/assets/figures/04a-safety-2.svg", svg04a),
+        ("web/nemoclaw/assets/figures/lethal-trifecta.svg", svg04a),
     ):
         if process_ref.search(text):
             findings.append((rel, "course assets must not expose issue-thread, MR/PR, or user-handle provenance"))
-    if not _has_all(askill, ("02b-retrieval-boundaries.svg", "course-provided boundary map", "04a-safety-2.svg", "Simon Willison")):
+    if not _has_all(askill, ("02b-retrieval-boundaries.svg", "course-provided boundary map", "lethal-trifecta.svg", "Simon Willison")):
         findings.append(("web/nemoclaw/assets/SKILL.html", "asset provenance must document retrieval-boundary and lethal-trifecta figure sources"))
 
     if verbose:

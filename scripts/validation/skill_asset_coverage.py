@@ -97,10 +97,9 @@ def run(verbose: bool = True) -> int:
     n_img, _ = check_asset_images(fail)
     n_mat, _ = check_mats(fail)
     if fail:
-        if verbose:
-            print("skill_asset_coverage: FAIL", file=sys.stderr)
-            for item in fail:
-                print("  " + item, file=sys.stderr)
+        print("skill_asset_coverage: FAIL", file=sys.stderr)
+        for item in fail:
+            print("  " + item, file=sys.stderr)
         return 1
     if verbose:
         print(f"skill_asset_coverage: OK ({n_img} asset image(s), {n_mat} material file(s))")
