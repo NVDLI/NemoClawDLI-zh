@@ -45,9 +45,10 @@
     <p class="lead">
       A <strong>workflow agent</strong> means an agent system where your harness controls
       a workflow: a graph of model calls, deterministic code steps, tool calls, and
-      specialist loops. A single ReAct loop handles most one-shot tasks. Workflow structure
-      starts to pay off with sub-tasks that run in parallel, work that decomposes cleanly
-      before any tool runs, or routing that must not depend on the last tool result.
+      specialist loops. Most one-shot tasks fit in a single ReAct loop. Use workflow
+      structure only when one of three conditions is true: sub-tasks that run in parallel,
+      a plan that can be written before tools run, or routing that should not depend on
+      the last tool result.
     </p>
     <p>
       This workflow shape can span these problem classes by moving context management

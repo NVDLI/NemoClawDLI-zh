@@ -35,11 +35,6 @@ CHECKS = [
         "after": "offered a tool and asked",
     },
     {
-        "page": "01b-react.html",
-        "label": "MAX_STEPS framed as heuristic",
-        "required": "Use <code>MAX_STEPS = 6</code> as the demo safety belt",
-    },
-    {
         "page": "01c-tools.html",
         "label": "MCP acronym expanded before shorthand",
         "before": "Model Context Protocol (MCP)",

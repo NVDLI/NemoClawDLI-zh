@@ -225,6 +225,8 @@ _BARE_AND = re.compile(
     r"\b(?:a|an|the)\s+[\w-]+(?:\s+[\w-]+){0,2}\s+and\s+(?:a|an|the)\s+[\w-]+(?:\s+[\w-]+){0,2}\s+and\s+(?:a|an|the)\b",
     re.I,
 )
+_STUB_CONTINUATION = re.compile(r"\b(?:starts? to|begins? to|pays? off|matters? when|works? when)\b", re.I)
+_STUB_SUBJECT = re.compile(r"^(?:This|That|The|A|An|Workflow|Agent|Model|Runtime|Loop|Structure)\b")
 
 
 def antithesis_hits(prose) -> list:
@@ -294,7 +296,9 @@ def grammar_hits(prose) -> list:
       tack-on         a hollow expansionary connector ('which is exactly', 'and that X is the …') that
                       pads the sentence by naming what something is instead of adding substance.
       and-then-chain  a comma-welded 'X, and Y, then Z' step sequence; split it or subordinate.
-      bare-and-chain  three article-led items welded by bare 'and' ('a X and a Y and a Z'); make it a list."""
+      bare-and-chain  three article-led items welded by bare 'and' ('a X and a Y and a Z'); make it a list.
+      stub-split      a short setup sentence followed by a continuation sentence that should have
+                      been one subordinate sentence."""
     out, seen = [], set()
 
     def add(label, s):
@@ -323,6 +327,9 @@ def grammar_hits(prose) -> list:
             add("and-then-chain", s)
         if _BARE_AND.search(s):
             add("bare-and-chain", s)
+    for (a, na), (b, nb) in zip(sents, sents[1:]):
+        if 6 <= na <= 13 and 8 <= nb <= 36 and _STUB_SUBJECT.match(b) and _STUB_CONTINUATION.search(b):
+            add("stub-split", f"{a} {b}")
     i = 0                                                 # runs of consecutive very-short sentences
     while i < len(sents):
         j = i

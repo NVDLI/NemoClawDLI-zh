@@ -186,14 +186,6 @@
 
   <h2>Context rot: why a longer loop reads worse</h2>
   <p>
-    Use <code>MAX_STEPS = 6</code> as the demo safety belt for this exercise. The value is
-    high enough for the time-tool question to finish, and low enough to stop a confused
-    agent that misreads its tool spec or keeps retrying the same call. In production,
-    choose this cap from task evaluations, latency budgets, and the cost of a bad retry
-    rather than copying the number from a tutorial.
-  </p>
-
-  <p>
     This issue becomes more likely as the context grows. <strong>Context rot</strong> is the
     tendency for contradictions, stale observations, and poor conventions to accumulate in the
     prompt history until the model's next decision gets worse. The effect also has a positional
@@ -267,13 +259,6 @@
         <code>get_current_time</code> once, twice, or three times? Why
         would a model re-call a tool whose output it already has,
         and how would you discourage that in the system prompt?</li>
-    <li><strong>Make the safety belt smaller.</strong>
-        Set <code>MAX_STEPS</code> to 2 and ask a question that would
-        normally take 3 steps. The loop exits with no final answer. Look at what
-        <code>state.finalContent</code> holds when that happens, and decide what a
-        production agent should return to the caller instead of an empty result:
-        a partial answer, an explicit "I ran out of steps" error, or a request to
-        continue.</li>
   </ol>
 
   <div class="references">
@@ -395,12 +380,13 @@ return state.execTool("get_current_time");
     {
       id: "loop", icon: "🔄", title: "ReAct loop", x: 1, y: 1,
       summary: "Runs the ReAct cycle: call the model, check finish_reason, run any requested tools, append " +
-               "the results as observations, then loop. It exits when finish_reason is 'stop'; MAX_STEPS=6 " +
-               "is the backstop against a model that loops forever. Edit MODEL at the top to swap the brain.",
+               "the results as observations, then loop. It exits when finish_reason is 'stop'. " +
+               "Edit MODEL at the top to swap the brain.",
       code: `// MODEL is the swappable brain in the reasoning slot. Change it and rerun to drive the
 // same loop with a different model.
 const MODEL = "nvidia/nemotron-3-nano-30b-a3b";   // or "nvidia/nemotron-3-super-120b-a12b" for a stronger brain
-const MAX_STEPS = 6;
+// Backstop for runaway tool loops during the demo.
+const max_steps = 12;
 
 state.messages = [
   { role: "system", content: state.systemPrompt },
@@ -408,7 +394,7 @@ state.messages = [
 ];
 
 let step = 0, answered = false;
-while (step++ < MAX_STEPS) {
+while (step++ < max_steps) {
   helpers.log(\`── step \${step} ──────────────────────\`);
   // Suppress raw tokens so only the curated trace appears.
   const s = await helpers.chatStream({
@@ -432,7 +418,7 @@ while (step++ < MAX_STEPS) {
     state.messages.push({ role: "tool", tool_call_id: tc.id, content: result });
   }
 }
-if (!answered) helpers.log("⚠ step cap reached · safety belt fired");
+if (!answered) helpers.log("⚠ step cap reached");
 return { model: MODEL, steps_taken: step, messages: state.messages };
 `,
     },
