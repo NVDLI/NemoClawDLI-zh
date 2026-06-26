@@ -116,6 +116,156 @@ function _buildDebugDet(e, code, ep) {
   return det;
 }
 
+
+// ── Shared cell shell/rendering primitives (CanvasFlow + RunCell) ─────────────
+// Keep the old rc/cf selectors for tests and Studio automation, but route the
+// learner-facing controls, code labels, and output rendering through one path.
+const CELL_CANVAS_VISIBLE_LINES = 39;
+
+function _cellBtnHTML(kind, text, extraClass = "", title = "") {
+  const tone = kind === "run" ? " cell-btn-run"
+             : kind === "reset" ? " cell-btn-reset"
+             : "";
+  const safeTitle = title ? ` title="${escapeHtml(title)}"` : "";
+  return `<button type="button" class="cell-btn${tone}${extraClass ? " " + extraClass : ""}"${safeTitle}>${escapeHtml(text)}</button>`;
+}
+
+function _cellLangSummaryHTML({ chip = "JS", sig = "", meta = "", metaAttr = "" } = {}) {
+  return `<summary>
+    <span class="cf-det-chip cell-lang-chip" data-lang-chip>${escapeHtml(chip)}</span>
+    ${sig ? `<span class="cf-det-sig">${sig}</span>` : ""}
+    ${meta ? `<span class="cf-det-meta" ${metaAttr}>${escapeHtml(meta)}</span>` : ""}
+  </summary>`;
+}
+
+function _cellCodeOpen(opts = {}, code = "", kind = "run") {
+  if (opts.openCode === true || opts.showCode === true) return true;
+  if (opts.openCode === false || opts.showCode === false) return false;
+  if (kind !== "canvas") return false;
+  const lines = Math.max(1, String(code || "").split("\n").length);
+  return lines <= CELL_CANVAS_VISIBLE_LINES;
+}
+
+function _cellHighlight(codeEl) {
+  if (typeof window !== "undefined" && typeof window.hljs !== "undefined") {
+    try { window.hljs.highlightElement(codeEl); } catch (_) {}
+  }
+}
+
+function _appendCellJson(host, value, label = null, cls = "cell-log-json") {
+  if (label) _appendCellHeading(host, label);
+  const pre = document.createElement("pre");
+  pre.className = cls;
+  const code = document.createElement("code");
+  code.className = "language-json hljs";
+  code.textContent = JSON.stringify(value, null, 2);
+  pre.appendChild(code);
+  host.appendChild(pre);
+  _cellHighlight(code);
+  return pre;
+}
+
+function _appendCellText(host, text, cls = "cell-log-line", color = "") {
+  const div = document.createElement("div");
+  div.className = cls;
+  if (color) div.style.color = color;
+  div.textContent = String(text);
+  host.appendChild(div);
+  return div;
+}
+
+function _appendCellHeading(host, title) {
+  const div = document.createElement("div");
+  div.className = "cell-log-heading";
+  div.textContent = String(title);
+  host.appendChild(div);
+  return div;
+}
+
+function _appendCellDetails(host, summary, body, cls = "cell-log-details") {
+  const det = document.createElement("details");
+  det.className = cls;
+  const sum = document.createElement("summary");
+  sum.textContent = String(summary);
+  det.appendChild(sum);
+  const inner = document.createElement("div");
+  inner.className = "cell-log-details-body";
+  if (body && typeof body === "object") {
+    const pre = document.createElement("pre");
+    pre.className = "cell-log-json";
+    const code = document.createElement("code");
+    code.className = "language-json hljs";
+    code.textContent = JSON.stringify(body, null, 2);
+    pre.appendChild(code);
+    inner.appendChild(pre);
+    det.appendChild(inner);
+    host.appendChild(det);
+    _cellHighlight(code);
+  } else {
+    inner.textContent = String(body);
+    det.appendChild(inner);
+    host.appendChild(det);
+  }
+  return det;
+}
+
+function _appendCellKv(host, obj) {
+  const div = document.createElement("div");
+  div.className = "cell-log-kv";
+  for (const [k, v] of Object.entries(obj || {})) {
+    const pair = document.createElement("span");
+    const key = document.createElement("span");
+    key.className = "cell-log-kv-key";
+    key.textContent = k + ":";
+    const val = document.createElement("span");
+    val.className = "cell-log-kv-val";
+    val.textContent = typeof v === "object" ? JSON.stringify(v) : String(v);
+    pair.appendChild(key);
+    pair.appendChild(document.createTextNode(" "));
+    pair.appendChild(val);
+    div.appendChild(pair);
+  }
+  host.appendChild(div);
+  return div;
+}
+
+function _appendCellHtml(host, html, cls = "cell-log-html") {
+  const div = document.createElement("div");
+  div.className = cls;
+  div.innerHTML = String(html);
+  host.appendChild(div);
+  return div;
+}
+
+function _appendCellReturn(host, val, cls = "cf-panel-output-pre") {
+  if (val !== null && (typeof val === "object" || typeof val === "boolean" || typeof val === "number")) {
+    return _appendCellJson(host, val, null, cls);
+  }
+  return _appendCellText(host, String(val), cls);
+}
+
+function _installStructuredLog(log, host, onAppend = () => {}, svgFn = null) {
+  log.h = (title) => { const el = _appendCellHeading(host, title); onAppend(el); return el; };
+  log.json = (a, b) => { const el = b === undefined ? _appendCellJson(host, a) : _appendCellJson(host, b, a); onAppend(el); return el; };
+  log.details = (summary, body) => { const el = _appendCellDetails(host, summary, body); onAppend(el); return el; };
+  log.kv = (obj) => { const el = _appendCellKv(host, obj); onAppend(el); return el; };
+  log.html = (htmlString) => { const el = _appendCellHtml(host, htmlString); onAppend(el); return el; };
+  log.svg = svgFn || ((htmlString) => log.html(htmlString));
+  log.draw = (W, H, body, opts = {}) => {
+    const title  = opts.title || null;
+    const bg     = opts.bg     || "#0d0d0d";
+    const border = opts.border || "#2a2a2a";
+    const radius = opts.radius != null ? opts.radius : 6;
+    const titleEl = title
+      ? `<text x="${W / 2}" y="22" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="#6f6f6f" letter-spacing="0.08em">${String(title)
+          .replace(/[<>&]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]))}</text>`
+      : "";
+    return log.svg(`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;background:${bg};border:1px solid ${border};border-radius:${radius}px">${titleEl}${body}</svg>`);
+  };
+  log.clear = () => { host.innerHTML = ""; };
+  return log;
+}
+
 // ── mountCanvasFlow: a 2D graph view of an exercise ─────────────────────────────
 // Renders the nodes as icon-and-title cards on a grid joined by curved SVG edges, each node's editable CodeMirror cell stacked below in declared (= run) order.
 
@@ -167,8 +317,8 @@ export function mountCanvasFlow(targetSel, opts) {
     <div class="cf-header">
       <span class="cf-label">${label || ""}</span>
       <div class="cf-actions">
-        <button type="button" class="cf-btn cf-btn-reset" title="Restore every node's code to its original">↺ Reset code</button>
-        <button type="button" class="cf-btn cf-btn-run">▶ Run all</button>
+        ${_cellBtnHTML("reset", "↺ Reset code", "cf-btn cf-btn-reset", "Restore every node's code to its original")}
+        ${_cellBtnHTML("run", "▶ Run all", "cf-btn cf-btn-run", "Run every node in order")}
       </div>
     </div>
     ${intro ? `<div class="cf-intro">${intro}</div>` : ""}
@@ -507,31 +657,26 @@ helpers.viz.sideBySide(
     const panel = document.createElement("div");
     panel.className = "cf-panel";
     panel.dataset.id = node.id;
-    // Show short blocks + artifact code expanded; collapse long plumbing (maze generation, prebuilt
-    // index loaders). node.showCode forces it: true = always open, false = always collapsed.
-    const _codeLines = (node.code || "").split("\n").length;
-    const _showCode = node.showCode === true || (node.showCode !== false && _codeLines <= 80);
+    // Short teaching snippets open by default; longer/plumbing snippets stay one click away.
+    // node.showCode forces it: true = always open, false = always collapsed.
+    const _showCode = _cellCodeOpen(node, node.code, "canvas");
     panel.innerHTML = `
-      <div class="cf-panel-head">
+      <div class="cf-panel-head cell-head">
         <span class="cf-panel-icon">${node.icon || "●"}</span>
         <span class="cf-panel-title">${node.title || ""}</span>
         ${node.summary ? `<span class="cf-panel-summary">${node.summary}</span>` : ""}
         <span class="cf-panel-status-dot" data-status></span>
-        <button type="button" class="cf-panel-reset" title="Restore this node\'s original code and clear its output">Reset</button>
-        <button type="button" class="cf-panel-runone" data-runmode="js">Run</button>
+        ${_cellBtnHTML("reset", "↺ Reset", "cf-panel-reset", "Restore this node's original code and clear its output")}
+        ${_cellBtnHTML("run", "▶ Run", "cf-panel-runone", "Run this node")}
       </div>
       <div class="cf-panel-overview"></div>
       <details class="cf-panel-det cf-panel-code-det"${_showCode ? " open" : ""}>
-        <summary>
-          <span class="cf-det-chip" data-lang-chip>JS</span>
-          <span class="cf-det-sig" data-lang-sig>"async (state, helpers) =&gt; { … }"</span>
-          <span class="cf-det-meta" data-code-meta>${_showCode ? "click to collapse" : "click to expand"}</span>
-        </summary>
-        <div class="cf-panel-code-body">
-          <div class="cf-code-view" data-lang="js">
+        ${_cellLangSummaryHTML({ sig: "async (state, helpers) =&gt; { … }", meta: _showCode ? "click to collapse" : "click to expand", metaAttr: "data-code-meta" })}
+        <div class="cf-panel-code-body cell-code-body">
+          <div class="cf-code-view cell-code-view" data-lang="js">
             <textarea class="cf-panel-code" spellcheck="false">${escapeHtml(node.code || "")}</textarea>
           </div>
-          <button type="button" class="cf-code-copy" title="Copy code to clipboard" aria-label="Copy code">⎘</button>
+          <button type="button" class="cf-code-copy cell-code-copy" title="Copy code to clipboard" aria-label="Copy code">⎘</button>
         </div>
       </details>
       <details class="cf-panel-det cf-panel-results-det">
@@ -541,8 +686,8 @@ helpers.viz.sideBySide(
           <span class="cf-det-meta" data-results-meta>not yet run</span>
         </summary>
         <div class="cf-panel-stream"></div>
-        <div class="cf-panel-log"></div>
-        <div class="cf-panel-output"></div>
+        <div class="cf-panel-log cell-log"></div>
+        <div class="cf-panel-output cell-output-panel"></div>
       </details>
     `;
     panelsHost.appendChild(panel);
@@ -853,16 +998,7 @@ helpers.viz.sideBySide(
       warn:  (...a) => _capLine("warn", a),
       error: (...a) => _capLine("error", a),
     };
-    // log.html(htmlString) appends rendered HTML (e.g. an inline SVG) to the panel's log area.
-    // Used by visualization nodes that want to show a chart or diagram inside the cell's results dropdown.
-    log.html = (html) => {
-      const div = document.createElement("div");
-      div.className = "cf-panel-log-html";
-      div.innerHTML = String(html);
-      logEl.appendChild(div);
-    };
-    // log.svg(svgString) emits raw SVG into the panel log.
-    // When iframed (the lite-mode edX export), it runs a substitution pass mirroring bundle_standalone.py's SVG_SUBS, catching dark-theme colors in JS template literals (viz charts, cell SVG) the bundler cannot reach. Lab unaffected.
+    // log.html/svg/draw need the lite SVG color pass, so install them after the pass is defined.
     const _LITE_VIZ_SUBS = (typeof window !== "undefined" && window.parent !== window) ? [
       // Backgrounds / panel surfaces
       ['#161616', '#eef1f4'], ['#1e1e1e', '#f6f8fa'], ['#0d0d0d', '#f6f8fa'],
@@ -898,54 +1034,12 @@ helpers.viz.sideBySide(
       }
       return s;
     }
-    log.svg = (html) => {
-      const div = document.createElement("div");
-      div.className = "cf-panel-log-html";
-      div.innerHTML = _flipDarkSvg(String(html));
-      logEl.appendChild(div);
-    };
-    // log.draw(W, H, body, opts) wraps body in the <svg> boilerplate so cells declare only their own marks (rects, text, lines), not the viewBox/xmlns/background each time.
-    // opts: { title, bg = "#0d0d0d", border = "#2a2a2a", radius = 6 }.
-    log.draw = (W, H, body, opts = {}) => {
-      const title  = opts.title || null;
-      const bg     = opts.bg     || "#0d0d0d";
-      const border = opts.border || "#2a2a2a";
-      const radius = opts.radius != null ? opts.radius : 6;
-      const titleEl = title
-        ? `<text x="${W / 2}" y="22" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="#6f6f6f" letter-spacing="0.08em">${String(title)
-            .replace(/[<>&]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]))}</text>`
-        : "";
-      log.svg(`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;background:${bg};border:1px solid ${border};border-radius:${radius}px">${titleEl}${body}</svg>`);
-    };
-    // log.details(summary, body) appends a collapsible <details> block: an object body renders as pretty JSON (highlighted when highlight.js is present), a string as plain text.
-    // It tucks a raw wire frame behind a one-line summary, mirroring the mountRunCell helper of the same name.
-    log.details = (summary, body) => {
-      const det = document.createElement("details");
-      det.className = "cf-panel-log-details";
-      det.style.cssText = "margin:4px 0 6px;border:1px solid var(--bd);border-radius:4px;background:var(--bg);";
-      const sum = document.createElement("summary");
-      sum.style.cssText = "padding:6px 10px;cursor:pointer;font-family:ui-monospace,monospace;font-size:.78rem;color:var(--td);";
-      sum.textContent = String(summary);
-      det.appendChild(sum);
-      const inner = document.createElement("div");
-      inner.style.cssText = "padding:8px 12px;font-family:ui-monospace,monospace;font-size:.78rem;line-height:1.5;color:var(--tx);white-space:pre-wrap;word-break:break-word;";
-      if (body && typeof body === "object") {
-        const pre = document.createElement("pre");
-        pre.style.cssText = "margin:0;background:transparent;border:0;padding:0;overflow-x:auto;";
-        const code = document.createElement("code");
-        code.className = "language-json";
-        code.textContent = JSON.stringify(body, null, 2);
-        pre.appendChild(code);
-        inner.appendChild(pre);
-        det.appendChild(inner);
-        logEl.appendChild(det);
-        if (typeof window.hljs !== "undefined") { try { window.hljs.highlightElement(code); } catch (_) {} }
-      } else {
-        inner.textContent = String(body);
-        det.appendChild(inner);
-        logEl.appendChild(det);
-      }
-    };
+    _installStructuredLog(log, logEl, (el) => s.logs.push(el), (html) => {
+      const el = _appendCellHtml(logEl, _flipDarkSvg(String(html)));
+      s.logs.push(el);
+      return el;
+    });
+    log.clear = () => { logEl.innerHTML = ""; s.logs = []; };
 
     // ── helpers.viz: per-run viz utilities (capture the per-run log) ───────────
     const viz = makeViz(log);
@@ -1043,22 +1137,7 @@ helpers.viz.sideBySide(
 
       // Render the return value, de-duplicated against the stream view: when the return is a string already most of what streamed, the redundant pre is omitted (no "same content shown twice" after a cell streams a reply then returns it).
       // Objects and arrays go through highlight.js.
-      const renderResultPre = (val) => {
-        const pre = document.createElement("pre");
-        pre.className = "cf-panel-output-pre";
-        if (val !== null && (typeof val === "object" || typeof val === "boolean" || typeof val === "number")) {
-          const code = document.createElement("code");
-          code.className = "language-json hljs";
-          code.textContent = typeof val === "object" ? JSON.stringify(val, null, 2) : JSON.stringify(val);
-          pre.appendChild(code);
-          if (typeof window.hljs !== "undefined") {
-            try { window.hljs.highlightElement(code); } catch (_) {}
-          }
-        } else {
-          pre.textContent = String(val);
-        }
-        outEl.appendChild(pre);
-      };
+      const renderResultPre = (val) => _appendCellReturn(outEl, val, "cf-panel-output-pre");
       if (result !== undefined) {
         const streamedText = (streamEl.textContent || "")
           .replace(/── call \d+ ──/g, "")
@@ -1361,7 +1440,6 @@ export function mountRunCell(targetSel, opts) {
   const code = opts.code || "";
   let jsBuffer = code;
   const runLabel = () => "▶ Run";
-  const langSub  = () => "javascript · editable · re-run";
   const schemas = opts.schemas || {};
   const label = opts.label || "editable cell";
   const showSchemas = Object.keys(schemas).length > 0;
@@ -1399,26 +1477,25 @@ export function mountRunCell(targetSel, opts) {
 
   // Outer card
   target.innerHTML = `
-    <div style="background:var(--e1);border:1px solid var(--bd);border-radius:8px;overflow:hidden;">
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--e2);border-bottom:1px solid var(--bd);font-family:var(--mono);font-size:.78rem;">
-        <span style="color:var(--gs);text-transform:uppercase;letter-spacing:.06em;">${label}</span>
-        <span class="rc-lang" style="color:var(--tf);">${langSub()}</span>
-        <span style="flex:1;"></span>
-        <button class="rc-reset" title="Restore this cell's original code and clear its output" style="background:transparent;color:var(--td);border:1px solid var(--bd);border-radius:4px;padding:5px 10px;font-family:var(--mono);font-weight:700;font-size:.82rem;cursor:pointer;">Reset</button>
-        <button class="rc-run" style="background:var(--g);color:#0a0a0a;border:none;border-radius:4px;padding:5px 14px;font-family:var(--mono);font-weight:700;font-size:.82rem;cursor:pointer;">${runLabel()}</button>
+    <div class="rc-card cell-card">
+      <div class="rc-head cell-head">
+        <span class="rc-label">${label}</span>
+        <span class="cf-det-chip cell-lang-chip rc-lang" data-lang-chip>JS</span>
+        <span class="rc-lang-sub">javascript · editable · re-run</span>
+        <span class="cell-spacer"></span>
+        ${_cellBtnHTML("reset", "↺ Reset", "rc-reset", "Restore this cell's original code and clear its output")}
+        ${_cellBtnHTML("run", runLabel(), "rc-run", "Run this cell")}
       </div>
       ${_rcHelpersHTML}
-      ${showSchemas ? `<details class="rc-schemas-det" style="border-top:1px solid var(--bd);"><summary style="padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:.78rem;color:var(--td);">schemas <span style="color:var(--tf);">json, editable</span></summary><div class="rc-schemas"></div></details>` : ""}
-      <details class="rc-code-det"${codeOpenAttr} style="border-top:1px solid var(--bd);">
-        <summary style="padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:.78rem;color:var(--td);">code <span style="color:var(--tf);">javascript, editable, ${codeLines} lines</span></summary>
-        <div class="rc-code-body" style="padding:0;position:relative;">
-          <button type="button" class="cf-code-copy rc-code-copy" title="Copy current code" aria-label="Copy current code">copy</button>
-          <textarea class="rc-code" spellcheck="false"
-            style="width:100%;min-height:140px;background:var(--e2,#0d0d0d);color:var(--tx,#e6edf3);border:none;outline:none;padding:12px 14px;
-                   font-family:ui-monospace,monospace;font-size:.84rem;line-height:1.55;resize:vertical;tab-size:2;"></textarea>
+      ${showSchemas ? `<details class="rc-schemas-det cell-schema-det"><summary><span class="cf-det-chip cf-det-chip-alt">schemas</span><span class="cf-det-sig">JSON · editable</span></summary><div class="rc-schemas"></div></details>` : ""}
+      <details class="rc-code-det"${codeOpenAttr}>
+        ${_cellLangSummaryHTML({ sig: "javascript · editable · " + codeLines + " lines", meta: codeOpenAttr ? "click to collapse" : "click to expand", metaAttr: "data-code-meta" })}
+        <div class="rc-code-body cell-code-body">
+          <button type="button" class="cf-code-copy rc-code-copy cell-code-copy" title="Copy current code" aria-label="Copy current code">⎘</button>
+          <textarea class="rc-code" spellcheck="false"></textarea>
         </div>
       </details>
-      <div class="rc-out" style="background:var(--bg);padding:10px 14px;font-family:ui-monospace,monospace;font-size:.82rem;color:var(--td);white-space:pre-wrap;min-height:48px;">empty until you Run</div>
+      <div class="rc-out cell-output-panel">empty until you Run</div>
     </div>`;
   // Wire the helpers tab: "show all" toggle + click-a-row-to-read-its-source (read-only, highlighted).
   const _rcHelpers = target.querySelector(".rc-helpers .cf-helpers-table");
@@ -1548,8 +1625,8 @@ export function mountRunCell(targetSel, opts) {
     const text = cm ? cm.getValue() : ta.value;
     try {
       await navigator.clipboard.writeText(text);
-      copyBtn.textContent = "copied";
-      setTimeout(() => { copyBtn.textContent = "copy"; }, 900);
+      copyBtn.textContent = "✓";
+      setTimeout(() => { copyBtn.textContent = "⎘"; }, 900);
     } catch (_) {
       copyBtn.textContent = "select";
       if (codeDet && !codeDet.open) codeDet.open = true;
@@ -1603,93 +1680,14 @@ export function mountRunCell(targetSel, opts) {
     }
 
     // ── Structured log API ────────────────────────────────────────────────
-    // log(...args), log.h(title), log.json(label?, obj), log.details(summary, body), log.kv(obj), log.html(str), log.clear(). Strings append as-is; objects auto-render as highlighted JSON.
+    // Same renderer family as CanvasFlow: text, headings, JSON, details, kv,
+    // trusted HTML/SVG/draw, and clear. Plain strings stay plain; objects render
+    // as highlighted JSON instead of collapsing to [object Object].
     let outputCount = 0;
-    function _appendText(text, color = "var(--tx)") {
-      const div = document.createElement("div");
-      div.style.cssText = `padding:6px 14px;font-family:ui-monospace,monospace;font-size:.84rem;line-height:1.55;color:${color};white-space:pre-wrap;word-break:break-word;`;
-      div.textContent = text;
-      out.appendChild(div);
-      outputCount++;
-    }
-
-    function _appendJson(obj, label = null) {
-      if (label) _appendHeading(label);
-      const pre = document.createElement("pre");
-      pre.style.cssText = "margin:4px 14px 8px;padding:10px 12px;background:var(--bg);border:1px solid var(--bd);border-radius:4px;font-size:.78rem;line-height:1.5;overflow-x:auto;";
-      const code = document.createElement("code");
-      code.className = "language-json";
-      code.textContent = JSON.stringify(obj, null, 2);
-      pre.appendChild(code);
-      out.appendChild(pre);
-      if (typeof window.hljs !== "undefined") {
-        try { window.hljs.highlightElement(code); } catch (_) {}
-      }
-      outputCount++;
-    }
-
-    function _appendHeading(title) {
-      const div = document.createElement("div");
-      div.style.cssText = "padding:10px 14px 2px;font-family:ui-monospace,monospace;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gs);";
-      div.textContent = title;
-      out.appendChild(div);
-      outputCount++;
-    }
-
-    function _appendDetails(summary, body) {
-      const det = document.createElement("details");
-      det.style.cssText = "margin:4px 14px 6px;border:1px solid var(--bd);border-radius:4px;background:var(--bg);";
-      const sum = document.createElement("summary");
-      sum.style.cssText = "padding:6px 10px;cursor:pointer;font-family:ui-monospace,monospace;font-size:.78rem;color:var(--td);";
-      sum.textContent = summary;
-      det.appendChild(sum);
-      const inner = document.createElement("div");
-      inner.style.cssText = "padding:8px 12px;font-family:ui-monospace,monospace;font-size:.78rem;line-height:1.5;color:var(--tx);white-space:pre-wrap;word-break:break-word;";
-
-      if (typeof body === "object" && body !== null) {
-        const code = document.createElement("code");
-        code.className = "language-json";
-        code.textContent = JSON.stringify(body, null, 2);
-        const pre = document.createElement("pre");
-        pre.style.cssText = "margin:0;background:transparent;border:0;padding:0;overflow-x:auto;";
-        pre.appendChild(code);
-        inner.appendChild(pre);
-        det.appendChild(inner);
-        det.open = false;
-        out.appendChild(det);
-        if (typeof window.hljs !== "undefined") {
-          try { window.hljs.highlightElement(code); } catch (_) {}
-        }
-      } else {
-        inner.textContent = String(body);
-        det.appendChild(inner);
-        out.appendChild(det);
-      }
-      outputCount++;
-    }
-
-    function _appendKv(obj) {
-      const div = document.createElement("div");
-      div.style.cssText = "padding:6px 14px;display:flex;flex-wrap:wrap;gap:14px;font-family:ui-monospace,monospace;font-size:.78rem;";
-      for (const [k, v] of Object.entries(obj)) {
-        const pair = document.createElement("span");
-        pair.innerHTML = `<span style="color:var(--tf);">${k}:</span> <span style="color:var(--gs);">${typeof v === "object" ? JSON.stringify(v) : String(v)}</span>`;
-        div.appendChild(pair);
-      }
-      out.appendChild(div);
-      outputCount++;
-    }
-
-    function _appendHtml(html) {
-      const div = document.createElement("div");
-      div.style.cssText = "padding:6px 14px;font-family:inherit;";
-      div.innerHTML = html;
-      out.appendChild(div);
-      outputCount++;
-    }
+    const counted = (el) => { outputCount++; return el; };
+    const _appendText = (text, color = "") => counted(_appendCellText(out, text, "cell-log-line", color));
+    const _appendJson = (obj, label = null) => counted(_appendCellJson(out, obj, label));
     const log = (...args) => {
-      // A dict or list renders as syntax-highlighted JSON (_appendJson), whether logged alone or mixed with text, while runs of plain values stay on one text line.
-      // That keeps an object readable instead of collapsing it to a flat string or "[object Object]".
       const texts = [];
       const flush = () => { if (texts.length) { _appendText(texts.join(" ")); texts.length = 0; } };
       args.forEach(a => {
@@ -1698,11 +1696,7 @@ export function mountRunCell(targetSel, opts) {
       });
       flush();
     };
-    log.h = (title) => _appendHeading(title);
-    log.json = (a, b) => (b === undefined ? _appendJson(a) : _appendJson(b, a));
-    log.details = (summary, body) => _appendDetails(summary, body);
-    log.kv = (obj) => _appendKv(obj);
-    log.html = (htmlString) => _appendHtml(htmlString);
+    _installStructuredLog(log, out, counted);
     const clear = () => { out.innerHTML = ""; outputCount = 0; };
     log.clear = clear;
 

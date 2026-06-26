@@ -258,12 +258,18 @@ function findChrome() {
       const main = document.querySelector('main');
       const title = document.title || '';
       const heading = (document.querySelector('h1') || document.querySelector('h2') || {}).textContent || '';
+      const textStartsCode = el => /^code\b/i.test((el.textContent || '').trim());
       return {
         title: title.trim(),
         heading: heading.trim(),
         hasMain: !!main,
         flows: document.querySelectorAll('.cf-btn-run').length,
         panels: document.querySelectorAll('.cf-panel').length,
+        runCells: document.querySelectorAll('.rc-card').length,
+        unifiedButtons: document.querySelectorAll('.cell-btn').length,
+        unifiedLangChips: document.querySelectorAll('.cell-lang-chip').length,
+        uglyCellButtons: document.querySelectorAll('.rc-run:not(.cell-btn),.rc-reset:not(.cell-btn),.cf-panel-runone:not(.cell-btn),.cf-panel-reset:not(.cell-btn)').length,
+        plainCodeLabels: Array.from(document.querySelectorAll('.rc-code-det > summary,.cf-panel-code-det > summary')).filter(textStartsCode).length,
         codeBlocks: document.querySelectorAll('pre code, pre').length,
       };
     });
@@ -271,7 +277,8 @@ function findChrome() {
     console.log('PAGE_ERRORS:', JSON.stringify(errors));
     console.log('RESOURCE_ERRORS:', JSON.stringify(resourceErrors));
     const significantResourceErrors = resourceErrors.filter(x => !/favicon\.ico/.test(x) && !/integrate\.api\.nvidia\.com\/v1\/models/.test(x));
-    const fail = errors.length > 0 || significantResourceErrors.length > 0 || !pageInfo.hasMain;
+    const fail = errors.length > 0 || significantResourceErrors.length > 0 || !pageInfo.hasMain
+      || pageInfo.uglyCellButtons > 0 || pageInfo.plainCodeLabels > 0;
     console.log(fail ? 'RESULT: FAIL (render errors)' : 'RESULT: PASS (static render)');
     await browser.close();
     if (staticServer) staticServer.close();

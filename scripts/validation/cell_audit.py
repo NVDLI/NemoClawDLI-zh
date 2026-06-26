@@ -114,7 +114,7 @@ def audit_runtime_contract():
         if not ok:
             findings.append(("web/nemoclaw/scripts/_canvas.js", msg))
 
-    rc_out = src.find('class="rc-out"')
+    rc_out = src.find('class="rc-out')
     rc_code = src.find('class="rc-code-det"')
     need(rc_out >= 0 and rc_code >= 0 and rc_code < rc_out,
          "run-cell code controls must stay above output, with the code editor collapsed by default")
@@ -128,27 +128,47 @@ def audit_runtime_contract():
          "run-cell code must not be hard-coded open by default")
     need(not re.search(r'<details class="rc-schemas-det"[^>]*\sopen\b', src),
          "run-cell schemas must be collapsed by default; schema plumbing should not lead the lesson")
-    need('class="rc-reset"' in src and "function resetCell" in src,
+    need('_cellBtnHTML("reset", "↺ Reset", "rc-reset"' in src and "function resetCell" in src,
          "run-cells need a per-cell Reset that restores original code/schema and clears output")
     need("const _runCellState = {};" in src and "\"state\",       ...Object.keys(schemaVars)" in src
          and "_runCellState, ...Object.values(schemaVars)" in src,
          "run-cells must inject a shared state object so one cell can hand data to the next")
-    need('class="cf-code-copy rc-code-copy"' in src,
+    need('class="cf-code-copy rc-code-copy cell-code-copy"' in src,
          "run-cells need a copy affordance for students who want to take edited code elsewhere")
     need('cm = attachCM(ta, "javascript");' in src,
          "run-cell JavaScript editors must remain editable by default")
-    need('class="cf-panel-reset"' in src and "function resetNode" in src,
+    need('_cellBtnHTML("reset", "↺ Reset", "cf-panel-reset"' in src and "function resetNode" in src,
          "canvas-flow nodes need per-node Reset so one step can be restored without resetting the whole flow")
     need('if (codeDet && !codeDet.open) codeDet.open = true;' in src,
          "run-cell errors should open the code panel when a failing line is marked")
     need('out.scrollIntoView({ block: "nearest", behavior: "smooth" });' not in src,
          "run-cell output must not auto-scroll on Run; hidden code should reduce page jumps, not move the viewport")
+    shared_primitives = [
+        "function _cellBtnHTML", "function _cellLangSummaryHTML", "function _cellCodeOpen",
+        "function _appendCellJson", "function _appendCellText", "function _appendCellReturn",
+        "function _installStructuredLog", "const CELL_CANVAS_VISIBLE_LINES = 39;",
+    ]
+    for token in shared_primitives:
+        need(token in src, f"cell UI/runtime must use shared abstraction token: {token}")
+    need('_cellBtnHTML("run", "▶ Run", "cf-panel-runone"' in src and '_cellBtnHTML("run", runLabel(), "rc-run"' in src,
+         "CanvasFlow and RunCell run buttons must share cell-btn/cell-btn-run styling while preserving legacy selectors")
+    need('_cellBtnHTML("reset", "↺ Reset", "cf-panel-reset"' in src and '_cellBtnHTML("reset", "↺ Reset", "rc-reset"' in src,
+         "CanvasFlow and RunCell reset buttons must share cell-btn/cell-btn-reset styling while preserving legacy selectors")
+    need('class="cf-det-chip cell-lang-chip rc-lang"' in src and 'class="cf-det-chip cell-lang-chip"' in src,
+         "editable code headers must use the same JS language chip in RunCell and CanvasFlow")
+    need('>code <span' not in src and '>code<' not in src,
+         "editable code headers must not render the old plain 'code' label; use the JS chip abstraction")
+    need('log.h = (title)' in src and 'log.json = (a, b)' in src and 'log.kv = (obj)' in src and 'log.clear = ()' in src,
+         "helpers.log must expose the same h/json/kv/clear surfaces in CanvasFlow and RunCell")
+    need(src.count('_installStructuredLog(log,') >= 2,
+         "CanvasFlow and RunCell must both install structured logging through _installStructuredLog")
     return findings
 
 
 
 CANVAS_MOUNT_RE = re.compile(r"mount(?:CanvasFlow|RunCell)\s*\(")
 CANVAS_LONG_DEFAULT_OPEN_LINES = 40
+CANVAS_DEFAULT_VISIBLE_MAX_LINES = 39
 VISIBLE_COMMENT_WALL = 4
 VISIBLE_LINE_LIMIT = 180
 VISIBLE_INDENT_LIMIT = 24
@@ -162,7 +182,7 @@ def _is_visible_cell(block: str, code_start: int, lines: int, canvas: bool) -> b
         return False
     if "showCode: true" in pre[-350:] or "openCode: true" in pre[-350:]:
         return True
-    return canvas and lines <= 80
+    return canvas and lines <= CANVAS_DEFAULT_VISIBLE_MAX_LINES
 
 
 def _visible_hygiene(rel: str, cell_line: int, code: str):
@@ -192,7 +212,7 @@ def _visible_hygiene(rel: str, cell_line: int, code: str):
 
 def audit_code_surface():
     """Find canvas-flow nodes whose code starts open despite being long enough to dominate the page.
-    mountCanvasFlow opens node code automatically up to 80 lines; that is useful for small teaching
+    mountCanvasFlow opens short node code automatically; that is useful for small teaching
     steps but rough for plumbing-heavy visualization or orchestration blocks. Anything at or above
     CANVAS_LONG_DEFAULT_OPEN_LINES must choose deliberately: add showCode:false for plumbing, or
     shrink/split the code if students really need to read it inline."""
@@ -216,7 +236,7 @@ def audit_code_surface():
                 pre = block[max(0, m.start() - 700):m.start()]
                 show_false = "showCode: false" in pre[-350:]
                 show_true = "showCode: true" in pre[-350:]
-                default_open = show_true or (lines <= 80 and not show_false)
+                default_open = show_true or (lines <= CANVAS_DEFAULT_VISIBLE_MAX_LINES and not show_false)
                 if not default_open or lines < CANVAS_LONG_DEFAULT_OPEN_LINES:
                     continue
                 title_m = re.search(r'title:\s*"([^"]+)"', pre)

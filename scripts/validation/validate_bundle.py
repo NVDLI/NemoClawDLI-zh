@@ -648,7 +648,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                          RECOMMENDED, "Update the flagged token or restore the missing asset so the page matches the shared HTML contract.")
                        for x in audit.get("findings", [])],
         "helper_notebook": [D("web/nemoclaw/scripts/SKILL.html", x, REQUIRED,
-                              "Use the helper API exposed by that runtime surface: CanvasFlow supports log/details/html/svg/draw; RunCell supports log.h/json/kv/html/clear.")
+                              "Use the shared helper API exposed by both runtime surfaces: log, log.h, log.json, log.kv, log.details, log.html, log.svg, log.draw, and log.clear.")
                             for x in helper_notebook_find],
         "studio_interface": [D("web/nemoclaw/studio.html", x, REQUIRED,
                                "Keep Studio controls reachable at narrow/short viewports and keep validator commands synchronized across Studio and SKILL docs.")
