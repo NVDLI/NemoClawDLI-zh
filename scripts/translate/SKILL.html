@@ -106,9 +106,16 @@
   <p>A translation is the same course in another language: a translate-&lt;lang&gt; branch that overlays the source, translating the reader-facing prose under web/ and carrying code, assets, and every skill-meta contract verbatim. This folder is the toolchain that keeps that overlay in step with the source. Open the README for the full process, the status tool to see what a sync needs, and walk the guided tour for the contributor loop. Ask the model about any of it with your build.nvidia.com key.</p>
   <div class="skill-note">Translation branches skip English prose-style suites but still run structural gates.</div>
   <h2>Executable checks</h2>
-  <div class="skill-cmds"><div class="skill-cmd"><b>Translation status</b><code>python3 scripts/translate/translation_status.py</code></div><div class="skill-cmd"><b>Ship gate for English</b><code>python3 scripts/validation/validate_bundle.py --no-write --scope ship</code></div></div>
+  <div class="skill-cmds">
+    <div class="skill-cmd"><b>Translation status</b><code>python3 scripts/translate/translation_status.py</code></div>
+    <div class="skill-cmd"><b>Ship gate for English</b><code>python3 scripts/validation/validate_bundle.py --no-write --scope ship</code></div>
+  </div>
   <h2>Linkage map</h2>
-  <div class="skill-grid"><a class="skill-card" href="README.md"><b>README.md</b><span>the process, in full. What a language branch is (a full overlay of the source), what gets translated vs carried verbatim, the sync marker, the contributor workflow end to end, and how translate-* CI/CD validates and deploys under /&lt;lang&gt;/. Start here.</span></a><a class="skill-card" href="translation_status.py"><b>translation_status.py</b><span>the drift tool. What changed on the source since this translation&#x27;s base, split into TO RE-TRANSLATE (prose the reader sees) and TO MERGE VERBATIM (code, assets, the skill-meta contract). The loop a translation lives in: read the status, act on the delta, advance the base (--set-base). --json and --check (CI) too.</span></a><a class="skill-card" href="translation_base.json"><b>translation_base.json</b><span>the sync marker. Records the source commit this translation reflects (lang + upstream + base_sha). On the source branch lang is null (nothing to sync). The whole drift abstraction is git diff base_sha..upstream, classified per file.</span></a></div>
+  <div class="skill-grid">
+    <a class="skill-card" href="README.md"><b>README.md</b><span>the process, in full. What a language branch is (a full overlay of the source), what gets translated vs carried verbatim, the sync marker, the contributor workflow end to end, and how translate-* CI/CD validates and deploys under /&lt;lang&gt;/. Start here.</span></a>
+    <a class="skill-card" href="translation_status.py"><b>translation_status.py</b><span>the drift tool. What changed on the source since this translation&#x27;s base, split into TO RE-TRANSLATE (prose the reader sees) and TO MERGE VERBATIM (code, assets, the skill-meta contract). The loop a translation lives in: read the status, act on the delta, advance the base (--set-base). --json and --check (CI) too.</span></a>
+    <a class="skill-card" href="translation_base.json"><b>translation_base.json</b><span>the sync marker. Records the source commit this translation reflects (lang + upstream + base_sha). On the source branch lang is null (nothing to sync). The whole drift abstraction is git diff base_sha..upstream, classified per file.</span></a>
+  </div>
   <h2>Interactive explorer</h2>
   <p>The explorer below opens source files, tours important sections, and checks documented paths against the repository tree.</p>
 </section>
