@@ -989,7 +989,7 @@
         done += slice.length; onProg(`analyzed ${done}/${files.length} pages`);
       }
       // config the engine's resolver replays: nginx routes, extra_static_paths, compose topology
-      for (const cf of ["nginx.conf", "docker-compose.yml", "docker-compose.override.yml", "workspace/entrypoint.sh"]) {
+      for (const cf of ["deploy/nginx.conf", "deploy/docker-compose.yml", "deploy/docker-compose.override.yml", "workspace/entrypoint.sh"]) {
         try { cache.set(cf, await fetchText(cf)); } catch (e) { cache.set(cf, ""); }
       }
       const io = {

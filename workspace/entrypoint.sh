@@ -6,7 +6,7 @@ set -euo pipefail
 #
 # /sandbox/dli is a NAMED VOLUME shared with the openclaw sidecar (so
 # notebook writes are visible to the sandboxed agent immediately).  In
-# dev, docker-compose.override.yml redirects the same volume to a bind
+# dev, deploy/docker-compose.override.yml redirects the same volume to a bind
 # mount of the repo root, and the seed step below is a no-op because
 # the host directory already has content.
 #
@@ -58,7 +58,7 @@ jupyter lab \
         # bare /lab: a tokenless request → /lab/login (poll passes); an
         # authenticated one (?token= or session cookie) is proxied here, where
         # default_url lands it on the foyer. See `location = /lab` in
-        # nginx.conf. Validated end-to-end against a token-protected
+        # deploy/nginx.conf. Validated end-to-end against a token-protected
         # jupyter-server 2.18: poll→login, ?token→foyer, cookie→foyer,
         # bad-token→login.
         #

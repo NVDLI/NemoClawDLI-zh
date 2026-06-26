@@ -47,12 +47,12 @@ glue but do not need model calls yet.
 ## Run against the lab stack
 
 Start the dev stack with Podman Compose or Docker Compose. Podman is preferred on
-hosts where Docker daemon access is unavailable. The compose files name the shared
+hosts where Docker daemon access is unavailable. The deploy compose files name the shared
 network `nvidia-llm`, which is the wrapper default.
 
 ```bash
 COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD \
-  podman compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
+  podman compose -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml up -d --build
 ```
 
 If your host uses `podman-compose`, use the same flags with that command. The
@@ -60,7 +60,7 @@ Python module form is also valid and is the podman-compose-via-python fallback:
 
 ```bash
 COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD \
-  python3 -m podman_compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
+  python3 -m podman_compose -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml up -d --build
 ```
 
 If Docker is available, `docker compose` works with the same compose files. This

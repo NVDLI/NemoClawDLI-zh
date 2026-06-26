@@ -39,7 +39,7 @@
      "also_update": ["this skill-meta interfaces+tests", "00_openclaw.md provable-security section", "any notebook that starts on-demand services"],
      "then": "rebuild + recreate docker_router; re-run self-tests"},
     {"if_you_change": "the docker socket mount or the HOST_PROJECT_DIR self-path mount",
-     "also_update": ["docker-compose.yml docker_router block", "the on-demand compose-create logic"],
+     "also_update": ["deploy/docker-compose.yml docker_router block", "the on-demand compose-create logic"],
      "then": "recreate docker_router; re-run self-tests"},
     {"if_you_change": "a diagnostic endpoint",
      "also_update": ["/help route", "consumers", "this skill-meta"],

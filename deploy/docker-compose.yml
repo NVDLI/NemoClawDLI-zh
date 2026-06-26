@@ -1,9 +1,10 @@
-## To Build The Repo: Execute the following command from directory ABOVE notebook repository
-## Dev Environment:  docker-compose build && docker-compose up -d
-## Prod Environment: docker-compose -f docker-compose.yml -f docker-compose.deployment.yml build && ...
+## To build locally from the repo root:
+##   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml up -d --build
+## Production uses:
+##   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.deployment.yml up -d
 ##
 ## Security contract: .env-dev (NVIDIA_API_KEY, NGC_API_KEY, etc.) is injected
-## ONLY into llm_client via env_file in docker-compose.override.yml.  All other
+## ONLY into llm_client via env_file in deploy/docker-compose.override.yml.  All other
 ## services reach the LLM only through the llm_client gateway, never directly.
 ## Do NOT add env_file: .env-dev or a .secret mount to any service except
 ## llm_client.
@@ -21,7 +22,7 @@ volumes:
   ## it from /sandbox/dli_seed/ (baked into the lab image via COPY in
   ## Dockerfile).  Subsequent boots see a populated volume and skip the seed.
   ##
-  ## Dev: docker-compose.override.yml replaces this volume's driver with a
+  ## Dev: deploy/docker-compose.override.yml replaces this volume's driver with a
   ## bind mount to the host repo root via driver_opts, giving live edits
   ## without rebuilding the lab image.
   dli:
@@ -49,7 +50,7 @@ services:
     volumes:
       ## Shared workspace volume. See the top-level volumes: section.
       ## Production: empty on first boot; entrypoint seeds from /sandbox/dli_seed/.
-      ## Dev: bind-mounted to repo root via docker-compose.override.yml driver_opts.
+      ## Dev: bind-mounted to repo root via deploy/docker-compose.override.yml driver_opts.
       - dli:/sandbox/dli:rw
       - repo:/sandbox/repo:rw
       - ocspace:/sandbox/ocspace:rw
@@ -80,13 +81,13 @@ services:
   ## ── LLM Gateway ────────────────────────────────────────────────────────────
   ## Single ingress point for all LLM/embed/rerank calls.  Every other service
   ## routes through here. API keys are injected via env_file in the dev overlay
-  ## (docker-compose.override.yml) and never appear in any other container.
+  ## (deploy/docker-compose.override.yml) and never appear in any other container.
   llm_client:
     ## SECURITY: no host port in prod. The gateway holds the course's API keys
     ## (and proxies students' own keys), so it must never be reachable by
     ## hostname. It stays on the internal docker network. Notebooks reach it at
     ## llm_client:9000, browser pages via the token-gated nginx /api/llm/ route.
-    ## The dev host port lives in docker-compose.override.yml only.
+    ## The dev host port lives in deploy/docker-compose.override.yml only.
     environment:
       - LOG_LEVEL=INFO
     restart: unless-stopped
@@ -96,26 +97,26 @@ services:
 
   ## ── OpenClaw / OpenShell Sandbox ───────────────────────────────────────────
   ## Sandboxed agentic shell gateway. Reachable as both `openclaw` (legacy,
-  ## kept for nginx.conf compatibility) and `openshell` (the OpenShell runtime
+  ## kept for deploy/nginx.conf compatibility) and `openshell` (the OpenShell runtime
   ## name) via the network alias below.
   ##
   ## Volume list intentionally mirrors the lab block; diffs:
   ##   repo -> :ro  (openclaw must not mutate course content)
   ##   openclaw_logs added for sandbox-internal log capture
-  ## ./:/sandbox/dli:ro is in docker-compose.override.yml only.
+  ## ./:/sandbox/dli:ro is in deploy/docker-compose.override.yml only.
   openclaw:
     init: false
     volumes:
       ## Shared workspace volume, read-only here. This is the same volume lab writes to.
       ## openclaw's entrypoint reads OPENCLAW_SRC=/sandbox/dli/cpu/services/openclaw
       ## from this mount; lab seeds it on first boot in production, or a host
-      ## bind-mount overrides it in dev (see docker-compose.override.yml).
+      ## bind-mount overrides it in dev (see deploy/docker-compose.override.yml).
       - dli:/sandbox/dli:ro
       - repo:/sandbox/repo:ro
       - ocspace:/sandbox/ocspace:rw
       - openclaw_user:/sandbox/.openclaw:rw
       - openclaw_logs:/var/log:rw
-    ## SECURITY: no host port in prod (dev-only, in docker-compose.override.yml).
+    ## SECURITY: no host port in prod (dev-only, in deploy/docker-compose.override.yml).
     ## openclaw runs privileged and executes agent tool-calls, so it must not be
     ## reachable by hostname. Students reach it only through the token-gated
     ## nginx /openclaw route. Internal network access stays available for nginx.
@@ -169,7 +170,7 @@ services:
   ## Internal control plane that hot-swaps the OpenClaw sandbox policy; the
   ## released course drives it in Modules 3 and 4. Reached in-network as
   ## http://sandbox-admin:8099. Build context and dev port are added in
-  ## docker-compose.override.yml.
+  ## deploy/docker-compose.override.yml.
   sandbox-admin:
     environment:
       - POLICY_PATH=/policy/sandbox-policy.yaml
@@ -215,7 +216,7 @@ services:
     depends_on:
       ## lab is the only ordering dep: the LMS health check hits :80/lab and
       ## :80/healthz, which proxy to it. The other services (llm_client, openclaw,
-      ## docker_router) are reached through runtime DNS resolution in nginx.conf
+      ## docker_router) are reached through runtime DNS resolution in deploy/nginx.conf
       ## (resolver 127.0.0.11 + a set variable in proxy_pass), so nginx starts
       ## regardless of their state and a transient outage never takes down /lab.
       - lab

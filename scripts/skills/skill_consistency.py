@@ -196,19 +196,19 @@ def inv_exec_allowlist():
 
 
 def inv_control_ui_basepath():
-    """openclaw control-UI base path must agree across nginx.conf + openclaw.json, and
+    """openclaw control-UI base path must agree across deploy/nginx.conf + openclaw.json, and
     must be declared in at least one of them (it is load-bearing for the WS gateway)."""
     vals: dict[str, str] = {}
-    m = re.search(r'__OPENCLAW_CONTROL_UI_BASE_PATH__\s*=\s*"([^"]+)"', read(TASK1 / "nginx.conf"))
+    m = re.search(r'__OPENCLAW_CONTROL_UI_BASE_PATH__\s*=\s*"([^"]+)"', read(TASK1 / "deploy" / "nginx.conf"))
     if m:
-        vals["nginx.conf"] = m.group(1)
+        vals["deploy/nginx.conf"] = m.group(1)
     ocjson = svc_file("openclaw", "openclaw.json")
     if ocjson:
         mm = re.search(r'"basePath"\s*:\s*"([^"]+)"', read(ocjson))
         if mm:
             vals["openclaw.json"] = mm.group(1)
     if not vals:
-        fail("control-UI basePath: declared in NEITHER nginx.conf NOR openclaw.json (expected in both)")
+        fail("control-UI basePath: declared in NEITHER deploy/nginx.conf NOR openclaw.json (expected in both)")
     elif len(set(vals.values())) > 1:
         fail(f"control-UI basePath DIVERGENCE: {vals}")
     elif len(vals) == 1:
@@ -245,7 +245,7 @@ def inv_lifecycle_allowlist():
 
 # Dangling refs: dgx/ and mats paths stay recognized so stale SKILL links fail loudly.
 _PREFIXES = ("task1/", "cpu/", "web/", "dgx/", "repos/",
-             "docs/", "scripts/", "workspace/", "cors-proxy/")
+             "deploy/", "docs/", "scripts/", "workspace/", "cors-proxy/")
 
 
 def _resolve(ref: str, base: Path | None = None) -> Path | None:

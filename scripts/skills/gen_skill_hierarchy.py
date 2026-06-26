@@ -81,7 +81,7 @@ SURFACE_LEAD = {
 # Core tenets projected into root skill-meta; scripts/validation/tenets.py reports enforceable ones.
 TENETS = {
     "purpose": [
-        "Content is curated once and projected: pages live under web/ and cpu/, and "
+        "Content is curated once and projected: pages live under execution surfaces, and "
         "bundle_standalone.py, build_pages.sh, and engine.js generate the standalone bundle, the "
         "Pages site, and the link graph from them. Add a delivery format by writing a generator, "
         "so a fix to the source reaches every format. PHILOSOPHY.md is the long form.",
@@ -93,19 +93,21 @@ TENETS = {
         "return for the next layer.",
         "Keep the release open: Apache 2.0, no gate or paywall, the foyer surfacing only the "
         "released courses, and mats cited by public URL.",
+        "Keep surface assumptions explicit: web/ is browser-only and cannot assume student-provisioned "
+        "microservices; cpu/ owns shared service stacks; spark/ or gpu surfaces must declare their "
+        "compute contract before content depends on them.",
         "Ship the services a course drives (a model gateway, a sandboxed agent harness, a policy "
         "control plane) and let them carry the mechanical work, so a reader's attention stays on "
         "the decision the exercise is about.",
-        "Keep contribution low-barrier with the quality bar held: the content discipline in "
-        "QUALITY_DIRECTIVES.md and these tenets. The path is still forming.",
+        "Invite expertise through focused Issues when the contributor is naming a problem, and use the "
+        "structured release process when the contributor is shipping a patch.",
     ],
     "assumptions": [
         "task1 is the canonical root: the open-source, replicable release. Everything worth "
         "keeping lives here and is versioned; scratch goes to /tmp and is never committed.",
-        "Content is organized by execution surface: web/ (browser, remote services only) "
-        "holds the released course and its course-scoped reference packets under "
-        "web/nemoclaw/mats/; cpu/ holds the shared microservice stack it runs against, "
-        "with shared repos/, scripts/, and workspace/.",
+        "Content is organized by execution surface: web/ holds browser-only courses and course-scoped "
+        "reference packets; cpu/ holds shared microservices; deploy/ holds compose and nginx; "
+        "future spark/ or gpu surfaces must state their compute contract before use.",
         "The brain is each directory's SKILL.html skill-meta JSON, not a SKILL.md. Parse it "
         "first, then walk children: task to surface to course to content.",
         "One link engine (scripts/runtime/engine.js) is the single source for resolution, crawl, "
@@ -122,7 +124,8 @@ TENETS = {
         "rule-of-three flourishes.",
         "Code-first: fixing a real code cell beats improving prose beats adding navigation. A "
         "change that teaches nothing new and prevents no bug is not worth making.",
-        "Browser courses stay remote-services-only; never put keys in static files.",
+        "Browser courses stay remote-services-only; never put keys in static files or depend on undeclared local services.",
+        "Deployment config stays under deploy/ so orchestration does not blur into course content.",
         "The course mats/ (web/nemoclaw/mats/) and repos/ are cited-by-URL reference packets: "
         "cite the external URL, never link the packet file.",
         "Run source_gate before adding assets, mats, datasets, cached references, or copied examples; "
@@ -252,6 +255,8 @@ def gen_task():
     if (TASK1 / "repos").is_dir():
         ref_layers.append({"name": "repos", "role": "vendored external repositories kept for "
                            "context-sharing and retrieval; not student content"})
+    if (TASK1 / "deploy").is_dir():
+        ref_layers.append({"name": "deploy", "role": "operator-facing compose and nginx deployment surface for DLI platform and local compute"})
     if (TASK1 / "scripts").is_dir():
         ref_layers.append({"name": "scripts", "role": "bundle tooling: the projection engine, the "
                            "link-graph viewer, the validation cadence, this SKILL generator"})
@@ -301,10 +306,11 @@ def gen_task():
     meta = {"node_type": "hub", "level": "task", "title": "Building Agents · NVIDIA DLI bundle",
             "role": "bundle_index", "served_at": "/lab/static/SKILL.html", "self_path": "SKILL.html",
             "thesis": ("NVIDIA DLI's open-source, replicable release of course material: the narrative, "
-                       "the assets, the agent-friendly deployment that runs it, and the automatic "
+                       "the assets, the deployment visor that runs it, and the automatic "
                        "verification that keeps it honest, packaged so a person or an agent can stand it "
                        "up, navigate it, and check it end to end. Content is organized by EXECUTION SURFACE "
-                       "(web / cpu) so each piece declares what it needs to run; every page buds from "
+                       "(web / cpu today, with spark or gpu surfaces only when they declare their compute contract) "
+                       "so each piece declares what it needs to run; every page buds from "
                        "a SKILL hub, so the whole bundle is statically and semantically verifiable."),
             "surfaces": [{"name": s, "path": f"{s}/SKILL.html", "assumes": sdesc.get(s, "")} for s, _ in surfaces],
             "reference_layers": ref_layers,

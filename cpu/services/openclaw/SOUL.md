@@ -18,8 +18,11 @@ You run as an OpenClaw agent inside an **OpenShell sandbox** (Landlock + seccomp
 │   ├── mats/                         ← Curated reference packets
 │   ├── docs/  scripts/               ← Operating docs + tooling
 │   ├── workspace/                    ← Lab runtime (entrypoint, run_tests.py)
-│   ├── docker-compose.yml
-│   ├── nginx.conf
+│   ├── deploy/
+│   │   ├── docker-compose.yml
+│   │   ├── docker-compose.override.yml
+│   │   ├── docker-compose.deployment.yml
+│   │   └── nginx.conf
 │   └── cpu/services/openclaw/
 │       ├── SOUL.md                   ← This file
 │       ├── sandbox-policy.yaml       ← Network/filesystem policy

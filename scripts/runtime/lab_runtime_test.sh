@@ -32,7 +32,7 @@ Examples:
 Environment:
   CONTAINER_ENGINE=podman|docker     Force engine; default prefers podman.
   LAB_RUNTIME_IMAGE=name:tag         Override image tag.
-  LAB_RUNTIME_NETWORK=nvidia-llm     Network for full lab tests; default matches docker-compose.yml.
+  LAB_RUNTIME_NETWORK=nvidia-llm     Network for full lab tests; default matches deploy/docker-compose.yml.
   CLAW_URL=url                       OpenClaw base URL. Use Brev URL if local OpenClaw fails or shows EPERM.
   CLAW_TOKEN=token                   OpenClaw gateway bearer token.
   CLAW_CF=jwt                        CF_Authorization value for remote Brev launchables.
@@ -120,9 +120,9 @@ if ! "$ENGINE" network inspect "$NETWORK" >/dev/null 2>&1; then
   cat >&2 <<EOF
 FATAL: container network '$NETWORK' not found.
 Start the lab stack first, for example:
-  COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$ROOT podman compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
+  COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$ROOT podman compose -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml up -d --build
 or, with podman-compose-via-python:
-  COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$ROOT python3 -m podman_compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
+  COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$ROOT python3 -m podman_compose -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml up -d --build
 or set LAB_RUNTIME_NETWORK to the network that contains nginx/openclaw.
 EOF
   exit 2

@@ -22,7 +22,7 @@
   function isMatPath(r) { return r.split("/").indexOf("mats") >= 0; }
 
   var SHIP_PREFIXES = ["web/nemoclaw/", "web/index", "web/courses",
-    "cpu/services/", "docs/", "scripts/"];
+    "cpu/services/", "deploy/", "docs/", "scripts/"];
   var SHIP_HUBS = setOf(["SKILL.html", "web/SKILL.html", "cpu/SKILL.html"]);
 
   // Release contract: the courses the release foyer (web/index.html) may surface.
@@ -31,8 +31,8 @@
   // mats now live UNDER web/ (already a crawl root that recurses), so "mats" is no longer a separate top-level crawl root or shared TOPDIR.
   // It is still shared infra, detected by segment.
   var SHARED_SUBDIRS = setOf(["mats", "repos", "services"]);
-  var SHARED_TOPDIRS = setOf(["repos", "scripts", "docs"]);
-  var CRAWL_TOP = ["web", "cpu", "docs", "scripts"];
+  var SHARED_TOPDIRS = setOf(["repos", "scripts", "docs", "deploy"]);
+  var CRAWL_TOP = ["web", "cpu", "deploy", "docs", "scripts"];
 
   var TEMPLATE_MARK = ["{{", "}}", "<?", "?>", "<%", "%>", "${", "&lt;", "&gt;", "&#"];
 
@@ -199,7 +199,7 @@
   }
 
   function parseCompose(io) {
-    var files = ["docker-compose.yml", "docker-compose.override.yml"];
+    var files = ["deploy/docker-compose.yml", "deploy/docker-compose.override.yml"];
     var services = {}, aliases = {}, dliDevice = null;
     function mergeService(name, ondemand, al) {
       if (!has(services, name)) services[name] = { ondemand: false, aliases: [] };
@@ -262,7 +262,7 @@
     if (/return\s+404/.test(body) && this.match === "regex") this.kind = "guard404";
   }
   function parseNginx(io) {
-    var txt = io.read("nginx.conf"); if (txt == null) return { rules: [], upstreams: {} };
+    var txt = io.read("deploy/nginx.conf"); if (txt == null) return { rules: [], upstreams: {} };
     var ups = parseUpstreams(txt), blocks = splitLocationBlocks(txt), rules = [];
     for (var i = 0; i < blocks.length; i++) rules.push(new NginxRule(blocks[i][0], blocks[i][1], ups));
     return { rules: rules, upstreams: ups };

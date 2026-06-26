@@ -155,7 +155,7 @@ const TEST_COMMANDS = [
     name: 'Lab stack via Python Podman Compose',
     mode: 'podman deployment',
     desc: 'Starts nginx/lab services with the Python podman-compose module when podman compose is unavailable.',
-    cmd: 'COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD python3 -m podman_compose -f docker-compose.yml -f docker-compose.override.yml up -d --build',
+    cmd: 'COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD python3 -m podman_compose -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml up -d --build',
   },
   {
     name: 'Full lab browser path',

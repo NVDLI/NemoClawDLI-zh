@@ -371,7 +371,7 @@ The actual source for this environment lives in the course repo:
 - **Entrypoint:** `cpu/services/openclaw/openclaw_shell.entrypoint.sh`
 - **Policy (YAML):** `cpu/services/openclaw/sandbox-policy.yaml`
 - **Policy (Rego):** `cpu/services/openclaw/sandbox-policy.rego`
-- **Docker Compose:** `docker-compose.yml` (root)
+- **Docker Compose:** `deploy/docker-compose.yml`
 
 ### Useful references
 
