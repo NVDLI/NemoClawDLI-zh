@@ -416,7 +416,7 @@ export const VIZ_BUILDERS = makeViz(() => {});
 export const HELPER_FNS = {
   chat, chatStream, webSearch, instantAnswer, formatSearchResults,
   embed, cosineSim, fetchRetry, getConfig, getKey, terminal,
-  coursePage, coursePages, contextWindow, estimateTokens, browserChatFetch, diagramSVG, ganttBarsSVG, mountFigures, mountChatUI, mountAgentChat, mountConsole, mountKeyPanel, openclawChat,
+  coursePage, coursePages, contextWindow, estimateTokens, browserChatFetch, diagramSVG, ganttBarsSVG, mountFigures, mountChatUI, mountAgentChat, mountConsole, mountKeyPanel, openclawChat, openclawGatewayWsUrl,
   evalSandboxNetwork, evalSandboxFs, sandboxExec, policyGet, mountPolicyMap,
 };
 // Menu entries that are values or closures rather than plain exported functions.
@@ -786,10 +786,10 @@ export { mountKeyPanel };
 // ── openclaw → _openclaw.js ─────────────────────────────────────────
 // Re-exported here so the helper registry/menu and existing page imports are unchanged.
 import {
-  mountClawGateway, mountClawProbe, openclawChat, GW_CONNECT, mountGwRecover,
+  mountClawGateway, mountClawProbe, openclawChat, openclawGatewayWsUrl, GW_CONNECT, mountGwRecover,
 } from "./_openclaw.js";
 export {
-  mountClawGateway, mountClawProbe, openclawChat, GW_CONNECT, mountGwRecover,
+  mountClawGateway, mountClawProbe, openclawChat, openclawGatewayWsUrl, GW_CONNECT, mountGwRecover,
 };
 
 

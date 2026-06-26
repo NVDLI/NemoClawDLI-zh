@@ -9,9 +9,36 @@ function _uniqueId(prefix = "") {
   return prefix + Math.random().toString(RANDOM_ID_RADIX).slice(2) + Date.now().toString(RANDOM_ID_RADIX);
 }
 
+const OPENCLAW_CORS_PROXY_BASE = "https://openclaw-cors-proxy.vkudlay.workers.dev";
+
+export function openclawGatewayWsUrl(rawUrl, cfJwt = "", proxyBase = OPENCLAW_CORS_PROXY_BASE) {
+  const raw = String(rawUrl || "").trim().replace(/\/+$/, "");
+  const jwt = String(cfJwt || "").trim();
+  if (!raw) return { url: "", displayUrl: "", viaProxy: false };
+  const direct = raw.replace(/^https/i, "wss").replace(/^http(?!s)/i, "ws") + "/cli/gateway";
+  try {
+    const upstream = new URL(raw);
+    if (jwt && /(^|\.)brevlab\.com$/i.test(upstream.hostname) && proxyBase) {
+      const proxied = new URL(proxyBase);
+      proxied.protocol = proxied.protocol === "http:" ? "ws:" : "wss:";
+      const proxyPath = proxied.pathname.replace(/\/+$/, "");
+      const upstreamPath = upstream.pathname.replace(/\/+$/, "");
+      proxied.pathname = proxyPath + "/https/" + upstream.host + upstreamPath + "/cli/gateway";
+      proxied.search = "cf_access_jwt=" + encodeURIComponent(jwt);
+      return {
+        url: proxied.href,
+        displayUrl: proxied.origin + proxied.pathname + "?cf_access_jwt=...",
+        viaProxy: true,
+      };
+    }
+  } catch (_) { /* fall back to direct URL for local or non-URL launchables */ }
+  return { url: direct, displayUrl: direct, viaProxy: false };
+}
+
 // ── ClawGateway widget ───────────────────────────────────────────────────────
-// Live WebSocket client to wss://rawUrl/cli/gateway, reading URL + token from localStorage.
-// The browser CF_Authorization cookie covers Cloudflare Access, so no proxy hop is needed.
+// Live WebSocket client to /cli/gateway, reading URL + token from localStorage.
+// Local launches connect directly. Brev launches with a pasted CF_Authorization JWT
+// use the OpenClaw CORS worker because browser WebSocket constructors cannot set headers.
 export function mountClawGateway(targetSel, opts = {}) {
   const target = typeof targetSel === "string" ? document.querySelector(targetSel) : targetSel;
   if (!target) return;
@@ -30,14 +57,8 @@ export function mountClawGateway(targetSel, opts = {}) {
       rawUrl: localStorage.getItem(_CLAWPROBE_KEY_RAW_URL) ||
               localStorage.getItem(_CLAWPROBE_KEY_URL)     || "",
       token:  localStorage.getItem(_CLAWPROBE_KEY_TOKEN)   || "",
+      cfJwt:  localStorage.getItem(_CLAWPROBE_KEY_CFJWT)   || "",
     };
-  }
-
-  // Build WS gateway URL directly with no proxy; browser sends CF cookie for CF Access
-  function _wsUrl(rawUrl) {
-    if (!rawUrl) return null;
-    const base = rawUrl.replace(/\/+$/, "").replace(/^https/, "wss").replace(/^http(?!s)/, "ws");
-    return base + "/cli/gateway";
   }
 
   // ── WS state ────────────────────────────────────────────────────────────────
@@ -183,13 +204,14 @@ export function mountClawGateway(targetSel, opts = {}) {
 
   // ── Connect ──────────────────────────────────────────────────────────────────
   connectBtn.addEventListener("click", async () => {
-    const { rawUrl, token } = _creds();
+    const { rawUrl, token, cfJwt } = _creds();
     if (!rawUrl || !token) {
       _showOut(`<span class="gw-err-txt">No URL or token yet. Fill in the OpenClaw probe above and click an action first.</span>`);
       return;
     }
-    const wsUrl = _wsUrl(rawUrl);
-    _setStatus("connecting");
+    const gateway = openclawGatewayWsUrl(rawUrl, cfJwt);
+    const wsUrl = gateway.url;
+    _setStatus("connecting", gateway.viaProxy ? "via CF proxy" : "direct");
     connectBtn.disabled = true;
     outEl.hidden = true;
     try {
@@ -510,7 +532,15 @@ export function mountClawProbe(targetSel, opts = {}) {
   // Initialise canvas keys on page load with whatever is already stored.
   _syncCanvasKeys(savedUrl, savedToken, savedCfJwt);
 
+  function hideHtmlFrame(clear = false) {
+    const fr = target.querySelector(".claw-html-frame");
+    if (!fr) return;
+    fr.hidden = true;
+    if (clear) fr.removeAttribute("srcdoc");
+  }
+
   function setOutput(text, kind = "") {
+    if (!String(text || "").includes("HTML ·")) hideHtmlFrame(true);
     outEl.classList.remove("ok", "err");
     if (kind) outEl.classList.add(kind);
     // Highlight the response with the course hljs theme when it looks like JSON.
@@ -562,8 +592,7 @@ export function mountClawProbe(targetSel, opts = {}) {
     const showUrl = _proxyBase ? displayUrl + "  (via proxy)" : displayUrl;
     setOutput(`→ ${method} ${showUrl}\n   …in flight`);
     // Hide any previous HTML frame while a new request is in flight.
-    const _htmlFrame = target.querySelector(".claw-html-frame");
-    if (_htmlFrame) _htmlFrame.hidden = true;
+    hideHtmlFrame(true);
     const t0 = performance.now();
     try {
       const r = await fetch(fetchTarget, {
@@ -585,8 +614,7 @@ export function mountClawProbe(targetSel, opts = {}) {
             " (it lasts about a day).\n\nFix: open your NemoClaw tab → DevTools → Application → Storage → Cookies →" +
             " click the nemoclaw domain → copy the CF_Authorization value → paste it into the CF Access JWT field" +
             " above and probe again.", "err");
-          const _fr = target.querySelector(".claw-html-frame");
-          if (_fr) _fr.hidden = true;
+          hideHtmlFrame(true);
           return;
         }
         setOutput(head + `   (HTML · ${html.length} bytes)`, r.ok ? "ok" : "err");
@@ -693,8 +721,10 @@ export async function openclawChat(message, { session = "main", onToken, onTool,
   */
   const rawUrl = (localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl") || "").replace(/\/+$/, "");
   const token  = localStorage.getItem("nemoclaw_clawtoken") || "";
+  const cfJwt  = localStorage.getItem("nemoclaw_clawcfjwt") || "";
   if (!rawUrl || !token) throw new Error("Connect first on the Kickstart page (3a): set your launchable URL + token in the probe.");
-  const wsUrl = rawUrl.replace(/^https/, "wss").replace(/^http(?!s)/, "ws") + "/cli/gateway";
+  const gateway = openclawGatewayWsUrl(rawUrl, cfJwt);
+  const wsUrl = gateway.url;
 
   async function connect() {
     return await new Promise((resolve, reject) => {
@@ -720,7 +750,7 @@ export async function openclawChat(message, { session = "main", onToken, onTool,
         call("connect", { minProtocol: 4, maxProtocol: 4, client: { id: "openclaw-control-ui", version: "0.1.0", platform: "browser", mode: "webchat" }, caps: ["tool-events"], role: "operator", scopes: ["operator.read", "operator.write", "operator.admin"], auth: { token } })
           .then(() => resolve(sock)).catch(reject);
       };
-      setTimeout(() => reject(new Error("no challenge arrived within 15s. Your Cloudflare Access session likely expired. Reopen your launchable URL to re-authenticate.")), 15000);
+      setTimeout(() => reject(new Error("no challenge arrived within 15s. If this is a Brev URL, paste a fresh CF_Authorization in the probe so the gateway can use the CF proxy; if you choose direct mode instead, open the Brev launchable URL in this browser to refresh its cookie.")), 15000);
     });
   }
 
@@ -795,12 +825,31 @@ export const GW_CONNECT = `
 const rawUrl = localStorage.getItem("nemoclaw_clawrawurl") ||
                localStorage.getItem("nemoclaw_clawurl") || "";
 const token  = localStorage.getItem("nemoclaw_clawtoken") || "";
+const cfJwt  = localStorage.getItem("nemoclaw_clawcfjwt") || "";
 if (!rawUrl || !token) {
   helpers.log("Fill in the OpenClaw probe above first. If local OpenClaw failed or showed EPERM, use the backup Brev session URL plus CF_Authorization.");
   return;
 }
-const wsUrl = rawUrl.replace(/\\/+$/, "").replace(/^https/, "wss").replace(/^http(?!s)/, "ws") + "/cli/gateway";
-helpers.log("→ " + wsUrl);
+const openclawGatewayWsUrl = (rawInput, jwtInput) => {
+  const raw = String(rawInput || "").trim().replace(/\/+$/, "");
+  const jwt = String(jwtInput || "").trim();
+  const direct = raw.replace(/^https/i, "wss").replace(/^http(?!s)/i, "ws") + "/cli/gateway";
+  try {
+    const upstream = new URL(raw);
+    if (jwt && /(^|\.)brevlab\.com$/i.test(upstream.hostname)) {
+      const proxied = new URL("https://openclaw-cors-proxy.vkudlay.workers.dev");
+      proxied.protocol = "wss:";
+      const upstreamPath = upstream.pathname.replace(/\/+$/, "");
+      proxied.pathname = "/https/" + upstream.host + upstreamPath + "/cli/gateway";
+      proxied.search = "cf_access_jwt=" + encodeURIComponent(jwt);
+      return { url: proxied.href, displayUrl: proxied.origin + proxied.pathname + "?cf_access_jwt=...", viaProxy: true };
+    }
+  } catch (_) {}
+  return { url: direct, displayUrl: direct, viaProxy: false };
+};
+const gateway = openclawGatewayWsUrl(rawUrl, cfJwt);
+const wsUrl = gateway.url;
+helpers.log("→ " + gateway.displayUrl + (gateway.viaProxy ? "  (via CF proxy)" : ""));
 
 // Keep one live gateway socket per flow.
 if (state._ws) { try { state._ws.close(); } catch (_) {} state._chatCb = null; }
@@ -848,7 +897,7 @@ await new Promise((resolve, reject) => {
       resolve(pl);
     }).catch(reject);
   };
-  setTimeout(() => reject(new Error("no challenge arrived within 15s. Open the Brev launchable URL (https://nemoclaw-<id>.brevlab.com), re-authenticate, copy CF_Authorization, and re-run Connect. If local OpenClaw logs EPERM, stop local probing and use that Brev backup path.")), 15000);
+  setTimeout(() => reject(new Error("no challenge arrived within 15s. If this is a Brev URL, paste a fresh CF_Authorization in the probe so the gateway can use the CF proxy; if you choose direct mode instead, open the Brev launchable URL in this browser to refresh its cookie. If local OpenClaw logs EPERM, stop local probing and use the Brev backup path.")), 15000);
 });
 `;
 

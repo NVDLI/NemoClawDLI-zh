@@ -728,6 +728,7 @@ find the <code>CF_Authorization</code> row → copy the full Value (a long JWT s
 Paste it here. Re-copy it if the probe stops working after a long break, since JWTs expire with your session.</p>
 <p><strong>Running locally:</strong> Leave this field empty. Local OpenClaw has no Cloudflare Access layer.</p>
 <p><strong>Backup mode:</strong> Required for the Brev URL when local OpenClaw is wedged or shows <code>EPERM</code>.</p>
+<p><strong>Gateway cells:</strong> The fetch probes use this JWT as a header. The <code>/cli/gateway</code> WebSocket cannot send custom browser headers, so the course routes Brev gateway cells through the OpenClaw CORS worker when this field is present. Direct WebSocket mode only works after the launchable URL has refreshed its own browser cookie.</p>
 <p><strong>Why this matters:</strong> The <code>HttpOnly</code> wall is exactly why production systems use
 <em>service tokens</em> for machine-to-machine calls. The browser session flow has no programmatic
 escape hatch by design.</p>`,
@@ -755,6 +756,7 @@ const METHOD    = 'GET';
 const PATH      = '/api/agent';   // any route the runtime serves
 const BODY      = null;           // e.g. { key: 'value' }
 const TRANSPORT = 'proxy';        // 'proxy': CORS worker, JWT header. 'direct': launchable, browser CF cookie.
+// Gateway cells below also use the worker for Brev WebSockets when CF_Authorization is present.
 
 const direct  = TRANSPORT === 'direct';
 const headers = { Accept: 'application/json, text/html, */*' };
