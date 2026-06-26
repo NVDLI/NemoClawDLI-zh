@@ -2,7 +2,10 @@
 """Audit OpenClaw fail-fast and Brev backup guidance."""
 from __future__ import annotations
 
+import os
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -13,6 +16,12 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
 from _bootstrap import find_repo_root
 
 ROOT = find_repo_root(Path(__file__).resolve())
+NODE_CANDIDATES = [
+    os.environ.get("NODE"),
+    shutil.which("node"),
+    "/mnt/c/Users/vkudlay/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe",
+]
+
 FILES = {
     "kickstart": ROOT / "web" / "nemoclaw" / "03a-kickstart.html",
     "openclaw_js": ROOT / "web" / "nemoclaw" / "scripts" / "_openclaw.js",
@@ -22,6 +31,7 @@ FILES = {
     "runtime_skill": ROOT / "scripts" / "runtime" / "SKILL.html",
     "scripts_skill": ROOT / "scripts" / "SKILL.html",
     "validation_skill": ROOT / "scripts" / "validation" / "SKILL.html",
+    "worker_ws_audit": ROOT / "scripts" / "validation" / "openclaw_worker_ws_audit.mjs",
 }
 
 REQUIRED = {
@@ -33,6 +43,7 @@ REQUIRED = {
     "runtime_skill": ["OpenClaw fallback", "CF_Authorization", "EPERM", "CLAW_CF"],
     "scripts_skill": ["OpenClaw fallback", "python3 scripts/validation/openclaw_fallback_audit.py"],
     "validation_skill": ["openclaw_fallback_audit.py", "OpenClaw fallback"],
+    "worker_ws_audit": ["openclaw worker ws audit", "CF_Authorization", "http://localhost:8088", "upstream WebSocket response directly"],
 }
 
 
@@ -74,6 +85,14 @@ def audit() -> list[str]:
             findings.append("GW_CONNECT template decodes to invalid regex/comment syntax; avoid slash regex literals inside stringified cells")
         if "openclawGatewayWsUrl" in decoded and 'new RegExp("/+$")' not in decoded:
             findings.append('GW_CONNECT gateway URL helper must avoid slash regex literals; use new RegExp("/+$")')
+    node = next((Path(c) for c in NODE_CANDIDATES if c and Path(c).exists()), None)
+    if not node:
+        findings.append("node runtime not found for openclaw_worker_ws_audit.mjs")
+    else:
+        proc = subprocess.run([str(node), str(FILES["worker_ws_audit"])], cwd=ROOT, text=True, capture_output=True)
+        if proc.returncode != 0:
+            detail = (proc.stdout + proc.stderr).strip().replace("\n", " | ")
+            findings.append(f"openclaw_worker_ws_audit.mjs failed: {detail}")
     return findings
 
 
