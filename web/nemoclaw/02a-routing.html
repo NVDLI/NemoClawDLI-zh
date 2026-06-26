@@ -43,17 +43,16 @@
     <div class="eyebrow">Module 2 · Part A of 3</div>
     <h1>The <span>Workflow</span> Agent</h1>
     <p class="lead">
-      A single ReAct loop handles most one-shot tasks, but sometimes you may need something 
-      more structured to work through harder problems. A <strong>workflow agent</strong> is an 
-      agent system where your harness controls a workflow: a graph of model calls, 
-      deterministic code steps, tool calls, and specialist loops. This shape improves over 
-      a consistent main loop by moving context management and synchronization into dedicated 
-      loops, routers, and planned sequences. This section will explore when this makes sense 
-      and how to implement them for tasks like fan-out and solidified routing pathways.
+      A single ReAct loop handles most one-shot tasks, but harder problems sometimes need
+      structure that decides work before the next tool result arrives. A <strong>workflow
+      agent</strong> means an agent system where your harness controls a workflow: a graph
+      of model calls, deterministic code steps, tool calls, and specialist loops. This shape
+      helps when sub-tasks that run in parallel can share results, when a plan can be written
+      before tools run, or when routing should follow a rule instead of the last observation.
     </p>
     <p>
-      This shape improves over a consistent main loop by moving context management
-      and synchronization into dedicated loops, routers, and planned sequences. 
+      This section uses fan-out and fixed routing to show where workflow structure helps
+      without replacing the ReAct loop from the previous page.
     </p>
   </div>
 
