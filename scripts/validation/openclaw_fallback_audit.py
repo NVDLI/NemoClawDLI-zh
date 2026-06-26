@@ -2,7 +2,10 @@
 """Audit OpenClaw fail-fast and Brev backup guidance."""
 from __future__ import annotations
 
+import os
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -13,6 +16,12 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
 from _bootstrap import find_repo_root
 
 ROOT = find_repo_root(Path(__file__).resolve())
+NODE_CANDIDATES = [
+    os.environ.get("NODE"),
+    shutil.which("node"),
+    "/mnt/c/Users/vkudlay/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe",
+]
+
 FILES = {
     "kickstart": ROOT / "web" / "nemoclaw" / "03a-kickstart.html",
     "openclaw_js": ROOT / "web" / "nemoclaw" / "scripts" / "_openclaw.js",
@@ -22,17 +31,19 @@ FILES = {
     "runtime_skill": ROOT / "scripts" / "runtime" / "SKILL.html",
     "scripts_skill": ROOT / "scripts" / "SKILL.html",
     "validation_skill": ROOT / "scripts" / "validation" / "SKILL.html",
+    "worker_ws_audit": ROOT / "scripts" / "validation" / "openclaw_worker_ws_audit.mjs",
 }
 
 REQUIRED = {
     "kickstart": ["EPERM", "Brev App URL", "CF_Authorization", "Fail-fast backup"],
     "openclaw_js": ["EPERM", "CF_Authorization", "Brev session URL", "stop local probing", "${fallback}${hint}", "openclawGatewayWsUrl", "cf_access_jwt", "hideHtmlFrame"],
-    "cors_worker": ["CF_Authorization", "CF-Access-Jwt-Assertion", "cf_access_jwt", "targetSearch.delete"],
+    "cors_worker": ["WORKER_VERSION", "CF_Authorization", "CF-Access-Jwt-Assertion", "cf_access_jwt", "targetSearch.delete", "upstream.webSocket", "Origin", "http://localhost:8088"],
     "runtime_js": ["OPENCLAW_BACKUP_HINT", "preflightOpenClaw", "resolveOpenClawToken", "OPENCLAW_TOKEN: discovered", "localStorage.setItem('nemoclaw_clawcfjwt'", "RESULT: FAIL (OpenClaw credentials supplied", "toolsMissing) ? 1 : 0", "'/health'"],
     "runtime_sh": ["CLAW_CF=<CF_Authorization>", "Use Brev URL if local OpenClaw fails or shows EPERM"],
     "runtime_skill": ["OpenClaw fallback", "CF_Authorization", "EPERM", "CLAW_CF"],
     "scripts_skill": ["OpenClaw fallback", "python3 scripts/validation/openclaw_fallback_audit.py"],
     "validation_skill": ["openclaw_fallback_audit.py", "OpenClaw fallback"],
+    "worker_ws_audit": ["openclaw worker ws audit", "CF_Authorization", "http://localhost:8088", "upstream WebSocket response directly"],
 }
 
 
@@ -57,6 +68,8 @@ def audit() -> list[str]:
         findings.append("web/nemoclaw/scripts/_openclaw.js runs each probe action twice")
     if "?cf_access_jwt=" in openclaw and "?cf_access_jwt=..." not in openclaw:
         findings.append("web/nemoclaw/scripts/_openclaw.js may log the raw CF Access JWT in gateway output")
+    if "cf_access_jwt=..." in openclaw and "__nemoclaw_proxy_meta" not in openclaw:
+        findings.append("GW_CONNECT should check the live proxy version before using Brev WebSocket proxy mode")
     if "setOutput(head + `   (HTML" in openclaw and "hideHtmlFrame(true);" not in openclaw:
         findings.append("web/nemoclaw/scripts/_openclaw.js does not clear stale HTML iframe before non-HTML output")
 
@@ -72,6 +85,14 @@ def audit() -> list[str]:
             findings.append("GW_CONNECT template decodes to invalid regex/comment syntax; avoid slash regex literals inside stringified cells")
         if "openclawGatewayWsUrl" in decoded and 'new RegExp("/+$")' not in decoded:
             findings.append('GW_CONNECT gateway URL helper must avoid slash regex literals; use new RegExp("/+$")')
+    node = next((Path(c) for c in NODE_CANDIDATES if c and Path(c).exists()), None)
+    if not node:
+        findings.append("node runtime not found for openclaw_worker_ws_audit.mjs")
+    else:
+        proc = subprocess.run([str(node), str(FILES["worker_ws_audit"])], cwd=ROOT, text=True, capture_output=True)
+        if proc.returncode != 0:
+            detail = (proc.stdout + proc.stderr).strip().replace("\n", " | ")
+            findings.append(f"openclaw_worker_ws_audit.mjs failed: {detail}")
     return findings
 
 
