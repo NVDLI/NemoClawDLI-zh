@@ -277,7 +277,7 @@ a > code { color: inherit; }
 .key-panel .key-change-btn { margin: 0; padding: 7px 16px; font-size: .82rem; }
 .key-panel .iframe-proxy-toggle-row {
   display: inline-flex; align-items: center; gap: 8px;
-  margin: .75em 0 .2em; color: var(--td); font-size: .86rem;
+  margin: 0 12%.75em 0 .2em; color: var(--td); font-size: .86rem;
 }
 .key-panel .iframe-proxy-toggle-row input { flex: 0 0 auto; }
 .key-panel .btn {

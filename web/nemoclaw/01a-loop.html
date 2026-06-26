@@ -214,27 +214,21 @@
   <strong>Two things that call is quietly doing, and why.</strong> Neither is
   magic, and both are worth understanding before you trust them.
   <ul>
-    <li><strong>It goes through a proxy.</strong> The request does not hit
-        <code>build.nvidia.com</code> directly, because a browser cannot: that
+    <li><strong>Your request may go through a proxy.</strong> If you selected the 
+        learning management system/iframe setting when you put in your API key, your 
+        request does not hit <code>build.nvidia.com</code> directly. That
         endpoint does not return the <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS" target="_blank" rel="noopener">cross-origin (CORS)</a> headers a browser
         <code>fetch</code> requires, so the call is routed through a small
-        pass-through proxy that adds them. The same proxy carries an
-        <code>X-BILLING-SOURCE: dli-nemoclaw-web</code> header the course
-        attaches to every request, so the usage is billed to this course rather
-        than to a personal account. Your key is not hidden or swapped: it rides
-        the same request straight to NVIDIA over TLS and is never stored anywhere
-        but your own browser.</li>
+        pass-through proxy that adds them. The proxy also adds a course attribution
+        header so DLI can identify traffic from this resource. Your API key is not
+        replaced or stored by the lesson; it is sent with the request you make.</li>
     <li><strong>Streaming is wrapped in a helper.</strong>
-        <code>chatStream()</code> is the same <code>POST</code> with
-        <code>stream: true</code>, but the reply comes back as a <a href="https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events" target="_blank" rel="noopener">Server-Sent-Events</a>
-        feed: many <code>data:</code> frames, a split between the answer and the
-        model's <code>reasoning_content</code>, a closing usage frame, and a
-        <code>[DONE]</code> marker. The helper parses that, routes the two channels
-        to the panel, retries a dropped connection before the first token arrives,
-        and honours the Stop button, so a cell can stay about the lesson instead of
-        the SSE plumbing. It is not a black box either: open any cell's helper menu
-        to read the exact source of <code>chat</code>, <code>chatStream</code>, and
-        every other helper.</li>
+        <code>chatStream()</code> sends the same chat request with streaming enabled,
+        then parses the returned event stream into answer text, reasoning text,
+        usage metadata, and the final done signal. The helper also connects those
+        pieces to the lesson panel and Stop button, so the cell can focus on the
+        concept instead of the streaming plumbing. You can open the helper source
+        from the cell menu to inspect exactly what it does.
     </ul>
   </div>
 
