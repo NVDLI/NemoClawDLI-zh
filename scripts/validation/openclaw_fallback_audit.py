@@ -27,7 +27,7 @@ FILES = {
 REQUIRED = {
     "kickstart": ["EPERM", "Brev App URL", "CF_Authorization", "Fail-fast backup"],
     "openclaw_js": ["EPERM", "CF_Authorization", "Brev session URL", "stop local probing", "${fallback}${hint}", "openclawGatewayWsUrl", "cf_access_jwt", "hideHtmlFrame"],
-    "cors_worker": ["CF_Authorization", "CF-Access-Jwt-Assertion", "cf_access_jwt", "targetSearch.delete"],
+    "cors_worker": ["WORKER_VERSION", "CF_Authorization", "CF-Access-Jwt-Assertion", "cf_access_jwt", "targetSearch.delete", "upstream.webSocket", "Origin", "http://localhost:8088"],
     "runtime_js": ["OPENCLAW_BACKUP_HINT", "preflightOpenClaw", "resolveOpenClawToken", "OPENCLAW_TOKEN: discovered", "localStorage.setItem('nemoclaw_clawcfjwt'", "RESULT: FAIL (OpenClaw credentials supplied", "toolsMissing) ? 1 : 0", "'/health'"],
     "runtime_sh": ["CLAW_CF=<CF_Authorization>", "Use Brev URL if local OpenClaw fails or shows EPERM"],
     "runtime_skill": ["OpenClaw fallback", "CF_Authorization", "EPERM", "CLAW_CF"],
@@ -57,6 +57,8 @@ def audit() -> list[str]:
         findings.append("web/nemoclaw/scripts/_openclaw.js runs each probe action twice")
     if "?cf_access_jwt=" in openclaw and "?cf_access_jwt=..." not in openclaw:
         findings.append("web/nemoclaw/scripts/_openclaw.js may log the raw CF Access JWT in gateway output")
+    if "cf_access_jwt=..." in openclaw and "__nemoclaw_proxy_meta" not in openclaw:
+        findings.append("GW_CONNECT should check the live proxy version before using Brev WebSocket proxy mode")
     if "setOutput(head + `   (HTML" in openclaw and "hideHtmlFrame(true);" not in openclaw:
         findings.append("web/nemoclaw/scripts/_openclaw.js does not clear stale HTML iframe before non-HTML output")
 

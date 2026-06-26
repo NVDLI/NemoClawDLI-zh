@@ -851,6 +851,14 @@ const openclawGatewayWsUrl = (rawInput, jwtInput) => {
 const gateway = openclawGatewayWsUrl(rawUrl, cfJwt);
 const wsUrl = gateway.url;
 helpers.log("→ " + gateway.displayUrl + (gateway.viaProxy ? "  (via CF proxy)" : ""));
+if (gateway.viaProxy) {
+  try {
+    const meta = await helpers.fetch("https://openclaw-cors-proxy.vkudlay.workers.dev/__nemoclaw_proxy_meta", { cache: "no-store" });
+    const txt = await meta.text();
+    if (meta.ok && txt.includes("ws-gateway")) helpers.log("  proxy worker: ws gateway enabled");
+    else helpers.log("  proxy worker may be stale: " + meta.status + " " + txt.slice(0, 80));
+  } catch (e) { helpers.log("  proxy worker version check failed: " + (e && e.message ? e.message : e)); }
+}
 
 // Keep one live gateway socket per flow.
 if (state._ws) { try { state._ws.close(); } catch (_) {} state._chatCb = null; }
