@@ -2,6 +2,7 @@
 """Audit OpenClaw fail-fast and Brev backup guidance."""
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -58,6 +59,19 @@ def audit() -> list[str]:
         findings.append("web/nemoclaw/scripts/_openclaw.js may log the raw CF Access JWT in gateway output")
     if "setOutput(head + `   (HTML" in openclaw and "hideHtmlFrame(true);" not in openclaw:
         findings.append("web/nemoclaw/scripts/_openclaw.js does not clear stale HTML iframe before non-HTML output")
+
+    m = re.search(r"export const GW_CONNECT = `([\s\S]*?)`;", openclaw)
+    if not m:
+        findings.append("web/nemoclaw/scripts/_openclaw.js missing GW_CONNECT template")
+    else:
+        # This is not a full JS parser. It catches the exact class of regression where
+        # regex slash escapes inside the template literal decode into invalid cell code
+        # such as replace(//+$/, ""), which module-level node --check cannot see.
+        decoded = m.group(1).replace(r"\/", "/")
+        if "replace(//" in decoded:
+            findings.append("GW_CONNECT template decodes to invalid regex/comment syntax; avoid slash regex literals inside stringified cells")
+        if "openclawGatewayWsUrl" in decoded and 'new RegExp("/+$")' not in decoded:
+            findings.append('GW_CONNECT gateway URL helper must avoid slash regex literals; use new RegExp("/+$")')
     return findings
 
 

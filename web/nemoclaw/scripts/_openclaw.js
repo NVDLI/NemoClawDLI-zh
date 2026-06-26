@@ -831,15 +831,16 @@ if (!rawUrl || !token) {
   return;
 }
 const openclawGatewayWsUrl = (rawInput, jwtInput) => {
-  const raw = String(rawInput || "").trim().replace(/\/+$/, "");
+  const raw = String(rawInput || "").trim().replace(new RegExp("/+$"), "");
   const jwt = String(jwtInput || "").trim();
   const direct = raw.replace(/^https/i, "wss").replace(/^http(?!s)/i, "ws") + "/cli/gateway";
   try {
     const upstream = new URL(raw);
-    if (jwt && /(^|\.)brevlab\.com$/i.test(upstream.hostname)) {
+    const host = upstream.hostname.toLowerCase();
+    if (jwt && (host === "brevlab.com" || host.endsWith(".brevlab.com"))) {
       const proxied = new URL("https://openclaw-cors-proxy.vkudlay.workers.dev");
       proxied.protocol = "wss:";
-      const upstreamPath = upstream.pathname.replace(/\/+$/, "");
+      const upstreamPath = upstream.pathname.replace(new RegExp("/+$"), "");
       proxied.pathname = "/https/" + upstream.host + upstreamPath + "/cli/gateway";
       proxied.search = "cf_access_jwt=" + encodeURIComponent(jwt);
       return { url: proxied.href, displayUrl: proxied.origin + proxied.pathname + "?cf_access_jwt=...", viaProxy: true };
