@@ -90,6 +90,8 @@ _STRUCTURE_FIX = {
                  "or set a figure between them. A wall of same-shaped prose reads script-like.",
     "buried-list": "Lift the parallel colon-led clauses into a real list, with a lead-in sentence before and a "
                    "takeaway sentence after, so the enumeration is scannable.",
+    "definition-dump": "Lift the term definitions into a focused list. Keep one lead sentence before the list, then one "
+                       "composition/takeaway paragraph after it.",
     "list-pileup": "Two lists are stacked with almost no prose between. Merge them, convert one back to a sentence, "
                    "or put a paragraph between them so the page is not list-after-list.",
     "list-candidate": "Repeated prose structure is doing list work. Add a lead-in sentence, then lift the parallel pieces into a focused list.",
@@ -109,6 +111,7 @@ import agent_process_audit as apa  # noqa: E402
 import course_contract as cca  # noqa: E402
 import concept_order_audit as coa  # noqa: E402
 import skill_contract as skc  # noqa: E402
+import course_content_contract as cc  # noqa: E402
 from collections import defaultdict  # noqa: E402
 
 
@@ -148,6 +151,9 @@ SUITE_META = [
     ("page_audit", "Page audit", "recommended",
      "Each page is held to the shared HTML contract: no stale tokens, no missing assets, no deploy course-code leaking into content. Each entry names the drifted token or asset to fix.",
      "scripts/runtime/engine.js", "pageAudit"),
+    ("course_content", "Course content contract", "recommended",
+     "Course promises that generic validators cannot infer: the retrieval-boundary figure stays concept-scoped with provenance hidden from learner prose, and the lethal-trifecta figure defines private data, untrusted input, external communication, and the full-duplex egress loop. Each finding names the missing contract piece.",
+     "scripts/validation/course_content_contract.py", "run"),
     ("prose_variety", "Prose rhythm", "consider",
      "Sentence-length spread, staccato triads, and over-enumeration, ranked. Monotone cadence is a machine-writing tell. This is a judgment call: the flagged pages are the ones to give a human rhythm pass if you agree.",
      "scripts/validation/prose_variety.py", "sweep"),
@@ -247,7 +253,7 @@ SUITE_META = [
      "The English source-course title, abstract, and learning objectives are canonical DLI copy. They must stay verbatim across the course home, foyer, and canonical contract files.",
      "scripts/validation/course_contract.py", "audit"),
     ("concept_order", "Concept order contract", "required",
-     "Core vocabulary in the early agent curriculum must be defined before learner-facing prose or code relies on it. This prevents glossary-hover patches and keeps issue #6 fixes structural.",
+     "Core vocabulary in the early agent curriculum must be defined before learner-facing prose or code relies on it. This prevents glossary-hover patches and keeps prerequisite fixes structural.",
      "scripts/validation/concept_order_audit.py", "audit"),
     ("skill_schema", "SKILL contract", "recommended",
      "Every SKILL.html skill-meta must be a well-formed contract of its kind: it classifies into one known kind (service-skill, service-index, dir-skill, hub, leaf), carries that kind's required keys, uses a known schema/node_type value and a semver version where the kind has one, and only valid notebook status values. An agent samples this block to work in a directory, so a malformed beacon is a contract an agent cannot trust. Each entry names the SKILL and the missing or invalid field.",
@@ -399,6 +405,13 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     total = s["failures"] + s["asset_leaks"] + s["cross_course"]
     gate_block = block if scope == "ship" else total
     ok = gate_block == 0 and vl_ok and foyer_ok
+
+    # content contracts: narrow promises the generic page/figure validators cannot infer.
+    try:
+        cc_find = cc.run(verbose=False)
+    except Exception as e:
+        cc_find = []
+        suite_errors["course_content"] = str(e); vl_fail.append(f"course content contract error: {e}")
 
     # grounding reference sweep (fast, no-llm). Folds the em-dash / ungrounded / cross
     # signals into the durable log so the cadence reflects content health, not just links.
@@ -696,6 +709,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "page_audit": [D(x.get("page"), "; ".join((fi.get("detail") or fi.get("token") or "") for fi in x.get("findings", [])),
                          RECOMMENDED, "Update the flagged token or restore the missing asset so the page matches the shared HTML contract.")
                        for x in audit.get("findings", [])],
+        "course_content": [D(path, detail, RECOMMENDED,
+                             "Restore the content contract. The retrieval-boundary figure needs clean learner-facing prose; the lethal-trifecta section needs the definition, full-duplex loop, figure, caption, reference, and asset provenance.")
+                           for path, detail in cc_find],
         "helper_notebook": [D("web/nemoclaw/scripts/SKILL.html", x, REQUIRED,
                               "Use the shared helper API exposed by both runtime surfaces: log, log.h, log.json, log.kv, log.details, log.html, log.svg, log.draw, and log.clear.")
                             for x in helper_notebook_find],
@@ -874,7 +890,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     # "scanned" is the coverage count, so a clean result reads as "ran on N inputs, found nothing".
     _scanned = {
         "links": s["pages"], "cross_course": s["pages"], "asset_leaks": s["pages"],
-        "reachability": reach.get("pages", 0), "page_audit": audit.get("pages", 0),
+        "reachability": reach.get("pages", 0), "page_audit": audit.get("pages", 0), "course_content": 2,
         "grounding": len(grecs), "prose_variety": len(pv_rows), "prose_buzz": len(pv_rows), "redundancy": len(pv_rows), "grammar": len(pv_rows), "structure": len(pv_rows), "headings": len(pv_rows), "assertions": len(pv_rows), "word_echo": len(pv_rows), "comma_weight": len(pv_rows), "branding": len(pv_rows),
         "defer_copula": len(pv_rows), "dense_repeats": len(pv_rows), "over_verbage": len(pv_rows), "padding": len(pv_rows),
         "hollow_intro": len(pv_rows), "repeated_phrase": len(pv_rows), "vacuous_meta": len(pv_rows),
@@ -934,6 +950,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "reachability": reach,
         "foyer_release": foyer,
         "page_audit": audit,
+        "course_content": {"findings": len(cc_find)},
         "prose_variety": {"pages": len(pv_rows), "flagged": len(pv_flagged), "flag_at": pv.FLAG_AT,
                           "flagged_pages": [{"path": r["path"], "score": r["score"], "tells": r["tells"]}
                                             for r in pv_flagged],
@@ -977,6 +994,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         print(f"    ✗ foyer {v.get('kind')}: {v.get('detail')}")
     print(f"  page audit      : {audit.get('pages_with_findings', '?')}/{audit.get('pages', '?')} .html show drift "
           f"(stale tokens / missing assets / contract)")
+    print(f"  course content  : {len(cc_find)} content contract finding(s) (retrieval boundary, lethal trifecta)")
     if not lang_en:
         print(f"  prose / buzz / branding : n/a for '{lang}' (English-prose style suites do not gate a translation)")
     if pv_rows and lang_en:

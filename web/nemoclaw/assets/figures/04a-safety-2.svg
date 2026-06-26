@@ -1,1 +1,94 @@
-<svg class="gfx-dark" viewBox="0 0 720 422" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The lethal trifecta: untrusted input, access to secrets, and a way to send data out. Each capability is harmless on its own, but together the three open a path to breach." preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:1040px;margin:1.5rem auto"><defs></defs><circle cx="280" cy="184" r="134" fill="var(--gfx-blue,#0969da)" fill-opacity="0.12" stroke="var(--gfx-blue,#0969da)" stroke-width="2.5"/><circle cx="440" cy="184" r="134" fill="var(--gfx-amber,#9a6700)" fill-opacity="0.12" stroke="var(--gfx-amber,#9a6700)" stroke-width="2.5"/><circle cx="360" cy="278" r="134" fill="var(--gfx-green,#4a7a00)" fill-opacity="0.12" stroke="var(--gfx-green,#4a7a00)" stroke-width="2.5"/><rect x="177.45" y="103.25" width="109.10000000000001" height="41.5" rx="8" fill="var(--gfx-tint-blue,#dfeaf5)" stroke="var(--gfx-blue,#0969da)" stroke-width="1.6"/><text x="232" y="121.05" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13.5" fill="var(--gfx-blue,#0969da)" text-anchor="middle" font-weight="700">access to secrets</text><text x="232" y="135.55" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">private data</text><rect x="422.3125" y="103.25" width="131.375" height="41.5" rx="8" fill="var(--gfx-tint-amber,#f7e9cf)" stroke="var(--gfx-amber,#9a6700)" stroke-width="1.6"/><text x="488" y="121.05" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13.5" fill="var(--gfx-amber,#9a6700)" text-anchor="middle" font-weight="700">untrusted input</text><text x="488" y="135.55" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">a peer's output</text><rect x="307.65" y="327.25" width="104.7" height="41.5" rx="8" fill="var(--gfx-tint-green,#e6f3d4)" stroke="var(--gfx-green,#4a7a00)" stroke-width="1.6"/><text x="360" y="345.05" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="13.5" fill="var(--gfx-green,#4a7a00)" text-anchor="middle" font-weight="700">a way out</text><text x="360" y="359.55" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-sub,#5e5e5e)" text-anchor="middle">an outbound channel</text><circle cx="360" cy="220" r="42" fill="var(--gfx-red,#d1242f)" fill-opacity="0.95"/><text x="360" y="216" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12.5" fill="var(--gfx-bg,#ffffff)" text-anchor="middle" font-weight="800">BREACH</text><text x="360" y="234" font-family="Arial, 'Helvetica Neue', Helvetica, sans-serif" font-size="11" fill="var(--gfx-bg,#ffffff)" text-anchor="middle">all three</text></svg>
+<svg class="gfx-dark" viewBox="0 0 860 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The lethal trifecta for agents: private data, untrusted input, and an allowed outbound channel overlap to create a breach path. A response from the outbound service can also return new untrusted input to the agent." preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:var(--gfx-bg,#0d0d0d);border:1px solid var(--gfx-border,#2a2a2a);border-radius:12px;padding:16px;max-width:980px;margin:1.5rem auto">
+<!--
+Provenance: course-provided lethal-trifecta boundary diagram.
+Course adaptation: redrawn for Securing Agents Module 4a with explicit term definitions and the
+full-duplex feedback loop that turns a permitted outbound channel into another inbound input source.
+Definition follows Simon Willison's formulation: private data, untrusted content, and external communication.
+-->
+  <defs>
+    <filter id="tri-shadow" x="-12%" y="-12%" width="124%" height="124%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="var(--gfx-shadow,#000000)" flood-opacity="0.48"/>
+    </filter>
+    <marker id="tri-arrow-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-amber,#eab308)"/>
+    </marker>
+    <marker id="tri-arrow-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-blue,#3b82f6)"/>
+    </marker>
+    <marker id="tri-arrow-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-green,#10b981)"/>
+    </marker>
+    <style>
+      .tri-title{font-family:Arial,sans-serif;font-size:14px;font-weight:800;fill:var(--gfx-ink,#f2f2f2)}
+      .tri-sub{font-family:Arial,sans-serif;font-size:12px;fill:var(--gfx-sub,#a7a7a7)}
+      .tri-small{font-family:Arial,sans-serif;font-size:11px;fill:var(--gfx-sub,#8a8a8a)}
+      .tri-mono{font-family:ui-monospace,monospace;font-size:12px;font-weight:800;text-anchor:middle}
+    </style>
+  </defs>
+
+  <text x="430" y="30" class="tri-title" text-anchor="middle">Lethal trifecta: the dangerous overlap</text>
+  <text x="430" y="50" class="tri-sub" text-anchor="middle">The sandbox can allow a channel and still be blind to what untrusted instructions make the agent send.</text>
+
+  <circle cx="332" cy="226" r="148" fill="var(--gfx-blue,#3b82f6)" fill-opacity="0.08" stroke="var(--gfx-blue,#3b82f6)" stroke-width="2.4"/>
+  <circle cx="528" cy="226" r="148" fill="var(--gfx-amber,#eab308)" fill-opacity="0.08" stroke="var(--gfx-amber,#eab308)" stroke-width="2.4"/>
+  <circle cx="430" cy="348" r="148" fill="var(--gfx-green,#10b981)" fill-opacity="0.08" stroke="var(--gfx-green,#10b981)" stroke-width="2.4"/>
+
+  <g filter="url(#tri-shadow)">
+    <rect x="88" y="132" width="214" height="74" rx="8" fill="var(--gfx-card,#141414)" stroke="var(--gfx-blue,#3b82f6)" stroke-width="1.6"/>
+    <text x="195" y="156" class="tri-title" fill="var(--gfx-blue2,#7eb8ff)" text-anchor="middle">Private data</text>
+    <text x="195" y="176" class="tri-small" text-anchor="middle">workspace files, emails, tokens,</text>
+    <text x="195" y="192" class="tri-small" text-anchor="middle">memory, or internal records</text>
+  </g>
+
+  <g filter="url(#tri-shadow)">
+    <rect x="558" y="132" width="214" height="74" rx="8" fill="var(--gfx-card,#141414)" stroke="var(--gfx-amber,#eab308)" stroke-width="1.6"/>
+    <text x="665" y="156" class="tri-title" fill="var(--gfx-amber2,#facc15)" text-anchor="middle">Untrusted input</text>
+    <text x="665" y="176" class="tri-small" text-anchor="middle">web pages, tickets, tool output,</text>
+    <text x="665" y="192" class="tri-small" text-anchor="middle">documents, or peer responses</text>
+  </g>
+
+  <g filter="url(#tri-shadow)">
+    <rect x="302" y="426" width="256" height="74" rx="8" fill="var(--gfx-card,#141414)" stroke="var(--gfx-green,#10b981)" stroke-width="1.6"/>
+    <text x="430" y="450" class="tri-title" fill="var(--gfx-green2,#34d399)" text-anchor="middle">External communication</text>
+    <text x="430" y="470" class="tri-small" text-anchor="middle">any allowed egress path: HTTP, PR,</text>
+    <text x="430" y="486" class="tri-small" text-anchor="middle">chat, image load, log, or link</text>
+  </g>
+
+  <g filter="url(#tri-shadow)" transform="translate(369,242)">
+    <circle cx="61" cy="61" r="60" fill="var(--gfx-red,#dc2626)" fill-opacity="0.96" stroke="var(--gfx-invert,#ffffff)" stroke-width="1.2"/>
+    <circle cx="61" cy="61" r="50" fill="none" stroke="var(--gfx-red2,#fecaca)" stroke-width="1.4" stroke-dasharray="3 3"/>
+    <text x="61" y="56" class="tri-mono" fill="var(--gfx-invert,#ffffff)" font-size="16">BREACH</text>
+    <text x="61" y="77" class="tri-small" fill="var(--gfx-red3,#ffe4e6)" text-anchor="middle" font-weight="700">all three</text>
+  </g>
+
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M612 215 C555 185 480 180 412 222" stroke="var(--gfx-amber,#eab308)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#tri-arrow-amber)"/>
+    <text x="504" y="176" class="tri-small" fill="var(--gfx-amber,#eab308)" text-anchor="middle">malicious instruction steers the task</text>
+
+    <path d="M302 230 C314 291 352 321 386 326" stroke="var(--gfx-blue,#3b82f6)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#tri-arrow-blue)"/>
+    <text x="315" y="298" class="tri-small" fill="var(--gfx-blue2,#7eb8ff)" text-anchor="middle" transform="rotate(-58 315 298)">reads secret</text>
+
+    <path d="M456 367 C512 363 551 331 574 278" stroke="var(--gfx-green,#10b981)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#tri-arrow-green)"/>
+    <text x="545" y="350" class="tri-small" fill="var(--gfx-green2,#34d399)" text-anchor="middle" transform="rotate(-34 545 350)">sends it out</text>
+  </g>
+
+  <g filter="url(#tri-shadow)">
+    <rect x="590" y="300" width="184" height="72" rx="8" fill="var(--gfx-card,#141414)" stroke="var(--gfx-orange,#f59e0b)" stroke-width="1.4"/>
+    <text x="682" y="323" class="tri-title" fill="var(--gfx-amber3,#fbbf24)" text-anchor="middle">Allowed endpoint</text>
+    <text x="682" y="343" class="tri-small" text-anchor="middle">The policy permits the channel.</text>
+    <text x="682" y="359" class="tri-small" text-anchor="middle">It does not inspect intent.</text>
+  </g>
+
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M560 360 C598 394 676 406 732 376" stroke="var(--gfx-orange,#f59e0b)" stroke-width="2" marker-end="url(#tri-arrow-amber)"/>
+    <text x="648" y="417" class="tri-small" fill="var(--gfx-amber3,#fbbf24)" text-anchor="middle">request leaves through allowed egress</text>
+    <path d="M728 302 C685 252 655 224 614 199" stroke="var(--gfx-amber,#eab308)" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#tri-arrow-amber)"/>
+    <text x="712" y="255" class="tri-small" fill="var(--gfx-amber3,#fbbf24)" text-anchor="middle" transform="rotate(-58 712 255)">response returns as new input</text>
+  </g>
+
+  <g transform="translate(60,430)">
+    <rect width="194" height="54" rx="8" fill="var(--gfx-e1,#101010)" stroke="var(--gfx-border,#2a2a2a)"/>
+    <text x="97" y="22" class="tri-mono" fill="var(--gfx-green3,#aee23a)">break any leg</text>
+    <text x="97" y="40" class="tri-small" text-anchor="middle">remove one capability or mediate it</text>
+  </g>
+</svg>

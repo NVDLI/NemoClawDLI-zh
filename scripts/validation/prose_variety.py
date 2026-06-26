@@ -577,6 +577,8 @@ def structure_findings(f: Path) -> list:
                        paragraphs, or 2+ where each is a long (>=4-sentence) block. Reads script-like.
       buried-list      one paragraph carrying 2+ parallel colon-led clauses ("The index is …: … The
                        live request is …: …"): an enumeration hiding in prose that wants to be a list.
+      definition-dump  one paragraph defining three or more named terms with is/are/means: a glossary
+                       hiding in prose that should become a focused list.
       list-pileup      two lists with only one or two short paragraphs between them: list-heavy, no
                        prose to pace them.
       list-candidate   three adjacent similarly shaped prose blocks that probably want a lead-in
@@ -592,6 +594,9 @@ def structure_findings(f: Path) -> list:
             nw, ns = len(_WORD.findall(text)), len(_sentences(text))
             if ns >= 7 or nw >= 130:
                 out.append(("wall-of-text", f"one paragraph of {nw} words / {ns} sentences; split it, or lift part into a list or callout"))
+            defs = re.findall(r"(?:^|[.!?]\s+)(?:[A-Z][A-Za-z0-9 /+-]{2,48})\s+(?:is|are|means)\s+", text)
+            if len(defs) >= 3 and nw >= 55:
+                out.append(("definition-dump", f"{len(defs)} term definitions packed into one paragraph; introduce the group, then make a focused list"))
     run = []
     for kind, text in bl + [("heading", "")]:               # sentinel flushes a trailing run
         if kind == "para":
