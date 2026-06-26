@@ -365,6 +365,99 @@ def narrative(f: Path) -> list:
 _BLOCK = re.compile(r"<h[1-3]\b|<p\b[^>]*>|<ul\b|<ol\b|<table\b|<figure\b|<svg\b|<img\b|<pre\b"
                     r"|<div\b[^>]*class=\"[^\"]*callout|<div\b[^>]*id=\"[a-z0-9-]+\"", re.I)
 _COLON_LED = re.compile(r"(?:^|[.!?]\s+)(?:The|A|An|Each|Every|One)\s+[\w ,'-]{2,45}?:")
+_LIST_LEAD = re.compile(r"^(?:The|A|An|Each|Every|One|This|That)\b")
+_DEFINITIONAL = re.compile(r"\b(?:is|are|means|gives|runs|stores|wraps|starts|holds|carries|calls|routes|returns)\b", re.I)
+
+
+def _parallel_list_candidate(run: list[str]) -> str | None:
+    """Return a detail string when consecutive prose blocks have the same teaching shape and
+    should probably become a segued-into focused list. Kept narrow: it needs three nearby
+    short paragraphs with lead-in grammar, similar lengths, and no existing list break."""
+    if len(run) < 3:
+        return None
+    samples = []
+    for text in run:
+        words = _WORD.findall(text)
+        if not (12 <= len(words) <= 90):
+            return None
+        first = _sentences(text)[0][0] if _sentences(text) else text
+        if not (_LIST_LEAD.search(first) and _DEFINITIONAL.search(first)):
+            return None
+        samples.append(first[:72])
+    lens = [len(_WORD.findall(x)) for x in run]
+    if max(lens) - min(lens) > 55:
+        return None
+    return f"{len(run)} adjacent similarly shaped paragraphs; introduce the group, then make a focused list (examples: {samples[0]!r}; {samples[1]!r})"
+
+
+def _list_density_findings(bl: list[tuple[str, str]]) -> list:
+    """Find list clusters that are too close. A pair is handled by list-pileup; this catches
+    section-scale list density where the fix is usually to refactor the surrounding section, not
+    shuffle one paragraph."""
+    out = []
+    section = []
+    for kind, text in bl + [("heading", "")]:
+        if kind == "heading":
+            out.extend(_list_density_section(section))
+            section = []
+        else:
+            section.append((kind, text))
+    return out
+
+
+def _list_density_section(section: list[tuple[str, str]]) -> list:
+    content = [(k, t) for k, t in section if k in {"para", "para_styled", "list", "callout", "figure", "table", "cell"}]
+    list_pos = [i for i, (k, _) in enumerate(content) if k == "list"]
+    if len(list_pos) < 3:
+        return []
+    out = []
+    span = list_pos[-1] - list_pos[0] + 1
+    if span <= 10:
+        out.append(("list-density", f"{len(list_pos)} lists within {span} nearby content blocks; refactor the section so lists do distinct jobs instead of stacking"))
+    for a, b, c in zip(list_pos, list_pos[1:], list_pos[2:]):
+        if c - a <= 7:
+            out.append(("list-density", "three lists appear within seven content blocks; merge, split the section, or convert one list back into prose"))
+            break
+    return out
+
+
+def _page_list_density(bl: list[tuple[str, str]]) -> list:
+    content = [(k, t) for k, t in bl if k in {"para", "para_styled", "list", "callout", "figure", "table", "cell"}]
+    pos = [i for i, (k, _) in enumerate(content) if k == "list"]
+    if len(pos) < 7:
+        return []
+    gaps = [b - a for a, b in zip(pos, pos[1:])]
+    tight = sum(1 for g in gaps if g <= 4)
+    if tight >= 4:
+        return [("list-density", f"{len(pos)} lists on the page, with {tight} close gaps; refactor at section scale so lists alternate with explanatory prose")]
+    return []
+
+
+_ENUM_INTRO = re.compile(r"\b(?:two|three|four|five|six|several|many|parts|steps|patterns|mechanisms|axes|knobs|conditions|questions|arguments)\b", re.I)
+
+
+def _heading_para_candidates(bl: list[tuple[str, str]]) -> list:
+    out = []
+    i = 0
+    while i < len(bl) - 1:
+        if bl[i][0] != "heading" or bl[i + 1][0] not in {"para", "para_styled"}:
+            i += 1
+            continue
+        j = i
+        paras = []
+        while j < len(bl) - 1 and bl[j][0] == "heading" and bl[j + 1][0] in {"para", "para_styled"}:
+            txt = bl[j + 1][1]
+            nw = len(_WORD.findall(txt))
+            if not (12 <= nw <= 85):
+                break
+            paras.append(txt)
+            j += 2
+        if len(paras) >= 3:
+            intro = " ".join(t for _, t in bl[max(0, i - 4):i] if t)
+            if _ENUM_INTRO.search(intro):
+                out.append(("list-candidate", f"{len(paras)} short heading-plus-paragraph entries follow an enumerating lead-in; make them a focused list, or expand each subsection enough to earn its heading"))
+        i = max(j, i + 1)
+    return out
 
 
 def _blocks(f: Path):
@@ -410,6 +503,10 @@ def structure_findings(f: Path) -> list:
                        live request is …: …"): an enumeration hiding in prose that wants to be a list.
       list-pileup      two lists with only one or two short paragraphs between them: list-heavy, no
                        prose to pace them.
+      list-candidate   three adjacent similarly shaped prose blocks that probably want a lead-in
+                       sentence plus a focused list.
+      list-density     three or more lists packed into one short section: a local shuffle is not
+                       enough; refactor the surrounding section so lists do distinct jobs.
       wall-of-text     one paragraph (lead included) of 7+ sentences or 130+ words: a visually bereft
                        block a reader skips. Split it, or lift part into a list or callout."""
     bl = _blocks(f)
@@ -426,6 +523,11 @@ def structure_findings(f: Path) -> list:
             continue
         if len(run) >= 3 or (len(run) >= 2 and sum(1 for c in run if len(_sentences(c)) >= 4) >= 2):
             out.append(("prose-run", f"{len(run)} narrative paragraphs with no list, figure, callout, or break between them"))
+        for i in range(0, max(0, len(run) - 2)):
+            detail = _parallel_list_candidate(run[i:i + 3])
+            if detail:
+                out.append(("list-candidate", detail))
+                break
         run = []
     for kind, text in bl:
         if kind.startswith("para") and len(_COLON_LED.findall(text)) >= 2:
@@ -436,6 +538,9 @@ def structure_findings(f: Path) -> list:
         if between and all(k.startswith("para") for k, _ in between) and len(between) <= 2 \
            and all(len(_sentences(t)) <= 2 for _, t in between):
             out.append(("list-pileup", "two lists separated only by a sentence or two; space them with prose or merge"))
+    out += _heading_para_candidates(bl)
+    out += _list_density_findings(bl)
+    out += _page_list_density(bl)
     out += _grid_findings(f)
     return out
 

@@ -92,6 +92,8 @@ _STRUCTURE_FIX = {
                    "takeaway sentence after, so the enumeration is scannable.",
     "list-pileup": "Two lists are stacked with almost no prose between. Merge them, convert one back to a sentence, "
                    "or put a paragraph between them so the page is not list-after-list.",
+    "list-candidate": "Repeated prose structure is doing list work. Add a lead-in sentence, then lift the parallel pieces into a focused list.",
+    "list-density": "Lists are packed too closely for a local edit. Refactor the surrounding section so each list has a distinct job, or merge/split the section at blast-radius scale.",
     "wall-of-text": "One paragraph is too long to read as a block. Split it into two or three, trim any over-detailed "
                     "recap, and lift an enumeration or step sequence into a list or callout.",
 }
@@ -171,7 +173,7 @@ SUITE_META = [
      "Buzz parsed in HEADINGS, judged as their own class: a mirrored or numeric heading ('Five agents, one application layer', 'N X, one Y', 'A is B; C is D') is a marketing tell at the top of a section. Treat it as blast radius: a buzzy heading usually means the section it governs needs the same rewrite pass, so the fix is the heading AND a look at the body under it.",
      "scripts/validation/prose_variety.py", "nonprose_buzz"),
     ("structure", "Structural rhythm", "recommended",
-     "Block-level monotony a sentence metric cannot see: a run of narrative paragraphs with no list, figure, callout, or code to pace them (reads script-like); an enumeration buried in prose as parallel colon-led clauses that wants to be a list; or two lists stacked with only a sentence between. Code and reference cards are excluded. Break the run with a list or callout, lift the buried list out, or space the stacked lists with prose.",
+     "Block-level monotony a sentence metric cannot see: prose runs, buried enumerations, repeated short subsection shapes that may want a focused list, and list clusters that are too close. Code and reference cards are excluded. Break the run, lift the buried list out, add a segued-into list where structure repeats, or refactor dense list clusters at section scale.",
      "scripts/validation/prose_variety.py", "structure_findings"),
     ("branding", "Brand naming", "recommended",
      "Product and brand names must use canonical casing in PROSE: NVIDIA, NemoClaw, OpenClaw, OpenShell, Nemotron. Code, URLs, paths, model-ids, and the lowercase CLI names (openshell, openclaw) are excluded, so only a real prose miscasing flags. Mostly a regression guard: it locks brand casing so future drift cannot ship.",
