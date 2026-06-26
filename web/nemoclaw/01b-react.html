@@ -198,13 +198,11 @@
     <div class="fig-embed" data-svg-src="assets/figures/01b-react-4.svg" style="aspect-ratio:760 / 305"></div>
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Redrawn from <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu et al. (2023)</a>. As the loop appends turns, the answer you need drifts into the weak middle.</figcaption>
   </figure>
-  <p>
-    Some mitigations for this issue include:
-  </p>
+  <p>Common mitigations keep each decision close to the evidence it needs:</p>
   <ul>
-    <li>having the model plan ahead before it accumulates observations,</li>
-    <li>delegating sub-tasks so each sub-agent works on a short context,</li>
-    <li>or rolling earlier turns into a summary.</li>
+    <li>plan before the loop accumulates observations,</li>
+    <li>delegate sub-tasks so each sub-agent works on a short context,</li>
+    <li>or summarize earlier turns before they become a liability.</li>
   </ul>
   <p>
     Each of those costs something in latency or fidelity or complexity, and each is worth weighing against the task at hand.
@@ -214,7 +212,7 @@
   <p>
     The loop above hard-wires one tiny tool. LangChain's <a href="https://docs.langchain.com/oss/javascript/langchain/agents" target="_blank" rel="noopener"><code>createReactAgent</code></a>
     generalizes the same machinery to support more tools, standard interfaces, and observability integrations. An instance of this class is wired below to a single tool,
-    <code>read_course_page</code>, which hands the agent any page of this course as markdown. The model should decides which pages to read to answer your question, so give it a try.
+    <code>read_course_page</code>, which hands the agent any page of this course as markdown. The model decides which pages to read for your question, so give it a try.
   </p>
 
   <div class="callout">
