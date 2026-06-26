@@ -103,11 +103,11 @@
 
   <!-- ── Why production simplified it ── -->
   <h2>Why today's RAG drops the joint training</h2>
-  <p>Almost nobody trains RAG that way now, for two practical reasons:</p>
-  <ul>
-    <li>you cannot backpropagate into a frontier model you reach through an API;</li>
-    <li>even self-hosted, end-to-end retrieval training is expensive and easy to destabilize.</li>
-  </ul>
+  <p>
+    Almost nobody trains RAG that way now for two practical reasons. You cannot
+    backpropagate into a frontier model you reach through an API, and even self-hosted
+    end-to-end retrieval training is expensive and easy to destabilize.
+  </p>
   <p>
     Practice settled on a simpler assembly. You take a model that already exists, freeze it, and put a retriever in
     front of it so the prompt arrives pre-loaded with evidence and nothing is trained at all. The parts were built
@@ -136,11 +136,12 @@
     Adapted from <a href="https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/" target="_blank" rel="noopener">Hayden Wolff, <em>RAG 101</em></a> (NVIDIA, 2023)
     and <a href="https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-with-nvidia-ai-langchain-ai-endpoints/" target="_blank" rel="noopener">Amit Bleiweiss, <em>tips for building a RAG pipeline</em></a> (NVIDIA, 2024).
   </p>
-  <p>Two timelines share that picture:</p>
-  <ul>
-    <li><strong>The index is built once, offline.</strong> Every passage in the corpus is embedded and stored for fast lookup.</li>
-    <li><strong>The live request runs top-down.</strong> Embed the question, search the index for the top-K passages, and hand them to the model alongside the question.</li>
-  </ul>
+  <p>
+    Two timelines share that picture. <strong>Indexing</strong> happens once, offline:
+    every passage in the corpus is embedded and stored for fast lookup. <strong>Query time</strong>
+    runs top-down: embed the question, search the index for the top-K passages, and hand
+    them to the model alongside the question.
+  </p>
   <p>
     The rest of this page builds the live path one stage at a time, starting with the decision that comes before you
     pick a store.
@@ -156,12 +157,12 @@
   <p>
     For an autonomous agent, the bundle is the working memory it carries across many
     turns. That memory stores the agent's constraints, prior decisions, and partial
-    results, along with the tool surfaces and rules it operates under. When that bundle
-    is badly designed, two things go wrong:
+    results, along with the tool surfaces and rules it operates under. Two failures
+    show that the bundle is badly designed:
   </p>
   <ul>
-    <li><strong>Rediscovery tax.</strong> The agent re-fetches the same piece of the bundle on every turn because the running state does not carry it forward. Cost scales linearly with turn count.</li>
-    <li><strong>Stale bundle.</strong> The agent acts on a piece of the bundle that was true earlier and has since changed, so it commits with full confidence to a decision the current state no longer supports.</li>
+    <li><strong>Rediscovery tax.</strong> The agent re-fetches the same context on every turn.</li>
+    <li><strong>Stale bundle.</strong> The agent acts confidently on state that was true earlier but has since changed.</li>
   </ul>
   <p>
     The bundle principle is a planning discipline: <em>define the bundle before
@@ -201,13 +202,12 @@
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/02b-rag-2.svg" style="aspect-ratio:900 / 420"></div>
   </figure>
-  <p>Every request walks the same four steps:</p>
-  <ul>
-    <li><strong>Embed</strong> the query into a vector.</li>
-    <li><strong>Search</strong> the passage index for the top-K nearest passages.</li>
-    <li><strong>Concatenate</strong> those passages onto the prompt.</li>
-    <li><strong>Generate</strong> an answer grounded in them.</li>
-  </ul>
+  <p>
+    Every request walks the same four steps: <strong>embed</strong> the query into a vector,
+    <strong>search</strong> the passage index for the top-K nearest passages,
+    <strong>concatenate</strong> those passages onto the prompt, and <strong>generate</strong>
+    an answer grounded in them.
+  </p>
   <p>
     Index agents that manage other primitives largely take the same shape while varying the search/embed/verification logic, so please look into the other options when they align well with your corpus of interest.
   </p>

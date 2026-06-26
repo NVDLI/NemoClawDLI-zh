@@ -460,6 +460,70 @@ def _heading_para_candidates(bl: list[tuple[str, str]]) -> list:
     return out
 
 
+def _strip_between_ids(body: str, start_id: str, end_id: str) -> str:
+    start = re.search(r'<div\b[^>]*\bid="' + re.escape(start_id) + r'"[^>]*>', body, re.I)
+    end = re.search(r'<div\b[^>]*\bid="' + re.escape(end_id) + r'"[^>]*>', body, re.I)
+    if start and end and start.start() < end.start():
+        return body[:start.start()] + " " + body[end.start():]
+    return body
+
+
+def _strip_div_by_id(body: str, div_id: str) -> str:
+    m = re.search(r'<div\b[^>]*\bid="' + re.escape(div_id) + r'"[^>]*>', body, re.I)
+    if not m:
+        return body
+    depth = 1
+    cur = m.end()
+    tag = re.compile(r'</?div\b[^>]*>', re.I)
+    for tm in tag.finditer(body, cur):
+        if tm.group(0).startswith('</'):
+            depth -= 1
+        else:
+            depth += 1
+        cur = tm.end()
+        if depth == 0:
+            return body[:m.start()] + " " + body[cur:]
+    return body[:m.start()]
+
+
+def _strip_divs_by_class(body: str, class_word: str) -> str:
+    out = []
+    pos = 0
+    pat = re.compile(r'<div\b[^>]*\bclass="[^"]*\b' + re.escape(class_word) + r'\b[^"]*"[^>]*>', re.I)
+    while True:
+        m = pat.search(body, pos)
+        if not m:
+            out.append(body[pos:])
+            break
+        out.append(body[pos:m.start()])
+        depth = 1
+        cur = m.end()
+        tag = re.compile(r'</?div\b[^>]*>', re.I)
+        for tm in tag.finditer(body, cur):
+            if tm.group(0).startswith('</'):
+                depth -= 1
+            else:
+                depth += 1
+            cur = tm.end()
+            if depth == 0:
+                break
+        pos = cur
+    return " ".join(out)
+
+
+def _strip_reference_scaffolds(body: str) -> str:
+    """Remove non-narrative catalogs before structural rhythm checks.
+
+    Reference hubs and learning-path card grids are navigation/catalog surfaces. Their
+    close lists are intentional metadata, not a prose section that needs refactoring.
+    """
+    body = _strip_between_ids(body, "refs", "learning-path")
+    body = _strip_div_by_id(body, "learning-path")
+    body = _strip_divs_by_class(body, "references")
+    body = _strip_divs_by_class(body, "card-grid")
+    return body
+
+
 def _blocks(f: Path):
     """The page body as an ordered list of (kind, text) blocks, so structural rhythm (not just prose)
     can be judged. Code, SVG, and scripts are removed first: their colons/braces are syntax, not
@@ -470,9 +534,13 @@ def _blocks(f: Path):
     if suf not in (".html", ".htm"):
         return []
     body = raw[raw.lower().find("<body"):] if "<body" in raw.lower() else raw
+    body = _strip_reference_scaffolds(body)
     body = _SVG.sub(" ", body)
     body = re.sub(r"<pre\b.*?</pre>", " ", body, flags=re.S | re.I)
     body = re.sub(r"<script\b.*?</script>", " ", body, flags=re.S | re.I)
+    # List bodies are enumerative by structure. Preserve the list block, but keep
+    # nested headings and paragraphs from being counted as narrative flow.
+    body = re.sub(r"<li\b[^>]*>.*?</li>", "<li></li>", body, flags=re.S | re.I)
     out = []
     for m in _BLOCK.finditer(body):
         t = m.group(0).lower()

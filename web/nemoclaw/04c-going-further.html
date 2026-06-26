@@ -58,8 +58,10 @@
   .small-links a:hover { color: var(--g); }
 
   .pattern { margin: 1.2em 0; padding: 14px 18px; background: rgba(118,185,0,.06); border-left: 3px solid var(--g); border-radius: var(--r); }
+  .pattern-list { list-style: none; padding-left: 0; margin: 1.2em 0; }
   .pattern h3 { margin: 0 0 .4em; font-size: 1rem; color: var(--gs); }
   .pattern p { margin: .4em 0; font-size: .92rem; color: var(--td); line-height: 1.6; }
+  .pattern p:first-child strong { color: var(--gs); }
 
   figure.video { margin: 0 0 1.8em; }
   figure.video figcaption { font-size: .88rem; color: var(--td); line-height: 1.6; margin-top: -.4em; }
@@ -94,14 +96,10 @@
       kernel-level sandbox, and measured the blast radius the policy leaves.
     </p>
     <p class="lead">
-      A real deployment adds its own data and its own users, and bringing it
-      that far takes a few more decisions.
+      A real deployment adds its own data and users. The remaining choices are
+      where to deploy it, how to bring in your own knowledge, and which open
+      problems matter once the basics hold.
     </p>
-    <ul class="lead" style="font-size:1.05rem;color:var(--td);line-height:1.7">
-      <li>where to deploy what you built</li>
-      <li>how to bring your own knowledge in</li>
-      <li>which open problems are worth pushing on once the basics hold</li>
-    </ul>
   </div>
 
   <!-- ── Deploy what you built ─────────────────────────────────────── -->
@@ -160,8 +158,8 @@
         VFS, and sub-agents shape from 2c, plus
         <a href="https://www.crewai.com/" target="_blank" rel="noopener">CrewAI</a> and
         <a href="https://microsoft.github.io/autogen/" target="_blank" rel="noopener">AutoGen</a>
-        for role-based fleets. The agent-type vocabulary the course built
-        is the right vocabulary for comparing them to your problem.
+        for role-based fleets. Compare each framework by the work it makes
+        explicit: state, tools, retrieval, delegation, persistence, and runtime policy.
       </li>
     </ul>
   </div>
@@ -218,9 +216,12 @@
   <!-- ── Where to push next ──────────────────────────────────────────── -->
   <div class="section">
     <div class="section-eyebrow">Where to push next</div>
-    <h2>Three axes the agent vocabulary opens up</h2>
-    <p>Production work pushes on three independent axes. Use the
-       vocabulary from this course for each:</p>
+    <h2>Three axes for production work</h2>
+    <p>
+      Production work usually pushes on one of three axes: the knowledge layer,
+      the runtime substrate, or fleet behavior. The terms below are course
+      vocabulary only when they point to a concrete design choice.
+    </p>
     <ul>
       <li><strong>The knowledge layer.</strong> Production-grade retrieval: structural chunking, page-image retrieval, faithfulness eval on real heterogeneous corpora. NeMo Retriever and the RAG AI Blueprints are where this gets built for real.</li>
       <li><strong>The substrate.</strong> Wire-format protocols (MCP, the Responses API, OTel GenAI conventions, A2A) that keep tool capabilities portable across providers and frameworks.</li>
@@ -441,69 +442,68 @@
     <div class="section-eyebrow">Four patterns worth carrying</div>
     <h2>What to remember when you ship one of these</h2>
 
-    <div class="pattern">
-      <h3>Forecasts about agent productivity are systematically wrong.</h3>
-      <p>
-        <a href="https://metr.org/" target="_blank" rel="noopener">METR</a>'s randomised trial of experienced open-source developers
-        found a meaningful slowdown from using a coding agent, even though
-        they expected to go faster and reported afterward that they had.
-        That distance between forecast and measured result is the finding to
-        carry forward, so weigh it when scoping the value of any agent you ship.
-      </p>
-    </div>
-
-    <div class="pattern">
-      <h3>A single strong agent is the default.</h3>
-      <p>
-        A single strong agent beats a multi-agent system once a task crosses a
-        threshold of complexity (<a href="https://arxiv.org/abs/2403.02419" target="_blank" rel="noopener">Chen et al., 2024</a>).
-        Push N higher and the emergent behaviours can hurt more than the
-        failure modes you set out to fix. Before adding one more to the
-        topology, name the specific failure mode it is meant to fix. If you
-        can't name it, the extra complexity is unlikely to help.
-      </p>
-    </div>
-
-    <div class="pattern">
-      <h3>Kernel containment is the answer to "what survives a successful prompt injection."</h3>
-      <p>
-        Prompt rules and application guardrails help, but they only act on
-        what the model exposes to them, and an injected instruction that
-        looks valid will pass straight through.
-      </p>
-      <p>
-        Any agent that can touch a real shell or filesystem or reach the
-        network therefore needs a layer beneath the prompt. That layer
-        enforces its rules at the syscall boundary, below the level any
-        instruction can reach.
-      </p>
-    </div>
-
-    <div class="pattern">
-      <h3>The agent's admin token is a higher perimeter than the sandbox.</h3>
-      <p>
-        The kernel sandbox bounds what the agent can do to the world, yet it
-        says nothing about whoever holds the agent's operator token. That
-        holder sits above the boundary entirely, free to do any of the
-        following:
-      </p>
-      <ul>
-        <li>read the persona</li>
-        <li>plant cron jobs</li>
-        <li>patch the model and its tools</li>
-        <li>inject a turn into the conversation</li>
-      </ul>
-      <p>
-        The hardness of the box and the scope of that token are separate
-        measurements.
-      </p>
-      <p>
-        Module 4b showed the token reaching past the checkpoint
-        the sandbox never sees. Treat an <code>operator.admin</code> credential
-        like a root password: tight storage and regular rotation. For that
-        agent it reaches further than root does inside the box.
-      </p>
-    </div>
+    <ul class="pattern-list">
+      <li class="pattern">
+        <p>
+          <strong>Forecasts about agent productivity are systematically wrong.</strong>
+          <a href="https://metr.org/" target="_blank" rel="noopener">METR</a>'s randomised trial of experienced open-source developers
+          found a meaningful slowdown from using a coding agent, even though
+          they expected to go faster and reported afterward that they had.
+          That distance between forecast and measured result is the finding to
+          carry forward, so weigh it when scoping the value of any agent you ship.
+        </p>
+      </li>
+      <li class="pattern">
+        <p>
+          <strong>A single strong agent is the default.</strong>
+          A single strong agent beats a multi-agent system once a task crosses a
+          threshold of complexity (<a href="https://arxiv.org/abs/2403.02419" target="_blank" rel="noopener">Chen et al., 2024</a>).
+          Push N higher and the emergent behaviours can hurt more than the
+          failure modes you set out to fix. Before adding one more to the
+          topology, name the specific failure mode it is meant to fix. If you
+          can't name it, the extra complexity is unlikely to help.
+        </p>
+      </li>
+      <li class="pattern">
+        <p>
+          <strong>Kernel containment answers what survives a successful prompt injection.</strong>
+          Prompt rules and application guardrails help, but they only act on
+          what the model exposes to them, and an injected instruction that
+          looks valid will pass straight through.
+        </p>
+        <p>
+          Any agent that can touch a real shell or filesystem or reach the
+          network therefore needs a layer beneath the prompt. That layer
+          enforces its rules at the syscall boundary, below the level any
+          instruction can reach.
+        </p>
+      </li>
+      <li class="pattern">
+        <p>
+          <strong>The agent's admin token is a higher perimeter than the sandbox.</strong>
+          The kernel sandbox bounds what the agent can do to the world, yet it
+          says nothing about whoever holds the agent's operator token. That
+          holder sits above the boundary entirely, free to do any of the
+          following:
+        </p>
+        <ul>
+          <li>read the persona</li>
+          <li>plant cron jobs</li>
+          <li>patch the model and its tools</li>
+          <li>inject a turn into the conversation</li>
+        </ul>
+        <p>
+          The hardness of the box and the scope of that token are separate
+          measurements.
+        </p>
+        <p>
+          Module 4b showed the token reaching past the checkpoint
+          the sandbox never sees. Treat an <code>operator.admin</code> credential
+          like a root password: tight storage and regular rotation. For that
+          agent it reaches further than root does inside the box.
+        </p>
+      </li>
+    </ul>
   </div>
 
   <h2>Try it · ask the whole course</h2>

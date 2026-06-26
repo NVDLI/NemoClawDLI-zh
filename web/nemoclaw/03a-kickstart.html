@@ -240,28 +240,31 @@
 
     <div id="probe-claw"></div>
 
-    <p>If the OpenClaw probe times out or returns a 502, the agent harness
-      hasn't finished booting, which usually means the launchable started
-      before OpenClaw finished loading its policy YAML.</p>
-    <p>Wait 30 seconds and then click Probe again to give the runtime time to
-      come up, and if it stays down after that, 03c covers the diagnostic
-      path.</p>
+    <div class="callout warn">
+      <strong>If the OpenClaw probe times out or returns a 502.</strong>
+      The agent harness likely has not finished booting, which usually means the
+      launchable started before OpenClaw finished loading its policy YAML. Wait
+      30 seconds, click Probe again, and if it stays down after that, 03c covers
+      the diagnostic path.
+    </div>
 
     <h3>The probe's request, as editable code</h3>
     <p>This cell makes the same call the probe does, with the code exposed. It reuses the
       URL, token, and CF JWT the probe saved. Edit <code>PATH</code>, <code>METHOD</code>,
       and <code>BODY</code> to send other requests. The status, headers, and body come back
       below.</p>
-    <p><code>TRANSPORT</code> controls how the credential reaches the launchable.
-      <code>"proxy"</code> routes through the CORS worker and sends the CF Access JWT as a
-      header. <code>"direct"</code> calls the launchable origin with
-      <code>credentials:&nbsp;"include"</code> and no JWT. It relies on the CF Access cookie
-      your browser already holds. Try both. Then open the page in a browser that never
-      signed in to the launchable, and try again. <code>"direct"</code> fails every time.
-      The cookie is <code>HttpOnly</code> and scoped to the launchable origin, so the
-      browser attaches it but the launchable sends no CORS header for this page, and you
-      never see the response. Only the explicit JWT, through the proxy, returns the
-      body.</p>
+    <p><code>TRANSPORT</code> controls how the credential reaches the launchable:</p>
+    <ul>
+      <li><code>"proxy"</code> routes through the CORS worker and sends the CF Access JWT as a header.</li>
+      <li><code>"direct"</code> calls the launchable origin with <code>credentials:&nbsp;"include"</code> and no JWT, relying on the CF Access cookie your browser already holds.</li>
+    </ul>
+    <p>
+      Try both. Then open the page in a browser that never signed in to the launchable,
+      and try again. <code>"direct"</code> fails every time. The cookie is
+      <code>HttpOnly</code> and scoped to the launchable origin, so the browser attaches
+      it automatically. The launchable sends no CORS header for this page, so you never
+      see the response. Only the explicit JWT, through the proxy, returns the body.
+    </p>
 
     <div id="claw-raw-cell"></div>
 

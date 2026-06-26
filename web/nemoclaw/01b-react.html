@@ -45,15 +45,16 @@
       An agent built on a language model runs the same perceive-reason-act
       loop as anything else, with one detail that gives the pattern its name:
       the model reasons in words between the actions it takes.
+      <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al. (2022)</a>
+      called this <strong>ReAct</strong>, for reasoning and acting. They found that
+      interleaving short reasoning traces with tool use handles many tasks more
+      reliably than planning everything first or acting with no reasoning step.
+    </p>
+    <p>
       A <strong>tool</strong> is code your harness can run for the model: a named function
       with a description, an input schema, and a return value. A <strong>tool call</strong>
       is the model's structured request for that code. The harness parses the request,
       runs the function, appends the result, and calls the model again.
-      <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al. (2022)</a>
-      called this <strong>ReAct</strong>, for reasoning and acting. They found that
-      a model which interleaves short stretches of reasoning with calls to its tools
-      handles a wide range of tasks more reliably than one that only plans in advance
-      or only acts without thinking it through.
     </p>
     <p>
       This loop is the foundation that most general-purpose agent frameworks
@@ -88,19 +89,17 @@
     to a human.
   </p>
   <ul>
-    <li><code>"stop"</code> means the model has written its final answer and the loop can exit, delivering <code>content</code> to the user.</li>
-    <li><code>"tool_calls"</code> means the model is asking your code to run the named function and append the result before calling back.</li>
-    <li><code>"length"</code> fires when the model hits its token cap before it finishes.</li>
-    <li><code>"content_filter"</code> fires when a safety classifier trips on the output.</li>
+    <li><code>"stop"</code> means the model has written its final answer and the loop can return <code>content</code> to the user.</li>
+    <li><code>"tool_calls"</code> means the model is asking your code to run a named function and append the result before calling back.</li>
+    <li><code>"length"</code> means the token budget ran out before the answer finished.</li>
+    <li><code>"content_filter"</code> means a safety classifier stopped the output.</li>
   </ul>
 
-  <p>In modern ReAct, a short router reads it and runs the following loop:</p>
-  <ol>
-    <li>the model picks a tool,</li>
-    <li>your code runs it,</li>
-    <li>the result goes back,</li>
-    <li>the loop repeats until the model says done.</li>
-  </ol>
+  <p>
+    In modern ReAct, a short router reads that field. If the model asked for a tool, the router
+    runs your function, appends the result, and calls the model again. If the model stopped, the
+    router returns the answer.
+  </p>
   <p>
     The arrangement is strong because the model is never bound to the plan it
     started with. Whenever a tool returns something it did not expect, that result
@@ -120,10 +119,10 @@
     This course's minimal agent fills each slot with the simplest thing that works:
   </p>
   <ul>
-    <li>the <code>messages[]</code> array holds the memory,</li>
-    <li>the <code>finish_reason</code> router does the planning,</li>
-    <li>your functions are the tools,</li>
-    <li>and a tool call is how it acts.</li>
+    <li><strong>Memory</strong> is the <code>messages[]</code> array.</li>
+    <li><strong>Planning</strong> is the <code>finish_reason</code> router.</li>
+    <li><strong>Tools</strong> are the functions your harness exposes.</li>
+    <li><strong>Action</strong> is the tool call the harness executes.</li>
   </ul>
   <p>
     None of that lives inside the model. It is the harness you build around a single
@@ -160,12 +159,11 @@
     All we need is a single tool named <code>get_current_time</code> plus one system prompt
     and one <code>while</code> loop. Run it with "What time is it in UTC?" to start, and see what else you can ask:
   </p>
-  <ol>
-    <li><strong>Step 1.</strong> The model asks for the tool.</li>
-    <li><strong>Tool run.</strong> The executor runs the function and appends the timestamp as a <code>tool</code>-role message.</li>
-    <li><strong>Step 2.</strong> The model reads the timestamp and writes the user-facing answer.</li>
-    <li><strong>Exit.</strong> The loop ends when <code>finish_reason</code> reads <code>"stop"</code>.</li>
-  </ol>
+  <p>
+    The flow is short: the model asks for the tool, the executor appends the timestamp as a
+    <code>tool</code>-role message, the model reads that timestamp, and the loop exits when
+    <code>finish_reason</code> reads <code>"stop"</code>.
+  </p>
 
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/01b-react-3.svg" style="aspect-ratio:820 / 234"></div>
@@ -196,14 +194,12 @@
   </p>
 
   <p>
-    This issue actually becomes more likely as the context grows due in part to a larger phenomena known as <b>context rot</b>.
-    Simply put, context rot is the tendency for contradictions and poor performance to manifest as the model inputs grow.
-    There are many soft reasons for this, which include:
-    <ul>
-      <li>Accumulating poor or ambiguous conventions, logical contraditions, and historical/stale environment observations in the context history (constituting an increase in cognitive load).</li>
-      <li>Inherent model tendencies to focus more on the tails of dialog (front and back) as assessed by <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">"Lost in the Middle" (Liu et al., 2023)</a></li>
-    </ul>
-    In general, you can largely assume that the further an important signal strays into the middle of a long-running prompt, the more likely it is to be ignored or contradicted.
+    This issue becomes more likely as the context grows. <strong>Context rot</strong> is the
+    tendency for contradictions, stale observations, and poor conventions to accumulate in the
+    prompt history until the model's next decision gets worse. The effect also has a positional
+    component: <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu et al. (2023)</a>
+    showed that models can underuse information buried in the middle of a long context. The further an
+    important signal drifts from the current turn, the easier it is for the loop to ignore or contradict it.
   </p>
 
   <figure style="margin:1.4em 0">
