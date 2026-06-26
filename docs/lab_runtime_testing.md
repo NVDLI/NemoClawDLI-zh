@@ -46,26 +46,20 @@ glue but do not need model calls yet.
 
 ## Run against the lab stack
 
-Start the dev stack with Podman Compose or Docker Compose. Podman is preferred on
-hosts where Docker daemon access is unavailable. The deploy compose files name the shared
-network `nvidia-llm`, which is the wrapper default.
-
-```bash
-COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD \
-  podman compose -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml up -d --build
-```
-
-If your host uses `podman-compose`, use the same flags with that command. The
-Python module form is also valid and is the podman-compose-via-python fallback:
+Start the dev stack with the compose frontend reported by `scripts/runtime/browser_env_probe.sh`.
+On this course host, `python3 -m podman_compose` is the reliable path. Docker may
+be installed without the Compose v2 plugin, and Podman may work while
+`podman compose` is absent. The deploy compose files name the shared network
+`nvidia-llm`, which is the wrapper default.
 
 ```bash
 COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD \
   python3 -m podman_compose -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml up -d --build
 ```
 
-If Docker is available, `docker compose` works with the same compose files. This
-repo does not vendor a compose binary; install one on the host or in a temporary
-venv when a clean agent machine only has `podman`.
+If your host has native Compose, the same files also work with `docker compose`
+or `podman compose`. Do not stop after a missing native Compose subcommand when
+the probe reports `podman-compose-via-python: yes`.
 
 Then run a browser-page test on the same container network:
 

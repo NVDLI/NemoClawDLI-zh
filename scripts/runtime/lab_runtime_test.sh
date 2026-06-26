@@ -119,11 +119,11 @@ fi
 if ! "$ENGINE" network inspect "$NETWORK" >/dev/null 2>&1; then
   cat >&2 <<EOF
 FATAL: container network '$NETWORK' not found.
-Start the lab stack first, for example:
-  COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$ROOT podman compose -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml up -d --build
-or, with podman-compose-via-python:
+Start the lab stack first with the compose frontend reported by scripts/runtime/browser_env_probe.sh.
+On this host the reliable path is podman-compose-via-python:
   COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$ROOT python3 -m podman_compose -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml up -d --build
-or set LAB_RUNTIME_NETWORK to the network that contains nginx/openclaw.
+If native Compose is installed, the same files work with docker compose or podman compose.
+Or set LAB_RUNTIME_NETWORK to the network that contains nginx/openclaw.
 EOF
   exit 2
 fi

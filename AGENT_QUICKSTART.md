@@ -160,8 +160,12 @@ scripts/runtime/browser_env_probe.sh                       # proves container No
 CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only
 ```
 
-For full lab-network browser tests, start the stack first. If `podman compose`
-is unavailable, use the Python module form:
+For full lab-network browser tests, start the stack first with the compose
+frontend reported by `scripts/runtime/browser_env_probe.sh`. Docker may be
+installed without the Compose v2 plugin, and Podman may work while
+`podman compose` is absent. On this host, use `python3 -m podman_compose`; do
+not stop after `docker compose` or `podman compose` is missing if the probe
+reports `podman-compose-via-python: yes`.
 
 ```bash
 COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD \

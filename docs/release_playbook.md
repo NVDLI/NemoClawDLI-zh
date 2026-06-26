@@ -157,8 +157,13 @@ PY
 ```
 
 ```bash
-docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml config
+COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD \
+  python3 -m podman_compose -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml config
 ```
+
+Use `docker compose` or `podman compose` only when `scripts/runtime/browser_env_probe.sh`
+shows that native Compose is installed. Docker may exist without Compose v2, and
+Podman may exist without `podman compose`; that is why the probe is the first step.
 
 ## Label taxonomy
 

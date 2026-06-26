@@ -26,6 +26,8 @@ SCRIPT_SKILL = COURSE / "scripts" / "SKILL.html"
 RUNTIME_SKILL = ROOT / "scripts" / "runtime" / "SKILL.html"
 ROOT_SCRIPT_SKILL = ROOT / "scripts" / "SKILL.html"
 LAB_RUNTIME_DOC = ROOT / "docs" / "lab_runtime_testing.md"
+AGENT_QUICKSTART = ROOT / "AGENT_QUICKSTART.md"
+RELEASE_PLAYBOOK = ROOT / "docs" / "release_playbook.md"
 BROWSER_PROBE = ROOT / "scripts" / "runtime" / "browser_env_probe.sh"
 HELPER_NOTEBOOK_AUDIT = ROOT / "scripts" / "validation" / "helper_notebook_runtime_audit.py"
 STUDIO_RESPONSIVE_AUDIT = ROOT / "scripts" / "validation" / "studio_responsive_audit.py"
@@ -101,6 +103,9 @@ def audit() -> list[str]:
     runtime_skill = read(RUNTIME_SKILL)
     root_script_skill = read(ROOT_SCRIPT_SKILL)
     lab_doc = read(LAB_RUNTIME_DOC)
+    quickstart = read(AGENT_QUICKSTART)
+    release_playbook = read(RELEASE_PLAYBOOK)
+    browser_probe = read(BROWSER_PROBE) if BROWSER_PROBE.is_file() else ""
 
     missing_ids = sorted(REQUIRED_IDS - html_ids(html))
     for item in missing_ids:
@@ -171,6 +176,9 @@ def audit() -> list[str]:
         "browser smoke": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --smoke",
         "host deps optional": "host Node, Chromium, and Playwright are optional",
         "python compose": "python3 -m podman_compose",
+        "native docker compose caveat": "Docker may exist without <code>docker compose</code>",
+        "native podman compose caveat": "Podman may exist without <code>podman compose</code>",
+        "python compose escalation": "podman-compose-via-python: yes",
     }
     for label, token in runtime_tokens.items():
         if token not in runtime_skill:
@@ -190,9 +198,41 @@ def audit() -> list[str]:
         "lab doc probe": "scripts/runtime/browser_env_probe.sh",
         "lab doc optional host deps": "Host Node.js, Playwright, and Chromium are not",
         "lab doc python compose": "python3 -m podman_compose",
+        "lab doc docker compose caveat": "Compose v2 plugin",
+        "lab doc podman compose caveat": "Podman may work while",
+        "lab doc do not stop": "Do not stop after a missing native Compose subcommand",
     }.items():
         if token not in lab_doc:
             findings.append(f"docs/lab_runtime_testing.md missing {label}: {token}")
+
+    for label, token in {
+        "quickstart probe": "scripts/runtime/browser_env_probe.sh",
+        "quickstart docker compose caveat": "Compose v2 plugin",
+        "quickstart podman compose caveat": "Podman may work while",
+        "quickstart do not stop": "not stop after `docker compose`",
+        "quickstart python compose": "python3 -m podman_compose",
+    }.items():
+        if token not in quickstart:
+            findings.append(f"AGENT_QUICKSTART.md missing {label}: {token}")
+
+    for label, token in {
+        "release playbook probe": "scripts/runtime/browser_env_probe.sh",
+        "release playbook docker compose caveat": "Docker may exist without Compose v2",
+        "release playbook podman compose caveat": "Podman may exist without `podman compose`",
+        "release playbook python compose": "python3 -m podman_compose",
+    }.items():
+        if token not in release_playbook:
+            findings.append(f"docs/release_playbook.md missing {label}: {token}")
+
+    for label, token in {
+        "probe native docker compose status": "native docker compose",
+        "probe native podman compose status": "native podman compose",
+        "probe python compose status": "podman-compose-via-python",
+        "probe native compose escalation": "native Compose missing; use python3 -m podman_compose",
+        "probe do not stop": "do not stop at docker compose or podman compose failure",
+    }.items():
+        if token not in browser_probe:
+            findings.append(f"scripts/runtime/browser_env_probe.sh missing {label}: {token}")
 
     if not BROWSER_PROBE.is_file():
         findings.append("scripts/runtime/browser_env_probe.sh missing")
