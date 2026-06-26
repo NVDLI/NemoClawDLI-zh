@@ -136,34 +136,27 @@
     Adapted from <a href="https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/" target="_blank" rel="noopener">Hayden Wolff, <em>RAG 101</em></a> (NVIDIA, 2023)
     and <a href="https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-with-nvidia-ai-langchain-ai-endpoints/" target="_blank" rel="noopener">Amit Bleiweiss, <em>tips for building a RAG pipeline</em></a> (NVIDIA, 2024).
   </p>
+  <p>You can see from the figure that there are two key stages</p>
+  <ul>
+    <li><strong>The index is built once, offline.</strong> Every passage in the corpus is embedded and stored for fast lookup.</li>
+    <li><strong>The live request interacts with the index.</strong> Embed the question, search the index for the top-K passages, and hand them to the model alongside the question.</li>
+  </ul>
   <p>
-    Two timelines share that picture. <strong>Indexing</strong> happens once, offline:
-    every passage in the corpus is embedded and stored for fast lookup. <strong>Query time</strong>
-    runs top-down: embed the question, search the index for the top-K passages, and hand
-    them to the model alongside the question.
-  </p>
-  <p>
-    The rest of this page builds the live path one stage at a time, starting with the decision that comes before you
-    pick a store.
+    The rest of this page builds the live path one stage at a time.
   </p>
 
   <!-- ── Part 1: The bundle principle ──────────────────────────────────────── -->
   <h2>Naming the context bundle before you pick a store</h2>
   <p>
-    Before picking a retrieval primitive, the Index Agent has to name its <strong>bundle</strong>. The bundle is the
-    complete and bounded set of context it needs in one package to do its job. A single-turn QA system keeps that
-    bundle small: the user question, the paragraph retrieved to answer it, and the answer itself.
-  </p>
-  <p>
-    For an autonomous agent, the bundle is the working memory it carries across many
-    turns. That memory stores the agent's constraints, prior decisions, and partial
-    results, along with the tool surfaces and rules it operates under. Two failures
-    show that the bundle is badly designed:
+    Before picking a retrieval primitive, you should first define a <strong>bundle</strong>. The bundle is the
+    complete and bounded set of context that you intend your pipeline to pass around. 
   </p>
   <ul>
-    <li><strong>Repeated lookup.</strong> The agent has no stable place to carry forward a constraint, prior decision, or partial result, so later turns ask retrieval for the same working state again.</li>
-    <li><strong>Old or conflicting context.</strong> The bundle brings back information that is now wrong, or presents two observations as if both can still be true without explaining what changed.</li>
-  </ul>
+    <li><b>For a simple single-turn question-answering system</b>, we would expect bundle small to be provided to the agent: the user question, the few chunks retrieved to answer it, and the answer itself.</li>
+    <li><b>For an autonomous agent</b>, the bundle is the working memory it carries across many
+    turns. That memory stores the agent's constraints, prior decisions, and partial
+    results, along with the tool surfaces and rules it operates under.</b></li>
+    <li><b>For an arbitrary Index Agent,</b> a bundle that gets returned by the agent may only house the retrieved context chunks along with their chunk sources, relevancy scores, and possibly a summary. A separate internal bundle that gets passed around inside such an agent may be the flat live-request-processing pipeline from above, or could be a ReAct-style loop that iterates, judges retrieval relevance and retries until it has accumulated a good return over multiple turns.</li> 
   <p>
     The bundle principle is a planning discipline: <em>define the bundle before
     you pick the database</em>. Picking a vector store first and hoping it covers
