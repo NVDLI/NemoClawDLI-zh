@@ -82,7 +82,7 @@
         30,
         40
       ],
-      "note": "The worker rewrites a caller-provided Access JWT into the CF_Authorization cookie expected by the target launchable."
+      "note": "The worker rewrites a caller-provided Access JWT into the CF_Authorization cookie expected by the target launchable. Fetch callers use CF-Access-Jwt-Assertion; browser WebSocket callers use cf_access_jwt because WebSocket constructors cannot set headers."
     }
   ],
   "related": [

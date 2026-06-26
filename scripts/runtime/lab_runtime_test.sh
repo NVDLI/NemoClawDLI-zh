@@ -34,7 +34,7 @@ Environment:
   LAB_RUNTIME_IMAGE=name:tag         Override image tag.
   LAB_RUNTIME_NETWORK=nvidia-llm     Network for full lab tests; default matches deploy/docker-compose.yml.
   CLAW_URL=url                       OpenClaw base URL. Use Brev URL if local OpenClaw fails or shows EPERM.
-  CLAW_TOKEN=token                   OpenClaw gateway bearer token.
+  CLAW_TOKEN=token                   OpenClaw gateway bearer token; optional for Brev when /api/agent can discover it with CLAW_CF.
   CLAW_CF=jwt                        CF_Authorization value for remote Brev launchables.
   PLAYWRIGHT_VERSION=1.55.0          Override build arg for the runtime image.
 USAGE

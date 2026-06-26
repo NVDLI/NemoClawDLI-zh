@@ -26,10 +26,15 @@ export default {
     if (!hostOk) {
       return new Response('Upstream host not allowed (NemoClaw launchables only).', { status: 403, headers: { "Content-Type": "text/plain", ...cors } });
     }
-    const target = "https://" + rest + url.search;
+    const targetSearch = new URLSearchParams(url.search);
     const fwdHeaders = new Headers(request.headers);
-    // Forward the JWT as the CF_Authorization cookie that Cloudflare Access checks
-    const cfJwt = fwdHeaders.get("CF-Access-Jwt-Assertion");
+    // Forward the JWT as the CF_Authorization cookie that Cloudflare Access checks.
+    // Fetch probes can send CF-Access-Jwt-Assertion. Browser WebSocket constructors
+    // cannot set headers, so the gateway path accepts the same value as a short-lived
+    // query parameter and strips it before forwarding upstream.
+    const cfJwt = fwdHeaders.get("CF-Access-Jwt-Assertion") || targetSearch.get("cf_access_jwt");
+    targetSearch.delete("cf_access_jwt");
+    const target = "https://" + rest + (targetSearch.toString() ? "?" + targetSearch.toString() : "");
     if (cfJwt) {
       fwdHeaders.delete("CF-Access-Jwt-Assertion");
       fwdHeaders.set("Cookie", "CF_Authorization=" + cfJwt);

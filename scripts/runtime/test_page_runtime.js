@@ -22,7 +22,7 @@ const STATIC_SERVER_URL = 'http://127.0.0.1:4173';
 const LOOPBACK_ORIGIN = 'http:' + '//127.0.0.1';
 const url = args.find(a => a !== '--smoke' && a !== '--render-only' && a !== '--serve-static') || DEFAULT_LAB_URL;
 const CLAW_URL = process.env.CLAW_URL || '';
-const CLAW_TOKEN = process.env.CLAW_TOKEN || '';
+let CLAW_TOKEN = process.env.CLAW_TOKEN || '';
 const CLAW_CF = process.env.CLAW_CF || '';
 const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY || '';
 const DIRECT_API_URL = process.env.NVIDIA_API_URL || 'https://integrate.api.nvidia.com/v1';
@@ -83,7 +83,31 @@ function joinUrl(base, pathPart) {
   return base.replace(/\/+$/, '') + pathPart;
 }
 
+async function resolveOpenClawToken() {
+  if (CLAW_TOKEN || !(CLAW_URL && CLAW_CF)) return;
+  const timeout = withTimeout(8000);
+  try {
+    const resp = await fetch(joinUrl(CLAW_URL, '/api/agent'), {
+      headers: { Accept: 'application/json, text/plain, */*', 'CF-Access-Jwt-Assertion': CLAW_CF },
+      signal: timeout.signal,
+    });
+    const body = await resp.text();
+    const m = body.match(/token=([a-f0-9]{16,})/i);
+    if (resp.ok && m) {
+      CLAW_TOKEN = m[1];
+      console.log('OPENCLAW_TOKEN: discovered from /api/agent');
+    } else {
+      console.log('OPENCLAW_TOKEN: not discovered from /api/agent (' + resp.status + ')');
+    }
+  } catch (e) {
+    console.log('OPENCLAW_TOKEN: discovery failed (' + (e && e.message ? e.message : String(e)) + ')');
+  } finally {
+    timeout.done();
+  }
+}
+
 async function preflightOpenClaw() {
+  await resolveOpenClawToken();
   if (!(CLAW_URL && CLAW_TOKEN)) return;
   const headers = { Accept: 'application/json, text/plain, */*', Authorization: `Bearer ${CLAW_TOKEN}` };
   if (CLAW_CF) headers['CF-Access-Jwt-Assertion'] = CLAW_CF;
@@ -296,12 +320,13 @@ function findChrome() {
 
   // Inject credentials after the probe widget mounts, or it clears them.
   if (CLAW_URL && CLAW_TOKEN) {
-    await page.evaluate(([u, t]) => {
-      sessionStorage.setItem('nemoclaw_clawrawurl', u);
-      sessionStorage.setItem('nemoclaw_clawurl', u);
-      sessionStorage.setItem('nemoclaw_clawtoken', t);
-    }, [CLAW_URL, CLAW_TOKEN]);
-    console.log('CREDS: injected', CLAW_URL);
+    await page.evaluate(([u, t, cf]) => {
+      localStorage.setItem('nemoclaw_clawrawurl', u);
+      localStorage.setItem('nemoclaw_clawurl', u);
+      localStorage.setItem('nemoclaw_clawtoken', t);
+      if (cf) localStorage.setItem('nemoclaw_clawcfjwt', cf);
+    }, [CLAW_URL, CLAW_TOKEN, CLAW_CF]);
+    console.log('CREDS: injected', CLAW_URL, CLAW_CF ? '(CF JWT stored for gateway proxy)' : '');
   } else {
     console.log('CREDS: none (gateway nodes will short-circuit on the probe guard)');
   }
