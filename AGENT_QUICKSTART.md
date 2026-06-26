@@ -62,7 +62,7 @@ discipline, so read it when an instruction collides with another.
 | Agent reference docs | `docs/` |
 | SKILL contract spec | `SKILL_CONTRACT.md` |
 | Quality directives | `QUALITY_DIRECTIVES.md` |
-| Compose | `docker-compose.yml` + `docker-compose.override.yml` |
+| Deployment surface | `deploy/` compose overlays + nginx route config |
 | Scratch / drafts / probes | `/tmp` (ephemeral, never committed) |
 
 ---
@@ -111,7 +111,7 @@ its essays share with course pages, never linked as files.
 
 ## Docker stack
 
-Six services. The compose project name is set by `COMPOSE_PROJECT_NAME`, so
+Six services. Compose and nginx config live in `deploy/`. The compose project name is set by `COMPOSE_PROJECT_NAME`, so
 container names are `<project>-<service>-1`. Do not hardcode it; discover the
 lab container:
 
@@ -134,7 +134,7 @@ volume seeded from a baked-in copy in the lab image.
 | `nginx` | `:80` | Reverse proxy |
 
 The live key file is injected **only** into `llm_client` via `env_file:` in the
-override. No other service ever receives keys.
+local or production deploy overlay. No other service ever receives keys.
 
 ---
 
@@ -165,7 +165,7 @@ is unavailable, use the Python module form:
 
 ```bash
 COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD \
-  python3 -m podman_compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
+  python3 -m podman_compose -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml up -d --build
 CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html
 ```
 

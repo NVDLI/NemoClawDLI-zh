@@ -48,7 +48,7 @@ NEXT:
     CONTAINER_ENGINE=$ENGINE scripts/runtime/lab_runtime_test.sh --render-only
 
   start podman lab stack with Python compose:
-    COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=\$PWD python3 -m podman_compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
+    COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=\$PWD python3 -m podman_compose -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml up -d --build
 
   full lab-network browser check:
     CONTAINER_ENGINE=$ENGINE scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html

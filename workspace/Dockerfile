@@ -21,7 +21,7 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
 WORKDIR /tmp
 
 #Run pip dependencies
-# Build context is the repo's task1/ dir (docker-compose.override.yml:
+# Build context is the repo's task1/ dir (deploy/docker-compose.override.yml:
 # context: .), so workspace files are addressed as workspace/<path>.
 COPY workspace/requirements.txt .
 RUN pip3 install --upgrade pip && pip3 install -r requirements.txt
@@ -73,7 +73,7 @@ WORKDIR /sandbox
 # syncs /sandbox/dli_seed/workspace/ into /sandbox/dli/workspace/ on first boot.
 # That populates the named volume that openclaw also mounts, so live edits in
 # JupyterLab are visible to openclaw immediately.  In dev,
-# docker-compose.override.yml redirects the same named volume to a bind mount of
+# deploy/docker-compose.override.yml redirects the same named volume to a bind mount of
 # the repo root, so the seed step is skipped.
 COPY workspace/ /sandbox/dli_seed/workspace/
 

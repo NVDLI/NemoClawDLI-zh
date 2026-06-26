@@ -28,7 +28,7 @@
     {"id": "stack-health", "assert": "each always-on service answers; on-demand ones skip when down"}
   ],
   "change_impact": [
-    {"if_you_change": "the set of services (add / remove / rename)", "also_update": ["services[] in this skill-meta", "the table on this page", "the self-tests below", "workspace/SKILL.html services{}", "docker-compose.yml"], "then": "re-run the self-tests"},
+    {"if_you_change": "the set of services (add / remove / rename)", "also_update": ["services[] in this skill-meta", "the table on this page", "the self-tests below", "workspace/SKILL.html services{}", "deploy/docker-compose.yml"], "then": "re-run the self-tests"},
     {"if_you_change": "a service's address, route, or on-demand status", "also_update": ["that service's own SKILL.html", "this index", "nginx routes if a /lab/svc path moved"], "then": "docker restart nginx if a route moved; re-run the self-tests"}
   ],
   "related": ["cpu/services/00_service_map.md", "web/SKILL.html"]

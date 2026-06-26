@@ -38,7 +38,7 @@ HERE = Path(__file__).resolve()
 
 def _find_task1(start: Path) -> Path:
     for p in [start, *start.parents]:
-        if (p / "docker-compose.yml").is_file() or (p / "AGENT_QUICKSTART.md").is_file():
+        if (p / "deploy" / "docker-compose.yml").is_file() or (p / "AGENT_QUICKSTART.md").is_file():
             return p
     return start.parents[1]
 
@@ -208,9 +208,9 @@ def _config_paths():
                 out.append((ep.name, p))
         for m in re.finditer(r'root_dir\s*=\s*"([^"]+)"', txt):
             out.append((ep.name, m.group(1)))
-    for comp in sorted(TASK1.glob("docker-compose*.yml")):
+    for comp in sorted((TASK1 / "deploy").glob("docker-compose*.yml")):
         for m in re.finditer(r"\b[A-Z_]+_SRC=(/sandbox/dli/[^\s,\"']+)", comp.read_text()):
-            out.append((comp.name, m.group(1)))
+            out.append((str(comp.relative_to(TASK1)), m.group(1)))
     return out
 
 
@@ -269,6 +269,46 @@ def check_course_assets(res: Result):
         res.fail("course-assets", "; ".join(stale[:8]))
 
 
+
+def check_deploy_layout(res: Result):
+    """Compose and nginx config belong under deploy/. Keep this in the layout gate so
+    future deployment edits do not leak orchestration files back into the release root."""
+    required = [
+        TASK1 / "deploy" / "SKILL.html",
+        TASK1 / "deploy" / "docker-compose.yml",
+        TASK1 / "deploy" / "docker-compose.override.yml",
+        TASK1 / "deploy" / "docker-compose.deployment.yml",
+        TASK1 / "deploy" / "nginx.conf",
+    ]
+    for path in required:
+        if not path.is_file():
+            res.fail("deploy-layout", f"missing deployment file: {path.relative_to(TASK1)}")
+    stale = [p.name for p in TASK1.glob("docker-compose*.yml")]
+    if (TASK1 / "nginx.conf").exists():
+        stale.append("nginx.conf")
+    if stale:
+        res.fail("deploy-layout", "deployment config must live in deploy/: " + ", ".join(sorted(stale)))
+
+
+def check_release_scaffold(res: Result):
+    """The external-release playbook and contribution templates are release infrastructure.
+    Keep them present so public mirroring does not lose intake and review guardrails."""
+    required = [
+        TASK1 / "docs" / "release_playbook.md",
+        TASK1 / ".gitlab" / "issue_templates" / "Course content.md",
+        TASK1 / ".gitlab" / "issue_templates" / "Runtime or deployment.md",
+        TASK1 / ".gitlab" / "issue_templates" / "Source or licensing.md",
+        TASK1 / ".gitlab" / "merge_request_templates" / "Default.md",
+        TASK1 / ".github" / "ISSUE_TEMPLATE" / "config.yml",
+        TASK1 / ".github" / "ISSUE_TEMPLATE" / "course-content.yml",
+        TASK1 / ".github" / "ISSUE_TEMPLATE" / "runtime-deploy.yml",
+        TASK1 / ".github" / "ISSUE_TEMPLATE" / "source-licensing.yml",
+        TASK1 / ".github" / "PULL_REQUEST_TEMPLATE.md",
+    ]
+    for path in required:
+        if not path.is_file():
+            res.fail("release-scaffold", f"missing external-release scaffold: {path.relative_to(TASK1)}")
+
 def check_skill_asset_coverage(res: Result):
     """Verify assets/SKILL.html and mats/SKILL.html directly link every local file they govern.
     This keeps provenance pages usable as file indexes in the deployed course and catches the
@@ -307,6 +347,8 @@ def main():
     check_links(res)                              # dead page-links (live crawl, else offline projection)
     check_static(res)                             # configured static/mount paths that no longer exist
     check_course_assets(res)                      # course runtime scripts/styles interface
+    check_deploy_layout(res)                       # compose/nginx isolated under deploy/
+    check_release_scaffold(res)                    # external mirror intake/review scaffolding
     check_skill_asset_coverage(res)               # asset/mat SKILL pages directly link governed files
     check_skills(res)                             # SKILL.html beacons that drifted from their directory
 

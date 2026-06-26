@@ -31,7 +31,7 @@ It presents an **OpenAI-compatible REST API** (`/v1/chat/completions`, `/v1/mode
 The server is defined in [`llm_client.py`](llm_client/llm_client.py) and built from
 [`llm_client.Dockerfile`](llm_client/llm_client.Dockerfile). Its API key credentials are injected
 at container start via the lab's
-[`docker-compose.override.yml`](../../../docker-compose.override.yml); **no other
+[`deploy/docker-compose.override.yml`](../../../deploy/docker-compose.override.yml); **no other
 service or notebook holds a key**.
 
 ---

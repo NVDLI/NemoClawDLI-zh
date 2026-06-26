@@ -29,7 +29,7 @@ HERE = Path(__file__).resolve()
 
 def _find_task1(start: Path) -> Path:
     for p in [start, *start.parents]:
-        if (p / "docker-compose.yml").is_file() or (p / "AGENT_QUICKSTART.md").is_file():
+        if (p / "deploy" / "docker-compose.yml").is_file() or (p / "AGENT_QUICKSTART.md").is_file():
             return p
     return start.parents[1]
 
@@ -57,14 +57,14 @@ def is_mat_path(rel: str) -> bool:
 
 
 SHIP_PREFIXES = ("web/nemoclaw/", "web/index", "web/courses",
-                 "cpu/services/", "docs/", "scripts/")
+                 "cpu/services/", "deploy/", "docs/", "scripts/")
 SHIP_HUBS = {"SKILL.html", "web/SKILL.html", "cpu/SKILL.html"}
 
 # mats now live UNDER web/ (already a crawl root that recurses), so "mats" is no longer a separate top-level crawl root or shared TOPDIR.
 # It is still shared infra, detected by path segment.
 SHARED_SUBDIRS = {"mats", "repos", "services"}
-SHARED_TOPDIRS = {"repos", "scripts", "docs"}
-CRAWL_TOP = ("web", "cpu", "docs", "scripts")
+SHARED_TOPDIRS = {"repos", "scripts", "docs", "deploy"}
+CRAWL_TOP = ("web", "cpu", "deploy", "docs", "scripts")
 
 _TEMPLATE_MARK = ("{{", "}}", "<?", "?>", "<%", "%>", "${", "&lt;", "&gt;", "&#")
 

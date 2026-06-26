@@ -83,7 +83,7 @@
     "scripts/runtime/browser_env_probe.sh",
     "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --smoke",
     "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only",
-    "COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD python3 -m podman_compose -f docker-compose.yml -f docker-compose.override.yml up -d --build",
+    "COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD python3 -m podman_compose -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml up -d --build",
     "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html",
     "python3 scripts/validation/validate_layout.py --quiet",
     "python3 scripts/skills/skill_contract.py",
@@ -152,7 +152,7 @@
       <tr><td><code>scripts/runtime/browser_env_probe.sh</code></td><td>First browser-runtime discovery command. Finds Podman or Docker, reports podman-compose-via-python availability, and proves container Node.js, Playwright, and Chromium through smoke.</td></tr>
       <tr><td><code>CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --smoke</code></td><td>Direct browser runtime smoke. No lab stack, no host Node, no host Chromium, no host Playwright.</td></tr>
       <tr><td><code>CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only</code></td><td>No-lab browser-container check. Uses the runtime image to render a static page without the podman deployment network.</td></tr>
-      <tr><td><code>COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD python3 -m podman_compose -f docker-compose.yml -f docker-compose.override.yml up -d --build</code></td><td>Podman deployment startup through the Python podman-compose module. Same compose files as <code>podman compose</code>; useful when only podman plus the Python package are available.</td></tr>
+      <tr><td><code>COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD python3 -m podman_compose -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml up -d --build</code></td><td>Podman deployment startup through the Python podman-compose module. Same compose files as <code>podman compose</code>; useful when only podman plus the Python package are available.</td></tr>
       <tr><td><code>CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html</code></td><td>Full lab-network browser check after the podman stack is running.</td></tr>
       <tr><td><code>python3 scripts/validation/validate_layout.py --quiet</code></td><td>Page wiring, links, and misplaced runtime files.</td></tr>
       <tr><td><code>python3 scripts/skills/skill_contract.py</code></td><td>Well-formed <code>skill-meta</code> JSON and directory drift.</td></tr>

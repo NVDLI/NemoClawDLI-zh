@@ -133,7 +133,7 @@
     <div class="skill-cmd"><b>Module graph</b><code>python3 scripts/runtime/module_check.py --dir web</code></div>
     <div class="skill-cmd"><b>Render check</b><code>python3 scripts/runtime/render_check.py</code></div>
     <div class="skill-cmd"><b>No-lab browser</b><code>CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only</code></div>
-    <div class="skill-cmd"><b>Podman compose via Python</b><code>COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD python3 -m podman_compose -f docker-compose.yml -f docker-compose.override.yml up -d --build</code></div>
+    <div class="skill-cmd"><b>Podman compose via Python</b><code>COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD python3 -m podman_compose -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml up -d --build</code></div>
     <div class="skill-cmd"><b>Lab browser</b><code>CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html</code></div>
     <div class="skill-cmd"><b>OpenClaw fallback</b><code>CLAW_URL=https://nemoclaw-&lt;id&gt;.brevlab.com CLAW_TOKEN=&lt;gateway-token&gt; CLAW_CF=&lt;CF_Authorization&gt; CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/03a-kickstart.html</code></div>
   </div>

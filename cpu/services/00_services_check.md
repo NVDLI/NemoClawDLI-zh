@@ -25,7 +25,7 @@ This notebook checks every microservice that course notebooks depend on.
 Run it whenever you suspect a service is down, after a `docker-compose restart`,
 or to confirm the environment is healthy before starting a module.
 
-Each section corresponds to one `##`-delimited block in [`docker-compose.yml`](../../docker-compose.yml).
+Each section corresponds to one `##`-delimited block in [`deploy/docker-compose.yml`](../../deploy/docker-compose.yml).
 A green ✅ means the service responded correctly; ❌ means it needs attention.
 
 ---
