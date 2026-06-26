@@ -91,9 +91,21 @@
   <p>Build and publishing helpers for the static bundle, branch manifests, language manifests, hooks, and edX export.</p>
   <div class="skill-note">Some build commands write generated output. Use temporary output paths for checks unless you intend to update release artifacts.</div>
   <h2>Executable checks</h2>
-  <div class="skill-cmds"><div class="skill-cmd"><b>Standalone bundle</b><code>python3 scripts/build/bundle_standalone.py --src web/nemoclaw --out /tmp/nemoclaw_bundle_check --clean --full</code></div><div class="skill-cmd"><b>Pages build</b><code>bash scripts/build/build_pages.sh</code></div><div class="skill-cmd"><b>edX export</b><code>python3 scripts/build/publish_edx.py --help</code></div></div>
+  <div class="skill-cmds">
+    <div class="skill-cmd"><b>Standalone bundle</b><code>python3 scripts/build/bundle_standalone.py --src web/nemoclaw --out /tmp/nemoclaw_bundle_check --clean --full</code></div>
+    <div class="skill-cmd"><b>Pages build</b><code>bash scripts/build/build_pages.sh</code></div>
+    <div class="skill-cmd"><b>edX export</b><code>python3 scripts/build/publish_edx.py --help</code></div>
+  </div>
   <h2>Linkage map</h2>
-  <div class="skill-grid"><a class="skill-card" href="build_pages.sh"><b>build_pages.sh</b><span>site assembler. Builds public/ from the client-side course and validation assets.</span></a><a class="skill-card" href="bundle_standalone.py"><b>bundle_standalone.py</b><span>standalone bundler. Copies and inlines the course into a self-contained web bundle.</span></a><a class="skill-card" href="push_pages.sh"><b>push_pages.sh</b><span>Pages pusher. Pushes the assembled public/ output to the Pages target.</span></a><a class="skill-card" href="publish_edx.py"><b>publish_edx.py</b><span>edX export. Creates the iframe-friendly edX surface.</span></a><a class="skill-card" href="install-hooks.sh"><b>install-hooks.sh</b><span>hook installer. Installs local git hooks that run repo gates.</span></a><a class="skill-card" href="build_branch_manifest.py"><b>build_branch_manifest.py</b><span>branch manifest. Builds branch metadata for release and translation workflows.</span></a><a class="skill-card" href="build_language_manifest.py"><b>build_language_manifest.py</b><span>language manifest. Builds language-branch metadata for translated bundles.</span></a></div>
+  <div class="skill-grid">
+    <a class="skill-card" href="build_pages.sh"><b>build_pages.sh</b><span>site assembler. Builds public/ from the client-side course and validation assets.</span></a>
+    <a class="skill-card" href="bundle_standalone.py"><b>bundle_standalone.py</b><span>standalone bundler. Copies and inlines the course into a self-contained web bundle.</span></a>
+    <a class="skill-card" href="push_pages.sh"><b>push_pages.sh</b><span>Pages pusher. Pushes the assembled public/ output to the Pages target.</span></a>
+    <a class="skill-card" href="publish_edx.py"><b>publish_edx.py</b><span>edX export. Creates the iframe-friendly edX surface.</span></a>
+    <a class="skill-card" href="install-hooks.sh"><b>install-hooks.sh</b><span>hook installer. Installs local git hooks that run repo gates.</span></a>
+    <a class="skill-card" href="build_branch_manifest.py"><b>build_branch_manifest.py</b><span>branch manifest. Builds branch metadata for release and translation workflows.</span></a>
+    <a class="skill-card" href="build_language_manifest.py"><b>build_language_manifest.py</b><span>language manifest. Builds language-branch metadata for translated bundles.</span></a>
+  </div>
   <h2>Interactive explorer</h2>
   <p>The explorer below opens source files, tours important sections, and checks documented paths against the repository tree.</p>
 </section>

@@ -16,6 +16,10 @@ Two readers, one file, so two checks:
           location, the notebook list is complete, hub children exist. Reused wholesale
           from skill_audit (its detector is the source of truth; --fix delegates to it).
 
+  SOURCE  SKILL.html source stays reviewable and durable: static card/command grids are not
+          minified into one-line walls, and beacons do not expose numbered issue/MR/PR threads
+          or user handles as course-facing provenance.
+
 The KINDS table below is the de-facto contract, read off the shipped tree, NOT the prose in
 SKILL_CONTRACT.md (whose schema section predates the surface-first taxonomy and is stale). The
 beacons are the contract; this encodes them so future drift from them surfaces.
@@ -41,6 +45,7 @@ import skill_audit as sa  # drift detector + --fix engine + skills()/parse_meta(
 TASK1 = sa.TASK1
 _SEMVER = re.compile(r"^\d+\.\d+\.\d+([.\-+].*)?$")
 _STATUS = {"ready", "setup", "wip", "ref"}
+_PROCESS_REF = re.compile(r"(?:GitLab\s+issue\s*#?\d+|\bissue\s*#\d+|\bMR\s*!?\d+|\bPR\s*#?\d+|merge request\s*!?\d+|pull request\s*#?\d+|@(?!media\b|supports\b|keyframes\b|font-face\b|import\b)[A-Za-z0-9_][A-Za-z0-9_.-]*)", re.I)
 
 # Contract matrix: classify by schema/node_type and require stable beacon keys.
 KINDS = {
@@ -109,9 +114,29 @@ def schema_findings():
     return out
 
 
+def source_quality_findings():
+    """Source-level quality checks for SKILL.html files.
+
+    These catch failures the JSON schema cannot see: unreadable static HTML walls and
+    process/provenance references that should not leak into durable course beacons.
+    """
+    out = []
+    for sk in sa.skills():
+        rel = str(sk.relative_to(TASK1))
+        text = sk.read_text(encoding="utf-8")
+        for lineno, line in enumerate(text.splitlines(), 1):
+            card_count = line.count('class="skill-card"')
+            cmd_count = line.count('class="skill-cmd"')
+            if len(line) > 320 and card_count + cmd_count >= 3:
+                out.append((rel, f"source-quality line {lineno}: static grid/list packs {card_count + cmd_count} cards or commands onto one line"))
+            if _PROCESS_REF.search(line):
+                out.append((rel, f"source-quality line {lineno}: numbered issue/MR/PR or user-handle provenance does not belong in SKILL.html"))
+    return out
+
+
 def run(verbose: bool = False) -> dict:
     """Gate entrypoint. Returns {"schema": [(page, detail)], "drift": [(page, detail)]}."""
-    return {"schema": schema_findings(), "drift": sa.audit(fix=False)}
+    return {"schema": schema_findings() + source_quality_findings(), "drift": sa.audit(fix=False)}
 
 
 def main():

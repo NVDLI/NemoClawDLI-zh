@@ -50,7 +50,7 @@
     <p class="lead">
       The Index Agent brings outside knowledge to a Workflow Agent, supplying a
       corpus indexed for retrieval together with the wiring that turns retrieval
-      into a tool the model can call. The build walks the fuzzy-prose case from
+      into a tool the model can call. The build walks the unstructured-prose case from
       corpus to answer by embedding and indexing the corpus before retrieval is
       wrapped as a tool. The other three shapes get a pointer to where they go deeper.
     </p>
@@ -164,6 +164,30 @@
     candidate primitive can deliver the bundle for your task.
   </p>
 
+  <h2>Where MCP fits in retrieval systems</h2>
+  <p>
+    MCP gives a retrieval system one boundary for discovering and calling
+    external context sources. The agent still needs a runtime that decides when to
+    retrieve, validates the result, and composes it with the rest of the active
+    task state. Other boundaries can carry other parts of the same system:
+    skills package reusable capability instructions, A2A can route work to
+    remote specialists, and UI protocols can stream the generated state back to
+    an application.
+  </p>
+  <p>
+    The figure below separates those boundaries. Read it left to right for
+    context ingress through MCP and task delivery through A2A; read it bottom
+    to top for capability brokerage through skills, runtime execution, and
+    generated UX. Choose the boundary that matches the bundle and the system
+    state it must carry.
+  </p>
+  <figure style="margin:1.4em 0 1.8em">
+    <div class="fig-embed" data-svg-src="assets/figures/02b-retrieval-boundaries.svg" style="aspect-ratio:1100 / 460"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">
+      Four system boundaries around a retrieval runtime: MCP for context ingress, A2A for task delivery, and skills/runtime/UX for capability flow.
+    </figcaption>
+  </figure>
+
   <!-- ── Part 2: Four data shapes ──────────────────────────────────────────── -->
   <h2>Matching a retrieval primitive to the shape of your data</h2>
   <p>
@@ -180,15 +204,15 @@
       <th style="text-align:left;padding:8px 12px;color:var(--td);font-size:.78rem;text-transform:uppercase">Right primitive</th>
     </tr></thead>
     <tbody>
-      <tr><td style="padding:8px 12px"><strong>Fuzzy prose</strong></td><td style="padding:8px 12px">Docs, articles, code comments, transcripts</td><td style="padding:8px 12px">Dense vector + cross-encoder rerank</td></tr>
+      <tr><td style="padding:8px 12px"><strong>Unstructured prose</strong></td><td style="padding:8px 12px">Docs, articles, code comments, transcripts</td><td style="padding:8px 12px">Dense vector + cross-encoder rerank</td></tr>
       <tr><td style="padding:8px 12px"><strong>Hierarchical docs</strong></td><td style="padding:8px 12px">Legal contracts, technical manuals, nested specs</td><td style="padding:8px 12px">Tree index with parent pointers</td></tr>
-      <tr><td style="padding:8px 12px"><strong>Governed tables</strong></td><td style="padding:8px 12px">Customer records, financial ledgers, HR tables</td><td style="padding:8px 12px">Semantic layer over the source of truth</td></tr>
+      <tr><td style="padding:8px 12px"><strong>Structured / governed tables</strong></td><td style="padding:8px 12px">Customer records, financial ledgers, HR tables</td><td style="padding:8px 12px">Semantic layer over the source of truth</td></tr>
       <tr><td style="padding:8px 12px"><strong>Relational / graph</strong></td><td style="padding:8px 12px">Org charts, code dependencies, knowledge graphs</td><td style="padding:8px 12px">Graph traversal (<a href="https://opencypher.org/" target="_blank" rel="noopener">Cypher</a>, GraphQL, custom)</td></tr>
     </tbody>
   </table>
 
   <p>
-    This module follows the <strong>fuzzy-prose</strong> shape from corpus to answer, and runs the
+    This module follows the <strong>unstructured-prose</strong> shape from corpus to answer, and runs the
     basic retrieve-then-generate flow for our example purposes.
   </p>
   <figure style="margin:1.4em 0">
@@ -208,7 +232,7 @@
   <!-- ── Part 3: Embeddings ────────────────────────────────────────────────── -->
   <h2>The embedding, the primitive everything else is built on</h2>
   <p>
-    Each fuzzy-prose Index Agent starts from the same
+    Each unstructured-prose Index Agent starts from the same
     primitive. An embedding is a learned numerical address for a piece of text,
     a fixed-length vector placed so that semantically similar
     texts land near each other in vector space. Two practical
@@ -327,14 +351,14 @@
 
   <h2>How the other three shapes are built</h2>
   <p>
-    You just built the fuzzy-prose lane from corpus to answer. The other three are named
+    You just built the unstructured-prose lane from corpus to answer. The other three are named
     here so you can recognise them in the wild and reach for the right primitive.
     Each one has a well-worn production pattern, sketched below.
   </p>
   <ul>
     <li><strong>Hierarchical docs.</strong> A chunker that preserves the heading hierarchy, plus atomic table extraction, parent pointers, and a dual index for structural and semantic search. You index the small child chunks for recall and fetch the enclosing parent on a hit, so the model reads the matched clause together with the section it belongs to.</li>
     <li><strong>Page-image retrieval for figures and charts.</strong> A dual-vector setup that embeds the rendered page image alongside its text, so a query can also pull a figure or a slide when the answer lives there.</li>
-    <li><strong>Governed tables.</strong> Not built in this course. The standard production pattern is a semantic layer sitting between the agent and the row-level data, exposing only the curated metrics the bundle requires.</li>
+    <li><strong>Structured / governed tables.</strong> Not built in this course. The standard production pattern is a semantic layer sitting between the agent and the row-level data, exposing only the curated metrics the bundle requires.</li>
     <li><strong>Relational / graph data.</strong> The agent calls a graph-traversal tool (Cypher, GraphQL, or custom) in place of a vector store. The bundle it gets back is a sub-graph whose explicit edges carry into the prompt, so the relationships between entities reach the model intact.</li>
   </ul>
 

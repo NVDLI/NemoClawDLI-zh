@@ -49,7 +49,7 @@ CHECKS = [
         "page": "02a-routing.html",
         "label": "workflow agent defined before pattern details",
         "before": "A <strong>workflow agent</strong> means an agent system",
-        "after": "sub-tasks that run in parallel",
+        "after": "The model writes the full plan upfront",
     },
     {
         "page": "02a-routing.html",

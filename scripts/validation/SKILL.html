@@ -25,6 +25,7 @@
     "scripts/validation/openclaw_fallback_audit.py",
     "scripts/validation/agent_process_audit.py",
     "scripts/validation/course_contract.py",
+    "scripts/validation/course_content_contract.py",
     "scripts/validation/concept_order_audit.py"
   ],
   "explorer": "../../web/_skill_explorer.js"
@@ -123,6 +124,11 @@
       "desc": "Required invariant for the English source course title, abstract, and learning objectives."
     },
     {
+      "path": "course_content_contract.py",
+      "role": "content contract",
+      "desc": "Locks the retrieval-boundary and lethal-trifecta promises that generic validators cannot infer."
+    },
+    {
       "path": "concept_order_audit.py",
       "role": "Concept order audit",
       "desc": "Required first-use checks for early agent vocabulary and prerequisite framing."
@@ -158,9 +164,45 @@
   <p>Static validators for links, layout, prose, code hygiene, figures, cells, and course contracts. These are gates, not prompt guidance.</p>
   <div class="skill-note">Run commands from the repository root. Root-level script paths remain compatibility entrypoints; implementation files live in this directory tree.</div>
   <h2>Executable checks</h2>
-  <div class="skill-cmds"><div class="skill-cmd"><b>Ship gate</b><code>python3 scripts/validation/validate_bundle.py --no-write --scope ship</code></div><div class="skill-cmd"><b>Layout links</b><code>python3 scripts/validation/validate_layout.py --quiet</code></div><div class="skill-cmd"><b>Cell contract</b><code>python3 scripts/validation/cell_audit.py</code></div><div class="skill-cmd"><b>Code hygiene</b><code>python3 scripts/validation/code_hygiene.py</code></div><div class="skill-cmd"><b>Figure audit</b><code>python3 scripts/validation/figure_audit.py</code></div><div class="skill-cmd"><b>Studio interface</b><code>python3 scripts/validation/studio_interface_audit.py</code></div><div class="skill-cmd"><b>OpenClaw fallback</b><code>python3 scripts/validation/openclaw_fallback_audit.py</code></div><div class="skill-cmd"><b>Agent process</b><code>python3 scripts/validation/agent_process_audit.py</code></div><div class="skill-cmd"><b>Course contract</b><code>python3 scripts/validation/course_contract.py</code></div><div class="skill-cmd"><b>Concept order</b><code>python3 scripts/validation/concept_order_audit.py</code></div><div class="skill-cmd"><b>Helper notebook static</b><code>python3 scripts/validation/helper_notebook_runtime_audit.py --no-container</code></div><div class="skill-cmd"><b>Helper notebook browser</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/helper_notebook_runtime_audit.py</code></div><div class="skill-cmd"><b>Studio responsive</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/studio_responsive_audit.py</code></div></div>
+<div class="skill-cmds">
+  <div class="skill-cmd"><b>Ship gate</b><code>python3 scripts/validation/validate_bundle.py --no-write --scope ship</code></div>
+  <div class="skill-cmd"><b>Layout links</b><code>python3 scripts/validation/validate_layout.py --quiet</code></div>
+  <div class="skill-cmd"><b>Cell contract</b><code>python3 scripts/validation/cell_audit.py</code></div>
+  <div class="skill-cmd"><b>Code hygiene</b><code>python3 scripts/validation/code_hygiene.py</code></div>
+  <div class="skill-cmd"><b>Figure audit</b><code>python3 scripts/validation/figure_audit.py</code></div>
+  <div class="skill-cmd"><b>Studio interface</b><code>python3 scripts/validation/studio_interface_audit.py</code></div>
+  <div class="skill-cmd"><b>OpenClaw fallback</b><code>python3 scripts/validation/openclaw_fallback_audit.py</code></div>
+  <div class="skill-cmd"><b>Agent process</b><code>python3 scripts/validation/agent_process_audit.py</code></div>
+  <div class="skill-cmd"><b>Course contract</b><code>python3 scripts/validation/course_contract.py</code></div>
+  <div class="skill-cmd"><b>Content contract</b><code>python3 scripts/validation/course_content_contract.py</code></div>
+  <div class="skill-cmd"><b>Concept order</b><code>python3 scripts/validation/concept_order_audit.py</code></div>
+  <div class="skill-cmd"><b>Helper notebook static</b><code>python3 scripts/validation/helper_notebook_runtime_audit.py --no-container</code></div>
+  <div class="skill-cmd"><b>Helper notebook browser</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/helper_notebook_runtime_audit.py</code></div>
+  <div class="skill-cmd"><b>Studio responsive</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/studio_responsive_audit.py</code></div>
+</div>
   <h2>Linkage map</h2>
-  <div class="skill-grid"><a class="skill-card" href="validate_bundle.py"><b>validate_bundle.py</b><span>ship gate. Composes every validator into the release gate and durable report.</span></a><a class="skill-card" href="validate_layout.py"><b>validate_layout.py</b><span>layout gate. Checks links, static mounts, and SKILL beacons.</span></a><a class="skill-card" href="grounding.py"><b>grounding.py</b><span>grounding sweep. Checks cited material association and source-grounding signals.</span></a><a class="skill-card" href="prose_variety.py"><b>prose_variety.py</b><span>prose cadence. Finds rhythm, buzz, grammar, and structural prose issues.</span></a><a class="skill-card" href="code_hygiene.py"><b>code_hygiene.py</b><span>code bloat and style. Scans code comments, walls, duplication, size, constants, and prose tells in code.</span></a><a class="skill-card" href="color_theme.py"><b>color_theme.py</b><span>theme check. Flags inline or non-theme-dynamic colors.</span></a><a class="skill-card" href="figure_audit.py"><b>figure_audit.py</b><span>figure audit. Checks static figure legibility and accessibility.</span></a><a class="skill-card" href="cell_audit.py"><b>cell_audit.py</b><span>cell contract. Checks runnable-cell transparency, logging, awaits, keys, and UI contract.</span></a><a class="skill-card" href="reference_graph.py"><b>reference_graph.py</b><span>reference graph. Audits cross-course reference coupling.</span></a><a class="skill-card" href="studio_interface_audit.py"><b>studio_interface_audit.py</b><span>studio interface audit. Checks studio controls, local assets, static read-only mode, lab write mode, and documentation.</span></a><a class="skill-card" href="helper_notebook_runtime_audit.py"><b>helper_notebook_runtime_audit.py</b><span>helper notebook audit. Checks CanvasFlow and RunCell helper API use, then can launch containerized Playwright to click every notebook run control.</span></a><a class="skill-card" href="studio_responsive_audit.py"><b>studio_responsive_audit.py</b><span>studio responsive audit. Uses containerized Playwright to stress narrow and short Studio viewports for scrollable topbar controls and sidebar panel floors.</span></a><a class="skill-card" href="openclaw_fallback_audit.py"><b>openclaw_fallback_audit.py</b><span>OpenClaw fallback audit. Checks fail-fast harness behavior and Brev backup guidance.</span></a><a class="skill-card" href="agent_process_audit.py"><b>agent_process_audit.py</b><span>Agent process audit. Checks issue/MR, taxonomy, validation, and safe-auth guardrail visibility.</span></a><a class="skill-card" href="course_contract.py"><b>course_contract.py</b><span>Course contract audit. Holds the English course title, abstract, and objectives verbatim.</span></a><a class="skill-card" href="concept_order_audit.py"><b>concept_order_audit.py</b><span>Concept order audit. Keeps key terms defined before learner-facing prose or code depends on them.</span></a><a class="skill-card" href="tenets.py"><b>tenets.py</b><span>tenet check. Checks platform tenets reflected in course files.</span></a><a class="skill-card" href="nb_audit.py"><b>nb_audit.py</b><span>notebook audit. Detects notebook buffer corruption patterns.</span></a><a class="skill-card" href="fix_comment_hygiene.py"><b>fix_comment_hygiene.py</b><span>comment fixer. Applies safe comment-formatting fixes reported by code_hygiene.py.</span></a></div>
+  <div class="skill-grid">
+    <a class="skill-card" href="validate_bundle.py"><b>validate_bundle.py</b><span>ship gate. Composes every validator into the release gate and durable report.</span></a>
+    <a class="skill-card" href="validate_layout.py"><b>validate_layout.py</b><span>layout gate. Checks links, static mounts, and SKILL beacons.</span></a>
+    <a class="skill-card" href="grounding.py"><b>grounding.py</b><span>grounding sweep. Checks cited material association and source-grounding signals.</span></a>
+    <a class="skill-card" href="prose_variety.py"><b>prose_variety.py</b><span>prose cadence. Finds rhythm, buzz, grammar, and structural prose issues.</span></a>
+    <a class="skill-card" href="code_hygiene.py"><b>code_hygiene.py</b><span>code bloat and style. Scans code comments, walls, duplication, size, constants, and prose tells in code.</span></a>
+    <a class="skill-card" href="color_theme.py"><b>color_theme.py</b><span>theme check. Flags inline or non-theme-dynamic colors.</span></a>
+    <a class="skill-card" href="figure_audit.py"><b>figure_audit.py</b><span>figure audit. Checks static figure legibility and accessibility.</span></a>
+    <a class="skill-card" href="cell_audit.py"><b>cell_audit.py</b><span>cell contract. Checks runnable-cell transparency, logging, awaits, keys, and UI contract.</span></a>
+    <a class="skill-card" href="reference_graph.py"><b>reference_graph.py</b><span>reference graph. Audits cross-course reference coupling.</span></a>
+    <a class="skill-card" href="studio_interface_audit.py"><b>studio_interface_audit.py</b><span>studio interface audit. Checks studio controls, local assets, static read-only mode, lab write mode, and documentation.</span></a>
+    <a class="skill-card" href="helper_notebook_runtime_audit.py"><b>helper_notebook_runtime_audit.py</b><span>helper notebook audit. Checks CanvasFlow and RunCell helper API use, then can launch containerized Playwright to click every notebook run control.</span></a>
+    <a class="skill-card" href="studio_responsive_audit.py"><b>studio_responsive_audit.py</b><span>studio responsive audit. Uses containerized Playwright to stress narrow and short Studio viewports for scrollable topbar controls and sidebar panel floors.</span></a>
+    <a class="skill-card" href="openclaw_fallback_audit.py"><b>openclaw_fallback_audit.py</b><span>OpenClaw fallback audit. Checks fail-fast harness behavior and Brev backup guidance.</span></a>
+    <a class="skill-card" href="agent_process_audit.py"><b>agent_process_audit.py</b><span>Agent process audit. Checks issue/MR, taxonomy, validation, and safe-auth guardrail visibility.</span></a>
+    <a class="skill-card" href="course_contract.py"><b>course_contract.py</b><span>Course contract audit. Holds the English course title, abstract, and objectives verbatim.</span></a>
+    <a class="skill-card" href="course_content_contract.py"><b>course_content_contract.py</b><span>Content contract. Locks the retrieval-boundary and lethal-trifecta promises.</span></a>
+    <a class="skill-card" href="concept_order_audit.py"><b>concept_order_audit.py</b><span>Concept order audit. Keeps key terms defined before learner-facing prose or code depends on them.</span></a>
+    <a class="skill-card" href="tenets.py"><b>tenets.py</b><span>tenet check. Checks platform tenets reflected in course files.</span></a>
+    <a class="skill-card" href="nb_audit.py"><b>nb_audit.py</b><span>notebook audit. Detects notebook buffer corruption patterns.</span></a>
+    <a class="skill-card" href="fix_comment_hygiene.py"><b>fix_comment_hygiene.py</b><span>comment fixer. Applies safe comment-formatting fixes reported by code_hygiene.py.</span></a>
+  </div>
   <h2>Interactive explorer</h2>
   <p>The explorer below opens source files, tours important sections, and checks documented paths against the repository tree.</p>
 </section>
