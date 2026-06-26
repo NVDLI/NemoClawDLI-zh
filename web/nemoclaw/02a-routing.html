@@ -43,19 +43,16 @@
     <div class="eyebrow">Module 2 · Part A of 3</div>
     <h1>The <span>Workflow</span> Agent</h1>
     <p class="lead">
-      A single ReAct loop handles most one-shot tasks, but three key patterns will
-      push you past it:
+      A single ReAct loop handles most one-shot tasks, but harder problems sometimes need
+      structure that decides work before the next tool result arrives. A <strong>workflow
+      agent</strong> means an agent system where your harness controls a workflow: a graph
+      of model calls, deterministic code steps, tool calls, and specialist loops. This shape
+      helps when sub-tasks that run in parallel can share results, when a plan can be written
+      before tools run, or when routing should follow a rule instead of the last observation.
     </p>
-    <ul>
-      <li>sub-tasks that run in parallel,</li>
-      <li>work that decomposes cleanly into a plan written before any tool runs,</li>
-      <li>and routing decisions that must not depend on whatever the last tool returned.</li>
-    </ul>
     <p>
-      A <b>workflow agent</b> can span these problem classes by moving context management
-      and synchronization into dedicated loops, routers, and planned sequences. This page
-      stays at the pattern level: you will see how routing, fan-out, and plan-then-execute
-      structures help when a single ReAct loop becomes awkward.
+      This section uses fan-out and fixed routing to show where workflow structure helps
+      without replacing the ReAct loop from the previous page.
     </p>
   </div>
 
@@ -125,12 +122,9 @@
 
   <div class="callout warn">
     <strong>The overhead tax in concrete terms.</strong>
-    <ul style="margin:8px 0 0 22px">
-      <li>One extra LLM call per agent boundary (the supervisor asking "who handles this?" and the worker reporting back)</li>
-      <li>A whole extra layer of routing prompts to write and maintain</li>
-      <li>More surface area for failures: with N agent boundaries, a crash or malformed message has N places to originate</li>
-      <li>Trajectories are harder to read because they fan across agents instead of running down one timeline</li>
-    </ul>
+    Every agent boundary adds one more model call, one more routing prompt, another place for
+    malformed messages to originate, and a trajectory that now fans across workers instead of
+    running down one readable timeline.
   </div>
 
   <p>
@@ -155,6 +149,11 @@
     The cell below runs a ReWOO pipeline against the NVIDIA glossary, using
     <code>helpers.webSearch</code> (the ranked glossary search you met in Module 1c) for every retrieval the plan calls for. The <a href="glossary.html">glossary explorer</a> shows the full index this searches and lets you run any query the planner might emit:
   </p>
+  <p>
+    <code>Promise.all</code> is JavaScript's helper for starting several promises and waiting
+    until all of them finish. Here it is just the concurrency mechanism: it does not call
+    the model and it does not decide which searches to run.
+  </p>
   <ol>
     <li><strong>Planner.</strong> One schema-bound LLM call emits a JSON list of 3-5 search queries.</li>
     <li><strong>Executor.</strong> Plain JavaScript. Every query runs concurrently via <code>Promise.all</code>, with no LLM calls at this stage.</li>
@@ -176,8 +175,11 @@
   <p>
     Routing is a different shape of multi-agent in which a triage agent classifies the
     input and hands it to one specialist. Because the classifier must emit one of a fixed
-    enum of categories, the output must be sufficiently constrained with a tight contract to avoid a service-level agreement failure.
-    Each specialist downstream owns a narrow system prompt that might never sees the triage agent's reasoning by design.
+    enum of categories, the output needs a tight contract. A <strong>fixed enum</strong>
+    is a closed list of allowed labels; if the model returns anything else, the router
+    should reject the route or retry under stricter instructions instead of guessing.
+    Each specialist downstream owns a narrow system prompt and does not need to see the
+    triage agent's reasoning.
   </p>
 
   <figure style="margin:1.4em 0">
@@ -194,13 +196,10 @@
     The ReWOO pipeline was parallel by construction, since every query it planned ran
     concurrently against the glossary. A more common parallel pattern fans one shared
     input out to several specialists that each carry their own system prompt and all run
-    at once. Three things to watch in the trace:
+    at once. In the trace, total wall time tracks the slowest specialist while the others
+    overlap inside that window, the Gantt chart shows each specialist's duration, and all
+    specialists share one web-search result so cost stays bounded.
   </p>
-  <ul>
-    <li>Total wall time tracks the slowest specialist while the others overlap inside that window.</li>
-    <li>The Gantt chart shows per-specialist duration inside a dashed wall-clock window.</li>
-    <li>All specialists share one web-search result, so cost stays bounded as you add more of them.</li>
-  </ul>
 
   <div id="cell-m2a-parallel"></div>
 
