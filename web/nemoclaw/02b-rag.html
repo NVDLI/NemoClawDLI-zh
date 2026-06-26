@@ -161,8 +161,8 @@
     show that the bundle is badly designed:
   </p>
   <ul>
-    <li><strong>Rediscovery tax.</strong> The agent re-fetches the same context on every turn.</li>
-    <li><strong>Stale bundle.</strong> The agent acts confidently on state that was true earlier but has since changed.</li>
+    <li><strong>Repeated lookup.</strong> The agent has no stable place to carry forward a constraint, prior decision, or partial result, so later turns ask retrieval for the same working state again.</li>
+    <li><strong>Old or conflicting context.</strong> The bundle brings back information that is now wrong, or presents two observations as if both can still be true without explaining what changed.</li>
   </ul>
   <p>
     The bundle principle is a planning discipline: <em>define the bundle before

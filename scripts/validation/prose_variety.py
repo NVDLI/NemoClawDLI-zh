@@ -521,6 +521,7 @@ def _strip_reference_scaffolds(body: str) -> str:
     body = _strip_div_by_id(body, "learning-path")
     body = _strip_divs_by_class(body, "references")
     body = _strip_divs_by_class(body, "card-grid")
+    body = _strip_divs_by_class(body, "layers")
     return body
 
 
