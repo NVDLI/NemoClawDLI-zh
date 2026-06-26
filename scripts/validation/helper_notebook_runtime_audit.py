@@ -29,15 +29,8 @@ SKILL = ROOT / "web" / "nemoclaw" / "scripts" / "SKILL.html"
 DEFAULT_IMAGE = "nemoclaw/lab-runtime-test:local"
 DEFAULT_PATH = "/nemoclaw/scripts/SKILL.html"
 
-CANVAS_UNSUPPORTED = (
-    "helpers.log.h(",
-    "helpers.log.json(",
-    "helpers.log.kv(",
-    "helpers.log.clear(",
-)
+CANVAS_UNSUPPORTED = ()
 RUN_CELL_UNSUPPORTED = (
-    "helpers.log.draw(",
-    "helpers.log.svg(",
     "helpers.viz.",
 )
 REQUIRED_IDS = (
@@ -137,7 +130,17 @@ function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
       validationTable: !!table,
       validationRows,
       unupgradedEditors,
+      unifiedButtons: document.querySelectorAll('.helper-notebook .cell-btn').length,
+      unifiedLangChips: document.querySelectorAll('.helper-notebook .cell-lang-chip').length,
+      uglyCellButtons: document.querySelectorAll('.helper-notebook .rc-run:not(.cell-btn),.helper-notebook .rc-reset:not(.cell-btn),.helper-notebook .cf-panel-runone:not(.cell-btn),.helper-notebook .cf-panel-reset:not(.cell-btn)').length,
+      plainCodeLabels: Array.from(document.querySelectorAll('.helper-notebook .rc-code-det > summary,.helper-notebook .cf-panel-code-det > summary')).filter(el => /^code\b/i.test((el.textContent || '').trim())).length,
       pageOverflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      badOverflow: Array.from(document.querySelectorAll('body *')).filter(el => {
+        const r = el.getBoundingClientRect();
+        if (r.right <= document.documentElement.clientWidth + 2) return false;
+        if (el.closest('.topbar nav,.cf-stage,.CodeMirror,.CodeMirror-scroll,.cf-helpers-scroll,.cell-log-json,.cf-panel-log-json,.cf-log-json,pre')) return false;
+        return true;
+      }).slice(0, 8).map(el => ({ tag: el.tagName, cls: String(el.className || '').slice(0, 80), text: (el.textContent || '').trim().slice(0, 80) })),
     };
   });
   if (!surface.hasHljs) throw new Error('highlight.js not loaded on helper notebook page');
@@ -147,7 +150,11 @@ function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
   if (surface.unupgradedEditors.length) throw new Error(`raw editors did not upgrade to CodeMirror: ${JSON.stringify(surface.unupgradedEditors)}`);
   const badRows = surface.validationRows.filter(r => r.commandRatio > 0.46 || r.descRatio < 0.50 || r.commandWhiteSpace !== 'pre-wrap' || !['anywhere', 'break-word'].includes(r.commandOverflowWrap) || r.commandScrolls);
   if (badRows.length) throw new Error(`validation table rows fail wrapping/proportion checks: ${JSON.stringify(badRows)}`);
-  if (surface.pageOverflowX > 2) throw new Error(`page has horizontal overflow: ${surface.pageOverflowX}px`);
+  if (surface.uglyCellButtons > 0) throw new Error(`helper notebook has ugly legacy cell buttons: ${surface.uglyCellButtons}`);
+  if (surface.plainCodeLabels > 0) throw new Error(`helper notebook has old plain code labels: ${surface.plainCodeLabels}`);
+  if (surface.unifiedButtons < 12) throw new Error(`helper notebook missing unified buttons: ${JSON.stringify(surface)}`);
+  if (surface.unifiedLangChips < surface.expectedEditors) throw new Error(`helper notebook missing unified JS chips: ${JSON.stringify(surface)}`);
+  if (surface.badOverflow.length) throw new Error(`page has uncontained horizontal overflow: ${JSON.stringify(surface.badOverflow)}`);
   const selectors = [
     '#helper-map-cell .cf-btn-run',
     '#helper-retrieval-cell .cf-btn-run',
@@ -254,6 +261,8 @@ def static_audit(skill_path: Path = SKILL) -> list[str]:
     for required in (
         "python3 scripts/validation/helper_notebook_runtime_audit.py --no-container",
         "CONTAINER_ENGINE=podman python3 scripts/validation/helper_notebook_runtime_audit.py",
+        "CONTAINER_ENGINE=podman python3 scripts/validation/cell_ui_runtime_audit.py --screenshots tmp/cell-ui-audit-source",
+        "CONTAINER_ENGINE=podman python3 scripts/validation/cell_ui_runtime_audit.py --site-root public --screenshots tmp/cell-ui-audit-public",
         "scripts/runtime/browser_env_probe.sh",
         "podman-compose-via-python",
         "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js",
@@ -276,10 +285,25 @@ def static_audit(skill_path: Path = SKILL) -> list[str]:
         for token in RUN_CELL_UNSUPPORTED:
             if token in block:
                 findings.append(f"RunCell block uses CanvasFlow-only API {token} at line {_line_for(raw, token, start)}")
-    if "helpers.log.h(\"UI helper dry run\")" not in raw:
-        findings.append("RunCell example must retain helpers.log.h coverage")
-    if "helpers.log.draw(" not in raw:
-        findings.append("CanvasFlow example must retain helpers.log.draw coverage")
+    shared_log_tokens = (
+        "helpers.log(",
+        "helpers.log.h(",
+        "helpers.log.json(",
+        "helpers.log.kv(",
+        "helpers.log.details(",
+        "helpers.log.html(",
+        "helpers.log.svg(",
+        "helpers.log.draw(",
+        "helpers.log.clear(",
+    )
+    for token in shared_log_tokens:
+        if token not in raw:
+            findings.append(f"helper notebook must retain shared log API coverage: {token}")
+    for token in ("helpers.log.svg(", "helpers.log.draw("):
+        if raw.count(token) < 2:
+            findings.append(f"helper notebook must show {token} in both CanvasFlow and RunCell examples")
+    if "helpers.log.h(\"UI helper dry run\")" not in raw or "helpers.log.h(\"shared log surfaces\")" not in raw:
+        findings.append("helper notebook must retain log heading examples in both RunCell and CanvasFlow")
     if "helpers.viz.scoreBarChart(" not in raw or "helpers.viz.diffTable(" not in raw:
         findings.append("CanvasFlow visualization examples must retain chart and diff coverage")
     if "helpers.coursePages()" not in raw or "helpers.formatSearchResults(" not in raw:

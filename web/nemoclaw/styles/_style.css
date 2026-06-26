@@ -40,6 +40,9 @@ body {
  * Contents centre over `main`'s fluid width on wide screens via the
  * max(gutter, fill) padding pattern. */
 .topbar {
+  box-sizing: border-box;
+  max-width: 100vw;
+  overflow: hidden;
   position: sticky; top: 0; z-index: 100;
   display: flex; align-items: center;
   gap: 18px;
@@ -75,7 +78,8 @@ body {
 .topbar .spacer { flex: 0 0 auto; min-width: 8px; }
 #py-mode-topbar-container { display: flex; align-items: center; flex-shrink: 0; margin-right: 12px; }
 .topbar .key-pill {
-  flex-shrink: 0; display: inline-flex; align-items: center; line-height: 1;
+  flex: 0 1 auto; min-width: 0; max-width: 34vw; display: inline-flex; align-items: center; line-height: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font-size: .78rem; font-family: var(--mono);
   padding: 7px 13px;
   border-radius: 7px; border: 1px solid #2a2a2a; border-color: var(--bd);
@@ -89,6 +93,7 @@ body {
 @media (max-width: 640px) {
   .topbar { height: 48px; }
   .topbar .logo { font-size: .9rem; }
+  .topbar .key-pill { max-width: 22vw; padding: 6px 9px; }
 }
 
 /* ── Page layout ─────────────────────────────────────────────────────────────── */
@@ -388,6 +393,11 @@ a > code { color: inherit; }
 
 /* ── mountCanvasFlow: canvas at top, code panels below ─────────────────────── */
 .cf-wrap {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
   background:
     radial-gradient(circle at 20% 0%, rgba(118,185,0,0.04) 0%, transparent 50%),
     #0a0a0a;
@@ -400,7 +410,9 @@ a > code { color: inherit; }
 .cf-header {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; flex-wrap: wrap; margin-bottom: 10px;
+  min-width: 0;
 }
+.cf-actions { flex: 1 1 auto; min-width: 0; justify-content: flex-end; flex-wrap: wrap; }
 .cf-label {
   font-family: ui-monospace, "SF Mono", Consolas, monospace;
   font-size: .76rem; color: var(--gs);
@@ -459,6 +471,168 @@ body.python-mode .cf-btn-reset-kernel:hover:not([disabled]) {
   background: linear-gradient(180deg, #a3dd1f 0%, #8fcd00 100%);
   border-color: #76b900;
 }
+
+
+/* Shared runnable-cell controls used by CanvasFlow and RunCell. Keep .rc-* and
+   .cf-* selectors as compatibility hooks; these classes own the visual system. */
+.cell-card {
+  background: var(--e1);
+  border: 1px solid var(--bd);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.cell-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--e2);
+  border-bottom: 1px solid var(--bd);
+  font-family: var(--mono);
+  font-size: .78rem;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.cell-spacer { flex: 1 1 auto; min-width: 24px; }
+.rc-label {
+  color: var(--gs);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-weight: 700;
+}
+.rc-lang-sub { color: var(--tf); }
+.cell-btn {
+  background: #161616;
+  color: var(--tx);
+  border: 1px solid var(--bd);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-family: var(--mono);
+  font-size: .8rem;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color .12s, background .12s, transform .08s;
+}
+.cell-btn:hover:not([disabled]) { border-color: var(--g); }
+.cell-btn:active { transform: translateY(1px); }
+.cell-btn[disabled] { opacity: .6; cursor: not-allowed; }
+.cell-btn-run {
+  background: linear-gradient(180deg, #8fcd00 0%, #76b900 100%);
+  color: #000;
+  border-color: #4a7a00;
+  box-shadow: 0 2px 6px rgba(118,185,0,0.3);
+}
+.cell-btn-run:hover:not([disabled]) {
+  background: linear-gradient(180deg, #a3dd1f 0%, #8fcd00 100%);
+  border-color: #76b900;
+}
+.cell-btn-reset { color: var(--td); }
+.cell-schema-det,
+.rc-code-det { border-top: 1px solid var(--bd); }
+.cell-schema-det > summary,
+.rc-code-det > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: .78rem;
+  color: var(--td);
+}
+.cell-code-body { padding: 0; position: relative; }
+.rc-code {
+  width: 100%;
+  min-height: 140px;
+  background: var(--e2,#0d0d0d);
+  color: var(--tx,#e6edf3);
+  border: none;
+  outline: none;
+  padding: 12px 14px;
+  font-family: ui-monospace, monospace;
+  font-size: .84rem;
+  line-height: 1.55;
+  resize: vertical;
+  tab-size: 2;
+}
+.cell-output-panel {
+  background: var(--bg);
+  padding: 0;
+  font-family: ui-monospace, monospace;
+  font-size: .82rem;
+  color: var(--td);
+  white-space: pre-wrap;
+  min-height: 48px;
+}
+.cell-log-line,
+.cell-log-heading,
+.cell-log-kv,
+.cell-log-html,
+.cell-log-details { margin: 0; }
+.cell-log-line {
+  padding: 6px 14px;
+  font-family: ui-monospace, monospace;
+  font-size: .84rem;
+  line-height: 1.55;
+  color: var(--tx);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.cell-log-heading {
+  padding: 10px 14px 2px;
+  font-family: ui-monospace, monospace;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--gs);
+}
+.cell-log-json {
+  margin: 4px 14px 8px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--bd);
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: .78rem;
+  line-height: 1.5;
+  overflow-x: auto;
+}
+.cell-log-kv {
+  padding: 6px 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-family: ui-monospace, monospace;
+  font-size: .78rem;
+}
+.cell-log-kv-key { color: var(--tf); }
+.cell-log-kv-val { color: var(--gs); }
+.cell-log-html { padding: 6px 14px; font-family: inherit; }
+.cell-log-details {
+  margin: 4px 14px 6px;
+  border: 1px solid var(--bd);
+  border-radius: 4px;
+  background: var(--bg);
+}
+.cell-log-details > summary {
+  padding: 6px 10px;
+  cursor: pointer;
+  font-family: ui-monospace, monospace;
+  font-size: .78rem;
+  color: var(--td);
+}
+.cell-log-details-body {
+  padding: 8px 12px;
+  font-family: ui-monospace, monospace;
+  font-size: .78rem;
+  line-height: 1.5;
+  color: var(--tx);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .cf-intro {
   font-size: .82rem; color: var(--td); line-height: 1.55;
   margin: 4px 0 14px;
@@ -469,13 +643,18 @@ body.python-mode .cf-btn-reset-kernel:hover:not([disabled]) {
 /* The stage: relative wrapper for the SVG layer + grid of node cards */
 .cf-stage {
   position: relative;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   background-color: var(--bg);
   background-image: radial-gradient(circle, var(--e3) 1px, transparent 1px);
   background-size: 22px 22px;
   border: 1px solid var(--bd);
   border-radius: 10px;
   padding: 28px 32px;
-  overflow: visible;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 .cf-svg {
   position: absolute; inset: 0;
@@ -487,6 +666,7 @@ body.python-mode .cf-btn-reset-kernel:hover:not([disabled]) {
   position: relative; z-index: 1;
   display: grid;
   gap: 60px 80px;
+  min-width: max-content;
   justify-items: center;
   align-items: stretch;
 }
@@ -568,6 +748,9 @@ body.python-mode .cf-btn-reset-kernel:hover:not([disabled]) {
   margin-top: 6px;
 }
 .cf-panel {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   background: #0f0f0f;
   border: 1px solid var(--bd); border-radius: 8px;
   padding: 12px 14px 14px;
@@ -603,13 +786,13 @@ body.python-mode .cf-btn-reset-kernel:hover:not([disabled]) {
 .cf-panel-status-dot.complete { background: var(--g); box-shadow: 0 0 8px rgba(118,185,0,0.6); }
 .cf-panel-status-dot.error    { background: #d74e4e; box-shadow: 0 0 8px rgba(215,78,78,0.6); }
 
-.cf-panel-runone {
+.cf-panel-runone:not(.cell-btn) {
   background: #161616; color: var(--gs);
   border: 1px solid #4a7a00; border-radius: 5px;
   padding: 5px 12px; font-size: .78rem; cursor: pointer;
   font-family: ui-monospace, monospace; font-weight: 600;
 }
-.cf-panel-runone:hover { background: #1a2912; color: var(--tx); border-color: var(--g); }
+.cf-panel-runone:not(.cell-btn):hover { background: #1a2912; color: var(--tx); border-color: var(--g); }
 
 /* ── Helpers reference (between intro and stage) ─────────────────────────── */
 .cf-helpers {
@@ -1002,6 +1185,7 @@ body.python-mode .cf-btn-reset-kernel:hover:not([disabled]) {
 }
 
 @media (max-width: 720px) {
+  .cf-stage { padding: 18px 16px; }
   .cf-canvas { gap: 40px 30px; }
   .cf-node { padding: 10px 12px; }
   .cf-node-title { font-size: .82rem; }
@@ -1481,10 +1665,10 @@ body.python-mode .py-mode-jlab-link { display: inline-block; }
 :root[data-theme="light"] #py-mode-topbar-container .py-mode-toggle-wrap:hover { background: var(--e2); }
 
 /* Run / apply / revert buttons. */
-:root[data-theme="light"] .cf-panel-runone,
+:root[data-theme="light"] .cf-panel-runone:not(.cell-btn),
 :root[data-theme="light"] .cf-helpers-apply,
 :root[data-theme="light"] .cf-helpers-revert { background: var(--e2); }
-:root[data-theme="light"] .cf-panel-runone:hover,
+:root[data-theme="light"] .cf-panel-runone:not(.cell-btn):hover,
 :root[data-theme="light"] .cf-helpers-apply:hover,
 :root[data-theme="light"] .cf-code-copy.ok { background: #e6f3d4; }
 :root[data-theme="light"] .cf-helpers-revert:hover,
@@ -1526,8 +1710,8 @@ body.python-mode .py-mode-jlab-link { display: inline-block; }
 :root[data-theme="light"] .cf-py-copy-btn,
 :root[data-theme="light"] .py-mode-jlab-link,
 :root[data-theme="light"] body.python-mode .cf-det-chip[data-lang-chip],
-:root[data-theme="light"] .cf-panel-runone[data-runmode="python"] { color: #8250df; }
-:root[data-theme="light"] .cf-panel-runone[data-runmode="python"]:hover,
+:root[data-theme="light"] .cf-panel-runone[data-runmode="python"]:not(.cell-btn) { color: #8250df; }
+:root[data-theme="light"] .cf-panel-runone[data-runmode="python"]:not(.cell-btn):hover,
 :root[data-theme="light"] .py-mode-jlab-link:hover { color: #6f42c1; }
 :root[data-theme="light"] .py-mode-label.on .py-mode-thumb { background: #8250df; }
 :root[data-theme="light"] .py-mode-track { background: var(--e3); border-color: var(--bd); }
@@ -1543,6 +1727,11 @@ body.python-mode .py-mode-jlab-link { display: inline-block; }
 /* Canvas-flow OUTER container (the backdrop behind the stage + header + code panels),
    the action buttons, and the python kernel chips. */
 :root[data-theme="light"] .cf-wrap {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
   background: radial-gradient(circle at 20% 0%, rgba(118,185,0,0.05) 0%, transparent 50%), var(--e1);
   box-shadow: 0 2px 12px rgba(0,0,0,0.06);
 }
@@ -1569,3 +1758,5 @@ body.python-mode .py-mode-jlab-link { display: inline-block; }
 .gw-table th{text-align:left;color:var(--td,#b0b0b0);padding:.15rem .5rem .15rem 0;border-bottom:1px solid var(--bd,#2a2a2a)}
 .gw-table td{padding:.2rem .5rem .2rem 0;color:var(--tf,#e0e0e0);vertical-align:top}
 .gw-table tr:hover td{background:var(--e1)}
+
+main code { overflow-wrap: anywhere; word-break: break-word; }

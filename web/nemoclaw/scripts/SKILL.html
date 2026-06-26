@@ -11,12 +11,13 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 <style>
-  main { max-width: 1080px; margin: 0 auto; padding: 1.5rem; }
-  table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: .9rem; }
-  th, td { text-align: left; vertical-align: top; border-bottom: 1px solid var(--bd); padding: .55rem .65rem; }
+  html, body { max-width: 100%; overflow-x: clip; }
+  main { max-width: 1080px; margin: 0 auto; padding: 1.5rem; box-sizing: border-box; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: .9rem; table-layout: fixed; }
+  th, td { text-align: left; vertical-align: top; border-bottom: 1px solid var(--bd); padding: .55rem .65rem; overflow-wrap: anywhere; word-break: break-word; }
   th { color: var(--td); font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; }
-  td:first-child { font-family: var(--mono); color: var(--gs); white-space: nowrap; }
-  code { color: var(--gs); }
+  td:first-child { font-family: var(--mono); color: var(--gs); white-space: normal; }
+  code { color: var(--gs); overflow-wrap: anywhere; word-break: break-word; }
   .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
   .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
   .CodeMirror-vscrollbar { display: none; }
@@ -32,8 +33,8 @@
   #validation-table td:first-child { white-space: normal; }
   #validation-table code { display: block; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: .78rem; line-height: 1.45; }
   .note { border-left: 3px solid var(--g); background: rgba(118,185,0,.08); padding: .8rem 1rem; color: var(--td); }
-  .helper-notebook { display: grid; gap: 1rem; margin: 1rem 0 1.5rem; }
-  .helper-cell { min-height: 4rem; }
+  .helper-notebook { display: grid; gap: 1rem; margin: 1rem 0 1.5rem; min-width: 0; }
+  .helper-cell { min-height: 4rem; min-width: 0; }
 </style>
 <script type="application/json" id="skill-meta">
 {
@@ -76,6 +77,8 @@
     "python3 scripts/validation/studio_interface_audit.py",
     "python3 scripts/validation/helper_notebook_runtime_audit.py --no-container",
     "CONTAINER_ENGINE=podman python3 scripts/validation/helper_notebook_runtime_audit.py",
+    "CONTAINER_ENGINE=podman python3 scripts/validation/cell_ui_runtime_audit.py --screenshots tmp/cell-ui-audit-source",
+    "CONTAINER_ENGINE=podman python3 scripts/validation/cell_ui_runtime_audit.py --site-root public --screenshots tmp/cell-ui-audit-public",
     "CONTAINER_ENGINE=podman python3 scripts/validation/studio_responsive_audit.py",
     "scripts/runtime/browser_env_probe.sh",
     "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --smoke",
@@ -143,6 +146,8 @@
       <tr><td><code>python3 scripts/validation/studio_interface_audit.py</code></td><td>Studio controls, local assets, lesson coverage, lab-write versus static-read-only behavior, references panel, testing sidebar commands, this SKILL documentation, and helper-notebook API surface checks.</td></tr>
       <tr><td><code>python3 scripts/validation/helper_notebook_runtime_audit.py --no-container</code></td><td>Static helper-notebook contract. Verifies the runnable notebook does not mix <code>mountCanvasFlow</code> and <code>mountRunCell</code> helper APIs.</td></tr>
       <tr><td><code>CONTAINER_ENGINE=podman python3 scripts/validation/helper_notebook_runtime_audit.py</code></td><td>Containerized Playwright check. Serves the source page, clicks every helper notebook run button, and fails on runtime errors.</td></tr>
+      <tr><td><code>CONTAINER_ENGINE=podman python3 scripts/validation/cell_ui_runtime_audit.py --screenshots tmp/cell-ui-audit-source</code></td><td>Source-page cell UI suite. Checks CanvasFlow and RunCell across desktop/mobile and dark/light themes, verifies CodeMirror tokens, hidden-code heuristics, shared JS chips, unified buttons, and helper-notebook output. Writes screenshots for review.</td></tr>
+      <tr><td><code>CONTAINER_ENGINE=podman python3 scripts/validation/cell_ui_runtime_audit.py --site-root public --screenshots tmp/cell-ui-audit-public</code></td><td>Built-page cell UI suite. Run after <code>BUILD_PAGES_LANGS=0 scripts/build/build_pages.sh</code> to prove the production bundle preserves the same cell contract and screenshot evidence.</td></tr>
       <tr><td><code>CONTAINER_ENGINE=podman python3 scripts/validation/studio_responsive_audit.py</code></td><td>Containerized Playwright check for Studio layout extremes: topbar scrolling, minimum control sizes, sidebar list floors, and internal list scrolling.</td></tr>
       <tr><td><code>scripts/runtime/browser_env_probe.sh</code></td><td>First browser-runtime discovery command. Finds Podman or Docker, reports podman-compose-via-python availability, and proves container Node.js, Playwright, and Chromium through smoke.</td></tr>
       <tr><td><code>CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --smoke</code></td><td>Direct browser runtime smoke. No lab stack, no host Node, no host Chromium, no host Playwright.</td></tr>
@@ -167,14 +172,15 @@ mountCanvasFlow("#helper-map-cell", {
     { id: "state-log", icon: "S", title: "State + log", x: 1, y: 1, summary: "Write state, emit traces, and use every log surface.", code: `
 state.question = "Which helpers are local, live, or lab-only?";
 helpers.trace("helper-notebook.start", { page: "web/nemoclaw/scripts/SKILL.html" });
-helpers.log("log surfaces");
+helpers.log.h("shared log surfaces");
 helpers.log("plain text", 2, "extra values");
-helpers.log("state snapshot", state);
-helpers.log({ mode: "local", runnable: true, sharedState: !!state });
+helpers.log.json("state snapshot", state);
+helpers.log.kv({ mode: "local", runnable: true, sharedState: !!state });
 helpers.log.details("trace store", state.__trace || []);
 helpers.log.html("<strong>HTML log</strong> stays inside this cell.");
+helpers.log.svg('<svg viewBox="0 0 240 54" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:6px"><text x="16" y="32" fill="#76b900" font-family="ui-monospace,monospace" font-size="14">log.svg shared surface</text></svg>');
 helpers.log.draw(260, 100, '<circle cx="70" cy="55" r="26" fill="#76b900"/><text x="135" y="60" fill="#f2f2f2" font-family="ui-monospace,monospace" font-size="13">log.draw</text>', { title: "inline marks" });
-return { wrote: Object.keys(state), traceEvents: state.__trace.length };
+return { wrote: Object.keys(state), traceEvents: state.__trace.length, logApi: ["log", "h", "json", "kv", "details", "html", "svg", "draw", "clear"] };
 `},
     { id: "viz", icon: "V", title: "Visualization helpers", x: 2, y: 1, summary: "Render diagrams, message timelines, bars, diffs, and retrieval scores.", code: `
 helpers.viz.diagram({
@@ -299,6 +305,12 @@ mountRunCell("#helper-ui-cell", {
   helpers: ["mountChatUI", "mountAgentChat", "mountConsole", "mountKeyPanel", "diagramSVG", "ganttBarsSVG", "mountFigures", "log", "state", "signal"],
   code: `
 helpers.log.h("UI helper dry run");
+helpers.log.json("run cell parity", { surfaces: ["log", "h", "json", "kv", "details", "html", "svg", "draw", "clear"] });
+helpers.log.kv({ runtime: "RunCell", sameLogApi: true });
+const scratch = document.createElement("div");
+helpers.log.html("<span data-scratch>scratch before clear</span>");
+helpers.log.clear();
+helpers.log.h("UI helper dry run");
 const host = document.createElement("div");
 const consoleHost = document.createElement("div");
 helpers.mountConsole(consoleHost, { prompt: ">", greeting: "console helper mounted", suggestions: ["status"], onSubmit: async (line, api) => api.write("echo " + line) });
@@ -307,6 +319,8 @@ const chatHost = document.createElement("div");
 helpers.mountChatUI(chatHost, { title: "chat helper shell", placeholder: "message" });
 host.appendChild(chatHost);
 helpers.log.html(host.innerHTML);
+helpers.log.svg('<svg viewBox="0 0 220 54" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:6px"><text x="16" y="32" fill="#76b900" font-family="ui-monospace,monospace" font-size="14">RunCell log.svg</text></svg>');
+helpers.log.draw(220, 72, '<rect x="24" y="30" width="50" height="20" fill="#76b900"/><text x="92" y="45" fill="#f2f2f2" font-family="ui-monospace,monospace" font-size="13">RunCell log.draw</text>', { title: "shared log" });
 helpers.log.details("diagramSVG", helpers.diagramSVG({ nodes: [{ id: "ui", label: "UI", kind: "tool", x: 1, y: 1 }], edges: [] }).slice(0, 400));
 helpers.log.details("ganttBarsSVG", helpers.ganttBarsSVG([{ name: "mount", start: 0, end: 1 }], 1, "UI helper").slice(0, 400));
 helpers.log("mountAgentChat, mountKeyPanel, and mountFigures are page-level mount helpers; use them with a real DOM target on course pages.");
