@@ -15,7 +15,7 @@ behavior, and any source or runtime evidence. This is the preferred path for cro
 course claims, pedagogy, vendor/source concerns, and deployment assumptions.
 
 Use the direct patch path when you can carry the change through the structured release
-process. A direct MR should update the source, declared blast-radius files, and validators
+process. The full release and external-mirror model lives in [`docs/release_playbook.md`](docs/release_playbook.md). A direct MR should update the source, declared blast-radius files, and validators
 when the failure class should not recur. Link the tracker with `Addresses #N` unless the
 change fully closes the issue.
 

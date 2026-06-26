@@ -118,7 +118,7 @@ If you are contributing a direct patch, follow the structured release path:
 4. Run the validation ladder above.
 5. Open an MR that says `Addresses #N` unless the change truly closes the issue.
 
-Source and licensing rules live in [`scripts/compliance/docs/vendor_policy.md`](scripts/compliance/docs/vendor_policy.md)
+The full external-release operating model lives in [`docs/release_playbook.md`](docs/release_playbook.md). Source and licensing rules live in [`scripts/compliance/docs/vendor_policy.md`](scripts/compliance/docs/vendor_policy.md)
 and [`scripts/compliance/docs/open_source_readiness.md`](scripts/compliance/docs/open_source_readiness.md).
 
 ## Layout

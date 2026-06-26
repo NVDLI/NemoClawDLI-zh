@@ -289,6 +289,26 @@ def check_deploy_layout(res: Result):
     if stale:
         res.fail("deploy-layout", "deployment config must live in deploy/: " + ", ".join(sorted(stale)))
 
+
+def check_release_scaffold(res: Result):
+    """The external-release playbook and contribution templates are release infrastructure.
+    Keep them present so public mirroring does not lose intake and review guardrails."""
+    required = [
+        TASK1 / "docs" / "release_playbook.md",
+        TASK1 / ".gitlab" / "issue_templates" / "Course content.md",
+        TASK1 / ".gitlab" / "issue_templates" / "Runtime or deployment.md",
+        TASK1 / ".gitlab" / "issue_templates" / "Source or licensing.md",
+        TASK1 / ".gitlab" / "merge_request_templates" / "Default.md",
+        TASK1 / ".github" / "ISSUE_TEMPLATE" / "config.yml",
+        TASK1 / ".github" / "ISSUE_TEMPLATE" / "course-content.yml",
+        TASK1 / ".github" / "ISSUE_TEMPLATE" / "runtime-deploy.yml",
+        TASK1 / ".github" / "ISSUE_TEMPLATE" / "source-licensing.yml",
+        TASK1 / ".github" / "PULL_REQUEST_TEMPLATE.md",
+    ]
+    for path in required:
+        if not path.is_file():
+            res.fail("release-scaffold", f"missing external-release scaffold: {path.relative_to(TASK1)}")
+
 def check_skill_asset_coverage(res: Result):
     """Verify assets/SKILL.html and mats/SKILL.html directly link every local file they govern.
     This keeps provenance pages usable as file indexes in the deployed course and catches the
@@ -328,6 +348,7 @@ def main():
     check_static(res)                             # configured static/mount paths that no longer exist
     check_course_assets(res)                      # course runtime scripts/styles interface
     check_deploy_layout(res)                       # compose/nginx isolated under deploy/
+    check_release_scaffold(res)                    # external mirror intake/review scaffolding
     check_skill_asset_coverage(res)               # asset/mat SKILL pages directly link governed files
     check_skills(res)                             # SKILL.html beacons that drifted from their directory
 
