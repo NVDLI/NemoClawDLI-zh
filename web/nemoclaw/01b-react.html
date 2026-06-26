@@ -45,6 +45,10 @@
       An agent built on a language model runs the same perceive-reason-act
       loop as anything else, with one detail that gives the pattern its name:
       the model reasons in words between the actions it takes.
+      A <strong>tool</strong> is code your harness can run for the model: a named function
+      with a description, an input schema, and a return value. A <strong>tool call</strong>
+      is the model's structured request for that code. The harness parses the request,
+      runs the function, appends the result, and calls the model again.
       <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al. (2022)</a>
       called this <strong>ReAct</strong>, for reasoning and acting. They found that
       a model which interleaves short stretches of reasoning with calls to its tools
@@ -184,10 +188,11 @@
 
   <h2>Context rot: why a longer loop reads worse</h2>
   <p>
-    As each step costs tokens and bloats the messages array, <code>MAX_STEPS = 6</code> is set as
-    a cheap backstop to cap the agent's efforts. A confused agent
-    (one that misreads its tool spec or gets stuck retrying) keeps going
-    as long as the endpoint answers, which may lead to a never-ending interaction loop.
+    Use <code>MAX_STEPS = 6</code> as the demo safety belt for this exercise. The value is
+    high enough for the time-tool question to finish, and low enough to stop a confused
+    agent that misreads its tool spec or keeps retrying the same call. In production,
+    choose this cap from task evaluations, latency budgets, and the cost of a bad retry
+    rather than copying the number from a tutorial.
   </p>
 
   <p>

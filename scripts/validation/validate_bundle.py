@@ -105,6 +105,7 @@ import studio_interface_audit as sia  # noqa: E402
 import openclaw_fallback_audit as ofa  # noqa: E402
 import agent_process_audit as apa  # noqa: E402
 import course_contract as cca  # noqa: E402
+import concept_order_audit as coa  # noqa: E402
 import skill_contract as skc  # noqa: E402
 from collections import defaultdict  # noqa: E402
 
@@ -243,6 +244,9 @@ SUITE_META = [
     ("course_contract", "Course title and abstract contract", "required",
      "The English source-course title, abstract, and learning objectives are canonical DLI copy. They must stay verbatim across the course home, foyer, and canonical contract files.",
      "scripts/validation/course_contract.py", "audit"),
+    ("concept_order", "Concept order contract", "required",
+     "Core vocabulary in the early agent curriculum must be defined before learner-facing prose or code relies on it. This prevents glossary-hover patches and keeps issue #6 fixes structural.",
+     "scripts/validation/concept_order_audit.py", "audit"),
     ("skill_schema", "SKILL contract", "recommended",
      "Every SKILL.html skill-meta must be a well-formed contract of its kind: it classifies into one known kind (service-skill, service-index, dir-skill, hub, leaf), carries that kind's required keys, uses a known schema/node_type value and a semver version where the kind has one, and only valid notebook status values. An agent samples this block to work in a directory, so a malformed beacon is a contract an agent cannot trust. Each entry names the SKILL and the missing or invalid field.",
      "scripts/skills/skill_contract.py", "schema_findings"),
@@ -543,6 +547,17 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         ok = False
         vl_fail.extend(f"course contract: {x}" for x in course_contract_find)
 
+    # Concept order contract (required): key terms should be defined before first use.
+    try:
+        concept_order_find = coa.audit()
+    except Exception as e:
+        concept_order_find = [f"concept order audit error: {e}"]
+        suite_errors["concept_order"] = str(e)
+    if concept_order_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(f"concept order: {x}" for x in concept_order_find)
+
     # SKILL contract (advisory): every skill-meta is a well-formed beacon of its kind (schema leg)
     # and matches its directory (drift leg, reused from skill_audit). The agent-facing half of the
     # contract: a malformed or stale beacon is what an agent samples and is misled by.
@@ -694,6 +709,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "course_contract": [D("web/nemoclaw/COURSE_CANON.md", x, REQUIRED,
                               "Restore the canonical DLI title, abstract, and learning objectives verbatim. Do not paraphrase, retitle, reorder, or translate the English source copy.")
                             for x in course_contract_find],
+        "concept_order": [D("web/nemoclaw/01b-react.html", x, REQUIRED,
+                            "Define the term or prerequisite before the prose or runnable code depends on it; avoid hover-only definitions.")
+                          for x in concept_order_find],
         "prose_variety": [D(r["path"], f"score {r['score']} · {', '.join(r['tells'])}", CONSIDER,
                             "Give the page a rhythm pass: vary sentence length, break the staccato triads, turn enumerations back into prose.")
                           for r in pv_flagged],
@@ -864,6 +882,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "helper_notebook": 1,
         "studio_interface": 1,
         "course_contract": 1,
+        "concept_order": 1,
         "materials": materials.get("count", 0),
         "skill_schema": skc_scanned, "skill_drift": skc_scanned,
     }
@@ -983,6 +1002,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
           f"readability {len(ca_find.get('readability', []))})")
     print(f"  figure geometry : {len(dg_find)} runtime-figure finding(s) (text overlap / past bounds / connector-crosses-box / useless)")
     print(f"  course contract : {len(course_contract_find)} finding(s) (title / abstract / learning objectives)")
+    print(f"  concept order   : {len(concept_order_find)} finding(s) (first-use definitions / prerequisite framing)")
     _cg = {k: len(v) for k, v in ch_fam.items()}
     print(f"  code hygiene    : {len(ch_rows)} finding(s) over {ch_scanned} code file(s) "
           f"(comments {_cg.get('comments', 0)}, walls {_cg.get('walls', 0)}, dup {_cg.get('duplication', 0)}, "

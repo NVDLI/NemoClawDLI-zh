@@ -43,8 +43,10 @@
     <div class="eyebrow">Module 2 · Part A of 3</div>
     <h1>The <span>Workflow</span> Agent</h1>
     <p class="lead">
-      A single ReAct loop handles most one-shot tasks, but three key patterns will
-      push you past it:
+      A <strong>workflow agent</strong> means an agent system where your harness controls
+      a workflow: a graph of model calls, deterministic code steps, tool calls, and
+      specialist loops. A single ReAct loop handles most one-shot tasks, but three key
+      patterns will push you past it:
     </p>
     <ul>
       <li>sub-tasks that run in parallel,</li>
@@ -52,7 +54,7 @@
       <li>and routing decisions that must not depend on whatever the last tool returned.</li>
     </ul>
     <p>
-      A <b>workflow agent</b> can span these problem classes by moving context management
+      This workflow shape can span these problem classes by moving context management
       and synchronization into dedicated loops, routers, and planned sequences. This page
       stays at the pattern level: you will see how routing, fan-out, and plan-then-execute
       structures help when a single ReAct loop becomes awkward.
@@ -155,6 +157,11 @@
     The cell below runs a ReWOO pipeline against the NVIDIA glossary, using
     <code>helpers.webSearch</code> (the ranked glossary search you met in Module 1c) for every retrieval the plan calls for. The <a href="glossary.html">glossary explorer</a> shows the full index this searches and lets you run any query the planner might emit:
   </p>
+  <p>
+    <code>Promise.all</code> is JavaScript's helper for starting several promises and waiting
+    until all of them finish. Here it is just the concurrency mechanism: it does not call
+    the model and it does not decide which searches to run.
+  </p>
   <ol>
     <li><strong>Planner.</strong> One schema-bound LLM call emits a JSON list of 3-5 search queries.</li>
     <li><strong>Executor.</strong> Plain JavaScript. Every query runs concurrently via <code>Promise.all</code>, with no LLM calls at this stage.</li>
@@ -176,8 +183,11 @@
   <p>
     Routing is a different shape of multi-agent in which a triage agent classifies the
     input and hands it to one specialist. Because the classifier must emit one of a fixed
-    enum of categories, the output must be sufficiently constrained with a tight contract to avoid a service-level agreement failure.
-    Each specialist downstream owns a narrow system prompt that might never sees the triage agent's reasoning by design.
+    enum of categories, the output needs a tight contract. A <strong>fixed enum</strong>
+    is a closed list of allowed labels; if the model returns anything else, the router
+    should reject the route or retry under stricter instructions instead of guessing.
+    Each specialist downstream owns a narrow system prompt and does not need to see the
+    triage agent's reasoning.
   </p>
 
   <figure style="margin:1.4em 0">
