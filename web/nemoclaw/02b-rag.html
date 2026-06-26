@@ -202,14 +202,15 @@
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/02b-rag-2.svg" style="aspect-ratio:900 / 420"></div>
   </figure>
+  <p>Every request walks the same four steps:</p>
+  <ul>
+    <li><strong>Embed</strong> the query into a vector.</li>
+    <li><strong>Search</strong> the passage index for the top-K nearest passages.</li>
+    <li><strong>Concatenate</strong> those passages onto the prompt.</li>
+    <li><strong>Generate</strong> an answer grounded in them.</li>
+  </ul>
   <p>
-    Every request walks the same four steps: <strong>embed</strong> the query into a vector,
-    <strong>search</strong> the passage index for the top-K nearest passages,
-    <strong>concatenate</strong> those passages onto the prompt, and <strong>generate</strong>
-    an answer grounded in them.
-  </p>
-  <p>
-    Index agents that manage other primitives largely take the same shape while varying the search/embed/verification logic, so please look into the other options when they align well with your corpus of interest.
+    Index agents that manage other primitives largely take the same shape while varying the search/embed/verification logic, so don't feel intimidated to experiment with shapes that better fit your data.
   </p>
 
   <!-- ── Part 3: Embeddings ────────────────────────────────────────────────── -->
