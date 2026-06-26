@@ -416,6 +416,9 @@ svg[style*="background: #0d0d0d"] {
 
 /* Stage: light gray backdrop with darker gray dots, per the user's spec */
 .cf-stage {
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
   background-color: #eef1f4 !important;
   background-image: radial-gradient(circle, #999 1px, transparent 1px) !important;
   background-size: 22px 22px !important;
@@ -789,3 +792,5 @@ pre .hljs                { color: #1f2328 !important; background: transparent !i
   border: 1px solid #d0d7de !important;
 }
 .cf-code-copy:hover { background: #ffffff !important; color: #4a7a00 !important; border-color: #76b900 !important; }
+
+@media (max-width: 720px) { .cf-stage { padding: 18px 16px !important; } }

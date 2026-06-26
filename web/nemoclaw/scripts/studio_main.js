@@ -116,6 +116,18 @@ const TEST_COMMANDS = [
     cmd: 'CONTAINER_ENGINE=podman python3 scripts/validation/helper_notebook_runtime_audit.py',
   },
   {
+    name: 'Cell UI source/browser contract',
+    mode: 'podman image, no lab stack',
+    desc: 'Checks CanvasFlow and RunCell across desktop/mobile and dark/light themes; verifies unified buttons, JS chips, syntax highlighting, hidden-code heuristics, and captures screenshots.',
+    cmd: 'CONTAINER_ENGINE=podman python3 scripts/validation/cell_ui_runtime_audit.py --screenshots tmp/cell-ui-audit-source',
+  },
+  {
+    name: 'Cell UI production bundle contract',
+    mode: 'podman image, no lab stack',
+    desc: 'Run after BUILD_PAGES_LANGS=0 scripts/build/build_pages.sh; repeats the cell UI browser suite against public/ to prove the shipped bundle keeps the contract.',
+    cmd: 'CONTAINER_ENGINE=podman python3 scripts/validation/cell_ui_runtime_audit.py --site-root public --screenshots tmp/cell-ui-audit-public',
+  },
+  {
     name: 'Studio responsive contract',
     mode: 'podman image, no lab stack',
     desc: 'Stress-tests narrow and short Studio viewports for topbar scrolling, usable controls, sidebar list floors, and internal scrolling.',
