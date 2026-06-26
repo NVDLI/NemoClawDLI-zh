@@ -39,20 +39,18 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
         sys.path.insert(0, str(_p / "scripts")); break
 from _bootstrap import add_script_paths, find_repo_root
 
-# scripts/ sits directly under the CONTENT ROOT: task1 today (a subdir of the DLI wrapper),
-# the repo root in the open-source release. So the content root is scripts/..; the git repo
-# (the wrapper that holds .git) is its parent while task1 is still a subdir.
+# scripts/ sits directly under the CONTENT ROOT: task1 today (a subdir of the DLI wrapper), the repo root in the open-source release.
+# So the content root is scripts/..; the git repo (the wrapper that holds .git) is its parent while task1 is still a subdir.
 TASK1 = find_repo_root(Path(__file__).resolve())
 add_script_paths(TASK1 / "scripts")
 import scripts_hierarchy as sh  # noqa: E402
 REPO = TASK1.parent if (TASK1.parent / ".git").exists() else TASK1
 SKIP_PARTS = {"__pycache__", ".ipynb_checkpoints", "node_modules", ".git", ".cache",
-              # generated build output (gitignored): public/ is the Pages build, the rest are
-              # bundler/export trees. Never source, and a build mid-flight makes subdirs appear
-              # and vanish under us, so walking into them crashes the scan. Prune them.
+              # generated build output (gitignored): public/ is the Pages build, the rest are bundler/export trees.
+              # Never source, and a build mid-flight makes subdirs appear and vanish under us, so walking into them crashes the scan.
+              # Prune them.
               "public", "export", "standalone", "dist", "build", "i18n",
-              # gitignored lab-runtime cruft: never validate it (and do not rely on
-              # filesystem permissions to skip it, e.g. a root-owned .Trash-0).
+              # Skip gitignored lab-runtime cruft explicitly.
               ".Trash-0", "artifacts", "grounding_cache", "_paper_cache",
               ".exec_stage", ".solution"}
 # config/source suffixes worth scanning for duplicated facts
@@ -129,8 +127,7 @@ def inv_openclaw_token():
             found.setdefault(tok, []).append(str(p.relative_to(REPO)))
     distinct = set(found)
     if not distinct:
-        # the token is a load-bearing literal across nginx + service SKILLs; its total
-        # absence means the scan surface is wrong again, not that all is well.
+        # Total absence means the scan surface broke, not that token refs are clean.
         fail("openclaw token: NOT FOUND anywhere. The scan surface is wrong or the refs were dropped.")
     elif distinct == {"dli-openclaw-token"}:
         ok(f"openclaw token: single value across {sum(len(v) for v in found.values())} refs")
@@ -246,11 +243,7 @@ def inv_lifecycle_allowlist():
         fail(f"lifecycle allow-list DIVERGENCE: missing {sorted(missing)} extra {sorted(extra)}")
 
 
-# ── DANGLING refs ────────────────────────────────────────────────────────────────
-# dgx/ is kept in the recognizer set on purpose: the release ships no dgx surface, so
-# any dgx/<path> a SKILL declares resolves to a missing file and is flagged dangling.
-# mats are now course-scoped under web/nemoclaw/mats/, so the "web/" prefix already covers
-# them; there is no bare top-level "mats/" path root any more.
+# Dangling refs: dgx/ and mats paths stay recognized so stale SKILL links fail loudly.
 _PREFIXES = ("task1/", "cpu/", "web/", "dgx/", "repos/",
              "docs/", "scripts/", "workspace/", "cors-proxy/")
 
@@ -307,8 +300,7 @@ def check_harness_wiring():
         h = read(p)
         rel = str(p.relative_to(REPO))
         meta = skill_meta(p) or {}
-        # A directory-explorer documents files (it may LIST _skill_selftest.js in its index)
-        # but does not host the self-test harness, so the half-wired heuristic does not apply.
+        # Directory explorers may list harness files without mounting them.
         if meta.get("node_type") == "directory-explorer":
             continue
         mount = 'id="selftest"' in h

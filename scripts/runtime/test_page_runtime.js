@@ -1,32 +1,7 @@
 #!/usr/bin/env node
-// Runtime test for browser course pages via playwright-core.
-// Preferred host entrypoint:
-//   scripts/runtime/lab_runtime_test.sh [--smoke] [url]
-// Legacy openclaw-container entrypoint:
-//   docker cp test_page_runtime.js <stack>-task1-openclaw-1:/tmp/
-//   docker exec \
-//     -e CLAW_URL=http://localhost:8995 -e CLAW_TOKEN=dli-openclaw-token \
-//     <stack>-task1-openclaw-1 node /tmp/test_page_runtime.js [url]
-// Default URL: http://nginx/lab/static/nemoclaw/01a-loop.html
-// Static render check: scripts/runtime/lab_runtime_test.sh --render-only
-//
-// Credentials: set CLAW_URL + CLAW_TOKEN to drive the OpenClaw gateway nodes
-// (03a/03c/04a). They are injected into sessionStorage under the keys the pages
-// read (nemoclaw_clawrawurl / _clawtoken) before any script runs, so
-// the Connect nodes succeed against the local gateway instead of stalling on the
-// "fill in the probe" guard.
-//
-// WebSocket monitoring: every /cli/gateway frame is parsed. The run is only
-// considered to exercise the agent loop if event:"agent" tool/command frames
-// actually arrive. A green page with zero tool frames is reported as a WARN,
-// because that is exactly the silent-failure mode this harness exists to catch.
-//
-// Legacy deps when running directly inside openclaw:
-//   apt-get install -y libglib2.0-0 libnspr4 libnss3 libatk1.0-0 libatk-bridge2.0-0 \
-//     libcups2 libdrm2 libgbm1 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 \
-//     libxrandr2 libxext6 libx11-6 libpangocairo-1.0-0 libasound2t64 fonts-liberation
-//   PLAYWRIGHT_BROWSERS_PATH=/tmp/pw-browsers \
-//     npx playwright install chromium-headless-shell
+// Browser runtime harness. Host entrypoint: scripts/runtime/lab_runtime_test.sh [--smoke] [url].
+// Set CLAW_URL + CLAW_TOKEN to exercise OpenClaw gateway nodes.
+// With OpenClaw credentials, zero tool frames is a hard failure.
 
 const fs = require('fs');
 const http = require('http');
@@ -42,11 +17,16 @@ const args = process.argv.slice(2);
 const smoke = args.includes('--smoke');
 const renderOnly = args.includes('--render-only');
 const serveStatic = args.includes('--serve-static');
-const url = args.find(a => a !== '--smoke' && a !== '--render-only' && a !== '--serve-static') || 'http://nginx/lab/static/nemoclaw/01a-loop.html';
+const DEFAULT_LAB_URL = 'http://nginx/lab/static/nemoclaw/01a-loop.html';
+const STATIC_SERVER_URL = 'http://127.0.0.1:4173';
+const LOOPBACK_ORIGIN = 'http:' + '//127.0.0.1';
+const url = args.find(a => a !== '--smoke' && a !== '--render-only' && a !== '--serve-static') || DEFAULT_LAB_URL;
 const CLAW_URL = process.env.CLAW_URL || '';
 const CLAW_TOKEN = process.env.CLAW_TOKEN || '';
+const CLAW_CF = process.env.CLAW_CF || '';
 const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY || '';
 const DIRECT_API_URL = process.env.NVIDIA_API_URL || 'https://integrate.api.nvidia.com/v1';
+const OPENCLAW_BACKUP_HINT = 'Use backup OpenClaw: set CLAW_URL=https://nemoclaw-<id>.brevlab.com CLAW_TOKEN=<gateway token> CLAW_CF=<CF_Authorization>. If local OpenClaw shows EPERM, stop local probing and use the Brev session URL plus CF_Authorization.';
 
 // Locate the chromium-headless-shell binary.
 // The install path moves between playwright versions, so glob the known roots instead of hardcoding one.
@@ -66,7 +46,7 @@ function startStaticServer() {
   const roots = ['/workspace/web', '/workspace'];
   const server = http.createServer((req, res) => {
     try {
-      const parsed = new URL(req.url, 'http://127.0.0.1');
+      const parsed = new URL(req.url, LOOPBACK_ORIGIN);
       let rel = decodeURIComponent(parsed.pathname);
       if (rel.startsWith('/lab/static/')) rel = rel.slice('/lab/static/'.length);
       else rel = rel.replace(/^\/+/, '');
@@ -90,6 +70,42 @@ function startStaticServer() {
   return new Promise(resolve => {
     server.listen(4173, '127.0.0.1', () => resolve(server));
   });
+}
+
+
+function withTimeout(ms) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new Error(`timeout after ${ms}ms`)), ms);
+  return { signal: controller.signal, done: () => clearTimeout(timer) };
+}
+
+function joinUrl(base, pathPart) {
+  return base.replace(/\/+$/, '') + pathPart;
+}
+
+async function preflightOpenClaw() {
+  if (!(CLAW_URL && CLAW_TOKEN)) return;
+  const headers = { Accept: 'application/json, text/plain, */*', Authorization: `Bearer ${CLAW_TOKEN}` };
+  if (CLAW_CF) headers['CF-Access-Jwt-Assertion'] = CLAW_CF;
+  const targets = ['/health', '/healthz', '/api/agent'];
+  const attempts = [];
+  for (const pathPart of targets) {
+    const timeout = withTimeout(6000);
+    const target = joinUrl(CLAW_URL, pathPart);
+    try {
+      const resp = await fetch(target, { headers, signal: timeout.signal });
+      attempts.push(`${resp.status} ${target}`);
+      if (resp.ok || [401, 403].includes(resp.status)) {
+        console.log('OPENCLAW_PREFLIGHT:', attempts.join(' | '));
+        return;
+      }
+    } catch (e) {
+      attempts.push(`${target} -> ${e && e.message ? e.message : String(e)}`);
+    } finally {
+      timeout.done();
+    }
+  }
+  throw new Error(`OpenClaw preflight failed. ${attempts.join(' | ')}. ${OPENCLAW_BACKUP_HINT}`);
 }
 
 function findChrome() {
@@ -121,7 +137,7 @@ function findChrome() {
   let staticServer = null;
   if (serveStatic) {
     staticServer = await startStaticServer();
-    console.log('STATIC_SERVER: http://127.0.0.1:4173');
+    console.log('STATIC_SERVER: ' + STATIC_SERVER_URL);
   }
 
   const executablePath = findChrome();
@@ -157,6 +173,8 @@ function findChrome() {
     return route.continue();
   });
 
+  if (!smoke && !renderOnly) await preflightOpenClaw();
+
   if (smoke) {
     await page.goto('data:text/html,<main id="ok">lab runtime smoke</main>');
     const ok = await page.textContent('#ok');
@@ -167,11 +185,7 @@ function findChrome() {
     process.exit(0);
   }
 
-  // Local-test only: the gateway's controlUi.allowedOrigins won't contain the
-  // origin nginx serves the page from (http://nginx), so the WS handshake is
-  // rejected with "origin not allowed". On the real interface the page is served
-  // from an allowed origin, so this never triggers. CLAW_ORIGIN lets the harness
-  // present an allowlisted Origin (e.g. http://localhost:8088) for the handshake.
+  // Local harness may need an allowlisted Origin for gateway WS handshakes.
   if (process.env.CLAW_ORIGIN) {
     await page.setExtraHTTPHeaders({ Origin: process.env.CLAW_ORIGIN });
     console.log('ORIGIN: overridden ->', process.env.CLAW_ORIGIN);
@@ -199,9 +213,7 @@ function findChrome() {
     page.on('websocket', s => console.log('  [ws.open]', s.url()));
   }
 
-  // ── WebSocket frame monitoring ──────────────────────────────────────────────
-  // Tally gateway frames by kind. Tool/command frames are the signal that the
-  // agent loop actually ran; their absence is the bug this harness guards.
+  // Gateway frame counts prove the agent loop actually ran.
   const ws = { sockets: 0, allFrames: 0, evtKinds: {}, resErr: [], agentFrames: 0, toolStarts: [], cmdEnds: [], chatFinals: 0, errors: 0 };
   page.on('websocket', sock => {
     if (!/\/cli\/gateway/.test(sock.url())) return;
@@ -223,23 +235,20 @@ function findChrome() {
     });
   });
 
-  // For a remote *.brevlab.com launchable, the browser needs the CF_Authorization
-  // cookie to clear Cloudflare Access before the WS upgrade. Set it for the
-  // launchable host (derived from CLAW_URL) so the headless browser authenticates
-  // exactly like a logged-in student.
-  if (process.env.CLAW_CF && CLAW_URL) {
+  // For a remote *.brevlab.com launchable, the browser needs the CF_Authorization cookie to clear Cloudflare Access before the WS upgrade.
+  // Set it for the launchable host (derived from CLAW_URL) so the headless browser authenticates exactly like a logged-in student.
+  if (CLAW_CF && CLAW_URL) {
     try {
       const host = new URL(CLAW_URL).hostname;
-      // SameSite=None + Secure so the browser sends it on the cross-site wss
-      // upgrade (the page origin differs from the launchable). A Lax cookie is
-      // withheld cross-site and CF 302s the handshake, so no challenge arrives.
-      await page.context().addCookies([{ name: 'CF_Authorization', value: process.env.CLAW_CF, domain: host, path: '/', secure: true, sameSite: 'None' }]);
+      // SameSite=None + Secure so the browser sends it on the cross-site wss upgrade (the page origin differs from the launchable).
+      // A Lax cookie is withheld cross-site and CF 302s the handshake, so no challenge arrives.
+      await page.context().addCookies([{ name: 'CF_Authorization', value: CLAW_CF, domain: host, path: '/', secure: true, sameSite: 'None' }]);
       console.log('CF_COOKIE: set for', host);
     } catch (e) { console.log('CF_COOKIE: skipped (' + e.message + ')'); }
   }
 
-  // The web course is remote-service-only: browser pages call integrate.api.nvidia.com
-  // directly with the learner's nvapi key. The harness mirrors that path.
+  // The web course is remote-service-only: browser pages call integrate.api.nvidia.com directly with the learner's nvapi key.
+  // The harness mirrors that path.
   await page.addInitScript(({ apiKey, apiUrl }) => {
     try {
       sessionStorage.setItem("__nv_slim_cfg_v1", JSON.stringify({
@@ -285,9 +294,7 @@ function findChrome() {
     process.exit(fail ? 1 : 0);
   }
 
-  // Inject gateway credentials AFTER the probe widget mounts. The widget rewrites
-  // the token key to "" on mount, so an addInitScript value gets clobbered; set
-  // the keys here, after it has settled and before we click Run.
+  // Inject credentials after the probe widget mounts, or it clears them.
   if (CLAW_URL && CLAW_TOKEN) {
     await page.evaluate(([u, t]) => {
       sessionStorage.setItem('nemoclaw_clawrawurl', u);
@@ -299,8 +306,8 @@ function findChrome() {
     console.log('CREDS: none (gateway nodes will short-circuit on the probe guard)');
   }
 
-  // Click "Run all" on every canvas flow. Each flow runs its nodes sequentially
-  // (connect → … → chat) on a shared state, so this drives the full handshake.
+  // Click "Run all" on every canvas flow.
+  // Each flow runs its nodes sequentially (connect → … → chat) on a shared state, so this drives the full handshake.
   const flowCount = await page.evaluate(() => {
     const btns = document.querySelectorAll('.cf-btn-run');
     btns.forEach(b => b.click());
@@ -308,8 +315,7 @@ function findChrome() {
   });
   console.log('FLOWS:', flowCount);
 
-  // Settle: agent runs that call tools take longer than plain LLM calls, and the
-  // chat node's own timeout is 90s, so allow up to 120s.
+  // Settle: agent runs that call tools take longer than plain LLM calls, and the chat node's own timeout is 90s, so allow up to 120s.
   let settled = false;
   for (let i = 0; i < 240; i++) {
     await page.waitForTimeout(500);
@@ -345,10 +351,10 @@ function findChrome() {
   const toolsMissing = expectedTools && ws.toolStarts.length === 0 && ws.cmdEnds.length === 0;
 
   if (hardFail) console.log('RESULT: FAIL (errors / unsettled nodes / no flows)');
-  else if (toolsMissing) console.log('RESULT: WARN (page green but NO tool/command frames, so the agent loop was not observed)');
+  else if (toolsMissing) console.log('RESULT: FAIL (OpenClaw credentials supplied but NO tool/command frames observed). ' + OPENCLAW_BACKUP_HINT);
   else console.log('RESULT: PASS' + (expectedTools ? ` (${ws.toolStarts.length} tool starts, ${ws.cmdEnds.length} command ends)` : ''));
 
   await browser.close();
   if (staticServer) staticServer.close();
-  process.exit(hardFail ? 1 : 0);
+  process.exit((hardFail || toolsMissing) ? 1 : 0);
 })().catch(e => { console.error('FATAL:', e.message); process.exit(1); });

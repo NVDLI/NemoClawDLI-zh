@@ -275,8 +275,7 @@ const nav = document.getElementById("nav");
 if (nav) nav.innerHTML = buildNav("index.html");
 const pill = document.getElementById("key-status");
 updateKeyPill(pill);
-// Reuse mountKeyPanel (the same verify + change + persist the course pages use) instead of
-// reimplementing key handling on the landing; the topbar pill mirrors the saved state.
+// Reuse the course key panel so landing-page state stays consistent.
 mountKeyPanel(document.getElementById("key-panel"), { onSave: () => updateKeyPill(pill), onClear: () => updateKeyPill(pill) });
 </script>
 </body>

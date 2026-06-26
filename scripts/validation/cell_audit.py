@@ -210,6 +210,7 @@ def _visible_hygiene(rel: str, cell_line: int, code: str):
     return findings
 
 
+
 def audit_code_surface():
     """Find canvas-flow nodes whose code starts open despite being long enough to dominate the page.
     mountCanvasFlow opens short node code automatically; that is useful for small teaching
@@ -247,6 +248,7 @@ def audit_code_surface():
     return findings
 
 
+
 def audit_visible_code_hygiene():
     """Find hygiene problems in code that is visible by default. This intentionally does
     not force first-line comments or formatting churn across collapsed implementation cells."""
@@ -268,6 +270,7 @@ def audit_visible_code_hygiene():
                     continue
                 cell_line = text[:start + m.start()].count("\n") + 1
                 findings.extend(_visible_hygiene(rel, cell_line, code))
+
     return findings
 
 
@@ -279,7 +282,9 @@ def run(verbose=True):
     opaque, console, unawaited, dialog, key, static, unhi = [], [], [], [], [], [], []
     ui_contract = audit_runtime_contract()
     code_surface = audit_code_surface()
+
     readability = audit_visible_code_hygiene()
+
     for p in pages:
         o, c, u, d, k, st, uh = audit_page(p)  # per-page findings, by category
         opaque += o; console += c; unawaited += u; dialog += d; key += k; static += st; unhi += uh
@@ -298,13 +303,17 @@ def run(verbose=True):
         show("editable cells without the syntax highlighter loaded", unhi, lambda it: f"{it[0]}  {it[1]}")
         show("learner-facing cell UI contract", ui_contract, lambda it: f"{it[0]}  {it[1]}")
         show("default-open canvas code surface", code_surface, lambda it: f"{it[0]}  {it[1]}")
+
         show("visible learner code hygiene", readability, lambda it: f"{it[0]}  {it[1]}")
+
         total = (len(opaque) + len(console) + len(unawaited) + len(dialog) + len(key) + len(static)
                  + len(unhi) + len(ui_contract) + len(code_surface) + len(readability))
         print(f"\ncell_audit: {total} finding(s) (opaque {len(opaque)}, console {len(console)}, "
               f"unawaited {len(unawaited)}, dialog {len(dialog)}, inline-key {len(key)}, static {len(static)}, "
+
               f"unhighlighted {len(unhi)}, ui-contract {len(ui_contract)}, code-surface {len(code_surface)}, "
               f"readability {len(readability)})")
+
     return {"opaque": opaque, "console": console, "unawaited": unawaited,
             "dialog": dialog, "inline_key": key, "static_cell_code": static,
             "unhighlighted": unhi, "ui_contract": ui_contract,

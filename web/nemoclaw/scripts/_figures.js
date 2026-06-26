@@ -1,8 +1,4 @@
-// _figures.js holds the inline figure builders that used to live in _shared.js.
-//
-// course-specific figure generators kept out of the shared diagram engine. ganttBarsSVG (02c)
-// renders a concurrency-vs-serial Gantt chart as an SVG string. The general engine (diagramSVG
-// / mountDiagram) stays in _shared.js; this is for one-off, per-section figures.
+// Course-specific inline figure builders kept out of the shared diagram engine.
 
 export function ganttBarsSVG(workers, wallSeconds, title = "Concurrency vs serial time") {
   /* @doc <code>helpers.ganttBarsSVG(workers, wallSeconds, title)</code> ::
@@ -45,10 +41,7 @@ export function ganttBarsSVG(workers, wallSeconds, title = "Concurrency vs seria
     ${body}</svg>`;
 }
 
-// ── mountFigures + fit-to-screen lightbox ────────────────────────────────────
-// Figures live in assets/figures/*.svg and are fetched + injected INLINE here (not via <img>), so the
-// page's var(--gfx-*) / .gfx-dark theme cascade reaches them. Each injected figure is click/Enter to
-// open a fit-to-screen lightbox. Idempotent; fetches are deduped.
+// Inject SVG figures inline and wire the fit-to-screen lightbox.
 const _figCache = {};
 function _fetchSvg(src) {
   if (!_figCache[src]) {

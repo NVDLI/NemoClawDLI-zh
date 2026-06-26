@@ -74,8 +74,8 @@
   }
 
   function injectChrome() {
-    // Apply a saved manual theme choice before any content is built (the framer renders its body
-    // in JS, so this is flash-free). With no saved choice the palette below follows the OS.
+    // Apply a saved manual theme choice before any content is built (the framer renders its body in JS, so this is flash-free).
+    // With no saved choice the palette below follows the OS.
     try { var _t = localStorage.getItem("theme"); if (_t) document.documentElement.setAttribute("data-theme", _t); } catch (e) {}
     if (document.head.querySelector('link[data-hljs]')) return;
     var css = el("link"); css.rel = "stylesheet"; css.href = HLJS_CSS; css.dataset.hljs = "1";
@@ -222,8 +222,8 @@
     return esc(code);
   }
 
-  // Markdown for the hub mode (the README reflection). Loads marked once from a CDN; falls
-  // back to a <pre> of the raw text if the CDN is blocked, so the page still reads.
+  // Markdown for the hub mode (the README reflection).
+  // Loads marked once from a CDN; falls back to a <pre> of the raw text if the CDN is blocked, so the page still reads.
   function loadMarked() {
     if (!window.__sxMarkedP) {
       window.__sxMarkedP = import("https://cdn.jsdelivr.net/npm/marked@14/+esm")

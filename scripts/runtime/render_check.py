@@ -34,19 +34,14 @@ DEFAULT_PAGES = ["01a-loop", "01b-react", "01c-tools", "02a-routing", "02b-rag",
                  "03a-kickstart", "03b-openclaw", "03c-always-on", "04a-safety",
                  "04b-modern-clis", "04c-going-further"]
 
-# Non-numbered pages that share _shared.js and the module graph. They mount fewer (or no)
-# canvas cells, so the gate that matters for them is "loads without a JS error or a failed
-# module import" rather than panel count. They are checked under --all. glossary.html broke
-# once because the _glossary.js extraction dropped a re-export and no gate covered it; this
-# list closes that gap.
+# Aux pages check module-load health, not canvas panel count.
 AUX_PAGES = ["index", "courses", "cert", "glossary", "studio", "SKILL"]
 
-# Execution-time errors that mean broken CODE (a helper out of scope, a typo), as opposed to the
-# offline fetch failures that are expected here (no backend wired to the static server).
+# Code errors fail; expected offline fetch noise does not.
 _CODE_ERR = ("is not defined", "is not a function", "is not iterable", "SyntaxError",
              "Cannot read properties", "Cannot access",
-             # A fetched asset that 404s returns the HTML index; .json() on it throws this. The message
-             # carries none of the names above, so without these a crashed cell read as ok (the 04b miss).
+             # A fetched asset that 404s returns the HTML index; .json() on it throws this.
+             # The message carries none of the names above, so without these a crashed cell read as ok (the 04b miss).
              "Unexpected token", "is not valid JSON")
 _NET_NOISE = ("fetch", "NetworkError", "Failed to load", "ERR_", "/api/", "/lab/", "Load failed",
               "AbortError", "timed out", "timeout", "ECONN", "ERR_NETWORK")
@@ -114,7 +109,7 @@ def main():
             page.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
             page.on("pageerror", lambda e: errs.append("PAGEERROR: " + str(e)))
             try:
-                page.goto("http://127.0.0.1:%d/%s.html" % (a.port, name), wait_until="load", timeout=20000)
+                page.goto(LOCAL_PAGE_URL_TEMPLATE % (a.port, name), wait_until="load", timeout=20000)
                 page.wait_for_timeout(2800)
                 panels = page.eval_on_selector_all(".cf-panel", "e=>e.length")
                 btns = page.eval_on_selector_all(".cf-panel-runone", "e=>[...new Set(e.map(x=>x.textContent.trim()))]")

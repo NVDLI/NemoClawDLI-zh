@@ -382,8 +382,7 @@
       label: "the Try-it artifact, in code",
       autorun: true,
       code: `// memory:true keeps the conversation: ctx.history holds the earlier turns and each call
-// sees them. Flip the 🧠 memory toggle off and ctx.history goes empty, so the very same
-// respond becomes the pure, stateless function the agent loop will later wrap.
+// Turn memory off to make respond a pure, stateless function.
 
 helpers.mountChatUI("#loop-artifact", {
   memory: true,
@@ -394,8 +393,7 @@ helpers.mountChatUI("#loop-artifact", {
   ],
   examples: ["My name is Ada. Remember it.", "What is my name?", "What is the capital of France?", "Explain the agent loop in two sentences", "Why does an agent need a loop instead of one call?"],
   respond: async (text, ctx) => {
-    // ctx.history is the prior turns when memory is on, empty when it is off (the || [] also guards
-    // an older build of the widget that does not pass history through).
+    // ctx.history holds prior turns when memory is on.
     const messages = [...(ctx.history || []), { role: "user", content: text }];
     const s = await helpers.chatStream({ messages, model: ctx.model, max_tokens: 8196, signal: ctx.signal },
       (t) => ctx.view.token(t), { onReasoning: (r) => ctx.view.reasoning(r) });
@@ -404,9 +402,7 @@ helpers.mountChatUI("#loop-artifact", {
 });
 helpers.log("rendered below. Edit the config and Run.");
 
-// Under the hood: mountChatUI renders the whole view, the model picker, markdown, streaming
-// tool chips, the context meter, the memory toggle, and edit-to-rewind. You write only respond().
-// Open the cell's helper menu to read chatStream and the rest.
+// mountChatUI renders the chat view; this cell supplies respond().
 `,
     });
   </script>
@@ -531,13 +527,14 @@ mountCanvasFlow("#cell-maze", {
       showCode: false,
       summary: "This node hides the maze plumbing by default. If you expand it, read from the bottom: it stores shared helpers in state, then runs the corridor and maze animations that show why a fixed rule is not enough.",
       code: `// Reading guide: most of this block is support code. Start near the bottom where state.fn is
+
 // assigned, then read the two animations: a corridor that 'always east' can solve and a maze
 // where that same fixed rule stalls. The search nodes reuse these helpers instead of redefining them.
 // Maze-generation plumbing: builds the grid and the move utilities every later
 // node reads from state. The later nodes swap the decision rule.
 
-// lcg is a tiny seeded random-number generator, so a given seed always builds
-// the same maze (reproducible runs).
+
+// lcg is a tiny seeded random-number generator, so a given seed always builds the same maze (reproducible runs).
 function lcg(seed) {
   let s = ((seed | 0) >>> 0) || 42;
   return () => { s = (Math.imul(1664525, s) + 1013904223) >>> 0; return s / 4294967296; };
@@ -557,8 +554,7 @@ function generateMaze(cols, rows, seed, loopFactor = 0.15) {
   }
   g[1][1] = '.'; carve(1, 1); g[1][1] = 'S'; g[H-2][W-2] = 'G';
 
-  // Loop-carving pass: a perfect maze has just one path between any two cells,
-  // so knock down a few extra walls between open cells to add forks and junctions.
+  // Add a few extra openings so the maze has forks and junctions.
   const rng2 = lcg((seed ^ 0x5A5A5A5A) >>> 0);
   for (let y = 1; y < H-1; y++) {
     for (let x = 1; x < W-1; x++) {
@@ -710,9 +706,8 @@ const CORRIDOR = ["###################","#S...............G#","#################
 // A fixed heading is enough on a straight corridor, so 'always east' walks it straight to the goal.
 const corrR = await animRun(CORRIDOR, findCell(CORRIDOR,'S'), findCell(CORRIDOR,'G'), () => 'east', 40, corrId, 55);
 
-// The same fixed heading cannot navigate the maze. It walks east until a wall stops it and then has
-// nowhere to go: a constant rule has no way to turn. That dead stop is the reason the reasoner nodes
-// below swap a real search routine into the very same slot.
+// A fixed heading stalls in the maze because it cannot turn after the first wall.
+// The reasoner nodes below swap a real search routine into the same slot.
 async function animStall(grid, start, goal, dir, elId, msPerStep) {
   let pos = [...start]; const visited = [[...pos]]; let moves = 0;
   for (;;) {
@@ -874,6 +869,7 @@ mountCanvasFlow("#cell-llm-maze", {
       id: "helpers", icon: "⚙️", title: "Maze engine",
       x: 0, y: 0,
       showCode: false,
+
       summary: "The engine code is collapsed by default because it is mostly web plumbing. If you expand it, scan the exported names at the bottom: state.runMaze is the shared solver that the editable run node calls.",
       code: `// Reading guide: this is infrastructure, not a required coding exercise. The run
 // node below is the intended editing surface. Expand this only if you want to inspect
@@ -882,8 +878,8 @@ mountCanvasFlow("#cell-llm-maze", {
 // The lesson is the decision-step swap: the same loop that ran DFS, BFS, and A*
 // now drives a language model over this maze instead.
 
-// lcg is a tiny seeded random-number generator, so a given seed always builds
-// the same maze (reproducible runs).
+
+// lcg is a tiny seeded random-number generator, so a given seed always builds the same maze (reproducible runs).
 function lcg(seed) {
   let s = ((seed | 0) >>> 0) || 42;
   return () => { s = (Math.imul(1664525, s) + 1013904223) >>> 0; return s / 4294967296; };
@@ -903,8 +899,7 @@ function generateMaze(cols, rows, seed, loopFactor = 0.15) {
   }
   g[1][1] = '.'; carve(1, 1); g[1][1] = 'S'; g[H-2][W-2] = 'G';
 
-  // Loop-carving pass: a perfect maze has just one path between any two cells,
-  // so knock down a few extra walls between open cells to add forks and junctions.
+  // Add a few extra openings so the maze has forks and junctions.
   const rng2 = lcg((seed ^ 0x5A5A5A5A) >>> 0);
   for (let y = 1; y < H-1; y++) {
     for (let x = 1; x < W-1; x++) {
@@ -1034,9 +1029,9 @@ state.SYS_REFERENCE = [
 state.SYS = state.SYS_DIRECTIVE + "\\n\\n" + state.SYS_REFERENCE;
 
 // Model choices for this tool-calling maze task; every entry supports tool calls.
-// Image-capable entries are marked below. Pick one in runMaze by key,
-// e.g. state.runMaze(helpers, state, { model: "vision" }).
+// Image-capable entries are marked below; pass one key to runMaze, e.g. { model: "vision" }.
 state.MAZE_MODELS = {
+
   omni:       { id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", maxTok: 16384, temp: 0.6,  // multimodal reasoning model (reads images)
                 extra_body: { reasoning_budget: 4096, chat_template_kwargs: { enable_thinking: true } } },
   reasoning:  { id: "nvidia/nemotron-3-nano-30b-a3b", maxTok: 16384, temp: 0.6,       // text reasoning model
@@ -1045,6 +1040,7 @@ state.MAZE_MODELS = {
   qwenVision: { id: "qwen/qwen3.5-122b-a10b", maxTok: 4096, temp: 0.4 },             // reads images + tools
   super:      { id: "nvidia/nemotron-3-super-120b-a12b", maxTok: 16384, temp: 0.4 }, // reasoning model. Give it room to think and call tools
   gptOss:     { id: "openai/gpt-oss-120b", maxTok: 16384, temp: 0.5 }                // reasoning + tools
+
 };
 
 state.generateMaze = generateMaze;
@@ -1099,9 +1095,11 @@ state.mazeToDataURL = function(grid, pos, goal, visited, cell) {
   return cv.toDataURL('image/png');
 };
 
+
 // runMaze: ONE corridor-walk + LLM-at-junctions solver, shared by the run node.
 // All knobs are optional. opts.model defaults to the multimodal omni model.
 // opts.advanced swaps in the bigger, loopier maze.
+
 state.runMaze = async function(h, state, opts) {
   opts = opts || {};
   var advanced = !!opts.advanced;
@@ -1127,17 +1125,16 @@ state.runMaze = async function(h, state, opts) {
   }
   var MODEL = resolveModel(opts.model);
 
-  var cfg = advanced ? { w: 15, h: 11, seed: 99, loop: 0.55, max: 40 }
-                     : { w: 11, h: 9,  seed: 42, loop: 0.30, max: 20 };
+  var cfg = advanced
+    ? { w: 15, h: 11, seed: 99, loop: 0.55, max: 40 }
+    : { w: 11, h: 9, seed: 42, loop: 0.30, max: 20 };
 
   var log = h.log;
   var generateMaze = state.generateMaze, findCell = state.findCell, validMoves = state.validMoves,
       doMove = state.doMove, toAscii = state.toAscii, renderMaze = state.renderMaze, DIRS = state.DIRS,
       DECISION_TOOL = state.DECISION_TOOL, makeReasonStream = state.makeReasonStream;
 
-  // ── system prompt = base instructions + (optionally) the exact tool spec ───
-  // Restating the tool's name, args, and required fields in the system message
-  // helps smaller models emit the call in the shape the runner expects.
+  // Add the tool spec to the prompt so smaller models call it correctly.
   function toolSpecText(tool) {
     var f = tool.function, props = (f.parameters && f.parameters.properties) || {}, lines = [];
     lines.push('OUTPUT FORMAT. Reply ONLY by calling this function (no prose, no plain text):');
@@ -1157,10 +1154,7 @@ state.runMaze = async function(h, state, opts) {
   if (toolSpecInSystem) sysText = sysText + '\\n\\n' + toolSpecText(DECISION_TOOL);
   var sysMsg = { role: 'system', content: sysText };
 
-  // ── prompt format: how each turn's maze is described (override via opts.promptFormat) ──
-  // promptFormat(ctx) -> string, ctx = { ascii, avail, pos, goal, trail, decision, first }.
-  // trail = coordinates travelled (empty unless includeCoords), so the model can map
-  // one direction to a multi-cell move once corridors auto-walk.
+  // promptFormat(ctx) describes each maze turn; opts.promptFormat can replace it.
   var promptFormat = opts.promptFormat || function(ctx) {
     return 'You are at (' + ctx.pos[0] + ',' + ctx.pos[1] + ').\\n'
       + (ctx.first ? 'Maze:' : 'Current maze:') + '\\n' + ctx.ascii
@@ -1200,8 +1194,7 @@ state.runMaze = async function(h, state, opts) {
       .replace(/[^NSEW]/g, '');
   }
 
-  // splitThink: qwen-style models emit reasoning inline as <think>...</think> in
-  // the content, not as reasoning_content; pull it out so it is shown, not parsed.
+  // Pull inline <think> reasoning out before parsing the answer.
   function splitThink(c) {
     c = c || ''; var rsn = '', lc = c.toLowerCase();
     var o = lc.indexOf('<think>');
@@ -1213,10 +1206,7 @@ state.runMaze = async function(h, state, opts) {
     return { reasoning: rsn.trim(), content: c.trim() };
   }
 
-  // renderRequest: dump everything sent to the model this turn into a collapsible
-  // panel: system message, full history, current user turn (text + image),
-  // the tool list, and call params.
-  // Logged right before each call, so it sits above the reasoning and result.
+  // Show the exact model request in a collapsible panel before each call.
   function escH(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
   function fmtContent(c) {
     if (typeof c === 'string') return '<div style="white-space:pre-wrap">' + escH(c) + '</div>';
@@ -1252,9 +1242,7 @@ state.runMaze = async function(h, state, opts) {
       + ctxBlock + '<div style="color:#778;margin-bottom:4px">raw messages · ' + meta + '</div>' + rows + '</div></details>';
   }
 
-  // Walk automatically until a REAL decision: a junction with 2+ forward options.
-  // One forward option is a corridor (follow it); zero is a dead end (reverse out),
-  // so the model is asked to "pick" only when there is a genuine choice.
+  // Ask the model only at real junctions; auto-walk corridors and dead ends.
   async function corridorWalk(label) {
     while (!sig.aborted) {
       var moves = validMoves(grid, pos);
@@ -1315,8 +1303,15 @@ state.runMaze = async function(h, state, opts) {
       }
       var ascii = toAscii(grid, pos, goal, visited);
       var imageUrl = includeImage ? state.mazeToDataURL(grid, pos, goal, visited) : null;
-      var userText = promptFormat({ ascii: ascii, avail: availStr(pos),
-                                    pos: pos, goal: goal, trail: trail, decision: decision, first: decision === 1 });
+      var userText = promptFormat({
+        ascii: ascii,
+        avail: availStr(pos),
+        pos: pos,
+        goal: goal,
+        trail: trail,
+        decision: decision,
+        first: decision === 1,
+      });
       var userMsg = buildUser(userText, imageUrl);
       var sent = includeHistory ? [sysMsg].concat(history, [userMsg]) : [sysMsg, userMsg];
 
@@ -1347,8 +1342,7 @@ state.runMaze = async function(h, state, opts) {
       var rawDir = '';
       if (tcs.length) { try { rawDir = JSON.parse(tcs[0].function.arguments || '{}').direction || ''; } catch (e2) {} }
 
-      // Honor models (e.g. nemotron-nano-12b-vl) that "call" the tool as plain TEXT instead of a
-      // structured tool_call: parse choose_direction(...) out of the reply and use its argument.
+      // Parse text-form choose_direction(...) calls from models without structured tool calls.
       var fromText = false;
       if (!rawDir && replyText) {
         var ci = replyText.toLowerCase().indexOf('choose_direction');
@@ -1368,12 +1362,12 @@ state.runMaze = async function(h, state, opts) {
         if (tcs.length) entry.tool_calls = tcs;
         history.push(entry);
       }
-      // feedback is a tool message only when there was a real tool_call; otherwise a user message
-      // (a tool message without a preceding tool_call is invalid and confuses the model).
+      // Use tool feedback only after a real tool_call; otherwise use a user message.
       function reply(content) {
         if (!includeHistory) return;
-        history.push(toolId ? { role: 'tool', tool_call_id: toolId, content: content }
-                            : { role: 'user', content: content });
+        history.push(toolId
+          ? { role: 'tool', tool_call_id: toolId, content: content }
+          : { role: 'user', content: content });
       }
 
       if (!steps) {
@@ -1402,8 +1396,7 @@ state.runMaze = async function(h, state, opts) {
       }
       info('moved: <code style="color:#76b900;background:#0d1f00;padding:1px 4px;border-radius:3px">' + (pathStr || '(none)') + '</code>' + (walled ? ' then hit a wall going ' + walled : ''));
 
-      // Auto-walk corridors and reverse out of dead ends BEFORE reporting back, so the
-      // feedback reflects where the agent actually ended up (not a stale pre-walk spot).
+      // Auto-walk before feedback so the model sees the actual new position.
       var pw = [pos[0], pos[1]];
       if (await corridorWalk('walk')) {
         show('goal via corridor · ' + visited.length + ' steps');
@@ -1414,9 +1407,10 @@ state.runMaze = async function(h, state, opts) {
 
       var walkedNote = (pos[0] !== pw[0] || pos[1] !== pw[1])
         ? ' Then corridors/dead-ends were auto-walked for you.' : '';
-      reply((walled ? 'Executed ' + (pathStr || '(none)') + ', then hit a wall going ' + walled + '.'
-                    : 'Executed ' + (pathStr || '(none)') + '.')
-            + walkedNote + ' Now at ' + JSON.stringify(pos) + '. Available: ' + availStr(pos) + '.');
+      const stepNote = walled
+        ? 'Executed ' + (pathStr || '(none)') + ', then hit a wall going ' + walled + '.'
+        : 'Executed ' + (pathStr || '(none)') + '.';
+      reply(stepNote + walkedNote + ' Now at ' + JSON.stringify(pos) + '. Available: ' + availStr(pos) + '.');
       await new Promise(function(res) { setTimeout(res, 200); });
     }
   } finally {
@@ -1447,6 +1441,7 @@ Prefer unvisited branches (-) over visited cells (·); head toward G when you ca
 Minimize reasoning efforts and make immediate moves.\`;
 
 return await state.runMaze(helpers, state, {
+
   model:           "vision",   // multimodal model; try "super", "omni", or "qwenVision" to compare
   directive:        DIRECTIVE,  // editable core of the system message (above)
   advanced:         false,      // false = simple 11x9 maze. true = larger 15x11 maze with more loops
@@ -1455,6 +1450,7 @@ return await state.runMaze(helpers, state, {
   includeHistory:   true,       // include the history of past moves
   includeCoords:    true,       // list every coordinate travelled
   toolSpecInSystem: true,       // repeat the tool spec in the system message when the server does not inject it clearly
+
 });
 `,
     },
@@ -1524,9 +1520,7 @@ log.details("request (key redacted)", { headers: { ...headers, Authorization: "B
 // 2) Send it, then read what comes BACK.
 const r = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
 log("← HTTP " + r.status + " " + r.statusText);
-// Check the status BEFORE parsing. A non-2xx body is often plain text or an HTML error page, not
-// JSON, so r.json() would throw a cryptic "Unexpected ... after JSON" with no line to blame. Read
-// it as text and surface the status plus the body, so a 404 reads as a clear HTTP error right here.
+// Check HTTP status before parsing so failures show the real response body.
 if (!r.ok) {
   const errText = await r.text();
   log.details("error body", errText);

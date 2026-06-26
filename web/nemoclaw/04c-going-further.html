@@ -556,9 +556,7 @@ helpers.mountAgentChat("#capstone-artifact", {
 });
 helpers.log("rendered below. Edit the config and Run.");
 
-// helpers.mountAgentChat runs one real LangChain createReactAgent per model (each
-// with its own memory); you supply the tools and prompt, the helper runs the loop.
-// read_course_page fetches one course page as markdown; the agent picks the page.
+// mountAgentChat runs one LangChain agent per model; you supply tools and prompt.
 `,
     });
   </script>

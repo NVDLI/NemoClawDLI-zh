@@ -75,10 +75,7 @@ HTML_SHELL_TAIL = """
 """
 
 
-# The fragment is always supposed to start with this HTML comment. If we
-# find anything before it, that's IDE-buffer-race detritus (a known issue:
-# editors with a stale buffer can append-merge over an external edit) and
-# we slice it off so the vendored output is always clean.
+# Strip stale editor-prefixed document copies before ingest.
 FRAGMENT_MARKER = "<!-- ─── edX HtmlBlock"
 
 
@@ -135,7 +132,7 @@ def main() -> int:
     upload(OUT, PREFIX + "navigator.html", dry_run=args.dry_run)
     upload(OUT, PREFIX + "index.html",     dry_run=args.dry_run)
 
-    base = f"https://{BUCKET}.s3.us-east-1.amazonaws.com/{PREFIX}"
+    base = S3_STATIC_BASE.format(BUCKET=BUCKET, PREFIX=PREFIX)
     print()
     print(f"Live:")
     print(f"  {base}navigator.html")

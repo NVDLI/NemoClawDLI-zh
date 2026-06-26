@@ -279,10 +279,9 @@
   <div id="deep-cell"></div>
   <div id="deep-artifact"></div>
   <script type="text/plain" id="deep-src">
-// Try-it artifact: a hand-rolled deep-research agent.
-// Plans 3-4 parallel sub-investigations (web + this course's sections),
-// fans out one sub-agent per branch, then synthesizes one cited answer.
-// Every stage is a chatStream call; edit a stage and Run to re-render.
+// Deep-research artifact: plan, fan out sub-agents, then synthesize a cited answer.
+
+window.DEEP_AGENT_MAX_TOKENS = 8196;
 
 const PAGES = helpers.coursePages();
 const INDEX = PAGES.map(p => "  " + p.id + " · " + p.title).join("\n");
@@ -324,7 +323,7 @@ helpers.mountChatUI("#deep-artifact", {
 
     const planRes = await helpers.chatStream(
       { messages: [{ role: "system", content: planSys }, { role: "user", content: text }],
-        model: ctx.model, max_tokens: 8196, signal: sig }, null);
+        model: ctx.model, max_tokens: window.DEEP_AGENT_MAX_TOKENS, signal: sig }, null);
 
     let branches = [];
     try { branches = JSON.parse(planRes.content.match(/\{[\s\S]*\}/)[0]).branches || []; } catch (_) {}
@@ -332,8 +331,7 @@ helpers.mountChatUI("#deep-artifact", {
     branches = branches
       .filter(b => b && b.goal && (b.source === "web" || (b.source === "section" && ids.has(b.target))));
 
-    // Guarantee the fan-out spans both the web and this course's sections,
-    // even if the planner under-specified.
+    // Guarantee the fan-out spans both the web and this course's sections, even if the planner under-specified.
     // Section pick uses title/id keyword overlap.
     const pickSection = () => {
       const words = text.toLowerCase().match(/[a-z]{4,}/g) || [];
@@ -350,8 +348,7 @@ helpers.mountChatUI("#deep-artifact", {
     if (!branches.some(b => b.source === "web"))     branches.push({ source: "web", target: text, goal: text });
     branches = branches.slice(0, 4);
 
-    // Surface the actual parsed plan (highlighted object), not only the tree,
-    // so the student can read each branch's source/target/goal verbatim.
+    // Show the parsed plan so each branch's source, target, and goal are visible.
     ctx.view.tool("plan", { branches });
 
     // draw the plan as a branch tree, straight from the chosen branches
@@ -392,7 +389,7 @@ helpers.mountChatUI("#deep-artifact", {
             + " If the source does not cover it, reply exactly 'not covered'."
           ) },
           { role: "user", content: "GOAL: " + b.goal + "\n\nSOURCE:\n" + src }],
-          model: FAST, max_tokens: 8196, signal: sig }, null);
+          model: FAST, max_tokens: window.DEEP_AGENT_MAX_TOKENS, signal: sig }, null);
         finding = (r.content || "").trim() || "(no finding)";
       } catch (e) { finding = "(branch failed: " + (e.message || e) + ")"; }
       return { finding, label, src, goal: b.goal, dt: (performance.now() - bt0) / 1000 };
@@ -401,8 +398,7 @@ helpers.mountChatUI("#deep-artifact", {
     const results = await Promise.all(branches.map(runBranch));
     const wall = (performance.now() - t0) / 1000;
     results.forEach(r => {
-      // Show what each sub-agent actually read alongside what it concluded,
-      // so a finding can be checked against its own source material.
+      // Show what each sub-agent actually read alongside what it concluded, so a finding can be checked against its own source material.
       ctx.view.tool(r.label + " · source", { goal: r.goal, source: r.src });
       ctx.view.tool(r.label + " · " + r.dt.toFixed(1) + "s", r.finding);
     });
@@ -412,8 +408,7 @@ helpers.mountChatUI("#deep-artifact", {
 
     // ── 3. SYNTHESIZE: one grounded answer from the findings ────────────
     const findings = results.map((r, i) => "[" + (i + 1) + "] (" + r.label + ")\n" + r.finding).join("\n\n");
-    // Surface the exact findings corpus the synthesizer is grounded on, so the
-    // student can see every [n] the answer cites mapped back to its finding.
+    // Show the findings corpus that each [n] citation maps back to.
     ctx.view.tool("findings corpus", { findings: results.map((r, i) => ({ n: i + 1, branch: r.label, finding: r.finding })) });
     const s = await helpers.chatStream({ messages: [
       { role: "system", content: (
@@ -421,7 +416,7 @@ helpers.mountChatUI("#deep-artifact", {
         + " If a finding is 'not covered' or empty, do not invent; say what you could not find."
       ) },
       { role: "user", content: "QUESTION: " + text + "\n\nFINDINGS:\n" + findings }],
-      model: ctx.model, max_tokens: 8196, signal: sig },
+      model: ctx.model, max_tokens: window.DEEP_AGENT_MAX_TOKENS, signal: sig },
       (tok) => ctx.view.token(tok));   // no reasoning here: the sub-agents did the thinking; keep the synthesis one clean answer
     if (s.usage) ctx.view.usage({ input: s.usage.prompt_tokens, output: s.usage.completion_tokens, model: s.model });
   },
@@ -452,6 +447,8 @@ mountJourneyMap("#journey-map", "2c");
 hljs.highlightAll();
 
 // ── M3c P1: ChatOpenAI from @langchain/openai ────────────────────────────────
+window.DEEP_AGENT_MAX_TOKENS = 8196;
+
 mountCanvasFlow("#cell-m3c-p1", {
   label: "Module 2c Part 3 · ChatOpenAI · wrapping any OpenAI-compatible endpoint",
   intro: "The first node imports @langchain/openai from a CDN and constructs a ChatOpenAI instance. Rather than hardcoding a URL, it calls getConfig() to pick up whichever endpoint is active in the current environment. The second node invokes the model with a short question, producing a typed AIMessage rather than the raw JSON you would get from a fetch() call. It is the same underlying model, now reached through a Runnable interface that chains, graphs, and retrieval pipelines all know how to consume.",
@@ -462,7 +459,10 @@ mountCanvasFlow("#cell-m3c-p1", {
       summary: "Dynamically imports @langchain/openai from a CDN that pre-bundles npm packages for browser use, then constructs a ChatOpenAI instance. The baseURL is read from getConfig() at run time, so the same code works against build.nvidia.com, a NemoClaw local model worker, or any self-hosted NIM endpoint; nothing in the chain, graph, or retrieval pipeline below needs to know which one is active.",
       code: `// Load the external package bundle used by this example.
 helpers.log("importing @langchain/openai ...");
-const { ChatOpenAI } = await import("https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm");
+const LANGCHAIN_IMPORT_URLS = [
+  "https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm",
+];
+const [{ ChatOpenAI }] = await Promise.all(LANGCHAIN_IMPORT_URLS.map(url => import(url)));
 helpers.log("import OK");
 
 const cfg = await helpers.getConfig();
@@ -515,10 +515,17 @@ mountCanvasFlow("#cell-m3c-p2", {
       summary: "Dynamically imports three packages at runtime from a CDN: @langchain/openai for the model wrapper, @langchain/core/tools for the tool() decorator, and @langchain/langgraph for createReactAgent. Zod is imported alongside them to provide schema validation for tool arguments.",
       code: `// Load the external package bundle used by this example.
 helpers.log("importing langchain ecosystem...");
-const { ChatOpenAI }       = await import("https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm");
-const { tool }             = await import("https://cdn.jsdelivr.net/npm/@langchain/core@1.1.48/tools/+esm");
-const { createReactAgent } = await import("https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/prebuilt/+esm");
-const { z }                = await import("https://cdn.jsdelivr.net/npm/zod@3/+esm");
+const LANGCHAIN_IMPORT_URLS = [
+  "https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm",
+  "https://cdn.jsdelivr.net/npm/@langchain/core@1.1.48/tools/+esm",
+  "https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/prebuilt/+esm",
+  "https://cdn.jsdelivr.net/npm/zod@3/+esm",
+];
+const [oai, core, prebuilt, zod] = await Promise.all(LANGCHAIN_IMPORT_URLS.map(url => import(url)));
+const { ChatOpenAI }       = oai;
+const { tool }             = core;
+const { createReactAgent } = prebuilt;
+const { z }                = zod;
 state.deps = { ChatOpenAI, tool, createReactAgent, z };
 helpers.log("imports OK");
 
@@ -616,10 +623,17 @@ mountCanvasFlow("#cell-m3c-p3", {
       summary: "Imports the same four packages used in Part 4 (ChatOpenAI, tool, createReactAgent, zod) and constructs a ChatOpenAI instance using getConfig() to resolve the active endpoint. This node is reproduced here so the deep-agent canvas is fully self-contained, and you can run it without having run the earlier canvases first.",
       code: `// Load the external package bundle used by this example.
 helpers.log("importing LangChain bundles...");
-const { ChatOpenAI }       = await import("https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm");
-const { tool }             = await import("https://cdn.jsdelivr.net/npm/@langchain/core@1.1.48/tools/+esm");
-const { createReactAgent } = await import("https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/prebuilt/+esm");
-const { z }                = await import("https://cdn.jsdelivr.net/npm/zod@3/+esm");
+const LANGCHAIN_IMPORT_URLS = [
+  "https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm",
+  "https://cdn.jsdelivr.net/npm/@langchain/core@1.1.48/tools/+esm",
+  "https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/prebuilt/+esm",
+  "https://cdn.jsdelivr.net/npm/zod@3/+esm",
+];
+const [oai, core, prebuilt, zod] = await Promise.all(LANGCHAIN_IMPORT_URLS.map(url => import(url)));
+const { ChatOpenAI }       = oai;
+const { tool }             = core;
+const { createReactAgent } = prebuilt;
+const { z }                = zod;
 state.deps = { ChatOpenAI, tool, createReactAgent, z };
 
 const cfg = await helpers.getConfig();
@@ -676,7 +690,9 @@ state.goal = [
 ].join("");
 // Edit this string to try a different multi-file research goal.
 
+
 // withStructuredOutput binds the output to this schema and returns a parsed object.
+
 const planner = state.llm.withStructuredOutput({
   type: "object", additionalProperties: false,
   properties: {
@@ -757,7 +773,7 @@ const out = await helpers.chatStream({
     },
     { role: "user",   content: "Goal: " + state.goal + "\\n\\nFiles on the virtual filesystem:\\n\\n" + corpus },
   ],
-  max_tokens: 8196,
+  max_tokens: window.DEEP_AGENT_MAX_TOKENS,
 });
 
 state.synthesis = (out.content || out.reasoning || "").trim() || "(synthesiser produced no text)";
@@ -772,10 +788,7 @@ return { synthesised: true, source_files: paths, report_chars: state.synthesis.l
       showCode: false,
       summary: "Builds a diagram from the actual run data. The code is collapsed by default because it is mostly diagram-spec plumbing: orchestrator, workers, synthesiser, and the edges between them.",
       code: `// Reading guide: this block does not run another model call. It turns state.subResults
-// and state.vfs into a diagram spec so the worker fan-out and shared-filesystem join are visible.
-// Build a diagram spec straight from the run: orchestrator (row 0) fans out
-// to one worker per subtask (row 1, x = index), each feeding the synthesiser
-// (row 2). Each worker's label/lines come from its subtask + result.
+// Build the diagram directly from the run: orchestrator, workers, synthesizer.
 
 const workers = state.subResults.map((r, i) => ({
   id: "w" + i,

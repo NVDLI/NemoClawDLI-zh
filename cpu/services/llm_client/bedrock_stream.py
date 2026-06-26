@@ -203,11 +203,7 @@ class ConverseStreamAccumulator:
 
             if "text" in delta:
                 text = delta["text"]
-                # Defensive: some Bedrock streams emit contentBlockDelta with
-                # text before any contentBlockStart (or after a tool block
-                # ended without a fresh start). Without this lazy create the
-                # text is silently dropped. The symptom is a trace with
-                # output_tokens > 0 but content: [] in bedrock.response.
+                # Bedrock can send text without a fresh text block; create one instead of dropping output.
                 if not self._blocks or self._blocks[-1].get("type") != "text":
                     self._blocks.append({"type": "text", "text": ""})
                     self._current_block_type = "text"
@@ -225,13 +221,7 @@ class ConverseStreamAccumulator:
                 })
 
             elif "reasoningContent" in delta:
-                # Mirror Bedrock's reasoningContent deltas onto the OpenAI
-                # wire. Text deltas map to `delta.reasoning_content` and the
-                # final signature maps to `delta.reasoning_signature`. Without
-                # this, OpenAI-compat consumers (notebooks, LangChain, etc.)
-                # see only `content` and have no way to surface the model's
-                # thinking, even though to_bedrock_response() preserves it
-                # for span telemetry.
+                # Mirror Bedrock reasoning onto OpenAI-compatible delta fields.
                 rc = delta["reasoningContent"]
                 text = rc.get("text", "")
                 sig = rc.get("signature", "")

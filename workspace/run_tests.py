@@ -104,9 +104,8 @@ else:
 
     LAB = _detect_lab_container()
 
-# Surface-first layout: course notebooks live under task1/cpu/<course> (the
-# release keeps cpu/services). The legacy workspace/<course> fallback stays so
-# the runner still resolves a course placed directly under workspace/.
+# Surface-first layout: course notebooks live under task1/cpu/<course> (the release keeps cpu/services).
+# The legacy workspace/<course> fallback stays so the runner still resolves a course placed directly under workspace/.
 TASK1_DIR  = SCRIPT_DIR.parent                  # task1/
 NB_SURFACES = ("cpu",)
 _DLI_LAB   = str(Path(WORKSPACE_LAB).parent)    # container path of task1 (/sandbox/dli)
@@ -239,9 +238,8 @@ def _bucket(r: NotebookResult) -> str:
     if r.n_exec == 0 and r.name in GPU_REQUIRED_NOTEBOOKS: return "soft"
     if r.n_exec == 0:               return "0exec"
     if r.n_errors == 0:             return "clean"
-    # Sibling-dependent notebooks: ANY error here is environmental, not a code
-    # bug. The full chain only works when the sibling notebook ran in the same
-    # kernel; CI can't satisfy that.
+    # Sibling-dependent notebooks: ANY error here is environmental, not a code bug.
+    # The full chain only works when the sibling notebook ran in the same kernel; CI can't satisfy that.
     if r.n_errors > 0 and r.name in SIBLING_DEPENDENT_NOTEBOOKS: return "soft"
     # Infra errors are environmental (service down, rate limit, gateway 5xx).
     # When the FIRST error is infra, anything after it is downstream noise:
@@ -274,8 +272,7 @@ def find_notebooks(course: str) -> list[str]:
     (these serve as integration tests for each microservice).  For other courses,
     discovers *.md files directly inside the course directory.
     """
-    # Surface-first: notebooks live under task1/cpu/<course>. _course_loc
-    # searches the cpu surface first, then the legacy workspace/ root.
+    # Surface-first: notebooks live under task1/cpu/<course>. _course_loc searches the cpu surface first, then the legacy workspace/ root.
     course_dir, _ = _course_loc(course)
     if course_dir is None:
         return []
@@ -413,9 +410,8 @@ def execute_notebook(
           [ -f {tmp_ipynb!r} ] && mv {tmp_ipynb!r} {out_ipynb!r} || true
         fi
     """).strip()
-    # Outer subprocess timeout: capped at 2 h so a hung notebook never blocks
-    # the watcher indefinitely.  The inner nbconvert per-cell timeout controls
-    # actual cell execution; this is just a safety net for infrastructure hangs.
+    # Outer subprocess timeout: capped at 2 h so a hung notebook never blocks the watcher indefinitely.
+    # The inner nbconvert per-cell timeout controls actual cell execution; this is just a safety net for infrastructure hangs.
     outer_timeout = min(effective_timeout * 30 + 300, 7200)
 
     try:

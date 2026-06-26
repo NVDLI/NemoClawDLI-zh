@@ -431,14 +431,13 @@ helpers.mountChatUI("#kickstart-artifact", {
     "What model are you running on?",
     "What tools can you call?",
     "Read your SOUL.md and summarize who you are",
-    "Try to curl https://example.com and tell me what happened"
+    "Try to curl https://example.com and tell me what happened",
   ],
   respond: async (text, ctx) => { await helpers.openclawChat(text, { session: "art-" + ctx.thread, view: ctx.view, signal: ctx.signal }); },
 });
 helpers.log("rendered below. Edit the config and Run.");
 
-// The panel is helpers.mountChatUI and it streams through helpers.openclawChat;
-// open the helpers tab above to read either one's source.
+// The panel is helpers.mountChatUI and it streams through helpers.openclawChat; open the helpers tab above to read either one's source.
 `,
       });
     </script>
@@ -504,11 +503,14 @@ helpers.log("rendered below. Edit the config and Run.");
       ],
     });
 
+    const NVIDIA_API_BASE_URL = "https://integrate.api.nvidia.com/v1";
+    const NVIDIA_BUILD_URL = "https://build.nvidia.com";
+
     // ── Probe model endpoint ─────────────────────────────────────────────────────
     mountClawProbe("#probe-llm", {
       label: "Probe model endpoint (build.nvidia.com)",
       intro: "",
-      defaultUrl: "https://integrate.api.nvidia.com/v1",
+      defaultUrl: NVIDIA_API_BASE_URL,
       proxyBase: "https://nvidia-api-cors-proxy.vkudlay.workers.dev",
       defaultToken: localStorage.getItem("nvapi") || "",
       fieldHelp: {
@@ -516,12 +518,12 @@ helpers.log("rendered below. Edit the config and Run.");
 <p><strong>How requests reach it:</strong> The browser can't call <code>integrate.api.nvidia.com</code> directly because
 of the same-origin policy. Requests route through a hosted Cloudflare Worker that adds CORS headers and
 forwards your key unchanged.</p>
-<p><strong>Running locally (not in the lab):</strong> Call <code>https://integrate.api.nvidia.com/v1</code> directly
+<p><strong>Running locally (not in the lab):</strong> Call <code>${NVIDIA_API_BASE_URL}</code> directly
 from your script or notebook. No proxy needed outside a browser context, where the same-origin restriction doesn't apply.</p>`,
 
         token: `<p><strong>What it is:</strong> Your NVIDIA API key, starting with <code>nvapi-</code>. Autofills from the key
 you saved on the course home page.</p>
-<p><strong>How to get one:</strong> Sign in at <a href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com</a>
+<p><strong>How to get one:</strong> Sign in at <a href="${NVIDIA_BUILD_URL}" target="_blank" rel="noopener">build.nvidia.com</a>
 → API Keys → Generate Key.</p>
 <p><strong>Running locally:</strong> Same key works everywhere. Store it as an environment variable
 (<code>NVIDIA_API_KEY</code>) rather than pasting it into code.</p>`,
@@ -550,7 +552,8 @@ you saved on the course home page.</p>
     mountRunCell("#bench-fetch-models", {
       label: "Fetch matching models",
       openCode: true,
-      code: `const FILTER = ["120b", "glm", "kimi", "minimax"];
+      code: `// Fetch the model catalog and keep only the IDs this benchmark compares.
+const FILTER = ["120b", "glm", "kimi", "minimax"];
 const PROXY  = "https://nvidia-api-cors-proxy.vkudlay.workers.dev";
 const KEY    = localStorage.getItem("nvapi") || "";
 
@@ -578,7 +581,8 @@ return { count: models.length };`,
 
     mountRunCell("#bench-measure-models", {
       label: "Measure TTFT per model",
-      code: `if (!state.models?.length) { helpers.log("Run 'Fetch matching models' first."); return; }
+      code: `// Stream one prompt through each selected model and measure first-token latency.
+if (!state.models?.length) { helpers.log("Run 'Fetch matching models' first."); return; }
 const PROMPT       = "List five prime numbers.";
 // Try another prompt (uncomment one) to compare how the models behave on different work:
 // const PROMPT    = "Explain step by step why the sky is blue.";                // a reasoning task
@@ -586,10 +590,7 @@ const PROMPT       = "List five prime numbers.";
 const MAX_TOKENS   = 256;     // reasoning models think first; too low and they never answer
 const TTFT_TIMEOUT = 30000;   // ms; give up on a model with no first token by now (some are slow to start)
 
-// Stream the prompt; time the first token; count tokens and the mean gap.
-// Reasoning models emit \`reasoning_content\` (thinking) before \`content\`
-// (the answer); count both, or a deep thinker that caps mid-thought reads
-// as "0 tokens".
+// Time first-token latency and count both reasoning and answer tokens.
 async function bench(model) {
   const ctrl  = new AbortController();
   const guard = setTimeout(() => ctrl.abort(), TTFT_TIMEOUT);   // first-token watchdog
@@ -646,8 +647,7 @@ async function bench(model) {
   return { model, ttft, total, tokens, reasoning, avgGap, text, think, finish, err };
 }
 
-// Launch every model concurrently, then await them in catalog order, so the
-// log prints in a stable order even though the requests overlap.
+// Launch every model concurrently, then await them in catalog order, so the log prints in a stable order even though the requests overlap.
 const pending = state.models.map(bench);
 const results = [];
 for (let i = 0; i < pending.length; i++) {
@@ -695,8 +695,7 @@ return { ranked: ok.map(r => r.model), errors: results.filter(r => r.err).length
       syncCanvas: true,
       cfAccess: true,
 
-      // base URL + CF Access JWT is enough: GET /api/agent returns
-      // agent.dashboardUrl = "/#token=<hex>", which IS the gateway token.
+      // GET /api/agent returns agent.dashboardUrl with the gateway token.
       autofillToken: (j) => {
         const m = (j?.agent?.dashboardUrl || "").match(/token=([a-f0-9]+)/i);
         return m ? m[1] : null;
@@ -706,7 +705,8 @@ return { ranked: ok.map(r => r.model), errors: results.filter(r => r.err).length
 <p><strong>How to find it:</strong> Your Brev dashboard shows it as the App URL:
 <code>https://nemoclaw-&lt;id&gt;.brevlab.com</code>.</p>
 <p><strong>Running locally:</strong> Use <code>http://localhost:8088</code> (or the port your OpenClaw container
-exposes). No Cloudflare tunnel, no CF Access layer, so connect directly and leave the CF Access JWT field empty.</p>`,
+exposes). No Cloudflare tunnel, no CF Access layer, so connect directly and leave the CF Access JWT field empty.</p>
+<p><strong>Fail-fast backup:</strong> If local OpenClaw fails to start, returns connection errors, or logs <code>EPERM</code>, stop local probing. Use the Brev App URL instead, then paste <code>CF_Authorization</code> below.</p>`,
 
         token: `<p><strong>Usually you can leave this blank.</strong> Run <strong>GET /api/agent</strong> below and the probe
 reads the gateway token out of <code>agent.dashboardUrl</code> and fills this field for you. The base URL plus your
@@ -725,6 +725,7 @@ stealing session tokens. There is no JS escape hatch; this is by design.</p>
 find the <code>CF_Authorization</code> row → copy the full Value (a long JWT string).
 Paste it here. Re-copy it if the probe stops working after a long break, since JWTs expire with your session.</p>
 <p><strong>Running locally:</strong> Leave this field empty. Local OpenClaw has no Cloudflare Access layer.</p>
+<p><strong>Backup mode:</strong> Required for the Brev URL when local OpenClaw is wedged or shows <code>EPERM</code>.</p>
 <p><strong>Why this matters:</strong> The <code>HttpOnly</code> wall is exactly why production systems use
 <em>service tokens</em> for machine-to-machine calls. The browser session flow has no programmatic
 escape hatch by design.</p>`,
@@ -772,18 +773,14 @@ helpers.log.details('body', await res.text());
 `,
     });
 
-    // ── Shared chat-turn snippet ───────────────────────────────────────────────────
-    // Tool calls ride a SEPARATE stream from the chat reply.
-    // Each turn subscribes to the session's message stream before chat.send;
-    // skip it and only the final prose comes back, with the exec steps invisible.
+    // Shared chat-turn snippet. Subscribe first or tool events stay invisible.
     const gwChat = (sk, msg) => {
       // sk is normally a literal string.
       // Pass { raw: "<js expr>" } to compute the sessionKey at run time.
       // A fresh unique-per-run key makes the agent re-run its tools; reuse replays.
       const skExpr = (sk && typeof sk === "object" && sk.raw) ? sk.raw : JSON.stringify(sk);
       // msg is normally a literal string.
-      // Pass { raw: "<js>" } to supply the whole message-assignment block yourself,
-      // like a stack of prompts where the last uncommented line wins.
+      // Pass { raw: "<js>" } for a custom message-assignment block.
       const msgBlock = (msg && typeof msg === "object" && msg.raw)
         ? msg.raw
         : ("let message = " + JSON.stringify(msg) + ";");
@@ -798,18 +795,14 @@ const TOTAL_TIMEOUT_S = 240;         // hard ceiling for the whole turn
 // ──────────────────────────────────────────────────────────────────────────────
 helpers.log("→ " + message);
 
-// chat.send returns the final prose only.
-// The exec/tool steps arrive as event:"agent" frames, forwarded ONLY to
-// sockets subscribed to this session; subscribe once, then send the turn.
+// chat.send returns prose; subscribed agent frames carry tool steps.
 if (!state._subs) state._subs = {};
 if (!state._subs[sessionKey]) {
   await state.call("sessions.messages.subscribe", { key: sessionKey });
   state._subs[sessionKey] = true;
 }
 
-// 🧹 Start fresh: uncomment the line below to wipe this session's memory.
-//    sessions.reset clears the server-side history, so the agent answers as a
-//    stranger and re-runs its tools instead of replaying the earlier turn.
+// Uncomment to clear this session and force fresh tool work.
 // await state.call("sessions.reset", { key: sessionKey }); helpers.log("🧹 cleared session memory: " + sessionKey);
 
 const _params = {
@@ -826,11 +819,9 @@ const _params = {
 
 // The "assistant" stream is the answer text; "lifecycle" phase:end ends the run.
 
-// Reasoning is NOT forwarded by the gateway, so these args and results are the
-// deepest per-step view; the 📜 logs cell (in Recover) tails the runtime log.
+// Gateway omits reasoning; tool args/results are the deepest step view here.
 
-// Two timers guard the run: an idle timer (reset only by REAL activity, never
-// by heartbeats) and a global backstop.
+// Two timers guard the run: an idle timer (reset only by REAL activity, never by heartbeats) and a global backstop.
 let _text = "", _finalEv, _t0 = performance.now(), _ttft = 0, _myRun = null;
 let _toolStarts = 0, _didResult = false;            // for the degradation check below
 const IDLE_MS = IDLE_TIMEOUT_S * 1000, GLOBAL_MS = TOTAL_TIMEOUT_S * 1000;
@@ -840,9 +831,7 @@ await new Promise((resolve, reject) => {
     clearTimeout(_idle); clearTimeout(_global); state._chatCb = null;
     if (why) helpers.log(why);
 
-    // On a timeout the run is still alive server-side.
-    // Abort it (fire-and-forget) so it stops burning the agent and leaking
-    // frames into the next turn.
+    // Abort timed-out runs server-side so they stop consuming work and leaking frames.
     if (stalled) {
       helpers.log("⛔ aborting the run on " + sessionKey + " so it does not keep running in the background…");
       state.call("chat.abort", { sessionKey }).catch(() => {});
@@ -857,14 +846,10 @@ await new Promise((resolve, reject) => {
    try {
     const pl = d.payload || {};
     // Heartbeats stream the whole time the socket is open, and are NOT activity.
-    // Ignore them; otherwise a stalled run emitting only heartbeats would keep
-    // the idle timer alive and never time out.
+    // Ignore them; otherwise a stalled run emitting only heartbeats would keep the idle timer alive and never time out.
     if (pl.isHeartbeat || d.event === "health" || d.event === "tick") return;
 
-    // One sessionKey can have several runs (an earlier turn may still be streaming).
-    // The gateway forwards them ALL to subscribers, so lock onto the runId that
-    // chat.send returned and drop every other run's frames.
-    // Do this before bumpIdle, or stale chatter resets the idle timer.
+    // Keep only this runId before bumpIdle, or stale frames can mask a stall.
     if (_myRun && pl.runId && pl.runId !== _myRun) return;
     bumpIdle();   // real activity on OUR run pushes the idle deadline back
     if (d.event === "chat" && pl.state === "final") {
@@ -885,8 +870,7 @@ await new Promise((resolve, reject) => {
       if (!_ttft) _ttft = performance.now() - _t0;
       _text = data.text || _text;
     } else if (stream === "tool" && data.phase === "start") {
-      // a tool was invoked, so show its INPUT (args reveal exactly what was asked,
-      // such as an unexpanded path or a malformed command that makes the tool hang)
+      // Show tool input; bad args often explain hangs.
       _toolStarts++;
       const inp = data.args ? JSON.stringify(data.args) : (data.meta || "");
       helpers.log.details("⚙️ " + (data.name || "tool") + (inp ? "  " + inp.replace(/\\n/g, " ").slice(0, 160) : ""), d);
@@ -904,15 +888,13 @@ await new Promise((resolve, reject) => {
       finish();
     }
    } catch (e) {
-    // A throw inside a WS frame handler is otherwise swallowed silently and looks
-    // like a hang, so surface it instead of hiding the failure.
+    // A throw inside a WS frame handler is otherwise swallowed silently and looks like a hang, so surface it instead of hiding the failure.
     helpers.log("⚠ frame-handler error: " + (e && e.message ? e.message : e));
    }
   };
 
   bumpIdle();
-  // chat.send returns { runId, status } well before any frame, so lock onto that
-  // runId so the handler can ignore every other run sharing this sessionKey.
+  // Lock onto this runId so shared-session chatter is ignored.
   state.call("chat.send", _params)
     .then(res => { _myRun = (res && res.runId) || null; })
     .catch(e => { clearTimeout(_idle); clearTimeout(_global); state._chatCb = null; reject(e); });
@@ -929,8 +911,7 @@ helpers.log("⏱ " + _secs.toFixed(1) + "s · ~" + _toks + " tok · " +
 state.out = _text;
 
 // Degradation check: a healthy run returns text and/or a tool result.
-// If tools STARTED but none returned a result, a tool is hung or the model is
-// looping, a runtime problem rather than your code.
+// If tools STARTED but none returned a result, a tool is hung or the model is looping, a runtime problem rather than your code.
 // The ⚙️ rows show which tools ran; the Health check flags toolSearch.
 if (!_text.trim() && !_didResult && _toolStarts > 0) {
   helpers.log("⚠ DEGRADED: started " + _toolStarts + " tool call(s) but none returned a result or answer.");
@@ -959,7 +940,8 @@ if (!_text.trim() && !_didResult && _toolStarts > 0) {
           id: "gw-list", icon: "📋", title: "Call models.list and cron.list", x: 1, y: 0,
           showCode: false,
           summary: "Two JSON-RPC calls go through the open connection: models.list names every model the runtime serves, while cron.list reports the currently scheduled jobs.",
-          code: `if (!state.call) { helpers.log("Run the Connect node first."); return; }
+          code: `// Use the existing gateway socket to list models and scheduled jobs.
+if (!state.call) { helpers.log("Run the Connect node first."); return; }
 
 const models = await state.call("models.list");
 helpers.log("models (" + (models?.models?.length || 0) + "):");

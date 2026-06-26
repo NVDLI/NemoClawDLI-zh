@@ -102,6 +102,8 @@ import figure_audit as fa  # noqa: E402
 import cell_audit as ca  # noqa: E402
 import helper_notebook_runtime_audit as hna  # noqa: E402
 import studio_interface_audit as sia  # noqa: E402
+import openclaw_fallback_audit as ofa  # noqa: E402
+import agent_process_audit as apa  # noqa: E402
 import course_contract as cca  # noqa: E402
 import skill_contract as skc  # noqa: E402
 from collections import defaultdict  # noqa: E402
@@ -222,7 +224,9 @@ SUITE_META = [
      "SVG text must be legible at its render size, no label may overflow its figure, and figures/images must carry aria-label / alt / rel=noopener. A figure too small to read or clipped at the frame is a silent defect no prose check sees.",
      "scripts/validation/figure_audit.py", "run"),
     ("cell_audit", "Cell & artifact contract", "recommended",
+
      "Every runnable cell shows its work in the panel, writes via helpers.log not console, awaits its model calls, inlines no key, keeps cell-only code in an editable cell, is syntax-highlighted by default, and keeps default-visible learner code readable. A hard-coded key is required-tier (it ships to every student); the rest are recommended.",
+
      "scripts/validation/cell_audit.py", "run"),
     ("helper_notebook", "Helper notebook contract", "required",
      "The runnable helper notebook must use the helper API exposed by its actual runtime surface. Static examples must not mix CanvasFlow-only and RunCell-only log helpers, because that ships a TypeError directly to students.",
@@ -230,6 +234,12 @@ SUITE_META = [
     ("studio_interface", "Studio interface contract", "required",
      "Studio is the operator console for authoring and validation. Its controls must remain reachable at layout extremes, its sidebar lists must scroll internally, and its documented test commands must stay synchronized with the validators.",
      "scripts/validation/studio_interface_audit.py", "audit"),
+    ("openclaw_fallback", "OpenClaw fallback contract", "required",
+     "Credentialed OpenClaw tests must fail fast when the runtime is unreachable, and the kickstart path must point learners to the Brev URL plus CF_Authorization backup instead of silently passing a dead local service.",
+     "scripts/validation/openclaw_fallback_audit.py", "audit"),
+    ("agent_process", "Agent process contract", "required",
+     "Issue/MR, taxonomy, validation, and safe-auth guardrails must be discoverable from the repo beacons so broad agent work starts from a durable process instead of ad hoc transcript memory.",
+     "scripts/validation/agent_process_audit.py", "audit"),
     ("course_contract", "Course title and abstract contract", "required",
      "The English source-course title, abstract, and learning objectives are canonical DLI copy. They must stay verbatim across the course home, foyer, and canonical contract files.",
      "scripts/validation/course_contract.py", "audit"),
@@ -500,6 +510,28 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         ok = False
         vl_fail.extend(f"studio interface: {x}" for x in studio_interface_find)
 
+    # OpenClaw fallback contract (required): credentialed harness fails hard and docs point to Brev backup.
+    try:
+        openclaw_fallback_find = ofa.audit()
+    except Exception as e:
+        openclaw_fallback_find = [f"OpenClaw fallback audit error: {e}"]
+        suite_errors["openclaw_fallback"] = str(e)
+    if openclaw_fallback_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(f"OpenClaw fallback: {x}" for x in openclaw_fallback_find)
+
+    # Agent process contract (required): keep broad-work guardrails visible from repo beacons.
+    try:
+        agent_process_find = apa.audit()
+    except Exception as e:
+        agent_process_find = [f"agent process audit error: {e}"]
+        suite_errors["agent_process"] = str(e)
+    if agent_process_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(f"agent process: {x}" for x in agent_process_find)
+
     # Course contract (required): canonical DLI title, abstract, and objectives are immutable.
     try:
         course_contract_find = cca.audit()
@@ -653,6 +685,12 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "studio_interface": [D("web/nemoclaw/studio.html", x, REQUIRED,
                                "Keep Studio controls reachable at narrow/short viewports and keep validator commands synchronized across Studio and SKILL docs.")
                              for x in studio_interface_find],
+        "openclaw_fallback": [D("web/nemoclaw/03a-kickstart.html", x, REQUIRED,
+                                "Keep the credentialed harness fail-fast and keep the kickstart backup path explicit: Brev session URL, gateway token, and CF_Authorization.")
+                              for x in openclaw_fallback_find],
+        "agent_process": [D("docs/agent_process.md", x, REQUIRED,
+                            "Keep issue/MR, taxonomy, validation, and safe-auth guardrails documented and linked from the repo beacons.")
+                          for x in agent_process_find],
         "course_contract": [D("web/nemoclaw/COURSE_CANON.md", x, REQUIRED,
                               "Restore the canonical DLI title, abstract, and learning objectives verbatim. Do not paraphrase, retitle, reorder, or translate the English source copy.")
                             for x in course_contract_find],

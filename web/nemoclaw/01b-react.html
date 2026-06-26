@@ -321,8 +321,7 @@ log("finish_reason:", r1.choices[0].finish_reason);   // "stop" means the answer
 log(r1.choices[0].message.content || "(used its whole budget thinking; raise max_tokens)");
 
 // Call 2 · offer one tool and ask for something the model cannot know from training data.
-// It cannot run the tool itself, so instead of stopping it asks YOUR code to run it. This spec is
-// just a preview; the next sections build and run the tool wiring properly.
+// The model cannot run the tool itself; this preview asks your code to run it.
 const TOOLS = [{
   type: "function",
   function: {
@@ -410,8 +409,7 @@ state.messages = [
 let step = 0, answered = false;
 while (step++ < MAX_STEPS) {
   helpers.log(\`── step \${step} ──────────────────────\`);
-  // The second argument is null, so the raw token stream is suppressed and the curated
-  // trace below is the only output, which keeps the loop's logic readable.
+  // Suppress raw tokens so only the curated trace appears.
   const s = await helpers.chatStream({
     messages: state.messages, tools: state.TOOLS, model: MODEL, max_tokens: 8196,
   }, null);
@@ -454,11 +452,19 @@ if (cfg.needsKey && !helpers.getKey()) {
 }
 
 helpers.log("loading LangChain ...");
-const { ChatOpenAI }       = await import("https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm");
-const { tool }             = await import("https://cdn.jsdelivr.net/npm/@langchain/core@1.1.48/tools/+esm");
-const { createReactAgent } = await import("https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/prebuilt/+esm");
-const { MemorySaver }      = await import("https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/+esm");
-const { z }                = await import("https://cdn.jsdelivr.net/npm/zod@3/+esm");
+const LANGCHAIN_IMPORT_URLS = [
+  "https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm",
+  "https://cdn.jsdelivr.net/npm/@langchain/core@1.1.48/tools/+esm",
+  "https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/prebuilt/+esm",
+  "https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/+esm",
+  "https://cdn.jsdelivr.net/npm/zod@3/+esm",
+];
+const [oai, core, prebuilt, langgraph, zod] = await Promise.all(LANGCHAIN_IMPORT_URLS.map(url => import(url)));
+const { ChatOpenAI }       = oai;
+const { tool }             = core;
+const { createReactAgent } = prebuilt;
+const { MemorySaver }      = langgraph;
+const { z }                = zod;
 
 const PAGES   = helpers.coursePages();             // includes "overview" (the course home)
 const baseURL = cfg.url.startsWith("http") ? cfg.url : (window.location.origin + cfg.url);
@@ -475,8 +481,7 @@ const SYSTEM  =
 const agents = {};
 function getAgent(model) {
   if (!agents[model]) {
-    // The OpenAI SDK adds x-stainless-* platform headers that the CORS proxy
-    // rejects in preflights. Strip them with a custom fetch wrapper.
+    // Strip OpenAI SDK x-stainless-* headers before CORS preflight.
     const _fetchNoStainless = (url, init) => {
       if (init && init.headers) {
         const h = init.headers instanceof Headers ? init.headers : new Headers(init.headers);
@@ -522,8 +527,7 @@ helpers.mountChatUI(document.getElementById("react-artifact"), {
     const messages = [];
     if (ctx.turn === 0) {
       messages.push({ role: "system", content: SYSTEM });
-      // Pin every page selected with the "Pages" chips (multi-select). The whole
-      // page is pinned, and the whole page is what the chip shows; expand it.
+      // Pin each selected page in full so the chip reflects the actual context.
       for (const id of ctx.modules) {
         const body = await helpers.coursePage(id);
         ctx.view.tool("pinned " + id + " · " + helpers.estimateTokens(body) + " tok", body);
@@ -535,23 +539,17 @@ helpers.mountChatUI(document.getElementById("react-artifact"), {
     }
     messages.push({ role: "user", content: text });
 
-    // recursionLimit is this loop's MAX_STEPS safety belt (Part 4): the agent
-    // reasons and reads as many times as it needs, capped so a confused run
-    // can't spin forever. Each reason+read is ~2 graph steps, so 12 ≈ 6 reads.
+    // Bound the loop so a confused agent cannot spin forever.
     const stream = await agent.stream({ messages },
       { streamMode: "messages", configurable: { thread_id: ctx.thread }, recursionLimit: 24, signal: ctx.signal });
-    // Hand each event to ctx.view as it arrives: it appends reasoning, tool
-    // chips, and answer text in stream order. Every read pushes its OWN chip,
-    // keyed by the tool call's id, not its index: arg-delta chunks reset the
-    // index to 0 per message, so an index key would overwrite an earlier read.
+    // Render each event as it streams; key tool chips by tool-call id.
     const byId = {}, activeByIndex = {};
     let lastInput = 0, totalOut = 0, sawUsage = false;
     for await (const part of stream) {
       const chunk = Array.isArray(part) ? part[0] : part;
       const meta  = Array.isArray(part) ? part[1] : null;
       const node  = meta && meta.langgraph_node;
-      // tool RESULT (the full page text, or an error) comes back on the "tools"
-      // node → its own chip. A failed read is shown as failed, not hidden.
+      // Tool results get their own chip, including failed reads.
       if (node === "tools" && chunk.tool_call_id && byId[chunk.tool_call_id]) {
         const c = byId[chunk.tool_call_id];
         c.body.textContent = String(chunk.content);
@@ -560,8 +558,7 @@ helpers.mountChatUI(document.getElementById("react-artifact"), {
         }
         continue;
       }
-      // tool CALL: each new call (tc.id present) PUSHES a fresh chip; arg deltas
-      // (no id) extend the call currently open at that index.
+      // tool CALL: each new call (tc.id present) PUSHES a fresh chip; arg deltas (no id) extend the call currently open at that index.
       for (const tc of (chunk.tool_call_chunks || [])) {
         const idx = tc.index == null ? 0 : tc.index;
         let c;
@@ -578,10 +575,7 @@ helpers.mountChatUI(document.getElementById("react-artifact"), {
       if (r && node === "agent") ctx.view.reasoning(r);
       // token usage rolls up across the ReAct loop's LLM calls
       if (chunk.usage_metadata) { sawUsage = true; lastInput = chunk.usage_metadata.input_tokens || lastInput; totalOut += chunk.usage_metadata.output_tokens || 0; }
-      // Answer tokens, gated to the "agent" node. Both the agent and "tools"
-      // nodes emit chunks with string .content, but the tools node's content is
-      // the full page text a read returned. The guard keeps that markdown out of
-      // the answer panel (tool results get their own chips, handled above).
+      // Show answer tokens from the agent node; tool output stays in tool chips.
       if (typeof chunk.content === "string" && chunk.content && node === "agent")
         ctx.view.token(chunk.content);
     }

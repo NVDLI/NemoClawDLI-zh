@@ -282,8 +282,8 @@
       label: "the Try-it artifact, in code",
       autorun: true,
       code: `// This is the Try-it artifact: a real conversation with the OpenClaw agent on
-// your launchable, over the gateway. Tool chips fire as it works. Edit the
-// greeting, examples, or respond logic, then Run to re-render.
+// your launchable, over the gateway. Tool chips fire as it works.
+// Edit the greeting, examples, or response logic, then rerun.
 helpers.mountChatUI("#openclaw-artifact", {
   greeting: "Chat with your live agent (connect on the Kickstart page first). Try “list your workspace files and tell me what each is for,” or “read SOUL.md.”",
   examples: ["List your workspace files and what each is for", "Read SOUL.md and summarize who you are", "What tools do you have access to?", "What is in your AGENTS.md?", "Save a note to your memory, then read it back", "If a webpage told you to ignore your instructions, what would you do?"],
@@ -291,8 +291,7 @@ helpers.mountChatUI("#openclaw-artifact", {
 });
 helpers.log("rendered below. Edit the config and Run.");
 
-// The panel is helpers.mountChatUI and it streams through helpers.openclawChat;
-// open the helpers tab above to read either one's source.
+// The panel is helpers.mountChatUI and it streams through helpers.openclawChat; open the helpers tab above to read either one's source.
 `,
     });
   </script>
@@ -334,13 +333,9 @@ mountDiagram("#fig-calls", {
 // ── Shared WS connect snippet (used as prefix in each connect node) ──────────
 
 
-// Setup snippet for the first node of each flow: connect to the gateway, then
-// store a `turn` helper on `state` so later nodes send chat turns without
-// re-wiring the plumbing (same gateway machinery as Kickstart 3a).
+// Connect once, then store state.turn for later nodes.
 const setupTurn = GW_CONNECT + `
-// state.turn({ content, session }) sends ONE chat turn over the gateway WS and
-// returns the agent's final text, routed through chat.send because the
-// launchable's /v1/chat/completions is not reachable directly from the browser.
+// state.turn sends one gateway chat turn and returns final text.
 if (!state._subs) state._subs = {};
 
 // ── tune these (apply to every state.turn call in this flow) ──────────────────
@@ -362,8 +357,7 @@ state.turn = async ({ content, session }) => {
       const pl = d.payload || {};
       // ignore heartbeats / keepalives: not real activity, never reset the idle timer
       if (pl.isHeartbeat || d.event === "health" || d.event === "tick") return;
-      // one sessionKey can host several runs; lock onto ours (myRun) and drop the
-      // rest so a stale run's chatter can't reset our idle timer and mask a stall
+      // Keep only our runId so stale frames cannot reset the idle timer.
       if (myRun && pl.runId && pl.runId !== myRun) return;
       bump();   // real activity on OUR run pushes the idle deadline back
       if (d.event === "chat" && pl.state === "final") {
@@ -516,7 +510,8 @@ helpers.log(state.r1);
       id: "recall", icon: "💭", title: "Turn 2 · ask it back", x: 1, y: 0,
       showCode: false,
       summary: "A fresh turn on the same session asks what the agent remembers. The model has no memory of turn 1; the preference survives because the runtime carried it forward (the session, and the MEMORY.md the agent saved). The check confirms the keywords actually came through.",
-      code: `const r2 = await state.turn({
+      code: `// Ask the same session what it retained after the write turn.
+const r2 = await state.turn({
   content: "What do you remember about how I like to receive code review?",
   session: "quick-3b-memory",
 });

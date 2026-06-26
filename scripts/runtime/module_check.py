@@ -47,8 +47,7 @@ def _names_in_clause(clause, want="exported"):
 def parse_exports(src):
     names = set(_DECL.findall(src))
     for blk in _EXPORT_BLOCK.finditer(src):
-        # skip `export { x } from "./y"` (handled as both export and a passthrough) by still
-        # counting the name: a re-export-from is a real export of this module.
+        # Count re-export-from names as real exports of this module.
         names.update(_names_in_clause(blk.group(1), "exported"))
     return names
 

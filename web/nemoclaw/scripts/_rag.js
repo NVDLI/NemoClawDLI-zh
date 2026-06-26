@@ -1,15 +1,8 @@
-// _rag.js holds the RAG retrieval helpers that used to live in _shared.js.
-//
-// embeddings + similarity (02b): embed() over the remote NVIDIA embed endpoint, and
-// cosineSim().
+// RAG retrieval helpers: remote embeddings plus cosine scoring.
 
 import { fetchRetry, getConfig, _apiHeaders } from "./_shared.js";
 
-// Embed a string (or list of strings) via the remote build endpoint
-// (cfg.url is the CORS worker; /embeddings is proxied through). NVIDIA embed
-// models require an input_type ("query" or "passage").
-// Returns a list of vectors (numbers[]). Single-string input still returns a
-// list of length 1 so the call shape is uniform.
+// Embed one or more strings and always return a list of vectors.
 export async function embed(input, { model = "nvidia/llama-nemotron-embed-1b-v2", inputType = "query" } = {}) {
   /* @doc <code>helpers.embed(text, {model, inputType})</code> ::
        POST to the remote build endpoint <code>{cfg.url}/embeddings</code> (the CORS worker).
@@ -31,8 +24,7 @@ export async function embed(input, { model = "nvidia/llama-nemotron-embed-1b-v2"
   return data.data.map(d => d.embedding);
 }
 
-// Cosine similarity between two equal-length vectors. The standard
-// retrieval primitive, where score(query_emb, doc_emb) closer to 1 = closer match.
+// Score equal-length vectors; closer to 1 means closer match.
 export function cosineSim(a, b) {
   /* @doc <code>helpers.cosineSim(a, b)</code> ::
        Cosine similarity between two vectors. Closer to 1 = closer match. The standard retrieval

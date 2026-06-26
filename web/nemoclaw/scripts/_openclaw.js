@@ -4,6 +4,11 @@
 
 import { updateClawPill, escHtml, _escAttr, mountCanvasFlow } from "./_shared.js";
 
+const RANDOM_ID_RADIX = 36;
+function _uniqueId(prefix = "") {
+  return prefix + Math.random().toString(RANDOM_ID_RADIX).slice(2) + Date.now().toString(RANDOM_ID_RADIX);
+}
+
 // ── ClawGateway widget ───────────────────────────────────────────────────────
 // Live WebSocket client to wss://rawUrl/cli/gateway, reading URL + token from localStorage.
 // The browser CF_Authorization cookie covers Cloudflare Access, so no proxy hop is needed.
@@ -46,7 +51,7 @@ export function mountClawGateway(targetSel, opts = {}) {
 
   function _call(method, params) {
     return new Promise((resolve, reject) => {
-      const id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      const id = _uniqueId();
       const tmo = setTimeout(() => {
         delete _pending[id];
         reject(new Error(`${method} timed out`));
@@ -72,7 +77,7 @@ export function mountClawGateway(targetSel, opts = {}) {
         const typ = d.type  || "";
 
         if (evt === "connect.challenge") {
-          _connId = Math.random().toString(36).slice(2) + Date.now().toString(36);
+          _connId = _uniqueId();
           // Resolve the outer promise on connect response
           _pending[_connId] = {
             resolve: r => {
@@ -211,7 +216,7 @@ export function mountClawGateway(targetSel, opts = {}) {
       try {
         if (action.chat) {
           // Streaming chat
-          const ikey = Math.random().toString(36).slice(2) + Date.now().toString(36);
+          const ikey = _uniqueId();
           let fullText = "";
           outEl.hidden  = false;
           outEl.innerHTML = `<div class="gw-chat-out"></div>`;
@@ -298,7 +303,7 @@ export function mountClawProbe(targetSel, opts = {}) {
     : (defaultToken || "(none needed in your launchable)");
   const actions      = opts.actions || [];
   const label        = opts.label || "Live OpenClaw probe";
-  const intro        = opts.intro !== undefined ? opts.intro : "Paste the base URL of a running OpenClaw service. Your launchable's proxy is the default; to reach a remote launchable, paste its URL (https://nemoclaw-<id>.brevlab.com) instead.";
+  const intro        = opts.intro !== undefined ? opts.intro : "Paste the base URL of a running OpenClaw service. If local OpenClaw fails, stops booting, or reports EPERM, stop local probing and use the backup Brev session URL plus CF_Authorization.";
 
   function _normalizeBaseUrl(raw) {
     const text = String(raw || "").trim();
@@ -630,14 +635,18 @@ export function mountClawProbe(targetSel, opts = {}) {
       }
     } catch (e) {
       const dt = Math.round(performance.now() - t0);
+      const fallback = /EPERM|Failed to fetch|NetworkError|Load failed|ECONN|ERR_CONNECTION|timed out|502|503/i.test(e?.message || "")
+        ? "\nBackup: if local OpenClaw failed to start or logs EPERM, stop local probing. Paste your NemoClaw Brev session URL (https://nemoclaw-<id>.brevlab.com), then paste CF_Authorization from DevTools into the CF Access JWT field.\n"
+        : "";
       const hint = "Possible causes:\n" +
+        "• OpenClaw did not start cleanly. Local EPERM means use the Brev backup URL plus CF_Authorization.\n" +
         "• CORS blocked, because a header is not in the Access-Control-Allow-Headers preflight response.\n" +
         "• Wrong URL, so confirm no trailing /v1 on the base URL.\n" +
         "• Service offline. If the launchable just started, wait 30 s and try again.\n" +
         "• 502 on /v1/chat/completions, so the model backend isn't responding; check that\n" +
         "  NVIDIA_API_KEY resolved correctly in the launchable environment.\n\n" +
         "Gateway token: once the URL and CF Access JWT check out, GET /api/agent above fills it in for you from agent.dashboardUrl.";
-      setOutput(`✗ network error after ${dt}ms\n   ${String(e?.message || e)}\n\n${hint}`, "err");
+      setOutput(`✗ network error after ${dt}ms\n   ${String(e?.message || e)}\n\n${fallback}${hint}`, "err");
     }
   }
 
@@ -692,7 +701,7 @@ export async function openclawChat(message, { session = "main", onToken, onTool,
       const pend = {}, ws = new WebSocket(wsUrl);
       let chatCb = null;
       const call = (method, params) => new Promise((res, rej) => {
-        const id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+        const id = _uniqueId();
         const tmo = setTimeout(() => { delete pend[id]; rej(new Error(method + " timed out")); }, 20000);
         pend[id] = { res, rej, tmo };
         ws.send(JSON.stringify({ type: "req", id, method, params: params || {} }));
@@ -776,7 +785,7 @@ export async function openclawChat(message, { session = "main", onToken, onTool,
     });
 
     bump();
-    sock.call("chat.send", { sessionKey: session, idempotencyKey: Math.random().toString(36).slice(2) + Date.now().toString(36), message })
+    sock.call("chat.send", { sessionKey: session, idempotencyKey: _uniqueId(), message })
       .then(res => { myRun = (res && res.runId) || null; })
       .catch(e => { clearTimeout(idle); clearTimeout(glob); sock.setCb(null); reject(e); });
   });
@@ -787,21 +796,21 @@ const rawUrl = localStorage.getItem("nemoclaw_clawrawurl") ||
                localStorage.getItem("nemoclaw_clawurl") || "";
 const token  = localStorage.getItem("nemoclaw_clawtoken") || "";
 if (!rawUrl || !token) {
-  helpers.log("Fill in the OpenClaw probe above (URL + token) first.");
+  helpers.log("Fill in the OpenClaw probe above first. If local OpenClaw failed or showed EPERM, use the backup Brev session URL plus CF_Authorization.");
   return;
 }
 const wsUrl = rawUrl.replace(/\\/+$/, "").replace(/^https/, "wss").replace(/^http(?!s)/, "ws") + "/cli/gateway";
 helpers.log("→ " + wsUrl);
 
-// Close any socket a previous Connect on this flow left open, so re-running a
-// node (or running another Connect) does not pile up live WebSockets in the
-// background. We keep ONE socket per flow on state._ws.
+// Keep one live gateway socket per flow.
 if (state._ws) { try { state._ws.close(); } catch (_) {} state._chatCb = null; }
 
 const _pend = {};
+const RANDOM_ID_RADIX = 36;
+const nextId = () => Math.random().toString(RANDOM_ID_RADIX).slice(2) + Date.now().toString(RANDOM_ID_RADIX);
 const _ws = new WebSocket(wsUrl);
 state._ws = _ws;
-// Stop button: abort the run → close the socket and reject any in-flight call.
+// Stop closes the socket and rejects in-flight calls.
 if (typeof helpers !== "undefined" && helpers.signal) helpers.signal.addEventListener("abort", () => {
   try { _ws.close(); } catch (_) {}
   for (const _id in _pend) { try { clearTimeout(_pend[_id].tmo); _pend[_id].reject(new Error("stopped")); } catch (_) {} delete _pend[_id]; }
@@ -817,7 +826,7 @@ _ws.onmessage = ev => {
 _ws.onerror = () => {};
 state._chatCb = null;
 state.call = (method, params) => new Promise((resolve, reject) => {
-  const id  = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const id  = nextId();
   const tmo = setTimeout(() => { delete _pend[id]; reject(new Error(method + " timed out")); }, 20000);
   _pend[id] = { resolve, reject, tmo };
   _ws.send(JSON.stringify({ type: "req", id, method, params: params || {} }));
@@ -839,13 +848,11 @@ await new Promise((resolve, reject) => {
       resolve(pl);
     }).catch(reject);
   };
-  setTimeout(() => reject(new Error("no challenge arrived within 15s. Your Cloudflare Access session most likely expired. Open your launchable URL (https://nemoclaw-<id>.brevlab.com) in a new tab to re-authenticate, then re-run Connect. (Less often, the launchable is still booting, so wait 30s and retry.)")), 15000);
+  setTimeout(() => reject(new Error("no challenge arrived within 15s. Open the Brev launchable URL (https://nemoclaw-<id>.brevlab.com), re-authenticate, copy CF_Authorization, and re-run Connect. If local OpenClaw logs EPERM, stop local probing and use that Brev backup path.")), 15000);
 });
 `;
 
-// ── Shared recover flow (health check + toolSearch repair) ───────────────────
-// One mountGwRecover("#gw-recover") call mounts the same detect-and-recover cells.
-// Synced across 03a/03c/04a.
+// Shared recover flow, reused across 03a/03c/04a.
 export function mountGwRecover(sel) {
   mountCanvasFlow(sel, {
   label: "Detect & recover · health check, then escalating reset",
@@ -870,9 +877,7 @@ try {
   (envs.environments || []).forEach(e => helpers.log("  env " + e.id + ": " + e.status));
 } catch (e) { helpers.log("  environments.list failed: " + e.message); }
 
-// 2. The #1 cause of the tool_search_code loop: tools.toolSearch is ON, so the
-//    model uses the code bridge to find tools and gets stuck instead of calling
-//    exec. The Recover cell turns it off.
+// 2. tools.toolSearch can trap weaker models in bridge-code loops; Recover turns it off.
 let toolSearch = null;
 try {
   const cfg = await state.call("config.get", {});
@@ -888,11 +893,8 @@ try {
   helpers.log("  pending exec approvals: " + pending);
 } catch (e) { helpers.log("  exec.approval.list failed: " + e.message); }
 
-// 3. Behavioral probe: ask the agent to echo a marker through its exec tool. This is the
-//    real test, since the tool_search_code loop breaks exactly this, so it costs one model
-//    turn. We stream what the agent does as it happens, and conclude THE MOMENT the marker
-//    comes back rather than waiting for the model's closing prose, which is most of the wait.
-const PROBE = "quick-health-" + Math.random().toString(36).slice(2, 8);
+// 3. Echo probe proves exec works; finish as soon as the marker returns.
+const PROBE = _uniqueId("quick-health-").slice(0, 21);
 await state.call("sessions.messages.subscribe", { key: PROBE });
 let ok = false, sawTool = false, runId = null;
 const trace = [], t0 = performance.now();
@@ -939,10 +941,7 @@ return { healthy: ok, outcome, pendingApprovals: pending, toolSearch };
       code: GW_CONNECT + `
 helpers.log("Repairing the runtime");
 
-// 1. THE KEY FIX. tools.toolSearch lets the model run a code "bridge" to find and
-//    invoke tools. A weaker model (e.g. nemotron-3-super-120b) loops on that
-//    bridge ("tool_search_code · run bridge code") and never calls exec. Turn it
-//    off with a config merge-patch so the agent uses the native exec tool.
+// 1. Disable toolSearch so the agent uses native exec instead of bridge code.
 const cfg = await state.call("config.get", {});
 if (cfg.parsed && cfg.parsed.tools && cfg.parsed.tools.toolSearch) {
   await state.call("config.patch", { raw: JSON.stringify({ tools: { toolSearch: false } }), baseHash: cfg.hash });
@@ -959,11 +958,7 @@ let removed = 0;
 for (const s of all.filter(s => !/:main$/.test(s.key))) { try { await state.call("sessions.delete", { key: s.key }); removed++; } catch (e) {} }
 helpers.log("  ✓ reset agent:main:main and deleted " + removed + " throwaway session(s)");
 
-// 3. Applying the toolSearch change needs a runtime restart, which DROPS the
-//    connection for ~40s, so it is opt-in, never automatic. Leave DO_RESTART
-//    false (config is patched and applies on the next restart); flip it to true
-//    and re-run ONLY this cell when you want to restart now. Default-false keeps
-//    "Run all" from knocking the runtime out from under the cells after it.
+// 3. Restart applies the config patch but drops the socket, so it stays opt-in.
 const DO_RESTART = false;
 if (DO_RESTART) {
   await state.call("gateway.restart.request", { reason: "course recovery: disable toolSearch" }).catch(e => helpers.log("  restart failed: " + e.message));
@@ -986,8 +981,7 @@ const lines = lg.lines || [];
 helpers.log("runtime log · last " + lines.length + " line(s)" + (lg.file ? " · " + lg.file : ""));
 lines.slice(-LOG_LINES).forEach(raw => {
   // Each line is a JSON STRING: { "0": "{subsystem…}", "1": <message>, …, _meta }.
-  // Parse it, read the level + subsystem, and join the numeric arg keys (skip "0",
-  // the subsystem tag) into one message.
+  // Parse it, read the level + subsystem, and join the numeric arg keys (skip "0", the subsystem tag) into one message.
   let L; try { L = typeof raw === "string" ? JSON.parse(raw) : raw; } catch (_) { return; }
   const lvl = ((L._meta && L._meta.logLevelName) || "?").padEnd(5);
   let sub = ""; try { sub = JSON.parse(L["0"] || "{}").subsystem || ""; } catch (_) {}
