@@ -29,7 +29,7 @@ try {
 
   const req = new Request('https://openclaw-cors-proxy.test/https/nemoclaw-v6paslvp5.brevlab.com/cli/gateway?cf_access_jwt=test.jwt&keep=1', {
     method: 'GET',
-    headers: { Upgrade: 'websocket', Origin: 'https://vkudlay.gitlab-master-pages.nvidia.com' },
+    headers: { Upgrade: 'websocket', Origin: 'https://course.example.test' },
   });
   const res = await worker.fetch(req, {});
   if (res.webSocket !== wsMarker) fail('worker did not return upstream WebSocket response directly');
