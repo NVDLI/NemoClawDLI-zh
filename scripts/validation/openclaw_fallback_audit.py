@@ -32,6 +32,7 @@ FILES = {
     "scripts_skill": ROOT / "scripts" / "SKILL.html",
     "validation_skill": ROOT / "scripts" / "validation" / "SKILL.html",
     "worker_ws_audit": ROOT / "scripts" / "validation" / "openclaw_worker_ws_audit.mjs",
+    "gw_transport_audit": ROOT / "scripts" / "validation" / "gw_connect_transport_audit.mjs",
 }
 
 REQUIRED = {
@@ -44,6 +45,7 @@ REQUIRED = {
     "scripts_skill": ["OpenClaw fallback", "python3 scripts/validation/openclaw_fallback_audit.py"],
     "validation_skill": ["openclaw_fallback_audit.py", "OpenClaw fallback"],
     "worker_ws_audit": ["openclaw worker ws audit", "CF_Authorization", "http://localhost:8088", "upstream WebSocket response directly"],
+    "gw_transport_audit": ["gw connect transport audit", "falling back to direct browser-cookie WebSocket"],
 }
 
 
@@ -89,10 +91,11 @@ def audit() -> list[str]:
     if not node:
         findings.append("node runtime not found for openclaw_worker_ws_audit.mjs")
     else:
-        proc = subprocess.run([str(node), str(FILES["worker_ws_audit"])], cwd=ROOT, text=True, capture_output=True)
-        if proc.returncode != 0:
-            detail = (proc.stdout + proc.stderr).strip().replace("\n", " | ")
-            findings.append(f"openclaw_worker_ws_audit.mjs failed: {detail}")
+        for script_key in ("worker_ws_audit", "gw_transport_audit"):
+            proc = subprocess.run([str(node), str(FILES[script_key])], cwd=ROOT, text=True, capture_output=True)
+            if proc.returncode != 0:
+                detail = (proc.stdout + proc.stderr).strip().replace("\n", " | ")
+                findings.append(f"{FILES[script_key].name} failed: {detail}")
     return findings
 
 
