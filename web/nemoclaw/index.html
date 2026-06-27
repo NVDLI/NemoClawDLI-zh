@@ -133,7 +133,7 @@
   <div class="howto">
     <div class="step"><span class="n">1</span><span><b>Drop in your key</b> below. Model calls go to <a href="https://build.nvidia.com" target="_blank" rel="noopener"><code>build.nvidia.com</code></a>; a free <code>nvapi-</code> key unlocks every exercise. Enable LMS/static iframe mode only when your host page needs the CORS worker.</span></div>
     <div class="step"><span class="n">2</span><span><b>Work the four modules</b> in order. Every cell runs live in the browser with JavaScript, so you should be able to run it in your web browsers or with a general-purpose agent chatbot of choice.</span></div>
-    <div class="step"><span class="n">3</span><span><b>For the agent stack</b> in Modules 3&ndash;4, deploy the NemoClaw Brev launchable when the course asks for it; it hosts the course's <a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener">OpenClaw</a>-in-<a href="https://github.com/NVIDIA/OpenShell" target="_blank" rel="noopener">OpenShell</a> stack as defined by the <a href="https://github.com/NVIDIA/NemoClaw" target="_blank" rel="noopener">NemoClaw blueprint</a>.</span></div>
+    <div class="step"><span class="n">3</span><span><b>For the agent stack</b> in Modules 3&ndash;4, create a NemoClaw launchable when the course asks for it; it hosts the course's <a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener">OpenClaw</a>-in-<a href="https://github.com/NVIDIA/OpenShell" target="_blank" rel="noopener">OpenShell</a> stack as defined by the <a href="https://github.com/NVIDIA/NemoClaw" target="_blank" rel="noopener">NemoClaw blueprint</a>.</span></div>
   </div>
 
   <div class="section" id="learning-objectives">
@@ -247,10 +247,12 @@
       </a>
       <a class="sys-card runtime" href="https://brev.nvidia.com/launchable/deploy/now?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS" target="_blank" rel="noopener">
         <div class="sys-label">Agent stack</div>
-        <div class="sys-name">NemoClaw stack on Brev</div>
-        <div class="sys-desc">NemoClaw supplies the hardened assembly: OpenClaw as the agent harness,
-          OpenShell as the sandbox, and deployment policy around both. The Brev launchable is the hosted copy
-          this course asks your browser to drive.</div>
+        <div class="sys-name">NemoClaw launchable on Brev</div>
+        <div class="sys-desc">
+          This will be your sandboxed agent stack for this workshop. OpenClaw will be the agent harness,
+          OpenShell will serve the sandbox, and NemoClaw will be the blueprint that organized them into a reference deployment.
+          This will be deployed on a brev launchable by default, but you can deploy it locally and modify the code accordingly.  
+        </div>
       </a>
     </div>
   </div>

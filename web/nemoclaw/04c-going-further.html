@@ -116,7 +116,7 @@
     </p>
     <ul style="font-size:.9rem;color:var(--td);line-height:1.7">
       <li>
-        <a href="https://brev.nvidia.com/launchable/deploy/now?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS" target="_blank" rel="noopener">NVIDIA Brev launchables</a>
+        <a href="https://build.nvidia.com/spark/nemoclaw-applications" target="_blank" rel="noopener">NVIDIA NemoClaw playbooks</a>
         give you one-click GPU environments preloaded with the runtime
         components you saw in your launchable. Pre-built launchables exist
         for the <a href="https://blog.langchain.com/deep-agents/" target="_blank" rel="noopener">LangChain deep-agents</a> stack, OpenClaw-style
@@ -136,7 +136,7 @@
       <li>
         <a href="https://build.nvidia.com/spark/nemoclaw-applications" target="_blank" rel="noopener">NemoClaw applications</a>
         is the companion gallery for the launchable you ran. NVIDIA's
-        DGX Spark playbook walks complete NemoClaw agents end to end,
+        DGX Spark playbooks walk complete NemoClaw agents end to end,
         including a daily news digest, a software-development agent, a
         deck reviewer, and a calendar negotiator, each carrying the
         same policy setup Module 4 covered. Read one as a worked
@@ -292,7 +292,7 @@
       <li>Wang et al. (2023). <a href="https://arxiv.org/abs/2305.16291" target="_blank" rel="noopener">Voyager.</a> <code>arXiv:2305.16291</code> (always-on skill-library agent).</li>
       <li>Anthropic <a href="https://docs.anthropic.com/en/docs/claude-code/overview" target="_blank" rel="noopener">Claude Code</a> · <a href="https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview" target="_blank" rel="noopener">Agent Skills</a>.</li>
       <li>OpenAI <a href="https://platform.openai.com/docs/codex" target="_blank" rel="noopener">Codex CLI</a>.</li>
-      <li><a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes Agent (Nous Research)</a> and its <a href="https://hermes-agent.nousresearch.com/docs/user-guide/security" target="_blank" rel="noopener">security guide</a>. A separate agent application with skills from experience, persistent memory, built-in cron, and a messaging gateway; useful when comparing what NemoClaw wraps versus what OpenShell contains.</li>
+      <li><a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes Agent (Nous Research)</a> and its <a href="https://hermes-agent.nousresearch.com/docs/user-guide/security" target="_blank" rel="noopener">security guide</a>. A separate agent application with skills from experience, persistent memory, built-in cron, and a messaging gateway; useful when comparing agent applications with the OpenShell security runtime and the NemoClaw reference stack.</li>
       <li><a href="https://github.com/NVIDIA/NeMo-Curator" target="_blank" rel="noopener">NeMo Curator</a> (data-quality pipeline).</li>
     </ul>
 
@@ -518,10 +518,8 @@
   <div class="callout">
     <strong>The shape you built runs in production.</strong> The OpenClaw agent you drove in Modules 3 and
     4 is built on the <a href="https://github.com/earendil-works/pi-mono" target="_blank" rel="noopener">Pi
-    agent runtime</a> (pi-mono, by Mario Zechner), which OpenClaw internalized and wrapped with a
-    multi-channel gateway, the skills you ran, and the persisted memory you watched it keep. The core under
-    all of that is the same perceive-reason-act loop, tool calls, and growing message history you wrote by
-    hand in Module 1.
+    agent runtime</a> which OpenClaw leverages behind its agent gateway. Looking at this core, you'll see that under
+    all of these layers is the same perceive-reason-act loop, tool calls, and growing message history you relied on in Module 1.
   </div>
   <div id="capstone-cell"></div>
   <div id="capstone-artifact"></div>
