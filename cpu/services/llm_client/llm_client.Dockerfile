@@ -5,10 +5,12 @@ WORKDIR /app
 
 # Install dependencies
 RUN pip install --no-cache-dir \
-    fastapi \
+    "fastapi>=0.138.1" \
+    "starlette>=1.3.1" \
     uvicorn[standard] \
     httpx \
     pydantic \
+    "protobuf>=5.29.6,<6" \
     opentelemetry-api \
     opentelemetry-sdk \
     opentelemetry-exporter-otlp-proto-grpc

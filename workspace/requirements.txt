@@ -4,16 +4,16 @@
 nest_asyncio                # Jupyter + asyncio.run() in the same event loop
 
 # Networking & Web
-fastapi
+fastapi>=0.138.1
 httpx>=0.27.0
 httpx-sse
 requests
 sse-starlette
-starlette>=0.40.0
+starlette>=1.3.1
 streamlit
 uvicorn[standard]
 voila
-protobuf>=5.26.0       # grpcio / transformers require runtime_version added in 5.26
+protobuf>=5.29.6,<6    # patched 5.x line; grpcio / transformers need runtime_version added in 5.26
 
 # LangChain & Orchestration
 crewai
@@ -31,7 +31,7 @@ langgraph-sdk>=0.1.40
 langserve
 langsmith
 litellm
-mcp>=1.5.0             # Model Context Protocol SDK for agent tool integration
+mcp>=1.23.0            # Model Context Protocol SDK for agent tool integration
 
 # Data & Retrieval
 duckdb
