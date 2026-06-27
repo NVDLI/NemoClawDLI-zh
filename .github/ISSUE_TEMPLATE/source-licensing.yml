@@ -3,6 +3,10 @@ description: Report source provenance, attribution, vendored material, or licens
 title: "[source] "
 labels: ["state:needs-triage", "kind:source-correction", "risk:license-source"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Current release target is `web/nemoclaw/` on the CPU service stack, while the repo remains a multi-course bundle. Keep private URLs, internal sources, and unpublished licensing details out of public issues.
   - type: input
     id: material
     attributes:

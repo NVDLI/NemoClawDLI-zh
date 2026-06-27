@@ -8,6 +8,7 @@
 # Isolation contract:
 #   - branch previews are manual and live under public/<branch-slug>/web/nemoclaw;
 #   - preview Pages artifacts rebuild the production root from a protected ref, then add the branch preview;
+#   - downloadable Pages job artifacts expire quickly to avoid storage growth;
 #   - the branch foyer at public/<branch-slug>/index.html reads a static branch manifest;
 #   - production refs still require a manual job start;
 #   - branch names are normalized through CI_COMMIT_REF_SLUG before becoming URLs.
@@ -17,8 +18,13 @@ stages: [test, deploy]
 variables:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
   GIT_DEPTH: "20"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
 .with_python_node: &with_python_node
+  cache:
+    key: "$CI_JOB_NAME"
+    paths:
+      - .cache/pip
   image: node:20-bookworm-slim
   # The available instance runners are all tagged; untagged jobs match none of them.
   # `pages` is the Shared Pages Runner (a Docker runner) that picks these up.
@@ -43,8 +49,10 @@ test:
     - python3 scripts/validation/validate_layout.py --quiet
     - python3 scripts/skills/skill_consistency.py
     - python3 scripts/skills/skill_contract.py
+    - python3 scripts/validation/ci_storage_audit.py
     - python3 scripts/compliance/source_gate.py
     - python3 scripts/security/audit_python_dependencies.py
+    - python3 scripts/security/audit_vulnerability_waivers.py
     - bash   scripts/runtime/run_engine.sh --self-test
     - 'L=""; case "$CI_COMMIT_BRANCH" in translate-*) L="--lang ${CI_COMMIT_BRANCH#translate-}";; esac; python3 scripts/validation/validate_bundle.py --scope ship $L'
     # Live materials drift check: keep ordinary branch pipelines offline so arXiv/devblog rate
@@ -67,15 +75,70 @@ test:
       - docs/validation/
     expire_in: 30 days
 
+security_sca:
+  <<: *with_python_node
+  stage: test
+  script:
+    - mkdir -p scripts/security/reports
+    - pip install --break-system-packages -q --upgrade pip setuptools wheel pip-audit cyclonedx-bom >/dev/null
+    - python3 scripts/security/run_full_sca.py --execute --python-local --cyclonedx-env --out-dir scripts/security/reports
+  artifacts:
+    when: always
+    name: "security-sca-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - scripts/security/reports/
+    expire_in: 30 days
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: on_success
+      allow_failure: false
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+      allow_failure: false
+    - if: '$CI_COMMIT_BRANCH'
+      when: manual
+      allow_failure: false
+    - when: never
+
+security_deep_sca:
+  <<: *with_python_node
+  stage: test
+  timeout: 2h
+  script:
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends python3-venv >/dev/null
+    - rm -rf .sca-venv
+    - python3 -m venv .sca-venv
+    - .sca-venv/bin/python -m pip install -q --upgrade pip setuptools wheel
+    - .sca-venv/bin/python -m pip install -q -r workspace/requirements.txt
+    - .sca-venv/bin/python -m pip install -q pip-audit cyclonedx-bom
+    - PATH="$CI_PROJECT_DIR/.sca-venv/bin:$PATH" .sca-venv/bin/python scripts/security/run_full_sca.py --execute --python-local --cyclonedx-env --out-dir scripts/security/reports/deep-workspace
+  artifacts:
+    when: always
+    name: "security-deep-sca-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - scripts/security/reports/deep-workspace/
+    expire_in: 30 days
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: on_success
+      allow_failure: false
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+      allow_failure: false
+    - if: '$CI_COMMIT_BRANCH'
+      when: manual
+      allow_failure: false
+    - when: never
+
 pages:
   <<: *with_python_node
   stage: deploy
   needs: ["test"]
   resource_group: pages-site
   script:
-    # Classic GitLab Pages supports only one `pages` job. To make branch staging experiential
-    # without replacing production, branch pipelines publish one combined Pages artifact:
-    # production root rebuilt from a protected ref, plus this branch under /<slug>/web/nemoclaw/.
+    # This GitLab instance still uses classic Pages: only the job literally named
+    # `pages` can publish. Branch previews therefore ship a combined artifact
+    # with production rebuilt from a protected ref plus the branch under /<slug>/.
     - |
       set -euo pipefail
       refresh_branch_refs() {
@@ -148,9 +211,11 @@ pages:
   artifacts:
     paths:
       - public
+    expire_in: 3 days
   environment:
     name: "$PAGES_ENVIRONMENT_NAME"
     url: "$PAGES_ENVIRONMENT_URL"
+    auto_stop_in: "$PAGES_AUTO_STOP_IN"
   rules:
     # Branch previews are real GitLab Pages deploys, but production root is rebuilt from the
     # protected production ref and the branch only gets /<slug>/ plus /<slug>/web/nemoclaw/.
@@ -159,6 +224,7 @@ pages:
         PAGES_PREVIEW: "1"
         PAGES_ENVIRONMENT_NAME: "review/$CI_COMMIT_REF_SLUG"
         PAGES_ENVIRONMENT_URL: "$CI_PAGES_URL/$CI_COMMIT_REF_SLUG/web/nemoclaw/"
+        PAGES_AUTO_STOP_IN: "3 days"
       when: manual
       allow_failure: false
     # Production lock: production deploys are manual only. Pushes to production refs run tests,
@@ -167,12 +233,14 @@ pages:
       variables:
         PAGES_ENVIRONMENT_NAME: "production"
         PAGES_ENVIRONMENT_URL: "$CI_PAGES_URL/nemoclaw/"
+        PAGES_AUTO_STOP_IN: "never"
       when: manual
       allow_failure: false
     - if: '$CI_COMMIT_BRANCH == "nemoclaw-only"'
       variables:
         PAGES_ENVIRONMENT_NAME: "production"
         PAGES_ENVIRONMENT_URL: "$CI_PAGES_URL/nemoclaw/"
+        PAGES_AUTO_STOP_IN: "never"
       when: manual
       allow_failure: false
     - when: never

@@ -4,6 +4,9 @@ This note is for agents and maintainers working across issues, merge requests, a
 
 ## Start from the tracker
 
+- Use `docs/issue_standards.md` as the issue anatomy and label cadence. Current
+  work assumes `web/nemoclaw/` on the CPU service stack, while the repo stays
+  shaped as a multi-course bundle.
 - Read the issue or MR before editing. If network or auth blocks the read, say that and work from local evidence only.
 - Tie the MR to the tracker with `Addresses #N` unless the user explicitly says the change closes the issue. Do not write `Closes #N` for partial hygiene, exploratory prose, or a blast-radius pass.
 - Keep the branch name, commit message, and MR note aligned with the issue scope. If the work intentionally touches related issues, name those as related, not solved.
@@ -25,7 +28,7 @@ This note is for agents and maintainers working across issues, merge requests, a
 ## Validation ladder
 
 - Always run `git diff --check`.
-- For dependency, service image, or runtime package changes, run `python3 scripts/security/audit_python_dependencies.py` before the full gate.
+- For dependency, service image, runtime package, or security-exception changes, run `python3 scripts/security/audit_python_dependencies.py` and `python3 scripts/security/audit_vulnerability_waivers.py` before the full gate.
 - For content or navigation changes, run `python3 scripts/skills/skill_consistency.py`, `python3 scripts/validation/validate_layout.py --quiet`, and `python3 scripts/validation/validate_bundle.py --no-write --scope ship`.
 - For page title, navigation, or deploy-path changes, run `BUILD_PAGES_LANGS=0 scripts/build/build_pages.sh` before calling the MR ready.
 - For Studio, runnable-cell, browser-runtime, or OpenClaw changes, also run the browser/runtime harness named in `AGENT_QUICKSTART.md` and the relevant `scripts/validation/*_audit.py` file.

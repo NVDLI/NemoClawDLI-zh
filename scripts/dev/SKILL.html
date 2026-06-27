@@ -14,7 +14,8 @@
   "summary": "Local contributor helpers that are useful at the command line but are not part of the course runtime or release gate.",
   "related": [
     "scripts/dev/push",
-    "scripts/dev/codex_sandbox_probe.sh"
+    "scripts/dev/codex_sandbox_probe.sh",
+    "scripts/dev/refresh_gitlab_issue_standards.py"
   ],
   "explorer": "../../web/_skill_explorer.js"
 }
@@ -45,6 +46,11 @@
       "path": "codex_sandbox_probe.sh",
       "role": "Codex host sandbox probe",
       "desc": "Checks the host Codex bubblewrap dependency and documents the rootless current-host repair path. This is for the agent execution environment, not the course microservice containers."
+    },
+    {
+      "path": "refresh_gitlab_issue_standards.py",
+      "role": "tracker refresh helper",
+      "desc": "Applies the current issue anatomy, labels, reviewer-feedback summaries, and standards issue to GitLab when authenticated."
     }
   ]
 }
@@ -65,10 +71,11 @@
   <div class="skill-cmds">
     <div class="skill-cmd"><b>Safe push helper</b><code>scripts/dev/push --help</code></div>
     <div class="skill-cmd"><b>Codex sandbox probe</b><code>scripts/dev/codex_sandbox_probe.sh</code></div>
+    <div class="skill-cmd"><b>Tracker refresh dry run</b><code>python3 scripts/dev/refresh_gitlab_issue_standards.py --dry-run</code></div>
     <div class="skill-cmd"><b>Git status</b><code>git status --short --branch</code></div>
   </div>
   <h2>Linkage map</h2>
-  <div class="skill-grid"><a class="skill-card" href="push"><b>push</b><span>safe push helper. Pulls with rebase before pushing and protects local tracked edits during the operation.</span></a><a class="skill-card" href="codex_sandbox_probe.sh"><b>codex_sandbox_probe.sh</b><span>Codex host sandbox probe. Checks bubblewrap and documents the rootless current-host repair path.</span></a></div>
+  <div class="skill-grid"><a class="skill-card" href="push"><b>push</b><span>safe push helper. Pulls with rebase before pushing and protects local tracked edits during the operation.</span></a><a class="skill-card" href="codex_sandbox_probe.sh"><b>codex_sandbox_probe.sh</b><span>Codex host sandbox probe. Checks bubblewrap and documents the rootless current-host repair path.</span></a><a class="skill-card" href="refresh_gitlab_issue_standards.py"><b>refresh_gitlab_issue_standards.py</b><span>tracker refresh helper. Applies the current issue anatomy, labels, reviewer-feedback summaries, and standards issue to GitLab when authenticated.</span></a></div>
   <h2>Interactive explorer</h2>
   <p>The explorer below opens source files, tours important sections, and checks documented paths against the repository tree.</p>
 </section>

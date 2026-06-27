@@ -147,6 +147,7 @@ under node):
 python3 scripts/validation/validate_layout.py --quiet      # layout + link glue
 python3 scripts/skills/skill_consistency.py             # skill-meta vs the real tree
 python3 scripts/security/audit_python_dependencies.py    # declared floors/pins have no known PyPI/OSV vulns
+python3 scripts/security/audit_vulnerability_waivers.py  # accepted vuln exceptions are owned + unexpired
 bash    scripts/runtime/run_engine.sh --self-test        # link-engine self-test
 python3 scripts/validation/validate_bundle.py --scope ship  # grounding, reachability, page audit, em-dash
 ```
@@ -200,8 +201,10 @@ floor audit, validate_layout, and the link-projection gate.
 
 CI: `.gitlab-ci.yml` and `.github/workflows/pages.yml` run the same gate, then
 `scripts/build/build_pages.sh` publishes a fully client-side site to GitLab Pages
-(private / pre-release) and GitHub Pages (external release). See
-[`docs/pages_deploy.md`](docs/pages_deploy.md).
+(private / pre-release) and GitHub Pages (external release). GitLab also exposes
+manual `security_sca` and `security_deep_sca` jobs; run the deep job when the
+workspace dependency graph changes. See [`docs/pages_deploy.md`](docs/pages_deploy.md)
+and [`docs/dependency_security.md`](docs/dependency_security.md).
 
 ---
 

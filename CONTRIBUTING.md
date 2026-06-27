@@ -11,8 +11,9 @@ standing the bundle up on DLI platform or local compute.
 Use the issue path when you have expertise about the course, platform, security model,
 source material, or learner experience but do not already have a release-ready patch.
 File a focused Issue with the affected files or URLs, the observed behavior, the expected
-behavior, and any source or runtime evidence. This is the preferred path for cross-cutting
-course claims, pedagogy, vendor/source concerns, and deployment assumptions.
+behavior, and any source or runtime evidence. The issue anatomy and cadence live in
+[`docs/issue_standards.md`](docs/issue_standards.md). This is the preferred path for
+cross-cutting course claims, pedagogy, vendor/source concerns, and deployment assumptions.
 
 Use the direct patch path when you can carry the change through the structured release
 process. The full release and external-mirror model lives in [`docs/release_playbook.md`](docs/release_playbook.md). A direct MR should update the source, declared blast-radius files, and validators
