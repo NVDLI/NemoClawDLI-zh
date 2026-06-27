@@ -14,7 +14,7 @@ const OPENCLAW_CORS_PROXY_BASE = "https://openclaw-cors-proxy.vkudlay.workers.de
 export function openclawGatewayWsUrl(rawUrl, cfJwt = "", proxyBase = OPENCLAW_CORS_PROXY_BASE) {
   const raw = String(rawUrl || "").trim().replace(/\/+$/, "");
   const jwt = String(cfJwt || "").trim();
-  if (!raw) return { url: "", displayUrl: "", viaProxy: false };
+  if (!raw) return { url: "", displayUrl: "", viaProxy: false, directUrl: "", directDisplayUrl: "" };
   const direct = raw.replace(/^https/i, "wss").replace(/^http(?!s)/i, "ws") + "/cli/gateway";
   try {
     const upstream = new URL(raw);
@@ -29,10 +29,12 @@ export function openclawGatewayWsUrl(rawUrl, cfJwt = "", proxyBase = OPENCLAW_CO
         url: proxied.href,
         displayUrl: proxied.origin + proxied.pathname + "?cf_access_jwt=...",
         viaProxy: true,
+        directUrl: direct,
+        directDisplayUrl: direct,
       };
     }
   } catch (_) { /* fall back to direct URL for local or non-URL launchables */ }
-  return { url: direct, displayUrl: direct, viaProxy: false };
+  return { url: direct, displayUrl: direct, viaProxy: false, directUrl: direct, directDisplayUrl: direct };
 }
 
 // ── ClawGateway widget ───────────────────────────────────────────────────────
@@ -843,21 +845,27 @@ const openclawGatewayWsUrl = (rawInput, jwtInput) => {
       const upstreamPath = upstream.pathname.replace(new RegExp("/+$"), "");
       proxied.pathname = "/https/" + upstream.host + upstreamPath + "/cli/gateway";
       proxied.search = "cf_access_jwt=" + encodeURIComponent(jwt);
-      return { url: proxied.href, displayUrl: proxied.origin + proxied.pathname + "?cf_access_jwt=...", viaProxy: true };
+      return { url: proxied.href, displayUrl: proxied.origin + proxied.pathname + "?cf_access_jwt=...", viaProxy: true, directUrl: direct, directDisplayUrl: direct };
     }
   } catch (_) {}
-  return { url: direct, displayUrl: direct, viaProxy: false };
+  return { url: direct, displayUrl: direct, viaProxy: false, directUrl: direct, directDisplayUrl: direct };
 };
 const gateway = openclawGatewayWsUrl(rawUrl, cfJwt);
-const wsUrl = gateway.url;
+let wsUrl = gateway.url;
 helpers.log("→ " + gateway.displayUrl + (gateway.viaProxy ? "  (via CF proxy)" : ""));
 if (gateway.viaProxy) {
+  let proxyReady = false;
   try {
     const meta = await helpers.fetch("https://openclaw-cors-proxy.vkudlay.workers.dev/__nemoclaw_proxy_meta", { cache: "no-store" });
     const txt = await meta.text();
-    if (meta.ok && txt.includes("ws-gateway")) helpers.log("  proxy worker: ws gateway enabled");
-    else helpers.log("  proxy worker may be stale: " + meta.status + " " + txt.slice(0, 80));
-  } catch (e) { helpers.log("  proxy worker version check failed: " + (e && e.message ? e.message : e)); }
+    proxyReady = meta.ok && txt.includes("ws-gateway");
+    if (proxyReady) helpers.log("  proxy worker: ws gateway enabled");
+    else helpers.log("  proxy worker stale; falling back to direct browser-cookie WebSocket: " + meta.status + " " + txt.slice(0, 80));
+  } catch (e) { helpers.log("  proxy worker version check failed; falling back to direct browser-cookie WebSocket: " + (e && e.message ? e.message : e)); }
+  if (!proxyReady) {
+    wsUrl = gateway.directUrl;
+    helpers.log("→ " + gateway.directDisplayUrl + "  (direct fallback; open the Brev URL first if this browser lacks the CF cookie)");
+  }
 }
 
 // Keep one live gateway socket per flow.
@@ -952,7 +960,7 @@ try {
 } catch (e) { helpers.log("  exec.approval.list failed: " + e.message); }
 
 // 3. Echo probe proves exec works; finish as soon as the marker returns.
-const PROBE = _uniqueId("quick-health-").slice(0, 21);
+const PROBE = nextId("quick-health-").slice(0, 21);
 await state.call("sessions.messages.subscribe", { key: PROBE });
 let ok = false, sawTool = false, runId = null;
 const trace = [], t0 = performance.now();
