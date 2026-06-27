@@ -33,6 +33,8 @@ REQUIRED_FLOORS = {
     "starlette": "1.3.1",
     "protobuf": "5.29.6",
     "mcp": "1.23.0",
+    "cryptography": "48.0.1",
+    "aiohttp": "3.14.1",
 }
 
 REQ_RE = re.compile(

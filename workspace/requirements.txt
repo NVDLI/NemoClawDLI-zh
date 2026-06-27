@@ -8,6 +8,7 @@ fastapi>=0.138.1
 httpx>=0.27.0
 httpx-sse
 requests
+aiohttp>=3.14.1          # transitive web client/server dependency; keep above current PyPI advisory floor
 sse-starlette
 starlette>=1.3.1
 streamlit
@@ -16,7 +17,6 @@ voila
 protobuf>=5.29.6,<6    # patched 5.x line; grpcio / transformers need runtime_version added in 5.26
 
 # LangChain & Orchestration
-crewai
 langchain
 langchain-classic>=1.0.0
 langchain-community
@@ -40,6 +40,7 @@ nemo-microservices
 pandas
 pydantic
 python-dotenv
+cryptography>=48.0.1    # transitive TLS/crypto dependency; keep above current PyPI advisory floor
 tavily-python
 
 # Document Processing
