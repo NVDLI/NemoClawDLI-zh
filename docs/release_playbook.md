@@ -14,6 +14,11 @@ Use a staged externalization model:
 
 Default rule: **issue-first, patch-second**. Students with domain evidence file structured Issues. Students who can carry a fix through validation open PRs using the structured release process.
 
+Current issue and MR templates assume `web/nemoclaw/` on the CPU service stack
+(`cpu/`, `workspace/`, and `deploy/`) as the active release target. Keep that
+explicit in each issue, then mark whether the finding is course-specific or
+bundle-wide so the same tracker can scale to future courses.
+
 ## Surface ownership
 
 | Surface | Owner lane | Contribution shape | Required gate |
@@ -146,6 +151,7 @@ Use these while GitLab remains canonical:
 - Keep branch preview deploys manual, isolated under branch slug paths, and built with production root from a protected ref.
 - Use templates in `.gitlab/issue_templates/` and `.gitlab/merge_request_templates/`.
 - Use labels and milestones as the project-management source. Mirror the same taxonomy to GitHub.
+- Keep `docs/issue_standards.md` aligned with tracker labels, issue templates, and MR templates.
 
 ## Workflow abstractions
 

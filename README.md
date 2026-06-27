@@ -109,6 +109,7 @@ If you have domain expertise, contribute first by lodging focused Issues with ev
 what is wrong, where it appears, what the learner or operator impact is, and what source
 or runtime behavior supports the claim. Issue-first contribution helps preserve the course
 release process when the right fix crosses content, deployment, validation, or licensing.
+Issue shape and label cadence are defined in [`docs/issue_standards.md`](docs/issue_standards.md).
 
 If you are contributing a direct patch, follow the structured release path:
 

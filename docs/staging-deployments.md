@@ -1,20 +1,29 @@
 # Staging Deployments and Production Lock
 
-This is a temporary deployment design for review while the course is still changing quickly. Its objective is to let reviewers experience branch output on the real GitLab Pages host without allowing an ordinary branch failure to replace production content.
+This deployment design lets reviewers experience branch output on the real GitLab Pages host without allowing an ordinary branch failure to replace production content or leave large downloadable artifacts around indefinitely.
 
 ## Behavior
 
-- `pages` is the only deploy job because this GitLab instance supports only classic GitLab Pages (`pages can only be used within a pages job`).
+- `pages` is the only deploy job because this GitLab instance still supports only classic GitLab Pages (`pages can only be used within a pages job`).
 - On production refs (`$CI_DEFAULT_BRANCH` and `nemoclaw-only`), `pages` is manual and builds the normal production site at `$CI_PAGES_URL/nemoclaw/`.
 - On ordinary branches, `pages` is also manual. It builds a combined Pages artifact: production root from a protected ref, plus the branch foyer at `public/$CI_COMMIT_REF_SLUG/index.html` and the branch course at `public/$CI_COMMIT_REF_SLUG/web/nemoclaw/`, served as `$CI_PAGES_URL/$CI_COMMIT_REF_SLUG/` and `$CI_PAGES_URL/$CI_COMMIT_REF_SLUG/web/nemoclaw/`.
 - The branch foyer reads `branches.json` and shows a branch dropdown when a build-time manifest is present. The manifest is advisory: a branch appears when it is detectable in git refs, and its preview URL works after that branch has been manually published to Pages.
 - The branch foyer also reads `languages.json` and shows a language dropdown when the artifact contains more than one built language. English follows the preview course prefix (`web/nemoclaw/` in branch previews); translations use their built course path such as `pt/nemoclaw/`.
 - Translation branches run the test gate and are aggregated by the production build; they do not publish standalone previews by default.
-- Preview deployments are review surfaces, not durable course URLs. With classic Pages they persist until the next Pages deploy replaces the single project artifact.
+- Preview deployments are review surfaces, not durable course URLs. Their downloadable job artifacts expire after three days. Review environments also request auto-stop after three days.
 
-## Temporary Compromise
+## Storage Contract
 
-The preview path intentionally mirrors the source path segment `web/nemoclaw` for transferability. That makes it easier to compare a staging artifact with repo-relative source paths and future rsync layouts. The compromise is that GitLab Pages has one project-wide published artifact on this instance, so a branch preview deploy must publish a combined artifact instead of an isolated Pages deployment. Branch previews also persist until another Pages deploy replaces the artifact. This is acceptable as a temporary review path only because the production root is rebuilt from an approved production ref and the branch content is confined to `/<branch-slug>/web/nemoclaw/`.
+The preview path intentionally mirrors the source path segment `web/nemoclaw` for transferability. That makes it easier to compare a staging artifact with repo-relative source paths and future rsync layouts.
+
+The preview path intentionally mirrors the source path segment `web/nemoclaw` for transferability. That makes it easier to compare a staging artifact with repo-relative source paths and future rsync layouts. The compromise is that classic GitLab Pages has one project-wide published artifact on this instance, so a branch preview deploy must publish a combined artifact instead of an isolated Pages deployment. This is acceptable as a temporary review path only because the production root is rebuilt from an approved production ref and the branch content is confined to `/<branch-slug>/web/nemoclaw/`.
+
+The `pages` job must keep both cleanup controls:
+
+- `artifacts.expire_in: 3 days`, so the downloadable `public/` artifacts do not accumulate as 10-20 MiB entries.
+- `environment.auto_stop_in: 3 days` for branch previews, so the review environment list does not grow without bound. Production sets this to `never`.
+
+`scripts/validation/ci_storage_audit.py` enforces this shape in CI.
 
 ## Guardrails
 

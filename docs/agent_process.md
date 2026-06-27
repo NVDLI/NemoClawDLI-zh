@@ -4,6 +4,9 @@ This note is for agents and maintainers working across issues, merge requests, a
 
 ## Start from the tracker
 
+- Use `docs/issue_standards.md` as the issue anatomy and label cadence. Current
+  work assumes `web/nemoclaw/` on the CPU service stack, while the repo stays
+  shaped as a multi-course bundle.
 - Read the issue or MR before editing. If network or auth blocks the read, say that and work from local evidence only.
 - Tie the MR to the tracker with `Addresses #N` unless the user explicitly says the change closes the issue. Do not write `Closes #N` for partial hygiene, exploratory prose, or a blast-radius pass.
 - Keep the branch name, commit message, and MR note aligned with the issue scope. If the work intentionally touches related issues, name those as related, not solved.
