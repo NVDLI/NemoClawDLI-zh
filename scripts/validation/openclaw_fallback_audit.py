@@ -33,6 +33,7 @@ FILES = {
     "validation_skill": ROOT / "scripts" / "validation" / "SKILL.html",
     "worker_ws_audit": ROOT / "scripts" / "validation" / "openclaw_worker_ws_audit.mjs",
     "gw_transport_audit": ROOT / "scripts" / "validation" / "gw_connect_transport_audit.mjs",
+    "gw_recover_compile_audit": ROOT / "scripts" / "validation" / "gw_recover_compile_audit.mjs",
 }
 
 REQUIRED = {
@@ -46,6 +47,7 @@ REQUIRED = {
     "validation_skill": ["openclaw_fallback_audit.py", "OpenClaw fallback"],
     "worker_ws_audit": ["openclaw worker ws audit", "CF_Authorization", "http://localhost:8088", "upstream WebSocket response directly"],
     "gw_transport_audit": ["gw connect transport audit", "falling back to direct browser-cookie WebSocket"],
+    "gw_recover_compile_audit": ["gw recover compile audit", "private _uniqueId"],
 }
 
 
@@ -87,11 +89,13 @@ def audit() -> list[str]:
             findings.append("GW_CONNECT template decodes to invalid regex/comment syntax; avoid slash regex literals inside stringified cells")
         if "openclawGatewayWsUrl" in decoded and 'new RegExp("/+$")' not in decoded:
             findings.append('GW_CONNECT gateway URL helper must avoid slash regex literals; use new RegExp("/+$")')
+        if "_uniqueId(" in decoded:
+            findings.append("GW_CONNECT/recover cell code references private module helper _uniqueId; use local nextId")
     node = next((Path(c) for c in NODE_CANDIDATES if c and Path(c).exists()), None)
     if not node:
         findings.append("node runtime not found for openclaw_worker_ws_audit.mjs")
     else:
-        for script_key in ("worker_ws_audit", "gw_transport_audit"):
+        for script_key in ("worker_ws_audit", "gw_transport_audit", "gw_recover_compile_audit"):
             proc = subprocess.run([str(node), str(FILES[script_key])], cwd=ROOT, text=True, capture_output=True)
             if proc.returncode != 0:
                 detail = (proc.stdout + proc.stderr).strip().replace("\n", " | ")

@@ -960,7 +960,7 @@ try {
 } catch (e) { helpers.log("  exec.approval.list failed: " + e.message); }
 
 // 3. Echo probe proves exec works; finish as soon as the marker returns.
-const PROBE = _uniqueId("quick-health-").slice(0, 21);
+const PROBE = nextId("quick-health-").slice(0, 21);
 await state.call("sessions.messages.subscribe", { key: PROBE });
 let ok = false, sawTool = false, runId = null;
 const trace = [], t0 = performance.now();
