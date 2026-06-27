@@ -34,8 +34,8 @@ export { diagramSVG, mountDiagram };
 
 // ── ganttBarsSVG (02c concurrency figure) → _figures.js ──────────────────────
 // Re-export figure helpers so page imports and helper menus stay stable.
-import { ganttBarsSVG, mountFigures } from "./_figures.js";
-export { ganttBarsSVG, mountFigures };
+import { ganttBarsSVG, mountFigures, openFigureLightbox, wireFigureZoom } from "./_figures.js";
+export { ganttBarsSVG, mountFigures, openFigureLightbox, wireFigureZoom };
 
 const LAB_MODEL     = "nvidia/nemotron-3-nano-30b-a3b"; // legacy helper default; getConfig().model is the active course default
 const CONFIG_KEY    = "__nv_slim_cfg_v1";
@@ -416,7 +416,7 @@ export const VIZ_BUILDERS = makeViz(() => {});
 export const HELPER_FNS = {
   chat, chatStream, webSearch, instantAnswer, formatSearchResults,
   embed, cosineSim, fetchRetry, getConfig, getKey, terminal,
-  coursePage, coursePages, contextWindow, estimateTokens, browserChatFetch, diagramSVG, ganttBarsSVG, mountFigures, mountChatUI, mountAgentChat, mountConsole, mountKeyPanel, openclawChat, openclawGatewayWsUrl,
+  coursePage, coursePages, contextWindow, estimateTokens, browserChatFetch, diagramSVG, ganttBarsSVG, mountFigures, openFigureLightbox, wireFigureZoom, mountChatUI, mountAgentChat, mountConsole, mountKeyPanel, openclawChat, openclawGatewayWsUrl,
   evalSandboxNetwork, evalSandboxFs, sandboxExec, policyGet, mountPolicyMap,
 };
 // Menu entries that are values or closures rather than plain exported functions.

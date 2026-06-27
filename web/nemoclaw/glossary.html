@@ -92,7 +92,10 @@
         demand.</p>
       </div>
     </div>
-    <div id="gx-delivery"></div>
+    <figure style="margin:1.4em 0">
+      <div id="gx-delivery"></div>
+      <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Vendored sources become a static catalog, then an in-memory cache, then ranked results without a live network call.</figcaption>
+    </figure>
   </section>
 
   <section>
@@ -103,7 +106,10 @@
       written so that any drift it finds is surfaced to everyone at once and described in exactly
       the same words.
     </p>
-    <div id="gx-pipeline-doc"></div>
+    <figure style="margin:1.4em 0">
+      <div id="gx-pipeline-doc"></div>
+      <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">The pull script fingerprints each source, and the same drift result appears in CLI, CI, and the validator screen.</figcaption>
+    </figure>
     <p class="gx-lead" style="margin-top:1em">
       The loop runs like this. A contributor (or the deploy build) runs the pull, and every source gets
       fingerprinted in <code>_materials.json</code>. Passing <code>--check</code> re-fetches each source
@@ -166,13 +172,17 @@ const $ = (id) => document.getElementById(id);
 // ── The materials pipeline: web sources -> pull -> catalog -> cache -> search ──
 mountDiagram("#gx-delivery", {
   title: "How the catalog reaches a search",
-  caption: "Vendored from the web into one static file that is fetched once and held in memory, so every query ranks the cached copy without touching the network or needing a key.",
+  maxWidth: 1040,
+  boxW: 268,
+  boxH: 104,
+  gapX: 96,
+  rowGap: 76,
   nodes: [
-    { id: "web",    label: "web sources",        kind: "env",     x: 0, y: 0, lines: ["glossary, arXiv, blog"] },
-    { id: "pull",   label: "pull_materials.py",  kind: "tool",    x: 1, y: 1, lines: ["fetch + fingerprint", "on build / on demand"] },
-    { id: "file",   label: "materials_index.json", kind: "data",  x: 2, y: 2, lines: ["cached + on-demand", "ships in the bundle"] },
-    { id: "cache",  label: "in-memory cache",    kind: "neutral", x: 3, y: 3, lines: ["fetched once"] },
-    { id: "search", label: "webSearch",          kind: "model",   x: 4, y: 4, lines: ["ranks both tiers", "no key, no network"] },
+    { id: "web",    label: "web sources",          kind: "env",     x: 0, y: 0, lines: ["glossary, arXiv, blog"] },
+    { id: "pull",   label: "pull_materials.py",    kind: "tool",    x: 1, y: 0, lines: ["fetch + fingerprint", "on build / on demand"] },
+    { id: "file",   label: "materials_index.json", kind: "data",    x: 1, y: 1, lines: ["cached + on-demand", "ships in the bundle"] },
+    { id: "cache",  label: "in-memory cache",      kind: "neutral", x: 2, y: 1, lines: ["fetched once"] },
+    { id: "search", label: "webSearch",            kind: "model",   x: 2, y: 2, lines: ["ranks both tiers", "no key, no network"] },
   ],
 
   edges: [
@@ -186,14 +196,16 @@ mountDiagram("#gx-delivery", {
 // ── The control loop: pull -> fingerprint -> drift check -> validator screen ──
 mountDiagram("#gx-pipeline-doc", {
   title: "Keeping the corpus honest",
-  caption: "Each source gets a fingerprint when it is pulled. The drift check re-fetches and " +
-           "compares, so a mismatch or outage surfaces the same way on the CLI, in CI, and on the " +
-           "validator screen, with the one-line fix.",
+  maxWidth: 980,
+  boxW: 268,
+  boxH: 104,
+  gapX: 96,
+  rowGap: 76,
   nodes: [
-    { id: "pull",  label: "pull",          kind: "tool",    x: 0, y: 0, lines: ["pull_materials.py", "rebase to the web"] },
-    { id: "prov",  label: "_materials.json", kind: "data",  x: 1, y: 1, lines: ["url + sha256", "per source"] },
-    { id: "check", label: "--check",        kind: "tool",   x: 2, y: 2, lines: ["re-fetch + compare", "ok / drifted / unreachable"] },
-    { id: "screen",label: "validator screen", kind: "model",x: 3, y: 3, lines: ["names the source", "+ the fix command"] },
+    { id: "pull",  label: "pull",             kind: "tool",  x: 0, y: 0, lines: ["pull_materials.py", "rebase to the web"] },
+    { id: "prov",  label: "_materials.json",  kind: "data",  x: 1, y: 0, lines: ["url + sha256", "per source"] },
+    { id: "check", label: "--check",          kind: "tool",  x: 1, y: 1, lines: ["re-fetch + compare", "ok / drifted / unreachable"] },
+    { id: "screen",label: "validator screen", kind: "model", x: 2, y: 1, lines: ["names the source", "+ the fix command"] },
   ],
 
   edges: [

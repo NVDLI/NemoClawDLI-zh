@@ -505,7 +505,7 @@ mountGwRecover("#gw-recover");
 mountDiagram("#fig-calls", {
   kicker: "THE POLICY DECIDES WHAT RUNS",
   title: "Every tool call passes the sandbox",
-  width: 1180, height: 300, maxWidth: 940, boxW: 220, boxH: 124,
+  maxWidth: 1040, boxW: 230, boxH: 108, gapX: 128, top: 58,
   nodes: [
     { id: "call",   label: "agent tool call",     kind: "agent", x: 0, y: 0, lines: ["bash, curl, file open"] },
     { id: "gate",   label: "OpenShell layers",    kind: "env",   x: 1, y: 0, lines: ["netns, Landlock,", "seccomp, OPA proxy"] },
@@ -513,9 +513,9 @@ mountDiagram("#fig-calls", {
   ],
 
   edges: [
-    { from: "call", to: "gate",   label: "every call",       side: "top",    tint: "agent"   },
-    { from: "gate", to: "target", label: "policy permits",   side: "top",    tint: "data"    },
-    { from: "gate", to: "call",   label: "denied · EACCES",  side: "bottom", tint: "neutral" },
+    { from: "call", to: "gate",   label: "every call",       fromPort: "right", toPort: "left", labelDy: -42, tint: "agent"   },
+    { from: "gate", to: "target", label: "policy permits",   fromPort: "right", toPort: "left", labelDy: -42, tint: "data"    },
+    { from: "gate", to: "call",   label: "denied · EACCES",  fromPort: "bottom-left", toPort: "right", toOffset: 30, labelDy: 34, return: true, tint: "neutral" },
   ],
 });
 

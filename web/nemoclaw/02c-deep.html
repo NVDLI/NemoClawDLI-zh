@@ -806,7 +806,6 @@ const sourceCount = Object.keys(state.vfs).filter(p => p !== "final_report.md").
 const reportChars = (state.synthesis || "").length;
 const spec = {
   title: "Deep agent · one orchestrator, " + workers.length + " sub-agents, shared VFS",
-  caption: "Each worker runs in its own fresh context, and the synthesiser reads the files they leave behind to write one combined report.",
   nodes: [
     { id: "orch", label: "orchestrator", kind: "model", x: Math.max(0, (workers.length - 1) / 2), y: 0,
       lines: ["plans " + workers.length + " subtasks"] },

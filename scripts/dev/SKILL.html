@@ -13,7 +13,8 @@
   "source_dir": "scripts/dev/",
   "summary": "Local contributor helpers that are useful at the command line but are not part of the course runtime or release gate.",
   "related": [
-    "scripts/dev/push"
+    "scripts/dev/push",
+    "scripts/dev/codex_sandbox_probe.sh"
   ],
   "explorer": "../../web/_skill_explorer.js"
 }
@@ -39,6 +40,11 @@
       "path": "push",
       "role": "safe push helper",
       "desc": "Pulls with rebase before pushing and protects local tracked edits during the operation."
+    },
+    {
+      "path": "codex_sandbox_probe.sh",
+      "role": "Codex host sandbox probe",
+      "desc": "Checks the host Codex bubblewrap dependency and documents the rootless current-host repair path. This is for the agent execution environment, not the course microservice containers."
     }
   ]
 }
@@ -54,14 +60,15 @@
   <nav class="skill-nav"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a></nav>
   <h1 id="skill-title">scripts/dev local operator helpers</h1>
   <p>Local contributor helpers that are useful at the command line but are not part of the course runtime or release gate.</p>
-  <div class="skill-note">These helpers are operator conveniences. They should stay small and should not become release gates.</div>
+  <div class="skill-note">These helpers are operator conveniences. They should stay small and should not become release gates. If Codex tool calls fail before the repo command starts with <code>bubblewrap is unavailable</code>, run the sandbox probe here; installing packages inside NemoClaw service containers will not fix the host Codex launcher.</div>
   <h2>Executable checks</h2>
   <div class="skill-cmds">
     <div class="skill-cmd"><b>Safe push helper</b><code>scripts/dev/push --help</code></div>
+    <div class="skill-cmd"><b>Codex sandbox probe</b><code>scripts/dev/codex_sandbox_probe.sh</code></div>
     <div class="skill-cmd"><b>Git status</b><code>git status --short --branch</code></div>
   </div>
   <h2>Linkage map</h2>
-  <div class="skill-grid"><a class="skill-card" href="push"><b>push</b><span>safe push helper. Pulls with rebase before pushing and protects local tracked edits during the operation.</span></a></div>
+  <div class="skill-grid"><a class="skill-card" href="push"><b>push</b><span>safe push helper. Pulls with rebase before pushing and protects local tracked edits during the operation.</span></a><a class="skill-card" href="codex_sandbox_probe.sh"><b>codex_sandbox_probe.sh</b><span>Codex host sandbox probe. Checks bubblewrap and documents the rootless current-host repair path.</span></a></div>
   <h2>Interactive explorer</h2>
   <p>The explorer below opens source files, tours important sections, and checks documented paths against the repository tree.</p>
 </section>

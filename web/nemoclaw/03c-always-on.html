@@ -267,19 +267,22 @@ hljs.highlightAll();
 mountDiagram("#fig-calls", {
   kicker: "NO HUMAN IN THE LOOP",
   title: "The always-on loop",
-  width: 560, maxWidth: 560, boxW: 250, rowGap: 36,
+  maxWidth: 980,
+  boxW: 268,
+  boxH: 116,
+  gapX: 86,
+  top: 58,
   nodes: [
-    { id: "cron", label: "schedule", kind: "env", x: 0, y: 0, lines: ["cron / heartbeat", "fires on a timer"] },
-    { id: "gw",   label: "gateway",  kind: "agent", x: 0, y: 1,
-      lines: ["model plans, calls", "sandbox tools, repeats"], socket: "wakes in a fresh session" },
-    { id: "logs", label: "workspace / logs", kind: "data", x: 0, y: 2, lines: ["MEMORY.md, logs/"] },
+    { id: "cron", label: "schedule", kind: "env", x: 0, y: 0, lines: ["cron or heartbeat", "fires on a timer"] },
+    { id: "gw",   label: "gateway loop", kind: "agent", x: 1, y: 0,
+      lines: ["model plans, calls tools", "then repeats"], socket: "fresh session" },
+    { id: "logs", label: "workspace / logs", kind: "data", x: 2, y: 0, lines: ["MEMORY.md", "logs and artifacts"] },
   ],
   edges: [
-    { from: "cron", to: "gw",   label: "tick",    side: "top", tint: "env"   },
-    { from: "gw",   to: "logs", label: "results", side: "top", tint: "agent" },
-    { from: "gw",   to: "gw",   tint: "agent" },
+    { from: "cron", to: "gw",   label: "wake",  fromPort: "right", toPort: "left", labelDy: -42, tint: "env"   },
+    { from: "gw",   to: "logs", label: "write", fromPort: "right", toPort: "left", labelDy: -42, tint: "agent" },
+    { from: "logs", to: "gw",   label: "read",  fromPort: "bottom-left", toPort: "right", toOffset: 34, labelDy: 34, return: true, tint: "data"  },
   ],
-  caption: "With no human in the loop, the agent wakes on a schedule, runs its loop, and writes the results back to the workspace.",
 });
 
 // ── Shared WS connect snippet (used as prefix in each connect node) ──────────

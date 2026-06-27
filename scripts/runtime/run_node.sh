@@ -17,13 +17,22 @@ if command -v node >/dev/null 2>&1; then
   exec node "$ABS" "$@"
 fi
 
-if command -v docker >/dev/null 2>&1; then
+ENGINE="${CONTAINER_ENGINE:-}"
+if [ -z "$ENGINE" ]; then
+  for c in podman docker; do
+    if command -v "$c" >/dev/null 2>&1 && "$c" info >/dev/null 2>&1; then ENGINE="$c"; break; fi
+  done
+fi
+
+if [ -n "$ENGINE" ] && command -v "$ENGINE" >/dev/null 2>&1; then
   IMG=""
   for c in node:20-slim node:20-bookworm-slim node:20 node:lts-slim node:lts node:20-alpine; do
-    if docker image inspect "$c" >/dev/null 2>&1; then IMG="$c"; break; fi
+    if "$ENGINE" image inspect "$c" >/dev/null 2>&1; then IMG="$c"; break; fi
   done
   [ -z "$IMG" ] && IMG="node:20-slim"   # none local: pull it (small) -- correctness over speed
-  exec docker run --rm -u "$(id -u):$(id -g)" -v "$REPO":/work -w /work "$IMG" node "/work/$REL" "$@"
+  run_user=()
+  if [ "$ENGINE" = "podman" ]; then run_user+=(--userns=keep-id); else run_user+=(-u "$(id -u):$(id -g)"); fi
+  exec "$ENGINE" run --rm "${run_user[@]}" -v "$REPO":/work -w /work "$IMG" node "/work/$REL" "$@"
 fi
 
 LAB="$(docker ps --format '{{.Names}}' 2>/dev/null | grep -iE '(^|[-_])lab([-_]|$)|jupyter' | head -1 || true)"

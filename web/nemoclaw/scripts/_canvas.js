@@ -1,6 +1,6 @@
 // Interactive-cell runtime: mountCanvasFlow, mountRunCell, the helper-menu builders, error/log.
 // Leaf module: it imports the registries and primitives from _shared.js but references them only inside function bodies, so the import cycle stays load-safe.
-import { HELPER_FNS, REASONING_MODEL, SPECIALS, VIZ_BUILDERS, _labOnlyService, _stepLabOnly, browserChatFetch, chat, chatStream, contextWindow, cosineSim, coursePage, coursePages, diagramSVG, embed, estimateTokens, evalSandboxFs, evalSandboxNetwork, fetchRetry, formatSearchResults, ganttBarsSVG, getConfig, getKey, instantAnswer, mountAgentChat, mountChatUI, mountKeyPanel, openclawChat, sandboxExec, terminal, webSearch } from "./_shared.js";
+import { HELPER_FNS, REASONING_MODEL, SPECIALS, VIZ_BUILDERS, _labOnlyService, _stepLabOnly, browserChatFetch, chat, chatStream, contextWindow, cosineSim, coursePage, coursePages, diagramSVG, embed, estimateTokens, evalSandboxFs, evalSandboxNetwork, fetchRetry, formatSearchResults, ganttBarsSVG, getConfig, getKey, instantAnswer, mountAgentChat, mountChatUI, mountKeyPanel, openclawChat, sandboxExec, terminal, webSearch, wireFigureZoom } from "./_shared.js";
 import { makeViz } from "./_viz.js";
 
 // ── Cmd-/ · Ctrl-/ : toggle `// ` line comments on the selection ─────────────────
@@ -233,6 +233,7 @@ function _appendCellHtml(host, html, cls = "cell-log-html") {
   const div = document.createElement("div");
   div.className = cls;
   div.innerHTML = String(html);
+  div.querySelectorAll("svg.dg-svg").forEach(svg => wireFigureZoom(svg));
   host.appendChild(div);
   return div;
 }

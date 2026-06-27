@@ -463,7 +463,7 @@ helpers.log("rendered below. Edit the config and Run.");
     mountDiagram("#fig-calls", {
       kicker: "ONE POST · A LOOP INSIDE THE GATEWAY",
       title: "One agent call, expanded",
-      width: 760, height: 300, maxWidth: 720, boxW: 220, boxH: 132,
+      maxWidth: 760, boxW: 268, boxH: 116, gapX: 86, top: 58,
       nodes: [
         {
           id: "you", label: "your code", kind: "data", x: 0, y: 0,
@@ -487,7 +487,7 @@ helpers.log("rendered below. Edit the config and Run.");
     mountDiagram("#fig-toolsearch", {
       kicker: "ONE FLAG DECIDES WHETHER EXEC RUNS",
       title: "How toolSearch breaks exec, and how Recover fixes it",
-      width: 940, maxWidth: 880, boxW: 196, boxH: 104, rowGap: 40,
+      maxWidth: 1040, boxW: 252, boxH: 98, gapX: 92, rowGap: 76,
       nodes: [
         { id: "on", label: "toolSearch ON", kind: "neutral", x: 0, y: 0, lines: ["fresh-launchable default"] },
         { id: "loop", label: "tool_search_code", kind: "tool", x: 1, y: 0, lines: ["model loops on the", "code bridge"] },

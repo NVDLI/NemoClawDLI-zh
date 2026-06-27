@@ -205,7 +205,9 @@ def _engine(*args: str) -> str:
     that cannot run is an error, never a silent pass)."""
     p = subprocess.run(["bash", str(_RUN_ENGINE), *args],
                        capture_output=True, text=True)
-    if p.returncode not in (0, 1):       # 0 ok, 1 = blocking issues (still valid output); >1 = infra
+    if p.returncode not in (0, 1) or (p.returncode == 1 and not p.stdout.strip()):
+        # 0 ok, 1 = blocking issues only when the engine still emitted its JSON report.
+        # Empty stdout with return code 1 is usually container/socket failure from run_node.sh.
         raise RuntimeError(f"engine.js failed ({p.returncode}): {p.stderr.strip() or p.stdout.strip()}")
     return p.stdout
 
@@ -213,7 +215,10 @@ def _engine(*args: str) -> str:
 def _engine_json(*args: str) -> dict:
     out = _engine(*args)
     line = out.strip().splitlines()[-1] if out.strip() else "{}"
-    return json.loads(line)
+    try:
+        return json.loads(line)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"engine.js returned non-JSON output for {' '.join(args)}: {line[:240]}") from e
 
 
 def check(proj: Projection | None = None) -> dict:
