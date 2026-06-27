@@ -162,6 +162,19 @@ scripts/runtime/browser_env_probe.sh                       # proves container No
 CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only
 ```
 
+If Codex tool calls fail before the requested command starts with
+`bubblewrap is unavailable`, the missing dependency is in the host Codex
+execution environment, not in NemoClaw's microservice containers. Run:
+
+```bash
+scripts/dev/codex_sandbox_probe.sh
+```
+
+The durable fix is to add `bubblewrap` to the Codex environment spec/base image.
+The script also documents a rootless `--repair-user` fallback for the current
+host; do not copy an arbitrary binary into `codex-resources/bwrap`, because
+Codex hash-checks bundled resources.
+
 For full lab-network browser tests, start the stack first with the compose
 frontend reported by `scripts/runtime/browser_env_probe.sh`. Docker may be
 installed without the Compose v2 plugin, and Podman may work while

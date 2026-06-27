@@ -1589,6 +1589,9 @@ body.python-mode .py-mode-jlab-link { display: inline-block; }
 
 /* ── External figures (assets/figures/*.svg, fetched + injected by mountFigures) + zoom lightbox ── */
 .fig-embed { display: block; width: 100%; margin: 1.4em auto; position: relative; min-height: 40px; cursor: zoom-in; }
+.fig-zoom-host { position: relative; cursor: zoom-in; }
+.fig-zoom-host:focus-visible { outline: 2px solid var(--gs); outline-offset: 3px; }
+svg.dg-svg { font-family: var(--sans); }
 .fig-embed svg { width: 100%; height: auto; display: block; }
 .fig-embed::after { content: "⛶ zoom"; position: absolute; top: 8px; right: 10px; font: 600 .7rem var(--mono, monospace); color: var(--td); background: var(--bg); border: 1px solid var(--bd); border-radius: 999px; padding: 2px 8px; opacity: 0; transition: opacity .15s; pointer-events: none; }
 .fig-embed:hover::after, .fig-embed:focus-visible::after { opacity: .85; }

@@ -69,7 +69,7 @@ function _lightbox() {
       stage.innerHTML = "";
       svg.removeAttribute("style");
       svg.style.display = "block";
-      svg.style.background = "var(--gfx-bg)";
+      svg.style.background = "var(--gfx-bg, var(--bg, #0d0d0d))";
       svg.style.borderRadius = "8px";
       const vb = (svg.getAttribute("viewBox") || "").split(/[\s,]+/).map(Number);
       if (vb.length === 4 && vb[2] > 0 && vb[3] > 0) {
@@ -88,6 +88,28 @@ function _lightbox() {
   return _lb;
 }
 
+export function openFigureLightbox(svg) {
+  if (!svg) return;
+  _lightbox().open(svg.cloneNode(true));
+}
+
+export function wireFigureZoom(host, svg = null) {
+  if (!host) return;
+  const targetSvg = svg || (host.matches && host.matches("svg") ? host : host.querySelector("svg"));
+  if (!targetSvg || targetSvg.dataset.figZoomDone === "1") return;
+  targetSvg.dataset.figZoomDone = "1";
+  const clickHost = host.matches && host.matches("svg") ? targetSvg : host;
+  clickHost.classList.add("fig-zoom-host");
+  clickHost.setAttribute("role", "button");
+  clickHost.setAttribute("tabindex", "0");
+  clickHost.setAttribute("aria-label", (targetSvg.getAttribute("aria-label") || "Figure") + ", click to enlarge");
+  const open = () => openFigureLightbox(targetSvg);
+  clickHost.addEventListener("click", open);
+  clickHost.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
+  });
+}
+
 export function mountFigures(rootSel) {
   /* @doc <code>helpers.mountFigures(rootSel?)</code> ::
        Replace each <code>[data-svg-src]</code> placeholder under <code>rootSel</code> (default the whole
@@ -104,12 +126,7 @@ export function mountFigures(rootSel) {
       const svg = host.querySelector("svg");
       if (!svg) throw new Error("no <svg> in " + src);
       host.style.aspectRatio = "";   // the injected SVG now sets its own height
-      host.setAttribute("role", "button");
-      host.setAttribute("tabindex", "0");
-      host.setAttribute("aria-label", (svg.getAttribute("aria-label") || "Figure") + ", click to enlarge");
-      const open = () => _lightbox().open(svg.cloneNode(true));
-      host.addEventListener("click", open);
-      host.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
+      wireFigureZoom(host, svg);
     }).catch(() => {
       host.innerHTML = '<a href="' + src + '" target="_blank" rel="noopener">Open figure in a new tab</a>';
     });

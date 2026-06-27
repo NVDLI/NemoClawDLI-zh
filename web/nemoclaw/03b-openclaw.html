@@ -315,7 +315,7 @@ hljs.highlightAll();
 mountDiagram("#fig-calls", {
   kicker: "THE DIRECTORY IS THE CONFIGURATION",
   title: "What shapes each reply",
-  width: 1160, height: 300, maxWidth: 1040, boxW: 220, boxH: 124,
+  maxWidth: 980, boxW: 268, boxH: 108, gapX: 86, top: 58,
   nodes: [
     { id: "files", label: "workspace files", kind: "data",  x: 0, y: 0, lines: ["SOUL.md, AGENTS.md,", "TOOLS.md, USER.md"] },
     { id: "gw",    label: "OpenClaw gateway", kind: "agent", x: 1, y: 0, lines: ["folds the folder", "into the prompt"] },
@@ -323,10 +323,10 @@ mountDiagram("#fig-calls", {
   ],
 
   edges: [
-    { from: "files", to: "gw",    label: "read every turn", side: "top",    tint: "data"  },
-    { from: "gw",    to: "model", label: "system prompt",   side: "top",    tint: "agent" },
-    { from: "model", to: "gw",    label: "reply",           side: "bottom", tint: "model" },
-    { from: "gw",    to: "files", label: "writes back",     side: "bottom", tint: "agent" },
+    { from: "files", to: "gw",    label: "read every turn", fromPort: "right", toPort: "left", labelDy: -42, tint: "data"  },
+    { from: "gw",    to: "model", label: "system prompt",   fromPort: "right", toPort: "left", labelDy: -42, tint: "agent" },
+    { from: "model", to: "gw",    label: "reply",           fromPort: "bottom-left", toPort: "right", toOffset: 30, labelDy: 34, return: true, tint: "model" },
+    { from: "gw",    to: "files", label: "writes back",     fromPort: "bottom-left", toPort: "right", toOffset: 30, labelDy: 34, return: true, tint: "agent" },
   ],
 });
 
