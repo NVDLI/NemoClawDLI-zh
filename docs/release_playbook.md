@@ -62,6 +62,81 @@ Use these when the mirror lands on GitHub:
 - Use GitHub Actions environments for public Pages. Use required reviewers for production and concurrency so only one deploy runs at a time.
 - Keep fork PR jobs on read-only tokens. Do not expose model, DLI, Cloudflare, or deployment secrets to forked pull requests.
 
+## Public GitHub security baseline
+
+When the external mirror is public on GitHub, use GitHub-native security features
+for public intake and keep NVIDIA-hosted support services for private runtime,
+internal registries, confidential advisories, and DLI/Brev deployment evidence.
+Do not move secrets, launch URLs, NGC credentials, Cloudflare headers, or private
+scanner output to the public mirror.
+
+Baseline for public GitHub availability:
+
+- Enable and monitor the dependency graph. Public repositories have dependency
+  graph support by default, and the graph can show direct/transitive dependency
+  paths, vulnerable packages, licenses, and SBOM export.
+- Enable Dependabot alerts and assign ownership. Dependabot alerts scan default
+  branch dependency data when advisory data changes or the dependency graph
+  changes; use them for public alert visibility, but keep repo-local SCA because
+  not every advisory, transitive path, image layer, or runtime install is covered.
+- Add `dependabot.yml` after the mirror has stable branch protection. Start with
+  `pip`, `github-actions`, and Docker ecosystem updates. Use grouped updates and
+  labels to avoid notification floods.
+- Require `dependency-review-action` on pull requests that change manifests or
+  lock files. For public repositories the action can enforce dependency review;
+  configure it to fail on vulnerable additions and to honor license allow/deny
+  policy when that policy is defined.
+- Enable CodeQL/code scanning. Public repositories can use code scanning; upload
+  SARIF from third-party tools if CodeQL does not cover a check. Treat code
+  scanning as complementary to repo validators, not a replacement.
+- Enable secret scanning and push protection. Public repositories get secret
+  scanning automatically for supported patterns; add custom patterns only after
+  NVIDIA/org-specific token formats are approved for that public repo. Rotate
+  leaked credentials immediately; history cleanup is secondary after revocation.
+- Keep `SECURITY.md` or the GitHub private vulnerability reporting path clear
+  before public intake. Security reports should not go through normal Issues.
+- Publish or retain SBOM artifacts from CI. Prefer CycloneDX JSON from the
+  resolved environment, and upload/submit dependency data where the host supports
+  it. If dependency submission and dependency review both run, run submission
+  first or configure retries so PR review does not race missing snapshots.
+
+NVIDIA-hosted support remains appropriate when any of these are true:
+
+- The scan needs private base images, NGC access, internal package indexes, or
+  DLI/Brev deployment credentials.
+- The report contains non-public component names, private URLs, customer data,
+  internal service topology, or sensitive exploit detail.
+- The job requires privileged container behavior such as the OpenClaw/OpenShell
+  runtime path, Docker socket access, or GPU/CUDA image assembly.
+- A finding needs confidential triage before the public mirror can safely show it.
+
+## Security hardening roadmap
+
+The current repo-local guardrails are the floor: fast dependency floor audit,
+waiver audit, resolved-environment SCA, SBOM artifacts, source gate, and ship
+validation. Work beyond that should be split into small MRs with clear ownership.
+
+| Step | Public GitHub path | NVIDIA/internal path | Notes |
+|---|---|---|---|
+| Reproducible Python resolution | Add lock or constraints and Dependabot update policy | Use internal CI cache or build image as reference resolver | Reduces drift between local, CI, and lab image. |
+| Image SCA | Build public-safe images and scan with Trivy/Grype/OSV, upload SARIF where useful | Scan NGC/private/DLI images in internal CI or registry tooling | Do not publish private layer names or credentials. |
+| Dependency review | Require `dependency-review-action` on PRs | Keep GitLab `security_deep_sca` for canonical branch until mirror becomes source | GitHub review is PR-diff oriented; deep SCA is resolved-env oriented. |
+| Code scanning | Enable CodeQL default setup plus SARIF uploads for extra tools | Run proprietary or NVIDIA-hosted checks internally when rules are not public-safe | Public alerts should be actionable without exposing private topology. |
+| Secret scanning | Use GitHub secret scanning, push protection, and approved custom patterns | Keep internal secret scans for NVIDIA/private token families | Rotate first; do not rely on history rewriting as mitigation. |
+| Waivers/VEX | Keep `vulnerability-waivers.json`; consider VEX only if downstream consumers need machine-readable non-affected status | Keep confidential exceptions internal until safe to disclose | Waivers must expire and name owner/source. |
+| Governance | CODEOWNERS + protected branches + required checks | GitLab protected refs and confidential issue workflow remain canonical | Add external CODEOWNERS only when real org/team handles exist. |
+
+Legitimate stopping points:
+
+- Do not force full image builds on every documentation PR; schedule them, run them
+  on dependency/runtime/image changes, or use cached signed build outputs.
+- Do not publish scanner reports that disclose private image names, internal URLs,
+  or exploit paths. Summarize public-safe status and keep evidence internal.
+- Do not add broad Dependabot automation until branch protection, labels, owners,
+  and triage capacity exist. Otherwise update noise hides real risk.
+- Do not create permanent waivers for unfixed upstream vulnerabilities. Use
+  time-boxed waivers or remove the dependency when the package is unused.
+
 ## Internal GitLab settings
 
 Use these while GitLab remains canonical:
@@ -123,6 +198,10 @@ Release checklist:
 | Layer | Runs on | Blocks merge | Purpose |
 |---|---|---|---|
 | Static gate | every branch/PR | yes | structure, links, SKILL, source, course contract |
+| Dependency floor gate | every branch/PR | yes | prevent known vulnerable direct floors/pins from entering manifests |
+| Waiver gate | every branch/PR | yes | require owned, sourced, unexpired vulnerability exceptions |
+| Resolved-environment SCA | schedules, dependency/runtime changes, manual MR job | yes when dependency graph changes; otherwise advisory/manual | install workspace requirements, run `pip-audit --local --strict`, emit CycloneDX SBOM |
+| Image SCA | schedules, image/base/runtime changes, release candidates | yes for release candidates; too heavy for every prose PR | scan built service images and base layers |
 | Browser/runtime gate | runtime, Studio, OpenClaw, page JS changes | yes when touched | page execution and visual/runtime smoke |
 | Deployment gate | protected release branches and manual deploys | release manager | Pages and DLI platform evidence |
 
@@ -133,8 +212,20 @@ python3 scripts/validation/validate_layout.py --quiet
 python3 scripts/skills/skill_consistency.py
 python3 scripts/skills/skill_contract.py
 python3 scripts/compliance/source_gate.py
+python3 scripts/security/audit_python_dependencies.py
+python3 scripts/security/audit_vulnerability_waivers.py
 bash scripts/runtime/run_engine.sh --self-test
 python3 scripts/validation/validate_bundle.py --scope ship
+```
+
+For dependency changes, also run the resolved-environment SCA job or equivalent:
+
+```bash
+python3 -m venv .sca-venv
+.sca-venv/bin/python -m pip install --upgrade pip setuptools wheel
+.sca-venv/bin/python -m pip install -r workspace/requirements.txt
+.sca-venv/bin/python -m pip install pip-audit cyclonedx-bom
+PATH="$PWD/.sca-venv/bin:$PATH" .sca-venv/bin/python scripts/security/run_full_sca.py --execute --python-local --cyclonedx-env --out-dir scripts/security/reports/deep-workspace
 ```
 
 For page runtime or Studio changes:
@@ -205,6 +296,10 @@ Before public mirror:
 - [ ] GitHub issue/PR templates exist.
 - [ ] External repository protects `main` and `release/*`.
 - [ ] External repository has required checks mapped to the static gate.
+- [ ] Dependency graph, Dependabot alerts, dependency review, code scanning, and secret scanning are enabled or explicitly deferred with a reason.
+- [ ] `dependabot.yml` exists for public-safe ecosystems after owners and labels exist.
+- [ ] Resolved-environment SBOM artifacts are retained for releases.
+- [ ] Image SCA strategy is defined for public-safe images and NVIDIA/internal images separately.
 - [ ] External repository has Discussions enabled, with pinned welcome guidance.
 - [ ] CODEOWNERS is added after org/team handles are real.
 - [ ] Mirror is protected-branch/tag-only until public contribution intake is ready.
@@ -214,6 +309,8 @@ Before public mirror:
 Before student PR intake:
 
 - [ ] Fork PRs cannot access secrets.
+- [ ] Dependency-review check blocks vulnerable dependency additions.
+- [ ] Secret scanning push protection is enabled where available; custom patterns are approved before use.
 - [ ] PR template asks for issue link, surfaces touched, validation, and source/licensing impact.
 - [ ] Maintainer triage SLA is defined internally.
 - [ ] Labels and milestones are mirrored between GitLab and GitHub.
@@ -228,3 +325,7 @@ Before student PR intake:
 - GitHub Actions deployments support environments, protection rules, concurrency, and deployment history.
 - GitHub Discussions is for transparent community conversations that are not tracked code work.
 - GitHub Projects can provide board-style planning for issues and pull requests.
+- GitHub dependency graph is available for public repositories by default and can export SBOMs.
+- GitHub dependency review and dependency-review-action are available for public repositories and can block vulnerable dependency additions.
+- GitHub code scanning is available for public repositories, with CodeQL or SARIF-uploaded third-party tools.
+- GitHub secret scanning runs automatically for public repositories and can be extended with custom patterns and validity checks where available.

@@ -104,6 +104,21 @@ if [ -f "$DEPENDENCY_AUDIT" ]; then
     fi
 fi
 
+
+# ── RULE 3e: vulnerability waiver registry guard ────────────────────────────
+# Any accepted vulnerability exception must be explicit, owned, sourced, and
+# time-boxed. Expired waivers fail locally and in CI.
+WAIVER_AUDIT="$T1/scripts/security/audit_vulnerability_waivers.py"
+if [ -f "$WAIVER_AUDIT" ]; then
+    if ! python3 "$WAIVER_AUDIT"; then
+        echo ""
+        echo "pre-push: REFUSING PUSH - vulnerability waiver registry failed."
+        echo "Fix the expired or malformed waiver, then run:"
+        echo "  python3 scripts/security/audit_vulnerability_waivers.py"
+        exit 1
+    fi
+fi
+
 # ── RULE 4: layout / link glue guard ──────────────────────────────────────────
 LAYOUT="$T1/scripts/validation/validate_layout.py"
 if [ -f "$LAYOUT" ]; then

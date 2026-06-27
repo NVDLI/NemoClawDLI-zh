@@ -17,8 +17,13 @@ stages: [test, deploy]
 variables:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
   GIT_DEPTH: "20"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
 .with_python_node: &with_python_node
+  cache:
+    key: "$CI_JOB_NAME"
+    paths:
+      - .cache/pip
   image: node:20-bookworm-slim
   # The available instance runners are all tagged; untagged jobs match none of them.
   # `pages` is the Shared Pages Runner (a Docker runner) that picks these up.
@@ -45,6 +50,7 @@ test:
     - python3 scripts/skills/skill_contract.py
     - python3 scripts/compliance/source_gate.py
     - python3 scripts/security/audit_python_dependencies.py
+    - python3 scripts/security/audit_vulnerability_waivers.py
     - bash   scripts/runtime/run_engine.sh --self-test
     - 'L=""; case "$CI_COMMIT_BRANCH" in translate-*) L="--lang ${CI_COMMIT_BRANCH#translate-}";; esac; python3 scripts/validation/validate_bundle.py --scope ship $L'
     # Live materials drift check: keep ordinary branch pipelines offline so arXiv/devblog rate
@@ -66,6 +72,61 @@ test:
     paths:
       - docs/validation/
     expire_in: 30 days
+
+security_sca:
+  <<: *with_python_node
+  stage: test
+  script:
+    - mkdir -p scripts/security/reports
+    - pip install --break-system-packages -q --upgrade pip setuptools wheel pip-audit cyclonedx-bom >/dev/null
+    - python3 scripts/security/run_full_sca.py --execute --python-local --cyclonedx-env --out-dir scripts/security/reports
+  artifacts:
+    when: always
+    name: "security-sca-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - scripts/security/reports/
+    expire_in: 30 days
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: on_success
+      allow_failure: false
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+      allow_failure: false
+    - if: '$CI_COMMIT_BRANCH'
+      when: manual
+      allow_failure: false
+    - when: never
+
+security_deep_sca:
+  <<: *with_python_node
+  stage: test
+  timeout: 2h
+  script:
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends python3-venv >/dev/null
+    - rm -rf .sca-venv
+    - python3 -m venv .sca-venv
+    - .sca-venv/bin/python -m pip install -q --upgrade pip setuptools wheel
+    - .sca-venv/bin/python -m pip install -q -r workspace/requirements.txt
+    - .sca-venv/bin/python -m pip install -q pip-audit cyclonedx-bom
+    - PATH="$CI_PROJECT_DIR/.sca-venv/bin:$PATH" .sca-venv/bin/python scripts/security/run_full_sca.py --execute --python-local --cyclonedx-env --out-dir scripts/security/reports/deep-workspace
+  artifacts:
+    when: always
+    name: "security-deep-sca-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - scripts/security/reports/deep-workspace/
+    expire_in: 30 days
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: on_success
+      allow_failure: false
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+      allow_failure: false
+    - if: '$CI_COMMIT_BRANCH'
+      when: manual
+      allow_failure: false
+    - when: never
 
 pages:
   <<: *with_python_node

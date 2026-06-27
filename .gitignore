@@ -63,6 +63,9 @@ workspace/export/
 *.parquet
 # Generated validation reports (written by validate_bundle.py / the DGX watcher)
 docs/validation/
+scripts/security/reports/
+.sca-venv/
+.cache/pip/
 
 # Local env + secrets (never commit)
 .env

@@ -1,6 +1,6 @@
 # Python dependency vulnerability guard
 
-This repo uses two layers for Python dependency security.
+This repo uses three layers for Python dependency security.
 
 ## Fast source gate
 
@@ -24,7 +24,8 @@ PyPI/OSV reports a known vulnerability for that declared release.
 
 This catches the class that triggered the Starlette, protobuf, and MCP report:
 a source manifest allowed a vulnerable minimum such as `starlette>=0.40.0` or
-`mcp>=1.5.0`.
+`mcp>=1.5.0`. It also tracks vulnerable transitive packages surfaced by the
+resolved workspace scan, such as `aiohttp` and `cryptography`. It also makes unused vulnerable runtime dependencies visible so they can be removed instead of waived.
 
 The check is wired into:
 
@@ -33,18 +34,63 @@ The check is wired into:
 - `scripts/security/SKILL.html`, so an agent can discover and run it from the security visor
 - `AGENT_QUICKSTART.md`, so it appears in the normal validation cadence
 
+## Waiver registry
+
+Known vulnerability exceptions must be explicit, owned, sourced, and time-boxed in:
+
+```bash
+scripts/security/vulnerability-waivers.json
+```
+
+The registry is intentionally empty by default. Any entry must include:
+
+- `id`: advisory ID, CVE, GHSA, or BDSA identifier
+- `package`: affected package or image component
+- `reason`: why the risk is accepted for this repo
+- `owner`: accountable person or team
+- `expires`: `YYYY-MM-DD`
+- `source`: scanner report, issue, MR, or advisory URL
+
+Validate it with:
+
+```bash
+python3 scripts/security/audit_vulnerability_waivers.py
+```
+
+Expired waivers fail locally and in CI. Use a waiver only when the scanner finding
+is not currently actionable; do not use it to bypass an available safe upgrade.
+
 ## Full installed-environment SCA
 
 The fast gate does not replace a full transitive scan. Once the workspace/test
 container has installed the real environment, run one of the standard scanners
 inside that environment.
 
-Preferred Python environment scan:
+Preferred repo wrapper:
+
+```bash
+python3 scripts/security/run_full_sca.py
+python3 scripts/security/run_full_sca.py --execute --python-local --cyclonedx-env --osv-source
+python3 scripts/security/run_full_sca.py --execute --image <built-image>
+```
+
+The wrapper is the agent-discoverable SCA entry point. It prints the exact scanner
+commands by default and runs only selected scanners when `--execute` is provided.
+It never installs tools.
+
+Preferred Python environment scan when running commands directly:
 
 ```bash
 python3 -m pip install pip-audit
 python3 -m pip_audit --local --strict --format json --output /tmp/pip-audit.json
 python3 -m pip_audit --local --strict
+```
+
+CycloneDX SBOM for the installed Python environment:
+
+```bash
+python3 -m pip install cyclonedx-bom
+cyclonedx-py environment --of JSON --output-file /tmp/python-env.cdx.json
 ```
 
 Source or image scan when OSV-Scanner is available:
@@ -59,12 +105,52 @@ requests. Use that as the server-side project policy layer when the instance has
 it enabled; keep this repo-local audit as the fast developer and agent-visible
 floor guard.
 
+CI includes two SCA jobs:
+
+- `security_sca`: manual on branches/default branch and automatic on schedules. It
+  scans the CI Python environment after installing scanner tooling and emits SBOM
+  artifacts under `scripts/security/reports/`.
+- `security_deep_sca`: manual on branches/default branch and automatic on
+  schedules. It creates an isolated `.sca-venv`, installs
+  `workspace/requirements.txt`, audits the resolved workspace environment, and
+  emits a CycloneDX SBOM under `scripts/security/reports/deep-workspace/`. This
+  job has a 2 hour timeout because full dependency resolution can be slow.
+
+Use the GitLab SBOM Dependency Scanning policy layer for continuous
+advisory-database rescans of default-branch SBOM components.
+
+## Next hardening steps
+
+These are intentionally not hidden as vague future work. File separate issues/MRs
+when taking them on:
+
+1. Add reproducible Python resolution with a constraints or lock workflow. The
+   current floor plus resolved-env SCA model catches vulnerable outcomes, but it
+   does not guarantee identical resolution across machines.
+2. Add image SCA for built service images. Use public-safe scanners such as Trivy,
+   Grype, or OSV-Scanner for public images; keep NVIDIA/private base image scans
+   in internal CI or registry tooling when image names/layers are not public-safe.
+3. Enable public GitHub supply-chain features when mirrored externally: dependency
+   graph, Dependabot alerts, dependency review action, CodeQL/code scanning, and
+   secret scanning. Keep GitLab/internal jobs authoritative while GitLab remains
+   canonical.
+4. Add `CODEOWNERS` and protected-branch rules for dependency manifests, Dockerfiles,
+   `scripts/security/*`, CI files, deploy files, and waiver registry changes.
+5. Consider VEX only if downstream consumers need machine-readable non-affected
+   statements. Until then, keep the waiver registry small, explicit, and expiring.
+6. Add release SBOM retention. Store CycloneDX artifacts for resolved environments
+   and release images with each protected release.
+
 ## Maintenance
 
 When a new advisory arrives:
 
 1. Raise the package floor or pin in the relevant manifest.
 2. Add the package and required floor to `REQUIRED_FLOORS` in `scripts/security/audit_python_dependencies.py` if it is a dependency class we must track explicitly.
-3. Run `python3 scripts/security/audit_python_dependencies.py`.
-4. Run the usual repo gate.
-5. Record the full installed-environment scan result when the test/lab container is available.
+3. If a temporary exception is unavoidable, add a time-boxed entry to `scripts/security/vulnerability-waivers.json`.
+4. Run `python3 scripts/security/audit_python_dependencies.py`.
+5. Run `python3 scripts/security/audit_vulnerability_waivers.py`.
+6. Run `python3 scripts/security/run_full_sca.py --execute --python-local --cyclonedx-env` in the built environment.
+7. Run the `security_deep_sca` CI job or the equivalent isolated-venv command when the full workspace dependency graph changed.
+8. Run the usual repo gate.
+9. Record the full installed-environment scan result when the test/lab container is available.
