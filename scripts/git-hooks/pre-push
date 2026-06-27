@@ -89,6 +89,21 @@ if [ -f "$SOURCE_GATE" ]; then
         exit 1
     fi
 fi
+# ── RULE 3d: Python dependency vulnerability floor guard ─────────────────────
+# Fast source-level SCA guard: query PyPI/OSV metadata for dependency floors and
+# exact pins declared in requirements files and service Dockerfiles. Full transitive
+# SCA still belongs in the built test/lab environment with pip-audit or OSV-Scanner.
+DEPENDENCY_AUDIT="$T1/scripts/security/audit_python_dependencies.py"
+if [ -f "$DEPENDENCY_AUDIT" ]; then
+    if ! python3 "$DEPENDENCY_AUDIT"; then
+        echo ""
+        echo "pre-push: REFUSING PUSH - Python dependency vulnerability audit failed."
+        echo "Raise the vulnerable floor/pin, then run:"
+        echo "  python3 scripts/security/audit_python_dependencies.py"
+        exit 1
+    fi
+fi
+
 # ── RULE 4: layout / link glue guard ──────────────────────────────────────────
 LAYOUT="$T1/scripts/validation/validate_layout.py"
 if [ -f "$LAYOUT" ]; then

@@ -146,6 +146,7 @@ under node):
 ```bash
 python3 scripts/validation/validate_layout.py --quiet      # layout + link glue
 python3 scripts/skills/skill_consistency.py             # skill-meta vs the real tree
+python3 scripts/security/audit_python_dependencies.py    # declared floors/pins have no known PyPI/OSV vulns
 bash    scripts/runtime/run_engine.sh --self-test        # link-engine self-test
 python3 scripts/validation/validate_bundle.py --scope ship  # grounding, reachability, page audit, em-dash
 ```
@@ -181,8 +182,8 @@ bash scripts/build/install-hooks.sh
 
 This symlinks `scripts/git-hooks/{pre-commit,pre-push}` into `.git/hooks/`.
 pre-commit covers notebook-corruption, canvas-HTML, and page-runtime guards.
-pre-push runs the rebase guard, skill_consistency, validate_layout, and the
-link-projection gate.
+pre-push runs the rebase guard, skill_consistency, dependency vulnerability
+floor audit, validate_layout, and the link-projection gate.
 
 CI: `.gitlab-ci.yml` and `.github/workflows/pages.yml` run the same gate, then
 `scripts/build/build_pages.sh` publishes a fully client-side site to GitLab Pages

@@ -15,7 +15,8 @@
     "scripts/git-hooks/pre-commit",
     "scripts/git-hooks/pre-push",
     "scripts/build/install-hooks.sh",
-    "scripts/compliance/source_gate.py"
+    "scripts/compliance/source_gate.py",
+    "scripts/security/audit_python_dependencies.py"
   ],
   "explorer": "../../web/_skill_explorer.js"
 }
@@ -43,11 +44,12 @@
 <section class="skill-static" aria-labelledby="skill-title">
   <nav class="skill-nav"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a></nav>
   <h1 id="skill-title">scripts/git-hooks local hooks</h1>
-  <p>Local git hooks live here. Install them from the grouped build tools.</p>
+  <p>Local git hooks live here. Install them from the grouped build tools; pre-push includes the dependency vulnerability floor audit.</p>
   <h2>Executable checks</h2>
   <div class="skill-cmds">
     <div class="skill-cmd"><b>Install hooks</b><code>bash scripts/build/install-hooks.sh</code></div>
     <div class="skill-cmd"><b>Source gate</b><code>python3 scripts/compliance/source_gate.py</code></div>
+    <div class="skill-cmd"><b>Dependency vulnerability</b><code>python3 scripts/security/audit_python_dependencies.py</code></div>
   </div>
   <h2>Linkage map</h2>
   <div class="skill-grid">

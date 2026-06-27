@@ -3,18 +3,20 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>scripts/security iframe proxy audit</title>
+<title>scripts/security audits</title>
 
 <script type="application/json" id="skill-meta">
 {
   "schema": "dir-skill/1.0",
   "node_type": "directory-explorer",
-  "title": "scripts/security iframe proxy audit",
+  "title": "scripts/security audits",
   "source_dir": "scripts/security/",
-  "summary": "Security checks for the course browser runtime. Main keeps iframe execution support, but proxy execution is an explicit learner or host-page opt-in. This branch does not change Cloudflare Worker source; it documents worker follow-up findings for deployment-owner review.",
+  "summary": "Security checks for the course browser runtime and Python dependency declarations. Agents start here for iframe proxy opt-in checks and dependency vulnerability floor checks.",
   "related": [
     "scripts/security/audit_iframe_proxy_opt_in.py",
     "scripts/security/iframe_proxy_worker_findings.md",
+    "scripts/security/audit_python_dependencies.py",
+    "docs/dependency_security.md",
     "web/nemoclaw/scripts/_shared.js",
     "cors-proxy/cors-proxy-worker-build.js",
     "cors-proxy/cors-proxy-worker-openclaw.js"
@@ -25,8 +27,8 @@
 
 <script type="application/json" id="explorer-config">
 {
-  "title": "scripts/security iframe proxy audit",
-  "summary": "Main supports LMS/static iframe execution, but it is not the silent default. The browser runtime exposes an explicit toggle and URL flag. Worker source changes are out of scope for this branch, so this folder records follow-up findings rather than patching deployed-worker code.",
+  "title": "scripts/security audits",
+  "summary": "Security checks live here. Browser iframe proxy use stays explicit, and Python dependency floors/pins are checked against PyPI/OSV metadata before a change leaves development.",
   "model": "nvidia/nemotron-3-nano-30b-a3b",
   "ties": ["build", "security"],
   "nav": {
@@ -43,6 +45,16 @@
       "path": "iframe_proxy_worker_findings.md",
       "role": "worker follow-up findings",
       "desc": "Documents proxy-worker concerns for a later deployment-owner MR without changing worker source in this branch."
+    },
+    {
+      "path": "audit_python_dependencies.py",
+      "role": "dependency vulnerability floor audit",
+      "desc": "Checks Python dependency floors and exact pins against PyPI/OSV vulnerability metadata."
+    },
+    {
+      "path": "../../docs/dependency_security.md",
+      "role": "dependency security process",
+      "desc": "Explains the fast source gate, full pip-audit/OSV scans, and GitLab Dependency Scanning policy layer."
     }
   ],
   "tour": [
@@ -70,18 +82,22 @@
 <body>
 <section class="skill-static" aria-labelledby="skill-title">
   <nav class="skill-nav"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a></nav>
-  <h1 id="skill-title">scripts/security iframe proxy audit</h1>
-  <p>Main supports LMS/static iframe execution, but it is not the silent default. The browser runtime exposes an explicit toggle and URL flag. Worker source changes are out of scope for this branch, so this folder records follow-up findings rather than patching deployed-worker code.</p>
+  <h1 id="skill-title">scripts/security audits</h1>
+  <p>Security checks live here. Browser iframe proxy use stays explicit, and Python dependency floors/pins are checked against PyPI/OSV metadata before a change leaves development.</p>
   <div class="skill-note">Run commands from the repository root. Root-level script paths remain compatibility entrypoints; implementation files live in this directory tree.</div>
   <h2>Executable checks</h2>
   <div class="skill-cmds">
     <div class="skill-cmd"><b>Iframe proxy audit</b><code>python3 scripts/security/audit_iframe_proxy_opt_in.py</code></div>
-    <div class="skill-cmd"><b>Ship gate includes audit</b><code>python3 scripts/validation/validate_bundle.py --no-write --scope ship</code></div>
+    <div class="skill-cmd"><b>Dependency vulnerability audit</b><code>python3 scripts/security/audit_python_dependencies.py</code></div>
+    <div class="skill-cmd"><b>Full container SCA</b><code>python3 -m pip_audit --local --strict</code></div>
+    <div class="skill-cmd"><b>Ship gate</b><code>python3 scripts/validation/validate_bundle.py --no-write --scope ship</code></div>
   </div>
   <h2>Linkage map</h2>
   <div class="skill-grid">
     <a class="skill-card" href="audit_iframe_proxy_opt_in.py"><b>audit_iframe_proxy_opt_in.py</b><span>iframe proxy source audit. Checks that direct API use is default, iframe proxy mode is explicit, billing headers are always present for tracking, and worker follow-up findings are documented.</span></a>
     <a class="skill-card" href="iframe_proxy_worker_findings.md"><b>iframe_proxy_worker_findings.md</b><span>worker follow-up findings. Documents proxy-worker concerns for a later deployment-owner MR without changing worker source in this branch.</span></a>
+    <a class="skill-card" href="audit_python_dependencies.py"><b>audit_python_dependencies.py</b><span>dependency vulnerability floor audit. Checks tracked Python dependency declarations against PyPI/OSV metadata.</span></a>
+    <a class="skill-card" href="../../docs/dependency_security.md"><b>dependency_security.md</b><span>standard integration path for fast source checks, full pip-audit/OSV scans, and GitLab Dependency Scanning.</span></a>
   </div>
   <h2>Interactive explorer</h2>
   <p>The explorer below opens source files, tours important sections, and checks documented paths against the repository tree.</p>
