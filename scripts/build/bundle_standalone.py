@@ -48,11 +48,11 @@ DEFAULT_OUT = TASK1 / "web_standalone"
 # Regex catalogue. Tested against every page in web/.
 # ────────────────────────────────────────────────────────────────────────────
 CSS_LINK_RE = re.compile(
-    r'<link\s+rel="stylesheet"\s+href="styles/_style\.css"\s*/?>',
+    r'<link\s+rel="stylesheet"\s+href="(?:styles/)?_style\.css"\s*/?>',
     re.IGNORECASE,
 )
 IMPORT_LINE_RE = re.compile(
-    r'^\s*import\s+\{[^}]*\}\s+from\s+["\']\./scripts/_shared\.js["\'];?\s*$',
+    r'^\s*import\s+\{[^}]*\}\s+from\s+["\']\./(?:scripts/)?_shared\.js["\'];?\s*$',
     re.MULTILINE,
 )
 TOPBAR_RE = re.compile(
@@ -526,6 +526,14 @@ THEME_INIT_JS = (
 )
 
 
+def _first_file(*paths: Path) -> Path:
+    for path in paths:
+        if path.is_file():
+            return path
+    names = ", ".join(str(p) for p in paths)
+    raise FileNotFoundError(names)
+
+
 def bundle_one(html_path: Path, css_text: str, lite_css: str, shared_js: str,
                full: bool = False) -> str:
     """Bundle one page into a self-contained file.
@@ -658,9 +666,12 @@ def main() -> int:
                 pass
     out.mkdir(parents=True, exist_ok=True)
 
-    css_text = (web / "styles" / "_style.css").read_text(encoding="utf-8")
-    lite_css = (web / "styles" / "_lite_overlay.css").read_text(encoding="utf-8")
-    shared_js = (web / "scripts" / "_shared.js").read_text(encoding="utf-8")
+    # Normal source uses styles/ and scripts/. Translation overlays staged under
+    # i18n/<lang>/ may be flat (_style.css, _shared.js) after archive filtering.
+    # Support both so language builds do not silently disappear from Pages.
+    css_text = _first_file(web / "styles" / "_style.css", web / "_style.css").read_text(encoding="utf-8")
+    lite_css = _first_file(web / "styles" / "_lite_overlay.css", web / "_lite_overlay.css").read_text(encoding="utf-8")
+    shared_js = _first_file(web / "scripts" / "_shared.js", web / "_shared.js").read_text(encoding="utf-8")
 
     pages = sorted(p for p in web.glob("*.html") if not p.name.startswith("."))
     if not pages:
@@ -680,11 +691,17 @@ def main() -> int:
     # per-section modules scripts/_shared.js imports in turn (e.g. _openshell.js) all resolve as siblings,
     # loaded once via ES-module caching exactly as the lab serves them. Globbing _*.js carries any
     # module the split adds without a per-module edit here.
-    for mod in sorted((web / "scripts").glob("_*.js")):
-        dst = out / "scripts" / mod.name
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(mod, dst)
-        print(f"  shipped scripts/{mod.name}  ({dst.stat().st_size // 1024} KB)")
+    script_dirs = [(web / "scripts", out / "scripts", "scripts/")]
+    if any((web / name).is_file() for name in ("_shared.js", "_canvas.js")):
+        script_dirs.append((web, out, ""))
+    for src_dir, dst_dir, label_prefix in script_dirs:
+        if not src_dir.is_dir():
+            continue
+        for mod in sorted(src_dir.glob("_*.js")):
+            dst = dst_dir / mod.name
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(mod, dst)
+            print(f"  shipped {label_prefix}{mod.name}  ({dst.stat().st_size // 1024} KB)")
 
     # The SKILL hubs render via web/_skill_explorer.js, which lives one level ABOVE --src (one renderer
     # serves every surface). Subdir SKILLs live at scripts/SKILL.html, styles/SKILL.html, assets/SKILL.html,
@@ -704,6 +721,12 @@ def main() -> int:
             if f.is_file():
                 shutil.copy2(f, dst_styles / f.name)
         print(f"  copied styles/      ({sum(1 for p in dst_styles.iterdir() if p.is_file())} files)")
+    else:
+        flat_styles = [f for f in (web / "_style.css", web / "_lite_overlay.css") if f.is_file()]
+        for f in flat_styles:
+            shutil.copy2(f, out / f.name)
+        if flat_styles:
+            print(f"  copied flat styles  ({len(flat_styles)} files)")
 
     scripts_skill = web / "scripts" / "SKILL.html"
     if scripts_skill.is_file():
