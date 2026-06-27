@@ -57,7 +57,7 @@
   "title": "Image provenance",
   "source_dir": "web/nemoclaw/assets/",
   "self_path": "web/nemoclaw/assets/SKILL.html",
-  "summary": "Every course image has a direct asset link, source/license metadata, and a lesson link showing where it appears. Contributor names belong in provenance and SVG comments, not learner-facing captions or narrative prose. Avoid issue-title phrasing such as story/narrative/architecture when the learner-facing concept is narrower."
+  "summary": "Every course image has a direct asset link, source/license metadata, and a lesson link showing where it appears. Contributor names belong in provenance and SVG comments, not learner-facing captions or narrative prose. Avoid issue-title phrasing such as story/narrative/architecture when the learner-facing concept is narrower. Do not modify an SVG file unless the user explicitly asks for SVG changes or the edit converts an authored source into a tone-safe generated asset."
 }</script>
 <script type="application/json" id="provenance">{
   "repo_license": "Apache-2.0. Course-authored diagrams and support files are contributed under the repository license unless a row marks external terms.",
@@ -68,7 +68,7 @@
     "conversion": "paper figure converted to SVG and used as a fixed white image"
   },
   "layout_note": "All SVG course graphics now live under assets/figures/. Paper conversions such as ReAct, ReWOO, and the original RAG architecture stay fixed-white because the course renders them as img elements, not theme-aware inline SVGs.",
-  "attribution_policy": "Credit contributors in this provenance page and in source comments. Keep learner-facing page prose and figure captions focused on the concept, not the contributor name or issue title. Do not inherit reviewer shorthand such as story, narrative, or architecture map unless the page actually teaches that abstraction.",
+  "attribution_policy": "Credit contributors in this provenance page and in source comments. Keep learner-facing page prose and figure captions focused on the concept, not the contributor name or issue title. Do not inherit reviewer shorthand such as story, narrative, or architecture map unless the page actually teaches that abstraction. Insert existing SVGs as-is; modify SVG source only when explicitly requested or when converting authored source into a tone-safe generated asset.",
   "figures": [
     {
       "file": "favicon.ico",

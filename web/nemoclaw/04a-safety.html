@@ -110,25 +110,33 @@
   </ul>
 
   <div class="callout">
-    <strong>The OpenClaw / OpenShell / NemoClaw split.</strong> OpenClaw is the
-    agent harness that chooses what to do given the room it has to move.
-    OpenShell is the kernel sandbox in front of it that sets the bounds
-    of that room, enforcing one policy on every filesystem access,
-    network connection, and syscall the agent attempts. Each piece stays
-    small and testable because neither does the other's job. OpenShell is
-    also agent-agnostic: it can sit in front of OpenClaw,
-    <a href="https://nousresearch.com/" target="_blank" rel="noopener">Hermes from Nous Research</a>,
-    or a deep-agent workflow that needs OS-level containment. NemoClaw is the
-    reference stack that packages OpenClaw and OpenShell with lifecycle commands,
-    policy presets, and deployment defaults.
+    <strong>The OpenClaw / OpenShell / NemoClaw split.</strong> 
+    <ul>
+      <li><a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener">OpenClaw</a> is the multi-channel agent framework that chooses what to do given the room it has to move.
+      <li><a href="https://github.com/NVIDIA/openshell" target="_blank" rel="noopener">OpenShell</a> is the security runtime in front of it: sandbox, policy engine, gateway,
+    and privacy router. It sets the bounds of that room, enforcing policy on
+    filesystem access, network connections, and process behavior. OpenShell is also
+    agent-agnostic: it can sit in front of
+    <a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener">OpenClaw</a>,
+    <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Nous Research's Hermes</a>,
+    <a href="https://github.com/langchain-ai/deepagents" target="_blank" rel="noopener">LangChain deepagents</a>,
+    or just about any workflow that needs OS-level containment.</li>
+    <li>
+      <a href="https://www.nvidia.com/en-us/ai/nemoclaw/" target="_blank" rel="noopener">NemoClaw</a> is the reference stack that packages OpenClaw and OpenShell with lifecycle commands,
+      policy presets, local inference guidance, and deployment defaults.
+    </li>
   </div>
 
   <h2>Four mechanisms OpenShell composes</h2>
   <p>OpenShell enforces its policy through four kernel-level mechanisms.
      None of them is new on its own. The value comes from using all four
      together, with one policy file as the single source of truth.</p>
-<figure style="margin:1.4em 0"><div class="fig-embed" data-svg-src="assets/figures/04a-safety-1.svg" style="aspect-ratio:720 / 320"></div><figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Prompt rules and application guardrails shape the agent before kernel containment enforces the final boundary. The blocked arrow shows an outbound action stopped before it reaches disk or network.</figcaption></figure>
-
+  <figure style="margin:1.4em 0">
+    <div class="fig-embed" data-svg-src="assets/figures/04a-safety-1.svg" style="aspect-ratio:720 / 320"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">
+      Prompt rules and application guardrails shape the agent before kernel containment enforces the final boundary. The blocked arrow shows an outbound action stopped before it reaches disk or network.
+    </figcaption>
+  </figure>
 
   <div class="layers">
     <div class="layer-card">
@@ -174,19 +182,16 @@
 
   <div class="callout">
     <p><strong>Same runtime as Kickstart.</strong> Every cell here drives the same
-       OpenClaw agent on your
-       <a href="https://brev.nvidia.com/launchable/deploy/now?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS" target="_blank" rel="noopener">NemoClaw launchable on Brev</a>,
-       so if one logs <code>⚠ DEGRADED</code> the agent is looping on
-       <code>tool_search_code</code> instead of acting.</p>
-    <p>Shape the runtime with the recover cell below and then re-run, and on a freshly launched
-       instance run it once before you start anything else.</p>
+       OpenClaw agent you connected on the Kickstart page.</p>
   </div>
 
   <div id="gw-recover"></div>
 
   <figure style="margin:1.4em 0">
     <div id="fig-calls"></div>
-    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Prompt rules and application guardrails shape the agent before kernel containment enforces the final boundary. The blocked arrow shows an outbound action stopped before it reaches disk or network.</figcaption>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">
+      Prompt rules and application guardrails shape the agent before kernel containment enforces the final boundary. The blocked arrow shows an outbound action stopped before it reaches disk or network.
+    </figcaption>
   </figure>
 
   <h2>Watch the kernel decide</h2>
@@ -320,8 +325,7 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
 
   <div class="callout">
     <strong>Each result is a real kernel decision.</strong> The live half of each flow runs
-    on your
-    <a href="https://brev.nvidia.com/launchable/deploy/now?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS" target="_blank" rel="noopener">Brev launchable</a>
+    on the launchable you connected in Kickstart
     through <code>openshell sandbox exec</code>, so each result you read back is
     a decision the kernel made on the wire.
     Keep your launchable open in another tab so its Cloudflare Access session stays

@@ -128,12 +128,15 @@
   </figure>
 
   <div class="callout">
-    <p><strong>Same runtime as Kickstart.</strong> These cells reach the agent on your
-       <a href="https://brev.nvidia.com/launchable/deploy/now?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS" target="_blank" rel="noopener">NemoClaw launchable on Brev</a>
-       through the gateway, which is the only channel you have because the launchable's
-       <code>/v1/chat/completions</code> is not reachable directly from the browser.
-       Should a cell log
-       <code>⚠ DEGRADED</code> or stall, shape the runtime with the health-check and
+    <p><strong>Same runtime as Kickstart.</strong> These cells reach the agent you
+      connected on the Kickstart page, as kickstarted through the
+      <a href="https://brev.nvidia.com/launchable/deploy/now?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS" target="_blank" rel="noopener">NemoClaw launchable on Brev</a>
+       If you wanted to create a local kickstart, you could also follow the
+       <a href="https://build.nvidia.com/spark/nemoclaw-applications" target="_blank" rel="noopener">NemoClaw setup playbook</a> 
+       and tweak the code so that the connection goes through properly <i>(recommended as an agent-assisted activity)</i>.
+       The gateway is the only channel you have because the launchable's
+       <code>/v1/chat/completions</code> is not reachable directly per the launchable's settings.
+       Should a cell log <code>⚠ DEGRADED</code> or stall, shape the runtime with the health-check and
        recover cells that follow and that you run once on each freshly launched instance.</p>
   </div>
 
