@@ -2,6 +2,12 @@
 
 What runtime, browser, service, or deployment behavior failed?
 
+## Current release target
+
+- Course: `web/nemoclaw/` unless this is a bundle-wide issue
+- Runtime: CPU service stack (`cpu/`, `workspace/`, `deploy/`) unless stated otherwise
+- Bundle scope: course-specific or bundle-wide
+
 ## Environment
 
 - Local, DLI platform, Pages, or external mirror:

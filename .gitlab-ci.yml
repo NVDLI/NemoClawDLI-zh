@@ -8,6 +8,7 @@
 # Isolation contract:
 #   - branch previews are manual and live under public/<branch-slug>/web/nemoclaw;
 #   - preview Pages artifacts rebuild the production root from a protected ref, then add the branch preview;
+#   - downloadable Pages job artifacts expire quickly to avoid storage growth;
 #   - the branch foyer at public/<branch-slug>/index.html reads a static branch manifest;
 #   - production refs still require a manual job start;
 #   - branch names are normalized through CI_COMMIT_REF_SLUG before becoming URLs.
@@ -48,6 +49,7 @@ test:
     - python3 scripts/validation/validate_layout.py --quiet
     - python3 scripts/skills/skill_consistency.py
     - python3 scripts/skills/skill_contract.py
+    - python3 scripts/validation/ci_storage_audit.py
     - python3 scripts/compliance/source_gate.py
     - python3 scripts/security/audit_python_dependencies.py
     - python3 scripts/security/audit_vulnerability_waivers.py
@@ -134,9 +136,9 @@ pages:
   needs: ["test"]
   resource_group: pages-site
   script:
-    # Classic GitLab Pages supports only one `pages` job. To make branch staging experiential
-    # without replacing production, branch pipelines publish one combined Pages artifact:
-    # production root rebuilt from a protected ref, plus this branch under /<slug>/web/nemoclaw/.
+    # This GitLab instance still uses classic Pages: only the job literally named
+    # `pages` can publish. Branch previews therefore ship a combined artifact
+    # with production rebuilt from a protected ref plus the branch under /<slug>/.
     - |
       set -euo pipefail
       refresh_branch_refs() {
@@ -209,9 +211,11 @@ pages:
   artifacts:
     paths:
       - public
+    expire_in: 3 days
   environment:
     name: "$PAGES_ENVIRONMENT_NAME"
     url: "$PAGES_ENVIRONMENT_URL"
+    auto_stop_in: "$PAGES_AUTO_STOP_IN"
   rules:
     # Branch previews are real GitLab Pages deploys, but production root is rebuilt from the
     # protected production ref and the branch only gets /<slug>/ plus /<slug>/web/nemoclaw/.
@@ -220,6 +224,7 @@ pages:
         PAGES_PREVIEW: "1"
         PAGES_ENVIRONMENT_NAME: "review/$CI_COMMIT_REF_SLUG"
         PAGES_ENVIRONMENT_URL: "$CI_PAGES_URL/$CI_COMMIT_REF_SLUG/web/nemoclaw/"
+        PAGES_AUTO_STOP_IN: "3 days"
       when: manual
       allow_failure: false
     # Production lock: production deploys are manual only. Pushes to production refs run tests,
@@ -228,12 +233,14 @@ pages:
       variables:
         PAGES_ENVIRONMENT_NAME: "production"
         PAGES_ENVIRONMENT_URL: "$CI_PAGES_URL/nemoclaw/"
+        PAGES_AUTO_STOP_IN: "never"
       when: manual
       allow_failure: false
     - if: '$CI_COMMIT_BRANCH == "nemoclaw-only"'
       variables:
         PAGES_ENVIRONMENT_NAME: "production"
         PAGES_ENVIRONMENT_URL: "$CI_PAGES_URL/nemoclaw/"
+        PAGES_AUTO_STOP_IN: "never"
       when: manual
       allow_failure: false
     - when: never

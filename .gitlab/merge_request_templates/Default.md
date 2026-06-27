@@ -6,6 +6,12 @@ What changed and why?
 
 Addresses #
 
+## Current release target
+
+- Course: `web/nemoclaw/` unless this is bundle-wide
+- Runtime: CPU service stack (`cpu/`, `workspace/`, `deploy/`) unless stated otherwise
+- Bundle scope: course-specific or bundle-wide
+
 ## Surfaces touched
 
 - [ ] `web/`

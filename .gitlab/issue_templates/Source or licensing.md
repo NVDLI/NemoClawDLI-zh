@@ -2,6 +2,12 @@
 
 What source, provenance, licensing, attribution, or vendored material needs review?
 
+## Current release target
+
+- Course: `web/nemoclaw/` unless this is a bundle-wide issue
+- Runtime: CPU service stack (`cpu/`, `workspace/`, `deploy/`) unless stated otherwise
+- Bundle scope: course-specific or bundle-wide
+
 ## Material
 
 - File or URL:
