@@ -106,6 +106,7 @@ import figure_audit as fa  # noqa: E402
 import cell_audit as ca  # noqa: E402
 import learner_flow_audit as lfa  # noqa: E402
 import contribution_safety_audit as csa  # noqa: E402
+import localization_audit as la  # noqa: E402
 import helper_notebook_runtime_audit as hna  # noqa: E402
 import studio_interface_audit as sia  # noqa: E402
 import openclaw_fallback_audit as ofa  # noqa: E402
@@ -160,6 +161,9 @@ SUITE_META = [
     ("course_dependency_integrity", "Course dependency integrity", "required",
      "Fixed third-party browser assets execute inside every learner page. Their URLs, expected bytes, and CORS mode must stay pinned with Subresource Integrity so an upstream response change cannot silently execute in the course.",
      "scripts/validation/course_dependency_integrity.py", "audit"),
+    ("localization", "Localization integrity", "required",
+     "Same-branch language overlays contain localized HTML only, retain canonical document and executable structure, share standalone runtime/assets and SKILL contracts, use locale-native terminology, and expose source drift before a translated page is published.",
+     "scripts/validation/localization_audit.py", "scan"),
     ("prose_variety", "Prose rhythm", "consider",
      "Sentence-length spread, staccato triads, and over-enumeration, ranked. Monotone cadence is a machine-writing tell. This is a judgment call: the flagged pages are the ones to give a human rhythm pass if you agree.",
      "scripts/validation/prose_variety.py", "sweep"),
@@ -562,6 +566,23 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         vl_fail.extend(f"contribution safety: {x.get('path')}: {x.get('message')}"
                        for x in contribution_safety_find)
 
+    # Same-branch localization contract (required): sparse overlay, reviewed source hashes,
+    # pt-BR language quality signals, and the Studio drift manifest.
+    try:
+        localization_find, localization_manifest = la.scan(TASK1, "pt-BR")
+        if write:
+            _, _, _, localization_profile, _ = la.locale_paths(TASK1, "pt-BR")
+            la.write_manifest(TASK1, localization_profile, localization_manifest)
+    except Exception as e:
+        localization_find = [{"code": "audit-error", "path": "i18n/pt",
+                              "detail": f"localization audit error: {e}"}]
+        localization_manifest = {"pages": [], "counts": {}}
+        suite_errors["localization"] = str(e)
+    if localization_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(f"localization: {x.get('path')}: {x.get('detail')}" for x in localization_find)
+
     # helper notebook static contract (required): no container, catches CanvasFlow / RunCell API drift.
     try:
         helper_notebook_find = hna.static_audit()
@@ -917,6 +938,11 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                                   f"[{x.get('code', 'finding')}] {x.get('message', '')}",
                                   REQUIRED, x.get("fix", "restore the contribution trust boundary"))
                                 for x in contribution_safety_find],
+        "localization": [D(x.get("path", "i18n/pt"),
+                            f"[{x.get('code', 'finding')}] {x.get('detail', '')}",
+                            REQUIRED,
+                            "Open web/nemoclaw/localization.html, repair the named pt-BR prose/structure/drift issue, then accept the reviewed source hash with localization_audit.py.")
+                         for x in localization_find],
         "skill_schema": [D(p, d, RECOMMENDED,
                            "Make the skill-meta a valid contract of its kind: add the missing required key, "
                            "correct the schema/node_type value, give version a semver MAJOR.MINOR.PATCH, or set a "
@@ -982,6 +1008,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "concept_order": 1,
         "materials": materials.get("count", 0),
         "skill_schema": skc_scanned, "skill_drift": skc_scanned,
+        "localization": len(localization_manifest.get("pages", [])),
     }
     _layout_own = [x for x in vl_fail if x.startswith("[")]
 
@@ -1043,6 +1070,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "cell_audit": {k: len(v) for k, v in ca_find.items()},
         "learner_flow": {"findings": len(learner_flow_find)},
         "contribution_safety": {"findings": len(contribution_safety_find)},
+        "localization": {"findings": len(localization_find),
+                         "counts": localization_manifest.get("counts", {})},
         "diagram_geom": {"findings": len(dg_find)},
         "skill_contract": {"skills": skc_scanned,
                            "schema": len(skc_find.get("schema", [])),
@@ -1109,6 +1138,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
           f"(progressive disclosure / prerequisites / lifecycle / CPU baseline)")
     print(f"  contribution    : {len(contribution_safety_find)} required finding(s) "
           f"(intake / submissions / hooks / CI permissions / release authority)")
+    print(f"  localization    : {len(localization_find)} required finding(s) "
+          f"({localization_manifest.get('counts', {})})")
     print(f"  figure geometry : {len(dg_find)} runtime-figure finding(s) (text overlap / past bounds / connector-crosses-box / useless)")
     print(f"  course contract : {len(course_contract_find)} finding(s) (title / abstract / learning objectives)")
     print(f"  dependency SRI  : {len(cdi_find)} finding(s) (fixed browser assets)")

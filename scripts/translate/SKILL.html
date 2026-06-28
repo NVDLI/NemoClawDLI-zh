@@ -3,126 +3,74 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>scripts/translate/ · language branches · explore</title>
-
+<title>scripts/translate/ · same-branch localization · explore</title>
 <script type="application/json" id="skill-meta">
 {
   "schema": "dir-skill/1.0",
   "node_type": "directory-explorer",
-  "title": "scripts/translate/ language branches",
+  "title": "scripts/translate/ same-branch localization",
   "source_dir": "scripts/translate/",
-  "summary": "How a language branch (translate-<lang>, the first is translate-pt) is built and kept in sync. A translation is a full overlay of the source branch: the same files, with the reader-facing prose under web/ rendered in the target language and everything else (code, assets, the skill-meta machine contracts) carried verbatim, so every build, gate, and deploy that runs on the source runs on the translation too. The one abstraction is a sync marker (translation_base.json) recording the source commit the translation reflects; translation_status.py diffs the source against it and splits the change into a re-translate list (prose) and a merge-verbatim list (code/asset/contract). validate_bundle --lang skips the English-prose style suites that would false-positive on correct target-language text while the structural suites still gate, and one aggregating build_pages run serves the source at the site root and every translate-<lang> branch under /<lang>/.",
+  "summary": "Language overlays live beside English on the same branch. Localized HTML is sparse; canonical web/ supplies standalone runtime modules, assets, data, fallback pages, and machine-contract pages. Validators hold inline executable structure equal while allowing translated UI strings. Per-page source hashes expose drift, locale profiles catch language-native defects, and Localization Studio compares both versions before a reviewer accepts the new base.",
   "related": [
-    "scripts/translate/translation_status.py",
-    "scripts/translate/translation_base.json",
     "scripts/translate/README.md",
-    "scripts/validation/validate_bundle.py"
+    "scripts/translate/locales/pt-BR/SKILL.html",
+    "scripts/translate/locales/pt-BR/profile.json",
+    "scripts/translate/translate_html_segments.py",
+    "scripts/validation/localization_audit.py",
+    "scripts/build/assemble_locale_overlay.py",
+    "web/nemoclaw/localization.html"
   ],
   "explorer": "../../web/_skill_explorer.js"
 }
 </script>
-
 <script type="application/json" id="explorer-config">
 {
-  "title": "scripts/translate/ · language branches",
-  "summary": "A translation is the same course in another language: a translate-<lang> branch that overlays the source, translating the reader-facing prose under web/ and carrying code, assets, and every skill-meta contract verbatim. This folder is the toolchain that keeps that overlay in step with the source. Open the README for the full process, the status tool to see what a sync needs, and walk the guided tour for the contributor loop. Ask the model about any of it with your build.nvidia.com key.",
+  "title": "scripts/translate/ · same-branch localization",
+  "summary": "Start with the locale SKILL, review source and target in Studio, repair language-native issues, then accept the exact English hash you inspected. Standalone runtime modules and assets never live in the locale overlay; inline executable structure stays equivalent.",
   "model": "nvidia/nemotron-3-nano-30b-a3b",
-  "ties": [
-    "build"
-  ],
-  "nav": {
-    "home": "../../web/index.html",
-    "up": {
-      "label": "the bundle toolchain",
-      "href": "../SKILL.html"
-    }
-  },
+  "ties": ["build"],
+  "nav": {"home": "../../web/index.html", "up": {"label": "the bundle toolchain", "href": "../SKILL.html"}},
   "groups": [
     {
-      "title": "Translation toolchain",
+      "title": "Localization workflow",
       "files": [
-        {
-          "path": "README.md",
-          "role": "the process, in full",
-          "desc": "What a language branch is (a full overlay of the source), what gets translated vs carried verbatim, the sync marker, the contributor workflow end to end, and how translate-* CI/CD validates and deploys under /<lang>/. Start here."
-        },
-        {
-          "path": "translation_status.py",
-          "role": "the drift tool",
-          "desc": "What changed on the source since this translation's base, split into TO RE-TRANSLATE (prose the reader sees) and TO MERGE VERBATIM (code, assets, the skill-meta contract). The loop a translation lives in: read the status, act on the delta, advance the base (--set-base). --json and --check (CI) too."
-        },
-        {
-          "path": "translation_base.json",
-          "role": "the sync marker",
-          "desc": "Records the source commit this translation reflects (lang + upstream + base_sha). On the source branch lang is null (nothing to sync). The whole drift abstraction is git diff base_sha..upstream, classified per file."
-        }
+        {"path": "README.md", "role": "same-branch process", "desc": "Sparse overlay boundary, page states, reviewer loop, build path, and historical branch-tool status."},
+        {"path": "locales/pt-BR/SKILL.html", "role": "Portuguese first-touch", "desc": "Portuguese-language guidance for natural Brazilian developer prose and discoverable validation."},
+        {"path": "locales/pt-BR/profile.json", "role": "locale profile", "desc": "NVIDIA terminology sources, preferred terms, accepted developer vocabulary, and static anti-patterns."},
+        {"path": "translate_html_segments.py", "role": "draft generator", "desc": "Protected semantic-block translation and polish with cache, retries, and secret-free provider usage telemetry. It never accepts a review hash."},
+        {"path": "../validation/localization_audit.py", "role": "required drift gate", "desc": "Missing/current/stale/blocked classification, machine-contract parity, locale checks, manifest generation, and mutation tests."},
+        {"path": "../build/assemble_locale_overlay.py", "role": "build assembler", "desc": "Copies canonical web/ and applies only allow-listed localized prose."}
+      ]
+    },
+    {
+      "title": "Historical branch tools",
+      "files": [
+        {"path": "translation_status.py", "role": "legacy translate-* reader", "desc": "Reads the former branch-base marker. Do not use it for new same-branch localization."},
+        {"path": "translation_base.json", "role": "legacy marker", "desc": "Retained so historical translation branches remain understandable."}
       ]
     }
-  ],
-  "tour": [
-    {
-      "title": "1 · The overlay and the split",
-      "file": "translation_status.py",
-      "note": "A translation overlays the source: prose under web/ is translated, everything else is carried verbatim so the code and the skill-meta contract never fork. classify() encodes that split; a web/ SKILL.html has its prose translated but its skill-meta JSON block stays byte-identical."
-    },
-    {
-      "title": "2 · The sync marker",
-      "file": "translation_base.json",
-      "note": "Set lang and upstream (main in the standalone release, nemoclaw-only when served from the s-fx-43-v1 bundle), then pin base_sha to the source commit your first pass matches with: translation_status.py --set-base origin/<upstream>."
-    },
-    {
-      "title": "3 · See what a sync needs",
-      "file": "translation_status.py",
-      "note": "When the source moves, run translation_status.py. It prints the re-translate list (prose) and the merge-verbatim list (code/asset/contract) with the exact files, so you update only the delta, then --set-base to advance."
-    },
-    {
-      "title": "4 · Validate like any branch",
-      "file": "README.md",
-      "note": "validate_bundle --lang <code> runs the identical structural gate (links, layout, SKILL contract, modules, figures, cells) and marks the English-prose style suites (rhythm, buzz, branding, em-dash) not-applicable, because they encode English norms that false-positive on correct target-language text."
-    },
-    {
-      "title": "5 · CI/CD and deploy",
-      "file": "README.md",
-      "note": "On a translate-* branch CI runs the gate with --lang plus the drift report (advisory) and does not deploy on its own. Each translation is staged as CONTENT under i18n/<lang>/ (git archive of its web/ tree: no history, no big files), and build_pages.sh turns every i18n/<lang>/ into public/<lang>/, so one Pages site serves the source at root and every language at /<lang>/. The source CI stages i18n from the branches; the rsync-mirror production site gets i18n via the publish rsync. No branch is pushed to the mirror (its clean history rejects this repo's big blobs). See README.md for the publish recipe; the branch is never merged."
-    }
-  ],
-  "related": [
-    "../SKILL.html",
-    "../validate_bundle.py",
-    "../../web/index.html"
   ]
 }
 </script>
-
-<style data-skill-static="1">
-.skill-static{padding:24px clamp(18px,4vw,44px);border-bottom:1px solid #2a2a2a;background:#0d0d0d;color:#f2f2f2;font:15px/1.55 system-ui,sans-serif}
-.skill-static a{color:#76b900}.skill-static h1{margin:.1em 0 .25em;color:#76b900;font-size:1.65rem}.skill-static h2{font-size:1.02rem;margin:1.2rem 0 .45rem}.skill-static p{max-width:76rem;color:#b0b0b0}.skill-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:.7rem 0}.skill-card{border:1px solid #2a2a2a;background:#161616;border-radius:8px;padding:12px 14px}.skill-card b{display:block;color:#aee23a;margin-bottom:4px}.skill-card code,.skill-cmd code{font-family:ui-monospace,Consolas,monospace}.skill-card span{color:#b0b0b0;font-size:.9rem}.skill-cmds{display:grid;gap:8px;margin:.7rem 0}.skill-cmd{display:grid;grid-template-columns:minmax(140px,220px) 1fr;gap:8px;align-items:center;border:1px solid #2a2a2a;border-radius:8px;background:#111;padding:9px 11px}.skill-cmd b{color:#aee23a}.skill-cmd code{display:block;overflow:auto;white-space:nowrap;color:#f2f2f2}.skill-note{border-left:3px solid #76b900;background:rgba(118,185,0,.08);padding:10px 13px;margin:.8rem 0;color:#ddd}.skill-nav{display:flex;gap:12px;flex-wrap:wrap;margin:.8rem 0}.skill-nav a{border:1px solid #2a2a2a;border-radius:999px;padding:5px 10px;text-decoration:none}.skill-nav a:hover{border-color:#76b900}@media(max-width:700px){.skill-cmd{grid-template-columns:1fr}.skill-static{padding:18px}}
-</style>
+<style>html,body{margin:0;background:#0d0d0d;color:#f2f2f2;font:15px/1.55 system-ui,sans-serif}.skill-static{padding:24px clamp(18px,4vw,44px);border-bottom:1px solid #2a2a2a}.skill-static a{color:#76b900}.skill-static h1{color:#76b900}.skill-grid,.skill-cmds{display:grid;gap:10px;margin:.7rem 0}.skill-grid{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}.skill-card,.skill-cmd{border:1px solid #2a2a2a;background:#161616;border-radius:8px;padding:10px 12px}.skill-card{color:#f2f2f2!important;text-decoration:none}.skill-card b,.skill-cmd b{display:block;color:#aee23a}.skill-cmd code{display:block;overflow:auto;white-space:nowrap}#explorer{height:100vh}</style>
 </head>
 <body>
 <section class="skill-static" aria-labelledby="skill-title">
-  <nav class="skill-nav"><a href="../../web/index.html">Home</a><a href="../SKILL.html">the bundle toolchain</a></nav>
-  <h1 id="skill-title">scripts/translate/ · language branches</h1>
-  <p>A translation is the same course in another language: a translate-&lt;lang&gt; branch that overlays the source, translating the reader-facing prose under web/ and carrying code, assets, and every skill-meta contract verbatim. This folder is the toolchain that keeps that overlay in step with the source. Open the README for the full process, the status tool to see what a sync needs, and walk the guided tour for the contributor loop. Ask the model about any of it with your build.nvidia.com key.</p>
-  <div class="skill-note">Translation branches skip English prose-style suites but still run structural gates.</div>
+  <h1 id="skill-title">Same-branch localization</h1>
+  <p>Begin at the target locale node. Review English and localized prose together; keep runtime and machine contracts canonical.</p>
   <h2>Executable checks</h2>
   <div class="skill-cmds">
-    <div class="skill-cmd"><b>Translation status</b><code>python3 scripts/translate/translation_status.py</code></div>
-    <div class="skill-cmd"><b>Ship gate for English</b><code>python3 scripts/validation/validate_bundle.py --no-write --scope ship</code></div>
+    <div class="skill-cmd"><b>Publish-boundary mutations</b><code>python3 scripts/build/assemble_locale_overlay.py --self-test</code></div>
+    <div class="skill-cmd"><b>Localization mutations</b><code>python3 scripts/validation/localization_audit.py --self-test</code></div>
+    <div class="skill-cmd"><b>Portuguese drift and language</b><code>python3 scripts/validation/localization_audit.py --locale pt-BR</code></div>
+    <div class="skill-cmd"><b>Generate a measured draft</b><code>python3 scripts/translate/translate_html_segments.py web/nemoclaw/PAGE.html --usage-report /tmp/pt-usage.json</code></div>
   </div>
   <h2>Linkage map</h2>
   <div class="skill-grid">
-    <a class="skill-card" href="README.md"><b>README.md</b><span>the process, in full. What a language branch is (a full overlay of the source), what gets translated vs carried verbatim, the sync marker, the contributor workflow end to end, and how translate-* CI/CD validates and deploys under /&lt;lang&gt;/. Start here.</span></a>
-    <a class="skill-card" href="translation_status.py"><b>translation_status.py</b><span>the drift tool. What changed on the source since this translation&#x27;s base, split into TO RE-TRANSLATE (prose the reader sees) and TO MERGE VERBATIM (code, assets, the skill-meta contract). The loop a translation lives in: read the status, act on the delta, advance the base (--set-base). --json and --check (CI) too.</span></a>
-    <a class="skill-card" href="translation_base.json"><b>translation_base.json</b><span>the sync marker. Records the source commit this translation reflects (lang + upstream + base_sha). On the source branch lang is null (nothing to sync). The whole drift abstraction is git diff base_sha..upstream, classified per file.</span></a>
+    <a class="skill-card" href="locales/pt-BR/SKILL.html"><b>pt-BR language contract</b>Natural Brazilian Portuguese, NVIDIA terminology sources, and literal-translation traps.</a>
+    <a class="skill-card" href="../../web/nemoclaw/localization.html"><b>Localization Studio</b>Same-branch English and Portuguese comparison with drift state.</a>
+    <a class="skill-card" href="../validation/localization_audit.py"><b>Required validator</b>Overlay boundary, accepted source hash, structure, and locale-native checks.</a>
   </div>
-  <h2>Interactive explorer</h2>
-  <p>The explorer below opens source files, tours important sections, and checks documented paths against the repository tree.</p>
 </section>
-<div id="explorer"></div>
-<noscript>
-  <section class="skill-static"><h2>JavaScript disabled</h2><p>The static command list and file links above remain usable. Enable JavaScript for source viewing and guided tours.</p></section>
-</noscript>
-<script src="../../web/_skill_explorer.js"></script>
-</body>
+<div id="explorer"></div><script src="../../web/_skill_explorer.js"></script></body>
 </html>

@@ -9,7 +9,9 @@ This deployment design lets reviewers experience branch output on the real GitLa
 - On ordinary branches, `pages` is also manual. It builds a combined Pages artifact: production root from a protected ref, plus the branch foyer at `public/$CI_COMMIT_REF_SLUG/index.html` and the branch course at `public/$CI_COMMIT_REF_SLUG/web/nemoclaw/`, served as `$CI_PAGES_URL/$CI_COMMIT_REF_SLUG/` and `$CI_PAGES_URL/$CI_COMMIT_REF_SLUG/web/nemoclaw/`.
 - The root and branch foyers read `branches.json`, which contains only preview paths present in the published artifact. The UI also sends a same-origin `HEAD` request before showing each option, so a stale or missing target stays hidden.
 - The branch foyer also reads `languages.json` and shows a language dropdown when the artifact contains more than one built language. English follows the preview course prefix (`web/nemoclaw/` in branch previews); translations use their built course path such as `pt/nemoclaw/`.
-- Translation branches run the test gate and are aggregated by the production build; they do not publish standalone previews by default.
+- A branch preview builds canonical English and every accepted same-branch locale overlay together.
+  `languages.json` advertises only pages whose reviewed English hash is current. Stale or
+  unreviewed translations fall back to canonical English during assembly.
 - Preview deployments are review surfaces, not durable course URLs. Their downloadable job artifacts expire after three days. Review environments also request auto-stop after three days.
 
 ## Storage Contract

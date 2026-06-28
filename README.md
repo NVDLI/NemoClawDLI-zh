@@ -41,6 +41,12 @@ The repository keeps curated source and projects it into release formats:
 Students enter through the release foyer, [`web/index.html`](web/index.html). It surfaces
 only released courses. Today that is [`web/nemoclaw/`](web/nemoclaw/).
 
+Localized course prose lives as a sparse same-branch overlay under [`i18n/`](i18n/).
+Canonical `web/` runtime modules, assets, machine-contract pages, and untranslated pages remain shared.
+Open [`web/nemoclaw/localization.html`](web/nemoclaw/localization.html) to compare English
+and Portuguese page state, then read [`scripts/translate/SKILL.html`](scripts/translate/SKILL.html)
+for the review workflow and locale-specific language guidance.
+
 ## Deployment
 
 Deployment files live under [`deploy/`](deploy/) so runtime orchestration is separate from
@@ -105,6 +111,9 @@ python3 scripts/validation/validate_layout.py --quiet
 python3 scripts/skills/skill_consistency.py
 python3 scripts/validation/contribution_safety_audit.py --self-test
 python3 scripts/validation/contribution_safety_audit.py
+python3 scripts/build/assemble_locale_overlay.py --self-test
+python3 scripts/validation/localization_audit.py --self-test
+python3 scripts/validation/localization_audit.py --locale pt-BR
 python3 scripts/compliance/source_gate.py
 bash scripts/runtime/run_engine.sh --self-test
 python3 scripts/validation/validate_bundle.py --scope ship

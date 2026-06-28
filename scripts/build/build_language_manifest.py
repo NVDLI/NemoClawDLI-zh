@@ -32,7 +32,11 @@ def main() -> int:
     site = Path(ns.site_root)
     prefix = clean_prefix(ns.course_prefix)
     english_url = f"{prefix + '/' if prefix else ''}nemoclaw/"
-    languages = [{"code": "en", "label": language_label("en"), "url": english_url, "current": True}]
+    english_course = site / prefix / "nemoclaw" if prefix else site / "nemoclaw"
+    english_pages = sorted(path.name for path in english_course.glob("*.html"))
+    languages = [{"code": "en", "locale": "en", "label": language_label("en"),
+                  "native_label": "English", "url": english_url,
+                  "available_pages": english_pages}]
 
     for child in sorted(site.iterdir() if site.exists() else [], key=lambda p: p.name):
         if not child.is_dir() or child.name in SKIP_DIRS:
@@ -40,8 +44,18 @@ def main() -> int:
         code = child.name
         if not re.fullmatch(r"[a-z]{2}(?:-[a-z0-9]+)?", code):
             continue
-        if (child / "nemoclaw" / "index.html").is_file():
-            languages.append({"code": code, "label": language_label(code), "url": f"{code}/nemoclaw/", "current": False})
+        course = child / "nemoclaw"
+        if (course / "index.html").is_file():
+            drift_path = course / "assets" / f"localization-{code}.json"
+            drift = json.loads(drift_path.read_text(encoding="utf-8")) if drift_path.is_file() else {}
+            languages.append({
+                "code": code,
+                "locale": drift.get("locale", code),
+                "label": drift.get("label", language_label(code)),
+                "native_label": drift.get("native_label", language_label(code)),
+                "url": f"{code}/nemoclaw/",
+                "available_pages": drift.get("available_pages", []),
+            })
 
     data = {
         "schema": "nemoclaw-languages/1",

@@ -23,8 +23,8 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 T1="$(cd "$HERE/../.." && pwd)"  # repo root (implementation lives under scripts/build)
 OUT="${1:-$T1/public}"
-# Build the source language at $OUT root, then each staged translation under i18n/<lang>/ into
-# $OUT/<lang>/, so one Pages site serves every language. BUILD_PAGES_LANGS=0 disables that loop.
+# Build the source language at $OUT root, then each sparse same-branch overlay under i18n/<lang>/
+# over canonical web/ and into $OUT/<lang>/. BUILD_PAGES_LANGS=0 disables that loop.
 LANGS="${BUILD_PAGES_LANGS:-1}"
 PULL_MATERIALS="${BUILD_PAGES_PULL_MATERIALS:-1}"
 COURSE_PREFIX="${BUILD_PAGES_COURSE_PREFIX:-}"
@@ -218,27 +218,31 @@ cat > "$OUT/tests.html" <<'HTML'
 </body></html>
 HTML
 
-# ── 6. Translations: each staged language overlay built into public/<lang>/ ──
-# A translation is a never-merged overlay branch, but its content reaches the rsync-mirror production
-# site (NemoClawDLIOS) the SAME way the source does: as filtered content, not as a branch. A raw
-# branch push carries this repo's deep history, whose old big blobs the mirror's clean history
-# rejects (the 5 MiB pre-receive limit). So the publish step stages each translation's web/ tree
-# under i18n/<lang>/ (git archive, web only: no history, no big files), the rsync carries it to the
-# mirror, and this loop builds each i18n/<lang>/ into $OUT/<lang>/. Relative links resolve under the
-# subpath, so one Pages site serves the source at root and every language at /<lang>/.
+# ── 6. Translations: sparse same-branch overlays built into public/<lang>/ ──
+# i18n/<lang>/ contains localized prose and locale metadata only. assemble_locale_overlay.py starts
+# from canonical web/ and applies the declared locale files, so standalone runtime modules, styles,
+# assets, machine-contract pages, and untranslated fallbacks cannot fork. The locale audit separately
+# holds inline executable structure equivalent. The assembled tree is temporary build input.
 if [ "$LANGS" = 1 ] && [ -d "$T1/i18n" ]; then
     for d in "$T1"/i18n/*/; do
-        [ -d "${d}web/nemoclaw" ] || continue
+        [ -f "${d}locale.json" ] || continue
+        [ -f "${d}localization_state.json" ] || continue
         lang="$(basename "$d")"
         echo "[build_pages] language $lang -> $OUT/$lang/ (from i18n/$lang) ..."
         mkdir -p "$OUT/$lang"
-        if ! python3 "$T1/scripts/build/bundle_standalone.py" --src "i18n/$lang/web/nemoclaw" \
+        locale_tmp="$(mktemp -d)"
+        if ! python3 "$T1/scripts/build/assemble_locale_overlay.py" --locale-root "i18n/$lang" --out "$locale_tmp"; then
+            echo "[build_pages]   WARN: $lang overlay assembly failed; the other languages still ship"
+            rm -rf "$locale_tmp"; continue
+        fi
+        if ! python3 "$T1/scripts/build/bundle_standalone.py" --src "$locale_tmp/web/nemoclaw" \
                 --out "$OUT/$lang/nemoclaw" --clean --full; then
-            echo "[build_pages]   WARN: $lang course build failed; the other languages still ship"; continue
+            echo "[build_pages]   WARN: $lang course build failed; the other languages still ship"
+            rm -rf "$locale_tmp"; continue
         fi
         # the language foyer is its own translated web/index.html, /lab/static -> relative
-        if [ -f "${d}web/index.html" ]; then
-            python3 - "${d}web/index.html" "$OUT/$lang/index.html" <<'PROJ'
+        if [ -f "$locale_tmp/web/index.html" ]; then
+            python3 - "$locale_tmp/web/index.html" "$OUT/$lang/index.html" <<'PROJ'
 import sys, re
 src, out = sys.argv[1], sys.argv[2]
 s = open(src).read().replace("/lab/static/", "")
@@ -246,8 +250,9 @@ s = re.sub(r'<!-- build:deploy-tools[^>]*-->', '', s)   # the Pages-only tool li
 open(out, "w").write(s)
 PROJ
         fi
-        fav="${d}web/nemoclaw/assets/favicon.ico"; [ -f "$fav" ] || fav="$T1/web/nemoclaw/assets/favicon.ico"
+        fav="$locale_tmp/web/nemoclaw/assets/favicon.ico"; [ -f "$fav" ] || fav="$T1/web/nemoclaw/assets/favicon.ico"
         [ -f "$fav" ] && cp "$fav" "$OUT/$lang/favicon.ico" || true
+        rm -rf "$locale_tmp"
     done
 fi
 

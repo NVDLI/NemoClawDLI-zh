@@ -1,126 +1,110 @@
-# Language branches: how a translation is built and kept in sync
+# Same-branch localization
 
-A translation of this course is a long-lived git branch named `translate-<lang>` (the first is
-`translate-pt`, Portuguese). The branch is a full **overlay** of the source branch: the same files
-in the same places, with the human-facing prose rendered in the target language and everything else
-carried over unchanged. Because the structure is identical, every build, gate, and deploy that runs
-on the source branch runs on a translation branch too. A translation is never a fork of the code or
-the machine contracts; it is the same course, spoken in another language.
+Translations live beside English on the same branch as sparse overlays under `i18n/<url-code>/`.
+The first locale is Brazilian Portuguese: locale `pt-BR`, URL code `pt`.
 
-This folder holds the utilities that make that overlay maintainable. The hard part is not the first
-pass, it is staying in step as the source moves: when a page is fixed on `main`, the translation
-needs to know exactly what changed so it can re-translate only the delta.
+This shape keeps review honest. One commit can change English, its translations, the drift metadata,
+and the validator that protects the relationship. A translation branch cannot hide an old runtime,
+and a language build cannot replace current code with a copied JavaScript or asset tree.
 
-## What gets translated, and what does not
+## The overlay boundary
 
-| Class | What | Rule |
-|---|---|---|
-| **Translate** | The prose the reader sees: `web/` course pages, the foyer, the slides, the `mats/` companions, and the human text of the `web/` SKILL hubs. | Render it in the target language. |
-| **Verbatim** | Code (`*.js`, `*.py`, `*.css`), data and assets (`*.json`, `*.svg`, images), and the agent/dev docs (`CLAUDE.md`, `AGENT_QUICKSTART.md`, the service SKILL beacons). | Merge from the source unchanged. Never fork it. |
+`web/` remains canonical for page structure and executable logic, and it is the only home for
+standalone runtime modules, styles, assets, data, machine-contract pages, and untranslated pages.
+`i18n/pt/localization_state.json` allow-lists the few HTML files whose reader-facing prose is localized.
+During a build, `assemble_locale_overlay.py` copies canonical `web/` and applies only those declared
+files. The audit requires equivalent HTML and executable structure while allowing localized UI
+strings inside a page. Everything else is inherited verbatim.
 
-One special case: a `web/` `SKILL.html` is prose-bearing, so its human text is translated, **but its
-`<script id="skill-meta">` JSON block is a machine contract and stays byte-identical to the source.**
-Translate the words around it, not the contract inside it.
+Do not copy runtime files into `i18n/`. If a localized page needs different behavior, make the
+canonical runtime locale-aware and test both languages.
 
-`translation_status.py` encodes this split (`classify()`), so the sync report tells you which changed
-files to re-translate and which to merge as-is.
+## Drift model
 
-## The sync marker
+Each accepted localized file records the SHA-256 of the English source that a reviewer actually
+read. `localization_audit.py` compares that hash with the current source and classifies every page:
 
-`translation_base.json` is the whole abstraction. It records the source commit this translation
-currently reflects (the **base**). On the source branch `lang` is `null`: there is nothing to keep in
-sync. On a `translate-<lang>` branch it carries:
+- `current`: target exists, source hash matches, locale checks pass;
+- `stale`: English changed after the last review;
+- `blocked`: hash matches but language, structure, or terminology checks fail;
+- `needs-review`: translated file exists but has no accepted source hash;
+- `missing`: no localized overlay exists, so the build inherits English.
 
-```json
-{ "lang": "pt", "upstream": "main", "base_sha": "<source commit this translation reflects>" }
-```
+The generated `web/nemoclaw/assets/localization-pt.json` drives Localization Studio and the Pages
+language menu. The menu offers a same-page switch only for `current` pages.
 
-`upstream` is the canonical content branch the translation tracks: `main` in the standalone
-open-source release, or `nemoclaw-only` when the course is served from the shared `s-fx-43-v1` bundle.
+## Portuguese review
 
-The drift you need to act on is `git diff base_sha..upstream`, classified per file. That is exactly
-what `translation_status.py` reports.
+Read `locales/pt-BR/SKILL.html` first. Its profile cites public NVIDIA Brazil material, records
+preferred terminology, permits established developer terms such as `workflow`, `runtime`, `sandbox`,
+and `stack`, and blocks known literal-translation artifacts. Static checks cannot certify natural
+prose; Studio keeps English and Portuguese side by side so a human can make that judgment efficiently.
 
-## The workflow
-
-```bash
-# 1. Create the language branch off the current source tip.
-git checkout main && git pull
-git checkout -b translate-pt
-
-# 2. Point the marker at this language and pin the base to where you started.
-#    (edit translation_base.json: "lang": "pt", "upstream": "main")
-python3 scripts/translate/translation_status.py --set-base origin/main
-
-# 3. Translate the reader-facing prose (web/ pages, slides, mats, web SKILL prose).
-#    Leave code, assets, and every skill-meta JSON block exactly as the source has them.
-
-# 4. Validate exactly like any branch. --lang skips the English-prose style suites
-#    (rhythm, buzz, branding, em-dash) that would false-positive on correct Portuguese;
-#    the structural suites (links, layout, SKILL contract, modules, figures, cells) still gate.
-python3 scripts/validation/validate_bundle.py --scope ship --lang pt
-
-# 5. Later, when the source has moved, see what to update and re-translate just the delta.
-python3 scripts/translate/translation_status.py
-#    ... translate the TO RE-TRANSLATE list, merge the TO MERGE VERBATIM list ...
-python3 scripts/translate/translation_status.py --set-base origin/main   # advance the base
-```
-
-Step 5 is the loop a translation lives in. Run the status, act on the delta, advance the base.
-
-## CI/CD on a `translate-` branch
-
-A `translate-<lang>` branch is **never merged into the source**. The build never reads the branch
-directly either: instead each translation is **staged as content** under `i18n/<lang>/` (its `web/`
-tree only), and `build_pages.sh` turns every `i18n/<lang>/` into `public/<lang>/`. One Pages site
-then serves the source at the root and every language at `/<lang>/`; relative links resolve under the
-subpath with no build-time base change. Staging from a branch (not pushing it) is deliberate: a raw
-branch push carries this repo's deep history, whose old big blobs the production mirror rejects (a
-5 MiB pre-receive limit). `git archive <branch> web` carries only the current `web/` tree, with no
-history and no big files.
-
-- On a **`translate-<lang>` branch**, CI derives the language from the branch name and runs **test**:
-  the same structural gate as the source plus `validate_bundle --lang <code>` (English-prose suites
-  marked not-applicable) and `translation_status.py --check` (the re-translate list, advisory). It
-  does not deploy on its own.
-- On the **source branch**, the **pages** job stages every `translate-*` branch into `i18n/<lang>/`
-  (`git archive`), then runs `build_pages.sh`, which aggregates the source plus every staged language
-  into one `public/` tree and deploys it.
-
-So a contributor opens a merge request **into** `translate-pt` (not into the source); the pipeline
-proves the translation is still structurally whole and shows what is left to sync.
-
-## Publishing to the live site (the rsync-mirror production flow)
-
-The production site (the `NemoClawDLIOS` Pages vendor on gitlab-master) is a single-branch mirror
-that rebuilds Pages with `build_pages.sh` from content the publish step rsyncs in. The translation
-reaches it the same way the source does, as filtered content: stage each language under `i18n/<lang>/`
-before the rsync, and the mirror's `build_pages.sh` builds `/<lang>/` from it. No branch is ever
-pushed to the mirror (its history would reject this repo's big blobs).
+## Contributor loop
 
 ```bash
-SRC="$HOME/s-fx-43-v1"        # source, branch nemoclaw-only
+# 1. See all same-branch states and refresh Studio data.
+python3 scripts/validation/localization_audit.py --locale pt-BR
 
-# 1. Stage each translation's web/ tree under i18n/<lang>/ (web only: no history, no big files).
-git -C "$SRC" fetch origin
-for lang in pt; do
-  rm -rf "$SRC/i18n/$lang"; mkdir -p "$SRC/i18n/$lang"
-  git -C "$SRC" archive "origin/translate-$lang" web | tar -x -C "$SRC/i18n/$lang"
-done
+# 2. Optionally generate a draft. Use a fresh cache when changing the prompt or model.
+#    The API key may be in NVIDIA_API_KEY or untracked .env-dev.
+python3 scripts/translate/translate_html_segments.py \
+  web/nemoclaw/02c-deep.html \
+  --cache /tmp/nemoclaw-pt-draft.json \
+  --usage-report /tmp/nemoclaw-pt-generate-usage.json
 
-# 2. Publish exactly as today. The rsync carries i18n/<lang>/ to the mirror (it strips nothing here:
-#    web/ has no >5 MiB files), the mirror commits + pushes main, and its build_pages builds /<lang>/.
-bash ~/publish-pages.sh "sync course source + translations"
+# 3. Run the bounded editorial pass before making manual corrections.
+python3 scripts/translate/translate_html_segments.py \
+  web/nemoclaw/02c-deep.html --polish \
+  --cache /tmp/nemoclaw-pt-draft.json \
+  --usage-report /tmp/nemoclaw-pt-polish-usage.json
+
+# 4. Add the HTML path to localization_state.json. Review every block in Studio.
+#    Repair calques manually and add reusable failures to profile.json unfit_phrases.
+#    Keep executable structure, identifiers, URLs, product names, cited titles,
+#    model prompts, and skill-meta canonical.
+
+# 5. Accept only the exact English base that a human reviewed.
+python3 scripts/validation/localization_audit.py \
+  --locale pt-BR --accept web/nemoclaw/02c-deep.html
+
+# 6. Prove the detector and build the combined site.
+python3 scripts/build/assemble_locale_overlay.py --self-test
+python3 scripts/validation/localization_audit.py --self-test
+BUILD_PAGES_PULL_MATERIALS=0 bash scripts/build/build_pages.sh /tmp/nemoclaw-pages
 ```
 
-`i18n/` is build staging, not source: leave it untracked on `nemoclaw-only` (do not commit it there),
-and the rsync still carries it to the mirror, where it becomes the translation content the live site
-serves at `/<lang>/`.
+The generator translates semantic HTML blocks rather than isolated text nodes. It protects tags,
+`code`/`kbd` spans, URLs, entities, placeholders, and executable code; retries invalid model output;
+and refuses a result whose protected-token sequence changes. `--polish` edits the localized blocks
+without re-reading the English source. Neither mode accepts a review hash: generation and acceptance
+remain separate authority boundaries.
 
-## Files here
+`--usage-report` writes secret-free JSON with request attempts, failures, elapsed request-seconds,
+and provider-reported prompt/completion tokens per page. Keep reports in `/tmp`; summarize them in the
+merge request rather than committing transient telemetry. A failed or timed-out request has unknown
+provider metering and must be reported separately from completed-request token totals.
 
-- `translation_status.py` is the drift tool. It reports what changed upstream since the base, split
-  into re-translate (prose) and merge-verbatim (code/asset/contract), with `--json`, `--check`,
-  and `--set-base`.
-- `translation_base.json` is the sync marker (lang, upstream, base commit).
-- `SKILL.html` is the directory beacon: this process, machine-readable and interactive.
+### Reproduce with Codex
+
+Ask Codex to read `scripts/translate/SKILL.html` and the locale SKILL first, translate only the named
+pages with the commands above, stop before accepting hashes, and open the built Localization Studio
+for a side-by-side review. Then direct it to fix every observed language defect, add only generalizable
+defects to `profile.json`, run the mutation/build/browser gates, and report both usage JSON files.
+Codex must not translate additional pages, accept a source hash, commit, or push unless those actions
+were explicitly included in the requested scope.
+
+Open `/nemoclaw/localization.html` in the built site. Filters expose current, stale, blocked,
+needs-review, and missing pages. Each row shows source/review/target hashes and the acceptance command.
+
+## Files
+
+- `locales/pt-BR/profile.json`: public terminology sources and machine-readable language rules.
+- `locales/pt-BR/SKILL.html`: Portuguese first-touch node for students, reviewers, and agents.
+- `translate_html_segments.py`: protected semantic-block drafting, polish, cache, and usage telemetry.
+- `scripts/validation/localization_audit.py`: required drift and language gate with mutation tests.
+- `scripts/build/assemble_locale_overlay.py`: deterministic canonical-plus-prose assembly.
+- `web/nemoclaw/localization.html`: same-branch comparison Studio.
+
+`translation_status.py` and `translation_base.json` remain only for reading historical
+`translate-*` branches. New locale work does not use or advance them.

@@ -1,0 +1,227 @@
+{
+  "schema": "nemoclaw-localization-drift/1",
+  "locale": "pt-BR",
+  "url_code": "pt",
+  "label": "Portuguese (Brazil)",
+  "native_label": "Português (Brasil)",
+  "available_pages": [
+    "01a-loop.html",
+    "01b-react.html",
+    "01c-tools.html",
+    "02a-routing.html",
+    "02b-rag.html",
+    "02c-deep.html",
+    "index.html"
+  ],
+  "counts": {
+    "current": 9,
+    "stale": 0,
+    "blocked": 0,
+    "needs-review": 0,
+    "missing": 11
+  },
+  "pages": [
+    {
+      "path": "web/index.html",
+      "file": "index.html",
+      "source_sha256": "de70120fe4f5561306f46779c88c13e9a4966895699fae67950510a850c36bea",
+      "reviewed_source_sha256": "de70120fe4f5561306f46779c88c13e9a4966895699fae67950510a850c36bea",
+      "target_sha256": "c036e381337019118e3ed5f551a0423c58214d0f1b7686eac9174fbb056231cc",
+      "status": "current",
+      "quality": []
+    },
+    {
+      "path": "web/courses.html",
+      "file": "courses.html",
+      "source_sha256": "09b7448fb0f3d1cbff33c59a7f93f9031f12e53e21b31ef564f54f14d264d42c",
+      "reviewed_source_sha256": "09b7448fb0f3d1cbff33c59a7f93f9031f12e53e21b31ef564f54f14d264d42c",
+      "target_sha256": "2f265be42ada7c94783caacc9ab79f5db758ece88d3b9b14ea27611829050c11",
+      "status": "current",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/01a-loop.html",
+      "file": "01a-loop.html",
+      "source_sha256": "a10f671e468aec3d03b79385558021c08799fa65b37d51b2a77b486ea72d0196",
+      "reviewed_source_sha256": "a10f671e468aec3d03b79385558021c08799fa65b37d51b2a77b486ea72d0196",
+      "target_sha256": "1522d0b283019752dd2cee8dc4a5541b398275bc9a02932d7c26a0f6aae777dd",
+      "status": "current",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/01b-react.html",
+      "file": "01b-react.html",
+      "source_sha256": "06918a86001cb57ae9622636d52d6c7906d69ba405be4b2ea09c68f6cee15846",
+      "reviewed_source_sha256": "06918a86001cb57ae9622636d52d6c7906d69ba405be4b2ea09c68f6cee15846",
+      "target_sha256": "cad5371a9e405138e4fbc28a6d86814a297fd718081fb4c3eda50fbb22f150d1",
+      "status": "current",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/01c-tools.html",
+      "file": "01c-tools.html",
+      "source_sha256": "9f181f75f85bcd274b26a90bf0e64efef05db0e2e7ce0ecf2e918c65f9a248e8",
+      "reviewed_source_sha256": "9f181f75f85bcd274b26a90bf0e64efef05db0e2e7ce0ecf2e918c65f9a248e8",
+      "target_sha256": "4697268250fbf388a932caddac09e87f0fe4cd1702d85fc76d34a5551528bc58",
+      "status": "current",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/02a-routing.html",
+      "file": "02a-routing.html",
+      "source_sha256": "1a403b77241af621fead832744e412c208efbad5ab3b87b0a0e91214fc595a54",
+      "reviewed_source_sha256": "1a403b77241af621fead832744e412c208efbad5ab3b87b0a0e91214fc595a54",
+      "target_sha256": "53cfa1c765bde91ed03662445a25588e0d71e4464eb5e4f5a6884c957748e09f",
+      "status": "current",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/02b-rag.html",
+      "file": "02b-rag.html",
+      "source_sha256": "c38efb53834dbf1cf7247dc06bce7f7867d0710dddac31909787bfdc66fa3d73",
+      "reviewed_source_sha256": "c38efb53834dbf1cf7247dc06bce7f7867d0710dddac31909787bfdc66fa3d73",
+      "target_sha256": "f7c3ede5f5ac5a11bef86a48f9e6be62e09289d9e03739a6d40ebcc4dc0582fa",
+      "status": "current",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/02c-deep.html",
+      "file": "02c-deep.html",
+      "source_sha256": "60cfd12ffe637e1f43a3cfa1834f41daa9d55f91247a9b08ddbc52fc29eeb1dd",
+      "reviewed_source_sha256": "60cfd12ffe637e1f43a3cfa1834f41daa9d55f91247a9b08ddbc52fc29eeb1dd",
+      "target_sha256": "1f3be36beb3f468d34c8dd852f46a1e63ff648a9240328c4fb6a93e029329b6d",
+      "status": "current",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/03a-kickstart.html",
+      "file": "03a-kickstart.html",
+      "source_sha256": "3dd9cd1d7d6c4344d9cbcec1f75419e6c1e6bb2f0a38a65d5133749846f60f58",
+      "reviewed_source_sha256": null,
+      "target_sha256": null,
+      "status": "missing",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/03b-openclaw.html",
+      "file": "03b-openclaw.html",
+      "source_sha256": "5327f631a244b700f2d38e88ca808654a1174c8bb99d8032f2648c50bf49dd42",
+      "reviewed_source_sha256": null,
+      "target_sha256": null,
+      "status": "missing",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/03c-always-on.html",
+      "file": "03c-always-on.html",
+      "source_sha256": "a4f08a283b73803be5636ba4330d807edb2a393a05a06b5082e291120e0f67c4",
+      "reviewed_source_sha256": null,
+      "target_sha256": null,
+      "status": "missing",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/04a-safety.html",
+      "file": "04a-safety.html",
+      "source_sha256": "a07897ec637c8365865668c1612f89edc21eee460f0c9ae3f2ebda09b044a47b",
+      "reviewed_source_sha256": null,
+      "target_sha256": null,
+      "status": "missing",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/04b-modern-clis.html",
+      "file": "04b-modern-clis.html",
+      "source_sha256": "28a689fbc2e6d2a769efb2cf164253d4e4085935e489c546c496bdaeb7558880",
+      "reviewed_source_sha256": null,
+      "target_sha256": null,
+      "status": "missing",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/04c-going-further.html",
+      "file": "04c-going-further.html",
+      "source_sha256": "ab630817fb4dff5c1cc0b1ef04b6cef85781c010a4c881b285bb8a465d5c491b",
+      "reviewed_source_sha256": null,
+      "target_sha256": null,
+      "status": "missing",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/SKILL.html",
+      "file": "SKILL.html",
+      "source_sha256": "4e1353f03ef81968eb3e180f60470c5bfe743bbd07bf9aed081feaacc554f7b8",
+      "reviewed_source_sha256": null,
+      "target_sha256": null,
+      "status": "missing",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/cert.html",
+      "file": "cert.html",
+      "source_sha256": "82168d549dbe9900495a90f41820a36c29e674e3c6d74bd8df88226a2b30c0c9",
+      "reviewed_source_sha256": null,
+      "target_sha256": null,
+      "status": "missing",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/courses.html",
+      "file": "courses.html",
+      "source_sha256": "9620af670949fba1d8bce5d7951f02f3c0eaa53e8787dc60516b2de434756e2f",
+      "reviewed_source_sha256": null,
+      "target_sha256": null,
+      "status": "missing",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/glossary.html",
+      "file": "glossary.html",
+      "source_sha256": "d250bcaed52be8ab29e5a61bdfd50e4b24f9c5e332a829feafe38a3accb4db78",
+      "reviewed_source_sha256": null,
+      "target_sha256": null,
+      "status": "missing",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/index.html",
+      "file": "index.html",
+      "source_sha256": "cc38af7e2cdc16eff1e038c96b887580c7470a4b07c99f57ae7c6083054ce8be",
+      "reviewed_source_sha256": "cc38af7e2cdc16eff1e038c96b887580c7470a4b07c99f57ae7c6083054ce8be",
+      "target_sha256": "6e72cd9f2531e7e34c3cde1f64fba29ae6e6ae43b65a13d89ca40fa646e233fd",
+      "status": "current",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/studio.html",
+      "file": "studio.html",
+      "source_sha256": "ff429c183d4d6a72769178c557d9f3a1d0fbbf0d12f9302d3542dc68d488871c",
+      "reviewed_source_sha256": null,
+      "target_sha256": null,
+      "status": "missing",
+      "quality": []
+    }
+  ],
+  "terminology_sources": [
+    {
+      "url": "https://www.nvidia.com/pt-br/solutions/ai/agentic-ai/",
+      "use": "agentes de IA; IA baseada em agentes; raciocinar, planejar e agir; workflows; pesquisa profunda; geração aumentada por recuperação"
+    },
+    {
+      "url": "https://www.nvidia.com/pt-br/learn/learning-path/generative-ai-llm/",
+      "use": "grandes modelos de linguagem; geração aumentada por recuperação; curso autônomo; avaliação"
+    },
+    {
+      "url": "https://www.nvidia.com/pt-br/ai-trust-center/trustworthy-ai/",
+      "use": "IA confiável; segurança e proteção; privacidade; transparência; medidas de proteção"
+    },
+    {
+      "url": "https://www.nvidia.com/pt-br/networking/products/software/doca/",
+      "use": "segurança em tempo de execução; aplicação de políticas; observabilidade; gerenciamento de ciclo de vida"
+    },
+    {
+      "url": "https://www.nvidia.com/pt-br/data-center/ai-data-platform/",
+      "use": "agente de pesquisa profunda; pesquisa semântica; inferência; baixa latência"
+    }
+  ]
+}

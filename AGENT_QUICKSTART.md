@@ -70,6 +70,9 @@ discipline, so read it when an instruction collides with another.
 | Companion essays (course-scoped) | `web/nemoclaw/mats/` |
 | Vendored reference repos | `repos/` |
 | Tooling | `scripts/` |
+| Localization workflow | `scripts/translate/SKILL.html` |
+| Portuguese language contract | `scripts/translate/locales/pt-BR/SKILL.html` |
+| Same-branch drift Studio | `web/nemoclaw/localization.html` |
 | Test runner + service build infra | `workspace/` |
 | Agent reference docs | `docs/` |
 | SKILL contract spec | `SKILL_CONTRACT.md` |
@@ -158,6 +161,9 @@ under node):
 ```bash
 python3 scripts/validation/validate_layout.py --quiet      # layout + link glue
 python3 scripts/skills/skill_consistency.py             # skill-meta vs the real tree
+python3 scripts/build/assemble_locale_overlay.py --self-test  # stale translations cannot publish
+python3 scripts/validation/localization_audit.py --self-test  # locale detector mutations
+python3 scripts/validation/localization_audit.py --locale pt-BR  # drift + pt-BR language contract
 python3 scripts/security/audit_python_dependencies.py    # declared floors/pins have no known PyPI/OSV vulns
 python3 scripts/security/audit_vulnerability_waivers.py  # accepted vuln exceptions are owned + unexpired
 bash    scripts/runtime/run_engine.sh --self-test        # link-engine self-test

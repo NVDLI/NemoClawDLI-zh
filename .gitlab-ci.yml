@@ -53,16 +53,17 @@ test:
   # Required gate: Pages may publish only after every required-tier release check passes.
   allow_failure: false
   script:
-    # The structural gate is identical on every branch. A translate-<lang> branch additionally
-    # passes --lang so validate_bundle skips the English-prose style suites (which would
-    # false-positive on correct target-language text); the language is derived from the branch name.
-    # The lang is derived inline per command so it does not depend on env persisting across lines.
+    # The canonical English course and sparse same-branch locale overlays ship together.
+    # validate_bundle checks English prose plus locale-specific overlay integrity in one run.
     - python3 scripts/validation/validate_layout.py --quiet
     - python3 scripts/skills/skill_consistency.py
     - python3 scripts/skills/skill_contract.py
     - python3 scripts/validation/ci_storage_audit.py
     - python3 scripts/validation/branch_preview_manifest_audit.py --self-test
     - python3 scripts/validation/learner_flow_audit.py --self-test
+    - python3 scripts/build/assemble_locale_overlay.py --self-test
+    - python3 scripts/validation/localization_audit.py --self-test
+    - python3 scripts/validation/localization_audit.py --locale pt-BR
     - python3 scripts/validation/contribution_safety_audit.py --self-test
     - python3 scripts/validation/contribution_safety_audit.py --report docs/validation/contribution-safety.json
     - 'if [ -n "${CI_MERGE_REQUEST_IID:-}" ]; then python3 scripts/validation/contribution_safety_audit.py --submission-env CI_MERGE_REQUEST_DESCRIPTION; else echo "Submission contract: no merge-request context in this pipeline; protected-ref policy remains authoritative."; fi'
@@ -70,7 +71,7 @@ test:
     - python3 scripts/security/audit_python_dependencies.py
     - python3 scripts/security/audit_vulnerability_waivers.py
     - bash   scripts/runtime/run_engine.sh --self-test
-    - 'B="${CI_COMMIT_BRANCH:-${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-}}"; L=""; case "$B" in translate-*) L="--lang ${B#translate-}";; esac; python3 scripts/validation/validate_bundle.py --scope ship $L'
+    - python3 scripts/validation/validate_bundle.py --scope ship
     # Live materials drift check: keep ordinary branch pipelines offline so arXiv/devblog rate
     # limits do not make feature work noisy. validate_bundle still checks committed provenance on
     # every branch; production refs and schedules perform the live re-fetch.
@@ -82,9 +83,6 @@ test:
         echo "Skipping live materials drift check on branch '${B:-detached}' to avoid rate-limiting external sources."
         echo "Offline provenance still runs inside scripts/validation/validate_bundle.py."
       fi
-    # On a translation branch, report what changed on the source since this translation's base so the
-    # job log shows the re-translate list. Advisory: a translator syncs at their own cadence.
-    - 'B="${CI_COMMIT_BRANCH:-${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-}}"; case "$B" in translate-*) python3 scripts/translate/translation_status.py --check || echo "translation drift is advisory; sync at your cadence";; esac'
   artifacts:
     when: always
     name: "gate-$CI_COMMIT_SHORT_SHA"
@@ -161,15 +159,6 @@ pages:
       refresh_branch_refs() {
         git fetch origin '+refs/heads/*:refs/remotes/origin/*' --quiet 2>/dev/null || true
       }
-      stage_translations() {
-        refresh_branch_refs
-        for ref in $(git for-each-ref --format='%(refname:short)' 'refs/remotes/origin/translate-*' 2>/dev/null); do
-          lang="${ref##*translate-}"
-          echo "staging i18n/$lang from $ref"
-          mkdir -p "i18n/$lang"
-          git archive "$ref" web | tar -x -C "i18n/$lang"
-        done
-      }
       build_branch_preview() {
         test -n "$CI_COMMIT_REF_SLUG"
         preview_ref="${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-$CI_COMMIT_REF_NAME}"
@@ -200,13 +189,6 @@ pages:
         mkdir -p /tmp/nemoclaw-prod-root
         git fetch origin "$prod_ref:refs/remotes/origin/$prod_ref" --quiet
         git archive "origin/$prod_ref" | tar -x -C /tmp/nemoclaw-prod-root
-        git fetch origin '+refs/heads/translate-*:refs/remotes/origin/translate-*' --quiet 2>/dev/null || true
-        for ref in $(git for-each-ref --format='%(refname:short)' 'refs/remotes/origin/translate-*' 2>/dev/null); do
-          lang="${ref##*translate-}"
-          echo "staging production i18n/$lang from $ref"
-          mkdir -p "/tmp/nemoclaw-prod-root/i18n/$lang"
-          git archive "$ref" web | tar -x -C "/tmp/nemoclaw-prod-root/i18n/$lang"
-        done
         (cd /tmp/nemoclaw-prod-root && bash scripts/build/build_pages.sh "$CI_PROJECT_DIR/public")
         refresh_branch_refs
         python3 scripts/build/build_branch_manifest.py --out public/branches.json --current-ref "$prod_ref" --current-slug "$prod_ref" --published-ref "$preview_ref=$CI_COMMIT_REF_SLUG"
@@ -226,7 +208,6 @@ pages:
         python3 scripts/validation/branch_preview_manifest_audit.py --artifact-root public --manifest public/branches.json --expect-preview "$preview_ref=$CI_COMMIT_REF_SLUG"
         python3 scripts/validation/branch_preview_manifest_audit.py --artifact-root public --manifest "public/$CI_COMMIT_REF_SLUG/branches.json" --expect-preview "$preview_ref=$CI_COMMIT_REF_SLUG"
       else
-        stage_translations
         bash scripts/build/build_pages.sh public
         test -f public/nemoclaw/index.html
         test -f public/branches.json
