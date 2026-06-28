@@ -7,8 +7,8 @@
 # pre-push = rebase guard + SKILL consistency + layout + projection link gate.
 set -e
 
-# Anchor on this script's own dir (task1/scripts), so it works whether task1 is a subdir
-# (DLI wrapper) or the repo root (the open-source release).
+# Anchor on this script's own directory so normal and linked worktrees resolve the same
+# canonical repository content root.
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 # `REPO_ROOT/.git` is a file in a linked worktree. Ask Git for the real hooks

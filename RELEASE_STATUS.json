@@ -1,0 +1,11 @@
+{
+  "schema": "nemoclaw-release-status/1",
+  "publication_state": "pending-osrb-approval",
+  "canonical_repository": "internal-gitlab",
+  "external_mirror": "not-published",
+  "target_license": "Apache-2.0",
+  "notice_required": false,
+  "released_courses": [
+    "nemoclaw"
+  ]
+}

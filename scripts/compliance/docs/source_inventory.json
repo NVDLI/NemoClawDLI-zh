@@ -105,12 +105,6 @@
       "disposition": "derived materials index"
     },
     {
-      "path": "NOTICE.md",
-      "kind": "notice",
-      "license": "Apache-2.0",
-      "disposition": "Apache distribution notice"
-    },
-    {
       "path": "web/nemoclaw/assets/figures/fig2_react.svg",
       "kind": "course-asset",
       "license": "Apache-2.0",

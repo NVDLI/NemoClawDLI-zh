@@ -11,7 +11,7 @@
   "role": "bundle_index",
   "served_at": "/lab/static/SKILL.html",
   "self_path": "SKILL.html",
-  "thesis": "NVIDIA DLI's open-source, replicable release of course material: the narrative, the assets, the deployment visor that runs it, and the automatic verification that keeps it honest, packaged so a person or an agent can stand it up, navigate it, and check it end to end. Content is organized by EXECUTION SURFACE (web / cpu today, with spark or gpu surfaces only when they declare their compute contract) so each piece declares what it needs to run; every page buds from a SKILL hub, so the whole bundle is statically and semantically verifiable.",
+  "thesis": "NVIDIA DLI's internal release candidate for a proposed open-source publication: the narrative, the assets, the deployment visor that runs it, and the automatic verification that keeps it honest, packaged so a person or an agent can stand it up, navigate it, and check it end to end. Content is organized by EXECUTION SURFACE (web / cpu today, with spark or gpu surfaces only when they declare their compute contract) so each piece declares what it needs to run; every page buds from a SKILL hub, so the whole bundle is statically and semantically verifiable.",
   "surfaces": [
     {
       "name": "web",
@@ -43,20 +43,25 @@
     "courses": [
       "nemoclaw"
     ],
-    "note": "the foyer surfaces only these released courses; this beacon maps the whole bundle"
+    "publication_state": "pending-osrb-approval",
+    "external_mirror": "not-published",
+    "target_license": "Apache-2.0",
+    "notice_required": false,
+    "status_path": "RELEASE_STATUS.json",
+    "note": "the foyer selection does not imply external publication approval"
   },
   "tenets": {
     "purpose": [
       "Content is curated once and projected: pages live under execution surfaces, and bundle_standalone.py, build_pages.sh, and engine.js generate the standalone bundle, the Pages site, and the link graph from them. Add a delivery format by writing a generator, so a fix to the source reaches every format. PHILOSOPHY.md is the long form.",
       "Anchor each page in a task that runs: build a working artifact a reader executes against the lab, and cut a page that only fills an outline. The aim is a change in what a reader can do.",
       "Order is a default, not a gate: keep pages usable out of sequence, with no enforced prerequisites or knowledge checks, so a reader can act on partial understanding and return for the next layer.",
-      "Keep the release open: Apache 2.0, no gate or paywall, the foyer surfacing only the released courses, and mats cited by public URL.",
+      "Target an open external release after approval: Apache 2.0, no gate or paywall, the foyer surfacing only the selected courses, and mats cited by public URL.",
       "Keep surface assumptions explicit: web/ is browser-only and cannot assume student-provisioned microservices; cpu/ owns shared service stacks; spark/ or gpu surfaces must declare their compute contract before content depends on them.",
       "Ship the services a course drives (a model gateway, a sandboxed agent harness, a policy control plane) and let them carry the mechanical work, so a reader's attention stays on the decision the exercise is about.",
-      "Ideas stay easy to contribute through Discussions and structured Issues. Code stays difficult to accept: treat every patch as untrusted, require issue linkage, blast-radius evidence, deterministic gates, human ownership, protected refs, and gated releases."
+      "Ideas stay easy to contribute through structured Issues and, after external intake is enabled, Discussions. Code stays difficult to accept: treat every patch as untrusted, require issue linkage, blast-radius evidence, deterministic gates, human ownership, protected refs, and gated releases."
     ],
     "assumptions": [
-      "task1 is the canonical root: the open-source, replicable release. Everything worth keeping lives here and is versioned; scratch goes to /tmp and is never committed.",
+      "The repository root is canonical for this internal release candidate. External publication remains pending OSRB approval. Everything worth keeping lives here and is versioned; scratch goes to /tmp and is never committed.",
       "Content is organized by execution surface: web/ holds browser-only courses and course-scoped reference packets; cpu/ holds shared microservices; deploy/ holds compose and nginx; future spark/ or gpu surfaces must state their compute contract before use.",
       "The brain is each directory's SKILL.html skill-meta JSON, not a SKILL.md. Parse it first, then walk children: task to surface to course to content. Visual work must also read the asset provenance beacon and validation beacon before edits.",
       "One link engine (scripts/runtime/engine.js) is the single source for resolution, crawl, reachability, and the release contract; it runs headless and in-browser, with no second implementation to drift.",
@@ -125,7 +130,7 @@
 {
   "mode": "hub",
   "title": "Building Agents \u00b7 NVIDIA DLI bundle",
-  "summary": "NVIDIA DLI's open-source, replicable release of course material: the narrative, the assets, the deployment visor that runs it, and the automatic verification that keeps it honest, packaged so a person or an agent can stand it up, navigate it, and check it end to end. Content is organized by EXECUTION SURFACE (web / cpu today, with spark or gpu surfaces only when they declare their compute contract) so each piece declares what it needs to run; every page buds from a SKILL hub, so the whole bundle is statically and semantically verifiable.",
+  "summary": "NVIDIA DLI's internal release candidate for a proposed open-source publication: the narrative, the assets, the deployment visor that runs it, and the automatic verification that keeps it honest, packaged so a person or an agent can stand it up, navigate it, and check it end to end. Content is organized by EXECUTION SURFACE (web / cpu today, with spark or gpu surfaces only when they declare their compute contract) so each piece declares what it needs to run; every page buds from a SKILL hub, so the whole bundle is statically and semantically verifiable.",
   "ties": [
     "build"
   ],
@@ -197,7 +202,17 @@
         {
           "label": "README.md",
           "href": "README.md",
-          "desc": "What the release is and how to run it (start here)."
+          "desc": "What the release candidate is and how to run it (start here)."
+        },
+        {
+          "label": "RELEASE_STATUS.md",
+          "href": "RELEASE_STATUS.md",
+          "desc": "Publication state, approval boundary, and NOTICE policy."
+        },
+        {
+          "label": "RELEASE_STATUS.json",
+          "href": "RELEASE_STATUS.json",
+          "desc": "Machine-readable publication and licensing state."
         },
         {
           "label": "AGENT_QUICKSTART.md",
@@ -208,11 +223,6 @@
           "label": "CONTRIBUTING.md",
           "href": "CONTRIBUTING.md",
           "desc": "How to contribute: hooks, the validation gate, conventions."
-        },
-        {
-          "label": "NOTICE.md",
-          "href": "NOTICE.md",
-          "desc": "Apache notice and third-party provenance pointer."
         },
         {
           "label": "QUALITY_DIRECTIVES.md",
@@ -265,6 +275,11 @@
           "desc": ""
         },
         {
+          "label": "docs/release_artifacts.md",
+          "href": "docs/release_artifacts.md",
+          "desc": ""
+        },
+        {
           "label": "docs/release_playbook.md",
           "href": "docs/release_playbook.md",
           "desc": ""
@@ -314,9 +329,10 @@
   <h2>Agent docs</h2>
   <ul>
     <li><a href="README.md">README.md</a></li>
+    <li><a href="RELEASE_STATUS.md">RELEASE_STATUS.md</a></li>
+    <li><a href="RELEASE_STATUS.json">RELEASE_STATUS.json</a></li>
     <li><a href="AGENT_QUICKSTART.md">AGENT_QUICKSTART.md</a></li>
     <li><a href="CONTRIBUTING.md">CONTRIBUTING.md</a></li>
-    <li><a href="NOTICE.md">NOTICE.md</a></li>
     <li><a href="QUALITY_DIRECTIVES.md">QUALITY_DIRECTIVES.md</a></li>
     <li><a href="scripts/compliance/docs/open_source_readiness.md">scripts/compliance/docs/open_source_readiness.md</a></li>
     <li><a href="scripts/compliance/docs/vendor_policy.md">scripts/compliance/docs/vendor_policy.md</a></li>
@@ -327,6 +343,7 @@
     <li><a href="docs/lab_runtime_testing.md">docs/lab_runtime_testing.md</a></li>
     <li><a href="docs/notebook_corruption_prevention.md">docs/notebook_corruption_prevention.md</a></li>
     <li><a href="docs/pages_deploy.md">docs/pages_deploy.md</a></li>
+    <li><a href="docs/release_artifacts.md">docs/release_artifacts.md</a></li>
     <li><a href="docs/release_playbook.md">docs/release_playbook.md</a></li>
     <li><a href="docs/staging-deployments.md">docs/staging-deployments.md</a></li>
     <li><a href="docs/validation_remediation.md">docs/validation_remediation.md</a></li>

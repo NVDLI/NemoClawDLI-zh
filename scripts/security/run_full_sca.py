@@ -62,14 +62,25 @@ def run_step(name: str, command: list[str], *, out: Path, require_tools: bool, e
 def planned_steps(args: argparse.Namespace, out: Path) -> list[tuple[str, list[str]]]:
     steps: list[tuple[str, list[str]]] = []
     if args.python_local or args.all_available:
+        python_audit = [sys.executable, "-m", "pip_audit"]
+        if args.python_path:
+            python_audit.extend(["--path", args.python_path])
+        else:
+            python_audit.append("--local")
+        python_audit.extend(["--strict", "--format", "json", "--output", str(out / "pip-audit-local.json")])
         steps.append((
             "pip-audit installed Python environment",
-            [sys.executable, "-m", "pip_audit", "--local", "--strict", "--format", "json", "--output", str(out / "pip-audit-local.json")],
+            python_audit,
         ))
     if args.cyclonedx_env or args.all_available:
+        cyclonedx = ["cyclonedx-py", "environment"]
+        if args.python_executable:
+            cyclonedx.append(args.python_executable)
+        cyclonedx.extend(["--output-reproducible", "--of", "JSON",
+                          "--output-file", str(out / "python-env.cdx.json")])
         steps.append((
             "CycloneDX SBOM for Python environment",
-            ["cyclonedx-py", "environment", "--of", "JSON", "--output-file", str(out / "python-env.cdx.json")],
+            cyclonedx,
         ))
     if args.osv_source or args.all_available:
         steps.append((
@@ -103,6 +114,8 @@ def main() -> int:
     parser.add_argument("--all-available", action="store_true", help="select all source/environment scanners that are installed")
     parser.add_argument("--python-local", action="store_true", help="run pip-audit against installed Python environment")
     parser.add_argument("--cyclonedx-env", action="store_true", help="write CycloneDX SBOM for installed Python environment")
+    parser.add_argument("--python-executable", help="Python interpreter whose environment CycloneDX should inventory")
+    parser.add_argument("--python-path", help="site-packages path pip-audit should inspect instead of the scanner environment")
     parser.add_argument("--osv-source", action="store_true", help="run OSV-Scanner source scan")
     parser.add_argument("--image", help="also scan a built image with OSV-Scanner, Grype, and Trivy when available")
     parser.add_argument("--json", action="store_true", help="emit machine-readable report")

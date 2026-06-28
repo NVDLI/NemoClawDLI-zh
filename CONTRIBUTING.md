@@ -1,6 +1,8 @@
 # Contributing
 
-This repository is the open-source release workspace for NVIDIA DLI course material.
+This repository is the internal release-candidate workspace for proposed open-source NVIDIA
+DLI course material. External publication remains pending OSRB approval; see
+[`RELEASE_STATUS.md`](RELEASE_STATUS.md).
 It packages authored content, shared services, deployment, and validation in one release
 tree. Content is organized by execution surface: `web/` is browser-only and remote-service
 aware, `cpu/` is the shared microservice stack, and `deploy/` is the operator surface for
@@ -16,9 +18,10 @@ File a focused Issue with the affected files or URLs, the observed behavior, the
 behavior, and any source or runtime evidence. The issue anatomy and cadence live in
 [`docs/issue_standards.md`](docs/issue_standards.md). This is the preferred path for
 cross-cutting course claims, pedagogy, vendor/source concerns, and deployment assumptions.
-Use [Discussions](https://github.com/NVIDIA/NemoClawDLIOS/discussions) for questions,
-brainstorms, learning friction, and ideas that do not yet have a concrete defect. Neither
-route requires code. Report vulnerabilities privately through [`SECURITY.md`](SECURITY.md).
+Use structured Issues for actionable defects. After external intake is approved and enabled,
+use Discussions for questions, brainstorms, learning friction, and ideas that do not yet have
+a concrete defect. Neither route requires code. Report vulnerabilities privately through
+[`SECURITY.md`](SECURITY.md).
 
 Use the direct patch path when you can carry the change through the structured release
 process. The full release and external-mirror model lives in [`docs/release_playbook.md`](docs/release_playbook.md). A direct MR should update the source, declared blast-radius files, and validators
@@ -88,6 +91,7 @@ python3 scripts/build/assemble_locale_overlay.py --self-test
 python3 scripts/validation/localization_audit.py --self-test
 python3 scripts/validation/localization_audit.py --locale pt-BR
 python3 scripts/compliance/source_gate.py
+python3 scripts/build/package_release.py --self-test
 bash scripts/runtime/run_engine.sh --self-test
 python3 scripts/validation/validate_bundle.py --scope ship
 python3 scripts/validation/tenets.py --check

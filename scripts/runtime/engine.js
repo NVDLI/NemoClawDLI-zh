@@ -580,7 +580,7 @@
       // DLI-LMS asset URLs legitimately carry the course code.
       exceptFile: /(^|\/)edx_navigator_quick\.html$/ },
     { re: /archived_courses\//, why: "archived_courses is removed" },
-    { re: /\bscaffold\//, why: "scaffold was removed; task1 is canonical" },
+    { re: /\bscaffold\//, why: "scaffold was removed; the repository root is canonical" },
     { re: new RegExp("workspace/build_agents/"), why: "removed pre-migration path" }
   ];
   var AUDIT_ASSET_EXT = [".css", ".js", ".mjs", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico"];

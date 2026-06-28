@@ -2,6 +2,12 @@
 
 This playbook defines how this course bundle moves from internal GitLab development to an external NVIDIA mirror that can accept student reports and later direct student contributions. The repository stays a course packaging and release workspace: authored content, shared services, deployment, validation, and governance move together.
 
+Current state: internal release candidate, with external publication pending OSRB approval. See
+[`RELEASE_STATUS.md`](../RELEASE_STATUS.md). Terms such as `released course` elsewhere in the
+repository identify courses selected for the learner foyer; they do not assert public publication.
+The GitHub Pages and release workflows must run
+`contribution_safety_audit.py --require-publication-approved` before external writes.
+
 ## Scalable recommendation
 
 Use a staged externalization model:
@@ -198,9 +204,11 @@ Use these while GitLab remains canonical:
 - Protect `v*` tags and name the eligible human release operators explicitly instead of granting
   tag creation to every Maintainer-role bot.
 - Keep production Pages deploy manual and protect the `production` environment with explicit
-  human deployers. The manual action is the one-operator authorization record; add an independent
-  approval rule only when another active operator can actually satisfy it. Review environments
-  remain isolated, manual, and short-lived without production authority.
+  human deployers. In a one-operator project, an environment approval rule naming that sole
+  operator must also allow the pipeline triggerer to approve; otherwise every deployment
+  deadlocks. When another active operator can supply independent review, disable self-approval
+  and require that reviewer. Review environments remain isolated, manual, and short-lived
+  without production authority.
 - Keep branch preview deploys manual, isolated under branch slug paths, built with production root from a protected ref, and blocked by the required test gate. On classic Pages, expose only preview paths present in the latest combined artifact.
 - Use templates in `.gitlab/issue_templates/` and `.gitlab/merge_request_templates/`.
 - Use labels and milestones as the project-management source. Mirror the same taxonomy to GitHub.
@@ -255,14 +263,17 @@ Release checklist:
 ### GitHub release runbook
 
 The checked-in `.github/workflows/release.yml` prepares a release but cannot authorize one.
+The tag, artifact, retention, and recovery contract lives in
+[`docs/release_artifacts.md`](release_artifacts.md).
 
 1. Merge the release candidate through the protected `main` ruleset. Required `pages / test` must
    pass on the final reviewed SHA.
-2. Have a release manager create a protected semantic tag such as `v1.2.3` on a commit contained in
-   `main`. Do not retarget an existing tag.
+2. Have a release manager create a protected annotated semantic tag such as `v1.2.3` on a commit
+   contained in `main`. Do not retarget, delete, or reuse an existing release tag.
 3. Run the `release` workflow manually and provide that tag. The read-only job verifies the tag,
    runs the full static/security gate, builds Pages without live material drift, creates a stable
-   tar archive, writes its SHA-256 checksum, and uploads the validation reports.
+   versioned tar archive, release manifest, resolved-environment CycloneDX SBOM, `SHA256SUMS`, and
+   operator-only validation evidence.
 4. The write job waits on the protected `github-release` environment. A reviewer other than the
    initiator checks the SHA, tag, validation artifact, checksum, known issues, and release notes.
 5. Approval grants `contents: write` only to the final job. It creates or refreshes a **Draft release**.
@@ -271,6 +282,9 @@ The checked-in `.github/workflows/release.yml` prepares a release but cannot aut
    governance, and known-issue sections, verifies attached checksums, then publishes it in GitHub.
 7. Confirm the release and Pages deployment histories, inspect Rule Insights for denied or bypassed
    operations, and record the release URL in the milestone. Any bypass needs an owner and rationale.
+
+Enable immutable releases on the external repository before the first publication. Build the draft
+and attach every asset before publishing because immutable release assets cannot be replaced later.
 
 If validation fails, fix through a new Issue-linked PR and create a new tag after merge. Never move a
 published tag, weaken a required check, approve your own environment job, or publish an artifact built
@@ -377,12 +391,15 @@ Before public mirror:
 - [ ] This playbook is linked from docs SKILL and root SKILL.
 - [ ] GitLab issue/MR templates exist.
 - [ ] GitHub issue/PR templates exist.
+- [ ] Code of Conduct and its enforcement route are approved before public community intake.
 - [ ] External repository protects `main` and `release/*`.
 - [ ] Active `v*` tag rules restrict create, update, and deletion.
+- [ ] Release workflow rejects lightweight tags and packages only annotated SemVer tags contained in `main`.
+- [ ] Immutable releases are enabled before the first public version is published.
 - [ ] External repository has required checks mapped to the static gate.
 - [ ] Dependency graph, Dependabot alerts, dependency review, code scanning, and secret scanning are enabled or explicitly deferred with a reason.
 - [ ] `dependabot.yml` exists for public-safe ecosystems after owners and labels exist.
-- [ ] Resolved-environment SBOM artifacts are retained for releases.
+- [ ] Release draft contains the deterministic archive, manifest, resolved-environment SBOM, and `SHA256SUMS`.
 - [ ] Image SCA strategy is defined for public-safe images and NVIDIA/internal images separately.
 - [ ] External repository has Discussions enabled, with pinned welcome guidance.
 - [ ] CODEOWNERS is added after org/team handles are real.

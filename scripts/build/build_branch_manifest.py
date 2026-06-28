@@ -24,6 +24,21 @@ def published_ref(spec: str) -> tuple[str, str]:
     return name, slug
 
 
+def generated_at() -> str:
+    raw = os.environ.get("SOURCE_DATE_EPOCH")
+    if raw is None:
+        value = dt.datetime.now(dt.timezone.utc)
+    else:
+        try:
+            epoch = int(raw)
+        except ValueError as exc:
+            raise SystemExit("SOURCE_DATE_EPOCH must be a non-negative integer") from exc
+        if epoch < 0:
+            raise SystemExit("SOURCE_DATE_EPOCH must be a non-negative integer")
+        value = dt.datetime.fromtimestamp(epoch, dt.timezone.utc)
+    return value.replace(microsecond=0).isoformat()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
@@ -67,7 +82,7 @@ def main() -> int:
 
     data = {
         "schema": "nemoclaw-branches/2",
-        "generated_at": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(),
+        "generated_at": generated_at(),
         "default_branch": default_branch,
         "current": {"name": current, "slug": current_slug} if current else None,
         "production_url": "nemoclaw/",
