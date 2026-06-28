@@ -92,9 +92,9 @@
     <div class="eyebrow">Module 4 · Part A of 3</div>
     <h1>The <span>OpenShell</span> Sandbox</h1>
     <p class="lead">
-      An agent can ignore a prompt rule, and application logic can make the
-      wrong decision. OpenShell puts the final allow-or-deny decision in a
-      sandbox the agent cannot rewrite.
+      Module 3 gave OpenClaw persistent context and unattended triggers. Prompt rules and
+      harness checks still influence what it attempts, while OpenShell puts the final
+      allow-or-deny decision in a sandbox the agent cannot rewrite.
     </p>
     <p class="lead">
       On this page, you send real commands to your launchable, read each
@@ -135,7 +135,7 @@
        or another process that needs operating-system-level containment.</p>
   </div>
 
-  <h2>One action, three lines of defense</h2>
+  <h2>Where each defense layer intervenes</h2>
   <p>Suppose untrusted content tells an agent to read a credential and send it
      away. Three different layers get a chance to stop that action, and each
      layer answers a different question.</p>
@@ -145,8 +145,8 @@
         should behave. Models can still be deceived by
         <a href="https://arxiv.org/abs/2302.12173" target="_blank" rel="noopener">Adversarial
         retrieved content</a>, malicious tool output, or another agent in
-        the loop. This layer influences the decision; it does not remove the
-        agent's authority.</li>
+        the loop. This layer influences the decision. The agent retains whatever
+        authority the runtime granted it.</li>
     <li><strong>The agent harness validates the request.</strong>
         OpenClaw or Hermes can reject an unsupported shell form, a forbidden
         tool call, or a malformed argument before the request reaches the
@@ -190,7 +190,7 @@
     </div>
   </details>
 
-  <h2>Four mechanisms, four concrete questions</h2>
+  <h2>How the sandbox mechanisms answer testable questions</h2>
   <p>This launchable combines four operating-system mechanisms. Each answers a
      question you can test, and together they apply policy at more than one
      boundary. Read the live policy later on this page before treating any one
@@ -771,7 +771,7 @@ helpers.log("Edit any command, add a probe('your command') line, or ask a new qu
 // ── Read your live policy, draw the map from it ───────────────────────────────
 mountRunCell("#cell-live-policy", {
   label: "Read your launchable's live policy",
-  intro: "The map computes its edges from a saved snapshot. This is the live request that snapshot stands in for. It runs openshell policy get on your launchable through the operator terminal and prints the raw policy YAML, so you can confirm the snapshot matches your real box. Keep your launchable open in another tab, since its Cloudflare Access session is what authorises the terminal; connect on the Kickstart page first if you have not. The code stays available in the dropdown for anyone who wants the exact call.",
+  intro: "Fetch the live policy through the operator terminal and print its YAML, then compare it with the snapshot that drives the map. Keep the launchable open for its Cloudflare Access session; connect in Module 3a first if needed. The exact call remains in the code dropdown.",
   code: `// helpers.policyGet() returns the command, raw output, status, and parsed policy.
 const p = await helpers.policyGet();
 helpers.log("called:  " + p.command);          // the exact command that ran on your box
@@ -801,7 +801,7 @@ return { agent, networks: nets };
 // ── Predict, then confirm against the live kernel ─────────────────────────────
 mountCanvasFlow("#cell-predict-confirm", {
   label: "Static verdict vs the live sandbox",
-  intro: "First run the live-policy cell above so this reads YOUR box's policy. Then pick an action from the buttons and its static verdict appears at once: predict computes the OpenShell verdict in the browser from that live policy, the same allow/deny logic the proxy runs. Then run Confirm to execute the action inside your live sandbox with openshell sandbox exec and read back the kernel's real result, and Compare to check the two agree. The code remains one dropdown away, but the default view keeps the verdicts first.",
+  intro: "Run the live-policy cell first. Pick an action, use Predict to evaluate its policy verdict in the browser, and use Confirm to execute it with openshell sandbox exec. Compare checks whether the static and live results agree. The code remains in the dropdown.",
   edges: [
     { from: "predict", to: "confirm" },
     { from: "confirm", to: "compare" },

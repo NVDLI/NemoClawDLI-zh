@@ -132,7 +132,7 @@
 
   <div class="howto">
     <div class="step"><span class="n">1</span><span><b>Drop in your key</b> below. Model calls go to <a href="https://build.nvidia.com" target="_blank" rel="noopener"><code>build.nvidia.com</code></a>; a free <code>nvapi-</code> key unlocks every exercise. Enable LMS/static iframe mode only when your host page needs the CORS worker.</span></div>
-    <div class="step"><span class="n">2</span><span><b>Work the four modules</b> in order. Every cell runs live in the browser with JavaScript, so you should be able to run it in your web browsers or with a general-purpose agent chatbot of choice.</span></div>
+    <div class="step"><span class="n">2</span><span><b>Follow the modules</b> in order for the default path, or jump to the task you need. Every page ends in a live browser artifact, with its JavaScript available for inspection and adaptation.</span></div>
     <div class="step"><span class="n">3</span><span><b>For the agent stack</b> in Modules 3&ndash;4, create a NemoClaw launchable when the course asks for it; it hosts the course's <a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener">OpenClaw</a>-in-<a href="https://github.com/NVIDIA/OpenShell" target="_blank" rel="noopener">OpenShell</a> stack as defined by the <a href="https://github.com/NVIDIA/NemoClaw" target="_blank" rel="noopener">NemoClaw blueprint</a>.</span></div>
   </div>
 
@@ -153,9 +153,10 @@
   <div class="section" id="setup">
     <h2>Entering Your API Key</h2>
     <p class="help">
-      The key is saved in <code>localStorage</code> on this browser, so it persists
+      Your browser saves the key in <code>localStorage</code>, so it persists
       across reloads and tabs and carries over to both courses until you clear it
-      with the Change button. The browser sends it to build.nvidia.com and never writes it into any page. The hosted CORS worker is used only when LMS/static iframe mode is enabled.
+      with the Change button. Requests send it to build.nvidia.com and never write it into any page.
+      Only LMS/static iframe mode uses the hosted CORS worker.
     </p>
     <div id="key-panel"></div>
   </div>
@@ -164,9 +165,13 @@
   <div class="section">
     <h2>Exploring the Material</h2>
     <p class="help">
-      Feel free to engage with the sections that you find most interesting. Each section contains 
-      self-hostable examples of code which you are free to modify, and can be leveraged by agents 
-      (i.e. by giving this repo to them as context) to make your own local deployments and custom applications.  
+      Use the modules as a guided order; each page also remains useful on its own.
+      Following the full path lets each module reuse its predecessor&mdash;the browser-hosted loop
+      becomes a scoped workflow, that workflow moves into a persistent agent runtime, and the
+      runtime's wider reach motivates the operating-system boundary that contains it.
+      Start with the task you need. Every page ends in a live artifact and keeps the
+      supporting code available. You can modify the examples in the browser, self-host them,
+      or give this repository to a coding agent as context for a local deployment or application.
     </p>
 
     <div class="module-grid">
@@ -198,7 +203,7 @@
         <a class="mc-main" href="./03a-kickstart.html">
           <div class="num">Module 3 · ~1 hour · 3 pages</div>
           <h3>NemoClaw Setup · OpenClaw · Always-On</h3>
-          <p>Connect the NemoClaw launchable, then explore OpenClaw's gateway, workspace, skills, and scheduled runs inside OpenShell.</p>
+          <p>Connect the NemoClaw launchable. Explore OpenClaw's gateway, workspace, skills, and scheduled runs inside OpenShell.</p>
         </a>
         <div class="pages">
           <a href="./03a-kickstart.html">3a Kickstart</a> ·

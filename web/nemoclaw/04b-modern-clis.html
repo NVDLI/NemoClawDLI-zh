@@ -66,8 +66,7 @@
     <div class="eyebrow">Module 4 · Part B of 3</div>
     <h1>Modern <span>CLI Agents</span></h1>
     <p class="lead">
-      Claude Code, Codex, Cursor, Hermes, and OpenClaw all wrap the
-      same handful of capabilities:
+      The agents compared below wrap the same handful of capabilities:
     </p>
     <ul class="lead">
       <li>a working directory</li>
@@ -77,22 +76,20 @@
       <li>a network</li>
     </ul>
     <p class="lead">
-      Security turns on which of
-      those a wrapper leaves open by default, whether unattended execution is enabled at all,
-      and whether the runtime underneath catches a bad call. The brand on the CLI rarely changes that answer.
+      Their security profiles depend on which capabilities are open by default and whether
+      unattended execution is enabled. The runtime underneath must also catch a bad call.
     </p>
     <p class="lead">
-      That runtime is the OpenShell sandbox you drove in Module 4a, and in this
-      module you weigh the wrappers that ride on top of it before building one of
-      your own in the browser.
+      Module 4a separated application decisions from operating-system enforcement.
+      Application wrappers sit above that boundary. You will compare them before building
+      a browser-based CLI agent of your own.
     </p>
   </div>
 
-  <h2>The CLI agents share one application shape</h2>
-  <p>Each runs a model in a loop with tools. That shared shape keeps them close to
-     interchangeable for almost any task you hand them however much their defaults diverge.
-     They part ways on harness weight. Harness weight measures how much each one hides for
-     you and how far its defaults reach before you ever ask.</p>
+  <h2>Shared loop, different application defaults</h2>
+  <p>Each product runs a model in a loop with tools. Defaults and built-in capabilities
+     differ. Implementation detail varies too. Their combined cost and convenience form
+     the <em>harness weight</em> used below.</p>
   <p>Hermes differs from the editor CLIs because skill creation, persistent memory,
      cron, and the messaging gateway are normal operating paths in its public docs.
      Other agents can still rewrite their own beacons or skills when file edits are
@@ -155,8 +152,7 @@
 
   <h2>Try it · the same task, weighed across harnesses</h2>
   <p>
-    Each CLI runs the same core loop, so each can carry both the everyday work and
-    the stretch cases. They differ only in harness weight, along three axes:
+    The artifact compares harness weight along these axes:
   </p>
   <ul>
     <li><strong>Abstractions</strong> the harness hides, so you write less code and also see less of what runs.</li>
@@ -164,11 +160,9 @@
     <li><strong>First-class features</strong> it ships built in, against the same capability left for you to hand-roll.</li>
   </ul>
   <p>
-    The real question is never whether one of them can do your task. You are choosing
-    how much harness weight the task is worth. Describe a task below and the artifact lays the
-    five side by side on that axis, the shared core loop first and the per-harness weight after.
-    The editable cell below builds it from three pieces you can change: the system prompt, the
-    examples, and the respond logic. Press Run after any edit to rebuild it.
+    Describe a task and compare how much machinery each harness supplies. The editable
+    cell exposes its system prompt and response logic. It also shows the examples. Rerun
+    the cell after an edit to rebuild the artifact.
   </p>
   <div id="clis-cell"></div>
   <div id="clis-artifact"></div>
@@ -262,6 +256,11 @@ helpers.log("rendered below. Toggle a README to add it as context, then ask.");
     loaded, so the harness weighs nothing to stand up. Its reach is still wide: the agent can
     read the DOM, call <code>fetch</code>, and use the course helpers, all inside the tab you
     are reading.
+  </p>
+  <p>
+    Module 4c returns to this browser form factor and separates the transferable part&mdash;an
+    interactive web surface with visible state and controls&mdash;from the authentication,
+    storage, network, and tool adapters supplied by a particular host.
   </p>
   <div id="cell-jsagent"></div>
   <div id="jsagent-artifact"></div>

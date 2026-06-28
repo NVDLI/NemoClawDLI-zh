@@ -172,6 +172,10 @@ CANVAS_DEFAULT_VISIBLE_MAX_LINES = 39
 VISIBLE_COMMENT_WALL = 4
 VISIBLE_LINE_LIMIT = 180
 VISIBLE_INDENT_LIMIT = 24
+CANVAS_LABEL_WORD_LIMIT = 14
+CANVAS_TITLE_WORD_LIMIT = 10
+CANVAS_COPY_WORD_LIMIT = 55
+CANVAS_COPY_RE = re.compile(r'\b(label|intro|title|summary)\s*:\s*(["\'])((?:\\.|(?!\2).)*)\2', re.S)
 
 
 def _is_visible_cell(block: str, code_start: int, lines: int, canvas: bool) -> bool:
@@ -274,6 +278,44 @@ def audit_visible_code_hygiene():
     return findings
 
 
+def audit_canvas_copy():
+    """Keep learner-facing canvas chrome shorter than the implementation it introduces.
+
+    Page headings already provide module coordinates, so repeating ``Module 2a Part 4`` in every
+    canvas label is navigation scaffolding rather than teaching. Long intros and summaries are a
+    second prose layer above code that is already available on demand; cap only extreme cases so
+    useful conceptual guidance survives while implementation inventories move back into the code.
+    """
+    findings = []
+    pages = sorted((WEB / "nemoclaw").glob("0*.html"))
+    for path in pages:
+        text = path.read_text(errors="ignore")
+        rel = str(path.relative_to(WEB.parent))
+        mounts = list(CANVAS_MOUNT_RE.finditer(text))
+        for i, mount in enumerate(mounts):
+            start = mount.start()
+            end = mounts[i + 1].start() if i + 1 < len(mounts) else len(text)
+            block = text[start:end]
+            # Strings inside runnable code are program data, not CanvasFlow chrome.
+            surface = CODE.sub("code: ``", block)
+            for m in CANVAS_COPY_RE.finditer(surface):
+                kind, value = m.group(1), re.sub(r"\\n|\s+", " ", m.group(3)).strip()
+                words = len(re.findall(r"[A-Za-z0-9][A-Za-z0-9'-]*", value))
+                reason = ""
+                if kind == "label" and re.search(r"\bModule\s+\d+[a-c]?\s+Part\s+\d+", value, re.I):
+                    reason = "repeats the page's module/part coordinate"
+                elif kind == "label" and words > CANVAS_LABEL_WORD_LIMIT:
+                    reason = f"label has {words} words (limit {CANVAS_LABEL_WORD_LIMIT})"
+                elif kind == "title" and words > CANVAS_TITLE_WORD_LIMIT:
+                    reason = f"node title has {words} words (limit {CANVAS_TITLE_WORD_LIMIT})"
+                elif kind in ("intro", "summary") and words > CANVAS_COPY_WORD_LIMIT:
+                    reason = f"{kind} has {words} words (limit {CANVAS_COPY_WORD_LIMIT})"
+                if reason:
+                    line_no = text[:start].count("\n") + surface[:m.start()].count("\n") + 1
+                    findings.append((rel, f"line {line_no}: {reason}: {value[:120]}"))
+    return findings
+
+
 def run(verbose=True):
     """Driver: audit every numbered lesson page's runnable cells and aggregate the findings. It exists
     so the gate and a reviewer get one accounting of cells that violate the runnable-cell contract.
@@ -284,6 +326,7 @@ def run(verbose=True):
     code_surface = audit_code_surface()
 
     readability = audit_visible_code_hygiene()
+    copy_surface = audit_canvas_copy()
 
     for p in pages:
         o, c, u, d, k, st, uh = audit_page(p)  # per-page findings, by category
@@ -305,19 +348,22 @@ def run(verbose=True):
         show("default-open canvas code surface", code_surface, lambda it: f"{it[0]}  {it[1]}")
 
         show("visible learner code hygiene", readability, lambda it: f"{it[0]}  {it[1]}")
+        show("learner-facing canvas copy", copy_surface, lambda it: f"{it[0]}  {it[1]}")
 
         total = (len(opaque) + len(console) + len(unawaited) + len(dialog) + len(key) + len(static)
-                 + len(unhi) + len(ui_contract) + len(code_surface) + len(readability))
+                 + len(unhi) + len(ui_contract) + len(code_surface) + len(readability)
+                 + len(copy_surface))
         print(f"\ncell_audit: {total} finding(s) (opaque {len(opaque)}, console {len(console)}, "
               f"unawaited {len(unawaited)}, dialog {len(dialog)}, inline-key {len(key)}, static {len(static)}, "
 
               f"unhighlighted {len(unhi)}, ui-contract {len(ui_contract)}, code-surface {len(code_surface)}, "
-              f"readability {len(readability)})")
+              f"readability {len(readability)}, copy {len(copy_surface)})")
 
     return {"opaque": opaque, "console": console, "unawaited": unawaited,
             "dialog": dialog, "inline_key": key, "static_cell_code": static,
             "unhighlighted": unhi, "ui_contract": ui_contract,
-            "code_surface": code_surface, "readability": readability}
+            "code_surface": code_surface, "readability": readability,
+            "copy_surface": copy_surface}
 
 
 if __name__ == "__main__":

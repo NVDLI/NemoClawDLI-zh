@@ -157,13 +157,12 @@
       <div class="eyebrow">Module 3 · Part A of 3 · live calls begin</div>
       <h1>Connect the <span>NemoClaw</span> Stack</h1>
       <p class="lead">
-        The research agent you just built ran on stateless calls, with orchestration living in
-        your page as specified in Javascript logic. Now you will point those same patterns at a 
+        Modules 1 and 2 kept orchestration in the browser. A workflow ended when the page stopped
+        carrying its messages, intermediate results, or branch state. Module 3 moves the same agent patterns into a
         <a href="https://brev.nvidia.com/launchable/deploy?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS" target="_blank" rel="noopener">
-        NemoClaw-running Brev Launchable</a>, a sandboxed multi-channel agent framework running that you can 
-        be kickstarted as needed. Reaching the underlying agent means moving along the spectrum of
-        access protocols which will largely be handled for you, but will set you up with reference connections 
-        which you can use to stand up similar interfaces in your future projects.
+        NemoClaw Brev launchable</a>. OpenClaw preserves session history and a file-backed workspace
+        while continuing to expose tools; OpenShell limits what that running agent can reach. From the browser, you will compare
+        the stateless model API with the persistent OpenClaw gateway.
       </p>
       <figure style="margin:1.4em 0">
         <div class="fig-embed" data-svg-src="assets/figures/03a-kickstart-1.svg" style="aspect-ratio:1300 / 400"></div>
@@ -199,9 +198,9 @@
 
     <h2>The two endpoints you work with from here</h2>
     <p>
-      The model endpoint answers the same API as before, and OpenClaw runs the agent loop behind the gateway. 
-      Both will be focused for this notebook, but feel free to skim the implementation details as they are pretty weedy.
-      <b>Maybe your agent of choice will be able to work more confidently with this code in its context though...</b>
+      The model endpoint answers the same API as before. The launchable gateway reaches an
+      OpenClaw process that preserves sessions and can run tools. Supporting protocol code stays
+      available in the cells, but the endpoint, credential, and state boundary are the parts to track.
     </p>
 
     <div class="url-pair">
@@ -218,9 +217,10 @@
         <h3>NemoClaw setup playbook</h3>
         <p>The setup creates a launchable that runs OpenClaw inside OpenShell, at
           <code>https://nemoclaw-&lt;id&gt;.brevlab.com</code>. Identity, tools,
-          session memory, and sandbox policy live there. Accessed via WebSocket
-          gateway at <code>/cli/gateway</code>. For more info, we recommend checking out the 
-          <a href="https://build.nvidia.com/spark/nemoclaw-applications" target="_blank" rel="noopener">🦞NemoClaw Setup Playbook</a>
+          session memory, and sandbox policy live there. The browser reaches the agent through
+          the WebSocket gateway at <code>/cli/gateway</code>. For a local deployment, follow the
+          <a href="https://build.nvidia.com/spark/nemoclaw-applications" target="_blank" rel="noopener">NemoClaw setup playbook</a>
+          and keep the same connection boundary.
         </p>
         <p style="color:var(--tf);font-size:.8rem">Gateway token auth. Sessions
           via <code>x-openclaw-session-key</code>.</p>
@@ -248,8 +248,8 @@
       <strong>If the OpenClaw probe times out or returns a 502.</strong>
       The agent harness likely has not finished booting, which usually means the
       launchable started before OpenClaw finished loading its policy YAML. Wait
-      30 seconds, click Probe again, and if it stays down after that, 03c covers
-      the diagnostic path.
+      30 seconds and click Probe again. If it stays down, use the Recover cell in
+      the gateway section below before continuing.
     </div>
 
     <h3>The probe's request, as editable code</h3>
@@ -391,8 +391,9 @@
     </div>
 
     <h2>What's next</h2>
-    <p>Next, you edit the files that define what OpenClaw <em>is</em> and watch the
-      same chat completion answer differently after the change.</p>
+    <p>Module 3b opens the files that shape each OpenClaw turn. Module 3c adds skills
+      and scheduled triggers, then Module 4 tests how OpenShell limits the actions those
+      persistent instructions can start.</p>
 
     <div class="references">
       <h3>References</h3>
@@ -971,7 +972,7 @@ return { models: models?.models?.length, cronJobs: jobs.length };
         {
           id: "gw-chat", icon: "💬", title: "Send a chat message (streaming)", x: 2, y: 0,
           showCode: false,
-          summary: "Call chat.send with a sessionKey. The gateway routes the message into the running agent loop and streams events back: agent frames carry the tool-execution steps, and the run-end frame closes it out. We use a fresh session key per run (see the suffix) so the agent always starts clean and re-runs its tools. A reused session can answer from memory or get tangled in a polluted history and never call exec. The default prompt makes the agent run a real command; comment the bottom prompt to try the simpler ones above it.",
+          summary: "Call chat.send with a fresh sessionKey and stream tool frames until run-end. The fresh suffix keeps each demo clean and forces a new tool run. The default prompt executes a command; commented alternatives test simpler turns.",
           code: gwChat({ raw: `"quick-3a-gw-" + Math.random().toString(36).slice(2, 8)` }, {
             raw:
               `// The LAST uncommented line wins; comment the bottom ones to try those above.
@@ -988,7 +989,7 @@ message = "Use your exec tool to run \`whoami\` and \`pwd\` in your sandbox, the
     // ── One session, carried memory: recall the earlier gw-chat turn ─────────────
     mountCanvasFlow("#session-call", {
       label: "The sessionKey rehydrates history across turns",
-      intro: "This single cell plants a fact under a dedicated sessionKey, then asks for it back under the same key. The second time, the client sends ONLY the question; the gateway rehydrates the planted turn from the history it holds server-side. The second cell clears that session so recall disappears; the third deletes the throwaway sessions (including the fresh per-run keys Step 2 creates) that pile up in the Control UI.",
+      intro: "Plant a fact and recall it under the same sessionKey, then clear that history and remove the throwaway sessions. The recall sends only the question; the gateway restores the earlier turn server-side.",
       edges: [
         { from: "sk-memory", to: "sk-clear" },
         { from: "sk-clear", to: "sk-cleanup" },
@@ -998,7 +999,7 @@ message = "Use your exec tool to run \`whoami\` and \`pwd\` in your sandbox, the
         {
           id: "sk-memory", icon: "🧠", title: "Plant a fact, then ask it back", x: 0, y: 0,
           showCode: false,
-          summary: "Two turns under ONE dedicated sessionKey, in a single cell. Turn 1 plants a fact; turn 2 asks for it back, sending only the question. The gateway rehydrates turn 1 server-side before turn 2 runs, so the model answers from a conversation the client never re-sent. Each turn is wrapped in its own { } block so the two snippets keep separate variables. A different key would be a different memory, and that is the whole memory model.",
+          summary: "Send two turns under the same sessionKey. The second sends only a recall question; the gateway restores the first turn before the model runs. A different key addresses a separate history.",
           code: GW_CONNECT + `
 helpers.log("turn 1 · plant a fact");
 {

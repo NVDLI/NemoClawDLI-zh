@@ -238,7 +238,7 @@ SUITE_META = [
      "scripts/validation/figure_audit.py", "run"),
     ("cell_audit", "Cell & artifact contract", "recommended",
 
-     "Every runnable cell shows its work in the panel, writes via helpers.log not console, awaits its model calls, inlines no key, keeps cell-only code in an editable cell, is syntax-highlighted by default, and keeps default-visible learner code readable. A hard-coded key is required-tier (it ships to every student); the rest are recommended.",
+     "Every runnable cell shows its work in the panel, writes via helpers.log not console, awaits its model calls, inlines no key, keeps cell-only code in an editable cell, is syntax-highlighted by default, and keeps default-visible code and canvas copy readable. A hard-coded key is required-tier (it ships to every student); the rest are recommended.",
 
      "scripts/validation/cell_audit.py", "run"),
     ("helper_notebook", "Helper notebook contract", "required",
@@ -690,6 +690,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                          "default-open cell is short enough to teach from."),
         "readability": (RECOMMENDED, "Clean the default-visible learner code. Avoid tab indentation, giant opening "
                         "comment walls, extreme nesting, and lines too long to read in the cell editor."),
+        "copy_surface": (RECOMMENDED, "Shorten learner-facing canvas chrome. Let the page heading carry module "
+                         "coordinates, keep labels and titles task-focused, and move implementation inventories "
+                         "into the expandable code rather than a second prose layer."),
     }
     _FIG_FIX = {
         "tiny": (RECOMMENDED, "Raise the text to a rendered font-size of at least 11px; below that it is "
@@ -1056,7 +1059,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
           f"unhighlighted {len(ca_find.get('unhighlighted', []))}, "
           f"ui-contract {len(ca_find.get('ui_contract', []))}, "
           f"code-surface {len(ca_find.get('code_surface', []))}, "
-          f"readability {len(ca_find.get('readability', []))})")
+          f"readability {len(ca_find.get('readability', []))}, "
+          f"copy {len(ca_find.get('copy_surface', []))})")
     print(f"  figure geometry : {len(dg_find)} runtime-figure finding(s) (text overlap / past bounds / connector-crosses-box / useless)")
     print(f"  course contract : {len(course_contract_find)} finding(s) (title / abstract / learning objectives)")
     print(f"  dependency SRI  : {len(cdi_find)} finding(s) (fixed browser assets)")
