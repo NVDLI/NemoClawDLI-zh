@@ -39,6 +39,7 @@ def _json_script(text: str, script_id: str) -> dict:
 def run(verbose: bool = True) -> list[tuple[str, str]]:
     findings: list[tuple[str, str]] = []
     p02b = _read("web/nemoclaw/02b-rag.html")
+    p01c = _read("web/nemoclaw/01c-tools.html")
     p04a = _read("web/nemoclaw/04a-safety.html")
     svg02b = _read("web/nemoclaw/assets/figures/02b-retrieval-boundaries.svg")
     svg04a = _read("web/nemoclaw/assets/figures/lethal-trifecta.svg")
@@ -46,6 +47,8 @@ def run(verbose: bool = True) -> list[tuple[str, str]]:
 
     if "assets/figures/02b-retrieval-boundaries.svg" not in p02b:
         findings.append(("web/nemoclaw/02b-rag.html", "missing retrieval boundary figure"))
+    if not _has_all(p01c, ("Discovery is a trust boundary", "smallest useful scope", "audience-bound", "SSRF")):
+        findings.append(("web/nemoclaw/01c-tools.html", "MCP lesson must distinguish tool discovery from consent, scoped credentials, and SSRF-safe connection handling"))
     if not _has_all(p02b, ("MCP", "A2A", "skills", "runtime", "generated UX")):
         findings.append(("web/nemoclaw/02b-rag.html", "retrieval boundary section must define MCP/A2A/skills/runtime/UX roles"))
     if re.search(r"Zenodia|@zcharpy|issue #\d+|issue-title|GitLab issue", p02b, re.I):
@@ -59,6 +62,12 @@ def run(verbose: bool = True) -> list[tuple[str, str]]:
         findings.append(("web/nemoclaw/04a-safety.html", "missing real lethal trifecta figure"))
     if not _has_all(p04a, ("Untrusted input", "private data", "external communication", "full-duplex")):
         findings.append(("web/nemoclaw/04a-safety.html", "lethal trifecta prose must define all three terms and the full-duplex risk"))
+    if "Four mechanisms this launchable composes" not in p04a or not _has_all(p04a, ("compatibility mode", "OverlayFS", "handles opened before restriction")):
+        findings.append(("web/nemoclaw/04a-safety.html", "filesystem lesson must qualify Landlock guarantees with compatibility, OverlayFS, and pre-opened-handle limits"))
+    if "does not prove escalation is impossible" not in p04a:
+        findings.append(("web/nemoclaw/04a-safety.html", "non-root lesson must describe reduced blast radius without promising impossible escalation"))
+    if not _has_all(p04a, ("Choose the control by failure mode", "Goal hijack or prompt injection", "Tool misuse", "Identity or privilege abuse", "Supply-chain or unexpected code execution", "Memory or context poisoning")):
+        findings.append(("web/nemoclaw/04a-safety.html", "sandbox limits section must map major agentic failure modes to the layer that can enforce each control"))
     fig_idx = p04a.find("assets/figures/lethal-trifecta.svg")
     fig_tail = p04a[fig_idx:fig_idx + 1200] if fig_idx >= 0 else ""
     if "Prompt rules and application guardrails shape the agent before kernel containment" in fig_tail:

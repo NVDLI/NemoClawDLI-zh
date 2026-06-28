@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>OpenShell · Securing Agents</title>
 <link rel="stylesheet" href="styles/_style.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js" integrity="sha384-GdEWAbCjn+ghjX0gLx7/N1hyTVmPAjdC2OvoAA0RyNcAOhqwtT8qnbCxWle2+uJX" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" integrity="sha384-zaeBlB/vwYsDRSlFajnDd7OydJ0cWk+c2OWybl3eSUf6hW2EbhlCsQPqKr3gkznT" crossorigin="anonymous"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css" integrity="sha384-05WuhgjXiqmZzcQ3vQRQ39HN356Yqb+SnhvELzFtpwS5b2IlqE8QsOO5LCSJ2znj" crossorigin="anonymous"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js" integrity="sha384-ZYmwuq4n2gOcNxMSiJ6jyTj+BbIrilr7p6dlq6q5nmSWKmsH9UU4K1qqjycMkfmR" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js" integrity="sha384-g0o+WW9mdIxA7LaaCKTkRm0M5TVT+Bb4s9eocxPsI2G0Xm0POG9iD6G6qP1IIsfS" crossorigin="anonymous"></script>
 <style>
   .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
   .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
@@ -28,6 +28,11 @@
   .layer-card h3 { font-size: .9rem; color: var(--gs); margin: 0 0 .35em; font-family: var(--mono); }
   .layer-card p  { font-size: .82rem; color: var(--td); margin: .2em 0; line-height: 1.55; }
   .layer-card code { font-size: .8em; }
+  .control-map-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: .8em 0 1.2em; }
+  .control-map { width: 100%; min-width: 720px; border-collapse: collapse; font-size: .82rem; line-height: 1.5; }
+  .control-map th { padding: 9px 11px; text-align: left; color: var(--gs); background: var(--e2); border: 1px solid var(--bd); }
+  .control-map td { padding: 9px 11px; vertical-align: top; color: var(--td); border: 1px solid var(--bd); }
+  .control-map tbody tr:nth-child(even) { background: var(--e1); }
   details.vocab-menu { margin: .85em 0 1.65em; border: 1px solid var(--bd); border-radius: var(--r); background: var(--e1); }
   details.vocab-menu > summary { cursor: pointer; padding: 11px 14px; color: var(--gs); font-family: var(--mono); font-weight: 700; font-size: .86rem; }
   details.vocab-menu > summary:hover { background: var(--e2); }
@@ -182,10 +187,10 @@
     </li>
   </div>
 
-  <h2>Four mechanisms OpenShell composes</h2>
-  <p>OpenShell enforces its policy through four kernel-level mechanisms.
-     None of them is new on its own. The value comes from using all four
-     together, with one policy file as the single source of truth.</p>
+  <h2>Four mechanisms this launchable composes</h2>
+  <p>This launchable combines four enforcement mechanisms. None is new on its own.
+     Their value comes from applying the policy at more than one boundary. Read the
+     live policy later on this page before treating any one of these guarantees as universal.</p>
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/04a-safety-1.svg" style="aspect-ratio:720 / 320"></div>
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">
@@ -206,10 +211,11 @@
     <div class="layer-card">
       <h3>2 · Landlock</h3>
       <p>Filesystem capability dropping at the kernel, through
-         <a href="https://docs.kernel.org/userspace-api/landlock.html" target="_blank" rel="noopener">Landlock</a>. The agent
-         <em>literally cannot</em> open files outside the workspace
-         tree, which closes the door on bind-mount tricks and symlink
-         races alike.</p>
+         <a href="https://docs.kernel.org/userspace-api/landlock.html" target="_blank" rel="noopener">Landlock</a>. In this
+         launchable, the policy limits new filesystem operations to the paths it grants.
+         That is strong enforcement, but not a proof that every Linux filesystem layout is
+         equivalent: compatibility mode, OverlayFS, and handles opened before restriction
+         all matter. Read the policy and test the path you intend to expose.</p>
     </div>
     <div class="layer-card">
       <h3>3 · seccomp</h3>
@@ -223,9 +229,10 @@
     <div class="layer-card">
       <h3>4 · Non-root process</h3>
       <p>The agent runs as an unprivileged <code>sandbox</code> user so
-         that even a successful exploit cannot escalate, and because seccomp
-         already keeps identity-changing operations like <code>setuid</code>
-         off the table this becomes the innermost ring in the diagram above.</p>
+         a successful exploit starts with less authority. That reduces blast radius;
+         it does not prove escalation is impossible. seccomp keeps identity-changing
+         operations such as <code>setuid</code> off this launchable's allowed surface,
+         while the host and container configuration remain part of the security boundary.</p>
     </div>
   </div>
 
@@ -255,7 +262,7 @@
           <dt>Ambient rights</dt>
           <dd>Access a process would otherwise inherit from the OS, parent process, mounts, or credentials.</dd>
           <dt>Workspace tree</dt>
-          <dd>The allowed directory subtree; outside paths remain unreachable after Landlock rules apply.</dd>
+          <dd>The directory subtree a policy grants. Verify the live policy and kernel compatibility before treating it as a complete filesystem boundary.</dd>
           <dt>Bind mount</dt>
           <dd>A filesystem subtree made visible at another path, including across chroot boundaries. <a href="https://man7.org/linux/man-pages/man2/mount.2.html" target="_blank" rel="noopener">mount(2)</a></dd>
           <dt>Symlink race</dt>
@@ -589,6 +596,25 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
         a peer shifts its verdict in social context. Only behavioural regression testing catches it.</li>
   </ul>
 
+  <h3>Choose the control by failure mode</h3>
+  <p>A sandbox limits what a compromised process can reach. The application and operating practice
+     still own decisions whose meaning is invisible to the kernel.</p>
+  <div class="control-map-scroll" role="region" aria-label="Agent failure modes and their enforcement controls" tabindex="0">
+  <table class="control-map">
+    <thead><tr><th>Failure mode</th><th>What the sandbox contributes</th><th>Control still needed above it</th></tr></thead>
+    <tbody>
+      <tr><td>Goal hijack or prompt injection</td><td>Limits reachable files, processes, and destinations after the model is steered</td><td>Input provenance, approval for consequential actions, and behavioural evaluation</td></tr>
+      <tr><td>Tool misuse</td><td>Restricts the OS and network envelope in which the tool runs</td><td>Per-tool authorization, argument validation, rate limits, and confirmation for irreversible calls</td></tr>
+      <tr><td>Identity or privilege abuse</td><td>Starts the process as a non-root identity and blocks selected escalation paths</td><td>Workload-specific identities, minimal token scopes, short lifetimes, rotation, and audit</td></tr>
+      <tr><td>Supply-chain or unexpected code execution</td><td>Reduces the files, syscalls, and egress available to installed code</td><td>Pinned and verified dependencies, install policy, and integrity monitoring</td></tr>
+      <tr><td>Memory or context poisoning</td><td>Can protect selected files when policy makes them read-only</td><td>Write provenance, reviewable history, trust labels, and recovery from a known-good state</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>The categories align with the
+     <a href="https://genai.owasp.org/2025/12/09/owasp-top-10-for-agentic-applications-the-benchmark-for-agentic-security-in-the-age-of-autonomous-ai/" target="_blank" rel="noopener">OWASP Top 10 for Agentic Applications</a>.
+     Use the table to pick an enforcement point instead of asking one layer to recognize every kind of harm.</p>
+
   <div class="callout warn">
     The sandbox establishes a floor rather than a complete defense. The practice that follows
     from it is to grant the agent the smallest envelope it needs, to prove what that envelope
@@ -604,6 +630,7 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
       <li><a href="https://docs.kernel.org/userspace-api/seccomp_filter.html" target="_blank" rel="noopener">seccomp filter</a> and <a href="https://docs.kernel.org/userspace-api/landlock.html" target="_blank" rel="noopener">Landlock</a>. The kernel syscall-allowlist and filesystem-capability primitives <code>openshell</code> uses for mechanisms 2 and 3.</li>
       <li><a href="https://www.openpolicyagent.org/docs/latest/" target="_blank" rel="noopener">Open Policy Agent</a>. The policy-as-data engine behind the OPA-evaluated CONNECT proxy that gates every outbound connection.</li>
       <li><a href="https://github.com/NVIDIA/NeMo-Guardrails" target="_blank" rel="noopener">NeMo Guardrails</a>. The application-layer complement to kernel containment, catching policy violations the kernel cannot see.</li>
+      <li><a href="https://genai.owasp.org/2025/12/09/owasp-top-10-for-agentic-applications-the-benchmark-for-agentic-security-in-the-age-of-autonomous-ai/" target="_blank" rel="noopener">OWASP Top 10 for Agentic Applications</a>. A current taxonomy for goal hijack, tool misuse, identity abuse, supply-chain compromise, unexpected code execution, and memory poisoning.</li>
     </ul>
     <p class="references-note">Comprehensive list at <a href="04c-going-further.html#refs">Going Further · References</a>.</p>
   </div>

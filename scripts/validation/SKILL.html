@@ -27,6 +27,7 @@
     "scripts/validation/agent_process_audit.py",
     "scripts/validation/course_contract.py",
     "scripts/validation/course_content_contract.py",
+    "scripts/validation/course_dependency_integrity.py",
     "scripts/validation/concept_order_audit.py"
   ],
   "explorer": "../../web/_skill_explorer.js"
@@ -135,6 +136,11 @@
       "desc": "Locks the retrieval-boundary and lethal-trifecta promises that generic validators cannot infer."
     },
     {
+      "path": "course_dependency_integrity.py",
+      "role": "course dependency integrity",
+      "desc": "Pins fixed browser CDN assets to expected SRI hashes so a changed response cannot execute in the course."
+    },
+    {
       "path": "concept_order_audit.py",
       "role": "Concept order audit",
       "desc": "Required first-use checks for early agent vocabulary and prerequisite framing."
@@ -183,6 +189,7 @@
   <div class="skill-cmd"><b>Agent process</b><code>python3 scripts/validation/agent_process_audit.py</code></div>
   <div class="skill-cmd"><b>Course contract</b><code>python3 scripts/validation/course_contract.py</code></div>
   <div class="skill-cmd"><b>Content contract</b><code>python3 scripts/validation/course_content_contract.py</code></div>
+  <div class="skill-cmd"><b>Dependency integrity</b><code>python3 scripts/validation/course_dependency_integrity.py</code></div>
   <div class="skill-cmd"><b>Concept order</b><code>python3 scripts/validation/concept_order_audit.py</code></div>
   <div class="skill-cmd"><b>Helper notebook static</b><code>python3 scripts/validation/helper_notebook_runtime_audit.py --no-container</code></div>
   <div class="skill-cmd"><b>Helper notebook browser</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/helper_notebook_runtime_audit.py</code></div>
@@ -207,6 +214,7 @@
     <a class="skill-card" href="agent_process_audit.py"><b>agent_process_audit.py</b><span>Agent process audit. Checks issue/MR, taxonomy, validation, and safe-auth guardrail visibility.</span></a>
     <a class="skill-card" href="course_contract.py"><b>course_contract.py</b><span>Course contract audit. Holds the English course title, abstract, and objectives verbatim.</span></a>
     <a class="skill-card" href="course_content_contract.py"><b>course_content_contract.py</b><span>Content contract. Locks the retrieval-boundary and lethal-trifecta promises.</span></a>
+    <a class="skill-card" href="course_dependency_integrity.py"><b>course_dependency_integrity.py</b><span>Dependency integrity. Requires expected SRI hashes and CORS mode for fixed third-party browser assets.</span></a>
     <a class="skill-card" href="concept_order_audit.py"><b>concept_order_audit.py</b><span>Concept order audit. Keeps key terms defined before learner-facing prose or code depends on them.</span></a>
     <a class="skill-card" href="tenets.py"><b>tenets.py</b><span>tenet check. Checks platform tenets reflected in course files.</span></a>
     <a class="skill-card" href="nb_audit.py"><b>nb_audit.py</b><span>notebook audit. Detects notebook buffer corruption patterns.</span></a>
