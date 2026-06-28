@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>The ReAct Loop · Securing Agents</title>
-<link rel="stylesheet" href="_style.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<title>O Ciclo ReAct · Segurança de Agentes</title>
+<link rel="stylesheet" href="styles/_style.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js" integrity="sha384-GdEWAbCjn+ghjX0gLx7/N1hyTVmPAjdC2OvoAA0RyNcAOhqwtT8qnbCxWle2+uJX" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" integrity="sha384-zaeBlB/vwYsDRSlFajnDd7OydJ0cWk+c2OWybl3eSUf6hW2EbhlCsQPqKr3gkznT" crossorigin="anonymous"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css" integrity="sha384-05WuhgjXiqmZzcQ3vQRQ39HN356Yqb+SnhvELzFtpwS5b2IlqE8QsOO5LCSJ2znj" crossorigin="anonymous"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js" integrity="sha384-ZYmwuq4n2gOcNxMSiJ6jyTj+BbIrilr7p6dlq6q5nmSWKmsH9UU4K1qqjycMkfmR" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js" integrity="sha384-g0o+WW9mdIxA7LaaCKTkRm0M5TVT+Bb4s9eocxPsI2G0Xm0POG9iD6G6qP1IIsfS" crossorigin="anonymous"></script>
 <style>
   .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
   .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
@@ -29,7 +29,7 @@
 </head>
 <body>
 <div class="topbar">
-  <a class="logo" href="index.html">NVIDIA · Securing Agents</a>
+  <a class="logo" href="index.html">NVIDIA · Segurança de Agentes</a>
   <nav id="nav"></nav>
   <div class="spacer"></div>
   <span class="key-pill" id="key-status" onclick="location.href='01a-loop.html?openKeyPanel=1'">…</span>
@@ -39,260 +39,225 @@
   <div id="journey-map"></div>
 
   <div class="hero">
-    <div class="eyebrow">Module 1 · Part B of 3</div>
-    <h1>The <span>ReAct</span> Loop</h1>
-    <p class="lead"> 
-      Um agente construído sobre um modelo de linguagem executa o mesmo ato de perceber-raciocinar
-      loop como qualquer outra coisa, com um detalhe que dá nome ao padrão:
-      O modelo raciocina em palavras entre as ações que toma. <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener" _istranslated="1">Yao et al. (2022)</a> chamaram <strong _istranslated="1">isso de ReAct</strong>, por raciocínio e atuação. Eles descobriram que
-      um modelo que intercala pequenos trechos de raciocínio com chamadas às suas ferramentas
-      lida com uma ampla variedade de tarefas de forma mais confiável do que uma que só planeja com antecedência
-      Ou só age sem pensar direito. 
-    </p>
+    <div class="eyebrow">Módulo 1 · Parte B de 3</div>
+    <h1>O ciclo <span>ReAct</span></h1>
+    <p class="lead">
+ Um agente baseado em um grande modelo de linguagem executa o mesmo ciclo perceber-raciocinar-agir
+ que qualquer outra coisa, com um detalhe que dá nome ao padrão:
+ o modelo raciocina em palavras entre as ações que ele toma.
+ <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al. (2022)</a>
+ chamou isso de <strong>ReAct</strong>, de raciocinar e agir. Os autores descobriram que
+ intercalar traços de raciocínio curtos com o uso de ferramentas lida com muitas tarefas de forma mais
+ confiável do que planejar tudo primeiro ou agir sem um passo de raciocínio.
+ </p>
     <p>
-      This loop is the foundation that most general-purpose agent frameworks
-      are built on, LangChain's <a href="https://docs.langchain.com/oss/javascript/langchain/agents" target="_blank" rel="noopener"><code>createReactAgent</code></a>
-      among them, and the rest of this module works up to it.
-    </p>
+ Uma <strong>ferramenta</strong> é um trecho de código que o harness de execução pode executar para o modelo: uma função nomeada
+ com uma descrição, um esquema de entrada e um valor de retorno. Uma <strong>chamada de ferramenta</strong>
+ é a solicitação estruturada do modelo para esse código. O harness de execução analisa a solicitação,
+ executa a função, anexa o resultado e chama o modelo novamente.
+ </p>
+    <p>
+ Esse ciclo é a base sobre a qual a maioria dos frameworks de agentes de propósito geral
+ é construída, incluindo o <a href="https://docs.langchain.com/oss/javascript/langchain/agents" target="_blank" rel="noopener"><code>createReactAgent</code></a>
+ da LangChain, e o restante desse módulo trabalha em direção a ele.
+ </p>
   </div>
 
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/01b-react-1.svg" style="aspect-ratio:1122 / 440"></div>
-    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">The loop is unchanged. With a language model in the reasoning step, the agent reads tool results and acts by calling tools.</figcaption>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">O ciclo permanece o mesmo. Com um grande modelo de linguagem na etapa de raciocínio, o agente lê os resultados e age chamando ferramentas.</figcaption>
   </figure>
 
-  <h2>The one field that tells the loop what to do next</h2>
+  <h2>O único campo que informa ao ciclo o que fazer em seguida</h2>
 
   <p>
-    Every chat-completions response carries a <code>finish_reason</code>
-    field that tells you why the model stopped generating. Inside an agent
-    loop, this is the only signal you need to decide what to do next:
-    run a tool, return the answer to the user, or handle an error. Before reading
-    what its values mean, make two calls and watch the field change.
-  </p> 
+ Todas as respostas de chat-completions carregam um campo <code>finish_reason</code>
+ que informa por que o modelo parou de gerar. Dentro de um ciclo de agente,
+ este é o único sinal de que você precisa para decidir o que fazer em seguida:
+ executar uma ferramenta, retornar a resposta ao usuário ou lidar com um erro. Antes de ler
+ o que seus valores significam, faça duas chamadas e observe o campo mudar.
+ </p>
 
   <div id="cell-finish-reason"></div>
 
   <p>
-    The first call answered on its own and came back <code>"stop"</code>. The second was
-    offered a tool and asked for something training data cannot supply, so instead of stopping
-    it came back <code>"tool_calls"</code>, handing your code the name of the function to run.
-    Those two values cover the common branching. The rest signal trouble that routes the loop
-    into a fallback harness, where the agent might retry the call or hand the conversation off
-    to a human.
-  </p>
+ A primeira chamada respondeu sozinha e retornou <code>"stop"</code>. A segunda recebeu
+ uma ferramenta e uma pergunta que os dados de treinamento não podem responder. Em vez de parar,
+ ela retornou <code>"tool_calls"</code>, entregando ao código o nome da função a executar.
+ Esses dois valores cobrem a ramificação comum. O restante sinaliza problemas que roteiam o ciclo
+ para um fluxo de fallback do harness, no qual o agente pode tentar novamente a chamada ou passar a conversa para
+ um humano.
+ </p>
   <ul>
-    <li><code>"stop"</code> means the model has written its final answer and the loop can exit, delivering <code>content</code> to the user.</li>
-    <li><code>"tool_calls"</code> means the model is asking your code to run the named function and append the result before calling back.</li>
-    <li><code>"length"</code> fires when the model hits its token cap before it finishes.</li>
-    <li><code>"content_filter"</code> fires when a safety classifier trips on the output.</li>
+    <li><code>"stop"</code> significa que o modelo escreveu sua resposta final e o ciclo pode retornar <code>content</code> ao usuário.</li>
+    <li><code>"tool_calls"</code> significa que o modelo está pedindo ao seu código para executar uma função nomeada e anexar o resultado antes de chamar novamente.</li>
+    <li><code>"length"</code> significa que o orçamento de tokens esgotou antes que a resposta terminasse.</li>
+    <li><code>"content_filter"</code> significa que um classificador de segurança parou a saída.</li>
   </ul>
 
-  <p>In modern ReAct, a short router reads it and runs the following loop:</p>
-  <ol>
-    <li>the model picks a tool,</li>
-    <li>your code runs it,</li>
-    <li>the result goes back,</li>
-    <li>the loop repeats until the model says done.</li>
-  </ol>
   <p>
-    The arrangement is strong because the model is never bound to the plan it
-    started with. Whenever a tool returns something it did not expect, that result
-    joins the next round of reasoning, and the model can reconsider where it stands
-    before deciding what to do next.
-  </p>
+ No ReAct moderno, um roteador curto lê esse campo. Se o modelo pediu uma ferramenta, o roteador
+ executa a sua função, anexa o resultado e chama o modelo novamente. Se o modelo parou, o
+ roteador retorna a resposta.
+ </p>
+  <p>
+ Esse arranjo funciona bem porque o modelo nunca fica preso ao plano inicial. Quando uma ferramenta retorna algo inesperado, o resultado entra na próxima rodada de raciocínio, e o modelo pode reavaliar a situação antes de decidir o que fazer.
+ </p>
 
-  
-  <h2>The pieces an LLM agent is built from</h2>
+
+  <h2>As peças de um agente de LLM</h2>
   <p>
-    Zoom in on the agent and you find the decomposition
-    <a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">Lilian Weng drew in
-    2023</a>. A language model sits at the center. Around it sit <strong>memory</strong>, <strong>planning</strong>, <strong>tools</strong>,
-    and the <strong>actions</strong> that reach the world. 
-  </p>
+ Amplie o agente e você encontrará a decomposição
+ <a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">que Lilian Weng apresentou em
+ 2023</a>. Um grande modelo de linguagem está no centro. Ao redor dele estão <strong>memória</strong>, <strong>planejamento</strong>, <strong>ferramentas</strong>
+ e as <strong>ações</strong> que interagem com o mundo.
+ </p>
   <p>
-    This course's minimal agent fills each slot with the simplest thing that works:
-  </p>
+ O agente mínimo deste curso preenche cada componente com a solução mais simples que funciona:
+ </p>
   <ul>
-    <li>the <code>messages[]</code> array holds the memory,</li>
-    <li>the <code>finish_reason</code> router does the planning,</li>
-    <li>your functions are the tools,</li>
-    <li>and a tool call is how it acts.</li>
+    <li><strong>Memória</strong> é o array <code>messages[]</code>.</li>
+    <li><strong>Planejamento</strong> é o roteador <code>finish_reason</code>.</li>
+    <li><strong>Ferramentas</strong> são as funções que o harness de execução expõe.</li>
+    <li><strong>Ação</strong> é a chamada de ferramenta que o harness de execução executa.</li>
   </ul>
   <p>
-    None of that lives inside the model. It is the harness you build around a single
-    text-in, text-out call.
-  </p>
+ Nenhum desses componentes vive dentro do modelo. Eles fazem parte do harness de execução construído em torno de uma única chamada de texto para texto.
+ </p>
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/01b-react-2.svg" style="aspect-ratio:940 / 320"></div>
-    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">After <a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">Lilian Weng (2023)</a>: the model is the agent's core controller, with memory, planning, tools, and action wired around it.</figcaption>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Depois de <a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">Lilian Weng (2023)</a>: o modelo é o controlador central do agente, com memória, planejamento, ferramentas e ação conectados ao redor dele.</figcaption>
   </figure>
   <div class="callout">
-    <strong>The modules are independent.</strong> You can replace the model or the tools
-    or the router on its own, and as long as each one still honors the contract the
-    others expect of it, the rest of the loop keeps working.
-  </div>
+ <strong>Os módulos são independentes.</strong> Você pode substituir o modelo ou as ferramentas
+ ou o roteador por conta própria, e desde que cada um ainda honre o contrato que os outros esperam dele, o resto do ciclo do agente continua funcionando.
+ </div>
   <p>
-    That independence also matters for how you read agent code you didn't
-    write. Whatever framework wraps it, any LLM-based agent must contain these
-    four pieces, and when something breaks the cause is usually in one of them:
-  </p>
+ Essa independência também importa para como você lê o código de um agente que você não
+ escreveu. Qualquer que seja o framework que o envolva, qualquer agente baseado em LLM deve conter essas
+ quatro peças, e quando algo quebra a causa é geralmente uma delas:
+ </p>
   <ul>
-    <li>the model returning the wrong <code>finish_reason</code>,</li>
-    <li>a missing turn in the messages array,</li>
-    <li>the tool executor handing back an unexpected value,</li>
-    <li>or the router misreading the signal.</li>
+    <li>o modelo retornando o <code>finish_reason</code> errado,</li>
+    <li>uma mensagem ausente no array,</li>
+    <li>o executor de ferramentas devolvendo um valor inesperado,</li>
+    <li>ou o roteador lendo o sinal de forma errada.</li>
   </ul>
   <p>
-    The four-piece frame gives you a checklist that applies regardless of how the
-    surrounding code is organized.
-  </p>
+ A estrutura de quatro peças fornece uma lista de verificação que se aplica independentemente de como o código circundante é organizado.
+ </p>
 
-  <h2>Building the loop from scratch with one tool</h2>
+  <h2>Construindo o ciclo do agente a partir do zero com uma ferramenta</h2>
   <p>
-    As an exercise, we can try to create a simple loop from scratch.
-    All we need is a single tool named <code>get_current_time</code> plus one system prompt
-    and one <code>while</code> loop. Run it with "What time is it in UTC?" to start, and see what else you can ask:
-  </p>
-  <ol>
-    <li><strong>Step 1.</strong> The model asks for the tool.</li>
-    <li><strong>Tool run.</strong> The executor runs the function and appends the timestamp as a <code>tool</code>-role message.</li>
-    <li><strong>Step 2.</strong> The model reads the timestamp and writes the user-facing answer.</li>
-    <li><strong>Exit.</strong> The loop ends when <code>finish_reason</code> reads <code>"stop"</code>.</li>
-  </ol>
+ Como um exercício, podemos tentar criar um ciclo simples do agente a partir do zero.
+ Tudo o que precisamos é de uma única ferramenta chamada <code>get_current_time</code> mais um prompt do sistema
+ e um ciclo <code>while</code>. Execute-o com "Que horas são em UTC?" para começar e veja o que mais você pode perguntar:
+ </p>
+  <p>
+ O fluxo é curto: o modelo solicita a ferramenta, o aplicativo executor anexa a marca de tempo como uma
+ mensagem com o papel <code>tool</code>, o modelo lê essa marca de tempo e o ciclo termina quando
+ <code>finish_reason</code> lê <code>"stop"</code>.
+ </p>
 
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/01b-react-3.svg" style="aspect-ratio:820 / 234"></div>
-    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Think, act, observe, repeat. The turn exits the moment finish_reason is "stop".</figcaption>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Pense, aja, observe, repita. O ciclo termina quando finish_reason é "stop".</figcaption>
   </figure>
 
   <div id="cell-m2c-p3"></div>
 
   <div class="callout">
-    <strong>What just happened inside the messages array.</strong><br>
-    The loop pushed four things into <code>state.messages</code>: <ul><li>the system
-    prompt (turn 0),</li><li>the user question (turn 1),</li><li>an assistant message with a
-    <code>tool_calls</code> field (turn 2, the request),</li><li>and a
-    <code>tool</code>-role message holding the function's return value (turn
-    3).</li></ul> The second LLM call read all four of those including the new tool result and
-    wrote the final answer. The growing array is the only "memory" this
-    agent has. If you saved that array to disk and reloaded it next week, the
-    model would resume the conversation without noticing the gap.
-  </div>
+ <strong>O que acabou de acontecer dentro do array de mensagens.</strong><br>
+ O ciclo adicionou quatro itens a <code>state.messages</code>: <ul><li>o prompt do sistema (turno 0),</li><li>a pergunta do usuário (turno 1),</li><li>uma mensagem de assistente com um
+ campo <code>tool_calls</code> (turno 2, a solicitação),</li><li>e uma
+ mensagem com o papel <code>tool</code> que contém o valor de retorno da função (turno
+ 3).</li></ul> A segunda chamada do LLM leu todas as quatro, incluindo o novo resultado da ferramenta, e
+ escreveu a resposta final. O array crescente é a única "memória" que este
+ agente tem. Se você salvar esse array em disco e recarregá-lo na semana seguinte, o
+ modelo retomará a conversa sem notar a lacuna.
+ </div>
 
-  <h2>Context rot: why a longer loop reads worse</h2>
+  <h2>Degradação do contexto: por que um ciclo mais longo lê pior</h2>
   <p>
-    As each step costs tokens and bloats the messages array, <code>MAX_STEPS = 6</code> is set as
-    a cheap backstop to cap the agent's efforts. A confused agent
-    (one that misreads its tool spec or gets stuck retrying) keeps going
-    as long as the endpoint answers, which may lead to a never-ending interaction loop. 
-  </p>
-  
-  <p>
-    This issue actually becomes more likely as the context grows due in part to a larger phenomena known as <b>context rot</b>. 
-    Simply put, context rot is the tendency for contradictions and poor performance to manifest as the model inputs grow. 
-    There are many soft reasons for this, which include: 
-    <ul>
-      <li>Accumulating poor or ambiguous conventions, logical contraditions, and historical/stale environment observations in the context history (constituting an increase in cognitive load).</li>
-      <li>Inherent model tendencies to focus more on the tails of dialog (front and back) as assessed by <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">"Lost in the Middle" (Liu et al., 2023)</a></li>
-    </ul>
-    In general, you can largely assume that the further an important signal strays into the middle of a long-running prompt, the more likely it is to be ignored or contradicted. 
-  </p>
+ Este problema se torna mais provável à medida que o contexto cresce. <strong>Degradação do contexto</strong> é a
+ tendência de contradições, observações desatualizadas e convenções pobres se acumularem no
+ histórico do prompt até prejudicar a próxima decisão do modelo. O efeito também tem um componente posicional:
+ <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu et al. (2023)</a>
+ mostraram que os modelos podem subutilizar informações enterradas no meio de um contexto longo. Quanto mais um
+ sinal importante se afasta do turno atual, mais fácil é para o ciclo ignorá-lo ou contradizê-lo.
+ </p>
 
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/01b-react-4.svg" style="aspect-ratio:760 / 305"></div>
-    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Redrawn from <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu et al. (2023)</a>. As the loop appends turns, the answer you need drifts into the weak middle.</figcaption>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Recriado a partir de <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu et al. (2023)</a>. À medida que o ciclo anexa turnos, a resposta que você precisa se afasta para o meio fraco.</figcaption>
   </figure>
-  <p>
-    Some mitigations for this issue include:
-  </p>
+  <p>Mitigações comuns mantêm cada decisão próxima às evidências de que precisa:</p>
   <ul>
-    <li>having the model plan ahead before it accumulates observations,</li>
-    <li>delegating sub-tasks so each sub-agent works on a short context,</li>
-    <li>or rolling earlier turns into a summary.</li>
+    <li>planeje antes que o ciclo acumule observações,</li>
+    <li>delegue subtarefas para que cada subagente trabalhe em um contexto curto,</li>
+    <li>ou resuma turnos anteriores antes que eles se tornem um passivo.</li>
   </ul>
   <p>
-    Each of those costs something in latency or fidelity or complexity, and each is worth weighing against the task at hand.
-  </p>
+ Cada mitigação tem custos de latência, fidelidade ou complexidade e deve ser avaliada diante da tarefa em questão.
+ </p>
 
-  <h2>The same loop, prebuilt and pointed at this course</h2>
+  <h2>O mesmo ciclo, pré-construído e apontado para este curso</h2>
   <p>
-    The loop above hard-wires one tiny tool. LangChain's <a href="https://docs.langchain.com/oss/javascript/langchain/agents" target="_blank" rel="noopener"><code>createReactAgent</code></a>
-    generalizes the same machinery to support more tools, standard interfaces, and observability integrations. An instance of this class is wired below to a single tool,
-    <code>read_course_page</code>, which hands the agent any page of this course as markdown. The model should decides which pages to read to answer your question, so give it a try.
-  </p>
+ O ciclo acima fixa diretamente uma pequena ferramenta. O <a href="https://docs.langchain.com/oss/javascript/langchain/agents" target="_blank" rel="noopener"><code>createReactAgent</code></a>
+ da LangChain generaliza a mesma maquinaria para suportar mais ferramentas, interfaces padrão e integrações de observabilidade. Uma instância desta classe é conectada abaixo a uma única ferramenta,
+ <code>read_course_page</code>, que fornece ao agente qualquer página deste curso como markdown. O modelo decide quais páginas ler para responder à sua pergunta; experimente.
+ </p>
 
   <div class="callout">
-    <strong>The cell produces an artifact.</strong> When you run it, you get a working
-    chat panel rather than a wall of logs, rendered from the agent's own code, that you
-    can hold a conversation with. The word itself is older than its current use, since
-    build pipelines and machine-learning training runs have produced "artifacts" and
-    "model artifacts" for years. Anthropic's recent <a href="https://support.claude.com/en/articles/14729249-use-live-artifacts-in-claude-cowork" target="_blank" rel="noopener">live artifacts</a>
-    sharpened the idea for agents, where an artifact becomes a persistent, interactive
-    HTML surface that the agent builds and that you keep using long after the reply which
-    produced it. The panel below builds one on a small scale, and an agent that can hand
-    back a full interface rather than plain text is a thread that runs through the rest of
-    this course.
-  </div>
+ <strong>A célula produz um artefato.</strong> Quando você executa, obtém um painel de chat funcional em vez de uma parede de logs, renderizado a partir do próprio código do agente, com o qual você pode manter uma conversa. A palavra em si é mais antiga do que seu uso atual, pois pipelines de build e execuções de treinamento de machine learning produziram "artefatos" e "artefatos de modelo" por anos. O recente <a href="https://support.claude.com/en/articles/14729249-use-live-artifacts-in-claude-cowork" target="_blank" rel="noopener">artefato ao vivo</a> da Anthropic aprimorou a ideia para agentes, onde um artefato se torna uma superfície HTML interativa persistente que o agente constrói e que você continua usando muito tempo após a resposta que o produziu. O painel abaixo constrói um em pequena escala, e um agente que pode fornecer uma interface completa em vez de texto simples é uma linha de raciocínio que perpassa o restante deste curso.
+ </div>
 
   <p>
-    Run the cell to build the panel, then chat with it. Pin one or more with
-    the <b>Pages</b> chips to ground every answer in them, or pin nothing and let the
-    agent choose what to read. The reply renders as markdown, with a chip for each source
-    the agent read so you can expand it to see the text it pulled back. Alongside the answer,
-    you also get the reasoning trace and the token usage. It remembers the conversation per chat.
-    Edit the cell and rerun to rebuild the artifact.
-  </p>
+ Execute a célula para construir o painel e converse com ele. Fixe uma ou mais páginas com os chips <b>Páginas</b> para fundamentar cada resposta nelas, ou não fixe nenhuma e deixe o agente escolher o que ler. A resposta é renderizada como markdown, com um chip para cada fonte consultada; expanda-o para ver o texto recuperado. Você também recebe o rastreamento do raciocínio e o uso de tokens. O painel preserva a conversa. Edite a célula e execute novamente para reconstruir o artefato.
+ </p>
   <div id="cell-react-lab"></div>
   <div id="react-artifact" style="margin:1em 0"></div>
 
-  <h2>Before you continue</h2>
-  <p>Each question is answerable by editing inputs in the canvas above and rerunning.</p>
+  <h2>Antes de continuar</h2>
+  <p>Cada pergunta pode ser respondida editando as entradas no canvas acima e executando novamente.</p>
   <ol>
-    <li><strong>Force the model to call the tool even when it does not need to.</strong>
-        Try a question the tool genuinely cannot answer ("capital of France?")
-        and watch <code>finish_reason</code> on step 1. Was it
-        <code>"stop"</code> or <code>"tool_calls"</code>? Now edit the system
-        prompt to <em>require</em> a tool call before answering ("You must
-        always call get_current_time once, then answer."). Does the model
-        comply? What does that tell you about how strongly the system prompt
-        steers a model that has training-data confidence in another
-        direction?</li>
-    <li><strong>Count the steps on a genuinely tool-needing question.</strong>
-        "How many minutes until 17:00 UTC?" takes more than one tool call.
-        Run it a few times. Did the model call
-        <code>get_current_time</code> once, twice, or three times? Why
-        would a model re-call a tool whose output it already has,
-        and how would you discourage that in the system prompt?</li>
-    <li><strong>Make the safety belt smaller.</strong>
-        Set <code>MAX_STEPS</code> to 2 and ask a question that would
-        normally take 3 steps. The loop exits with no final answer. Look at what
-        <code>state.finalContent</code> holds when that happens, and decide what a
-        production agent should return to the caller instead of an empty result:
-        a partial answer, an explicit "I ran out of steps" error, or a request to
-        continue.</li>
+    <li><strong>Force o modelo a chamar a ferramenta mesmo quando não precisa.</strong>
+ Tente uma pergunta que a ferramenta genuinamente não possa responder ("capital da França?")
+ e observe <code>finish_reason</code> na etapa 1. Foi
+ <code>"stop"</code> ou <code>"tool_calls"</code>? Agora edite o prompt do sistema
+ para <em>exigir</em> uma chamada de ferramenta antes de responder ("Você deve
+ sempre chamar get_current_time uma vez, então responder."). O modelo
+ atende? O que isso revela sobre o quanto o prompt do sistema consegue
+ direcionar um modelo que confia em seus dados de treinamento para outra
+ resposta?</li>
+    <li><strong>Conte as etapas em uma pergunta que realmente precisa de uma ferramenta.</strong>
+ "Quantos minutos até 17:00 UTC?" leva mais de uma chamada de ferramenta.
+ Execute algumas vezes. O modelo chamou
+ <code>get_current_time</code> uma vez, duas vezes ou três vezes? Por que
+ um modelo rechamaria uma ferramenta cuja saída ele já tem,
+ e como você desencorajaria isso no prompt do sistema?</li>
   </ol>
 
   <div class="references">
-    <h3>References</h3>
+    <h3>Referências</h3>
     <ul>
-      <li><a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al., <em>ReAct: Synergizing Reasoning and Acting in Language Models</em> (2022)</a>. The original alternating thought / action / observation pattern; the figure above is redrawn from this paper.</li>
-      <li><a href="https://arxiv.org/abs/2201.11903" target="_blank" rel="noopener">Wei et al., <em>Chain-of-Thought Prompting</em> (2022)</a>. The "reason" half of ReAct; what the model is doing inside <code>reasoning_content</code> when it deliberates before acting.</li>
-      <li><a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">Lilian Weng, <em>LLM Powered Autonomous Agents</em> (2023)</a>. The decomposition the figure above adapts: a language model as the agent's core controller, surrounded by memory, planning, and tool use.</li>
-      <li><a href="https://arxiv.org/abs/2305.18323" target="_blank" rel="noopener">Xu et al., <em>ReWOO: Decoupling Reasoning from Observations</em> (2023)</a>. A deliberate contrast to ReAct: the model writes the whole plan up front and a separate executor runs it without re-querying the model between steps. Comparing the two reveals the trade-off between reactive replanning and pre-committed execution.</li>
-      <li><a href="https://arxiv.org/abs/2302.04761" target="_blank" rel="noopener">Schick et al., <em>Toolformer</em> (2023)</a>. Covered again in 1c's references; revisit here for the underlying mechanism the ReAct loop exploits.</li>
+      <li><a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al., <em>ReAct: Synergizing Reasoning and Acting in Language Models</em> (2022)</a>. O padrão original de pensamento alternado / ação / observação; a figura acima é redesenhada a partir deste artigo.</li>
+      <li><a href="https://arxiv.org/abs/2201.11903" target="_blank" rel="noopener">Wei et al., <em>Chain-of-Thought Prompting</em> (2022)</a>. A metade "raciocínio" do ReAct; o que o modelo está fazendo dentro de <code>reasoning_content</code> quando ele delibera antes de agir.</li>
+      <li><a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">Lilian Weng, <em>LLM Powered Autonomous Agents</em> (2023)</a>. A decomposição que a figura acima adapta: um modelo de linguagem como o controlador central do agente, cercado por memória, planejamento e uso de ferramentas.</li>
+      <li><a href="https://arxiv.org/abs/2305.18323" target="_blank" rel="noopener">Xu et al., <em>ReWOO: Decoupling Reasoning from Observations</em> (2023)</a>. Um contraste deliberado com o ReAct: o modelo escreve todo o plano antecipadamente e um executor separado o executa sem reconsultar o modelo entre as etapas. Comparar os dois revela a troca entre replanejamento reativo e execução pré-comprometida.</li>
+      <li><a href="https://arxiv.org/abs/2302.04761" target="_blank" rel="noopener">Schick et al., <em>Toolformer</em> (2023)</a>. Coberto novamente nas referências do 1c; revista aqui para o mecanismo subjacente que o ciclo do ReAct explora.</li>
     </ul>
-    <p class="references-note">Comprehensive list at <a href="04c-going-further.html#refs">Going Further · References</a>.</p>
+    <p class="references-note">Lista abrangente em <a href="04c-going-further.html#refs">Ir Além · Referências</a>.</p>
   </div>
 
   <div class="foot-nav">
-    <a href="01a-loop.html">← Module 1a: The Agent</a>
-    <a class="next" href="01c-tools.html">Module 1c: Tools at Scale →</a>
+    <a href="01a-loop.html">← Módulo 1a: O Agente</a>
+    <a class="next" href="01c-tools.html">Módulo 1c: Ferramentas em Escala →</a>
   </div>
 </main>
 
 <script type="module">
-import { buildNav, updateKeyPill, mountJourneyMap, mountCanvasFlow, mountRunCell } from "./_shared.js";
+import { buildNav, updateKeyPill, mountJourneyMap, mountCanvasFlow, mountRunCell } from "./scripts/_shared.js";
 document.getElementById("nav").innerHTML = buildNav("01b-react.html");
 const pill = document.getElementById("key-status");
 updateKeyPill(pill);
@@ -301,8 +266,9 @@ hljs.highlightAll();
 
 // ── finish_reason, introduced by two real calls before the prose explains the values ─────────
 mountRunCell("#cell-finish-reason", {
-  label: "finish_reason · the one field the loop reads to decide what to do next",
-  intro: "Two calls to the same model. The first is a plain question it can answer, so it stops. The second offers one tool and asks for something training data cannot supply, so the model asks your code to run the tool instead of answering. Watch finish_reason change between them. The tool here is only a preview to make the field flip; you wire tools up properly in the sections just below.",
+  openCode: true,
+  label: "finish_reason · o único campo que o ciclo lê para decidir o que fazer em seguida",
+  intro: "Compare duas chamadas ao mesmo modelo. A primeira responde diretamente; a segunda solicita uma ferramenta que o seu código deve executar. Observe como finish_reason muda entre elas. Essa ferramenta é uma prévia do ciclo completo abaixo.",
   code: `// MODEL is the swappable brain. Change it and rerun to see whether a stronger model
 // stops or asks for the tool on these same two questions.
 const MODEL = "nvidia/nemotron-3-nano-30b-a3b";   // or "nvidia/nemotron-3-super-120b-a12b" for a stronger brain
@@ -313,13 +279,12 @@ const r1 = await chat({
   messages: [{ role: "user", content: "In one sentence, what is an agent's ReAct loop?" }],
   max_tokens: 8196,  // reasoning models think first; leave room past reasoning_content
 });
-log.h("call 1 · no tools offered");
+log.h("chamada 1 · nenhuma ferramenta oferecida");
 log("finish_reason:", r1.choices[0].finish_reason);   // "stop" means the answer is ready and the loop can exit
 log(r1.choices[0].message.content || "(used its whole budget thinking; raise max_tokens)");
 
 // Call 2 · offer one tool and ask for something the model cannot know from training data.
-// It cannot run the tool itself, so instead of stopping it asks YOUR code to run it. This spec is
-// just a preview; the next sections build and run the tool wiring properly.
+// The model cannot run the tool itself; this preview asks your code to run it.
 const TOOLS = [{
   type: "function",
   function: {
@@ -335,9 +300,9 @@ const r2 = await chat({
   max_tokens: 8196,
 });
 const m2 = r2.choices[0].message;
-log.h("call 2 · one tool offered, on a question training data cannot answer");
+log.h("chamada 2 · uma ferramenta oferecida, em uma pergunta que os dados de treinamento não podem responder");
 log("finish_reason:", r2.choices[0].finish_reason);   // "tool_calls" means the model is asking you to run a function
-log("it asked you to run:", (m2.tool_calls || []).map(t => t.function.name).join(", ") || "(nothing)");
+log("ela solicitou que você executasse:", (m2.tool_calls || []).map(t => t.function.name).join(", ") || "(nothing)");
 
 return { call1: r1.choices[0].finish_reason, call2: r2.choices[0].finish_reason };
 `,
@@ -345,8 +310,8 @@ return { call1: r1.choices[0].finish_reason, call2: r2.choices[0].finish_reason 
 
 // ── The complete ReAct loop, built from scratch ──────────────────────────────
 mountCanvasFlow("#cell-m2c-p3", {
-  label: "The complete ReAct loop, built from scratch",
-  intro: "The user node sets the prompt and system instructions; the tool node registers the function. " +
+  label: "O ciclo ReAct completo, construído do zero",
+  intro: "O nó do usuário define o prompt e as instruções do sistema; o nó da ferramenta registra a função." +
          "The loop calls the model, runs any requested tools, appends the observations, and repeats " +
          "until finish_reason is 'stop'. Every step is logged, so you can see what the model decided.",
   edges: [
@@ -355,11 +320,12 @@ mountCanvasFlow("#cell-m2c-p3", {
   ],
   nodes: [
     {
-      id: "user", icon: "👤", title: "User input", x: 0, y: 0,
-      summary: "Sets the system prompt and the user question. Swap in 'What is the capital of France?' " +
+      id: "user", icon: "👤", title: "Entrada do usuário", x: 0, y: 0,
+      summary: "Define o prompt do sistema e a pergunta do usuário. Substitua por 'Qual é a capital da França?'" +
                "and the model answers from training data, so no tool call fires and step 1's finish_reason " +
                "is 'stop', not 'tool_calls'.",
-      code: `state.systemPrompt = "You are a helpful assistant. Use the tools available "
+      code: `// Save the system prompt that frames the agent loop.
+state.systemPrompt = "You are a helpful assistant. Use the tools available "
   + "when the user asks for something you cannot answer from training data alone.";
 // state.userPrompt   = "What time is it in UTC?";
 // state.userPrompt   = "What is the capital of France?";
@@ -368,10 +334,11 @@ return state.userPrompt;
 `,
     },
     {
-      id: "tool", icon: "🛠", title: "Tool spec", x: 2, y: 0,
-      summary: "Registers get_current_time as the one tool and wires a JavaScript executor to run it. " +
+      id: "tool", icon: "🛠", title: "Especificação da ferramenta", x: 2, y: 0,
+      summary: "Registra get_current_time como a única ferramenta e conecta um executor JavaScript para executá-la." +
                "The model only names the call; your code does the work.",
-      code: `state.TOOLS = [{
+      code: `// Define the tool schema the model can choose from next.
+state.TOOLS = [{
   type: "function",
   function: {
     name: "get_current_time",
@@ -388,14 +355,15 @@ return state.execTool("get_current_time");
 `,
     },
     {
-      id: "loop", icon: "🔄", title: "ReAct loop", x: 1, y: 1,
-      summary: "Runs the ReAct cycle: call the model, check finish_reason, run any requested tools, append " +
-               "the results as observations, then loop. It exits when finish_reason is 'stop'; MAX_STEPS=6 " +
-               "is the backstop against a model that loops forever. Edit MODEL at the top to swap the brain.",
+      id: "loop", icon: "🔄", title: "Ciclo ReAct", x: 1, y: 1,
+      summary: "Executa o ciclo ReAct: chama o modelo, verifica finish_reason, executa as ferramentas solicitadas, anexa" +
+               "the results as observations, then loop. It exits when finish_reason is 'stop'. " +
+               "Edit MODEL at the top to swap the brain.",
       code: `// MODEL is the swappable brain in the reasoning slot. Change it and rerun to drive the
 // same loop with a different model.
 const MODEL = "nvidia/nemotron-3-nano-30b-a3b";   // or "nvidia/nemotron-3-super-120b-a12b" for a stronger brain
-const MAX_STEPS = 6;
+// Backstop for runaway tool loops during the demo.
+const max_steps = 12;
 
 state.messages = [
   { role: "system", content: state.systemPrompt },
@@ -403,10 +371,9 @@ state.messages = [
 ];
 
 let step = 0, answered = false;
-while (step++ < MAX_STEPS) {
+while (step++ < max_steps) {
   helpers.log(\`── step \${step} ──────────────────────\`);
-  // The second argument is null, so the raw token stream is suppressed and the curated
-  // trace below is the only output, which keeps the loop's logic readable.
+  // Suppress raw tokens so only the curated trace appears.
   const s = await helpers.chatStream({
     messages: state.messages, tools: state.TOOLS, model: MODEL, max_tokens: 8196,
   }, null);
@@ -419,16 +386,16 @@ while (step++ < MAX_STEPS) {
   if (s.finish_reason === "stop" && !s.tool_calls.length) {
     state.finalContent = s.content;
     answered = true;
-    helpers.log("✓ final answer:", s.content);
+    helpers.log("✓ resposta final:", s.content);
     break;
   }
   for (const tc of s.tool_calls) {
     const result = state.execTool(tc.function.name);
-    helpers.log("tool ran:", tc.function.name, "→", result);
+    helpers.log("ferramenta executada:", tc.function.name, "→", result);
     state.messages.push({ role: "tool", tool_call_id: tc.id, content: result });
   }
 }
-if (!answered) helpers.log("⚠ step cap reached · safety belt fired");
+if (!answered) helpers.log("⚠ limite de etapas atingido");
 return { model: MODEL, steps_taken: step, messages: state.messages };
 `,
     },
@@ -437,23 +404,31 @@ return { model: MODEL, steps_taken: step, messages: state.messages };
 
 // ── Part 5: running this cell BUILDS a live chat artifact (createReactAgent) ──
 mountRunCell("#cell-react-lab", {
-  label: "Build the artifact · createReactAgent → a live chat panel",
-  intro: "This cell renders a working chat panel from LangChain's off-the-shelf createReactAgent loop, " +
+  label: "Construir o artefato · createReactAgent → um painel de chat ao vivo",
+  intro: "Essa célula renderiza um painel de chat funcional a partir do ciclo do agente createReactAgent pronto para uso da LangChain," +
          "rather than printing a log. Its one tool is read_course_page; its memory is MemorySaver. " +
          "Edit the agent, the tool, or the prompt and rerun to rebuild the panel.",
   code: `// Running this cell renders a live chat panel into #react-artifact below.
 const cfg = await helpers.getConfig();
 if (cfg.needsKey && !helpers.getKey()) {
-  helpers.log("No API key yet. Add your nvapi- key on the course home, then rerun.");
+  helpers.log("Nenhuma chave de API ainda. Adicione sua chave nvapi- na página inicial do curso e execute novamente.");
   return "Add your nvapi- key on the course home, then rerun.";
 }
 
-helpers.log("loading LangChain ...");
-const { ChatOpenAI }       = await import("https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm");
-const { tool }             = await import("https://cdn.jsdelivr.net/npm/@langchain/core@1.1.48/tools/+esm");
-const { createReactAgent } = await import("https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/prebuilt/+esm");
-const { MemorySaver }      = await import("https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/+esm");
-const { z }                = await import("https://cdn.jsdelivr.net/npm/zod@3/+esm");
+helpers.log("Carregando LangChain...");
+const LANGCHAIN_IMPORT_URLS = [
+  "https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm",
+  "https://cdn.jsdelivr.net/npm/@langchain/core@1.1.48/tools/+esm",
+  "https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/prebuilt/+esm",
+  "https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/+esm",
+  "https://cdn.jsdelivr.net/npm/zod@3/+esm",
+];
+const [oai, core, prebuilt, langgraph, zod] = await Promise.all(LANGCHAIN_IMPORT_URLS.map(url => import(url)));
+const { ChatOpenAI }       = oai;
+const { tool }             = core;
+const { createReactAgent } = prebuilt;
+const { MemorySaver }      = langgraph;
+const { z }                = zod;
 
 const PAGES   = helpers.coursePages();             // includes "overview" (the course home)
 const baseURL = cfg.url.startsWith("http") ? cfg.url : (window.location.origin + cfg.url);
@@ -470,8 +445,7 @@ const SYSTEM  =
 const agents = {};
 function getAgent(model) {
   if (!agents[model]) {
-    // The OpenAI SDK adds x-stainless-* platform headers that the CORS proxy
-    // rejects in preflights. Strip them with a custom fetch wrapper.
+    // Strip OpenAI SDK x-stainless-* headers before CORS preflight.
     const _fetchNoStainless = (url, init) => {
       if (init && init.headers) {
         const h = init.headers instanceof Headers ? init.headers : new Headers(init.headers);
@@ -500,10 +474,10 @@ function getAgent(model) {
 helpers.mountChatUI(document.getElementById("react-artifact"), {
   modules: PAGES,
   models: [
-    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
-    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
+    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · rápido" },
+    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · mais forte" },
   ],
-  greeting: "Ask me anything about the course. I read the relevant pages before I answer.",
+  greeting: "Pergunte-me qualquer coisa sobre o curso. Eu leio as páginas relevantes antes de responder.",
   examples: [
     "What is the ReAct loop?",
     "Summarize the whole course",
@@ -517,8 +491,7 @@ helpers.mountChatUI(document.getElementById("react-artifact"), {
     const messages = [];
     if (ctx.turn === 0) {
       messages.push({ role: "system", content: SYSTEM });
-      // Pin every page selected with the "Pages" chips (multi-select). The whole
-      // page is pinned, and the whole page is what the chip shows; expand it.
+      // Pin each selected page in full so the chip reflects the actual context.
       for (const id of ctx.modules) {
         const body = await helpers.coursePage(id);
         ctx.view.tool("pinned " + id + " · " + helpers.estimateTokens(body) + " tok", body);
@@ -530,23 +503,17 @@ helpers.mountChatUI(document.getElementById("react-artifact"), {
     }
     messages.push({ role: "user", content: text });
 
-    // recursionLimit is this loop's MAX_STEPS safety belt (Part 4): the agent
-    // reasons and reads as many times as it needs, capped so a confused run
-    // can't spin forever. Each reason+read is ~2 graph steps, so 12 ≈ 6 reads.
+    // Bound the loop so a confused agent cannot spin forever.
     const stream = await agent.stream({ messages },
       { streamMode: "messages", configurable: { thread_id: ctx.thread }, recursionLimit: 24, signal: ctx.signal });
-    // Hand each event to ctx.view as it arrives: it appends reasoning, tool
-    // chips, and answer text in stream order. Every read pushes its OWN chip,
-    // keyed by the tool call's id, not its index: arg-delta chunks reset the
-    // index to 0 per message, so an index key would overwrite an earlier read.
+    // Render each event as it streams; key tool chips by tool-call id.
     const byId = {}, activeByIndex = {};
     let lastInput = 0, totalOut = 0, sawUsage = false;
     for await (const part of stream) {
       const chunk = Array.isArray(part) ? part[0] : part;
       const meta  = Array.isArray(part) ? part[1] : null;
       const node  = meta && meta.langgraph_node;
-      // tool RESULT (the full page text, or an error) comes back on the "tools"
-      // node → its own chip. A failed read is shown as failed, not hidden.
+      // Tool results get their own chip, including failed reads.
       if (node === "tools" && chunk.tool_call_id && byId[chunk.tool_call_id]) {
         const c = byId[chunk.tool_call_id];
         c.body.textContent = String(chunk.content);
@@ -555,8 +522,7 @@ helpers.mountChatUI(document.getElementById("react-artifact"), {
         }
         continue;
       }
-      // tool CALL: each new call (tc.id present) PUSHES a fresh chip; arg deltas
-      // (no id) extend the call currently open at that index.
+      // tool CALL: each new call (tc.id present) PUSHES a fresh chip; arg deltas (no id) extend the call currently open at that index.
       for (const tc of (chunk.tool_call_chunks || [])) {
         const idx = tc.index == null ? 0 : tc.index;
         let c;
@@ -573,10 +539,7 @@ helpers.mountChatUI(document.getElementById("react-artifact"), {
       if (r && node === "agent") ctx.view.reasoning(r);
       // token usage rolls up across the ReAct loop's LLM calls
       if (chunk.usage_metadata) { sawUsage = true; lastInput = chunk.usage_metadata.input_tokens || lastInput; totalOut += chunk.usage_metadata.output_tokens || 0; }
-      // Answer tokens, gated to the "agent" node. Both the agent and "tools"
-      // nodes emit chunks with string .content, but the tools node's content is
-      // the full page text a read returned. The guard keeps that markdown out of
-      // the answer panel (tool results get their own chips, handled above).
+      // Show answer tokens from the agent node; tool output stays in tool chips.
       if (typeof chunk.content === "string" && chunk.content && node === "agent")
         ctx.view.token(chunk.content);
     }
@@ -584,7 +547,7 @@ helpers.mountChatUI(document.getElementById("react-artifact"), {
   },
 });
 
-helpers.log("✓ artifact mounted below. Scroll down and chat with it.");
+helpers.log("✓ artefato montado abaixo. Role a página para baixo e converse com ele.");
 return "Artifact mounted below. Edit this cell and rerun to rebuild it.";
 `,
 });

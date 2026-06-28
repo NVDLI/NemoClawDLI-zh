@@ -43,6 +43,13 @@ Read [`AGENT_QUICKSTART.md`](AGENT_QUICKSTART.md) first. Every directory carries
 directory. [`SKILL_CONTRACT.md`](SKILL_CONTRACT.md) specifies that format and
 [`QUALITY_DIRECTIVES.md`](QUALITY_DIRECTIVES.md) sets the content bar.
 
+For localization, start at [`scripts/translate/SKILL.html`](scripts/translate/SKILL.html),
+then open the locale node such as [`scripts/translate/locales/pt-BR/SKILL.html`](scripts/translate/locales/pt-BR/SKILL.html).
+Translate learner-facing prose in the sparse `i18n/<code>/` overlay. Do not copy standalone
+runtime modules, assets, data, or machine-contract pages into it. Inline executable structure
+must remain equivalent to English; localized UI strings may differ. Locale profiles also reject literal wording
+that is grammatical but unnatural for the target student and developer audience.
+
 ## Structured Release Process
 
 1. Start from a clean branch for one coherent release concern.
@@ -77,6 +84,9 @@ python3 scripts/validation/validate_layout.py --quiet
 python3 scripts/skills/skill_consistency.py
 python3 scripts/validation/contribution_safety_audit.py --self-test
 python3 scripts/validation/contribution_safety_audit.py
+python3 scripts/build/assemble_locale_overlay.py --self-test
+python3 scripts/validation/localization_audit.py --self-test
+python3 scripts/validation/localization_audit.py --locale pt-BR
 python3 scripts/compliance/source_gate.py
 bash scripts/runtime/run_engine.sh --self-test
 python3 scripts/validation/validate_bundle.py --scope ship

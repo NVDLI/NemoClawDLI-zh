@@ -36,6 +36,8 @@ export { diagramSVG, mountDiagram };
 // Re-export figure helpers so page imports and helper menus stay stable.
 import { ganttBarsSVG, mountFigures, openFigureLightbox, wireFigureZoom } from "./_figures.js";
 export { ganttBarsSVG, mountFigures, openFigureLightbox, wireFigureZoom };
+import { mountLanguageMenu } from "./_locale.js";
+export { mountLanguageMenu };
 
 const LAB_MODEL     = "nvidia/nemotron-3-nano-30b-a3b"; // legacy helper default; getConfig().model is the active course default
 const CONFIG_KEY    = "__nv_slim_cfg_v1";
@@ -836,11 +838,10 @@ export function mountThemeToggle() {
 
 // Auto-mount on any page that ships a topbar (the lab and the full standalone).
 if (typeof document !== "undefined") {
-  const _boot = () => { mountThemeToggle(); mountFigures(); };
+  const _boot = () => { mountThemeToggle(); mountLanguageMenu(); mountFigures(); };
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", _boot);
   } else {
     _boot();
   }
 }
-

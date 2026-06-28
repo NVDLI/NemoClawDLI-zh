@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Tools at Scale · Securing Agents</title>
-<link rel="stylesheet" href="_style.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<title>Ferramentas em Escala · Segurança de Agente</title>
+<link rel="stylesheet" href="styles/_style.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js" integrity="sha384-GdEWAbCjn+ghjX0gLx7/N1hyTVmPAjdC2OvoAA0RyNcAOhqwtT8qnbCxWle2+uJX" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" integrity="sha384-zaeBlB/vwYsDRSlFajnDd7OydJ0cWk+c2OWybl3eSUf6hW2EbhlCsQPqKr3gkznT" crossorigin="anonymous"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css" integrity="sha384-05WuhgjXiqmZzcQ3vQRQ39HN356Yqb+SnhvELzFtpwS5b2IlqE8QsOO5LCSJ2znj" crossorigin="anonymous"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js" integrity="sha384-ZYmwuq4n2gOcNxMSiJ6jyTj+BbIrilr7p6dlq6q5nmSWKmsH9UU4K1qqjycMkfmR" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js" integrity="sha384-g0o+WW9mdIxA7LaaCKTkRm0M5TVT+Bb4s9eocxPsI2G0Xm0POG9iD6G6qP1IIsfS" crossorigin="anonymous"></script>
 <style>
   .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
   .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
@@ -24,7 +24,7 @@
 </head>
 <body>
 <div class="topbar">
-  <a class="logo" href="index.html">NVIDIA · Securing Agents</a>
+  <a class="logo" href="index.html">NVIDIA · Segurança de Agentes</a>
   <nav id="nav"></nav>
   <div class="spacer"></div>
   <span class="key-pill" id="key-status" onclick="location.href='01a-loop.html?openKeyPanel=1'">…</span>
@@ -34,195 +34,182 @@
   <div id="journey-map"></div>
 
   <div class="hero">
-    <div class="eyebrow">Module 1 · Part C of 3</div>
-    <h1>Tools <span>at Scale</span></h1>
+    <div class="eyebrow">Módulo 1 · Parte C de 3</div>
+    <h1>Ferramentas <span>em Escala</span></h1>
     <p class="lead">
-      In Module 1b you wired a single tool into the agent loop. That round-trip does not change here. The
-      number of tools grows, though, and routing reliably gets harder with every one you add.
-    </p>
+ No Módulo 1b, você conectou uma única ferramenta ao ciclo do agente: o modelo solicitou uma função nomeada, seu harness de execução a executou e o resultado voltou para a chamada seguinte do modelo. Esse percurso de ida e volta não muda aqui. O que muda é a superfície de ferramentas: o modelo deve escolher entre mais descrições, e cada ferramenta pode ocultar uma capacidade maior.
+ </p>
     <p>
-      One well-described tool is easy for the model to route to. A flat list of dozens crowds the context
-      and nudges the model toward the wrong call, or toward no call at all.
-    </p>
-    <ul>
-      <li>It scales the loop from one tool to many, where the model has to route.</li>
-      <li>It calls a real search endpoint and hides a sub-agent behind a single tool.</li>
-      <li>It ends with the <a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">MCP</a> shape that is becoming the production standard for serving tools.</li>
-    </ul>
+ A página segue esse contrato desde funções locais até um backend de busca, um sub-agente e, finalmente, um servidor de Protocolo de Contexto de Modelo (MCP). Essas são diferentes maneiras de fornecer capacidades ao mesmo ciclo. Uma lista de ferramentas longa e plana também consome contexto e pode tornar o roteamento menos confiável, o que motiva os fluxos de trabalho com escopo no Módulo 2.
+ </p>
   </div>
 
-  <h2>Every tool is the same round-trip</h2>
+  <h2>O contrato de chamada de ferramenta permanece fixo</h2>
   <p>
-    Whatever sits behind it, a tool runs the same four-step cycle you built in 1b, drawn below. Everything
-    this page adds (multi-tool routing, real search backends, agents-as-tools, MCP) is that one cycle with
-    a different source of schemas.
-  </p>
+ A figura traça o ciclo a partir de 1b. Seções posteriores mudam de onde vem o esquema e o que o executor faz, enquanto o modelo ainda solicita uma ferramenta nomeada e lê seu resultado.
+ </p>
 
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/01c-tools-1.svg" style="aspect-ratio:860 / 414"></div>
-    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">The LLM asks, your code answers, and the LLM concludes, but it never runs your function itself.</figcaption>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">O LLM pergunta, seu código responde e o LLM conclui, mas ele nunca executa sua função em si.</figcaption>
   </figure>
 
   <div class="callout">
-    <strong>The server enforces the schema.</strong> Before structured
-    function calling, you prompted the model to emit calls as custom XML or hand-rolled JSON, which broke
-    the moment it paraphrased. Now the contract lives in a first-class API field. The serving engine
-    constrains generation to the schema's grammar and delivers a consistent
-    <code>tool_calls</code> field. Your dispatch code can then count on <code>tc.function.name</code> and
-    <code>tc.function.arguments</code> being present and parseable.
-  </div>
+ <strong>O servidor aplica o esquema.</strong> Antes da chamada de função estruturada, as aplicações costumavam extrair XML personalizado ou JSON escrito à mão do texto do modelo. Uma paráfrase podia quebrar o analisador. O campo de ferramentas transporta o contrato separadamente; assim, o mecanismo de serviço pode restringir os argumentos ao esquema e retornar um campo <code>tool_calls</code> consistente. Seu código de encaminhamento pode então contar com <code>tc.function.name</code> e <code>tc.function.arguments</code> presentes e analisáveis.
+ </div>
 
-  <h2>How the model picks between several tools</h2>
+  <h2>Como o modelo escolhe entre várias ferramentas</h2>
   <p>
-    Agents rarely have a single tool. With more than one, the model decides
-    which to call based on the <code>description</code> field.
-  </p>
+ Os agentes raramente têm uma única ferramenta. Com mais de uma, o modelo decide qual chamar com base no campo <code>description</code>.
+ </p>
   <p>
-    The cell below gives the model two tools and a question that requires picking,
-    and the visualization shows which way the model went and why.
-  </p>
+ A célula abaixo fornece ao modelo duas ferramentas e uma pergunta que exige escolha, e a visualização mostra por qual caminho o modelo foi e por quê.
+ </p>
 
   <figure style="margin:1.4em 0">
     <div id="cell-m2b-p3"></div>
-    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Editing either description shifts how the model routes, since the description field is one of the most consequential prompt-engineering surfaces in any tool-using agent.</figcaption>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Editar qualquer descrição altera o roteamento do modelo, pois o campo de descrição é uma das superfícies de engenharia de prompt com maior impacto em um agente que usa ferramentas.</figcaption>
   </figure>
 
-  <h2>Wiring <code>glossary_search</code> to a real tool</h2>
+  <h2>Conectando <code>glossary_search</code> a uma ferramenta real</h2>
   <p>
-    The cell below wires <code>glossary_search</code> to the in-page MCP
-    server defined at the top of this page. That server is a catalog of NVIDIA terms with a
-    ranked search over it that runs entirely in the browser with no key and no backend,
-    returning short definitions with source links that are enough for the agent to ground its
-    reply. The catalog is wired in by hand so the whole server stays readable in one place, and
-    the course's shared <code>web_search</code> runs that same ranked query against the full NVIDIA
-    glossary index shipped with the bundle. The <a href="glossary.html">glossary explorer</a>
-    opens that real index: every term, the live <code>webSearch</code> and <code>instantAnswer</code>
-    source, and a box to run the exact query the agents call in the modules ahead.
-  </p>
+ A célula conecta <code>glossary_search</code> a um catálogo de termos da NVIDIA na página. A busca classificada é executada no navegador sem uma chave e retorna definições curtas com links de fonte. A <code>web_search</code> compartilhada do curso aplica a mesma classificação ao catálogo completo. Abra o <a href="glossary.html">explorador de glossário</a> para inspecionar cada termo, ler a fonte de <code>webSearch</code> e <code>instantAnswer</code> ao vivo ou executar a consulta você mesmo.
+ </p>
   <p>
-    The next section swaps the executor to an exact term lookup behind the <em>same</em>
-    tool contract, so you can watch the contract stay fixed while the backend changes
-    underneath it.
-  </p>
+ A próxima seção troca o executor por uma busca de termo exato atrás do <em>mesmo</em> contrato de ferramenta. Assim, você observa o contrato permanecer fixo enquanto o backend muda.
+ </p>
 
   <div class="callout">
-    <strong>A tool name should describe a capability.</strong>
-    A tool called <code>nvidia_glossary_api</code> is brittle: changing the backend
-    forces you to update every prompt that references the name. A tool called
-    <code>glossary_search</code> is durable. Its name describes what the caller
-    wants done, leaving the API that fulfils the request free to change. Behind that name you can run the
-    ranked search on this page, the exact lookup in the next section, or a richer index
-    added later. The schema, the description, and every agent prompt stay untouched.
-    Any tool that wraps an external service earns the same durability when you name it
-    for the capability callers depend on.
-  </div>
+ <strong>O nome de uma ferramenta deve descrever uma capacidade.</strong>
+ Uma ferramenta chamada <code>nvidia_glossary_api</code> é frágil: alterar o backend
+ força você a atualizar cada prompt que referencia o nome. Uma ferramenta chamada
+ <code>glossary_search</code> descreve o que o chamador precisa. Pesquisa classificada, busca exata,
+ ou um índice mais rico pode estar por trás desse contrato sem alterar o prompt do agente.
+ </div>
 
   <div id="cell-m2b-p4"></div>
 
-  <h2>Swapping the backend while the tool contract holds</h2>
+  <h2>Substituindo o backend enquanto o contrato da ferramenta é mantido</h2>
   <p>
-    The same loop runs here as a flat <code>mountRunCell</code> script, with one change: the executor.
-    The earlier search returned a short blurb for each of several matches. This backend returns the whole
-    article for the single best match, fetched from the term's cached glossary page. The schema and the
-    loop do not move; only the source behind <code>glossary_search</code> got richer.
-  </p>
+ O mesmo ciclo é executado aqui como um script <code>mountRunCell</code> plano, com uma alteração: o executor.
+ A busca anterior retornou um breve resumo para cada um dos vários resultados. Este backend retorna o artigo completo para a melhor correspondência, recuperado da página de glossário em cache do termo. O esquema e o ciclo não mudam; apenas a fonte por trás de <code>glossary_search</code> se tornou mais rica.
+ </p>
 
   <div class="callout">
-    <strong>The model only sees the contract.</strong> It asks for <code>glossary_search</code> with a
-    natural query and reads whatever comes back, unaware which backend answered. You can start with a blurb
-    index and later swap in full articles or a live search without touching the loop. Accuracy may drift
-    when a backend resolves a match differently, but the contract holds.
-  </div>
+ <strong>O modelo só vê o contrato.</strong> Ele solicita <code>glossary_search</code> com uma
+ consulta natural e lê o que é retornado, sem saber qual backend respondeu. Você pode começar com um índice de resumos e mais tarde substituir por artigos completos ou uma busca ao vivo sem tocar no ciclo. A precisão pode mudar
+ quando um backend resolve uma correspondência de maneira diferente, mas o contrato é mantido.
+ </div>
 
   <div id="cell-m2b-p4b"></div>
 
-  <h2>Hiding a whole agent behind a single tool</h2>
+  <h2>Ocultando um agente inteiro atrás de uma única ferramenta</h2>
   <p>
-    A tool need not be a small function. An entire sub-agent can sit behind a single
-    tool call. To the calling model it still looks like one tool, even though the agent
-    on the other side may be answering questions about a SQL database, running code in a
-    Python environment, or searching through a repository. Wrapping that capability as one
-    tool is easier for the main loop to work with than wiring the whole sub-agent into it directly.
-  </p>
+ Uma ferramenta não precisa ser uma pequena função. Um sub-agente inteiro pode estar por trás de uma única
+ chamada de ferramenta. O modelo chamador ainda vê um contrato. O agente por trás pode consultar um
+ banco de dados, executar código ou buscar um repositório sem expor essas ferramentas internas ao
+ ciclo principal.
+ </p>
   <p>
-    The cell below exposes a sub-agent that knows a small customer table
-    as one natural-language tool. The main agent never sees the rows
-    and can only ask questions.
-  </p>
+ A célula abaixo expõe um sub-agente que conhece uma pequena tabela de clientes
+ como uma ferramenta de linguagem natural. O agente principal nunca vê as linhas
+ e só pode fazer perguntas.
+ </p>
 
   <div id="cell-m2b-p5"></div>
 
   <div class="callout">
-    <strong>The cognitive-load lever.</strong>
-    Every additional tool, schema field, and description sentence consumes
-    context the main agent could use for its task. A sprawling flat tool
-    list tends to perform worse than a small set of tools backed by
-    sub-agents, because each loop only sees the tools relevant to its level.
-  </div>
+ <strong>A alavanca da carga cognitiva.</strong>
+ Cada ferramenta adicional, campo de esquema e frase de descrição consome
+ contexto que o agente principal poderia usar para sua tarefa. Uma lista de ferramentas plana e extensa tende a ter um desempenho pior do que um pequeno conjunto de ferramentas apoiadas por
+ sub-agentes, porque cada ciclo só vê as ferramentas relevantes para seu nível.
+ </div>
 
-  <h2>Fetching tools from a separate server with MCP</h2>
+  <h2>Recuperando ferramentas de um servidor separado com MCP</h2>
   <p>
-    MCP gives tool serving a standard shape. The agent retrieves the list of tools a
-    server offers with a <code>tools/list</code> call, then invokes any one of them with
-    <code>tools/call</code>. Those tools live in a separate process that the agent
-    connects to and queries when it starts up. Because the protocol is the same
-    everywhere, the agent can connect to additional servers without learning a new
-    interface for each one.
-  </p>
+ O Protocolo de Contexto do Modelo (MCP) fornece uma forma padrão para servir ferramentas. O agente recupera a lista de ferramentas que um
+ servidor oferece com uma chamada <code>tools/list</code>, então invoca qualquer uma delas com
+ <code>tools/call</code>. Essas ferramentas vivem em um processo separado que o agente
+ conecta e consulta quando é iniciado. Como o protocolo é o mesmo
+ em todos os lugares, o agente pode se conectar a servidores adicionais sem aprender uma nova
+ interface para cada um. Use MCP quando a descoberta de ferramentas e o transporte precisam de um protocolo compartilhado. Use uma função local, uma habilidade de repositório ou uma chamada de API direta quando o harness de execução
+ já sabe onde a capacidade vive e como invocá-la.
+ </p>
+
+  <div class="callout">
+ <strong>A descoberta é uma fronteira de confiança.</strong>
+ Trate uma resposta <code>tools/list</code> como entrada não confiável. Antes de se conectar ao servidor:
+ <ul>
+ <li>verifique sua identidade,</li>
+ <li>mostre as capacidades solicitadas ao usuário,</li>
+ <li>conceda o menor escopo útil,</li>
+ <li>e vincule cada credencial à audiência desse servidor.</li>
+ </ul>
+ Para conexão remota e
+ descoberta OAuth, rejeite destinos privados e link-local e valide todos os redirecionamentos. A
+ <a href="https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices" target="_blank" rel="noopener">orientação de segurança do MCP</a>
+ atribui consentimento, manipulação de token e controles de falsificação de solicitação de servidor (SSRF) ao cliente.
+ </div>
 
   <div class="fig-embed" data-svg-src="assets/figures/01c-tools-2.svg" style="aspect-ratio:720 / 320"></div>
   <p>
-    The cell below fakes a tiny MCP server in pure JavaScript with the
-    same <a href="https://www.jsonrpc.org/specification" target="_blank" rel="noopener">JSON-RPC</a> shape MCP defines (no transport). The agent fetches
-    the tool list, hands the schemas to the model, then dispatches
-    <code>tool_calls</code> back through the server's
-    <code>tools/call</code> handler. The agent loop is byte-for-byte
-    identical to a normal tool call while only the source of the tool list changes.
-  </p>
+ A célula abaixo simula um pequeno servidor MCP em JavaScript puro com o
+ mesmo formato <a href="https://www.jsonrpc.org/specification" target="_blank" rel="noopener">JSON-RPC</a> que o MCP define (sem transporte). O agente recupera
+ a lista de ferramentas, passa os esquemas para o modelo e encaminha
+ <code>tool_calls</code> de volta pelo manipulador <code>tools/call</code> do servidor. O ciclo do agente é idêntico,
+ byte por byte, ao de uma chamada de ferramenta normal; muda apenas a origem da lista de ferramentas.
+ </p>
 
   <div id="cell-m2b-p6"></div>
 
-  <h2>Before you continue</h2>
+  <p>
+ O Módulo 2 mantém esse contrato de ferramenta e altera a estrutura externa. Um workflow pode encaminhar
+ chamadas através de um pipeline fixo, distribuir trabalho em ramificações ou delegar uma tarefa focada a
+ outro ciclo sem expor todas as ferramentas internas ao chamador.
+ </p>
+
+  <h2>Antes de continuar</h2>
   <ol>
-    <li>What happens when the model calls a tool with arguments that fail your validation? The current loop crashes; how would you make it graceful without giving the model false confidence that the call succeeded?</li>
-    <li>The agents-as-tools sub-agent is opaque to the main agent. What information would you want it to surface back (in addition to the answer) so the main agent can decide whether to trust it on the next turn?</li>
-    <li>The <code>tool_choice</code> parameter can be set to <code>"required"</code> or to a specific tool name. When would forcing a tool call be the right move, and what risk does it create?</li>
+    <li>O que acontece quando o modelo chama uma ferramenta com argumentos que não passam pela validação? O ciclo atual falha; como você trataria o erro de modo controlado sem fazer o modelo acreditar que a chamada foi bem-sucedida?</li>
+    <li>O subagente usado como ferramenta é opaco para o agente principal. Além da resposta, quais informações ele deveria retornar para que o agente principal decida se confia nele no próximo turno?</li>
+    <li>O parâmetro <code>tool_choice</code> pode ser definido como <code>"required"</code> ou como um nome de ferramenta específico. Quando forçar uma chamada de ferramenta seria a escolha certa, e qual risco isso cria?</li>
+    <li>Antes de adicionar um servidor MCP remoto a este agente, quais identidade, escopo de capacidade, audiência do token e destinos de rede você verificaria? Qual deles se torna um caminho SSRF quando aceito sem validação?</li>
   </ol>
 
   <div class="references">
-    <h3>References</h3>
+    <h3>Referências</h3>
     <ul>
-      <li><a href="https://arxiv.org/abs/2302.04761" target="_blank" rel="noopener">Schick et al., <em>Toolformer: Language Models Can Teach Themselves to Use Tools</em> (2023)</a>. The paper that established self-supervised tool use; what every subsequent function-calling spec is variations on.</li>
-      <li><a href="https://platform.openai.com/docs/guides/function-calling" target="_blank" rel="noopener">OpenAI function-calling guide</a>. The spec your <code>tools=[…]</code> payload conforms to; the hosted build endpoint proxies this shape through to any provider.</li>
-      <li><a href="https://modelcontextprotocol.io/specification" target="_blank" rel="noopener">Model Context Protocol (MCP) specification</a>. The cross-vendor tool-discovery and tool-serving layer covered in this module's MCP section (originated by Anthropic, now an open project); complements function calling at the agent-runtime layer.</li>
-      <li><a href="https://docs.anthropic.com/en/docs/agents-and-tools/tool-use" target="_blank" rel="noopener">Anthropic tool-use reference</a>. The parallel implementation for Claude, useful as a cross-vendor comparison.</li>
+      <li><a href="https://arxiv.org/abs/2302.04761" target="_blank" rel="noopener">Schick et al., <em>Toolformer: Language Models Can Teach Themselves to Use Tools</em> (2023)</a>. O artigo que estabeleceu o uso de ferramentas de auto-supervisão; o que todas as especificações subsequentes de chamada de função são variações.</li>
+      <li><a href="https://platform.openai.com/docs/guides/function-calling" target="_blank" rel="noopener">Guia de chamada de função da OpenAI</a>. A especificação seguida pela carga <code>tools=[…]</code>; o endpoint hospedado de build encaminha esse formato para qualquer provedor.</li>
+      <li><a href="https://modelcontextprotocol.io/specification" target="_blank" rel="noopener">Especificação do Protocolo de Contexto de Modelo (MCP)</a>. A camada de descoberta de ferramentas e serviço de ferramentas entre fornecedores coberta na seção MCP deste módulo (originada pela Anthropic, agora um projeto aberto); complementa a chamada de função na camada de tempo de execução do agente.</li>
+      <li><a href="https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices" target="_blank" rel="noopener">Melhores práticas de segurança do MCP</a>. Consentimento, credenciais limitadas por audiência, controles SSRF e riscos de execução de servidor local para clientes e operadores do MCP.</li>
+      <li><a href="https://docs.anthropic.com/en/docs/agents-and-tools/tool-use" target="_blank" rel="noopener">Referência de uso de ferramentas da Anthropic</a>. A implementação paralela para Claude, útil como uma comparação entre fornecedores.</li>
     </ul>
-    <p class="references-note">Comprehensive list at <a href="04c-going-further.html#refs">Going Further · References</a>.</p>
+    <p class="references-note">Lista abrangente em <a href="04c-going-further.html#refs">Ir Além · Referências</a>.</p>
   </div>
 
-  <h2>Try it · an agent with two real tools</h2>
+  <h2>Tente · um agente com duas ferramentas reais</h2>
   <p>
-    This artifact runs a <a href="https://python.langchain.com/" target="_blank" rel="noopener">LangChain</a> <code>createReactAgent</code> wired to the two functions whose
-    contracts you just read: <code>calculate</code> for arithmetic and <code>glossary_search</code>
-    against the in-page NVIDIA glossary that runs in the browser without a key. Ask for a number it cannot work
-    out in its head or a term to define, and watch the tool chip light up before the
-    answer streams.
-  </p>
+ Este artefato executa um agente <a href="https://python.langchain.com/" target="_blank" rel="noopener">LangChain</a> <code>createReactAgent</code> conectado às duas funções cujos
+ contratos você acabou de ler: <code>calculate</code> para aritmética e <code>glossary_search</code>
+ contra o glossário NVIDIA na página que roda no navegador sem uma chave. Peça um número que ele não possa calcular na cabeça ou um termo para definir, e observe o chip de ferramenta acender antes da
+ resposta ser transmitida.
+ </p>
   <div id="tools-cell"></div>
   <div id="tools-artifact"></div>
   <script type="module">
-    import { mountRunCell } from "./_shared.js";
+    import { mountRunCell } from "./scripts/_shared.js";
     mountRunCell("#tools-cell", {
-      label: "the agent + your tools, in code",
+      label: "o agente + suas ferramentas, em código",
       autorun: true,
       code: `// Two tools: calculate (guarded arithmetic) and glossary_search (in-page server).
 // Edit the system prompt or the tools, then Run to re-render.
 helpers.mountAgentChat("#tools-artifact", {
   models: [
-    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
-    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
+    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · rápido" },
+    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · mais forte" },
   ],
-  greeting: "I can do arithmetic and search NVIDIA's glossary. Try 'what is 17.5% of 2,480?', 'what is a vector database?', or 'explain vector databases in depth'.",
+  greeting: "Eu posso fazer aritmética e pesquisar no glossário da NVIDIA. Tente 'qual é 17,5% de 2.480?', 'o que é um banco de dados de vetores?' ou 'explique bancos de dados de vetores em profundidade'.",
   examples: ["What is 17.5% of 2,480?", "What is a vector database?", "Explain vector databases in depth", "Define agentic AI", "What does GPU stand for, and what is it for?", "What is 2,480 divided by 17, rounded?"],
   system: "You are a helpful assistant. Use calculate for any arithmetic and glossary_search for definitions of AI and accelerated-computing terms. For a quick definition, call glossary_search normally; when the user wants depth on a single term, call it with full=true to read the whole article. Ground factual claims in the results; if a search returns nothing, say so rather than answering from memory. Keep answers brief unless the user asks for depth.",
   recursionLimit: 24,   // room for several search-then-read rounds before the safety cap
@@ -249,34 +236,28 @@ helpers.mountAgentChat("#tools-artifact", {
          }) }),
   ],
 });
-helpers.log("rendered below. Edit the config and Run.");
+helpers.log("renderizado abaixo. Edite a configuração e execute.");
 
-/* Under the hood, the artifact above is a real LangChain createReactAgent (one per
-   model, each with its own memory) wired to the tools you declare. mountAgentChat loads
-   LangChain, builds a ChatOpenAI on the course endpoint, wraps your tools, and streams
-   the tool calls and answer into the same view a hand-rolled loop would drive. */
+/* mountAgentChat builds one LangChain agent per model and streams tool calls plus answers. */
 `,
     });
   </script>
 
   <div class="foot-nav">
-    <a href="01b-react.html">← Module 1b: The ReAct Loop</a>
-    <a class="next" href="02a-routing.html">Module 2a: Workflows →</a>
+    <a href="01b-react.html">← Módulo 1b: O Ciclo do Agente</a>
+    <a class="next" href="02a-routing.html">Módulo 2a: Fluxos de Trabalho →</a>
   </div>
 </main>
 
 <script type="module">
-import { buildNav, chatStream, updateKeyPill, mountJourneyMap, mountRunCell, mountCanvasFlow } from "./_shared.js";
+import { buildNav, chatStream, updateKeyPill, mountJourneyMap, mountRunCell, mountCanvasFlow } from "./scripts/_shared.js";
 document.getElementById("nav").innerHTML = buildNav("01c-tools.html");
 const pill = document.getElementById("key-status");
 updateKeyPill(pill);
 mountJourneyMap("#journey-map", "1c");
 hljs.highlightAll();
 
-// In-page NVIDIA glossary MCP server: a catalog plus a small MCP-style server
-// (tools/list + tools/call) over it, with no API key and no backend.
-// On this page, the page IS the tool.
-// Regenerate the catalog with `python3 scripts/vendor_glossary.py --index`.
+// In-page glossary MCP server: static catalog, no key, no backend.
 const GLOSSARY = [
   ["3d-reconstruction","3D Reconstruction","Learn what 3D reconstruction is and how neural reconstruction works.","3D reconstruction;neural reconstruction;computer vision;3D models"],
   ["ai-agents","AI Agents","AI agents are advanced AI systems designed to autonomously reason, plan, and execute complex tasks based on high-level goals in a secure environment with controls.","AI Agents;Generative AI;LLMs;RAG"],
@@ -392,9 +373,7 @@ function glossaryLookup(slug) {
   const results = row ? [{ title: row[1], body: row[2], href: NV_GLOSSARY + row[0] + "/" }] : [];
   return { results, count: results.length, unreachable: false, source: "nvidia-glossary" };
 }
-// The full article for a "deep" term: a cached copy of the live NVIDIA glossary page, shipped at
-// mats/glossary_raw/<slug>.md. Most terms carry only the one-line blurb above; the deep terms carry
-// the whole body, which is what a richer retrieval backend returns for a single, confident match.
+// Deep glossary terms load cached full articles from mats/glossary_raw/.
 async function glossaryFull(query) {
   const top = _glossaryRank(query)[0];
   if (!top) return null;
@@ -441,8 +420,8 @@ window.formatGlossaryResults = formatGlossaryResults;
 
 // ── multi-tool routing ─────────────────────────────────────
 mountCanvasFlow("#cell-m2b-p3", {
-  label: "two tools, the model routes",
-  intro: "Three roots feed into one LLM, and editing either tool description shifts how the model routes. The description string is one of the most consequential prompt-engineering surfaces in any tool-using agent.",
+  label: "duas ferramentas, o modelo roteia",
+  intro: "Três raízes se conectam a um LLM, e editar qualquer descrição de ferramenta altera a forma como o modelo roteia. A string de descrição é uma das superfícies de engenharia de prompt mais consequenciais em qualquer agente que usa ferramentas.",
   edges: [
     { from: "question", to: "llm" },
     { from: "tool_a",   to: "llm" },
@@ -450,21 +429,26 @@ mountCanvasFlow("#cell-m2b-p3", {
   ],
   nodes: [
     {
-      id: "question", icon: "👤", title: "User question", x: 1, y: 0,
-      summary: "Try an arithmetic, a definition, or something either tool could handle.",
-      code: `state.question = "What is 2 to the power of 10?";
-// Swap in another question (or write your own) and rerun to watch the route change:
-// state.question = "Evaluate (17 * 43) + Math.sqrt(144) / Math.log(2).";                 // heavier arithmetic, routes to calculate
-// state.question = "What does raising a number to a real, non-integer power mean?";       // a concept, routes to explain_concept
-// state.question = "Approximate pi with 4 * (1 - 1/3 + 1/5 - 1/7 + 1/9 - 1/11).";         // a pi series to compute, routes to calculate
-// state.question = "Explain the Chudnovsky formula for pi and why it converges so fast."; // a concept about pi, routes to explain_concept
+      id: "question", icon: "👤", title: "Pergunta do usuário", x: 1, y: 0,
+      summary: "Tente uma operação aritmética, uma definição ou algo que qualquer ferramenta possa lidar.",
+      code: `// Set the student-editable prompt/input for the next step.
+
+const EXAMPLES = {
+  default: "What is 2 to the power of 10?",
+  arithmetic: "Evaluate (17 * 43) + Math.sqrt(144) / Math.log(2).",
+  concept: "What does raising a number to a real, non-integer power mean?",
+  series: "Approximate pi with 4 * (1 - 1/3 + 1/5 - 1/7 + 1/9 - 1/11).",
+};
+state.question = EXAMPLES.default;
+
 return state.question;
 `,
     },
     {
-      id: "tool_a", icon: "🛠", title: "Tool A · calculate", x: 0, y: 1,
-      summary: "Scoped to arithmetic expressions only. Its description explicitly says not to use it for definitions or conceptual questions, which steers the model toward the other tool when the intent is explanatory.",
-      code: `state.toolA = {
+      id: "tool_a", icon: "🛠", title: "Ferramenta A · calcular", x: 0, y: 1,
+      summary: "Limitado a expressões aritméticas apenas. Sua descrição diz explicitamente para não usá-lo para definições ou perguntas conceituais, o que direciona o modelo para a outra ferramenta quando a intenção é explicativa.",
+      code: `// Describe the calculator tool so the model knows when to route to it.
+state.toolA = {
   type: "function",
   function: {
     name: "calculate",
@@ -477,9 +461,10 @@ return state.toolA.function.name;
 `,
     },
     {
-      id: "tool_b", icon: "🛠", title: "Tool B · explain_concept", x: 2, y: 1,
-      summary: "Scoped to definitions and conceptual questions only. Its description tells the model not to use it for arithmetic, which keeps the two tools from competing on overlapping inputs.",
-      code: `state.toolB = {
+      id: "tool_b", icon: "🛠", title: "Ferramenta B · explicar_conceito", x: 2, y: 1,
+      summary: "Limitado a definições e perguntas conceituais apenas. Sua descrição instrui o modelo a não usá-lo para operações aritméticas, o que impede que as duas ferramentas concorram em entradas sobrepostas.",
+      code: `// Describe the explainer tool so conceptual questions route here.
+state.toolB = {
   type: "function",
   function: {
     name: "explain_concept",
@@ -492,16 +477,17 @@ return state.toolB.function.name;
 `,
     },
     {
-      id: "llm", icon: "🧠", title: "LLM call · the model routes", x: 1, y: 2,
-      summary: "Streams the model as it reasons over the two tool descriptions, then returns the routing decision. The route turns almost entirely on the description strings, so edit one and rerun to watch the model change its mind.",
-      code: `const s = await helpers.chatStream({
+      id: "llm", icon: "🧠", title: "Chamada de LLM · o modelo roteia", x: 1, y: 2,
+      summary: "Transmite o modelo enquanto ele raciocina sobre as descrições das duas ferramentas e, em seguida, retorna a decisão de roteamento. A rota depende quase inteiramente das strings de descrição, então edite uma e execute novamente para ver o modelo mudar de ideia.",
+      code: `// Ask the model to choose one of the two tool descriptions above.
+const s = await helpers.chatStream({
   messages: [{ role: "user", content: state.question }],
   tools:    [state.toolA, state.toolB],
   max_tokens: 8196,
 });
 
-// The reasoning streamed above. A returned value renders on its own, so just hand back the
-// decision: the tool the model chose (if any) and the arguments it filled in.
+// The reasoning streamed above.
+// Return the chosen tool, if any, plus the arguments the model filled in.
 if (!s.tool_calls.length) return { routed_to: "(answered directly)", answer: s.content };
 const tc = s.tool_calls[0];
 return { routed_to: tc.function.name, arguments: JSON.parse(tc.function.arguments || "{}") };
@@ -512,8 +498,8 @@ return { routed_to: tc.function.name, arguments: JSON.parse(tc.function.argument
 
 // ── glossary_search via the in-page NVIDIA glossary server ──
 mountCanvasFlow("#cell-m2b-p4", {
-  label: "glossary_search via the in-page NVIDIA glossary MCP server",
-  intro: "Each node writes into a shared state object that later nodes read. Open any node to edit its JS and rerun it alone, or run the whole graph.",
+  label: "busca_glossário via servidor de glossário MCP da NVIDIA na página",
+  intro: "Cada nó escreve em um objeto de estado compartilhado que os nós posteriores lêem. Abra qualquer nó para editar seu JS e executá-lo sozinho ou execute todo o gráfico.",
   edges: [
     { from: "input", to: "llm1" },
     { from: "tool",  to: "llm1" },
@@ -522,16 +508,18 @@ mountCanvasFlow("#cell-m2b-p4", {
   ],
   nodes: [
     {
-      id: "input", icon: "👤", title: "User input", x: 0, y: 0,
-      summary: "Holds the question the student asks, which you can edit before rerunning.",
-      code: `state.question = "What is the NVIDIA Nemotron model family and what is it good at?";
+      id: "input", icon: "👤", title: "Entrada do usuário", x: 0, y: 0,
+      summary: "Armazena a pergunta que o aluno faz, que você pode editar antes de executar novamente.",
+      code: `// Set the student-editable prompt/input for the next step.
+state.question = "What is the NVIDIA Nemotron model family and what is it good at?";
 return state.question;
 `,
     },
     {
-      id: "tool", icon: "📄", title: "Tool spec", x: 2, y: 0,
-      summary: "The glossary_search JSON Schema the model reads. It is the same shape any tool takes; only the name and description say what this one does.",
-      code: `state.SEARCH_SCHEMA = [{
+      id: "tool", icon: "📄", title: "Especificação da ferramenta", x: 2, y: 0,
+      summary: "O esquema JSON da busca_glossário que o modelo lê. Tem a mesma forma que qualquer ferramenta assume; apenas o nome e a descrição dizem o que essa faz.",
+      code: `// Define the tool schema the model can choose from next.
+state.SEARCH_SCHEMA = [{
   type: "function",
   function: {
     name: "glossary_search",
@@ -547,9 +535,10 @@ return { name: state.SEARCH_SCHEMA[0].function.name };
 `,
     },
     {
-      id: "llm1", icon: "🧠", title: "LLM call #1", x: 1, y: 1,
-      summary: "The first model call. This is a factual question the model should ground rather than recall, so we REQUIRE a glossary_search call here (tool_choice) to see the full round-trip. Letting the model decide for itself is the routing lesson above (and what the createReactAgent artifact does); here the model just fills in the search query.",
-      code: `state.messages = [
+      id: "llm1", icon: "🧠", title: "Chamada de LLM #1", x: 1, y: 1,
+      summary: "Força a busca_glossário para que o ciclo completo da ferramenta permaneça visível. O modelo fornece a consulta de busca; o roteamento de ferramentas autônomo é a lição acima e o comportamento do artefato final.",
+      code: `// Send the prepared messages and stream the model response.
+state.messages = [
   { role: "system", content: "You are a research assistant. Ground answers in glossary_search results; never answer factual questions from memory." },
   { role: "user",   content: state.question },
 ];
@@ -567,11 +556,11 @@ return {
 `,
     },
     {
-      id: "search", icon: "🌐", title: "glossary_search", x: 1, y: 2,
-      summary: "The executor. It calls the in-page glossary MCP server (defined at the top of this page) via tools/call and gets back ranked NVIDIA glossary entries. The catalog and the search both run locally in your browser, with no key and no network call.",
-      code: `if (!state.s1.tool_calls.length) {
-  // No tool call here: the model either answered from training (it has content)
-  // or ran out of tokens mid-call.
+      id: "search", icon: "🌐", title: "busca_glossário", x: 1, y: 2,
+      summary: "O executor. Ele chama o servidor de glossário MCP da NVIDIA na página (definido no topo desta página) via ferramentas/chamada e obtém entradas de glossário da NVIDIA classificadas. O catálogo e a busca são executados localmente em seu navegador, sem chave e sem chamada de rede.",
+      code: `// Handle the tool-call result from the previous model turn.
+if (!state.s1.tool_calls.length) {
+  // No tool call here: the model either answered from training (it has content) or ran out of tokens mid-call.
   // Distinguish the two so we never report a direct answer for a truncated call.
   state.skipped = true;
   state.reason = state.s1.content ? "model answered directly; no search needed"
@@ -597,20 +586,19 @@ return { query: state.query, count: meta.count, source: meta.source };
 `,
     },
     {
-      id: "llm2", icon: "🧠", title: "LLM call #2", x: 1, y: 3,
-      summary: "Synthesizes the final answer from the search results. Note this call passes NO tools, so it must answer from what call #1 retrieved rather than request another search. That is what turns a tool result into a final reply.",
-      code: `if (state.skipped) {
+      id: "llm2", icon: "🧠", title: "Chamada de LLM #2", x: 1, y: 3,
+      summary: "Sintetize a resposta final a partir dos resultados da pesquisa. Observe que essa chamada não passa NENHUMA ferramenta, portanto, deve responder com base no que a chamada #1 recuperou, em vez de solicitar outra pesquisa. É isso que transforma um resultado de ferramenta em uma resposta final.",
+      code: `// Handle the tool-call result from the previous model turn.
+if (state.skipped) {
   return { final_answer: state.s1.content || "(" + (state.reason || "no answer") + ")",
            note: "no search was run on this turn" };
 }
-// No \`tools\` here on purpose: with the schema removed, the model cannot ask for
-// another search, so it must synthesize an answer from the results it already has.
+// No tools here; the model must answer from the search results it already has.
 state.s2 = await helpers.chatStream({
   messages:   state.messages,
   max_tokens: 8196,   // room for the reasoning model to think AND write the answer
 });
-// Defensive: a reasoning model with no tools sometimes still emits tool-call
-// SYNTAX as text. Strip it so the student sees a clean final answer.
+// Strip stray tool-call text from reasoning models that emit it anyway.
 const answer = (state.s2.content || "")
   .replace(/<tool_call>[\\s\\S]*?<\\/tool_call>/g, "")
   .replace(/<\\/?function[^>]*>|<\\/?parameter[^>]*>/g, "").trim();
@@ -622,8 +610,8 @@ return answer || "(the model did not produce a final answer; try Run again)";
 
 // ── the same glossary_search tool, swapped to exact lookup ─
 mountRunCell("#cell-m2b-p4b", {
-  label: "the same glossary_search tool, swapped to a full-article backend",
-  intro: "Same glossary_search, same loop, but a richer backend: instead of a one-line blurb, it returns the term's whole NVIDIA glossary article. The model asks with a natural query and the backend fetches the full cached page. Edit the question and rerun (the 'deep' terms with a full article cached include vector database, RAG, LLMs, AI agents, and deep agents).",
+  label: "a mesma ferramenta de pesquisa de glossário, trocada para um backend de artigo completo",
+  intro: "Mantenha o contrato de pesquisa de glossário e troque por um backend mais rico que retorna o artigo em cache do melhor termo. Edite a pergunta e execute novamente; artigos completos incluem banco de dados de vetores, geração aumentada por recuperação (RAG), grandes modelos de linguagem (LLMs), agentes de IA e agentes profundos.",
   code: `// Same glossary_search the model already knows, but a richer backend behind it: instead of a
 // one-line blurb, it returns the term's full NVIDIA glossary article (mats/glossary_raw/<slug>.md).
 const SEARCH_SCHEMA = [{
@@ -644,8 +632,7 @@ const messages = [
 const s1   = await chatStream({ messages, tools: SEARCH_SCHEMA, tool_choice: { type: "function", function: { name: "glossary_search" } }, max_tokens: 8196 });
 const args = JSON.parse(s1.tool_calls[0].function.arguments || "{}");
 
-// Richer backend: fetch the whole article, not the blurb. Falls back gracefully for a term that has
-// no cached full page (only the "deep" terms have one).
+// Fetch the full article when cached; shallow glossary terms fall back to their blurb.
 const article = await glossaryFull(args.query || "");
 const toolMsg = article ? article.body : "(no full article cached for that term)";
 
@@ -655,15 +642,16 @@ messages.push({ role: "user", content: "Using only the article above, write the 
 
 // Streams the grounded answer; the return surfaces the full article the model actually read.
 await chatStream({ messages, max_tokens: 8196 });
-return article ? { term: article.term, slug: article.slug, chars: article.body.length, full_entry: article.body }
-               : { error: "no full article cached for that term" };
+return article
+  ? { term: article.term, slug: article.slug, chars: article.body.length, full_entry: article.body }
+  : { error: "no full article cached for that term" };
 `,
 });
 
 // ── agents as tools ────────────────────────────────────────
 mountCanvasFlow("#cell-m2b-p5", {
-  label: "agents as tools · hide the database, expose the question",
-  intro: "The top-level agent gets a single query_customer_db tool backed by a sub-agent that knows the schema (a tiny JS array stands in for SQL). Raw rows never reach the caller, which poses a question and receives a natural-language answer in return.",
+  label: "agentes como ferramentas · oculte o banco de dados, exponha a pergunta",
+  intro: "O agente de nível superior recebe uma única ferramenta de consulta ao banco de dados do cliente apoiada por um sub-agente que conhece o esquema (um pequeno array JS faz as vezes de SQL). As linhas brutos nunca atingem o chamador, que formula uma pergunta e recebe uma resposta em linguagem natural em retorno.",
   edges: [
     { from: "sub_data",  to: "sub_agent" },
     { from: "tool_spec", to: "main_llm" },
@@ -673,9 +661,10 @@ mountCanvasFlow("#cell-m2b-p5", {
   ],
   nodes: [
     {
-      id: "sub_data", icon: "🗃", title: "Hidden data (the sub-agent's world)", x: 0, y: 0,
-      summary: "An in-page customer table that the main agent will never see and that a real version would replace with a SQL connection plus row-level auth.",
-      code: `state.customers = [
+      id: "sub_data", icon: "🗃", title: "Dados ocultos (o mundo do sub-agente)", x: 0, y: 0,
+      summary: "Uma tabela de clientes em página que o agente principal nunca verá e que uma versão real substituiria por uma conexão SQL mais autenticação de nível de linha.",
+      code: `// Seed the small dataset this retrieval example searches.
+state.customers = [
   { id: 1001, name: "Aiyana Brooks",  plan: "pro",   region: "us-west", joined: "2024-03-12", tickets_30d: 1 },
   { id: 1002, name: "Boris Müller",   plan: "free",  region: "eu",      joined: "2025-11-04", tickets_30d: 0 },
   { id: 1003, name: "Chen Wei",       plan: "pro",   region: "apac",    joined: "2023-08-22", tickets_30d: 4 },
@@ -687,9 +676,10 @@ return { rows: state.customers.length, schema_fields: Object.keys(state.customer
 `,
     },
     {
-      id: "sub_agent", icon: "🤖", title: "Sub-agent · query_customer_db", x: 0, y: 1,
-      summary: "Knows the table schema and answers a natural-language question through one LLM call with the rows embedded in its system prompt.",
-      code: `state.queryCustomerDB = async function(question) {
+      id: "sub_agent", icon: "🤖", title: "Sub-agente · consulta_banco_de_dados_do_cliente", x: 0, y: 1,
+      summary: "Conhece o esquema da tabela e responde a uma pergunta em linguagem natural por meio de uma chamada de LLM com as linhas incorporadas em seu prompt de sistema.",
+      code: `// Define the mock database tool the agent may call.
+state.queryCustomerDB = async function(question) {
   // The sub-agent's world: a tight system prompt that hides the table, and the rows as context.
   const schemaText = "Customer rows have fields: id (int), name (string), plan (free|pro|team), region (us-east|us-west|eu|apac), joined (YYYY-MM-DD), tickets_30d (int).";
   const rowsText   = state.customers.map(c => JSON.stringify(c)).join("\\n");
@@ -709,13 +699,17 @@ return { sub_agent: "query_customer_db", world_rows: state.customers.length };
 `,
     },
     {
-      id: "tool_spec", icon: "📄", title: "Tool spec (to the main agent)", x: 2, y: 0,
-      summary: "The schema the main agent sees, which exposes the capability alone and gives zero details about the underlying table.",
-      code: `state.TOOLS = [{
+      id: "tool_spec", icon: "📄", title: "Especificação da ferramenta (para o agente principal)", x: 2, y: 0,
+      summary: "O esquema que o agente principal vê, que expõe a capacidade sozinha e não fornece detalhes sobre a tabela subjacente.",
+      code: `// Define the tool schema the model can choose from next.
+state.TOOLS = [{
   type: "function",
   function: {
     name: "query_customer_db",
-    description: "Ask a natural-language question about customer accounts. Returns a one-paragraph answer. Use for questions about plans, regions, ticket activity, signup dates, and counts.",
+    description: [
+      "Ask a natural-language question about customer accounts.",
+      "Use for questions about plans, regions, ticket activity, signup dates, and counts.",
+    ].join(" "),
     parameters: {
       type: "object",
       properties: { question: { type: "string", description: "A specific question in natural English." } },
@@ -727,16 +721,18 @@ return { tool_name: state.TOOLS[0].function.name };
 `,
     },
     {
-      id: "user", icon: "👤", title: "User question (to the main agent)", x: 2, y: 1,
-      summary: "Edit this to try a question like 'How many pro-plan customers do we have?' or 'Who has the most tickets in the last 30 days?'",
-      code: `state.userQuestion = "Which EU customers are on the pro plan, and how active are they?";
+      id: "user", icon: "👤", title: "Pergunta do usuário (para o agente principal)", x: 2, y: 1,
+      summary: "Edite isso para tentar uma pergunta como 'Quantos clientes do plano profissional temos?' ou 'Quem tem o maior número de tickets nos últimos 30 dias?'",
+      code: `// Set the student-editable prompt/input for the next step.
+state.userQuestion = "Which EU customers are on the pro plan, and how active are they?";
 return state.userQuestion;
 `,
     },
     {
-      id: "main_llm", icon: "🧠", title: "Main agent · plain LLM call", x: 1, y: 2,
-      summary: "Seeing only the one tool, the main agent decides whether to ask the sub-agent or answer directly.",
-      code: `state.mainMessages = [
+      id: "main_llm", icon: "🧠", title: "Agente principal · chamada de LLM simples", x: 1, y: 2,
+      summary: "Vendo apenas uma ferramenta, o agente principal decide se deve perguntar ao sub-agente ou responder diretamente.",
+      code: `// Send the prepared messages and stream the model response.
+state.mainMessages = [
   { role: "system", content: "You are a customer-success agent. When the user asks about customer data, call query_customer_db rather than guessing." },
   { role: "user",   content: state.userQuestion },
 ];
@@ -752,10 +748,11 @@ return {
 `,
     },
     {
-      id: "dispatch", icon: "📤", title: "Dispatch to sub-agent · synth final answer", x: 1, y: 3,
-      summary: "Once the top-level agent calls the tool, we hand the natural-language question to the sub-agent, append its answer, and ask for the user-facing reply.",
-      code: `if (!state.s1.tool_calls.length) {
-  helpers.log("main agent answered directly without using the sub-agent");
+      id: "dispatch", icon: "📤", title: "Encaminhar para o sub-agente · sintetizar resposta final", x: 1, y: 3,
+      summary: "Uma vez que o agente de nível superior chama a ferramenta, passamos a pergunta em linguagem natural para o sub-agente, anexamos sua resposta e solicitamos a resposta voltada para o usuário.",
+      code: `// Handle the tool-call result from the previous model turn.
+if (!state.s1.tool_calls.length) {
+  helpers.log("Agente principal respondeu diretamente sem usar o sub-agente.");
   return { final: state.s1.content || "(empty)" };
 }
 state.mainMessages.push({
@@ -765,16 +762,16 @@ state.mainMessages.push({
 });
 for (const tc of state.s1.tool_calls) {
   const args   = JSON.parse(tc.function.arguments || "{}");
-  helpers.log("main → sub: " + (args.question || "?"));
+  helpers.log("Principal → sub: " + (args.question || "?"));
   const answer = await state.queryCustomerDB(args.question || "");
-  helpers.log.details("sub → main", answer);
+  helpers.log.details("Sub → principal", answer);
   state.mainMessages.push({ role: "tool", tool_call_id: tc.id, content: answer });
 }
 const s2 = await helpers.chatStream({
   messages: state.mainMessages, tools: state.TOOLS, max_tokens: 8196,
 });
 
-helpers.log("note: the main agent never saw the rows; only the sub-agent's natural-language summary");
+helpers.log("Nota: o agente principal nunca viu as linhas; apenas o sub-agente viu o resumo em linguagem natural.");
 
 return s2.content || s2.reasoning || "(empty)";
 `,
@@ -784,8 +781,8 @@ return s2.content || s2.reasoning || "(empty)";
 
 // ── MCP-shaped tool server ─────────────────────────────────
 mountCanvasFlow("#cell-m2b-p6", {
-  label: "MCP-shaped tool server · discovery + dispatch",
-  intro: "A fake in-page MCP server exposes two tools through tools/list and tools/call with no network. The agent discovers the tool list, hands the schemas to the LLM, and dispatches the model's tool_calls back through tools/call. Only the tool source changes; the agent loop stays identical to a normal tool call.",
+  label: "Servidor de ferramentas no formato MCP · descoberta + encaminhamento",
+  intro: "Um servidor MCP simulado na página expõe duas ferramentas por meio de tools/list e tools/call, sem rede. O agente descobre a lista de ferramentas, passa os esquemas ao LLM e encaminha as chamadas do modelo de volta por tools/call. Muda apenas a origem da ferramenta; o ciclo do agente permanece idêntico ao de uma chamada normal.",
   edges: [
     { from: "server",   to: "discover" },
     { from: "discover", to: "llm" },
@@ -794,22 +791,21 @@ mountCanvasFlow("#cell-m2b-p6", {
   ],
   nodes: [
     {
-      id: "server", icon: "🖥", title: "In-page MCP server", x: 0, y: 0,
-      summary: "Points at the same glossary MCP server defined at the top of this page. It exposes the two standard endpoints (tools/list for discovery and tools/call for execution) in the same JSON-RPC-style shape as the real protocol. In production these calls travel over stdio or HTTP transport rather than running in the same JavaScript process.",
+      id: "server", icon: "🖥", title: "Servidor MCP na página", x: 0, y: 0,
+      summary: "Defina um servidor na página com tools/list e tools/call na forma de JSON-RPC do MCP. Um servidor MCP implantado carrega essas chamadas sobre stdio ou HTTP em vez do mesmo processo JavaScript.",
       code: `// The same in-page glossary server the search cell called directly, now reached through
-// MCP discovery rather than a direct call.
-// The client below discovers and dispatches its tools with no advance knowledge,
-// because the server already speaks tools/list and tools/call (defined up top).
+// Discover tools through MCP instead of hard-coding direct calls.
 state.mcpServer = window.glossaryMCP;
 const listed = await state.mcpServer.request("tools/list");
 return { exposes: ["tools/list", "tools/call"], tools: listed.tools.map(t => t.name) };
 `,
     },
     {
-      id: "discover", icon: "🔎", title: "Client · tools/list", x: 0, y: 1,
-      summary: "The client side of the MCP handshake: it calls tools/list on the server and maps each returned tool's inputSchema to the OpenAI function-calling format so the model can read it as a normal tools array.",
-      code: `const list = await state.mcpServer.request("tools/list");
-helpers.log("discovered " + list.tools.length + " tools");
+      id: "discover", icon: "🔎", title: "Cliente · tools/list", x: 0, y: 1,
+      summary: "O lado do cliente do aperto de mão do MCP: ele chama tools/list no servidor e mapeia cada esquema de entrada da ferramenta retornada para o formato de chamada de função da OpenAI, para que o modelo possa lê-lo como uma array de ferramentas normal.",
+      code: `// Ask the mock MCP server which tools it exposes.
+const list = await state.mcpServer.request("tools/list");
+helpers.log("Descoberto" + list.tools.length + " tools");
 state.tools = list.tools.map(t => ({
   type: "function",
   function: { name: t.name, description: t.description, parameters: t.inputSchema },
@@ -818,16 +814,18 @@ return state.tools.map(t => t.function.name);
 `,
     },
     {
-      id: "user", icon: "👤", title: "User question", x: 2, y: 1,
-      summary: "The question the model answers using the discovered glossary tools. A definitional ask is served by glossary_search, while a request for a specific term by slug goes to glossary_lookup.",
-      code: `state.question = "What is retrieval-augmented generation, and what does a vector database have to do with it?";
+      id: "user", icon: "👤", title: "Pergunta do usuário", x: 2, y: 1,
+      summary: "A pergunta que o modelo responde usando as ferramentas de glossário descobertas. Uma pergunta definicional é atendida por glossary_search, enquanto um pedido de um termo específico por slug vai para glossary_lookup.",
+      code: `// Set the student-editable prompt/input for the next step.
+state.question = "What is retrieval-augmented generation, and what does a vector database have to do with it?";
 return state.question;
 `,
     },
     {
-      id: "llm", icon: "🧠", title: "LLM (sees discovered tools)", x: 1, y: 2,
-      summary: "The same single chatStream call runs unchanged because the agent loop cannot tell whether the tools came from a hardcoded array or a remote MCP server. The discovery step above lets you swap that source without touching the loop at all.",
-      code: `state.messages = [{ role: "user", content: state.question }];
+      id: "llm", icon: "🧠", title: "LLM (vê as ferramentas descobertas)", x: 1, y: 2,
+      summary: "A mesma chamada única de chatStream é executada inalterada porque o ciclo do agente não pode determinar se as ferramentas vieram de uma array hardcoded ou de um servidor MCP remoto. A etapa de descoberta acima permite que você troque essa fonte sem tocar no ciclo em absoluto.",
+      code: `// Send the prepared messages and stream the model response.
+state.messages = [{ role: "user", content: state.question }];
 state.s1 = await helpers.chatStream({
   messages:   state.messages,
   tools:      state.tools,
@@ -845,14 +843,15 @@ return {
 `,
     },
     {
-      id: "dispatch", icon: "📤", title: "Client → tools/call → LLM #2", x: 1, y: 3,
-      summary: "Closes the loop: for each tool_call the model requested, this node forwards the call to the server's tools/call endpoint, appends the result as a tool message, then makes one final model call to produce the user-facing answer from whatever the server returned.",
-      code: `if (!state.s1.tool_calls.length) return state.s1.content || "(model answered directly)";
+      id: "dispatch", icon: "📤", title: "Cliente → tools/call → LLM #2", x: 1, y: 3,
+      summary: "Fecha o ciclo: para cada chamada de ferramenta que o modelo solicitou, este nó encaminha a chamada para o endpoint tools/call do servidor, anexa o resultado como uma mensagem de ferramenta e, em seguida, faz uma chamada final ao modelo para produzir a resposta voltada para o usuário com base no que o servidor retornou.",
+      code: `// Handle the tool-call result from the previous model turn.
+if (!state.s1.tool_calls.length) return state.s1.content || "(model answered directly)";
 for (const tc of state.s1.tool_calls) {
   const args = JSON.parse(tc.function.arguments || "{}");
   const out  = await state.mcpServer.request("tools/call", { name: tc.function.name, arguments: args });
   const txt  = out.content?.[0]?.text || "(no text)";
-  helpers.log.details("server → " + tc.function.name, out);
+  helpers.log.details("servidor → " + tc.function.name, out);
   state.messages.push({ role: "tool", tool_call_id: tc.id, content: txt });
 }
 const s2 = await helpers.chatStream({

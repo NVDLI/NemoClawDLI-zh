@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>NVIDIA DLI · Browser courses · Foyer</title>
+<link rel="icon" type="image/x-icon" href="/lab/static/nemoclaw/assets/favicon.ico"/>
+<title>NVIDIA DLI · Cursos no navegador · Início</title>
 
 <!--
   RELEASE FOYER.
@@ -124,6 +125,28 @@
   }
   .callout strong { color: var(--gs); }
 
+  .switcher-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(22rem,100%),1fr)); gap:14px; margin:1.6em 0; }
+  .foyer-switcher {
+    display:none; padding:14px 16px; background:var(--e1);
+    border:1px solid var(--e3); border-radius:8px;
+  }
+  .foyer-switcher.ready { display:block; }
+  .foyer-switcher h2 { font-size:.98rem; color:var(--g); margin:0 0 .35em; }
+  .switcher-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:.75em; }
+  .switcher-row select {
+    min-width:min(18rem,100%); flex:1; background:var(--bg); color:var(--tx);
+    border:1px solid var(--e3); border-radius:7px; padding:8px 10px;
+    font-family:var(--mono); font-size:.82rem;
+  }
+  .switcher-row button, .switcher-row a {
+    font-family:var(--mono); font-size:.82rem; color:#0a0a0a; background:var(--g);
+    border:1px solid var(--g); border-radius:7px; padding:8px 12px; cursor:pointer;
+    text-decoration:none; line-height:1.2;
+  }
+  .switcher-row a.secondary { color:var(--td); background:transparent; border-color:var(--e3); }
+  .switcher-meta { color:var(--tf); font-size:.82rem; margin-top:.5em; }
+
+
   /* Source & tooling: small button-chips */
   .src-links { display: flex; flex-wrap: wrap; gap: 10px; }
   .src-links a {
@@ -138,92 +161,110 @@
            color: var(--tf); font-size: .82rem; }
   footer a { color: var(--td); }
 </style>
-<script>/* Pre-paint: apply a saved manual theme so the foyer opens in the right palette with no flash;
-   with no saved choice the @media rule above follows the OS. */
+<script>/* Pre-paint the saved manual theme before the foyer renders. */
 (function(){try{var t=localStorage.getItem("theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
 </head>
 <body>
 <div class="topbar">
   <div class="topbar-inner">
     <span class="logo">NVIDIA DLI</span>
-    <span class="crumb">/ browser courses · foyer</span>
+    <span class="crumb">/ cursos no navegador · início</span>
     <span class="spacer"></span>
-    <button type="button" class="theme-toggle" aria-label="Toggle dark or light theme"></button>
-    <span class="badge">Building Agents</span>
+    <button type="button" class="theme-toggle" aria-label="Alternar entre tema escuro e claro"></button>
+    <span class="badge">Criação de agentes</span>
   </div>
 </div>
 
 <main>
   <div class="hero">
-    <div class="eyebrow">Live in your browser</div>
-    <h1>Build an agent, then <span class="accent">secure</span> it</h1>
+    <div class="eyebrow">Execução direta no navegador</div>
+    <h1>Crie um agente e depois <span class="accent">proteja</span> sua execução</h1>
     <p class="lead">
-      Securing Agents runs live in this lab over its remote model and sandbox
-      services, so there is nothing to install and an API key is optional. Open the
-      course to begin; the pages stay in this tab.
+      O curso Proteção de Agentes usa os modelos remotos e os serviços de sandbox do
+      laboratório. Não há nada para instalar e a chave de API é opcional. Abra o curso
+      para começar; as páginas permanecem nesta aba.
     </p>
   </div>
 
   <div class="paths">
     <a class="path-card" href="/lab/static/nemoclaw/index.html">
-      <span class="label">Web course</span>
-      <h2>Securing Agents with OpenShell and NemoClaw</h2>
-      <span class="duration">4 modules</span>
-      <p>
-        Safety sits at the center the whole way through. You cover the agent loop and
-        ReAct, routing and retrieval, then an always-on agent and the sandboxing that
-        contains the code it runs on your behalf. Every canvas cell runs against this lab.
+      <span class="label">Curso web</span>
+      <h2 id="nemoclaw-course-title">Proteção de Agentes com OpenShell e NemoClaw</h2>
+      <span class="duration">4 módulos</span>
+      <p id="nemoclaw-course-abstract">
+        Agentes modernos estão por toda parte e partem de uma ideia simples: um modelo conectado a
+        ferramentas, memória e uma decisão de roteamento que continua em execução até concluir a tarefa.
+        O curso constrói esse sistema do zero e liga cada etapa aos frameworks usados por profissionais
+        de software e pessoas sem formação técnica. Você avançará de uma chamada de API para coordenação
+        entre agentes, recuperação fundamentada, planejamento profundo e implantação segura com NVIDIA
+        OpenClaw e NemoClaw™.
       </p>
-      <span class="arrow">Start the course →</span>
+      <span class="arrow">Iniciar o curso →</span>
     </a>
   </div>
 
   <div class="callout">
-    <strong>No setup needed.</strong> In the lab, every page already routes through the
-    course model gateway, so the cells just work. Inside edX the text reads fine, but the
-    live cells there need your own API key, which each course page lets you set.
+    <strong>Nenhuma configuração adicional.</strong> No laboratório, as páginas já usam o gateway
+    de modelos do curso. No edX, o conteúdo permanece disponível para leitura, mas as células
+    interativas precisam de uma chave de API que pode ser informada em qualquer página do curso.
   </div>
 
+  <div class="switcher-grid">
+    <section class="foyer-switcher" id="language-switcher" aria-live="polite">
+      <h2>Idioma</h2>
+      <p style="color:var(--td);font-size:.9rem;margin:0;max-width:48rem">
+        Abra uma versão do curso disponível nesta publicação do Pages.
+      </p>
+      <div class="switcher-row">
+        <select id="language-select" aria-label="Idiomas disponíveis para o curso"></select>
+        <button type="button" id="language-open">Abrir</button>
+      </div>
+      <div class="switcher-meta" id="language-meta"></div>
+    </section>
+
+    <section class="foyer-switcher" id="branch-switcher" aria-live="polite">
+      <h2>Prévia de branch</h2>
+      <p style="color:var(--td);font-size:.9rem;margin:0;max-width:48rem">
+        Abra uma publicação detectada pelo Pages sem adivinhar a URL. A prévia aparece depois que a branch é publicada.
+      </p>
+      <div class="switcher-row">
+        <select id="branch-select" aria-label="Prévias de branch detectadas"></select>
+        <button type="button" id="branch-open">Abrir</button>
+        <a class="secondary" id="branch-prod" href="nemoclaw/">Produção</a>
+      </div>
+      <div class="switcher-meta" id="branch-meta"></div>
+    </section>
+  </div>
+
+
   <section class="source" style="margin:1.8em 0">
-    <h2 style="font-size:1.05rem;color:var(--g);margin:0 0 .4em">Source &amp; tooling</h2>
+    <h2 style="font-size:1.05rem;color:var(--g);margin:0 0 .4em">Código-fonte e ferramentas</h2>
     <p style="color:var(--td);font-size:.92rem;max-width:48rem;margin:0 0 .9em">
-      Every folder of the bundle opens in the browser. Read a folder's source in context and ask the
-      model about it (bring a key), or inspect how the pieces connect and verify.
+      Cada pasta do pacote pode ser aberta no navegador. Leia o código no contexto, consulte o modelo
+      com sua chave ou inspecione as conexões e os mecanismos de validação.
     </p>
     <div class="src-links">
-      <a href="/lab/static/cors-proxy/SKILL.html">CORS proxy workers</a>
-      <a href="/lab/static/scripts/SKILL.html">The toolchain</a>
-      <a href="/lab/static/docs/SKILL.html">Deploy &amp; agent notes</a>
-      <a href="/lab/static/workspace/SKILL.html">The lab image</a>
-      <a href="/lab/static/scripts/link_graph.html">Link graph</a>
+      <a href="/lab/static/cors-proxy/SKILL.html">Workers do proxy CORS</a>
+      <a href="/lab/static/scripts/SKILL.html">Toolchain</a>
+      <a href="/lab/static/docs/SKILL.html">Notas de implantação e agentes</a>
+      <a href="/lab/static/workspace/SKILL.html">Imagem do laboratório</a>
+      <a href="/lab/static/scripts/runtime/link_graph.html">Grafo de links</a>
       <!-- build:deploy-tools : build_pages injects the deploy-only gate + test-runner links here -->
     </div>
   </section>
 
   <footer>
     <p>
-      Securing Agents is the browser course released on this foyer.
-      Feedback:
-      <a href="https://www.nvidia.com/en-us/training/" target="_blank" rel="noopener">NVIDIA DLI training portal</a>.
+      Proteção de Agentes é o curso web disponível nesta página.
+      Comentários:
+      <a href="https://www.nvidia.com/en-us/training/" target="_blank" rel="noopener">portal de treinamento NVIDIA DLI</a>.
     </p>
   </footer>
 </main>
 
 <script>
-// Launch token + cookie handoff.
-// The LMS opens this foyer at the lab's default_url with the session token appended:
-// .../lab/static/index.html?token=XXXX. Jupyter's static-file handler serves the foyer
-// WITHOUT turning that token into a session cookie, so left alone the student is
-// authenticated-in-the-URL-only and the course pages' live cells (which call the
-// token-gated /lab/svc/* routes) would bounce to login. Two things make the handoff
-// reliable, so neither a slow cookie nor a missed one strands the user:
-//   1. A background request to an authenticated endpoint sets the /lab/ cookie for
-//      everything else (the static course pages reached from the cards above).
-//   2. Any link to an authenticated Jupyter destination carries the token so a click
-//      authenticates the normal Jupyter ?token= way (defensive; the cards are static
-//      pages that navigate SAME-TAB and rely on the cookie from step 1).
-// Course PAGES under /lab/static/ navigate SAME-TAB on purpose: a new tab gets a fresh
-// in-memory context and drops the saved key, and same-tab keeps the back button working.
+// Persist LMS launch tokens into Jupyter cookies before course modules load.
+// Keep static course pages same-tab so browser state and back navigation survive.
 (function () {
   var token = new URL(window.location.href).searchParams.get("token");
   var NEW_TAB     = /^\/(lab(?:\/(?!static\/)|$))/;            // live app routes, not /lab/static/
@@ -236,9 +277,7 @@
     }
   });
   if (!token) return;
-  // Best-effort cookie exchange (an @web.authenticated endpoint; Jupyter reads ?token=
-  // from the query and sets the /lab/ cookie). Strip the token from the address bar once
-  // it resolves.
+  // Exchange token for a lab cookie, then hide it from the address bar.
   fetch("/lab/api/status?token=" + encodeURIComponent(token), { credentials: "include" })
     .catch(function () {})
     .then(function () {
@@ -246,6 +285,138 @@
       u.searchParams.delete("token");
       window.history.replaceState({}, "", u.toString());
     });
+})();
+
+
+// Language selector: populated from build-time languages.json after the build has produced translated course bundles.
+// Missing or single-language JSON keeps it hidden.
+(function () {
+  var box = document.getElementById("language-switcher");
+  var sel = document.getElementById("language-select");
+  var open = document.getElementById("language-open");
+  var meta = document.getElementById("language-meta");
+  if (!box || !sel || !open || !meta) return;
+  function cleanUrl(u) {
+    if (!u || /(^|\/)\.\.(\/|$)/.test(u) || /^[a-z]+:/i.test(u)) return null;
+    return u;
+  }
+  var manifestUrl = new URL(document.documentElement.lang === "pt-BR" ? "../languages.json" : "languages.json", window.location.href);
+  fetch(manifestUrl, { cache: "no-store" }).then(function (r) {
+    if (!r.ok) throw new Error("no language manifest");
+    return r.json();
+  }).then(function (data) {
+    var languages = Array.isArray(data.languages) ? data.languages.filter(function (l) { return l && cleanUrl(l.url); }) : [];
+    if (languages.length < 2) return;
+    sel.innerHTML = "";
+    languages.forEach(function (l) {
+      var opt = document.createElement("option");
+      opt.value = new URL(cleanUrl(l.url), manifestUrl).href;
+      opt.textContent = (l.native_label || l.label || l.code) + " - " + (l.code || "idioma");
+      opt.dataset.label = l.label || l.code || "language";
+      opt.dataset.code = l.code || "";
+      sel.appendChild(opt);
+    });
+    var current = languages.find(function (l) { return window.location.href.indexOf(new URL(cleanUrl(l.url), manifestUrl).href) === 0; })
+      || languages.find(function (l) { return l.code === data.default; });
+    if (current) sel.value = new URL(cleanUrl(current.url), manifestUrl).href;
+    function paint() {
+      var opt = sel.options[sel.selectedIndex];
+      meta.textContent = opt ? ("Selecionado: " + opt.dataset.label + " (" + opt.dataset.code + ")") : "";
+    }
+    sel.addEventListener("change", paint);
+    open.addEventListener("click", function () {
+      if (sel.value) window.location.href = sel.value;
+    });
+    paint();
+    box.classList.add("ready");
+  }).catch(function () {});
+})();
+
+// Branch preview selector from build-time branches.json; missing JSON hides the static Pages control.
+(function () {
+  var box = document.getElementById("branch-switcher");
+  var sel = document.getElementById("branch-select");
+  var open = document.getElementById("branch-open");
+  var prod = document.getElementById("branch-prod");
+  var meta = document.getElementById("branch-meta");
+  if (!box || !sel || !open || !meta) return;
+  function cleanUrl(u) {
+    if (!u || /^[a-z]+:/i.test(u)) return null;
+    var parts = u.split("/");
+    var depth = 0;
+    for (var i = 0; i < parts.length; i += 1) {
+      if (!parts[i] || parts[i] === ".") continue;
+      if (parts[i] === "..") { depth -= 1; if (depth < -1) return null; }
+      else { depth += 1; }
+    }
+    return u;
+  }
+  function cleanSlug(s) {
+    return /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(s || "") ? s : null;
+  }
+  function branchRootPrefix(currentSlug) {
+    var parts = window.location.pathname.split("/").filter(Boolean);
+    var last = parts[parts.length - 1] || "";
+    if (last === "index.html") last = parts[parts.length - 2] || "";
+    return currentSlug && last === currentSlug ? "../" : "";
+  }
+  function targetUrl(branch, prefix, currentSlug) {
+    if (!branch) return null;
+    if (branch.kind === "production") return prefix + "nemoclaw/";
+    var slug = cleanSlug(branch.slug);
+    if (slug && currentSlug && slug === currentSlug) return "web/nemoclaw/";
+    return slug ? prefix + slug + "/web/nemoclaw/" : cleanUrl(branch.url);
+  }
+  function probeUrl(url) {
+    return url ? url.replace(/\/?$/, "/index.html") : null;
+  }
+  fetch("branches.json", { cache: "no-store" }).then(function (r) {
+    if (!r.ok) throw new Error("no branch manifest");
+    return r.json();
+  }).then(function (data) {
+    var currentSlug = data.current && cleanSlug(data.current.slug);
+    var prefix = branchRootPrefix(currentSlug);
+    var candidates = Array.isArray(data.branches) ? data.branches.filter(function (b) {
+      return b && b.preview_ready === true && targetUrl(b, prefix, currentSlug);
+    }) : [];
+    return Promise.all(candidates.map(function (b) {
+      var url = targetUrl(b, prefix, currentSlug);
+      return fetch(probeUrl(url), { method: "HEAD", cache: "no-store" }).then(function (r) {
+        return r.ok ? b : null;
+      }).catch(function () { return null; });
+    })).then(function (checked) {
+      return { data: data, currentSlug: currentSlug, prefix: prefix, branches: checked.filter(Boolean) };
+    });
+  }).then(function (state) {
+    var data = state.data;
+    var currentSlug = state.currentSlug;
+    var prefix = state.prefix;
+    var branches = state.branches;
+    if (!branches.length) return;
+    sel.innerHTML = "";
+    branches.forEach(function (b) {
+      var opt = document.createElement("option");
+      opt.value = targetUrl(b, prefix, currentSlug);
+      opt.textContent = (b.current ? "current: " : "") + b.name + " · " + (b.kind || "preview");
+      opt.dataset.name = b.name || "";
+      opt.dataset.kind = b.kind || "preview";
+      sel.appendChild(opt);
+    });
+    var current = branches.find(function (b) { return b.current; });
+    if (current) sel.value = targetUrl(current, prefix, currentSlug);
+    if (prod) prod.href = prefix + "nemoclaw/";
+    function paint() {
+      var opt = sel.options[sel.selectedIndex];
+      meta.textContent = opt ? ("Selected: " + opt.dataset.name + " (" + opt.dataset.kind + ")") : "";
+    }
+    sel.addEventListener("change", paint);
+    open.addEventListener("click", function () {
+      var url = cleanUrl(sel.value);
+      if (url) window.location.href = url;
+    });
+    paint();
+    box.classList.add("ready");
+  }).catch(function () {});
 })();
 
 // Theme toggle: same data-theme + localStorage("theme") contract as the course and framer pages.

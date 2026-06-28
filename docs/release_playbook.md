@@ -87,7 +87,7 @@ Branch policy:
 | `main` | internal protected branch | no direct pushes | accepted source |
 | `release/*` | release manager | no direct pushes | frozen public release train |
 | `student/*` | forks | contributors write in forks | student work in progress |
-| `translate-*` | trusted maintainer lane | limited | translation work |
+| `localize/*` | contributor-owned | no protected-ref access | sparse same-branch locale work reviewed with Localization Studio |
 | `v*` tags | release manager | no direct pushes | immutable public releases |
 
 ## External GitHub settings

@@ -158,6 +158,14 @@ if [ -f "$BUNDLE" ]; then
         echo "Repair the detector before trusting its progressive-disclosure, prerequisite, or lifecycle result."
         exit 1
     fi
+    if ! python3 "$T1/scripts/build/assemble_locale_overlay.py" --self-test \
+       || ! python3 "$T1/scripts/validation/localization_audit.py" --self-test \
+       || ! python3 "$T1/scripts/validation/localization_audit.py" --locale pt-BR --no-write; then
+        echo ""
+        echo "pre-push: REFUSING PUSH - localization contract failed."
+        echo "Repair the sparse overlay, pt-BR language finding, or reviewed source hash before pushing."
+        exit 1
+    fi
     # --no-write: gate only; the durable log is written by the cadence / CI / the
     # DGX-spark watcher, never by the hook (so a push never leaves a dirty tree).
     if ! python3 "$BUNDLE" --scope ship --no-write; then
