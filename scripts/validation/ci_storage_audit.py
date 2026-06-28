@@ -31,6 +31,8 @@ def main() -> int:
     findings: list[str] = []
 
     pages = _job_block(text, "pages")
+    test = _job_block(text, "test")
+    smoke = _job_block(text, "pages_smoke")
 
     if not pages:
         findings.append("missing pages job")
@@ -46,6 +48,17 @@ def main() -> int:
         (pages, r"PAGES_AUTO_STOP_IN:\s*[\"']?3 days", "branch previews must auto-stop"),
         (pages, r"PAGES_ENVIRONMENT_NAME:\s*[\"']?production", "production must use production environment"),
         (pages, r"PAGES_AUTO_STOP_IN:\s*[\"']?never", "production environment must not auto-stop"),
+        (pages, r"remote_sha=.*refs/remotes/origin/\$CI_COMMIT_REF_NAME", "preview deploy must reject stale pipeline commits"),
+        (pages, r"branch_preview_manifest_audit\.py --artifact-root public --manifest public/branches\.json", "pages job must validate root manifest paths"),
+        (pages, r"branch_preview_manifest_audit\.py --artifact-root public --manifest \"public/\$CI_COMMIT_REF_SLUG/branches\.json\"", "pages job must validate branch foyer manifest paths"),
+        (pages, r"--published-ref \"\$CI_COMMIT_REF_NAME=\$CI_COMMIT_REF_SLUG\"", "root manifest must list only the preview published in this artifact"),
+        (test, r"allow_failure:\s*false", "test gate must block Pages deployment on required-tier failures"),
+        (test, r"branch_preview_manifest_audit\.py --self-test", "test gate must self-test branch availability detection"),
+        (smoke, r"needs:\s*\[\"pages\"\]", "live Pages smoke must wait for the deploy job"),
+        (smoke, r"branch_preview_manifest_audit\.py --base-url \"\$CI_PAGES_URL/\"", "post-deploy job must probe the live Pages root"),
+        (smoke, r"--expect-preview \"\$CI_COMMIT_REF_NAME=\$CI_COMMIT_REF_SLUG\"", "branch smoke must require the deployed preview"),
+        (smoke, r"--attempts 30 --delay 5", "live Pages smoke must tolerate deployment propagation"),
+        (smoke, r"allow_failure:\s*false", "post-deploy Pages smoke must be blocking"),
     ]
     for block, pattern, msg in checks:
         if block and not re.search(pattern, block):
@@ -60,6 +73,12 @@ def main() -> int:
         findings.append("classic pages job must not use pages.path_prefix on this GitLab instance")
     if "expire_in: 3 days" not in pages:
         findings.append("pages job must keep 3-day downloadable artifact expiry")
+    if not re.search(r"stages:\s*\[[^\]]*verify[^\]]*\]", text):
+        findings.append("pipeline must retain a post-deploy verify stage")
+
+    foyer = (_root() / "web" / "index.html").read_text(encoding="utf-8")
+    if "b.preview_ready === true" not in foyer or 'method: "HEAD"' not in foyer:
+        findings.append("foyer must require preview_ready and probe each branch target before showing it")
 
     if findings:
         print("ci_storage_audit: FAIL")

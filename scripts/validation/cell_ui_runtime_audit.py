@@ -217,6 +217,37 @@ async function inspectPage(page, pagePath, vp, theme) {
     }).slice(0, 12).map(el => ({ tag: el.tagName, cls: String(el.className || '').slice(0, 80), bg: getComputedStyle(el).backgroundColor, fill: getComputedStyle(el).fill })),
   }));
 
+  let figureZoom = null;
+  const firstFigure = page.locator('.fig-embed').first();
+  if (await firstFigure.count()) {
+    await firstFigure.scrollIntoViewIfNeeded();
+    const badge = await firstFigure.evaluate(el => ({
+      content: getComputedStyle(el, '::after').content,
+      opacity: Number(getComputedStyle(el, '::after').opacity),
+    }));
+    await firstFigure.click();
+    await page.locator('.fig-lightbox:not([hidden])').waitFor({ state: 'visible', timeout: timeoutMs });
+    figureZoom = await page.evaluate((badgeState) => {
+      const overlay = document.querySelector('.fig-lightbox:not([hidden])');
+      const svg = overlay && overlay.querySelector('.fig-lightbox-stage svg');
+      const close = overlay && overlay.querySelector('.fig-lightbox-x');
+      const hint = overlay && overlay.querySelector('.fig-lightbox-hint');
+      const svgBox = svg && svg.getBoundingClientRect();
+      const closeBox = close && close.getBoundingClientRect();
+      return {
+        badge: badgeState,
+        svgWidth: svgBox ? Math.round(svgBox.width) : 0,
+        svgHeight: svgBox ? Math.round(svgBox.height) : 0,
+        overlayClientWidth: overlay ? overlay.clientWidth : 0,
+        overlayScrollWidth: overlay ? overlay.scrollWidth : 0,
+        closeVisible: !!closeBox && closeBox.width >= 36 && closeBox.height >= 36,
+        hintVisible: !!hint && getComputedStyle(hint).display !== 'none' && /swipe to pan/i.test(hint.textContent || ''),
+      };
+    }, badge);
+    await page.keyboard.press('Escape');
+    figureZoom.closed = await page.locator('.fig-lightbox[hidden]').count() === 1;
+  }
+
   const failures = [];
   if (!initial.main) failures.push('missing <main>');
   if (initial.flows + initial.runCells > 0 && initial.unifiedButtons < (initial.flows * 2 + initial.panels * 2 + initial.runCells * 2)) failures.push('too few unified .cell-btn controls');
@@ -232,8 +263,14 @@ async function inspectPage(page, pagePath, vp, theme) {
   if (initial.minCellButton < 28) failures.push(`tiny cell button dimension ${initial.minCellButton}`);
   const badRuns = runResults.filter(r => !r.hasOutput || r.badText);
   if (badRuns.length) failures.push(`helper run output failed ${JSON.stringify(badRuns)}`);
+  if (figureZoom && !figureZoom.closed) failures.push('figure lightbox did not close on Escape');
+  if (figureZoom && !figureZoom.closeVisible) failures.push('figure lightbox close control is not visible');
+  if (figureZoom && vp.name === 'narrow' && figureZoom.svgWidth < 680) failures.push(`mobile figure zoom remains unreadably narrow ${JSON.stringify(figureZoom)}`);
+  if (figureZoom && vp.name === 'narrow' && figureZoom.overlayScrollWidth <= figureZoom.overlayClientWidth) failures.push(`mobile figure zoom is not horizontally pannable ${JSON.stringify(figureZoom)}`);
+  if (figureZoom && vp.name === 'narrow' && (!figureZoom.badge.content.includes('tap to enlarge') || figureZoom.badge.opacity < 0.8)) failures.push(`mobile figure zoom affordance is hidden ${JSON.stringify(figureZoom.badge)}`);
+  if (figureZoom && vp.name === 'narrow' && !figureZoom.hintVisible) failures.push(`mobile figure pan hint is hidden ${JSON.stringify(figureZoom)}`);
   if (pageErrors.length) failures.push(`page errors ${JSON.stringify(pageErrors)}`);
-  return { pagePath, viewport: vp.name, theme, initial, runResults, finalInfo, consoleErrors, failures };
+  return { pagePath, viewport: vp.name, theme, initial, runResults, finalInfo, figureZoom, consoleErrors, failures };
 }
 
 (async () => {

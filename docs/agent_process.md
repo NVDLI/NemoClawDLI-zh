@@ -32,6 +32,7 @@ This note is for agents and maintainers working across issues, merge requests, a
 - For content or navigation changes, run `python3 scripts/skills/skill_consistency.py`, `python3 scripts/validation/validate_layout.py --quiet`, and `python3 scripts/validation/validate_bundle.py --no-write --scope ship`.
 - For page title, navigation, or deploy-path changes, run `BUILD_PAGES_LANGS=0 scripts/build/build_pages.sh` before calling the MR ready.
 - For Studio, runnable-cell, browser-runtime, or OpenClaw changes, also run the browser/runtime harness named in `AGENT_QUICKSTART.md` and the relevant `scripts/validation/*_audit.py` file.
+- For branch staging, require a passing blocking `test` job, confirm the Pages job SHA matches the live branch head, and probe the deployed course plus both branch manifests. Only paths present in the current classic-Pages artifact may appear in the foyer selector.
 - For a stateful browser bug, test the whole lifecycle: enter the state, leave it through a successful sibling result, leave it through an error, remount the component, then reload or navigate. Run that matrix against both source and built Pages output.
 - Pair lifecycle gates. A cheap static validator should catch missing selectors, cleanup calls, and CSS contracts; a real browser workflow must prove computed visibility and persisted-state behavior. Neither gate substitutes for the other.
 
@@ -41,6 +42,7 @@ This note is for agents and maintainers working across issues, merge requests, a
 - Non-conversion SVGs mount with `fig-embed` / `data-svg-src`; fixed-white conversions use `img` only when provenance marks `connection: "conversion"`.
 - Preserve meaningful diagram labels. Remove caption-like prose, contributor/process shorthand, and provenance from learner-facing SVG content; keep captions in page `figcaption` and provenance in `assets/SKILL.html`.
 - Preview the rendered result in the active agent harness and show the requester the screenshot, crop, or exact preview artifact path. Verify light and dark theme output when the figure can theme-switch.
+- At narrow width, inspect the inline overview and activate the figure lightbox. Labels must remain readable in the enlarged state, horizontal panning must work, and close/Escape controls must remain reachable.
 - Run `python3 scripts/validation/figure_audit.py`, `python3 scripts/compliance/source_gate.py`, and `python3 scripts/validation/validate_bundle.py --no-write --scope ship` before calling visual work ready.
 
 ## Safe auth and metadata updates

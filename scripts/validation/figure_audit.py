@@ -5,11 +5,12 @@ Figures are inline or fetched SVG with a fixed viewBox and max-width, so on-scre
 computable: rendered_px = font_size * render_width / viewBox_width. Flags text under a
 legibility floor, full-width course figures capped too small, text spilling past the figure
 bounds, dark-mode-hostile external SVGs, excess viewBox canvas, crowded figure stacks, and
-missing a11y affordances (svg aria-label, img alt, rel=noopener on new-tab links).
-All advisory.
+missing a11y affordances (svg aria-label, img alt, rel=noopener on new-tab links). Also holds
+the shared mobile lightbox contract that keeps detailed figures readable and pannable. The
+bundle treats mobile-lightbox drift as required-tier; the other figure findings remain recommended.
 
 Checks: tiny-text, small-render, flex-parent, text-overflow, no-aria, img-no-alt, blank-link,
-dark-mode, canvas, crowded.
+dark-mode, canvas, crowded, mobile-zoom.
 Run:  python3 scripts/validation/figure_audit.py
 """
 from __future__ import annotations
@@ -24,6 +25,8 @@ from _bootstrap import add_script_paths, find_repo_root
 HERE = Path(__file__).resolve()
 TASK1 = find_repo_root(HERE)
 WEB = TASK1 / "web"
+STYLE_PATH = WEB / "nemoclaw" / "styles" / "_style.css"
+FIGURES_JS_PATH = WEB / "nemoclaw" / "scripts" / "_figures.js"
 FLOOR = 9.0                 # px: below this, text is hard to read
 MIN_RENDER_W = 900           # px: full-width text figures below this read like thumbnails
 # Content column (px) a figure renders into. main: 71.25rem ~ 1140px - padding; index: 62.5rem.
@@ -234,6 +237,52 @@ def _svg_cases(path: Path, body: str):
         yield svg, f"{rel} -> {src}", True, {"src": src, "style": attrs.get("style", ""), "fixed_white": _asset_key(src) in FIXED_WHITE_ASSETS, "kind": "img"}
 
 
+def _mobile_zoom_findings(css: str, js: str):
+    """Return shared narrow-screen lightbox contract failures."""
+    findings = []
+    css_checks = [
+        (r"@media\s*\(max-width:\s*600px\)", "mobile figure rules must use the shared 600px breakpoint"),
+        (r'\.fig-embed::after\s*\{[^}]*content:\s*"⛶ tap to enlarge"[^}]*opacity:\s*\.85', "mobile figures need a visible tap-to-enlarge badge"),
+        (r"\.fig-lightbox\s*\{[^}]*overflow:\s*auto", "mobile figure lightbox must pan when the readable SVG exceeds the viewport"),
+        (r"\.fig-lightbox-stage\s*\{[^}]*max-width:\s*none[^}]*min-width:\s*max-content", "mobile figure stage must not shrink the enlarged SVG back to viewport width"),
+        (r"\.fig-lightbox-hint\s*\{[^}]*display:\s*block", "mobile figure lightbox needs a visible pan instruction"),
+    ]
+    for pattern, message in css_checks:
+        if not re.search(pattern, css, re.S):
+            findings.append((str(STYLE_PATH.relative_to(TASK1)), message))
+    js_checks = [
+        ("const MOBILE_FIGURE_BREAKPOINT = 600", "mobile figure JS breakpoint drifted from CSS"),
+        ("const MOBILE_FIGURE_MIN_WIDTH = 720", "mobile figure readable width must stay at least 720px"),
+        ("MOBILE_FIGURE_MIN_WIDTH / vb[2]", "mobile lightbox must derive a readable scale from the SVG viewBox"),
+        ("Math.max(fit, readable)", "mobile lightbox must prefer readable scale over fit-to-viewport shrinkage"),
+        ('<p class="fig-lightbox-hint">Swipe to pan</p>', "mobile lightbox must explain its horizontal pan gesture"),
+    ]
+    for token, message in js_checks:
+        if token not in js:
+            findings.append((str(FIGURES_JS_PATH.relative_to(TASK1)), message))
+    return findings
+
+
+def _mobile_zoom_contract():
+    """Hold the mobile contract and prove each detector rejects representative drift."""
+    css = STYLE_PATH.read_text(errors="ignore")
+    js = FIGURES_JS_PATH.read_text(errors="ignore")
+    findings = _mobile_zoom_findings(css, js)
+    cases = [
+        ("visible badge", css.replace("⛶ tap to enlarge", "⛶ zoom", 1), js, "visible tap-to-enlarge badge"),
+        ("pannable overlay", css.replace("overflow: auto", "overflow: visible", 1), js, "must pan"),
+        ("unshrunk stage", css.replace("max-height: none; min-width: max-content", "max-height: none; min-width: 0", 1), js, "must not shrink"),
+        ("pan hint style", css.replace(".fig-lightbox-hint { display: block", ".fig-lightbox-hint { display: none", 1), js, "visible pan instruction"),
+        ("readable width", css, js.replace("MOBILE_FIGURE_MIN_WIDTH = 720", "MOBILE_FIGURE_MIN_WIDTH = 390", 1), "at least 720px"),
+        ("readable scaling", css, js.replace("Math.max(fit, readable)", "fit", 1), "prefer readable scale"),
+        ("pan hint markup", css, js.replace("Swipe to pan", "", 1), "explain its horizontal pan gesture"),
+    ]
+    for label, mutated_css, mutated_js, expected in cases:
+        if not any(expected in message for _path, message in _mobile_zoom_findings(mutated_css, mutated_js)):
+            findings.append(("scripts/validation/figure_audit.py", f"mobile zoom detector missed {label}"))
+    return findings
+
+
 def audit_file(path: Path):
     """Run render-size, legibility, and a11y checks on one page. This catches both inline
     SVG and fetched <div data-svg-src=...> course figures before they ship."""
@@ -308,6 +357,7 @@ def run(verbose=True):
         t, s, fp, n, o, i, b, d, c, cr, ec = audit_file(f)      # per-page findings, by category
         tiny += t; small += s; flex_parent += fp; noaria += n; over += o; imgs += i; blanks += b
         dark += d; canvas += c; crowded += cr; embedded_caption += ec
+    mobile_zoom = _mobile_zoom_contract()
     if verbose:
         if tiny:
             print(f"[tiny text · rendered < {FLOOR}px] {len(tiny)}")
@@ -349,16 +399,22 @@ def run(verbose=True):
             print(f"[embedded SVG caption prose] {len(embedded_caption)}")
             for rel, text in embedded_caption:
                 print(f"        {rel}  «{text}…»")
+        if mobile_zoom:
+            print(f"[mobile figure zoom contract] {len(mobile_zoom)}")
+            for rel, message in mobile_zoom:
+                print(f"        {rel}  {message}")
         total = (len(tiny) + len(small) + len(flex_parent) + len(noaria) + len(over) + len(imgs)
-                 + len(blanks) + len(dark) + len(canvas) + len(crowded) + len(embedded_caption))
+                 + len(blanks) + len(dark) + len(canvas) + len(crowded) + len(embedded_caption)
+                 + len(mobile_zoom))
         print(f"\nfigure_audit: {total} finding(s) "
               f"(tiny {len(tiny)}, small {len(small)}, flex-parent {len(flex_parent)}, "
               f"overflow {len(over)}, no-aria {len(noaria)}, img-alt {len(imgs)}, blank-link {len(blanks)}, "
               f"dark-mode {len(dark)}, canvas {len(canvas)}, crowded {len(crowded)}, "
-              f"embedded-caption {len(embedded_caption)})")
+              f"embedded-caption {len(embedded_caption)}, mobile-zoom {len(mobile_zoom)})")
     return {"tiny": tiny, "small_render": small, "flex_parent": flex_parent, "overflow": over,
             "no_aria": noaria, "img_no_alt": imgs, "blank_link": blanks, "dark_mode": dark,
-            "canvas": canvas, "crowded": crowded, "embedded_caption": embedded_caption}
+            "canvas": canvas, "crowded": crowded, "embedded_caption": embedded_caption,
+            "mobile_zoom": mobile_zoom}
 
 
 if __name__ == "__main__":

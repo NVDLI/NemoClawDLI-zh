@@ -216,6 +216,11 @@ browser harness cannot run, report the exact blocker and still run the static
 gates above. Keep diagram labels that carry meaning; remove only caption-like
 prose, provenance, or process shorthand from SVG source.
 
+At narrow width, inspect both the inline overview and the enlarged state. The
+mobile zoom badge must stay visible; activating it must preserve readable label
+size, allow horizontal panning, keep the close control reachable, and close on
+Escape. `cell_ui_runtime_audit.py` exercises that interaction.
+
 If Codex tool calls fail before the requested command starts with
 `bubblewrap is unavailable`, the missing dependency is in the host Codex
 execution environment, not in NemoClaw's microservice containers. Run:
@@ -259,6 +264,17 @@ CI: `.gitlab-ci.yml` and `.github/workflows/pages.yml` run the same gate, then
 manual `security_sca` and `security_deep_sca` jobs; run the deep job when the
 workspace dependency graph changes. See [`docs/pages_deploy.md`](docs/pages_deploy.md)
 and [`docs/dependency_security.md`](docs/dependency_security.md).
+
+For GitLab branch staging, play `pages` only after the blocking `test` job passes.
+Done means the job SHA still matches the remote branch head, the live branch course
+returns 200, both root and branch `branches.json` files pass
+`branch_preview_manifest_audit.py`, and every selector option survives its same-origin
+HEAD probe. Classic Pages keeps only the latest combined preview artifact, so never
+claim an older branch remains staged after publishing another one. The automatic,
+blocking `pages_smoke` job performs the same checks after Pages propagation.
+For a local production-shaped browser check, run
+`CONTAINER_ENGINE=podman python3 scripts/validation/branch_preview_runtime_audit.py --site-root /tmp/<combined-artifact>`;
+it injects a ghost preview and requires both foyers to hide it.
 
 ---
 
