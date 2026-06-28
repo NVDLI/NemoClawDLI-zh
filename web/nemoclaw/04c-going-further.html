@@ -109,20 +109,17 @@
     <p>
       The in-browser exercises were sized for learning, with proxied
       endpoints and sessions that reset between runs. Taking the same
-      work to a setup you can ship means choosing a runtime
-      that handles GPU provisioning, model serving, and long-running
-      sessions. The options below cover the range of cases you are likely to
-      encounter.
+      work to a persistent deployment means choosing a runtime, an inference
+      provider, and an operating model for long-running sessions. A GPU is optional.
+      Hosted endpoints require no learner-managed accelerator; local inference requirements
+      depend on the selected provider and model.
     </p>
     <ul style="font-size:.9rem;color:var(--td);line-height:1.7">
       <li>
-        <a href="https://build.nvidia.com/spark/nemoclaw-applications" target="_blank" rel="noopener">NVIDIA NemoClaw playbooks</a>
-        give you one-click GPU environments preloaded with the runtime
-        components you saw in your launchable. Pre-built launchables exist
-        for the <a href="https://blog.langchain.com/deep-agents/" target="_blank" rel="noopener">LangChain deep-agents</a> stack, OpenClaw-style
-        file-as-context runtimes, and NemoClaw with kernel-level
-        containment. The launchable handles GPU provisioning, the
-        model server, and a Jupyter front end; you bring the repo.
+        <a href="https://docs.nvidia.com/nemoclaw/latest/get-started/prerequisites" target="_blank" rel="noopener">NemoClaw's current prerequisites</a>
+        list general Linux, macOS, Windows through WSL2, and DGX Spark paths. The
+        baseline starts at 4 vCPU and 8 GB RAM; GPU is optional. NemoClaw is alpha
+        software, so check current documentation as its interfaces and behavior evolve.
       </li>
       <li>
         <a href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com</a>
@@ -130,8 +127,8 @@
         The Python and JS examples in this course paste in here
         unchanged; swap the <code>baseURL</code> from your launchable's
         proxy to <code>https://integrate.api.nvidia.com/v1</code>
-        and supply an NVIDIA API key. Free credits cover the
-        experimentation phase.
+        and supply an NVIDIA API key. Account access and quota follow the
+        current service terms.
       </li>
       <li>
         <a href="https://build.nvidia.com/spark/nemoclaw-applications" target="_blank" rel="noopener">NemoClaw applications</a>

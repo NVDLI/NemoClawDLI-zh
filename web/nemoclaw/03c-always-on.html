@@ -75,15 +75,15 @@
     <li>The <strong>directive</strong> is the markdown file that tells the agent what to do.</li>
     <li>The <strong>trigger</strong> decides when a run starts.</li>
   </ul>
-  <p>Each mechanism below is only a different setting of these three, and none of them
-     adds any new machinery.</p>
+  <p>Each mechanism below is a different setting of these three. The course configuration
+     appears here; OpenClaw exposes additional session modes.</p>
 
   <table class="knobs-table">
     <thead><tr><th>Name</th><th>Session</th><th>Directive lives in</th><th>Trigger</th></tr></thead>
     <tbody>
       <tr><td>Skill <span style="color:var(--gs);font-weight:400;font-style:italic">(run below)</span></td>      <td>reuses the caller's</td>          <td><code>workspace/skills/&lt;name&gt;.md</code></td> <td>model picks it mid-turn when the directive matches the user's ask</td></tr>
-      <tr><td>Heartbeat <span style="color:var(--tf);font-weight:400;font-style:italic">(concept only)</span></td>  <td>reuses the caller's</td>          <td><code>HEARTBEAT.md</code></td>                    <td>gateway timer, ~30 min by default</td></tr>
-      <tr><td>Cron <span style="color:var(--gs);font-weight:400;font-style:italic">(run below)</span></td>       <td>fresh per fire (isolation)</td>   <td>JSON drop-in <code>prompt</code> field</td>       <td>cron schedule, per-minute precision</td></tr>
+      <tr><td>Heartbeat <span style="color:var(--tf);font-weight:400;font-style:italic">(concept only)</span></td>  <td>main session here</td>             <td><code>HEARTBEAT.md</code></td>                    <td>gateway timer, ~30 min by default</td></tr>
+      <tr><td>Cron <span style="color:var(--gs);font-weight:400;font-style:italic">(run below)</span></td>       <td>isolated here; fresh per fire</td><td>JSON drop-in <code>prompt</code> field</td>       <td>cron schedule, per-minute precision</td></tr>
       <tr><td>Sub-agent <span style="color:var(--tf);font-weight:400;font-style:italic">(concept only)</span></td>  <td>fresh, parent holds the handle</td><td>inline string at <code>delegate()</code> time</td><td>parent agent decides mid-turn</td></tr>
     </tbody>
   </table>
@@ -92,7 +92,9 @@
     The table is worth reading for what differs across rows rather than
     what repeats. Only three dimensions vary: session scope, directive
     location, and trigger type. Any new mechanism you encounter is one more
-    setting of those same three knobs. You run the skill
+    setting of those same three knobs. OpenClaw cron can bind a job to the
+    <a href="https://docs.openclaw.ai/cron-vs-heartbeat" target="_blank" rel="noopener">main, isolated, current, or a named session</a>.
+    This course uses isolated cron runs so each demonstration starts clean. You run the skill
     and the cron job on this page. Heartbeat and the sub-agent
     <code>delegate()</code> call are covered here only as table entries;
     no cell on this page fires them, so do not wait for one.
@@ -138,9 +140,9 @@ suggesting one, do these things in order:
      same WebSocket connection the Control UI uses is also where you list and manage them
      through the cron methods <code>cron.list</code> <code>cron.add</code> and
      <code>cron.remove</code>. A cron job lets an always-on agent act with no human in
-     the loop, because the scheduled work fires on its own timer and each run gets a
-     fresh session. The heartbeat in the table above differs here, since it ticks the
-     caller's own session instead of opening a new one.</p>
+     the loop because scheduled work fires on its own timer. The course runtime creates
+     an isolated session for this demonstration. OpenClaw can instead bind scheduled work
+     to another supported session mode when continuity is more important than isolation.</p>
 
   <p>The widget below walks the full lifecycle of a cron job:</p>
   <ol>
@@ -161,9 +163,10 @@ suggesting one, do these things in order:
   <div class="callout warn">
     <strong>Cron jobs run unattended.</strong> A scheduled directive
     that asks the agent to "send the daily report" will fire whether
-    you are watching or not. The fresh-session-per-fire knob is the
-    safety mechanism: each run starts clean, so a bug in turn 1 can't
-    poison turn 2. Module 4a adds a kernel-level containment layer on
+    you are watching or not. The course selects an isolated session for
+    each fire, so a bug in one run cannot poison the next run's transcript.
+    Other cron configurations can retain or bind session context between fires.
+    Module 4a adds a kernel-level containment layer on
     top of this. Every filesystem access and network connection the
     cron-fired agent attempts passes through an explicit allow-list
     before the syscall runs. A misbehaving scheduled job can then only
@@ -174,23 +177,23 @@ suggesting one, do these things in order:
   <p>
     Public
     <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes</a>
-    repository exposes four behaviors this page just exercised: creating skills from
-    experience, keeping memory across sessions, running cron jobs, and exposing
-    chat gateways for Telegram, Discord, and Slack. Its default mechanisms for perserving memory 
-    are quite different though, and it has a key focus on self-improvement in its feature sets.
+    repository exposes the same broad capability categories: reusable skills, persistent
+    memory, scheduled work, and a messaging gateway. Its implementation and defaults differ
+    from OpenClaw, so compare the security boundary and session behavior rather than assuming
+    that matching feature names imply matching risk controls.
   </p>
 
-  <p>Spotlighting this focus may make Hermes sound more dangerous, but all harnesses have 
-     similar core degrees of allowable freedom which are causes for concern. 
-     An agent that writes its own skills, schedules its own cron jobs, and accepts messages 
-     on an open channel can persist something malicious that outlives any single conversation. 
-     The next module will hopefully help clear up some of these concerns with <b>sandboxing</b>. 
+  <p>These risks are not unique to Hermes. Any harness that can write reusable instructions,
+     schedule work, and accept remote messages can persist a compromised directive beyond one
+     conversation. Module 4 separates the harness's application controls from the sandbox
+     controls that bound filesystem, process, and network access.
   </p>
   <div class="callout warn">
-    <strong>Hermes hardens this itself.</strong> Its own deployment guidance
-    insists on restricting the bot to specific user IDs and keeping the model
-    endpoint on <code>localhost</code>, so the open channel never reaches an
-    untrusted caller and the model stays off the public network.
+    <strong>Hermes gates its messaging surface.</strong> Its current
+    <a href="https://hermes-agent.nousresearch.com/docs/user-guide/security/" target="_blank" rel="noopener">security guide</a>
+    documents pairing codes and platform or global user allowlists, with
+    <code>default: deny</code> when no allow rule matches. Those application controls decide who
+    may talk to the agent. An operating-system sandbox separately bounds what its tools can reach.
   </div>
   <p>The same skills-as-memoised-trajectories pattern appears across the ecosystem
      under other names and shapes:</p>
@@ -208,6 +211,8 @@ suggesting one, do these things in order:
       <li><a href="https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview" target="_blank" rel="noopener">Anthropic, <em>Agent Skills</em></a>. The production skill-folder layout this page's <code>skills/&lt;name&gt;.md</code> drop-in mirrors.</li>
       <li><a href="https://langchain-ai.github.io/langgraph/concepts/persistence/" target="_blank" rel="noopener">LangGraph, <em>Persistence</em> (checkpointers)</a>. Checkpointed graphs as the same save-and-resume primitive in a different production shape.</li>
       <li><a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes Agent</a>. Agent application with self-improving skills, persistent memory, cron, and a messaging gateway; NVIDIA's DGX Spark playbooks list Hermes and NemoClaw as separate setup paths.</li>
+      <li><a href="https://docs.openclaw.ai/cron-vs-heartbeat" target="_blank" rel="noopener">OpenClaw, <em>Automation &amp; Tasks</em></a>. Current session and trigger semantics for cron, heartbeat, hooks, and background tasks.</li>
+      <li><a href="https://hermes-agent.nousresearch.com/docs/user-guide/security/" target="_blank" rel="noopener">Hermes Agent, <em>Security</em></a>. Pairing and allowlist behavior for messaging-gateway callers.</li>
       <li><a href="https://en.wikipedia.org/wiki/Cron" target="_blank" rel="noopener">cron(8)</a>. The canonical reference for the scheduling primitive the cron drop-in borrows.</li>
     </ul>
     <p class="references-note">Comprehensive list at <a href="04c-going-further.html#refs">Going Further · References</a>.</p>
@@ -272,7 +277,7 @@ mountDiagram("#fig-calls", {
   nodes: [
     { id: "cron", label: "schedule", kind: "env", x: 0, y: 0, lines: ["cron or heartbeat", "fires on a timer"] },
     { id: "gw",   label: "gateway loop", kind: "agent", x: 1, y: 0,
-      lines: ["model plans, calls tools", "then repeats"], socket: "fresh session" },
+      lines: ["model plans, calls tools", "then repeats"], socket: "configured session" },
     { id: "logs", label: "workspace / logs", kind: "data", x: 2, y: 0, lines: ["MEMORY.md", "logs and artifacts"] },
   ],
   edges: [

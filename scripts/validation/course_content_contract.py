@@ -40,7 +40,12 @@ def run(verbose: bool = True) -> list[tuple[str, str]]:
     findings: list[tuple[str, str]] = []
     p02b = _read("web/nemoclaw/02b-rag.html")
     p01c = _read("web/nemoclaw/01c-tools.html")
+    p03c = _read("web/nemoclaw/03c-always-on.html")
     p04a = _read("web/nemoclaw/04a-safety.html")
+    p04b = _read("web/nemoclaw/04b-modern-clis.html")
+    p04c = _read("web/nemoclaw/04c-going-further.html")
+    mat_stack = _read("web/nemoclaw/mats/nvidia_openshell_nemoclaw.md")
+    mat_safety = _read("web/nemoclaw/mats/agentic_safety_in_production.md")
     svg02b = _read("web/nemoclaw/assets/figures/02b-retrieval-boundaries.svg")
     svg04a = _read("web/nemoclaw/assets/figures/lethal-trifecta.svg")
     askill = _read("web/nemoclaw/assets/SKILL.html")
@@ -57,6 +62,22 @@ def run(verbose: bool = True) -> list[tuple[str, str]]:
         findings.append(("web/nemoclaw/assets/figures/02b-retrieval-boundaries.svg", "retrieval boundary SVG lost provenance"))
     if "Retrieval is one boundary in a larger system" in svg02b:
         findings.append(("web/nemoclaw/assets/figures/02b-retrieval-boundaries.svg", "retrieval boundary SVG must not embed caption prose; keep captions in HTML figcaption"))
+
+    if not _has_all(p03c, ("course configuration", "main, isolated, current, or a named session", "docs.openclaw.ai/cron-vs-heartbeat", "default: deny")):
+        findings.append(("web/nemoclaw/03c-always-on.html", "automation lesson must scope session behavior to the course configuration and cite current OpenClaw/Hermes controls"))
+    for stale in ("fresh per fire (isolation)", "each run gets a fresh session", "fresh-session-per-fire knob"):
+        if stale in p03c:
+            findings.append(("web/nemoclaw/03c-always-on.html", f"automation lesson must not present isolated cron as universal behavior: {stale}"))
+    if not _has_all(p04b, ("raw.githubusercontent.com/openclaw/openclaw/main/README.md", "raw.githubusercontent.com/NousResearch/hermes-agent/main/README.md")):
+        findings.append(("web/nemoclaw/04b-modern-clis.html", "CLI comparison must ground OpenClaw and Hermes descriptions in their current public repositories"))
+    if not _has_all(p04c, ("NemoClaw is alpha", "4 vCPU", "GPU is optional", "docs.nvidia.com/nemoclaw/latest/get-started/prerequisites")):
+        findings.append(("web/nemoclaw/04c-going-further.html", "deployment guidance must distinguish the general CPU baseline from optional GPU paths and carry the alpha caveat"))
+    if not _has_all(mat_stack, ("alpha", "early preview", "Linux", "macOS", "WSL2", "DGX Spark", "hosted or local inference")):
+        findings.append(("web/nemoclaw/mats/nvidia_openshell_nemoclaw.md", "stack essay must preserve current availability, platform, and inference qualifiers"))
+    if "NemoClaw targets NVIDIA DGX Spark" in mat_stack:
+        findings.append(("web/nemoclaw/mats/nvidia_openshell_nemoclaw.md", "DGX Spark playbook must not be presented as the NemoClaw product boundary"))
+    if not _has_all(mat_safety, ("reference stack", "alpha", "early-preview", "version being deployed")):
+        findings.append(("web/nemoclaw/mats/agentic_safety_in_production.md", "safety essay must preserve the version-sensitive alpha qualifier"))
 
     if "assets/figures/lethal-trifecta.svg" not in p04a:
         findings.append(("web/nemoclaw/04a-safety.html", "missing real lethal trifecta figure"))
