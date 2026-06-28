@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Required first-use concept order checks for the early agent curriculum.
+"""Required first-use concept order checks for the agent curriculum.
 
 This gate is intentionally narrow. It does not grade style and it does not create hover glossaries.
 It protects the pages where reviewers flagged vocabulary arriving before the learner has a usable definition.
@@ -63,6 +63,53 @@ CHECKS = [
         "before": "A <strong>fixed enum</strong>",
         "after": "The triage router has a fixed enum",
     },
+    {
+        "page": "04a-safety.html",
+        "label": "product roles separated before enforcement layers",
+        "before": "Keep the three product roles separate as you trace enforcement.",
+        "after": "One action, three lines of defense",
+    },
+    {
+        "page": "04a-safety.html",
+        "label": "network namespace defined before reference glossary",
+        "before": "A <strong>network namespace</strong> (<code>netns</code>)",
+        "after": "<dt>Network namespace / <code>netns</code></dt>",
+    },
+    {
+        "page": "04a-safety.html",
+        "label": "CONNECT proxy defined before reference glossary",
+        "before": "HTTP <strong>CONNECT proxy</strong> provides the only route out",
+        "after": "<dt>CONNECT proxy</dt>",
+    },
+    {
+        "page": "04a-safety.html",
+        "label": "OPA acronym expanded before shorthand",
+        "before": "Open Policy Agent (OPA)",
+        "after": "<dt>OPA</dt>",
+    },
+    {
+        "page": "04a-safety.html",
+        "label": "Landlock explained before reference glossary",
+        "before": "is a Linux Security Module that restricts future filesystem access",
+        "after": "<dt>Landlock</dt>",
+    },
+    {
+        "page": "04a-safety.html",
+        "label": "seccomp and BPF explained before reference glossary",
+        "before": "is Linux syscall filtering; its BPF filter",
+        "after": "<dt>seccomp</dt>",
+    },
+    {
+        "page": "04a-safety.html",
+        "label": "EPERM translated before reference glossary",
+        "before": "<code>EPERM</code>, meaning \"operation not permitted,\"",
+        "after": "<dt><code>EPERM</code> / <code>EACCES</code></dt>",
+    },
+    {
+        "page": "04a-safety.html",
+        "label": "mechanisms framed as testable learner questions",
+        "required": "Four mechanisms, four concrete questions",
+    },
 ]
 
 BAD_TOKENS = {
@@ -72,6 +119,10 @@ BAD_TOKENS = {
     ],
     "01c-tools.html": [
         "the production standard for serving tools",
+    ],
+    "04a-safety.html": [
+        "sandbox guardrailing",
+        "Filesystem capability dropping at the kernel, through",
     ],
 }
 
@@ -118,7 +169,7 @@ run = audit
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Validate first-use definitions for the early agent curriculum.")
+    ap = argparse.ArgumentParser(description="Validate first-use definitions across the agent curriculum.")
     ap.add_argument("--json", action="store_true", help="print machine-readable findings")
     args = ap.parse_args()
     findings = audit()
