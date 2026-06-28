@@ -11,7 +11,10 @@ set -e
 # (DLI wrapper) or the repo root (the open-source release).
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_ROOT="$(git rev-parse --show-toplevel)"
-HOOK_DIR="$REPO_ROOT/.git/hooks"
+# `REPO_ROOT/.git` is a file in a linked worktree. Ask Git for the real hooks
+# path so installation works in ordinary clones and worktrees alike.
+HOOK_DIR="$(git rev-parse --git-path hooks)"
+mkdir -p "$HOOK_DIR"
 
 for name in pre-commit pre-push; do
     src="$HERE/git-hooks/$name"
@@ -34,5 +37,5 @@ done
 echo ""
 echo "Verify:"
 echo "  ls -la $HOOK_DIR"
-echo "  python3 $HERE/nb_audit.py            # pre-commit corruption guard"
-echo "  python3 $HERE/validate_layout.py     # pre-push layout/link gate"
+echo "  python3 $HERE/validation/contribution_safety_audit.py"
+echo "  python3 $HERE/validation/validate_layout.py --quiet"

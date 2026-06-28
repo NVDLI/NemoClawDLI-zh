@@ -4,8 +4,8 @@
 # This is the layout-agnostic half of the pre-push contract and the copy that ships
 # when task1/ is the repo root (the open-source release). It enforces:
 #
-#   RULE 2 — REBASE GUARD: if origin/main is ahead, rebase before pushing so a
-#            concurrently pushed commit is never silently overwritten.
+#   RULE 2 — BASE GUARD: if origin/main is ahead, refuse with recovery commands.
+#            A hook reports drift; it never rewrites contributor history.
 #   RULE 3 — SKILL CONSISTENCY: refuse a push where a fact duplicated across files
 #            diverged, or a SKILL.html points at a missing file.
 #   RULE 4 — LAYOUT / LINK GLUE: deterministic surface-first layout + link validation,
@@ -26,22 +26,40 @@ REMOTE="${1:-origin}"
 T1="$(git rev-parse --show-toplevel)"
 [ -d "$T1/task1/scripts" ] && T1="$T1/task1"
 
-# ── RULE 2: rebase guard ─────────────────────────────────────────────────────
-[ "$REMOTE" = "origin" ] || exit 0
+# ── RULE 2: base guard ───────────────────────────────────────────────────────
+if [ "$REMOTE" = "origin" ]; then
+    if ! git fetch origin main --quiet; then
+        echo "pre-push: REFUSING PUSH - cannot verify origin/main."
+        echo "Fix network or authentication, run 'git fetch origin main', then retry."
+        exit 1
+    fi
 
-git fetch origin main --quiet 2>/dev/null || exit 0
+    LOCAL=$(git rev-parse HEAD)
+    REMOTE_SHA=$(git rev-parse origin/main 2>/dev/null || true)
 
-LOCAL=$(git rev-parse HEAD)
-REMOTE_SHA=$(git rev-parse origin/main 2>/dev/null || true)
-
-if [ -n "$REMOTE_SHA" ] && [ "$LOCAL" != "$REMOTE_SHA" ]; then
-    AHEAD=$(git rev-list HEAD..origin/main --count 2>/dev/null || echo 0)
-    if [ "$AHEAD" -gt 0 ]; then
-        echo "pre-push: origin/main is $AHEAD commit(s) ahead — rebasing..."
-        git pull --rebase -X ours --quiet origin main || {
-            echo "pre-push: rebase failed — fix conflicts then push again."
+    if [ -n "$REMOTE_SHA" ] && [ "$LOCAL" != "$REMOTE_SHA" ]; then
+        AHEAD=$(git rev-list HEAD..origin/main --count 2>/dev/null || echo 0)
+        if [ "$AHEAD" -gt 0 ]; then
+            echo "pre-push: REFUSING PUSH - origin/main is $AHEAD commit(s) ahead."
+            echo "The hook will not rewrite history or choose conflict winners. Review the drift, then run:"
+            echo "  git rebase origin/main"
+            echo "Resolve deliberately, rerun the gates, then push again."
             exit 1
-        }
+        fi
+    fi
+else
+    echo "pre-push: remote '$REMOTE' is not origin; base comparison skipped, all repository gates still run."
+fi
+
+# ── RULE 2b: contribution safety contract ───────────────────────────────────
+SAFETY="$T1/scripts/validation/contribution_safety_audit.py"
+if [ -f "$SAFETY" ]; then
+    if ! python3 "$SAFETY" --self-test || ! python3 "$SAFETY"; then
+        echo ""
+        echo "pre-push: REFUSING PUSH - contribution-safety contract failed."
+        echo "The issue/PR intake, permission boundary, hook, CI, or release gate no longer matches policy."
+        echo "Repair the named finding; this hook will not bypass or mutate it."
+        exit 1
     fi
 fi
 
@@ -134,6 +152,12 @@ fi
 # ── RULE 5: compilation-projection link gate (no live lab needed) ─────────────
 BUNDLE="$T1/scripts/validation/validate_bundle.py"
 if [ -f "$BUNDLE" ]; then
+    if ! python3 "$T1/scripts/validation/learner_flow_audit.py" --self-test; then
+        echo ""
+        echo "pre-push: REFUSING PUSH - learner interaction validator mutation tests failed."
+        echo "Repair the detector before trusting its progressive-disclosure, prerequisite, or lifecycle result."
+        exit 1
+    fi
     # --no-write: gate only; the durable log is written by the cadence / CI / the
     # DGX-spark watcher, never by the hook (so a push never leaves a dirty tree).
     if ! python3 "$BUNDLE" --scope ship --no-write; then

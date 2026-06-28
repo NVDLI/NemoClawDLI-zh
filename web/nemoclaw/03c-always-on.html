@@ -234,6 +234,8 @@ suggesting one, do these things in order:
 // matching skill mid-turn, the same machinery a heartbeat or cron fire uses.
 // Edit the greeting, examples, or respond logic, then Run to re-render.
 helpers.mountChatUI("#alwayson-artifact", {
+  disabled: () => !(localStorage.getItem("nemoclaw_clawtoken") && (localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl"))),
+  disabledMsg: "Connect your launchable in Module 3a first. This panel needs its URL and token.",
   greeting: "Connect on the Kickstart page, then send something that matches a skill, such as “checkout-service is throwing 502s in us-east-1, what do I do?”",
   examples: ["checkout-service is throwing 502s in us-east-1", "What skills are you configured with?", "Walk me through your incident runbook", "What cron jobs do you have scheduled?", "How would you triage a sudden latency spike?", "Summarize what you would do if paged at 3am"],
   respond: async (text, ctx) => { await helpers.openclawChat(text, { session: "art-" + ctx.thread, view: ctx.view, signal: ctx.signal }); },

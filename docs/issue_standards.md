@@ -113,7 +113,7 @@ Preferred state cadence:
 | Issue kind | Expected validation |
 |---|---|
 | Course content/prose | `validate_layout.py --quiet`, `skill_consistency.py`, `validate_bundle.py --no-write --scope ship`; prose validator when changing broad copy. |
-| Visual/runtime page | Static gate plus browser/runtime harness or local Pages smoke. |
+| Visual/runtime page | Static gate plus browser/runtime harness or local Pages smoke. For scaffolding/lab-flow work, include `learner_flow_audit.py --self-test` and `learner_flow_runtime_audit.py` so the detector and lifecycle are both exercised. |
 | CPU service/runtime | Targeted service test, compose config where relevant, runtime self-test. |
 | Deploy/ops | Compose/nginx validation, deployed preview or explicit platform blocker. |
 | Security/dependency | Dependency floor audit, waiver audit, deep SCA when dependency graph changes, source gate if public surface changes. |

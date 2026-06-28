@@ -70,12 +70,16 @@ export function ensureChatStyles() {
       .chatui-cursor::after{content:"▍";color:var(--g,#76b900);animation:chatui-blink 1s steps(2) infinite}
       @keyframes chatui-blink{50%{opacity:0}}
       .chatui-in{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--bd,#2a2a2a)}
+      .chatui-state{padding:7px 12px;border-top:1px solid var(--bd,#2a2a2a);font-family:var(--mono,monospace);font-size:.72rem;color:var(--tf,#8a8a8a);background:var(--e1,#161616)}
+      .chatui-state.ready{color:var(--gs,#aee23a)}.chatui-state.running{color:var(--warn,#d49c2c)}.chatui-state.error,.chatui-state.blocked{color:var(--err,#f87171)}
       .chatui-in textarea{flex:1;resize:none;background:var(--e2,#1e1e1e);color:var(--tx,#f2f2f2);border:1px solid var(--bd,#2a2a2a);border-radius:8px;padding:8px 11px;font-family:inherit;font-size:.9rem;line-height:1.4;min-height:20px;max-height:120px}
       .chatui-in textarea:focus{outline:none;border-color:var(--g,#76b900)}
       .chatui-send{background:var(--g,#76b900);color:#0a0a0a;border:0;border-radius:8px;padding:0 18px;font-weight:700;font-size:.85rem;cursor:pointer}
       .chatui-send:hover{background:var(--gs,#aee23a)}
-      .chatui-send:disabled{opacity:.5;cursor:wait}
-      .chatui-send.stop{background:var(--err);color:#fff}.chatui-send.stop:hover{background:var(--err);filter:brightness(1.1)}`;
+      .chatui-send:disabled{opacity:.5;cursor:not-allowed}
+      .chatui-send.stop{background:var(--err);color:#fff}.chatui-send.stop:hover{background:var(--err);filter:brightness(1.1)}
+      .da-console-state{margin:4px 0 8px;font-family:var(--mono,monospace);font-size:.72rem;color:var(--tf,#8a8a8a)}
+      .da-console-state.ready{color:var(--gs,#aee23a)}.da-console-state.running{color:var(--warn,#d49c2c)}.da-console-state.error,.da-console-state.blocked{color:var(--err,#f87171)}`;
   document.head.appendChild(s);
 }
 
@@ -123,6 +127,7 @@ export function mountChatUI(container, opts = {}) {
   el.innerHTML = `<div class="chatui${opts.growLog ? " chatui-grow" : ""}">
       <div class="chatui-bar">${modelSel}<span class="chatui-ctx chatui-ctxwrap" data-ctx hidden><span data-ctxtext></span><span class="chatui-ctxbar"><span class="chatui-ctxfill"></span></span></span><span class="sp"></span>${memToggle}<button class="chatui-reset" type="button">↺ New chat</button>${modChips}</div>
       <div class="chatui-log"></div>
+      <div class="chatui-state" role="status" aria-live="polite" aria-atomic="true"></div>
       <div class="chatui-in"><textarea class="chatui-text" rows="1" placeholder="Ask a question…"></textarea><button class="chatui-send" type="button">Send</button></div>
     </div>`;
 
@@ -130,6 +135,7 @@ export function mountChatUI(container, opts = {}) {
   const text = el.querySelector(".chatui-text");
   const sendBtn = el.querySelector(".chatui-send");
   const resetBtn = el.querySelector(".chatui-reset");
+  const stateEl = el.querySelector(".chatui-state");
   const modelEl = el.querySelector(".chatui-model");
   const ctxEl = el.querySelector("[data-ctx]");
   const chips = [...el.querySelectorAll(".chatui-modchip")];
@@ -150,6 +156,27 @@ export function mountChatUI(container, opts = {}) {
                 // Prior turns for respond; empty when memory is off.
                 get history() { return (memoryEnabled && memoryOn) ? history.map(m => ({ ...m })) : []; },
                 get memory()  { return memoryEnabled && memoryOn; } };
+  const readPrerequisiteBlocked = () => typeof opts.disabled === "function" ? opts.disabled() === true : opts.disabled === true;
+  let prerequisiteBlocked = readPrerequisiteBlocked();
+  let prerequisiteMessage = opts.disabledMsg || "Complete the prerequisite above before using this artifact.";
+  const setState = (message, kind = "") => {
+    stateEl.textContent = message;
+    stateEl.className = "chatui-state" + (kind ? " " + kind : "");
+  };
+  const setDisabled = (blocked, message = prerequisiteMessage) => {
+    prerequisiteBlocked = blocked === true;
+    prerequisiteMessage = message || prerequisiteMessage;
+    text.disabled = prerequisiteBlocked;
+    sendBtn.disabled = prerequisiteBlocked;
+    text.setAttribute("aria-disabled", String(prerequisiteBlocked));
+    sendBtn.setAttribute("aria-disabled", String(prerequisiteBlocked));
+    setState(prerequisiteBlocked ? "Prerequisite: " + prerequisiteMessage : "Ready", prerequisiteBlocked ? "blocked" : "ready");
+  };
+  setDisabled(prerequisiteBlocked, prerequisiteMessage);
+  const refreshPrerequisites = () => setDisabled(readPrerequisiteBlocked(), prerequisiteMessage);
+  window.addEventListener("focus", refreshPrerequisites);
+  window.addEventListener("storage", refreshPrerequisites);
+  window.addEventListener("nemoclaw:prerequisites", refreshPrerequisites);
 
   const ctxText = el.querySelector("[data-ctxtext]");
   const ctxFill = el.querySelector(".chatui-ctxfill");
@@ -211,10 +238,11 @@ export function mountChatUI(container, opts = {}) {
     log.appendChild(ex); };
   addExamples();
 
-  let running = false, curAC = null;
+  let running = false, curAC = null, resetEpoch = 0;
   async function send() {
     const q = text.value.trim();
-    if (!q || running) return;
+    if (!q || running || prerequisiteBlocked) return;
+    const epoch = resetEpoch;
     const histMark = history.length, turnMark = ctx.turn;   // where "edit · rewind here" rolls back to
     text.value = ""; text.style.height = "auto";
     const userBub = bubble("chatui-user", q);
@@ -237,6 +265,7 @@ export function mountChatUI(container, opts = {}) {
     // A long agent or gateway run can then be cancelled instead of waited out.
     running = true; curAC = new AbortController();
     sendBtn.textContent = "⏹ Stop"; sendBtn.classList.add("stop");
+    setState("Running. Press Stop to cancel.", "running");
     let cur = null;         // the currently-open streaming block: {kind, el, body?, _t, _raf}
     let answered = false, errored = false;
     // Per ReAct round the reasoning trace and the answer each live in ONE reused block.
@@ -297,13 +326,14 @@ export function mountChatUI(container, opts = {}) {
         }
         turn.appendChild(f); scroll(); },
       html(h) { endThink(); flush(); cur = null; const d = document.createElement("div"); d.className = "chatui-viz"; turn.appendChild(d); d.innerHTML = h; scroll(); return d; },
-      error(msg) { errored = true; flush(); cur = null; const d = document.createElement("div"); d.className = "chatui-msg chatui-bot err"; d.textContent = "⚠ " + msg; turn.appendChild(d); scroll(); },
+      error(msg) { errored = true; flush(); cur = null; const d = document.createElement("div"); d.className = "chatui-msg chatui-bot err"; d.textContent = "⚠ " + msg; turn.appendChild(d); setState("Error. Read the message, then edit or retry.", "error"); scroll(); },
     };
 
     try { await opts.respond(q, { module: ctx.module, modules: ctx.modules, model: ctx.model, thread: ctx.thread, turn: ctx.turn, window: ctx.window, history: ctx.history, memory: ctx.memory, signal: curAC.signal, view }); }
     catch (e) { if (!curAC.signal.aborted) view.error(e && e.message ? e.message : String(e)); }
     finally {
       flush(); endThink();
+      if (epoch !== resetEpoch) return;
       turn.classList.remove("chatui-cursor");
       if (curAC.signal.aborted) view.note("⏹ stopped");
       else if (!answered && !errored) { const d = document.createElement("div"); d.className = "chatui-msg chatui-bot"; d.textContent = "(no answer)"; turn.appendChild(d); }
@@ -313,24 +343,34 @@ export function mountChatUI(container, opts = {}) {
         history.push({ role: "user", content: q }, { role: "assistant", content: (roundAnswer && roundAnswer._t) || "" });
       running = false; curAC = null;
       sendBtn.textContent = "Send"; sendBtn.classList.remove("stop");
+      sendBtn.disabled = prerequisiteBlocked;
+      sendBtn.setAttribute("aria-disabled", String(prerequisiteBlocked));
+      if (prerequisiteBlocked) setState("Prerequisite: " + prerequisiteMessage, "blocked");
+      else if (errored) setState("Error. Read the message, then edit or retry.", "error");
+      else if (turn.textContent.includes("⏹ stopped")) setState("Stopped. Ready to run again.", "ready");
+      else setState("Ready", "ready");
       ctx.turn++; text.focus();
     }
   }
 
   sendBtn.addEventListener("click", () => { if (running) { try { curAC.abort(); } catch (_) {} } else send(); });
-  text.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (!running) send(); } });
+  text.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (!running && !prerequisiteBlocked) send(); } });
   text.addEventListener("input", () => { text.style.height = "auto"; text.style.height = Math.min(text.scrollHeight, 120) + "px"; });
   function reset() {
+    resetEpoch++;
     if (curAC) { try { curAC.abort(); } catch (_) {} }
+    running = false; curAC = null;
+    sendBtn.textContent = "Send"; sendBtn.classList.remove("stop");
     log.querySelectorAll(".chatui-msg, .chatui-turn, .chatui-examples, .chatui-msgctl").forEach(n => n.remove());
     if (opts.greeting) bubble("chatui-bot", opts.greeting);
     addExamples();
     ctx.thread = "chat-" + Math.random().toString(RANDOM_ID_RADIX).slice(2, 9); ctx.turn = 0; setBudget(0);
     history.length = 0;
     if (opts.onReset) try { opts.onReset(ctx); } catch (_) {}
+    refreshPrerequisites();
   }
   resetBtn.addEventListener("click", reset);
-  return { thread: ctx.thread, reset, ctx };
+  return { thread: ctx.thread, reset, setDisabled, refreshPrerequisites, ctx };
 }
 
 // Mount a live chat artifact backed by LangChain's createReactAgent.
@@ -472,13 +512,17 @@ export async function mountAgentChat(container, opts = {}) {
 export function mountConsole(container, { prompt = "$", greeting = "", suggestions = [], onSubmit, disabled = false, disabledMsg = "" } = {}) {
   const root = typeof container === "string" ? document.querySelector(container) : container;
   if (!root) return null;
+  ensureChatStyles();
   const id = "dl" + Math.random().toString(RANDOM_ID_RADIX).slice(2, 8);
   const opts = (suggestions || []).map(s => '<option value="' + String(s).replace(/"/g, "&quot;") + '"></option>').join("");
   root.innerHTML =
     '<div class="da-term">' +
-      '<div class="da-out"></div>' +
+      '<div class="da-out" role="log" aria-live="polite"></div>' +
+      '<div class="da-console-state" role="status" aria-live="polite" aria-atomic="true"></div>' +
       '<div class="da-line"><span class="da-ps">' + prompt + '</span>' +
         '<input class="da-in" list="' + id + '" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="console input"/>' +
+        '<button type="button" class="da-chip da-clear">clear</button>' +
+        '<button type="button" class="da-chip da-stop" hidden>■ stop</button>' +
         '<datalist id="' + id + '">' + opts + '</datalist>' +
       '</div>' +
       '<div class="da-chips"></div>' +
@@ -486,13 +530,35 @@ export function mountConsole(container, { prompt = "$", greeting = "", suggestio
   const out = root.querySelector(".da-out");
   const input = root.querySelector(".da-in");
   const chipRow = root.querySelector(".da-chips");
+  const state = root.querySelector(".da-console-state");
+  const clearBtn = root.querySelector(".da-clear");
+  const stopBtn = root.querySelector(".da-stop");
+  let running = false, runAC = null;
+  const setState = (message, kind = "") => {
+    state.textContent = message;
+    state.className = "da-console-state" + (kind ? " " + kind : "");
+  };
   const con = {
     write(text, cls) { const d = document.createElement("div"); if (cls) d.className = cls; d.textContent = (text == null ? "" : String(text)); out.appendChild(d); },
     raw(text) { if (text == null || text === "") return; out.appendChild(document.createTextNode(String(text))); },
-    clear() { out.innerHTML = ""; },
+    clear() { out.innerHTML = ""; setState(disabled ? "Prerequisite: " + disabledMsg : "Ready", disabled ? "blocked" : "ready"); },
   };
   root.addEventListener("click", e => { if (e.target.tagName !== "BUTTON" && e.target.tagName !== "INPUT") input.focus(); });
-  if (disabled) { if (disabledMsg) con.write(disabledMsg, "da-dim"); input.disabled = true; return con; }
+  clearBtn.addEventListener("click", () => con.clear());
+  stopBtn.addEventListener("click", () => {
+    if (!runAC) return;
+    setState("Stopping…", "running");
+    runAC.abort();
+  });
+  if (disabled) {
+    if (disabledMsg) con.write(disabledMsg, "da-dim");
+    input.disabled = true;
+    input.setAttribute("aria-disabled", "true");
+    stopBtn.disabled = true;
+    setState("Prerequisite: " + (disabledMsg || "Complete setup before using this console."), "blocked");
+    return con;
+  }
+  setState("Ready", "ready");
   (suggestions || []).forEach(s => {
     const b = document.createElement("button"); b.type = "button"; b.className = "da-chip"; b.textContent = s;
     b.addEventListener("click", () => { input.value = s; input.focus(); });
@@ -502,13 +568,35 @@ export function mountConsole(container, { prompt = "$", greeting = "", suggestio
   const hist = []; let hi = 0;
   input.addEventListener("keydown", async e => {
     if (e.key === "Enter") {
+      if (running) return;
       const line = input.value.trim(); input.value = "";
       con.write(prompt + " " + line, "da-cmd");
       if (!line) return;
       hist.push(line); hi = hist.length;
+      running = true;
+      runAC = new AbortController();
       input.disabled = true;
-      try { if (onSubmit) await onSubmit(line, con); } catch (err) { con.write("error: " + ((err && err.message) || err), "da-err"); }
-      input.disabled = false; input.focus(); input.scrollIntoView({ block: "nearest" });
+      stopBtn.hidden = false;
+      setState("Running. Press Stop to cancel.", "running");
+      try {
+        if (onSubmit) await onSubmit(line, con, { signal: runAC.signal });
+        if (runAC.signal.aborted) con.write("⏹ stopped", "da-dim");
+        setState(runAC.signal.aborted ? "Stopped. Ready to run again." : "Ready", "ready");
+      } catch (err) {
+        if (runAC.signal.aborted || (err && err.name === "AbortError")) {
+          con.write("⏹ stopped", "da-dim");
+          setState("Stopped. Ready to run again.", "ready");
+        } else {
+          con.write("error: " + ((err && err.message) || err), "da-err");
+          setState("Error. Read the message, then edit or retry.", "error");
+        }
+      } finally {
+        running = false;
+        runAC = null;
+        input.disabled = false;
+        stopBtn.hidden = true;
+        input.focus();
+      }
     } else if (e.key === "Tab") {
       const v = input.value.toLowerCase();
       const hit = (suggestions || []).find(s => s.toLowerCase().startsWith(v) && s.toLowerCase() !== v);

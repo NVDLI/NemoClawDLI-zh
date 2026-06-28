@@ -99,8 +99,9 @@ TENETS = {
         "Ship the services a course drives (a model gateway, a sandboxed agent harness, a policy "
         "control plane) and let them carry the mechanical work, so a reader's attention stays on "
         "the decision the exercise is about.",
-        "Invite expertise through focused Issues when the contributor is naming a problem, and use the "
-        "structured release process when the contributor is shipping a patch.",
+        "Ideas stay easy to contribute through Discussions and structured Issues. Code stays "
+        "difficult to accept: treat every patch as untrusted, require issue linkage, blast-radius "
+        "evidence, deterministic gates, human ownership, protected refs, and gated releases.",
     ],
     "assumptions": [
         "task1 is the canonical root: the open-source, replicable release. Everything worth "

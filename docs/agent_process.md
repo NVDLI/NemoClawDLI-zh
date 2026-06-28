@@ -11,6 +11,22 @@ This note is for agents and maintainers working across issues, merge requests, a
 - Tie the MR to the tracker with `Addresses #N` unless the user explicitly says the change closes the issue. Do not write `Closes #N` for partial hygiene, exploratory prose, or a blast-radius pass.
 - Keep the branch name, commit message, and MR note aligned with the issue scope. If the work intentionally touches related issues, name those as related, not solved.
 
+## Contribution authority
+
+- Keep idea intake cheap. A Discussion or structured Issue can carry a question, correction,
+  source, or design without requiring code.
+- Treat every patch as untrusted input, including patches from maintainers and capable agents.
+  Require issue linkage, named surfaces, blast-radius evidence, command results, human ownership,
+  risk, rollback, and explicit out-of-scope work.
+- Install the hooks, but never claim they secure a repository. Local hooks provide early feedback
+  and can be bypassed. Required CI validates the submitted commit; protected refs and environments
+  control merge, deploy, and release authority.
+- A hook must refuse and explain. It must not rebase, resolve conflicts, force-push, weaken a test,
+  or otherwise mutate history to make a contribution pass.
+- For contribution, hook, workflow, permission, or release changes, run
+  `python3 scripts/validation/contribution_safety_audit.py --self-test` and then the audit itself.
+  The JSON report belongs in CI artifacts so a human can inspect the exact boundary that passed.
+
 ## Course title, abstract, and objectives
 
 - `web/nemoclaw/COURSE_CANON.md` is canonical for the English source course title, abstract, and learning objectives. Do not rewrite, shorten, paraphrase, translate, retitle, or reorder that copy.
@@ -28,10 +44,12 @@ This note is for agents and maintainers working across issues, merge requests, a
 ## Validation ladder
 
 - Always run `git diff --check`.
+- For governance, contribution, hook, CI, permission, or release changes, run `contribution_safety_audit.py`, its mutation self-test, and the full ship gate.
 - For dependency, service image, runtime package, or security-exception changes, run `python3 scripts/security/audit_python_dependencies.py` and `python3 scripts/security/audit_vulnerability_waivers.py` before the full gate.
 - For content or navigation changes, run `python3 scripts/skills/skill_consistency.py`, `python3 scripts/validation/validate_layout.py --quiet`, and `python3 scripts/validation/validate_bundle.py --no-write --scope ship`.
 - For page title, navigation, or deploy-path changes, run `BUILD_PAGES_LANGS=0 scripts/build/build_pages.sh` before calling the MR ready.
 - For Studio, runnable-cell, browser-runtime, or OpenClaw changes, also run the browser/runtime harness named in `AGENT_QUICKSTART.md` and the relevant `scripts/validation/*_audit.py` file.
+- For learner-facing code or lab-flow changes, run `learner_flow_audit.py`, its mutation self-test, and `learner_flow_runtime_audit.py` against source and built Pages output. A closure claim needs evidence for disclosure, prerequisite readiness, Run/Stop/Reset, error recovery, and viewport stability; a screenshot of one happy state is insufficient.
 - For branch staging, require a passing blocking `test` job, confirm the Pages job SHA matches the live branch head, and probe the deployed course plus both branch manifests. Only paths present in the current classic-Pages artifact may appear in the foyer selector.
 - For a stateful browser bug, test the whole lifecycle: enter the state, leave it through a successful sibling result, leave it through an error, remount the component, then reload or navigate. Run that matrix against both source and built Pages output.
 - Pair lifecycle gates. A cheap static validator should catch missing selectors, cleanup calls, and CSS contracts; a real browser workflow must prove computed visibility and persisted-state behavior. Neither gate substitutes for the other.

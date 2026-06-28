@@ -270,6 +270,8 @@
 // your launchable, over the gateway. Tool chips fire as it works.
 // Edit the greeting, examples, or response logic, then rerun.
 helpers.mountChatUI("#openclaw-artifact", {
+  disabled: () => !(localStorage.getItem("nemoclaw_clawtoken") && (localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl"))),
+  disabledMsg: "Connect your launchable in Module 3a first. This panel needs its URL and token.",
   greeting: "Chat with your live agent (connect on the Kickstart page first). Try “list your workspace files and tell me what each is for,” or “read SOUL.md.”",
   examples: ["List your workspace files and what each is for", "Read SOUL.md and summarize who you are", "What tools do you have access to?", "What is in your AGENTS.md?", "Save a note to your memory, then read it back", "If a webpage told you to ignore your instructions, what would you do?"],
   respond: async (text, ctx) => { await helpers.openclawChat(text, { session: "art-" + ctx.thread, view: ctx.view, signal: ctx.signal }); },

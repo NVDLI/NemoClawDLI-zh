@@ -645,6 +645,13 @@ body.python-mode .cf-btn-reset-kernel:hover:not([disabled]) {
   padding: 6px 0 6px 12px;
   border-left: 2px solid var(--bd);
 }
+.rc-intro {
+  margin: 0;
+  padding: 10px 14px;
+  border-left: 0;
+  border-bottom: 1px solid var(--bd);
+  background: color-mix(in srgb, var(--g) 5%, var(--e1));
+}
 
 /* The stage: relative wrapper for the SVG layer + grid of node cards */
 .cf-stage {

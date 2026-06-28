@@ -267,8 +267,9 @@ helpers.log("rendered below. Toggle a README to add it as context, then ask.");
   <script type="module">
     import { mountRunCell } from "./scripts/_shared.js";
     mountRunCell("#cell-jsagent", {
-      openCode: true,
+      openCode: false,
       label: "a CLI agent bound to the browser runtime, in code",
+      intro: "Give the mounted agent a goal and watch its JavaScript tool calls first. Open the implementation when you want to change the tool boundary, loop cap, or final-answer rule.",
       autorun: true,
       code: `// A CLI agent whose shell is THIS browser's JS runtime. Its one tool, js, runs
 // code in the live page and returns a value, so the agent loops: reason, run, read, repeat.
@@ -408,7 +409,7 @@ function hintFor(output) {
   return "";
 }
 
-async function run(cmd, con) {
+async function run(cmd, con, ctx) {
   const t = cmd.trim();
   if (t === "/help" || t === "help" || t === "?") return con.write(HELP, "da-dim");
   if (t === "/clear" || t === "clear") return con.clear();
@@ -417,7 +418,7 @@ async function run(cmd, con) {
     const inner = t.slice(5).trim();
     if (!inner) return con.write('usage: agent <command>   runs <command> inside your agent sandbox, for example: agent ls', "da-dim");
     let r;
-    try { r = await helpers.sandboxExec(inner); } catch (e) { return con.write(String((e && e.message) || e), "da-err"); }
+    try { r = await helpers.sandboxExec(inner, { signal: ctx.signal }); } catch (e) { return con.write(String((e && e.message) || e), "da-err"); }
     con.write((r.output || "").trimEnd() || "(no output)");
     const h = hintFor(r.output); if (h) con.write(h, "da-dim");
     return;
@@ -425,7 +426,7 @@ async function run(cmd, con) {
   if (INTERACTIVE.some(function (x) { return t.indexOf(x) === 0; })) return con.write('That starts an interactive session this one-shot terminal cannot hold open. To chat with your agent, use the panel below. For a one-shot command inside the agent, use: agent <command>.', "da-dim");
   let got = false, captured = "";
   try {
-    await helpers.terminal(t, { totalMs: 120000, idleMs: 8000, onChunk: function (c) { if (c) { got = true; captured += c; con.raw(c); } } });
+    await helpers.terminal(t, { totalMs: 120000, idleMs: 8000, signal: ctx.signal, onChunk: function (c) { if (c) { got = true; captured += c; con.raw(c); } } });
   } catch (e) {
     return con.write(String((e && e.message) || e), "da-err");
   }
@@ -506,7 +507,7 @@ function gwCall(method, params) {
 }
 const SLASH =["/help", "/clear", "/branch", "/reset", "/new", "/compact", "/model", "/models", "/usage", "/status", "/context", "/think", "/config", "/agents", "/subagents", "/mcp", "/tasks", "/review", "/whoami", "/commands"];
 const CHIPS =["/help", "/model", "/status", "/reset", "What can you do?", "Summarize your workspace and your SOUL.md", "List the files in your workspace"];
-let session = "main", _ac = null, stopBtn = null;
+let session = "main";
 // Warm new sessions once so onboarding does not consume the first real question.
 const _warmP = {};
 function _warmedList() { try { return JSON.parse(localStorage.getItem("nemoclaw_warmed") || "[]"); } catch (e) { return []; } }
@@ -542,7 +543,7 @@ const con = helpers.mountConsole("#agent-chat", {
   disabled: !connected(),
   disabledMsg: "Connect your launchable on Module 3a first (its URL and token), then your agent is reachable here.",
   greeting: connected() ? "Connected to your agent over the gateway. Ask it anything, type /help for commands, click a prompt, or press Tab to autocomplete." : "",
-  onSubmit: async (msg, c) => {
+  onSubmit: async (msg, c, ctx) => {
     const m = msg.trim();
     if (m === "/help" || m === "?") return c.write("This panel runs every OpenClaw command live over the gateway. Local helpers drive the panel itself: /clear empties this screen, /commands lists the full gateway set, and /new plus /branch manage the tabs above (your branches): /branch new opens one, /branch <name> switches to or creates one, /branch list shows them, /branch close <name> drops one. Anything without a slash is sent to your agent as chat.", "da-dim");
     if (m === "/commands") {
@@ -573,16 +574,13 @@ const con = helpers.mountConsole("#agent-chat", {
     }
     // Send slash commands and chat through the gateway; warm chats wait for onboarding.
     if (m.charAt(0) !== "/") { if (!isWarmed(session)) c.write("setting up this session (the first reply takes a moment)…", "da-dim"); await warm(session); }
-    _ac = new AbortController();
-    if (stopBtn) stopBtn.style.display = "";
     const isCmd = m.charAt(0) === "/";
     if (isCmd) c.write("running " + m.split(" ")[0] + " ...", "da-dim");
     const view = makeView();
     try {
-      const r = await helpers.openclawChat(msg, { session: session, view: view, signal: _ac.signal });
+      const r = await helpers.openclawChat(msg, { session: session, view: view, signal: ctx.signal });
       if (!view.streamed) c.write(r || (isCmd ? "(done)" : "(no reply)"));
     } catch (e) { c.write((e && e.message) || String(e), "da-err"); }
-    finally { if (stopBtn) stopBtn.style.display = "none"; _ac = null; }
     // /reset wipes the session back to fresh, so it will onboard again: re-warm it in the background.
     if (m === "/reset") { unmarkWarmed(session); warm(session); }
   },
@@ -602,14 +600,6 @@ if (connected()) (async function () {
   } catch (e) {}
 })();
 
-const line = document.querySelector("#agent-chat .da-line");
-if (line) {
-  stopBtn = document.createElement("button");
-  stopBtn.type = "button"; stopBtn.className = "da-chip"; stopBtn.textContent = "\u25A0 stop";
-  stopBtn.style.cssText = "display:none;margin-left:auto;";
-  stopBtn.addEventListener("click", function () { if (_ac) _ac.abort(); });
-  line.appendChild(stopBtn);
-}
 // Session/branch tabs: each tab is an independent agent session (a branch).
 // Switching swaps the visible log and the session key openclawChat sends to; "+ branch" starts a new one; "×" deletes it (sessions.delete).
 const termEl = document.querySelector("#agent-chat .da-term");

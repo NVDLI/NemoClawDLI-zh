@@ -368,7 +368,7 @@ export function mountCanvasFlow(targetSel, opts) {
       </svg>
       <div class="cf-canvas" style="min-height:${minHeight}px;grid-template-columns:repeat(${cols},minmax(170px,1fr));grid-template-rows:repeat(${rows},auto);"></div>
     </div>
-    <div class="cf-status-bar"></div>
+    <div class="cf-status-bar" role="status" aria-live="polite" aria-atomic="true"></div>
     <div class="cf-panels"></div>
   `;
   target.appendChild(wrap);
@@ -686,13 +686,13 @@ helpers.viz.sideBySide(
       if (running) { stopRun(); return; }   // a run is in flight: this click stops it
       // Run this one node under the shared cancellation.
       // The Run-all button flips to "⏹ Stop" so it can abort even a single-node run.
-      beginRun();
-      try { await runNode(node.id); } catch (_) {} finally { endRun(); }
+      const epoch = beginRun();
+      try { await runNode(node.id); } catch (_) {} finally { if (epoch === runEpoch) endRun(); }
     });
 
     panel.querySelector(".cf-panel-reset").addEventListener("click", (e) => {
       e.stopPropagation();
-      if (running) stopRun();
+      if (running) { runEpoch++; stopRun(); endRun(); }
       resetNode(node.id);
     });
 
@@ -907,12 +907,14 @@ helpers.viz.sideBySide(
 
   // Cancellation: one AbortController per run.
   // While running, the Run-all button shows "⏹ Stop"; clicking it aborts in-flight helpers (chat, chatStream, terminal all honour the signal) and closes any gateway/terminal socket the cell parked on state._ws.
-  let runAC = null, running = false;
+  let runAC = null, running = false, runEpoch = 0;
   const _runBtn = () => wrap.querySelector(".cf-btn-run");
   function beginRun() {
+    runEpoch++;
     running = true; runAC = new AbortController();
     const b = _runBtn();
     if (b) { b.textContent = "⏹ Stop"; b.disabled = false; b.style.background = "var(--err)"; b.style.color = "#fff"; }
+    return runEpoch;
   }
   function endRun() {
     running = false; runAC = null;
@@ -929,10 +931,12 @@ helpers.viz.sideBySide(
   async function runNode(nodeId) {
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
+    const epoch = runEpoch;
     const s = ns[nodeId];
     const panel = panelsHost.querySelector(`.cf-panel[data-id="${nodeId}"]`);
     // Lab-only steps can't run outside the lab; explain instead of failing.
     const _cfg = await getConfig();
+    if (epoch !== runEpoch) return;
     if (_cfg.mode !== "proxy" && _stepLabOnly(node)) { _labReachable = false; _labOnlyNotice(node, panel); return; }
     setStatus(nodeId, "running");
     flowEdgesInto(nodeId, true);
@@ -1106,6 +1110,7 @@ helpers.viz.sideBySide(
         }
       }
       const result = await fn(shared, helpers, helpers, cellConsole);
+      if (epoch !== runEpoch) return;
       s.output = result;
 
       // Render the return value, de-duplicated against the stream view: when the return is a string already most of what streamed, the redundant pre is omitted (no "same content shown twice" after a cell streams a reply then returns it).
@@ -1153,6 +1158,7 @@ helpers.viz.sideBySide(
         metaEl.className = "cf-det-meta ok";
       }
     } catch (e) {
+      if (epoch !== runEpoch) return;
       // A Stop press aborts the run; show it as stopped, not a red code error.
       if (runAC && runAC.signal.aborted) {
         setStatus(nodeId, "idle");
@@ -1208,7 +1214,7 @@ helpers.viz.sideBySide(
 
   wrap.querySelector(".cf-btn-run").addEventListener("click", async () => {
     if (running) { stopRun(); return; }   // the button is "⏹ Stop" mid-run
-    beginRun();
+    const epoch = beginRun();
     statusBar.textContent = ""; statusBar.className = "cf-status-bar";
     for (const n of nodes) setStatus(n.id, "idle");
     for (const k of Object.keys(shared)) delete shared[k];
@@ -1218,6 +1224,7 @@ helpers.viz.sideBySide(
       for (const node of nodes) {
         if (runAC.signal.aborted) break;
         await runNode(node.id);
+        if (epoch !== runEpoch) return;
         ran++;
       }
       if (runAC && runAC.signal.aborted) {
@@ -1228,6 +1235,7 @@ helpers.viz.sideBySide(
         statusBar.className = "cf-status-bar ok";
       }
     } catch (e) {
+      if (epoch !== runEpoch) return;
       if (runAC && runAC.signal.aborted) {
         statusBar.textContent = "⏹ stopped after " + ran + " of " + nodes.length + " nodes";
         statusBar.className = "cf-status-bar";
@@ -1236,11 +1244,12 @@ helpers.viz.sideBySide(
         statusBar.className = "cf-status-bar err";
       }
     } finally {
-      endRun();
+      if (epoch === runEpoch) endRun();
     }
   });
 
   wrap.querySelector(".cf-btn-reset").addEventListener("click", () => {
+    if (running) { runEpoch++; stopRun(); endRun(); }
     for (const node of nodes) {
       ns[node.id].code = node.code || "";
       if (ns[node.id].cm) ns[node.id].cm.setValue(node.code || "");
@@ -1459,6 +1468,7 @@ export function mountRunCell(targetSel, opts) {
         ${_cellBtnHTML("reset", "↺ Reset", "rc-reset", "Restore this cell's original code and clear its output")}
         ${_cellBtnHTML("run", runLabel(), "rc-run", "Run this cell")}
       </div>
+      ${opts.intro ? `<div class="cf-intro rc-intro">${escapeHtml(opts.intro)}</div>` : ""}
       ${_rcHelpersHTML}
       ${showSchemas ? `<details class="rc-schemas-det cell-schema-det"><summary><span class="cf-det-chip cf-det-chip-alt">schemas</span><span class="cf-det-sig">JSON · editable</span></summary><div class="rc-schemas"></div></details>` : ""}
       <details class="rc-code-det"${codeOpenAttr}>
@@ -1468,7 +1478,7 @@ export function mountRunCell(targetSel, opts) {
           <textarea class="rc-code" spellcheck="false"></textarea>
         </div>
       </details>
-      <div class="rc-out cell-output-panel">empty until you Run</div>
+      <div class="rc-out cell-output-panel" role="status" aria-live="polite" aria-atomic="true">empty until you Run</div>
     </div>`;
   // Wire the helpers tab: "show all" toggle + click-a-row-to-read-its-source (read-only, highlighted).
   const _rcHelpers = target.querySelector(".rc-helpers .cf-helpers-table");
@@ -1586,6 +1596,7 @@ export function mountRunCell(targetSel, opts) {
   const copyBtn = target.querySelector(".rc-code-copy");
   const codeDet = target.querySelector(".rc-code-det");
   const schemaDet = target.querySelector(".rc-schemas-det");
+  let runEpoch = 0;
   if (codeDet) codeDet.addEventListener("toggle", () => {
     if (codeDet.open && cm) setTimeout(() => cm.refresh(), 30);
   });
@@ -1606,6 +1617,7 @@ export function mountRunCell(targetSel, opts) {
     }
   });
   function resetCell() {
+    runEpoch++;
     const live = _runCellAborts.get(cellId);
     if (live) live.abort();
     jsBuffer = code;
@@ -1629,6 +1641,7 @@ export function mountRunCell(targetSel, opts) {
   async function run() {
     if (_runCellAborts.get(cellId)) { _runCellAborts.get(cellId).abort(); }
     const ac = new AbortController();
+    const epoch = ++runEpoch;
     _runCellAborts.set(cellId, ac);
     btn.textContent = "⏹ Stop";
     btn.onclick = () => ac.abort();
@@ -1696,7 +1709,11 @@ export function mountRunCell(targetSel, opts) {
         }
       }
     } catch (e) {
-      if (!ac.signal.aborted) {
+      if (epoch !== runEpoch) {
+        return;
+      } else if (ac.signal.aborted) {
+        _emptyState("⏹ stopped");
+      } else {
         const err = document.createElement("div");
         err.style.cssText = "padding:10px 14px;color:var(--err);font-family:ui-monospace,monospace;font-size:.82rem;white-space:pre-wrap;";
         err.textContent = "✗ " + (e.name || "Error") + ": " + e.message;
@@ -1704,8 +1721,8 @@ export function mountRunCell(targetSel, opts) {
         // Mark the failing line in the editor and show a Debug-info panel (code snippet plus filtered stack), mirroring the canvas-cell behaviour.
         const _ep = _parseErrLine(e);
         const _rcCode = cm ? cm.getValue() : ta.value;
+        if (codeDet && !codeDet.open) codeDet.open = true;
         if (_ep !== null && cm) {
-          if (codeDet && !codeDet.open) codeDet.open = true;
           _clearCMErrs(cm); _markCMErr(cm, _ep);
           setTimeout(() => { try { cm.refresh(); cm.scrollIntoView({ line: _ep.cmLine, ch: 0 }, 100); } catch (_) {} }, 60);
         }
@@ -1714,9 +1731,11 @@ export function mountRunCell(targetSel, opts) {
         out.appendChild(dbg);
       }
     } finally {
-      _runCellAborts.delete(cellId);
-      btn.textContent = runLabel();
-      btn.onclick = run;
+      if (_runCellAborts.get(cellId) === ac) _runCellAborts.delete(cellId);
+      if (epoch === runEpoch) {
+        btn.textContent = runLabel();
+        btn.onclick = run;
+      }
     }
   }
   btn.onclick = run;
