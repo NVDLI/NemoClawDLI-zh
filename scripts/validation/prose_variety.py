@@ -81,6 +81,11 @@ _CARDS = (
     re.compile(r'<div\b[^>]*\bclass="[^"]*\bstep-card\b[^"]*"[^>]*>.*?</div>', re.I | re.S),
 )
 _PARA = re.compile(r"<p\b[^>]*>(.*?)</p>", re.I | re.S)   # narrative flow only; list items are enumerative by nature
+# The course contract owns this verbatim canonical copy. Exclude it from style advice: a validator
+# must not flag prose that authors are forbidden to rewrite. Content and presence remain release-gated
+# by course_content_contract.py.
+_IMMUTABLE_CANON = re.compile(
+    r'<p\b[^>]*\bid=["\']course-abstract["\'][^>]*>.*?</p>', re.I | re.S)
 # Teaching prose also lives OUTSIDE <p>: a <div class="callout"> (or note/lead/takeaway, and the
 # warn/info variants) wraps a <strong> lead-in and running sentences with no inner <p>. These were
 # never measured, which is how a buzzy callout passed the check. Scan them like paragraphs; the
@@ -107,16 +112,26 @@ _NEGPAR = re.compile(
 # construction below, and the sweep surfaces the exact sentence so a human judges
 # it instead of trusting a number. These are the tells the old score was blind to.
 _PAR_COPULA = re.compile(r"\b(?:is|are|was|were)\b[^;.?!]{1,45};\s+[^;.?!]{1,45}\b(?:is|are|was|were)\b", re.I)
+_COUNTED_NOUN = r"[\w-]+(?:\s+[\w-]+){0,2}"
 _NUM_ANTI = re.compile(
-    r"\b(?:one|a single)\b\s+[\w-]+,\s+(?:many|all|every|no|none|countless|swappable|infinite|any|each)\b"
-    # "same/one/both/each X, two/three/many Y" — the counted-parallel punch ("Same primitives, two levels")
-    r"|\b(?:same|one|a single|both|each|every)\s+[\w-]+,\s+(?:two|three|four|five|six|seven|eight|nine|ten|\d+|many|all|both|one|no|none|every)\b"
-    r"|\b(?:two|three|four|five|six|seven|eight|nine|ten|\d+)\s+[\w-]+s?,\s+(?:one|two|three|four|five|six|\d+|many|all|every|both|no|none)\b", re.I)
+    rf"\b(?:one(?!\s+of\b)|a single)\b\s+{_COUNTED_NOUN},\s+(?:many|all|every|no|none|countless|swappable|infinite|any|each)\s+{_COUNTED_NOUN}\b"
+    # Counted punches often use multiword noun phrases ("One workflow idea, two implementations"
+    # and "Five agents, one application layer"). The old one-word left side missed the first form.
+    rf"|\b(?:same|one|a single|both|each|every)\s+{_COUNTED_NOUN},\s+(?:two|three|four|five|six|seven|eight|nine|ten|\d+|many|all|both|one|no|none|every)\s+{_COUNTED_NOUN}\b"
+    rf"|\b(?:two|three|four|five|six|seven|eight|nine|ten|\d+)\s+{_COUNTED_NOUN},\s+(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+|many)\s+{_COUNTED_NOUN}\b",
+    re.I,
+)
+_REPEATED_COUNT = re.compile(
+    rf"\b(?P<count>one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+{_COUNTED_NOUN},\s+"
+    rf"(?P=count)\s+{_COUNTED_NOUN},\s+(?P=count)\s+{_COUNTED_NOUN}\b",
+    re.I,
+)
 _ONE_PUNCH = re.compile(r"(?:^|[.!?]\s+)(?:One|A single)\s+[\w-]+\.(?:\s|$)")
 _SAME_X = re.compile(r"\bthe\s+[\w-]+\s+that\s+(?:makes|made|lets|gives|drives|enables|powers)\s+[^.;,]{2,45}?\s+is\s+(?:also\s+)?", re.I)
 _NEG_SPLIT = re.compile(r"\bis not\b[^.?!:;]{2,50}[:;,.?!]\s+[Ii]t(?:'s| is)\b", re.I)  # "is not X: it is Y" reveal (colon/comma/period)
 _TWO_DIFF = re.compile(r"\b(?:are|is)\s+two\s+different\b", re.I)
 _ANTI_PATS = [("parallel-copula", _PAR_COPULA), ("numeric-antithesis", _NUM_ANTI),
+              ("repeated-count-list", _REPEATED_COUNT),
               ("one-word-punch", _ONE_PUNCH), ("same-X-reversal", _SAME_X),
               ("not-X-it-is-Y", _NEG_SPLIT), ("two-different", _TWO_DIFF)]
 
@@ -283,6 +298,34 @@ def antithesis_hits(prose) -> list:
     return out
 
 
+def pattern_contract() -> list[str]:
+    """Return detector misses that would reopen known numeric-cadence gaps."""
+    cases = {
+        "One workflow idea, two implementations": "numeric-antithesis",
+        "Four stages, one research result": "numeric-antithesis",
+        "4 workers, 4 contexts": "numeric-antithesis",
+        "One model call, one deterministic step, one specialist loop": "repeated-count-list",
+    }
+    misses = []
+    for text, expected in cases.items():
+        kinds = {kind for kind, _ in antithesis_hits(text)}
+        if expected not in kinds:
+            misses.append(f"{expected}: {text}")
+    controls = (
+        "Every exercise reaches one of three self-contained systems, all from the browser.",
+    )
+    for text in controls:
+        kinds = {kind for kind, _ in antithesis_hits(text)}
+        noisy = kinds & {"numeric-antithesis", "repeated-count-list"}
+        if noisy:
+            misses.append(f"false positive {sorted(noisy)}: {text}")
+    canonical = '<p class="lead" id="course-abstract">locked copy</p><p>editable copy</p>'
+    canonical_clean = _IMMUTABLE_CANON.sub(" ", canonical)
+    if "locked copy" in canonical_clean or "editable copy" not in canonical_clean:
+        misses.append("immutable course abstract exclusion")
+    return misses
+
+
 def grammar_hits(prose) -> list:
     """(rule, sentence) for each plain grammar/composition mistake, the kind a teacher marks in red.
     These catch prose that was patched to clear a metric rather than rewritten, so each trigger is a
@@ -350,6 +393,7 @@ def narrative(f: Path) -> list:
     body = lp._strip_noncontent(raw, suf)
     if suf in (".html", ".htm"):
         body = _SVG.sub(" ", body)
+        body = _IMMUTABLE_CANON.sub(" ", body)
         for _c in _CARDS:             # drop reference/navigation tile captions (not narrative flow)
             body = _c.sub(" ", body)
         raw_chunks = [_TAG.sub(" ", m.group(1)) for m in _PARA.finditer(body)]
@@ -1302,6 +1346,9 @@ def sweep(scope: str = "ship"):
     """Score every authored narrative page and rank worst-first, so a human can see at a glance which
     pages read machine-uniform and deserve a rhythm pass. This is the page-level driver the gate and
     the table both consume; a page at or above FLAG_AT is marked, but nothing here blocks (advisory)."""
+    misses = pattern_contract()
+    if misses:
+        raise RuntimeError("prose detector regression: " + "; ".join(misses))
     rows = []
     for f, rel in _pages(scope):
         try:

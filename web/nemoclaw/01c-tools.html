@@ -39,25 +39,21 @@
     <p class="lead">
       In Module 1b you wired a single tool into the agent loop: the model requested a named
       function, your harness ran it, and the result went back into the next model call. That
-      round-trip does not change here. The number of tools grows, though, and routing reliably
-      gets harder with every one you add.
+      round-trip does not change here. What changes is the tool surface: the model must choose
+      among more descriptions, and each tool may hide a larger capability.
     </p>
     <p>
-      One well-described tool is easy for the model to route to. A flat list of dozens crowds the context
-      and nudges the model toward the wrong call, or toward no call at all.
+      The page follows that contract from local functions to a search backend, a sub-agent,
+      and finally a Model Context Protocol (MCP) server. These are different ways to supply
+      capabilities to the same loop. A long flat tool list also consumes context and can make
+      routing less reliable, which motivates the scoped workflows in Module 2.
     </p>
-    <ul>
-      <li>It scales the loop from one tool to many, where the model has to route.</li>
-      <li>It calls a real search endpoint and hides a sub-agent behind a single tool.</li>
-      <li>It ends with <a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">Model Context Protocol (MCP)</a>, one standard way to discover and call tools from a separate server.</li>
-    </ul>
   </div>
 
-  <h2>Every tool is the same round-trip</h2>
+  <h2>The tool-call contract stays fixed</h2>
   <p>
-    Whatever sits behind it, a tool runs the same four-step cycle you built in 1b, drawn below. Everything
-    this page adds (multi-tool routing, real search backends, agents-as-tools, MCP) is that one cycle with
-    a different source of schemas.
+    The figure traces the cycle from 1b. Later sections change where the schema comes from and
+    what the executor does, while the model still requests a named tool and reads its result.
   </p>
 
   <figure style="margin:1.4em 0">
@@ -67,9 +63,9 @@
 
   <div class="callout">
     <strong>The server enforces the schema.</strong> Before structured
-    function calling, you prompted the model to emit calls as custom XML or hand-rolled JSON, which broke
-    the moment it paraphrased. Now the contract lives in a first-class API field. The serving engine
-    constrains generation to the schema's grammar and delivers a consistent
+    function calling, applications often parsed custom XML or hand-written JSON from model text.
+    A paraphrase could break that parser. The tools field carries the contract separately, so the
+    serving engine can constrain arguments to the schema and return a consistent
     <code>tool_calls</code> field. Your dispatch code can then count on <code>tc.function.name</code> and
     <code>tc.function.arguments</code> being present and parseable.
   </div>
@@ -91,15 +87,11 @@
 
   <h2>Wiring <code>glossary_search</code> to a real tool</h2>
   <p>
-    The cell below wires <code>glossary_search</code> to the in-page MCP
-    server defined at the top of this page. That server is a catalog of NVIDIA terms with a
-    ranked search over it that runs entirely in the browser with no key and no backend,
-    returning short definitions with source links that are enough for the agent to ground its
-    reply. The catalog is wired in by hand so the whole server stays readable in one place, and
-    the course's shared <code>web_search</code> runs that same ranked query against the full NVIDIA
-    glossary index shipped with the bundle. The <a href="glossary.html">glossary explorer</a>
-    opens that real index: every term, the live <code>webSearch</code> and <code>instantAnswer</code>
-    source, and a box to run the exact query the agents call in the modules ahead.
+    The cell wires <code>glossary_search</code> to an in-page catalog of NVIDIA terms.
+    Ranked search runs in the browser without a key and returns short definitions with source
+    links. The course's shared <code>web_search</code> applies the same ranking to the full catalog.
+    Open the <a href="glossary.html">glossary explorer</a> to inspect every term, read the live
+    <code>webSearch</code> and <code>instantAnswer</code> source, or run the query yourself.
   </p>
   <p>
     The next section swaps the executor to an exact term lookup behind the <em>same</em>
@@ -111,12 +103,8 @@
     <strong>A tool name should describe a capability.</strong>
     A tool called <code>nvidia_glossary_api</code> is brittle: changing the backend
     forces you to update every prompt that references the name. A tool called
-    <code>glossary_search</code> is durable. Its name describes what the caller
-    wants done, leaving the API that fulfils the request free to change. Behind that name you can run the
-    ranked search on this page, the exact lookup in the next section, or a richer index
-    added later. The schema, the description, and every agent prompt stay untouched.
-    Any tool that wraps an external service earns the same durability when you name it
-    for the capability callers depend on.
+    <code>glossary_search</code> describes what the caller needs. Ranked search, exact lookup,
+    or a richer index can sit behind that contract without changing the agent prompt.
   </div>
 
   <div id="cell-m2b-p4"></div>
@@ -141,10 +129,9 @@
   <h2>Hiding a whole agent behind a single tool</h2>
   <p>
     A tool need not be a small function. An entire sub-agent can sit behind a single
-    tool call. To the calling model it still looks like one tool, even though the agent
-    on the other side may be answering questions about a SQL database, running code in a
-    Python environment, or searching through a repository. Wrapping that capability as one
-    tool is easier for the main loop to work with than wiring the whole sub-agent into it directly.
+    tool call. The calling model still sees one contract. The agent behind it may query a
+    database, run code, or search a repository without exposing those internal tools to the
+    main loop.
   </p>
   <p>
     The cell below exposes a sub-agent that knows a small customer table
@@ -176,12 +163,17 @@
 
   <div class="callout">
     <strong>Discovery is a trust boundary.</strong>
-    A <code>tools/list</code> response is input from another system, not permission to use every tool it names.
-    Before connecting an agent to a new MCP server, identify the server, show the user the requested capabilities,
-    grant the smallest useful scope, and keep credentials audience-bound to that server. For remote connection and
-    OAuth-discovery paths, reject private and link-local destinations and validate every redirect. The
+    Treat a <code>tools/list</code> response as untrusted input. Before connecting the server:
+    <ul>
+      <li>verify its identity,</li>
+      <li>show the requested capabilities to the user,</li>
+      <li>grant the smallest useful scope,</li>
+      <li>and bind each credential to that server's audience.</li>
+    </ul>
+    For remote connection and
+    OAuth discovery, reject private and link-local destinations and validate every redirect. The
     <a href="https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices" target="_blank" rel="noopener">MCP security guidance</a>
-    treats consent, token handling, and SSRF controls as part of the client, not optional server details.
+    assigns consent, token handling, and server-side request forgery (SSRF) controls to the client.
   </div>
 
   <div class="fig-embed" data-svg-src="assets/figures/01c-tools-2.svg" style="aspect-ratio:720 / 320"></div>
@@ -195,6 +187,12 @@
   </p>
 
   <div id="cell-m2b-p6"></div>
+
+  <p>
+    Module 2 keeps this tool contract and changes the outer structure. A workflow can route
+    calls through a fixed pipeline, fan work into branches, or delegate a focused task to
+    another loop without exposing every internal tool to the caller.
+  </p>
 
   <h2>Before you continue</h2>
   <ol>
@@ -565,7 +563,7 @@ return { name: state.SEARCH_SCHEMA[0].function.name };
     },
     {
       id: "llm1", icon: "🧠", title: "LLM call #1", x: 1, y: 1,
-      summary: "The first model call. This is a factual question the model should ground rather than recall, so we REQUIRE a glossary_search call here (tool_choice) to see the full round-trip. Letting the model decide for itself is the routing lesson above (and what the createReactAgent artifact does); here the model just fills in the search query.",
+      summary: "Force glossary_search so the complete tool round-trip stays visible. The model supplies the search query; autonomous tool routing is the lesson above and the behavior of the final artifact.",
       code: `// Send the prepared messages and stream the model response.
 state.messages = [
   { role: "system", content: "You are a research assistant. Ground answers in glossary_search results; never answer factual questions from memory." },
@@ -640,7 +638,7 @@ return answer || "(the model did not produce a final answer; try Run again)";
 // ── the same glossary_search tool, swapped to exact lookup ─
 mountRunCell("#cell-m2b-p4b", {
   label: "the same glossary_search tool, swapped to a full-article backend",
-  intro: "Same glossary_search, same loop, but a richer backend: instead of a one-line blurb, it returns the term's whole NVIDIA glossary article. The model asks with a natural query and the backend fetches the full cached page. Edit the question and rerun (the 'deep' terms with a full article cached include vector database, RAG, LLMs, AI agents, and deep agents).",
+  intro: "Keep the glossary_search contract and swap in a richer backend that returns the best term's cached article. Edit the question and rerun; full articles include vector database, RAG, LLMs, AI agents, and deep agents.",
   code: `// Same glossary_search the model already knows, but a richer backend behind it: instead of a
 // one-line blurb, it returns the term's full NVIDIA glossary article (mats/glossary_raw/<slug>.md).
 const SEARCH_SCHEMA = [{
@@ -821,7 +819,7 @@ mountCanvasFlow("#cell-m2b-p6", {
   nodes: [
     {
       id: "server", icon: "🖥", title: "In-page MCP server", x: 0, y: 0,
-      summary: "Points at the same glossary MCP server defined at the top of this page. It exposes the two standard endpoints (tools/list for discovery and tools/call for execution) in the same JSON-RPC-style shape as the real protocol. In production these calls travel over stdio or HTTP transport rather than running in the same JavaScript process.",
+      summary: "Define an in-page server with tools/list and tools/call in MCP's JSON-RPC shape. A deployed MCP server carries those calls over stdio or HTTP instead of the same JavaScript process.",
       code: `// The same in-page glossary server the search cell called directly, now reached through
 // Discover tools through MCP instead of hard-coding direct calls.
 state.mcpServer = window.glossaryMCP;

@@ -70,8 +70,10 @@ def run(verbose: bool = True) -> list[tuple[str, str]]:
             findings.append(("web/nemoclaw/03c-always-on.html", f"automation lesson must not present isolated cron as universal behavior: {stale}"))
     if not _has_all(p04b, ("raw.githubusercontent.com/openclaw/openclaw/main/README.md", "raw.githubusercontent.com/NousResearch/hermes-agent/main/README.md")):
         findings.append(("web/nemoclaw/04b-modern-clis.html", "CLI comparison must ground OpenClaw and Hermes descriptions in their current public repositories"))
-    if not _has_all(p04c, ("NemoClaw is alpha", "4 vCPU", "GPU is optional", "docs.nvidia.com/nemoclaw/latest/get-started/prerequisites")):
-        findings.append(("web/nemoclaw/04c-going-further.html", "deployment guidance must distinguish the general CPU baseline from optional GPU paths and carry the alpha caveat"))
+    if not _has_all(p04c, ("4 vCPU", "GPU is optional", "requirements and interfaces evolve", "docs.nvidia.com/nemoclaw/latest/get-started/prerequisites")):
+        findings.append(("web/nemoclaw/04c-going-further.html", "deployment guidance must distinguish the general CPU baseline from optional GPU paths and direct learners to version-sensitive requirements"))
+    if not _has_all(p04c, ("14729249-use-live-artifacts-in-claude-cowork", "12515353-build-with-the-apps-sdk", "Transfer the interface contract, then adapt the environment", "cross-origin access")):
+        findings.append(("web/nemoclaw/04c-going-further.html", "transferability guidance must ground current web-artifact examples and distinguish portable interface code from host-specific authority"))
     if not _has_all(mat_stack, ("alpha", "early preview", "Linux", "macOS", "WSL2", "DGX Spark", "hosted or local inference")):
         findings.append(("web/nemoclaw/mats/nvidia_openshell_nemoclaw.md", "stack essay must preserve current availability, platform, and inference qualifiers"))
     if "NemoClaw targets NVIDIA DGX Spark" in mat_stack:
@@ -83,7 +85,7 @@ def run(verbose: bool = True) -> list[tuple[str, str]]:
         findings.append(("web/nemoclaw/04a-safety.html", "missing real lethal trifecta figure"))
     if not _has_all(p04a, ("Untrusted input", "private data", "external communication", "full-duplex")):
         findings.append(("web/nemoclaw/04a-safety.html", "lethal trifecta prose must define all three terms and the full-duplex risk"))
-    if "Four mechanisms, four concrete questions" not in p04a or not _has_all(p04a, ("compatibility mode", "OverlayFS", "handles opened before restriction")):
+    if "How the sandbox mechanisms answer testable questions" not in p04a or not _has_all(p04a, ("compatibility mode", "OverlayFS", "handles opened before restriction")):
         findings.append(("web/nemoclaw/04a-safety.html", "filesystem lesson must qualify Landlock guarantees with compatibility, OverlayFS, and pre-opened-handle limits"))
     if not _has_all(p04a, ("does not prove escalation is impossible",)):
         findings.append(("web/nemoclaw/04a-safety.html", "non-root lesson must describe reduced blast radius without promising impossible escalation"))

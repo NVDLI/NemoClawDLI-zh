@@ -48,11 +48,12 @@
       Index Agent fails silently in production.
     </p>
     <p class="lead">
-      The Index Agent brings outside knowledge to a Workflow Agent, supplying a
-      corpus indexed for retrieval together with the wiring that turns retrieval
-      into a tool the model can call. The build walks the unstructured-prose case from
-      corpus to answer by embedding and indexing the corpus before retrieval is
-      wrapped as a tool. The other three shapes get a pointer to where they go deeper.
+      The Index Agent applies that workflow idea to outside knowledge with a
+      developer-defined pipeline. It embeds and indexes a corpus ahead of time, then
+      retrieves matching passages and generates an answer from a bounded context bundle.
+      The build follows that path for unstructured prose before wrapping retrieval as a
+      tool that a surrounding ReAct loop can call. The other data shapes get pointers to
+      where they go deeper.
     </p>
   </div>
 
@@ -648,7 +649,7 @@ hljs.highlightAll();
 
 // ── M3b P1: one embedding ────────────────────────────────────────────────────
 mountCanvasFlow("#cell-m3b-p1", {
-  label: "Module 2b Part 3 · one embedding",
+  label: "Inspect one embedding",
   intro: "A single string is embedded into a high-dimensional vector (2048 floats for the default model), of which the first few dimensions are shown, where the magnitudes are the model's choice rather than yours.",
   edges: [{ from: "text", to: "embed" }],
   nodes: [
@@ -662,7 +663,7 @@ return state.text;
     },
     {
       id: "embed", icon: "🧮", title: "Embed Text", x: 0, y: 1,
-      summary: "Calls helpers.embed with input_type set to 'passage', which posts to the hosted embedding endpoint. The response is a flat array of floats: 2048 values for this model. The output shows the first 16 dimensions and the vector's magnitude. That magnitude comes back close to 1 because the model produces unit-normalized vectors, which makes cosine similarity equivalent to a plain dot product.",
+      summary: "Call the hosted embedding endpoint with input_type set to passage. Inspect the first dimensions and magnitude of its unit-normalized vector; normalization makes cosine similarity equivalent to a dot product.",
       code: `// Embed the text so similarity search can compare vectors.
 const [v] = await helpers.embed(state.text, {
   model:     "nvidia/llama-nemotron-embed-1b-v2",
@@ -682,7 +683,7 @@ return {
 
 // ── M3b P2: in-memory vector index ───────────────────────────────────────────
 mountCanvasFlow("#cell-m3b-p2", {
-  label: "Module 2b Part 4 · in-memory vector index · top-K cosine retrieval",
+  label: "Build an in-memory vector index",
   intro: "A tiny corpus is embedded once and held in memory. Each query is embedded and scored against every passage by cosine similarity, returning the top-K closest. This is the full production retrieval shape at toy scale, with every step visible.",
   edges: [
     { from: "corpus", to: "index" },
@@ -755,7 +756,7 @@ return state.topK.map(r => ({ score: r.score.toFixed(4), preview: r.text.slice(0
 
 // ── M3b P3: hierarchies (parent doc / child chunk) ───────────────────────────
 mountCanvasFlow("#cell-m3b-p3", {
-  label: "Module 2b Part 5 · hierarchies · child chunks index, parent docs answer",
+  label: "Retrieve child chunks, return parent documents",
   intro: "Three parent documents are each split into short sentence-chunks that get embedded and indexed, and a hit on any chunk returns the FULL parent document, so the precision of short chunks combines with the context of full docs.",
   edges: [
     { from: "docs",  to: "split" },
@@ -779,7 +780,7 @@ return { n_docs: state.docs.length };
     },
     {
       id: "split", icon: "✂️", title: "Split into child chunks", x: 0, y: 1,
-      summary: "Splits each parent document into individual sentences using a sentence-boundary regex. Each resulting chunk records the ID of the document it came from, so the retriever can walk back up to the parent on a hit. The split produces more chunks than documents: a document with four sentences becomes four searchable units, each focused on a narrower idea.",
+      summary: "Split each parent document into sentence chunks and retain its parent ID. The narrower units improve search precision while preserving a route back to the full document.",
       code: `// Seed the small dataset this retrieval example searches.
 state.chunks = [];
 for (const d of state.docs) {
@@ -874,7 +875,7 @@ return {
 
 // ── M3b P4: RAG agent (retrieval as a tool) ──────────────────────────────────
 mountCanvasFlow("#cell-m3b-p4", {
-  label: "Module 2b Part 6 · RAG agent · retrieve via tool + answer with context",
+  label: "Expose retrieval as an agent tool",
   intro: "A corpus is indexed once and held in memory, then the question goes to a chat call with a retrieve tool exposed. The model decides whether to retrieve; if it does, cosine similarity returns the top passages and a second call writes the answer grounded in them.",
   edges: [
     { from: "build_corpus", to: "agent" },

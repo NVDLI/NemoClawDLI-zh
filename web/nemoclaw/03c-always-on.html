@@ -55,28 +55,26 @@
     <div class="eyebrow">Module 3 · Part C of 3</div>
     <h1>The <span>Always-On</span> Agent</h1>
     <p class="lead">
-      The agent in 3b only ran when you sent it a chat completion, yet for
-      most useful agents the interesting behavior is exactly the work that
-      happens <em>without</em> being asked. OpenClaw can start a run on its own
-      through skills, heartbeats,
+      Module 3b ran the agent when you sent a message. OpenClaw can also start work
+      from skills, heartbeats,
       <a href="https://en.wikipedia.org/wiki/Cron" target="_blank" rel="noopener">cron</a>
-      jobs, and sub-agents, four mechanisms that share the same machinery and
-      differ only in how the knobs are set. The table below lays those settings
-      out, and you run the skill and the cron job here yourself.
+      jobs, and sub-agents. Each path still enters the same agent loop and OpenShell
+      sandbox; the session, directive, and trigger determine what runs. You will install
+      a skill and observe a cron-fired write.
     </p>
 
     <div class="fig-embed" data-svg-src="assets/figures/03c-always-on-1.svg" style="aspect-ratio:820 / 478"></div>
   </div>
 
-  <h2>Skills, heartbeats, cron, and sub-agents share one set of knobs</h2>
+  <h2>How triggers choose context and instructions</h2>
   <p>Every mechanism on this page is described by the same three knobs:</p>
   <ul>
     <li>The <strong>session</strong> sets whose context a run inherits.</li>
     <li>The <strong>directive</strong> is the markdown file that tells the agent what to do.</li>
     <li>The <strong>trigger</strong> decides when a run starts.</li>
   </ul>
-  <p>Each mechanism below is a different setting of these three. The course configuration
-     appears here; OpenClaw exposes additional session modes.</p>
+  <p>The table shows the course configuration. Use the same three fields to classify other
+     trigger types; OpenClaw also exposes additional session modes.</p>
 
   <table class="knobs-table">
     <thead><tr><th>Name</th><th>Session</th><th>Directive lives in</th><th>Trigger</th></tr></thead>
@@ -89,10 +87,7 @@
   </table>
 
   <div class="callout">
-    The table is worth reading for what differs across rows rather than
-    what repeats. Only three dimensions vary: session scope, directive
-    location, and trigger type. Any new mechanism you encounter is one more
-    setting of those same three knobs. OpenClaw cron can bind a job to the
+    OpenClaw cron can bind a job to the
     <a href="https://docs.openclaw.ai/cron-vs-heartbeat" target="_blank" rel="noopener">main, isolated, current, or a named session</a>.
     This course uses isolated cron runs so each demonstration starts clean. You run the skill
     and the cron job on this page. Heartbeat and the sub-agent
@@ -183,10 +178,10 @@ suggesting one, do these things in order:
     that matching feature names imply matching risk controls.
   </p>
 
-  <p>These risks are not unique to Hermes. Any harness that can write reusable instructions,
-     schedule work, and accept remote messages can persist a compromised directive beyond one
-     conversation. Module 4 separates the harness's application controls from the sandbox
-     controls that bound filesystem, process, and network access.
+  <p>Any harness that can write reusable instructions, schedule work, and accept remote
+     messages can persist a compromised directive beyond one conversation. Module 4 separates
+     those application controls from the sandbox controls that bound filesystem, process, and
+     network access.
   </p>
   <div class="callout warn">
     <strong>Hermes gates its messaging surface.</strong> Its current
@@ -472,7 +467,7 @@ return { matched_steps: hits };
 
 mountCanvasFlow("#probe-cron", {
   label: "Gateway · cron management",
-  intro: "List, install, and remove scheduled jobs over the same WebSocket connection. cron.add takes an id, a schedule string, and a prompt the agent runs on each tick. Between the add and the remove, the flow waits for the job to fire, then reads MEMORY.md off the sandbox so you can see the unattended write.",
+  intro: "Manage scheduled jobs over the gateway WebSocket: list, add, wait, inspect MEMORY.md, and remove. The completed flow leaves visible evidence of an unattended write.",
   edges: [
     { from: "cr-conn",  to: "cr-list"  },
     { from: "cr-list",  to: "cr-add"   },
@@ -525,7 +520,7 @@ return { installed: "quick-3c-demo" };
     {
       id: "cr-watch", icon: "⏳", title: "Wait, then read MEMORY.md", x: 0, y: 3,
       showCode: false,
-      summary: "This is the unattended write in the flesh. The job is registered and you are not driving it, yet it fires on its own minute boundary. This cell waits about 70 seconds, long enough for one tick to cross a minute, then reads the tail of MEMORY.md straight off the sandbox over the operator terminal. No chat turn is involved. The cron-fired agent wrote that new line while nothing was watching. Auth rides your browser's Cloudflare Access cookie, so keep the launchable open in another tab.",
+      summary: "Wait across a minute boundary, then read MEMORY.md through the operator terminal. The new line proves the cron-fired agent wrote without a chat turn. Keep the launchable open in another tab for the Cloudflare Access session.",
       code: `// The cron job is live and you are not driving it. Give it time to cross a
 // minute boundary so at least one tick fires, then read what it appended.
 const AGENT = "my-assistant";   // your agent's name, from GET /api/agent on the Kickstart page

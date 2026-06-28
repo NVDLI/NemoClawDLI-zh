@@ -51,8 +51,11 @@
       before tools run, or when routing should follow a rule instead of the last observation.
     </p>
     <p>
-      This section uses fan-out and fixed routing to show where workflow structure helps
-      without replacing the ReAct loop from the previous page.
+      The harness can scope a workflow around a model call, a deterministic step,
+      a specialist loop, or a group of parallel branches. At each boundary, it decides
+      what context crosses, what can branch, and which results feed the next pipeline
+      stage. This section uses fan-out and fixed routing to show that control without
+      replacing the ReAct loop from the previous page.
     </p>
   </div>
 
@@ -122,9 +125,9 @@
 
   <div class="callout warn">
     <strong>The overhead tax in concrete terms.</strong>
-    Every agent boundary adds one more model call, one more routing prompt, another place for
-    malformed messages to originate, and a trajectory that now fans across workers instead of
-    running down one readable timeline.
+    Every agent boundary adds model-call latency and routing logic. It also creates another
+    source of malformed messages and replaces a readable timeline with a trajectory that
+    fans across workers.
   </div>
 
   <p>
@@ -365,7 +368,7 @@ window.__extractJson = extractJson;
 
 // ── Part 3: ReWOO research pipeline ──────────────────────────────────────────
 mountCanvasFlow("#cell-m2a-rewoo", {
-  label: "Module 2a Part 3 · ReWOO · planner → parallel searches → synthesizer",
+  label: "Plan parallel glossary research",
   intro: "ReWOO writes the whole plan upfront, so every tool runs without re-asking the model and one synthesis call closes it out. Edit the goal in node 1 and rerun.",
   edges: [
     { from: "goal",         to: "planner"  },
@@ -505,7 +508,7 @@ return synth.content || synth.reasoning || "(empty)";
 
 // ── Part 4: Schema-bound triage ──────────────────────────────────────────────
 mountCanvasFlow("#cell-m2a-triage", {
-  label: "Module 2a Part 4 · triage → specialist routing",
+  label: "Route a ticket to a specialist",
   intro: "A schema-bound first LLM call emits {category, priority, summary}, a plain-JS router selects a specialist system prompt from the category, and a second LLM call writes the response under that prompt.",
   edges: [
     { from: "ticket",    to: "triage" },
@@ -605,7 +608,7 @@ return r.content || r.reasoning || "(empty)";
 
 // ── Part 5: Parallel specialists ─────────────────────────────────────────────
 mountCanvasFlow("#cell-m2a-parallel", {
-  label: "Module 2a Part 5 · parallel specialists from one shared input",
+  label: "Fan out one input to specialists",
   intro: "A single shared search result fans out to three specialists with different system prompts that Promise.all dispatches concurrently, so the total wall time tracks the slowest specialist rather than the sum.",
   edges: [
     { from: "topic",    to: "search" },
@@ -689,7 +692,7 @@ return {
 
 // ── Part 6: Agent factory ────────────────────────────────────────────────────
 mountCanvasFlow("#cell-m2a-factory", {
-  label: "Module 2a Part 6 · agent factory · parameterise the boilerplate",
+  label: "Build specialists from a factory",
   intro: "The factory function takes (role, systemPrompt, tools) and returns a callable specialist, and two specialists built from it run on the same input.",
   edges: [
     { from: "factory",     to: "specialists" },

@@ -20,6 +20,14 @@
   .cm-s-monokai.CodeMirror { background: #0d0d0d; color: #f8f8f2; }
   .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
   .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
+  .deep-stages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 1em 0 1.4em; }
+  .deep-stage { min-width: 0; padding: 12px 14px; border: 1px solid var(--bd); border-left: 3px solid var(--g); border-radius: 6px; background: var(--e1); }
+  .deep-stage:nth-child(2) { border-left-color: var(--gs); }
+  .deep-stage:nth-child(3) { border-left-color: var(--acc); }
+  .deep-stage:nth-child(4) { border-left-color: var(--warn); }
+  .deep-stage-label { margin-bottom: 4px; color: var(--gs); font: .7rem var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+  .deep-stage p { margin: 0; color: var(--td); font-size: .84rem; line-height: 1.5; }
+  @media (max-width: 720px) { .deep-stages { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -37,233 +45,151 @@
     <div class="eyebrow">Module 2 · Part C of 3</div>
     <h1><span>Deep</span> Agents</h1>
     <p class="lead">
-      A <em>deep agent</em>, sometimes called a research agent, is one that works on
-      more than a single level at once. An orchestrator at the top takes a task, breaks
-      it into smaller subtasks, and hands each one to a separate sub-agent that runs in
-      its own fresh, isolated context, while a shared filesystem carries results back and
-      forth between them. Reach for this pattern when one context can no longer hold the
-      work, which tends to happen under any of the following conditions.
+      Module 2 treats workflow scope as a control surface. Part A introduced a
+      harness that decides what context crosses each boundary, what can branch,
+      and how results move through a pipeline. Part B applied that control to a
+      developer-defined retrieval pipeline and its bounded context bundle.
     </p>
-    <ul>
-      <li>A task may be too large to fit in one context window.</li>
-      <li>Its subtasks may need to stay isolated so they cannot contaminate one another.</li>
-      <li>Its results may have to outlive a single run and persist as files on disk.</li>
-    </ul>
     <p class="lead">
-      We build up to it in three steps. The first shows why a flat ReAct loop breaks
-      down once a task runs long. The second introduces the four structural pillars that
-      hold a deep agent together. The third wires
-      <a href="https://www.langchain.com/langgraph" target="_blank" rel="noopener">LangGraph</a>
-      <code>createReactAgent</code> for the single-agent case and then hand-rolls the full
-      version so that every step stays observable.
+      A <em>deep research agent</em> applies the same idea to a question whose
+      evidence would outgrow one conversation. At run time, a planner chooses
+      independent branches and gives each worker only the original question,
+      its assigned task, and the tools it needs. Sibling histories stay outside.
+      A final stage synthesizes the evidence that the workers preserve. Run the
+      pattern first, then inspect its implementation.
     </p>
   </div>
 
-  <div class="callout warn">
-    <strong>Network warning.</strong> The cells below import libraries at runtime from
-    <code>esm.sh</code> and <code>cdn.jsdelivr.net</code>, which resolve via the host's
-    outbound DNS when you run inside a NemoClaw launchable. An environment that blocks
-    outbound traffic will make the imports fail with a network error and the cells stop
-    at node 1, so the first cell below is the connectivity check.
-  </div>
-
-  <h2>Where a single growing context breaks down</h2>
+  <h2>How the workflow boundary changes</h2>
   <p>
-    Every module so far has built single-context agents, a single
-    <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">ReAct</a>
-    loop driving one model through a steadily growing stack of tool calls, with
-    everything the agent does landing in that same context.
+    The outer workflow owns scope and data flow throughout Module 2. Retrieval
+    and deep research place the boundary differently.
+  </p>
+  <ul>
+    <li><strong>Index workflow.</strong> The developer defines the pipeline, and generation receives the bounded retrieval bundle from Part B.</li>
+    <li><strong>Deep-research workflow.</strong> The planner creates branches at run time. Workers receive task-specific context and store evidence for synthesis.</li>
+  </ul>
+  <p>
+    Either workflow can place a ReAct loop inside a stage that must adapt to
+    intermediate results.
+  </p>
+
+  <h2>Why a shared context breaks down</h2>
+  <p>
+    A single <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">ReAct</a>
+    loop keeps every instruction and observation in one history, so earlier
+    evidence competes with each new tool result. Eventually the history itself
+    becomes part of the problem.
   </p>
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/02c-deep-1.svg" style="aspect-ratio:680 / 430"></div>
+    <figcaption>One coordinator assigns focused work. Independent workers return evidence through shared storage, and a final step combines it.</figcaption>
   </figure>
-  <p style="font-size:.88rem;color:var(--td)">
-    Each sub-agent's context holds only the plan and its one task, with none
-    of the orchestrator's accumulated history. The sub-agents never share a
-    context, so a final synthesis step reads the shared files and writes one
-    combined report.
-  </p>
-  <p>
-    That shape has three failure modes, and each one gets worse the longer a task runs:
-  </p>
   <ul>
-    <li><strong>Context overflow.</strong> The accumulated history plus tool results plus retrieved chunks crosses the model's context window, and tokens at the bottom of the array start to get dropped or compressed.</li>
-    <li><strong>Context rot.</strong> Even within the window, tokens far from either end get under-weighted (<a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu et al., "Lost in the Middle"</a>). The agent forgets the original objective midway through.</li>
-    <li><strong>Cross-task interference.</strong> Reasoning about subtask N pollutes the context the agent has for subtask N+1. Specialists running in dedicated, isolated contexts would each do better.</li>
+    <li><strong>Overflow:</strong> evidence and tool output exceed the context window.</li>
+    <li><strong>Context rot:</strong> relevant evidence is present but under-weighted (<a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu et al.</a>).</li>
+    <li><strong>Interference:</strong> reasoning for one branch distracts the next branch.</li>
   </ul>
-  <p>
-    The deep agent fixes all three by splitting responsibility. A dedicated
-    <em>orchestrator</em> writes a plan, then hands each subtask to a fresh
-    <em>sub-agent</em> which inherit a limited context, permission scope, and directive.
-  </p>
 
-  <h2>The four pieces a deep agent is built from</h2>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:1em 0 1.4em">
-    <div style="background:var(--e1);border:1px solid var(--bd);border-left:3px solid var(--g);border-radius:6px;padding:12px 14px">
-      <div style="font-family:ui-monospace,monospace;font-size:.7rem;color:var(--gs);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Pillar 1 · Planning</div>
-      <p style="margin:0;font-size:.84rem;color:var(--td);line-height:1.5">A dedicated <code>write_todos</code> step runs before any execution begins, producing a structured list of subtasks. Writing the plan to shared memory first matters because it makes the decomposition inspectable and reusable: every sub-agent can read the same plan without the orchestrator having to re-explain the goal in each call.</p>
+  <h2>How research moves through the workflow</h2>
+  <div class="deep-stages">
+    <div class="deep-stage">
+      <div class="deep-stage-label">1 · Plan</div>
+      <p>The <strong>orchestrator</strong> turns the question into independent tasks, making the intended scope inspectable before work begins.</p>
     </div>
-    <div style="background:var(--e1);border:1px solid var(--bd);border-left:3px solid var(--gs);border-radius:6px;padding:12px 14px">
-      <div style="font-family:ui-monospace,monospace;font-size:.7rem;color:var(--gs);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Pillar 2 · Delegation</div>
-      <p style="margin:0;font-size:.84rem;color:var(--td);line-height:1.5">A <code>task</code> tool spawns a new sub-agent for each TODO item, and every one of them starts from a clean slate. None of the orchestrator's accumulated context reaches it, so no subtask can interfere with another.</p>
+    <div class="deep-stage">
+      <div class="deep-stage-label">2 · Investigate</div>
+      <p>Each <strong>sub-agent</strong> receives one task in a fresh context that excludes the histories of other branches.</p>
     </div>
-    <div style="background:var(--e1);border:1px solid var(--bd);border-left:3px solid var(--acc);border-radius:6px;padding:12px 14px">
-      <div style="font-family:ui-monospace,monospace;font-size:.7rem;color:var(--gs);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Pillar 3 · Memory</div>
-      <p style="margin:0;font-size:.84rem;color:var(--td);line-height:1.5">A virtual filesystem, implemented here as a plain map from file paths to file contents, persists across all agent calls and is visible to every sub-agent. Without it, each fresh sub-agent would start blank; the filesystem preserves completed work across the context boundary from one sub-agent to the next.</p>
+    <div class="deep-stage">
+      <div class="deep-stage-label">3 · Preserve</div>
+      <p>Workers write findings to a shared <strong>virtual filesystem</strong>, where evidence survives after their contexts end.</p>
     </div>
-    <div style="background:var(--e1);border:1px solid var(--bd);border-left:3px solid var(--warn);border-radius:6px;padding:12px 14px">
-      <div style="font-family:ui-monospace,monospace;font-size:.7rem;color:var(--gs);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Pillar 4 · Sandbox</div>
-      <p style="margin:0;font-size:.84rem;color:var(--td);line-height:1.5">A sandbox keeps shell work from over-extending its reach or overloading the agent's accessible space. A sub-agent that writes files or runs commands should not be able to reach host-owned resources or main-loop processes. The browser exercises on this page run with no real shell available and fall back to the virtual filesystem as their sandbox.</p>
+    <div class="deep-stage">
+      <div class="deep-stage-label">4 · Synthesize</div>
+      <p>The orchestrator reads the saved evidence and produces one answer whose claims remain traceable to their branches.</p>
     </div>
   </div>
-  <ul>
-    <li>Planning and Memory work together as a pair: the plan is written to the virtual filesystem once, and every sub-agent can read it from there without the orchestrator having to pass it explicitly.</li>
-    <li>Delegation and Sandbox work together as a pair: each spawned worker runs in an isolated execution surface, so a failure or runaway in one task cannot corrupt the context of another.</li>
-    <li>The <a href="https://build.nvidia.com/nvidia/aiq" target="_blank" rel="noopener">NVIDIA AI-Q Blueprint</a> is the production reference: same four pillars, typed task graph, durable state, human-in-the-loop approval as first-class graph state.</li>
-  </ul>
+
+  <div class="callout info">
+    <strong>Fresh context is not a sandbox.</strong> Context isolation separates
+    the branches' reasoning, while a sandbox limits operating-system access.
+    The browser artifact below has no shell; the later hand-rolled example uses
+    an in-memory filesystem to make shared state visible.
+  </div>
+
+  <h2>Try it · plan → investigate → synthesize</h2>
+  <p>
+    Ask a research question and watch the agent create branches that run in
+    parallel across the web and this course before writing one cited answer.
+    Its branch tree and timing chart come from the run itself.
+  </p>
+  <div id="deep-cell"></div>
+  <div id="deep-artifact"></div>
+
+  <h2>Inspect the implementation</h2>
+  <p>The next three cells isolate one implementation layer at a time, beginning
+     with the model adapter and ending with the complete research agent. Each
+     cell runs independently.</p>
+
+  <div class="callout warn">
+    <strong>The implementation cells need external package access.</strong> They
+    import pinned libraries from <code>cdn.jsdelivr.net</code>. If outbound DNS
+    is blocked, the import node fails before any model call.
+  </div>
 
   <!-- ── Part 3: ChatOpenAI ─────────────────────────────────────────────────── -->
-  <h2>Pointing LangChain at whichever endpoint is active</h2>
+  <h2>1 · Connect the model</h2>
   <p>
-    <code>ChatOpenAI</code> is a model wrapper that speaks the OpenAI
-    HTTP protocol. All that changes between environments is the
-    <code>baseURL</code> it points at, whether that is
-    <code>https://integrate.api.nvidia.com/v1</code> on build.nvidia.com
-    or any self-hosted NIM endpoint you choose to run instead. Everything
-    downstream, including chains, graphs, and retrieval pipelines, is
-    written once and works against any of those targets.
-  </p>
-  <p>
-    The node below calls <code>helpers.getConfig()</code>, which
-    returns whichever endpoint is currently active. On build.nvidia.com
-    that resolves to the NVIDIA API and uses your API key, while inside a
-    NemoClaw launchable the same call resolves to the local model worker
-    with no manual swap needed.
+    <code>ChatOpenAI</code> wraps any OpenAI-compatible endpoint. The cell reads
+    the active URL and credential from <code>helpers.getConfig()</code>, so the
+    rest of the graph does not depend on where the model runs.
   </p>
 
   <div id="cell-m3c-p1"></div>
 
-  <div class="callout">
-    <strong>ChatOpenAI interface.</strong> The two methods you will use throughout the rest of this module are:
-    <ul style="margin:8px 0 0 22px">
-      <li><code>.invoke(messages)</code> returns an <code>AIMessage</code> with the complete parsed reply. Use this when you need the full response before continuing.</li>
-      <li><code>.stream(messages)</code> returns an <code>AsyncIterable</code> of partial messages, one chunk per token batch. Use this when you want to display output incrementally.</li>
-    </ul>
-    Both methods satisfy the LangChain <code>Runnable</code> interface. A
-    <code>ChatOpenAI</code> instance can therefore drop into any spot that expects
-    a <code>Runnable</code>. A chain slot, a LangGraph node, and the tail of a
-    retrieval pipeline all accept it through that one shared interface and need no glue code.
-  </div>
+  <p><code>.invoke()</code> returns a complete message; <code>.stream()</code>
+     yields partial messages. Both satisfy LangChain's <code>Runnable</code> interface.</p>
 
   <!-- ── Part 4: LangGraph createReactAgent ───────────────────────────────── -->
-  <h2>Building the same ReAct loop as a LangGraph state graph</h2>
+  <h2>2 · Turn the loop into a graph</h2>
   <p>
-    LangGraph models ReAct as a graph in which nodes decide or execute and
-    edges loop. The cells on this page are JavaScript, where
-    <code>createReactAgent({llm, tools})</code> assembles that
-    graph. (In Python, <code>langchain.agents.create_agent(model, tools)</code>
-    exposes the same shape with a cleaner interface.)
-  </p>
-  <p>
-    It accepts either a model
-    string like <code>"openai:gpt-4o"</code> or a <code>BaseChatModel</code>
-    instance, and we pass our <code>baseURL</code>-configured <code>ChatOpenAI</code>
-    as that second form. Either way, the result is a compiled
-    <code>StateGraph</code> you can invoke, stream, or nest inside a larger graph.
+    <code>createReactAgent({llm, tools})</code> turns the Module 1 ReAct loop
+    into explicit model and tool nodes. The compiled graph can run alone or
+    become one node inside a larger workflow.
   </p>
 
   <div id="cell-m3c-p2"></div>
 
-  <div class="callout">
-    <strong>A graph is worth the extra structure once the control flow outgrows a
-    simple loop.</strong> Once the flow grows past "model decides, tool runs, repeat"
-    a graph reads more clearly than a loop. The usual triggers for making the switch
-    are these.
-    <ul style="margin:8px 0 0 22px">
-      <li>A human-approval gate before destructive tool calls.</li>
-      <li>A router that sends some messages to a different sub-graph.</li>
-      <li>A checkpointer that persists state across crashes.</li>
-      <li>Parallel branches that converge back into a single answer.</li>
-    </ul>
-    LangGraph's <code>StateGraph</code> exposes the typed channels the loop was passing
-    implicitly so that every node now reads as a pure function of that state and every
-    edge as a routing predicate the runtime follows. The shape matches the canvases you
-    have been editing all course.
-  </div>
+  <p>Use a graph once a simple loop can no longer express the required control flow.</p>
 
   <!-- ── Part 5: Deep agent (planner + sub-agents + VFS) ──────────────────── -->
-  <h2>Hand-rolling the whole deep agent so every node is visible</h2>
+  <h2>3 · Assemble the research agent</h2>
   <p>
-    The cell below is the four-pillar deep agent hand-rolled from
-    <a href="https://www.langchain.com/" target="_blank" rel="noopener">LangChain</a>
-    primitives, with all four nodes observable in the canvas log.
-  </p>
-  <p>
-    The
-    <a href="https://github.com/langchain-ai/deepagentsjs" target="_blank" rel="noopener"><code>deepagents</code></a>
-    npm package wraps the same shape behind <code>createDeepAgent</code>, but
-    imports <code>node:fs</code> and other Node-only modules.
+    This cell exposes each stage as its own node, with shared files visible
+    between delegation and synthesis. The <a href="https://github.com/langchain-ai/deepagentsjs" target="_blank" rel="noopener"><code>deepagents</code></a>
+    package wraps a similar pattern for Node.js applications.
   </p>
 
   <div id="cell-m3c-p3"></div>
 
-  <h2>Before you continue</h2>
+  <h2>Check your understanding</h2>
   <ol>
-    <li>Part 3 uses <code>helpers.getConfig()</code> to resolve the
-        active endpoint at run time. Trace the call: what does
-        <code>getConfig()</code> return when the page is opened inside your
-        NemoClaw launchable, versus when a student opens the same URL on
-        build.nvidia.com? What is the one value that differs, and where
-        does it come from?</li>
-    <li>Part 4's <code>createReactAgent</code> is a graph with two nodes
-        (agent + tools). Where would you add a third node for human-in-the-loop
-        approval before destructive tool calls?</li>
-    <li>Part 5's deep agent runs sub-agents in fresh context windows. Walk
-        through the three context-rot mitigations from the hero list and identify
-        which one each sub-agent is paying for. What is the cost?</li>
+    <li>What enters each sub-agent's context, and what stays out?</li>
+    <li>Why preserve findings instead of passing one growing transcript?</li>
+    <li>How do context isolation and operating-system sandboxing prevent different failures?</li>
   </ol>
-
-  <div class="callout info" style="margin-top:2em">
-    <strong>The later modules build on the patterns you have here.</strong> They take
-    the agent patterns you have built and turn to the operational questions that arise
-    once agents run in production:
-    <ul style="margin:8px 0 0 22px">
-      <li>How do you know an agent is doing what it claims?</li>
-      <li>How do you replay a failure to diagnose it?</li>
-      <li>Which behaviors should be blocked at the boundary before they ever reach a tool?</li>
-      <li>How does a fleet of agents improve over time as it accumulates experience?</li>
-    </ul>
-  </div>
 
   <div class="references">
     <h3>References</h3>
     <ul>
-      <li><a href="https://blog.langchain.com/deep-agents/" target="_blank" rel="noopener">LangChain, <em>Deep Agents</em> (blog, 2025)</a>. The planner / sub-agent / virtual-filesystem pattern this module's deep agent implements directly.</li>
-      <li><a href="https://github.com/langchain-ai/deepagents" target="_blank" rel="noopener">langchain-ai/deepagents</a> and <a href="https://github.com/langchain-ai/deepagentsjs" target="_blank" rel="noopener">deepagentsjs</a> (production-grade reference implementations).</li>
-      <li><a href="https://arxiv.org/abs/2305.16291" target="_blank" rel="noopener">Wang et al., <em>Voyager: An Open-Ended Embodied Agent</em> (2023)</a>. The skill-library pattern this module touches and Module 3c (Always-On) returns to.</li>
-      <li><a href="https://arxiv.org/abs/2303.17651" target="_blank" rel="noopener">Madaan et al., <em>Self-Refine</em> (2023)</a>. The iterative-refinement primitive deep agents loop with when an answer is incomplete.</li>
-      <li><a href="https://arxiv.org/abs/2304.03442" target="_blank" rel="noopener">Park et al., <em>Generative Agents</em> (2023)</a>. Large-scale autonomous agent simulation; a broader companion to the deep-agent runtime.</li>
-      <li><a href="https://developer.nvidia.com/blog/add-a-specialized-deep-research-skill-to-agent-harnesses/" target="_blank" rel="noopener">NVIDIA AI-Q</a>: the deep-agent pattern this module builds, packaged as a service that gives an agent harness one deep-research skill (retrieval, reasoning, synthesis, and grounded citation) instead of making every agent rebuild it, with the <a href="https://github.com/NVIDIA-AI-Blueprints/aiq" target="_blank" rel="noopener">AI-Q blueprint</a> as its runnable reference.</li>
-      <li><a href="https://developer.nvidia.com/case-studies/scientific-literature-ai-nvidia-nemotron" target="_blank" rel="noopener">Kosmos, an autonomous AI scientist</a>. A coordinated set of literature, analysis, and molecule agents that runs the orchestrator-and-sub-agents shape against real genetics and drug-discovery research.</li>
+      <li><a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu et al., <em>Lost in the Middle</em></a>. Evidence for context-position failures.</li>
+      <li><a href="https://blog.langchain.com/deep-agents/" target="_blank" rel="noopener">LangChain, <em>Deep Agents</em></a> and the <a href="https://github.com/langchain-ai/deepagentsjs" target="_blank" rel="noopener">JavaScript implementation</a>.</li>
+      <li><a href="https://developer.nvidia.com/blog/add-a-specialized-deep-research-skill-to-agent-harnesses/" target="_blank" rel="noopener">NVIDIA AI-Q deep research skill</a> and its <a href="https://github.com/NVIDIA-AI-Blueprints/aiq" target="_blank" rel="noopener">blueprint</a>.</li>
+      <li><a href="https://developer.nvidia.com/case-studies/scientific-literature-ai-nvidia-nemotron" target="_blank" rel="noopener">Kosmos</a>. A multi-agent scientific-research example.</li>
     </ul>
     <p class="references-note">Comprehensive list at <a href="04c-going-further.html#refs">Going Further · References</a>.</p>
   </div>
-
-  <h2>Try it · a branching research agent (plan → fan out → synthesize)</h2>
-  <p>
-    This runs the full deep pattern from Part 5. Ask a question and the agent
-    <strong>plans</strong> a few independent sub-investigations, then runs them
-    <strong>in parallel</strong> so that some search the web while others read
-    specific sections of this course. Finally it <strong>synthesizes</strong>
-    one grounded answer with citations.
-  </p>
-  <p>
-    The branch tree and the concurrency chart it draws come
-    straight from the run itself, and they show the context-rot mitigation Part 1
-    opened with: the work fans out wide, and each sub-agent starts from a fresh context.
-  </p>
-  <div id="deep-cell"></div>
-  <div id="deep-artifact"></div>
   <script type="text/plain" id="deep-src">
 // Deep-research artifact: plan, fan out sub-agents, then synthesize a cited answer.
 
@@ -412,7 +338,7 @@ helpers.log("rendered below. Edit the config and Run.");
   <script type="module">
     import { mountRunCell } from "./scripts/_shared.js";
     mountRunCell("#deep-cell", {
-      label: "the Try-it artifact, in code",
+      label: "Deep-research artifact source",
       autorun: true,
       code: document.getElementById("deep-src").textContent.trim(),
     });
@@ -436,13 +362,13 @@ hljs.highlightAll();
 window.DEEP_AGENT_MAX_TOKENS = 8196;
 
 mountCanvasFlow("#cell-m3c-p1", {
-  label: "Module 2c Part 3 · ChatOpenAI · wrapping any OpenAI-compatible endpoint",
-  intro: "The first node imports @langchain/openai from a CDN and constructs a ChatOpenAI instance. Rather than hardcoding a URL, it calls getConfig() to pick up whichever endpoint is active in the current environment. The second node invokes the model with a short question, producing a typed AIMessage rather than the raw JSON you would get from a fetch() call. It is the same underlying model, now reached through a Runnable interface that chains, graphs, and retrieval pipelines all know how to consume.",
+  label: "Connect LangChain to the active model",
+  intro: "Create the model client from the course config and inspect the message returned by invoke().",
   edges: [{ from: "import", to: "invoke" }],
   nodes: [
     {
-      id: "import", icon: "📦", title: "Import + wire ChatOpenAI", x: 0, y: 0,
-      summary: "Dynamically imports @langchain/openai from a CDN that pre-bundles npm packages for browser use, then constructs a ChatOpenAI instance. The baseURL is read from getConfig() at run time, so the same code works against build.nvidia.com, a NemoClaw local model worker, or any self-hosted NIM endpoint; nothing in the chain, graph, or retrieval pipeline below needs to know which one is active.",
+      id: "import", icon: "📦", title: "Create the model client", x: 0, y: 0,
+      summary: "Read the active endpoint from getConfig(); later graph code stays endpoint-independent.",
       code: `// Load the external package bundle used by this example.
 helpers.log("importing @langchain/openai ...");
 const LANGCHAIN_IMPORT_URLS = [
@@ -466,8 +392,8 @@ return { ready: true, baseURL, model: cfg.model };
     },
 
     {
-      id: "invoke", icon: "🧠", title: "Invoke the model", x: 0, y: 1,
-      summary: "Calls the model using .invoke() on the ChatOpenAI Runnable. The call shape matches the chatStream you have been using throughout the course, but the response is now a typed AIMessage rather than a raw JSON object.",
+      id: "invoke", icon: "🧠", title: "Inspect the response", x: 0, y: 1,
+      summary: "invoke() returns an AIMessage with the response content and usage metadata.",
       code: `// Send the prepared messages and stream the model response.
 const messages = [
   { role: "system", content: "You are a concise tutor. 2 sentences max." },
@@ -487,8 +413,8 @@ return {
 
 // ── M3c P2: LangGraph ReAct agent ────────────────────────────────────────────
 mountCanvasFlow("#cell-m3c-p2", {
-  label: "Module 2c Part 4 · LangGraph · createReactAgent over a tool",
-  intro: "A ReAct agent is built the LangGraph way by defining a tool with @langchain/core/tools and handing the tool list to createReactAgent, which yields a compiled state graph you can invoke or stream.",
+  label: "Build a ReAct graph",
+  intro: "Add a typed tool, compile the graph, and inspect the resulting message trajectory.",
   edges: [
     { from: "import", to: "tool" },
     { from: "tool",   to: "build" },
@@ -497,8 +423,8 @@ mountCanvasFlow("#cell-m3c-p2", {
 
   nodes: [
     {
-      id: "import", icon: "📦", title: "Import LangGraph + tools", x: 0, y: 0,
-      summary: "Dynamically imports three packages at runtime from a CDN: @langchain/openai for the model wrapper, @langchain/core/tools for the tool() decorator, and @langchain/langgraph for createReactAgent. Zod is imported alongside them to provide schema validation for tool arguments.",
+      id: "import", icon: "📦", title: "Load graph dependencies", x: 0, y: 0,
+      summary: "Load the model, graph, tool, and schema packages.",
       code: `// Load the external package bundle used by this example.
 helpers.log("importing langchain ecosystem...");
 const LANGCHAIN_IMPORT_URLS = [
@@ -528,8 +454,8 @@ return { imports: Object.keys(state.deps) };
     },
 
     {
-      id: "tool", icon: "🛠", title: "Define a tool", x: 0, y: 1,
-      summary: "Defines a get_current_time tool using LangChain's tool() decorator and a zod schema for the argument shape. Declaring the schema explicitly rather than relying on a docstring means LangGraph can validate arguments before invoking the function and expose a typed contract to the model via the tool's JSON schema.",
+      id: "tool", icon: "🛠", title: "Declare a typed time tool", x: 0, y: 1,
+      summary: "A Zod schema gives the model and runtime the same validated contract.",
       code: `// Pull the LangChain helpers this agent cell needs.
 const { tool, z } = state.deps;
 state.getCurrentTime = tool(
@@ -545,8 +471,8 @@ return { name: state.getCurrentTime.name, description: state.getCurrentTime.desc
     },
 
     {
-      id: "build", icon: "📐", title: "createReactAgent({llm, tools})", x: 0, y: 2,
-      summary: "Compiles and returns a StateGraph that encodes the same model-decides / tool-runs / loop structure as the hand-rolled ReAct loop from Module 1c, except that the control flow is now explicit graph edges rather than an imperative while loop.",
+      id: "build", icon: "📐", title: "Compile the ReAct graph", x: 0, y: 2,
+      summary: "The model and tool become the decide/execute loop from Module 1.",
       code: `// Construct the agent from the model, tools, and prompt.
 state.agent = state.deps.createReactAgent({
   llm:   state.llm,
@@ -557,8 +483,8 @@ return { graph_compiled: true };
     },
 
     {
-      id: "invoke", icon: "🚀", title: "Run the agent (+ trajectory viz)", x: 0, y: 3,
-      summary: "Calls .invoke() on the compiled graph with a single user message. LangGraph runs the full ReAct loop internally (model decides, tool runs, observation appended, model reads observation and decides again) and returns the complete message list when finish_reason is 'stop'. The trajectory visualisation shows every message in order, so you can see exactly which steps the model took and how many tool calls it made.",
+      id: "invoke", icon: "🚀", title: "Inspect the trajectory", x: 0, y: 3,
+      summary: "Run the graph and render its messages, including tool calls and results.",
       code: `// Ask the agent a concrete question to drive the loop.
 const question = "What time is it right now in UTC?";
 // Try another (uncomment one) and rerun to watch the trajectory change:
@@ -593,8 +519,8 @@ return {
 
 // ── M3c P3: hand-rolled deep agent (planner + sub-agents + VFS) ─────────────
 mountCanvasFlow("#cell-m3c-p3", {
-  label: "Module 2c Part 5 · deep agent, hand-rolled · planner + sub-agents + virtual FS",
-  intro: "A schema-bound planner emits the subtasks, then a fresh sub-agent runs each one against a shared virtual filesystem. A final synthesiser reads the files they left behind and writes one combined report. Per-node summaries carry the detail.",
+  label: "Assemble the research workflow",
+  intro: "These nodes expose the context boundaries, saved evidence, and synthesis path.",
   edges: [
     { from: "setup",      to: "planner" },
     { from: "vfs",        to: "dispatcher" },
@@ -605,8 +531,8 @@ mountCanvasFlow("#cell-m3c-p3", {
 
   nodes: [
     {
-      id: "setup", icon: "📦", title: "Imports + ChatOpenAI", x: 0, y: 0,
-      summary: "Imports the same four packages used in Part 4 (ChatOpenAI, tool, createReactAgent, zod) and constructs a ChatOpenAI instance using getConfig() to resolve the active endpoint. This node is reproduced here so the deep-agent canvas is fully self-contained, and you can run it without having run the earlier canvases first.",
+      id: "setup", icon: "📦", title: "Create the model client", x: 0, y: 0,
+      summary: "Repeat the model setup so this cell runs independently.",
       code: `// Load the external package bundle used by this example.
 helpers.log("importing LangChain bundles...");
 const LANGCHAIN_IMPORT_URLS = [
@@ -636,8 +562,8 @@ return { imports: Object.keys(state.deps) };
     },
 
     {
-      id: "vfs", icon: "🗂", title: "Virtual filesystem + tools", x: 2, y: 0,
-      summary: "The virtual filesystem is a plain JS object shared across the entire run. The write_file, read_file, and list_files tools give every sub-agent a consistent interface to store and retrieve work without any sub-agent needing to know about the others.",
+      id: "vfs", icon: "🗂", title: "Create shared evidence tools", x: 2, y: 0,
+      summary: "Workers exchange evidence through in-memory files rather than shared histories.",
       code: `// Pull the LangChain helpers this agent cell needs.
 const { tool, z } = state.deps;
 state.vfs = {};
@@ -664,8 +590,8 @@ return { tools: ["write_file", "read_file", "list_files"], vfs_state: Object.key
     },
 
     {
-      id: "planner", icon: "🧠", title: "Planner (schema-bound)", x: 1, y: 1,
-      summary: "A single LLM call that uses withStructuredOutput to bind the response to a declared JSON schema, so the subtask list arrives as a typed object rather than a string you would have to parse and validate manually.",
+      id: "planner", icon: "🧠", title: "Plan typed subtasks", x: 1, y: 1,
+      summary: "Structured output avoids parsing a free-text plan.",
       code: `// Set the student-editable prompt/input for the next step.
 state.goal = [
   "Research NVIDIA NIM (NVIDIA Inference Microservices) and produce three files: ",
@@ -704,8 +630,8 @@ return out;
     },
 
     {
-      id: "dispatcher", icon: "🚀", title: "Dispatch sub-agents (fresh context each)", x: 1, y: 2,
-      summary: "Loops over the planner's subtask list and spawns a brand-new createReactAgent for each one. Each sub-agent starts with a clean context window that contains only its assigned task and a brief note of which files already exist on the virtual filesystem. Earlier reasoning, intermediate orchestrator results, and prior tool calls stay out of that window, so nothing distracts the sub-agent from its job. The complete reply from each sub-agent is logged and stored in full.",
+      id: "dispatcher", icon: "🚀", title: "Run task-scoped workers", x: 1, y: 2,
+      summary: "Each worker receives its task and saved-file list. Sibling histories remain outside its context.",
       code: `// Pull the LangChain helpers this agent cell needs.
 const { createReactAgent } = state.deps;
 state.subResults = [];
@@ -735,8 +661,8 @@ return state.subResults;
     },
 
     {
-      id: "synth", icon: "🧠", title: "Synthesiser (reads VFS, one LLM call)", x: 1, y: 3,
-      summary: "The synthesis step the orchestrator never sees mid-run. It reads every file the sub-agents left on the virtual filesystem and makes one LLM call that combines them into a single deliverable, then writes that back to the filesystem as final_report.md. This is where the separate sub-agent outputs actually come together; the sub-agents shared no context, so the only thing they have in common is the files on disk.",
+      id: "synth", icon: "🧠", title: "Synthesize saved evidence", x: 1, y: 3,
+      summary: "Read the worker files, cite their names, and write final_report.md.",
       code: `// Inspect the virtual files the deep agent can read.
 const paths = Object.keys(state.vfs);
 if (!paths.length) {
@@ -770,9 +696,9 @@ return { synthesised: true, source_files: paths, report_chars: state.synthesis.l
     },
 
     {
-      id: "render", icon: "📊", title: "Render the deep-agent tree", x: 1, y: 4,
+      id: "render", icon: "📊", title: "Show the observed workflow", x: 1, y: 4,
       showCode: false,
-      summary: "Builds a diagram from the actual run data. The code is collapsed by default because it is mostly diagram-spec plumbing: orchestrator, workers, synthesiser, and the edges between them.",
+      summary: "Render the workers and file counts recorded during this run.",
       code: `// Reading guide: this block does not run another model call. It turns state.subResults
 // Build the diagram directly from the run: orchestrator, workers, synthesizer.
 
@@ -791,7 +717,7 @@ const workers = state.subResults.map((r, i) => ({
 const sourceCount = Object.keys(state.vfs).filter(p => p !== "final_report.md").length;
 const reportChars = (state.synthesis || "").length;
 const spec = {
-  title: "Deep agent · one orchestrator, " + workers.length + " sub-agents, shared VFS",
+  title: "Deep-research run",
   nodes: [
     { id: "orch", label: "orchestrator", kind: "model", x: Math.max(0, (workers.length - 1) / 2), y: 0,
       lines: ["plans " + workers.length + " subtasks"] },

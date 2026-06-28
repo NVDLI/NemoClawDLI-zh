@@ -55,26 +55,15 @@
     <div class="eyebrow">Module 3 · Part B of 3</div>
     <h1>The <span>OpenClaw</span> Agent</h1>
     <p class="lead">
-      OpenClaw is the <em>agent harness</em> inside the NemoClaw stack. It gives a model
-      a gateway, tools, memory, and a file-backed configuration. Three pieces make up
-      the working agent you drive here:
+      Module 3a connected the browser to a persistent runtime. OpenClaw is the
+      <em>agent harness</em> inside that NemoClaw stack: it combines a model and tools
+      with a server-side session and a file-backed workspace.
     </p>
-    <ul>
-      <li>a model wired to a tool palette,</li>
-      <li>a server-side session that remembers across turns,</li>
-      <li>and a workspace of markdown files that is its entire configuration.</li>
-    </ul>
     <p class="lead">
       NemoClaw supplies the blueprint that packages this harness with OpenShell
-      and deployment policy. No Python orchestrator drives OpenClaw here.
-      Every turn the harness reads that
-      folder and folds the files into the system prompt before handing the
-      result to the model and running whatever the model asks for. One fact
-      drives the rest of this page: the configuration is just files. The agent
-      can therefore read its own setup, and you can reshape it by editing one
-      file. Over the next few steps you ask the agent to describe its own
-      workspace, then change a single file and watch the next turn read
-      differently.
+      and deployment policy. OpenClaw, rather than a separate Python orchestrator, drives each
+      turn and reads its workspace files into the active context. You will inspect those files,
+      compare two persona configurations, and save memory that survives beyond the model call.
     </p>
 <figure style="margin:1.4em 0"><div class="fig-embed" data-svg-src="assets/figures/03b-openclaw-1.svg" style="aspect-ratio:780 / 413"></div><figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">The directory layout is the configuration, so editing one file changes how the next turn reads.</figcaption></figure>
 
@@ -105,10 +94,8 @@
      You will read both straight off the live sandbox a few steps down.</p>
 
   <div class="callout">
-    <strong>Because that setup is just files it can read, the agent
-    describes itself accurately.</strong> Ask it directly and the answer comes
-    from those same files, so you can trust whichever of these you put
-    to it:
+    <strong>Treat self-report as evidence.</strong> Ask the agent what its prompt contains,
+    then compare the answer with the live workspace in Step 1b:
     <ul>
       <li>which persona rules are active,</li>
       <li>what is on its tool list,</li>
@@ -128,16 +115,12 @@
   </figure>
 
   <div class="callout">
-    <p><strong>Same runtime as Kickstart.</strong> These cells reach the agent you
-      connected on the Kickstart page, as kickstarted through the
-      <a href="https://brev.nvidia.com/launchable/deploy/now?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS" target="_blank" rel="noopener">NemoClaw launchable on Brev</a>
-       If you wanted to create a local kickstart, you could also follow the
-       <a href="https://build.nvidia.com/spark/nemoclaw-applications" target="_blank" rel="noopener">NemoClaw setup playbook</a> 
-       and tweak the code so that the connection goes through properly <i>(recommended as an agent-assisted activity)</i>.
-       The gateway is the only channel you have because the launchable's
-       <code>/v1/chat/completions</code> is not reachable directly per the launchable's settings.
-       Should a cell log <code>⚠ DEGRADED</code> or stall, shape the runtime with the health-check and
-       recover cells that follow and that you run once on each freshly launched instance.</p>
+    <p><strong>Same runtime as Kickstart.</strong> These cells reuse the launchable
+      connected in 3a. The course exposes its gateway rather than the internal
+      <code>/v1/chat/completions</code> route. If a cell logs <code>⚠ DEGRADED</code>
+      or stalls, run Recover once for that fresh instance. A local deployment can use the
+      <a href="https://build.nvidia.com/spark/nemoclaw-applications" target="_blank" rel="noopener">NemoClaw setup playbook</a>
+      and the same gateway contract.</p>
   </div>
 
   <div id="gw-recover"></div>
@@ -173,9 +156,9 @@
   <div class="callout">
     <strong>The launchable has two planes of authority.</strong> The first is the
     terminal, which runs as the operator above the sandbox boundary and can
-    therefore read every file and list the sandboxes. The second is the agent,
-    which runs under the OpenShell policy you meet in Module 4 and shares the
-    machine with the terminal while answering to a tighter authority.
+    therefore read every file and list the sandboxes. The agent occupies the second
+    plane. It shares the machine with the terminal but runs under the narrower
+    OpenShell policy tested in Module 4.
   </div>
 
   <h2>Step 2 · Two scenarios, side by side</h2>
@@ -229,9 +212,8 @@
      next turn. The model itself has no persistent state, so the second turn can
      only answer because the runtime carried the preference forward through the
      session history it holds and through the MEMORY.md the agent saved.</p>
-  <p>Those two stores differ in reach. The session history lasts only as long as the
-     session itself, while the MEMORY.md the agent saved carries forward into a brand-new
-     session that starts with no history at all.</p>
+  <p>Those stores differ in reach. Session history belongs to its session.
+     <code>MEMORY.md</code> can carry a saved fact into a new session whose transcript starts empty.</p>
 
   <div id="cell-memory"></div>
 
@@ -453,7 +435,7 @@ helpers.log.details("raw transcript (" + frames + " WebSocket frames)", raw);
 
 mountCanvasFlow("#cell-personas", {
   label: "Two SOUL personas, same question",
-  intro: "One question runs against two sessions, and the lab maps each session key to a pre-built SOUL variant so you see two voices fast. Side by side, the only thing that differs between the replies is the SOUL file folded into each prompt, while the model stays identical. To make that change in production you edit SOUL.md.",
+  intro: "The lab maps two session keys to prebuilt SOUL variants, then sends both the same question and model. Compare the voices. Outside this lab affordance, change the persona by editing SOUL.md.",
 
   edges: [
     { from: "ask-a", to: "ask-b" },

@@ -222,8 +222,8 @@
         endpoint does not return the <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS" target="_blank" rel="noopener">cross-origin (CORS)</a> headers a browser
         <code>fetch</code> requires, so the call is routed through a small
         pass-through proxy that adds them. The proxy also adds a course attribution
-        header so DLI can identify traffic from this resource. Your API key is not
-        replaced or stored by the lesson; it is sent with the request you make.</li>
+        header so DLI can identify traffic from this resource. The lesson sends your
+        API key with that request without storing it or substituting another key.</li>
     <li><strong>Streaming is wrapped in a helper.</strong>
         <code>chatStream()</code> sends the same chat request with streaming enabled,
         then parses the returned event stream into answer text, reasoning text,
@@ -484,7 +484,7 @@ return { ticks: trace.length, finalPosition: state.env.position, trace };
 // ── Module 1a Part 4: maze + search reasoners ───────────────────────────────
 mountCanvasFlow("#cell-maze", {
   label: "The agent loop with a swappable reasoning step",
-  intro: "Run the nodes in order so that node 1 builds the maze and the shared utilities every later node reads from state. The hand-written search routines warm up the loop before the language-model run takes over. The implementation is collapsed by default because the point is the behavior. Expand code only when you want to inspect how a decision rule is wired into the loop.",
+  intro: "Run the nodes in order. Setup exports the maze helpers; the search nodes show fixed reasoners before the language model takes over. Plumbing stays collapsed because the lesson is the behavior, but you can expand any decision rule.",
   edges: [
     { from: "maze", to: "bfs"   },
     { from: "maze", to: "dfs"   },
@@ -702,7 +702,7 @@ return { corridorSolved: corrR.won, mazeStalledAfter: mazeR.moves };
     {
       id: "dfs", icon: "🌀", title: "DFS reasoner", x: 1, y: 0,
       showCode: false,
-      summary: "DFS code is collapsed by default. If you expand it, look for the recursive dfs(pos) function: it pushes a move when it enters a branch and pushes the reverse move when it backs out.",
+      summary: "The collapsed dfs(pos) function records a forward step on branch entry and its reverse during backtracking. Expand the node to inspect that recursion.",
       code: `// DFS is the depth-first version of the same agent loop. It first builds a full
 // move list, including backtracking moves, then replays that list as an animation.
 if (!state.fn) { helpers.log("Run the 'Maze + constant reasoner' node first."); return; }
@@ -833,7 +833,7 @@ return { steps, won: true };
 // ── Canvas 1.6: LLM / VLM run · the model chooses moves in the same maze loop ─
 mountCanvasFlow("#cell-llm-maze", {
   label: "LLM maze run · model chooses moves",
-  intro: "Run the engine node first; it exports the maze utilities and one shared solver (state.runMaze) to state. Then run the editable maze-agent node. The run node is open by default because it is the part to edit: change DIRECTIVE, then adjust model, advanced, includeText, includeImage, includeHistory, includeCoords, or toolSpecInSystem one at a time.",
+  intro: "Run the engine first to export the maze utilities and state.runMaze. Then use the editable maze-agent node: begin with DIRECTIVE and change one option at a time, including model, advanced, text, image, history, coordinates, or tool schema.",
   nodes: [
     {
       id: "helpers", icon: "⚙️", title: "Maze engine",
