@@ -131,6 +131,7 @@ import concept_order_audit as coa  # noqa: E402
 import skill_contract as skc  # noqa: E402
 import course_content_contract as cc  # noqa: E402
 import course_dependency_integrity as cdi  # noqa: E402
+import html_structure_audit as hsa  # noqa: E402
 from collections import defaultdict  # noqa: E402
 
 
@@ -170,6 +171,9 @@ SUITE_META = [
     ("page_audit", "Page audit", "recommended",
      "Each page is held to the shared HTML contract: no stale tokens, no missing assets, no deploy course-code leaking into content. Each entry names the drifted token or asset to fix.",
      "scripts/runtime/engine.js", "pageAudit"),
+    ("html_structure", "HTML structure", "required",
+     "Canonical and localized learner pages must not contain nested anchors. Browsers repair that invalid structure by closing the outer link early, which splits cards and leaks their prose into the surrounding layout.",
+     "scripts/validation/html_structure_audit.py", "audit"),
     ("course_content", "Course content contract", "required",
      "Course promises that generic validators cannot infer: retrieval and safety figures keep their teaching contracts, product comparisons cite public sources, automation semantics stay scoped to the demonstrated configuration, and alpha platform claims retain availability and hardware qualifiers. Each finding names the missing contract piece.",
      "scripts/validation/course_content_contract.py", "run"),
@@ -461,6 +465,22 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         vl_ok = False
         ok = False
         vl_fail.extend(f"course dependency integrity: {x}" for x in cdi_find)
+
+    try:
+        html_structure_find = hsa.audit()
+    except Exception as e:
+        html_structure_find = []
+        suite_errors["html_structure"] = str(e)
+        vl_ok = False
+        ok = False
+        vl_fail.append(f"HTML structure audit error: {e}")
+    if html_structure_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(
+            f"HTML structure: {item['path']}:{item['line']}:{item['column']}: {item['detail']}"
+            for item in html_structure_find
+        )
 
     # grounding reference sweep (fast, no-llm). Folds the em-dash / ungrounded / cross
     # signals into the durable log so the cadence reflects content health, not just links.
@@ -813,6 +833,10 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "page_audit": [D(x.get("page"), "; ".join((fi.get("detail") or fi.get("token") or "") for fi in x.get("findings", [])),
                          RECOMMENDED, "Update the flagged token or restore the missing asset so the page matches the shared HTML contract.")
                        for x in audit.get("findings", [])],
+        "html_structure": [D(item["path"],
+                             f"line {item['line']}, column {item['column']}: {item['detail']}", REQUIRED,
+                             "Replace the outer card link with a non-interactive container and give each destination its own sibling link. Never nest one anchor inside another.")
+                           for item in html_structure_find],
         "course_content": [D(path, detail, REQUIRED,
                              "Restore the source-backed teaching contract. Keep retrieval/safety explanations complete, product comparisons grounded in public sources, automation behavior scoped to the demonstrated configuration, and alpha platform claims qualified.")
                            for path, detail in cc_find],
@@ -1010,6 +1034,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     _scanned = {
         "links": s["pages"], "cross_course": s["pages"], "asset_leaks": s["pages"],
         "reachability": reach.get("pages", 0), "page_audit": audit.get("pages", 0), "course_content": 8,
+        "html_structure": len(hsa.source_pages(TASK1)),
         "course_dependency_integrity": 14,
         "grounding": len(grecs), "prose_variety": len(pv_rows), "prose_buzz": len(pv_rows), "redundancy": len(pv_rows), "grammar": len(pv_rows), "structure": len(pv_rows), "headings": len(pv_rows), "assertions": len(pv_rows), "word_echo": len(pv_rows), "comma_weight": len(pv_rows), "branding": len(pv_rows),
         "defer_copula": len(pv_rows), "dense_repeats": len(pv_rows), "over_verbage": len(pv_rows), "padding": len(pv_rows),
@@ -1071,6 +1096,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "reachability": reach,
         "foyer_release": foyer,
         "page_audit": audit,
+        "html_structure": {"pages": len(hsa.source_pages(TASK1)), "findings": len(html_structure_find)},
         "course_content": {"findings": len(cc_find)},
         "course_dependency_integrity": {"findings": len(cdi_find)},
         "prose_variety": {"pages": len(pv_rows), "flagged": len(pv_flagged), "flag_at": pv.FLAG_AT,

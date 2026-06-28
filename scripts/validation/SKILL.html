@@ -15,6 +15,7 @@
   "related": [
     "scripts/validation/validate_bundle.py",
     "scripts/validation/validate_layout.py",
+    "scripts/validation/html_structure_audit.py",
     "scripts/validation/grounding.py",
     "scripts/validation/prose_variety.py",
     "scripts/validation/code_hygiene.py",
@@ -66,6 +67,11 @@
       "path": "validate_layout.py",
       "role": "layout gate",
       "desc": "Checks links, static mounts, and SKILL beacons."
+    },
+    {
+      "path": "html_structure_audit.py",
+      "role": "HTML structure gate",
+      "desc": "Rejects nested anchors in canonical and localized learner pages before browser repair can split cards and leak content."
     },
     {
       "path": "grounding.py",
@@ -232,6 +238,7 @@
 <div class="skill-cmds">
   <div class="skill-cmd"><b>Ship gate</b><code>python3 scripts/validation/validate_bundle.py --no-write --scope ship</code></div>
   <div class="skill-cmd"><b>Layout links</b><code>python3 scripts/validation/validate_layout.py --quiet</code></div>
+  <div class="skill-cmd"><b>HTML structure + detector</b><code>python3 scripts/validation/html_structure_audit.py &amp;&amp; python3 scripts/validation/html_structure_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>Cell contract</b><code>python3 scripts/validation/cell_audit.py</code></div>
   <div class="skill-cmd"><b>Learner-flow static + detector</b><code>python3 scripts/validation/learner_flow_audit.py &amp;&amp; python3 scripts/validation/learner_flow_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>Learner-flow browser lifecycle</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/learner_flow_runtime_audit.py --site-root web</code></div>

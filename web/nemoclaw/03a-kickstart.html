@@ -83,7 +83,7 @@
       transition: opacity .15s;
     }
 
-    .url-card:hover {
+    a.url-card:hover {
       opacity: .8;
     }
 
@@ -92,6 +92,10 @@
       font-size: .95rem;
       color: var(--gs);
       font-family: var(--mono);
+    }
+
+    .url-card h3 a {
+      color: inherit;
     }
 
     .url-card p {
@@ -211,10 +215,10 @@
         <p style="color:var(--tf);font-size:.8rem">Your <code>nvapi-</code> key.
           The proxy forwards it unchanged.</p>
       </a>
-      <a class="url-card"
-        href="https://brev.nvidia.com/launchable/deploy/now?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS"
-        target="_blank" rel="noopener" style="border-left-color:var(--gs);background:rgba(118,185,0,.06)">
-        <h3>NemoClaw setup playbook</h3>
+      <article class="url-card" style="border-left-color:var(--gs);background:rgba(118,185,0,.06)">
+        <h3><a
+          href="https://brev.nvidia.com/launchable/deploy/now?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS"
+          target="_blank" rel="noopener">Launch NemoClaw on Brev</a></h3>
         <p>The setup creates a launchable that runs OpenClaw inside OpenShell, at
           <code>https://nemoclaw-&lt;id&gt;.brevlab.com</code>. Identity, tools,
           session memory, and sandbox policy live there. The browser reaches the agent through
@@ -224,7 +228,7 @@
         </p>
         <p style="color:var(--tf);font-size:.8rem">Gateway token auth. Sessions
           via <code>x-openclaw-session-key</code>.</p>
-      </a>
+      </article>
     </div>
 
     <h2>Step 1 · Probe the endpoints</h2>
