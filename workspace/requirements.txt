@@ -14,7 +14,7 @@ starlette>=1.3.1
 streamlit
 uvicorn[standard]
 voila
-protobuf>=5.29.6,<6    # patched 5.x line; grpcio / transformers need runtime_version added in 5.26
+protobuf>=5.29.6,<6    # compatibility floor; BDSA-2025-123809 remains waived until upstream ships the complete ParseDict recursion fix
 
 # LangChain & Orchestration
 langchain

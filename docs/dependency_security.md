@@ -60,6 +60,15 @@ python3 scripts/security/audit_vulnerability_waivers.py
 Expired waivers fail locally and in CI. Use a waiver only when the scanner finding
 is not currently actionable; do not use it to bypass an available safe upgrade.
 
+The protobuf waiver for `BDSA-2025-123809` covers an upstream gap rather than a
+version preference. The original `Any` recursion fix shipped in `5.29.6`, but
+`Struct`, `Value`, and `ListValue` still bypass the JSON parser depth counter in
+released wheels through `7.35.1`. Upstream merged the complete fix in
+[`protocolbuffers/protobuf#27007`](https://github.com/protocolbuffers/protobuf/pull/27007).
+Until that fix reaches a stable wheel, `audit_python_dependencies.py` rejects any
+tracked runtime caller of `google.protobuf.json_format.Parse` or `ParseDict`, and
+the waiver expires so the dependency cannot remain accepted silently.
+
 ## Full installed-environment SCA
 
 The fast gate does not replace a full transitive scan. Once the workspace/test
