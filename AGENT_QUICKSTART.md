@@ -162,6 +162,48 @@ scripts/runtime/browser_env_probe.sh                       # proves container No
 CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only
 ```
 
+When a change touches an image, SVG, diagram, canvas figure, screenshot-like
+asset, or page placement of an image, preview the rendered result through the
+current agent host before you call the work done. Use Codex image preview,
+Claude/browser screenshot, Cursor/browser preview, `cell_ui_runtime_audit.py`
+screenshots, the Playwright runtime harness, or a local Pages/browser smoke.
+Then show that preview to the requester in the status/final response, either as
+an embedded image/screenshot or as the concrete preview artifact path. If no
+host preview can run, report the exact harness blocker. Static checks such as
+`figure_audit.py`, `source_gate.py`, and `validate_bundle.py` are still required,
+but they do not replace seeing the rendered image.
+
+Course-authored or provided SVGs under `assets/figures/` should be mounted with
+`<div class="fig-embed" data-svg-src="..."></div>` so the shared theme variables
+and click-to-expand lightbox work. Plain `<img>` is only for fixed-white paper
+conversions documented as `connection: "conversion"` in asset provenance.
+
+Visual first-touch checklist:
+
+```bash
+# 1. Read the local image contract and validator surface.
+sed -n '1,140p' web/nemoclaw/assets/SKILL.html
+sed -n '1,220p' scripts/validation/SKILL.html
+
+# 2. Build the current page bundle and produce rendered screenshots.
+BUILD_PAGES_LANGS=0 bash scripts/build/build_pages.sh /tmp/nemoclaw_visual_preview
+python3 scripts/validation/cell_ui_runtime_audit.py \
+  --site-root /tmp/nemoclaw_visual_preview \
+  --page /nemoclaw/02b-rag.html \
+  --screenshots /tmp/nemoclaw_visual_audit
+
+# 3. Run the visual/static gates before pushing.
+python3 scripts/validation/figure_audit.py
+python3 scripts/compliance/source_gate.py
+python3 scripts/validation/validate_bundle.py --no-write --scope ship
+```
+
+Inspect the screenshots in the active harness and show the relevant image or
+crop to the requester. Check both light and dark theme screenshots. If the
+browser harness cannot run, report the exact blocker and still run the static
+gates above. Keep diagram labels that carry meaning; remove only caption-like
+prose, provenance, or process shorthand from SVG source.
+
 If Codex tool calls fail before the requested command starts with
 `bubblewrap is unavailable`, the missing dependency is in the host Codex
 execution environment, not in NemoClaw's microservice containers. Run:

@@ -1,4 +1,4 @@
-<svg class="gfx-dark" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The compositional vulnerability matrix illustrating the intersection of untrusted input, reachability of secrets, and an allowed outbound channel with full-duplex ingress feedback loops." preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; display:block; background:#0d0d0d; border:1px solid #2a2a2a; border-radius:12px; padding:16px; max-width:1100px; margin:1.5rem auto">
+<svg class="gfx-dark" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The compositional vulnerability matrix illustrating the intersection of untrusted input, reachability of secrets, and an allowed outbound channel with full-duplex ingress feedback loops." preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; display:block; background:var(--gfx-bg,#0d0d0d); border:1px solid var(--gfx-line,#2a2a2a); border-radius:12px; padding:16px; max-width:1100px; margin:1.5rem auto">
   <defs>
     <filter id="hub-shadow" x="-20%" y="-20%" width="140%" height="140%">
       <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.5"/>
@@ -24,19 +24,19 @@
   <text x="491" y="335" font-family="Arial, sans-serif" font-size="10.5" fill="#10b981" text-anchor="middle" font-style="italic" transform="rotate(60 515 320)">ingests response</text>
 
   <g transform="translate(130, 160)">
-    <rect x="0" y="0" width="160" height="46" rx="6" fill="#0d0d0d" stroke="#3b82f6" stroke-width="1.5"/>
+    <rect x="0" y="0" width="160" height="46" rx="6" fill="var(--gfx-bg,#0d0d0d)" stroke="#3b82f6" stroke-width="1.5"/>
     <text x="80" y="19" font-family="Arial, sans-serif" font-size="12.5" fill="#3b82f6" font-weight="700" text-anchor="middle">Access to Secrets</text>
     <text x="80" y="35" font-family="Arial, sans-serif" font-size="11" fill="#6a6a6a" text-anchor="middle">Protected Private Data</text>
   </g>
 
   <g transform="translate(515, 160)">
-    <rect x="0" y="0" width="160" height="46" rx="6" fill="#0d0d0d" stroke="#eab308" stroke-width="1.5"/>
+    <rect x="0" y="0" width="160" height="46" rx="6" fill="var(--gfx-bg,#0d0d0d)" stroke="#eab308" stroke-width="1.5"/>
     <text x="80" y="19" font-family="Arial, sans-serif" font-size="12.5" fill="#eab308" font-weight="700" text-anchor="middle">Untrusted Input</text>
     <text x="80" y="35" font-family="Arial, sans-serif" font-size="11" fill="#6a6a6a" text-anchor="middle">Adversarial Instructions</text>
   </g>
 
   <g transform="translate(320, 380)">
-    <rect x="0" y="0" width="160" height="46" rx="6" fill="#0d0d0d" stroke="#10b981" stroke-width="1.5"/>
+    <rect x="0" y="0" width="160" height="46" rx="6" fill="var(--gfx-bg,#0d0d0d)" stroke="#10b981" stroke-width="1.5"/>
     <text x="80" y="19" font-family="Arial, sans-serif" font-size="12.5" fill="#10b981" font-weight="700" text-anchor="middle">A Way Out</text>
     <text x="80" y="35" font-family="Arial, sans-serif" font-size="11" fill="#6a6a6a" text-anchor="middle">Permitted Egress Path</text>
   </g>

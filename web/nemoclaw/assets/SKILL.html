@@ -57,7 +57,7 @@
   "title": "Image provenance",
   "source_dir": "web/nemoclaw/assets/",
   "self_path": "web/nemoclaw/assets/SKILL.html",
-  "summary": "Every course image has a direct asset link, source/license metadata, and a lesson link showing where it appears. Contributor names belong in provenance and SVG comments, not learner-facing captions or narrative prose. Avoid issue-title phrasing such as story/narrative/architecture when the learner-facing concept is narrower. Do not modify an SVG file unless the user explicitly asks for SVG changes or the edit converts an authored source into a tone-safe generated asset."
+  "summary": "Every course image has a direct asset link, source/license metadata, a lesson link showing where it appears, theme/mount classification, and a required rendered-preview step when touched. Course-authored or provided SVGs mount through fig-embed/data-svg-src so theme variables and click-to-expand work; plain img is only for fixed-white paper conversions documented as connection=conversion. Semantic labels stay in diagrams; caption-like prose, contributor names, and issue shorthand belong in figcaption, provenance, or SVG comments, not learner-facing graphic text. Avoid issue-title phrasing such as story/narrative/architecture when the learner-facing concept is narrower. Do not modify an SVG file unless the user explicitly asks for SVG changes or the edit converts an authored source into a tone-safe generated asset."
 }</script>
 <script type="application/json" id="provenance">{
   "repo_license": "Apache-2.0. Course-authored diagrams and support files are contributed under the repository license unless a row marks external terms.",
@@ -65,10 +65,12 @@
     "original": "authored for this course",
     "inspiration": "original drawing of a sourced concept",
     "recreation": "course redraw of a source figure or layout",
-    "conversion": "paper figure converted to SVG and used as a fixed white image"
+    "conversion": "paper figure converted to SVG and used as a fixed white image",
+    "provided course asset": "diagram supplied for this course and used with source/license provenance"
   },
-  "layout_note": "All SVG course graphics now live under assets/figures/. Paper conversions such as ReAct, ReWOO, and the original RAG architecture stay fixed-white because the course renders them as img elements, not theme-aware inline SVGs.",
-  "attribution_policy": "Credit contributors in this provenance page and in source comments. Keep learner-facing page prose and figure captions focused on the concept, not the contributor name or issue title. Do not inherit reviewer shorthand such as story, narrative, or architecture map unless the page actually teaches that abstraction. Insert existing SVGs as-is; modify SVG source only when explicitly requested or when converting authored source into a tone-safe generated asset.",
+  "layout_note": "All SVG course graphics now live under assets/figures/. Course-authored or provided SVGs render through fig-embed/data-svg-src so theme variables and click-to-expand work. Paper conversions such as ReAct, ReWOO, and the original RAG architecture stay fixed-white because the course renders them as img elements and provenance marks them as conversion. Do not use img for a non-conversion SVG.",
+  "attribution_policy": "Credit contributors in this provenance page and in source comments. Keep learner-facing page prose and figure captions focused on the concept, not the contributor name or issue title. Do not inherit reviewer shorthand such as story, narrative, or architecture map unless the page actually teaches that abstraction. Preserve semantic diagram labels; remove only caption-like prose, provenance, or process shorthand from SVG-rendered text. Insert existing SVGs as-is; modify SVG source only when explicitly requested or when converting authored source into a tone-safe generated asset.",
+  "visual_preview_policy": "When an agent adds, removes, replaces, edits, or repositions any image, SVG, diagram, or canvas figure, preview the rendered result through the current host harness before claiming completion. Acceptable evidence includes Codex image preview or screenshot, Claude/browser screenshot, Cursor/browser preview, the Playwright runtime harness, cell_ui_runtime_audit.py screenshots, or local Pages/browser smoke. Show the preview to the requester in the status/final response, either as an embedded image/screenshot or as the concrete preview artifact path. Check light and dark theme screenshots when the asset can theme-switch. If none can run, report the exact blocker and run figure_audit.py, source_gate.py, and validate_bundle.py.",
   "figures": [
     {
       "file": "favicon.ico",
@@ -79,6 +81,16 @@
       "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
       "connection": "original",
       "used_by": "index.html"
+    },
+    {
+      "file": "figures/01a-agent-environment.svg",
+      "depicts": "environment and agent boundary loop",
+      "source": "original course diagram",
+      "source_url": "",
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+      "connection": "original",
+      "used_by": "01a-loop.html"
     },
     {
       "file": "figures/01a-loop-1.svg",
@@ -271,13 +283,13 @@
       "used_by": "04a-safety.html"
     },
     {
-      "file": "figures/04a-safety-2.svg",
-      "depicts": "lethal trifecta overlap and full-duplex egress feedback loop",
-      "source": "Simon Willison lethal trifecta definition",
-      "source_url": "https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/",
-      "license": "Apache-2.0",
-      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
-      "connection": "original course adaptation",
+      "file": "figures/04a-openshell-architecture.svg",
+      "depicts": "OpenShell component architecture",
+      "source": "NVIDIA-provided OpenShell architecture diagram",
+      "source_url": "",
+      "license": "NVIDIA Distribution License",
+      "license_url": "",
+      "connection": "provided course asset",
       "used_by": "04a-safety.html"
     },
     {
@@ -396,7 +408,7 @@
     <button type="button" data-theme-choice="dark" aria-pressed="true">Dark</button>
     <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
   </div>
-</div><section class="note"><strong>Directory policy.</strong> Image assets live in <code>assets/figures/</code>. Root <code>assets/</code> is reserved for indexes, CLI readme snapshots, and favicon/support files. Asset provenance belongs in this page and in source comments; course pages should describe the concept, not implementation history or review shorthand.</section>
+</div><section class="note"><strong>Directory policy.</strong> Image assets live in <code>assets/figures/</code>. Root <code>assets/</code> is reserved for indexes, CLI readme snapshots, and favicon/support files. Asset provenance belongs in this page and in source comments; course pages should describe the concept, not implementation history or review shorthand. Keep meaningful labels inside diagrams, but move captions and provenance out of SVG-rendered text. Any agent that touches an image or its page placement must preview the rendered result through its host harness, inspect light and dark mode when relevant, show it to the requester, and report the evidence or exact blocker.</section>
 <h2>Files</h2><ul class="file-index"><li><a href="cli_readme_claude-code.txt">cli_readme_claude-code.txt</a><span class="kind">txt</span></li>
 <li><a href="cli_readme_codex.txt">cli_readme_codex.txt</a><span class="kind">txt</span></li>
 <li><a href="cli_readme_cursor.txt">cli_readme_cursor.txt</a><span class="kind">txt</span></li>
@@ -404,6 +416,7 @@
 <li><a href="cli_readme_openclaw.txt">cli_readme_openclaw.txt</a><span class="kind">txt</span></li>
 <li><a href="cli_readmes.json">cli_readmes.json</a><span class="kind">json</span></li>
 <li><a href="favicon.ico">favicon.ico</a><span class="kind">ico</span></li>
+<li><a href="figures/01a-agent-environment.svg">figures/01a-agent-environment.svg</a><span class="kind">svg</span></li>
 <li><a href="figures/01a-loop-1.svg">figures/01a-loop-1.svg</a><span class="kind">svg</span></li>
 <li><a href="figures/01a-loop-2.svg">figures/01a-loop-2.svg</a><span class="kind">svg</span></li>
 <li><a href="figures/01a-loop-3.svg">figures/01a-loop-3.svg</a><span class="kind">svg</span></li>
@@ -422,8 +435,8 @@
 <li><a href="figures/03a-kickstart-1.svg">figures/03a-kickstart-1.svg</a><span class="kind">svg</span></li>
 <li><a href="figures/03b-openclaw-1.svg">figures/03b-openclaw-1.svg</a><span class="kind">svg</span></li>
 <li><a href="figures/03c-always-on-1.svg">figures/03c-always-on-1.svg</a><span class="kind">svg</span></li>
+<li><a href="figures/04a-openshell-architecture.svg">figures/04a-openshell-architecture.svg</a><span class="kind">svg</span></li>
 <li><a href="figures/04a-safety-1.svg">figures/04a-safety-1.svg</a><span class="kind">svg</span></li>
-<li><a href="figures/04a-safety-2.svg">figures/04a-safety-2.svg</a><span class="kind">svg</span></li>
 <li><a href="figures/lethal-trifecta.svg">figures/lethal-trifecta.svg</a><span class="kind">svg</span></li>
 <li><a href="figures/fig2_react.svg">figures/fig2_react.svg</a><span class="kind">svg</span></li>
 <li><a href="figures/fig2_rewoo.svg">figures/fig2_rewoo.svg</a><span class="kind">svg</span></li>
@@ -438,6 +451,15 @@
   <div class="pv-use"><span>Used in</span> <a href="../index.html">index.html</a></div>
   <div class="pv-meta"><span>Connection</span>original</div>
   <div class="pv-meta"><span>Source</span>original course asset</div>
+  <div class="pv-meta"><span>License</span>Apache-2.0</div>
+</article>
+<article class="pv-card" data-asset="figures/01a-agent-environment.svg" data-course-use="01a-loop.html">
+  <div class="pv-prev"><div data-svg-src="figures/01a-agent-environment.svg"></div></div>
+  <div class="pv-file"><a href="figures/01a-agent-environment.svg">figures/01a-agent-environment.svg</a></div>
+  <div class="pv-dep">environment and agent boundary loop</div>
+  <div class="pv-use"><span>Used in</span> <a href="../01a-loop.html">01a-loop.html</a></div>
+  <div class="pv-meta"><span>Connection</span>original</div>
+  <div class="pv-meta"><span>Source</span>original course diagram</div>
   <div class="pv-meta"><span>License</span>Apache-2.0</div>
 </article>
 <article class="pv-card" data-asset="figures/01a-loop-1.svg" data-course-use="01a-loop.html">
@@ -611,14 +633,14 @@
   <div class="pv-meta"><span>Source</span>original course diagram</div>
   <div class="pv-meta"><span>License</span>Apache-2.0</div>
 </article>
-<article class="pv-card" data-asset="figures/04a-safety-2.svg" data-course-use="04a-safety.html">
-  <div class="pv-prev"><div data-svg-src="figures/04a-safety-2.svg"></div></div>
-  <div class="pv-file"><a href="figures/04a-safety-2.svg">figures/04a-safety-2.svg</a></div>
-  <div class="pv-dep">tool-call policy path</div>
+<article class="pv-card" data-asset="figures/04a-openshell-architecture.svg" data-course-use="04a-safety.html">
+  <div class="pv-prev"><div data-svg-src="figures/04a-openshell-architecture.svg"></div></div>
+  <div class="pv-file"><a href="figures/04a-openshell-architecture.svg">figures/04a-openshell-architecture.svg</a></div>
+  <div class="pv-dep">OpenShell component architecture</div>
   <div class="pv-use"><span>Used in</span> <a href="../04a-safety.html">04a-safety.html</a></div>
-  <div class="pv-meta"><span>Connection</span>original</div>
-  <div class="pv-meta"><span>Source</span>original course diagram</div>
-  <div class="pv-meta"><span>License</span>Apache-2.0</div>
+  <div class="pv-meta"><span>Connection</span>provided course asset</div>
+  <div class="pv-meta"><span>Source</span>NVIDIA-provided OpenShell architecture diagram</div>
+  <div class="pv-meta"><span>License</span>NVIDIA Distribution License</div>
 </article>
 <article class="pv-card" data-asset="figures/lethal-trifecta.svg" data-course-use="04a-safety.html">
   <div class="pv-prev"><div data-svg-src="figures/lethal-trifecta.svg"></div></div>

@@ -26,6 +26,8 @@ DEFAULT_IMAGE = "nemoclaw/lab-runtime-test:local"
 DEFAULT_PAGES = (
     "/nemoclaw/scripts/SKILL.html",
     "/nemoclaw/01a-loop.html",
+    "/nemoclaw/02b-rag.html",
+    "/nemoclaw/04a-safety.html",
     "/nemoclaw/04b-modern-clis.html",
 )
 
@@ -85,6 +87,34 @@ async function inspectPage(page, pagePath, vp, theme) {
     runCellOpenDefault: document.querySelectorAll('.rc-code-det[open]').length,
   }));
   const initial = await page.evaluate((visibility) => {
+    const darkSurfaces = () => Array.from(document.querySelectorAll(
+      '.cell-btn-reset,.cf-btn-reset,.cf-panel-reset,.cf-node,.cf-panel,.cf-panel-det,.rc-code-det,.CodeMirror,.CodeMirror-gutters,.cell-code-body,.rc-code-body,.cf-panel-code-body,.cell-output-panel,.rc-out,.cf-panel-stream,.cf-panel-log,.cf-panel-output-pre,svg.gfx-dark,svg.gfx-dark rect,svg.gfx-dark circle,svg.gfx-dark ellipse,svg.gfx-dark polygon,svg.os-architecture,svg.os-architecture rect,svg.os-architecture .os-panel'
+    )).filter(el => {
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height) return false;
+      const cs = getComputedStyle(el);
+      let color = cs.backgroundColor;
+      if (el instanceof SVGElement) {
+        const tag = el.tagName.toLowerCase();
+        if (tag !== 'svg') {
+          if (r.width * r.height < 900) return false;
+          if (tag === 'path' && !String(el.getAttribute('class') || '').includes('os-panel')) return false;
+          color = cs.fill;
+          if (!color || color === 'none') return false;
+        }
+      }
+      const m = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/);
+      if (!m) return false;
+      if (m[4] != null && Number(m[4]) === 0) return false;
+      const rgb = m.slice(1, 4).map(Number);
+      if (el instanceof SVGElement && el.tagName.toLowerCase() !== 'svg') {
+        if (Math.max(...rgb) - Math.min(...rgb) >= 45) return false;
+      }
+      const [rr, gg, bb] = rgb.map(v => v / 255);
+      const lin = [rr, gg, bb].map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+      const lum = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+      return lum < 0.45;
+    }).slice(0, 12).map(el => ({ tag: el.tagName, cls: String(el.className || '').slice(0, 80), bg: getComputedStyle(el).backgroundColor, fill: getComputedStyle(el).fill }));
     const codeDetails = Array.from(document.querySelectorAll('.cf-panel-code-det,.rc-code-det'));
     const codeSummaries = codeDetails.map(det => (det.querySelector('summary')?.textContent || '').trim());
     const canvasLongOpen = Array.from(document.querySelectorAll('.cf-panel-code-det[open] .cf-panel-code')).filter(ta => (ta.value || '').split('\n').length >= 40).length;
@@ -107,10 +137,13 @@ async function inspectPage(page, pagePath, vp, theme) {
       pageOverflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
       badOverflow: Array.from(document.querySelectorAll('body *')).filter(el => {
         const r = el.getBoundingClientRect();
+        if (el instanceof SVGElement || el.closest('svg')) return false;
         if (r.right <= document.documentElement.clientWidth + 2) return false;
-        if (el.closest('.topbar nav,.cf-stage,.CodeMirror,.CodeMirror-scroll,.cf-helpers-scroll,.cell-log-json,.cf-panel-log-json,.cf-log-json,pre')) return false;
+        if (el.tagName === 'CODE') return false;
+        if (el.closest('.topbar nav,.cf-stage,.CodeMirror,.CodeMirror-scroll,.cf-helpers-scroll,.cell-log-json,.cf-panel-log-json,.cf-log-json,.cell-code-body,.rc-code-body,.cf-panel-code-body,pre')) return false;
         return true;
       }).slice(0, 8).map(el => ({ tag: el.tagName, cls: String(el.className || '').slice(0, 80), text: (el.textContent || '').trim().slice(0, 80) })),
+      lightDarkSurfaces: document.documentElement.getAttribute('data-theme') !== 'light' ? [] : darkSurfaces(),
       minCellButton: Math.min(...Array.from(document.querySelectorAll('.cell-btn')).map(b => Math.min(b.getBoundingClientRect().width, b.getBoundingClientRect().height)).filter(Number.isFinite), 999),
     };
     return output;
@@ -154,6 +187,34 @@ async function inspectPage(page, pagePath, vp, theme) {
     jsonBlocks: document.querySelectorAll('.cell-log-json,.cf-panel-output-pre code.language-json').length,
     detailsBlocks: document.querySelectorAll('.cell-log-details, .cf-panel-log-details').length,
     htmlBlocks: document.querySelectorAll('.cell-log-html,.cf-panel-log-html').length,
+    lightDarkSurfaces: document.documentElement.getAttribute('data-theme') !== 'light' ? [] : Array.from(document.querySelectorAll(
+      '.cell-btn-reset,.cf-btn-reset,.cf-panel-reset,.cf-node,.cf-panel,.cf-panel-det,.rc-code-det,.CodeMirror,.CodeMirror-gutters,.cell-code-body,.rc-code-body,.cf-panel-code-body,.cell-output-panel,.rc-out,.cf-panel-stream,.cf-panel-log,.cf-panel-output-pre,svg.gfx-dark,svg.gfx-dark rect,svg.gfx-dark circle,svg.gfx-dark ellipse,svg.gfx-dark polygon,svg.os-architecture,svg.os-architecture rect,svg.os-architecture .os-panel'
+    )).filter(el => {
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height) return false;
+      const cs = getComputedStyle(el);
+      let color = cs.backgroundColor;
+      if (el instanceof SVGElement) {
+        const tag = el.tagName.toLowerCase();
+        if (tag !== 'svg') {
+          if (r.width * r.height < 900) return false;
+          if (tag === 'path' && !String(el.getAttribute('class') || '').includes('os-panel')) return false;
+          color = cs.fill;
+          if (!color || color === 'none') return false;
+        }
+      }
+      const m = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/);
+      if (!m) return false;
+      if (m[4] != null && Number(m[4]) === 0) return false;
+      const rgb = m.slice(1, 4).map(Number);
+      if (el instanceof SVGElement && el.tagName.toLowerCase() !== 'svg') {
+        if (Math.max(...rgb) - Math.min(...rgb) >= 45) return false;
+      }
+      const [rr, gg, bb] = rgb.map(v => v / 255);
+      const lin = [rr, gg, bb].map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+      const lum = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+      return lum < 0.45;
+    }).slice(0, 12).map(el => ({ tag: el.tagName, cls: String(el.className || '').slice(0, 80), bg: getComputedStyle(el).backgroundColor, fill: getComputedStyle(el).fill })),
   }));
 
   const failures = [];
@@ -166,6 +227,8 @@ async function inspectPage(page, pagePath, vp, theme) {
   if (initial.flows + initial.runCells > 0 && finalInfo.codeMirrorCount < initial.panels + initial.runCells) failures.push('CodeMirror did not mount for every opened editor');
   if (initial.flows + initial.runCells > 0 && finalInfo.cmTokenCount < finalInfo.codeMirrorCount) failures.push('CodeMirror syntax tokens missing');
   if (initial.badOverflow.length) failures.push(`uncontained horizontal overflow ${JSON.stringify(initial.badOverflow)}`);
+  if (initial.lightDarkSurfaces.length) failures.push(`light theme dark cell surfaces ${JSON.stringify(initial.lightDarkSurfaces)}`);
+  if (finalInfo.lightDarkSurfaces.length) failures.push(`light theme dark expanded surfaces ${JSON.stringify(finalInfo.lightDarkSurfaces)}`);
   if (initial.minCellButton < 28) failures.push(`tiny cell button dimension ${initial.minCellButton}`);
   const badRuns = runResults.filter(r => !r.hasOutput || r.badText);
   if (badRuns.length) failures.push(`helper run output failed ${JSON.stringify(badRuns)}`);

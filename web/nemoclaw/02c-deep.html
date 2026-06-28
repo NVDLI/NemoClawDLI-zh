@@ -67,13 +67,21 @@
     at node 1, so the first cell below is the connectivity check.
   </div>
 
-  <!-- ── Why deep agents · shallow vs deep ── -->
   <h2>Where a single growing context breaks down</h2>
   <p>
     Every module so far has built single-context agents, a single
     <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">ReAct</a>
     loop driving one model through a steadily growing stack of tool calls, with
     everything the agent does landing in that same context.
+  </p>
+  <figure style="margin:1.4em 0">
+    <div class="fig-embed" data-svg-src="assets/figures/02c-deep-1.svg" style="aspect-ratio:680 / 430"></div>
+  </figure>
+  <p style="font-size:.88rem;color:var(--td)">
+    Each sub-agent's context holds only the plan and its one task, with none
+    of the orchestrator's accumulated history. The sub-agents never share a
+    context, so a final synthesis step reads the shared files and writes one
+    combined report.
   </p>
   <p>
     That shape has three failure modes, and each one gets worse the longer a task runs:
@@ -86,29 +94,7 @@
   <p>
     The deep agent fixes all three by splitting responsibility. A dedicated
     <em>orchestrator</em> writes a plan, then hands each subtask to a fresh
-    <em>sub-agent</em> that sees only its own work.
-  </p>
-  <p>
-    Sub-agents exchange results through a shared filesystem, so one sub-agent's
-    output reaches the next without routing back through the orchestrator's
-    context window.
-  </p>
-  <figure style="margin:1.4em 0">
-    <div class="fig-embed" data-svg-src="assets/figures/02c-deep-1.svg" style="aspect-ratio:680 / 430"></div>
-  </figure>
-  <p style="font-size:.88rem;color:var(--td)">
-    Each sub-agent's context holds only the plan and its one task, with none
-    of the orchestrator's accumulated history. The sub-agents never share a
-    context, so a final synthesis step reads the shared files and writes one
-    combined report.
-  </p>
-  <p style="font-size:.88rem;color:var(--td)">
-    Topology comes from LangChain's
-    <a href="https://blog.langchain.com/deep-agents/" target="_blank" rel="noopener">"Deep
-    Agents"</a> framing (Bryk, Hwchase17 et al., 2025) and the
-    <a href="https://build.nvidia.com/nvidia/aiq" target="_blank" rel="noopener">NVIDIA AI-Q
-    Blueprint</a>; the four-pillar decomposition below maps directly to the
-    <code>deepagents</code> npm package's public API.
+    <em>sub-agent</em> which inherit a limited context, permission scope, and directive.
   </p>
 
   <h2>The four pieces a deep agent is built from</h2>
@@ -127,7 +113,7 @@
     </div>
     <div style="background:var(--e1);border:1px solid var(--bd);border-left:3px solid var(--warn);border-radius:6px;padding:12px 14px">
       <div style="font-family:ui-monospace,monospace;font-size:.7rem;color:var(--gs);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Pillar 4 · Sandbox</div>
-      <p style="margin:0;font-size:.84rem;color:var(--td);line-height:1.5">Shell-grade work runs inside an isolated container boundary. A sub-agent that writes files or runs commands cannot reach the host from there. The browser exercises on this page run with no real shell available and fall back to the virtual filesystem as their sandbox. Inside a full NemoClaw launchable the <code>openshell</code> service supplies the real container boundary and executes commands on the agent's behalf.</p>
+      <p style="margin:0;font-size:.84rem;color:var(--td);line-height:1.5">A sandbox keeps shell work from over-extending its reach or overloading the agent's accessible space. A sub-agent that writes files or runs commands should not be able to reach host-owned resources or main-loop processes. The browser exercises on this page run with no real shell available and fall back to the virtual filesystem as their sandbox.</p>
     </div>
   </div>
   <ul>

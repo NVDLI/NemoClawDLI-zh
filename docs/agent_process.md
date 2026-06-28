@@ -33,6 +33,14 @@ This note is for agents and maintainers working across issues, merge requests, a
 - For page title, navigation, or deploy-path changes, run `BUILD_PAGES_LANGS=0 scripts/build/build_pages.sh` before calling the MR ready.
 - For Studio, runnable-cell, browser-runtime, or OpenClaw changes, also run the browser/runtime harness named in `AGENT_QUICKSTART.md` and the relevant `scripts/validation/*_audit.py` file.
 
+## Visual changes
+
+- Before touching a course image, SVG, diagram, or figure placement, read `web/nemoclaw/assets/SKILL.html` and classify the asset as a theme-aware course/provided SVG or a fixed-white conversion.
+- Non-conversion SVGs mount with `fig-embed` / `data-svg-src`; fixed-white conversions use `img` only when provenance marks `connection: "conversion"`.
+- Preserve meaningful diagram labels. Remove caption-like prose, contributor/process shorthand, and provenance from learner-facing SVG content; keep captions in page `figcaption` and provenance in `assets/SKILL.html`.
+- Preview the rendered result in the active agent harness and show the requester the screenshot, crop, or exact preview artifact path. Verify light and dark theme output when the figure can theme-switch.
+- Run `python3 scripts/validation/figure_audit.py`, `python3 scripts/compliance/source_gate.py`, and `python3 scripts/validation/validate_bundle.py --no-write --scope ship` before calling visual work ready.
+
 ## Safe auth and metadata updates
 
 - Do not print token-bearing environment variables. Never run `env | rg TOKEN`, `printenv | grep TOKEN`, or equivalent output-producing probes for GitLab or service credentials.

@@ -16,8 +16,11 @@ FILES = {
     "process_doc": ROOT / "docs" / "agent_process.md",
     "agents": ROOT / "AGENTS.md",
     "quickstart": ROOT / "AGENT_QUICKSTART.md",
+    "root_skill": ROOT / "SKILL.html",
+    "assets_skill": ROOT / "web" / "nemoclaw" / "assets" / "SKILL.html",
     "docs_skill": ROOT / "docs" / "SKILL.html",
     "validation_skill": ROOT / "scripts" / "validation" / "SKILL.html",
+    "figures_skill": ROOT / "scripts" / "figures" / "SKILL.html",
     "pre_push": ROOT / "scripts" / "git-hooks" / "pre-push",
 }
 
@@ -33,11 +36,18 @@ REQUIRED = {
         "git credential fill",
         "BUILD_PAGES_LANGS=0 scripts/build/build_pages.sh",
         "`apply_patch` is unavailable",
+        "Visual changes",
+        "fig-embed",
+        "Preserve meaningful diagram labels",
+        "show the requester",
     ],
-    "agents": ["docs/agent_process.md"],
-    "quickstart": ["docs/agent_process.md"],
+    "agents": ["docs/agent_process.md", "web/nemoclaw/assets/SKILL.html", "scripts/validation/SKILL.html", "Do not flatten a diagram"],
+    "quickstart": ["docs/agent_process.md", "Visual first-touch checklist", "cell_ui_runtime_audit.py", "light and dark theme screenshots"],
+    "root_skill": ["asset provenance beacon", "inspect light and dark theme output", "source_gate"],
+    "assets_skill": ["theme/mount classification", "Semantic labels stay in diagrams", "visual_preview_policy", "light and dark theme screenshots"],
     "docs_skill": ["agent_process.md", "agent process"],
-    "validation_skill": ["agent_process_audit.py", "Agent process"],
+    "validation_skill": ["agent_process_audit.py", "Agent process", "cell_ui_runtime_audit.py", "Rendered page screenshots"],
+    "figures_skill": ["rendered-preview", "harness screenshot"],
     "pre_push": ["validate_bundle.py", "--scope ship --no-write"],
 }
 

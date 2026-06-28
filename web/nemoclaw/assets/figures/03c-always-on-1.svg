@@ -1,6 +1,6 @@
 <svg class="gfx-dark" viewBox="0 0 1040 520" xmlns="http://www.w3.org/2000/svg" role="img"
   aria-label="Skills, heartbeats, cron jobs, and sub-agents share three settings: session, directive, and trigger. Each mechanism starts the same agent loop with a different setting profile."
-  preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:14px;max-width:1040px;margin:1.5rem auto">
+  preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;background:#0d0d0d;border-radius:8px;max-width:1040px;margin:1.5rem auto">
   <defs>
     <marker id="ao-arr" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto">
       <path d="M0,1 L9,5 L0,9 Z" fill="var(--gfx-sub,#8b949e)"/>
