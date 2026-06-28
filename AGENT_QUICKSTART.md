@@ -162,6 +162,8 @@ under node):
 
 ```bash
 python3 scripts/validation/validate_layout.py --quiet      # layout + link glue
+python3 scripts/validation/html_structure_audit.py --self-test  # prove browser-repair detector
+python3 scripts/validation/html_structure_audit.py         # EN + locale HTML structure
 python3 scripts/skills/skill_consistency.py             # skill-meta vs the real tree
 python3 scripts/build/assemble_locale_overlay.py --self-test  # stale translations cannot publish
 python3 scripts/validation/localization_audit.py --self-test  # locale detector mutations

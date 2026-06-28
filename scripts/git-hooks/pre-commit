@@ -84,6 +84,14 @@ STAGED_HTML=$(git diff --cached --name-only --diff-filter=ACM \
     || true)
 
 if [ -n "$STAGED_HTML" ]; then
+    HTML_STRUCTURE="$T1/scripts/validation/html_structure_audit.py"
+    if [ -f "$HTML_STRUCTURE" ] && ! python3 "$HTML_STRUCTURE"; then
+        echo ""
+        echo "[pre-commit] REFUSING COMMIT: invalid learner-page HTML structure."
+        echo "Nested anchors trigger browser error recovery that splits cards and leaks content."
+        exit 1
+    fi
+
     # ── Fast static structural check (no docker needed) ──────────────────────
     VALIDATOR="$T1/scripts/validation/validate_canvas_html.py"
     if [ -f "$VALIDATOR" ]; then

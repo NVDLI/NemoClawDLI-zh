@@ -162,6 +162,12 @@ fi
 # ── RULE 5: compilation-projection link gate (no live lab needed) ─────────────
 BUNDLE="$T1/scripts/validation/validate_bundle.py"
 if [ -f "$BUNDLE" ]; then
+    if ! python3 "$T1/scripts/validation/html_structure_audit.py" --self-test; then
+        echo ""
+        echo "pre-push: REFUSING PUSH - HTML structure validator mutation tests failed."
+        echo "Repair the detector before trusting its nested-anchor result."
+        exit 1
+    fi
     if ! python3 "$T1/scripts/validation/learner_flow_audit.py" --self-test; then
         echo ""
         echo "pre-push: REFUSING PUSH - learner interaction validator mutation tests failed."
