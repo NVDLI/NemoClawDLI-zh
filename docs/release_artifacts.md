@@ -19,6 +19,8 @@ always starts from a protected tag and never from a branch name or an unreviewed
 - Use SemVer tags such as `v1.2.3` or an explicit prerelease such as `v1.3.0-rc.1`.
 - Create an annotated tag on a commit contained in protected `main`. Lightweight tags are refused.
 - Protect `v*` creation, update, and deletion. Name eligible release operators directly.
+- In one-operator mode, keep the protected-tag creator set equal to the sole production deployer.
+  Change tag, deployment, and approval authority together when another operator becomes active.
 - Never move, delete, or reuse a published version tag. Fix release defects under a new version.
 - Prefer signed annotated tags after the external repository has a documented signing identity and
   trust-root rotation process. Do not claim signature verification before that trust path exists.

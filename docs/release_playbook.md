@@ -203,6 +203,9 @@ Use these while GitLab remains canonical:
   approval and keep the protected action as release-owner acceptance.
 - Protect `v*` tags and name the eligible human release operators explicitly instead of granting
   tag creation to every Maintainer-role bot.
+- When pipeline-triggerer self-approval is enabled for one operator, make the `v*` creator set
+  exactly match that sole production deployer. Add or remove operators across tag creation,
+  protected production, deployment approval, and human review as one audited change.
 - Keep production Pages deploy manual and protect the `production` environment with explicit
   human deployers. In a one-operator project, an environment approval rule naming that sole
   operator must also allow the pipeline triggerer to approve; otherwise every deployment

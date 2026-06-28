@@ -77,11 +77,19 @@ def audit(snapshot: dict[str, object]) -> list[dict[str, str]]:
 
     tags = snapshot.get("protected_tags") or []
     release_tag = next((t for t in tags if t.get("name") in ("v*", "v*.*.*")), None)
+    release_tag_users: set[int] = set()
+    release_tag_groups: set[int] = set()
     if not release_tag:
         out.append(item("release-tags-unprotected", "semantic release tags have no protected-tag rule",
                         "protect v* creation for maintainers and forbid update/delete"))
     else:
         tag_levels = release_tag.get("create_access_levels", [])
+        release_tag_users = {
+            level.get("user_id") for level in tag_levels if level.get("user_id")
+        }
+        release_tag_groups = {
+            level.get("group_id") for level in tag_levels if level.get("group_id")
+        }
         if not tag_levels or any(not (level.get("user_id") or level.get("group_id")) for level in tag_levels):
             out.append(item("release-tag-role-bypass", "release tags can be created by a broad role or bot",
                             "name eligible human users or a human-owned release group explicitly"))
@@ -138,6 +146,12 @@ def audit(snapshot: dict[str, object]) -> list[dict[str, str]]:
             out.append(item("production-self-approval-too-broad",
                             "self-approval mode is not limited to one matching named deployer and approver",
                             "keep one explicit operator or disable self-approval and require independent review"))
+        if (project.get("allow_pipeline_trigger_approve_deployment") and sole_operator_rule
+                and release_tag and (release_tag_users != deployer_users or release_tag_groups)):
+            out.append(item("release-tag-operator-drift",
+                            "release tag creators do not match the sole production operator",
+                            "make the v* creator set exactly match the named production deployer, "
+                            "or move all release controls to a reviewed multi-operator model"))
     return out
 
 
@@ -172,6 +186,9 @@ def self_test() -> list[str]:
         ("main-force-push", lambda x: x["protected_branches"][0].update(allow_force_push=True)),
         ("release-tags-unprotected", lambda x: x.update(protected_tags=[])),
         ("release-tag-role-bypass", lambda x: x["protected_tags"][0].update(create_access_levels=[{"access_level": 40}])),
+        ("release-tag-operator-drift",
+         lambda x: x["protected_tags"][0]["create_access_levels"].append(
+             {"access_level": 40, "user_id": 11})),
         ("approval-not-reset", lambda x: x["approvals"].update(reset_approvals_on_push=False)),
         ("author-can-approve", lambda x: x["approvals"].update(merge_requests_author_approval=True)),
         ("committer-can-approve", lambda x: x["approvals"].update(merge_requests_disable_committers_approval=False)),
