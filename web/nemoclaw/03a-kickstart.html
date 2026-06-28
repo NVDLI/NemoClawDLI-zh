@@ -431,6 +431,8 @@
         code: `// This opens the same /cli/gateway WebSocket the probe above used; openclawChat
 // streams the reply into the view and fires a chip per tool call.
 helpers.mountChatUI("#kickstart-artifact", {
+  disabled: () => !(localStorage.getItem("nemoclaw_clawtoken") && (localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl"))),
+  disabledMsg: "Connect the launchable in the probe above. This panel unlocks as soon as its URL and token are saved.",
   greeting: "Connect your launchable in the probe above, then say hi, or ask me to run whoami and pwd with my exec tool.",
   examples: [
     "Run whoami and pwd with your exec tool",
@@ -559,6 +561,7 @@ you saved on the course home page.</p>
     mountRunCell("#bench-fetch-models", {
       label: "Fetch matching models",
       openCode: true,
+      intro: "Run this short discovery request first. It lists models matching the editable prefix; code stays visible because changing that filter is the exercise.",
       code: `// Fetch the model catalog and keep only the IDs this benchmark compares.
 const FILTER = ["120b", "glm", "kimi", "minimax"];
 const PROXY  = "https://nvidia-api-cors-proxy.vkudlay.workers.dev";
@@ -749,6 +752,7 @@ escape hatch by design.</p>`,
     mountRunCell("#claw-raw-cell", {
       label: "the probe's request, as editable code",
       openCode: true,
+      intro: "Use the probe UI above for the normal path. This cell exposes its request so you can compare proxy and direct transport or inspect an unexpected response.",
       autorun: false,
       code: `// The probe saved its URL, token, and CF JWT in localStorage. Reuse them here.
 const proxy = localStorage.getItem('nemoclaw_clawurl')    || '';  // launchable via CORS worker

@@ -7,6 +7,18 @@ path is relative to the repository root. The repo IS the release.
 
 ---
 
+## Contribution safety first-touch
+
+Ideas are cheap to submit through Discussions or Issues. Code is not trusted because an agent
+or experienced maintainer wrote it. Before editing, identify the Issue, human owner, surfaces,
+blast radius, validators, and runtime evidence. Work on a topic branch. The pre-commit hook
+refuses commits on protected refs; pre-push refuses a stale base and never rewrites history.
+Required CI and protected host settings remain authoritative because local hooks are bypassable.
+Run `python3 scripts/validation/contribution_safety_audit.py --self-test` whenever governance,
+templates, hooks, CI, permissions, or release workflows change.
+
+---
+
 ## The brain
 
 Every agent-addressable directory has a **`SKILL.html`** at its root.
@@ -165,6 +177,19 @@ CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only
 Stateful browser fixes need transition coverage, not one successful screenshot. Exercise
 state entry, successful exit, error exit, remount, and reload/navigation against source and
 built output. Pair the browser workflow with a static contract that catches cheap source drift.
+For learner-facing code visibility or interaction-state changes, run both halves of the
+shared contract:
+
+```bash
+python3 scripts/validation/learner_flow_audit.py
+python3 scripts/validation/learner_flow_audit.py --self-test
+CONTAINER_ENGINE=podman python3 scripts/validation/learner_flow_runtime_audit.py --site-root web
+```
+
+The static gate discovers course directories rather than assuming a GPU/runtime shape. It
+requires focus prose before default-open implementation, visible prerequisites before live
+launchable input, and stable Run/Stop/Reset/error states. The browser gate performs those
+transitions against the real shared components.
 For the OpenClaw probe frame lifecycle, run:
 
 ```bash

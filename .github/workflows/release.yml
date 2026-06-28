@@ -1,0 +1,106 @@
+# Validate an existing protected tag, build a reproducible public artifact, then
+# create a draft GitHub release behind the github-release environment approval.
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing protected tag to package (for example v1.2.3)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify protected release input
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          python3 -c 'import re,sys; tag=sys.argv[1]; ok=re.fullmatch(r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:[-+][0-9A-Za-z.-]+)?", tag); sys.exit(0 if ok else 1)' "$RELEASE_TAG" || { echo "refusing release: tag must match semantic vMAJOR.MINOR.PATCH" >&2; exit 1; }
+          git show-ref --verify --quiet "refs/tags/$RELEASE_TAG" || { echo "refusing release: tag does not exist" >&2; exit 1; }
+          git fetch origin main --quiet
+          git merge-base --is-ancestor "$RELEASE_TAG^{commit}" origin/main || { echo "refusing release: tag is not contained in origin/main" >&2; exit 1; }
+          test "$(git rev-parse HEAD)" = "$(git rev-parse "$RELEASE_TAG^{commit}")" || { echo "refusing release: checkout SHA differs from tag" >&2; exit 1; }
+      - name: Install public validation dependencies
+        run: pip install requests beautifulsoup4 markdownify lxml
+      - name: Required release gate
+        run: |
+          python3 scripts/validation/validate_layout.py --quiet
+          python3 scripts/skills/skill_consistency.py
+          python3 scripts/skills/skill_contract.py
+          python3 scripts/validation/ci_storage_audit.py
+          python3 scripts/validation/branch_preview_manifest_audit.py --self-test
+          python3 scripts/validation/learner_flow_audit.py --self-test
+          python3 scripts/validation/contribution_safety_audit.py --self-test
+          python3 scripts/validation/contribution_safety_audit.py --report docs/validation/contribution-safety.json
+          python3 scripts/compliance/source_gate.py
+          python3 scripts/security/audit_python_dependencies.py
+          python3 scripts/security/audit_vulnerability_waivers.py
+          bash scripts/runtime/run_engine.sh --self-test
+          python3 scripts/validation/validate_bundle.py --scope ship
+      - name: Build reproducible release archive
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          export BUILD_PAGES_LANGS=0
+          export BUILD_PAGES_PULL_MATERIALS=0
+          bash scripts/build/build_pages.sh public
+          tar --sort=name --mtime="@$(git show -s --format=%ct HEAD)" --owner=0 --group=0 --numeric-owner -czf "nemoclaw-$RELEASE_TAG.tar.gz" public
+          sha256sum "nemoclaw-$RELEASE_TAG.tar.gz" > "nemoclaw-$RELEASE_TAG.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ inputs.tag }}
+          path: |
+            nemoclaw-${{ inputs.tag }}.tar.gz
+            nemoclaw-${{ inputs.tag }}.sha256
+            docs/validation/latest.json
+            docs/validation/latest.md
+            docs/validation/contribution-safety.json
+          if-no-files-found: error
+          retention-days: 30
+
+  draft-release:
+    needs: validate-and-package
+    runs-on: ubuntu-latest
+    environment:
+      name: github-release
+    permissions:
+      contents: write
+    concurrency:
+      group: github-release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-${{ inputs.tag }}
+      - name: Create or refresh draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = "true" || { echo "refusing release: existing release is already published" >&2; exit 1; }
+            gh release upload "$RELEASE_TAG" "nemoclaw-$RELEASE_TAG.tar.gz" "nemoclaw-$RELEASE_TAG.sha256" --clobber
+          else
+            gh release create "$RELEASE_TAG" "nemoclaw-$RELEASE_TAG.tar.gz" "nemoclaw-$RELEASE_TAG.sha256" --draft --verify-tag --generate-notes --title "$RELEASE_TAG"
+          fi
+          echo "Draft prepared. Human release manager must review notes, validation artifact, and checksum before publishing."

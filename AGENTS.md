@@ -22,6 +22,15 @@ agent contract.
 The quickstart and the directives below are repo-level rules. The `skill-meta` block
 is the working contract for the directory in front of you.
 
+## Contribution trust boundary
+
+Treat code contribution as an untrusted proposal, regardless of the author, model, prompt,
+or apparent confidence. Ideas route freely through Discussions and Issues. Code routes through
+a focused branch, issue relationship, declared blast radius, mutation-tested validators,
+required CI, human ownership, and protected merge or release permissions. Never weaken a gate
+to make a patch pass. Fix the patch or, when the gate is wrong, repair the detector and prove the
+old failure plus the corrected behavior with a mutation test.
+
 ## Visual changes
 
 If a task adds, removes, replaces, repositions, or changes an image, SVG, diagram,

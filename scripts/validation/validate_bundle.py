@@ -104,6 +104,8 @@ import code_hygiene as ch  # noqa: E402
 import color_theme as ct  # noqa: E402
 import figure_audit as fa  # noqa: E402
 import cell_audit as ca  # noqa: E402
+import learner_flow_audit as lfa  # noqa: E402
+import contribution_safety_audit as csa  # noqa: E402
 import helper_notebook_runtime_audit as hna  # noqa: E402
 import studio_interface_audit as sia  # noqa: E402
 import openclaw_fallback_audit as ofa  # noqa: E402
@@ -241,6 +243,12 @@ SUITE_META = [
      "Every runnable cell shows its work in the panel, writes via helpers.log not console, awaits its model calls, inlines no key, keeps cell-only code in an editable cell, is syntax-highlighted by default, and keeps default-visible code and canvas copy readable. A hard-coded key is required-tier (it ships to every student); the rest are recommended.",
 
      "scripts/validation/cell_audit.py", "run"),
+    ("learner_flow", "Learner interaction flow", "required",
+     "Learner-facing implementation uses progressive disclosure; prerequisite state appears before launchable input; Run, Stop, Reset, error, and completion states stay visible and cancellable without moving the page viewport; the course states its CPU baseline without assuming GPU hardware.",
+     "scripts/validation/learner_flow_audit.py", "audit_tree"),
+    ("contribution_safety", "Contribution safety", "required",
+     "Ideas remain easy to submit while code, merge, deploy, and release authority stay separated. Templates expose evidence and ownership; hooks refuse without mutating; pull-request CI is read-only; required checks and protected environments gate writes.",
+     "scripts/validation/contribution_safety_audit.py", "audit_repo"),
     ("helper_notebook", "Helper notebook contract", "required",
      "The runnable helper notebook must use the helper API exposed by its actual runtime surface. Static examples must not mix CanvasFlow-only and RunCell-only log helpers, because that ships a TypeError directly to students.",
      "scripts/validation/helper_notebook_runtime_audit.py", "static_audit"),
@@ -528,6 +536,31 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     except Exception as e:
         ca_find, ca_total = {}, 0
         suite_errors["cell_audit"] = str(e); vl_fail.append(f"cell audit error: {e}")
+
+    # Learner interaction flow (required): objective disclosure, readiness, lifecycle, and CPU-baseline invariants.
+    try:
+        learner_flow_find = lfa.audit_tree()
+    except Exception as e:
+        learner_flow_find = [f"learner flow audit error: {e}"]
+        suite_errors["learner_flow"] = str(e)
+    if learner_flow_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(f"learner flow: {x}" for x in learner_flow_find)
+
+    # Contribution safety (required): intake, submission, hook, CI permission, and release boundaries.
+    try:
+        contribution_safety_find = csa.audit_repo()
+    except Exception as e:
+        contribution_safety_find = [{"code": "audit-error", "path": "repository",
+                                     "message": f"contribution safety audit error: {e}",
+                                     "fix": "repair contribution_safety_audit.py"}]
+        suite_errors["contribution_safety"] = str(e)
+    if contribution_safety_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(f"contribution safety: {x.get('path')}: {x.get('message')}"
+                       for x in contribution_safety_find)
 
     # helper notebook static contract (required): no container, catches CanvasFlow / RunCell API drift.
     try:
@@ -877,6 +910,13 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                            for f, snippet, reason in ct_find.get("bake", [])]),
         "figure_audit": [_fig(k, t) for k, items in fa_find.items() for t in items],
         "cell_audit": [_cell(k, t) for k, items in ca_find.items() for t in items],
+        "learner_flow": [D("web/nemoclaw", x, REQUIRED,
+                           "Restore the shared learner interaction contract: focus before implementation, bounded default-open code, visible prerequisite status, cancellable Run/Stop/Reset/error states, stable viewport, and explicit CPU baseline.")
+                         for x in learner_flow_find],
+        "contribution_safety": [D(x.get("path", "repository"),
+                                  f"[{x.get('code', 'finding')}] {x.get('message', '')}",
+                                  REQUIRED, x.get("fix", "restore the contribution trust boundary"))
+                                for x in contribution_safety_find],
         "skill_schema": [D(p, d, RECOMMENDED,
                            "Make the skill-meta a valid contract of its kind: add the missing required key, "
                            "correct the schema/node_type value, give version a semver MAJOR.MINOR.PATCH, or set a "
@@ -1001,6 +1041,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                                      for k in sorted({r["kind"] for r in ch_rows})}},
         "figure_audit": {k: len(v) for k, v in fa_find.items()},
         "cell_audit": {k: len(v) for k, v in ca_find.items()},
+        "learner_flow": {"findings": len(learner_flow_find)},
+        "contribution_safety": {"findings": len(contribution_safety_find)},
         "diagram_geom": {"findings": len(dg_find)},
         "skill_contract": {"skills": skc_scanned,
                            "schema": len(skc_find.get("schema", [])),
@@ -1063,6 +1105,10 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
           f"code-surface {len(ca_find.get('code_surface', []))}, "
           f"readability {len(ca_find.get('readability', []))}, "
           f"copy {len(ca_find.get('copy_surface', []))})")
+    print(f"  learner flow    : {len(learner_flow_find)} required finding(s) "
+          f"(progressive disclosure / prerequisites / lifecycle / CPU baseline)")
+    print(f"  contribution    : {len(contribution_safety_find)} required finding(s) "
+          f"(intake / submissions / hooks / CI permissions / release authority)")
     print(f"  figure geometry : {len(dg_find)} runtime-figure finding(s) (text overlap / past bounds / connector-crosses-box / useless)")
     print(f"  course contract : {len(course_contract_find)} finding(s) (title / abstract / learning objectives)")
     print(f"  dependency SRI  : {len(cdi_find)} finding(s) (fixed browser assets)")
@@ -1148,6 +1194,8 @@ def _render_md(summary: dict) -> str:
          f"| color theme (non-theme-dynamic colors) | {summary.get('color_theme',{}).get('inline',0) + summary.get('color_theme',{}).get('undefined_var',0) + summary.get('color_theme',{}).get('bake',0)} | advisory |",
          f"| figure audit (legibility / formatting) | {sum(summary.get('figure_audit',{}).values())} | advisory |",
          f"| cell audit (runnable-cell contract) | {sum(summary.get('cell_audit',{}).values())} | advisory |",
+         f"| learner interaction flow | {summary.get('learner_flow',{}).get('findings',0)} | blocking |",
+         f"| contribution safety | {summary.get('contribution_safety',{}).get('findings',0)} | blocking |",
          f"| figure geometry (runtime figures) | {summary.get('diagram_geom',{}).get('findings',0)} | advisory |",
          f"| strays (unreachable from a SKILL hub) | {len(rc.get('strays',[]))} | {rc.get('real_strays','?')} real |",
          f"| release foyer (surfaces only RELEASED) | {'OK' if fy.get('ok') else 'FAIL'} | {len(fy.get('violations',[]))} blocking |",
@@ -1162,7 +1210,7 @@ def _render_md(summary: dict) -> str:
                    "asset_leaks": "Asset leaks", "page_audit": "Page audit", "prose_variety": "Prose rhythm",
                    "prose_buzz": "Buzz cadence", "redundancy": "Redundancy", "grammar": "Grammar & composition", "grounding": "Grounding", "color_theme": "Color theme",
                    "figure_audit": "Figure audit", "cell_audit": "Cell contract", "diagram_geom": "Figure geometry",
-                   "materials": "Materials", "reachability": "Reachability",
+                   "materials": "Materials", "reachability": "Reachability", "contribution_safety": "Contribution safety",
                    "word_echo": "Word echo", "comma_weight": "Comma weight", "assertions": "Bare assertions",
                    "headings": "Headings", "structure": "Structural rhythm", "branding": "Brand naming",
                    "defer_copula": "Deferred copula", "dense_repeats": "Dense repetition", "over_verbage": "Over-verbage",

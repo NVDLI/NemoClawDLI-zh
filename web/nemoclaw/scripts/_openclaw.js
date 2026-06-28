@@ -519,6 +519,7 @@ export function mountClawProbe(targetSel, opts = {}) {
     localStorage.setItem(_CLAWPROBE_KEY_TOKEN,   rawToken);
     if (opts.cfAccess) localStorage.setItem(_CLAWPROBE_KEY_CFJWT, rawCfJwt || "");
     updateClawPill(document.getElementById("claw-status"));
+    window.dispatchEvent(new Event("nemoclaw:prerequisites"));
   }
 
   urlInp.addEventListener("input", () => {

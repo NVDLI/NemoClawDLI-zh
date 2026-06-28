@@ -4,7 +4,8 @@
 This is intentionally stricter than a page render smoke. It verifies the
 consolidated CanvasFlow/RunCell abstraction across source or built pages,
 multiple viewport/theme configurations, CodeMirror highlighting, hidden-code
-heuristics, unified controls, and actual run output on the helper notebook.
+heuristics, paired initial/expanded screenshots, unified controls, and actual
+run output on the helper notebook.
 """
 from __future__ import annotations
 
@@ -172,12 +173,17 @@ async function inspectPage(page, pagePath, vp, theme) {
     const text = await page.locator(rootSel).innerText().catch(() => '');
     runResults.push({ sel, hasOutput: /(returned value|wrote into state|helper|mounted|liveSkipped|labSkipped|traceEvents)/i.test(text), badText: /TypeError|ReferenceError|helpers\.log\.[a-z]+ is not a function|✗ stopped:/i.test(text) });
   }
+  if (screenshots) {
+    fs.mkdirSync(screenshots, { recursive: true });
+    const safe = pagePath.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 80);
+    await page.screenshot({ path: path.join(screenshots, `${safe}_${vp.name}_${theme}_initial.png`), fullPage: true });
+  }
   await page.evaluate(() => document.querySelectorAll('.cf-panel-code-det,.rc-code-det').forEach(det => { det.open = true; }));
   await wait(250);
   if (screenshots) {
     fs.mkdirSync(screenshots, { recursive: true });
     const safe = pagePath.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 80);
-    await page.screenshot({ path: path.join(screenshots, `${safe}_${vp.name}_${theme}.png`), fullPage: true });
+    await page.screenshot({ path: path.join(screenshots, `${safe}_${vp.name}_${theme}_expanded.png`), fullPage: true });
   }
   const finalInfo = await page.evaluate(() => ({
     codeMirrorCount: document.querySelectorAll('.CodeMirror').length,

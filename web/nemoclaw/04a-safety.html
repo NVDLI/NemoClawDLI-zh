@@ -362,6 +362,8 @@
       code: `// Describe a goal in plain words; the agent plans the shell commands it would run.
 // The cell runs each in YOUR sandbox and shows the command, its output, and its exit code.
 helpers.mountChatUI("#trajectory-artifact", {
+  disabled: () => !(localStorage.getItem("nemoclaw_clawtoken") && (localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl"))),
+  disabledMsg: "Connect your launchable in Module 3a first. This exercise runs commands in your sandbox.",
   greeting: "Describe a goal and I plan the shell commands an agent would run for it, then we run each one in your sandbox and read the result, in order. Watch what each command returns. A secret that prints to the screen has already left the box, whatever the network blocks afterward.",
   models: [
     { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
@@ -395,7 +397,7 @@ helpers.mountChatUI("#trajectory-artifact", {
     let blockedAt = 0;
     for (let i = 0; i < steps.length; i++) {
       const s = steps[i];
-      const res = await helpers.sandboxExec(s.command);
+      const res = await helpers.sandboxExec(s.command, { signal: ctx.signal });
       const out = (res.output || "").trim();
       const blocked = res.exitCode != null ? res.exitCode !== 0 : /tunnel failed|code=000|permission denied|EACCES|EPERM|operation not permitted|could not resolve|refus/i.test(out);
       if (blocked && !blockedAt) blockedAt = i + 1;
@@ -680,14 +682,15 @@ mountDiagram("#fig-calls", {
 
 // ── Intuition 1: watch the kernel decide ────────────────────────────────────
 mountRunCell("#cell-layers", {
-  openCode: true,
+  openCode: false,
   label: "ask the box anything, in code",
+  intro: "Run the prepared questions first and compare each verdict, mechanism, and evidence line. Then open the implementation only when you want to change a command or add a probe.",
   code: `// You write the COMMAND; probe() runs it in your sandbox.
 // It prints the verdict (the exit code), the deciding mechanism, and a line of evidence.
 // For egress it also reads the HTTP status: a denied tunnel exits non-zero, while a denied plain request returns 403 at exit 0.
 const _esc = (x) => String(x).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
 async function probe(command, mechanism) {
-  const res = await helpers.sandboxExec(command);
+  const res = await helpers.sandboxExec(command, { signal: AbortSignal });
   const out = (res.output || "").trim();
   const proxyDeny = /code=(403|407)\\b/.test(out);
   const blocked = proxyDeny || (res.exitCode == null

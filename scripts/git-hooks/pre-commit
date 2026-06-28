@@ -16,6 +16,29 @@ T1="$REPO_ROOT"; [ -d "$REPO_ROOT/task1/scripts" ] && T1="$REPO_ROOT/task1"
 T1REL="${T1#$REPO_ROOT/}"; [ "$T1REL" = "$T1" ] && T1REL="" || T1REL="$T1REL/"
 AUDIT="$T1/scripts/validation/nb_audit.py"
 
+# Protected refs accept reviewed merges and release automation, not workstation
+# commits. Refuse before any expensive check and show the contributor the recovery.
+BRANCH="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+case "$BRANCH" in
+    main|nemoclaw-only|release/*)
+        echo "[pre-commit] REFUSING COMMIT on protected branch '$BRANCH'."
+        echo "Create a focused branch, commit there, then open a reviewed MR/PR:"
+        echo "  git switch -c <issue-or-change-name>"
+        exit 1
+        ;;
+esac
+
+# The contribution boundary is deliberately cheap and first. If a change weakens
+# issue intake, PR evidence, CI permissions, hooks, or release approval, fail before
+# the contributor spends time on deeper content/runtime gates.
+SAFETY="$T1/scripts/validation/contribution_safety_audit.py"
+if [ -f "$SAFETY" ] && ! python3 "$SAFETY"; then
+    echo ""
+    echo "[pre-commit] REFUSING COMMIT: contribution-safety contract failed."
+    echo "Each finding above names the broken boundary and exact repair."
+    exit 1
+fi
+
 if [ ! -f "$AUDIT" ]; then
     # Audit script not present in this repo; nothing to check.
     exit 0
@@ -29,30 +52,28 @@ STAGED_MDS=$(git diff --cached --name-only --diff-filter=ACM \
     | grep -E "^${T1REL}(cpu|dgx)/[^/]+/.*\.md$" \
     || true)
 
-if [ -z "$STAGED_MDS" ]; then
-    exit 0
-fi
+if [ -n "$STAGED_MDS" ]; then
+    echo "[pre-commit] auditing staged course markdown..."
+    # Audit only the staged files. The audit reads from the working tree
+    # (which is what `git commit` would record).
+    if ! python3 "$AUDIT" $STAGED_MDS; then
+        echo ""
+        echo "[pre-commit] REFUSING COMMIT: one or more staged markdown files"
+        echo "contain corruption signatures (duplicate H1 banner, duplicate Part"
+        echo "headers, doubled identifiers like 'chatchat', or nvidia/nemotron"
+        echo "name interleaves)."
+        echo ""
+        echo "This is almost certainly the IDE-buffer-merge race. To recover:"
+        echo "  1. Close the affected .md files in VS Code."
+        echo "  2. Restore a clean version (Write tool, or in-place dedupe for"
+        echo "     periodically-duplicated files; see docs/notebook_corruption_prevention.md)."
+        echo "  3. Re-run 'python3 scripts/validation/nb_audit.py' to confirm clean."
+        echo "  4. Re-stage and commit."
+        exit 1
+    fi
 
-echo "[pre-commit] auditing staged course markdown..."
-# Audit only the staged files. The audit reads from the working tree
-# (which is what `git commit` would record).
-if ! python3 "$AUDIT" $STAGED_MDS; then
-    echo ""
-    echo "[pre-commit] REFUSING COMMIT: one or more staged markdown files"
-    echo "contain corruption signatures (duplicate H1 banner, duplicate Part"
-    echo "headers, doubled identifiers like 'chatchat', or nvidia/nemotron"
-    echo "name interleaves)."
-    echo ""
-    echo "This is almost certainly the IDE-buffer-merge race. To recover:"
-    echo "  1. Close the affected .md files in VS Code."
-    echo "  2. Restore a clean version (Write tool, or in-place dedupe for"
-    echo "     periodically-duplicated files; see docs/notebook_corruption_prevention.md)."
-    echo "  3. Re-run 'python3 scripts/validation/nb_audit.py' to confirm clean."
-    echo "  4. Re-stage and commit."
-    exit 1
+    echo "[pre-commit] all staged course markdown clean."
 fi
-
-echo "[pre-commit] all staged course markdown clean."
 
 # ── Playwright runtime check for canvas flow HTML pages ─────────────────────
 # Triggered when a web course page or a shared stylesheet is staged. URLs follow the

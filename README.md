@@ -81,6 +81,21 @@ and process docs. Agents should read [`AGENTS.md`](AGENTS.md), then
 [`AGENT_QUICKSTART.md`](AGENT_QUICKSTART.md), then the relevant `SKILL.html` before
 changing files.
 
+## Ideas are easy; code is gated
+
+The contribution boundary is intentionally asymmetric. Questions, corrections, teaching
+ideas, runtime observations, and source leads should be cheap to submit through
+[Discussions](https://github.com/NVIDIA/NemoClawDLIOS/discussions) or the structured Issue
+templates. No local checkout or patch is required. Security reports use the private path
+described in [`SECURITY.md`](SECURITY.md), never a public Issue.
+
+Code is an untrusted proposal until the repository and a human owner accept it. A direct
+patch must name an Issue, declare every touched surface and blast radius, produce validation
+evidence, and survive local hooks, required CI, protected-ref rules, owner review, and gated
+release environments. Local hooks provide early feedback; protected refs and required checks
+are the authority because hooks can be skipped. The contract and operator controls live in
+[`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/release_playbook.md`](docs/release_playbook.md).
+
 ## Verification
 
 Run the static release gate before pushing:
@@ -88,6 +103,8 @@ Run the static release gate before pushing:
 ```bash
 python3 scripts/validation/validate_layout.py --quiet
 python3 scripts/skills/skill_consistency.py
+python3 scripts/validation/contribution_safety_audit.py --self-test
+python3 scripts/validation/contribution_safety_audit.py
 python3 scripts/compliance/source_gate.py
 bash scripts/runtime/run_engine.sh --self-test
 python3 scripts/validation/validate_bundle.py --scope ship

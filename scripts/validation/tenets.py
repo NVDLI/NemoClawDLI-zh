@@ -46,6 +46,7 @@ ENFORCED_BY = [
     ("foyer",                 "run_engine.sh --self-test  (release/foyer contract)"),
     ("skill-meta json",       "skill_consistency.py  (skill-meta vs the real tree)"),
     ("validate before",       "install-hooks.sh wires the pre-push gate that runs all four"),
+    ("ideas stay easy",       "contribution_safety_audit.py + required CI + protected host settings"),
     ("runtime output",        ".gitignore + the pre-commit / pre-push hooks"),
     ("single source",         "run_engine.sh --self-test  (one engine, pinned facts)"),
     ("lead-page parity",      "manual review (lead-page-parity); not auto-gated"),

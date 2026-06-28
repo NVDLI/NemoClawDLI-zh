@@ -14,6 +14,41 @@ Use a staged externalization model:
 
 Default rule: **issue-first, patch-second**. Students with domain evidence file structured Issues. Students who can carry a fix through validation open PRs using the structured release process.
 
+## Contribution trust model
+
+The repository separates the cost of proposing knowledge from the authority to change a release.
+
+| Stage | Default access | Required evidence | Authority |
+|---|---|---|---|
+| Discussion | open | question, friction, or idea | none; no code changes |
+| Issue | open and structured | location, current/expected behavior, safe evidence | maintainer triage |
+| Branch or fork | contributor-owned | focused patch linked to an Issue | no protected-ref access |
+| PR or MR | untrusted proposal | surfaces, blast radius, commands and results, owner, risk, rollback | required CI plus human review |
+| Merge | restricted | current approved diff and required checks | protected branch or ruleset |
+| Pages or release | separately restricted | immutable SHA or tag, built artifact, smoke evidence | protected environment and release manager |
+
+An agent, novice, or maintainer may propose any of these artifacts. Identity or tool quality never
+substitutes for evidence. Local hooks push back early but are bypassable. CI validates the submitted
+commit. Protected refs, tag rules, and environments hold the irreversible authority.
+
+Host settings are not versioned by this repository. Workflow files can request read-only tokens,
+environments, and checks, but only a host administrator can activate rulesets, required reviewers,
+prevent self-review, and restrict bypass. The operator must verify both halves: repository policy
+with `contribution_safety_audit.py`, then live host settings and Rule Insights before public intake
+or release.
+
+For the canonical GitLab project, run the read-only live audit before merging governance work and
+before each release train:
+
+```bash
+python3 scripts/validation/gitlab_governance_audit.py --self-test
+python3 scripts/validation/gitlab_governance_audit.py --project 364401 \
+  --report docs/validation/gitlab-governance.json
+```
+
+The audit reports every weak host control with its exact setting. Its report is evidence, not a
+substitute for the host audit log or a human review of who holds the named roles.
+
 Current issue and MR templates assume `web/nemoclaw/` on the CPU service stack
 (`cpu/`, `workspace/`, and `deploy/`) as the active release target. Keep that
 explicit in each issue, then mark whether the finding is course-specific or
@@ -63,8 +98,16 @@ Use these when the mirror lands on GitHub:
 - Enable Discussions for questions, learning friction, and broad ideas that are not actionable defects.
 - Enable Projects for the triage/release board.
 - Add `.github/CODEOWNERS` only after real NVIDIA org/team handles exist. Owners should cover `web/`, `cpu/`, `deploy/`, `scripts/`, `docs/`, and source governance paths.
-- Protect `main` and `release/*` with required status checks, required PR review, required CODEOWNERS review, no force pushes, and no direct pushes except release automation.
+- Create an active branch ruleset for `main` and `release/*`. Require a pull request, one approval,
+  dismissal of stale approvals, approval of the most recent push by someone else, resolved review
+  threads, and the strict `test` status from the `pages` workflow. Block deletion and force pushes.
+  Give no person an always-bypass lane; if automation needs bypass, scope it to a named GitHub App.
+- Create an active tag ruleset for `v*`. Restrict tag creation, update, and deletion to the release
+  manager or release App. A workflow consumes an existing protected tag; it does not mint one.
 - Use GitHub Actions environments for public Pages. Use required reviewers for production and concurrency so only one deploy runs at a time.
+- Configure both `github-pages` and `github-release` with required reviewers, prevent self-review,
+  disallow administrator bypass, and restrict deployment branches or tags. Review environment and
+  ruleset bypass events in Rule Insights after each release.
 - Keep fork PR jobs on read-only tokens. Do not expose model, DLI, Cloudflare, or deployment secrets to forked pull requests.
 
 ## Public GitHub security baseline
@@ -147,7 +190,17 @@ Legitimate stopping points:
 Use these while GitLab remains canonical:
 
 - Protect `main`, `nemoclaw-only`, `release/*`, and tags.
-- Keep production Pages deploy manual and protected.
+- Set `main` push access to No one, disable force push, and allow maintainers to merge only through MRs.
+- Require a successful pipeline and resolved discussions. In a one-operator project, require the
+  protected manual `human_review` job after the exact commit's live preview smoke; restrict its
+  environment to named human operators. With two active maintainers, prefer an independent MR
+  approval and keep the protected action as release-owner acceptance.
+- Protect `v*` tags and name the eligible human release operators explicitly instead of granting
+  tag creation to every Maintainer-role bot.
+- Keep production Pages deploy manual and protect the `production` environment with explicit
+  human deployers. The manual action is the one-operator authorization record; add an independent
+  approval rule only when another active operator can actually satisfy it. Review environments
+  remain isolated, manual, and short-lived without production authority.
 - Keep branch preview deploys manual, isolated under branch slug paths, built with production root from a protected ref, and blocked by the required test gate. On classic Pages, expose only preview paths present in the latest combined artifact.
 - Use templates in `.gitlab/issue_templates/` and `.gitlab/merge_request_templates/`.
 - Use labels and milestones as the project-management source. Mirror the same taxonomy to GitHub.
@@ -198,6 +251,30 @@ Release checklist:
 6. Confirm branch/tag protection and mirror direction.
 7. Tag release from protected source.
 8. Publish release notes grouped by learner-facing, runtime/deploy, governance, and known issues.
+
+### GitHub release runbook
+
+The checked-in `.github/workflows/release.yml` prepares a release but cannot authorize one.
+
+1. Merge the release candidate through the protected `main` ruleset. Required `pages / test` must
+   pass on the final reviewed SHA.
+2. Have a release manager create a protected semantic tag such as `v1.2.3` on a commit contained in
+   `main`. Do not retarget an existing tag.
+3. Run the `release` workflow manually and provide that tag. The read-only job verifies the tag,
+   runs the full static/security gate, builds Pages without live material drift, creates a stable
+   tar archive, writes its SHA-256 checksum, and uploads the validation reports.
+4. The write job waits on the protected `github-release` environment. A reviewer other than the
+   initiator checks the SHA, tag, validation artifact, checksum, known issues, and release notes.
+5. Approval grants `contents: write` only to the final job. It creates or refreshes a **Draft release**.
+   The workflow never publishes a release directly.
+6. A release manager reviews the draft, edits generated notes into learner-facing, runtime/deploy,
+   governance, and known-issue sections, verifies attached checksums, then publishes it in GitHub.
+7. Confirm the release and Pages deployment histories, inspect Rule Insights for denied or bypassed
+   operations, and record the release URL in the milestone. Any bypass needs an owner and rationale.
+
+If validation fails, fix through a new Issue-linked PR and create a new tag after merge. Never move a
+published tag, weaken a required check, approve your own environment job, or publish an artifact built
+from an unreviewed branch.
 
 ## CI/CD policy
 
@@ -301,6 +378,7 @@ Before public mirror:
 - [ ] GitLab issue/MR templates exist.
 - [ ] GitHub issue/PR templates exist.
 - [ ] External repository protects `main` and `release/*`.
+- [ ] Active `v*` tag rules restrict create, update, and deletion.
 - [ ] External repository has required checks mapped to the static gate.
 - [ ] Dependency graph, Dependabot alerts, dependency review, code scanning, and secret scanning are enabled or explicitly deferred with a reason.
 - [ ] `dependabot.yml` exists for public-safe ecosystems after owners and labels exist.
@@ -311,6 +389,8 @@ Before public mirror:
 - [ ] Mirror is protected-branch/tag-only until public contribution intake is ready.
 - [ ] `source_gate.py` passes on the mirrored ref.
 - [ ] Public Pages deploy uses environment protection and concurrency.
+- [ ] `github-pages` and `github-release` require a reviewer, prevent self-review, and disallow admin bypass.
+- [ ] A test release produced a Draft release, checksum, validation report, and Rule Insights record.
 
 Before student PR intake:
 
@@ -335,3 +415,12 @@ Before student PR intake:
 - GitHub dependency review and dependency-review-action are available for public repositories and can block vulnerable dependency additions.
 - GitHub code scanning is available for public repositories, with CodeQL or SARIF-uploaded third-party tools.
 - GitHub secret scanning runs automatically for public repositories and can be extended with custom patterns and validity checks where available.
+
+Operator references:
+
+- [GitHub ruleset rules](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets)
+- [GitHub ruleset management and Rule Insights](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/managing-rulesets-for-a-repository)
+- [GitHub deployment environments](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
+- [GitHub token least-privilege guidance](https://docs.github.com/en/actions/how-tos/security-for-github-actions/security-guides/use-github_token-in-workflows)
+- [GitHub fork pull-request security behavior](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows)
+- [GitHub private vulnerability reporting](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing/privately-reporting-a-security-vulnerability)

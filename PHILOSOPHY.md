@@ -24,7 +24,7 @@ The repository ships the services a course drives: a model gateway (`llm_client`
 
 The repository curates technical knowledge, projects it into the form a reader needs, holds it under an open license, and serves courses that run against real infrastructure. That is the shape of a platform, and it is built to leave a reader able to do the thing the material is about. A change in what the reader can do is what the whole apparatus is tuned to produce, so it is the outcome the gate and the content discipline both work back from.
 
-Contribution follows from the same aim. Tools and agents have made useful material much cheaper to produce, so the repository keeps the barrier to adding content low on purpose and relies on the content discipline in [`QUALITY_DIRECTIVES.md`](QUALITY_DIRECTIVES.md) and the tenets in [`SKILL.html`](SKILL.html) to hold quality as more of it arrives. The decisions here are provisional, written down so the next person has something concrete to argue with.
+Contribution follows from the same aim. Tools and agents have made useful material much cheaper to propose, so the repository keeps the barrier to proposing an idea low. A question, correction, source, or teaching idea can arrive through a Discussion or structured Issue without a checkout. Changing the release is deliberately harder. Code from any person or agent starts untrusted, passes deterministic local and CI gates, names its blast radius and evidence, and reaches protected refs or release environments only through human-owned permissions. The decisions here are provisional, written down so the next person has something concrete to argue with.
 
 ---
 
