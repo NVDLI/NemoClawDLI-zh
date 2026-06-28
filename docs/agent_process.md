@@ -32,6 +32,8 @@ This note is for agents and maintainers working across issues, merge requests, a
 - For content or navigation changes, run `python3 scripts/skills/skill_consistency.py`, `python3 scripts/validation/validate_layout.py --quiet`, and `python3 scripts/validation/validate_bundle.py --no-write --scope ship`.
 - For page title, navigation, or deploy-path changes, run `BUILD_PAGES_LANGS=0 scripts/build/build_pages.sh` before calling the MR ready.
 - For Studio, runnable-cell, browser-runtime, or OpenClaw changes, also run the browser/runtime harness named in `AGENT_QUICKSTART.md` and the relevant `scripts/validation/*_audit.py` file.
+- For a stateful browser bug, test the whole lifecycle: enter the state, leave it through a successful sibling result, leave it through an error, remount the component, then reload or navigate. Run that matrix against both source and built Pages output.
+- Pair lifecycle gates. A cheap static validator should catch missing selectors, cleanup calls, and CSS contracts; a real browser workflow must prove computed visibility and persisted-state behavior. Neither gate substitutes for the other.
 
 ## Visual changes
 

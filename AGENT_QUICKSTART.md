@@ -162,6 +162,18 @@ scripts/runtime/browser_env_probe.sh                       # proves container No
 CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only
 ```
 
+Stateful browser fixes need transition coverage, not one successful screenshot. Exercise
+state entry, successful exit, error exit, remount, and reload/navigation against source and
+built output. Pair the browser workflow with a static contract that catches cheap source drift.
+For the OpenClaw probe frame lifecycle, run:
+
+```bash
+python3 scripts/validation/openclaw_fallback_audit.py
+CONTAINER_ENGINE=podman python3 scripts/validation/openclaw_probe_frame_runtime_audit.py --site-root web
+BUILD_PAGES_LANGS=0 bash scripts/build/build_pages.sh /tmp/nemoclaw_frame_preview
+CONTAINER_ENGINE=podman python3 scripts/validation/openclaw_probe_frame_runtime_audit.py --site-root /tmp/nemoclaw_frame_preview
+```
+
 When a change touches an image, SVG, diagram, canvas figure, screenshot-like
 asset, or page placement of an image, preview the rendered result through the
 current agent host before you call the work done. Use Codex image preview,
