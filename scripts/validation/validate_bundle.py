@@ -247,8 +247,8 @@ SUITE_META = [
     ("studio_interface", "Studio interface contract", "required",
      "Studio is the operator console for authoring and validation. Its controls must remain reachable at layout extremes, its sidebar lists must scroll internally, and its documented test commands must stay synchronized with the validators.",
      "scripts/validation/studio_interface_audit.py", "audit"),
-    ("openclaw_fallback", "OpenClaw fallback contract", "required",
-     "Credentialed OpenClaw tests must fail fast when the runtime is unreachable, and the kickstart path must point learners to the Brev URL plus CF_Authorization backup instead of silently passing a dead local service.",
+    ("openclaw_fallback", "OpenClaw fallback and probe lifecycle contract", "required",
+     "Credentialed OpenClaw tests must fail fast when the runtime is unreachable, the kickstart path must point learners to the Brev backup, and an HTML probe response must disappear before later JSON, error, or access-warning output.",
      "scripts/validation/openclaw_fallback_audit.py", "audit"),
     ("agent_process", "Agent process contract", "required",
      "Issue/MR, taxonomy, validation, and safe-auth guardrails must be discoverable from the repo beacons so broad agent work starts from a durable process instead of ad hoc transcript memory.",
@@ -755,7 +755,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                                "Keep Studio controls reachable at narrow/short viewports and keep validator commands synchronized across Studio and SKILL docs.")
                              for x in studio_interface_find],
         "openclaw_fallback": [D("web/nemoclaw/03a-kickstart.html", x, REQUIRED,
-                                "Keep the credentialed harness fail-fast and keep the kickstart backup path explicit: Brev session URL, gateway token, and CF_Authorization.")
+                                "Keep the credentialed harness fail-fast, keep the Brev backup path explicit, and preserve the probe iframe lifecycle: hide plus clear srcdoc before every non-HTML result.")
                               for x in openclaw_fallback_find],
         "agent_process": [D("docs/agent_process.md", x, REQUIRED,
                             "Keep issue/MR, taxonomy, validation, and safe-auth guardrails documented and linked from the repo beacons.")

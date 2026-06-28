@@ -446,6 +446,7 @@ export function mountClawProbe(targetSel, opts = {}) {
       .claw-out.ok{border-color:var(--gd,#4a7a00)}
       .claw-out.err{border-color:var(--err,#a04040);color:var(--err,#ffb0b0)}
       .claw-html-frame{width:100%;height:340px;border:1px solid var(--bd,#2a2a2a);border-radius:5px;margin-top:.5em;background:#fff;display:block}
+      .claw-html-frame[hidden]{display:none}
     `;
     document.head.appendChild(s);
   }

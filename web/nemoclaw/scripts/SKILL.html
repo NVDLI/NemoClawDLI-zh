@@ -76,6 +76,9 @@
   "tests": [
     "python3 scripts/validation/studio_interface_audit.py",
     "python3 scripts/validation/helper_notebook_runtime_audit.py --no-container",
+    "python3 scripts/validation/openclaw_fallback_audit.py",
+    "CONTAINER_ENGINE=podman python3 scripts/validation/openclaw_probe_frame_runtime_audit.py --site-root web",
+    "CONTAINER_ENGINE=podman python3 scripts/validation/openclaw_probe_frame_runtime_audit.py --site-root public",
     "CONTAINER_ENGINE=podman python3 scripts/validation/helper_notebook_runtime_audit.py",
     "CONTAINER_ENGINE=podman python3 scripts/validation/cell_ui_runtime_audit.py --screenshots tmp/cell-ui-audit-source",
     "CONTAINER_ENGINE=podman python3 scripts/validation/cell_ui_runtime_audit.py --site-root public --screenshots tmp/cell-ui-audit-public",
@@ -149,6 +152,9 @@
       <tr><td><code>CONTAINER_ENGINE=podman python3 scripts/validation/cell_ui_runtime_audit.py --screenshots tmp/cell-ui-audit-source</code></td><td>Source-page cell UI suite. Checks CanvasFlow and RunCell across desktop/mobile and dark/light themes, verifies CodeMirror tokens, hidden-code heuristics, shared JS chips, unified buttons, and helper-notebook output. Writes screenshots for review.</td></tr>
       <tr><td><code>CONTAINER_ENGINE=podman python3 scripts/validation/cell_ui_runtime_audit.py --site-root public --screenshots tmp/cell-ui-audit-public</code></td><td>Built-page cell UI suite. Run after <code>BUILD_PAGES_LANGS=0 scripts/build/build_pages.sh</code> to prove the production bundle preserves the same cell contract and screenshot evidence.</td></tr>
       <tr><td><code>CONTAINER_ENGINE=podman python3 scripts/validation/studio_responsive_audit.py</code></td><td>Containerized Playwright check for Studio layout extremes: topbar scrolling, minimum control sizes, sidebar list floors, and internal list scrolling.</td></tr>
+      <tr><td><code>python3 scripts/validation/openclaw_fallback_audit.py</code></td><td>Required static OpenClaw fallback and probe lifecycle contract, including explicit hidden-frame CSS and <code>srcdoc</code> cleanup.</td></tr>
+      <tr><td><code>CONTAINER_ENGINE=podman python3 scripts/validation/openclaw_probe_frame_runtime_audit.py --site-root web</code></td><td>Source-page Chromium regression for HTML probe cleanup after JSON, network error, Cloudflare warning, remount, and reload transitions.</td></tr>
+      <tr><td><code>CONTAINER_ENGINE=podman python3 scripts/validation/openclaw_probe_frame_runtime_audit.py --site-root public</code></td><td>Runs the same state-transition matrix against built Pages output after <code>BUILD_PAGES_LANGS=0 scripts/build/build_pages.sh public</code>.</td></tr>
       <tr><td><code>scripts/runtime/browser_env_probe.sh</code></td><td>First browser-runtime discovery command. Finds Podman or Docker, reports native Compose plus podman-compose-via-python availability, and proves container Node.js, Playwright, and Chromium through smoke.</td></tr>
       <tr><td><code>CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --smoke</code></td><td>Direct browser runtime smoke. No lab stack, no host Node, no host Chromium, no host Playwright.</td></tr>
       <tr><td><code>CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only</code></td><td>No-lab browser-container check. Uses the runtime image to render a static page without the podman deployment network.</td></tr>
