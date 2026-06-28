@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Tools at Scale · Securing Agents</title>
 <link rel="stylesheet" href="styles/_style.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js" integrity="sha384-GdEWAbCjn+ghjX0gLx7/N1hyTVmPAjdC2OvoAA0RyNcAOhqwtT8qnbCxWle2+uJX" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" integrity="sha384-zaeBlB/vwYsDRSlFajnDd7OydJ0cWk+c2OWybl3eSUf6hW2EbhlCsQPqKr3gkznT" crossorigin="anonymous"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css" integrity="sha384-05WuhgjXiqmZzcQ3vQRQ39HN356Yqb+SnhvELzFtpwS5b2IlqE8QsOO5LCSJ2znj" crossorigin="anonymous"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js" integrity="sha384-ZYmwuq4n2gOcNxMSiJ6jyTj+BbIrilr7p6dlq6q5nmSWKmsH9UU4K1qqjycMkfmR" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js" integrity="sha384-g0o+WW9mdIxA7LaaCKTkRm0M5TVT+Bb4s9eocxPsI2G0Xm0POG9iD6G6qP1IIsfS" crossorigin="anonymous"></script>
 <style>
   .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
   .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
@@ -174,6 +174,16 @@
     already knows where the capability lives and how to invoke it.
   </p>
 
+  <div class="callout">
+    <strong>Discovery is a trust boundary.</strong>
+    A <code>tools/list</code> response is input from another system, not permission to use every tool it names.
+    Before connecting an agent to a new MCP server, identify the server, show the user the requested capabilities,
+    grant the smallest useful scope, and keep credentials audience-bound to that server. For remote connection and
+    OAuth-discovery paths, reject private and link-local destinations and validate every redirect. The
+    <a href="https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices" target="_blank" rel="noopener">MCP security guidance</a>
+    treats consent, token handling, and SSRF controls as part of the client, not optional server details.
+  </div>
+
   <div class="fig-embed" data-svg-src="assets/figures/01c-tools-2.svg" style="aspect-ratio:720 / 320"></div>
   <p>
     The cell below fakes a tiny MCP server in pure JavaScript with the
@@ -191,6 +201,7 @@
     <li>What happens when the model calls a tool with arguments that fail your validation? The current loop crashes; how would you make it graceful without giving the model false confidence that the call succeeded?</li>
     <li>The agents-as-tools sub-agent is opaque to the main agent. What information would you want it to surface back (in addition to the answer) so the main agent can decide whether to trust it on the next turn?</li>
     <li>The <code>tool_choice</code> parameter can be set to <code>"required"</code> or to a specific tool name. When would forcing a tool call be the right move, and what risk does it create?</li>
+    <li>Before you add a remote MCP server to this agent, what identity, capability scope, token audience, and network destinations would you verify? Which one becomes an SSRF path if you accept it without validation?</li>
   </ol>
 
   <div class="references">
@@ -199,6 +210,7 @@
       <li><a href="https://arxiv.org/abs/2302.04761" target="_blank" rel="noopener">Schick et al., <em>Toolformer: Language Models Can Teach Themselves to Use Tools</em> (2023)</a>. The paper that established self-supervised tool use; what every subsequent function-calling spec is variations on.</li>
       <li><a href="https://platform.openai.com/docs/guides/function-calling" target="_blank" rel="noopener">OpenAI function-calling guide</a>. The spec your <code>tools=[…]</code> payload conforms to; the hosted build endpoint proxies this shape through to any provider.</li>
       <li><a href="https://modelcontextprotocol.io/specification" target="_blank" rel="noopener">Model Context Protocol (MCP) specification</a>. The cross-vendor tool-discovery and tool-serving layer covered in this module's MCP section (originated by Anthropic, now an open project); complements function calling at the agent-runtime layer.</li>
+      <li><a href="https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices" target="_blank" rel="noopener">MCP security best practices</a>. Consent, audience-bound credentials, SSRF controls, and local-server execution risks for MCP clients and operators.</li>
       <li><a href="https://docs.anthropic.com/en/docs/agents-and-tools/tool-use" target="_blank" rel="noopener">Anthropic tool-use reference</a>. The parallel implementation for Claude, useful as a cross-vendor comparison.</li>
     </ul>
     <p class="references-note">Comprehensive list at <a href="04c-going-further.html#refs">Going Further · References</a>.</p>

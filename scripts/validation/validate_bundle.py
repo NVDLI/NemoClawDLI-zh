@@ -112,6 +112,7 @@ import course_contract as cca  # noqa: E402
 import concept_order_audit as coa  # noqa: E402
 import skill_contract as skc  # noqa: E402
 import course_content_contract as cc  # noqa: E402
+import course_dependency_integrity as cdi  # noqa: E402
 from collections import defaultdict  # noqa: E402
 
 
@@ -154,6 +155,9 @@ SUITE_META = [
     ("course_content", "Course content contract", "recommended",
      "Course promises that generic validators cannot infer: the retrieval-boundary figure stays concept-scoped with provenance hidden from learner prose, and the lethal-trifecta figure defines private data, untrusted input, external communication, and the full-duplex egress loop. Each finding names the missing contract piece.",
      "scripts/validation/course_content_contract.py", "run"),
+    ("course_dependency_integrity", "Course dependency integrity", "required",
+     "Fixed third-party browser assets execute inside every learner page. Their URLs, expected bytes, and CORS mode must stay pinned with Subresource Integrity so an upstream response change cannot silently execute in the course.",
+     "scripts/validation/course_dependency_integrity.py", "audit"),
     ("prose_variety", "Prose rhythm", "consider",
      "Sentence-length spread, staccato triads, and over-enumeration, ranked. Monotone cadence is a machine-writing tell. This is a judgment call: the flagged pages are the ones to give a human rhythm pass if you agree.",
      "scripts/validation/prose_variety.py", "sweep"),
@@ -412,6 +416,17 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     except Exception as e:
         cc_find = []
         suite_errors["course_content"] = str(e); vl_fail.append(f"course content contract error: {e}")
+
+    try:
+        cdi_find = cdi.audit()
+    except Exception as e:
+        cdi_find = []
+        suite_errors["course_dependency_integrity"] = str(e)
+        vl_fail.append(f"course dependency integrity error: {e}")
+    if cdi_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(f"course dependency integrity: {x}" for x in cdi_find)
 
     # grounding reference sweep (fast, no-llm). Folds the em-dash / ungrounded / cross
     # signals into the durable log so the cadence reflects content health, not just links.
@@ -720,6 +735,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "course_content": [D(path, detail, RECOMMENDED,
                              "Restore the content contract. The retrieval-boundary figure needs clean learner-facing prose; the lethal-trifecta section needs the definition, full-duplex loop, figure, caption, reference, and asset provenance.")
                            for path, detail in cc_find],
+        "course_dependency_integrity": [D("web/nemoclaw", detail, REQUIRED,
+                                          "Restore the expected SRI digest and crossorigin mode, or update the pinned digest only after reviewing the new dependency bytes.")
+                                        for detail in cdi_find],
         "helper_notebook": [D("web/nemoclaw/scripts/SKILL.html", x, REQUIRED,
                               "Use the shared helper API exposed by both runtime surfaces: log, log.h, log.json, log.kv, log.details, log.html, log.svg, log.draw, and log.clear.")
                             for x in helper_notebook_find],
@@ -899,6 +917,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     _scanned = {
         "links": s["pages"], "cross_course": s["pages"], "asset_leaks": s["pages"],
         "reachability": reach.get("pages", 0), "page_audit": audit.get("pages", 0), "course_content": 2,
+        "course_dependency_integrity": 14,
         "grounding": len(grecs), "prose_variety": len(pv_rows), "prose_buzz": len(pv_rows), "redundancy": len(pv_rows), "grammar": len(pv_rows), "structure": len(pv_rows), "headings": len(pv_rows), "assertions": len(pv_rows), "word_echo": len(pv_rows), "comma_weight": len(pv_rows), "branding": len(pv_rows),
         "defer_copula": len(pv_rows), "dense_repeats": len(pv_rows), "over_verbage": len(pv_rows), "padding": len(pv_rows),
         "hollow_intro": len(pv_rows), "repeated_phrase": len(pv_rows), "vacuous_meta": len(pv_rows),
@@ -959,6 +978,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "foyer_release": foyer,
         "page_audit": audit,
         "course_content": {"findings": len(cc_find)},
+        "course_dependency_integrity": {"findings": len(cdi_find)},
         "prose_variety": {"pages": len(pv_rows), "flagged": len(pv_flagged), "flag_at": pv.FLAG_AT,
                           "flagged_pages": [{"path": r["path"], "score": r["score"], "tells": r["tells"]}
                                             for r in pv_flagged],
@@ -1032,6 +1052,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
           f"readability {len(ca_find.get('readability', []))})")
     print(f"  figure geometry : {len(dg_find)} runtime-figure finding(s) (text overlap / past bounds / connector-crosses-box / useless)")
     print(f"  course contract : {len(course_contract_find)} finding(s) (title / abstract / learning objectives)")
+    print(f"  dependency SRI  : {len(cdi_find)} finding(s) (fixed browser assets)")
     print(f"  concept order   : {len(concept_order_find)} finding(s) (first-use definitions / prerequisite framing)")
     _cg = {k: len(v) for k, v in ch_fam.items()}
     print(f"  code hygiene    : {len(ch_rows)} finding(s) over {ch_scanned} code file(s) "
