@@ -20,12 +20,17 @@ from _bootstrap import find_repo_root
 ROOT = find_repo_root(Path(__file__).resolve())
 
 CONTRACT_FILES = (
+    "RELEASE_STATUS.json",
+    "RELEASE_STATUS.md",
     "README.md",
     "CONTRIBUTING.md",
     "PHILOSOPHY.md",
     "AGENTS.md",
     "AGENT_QUICKSTART.md",
+    "SECURITY.md",
     "docs/release_playbook.md",
+    "docs/release_artifacts.md",
+    "scripts/compliance/docs/open_source_readiness.md",
     ".github/ISSUE_TEMPLATE/config.yml",
     ".github/PULL_REQUEST_TEMPLATE.md",
     ".gitlab/merge_request_templates/Default.md",
@@ -33,10 +38,13 @@ CONTRACT_FILES = (
     ".github/workflows/release.yml",
     ".gitlab-ci.yml",
     "scripts/build/install-hooks.sh",
+    "scripts/build/build_branch_manifest.py",
+    "scripts/build/package_release.py",
     "scripts/git-hooks/pre-commit",
     "scripts/git-hooks/pre-push",
     "scripts/skills/gen_skill_hierarchy.py",
     "scripts/validation/SKILL.html",
+    "scripts/validation/validate_bundle.py",
     "scripts/validation/gitlab_governance_audit.py",
 )
 
@@ -63,9 +71,65 @@ def top_permissions(workflow: str) -> str:
     return match.group(1) if match else ""
 
 
+def audit_publication_approval(root: Path = ROOT) -> list[dict[str, str]]:
+    try:
+        status = json.loads((root / "RELEASE_STATUS.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return [finding("publication-approval", "RELEASE_STATUS.json",
+                        "publication state cannot be read",
+                        "restore the release status before any external write")]
+    if status.get("publication_state") not in {"approved-for-publication", "published"}:
+        return [finding("publication-approval", "RELEASE_STATUS.json",
+                        "external publication is not approved",
+                        "complete OSRB approval, then update release status in a reviewed change")]
+    return []
+
+
 def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
     out: list[dict[str, str]] = []
     docs = {rel: read(root, rel, out) for rel in CONTRACT_FILES}
+
+    try:
+        status = json.loads(docs["RELEASE_STATUS.json"])
+    except (TypeError, json.JSONDecodeError):
+        status = {}
+        out.append(finding("release-status-json", "RELEASE_STATUS.json",
+                           "release status is not valid JSON",
+                           "restore the machine-readable release status contract"))
+    expected_status = {
+        "schema": "nemoclaw-release-status/1",
+        "publication_state": "pending-osrb-approval",
+        "canonical_repository": "internal-gitlab",
+        "external_mirror": "not-published",
+        "target_license": "Apache-2.0",
+    }
+    for key, expected in expected_status.items():
+        if status.get(key) != expected:
+            out.append(finding("release-status", "RELEASE_STATUS.json",
+                               f"{key} must be {expected!r} before external approval",
+                               "update publication state only in an OSRB-approved release change"))
+    notice_required = status.get("notice_required")
+    if not isinstance(notice_required, bool):
+        out.append(finding("notice-state", "RELEASE_STATUS.json",
+                           "notice_required must be a boolean",
+                           "record whether required downstream attributions exist"))
+    elif notice_required != (root / "NOTICE.md").is_file():
+        out.append(finding("notice-state", "NOTICE.md",
+                           "NOTICE presence disagrees with RELEASE_STATUS.json",
+                           "add NOTICE only for required attributions and update notice_required together"))
+
+    for rel in ("RELEASE_STATUS.md", "README.md", "CONTRIBUTING.md", "AGENT_QUICKSTART.md",
+                "docs/release_playbook.md", "scripts/compliance/docs/open_source_readiness.md"):
+        require(re.sub(r"\s+", " ", docs[rel]), "pending OSRB approval", rel,
+                "release-status-language", out,
+                "state that external publication remains pending OSRB approval")
+    require(docs["SECURITY.md"], "https://www.nvidia.com/en-us/security/report-vulnerability/",
+            "SECURITY.md", "security-report-route", out,
+            "make NVIDIA Product Security the stable private reporting route")
+    if "github.com/NVIDIA/NemoClawDLIOS/security/advisories/new" in docs["SECURITY.md"]:
+        out.append(finding("security-future-route", "SECURITY.md",
+                           "policy assumes a repository-specific advisory endpoint exists",
+                           "mention private vulnerability reporting only as conditional on enablement"))
 
     require(docs["README.md"], "Ideas are easy; code is gated", "README.md", "readme-boundary", out,
             "state the intake/code asymmetry in the README")
@@ -119,6 +183,11 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "pr-deploy-boundary", out, "prevent pull-request runs from reaching deployment")
     require(pages, "contribution_safety_audit.py --self-test", ".github/workflows/pages.yml",
             "github-safety-selftest", out, "run detector mutations in GitHub CI")
+    require(pages, "contribution_safety_audit.py --require-publication-approved",
+            ".github/workflows/pages.yml", "publication-deploy-guard", out,
+            "refuse external Pages deployment until publication is approved")
+    require(pages, "package_release.py --self-test", ".github/workflows/pages.yml",
+            "github-package-selftest", out, "test deterministic release packaging in public CI")
     require(pages, "--submission-env CONTRIBUTION_BODY", ".github/workflows/pages.yml",
             "github-submission-contract", out, "validate the live pull-request body")
 
@@ -142,6 +211,15 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
                            "keep contents: read globally and grant contents: write only to draft-release"))
     require(release, "existing release is already published", ".github/workflows/release.yml",
             "release-immutable", out, "refuse to update a published release")
+    require(release, 'git cat-file -t "refs/tags/$RELEASE_TAG"', ".github/workflows/release.yml",
+            "release-annotated-tag", out, "refuse lightweight release tags")
+    for token in ("package_release.py --self-test", "release-manifest.json", "SHA256SUMS",
+                  "python-env.cdx.json", "release-assets/*"):
+        require(release, token, ".github/workflows/release.yml", "release-artifact-set", out,
+                f"retain required release artifact contract token: {token}")
+    require(release, "contribution_safety_audit.py --require-publication-approved",
+            ".github/workflows/release.yml", "publication-release-guard", out,
+            "refuse external release preparation until publication is approved")
     if "pull_request:" in release or "pull_request_target:" in release:
         out.append(finding("release-pr-trigger", ".github/workflows/release.yml",
                            "release workflow can be started by an untrusted pull request",
@@ -150,6 +228,8 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
     gitlab = docs[".gitlab-ci.yml"]
     require(gitlab, "contribution_safety_audit.py --self-test", ".gitlab-ci.yml",
             "gitlab-safety-selftest", out, "run detector mutations in GitLab CI")
+    require(gitlab, "package_release.py --self-test", ".gitlab-ci.yml",
+            "gitlab-package-selftest", out, "test deterministic release packaging in canonical CI")
     require(gitlab, "--report docs/validation/contribution-safety.json", ".gitlab-ci.yml",
             "gitlab-safety-report", out, "retain a machine-readable contribution-boundary report")
     require(gitlab, "CI_MERGE_REQUEST_DESCRIPTION", ".gitlab-ci.yml", "gitlab-submission-contract", out,
@@ -201,12 +281,34 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "refuse a behind branch instead of silently rewriting it")
     require(prep, "contribution_safety_audit.py", "scripts/git-hooks/pre-push", "prepush-safety", out,
             "run the contribution-boundary audit and its mutations before push")
+    require(prep, 'PACKAGE_RELEASE="$T1/scripts/build/package_release.py"',
+            "scripts/git-hooks/pre-push", "prepush-package-selftest", out,
+            "run the deterministic release-packaging self-test before push")
 
     playbook = docs["docs/release_playbook.md"]
     for token in ("GitHub release runbook", "github-release", "Rule Insights", "Draft release",
                   "Host settings are not versioned by this repository", "gitlab_governance_audit.py"):
         require(playbook, token, "docs/release_playbook.md", "release-playbook", out,
                 f"document {token} in the GitHub release/operator runbook")
+    require(playbook, "docs/release_artifacts.md", "docs/release_playbook.md",
+            "release-artifact-doc", out, "link the artifact and tag contract from the release runbook")
+    package_source = docs["scripts/build/package_release.py"]
+    for token in ('mtime=0', 'format=tarfile.PAX_FORMAT', '"release-manifest.json"', '"SHA256SUMS"'):
+        require(package_source, token, "scripts/build/package_release.py", "release-package-contract", out,
+                f"keep deterministic release-packaging primitive: {token}")
+    require(docs["scripts/build/build_branch_manifest.py"], 'os.environ.get("SOURCE_DATE_EPOCH")',
+            "scripts/build/build_branch_manifest.py", "release-build-epoch", out,
+            "make generated branch metadata reproducible for tagged builds")
+    require(release, 'echo "SOURCE_DATE_EPOCH=', ".github/workflows/release.yml",
+            "release-build-epoch", out, "bind generated build metadata to the release commit time")
+    require(release, '>> "$GITHUB_ENV"', ".github/workflows/release.yml",
+            "release-build-epoch", out, "carry the release commit epoch through every build step")
+    require(docs["scripts/validation/validate_bundle.py"], 'os.environ.get("SOURCE_DATE_EPOCH")',
+            "scripts/validation/validate_bundle.py", "release-build-epoch", out,
+            "make generated validation reports reproducible for tagged builds")
+    for token in ("annotated", "immutable", "CycloneDX", "SHA256SUMS", "3 days"):
+        require(docs["docs/release_artifacts.md"], token, "docs/release_artifacts.md",
+                "release-artifact-doc", out, f"document release strategy token: {token}")
     require(docs["scripts/skills/gen_skill_hierarchy.py"], "Ideas stay easy to contribute",
             "scripts/skills/gen_skill_hierarchy.py", "tenet-source", out,
             "project the contribution trust boundary into the root SKILL tenets")
@@ -224,6 +326,13 @@ SUBMISSION_SECTIONS = (
 
 def audit_submission(body: str) -> list[dict[str, str]]:
     out: list[dict[str, str]] = []
+    required_headings = [f"## {section}" for section in SUBMISSION_SECTIONS]
+    missing_in_window = [heading for heading in required_headings if heading not in (body or "")[:2700]]
+    if missing_in_window:
+        out.append(finding("submission-description-window", "submission",
+                           "required headings fall outside GitLab's CI description window: "
+                           + ", ".join(missing_in_window),
+                           "put the compact submission contract before rationale, screenshots, or logs"))
     for section in SUBMISSION_SECTIONS:
         match = re.search(rf"(?ms)^## {re.escape(section)}\s*\n(.*?)(?=^## |\Z)", body or "")
         if not match or not match.group(1).strip():
@@ -256,17 +365,27 @@ def self_test() -> list[str]:
             ("github-pr-trigger", ".github/workflows/pages.yml", "  pull_request:\n", "  # pull_request removed\n"),
             ("pr-deploy-boundary", ".github/workflows/pages.yml", "if: github.event_name != 'pull_request'", "if: always()"),
             ("release-draft", ".github/workflows/release.yml", "--draft --verify-tag", "--verify-tag"),
+            ("release-annotated-tag", ".github/workflows/release.yml", 'git cat-file -t "refs/tags/$RELEASE_TAG"', 'git cat-file -t "$RELEASE_TAG^{commit}"'),
+            ("release-artifact-set", ".github/workflows/release.yml", "release-assets/release-manifest.json", "release-assets/manifest.json"),
+            ("release-package-contract", "scripts/build/package_release.py", "mtime=0", "mtime=None"),
+            ("release-build-epoch", "scripts/build/build_branch_manifest.py", 'os.environ.get("SOURCE_DATE_EPOCH")', 'os.environ.get("BUILD_TIME")'),
+            ("publication-release-guard", ".github/workflows/release.yml", "contribution_safety_audit.py --require-publication-approved", "contribution_safety_audit.py"),
+            ("publication-deploy-guard", ".github/workflows/pages.yml", "contribution_safety_audit.py --require-publication-approved", "contribution_safety_audit.py"),
             ("discussion-route", ".github/ISSUE_TEMPLATE/config.yml", "/discussions", "/issues"),
             ("submission-template", ".github/PULL_REQUEST_TEMPLATE.md", "## Blast radius checked", "## Scope notes"),
             ("gitlab-description-window", ".gitlab/merge_request_templates/Default.md", "## Validation evidence", "x" * 2700 + "\n## Validation evidence"),
             ("mutating-prepush", "scripts/git-hooks/pre-push", "REFUSING PUSH - origin/main is", "git pull --rebase origin main # REFUSING PUSH - origin/main is"),
             ("fetch-fail-open", "scripts/git-hooks/pre-push", "if ! git fetch origin main --quiet; then", "git fetch origin main --quiet || exit 0\n    if false; then"),
             ("remote-fail-open", "scripts/git-hooks/pre-push", "if [ \"$REMOTE\" = \"origin\" ]; then", "[ \"$REMOTE\" = \"origin\" ] || exit 0\nif false; then"),
+            ("prepush-package-selftest", "scripts/git-hooks/pre-push", "PACKAGE_RELEASE=", "PACKAGE_TEST="),
             ("gitlab-safety-selftest", ".gitlab-ci.yml", "contribution_safety_audit.py --self-test", "contribution_safety_audit.py --version"),
             ("gitlab-human-review", ".gitlab-ci.yml", "human_review:", "operator_review:"),
             ("gitlab-human-review-needs", ".gitlab-ci.yml", 'needs: ["test", "pages_smoke"]', 'needs: ["test"]'),
             ("gitlab-human-review-blocking", ".gitlab-ci.yml", '    - if: \'$CI_PIPELINE_SOURCE == "merge_request_event"\'\n      when: manual\n      allow_failure: false\n', '    - if: \'$CI_PIPELINE_SOURCE == "merge_request_event"\'\n      when: on_success\n      allow_failure: true\n'),
             ("readme-boundary", "README.md", "Ideas are easy; code is gated", "Contribution overview"),
+            ("release-status", "RELEASE_STATUS.json", '"pending-osrb-approval"', '"published"'),
+            ("notice-state", "RELEASE_STATUS.json", '"notice_required": false', '"notice_required": true'),
+            ("security-report-route", "SECURITY.md", "https://www.nvidia.com/en-us/security/report-vulnerability/", "https://example.invalid/report"),
             ("release-playbook", "docs/release_playbook.md", "Host settings are not versioned by this repository", "Host settings checklist"),
         )
         originals: dict[str, str] = {}
@@ -283,14 +402,26 @@ def self_test() -> list[str]:
                 failures.append(f"mutation escaped detector: {expected}")
             path.write_text(raw, encoding="utf-8")
 
+        status_path = fixture / "RELEASE_STATUS.json"
+        approved = json.loads(status_path.read_text(encoding="utf-8"))
+        approved["publication_state"] = "approved-for-publication"
+        status_path.write_text(json.dumps(approved, indent=2) + "\n", encoding="utf-8")
+        if audit_publication_approval(fixture):
+            failures.append("approved release rejected by the external publication guard")
+
     good = """## Summary\nBound the release path.\n## Issue link\nAddresses #12\n## Surfaces touched\n- [x] `scripts/`\n## Blast radius checked\nHooks and CI.\n## Validation evidence\nPASS: audit.\n## Human ownership\nRelease manager reviews.\n## Risk and rollback\nRevert commit.\n## Out of scope\nHost settings.\n"""
     if audit_submission(good):
         failures.append("valid submission fixture rejected")
+    if not audit_publication_approval(ROOT):
+        failures.append("pending release unexpectedly passed the external publication guard")
     for needle, expected in (("## Human ownership\nRelease manager reviews.\n", "submission-section"),
                              ("Addresses #12", "submission-issue"), ("PASS: audit.", "submission-evidence")):
         codes = {item["code"] for item in audit_submission(good.replace(needle, "", 1))}
         if expected not in codes:
             failures.append(f"submission mutation escaped detector: {expected}")
+    long_body = good.replace("## Out of scope", "x" * 2700 + "\n## Out of scope", 1)
+    if "submission-description-window" not in {item["code"] for item in audit_submission(long_body)}:
+        failures.append("submission description-window mutation escaped detector")
     return failures
 
 
@@ -314,9 +445,12 @@ def emit(findings: list[dict[str, str]], label: str, report: str | None = None) 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--require-publication-approved", action="store_true")
     parser.add_argument("--submission-env", metavar="NAME")
     parser.add_argument("--report")
     args = parser.parse_args()
+    if args.require_publication_approved:
+        return emit(audit_publication_approval(), "external publication approval", args.report)
     if args.self_test:
         failures = self_test()
         findings = [finding("self-test", "mutation", item, "repair the escaped detector") for item in failures]

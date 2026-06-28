@@ -1,6 +1,10 @@
 # Open-source release readiness
 
-This repository is prepared as an Apache-2.0 open-source release. This guide is a release-safe operating procedure for contributors and maintainers. It intentionally avoids private ticket systems, internal wiki links, and company-only process URLs.
+This repository is an internal release candidate prepared for a proposed Apache-2.0
+open-source publication. External publication remains pending OSRB approval. The canonical
+state is recorded in `RELEASE_STATUS.json` and explained in `RELEASE_STATUS.md`. This guide is
+a release-safe operating procedure for contributors and maintainers. It intentionally avoids
+private ticket systems, internal wiki links, and company-only process URLs.
 
 ## When to Use This Guide
 
@@ -44,14 +48,22 @@ Each item must be complete, marked not applicable with rationale, or escalated b
 - Document required credentials, hardware, and known limitations.
 - Confirm the maintenance owner, triage cadence, review expectations, and archive policy.
 - Confirm contribution terms and issue or pull request templates.
+- Confirm a Code of Conduct and a real enforcement route before public community intake.
 - Run the source and security gates.
 - Record unresolved questions before submission or publication.
 
 ## License Posture
 
-The repository license is Apache-2.0. Contributions intentionally submitted for inclusion are accepted under Apache-2.0 unless a contributor clearly marks the work as not a contribution.
+Apache-2.0 is the intended external license. Contributions intentionally submitted for inclusion
+are accepted under the checked-in Apache-2.0 terms unless a contributor clearly marks the work
+as not a contribution. OSRB approval remains a separate prerequisite for external publication.
 
 Apache-2.0 does not automatically make every copied third-party artifact redistributable. Any external image, text, dataset, model, notebook, or cached page must have its own source and license disposition before it is committed.
+
+Do not create a narrative `NOTICE` file as a second source inventory. Add `NOTICE` only when a
+bundled work or another legal requirement creates an attribution notice that downstream users
+must preserve. Keep it limited to required notices and set `notice_required` in
+`RELEASE_STATUS.json` at the same time.
 
 ## Execution Evidence
 

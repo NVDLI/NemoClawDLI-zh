@@ -62,7 +62,7 @@
     {
       "path": "run_full_sca.py",
       "role": "full SCA and SBOM runner",
-      "desc": "Prints or runs the pip-audit, CycloneDX, OSV-Scanner, Grype, and Trivy commands for the built environment."
+      "desc": "Prints or runs pip-audit, reproducible CycloneDX, OSV-Scanner, Grype, and Trivy commands; release jobs can target a runtime interpreter and site-packages from a separate scanner environment."
     },
     {
       "path": "vulnerability-waivers.json",
@@ -119,7 +119,7 @@
     <a class="skill-card" href="iframe_proxy_worker_findings.md"><b>iframe_proxy_worker_findings.md</b><span>worker follow-up findings. Documents proxy-worker concerns for a later deployment-owner MR without changing worker source in this branch.</span></a>
     <a class="skill-card" href="audit_python_dependencies.py"><b>audit_python_dependencies.py</b><span>dependency vulnerability floor audit. Checks tracked Python dependency declarations against PyPI/OSV metadata.</span></a>
     <a class="skill-card" href="audit_vulnerability_waivers.py"><b>audit_vulnerability_waivers.py</b><span>vulnerability waiver audit. Validates explicit, owned, sourced, and unexpired exceptions.</span></a>
-    <a class="skill-card" href="run_full_sca.py"><b>run_full_sca.py</b><span>full SCA and SBOM runner. Prints or runs installed-environment scanner commands.</span></a>
+    <a class="skill-card" href="run_full_sca.py"><b>run_full_sca.py</b><span>full SCA and SBOM runner. Supports scanner-separated runtime targeting for clean release SBOMs.</span></a>
     <a class="skill-card" href="vulnerability-waivers.json"><b>vulnerability-waivers.json</b><span>waiver registry. Empty by default; temporary exceptions live here.</span></a>
     <a class="skill-card" href="../../docs/dependency_security.md"><b>dependency_security.md</b><span>standard integration path for fast source checks, waiver policy, SBOM output, full SCA scans, and GitLab Dependency Scanning.</span></a>
   </div>

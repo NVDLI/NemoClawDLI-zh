@@ -1,11 +1,13 @@
-# Building Agents · NVIDIA DLI open-source replicable release
+# Building Agents · NVIDIA DLI open-source release candidate
 
-This repository is a course packaging and release workspace for NVIDIA DLI material.
+This repository is a course packaging and release workspace for NVIDIA DLI material and an
+internal candidate for external open-source publication. Publication remains pending OSRB
+approval. See [`RELEASE_STATUS.md`](RELEASE_STATUS.md) for the exact boundary.
 It keeps the authored course, shared runtime services, deployment configuration, and
 release validation in one source tree so a person or an agent can build, serve, audit,
 and ship the same artifact.
 
-The current released course is **Securing Agents with OpenShell and NemoClaw**. The
+The course currently selected for the learner release is **Securing Agents with OpenShell and NemoClaw**. The
 repo is broader than that one course. Its core release tenet is **surface separation**:
 course content is organized by the environment it can assume, and no surface may borrow
 runtime assumptions from another surface without declaring that dependency.
@@ -37,6 +39,10 @@ The repository keeps curated source and projects it into release formats:
 - standalone bundle generated from the same source
 - client-side Pages site for preview or external release
 - validation reports that use the same link engine as the browser viewer
+
+Versioned public releases use protected annotated SemVer tags and deterministic archives with a
+manifest, resolved-environment SBOM, and checksums. See
+[`docs/release_artifacts.md`](docs/release_artifacts.md).
 
 Students enter through the release foyer, [`web/index.html`](web/index.html). It surfaces
 only released courses. Today that is [`web/nemoclaw/`](web/nemoclaw/).
@@ -90,9 +96,9 @@ changing files.
 ## Ideas are easy; code is gated
 
 The contribution boundary is intentionally asymmetric. Questions, corrections, teaching
-ideas, runtime observations, and source leads should be cheap to submit through
-[Discussions](https://github.com/NVIDIA/NemoClawDLIOS/discussions) or the structured Issue
-templates. No local checkout or patch is required. Security reports use the private path
+ideas, runtime observations, and source leads should be cheap to submit through structured
+Issues. Discussions become available when the external mirror and its intake features are
+approved and enabled. No local checkout or patch is required. Security reports use the private path
 described in [`SECURITY.md`](SECURITY.md), never a public Issue.
 
 Code is an untrusted proposal until the repository and a human owner accept it. A direct
@@ -115,6 +121,7 @@ python3 scripts/build/assemble_locale_overlay.py --self-test
 python3 scripts/validation/localization_audit.py --self-test
 python3 scripts/validation/localization_audit.py --locale pt-BR
 python3 scripts/compliance/source_gate.py
+python3 scripts/build/package_release.py --self-test
 bash scripts/runtime/run_engine.sh --self-test
 python3 scripts/validation/validate_bundle.py --scope ship
 ```
@@ -164,4 +171,5 @@ and [`scripts/compliance/docs/open_source_readiness.md`](scripts/compliance/docs
 
 ## License
 
-Released under the [Apache License 2.0](LICENSE.md).
+The proposed external release uses the [Apache License 2.0](LICENSE.md). External publication
+remains subject to [`RELEASE_STATUS.md`](RELEASE_STATUS.md).

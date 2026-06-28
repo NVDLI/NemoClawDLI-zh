@@ -6,7 +6,7 @@
 
 Content is authored once, by execution surface, under `web/` and `cpu/`. Everything a reader opens is generated from that source: `bundle_standalone.py` inlines each page into a self-contained HTML file, `build_pages.sh` assembles the client-side Pages site, and the `engine.js` that verifies the release also resolves where every generated link goes. A new delivery format is a new generator over the same source, so a correction reaches every format at once.
 
-The release is under Apache 2.0, with no gate, paywall, or members-only tier. The foyer at `web/index.html` shows the released courses and the lab serves them. The reference packets under `web/nemoclaw/mats/` are joined to pages by the public URLs they cite, so a page's citations stay with the page.
+The proposed external release targets Apache 2.0, with no gate, paywall, or members-only tier after publication. External publication remains pending OSRB approval. The foyer at `web/index.html` shows the courses selected for the release build and the lab serves them. The reference packets under `web/nemoclaw/mats/` are joined to pages by the public URLs they cite, so a page's citations stay with the page.
 
 Generation from one source and an open license push the content into a particular role. The repository keeps a curated body of knowledge and projects it into whatever form a reader opens; a course is one such projection. So most of the day-to-day work goes into curating that source and writing the generators, and very little goes into hand-building any individual format.
 

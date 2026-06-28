@@ -21,6 +21,8 @@ jobs:
         with:
           ref: ${{ inputs.tag }}
           fetch-depth: 0
+      - name: Verify external publication approval
+        run: python3 scripts/validation/contribution_safety_audit.py --require-publication-approved
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -34,9 +36,11 @@ jobs:
           set -euo pipefail
           python3 -c 'import re,sys; tag=sys.argv[1]; ok=re.fullmatch(r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:[-+][0-9A-Za-z.-]+)?", tag); sys.exit(0 if ok else 1)' "$RELEASE_TAG" || { echo "refusing release: tag must match semantic vMAJOR.MINOR.PATCH" >&2; exit 1; }
           git show-ref --verify --quiet "refs/tags/$RELEASE_TAG" || { echo "refusing release: tag does not exist" >&2; exit 1; }
+          test "$(git cat-file -t "refs/tags/$RELEASE_TAG")" = "tag" || { echo "refusing release: release tag must be annotated" >&2; exit 1; }
           git fetch origin main --quiet
           git merge-base --is-ancestor "$RELEASE_TAG^{commit}" origin/main || { echo "refusing release: tag is not contained in origin/main" >&2; exit 1; }
           test "$(git rev-parse HEAD)" = "$(git rev-parse "$RELEASE_TAG^{commit}")" || { echo "refusing release: checkout SHA differs from tag" >&2; exit 1; }
+          echo "SOURCE_DATE_EPOCH=$(git show -s --format=%ct "$RELEASE_TAG^{commit}")" >> "$GITHUB_ENV"
       - name: Install public validation dependencies
         run: pip install requests beautifulsoup4 markdownify lxml
       - name: Required release gate
@@ -55,8 +59,22 @@ jobs:
           python3 scripts/compliance/source_gate.py
           python3 scripts/security/audit_python_dependencies.py
           python3 scripts/security/audit_vulnerability_waivers.py
+          python3 scripts/build/package_release.py --self-test
           bash scripts/runtime/run_engine.sh --self-test
           python3 scripts/validation/validate_bundle.py --scope ship
+      - name: Resolve release environment and emit SBOM
+        run: |
+          set -euo pipefail
+          python3 -m venv .release-runtime-venv
+          python3 -m venv .release-scan-venv
+          .release-runtime-venv/bin/python -m pip install -q --upgrade pip setuptools wheel
+          .release-runtime-venv/bin/python -m pip install -q -r workspace/requirements.txt
+          .release-scan-venv/bin/python -m pip install -q --upgrade pip pip-audit==2.10.1 cyclonedx-bom==7.3.0
+          RUNTIME_SITE="$(.release-runtime-venv/bin/python -c 'import sysconfig; print(sysconfig.get_path("purelib"))')"
+          PATH="$PWD/.release-scan-venv/bin:$PATH" .release-scan-venv/bin/python \
+            scripts/security/run_full_sca.py --execute --require-tools --python-local \
+            --cyclonedx-env --python-executable "$PWD/.release-runtime-venv/bin/python" \
+            --python-path "$RUNTIME_SITE" --out-dir release-security
       - name: Build reproducible release archive
         env:
           RELEASE_TAG: ${{ inputs.tag }}
@@ -65,17 +83,29 @@ jobs:
           export BUILD_PAGES_LANGS=0
           export BUILD_PAGES_PULL_MATERIALS=0
           bash scripts/build/build_pages.sh public
-          tar --sort=name --mtime="@$(git show -s --format=%ct HEAD)" --owner=0 --group=0 --numeric-owner -czf "nemoclaw-$RELEASE_TAG.tar.gz" public
-          sha256sum "nemoclaw-$RELEASE_TAG.tar.gz" > "nemoclaw-$RELEASE_TAG.sha256"
+          mkdir -p release-assets release-evidence
+          cp release-security/python-env.cdx.json "release-security/nemoclaw-$RELEASE_TAG.python-env.cdx.json"
+          cp docs/validation/latest.json release-evidence/validation.json
+          cp docs/validation/latest.md release-evidence/validation.md
+          cp docs/validation/contribution-safety.json release-evidence/contribution-safety.json
+          cp release-security/pip-audit-local.json release-evidence/pip-audit-local.json
+          python3 scripts/build/package_release.py \
+            --site-root public \
+            --out-dir release-assets \
+            --tag "$RELEASE_TAG" \
+            --commit "$(git rev-parse "$RELEASE_TAG^{commit}")" \
+            --tag-object "$(git rev-parse "refs/tags/$RELEASE_TAG")" \
+            --source-date-epoch "$SOURCE_DATE_EPOCH" \
+            --asset "release-security/nemoclaw-$RELEASE_TAG.python-env.cdx.json"
+          test -f release-assets/release-manifest.json
+          test -f release-assets/SHA256SUMS
+          (cd release-assets && sha256sum --check SHA256SUMS)
       - uses: actions/upload-artifact@v4
         with:
           name: release-${{ inputs.tag }}
           path: |
-            nemoclaw-${{ inputs.tag }}.tar.gz
-            nemoclaw-${{ inputs.tag }}.sha256
-            docs/validation/latest.json
-            docs/validation/latest.md
-            docs/validation/contribution-safety.json
+            release-assets/
+            release-evidence/
           if-no-files-found: error
           retention-days: 30
 
@@ -102,8 +132,8 @@ jobs:
           set -euo pipefail
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = "true" || { echo "refusing release: existing release is already published" >&2; exit 1; }
-            gh release upload "$RELEASE_TAG" "nemoclaw-$RELEASE_TAG.tar.gz" "nemoclaw-$RELEASE_TAG.sha256" --clobber
+            gh release upload "$RELEASE_TAG" release-assets/* --clobber
           else
-            gh release create "$RELEASE_TAG" "nemoclaw-$RELEASE_TAG.tar.gz" "nemoclaw-$RELEASE_TAG.sha256" --draft --verify-tag --generate-notes --title "$RELEASE_TAG"
+            gh release create "$RELEASE_TAG" release-assets/* --draft --verify-tag --generate-notes --title "$RELEASE_TAG"
           fi
-          echo "Draft prepared. Human release manager must review notes, validation artifact, and checksum before publishing."
+          echo "Draft prepared. Human release manager must review notes, evidence, manifest, SBOM, and checksums before immutable publication."

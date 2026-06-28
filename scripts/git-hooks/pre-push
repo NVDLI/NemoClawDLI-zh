@@ -20,9 +20,8 @@ set -euo pipefail
 
 REMOTE="${1:-origin}"
 
-# task1 is the CONTENT ROOT: a subdir under the DLI wrapper (s-fx-43-v1/task1) today,
-# the repo root in the open-source release. Detect either layout so the hook keeps
-# working after the repo-root move without edits.
+# Resolve the content root from the installed hook. The repository root is canonical,
+# while linked worktrees may place the hook through a shared Git directory.
 T1="$(git rev-parse --show-toplevel)"
 [ -d "$T1/task1/scripts" ] && T1="$T1/task1"
 
@@ -133,6 +132,17 @@ if [ -f "$WAIVER_AUDIT" ]; then
         echo "pre-push: REFUSING PUSH - vulnerability waiver registry failed."
         echo "Fix the expired or malformed waiver, then run:"
         echo "  python3 scripts/security/audit_vulnerability_waivers.py"
+        exit 1
+    fi
+fi
+
+# ── RULE 3f: release package determinism guard ───────────────────────────────
+PACKAGE_RELEASE="$T1/scripts/build/package_release.py"
+if [ -f "$PACKAGE_RELEASE" ]; then
+    if ! python3 "$PACKAGE_RELEASE" --self-test; then
+        echo ""
+        echo "pre-push: REFUSING PUSH - release package determinism failed."
+        echo "Run: python3 scripts/build/package_release.py --self-test"
         exit 1
     fi
 fi

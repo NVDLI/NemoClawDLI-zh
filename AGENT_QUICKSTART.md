@@ -2,8 +2,10 @@
 
 Read this once per session. Then sample `SKILL.html` in the directory you're working in. For issue, MR, taxonomy, or broad prose work, read [`docs/agent_process.md`](docs/agent_process.md) before editing. The English course title, abstract, and learning objectives live in [`web/nemoclaw/COURSE_CANON.md`](web/nemoclaw/COURSE_CANON.md) and are immutable.
 
-This is the standalone open-source release of NVIDIA's Building Agents course. Every
-path is relative to the repository root. The repo IS the release.
+This is the internal release candidate for a proposed open-source publication of NVIDIA's
+Building Agents course. External publication remains pending OSRB approval. Every path is
+relative to the repository root; read [`RELEASE_STATUS.md`](RELEASE_STATUS.md) before changing
+publication, licensing, contribution, or release claims.
 
 ---
 
@@ -166,6 +168,7 @@ python3 scripts/validation/localization_audit.py --self-test  # locale detector 
 python3 scripts/validation/localization_audit.py --locale pt-BR  # drift + pt-BR language contract
 python3 scripts/security/audit_python_dependencies.py    # declared floors/pins have no known PyPI/OSV vulns
 python3 scripts/security/audit_vulnerability_waivers.py  # accepted vuln exceptions are owned + unexpired
+python3 scripts/build/package_release.py --self-test     # archive/manifest/checksum determinism
 bash    scripts/runtime/run_engine.sh --self-test        # link-engine self-test
 python3 scripts/validation/validate_bundle.py --scope ship  # grounding, reachability, page audit, em-dash
 ```

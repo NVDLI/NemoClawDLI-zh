@@ -46,6 +46,7 @@ jobs:
           python3 scripts/compliance/source_gate.py
           python3 scripts/security/audit_python_dependencies.py
           python3 scripts/security/audit_vulnerability_waivers.py
+          python3 scripts/build/package_release.py --self-test
           bash    scripts/runtime/run_engine.sh --self-test
           python3 scripts/validation/validate_bundle.py --scope ship
       - name: Pull request submission contract
@@ -76,6 +77,8 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: Verify external publication approval
+        run: python3 scripts/validation/contribution_safety_audit.py --require-publication-approved
       - uses: actions/setup-node@v4
         with:
           node-version: "20"

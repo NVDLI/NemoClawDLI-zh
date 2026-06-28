@@ -86,6 +86,8 @@ python3 scripts/security/run_full_sca.py --execute --image <built-image>
 The wrapper is the agent-discoverable SCA entry point. It prints the exact scanner
 commands by default and runs only selected scanners when `--execute` is provided.
 It never installs tools.
+For release SBOMs, keep scanner packages out of the runtime environment and pass the runtime
+interpreter with `--python-executable` plus its site-packages path with `--python-path`.
 
 Preferred Python environment scan when running commands directly:
 
@@ -147,8 +149,9 @@ when taking them on:
    `scripts/security/*`, CI files, deploy files, and waiver registry changes.
 5. Consider VEX only if downstream consumers need machine-readable non-affected
    statements. Until then, keep the waiver registry small, explicit, and expiring.
-6. Add release SBOM retention. Store CycloneDX artifacts for resolved environments
-   and release images with each protected release.
+6. Keep release SBOM retention aligned with [`release_artifacts.md`](release_artifacts.md).
+   The protected release workflow publishes the resolved Python CycloneDX SBOM beside each archive;
+   add image SBOMs when public release images exist.
 
 ## Maintenance
 

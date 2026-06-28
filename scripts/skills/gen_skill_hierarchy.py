@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the nested SKILL.html hub hierarchy:
 
-    task1/SKILL.html  (task hub == bundle index, served at /lab/static/SKILL.html)
+    SKILL.html  (repository hub == bundle index, served at /lab/static/SKILL.html)
       ├─ web/SKILL.html  (surface hub)  ─→ each web/<course>/SKILL.html
       └─ cpu/SKILL.html  (surface hub)  ─→ each cpu/<course>/SKILL.html
             └─ <course>/SKILL.html  (course hub) ─→ its content
@@ -30,6 +30,7 @@ TASK1 = find_repo_root(HERE)
 add_script_paths(TASK1 / "scripts")
 SURFACES = ("web", "cpu")
 MARKER = "gen_skill_hierarchy.py"   # presence in a SKILL.html => safe to regenerate
+RELEASE_STATUS = json.loads((TASK1 / "RELEASE_STATUS.json").read_text(encoding="utf-8"))
 
 try:
     from link_projection import RELEASED   # single source for the released-course set
@@ -91,21 +92,23 @@ TENETS = {
         "Order is a default, not a gate: keep pages usable out of sequence, with no enforced "
         "prerequisites or knowledge checks, so a reader can act on partial understanding and "
         "return for the next layer.",
-        "Keep the release open: Apache 2.0, no gate or paywall, the foyer surfacing only the "
-        "released courses, and mats cited by public URL.",
+        "Target an open external release after approval: Apache 2.0, no gate or paywall, the "
+        "foyer surfacing only the selected courses, and mats cited by public URL.",
         "Keep surface assumptions explicit: web/ is browser-only and cannot assume student-provisioned "
         "microservices; cpu/ owns shared service stacks; spark/ or gpu surfaces must declare their "
         "compute contract before content depends on them.",
         "Ship the services a course drives (a model gateway, a sandboxed agent harness, a policy "
         "control plane) and let them carry the mechanical work, so a reader's attention stays on "
         "the decision the exercise is about.",
-        "Ideas stay easy to contribute through Discussions and structured Issues. Code stays "
+        "Ideas stay easy to contribute through structured Issues and, after external intake is enabled, "
+        "Discussions. Code stays "
         "difficult to accept: treat every patch as untrusted, require issue linkage, blast-radius "
         "evidence, deterministic gates, human ownership, protected refs, and gated releases.",
     ],
     "assumptions": [
-        "task1 is the canonical root: the open-source, replicable release. Everything worth "
-        "keeping lives here and is versioned; scratch goes to /tmp and is never committed.",
+        "The repository root is canonical for this internal release candidate. External publication "
+        "remains pending OSRB approval. Everything worth keeping lives here and is versioned; scratch "
+        "goes to /tmp and is never committed.",
         "Content is organized by execution surface: web/ holds browser-only courses and course-scoped "
         "reference packets; cpu/ holds shared microservices; deploy/ holds compose and nginx; "
         "future spark/ or gpu surfaces must state their compute contract before use.",
@@ -247,7 +250,7 @@ def write(path: Path, content: str):
 
 
 def gen_task():
-    """task1/SKILL.html is the ROOT hub, served at /lab/static/SKILL.html. It is the
+    """The root SKILL.html is served at /lab/static/SKILL.html. It is the
     ONTOLOGY BEACON for the whole bundle: an honest, statically-verifiable interface over
     its immediate children (the execution surfaces, the reference layers, the tooling, the
     agent docs), not a pitch for any one course. It descends into the per-surface hubs and
@@ -297,10 +300,11 @@ def gen_task():
         src_items.append(("scripts/runtime/link_graph.html", "scripts/runtime/link_graph.html",
                           "Link + topology viewer: how every page resolves and what reaches a SKILL hub."))
 
-    docs = [("README.md", "README.md", "What the release is and how to run it (start here)."),
+    docs = [("README.md", "README.md", "What the release candidate is and how to run it (start here)."),
+            ("RELEASE_STATUS.md", "RELEASE_STATUS.md", "Publication state, approval boundary, and NOTICE policy."),
+            ("RELEASE_STATUS.json", "RELEASE_STATUS.json", "Machine-readable publication and licensing state."),
             ("AGENT_QUICKSTART.md", "AGENT_QUICKSTART.md", "Agent orientation: layout, services, rules."),
             ("CONTRIBUTING.md", "CONTRIBUTING.md", "How to contribute: hooks, the validation gate, conventions."),
-            ("NOTICE.md", "NOTICE.md", "Apache notice and third-party provenance pointer."),
             ("QUALITY_DIRECTIVES.md", "QUALITY_DIRECTIVES.md", "Pedagogical quality bar."),
             ("scripts/compliance/docs/open_source_readiness.md", "scripts/compliance/docs/open_source_readiness.md", "Release-safe readiness checklist and roles."),
             ("scripts/compliance/docs/vendor_policy.md", "scripts/compliance/docs/vendor_policy.md", "Source and vendor-ingestion policy."),
@@ -318,7 +322,8 @@ def gen_task():
 
     meta = {"node_type": "hub", "level": "task", "title": "Building Agents · NVIDIA DLI bundle",
             "role": "bundle_index", "served_at": "/lab/static/SKILL.html", "self_path": "SKILL.html",
-            "thesis": ("NVIDIA DLI's open-source, replicable release of course material: the narrative, "
+            "thesis": ("NVIDIA DLI's internal release candidate for a proposed open-source publication: "
+                       "the narrative, "
                        "the assets, the deployment visor that runs it, and the automatic "
                        "verification that keeps it honest, packaged so a person or an agent can stand it "
                        "up, navigate it, and check it end to end. Content is organized by EXECUTION SURFACE "
@@ -328,7 +333,12 @@ def gen_task():
             "surfaces": [{"name": s, "path": f"{s}/SKILL.html", "assumes": sdesc.get(s, "")} for s, _ in surfaces],
             "reference_layers": ref_layers,
             "release": {"surface": "web/index.html", "courses": rel_courses,
-                        "note": "the foyer surfaces only these released courses; this beacon maps the whole bundle"},
+                        "publication_state": RELEASE_STATUS["publication_state"],
+                        "external_mirror": RELEASE_STATUS["external_mirror"],
+                        "target_license": RELEASE_STATUS["target_license"],
+                        "notice_required": RELEASE_STATUS["notice_required"],
+                        "status_path": "RELEASE_STATUS.json",
+                        "note": "the foyer selection does not imply external publication approval"},
             "tenets": TENETS,
             "children": ([{"name": s, "path": f"{s}/SKILL.html"} for s, _ in surfaces]
                          + [{"name": n.rstrip("/"), "path": h} for (n, h, _d) in explorers])}

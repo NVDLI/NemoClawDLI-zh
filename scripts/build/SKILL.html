@@ -19,6 +19,7 @@
     "scripts/build/publish_edx.py",
     "scripts/build/install-hooks.sh",
     "scripts/build/build_branch_manifest.py"
+    ,"scripts/build/package_release.py"
   ],
   "explorer": "../../web/_skill_explorer.js"
 }
@@ -74,6 +75,11 @@
       "path": "build_language_manifest.py",
       "role": "language manifest",
       "desc": "Builds language-branch metadata for translated bundles."
+    },
+    {
+      "path": "package_release.py",
+      "role": "deterministic release packager",
+      "desc": "Builds a normalized versioned archive, release manifest, copied SBOM assets, and SHA256SUMS with a reproducibility self-test."
     }
   ]
 }
@@ -94,6 +100,7 @@
   <div class="skill-cmds">
     <div class="skill-cmd"><b>Standalone bundle</b><code>python3 scripts/build/bundle_standalone.py --src web/nemoclaw --out /tmp/nemoclaw_bundle_check --clean --full</code></div>
     <div class="skill-cmd"><b>Pages build</b><code>bash scripts/build/build_pages.sh</code></div>
+    <div class="skill-cmd"><b>Release package determinism</b><code>python3 scripts/build/package_release.py --self-test</code></div>
     <div class="skill-cmd"><b>edX export</b><code>python3 scripts/build/publish_edx.py --help</code></div>
   </div>
   <h2>Linkage map</h2>
@@ -105,6 +112,7 @@
     <a class="skill-card" href="install-hooks.sh"><b>install-hooks.sh</b><span>hook installer. Installs local git hooks that run repo gates.</span></a>
     <a class="skill-card" href="build_branch_manifest.py"><b>build_branch_manifest.py</b><span>branch manifest. Lists only production and preview paths published in the current Pages artifact.</span></a>
     <a class="skill-card" href="build_language_manifest.py"><b>build_language_manifest.py</b><span>language manifest. Builds language-branch metadata for translated bundles.</span></a>
+    <a class="skill-card" href="package_release.py"><b>package_release.py</b><span>deterministic release packager. Builds the versioned archive, manifest, release assets, and checksums.</span></a>
   </div>
   <h2>Interactive explorer</h2>
   <p>The explorer below opens source files, tours important sections, and checks documented paths against the repository tree.</p>

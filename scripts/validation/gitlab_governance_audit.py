@@ -116,13 +116,36 @@ def audit(snapshot: dict[str, object]) -> list[dict[str, str]]:
         if not deployers or any(not (level.get("user_id") or level.get("group_id")) for level in deployers):
             out.append(item("production-role-bypass", "production deployment allows a broad role or bot",
                             "name human deployers or a human-owned release group explicitly"))
+        approval_rules = [rule for rule in production.get("approval_rules", [])
+                          if rule.get("required_approvals", 0) > 0]
+        if any(not (rule.get("user_id") or rule.get("group_id")) for rule in approval_rules):
+            out.append(item("production-approval-role-bypass",
+                            "production approval allows a broad role instead of a named principal",
+                            "name human approvers or a human-owned release group explicitly"))
+        deployer_users = {level.get("user_id") for level in deployers if level.get("user_id")}
+        approver_users = {rule.get("user_id") for rule in approval_rules if rule.get("user_id")}
+        deployer_groups = {level.get("group_id") for level in deployers if level.get("group_id")}
+        approver_groups = {rule.get("group_id") for rule in approval_rules if rule.get("group_id")}
+        sole_operator_rule = (len(deployer_users) == 1 and approver_users == deployer_users
+                              and all(not rule.get("group_id") for rule in approval_rules))
+        if (approval_rules and sole_operator_rule
+                and not project.get("allow_pipeline_trigger_approve_deployment")):
+            out.append(item("production-self-approval-deadlock",
+                            "the sole production operator cannot approve a deployment they trigger",
+                            "enable pipeline-triggerer deployment approval or assign an independent approver"))
+        if (project.get("allow_pipeline_trigger_approve_deployment")
+                and (not sole_operator_rule or deployer_groups or approver_groups)):
+            out.append(item("production-self-approval-too-broad",
+                            "self-approval mode is not limited to one matching named deployer and approver",
+                            "keep one explicit operator or disable self-approval and require independent review"))
     return out
 
 
 def good_fixture() -> dict[str, object]:
     return {
         "project": {"only_allow_merge_if_pipeline_succeeds": True,
-                    "only_allow_merge_if_all_discussions_are_resolved": True},
+                    "only_allow_merge_if_all_discussions_are_resolved": True,
+                    "allow_pipeline_trigger_approve_deployment": True},
         "protected_branches": [{"name": "main", "allow_force_push": False,
                                 "push_access_levels": [{"access_level": 0}],
                                 "merge_access_levels": [{"access_level": 40}]}],
@@ -133,7 +156,7 @@ def good_fixture() -> dict[str, object]:
         "protected_environments": [
             {"name": "human-review", "deploy_access_levels": [{"user_id": 10}]},
             {"name": "production", "deploy_access_levels": [{"user_id": 10}],
-             "approval_rules": []},
+             "approval_rules": [{"user_id": 10, "required_approvals": 1}]},
         ],
     }
 
@@ -156,6 +179,9 @@ def self_test() -> list[str]:
         ("human-review-role-bypass", lambda x: x["protected_environments"][0].update(deploy_access_levels=[{"access_level": 40}])),
         ("production-unprotected", lambda x: x.update(protected_environments=x["protected_environments"][:1])),
         ("production-role-bypass", lambda x: x["protected_environments"][1].update(deploy_access_levels=[{"access_level": 40}])),
+        ("production-approval-role-bypass", lambda x: x["protected_environments"][1].update(approval_rules=[{"access_level": 40, "required_approvals": 1}])),
+        ("production-self-approval-deadlock", lambda x: x["project"].update(allow_pipeline_trigger_approve_deployment=False)),
+        ("production-self-approval-too-broad", lambda x: x["protected_environments"][1]["deploy_access_levels"].append({"user_id": 11})),
     )
     failures: list[str] = []
     for expected, mutate in mutations:

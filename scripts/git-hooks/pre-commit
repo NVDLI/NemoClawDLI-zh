@@ -9,8 +9,8 @@
 
 set -e
 
-# Resolve repo root and the content root. task1/ is the content root; it is a subdir under
-# the DLI wrapper today and will be the repo root in the open-source release, so detect either.
+# Resolve the canonical repository content root while retaining compatibility with legacy
+# wrapper checkouts that still place the content under task1/.
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 T1="$REPO_ROOT"; [ -d "$REPO_ROOT/task1/scripts" ] && T1="$REPO_ROOT/task1"
 T1REL="${T1#$REPO_ROOT/}"; [ "$T1REL" = "$T1" ] && T1REL="" || T1REL="$T1REL/"

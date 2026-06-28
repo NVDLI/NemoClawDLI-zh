@@ -27,9 +27,24 @@ Usage:
   python3 scripts/validation/validate_bundle.py --no-write   # gate only, no log file
 """
 from __future__ import annotations
-import argparse, json, subprocess, sys
+import argparse, json, os, subprocess, sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+
+def _report_stamp(explicit: str | None) -> str:
+    if explicit:
+        return explicit
+    raw = os.environ.get("SOURCE_DATE_EPOCH")
+    if raw is not None:
+        try:
+            epoch = int(raw)
+        except ValueError as exc:
+            raise SystemExit("SOURCE_DATE_EPOCH must be a non-negative integer") from exc
+        if epoch < 0:
+            raise SystemExit("SOURCE_DATE_EPOCH must be a non-negative integer")
+        return datetime.fromtimestamp(epoch, timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
     if (_p / "scripts" / "_bootstrap.py").exists():
@@ -1045,7 +1060,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     advisory = gradient[RECOMMENDED] + gradient[CONSIDER]
 
     summary = {
-        "generated": stamp or datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "generated": _report_stamp(stamp),
         "git_sha": _git_sha(), "scope": scope, "lang": lang,
         "translation_na_suites": sorted(na_suites), "ok": ok,
         "link_stats": s, "validate_layout_ok": vl_ok, "validate_layout_failures": vl_fail,
