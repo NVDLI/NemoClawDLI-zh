@@ -70,7 +70,7 @@ WEB_PAGE_DESC = {
 WEB_SUPPORT = {
     "scripts": ("runtime scripts", "Browser modules for page chrome, runnable cells, canvas flows, OpenClaw controls, chat widgets, diagrams, retrieval helpers, and the studio tool."),
     "styles":  ("course styles", "Shared course CSS plus the light iframe/export overlay."),
-    "assets":  ("image provenance", "Source, license, and connection level for every image."),
+    "assets":  ("image provenance", "Source, license, connection level, theme mode, mount style, and visual-preview duty for every image."),
     "mats":    ("material provenance", "Source and connection level for every companion essay."),
 }
 SURFACE_LEAD = {
@@ -109,7 +109,8 @@ TENETS = {
         "reference packets; cpu/ holds shared microservices; deploy/ holds compose and nginx; "
         "future spark/ or gpu surfaces must state their compute contract before use.",
         "The brain is each directory's SKILL.html skill-meta JSON, not a SKILL.md. Parse it "
-        "first, then walk children: task to surface to course to content.",
+        "first, then walk children: task to surface to course to content. Visual work must also "
+        "read the asset provenance beacon and validation beacon before edits.",
         "One link engine (scripts/runtime/engine.js) is the single source for resolution, crawl, "
         "reachability, and the release contract; it runs headless and in-browser, with no "
         "second implementation to drift.",
@@ -130,12 +131,23 @@ TENETS = {
         "cite the external URL, never link the packet file.",
         "Run source_gate before adding assets, mats, datasets, cached references, or copied examples; "
         "every new source needs provenance and license disposition.",
+        "When a change touches an image, SVG, diagram, canvas figure, or page placement, preview the "
+        "rendered result through the active agent harness (Codex, Claude, Cursor, Playwright, or local "
+        "browser smoke), inspect light and dark theme output when the asset can theme-switch, show the "
+        "preview to the requester, and report that evidence or the exact blocker.",
+        "Course-authored/provided SVGs under assets/figures mount with fig-embed/data-svg-src so theme "
+        "variables and click-to-expand work. Plain img is only for fixed-white paper conversions documented "
+        "as connection=conversion in asset provenance. Keep semantic figure labels; move only caption-like "
+        "prose, contributor credit, or issue shorthand out of SVG source.",
         "Never commit lab-generated runtime output (artifacts/, export/, caches, the public/ build).",
     ],
     "cadences": [
         "Validate before pushing: validate_layout, skill_consistency, source_gate, run_engine --self-test, "
         "validate_bundle --scope ship. The same gates run at pre-push (install: "
         "bash scripts/build/install-hooks.sh).",
+        "For visual work, run figure_audit, source_gate, validate_bundle --no-write --scope ship, and a "
+        "rendered preview shown to the requester. Static pass without a rendered preview is incomplete "
+        "unless the host harness cannot run and the blocker is named.",
         "A reported defect is a SAMPLE of a class: grep the whole repo across every course, "
         "surface, and duplicated copy before fixing, then fix every instance or name the deferrals.",
         "Improve one, improve all: a fix in one course propagates to its siblings.",

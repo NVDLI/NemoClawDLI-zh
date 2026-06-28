@@ -28,12 +28,37 @@
   .layer-card h3 { font-size: .9rem; color: var(--gs); margin: 0 0 .35em; font-family: var(--mono); }
   .layer-card p  { font-size: .82rem; color: var(--td); margin: .2em 0; line-height: 1.55; }
   .layer-card code { font-size: .8em; }
+  details.vocab-menu { margin: .85em 0 1.65em; border: 1px solid var(--bd); border-radius: var(--r); background: var(--e1); }
+  details.vocab-menu > summary { cursor: pointer; padding: 11px 14px; color: var(--gs); font-family: var(--mono); font-weight: 700; font-size: .86rem; }
+  details.vocab-menu > summary:hover { background: var(--e2); }
+  details.vocab-menu > summary::marker { color: var(--gs); }
+  .vocab-clusters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; padding: 0 14px 14px; }
+  @media (max-width: 720px) { .vocab-clusters { grid-template-columns: 1fr; } }
+  .vocab-cluster { min-width: 0; }
+  .vocab-cluster h3 { color: var(--gs); font-family: var(--mono); font-size: .82rem; margin: .15em 0 .55em; }
+  .vocab-terms dt { color: var(--tx); font-weight: 700; font-size: .84rem; margin: .45em 0 .1em; }
+  .vocab-terms dd { color: var(--td); font-size: .81rem; line-height: 1.45; margin: 0; }
+  .vocab-terms dd a { white-space: nowrap; }
   figure.lp-video { margin: 1.4em 0; }
   figure.lp-video .video-wrap { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;
      border-radius: 8px; border: 1px solid var(--bd); background: var(--e1); }
   figure.lp-video .video-wrap iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
   figure.lp-video figcaption { font-size: .88rem; color: var(--td,#b0b0b0); line-height: 1.6; margin-top: .55em; }
   figure.lp-video figcaption b { color: var(--gs,#aee23a); }
+  figure.architecture-map { margin: 1.2em auto 2em; max-width: 1100px; }
+  figure.architecture-map .fig-embed { margin:0; }
+  svg.os-architecture {
+    --os-surface:#000000; --os-panel:#000000; --os-text:#f2f4f8; --os-line:#a3aab7;
+    --os-raster-filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(1.08);
+    background:var(--os-surface) !important;
+  }
+  :root[data-theme="light"] svg.os-architecture {
+    --os-surface:#ffffff; --os-panel:#ffffff; --os-text:#1f2328; --os-line:#68717d; --os-raster-filter:none;
+  }
+  figure.architecture-map .fig-embed svg.os-architecture {
+    border:1px solid var(--bd); border-radius:8px;
+  }
+  figure.architecture-map figcaption { max-width: 760px; margin:.55em auto 0; text-align:center; font-size:.9rem; color:var(--gfx-sub,#8a8a8a); line-height:1.5; }
 </style>
 </head>
 <body>
@@ -53,9 +78,9 @@
     <h1>The <span>OpenShell</span> Sandbox</h1>
     <p class="lead">
       Prompt rules alone cannot contain an agent, so the containment has to
-      live in infrastructure the model cannot talk its way past. The NemoClaw stack
-      ships the OpenClaw agent harness inside OpenShell, a kernel-level sandbox that decides what
-      the agent may do whatever its prompt says.
+      live in infrastructure the model cannot talk its way past. Raw agent
+      access can still enforce command-shape rules, but OpenShell supplies the
+      sandbox boundary that continues to hold if that agent layer is wrong.
     </p>
     <p class="lead">
       From here you drive the box yourself, watching the kernel allow and
@@ -77,9 +102,16 @@
   </figure>
   -->
 
-  <h2>Why a sandbox, when you already have a system prompt</h2>
-  <p>Two arguments anchor every containment system worth deploying:</p>
+  <figure class="architecture-map">
+    <div class="fig-embed" data-svg-src="assets/figures/04a-openshell-architecture.svg"></div>
+    <figcaption>
+      OpenShell separates control entry, policy enforcement, agent state, tool access, and model routing. Keep this map in view as the page moves from the sandbox argument to live policy checks.
+    </figcaption>
+  </figure>
 
+  <h2>Why a sandbox, when you already have a system prompt</h2>
+  <p>The containment stack has three layers: prompt, application, and sandbox guardrailing.
+     NemoClaw is the reference blueprint that shows how you can merge all three in a secure, synchronized manner.</p>
   <ul>
     <li><strong>A prompt rule is only ever a request.</strong>
         Telling an agent "do not exfiltrate secrets" depends on the
@@ -87,12 +119,35 @@
         <a href="https://arxiv.org/abs/2302.12173" target="_blank" rel="noopener">Adversarial
         retrieved content</a>, malicious tool output, or another agent in
         the loop can all cause a compliant model to act against its
-        rules. Infrastructure containment denies by default at the
-        kernel: if the model decides to disobey, the kernel refuses the
-        operation. A blocked file access returns <code>EACCES</code>, a
-        blocked syscall returns <code>EPERM</code> (the standard
-        <a href="https://man7.org/linux/man-pages/man3/errno.3.html" target="_blank" rel="noopener">POSIX error codes</a>),
-        regardless of what the model thinks it's doing.</li>
+        rules. OWASP's
+        <a href="https://genai.owasp.org/llmrisk/llm01-prompt-injection/" target="_blank" rel="noopener">LLM01
+        guidance</a> treats this as a design problem, not a prompt-writing
+        problem: constrain tools, restrict privileges, and assume external
+        content can steer the model.</li>
+    <li><strong>The agent harness is enforcement, but not the final authority.</strong>
+        Raw OpenClaw or Hermes access can reject bad shapes before they touch
+        the OS: no <code>sudo</code>, no unsupported shell forms, no implicit
+        ingress or egress defaults, and no tool call outside the allowed
+        surface. That is real deterministic control, much stronger than a
+        prompt. It is still application logic and configuration, though. A
+        misconfigured, outdated, or compromised harness can make the wrong
+        decision.</li>
+    <li><strong>The sandbox is the last-resort boundary.</strong>
+        <a href="https://csrc.nist.gov/pubs/sp/800/207/final" target="_blank" rel="noopener">Zero
+        trust</a> says not to grant implicit trust just because a request
+        came from an expected place. OpenShell applies that idea inside the
+        agent runtime: even if the prompt and harness both fail, the process
+        still lacks authority. Kernel mechanisms such as
+        <a href="https://www.kernel.org/doc/html/latest/userspace-api/seccomp_filter.html" target="_blank" rel="noopener">seccomp
+        filters</a> can return an error without executing a forbidden
+        syscall, and container profiles such as
+        <a href="https://docs.docker.com/engine/security/seccomp/" target="_blank" rel="noopener">Docker's
+        default seccomp profile</a> use allowlists to deny by default. A
+        blocked file access returns <code>EACCES</code>, a blocked syscall
+        returns <code>EPERM</code> or another policy-chosen
+        <a href="https://man7.org/linux/man-pages/man3/errno.3.html" target="_blank" rel="noopener">POSIX
+        error</a>, regardless of what the model or harness thought it was
+        allowed to do.</li>
     <li><strong>Least authority is old engineering.</strong>
         <a href="https://www.cs.virginia.edu/~evans/cs551/saltzer/" target="_blank" rel="noopener">Saltzer
         and Schroeder</a> named the
@@ -103,8 +158,8 @@
         that no analysis can decide non-trivial semantic properties of an
         arbitrary program ahead of time. An agent holding a code-exec tool
         falls squarely in that class, so no static check can promise what
-        it will do once it runs. The honest move is to instrument the
-        runtime rather than try to prove the model safe in advance. The
+        it will do once it runs. The honest move is to instrument each
+        boundary rather than try to prove the model safe in advance. The
         1970s OS designers worked out this discipline, and we are
         reapplying their work to agents.</li>
   </ul>
@@ -122,7 +177,7 @@
     <a href="https://github.com/langchain-ai/deepagents" target="_blank" rel="noopener">LangChain deepagents</a>,
     or just about any workflow that needs OS-level containment.</li>
     <li>
-      <a href="https://www.nvidia.com/en-us/ai/nemoclaw/" target="_blank" rel="noopener">NemoClaw</a> is the reference stack that packages OpenClaw and OpenShell with lifecycle commands,
+      <a href="https://www.nvidia.com/en-us/ai/nemoclaw/" target="_blank" rel="noopener">NemoClaw</a> is the blueprint that packages OpenClaw and OpenShell with lifecycle commands,
       policy presets, local inference guidance, and deployment defaults.
     </li>
   </div>
@@ -173,6 +228,72 @@
          off the table this becomes the innermost ring in the diagram above.</p>
     </div>
   </div>
+
+  <details class="vocab-menu">
+    <summary>Vocabulary in these four mechanisms</summary>
+    <div class="vocab-clusters">
+      <section class="vocab-cluster">
+        <h3>Network policy</h3>
+        <dl class="vocab-terms">
+          <dt>Network namespace / <code>netns</code></dt>
+          <dd>Isolated Linux network stack: devices, routes, firewall rules, and socket ports. <a href="https://man7.org/linux/man-pages/man7/network_namespaces.7.html" target="_blank" rel="noopener">network_namespaces(7)</a></dd>
+          <dt>Ingress / egress</dt>
+          <dd>Ingress is traffic entering the sandbox; egress is traffic leaving it. Default-deny means neither direction is open unless policy grants it.</dd>
+          <dt>CONNECT proxy</dt>
+          <dd>HTTP tunnel proxy to a requested host and port; safe deployments restrict allowed targets. <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods/CONNECT" target="_blank" rel="noopener">MDN CONNECT</a></dd>
+          <dt>OPA</dt>
+          <dd>Policy engine that evaluates structured input and returns decisions to enforcement code. <a href="https://www.openpolicyagent.org/docs" target="_blank" rel="noopener">OPA docs</a></dd>
+          <dt>Binary, host, port, path</dt>
+          <dd>Egress policy inputs: executable identity, target name, TCP port, and requested URL path.</dd>
+        </dl>
+      </section>
+      <section class="vocab-cluster">
+        <h3>Filesystem boundary</h3>
+        <dl class="vocab-terms">
+          <dt>Landlock</dt>
+          <dd>Linux Security Module that lets an unprivileged process restrict its own future access. <a href="https://docs.kernel.org/userspace-api/landlock.html" target="_blank" rel="noopener">Kernel docs</a></dd>
+          <dt>Ambient rights</dt>
+          <dd>Access a process would otherwise inherit from the OS, parent process, mounts, or credentials.</dd>
+          <dt>Workspace tree</dt>
+          <dd>The allowed directory subtree; outside paths remain unreachable after Landlock rules apply.</dd>
+          <dt>Bind mount</dt>
+          <dd>A filesystem subtree made visible at another path, including across chroot boundaries. <a href="https://man7.org/linux/man-pages/man2/mount.2.html" target="_blank" rel="noopener">mount(2)</a></dd>
+          <dt>Symlink race</dt>
+          <dd>A checked path changes through a symbolic link before use. <a href="https://man7.org/linux/man-pages/man7/symlink.7.html" target="_blank" rel="noopener">symlink(7)</a></dd>
+        </dl>
+      </section>
+      <section class="vocab-cluster">
+        <h3>Syscall boundary</h3>
+        <dl class="vocab-terms">
+          <dt>seccomp</dt>
+          <dd>Linux syscall filtering that reduces kernel surface reachable by a process. <a href="https://docs.kernel.org/userspace-api/seccomp_filter.html" target="_blank" rel="noopener">Kernel docs</a></dd>
+          <dt>Syscall allowlist</dt>
+          <dd>The syscall set allowed to run; everything else receives a policy action.</dd>
+          <dt>BPF layer</dt>
+          <dd>Filter program that checks syscall numbers and arguments before execution. <a href="https://docs.kernel.org/userspace-api/seccomp_filter.html" target="_blank" rel="noopener">Kernel docs</a></dd>
+          <dt>TOCTOU / inspection race</dt>
+          <dd>Time-of-check/time-of-use bug; seccomp avoids pointer dereference races inside the filter. <a href="https://docs.kernel.org/userspace-api/seccomp_filter.html" target="_blank" rel="noopener">Kernel docs</a></dd>
+          <dt><code>EPERM</code> / <code>EACCES</code></dt>
+          <dd>Linux errno names for operation not permitted and permission denied. <a href="https://man7.org/linux/man-pages/man3/errno.3.html" target="_blank" rel="noopener">errno(3)</a></dd>
+        </dl>
+      </section>
+      <section class="vocab-cluster">
+        <h3>Process identity</h3>
+        <dl class="vocab-terms">
+          <dt>Agent process</dt>
+          <dd>The OS process running the agent and tools inside these boundaries.</dd>
+          <dt>Non-root / unprivileged user</dt>
+          <dd>A nonzero UID subject to normal kernel permission checks. <a href="https://man7.org/linux/man-pages/man7/capabilities.7.html" target="_blank" rel="noopener">capabilities(7)</a></dd>
+          <dt>Linux capability</dt>
+          <dd>A split-out root power such as <code>CAP_SYS_ADMIN</code> or <code>CAP_SETUID</code>. <a href="https://man7.org/linux/man-pages/man7/capabilities.7.html" target="_blank" rel="noopener">capabilities(7)</a></dd>
+          <dt><code>ptrace</code>, <code>mount</code>, <code>setuid</code></dt>
+          <dd>Dangerous primitives for process control, filesystem attachment, and identity change. <a href="https://man7.org/linux/man-pages/man2/ptrace.2.html" target="_blank" rel="noopener">ptrace(2)</a> · <a href="https://man7.org/linux/man-pages/man2/mount.2.html" target="_blank" rel="noopener">mount(2)</a> · <a href="https://man7.org/linux/man-pages/man2/setuid.2.html" target="_blank" rel="noopener">setuid(2)</a></dd>
+          <dt>Privilege escalation</dt>
+          <dd>Gaining authority beyond assignment: root, extra capabilities, broader file access, or broader network access.</dd>
+        </dl>
+      </section>
+    </div>
+  </details>
 
   <h2>Shape the runtime first</h2>
   <p>Before you drive the sandbox yourself, make the agent healthy by recovering the runtime

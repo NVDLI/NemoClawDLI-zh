@@ -57,6 +57,8 @@ def tracked_files() -> list[Path]:
             continue
         seen.add(line)
         p = ROOT / line
+        if not p.exists():
+            continue
         if any(part in SKIP_PARTS for part in p.parts):
             continue
         files.append(p)

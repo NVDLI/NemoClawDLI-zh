@@ -20,6 +20,8 @@
   .cm-s-monokai.CodeMirror { background: #0d0d0d; color: #f8f8f2; }
   .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
   .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
+  .agent-loop-figure { margin: 1.2em auto 1.6em; }
+  .agent-loop-figure .fig-embed { max-width: 900px; margin-left: auto; margin-right: auto; }
 </style>
 </head>
 <body>
@@ -43,10 +45,10 @@
     </p>
     <p>
       All of them <b>perceive</b> their environment through sensors and <b>act</b> on it through actuators.
-      Because each action feeds the next observation, perceiving and acting fold into one continuous cycle that
-      lasts as long as the agent is working toward something. This course calls that cycle the
-      <strong>perceive-reason-act loop</strong>. The agents you will build run the same cycle
-      a thermostat does and are set apart only by how much they can perceive and how far their actions reach.
+      Because each action feeds the next observation, perceiving and acting fold into one continuous cycle,
+      a <strong>perceive-reason-act loop</strong>, that lasts as long as the agent continues to interact.
+      The agents you will build all adopt the same cycle and are set apart only by how much they can perceive
+      and how far their actions reach.
     </p>
   </div>
 
@@ -54,8 +56,8 @@
   <p>A single trip around the loop runs through three parts, each with a plain name and a
      distinct job.</p>
 
-  <figure style="margin:1.4em 0">
-    <div id="fig-agent-loop"></div>
+  <figure class="agent-loop-figure">
+    <div class="fig-embed" data-svg-src="assets/figures/01a-agent-environment.svg" style="aspect-ratio:860 / 270"></div>
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Only perception and action cross the boundary. The decision step between them can change.</figcaption>
   </figure>
 
@@ -400,31 +402,13 @@ helpers.log("rendered below. Edit the config and Run.");
 </main>
 
 <script type="module">
-import { buildNav, updateKeyPill, mountKeyPanel, mountJourneyMap, mountCanvasFlow, mountRunCell, mountDiagram } from "./scripts/_shared.js";
+import { buildNav, updateKeyPill, mountKeyPanel, mountJourneyMap, mountCanvasFlow, mountRunCell } from "./scripts/_shared.js";
 document.getElementById("nav").innerHTML = buildNav("01a-loop.html");
 const pill = document.getElementById("key-status");
 updateKeyPill(pill);
 mountJourneyMap("#journey-map", "1a");
 mountKeyPanel(document.getElementById("key-panel"), { onSave: () => updateKeyPill(pill), onClear: () => updateKeyPill(pill) });
 hljs.highlightAll();
-
-// The agent loop (Environment | Agent), rendered from a spec via mountDiagram.
-mountDiagram("#fig-agent-loop", {
-  title: "The agent loop", kicker: "PERCEIVE · REASON · ACT", width: 760, height: 280,
-  aria: "The agent loop. The environment carries the world state, and the agent picks the next action through a decision step. Perceptions flow agent-ward and actions flow back, and only those cross the boundary, while the decision logic stays swappable.",
-  nodes: [
-    { id: "env", kind: "env", label: "Environment", x: 0, y: 0,
-      lines: ["the world state", "sensors read it", "actions change it"] },
-    { id: "agent", kind: "agent", label: "Agent", x: 1, y: 0,
-      lines: ["picks the next action", "from what it perceives"], socket: "replaceable reasoning" },
-  ],
-
-  edges: [
-    { from: "env", to: "agent", label: "perceive", side: "top", tint: "env" },
-    { from: "agent", to: "env", label: "act", side: "bottom", tint: "agent" },
-    { from: "agent", to: "agent" },
-  ],
-});
 
 // ── Canvas 1: a reflex agent with zero LLMs ──────────────────────────────────
 mountCanvasFlow("#cell-reflex", {

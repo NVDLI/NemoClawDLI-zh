@@ -682,6 +682,14 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "img_no_alt": (RECOMMENDED, "Add descriptive alt text to the image."),
         "blank_link": (RECOMMENDED, "Give the link visible text or an aria-label, and rel=\"noopener\" when it "
                        "opens a new tab."),
+        "dark_mode": (RECOMMENDED, "Course-authored/provided SVG images must be dark-mode friendly. Remove white "
+                      "page frames, convert white SVG path fills, hook embedded raster icons to a theme filter, and "
+                      "render non-conversion SVGs through fig-embed/data-svg-src so theme variables and zoom work. "
+                      "Fixed-white paper conversions must be marked that way in provenance."),
+        "canvas": (RECOMMENDED, "Crop excess SVG viewBox whitespace or reduce the display cap so the rendered figure "
+                   "does not consume too much vertical space."),
+        "crowded": (RECOMMENDED, "Do not stack figures with only token prose between them. Move the figure or add "
+                    "enough explanatory context so consecutive graphics do not read as a wall."),
     }
 
     def _fig(k, t):
@@ -1011,7 +1019,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     print(f"  figure audit    : {fa_total} legibility/format finding(s) "
           f"(tiny-text {len(fa_find.get('tiny', []))}, small-render {len(fa_find.get('small_render', []))}, "
           f"flex-parent {len(fa_find.get('flex_parent', []))}, overflow {len(fa_find.get('overflow', []))}, "
-          f"a11y {len(fa_find.get('no_aria', [])) + len(fa_find.get('img_no_alt', [])) + len(fa_find.get('blank_link', []))})")
+          f"a11y {len(fa_find.get('no_aria', [])) + len(fa_find.get('img_no_alt', [])) + len(fa_find.get('blank_link', []))}, "
+          f"dark-mode {len(fa_find.get('dark_mode', []))}, canvas {len(fa_find.get('canvas', []))}, "
+          f"crowded {len(fa_find.get('crowded', []))})")
     print(f"  cell audit      : {ca_total} cell-contract finding(s) "
           f"(opaque {len(ca_find.get('opaque', []))}, console {len(ca_find.get('console', []))}, "
           f"unawaited {len(ca_find.get('unawaited', []))}, dialog {len(ca_find.get('dialog', []))}, "

@@ -111,6 +111,12 @@ p strong { color: #f2f2f2; color: var(--tx); }
 a { color: #76b900; color: var(--g); }
 ul, ol { margin: .6em 0 .6em 1.4em; color: #b0b0b0; color: var(--td); }
 li { margin: .3em 0; }
+main figure figcaption {
+  max-width: 760px;
+  margin: .75em auto 1.35em !important;
+  text-align: center !important;
+  line-height: 1.5;
+}
 
 /* ── Inline code chips in prose ─────────────────────────────────────────────
    Any <code> not inside a <pre> block gets a subtle chip: green text on a
@@ -1537,9 +1543,13 @@ body.python-mode .py-mode-jlab-link { display: inline-block; }
 .gfx-dark{
   --gfx-ink:#e8eaed; --gfx-ink2:#c6cace; --gfx-sub:#9aa0a6; --gfx-faint:#6b7177;
   --gfx-line:#3a3f45; --gfx-panel:#17191c; --gfx-bg:#0d0d0d;
+  --gfx-border:#3a3f45;
   --gfx-blue:#5aa8ff; --gfx-green:#9bd14a; --gfx-purple:#bd9cf7; --gfx-amber:#e3b341; --gfx-teal:#3fd0c0; --gfx-red:#ff6b6b;
   --gfx-tint-blue:#15273d; --gfx-tint-green:#1d2a12; --gfx-tint-purple:#241a36;
   --gfx-tint-amber:#33280f; --gfx-tint-teal:#0e2b28; --gfx-tint-red:#3a1414; --gfx-tint-sub:#1c1f22;
+  --gfx-card:#141414; --gfx-e1:#1a1a1a; --gfx-dim:#555555; --gfx-muted:#777777; --gfx-shadow:#000000;
+  --gfx-nvgreen:#76b900; --gfx-cyan:#0ea5e9; --gfx-blue2:#38bdf8; --gfx-blue3:#7eb8ff;
+  --gfx-green2:#34d399; --gfx-green-bg:#064e3b; --gfx-amber2:#fbbf24; --gfx-amber-bg:#451a03;
 }
 
 /* Diagram (mountDiagram / viz.diagram) arrow + kind hues. diagramSVG emits var(--dg-*) instead of
@@ -1578,9 +1588,13 @@ body.python-mode .py-mode-jlab-link { display: inline-block; }
 :root[data-theme="light"] .gfx-dark {
   --gfx-ink:#1a1a1a; --gfx-ink2:#3b3b3b; --gfx-sub:#5e5e5e; --gfx-faint:#8b949e;
   --gfx-line:#d0d7de; --gfx-panel:#f6f8fa; --gfx-bg:#ffffff;
+  --gfx-border:#d0d7de;
   --gfx-blue:#0969da; --gfx-green:#4a7a00; --gfx-purple:#6f42c1; --gfx-amber:#9a6700; --gfx-teal:#0d9488; --gfx-red:#d1242f;
   --gfx-tint-blue:#dfeaf5; --gfx-tint-green:#e6f3d4; --gfx-tint-purple:#eadfff;
   --gfx-tint-amber:#f7e9cf; --gfx-tint-teal:#d6f1ee; --gfx-tint-red:#fadcdc; --gfx-tint-sub:#eef1f4;
+  --gfx-card:#ffffff; --gfx-e1:#eef1f4; --gfx-dim:#57606a; --gfx-muted:#57606a; --gfx-shadow:#6e7781;
+  --gfx-nvgreen:#4a7a00; --gfx-cyan:#0969da; --gfx-blue2:#0969da; --gfx-blue3:#0969da;
+  --gfx-green2:#4a7a00; --gfx-green-bg:#e6f3d4; --gfx-amber2:#9a6700; --gfx-amber-bg:#f7e9cf;
 }
 :root[data-theme="light"] svg.gfx-dark {
   background: var(--gfx-bg) !important;
@@ -1668,6 +1682,19 @@ svg.dg-svg { font-family: var(--sans); }
 :root[data-theme="light"] #py-mode-topbar-container .py-mode-toggle-wrap:hover { background: var(--e2); }
 
 /* Run / apply / revert buttons. */
+:root[data-theme="light"] .cf-btn:not(.cf-btn-run),
+:root[data-theme="light"] .cell-btn:not(.cell-btn-run),
+:root[data-theme="light"] .cf-panel-reset {
+  background: var(--e2);
+  color: var(--td);
+  border-color: var(--bd);
+}
+:root[data-theme="light"] .cf-btn:not(.cf-btn-run):hover,
+:root[data-theme="light"] .cell-btn:not(.cell-btn-run):hover,
+:root[data-theme="light"] .cf-panel-reset:hover {
+  background: var(--e3);
+  color: var(--tx);
+}
 :root[data-theme="light"] .cf-panel-runone:not(.cell-btn),
 :root[data-theme="light"] .cf-helpers-apply,
 :root[data-theme="light"] .cf-helpers-revert { background: var(--e2); }
@@ -1686,6 +1713,11 @@ svg.dg-svg { font-family: var(--sans); }
 :root[data-theme="light"] .cf-helpers-src-editor { background: var(--bg); color: var(--tx); }
 :root[data-theme="light"] .cf-panel-log { background: var(--e2); }
 :root[data-theme="light"] .cf-code-copy { background: rgba(255,255,255,0.85); }
+:root[data-theme="light"] .cell-code-body,
+:root[data-theme="light"] .rc-code-body,
+:root[data-theme="light"] .cf-panel-code-body {
+  background: var(--bg);
+}
 
 /* CodeMirror editors (mounted with the monokai theme) -> a light editor in light mode. */
 :root[data-theme="light"] .cm-s-monokai.CodeMirror { background: var(--bg); color: #383a42; }

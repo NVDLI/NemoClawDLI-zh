@@ -6,6 +6,7 @@ and prose validators cannot infer from first principles.
 """
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -30,6 +31,11 @@ def _has_all(text: str, tokens: tuple[str, ...]) -> bool:
     return all(t.lower() in low for t in tokens)
 
 
+def _json_script(text: str, script_id: str) -> dict:
+    m = re.search(r'<script[^>]+id=["\']' + re.escape(script_id) + r'["\'][^>]*>(.*?)</script>', text, re.S)
+    return json.loads(m.group(1)) if m else {}
+
+
 def run(verbose: bool = True) -> list[tuple[str, str]]:
     findings: list[tuple[str, str]] = []
     p02b = _read("web/nemoclaw/02b-rag.html")
@@ -44,8 +50,10 @@ def run(verbose: bool = True) -> list[tuple[str, str]]:
         findings.append(("web/nemoclaw/02b-rag.html", "retrieval boundary section must define MCP/A2A/skills/runtime/UX roles"))
     if re.search(r"Zenodia|@zcharpy|issue #\d+|issue-title|GitLab issue", p02b, re.I):
         findings.append(("web/nemoclaw/02b-rag.html", "learner-facing retrieval prose must not leak contributor or issue-thread shorthand"))
-    if not _has_all(svg02b, ("Provenance", "MCP", "A2A", "Agent Skills", "Generative UX")):
-        findings.append(("web/nemoclaw/assets/figures/02b-retrieval-boundaries.svg", "retrieval boundary SVG lost provenance or core boundary labels"))
+    if "Provenance" not in svg02b:
+        findings.append(("web/nemoclaw/assets/figures/02b-retrieval-boundaries.svg", "retrieval boundary SVG lost provenance"))
+    if "Retrieval is one boundary in a larger system" in svg02b:
+        findings.append(("web/nemoclaw/assets/figures/02b-retrieval-boundaries.svg", "retrieval boundary SVG must not embed caption prose; keep captions in HTML figcaption"))
 
     if "assets/figures/lethal-trifecta.svg" not in p04a:
         findings.append(("web/nemoclaw/04a-safety.html", "missing real lethal trifecta figure"))
@@ -72,6 +80,21 @@ def run(verbose: bool = True) -> list[tuple[str, str]]:
             findings.append((rel, "course assets must not expose issue-thread, MR/PR, or user-handle provenance"))
     if not _has_all(askill, ("02b-retrieval-boundaries.svg", "course-provided boundary map", "lethal-trifecta.svg", "Simon Willison")):
         findings.append(("web/nemoclaw/assets/SKILL.html", "asset provenance must document retrieval-boundary and lethal-trifecta figure sources"))
+
+    provenance = _json_script(askill, "provenance")
+    for row in provenance.get("figures", []):
+        file_name = row.get("file", "")
+        used_by = row.get("used_by", "")
+        if not file_name.startswith("figures/") or not used_by.endswith(".html"):
+            continue
+        page_rel = f"web/nemoclaw/{used_by}"
+        try:
+            page = _read(page_rel)
+        except FileNotFoundError:
+            findings.append(("web/nemoclaw/assets/SKILL.html", f"asset provenance used_by page missing for {file_name}: {used_by}"))
+            continue
+        if file_name not in page:
+            findings.append(("web/nemoclaw/assets/SKILL.html", f"asset provenance row is stale: {file_name} is not referenced by {used_by}"))
 
     if verbose:
         if findings:

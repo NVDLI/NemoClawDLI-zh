@@ -11,7 +11,7 @@
   "node_type": "directory-explorer",
   "title": "scripts/figures runtime figure checks",
   "source_dir": "scripts/figures/",
-  "summary": "Node and jsdom checks for JavaScript-drawn figures. Static SVG audits cannot see these runtime diagrams.",
+  "summary": "Node, jsdom, and rendered-preview checks for JavaScript-drawn figures. Static SVG audits cannot see these runtime diagrams, and geometry checks do not replace a harness screenshot.",
   "related": [
     "scripts/figures/check_figures.mjs",
     "scripts/figures/run_figcheck.sh"
@@ -23,7 +23,7 @@
 <script type="application/json" id="explorer-config">
 {
   "title": "scripts/figures runtime figure checks",
-  "summary": "Node and jsdom checks for JavaScript-drawn figures. Static SVG audits cannot see these runtime diagrams.",
+  "summary": "Node, jsdom, and rendered-preview checks for JavaScript-drawn figures. Static SVG audits cannot see these runtime diagrams, and geometry checks do not replace a harness screenshot.",
   "model": "nvidia/nemotron-3-nano-30b-a3b",
   "ties": [
     "build"
@@ -59,8 +59,9 @@
 <section class="skill-static" aria-labelledby="skill-title">
   <nav class="skill-nav"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a></nav>
   <h1 id="skill-title">scripts/figures runtime figure checks</h1>
-  <p>Node and jsdom checks for JavaScript-drawn figures. Static SVG audits cannot see these runtime diagrams.</p>
+  <p>Node, jsdom, and rendered-preview checks for JavaScript-drawn figures. Static SVG audits cannot see these runtime diagrams, and geometry checks do not replace a harness screenshot.</p>
   <div class="skill-note">Run commands from the repository root. Root-level script paths remain compatibility entrypoints; implementation files live in this directory tree.</div>
+  <div class="skill-note">After changing a runtime diagram, inspect a browser-rendered screenshot in the active agent harness and show the preview to the requester.</div>
   <h2>Executable checks</h2>
   <div class="skill-cmds">
     <div class="skill-cmd"><b>Runtime geometry</b><code>bash scripts/figures/run_figcheck.sh</code></div>

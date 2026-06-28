@@ -30,6 +30,13 @@
   .knobs-table tr:last-child td { border-bottom: none; }
   .knobs-table td:first-child { font-family: var(--mono); color: var(--gs); font-weight: 700; }
   .knobs-table code { font-size: .82em; }
+  .file-tree {
+    background: var(--e2); border: 1px solid var(--bd); border-radius: var(--r);
+    padding: 14px 18px; font-family: var(--mono); font-size: .82rem;
+    line-height: 1.7; color: var(--td); white-space: pre-wrap; margin: 1em 0;
+  }
+  .file-tree .fname { color: var(--gs); font-weight: 700; }
+  .skill-file { overflow-x: auto; }
 </style>
 </head>
 <body>
@@ -98,7 +105,7 @@
      matching skill when the next turn asks for it. You do not restart it, redeploy it,
      or touch the system prompt yourself.</p>
 
-<pre><code class="language-md"># skills/triage-incident.md
+  <div class="file-tree skill-file"><span class="fname"># skills/triage-incident.md</span>
 
 When the user asks about a production incident, or pastes a log line
 suggesting one, do these things in order:
@@ -106,8 +113,7 @@ suggesting one, do these things in order:
 1. Confirm the affected service and the time window.
 2. Open the runbook for that service from /sandbox/runbooks/.
 3. Suggest the smallest reversible mitigation; do not run it yourself.
-4. Ask the user before opening a Jira ticket.
-</code></pre>
+4. Ask the user before opening a Jira ticket.</div>
 
   <p>The widget below asks the agent to install that exact skill, then fires a
      chat completion designed to match it. Matching is automatic. The agent

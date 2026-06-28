@@ -26,8 +26,6 @@ License: Apache-2.0.
     </style>
   </defs>
 
-  <text x="550" y="28" class="zen-small" text-anchor="middle" fill="var(--gfx-sub,#8a8a8a)">Retrieval is one boundary in a larger system: context in, runtime orchestration, presentation out.</text>
-
   <g stroke-linecap="round" stroke-linejoin="round" fill="none">
     <path d="M280 105 L340 105 L340 225 L400 225" stroke="var(--gfx-green,#10b981)" stroke-width="2.2" marker-end="url(#zen-arrow-green)"/>
     <path d="M280 225 L400 225" stroke="var(--gfx-green,#10b981)" stroke-width="2.2" marker-end="url(#zen-arrow-green)"/>

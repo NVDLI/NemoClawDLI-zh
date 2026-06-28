@@ -430,7 +430,6 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
   <p>Untrusted input, a reachable secret, and an open channel out together form the lethal trifecta.
      None is dangerous in isolation, yet once all three are present the untrusted input can steer the
      agent into reading the secret and then sending it back out through the channel.</p>
-<figure style="margin:0"><div class="fig-embed" data-svg-src="assets/figures/04a-safety-2.svg" style="aspect-ratio:720 / 320"></div><figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Prompt rules and application guardrails shape the agent before kernel containment enforces the final boundary. The blocked arrow shows an outbound action stopped before it reaches disk or network.</figcaption></figure>
   <p>These gaps are real on a default box, and none of them is decidable by the network and
      filesystem policy:</p>
   <ul>

@@ -11,7 +11,7 @@
   "node_type": "directory-explorer",
   "title": "scripts/validation deterministic gates",
   "source_dir": "scripts/validation/",
-  "summary": "Static validators for links, layout, prose, code hygiene, figures, cells, and course contracts. These are gates, not prompt guidance.",
+  "summary": "Static and rendered validators for links, layout, prose, code hygiene, figures, cells, theme behavior, screenshots, and course contracts. These are gates, not prompt guidance.",
   "related": [
     "scripts/validation/validate_bundle.py",
     "scripts/validation/validate_layout.py",
@@ -19,6 +19,7 @@
     "scripts/validation/prose_variety.py",
     "scripts/validation/code_hygiene.py",
     "scripts/validation/color_theme.py",
+    "scripts/validation/cell_ui_runtime_audit.py",
     "scripts/validation/studio_interface_audit.py",
     "scripts/validation/helper_notebook_runtime_audit.py",
     "scripts/validation/studio_responsive_audit.py",
@@ -35,7 +36,7 @@
 <script type="application/json" id="explorer-config">
 {
   "title": "scripts/validation deterministic gates",
-  "summary": "Static validators for links, layout, prose, code hygiene, figures, cells, and course contracts. These are gates, not prompt guidance.",
+  "summary": "Static and rendered validators for links, layout, prose, code hygiene, figures, cells, theme behavior, screenshots, and course contracts. These are gates, not prompt guidance.",
   "model": "nvidia/nemotron-3-nano-30b-a3b",
   "ties": [
     "build"
@@ -82,6 +83,11 @@
       "path": "figure_audit.py",
       "role": "figure audit",
       "desc": "Checks static figure legibility and accessibility."
+    },
+    {
+      "path": "cell_ui_runtime_audit.py",
+      "role": "rendered page screenshot audit",
+      "desc": "Renders pages in desktop and narrow viewports across light and dark themes, writes screenshots, and flags dark-only cell/figure surfaces."
     },
     {
       "path": "cell_audit.py",
@@ -161,8 +167,9 @@
 <section class="skill-static" aria-labelledby="skill-title">
   <nav class="skill-nav"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a></nav>
   <h1 id="skill-title">scripts/validation deterministic gates</h1>
-  <p>Static validators for links, layout, prose, code hygiene, figures, cells, and course contracts. These are gates, not prompt guidance.</p>
+  <p>Static and rendered validators for links, layout, prose, code hygiene, figures, cells, theme behavior, screenshots, and course contracts. These are gates, not prompt guidance.</p>
   <div class="skill-note">Run commands from the repository root. Root-level script paths remain compatibility entrypoints; implementation files live in this directory tree.</div>
+  <div class="skill-note">Visual work is not done with static greps alone. Build or serve the page, run the rendered screenshot audit for the affected page, inspect the screenshots in the active harness, and show the relevant preview to the requester.</div>
   <h2>Executable checks</h2>
 <div class="skill-cmds">
   <div class="skill-cmd"><b>Ship gate</b><code>python3 scripts/validation/validate_bundle.py --no-write --scope ship</code></div>
@@ -170,6 +177,7 @@
   <div class="skill-cmd"><b>Cell contract</b><code>python3 scripts/validation/cell_audit.py</code></div>
   <div class="skill-cmd"><b>Code hygiene</b><code>python3 scripts/validation/code_hygiene.py</code></div>
   <div class="skill-cmd"><b>Figure audit</b><code>python3 scripts/validation/figure_audit.py</code></div>
+  <div class="skill-cmd"><b>Rendered page screenshots</b><code>python3 scripts/validation/cell_ui_runtime_audit.py --site-root /tmp/nemoclaw_visual_preview --page /nemoclaw/02b-rag.html --screenshots /tmp/nemoclaw_visual_audit</code></div>
   <div class="skill-cmd"><b>Studio interface</b><code>python3 scripts/validation/studio_interface_audit.py</code></div>
   <div class="skill-cmd"><b>OpenClaw fallback</b><code>python3 scripts/validation/openclaw_fallback_audit.py</code></div>
   <div class="skill-cmd"><b>Agent process</b><code>python3 scripts/validation/agent_process_audit.py</code></div>
@@ -189,6 +197,7 @@
     <a class="skill-card" href="code_hygiene.py"><b>code_hygiene.py</b><span>code bloat and style. Scans code comments, walls, duplication, size, constants, and prose tells in code.</span></a>
     <a class="skill-card" href="color_theme.py"><b>color_theme.py</b><span>theme check. Flags inline or non-theme-dynamic colors.</span></a>
     <a class="skill-card" href="figure_audit.py"><b>figure_audit.py</b><span>figure audit. Checks static figure legibility and accessibility.</span></a>
+    <a class="skill-card" href="cell_ui_runtime_audit.py"><b>cell_ui_runtime_audit.py</b><span>rendered page screenshot audit. Renders pages in desktop and narrow viewports across light and dark themes, writes screenshots, and flags dark-only cell/figure surfaces.</span></a>
     <a class="skill-card" href="cell_audit.py"><b>cell_audit.py</b><span>cell contract. Checks runnable-cell transparency, logging, awaits, keys, and UI contract.</span></a>
     <a class="skill-card" href="reference_graph.py"><b>reference_graph.py</b><span>reference graph. Audits cross-course reference coupling.</span></a>
     <a class="skill-card" href="studio_interface_audit.py"><b>studio_interface_audit.py</b><span>studio interface audit. Checks studio controls, local assets, static read-only mode, lab write mode, and documentation.</span></a>

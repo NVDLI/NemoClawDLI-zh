@@ -13,9 +13,38 @@ agent contract.
    `<script type="application/json" id="skill-meta">` block. That JSON is the brain:
    `web/nemoclaw/SKILL.html` for the course, `web/SKILL.html` for the bundle, the
    root `SKILL.html` for the whole repo.
+4. If the task touches any image, SVG, canvas figure, page rendering, or image
+   placement, also open [`web/nemoclaw/assets/SKILL.html`](web/nemoclaw/assets/SKILL.html)
+   and [`scripts/validation/SKILL.html`](scripts/validation/SKILL.html) before editing.
+   Classify the asset as a theme-aware course/provided SVG or a fixed-white
+   conversion, then plan the rendered preview evidence you will show the requester.
 
 The quickstart and the directives below are repo-level rules. The `skill-meta` block
 is the working contract for the directory in front of you.
+
+## Visual changes
+
+If a task adds, removes, replaces, repositions, or changes an image, SVG, diagram,
+canvas figure, page rendering, or visual layout, preview the result through the
+agent host before claiming it. Use the harness available to the session:
+Codex image preview or screenshot, Claude/browser screenshot, Cursor/browser
+preview, the Playwright runtime harness, or a local Pages/browser smoke. Show
+the preview to the requester in the status/final response, either as an embedded
+image/screenshot or as the concrete preview artifact path. If no visual harness
+can run, report the exact blocker and still run the static figure and bundle
+gates.
+
+The preview is part of the evidence, not a nice-to-have. A visual diff that only
+passes text grep, provenance, or link validation is not done.
+
+Course-authored or provided SVGs under `assets/figures/` use
+`<div class="fig-embed" data-svg-src="..."></div>` so shared theme variables and
+the click-to-expand lightbox work. Plain `<img>` is only for fixed-white paper
+conversions documented as `connection: "conversion"` in asset provenance.
+
+Do not flatten a diagram to silence a caption problem. Long explanatory prose,
+contributor credit, and issue-thread shorthand belong in page captions or
+provenance. Semantic labels that make the graphic legible stay inside the figure.
 
 ## Instruction precedence
 
