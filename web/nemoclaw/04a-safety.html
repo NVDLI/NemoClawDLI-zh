@@ -33,6 +33,16 @@
   .control-map th { padding: 9px 11px; text-align: left; color: var(--gs); background: var(--e2); border: 1px solid var(--bd); }
   .control-map td { padding: 9px 11px; vertical-align: top; color: var(--td); border: 1px solid var(--bd); }
   .control-map tbody tr:nth-child(even) { background: var(--e1); }
+  @media (max-width: 720px) {
+    .control-map-scroll { overflow: visible; }
+    .control-map { display: block; min-width: 0; }
+    .control-map thead { display: none; }
+    .control-map tbody, .control-map tr, .control-map td { display: block; width: 100%; box-sizing: border-box; }
+    .control-map tr { margin: 0 0 12px; border: 1px solid var(--bd); border-radius: var(--r); overflow: hidden; background: var(--e1); }
+    .control-map td { border: 0; border-top: 1px solid var(--bd); }
+    .control-map td:first-child { border-top: 0; color: var(--gs); background: var(--e2); font-weight: 700; }
+    .control-map td:not(:first-child)::before { content: attr(data-label); display: block; margin-bottom: 3px; color: var(--tx); font-size: .76rem; font-weight: 700; }
+  }
   details.vocab-menu { margin: .85em 0 1.65em; border: 1px solid var(--bd); border-radius: var(--r); background: var(--e1); }
   details.vocab-menu > summary { cursor: pointer; padding: 11px 14px; color: var(--gs); font-family: var(--mono); font-weight: 700; font-size: .86rem; }
   details.vocab-menu > summary:hover { background: var(--e2); }
@@ -82,16 +92,14 @@
     <div class="eyebrow">Module 4 · Part A of 3</div>
     <h1>The <span>OpenShell</span> Sandbox</h1>
     <p class="lead">
-      Prompt rules alone cannot contain an agent, so the containment has to
-      live in infrastructure the model cannot talk its way past. Raw agent
-      access can still enforce command-shape rules, but OpenShell supplies the
-      sandbox boundary that continues to hold if that agent layer is wrong.
+      An agent can ignore a prompt rule, and application logic can make the
+      wrong decision. OpenShell puts the final allow-or-deny decision in a
+      sandbox the agent cannot rewrite.
     </p>
     <p class="lead">
-      From here you drive the box yourself, watching the kernel allow and
-      refuse what the agent tries before you read the policy those verdicts
-      come from and prove it holds. Last comes the part the sandbox never
-      sees, the control plane above it that can reconfigure the agent at will.
+      On this page, you send real commands to your launchable, read each
+      verdict, and trace it to the rule that produced it. Then you inspect a
+      second boundary: the operator control plane above the sandbox.
     </p>
   </div>
 
@@ -114,83 +122,79 @@
     </figcaption>
   </figure>
 
-  <h2>Why a sandbox, when you already have a system prompt</h2>
-  <p>The containment stack has three layers: prompt, application, and sandbox guardrailing.
-     NemoClaw is the reference blueprint that shows how you can merge all three in a secure, synchronized manner.</p>
-  <ul>
-    <li><strong>A prompt rule is only ever a request.</strong>
-        Telling an agent "do not exfiltrate secrets" depends on the
-        model deciding to obey. Models can be deceived.
-        <a href="https://arxiv.org/abs/2302.12173" target="_blank" rel="noopener">Adversarial
-        retrieved content</a>, malicious tool output, or another agent in
-        the loop can all cause a compliant model to act against its
-        rules. OWASP's
-        <a href="https://genai.owasp.org/llmrisk/llm01-prompt-injection/" target="_blank" rel="noopener">LLM01
-        guidance</a> treats this as a design problem, not a prompt-writing
-        problem: constrain tools, restrict privileges, and assume external
-        content can steer the model.</li>
-    <li><strong>The agent harness is enforcement, but not the final authority.</strong>
-        Raw OpenClaw or Hermes access can reject bad shapes before they touch
-        the OS: no <code>sudo</code>, no unsupported shell forms, no implicit
-        ingress or egress defaults, and no tool call outside the allowed
-        surface. That is real deterministic control, much stronger than a
-        prompt. It is still application logic and configuration, though. A
-        misconfigured, outdated, or compromised harness can make the wrong
-        decision.</li>
-    <li><strong>The sandbox is the last-resort boundary.</strong>
-        <a href="https://csrc.nist.gov/pubs/sp/800/207/final" target="_blank" rel="noopener">Zero
-        trust</a> says not to grant implicit trust just because a request
-        came from an expected place. OpenShell applies that idea inside the
-        agent runtime: even if the prompt and harness both fail, the process
-        still lacks authority. Kernel mechanisms such as
-        <a href="https://www.kernel.org/doc/html/latest/userspace-api/seccomp_filter.html" target="_blank" rel="noopener">seccomp
-        filters</a> can return an error without executing a forbidden
-        syscall, and container profiles such as
-        <a href="https://docs.docker.com/engine/security/seccomp/" target="_blank" rel="noopener">Docker's
-        default seccomp profile</a> use allowlists to deny by default. A
-        blocked file access returns <code>EACCES</code>, a blocked syscall
-        returns <code>EPERM</code> or another policy-chosen
-        <a href="https://man7.org/linux/man-pages/man3/errno.3.html" target="_blank" rel="noopener">POSIX
-        error</a>, regardless of what the model or harness thought it was
-        allowed to do.</li>
-    <li><strong>Least authority is old engineering.</strong>
-        <a href="https://www.cs.virginia.edu/~evans/cs551/saltzer/" target="_blank" rel="noopener">Saltzer
-        and Schroeder</a> named the
-        <a href="https://en.wikipedia.org/wiki/Principle_of_least_privilege" target="_blank" rel="noopener">principle of least privilege</a>
-        in 1975: each component
-        gets only the privileges it needs.
-        <a href="https://en.wikipedia.org/wiki/Rice%27s_theorem" target="_blank" rel="noopener">Rice's theorem</a> (1953) tells us
-        that no analysis can decide non-trivial semantic properties of an
-        arbitrary program ahead of time. An agent holding a code-exec tool
-        falls squarely in that class, so no static check can promise what
-        it will do once it runs. The honest move is to instrument each
-        boundary rather than try to prove the model safe in advance. The
-        1970s OS designers worked out this discipline, and we are
-        reapplying their work to agents.</li>
-  </ul>
-
   <div class="callout">
-    <strong>The OpenClaw / OpenShell / NemoClaw split.</strong> 
+    <strong>Keep the three product roles separate as you trace enforcement.</strong>
     <ul>
-      <li><a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener">OpenClaw</a> is the multi-channel agent framework that chooses what to do given the room it has to move.
-      <li><a href="https://github.com/NVIDIA/openshell" target="_blank" rel="noopener">OpenShell</a> is the security runtime in front of it: sandbox, policy engine, gateway,
-    and privacy router. It sets the bounds of that room, enforcing policy on
-    filesystem access, network connections, and process behavior. OpenShell is also
-    agent-agnostic: it can sit in front of
-    <a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener">OpenClaw</a>,
-    <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Nous Research's Hermes</a>,
-    <a href="https://github.com/langchain-ai/deepagents" target="_blank" rel="noopener">LangChain deepagents</a>,
-    or just about any workflow that needs OS-level containment.</li>
-    <li>
-      <a href="https://www.nvidia.com/en-us/ai/nemoclaw/" target="_blank" rel="noopener">NemoClaw</a> is the blueprint that packages OpenClaw and OpenShell with lifecycle commands,
-      policy presets, local inference guidance, and deployment defaults.
-    </li>
+      <li><a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener">OpenClaw</a> is the agent framework. It decides which tool to use and what action to attempt.</li>
+      <li><a href="https://github.com/NVIDIA/openshell" target="_blank" rel="noopener">OpenShell</a> is the security runtime. It limits the files, network destinations, and operating-system operations available to that action.</li>
+      <li><a href="https://www.nvidia.com/en-us/ai/nemoclaw/" target="_blank" rel="noopener">NemoClaw</a> is the reference stack that packages OpenClaw and OpenShell with lifecycle commands, policy presets, inference guidance, and deployment defaults.</li>
+    </ul>
+    <p>OpenShell is agent-agnostic. The same boundary can enclose OpenClaw,
+       <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes</a>,
+       <a href="https://github.com/langchain-ai/deepagents" target="_blank" rel="noopener">LangChain deepagents</a>,
+       or another process that needs operating-system-level containment.</p>
   </div>
 
-  <h2>Four mechanisms this launchable composes</h2>
-  <p>This launchable combines four enforcement mechanisms. None is new on its own.
-     Their value comes from applying the policy at more than one boundary. Read the
-     live policy later on this page before treating any one of these guarantees as universal.</p>
+  <h2>One action, three lines of defense</h2>
+  <p>Suppose untrusted content tells an agent to read a credential and send it
+     away. Three different layers get a chance to stop that action, and each
+     layer answers a different question.</p>
+  <ul>
+    <li><strong>The prompt shapes intent.</strong>
+        A rule such as "do not reveal credentials" tells the model how it
+        should behave. Models can still be deceived by
+        <a href="https://arxiv.org/abs/2302.12173" target="_blank" rel="noopener">Adversarial
+        retrieved content</a>, malicious tool output, or another agent in
+        the loop. This layer influences the decision; it does not remove the
+        agent's authority.</li>
+    <li><strong>The agent harness validates the request.</strong>
+        OpenClaw or Hermes can reject an unsupported shell form, a forbidden
+        tool call, or a malformed argument before the request reaches the
+        operating system. That deterministic check is useful, but it remains
+        application logic that can be misconfigured, outdated, or compromised.</li>
+    <li><strong>The sandbox limits the result.</strong>
+        OpenShell gives the process only the authority allowed by policy. If
+        the prompt and harness both fail, the operating system can still deny
+        a file, network, or process operation before it completes.</li>
+  </ul>
+  <p>The live work on this page measures that final layer. You will attempt an
+     action, observe the allow-or-deny verdict, and connect the verdict to the
+     mechanism that enforced it.</p>
+
+  <details class="vocab-menu">
+    <summary>Why enforcement belongs below the model</summary>
+    <div class="vocab-clusters">
+      <section class="vocab-cluster">
+        <h3>Assume a valid-looking request can still be harmful</h3>
+        <p><a href="https://csrc.nist.gov/pubs/sp/800/207/final" target="_blank" rel="noopener">Zero trust</a>
+           rejects implicit trust based only on where a request came from.
+           OWASP's <a href="https://genai.owasp.org/llmrisk/llm01-prompt-injection/" target="_blank" rel="noopener">prompt-injection guidance</a>
+           applies the same discipline to agents: constrain tools, restrict
+           privileges, and assume external content can steer the model.</p>
+      </section>
+      <section class="vocab-cluster">
+        <h3>Grant only the authority the task needs</h3>
+        <p><a href="https://www.cs.virginia.edu/~evans/cs551/saltzer/" target="_blank" rel="noopener">Saltzer and Schroeder</a>
+           described this as the principle of least privilege: each component
+           receives only the permissions needed for its work. Because the
+           discipline predates agents, it transfers cleanly to this setting.</p>
+      </section>
+      <section class="vocab-cluster">
+        <h3>Measure boundaries instead of trying to prove intent</h3>
+        <p><a href="https://en.wikipedia.org/wiki/Rice%27s_theorem" target="_blank" rel="noopener">Rice's theorem</a>
+           rules out a general test for non-trivial behavior of arbitrary
+           programs. An agent with code execution deserves the same caution:
+           instrument the boundaries around what runs instead of assuming a
+           static check can prove every future action safe.</p>
+      </section>
+    </div>
+  </details>
+
+  <h2>Four mechanisms, four concrete questions</h2>
+  <p>This launchable combines four operating-system mechanisms. Each answers a
+     question you can test, and together they apply policy at more than one
+     boundary. Read the live policy later on this page before treating any one
+     guarantee as universal.</p>
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/04a-safety-1.svg" style="aspect-ratio:720 / 320"></div>
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">
@@ -200,39 +204,41 @@
 
   <div class="layers">
     <div class="layer-card">
-      <h3>1 · Network namespace + egress proxy</h3>
-      <p>The agent's process runs in its own netns with no outbound
-         access by default. Its one egress route is an
-         <a href="https://www.openpolicyagent.org/" target="_blank" rel="noopener">OPA</a>-evaluated
-         CONNECT proxy that checks the binary, host, port, and path of
-         every connection against a policy file. Whoever edits that file
-         is the one who decides what egress the agent gets.</p>
+      <h3>1 · Where can this process connect?</h3>
+      <p>A <strong>network namespace</strong> (<code>netns</code>) gives the
+         agent an isolated network stack. Outbound access starts closed. An
+         HTTP <strong>CONNECT proxy</strong> provides the only route out.
+         <a href="https://www.openpolicyagent.org/" target="_blank" rel="noopener">Open Policy Agent (OPA)</a>
+         checks the requesting binary, host, port, and path against policy.
+         Whoever edits that policy decides which connections are allowed.</p>
     </div>
     <div class="layer-card">
-      <h3>2 · Landlock</h3>
-      <p>Filesystem capability dropping at the kernel, through
-         <a href="https://docs.kernel.org/userspace-api/landlock.html" target="_blank" rel="noopener">Landlock</a>. In this
-         launchable, the policy limits new filesystem operations to the paths it grants.
-         That is strong enforcement, but not a proof that every Linux filesystem layout is
-         equivalent: compatibility mode, OverlayFS, and handles opened before restriction
-         all matter. Read the policy and test the path you intend to expose.</p>
+      <h3>2 · Which files can it reach?</h3>
+      <p><a href="https://docs.kernel.org/userspace-api/landlock.html" target="_blank" rel="noopener"><strong>Landlock</strong></a>
+         is a Linux Security Module that restricts future filesystem access.
+         Here it limits new file operations to paths granted by policy. That
+         is strong enforcement, but compatibility mode, OverlayFS, and handles
+         opened before restriction still matter. Read the live policy and test
+         the path you intend to expose.</p>
     </div>
     <div class="layer-card">
-      <h3>3 · seccomp</h3>
-      <p>A per-process syscall allowlist is applied at the BPF layer
-         through <a href="https://docs.kernel.org/userspace-api/seccomp_filter.html" target="_blank" rel="noopener">seccomp</a>,
-         so any syscall outside the allowlist returns <code>EPERM</code>
-         before the kernel ever runs it and inspection never races with
-         enforcement. The dangerous primitives ptrace, mount, and setuid
-         are all kept off that list.</p>
+      <h3>3 · Which kernel operations can it request?</h3>
+      <p>A <strong>system call</strong>, or syscall, asks the Linux kernel to
+         perform an operation. <a href="https://docs.kernel.org/userspace-api/seccomp_filter.html" target="_blank" rel="noopener"><code>seccomp</code></a>
+         is Linux syscall filtering; its BPF filter checks each request against
+         an allowlist. A denied call returns <code>EPERM</code>, meaning
+         "operation not permitted," before the operation runs. This launchable
+         excludes dangerous primitives such as <code>ptrace</code>,
+         <code>mount</code>, and <code>setuid</code>.</p>
     </div>
     <div class="layer-card">
-      <h3>4 · Non-root process</h3>
-      <p>The agent runs as an unprivileged <code>sandbox</code> user so
-         a successful exploit starts with less authority. That reduces blast radius;
-         it does not prove escalation is impossible. seccomp keeps identity-changing
-         operations such as <code>setuid</code> off this launchable's allowed surface,
-         while the host and container configuration remain part of the security boundary.</p>
+      <h3>4 · How much authority does it start with?</h3>
+      <p>The agent runs as a <strong>non-root process</strong> under the
+         unprivileged <code>sandbox</code> user. A successful exploit therefore
+         starts with less authority. The lower starting authority reduces
+         blast radius, though it does not prove escalation is impossible. The
+         host, container configuration, and syscall policy remain part of the
+         security boundary.</p>
     </div>
   </div>
 
@@ -418,8 +424,9 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
      back to a single policy file, which is worth reading off your launchable before you work with it.
      The cell below calls <code>helpers.policyGet()</code>, which runs <code>openshell policy get</code>
      over the operator terminal and parses the result for you.</p>
-  <p>From here the page computes from <em>your</em> box's policy rather than from a baked example, and
-     the cell keeps the code in a dropdown, so you can inspect the exact call without making it the main lesson.</p>
+  <p>The page now computes from <em>your</em> box's policy instead of a baked
+     example. The cell keeps its code in a dropdown, where you can inspect the
+     exact call without making it the main lesson.</p>
 
   <div id="cell-live-policy"></div>
 
@@ -570,8 +577,8 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
   <p>The hard part is composition. A policy can correctly allow one outbound endpoint, but the
      endpoint is still full-duplex: the request leaves and the response comes back as more input.
      Once hostile content can steer the model, it can ask for private data and send that data through
-     a channel the sandbox regards as allowed. Break any one leg, or mediate it above the sandbox,
-     and the exploit loses the path it needs.</p>
+     a channel the sandbox regards as allowed. Mediating any one leg above the
+     sandbox removes the path the exploit needs.</p>
 <figure style="margin:0"><div class="fig-embed" data-svg-src="assets/figures/lethal-trifecta.svg" style="aspect-ratio:800 / 500"></div><figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">The red center shows a path across allowed pieces rather than a single forbidden action. Hostile content influences a runtime that can read protected state and use an approved channel. Because the channel also brings responses back, a network allowlist alone cannot decide whether an allowed connection is safe.</figcaption></figure>
   <p>These gaps are real on a default box, and none of them is decidable by the network and
      filesystem policy:</p>
@@ -603,11 +610,11 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
   <table class="control-map">
     <thead><tr><th>Failure mode</th><th>What the sandbox contributes</th><th>Control still needed above it</th></tr></thead>
     <tbody>
-      <tr><td>Goal hijack or prompt injection</td><td>Limits reachable files, processes, and destinations after the model is steered</td><td>Input provenance, approval for consequential actions, and behavioural evaluation</td></tr>
-      <tr><td>Tool misuse</td><td>Restricts the OS and network envelope in which the tool runs</td><td>Per-tool authorization, argument validation, rate limits, and confirmation for irreversible calls</td></tr>
-      <tr><td>Identity or privilege abuse</td><td>Starts the process as a non-root identity and blocks selected escalation paths</td><td>Workload-specific identities, minimal token scopes, short lifetimes, rotation, and audit</td></tr>
-      <tr><td>Supply-chain or unexpected code execution</td><td>Reduces the files, syscalls, and egress available to installed code</td><td>Pinned and verified dependencies, install policy, and integrity monitoring</td></tr>
-      <tr><td>Memory or context poisoning</td><td>Can protect selected files when policy makes them read-only</td><td>Write provenance, reviewable history, trust labels, and recovery from a known-good state</td></tr>
+      <tr><td>Goal hijack or prompt injection</td><td data-label="Sandbox contribution">Limits reachable files, processes, and destinations after the model is steered</td><td data-label="Control still needed">Input provenance, approval for consequential actions, and behavioural evaluation</td></tr>
+      <tr><td>Tool misuse</td><td data-label="Sandbox contribution">Restricts the OS and network envelope in which the tool runs</td><td data-label="Control still needed">Per-tool authorization, argument validation, rate limits, and confirmation for irreversible calls</td></tr>
+      <tr><td>Identity or privilege abuse</td><td data-label="Sandbox contribution">Starts the process as a non-root identity and blocks selected escalation paths</td><td data-label="Control still needed">Workload-specific identities, minimal token scopes, short lifetimes, rotation, and audit</td></tr>
+      <tr><td>Supply-chain or unexpected code execution</td><td data-label="Sandbox contribution">Reduces the files, syscalls, and egress available to installed code</td><td data-label="Control still needed">Pinned and verified dependencies, install policy, and integrity monitoring</td></tr>
+      <tr><td>Memory or context poisoning</td><td data-label="Sandbox contribution">Can protect selected files when policy makes them read-only</td><td data-label="Control still needed">Write provenance, reviewable history, trust labels, and recovery from a known-good state</td></tr>
     </tbody>
   </table>
   </div>

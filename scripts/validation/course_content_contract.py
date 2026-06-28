@@ -27,8 +27,8 @@ def _read(rel: str) -> str:
 
 
 def _has_all(text: str, tokens: tuple[str, ...]) -> bool:
-    low = text.lower()
-    return all(t.lower() in low for t in tokens)
+    normalized = re.sub(r"\s+", " ", text).lower()
+    return all(re.sub(r"\s+", " ", token).lower() in normalized for token in tokens)
 
 
 def _json_script(text: str, script_id: str) -> dict:
@@ -83,9 +83,9 @@ def run(verbose: bool = True) -> list[tuple[str, str]]:
         findings.append(("web/nemoclaw/04a-safety.html", "missing real lethal trifecta figure"))
     if not _has_all(p04a, ("Untrusted input", "private data", "external communication", "full-duplex")):
         findings.append(("web/nemoclaw/04a-safety.html", "lethal trifecta prose must define all three terms and the full-duplex risk"))
-    if "Four mechanisms this launchable composes" not in p04a or not _has_all(p04a, ("compatibility mode", "OverlayFS", "handles opened before restriction")):
+    if "Four mechanisms, four concrete questions" not in p04a or not _has_all(p04a, ("compatibility mode", "OverlayFS", "handles opened before restriction")):
         findings.append(("web/nemoclaw/04a-safety.html", "filesystem lesson must qualify Landlock guarantees with compatibility, OverlayFS, and pre-opened-handle limits"))
-    if "does not prove escalation is impossible" not in p04a:
+    if not _has_all(p04a, ("does not prove escalation is impossible",)):
         findings.append(("web/nemoclaw/04a-safety.html", "non-root lesson must describe reduced blast radius without promising impossible escalation"))
     if not _has_all(p04a, ("Choose the control by failure mode", "Goal hijack or prompt injection", "Tool misuse", "Identity or privilege abuse", "Supply-chain or unexpected code execution", "Memory or context poisoning")):
         findings.append(("web/nemoclaw/04a-safety.html", "sandbox limits section must map major agentic failure modes to the layer that can enforce each control"))
