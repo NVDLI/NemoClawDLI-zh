@@ -148,7 +148,7 @@ Use these while GitLab remains canonical:
 
 - Protect `main`, `nemoclaw-only`, `release/*`, and tags.
 - Keep production Pages deploy manual and protected.
-- Keep branch preview deploys manual, isolated under branch slug paths, and built with production root from a protected ref.
+- Keep branch preview deploys manual, isolated under branch slug paths, built with production root from a protected ref, and blocked by the required test gate. On classic Pages, expose only preview paths present in the latest combined artifact.
 - Use templates in `.gitlab/issue_templates/` and `.gitlab/merge_request_templates/`.
 - Use labels and milestones as the project-management source. Mirror the same taxonomy to GitHub.
 - Keep `docs/issue_standards.md` aligned with tracker labels, issue templates, and MR templates.

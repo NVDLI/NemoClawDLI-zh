@@ -13,7 +13,7 @@
 #   - production refs still require a manual job start;
 #   - branch names are normalized through CI_COMMIT_REF_SLUG before becoming URLs.
 
-stages: [test, deploy]
+stages: [test, deploy, verify]
 
 variables:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
@@ -39,8 +39,8 @@ variables:
 test:
   <<: *with_python_node
   stage: test
-  # Advisory gate: it reports, but a failure here never blocks the Pages deploy.
-  allow_failure: true
+  # Required gate: Pages may publish only after every required-tier release check passes.
+  allow_failure: false
   script:
     # The structural gate is identical on every branch. A translate-<lang> branch additionally
     # passes --lang so validate_bundle skips the English-prose style suites (which would
@@ -50,6 +50,7 @@ test:
     - python3 scripts/skills/skill_consistency.py
     - python3 scripts/skills/skill_contract.py
     - python3 scripts/validation/ci_storage_audit.py
+    - python3 scripts/validation/branch_preview_manifest_audit.py --self-test
     - python3 scripts/compliance/source_gate.py
     - python3 scripts/security/audit_python_dependencies.py
     - python3 scripts/security/audit_vulnerability_waivers.py
@@ -157,9 +158,11 @@ pages:
         test -n "$CI_COMMIT_REF_SLUG"
         case "$CI_COMMIT_REF_SLUG" in *..*|*/*|*\*) echo "unsafe CI_COMMIT_REF_SLUG=$CI_COMMIT_REF_SLUG" >&2; exit 1;; esac
         refresh_branch_refs
+        remote_sha="$(git rev-parse "refs/remotes/origin/$CI_COMMIT_REF_NAME^{commit}")"
+        test "$remote_sha" = "$CI_COMMIT_SHA" || { echo "refusing stale preview: pipeline=$CI_COMMIT_SHA remote=$remote_sha" >&2; exit 1; }
         export BUILD_PAGES_COURSE_PREFIX="web"
         bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"
-        python3 scripts/build/build_branch_manifest.py --out "public/$CI_COMMIT_REF_SLUG/branches.json"
+        python3 scripts/build/build_branch_manifest.py --out "public/$CI_COMMIT_REF_SLUG/branches.json" --current-ref "$CI_COMMIT_REF_NAME" --current-slug "$CI_COMMIT_REF_SLUG"
         test -f "public/$CI_COMMIT_REF_SLUG/index.html"
         test -f "public/$CI_COMMIT_REF_SLUG/branches.json"
         test -f "public/$CI_COMMIT_REF_SLUG/languages.json"
@@ -188,12 +191,12 @@ pages:
         done
         (cd /tmp/nemoclaw-prod-root && bash scripts/build/build_pages.sh "$CI_PROJECT_DIR/public")
         refresh_branch_refs
-        python3 scripts/build/build_branch_manifest.py --out public/branches.json --current-ref "$prod_ref" --current-slug "$prod_ref"
+        python3 scripts/build/build_branch_manifest.py --out public/branches.json --current-ref "$prod_ref" --current-slug "$prod_ref" --published-ref "$CI_COMMIT_REF_NAME=$CI_COMMIT_REF_SLUG"
         test -f public/nemoclaw/index.html
         test -f public/index.html
         test -f public/branches.json
         test -f public/languages.json
-        grep -q 'nemoclaw-branches/1' public/branches.json
+        grep -q 'nemoclaw-branches/2' public/branches.json
         grep -Fq "$CI_COMMIT_REF_NAME" public/branches.json
       }
       if [ "${PAGES_PREVIEW:-0}" = "1" ]; then
@@ -201,6 +204,8 @@ pages:
         export BUILD_PAGES_PULL_MATERIALS=0
         build_production_root_from_ref
         build_branch_preview
+        python3 scripts/validation/branch_preview_manifest_audit.py --artifact-root public --manifest public/branches.json --expect-preview "$CI_COMMIT_REF_NAME=$CI_COMMIT_REF_SLUG"
+        python3 scripts/validation/branch_preview_manifest_audit.py --artifact-root public --manifest "public/$CI_COMMIT_REF_SLUG/branches.json" --expect-preview "$CI_COMMIT_REF_NAME=$CI_COMMIT_REF_SLUG"
       else
         stage_translations
         bash scripts/build/build_pages.sh public
@@ -242,5 +247,29 @@ pages:
         PAGES_ENVIRONMENT_URL: "$CI_PAGES_URL/nemoclaw/"
         PAGES_AUTO_STOP_IN: "never"
       when: manual
+      allow_failure: false
+    - when: never
+
+pages_smoke:
+  image: python:3.11-slim
+  tags: [pages]
+  stage: verify
+  needs: ["pages"]
+  script:
+    - |
+      set -eu
+      if [ "${PAGES_PREVIEW:-0}" = "1" ]; then
+        python3 scripts/validation/branch_preview_manifest_audit.py --base-url "$CI_PAGES_URL/" --expect-preview "$CI_COMMIT_REF_NAME=$CI_COMMIT_REF_SLUG" --attempts 30 --delay 5
+      else
+        python3 scripts/validation/branch_preview_manifest_audit.py --base-url "$CI_PAGES_URL/" --attempts 30 --delay 5
+      fi
+  rules:
+    - if: '$CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_BRANCH != "nemoclaw-only" && $CI_COMMIT_BRANCH !~ /^translate-/ && $CI_PIPELINE_SOURCE != "schedule"'
+      variables:
+        PAGES_PREVIEW: "1"
+      when: on_success
+      allow_failure: false
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH == "nemoclaw-only"'
+      when: on_success
       allow_failure: false
     - when: never

@@ -51,12 +51,15 @@ function _fetchSvg(src) {
 }
 
 let _lb = null;
+const MOBILE_FIGURE_BREAKPOINT = 600;
+const MOBILE_FIGURE_MIN_WIDTH = 720;
 function _lightbox() {
   if (_lb) return _lb;
   const root = document.createElement("div");
   root.className = "fig-lightbox";
   root.hidden = true;
   root.innerHTML = '<button class="fig-lightbox-x" type="button" aria-label="Close (Esc)">✕</button>'
+                 + '<p class="fig-lightbox-hint">Swipe to pan</p>'
                  + '<div class="fig-lightbox-stage" role="dialog" aria-modal="true" aria-label="Enlarged figure"></div>';
   const stage = root.querySelector(".fig-lightbox-stage");
   const close = () => { root.hidden = true; stage.innerHTML = ""; document.body.style.overflow = ""; };
@@ -73,7 +76,11 @@ function _lightbox() {
       svg.style.borderRadius = "8px";
       const vb = (svg.getAttribute("viewBox") || "").split(/[\s,]+/).map(Number);
       if (vb.length === 4 && vb[2] > 0 && vb[3] > 0) {
-        const s = Math.min(window.innerWidth * 0.92 / vb[2], window.innerHeight * 0.9 / vb[3]);
+        const fit = Math.min(window.innerWidth * 0.92 / vb[2], window.innerHeight * 0.9 / vb[3]);
+        const readable = window.innerWidth <= MOBILE_FIGURE_BREAKPOINT
+          ? MOBILE_FIGURE_MIN_WIDTH / vb[2]
+          : 0;
+        const s = Math.max(fit, readable);
         svg.style.width = Math.round(vb[2] * s) + "px";
         svg.style.height = Math.round(vb[3] * s) + "px";
       } else {

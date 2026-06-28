@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write a build-time branch-preview manifest for the Pages foyer."""
+"""Write a manifest containing only branch previews present in the Pages artifact."""
 from __future__ import annotations
 
 import argparse
@@ -7,16 +7,7 @@ import datetime as dt
 import json
 import os
 import re
-import subprocess
 from pathlib import Path
-
-
-def run_git(args: list[str]) -> list[str]:
-    try:
-        out = subprocess.check_output(["git", *args], text=True, stderr=subprocess.DEVNULL)
-    except Exception:
-        return []
-    return [line.strip() for line in out.splitlines() if line.strip()]
 
 
 def slug_ref(name: str) -> str:
@@ -24,59 +15,63 @@ def slug_ref(name: str) -> str:
     return slug or "branch"
 
 
-def collect_branches() -> list[str]:
-    names: set[str] = set()
-    for ref in run_git(["for-each-ref", "--format=%(refname:short)", "refs/remotes/origin"]):
-        if ref == "origin/HEAD" or not ref.startswith("origin/"):
-            continue
-        names.add(ref[len("origin/"):])
-    for ref in run_git(["for-each-ref", "--format=%(refname:short)", "refs/heads"]):
-        names.add(ref)
-    return sorted(names, key=lambda n: (n.startswith("translate-"), n.lower()))
+def published_ref(spec: str) -> tuple[str, str]:
+    name, sep, slug = spec.partition("=")
+    name = name.strip()
+    slug = (slug if sep else slug_ref(name)).strip()
+    if not name or not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", slug):
+        raise ValueError(f"invalid published ref: {spec!r}")
+    return name, slug
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
     ap.add_argument("--default-branch", default=os.environ.get("CI_DEFAULT_BRANCH", "main"))
-    ap.add_argument("--current-ref", default=os.environ.get("CI_COMMIT_REF_NAME") or os.environ.get("CI_COMMIT_BRANCH"))
-    ap.add_argument("--current-slug", default=os.environ.get("CI_COMMIT_REF_SLUG"))
+    ap.add_argument("--current-ref")
+    ap.add_argument("--current-slug")
+    ap.add_argument("--published-ref", action="append", default=[], metavar="NAME[=SLUG]")
     ap.add_argument("--max", type=int, default=80)
     ns = ap.parse_args()
 
-    current = ns.current_ref or (run_git(["branch", "--show-current"]) or [""])[0]
-    current_slug = (ns.current_slug or slug_ref(current)) if current else ""
     default_branch = ns.default_branch or "main"
+    production_refs = {default_branch, "nemoclaw-only"}
+    current = ns.current_ref or default_branch
+    current_slug = ns.current_slug or slug_ref(current)
+    production_name = current if current in production_refs else default_branch
 
-    branches = collect_branches()
-    if default_branch and default_branch not in branches:
-        branches.insert(0, default_branch)
-    if current and current not in branches:
-        branches.insert(0, current)
+    refs: list[tuple[str, str, str]] = [(production_name, slug_ref(production_name), "production")]
+    if current not in production_refs:
+        refs.append((current, current_slug, "preview"))
+    for spec in ns.published_ref:
+        name, slug = published_ref(spec)
+        kind = "production" if name in production_refs else "preview"
+        refs.append((name, slug, kind))
 
     seen_slugs: set[str] = set()
     items = []
-    for name in branches[: ns.max]:
-        slug = current_slug if current and name == current and current_slug else slug_ref(name)
+    for name, slug, kind in refs:
         if slug in seen_slugs:
             continue
         seen_slugs.add(slug)
-        is_prod = name in {default_branch, "nemoclaw-only"}
         items.append({
             "name": name,
             "slug": slug,
-            "kind": "production" if is_prod else "preview",
-            "url": "nemoclaw/" if is_prod else f"{slug}/web/nemoclaw/",
+            "kind": kind,
+            "url": "nemoclaw/" if kind == "production" else f"{slug}/web/nemoclaw/",
+            "preview_ready": True,
             "current": bool(current and name == current),
         })
+        if len(items) >= ns.max:
+            break
 
     data = {
-        "schema": "nemoclaw-branches/1",
+        "schema": "nemoclaw-branches/2",
         "generated_at": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(),
         "default_branch": default_branch,
         "current": {"name": current, "slug": current_slug} if current else None,
         "production_url": "nemoclaw/",
-        "note": "Branch previews exist only after a manual Pages preview deploy has published that branch path.",
+        "note": "Every listed preview path is present in this Pages artifact.",
         "branches": items,
     }
     out = Path(ns.out)

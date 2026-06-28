@@ -715,6 +715,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                    "does not consume too much vertical space."),
         "crowded": (RECOMMENDED, "Do not stack figures with only token prose between them. Move the figure or add "
                     "enough explanatory context so consecutive graphics do not read as a wall."),
+        "mobile_zoom": (REQUIRED, "Restore the shared mobile figure contract: visible zoom and pan cues, a 720px "
+                        "readable enlarged width, horizontal panning, and reachable close/Escape behavior."),
     }
 
     def _fig(k, t):
