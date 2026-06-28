@@ -152,8 +152,8 @@ SUITE_META = [
     ("page_audit", "Page audit", "recommended",
      "Each page is held to the shared HTML contract: no stale tokens, no missing assets, no deploy course-code leaking into content. Each entry names the drifted token or asset to fix.",
      "scripts/runtime/engine.js", "pageAudit"),
-    ("course_content", "Course content contract", "recommended",
-     "Course promises that generic validators cannot infer: the retrieval-boundary figure stays concept-scoped with provenance hidden from learner prose, and the lethal-trifecta figure defines private data, untrusted input, external communication, and the full-duplex egress loop. Each finding names the missing contract piece.",
+    ("course_content", "Course content contract", "required",
+     "Course promises that generic validators cannot infer: retrieval and safety figures keep their teaching contracts, product comparisons cite public sources, automation semantics stay scoped to the demonstrated configuration, and alpha platform claims retain availability and hardware qualifiers. Each finding names the missing contract piece.",
      "scripts/validation/course_content_contract.py", "run"),
     ("course_dependency_integrity", "Course dependency integrity", "required",
      "Fixed third-party browser assets execute inside every learner page. Their URLs, expected bytes, and CORS mode must stay pinned with Subresource Integrity so an upstream response change cannot silently execute in the course.",
@@ -415,7 +415,14 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         cc_find = cc.run(verbose=False)
     except Exception as e:
         cc_find = []
-        suite_errors["course_content"] = str(e); vl_fail.append(f"course content contract error: {e}")
+        suite_errors["course_content"] = str(e)
+        vl_ok = False
+        ok = False
+        vl_fail.append(f"course content contract error: {e}")
+    if cc_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(f"course content contract: {path}: {detail}" for path, detail in cc_find)
 
     try:
         cdi_find = cdi.audit()
@@ -732,8 +739,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "page_audit": [D(x.get("page"), "; ".join((fi.get("detail") or fi.get("token") or "") for fi in x.get("findings", [])),
                          RECOMMENDED, "Update the flagged token or restore the missing asset so the page matches the shared HTML contract.")
                        for x in audit.get("findings", [])],
-        "course_content": [D(path, detail, RECOMMENDED,
-                             "Restore the content contract. The retrieval-boundary figure needs clean learner-facing prose; the lethal-trifecta section needs the definition, full-duplex loop, figure, caption, reference, and asset provenance.")
+        "course_content": [D(path, detail, REQUIRED,
+                             "Restore the source-backed teaching contract. Keep retrieval/safety explanations complete, product comparisons grounded in public sources, automation behavior scoped to the demonstrated configuration, and alpha platform claims qualified.")
                            for path, detail in cc_find],
         "course_dependency_integrity": [D("web/nemoclaw", detail, REQUIRED,
                                           "Restore the expected SRI digest and crossorigin mode, or update the pinned digest only after reviewing the new dependency bytes.")
@@ -916,7 +923,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     # "scanned" is the coverage count, so a clean result reads as "ran on N inputs, found nothing".
     _scanned = {
         "links": s["pages"], "cross_course": s["pages"], "asset_leaks": s["pages"],
-        "reachability": reach.get("pages", 0), "page_audit": audit.get("pages", 0), "course_content": 2,
+        "reachability": reach.get("pages", 0), "page_audit": audit.get("pages", 0), "course_content": 8,
         "course_dependency_integrity": 14,
         "grounding": len(grecs), "prose_variety": len(pv_rows), "prose_buzz": len(pv_rows), "redundancy": len(pv_rows), "grammar": len(pv_rows), "structure": len(pv_rows), "headings": len(pv_rows), "assertions": len(pv_rows), "word_echo": len(pv_rows), "comma_weight": len(pv_rows), "branding": len(pv_rows),
         "defer_copula": len(pv_rows), "dense_repeats": len(pv_rows), "over_verbage": len(pv_rows), "padding": len(pv_rows),
@@ -1022,7 +1029,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         print(f"    ✗ foyer {v.get('kind')}: {v.get('detail')}")
     print(f"  page audit      : {audit.get('pages_with_findings', '?')}/{audit.get('pages', '?')} .html show drift "
           f"(stale tokens / missing assets / contract)")
-    print(f"  course content  : {len(cc_find)} content contract finding(s) (retrieval boundary, lethal trifecta)")
+    print(f"  course content  : {len(cc_find)} required content contract finding(s) (teaching, product, platform)")
     if not lang_en:
         print(f"  prose / buzz / branding : n/a for '{lang}' (English-prose style suites do not gate a translation)")
     if pv_rows and lang_en:

@@ -62,7 +62,7 @@ The failure case worth naming is the **Manchurian agent**: a legitimate agent wi
 
 ## Inside the NemoClaw architecture
 
-NemoClaw is NVIDIA's open-source runtime for running OpenClaw agents safely inside a controlled OpenShell sandbox. It installs in a single command:
+NemoClaw is NVIDIA's open-source reference stack for running OpenClaw inside a controlled OpenShell sandbox. It is alpha, early-preview software in the [current documentation](https://docs.nvidia.com/nemoclaw/latest/), so operational details should be checked against the version being deployed. Installation starts with one command:
 
 ```shell
 curl -fsSL https://www.nvidia.com/nemoclaw.sh | bash
