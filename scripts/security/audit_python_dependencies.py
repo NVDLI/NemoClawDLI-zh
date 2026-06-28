@@ -10,6 +10,7 @@ installed dependency graph.
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
 import re
 import sys
@@ -36,6 +37,17 @@ REQUIRED_FLOORS = {
     "cryptography": "48.0.1",
     "aiohttp": "3.14.1",
 }
+
+# BDSA-2025-123809 / upstream #26432: no released wheel through 7.35.1 contains
+# the complete Struct/Value/ListValue recursion fix. The runtime currently uses
+# protobuf for generated/binary messages, not the vulnerable JSON conversion API.
+# Keep that claim executable while the time-boxed waiver is active.
+PROTOBUF_JSON_PARSE_RE = re.compile(
+    r"\b(?:json_format|protobuf_json_format)\.(?:Parse|ParseDict)\s*\("
+    r"|from\s+google\.protobuf\.json_format\s+import\s+[^\n]*(?:Parse|ParseDict)\b"
+)
+PROTOBUF_WAIVER_ID = "BDSA-2025-123809"
+WAIVER_REGISTRY = ROOT / "scripts" / "security" / "vulnerability-waivers.json"
 
 REQ_RE = re.compile(
     r'^(?P<name>[A-Za-z0-9_.-]+)(?:\[[^\]]+\])?\s*'
@@ -126,6 +138,38 @@ def declarations() -> list[dict]:
     return rows
 
 
+def protobuf_json_parse_callers() -> list[dict]:
+    """Find runtime code that would make the waived recursion bug reachable."""
+    findings: list[dict] = []
+    for root_name in ("cpu", "workspace"):
+        for path in (ROOT / root_name).rglob("*.py"):
+            text = path.read_text(encoding="utf-8", errors="replace")
+            for match in PROTOBUF_JSON_PARSE_RE.finditer(text):
+                findings.append({
+                    "file": str(path.relative_to(ROOT)),
+                    "line": text.count("\n", 0, match.start()) + 1,
+                    "package": "protobuf",
+                    "reason": "BDSA-2025-123809 exposure: protobuf JSON Parse/ParseDict is forbidden while the recursion advisory has no patched release",
+                })
+    return findings
+
+
+def active_waiver(advisory_id: str, package: str) -> bool:
+    try:
+        data = json.loads(WAIVER_REGISTRY.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    today = dt.date.today()
+    for waiver in data.get("waivers", []):
+        if waiver.get("id") != advisory_id or norm_name(str(waiver.get("package", ""))) != norm_name(package):
+            continue
+        try:
+            return dt.date.fromisoformat(str(waiver.get("expires"))) >= today
+        except ValueError:
+            return False
+    return False
+
+
 def fetch_vulns(name: str, version: str) -> list[dict]:
     url = f"https://pypi.org/pypi/{name}/{version}/json"
     req = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "NemoClaw-dependency-audit/1"})
@@ -139,8 +183,15 @@ def main() -> int:
     args = ap.parse_args()
 
     rows = declarations()
-    failures: list[dict] = []
+    failures: list[dict] = protobuf_json_parse_callers()
     notes: list[str] = []
+    protobuf_waived = active_waiver(PROTOBUF_WAIVER_ID, "protobuf")
+    if not protobuf_waived:
+        failures.append({
+            "file": str(WAIVER_REGISTRY.relative_to(ROOT)),
+            "package": "protobuf",
+            "reason": f"{PROTOBUF_WAIVER_ID} has no active waiver while no patched protobuf release is available",
+        })
     seen = {(r.get("file"), r.get("name")) for r in rows if r.get("name")}
 
     for file_rel in ("workspace/requirements.txt",):
@@ -173,6 +224,8 @@ def main() -> int:
         vulns = cache[key]
         if vulns:
             failures.append({**row, "reason": "known vulnerabilities reported by PyPI/OSV", "vulnerabilities": vulns})
+        elif name == "protobuf" and protobuf_waived:
+            notes.append(f"WAIVED {row['file']}: {row['spec']} ({PROTOBUF_WAIVER_ID}; Parse/ParseDict reachability guard clean)")
         else:
             notes.append(f"PASS {row['file']}: {row['spec']} ({name} {ver})")
 
