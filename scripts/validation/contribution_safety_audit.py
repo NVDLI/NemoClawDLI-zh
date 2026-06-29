@@ -39,6 +39,9 @@ CONTRACT_FILES = (
     "scripts/compliance/docs/open_source_readiness.md",
     ".github/ISSUE_TEMPLATE/config.yml",
     ".github/PULL_REQUEST_TEMPLATE.md",
+    ".github/dependabot.yml",
+    ".github/workflows/codeql.yml",
+    ".github/workflows/dependency-review.yml",
     ".gitlab/merge_request_templates/Default.md",
     ".github/workflows/pages.yml",
     ".github/workflows/release.yml",
@@ -46,12 +49,17 @@ CONTRACT_FILES = (
     "scripts/build/install-hooks.sh",
     "scripts/build/build_branch_manifest.py",
     "scripts/build/package_release.py",
+    "scripts/materials/requirements.lock",
+    "scripts/security/audit_dependency_locks.py",
+    "scripts/security/requirements-sca.lock",
     "scripts/git-hooks/pre-commit",
     "scripts/git-hooks/pre-push",
     "scripts/skills/gen_skill_hierarchy.py",
     "scripts/validation/SKILL.html",
     "scripts/validation/validate_bundle.py",
     "scripts/validation/gitlab_governance_audit.py",
+    "workspace/requirements.lock",
+    "workspace/Dockerfile",
 )
 
 
@@ -77,6 +85,30 @@ def top_permissions(workflow: str) -> str:
     return match.group(1) if match else ""
 
 
+def audit_workflow_pins(root: Path) -> list[dict[str, str]]:
+    out: list[dict[str, str]] = []
+    for path in sorted((root / ".github/workflows").glob("*.yml")):
+        rel = path.relative_to(root).as_posix()
+        for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            action = re.search(r"\buses:\s*([^\s]+)", line)
+            if action and not action.group(1).startswith("./"):
+                ref = action.group(1).rsplit("@", 1)[-1]
+                if not re.fullmatch(r"[0-9a-f]{40}", ref):
+                    out.append(finding("mutable-action-ref", rel,
+                                       f"line {line_no} action ref is not a full commit SHA: {action.group(1)}",
+                                       "pin the reviewed action release to its immutable 40-character commit SHA"))
+                if not re.search(r"#\s*v?[0-9]+(?:\.[0-9]+){1,2}\s*$", line):
+                    out.append(finding("action-version-comment", rel,
+                                       f"line {line_no} pinned action lacks a readable release comment",
+                                       "retain the reviewed release as a trailing comment beside the SHA"))
+            if re.search(r"\b(?:python3?\s+-m\s+)?pip\s+install\b", line):
+                if not re.search(r"(?:--requirement|-r)\s+[^\s]+\.lock\b", line):
+                    out.append(finding("unpinned-workflow-install", rel,
+                                       f"line {line_no} installs Python packages without a reviewed lock",
+                                       "install a scope-specific requirements.lock file instead of ad hoc package arguments"))
+    return out
+
+
 def audit_publication_approval(root: Path = ROOT) -> list[dict[str, str]]:
     try:
         status = json.loads((root / "RELEASE_STATUS.json").read_text(encoding="utf-8"))
@@ -94,6 +126,7 @@ def audit_publication_approval(root: Path = ROOT) -> list[dict[str, str]]:
 def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
     out: list[dict[str, str]] = []
     docs = {rel: read(root, rel, out) for rel in CONTRACT_FILES}
+    out.extend(audit_workflow_pins(root))
 
     try:
         status = json.loads(docs["RELEASE_STATUS.json"])
@@ -241,6 +274,10 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "github-submission-contract", out, "validate the live pull-request body")
     require(pages, "--commit-range \"$DCO_RANGE\"", ".github/workflows/pages.yml",
             "github-dco-check", out, "validate every pull-request commit signoff")
+    if pages.count("scripts/materials/requirements.lock") != 2:
+        out.append(finding("github-material-lock", ".github/workflows/pages.yml",
+                           "test and deploy jobs must install material tooling from the reviewed lock",
+                           "use scripts/materials/requirements.lock in both Python setup paths"))
 
     release = docs[".github/workflows/release.yml"]
     require(release, "  workflow_dispatch:", ".github/workflows/release.yml", "release-manual", out,
@@ -275,6 +312,45 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
         out.append(finding("release-pr-trigger", ".github/workflows/release.yml",
                            "release workflow can be started by an untrusted pull request",
                            "keep release workflow_dispatch-only"))
+    require(release, "workspace/requirements.lock", ".github/workflows/release.yml",
+            "release-runtime-lock", out, "build the release environment from the Python 3.11 runtime lock")
+    require(release, "scripts/security/requirements-sca.lock", ".github/workflows/release.yml",
+            "release-sca-lock", out, "install scanners from their isolated reviewed lock")
+
+    dependency_review = docs[".github/workflows/dependency-review.yml"]
+    require(dependency_review, "  pull_request:\n", ".github/workflows/dependency-review.yml",
+            "dependency-review-trigger", out, "run dependency review on every pull request to main")
+    require(dependency_review, "fail-on-severity: moderate", ".github/workflows/dependency-review.yml",
+            "dependency-review-floor", out, "block moderate-or-higher vulnerable additions")
+    if "pull_request_target:" in dependency_review or "secrets." in dependency_review:
+        out.append(finding("dependency-review-fork-safety", ".github/workflows/dependency-review.yml",
+                           "dependency review can acquire base-repository or secret authority",
+                           "use pull_request with contents: read and no secrets"))
+
+    codeql = docs[".github/workflows/codeql.yml"]
+    for token in ("javascript-typescript", "python", "security-events: write", "schedule:"):
+        require(codeql, token, ".github/workflows/codeql.yml", "codeql-baseline", out,
+                f"retain public CodeQL baseline token: {token}")
+    if "pull_request_target:" in codeql or "secrets." in codeql:
+        out.append(finding("codeql-fork-safety", ".github/workflows/codeql.yml",
+                           "CodeQL can acquire base-repository or secret authority",
+                           "use pull_request with scoped security-events upload and no secrets"))
+
+    dependabot = docs[".github/dependabot.yml"]
+    for ecosystem in ("github-actions", "pip", "docker"):
+        require(dependabot, f"package-ecosystem: {ecosystem}", ".github/dependabot.yml",
+                "dependency-update-coverage", out, f"retain controlled {ecosystem} update coverage")
+
+    for rel in ("workspace/requirements.lock", "scripts/materials/requirements.lock",
+                "scripts/security/requirements-sca.lock"):
+        if not docs[rel].strip():
+            out.append(finding("dependency-lock", rel, "dependency lock is empty",
+                               "regenerate the exact transitive Python 3.11 lock"))
+    require(docs["scripts/security/audit_dependency_locks.py"], "--self-test",
+            "scripts/security/audit_dependency_locks.py", "dependency-lock-detector", out,
+            "retain mutation tests for stale and unpinned dependency locks")
+    require(docs["workspace/Dockerfile"], "pip3 install -r requirements.lock", "workspace/Dockerfile",
+            "workspace-lock-install", out, "build the lab image from the exact runtime closure")
 
     gitlab = docs[".gitlab-ci.yml"]
     require(gitlab, "contribution_safety_audit.py --self-test", ".gitlab-ci.yml",
@@ -288,6 +364,14 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
     require(gitlab, '--commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"',
             ".gitlab-ci.yml", "gitlab-dco-check", out,
             "validate every merge-request commit signoff")
+    require(gitlab, "audit_dependency_locks.py --self-test", ".gitlab-ci.yml",
+            "gitlab-lock-selftest", out, "run dependency-lock mutations in canonical CI")
+    require(gitlab, ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock",
+            ".gitlab-ci.yml", "gitlab-runtime-lock", out,
+            "scan the exact runtime closure rather than resolving direct requirements again")
+    require(gitlab, ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock",
+            ".gitlab-ci.yml", "gitlab-sca-lock", out,
+            "keep scanner tooling isolated in its exact lock")
     require(gitlab, 'CI_PIPELINE_SOURCE == "merge_request_event"', ".gitlab-ci.yml",
             "gitlab-mr-pipeline", out, "run open merge requests in MR context")
     require(gitlab, "$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS", ".gitlab-ci.yml",
@@ -337,6 +421,8 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "run the contribution-boundary audit and its mutations before push")
     require(prep, "--commit-range origin/main..HEAD", "scripts/git-hooks/pre-push", "prepush-dco", out,
             "reject unsigned topic-branch commits before push")
+    require(prep, 'LOCK_AUDIT="$T1/scripts/security/audit_dependency_locks.py"', "scripts/git-hooks/pre-push",
+            "prepush-lock-selftest", out, "reject stale or unpinned dependency locks before push")
     require(prep, 'PACKAGE_RELEASE="$T1/scripts/build/package_release.py"',
             "scripts/git-hooks/pre-push", "prepush-package-selftest", out,
             "run the deterministic release-packaging self-test before push")
@@ -465,7 +551,13 @@ def self_test() -> list[str]:
             ("independent-review", "MAINTAINERS.md", "nobody approves their own", "self-approval allowed"),
             ("dco-policy", "DCO.md", "Developer Certificate of Origin 1.1", "unversioned signoff"),
             ("github-pr-trigger", ".github/workflows/pages.yml", "  pull_request:\n", "  # pull_request removed\n"),
+            ("mutable-action-ref", ".github/workflows/pages.yml", "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683", "actions/checkout@v4"),
+            ("unpinned-workflow-install", ".github/workflows/pages.yml", "--requirement scripts/materials/requirements.lock", "requests beautifulsoup4 markdownify lxml"),
+            ("github-material-lock", ".github/workflows/pages.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),
             ("pr-deploy-boundary", ".github/workflows/pages.yml", "if: github.event_name != 'pull_request'", "if: always()"),
+            ("dependency-review-floor", ".github/workflows/dependency-review.yml", "fail-on-severity: moderate", "fail-on-severity: critical"),
+            ("codeql-baseline", ".github/workflows/codeql.yml", "javascript-typescript", "javascript-disabled"),
+            ("dependency-update-coverage", ".github/dependabot.yml", "package-ecosystem: docker", "package-ecosystem: unsupported"),
             ("release-draft", ".github/workflows/release.yml", "--draft --verify-tag", "--verify-tag"),
             ("release-annotated-tag", ".github/workflows/release.yml", 'git cat-file -t "refs/tags/$RELEASE_TAG"', 'git cat-file -t "$RELEASE_TAG^{commit}"'),
             ("release-artifact-set", ".github/workflows/release.yml", "release-assets/release-manifest.json", "release-assets/manifest.json"),
@@ -473,6 +565,8 @@ def self_test() -> list[str]:
             ("release-build-epoch", "scripts/build/build_branch_manifest.py", 'os.environ.get("SOURCE_DATE_EPOCH")', 'os.environ.get("BUILD_TIME")'),
             ("publication-release-guard", ".github/workflows/release.yml", "contribution_safety_audit.py --require-publication-approved", "contribution_safety_audit.py"),
             ("publication-deploy-guard", ".github/workflows/pages.yml", "contribution_safety_audit.py --require-publication-approved", "contribution_safety_audit.py"),
+            ("release-runtime-lock", ".github/workflows/release.yml", "workspace/requirements.lock", "workspace/requirements.txt"),
+            ("release-sca-lock", ".github/workflows/release.yml", "scripts/security/requirements-sca.lock", "pip-audit cyclonedx-bom"),
             ("discussion-route", ".github/ISSUE_TEMPLATE/config.yml", "/discussions", "/issues"),
             ("submission-template", ".github/PULL_REQUEST_TEMPLATE.md", "## Blast radius checked", "## Scope notes"),
             ("gitlab-description-window", ".gitlab/merge_request_templates/Default.md", "## Validation evidence", "x" * 2700 + "\n## Validation evidence"),
@@ -480,8 +574,12 @@ def self_test() -> list[str]:
             ("fetch-fail-open", "scripts/git-hooks/pre-push", "if ! git fetch origin main --quiet; then", "git fetch origin main --quiet || exit 0\n    if false; then"),
             ("remote-fail-open", "scripts/git-hooks/pre-push", "if [ \"$REMOTE\" = \"origin\" ]; then", "[ \"$REMOTE\" = \"origin\" ] || exit 0\nif false; then"),
             ("prepush-package-selftest", "scripts/git-hooks/pre-push", "PACKAGE_RELEASE=", "PACKAGE_TEST="),
+            ("prepush-lock-selftest", "scripts/git-hooks/pre-push", 'LOCK_AUDIT="$T1/scripts/security/audit_dependency_locks.py"', 'LOCK_AUDIT="$T1/scripts/security/noop.py"'),
             ("gitlab-safety-selftest", ".gitlab-ci.yml", "contribution_safety_audit.py --self-test", "contribution_safety_audit.py --version"),
             ("gitlab-dco-check", ".gitlab-ci.yml", '--commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', '--commit-range "${CI_COMMIT_SHA}"'),
+            ("gitlab-lock-selftest", ".gitlab-ci.yml", "audit_dependency_locks.py --self-test", "audit_dependency_locks.py --version"),
+            ("gitlab-runtime-lock", ".gitlab-ci.yml", ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock", ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.txt"),
+            ("gitlab-sca-lock", ".gitlab-ci.yml", ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock", ".sca-tools-venv/bin/python -m pip install -q pip-audit cyclonedx-bom"),
             ("gitlab-human-review", ".gitlab-ci.yml", "human_review:", "operator_review:"),
             ("gitlab-human-review-needs", ".gitlab-ci.yml", 'needs: ["test", "pages_smoke"]', 'needs: ["test"]'),
             ("gitlab-human-review-blocking", ".gitlab-ci.yml", '    - if: \'$CI_PIPELINE_SOURCE == "merge_request_event"\'\n      when: manual\n      allow_failure: false\n', '    - if: \'$CI_PIPELINE_SOURCE == "merge_request_event"\'\n      when: on_success\n      allow_failure: true\n'),
@@ -491,6 +589,7 @@ def self_test() -> list[str]:
             ("notice-state", "RELEASE_STATUS.json", '"notice_required": false', '"notice_required": true'),
             ("security-report-route", "SECURITY.md", "https://www.nvidia.com/en-us/security/report-vulnerability/", "https://example.invalid/report"),
             ("release-playbook", "docs/release_playbook.md", "Host settings are not versioned by this repository", "Host settings checklist"),
+            ("workspace-lock-install", "workspace/Dockerfile", "pip3 install -r requirements.lock", "pip3 install -r requirements.txt"),
         )
         originals: dict[str, str] = {}
         for expected, rel, old, new in cases:

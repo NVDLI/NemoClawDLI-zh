@@ -319,6 +319,8 @@ python3 scripts/skills/skill_contract.py
 python3 scripts/compliance/source_gate.py
 python3 scripts/security/audit_python_dependencies.py
 python3 scripts/security/audit_vulnerability_waivers.py
+python3 scripts/security/audit_dependency_locks.py --self-test
+python3 scripts/security/audit_dependency_locks.py
 bash scripts/runtime/run_engine.sh --self-test
 python3 scripts/validation/validate_bundle.py --scope ship
 ```
@@ -326,10 +328,10 @@ python3 scripts/validation/validate_bundle.py --scope ship
 For dependency changes, also run the resolved-environment SCA job or equivalent:
 
 ```bash
+python3 -m venv .runtime-venv
 python3 -m venv .sca-venv
-.sca-venv/bin/python -m pip install --upgrade pip setuptools wheel
-.sca-venv/bin/python -m pip install -r workspace/requirements.txt
-.sca-venv/bin/python -m pip install pip-audit cyclonedx-bom
+.runtime-venv/bin/python -m pip install -r workspace/requirements.lock
+.sca-venv/bin/python -m pip install -r scripts/security/requirements-sca.lock
 PATH="$PWD/.sca-venv/bin:$PATH" .sca-venv/bin/python scripts/security/run_full_sca.py --execute --python-local --cyclonedx-env --out-dir scripts/security/reports/deep-workspace
 ```
 
@@ -406,7 +408,8 @@ Before public mirror:
 - [ ] Immutable releases are enabled before the first public version is published.
 - [ ] External repository has required checks mapped to the static gate.
 - [ ] Dependency graph, Dependabot alerts, dependency review, code scanning, and secret scanning are enabled or explicitly deferred with a reason.
-- [ ] `dependabot.yml` exists for public-safe ecosystems after owners and labels exist.
+- [x] Repo-owned Dependabot, dependency-review, and CodeQL workflows exist with immutable action pins and fork-safe permissions.
+- [ ] Host dependency graph, alerts, code-scanning upload, secret scanning, and push protection are enabled and smoke-tested.
 - [ ] Release draft contains the deterministic archive, manifest, resolved-environment SBOM, and `SHA256SUMS`.
 - [ ] Image SCA strategy is defined for public-safe images and NVIDIA/internal images separately.
 - [ ] External repository has Discussions enabled, with pinned welcome guidance.

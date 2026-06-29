@@ -14,6 +14,7 @@
   "summary": "What the lab runs inside: the image build, its entrypoint and python deps, the surface-aware notebook test runner, and the SKILL self-test harness. The image also ships headless Chromium (playwright) so notebooks and the render-check harness (scripts/runtime/render_check.py) can drive a real browser with no setup. A live explorer: open a file, read it in context, and ask the model about it.",
   "related": [
     "workspace/Dockerfile",
+    "workspace/requirements.lock",
     "workspace/run_tests.py",
     "scripts/runtime/render_check.py"
   ],
@@ -51,7 +52,12 @@
     {
       "path": "requirements.txt",
       "role": "python deps",
-      "desc": "Exact direct Python dependencies for the lab image. Pins provide stable source/SBOM package identity; full installed-environment SCA still resolves and scans transitive dependencies."
+      "desc": "Exact direct Python dependencies for the lab image; changes must regenerate requirements.lock."
+    },
+    {
+      "path": "requirements.lock",
+      "role": "resolved Python environment",
+      "desc": "Exact Python 3.11 transitive closure used for release installation and runtime SBOM generation."
     },
     {
       "path": "run_tests.py",
@@ -85,6 +91,8 @@
     <li><a href="Dockerfile">Dockerfile</a></li>
     <li><a href="run_tests.py">run_tests.py</a></li>
     <li><a href="entrypoint.sh">entrypoint.sh</a></li>
+    <li><a href="requirements.txt">requirements.txt</a></li>
+    <li><a href="requirements.lock">requirements.lock</a></li>
   </ul>
 </noscript>
 <script src="../web/_skill_explorer.js"></script>

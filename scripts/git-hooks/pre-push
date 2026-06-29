@@ -138,7 +138,18 @@ if [ -f "$WAIVER_AUDIT" ]; then
     fi
 fi
 
-# ── RULE 3f: release package determinism guard ───────────────────────────────
+# ── RULE 3f: dependency lock guard ──────────────────────────────────────────
+LOCK_AUDIT="$T1/scripts/security/audit_dependency_locks.py"
+if [ -f "$LOCK_AUDIT" ]; then
+    if ! python3 "$LOCK_AUDIT" --self-test || ! python3 "$LOCK_AUDIT"; then
+        echo ""
+        echo "pre-push: REFUSING PUSH - dependency locks are stale or unpinned."
+        echo "Regenerate the named Python 3.11 lock and rerun its mutation self-test."
+        exit 1
+    fi
+fi
+
+# ── RULE 3g: release package determinism guard ───────────────────────────────
 PACKAGE_RELEASE="$T1/scripts/build/package_release.py"
 if [ -f "$PACKAGE_RELEASE" ]; then
     if ! python3 "$PACKAGE_RELEASE" --self-test; then

@@ -74,6 +74,8 @@ test:
     - python3 scripts/compliance/source_gate.py
     - python3 scripts/security/audit_python_dependencies.py
     - python3 scripts/security/audit_vulnerability_waivers.py
+    - python3 scripts/security/audit_dependency_locks.py --self-test
+    - python3 scripts/security/audit_dependency_locks.py
     - python3 scripts/build/package_release.py --self-test
     - bash   scripts/runtime/run_engine.sh --self-test
     - python3 scripts/validation/validate_bundle.py --scope ship
@@ -126,12 +128,13 @@ security_deep_sca:
   timeout: 2h
   script:
     - apt-get update -qq && apt-get install -y -qq --no-install-recommends python3-venv >/dev/null
-    - rm -rf .sca-venv
-    - python3 -m venv .sca-venv
-    - .sca-venv/bin/python -m pip install -q --upgrade pip setuptools wheel
-    - .sca-venv/bin/python -m pip install -q -r workspace/requirements.txt
-    - .sca-venv/bin/python -m pip install -q pip-audit cyclonedx-bom
-    - PATH="$CI_PROJECT_DIR/.sca-venv/bin:$PATH" .sca-venv/bin/python scripts/security/run_full_sca.py --execute --python-local --cyclonedx-env --out-dir scripts/security/reports/deep-workspace
+    - rm -rf .sca-runtime-venv .sca-tools-venv
+    - python3 -m venv .sca-runtime-venv
+    - python3 -m venv .sca-tools-venv
+    - .sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock
+    - .sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock
+    - RUNTIME_SITE="$(.sca-runtime-venv/bin/python -c 'import sysconfig; print(sysconfig.get_path("purelib"))')"
+    - PATH="$CI_PROJECT_DIR/.sca-tools-venv/bin:$PATH" .sca-tools-venv/bin/python scripts/security/run_full_sca.py --execute --require-tools --python-local --cyclonedx-env --python-executable "$CI_PROJECT_DIR/.sca-runtime-venv/bin/python" --python-path "$RUNTIME_SITE" --out-dir scripts/security/reports/deep-workspace
   artifacts:
     when: always
     name: "security-deep-sca-$CI_COMMIT_SHORT_SHA"
@@ -145,12 +148,16 @@ security_deep_sca:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       changes:
         - workspace/requirements.txt
+        - workspace/requirements.lock
         - workspace/Dockerfile
         - cpu/services/sandbox_admin/requirements.txt
         - cpu/services/docker_router/Dockerfile
         - cpu/services/llm_client/llm_client.Dockerfile
         - scripts/security/audit_python_dependencies.py
         - scripts/security/audit_vulnerability_waivers.py
+        - scripts/security/audit_dependency_locks.py
+        - scripts/security/requirements-sca.lock.in
+        - scripts/security/requirements-sca.lock
         - scripts/security/run_full_sca.py
         - scripts/security/vulnerability-waivers.json
         - .gitlab-ci.yml
