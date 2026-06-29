@@ -38,6 +38,14 @@ REQUIRED_FLOORS = {
     "aiohttp": "3.14.1",
 }
 
+# These packages are intentionally absent from the supported course/lab runtime.
+# Adding one back requires a demonstrated runtime use plus a fresh OSRB distribution
+# decision; a bare dependency declaration is not sufficient evidence.
+FORBIDDEN_DIRECT_REQUIREMENTS = {
+    "langserve": "retired unused dependency; reintroduction requires runtime evidence and an OSRB distribution decision",
+    "langgraph-cli": "retired unused in-memory runtime; it conflicts with the supported protobuf, cryptography, OpenTelemetry, and Starlette compatibility line",
+}
+
 # BDSA-2025-123809 / upstream #26432: no released wheel through 7.35.1 contains
 # the complete Struct/Value/ListValue recursion fix. The runtime currently uses
 # protobuf for generated/binary messages, not the vulnerable JSON conversion API.
@@ -138,6 +146,47 @@ def declarations() -> list[dict]:
     return rows
 
 
+def forbidden_direct_requirements(path: Path = ROOT / "workspace" / "requirements.txt") -> list[dict]:
+    """Reject direct dependencies intentionally removed from the supported runtime."""
+    findings: list[dict] = []
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        spec = split_requirement_line(line)
+        if not spec:
+            continue
+        match = REQ_RE.match(spec)
+        if not match:
+            continue
+        name = norm_name(match.group("name"))
+        if name in FORBIDDEN_DIRECT_REQUIREMENTS:
+            findings.append({
+                "file": str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path),
+                "line": line_number,
+                "package": name,
+                "reason": FORBIDDEN_DIRECT_REQUIREMENTS[name],
+            })
+    return findings
+
+
+def unlocked_direct_requirements(path: Path = ROOT / "workspace" / "requirements.txt") -> list[dict]:
+    """Require exact versions for each direct workspace dependency used by SBOM scans."""
+    findings: list[dict] = []
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        spec = split_requirement_line(line)
+        if not spec:
+            continue
+        match = REQ_RE.match(spec)
+        if not match:
+            continue
+        if match.group("op") != "==" or not match.group("ver"):
+            findings.append({
+                "file": str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path),
+                "line": line_number,
+                "package": norm_name(match.group("name")),
+                "reason": "direct workspace dependencies must use an exact == version for source/SBOM identity",
+            })
+    return findings
+
+
 def protobuf_json_parse_callers() -> list[dict]:
     """Find runtime code that would make the waived recursion bug reachable."""
     findings: list[dict] = []
@@ -180,10 +229,34 @@ def fetch_vulns(name: str, version: str) -> list[dict]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--json", action="store_true", help="emit machine-readable report")
+    ap.add_argument("--self-test", action="store_true", help="exercise the retired-dependency guard without network access")
     args = ap.parse_args()
 
+    if args.self_test:
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = Path(tmp) / "requirements.txt"
+            manifest.write_text(
+                "requests==2.33.1\nlangserve>=0.3\nlanggraph-cli==0.4.30\n",
+                encoding="utf-8",
+            )
+            forbidden = forbidden_direct_requirements(manifest)
+            unlocked = unlocked_direct_requirements(manifest)
+        if {item.get("package") for item in forbidden} != {"langserve", "langgraph-cli"}:
+            print("python dependency audit self-test: FAIL", file=sys.stderr)
+            return 1
+        if len(unlocked) != 1 or unlocked[0].get("package") != "langserve":
+            print("python dependency audit self-test: FAIL", file=sys.stderr)
+            return 1
+        print("python dependency audit self-test: PASS (retired and unlocked dependencies rejected)")
+        return 0
+
     rows = declarations()
-    failures: list[dict] = protobuf_json_parse_callers()
+    failures: list[dict] = (
+        protobuf_json_parse_callers()
+        + forbidden_direct_requirements()
+        + unlocked_direct_requirements()
+    )
     notes: list[str] = []
     protobuf_waived = active_waiver(PROTOBUF_WAIVER_ID, "protobuf")
     if not protobuf_waived:

@@ -1,89 +1,88 @@
-## UNLOCKED (LATEST COMPATIBLE)
+## Direct dependency lock — resolved 2026-06-29 for Python 3.11.
+## Exact direct pins give source/SBOM scans stable package identities. This is not
+## a hash-locked transitive closure; full installed-environment SCA remains required.
 
 # Async / notebook compat
-nest_asyncio                # Jupyter + asyncio.run() in the same event loop
+nest_asyncio==1.6.0
 
 # Networking & Web
-fastapi>=0.138.1
-httpx>=0.27.0
-httpx-sse
-requests
-aiohttp>=3.14.1          # transitive web client/server dependency; keep above current PyPI advisory floor
-sse-starlette
-starlette>=1.3.1
-streamlit
-uvicorn[standard]
-voila
-protobuf>=5.29.6,<6    # compatibility floor; BDSA-2025-123809 remains waived until upstream ships the complete ParseDict recursion fix
+fastapi==0.138.2
+httpx==0.28.1
+httpx-sse==0.4.3
+requests==2.33.1
+aiohttp==3.14.1
+sse-starlette==3.4.5
+starlette==1.3.1
+streamlit==1.58.0
+uvicorn[standard]==0.49.0
+voila==0.5.12
+protobuf==5.29.6  # BDSA-2025-123809 remains waived until upstream ships the complete ParseDict recursion fix
 
 # LangChain & Orchestration
-langchain
-langchain-classic>=1.0.0
-langchain-community
-langchain-core
-langchain-mcp-adapters
-langchain-nvidia-ai-endpoints
-langchain-openai
-langchain-text-splitters
-langgraph
-langgraph-cli[inmem]
-langgraph-sdk>=0.1.40
-langserve
-langsmith
-litellm
-mcp>=1.23.0            # Model Context Protocol SDK for agent tool integration
+langchain==1.3.11
+langchain-classic==1.0.8
+langchain-community==0.4.2
+langchain-core==1.4.8
+langchain-mcp-adapters==0.3.0
+langchain-nvidia-ai-endpoints==1.4.1
+langchain-openai==1.3.3
+langchain-text-splitters==1.1.2
+langgraph==1.2.6
+langgraph-sdk==0.4.2
+langsmith==0.9.3
+litellm==1.90.0
+mcp==1.28.1  # Model Context Protocol SDK for agent tool integration
 
 # Data & Retrieval
-duckdb
-faiss-cpu
-nemo-microservices
-pandas
-pydantic
-python-dotenv
-cryptography>=48.0.1    # transitive TLS/crypto dependency; keep above current PyPI advisory floor
-tavily-python
+duckdb==1.5.4
+faiss-cpu==1.14.3
+nemo-microservices==1.5.0
+pandas==2.3.3
+pydantic==2.13.4
+python-dotenv==1.2.2
+cryptography==49.0.0
+tavily-python==0.7.26
 
 # Document Processing
-arxiv<4  # v4 removed Search.results(); ArxivRetriever in langchain_community requires <4
-pdf2image
-pymupdf
-rank-bm25
+arxiv==3.0.0  # v4 removed Search.results(); ArxivRetriever in langchain_community requires <4
+pdf2image==1.17.0
+pymupdf==1.28.0
+rank-bm25==0.2.2
 
 # ML / DL / Inference
-docker>=7.1.0          # docker_router + sandbox_admin services drive the agent sandbox
-matplotlib
-networkx               # Graph library
-openai
-scikit-learn
-transformers           # transitive dependency of the langchain / embedding stack
-# NOTE: torch/torchaudio/torchvision installed separately in Dockerfile with
-# --index-url https://download.pytorch.org/whl/cu128 for CUDA 12.8 + ARM64.
-# vllm is a standalone inference server, not a notebook library; it is launched
-# via shell, never imported.
+docker==7.1.0  # docker_router + sandbox_admin services drive the agent sandbox
+matplotlib==3.10.9
+networkx==3.4.2
+openai==2.44.0
+scikit-learn==1.7.2
+transformers==5.12.1
+# torch/torchaudio/torchvision stay in workspace/Dockerfile because the CUDA 12.8
+# index is required for Blackwell-compatible wheels.
 
-# Observability. Pin to the opentelemetry 1.34 / instrumentation 0.54b line.
-# Do NOT unpin: opentelemetry 1.35+ removed ReadableLogRecord, and the matching
-# instrumentation 0.55b* expects api 1.35+ (it imports PackageNotFoundError from
-# util._importlib_metadata, which exists in 1.35 but not 1.34). Pinning the
-# instrumentation packages to ~=0.54b0 keeps them compatible with the pinned
-# api 1.34 line, avoiding the import error that crashes a FastAPI service at
-# startup before uvicorn can bind.
-opentelemetry-api~=1.34.0
-opentelemetry-sdk~=1.34.0
-opentelemetry-exporter-otlp-proto-grpc~=1.34.0
-opentelemetry-instrumentation-fastapi~=0.54b0
-opentelemetry-instrumentation-requests~=0.54b0
-opentelemetry-semantic-conventions~=0.54b0
-plotly
+# Observability. Keep the API/SDK line and matching instrumentation compatible.
+opentelemetry-api==1.34.1
+opentelemetry-sdk==1.34.1
+opentelemetry-exporter-otlp-proto-grpc==1.34.1
+opentelemetry-instrumentation-fastapi==0.55b1
+opentelemetry-instrumentation-requests==0.55b1
+opentelemetry-semantic-conventions==0.55b1
+plotly==6.8.0
 
 # Dev Tools & UI
-gradio
-ipywidgets
-jupyter-app-launcher
-jupyterlab
-jupyterlab-git
-
-# Browser automation for in-lab render/UI experiments. The Chromium browser + its
-# system libs are installed in the Dockerfile (playwright install --with-deps chromium);
-# the render-check harness is scripts/runtime/render_check.py. Discoverable via workspace/SKILL.html.
-playwright
+gradio==6.19.0
+ipywidgets==8.1.8
+jupyter-app-launcher==0.3.2
+jupyter-archive==3.4.0
+jupyter-collaboration==4.4.1
+jupyter-resource-usage==1.2.1
+jupyter-server==2.20.0
+jupyter-server-proxy==4.5.0
+jupyterlab==4.5.9
+jupyterlab-git==0.54.0
+jupyterlab-language-pack-ja-JP==4.5.post3
+jupyterlab-language-pack-zh-CN==4.5.post3
+jupyterlab-language-pack-zh-TW==4.5.post3
+jupyterlab-widgets==3.0.16
+jupytext==1.19.4
+playwright==1.61.0
+uv==0.11.25

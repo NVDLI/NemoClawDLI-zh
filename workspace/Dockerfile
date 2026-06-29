@@ -24,7 +24,7 @@ WORKDIR /tmp
 # Build context is the repo's task1/ dir (deploy/docker-compose.override.yml:
 # context: .), so workspace files are addressed as workspace/<path>.
 COPY workspace/requirements.txt .
-RUN pip3 install --upgrade pip && pip3 install -r requirements.txt
+RUN pip3 install --upgrade pip==26.1.2 && pip3 install -r requirements.txt
 
 # Install PyTorch with CUDA 12.8 support. cu128 is required for Blackwell
 # GPU architecture (sm_100) on the DGX Spark GB10; earlier wheels compiled
@@ -33,7 +33,7 @@ RUN pip3 install --upgrade pip && pip3 install -r requirements.txt
 # version set; all three must come from the same wheel index in one command
 # to avoid version drift (e.g. torchaudio 2.11 shipping before torch 2.11).
 RUN pip3 install --no-cache-dir \
-    torch torchvision torchaudio \
+    torch==2.11.0+cu128 torchvision==0.26.0+cu128 torchaudio==2.11.0+cu128 \
     --index-url https://download.pytorch.org/whl/cu128 \
     --upgrade
 
@@ -49,14 +49,6 @@ RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 # (scripts/runtime/render_check.py) can drive a real browser with no manual setup. A repo pull
 # builds this in; the capability is documented in workspace/SKILL.html.
 RUN playwright install --with-deps chromium
-
-RUN pip install --no-cache-dir --root-user-action ignore \
-    uv jupyterlab==4.5.5 jupyterlab-widgets jupyter-archive ipywidgets \
-    jupyter-resource-usage jupytext jupyter-server-proxy \
-    "jupyter-server>=2.0.0" jupyter-collaboration \
-    jupyterlab-language-pack-zh-CN \
-    jupyterlab-language-pack-ja-JP \
-    jupyterlab-language-pack-zh-TW
 
 COPY cpu/services/jupyter/ /opt/jupyter_cfg/
 RUN rm -rf /root/.jupyter/* \

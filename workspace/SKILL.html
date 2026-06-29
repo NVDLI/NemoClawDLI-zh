@@ -51,7 +51,7 @@
     {
       "path": "requirements.txt",
       "role": "python deps",
-      "desc": "The python packages the lab image installs (always latest, since the host defines the environment) — including playwright, the driver for the bundled Chromium used by scripts/runtime/render_check.py."
+      "desc": "Exact direct Python dependencies for the lab image. Pins provide stable source/SBOM package identity; full installed-environment SCA still resolves and scans transitive dependencies."
     },
     {
       "path": "run_tests.py",
