@@ -7,6 +7,10 @@ Building Agents course. External publication remains pending OSRB approval. Ever
 relative to the repository root; read [`RELEASE_STATUS.md`](RELEASE_STATUS.md) before changing
 publication, licensing, contribution, or release claims.
 
+Before proposing code, read [`GOVERNANCE.json`](GOVERNANCE.json), [`CONTRIBUTING.md`](CONTRIBUTING.md),
+and [`DCO.md`](DCO.md). Agents must preserve the commit signoff, conduct, support, ownership,
+independent-review, and protected-release boundaries. An agent cannot act as the human owner.
+
 ---
 
 ## Contribution safety first-touch

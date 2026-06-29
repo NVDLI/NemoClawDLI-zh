@@ -22,6 +22,11 @@ Default rule: **issue-first, patch-second**. Students with domain evidence file 
 
 ## Contribution trust model
 
+Repository governance is machine-readable in `GOVERNANCE.json` and projected into the public
+`CODE_OF_CONDUCT.md`, `SUPPORT.md`, `MAINTAINERS.md`, and `DCO.md`. DCO 1.1 signoff is checked for
+every proposed commit locally and in GitLab/GitHub CI. Signoff proves submission rights; required
+checks, independent review, and protected host authority still decide acceptance.
+
 The repository separates the cost of proposing knowledge from the authority to change a release.
 
 | Stage | Default access | Required evidence | Authority |
@@ -394,7 +399,7 @@ Before public mirror:
 - [ ] This playbook is linked from docs SKILL and root SKILL.
 - [ ] GitLab issue/MR templates exist.
 - [ ] GitHub issue/PR templates exist.
-- [ ] Code of Conduct and its enforcement route are approved before public community intake.
+- [x] Code of Conduct and a public-safe private platform reporting route are repository-defined; verify host moderation before intake.
 - [ ] External repository protects `main` and `release/*`.
 - [ ] Active `v*` tag rules restrict create, update, and deletion.
 - [ ] Release workflow rejects lightweight tags and packages only annotated SemVer tags contained in `main`.
@@ -418,7 +423,8 @@ Before student PR intake:
 - [ ] Dependency-review check blocks vulnerable dependency additions.
 - [ ] Secret scanning push protection is enabled where available; custom patterns are approved before use.
 - [ ] PR template asks for issue link, surfaces touched, validation, and source/licensing impact.
-- [ ] Maintainer triage SLA is defined internally.
+- [x] Public support policy states best-effort triage without an unsupported response SLA.
+- [x] DCO 1.1 is documented and enforced over every proposed commit range.
 - [ ] Labels and milestones are mirrored between GitLab and GitHub.
 - [ ] Release note owner exists for each milestone.
 - [ ] Security/private reports have a non-public contact path.

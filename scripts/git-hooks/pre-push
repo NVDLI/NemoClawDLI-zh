@@ -53,10 +53,12 @@ fi
 # ── RULE 2b: contribution safety contract ───────────────────────────────────
 SAFETY="$T1/scripts/validation/contribution_safety_audit.py"
 if [ -f "$SAFETY" ]; then
-    if ! python3 "$SAFETY" --self-test || ! python3 "$SAFETY"; then
+    if ! python3 "$SAFETY" --self-test \
+       || ! python3 "$SAFETY" \
+       || ! python3 "$SAFETY" --commit-range origin/main..HEAD; then
         echo ""
         echo "pre-push: REFUSING PUSH - contribution-safety contract failed."
-        echo "The issue/PR intake, permission boundary, hook, CI, or release gate no longer matches policy."
+        echo "The governance, DCO signoff, intake, permission, CI, or release contract no longer matches policy."
         echo "Repair the named finding; this hook will not bypass or mutate it."
         exit 1
     fi
