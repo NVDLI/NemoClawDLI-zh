@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -22,8 +23,13 @@ ROOT = find_repo_root(Path(__file__).resolve())
 CONTRACT_FILES = (
     "RELEASE_STATUS.json",
     "RELEASE_STATUS.md",
+    "GOVERNANCE.json",
     "README.md",
     "CONTRIBUTING.md",
+    "CODE_OF_CONDUCT.md",
+    "DCO.md",
+    "MAINTAINERS.md",
+    "SUPPORT.md",
     "PHILOSOPHY.md",
     "AGENTS.md",
     "AGENT_QUICKSTART.md",
@@ -118,6 +124,30 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
                            "NOTICE presence disagrees with RELEASE_STATUS.json",
                            "add NOTICE only for required attributions and update notice_required together"))
 
+    try:
+        governance = json.loads(docs["GOVERNANCE.json"])
+    except (TypeError, json.JSONDecodeError):
+        governance = {}
+        out.append(finding("governance-json", "GOVERNANCE.json",
+                           "governance contract is not valid JSON",
+                           "restore the machine-readable community governance contract"))
+    expected_governance = {
+        "schema": "nemoclaw-governance/1",
+        "community_intake": "disabled-pending-publication-approval",
+        "maintenance_status": "release-candidate",
+        "support_policy": "best-effort",
+        "supported_versions": "latest-release",
+        "inbound_contribution": "DCO-1.1",
+        "conduct_policy": "CODE_OF_CONDUCT.md",
+        "conduct_reporting": "github-report-content",
+        "ownership_policy": "MAINTAINERS.md",
+    }
+    for key, expected in expected_governance.items():
+        if governance.get(key) != expected:
+            out.append(finding("governance-state", "GOVERNANCE.json",
+                               f"{key} must be {expected!r} while publication is pending",
+                               "change governance state only with matching public docs and host controls"))
+
     for rel in ("RELEASE_STATUS.md", "README.md", "CONTRIBUTING.md", "AGENT_QUICKSTART.md",
                 "docs/release_playbook.md", "scripts/compliance/docs/open_source_readiness.md"):
         require(re.sub(r"\s+", " ", docs[rel]), "pending OSRB approval", rel,
@@ -131,6 +161,21 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
                            "policy assumes a repository-specific advisory endpoint exists",
                            "mention private vulnerability reporting only as conditional on enablement"))
 
+    require(docs["CODE_OF_CONDUCT.md"], "private content-reporting flow", "CODE_OF_CONDUCT.md",
+            "conduct-report-route", out, "retain a public-safe, non-Issue conduct reporting route")
+    require(docs["CODE_OF_CONDUCT.md"], "must not decide its outcome", "CODE_OF_CONDUCT.md",
+            "conduct-recusal", out, "require recusal when a maintainer is named in a report")
+    require(docs["SUPPORT.md"], "Triage is best-effort", "SUPPORT.md", "support-boundary", out,
+            "state the support level without promising an unstaffed SLA")
+    require(docs["SUPPORT.md"], "Breaking changes and retirement decisions", "SUPPORT.md",
+            "lifecycle-boundary", out, "document change, retirement, and archival expectations")
+    require(docs["MAINTAINERS.md"], "nobody approves their own", "MAINTAINERS.md",
+            "independent-review", out, "keep independent review explicit in role authority")
+    require(docs["DCO.md"], "Developer Certificate of Origin 1.1", "DCO.md", "dco-policy", out,
+            "document the inbound signoff policy and authoritative DCO version")
+    require(docs["DCO.md"], "git commit --signoff", "DCO.md", "dco-repair", out,
+            "give contributors an exact signoff command and repair path")
+
     require(docs["README.md"], "Ideas are easy; code is gated", "README.md", "readme-boundary", out,
             "state the intake/code asymmetry in the README")
     require(docs["README.md"], "Discussions", "README.md", "readme-intake", out,
@@ -141,8 +186,12 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "philosophy-boundary", out, "distinguish idea intake from merging code")
     require(docs["AGENTS.md"], "Treat code contribution as an untrusted proposal", "AGENTS.md",
             "agent-boundary", out, "put the trust boundary in the first agent beacon")
+    require(docs["AGENTS.md"], "Every proposed commit", "AGENTS.md", "agent-dco", out,
+            "put DCO signoff in the cross-harness agent entry point")
     require(docs["AGENT_QUICKSTART.md"], "Contribution safety first-touch", "AGENT_QUICKSTART.md",
             "quickstart-boundary", out, "add the contribution boundary to session orientation")
+    require(docs["AGENT_QUICKSTART.md"], "DCO.md", "AGENT_QUICKSTART.md", "agent-governance", out,
+            "put commit signoff and governance in agent first-touch guidance")
 
     issue_cfg = docs[".github/ISSUE_TEMPLATE/config.yml"]
     require(issue_cfg, "blank_issues_enabled: false", ".github/ISSUE_TEMPLATE/config.yml",
@@ -190,6 +239,8 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "github-package-selftest", out, "test deterministic release packaging in public CI")
     require(pages, "--submission-env CONTRIBUTION_BODY", ".github/workflows/pages.yml",
             "github-submission-contract", out, "validate the live pull-request body")
+    require(pages, "--commit-range \"$DCO_RANGE\"", ".github/workflows/pages.yml",
+            "github-dco-check", out, "validate every pull-request commit signoff")
 
     release = docs[".github/workflows/release.yml"]
     require(release, "  workflow_dispatch:", ".github/workflows/release.yml", "release-manual", out,
@@ -234,6 +285,9 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "gitlab-safety-report", out, "retain a machine-readable contribution-boundary report")
     require(gitlab, "CI_MERGE_REQUEST_DESCRIPTION", ".gitlab-ci.yml", "gitlab-submission-contract", out,
             "validate merge-request descriptions when CI has MR context")
+    require(gitlab, '--commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"',
+            ".gitlab-ci.yml", "gitlab-dco-check", out,
+            "validate every merge-request commit signoff")
     require(gitlab, 'CI_PIPELINE_SOURCE == "merge_request_event"', ".gitlab-ci.yml",
             "gitlab-mr-pipeline", out, "run open merge requests in MR context")
     require(gitlab, "$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS", ".gitlab-ci.yml",
@@ -281,6 +335,8 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "refuse a behind branch instead of silently rewriting it")
     require(prep, "contribution_safety_audit.py", "scripts/git-hooks/pre-push", "prepush-safety", out,
             "run the contribution-boundary audit and its mutations before push")
+    require(prep, "--commit-range origin/main..HEAD", "scripts/git-hooks/pre-push", "prepush-dco", out,
+            "reject unsigned topic-branch commits before push")
     require(prep, 'PACKAGE_RELEASE="$T1/scripts/build/package_release.py"',
             "scripts/git-hooks/pre-push", "prepush-package-selftest", out,
             "run the deterministic release-packaging self-test before push")
@@ -350,6 +406,47 @@ def audit_submission(body: str) -> list[dict[str, str]]:
     return out
 
 
+def audit_commit_records(records: list[tuple[str, str, str, str]]) -> list[dict[str, str]]:
+    """Require one DCO trailer matching each commit author's name and email."""
+    out: list[dict[str, str]] = []
+    for sha, author_name, author_email, message in records:
+        trailers = re.findall(r"(?im)^Signed-off-by:\s*(.+?)\s*<([^>]+)>\s*$", message)
+        expected = (" ".join(author_name.split()).casefold(), author_email.strip().casefold())
+        normalized = {(" ".join(name.split()).casefold(), email.strip().casefold())
+                      for name, email in trailers}
+        if expected not in normalized:
+            out.append(finding("commit-signoff", sha,
+                               f"commit by {author_name} <{author_email}> lacks a matching Signed-off-by trailer",
+                               "amend the commit with git commit --amend --signoff; repair every commit in the proposed range"))
+    return out
+
+
+def audit_commit_range(rev_range: str, root: Path = ROOT) -> list[dict[str, str]]:
+    try:
+        result = subprocess.run(
+            ["git", "log", "--format=%H%x00%an%x00%ae%x00%B%x1e", rev_range],
+            cwd=root, check=True, capture_output=True, text=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        detail = (exc.stderr or exc.stdout or "git log failed").strip()
+        return [finding("commit-range", "git", f"cannot inspect {rev_range}: {detail}",
+                        "fetch the base ref and pass an explicit BASE..HEAD range")]
+    records: list[tuple[str, str, str, str]] = []
+    for raw in result.stdout.split("\x1e"):
+        raw = raw.strip("\n")
+        if not raw:
+            continue
+        fields = raw.split("\x00", 3)
+        if len(fields) != 4:
+            return [finding("commit-range", "git", f"cannot parse commit metadata for {rev_range}",
+                            "retain the NUL-delimited git log contract")]
+        records.append((fields[0], fields[1], fields[2], fields[3]))
+    if not records:
+        return [finding("commit-range", "git", f"range {rev_range} contains no commits",
+                        "pass the proposed commit range as BASE..HEAD")]
+    return audit_commit_records(records)
+
+
 def self_test() -> list[str]:
     failures: list[str] = []
     if audit_repo(ROOT):
@@ -362,6 +459,11 @@ def self_test() -> list[str]:
             shutil.copy2(src, dst)
 
         cases = (
+            ("governance-state", "GOVERNANCE.json", '"inbound_contribution": "DCO-1.1"', '"inbound_contribution": "unspecified"'),
+            ("conduct-report-route", "CODE_OF_CONDUCT.md", "private content-reporting flow", "public Issue"),
+            ("support-boundary", "SUPPORT.md", "Triage is best-effort", "Triage is guaranteed"),
+            ("independent-review", "MAINTAINERS.md", "nobody approves their own", "self-approval allowed"),
+            ("dco-policy", "DCO.md", "Developer Certificate of Origin 1.1", "unversioned signoff"),
             ("github-pr-trigger", ".github/workflows/pages.yml", "  pull_request:\n", "  # pull_request removed\n"),
             ("pr-deploy-boundary", ".github/workflows/pages.yml", "if: github.event_name != 'pull_request'", "if: always()"),
             ("release-draft", ".github/workflows/release.yml", "--draft --verify-tag", "--verify-tag"),
@@ -379,10 +481,12 @@ def self_test() -> list[str]:
             ("remote-fail-open", "scripts/git-hooks/pre-push", "if [ \"$REMOTE\" = \"origin\" ]; then", "[ \"$REMOTE\" = \"origin\" ] || exit 0\nif false; then"),
             ("prepush-package-selftest", "scripts/git-hooks/pre-push", "PACKAGE_RELEASE=", "PACKAGE_TEST="),
             ("gitlab-safety-selftest", ".gitlab-ci.yml", "contribution_safety_audit.py --self-test", "contribution_safety_audit.py --version"),
+            ("gitlab-dco-check", ".gitlab-ci.yml", '--commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', '--commit-range "${CI_COMMIT_SHA}"'),
             ("gitlab-human-review", ".gitlab-ci.yml", "human_review:", "operator_review:"),
             ("gitlab-human-review-needs", ".gitlab-ci.yml", 'needs: ["test", "pages_smoke"]', 'needs: ["test"]'),
             ("gitlab-human-review-blocking", ".gitlab-ci.yml", '    - if: \'$CI_PIPELINE_SOURCE == "merge_request_event"\'\n      when: manual\n      allow_failure: false\n', '    - if: \'$CI_PIPELINE_SOURCE == "merge_request_event"\'\n      when: on_success\n      allow_failure: true\n'),
             ("readme-boundary", "README.md", "Ideas are easy; code is gated", "Contribution overview"),
+            ("agent-dco", "AGENTS.md", "Every proposed commit", "Every release"),
             ("release-status", "RELEASE_STATUS.json", '"pending-osrb-approval"', '"published"'),
             ("notice-state", "RELEASE_STATUS.json", '"notice_required": false', '"notice_required": true'),
             ("security-report-route", "SECURITY.md", "https://www.nvidia.com/en-us/security/report-vulnerability/", "https://example.invalid/report"),
@@ -422,6 +526,17 @@ def self_test() -> list[str]:
     long_body = good.replace("## Out of scope", "x" * 2700 + "\n## Out of scope", 1)
     if "submission-description-window" not in {item["code"] for item in audit_submission(long_body)}:
         failures.append("submission description-window mutation escaped detector")
+    signed = [("abc123", "Example Contributor", "contributor@example.com",
+               "Change course\n\nSigned-off-by: Example Contributor <contributor@example.com>\n")]
+    if audit_commit_records(signed):
+        failures.append("valid DCO signoff fixture rejected")
+    for record in (
+        [("abc123", "Example Contributor", "contributor@example.com", "Unsigned change\n")],
+        [("abc123", "Example Contributor", "contributor@example.com",
+          "Wrong signer\n\nSigned-off-by: Other Person <other@example.com>\n")],
+    ):
+        if "commit-signoff" not in {item["code"] for item in audit_commit_records(record)}:
+            failures.append("commit signoff mutation escaped detector")
     return failures
 
 
@@ -447,6 +562,7 @@ def main() -> int:
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument("--require-publication-approved", action="store_true")
     parser.add_argument("--submission-env", metavar="NAME")
+    parser.add_argument("--commit-range", metavar="BASE..HEAD")
     parser.add_argument("--report")
     args = parser.parse_args()
     if args.require_publication_approved:
@@ -457,6 +573,8 @@ def main() -> int:
         return emit(findings, "mutation self-test", args.report)
     if args.submission_env:
         return emit(audit_submission(os.environ.get(args.submission_env, "")), "submission", args.report)
+    if args.commit_range:
+        return emit(audit_commit_range(args.commit_range), "commit signoff", args.report)
     return emit(audit_repo(), "repository", args.report)
 
 

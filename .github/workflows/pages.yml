@@ -22,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -57,6 +59,11 @@ jobs:
         env:
           CONTRIBUTION_BODY: ${{ github.event.pull_request.body }}
         run: python3 scripts/validation/contribution_safety_audit.py --submission-env CONTRIBUTION_BODY
+      - name: Pull request commit signoff
+        if: github.event_name == 'pull_request'
+        env:
+          DCO_RANGE: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/validation/contribution_safety_audit.py --commit-range "$DCO_RANGE"
       - name: Materials drift check (advisory; complains on drift, never blocks the deploy)
         continue-on-error: true
         run: python3 scripts/materials/pull_materials.py --check

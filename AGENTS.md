@@ -31,6 +31,10 @@ required CI, human ownership, and protected merge or release permissions. Never 
 to make a patch pass. Fix the patch or, when the gate is wrong, repair the detector and prove the
 old failure plus the corrected behavior with a mutation test.
 
+Before committing, read `GOVERNANCE.json`, `CONTRIBUTING.md`, and `DCO.md`. Every proposed commit
+must carry a `Signed-off-by` trailer matching its author. Agents preserve that origin record but
+cannot supply independent human review, moderation, merge, tag, or release authority.
+
 ## Visual changes
 
 If a task adds, removes, replaces, repositions, or changes an image, SVG, diagram,

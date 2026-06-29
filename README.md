@@ -114,6 +114,12 @@ release environments. Local hooks provide early feedback; protected refs and req
 are the authority because hooks can be skipped. The contract and operator controls live in
 [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/release_playbook.md`](docs/release_playbook.md).
 
+Public governance is explicit: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) sets behavior and
+enforcement, [`SUPPORT.md`](SUPPORT.md) defines the best-effort support and lifecycle boundary,
+[`MAINTAINERS.md`](MAINTAINERS.md) defines role authority, and [`GOVERNANCE.json`](GOVERNANCE.json)
+exposes the same state to automation. Every contributed commit requires the DCO signoff described
+in [`DCO.md`](DCO.md).
+
 ## Verification
 
 Run the static release gate before pushing:

@@ -57,11 +57,17 @@ that is grammatical but unnatural for the target student and developer audience.
 
 1. Start from a clean branch for one coherent release concern.
 2. Read the relevant Issue or MR before editing.
-3. Update the source surface and every declared blast-radius file.
-4. Keep course title, abstract, and objectives verbatim from [`web/nemoclaw/COURSE_CANON.md`](web/nemoclaw/COURSE_CANON.md).
-5. Add or update a validator when the same class of problem should not recur.
-6. Run the validation ladder below.
-7. Open an MR that names the issue relationship and lists validation results.
+3. Sign every commit under the Developer Certificate of Origin in [`DCO.md`](DCO.md).
+4. Update the source surface and every declared blast-radius file.
+5. Keep course title, abstract, and objectives verbatim from [`web/nemoclaw/COURSE_CANON.md`](web/nemoclaw/COURSE_CANON.md).
+6. Add or update a validator when the same class of problem should not recur.
+7. Run the validation ladder below.
+8. Open an MR that names the issue relationship and lists validation results.
+
+Use `git commit --signoff` to add a `Signed-off-by` trailer matching the commit author. CI checks
+every commit in the proposed range. If the check fails, follow the repair guidance in `DCO.md`;
+do not squash away another contributor's authorship or treat a signoff as permission to submit
+third-party material.
 
 ## Install the Hooks
 
@@ -123,6 +129,8 @@ The full operating creed is projected into the root `SKILL.html` skill-meta. Run
 This repository is licensed under Apache-2.0. Unless you clearly mark a submission as
 `Not a Contribution`, any contribution intentionally submitted for inclusion is offered
 under Apache-2.0, with the contribution terms in [`LICENSE.md`](LICENSE.md).
+Every commit must also carry the DCO 1.1 signoff defined in [`DCO.md`](DCO.md). The signoff
+certifies origin and submission rights; it does not transfer copyright or replace review.
 
 Do not submit material you do not have the right to contribute. Third-party text, images,
 datasets, model artifacts, copied examples, cached web pages, and generated assets need
