@@ -69,6 +69,7 @@ opentelemetry-semantic-conventions==0.55b1
 plotly==6.8.0
 
 # Dev Tools & UI
+pip==26.1.2  # venv bootstrap is part of the scanned runtime environment
 gradio==6.19.0
 ipywidgets==8.1.8
 jupyter-app-launcher==0.3.2
