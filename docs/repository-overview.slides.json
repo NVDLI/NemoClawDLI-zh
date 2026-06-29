@@ -1,0 +1,294 @@
+{
+  "schema": "nemoclaw-stakeholder-slides/2",
+  "title": "Securing Agents with OpenShell and NemoClaw",
+  "subtitle": "Repository tour for course reviewers, developers, and release owners",
+  "audience": "Course reviewers, instructors, developers, localization reviewers, and release owners",
+  "publication_note": "Internal release candidate. External publication remains pending OSRB approval.",
+  "reference": {
+    "repository": "s-fx-43-v1",
+    "commit": "c648a856ccd281eb9dad904f168b62e7a4a75fd4",
+    "path": "task1/web/agentic_ai/slides",
+    "connection": "visual-language reference",
+    "license": "Apache-2.0"
+  },
+  "slides": [
+    {
+      "id": "title",
+      "layout": "title",
+      "claim_scope": "course",
+      "kicker": "NVIDIA Deep Learning Institute",
+      "title": "Securing Agents with OpenShell and NemoClaw",
+      "lead": "Repository tour for course reviewers, developers, and release owners",
+      "footer": "Internal release candidate · external publication pending OSRB approval",
+      "evidence": ["web/nemoclaw/COURSE_CANON.md", "RELEASE_STATUS.md"],
+      "notes": "Open with the repository's canonical course title. This deck is not a substitute for the course and does not claim a public release. It explains how the learner path, browser artifacts, contribution controls, localization workflow, and release gates fit together. The review question is practical: can each audience find the surface it owns and verify the evidence behind it?"
+    },
+    {
+      "id": "course-promise",
+      "layout": "screenshot",
+      "claim_scope": "course",
+      "kicker": "Course promise",
+      "title": "Build the agent, then add runtime controls",
+      "lead": "Learners begin with a model-and-tools loop, then run a persistent agent inside OpenShell policy boundaries.",
+      "visual": {
+        "asset": "docs/assets/repository-overview/course-home.png",
+        "alt": "Course home showing the canonical title and abstract",
+        "caption": "The canonical abstract remains locked by course_contract.py.",
+        "points": [
+          "The course defines each mechanism before naming frameworks.",
+          "Runnable artifacts accompany the explanation.",
+          "Modules 3 and 4 add runtime containment after construction."
+        ]
+      },
+      "evidence": ["web/nemoclaw/COURSE_CANON.md", "web/nemoclaw/index.html", "scripts/validation/course_contract.py"],
+      "notes": "Explain the promise in sequence. Learners first construct the mechanisms that make an agent recognizable: a loop, tool requests, memory, routing, and retrieval. Modules 3 and 4 then move those mechanisms into a persistent runtime and introduce enforcement outside the prompt. The canonical abstract and learning objectives are source-controlled and validated verbatim, which prevents a deck or landing-page edit from silently changing the course contract."
+    },
+    {
+      "id": "course-route",
+      "layout": "screenshot",
+      "claim_scope": "course",
+      "kicker": "Learner route",
+      "title": "The course progresses through four modules",
+      "lead": "Each module reuses earlier mechanisms and changes orchestration, state, or enforcement.",
+      "visual": {
+        "asset": "docs/assets/repository-overview/course-map.png",
+        "alt": "Course home module map with four modules and twelve pages",
+        "caption": "The source landing page is the authoritative module map.",
+        "points": [
+          "Module 1 covers the loop, ReAct, and tools.",
+          "Module 2 covers workflows, retrieval, and deep research.",
+          "Module 3 covers NemoClaw setup, OpenClaw, and scheduled operation.",
+          "Module 4 covers OpenShell safety, CLI comparisons, and next steps."
+        ]
+      },
+      "evidence": ["web/nemoclaw/index.html", "web/nemoclaw/SKILL.html"],
+      "notes": "Use the map to set expectations before opening individual examples. Module 1 supplies the execution vocabulary, Module 2 changes how a harness organizes calls and evidence, and Module 3 introduces the persistent OpenClaw runtime assembled by NemoClaw. Module 4 identifies the OpenShell controls that the agent cannot rewrite through prompting. The pages remain independently useful, but the ordered route explains why each additional capability creates a new operational concern."
+    },
+    {
+      "id": "module-one",
+      "layout": "sequence",
+      "claim_scope": "module:1",
+      "kicker": "Module 1 · mechanisms",
+      "title": "Module 1 exposes the agent loop",
+      "lead": "Learners inspect the boundary between model decisions and code execution at every step.",
+      "visual": {
+        "items": [
+          {"label": "1a · Loop", "detail": "Observe → decide → act. The model call is only the decision step."},
+          {"label": "1b · ReAct", "detail": "Tool observations return to the model until the turn reaches a stop condition."},
+          {"label": "1c · Tools", "detail": "The model requests a function; browser code validates and executes it."}
+        ],
+        "outcome": "By the end of Module 1, the learner can point to who chooses an action and who performs it."
+      },
+      "evidence": ["web/nemoclaw/01a-loop.html", "web/nemoclaw/01b-react.html", "web/nemoclaw/01c-tools.html"],
+      "notes": "Module 1 deliberately avoids starting with an agent framework. Part A isolates the perceive, reason, and act loop. Part B shows how an observation changes the next model decision. Part C introduces structured tool requests and keeps execution in ordinary browser code. This ordering gives students a concrete test for later systems: when a framework says it has an agent, they can locate the loop, the tool boundary, and the condition that ends a turn."
+    },
+    {
+      "id": "module-two",
+      "layout": "sequence",
+      "claim_scope": "module:2",
+      "kicker": "Module 2 · workflow scope",
+      "title": "Module 2 controls context and result flow",
+      "lead": "Part 2a defines the workflow boundary; Parts 2b and 2c apply it to fixed retrieval and dynamic research.",
+      "visual": {
+        "items": [
+          {"label": "2a · Scope", "detail": "Choose what context crosses each stage, when work branches, and which results continue."},
+          {"label": "2b · Fixed retrieval", "detail": "Build a bounded evidence bundle for generation or expose retrieval to a ReAct loop."},
+          {"label": "2c · Deep research", "detail": "Create focused branches at run time, preserve their evidence, then synthesize the results."}
+        ],
+        "outcome": "The shared concern is context and result flow; Parts B and C implement it with fixed and dynamic structures."
+      },
+      "evidence": ["web/nemoclaw/02a-routing.html", "web/nemoclaw/02b-rag.html", "web/nemoclaw/02c-deep.html"],
+      "notes": "Part 2a defines the outer workflow as a control over context, branching, and result flow while retaining the ReAct loop inside adaptive stages. Part 2b implements that idea as a developer-defined retrieval pipeline that builds a bounded evidence bundle. Part 2c implements it as planner-created research branches with focused worker context and shared evidence for synthesis. The pages change who defines the stages, while preserving the same workflow concern."
+    },
+    {
+      "id": "module-three",
+      "layout": "comparison",
+      "claim_scope": "module:3",
+      "kicker": "Module 3 · OpenClaw runtime",
+      "title": "Module 3 moves workflows into OpenClaw",
+      "lead": "Learners connect the gateway, inspect workspace context, then add skills and scheduled runs.",
+      "visual": {
+        "images": [
+          {"asset": "docs/assets/repository-overview/openclaw-workspace.png", "alt": "OpenClaw workspace diagram from Module 3b"},
+          {"asset": "docs/assets/repository-overview/openclaw-triggers.png", "alt": "OpenClaw skills and scheduled-trigger diagram from Module 3c"}
+        ],
+        "items": [
+          {"label": "3a · Connect", "detail": "Open a persistent gateway session from the browser."},
+          {"label": "3b · Inspect", "detail": "Read the workspace files and memory that shape later turns."},
+          {"label": "3c · Extend", "detail": "Add skills and observe a scheduled run through the same agent."}
+        ]
+      },
+      "evidence": ["web/nemoclaw/index.html", "web/nemoclaw/03a-kickstart.html", "web/nemoclaw/03b-openclaw.html", "web/nemoclaw/03c-always-on.html"],
+      "notes": "Part 3a connects the browser to OpenClaw's persistent gateway and establishes server-side sessions. Part 3b inspects the file-backed workspace that shapes each turn and stores memory beyond one call. Part 3c adds skills and scheduled triggers. OpenShell contains this running agent, while Part 4a tests its enforcement. The screenshots come from Parts 3b and 3c so the visual evidence matches the full module claim."
+    },
+    {
+      "id": "module-four",
+      "layout": "sequence",
+      "claim_scope": "module:4",
+      "kicker": "Module 4 · containment",
+      "title": "Module 4 turns reach into testable limits",
+      "lead": "Learners probe OpenShell, compare agent defaults, then carry the controls into deployment decisions.",
+      "visual": {
+        "items": [
+          {"label": "4a · Prove", "detail": "Run commands, inspect policy verdicts, and separate harness choices from OpenShell enforcement."},
+          {"label": "4b · Compare", "detail": "Compare CLI agents by tools, persistence, unattended work, and the authority beneath them."},
+          {"label": "4c · Carry forward", "detail": "Map the course layers to deployment, data, evaluation, and current safety work."}
+        ],
+        "outcome": "The module turns wider agent reach into controls that can be tested, compared, and reviewed."
+      },
+      "evidence": ["web/nemoclaw/04a-safety.html", "web/nemoclaw/04b-modern-clis.html", "web/nemoclaw/04c-going-further.html"],
+      "notes": "Part 4a tests the OpenShell boundary with live policy probes and separates application behavior from operating-system enforcement. Part 4b compares CLI agent defaults, persistent capabilities, unattended operation, and the authority each runtime grants. Part 4c carries the four course layers into deployment, data integration, evaluation, and current safety work. The module turns the reach introduced by a persistent agent into controls and review questions that an operator can test."
+    },
+    {
+      "id": "browser-artifact",
+      "layout": "screenshot",
+      "claim_scope": "repository",
+      "kicker": "Browser delivery",
+      "title": "Browser artifacts keep implementation inspectable",
+      "lead": "The page shows the task, model, controls, output, and adjacent RunCell source.",
+      "visual": {
+        "asset": "docs/assets/repository-overview/browser-artifact.png",
+        "alt": "Runnable deep research chat interface in the browser course",
+        "caption": "Captured from the built Pages artifact.",
+        "points": [
+          "Learners can inspect or adapt the example without a frontend toolchain.",
+          "Run, Stop, Reset, errors, and source disclosure share one page contract.",
+          "The browser form also supports workflow prototypes and reviewable artifacts."
+        ]
+      },
+      "evidence": ["web/nemoclaw/02c-deep.html", "web/nemoclaw/scripts/_canvas.js", "scripts/validation/learner_flow_audit.py"],
+      "notes": "After the four-module path, use this slide to separate course content from its delivery form. A browser page carries explanation and runnable output together, while keeping source available without a frontend toolchain. Static and browser validators exercise readiness, Run, Stop, Reset, errors, disclosure, and viewport stability. The same interface can support interactive documentation, agent-generated artifacts, lightweight workflow applications, and general scripting when those checks remain in place."
+    },
+    {
+      "id": "contribution-path",
+      "layout": "gates",
+      "claim_scope": "repository",
+      "kicker": "Contribution path",
+      "title": "Protected controls gate every code change",
+      "lead": "Issues accept proposals. Required CI and human review gate code before merge or release.",
+      "visual": {
+        "steps": [
+          {"label": "Issue", "detail": "State the learner or operator problem and attach evidence."},
+          {"label": "Branch", "detail": "Keep one coherent change and declare its blast radius."},
+          {"label": "Local checks", "detail": "Hooks and focused validators return early, actionable failures."},
+          {"label": "Required CI", "detail": "Run the full gate against the submitted commit."},
+          {"label": "Human authority", "detail": "Protected merge, deployment, tag, and release actions remain explicit."}
+        ]
+      },
+      "evidence": ["README.md", "CONTRIBUTING.md", "docs/agent_process.md", "scripts/validation/contribution_safety_audit.py"],
+      "notes": "Authority depends on validation and review regardless of contributor identity. A novice, maintainer, or coding agent can submit an Issue and propose a branch. The proposal remains untrusted until checks and a human owner accept the exact diff. Local hooks improve feedback but can be skipped, so they are not the security boundary. Required CI, protected refs, protected environments, and explicit release actions provide the authoritative controls. The contribution-safety validator checks that these surfaces remain aligned."
+    },
+    {
+      "id": "validation-report",
+      "layout": "screenshot",
+      "claim_scope": "repository",
+      "kicker": "Observable validation",
+      "title": "Validation reports show rules and findings",
+      "lead": "Reviewers can see what ran, what it examined, why the rule exists, and where its code lives.",
+      "visual": {
+        "asset": "docs/assets/repository-overview/validation-report.png",
+        "alt": "Browser validation report showing suite severity, implementation source, and results",
+        "caption": "The report is generated from docs/validation/latest.json and published with Pages.",
+        "points": [
+          "Required checks block publication or runtime contracts.",
+          "Recommended findings identify defects with a concrete repair.",
+          "Consider findings remain visible for human judgment."
+        ]
+      },
+      "evidence": ["scripts/validation/validate_bundle.py", "web/_skill_explorer.js", "scripts/build/build_pages.sh"],
+      "notes": "The report gives reviewers the evidence behind its status. Every suite carries a severity tier, rationale, implementation location, examined-input count, and findings. A suite that crashes or sees no inputs cannot appear as clean. Reviewers can inspect the checked source and export critique for another pass. This slide deck enters that system through a dedicated slides suite while reusing the repository's prose checks instead of inventing a separate writing standard."
+    },
+    {
+      "id": "validation-layers",
+      "layout": "layers",
+      "claim_scope": "repository",
+      "kicker": "Validation design",
+      "title": "Each failure needs matching evidence",
+      "lead": "Static, mutation, browser, and protected-host checks cover different failures.",
+      "visual": {
+        "items": [
+          {"label": "Static source", "detail": "Links, mounts, prose, concepts, dependencies, figures, localization, governance files."},
+          {"label": "Mutation self-tests", "detail": "Deliberately break a protected contract and require the detector to reject it."},
+          {"label": "Browser runtime", "detail": "Exercise lifecycle, layout, theme, language switching, and state cleanup."},
+          {"label": "Protected host action", "detail": "Require the tested SHA, human approval, and scoped merge/deploy/tag permissions."}
+        ]
+      },
+      "evidence": ["scripts/validation/validate_bundle.py", "scripts/validation/learner_flow_runtime_audit.py", "scripts/validation/contribution_safety_audit.py", ".gitlab-ci.yml"],
+      "notes": "No single validator can prove the repository is correct. Static checks return quickly and catch dead paths, missing contracts, prose regressions, and unsafe configuration before a browser starts. Mutation tests prove that important detectors reject a known bad input. Browser checks cover computed layout and state transitions. GitLab controls decide whether a tested commit may merge, deploy, or become a release. The slide audit follows the same pattern: shared prose rules, slide-specific structure and image checks, then rendered inspection."
+    },
+    {
+      "id": "agent-readable",
+      "layout": "tree",
+      "claim_scope": "repository",
+      "kicker": "Repository navigation",
+      "title": "SKILL.html routes work to local contracts",
+      "lead": "The hierarchy shows people and agents which files, rules, and checks apply before editing.",
+      "visual": {
+        "root": "SKILL.html · repository contract",
+        "items": [
+          {"label": "web/nemoclaw/", "detail": "course pages, browser runtime, figures, materials, and course-specific rules"},
+          {"label": "scripts/validation/", "detail": "deterministic gates, mutation tests, browser audits, and suite provenance"},
+          {"label": "scripts/build/", "detail": "standalone bundles, Pages projection, release packaging, and deck generation"},
+          {"label": "docs/", "detail": "human process, staging, governance, release, and this repository tour"}
+        ]
+      },
+      "evidence": ["SKILL.html", "web/nemoclaw/SKILL.html", "scripts/validation/SKILL.html", "scripts/build/SKILL.html", "docs/SKILL.html"],
+      "notes": "The SKILL hierarchy is a navigation and ownership layer. The root explains repository-wide expectations; child beacons describe the files and commands nearest to a task. This reduces reliance on a large prompt or a contributor's prior familiarity. The validators remain the enforcement layer. For slide work, the docs beacon points to the deck, the build beacon explains regeneration, and the validation beacon exposes the slide audit and its self-test."
+    },
+    {
+      "id": "localization",
+      "layout": "screenshot",
+      "claim_scope": "repository",
+      "kicker": "Localization workflow",
+      "title": "Localization Studio makes source drift visible",
+      "lead": "The interface shows accepted source hashes, current pages, pending coverage, and side-by-side rendered output.",
+      "visual": {
+        "asset": "docs/assets/repository-overview/localization-studio.png",
+        "alt": "Localization Studio comparing English and Brazilian Portuguese course pages",
+        "caption": "The current branch contains reviewed pt-BR coverage through Module 2; later pages remain explicit fallbacks.",
+        "points": [
+          "Localized prose stays in a sparse overlay while all languages share the runtime.",
+          "Source drift becomes a review state instead of a silent mismatch.",
+          "Locale checks catch prose that reads poorly for Brazilian learners and developers."
+        ]
+      },
+      "evidence": ["web/nemoclaw/localization.html", "i18n/pt/localization_state.json", "scripts/validation/localization_audit.py", "scripts/validation/localization_runtime_audit.py"],
+      "notes": "The Portuguese course shares runtime modules, assets, validators, and untranslated fallback behavior with English. Reviewed pages live as sparse overlays and carry the source hash they accepted. Localization Studio compares both rendered pages on the same branch and surfaces current, stale, pending, or blocked states. Static locale checks protect document structure and pt-BR language quality; browser checks verify same-page switching, fallback badges, translated controls, and responsive behavior."
+    },
+    {
+      "id": "preview-release",
+      "layout": "lanes",
+      "claim_scope": "repository",
+      "kicker": "Preview and release",
+      "title": "Branch previews provide review evidence",
+      "lead": "The three lanes differ in ref selection, artifact retention, permissions, and release meaning.",
+      "visual": {
+        "lanes": [
+          {"label": "Branch preview", "detail": "Manual Pages deployment for the tested SHA at a branch path, with short retention.", "status": "review"},
+          {"label": "Internal production", "detail": "Protected main deployment through a manual environment action.", "status": "operate"},
+          {"label": "Public release", "detail": "Annotated SemVer tag, source archive, manifest, SBOM, checksums, and OSRB approval.", "status": "pending OSRB"}
+        ]
+      },
+      "evidence": ["docs/pages_deploy.md", "docs/release_playbook.md", "docs/release_artifacts.md", "RELEASE_STATUS.md", ".gitlab-ci.yml"],
+      "notes": "A preview answers whether the submitted commit renders and behaves as expected. It does not assign a version or authorize public distribution. Internal production is a protected deployment from an approved ref. Public release adds a SemVer tag and immutable release artifacts, including provenance, an SBOM, and checksums. External publication remains blocked until RELEASE_STATUS.md records OSRB approval. The lanes stay separate so a convenient preview cannot accidentally become release authority."
+    },
+    {
+      "id": "review-path",
+      "layout": "review",
+      "claim_scope": "repository",
+      "kicker": "Review path",
+      "title": "Reviewers start from the artifact they own",
+      "lead": "The course, implementation, validation evidence, and release controls link to one another.",
+      "visual": {
+        "items": [
+          {"label": "Course reviewer", "path": "web/nemoclaw/index.html", "detail": "Follow the learner route and run the browser artifacts."},
+          {"label": "Instructor", "path": "web/nemoclaw/COURSE_CANON.md", "detail": "Check objectives, prerequisites, progression, and teaching evidence."},
+          {"label": "Developer", "path": "SKILL.html", "detail": "Read the nearest contract, declare blast radius, and run focused checks."},
+          {"label": "Release owner", "path": "validation.html + RELEASE_STATUS.md", "detail": "Review the tested SHA, findings, deployment evidence, and publication state."}
+        ]
+      },
+      "evidence": ["web/nemoclaw/index.html", "web/nemoclaw/COURSE_CANON.md", "SKILL.html", "RELEASE_STATUS.md", "docs/release_playbook.md"],
+      "notes": "Close with navigation rather than a slogan. Course reviewers should experience the material in order and inspect the artifacts as learners do. Instructors can compare that experience with the canonical objectives. Developers should begin at the nearest SKILL beacon and use the validation ladder for the touched surfaces. Release owners should review the exact tested commit, the rendered preview, gate findings, deployment authority, and the explicit publication state."
+    }
+  ]
+}

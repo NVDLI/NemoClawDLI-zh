@@ -11,7 +11,7 @@
   "node_type": "directory-explorer",
   "title": "docs/ agent and deploy notes",
   "source_dir": "docs/",
-  "summary": "The longer-form notes that do not belong in a SKILL beacon: how the static Pages site is built and published, how temporary staging previews are isolated from production, and the notebook-corruption pattern to avoid. (docs/validation/ holds the generated gate log, surfaced through the validation report, not here.) A live explorer: open a note, read it, and ask the model about it.",
+  "summary": "Longer-form operating notes plus the hosted repository-overview deck for course reviewers, developers, and release owners. The deck is generated from one manifest into browser and PowerPoint forms; docs/validation/ holds the generated gate log surfaced through the validation report.",
   "related": [
     "docs/pages_deploy.md",
     "docs/staging-deployments.md",
@@ -23,6 +23,9 @@
     "docs/release_playbook.md",
     "docs/release_artifacts.md",
     "docs/dependency_security.md",
+    "docs/repository-overview.html",
+    "docs/repository-overview.slides.json",
+    "docs/repository-overview.pptx",
     "scripts/compliance/docs/SKILL.html"
   ],
   "explorer": "../web/_skill_explorer.js"
@@ -32,7 +35,7 @@
 <script type="application/json" id="explorer-config">
 {
   "title": "docs/ \u00b7 agent and deploy notes",
-  "summary": "Longer-form notes that back the SKILL beacons, including the temporary staging-preview/prod-lock design and the containerized browser runtime harness. Open one and ask about it; the generated gate log under docs/validation/ is read through the validation report instead.",
+  "summary": "Operating notes plus the hosted repository-overview deck. The deck links course, implementation, validation, localization, staging, and release evidence for stakeholder review.",
   "model": "nvidia/nemotron-3-nano-30b-a3b",
   "ties": [
     "build"
@@ -94,6 +97,21 @@
       "path": "dependency_security.md",
       "role": "dependency security guard",
       "desc": "Fast source-level dependency vulnerability floor audit, waiver policy, SBOM output, and full pip-audit/OSV/GitLab SCA guidance."
+    },
+    {
+      "path": "repository-overview.html",
+      "role": "hosted stakeholder deck",
+      "desc": "Browser presentation generated from repository-overview.slides.json, with keyboard navigation and speaker notes."
+    },
+    {
+      "path": "repository-overview.slides.json",
+      "role": "shared slide source",
+      "desc": "Claim scope, evidence paths, slide content, screenshot references, and speaker notes used by the hosted and PowerPoint builds."
+    },
+    {
+      "path": "repository-overview.pptx",
+      "role": "downloadable stakeholder deck",
+      "desc": "PowerPoint projection of the shared slide manifest for offline presentation and review."
     }
   ],
   "related": [
@@ -121,6 +139,9 @@
     <li><a href="release_playbook.md">release_playbook.md</a></li>
     <li><a href="release_artifacts.md">release_artifacts.md</a></li>
     <li><a href="dependency_security.md">dependency_security.md</a></li>
+    <li><a href="repository-overview.html">repository-overview.html</a></li>
+    <li><a href="repository-overview.slides.json">repository-overview.slides.json</a></li>
+    <li><a href="repository-overview.pptx">repository-overview.pptx</a></li>
     <li><a href="../scripts/compliance/docs/SKILL.html">scripts/compliance/docs/SKILL.html</a></li>
   </ul>
 </noscript>

@@ -117,9 +117,23 @@ for d in cors-proxy deploy scripts docs workspace; do
                  "$T1/$d"/*.sh "$T1/$d"/*.md "$T1/$d"/*.txt "$T1/$d"/*.yml "$T1/$d"/*.yaml "$T1/$d"/*.conf "$T1/$d"/*.json "$T1/$d"/Dockerfile; do
             [ -f "$f" ] && cp "$f" "$OUT/$d"/
         done
+        if [ "$d" = "docs" ] && [ -d "$T1/docs/assets/repository-overview" ]; then
+            mkdir -p "$OUT/docs/assets/repository-overview"
+            cp "$T1"/docs/assets/repository-overview/* "$OUT/docs/assets/repository-overview"/
+        fi
+        if [ "$d" = "docs" ]; then
+            for f in "$T1/docs"/*.pptx; do [ -f "$f" ] && cp "$f" "$OUT/docs"/; done
+        fi
         echo "[build_pages] explorer $d -> public/$d/ ($(find "$OUT/$d" -maxdepth 1 -type f | wc -l) files, source shipped read-only)"
     fi
 done
+
+if [ -f "$T1/docs/repository-overview.slides.json" ]; then
+    test -f "$OUT/docs/repository-overview.html"
+    test -f "$OUT/docs/repository-overview.slides.json"
+    test -f "$OUT/docs/assets/repository-overview/captures.json"
+    if [ -f "$T1/docs/repository-overview.pptx" ]; then test -f "$OUT/docs/repository-overview.pptx"; fi
+fi
 
 # Project each shipped explorer's topbar nav to the Pages layout. In the lab/source tree the
 # logo home is ../web/index.html and the up-breadcrumb is the root SKILL.html hub; neither path

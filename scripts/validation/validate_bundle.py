@@ -132,6 +132,7 @@ import skill_contract as skc  # noqa: E402
 import course_content_contract as cc  # noqa: E402
 import course_dependency_integrity as cdi  # noqa: E402
 import html_structure_audit as hsa  # noqa: E402
+import slides_audit as sla  # noqa: E402
 from collections import defaultdict  # noqa: E402
 
 
@@ -174,6 +175,9 @@ SUITE_META = [
     ("html_structure", "HTML structure", "required",
      "Canonical and localized learner pages must not contain nested anchors. Browsers repair that invalid structure by closing the outer link early, which splits cards and leaks their prose into the surrounding layout.",
      "scripts/validation/html_structure_audit.py", "audit"),
+    ("slides", "Repository overview slides", "required",
+     "The hosted stakeholder deck must stay evidence-backed, substantial enough to present, free of the course's known prose regressions, visually legible, reproducible from its manifest, and safe to render outside the course theme. The suite reuses prose_variety and adds slide-only image, notes, provenance, SVG, and generated-output checks.",
+     "scripts/validation/slides_audit.py", "audit_manifest"),
     ("course_content", "Course content contract", "required",
      "Course promises that generic validators cannot infer: retrieval and safety figures keep their teaching contracts, product comparisons cite public sources, automation semantics stay scoped to the demonstrated configuration, and alpha platform claims retain availability and hardware qualifiers. Each finding names the missing contract piece.",
      "scripts/validation/course_content_contract.py", "run"),
@@ -481,6 +485,21 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
             f"HTML structure: {item['path']}:{item['line']}:{item['column']}: {item['detail']}"
             for item in html_structure_find
         )
+
+    try:
+        slides_manifest = json.loads(sla.MANIFEST.read_text(encoding="utf-8"))
+        slides_find = sla.audit_manifest(slides_manifest)
+        slides_scanned = len(slides_manifest.get("slides", []))
+    except Exception as e:
+        slides_find, slides_scanned = [], 0
+        suite_errors["slides"] = str(e)
+        vl_ok = False
+        ok = False
+        vl_fail.append(f"slides audit error: {e}")
+    if slides_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(f"slides: {item['path']}: {item['detail']}" for item in slides_find)
 
     # grounding reference sweep (fast, no-llm). Folds the em-dash / ungrounded / cross
     # signals into the durable log so the cadence reflects content health, not just links.
@@ -837,6 +856,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                              f"line {item['line']}, column {item['column']}: {item['detail']}", REQUIRED,
                              "Replace the outer card link with a non-interactive container and give each destination its own sibling link. Never nest one anchor inside another.")
                            for item in html_structure_find],
+        "slides": [D(item["path"], f"[{item['code']}] {item['detail']}", REQUIRED,
+                     "Repair the shared manifest or generated deck, then run slides_audit.py and its mutation self-test. Reuse the course prose rules; preserve evidence paths, screenshot provenance, speaker-note depth, image contrast, and isolated SVG color defaults.")
+                   for item in slides_find],
         "course_content": [D(path, detail, REQUIRED,
                              "Restore the source-backed teaching contract. Keep retrieval/safety explanations complete, product comparisons grounded in public sources, automation behavior scoped to the demonstrated configuration, and alpha platform claims qualified.")
                            for path, detail in cc_find],
@@ -1035,6 +1057,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "links": s["pages"], "cross_course": s["pages"], "asset_leaks": s["pages"],
         "reachability": reach.get("pages", 0), "page_audit": audit.get("pages", 0), "course_content": 8,
         "html_structure": len(hsa.source_pages(TASK1)),
+        "slides": slides_scanned,
         "course_dependency_integrity": 14,
         "grounding": len(grecs), "prose_variety": len(pv_rows), "prose_buzz": len(pv_rows), "redundancy": len(pv_rows), "grammar": len(pv_rows), "structure": len(pv_rows), "headings": len(pv_rows), "assertions": len(pv_rows), "word_echo": len(pv_rows), "comma_weight": len(pv_rows), "branding": len(pv_rows),
         "defer_copula": len(pv_rows), "dense_repeats": len(pv_rows), "over_verbage": len(pv_rows), "padding": len(pv_rows),
@@ -1097,6 +1120,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "foyer_release": foyer,
         "page_audit": audit,
         "html_structure": {"pages": len(hsa.source_pages(TASK1)), "findings": len(html_structure_find)},
+        "slides": {"slides": slides_scanned, "findings": len(slides_find)},
         "course_content": {"findings": len(cc_find)},
         "course_dependency_integrity": {"findings": len(cdi_find)},
         "prose_variety": {"pages": len(pv_rows), "flagged": len(pv_flagged), "flag_at": pv.FLAG_AT,
@@ -1147,6 +1171,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     print(f"  page audit      : {audit.get('pages_with_findings', '?')}/{audit.get('pages', '?')} .html show drift "
           f"(stale tokens / missing assets / contract)")
     print(f"  course content  : {len(cc_find)} required content contract finding(s) (teaching, product, platform)")
+    print(f"  overview slides : {len(slides_find)} required finding(s) over {slides_scanned} slides")
     if not lang_en:
         print(f"  prose / buzz / branding : n/a for '{lang}' (English-prose style suites do not gate a translation)")
     if pv_rows and lang_en:
