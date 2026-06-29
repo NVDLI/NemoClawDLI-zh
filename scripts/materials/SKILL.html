@@ -17,7 +17,8 @@
     "scripts/materials/vendor_glossary.py",
     "scripts/materials/vendor_navigator.py",
     "scripts/materials/build_rag_index.py",
-    "scripts/materials/build_cli_readmes.py"
+    "scripts/materials/build_cli_readmes.py",
+    "scripts/materials/requirements.lock"
   ],
   "explorer": "../../web/_skill_explorer.js"
 }
@@ -63,6 +64,11 @@
       "path": "build_cli_readmes.py",
       "role": "CLI readme builder",
       "desc": "Generates readable CLI reference material from source artifacts."
+    },
+    {
+      "path": "requirements.lock",
+      "role": "material tooling dependency lock",
+      "desc": "Exact Python 3.11 transitive closure for material refresh and drift-check tooling."
     }
   ]
 }
@@ -82,6 +88,7 @@
   <h2>Executable checks</h2>
   <div class="skill-cmds">
     <div class="skill-cmd"><b>Material provenance</b><code>python3 scripts/materials/pull_materials.py --check</code></div>
+    <div class="skill-cmd"><b>Dependency lock</b><code>python3 scripts/security/audit_dependency_locks.py</code></div>
     <div class="skill-cmd"><b>RAG index</b><code>python3 scripts/materials/build_rag_index.py --help</code></div>
     <div class="skill-cmd"><b>CLI readmes</b><code>python3 scripts/materials/build_cli_readmes.py --help</code></div>
   </div>

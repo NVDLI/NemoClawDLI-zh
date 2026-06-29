@@ -23,8 +23,8 @@ WORKDIR /tmp
 #Run pip dependencies
 # Build context is the repo's task1/ dir (deploy/docker-compose.override.yml:
 # context: .), so workspace files are addressed as workspace/<path>.
-COPY workspace/requirements.txt .
-RUN pip3 install --upgrade pip==26.1.2 && pip3 install -r requirements.txt
+COPY workspace/requirements.txt workspace/requirements.lock ./
+RUN pip3 install --upgrade pip==26.1.2 && pip3 install -r requirements.lock
 
 # Install PyTorch with CUDA 12.8 support. cu128 is required for Blackwell
 # GPU architecture (sm_100) on the DGX Spark GB10; earlier wheels compiled
@@ -37,14 +37,14 @@ RUN pip3 install --no-cache-dir \
     --index-url https://download.pytorch.org/whl/cu128 \
     --upgrade
 
-# Re-run requirements.txt AFTER PyTorch so that any package (e.g. OpenTelemetry)
+# Re-run requirements.lock AFTER PyTorch so that any package (e.g. OpenTelemetry)
 # that pip deprioritised earlier in favour of PyTorch's transitive deps gets the
-# pinned version we specify in requirements.txt.  This is a no-op for packages
+# resolved version in the lock wins. This is a no-op for packages
 # already at the right version.
-RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
+RUN pip3 install --no-cache-dir -r /tmp/requirements.lock
 
 # Headless Chromium for in-lab browser/render experiments. playwright (the driver) is
-# pinned in requirements.txt and installed above; this pulls the browser binary plus the
+# pinned in requirements.lock and installed above; this pulls the browser binary plus the
 # system libraries it needs to launch, so a notebook or the render-check harness
 # (scripts/runtime/render_check.py) can drive a real browser with no manual setup. A repo pull
 # builds this in; the capability is documented in workspace/SKILL.html.

@@ -27,10 +27,29 @@ a source manifest allowed a vulnerable minimum such as `starlette>=0.40.0` or
 `mcp>=1.5.0`. It also tracks vulnerable transitive packages surfaced by the
 resolved workspace scan, such as `aiohttp` and `cryptography`. It also makes unused vulnerable runtime dependencies visible so they can be removed instead of waived.
 
-The workspace manifest is an exact direct-dependency lock so source/SBOM scans retain
-package identity. It does not replace a hash-locked transitive closure or the full
-installed-environment SCA scan. The gate rejects an unpinned direct workspace
-dependency and direct dependencies intentionally removed from the supported runtime.
+The workspace manifest keeps reviewed direct dependencies readable. `workspace/requirements.lock`
+is the exact Python 3.11 transitive closure used by release installation and SBOM generation.
+Material refresh tooling and SCA tooling have separate locks under `scripts/materials/` and
+`scripts/security/`, so scanner packages do not appear as runtime components.
+
+Validate lock shape, direct-pin parity, and detector mutations:
+
+```bash
+python3 scripts/security/audit_dependency_locks.py --self-test
+python3 scripts/security/audit_dependency_locks.py
+```
+
+Regenerate with the repository's pinned `uv==0.11.25` after changing a direct manifest:
+
+```bash
+uv pip compile workspace/requirements.txt --python-version 3.11 --no-header --no-annotate --output-file workspace/requirements.lock
+uv pip compile scripts/materials/requirements.lock.in --python-version 3.11 --no-header --no-annotate --output-file scripts/materials/requirements.lock
+uv pip compile scripts/security/requirements-sca.lock.in --python-version 3.11 --no-header --no-annotate --output-file scripts/security/requirements-sca.lock
+```
+
+Review the full lock diff, rerun SCA, and commit each direct manifest with its lock. Exact versions
+stabilize resolution and SBOM identity; installed-environment SCA remains required. The direct gate
+also rejects unpinned workspace dependencies and dependencies intentionally removed from the runtime.
 `langserve` and `langgraph-cli` are such packages: no tracked course or service
 code imports them. The CLI's in-memory runtime also conflicts with the supported
 protobuf, cryptography, OpenTelemetry, and Starlette compatibility line. Reintroducing
@@ -150,16 +169,15 @@ advisory-database rescans of default-branch SBOM components.
 These are intentionally not hidden as vague future work. File separate issues/MRs
 when taking them on:
 
-1. Add reproducible Python resolution with a constraints or lock workflow. The
-   current floor plus resolved-env SCA model catches vulnerable outcomes, but it
-   does not guarantee identical resolution across machines.
+1. Add hashes or signed provenance to the exact Python lock workflow when the release host and
+   artifact policy are finalized.
 2. Add image SCA for built service images. Use public-safe scanners such as Trivy,
    Grype, or OSV-Scanner for public images; keep NVIDIA/private base image scans
    in internal CI or registry tooling when image names/layers are not public-safe.
-3. Enable public GitHub supply-chain features when mirrored externally: dependency
-   graph, Dependabot alerts, dependency review action, CodeQL/code scanning, and
-   secret scanning. Keep GitLab/internal jobs authoritative while GitLab remains
-   canonical.
+3. Enable and smoke-test the host dependency graph, Dependabot alerts, CodeQL upload,
+   secret scanning, and push protection when mirrored externally. Repo-owned update,
+   dependency-review, and CodeQL workflow definitions are already versioned. Keep
+   GitLab/internal jobs authoritative while GitLab remains canonical.
 4. Add `CODEOWNERS` and protected-branch rules for dependency manifests, Dockerfiles,
    `scripts/security/*`, CI files, deploy files, and waiver registry changes.
 5. Consider VEX only if downstream consumers need machine-readable non-affected

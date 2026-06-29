@@ -174,6 +174,8 @@ python3 scripts/validation/localization_audit.py --self-test  # locale detector 
 python3 scripts/validation/localization_audit.py --locale pt-BR  # drift + pt-BR language contract
 python3 scripts/security/audit_python_dependencies.py    # declared floors/pins have no known PyPI/OSV vulns
 python3 scripts/security/audit_vulnerability_waivers.py  # accepted vuln exceptions are owned + unexpired
+python3 scripts/security/audit_dependency_locks.py --self-test  # lock detector rejects stale/unpinned mutations
+python3 scripts/security/audit_dependency_locks.py        # runtime/material/SCA locks match direct manifests
 python3 scripts/build/package_release.py --self-test     # archive/manifest/checksum determinism
 bash    scripts/runtime/run_engine.sh --self-test        # link-engine self-test
 python3 scripts/validation/validate_bundle.py --scope ship  # grounding, reachability, page audit, em-dash
