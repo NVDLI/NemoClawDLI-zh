@@ -157,6 +157,30 @@
       "kind": "generated-reference",
       "license": "generated-from-authored-source",
       "disposition": "generated CLI README excerpt"
+    },
+    {
+      "path": "docs/repository-overview.slides.json",
+      "kind": "authored-presentation-source",
+      "license": "Apache-2.0",
+      "disposition": "shared authored source; visual language references the Apache-2.0 s-fx-43-v1 deck recorded in the manifest"
+    },
+    {
+      "path": "docs/repository-overview.html",
+      "kind": "generated-presentation",
+      "license": "generated-from-authored-source",
+      "disposition": "hosted projection of docs/repository-overview.slides.json"
+    },
+    {
+      "path": "docs/repository-overview.pptx",
+      "kind": "generated-presentation",
+      "license": "generated-from-authored-source",
+      "disposition": "PowerPoint projection of docs/repository-overview.slides.json"
+    },
+    {
+      "path": "docs/assets/repository-overview",
+      "kind": "generated-course-screenshots",
+      "license": "generated-from-authored-source",
+      "disposition": "browser captures of repository-owned Pages surfaces with selector provenance in captures.json"
     }
   ],
   "forbidden_private_link_regexes": [

@@ -16,6 +16,8 @@
     "scripts/validation/validate_bundle.py",
     "scripts/validation/validate_layout.py",
     "scripts/validation/html_structure_audit.py",
+    "scripts/validation/slides_audit.py",
+    "scripts/validation/slides_runtime_audit.mjs",
     "scripts/validation/grounding.py",
     "scripts/validation/prose_variety.py",
     "scripts/validation/code_hygiene.py",
@@ -72,6 +74,16 @@
       "path": "html_structure_audit.py",
       "role": "HTML structure gate",
       "desc": "Rejects nested anchors in canonical and localized learner pages before browser repair can split cards and leak content."
+    },
+    {
+      "path": "slides_audit.py",
+      "role": "stakeholder slide gate",
+      "desc": "Reuses course prose detectors and adds claim-scope, uninterrupted Module 1-4 sequence, module-narrative, evidence-breadth, speaker-note, screenshot, SVG isolation, capture-provenance, and generated-output checks with mutation tests."
+    },
+    {
+      "path": "slides_runtime_audit.mjs",
+      "role": "stakeholder slide browser gate",
+      "desc": "Renders every hosted slide, verifies one-line titles, whitespace balance, hash navigation, image decoding, speaker notes, and stage overflow, then writes scratch screenshots for inspection."
     },
     {
       "path": "grounding.py",
@@ -239,6 +251,7 @@
   <div class="skill-cmd"><b>Ship gate</b><code>python3 scripts/validation/validate_bundle.py --no-write --scope ship</code></div>
   <div class="skill-cmd"><b>Layout links</b><code>python3 scripts/validation/validate_layout.py --quiet</code></div>
   <div class="skill-cmd"><b>HTML structure + detector</b><code>python3 scripts/validation/html_structure_audit.py &amp;&amp; python3 scripts/validation/html_structure_audit.py --self-test</code></div>
+  <div class="skill-cmd"><b>Stakeholder slides + detector</b><code>python3 scripts/validation/slides_audit.py &amp;&amp; python3 scripts/validation/slides_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>Cell contract</b><code>python3 scripts/validation/cell_audit.py</code></div>
   <div class="skill-cmd"><b>Learner-flow static + detector</b><code>python3 scripts/validation/learner_flow_audit.py &amp;&amp; python3 scripts/validation/learner_flow_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>Learner-flow browser lifecycle</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/learner_flow_runtime_audit.py --site-root web</code></div>
@@ -267,6 +280,8 @@
   <div class="skill-grid">
     <a class="skill-card" href="validate_bundle.py"><b>validate_bundle.py</b><span>ship gate. Composes every validator into the release gate and durable report.</span></a>
     <a class="skill-card" href="validate_layout.py"><b>validate_layout.py</b><span>layout gate. Checks links, static mounts, and SKILL beacons.</span></a>
+    <a class="skill-card" href="slides_audit.py"><b>slides_audit.py</b><span>stakeholder slide gate. Reuses prose rules and checks claim scope, an uninterrupted Module 1-4 sequence, module narrative, evidence breadth, note depth, screenshot contrast, SVG isolation, provenance, and generated output.</span></a>
+    <a class="skill-card" href="slides_runtime_audit.mjs"><b>slides_runtime_audit.mjs</b><span>stakeholder slide browser gate. Renders every slide and checks one-line titles, whitespace balance, navigation, images, notes, and stage bounds.</span></a>
     <a class="skill-card" href="grounding.py"><b>grounding.py</b><span>grounding sweep. Checks cited material association and source-grounding signals.</span></a>
     <a class="skill-card" href="prose_variety.py"><b>prose_variety.py</b><span>prose cadence. Finds rhythm, buzz, grammar, and structural prose issues.</span></a>
     <a class="skill-card" href="code_hygiene.py"><b>code_hygiene.py</b><span>code bloat and style. Scans code comments, walls, duplication, size, constants, and prose tells in code.</span></a>

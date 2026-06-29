@@ -19,7 +19,10 @@
     "scripts/build/publish_edx.py",
     "scripts/build/install-hooks.sh",
     "scripts/build/build_branch_manifest.py"
-    ,"scripts/build/package_release.py"
+    ,"scripts/build/package_release.py",
+    "scripts/build/build_repository_overview_html.py",
+    "scripts/build/build_repository_overview.mjs",
+    "scripts/build/capture_repository_overview.mjs"
   ],
   "explorer": "../../web/_skill_explorer.js"
 }
@@ -80,6 +83,21 @@
       "path": "package_release.py",
       "role": "deterministic release packager",
       "desc": "Builds a normalized versioned archive, release manifest, copied SBOM assets, and SHA256SUMS with a reproducibility self-test."
+    },
+    {
+      "path": "build_repository_overview_html.py",
+      "role": "hosted slide generator",
+      "desc": "Builds docs/repository-overview.html from the shared slide manifest and checks generated-output freshness."
+    },
+    {
+      "path": "build_repository_overview.mjs",
+      "role": "PowerPoint slide generator",
+      "desc": "Builds docs/repository-overview.pptx with artifact-tool from the same manifest."
+    },
+    {
+      "path": "capture_repository_overview.mjs",
+      "role": "slide evidence capture",
+      "desc": "Captures repository-owned Pages surfaces and records exact page, selector, and talking-point provenance."
     }
   ]
 }
@@ -101,6 +119,7 @@
     <div class="skill-cmd"><b>Standalone bundle</b><code>python3 scripts/build/bundle_standalone.py --src web/nemoclaw --out /tmp/nemoclaw_bundle_check --clean --full</code></div>
     <div class="skill-cmd"><b>Pages build</b><code>bash scripts/build/build_pages.sh</code></div>
     <div class="skill-cmd"><b>Release package determinism</b><code>python3 scripts/build/package_release.py --self-test</code></div>
+    <div class="skill-cmd"><b>Hosted slide deck</b><code>python3 scripts/build/build_repository_overview_html.py --check</code></div>
     <div class="skill-cmd"><b>edX export</b><code>python3 scripts/build/publish_edx.py --help</code></div>
   </div>
   <h2>Linkage map</h2>
@@ -113,6 +132,9 @@
     <a class="skill-card" href="build_branch_manifest.py"><b>build_branch_manifest.py</b><span>branch manifest. Lists only production and preview paths published in the current Pages artifact.</span></a>
     <a class="skill-card" href="build_language_manifest.py"><b>build_language_manifest.py</b><span>language manifest. Builds language-branch metadata for translated bundles.</span></a>
     <a class="skill-card" href="package_release.py"><b>package_release.py</b><span>deterministic release packager. Builds the versioned archive, manifest, release assets, and checksums.</span></a>
+    <a class="skill-card" href="build_repository_overview_html.py"><b>build_repository_overview_html.py</b><span>hosted slide generator. Projects the shared manifest into a keyboard-navigable HTML deck.</span></a>
+    <a class="skill-card" href="build_repository_overview.mjs"><b>build_repository_overview.mjs</b><span>PowerPoint generator. Projects the shared manifest into the offline PPTX deck.</span></a>
+    <a class="skill-card" href="capture_repository_overview.mjs"><b>capture_repository_overview.mjs</b><span>browser evidence capture. Records real course, Studio, and validation surfaces for slide use.</span></a>
   </div>
   <h2>Interactive explorer</h2>
   <p>The explorer below opens source files, tours important sections, and checks documented paths against the repository tree.</p>

@@ -1,4 +1,9 @@
 <svg class="gfx-dark" viewBox="0 0 1300 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three layers of access to a model or agent separated by clean vertical dividing lines with scaled text and nested g-group components." preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; display:block; background:var(--gfx-bg); border:1px solid var(--gfx-line); border-radius:12px; padding:16px; max-width:1400px; margin:1.5rem auto">
+          <!-- Standalone fallback: course pages override these variables through .gfx-dark, while
+               img/PPTX/rendering tools still receive a complete dark palette. -->
+          <style>
+            svg.gfx-dark{--gfx-ink:#e8eaed;--gfx-ink2:#c6cace;--gfx-sub:#9aa0a6;--gfx-faint:#6b7177;--gfx-line:#3a3f45;--gfx-panel:#17191c;--gfx-bg:#0d0d0d;--gfx-blue:#5aa8ff;--gfx-green:#9bd14a;--gfx-tint-blue:#15273d;--gfx-tint-green:#1d2a12}
+          </style>
           <defs>
             <marker id="arrow-gray" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
               <path d="M0,2 L6,5 L0,8 Z" fill="var(--gfx-line)"/>

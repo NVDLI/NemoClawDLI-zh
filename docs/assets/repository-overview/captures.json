@@ -1,0 +1,103 @@
+{
+  "schema": "nemoclaw-slide-captures/1",
+  "baseUrl": "http://127.0.0.1:8016",
+  "captures": [
+    {
+      "file": "course-home.png",
+      "page": "/nemoclaw/index.html",
+      "wait": ".module-grid",
+      "selector": ".hero",
+      "talkingPoint": "The canonical title and course promise appear before setup or implementation detail.",
+      "url": "http://127.0.0.1:8016/nemoclaw/index.html",
+      "bytes": 31738
+    },
+    {
+      "file": "course-map.png",
+      "page": "/nemoclaw/index.html",
+      "wait": ".module-grid",
+      "selector": ".module-grid",
+      "talkingPoint": "Four modules carry the learner from an agent loop to runtime containment.",
+      "url": "http://127.0.0.1:8016/nemoclaw/index.html",
+      "bytes": 42307
+    },
+    {
+      "file": "module-2-workflow.png",
+      "page": "/nemoclaw/02a-routing.html",
+      "wait": ".pattern-grid",
+      "selector": ".pattern-grid",
+      "talkingPoint": "Part A compares when the model chooses work and when deterministic code executes it.",
+      "url": "http://127.0.0.1:8016/nemoclaw/02a-routing.html",
+      "bytes": 36848
+    },
+    {
+      "file": "module-2-deep-research.png",
+      "page": "/nemoclaw/02c-deep.html",
+      "wait": ".deep-stages",
+      "selector": ".deep-stages",
+      "talkingPoint": "Part C exposes planning, isolated investigation, shared evidence, and synthesis as separate stages.",
+      "url": "http://127.0.0.1:8016/nemoclaw/02c-deep.html",
+      "bytes": 17059
+    },
+    {
+      "file": "browser-artifact.png",
+      "page": "/nemoclaw/02c-deep.html",
+      "wait": "#deep-artifact > *",
+      "selector": "#deep-artifact",
+      "talkingPoint": "The browser exposes a runnable deep-research interface while keeping its source available in the adjacent RunCell.",
+      "url": "http://127.0.0.1:8016/nemoclaw/02c-deep.html",
+      "bytes": 27290
+    },
+    {
+      "file": "protocol-surfaces.png",
+      "page": "/nemoclaw/03a-kickstart.html",
+      "wait": ".hero figure svg",
+      "selector": ".hero figure",
+      "talkingPoint": "The rendered course page distinguishes request-response APIs, MCP tool transport, and the persistent OpenClaw gateway.",
+      "url": "http://127.0.0.1:8016/nemoclaw/03a-kickstart.html",
+      "bytes": 50459
+    },
+    {
+      "file": "openclaw-workspace.png",
+      "page": "/nemoclaw/03b-openclaw.html",
+      "wait": ".hero figure svg",
+      "selector": ".hero figure",
+      "talkingPoint": "Part 3b shows how OpenClaw workspace files shape the next agent turn.",
+      "url": "http://127.0.0.1:8016/nemoclaw/03b-openclaw.html",
+      "bytes": 41700
+    },
+    {
+      "file": "openclaw-triggers.png",
+      "page": "/nemoclaw/03c-always-on.html",
+      "wait": ".hero .fig-embed svg",
+      "selector": ".hero .fig-embed",
+      "talkingPoint": "Part 3c adds skills and scheduled triggers to the same persistent OpenClaw runtime.",
+      "url": "http://127.0.0.1:8016/nemoclaw/03c-always-on.html",
+      "bytes": 31014
+    },
+    {
+      "file": "openshell-boundary.png",
+      "page": "/nemoclaw/04a-safety.html",
+      "wait": ".architecture-map svg",
+      "selector": ".architecture-map",
+      "talkingPoint": "OpenShell owns gateway, policy, network, model-routing, and tool boundaries outside the agent harness.",
+      "url": "http://127.0.0.1:8016/nemoclaw/04a-safety.html",
+      "bytes": 67101
+    },
+    {
+      "file": "localization-studio.png",
+      "page": "/nemoclaw/localization.html",
+      "wait": ".loc-page",
+      "talkingPoint": "Localization Studio compares English and Portuguese on the same branch and surfaces source drift.",
+      "url": "http://127.0.0.1:8016/nemoclaw/localization.html",
+      "bytes": 97714
+    },
+    {
+      "file": "validation-report.png",
+      "page": "/validation.html",
+      "wait": ".rp-main",
+      "talkingPoint": "The browser report exposes the rule, implementation source, severity, and exact findings behind each gate.",
+      "url": "http://127.0.0.1:8016/validation.html",
+      "bytes": 77472
+    }
+  ]
+}

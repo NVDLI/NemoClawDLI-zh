@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Run a repo node script headless against the REAL host tree (CI + python shims).
 # Resolution, each running the script against THIS repo's files:
-#   1. host `node` on PATH.
-#   2. `node` in a throwaway container with the host repo mounted (correct by construction).
-#   3. a running lab container's node -- ONLY if /sandbox/dli matches this tree (guarded; that
+#   1. explicit NODE_BIN, including a Windows node.exe reached from WSL.
+#   2. host `node` on PATH.
+#   3. `node` in a throwaway container with the host repo mounted (correct by construction).
+#   4. a running lab container's node -- ONLY if /sandbox/dli matches this tree (guarded; that
 #      mount can be a named volume diverged from the host, which would run against a stale tree).
 # Fails LOUD if none reachable. Usage: run_node.sh <script> [args...]  (script abs or repo-relative)
 set -euo pipefail
@@ -12,6 +13,23 @@ REPO="$(cd "$HERE/../.." && pwd)"
 SCRIPT="${1:?usage: run_node.sh <script> [args...]}"; shift
 case "$SCRIPT" in /*) ABS="$SCRIPT";; *) ABS="$REPO/$SCRIPT";; esac
 REL="${ABS#"$REPO"/}"
+
+if [ -n "${NODE_BIN:-}" ]; then
+  if [ ! -x "$NODE_BIN" ]; then
+    echo "run_node: NODE_BIN is not executable: $NODE_BIN" >&2
+    exit 2
+  fi
+  case "$NODE_BIN" in
+    *.exe)
+      if ! command -v wslpath >/dev/null 2>&1; then
+        echo "run_node: NODE_BIN points to node.exe but wslpath is unavailable." >&2
+        exit 2
+      fi
+      exec "$NODE_BIN" "$(wslpath -w "$ABS")" "$@"
+      ;;
+    *) exec "$NODE_BIN" "$ABS" "$@" ;;
+  esac
+fi
 
 if command -v node >/dev/null 2>&1; then
   exec node "$ABS" "$@"

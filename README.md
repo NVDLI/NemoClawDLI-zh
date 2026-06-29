@@ -47,6 +47,12 @@ manifest, resolved-environment SBOM, and checksums. See
 Students enter through the release foyer, [`web/index.html`](web/index.html). It surfaces
 only released courses. Today that is [`web/nemoclaw/`](web/nemoclaw/).
 
+For a presentation-led review, open the hosted
+[`repository overview`](docs/repository-overview.html). It connects the learner route,
+browser artifacts, runtime boundaries, contribution controls, localization workflow, and
+release evidence. The downloadable PowerPoint version lives beside it at
+[`docs/repository-overview.pptx`](docs/repository-overview.pptx).
+
 Localized course prose lives as a sparse same-branch overlay under [`i18n/`](i18n/).
 Canonical `web/` runtime modules, assets, machine-contract pages, and untranslated pages remain shared.
 Open [`web/nemoclaw/localization.html`](web/nemoclaw/localization.html) to compare English
@@ -120,6 +126,8 @@ python3 scripts/validation/contribution_safety_audit.py
 python3 scripts/build/assemble_locale_overlay.py --self-test
 python3 scripts/validation/localization_audit.py --self-test
 python3 scripts/validation/localization_audit.py --locale pt-BR
+python3 scripts/validation/slides_audit.py --self-test
+python3 scripts/validation/slides_audit.py
 python3 scripts/compliance/source_gate.py
 python3 scripts/build/package_release.py --self-test
 bash scripts/runtime/run_engine.sh --self-test

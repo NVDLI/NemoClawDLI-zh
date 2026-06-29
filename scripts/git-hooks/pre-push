@@ -168,6 +168,14 @@ if [ -f "$BUNDLE" ]; then
         echo "Repair the detector before trusting its nested-anchor result."
         exit 1
     fi
+    if ! python3 "$T1/scripts/validation/slides_audit.py" --self-test \
+       || ! python3 "$T1/scripts/build/build_repository_overview_html.py" --check; then
+        echo ""
+        echo "pre-push: REFUSING PUSH - repository slide source, prose, assets, or generated HTML failed."
+        echo "Run: python3 scripts/validation/slides_audit.py --self-test"
+        echo "Then: python3 scripts/validation/slides_audit.py"
+        exit 1
+    fi
     if ! python3 "$T1/scripts/validation/learner_flow_audit.py" --self-test; then
         echo ""
         echo "pre-push: REFUSING PUSH - learner interaction validator mutation tests failed."

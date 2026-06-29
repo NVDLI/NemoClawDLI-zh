@@ -4,9 +4,10 @@
 # once into scripts/.figtools/ (gitignored, persists across runs via the host mount).
 # All args forward to check_figures.mjs (e.g. --json).
 set -euo pipefail
-HERE="$(cd "$(dirname "$0")/.." && pwd)"
-REPO="$(cd "$HERE/.." && pwd)"
-TOOLS="$HERE/.figtools"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+SCRIPTS="$(cd "$HERE/.." && pwd)"
+REPO="$(cd "$SCRIPTS/.." && pwd)"
+TOOLS="$SCRIPTS/.figtools"
 
 if command -v node >/dev/null 2>&1; then
   if [ ! -d "$TOOLS/node_modules/jsdom" ]; then
