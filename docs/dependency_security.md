@@ -27,6 +27,20 @@ a source manifest allowed a vulnerable minimum such as `starlette>=0.40.0` or
 `mcp>=1.5.0`. It also tracks vulnerable transitive packages surfaced by the
 resolved workspace scan, such as `aiohttp` and `cryptography`. It also makes unused vulnerable runtime dependencies visible so they can be removed instead of waived.
 
+The workspace manifest is an exact direct-dependency lock so source/SBOM scans retain
+package identity. It does not replace a hash-locked transitive closure or the full
+installed-environment SCA scan. The gate rejects an unpinned direct workspace
+dependency and direct dependencies intentionally removed from the supported runtime.
+`langserve` and `langgraph-cli` are such packages: no tracked course or service
+code imports them. The CLI's in-memory runtime also conflicts with the supported
+protobuf, cryptography, OpenTelemetry, and Starlette compatibility line. Reintroducing
+either requires demonstrated runtime need plus a current OSRB and compatibility decision.
+Run its network-free regression check with:
+
+```bash
+python3 scripts/security/audit_python_dependencies.py --self-test
+```
+
 The check is wired into:
 
 - `.gitlab-ci.yml` test job
@@ -121,8 +135,9 @@ CI includes two SCA jobs:
 - `security_sca`: manual on branches/default branch and automatic on schedules. It
   scans the CI Python environment after installing scanner tooling and emits SBOM
   artifacts under `scripts/security/reports/`.
-- `security_deep_sca`: manual on branches/default branch and automatic on
-  schedules. It creates an isolated `.sca-venv`, installs
+- `security_deep_sca`: automatic on merge requests that change a Python dependency
+  manifest, relevant Dockerfile, waiver, or SCA gate; manual on other
+  branches/default branch; and automatic on schedules. It creates an isolated `.sca-venv`, installs
   `workspace/requirements.txt`, audits the resolved workspace environment, and
   emits a CycloneDX SBOM under `scripts/security/reports/deep-workspace/`. This
   job has a 2 hour timeout because full dependency resolution can be slow.

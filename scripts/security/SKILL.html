@@ -52,7 +52,7 @@
     {
       "path": "audit_python_dependencies.py",
       "role": "dependency vulnerability floor audit",
-      "desc": "Checks Python dependency floors and exact pins against PyPI/OSV vulnerability metadata."
+      "desc": "Checks Python dependency floors and exact direct workspace pins against PyPI/OSV metadata, and rejects retired dependencies without a new runtime and OSRB decision."
     },
     {
       "path": "audit_vulnerability_waivers.py",
@@ -117,7 +117,7 @@
   <div class="skill-grid">
     <a class="skill-card" href="audit_iframe_proxy_opt_in.py"><b>audit_iframe_proxy_opt_in.py</b><span>iframe proxy source audit. Checks that direct API use is default, iframe proxy mode is explicit, billing headers are always present for tracking, and worker follow-up findings are documented.</span></a>
     <a class="skill-card" href="iframe_proxy_worker_findings.md"><b>iframe_proxy_worker_findings.md</b><span>worker follow-up findings. Documents proxy-worker concerns for a later deployment-owner MR without changing worker source in this branch.</span></a>
-    <a class="skill-card" href="audit_python_dependencies.py"><b>audit_python_dependencies.py</b><span>dependency vulnerability floor audit. Checks tracked Python dependency declarations against PyPI/OSV metadata.</span></a>
+    <a class="skill-card" href="audit_python_dependencies.py"><b>audit_python_dependencies.py</b><span>dependency vulnerability floor audit. Checks tracked Python declarations against PyPI/OSV metadata, exact workspace pins, and retired direct dependencies.</span></a>
     <a class="skill-card" href="audit_vulnerability_waivers.py"><b>audit_vulnerability_waivers.py</b><span>vulnerability waiver audit. Validates explicit, owned, sourced, and unexpired exceptions.</span></a>
     <a class="skill-card" href="run_full_sca.py"><b>run_full_sca.py</b><span>full SCA and SBOM runner. Supports scanner-separated runtime targeting for clean release SBOMs.</span></a>
     <a class="skill-card" href="vulnerability-waivers.json"><b>vulnerability-waivers.json</b><span>waiver registry. Empty by default; temporary exceptions live here.</span></a>
