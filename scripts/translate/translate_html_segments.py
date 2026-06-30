@@ -36,8 +36,12 @@ SKIP_TEXT = {"script", "style", "pre", "code", "svg", "noscript"}
 ATTRS = {"alt", "aria-label", "placeholder", "title"}
 BLOCK_TAGS = {"p", "li", "h1", "h2", "h3", "h4", "figcaption", "button", "option", "label", "summary", "td", "th", "a"}
 BLOCK_DIV_CLASSES = {"callout", "step", "sys-desc", "num", "eyebrow"}
-UI_FIELD_RE = re.compile(r'\b(?:label|intro|title|summary|greeting)\s*:\s*(["\'])(.*?)(?<!\\)\1', re.S)
-UI_CALL_RE = re.compile(r'\b(?:helpers\.log|log(?:\.h|\.details|\.html)?|info|show)\s*\(\s*(["\'])(.*?)(?<!\\)\1', re.S)
+UI_FIELD_RE = re.compile(r'\b(?:label|intro|title|summary|greeting|disabledMsg|kicker|socket)\s*:\s*(["\'])(.*?)(?<!\\)\1', re.S)
+UI_LINES_RE = re.compile(r'\blines\s*:\s*\[(.*?)\]', re.S)
+UI_HELP_RE = re.compile(r'\b(?:url|token|cfJwt)\s*:\s*`(.*?)`', re.S)
+UI_TERNARY_RE = re.compile(r'\b(?:greeting|disabledMsg)\s*:\s*([^\n]+)')
+JS_STRING_RE = re.compile(r'(["\'])(.*?)(?<!\\)\1', re.S)
+UI_CALL_RE = re.compile(r'\b(?:helpers\.log|log(?:\.h|\.details|\.html)?|info|show)\s*\((.*?)\)\s*;', re.S)
 SCRIPT_RE = re.compile(r'<script\b([^>]*)>(.*?)</script>', re.S | re.I)
 PLACEHOLDER_RE = re.compile(r'(?:<code\b[^>]*>.*?</code>|<kbd\b[^>]*>.*?</kbd>|\\?\$\{[^}]+\}|\{\{[^}]+\}\}|https?://[^\s<"\']+|nvapi-|&[A-Za-z0-9#]+;|<[^>]+>)', re.S | re.I)
 
@@ -189,11 +193,34 @@ def script_segments(raw: str) -> list[Segment]:
         if re.search(r'(?i)\bsrc\s*=|application/json', attrs):
             continue
         body_start = script.start(2)
-        for pattern in (UI_FIELD_RE, UI_CALL_RE):
-            for match in pattern.finditer(body):
+        for match in UI_FIELD_RE.finditer(body):
+            text = match.group(2)
+            if useful(text):
+                out.append(Segment(body_start + match.start(2), body_start + match.end(2), text, "script-ui"))
+        for call in UI_CALL_RE.finditer(body):
+            for match in JS_STRING_RE.finditer(call.group(1)):
                 text = match.group(2)
                 if useful(text):
-                    out.append(Segment(body_start + match.start(2), body_start + match.end(2), text, "script-ui"))
+                    start = body_start + call.start(1) + match.start(2)
+                    out.append(Segment(start, body_start + call.start(1) + match.end(2), text, "script-ui"))
+        for array in UI_LINES_RE.finditer(body):
+            for match in JS_STRING_RE.finditer(array.group(1)):
+                text = match.group(2)
+                if useful(text):
+                    start = body_start + array.start(1) + match.start(2)
+                    out.append(Segment(start, body_start + array.start(1) + match.end(2), text, "script-ui"))
+        for match in UI_HELP_RE.finditer(body):
+            text = match.group(1)
+            if useful(text):
+                out.append(Segment(body_start + match.start(1), body_start + match.end(1), text, "script-ui"))
+        for field in UI_TERNARY_RE.finditer(body):
+            if "?" not in field.group(1):
+                continue
+            for match in JS_STRING_RE.finditer(field.group(1)):
+                text = match.group(2)
+                if useful(text):
+                    start = body_start + field.start(1) + match.start(2)
+                    out.append(Segment(start, body_start + field.start(1) + match.end(2), text, "script-ui"))
     return out
 
 
@@ -265,6 +292,7 @@ def parse_json_array(content: str) -> list[dict[str, str]]:
 def translate_batch(batch: list[tuple[str, str]], profile: dict, model: str, key: str, polish: bool,
                     ledger: UsageLedger, page: str) -> dict[str, str]:
     terminology = "; ".join(f"{source} => {target}" for source, target in profile.get("preferred_terms", {}).items())
+    rejected = "; ".join(f"{phrase} ({fix})" for phrase, fix in profile.get("unfit_phrases", {}).items())
     payload = [{"id": item_id, "source": source} for item_id, source in batch]
     action = ("Edit each Brazilian Portuguese source for grammar, agreement, precision, and natural technical flow. "
               "Do not retranslate English technical tokens that were deliberately preserved."
@@ -279,7 +307,7 @@ model IDs, product names, and English titles of cited papers/books. Do not trans
 Avoid literal calques. Check articles, gender, number, prepositions, and sentence flow after translating. Prefer concise,
 fluent instructional prose written for Brazilian software developers. Do not leave the English word loop in learner prose.
 Terminology: {terminology}
-Never use "IA agentiva", "soquete de raciocínio", "cérebro do agente", "ficheiro", or "equipa"."""
+Rejected literal translations: {rejected}"""
     started = time.monotonic()
     try:
         response = requests.post(

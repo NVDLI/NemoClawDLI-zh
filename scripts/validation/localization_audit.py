@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import html
 import json
 import re
 import shutil
@@ -140,13 +141,30 @@ def script_shapes(raw: str) -> list[str]:
 def scripted_ui_text(raw: str) -> str:
     """Extract common learner-facing object fields without treating model prompts as UI prose."""
     values = []
-    pattern = r'\b(?:label|intro|title|summary|greeting)\s*:\s*(["\'])(.*?)(?<!\\)\1'
+    pattern = r'\b(?:label|intro|title|summary|greeting|disabledMsg|kicker|socket)\s*:\s*(["\'])(.*?)(?<!\\)\1'
     for match in re.finditer(pattern, raw, re.S):
         values.append(match.group(2).replace("\\n", " "))
-    call_pattern = r'\b(?:helpers\.log|log(?:\.h|\.details|\.html)?|info|show)\s*\(\s*(["\'])(.*?)(?<!\\)\1'
-    for match in re.finditer(call_pattern, raw, re.S):
-        values.append(match.group(2).replace("\\n", " "))
+    call_pattern = r'\b(?:helpers\.log|log(?:\.h|\.details|\.html)?|info|show)\s*\((.*?)\)\s*;'
+    for call in re.finditer(call_pattern, raw, re.S):
+        values.extend(match.group(2).replace("\\n", " ") for match in re.finditer(r'(["\'])(.*?)(?<!\\)\1', call.group(1), re.S))
+    for array in re.finditer(r'\blines\s*:\s*\[(.*?)\]', raw, re.S):
+        values.extend(match.group(2) for match in re.finditer(r'(["\'])(.*?)(?<!\\)\1', array.group(1), re.S))
+    values.extend(match.group(1) for match in re.finditer(r'\b(?:url|token|cfJwt)\s*:\s*`(.*?)`', raw, re.S))
+    for field in re.finditer(r'\b(?:greeting|disabledMsg)\s*:\s*([^\n]+)', raw):
+        if "?" in field.group(1):
+            values.extend(match.group(2) for match in re.finditer(r'(["\'])(.*?)(?<!\\)\1', field.group(1)))
     return re.sub(r"\s+", " ", " ".join(values)).strip()
+
+
+def citation_titles(raw: str) -> list[tuple[str, str]]:
+    """Return cited titles that remain canonical across language overlays."""
+    out = []
+    anchor = re.compile(r'<a\b[^>]*\bhref=["\']([^"\']+)["\'][^>]*>(.*?)</a>', re.I | re.S)
+    for href, body in anchor.findall(raw):
+        title = re.search(r"<em>(.*?)</em>", body, re.I | re.S)
+        if title:
+            out.append((href, re.sub(r"\s+", " ", title.group(1)).strip()))
+    return out
 
 
 def html_lang(raw: str) -> str:
@@ -202,12 +220,23 @@ def svg_quality(source_raw: str, target_raw: str, profile: dict) -> list[dict[st
     try:
         source_geometry = svg_geometry(source_raw)
         target_geometry = svg_geometry(target_raw)
+        source_root = ET.fromstring(source_raw)
+        target_root = ET.fromstring(target_raw)
     except ET.ParseError as exc:
         return [{"code": "svg-xml", "detail": f"invalid localized SVG: {exc}"}]
     if 'data-locale="pt-BR"' not in target_raw:
         out.append({"code": "svg-locale", "detail": "localized SVG needs data-locale=pt-BR"})
     if source_geometry != target_geometry:
         out.append({"code": "svg-geometry", "detail": "localized SVG changed non-text geometry or element order"})
+    for source_el, target_el in zip(source_root.iter(), target_root.iter()):
+        if source_el.tag.rsplit("}", 1)[-1] != "tspan":
+            continue
+        source_text = "".join(source_el.itertext()).strip()
+        target_text = "".join(target_el.itertext()).strip()
+        if source_text != target_text and len(target_el.attrib.get("x", "").split()) > 1:
+            out.append({"code": "svg-glyph-positions",
+                        "detail": f"translated tspan {target_text!r} retains source per-glyph x positions"})
+            break
     if re.search(r"<script\b|\bon\w+\s*=", target_raw, re.I):
         out.append({"code": "svg-script", "detail": "localized SVG may not add executable content"})
     visible = svg_visible_text(target_raw)
@@ -268,6 +297,8 @@ def page_quality(source_raw: str, target_raw: str, profile: dict, *, skill: bool
         out.append({"code": "html-lang", "detail": f"expected <html lang=\"{expected_lang}\">"})
     ui_text = scripted_ui_text(target_raw)
     visible = reader_text(target_raw) + " " + ui_text
+    for _, title in citation_titles(target_raw):
+        visible = visible.replace(html.unescape(re.sub(r"<[^>]+>", "", title)), "")
     for marker in profile.get("english_sentence_markers", []):
         if marker in visible:
             out.append({"code": "untranslated-english", "detail": f"reader text still contains {marker!r}"})
@@ -277,6 +308,8 @@ def page_quality(source_raw: str, target_raw: str, profile: dict, *, skill: bool
     for phrase, fix in profile.get("unfit_phrases", {}).items():
         if re.search(rf"(?i)\b{re.escape(phrase)}\b", visible):
             out.append({"code": "unfit-pt-br", "detail": f"{phrase!r}: {fix}"})
+    if citation_titles(source_raw) != citation_titles(target_raw):
+        out.append({"code": "citation-title", "detail": "cited paper/book titles must remain canonical"})
     missing_ids = sorted(html_ids(source_raw) - html_ids(target_raw))
     if missing_ids:
         out.append({"code": "structure-ids", "detail": "missing source ids: " + ", ".join(missing_ids[:12])})
@@ -482,9 +515,22 @@ def self_test() -> list[str]:
         base, _ = scan(root, "pt-BR")
         if base:
             failures.append(f"clean fixture rejected: {base}")
+        cited_source = '<html lang="en"><a href="paper"><em>Canonical Paper Title</em></a></html>'
+        cited_target = '<html lang="pt-BR"><a href="paper"><em>Título traduzido</em></a></html>'
+        if "citation-title" not in {item["code"] for item in page_quality(cited_source, cited_target, profile)}:
+            failures.append("translated citation title escaped detector")
+        line_source = '<html lang="en"><script>const x={lines:["Run the node"]}</script></html>'
+        line_target = '<html lang="pt-BR"><script>const x={lines:["Run the node"]}</script></html>'
+        if "untranslated-ui" not in {item["code"] for item in page_quality(line_source, line_target, profile)}:
+            failures.append("English diagram line escaped detector")
         svg_rel = "web/nemoclaw/assets/figures/lesson.svg"
         svg_source = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 30" aria-label="Agent loop"><rect width="100" height="30"/><text x="5" y="20">Agent loop</text></svg>'
         svg_target = '<svg data-locale="pt-BR" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 30" aria-label="Ciclo do agente"><rect width="100" height="30"/><text x="5" y="20">Ciclo do agente</text></svg>'
+        positioned_source = '<svg xmlns="http://www.w3.org/2000/svg"><text><tspan x="1 2 3">Run</tspan></text></svg>'
+        positioned_target = '<svg data-locale="pt-BR" xmlns="http://www.w3.org/2000/svg"><text><tspan x="1 2 3">Executar</tspan></text></svg>'
+        positioned_profile = {**profile, "_svg_translations": {"Run": "Executar"}}
+        if "svg-glyph-positions" not in {item["code"] for item in svg_quality(positioned_source, positioned_target, positioned_profile)}:
+            failures.append("translated text retaining source glyph positions escaped detector")
         (root / svg_rel).parent.mkdir(parents=True)
         (root / svg_rel).write_text(svg_source)
         (root / "i18n/pt" / svg_rel).parent.mkdir(parents=True)

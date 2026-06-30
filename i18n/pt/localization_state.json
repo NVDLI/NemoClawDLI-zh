@@ -11,6 +11,12 @@
     "web/nemoclaw/02a-routing.html",
     "web/nemoclaw/02b-rag.html",
     "web/nemoclaw/02c-deep.html",
+    "web/nemoclaw/03a-kickstart.html",
+    "web/nemoclaw/03b-openclaw.html",
+    "web/nemoclaw/03c-always-on.html",
+    "web/nemoclaw/04a-safety.html",
+    "web/nemoclaw/04b-modern-clis.html",
+    "web/nemoclaw/04c-going-further.html",
     "web/nemoclaw/index.html"
   ],
   "asset_files": [
@@ -32,7 +38,13 @@
     "web/nemoclaw/assets/figures/02c-deep-1.svg",
     "web/nemoclaw/assets/figures/fig2_react.svg",
     "web/nemoclaw/assets/figures/fig2_rewoo.svg",
-    "web/nemoclaw/assets/figures/rag_arch_2021.svg"
+    "web/nemoclaw/assets/figures/rag_arch_2021.svg",
+    "web/nemoclaw/assets/figures/03a-kickstart-1.svg",
+    "web/nemoclaw/assets/figures/03b-openclaw-1.svg",
+    "web/nemoclaw/assets/figures/03c-always-on-1.svg",
+    "web/nemoclaw/assets/figures/04a-openshell-architecture.svg",
+    "web/nemoclaw/assets/figures/04a-safety-1.svg",
+    "web/nemoclaw/assets/figures/lethal-trifecta.svg"
   ],
   "asset_reviews": {
     "web/nemoclaw/assets/figures/01a-agent-environment.svg": {
@@ -110,6 +122,30 @@
     "web/nemoclaw/assets/figures/rag_arch_2021.svg": {
       "source_sha256": "021eb9d444f12ef30b76b61aba241d874a0bdf6de55c8fd168ac75e6b23438f6",
       "reviewed_on": "2026-06-29"
+    },
+    "web/nemoclaw/assets/figures/03a-kickstart-1.svg": {
+      "source_sha256": "353270d25b189fd9fdbb052d1c67439b40e8b3d7024db556dfa2c7e9b219b3dc",
+      "reviewed_on": "2026-06-29"
+    },
+    "web/nemoclaw/assets/figures/03b-openclaw-1.svg": {
+      "source_sha256": "744bea2f97979bb5e7f156eb401cea606f56b5a0b1adb0fc9927e577aa8a420c",
+      "reviewed_on": "2026-06-29"
+    },
+    "web/nemoclaw/assets/figures/03c-always-on-1.svg": {
+      "source_sha256": "33b2652067f46cac154e2ec6e2e9793777103823ffd10acd39916b5fc3559716",
+      "reviewed_on": "2026-06-29"
+    },
+    "web/nemoclaw/assets/figures/04a-openshell-architecture.svg": {
+      "source_sha256": "0adbf9ac1d02909e82a343b1b3d261b8ab5fbe0a7bebee53d58f74c964c8fac7",
+      "reviewed_on": "2026-06-29"
+    },
+    "web/nemoclaw/assets/figures/04a-safety-1.svg": {
+      "source_sha256": "9a6a9abbc24d0241bf3b26fc954f2bf1c4d752a17336f94eb1ade45553ec56b3",
+      "reviewed_on": "2026-06-29"
+    },
+    "web/nemoclaw/assets/figures/lethal-trifecta.svg": {
+      "source_sha256": "13a799c719ed151961253705995f28882044a3910b15340b12eb2c36a115b893",
+      "reviewed_on": "2026-06-29"
     }
   },
   "reviews": {
@@ -153,6 +189,34 @@
     "web/nemoclaw/02c-deep.html": {
       "source_sha256": "dcc78856d3291755ed7e66bb2a50c2d0bc47205787643bf3764fdc9452c36c15",
       "translation_sha256": "b8c9637a47a3d51480d4baaf9f01cdf9c5e5a5b54ba5e6410156b9ab9c3a4dc4",
+      "reviewed_on": "2026-06-29"
+    },
+    "web/nemoclaw/03a-kickstart.html": {
+      "source_sha256": "23618bf7baf022bc92336ee773276ac99321cc25618c025d19e7a6379c9ccff9",
+      "reviewed_on": "2026-06-29"
+    },
+    "web/nemoclaw/03b-openclaw.html": {
+      "source_sha256": "622027a5e8881077b005a00dec3a65276eb9b9f25e5b8d6f3e8f7614fe9185fc",
+      "translation_sha256": "4c982a78d5ce599172a4ceda7927da9d6027dcfd640c2184edeff01c601b2498",
+      "reviewed_on": "2026-06-29"
+    },
+    "web/nemoclaw/03c-always-on.html": {
+      "source_sha256": "a4f08a283b73803be5636ba4330d807edb2a393a05a06b5082e291120e0f67c4",
+      "reviewed_on": "2026-06-29"
+    },
+    "web/nemoclaw/04a-safety.html": {
+      "source_sha256": "ef0cc4e7dff68ef101bb7bd0a6873dce24f9019ce2ffb9fbb943dcf03bc52eab",
+      "translation_sha256": "b9b28163f204c4057110e28db02dfbd9361864a8920059493b65bf9738aef60b",
+      "reviewed_on": "2026-06-29"
+    },
+    "web/nemoclaw/04b-modern-clis.html": {
+      "source_sha256": "ac945baadaac299c5c8dae7494912aca78b28d890c6beb1444eb1c1615decdf7",
+      "translation_sha256": "5ab98d86e9ced24af218264fc402b12f4e2c062e03af4f63b848a25715cf54a1",
+      "reviewed_on": "2026-06-29"
+    },
+    "web/nemoclaw/04c-going-further.html": {
+      "source_sha256": "dea02e21cfb83a54761adfcba0bc3939ae4b450b96cc8eb2e67da22ccec09f96",
+      "translation_sha256": "8635b269f1bcf0f6bf74e49f603d398909fc74d24f796bee5fe04e7c535f6007",
       "reviewed_on": "2026-06-29"
     }
   }

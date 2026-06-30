@@ -11,14 +11,20 @@
     "02a-routing.html",
     "02b-rag.html",
     "02c-deep.html",
+    "03a-kickstart.html",
+    "03b-openclaw.html",
+    "03c-always-on.html",
+    "04a-safety.html",
+    "04b-modern-clis.html",
+    "04c-going-further.html",
     "index.html"
   ],
   "counts": {
-    "current": 9,
+    "current": 15,
     "stale": 0,
     "blocked": 0,
     "needs-review": 0,
-    "missing": 11
+    "missing": 5
   },
   "pages": [
     {
@@ -80,7 +86,7 @@
       "file": "02b-rag.html",
       "source_sha256": "2c802a3a32300809d160d22b52327f2cf04d66aefd5f91ea129d128b4537d1ff",
       "reviewed_source_sha256": "2c802a3a32300809d160d22b52327f2cf04d66aefd5f91ea129d128b4537d1ff",
-      "target_sha256": "fc6df3f84acd488995b946f5afa8b3000cc4673ba56b3bc6620b2b373a4e1bea",
+      "target_sha256": "d348ea50ce87b926deddd9228490a118999cd794cb20abde6e7014ec3e9a1c88",
       "status": "current",
       "quality": []
     },
@@ -89,7 +95,7 @@
       "file": "02c-deep.html",
       "source_sha256": "b8c9637a47a3d51480d4baaf9f01cdf9c5e5a5b54ba5e6410156b9ab9c3a4dc4",
       "reviewed_source_sha256": "b8c9637a47a3d51480d4baaf9f01cdf9c5e5a5b54ba5e6410156b9ab9c3a4dc4",
-      "target_sha256": "b75e0eec1dc7690dfbfa045bc4dcbb279679ead7d26cf3ef9dc4a627e20d7332",
+      "target_sha256": "8334f74330ea789c86b5693be87ec4fdeabdba91a46d06c17ad368ff1167dd92",
       "status": "current",
       "quality": []
     },
@@ -97,54 +103,54 @@
       "path": "web/nemoclaw/03a-kickstart.html",
       "file": "03a-kickstart.html",
       "source_sha256": "23618bf7baf022bc92336ee773276ac99321cc25618c025d19e7a6379c9ccff9",
-      "reviewed_source_sha256": null,
-      "target_sha256": null,
-      "status": "missing",
+      "reviewed_source_sha256": "23618bf7baf022bc92336ee773276ac99321cc25618c025d19e7a6379c9ccff9",
+      "target_sha256": "312149b3814a56986cf761e8130a1fca651af9204af968e1923405a2bdc0032c",
+      "status": "current",
       "quality": []
     },
     {
       "path": "web/nemoclaw/03b-openclaw.html",
       "file": "03b-openclaw.html",
       "source_sha256": "4c982a78d5ce599172a4ceda7927da9d6027dcfd640c2184edeff01c601b2498",
-      "reviewed_source_sha256": null,
-      "target_sha256": null,
-      "status": "missing",
+      "reviewed_source_sha256": "4c982a78d5ce599172a4ceda7927da9d6027dcfd640c2184edeff01c601b2498",
+      "target_sha256": "79ee9ffa413809ff9cde363bf4875cc772dd433dccf191f3526d05113759c055",
+      "status": "current",
       "quality": []
     },
     {
       "path": "web/nemoclaw/03c-always-on.html",
       "file": "03c-always-on.html",
       "source_sha256": "a4f08a283b73803be5636ba4330d807edb2a393a05a06b5082e291120e0f67c4",
-      "reviewed_source_sha256": null,
-      "target_sha256": null,
-      "status": "missing",
+      "reviewed_source_sha256": "a4f08a283b73803be5636ba4330d807edb2a393a05a06b5082e291120e0f67c4",
+      "target_sha256": "c23a34e87a08d5f79853d1dfab01a3604e53533d9d8d740777048e7aeceb9c4d",
+      "status": "current",
       "quality": []
     },
     {
       "path": "web/nemoclaw/04a-safety.html",
       "file": "04a-safety.html",
       "source_sha256": "b9b28163f204c4057110e28db02dfbd9361864a8920059493b65bf9738aef60b",
-      "reviewed_source_sha256": null,
-      "target_sha256": null,
-      "status": "missing",
+      "reviewed_source_sha256": "b9b28163f204c4057110e28db02dfbd9361864a8920059493b65bf9738aef60b",
+      "target_sha256": "ef8884c75fa78561547a88eb95e4a8f3fa7f1fab4fd30e262db713e69573d3e1",
+      "status": "current",
       "quality": []
     },
     {
       "path": "web/nemoclaw/04b-modern-clis.html",
       "file": "04b-modern-clis.html",
       "source_sha256": "5ab98d86e9ced24af218264fc402b12f4e2c062e03af4f63b848a25715cf54a1",
-      "reviewed_source_sha256": null,
-      "target_sha256": null,
-      "status": "missing",
+      "reviewed_source_sha256": "5ab98d86e9ced24af218264fc402b12f4e2c062e03af4f63b848a25715cf54a1",
+      "target_sha256": "b2bf1731efa5ee97afa3226a089a56e61021a79ec77b111c671d70f75422605f",
+      "status": "current",
       "quality": []
     },
     {
       "path": "web/nemoclaw/04c-going-further.html",
       "file": "04c-going-further.html",
       "source_sha256": "8635b269f1bcf0f6bf74e49f603d398909fc74d24f796bee5fe04e7c535f6007",
-      "reviewed_source_sha256": null,
-      "target_sha256": null,
-      "status": "missing",
+      "reviewed_source_sha256": "8635b269f1bcf0f6bf74e49f603d398909fc74d24f796bee5fe04e7c535f6007",
+      "target_sha256": "4d2c1a1d38dcc289c5b06d30638182182b21ca18a028777ae384e7842aec7a2c",
+      "status": "current",
       "quality": []
     },
     {
@@ -188,7 +194,7 @@
       "file": "index.html",
       "source_sha256": "cc38af7e2cdc16eff1e038c96b887580c7470a4b07c99f57ae7c6083054ce8be",
       "reviewed_source_sha256": "cc38af7e2cdc16eff1e038c96b887580c7470a4b07c99f57ae7c6083054ce8be",
-      "target_sha256": "6e72cd9f2531e7e34c3cde1f64fba29ae6e6ae43b65a13d89ca40fa646e233fd",
+      "target_sha256": "1ee25551fb90f2977e9d56482597419bea2210e542c90a2474fefb30a9abb639",
       "status": "current",
       "quality": []
     },
@@ -348,11 +354,56 @@
       "quality": []
     },
     {
+      "path": "web/nemoclaw/assets/figures/03a-kickstart-1.svg",
+      "file": "03a-kickstart-1.svg",
+      "source_sha256": "353270d25b189fd9fdbb052d1c67439b40e8b3d7024db556dfa2c7e9b219b3dc",
+      "reviewed_source_sha256": "353270d25b189fd9fdbb052d1c67439b40e8b3d7024db556dfa2c7e9b219b3dc",
+      "target_sha256": "1bd652bbc84b2c1fa0215095024caa5248e0bad698ba989452c21bdd14ed9361",
+      "status": "current",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/assets/figures/03b-openclaw-1.svg",
+      "file": "03b-openclaw-1.svg",
+      "source_sha256": "744bea2f97979bb5e7f156eb401cea606f56b5a0b1adb0fc9927e577aa8a420c",
+      "reviewed_source_sha256": "744bea2f97979bb5e7f156eb401cea606f56b5a0b1adb0fc9927e577aa8a420c",
+      "target_sha256": "c74da3deb09057a58ea4f0b679d023aaea6cccb6ced621bcb175c10efec8c74a",
+      "status": "current",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/assets/figures/03c-always-on-1.svg",
+      "file": "03c-always-on-1.svg",
+      "source_sha256": "33b2652067f46cac154e2ec6e2e9793777103823ffd10acd39916b5fc3559716",
+      "reviewed_source_sha256": "33b2652067f46cac154e2ec6e2e9793777103823ffd10acd39916b5fc3559716",
+      "target_sha256": "9af335dfdcbffca99ed3a916a1fcff501602809f1eb0f9c4ae2fed62196a0713",
+      "status": "current",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/assets/figures/04a-openshell-architecture.svg",
+      "file": "04a-openshell-architecture.svg",
+      "source_sha256": "0adbf9ac1d02909e82a343b1b3d261b8ab5fbe0a7bebee53d58f74c964c8fac7",
+      "reviewed_source_sha256": "0adbf9ac1d02909e82a343b1b3d261b8ab5fbe0a7bebee53d58f74c964c8fac7",
+      "target_sha256": "4f1585fec42425506caa39a42fd049ec4d9a9b026a07331a6f0f4123c807a0b4",
+      "status": "current",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/assets/figures/04a-safety-1.svg",
+      "file": "04a-safety-1.svg",
+      "source_sha256": "9a6a9abbc24d0241bf3b26fc954f2bf1c4d752a17336f94eb1ade45553ec56b3",
+      "reviewed_source_sha256": "9a6a9abbc24d0241bf3b26fc954f2bf1c4d752a17336f94eb1ade45553ec56b3",
+      "target_sha256": "bf9dc1563726a8959f066e594da60c74bee49c6db91ba92aa2bb5c2327cc069e",
+      "status": "current",
+      "quality": []
+    },
+    {
       "path": "web/nemoclaw/assets/figures/fig2_react.svg",
       "file": "fig2_react.svg",
       "source_sha256": "82a47487d7300eccf5a730327a28bd3a9f1d9b4c62173a04708b24f84c342032",
       "reviewed_source_sha256": "82a47487d7300eccf5a730327a28bd3a9f1d9b4c62173a04708b24f84c342032",
-      "target_sha256": "62f65612edbef81bc711afcb37a68d9c97a0d65dbf403037c631dddcae865c69",
+      "target_sha256": "386eb634d3ea0c8e2e8c785c2071c3fdb75a59dd4e63ab4eb3ba255d4c772893",
       "status": "current",
       "quality": []
     },
@@ -361,7 +412,16 @@
       "file": "fig2_rewoo.svg",
       "source_sha256": "45c869612a6254f5d62a366361120405178124b30e3a310f05ab30436eb84e6e",
       "reviewed_source_sha256": "45c869612a6254f5d62a366361120405178124b30e3a310f05ab30436eb84e6e",
-      "target_sha256": "50ddd4d4b1468f636def86b30328d192d19fad7090620985e63856f4b1622e74",
+      "target_sha256": "1561a33dfe1f5487965cf967f2fd66226c0f69c79991683169db462e3a98e2ec",
+      "status": "current",
+      "quality": []
+    },
+    {
+      "path": "web/nemoclaw/assets/figures/lethal-trifecta.svg",
+      "file": "lethal-trifecta.svg",
+      "source_sha256": "13a799c719ed151961253705995f28882044a3910b15340b12eb2c36a115b893",
+      "reviewed_source_sha256": "13a799c719ed151961253705995f28882044a3910b15340b12eb2c36a115b893",
+      "target_sha256": "6a17a62db4dc1b341662f7c7730d6557c7ebd6a9f03df216e9b800ffe9048233",
       "status": "current",
       "quality": []
     },
@@ -370,13 +430,13 @@
       "file": "rag_arch_2021.svg",
       "source_sha256": "021eb9d444f12ef30b76b61aba241d874a0bdf6de55c8fd168ac75e6b23438f6",
       "reviewed_source_sha256": "021eb9d444f12ef30b76b61aba241d874a0bdf6de55c8fd168ac75e6b23438f6",
-      "target_sha256": "b5941c638332224104574a2027d76724aa89c219a23c1b58d1f3cdc63e8ebc83",
+      "target_sha256": "8eab2ec216a5d14f1d871101330d82f232e36aa59f684f0c77a76281e802641c",
       "status": "current",
       "quality": []
     }
   ],
   "asset_counts": {
-    "current": 19,
+    "current": 25,
     "stale": 0,
     "blocked": 0,
     "needs-review": 0,
@@ -402,6 +462,18 @@
     {
       "url": "https://www.nvidia.com/pt-br/data-center/ai-data-platform/",
       "use": "agente de pesquisa profunda; pesquisa semântica; inferência; baixa latência"
+    },
+    {
+      "url": "https://www.nvidia.com/pt-br/ai/build-a-claw/",
+      "use": "agentes de IA autônomos; runtime seguro do OpenShell; stack de referência; guardrails de segurança; assistentes sempre ativos; sandbox"
+    },
+    {
+      "url": "https://learn.microsoft.com/pt-br/agent-framework/agents/safety",
+      "use": "limites de confiança; lista de permissões; escopo de impacto; saída não confiável; aprovação de ferramentas"
+    },
+    {
+      "url": "https://aws.amazon.com/pt/what-is/retrieval-augmented-generation/",
+      "use": "geração aumentada via recuperação; grande modelo de linguagem; base de conhecimento; resposta fundamentada"
     }
   ]
 }

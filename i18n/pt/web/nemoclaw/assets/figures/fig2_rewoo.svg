@@ -351,7 +351,7 @@ TkSuQmCC"/>
 <path transform="matrix(1,0,0,-1,-96,478.8)" d="M605.94 268.14H677.82V290.7H605.94Z" fill="#ffffff" fill-rule="evenodd"/>
 <path transform="matrix(1,0,0,-1,-96,478.8)" stroke-width="1.5" stroke-linecap="butt" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="var(--gfx-paper-blue,#2f528f)" d="M605.94 268.14H677.82V290.7H605.94Z"/>
 <g clip-path="url(#clip_6)">
-<text fill="var(--gfx-paper-ink,#595959)" xml:space="preserve" transform="matrix(1 0 -0 1 -96 478.8)" font-size="14.04" font-family="Calibri" font-weight="bold"><tspan y="-274.73" x="629.26 635.1428 642.07858 647.72268">Tarefa</tspan></text>
+<text fill="var(--gfx-paper-ink,#595959)" xml:space="preserve" transform="matrix(1 0 -0 1 -96 478.8)" font-size="14.04" font-family="Calibri" font-weight="bold"><tspan y="-274.73" x="638.491" text-anchor="middle">Tarefa</tspan></text>
 </g>
 <g clip-path="url(#clip_7)">
 <g clip-path="url(#clip_8)">
@@ -380,7 +380,7 @@ AABJRU5ErkJggg=="/>
 <path transform="matrix(1,0,0,-1,-96,478.8)" stroke-width="1.5" stroke-linecap="butt" stroke-dasharray="4.5,1.5" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="var(--gfx-paper-blue,#2f528f)" d="M509.1 349.74H575.7V412.74H509.1Z"/>
 <path transform="matrix(1,0,0,-1,-96,478.8)" d="M507.6 346.6C507.6 348.04 508.76 349.2 510.2 349.2H574.48C575.92 349.2 577.08 348.04 577.08 346.6V336.2C577.08 334.76 575.92 333.6 574.48 333.6H510.2C508.76 333.6 507.6 334.76 507.6 336.2Z" fill="var(--gfx-paper-line,#e7e6e6)" fill-rule="evenodd"/>
 <g clip-path="url(#clip_14)">
-<text fill="var(--gfx-paper-ink,#595959)" xml:space="preserve" transform="matrix(1 0 -0 1 -96 478.8)" font-size="15.96" font-family="Calibri" font-weight="bold"><tspan y="-335.98" x="516.82 525.3107 529.2847 537.16897 545.73947 554.2461 562.274">Planejador</tspan></text>
+<text fill="var(--gfx-paper-ink,#595959)" xml:space="preserve" transform="matrix(1 0 -0 1 -96 478.8)" font-size="15.96" font-family="Calibri" font-weight="bold"><tspan y="-335.98" x="539.547" text-anchor="middle">Planejador</tspan></text>
 </g>
 <g clip-path="url(#clip_15)">
 <g clip-path="url(#clip_16)">
@@ -393,7 +393,7 @@ AABJRU5ErkJggg=="/>
 <path transform="matrix(1,0,0,-1,-96,478.8)" stroke-width="1.5" stroke-linecap="butt" stroke-dasharray="4.5,1.5" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="var(--gfx-paper-blue,#2f528f)" d="M731.58 364.74H769.02V401.58H731.58Z"/>
 <path transform="matrix(1,0,0,-1,-96,478.8)" d="M731.52 362.4C731.52 363.33 732.27 364.08 733.2 364.08H767.28C768.21 364.08 768.96 363.33 768.96 362.4V355.68C768.96 354.75 768.21 354 767.28 354H733.2C732.27 354 731.52 354.75 731.52 355.68Z" fill="var(--gfx-paper-line,#e7e6e6)" fill-rule="evenodd"/>
 <g clip-path="url(#clip_17)">
-<text fill="var(--gfx-paper-ink,#595959)" xml:space="preserve" transform="matrix(1 0 -0 1 -96 478.8)" font-size="10.56" font-family="Calibri" font-weight="bold"><tspan y="-355.42" x="740.66 745.9294 751.5684 757.20748">Ferramenta</tspan></text>
+<text fill="var(--gfx-paper-ink,#595959)" xml:space="preserve" transform="matrix(1 0 -0 1 -96 478.8)" font-size="8.5" font-family="Calibri" font-weight="bold"><tspan y="-355.42" x="748.934" text-anchor="middle">Ferramenta</tspan></text>
 </g>
 <g clip-path="url(#clip_18)">
 <g clip-path="url(#clip_19)">
@@ -406,7 +406,7 @@ AABJRU5ErkJggg=="/>
 <path transform="matrix(1,0,0,-1,-96,478.8)" stroke-width="1.5" stroke-linecap="butt" stroke-dasharray="4.5,1.5" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="var(--gfx-paper-blue,#2f528f)" d="M795.9 375.78H833.34V412.74H795.9Z"/>
 <path transform="matrix(1,0,0,-1,-96,478.8)" d="M795.84 373.54C795.84 374.48 796.6 375.24 797.54 375.24H831.58C832.52 375.24 833.28 374.48 833.28 373.54V366.74C833.28 365.8 832.52 365.04 831.58 365.04H797.54C796.6 365.04 795.84 365.8 795.84 366.74Z" fill="var(--gfx-paper-line,#e7e6e6)" fill-rule="evenodd"/>
 <g clip-path="url(#clip_20)">
-<text fill="var(--gfx-paper-ink,#595959)" xml:space="preserve" transform="matrix(1 0 -0 1 -96 478.8)" font-size="10.56" font-family="Calibri" font-weight="bold"><tspan y="-366.55" x="804.98 810.2494 815.8884 821.52749">Ferramenta</tspan></text>
+<text fill="var(--gfx-paper-ink,#595959)" xml:space="preserve" transform="matrix(1 0 -0 1 -96 478.8)" font-size="8.5" font-family="Calibri" font-weight="bold"><tspan y="-366.55" x="813.254" text-anchor="middle">Ferramenta</tspan></text>
 </g>
 <g clip-path="url(#clip_21)">
 <g clip-path="url(#clip_22)">
@@ -419,7 +419,7 @@ AABJRU5ErkJggg=="/>
 <path transform="matrix(1,0,0,-1,-96,478.8)" stroke-width="1.5" stroke-linecap="butt" stroke-dasharray="4.5,1.5" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="var(--gfx-paper-blue,#2f528f)" d="M778.14 300.9H815.58V337.74H778.14Z"/>
 <path transform="matrix(1,0,0,-1,-96,478.8)" d="M778.08 298.56C778.08 299.49 778.83 300.24 779.76 300.24H813.84C814.77 300.24 815.52 299.49 815.52 298.56V291.84C815.52 290.91 814.77 290.16 813.84 290.16H779.76C778.83 290.16 778.08 290.91 778.08 291.84Z" fill="var(--gfx-paper-line,#e7e6e6)" fill-rule="evenodd"/>
 <g clip-path="url(#clip_23)">
-<text fill="var(--gfx-paper-ink,#595959)" xml:space="preserve" transform="matrix(1 0 -0 1 -96 478.8)" font-size="10.56" font-family="Calibri" font-weight="bold"><tspan y="-291.6" x="787.18 792.4494 798.08847 803.7275">Ferramenta</tspan></text>
+<text fill="var(--gfx-paper-ink,#595959)" xml:space="preserve" transform="matrix(1 0 -0 1 -96 478.8)" font-size="8.5" font-family="Calibri" font-weight="bold"><tspan y="-291.6" x="795.454" text-anchor="middle">Ferramenta</tspan></text>
 </g>
 <path transform="matrix(1,0,0,-1,-96,478.8)" d="M605.94 220.26H644.58V254.7H605.94Z" fill="var(--gfx-paper-green,#32ee5a)" fill-rule="evenodd"/>
 <path transform="matrix(1,0,0,-1,-96,478.8)" stroke-width="1.5" stroke-linecap="butt" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="var(--gfx-paper-blue,#2f528f)" d="M605.94 220.26H644.58V254.7H605.94Z"/>
@@ -442,13 +442,13 @@ AABJRU5ErkJggg=="/>
 <path transform="matrix(1,0,0,-1,-96,478.8)" stroke-width="1.5" stroke-linecap="butt" stroke-dasharray="4.5,1.5" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="var(--gfx-paper-blue,#2f528f)" d="M611.22 140.94H677.93997V203.94H611.22Z"/>
 <path transform="matrix(1,0,0,-1,-96,478.8)" d="M609.84 137.9C609.84 139.35 611.01 140.52 612.46 140.52H676.58C678.03 140.52 679.2 139.35 679.2 137.9V127.42C679.2 125.97 678.03 124.8 676.58 124.8H612.46C611.01 124.8 609.84 125.97 609.84 127.42Z" fill="var(--gfx-paper-line,#e7e6e6)" fill-rule="evenodd"/>
 <g clip-path="url(#clip_28)">
-<text fill="var(--gfx-paper-ink,#595959)" xml:space="preserve" transform="matrix(1 0 -0 1 -96 478.8)" font-size="15.96" font-family="Calibri" font-weight="bold"><tspan y="-127.18" x="623.88 631.4291 640.0634 643.98959 651.45889 659.48678">Solucionador</tspan></text>
+<text fill="var(--gfx-paper-ink,#595959)" xml:space="preserve" transform="matrix(1 0 -0 1 -96 478.8)" font-size="15.96" font-family="Calibri" font-weight="bold"><tspan y="-127.18" x="641.683" text-anchor="middle">Solucionador</tspan></text>
 </g>
 <path transform="matrix(1,0,0,-1,-96,478.8)" stroke-width="1.5" stroke-linecap="butt" stroke-dasharray="4.5,1.5" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="var(--gfx-paper-teal,#00d9f0)" d="M706.62 285.42H895.38V418.14H706.62Z"/>
 <path transform="matrix(1,0,0,-1,-96,478.8)" stroke-width="1.5" stroke-linecap="butt" stroke-dasharray="4.5,1.5" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="var(--gfx-paper-blue,#2f528f)" d="M837.06 320.1H874.5V356.94H837.06Z"/>
 <path transform="matrix(1,0,0,-1,-96,478.8)" d="M837 317.76C837 318.69 837.75 319.44 838.68 319.44H872.76C873.69 319.44 874.44 318.69 874.44 317.76V311.04C874.44 310.11 873.69 309.36 872.76 309.36H838.68C837.75 309.36 837 310.11 837 311.04Z" fill="var(--gfx-paper-line,#e7e6e6)" fill-rule="evenodd"/>
 <g clip-path="url(#clip_29)">
-<text fill="var(--gfx-paper-ink,#595959)" xml:space="preserve" transform="matrix(1 0 -0 1 -96 478.8)" font-size="11.04" font-family="Calibri" font-weight="bold"><tspan y="-310.66" x="845.78 851.289 857.17337 863.0577">Ferramenta</tspan></text>
+<text fill="var(--gfx-paper-ink,#595959)" xml:space="preserve" transform="matrix(1 0 -0 1 -96 478.8)" font-size="8.5" font-family="Calibri" font-weight="bold"><tspan y="-310.66" x="854.419" text-anchor="middle">Ferramenta</tspan></text>
 </g>
 <path transform="matrix(1,0,0,-1,-96,478.8)" d="M845.88 338.82C845.88 339.78 846.63 340.56 847.56 340.56 848.49 340.56 849.24 339.78 849.24 338.82 849.24 337.86 848.49 337.08 847.56 337.08 846.63 337.08 845.88 337.86 845.88 338.82Z" fill-rule="evenodd"/>
 <path transform="matrix(1,0,0,-1,-96,478.8)" stroke-width="1" stroke-linecap="butt" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="var(--gfx-paper-blue,#2f528f)" d="M845.88 338.82C845.88 339.78 846.63 340.56 847.56 340.56 848.49 340.56 849.24 339.78 849.24 338.82 849.24 337.86 848.49 337.08 847.56 337.08 846.63 337.08 845.88 337.86 845.88 338.82Z"/>
@@ -463,7 +463,7 @@ AABJRU5ErkJggg=="/>
 </g>
 <path transform="matrix(1,0,0,-1,-96,478.8)" d="M799.68 436.58C799.68 438.49 801.23 440.04 803.14 440.04H858.74C860.65 440.04 862.2 438.49 862.2 436.58V422.74C862.2 420.83 860.65 419.28 858.74 419.28H803.14C801.23 419.28 799.68 420.83 799.68 422.74Z" fill="var(--gfx-paper-line,#e7e6e6)" fill-rule="evenodd"/>
 <g clip-path="url(#clip_31)">
-<text fill="var(--gfx-paper-ink,#595959)" xml:space="preserve" transform="matrix(1 0 -0 1 -96 478.8)" font-size="14.04" font-family="Calibri" font-weight="bold"><tspan y="-424.94" x="809.35 821.4665 829.02 834.0463 840.40646 847.46859">Executor</tspan></text>
+<text fill="var(--gfx-paper-ink,#595959)" xml:space="preserve" transform="matrix(1 0 -0 1 -96 478.8)" font-size="14.04" font-family="Calibri" font-weight="bold"><tspan y="-424.94" x="828.409" text-anchor="middle">Executor</tspan></text>
 </g>
 <path transform="matrix(1,0,0,-1,-96,478.8)" stroke-width="1" stroke-linecap="butt" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="var(--gfx-paper-blue,#2f528f)" d="M626.04 261.48H632.61V265.68H645.75V261.48H652.32L639.18 257.28Z"/>
 <g clip-path="url(#clip_32)">
@@ -487,13 +487,13 @@ AABJRU5ErkJggg=="/>
 <path transform="matrix(1,0,0,-1,-96,478.8)" stroke-width="1.5" stroke-linecap="butt" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="var(--gfx-paper-blue,#2f528f)" d="M605.94 290.94H677.82V313.5H605.94Z"/>
 <path transform="matrix(1,0,0,-1,-96,478.8)" d="M613.83 295.85H669.75V308.81H613.83Z" fill="var(--gfx-paper-orange,#f08b30)" fill-rule="evenodd"/>
 <g clip-path="url(#clip_36)">
-<text fill="var(--gfx-paper-ink,#595959)" xml:space="preserve" transform="matrix(1 0 -0 1 -96 478.8)" font-size="10.56" font-family="Calibri" font-weight="bold"><tspan y="-298.68" x="613.9 619.15896 624.47067 629.2649 634.5449 643.1724 648.84317 651.4409 656.6153 660.3641 664.5353">&#x003c;exemplos&#x003e;</tspan></text>
+<text fill="var(--gfx-paper-ink,#595959)" xml:space="preserve" transform="matrix(1 0 -0 1 -96 478.8)" font-size="10.56" font-family="Calibri" font-weight="bold"><tspan y="-298.68" x="639.218" text-anchor="middle">&#x003c;exemplos&#x003e;</tspan></text>
 </g>
 <path transform="matrix(1,0,0,-1,-96,478.8)" d="M605.94 314.46H677.82V336.9H605.94Z" fill="#ffffff" fill-rule="evenodd"/>
 <path transform="matrix(1,0,0,-1,-96,478.8)" stroke-width="1.5" stroke-linecap="butt" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="var(--gfx-paper-blue,#2f528f)" d="M605.94 314.46H677.82V336.9H605.94Z"/>
 <path transform="matrix(1,0,0,-1,-96,478.8)" d="M617.06 318.4H666.5V333.16H617.06Z" fill="var(--gfx-paper-orange,#f08b30)" fill-rule="evenodd"/>
 <g clip-path="url(#clip_37)">
-<text fill="var(--gfx-paper-ink,#595959)" xml:space="preserve" transform="matrix(1 0 -0 1 -96 478.8)" font-size="12.024" font-family="Calibri" font-weight="bold"><tspan y="-321.6" x="617.14 623.128 628.15408 634.64706 641.00778 645.08389 650.8434 656.3624 660.5347">&#x003c;contexto&#x003e;</tspan></text>
+<text fill="var(--gfx-paper-ink,#595959)" xml:space="preserve" transform="matrix(1 0 -0 1 -96 478.8)" font-size="12.024" font-family="Calibri" font-weight="bold"><tspan y="-321.6" x="638.837" text-anchor="middle">&#x003c;contexto&#x003e;</tspan></text>
 </g>
 <path transform="matrix(1,0,0,-1,-96,478.8)" d="M779.4 155.08C779.4 156.05 780.19 156.84 781.16 156.84H818.2C819.17 156.84 819.96 156.05 819.96 155.08V148.04C819.96 147.07 819.17 146.28 818.2 146.28H781.16C780.19 146.28 779.4 147.07 779.4 148.04Z" fill="var(--gfx-paper-line,#e7e6e6)" fill-rule="evenodd"/>
 <g clip-path="url(#clip_78)">
