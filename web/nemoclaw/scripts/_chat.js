@@ -137,6 +137,7 @@ export function mountChatUI(container, opts = {}) {
     .filter(item => item && ["system", "user", "assistant"].includes(item.role) && typeof item.content === "string")
     .map(item => ({ role: item.role, content: item.content }));
   const history = cleanHistory(opts.initialHistory);   // completed turns, optionally restored by a host
+  let activityText = String(opts.initialActivity || "").slice(-30000);
   const memToggle = memoryEnabled
     ? `<button class="chatui-mem on" type="button" aria-pressed="true" title="When on, the model sees the whole conversation. Turn it off to watch it answer each message as a stateless function with no recall.">🧠 memory: on</button>`
     : "";
@@ -172,8 +173,8 @@ export function mountChatUI(container, opts = {}) {
   const notifyHistory = () => {
     if (opts.onHistoryChange) try { opts.onHistoryChange(history.map(item => ({ ...item })), ctx); } catch (_) {}
   };
-  const notifyTurnSnapshot = (items, state) => {
-    if (opts.onTurnSnapshot) try { opts.onTurnSnapshot(cleanHistory(items), { state }, ctx); } catch (_) {}
+  const notifyTurnSnapshot = (items, state, activity = activityText) => {
+    if (opts.onTurnSnapshot) try { opts.onTurnSnapshot(cleanHistory(items), { state, activity }, ctx); } catch (_) {}
   };
   ctx = { thread: "chat-" + Math.random().toString(RANDOM_ID_RADIX).slice(2, 9), turn: 0, _ctx: 0,
                 get modules() { return selectedModules(); },
@@ -313,13 +314,18 @@ export function mountChatUI(container, opts = {}) {
     // A tool call, warn, or note ends the round; the next reasoning opens a fresh block.
     let roundThink = null, roundAnswer = null;
     let snapshotTimer = 0, lastError = "";
+    const activitySnapshot = () => {
+      const trace = turn.innerText.trim();
+      const entry = `USER\n${q}${trace ? `\n\nAGENT ACTIVITY\n${trace}` : ""}`;
+      return [activityText, entry].filter(Boolean).join("\n\n---\n\n").slice(-30000);
+    };
     const snapshotTurn = (state = "running", immediate = false) => {
       const write = () => {
         snapshotTimer = 0;
         const items = [...history, { role: "user", content: q }];
         const answer = (roundAnswer && roundAnswer._t) || (state === "error" && lastError ? "Request failed: " + lastError : "") || (state === "stopped" ? "Response stopped before completion." : "");
         if (answer) items.push({ role: "assistant", content: answer });
-        notifyTurnSnapshot(items, state);
+        notifyTurnSnapshot(items, state, activitySnapshot());
       };
       if (snapshotTimer) clearTimeout(snapshotTimer);
       if (immediate) write();
@@ -342,7 +348,7 @@ export function mountChatUI(container, opts = {}) {
       reasoning(t) {
         if (!roundThink) { newThink(); roundThink = cur; }
         else if (cur !== roundThink) { cur = roundThink; cur.el.open = true; }   // reasoning resumed after a stray token
-        cur._t += t; cur.body.textContent = cur._t; scroll(); },
+        cur._t += t; cur.body.textContent = cur._t; snapshotTurn("running"); scroll(); },
       token(t) {
         if (cur && cur.kind === "think") endThink();         // fold the reasoning before the answer renders
         if (!roundAnswer) { newAnswer(); roundAnswer = cur; }
@@ -366,9 +372,15 @@ export function mountChatUI(container, opts = {}) {
           } else { b.textContent = String(detail); }
           c.appendChild(b);
         } else { c = document.createElement("div"); c.className = "chatui-tool"; c.textContent = "🔧 " + label; }
-        turn.appendChild(c); scroll(); return c; },
-      warn(msg) { endThink(); flush(); cur = null; roundThink = null; roundAnswer = null; const d = document.createElement("div"); d.className = "chatui-warn"; d.textContent = "⚠ " + msg; turn.appendChild(d); scroll(); return d; },
-      note(msg) { flush(); cur = null; roundThink = null; roundAnswer = null; const d = document.createElement("div"); d.className = "chatui-usage"; d.textContent = msg; turn.appendChild(d); scroll(); return d; },
+        turn.appendChild(c); snapshotTurn("running"); scroll(); return c; },
+      updateTool(toolElement, label, detail) {
+        const summary = toolElement?.querySelector("summary"), body = toolElement?.querySelector(".chatui-tool-body");
+        if (summary && label) summary.textContent = "🔧 " + label;
+        if (body && detail != null) body.textContent = String(detail);
+        snapshotTurn("running");
+      },
+      warn(msg) { endThink(); flush(); cur = null; roundThink = null; roundAnswer = null; const d = document.createElement("div"); d.className = "chatui-warn"; d.textContent = "⚠ " + msg; turn.appendChild(d); snapshotTurn("running"); scroll(); return d; },
+      note(msg) { flush(); cur = null; roundThink = null; roundAnswer = null; const d = document.createElement("div"); d.className = "chatui-usage"; d.textContent = msg; turn.appendChild(d); snapshotTurn("running"); scroll(); return d; },
       usage(u) { u = u || {};
         const f = document.createElement("div"); f.className = "chatui-usage";
         if (u.context != null) {            // absolute context size + (optionally) the source's own window
@@ -381,7 +393,7 @@ export function mountChatUI(container, opts = {}) {
           f.textContent = "↑ " + (u.input || 0) + " in · ↓ " + (u.output || 0) + " out" + (total ? " · context " + total + " tok" + (win ? " of " + win : "") : "");
           if (total) setBudget(total, u.model);   // bar matches the footer's context total
         }
-        turn.appendChild(f); scroll(); },
+        turn.appendChild(f); snapshotTurn("running"); scroll(); },
       html(h) { endThink(); flush(); cur = null; const d = document.createElement("div"); d.className = "chatui-viz"; turn.appendChild(d); d.innerHTML = h; scroll(); return d; },
       discardAnswer() {
         flush();
@@ -410,6 +422,12 @@ export function mountChatUI(container, opts = {}) {
         notifyHistory();
         if (opts.onAssistantMessage) try { opts.onAssistantMessage(answer, ctx); } catch (_) {}
       } else if (memoryEnabled) snapshotTurn(curAC.signal.aborted ? "stopped" : "error", true);
+      activityText = activitySnapshot();
+      if (curAC.signal.aborted || errored) {
+        const state = curAC.signal.aborted ? "stopped" : "error";
+        const answer = curAC.signal.aborted ? "Response stopped before completion." : "Request failed: " + lastError;
+        notifyTurnSnapshot([...history, { role: "user", content: q }, { role: "assistant", content: answer }], state, activityText);
+      } else notifyTurnSnapshot(history, "complete", activityText);
       running = false; curAC = null;
       sendBtn.textContent = "Send"; sendBtn.classList.remove("stop");
       sendBtn.disabled = prerequisiteBlocked;
@@ -435,6 +453,8 @@ export function mountChatUI(container, opts = {}) {
     addExamples();
     ctx.thread = "chat-" + Math.random().toString(RANDOM_ID_RADIX).slice(2, 9); ctx.turn = 0; setBudget(0);
     history.length = 0;
+    activityText = "";
+    notifyTurnSnapshot([], "reset", "");
     notifyHistory();
     if (opts.onReset) try { opts.onReset(ctx); } catch (_) {}
     refreshPrerequisites();
@@ -452,7 +472,7 @@ export async function mountAgentChat(container, opts = {}) {
        Live chat artifact on LangChain <code>createReactAgent</code>. <code>opts</code>: <code>{
        models:[{id,label}], system,
        buildTools({tool,z,coursePage,coursePages,webSearch,formatSearchResults}), greeting,
-       modules, recursionLimit, growLog, initialHistory, onUserMessage, onTurnSnapshot, onAssistantMessage, onHistoryChange,
+       modules, recursionLimit, growLog, initialHistory, initialActivity, onUserMessage, onTurnSnapshot, onAssistantMessage, onHistoryChange,
        compactAtTokens, compactKeepMessages }</code>. Restored history seeds a fresh checkpoint;
        compaction summarizes older turns with the active model, preserves recent messages, and rotates
        to a new thread. <code>growLog:true</code> drops the panel's internal
@@ -504,7 +524,7 @@ export async function mountAgentChat(container, opts = {}) {
   }
   return mountChatUI(el, {
     modules: opts.modules, models: opts.models, intro: opts.intro, greeting: opts.greeting, examples: opts.examples, growLog: opts.growLog,
-    initialHistory: opts.initialHistory, onUserMessage: opts.onUserMessage, onTurnSnapshot: opts.onTurnSnapshot,
+    initialHistory: opts.initialHistory, initialActivity: opts.initialActivity, onUserMessage: opts.onUserMessage, onTurnSnapshot: opts.onTurnSnapshot,
     onAssistantMessage: opts.onAssistantMessage,
     onHistoryChange: opts.onHistoryChange, resetLabel: opts.resetLabel,
     respond: async (text, ctx) => {
@@ -588,6 +608,7 @@ export async function mountAgentChat(container, opts = {}) {
           c.result = (c.result || "") + (typeof chunk.content === "string" ? chunk.content : JSON.stringify(chunk.content));
           if (c.bodyEl) c.bodyEl.textContent = c.result;
           if (chunk.status === "error" || /^\(unknown page|→ \d{3}$/.test(c.result.trim())) markErr(c);
+          ctx.view.updateTool(c.el, labelFor(c.name, c.args), c.result);
           continue;
         }
         for (const tc of (chunk.tool_call_chunks || [])) {
@@ -604,6 +625,7 @@ export async function mountAgentChat(container, opts = {}) {
           if (tc.name) c.name = tc.name;
           c.args += (tc.args || "");
           if (c.sumEl) c.sumEl.textContent = "🔧 " + labelFor(c.name, c.args);
+          ctx.view.updateTool(c.el, labelFor(c.name, c.args), c.result || "(running)");
         }
         // reasoning deltas (nemotron exposes them on additional_kwargs)
         const rc = chunk.additional_kwargs && (chunk.additional_kwargs.reasoning_content || chunk.additional_kwargs.reasoning);

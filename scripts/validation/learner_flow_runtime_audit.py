@@ -71,8 +71,8 @@ import { mountChatUI } from "/nemoclaw/scripts/_shared.js";
 import { loadCourseAssistantStore, saveCourseAssistantStore } from "/nemoclaw/scripts/_course_assistant.js";
 const store = loadCourseAssistantStore();
 const session = store.sessions.find(item => item.id === store.activeId) || store.sessions[0];
-const persist = history => { const current = store.sessions.find(item => item.id === store.activeId) || store.sessions[0]; current.history = history; current.updatedAt = Date.now(); saveCourseAssistantStore(store); };
-mountChatUI("#history-chat", { memory:true, initialHistory:session.history, onHistoryChange:persist, onTurnSnapshot:persist,
+const persist = (history, meta={}) => { const current = store.sessions.find(item => item.id === store.activeId) || store.sessions[0]; current.history = history; if (Object.hasOwn(meta, "activity")) current.activity = meta.activity; current.updatedAt = Date.now(); saveCourseAssistantStore(store); };
+mountChatUI("#history-chat", { memory:true, initialHistory:session.history, initialActivity:session.activity, onHistoryChange:persist, onTurnSnapshot:persist,
   respond:async(text,ctx) => { if (text.includes("slow")) { ctx.view.token("partial reply before navigation"); await new Promise(resolve => setTimeout(resolve, 5000)); } ctx.view.token("completed reply: " + text); } });
 window.historyMounted = true;
 </script></body></html>`;
@@ -281,6 +281,8 @@ async function waitText(locator, pattern) {
   await historyPage.waitForFunction(() => window.historyMounted === true);
   const restoredHistory = await historyPage.locator('.chatui-log').innerText();
   if (!/completed turn survives navigation/.test(restoredHistory) || !/completed reply: completed turn survives navigation/.test(restoredHistory)) throw new Error('completed Course Assistant transcript vanished across navigation');
+  const restoredActivity = await historyPage.evaluate(() => JSON.parse(localStorage.getItem('nemoclaw_course_assistant_sessions_v1')).sessions[0].activity);
+  if (!/completed turn survives navigation/.test(restoredActivity) || !/completed reply: completed turn survives navigation/.test(restoredActivity)) throw new Error('visible Course Assistant agent activity vanished across navigation');
   await historyContext.close();
 
   const courseContext = await browser.newContext({ viewport:{ width:1100, height:900 } });
@@ -290,6 +292,7 @@ async function waitText(locator, pattern) {
     if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify({ version:1, activeId:'saved-session', sessions:[{
       id:'saved-session', title:'Saved session', pageId:'01a-loop', pageTitle:'The agent loop', createdAt:1, updatedAt:1,
       history:[{ role:'user', content:'Persisted learner question' }, { role:'assistant', content:'Persisted course answer' }],
+      activity:'USER\\nPersisted learner question\\n\\nAGENT ACTIVITY\\nread_course_page · 01a-loop\\nPersisted course answer',
     }] }));
   });
   const coursePage = await courseContext.newPage();
@@ -301,7 +304,7 @@ async function waitText(locator, pattern) {
   if (!courseSearch.length || courseSearch.length > 4 || courseSearch.some(result => !result.id || !result.excerpt || result.excerpt.length > 900)) throw new Error(`page assistant course search is not bounded/useful: ${JSON.stringify(courseSearch)}`);
   const sourceAccess = await coursePage.evaluate(async () => {
     const { courseCode, courseCodeArtifacts, courseRuntimeFiles, courseRuntimeSource } = await import('./scripts/_langchain.js');
-    const { artifactFromMarkdown, parseInlineCourseSourceIntent, resolveCourseSourceUri } = await import('./scripts/_course_assistant.js');
+    const { artifactFromMarkdown, artifactJavaScriptIssue, parseInlineCourseSourceIntent, resolveCourseSourceUri } = await import('./scripts/_course_assistant.js');
     const artifacts = await courseCodeArtifacts('02c-deep');
     const deep = await courseCode('02c-deep', 'deep-src');
     const runtimeFiles = courseRuntimeFiles();
@@ -319,25 +322,31 @@ async function waitText(locator, pattern) {
       traversalRejected:/unknown runtime file/.test(rejected),
       fencedArtifactCaptured:captured?.title === 'Captured artifact' && /captured/.test(captured.html) && /dataset\.ready/.test(captured.javascript),
       inlineSourceRecovered:recoveredIntent?.uri === 'deep-src' && /Course source: 02c-deep · deep-src/.test(recoveredSource?.content || ''),
+      artifactAsyncGuard:/asynchronous/.test(artifactJavaScriptIssue('const embeddings = course.embed(["hello"], { inputType: "query" });')),
+      artifactInputGuard:/inputType/.test(artifactJavaScriptIssue('const embeddings = await course.embed(["hello"], { inputType: "text" });')),
+      artifactTopLevelAwait:artifactJavaScriptIssue('const embeddings = await course.embed(["hello"], { inputType: "query" });') === '',
+      artifactCombinedGuard:(issue => /inputType/.test(issue) && /asynchronous/.test(issue))(artifactJavaScriptIssue('const embeddings = course.embed(["hello"], { inputType: "text" });')),
     };
   });
-  if (!sourceAccess.artifactIds.includes('deep-src') || !sourceAccess.artifactIds.some(id => /^module-/.test(id)) || sourceAccess.indexHasBodies || !sourceAccess.deepIsJavaScript || !sourceAccess.runtimeFiles.includes('_shared.js') || !sourceAccess.sharedIsExact || !sourceAccess.traversalRejected || !sourceAccess.fencedArtifactCaptured || !sourceAccess.inlineSourceRecovered) throw new Error(`Course Assistant source/artifact access is incomplete or unsafe: ${JSON.stringify(sourceAccess)}`);
+  if (!sourceAccess.artifactIds.includes('deep-src') || !sourceAccess.artifactIds.some(id => /^module-/.test(id)) || sourceAccess.indexHasBodies || !sourceAccess.deepIsJavaScript || !sourceAccess.runtimeFiles.includes('_shared.js') || !sourceAccess.sharedIsExact || !sourceAccess.traversalRejected || !sourceAccess.fencedArtifactCaptured || !sourceAccess.inlineSourceRecovered || !sourceAccess.artifactAsyncGuard || !sourceAccess.artifactInputGuard || !sourceAccess.artifactTopLevelAwait || !sourceAccess.artifactCombinedGuard) throw new Error(`Course Assistant source/artifact access is incomplete or unsafe: ${JSON.stringify(sourceAccess)}`);
   const sessionCap = await coursePage.evaluate(async () => {
     const { saveCourseAssistantStore, loadCourseAssistantStore } = await import('./scripts/_course_assistant.js');
     const values = new Map();
     const storage = { getItem:key => values.get(key) || null, setItem:(key, value) => values.set(key, value) };
     const store = { activeId:'s14', sessions:Array.from({ length:15 }, (_, i) => ({ id:'s' + i, title:'Session ' + i, createdAt:i, updatedAt:i,
       history:[{ role:'user', content:'u'.repeat(60000) }, { role:'assistant', content:'a'.repeat(60000) }],
+      activity:'trace'.repeat(20000),
       artifact:{ title:'Large artifact', html:'h'.repeat(80000), javascript:'j'.repeat(80000), updatedAt:i },
     })) };
     const saved = saveCourseAssistantStore(store, storage);
     const loaded = loadCourseAssistantStore(storage);
     return { live:store.sessions.length, stored:loaded.sessions.length, chars:saved.chars,
       maxHistory:Math.max(...loaded.sessions.map(session => session.history.reduce((sum, item) => sum + item.content.length, 0))),
+      maxActivity:Math.max(...loaded.sessions.map(session => session.activity.length)),
       maxArtifact:Math.max(...loaded.sessions.map(session => (session.artifact?.html.length || 0) + (session.artifact?.javascript.length || 0))),
     };
   });
-  if (sessionCap.live !== 12 || sessionCap.stored !== 12 || sessionCap.chars > 2300000 || sessionCap.maxHistory > 100000 || sessionCap.maxArtifact > 80000) throw new Error(`Course Assistant cap diverged between live and stored state: ${JSON.stringify(sessionCap)}`);
+  if (sessionCap.live !== 12 || sessionCap.stored !== 12 || sessionCap.chars > 2550000 || sessionCap.maxHistory > 100000 || sessionCap.maxActivity > 20000 || sessionCap.maxArtifact > 80000) throw new Error(`Course Assistant cap diverged between live and stored state: ${JSON.stringify(sessionCap)}`);
   const assistantLauncher = coursePage.locator('.course-assistant-launcher');
   await assistantLauncher.waitFor({ state:'visible' });
   const launcherBox = await assistantLauncher.boundingBox();
@@ -350,6 +359,9 @@ async function waitText(locator, pattern) {
   let sessionSelect = assistantPanel.locator('#course-assistant-session');
   if (await sessionSelect.locator('option').count() !== 1 || !/Persisted learner question/.test(await assistantPanel.innerText())) throw new Error('Course Assistant did not restore its local session');
   if (!/Attached page: 01a-loop/.test(await assistantPanel.locator('.course-assistant-context').innerText())) throw new Error('restored Course Assistant session inherited the open page instead of its saved page');
+  await assistantPanel.locator('[data-course-assistant-view="history"]').click();
+  if (!/read_course_page · 01a-loop/.test(await assistantPanel.locator('.course-assistant-history pre').innerText()) || !/Persisted course answer/.test(await assistantPanel.locator('.course-assistant-history pre').innerText())) throw new Error('Course Assistant History did not restore saved agent activity');
+  await assistantPanel.locator('[data-course-assistant-view="chat"]').click();
   const savedSessionId = await sessionSelect.inputValue();
   await assistantPanel.locator('[data-course-assistant-new]').click();
   await assistantPanel.locator('#course-assistant-session option').nth(1).waitFor({ state:'attached' });
@@ -376,8 +388,12 @@ async function waitText(locator, pattern) {
   sessionSelect = assistantPanel.locator('#course-assistant-session');
   if (await sessionSelect.locator('option').count() !== 2 || await sessionSelect.inputValue() !== newSessionId || !/MCP study/.test(await sessionSelect.locator('option:checked').innerText())) throw new Error('Course Assistant session selection/name did not survive reload');
   if (!/Explain MCP trust boundaries/.test(await assistantPanel.locator('.chatui-log').innerText())) throw new Error('failed Course Assistant turn did not survive reload');
+  await assistantPanel.locator('[data-course-assistant-view="history"]').click();
+  if (!/Explain MCP trust boundaries/.test(await assistantPanel.locator('.course-assistant-history pre').innerText())) throw new Error('failed Course Assistant agent activity did not survive reload');
+  await assistantPanel.locator('[data-course-assistant-view="chat"]').click();
   await assistantPanel.locator('[data-course-assistant-view="artifact"]').click();
   await assistantPanel.locator('[data-course-artifact-title]').fill('MCP browser demo');
+  if (!/await course\.embed/.test(await assistantPanel.locator('.course-artifact-api').innerText())) throw new Error('Course Assistant artifact editor hides its asynchronous embedding API');
   if (await assistantPanel.locator('.course-artifact-editors .CodeMirror').count() !== 2) throw new Error('Course Assistant artifact did not upgrade both code editors');
   await assistantPanel.evaluate(panel => {
     panel.querySelector('[data-course-artifact-html]').__courseAssistantEditor.setValue('<button id="artifact-run">Run artifact</button><output id="artifact-output"></output>');
@@ -404,6 +420,8 @@ async function waitText(locator, pattern) {
   await crossPanel.waitFor({ state:'visible' });
   if (!/Attached page: 02b-rag/.test(await crossPanel.locator('.course-assistant-context').innerText()) || !/Use 01b-react/.test(await crossPanel.locator('[data-course-assistant-use-page]').innerText())) throw new Error('Course Assistant silently rebound a restored session to the currently open page');
   if (!/Explain MCP trust boundaries/.test(await crossPanel.locator('.chatui-log').innerText())) throw new Error('Course Assistant session metadata survived cross-page navigation but its transcript did not');
+  await crossPanel.locator('[data-course-assistant-view="history"]').click();
+  if (!/Explain MCP trust boundaries/.test(await crossPanel.locator('.course-assistant-history pre').innerText())) throw new Error('Course Assistant session transcript survived cross-page navigation but its agent activity did not');
   await crossPanel.locator('[data-course-assistant-view="artifact"]').click();
   if (await crossPanel.locator('[data-course-artifact-title]').inputValue() !== 'MCP browser demo' || !/artifact-output/.test(await crossPanel.locator('[data-course-artifact-html]').inputValue())) throw new Error('Course Assistant Artifact view did not survive cross-page navigation');
   artifactFrame = crossPanel.frameLocator('.course-assistant-artifact iframe');
@@ -411,7 +429,7 @@ async function waitText(locator, pattern) {
   if (await artifactFrame.locator('#artifact-output').innerText() !== 'artifact ran') throw new Error('restored Course Assistant artifact did not rerun in its sandbox');
   await crossPanel.evaluate(panel => {
     panel.querySelector('[data-course-artifact-html]').__courseAssistantEditor.setValue('<div id="bridge-result"></div>');
-    panel.querySelector('[data-course-artifact-js]').__courseAssistantEditor.setValue('course.embed([]).catch(error => { document.querySelector("#bridge-result").textContent = error.message; });');
+    panel.querySelector('[data-course-artifact-js]').__courseAssistantEditor.setValue('try { await course.embed([]); } catch (error) { document.querySelector("#bridge-result").textContent = error.message; }');
   });
   await crossPanel.locator('[data-course-artifact-run]').click();
   artifactFrame = crossPanel.frameLocator('.course-assistant-artifact iframe');
