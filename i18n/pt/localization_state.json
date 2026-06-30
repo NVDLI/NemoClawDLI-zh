@@ -150,8 +150,8 @@
   },
   "reviews": {
     "web/index.html": {
-      "source_sha256": "de70120fe4f5561306f46779c88c13e9a4966895699fae67950510a850c36bea",
-      "reviewed_on": "2026-06-28"
+      "source_sha256": "78aa307db64851a947338e98e7e6a11e5fdc085a087b3209632c8d467587723c",
+      "reviewed_on": "2026-06-30"
     },
     "web/courses.html": {
       "source_sha256": "09b7448fb0f3d1cbff33c59a7f93f9031f12e53e21b31ef564f54f14d264d42c",

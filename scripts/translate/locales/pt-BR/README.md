@@ -59,6 +59,10 @@ Um rascunho gerado não é uma página revisada. Primeiro gere e refine com
 calques e termos técnicos no contexto. Quando um defeito puder reaparecer em outra página,
 registre a expressão específica em `profile.json`. Só então aceite o hash da origem.
 
+`shell_translations.json` traduz as perguntas e os enquadramentos dos blocos de detalhe. No build,
+`locale_projection.py` combina essas traduções e a prosa revisada com a estrutura completa da
+página canônica atual. Um novo controle sem tradução deve bloquear a validação.
+
 ```bash
 python3 scripts/validation/localization_audit.py --locale pt-BR
 python3 scripts/validation/localization_audit.py --locale pt-BR --self-test

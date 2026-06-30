@@ -26,7 +26,9 @@
 <body>
 <div class="loc-shell">
   <header class="loc-top">
-    <div class="loc-brand">Studio <span>Localization / Localização</span></div>
+    <div class="loc-brand">Studio <span>Localization</span></div>
+    <label for="loc-locale" class="loc-pane-head">Locale</label>
+    <select id="loc-locale" aria-label="Localization target"><option value="pt">Português (Brasil)</option><option value="es">Español</option></select>
     <a href="studio.html">Course Studio</a>
     <a href="index.html">Course</a>
     <div class="loc-spacer"></div>
@@ -42,7 +44,7 @@
       <div class="loc-evidence" id="loc-evidence"><strong>Select a page</strong></div>
       <div class="loc-compare">
         <section class="loc-pane"><div class="loc-pane-head"><b>English source</b><span id="loc-source-label"></span></div><iframe id="loc-source" title="English source page"></iframe></section>
-        <section class="loc-pane"><div class="loc-pane-head"><b>Português (Brasil)</b><span id="loc-target-label"></span></div><iframe id="loc-target" title="Portuguese localized page"></iframe></section>
+        <section class="loc-pane"><div class="loc-pane-head"><b id="loc-target-name">Localized target</b><span id="loc-target-label"></span></div><iframe id="loc-target" title="Localized target page"></iframe></section>
       </div>
       <div class="loc-findings" id="loc-findings" aria-live="polite"></div>
     </main>

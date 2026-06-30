@@ -1,7 +1,8 @@
 # Same-branch localization
 
 Translations live beside English on the same branch as sparse overlays under `i18n/<url-code>/`.
-The first locale is Brazilian Portuguese: locale `pt-BR`, URL code `pt`.
+Current locale profiles include Brazilian Portuguese (`pt-BR`, URL code `pt`) and neutral technical
+Spanish (`es-ES`, URL code `es`). Each locale owns its terminology, rhythm, and calque rules.
 
 This shape keeps review honest. One commit can change English, its translations, the drift metadata,
 and the validator that protects the relationship. A translation branch cannot hide an old runtime,
@@ -11,7 +12,7 @@ and a language build cannot replace current code with a copied JavaScript or ass
 
 `web/` remains canonical for page structure and executable logic, and it is the only home for
 standalone runtime modules, styles, data, machine-contract pages, and untranslated pages.
-`i18n/pt/localization_state.json` allow-lists localized HTML and reviewed SVGs whose embedded text
+Each `i18n/<code>/localization_state.json` allow-lists localized HTML and reviewed SVGs whose embedded text
 differs by language. Other assets stay canonical.
 During a build, `assemble_locale_overlay.py` copies canonical `web/` and applies only those declared
 files. The audit requires equivalent HTML and executable structure while allowing localized UI
@@ -33,15 +34,15 @@ read. `localization_audit.py` compares that hash with the current source and cla
 - `needs-review`: translated file exists but has no accepted source hash;
 - `missing`: no localized overlay exists, so the build inherits English.
 
-The generated `web/nemoclaw/assets/localization-pt.json` drives Localization Studio and the Pages
+The generated `web/nemoclaw/assets/localization-<code>.json` drives Localization Studio and the Pages
 language menu. The menu offers a same-page switch only for `current` pages.
 
-## Portuguese review
+## Locale review
 
-Read `locales/pt-BR/SKILL.html` first. Its profile cites public NVIDIA Brazil material, records
+Read the target locale SKILL first. Locale profiles cite public NVIDIA material, record
 preferred terminology, permits established developer terms such as `workflow`, `runtime`, `sandbox`,
 and `stack`, and blocks known literal-translation artifacts. Static checks cannot certify natural
-prose; Studio keeps English and Portuguese side by side so a human can make that judgment efficiently.
+prose; Studio keeps English and the selected locale side by side so a human can make that judgment efficiently.
 
 ## Contributor loop
 
@@ -106,9 +107,12 @@ needs-review, and missing pages. Each row shows source/review/target hashes and 
 
 - `locales/pt-BR/profile.json`: public terminology sources and machine-readable language rules.
 - `locales/pt-BR/SKILL.html`: Portuguese first-touch node for students, reviewers, and agents.
+- `locales/es-ES/profile.json`: public Spanish terminology sources, neutral technical vocabulary, rhythm limits, and calque rules.
+- `locales/es-ES/SKILL.html`: Spanish first-touch node for students, reviewers, and agents.
 - `translate_html_segments.py`: protected semantic-block drafting, polish, cache, and usage telemetry.
 - `translate_svg_text.py`: geometry-preserving SVG label/accessibility translation.
 - `locales/pt-BR/svg_translations.json`: reviewed, provider-free SVG translation map.
+- `locales/es-ES/svg_translations.json`: reviewed, provider-free Spanish SVG translation map.
 - `scripts/validation/localization_audit.py`: required drift and language gate with mutation tests.
 - `scripts/build/assemble_locale_overlay.py`: deterministic canonical-plus-prose assembly.
 - `web/nemoclaw/localization.html`: same-branch comparison Studio.

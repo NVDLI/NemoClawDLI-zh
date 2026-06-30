@@ -66,7 +66,7 @@ test:
     - python3 scripts/build/build_repository_overview_html.py --check
     - python3 scripts/build/assemble_locale_overlay.py --self-test
     - python3 scripts/validation/localization_audit.py --self-test
-    - python3 scripts/validation/localization_audit.py --locale pt-BR
+    - 'for locale in scripts/translate/locales/*; do if [ -f "$locale/profile.json" ]; then code="$(basename "$locale")"; python3 scripts/validation/localization_audit.py --locale "$code"; fi; done'
     - python3 scripts/validation/contribution_safety_audit.py --self-test
     - python3 scripts/validation/contribution_safety_audit.py --report docs/validation/contribution-safety.json
     - 'if [ -n "${CI_MERGE_REQUEST_IID:-}" ]; then python3 scripts/validation/contribution_safety_audit.py --submission-env CI_MERGE_REQUEST_DESCRIPTION; else echo "Submission contract: no merge-request context in this pipeline; protected-ref policy remains authoritative."; fi'
@@ -207,7 +207,7 @@ pages:
         grep -q 'href="web/nemoclaw/assets/favicon.ico"' "public/$CI_COMMIT_REF_SLUG/index.html"
         grep -q 'return "web/nemoclaw/"' "public/$CI_COMMIT_REF_SLUG/index.html"
         grep -q 'web/nemoclaw/' "public/$CI_COMMIT_REF_SLUG/languages.json"
-        if [ -d i18n/pt/web/nemoclaw ]; then test -f "public/$CI_COMMIT_REF_SLUG/pt/nemoclaw/index.html"; grep -q 'pt/nemoclaw/' "public/$CI_COMMIT_REF_SLUG/languages.json"; fi
+        for locale in i18n/*; do if [ -d "$locale/web/nemoclaw" ]; then code="$(basename "$locale")"; test -f "public/$CI_COMMIT_REF_SLUG/$code/nemoclaw/index.html"; grep -q "$code/nemoclaw/" "public/$CI_COMMIT_REF_SLUG/languages.json"; fi; done
       }
       build_production_root_from_ref() {
         preview_ref="${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-$CI_COMMIT_REF_NAME}"

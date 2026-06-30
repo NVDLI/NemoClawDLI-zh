@@ -620,17 +620,24 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         vl_fail.extend(f"contribution safety: {x.get('path')}: {x.get('message')}"
                        for x in contribution_safety_find)
 
-    # Same-branch localization contract (required): sparse overlay, reviewed source hashes,
-    # pt-BR language quality signals, and the Studio drift manifest.
+    # Same-branch localization contract (required): every declared locale is gated.
+    localization_find = []
+    localization_manifest = {"pages": [], "counts": {}}
     try:
-        localization_find, localization_manifest = la.scan(TASK1, "pt-BR")
-        if write:
-            _, _, _, localization_profile, _ = la.locale_paths(TASK1, "pt-BR")
-            la.write_manifest(TASK1, localization_profile, localization_manifest)
+        for locale_dir in sorted((TASK1 / "scripts/translate/locales").iterdir()):
+            profile_path = locale_dir / "profile.json"
+            if not profile_path.is_file():
+                continue
+            locale = json.loads(profile_path.read_text(encoding="utf-8"))["locale"]
+            locale_find, locale_manifest = la.scan(TASK1, locale)
+            localization_find.extend(locale_find)
+            localization_manifest[locale] = locale_manifest
+            if write:
+                _, _, _, localization_profile, _ = la.locale_paths(TASK1, locale)
+                la.write_manifest(TASK1, localization_profile, locale_manifest)
     except Exception as e:
-        localization_find = [{"code": "audit-error", "path": "i18n/pt",
+        localization_find = [{"code": "audit-error", "path": "i18n",
                               "detail": f"localization audit error: {e}"}]
-        localization_manifest = {"pages": [], "counts": {}}
         suite_errors["localization"] = str(e)
     if localization_find:
         vl_ok = False
@@ -999,10 +1006,10 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                                   f"[{x.get('code', 'finding')}] {x.get('message', '')}",
                                   REQUIRED, x.get("fix", "restore the contribution trust boundary"))
                                 for x in contribution_safety_find],
-        "localization": [D(x.get("path", "i18n/pt"),
+        "localization": [D(x.get("path", "i18n"),
                             f"[{x.get('code', 'finding')}] {x.get('detail', '')}",
                             REQUIRED,
-                            "Open web/nemoclaw/localization.html, repair the named pt-BR prose/structure/drift issue, then accept the reviewed source hash with localization_audit.py.")
+                            "Open web/nemoclaw/localization.html, repair the named locale prose/structure/drift issue, then accept the reviewed source hash with localization_audit.py.")
                          for x in localization_find],
         "skill_schema": [D(p, d, RECOMMENDED,
                            "Make the skill-meta a valid contract of its kind: add the missing required key, "

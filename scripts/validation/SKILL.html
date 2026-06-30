@@ -143,12 +143,12 @@
     {
       "path": "localization_audit.py",
       "role": "same-branch localization gate",
-      "desc": "Required sparse-overlay, reviewed-source-hash, pt-BR terminology, structure, SKILL parity, and Studio drift-manifest audit with mutation tests."
+      "desc": "Required sparse-overlay, reviewed-source-hash, locale terminology, structure, SKILL parity, and Studio drift-manifest audit with mutation tests."
     },
     {
       "path": "localization_runtime_audit.py",
       "role": "localization browser gate",
-      "desc": "Chromium coverage for same-page language routing, explicit fallback, Portuguese locale metadata, responsive globe menu, and side-by-side Localization Studio."
+      "desc": "Chromium coverage for same-page language routing, explicit fallback, Portuguese and Spanish locale metadata, responsive globe menu, and side-by-side Localization Studio."
     },
     {
       "path": "reference_graph.py",
@@ -273,7 +273,7 @@
   <div class="skill-cmd"><b>Helper notebook static</b><code>python3 scripts/validation/helper_notebook_runtime_audit.py --no-container</code></div>
   <div class="skill-cmd"><b>Helper notebook browser</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/helper_notebook_runtime_audit.py</code></div>
   <div class="skill-cmd"><b>Studio responsive</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/studio_responsive_audit.py</code></div>
-  <div class="skill-cmd"><b>Localization + mutations</b><code>python3 scripts/validation/localization_audit.py --self-test &amp;&amp; python3 scripts/validation/localization_audit.py --locale pt-BR</code></div>
+  <div class="skill-cmd"><b>Localization + mutations</b><code>python3 scripts/validation/localization_audit.py --self-test &amp;&amp; for locale in pt-BR es-ES; do python3 scripts/validation/localization_audit.py --locale "$locale"; done</code></div>
   <div class="skill-cmd"><b>Localization browser</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/localization_runtime_audit.py --site-root /tmp/pt-localization-pages</code></div>
 </div>
   <h2>Linkage map</h2>
@@ -293,8 +293,8 @@
     <a class="skill-card" href="learner_flow_runtime_audit.py"><b>learner_flow_runtime_audit.py</b><span>learner-flow browser gate. Exercises Guided code collapse/local reveal, authored defaults, saved depth, section overrides, reload/print, narrow keyboard behavior, prerequisites, and cell lifecycle transitions.</span></a>
     <a class="skill-card" href="contribution_safety_audit.py"><b>contribution_safety_audit.py</b><span>required contribution-safety gate. Holds governance and DCO, immutable action pins, locked workflow installs, fork-safe security workflows, submission evidence, hooks, PR permissions, and release authority together with mutation coverage.</span></a>
     <a class="skill-card" href="gitlab_governance_audit.py"><b>gitlab_governance_audit.py</b><span>read-only live-host gate. Reports whether GitLab protects main, release tags, production deploys and approvers, and the explicit human-review action while detecting one-operator deadlocks or authority widening.</span></a>
-    <a class="skill-card" href="localization_audit.py"><b>localization_audit.py</b><span>required locale gate. Rejects runtime copies, stale accepted hashes, machine-contract drift, obvious untranslated UI, and pt-BR translation artifacts; emits the Localization Studio manifest.</span></a>
-    <a class="skill-card" href="localization_runtime_audit.py"><b>localization_runtime_audit.py</b><span>browser locale gate. Exercises English/Portuguese same-page switching, fallback routing, responsive menu behavior, and Localization Studio comparison frames.</span></a>
+    <a class="skill-card" href="localization_audit.py"><b>localization_audit.py</b><span>required locale gate. Rejects runtime copies, stale accepted hashes, machine-contract drift, untranslated UI, locale-specific prose artifacts, and Spanish runnable-code drift; emits the Localization Studio manifest.</span></a>
+    <a class="skill-card" href="localization_runtime_audit.py"><b>localization_runtime_audit.py</b><span>browser locale gate. Exercises English, Portuguese, and Spanish same-page switching, fallback routing, responsive menu behavior, translated SVG geometry, and Localization Studio comparison frames.</span></a>
     <a class="skill-card" href="reference_graph.py"><b>reference_graph.py</b><span>reference graph. Audits cross-course reference coupling.</span></a>
     <a class="skill-card" href="studio_interface_audit.py"><b>studio_interface_audit.py</b><span>studio interface audit. Checks studio controls, local assets, static read-only mode, lab write mode, and documentation.</span></a>
     <a class="skill-card" href="helper_notebook_runtime_audit.py"><b>helper_notebook_runtime_audit.py</b><span>helper notebook audit. Checks CanvasFlow and RunCell helper API use, then can launch containerized Playwright to click every notebook run control.</span></a>

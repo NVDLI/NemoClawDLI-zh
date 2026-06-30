@@ -10,6 +10,7 @@ from pathlib import Path
 LABELS = {
     "en": "English",
     "pt": "Portuguese",
+    "es": "Spanish",
 }
 SKIP_DIRS = {"cors-proxy", "docs", "scripts", "workspace", "validated-source", "web", "nemoclaw"}
 

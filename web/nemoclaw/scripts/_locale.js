@@ -81,23 +81,58 @@ const PT_ATTRS = new Map(Object.entries({
   "Copy current code": "Copiar o código atual"
 }));
 
+const ES_TEXT = new Map(Object.entries({
+  "The Agent": "El agente", "The ReAct Loop": "El ciclo ReAct", "Tools at Scale": "Herramientas a escala",
+  "Workflows": "Flujos de trabajo", "The Index Agent": "El agente de índice", "Deep Agents": "Agentes profundos",
+  "Connect NemoClaw": "Conectar NemoClaw", "Always-On": "Operación continua", "Modern CLIs": "CLI modernas",
+  "Going Further": "Siguientes pasos", "Section": "Sección", "Section 1": "Sección 1", "Section 2": "Sección 2",
+  "Section 3": "Sección 3", "Section 4": "Sección 4", "Course map": "Mapa del curso",
+  "click to see all sections": "pulse para ver todas las secciones", "start": "inicio", "end": "fin",
+  "No API key": "Sin clave de API", "Key …": "Clave …", "Key set ✓": "Clave guardada ✓",
+  "Key rejected ✗": "Clave rechazada ✗", "Model": "Modelo", "Pages": "Páginas",
+  "none pinned = auto-select": "ninguna fijada = selección automática", "🧠 memory: on": "🧠 memoria: activa",
+  "🧠 memory: off": "🧠 memoria: inactiva", "↺ New chat": "↺ Nueva conversación",
+  "Ask a question…": "Escriba una pregunta…", "Send": "Enviar", "⏹ Stop": "⏹ Detener",
+  "▶ Run": "▶ Ejecutar", "▶ Run all": "▶ Ejecutar todo", "⏳ Running…": "⏳ Ejecutando…",
+  "↺ Reset": "↺ Restablecer", "↺ Reset code": "↺ Restablecer código", "Ready": "Listo",
+  "empty until you Run": "vacío hasta ejecutar", "reset. empty until you Run": "restablecido; vacío hasta ejecutar",
+  "click to collapse": "pulse para contraer", "click to expand": "pulse para ampliar",
+  "Change": "Cambiar", "Save & verify": "Guardar y verificar", "No key yet?": "¿Aún no tiene una clave?",
+  "Sign up at build.nvidia.com →": "Regístrese en build.nvidia.com →"
+}));
+
+const ES_ATTRS = new Map(Object.entries({
+  "Ask a question…": "Escriba una pregunta…", "Course progression; current step highlighted.": "Progreso del curso; la etapa actual está resaltada.",
+  "Show the whole course map": "Mostrar el mapa completo del curso", "Choose language": "Elegir idioma",
+  "Run every node in order": "Ejecutar todos los nodos en orden", "Run this cell": "Ejecutar esta celda",
+  "Restore every node's code to its original": "Restablecer el código original de todos los nodos",
+  "Restore this cell's original code and clear its output": "Restablecer el código original de esta celda y borrar su salida",
+  "Copy current code": "Copiar el código actual"
+}));
+
 const LOCALIZED_UI = "#journey-map,.topbar,.cf-wrap,.rc-card,.chatui,.key-panel";
 
-function ptPage() {
-  return document.documentElement.lang.toLowerCase() === "pt-br";
+function localeMaps() {
+  const locale = document.documentElement.lang.toLowerCase();
+  if (locale === "pt-br") return { text: PT_TEXT, attrs: PT_ATTRS, previous: "Anterior: ", next: "Próxima: " };
+  if (locale === "es-es") return { text: ES_TEXT, attrs: ES_ATTRS, previous: "Anterior: ", next: "Siguiente: " };
+  return null;
 }
 
 function translatedText(value) {
-  const direct = PT_TEXT.get(value);
+  const maps = localeMaps();
+  if (!maps) return value;
+  const direct = maps.text.get(value);
   if (direct) return direct;
-  for (const [prefix, replacement] of [["Previous: ", "Anterior: "], ["Next: ", "Próxima: "]]) {
-    if (value.startsWith(prefix)) return replacement + (PT_TEXT.get(value.slice(prefix.length)) || value.slice(prefix.length));
+  for (const [prefix, replacement] of [["Previous: ", maps.previous], ["Next: ", maps.next]]) {
+    if (value.startsWith(prefix)) return replacement + (maps.text.get(value.slice(prefix.length)) || value.slice(prefix.length));
   }
   return value;
 }
 
 function localizeUi(root = document.body) {
-  if (!ptPage() || !root) return;
+  const maps = localeMaps();
+  if (!maps || !root) return;
   const scopes = [];
   if (root.nodeType === Node.ELEMENT_NODE && root.matches?.(LOCALIZED_UI)) scopes.push(root);
   if (root.nodeType === Node.ELEMENT_NODE) scopes.push(...root.querySelectorAll?.(LOCALIZED_UI) || []);
@@ -118,16 +153,16 @@ function localizeUi(root = document.body) {
       for (const attr of ["placeholder", "title", "aria-label"]) {
         const value = element.getAttribute(attr);
         if (!value) continue;
-        const replacement = PT_ATTRS.get(value) || translatedText(value);
+        const replacement = maps.attrs.get(value) || translatedText(value);
         if (replacement !== value) element.setAttribute(attr, replacement);
       }
     });
   });
 }
 
-function mountPortugueseUi() {
-  if (!ptPage() || document.documentElement.dataset.ptUiMounted === "1") return;
-  document.documentElement.dataset.ptUiMounted = "1";
+function mountLocalizedUi() {
+  if (!localeMaps() || document.documentElement.dataset.localeUiMounted === "1") return;
+  document.documentElement.dataset.localeUiMounted = "1";
   localizeUi();
   new MutationObserver(mutations => mutations.forEach(mutation => {
     const root = mutation.target.nodeType === Node.ELEMENT_NODE ? mutation.target : mutation.target.parentElement;
@@ -203,7 +238,9 @@ function rewriteUnavailableCourseLinks(current, fallback, manifestUrl) {
     if (!file.endsWith(".html") || hasPage(current, file)) return;
     anchor.href = new URL(file, fallbackBase).href;
     anchor.dataset.languageFallback = fallback.code;
-    const note = current.locale === "pt-BR" ? "Ainda não disponível em português; abre em inglês." : "Not available in this language; opens in English.";
+    const note = current.locale === "pt-BR" ? "Ainda não disponível em português; abre em inglês."
+      : current.locale === "es-ES" ? "Aún no está disponible en español; se abre en inglés."
+      : "Not available in this language; opens in English.";
     anchor.title = anchor.title ? `${anchor.title} · ${note}` : note;
     if (!anchor.querySelector(".language-fallback-badge")) {
       const badge = document.createElement("span");
@@ -216,7 +253,7 @@ function rewriteUnavailableCourseLinks(current, fallback, manifestUrl) {
 }
 
 export async function mountLanguageMenu() {
-  mountPortugueseUi();
+  mountLocalizedUi();
   const bar = document.querySelector(".topbar");
   if (!bar || bar.querySelector(".language-menu")) return;
   const found = await findManifest();
@@ -233,7 +270,7 @@ export async function mountLanguageMenu() {
   button.className = "language-menu-button";
   button.type = "button";
   button.textContent = "🌐";
-  button.setAttribute("aria-label", current.locale === "pt-BR" ? "Escolher idioma" : "Choose language");
+  button.setAttribute("aria-label", current.locale === "pt-BR" ? "Escolher idioma" : current.locale === "es-ES" ? "Elegir idioma" : "Choose language");
   button.setAttribute("aria-haspopup", "menu");
   button.setAttribute("aria-expanded", "false");
   const menu = document.createElement("div");
@@ -249,7 +286,7 @@ export async function mountLanguageMenu() {
     if (entry.code === current.code) link.setAttribute("aria-current", "page");
     if (!hasPage(entry, file)) {
       const small = document.createElement("small");
-      small.textContent = entry.locale === "pt-BR" ? "página inicial" : "course home";
+      small.textContent = entry.locale === "pt-BR" ? "página inicial" : entry.locale === "es-ES" ? "página de inicio" : "course home";
       link.appendChild(small);
     }
     menu.appendChild(link);
