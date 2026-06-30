@@ -13,6 +13,7 @@ const ASSISTANT_WIDTH_KEY = "nemoclaw_course_assistant_width_v1";
 const ASSISTANT_SESSIONS_KEY = "nemoclaw_course_assistant_sessions_v1";
 const MAX_ASSISTANT_SESSIONS = 12;
 const MAX_SESSION_HISTORY_CHARS = 100000;
+const MAX_SESSION_ACTIVITY_CHARS = 20000;
 const MAX_ARTIFACT_FIELD_CHARS = 40000;
 
 function newSession(page = null) {
@@ -21,7 +22,7 @@ function newSession(page = null) {
     id: crypto.randomUUID?.() || "session-" + now + "-" + Math.random().toString(36).slice(2, 8),
     title: "New session", manualTitle: false,
     pageId: page?.id || "", pageTitle: page?.title || "",
-    createdAt: now, updatedAt: now, history: [], artifact: null,
+    createdAt: now, updatedAt: now, history: [], activity: "", artifact: null,
   };
 }
 
@@ -54,6 +55,10 @@ function cleanArtifact(value) {
   };
 }
 
+function cleanActivity(value) {
+  return String(value || "").slice(-MAX_SESSION_ACTIVITY_CHARS);
+}
+
 export function loadCourseAssistantStore(storage = localStorage) {
   let parsed = null;
   try { parsed = JSON.parse(storage.getItem(ASSISTANT_SESSIONS_KEY) || "null"); } catch (_) {}
@@ -61,7 +66,7 @@ export function loadCourseAssistantStore(storage = localStorage) {
     id: String(item.id || ""), title: String(item.title || "New session").slice(0, 72),
     manualTitle: item.manualTitle === true,
     pageId: String(item.pageId || "").slice(0, 80), pageTitle: String(item.pageTitle || "").slice(0, 160),
-    createdAt: Number(item.createdAt || Date.now()), updatedAt: Number(item.updatedAt || Date.now()), history: cleanHistory(item.history), artifact: cleanArtifact(item.artifact),
+    createdAt: Number(item.createdAt || Date.now()), updatedAt: Number(item.updatedAt || Date.now()), history: cleanHistory(item.history), activity: cleanActivity(item.activity), artifact: cleanArtifact(item.artifact),
   })).filter(item => item.id).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, MAX_ASSISTANT_SESSIONS);
   if (!sessions.length) sessions.push(newSession());
   const activeId = sessions.some(item => item.id === parsed?.activeId) ? parsed.activeId : sessions[0].id;
@@ -70,7 +75,7 @@ export function loadCourseAssistantStore(storage = localStorage) {
 
 export function saveCourseAssistantStore(store, storage = localStorage) {
   store.sessions = store.sessions.map(session => ({
-    ...session, history: cleanHistory(session.history), artifact: cleanArtifact(session.artifact),
+    ...session, history: cleanHistory(session.history), activity: cleanActivity(session.activity), artifact: cleanArtifact(session.artifact),
   })).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, MAX_ASSISTANT_SESSIONS);
   if (!store.sessions.some(item => item.id === store.activeId)) store.activeId = store.sessions[0]?.id || "";
   const serialized = JSON.stringify({ version: 3, activeId: store.activeId, sessions: store.sessions });
@@ -111,6 +116,24 @@ export function artifactFromMarkdown(markdown, title = "Generated browser artifa
   }
   if (css) html = `<style>\n${css}\n</style>\n` + html;
   return html || javascript ? cleanArtifact({ title, html, javascript, updatedAt: Date.now() }) : null;
+}
+
+export function artifactJavaScriptIssue(source) {
+  const javascript = String(source || "");
+  const issues = [];
+  if (/\bimport\s*\(|\bimport\s+[\s\S]*?\bfrom\s*["']|\bfrom\s*["']\.\.?\//.test(javascript)) {
+    issues.push("Imports are unavailable in the artifact sandbox. Use the injected course API.");
+  }
+  const badInputType = javascript.match(/\binputType\s*:\s*["']([^"']+)["']/);
+  if (badInputType && !["query", "passage"].includes(badInputType[1])) {
+    issues.push(`course.embed inputType must be "query" or "passage", not "${badInputType[1]}".`);
+  }
+  if (/(?:^|[;\n])\s*(?:(?:const|let|var)\s+)?[A-Za-z_$][\w$]*\s*=\s*course\.embed\s*\(/m.test(javascript)) {
+    issues.push("course.embed is asynchronous. Assign its result with await course.embed(...).");
+  }
+  try { Function(`return (async () => {\n${javascript}\n});`); }
+  catch (error) { issues.push(`JavaScript syntax error: ${error.message}`); }
+  return issues.join(" ");
 }
 
 export function parseInlineCourseSourceIntent(text) {
@@ -156,10 +179,10 @@ export function mountCourseAssistant(runtime = {}) {
     renameLabel: "Renomear a sessão atual", renamePlaceholder: "Nome da sessão",
     attached: "Página vinculada", noPage: "Nenhuma página vinculada", usePage: id => `Usar ${id}`, refreshPage: "Atualizar página",
     tools: "mapa, prosa, código e fontes do runtime disponíveis",
-    chatView: "Conversa", artifactView: "Artefato", artifactTitle: "Título do artefato", htmlLabel: "HTML", javascriptLabel: "JavaScript",
+    chatView: "Conversa", artifactView: "Artefato", historyView: "Histórico", historyTitle: "Atividade salva da sessão", copyHistory: "Copiar histórico", noHistory: "Ainda não há atividade salva nesta sessão.", artifactTitle: "Título do artefato", htmlLabel: "HTML", javascriptLabel: "JavaScript",
     runArtifact: "▶ Executar", clearArtifact: "Limpar prévia", deleteArtifact: "Excluir artefato", artifactPreview: "Prévia do artefato do curso", generatedReady: "Código gerado pronto",
     previewCleared: "Prévia limpa; código preservado", artifactDeleted: "Artefato excluído", syntaxError: "Erro de sintaxe", runtimeError: "Erro de execução",
-    unsupportedImport: "Imports não funcionam no sandbox. Use course.embed(...) para embeddings.",
+    artifactApi: 'API assíncrona: const vetores = await course.embed(textos, { inputType: "query" });',
     saved: "Salvo localmente", saving: "Salvando resposta", full: "Não salvo: armazenamento local cheio", selected: "Sessão selecionada",
     created: "Nova sessão criada", deleted: "Sessão excluída", renamed: "Sessão renomeada", attachedNow: "Página vinculada à sessão", compacted: "Contexto condensado e salvo localmente",
     emptyTitle: "Nova sessão", clear: "↺ Limpar sessão",
@@ -174,10 +197,10 @@ export function mountCourseAssistant(runtime = {}) {
     renameLabel: "Rename current Course Assistant session", renamePlaceholder: "Session name",
     attached: "Attached page", noPage: "No page attached", usePage: id => `Use ${id}`, refreshPage: "Refresh page",
     tools: "course map, prose, code, and runtime-source tools available",
-    chatView: "Chat", artifactView: "Artifact", artifactTitle: "Artifact title", htmlLabel: "HTML", javascriptLabel: "JavaScript",
+    chatView: "Chat", artifactView: "Artifact", historyView: "History", historyTitle: "Saved session activity", copyHistory: "Copy history", noHistory: "No saved activity in this session yet.", artifactTitle: "Artifact title", htmlLabel: "HTML", javascriptLabel: "JavaScript",
     runArtifact: "▶ Run", clearArtifact: "Clear preview", deleteArtifact: "Delete artifact", artifactPreview: "Course artifact preview", generatedReady: "Generated code ready",
     previewCleared: "Preview cleared; code preserved", artifactDeleted: "Artifact deleted", syntaxError: "Syntax error", runtimeError: "Runtime error",
-    unsupportedImport: "Imports are unavailable in the sandbox. Use course.embed(...) for embeddings.",
+    artifactApi: 'Async API: const vectors = await course.embed(texts, { inputType: "query" });',
     saved: "Saved locally", saving: "Saving response", full: "Not saved: browser storage is full", selected: "Session selected",
     created: "New session created", deleted: "Session deleted", renamed: "Session renamed", attachedNow: "Page attached to session", compacted: "Compacted and saved locally",
     emptyTitle: "New session", clear: "↺ Clear session",
@@ -204,19 +227,23 @@ export function mountCourseAssistant(runtime = {}) {
       <header><div><span>${copy.assistant}</span><h2 data-course-assistant-title>${copy.emptyTitle}</h2></div><button type="button" data-course-assistant-close aria-label="${copy.close}">×</button></header>
       <div class="course-assistant-sessions"><label for="course-assistant-session">${copy.session}</label><select id="course-assistant-session" aria-label="${copy.session}"></select><button type="button" data-course-assistant-new>${copy.newSession}</button><button type="button" data-course-assistant-delete aria-label="${copy.deleteLabel}">${copy.deleteSession}</button><input type="text" maxlength="72" aria-label="${copy.renameLabel}" placeholder="${copy.renamePlaceholder}"><span role="status" aria-live="polite"></span></div>
       <p class="course-assistant-context"><span></span><button type="button" data-course-assistant-use-page></button></p>
-      <div class="course-assistant-tabs" role="tablist"><button type="button" role="tab" aria-selected="true" data-course-assistant-view="chat">${copy.chatView}</button><button type="button" role="tab" aria-selected="false" data-course-assistant-view="artifact">${copy.artifactView}</button></div>
+      <div class="course-assistant-tabs" role="tablist"><button type="button" role="tab" aria-selected="true" data-course-assistant-view="chat">${copy.chatView}</button><button type="button" role="tab" aria-selected="false" data-course-assistant-view="artifact">${copy.artifactView}</button><button type="button" role="tab" aria-selected="false" data-course-assistant-view="history">${copy.historyView}</button></div>
       <div class="course-assistant-body"></div>
       <section class="course-assistant-artifact" hidden>
         <label>${copy.artifactTitle}<input type="text" maxlength="96" data-course-artifact-title></label>
+        <p class="course-artifact-api">${copy.artifactApi}</p>
         <div class="course-artifact-editors"><label>${copy.htmlLabel}<textarea data-course-artifact-html spellcheck="false"></textarea></label><label>${copy.javascriptLabel}<textarea data-course-artifact-js spellcheck="false"></textarea></label></div>
         <div class="course-artifact-actions"><button type="button" data-course-artifact-run>${copy.runArtifact}</button><button type="button" data-course-artifact-clear>${copy.clearArtifact}</button><button type="button" data-course-artifact-delete>${copy.deleteArtifact}</button><span role="status" aria-live="polite"></span></div>
         <iframe sandbox="allow-scripts" referrerpolicy="no-referrer" title="${copy.artifactPreview}"></iframe>
       </section>
+      <section class="course-assistant-history" hidden><header><strong>${copy.historyTitle}</strong><button type="button" data-course-history-copy>${copy.copyHistory}</button></header><pre tabindex="0"></pre></section>
     </aside>`;
   document.body.append(launcher, shell);
   const panel = shell.querySelector(".course-assistant-panel");
   const body = shell.querySelector(".course-assistant-body");
   const artifactPanel = shell.querySelector(".course-assistant-artifact");
+  const historyPanel = shell.querySelector(".course-assistant-history");
+  const historyText = historyPanel.querySelector("pre");
   const artifactTitle = shell.querySelector("[data-course-artifact-title]");
   const artifactHtml = shell.querySelector("[data-course-artifact-html]");
   const artifactJs = shell.querySelector("[data-course-artifact-js]");
@@ -258,9 +285,10 @@ export function mountCourseAssistant(runtime = {}) {
   const activeSession = () => store.sessions.find(item => item.id === store.activeId) || store.sessions[0];
   let activeView = "chat";
   const activateView = view => {
-    activeView = view === "artifact" ? "artifact" : "chat";
+    activeView = ["artifact", "history"].includes(view) ? view : "chat";
     body.hidden = activeView !== "chat";
     artifactPanel.hidden = activeView !== "artifact";
+    historyPanel.hidden = activeView !== "history";
     viewButtons.forEach(button => button.setAttribute("aria-selected", String(button.dataset.courseAssistantView === activeView)));
     if (activeView === "artifact") setTimeout(() => Object.values(artifactEditors).forEach(editor => editor?.refresh()), 0);
   };
@@ -268,7 +296,7 @@ export function mountCourseAssistant(runtime = {}) {
     const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob:; font-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'">`;
     const javascript = String(artifact?.javascript || "").replace(/<\/script/gi, "<\\/script");
     const bridge = `<script>(function(){const channel=${JSON.stringify(artifactBridgeId)},pending=new Map();let seq=0;window.course=Object.freeze({embed:(input,options={})=>new Promise((resolve,reject)=>{const id=++seq;pending.set(id,{resolve,reject});parent.postMessage({channel,type:"request",id,method:"embed",args:[input,options]},"*");setTimeout(()=>{if(pending.delete(id))reject(new Error("course.embed timed out"));},65000);})});addEventListener("message",event=>{const data=event.data||{};if(data.channel!==channel||data.type!=="response"||!pending.has(data.id))return;const item=pending.get(data.id);pending.delete(data.id);data.error?item.reject(new Error(data.error)):item.resolve(data.result);});const report=value=>parent.postMessage({channel,type:"artifact-error",message:String(value?.message||value),line:value?.lineno||0,column:value?.colno||0},"*");addEventListener("error",event=>report(event));addEventListener("unhandledrejection",event=>report(event.reason));})();<\/script>`;
-    const script = `${bridge}<script>\n${javascript}\n<\/script>`;
+    const script = `${bridge}<script>\n(async () => {\n${javascript}\n})();\n<\/script>`;
     const html = String(artifact?.html || "").trim();
     if (/<html[\s>]/i.test(html)) {
       let documentText = /<head[\s>]/i.test(html) ? html.replace(/<head([^>]*)>/i, `<head$1>${csp}`) : csp + html;
@@ -305,9 +333,12 @@ export function mountCourseAssistant(runtime = {}) {
     usePageButton.textContent = session?.pageId === page.id ? copy.refreshPage : copy.usePage(page.id);
     newSessionButton.disabled = store.sessions.length >= MAX_ASSISTANT_SESSIONS;
   };
+  const renderHistory = () => {
+    historyText.textContent = activeSession()?.activity || copy.noHistory;
+  };
   const persistStore = (message = copy.saved) => {
     try {
-      const saved = saveCourseAssistantStore(store); renderSessions();
+      const saved = saveCourseAssistantStore(store); renderSessions(); renderHistory();
       sessionStatus.textContent = `${message} · ${saved.sessions}/${MAX_ASSISTANT_SESSIONS} · ${Math.ceil(saved.chars / 1024)} KB`;
     }
     catch (error) { sessionStatus.textContent = `${copy.full} · ${error?.name || "storage error"}`; }
@@ -315,6 +346,12 @@ export function mountCourseAssistant(runtime = {}) {
   persistStore(copy.saved);
   renderArtifact(true);
   viewButtons.forEach(button => button.addEventListener("click", () => activateView(button.dataset.courseAssistantView)));
+  shell.querySelector("[data-course-history-copy]").addEventListener("click", event => {
+    navigator.clipboard.writeText(activeSession()?.activity || "").then(() => {
+      const button = event.currentTarget, before = button.textContent; button.textContent = "✓";
+      setTimeout(() => { button.textContent = before; }, 1000);
+    }).catch(() => {});
+  });
   let artifactSaveTimer = 0;
   let runArtifact = () => {};
   const saveArtifact = (message = copy.saved, run = false) => {
@@ -386,11 +423,8 @@ export function mountCourseAssistant(runtime = {}) {
   runArtifact = () => {
     saveArtifact(copy.saved, false);
     const javascript = editorValue("javascript", artifactJs);
-    if (/\bimport\s*\(|\bimport\s+[\s\S]*?\bfrom\s*["']|\bfrom\s*["']\.\.?\//.test(javascript)) {
-      artifactStatus.textContent = copy.unsupportedImport; artifactStatus.classList.add("error"); return;
-    }
-    try { Function(javascript); }
-    catch (error) { artifactStatus.textContent = `${copy.syntaxError}: ${error.message}`; artifactStatus.classList.add("error"); return; }
+    const issue = artifactJavaScriptIssue(javascript);
+    if (issue) { artifactStatus.textContent = issue; artifactStatus.classList.add("error"); return; }
     artifactStatus.classList.remove("error"); renderArtifact(true);
   };
   shell.querySelector("[data-course-artifact-run]").addEventListener("click", runArtifact);
@@ -422,7 +456,8 @@ export function mountCourseAssistant(runtime = {}) {
         throw new Error("course.embed accepts 1-16 non-empty strings, up to 12,000 characters total");
       }
       const requestedType = data.args?.[1]?.inputType;
-      const inputType = requestedType === "passage" ? "passage" : "query";
+      if (requestedType != null && !["query", "passage"].includes(requestedType)) throw new Error('course.embed inputType must be "query" or "passage"');
+      const inputType = requestedType || "query";
       respond({ result: await runtime.embed(input, { inputType }) });
     } catch (error) { respond({ error: String(error?.message || error).slice(0, 500) }); }
   });
@@ -499,6 +534,7 @@ export function mountCourseAssistant(runtime = {}) {
       models: MODELS,
       memory: true,
       initialHistory: session.history,
+      initialActivity: session.activity,
       resetLabel: copy.clear,
       compactAtTokens: 12000,
       compactKeepMessages: 6,
@@ -512,7 +548,7 @@ export function mountCourseAssistant(runtime = {}) {
       onTurnSnapshot: (history, meta) => {
         const current = store.sessions.find(item => item.id === mountedSessionId);
         if (!current) return;
-        current.history = cleanHistory(history); current.updatedAt = Date.now();
+        current.history = cleanHistory(history); current.activity = cleanActivity(meta?.activity); current.updatedAt = Date.now();
         persistStore(meta?.state === "running" ? copy.saving : copy.saved);
       },
       onHistoryChange: history => {
@@ -529,6 +565,8 @@ export function mountCourseAssistant(runtime = {}) {
         if (!current) return;
         const artifact = artifactFromMarkdown(answer, `${current.title || "Course Assistant"} artifact`);
         if (!artifact) return;
+        const issue = artifactJavaScriptIssue(artifact.javascript);
+        if (issue) { artifactStatus.textContent = `Generated artifact rejected: ${issue}`; artifactStatus.classList.add("error"); return; }
         current.artifact = artifact; current.updatedAt = Date.now();
         persistStore(copy.saved); renderArtifact(false); artifactStatus.textContent = copy.generatedReady;
       },
@@ -536,8 +574,8 @@ export function mountCourseAssistant(runtime = {}) {
       greeting: copy.greeting(attachedPage?.id || ""),
       examples: copy.examples,
       system: pt
-        ? `Você é o Assistente do Curso Securing Agents. ${attachedPage ? `Esta sessão está vinculada à página ${attachedPage.id}, “${attachedTitle}”, fornecida como contexto inicial. Comece por ela.` : "Esta sessão não tem uma página vinculada."} Para perguntas sobre o curso, use list_course_pages, search_course_pages e read_course_page. Para código, use list_course_code e depois read_course_source com o URI retornado; para módulos compartilhados, use list_course_runtime_files e read_course_runtime_source. Invoque as ferramentas pela API: nunca imprima os argumentos JSON como resposta. O runtime do curso é JavaScript no navegador: use HTML/JavaScript por padrão. O sandbox de artefato fornece course.embed(textos, {inputType}); não use import, fetch, localStorage nem pacotes externos. O curso não oferece uma célula genérica para colar código. Use queue_course_artifact para criar uma área editável e executável. Leia o código antes de explicar e nunca invente uma implementação nem alegue que o código é privado ou inacessível. Cite os IDs das páginas e os arquivos usados.`
-        : `You are the Course Assistant for Securing Agents. ${attachedPage ? `This session is attached to ${attachedPage.id}, “${attachedTitle}”, supplied as initial context. Begin there.` : "This session has no attached page."} For course questions, use list_course_pages, search_course_pages, and read_course_page. For code, use list_course_code then read_course_source with the returned URI; for shared modules use list_course_runtime_files and read_course_runtime_source. Invoke tools through the API: never print tool arguments as JSON. The course runtime is browser JavaScript: default to HTML/JavaScript. The artifact sandbox provides course.embed(texts, { inputType }); do not use import, fetch, localStorage, or external packages. The course has no generic pasteable code cell. Use queue_course_artifact to create an editable, runnable view. Inspect source before explaining code, and never invent an implementation or claim source is private or inaccessible. Cite course page ids and source files used.`,
+        ? `Você é o Assistente do Curso Securing Agents. ${attachedPage ? `Esta sessão está vinculada à página ${attachedPage.id}, “${attachedTitle}”, fornecida como contexto inicial. Comece por ela.` : "Esta sessão não tem uma página vinculada."} Para perguntas sobre o curso, use list_course_pages, search_course_pages e read_course_page. Para código, use list_course_code e depois read_course_source com o URI retornado; para módulos compartilhados, use list_course_runtime_files e read_course_runtime_source. Invoque as ferramentas pela API: nunca imprima os argumentos JSON como resposta. O runtime do curso é JavaScript no navegador: use HTML/JavaScript por padrão. O sandbox fornece a API assíncrona course.embed; sempre use await course.embed(textos, { inputType: "query" ou "passage" }). O executor aceita await no nível superior. Não use import, fetch, localStorage nem pacotes externos. O curso não oferece uma célula genérica para colar código. Use queue_course_artifact para criar uma área editável e executável. Leia o código antes de explicar e nunca invente uma implementação nem alegue que o código é privado ou inacessível. Cite os IDs das páginas e os arquivos usados.`
+        : `You are the Course Assistant for Securing Agents. ${attachedPage ? `This session is attached to ${attachedPage.id}, “${attachedTitle}”, supplied as initial context. Begin there.` : "This session has no attached page."} For course questions, use list_course_pages, search_course_pages, and read_course_page. For code, use list_course_code then read_course_source with the returned URI; for shared modules use list_course_runtime_files and read_course_runtime_source. Invoke tools through the API: never print tool arguments as JSON. The course runtime is browser JavaScript: default to HTML/JavaScript. The sandbox provides the asynchronous course.embed API; always use await course.embed(texts, { inputType: "query" or "passage" }). Top-level await is supported by the artifact runner. Do not use import, fetch, localStorage, or external packages. The course has no generic pasteable code cell. Use queue_course_artifact to create an editable, runnable view. Inspect source before explaining code, and never invent an implementation or claim source is private or inaccessible. Cite course page ids and source files used.`,
       recoverInlineToolIntent: async answer => {
         const intent = parseInlineCourseSourceIntent(answer);
         return intent ? resolveCourseSourceUri(intent.uri, attachedPage?.id || "") : null;
@@ -589,12 +627,14 @@ export function mountCourseAssistant(runtime = {}) {
           tool(async ({ title: artifactName, html, javascript }) => {
             const current = store.sessions.find(item => item.id === mountedSessionId);
             if (!current) return "No active Course Assistant session.";
+            const issue = artifactJavaScriptIssue(javascript);
+            if (issue) return `Artifact rejected: ${issue} Correct the JavaScript, then call queue_course_artifact again.`;
             current.artifact = cleanArtifact({ title: artifactName, html, javascript, updatedAt: Date.now() });
             current.updatedAt = Date.now(); persistStore(copy.saved); renderArtifact(true); activateView("artifact");
             return `Queued browser artifact “${current.artifact.title}” with ${current.artifact.html.length} HTML chars and ${current.artifact.javascript.length} JavaScript chars.`;
           }, {
             name: "queue_course_artifact",
-            description: pt ? "Crie uma área editável e executável. Para embeddings, chame course.embed; não use import, fetch, localStorage ou pacotes externos." : "Queue editable HTML/JavaScript. For embeddings call course.embed; do not use import, fetch, localStorage, external packages, or a nonexistent course cell.",
+            description: pt ? "Crie uma área editável e executável. Para embeddings, use await course.embed com inputType query ou passage; não use import, fetch, localStorage ou pacotes externos." : "Queue editable HTML/JavaScript. For embeddings use await course.embed with inputType query or passage; top-level await works. Do not use import, fetch, localStorage, external packages, or a nonexistent course cell.",
             schema: z.object({
               title: z.string().min(1).describe("short artifact title"),
               html: z.string().describe("HTML body or complete document; use an empty string when not needed"),
@@ -631,7 +671,7 @@ export function mountCourseAssistant(runtime = {}) {
   newSessionButton.addEventListener("click", async () => {
     flushArtifactSave();
     const current = activeSession();
-    if (current && !current.history.length && !current.artifact && current.title === "New session") {
+    if (current && !current.history.length && !current.activity && !current.artifact && current.title === "New session") {
       sessionName.focus(); sessionName.select(); return;
     }
     if (store.sessions.length >= MAX_ASSISTANT_SESSIONS) { sessionStatus.textContent = `${copy.full} · ${MAX_ASSISTANT_SESSIONS}/${MAX_ASSISTANT_SESSIONS}`; return; }
