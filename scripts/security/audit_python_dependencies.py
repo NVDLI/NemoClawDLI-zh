@@ -44,6 +44,13 @@ REQUIRED_FLOORS = {
 FORBIDDEN_DIRECT_REQUIREMENTS = {
     "langserve": "retired unused dependency; reintroduction requires runtime evidence and an OSRB distribution decision",
     "langgraph-cli": "retired unused in-memory runtime; it conflicts with the supported protobuf, cryptography, OpenTelemetry, and Starlette compatibility line",
+    "jupyter-archive": "unused optional Jupyter extension removed from the supported runtime and SBOM; reintroduction requires learner evidence and source/license disposition",
+    "jupyter-collaboration": "unused optional Jupyter extension removed from the supported runtime and SBOM; reintroduction requires learner evidence and source/license disposition",
+    "jupyter-resource-usage": "unused optional Jupyter extension removed from the supported runtime and SBOM; reintroduction requires learner evidence and source/license disposition",
+    "jupyterlab-language-pack-ja-jp": "unused language pack removed from the supported runtime and SBOM; reintroduction requires learner evidence and source/license disposition",
+    "jupyterlab-language-pack-zh-cn": "unused language pack removed from the supported runtime and SBOM; reintroduction requires learner evidence and source/license disposition",
+    "jupyterlab-language-pack-zh-tw": "unused language pack removed from the supported runtime and SBOM; reintroduction requires learner evidence and source/license disposition",
+    "pymupdf": "unused document processor removed from the supported runtime and SBOM; reintroduction requires runtime evidence and source/license disposition",
 }
 
 # BDSA-2025-123809 / upstream #26432: no released wheel through 7.35.1 contains
@@ -236,13 +243,11 @@ def main() -> int:
         import tempfile
         with tempfile.TemporaryDirectory() as tmp:
             manifest = Path(tmp) / "requirements.txt"
-            manifest.write_text(
-                "requests==2.33.1\nlangserve>=0.3\nlanggraph-cli==0.4.30\n",
-                encoding="utf-8",
-            )
+            retired = ["langserve>=0.3"] + [f"{name}==0" for name in FORBIDDEN_DIRECT_REQUIREMENTS if name != "langserve"]
+            manifest.write_text("requests==2.33.1\n" + "\n".join(retired) + "\n", encoding="utf-8")
             forbidden = forbidden_direct_requirements(manifest)
             unlocked = unlocked_direct_requirements(manifest)
-        if {item.get("package") for item in forbidden} != {"langserve", "langgraph-cli"}:
+        if {item.get("package") for item in forbidden} != set(FORBIDDEN_DIRECT_REQUIREMENTS):
             print("python dependency audit self-test: FAIL", file=sys.stderr)
             return 1
         if len(unlocked) != 1 or unlocked[0].get("package") != "langserve":

@@ -50,10 +50,11 @@ uv pip compile scripts/security/requirements-sca.lock.in --python-version 3.11 -
 Review the full lock diff, rerun SCA, and commit each direct manifest with its lock. Exact versions
 stabilize resolution and SBOM identity; installed-environment SCA remains required. The direct gate
 also rejects unpinned workspace dependencies and dependencies intentionally removed from the runtime.
-`langserve` and `langgraph-cli` are such packages: no tracked course or service
-code imports them. The CLI's in-memory runtime also conflicts with the supported
-protobuf, cryptography, OpenTelemetry, and Starlette compatibility line. Reintroducing
-either requires demonstrated runtime need plus a current OSRB and compatibility decision.
+`langserve`, `langgraph-cli`, unused optional Jupyter extensions and language packs, and
+`pymupdf` are such packages: no tracked course, notebook, service, or Jupyter configuration
+uses them. The CLI's in-memory runtime also conflicts with the supported protobuf,
+cryptography, OpenTelemetry, and Starlette compatibility line. Reintroduction requires
+demonstrated runtime or learner need plus current source/license and compatibility review.
 Run its network-free regression check with:
 
 ```bash
@@ -103,6 +104,20 @@ tracked runtime caller of `google.protobuf.json_format.Parse` or `ParseDict`, an
 the waiver expires so the dependency cannot remain accepted silently.
 
 ## Full installed-environment SCA
+
+### Inventory is not license approval
+
+An SBOM records components and relationships. License data is optional metadata and may be absent
+or too weak for a downstream policy engine. For example, the generated CycloneDX document identified
+the removed Jupyter packages by name, version, and package URL and carried a Python classifier such as
+`License :: OSI Approved :: BSD License`; the review system still required an SPDX-normalized license.
+`pymupdf` had no license field in the generated component. An `Unknown License` result therefore does
+not mean the component was missing from the SBOM. It means inventory succeeded but license evidence
+did not meet policy.
+
+Do not hand-edit a generated SBOM. Remove an unused component, correct its package/source metadata,
+or add approved enrichment in the SBOM pipeline. Keep the source/license decision outside generated
+artifacts so every rebuild is reproducible.
 
 The fast gate does not replace a full transitive scan. Once the workspace/test
 container has installed the real environment, run one of the standard scanners

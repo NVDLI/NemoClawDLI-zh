@@ -46,7 +46,6 @@ tavily-python==0.7.26
 # Document Processing
 arxiv==3.0.0  # v4 removed Search.results(); ArxivRetriever in langchain_community requires <4
 pdf2image==1.17.0
-pymupdf==1.28.0
 rank-bm25==0.2.2
 
 # ML / DL / Inference
@@ -73,16 +72,10 @@ pip==26.1.2  # venv bootstrap is part of the scanned runtime environment
 gradio==6.19.0
 ipywidgets==8.1.8
 jupyter-app-launcher==0.3.2
-jupyter-archive==3.4.0
-jupyter-collaboration==4.4.1
-jupyter-resource-usage==1.2.1
 jupyter-server==2.20.0
 jupyter-server-proxy==4.5.0
 jupyterlab==4.5.9
 jupyterlab-git==0.54.0
-jupyterlab-language-pack-ja-JP==4.5.post3
-jupyterlab-language-pack-zh-CN==4.5.post3
-jupyterlab-language-pack-zh-TW==4.5.post3
 jupyterlab-widgets==3.0.16
 jupytext==1.19.4
 playwright==1.61.0

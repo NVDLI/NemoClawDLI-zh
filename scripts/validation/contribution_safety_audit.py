@@ -51,6 +51,7 @@ CONTRACT_FILES = (
     "scripts/build/package_release.py",
     "scripts/materials/requirements.lock",
     "scripts/security/audit_dependency_locks.py",
+    "scripts/security/audit_sbom_policy.py",
     "scripts/security/requirements-sca.lock",
     "scripts/git-hooks/pre-commit",
     "scripts/git-hooks/pre-push",
@@ -278,6 +279,8 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
         out.append(finding("github-material-lock", ".github/workflows/pages.yml",
                            "test and deploy jobs must install material tooling from the reviewed lock",
                            "use scripts/materials/requirements.lock in both Python setup paths"))
+    require(pages, "audit_sbom_policy.py --self-test", ".github/workflows/pages.yml",
+            "github-sbom-policy-selftest", out, "prove the SBOM policy detector in public PR CI")
 
     release = docs[".github/workflows/release.yml"]
     require(release, "  workflow_dispatch:", ".github/workflows/release.yml", "release-manual", out,
@@ -316,6 +319,8 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "release-runtime-lock", out, "build the release environment from the Python 3.11 runtime lock")
     require(release, "scripts/security/requirements-sca.lock", ".github/workflows/release.yml",
             "release-sca-lock", out, "install scanners from their isolated reviewed lock")
+    require(release, "--sbom release-security/python-env.cdx.json", ".github/workflows/release.yml",
+            "release-sbom-policy", out, "evaluate and retain SBOM policy evidence before release")
 
     dependency_review = docs[".github/workflows/dependency-review.yml"]
     require(dependency_review, "  pull_request:\n", ".github/workflows/dependency-review.yml",
@@ -351,6 +356,9 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "retain mutation tests for stale and unpinned dependency locks")
     require(docs["workspace/Dockerfile"], "pip3 install -r requirements.lock", "workspace/Dockerfile",
             "workspace-lock-install", out, "build the lab image from the exact runtime closure")
+    require(docs["scripts/security/audit_sbom_policy.py"], "retired-component",
+            "scripts/security/audit_sbom_policy.py", "sbom-policy-detector", out,
+            "retain runtime SBOM completeness and retired-component enforcement")
 
     gitlab = docs[".gitlab-ci.yml"]
     require(gitlab, "contribution_safety_audit.py --self-test", ".gitlab-ci.yml",
@@ -366,6 +374,8 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "validate every merge-request commit signoff")
     require(gitlab, "audit_dependency_locks.py --self-test", ".gitlab-ci.yml",
             "gitlab-lock-selftest", out, "run dependency-lock mutations in canonical CI")
+    require(gitlab, "audit_sbom_policy.py --sbom", ".gitlab-ci.yml", "gitlab-sbom-policy", out,
+            "evaluate the generated runtime SBOM instead of only uploading it")
     require(gitlab, ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock",
             ".gitlab-ci.yml", "gitlab-runtime-lock", out,
             "scan the exact runtime closure rather than resolving direct requirements again")
@@ -423,6 +433,8 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "reject unsigned topic-branch commits before push")
     require(prep, 'LOCK_AUDIT="$T1/scripts/security/audit_dependency_locks.py"', "scripts/git-hooks/pre-push",
             "prepush-lock-selftest", out, "reject stale or unpinned dependency locks before push")
+    require(prep, 'SBOM_POLICY="$T1/scripts/security/audit_sbom_policy.py"', "scripts/git-hooks/pre-push",
+            "prepush-sbom-policy", out, "run the SBOM policy mutation detector before push")
     require(prep, 'PACKAGE_RELEASE="$T1/scripts/build/package_release.py"',
             "scripts/git-hooks/pre-push", "prepush-package-selftest", out,
             "run the deterministic release-packaging self-test before push")
@@ -554,6 +566,7 @@ def self_test() -> list[str]:
             ("mutable-action-ref", ".github/workflows/pages.yml", "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683", "actions/checkout@v4"),
             ("unpinned-workflow-install", ".github/workflows/pages.yml", "--requirement scripts/materials/requirements.lock", "requests beautifulsoup4 markdownify lxml"),
             ("github-material-lock", ".github/workflows/pages.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),
+            ("github-sbom-policy-selftest", ".github/workflows/pages.yml", "audit_sbom_policy.py --self-test", "audit_sbom_policy.py --help"),
             ("pr-deploy-boundary", ".github/workflows/pages.yml", "if: github.event_name != 'pull_request'", "if: always()"),
             ("dependency-review-floor", ".github/workflows/dependency-review.yml", "fail-on-severity: moderate", "fail-on-severity: critical"),
             ("codeql-baseline", ".github/workflows/codeql.yml", "javascript-typescript", "javascript-disabled"),
@@ -567,6 +580,7 @@ def self_test() -> list[str]:
             ("publication-deploy-guard", ".github/workflows/pages.yml", "contribution_safety_audit.py --require-publication-approved", "contribution_safety_audit.py"),
             ("release-runtime-lock", ".github/workflows/release.yml", "workspace/requirements.lock", "workspace/requirements.txt"),
             ("release-sca-lock", ".github/workflows/release.yml", "scripts/security/requirements-sca.lock", "pip-audit cyclonedx-bom"),
+            ("release-sbom-policy", ".github/workflows/release.yml", "--sbom release-security/python-env.cdx.json", "--sbom release-security/unchecked.json"),
             ("discussion-route", ".github/ISSUE_TEMPLATE/config.yml", "/discussions", "/issues"),
             ("submission-template", ".github/PULL_REQUEST_TEMPLATE.md", "## Blast radius checked", "## Scope notes"),
             ("gitlab-description-window", ".gitlab/merge_request_templates/Default.md", "## Validation evidence", "x" * 2700 + "\n## Validation evidence"),
@@ -575,9 +589,11 @@ def self_test() -> list[str]:
             ("remote-fail-open", "scripts/git-hooks/pre-push", "if [ \"$REMOTE\" = \"origin\" ]; then", "[ \"$REMOTE\" = \"origin\" ] || exit 0\nif false; then"),
             ("prepush-package-selftest", "scripts/git-hooks/pre-push", "PACKAGE_RELEASE=", "PACKAGE_TEST="),
             ("prepush-lock-selftest", "scripts/git-hooks/pre-push", 'LOCK_AUDIT="$T1/scripts/security/audit_dependency_locks.py"', 'LOCK_AUDIT="$T1/scripts/security/noop.py"'),
+            ("prepush-sbom-policy", "scripts/git-hooks/pre-push", 'SBOM_POLICY="$T1/scripts/security/audit_sbom_policy.py"', 'SBOM_POLICY="$T1/scripts/security/noop.py"'),
             ("gitlab-safety-selftest", ".gitlab-ci.yml", "contribution_safety_audit.py --self-test", "contribution_safety_audit.py --version"),
             ("gitlab-dco-check", ".gitlab-ci.yml", '--commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', '--commit-range "${CI_COMMIT_SHA}"'),
             ("gitlab-lock-selftest", ".gitlab-ci.yml", "audit_dependency_locks.py --self-test", "audit_dependency_locks.py --version"),
+            ("gitlab-sbom-policy", ".gitlab-ci.yml", "audit_sbom_policy.py --sbom", "audit_sbom_policy.py --help"),
             ("gitlab-runtime-lock", ".gitlab-ci.yml", ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock", ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.txt"),
             ("gitlab-sca-lock", ".gitlab-ci.yml", ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock", ".sca-tools-venv/bin/python -m pip install -q pip-audit cyclonedx-bom"),
             ("gitlab-human-review", ".gitlab-ci.yml", "human_review:", "operator_review:"),
