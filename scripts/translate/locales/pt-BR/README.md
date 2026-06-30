@@ -21,6 +21,13 @@ O arquivo `profile.json` cita páginas públicas da NVIDIA Brasil. Elas sustenta
 `IA baseada em agentes`, `agente de pesquisa profunda`, `geração aumentada por recuperação`,
 `implantação`, `segurança em tempo de execução` e `aplicação de políticas`.
 
+O perfil também cruza documentação técnica pt-BR da Microsoft e da AWS. Essas fontes ajudam a
+distinguir termos que parecem sinônimos, mas cumprem papéis diferentes: `runtime` nomeia um
+componente, enquanto `em tempo de execução` descreve quando algo ocorre; `workflow` nomeia a
+abstração do curso, enquanto `fluxo de trabalho` cabe em prosa geral. A documentação brasileira da
+NVIDIA mantém empréstimos como `runtime`, `stack`, `guardrails` e `sandbox`. Não os traduza de
+forma mecânica, nem os espalhe onde uma expressão portuguesa é mais clara.
+
 Termos de interface consolidados entre desenvolvedores, como `workflow`, `framework`, `runtime`,
 `sandbox` e `stack`, podem permanecer em inglês. Forçar traduções literais nesses casos piora a
 leitura e dificulta a ligação entre o curso, o código e a documentação dos produtos.
@@ -40,6 +47,12 @@ leitura e dificulta a ligação entre o curso, o código e a documentação dos 
 Cadência, naturalidade, precisão conceitual e adequação ao público não cabem em uma lista de
 palavras. O Studio de localização reduz o custo dessa revisão: mostra as duas páginas, o hash que
 mudou, os sinais encontrados e o comando exato para aceitar uma nova base depois da leitura.
+
+Leia o parágrafo inteiro depois de traduzir. Uma frase pode passar pelo glossário e ainda falhar por
+concordância, regência, sujeito ambíguo, título traduzido literalmente ou sequência pedagógica
+quebrada. Execute também `prose_variety.py --page` sobre o overlay: os detectores estruturais de
+frases longas, repetições e cadência funcionam em grande parte sem depender do idioma. Corrija o
+problema de composição; não troque apenas a pontuação para silenciar o sinal.
 
 Um rascunho gerado não é uma página revisada. Primeiro gere e refine com
 `translate_html_segments.py`; depois leia os blocos completos no Studio. Corrija concordância,
