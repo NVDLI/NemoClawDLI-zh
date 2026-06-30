@@ -149,7 +149,15 @@ if [ -f "$LOCK_AUDIT" ]; then
     fi
 fi
 
-# ── RULE 3g: release package determinism guard ───────────────────────────────
+# ── RULE 3g: SBOM policy detector ───────────────────────────────────────────
+SBOM_POLICY="$T1/scripts/security/audit_sbom_policy.py"
+if [ -f "$SBOM_POLICY" ] && ! python3 "$SBOM_POLICY" --self-test; then
+    echo ""
+    echo "pre-push: REFUSING PUSH - SBOM completeness/retired-component detector failed."
+    exit 1
+fi
+
+# ── RULE 3h: release package determinism guard ───────────────────────────────
 PACKAGE_RELEASE="$T1/scripts/build/package_release.py"
 if [ -f "$PACKAGE_RELEASE" ]; then
     if ! python3 "$PACKAGE_RELEASE" --self-test; then

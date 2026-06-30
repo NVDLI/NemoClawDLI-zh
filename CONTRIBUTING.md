@@ -99,6 +99,7 @@ python3 scripts/validation/localization_audit.py --locale pt-BR
 python3 scripts/compliance/source_gate.py
 python3 scripts/security/audit_dependency_locks.py --self-test
 python3 scripts/security/audit_dependency_locks.py
+python3 scripts/security/audit_sbom_policy.py --self-test
 python3 scripts/build/package_release.py --self-test
 bash scripts/runtime/run_engine.sh --self-test
 python3 scripts/validation/validate_bundle.py --scope ship

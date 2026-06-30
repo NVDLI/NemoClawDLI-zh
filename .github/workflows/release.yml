@@ -64,6 +64,7 @@ jobs:
           python3 scripts/security/audit_vulnerability_waivers.py
           python3 scripts/security/audit_dependency_locks.py --self-test
           python3 scripts/security/audit_dependency_locks.py
+          python3 scripts/security/audit_sbom_policy.py --self-test
           python3 scripts/build/package_release.py --self-test
           bash scripts/runtime/run_engine.sh --self-test
           python3 scripts/validation/validate_bundle.py --scope ship
@@ -79,6 +80,9 @@ jobs:
             scripts/security/run_full_sca.py --execute --require-tools --python-local \
             --cyclonedx-env --python-executable "$PWD/.release-runtime-venv/bin/python" \
             --python-path "$RUNTIME_SITE" --out-dir release-security
+          .release-scan-venv/bin/python scripts/security/audit_sbom_policy.py \
+            --sbom release-security/python-env.cdx.json \
+            --report release-security/sbom-policy.json
       - name: Build reproducible release archive
         env:
           RELEASE_TAG: ${{ inputs.tag }}
@@ -93,6 +97,7 @@ jobs:
           cp docs/validation/latest.md release-evidence/validation.md
           cp docs/validation/contribution-safety.json release-evidence/contribution-safety.json
           cp release-security/pip-audit-local.json release-evidence/pip-audit-local.json
+          cp release-security/sbom-policy.json release-evidence/sbom-policy.json
           python3 scripts/build/package_release.py \
             --site-root public \
             --out-dir release-assets \

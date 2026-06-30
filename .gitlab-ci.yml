@@ -76,6 +76,7 @@ test:
     - python3 scripts/security/audit_vulnerability_waivers.py
     - python3 scripts/security/audit_dependency_locks.py --self-test
     - python3 scripts/security/audit_dependency_locks.py
+    - python3 scripts/security/audit_sbom_policy.py --self-test
     - python3 scripts/build/package_release.py --self-test
     - bash   scripts/runtime/run_engine.sh --self-test
     - python3 scripts/validation/validate_bundle.py --scope ship
@@ -135,6 +136,7 @@ security_deep_sca:
     - .sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock
     - RUNTIME_SITE="$(.sca-runtime-venv/bin/python -c 'import sysconfig; print(sysconfig.get_path("purelib"))')"
     - PATH="$CI_PROJECT_DIR/.sca-tools-venv/bin:$PATH" .sca-tools-venv/bin/python scripts/security/run_full_sca.py --execute --require-tools --python-local --cyclonedx-env --python-executable "$CI_PROJECT_DIR/.sca-runtime-venv/bin/python" --python-path "$RUNTIME_SITE" --out-dir scripts/security/reports/deep-workspace
+    - .sca-tools-venv/bin/python scripts/security/audit_sbom_policy.py --sbom scripts/security/reports/deep-workspace/python-env.cdx.json --report scripts/security/reports/deep-workspace/sbom-policy.json
   artifacts:
     when: always
     name: "security-deep-sca-$CI_COMMIT_SHORT_SHA"
@@ -156,6 +158,7 @@ security_deep_sca:
         - scripts/security/audit_python_dependencies.py
         - scripts/security/audit_vulnerability_waivers.py
         - scripts/security/audit_dependency_locks.py
+        - scripts/security/audit_sbom_policy.py
         - scripts/security/requirements-sca.lock.in
         - scripts/security/requirements-sca.lock
         - scripts/security/run_full_sca.py

@@ -53,6 +53,7 @@ jobs:
           python3 scripts/security/audit_vulnerability_waivers.py
           python3 scripts/security/audit_dependency_locks.py --self-test
           python3 scripts/security/audit_dependency_locks.py
+          python3 scripts/security/audit_sbom_policy.py --self-test
           python3 scripts/build/package_release.py --self-test
           bash    scripts/runtime/run_engine.sh --self-test
           python3 scripts/validation/validate_bundle.py --scope ship

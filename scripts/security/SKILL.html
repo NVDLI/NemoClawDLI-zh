@@ -17,6 +17,7 @@
     "scripts/security/iframe_proxy_worker_findings.md",
     "scripts/security/audit_python_dependencies.py",
     "scripts/security/audit_dependency_locks.py",
+    "scripts/security/audit_sbom_policy.py",
     "workspace/requirements.lock",
     "scripts/materials/requirements.lock",
     "scripts/security/requirements-sca.lock",
@@ -69,6 +70,11 @@
       "desc": "Rejects non-exact, missing, or stale Python 3.11 runtime, material-tool, and SCA locks with mutation coverage."
     },
     {
+      "path": "audit_sbom_policy.py",
+      "role": "runtime SBOM policy audit",
+      "desc": "Checks installed-environment SBOM completeness, rejects retired components, and reports license metadata quality without claiming legal approval."
+    },
+    {
       "path": "run_full_sca.py",
       "role": "full SCA and SBOM runner",
       "desc": "Prints or runs pip-audit, reproducible CycloneDX, OSV-Scanner, Grype, and Trivy commands; release jobs can target a runtime interpreter and site-packages from a separate scanner environment."
@@ -118,6 +124,7 @@
     <div class="skill-cmd"><b>Dependency vulnerability audit</b><code>python3 scripts/security/audit_python_dependencies.py</code></div>
     <div class="skill-cmd"><b>Waiver audit</b><code>python3 scripts/security/audit_vulnerability_waivers.py</code></div>
     <div class="skill-cmd"><b>Dependency locks</b><code>python3 scripts/security/audit_dependency_locks.py --self-test &amp;&amp; python3 scripts/security/audit_dependency_locks.py</code></div>
+    <div class="skill-cmd"><b>SBOM policy detector</b><code>python3 scripts/security/audit_sbom_policy.py --self-test</code></div>
     <div class="skill-cmd"><b>Full SCA plan</b><code>python3 scripts/security/run_full_sca.py</code></div>
     <div class="skill-cmd"><b>Full SCA execute</b><code>python3 scripts/security/run_full_sca.py --execute --python-local --cyclonedx-env</code></div>
     <div class="skill-cmd"><b>Deep CI SCA</b><code>security_deep_sca</code></div>
@@ -130,6 +137,7 @@
     <a class="skill-card" href="audit_python_dependencies.py"><b>audit_python_dependencies.py</b><span>dependency vulnerability floor audit. Checks tracked Python declarations against PyPI/OSV metadata, exact workspace pins, and retired direct dependencies.</span></a>
     <a class="skill-card" href="audit_vulnerability_waivers.py"><b>audit_vulnerability_waivers.py</b><span>vulnerability waiver audit. Validates explicit, owned, sourced, and unexpired exceptions.</span></a>
     <a class="skill-card" href="audit_dependency_locks.py"><b>audit_dependency_locks.py</b><span>dependency lock audit. Enforces exact Python 3.11 runtime, material-tool, and SCA closures plus direct-manifest parity.</span></a>
+    <a class="skill-card" href="audit_sbom_policy.py"><b>audit_sbom_policy.py</b><span>runtime SBOM policy audit. Proves lock coverage, rejects retired components, and reports whether license metadata is SPDX, named, or absent.</span></a>
     <a class="skill-card" href="run_full_sca.py"><b>run_full_sca.py</b><span>full SCA and SBOM runner. Supports scanner-separated runtime targeting for clean release SBOMs.</span></a>
     <a class="skill-card" href="vulnerability-waivers.json"><b>vulnerability-waivers.json</b><span>waiver registry. Empty by default; temporary exceptions live here.</span></a>
     <a class="skill-card" href="../../docs/dependency_security.md"><b>dependency_security.md</b><span>standard integration path for fast source checks, waiver policy, SBOM output, full SCA scans, and GitLab Dependency Scanning.</span></a>
