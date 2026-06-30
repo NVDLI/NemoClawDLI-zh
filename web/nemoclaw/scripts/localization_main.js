@@ -1,7 +1,7 @@
 const $ = selector => document.querySelector(selector);
 const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
 const manifestCandidates = ["../languages.json", "../../languages.json", "../../../languages.json", "../../../../languages.json"];
-let drift, languages, activeStatus = "all", selected;
+let drift, languages, activeStatus = "all", activeKind = "pages", selected;
 
 async function languageManifest() {
   for (const rel of manifestCandidates) {
@@ -20,9 +20,11 @@ function courseRows() {
   return drift.pages.filter(row => row.path.startsWith("web/nemoclaw/") && row.file !== "SKILL.html");
 }
 
+function activeRows() { return activeKind === "assets" ? (drift.assets || []) : courseRows(); }
+
 function counts() {
   const out = {};
-  courseRows().forEach(row => { out[row.status] = (out[row.status] || 0) + 1; });
+  activeRows().forEach(row => { out[row.status] = (out[row.status] || 0) + 1; });
   return out;
 }
 
@@ -30,7 +32,7 @@ function renderFilters() {
   const found = counts();
   const statuses = ["all", "current", "stale", "blocked", "needs-review", "missing"];
   $("#loc-filters").innerHTML = statuses.map(status => {
-    const n = status === "all" ? courseRows().length : (found[status] || 0);
+    const n = status === "all" ? activeRows().length : (found[status] || 0);
     return `<button class="loc-filter${activeStatus===status?' active':''}" data-status="${status}">${status} ${n}</button>`;
   }).join("");
   document.querySelectorAll(".loc-filter").forEach(button => button.addEventListener("click", () => {
@@ -39,7 +41,7 @@ function renderFilters() {
 }
 
 function renderPages() {
-  const rows = courseRows().filter(row => activeStatus === "all" || row.status === activeStatus);
+  const rows = activeRows().filter(row => activeStatus === "all" || row.status === activeStatus);
   $("#loc-pages").innerHTML = rows.map(row => `<button class="loc-page${selected?.path===row.path?' active':''}" data-path="${esc(row.path)}"><span class="loc-dot ${esc(row.status)}"></span><span><b>${esc(row.file)}</b><small>${esc(row.status)}</small></span></button>`).join("") || '<div class="loc-empty">No pages in this state.</div>';
   document.querySelectorAll(".loc-page").forEach(button => button.addEventListener("click", () => selectPage(button.dataset.path)));
 }
@@ -51,13 +53,25 @@ function baseFor(code) {
 
 function shortHash(value) { return value ? value.slice(0, 12) : "none"; }
 
-function selectPage(path) {
-  selected = drift.pages.find(row => row.path === path);
+async function selectPage(path) {
+  selected = activeRows().find(row => row.path === path);
   if (!selected) return;
   const sourceBase = baseFor(languages?.data.default || "en") || new URL("./", location.href);
   const targetBase = baseFor(drift.url_code) || new URL(`../../i18n/${drift.url_code}/web/nemoclaw/`, location.href);
-  $("#loc-source").src = new URL(selected.file, sourceBase);
-  $("#loc-target").src = new URL(selected.file, targetBase);
+  const relative = activeKind === "assets" ? selected.path.replace(/^web\/nemoclaw\//, "") : selected.file;
+  const sourceUrl = new URL(relative, sourceBase);
+  const targetUrl = new URL(relative, targetBase);
+  if (activeKind === "assets") {
+    const [sourceSvg, targetSvg] = await Promise.all([
+      fetch(sourceUrl).then(response => response.text()), fetch(targetUrl).then(response => response.text()),
+    ]);
+    const documentFor = svg => `<!doctype html><link rel="stylesheet" href="styles/_style.css"><style>html,body{margin:0;min-height:100%;display:grid;place-items:center;background:var(--bg);overflow:auto}svg{max-width:96%;height:auto}</style>${svg}`;
+    $("#loc-source").removeAttribute("src"); $("#loc-target").removeAttribute("src");
+    $("#loc-source").srcdoc = documentFor(sourceSvg); $("#loc-target").srcdoc = documentFor(targetSvg);
+  } else {
+    $("#loc-source").removeAttribute("srcdoc"); $("#loc-target").removeAttribute("srcdoc");
+    $("#loc-source").src = sourceUrl; $("#loc-target").src = targetUrl;
+  }
   $("#loc-source-label").textContent = shortHash(selected.source_sha256);
   $("#loc-target-label").textContent = selected.status;
   $("#loc-evidence").innerHTML = `<strong>${esc(selected.file)}</strong><span>source <code>${shortHash(selected.source_sha256)}</code></span><span>reviewed <code>${shortHash(selected.reviewed_source_sha256)}</code></span><span>target <code>${shortHash(selected.target_sha256)}</code></span>`;
@@ -71,7 +85,13 @@ async function boot() {
   if (!driftResponse.ok) throw new Error(`drift manifest unavailable (${driftResponse.status})`);
   drift = await driftResponse.json(); languages = lang;
   const c = counts();
-  $("#loc-summary").textContent = `${c.current || 0} current · ${c.stale || 0} stale · ${(c.blocked || 0) + (c['needs-review'] || 0) + (c.missing || 0)} pending`;
+  const assets = drift.asset_counts || {};
+  $("#loc-summary").textContent = `${c.current || 0} pages current · ${assets.current || 0} SVGs current · ${(c.stale || 0) + (c.blocked || 0) + (c['needs-review'] || 0) + (c.missing || 0) + (assets.stale || 0) + (assets.blocked || 0) + (assets['needs-review'] || 0) + (assets.missing || 0)} pending`;
+  document.querySelectorAll("#loc-kinds button").forEach(button => button.addEventListener("click", () => {
+    activeKind = button.dataset.kind; activeStatus = "all"; selected = null;
+    document.querySelectorAll("#loc-kinds button").forEach(item => item.classList.toggle("active", item === button));
+    renderFilters(); renderPages(); const first = activeRows()[0]; if (first) selectPage(first.path);
+  }));
   renderFilters(); renderPages();
   const first = courseRows().find(row => row.status !== "missing") || courseRows()[0];
   if (first) selectPage(first.path);

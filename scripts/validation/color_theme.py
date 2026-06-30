@@ -171,7 +171,10 @@ def scan_inline(text: str):
         prop, val = m.group(1), m.group(2)
         if not re.search(r"color|background|border|outline|shadow|fill|stroke", prop, re.I):
             continue
-        for tok in HEX.findall(val) + RGB.findall(val):
+        # Match bad_in_style_body: a literal fallback inside a defined var() remains theme-dynamic.
+        # The undefined-variable pass below still rejects a misspelled or missing custom property.
+        dynamic = re.sub(r"var\(\s*--[A-Za-z0-9-]+\s*(?:,[^)]*)?\)", "var()", val)
+        for tok in HEX.findall(dynamic) + RGB.findall(dynamic):
             if not neutral(tok):
                 bad.append((tok, "style." + prop))
     return bad
@@ -257,6 +260,20 @@ def svg_sub_sources():
 
 SVG_ATTR = re.compile(
     r'\b(fill|stroke|stop-color|flood-color|lighting-color)\s*=\s*"(#[0-9a-fA-F]{3,8}|rgba?\([^)]*\))"', re.I)
+PAPER_ONLY_FIGURES = {"fig2_react.svg", "fig2_rewoo.svg"}
+
+
+def scan_paper_palette(name: str, text: str):
+    """Reject dark-surface variables inside figures that retain white paper and black source ink."""
+    bad = []
+    if name in PAPER_ONLY_FIGURES:
+        for var_name in sorted(set(re.findall(r"var\((--gfx-[A-Za-z0-9-]+)", text))):
+            if not var_name.startswith("--gfx-paper-"):
+                bad.append((var_name, "paper figure uses a dark-surface palette"))
+    elif name == "rag_arch_2021.svg":
+        for var_name in sorted(set(re.findall(r"var\((--gfx-tint-[A-Za-z0-9-]+)", text))):
+            bad.append((var_name, "paper cell behind black ink uses a dark-surface tint"))
+    return bad
 
 
 def scan_svg_attrs(text: str):
@@ -355,8 +372,18 @@ def run(verbose=True):
     # fill/stroke regression in an extracted figure is still caught (they ride var(--gfx-*)).
     for f in sorted((NEMO / "assets" / "figures").glob("*.svg")):
         rel = str(f.relative_to(WEB.parent))
-        for tok, prop in scan_svg_attrs(f.read_text(errors="ignore")):
+        figure_text = f.read_text(errors="ignore")
+        for tok, prop in scan_svg_attrs(figure_text) + scan_paper_palette(f.name, figure_text):
             inline.append((rel, tok, prop))
+    routing = NEMO / "02a-routing.html"
+    if routing.exists():
+        routing_text = routing.read_text(errors="ignore")
+        for name in PAPER_ONLY_FIGURES:
+            pattern = (r'data-svg-src="assets/figures/' + re.escape(name)
+                       + r'"[^>]*style="[^"]*background:var\(--gfx-paper-surface,')
+            if not re.search(pattern, routing_text, re.I | re.S):
+                inline.append((str(routing.relative_to(WEB.parent)), name,
+                               "paper figure wrapper lacks --gfx-paper-surface"))
     # Second pass: every var() REFERENCE whose name is never defined anywhere (its lone fallback
     # never flips), scanned across the stylesheets, the chrome, and the pages.
     for f in style_files() + chrome_js() + sorted(NEMO.glob("*.html")) + sorted(WEB.glob("*.html")):

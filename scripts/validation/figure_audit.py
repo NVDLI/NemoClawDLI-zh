@@ -268,9 +268,16 @@ def _mobile_zoom_contract():
     css = STYLE_PATH.read_text(errors="ignore")
     js = FIGURES_JS_PATH.read_text(errors="ignore")
     findings = _mobile_zoom_findings(css, js)
+    no_pan_css = re.sub(
+        r"(\.fig-lightbox\s*\{[^}]*?)overflow:\s*auto",
+        r"\1overflow: visible",
+        css,
+        count=1,
+        flags=re.S,
+    )
     cases = [
         ("visible badge", css.replace("⛶ tap to enlarge", "⛶ zoom", 1), js, "visible tap-to-enlarge badge"),
-        ("pannable overlay", css.replace("overflow: auto", "overflow: visible", 1), js, "must pan"),
+        ("pannable overlay", no_pan_css, js, "must pan"),
         ("unshrunk stage", css.replace("max-height: none; min-width: max-content", "max-height: none; min-width: 0", 1), js, "must not shrink"),
         ("pan hint style", css.replace(".fig-lightbox-hint { display: block", ".fig-lightbox-hint { display: none", 1), js, "visible pan instruction"),
         ("readable width", css, js.replace("MOBILE_FIGURE_MIN_WIDTH = 720", "MOBILE_FIGURE_MIN_WIDTH = 390", 1), "at least 720px"),

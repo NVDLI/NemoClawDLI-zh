@@ -22,6 +22,8 @@
   --err: #d1242f;
   --warn: #9a6700;
   --reason: #8250df;
+  --artifact: #54aeff;
+  --artifact-text: #0969da;
   /* Diagram arrow + kind hues (mountDiagram / viz.diagram emits var(--dg-*)); light values so a
      runtime-injected diagram in the baked export renders light, not the dark pastels. */
   --dg-arrow:#57606a;
@@ -47,6 +49,11 @@
   --gfx-blue:#0969da; --gfx-green:#4a7a00; --gfx-purple:#6f42c1; --gfx-amber:#9a6700; --gfx-teal:#0d9488; --gfx-red:#d1242f;
   --gfx-tint-blue:#dfeaf5; --gfx-tint-green:#e6f3d4; --gfx-tint-purple:#eadfff;
   --gfx-tint-amber:#f7e9cf; --gfx-tint-teal:#d6f1ee; --gfx-tint-red:#fadcdc; --gfx-tint-sub:#eef1f4;
+  --gfx-paper-tint-blue:#dfeaf5; --gfx-paper-tint-green:#e6f3d4;
+  --gfx-paper-tint-purple:#eadfff; --gfx-paper-tint-teal:#d6f1ee;
+  --gfx-paper-surface:#ffffff; --gfx-paper-ink:#595959; --gfx-paper-muted:#7f7f7f; --gfx-paper-line:#e7e6e6; --gfx-paper-faint:#adb9ca;
+  --gfx-paper-blue:#2f528f; --gfx-paper-blue2:#4472c4; --gfx-paper-green:#32ee5a;
+  --gfx-paper-teal:#00d9f0; --gfx-paper-yellow:#ffff00; --gfx-paper-orange:#f08b30; --gfx-paper-red:#fe3222;
 }
 
 /* Body rules that flip the canvas to light. */

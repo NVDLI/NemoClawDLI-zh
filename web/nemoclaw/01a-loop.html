@@ -61,6 +61,18 @@
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Only perception and action cross the boundary. The decision step between them can change.</figcaption>
   </figure>
 
+  <p data-localization-scope="en">
+    <strong>Perception</strong> gathers what the agent can know, <strong>reasoning</strong>
+    chooses what to do, and <strong>action</strong> changes the environment. Perception and
+    action often come from an existing interaction model, whether it controls a vacuum,
+    web automation, a game entity, or a humanoid. The reasoning step can change without
+    changing that boundary, which separates capability from reach.
+  </p>
+
+  <details class="learning-block" open data-learning-id="agent-architecture-spectrum" data-learning-tier="deep" data-localization-scope="en-shell">
+  <summary data-localization-scope="en"><span class="learning-scope">Deep · Concepts</span><span class="learning-question">Explore the loop and classic architectures?</span></summary>
+  <div class="learning-block-body">
+  <p data-localization-scope="en">Open this section when you want concrete examples and the fuller architecture taxonomy.</p>
   <ul>
     <li><strong>Perception</strong> gives the agent everything it knows about its environment.
         A thermostat reads a single number: the current temperature. A self-driving car fuses
@@ -89,9 +101,9 @@
   </div>
 
   <p>
-    The decision step is where the classic agent designs differ. Russell and
-    Norvig's <a href="https://aima.cs.berkeley.edu/" target="_blank" rel="noopener">Artificial Intelligence: A Modern Approach</a>
-    lays them out as a spectrum, from a bare reflex agent up to a learning agent that improves its own
+    Classic agent designs differ at the decision step. Russell and Norvig's
+    <a href="https://aima.cs.berkeley.edu/" target="_blank" rel="noopener">Artificial Intelligence: A Modern Approach</a>
+    arranges them as a spectrum, from a bare reflex agent up to a learning agent that improves its own
     rules. This course starts with rigid logic, then adds a language model and engineered context
     to move toward a model-based, goal-oriented loop. Later modules keep that loop running over
     changing state, which is the pattern learning agents build on.
@@ -100,7 +112,12 @@
     <div class="fig-embed" data-svg-src="assets/figures/01a-loop-1.svg" style="aspect-ratio:1020 / 400"></div>
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Four agent architectures in order of growing structure, from a reflex agent that maps inputs straight to actions up to a learning agent that rewrites its own rules. Adapted from Russell and Norvig's <a href="https://aima.cs.berkeley.edu/" target="_blank" rel="noopener">Artificial Intelligence: A Modern Approach</a> (Ch 1).</figcaption>
   </figure>
+  </div>
+  </details>
 
+  <details class="learning-block" open data-learning-id="reflex-agent-lab" data-learning-tier="applied" data-learning-artifact="optional" data-localization-scope="en-shell">
+  <summary data-localization-scope="en"><span class="learning-scope">Applied · Reflex</span><span class="learning-question">Run the smallest rule-based agent loop?</span></summary>
+  <div class="learning-block-body">
   <h2>An agent with no language model</h2>
   <p>The smallest decision function is a single <code>if</code>
      statement. Here it drives a one-dimensional track bounded by walls at positions 0
@@ -123,6 +140,8 @@
         loop structure, the state layout, and the action step all
         remain identical.</li>
   </ul>
+  </div>
+  </details>
 
   <h2>What changes when reasoning calls an LLM</h2>
   <p>You call the chat-completions interface like any other function: hand
@@ -167,6 +186,9 @@
         to do next.</li>
   </ul>
 
+  <details class="learning-block" open data-learning-id="conversation-state-apis" data-learning-tier="deep" data-localization-scope="en-shell">
+  <summary data-localization-scope="en"><span class="learning-scope">Deep · Build</span><span class="learning-question">Compare where APIs keep conversation state?</span></summary>
+  <div class="learning-block-body">
   <p>
     This course uses the
     <a href="https://platform.openai.com/docs/api-reference/chat" target="_blank" rel="noopener">Chat Completions API</a>
@@ -182,6 +204,8 @@
     <div class="fig-embed" data-svg-src="assets/figures/01a-loop-2.svg" style="aspect-ratio:840 / 222"></div>
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Both interfaces wrap the same stateless call. They differ only in who keeps the conversation between turns.</figcaption>
   </figure>
+  </div>
+  </details>
 
   <h2>A real call, in your browser</h2>
   <p>The cell below sends one chat-completion to the model. It needs an
@@ -196,6 +220,9 @@
 
   <div id="cell-onecall"></div>
 
+  <details class="learning-block" open data-learning-id="chat-wire-format" data-learning-tier="deep" data-learning-artifact="optional" data-localization-scope="en-shell">
+  <summary data-localization-scope="en"><span class="learning-scope">Deep · Wire</span><span class="learning-question">Inspect the raw HTTP request and response?</span></summary>
+  <div class="learning-block-body">
   <h3>What <code>chat()</code> actually sends</h3>
   <p><code>chat()</code> is a convenience wrapper around one ordinary HTTP
      <code>POST</code> in the OpenAI-compatible wire format. That request carries three things:</p>
@@ -230,10 +257,15 @@
         usage metadata, and the final done signal. The helper also connects those
         pieces to the lesson panel and Stop button, so the cell can focus on the
         concept instead of the streaming plumbing. You can open the helper source
-        from the cell menu to inspect exactly what it does.
+        from the cell menu to inspect exactly what it does.</li>
     </ul>
   </div>
+  </div>
+  </details>
 
+  <details class="learning-block" open data-learning-id="replaceable-reasoning-lab" data-learning-tier="applied" data-learning-artifact="optional" data-learning-exercise="optional" data-localization-scope="en-shell">
+  <summary data-localization-scope="en"><span class="learning-scope">Applied · Loop</span><span class="learning-question">Compare maze reasoning inside one fixed loop?</span></summary>
+  <div class="learning-block-body">
   <h2>Swapping the reasoning step while the loop stays fixed</h2>
   <p>
     You now have both halves of an agent, and the stateless <code>chat()</code> function above will pair nicely
@@ -254,9 +286,9 @@
 
   <div class="callout">
     <strong>The decision step is the only part that varies.</strong>
-    DFS, BFS, and A* all read the current maze state and return a move. The last node
-    makes that explicit: one line chooses the decision function, and the loop below it
-    runs the same way either way. The <code>chat()</code> call you just ran can fill that
+    DFS, BFS, and A* all read the current maze state and return a move. One line in the
+    last node chooses the decision function; the loop below runs the same way for each
+    choice. The <code>chat()</code> call you just ran can fill that
     same step. It changes two edges: your code renders perception as text, and the
     model returns a tool call that your code applies. The next section zooms in on those
     two edges.
@@ -354,6 +386,8 @@
         The loop, maze, perception, and action do not change. Only the model making
         the move does. Does the larger text model reach the goal in fewer decisions?</li>
   </ol>
+  </div>
+  </details>
 
   <h2>Try it · the model as a pure function</h2>
   <p>

@@ -47,14 +47,16 @@ export function ensureChatStyles() {
       .chatui-bot pre{background:var(--e2,#0d0d0d);border:1px solid var(--bd,#2a2a2a);border-radius:6px;padding:10px 12px;overflow-x:auto;margin:.5em 0}.chatui-bot pre code{background:none;padding:0;color:var(--tx,#f2f2f2)}
       .chatui-bot table{border-collapse:collapse;font-size:.85em;margin:.4em 0}.chatui-bot td,.chatui-bot th{border:1px solid var(--bd,#2a2a2a);padding:3px 8px}
       .chatui-bot a{color:var(--gs,#aee23a)}
-      .chatui-tool,.chatui-think{align-self:flex-start;max-width:90%;font-family:var(--mono,monospace);font-size:.74rem;color:var(--gs,#aee23a);background:rgba(118,185,0,.07);border:1px solid rgba(118,185,0,.22);border-radius:8px;padding:4px 10px}
-      details.chatui-tool>summary,details.chatui-think>summary{cursor:pointer;list-style:none}
-      details.chatui-tool>summary::-webkit-details-marker,details.chatui-think>summary::-webkit-details-marker{display:none}
-      .chatui-tool-body,.chatui-think-body{margin-top:6px;padding-top:6px;border-top:1px solid rgba(118,185,0,.18);color:var(--td,#b0b0b0);white-space:pre-wrap;max-height:340px;overflow:auto}
+      .chatui-tool,.chatui-think,.chatui-memory{align-self:flex-start;max-width:90%;font-family:var(--mono,monospace);font-size:.74rem;color:var(--gs,#aee23a);background:rgba(118,185,0,.07);border:1px solid rgba(118,185,0,.22);border-radius:8px;padding:4px 10px}
+      details.chatui-tool>summary,details.chatui-think>summary,details.chatui-memory>summary{cursor:pointer;list-style:none}
+      details.chatui-tool>summary::-webkit-details-marker,details.chatui-think>summary::-webkit-details-marker,details.chatui-memory>summary::-webkit-details-marker{display:none}
+      .chatui-tool-body,.chatui-think-body,.chatui-memory-body{margin-top:6px;padding-top:6px;border-top:1px solid rgba(118,185,0,.18);color:var(--td,#b0b0b0);white-space:pre-wrap;max-height:340px;overflow:auto}
       .chatui-tool.err{color:var(--err);background:rgba(248,113,113,.07);border-color:rgba(248,113,113,.3)}
       .chatui-tool.err .chatui-tool-body{border-top-color:rgba(248,113,113,.2)}
       .chatui-think{color:var(--reason);background:rgba(130,80,223,.06);border-color:rgba(130,80,223,.28)}
       .chatui-think-body{border-top-color:rgba(130,80,223,.2)}
+      .chatui-memory{color:var(--artifact-text,#9bdcff);background:rgba(84,174,255,.06);border-color:rgba(84,174,255,.25)}
+      .chatui-memory-body{border-top-color:rgba(84,174,255,.2)}
       .chatui-warn{align-self:flex-start;max-width:90%;font-family:var(--mono,monospace);font-size:.72rem;color:var(--warn);background:rgba(212,156,44,.08);border:1px solid rgba(212,156,44,.3);border-radius:8px;padding:4px 10px;white-space:pre-wrap}
       .chatui-usage{align-self:flex-start;font-family:var(--mono,monospace);font-size:.68rem;color:var(--tf,#8a8a8a)}
       .chatui-turn{display:flex;flex-direction:column;gap:9px;align-self:stretch}
@@ -83,6 +85,20 @@ export function ensureChatStyles() {
   document.head.appendChild(s);
 }
 
+function markLiveArtifact(el) {
+  if (!el.id.endsWith("-artifact")) return;
+  el.classList.add("course-artifact");
+  if (!el.dataset.artifactLabel) {
+    el.dataset.artifactLabel = document.documentElement.lang.toLowerCase().startsWith("pt")
+      ? "Artefato interativo"
+      : "Live artifact";
+  }
+}
+
+export function markLiveArtifacts(root = document) {
+  root.querySelectorAll?.('[id$="-artifact"]').forEach(markLiveArtifact);
+}
+
 export function mountChatUI(container, opts = {}) {
   /* @doc <code>helpers.mountChatUI(el, opts)</code> ::
        Render a live, observable chat artifact (controls + streaming transcript + input) into
@@ -102,6 +118,7 @@ export function mountChatUI(container, opts = {}) {
   */
   const el = typeof container === "string" ? document.querySelector(container) : container;
   if (!el) return null;
+  markLiveArtifact(el);
   // Markdown: load marked once (cached on window); render answers as HTML + hljs.
   if (!window.__markedP) window.__markedP = import(MARKED_CDN_URL).then(m => m.marked || m.default).catch(() => null);
   let MARKED = null; window.__markedP.then(m => { MARKED = m; });
@@ -116,7 +133,10 @@ export function mountChatUI(container, opts = {}) {
   // Opt-in memory keeps completed turns in ctx.history and rewinds them on edit.
   const memoryEnabled = opts.memory === true;
   let memoryOn = memoryEnabled;
-  const history = [];   // [{role,content}] of completed turns, surfaced as ctx.history while memory is on
+  const cleanHistory = (items) => (Array.isArray(items) ? items : [])
+    .filter(item => item && ["system", "user", "assistant"].includes(item.role) && typeof item.content === "string")
+    .map(item => ({ role: item.role, content: item.content }));
+  const history = cleanHistory(opts.initialHistory);   // completed turns, optionally restored by a host
   const memToggle = memoryEnabled
     ? `<button class="chatui-mem on" type="button" aria-pressed="true" title="When on, the model sees the whole conversation. Turn it off to watch it answer each message as a stateless function with no recall.">🧠 memory: on</button>`
     : "";
@@ -125,7 +145,7 @@ export function mountChatUI(container, opts = {}) {
   const modChips = modules.length
     ? `<div class="chatui-mods"><label>Pages</label>${modules.map(m => `<button type="button" class="chatui-modchip" data-id="${escHtml(m.id)}" title="${escHtml(m.title || m.id)}">${escHtml(m.id)}</button>`).join("")}<span class="chatui-ctx" data-pinhint>none pinned = auto-select</span></div>` : "";
   el.innerHTML = `<div class="chatui${opts.growLog ? " chatui-grow" : ""}">
-      <div class="chatui-bar">${modelSel}<span class="chatui-ctx chatui-ctxwrap" data-ctx hidden><span data-ctxtext></span><span class="chatui-ctxbar"><span class="chatui-ctxfill"></span></span></span><span class="sp"></span>${memToggle}<button class="chatui-reset" type="button">↺ New chat</button>${modChips}</div>
+      <div class="chatui-bar">${modelSel}<span class="chatui-ctx chatui-ctxwrap" data-ctx hidden><span data-ctxtext></span><span class="chatui-ctxbar"><span class="chatui-ctxfill"></span></span></span><span class="sp"></span>${memToggle}<button class="chatui-reset" type="button">${escHtml(opts.resetLabel || "↺ New chat")}</button>${modChips}</div>
       <div class="chatui-log"></div>
       <div class="chatui-state" role="status" aria-live="polite" aria-atomic="true"></div>
       <div class="chatui-in"><textarea class="chatui-text" rows="1" placeholder="Ask a question…"></textarea><button class="chatui-send" type="button">Send</button></div>
@@ -148,14 +168,24 @@ export function mountChatUI(container, opts = {}) {
     memBtn.textContent = "🧠 memory: " + (memoryOn ? "on" : "off");
   });
   const selectedModules = () => chips.filter(c => c.classList.contains("on")).map(c => c.dataset.id);
-  const ctx = { thread: "chat-" + Math.random().toString(RANDOM_ID_RADIX).slice(2, 9), turn: 0, _ctx: 0,
+  let ctx;
+  const notifyHistory = () => {
+    if (opts.onHistoryChange) try { opts.onHistoryChange(history.map(item => ({ ...item })), ctx); } catch (_) {}
+  };
+  const notifyTurnSnapshot = (items, state) => {
+    if (opts.onTurnSnapshot) try { opts.onTurnSnapshot(cleanHistory(items), { state }, ctx); } catch (_) {}
+  };
+  ctx = { thread: "chat-" + Math.random().toString(RANDOM_ID_RADIX).slice(2, 9), turn: 0, _ctx: 0,
                 get modules() { return selectedModules(); },
                 get module() { const s = selectedModules(); return s[0] || "auto"; },   // back-compat
                 get model()  { return modelEl ? modelEl.value : (models[0] && models[0].id) || null; },
                 get window() { return contextWindow(ctx.model); },
                 // Prior turns for respond; empty when memory is off.
                 get history() { return (memoryEnabled && memoryOn) ? history.map(m => ({ ...m })) : []; },
-                get memory()  { return memoryEnabled && memoryOn; } };
+                get memory()  { return memoryEnabled && memoryOn; },
+                replaceHistory(items) { history.splice(0, history.length, ...cleanHistory(items)); notifyHistory(); return history.map(item => ({ ...item })); },
+                rotateThread() { ctx.thread = "chat-" + Math.random().toString(RANDOM_ID_RADIX).slice(2, 9); ctx.turn = 0; return ctx.thread; },
+              };
   const readPrerequisiteBlocked = () => typeof opts.disabled === "function" ? opts.disabled() === true : opts.disabled === true;
   let prerequisiteBlocked = readPrerequisiteBlocked();
   let prerequisiteMessage = opts.disabledMsg || "Complete the prerequisite above before using this artifact.";
@@ -201,9 +231,17 @@ export function mountChatUI(container, opts = {}) {
     }
   };
   if (opts.intro) { const i = document.createElement("div"); i.className = "chatui-intro"; i.textContent = opts.intro; log.appendChild(i); }
-  if (opts.greeting) { const g = document.createElement("div"); g.className = "chatui-msg chatui-bot"; g.textContent = opts.greeting; log.appendChild(g); }
   const scroll = () => { log.scrollTop = log.scrollHeight; };
   const bubble = (cls, txt) => { const d = document.createElement("div"); d.className = "chatui-msg " + cls; if (txt != null) d.textContent = txt; log.appendChild(d); scroll(); return d; };
+  if (!history.length && opts.greeting) bubble("chatui-bot", opts.greeting);
+  history.forEach(item => {
+    if (item.role === "system") {
+      const note = document.createElement("details"); note.className = "chatui-memory chatui-restored-summary";
+      note.innerHTML = "<summary>Compacted memory restored · " + estimateTokens(item.content) + " tok</summary>";
+      const memory = document.createElement("div"); memory.className = "chatui-memory-body"; memory.textContent = item.content;
+      note.appendChild(memory); log.appendChild(note);
+    } else bubble(item.role === "user" ? "chatui-user" : "chatui-bot", item.content);
+  });
   // A control row under a message. It can copy the text.
   // The student's own messages also get edit-and-requeue.
   // That drops the text back in the box to tweak and resend.
@@ -236,12 +274,13 @@ export function mountChatUI(container, opts = {}) {
       b.addEventListener("click", () => { text.value = s; text.style.height = "auto"; text.style.height = Math.min(text.scrollHeight, 120) + "px"; text.focus(); });
       ex.appendChild(b); });
     log.appendChild(ex); };
-  addExamples();
+  if (!history.length) addExamples();
 
   let running = false, curAC = null, resetEpoch = 0;
   async function send() {
     const q = text.value.trim();
     if (!q || running || prerequisiteBlocked) return;
+    if (opts.onUserMessage) try { opts.onUserMessage(q, ctx); } catch (_) {}
     const epoch = resetEpoch;
     const histMark = history.length, turnMark = ctx.turn;   // where "edit · rewind here" rolls back to
     text.value = ""; text.style.height = "auto";
@@ -250,6 +289,7 @@ export function mountChatUI(container, opts = {}) {
     const editHandler = memoryEnabled ? () => {
       removeFrom(userBub);
       history.length = Math.min(history.length, histMark);
+      notifyHistory();
       ctx.turn = turnMark;
       setBudget(0);
       text.value = q;
@@ -272,6 +312,22 @@ export function mountChatUI(container, opts = {}) {
     // Reuse keeps a stray content token interleaved mid-reasoning from splitting the trace.
     // A tool call, warn, or note ends the round; the next reasoning opens a fresh block.
     let roundThink = null, roundAnswer = null;
+    let snapshotTimer = 0, lastError = "";
+    const snapshotTurn = (state = "running", immediate = false) => {
+      const write = () => {
+        snapshotTimer = 0;
+        const items = [...history, { role: "user", content: q }];
+        const answer = (roundAnswer && roundAnswer._t) || (state === "error" && lastError ? "Request failed: " + lastError : "") || (state === "stopped" ? "Response stopped before completion." : "");
+        if (answer) items.push({ role: "assistant", content: answer });
+        notifyTurnSnapshot(items, state);
+      };
+      if (snapshotTimer) clearTimeout(snapshotTimer);
+      if (immediate) write();
+      else snapshotTimer = setTimeout(write, 400);
+    };
+    snapshotTurn("running", true);
+    const snapshotBeforeNavigation = () => snapshotTurn("running", true);
+    window.addEventListener("pagehide", snapshotBeforeNavigation, { once: true });
     // A reasoning block stays open while it streams, then folds shut.
     // The fold happens once the agent advances to its next act or answer, and it stays expandable.
     const endThink = () => { if (cur && cur.kind === "think") { cur.el.open = false;
@@ -292,7 +348,8 @@ export function mountChatUI(container, opts = {}) {
         if (!roundAnswer) { newAnswer(); roundAnswer = cur; }
         else if (cur !== roundAnswer) { cur = roundAnswer; }
         const c = cur; c._t += t;
-        if (!c._raf) c._raf = requestAnimationFrame(() => { c._raf = 0; renderMd(c.el, c._t); scroll(); }); },
+        if (!c._raf) c._raf = requestAnimationFrame(() => { c._raf = 0; renderMd(c.el, c._t); scroll(); });
+        snapshotTurn("running"); },
       // A tool call closes the current streaming block and appends its own.
       // A read that happens after some reasoning therefore renders below it.
       tool(label, detail) { endThink(); flush(); cur = null; roundThink = null; roundAnswer = null; let c;
@@ -326,12 +383,20 @@ export function mountChatUI(container, opts = {}) {
         }
         turn.appendChild(f); scroll(); },
       html(h) { endThink(); flush(); cur = null; const d = document.createElement("div"); d.className = "chatui-viz"; turn.appendChild(d); d.innerHTML = h; scroll(); return d; },
-      error(msg) { errored = true; flush(); cur = null; const d = document.createElement("div"); d.className = "chatui-msg chatui-bot err"; d.textContent = "⚠ " + msg; turn.appendChild(d); setState("Error. Read the message, then edit or retry.", "error"); scroll(); },
+      discardAnswer() {
+        flush();
+        if (roundAnswer?.el) roundAnswer.el.remove();
+        if (cur === roundAnswer) cur = null;
+        roundAnswer = null; answered = false; scroll();
+      },
+      error(msg) { errored = true; lastError = String(msg); flush(); cur = null; const d = document.createElement("div"); d.className = "chatui-msg chatui-bot err"; d.textContent = "⚠ " + msg; turn.appendChild(d); setState("Error. Read the message, then edit or retry.", "error"); snapshotTurn("error", true); scroll(); },
     };
 
-    try { await opts.respond(q, { module: ctx.module, modules: ctx.modules, model: ctx.model, thread: ctx.thread, turn: ctx.turn, window: ctx.window, history: ctx.history, memory: ctx.memory, signal: curAC.signal, view }); }
+    try { await opts.respond(q, { module: ctx.module, modules: ctx.modules, model: ctx.model, thread: ctx.thread, turn: ctx.turn, window: ctx.window, history: ctx.history, memory: ctx.memory, signal: curAC.signal, view, replaceHistory: ctx.replaceHistory, rotateThread: ctx.rotateThread }); }
     catch (e) { if (!curAC.signal.aborted) view.error(e && e.message ? e.message : String(e)); }
     finally {
+      window.removeEventListener("pagehide", snapshotBeforeNavigation);
+      if (snapshotTimer) { clearTimeout(snapshotTimer); snapshotTimer = 0; }
       flush(); endThink();
       if (epoch !== resetEpoch) return;
       turn.classList.remove("chatui-cursor");
@@ -339,8 +404,12 @@ export function mountChatUI(container, opts = {}) {
       else if (!answered && !errored) { const d = document.createElement("div"); d.className = "chatui-msg chatui-bot"; d.textContent = "(no answer)"; turn.appendChild(d); }
       addMsgControls("bot", () => (roundAnswer && roundAnswer._t) || turn.innerText || "", false);   // copy the reply
       // Record the completed turn so ctx.history can carry it into the next call while memory is on.
-      if (memoryEnabled && !curAC.signal.aborted && !errored)
-        history.push({ role: "user", content: q }, { role: "assistant", content: (roundAnswer && roundAnswer._t) || "" });
+      if (memoryEnabled && !curAC.signal.aborted && !errored) {
+        const answer = (roundAnswer && roundAnswer._t) || "";
+        history.push({ role: "user", content: q }, { role: "assistant", content: answer });
+        notifyHistory();
+        if (opts.onAssistantMessage) try { opts.onAssistantMessage(answer, ctx); } catch (_) {}
+      } else if (memoryEnabled) snapshotTurn(curAC.signal.aborted ? "stopped" : "error", true);
       running = false; curAC = null;
       sendBtn.textContent = "Send"; sendBtn.classList.remove("stop");
       sendBtn.disabled = prerequisiteBlocked;
@@ -366,11 +435,13 @@ export function mountChatUI(container, opts = {}) {
     addExamples();
     ctx.thread = "chat-" + Math.random().toString(RANDOM_ID_RADIX).slice(2, 9); ctx.turn = 0; setBudget(0);
     history.length = 0;
+    notifyHistory();
     if (opts.onReset) try { opts.onReset(ctx); } catch (_) {}
     refreshPrerequisites();
   }
+  const stop = () => { if (curAC) try { curAC.abort(); } catch (_) {} };
   resetBtn.addEventListener("click", reset);
-  return { thread: ctx.thread, reset, setDisabled, refreshPrerequisites, ctx };
+  return { thread: ctx.thread, reset, stop, setDisabled, refreshPrerequisites, ctx };
 }
 
 // Mount a live chat artifact backed by LangChain's createReactAgent.
@@ -381,7 +452,10 @@ export async function mountAgentChat(container, opts = {}) {
        Live chat artifact on LangChain <code>createReactAgent</code>. <code>opts</code>: <code>{
        models:[{id,label}], system,
        buildTools({tool,z,coursePage,coursePages,webSearch,formatSearchResults}), greeting,
-       modules, recursionLimit, growLog }</code>. <code>growLog:true</code> drops the panel's internal
+       modules, recursionLimit, growLog, initialHistory, onUserMessage, onTurnSnapshot, onAssistantMessage, onHistoryChange,
+       compactAtTokens, compactKeepMessages }</code>. Restored history seeds a fresh checkpoint;
+       compaction summarizes older turns with the active model, preserves recent messages, and rotates
+       to a new thread. <code>growLog:true</code> drops the panel's internal
        scroll caps so a long transcript flows with the page instead of trapping the wheel. Loads LangChain from a CDN, builds one agent per model
        (MemorySaver for multi-turn), streams tokens + tool chips, guards the missing key. The
        off-the-shelf companion to <code>mountChatUI</code>.
@@ -403,9 +477,9 @@ export async function mountAgentChat(container, opts = {}) {
     }
     return LC;
   }
-  const agents = {};
-  async function getAgent(model) {
-    if (!agents[model]) {
+  const runtimes = {};
+  async function getRuntime(model) {
+    if (!runtimes[model]) {
       const d = await deps();
       const cfg = await getConfig();
       const baseURL = cfg.url.startsWith("http") ? cfg.url : (window.location.origin + cfg.url);
@@ -424,43 +498,79 @@ export async function mountAgentChat(container, opts = {}) {
         apiKey: cfg.needsKey ? getKey() : "no-key-needed", model, temperature: 0, maxTokens: 16384 });
       const tools = opts.buildTools
         ? opts.buildTools({ tool: d.tool, z: d.z, coursePage, coursePages, webSearch, formatSearchResults }) : [];
-      agents[model] = d.createReactAgent({ llm, tools, checkpointer: new d.MemorySaver() });
+      runtimes[model] = { llm, agent: d.createReactAgent({ llm, tools, checkpointer: new d.MemorySaver() }), threads: new Set() };
     }
-    return agents[model];
+    return runtimes[model];
   }
   return mountChatUI(el, {
     modules: opts.modules, models: opts.models, intro: opts.intro, greeting: opts.greeting, examples: opts.examples, growLog: opts.growLog,
+    initialHistory: opts.initialHistory, onUserMessage: opts.onUserMessage, onTurnSnapshot: opts.onTurnSnapshot,
+    onAssistantMessage: opts.onAssistantMessage,
+    onHistoryChange: opts.onHistoryChange, resetLabel: opts.resetLabel,
     respond: async (text, ctx) => {
       const cfg = await getConfig();
       if (cfg.needsKey && !getKey()) { ctx.view.error("Add your nvapi- key on the course home, then chat."); return; }
-      const agent = await getAgent(ctx.model);
+      const runtime = await getRuntime(ctx.model);
+      const compactAt = Number(opts.compactAtTokens || 0);
+      const keepMessages = Math.max(2, Number(opts.compactKeepMessages || 6));
+      if (compactAt > 0 && ctx.history.length > keepMessages && estimateTokens(ctx.history) > compactAt) {
+        try {
+          const older = ctx.history.slice(0, -keepMessages);
+          const recent = ctx.history.slice(-keepMessages);
+          const summaryResult = await runtime.llm.invoke([
+            { role: "system", content: "Compact this Course Assistant session. Preserve learner goals, decisions, corrections, unresolved questions, and course page ids. Remove repetition and transient wording. Return only the durable summary." },
+            { role: "user", content: older.map(item => item.role + ": " + item.content).join("\n\n") },
+          ], { signal: ctx.signal });
+          const summary = typeof summaryResult.content === "string"
+            ? summaryResult.content : JSON.stringify(summaryResult.content || "");
+          ctx.history = ctx.replaceHistory([{ role: "system", content: "Course Assistant compacted memory:\n" + summary }, ...recent]);
+          ctx.thread = ctx.rotateThread();
+          ctx.view.note("Compacted " + older.length + " older messages into durable session memory; kept " + recent.length + " recent messages.");
+        } catch (error) {
+          if (ctx.signal.aborted) throw error;
+          ctx.view.warn("Session compaction was delayed; this turn will use the existing history. " + (error?.message || error));
+        }
+      }
+      const seedThread = !runtime.threads.has(ctx.thread);
       const messages = [];
-      if (ctx.turn === 0 && opts.system) messages.push({ role: "system", content: typeof opts.system === "function" ? opts.system(ctx) : opts.system });
+      if (seedThread && opts.system) messages.push({ role: "system", content: typeof opts.system === "function" ? opts.system(ctx) : opts.system });
+      // A host can seed a visible, page-specific context without copying a second
+      // agent implementation. The chip makes that initial grounding inspectable.
+      if (seedThread && opts.initialContext) {
+        const context = await opts.initialContext(ctx);
+        if (context && context.content) {
+          const label = context.label || "initial context";
+          ctx.view.tool(label + " · " + estimateTokens(context.content) + " tok", context.content);
+          messages.push({ role: "system", content: "Initial context (" + label + "):\n\n" + context.content });
+        }
+      }
       // Pin one or more course pages chosen via the "Pages" chips, on turn 0 only.
       // Later turns reuse the thread's checkpointed context, so they skip this.
       // The whole page is pinned and shown in the chip, so nothing is clipped.
-      if (ctx.turn === 0 && opts.modules) {
+      if (seedThread && opts.modules) {
         for (const id of (ctx.modules || [])) {
           const body = await coursePage(id);
           ctx.view.tool("pinned " + id + " · " + estimateTokens(body) + " tok", body);
           messages.push({ role: "system", content: "Pinned course page (" + id + "):\n\n" + body });
         }
       }
+      if (seedThread && ctx.history.length) messages.push(...ctx.history);
       messages.push({ role: "user", content: text });
       // Pre-flight context-budget check, run on turn 0 only.
       // It warns before the call when the prompt alone would overflow the window, rather than letting the endpoint drop tokens silently.
       // Later turns live in the checkpointed thread.
-      if (ctx.turn === 0) {
+      if (seedThread) {
         const est = estimateTokens(messages);
         if (est > ctx.window) ctx.view.warn("This prompt is ~" + est + " tokens but " + ctx.model + " holds ~" + ctx.window + ". Unpin a page or split the question.");
       }
-      const stream = await agent.stream({ messages },
+      const stream = await runtime.agent.stream({ messages },
         { streamMode: "messages", configurable: { thread_id: ctx.thread }, recursionLimit: opts.recursionLimit || 12, signal: ctx.signal });
+      runtime.threads.add(ctx.thread);
       // Every tool call pushes its own chip in call order, and a chip is never reused.
       // Chips are keyed by the tool call's unique id, not by index.
       // Arg-delta chunks reset their index to 0 each model message, so an index key would let a later read overwrite an earlier one.
       const byId = {}, activeByIndex = {};
-      let lastInput = 0, totalOutput = 0, sawUsage = false;
+      let lastInput = 0, totalOutput = 0, sawUsage = false, answerText = "";
       const labelFor = (name, args) => {
         let a = ""; try { const o = JSON.parse(args || "{}"); a = o.page || o.id || o.query || o.expression || Object.values(o)[0] || ""; } catch (_) {}
         return a ? name + " · " + a : name;
@@ -499,8 +609,35 @@ export async function mountAgentChat(container, opts = {}) {
         const rc = chunk.additional_kwargs && (chunk.additional_kwargs.reasoning_content || chunk.additional_kwargs.reasoning);
         if (rc && node === "agent") ctx.view.reasoning(typeof rc === "string" ? rc : String(rc));
         if (chunk.usage_metadata) { sawUsage = true; lastInput = chunk.usage_metadata.input_tokens || lastInput; totalOutput += chunk.usage_metadata.output_tokens || 0; }
-        if (typeof chunk.content === "string" && chunk.content && node === "agent")
-          ctx.view.token(chunk.content);
+        if (typeof chunk.content === "string" && chunk.content && node === "agent") {
+          answerText += chunk.content; ctx.view.token(chunk.content);
+        }
+      }
+      if (opts.recoverInlineToolIntent) {
+        let recovered = null;
+        try { recovered = await opts.recoverInlineToolIntent(answerText, ctx); }
+        catch (error) { ctx.view.warn("Could not recover the inline tool request: " + (error?.message || error)); }
+        if (recovered?.content) {
+          ctx.view.discardAnswer();
+          ctx.view.tool(recovered.label || "recovered course source", recovered.content);
+          ctx.view.note("Recovered a source request that the model emitted as JSON instead of invoking as a tool.");
+          const system = typeof opts.system === "function" ? opts.system(ctx) : opts.system;
+          const recoveryMessages = [
+            ...(system ? [{ role: "system", content: system }] : []),
+            ...ctx.history.slice(-6),
+            { role: "user", content: text },
+            { role: "assistant", content: answerText },
+            { role: "user", content: `The interface executed that source read. Use this result to answer my original request. Do not emit tool JSON.\n\n${recovered.content.slice(0, 60000)}` },
+          ];
+          let recoveryText = "";
+          try {
+            const recoveryStream = await runtime.llm.stream(recoveryMessages, { signal: ctx.signal });
+            for await (const chunk of recoveryStream) {
+              if (typeof chunk.content === "string" && chunk.content) { recoveryText += chunk.content; ctx.view.token(chunk.content); }
+            }
+          } catch (error) { ctx.view.warn("Source read succeeded, but answer synthesis failed: " + (error?.message || error)); }
+          if (!recoveryText) ctx.view.token("I recovered and opened the requested source above, but the follow-up answer did not complete. Retry the question to continue from the saved session.");
+        }
       }
       if (sawUsage) ctx.view.usage({ input: lastInput, output: totalOutput });
     },
@@ -512,6 +649,7 @@ export async function mountAgentChat(container, opts = {}) {
 export function mountConsole(container, { prompt = "$", greeting = "", suggestions = [], onSubmit, disabled = false, disabledMsg = "" } = {}) {
   const root = typeof container === "string" ? document.querySelector(container) : container;
   if (!root) return null;
+  markLiveArtifact(root);
   ensureChatStyles();
   const id = "dl" + Math.random().toString(RANDOM_ID_RADIX).slice(2, 8);
   const opts = (suggestions || []).map(s => '<option value="' + String(s).replace(/"/g, "&quot;") + '"></option>').join("");

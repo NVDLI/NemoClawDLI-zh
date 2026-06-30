@@ -109,6 +109,9 @@
 
   <div id="cell-m2b-p4"></div>
 
+  <details class="learning-block" open data-learning-id="tool-backend-swap" data-learning-tier="applied" data-learning-artifact="optional" data-localization-scope="en-shell">
+  <summary data-localization-scope="en"><span class="learning-scope">Applied · Backend</span><span class="learning-question">Swap the executor without changing the tool?</span></summary>
+  <div class="learning-block-body">
   <h2>Swapping the backend while the tool contract holds</h2>
   <p>
     The same loop runs here as a flat <code>mountRunCell</code> script, with one change: the executor.
@@ -125,7 +128,12 @@
   </div>
 
   <div id="cell-m2b-p4b"></div>
+  </div>
+  </details>
 
+  <details class="learning-block" open data-learning-id="subagent-as-tool" data-learning-tier="deep" data-learning-artifact="optional" data-localization-scope="en-shell">
+  <summary data-localization-scope="en"><span class="learning-scope">Deep · Delegation</span><span class="learning-question">Hide a focused agent behind one tool?</span></summary>
+  <div class="learning-block-body">
   <h2>Hiding a whole agent behind a single tool</h2>
   <p>
     A tool need not be a small function. An entire sub-agent can sit behind a single
@@ -148,8 +156,13 @@
     list tends to perform worse than a small set of tools backed by
     sub-agents, because each loop only sees the tools relevant to its level.
   </div>
+  </div>
+  </details>
 
   <h2>Fetching tools from a separate server with MCP</h2>
+  <details class="learning-block" open data-learning-id="mcp-protocol-detail" data-learning-tier="applied" data-learning-artifact="optional" data-localization-scope="en-shell">
+  <summary data-localization-scope="en"><span class="learning-scope">Applied · Build</span><span class="learning-question">Need the MCP discovery and invocation flow?</span></summary>
+  <div class="learning-block-body">
   <p>
     Model Context Protocol (MCP) gives tool serving a standard shape. The agent retrieves the list of tools a
     server offers with a <code>tools/list</code> call, then invokes any one of them with
@@ -193,6 +206,8 @@
     calls through a fixed pipeline, fan work into branches, or delegate a focused task to
     another loop without exposing every internal tool to the caller.
   </p>
+  </div>
+  </details>
 
   <h2>Before you continue</h2>
   <ol>
@@ -202,7 +217,9 @@
     <li>Before you add a remote MCP server to this agent, what identity, capability scope, token audience, and network destinations would you verify? Which one becomes an SSRF path if you accept it without validation?</li>
   </ol>
 
-  <div class="references">
+  <details class="references learning-block" open data-learning-id="tool-use-references" data-learning-tier="deep" data-localization-scope="en-shell">
+    <summary data-localization-scope="en"><span class="learning-scope">Deep · Sources</span><span class="learning-question">Review the tool-use and MCP sources?</span></summary>
+    <div class="learning-block-body">
     <h3>References</h3>
     <ul>
       <li><a href="https://arxiv.org/abs/2302.04761" target="_blank" rel="noopener">Schick et al., <em>Toolformer: Language Models Can Teach Themselves to Use Tools</em> (2023)</a>. The paper that established self-supervised tool use; what every subsequent function-calling spec is variations on.</li>
@@ -212,7 +229,8 @@
       <li><a href="https://docs.anthropic.com/en/docs/agents-and-tools/tool-use" target="_blank" rel="noopener">Anthropic tool-use reference</a>. The parallel implementation for Claude, useful as a cross-vendor comparison.</li>
     </ul>
     <p class="references-note">Comprehensive list at <a href="04c-going-further.html#refs">Going Further · References</a>.</p>
-  </div>
+    </div>
+  </details>
 
   <h2>Try it · an agent with two real tools</h2>
   <p>

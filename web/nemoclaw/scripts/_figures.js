@@ -20,7 +20,7 @@ export function ganttBarsSVG(workers, wallSeconds, title = "Concurrency vs seria
     const bw = scale(w.dt || 0);
     body += `<text x="${PAD_L - 6}" y="${y + BAR_H / 2 + 4}" text-anchor="end" font-size="11" font-family="ui-monospace,monospace" fill="#b0b0b0">${esc(w.label || `worker ${i + 1}`)}</text>`;
     body += `<rect x="${PAD_L}" y="${y}" width="${maxBarW}" height="${BAR_H}" rx="3" fill="#161616"/>`;
-    body += `<rect x="${PAD_L}" y="${y}" width="${bw}" height="${BAR_H}" rx="3" fill="#3b82f6" opacity="0.75"/>`;
+    body += `<rect x="${PAD_L}" y="${y}" width="${bw}" height="${BAR_H}" rx="3" fill="var(--gfx-blue,#3b82f6)" opacity="0.75"/>`;
     body += `<text x="${PAD_L + bw + 5}" y="${y + BAR_H / 2 + 4}" font-size="11" font-family="ui-monospace,monospace" fill="#7eb8ff">${(w.dt || 0).toFixed(2)}s</text>`;
   });
   const serY = PAD_T + workers.length * (BAR_H + GAP) + GAP;
@@ -30,9 +30,9 @@ export function ganttBarsSVG(workers, wallSeconds, title = "Concurrency vs seria
   body += `<text x="${PAD_L + maxBarW + 5}" y="${serY + BAR_H / 2 + 4}" font-size="11" font-family="ui-monospace,monospace" fill="#e8c87a">${serialTotal.toFixed(2)}s</text>`;
   const wallY = serY + BAR_H + GAP;
   const wallW = scale(wallSeconds);
-  body += `<text x="${PAD_L - 6}" y="${wallY + BAR_H / 2 + 4}" text-anchor="end" font-size="11" font-family="ui-monospace,monospace" fill="#76b900" font-weight="700">wall time</text>`;
+  body += `<text x="${PAD_L - 6}" y="${wallY + BAR_H / 2 + 4}" text-anchor="end" font-size="11" font-family="ui-monospace,monospace" fill="var(--gfx-nvgreen,#76b900)" font-weight="700">wall time</text>`;
   body += `<rect x="${PAD_L}" y="${wallY}" width="${maxBarW}" height="${BAR_H}" rx="3" fill="#161616"/>`;
-  body += `<rect x="${PAD_L}" y="${wallY}" width="${wallW}" height="${BAR_H}" rx="3" fill="#76b900" opacity="0.75"/>`;
+  body += `<rect x="${PAD_L}" y="${wallY}" width="${wallW}" height="${BAR_H}" rx="3" fill="var(--gfx-nvgreen,#76b900)" opacity="0.75"/>`;
   body += `<text x="${PAD_L + wallW + 5}" y="${wallY + BAR_H / 2 + 4}" font-size="11" font-family="ui-monospace,monospace" fill="#aee23a">${wallSeconds.toFixed(2)}s</text>`;
   const speedup = serialTotal / Math.max(wallSeconds, 0.001);
   return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:6px">

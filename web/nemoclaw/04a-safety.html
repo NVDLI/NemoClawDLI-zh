@@ -164,32 +164,33 @@
   <details class="vocab-menu">
     <summary>Why enforcement belongs below the model</summary>
     <div class="vocab-clusters">
-      <section class="vocab-cluster">
+      <div class="vocab-cluster" id="principle-zero-trust">
         <h3>Assume a valid-looking request can still be harmful</h3>
         <p><a href="https://csrc.nist.gov/pubs/sp/800/207/final" target="_blank" rel="noopener">Zero trust</a>
            rejects implicit trust based only on where a request came from.
            OWASP's <a href="https://genai.owasp.org/llmrisk/llm01-prompt-injection/" target="_blank" rel="noopener">prompt-injection guidance</a>
            applies the same discipline to agents: constrain tools, restrict
            privileges, and assume external content can steer the model.</p>
-      </section>
-      <section class="vocab-cluster">
+      </div>
+      <div class="vocab-cluster" id="principle-least-privilege">
         <h3>Grant only the authority the task needs</h3>
         <p><a href="https://www.cs.virginia.edu/~evans/cs551/saltzer/" target="_blank" rel="noopener">Saltzer and Schroeder</a>
            described this as the principle of least privilege: each component
            receives only the permissions needed for its work. Because the
            discipline predates agents, it transfers cleanly to this setting.</p>
-      </section>
-      <section class="vocab-cluster">
+      </div>
+      <div class="vocab-cluster" id="principle-measured-boundaries">
         <h3>Measure boundaries instead of trying to prove intent</h3>
         <p><a href="https://en.wikipedia.org/wiki/Rice%27s_theorem" target="_blank" rel="noopener">Rice's theorem</a>
            rules out a general test for non-trivial behavior of arbitrary
            programs. An agent with code execution deserves the same caution:
            instrument the boundaries around what runs instead of assuming a
            static check can prove every future action safe.</p>
-      </section>
+      </div>
     </div>
   </details>
 
+  <div id="sandbox-mechanisms"></div>
   <h2>How the sandbox mechanisms answer testable questions</h2>
   <p>This launchable combines four operating-system mechanisms. Each answers a
      question you can test, and together they apply policy at more than one
@@ -343,6 +344,9 @@
      edit any command or add your own.</p>
   <div id="cell-layers"></div>
 
+  <details class="learning-block" open data-learning-id="sandbox-trajectory" data-learning-tier="deep" data-learning-artifact="optional" data-localization-scope="en-shell">
+  <summary data-localization-scope="en"><span class="learning-scope">Deep · Trajectory</span><span class="learning-question">Run a multi-command sandbox trajectory?</span></summary>
+  <div class="learning-block-body">
   <h2>Going further: a whole trajectory</h2>
   <p>A real agent chains several commands together to pursue a goal that no single isolated cell above
      ever attempted on its own. Describe one such goal in the box below and the agent plans the whole
@@ -420,6 +424,8 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
 `,
     });
   </script>
+  </div>
+  </details>
 
   <h2>Read your launchable's live policy, then see it as a map</h2>
   <p>Now that you have watched the kernel decide, you can see that every one of those verdicts traces
@@ -576,8 +582,8 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
     <li><strong>External communication</strong> is any path that can carry bytes out: HTTP, a pull request,
         chat, a log line, an image load, or even a link the user might click.</li>
   </ul>
-  <p>The hard part is composition. A policy can correctly allow one outbound endpoint, but the
-     endpoint is still full-duplex: the request leaves and the response comes back as more input.
+  <p>Risk appears when these permissions compose. A policy can correctly allow one outbound endpoint,
+     but that endpoint is still full-duplex: the request leaves and the response comes back as more input.
      Once hostile content can steer the model, it can ask for private data and send that data through
      a channel the sandbox regards as allowed. Mediating any one leg above the
      sandbox removes the path the exploit needs.</p>

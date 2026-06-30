@@ -38,6 +38,10 @@ import { ganttBarsSVG, mountFigures, openFigureLightbox, wireFigureZoom } from "
 export { ganttBarsSVG, mountFigures, openFigureLightbox, wireFigureZoom };
 import { mountLanguageMenu } from "./_locale.js";
 export { mountLanguageMenu };
+import { mountLearningView } from "./_learning.js";
+export { mountLearningView };
+import { mountCourseAssistant, mountCourseLicenseNote } from "./_course_assistant.js";
+export { mountCourseAssistant, mountCourseLicenseNote };
 
 const LAB_MODEL     = "nvidia/nemotron-3-nano-30b-a3b"; // legacy helper default; getConfig().model is the active course default
 const CONFIG_KEY    = "__nv_slim_cfg_v1";
@@ -381,8 +385,8 @@ export {
 
 // The chat-artifact widgets (ensureChatStyles / mountChatUI / mountAgentChat) live in _chat.js.
 // The _chat.js -> _shared.js import cycle is load-safe because the refs sit inside function bodies, which run only after both modules finish loading.
-import { ensureChatStyles, mountChatUI, mountAgentChat, mountConsole } from "./_chat.js";
-export { ensureChatStyles, mountChatUI, mountAgentChat, mountConsole };
+import { ensureChatStyles, markLiveArtifacts, mountChatUI, mountAgentChat, mountConsole } from "./_chat.js";
+export { ensureChatStyles, markLiveArtifacts, mountChatUI, mountAgentChat, mountConsole };
 
 // Render search results into one text blob (numbered snippets with title + body + url) that the LLM can read as a tool result.
 export function formatSearchResults(searchOut) {
@@ -838,7 +842,7 @@ export function mountThemeToggle() {
 
 // Auto-mount on any page that ships a topbar (the lab and the full standalone).
 if (typeof document !== "undefined") {
-  const _boot = () => { mountThemeToggle(); mountLanguageMenu(); mountFigures(); };
+  const _boot = () => { mountLearningView(); mountThemeToggle(); mountLanguageMenu(); mountFigures(); markLiveArtifacts(); mountCourseLicenseNote(); mountCourseAssistant({ embed }); };
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", _boot);
   } else {

@@ -10,6 +10,11 @@ Preserve a ideia, o nível técnico e a sequência pedagógica. Não preserve a 
 inglês quando ela produz uma construção artificial em português. Código, identificadores,
 nomes de produto, URLs e o JSON `skill-meta` continuam canônicos.
 
+Textos dentro de SVGs também fazem parte da experiência. A versão pt-BR usa sobreposições
+esparsas que preservam a geometria e traduzem rótulos visíveis e descrições acessíveis. Revise
+essas figuras renderizadas em tema claro e escuro; textos mais longos podem exigir rótulos mais
+concisos ou ajustes tipográficos sem alterar o conceito.
+
 ## Vocabulário NVIDIA
 
 O arquivo `profile.json` cita páginas públicas da NVIDIA Brasil. Elas sustentam escolhas como
@@ -44,4 +49,5 @@ registre a expressão específica em `profile.json`. Só então aceite o hash da
 ```bash
 python3 scripts/validation/localization_audit.py --locale pt-BR
 python3 scripts/validation/localization_audit.py --locale pt-BR --self-test
+python3 scripts/translate/translate_svg_text.py web/nemoclaw/assets/figures/FIGURE.svg --no-api
 ```

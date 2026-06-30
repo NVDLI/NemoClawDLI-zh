@@ -362,7 +362,7 @@ export function mountCanvasFlow(targetSel, opts) {
       <svg class="cf-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <defs>
           <marker id="${markerId}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-            <path d="M0,0 L10,5 L0,10 Z" fill="#76b900"/>
+            <path d="M0,0 L10,5 L0,10 Z" fill="var(--gfx-nvgreen,#76b900)"/>
           </marker>
         </defs>
       </svg>

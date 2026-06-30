@@ -10,14 +10,17 @@ and a language build cannot replace current code with a copied JavaScript or ass
 ## The overlay boundary
 
 `web/` remains canonical for page structure and executable logic, and it is the only home for
-standalone runtime modules, styles, assets, data, machine-contract pages, and untranslated pages.
-`i18n/pt/localization_state.json` allow-lists the few HTML files whose reader-facing prose is localized.
+standalone runtime modules, styles, data, machine-contract pages, and untranslated pages.
+`i18n/pt/localization_state.json` allow-lists localized HTML and reviewed SVGs whose embedded text
+differs by language. Other assets stay canonical.
 During a build, `assemble_locale_overlay.py` copies canonical `web/` and applies only those declared
 files. The audit requires equivalent HTML and executable structure while allowing localized UI
 strings inside a page. Everything else is inherited verbatim.
 
 Do not copy runtime files into `i18n/`. If a localized page needs different behavior, make the
-canonical runtime locale-aware and test both languages.
+canonical runtime locale-aware and test both languages. Localized SVGs are the narrow asset
+exception: preserve non-text geometry, add `data-locale`, declare them under `asset_files`, and
+accept the exact canonical source hash only after rendered review.
 
 ## Drift model
 
@@ -69,6 +72,8 @@ python3 scripts/validation/localization_audit.py \
   --locale pt-BR --accept web/nemoclaw/02c-deep.html
 
 # 6. Prove the detector and build the combined site.
+python3 scripts/translate/translate_svg_text.py \
+  web/nemoclaw/assets/figures/FIGURE.svg --no-api
 python3 scripts/build/assemble_locale_overlay.py --self-test
 python3 scripts/validation/localization_audit.py --self-test
 BUILD_PAGES_PULL_MATERIALS=0 bash scripts/build/build_pages.sh /tmp/nemoclaw-pages
@@ -102,6 +107,8 @@ needs-review, and missing pages. Each row shows source/review/target hashes and 
 - `locales/pt-BR/profile.json`: public terminology sources and machine-readable language rules.
 - `locales/pt-BR/SKILL.html`: Portuguese first-touch node for students, reviewers, and agents.
 - `translate_html_segments.py`: protected semantic-block drafting, polish, cache, and usage telemetry.
+- `translate_svg_text.py`: geometry-preserving SVG label/accessibility translation.
+- `locales/pt-BR/svg_translations.json`: reviewed, provider-free SVG translation map.
 - `scripts/validation/localization_audit.py`: required drift and language gate with mutation tests.
 - `scripts/build/assemble_locale_overlay.py`: deterministic canonical-plus-prose assembly.
 - `web/nemoclaw/localization.html`: same-branch comparison Studio.
