@@ -326,9 +326,12 @@ async function waitText(locator, pattern) {
       artifactInputGuard:/inputType/.test(artifactJavaScriptIssue('const embeddings = await course.embed(["hello"], { inputType: "text" });')),
       artifactTopLevelAwait:artifactJavaScriptIssue('const embeddings = await course.embed(["hello"], { inputType: "query" });') === '',
       artifactCombinedGuard:(issue => /inputType/.test(issue) && /asynchronous/.test(issue))(artifactJavaScriptIssue('const embeddings = course.embed(["hello"], { inputType: "text" });')),
+      helperAliasAllowed:artifactJavaScriptIssue('const embeddings = await helpers.embed(["hello"], { inputType: "query" }); const score = helpers.cosineSim(embeddings[0], embeddings[0]);') === '',
+      helperAsyncGuard:/asynchronous/.test(artifactJavaScriptIssue('const embeddings = helpers.embed(["hello"], { inputType: "query" });')),
+      helperAllowlistGuard:/helpers\.mountChatUI/.test(artifactJavaScriptIssue('helpers.mountChatUI("#app");')),
     };
   });
-  if (!sourceAccess.artifactIds.includes('deep-src') || !sourceAccess.artifactIds.some(id => /^module-/.test(id)) || sourceAccess.indexHasBodies || !sourceAccess.deepIsJavaScript || !sourceAccess.runtimeFiles.includes('_shared.js') || !sourceAccess.sharedIsExact || !sourceAccess.traversalRejected || !sourceAccess.fencedArtifactCaptured || !sourceAccess.inlineSourceRecovered || !sourceAccess.artifactAsyncGuard || !sourceAccess.artifactInputGuard || !sourceAccess.artifactTopLevelAwait || !sourceAccess.artifactCombinedGuard) throw new Error(`Course Assistant source/artifact access is incomplete or unsafe: ${JSON.stringify(sourceAccess)}`);
+  if (!sourceAccess.artifactIds.includes('deep-src') || !sourceAccess.artifactIds.some(id => /^module-/.test(id)) || sourceAccess.indexHasBodies || !sourceAccess.deepIsJavaScript || !sourceAccess.runtimeFiles.includes('_shared.js') || !sourceAccess.sharedIsExact || !sourceAccess.traversalRejected || !sourceAccess.fencedArtifactCaptured || !sourceAccess.inlineSourceRecovered || !sourceAccess.artifactAsyncGuard || !sourceAccess.artifactInputGuard || !sourceAccess.artifactTopLevelAwait || !sourceAccess.artifactCombinedGuard || !sourceAccess.helperAliasAllowed || !sourceAccess.helperAsyncGuard || !sourceAccess.helperAllowlistGuard) throw new Error(`Course Assistant source/artifact access is incomplete or unsafe: ${JSON.stringify(sourceAccess)}`);
   const sessionCap = await coursePage.evaluate(async () => {
     const { saveCourseAssistantStore, loadCourseAssistantStore } = await import('./scripts/_course_assistant.js');
     const values = new Map();
@@ -422,6 +425,8 @@ async function waitText(locator, pattern) {
   if (!/Explain MCP trust boundaries/.test(await crossPanel.locator('.chatui-log').innerText())) throw new Error('Course Assistant session metadata survived cross-page navigation but its transcript did not');
   await crossPanel.locator('[data-course-assistant-view="history"]').click();
   if (!/Explain MCP trust boundaries/.test(await crossPanel.locator('.course-assistant-history pre').innerText())) throw new Error('Course Assistant session transcript survived cross-page navigation but its agent activity did not');
+  const historyCopyStyle = await crossPanel.locator('[data-course-history-copy]').evaluate(button => ({ width:button.getBoundingClientRect().width, fontSize:parseFloat(getComputedStyle(button).fontSize) }));
+  if (historyCopyStyle.width <= 50 || historyCopyStyle.fontSize >= 18) throw new Error(`Course Assistant History copy control inherited top-level close-button sizing: ${JSON.stringify(historyCopyStyle)}`);
   await crossPanel.locator('[data-course-assistant-view="artifact"]').click();
   if (await crossPanel.locator('[data-course-artifact-title]').inputValue() !== 'MCP browser demo' || !/artifact-output/.test(await crossPanel.locator('[data-course-artifact-html]').inputValue())) throw new Error('Course Assistant Artifact view did not survive cross-page navigation');
   artifactFrame = crossPanel.frameLocator('.course-assistant-artifact iframe');
@@ -429,12 +434,12 @@ async function waitText(locator, pattern) {
   if (await artifactFrame.locator('#artifact-output').innerText() !== 'artifact ran') throw new Error('restored Course Assistant artifact did not rerun in its sandbox');
   await crossPanel.evaluate(panel => {
     panel.querySelector('[data-course-artifact-html]').__courseAssistantEditor.setValue('<div id="bridge-result"></div>');
-    panel.querySelector('[data-course-artifact-js]').__courseAssistantEditor.setValue('try { await course.embed([]); } catch (error) { document.querySelector("#bridge-result").textContent = error.message; }');
+    panel.querySelector('[data-course-artifact-js]').__courseAssistantEditor.setValue('document.querySelector("#bridge-result").textContent = helpers.cosineSim([1, 0], [1, 0]).toFixed(1) + "|"; try { await helpers.embed([]); } catch (error) { document.querySelector("#bridge-result").textContent += error.message; }');
   });
   await crossPanel.locator('[data-course-artifact-run]').click();
   artifactFrame = crossPanel.frameLocator('.course-assistant-artifact iframe');
   await artifactFrame.locator('#bridge-result').waitFor({ state:'visible' });
-  if (!/accepts 1-16 non-empty strings/.test(await artifactFrame.locator('#bridge-result').innerText())) throw new Error('Course Assistant artifact embedding bridge did not enforce its request bound');
+  if (!/^1\.0\|.*accepts 1-16 non-empty strings/.test(await artifactFrame.locator('#bridge-result').innerText())) throw new Error('Course Assistant artifact helper facade did not expose cosineSim/embed or enforce its request bound');
   await crossPanel.evaluate(panel => panel.querySelector('[data-course-artifact-js]').__courseAssistantEditor.setValue('const { broken } from "./_shared.js";'));
   await crossPanel.locator('[data-course-artifact-run]').click();
   if (!/Syntax error|Imports are unavailable/.test(await crossPanel.locator('.course-artifact-actions [role="status"]').innerText())) throw new Error('Course Assistant artifact did not surface generated JavaScript failure before execution');

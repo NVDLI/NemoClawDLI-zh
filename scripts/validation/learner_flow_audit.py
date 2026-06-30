@@ -231,11 +231,12 @@ def audit_page_assistant(assistant: str, shared: str, chat: str, css: str) -> li
         'sandbox="allow-scripts"': "Course Assistant artifact preview must run in an origin-isolated sandbox",
         'default-src \'none\'': "Course Assistant artifact preview must block ambient network and parent access",
         'URL.createObjectURL(new Blob([': "Course Assistant artifact preview must avoid fragile srcdoc injection",
-        'window.course=Object.freeze({embed:': "Course Assistant artifact sandbox must expose a narrow embedding bridge",
+        'window.course=api;window.helpers=new Proxy': "Course Assistant artifact sandbox must expose bounded course and lesson-helper bridges",
+        'filter(name => !["embed", "cosineSim"].includes(name))': "Course Assistant must reject lesson helpers absent from the artifact sandbox",
         'input.length > 16': "Course Assistant embedding bridge must bound artifact requests",
         'export function artifactJavaScriptIssue': "Course Assistant must validate generated JavaScript without a model call",
-        'course.embed is asynchronous. Assign its result with await course.embed(...)': "Course Assistant must reject unawaited embedding requests",
-        'course.embed inputType must be': "Course Assistant must reject unsupported embedding input types",
+        'Artifact embedding is asynchronous. Assign its result with await course.embed(...) or await helpers.embed(...)': "Course Assistant must reject unawaited embedding requests through either alias",
+        'Artifact embed inputType must be': "Course Assistant must reject unsupported embedding input types",
         '(async () => {\\n${javascript}\\n})();': "Course Assistant runner must support top-level await without exposing imports",
         'Artifact rejected: ${issue}': "Course Assistant tool must return invalid artifact code to the agent for correction",
         'class="course-artifact-api"': "Course Assistant editor must show its asynchronous embedding contract",
@@ -247,6 +248,7 @@ def audit_page_assistant(assistant: str, shared: str, chat: str, css: str) -> li
         'The course has no generic pasteable code cell': "Course Assistant must reject nonexistent paste-into-cell guidance",
         'The sandbox provides the asynchronous course.embed API': "Course Assistant prompt must teach the artifact bridge instead of inventing imports",
         'always use await course.embed': "Course Assistant prompt must state that embedding calls are asynchronous",
+        'No other helpers.* API is available': "Course Assistant prompt must distinguish lesson helpers from artifact APIs",
         'activateView("artifact")': "generated artifacts must open the real Artifact view",
         'mountCourseLicenseNote': "shared chrome must mount the course license note",
         'Course-authored prose, example code, and original diagrams': "license note must state the exact Apache-2.0 scope",
@@ -272,6 +274,9 @@ def audit_page_assistant(assistant: str, shared: str, chat: str, css: str) -> li
           "Course Assistant Artifact view needs a bounded responsive layout")
     _need(findings, ".course-assistant-history" in css and "white-space: pre-wrap" in css,
           "Course Assistant persistent History needs a bounded readable layout")
+    _need(findings, ".course-assistant-panel > header button {" in css and
+          ".course-assistant-panel header button {" not in css,
+          "Course Assistant close-button sizing must not leak into nested History controls")
     _need(findings, assistant.count("artifactJavaScriptIssue(javascript)") >= 2 and
           "artifactJavaScriptIssue(artifact.javascript)" in assistant,
           "Course Assistant must validate manual runs, tool queues, and fenced-code capture")
@@ -790,11 +795,12 @@ def self_test() -> list[str]:
         ("assistant loses artifact tab", assistant.replace('data-course-assistant-view="artifact"', 'data-missing-view="artifact"'), shared, chat, css, "discoverable Artifact tab"),
         ("assistant artifact escapes sandbox", assistant.replace('sandbox="allow-scripts"', 'sandbox="allow-scripts allow-same-origin"', 1), shared, chat, css, "origin-isolated sandbox"),
         ("assistant artifact returns to srcdoc", assistant.replace('URL.createObjectURL(new Blob([', 'artifactFrame.srcdoc = ([', 1), shared, chat, css, "fragile srcdoc"),
-        ("assistant artifact loses embed bridge", assistant.replace('window.course=Object.freeze({embed:', 'window.course=Object.freeze({missing:', 1), shared, chat, css, "embedding bridge"),
+        ("assistant artifact loses helper bridge", assistant.replace('window.course=api;window.helpers=new Proxy', 'window.course=api;window.missingHelpers=new Proxy', 1), shared, chat, css, "lesson-helper bridges"),
+        ("assistant artifact allows unavailable lesson helpers", assistant.replace('filter(name => !["embed", "cosineSim"].includes(name))', 'filter(name => false)', 1), shared, chat, css, "absent from the artifact sandbox"),
         ("assistant artifact bridge unbounded", assistant.replace('input.length > 16', 'false', 1), shared, chat, css, "bound artifact requests"),
         ("assistant artifact loses validator", assistant.replace('export function artifactJavaScriptIssue', 'function removedArtifactJavaScriptIssue', 1), shared, chat, css, "validate generated JavaScript"),
-        ("assistant artifact allows unawaited embed", assistant.replace('course.embed is asynchronous. Assign its result with await course.embed(...)', 'Embeddings failed', 1), shared, chat, css, "unawaited embedding"),
-        ("assistant artifact allows bad input type", assistant.replace('course.embed inputType must be', 'Embedding option failed'), shared, chat, css, "unsupported embedding input types"),
+        ("assistant artifact allows unawaited embed", assistant.replace('Artifact embedding is asynchronous. Assign its result with await course.embed(...) or await helpers.embed(...)', 'Embeddings failed', 1), shared, chat, css, "unawaited embedding"),
+        ("assistant artifact allows bad input type", assistant.replace('Artifact embed inputType must be', 'Embedding option failed'), shared, chat, css, "unsupported embedding input types"),
         ("assistant artifact validation misses queue and run", assistant.replace('artifactJavaScriptIssue(javascript)', 'removedArtifactCheck(javascript)'), shared, chat, css, "manual runs, tool queues"),
         ("assistant artifact loses async runner", assistant.replace('(async () => {\\n${javascript}\\n})();', '${javascript}', 1), shared, chat, css, "top-level await"),
         ("assistant artifact hides API contract", assistant.replace('class="course-artifact-api"', 'class="removed-artifact-api"', 1), shared, chat, css, "show its asynchronous embedding contract"),
@@ -805,6 +811,7 @@ def self_test() -> list[str]:
         ("assistant invents artifact imports", assistant.replace('The sandbox provides the asynchronous course.embed API', 'Import _rag.js inside the artifact', 1), shared, chat, css, "artifact bridge"),
         ("assistant artifact layout unbounded", assistant, shared, chat, css.replace('.course-assistant-artifact iframe', '.removed-artifact-frame', 1), "bounded responsive layout"),
         ("assistant History layout unbounded", assistant, shared, chat, css.replace('.course-assistant-history', '.removed-assistant-history'), "persistent History needs a bounded"),
+        ("assistant close-button style leaks into History", assistant, shared, chat, css.replace('.course-assistant-panel > header button {', '.course-assistant-panel header button {', 1), "must not leak into nested History controls"),
         ("assistant loses compaction threshold", assistant.replace('compactAtTokens: 12000', 'compactAtTokens: 0', 1), shared, chat, css, "compaction threshold"),
         ("assistant compaction keeps no recent turns", assistant.replace('compactKeepMessages: 6', 'compactKeepMessages: 0', 1), shared, chat, css, "recent verbatim"),
         ("assistant compaction skips thread rotation", assistant, shared, chat.replace('ctx.thread = ctx.rotateThread();', '', 1), css, "fresh bounded"),

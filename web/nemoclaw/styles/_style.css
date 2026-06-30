@@ -204,8 +204,8 @@ body {
 .course-assistant-panel > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 13px 14px 10px; border-bottom: 1px solid var(--bd); }
 .course-assistant-panel header span { color: var(--artifact-text); font: 800 .62rem/1 var(--mono); letter-spacing: .06em; }
 .course-assistant-panel h2 { margin: .35rem 0 0; font-size: 1rem; line-height: 1.25; }
-.course-assistant-panel header button { width: 30px; height: 30px; flex: 0 0 auto; border: 1px solid var(--bd); border-radius: 7px; background: transparent; color: var(--td); font-size: 1.35rem; cursor: pointer; }
-.course-assistant-panel header button:hover, .course-assistant-panel header button:focus-visible { border-color: var(--g); color: var(--gs); outline: none; }
+.course-assistant-panel > header button { width: 30px; height: 30px; flex: 0 0 auto; border: 1px solid var(--bd); border-radius: 7px; background: transparent; color: var(--td); font-size: 1.35rem; cursor: pointer; }
+.course-assistant-panel > header button:hover, .course-assistant-panel > header button:focus-visible { border-color: var(--g); color: var(--gs); outline: none; }
 .course-assistant-sessions { display: grid; grid-template-columns: auto minmax(8rem, 1fr) auto auto; align-items: center; gap: 6px; padding: 7px 10px; border-bottom: 1px solid var(--bd); background: var(--e1); }
 .course-assistant-sessions label { color: var(--tf); font: .66rem/1 var(--mono); text-transform: uppercase; }
 .course-assistant-sessions select, .course-assistant-sessions input, .course-assistant-sessions button { min-width: 0; height: 28px; border: 1px solid var(--bd); border-radius: 5px; background: var(--e2); color: var(--td); font: .69rem/1 var(--mono); }
