@@ -9,6 +9,7 @@ import re
 import shutil
 import sys
 import tempfile
+import xml.etree.ElementTree as ET
 from datetime import date
 from html.parser import HTMLParser
 from pathlib import Path
@@ -18,21 +19,26 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
         sys.path.insert(0, str(_p / "scripts"))
         break
 from _bootstrap import find_repo_root
+from translate.localization_scope import translation_canonical, translation_sha
+from translate.translate_svg_text import extract_svg_segments
 
 ROOT = find_repo_root(Path(__file__).resolve())
 SKIP_TEXT = {"script", "style", "pre", "code", "svg", "noscript"}
 INTERFACE_CONTRACT = {
-    "web/nemoclaw/localization.html": ("id=\"loc-filters\"", "id=\"loc-source\"", "id=\"loc-target\"", "scripts/localization_main.js"),
-    "web/nemoclaw/scripts/localization_main.js": ("assets/localization-pt.json", '"current", "stale", "blocked", "needs-review", "missing"', "reviewed_source_sha256"),
+    "web/nemoclaw/localization.html": ("id=\"loc-kinds\"", "data-kind=\"assets\"", "id=\"loc-filters\"", "id=\"loc-source\"", "id=\"loc-target\"", "scripts/localization_main.js"),
+    "web/nemoclaw/scripts/localization_main.js": ("assets/localization-pt.json", '"current", "stale", "blocked", "needs-review", "missing"', "reviewed_source_sha256", "asset_counts", 'activeKind === "assets"'),
     "web/nemoclaw/scripts/_locale.js": ("mountLanguageMenu", "available_pages", 'aria-haspopup', "languageFallback", "language-fallback-badge"),
     "web/nemoclaw/scripts/_shared.js": ("mountLanguageMenu()",),
     "web/nemoclaw/studio.html": ('href="localization.html"',),
     "scripts/build/build_language_manifest.py": ("native_label", "available_pages", "localization-"),
     "scripts/build/build_pages.sh": ("assemble_locale_overlay.py",),
-    "scripts/build/assemble_locale_overlay.py": ("source_sha256", "self-test", "stale translation did not fall back"),
+    "scripts/build/assemble_locale_overlay.py": ("source_sha256", "translation_sha256", "self-test", "stale translation did not fall back"),
+    "scripts/translate/translate_svg_text.py": ("extract_svg_segments", "data-locale", "--no-api", "svg_translations.json"),
+    "scripts/translate/locales/pt-BR/svg_translations.json": ("Ambiente", "ETAPA DE DECISÃO", "Agentes com aprendizado"),
+    "scripts/translate/localization_scope.py": ("en-shell", "data-localization-scope", "translation_sha"),
     "scripts/validation/localization_runtime_audit.py": ("pageerror", "language-menu entries are clipped", "Localization Studio"),
     ".gitlab-ci.yml": ("assemble_locale_overlay.py --self-test", "localization_audit.py --self-test", "localization_audit.py --locale pt-BR"),
-    "scripts/translate/SKILL.html": ("locales/pt-BR/SKILL.html", "same-branch localization"),
+    "scripts/translate/SKILL.html": ("locales/pt-BR/SKILL.html", "same-branch localization", "translate_svg_text.py"),
 }
 
 
@@ -167,6 +173,63 @@ def skill_meta(raw: str) -> object | None:
         return None
 
 
+def svg_geometry(raw: str) -> list[tuple[str, tuple[tuple[str, str], ...]]]:
+    """Represent non-language SVG structure; text coordinates may change to repair wrapping."""
+    root = ET.fromstring(raw)
+    out = []
+    for element in root.iter():
+        tag = element.tag.rsplit("}", 1)[-1]
+        if tag in {"text", "tspan", "title", "desc"}:
+            out.append((tag, ()))
+            continue
+        attrs = tuple(sorted((key.rsplit("}", 1)[-1], value) for key, value in element.attrib.items()
+                             if key not in {"aria-label", "data-locale"}))
+        out.append((tag, attrs))
+    return out
+
+
+def svg_visible_text(raw: str) -> str:
+    root = ET.fromstring(raw)
+    values = [root.attrib.get("aria-label", "")]
+    for element in root.iter():
+        if element.tag.rsplit("}", 1)[-1] in {"text", "tspan", "title", "desc"} and element.text:
+            values.append(element.text)
+    return re.sub(r"\s+", " ", " ".join(values)).strip()
+
+
+def svg_quality(source_raw: str, target_raw: str, profile: dict) -> list[dict[str, str]]:
+    out: list[dict[str, str]] = []
+    try:
+        source_geometry = svg_geometry(source_raw)
+        target_geometry = svg_geometry(target_raw)
+    except ET.ParseError as exc:
+        return [{"code": "svg-xml", "detail": f"invalid localized SVG: {exc}"}]
+    if 'data-locale="pt-BR"' not in target_raw:
+        out.append({"code": "svg-locale", "detail": "localized SVG needs data-locale=pt-BR"})
+    if source_geometry != target_geometry:
+        out.append({"code": "svg-geometry", "detail": "localized SVG changed non-text geometry or element order"})
+    if re.search(r"<script\b|\bon\w+\s*=", target_raw, re.I):
+        out.append({"code": "svg-script", "detail": "localized SVG may not add executable content"})
+    visible = svg_visible_text(target_raw)
+    source_segments = [item.text for item in extract_svg_segments(source_raw)]
+    target_segments = [item.text for item in extract_svg_segments(target_raw)]
+    translations = profile.get("_svg_translations", {})
+    if len(source_segments) != len(target_segments):
+        out.append({"code": "svg-text-shape", "detail": "localized SVG changed the number of translatable text nodes"})
+    else:
+        for source_text, target_text in zip(source_segments, target_segments):
+            if source_text not in translations:
+                out.append({"code": "svg-translation-map", "detail": f"missing reviewed SVG mapping for {source_text!r}"})
+                break
+            if translations[source_text] != target_text:
+                out.append({"code": "svg-translation-drift", "detail": f"localized SVG text differs from reviewed mapping for {source_text!r}"})
+                break
+    for phrase, fix in profile.get("unfit_phrases", {}).items():
+        if re.search(rf"(?i)\b{re.escape(phrase)}\b", visible):
+            out.append({"code": "unfit-pt-br", "detail": f"{phrase!r}: {fix}"})
+    return out
+
+
 def canonical_pages(root: Path) -> list[Path]:
     pages = [root / "web" / "index.html", root / "web" / "courses.html"]
     pages.extend(sorted((root / "web" / "nemoclaw").glob("*.html")))
@@ -198,6 +261,8 @@ def interface_findings(root: Path) -> list[dict[str, str]]:
 
 def page_quality(source_raw: str, target_raw: str, profile: dict, *, skill: bool = False) -> list[dict[str, str]]:
     out: list[dict[str, str]] = []
+    if 'data-localization-scope="en-shell"' in source_raw:
+        source_raw = translation_canonical(source_raw)
     expected_lang = profile["html_lang"]
     if html_lang(target_raw) != expected_lang:
         out.append({"code": "html-lang", "detail": f"expected <html lang=\"{expected_lang}\">"})
@@ -229,33 +294,46 @@ def page_quality(source_raw: str, target_raw: str, profile: dict, *, skill: bool
 
 def scan(root: Path, locale: str) -> tuple[list[dict[str, str]], dict]:
     _, locale_root, _, profile, state = locale_paths(root, locale)
+    svg_map = root / "scripts" / "translate" / "locales" / locale / "svg_translations.json"
+    profile["_svg_translations"] = json.loads(svg_map.read_text(encoding="utf-8")) if svg_map.is_file() else {}
     overlay_root = locale_root / "web"
     declared = {Path(item).as_posix() for item in state.get("overlay_files", [])}
+    declared_assets = {Path(item).as_posix() for item in state.get("asset_files", [])}
+    declared_all = declared | declared_assets
     actual = {path.relative_to(locale_root).as_posix() for path in overlay_root.rglob("*") if path.is_file()}
     findings: list[dict[str, str]] = interface_findings(root) if (root / "web/nemoclaw/localization.html").exists() else []
-    for path in sorted(actual - declared):
+    for path in sorted(actual - declared_all):
         findings.append({"code": "overlay-extra", "path": path,
                          "detail": "not declared as localized prose; code/assets and fallback pages belong to canonical web/"})
-    for path in sorted(declared - actual):
+    for path in sorted(declared_all - actual):
         findings.append({"code": "overlay-missing", "path": path, "detail": "declared overlay file is missing"})
     for path in sorted(declared):
         if not path.startswith("web/") or not path.endswith(".html") or not (root / path).is_file():
             findings.append({"code": "overlay-boundary", "path": path,
                              "detail": "locale overlays may contain only HTML files with a canonical web/ source"})
+    for path in sorted(declared_assets):
+        if not path.startswith("web/nemoclaw/assets/figures/") or not path.endswith(".svg") or not (root / path).is_file():
+            findings.append({"code": "overlay-asset-boundary", "path": path,
+                             "detail": "localized assets may contain only reviewed course figure SVGs"})
 
     reviews = state.get("reviews", {})
+    asset_reviews = state.get("asset_reviews", {})
     for path in sorted(set(reviews) - declared):
         findings.append({"code": "review-orphan", "path": path,
                          "detail": "review entry is not present in overlay_files"})
+    for path in sorted(set(asset_reviews) - declared_assets):
+        findings.append({"code": "asset-review-orphan", "path": path,
+                         "detail": "asset review entry is not present in asset_files"})
     rows: list[dict[str, object]] = []
     for source in canonical_pages(root):
         rel = source.relative_to(root).as_posix()
         target = locale_root / rel
         source_raw = source.read_text(encoding="utf-8")
-        source_digest = sha(source_raw)
+        scoped = 'data-localization-scope="en-shell"' in source_raw
+        source_digest = translation_sha(source_raw) if scoped else sha(source_raw)
         target_raw = target.read_text(encoding="utf-8") if target.is_file() else ""
         review = reviews.get(rel) or {}
-        reviewed_digest = review.get("source_sha256")
+        reviewed_digest = review.get("translation_sha256") if scoped else review.get("source_sha256")
         quality = page_quality(source_raw, target_raw, profile, skill=source.name == "SKILL.html") if target_raw else []
         if not target_raw:
             status = "missing"
@@ -289,6 +367,34 @@ def scan(root: Path, locale: str) -> tuple[list[dict[str, str]], dict]:
             findings.append({"code": "skill-meta-drift", "path": rel,
                              "detail": "localized skill-meta differs from canonical JSON"})
 
+    asset_rows = []
+    for rel in sorted(declared_assets):
+        source, target = root / rel, locale_root / rel
+        source_raw = source.read_text(encoding="utf-8") if source.is_file() else ""
+        target_raw = target.read_text(encoding="utf-8") if target.is_file() else ""
+        review = asset_reviews.get(rel) or {}
+        source_digest = sha(source_raw) if source_raw else None
+        quality = svg_quality(source_raw, target_raw, profile) if source_raw and target_raw else []
+        if not target_raw:
+            status = "missing"
+        elif not review.get("source_sha256"):
+            status = "needs-review"
+        elif review.get("source_sha256") != source_digest:
+            status = "stale"
+        elif quality:
+            status = "blocked"
+        else:
+            status = "current"
+        if review.get("source_sha256") and review.get("source_sha256") != source_digest:
+            findings.append({"code": "stale-asset-source", "path": rel,
+                             "detail": f"reviewed {review['source_sha256'][:12]}, source is {source_digest[:12]}"})
+        if review.get("source_sha256"):
+            findings.extend({"code": item["code"], "path": rel, "detail": item["detail"]} for item in quality)
+        asset_rows.append({"path": rel, "file": Path(rel).name, "source_sha256": source_digest,
+                           "reviewed_source_sha256": review.get("source_sha256"),
+                           "target_sha256": sha(target_raw) if target_raw else None,
+                           "status": status, "quality": quality})
+
     available = sorted(row["file"] for row in rows
                        if row["path"].startswith("web/nemoclaw/") and row["status"] == "current")
     manifest = {
@@ -301,6 +407,9 @@ def scan(root: Path, locale: str) -> tuple[list[dict[str, str]], dict]:
         "counts": {name: sum(1 for row in rows if row["status"] == name)
                    for name in ("current", "stale", "blocked", "needs-review", "missing")},
         "pages": rows,
+        "assets": asset_rows,
+        "asset_counts": {name: sum(1 for row in asset_rows if row["status"] == name)
+                         for name in ("current", "stale", "blocked", "needs-review", "missing")},
         "terminology_sources": profile.get("terminology_sources", []),
     }
     return findings, manifest
@@ -314,20 +423,32 @@ def write_manifest(root: Path, profile: dict, manifest: dict) -> Path:
 
 def accept(root: Path, locale: str, paths: list[str]) -> list[str]:
     _, locale_root, state_path, profile, state = locale_paths(root, locale)
+    svg_map = root / "scripts" / "translate" / "locales" / locale / "svg_translations.json"
+    profile["_svg_translations"] = json.loads(svg_map.read_text(encoding="utf-8")) if svg_map.is_file() else {}
     errors: list[str] = []
     reviews = state.setdefault("reviews", {})
+    asset_reviews = state.setdefault("asset_reviews", {})
     for rel in paths:
         source, target = root / rel, locale_root / rel
         if not source.is_file() or not target.is_file():
             errors.append(f"{rel}: source or localized target missing")
             continue
-        quality = page_quality(source.read_text(encoding="utf-8"), target.read_text(encoding="utf-8"), profile,
-                               skill=source.name == "SKILL.html")
+        source_raw = source.read_text(encoding="utf-8")
+        target_raw = target.read_text(encoding="utf-8")
+        quality = (svg_quality(source_raw, target_raw, profile) if source.suffix == ".svg" else
+                   page_quality(source_raw, target_raw, profile, skill=source.name == "SKILL.html"))
         if quality:
             errors.append(f"{rel}: " + "; ".join(item["detail"] for item in quality))
             continue
-        reviews[rel] = {"source_sha256": sha(source.read_text(encoding="utf-8")),
-                        "reviewed_on": date.today().isoformat()}
+        raw = source_raw
+        if source.suffix == ".svg":
+            asset_reviews[rel] = {"source_sha256": sha(raw), "reviewed_on": date.today().isoformat()}
+            continue
+        if 'data-localization-scope="en-shell"' in raw:
+            reviews[rel] = {"source_sha256": sha(raw), "translation_sha256": translation_sha(raw),
+                            "reviewed_on": date.today().isoformat()}
+        else:
+            reviews[rel] = {"source_sha256": sha(raw), "reviewed_on": date.today().isoformat()}
     if not errors:
         state_path.write_text(json.dumps(state, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return errors
@@ -347,7 +468,9 @@ def self_test() -> list[str]:
                    "html_lang": "pt-BR", "english_sentence_markers": ["Course home"],
                    "english_ui_markers": ["Run the node"],
                    "unfit_phrases": {"soquete de raciocínio": "use etapa de decisão"}}
+        profile["_svg_translations"] = {"Agent loop": "Ciclo do agente"}
         (profile_dir / "profile.json").write_text(json.dumps(profile))
+        (profile_dir / "svg_translations.json").write_text(json.dumps(profile["_svg_translations"]))
         source_raw = '<!doctype html><html lang="en"><body><main id="lesson">Course home</main><script>const x=1; helpers.log("Run the node");</script></body></html>'
         target_raw = '<!doctype html><html lang="pt-BR"><body><main id="lesson">Início do curso</main><script>const x=1; helpers.log("Execute o nó");</script></body></html>'
         (source_dir / "index.html").write_text(source_raw)
@@ -359,6 +482,37 @@ def self_test() -> list[str]:
         base, _ = scan(root, "pt-BR")
         if base:
             failures.append(f"clean fixture rejected: {base}")
+        svg_rel = "web/nemoclaw/assets/figures/lesson.svg"
+        svg_source = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 30" aria-label="Agent loop"><rect width="100" height="30"/><text x="5" y="20">Agent loop</text></svg>'
+        svg_target = '<svg data-locale="pt-BR" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 30" aria-label="Ciclo do agente"><rect width="100" height="30"/><text x="5" y="20">Ciclo do agente</text></svg>'
+        (root / svg_rel).parent.mkdir(parents=True)
+        (root / svg_rel).write_text(svg_source)
+        (root / "i18n/pt" / svg_rel).parent.mkdir(parents=True)
+        (root / "i18n/pt" / svg_rel).write_text(svg_target)
+        state["asset_files"] = [svg_rel]
+        state["asset_reviews"] = {svg_rel: {"source_sha256": sha(svg_source)}}
+        (root / "i18n/pt/localization_state.json").write_text(json.dumps(state))
+        svg_base, _ = scan(root, "pt-BR")
+        if svg_base:
+            failures.append(f"clean SVG fixture rejected: {svg_base}")
+        (root / "i18n/pt" / svg_rel).write_text(svg_target.replace('<rect width="100"', '<rect width="90"'))
+        svg_changed, _ = scan(root, "pt-BR")
+        if not any(item["code"] == "svg-geometry" for item in svg_changed):
+            failures.append("localized SVG geometry mutation was not rejected")
+        (root / "i18n/pt" / svg_rel).write_text(svg_target.replace('data-locale="pt-BR" ', ""))
+        svg_unmarked, _ = scan(root, "pt-BR")
+        if not any(item["code"] == "svg-locale" for item in svg_unmarked):
+            failures.append("unmarked localized SVG was not rejected")
+        (root / "i18n/pt" / svg_rel).write_text(svg_target)
+        scoped_raw = source_raw.replace(
+            "Course home",
+            '<details class="learning-block" data-localization-scope="en-shell"><summary data-localization-scope="en">Need detail?</summary><div class="learning-block-body">Course home</div></details>',
+        )
+        if page_quality(scoped_raw, target_raw, profile):
+            failures.append("English-only presentation shell changed locale structure checks")
+        if (translation_sha(scoped_raw) != translation_sha(scoped_raw.replace("Need detail?", "Open detail?")) or
+                translation_sha(scoped_raw) == translation_sha(scoped_raw.replace("Course home", "Changed lesson", 1))):
+            failures.append("translation digest did not isolate controls from translatable body changes")
         cases = (
             ("html-lang", lambda: (target_dir / "index.html").write_text(target_raw.replace('lang="pt-BR"', 'lang="en"'))),
             ("untranslated-english", lambda: (target_dir / "index.html").write_text(target_raw.replace("Início do curso", "Course home"))),

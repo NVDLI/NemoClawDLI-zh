@@ -127,6 +127,9 @@
 
   <div id="cell-introspect"></div>
 
+  <details class="learning-block" open data-learning-id="operator-workspace-inspection" data-learning-tier="applied" data-learning-artifact="optional" data-localization-scope="en-shell">
+  <summary data-localization-scope="en"><span class="learning-scope">Applied · Operator</span><span class="learning-question">Verify the workspace from the operator plane?</span></summary>
+  <div class="learning-block-body">
   <h2>Step 1b · Read the workspace yourself</h2>
   <p>Step 1 asked the agent to <em>describe</em> its files, and you do not have
      to take its word for it. Until now your only channel has been the gateway
@@ -160,6 +163,8 @@
     plane. It shares the machine with the terminal but runs under the narrower
     OpenShell policy tested in Module 4.
   </div>
+  </div>
+  </details>
 
   <h2>Step 2 · Two scenarios, side by side</h2>
   <p>Because the persona is just a file, swapping the SOUL definition changes the
@@ -391,16 +396,11 @@ state.turn = async ({ content, session }) => {
 // Health / recover / logs flow is shared from _shared.js:
 mountGwRecover("#gw-recover");
 
-mountCanvasFlow("#cell-introspect", {
-  label: "Ask OpenClaw to describe its own configuration",
-  intro: "Asking the agent to survey its own workspace and report works because its setup is files on disk (SOUL.md, tool descriptions, memory) that the runtime folds into the system prompt each turn, so the agent can talk about itself.",
-
-  nodes: [
-    {
-      id: "introspect", icon: "🔍", title: "Ask it to describe its workspace", x: 0, y: 0,
-      showCode: false,
-      summary: "One chat turn asking the agent to list its workspace files and explain each. It answers from its system prompt and its own tools, since listing a directory is itself a tool call. Edit a file and the next run reflects the change.",
-      code: setupTurn + `
+mountRunCell("#cell-introspect", {
+  openCode: false,
+  label: "Ask OpenClaw to describe its workspace",
+  intro: "Run one turn, then compare the answer with the live workspace in Step 1b.",
+  code: `${setupTurn}
 const report = await state.turn({
   content: "Briefly: list the files in your workspace and tell me what each one is for. " +
            "One bullet per file. Don't dump file contents.",
@@ -408,8 +408,6 @@ const report = await state.turn({
 });
 helpers.log(report);
 `,
-    },
-  ],
 });
 
 mountRunCell("#cell-workspace-term", {

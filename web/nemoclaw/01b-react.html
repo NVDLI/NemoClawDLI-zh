@@ -107,7 +107,9 @@
     before deciding what to do next.
   </p>
 
-
+  <details class="learning-block" open data-learning-id="agent-harness-parts" data-learning-tier="applied" data-localization-scope="en-shell">
+  <summary data-localization-scope="en"><span class="learning-scope">Applied · Anatomy</span><span class="learning-question">Map the model, memory, tools, and router?</span></summary>
+  <div class="learning-block-body">
   <h2>The pieces an LLM agent is built from</h2>
   <p>
     Zoom in on the agent and you find the decomposition
@@ -152,6 +154,8 @@
     The four-piece frame gives you a checklist that applies regardless of how the
     surrounding code is organized.
   </p>
+  </div>
+  </details>
 
   <h2>Building the loop from scratch with one tool</h2>
   <p>
@@ -184,6 +188,9 @@
     model would resume the conversation without noticing the gap.
   </div>
 
+  <details class="learning-block" open data-learning-id="context-rot" data-learning-tier="applied" data-localization-scope="en-shell">
+  <summary data-localization-scope="en"><span class="learning-scope">Applied · Operate</span><span class="learning-question">Need context-rot evidence and mitigations?</span></summary>
+  <div class="learning-block-body">
   <h2>Context rot: why a longer loop reads worse</h2>
   <p>
     This issue becomes more likely as the context grows. <strong>Context rot</strong> is the
@@ -207,6 +214,8 @@
   <p>
     Each of those costs something in latency or fidelity or complexity, and each is worth weighing against the task at hand.
   </p>
+  </div>
+  </details>
 
   <h2>The same loop, prebuilt and pointed at this course</h2>
   <p>
@@ -259,7 +268,9 @@
         and how would you discourage that in the system prompt?</li>
   </ol>
 
-  <div class="references">
+  <details class="references learning-block" open data-learning-id="react-references" data-learning-tier="deep" data-localization-scope="en-shell">
+    <summary data-localization-scope="en"><span class="learning-scope">Deep · Sources</span><span class="learning-question">Trace these mechanisms to primary sources?</span></summary>
+    <div class="learning-block-body">
     <h3>References</h3>
     <ul>
       <li><a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al., <em>ReAct: Synergizing Reasoning and Acting in Language Models</em> (2022)</a>. The original alternating thought / action / observation pattern; the figure above is redrawn from this paper.</li>
@@ -269,7 +280,8 @@
       <li><a href="https://arxiv.org/abs/2302.04761" target="_blank" rel="noopener">Schick et al., <em>Toolformer</em> (2023)</a>. Covered again in 1c's references; revisit here for the underlying mechanism the ReAct loop exploits.</li>
     </ul>
     <p class="references-note">Comprehensive list at <a href="04c-going-further.html#refs">Going Further · References</a>.</p>
-  </div>
+    </div>
+  </details>
 
   <div class="foot-nav">
     <a href="01a-loop.html">← Module 1a: The Agent</a>

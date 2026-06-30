@@ -95,13 +95,13 @@
 
   <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:14px;margin:1.4em 0">
     <figure style="margin:0;flex:1 1 320px;max-width:430px">
-      <img src="assets/figures/fig2_react.svg" alt="The ReAct loop: the model reasons, acts through a tool, observes the result, and repeats until it is done."
-           style="width:100%;height:auto;display:block;background:#fff;border:1px solid #d0d7de;border-radius:8px;padding:14px"/>
+      <div class="fig-embed" data-svg-src="assets/figures/fig2_react.svg"
+           style="margin:0;background:var(--gfx-paper-surface,#fff);border:1px solid var(--gfx-line,#2a2a2a);border-radius:8px;padding:14px"></div>
       <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">ReAct interleaves a reasoning step with each tool call, reacting to every observation before deciding the next move.</figcaption>
     </figure>
     <figure style="margin:0;flex:1 1 320px;max-width:430px">
-      <img src="assets/figures/fig2_rewoo.svg" alt="The ReWOO pattern: the model writes the whole plan upfront, a deterministic executor runs every tool, and one synthesis call closes it out."
-           style="width:100%;height:auto;display:block;background:#fff;border:1px solid #d0d7de;border-radius:8px;padding:14px"/>
+      <div class="fig-embed" data-svg-src="assets/figures/fig2_rewoo.svg"
+           style="margin:0;background:var(--gfx-paper-surface,#fff);border:1px solid var(--gfx-line,#2a2a2a);border-radius:8px;padding:14px"></div>
       <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">ReWOO writes the full plan before any tool runs, executes the steps without re-asking the model, then synthesizes once.</figcaption>
     </figure>
   </div>
@@ -146,6 +146,9 @@
   </ul>
 
   <!-- ── Part 3: A real ReWOO research pipeline ───────────────────────────── -->
+  <details class="learning-block" open data-learning-id="rewoo-glossary-pipeline" data-learning-tier="applied" data-learning-artifact="optional" data-localization-scope="en-shell">
+  <summary data-localization-scope="en"><span class="learning-scope">Applied · Pipeline</span><span class="learning-question">Run the full plan-execute-synthesize pipeline?</span></summary>
+  <div class="learning-block-body">
   <h2>Running a ReWOO pipeline against the NVIDIA glossary</h2>
 
   <p>
@@ -171,6 +174,8 @@
     <div id="cell-m2a-rewoo"></div>
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">The ReWOO pattern plans every tool call up front, runs them in parallel, then synthesizes in one final call. <a href="https://arxiv.org/abs/2305.18323" target="_blank" rel="noopener">Xu et al. (2023)</a>.</figcaption>
   </figure>
+  </div>
+  </details>
 
   <!-- ── Part 4: Schema-bound triage ──────────────────────────────────────── -->
   <h2>Routing a ticket to one specialist with a fixed enum</h2>
@@ -207,6 +212,9 @@
   <div id="cell-m2a-parallel"></div>
 
   <!-- ── Part 6: Agent factories ──────────────────────────────────────────── -->
+  <details class="learning-block" open data-learning-id="specialist-factory" data-learning-tier="deep" data-learning-artifact="optional" data-learning-exercise="optional" data-localization-scope="en-shell">
+  <summary data-localization-scope="en"><span class="learning-scope">Deep · Factory</span><span class="learning-question">Factor repeated specialists into one declaration?</span></summary>
+  <div class="learning-block-body">
   <h2>Declaring specialists from a factory instead of hand-writing each</h2>
 
   <p>
@@ -255,6 +263,8 @@
     Part C (Deep Agents) takes it further still, into a planner agent that dispatches
     sub-agents in fresh contexts and persists their working state to a virtual filesystem.
   </div>
+  </div>
+  </details>
 
   <div class="references">
     <h3>References</h3>

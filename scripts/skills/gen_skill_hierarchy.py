@@ -41,8 +41,8 @@ except Exception:
 WEB_COURSE_DESC = {
     "nemoclaw":      "Securing Agents: a browser-first course that runs against the lab's model gateway "
                      "and OpenClaw runtime. The pages build the agent loop, tools, retrieval, planning, "
-                     "and sandbox controls as live artifacts, with course code collapsed when it is "
-                     "supporting infrastructure rather than the lesson focus.",
+                     "and sandbox controls as live artifacts. Learner-selected views collapse explicitly "
+                     "optional prose and supporting code while keeping prerequisites, exercises, and safety limits visible.",
 }
 # One-line purpose per course page, so the rendered hub documents what each page does instead of listing bare filenames.
 # Keyed by course then page stem; a missing entry just renders an empty desc.

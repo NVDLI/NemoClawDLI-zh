@@ -75,8 +75,8 @@
  </p>
   <div style="display:flex;justify-content:center;margin:1.4em 0">
     <figure style="margin:0;max-width:940px;width:100%">
-      <img src="assets/figures/rag_arch_2021.svg" alt="A arquitetura RAG original de Lewis et al. 2020. Uma consulta x é incorporada por um codificador de consulta q, então uma busca de produto interno máximo (MIPS) sobre um índice de documentos recupera passagens z. Um gerador p-teta condiciona a consulta juntamente com cada passagem recuperada e marginaliza sobre elas para produzir a saída y. Uma seta no topo, rotulada como Retropropagação de Ponta a Ponta por q e p-teta, mostra que os gradientes fluem de volta por meio do gerador e do codificador de consulta, então o recuperador e o gerador são treinados conjuntamente."
-           style="width:100%;height:auto;display:block;background:#fff;border:1px solid #d0d7de;border-radius:8px;padding:16px"/>
+      <div class="fig-embed" data-svg-src="assets/figures/rag_arch_2021.svg"
+           style="margin:0;background:var(--gfx-bg,#0d0d0d);border:1px solid var(--gfx-line,#2a2a2a);border-radius:8px;padding:16px"></div>
       <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">
  A arquitetura original, de <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al. 2020</a>,
  com o rótulo de retropropagação na linha superior que a maioria dos sistemas construídos hoje deixa de fora.
@@ -115,11 +115,10 @@
  Adaptado de <a href="https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/" target="_blank" rel="noopener">Hayden Wolff, <em>RAG 101</em></a> (NVIDIA, 2023) 
  e <a href="https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-with-nvidia-ai-langchain-ai-endpoints/" target="_blank" rel="noopener">Amit Bleiweiss, <em>dicas para construir um pipeline RAG</em></a> (NVIDIA, 2024).</figcaption>
   </figure>
-  <p>Você pode ver pela figura que existem duas etapas principais:</p>
-  <ul>
-    <li><strong>O índice é construído uma vez, offline.</strong> Cada passagem no corpus é incorporada e armazenada para busca rápida.</li>
-    <li><strong>A solicitação em tempo de execução consulta o índice.</strong> A pergunta é incorporada, o índice retorna as passagens mais relevantes, e elas seguem para o modelo junto com a pergunta.</li>
-  </ul>
+  <div class="callout">
+    <p class="pipeline-stage"><strong>Offline:</strong> construa o índice uma vez, incorporando cada passagem e armazenando-a para busca rápida.</p>
+    <p class="pipeline-stage"><strong>Ao vivo:</strong> incorpore a pergunta, recupere as passagens top-K e entregue-as ao modelo junto com a pergunta.</p>
+  </div>
   <p>
  O restante desta página constrói o caminho ao vivo uma etapa de cada vez.</p>
 
@@ -192,10 +191,10 @@
  um vetor de comprimento fixo, posicionado de modo que textos semanticamente semelhantes
  fiquem próximos no espaço vetorial. Disso decorrem duas consequências práticas:
  </p>
-  <ol>
-    <li>Você pode <em>comparar</em> textos com baixo custo: a <a href="https://en.wikipedia.org/wiki/Cosine_similarity" target="_blank" rel="noopener">similaridade cosseno</a> entre dois vetores usa um produto escalar e suas duas magnitudes.</li>
-    <li>Você pode <em>armazenar</em> textos de acordo com sua posição nesse espaço; um índice vetorial é uma estrutura de dados otimizada para buscar os vizinhos mais próximos.</li>
-  </ol>
+  <div class="callout">
+    <p class="embedding-consequence"><strong>Comparar:</strong> a <a href="https://en.wikipedia.org/wiki/Cosine_similarity" target="_blank" rel="noopener">similaridade cosseno</a> entre dois vetores usa um produto escalar e duas magnitudes.</p>
+    <p class="embedding-consequence"><strong>Armazenar:</strong> um índice vetorial organiza textos pela posição nesse espaço para buscar os vizinhos mais próximos com eficiência.</p>
+  </div>
   <p>
  Ambos se baseiam em um único primitivo: o modelo de incorporação. Este curso encaminha as chamadas por <code>helpers.embed</code> ao endpoint de incorporação hospedado da NVIDIA,
  permitindo executar tudo no navegador sem depender de um ambiente de laboratório ou servidor local.
@@ -445,8 +444,8 @@ helpers.log("Observe o tema global que o top-K perde, mas a passagem da comunida
   <h2>Antes de continuar</h2>
   <ol>
     <li>Na Parte 4, o cosseno pontua dois vetores da mesma maneira, independentemente de qual representa a consulta. Já o modelo de incorporação da NVIDIA usa <code>input_type</code> para distinguir consulta e passagem. O que essa assimetria oferece que o cosseno, sozinho, não poderia oferecer?</li>
-    <li>A Parte 5 indexa trechos filhos, mas recupera o pai quando encontra uma correspondência. O que falha se o documento pai for grande demais para a janela de contexto do LLM? Qual dos quatro primitivos você escolheria em seguida?</li>
-    <li>O recuperador da Parte 6 tem um top-K fixo de 3. Quando K deve ser uma função da consulta (por exemplo, quão confiante o agente está) em vez de uma constante?</li>
+    <li>A construção do índice incorpora cada passagem do corpus uma vez, enquanto o caminho ao vivo incorpora cada nova pergunta. Quais mudanças exigem reindexar todo o corpus e quais exigem apenas uma nova incorporação da consulta?</li>
+    <li>Top-K sempre retorna K passagens, mesmo quando todas as pontuações são fracas. Qual sinal o agente deve verificar antes de incluir essas passagens no prompt?</li>
   </ol>
 
   <div class="references">
@@ -550,7 +549,7 @@ helpers.log("renderizado abaixo. Edite a configuração e execute.");
 </main>
 
 <script type="module">
-import { buildNav, chat, chatStream, updateKeyPill, mountJourneyMap, mountCanvasFlow } from "./scripts/_shared.js";
+import { buildNav, chat, chatStream, updateKeyPill, mountJourneyMap, mountCanvasFlow, mountRunCell } from "./scripts/_shared.js";
 document.getElementById("nav").innerHTML = buildNav("02b-rag.html");
 const pill = document.getElementById("key-status");
 updateKeyPill(pill);
@@ -558,37 +557,30 @@ mountJourneyMap("#journey-map", "2b");
 hljs.highlightAll();
 
 // ── M3b P1: one embedding ────────────────────────────────────────────────────
-mountCanvasFlow("#cell-m3b-p1", {
+mountRunCell("#cell-m3b-p1", {
+  openCode: false,
   label: "Inspecione uma incorporação",
-  intro: "Uma única string é incorporada em um vetor de alta dimensionalidade (2048 floats para o modelo padrão), dos quais as primeiras dimensões são mostradas, onde as magnitudes são a escolha do modelo e não a sua.",
-  edges: [{ from: "text", to: "embed" }],
-  nodes: [
-    {
-      id: "text", icon: "📝", title: "Texto de entrada", x: 0, y: 0,
-      summary: "Uma única string passada para o modelo de incorporação. O modelo não se importa se a string é um nome, uma pergunta ou uma frase completa. A saída é sempre do mesmo formato: um vetor de comprimento fixo. Alterar o texto altera a posição do vetor no espaço de incorporação, mas nunca sua dimensionalidade.",
-      code: `// Set the student-editable prompt/input for the next step.
-state.text = "The transformer architecture replaced recurrent neural networks for sequence modeling.";
-return state.text;
-`,
-    },
-    {
-      id: "embed", icon: "🧮", title: "Incorporar texto", x: 0, y: 1,
-      summary: "Chame o endpoint de incorporação hospedado com input_type definido como passagem. Inspecione as primeiras dimensões e magnitude do vetor unitário normalizado; a normalização torna a similaridade cosseno equivalente a um produto escalar.",
-      code: `// Embed the text so similarity search can compare vectors.
-const [v] = await helpers.embed(state.text, {
+  intro: "O modelo padrão retorna 2.048 valores. Escolha um exemplo e inspecione o comprimento fixo e a magnitude normalizada próxima de 1. Altere EXAMPLE ou adicione seu próprio texto.",
+  code: `const EXAMPLES = [
+  "The transformer architecture replaced recurrent neural networks for sequence modeling.",
+  "What replaced recurrent neural networks for sequence modeling?",
+  "A flaky pie crust needs cold butter and minimal mixing.",
+  "OpenShell limits an agent's filesystem and network access.",
+];
+const EXAMPLE = 0; // Try 0, 1, 2, or 3.
+const text = EXAMPLES[EXAMPLE];
+
+const [v] = await helpers.embed(text, {
   model:     "nvidia/llama-nemotron-embed-1b-v2",
   inputType: "passage",
 });
-state.vector = v;
 return {
-  dim:           v.length,
-  first_16:      v.slice(0, 16).map(x => +x.toFixed(4)),
-  magnitude:     Math.sqrt(v.reduce((s, x) => s + x*x, 0)).toFixed(4),
-  zero_threshold: v.filter(x => Math.abs(x) < 0.001).length + " near-zero dims of " + v.length,
+  text,
+  dimensions: v.length,
+  first_16: v.slice(0, 16).map(x => +x.toFixed(4)),
+  magnitude: +Math.sqrt(v.reduce((sum, x) => sum + x * x, 0)).toFixed(4),
 };
 `,
-    },
-  ],
 });
 
 // ── M3b P2: in-memory vector index ───────────────────────────────────────────

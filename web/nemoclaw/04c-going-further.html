@@ -110,8 +110,8 @@
       The in-browser exercises were sized for learning, with proxied
       endpoints and sessions that reset between runs. Taking the same
       work to a persistent deployment means choosing a runtime, an inference
-      provider, and an operating model for long-running sessions. A GPU is optional.
-      Hosted endpoints require no learner-managed accelerator; local inference requirements
+      provider, and an operating model for long-running sessions. Hosted endpoints require no
+      learner-managed GPU; local inference requirements
       depend on the selected provider and model.
     </p>
     <ul style="font-size:.9rem;color:var(--td);line-height:1.7">
@@ -173,6 +173,13 @@
       dynamic workflow, or provide a focused front end for general scripting over loaded
       data and allowed services.
     </p>
+    <div class="callout">
+      <strong>Transfer the interface contract, then adapt the environment.</strong>
+      HTML, CSS, JavaScript, visible state, and approval controls travel well. Authentication,
+      cross-origin access, persistence, filesystem reach, backend tools, and host UI bridges do
+      not. Keep those dependencies behind narrow adapters so the workflow can move without
+      pretending every host grants the same authority.
+    </div>
     <p>
       Agent products now expose this form directly. Anthropic describes
       <a href="https://support.claude.com/en/articles/14729249-use-live-artifacts-in-claude-cowork" target="_blank" rel="noopener">Cowork live artifacts</a>
@@ -183,13 +190,6 @@
       A static page, a hosted artifact, and an in-chat app use different host contracts, but
       all can present the same workflow as inspectable state plus bounded actions.
     </p>
-    <div class="callout">
-      <strong>Transfer the interface contract, then adapt the environment.</strong>
-      HTML, CSS, JavaScript, visible state, and approval controls travel well. Authentication,
-      cross-origin access, persistence, filesystem reach, backend tools, and host UI bridges do
-      not. Keep those dependencies behind narrow adapters so the workflow can move without
-      pretending every host grants the same authority.
-    </div>
   </div>
 
   <!-- ── Add new knowledge ──────────────────────────────────────────── -->
@@ -242,6 +242,9 @@
   </div>
 
   <!-- ── Where to push next ──────────────────────────────────────────── -->
+  <details class="learning-block" open data-learning-id="production-divergence" data-learning-tier="applied" data-localization-scope="en-shell">
+  <summary data-localization-scope="en"><span class="learning-scope">Applied · Next</span><span class="learning-question">Choose the next production axis to deepen?</span></summary>
+  <div class="learning-block-body">
   <div class="section">
     <div class="section-eyebrow">Where to push next</div>
     <h2>Where production work diverges</h2>
@@ -260,8 +263,13 @@
     </p>
     <a class="action-btn" href="https://developer.nvidia.com/blog/category/generative-ai/" target="_blank" rel="noopener">NVIDIA Developer Blog →</a>
   </div>
+  </div>
+  </details>
 
   <!-- ── Resources by topic ────────────────────────────────────────── -->
+  <details class="learning-block" open data-learning-id="course-reading-list" data-learning-tier="deep" data-localization-scope="en-shell">
+  <summary data-localization-scope="en"><span class="learning-scope">Deep · Sources</span><span class="learning-question">Open the full module-by-module reading list?</span></summary>
+  <div class="learning-block-body">
   <div class="section" id="refs">
     <div class="section-eyebrow">References hub</div>
     <h2>Reading list, organised by module</h2>
@@ -350,6 +358,8 @@
       <li><a href="https://build.nvidia.com/nvidia/aiq" target="_blank" rel="noopener">NVIDIA AI-Q Blueprint</a> · <a href="https://github.com/langchain-ai/deepagents" target="_blank" rel="noopener">deepagents</a>.</li>
     </ul>
   </div>
+  </div>
+  </details>
 
   <!-- ── NVIDIA Agentic AI Learning Path ───────────────────────────── -->
   <div class="section" id="learning-path">
@@ -533,16 +543,9 @@
     </ul>
   </div>
 
-  <h2>Try it · ask the whole course</h2>
+  <h2>Keep the Course Assistant with you</h2>
   <p>
-    The capstone artifact is a <code>createReactAgent</code> whose one tool reads any
-    page of this course as markdown. It is the same shape you built in Module 1b,
-    now pointed at everything you learned. You can ask it to compare modules, refresh a detail, or even quiz you on the material.
-  </p>
-  <p>
-    On each turn it reads the relevant page before answering and keeps the whole
-    conversation in memory. Pin a module to focus on one, or leave it on
-    Auto-select.
+    The <strong>Course Assistant</strong> behind the <strong>✦</strong> button is available on every English lesson, so this page no longer mounts a second capstone chat. It preloads the current page. When a question crosses modules, the assistant can inspect the course map, search the lessons, and read the relevant pages. Browser-local persistence means sessions stay in this browser: return to one after navigating or reloading, or create another for a clean line of inquiry. As a session grows, the assistant compacts older turns into durable memory, keeps the recent exchange verbatim, and starts a fresh bounded agent thread from that state.
   </p>
   <div class="callout">
     <strong>The shape you built runs in production.</strong> The OpenClaw agent you drove in Modules 3 and
@@ -550,41 +553,7 @@
     agent runtime</a> which OpenClaw leverages behind its agent gateway. Looking at this core, you'll see that under
     all of these layers is the same perceive-reason-act loop, tool calls, and growing message history you relied on in Module 1.
   </div>
-  <div id="capstone-cell"></div>
-  <div id="capstone-artifact"></div>
-  <script type="module">
-    import { mountRunCell } from "./scripts/_shared.js";
-    mountRunCell("#capstone-cell", {
-      label: "the panel + the agent + your tool, in code",
-      autorun: true,
-      code: `// The read tool's enum is every page of this course; the agent reads on demand
-// and cites the page id.
-// Edit the prompt or the tool, then Run to re-render.
-
-helpers.mountAgentChat("#capstone-artifact", {
-  models: [
-    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
-    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
-  ],
-
-  modules: helpers.coursePages(),
-  greeting: "You finished the course. Ask me anything you learned, like “how does the OpenShell sandbox differ from prompt rules?” or “quiz me on the ReAct loop,” and I'll read the relevant page and answer.",
-  examples: ["Quiz me on the ReAct loop", "Compare RAG with a deep-research agent", "Summarize Module 3 in five bullets", "How does OpenClaw's agent loop relate to the one I built in 1b?", "What is Pi, the runtime OpenClaw is built on?", "List the ways an agent can be attacked, with the page that covers each"],
-  system: "You are this course's teaching assistant. Answer from pages you read with read_course_page; cite the page id you used. Take commands: quiz the user, compare two topics, summarize one module, or walk the path from a single call to an always-on agent. For a course-wide question (summarize the course, what will I build), read the 'overview' page first. If a page does not cover it, say so.",
-  recursionLimit: 24,   // the capstone reads several pages per answer; match 01b/01c's headroom
-  growLog: true,        // the recap chat runs long; let it flow with the page instead of trapping the scroll
-  buildTools: ({ tool, z, coursePage, coursePages }) => [
-    tool(async ({ page }) => await coursePage(page),
-      { name: "read_course_page", description: "Read a page of THIS course and return its text as markdown.",
-        schema: z.object({ page: z.enum(coursePages().map(p => p.id)).describe("which page, e.g. 03b-openclaw") }) }),
-  ],
-});
-helpers.log("rendered below. Edit the config and Run.");
-
-// mountAgentChat runs one LangChain agent per model; you supply tools and prompt.
-`,
-    });
-  </script>
+  <p><button type="button" class="course-assistant-open" id="open-course-assistant">Open Course Assistant</button></p>
 
   <div class="foot-nav">
     <a href="04b-modern-clis.html">← Module 4b: Modern CLIs</a>
@@ -598,6 +567,7 @@ mountJourneyMap("#journey-map", "4c");
 document.getElementById("nav").innerHTML = buildNav("04c-going-further.html");
 updateKeyPill(document.getElementById("key-status"));
 hljs.highlightAll();
+document.getElementById("open-course-assistant").addEventListener("click", () => document.querySelector(".course-assistant-launcher")?.click());
 </script>
 </body>
 </html>

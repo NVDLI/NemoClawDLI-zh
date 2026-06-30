@@ -4,8 +4,8 @@
 This is intentionally stricter than a page render smoke. It verifies the
 consolidated CanvasFlow/RunCell abstraction across source or built pages,
 multiple viewport/theme configurations, CodeMirror highlighting, hidden-code
-heuristics, paired initial/expanded screenshots, unified controls, and actual
-run output on the helper notebook.
+heuristics, paired initial/expanded screenshots, unified controls, live-artifact
+cues, and actual run output on the helper notebook.
 """
 from __future__ import annotations
 
@@ -82,6 +82,12 @@ async function inspectPage(page, pagePath, vp, theme) {
   await page.goto(url, { waitUntil: 'networkidle', timeout: timeoutMs });
   await page.evaluate((themeName) => document.documentElement.setAttribute('data-theme', themeName), theme);
   await wait(600);
+  // Shared chrome may restore its saved theme after page scripts finish mounting.
+  // Disable visual transitions during measurement, then re-assert the requested state so
+  // the matrix checks final colors instead of sampling a reset button mid-fade.
+  await page.addStyleTag({ content: '*,*::before,*::after{transition:none!important;animation:none!important}' });
+  await page.evaluate((themeName) => document.documentElement.setAttribute('data-theme', themeName), theme);
+  await wait(50);
 
   const visibility = await page.evaluate(() => ({
     canvasLongOpen: Array.from(document.querySelectorAll('.cf-panel-code-det[open] .cf-panel-code')).filter(ta => (ta.value || '').split('\n').length >= 40).length,
@@ -121,6 +127,21 @@ async function inspectPage(page, pagePath, vp, theme) {
     const canvasLongOpen = Array.from(document.querySelectorAll('.cf-panel-code-det[open] .cf-panel-code')).filter(ta => (ta.value || '').split('\n').length >= 40).length;
     const runCellOpenDefault = document.querySelectorAll('.rc-code-det[open]').length;
     const cms = Array.from(document.querySelectorAll('.CodeMirror'));
+    const artifacts = Array.from(document.querySelectorAll('[id$="-artifact"]')).map(el => {
+      const surface = el.querySelector('.chatui-log,.da-out');
+      const surfaceStyle = surface ? getComputedStyle(surface) : null;
+      return {
+        id: el.id,
+        marked: el.classList.contains('course-artifact'),
+        label: el.dataset.artifactLabel || '',
+        cue: getComputedStyle(el, '::before').content,
+        rail: getComputedStyle(el).borderLeftColor,
+        railWidth: parseFloat(getComputedStyle(el).borderLeftWidth) || 0,
+        surface: !!surface,
+        maxHeight: surfaceStyle?.maxHeight || '',
+        overflowY: surfaceStyle?.overflowY || '',
+      };
+    });
     const output = {
       title: document.title,
       main: !!document.querySelector('main'),
@@ -146,6 +167,7 @@ async function inspectPage(page, pagePath, vp, theme) {
       }).slice(0, 8).map(el => ({ tag: el.tagName, cls: String(el.className || '').slice(0, 80), text: (el.textContent || '').trim().slice(0, 80) })),
       lightDarkSurfaces: document.documentElement.getAttribute('data-theme') !== 'light' ? [] : darkSurfaces(),
       minCellButton: Math.min(...Array.from(document.querySelectorAll('.cell-btn')).map(b => Math.min(b.getBoundingClientRect().width, b.getBoundingClientRect().height)).filter(Number.isFinite), 999),
+      artifacts,
     };
     return output;
   }, visibility);
@@ -267,6 +289,8 @@ async function inspectPage(page, pagePath, vp, theme) {
   if (initial.lightDarkSurfaces.length) failures.push(`light theme dark cell surfaces ${JSON.stringify(initial.lightDarkSurfaces)}`);
   if (finalInfo.lightDarkSurfaces.length) failures.push(`light theme dark expanded surfaces ${JSON.stringify(finalInfo.lightDarkSurfaces)}`);
   if (initial.minCellButton < 28) failures.push(`tiny cell button dimension ${initial.minCellButton}`);
+  const badArtifacts = initial.artifacts.filter(a => !a.marked || !a.label || !a.cue.includes(a.label) || a.railWidth < 2 || /rgba?\(0,\s*0,\s*0,\s*0\)/.test(a.rail) || (a.surface && (a.maxHeight === 'none' || !/auto|scroll/.test(a.overflowY))));
+  if (badArtifacts.length) failures.push(`live artifact cue missing ${JSON.stringify(badArtifacts)}`);
   const badRuns = runResults.filter(r => !r.hasOutput || r.badText);
   if (badRuns.length) failures.push(`helper run output failed ${JSON.stringify(badRuns)}`);
   if (figureZoom && !figureZoom.closed) failures.push('figure lightbox did not close on Escape');

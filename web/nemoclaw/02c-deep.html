@@ -27,6 +27,25 @@
   .deep-stage:nth-child(4) { border-left-color: var(--warn); }
   .deep-stage-label { margin-bottom: 4px; color: var(--gs); font: .7rem var(--mono); letter-spacing: .08em; text-transform: uppercase; }
   .deep-stage p { margin: 0; color: var(--td); font-size: .84rem; line-height: 1.5; }
+  .research-board { min-width: 0; border: 1px solid var(--bd); border-radius: 7px; background: var(--bg); overflow: hidden; }
+  .research-board > header { display: flex; align-items: baseline; gap: 10px; padding: 9px 11px; border-bottom: 1px solid var(--bd); }
+  .research-board > header strong { color: var(--gs); font: 800 .7rem/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+  .research-board-status { color: var(--tf); font: .72rem/1.35 var(--mono); }
+  .research-thread-rail { display: flex; justify-content: flex-start; align-items: stretch; gap: 9px; padding: 10px; overflow-x: auto; overscroll-behavior-inline: contain; scroll-snap-type: x proximity; }
+  .research-thread { flex: 0 0 min(19rem, calc(100vw - 74px)); min-width: 0; height: 18rem; display: flex; flex-direction: column; text-align: left; scroll-snap-align: start; border: 1px solid var(--bd); border-left: 3px solid var(--tf); border-radius: 6px; background: var(--e1); outline: none; }
+  .research-thread:focus, .research-thread:hover { border-color: var(--artifact); border-left-color: var(--artifact); box-shadow: 0 0 0 1px color-mix(in srgb, var(--artifact) 34%, transparent); }
+  .research-thread.running { border-left-color: var(--warn); }
+  .research-thread.done { border-left-color: var(--g); }
+  .research-thread.gap { border-left-color: var(--acc); }
+  .research-thread.failed { border-left-color: var(--err); }
+  .research-thread > header { padding: 9px 10px 7px; border-bottom: 1px solid var(--bd); }
+  .research-thread-kind { color: var(--artifact-text); font: 800 .63rem/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+  .research-thread h3 { margin: 5px 0 0; color: var(--td); font-size: .82rem; line-height: 1.3; }
+  .research-thread-status { min-height: 1.8rem; padding: 6px 10px; color: var(--tf); font: .68rem/1.35 var(--mono); border-bottom: 1px solid var(--bd); }
+  .research-thread-stream { flex: 1; min-height: 0; margin: 0; padding: 9px 10px; overflow: auto; overscroll-behavior: contain; white-space: pre-wrap; color: var(--td); font: .74rem/1.45 var(--mono); }
+  .research-thread-source { flex: 0 0 auto; border-top: 1px solid var(--bd); }
+  .research-thread-source summary { padding: 6px 10px; color: var(--tf); font: .66rem/1.3 var(--mono); cursor: pointer; }
+  .research-thread-source pre { max-height: 10rem; margin: 0; padding: 8px 10px; overflow: auto; white-space: pre-wrap; color: var(--tf); font: .68rem/1.4 var(--mono); }
   @media (max-width: 720px) { .deep-stages { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -93,19 +112,19 @@
 
   <h2>How research moves through the workflow</h2>
   <div class="deep-stages">
-    <div class="deep-stage">
+    <div class="deep-stage" id="deep-stage-plan">
       <div class="deep-stage-label">1 · Plan</div>
       <p>The <strong>orchestrator</strong> turns the question into independent tasks, making the intended scope inspectable before work begins.</p>
     </div>
-    <div class="deep-stage">
+    <div class="deep-stage" id="deep-stage-investigate">
       <div class="deep-stage-label">2 · Investigate</div>
       <p>Each <strong>sub-agent</strong> receives one task in a fresh context that excludes the histories of other branches.</p>
     </div>
-    <div class="deep-stage">
+    <div class="deep-stage" id="deep-stage-preserve">
       <div class="deep-stage-label">3 · Preserve</div>
       <p>Workers write findings to a shared <strong>virtual filesystem</strong>, where evidence survives after their contexts end.</p>
     </div>
-    <div class="deep-stage">
+    <div class="deep-stage" id="deep-stage-synthesize">
       <div class="deep-stage-label">4 · Synthesize</div>
       <p>The orchestrator reads the saved evidence and produces one answer whose claims remain traceable to their branches.</p>
     </div>
@@ -121,8 +140,9 @@
   <h2>Try it · plan → investigate → synthesize</h2>
   <p>
     Ask a research question and watch the agent create branches that run in
-    parallel across the web and this course before writing one cited answer.
-    Its branch tree and timing chart come from the run itself.
+    parallel across curated external materials and this course before writing one cited answer.
+    Each worker streams into its own focusable panel, so you can inspect active
+    operations instead of waiting for the entire fan-out to finish.
   </p>
   <div id="deep-cell"></div>
   <div id="deep-artifact"></div>
@@ -137,6 +157,10 @@
     import pinned libraries from <code>cdn.jsdelivr.net</code>. If outbound DNS
     is blocked, the import node fails before any model call.
   </div>
+
+  <details class="learning-block" open data-learning-id="deep-agent-implementation" data-learning-tier="applied" data-learning-artifact="optional" data-learning-exercise="optional" data-localization-scope="en-shell">
+  <summary data-localization-scope="en"><span class="learning-scope">Applied · Build</span><span class="learning-question">Build the planner, workers, and shared state?</span></summary>
+  <div class="learning-block-body">
 
   <!-- ── Part 3: ChatOpenAI ─────────────────────────────────────────────────── -->
   <h2>1 · Connect the model</h2>
@@ -179,8 +203,12 @@
     <li>Why preserve findings instead of passing one growing transcript?</li>
     <li>How do context isolation and operating-system sandboxing prevent different failures?</li>
   </ol>
+  </div>
+  </details>
 
-  <div class="references">
+  <details class="references learning-block" open data-learning-id="deep-agent-references" data-learning-tier="deep" data-localization-scope="en-shell">
+  <summary data-localization-scope="en"><span class="learning-scope">Deep · Sources</span><span class="learning-question">Trace the deep-research implementation sources?</span></summary>
+  <div class="learning-block-body">
     <h3>References</h3>
     <ul>
       <li><a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu et al., <em>Lost in the Middle</em></a>. Evidence for context-position failures.</li>
@@ -190,6 +218,7 @@
     </ul>
     <p class="references-note">Comprehensive list at <a href="04c-going-further.html#refs">Going Further · References</a>.</p>
   </div>
+  </details>
   <script type="text/plain" id="deep-src">
 // Deep-research artifact: plan, fan out sub-agents, then synthesize a cited answer.
 
@@ -198,6 +227,12 @@ window.DEEP_AGENT_MAX_TOKENS = 8196;
 const PAGES = helpers.coursePages();
 const INDEX = PAGES.map(p => "  " + p.id + " · " + p.title).join("\n");
 const FAST  = "nvidia/nemotron-3-nano-30b-a3b";   // sub-agents are cheap workers: always the fast model
+const MATERIAL_TOPICS = [
+  "AI Agents", "Deep Agents", "Multi-Agent Systems", "Chain of Thought Prompting",
+  "Retrieval-Augmented Generation (RAG)", "Large Language Models",
+  "ReAct: Synergizing Reasoning and Acting in Language Models",
+  "ReWOO: Decoupling Reasoning from Observations for Efficient Augmented Language Models",
+];
 
 helpers.mountChatUI("#deep-artifact", {
   models: [
@@ -206,7 +241,7 @@ helpers.mountChatUI("#deep-artifact", {
   ],
   greeting: (
     "I'm a deep research agent. Ask me something and I'll plan a few parallel sub-investigations"
-    + " across the web and this course's own sections, then synthesize a grounded answer."
+    + " across curated NVIDIA materials and this course's own sections, then synthesize a grounded answer."
   ),
   examples: [
     "How does this course's OpenShell sandbox relate to agent safety in general?",
@@ -225,13 +260,14 @@ helpers.mountChatUI("#deep-artifact", {
     const planSys =
       "You are a research planner. Break the user's question into 3 to 4 INDEPENDENT " +
       "sub-investigations that can run in parallel. Each is either:\n" +
-      "  - source \"web\": a web search for external/general facts; target = a short query.\n" +
+      "  - source \"materials\": search the course's curated NVIDIA glossary and cited papers; " +
+      "target = one listed material topic that can support the goal.\n" +
       "  - source \"section\": read ONE section of THIS course; target = a page id below.\n" +
-      "You MUST include AT LEAST ONE \"section\" branch AND AT LEAST ONE \"web\" branch: " +
-      "use course sections for what THIS course teaches and how it implements things, web for " +
-      "outside/general facts. Pick the sections whose titles are most relevant to the question. " +
-      "Return ONLY JSON: {\"branches\":[{\"source\":\"web\"|\"section\",\"target\":\"...\",\"goal\":\"...\"}]}.\n\n" +
-      "Course sections:\n" + INDEX;
+      "You MUST include AT LEAST ONE \"section\" branch AND AT LEAST ONE \"materials\" branch: " +
+      "use course sections for this course's implementation and curated materials for outside framing. " +
+      "Do not claim the materials branch searches the open web. " +
+      "Return ONLY JSON: {\"branches\":[{\"source\":\"materials\"|\"section\",\"target\":\"...\",\"goal\":\"...\"}]}.\n\n" +
+      "Course sections:\n" + INDEX + "\n\nMaterial topics:\n  " + MATERIAL_TOPICS.join("\n  ");
 
     const planRes = await helpers.chatStream(
       { messages: [{ role: "system", content: planSys }, { role: "user", content: text }],
@@ -241,7 +277,7 @@ helpers.mountChatUI("#deep-artifact", {
     try { branches = JSON.parse(planRes.content.match(/\{[\s\S]*\}/)[0]).branches || []; } catch (_) {}
     const ids = new Set(PAGES.map(p => p.id));
     branches = branches
-      .filter(b => b && b.goal && (b.source === "web" || (b.source === "section" && ids.has(b.target))));
+      .filter(b => b && b.goal && (b.source === "materials" || (b.source === "section" && ids.has(b.target))));
 
     // Guarantee the fan-out spans both the web and this course's sections, even if the planner under-specified.
     // Section pick uses title/id keyword overlap.
@@ -257,66 +293,101 @@ helpers.mountChatUI("#deep-artifact", {
     };
 
     if (!branches.some(b => b.source === "section")) branches.push({ source: "section", target: pickSection(), goal: text });
-    if (!branches.some(b => b.source === "web"))     branches.push({ source: "web", target: text, goal: text });
+    if (!branches.some(b => b.source === "materials")) branches.push({ source: "materials", target: "AI Agents", goal: text });
     branches = branches.slice(0, 4);
 
     // Show the parsed plan so each branch's source, target, and goal are visible.
     ctx.view.tool("plan", { branches });
 
-    // draw the plan as a branch tree, straight from the chosen branches
-    const cx = Math.floor((branches.length - 1) / 2);
-    ctx.view.html(helpers.diagramSVG({
-      title: "Plan → parallel sub-agents → synthesis",
-      nodes: [
-        { id: "q",     label: "question",    kind: "env",   x: cx, y: 0 },
-        { id: "plan",  label: "planner",     kind: "model", x: cx, y: 1 },
-        ...branches.map((b, i) => ({ id: "b" + i,
-          label: b.source === "web" ? "web_search" : b.target,
-          kind:  b.source === "web" ? "tool" : "data", x: i, y: 2,
-          lines: [b.source, String(b.target).slice(0, 18)] })),
-        { id: "synth", label: "synthesize",  kind: "model", x: cx, y: 3 },
-      ],
-
-      edges: [
-        { from: "q", to: "plan" },
-        ...branches.map((b, i) => ({ from: "plan", to: "b" + i })),
-        ...branches.map((b, i) => ({ from: "b" + i, to: "synth" })),
-      ],
-    }));
+    // Build a live HTML operation board. Each branch owns one left-aligned,
+    // independently scrollable panel and begins updating before its siblings finish.
+    const board = ctx.view.html(
+      '<section class="research-board" aria-label="Live research operations">' +
+      '<header><strong>Parallel research</strong><span class="research-board-status" role="status" aria-live="polite">Starting workers…</span></header>' +
+      '<div class="research-thread-rail"></div></section>'
+    ).querySelector(".research-board");
+    const boardStatus = board.querySelector(".research-board-status");
+    const rail = board.querySelector(".research-thread-rail");
+    const cards = branches.map((b, i) => {
+      const card = document.createElement("article");
+      card.className = "research-thread queued";
+      card.tabIndex = 0;
+      card.setAttribute("aria-label", "Research worker " + (i + 1) + ": " + b.goal);
+      card.innerHTML = '<header><span class="research-thread-kind"></span><h3></h3></header>' +
+        '<div class="research-thread-status" role="status" aria-live="polite">Queued</div>' +
+        '<pre class="research-thread-stream">Waiting for worker…</pre>' +
+        '<details class="research-thread-source"><summary>Inspect source</summary><pre></pre></details>';
+      card.querySelector(".research-thread-kind").textContent = "Worker " + (i + 1) + " · " + b.source;
+      card.querySelector("h3").textContent = b.goal;
+      rail.appendChild(card);
+      return {
+        card,
+        status: card.querySelector(".research-thread-status"),
+        stream: card.querySelector(".research-thread-stream"),
+        source: card.querySelector(".research-thread-source pre"),
+        text: "",
+      };
+    });
+    const setWorker = (worker, state, status) => {
+      worker.card.classList.remove("queued", "running", "done", "gap", "failed");
+      worker.card.classList.add(state);
+      worker.status.textContent = status;
+    };
+    const streamWorker = (worker, token) => {
+      worker.text += token;
+      worker.stream.textContent = worker.text;
+      worker.stream.scrollTop = worker.stream.scrollHeight;
+    };
 
     // ── 2. FAN OUT: one sub-agent per branch, all at once ───────────────
     const t0 = performance.now();
-    const runBranch = async (b) => {
+    boardStatus.textContent = branches.length + " workers active · select a panel to inspect it";
+    const runBranch = async (b, i) => {
       const bt0 = performance.now();
-      const label = (b.source === "web" ? "web · " : "section · ") + b.target;
+      const label = (b.source === "materials" ? "materials · " : "section · ") + b.target;
+      const worker = cards[i];
       let finding, src = "";
       try {
-        src = b.source === "web"
+        setWorker(worker, "running", "Reading " + label + "…");
+        worker.stream.textContent = "Loading source…";
+        src = b.source === "materials"
           ? helpers.formatSearchResults(await helpers.webSearch(b.target, { maxResults: 4 }))
           : (await helpers.coursePage(b.target)).slice(0, 6000);
+        worker.source.textContent = src;
+        worker.stream.textContent = "";
+        worker.text = "";
+        setWorker(worker, "running", "Extracting evidence…");
 
         const r = await helpers.chatStream({ messages: [
           { role: "system", content: (
-            "You are a sub-agent. From the SOURCE, extract ONLY what answers the GOAL, in 2-4 sentences."
-            + " If the source does not cover it, reply exactly 'not covered'."
+            "You are a sub-agent. From the SOURCE, extract only what supports the GOAL, in 2-4 sentences."
+            + " If coverage is partial, report the supported point and end with 'Coverage gap:' plus what is missing."
+            + " Use 'not covered' only when the source has no relevant information at all."
           ) },
           { role: "user", content: "GOAL: " + b.goal + "\n\nSOURCE:\n" + src }],
-          model: FAST, max_tokens: window.DEEP_AGENT_MAX_TOKENS, signal: sig }, null);
+          model: FAST, max_tokens: window.DEEP_AGENT_MAX_TOKENS, signal: sig },
+          (token) => streamWorker(worker, token));
         finding = (r.content || "").trim() || "(no finding)";
-      } catch (e) { finding = "(branch failed: " + (e.message || e) + ")"; }
-      return { finding, label, src, goal: b.goal, dt: (performance.now() - bt0) / 1000 };
+        worker.text = finding;
+        worker.stream.textContent = finding;
+        const gap = /^not covered\.?$/i.test(finding) || /\bcoverage gap:/i.test(finding);
+        setWorker(worker, gap ? "gap" : "done", gap ? "Coverage gap" : "Complete");
+      } catch (e) {
+        finding = "(branch failed: " + (e.message || e) + ")";
+        worker.stream.textContent = finding;
+        setWorker(worker, "failed", "Failed");
+      }
+      const dt = (performance.now() - bt0) / 1000;
+      worker.status.textContent += " · " + dt.toFixed(1) + "s";
+      return { finding, label, src, goal: b.goal, dt, gap: worker.card.classList.contains("gap") };
     };
 
     const results = await Promise.all(branches.map(runBranch));
     const wall = (performance.now() - t0) / 1000;
-    results.forEach(r => {
-      // Show what each sub-agent actually read alongside what it concluded, so a finding can be checked against its own source material.
-      ctx.view.tool(r.label + " · source", { goal: r.goal, source: r.src });
-      ctx.view.tool(r.label + " · " + r.dt.toFixed(1) + "s", r.finding);
-    });
-    ctx.view.html(helpers.ganttBarsSVG(
-      results.map(r => ({ label: r.label.slice(0, 16), dt: r.dt })), wall,
-      branches.length + " sub-agents · parallel vs serial"));
+    const serial = results.reduce((sum, r) => sum + r.dt, 0);
+    const gaps = results.filter(r => r.gap).length;
+    boardStatus.textContent = branches.length + " workers complete · " + wall.toFixed(1) +
+      "s wall time vs " + serial.toFixed(1) + "s serial" + (gaps ? " · " + gaps + (gaps === 1 ? " coverage gap" : " coverage gaps") : "") + " · synthesizing…";
 
     // ── 3. SYNTHESIZE: one grounded answer from the findings ────────────
     const findings = results.map((r, i) => "[" + (i + 1) + "] (" + r.label + ")\n" + r.finding).join("\n\n");
@@ -325,11 +396,12 @@ helpers.mountChatUI("#deep-artifact", {
     const s = await helpers.chatStream({ messages: [
       { role: "system", content: (
         "You are a research assistant. Answer the user's question using ONLY the findings below, citing each claim with its [n]."
-        + " If a finding is 'not covered' or empty, do not invent; say what you could not find."
+        + " If a finding names a coverage gap or is empty, do not invent; preserve that limitation in the answer."
       ) },
       { role: "user", content: "QUESTION: " + text + "\n\nFINDINGS:\n" + findings }],
       model: ctx.model, max_tokens: window.DEEP_AGENT_MAX_TOKENS, signal: sig },
       (tok) => ctx.view.token(tok));   // no reasoning here: the sub-agents did the thinking; keep the synthesis one clean answer
+    boardStatus.textContent = branches.length + " workers + synthesis complete · " + wall.toFixed(1) + "s parallel fan-out";
     if (s.usage) ctx.view.usage({ input: s.usage.prompt_tokens, output: s.usage.completion_tokens, model: s.model });
   },
 });

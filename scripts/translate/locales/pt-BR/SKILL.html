@@ -15,6 +15,8 @@
     "scripts/translate/locales/pt-BR/profile.json",
     "scripts/translate/locales/pt-BR/README.md",
     "scripts/translate/translate_html_segments.py",
+    "scripts/translate/translate_svg_text.py",
+    "scripts/translate/locales/pt-BR/svg_translations.json",
     "scripts/validation/localization_audit.py",
     "web/nemoclaw/localization.html"
   ],
@@ -35,7 +37,9 @@
       "files": [
         {"path": "README.md", "role": "guia de revisão", "desc": "Princípios, limites e fluxo de trabalho para uma tradução tecnicamente fiel e natural."},
         {"path": "profile.json", "role": "perfil analisável", "desc": "Fontes NVIDIA, terminologia preferida, exceções técnicas e sinais que a validação deve bloquear."},
-        {"path": "../../translate_html_segments.py", "role": "gerador de rascunho", "desc": "Tradução por blocos semânticos, refinamento, cache e telemetria de uso; não aceita o hash de revisão."}
+        {"path": "../../translate_html_segments.py", "role": "gerador de rascunho", "desc": "Tradução por blocos semânticos, refinamento, cache e telemetria de uso; não aceita o hash de revisão."},
+        {"path": "../../translate_svg_text.py", "role": "gerador de SVG localizado", "desc": "Traduz rótulos e descrições no SVG sem alterar sua geometria."},
+        {"path": "svg_translations.json", "role": "texto SVG revisado", "desc": "Mapa reproduzível de textos em inglês para rótulos naturais em português do Brasil."}
       ]
     }
   ]

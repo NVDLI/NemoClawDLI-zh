@@ -20,6 +20,110 @@ export const COURSE_PAGES = [
   { id: "04c-going-further", title: "4c · Going Further" },
 ];
 
+// Public browser modules learners can inspect through the Course Assistant.
+// Keep this allow-list explicit: source access is broad enough to explain the course,
+// but cannot become an arbitrary same-origin file reader.
+const COURSE_RUNTIME_FILES = [
+  ["_shared.js", "course API surface and browser model helpers"],
+  ["_canvas.js", "RunCell and CanvasFlow rendering/runtime"],
+  ["_chat.js", "chat, ReAct, streaming, and compaction UI"],
+  ["_course_assistant.js", "Course Assistant sessions and course-reading tools"],
+  ["_langchain.js", "course-page, source, and token helpers"],
+  ["_learning.js", "Guided disclosure behavior"],
+  ["_openclaw.js", "OpenClaw gateway and probe controls"],
+  ["_openshell.js", "OpenShell policy and terminal helpers"],
+  ["_rag.js", "retrieval helpers"],
+  ["_glossary.js", "curated-material search"],
+  ["_diagram.js", "diagram grammar"],
+  ["_figures.js", "course figures and lightbox behavior"],
+  ["_viz.js", "cell visualization builders"],
+  ["_keypanel.js", "API-key setup UI"],
+  ["_locale.js", "language menu and locale routing"],
+];
+
+function _courseId(pageId) {
+  return String(pageId || "").trim().replace(/\.html$/, "");
+}
+
+function _coursePath(id) {
+  return id === "overview" ? "../../index.html" : id + ".html";
+}
+
+const COURSE_HTML_CACHE = new Map();
+async function _courseHtml(pageId) {
+  const id = _courseId(pageId);
+  if (!COURSE_PAGES.some(page => page.id === id)) return { id, html: "", error: `(unknown page "${id}")` };
+  if (!COURSE_HTML_CACHE.has(id)) COURSE_HTML_CACHE.set(id, (async () => {
+    const response = await fetch(_coursePath(id), { credentials: "same-origin" });
+    if (!response.ok) throw new Error(`course source "${id}" → ${response.status}`);
+    return { id, html: await response.text(), error: "" };
+  })());
+  try { return await COURSE_HTML_CACHE.get(id); }
+  catch (error) { COURSE_HTML_CACHE.delete(id); throw error; }
+}
+
+function _courseCodeArtifacts(html) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const artifacts = [];
+  doc.querySelectorAll('script[type="text/plain"][id]').forEach(script => {
+    const source = script.textContent.trim();
+    if (source) artifacts.push({
+      id: script.id,
+      kind: "lesson artifact",
+      summary: `script#${script.id}`,
+      lines: source.split("\n").length,
+      source,
+    });
+  });
+  let moduleNumber = 0;
+  doc.querySelectorAll('script[type="module"]:not([src])').forEach(script => {
+    const source = script.textContent.trim();
+    if (!source) return;
+    moduleNumber += 1;
+    const mounts = [...source.matchAll(/\b(mount[A-Z][A-Za-z0-9_]*)\s*\(/g)].map(match => match[1]);
+    const imports = [...source.matchAll(/from\s+["']([^"']+)["']/g)].map(match => match[1]);
+    const signals = [...new Set([...mounts, ...imports])].slice(0, 6);
+    artifacts.push({
+      id: `module-${moduleNumber}`,
+      kind: "page module",
+      summary: signals.join(", ") || `inline module ${moduleNumber}`,
+      lines: source.split("\n").length,
+      source,
+    });
+  });
+  return artifacts;
+}
+
+export async function courseCodeArtifacts(pageId) {
+  const page = await _courseHtml(pageId);
+  if (page.error) return [];
+  return _courseCodeArtifacts(page.html).map(({ source: _source, ...metadata }) => metadata);
+}
+
+export async function courseCode(pageId, artifactId) {
+  const page = await _courseHtml(pageId);
+  if (page.error) return page.error;
+  const artifacts = _courseCodeArtifacts(page.html);
+  const artifact = artifacts.find(item => item.id === String(artifactId || "").trim());
+  if (!artifact) {
+    return `(unknown code artifact "${artifactId}" on ${page.id}. Choose one of: ${artifacts.map(item => item.id).join(", ") || "none"})`;
+  }
+  return `// Course source: ${page.id} · ${artifact.id} · ${artifact.summary}\n\n${artifact.source}`;
+}
+
+export function courseRuntimeFiles() {
+  return COURSE_RUNTIME_FILES.map(([file, summary]) => ({ file, summary }));
+}
+
+export async function courseRuntimeSource(file) {
+  const safe = String(file || "").trim().replace(/^scripts\//, "");
+  const entry = COURSE_RUNTIME_FILES.find(([name]) => name === safe);
+  if (!entry) return `(unknown runtime file "${file}". Choose one of: ${COURSE_RUNTIME_FILES.map(([name]) => name).join(", ")})`;
+  const response = await fetch("scripts/" + safe, { credentials: "same-origin" });
+  if (!response.ok) throw new Error(`course runtime source "${safe}" → ${response.status}`);
+  return `// Course runtime source: scripts/${safe} · ${entry[1]}\n\n${await response.text()}`;
+}
+
 // Convert a course page's HTML to markdown a model can ingest.
 // Keep the prose (headings, paragraphs, lists, code, callouts).
 // Drop the chrome (nav, scripts, SVGs, interactive canvas widgets).
@@ -76,18 +180,19 @@ export async function coursePage(pageId) {
   /* @doc <code>helpers.coursePage(id)</code> returns one course page's prose as markdown.
        <code>id</code> is a file id like <code>"01b-react"</code> (list them with <code>helpers.coursePages()</code>); same-origin fetch, no key.
        Wire it as the body of a <code>read_course_page</code> tool to ground answers in real content. */
-  const id = String(pageId || "").trim().replace(/\.html$/, "");
+  const id = _courseId(pageId);
   if (!COURSE_PAGES.some(p => p.id === id)) {
     return `(unknown page "${id}". Choose one of: ${COURSE_PAGES.map(p => p.id).join(", ")})`;
   }
   // "overview" is the course home, one level up from the page directory.
   // It carries the global map, what-you'll-build, and what-it-runs-on.
   // Read it for course-wide questions rather than guessing at a single module page.
-  const path = id === "overview" ? "../../index.html" : id + ".html";
-  const r = await fetch(path, { credentials: "same-origin" });
-  if (!r.ok) throw new Error(`coursePage("${id}") → ${r.status}`);
-  const md = _htmlToMarkdown(await r.text());
-  const title = (COURSE_PAGES.find(p => p.id === id) || {}).title || id;
+  const page = await _courseHtml(id);
+  const html = page.html;
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const md = _htmlToMarkdown(html);
+  const title = doc.querySelector("h1")?.textContent.replace(/\s+/g, " ").trim()
+    || (COURSE_PAGES.find(p => p.id === id) || {}).title || id;
   return `# ${title}  (course page: ${id})\n\n${md}`;
 }
 

@@ -70,6 +70,9 @@
   -->
 
   <!-- ── Foundations: RAG began as one jointly-trained system ── -->
+  <details class="learning-block" open data-learning-id="rag-history" data-learning-tier="deep" data-localization-scope="en-shell">
+    <summary data-localization-scope="en"><span class="learning-scope">Deep · History</span><span class="learning-question">Trace RAG from joint training to retrieval?</span></summary>
+    <div class="learning-block-body">
   <h2>Where RAG came from: one system, trained end to end</h2>
   <p>
     The version of RAG everyone runs today drops most of what the original design did, and knowing that reframes the
@@ -84,8 +87,8 @@
   </p>
   <div style="display:flex;justify-content:center;margin:1.4em 0">
     <figure style="margin:0;max-width:940px;width:100%">
-      <img src="assets/figures/rag_arch_2021.svg" alt="The original RAG architecture from Lewis et al. 2020. A query x is embedded by a query encoder q, then a maximum-inner-product search (MIPS) over a document index retrieves passages z. A generator p-theta conditions on the query together with each retrieved passage and marginalizes over them to produce the output y. An arrow across the top, labelled End-to-End Backprop through q and p-theta, shows that gradients flow back through both the generator and the query encoder, so the retriever and the generator are trained jointly."
-           style="width:100%;height:auto;display:block;background:#fff;border:1px solid #d0d7de;border-radius:8px;padding:16px"/>
+      <div class="fig-embed" data-svg-src="assets/figures/rag_arch_2021.svg"
+           style="margin:0;background:var(--gfx-bg,#0d0d0d);border:1px solid var(--gfx-line,#2a2a2a);border-radius:8px;padding:16px"></div>
       <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">
         The original architecture, from <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al. 2020</a>,
         with the top-row backprop label that most systems built today leave out.
@@ -122,6 +125,8 @@
     retrieval stack keeps adding stages to recover the rest. Read the bolt-on as a pragmatic stand-in for a once-unified
     system, and you can see where its ceiling sits and which knobs raise it.
   </div>
+    </div>
+  </details>
 
   <!-- ── The practical pipeline you build ── -->
   <h2>The retrieve-then-generate pipeline you build</h2>
@@ -137,16 +142,18 @@
       and <a href="https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-with-nvidia-ai-langchain-ai-endpoints/" target="_blank" rel="noopener">Amit Bleiweiss, <em>tips for building a RAG pipeline</em></a> (NVIDIA, 2024).
     </figcaption>
   </figure>
-  <p>You can see from the figure that there are two key stages:</p>
-  <ul>
-    <li><strong>The index is built once, offline.</strong> Every passage in the corpus is embedded and stored for fast lookup.</li>
-    <li><strong>The live request interacts with the index.</strong> Embed the question, search the index for the top-K passages, and hand them to the model alongside the question.</li>
-  </ul>
+  <div class="callout">
+    <p class="pipeline-stage"><strong>Offline:</strong> build the index once by embedding every passage and storing it for fast lookup.</p>
+    <p class="pipeline-stage"><strong>Live:</strong> embed the question, retrieve the top-K passages, and pass them to the model with the question.</p>
+  </div>
   <p>
     The rest of this page builds the live path one stage at a time.
   </p>
 
   <!-- ── Part 1: The bundle principle ──────────────────────────────────────── -->
+  <details class="learning-block" open data-learning-id="retrieval-system-boundaries" data-learning-tier="applied" data-localization-scope="en-shell">
+    <summary data-localization-scope="en"><span class="learning-scope">Applied · Scope</span><span class="learning-question">Choose bundles, boundaries, and data shapes?</span></summary>
+    <div class="learning-block-body">
   <h2>Naming the context bundle before you pick a store</h2>
   <p>
     Before picking a retrieval primitive, you should first define a <strong>bundle</strong>. The bundle is the
@@ -229,6 +236,8 @@
   <p>
     Index agents that manage other primitives largely take the same shape while varying the search/embed/verification logic, so don't feel intimidated to experiment with shapes that better fit your data.
   </p>
+    </div>
+  </details>
 
   <!-- ── Part 3: Embeddings ────────────────────────────────────────────────── -->
   <h2>The embedding, the primitive everything else is built on</h2>
@@ -239,10 +248,10 @@
     texts land near each other in vector space. Two practical
     consequences follow:
   </p>
-  <ol>
-    <li>You can <em>compare</em> texts cheaply: <a href="https://en.wikipedia.org/wiki/Cosine_similarity" target="_blank" rel="noopener">cosine similarity</a> over the two vectors is one dot product plus two magnitudes.</li>
-    <li>You can <em>store</em> texts by where they live in that space; a vector index is a data structure tuned for nearest-neighbour search.</li>
-  </ol>
+  <div class="callout">
+    <p class="embedding-consequence"><strong>Compare:</strong> <a href="https://en.wikipedia.org/wiki/Cosine_similarity" target="_blank" rel="noopener">cosine similarity</a> over two vectors costs one dot product plus two magnitudes.</p>
+    <p class="embedding-consequence"><strong>Store:</strong> a vector index organizes texts by their position in that space for efficient nearest-neighbour search.</p>
+  </div>
   <p>
     Both rest on a single primitive, the embedding model. This course routes embedding
     calls through <code>helpers.embed</code>, which proxies to the hosted NVIDIA embedding endpoint
@@ -251,8 +260,11 @@
 
   <div id="cell-m3b-p1"></div>
 
+  <details class="learning-block" open data-learning-id="embedding-api-contract" data-learning-tier="applied" data-localization-scope="en-shell">
+    <summary data-localization-scope="en"><span class="learning-scope">Applied · Contract</span><span class="learning-question">Need the embedding request contract?</span></summary>
+    <div class="learning-block-body">
   <div class="callout">
-    <strong>Embeddings API contract.</strong>
+    <strong>Embedding API contract.</strong>
     <p>The embeddings endpoint takes a JSON request with three fields and returns one array of vectors:</p>
     <ul>
       <li><code>input</code> is the batch of texts to embed, typed <code>string[]</code>.</li>
@@ -268,6 +280,8 @@
     <code>"passage"</code> type or the reverse breaks the score function
     silently and produces lower recall with no error message.</p>
   </div>
+    </div>
+  </details>
 
   <!-- ── Part 4: Vector index ──────────────────────────────────────────────── -->
   <h2>A whole retriever in thirty lines of top-K cosine</h2>
@@ -302,6 +316,9 @@
   </div>
 
   <!-- ── Part 5: Hierarchies ──────────────────────────────────────────────── -->
+  <details class="learning-block" open data-learning-id="parent-document-retrieval" data-learning-tier="applied" data-learning-artifact="optional" data-localization-scope="en-shell">
+    <summary data-localization-scope="en"><span class="learning-scope">Applied · Chunks</span><span class="learning-question">Retrieve small chunks with parent context?</span></summary>
+    <div class="learning-block-body">
   <h2>Searching small chunks but returning the parent document</h2>
   <p>
     A bare top-K Index Agent has a recall-precision trade-off no embedding model
@@ -325,8 +342,13 @@
     <div id="cell-m3b-p3"></div>
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">We embed and search the small child chunks, and each match hands its full parent document to the LLM.</figcaption>
   </figure>
+    </div>
+  </details>
 
   <!-- ── Part 6: Retrieval as a tool ──────────────────────────────────────── -->
+  <details class="learning-block" open data-learning-id="retriever-as-tool" data-learning-tier="applied" data-learning-artifact="optional" data-localization-scope="en-shell">
+    <summary data-localization-scope="en"><span class="learning-scope">Applied · Agent</span><span class="learning-question">Let the model decide when to retrieve?</span></summary>
+    <div class="learning-block-body">
   <h2>Wrapping the index as a tool the model decides to call</h2>
   <p>
     A retrieval index on its own only answers when something queries it.
@@ -349,7 +371,12 @@
   </p>
 
   <div id="cell-m3b-p4"></div>
+    </div>
+  </details>
 
+  <details class="learning-block" open data-learning-id="other-index-shapes" data-learning-tier="applied" data-localization-scope="en-shell">
+    <summary data-localization-scope="en"><span class="learning-scope">Applied · Shapes</span><span class="learning-question">Compare the other index shapes?</span></summary>
+    <div class="learning-block-body">
   <h2>How the other three shapes are built</h2>
   <p>
     You just built the unstructured-prose lane from corpus to answer. The other three are named
@@ -362,8 +389,13 @@
     <li><strong>Structured / governed tables.</strong> Not built in this course. The standard production pattern is a semantic layer sitting between the agent and the row-level data, exposing only the curated metrics the bundle requires.</li>
     <li><strong>Relational / graph data.</strong> The agent calls a graph-traversal tool (Cypher, GraphQL, or custom) in place of a vector store. The bundle it gets back is a sub-graph whose explicit edges carry into the prompt, so the relationships between entities reach the model intact.</li>
   </ul>
+    </div>
+  </details>
 
   <!-- ── Frontier: GraphRAG for global questions ───────────────────────────── -->
+  <details class="learning-block" open data-learning-id="graphrag-global-questions" data-learning-tier="deep" data-learning-artifact="optional" data-localization-scope="en-shell">
+    <summary data-localization-scope="en"><span class="learning-scope">Deep · GraphRAG</span><span class="learning-question">Explore corpus-wide retrieval with GraphRAG?</span></summary>
+    <div class="learning-block-body">
   <h2>When top-K is the wrong tool: GraphRAG and global questions</h2>
   <p>
     Every retriever on this page answers a <em>local</em> question whose answer sits in a handful of passages that Top-K
@@ -514,6 +546,8 @@ helpers.log("Notice the global theme top-K misses but the community pass recover
     corpus into summarized communities buys the global answer, paid for by an
     expensive indexing pass you run once.
   </p>
+    </div>
+  </details>
 
   <h2>Before you continue</h2>
   <ol>
@@ -521,14 +555,16 @@ helpers.log("Notice the global theme top-K misses but the community pass recover
         query, yet the NVIDIA embed model used here takes <code>input_type</code> to
         distinguish query from passage. What does that asymmetry buy you that pure cosine
         could not?</li>
-    <li>Part 5 indexes child chunks but fetches the parent on a hit. What is the
-        failure mode if the parent document is too large to fit in the LLM's
-        context window? Which of the four shapes' primitives would you reach for
-        next?</li>
-    <li>The Part 6 retriever has a fixed top-K of 3. When should K be a function
-        of the query (e.g. how confident the agent is) instead of a constant?</li>
+    <li>The index build embeds every corpus passage once, while the live path embeds
+        each new question. Which changes require a full re-index, and which require
+        only one new query embedding?</li>
+    <li>Top-K always returns K passages, even when every score is weak. What signal
+        should the agent inspect before letting those passages enter the prompt?</li>
   </ol>
 
+  <details class="learning-block" open data-learning-id="rag-references" data-learning-tier="deep" data-localization-scope="en-shell">
+    <summary data-localization-scope="en"><span class="learning-scope">Deep · Sources</span><span class="learning-question">Trace the retrieval research sources?</span></summary>
+    <div class="learning-block-body">
   <div class="references">
     <h3>References</h3>
     <ul>
@@ -541,6 +577,8 @@ helpers.log("Notice the global theme top-K misses but the community pass recover
     </ul>
     <p class="references-note">Comprehensive list at <a href="04c-going-further.html#refs">Going Further · References</a>.</p>
   </div>
+    </div>
+  </details>
 
   <h2>Try it · retrieval, live</h2>
   <p>
@@ -640,7 +678,7 @@ helpers.log("rendered below. Edit the config and Run.");
 </main>
 
 <script type="module">
-import { buildNav, chat, chatStream, updateKeyPill, mountJourneyMap, mountCanvasFlow } from "./scripts/_shared.js";
+import { buildNav, chat, chatStream, updateKeyPill, mountJourneyMap, mountCanvasFlow, mountRunCell } from "./scripts/_shared.js";
 document.getElementById("nav").innerHTML = buildNav("02b-rag.html");
 const pill = document.getElementById("key-status");
 updateKeyPill(pill);
@@ -648,37 +686,30 @@ mountJourneyMap("#journey-map", "2b");
 hljs.highlightAll();
 
 // ── M3b P1: one embedding ────────────────────────────────────────────────────
-mountCanvasFlow("#cell-m3b-p1", {
+mountRunCell("#cell-m3b-p1", {
+  openCode: false,
   label: "Inspect one embedding",
-  intro: "A single string is embedded into a high-dimensional vector (2048 floats for the default model), of which the first few dimensions are shown, where the magnitudes are the model's choice rather than yours.",
-  edges: [{ from: "text", to: "embed" }],
-  nodes: [
-    {
-      id: "text", icon: "📝", title: "Input text", x: 0, y: 0,
-      summary: "A single string passed to the embedding model. The model does not care whether the string is a name, a question, or a full sentence. The output is always the same shape: one fixed-length vector. Changing the text changes the vector's position in the embedding space, but never its dimensionality.",
-      code: `// Set the student-editable prompt/input for the next step.
-state.text = "The transformer architecture replaced recurrent neural networks for sequence modeling.";
-return state.text;
-`,
-    },
-    {
-      id: "embed", icon: "🧮", title: "Embed Text", x: 0, y: 1,
-      summary: "Call the hosted embedding endpoint with input_type set to passage. Inspect the first dimensions and magnitude of its unit-normalized vector; normalization makes cosine similarity equivalent to a dot product.",
-      code: `// Embed the text so similarity search can compare vectors.
-const [v] = await helpers.embed(state.text, {
+  intro: "The default model returns 2,048 values. Choose an example, then inspect its fixed length and near-1 normalized magnitude. Change EXAMPLE or add your own text.",
+  code: `const EXAMPLES = [
+  "The transformer architecture replaced recurrent neural networks for sequence modeling.",
+  "What replaced recurrent neural networks for sequence modeling?",
+  "A flaky pie crust needs cold butter and minimal mixing.",
+  "OpenShell limits an agent's filesystem and network access.",
+];
+const EXAMPLE = 0; // Try 0, 1, 2, or 3.
+const text = EXAMPLES[EXAMPLE];
+
+const [v] = await helpers.embed(text, {
   model:     "nvidia/llama-nemotron-embed-1b-v2",
   inputType: "passage",
 });
-state.vector = v;
 return {
-  dim:           v.length,
-  first_16:      v.slice(0, 16).map(x => +x.toFixed(4)),
-  magnitude:     Math.sqrt(v.reduce((s, x) => s + x*x, 0)).toFixed(4),
-  zero_threshold: v.filter(x => Math.abs(x) < 0.001).length + " near-zero dims of " + v.length,
+  text,
+  dimensions: v.length,
+  first_16: v.slice(0, 16).map(x => +x.toFixed(4)),
+  magnitude: +Math.sqrt(v.reduce((sum, x) => sum + x * x, 0)).toFixed(4),
 };
 `,
-    },
-  ],
 });
 
 // ── M3b P2: in-memory vector index ───────────────────────────────────────────

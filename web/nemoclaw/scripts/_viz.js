@@ -42,7 +42,7 @@ export function makeViz(log) {
         rows += `<text x="${thX + 3}" y="${PAD_T - 10}" font-size="9" font-family="ui-monospace,monospace" fill="#d49c2c">threshold ${threshold}</text>`;
         const meanX = PAD_L + Math.round((mean / 5) * maxBarW);
         rows += `<line x1="${meanX}" y1="${PAD_T - 8}" x2="${meanX}" y2="${PAD_T + scored.length * (BAR_H + GAP) - GAP + 4}" stroke="#76b900" stroke-width="1" stroke-dasharray="3 3" opacity="0.6"/>`;
-        rows += `<text x="${meanX + 3}" y="${H - PAD_B / 2 + 4}" font-size="9" font-family="ui-monospace,monospace" fill="#76b900">mean ${mean.toFixed(2)}</text>`;
+        rows += `<text x="${meanX + 3}" y="${H - PAD_B / 2 + 4}" font-size="9" font-family="ui-monospace,monospace" fill="var(--gfx-nvgreen,#76b900)">mean ${mean.toFixed(2)}</text>`;
         log.svg(`<svg viewBox="0 0 ${width} ${H}" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:6px">
           <text x="${width / 2}" y="22" text-anchor="middle" font-size="12" font-family="ui-monospace,monospace" fill="#aee23a" font-weight="700">${esc(title)}</text>
           ${rows}</svg>`);
