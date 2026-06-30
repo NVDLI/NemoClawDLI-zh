@@ -20,6 +20,7 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
         sys.path.insert(0, str(_p / "scripts"))
         break
 from _bootstrap import find_repo_root
+from translate.locale_projection import project_locale_html
 from translate.localization_scope import translation_sha
 
 ROOT = find_repo_root(Path(__file__).resolve())
@@ -44,6 +45,11 @@ def assemble(locale_root: Path, out: Path, canonical_root: Path = ROOT) -> list[
     asset_files = [safe_relative(item) for item in state.get("asset_files", [])]
     reviews = state.get("reviews", {})
     asset_reviews = state.get("asset_reviews", {})
+    locale_meta = json.loads((locale_root / "locale.json").read_text(encoding="utf-8"))
+    profile_ref = locale_meta.get("profile")
+    profile_path = canonical_root / profile_ref if profile_ref else None
+    shell_path = profile_path.parent / "shell_translations.json" if profile_path else locale_root / "shell_translations.json"
+    shell_translations = json.loads(shell_path.read_text(encoding="utf-8")) if shell_path.is_file() else {}
     if out.exists():
         shutil.rmtree(out)
     shutil.copytree(canonical_root / "web", out / "web")
@@ -64,9 +70,12 @@ def assemble(locale_root: Path, out: Path, canonical_root: Path = ROOT) -> list[
             continue
         dst = out / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dst)
+        if scoped_html:
+            dst.write_text(project_locale_html(canonical_raw, src.read_text(encoding="utf-8"), shell_translations),
+                           encoding="utf-8")
+        else:
+            shutil.copy2(src, dst)
         applied.append(rel.as_posix())
-    locale_meta = json.loads((locale_root / "locale.json").read_text(encoding="utf-8"))
     browser_meta = out / "web" / "nemoclaw" / "assets" / "locale.json"
     browser_meta.parent.mkdir(parents=True, exist_ok=True)
     browser_meta.write_text(json.dumps(locale_meta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -87,6 +96,9 @@ def self_test() -> list[str]:
         source.write_text("English source", encoding="utf-8")
         target.write_text("Fonte em português", encoding="utf-8")
         (locale / "locale.json").write_text(json.dumps({"locale": "pt-BR"}), encoding="utf-8")
+        (locale / "shell_translations.json").write_text(json.dumps({
+            "Need detail?": "Precisa de detalhes?"
+        }), encoding="utf-8")
         state = {"overlay_files": [rel.as_posix()],
                  "reviews": {rel.as_posix(): {"source_sha256": source_sha(source)}}}
         (locale / "localization_state.json").write_text(json.dumps(state), encoding="utf-8")
@@ -102,9 +114,20 @@ def self_test() -> list[str]:
         (locale / "localization_state.json").write_text(json.dumps(state), encoding="utf-8")
         if assemble(locale, out, canonical) != [rel.as_posix()]:
             failures.append("English-only presentation shell invalidated a reviewed translation")
+        projected = (out / rel).read_text(encoding="utf-8")
+        if "<details" not in projected or "Precisa de detalhes?" not in projected or "Fonte em português" not in projected:
+            failures.append("localized prose was not projected into the current presentation shell")
         source.write_text(scoped.replace("Need detail?", "Open detail?"), encoding="utf-8")
+        try:
+            assemble(locale, out, canonical)
+            failures.append("untranslated presentation-shell change was accepted")
+        except ValueError:
+            pass
+        (locale / "shell_translations.json").write_text(json.dumps({
+            "Need detail?": "Precisa de detalhes?", "Open detail?": "Abrir detalhes?"
+        }), encoding="utf-8")
         if assemble(locale, out, canonical) != [rel.as_posix()]:
-            failures.append("English-only control wording invalidated a reviewed translation")
+            failures.append("translated presentation-shell change was rejected")
         source.write_text(scoped.replace("English source", "Changed lesson"), encoding="utf-8")
         if assemble(locale, out, canonical):
             failures.append("translatable body change did not invalidate a reviewed translation")

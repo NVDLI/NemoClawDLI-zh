@@ -125,7 +125,8 @@ def audit_learning_runtime(learning: str, shared: str, css: str) -> list[str]:
         'target?.closest("details.learning-block[data-learning-tier]")': "deep links must reveal a target inside a collapsed disclosure",
         'mountLearningView()': "learning profile needs a shared mount entry point",
         'if (!supportsLearningView()) return;': "learning controls must stay on course home and numbered lessons",
-        'startsWith("en")': "the pilot must remain limited to the English source course",
+        'const locale = document.documentElement.lang.toLowerCase();': "learning depth labels must derive from the document language",
+        'locale.startsWith("es")': "Guided mode must support Spanish course pages",
         'storage()?.setItem(LEARNING_DEPTH_KEY, "guided")': "hidden-selector pilot must reset every page to Guided",
         'applyLearningDepth("guided")': "hidden-selector pilot must render every page in Guided",
     }
@@ -159,11 +160,13 @@ def audit_page_assistant(assistant: str, shared: str, chat: str, css: str) -> li
     findings: list[str] = []
     contract = {
         'import { mountAgentChat } from "./_chat.js";': "page assistant must reuse the tested ReAct artifact",
-        'const pt = document.documentElement.lang.toLowerCase().startsWith("pt")': "page assistant must localize itself from the document language",
+        'const language = document.documentElement.lang.toLowerCase()': "page assistant must localize itself from the document language",
+        'const es = language.startsWith("es")': "page assistant must recognize Spanish",
         'assistant: "ASSISTENTE DO CURSO"': "page assistant needs Brazilian Portuguese chrome",
+        'assistant: "ASISTENTE DEL CURSO"': "page assistant needs Spanish chrome",
         'if (!location.pathname.includes("/nemoclaw/")) return;': "page assistant must stay scoped to course pages",
         'pageId: String(item.pageId || "")': "Course Assistant page grounding must persist with its session",
-        'initialContext: attachedPage ? async () => ({ label: (pt ? "página + índice de código · " : "page + code index · ") + attachedPage.id': "Course Assistant must seed its attached prose and code index as inspectable context",
+        'initialContext: attachedPage ? async () => ({ label: localized(': "Course Assistant must seed its attached prose and code index as inspectable context",
         'name: "list_course_pages"': "page assistant must expose the course map to its ReAct loop",
         'name: "search_course_pages"': "page assistant must search the course before guessing which page matters",
         'export async function searchCoursePages': "course search must remain independently testable without a model call",
@@ -727,7 +730,7 @@ def self_test() -> list[str]:
         ("Guided leaves code open", learning.replace('detail.open = depth === "guided" ? false', 'detail.open = depth === "guided" ? true', 1), shared, css, "collapse interactive code"),
         ("late code cells ignored", learning.replace("mountCodeObserver();", "", 1), shared, css, "mounted after shared chrome"),
         ("learning controls on support tools", learning.replace("if (!supportsLearningView()) return;", "", 1), shared, css, "course home and numbered lessons"),
-        ("learning controls enabled across locales", learning.replace('if (!document.documentElement.lang.toLowerCase().startsWith("en")) return false;', "", 1), shared, css, "English source course"),
+        ("Spanish Guided support removed", learning.replace('locale.startsWith("es")', 'false', 1), shared, css, "support Spanish course pages"),
         ("hidden selector restores saved depth", learning.replace('applyLearningDepth("guided");', 'applyLearningDepth();', 1), shared, css, "render every page in Guided"),
         ("missing learning-view mount", learning, shared.replace("mountLearningView();", "", 1), css, "every topbar page"),
         ("artifact placeholders wait for mount", learning, shared.replace("markLiveArtifacts();", "", 1), css, "artifact placeholder"),
@@ -750,8 +753,9 @@ def self_test() -> list[str]:
     assistant = (ROOT / "web/nemoclaw/scripts/_course_assistant.js").read_text(encoding="utf-8")
     assistant_cases = [
         ("assistant loses session page", assistant.replace('pageId: String(item.pageId || "")', 'legacyPage: String(item.pageId || "")', 1), shared, chat, css, "grounding must persist"),
-        ("assistant loses page context", assistant.replace('initialContext: attachedPage ? async () => ({ label: (pt ? "página + índice de código · " : "page + code index · ") + attachedPage.id', 'initialContext: null && async () => ({ label: "missing"', 1), shared, chat, css, "attached prose and code index"),
+        ("assistant loses page context", assistant.replace('initialContext: attachedPage ? async () => ({ label: localized(', 'initialContext: null && async () => ({ label: localized(', 1), shared, chat, css, "attached prose and code index"),
         ("assistant loses Portuguese chrome", assistant.replace('assistant: "ASSISTENTE DO CURSO"', 'assistant: "COURSE ASSISTANT"', 1), shared, chat, css, "Brazilian Portuguese chrome"),
+        ("assistant loses Spanish chrome", assistant.replace('assistant: "ASISTENTE DEL CURSO"', 'assistant: "COURSE ASSISTANT"', 1), shared, chat, css, "Spanish chrome"),
         ("assistant loses course map", assistant.replace('name: "list_course_pages"', 'name: "missing_course_map"', 1), shared, chat, css, "course map"),
         ("assistant loses course search", assistant.replace('name: "search_course_pages"', 'name: "missing_course_search"', 1), shared, chat, css, "search the course"),
         ("assistant returns structured tool payload", assistant.replace('return JSON.stringify(await searchCoursePages(query, readPage, catalog), null, 2);', 'return searchCoursePages(query, readPage, catalog);', 1), shared, chat, css, "endpoint-safe text"),

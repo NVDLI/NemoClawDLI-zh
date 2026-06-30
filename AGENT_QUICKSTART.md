@@ -77,7 +77,7 @@ discipline, so read it when an instruction collides with another.
 | Vendored reference repos | `repos/` |
 | Tooling | `scripts/` |
 | Localization workflow | `scripts/translate/SKILL.html` |
-| Portuguese language contract | `scripts/translate/locales/pt-BR/SKILL.html` |
+| Locale language contracts | `scripts/translate/locales/<locale>/SKILL.html` (`pt-BR`, `es-ES`) |
 | Same-branch drift Studio | `web/nemoclaw/localization.html` |
 | Test runner + service build infra | `workspace/` |
 | Agent reference docs | `docs/` |
@@ -171,7 +171,7 @@ python3 scripts/validation/html_structure_audit.py         # EN + locale HTML st
 python3 scripts/skills/skill_consistency.py             # skill-meta vs the real tree
 python3 scripts/build/assemble_locale_overlay.py --self-test  # stale translations cannot publish
 python3 scripts/validation/localization_audit.py --self-test  # locale detector mutations
-python3 scripts/validation/localization_audit.py --locale pt-BR  # drift + pt-BR language contract
+for locale in pt-BR es-ES; do python3 scripts/validation/localization_audit.py --locale "$locale"; done  # drift + language contracts
 python3 scripts/security/audit_python_dependencies.py    # declared floors/pins have no known PyPI/OSV vulns
 python3 scripts/security/audit_vulnerability_waivers.py  # accepted vuln exceptions are owned + unexpired
 python3 scripts/security/audit_dependency_locks.py --self-test  # lock detector rejects stale/unpinned mutations

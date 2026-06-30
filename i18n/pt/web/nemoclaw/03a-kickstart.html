@@ -639,8 +639,8 @@ pelo worker CORS do OpenClaw. O modo WebSocket direto só funciona depois que a 
       },
 
       actions: [
-        { label: "GET/healthz", path: "/healthz", method: "GET" },
-        { label: "GET /api/agente", path: "/api/agent", method: "GET" },
+        { label: "GET /healthz", path: "/healthz", method: "GET" },
+        { label: "GET /api/agent", path: "/api/agent", method: "GET" },
       ],
     });
 
@@ -937,7 +937,7 @@ helpers.log("Execute novamente o turno de recuperação acima; o fato registrado
         {
           id: "sk-cleanup", icon: "🗑", title: "Limpar as sessões antigas", x: 2, y: 0,
           showCode: false,
-          summary: "Cada sessionKey distinta deixa uma sessão no gateway. Esta etapa percorre a lista paginada e remove as descartáveis, mantendo apenas a sessão principal. Edite KEEP para preservar outras sessões.",
+          summary: "Cada sessionKey distinta deixa uma sessão no gateway. Esta etapa percorre a lista paginada e remove as descartáveis, mantendo apenas a sessão principal. Edite KEEP para preservar outras sessões; por exemplo, /:(main|quick-3c-skill)$/ também mantém uma sessão importante.",
           code: GW_CONNECT + `
 // Keep these; delete the rest. The default keeps only the Main Session.
 const KEEP = /:main$/;

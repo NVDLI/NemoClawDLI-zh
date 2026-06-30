@@ -2,6 +2,7 @@ const $ = selector => document.querySelector(selector);
 const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
 const manifestCandidates = ["../languages.json", "../../languages.json", "../../../languages.json", "../../../../languages.json"];
 let drift, languages, activeStatus = "all", activeKind = "pages", selected;
+const localeSelect = $("#loc-locale");
 
 async function languageManifest() {
   for (const rel of manifestCandidates) {
@@ -76,14 +77,17 @@ async function selectPage(path) {
   $("#loc-target-label").textContent = selected.status;
   $("#loc-evidence").innerHTML = `<strong>${esc(selected.file)}</strong><span>source <code>${shortHash(selected.source_sha256)}</code></span><span>reviewed <code>${shortHash(selected.reviewed_source_sha256)}</code></span><span>target <code>${shortHash(selected.target_sha256)}</code></span>`;
   const findings = selected.quality || [];
-  $("#loc-findings").innerHTML = `<strong>${esc(selected.status)}</strong>${findings.length ? `<ul>${findings.map(item => `<li><code>${esc(item.code)}</code> ${esc(item.detail)}</li>`).join("")}</ul>` : '<span> · no static language/structure findings</span>'}<div>After reviewing the complete page: <code>python3 scripts/validation/localization_audit.py --locale pt-BR --accept ${esc(selected.path)}</code></div>`;
+  $("#loc-findings").innerHTML = `<strong>${esc(selected.status)}</strong>${findings.length ? `<ul>${findings.map(item => `<li><code>${esc(item.code)}</code> ${esc(item.detail)}</li>`).join("")}</ul>` : '<span> · no static language/structure findings</span>'}<div>After reviewing the complete page: <code>python3 scripts/validation/localization_audit.py --locale ${esc(drift.locale)} --accept ${esc(selected.path)}</code></div>`;
   renderPages();
 }
 
 async function boot() {
-  const [driftResponse, lang] = await Promise.all([fetch("assets/localization-pt.json", {cache:"no-store"}), languageManifest()]);
+  const requested = new URLSearchParams(location.search).get("locale") || localeSelect?.value || "pt";
+  if (localeSelect) localeSelect.value = requested;
+  const [driftResponse, lang] = await Promise.all([fetch(`assets/localization-${requested}.json`, {cache:"no-store"}), languageManifest()]);
   if (!driftResponse.ok) throw new Error(`drift manifest unavailable (${driftResponse.status})`);
   drift = await driftResponse.json(); languages = lang;
+  $("#loc-target-name").textContent = drift.native_label || drift.label || drift.locale;
   const c = counts();
   const assets = drift.asset_counts || {};
   $("#loc-summary").textContent = `${c.current || 0} pages current · ${assets.current || 0} SVGs current · ${(c.stale || 0) + (c.blocked || 0) + (c['needs-review'] || 0) + (c.missing || 0) + (assets.stale || 0) + (assets.blocked || 0) + (assets['needs-review'] || 0) + (assets.missing || 0)} pending`;
@@ -96,6 +100,10 @@ async function boot() {
   const first = courseRows().find(row => row.status !== "missing") || courseRows()[0];
   if (first) selectPage(first.path);
 }
+
+localeSelect?.addEventListener("change", () => {
+  const url = new URL(location.href); url.searchParams.set("locale", localeSelect.value); location.href = url;
+});
 
 boot().catch(error => {
   $("#loc-summary").textContent = "Localization data unavailable";

@@ -31,7 +31,7 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
 from _bootstrap import find_repo_root
 
 ROOT = find_repo_root(Path(__file__).resolve())
-TRANSLATION_REVISION = "pt-br-editorial-v3"
+TRANSLATION_REVISION = "locale-editorial-v4"
 SKIP_TEXT = {"script", "style", "pre", "code", "svg", "noscript"}
 ATTRS = {"alt", "aria-label", "placeholder", "title"}
 BLOCK_TAGS = {"p", "li", "h1", "h2", "h3", "h4", "figcaption", "button", "option", "label", "summary", "td", "th", "a"}
@@ -193,17 +193,27 @@ def script_segments(raw: str) -> list[Segment]:
         if re.search(r'(?i)\bsrc\s*=|application/json', attrs):
             continue
         body_start = script.start(2)
+        code_ranges = [(match.start(1), match.end(1))
+                       for match in re.finditer(r'\bcode\s*:\s*(?:(?:[A-Za-z_$][\w$]*(?:\.[\w$]+)*)\s*\+\s*)*`((?:\\.|[^`])*)`', body, re.S)]
+
+        def inside_code(position: int) -> bool:
+            return any(start <= position < end for start, end in code_ranges)
+
         for match in UI_FIELD_RE.finditer(body):
             text = match.group(2)
-            if useful(text):
+            if useful(text) and not inside_code(match.start(2)):
                 out.append(Segment(body_start + match.start(2), body_start + match.end(2), text, "script-ui"))
         for call in UI_CALL_RE.finditer(body):
+            if inside_code(call.start()):
+                continue
             for match in JS_STRING_RE.finditer(call.group(1)):
                 text = match.group(2)
                 if useful(text):
                     start = body_start + call.start(1) + match.start(2)
                     out.append(Segment(start, body_start + call.start(1) + match.end(2), text, "script-ui"))
         for array in UI_LINES_RE.finditer(body):
+            if inside_code(array.start()):
+                continue
             for match in JS_STRING_RE.finditer(array.group(1)):
                 text = match.group(2)
                 if useful(text):
@@ -211,10 +221,10 @@ def script_segments(raw: str) -> list[Segment]:
                     out.append(Segment(start, body_start + array.start(1) + match.end(2), text, "script-ui"))
         for match in UI_HELP_RE.finditer(body):
             text = match.group(1)
-            if useful(text):
+            if useful(text) and not inside_code(match.start(1)):
                 out.append(Segment(body_start + match.start(1), body_start + match.end(1), text, "script-ui"))
         for field in UI_TERNARY_RE.finditer(body):
-            if "?" not in field.group(1):
+            if "?" not in field.group(1) or inside_code(field.start(1)):
                 continue
             for match in JS_STRING_RE.finditer(field.group(1)):
                 text = match.group(2)
@@ -294,18 +304,22 @@ def translate_batch(batch: list[tuple[str, str]], profile: dict, model: str, key
     terminology = "; ".join(f"{source} => {target}" for source, target in profile.get("preferred_terms", {}).items())
     rejected = "; ".join(f"{phrase} ({fix})" for phrase, fix in profile.get("unfit_phrases", {}).items())
     payload = [{"id": item_id, "source": source} for item_id, source in batch]
-    action = ("Edit each Brazilian Portuguese source for grammar, agreement, precision, and natural technical flow. "
-              "Do not retranslate English technical tokens that were deliberately preserved."
+    language_name = profile.get("language_name", profile["native_label"])
+    audience = profile.get("audience", f"students and software developers who use {language_name}")
+    locale_guidance = profile.get("generation_guidance", "Use natural technical language for the target audience.")
+    action = (f"Edit each {language_name} source for grammar, agreement, precision, rhythm, and natural technical flow. "
+              "Do not retranslate technical tokens that were deliberately preserved."
               if polish else
-              "Translate each source into natural Brazilian Portuguese.")
-    system = f"""You localize an NVIDIA course for students and software developers in Brazil.
+              f"Translate each source into natural {language_name}.")
+    system = f"""You localize an NVIDIA course for {audience}.
 {action}
-Produce natural, publication-quality Brazilian Portuguese while preserving full technical meaning and teaching sequence.
+Produce natural, publication-quality {language_name} while preserving full technical meaning and teaching sequence.
 Return ONLY a JSON array of objects with exactly keys id and translation, one per input id.
 Preserve HTML tags, entities, escaped characters, ${{...}} placeholders, URLs, file paths, code identifiers, API fields,
 model IDs, product names, and English titles of cited papers/books. Do not translate model prompts or invent explanations.
-Avoid literal calques. Check articles, gender, number, prepositions, and sentence flow after translating. Prefer concise,
-fluent instructional prose written for Brazilian software developers. Do not leave the English word loop in learner prose.
+Avoid literal calques. Check articles, gender, number, prepositions, rhythm, and sentence flow after translating. Prefer
+concise, fluent instructional prose. Avoid repetitive sentence openings, slogan cadence, and stacked noun phrases.
+{locale_guidance}
 Terminology: {terminology}
 Rejected literal translations: {rejected}"""
     started = time.monotonic()
@@ -474,7 +488,7 @@ def main() -> int:
     parser.add_argument("pages", nargs="+")
     parser.add_argument("--locale", default="pt-BR")
     parser.add_argument("--model", default="meta/llama-3.3-70b-instruct")
-    parser.add_argument("--cache", type=Path, default=Path("/tmp/nemoclaw-pt-translation-cache-v2.json"))
+    parser.add_argument("--cache", type=Path)
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--polish", action="store_true")
@@ -483,6 +497,8 @@ def main() -> int:
     args = parser.parse_args()
     profile_path = ROOT / "scripts" / "translate" / "locales" / args.locale / "profile.json"
     profile = json.loads(profile_path.read_text(encoding="utf-8"))
+    if args.cache is None:
+        args.cache = Path(f"/tmp/nemoclaw-{profile['url_code']}-translation-cache-v1.json")
     locale_root = ROOT / "i18n" / profile["url_code"]
     ledger = UsageLedger(args.model)
     for raw_page in args.pages:
@@ -491,8 +507,9 @@ def main() -> int:
             rel = source.relative_to(ROOT)
         except ValueError:
             parser.error(f"outside repository: {raw_page}")
-        if not source.is_file() or rel.parts[:2] != ("web", "nemoclaw") or source.suffix != ".html":
-            parser.error(f"not a course HTML source: {raw_page}")
+        allowed = rel in {Path("web/index.html"), Path("web/courses.html")} or rel.parts[:2] == ("web", "nemoclaw")
+        if not source.is_file() or not allowed or source.suffix != ".html":
+            parser.error(f"not a learner-facing HTML source: {raw_page}")
         translate_page(source, locale_root / rel, profile, args.model, args.cache, args.dry_run, args.workers,
                        args.polish, ledger)
     if args.usage_report:

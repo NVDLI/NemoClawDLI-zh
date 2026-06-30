@@ -31,6 +31,7 @@ from translate.translate_html_segments import (
 ROOT = find_repo_root(Path(__file__).resolve())
 ATTR_RE = re.compile(r'\b(?:aria-label|title)\s*=\s*(["\'])(.*?)\1', re.S | re.I)
 TEXT_RE = re.compile(r'<(?:text|tspan)\b[^>]*>([^<>]+)</(?:text|tspan)>', re.S | re.I)
+TSPAN_RE = re.compile(r'(<tspan\b[^>]*\bx=")([^"]+)("[^>]*>)([^<]*)(</tspan>)', re.S | re.I)
 
 
 def extract_svg_segments(raw: str) -> list[Segment]:
@@ -48,6 +49,33 @@ def extract_svg_segments(raw: str) -> list[Segment]:
             start = match.start(1) + left
             found[(start, start + len(core))] = Segment(start, start + len(core), core, "text")
     return [found[key] for key in sorted(found)]
+
+
+def normalize_translated_tspan_positions(source_raw: str, translated_raw: str) -> str:
+    """Replace source per-glyph positions when translated labels change length."""
+    source_spans = list(TSPAN_RE.finditer(source_raw))
+    target_spans = list(TSPAN_RE.finditer(translated_raw))
+    if len(source_spans) != len(target_spans):
+        return translated_raw
+    replacements: list[tuple[int, int, str]] = []
+    for source, target in zip(source_spans, target_spans):
+        if source.group(4) == target.group(4):
+            continue
+        positions = target.group(2).split()
+        if len(positions) < 2:
+            continue
+        try:
+            center = (float(positions[0]) + float(positions[-1])) / 2
+        except ValueError:
+            continue
+        suffix = target.group(3)
+        if "text-anchor=" not in suffix:
+            suffix = suffix[:-1] + ' text-anchor="middle">'
+        replacement = target.group(1) + f"{center:.3f}" + suffix + target.group(4) + target.group(5)
+        replacements.append((target.start(), target.end(), replacement))
+    for start, end, value in reversed(replacements):
+        translated_raw = translated_raw[:start] + value + translated_raw[end:]
+    return translated_raw
 
 
 def translate_svg(source: Path, target: Path, profile: dict, model: str, cache_path: Path,
@@ -68,7 +96,7 @@ def translate_svg(source: Path, target: Path, profile: dict, model: str, cache_p
     if no_api and missing:
         missing_text = "\n".join(f"  - {text}" for _, text in missing)
         raise ValueError(f"SVG translation dictionary misses {len(missing)} strings in {label}:\n{missing_text}")
-    key = api_key()
+    key = api_key() if missing else ""
     for index, batch in enumerate(batches(missing), 1):
         translated = translate_batch(batch, profile, model, key, False, ledger, label)
         for item_id, source_text in batch:
@@ -83,6 +111,7 @@ def translate_svg(source: Path, target: Path, profile: dict, model: str, cache_p
     translated_raw = raw
     for start, end, value in sorted(replacements, reverse=True):
         translated_raw = translated_raw[:start] + value + translated_raw[end:]
+    translated_raw = normalize_translated_tspan_positions(raw, translated_raw)
     translated_raw = re.sub(r"<svg\b", f'<svg data-locale="{profile["locale"]}"', translated_raw, count=1)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(translated_raw, encoding="utf-8")
@@ -94,13 +123,15 @@ def main() -> int:
     parser.add_argument("assets", nargs="+")
     parser.add_argument("--locale", default="pt-BR")
     parser.add_argument("--model", default="meta/llama-3.3-70b-instruct")
-    parser.add_argument("--cache", type=Path, default=Path("/tmp/nemoclaw-pt-svg-translation-cache-v1.json"))
+    parser.add_argument("--cache", type=Path)
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--no-api", action="store_true", help="require every string from the locale SVG dictionary")
     parser.add_argument("--usage-report", type=Path)
     args = parser.parse_args()
     profile = json.loads((ROOT / "scripts/translate/locales" / args.locale / "profile.json").read_text(encoding="utf-8"))
+    if args.cache is None:
+        args.cache = Path(f"/tmp/nemoclaw-{profile['url_code']}-svg-translation-cache-v1.json")
     dictionary_path = ROOT / "scripts/translate/locales" / args.locale / "svg_translations.json"
     dictionary = json.loads(dictionary_path.read_text(encoding="utf-8")) if dictionary_path.is_file() else {}
     locale_root = ROOT / "i18n" / profile["url_code"]

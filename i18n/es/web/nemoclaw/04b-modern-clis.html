@@ -1,0 +1,644 @@
+
+<html lang="es-ES">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CLI modernos · Seguridad de agentes</title>
+<link rel="stylesheet" href="styles/_style.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js" integrity="sha384-GdEWAbCjn+ghjX0gLx7/N1hyTVmPAjdC2OvoAA0RyNcAOhqwtT8qnbCxWle2+uJX" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" integrity="sha384-zaeBlB/vwYsDRSlFajnDd7OydJ0cWk+c2OWybl3eSUf6hW2EbhlCsQPqKr3gkznT" crossorigin="anonymous"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css" integrity="sha384-05WuhgjXiqmZzcQ3vQRQ39HN356Yqb+SnhvELzFtpwS5b2IlqE8QsOO5LCSJ2znj" crossorigin="anonymous"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js" integrity="sha384-ZYmwuq4n2gOcNxMSiJ6jyTj+BbIrilr7p6dlq6q5nmSWKmsH9UU4K1qqjycMkfmR" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js" integrity="sha384-g0o+WW9mdIxA7LaaCKTkRm0M5TVT+Bb4s9eocxPsI2G0Xm0POG9iD6G6qP1IIsfS" crossorigin="anonymous"></script>
+<style>
+  .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
+  .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
+  .CodeMirror-vscrollbar { display: none; }
+  .CodeMirror-gutters { background: #0d0d0d; border-right: 1px solid #2a2a2a; }
+  .CodeMirror-linenumber { color: #6a6a6a; padding: 0 8px 0 6px; font-size: .76rem; }
+  .CodeMirror-lines { padding: 10px 0; }
+  .cm-s-monokai.CodeMirror { background: #0d0d0d; color: #f8f8f2; }
+  .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
+  .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
+</style>
+<style>
+  .cli-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin: 1em 0; }
+  @media (max-width: 720px) { .cli-grid { grid-template-columns: 1fr; } }
+  .cli-card { background: var(--e1); border: 1px solid var(--bd); border-radius: var(--r); padding: 14px 16px; border-left: 3px solid var(--g); }
+  .cli-card h3 { font-size: 1rem; color: var(--gs); margin: 0 0 .35em; }
+  .cli-card p  { font-size: .85rem; color: var(--td); margin: .25em 0; line-height: 1.55; }
+  .cli-card code { font-size: .82em; }
+  .dof-table, .map-table { width: 100%; border-collapse: collapse; font-size: .86rem; margin: 1em 0; }
+  .dof-table thead tr, .map-table thead tr { border-bottom: 2px solid var(--bd); }
+  .dof-table th, .map-table th { text-align: left; padding: 8px 12px; color: var(--td); font-size: .76rem; text-transform: uppercase; letter-spacing: .05em; }
+  .dof-table td, .map-table td { padding: 9px 12px; border-bottom: 1px solid var(--e2); vertical-align: top; }
+  .dof-table tr:last-child td, .map-table tr:last-child td { border-bottom: none; }
+  .dof-table td:first-child, .map-table td:first-child { font-family: var(--mono); color: var(--gs); font-weight: 600; }
+  .dof-table code, .map-table code { font-size: .82em; }
+  .da-term { background: #0b0b0b; border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.5; color: #d6d6d6; margin: 1em 0; }
+  .da-term .da-out { white-space: pre-wrap; word-break: break-word; }
+  .da-term .da-out > div { padding: 1px 0; }
+  .da-term .da-cmd { color: var(--gs, #aee23a); }
+  .da-term .da-err { color: #ff6b6b; }
+  .da-term .da-dim { color: #8a8a8a; }
+  .da-term .da-line { display: flex; align-items: flex-start; gap: 8px; margin-top: 2px; }
+  .da-term .da-ps { color: var(--gs, #aee23a); flex: none; }
+  .da-term .da-in { flex: 1; background: transparent; border: 0; outline: 0; color: #d6d6d6; font: inherit; padding: 0; }
+  .da-term .da-in:disabled { opacity: .6; }
+  .da-term .da-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; border-top: 1px solid #1c1c1c; padding-top: 8px; }
+  .da-term .da-chip { background: #161616; border: 1px solid #2a2a2a; color: #b9d76a; font: inherit; font-size: .76rem; padding: 2px 9px; border-radius: 999px; cursor: pointer; }
+  .da-term .da-chip:hover { background: #1f1f1f; border-color: var(--gs, #aee23a); }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="index.html">NVIDIA · Seguridad de agentes</a>
+  <nav id="nav"></nav>
+  <div class="spacer"></div>
+  <span class="key-pill" id="key-status" onclick="location.href=&#x27;01a-loop.html?openKeyPanel=1&#x27;">…</span>
+  <span class="key-pill" id="claw-status" onclick="location.href=&#x27;03a-kickstart.html#probe-claw&#x27;">…</span>
+</div>
+
+<main>
+  <div id="journey-map"></div>
+
+  <div class="hero">
+    <div class="eyebrow">Módulo 4 · Parte B de 3</div>
+    <h1><span>Agentes de CLI</span> modernos</h1>
+    <p class="lead">Los agentes que se comparan a continuación reúnen el mismo conjunto de capacidades:</p>
+    <ul class="lead">
+      <li>un directorio de trabajo</li>
+      <li>un conjunto de herramientas</li>
+      <li>una memoria</li>
+      <li>formas opcionales de ejecución sin una persona escribiendo activamente, como cron, tareas largas o trabajos en cola</li>
+      <li>una red</li>
+    </ul>
+    <p class="lead">Su perfil de seguridad depende de qué capacidades estén abiertas de forma predeterminada y de si se permite la ejecución sin supervisión. El runtime subyacente también debe detener una llamada incorrecta.</p>
+    <p class="lead">El Módulo 4a separó las decisiones de la aplicación de la aplicación de políticas por el sistema operativo. Los wrappers de aplicación se sitúan por encima de ese límite. Los comparará antes de crear su propio agente de CLI basado en el navegador.</p>
+  </div>
+
+  <h2>El mismo ciclo, distintos valores predeterminados de aplicación</h2>
+  <p>Cada producto ejecuta un modelo en un ciclo con herramientas. Sus valores predeterminados, capacidades integradas y detalles de implementación difieren. El coste y la comodidad que combinan forman el <em>peso del entorno de ejecución</em> utilizado a continuación.</p>
+  <p>Hermes difiere de los CLI de editores porque crear skills, conservar memoria, ejecutar cron y utilizar el gateway de mensajería son rutas habituales en su documentación pública. Otros agentes también pueden reescribir sus propios archivos de orientación o skills cuando se permiten ediciones, de modo que el riesgo no es exclusivo de Hermes.</p>
+  <ul class="cli-list">
+    <li><a href="https://docs.claude.com/en/docs/claude-code" target="_blank" rel="noopener"><strong>Claude Code</strong></a> (Anthropic). Utiliza <code>CLAUDE.md</code> en la raíz del proyecto y <code>~/.claude/CLAUDE.md</code> para reglas de todo el usuario. Ofrece un conjunto amplio de capacidades, como edición, bash, web, subagentes y tareas largas, con hooks que interceptan llamadas a herramientas y valores predeterminados conservadores: el acceso más amplio a archivos y red requiere autorización.</li>
+    <li><a href="https://github.com/openai/codex" target="_blank" rel="noopener"><strong>Codex CLI</strong></a> (OpenAI). Utiliza <code>AGENTS.md</code>. El sandbox predeterminado funciona en modo de aprobación: cada escritura o comando de shell espera su confirmación, salvo que utilice <code>--full-auto</code>. El conjunto de herramientas se centra en el shell; incluso la edición de archivos pasa por él.</li>
+    <li><a href="https://docs.cursor.com" target="_blank" rel="noopener"><strong>Cursor</strong></a> (integrado al IDE). Usa <code>.cursor/rules/*.mdc</code>. El agente funciona por medio del editor; por lo tanto, las herramientas siguen esta forma ("aplique este diff al archivo X"), y el sandbox corresponde a los permisos que el editor y el sistema operativo ya conceden.</li>
+    <li><a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener"><strong>Hermes</strong></a> (Nous Research). Es un agente de terminal que mejora con el uso: <em>crea skills a partir de la experiencia</em>, conserva memoria entre sesiones, ejecuta un cron integrado y recibe mensajes de Telegram, Discord y Slack mediante su gateway. Tiene la misma forma general de aplicación que OpenClaw, con automodificación y una superficie de mensajería activadas.</li>
+    <li><a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener"><strong>OpenClaw</strong></a> (en NVIDIA NemoClaw). Es el agente que ha controlado durante el curso. Su conjunto de archivos de orientación es toda la carpeta <code>workspace/</code>, con SOUL.md, AGENTS.md, IDENTITY.md y los demás. Admite operación sin supervisión mediante activadores administrados por el gateway. En el stack de referencia de NemoClaw se ejecuta <em>dentro</em> del sandbox de OpenShell, de modo que una política del kernel controla sus herramientas sin depender de lo que decida el modelo.</li>
+  </ul>
+
+  <div class="callout"><strong>OpenShell puede alojar esta clase de aplicación de agentes.</strong> NemoClaw es el stack de referencia que utiliza el curso. NVIDIA también documenta la integración de OpenShell con Codex, Cursor y OpenCode. El CLI elegido determina los valores predeterminados iniciales; el wrapper de OpenShell decide hasta dónde se permite que lleguen.</div>
+
+  <h2>Los grados de libertad forman la superficie de ataque</h2>
+  <p>Todos estos agentes se configuran según los mismos ejes, y cada eje representa una capacidad que se concede o se retiene. La columna de NemoClaw procede directamente de la política de OpenShell que ejecuta el launchable y que leyó y comprobó en el <a href="04a-safety.html">Módulo 4a</a>.</p>
+
+  <table class="dof-table">
+    <thead><tr><th>Grado de libertad</th><th>Control</th><th>Valor predeterminado de NemoClaw (política activa)</th></tr></thead>
+    <tbody>
+      <tr><td>Sistema de archivos</td><td>qué rutas se pueden leer o escribir</td>
+        <td>escritura únicamente en <code>/tmp</code>, <code>/sandbox/.openclaw</code>, <code>/sandbox/.nemoclaw</code> y el directorio de trabajo; las rutas del sistema son de solo lectura. Landlock aplica la regla (<code>best_effort</code>).</td></tr>
+      <tr><td>Egress de red</td><td>host + puerto + método/ruta HTTP, por binario</td>
+        <td>denegado de forma predeterminada; una lista breve de permitidos (inferencia de NVIDIA, <code>inference.local</code>, clawhub/npm), donde cada entrada se limita a una forma HTTP y a un binario concreto.</td></tr>
+      <tr><td>Identidad del proceso</td><td>con qué usuario se ejecuta el agente</td>
+        <td>usuario <code>sandbox</code> sin privilegios de root; <code>ptrace</code>, <code>mount</code> y <code>setuid</code> bloqueados por seccomp.</td></tr>
+      <tr><td>Identidad del binario</td><td>qué ejecutable puede usar una concesión</td>
+        <td>se resuelve mediante la ruta del ejecutable y el recorrido de los procesos ancestros, con un hash de confianza en el primer uso; <code>argv[0]</code> no se considera fiable porque se puede falsificar.</td></tr>
+      <tr><td>Persistencia</td><td>cron, skills y la personalidad de SOUL.md</td>
+        <td>se puede escribir dentro del workspace. El esquema de políticas no permite establecer un solo archivo como de solo lectura, por lo que la protección de SOUL.md con «shields up» utiliza DAC y <code>chattr +i</code>, no el sandbox.</td></tr>
+      <tr><td>Enrutamiento de inferencia</td><td>por qué endpoint de modelo salen las llamadas</td>
+        <td>se enruta mediante el gateway administrado <code>inference.local</code>; Privacy Router decide qué contexto puede salir según la política del operador, no la del agente.</td></tr>
+    </tbody>
+  </table>
+
+
+  <h2>Pruebe · la misma tarea, ponderada entre distintos entornos</h2>
+  <p>El artefacto compara el peso de los entornos de ejecución en estos ejes:</p>
+  <ul>
+    <li><strong>Abstracciones</strong> que oculta el entorno: escribe menos código y ve menos de lo que se ejecuta.</li>
+    <li><strong>Suposiciones y valores predeterminados</strong> que incorpora: deciden hasta dónde llega antes de que usted lo solicite.</li>
+    <li><strong>Funciones integradas</strong> que incluye, frente a la misma capacidad que tendría que implementar por su cuenta.</li>
+  </ul>
+  <p>Describa una tarea y compare cuánta infraestructura aporta cada entorno. La celda editable expone el prompt de sistema, la lógica de respuesta y los ejemplos. Vuelva a ejecutarla después de editar para reconstruir el artefacto.</p>
+  <div id="clis-cell"></div>
+  <div id="clis-artifact"></div>
+  <script type="module">
+    import { mountRunCell } from "./scripts/_shared.js";
+    mountRunCell("#clis-cell", {
+      label: "El artefacto de prueba, en código",
+      autorun: true,
+      code: `// "Weigh the harnesses" artifact. Grounds on the vendored framework READMEs
+// Inline CLI extracts seed the prompt; README toggles add full docs for one turn.
+const META = { frameworks: [
+  { id: "claude-code", name: "Claude Code", note: "Anthropic. Beacon CLAUDE.md.", source: "https://raw.githubusercontent.com/anthropics/claude-code/main/README.md", extract: "Claude Code is an agentic coding tool that lives in your terminal, understands your codebase, and helps you code faster by executing routine tasks, explaining complex code, and handling git workflows -- all through natural language commands. Use it in your terminal, IDE, or tag @claude on Github." },
+  { id: "codex", name: "Codex CLI", note: "OpenAI. Beacon AGENTS.md.", source: "https://raw.githubusercontent.com/openai/codex/main/README.md", extract: "Codex CLI is a coding agent from OpenAI that runs locally on your computer. If you want Codex in your code editor (VS Code, Cursor, Windsurf), install in your IDE. If you want the desktop app experience, run codex app or visit the Codex App page." },
+  { id: "cursor", name: "Cursor", note: "Closed-source editor agent. No public repo; described from the course.", source: "course-authored (no public repo)", extract: "Cursor is a closed-source AI code editor with a built-in agent. It has no public repository, so this description stands in for a README." },
+  { id: "hermes", name: "Hermes", note: "Nous Research. Skills, memory, cron, and a multi-platform gateway.", source: "https://raw.githubusercontent.com/NousResearch/hermes-agent/main/README.md", extract: "Hermes Agent is an open-source agent framework by Nous Research. Its public documentation covers reusable skills, persistent memory, scheduled tasks, and messaging gateways, with provider and tool configuration left to the operator." },
+  { id: "openclaw", name: "OpenClaw", note: "Open-source personal agent harness; this course runs it through NVIDIA NemoClaw.", source: "https://raw.githubusercontent.com/openclaw/openclaw/main/README.md", extract: "OpenClaw is a personal AI assistant that runs on the operator's devices and communicates through configured channels. The NemoClaw reference stack used by this course runs OpenClaw inside OpenShell so filesystem, process, network, and inference access can be governed outside the model." }
+] };
+const FW = META.frameworks;                       // [{ id, name, note, source, extract }]
+const nameOf = (id) => (FW.find((f) => f.id === id) || {}).name || id;
+const _cache = {};
+async function readme(id) {
+  const fallback = () => (FW.find((f) => f.id === id) || {}).extract || "";
+  if (_cache[id] == null) {
+    try { const r = await helpers.fetch("assets/cli_readme_" + id + ".txt"); _cache[id] = r.ok ? await r.text() : fallback(); }
+    catch (e) { _cache[id] = fallback(); }
+  }
+  return _cache[id];
+}
+
+// A grounded system prompt, assembled from the READMEs instead of guessed.
+const SYS =
+  "These agent CLIs share one shape, a model looping over tools. Grounded descriptions from their docs:\\n" +
+  FW.map((f) => "- " + f.name + " (" + f.note + "): " + f.extract).join("\\n") +
+  "\\n\\nThey are interchangeable for almost any task; what differs is harness weight: the abstractions each hides, the defaults it assumes, and the capabilities it makes first-class instead of leaving you to hand-roll. " +
+  "Self-modification is not unique to any one of them: any that can edit files can rewrite its own skills, so treat it as a difference of emphasis, not capability. " +
+  "Ground every claim in the descriptions above and in any READMEs the user attached. If a detail is not supported there, say you are unsure instead of inventing a feature. " +
+  "For the user's task, answer in three parts. (1) In two sentences, the near-identical core loop all of them would run, so it is clear any could do it. (2) One line per CLI: the single thing that is first-class for THIS task versus what you would hand-roll, plus the default that sets its weight, citing the doc detail it rests on. (3) One sentence: none is more capable here, so the choice is how much harness weight the task is worth. Do not crown a single winner.";
+
+// One toggle per framework; selection clears after the next question.
+const selected = new Set();
+const stale = document.querySelector("#clis-readme-bar");
+if (stale) stale.remove();
+
+const bar = document.createElement("div");
+bar.id = "clis-readme-bar"; bar.className = "chatui-mods";
+bar.style.cssText = "display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 8px";
+bar.innerHTML = "<label>READMEs</label>";
+
+const btnFor = {};
+FW.forEach((f) => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "chatui-modchip"; b.textContent = "+ " + f.name; b.title = f.source;
+  b.addEventListener("click", () => { b.classList.toggle("on"); selected.has(f.id) ? selected.delete(f.id) : selected.add(f.id); });
+  btnFor[f.id] = b; bar.appendChild(b);
+});
+document.querySelector("#clis-artifact").before(bar);
+const clearSel = () => { selected.clear(); FW.forEach((f) => btnFor[f.id].classList.remove("on")); };
+
+helpers.mountChatUI("#clis-artifact", {
+  growLog: true,   // flow with the page instead of an internal 480px scroll that traps the wheel
+  greeting: "Tell me a task and where it runs. I will show the one core loop all of these CLIs would run for it, then weigh each from its docs, rather than crowning a single winner. Toggle a README above to hand me its full text for your next question.",
+  examples: ["Refactor a large repo unattended overnight", "A personal assistant I message from my phone", "Triage prod incidents on a server 24/7"],
+
+  respond: async (text, ctx) => {
+    let primer = "";
+    const sel = [...selected];
+    if (sel.length) {
+      const parts = await Promise.all(sel.map(async (id) => "## " + nameOf(id) + " README\\n\\n" + (await readme(id))));
+      primer = "\\n\\nThe user attached these full READMEs as reference for this decision. Ground your answer in them:\\n\\n" + parts.join("\\n\\n---\\n\\n");
+      ctx.view.tool("injected READMEs: " + sel.map(nameOf).join(", "));
+    }
+    const s = await helpers.chatStream({ messages: [{ role: "system", content: SYS + primer }, { role: "user", content: text }], max_tokens: 8196, signal: ctx.signal },
+      (t) => ctx.view.token(t), { onReasoning: (r) => ctx.view.reasoning(r) });
+    if (s.usage) ctx.view.usage({ input: s.usage.prompt_tokens, output: s.usage.completion_tokens, model: s.model });
+    clearSel();                                   // deselect so the same README never double-injects
+  },
+});
+helpers.log("rendered below. Toggle a README to add it as context, then ask.");
+
+/* mountChatUI renders the panel; respond() streams one chat call. */
+`,
+    });
+  </script>
+
+
+
+
+  <h2>Cree un agente de CLI cuyo shell es este navegador</h2>
+  <p>Los CLI anteriores conectan un agente a una terminal de una máquina real. Puede crear la misma forma utilizando el runtime JavaScript del navegador como shell. El agente siguiente tiene una herramienta, <code>js</code>, con la que escribe JavaScript que se ejecuta en esta página y devuelve un resultado que el agente lee antes de decidir qué ejecutar después. El runtime ya está cargado, por lo que no hay que preparar otro entorno. Su alcance sigue siendo amplio: el agente puede leer el DOM, llamar a <code>fetch</code> y utilizar los helpers del curso, todo dentro de la pestaña que está leyendo.</p>
+  <p>El Módulo 4c retoma este formato de navegador y separa la parte transferible&mdash;una superficie web interactiva con estado y controles visibles&mdash;de los adaptadores de autenticación, almacenamiento, red y herramientas que proporciona cada host.</p>
+  <div id="cell-jsagent"></div>
+  <div id="jsagent-artifact"></div>
+  <script type="module">
+    import { mountRunCell } from "./scripts/_shared.js";
+    mountRunCell("#cell-jsagent", {
+      openCode: false,
+      label: "un agente de CLI conectado al runtime del navegador, en código",
+      intro: "Asigne un objetivo al agente y observe primero sus llamadas a la herramienta JavaScript. Abra la implementación cuando quiera cambiar el límite de la herramienta, el máximo de ciclos o la regla para la respuesta final.",
+      autorun: true,
+      code: `// A CLI agent whose shell is THIS browser's JS runtime. Its one tool, js, runs
+// code in the live page and returns a value, so the agent loops: reason, run, read, repeat.
+// The runtime is already loaded, nothing to install.
+const JS_TOOL = {
+  type: "function",
+  function: {
+    name: "js",
+    description: [
+      "Run JavaScript in this browser page and return a value.",
+      "You have the full window: document, fetch, location, and the course helpers object.",
+      "End with a return statement to report the result.",
+    ].join(" "),
+    parameters: {
+      type: "object",
+      properties: { code: { type: "string", description: "JavaScript to run. Use return." } },
+      required: ["code"],
+    },
+  },
+};
+
+// Run agent-written code against the live runtime. helpers is injected; document, window, and fetch are ambient.
+async function runJS(code) {
+  const fn = new Function("helpers", "return (async () => { " + code + " })();");
+  return await fn(helpers);
+}
+
+helpers.mountChatUI("#jsagent-artifact", {
+  growLog: true,   // flow with the page instead of an internal 480px scroll that traps the wheel
+  greeting: "Give me a goal. My shell is this page's JavaScript runtime, so I act by running JS right here in your tab.",
+  examples: [
+    "How many code editors are on this page?",
+    "List the H2 section headings on this page.",
+    "Fetch assets/rag_index.json and report the embed model and how many docs it pins.",
+    "How many links on this page open in a new tab?",
+    "Compute the 12th Fibonacci number and return it.",
+    "Which keys are in localStorage right now?",
+  ],
+  respond: async (goal, ctx) => {
+    const messages = [
+      {
+        role: "system",
+        content: [
+          "You are a CLI agent whose shell is this browser's JavaScript runtime.",
+          "To learn anything, call the js tool with code that runs in the live page.",
+          "End each code snippet with a return statement.",
+          "Never claim a result you did not run.",
+          "Editable code cells render as .CodeMirror elements, not .code-editor.",
+          "If a selector returns nothing, inspect the DOM before concluding.",
+          "When you have enough, reply with a short plain-text answer and no tool call.",
+        ].join(" "),
+      },
+      { role: "user", content: goal },
+    ];
+
+    let answered = false;
+    for (let step = 0; step < 8; step++) {
+      const r = await helpers.chat({ messages, tools: [JS_TOOL], max_tokens: 8196 });
+      const m = r.choices[0].message;
+      messages.push(m);
+
+      const calls = m.tool_calls || [];
+      if (!calls.length) {
+        const txt = (m.content || "").trim();
+        if (txt) { ctx.view.token(txt); answered = true; break; }
+        messages.push({ role: "user", content: "Run js to gather what you need, or give your final plain-text answer." });
+        continue;
+      }
+      for (const tc of calls) {
+        let code = "";
+        try { code = JSON.parse(tc.function.arguments || "{}").code || ""; } catch (_) {}
+        if (!code.trim()) {
+          ctx.view.tool("$ js", "(empty)");
+          ctx.view.tool("returned", "no code submitted");
+          messages.push({ role: "tool", tool_call_id: tc.id, content: "Error: no code submitted. Put JavaScript in the code argument and end with a return statement." });
+          continue;
+        }
+        ctx.view.tool("$ js", code);                       // the JS the agent chose to run
+
+        let out;
+        try { out = await runJS(code); } catch (e) { out = "Error: " + ((e && e.message) || e); }
+        const text = out === undefined ? "undefined (did the snippet end with a return?)" : (typeof out === "object" ? JSON.stringify(out) : String(out));
+        ctx.view.tool("returned", text.slice(0, 700));     // what the runtime handed back
+        messages.push({ role: "tool", tool_call_id: tc.id, content: text.slice(0, 1500) });
+      }
+    }
+    // Always land on a plain-text answer instead of dead-ending at "(no answer)".
+    if (!answered) {
+      const r = await helpers.chat({ messages: messages.concat([{ role: "user", content: "Give your best final answer now in one or two plain-text sentences, using only what the tool returned." }]), max_tokens: 8196 });
+      ctx.view.token((r.choices[0].message.content || "I could not determine that from the page.").trim());
+    }
+  },
+});
+helpers.log("CLI agent mounted below. Give it a goal and watch it drive the runtime.");
+`,
+    });
+  </script>
+
+
+
+
+
+
+  <h2>Abra un shell real en el launchable</h2>
+  <p>Su launchable de NemoClaw ofrece un shell real del host mediante la misma conexión <code>/ws/terminal</code> que utilizan las sondas de políticas del Módulo 4a. Ese host contiene el CLI <strong>openshell</strong>, la herramienta del operador que administra el agente en el sandbox. Cada línea que escriba debajo se ejecuta en el launchable y devuelve su propia salida.</p>
+  <p>Conecte primero el launchable en el <a href="03a-kickstart.html">Módulo 3a</a>. Escriba un comando o pulse Tab para autocompletar. En el host, <code>openshell sandbox list</code> muestra el agente y <code>openshell status</code> informa del gateway. El agente se ejecuta dentro de un sandbox; anteponga <code>agent</code> a un comando para ejecutarlo allí: <code>agent ls</code> enumera sus archivos mediante <code>openshell sandbox exec</code>. Cada comando se ejecuta en un shell breve e independiente. Para conversar de forma interactiva con el agente, utilice el panel siguiente en lugar de <code>openclaw tui</code>.</p>
+  <div id="cell-deepagents"></div>
+  <div id="deepagents-artifact"></div>
+  <script type="module">
+    import { mountRunCell } from "./scripts/_shared.js";
+    mountRunCell("#cell-deepagents", {
+      label: "una terminal real en el launchable, con acceso rápido al sandbox del agente",
+      autorun: true,
+      code: `// A real shell on your NemoClaw launchable, over the same /ws/terminal PTY Module 4a's probes use
+// (helpers.terminal). The host carries openshell; your agent runs in a sandbox, so "agent <cmd>" runs
+// there via openshell sandbox exec (helpers.sandboxExec). Interactive sessions (openclaw tui) need a
+// persistent connection a one-shot terminal cannot hold, so chatting lives in the panel below.
+
+function launchableUrl() {
+  let u = localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl") || "";
+  while (u.length && u[u.length - 1] === "/") u = u.slice(0, -1);
+  return u;
+}
+
+const SUGGESTIONS = ["help", "openshell sandbox list", "openshell status", "openshell --help", "agent ls", "agent ls -a", "agent pwd"];
+// Interactive sessions a one-shot terminal cannot drive: steer the student to the chat panel or to exec.
+const INTERACTIVE = ["openshell term", "openshell sandbox connect", "nemoclaw", "openclaw chat", "openclaw tui", "openclaw configure"];
+const HELP = 'This is your launchable host shell. The host carries the openshell CLI; your agent runs inside a sandbox. On the host, try: openshell sandbox list, openshell status, openshell --help. To run a command inside your agent, prefix it with "agent", for example: agent ls. To chat with the agent, use the panel below this terminal. Type clear to empty the screen.';
+
+function hintFor(output) {
+  if (/execvp|command not found|No such file or directory/i.test(String(output || ""))) {
+    return "Not a command on the launchable host. The host carries openshell, so try openshell --help or openshell sandbox list, or run it inside your agent with: agent <command>.";
+  }
+  return "";
+}
+
+async function run(cmd, con, ctx) {
+  const t = cmd.trim();
+  if (t === "/help" || t === "help" || t === "?") return con.write(HELP, "da-dim");
+  if (t === "/clear" || t === "clear") return con.clear();
+  if (t.charAt(0) === "/") return con.write("Slash commands belong to the chat panel below or the openclaw tui, not this host shell. Type a command without the slash, or help.", "da-dim");
+  if (t === "agent" || t.indexOf("agent ") === 0) {
+    const inner = t.slice(5).trim();
+    if (!inner) return con.write('usage: agent <command>   runs <command> inside your agent sandbox, for example: agent ls', "da-dim");
+    let r;
+    try { r = await helpers.sandboxExec(inner, { signal: ctx.signal }); } catch (e) { return con.write(String((e && e.message) || e), "da-err"); }
+    con.write((r.output || "").trimEnd() || "(no output)");
+    const h = hintFor(r.output); if (h) con.write(h, "da-dim");
+    return;
+  }
+  if (INTERACTIVE.some(function (x) { return t.indexOf(x) === 0; })) return con.write('That starts an interactive session this one-shot terminal cannot hold open. To chat with your agent, use the panel below. For a one-shot command inside the agent, use: agent <command>.', "da-dim");
+  let got = false, captured = "";
+  try {
+    await helpers.terminal(t, { totalMs: 120000, idleMs: 8000, signal: ctx.signal, onChunk: function (c) { if (c) { got = true; captured += c; con.raw(c); } } });
+  } catch (e) {
+    return con.write(String((e && e.message) || e), "da-err");
+  }
+  if (!got) con.write("(no output)", "da-dim");
+  const h = hintFor(captured); if (h) con.write(h, "da-dim");
+}
+
+const connected = !!launchableUrl();
+helpers.mountConsole("#deepagents-artifact", {
+  prompt: "$",
+  suggestions: SUGGESTIONS,
+  disabled: !connected,
+  disabledMsg: "No launchable connected. Open Module 3a (Kickstart), connect your launchable, then return here.",
+  greeting: connected ? "Connected to your launchable host shell. It carries the openshell CLI; your agent runs in a sandbox. Type help, click a chip, or press Tab to autocomplete." : "",
+  onSubmit: run,
+});
+helpers.log("launchable terminal mounted below. If it says no launchable, connect on Module 3a.");
+`,
+    });
+  </script>
+
+
+
+
+  <h2>Converse con el agente</h2>
+  <p><code>openclaw tui</code> es un chat interactivo a pantalla completa que una terminal de ejecución única no puede mantener abierto. El panel siguiente se comunica con el mismo agente activo mediante el gateway de OpenClaw, la conexión <code>/cli/gateway</code> que utilizan los Módulos <a href="03b-openclaw.html">3b</a> y <a href="03c-always-on.html">3c</a>. Puede conversar sin salir de la página. El panel transmite la respuesta del agente y muestra cada herramienta o comando que ejecuta. Conecte primero el launchable en el <a href="03a-kickstart.html">Módulo 3a</a> con su URL y token. Pregunte cualquier cosa, elija una sugerencia o pulse Tab para autocompletar.</p>
+  <div id="cell-agentchat"></div>
+  <div id="agent-chat"></div>
+  <script type="module">
+    import { mountRunCell } from "./scripts/_shared.js";
+    mountRunCell("#cell-agentchat", {
+      label: "Converse con su agente activo mediante el gateway de OpenClaw",
+      autorun: true,
+      code: `// Chat with your live OpenClaw agent over the /cli/gateway (helpers.openclawChat). It streams the
+// The terminal streams replies, tool calls, slash commands, and live gateway results.
+function connected() {
+  return !!(localStorage.getItem("nemoclaw_clawtoken") && (localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl")));
+}
+
+// Reuse one operator socket; every slash query still hits the gateway fresh.
+let _gw = null;
+function gwUrl() {
+  let u = localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl") || "";
+  while (u.length && u[u.length - 1] === "/") u = u.slice(0, -1);
+  if (u.indexOf("https") === 0) u = "wss" + u.slice(5); else if (u.indexOf("http") === 0) u = "ws" + u.slice(4);
+  return u + "/cli/gateway";
+}
+function gwCall(method, params) {
+  return new Promise(function (resolve, reject) {
+    const token = localStorage.getItem("nemoclaw_clawtoken") || "";
+    if (!token) return reject(new Error("Connect on Module 3a first (URL + token)."));
+    function send(sock) {
+      const id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      const tm = setTimeout(function () { delete sock.pend[id]; reject(new Error(method + " timed out")); }, 20000);
+      sock.pend[id] = { resolve: resolve, reject: reject, tm: tm };
+      sock.ws.send(JSON.stringify({ type: "req", id: id, method: method, params: params || {} }));
+    }
+    if (_gw && _gw.ws.readyState === 1 && _gw.ready) return send(_gw);
+    let ws; try { ws = new WebSocket(gwUrl()); } catch (e) { return reject(e); }
+    const sock = { ws: ws, pend: {}, ready: false };
+    const ot = setTimeout(function () { if (!sock.ready) { try { ws.close(); } catch (e) {} reject(new Error("gateway did not respond in 15s; reopen your launchable URL to re-authenticate.")); } }, 15000);
+    ws.onmessage = function (ev) {
+      let d; try { d = JSON.parse(ev.data); } catch (e) { return; }
+      if (!sock.ready && d.event === "connect.challenge") {
+        const cid = "c" + Math.random().toString(36).slice(2);
+        sock.pend[cid] = { resolve: function () { sock.ready = true; clearTimeout(ot); _gw = sock; send(sock); }, reject: reject, tm: setTimeout(function () { reject(new Error("connect timed out")); }, 15000) };
+        ws.send(JSON.stringify({ type: "req", id: cid, method: "connect", params: { minProtocol: 4, maxProtocol: 4, client: { id: "openclaw-control-ui", version: "0.1.0", platform: "browser", mode: "webchat" }, caps: ["tool-events"], role: "operator", scopes: ["operator.read", "operator.write", "operator.admin"], auth: { token: token } } }));
+        return;
+      }
+      if (d.type === "res" && d.id && sock.pend[d.id]) { const pr = sock.pend[d.id]; clearTimeout(pr.tm); delete sock.pend[d.id]; if (d.ok) pr.resolve(d.payload); else pr.reject(new Error((d.error && d.error.message) || "gateway error")); }
+    };
+    ws.onerror = function () {};
+    ws.onclose = function () { if (_gw === sock) _gw = null; sock.ready = false; };
+  });
+}
+const SLASH =["/help", "/clear", "/branch", "/reset", "/new", "/compact", "/model", "/models", "/usage", "/status", "/context", "/think", "/config", "/agents", "/subagents", "/mcp", "/tasks", "/review", "/whoami", "/commands"];
+const CHIPS =["/help", "/model", "/status", "/reset", "What can you do?", "Summarize your workspace and your SOUL.md", "List the files in your workspace"];
+let session = "main";
+// Warm new sessions once so onboarding does not consume the first real question.
+const _warmP = {};
+function _warmedList() { try { return JSON.parse(localStorage.getItem("nemoclaw_warmed") || "[]"); } catch (e) { return []; } }
+function isWarmed(s) { return _warmedList().indexOf(s) >= 0; }
+function markWarmed(s) { try { const d = _warmedList(); if (d.indexOf(s) < 0) { d.push(s); localStorage.setItem("nemoclaw_warmed", JSON.stringify(d)); } } catch (e) {} }
+function unmarkWarmed(s) { try { localStorage.setItem("nemoclaw_warmed", JSON.stringify(_warmedList().filter(function (x) { return x !== s; }))); } catch (e) {} delete _warmP[s]; }
+function warm(s) {
+  if (_warmP[s]) return _warmP[s];
+  if (isWarmed(s) || !connected()) { _warmP[s] = Promise.resolve(); return _warmP[s]; }
+  _warmP[s] = helpers.openclawChat("Hello", { session: s }).then(function () { markWarmed(s); }).catch(function () { delete _warmP[s]; });
+  return _warmP[s];
+}
+
+function makeView() {
+  const o = document.querySelector("#agent-chat .da-out");
+  let ans = null;
+  const v = { streamed: false };
+  v.token = function (delta) { v.streamed = true; if (!ans) { ans = document.createElement("div"); o.appendChild(ans); } ans.textContent += delta; };
+  v.tool = function (label, body) {
+    ans = null;
+    const d = document.createElement("details"); d.style.cssText = "margin:3px 0;";
+    const sm = document.createElement("summary"); sm.textContent = "\uD83D\uDD27 " + label; sm.style.cssText = "cursor:pointer;";
+    const b = document.createElement("div"); b.className = "chatui-tool-body"; b.textContent = body || ""; b.style.cssText = "white-space:pre-wrap;font-size:.8rem;opacity:.8;margin:3px 0 0 14px;max-height:240px;overflow:auto;";
+    d.appendChild(sm); d.appendChild(b); o.appendChild(d); return d;
+  };
+  v.usage = function (u) { const e = document.createElement("div"); e.className = "da-dim"; e.textContent = "tokens " + (u.context || "?") + (u.window ? (" / " + u.window) : "") + (u.model ? (" · " + u.model) : ""); o.appendChild(e); };
+  return v;
+}
+
+const con = helpers.mountConsole("#agent-chat", {
+  prompt: "you",
+  suggestions: CHIPS,
+  disabled: !connected(),
+  disabledMsg: "Connect your launchable on Module 3a first (its URL and token), then your agent is reachable here.",
+  greeting: connected() ? "Connected to your agent over the gateway. Ask it anything, type /help for commands, click a prompt, or press Tab to autocomplete." : "",
+  onSubmit: async (msg, c, ctx) => {
+    const m = msg.trim();
+    if (m === "/help" || m === "?") return c.write("This panel runs every OpenClaw command live over the gateway. Local helpers drive the panel itself: /clear empties this screen, /commands lists the full gateway set, and /new plus /branch manage the tabs above (your branches): /branch new opens one, /branch <name> switches to or creates one, /branch list shows them, /branch close <name> drops one. Anything without a slash is sent to your agent as chat.", "da-dim");
+    if (m === "/commands") {
+      c.write("commands.list ...", "da-dim");
+      try {
+        const r = await gwCall("commands.list", {}); const cmds = (r && r.commands) || [];
+        if (!cmds.length) { c.write("No commands reported by the gateway.", "da-dim"); return; }
+        let cat = "";
+        cmds.slice().sort(function (a, b) { return (a.category || "").localeCompare(b.category || "") || (a.name || "").localeCompare(b.name || ""); }).forEach(function (cmd) {
+          if ((cmd.category || "") !== cat) { cat = cmd.category || ""; c.write((cat || "other") + ":", "da-cmd"); }
+          const alias = (cmd.textAliases && cmd.textAliases[0]) || ("/" + cmd.name);
+          c.write("  " + alias + (cmd.acceptsArgs ? " <args>" : "") + (cmd.description ? "  " + cmd.description : ""), "da-dim");
+        });
+      } catch (e) { c.write("commands.list failed: " + ((e && e.message) || e), "da-err"); }
+      return;
+    }
+    if (m === "/clear") return c.clear();
+    // Tabs are local agent sessions; handle /new and /branch here.
+    if (m === "/new") { addBranch(); return; }
+    if (m === "/branch" || m.indexOf("/branch ") === 0) {
+      const arg = m.indexOf("/branch ") === 0 ? m.slice(8).trim() : "";
+      if (!arg || arg === "new") { addBranch(); return; }
+      if (arg === "list" || arg === "ls") { c.write("branches: " + tabs.map(function (t) { return t === session ? t + " (active)" : t; }).join(", "), "da-dim"); return; }
+      if (arg.indexOf("close") === 0) { const nm = arg.slice(5).trim() || session; if (tabs.indexOf(nm) < 0) return c.write("no branch named '" + nm + "'", "da-err"); if (tabs.length <= 1) return c.write("cannot close the last branch.", "da-err"); closeTab(nm); return; }
+      if (tabs.indexOf(arg) < 0) { tabs.push(arg); logs[arg] = ""; saveBranches(); }
+      switchTab(arg); warm(arg);
+      return;
+    }
+    // Send slash commands and chat through the gateway; warm chats wait for onboarding.
+    if (m.charAt(0) !== "/") { if (!isWarmed(session)) c.write("setting up this session (the first reply takes a moment)…", "da-dim"); await warm(session); }
+    const isCmd = m.charAt(0) === "/";
+    if (isCmd) c.write("running " + m.split(" ")[0] + " ...", "da-dim");
+    const view = makeView();
+    try {
+      const r = await helpers.openclawChat(msg, { session: session, view: view, signal: ctx.signal });
+      if (!view.streamed) c.write(r || (isCmd ? "(done)" : "(no reply)"));
+    } catch (e) { c.write((e && e.message) || String(e), "da-err"); }
+    // /reset wipes the session back to fresh, so it will onboard again: re-warm it in the background.
+    if (m === "/reset") { unmarkWarmed(session); warm(session); }
+  },
+});
+
+const dl = document.querySelector("#agent-chat datalist");
+function addOpt(v) { if (dl && v) { const o2 = document.createElement("option"); o2.value = v; dl.appendChild(o2); } }
+SLASH.filter(function (s2) { return CHIPS.indexOf(s2) < 0; }).forEach(addOpt);   // static fallback; replaced by the live list below
+if (connected()) (async function () {
+  try {
+    const r = await gwCall("commands.list", {}); const cmds = (r && r.commands) || [];
+    if (dl && cmds.length) {
+      dl.innerHTML = ""; const seen = {};
+      cmds.forEach(function (cmd) { const a = (cmd.textAliases && cmd.textAliases[0]) || ("/" + cmd.name); if (a && !seen[a]) { seen[a] = 1; addOpt(a); } });
+      ["/clear", "/reset", "/model", "/models", "/status", "/config", "/help", "/commands"].forEach(function (a) { if (!seen[a]) { seen[a] = 1; addOpt(a); } });
+    }
+  } catch (e) {}
+})();
+
+// Session/branch tabs: each tab is an independent agent session (a branch).
+// Switching swaps the visible log and the session key openclawChat sends to; "+ branch" starts a new one; "×" deletes it (sessions.delete).
+const termEl = document.querySelector("#agent-chat .da-term");
+const outEl = document.querySelector("#agent-chat .da-out");
+let tabs = ["main"], branchN = 0;
+const logs = { main: "" };
+function saveBranches() { try { localStorage.setItem("nemoclaw_branches", JSON.stringify(tabs)); } catch (e) {} }
+const tabBar = document.createElement("div");
+tabBar.style.cssText = "display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;";
+function renderTabs() {
+  tabBar.innerHTML = "";
+  tabs.forEach(function (name) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "da-chip"; b.textContent = name;
+    b.style.fontWeight = (name === session) ? "700" : "400"; b.style.opacity = (name === session) ? "1" : ".6";
+    b.addEventListener("click", function () { switchTab(name); });
+    tabBar.appendChild(b);
+    if (tabs.length > 1) {
+      const x = document.createElement("button"); x.type = "button"; x.className = "da-chip"; x.textContent = "×";
+      x.title = "close " + name; x.style.padding = "2px 8px";
+      x.addEventListener("click", function (ev) { ev.stopPropagation(); closeTab(name); });
+      tabBar.appendChild(x);
+    }
+  });
+  const plus = document.createElement("button"); plus.type = "button"; plus.className = "da-chip"; plus.textContent = "+ branch";
+  plus.addEventListener("click", addBranch); tabBar.appendChild(plus);
+}
+function switchTab(name) {
+  if (name === session || !outEl) return;
+  logs[session] = outEl.innerHTML;
+  session = name;
+  outEl.innerHTML = logs[name] || "";
+  if (!logs[name]) con.write("Branch '" + name + "': a fresh agent session. Other branches are kept; switch tabs to revisit them.", "da-dim");
+  renderTabs();
+}
+function addBranch() { do { branchN += 1; } while (tabs.indexOf("branch-" + branchN) >= 0); const name = "branch-" + branchN; tabs.push(name); logs[name] = ""; saveBranches(); switchTab(name); warm(name); }
+async function closeTab(name) {
+  if (tabs.length <= 1) return;
+  try { await gwCall("sessions.delete", { key: name }); } catch (e) {}
+  tabs = tabs.filter(function (t) { return t !== name; }); delete logs[name]; saveBranches();
+  if (session === name) { session = tabs[0]; if (outEl) outEl.innerHTML = logs[session] || ""; }
+  renderTabs();
+}
+if (connected() && termEl && outEl) {
+  termEl.insertBefore(tabBar, termEl.firstChild);
+  // Branches persist in this browser: the panel owns its own tab list.
+  // We do NOT scrape the gateway's session list, which surfaces junk keys (e.g. a stale main-<timestamp> left by another client) as tabs.
+  // A branch's context still lives on the gateway under its name; switching back resumes it.
+  try {
+    const saved = JSON.parse(localStorage.getItem("nemoclaw_branches") || "[]");
+    if (Array.isArray(saved)) saved.forEach(function (n) { if (n && typeof n === "string" && tabs.indexOf(n) < 0) { tabs.push(n); if (!(n in logs)) logs[n] = ""; } });
+  } catch (e) {}
+  renderTabs();
+  warm(session);   // pre-warm the active session in the background so the first real message is instant
+}
+// Hide this cell's JavaScript by default (the panel is the artifact); a header toggle reveals it.
+(function () {
+  const box = document.querySelector("#cell-agentchat");
+  if (!box) return;
+  if (!document.getElementById("ac-hidecode")) {
+    const st = document.createElement("style"); st.id = "ac-hidecode";
+    st.textContent = "#cell-agentchat .rc-helpers,#cell-agentchat .rc-schemas,#cell-agentchat .rc-code,#cell-agentchat .CodeMirror,#cell-agentchat .rc-out{display:none;}#cell-agentchat.rc-show .rc-helpers,#cell-agentchat.rc-show .rc-schemas,#cell-agentchat.rc-show .rc-code,#cell-agentchat.rc-show .CodeMirror,#cell-agentchat.rc-show .rc-out{display:block;}";
+    document.head.appendChild(st);
+  }
+  const runBtn = box.querySelector(".rc-run"); const hdr = runBtn && runBtn.parentNode;
+  if (hdr && !hdr.querySelector(".ac-codetoggle")) {
+    const tg = document.createElement("button"); tg.type = "button"; tg.className = "ac-codetoggle"; tg.textContent = "show code";
+    tg.style.cssText = "margin-right:8px;background:var(--e1);color:var(--td);border:1px solid var(--bd);border-radius:4px;padding:4px 10px;font-family:var(--mono);font-size:.75rem;cursor:pointer;";
+    tg.addEventListener("click", function () {
+      const on = box.classList.toggle("rc-show");
+      tg.textContent = on ? "hide code" : "show code";
+      if (on) { const cm = box.querySelector(".CodeMirror"); if (cm && cm.CodeMirror) setTimeout(function () { cm.CodeMirror.refresh(); }, 0); }
+    });
+    hdr.insertBefore(tg, runBtn);
+  }
+})();
+helpers.log("agent chat mounted below.");
+`,
+    });
+  </script>
+
+  <div class="callout"><p><strong>La terminal anterior pertenece al plano del operador.</strong> Desde el shell del host del launchable, openshell administra el agente en el sandbox. El host es el plano de control situado por encima de la política, el perímetro que destacó el <a href="04a-safety.html">Módulo 4a</a>. Los comandos que envía al agente mediante <code>agent &lt;cmd&gt;</code> se ejecutan bajo su política de denegación predeterminada; el shell del host responde al operador.</p><ul><li><strong>Coste de preparación.</strong> El launchable se aprovisionó para usted y ya está en ejecución. En su propia máquina, un CLI necesita una instalación y un runtime configurado antes del primer turno.</li><li><strong>Alcance.</strong> Dentro del agente, la política del kernel controla cada llamada con las reglas de denegación predeterminada que leyó en el Módulo 4a. En su propia máquina, el CLI puede leer y escribir sus archivos y alcanzar toda la red.</li><li><strong>Alcance del impacto.</strong> Una inyección de prompt dentro del agente alcanza ese sandbox y su registro de auditoría. La misma inyección en su máquina actúa sobre sus archivos reales: es el argumento de los grados de libertad presentado al principio de la página, aplicado ahora por usted.</li></ul><p>Un entorno más completo justifica su peso cuando una tarea exige persistencia y trabajo real que una pestaña no puede mantener. La capacidad que debe desarrollar es interpretar la tarea para elegir el peso necesario; el <a href="04c-going-further.html">Módulo 4c</a> cierra con esa visión por capas.</p></div>
+
+  <div class="foot-nav">
+    <a href="04a-safety.html">← Módulo 4a: OpenShell</a>
+    <a class="next" href="04c-going-further.html">Módulo 4c: Para ir más lejos →</a>
+  </div>
+</main>
+
+<script type="module">
+import { buildNav, updateKeyPill, updateClawPill, mountJourneyMap } from "./scripts/_shared.js";
+document.getElementById("nav").innerHTML = buildNav("04b-modern-clis.html");
+updateKeyPill(document.getElementById("key-status"));
+updateClawPill(document.getElementById("claw-status"));
+mountJourneyMap("#journey-map", "4b");
+hljs.highlightAll();
+
+
+
+</script>
+</body>
+</html>

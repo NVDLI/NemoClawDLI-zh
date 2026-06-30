@@ -47,7 +47,8 @@ directory. [`SKILL_CONTRACT.md`](SKILL_CONTRACT.md) specifies that format and
 [`QUALITY_DIRECTIVES.md`](QUALITY_DIRECTIVES.md) sets the content bar.
 
 For localization, start at [`scripts/translate/SKILL.html`](scripts/translate/SKILL.html),
-then open the locale node such as [`scripts/translate/locales/pt-BR/SKILL.html`](scripts/translate/locales/pt-BR/SKILL.html).
+then open the target locale node, such as [`scripts/translate/locales/pt-BR/SKILL.html`](scripts/translate/locales/pt-BR/SKILL.html)
+or [`scripts/translate/locales/es-ES/SKILL.html`](scripts/translate/locales/es-ES/SKILL.html).
 Translate learner-facing prose in the sparse `i18n/<code>/` overlay. Do not copy standalone
 runtime modules, assets, data, or machine-contract pages into it. Inline executable structure
 must remain equivalent to English; localized UI strings may differ. Locale profiles also reject literal wording

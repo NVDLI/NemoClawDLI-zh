@@ -12,7 +12,6 @@ let printOpenStates = null;
 let codeObserver = null;
 
 function supportsLearningView() {
-  if (!document.documentElement.lang.toLowerCase().startsWith("en")) return false;
   if (document.body?.hasAttribute("data-learning-view")) return true;
   const page = location.pathname.split("/").pop() || "index.html";
   return page === "index.html" || /^0[1-4][a-c]-[^/]+\.html$/.test(page);
@@ -77,17 +76,23 @@ function mountCodeObserver() {
 }
 
 function makeDepthControl() {
+  const locale = document.documentElement.lang.toLowerCase();
+  const words = locale.startsWith("pt")
+    ? { detail: "Detalhe", aria: "Nível de detalhe do curso", guided: "Guiado", applied: "Aplicado", complete: "Completo" }
+    : locale.startsWith("es")
+      ? { detail: "Detalle", aria: "Nivel de detalle del curso", guided: "Guiado", applied: "Aplicado", complete: "Completo" }
+      : { detail: "Detail", aria: "Course detail level", guided: "Guided", applied: "Applied", complete: "Complete" };
   const label = document.createElement("label");
   label.className = "learning-depth-control";
   const text = document.createElement("span");
-  text.textContent = "Detail";
+  text.textContent = words.detail;
   const select = document.createElement("select");
   select.className = "learning-depth-select";
-  select.setAttribute("aria-label", "Course detail level");
+  select.setAttribute("aria-label", words.aria);
   select.innerHTML = `
-    <option value="guided">Guided</option>
-    <option value="applied">Applied</option>
-    <option value="complete">Complete</option>`;
+    <option value="guided">${words.guided}</option>
+    <option value="applied">${words.applied}</option>
+    <option value="complete">${words.complete}</option>`;
   select.addEventListener("change", () => saveLearningDepth(select.value));
   label.append(text, select);
   return label;
