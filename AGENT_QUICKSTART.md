@@ -321,7 +321,8 @@ For GitLab branch staging, play `pages` only after the blocking `test` job passe
 Done means the job SHA still matches the remote branch head, the live branch course
 returns 200, both root and branch `branches.json` files pass
 `branch_preview_manifest_audit.py`, and every selector option survives its same-origin
-HEAD probe. Classic Pages keeps only the latest combined preview artifact, so never
+HEAD probe. The same audit fetches each staged dependency dashboard, generated package
+inventory, and browser SBOM; a foyer-only 200 is insufficient. Classic Pages keeps only the latest combined preview artifact, so never
 claim an older branch remains staged after publishing another one. The automatic,
 blocking `pages_smoke` job performs the same checks after Pages propagation.
 For a local production-shaped browser check, run

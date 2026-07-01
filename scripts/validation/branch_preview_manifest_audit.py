@@ -12,6 +12,34 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+COURSE_EVIDENCE = (
+    "dependencies.html",
+    "vendor/browser-dependencies.json",
+    "vendor/browser-sbom.cdx.json",
+)
+
+
+def audit_course_evidence(course_root: Path, label: str) -> list[str]:
+    findings = [f"{label} missing course evidence: {rel}"
+                for rel in COURSE_EVIDENCE if not (course_root / rel).is_file()]
+    if findings:
+        return findings
+    dashboard = (course_root / "dependencies.html").read_text(encoding="utf-8", errors="replace")
+    if "Browser dependency inventory" not in dashboard or "vendor/browser-dependencies.json" not in dashboard:
+        findings.append(f"{label} dependency dashboard is not wired to its inventory")
+    try:
+        manifest = json.loads((course_root / "vendor/browser-dependencies.json").read_text())
+        sbom = json.loads((course_root / "vendor/browser-sbom.cdx.json").read_text())
+    except json.JSONDecodeError as exc:
+        return findings + [f"{label} browser dependency evidence is invalid JSON: {exc}"]
+    packages = manifest.get("packages") if isinstance(manifest.get("packages"), list) else []
+    components = sbom.get("components") if isinstance(sbom.get("components"), list) else []
+    if manifest.get("delivery") != "same-origin-vendored" or not packages:
+        findings.append(f"{label} browser dependency inventory is empty or not same-origin")
+    if sbom.get("bomFormat") != "CycloneDX" or len(components) != len(packages):
+        findings.append(f"{label} browser SBOM does not cover the package inventory")
+    return findings
+
 
 def parse_ref(spec: str) -> tuple[str, str]:
     name, sep, slug = spec.partition("=")
@@ -63,12 +91,17 @@ def audit(artifact_root: Path, manifest: Path, expected: list[str] | None = None
             current.append(name)
         if kind == "production":
             production += 1
-            target = artifact_root / "nemoclaw" / "index.html"
+            course_root = artifact_root / "nemoclaw"
+            target = course_root / "index.html"
             expected_url = "nemoclaw/"
+            if not expected:
+                findings.extend(audit_course_evidence(course_root, name))
         elif kind == "preview":
             previews[name] = slug
-            target = artifact_root / slug / "web" / "nemoclaw" / "index.html"
+            course_root = artifact_root / slug / "web" / "nemoclaw"
+            target = course_root / "index.html"
             expected_url = f"{slug}/web/nemoclaw/"
+            findings.extend(audit_course_evidence(course_root, name))
         else:
             findings.append(f"invalid branch kind for {name}: {kind!r}")
             continue
@@ -108,6 +141,16 @@ def self_test() -> list[str]:
         (root / "nemoclaw" / "index.html").write_text("production", encoding="utf-8")
         (root / "ready" / "web" / "nemoclaw").mkdir(parents=True)
         (root / "ready" / "web" / "nemoclaw" / "index.html").write_text("preview", encoding="utf-8")
+        (root / "ready" / "web" / "nemoclaw" / "dependencies.html").write_text(
+            "Browser dependency inventory vendor/browser-dependencies.json", encoding="utf-8"
+        )
+        (root / "ready" / "web" / "nemoclaw" / "vendor").mkdir()
+        (root / "ready" / "web" / "nemoclaw" / "vendor" / "browser-dependencies.json").write_text(
+            json.dumps({"delivery": "same-origin-vendored", "packages": [{"name": "fixture"}]}), encoding="utf-8"
+        )
+        (root / "ready" / "web" / "nemoclaw" / "vendor" / "browser-sbom.cdx.json").write_text(
+            json.dumps({"bomFormat": "CycloneDX", "components": [{"name": "fixture"}]}), encoding="utf-8"
+        )
         base = {
             "schema": "nemoclaw-branches/2",
             "current": {"name": "main", "slug": "main"},
@@ -139,6 +182,10 @@ def self_test() -> list[str]:
         (root / "unlisted" / "web" / "nemoclaw" / "index.html").write_text("preview", encoding="utf-8")
         if not any("missing from manifest" in finding for finding in audit(root, manifest)):
             misses.append("detector missed unlisted published path")
+        missing = root / "ready" / "web" / "nemoclaw" / "vendor" / "browser-sbom.cdx.json"
+        missing.unlink()
+        if not any("missing course evidence" in finding for finding in audit(root, manifest, ["ready=ready"])):
+            misses.append("detector missed absent browser dependency evidence")
     return misses
 
 
@@ -148,6 +195,25 @@ def fetch(url: str, method: str = "GET") -> bytes:
         if response.status < 200 or response.status >= 400:
             raise RuntimeError(f"HTTP {response.status}: {url}")
         return response.read()
+
+
+def audit_live_course_evidence(course_url: str, label: str) -> list[str]:
+    findings: list[str] = []
+    try:
+        dashboard = fetch(urllib.parse.urljoin(course_url, "dependencies.html")).decode("utf-8", "replace")
+        manifest = json.loads(fetch(urllib.parse.urljoin(course_url, "vendor/browser-dependencies.json")))
+        sbom = json.loads(fetch(urllib.parse.urljoin(course_url, "vendor/browser-sbom.cdx.json")))
+    except (urllib.error.URLError, TimeoutError, RuntimeError, json.JSONDecodeError) as exc:
+        return [f"{label} live browser dependency evidence unavailable: {exc}"]
+    packages = manifest.get("packages") if isinstance(manifest.get("packages"), list) else []
+    components = sbom.get("components") if isinstance(sbom.get("components"), list) else []
+    if "Browser dependency inventory" not in dashboard or "vendor/browser-dependencies.json" not in dashboard:
+        findings.append(f"{label} live dependency dashboard is not wired to its inventory")
+    if manifest.get("delivery") != "same-origin-vendored" or not packages:
+        findings.append(f"{label} live browser dependency inventory is empty or not same-origin")
+    if sbom.get("bomFormat") != "CycloneDX" or len(components) != len(packages):
+        findings.append(f"{label} live browser SBOM does not cover the package inventory")
+    return findings
 
 
 def audit_live_once(base_url: str, expected: list[str]) -> list[str]:
@@ -182,6 +248,9 @@ def audit_live_once(base_url: str, expected: list[str]) -> list[str]:
             fetch(target, "HEAD")
         except (urllib.error.URLError, TimeoutError, RuntimeError) as exc:
             findings.append(f"advertised branch target unavailable: {target}: {exc}")
+        kind = item.get("kind")
+        if (kind == "preview" and item.get("name") in expected_map) or (kind == "production" and not expected_map):
+            findings.extend(audit_live_course_evidence(urllib.parse.urljoin(base, str(item.get("url") or "")), str(item.get("name"))))
     for name, slug in expected_map.items():
         branch_base = urllib.parse.urljoin(base, f"{slug}/")
         try:
