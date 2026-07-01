@@ -192,8 +192,9 @@
       "reviewed_on": "2026-06-29"
     },
     "web/nemoclaw/03a-kickstart.html": {
-      "source_sha256": "23618bf7baf022bc92336ee773276ac99321cc25618c025d19e7a6379c9ccff9",
-      "reviewed_on": "2026-06-29"
+      "source_sha256": "1931d1ec8a3febc4aa4f15e10bbe55c897ee4eebc75fa7bfa91fa214fea9a37d",
+      "target_sha256": "1f9d0ec54ae76b19e69dc2eba1f6009f8196bacc83a227c100ec92fd149381a2",
+      "reviewed_on": "2026-06-30"
     },
     "web/nemoclaw/03b-openclaw.html": {
       "source_sha256": "622027a5e8881077b005a00dec3a65276eb9b9f25e5b8d6f3e8f7614fe9185fc",

@@ -26,6 +26,10 @@ This note is for agents and maintainers working across issues, merge requests, a
 - For contribution, hook, workflow, permission, or release changes, run
   `python3 scripts/validation/contribution_safety_audit.py --self-test` and then the audit itself.
   The JSON report belongs in CI artifacts so a human can inspect the exact boundary that passed.
+- For deployment topology, browser proxy, service, storage, privilege, authentication, secret-flow,
+  or release-pipeline changes, update `docs/security-architecture.json`, regenerate its SVG, and run
+  `python3 scripts/validation/security_architecture_audit.py --self-test` plus the audit. Production
+  nodes remain source-backed; local-only Compose services and volumes remain explicitly classified.
 
 ## Course title, abstract, and objectives
 

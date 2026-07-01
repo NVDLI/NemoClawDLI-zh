@@ -209,6 +209,12 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "document the inbound signoff policy and authoritative DCO version")
     require(docs["DCO.md"], "git commit --signoff", "DCO.md", "dco-repair", out,
             "give contributors an exact signoff command and repair path")
+    require(docs["DCO.md"], "host-generated squash or merge commit", "DCO.md",
+            "dco-stacked-merge", out,
+            "prevent stacked proposal merges from replacing signed commits with unsigned generated commits")
+    require(docs["CONTRIBUTING.md"], "stacked merge request", "CONTRIBUTING.md",
+            "contributor-stacked-merge", out,
+            "put the signed-commit preservation rule in contributor first-touch guidance")
 
     require(docs["README.md"], "Ideas are easy; code is gated", "README.md", "readme-boundary", out,
             "state the intake/code asymmetry in the README")
@@ -241,6 +247,8 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
         for section in required_sections:
             require(docs[rel], section, rel, "submission-template", out,
                     f"add the required {section} section")
+        require(docs[rel], "host-generated squash", rel, "stacked-submission-template", out,
+                "require a signed-commit preservation plan for stacked proposals")
     gitlab_template = docs[".gitlab/merge_request_templates/Default.md"]
     missing_in_window = [section for section in ("## Summary", *required_sections)
                          if section not in gitlab_template[:2700]]
@@ -264,6 +272,8 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
                            "keep contents: read globally and grant Pages writes only to the deploy job"))
     require(pages, "if: github.event_name != 'pull_request'", ".github/workflows/pages.yml",
             "pr-deploy-boundary", out, "prevent pull-request runs from reaching deployment")
+    require(pages, "github.ref == 'refs/heads/main'", ".github/workflows/pages.yml",
+            "pages-main-only", out, "prevent workflow_dispatch or non-main refs from deploying Pages")
     require(pages, "contribution_safety_audit.py --self-test", ".github/workflows/pages.yml",
             "github-safety-selftest", out, "run detector mutations in GitHub CI")
     require(pages, "contribution_safety_audit.py --require-publication-approved",
@@ -281,6 +291,14 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
                            "use scripts/materials/requirements.lock in both Python setup paths"))
     require(pages, "audit_sbom_policy.py --self-test", ".github/workflows/pages.yml",
             "github-sbom-policy-selftest", out, "prove the SBOM policy detector in public PR CI")
+    for rel in (".github/workflows/pages.yml", ".github/workflows/release.yml",
+                ".github/workflows/codeql.yml", ".github/workflows/dependency-review.yml"):
+        checkout_count = docs[rel].count("uses: actions/checkout@")
+        hardened_count = docs[rel].count("persist-credentials: false")
+        if hardened_count < checkout_count:
+            out.append(finding("checkout-credential", rel,
+                               f"{checkout_count - hardened_count} checkout step(s) persist credentials",
+                               "set persist-credentials: false on every checkout step"))
 
     release = docs[".github/workflows/release.yml"]
     require(release, "  workflow_dispatch:", ".github/workflows/release.yml", "release-manual", out,
@@ -562,12 +580,16 @@ def self_test() -> list[str]:
             ("support-boundary", "SUPPORT.md", "Triage is best-effort", "Triage is guaranteed"),
             ("independent-review", "MAINTAINERS.md", "nobody approves their own", "self-approval allowed"),
             ("dco-policy", "DCO.md", "Developer Certificate of Origin 1.1", "unversioned signoff"),
+            ("dco-stacked-merge", "DCO.md", "host-generated squash or merge commit", "generated integration commit"),
+            ("contributor-stacked-merge", "CONTRIBUTING.md", "stacked merge request", "nested proposal"),
             ("github-pr-trigger", ".github/workflows/pages.yml", "  pull_request:\n", "  # pull_request removed\n"),
             ("mutable-action-ref", ".github/workflows/pages.yml", "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683", "actions/checkout@v4"),
             ("unpinned-workflow-install", ".github/workflows/pages.yml", "--requirement scripts/materials/requirements.lock", "requests beautifulsoup4 markdownify lxml"),
             ("github-material-lock", ".github/workflows/pages.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),
             ("github-sbom-policy-selftest", ".github/workflows/pages.yml", "audit_sbom_policy.py --self-test", "audit_sbom_policy.py --help"),
             ("pr-deploy-boundary", ".github/workflows/pages.yml", "if: github.event_name != 'pull_request'", "if: always()"),
+            ("pages-main-only", ".github/workflows/pages.yml", "github.ref == 'refs/heads/main'", "github.ref != ''"),
+            ("checkout-credential", ".github/workflows/pages.yml", "persist-credentials: false", "persist-credentials: true"),
             ("dependency-review-floor", ".github/workflows/dependency-review.yml", "fail-on-severity: moderate", "fail-on-severity: critical"),
             ("codeql-baseline", ".github/workflows/codeql.yml", "javascript-typescript", "javascript-disabled"),
             ("dependency-update-coverage", ".github/dependabot.yml", "package-ecosystem: docker", "package-ecosystem: unsupported"),
@@ -583,6 +605,7 @@ def self_test() -> list[str]:
             ("release-sbom-policy", ".github/workflows/release.yml", "--sbom release-security/python-env.cdx.json", "--sbom release-security/unchecked.json"),
             ("discussion-route", ".github/ISSUE_TEMPLATE/config.yml", "/discussions", "/issues"),
             ("submission-template", ".github/PULL_REQUEST_TEMPLATE.md", "## Blast radius checked", "## Scope notes"),
+            ("stacked-submission-template", ".gitlab/merge_request_templates/Default.md", "host-generated squash", "automatic integration"),
             ("gitlab-description-window", ".gitlab/merge_request_templates/Default.md", "## Validation evidence", "x" * 2700 + "\n## Validation evidence"),
             ("mutating-prepush", "scripts/git-hooks/pre-push", "REFUSING PUSH - origin/main is", "git pull --rebase origin main # REFUSING PUSH - origin/main is"),
             ("fetch-fail-open", "scripts/git-hooks/pre-push", "if ! git fetch origin main --quiet; then", "git fetch origin main --quiet || exit 0\n    if false; then"),

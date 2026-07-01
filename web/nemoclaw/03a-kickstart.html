@@ -267,11 +267,10 @@
       <li><code>"direct"</code> calls the launchable origin with <code>credentials:&nbsp;"include"</code> and no JWT, relying on the CF Access cookie your browser already holds.</li>
     </ul>
     <p>
-      Try both. Then open the page in a browser that never signed in to the launchable,
-      and try again. <code>"direct"</code> fails every time. The cookie is
-      <code>HttpOnly</code> and scoped to the launchable origin, so the browser attaches
-      it automatically. The launchable sends no CORS header for this page, so you never
-      see the response. Only the explicit JWT, through the proxy, returns the body.
+      On a separately hosted Pages course, direct mode depends on a valid launchable cookie
+      and the launchable's cross-origin response policy; the explicit JWT route uses the relay.
+      When the course is vendored inside the same NemoClaw launchable as its runtime,
+      direct mode is same-origin and the relay is not needed.
     </p>
 
     <div id="claw-raw-cell"></div>
@@ -528,11 +527,12 @@ helpers.log("rendered below. Edit the config and Run.");
       defaultToken: localStorage.getItem("nvapi") || "",
       fieldHelp: {
         url: `<p><strong>What it is:</strong> The NVIDIA model API base. Pre-filled, no changes needed.</p>
-<p><strong>How requests reach it:</strong> The browser can't call <code>integrate.api.nvidia.com</code> directly because
-of the same-origin policy. Requests route through a hosted Cloudflare Worker that adds CORS headers and
-forwards your key unchanged.</p>
-<p><strong>Running locally (not in the lab):</strong> Call <code>${NVIDIA_API_BASE_URL}</code> directly
-from your script or notebook. No proxy needed outside a browser context, where the same-origin restriction doesn't apply.</p>`,
+<p><strong>How requests reach it:</strong> The main course runtime calls
+<code>integrate.api.nvidia.com</code> directly by default. This editable probe is routed through the
+hosted NVIDIA API CORS relay so you can inspect that transport. The relay is required for the course
+only when explicit iframe proxy mode is enabled.</p>
+<p><strong>Running locally:</strong> Browser pages, scripts, and notebooks should call
+<code>${NVIDIA_API_BASE_URL}</code> directly unless their embedding environment requires the relay.</p>`,
 
         token: `<p><strong>What it is:</strong> Your NVIDIA API key, starting with <code>nvapi-</code>. Autofills from the key
 you saved on the course home page.</p>
@@ -740,7 +740,11 @@ find the <code>CF_Authorization</code> row → copy the full Value (a long JWT s
 Paste it here. Re-copy it if the probe stops working after a long break, since JWTs expire with your session.</p>
 <p><strong>Running locally:</strong> Leave this field empty. Local OpenClaw has no Cloudflare Access layer.</p>
 <p><strong>Backup mode:</strong> Required for the Brev URL when local OpenClaw is wedged or shows <code>EPERM</code>.</p>
-<p><strong>Gateway cells:</strong> The fetch probes use this JWT as a header. The <code>/cli/gateway</code> WebSocket cannot send custom browser headers, so the course routes Brev gateway cells through the OpenClaw CORS worker when this field is present. Direct WebSocket mode only works after the launchable URL has refreshed its own browser cookie.</p>
+<p><strong>Gateway cells:</strong> The fetch probes use this JWT as a header. A separately hosted
+course routes the <code>/cli/gateway</code> WebSocket through the OpenClaw CORS worker when this field
+is present because browser WebSocket constructors cannot set the Access header. A course hosted in
+the same NemoClaw launchable uses the same-origin direct route. For a separate Pages origin, direct
+WebSocket mode also depends on a current launchable browser cookie and its cross-origin policy.</p>
 <p><strong>Why this matters:</strong> The <code>HttpOnly</code> wall is exactly why production systems use
 <em>service tokens</em> for machine-to-machine calls. The browser session flow has no programmatic
 escape hatch by design.</p>`,

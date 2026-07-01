@@ -21,6 +21,7 @@ jobs:
         with:
           ref: ${{ inputs.tag }}
           fetch-depth: 0
+          persist-credentials: false
       - name: Verify external publication approval
         run: python3 scripts/validation/contribution_safety_audit.py --require-publication-approved
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0

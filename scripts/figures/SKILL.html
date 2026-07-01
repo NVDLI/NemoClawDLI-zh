@@ -11,10 +11,11 @@
   "node_type": "directory-explorer",
   "title": "scripts/figures runtime figure checks",
   "source_dir": "scripts/figures/",
-  "summary": "Node, jsdom, and rendered-preview checks for JavaScript-drawn figures. Static SVG audits cannot see these runtime diagrams, and geometry checks do not replace a harness screenshot.",
+  "summary": "Node, jsdom, and rendered-preview checks for JavaScript-drawn figures plus the deterministic renderer for the repository-owned security architecture graph. Geometry checks do not replace a harness screenshot.",
   "related": [
     "scripts/figures/check_figures.mjs",
-    "scripts/figures/run_figcheck.sh"
+    "scripts/figures/run_figcheck.sh",
+    "scripts/figures/render_security_architecture.py"
   ],
   "explorer": "../../web/_skill_explorer.js"
 }
@@ -45,6 +46,11 @@
       "path": "run_figcheck.sh",
       "role": "figure check runner",
       "desc": "Resolves Node and jsdom, then runs check_figures.mjs."
+    },
+    {
+      "path": "render_security_architecture.py",
+      "role": "security architecture SVG projection",
+      "desc": "Deterministically renders docs/security-architecture.json into a review-neutral SVG and checks projection freshness."
     }
   ]
 }
@@ -66,11 +72,13 @@
   <div class="skill-cmds">
     <div class="skill-cmd"><b>Runtime geometry</b><code>bash scripts/figures/run_figcheck.sh</code></div>
     <div class="skill-cmd"><b>Figure audit</b><code>python3 scripts/validation/figure_audit.py</code></div>
+    <div class="skill-cmd"><b>security architecture SVG freshness</b><code>python3 scripts/figures/render_security_architecture.py --check</code></div>
   </div>
   <h2>Linkage map</h2>
   <div class="skill-grid">
     <a class="skill-card" href="check_figures.mjs"><b>check_figures.mjs</b><span>runtime geometry check. Renders diagrams and flags text overlap, overflow, bad connectors, and edgeless diagrams.</span></a>
     <a class="skill-card" href="run_figcheck.sh"><b>run_figcheck.sh</b><span>figure check runner. Resolves Node and jsdom, then runs check_figures.mjs.</span></a>
+    <a class="skill-card" href="render_security_architecture.py"><b>render_security_architecture.py</b><span>Security architecture renderer. Projects the canonical release graph into a deterministic, accessible SVG.</span></a>
   </div>
   <h2>Interactive explorer</h2>
   <p>The explorer below opens source files, tours important sections, and checks documented paths against the repository tree.</p>

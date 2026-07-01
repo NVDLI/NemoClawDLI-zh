@@ -48,6 +48,9 @@ Each public draft receives:
 Validation reports and the full `pip-audit` result remain workflow evidence. They are retained with
 the transfer artifact for 30 days but are not public release assets. This keeps operator evidence
 available without publishing noisy scanner detail as a supported product interface.
+The source-backed security architecture and generated SVG remain versioned under `docs/` so a reviewer
+can trace system boundaries to the exact source tag. They are engineering evidence rather than
+supported runtime interfaces and do not encode internal submissions or approval records.
 The workflow installs scanner tools in a separate environment, so scanner dependencies do not
 pollute the runtime SBOM. Scanner versions are pinned in the workflow so the same environment is
 serialized consistently until an explicit dependency update changes the tooling.

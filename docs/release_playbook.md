@@ -74,7 +74,7 @@ bundle-wide so the same tracker can scale to future courses.
 | `deploy/` | release engineering | local startup, DLI platform route, nginx/proxy behavior | compose parse, `run_engine.sh --self-test`, deploy preview if available |
 | `scripts/` | tooling | validator, build, runtime harness | targeted script test plus ship gate |
 | `web/nemoclaw/mats/` | source governance | citation, provenance, license correction | `source_gate.py`, materials pull/check when available |
-| `docs/` | maintainer docs | process, release, contribution docs | `skill_consistency.py`, `validate_layout.py` |
+| `docs/` | maintainer docs | process, release, contribution docs, security architecture evidence | `skill_consistency.py`, `validate_layout.py`, `security_architecture_audit.py` for topology evidence |
 
 A PR should touch one coherent release concern. A deploy path change can touch `deploy/`, runtime projection, build output, docs, and validators. A wording fix should not.
 
@@ -321,6 +321,9 @@ python3 scripts/security/audit_python_dependencies.py
 python3 scripts/security/audit_vulnerability_waivers.py
 python3 scripts/security/audit_dependency_locks.py --self-test
 python3 scripts/security/audit_dependency_locks.py
+python3 scripts/figures/render_security_architecture.py --check
+python3 scripts/validation/security_architecture_audit.py --self-test
+python3 scripts/validation/security_architecture_audit.py
 bash scripts/runtime/run_engine.sh --self-test
 python3 scripts/validation/validate_bundle.py --scope ship
 ```

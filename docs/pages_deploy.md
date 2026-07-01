@@ -1,11 +1,13 @@
-# CI/CD and client-side Pages
+# CI/CD and client-side delivery
 
 This documents how the course tests itself and ships as a fully client-side site.
 This is the standalone repository, so `.gitlab-ci.yml` and
 `.github/workflows/pages.yml` at the root are the live CI for this repo. Both run
 the same static gate and then build the same client-side site. GitLab Pages serves
 it as the private pre-release preview (access-controlled even on a private repo),
-and GitHub Pages serves it as the external public release.
+and GitHub Pages is the first-class external delivery mechanism. The planned
+`docs.nvidia.com/learning/nemoclaw` integration will provide the NVIDIA learning
+front door without changing the client-side course boundary.
 
 Build and preview the site locally any time:
 
@@ -29,8 +31,14 @@ browser, with no server logic:
 
 The course pages inline their own CSS and JS and use relative links, so the course
 dir is browsable from a Pages subpath. Live model calls use the student's own NVIDIA
-key through the public CORS proxy; lab-only steps badge themselves and short-circuit
-off-lab.
+key and call NVIDIA model services directly by default. An explicitly enabled iframe
+mode uses the NVIDIA API CORS relay. Pages-hosted NemoClaw traffic uses the OpenClaw
+relay because the browser cannot attach the required Access header to its WebSocket;
+a launchable-vendored course beside its NemoClaw runtime uses the same-origin direct
+route. The launchable supplies the startup NVIDIA API key through its approved bootstrap
+path and populates the same browser `localStorage` entry used by the course key panel;
+it does not introduce another credential channel. Lab-only
+steps badge themselves and short-circuit off-lab.
 
 ## What gets tested, and where
 
@@ -56,26 +64,43 @@ they run on the lab.
 
 ## Deployment
 
-The pipeline has two jobs, defined once and shared by both CI providers.
+The deployment path has four ordered stages. Security SCA jobs also run in the test
+stage when their rules select them.
 
-1. **Static gate** runs on every push to any branch: layout, skill-meta consistency,
-   the link-engine self-test, and the grounding/bundle audit. It writes the gate
-   report to `docs/validation/` as a build artifact.
-2. **Pages build** runs only on the default branch after the gate passes. It calls
-   `scripts/build/build_pages.sh public` and publishes the `public/` artifact.
+1. **Static gate** runs on every selected branch or merge-request pipeline. It writes
+   the gate report to `docs/validation/` as a build artifact.
+2. **Pages build** is manual. Production refs publish the root site; ordinary branches
+   publish an isolated preview path beside a root rebuilt from an approved production ref.
+   The job calls `scripts/build/build_pages.sh public` and publishes the `public/` artifact.
+3. **Pages smoke** verifies the deployed manifest and every advertised course URL.
+4. **Human review** becomes available only after the exact commit passes the static gate
+   and live deployment smoke test.
 
 ### GitLab Pages (private pre-release)
 
-`.gitlab-ci.yml` defines a `test` stage and a `pages` stage. The `pages` job builds
-`public/` and publishes to GitLab Pages from the default branch. GitLab Pages serves
-the site even when the repo is private, so the team gets the pre-external-release
-experience behind the same access control as any internal Pages site.
+`.gitlab-ci.yml` defines `test`, `deploy`, `verify`, and `review` stages. The manual
+`pages` job builds `public/` and publishes either a production ref or a branch preview.
+GitLab Pages serves the private pre-release review surface under repository access
+controls. `pages_smoke` checks the live result before `human_review` can be played.
 
 ### GitHub Pages (external release)
 
 `.github/workflows/pages.yml` runs the identical gate, then builds `public/` and
 deploys via the official GitHub Pages actions on pushes to the default branch. This
-is the public external release.
+is the first-class public course. A future `docs.nvidia.com/learning/nemoclaw` entry
+will route learners into this low-friction static experience.
+
+### NemoClaw launchable (same-origin alternative)
+
+The second supported interaction path is assembled by the production NemoClaw GitHub
+repository. Its release selects a version or tag of this course repository, vendors the
+resulting static tree, and registers it as a new-tab kickstart option beside the TUI,
+consoles, and other launchable surfaces. The NemoClaw deployment already serves its
+landing page and microservices from one origin, so course-to-runtime traffic is
+same-origin and does not use the OpenClaw relay. Its approved startup interface also
+receives the NVIDIA API key and seeds the existing browser `localStorage` entry consumed
+by `getKey()` and the key panel. This repository supplies the versioned course input;
+the NemoClaw repository owns the production launchable integration and deployment.
 
 Both providers call the same `scripts/build/build_pages.sh`, so the GitLab pre-release and
 the GitHub external site are byte-identical builds. Only one course ships: the

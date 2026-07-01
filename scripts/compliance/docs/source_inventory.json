@@ -187,6 +187,30 @@
       "kind": "generated-course-screenshots",
       "license": "generated-from-authored-source",
       "disposition": "browser captures of repository-owned Pages surfaces with selector provenance in captures.json"
+    },
+    {
+      "path": "docs/security-architecture.md",
+      "kind": "authored-security-documentation",
+      "license": "Apache-2.0",
+      "disposition": "operator instructions and public evidence boundary for the repository-owned security architecture"
+    },
+    {
+      "path": "docs/security-design.md",
+      "kind": "authored-security-documentation",
+      "license": "Apache-2.0",
+      "disposition": "review-neutral system scope, trust-boundary, control, and reconstruction record"
+    },
+    {
+      "path": "docs/security-architecture.json",
+      "kind": "authored-architecture-source",
+      "license": "Apache-2.0",
+      "disposition": "canonical source-backed release and runtime threat-model graph"
+    },
+    {
+      "path": "docs/security-architecture.svg",
+      "kind": "generated-architecture-diagram",
+      "license": "generated-from-authored-source",
+      "disposition": "review-neutral projection of docs/security-architecture.json"
     }
   ],
   "forbidden_private_link_regexes": [
@@ -204,7 +228,7 @@
     },
     {
       "name": "internal approval or bug host",
-      "pattern": "https?://[^\\s)\"<>]*(nvbugs|nspect)[^\\s)\"<>]*"
+      "pattern": "https?://[^\\s)\"<>]*(nvbugs|n[s]pect)[^\\s)\"<>]*"
     }
   ]
 }

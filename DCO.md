@@ -21,5 +21,13 @@ If a check fails, amend an unpublished commit with `git commit --amend --signoff
 commits, rebase and amend each commit deliberately. Do not rewrite commits another contributor has
 already based work on; add corrected commits or coordinate the repair instead.
 
+## Stacked proposal branches
+
+Do not use a host-generated squash or merge commit to integrate one unmerged proposal branch into
+another. Generated commits do not inherit the source commits' DCO trailers and can make the parent
+proposal fail its complete-range check. Preserve the original signed commits with a maintainer-owned
+fast-forward, or deliberately rebase or cherry-pick them while retaining authorship and matching
+signoffs. Never fabricate a trailer for a bot or another contributor.
+
 The signoff records origin. It does not replace source provenance, license review, tests, or human
 approval required by [`CONTRIBUTING.md`](CONTRIBUTING.md).

@@ -52,6 +52,10 @@ approval? Agent output does not satisfy this section.
 Every commit must include a matching `Signed-off-by` trailer under `DCO.md`. CI checks the complete
 merge-request range; a description claim does not replace commit-level signoff.
 
+If this targets another unmerged proposal branch, state the maintainer-owned fast-forward or
+rebase/cherry-pick plan that preserves the original signed commits. Do not use a host-generated squash
+or merge commit for a stacked merge request.
+
 ## Release notes
 
 Learner-facing:

@@ -197,6 +197,14 @@ if [ -f "$BUNDLE" ]; then
         echo "Then: python3 scripts/validation/slides_audit.py"
         exit 1
     fi
+    if ! python3 "$T1/scripts/figures/render_security_architecture.py" --check \
+       || ! python3 "$T1/scripts/validation/security_architecture_audit.py" --self-test \
+       || ! python3 "$T1/scripts/validation/security_architecture_audit.py"; then
+        echo ""
+        echo "pre-push: REFUSING PUSH - security architecture graph or detector failed."
+        echo "Update docs/security-architecture.json from source evidence, regenerate the SVG, then rerun the audit."
+        exit 1
+    fi
     if ! python3 "$T1/scripts/validation/learner_flow_audit.py" --self-test; then
         echo ""
         echo "pre-push: REFUSING PUSH - learner interaction validator mutation tests failed."

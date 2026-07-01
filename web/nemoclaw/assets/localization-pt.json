@@ -110,10 +110,10 @@
     {
       "path": "web/nemoclaw/03a-kickstart.html",
       "file": "03a-kickstart.html",
-      "source_sha256": "23618bf7baf022bc92336ee773276ac99321cc25618c025d19e7a6379c9ccff9",
-      "reviewed_source_sha256": "23618bf7baf022bc92336ee773276ac99321cc25618c025d19e7a6379c9ccff9",
-      "target_sha256": "ff5881b8ce69e654b9f73aa4f0699c52b0e786d467f8a9087917aae2dccaa798",
-      "reviewed_target_sha256": null,
+      "source_sha256": "1931d1ec8a3febc4aa4f15e10bbe55c897ee4eebc75fa7bfa91fa214fea9a37d",
+      "reviewed_source_sha256": "1931d1ec8a3febc4aa4f15e10bbe55c897ee4eebc75fa7bfa91fa214fea9a37d",
+      "target_sha256": "1f9d0ec54ae76b19e69dc2eba1f6009f8196bacc83a227c100ec92fd149381a2",
+      "reviewed_target_sha256": "1f9d0ec54ae76b19e69dc2eba1f6009f8196bacc83a227c100ec92fd149381a2",
       "status": "current",
       "quality": []
     },
