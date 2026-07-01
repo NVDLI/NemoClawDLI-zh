@@ -39,7 +39,8 @@
     "scripts/validation/course_content_contract.py",
     "scripts/validation/course_dependency_integrity.py",
     "scripts/validation/concept_order_audit.py",
-    "scripts/validation/security_architecture_audit.py"
+    "scripts/validation/security_architecture_audit.py",
+    "scripts/validation/release_evidence_audit.py"
   ],
   "explorer": "../../web/_skill_explorer.js"
 }
@@ -117,6 +118,11 @@
       "desc": "Required mutation-tested production scope, source-derived topology drift, local-only classification, evidence, trust-boundary, geometry, and generated-SVG freshness audit."
     },
     {
+      "path": "release_evidence_audit.py",
+      "role": "product design and release test-plan gate",
+      "desc": "Required mutation-tested audit for public-safe design, executable test coverage, repository baseline files, evidence ownership, external-review boundaries, gate wiring, and prose quality."
+    },
+    {
       "path": "cell_ui_runtime_audit.py",
       "role": "rendered page screenshot audit",
       "desc": "Renders pages in desktop and narrow viewports across light and dark themes, writes paired initial and expanded screenshots, flags dark-only surfaces, and exercises mobile figure zoom, pan, and close behavior."
@@ -124,7 +130,7 @@
     {
       "path": "cell_audit.py",
       "role": "cell contract",
-      "desc": "Checks runnable-cell transparency, logging, awaits, keys, and UI contract."
+      "desc": "Checks runnable-cell transparency, logging, awaits, keys, bundled editor assets, and UI contract with a focused asset-detector self-test."
     },
     {
       "path": "learner_flow_audit.py",
@@ -189,7 +195,7 @@
     {
       "path": "branch_preview_manifest_audit.py",
       "role": "Pages branch manifest audit",
-      "desc": "Rejects branch selector entries without published artifact paths, self-tests availability detection, and probes deployed root/branch manifests plus every advertised URL."
+      "desc": "Rejects branch selector entries without published artifact paths, self-tests availability and dependency-evidence detection, and probes deployed manifests, course URLs, dependency dashboards, inventories, and browser SBOMs."
     },
     {
       "path": "branch_preview_runtime_audit.py",
@@ -214,7 +220,7 @@
     {
       "path": "course_dependency_integrity.py",
       "role": "course dependency integrity",
-      "desc": "Pins fixed browser CDN assets to expected SRI hashes so a changed response cannot execute in the course."
+      "desc": "Validates exact same-origin browser packages, license evidence, artifact hashes, source references, and the absence of runtime package-CDN pulls."
     },
     {
       "path": "concept_order_audit.py",
@@ -258,7 +264,7 @@
   <div class="skill-cmd"><b>Layout links</b><code>python3 scripts/validation/validate_layout.py --quiet</code></div>
   <div class="skill-cmd"><b>HTML structure + detector</b><code>python3 scripts/validation/html_structure_audit.py &amp;&amp; python3 scripts/validation/html_structure_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>Stakeholder slides + detector</b><code>python3 scripts/validation/slides_audit.py &amp;&amp; python3 scripts/validation/slides_audit.py --self-test</code></div>
-  <div class="skill-cmd"><b>Cell contract</b><code>python3 scripts/validation/cell_audit.py</code></div>
+  <div class="skill-cmd"><b>Cell contract + detector</b><code>python3 scripts/validation/cell_audit.py --self-test &amp;&amp; python3 scripts/validation/cell_audit.py</code></div>
   <div class="skill-cmd"><b>Learner-flow static + detector</b><code>python3 scripts/validation/learner_flow_audit.py &amp;&amp; python3 scripts/validation/learner_flow_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>Learner-flow browser lifecycle</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/learner_flow_runtime_audit.py --site-root web</code></div>
   <div class="skill-cmd"><b>Contribution safety + detector</b><code>python3 scripts/validation/contribution_safety_audit.py &amp;&amp; python3 scripts/validation/contribution_safety_audit.py --self-test</code></div>
@@ -266,6 +272,7 @@
   <div class="skill-cmd"><b>Code hygiene</b><code>python3 scripts/validation/code_hygiene.py</code></div>
   <div class="skill-cmd"><b>Figure audit</b><code>python3 scripts/validation/figure_audit.py</code></div>
   <div class="skill-cmd"><b>security architecture + detector</b><code>python3 scripts/validation/security_architecture_audit.py &amp;&amp; python3 scripts/validation/security_architecture_audit.py --self-test</code></div>
+  <div class="skill-cmd"><b>Product design + release test evidence</b><code>python3 scripts/validation/release_evidence_audit.py &amp;&amp; python3 scripts/validation/release_evidence_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>Rendered page screenshots</b><code>python3 scripts/validation/cell_ui_runtime_audit.py --site-root /tmp/nemoclaw_visual_preview --page /nemoclaw/02b-rag.html --screenshots /tmp/nemoclaw_visual_audit</code></div>
   <div class="skill-cmd"><b>Studio interface</b><code>python3 scripts/validation/studio_interface_audit.py</code></div>
   <div class="skill-cmd"><b>OpenClaw fallback + static frame lifecycle</b><code>python3 scripts/validation/openclaw_fallback_audit.py</code></div>
@@ -295,8 +302,9 @@
     <a class="skill-card" href="color_theme.py"><b>color_theme.py</b><span>theme check. Flags inline or non-theme-dynamic colors.</span></a>
     <a class="skill-card" href="figure_audit.py"><b>figure_audit.py</b><span>figure audit. Checks static figure legibility, accessibility, and the shared mobile lightbox readability contract.</span></a>
     <a class="skill-card" href="security_architecture_audit.py"><b>security_architecture_audit.py</b><span>Required security architecture gate. Derives CI jobs, runtime hosts, remote suffixes, and worker inventory from source; also checks public metadata boundaries, local-only classification, evidence, geometry, and SVG freshness.</span></a>
+    <a class="skill-card" href="release_evidence_audit.py"><b>release_evidence_audit.py</b><span>Required product-design and release-test gate. Checks public-safe scope, data and cryptography inventories, evidence ownership, external-review boundaries, gate wiring, and mutation coverage.</span></a>
     <a class="skill-card" href="cell_ui_runtime_audit.py"><b>cell_ui_runtime_audit.py</b><span>rendered page screenshot audit. Renders desktop/narrow light/dark pages, writes paired initial/expanded screenshots, flags dark-only surfaces, and exercises mobile figure zoom, pan, and close behavior.</span></a>
-    <a class="skill-card" href="cell_audit.py"><b>cell_audit.py</b><span>cell contract. Checks runnable-cell transparency, logging, awaits, keys, and UI contract.</span></a>
+    <a class="skill-card" href="cell_audit.py"><b>cell_audit.py</b><span>cell contract. Checks runnable-cell transparency, logging, awaits, keys, bundled editor assets, and UI contract with a focused asset-detector self-test.</span></a>
     <a class="skill-card" href="learner_flow_audit.py"><b>learner_flow_audit.py</b><span>required learner-flow gate. Enforces Guided first visit, interactive-code collapse, saved depth, native inline disclosures, local questions, scope cues, readiness, lifecycle, viewport stability, and mutation coverage.</span></a>
     <a class="skill-card" href="learner_flow_runtime_audit.py"><b>learner_flow_runtime_audit.py</b><span>learner-flow browser gate. Exercises Guided code collapse/local reveal, authored defaults, saved depth, section overrides, reload/print, narrow keyboard behavior, prerequisites, and cell lifecycle transitions.</span></a>
     <a class="skill-card" href="contribution_safety_audit.py"><b>contribution_safety_audit.py</b><span>required contribution-safety gate. Holds governance and DCO, immutable action pins, locked workflow installs, fork-safe security workflows, submission evidence, hooks, PR permissions, and release authority together with mutation coverage.</span></a>
@@ -309,12 +317,12 @@
     <a class="skill-card" href="studio_responsive_audit.py"><b>studio_responsive_audit.py</b><span>studio responsive audit. Uses containerized Playwright to stress narrow and short Studio viewports for scrollable topbar controls and sidebar panel floors.</span></a>
     <a class="skill-card" href="openclaw_fallback_audit.py"><b>openclaw_fallback_audit.py</b><span>OpenClaw fallback audit. Checks fail-fast behavior, backup guidance, and static probe-frame cleanup.</span></a>
     <a class="skill-card" href="openclaw_probe_frame_runtime_audit.py"><b>openclaw_probe_frame_runtime_audit.py</b><span>OpenClaw probe frame browser audit. Exercises HTML-to-JSON/error/access-warning cleanup plus remount and reload.</span></a>
-    <a class="skill-card" href="branch_preview_manifest_audit.py"><b>branch_preview_manifest_audit.py</b><span>Pages branch manifest audit. Rejects selector entries without published paths, self-tests detection, and probes live Pages output.</span></a>
+    <a class="skill-card" href="branch_preview_manifest_audit.py"><b>branch_preview_manifest_audit.py</b><span>Pages branch manifest audit. Rejects selector entries without published paths or browser dependency evidence, self-tests detection, and probes live Pages output.</span></a>
     <a class="skill-card" href="branch_preview_runtime_audit.py"><b>branch_preview_runtime_audit.py</b><span>Pages branch selector browser audit. Injects a ghost preview and proves root/branch foyers hide it.</span></a>
     <a class="skill-card" href="agent_process_audit.py"><b>agent_process_audit.py</b><span>Agent process audit. Checks issue/MR, taxonomy, validation, and safe-auth guardrail visibility.</span></a>
     <a class="skill-card" href="course_contract.py"><b>course_contract.py</b><span>Course contract audit. Holds the English course title, abstract, and objectives verbatim.</span></a>
     <a class="skill-card" href="course_content_contract.py"><b>course_content_contract.py</b><span>Required content contract. Locks retrieval/safety teaching promises and current product/platform qualifiers.</span></a>
-    <a class="skill-card" href="course_dependency_integrity.py"><b>course_dependency_integrity.py</b><span>Dependency integrity. Requires expected SRI hashes and CORS mode for fixed third-party browser assets.</span></a>
+    <a class="skill-card" href="course_dependency_integrity.py"><b>course_dependency_integrity.py</b><span>Dependency integrity. Validates exact locks, licenses, hashes, source references, and same-origin delivery.</span></a>
     <a class="skill-card" href="concept_order_audit.py"><b>concept_order_audit.py</b><span>Concept order audit. Keeps course terms defined before learner-facing prose or code depends on them.</span></a>
     <a class="skill-card" href="tenets.py"><b>tenets.py</b><span>tenet check. Checks platform tenets reflected in course files.</span></a>
     <a class="skill-card" href="nb_audit.py"><b>nb_audit.py</b><span>notebook audit. Detects notebook buffer corruption patterns.</span></a>

@@ -69,6 +69,9 @@ test:
     # Semantic verifier: derives release jobs, runtime hosts, dynamic host suffixes, and worker
     # inventory from source; topology changes require an explicit architecture review.
     - python3 scripts/validation/security_architecture_audit.py
+    - python3 scripts/build/project_docs_explorer.py --self-test
+    - python3 scripts/validation/release_evidence_audit.py --self-test
+    - python3 scripts/validation/release_evidence_audit.py
     - python3 scripts/build/assemble_locale_overlay.py --self-test
     - python3 scripts/validation/localization_audit.py --self-test
     - 'for locale in scripts/translate/locales/*; do if [ -f "$locale/profile.json" ]; then code="$(basename "$locale")"; python3 scripts/validation/localization_audit.py --locale "$code"; fi; done'
@@ -77,6 +80,10 @@ test:
     - 'if [ -n "${CI_MERGE_REQUEST_IID:-}" ]; then python3 scripts/validation/contribution_safety_audit.py --submission-env CI_MERGE_REQUEST_DESCRIPTION; else echo "Submission contract: no merge-request context in this pipeline; protected-ref policy remains authoritative."; fi'
     - 'if [ -n "${CI_MERGE_REQUEST_DIFF_BASE_SHA:-}" ]; then python3 scripts/validation/contribution_safety_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"; else echo "DCO signoff: no merge-request commit range in this pipeline; pre-push and protected-ref policy remain authoritative."; fi'
     - python3 scripts/compliance/source_gate.py
+    - python3 scripts/validation/course_dependency_integrity.py --self-test
+    - python3 scripts/validation/course_dependency_integrity.py
+    - python3 scripts/validation/cell_audit.py --self-test
+    - python3 scripts/validation/cell_audit.py
     - python3 scripts/security/audit_python_dependencies.py
     - python3 scripts/security/audit_vulnerability_waivers.py
     - python3 scripts/security/audit_dependency_locks.py --self-test

@@ -1,8 +1,11 @@
 # Security design record
 
-This document supplies the public system context needed to interpret
-[`security-architecture.svg`](security-architecture.svg). It is intentionally independent of any
-internal review system, program identifier, submission version, or approval state.
+This document supplies the public security context needed to interpret
+[`security-architecture.svg`](security-architecture.svg). The broader product scope, data inventory,
+cryptography inventory, release behavior, and test mapping live in
+[`product-design.md`](product-design.md) and [`release-test-plan.md`](release-test-plan.md). These
+documents remain independent of any internal review system, program identifier, submission version,
+or approval state.
 
 ## System scope
 
@@ -32,7 +35,7 @@ adds them. The architecture validator rejects unreviewed production dependencies
 | Static host to learner device | HTTPS pages and assets | Public or host-controlled access | Relative paths, locale integrity, preview isolation, URL checks |
 | Browser to model service | HTTPS credential, prompts, and responses | Learner-provided bearer credential | TLS, password input, direct route by default, optional iframe relay |
 | Browser to NemoClaw | HTTPS and WebSocket commands, events, and gateway credential | Gateway credential plus hosting identity | Host restriction, credential handling, sandbox policy, host-specific routing |
-| Browser to public dependencies | HTTPS JavaScript and CSS | No caller identity | Version pins, SRI where supported, dependency validation |
+| Static host to browser | Same-origin vendored JavaScript and CSS | Host access policy | Exact lock, license inventory, artifact SHA-256, source-reference validation |
 
 Credentials are entered through password fields and retained in browser storage for reuse. They are
 not built into the static artifact or sent to repository CI. Prompts, responses, agent commands, and

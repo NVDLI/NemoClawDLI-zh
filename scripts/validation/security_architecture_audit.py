@@ -513,8 +513,8 @@ def self_test() -> list[str]:
     cases.append(("edge port bounds", mutation, expected_svg, "edge-port"))
 
     mutation = copy.deepcopy(base)
-    dependency_edge = next(edge for edge in mutation["edges"] if edge["id"] == "browser_to_dependencies")
-    dependency_edge["route"]["via"] = [[1100, 760], [1100, 832.5]]
+    dependency_edge = next(edge for edge in mutation["edges"] if edge["id"] == "browser_to_workers")
+    dependency_edge["route"]["via"] = [[1100, 760], [1100, 677.5]]
     cases.append(("edge overlap", mutation, expected_svg, "edge-overlap"))
 
     mutation = copy.deepcopy(base)

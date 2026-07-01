@@ -23,7 +23,11 @@ Every release candidate needs these records:
 - security and secrets sweep evidence
 - unresolved blockers or explicit not-applicable rationale
 
-The machine-readable source inventory lives at `scripts/compliance/docs/source_inventory.json`. The policy that explains what may be vendored lives at `scripts/compliance/docs/vendor_policy.md`.
+The product scope and release behavior live in `docs/product-design.md`. The verification
+contract lives in `docs/release-test-plan.md`, with its machine-readable ownership map in
+`docs/release-evidence.json`. The source inventory lives at
+`scripts/compliance/docs/source_inventory.json`. The policy that explains what may be vendored
+lives at `scripts/compliance/docs/vendor_policy.md`.
 
 ## Roles
 

@@ -86,7 +86,9 @@ for c in nemoclaw; do
     course_out="$OUT/${COURSE_PREFIX:+$COURSE_PREFIX/}$c"
     echo "[build_pages] bundling $c -> $course_out/ (full standalone) ..."
     python3 "$T1/scripts/build/bundle_standalone.py" --src "web/$c" --out "$course_out" --clean --full
-    for required in scripts/SKILL.html styles/SKILL.html styles/_style.css assets/SKILL.html mats/SKILL.html; do
+    for required in \
+        scripts/SKILL.html styles/SKILL.html styles/_style.css assets/SKILL.html mats/SKILL.html \
+        dependencies.html vendor/browser-dependencies.json vendor/browser-sbom.cdx.json; do
         if [ ! -f "$course_out/$required" ]; then
             echo "[build_pages]   ERROR: bundled course is missing $c/$required" >&2
             exit 1
@@ -114,7 +116,7 @@ for d in cors-proxy deploy scripts docs workspace; do
         mkdir -p "$OUT/$d"
         # the explorer + the documented source it shows (read-only); skip caches + subdirs
         for f in "$T1/$d"/*.html "$T1/$d"/*.js "$T1/$d"/*.mjs "$T1/$d"/*.py \
-                 "$T1/$d"/*.sh "$T1/$d"/*.md "$T1/$d"/*.txt "$T1/$d"/*.yml "$T1/$d"/*.yaml "$T1/$d"/*.conf "$T1/$d"/*.json "$T1/$d"/Dockerfile; do
+                 "$T1/$d"/*.sh "$T1/$d"/*.md "$T1/$d"/*.txt "$T1/$d"/*.yml "$T1/$d"/*.yaml "$T1/$d"/*.conf "$T1/$d"/*.json "$T1/$d"/*.svg "$T1/$d"/Dockerfile; do
             [ -f "$f" ] && cp "$f" "$OUT/$d"/
         done
         if [ "$d" = "docs" ] && [ -d "$T1/docs/assets/repository-overview" ]; then
@@ -127,6 +129,14 @@ for d in cors-proxy deploy scripts docs workspace; do
         echo "[build_pages] explorer $d -> public/$d/ ($(find "$OUT/$d" -maxdepth 1 -type f | wc -l) files, source shipped read-only)"
     fi
 done
+
+# Project every docs explorer declaration from source. Then inspect every declared Markdown
+# document and project its local link/image targets. This checks the final Pages tree rather than
+# assuming that a source-tree link remains valid after selective artifact assembly.
+python3 "$T1/scripts/build/project_docs_explorer.py" \
+    --source-skill "$T1/docs/SKILL.html" \
+    --source-root "$T1" \
+    --artifact-root "$OUT"
 
 if [ -f "$T1/docs/repository-overview.slides.json" ]; then
     test -f "$OUT/docs/repository-overview.html"

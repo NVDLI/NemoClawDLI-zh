@@ -55,12 +55,19 @@ jobs:
           python3 scripts/validation/html_structure_audit.py --self-test
           python3 scripts/validation/slides_audit.py --self-test
           python3 scripts/build/build_repository_overview_html.py --check
+          python3 scripts/build/project_docs_explorer.py --self-test
+          python3 scripts/validation/release_evidence_audit.py --self-test
+          python3 scripts/validation/release_evidence_audit.py
           python3 scripts/build/assemble_locale_overlay.py --self-test
           python3 scripts/validation/localization_audit.py --self-test
           python3 scripts/validation/localization_audit.py --locale pt-BR
           python3 scripts/validation/contribution_safety_audit.py --self-test
           python3 scripts/validation/contribution_safety_audit.py --report docs/validation/contribution-safety.json
           python3 scripts/compliance/source_gate.py
+          python3 scripts/validation/course_dependency_integrity.py --self-test
+          python3 scripts/validation/course_dependency_integrity.py
+          python3 scripts/validation/cell_audit.py --self-test
+          python3 scripts/validation/cell_audit.py
           python3 scripts/security/audit_python_dependencies.py
           python3 scripts/security/audit_vulnerability_waivers.py
           python3 scripts/security/audit_dependency_locks.py --self-test
@@ -94,6 +101,7 @@ jobs:
           bash scripts/build/build_pages.sh public
           mkdir -p release-assets release-evidence
           cp release-security/python-env.cdx.json "release-security/nemoclaw-$RELEASE_TAG.python-env.cdx.json"
+          cp web/nemoclaw/vendor/browser-sbom.cdx.json "release-security/nemoclaw-$RELEASE_TAG.browser.cdx.json"
           cp docs/validation/latest.json release-evidence/validation.json
           cp docs/validation/latest.md release-evidence/validation.md
           cp docs/validation/contribution-safety.json release-evidence/contribution-safety.json
@@ -106,7 +114,8 @@ jobs:
             --commit "$(git rev-parse "$RELEASE_TAG^{commit}")" \
             --tag-object "$(git rev-parse "refs/tags/$RELEASE_TAG")" \
             --source-date-epoch "$SOURCE_DATE_EPOCH" \
-            --asset "release-security/nemoclaw-$RELEASE_TAG.python-env.cdx.json"
+            --asset "release-security/nemoclaw-$RELEASE_TAG.python-env.cdx.json" \
+            --asset "release-security/nemoclaw-$RELEASE_TAG.browser.cdx.json"
           test -f release-assets/release-manifest.json
           test -f release-assets/SHA256SUMS
           (cd release-assets && sha256sum --check SHA256SUMS)

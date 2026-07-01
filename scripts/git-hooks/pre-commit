@@ -39,6 +39,14 @@ if [ -f "$SAFETY" ] && ! python3 "$SAFETY"; then
     exit 1
 fi
 
+RELEASE_EVIDENCE="$T1/scripts/validation/release_evidence_audit.py"
+if [ -f "$RELEASE_EVIDENCE" ] && ! python3 "$RELEASE_EVIDENCE"; then
+    echo ""
+    echo "[pre-commit] REFUSING COMMIT: product design or release test evidence is incomplete."
+    echo "Repair the named public document, ownership map, beacon, or validator wiring."
+    exit 1
+fi
+
 if [ ! -f "$AUDIT" ]; then
     # Audit script not present in this repo; nothing to check.
     exit 0

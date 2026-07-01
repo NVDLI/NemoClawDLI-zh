@@ -170,10 +170,17 @@ python3 scripts/validation/html_structure_audit.py --self-test  # prove browser-
 python3 scripts/validation/html_structure_audit.py         # EN + locale HTML structure
 python3 scripts/validation/security_architecture_audit.py --self-test # prove architecture drift detectors
 python3 scripts/validation/security_architecture_audit.py       # release/runtime trust-boundary graph
+python3 scripts/build/project_docs_explorer.py --self-test # prove rendered-doc artifact projection
+python3 scripts/validation/release_evidence_audit.py --self-test # prove design/test evidence detectors
+python3 scripts/validation/release_evidence_audit.py             # product design + release test plan
 python3 scripts/skills/skill_consistency.py             # skill-meta vs the real tree
 python3 scripts/build/assemble_locale_overlay.py --self-test  # stale translations cannot publish
 python3 scripts/validation/localization_audit.py --self-test  # locale detector mutations
 for locale in pt-BR es-ES; do python3 scripts/validation/localization_audit.py --locale "$locale"; done  # drift + language contracts
+python3 scripts/validation/course_dependency_integrity.py --self-test # prove browser package/inventory detectors
+python3 scripts/validation/course_dependency_integrity.py # exact packages, licenses, hashes, references, same-origin delivery
+python3 scripts/validation/cell_audit.py --self-test      # prove bundled and split editor-asset detection
+python3 scripts/validation/cell_audit.py                  # runnable-cell and CodeMirror delivery contract
 python3 scripts/security/audit_python_dependencies.py    # declared floors/pins have no known PyPI/OSV vulns
 python3 scripts/security/audit_vulnerability_waivers.py  # accepted vuln exceptions are owned + unexpired
 python3 scripts/security/audit_dependency_locks.py --self-test  # lock detector rejects stale/unpinned mutations
@@ -314,7 +321,8 @@ For GitLab branch staging, play `pages` only after the blocking `test` job passe
 Done means the job SHA still matches the remote branch head, the live branch course
 returns 200, both root and branch `branches.json` files pass
 `branch_preview_manifest_audit.py`, and every selector option survives its same-origin
-HEAD probe. Classic Pages keeps only the latest combined preview artifact, so never
+HEAD probe. The same audit fetches each staged dependency dashboard, generated package
+inventory, and browser SBOM; a foyer-only 200 is insufficient. Classic Pages keeps only the latest combined preview artifact, so never
 claim an older branch remains staged after publishing another one. The automatic,
 blocking `pages_smoke` job performs the same checks after Pages propagation.
 For a local production-shaped browser check, run

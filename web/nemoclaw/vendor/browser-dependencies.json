@@ -1,0 +1,977 @@
+{
+  "schema": "nemoclaw-browser-dependencies/1",
+  "delivery": "same-origin-vendored",
+  "generated_from": [
+    "scripts/browser-vendor/package.json",
+    "scripts/browser-vendor/package-lock.json",
+    "scripts/browser-vendor/highlight-entry.js",
+    "scripts/browser-vendor/codemirror-entry.js",
+    "scripts/browser-vendor/langchain-entry.js",
+    "web/ and i18n/ runtime references"
+  ],
+  "lock_sha256": "641159138da21305d39ebf42f7760609888df3456d8e27b3d70db9919f5ef988",
+  "packages": [
+    {
+      "name": "@cfworker/json-schema",
+      "version": "4.1.1",
+      "license": "MIT",
+      "direct": false,
+      "purpose": "Transitive code included by the browser agent bundle.",
+      "package_url": "https://www.npmjs.com/package/@cfworker/json-schema",
+      "homepage": "https://github.com/cfworker/cfworker/tree/master/packages/json-schema/README.md",
+      "license_file": "licenses/@cfworker__json-schema--4.1.1.txt"
+    },
+    {
+      "name": "@langchain/core",
+      "version": "1.1.48",
+      "license": "MIT",
+      "direct": true,
+      "purpose": "Tool and message primitives used by agent exercises.",
+      "package_url": "https://www.npmjs.com/package/@langchain/core",
+      "homepage": "https://github.com/langchain-ai/langchainjs/tree/main/langchain-core/",
+      "license_file": "licenses/@langchain__core--1.1.48.txt"
+    },
+    {
+      "name": "@langchain/langgraph",
+      "version": "1.4.7",
+      "license": "MIT",
+      "direct": true,
+      "purpose": "Agent construction and checkpoint memory used by agent exercises.",
+      "package_url": "https://www.npmjs.com/package/@langchain/langgraph",
+      "homepage": "git+ssh://git@github.com/langchain-ai/langgraphjs.git",
+      "license_file": "licenses/@langchain__langgraph--1.4.7.txt"
+    },
+    {
+      "name": "@langchain/langgraph-checkpoint",
+      "version": "1.1.3",
+      "license": "MIT",
+      "direct": false,
+      "purpose": "Transitive code included by the browser agent bundle.",
+      "package_url": "https://www.npmjs.com/package/@langchain/langgraph-checkpoint",
+      "homepage": "git+ssh://git@github.com/langchain-ai/langgraphjs.git",
+      "license_file": "licenses/@langchain__langgraph-checkpoint--1.1.3.txt"
+    },
+    {
+      "name": "@langchain/openai",
+      "version": "1.4.7",
+      "license": "MIT",
+      "direct": true,
+      "purpose": "OpenAI-compatible browser model client used by agent exercises.",
+      "package_url": "https://www.npmjs.com/package/@langchain/openai",
+      "homepage": "https://github.com/langchain-ai/langchainjs/tree/main/libs/providers/langchain-openai/",
+      "license_file": "licenses/@langchain__openai--1.4.7.txt"
+    },
+    {
+      "name": "base64-js",
+      "version": "1.5.1",
+      "license": "MIT",
+      "direct": false,
+      "purpose": "Transitive code included by the browser agent bundle.",
+      "package_url": "https://www.npmjs.com/package/base64-js",
+      "homepage": "https://github.com/beatgammit/base64-js",
+      "license_file": "licenses/base64-js--1.5.1.txt"
+    },
+    {
+      "name": "codemirror",
+      "version": "5.65.16",
+      "license": "MIT",
+      "direct": true,
+      "purpose": "Editable and read-only code cells.",
+      "package_url": "https://www.npmjs.com/package/codemirror",
+      "homepage": "https://codemirror.net/5/",
+      "license_file": "licenses/codemirror--5.65.16.txt"
+    },
+    {
+      "name": "eventemitter3",
+      "version": "4.0.7",
+      "license": "MIT",
+      "direct": false,
+      "purpose": "Transitive code included by the browser agent bundle.",
+      "package_url": "https://www.npmjs.com/package/eventemitter3",
+      "homepage": "git://github.com/primus/eventemitter3.git",
+      "license_file": "licenses/eventemitter3--4.0.7.txt"
+    },
+    {
+      "name": "highlight.js",
+      "version": "11.10.0",
+      "license": "BSD-3-Clause",
+      "direct": true,
+      "purpose": "Syntax highlighting in course pages and source explorers.",
+      "package_url": "https://www.npmjs.com/package/highlight.js",
+      "homepage": "https://highlightjs.org/",
+      "license_file": "licenses/highlight.js--11.10.0.txt"
+    },
+    {
+      "name": "js-tiktoken",
+      "version": "1.0.21",
+      "license": "MIT",
+      "direct": false,
+      "purpose": "Transitive code included by the browser agent bundle.",
+      "package_url": "https://www.npmjs.com/package/js-tiktoken",
+      "homepage": "https://github.com/dqbd/tiktoken",
+      "license_file": "licenses/js-tiktoken--1.0.21.txt"
+    },
+    {
+      "name": "langsmith",
+      "version": "0.7.14",
+      "license": "MIT",
+      "direct": false,
+      "purpose": "Transitive code included by the browser agent bundle.",
+      "package_url": "https://www.npmjs.com/package/langsmith",
+      "homepage": "https://github.com/langchain-ai/langsmith-sdk#readme",
+      "license_file": "licenses/langsmith--0.7.14.txt"
+    },
+    {
+      "name": "marked",
+      "version": "14.1.4",
+      "license": "MIT",
+      "direct": true,
+      "purpose": "Markdown rendering for chat output and repository documents.",
+      "package_url": "https://www.npmjs.com/package/marked",
+      "homepage": "https://marked.js.org",
+      "license_file": "licenses/marked--14.1.4.txt"
+    },
+    {
+      "name": "mustache",
+      "version": "4.2.0",
+      "license": "MIT",
+      "direct": false,
+      "purpose": "Transitive code included by the browser agent bundle.",
+      "package_url": "https://www.npmjs.com/package/mustache",
+      "homepage": "https://github.com/janl/mustache.js",
+      "license_file": "licenses/mustache--4.2.0.txt"
+    },
+    {
+      "name": "openai",
+      "version": "6.45.0",
+      "license": "Apache-2.0",
+      "direct": false,
+      "purpose": "Transitive code included by the browser agent bundle.",
+      "package_url": "https://www.npmjs.com/package/openai",
+      "homepage": "github:openai/openai-node",
+      "license_file": "licenses/openai--6.45.0.txt"
+    },
+    {
+      "name": "p-finally",
+      "version": "1.0.0",
+      "license": "MIT",
+      "direct": false,
+      "purpose": "Transitive code included by the browser agent bundle.",
+      "package_url": "https://www.npmjs.com/package/p-finally",
+      "homepage": "sindresorhus/p-finally",
+      "license_file": "licenses/p-finally--1.0.0.txt"
+    },
+    {
+      "name": "p-queue",
+      "version": "6.6.2",
+      "license": "MIT",
+      "direct": false,
+      "purpose": "Transitive code included by the browser agent bundle.",
+      "package_url": "https://www.npmjs.com/package/p-queue",
+      "homepage": "sindresorhus/p-queue",
+      "license_file": "licenses/p-queue--6.6.2.txt"
+    },
+    {
+      "name": "p-timeout",
+      "version": "3.2.0",
+      "license": "MIT",
+      "direct": false,
+      "purpose": "Transitive code included by the browser agent bundle.",
+      "package_url": "https://www.npmjs.com/package/p-timeout",
+      "homepage": "sindresorhus/p-timeout",
+      "license_file": "licenses/p-timeout--3.2.0.txt"
+    },
+    {
+      "name": "zod",
+      "version": "3.25.76",
+      "license": "MIT",
+      "direct": true,
+      "purpose": "Tool argument schemas used by agent exercises.",
+      "package_url": "https://www.npmjs.com/package/zod",
+      "homepage": "https://zod.dev",
+      "license_file": "licenses/zod--3.25.76.txt"
+    }
+  ],
+  "assets": [
+    {
+      "file": "codemirror-5.65.16.min.css",
+      "media_type": "text/css",
+      "bytes": 8720,
+      "sha256": "eb494ea972d2661ef86f7f6ac656dd6786d721e49c9c1b46e1eb967e4b6f9bf3",
+      "packages": [
+        "codemirror"
+      ],
+      "references": [
+        {
+          "source": "i18n/es/web/nemoclaw/01a-loop.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/01b-react.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/01c-tools.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/02a-routing.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/02b-rag.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/02c-deep.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/03a-kickstart.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/03b-openclaw.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/03c-always-on.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/04a-safety.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/04b-modern-clis.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/04c-going-further.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/01a-loop.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/01b-react.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/01c-tools.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/02a-routing.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/02b-rag.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/02c-deep.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/03a-kickstart.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/03b-openclaw.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/03c-always-on.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/04a-safety.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/04b-modern-clis.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/04c-going-further.html",
+          "line": 9
+        },
+        {
+          "source": "web/nemoclaw/01a-loop.html",
+          "line": 9
+        },
+        {
+          "source": "web/nemoclaw/01b-react.html",
+          "line": 9
+        },
+        {
+          "source": "web/nemoclaw/01c-tools.html",
+          "line": 9
+        },
+        {
+          "source": "web/nemoclaw/02a-routing.html",
+          "line": 9
+        },
+        {
+          "source": "web/nemoclaw/02b-rag.html",
+          "line": 9
+        },
+        {
+          "source": "web/nemoclaw/02c-deep.html",
+          "line": 9
+        },
+        {
+          "source": "web/nemoclaw/03a-kickstart.html",
+          "line": 10
+        },
+        {
+          "source": "web/nemoclaw/03b-openclaw.html",
+          "line": 9
+        },
+        {
+          "source": "web/nemoclaw/03c-always-on.html",
+          "line": 9
+        },
+        {
+          "source": "web/nemoclaw/04a-safety.html",
+          "line": 9
+        },
+        {
+          "source": "web/nemoclaw/04b-modern-clis.html",
+          "line": 9
+        },
+        {
+          "source": "web/nemoclaw/04c-going-further.html",
+          "line": 9
+        },
+        {
+          "source": "web/nemoclaw/glossary.html",
+          "line": 9
+        },
+        {
+          "source": "web/nemoclaw/scripts/SKILL.html",
+          "line": 9
+        }
+      ]
+    },
+    {
+      "file": "codemirror-5.65.16.min.js",
+      "media_type": "text/javascript",
+      "bytes": 237247,
+      "sha256": "54761ad71363f25ecb39171181883a6bc5b0149f91c027cc3b2070727943811c",
+      "packages": [
+        "codemirror"
+      ],
+      "references": [
+        {
+          "source": "i18n/es/web/nemoclaw/01a-loop.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/01b-react.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/01c-tools.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/02a-routing.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/02b-rag.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/02c-deep.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/03a-kickstart.html",
+          "line": 12
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/03b-openclaw.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/03c-always-on.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/04a-safety.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/04b-modern-clis.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/04c-going-further.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/01a-loop.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/01b-react.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/01c-tools.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/02a-routing.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/02b-rag.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/02c-deep.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/03a-kickstart.html",
+          "line": 12
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/03b-openclaw.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/03c-always-on.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/04a-safety.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/04b-modern-clis.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/04c-going-further.html",
+          "line": 11
+        },
+        {
+          "source": "web/nemoclaw/01a-loop.html",
+          "line": 11
+        },
+        {
+          "source": "web/nemoclaw/01b-react.html",
+          "line": 11
+        },
+        {
+          "source": "web/nemoclaw/01c-tools.html",
+          "line": 11
+        },
+        {
+          "source": "web/nemoclaw/02a-routing.html",
+          "line": 11
+        },
+        {
+          "source": "web/nemoclaw/02b-rag.html",
+          "line": 11
+        },
+        {
+          "source": "web/nemoclaw/02c-deep.html",
+          "line": 11
+        },
+        {
+          "source": "web/nemoclaw/03a-kickstart.html",
+          "line": 12
+        },
+        {
+          "source": "web/nemoclaw/03b-openclaw.html",
+          "line": 11
+        },
+        {
+          "source": "web/nemoclaw/03c-always-on.html",
+          "line": 11
+        },
+        {
+          "source": "web/nemoclaw/04a-safety.html",
+          "line": 11
+        },
+        {
+          "source": "web/nemoclaw/04b-modern-clis.html",
+          "line": 11
+        },
+        {
+          "source": "web/nemoclaw/04c-going-further.html",
+          "line": 11
+        },
+        {
+          "source": "web/nemoclaw/glossary.html",
+          "line": 11
+        },
+        {
+          "source": "web/nemoclaw/scripts/SKILL.html",
+          "line": 11
+        }
+      ]
+    },
+    {
+      "file": "codemirror-monokai-5.65.16.min.css",
+      "media_type": "text/css",
+      "bytes": 2179,
+      "sha256": "2463dc6fd92019a0c7ca2aaa01d03116b280fa7c6ae01bf21df7c107d9b683e8",
+      "packages": [
+        "codemirror"
+      ],
+      "references": [
+        {
+          "source": "i18n/es/web/nemoclaw/01a-loop.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/01b-react.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/01c-tools.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/02a-routing.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/02b-rag.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/02c-deep.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/03a-kickstart.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/03b-openclaw.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/03c-always-on.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/04a-safety.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/04b-modern-clis.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/04c-going-further.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/01a-loop.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/01b-react.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/01c-tools.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/02a-routing.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/02b-rag.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/02c-deep.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/03a-kickstart.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/03b-openclaw.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/03c-always-on.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/04a-safety.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/04b-modern-clis.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/04c-going-further.html",
+          "line": 10
+        },
+        {
+          "source": "web/nemoclaw/01a-loop.html",
+          "line": 10
+        },
+        {
+          "source": "web/nemoclaw/01b-react.html",
+          "line": 10
+        },
+        {
+          "source": "web/nemoclaw/01c-tools.html",
+          "line": 10
+        },
+        {
+          "source": "web/nemoclaw/02a-routing.html",
+          "line": 10
+        },
+        {
+          "source": "web/nemoclaw/02b-rag.html",
+          "line": 10
+        },
+        {
+          "source": "web/nemoclaw/02c-deep.html",
+          "line": 10
+        },
+        {
+          "source": "web/nemoclaw/03a-kickstart.html",
+          "line": 11
+        },
+        {
+          "source": "web/nemoclaw/03b-openclaw.html",
+          "line": 10
+        },
+        {
+          "source": "web/nemoclaw/03c-always-on.html",
+          "line": 10
+        },
+        {
+          "source": "web/nemoclaw/04a-safety.html",
+          "line": 10
+        },
+        {
+          "source": "web/nemoclaw/04b-modern-clis.html",
+          "line": 10
+        },
+        {
+          "source": "web/nemoclaw/04c-going-further.html",
+          "line": 10
+        },
+        {
+          "source": "web/nemoclaw/glossary.html",
+          "line": 10
+        },
+        {
+          "source": "web/nemoclaw/scripts/SKILL.html",
+          "line": 10
+        }
+      ]
+    },
+    {
+      "file": "highlight-11.10.0.min.js",
+      "media_type": "text/javascript",
+      "bytes": 155614,
+      "sha256": "d88ac87971ce226febfe3e18648f4c019de1e9cba37f21925ea7f33c7b81b566",
+      "packages": [
+        "highlight.js"
+      ],
+      "references": [
+        {
+          "source": "i18n/es/web/nemoclaw/01a-loop.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/01b-react.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/01c-tools.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/02a-routing.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/02b-rag.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/02c-deep.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/03a-kickstart.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/03b-openclaw.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/03c-always-on.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/04a-safety.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/04b-modern-clis.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/04c-going-further.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/01a-loop.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/01b-react.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/01c-tools.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/02a-routing.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/02b-rag.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/02c-deep.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/03a-kickstart.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/03b-openclaw.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/03c-always-on.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/04a-safety.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/04b-modern-clis.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/04c-going-further.html",
+          "line": 8
+        },
+        {
+          "source": "web/_skill_explorer.js",
+          "line": 64
+        },
+        {
+          "source": "web/nemoclaw/01a-loop.html",
+          "line": 8
+        },
+        {
+          "source": "web/nemoclaw/01b-react.html",
+          "line": 8
+        },
+        {
+          "source": "web/nemoclaw/01c-tools.html",
+          "line": 8
+        },
+        {
+          "source": "web/nemoclaw/02a-routing.html",
+          "line": 8
+        },
+        {
+          "source": "web/nemoclaw/02b-rag.html",
+          "line": 8
+        },
+        {
+          "source": "web/nemoclaw/02c-deep.html",
+          "line": 8
+        },
+        {
+          "source": "web/nemoclaw/03a-kickstart.html",
+          "line": 9
+        },
+        {
+          "source": "web/nemoclaw/03b-openclaw.html",
+          "line": 8
+        },
+        {
+          "source": "web/nemoclaw/03c-always-on.html",
+          "line": 8
+        },
+        {
+          "source": "web/nemoclaw/04a-safety.html",
+          "line": 8
+        },
+        {
+          "source": "web/nemoclaw/04b-modern-clis.html",
+          "line": 8
+        },
+        {
+          "source": "web/nemoclaw/04c-going-further.html",
+          "line": 8
+        },
+        {
+          "source": "web/nemoclaw/glossary.html",
+          "line": 8
+        },
+        {
+          "source": "web/nemoclaw/scripts/SKILL.html",
+          "line": 8
+        }
+      ]
+    },
+    {
+      "file": "highlight-github-dark-11.10.0.min.css",
+      "media_type": "text/css",
+      "bytes": 1315,
+      "sha256": "9f208d022102b1d0c7aebfecd8e42ca7997d5de636649d2b31ea63093d809019",
+      "packages": [
+        "highlight.js"
+      ],
+      "references": [
+        {
+          "source": "web/_skill_explorer.js",
+          "line": 63
+        }
+      ]
+    },
+    {
+      "file": "langchain-1.4.7.esm.min.js",
+      "media_type": "text/javascript",
+      "bytes": 1317782,
+      "sha256": "d937946fea777284fe8e3a57d6f549e91987d34dbf87e0f4e7439edbc7edc43f",
+      "packages": [
+        "@cfworker/json-schema",
+        "@langchain/core",
+        "@langchain/langgraph",
+        "@langchain/langgraph-checkpoint",
+        "@langchain/openai",
+        "base64-js",
+        "eventemitter3",
+        "js-tiktoken",
+        "langsmith",
+        "mustache",
+        "openai",
+        "p-finally",
+        "p-queue",
+        "p-timeout",
+        "zod"
+      ],
+      "references": [
+        {
+          "source": "i18n/es/web/nemoclaw/01b-react.html",
+          "line": 380
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/02c-deep.html",
+          "line": 431
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/02c-deep.html",
+          "line": 485
+        },
+        {
+          "source": "i18n/es/web/nemoclaw/02c-deep.html",
+          "line": 584
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/01b-react.html",
+          "line": 419
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/02c-deep.html",
+          "line": 422
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/02c-deep.html",
+          "line": 476
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/02c-deep.html",
+          "line": 575
+        },
+        {
+          "source": "web/nemoclaw/01b-react.html",
+          "line": 452
+        },
+        {
+          "source": "web/nemoclaw/02c-deep.html",
+          "line": 446
+        },
+        {
+          "source": "web/nemoclaw/02c-deep.html",
+          "line": 500
+        },
+        {
+          "source": "web/nemoclaw/02c-deep.html",
+          "line": 599
+        },
+        {
+          "source": "web/nemoclaw/scripts/_chat.js",
+          "line": 6
+        }
+      ]
+    },
+    {
+      "file": "marked-14.1.4.esm.js",
+      "media_type": "text/javascript",
+      "bytes": 92854,
+      "sha256": "7d0eba3a3b1ba7b53ed4a92f39b7ab4c2412f6d4d22b435ff29b55048e926e06",
+      "packages": [
+        "marked"
+      ],
+      "references": [
+        {
+          "source": "web/_skill_explorer.js",
+          "line": 264
+        },
+        {
+          "source": "web/nemoclaw/scripts/_chat.js",
+          "line": 5
+        }
+      ]
+    }
+  ],
+  "legal_notices": [
+    {
+      "file": "langchain-1.4.7.esm.min.js.LEGAL.txt",
+      "bytes": 860,
+      "sha256": "ebb1e385d21514bec6ad6e8318c0622c796e0eb0ce01c9d14a33fd3a83a420f7"
+    }
+  ],
+  "sbom": {
+    "file": "browser-sbom.cdx.json",
+    "bytes": 7862,
+    "sha256": "a0740300bc1147168ec403c460e7a80d88ab269c38f640d3c3dbd8857ece42ff",
+    "component_count": 18
+  }
+}

@@ -43,6 +43,13 @@ The repository keeps curated source and projects it into release formats:
 Versioned public releases use protected annotated SemVer tags and deterministic archives with a
 manifest, resolved-environment SBOM, and checksums. See
 [`docs/release_artifacts.md`](docs/release_artifacts.md).
+The released system boundary and its executable verification plan live in
+[`docs/product-design.md`](docs/product-design.md) and
+[`docs/release-test-plan.md`](docs/release-test-plan.md). Their machine-readable coverage map is
+[`docs/release-evidence.json`](docs/release-evidence.json).
+The public [`browser dependency inventory`](web/nemoclaw/dependencies.html) lists every direct and
+bundled transitive JavaScript package, exact version, license, same-origin asset, hash, and runtime
+reference used by learners.
 
 Students enter through the release foyer, [`web/index.html`](web/index.html). It surfaces
 only released courses. Today that is [`web/nemoclaw/`](web/nemoclaw/).
@@ -137,6 +144,8 @@ python3 scripts/validation/slides_audit.py --self-test
 python3 scripts/validation/slides_audit.py
 python3 scripts/validation/security_architecture_audit.py --self-test
 python3 scripts/validation/security_architecture_audit.py
+python3 scripts/validation/release_evidence_audit.py --self-test
+python3 scripts/validation/release_evidence_audit.py
 python3 scripts/compliance/source_gate.py
 python3 scripts/security/audit_dependency_locks.py --self-test
 python3 scripts/security/audit_dependency_locks.py

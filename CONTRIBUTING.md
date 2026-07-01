@@ -101,6 +101,8 @@ python3 scripts/validation/contribution_safety_audit.py --self-test
 python3 scripts/validation/contribution_safety_audit.py
 python3 scripts/validation/security_architecture_audit.py --self-test
 python3 scripts/validation/security_architecture_audit.py
+python3 scripts/validation/release_evidence_audit.py --self-test
+python3 scripts/validation/release_evidence_audit.py
 python3 scripts/build/assemble_locale_overlay.py --self-test
 python3 scripts/validation/localization_audit.py --self-test
 python3 scripts/validation/localization_audit.py --locale pt-BR

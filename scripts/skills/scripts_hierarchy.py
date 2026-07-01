@@ -15,8 +15,9 @@ ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
 
 GROUP_SKILLS = (
-    "build", "compliance", "dev", "edx", "figures", "git-hooks", "materials",
-    "runtime", "security", "skills", "translate", "validation",
+    "browser-vendor", "build", "compliance", "dev", "edx", "figures",
+    "git-hooks", "materials", "runtime", "security", "skills", "translate",
+    "validation",
 )
 ROOT_ALLOW = {".gitkeep", "SKILL.html", "_bootstrap.py"}
 SKIP_DIRS = {"__pycache__", ".figtools", "grounding_cache"}

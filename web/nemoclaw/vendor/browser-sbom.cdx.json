@@ -1,0 +1,375 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "application",
+      "name": "nemoclaw-student-browser-runtime",
+      "version": "source",
+      "bom-ref": "nemoclaw-student-browser-runtime"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "@cfworker/json-schema",
+      "version": "4.1.1",
+      "purl": "pkg:npm/%40cfworker/json-schema@4.1.1",
+      "bom-ref": "pkg:npm/%40cfworker/json-schema@4.1.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "nemoclaw:relationship",
+          "value": "transitive"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "@langchain/core",
+      "version": "1.1.48",
+      "purl": "pkg:npm/%40langchain/core@1.1.48",
+      "bom-ref": "pkg:npm/%40langchain/core@1.1.48",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "nemoclaw:relationship",
+          "value": "direct"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "@langchain/langgraph",
+      "version": "1.4.7",
+      "purl": "pkg:npm/%40langchain/langgraph@1.4.7",
+      "bom-ref": "pkg:npm/%40langchain/langgraph@1.4.7",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "nemoclaw:relationship",
+          "value": "direct"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "@langchain/langgraph-checkpoint",
+      "version": "1.1.3",
+      "purl": "pkg:npm/%40langchain/langgraph-checkpoint@1.1.3",
+      "bom-ref": "pkg:npm/%40langchain/langgraph-checkpoint@1.1.3",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "nemoclaw:relationship",
+          "value": "transitive"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "@langchain/openai",
+      "version": "1.4.7",
+      "purl": "pkg:npm/%40langchain/openai@1.4.7",
+      "bom-ref": "pkg:npm/%40langchain/openai@1.4.7",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "nemoclaw:relationship",
+          "value": "direct"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "base64-js",
+      "version": "1.5.1",
+      "purl": "pkg:npm/base64-js@1.5.1",
+      "bom-ref": "pkg:npm/base64-js@1.5.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "nemoclaw:relationship",
+          "value": "transitive"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "codemirror",
+      "version": "5.65.16",
+      "purl": "pkg:npm/codemirror@5.65.16",
+      "bom-ref": "pkg:npm/codemirror@5.65.16",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "nemoclaw:relationship",
+          "value": "direct"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "eventemitter3",
+      "version": "4.0.7",
+      "purl": "pkg:npm/eventemitter3@4.0.7",
+      "bom-ref": "pkg:npm/eventemitter3@4.0.7",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "nemoclaw:relationship",
+          "value": "transitive"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "highlight.js",
+      "version": "11.10.0",
+      "purl": "pkg:npm/highlight.js@11.10.0",
+      "bom-ref": "pkg:npm/highlight.js@11.10.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "nemoclaw:relationship",
+          "value": "direct"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "js-tiktoken",
+      "version": "1.0.21",
+      "purl": "pkg:npm/js-tiktoken@1.0.21",
+      "bom-ref": "pkg:npm/js-tiktoken@1.0.21",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "nemoclaw:relationship",
+          "value": "transitive"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "langsmith",
+      "version": "0.7.14",
+      "purl": "pkg:npm/langsmith@0.7.14",
+      "bom-ref": "pkg:npm/langsmith@0.7.14",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "nemoclaw:relationship",
+          "value": "transitive"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "marked",
+      "version": "14.1.4",
+      "purl": "pkg:npm/marked@14.1.4",
+      "bom-ref": "pkg:npm/marked@14.1.4",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "nemoclaw:relationship",
+          "value": "direct"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "mustache",
+      "version": "4.2.0",
+      "purl": "pkg:npm/mustache@4.2.0",
+      "bom-ref": "pkg:npm/mustache@4.2.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "nemoclaw:relationship",
+          "value": "transitive"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "openai",
+      "version": "6.45.0",
+      "purl": "pkg:npm/openai@6.45.0",
+      "bom-ref": "pkg:npm/openai@6.45.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "nemoclaw:relationship",
+          "value": "transitive"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "p-finally",
+      "version": "1.0.0",
+      "purl": "pkg:npm/p-finally@1.0.0",
+      "bom-ref": "pkg:npm/p-finally@1.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "nemoclaw:relationship",
+          "value": "transitive"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "p-queue",
+      "version": "6.6.2",
+      "purl": "pkg:npm/p-queue@6.6.2",
+      "bom-ref": "pkg:npm/p-queue@6.6.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "nemoclaw:relationship",
+          "value": "transitive"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "p-timeout",
+      "version": "3.2.0",
+      "purl": "pkg:npm/p-timeout@3.2.0",
+      "bom-ref": "pkg:npm/p-timeout@3.2.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "nemoclaw:relationship",
+          "value": "transitive"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "zod",
+      "version": "3.25.76",
+      "purl": "pkg:npm/zod@3.25.76",
+      "bom-ref": "pkg:npm/zod@3.25.76",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "nemoclaw:relationship",
+          "value": "direct"
+        }
+      ]
+    }
+  ]
+}

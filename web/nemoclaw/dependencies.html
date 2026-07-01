@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="page-role" content="tool"/>
+<title>Browser dependencies · Securing Agents</title>
+<link rel="stylesheet" href="styles/_style.css"/>
+<style>
+main{max-width:92rem;margin:0 auto;padding:clamp(1.4rem,4vw,3.5rem)}
+.dep-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.4rem}.dep-head h1{margin:.15rem 0 .35rem;color:var(--tx)}
+.dep-head p{max-width:54rem;margin:0;color:var(--td)}.dep-back{color:var(--gs);text-decoration:none;border:1px solid var(--bd);border-radius:999px;padding:.45rem .8rem}
+.dep-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:.75rem;margin:1.2rem 0 1.8rem}.dep-stat{border:1px solid var(--bd);border-radius:10px;background:var(--e1);padding:1rem}.dep-stat b{display:block;color:var(--gs);font:800 1.55rem/1 var(--mono);margin-bottom:.35rem}.dep-stat span{color:var(--tf);font-size:.78rem}
+.dep-section{margin:1.8rem 0}.dep-section h2{margin:0 0 .35rem}.dep-section>p{color:var(--td);max-width:70rem;margin:.35rem 0 1rem}
+.dep-table-wrap{overflow:auto;border:1px solid var(--bd);border-radius:10px}.dep-table{width:100%;border-collapse:collapse;min-width:54rem;background:var(--e1)}.dep-table th,.dep-table td{text-align:left;vertical-align:top;padding:.7rem .8rem;border-bottom:1px solid var(--bd)}.dep-table th{position:sticky;top:0;background:var(--e2);color:var(--tx);font-size:.72rem;text-transform:uppercase;letter-spacing:.04em}.dep-table tr:last-child td{border-bottom:0}.dep-table td{color:var(--td);font-size:.83rem}.dep-table code{color:var(--gs)}
+.dep-kind{display:inline-block;border:1px solid var(--bd);border-radius:999px;padding:.12rem .45rem;color:var(--tf);font-size:.68rem;white-space:nowrap}.dep-license{color:var(--gs)}.dep-hash{font:normal .72rem/1.4 var(--mono);overflow-wrap:anywhere;color:var(--tf)}
+.dep-note{border-left:3px solid var(--g);background:rgba(118,185,0,.07);padding:.8rem 1rem;color:var(--td);margin:1rem 0}.dep-links{margin:.8rem 0;padding-left:1.2rem;color:var(--td)}.dep-links li+li{margin-top:.35rem}.dep-error{color:var(--err)}
+@media(max-width:700px){main{padding:1rem}.dep-table{min-width:46rem}}
+</style>
+</head>
+<body>
+<main>
+  <header class="dep-head">
+    <div>
+      <h1>Browser dependency inventory</h1>
+      <p>These are the JavaScript and CSS files shipped to the learner browser. Generation starts from locked package inputs. It then records the emitted bytes and every runtime source reference.</p>
+    </div>
+    <a class="dep-back" href="index.html">Course home</a>
+  </header>
+
+  <div class="dep-note">All listed assets come from the static course origin; course pages never fetch executable packages from a public package CDN at runtime.</div>
+  <section class="dep-summary" id="summary" aria-label="Dependency summary"><div class="dep-stat"><b>…</b><span>Loading inventory</span></div></section>
+
+  <section class="dep-section">
+    <h2>Packages</h2>
+    <p>Course authors select direct rows. The lazy LangChain browser bundle contributes transitive rows, so the table shows the complete shipped package set rather than only imports visible in course pages. Each license link opens the exact text shipped with this course version.</p>
+    <div class="dep-table-wrap"><table class="dep-table" id="package-table"><thead><tr><th>Package</th><th>Version</th><th>Relationship</th><th>License</th><th>Purpose</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="dep-section">
+    <h2>Delivered assets</h2>
+    <p>SHA-256 binds each committed browser asset. Reference counts cover canonical pages plus pt-BR and es-ES runtime source.</p>
+    <div class="dep-table-wrap"><table class="dep-table" id="asset-table"><thead><tr><th>Asset</th><th>Size</th><th>Packages</th><th>Source refs</th><th>SHA-256</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="dep-section">
+    <h2>Reproduction boundary</h2>
+    <p>The exact inputs live in <code>scripts/browser-vendor/package.json</code> and <code>package-lock.json</code>. One build script emits the committed assets and inventory. CI verifies every hash against those bytes and rebuilds source references. Separate checks require exact versions and license evidence. Package-CDN URLs are rejected in student runtime code.</p>
+    <ul class="dep-links"><li id="legal-list"></li><li id="sbom-link"></li></ul>
+  </section>
+  <p class="dep-error" id="error" role="alert"></p>
+</main>
+<script>
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const size=n=>n<1024?`${n} B`:n<1048576?`${(n/1024).toFixed(1)} KiB`:`${(n/1048576).toFixed(2)} MiB`;
+fetch("vendor/browser-dependencies.json").then(r=>{if(!r.ok)throw new Error(`inventory request failed: ${r.status}`);return r.json()}).then(data=>{
+  const direct=data.packages.filter(p=>p.direct).length;
+  const totalBytes=data.assets.reduce((sum,a)=>sum+a.bytes,0);
+  document.getElementById("summary").innerHTML=[
+    [data.packages.length,"shipped packages"],[direct,"direct packages"],[data.assets.length,"same-origin assets"],[size(totalBytes),"total browser bytes"]
+  ].map(([v,l])=>`<div class="dep-stat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("");
+  document.querySelector("#package-table tbody").innerHTML=data.packages.map(p=>`<tr><td><a class="dep-license" href="${esc(p.package_url)}" target="_blank" rel="noopener"><code>${esc(p.name)}</code></a></td><td>${esc(p.version)}</td><td><span class="dep-kind">${p.direct?"direct":"transitive"}</span></td><td><a class="dep-license" href="vendor/${esc(p.license_file)}">${esc(p.license)}</a></td><td>${esc(p.purpose)}</td></tr>`).join("");
+  document.querySelector("#asset-table tbody").innerHTML=data.assets.map(a=>`<tr><td><a class="dep-license" href="vendor/${esc(a.file)}"><code>${esc(a.file)}</code></a></td><td>${size(a.bytes)}</td><td>${a.packages.map(esc).join("<br>")}</td><td>${a.references.length}</td><td class="dep-hash">${esc(a.sha256)}</td></tr>`).join("");
+  document.getElementById("legal-list").innerHTML=`Bundle-level embedded notices: ${data.legal_notices.map(n=>`<a class="dep-license" href="vendor/${esc(n.file)}"><code>${esc(n.file)}</code></a>`).join(", ")}.`;
+  document.getElementById("sbom-link").innerHTML=`Machine-readable inventory: <a class="dep-license" href="vendor/${esc(data.sbom.file)}"><code>${esc(data.sbom.file)}</code></a> (${data.sbom.component_count} CycloneDX components).`;
+}).catch(error=>{document.getElementById("error").textContent=`Could not load dependency inventory: ${error.message}`});
+</script>
+</body>
+</html>

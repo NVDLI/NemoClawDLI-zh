@@ -9,7 +9,7 @@ an internal release candidate until `RELEASE_STATUS.json` records external appro
 |---|---|---|---|---|
 | Branch preview | topic branch commit | Combined classic-Pages preview | 3 days | Manual review environment |
 | Internal production | protected `main` or approved production ref | Current Pages deployment | Replaced by next approved deploy | Protected production environment |
-| Public release | protected annotated `vMAJOR.MINOR.PATCH` tag | Versioned archive, manifest, SBOM, checksums | Published release lifetime | Protected tag plus release environment |
+| Public release | protected annotated `vMAJOR.MINOR.PATCH` tag | Versioned archive, manifest, SBOMs, checksums | Published release lifetime | Protected tag plus release environment |
 
 A Pages deployment proves a commit is previewable. It does not create a version. A public release
 always starts from a protected tag and never from a branch name or an unreviewed workflow input.
@@ -43,6 +43,7 @@ Each public draft receives:
 - `release-manifest.json`: schema, tag object, commit, source epoch, archive digest, file count,
   and attached-asset digests
 - `nemoclaw-vX.Y.Z.python-env.cdx.json`: CycloneDX SBOM for the resolved release environment
+- `nemoclaw-vX.Y.Z.browser.cdx.json`: CycloneDX SBOM for JavaScript packages shipped to learners
 - `SHA256SUMS`: digest list for every published asset
 
 Validation reports and the full `pip-audit` result remain workflow evidence. They are retained with
@@ -51,6 +52,9 @@ available without publishing noisy scanner detail as a supported product interfa
 The source-backed security architecture and generated SVG remain versioned under `docs/` so a reviewer
 can trace system boundaries to the exact source tag. They are engineering evidence rather than
 supported runtime interfaces and do not encode internal submissions or approval records.
+The tagged source also versions `docs/product-design.md`, `docs/release-test-plan.md`, and
+`docs/release-evidence.json`. Reviewers link those files at the exact release commit, then retain
+private scanner, reviewer, and approval records in the authorized release system.
 The workflow installs scanner tools in a separate environment, so scanner dependencies do not
 pollute the runtime SBOM. Scanner versions are pinned in the workflow so the same environment is
 serialized consistently until an explicit dependency update changes the tooling.
