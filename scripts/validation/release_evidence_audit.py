@@ -21,6 +21,7 @@ add_script_paths(ROOT / "scripts")
 import prose_variety as pv  # noqa: E402
 
 CONTRACT = ROOT / "docs" / "release-evidence.json"
+SOURCE_INVENTORY = ROOT / "scripts" / "compliance" / "docs" / "source_inventory.json"
 
 REQUIRED_DOCUMENTS = {
     "design", "test_plan", "security_design", "security_architecture",
@@ -76,12 +77,6 @@ REQUIRED_WIRING = {
     "docs/SKILL.html": ("product-design.md", "release-test-plan.md", "release-evidence.json"),
     "scripts/validation/SKILL.html": ("release_evidence_audit.py",),
 }
-FORBIDDEN_PUBLIC_PATTERNS = {
-    "internal-program-id": re.compile(r"\bNSPECT-[A-Z0-9-]+\b", re.I),
-    "internal-ticket-id": re.compile(r"\bMVSB-\d+\b", re.I),
-    "internal-tracker-url": re.compile(r"https?://(?:jirasw|confluence|nvbugs(?:pro)?)\.nvidia\.com", re.I),
-    "internal-review-name": re.compile(r"\b(?:TARA|TAVA|SecNemo|OneTrust|PLC)\b", re.I),
-}
 ALLOWED_OWNERS = {"repository", "operator", "shared"}
 ALLOWED_EXTERNAL_STATUS = "operator-required"
 PROSE_GRAMMAR_BLOCK = {
@@ -102,6 +97,14 @@ def finding(code: str, path: str, detail: str, fix: str) -> dict[str, str]:
 
 def load_contract(path: Path = CONTRACT) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def private_link_patterns(path: Path = SOURCE_INVENTORY) -> list[tuple[str, re.Pattern[str]]]:
+    inventory = json.loads(path.read_text(encoding="utf-8"))
+    return [
+        (str(row["name"]), re.compile(str(row["pattern"]), re.I))
+        for row in inventory.get("forbidden_private_link_regexes", [])
+    ]
 
 
 def headings(text: str) -> set[str]:
@@ -226,7 +229,7 @@ def audit_contract(data: dict, *, root: Path = ROOT,
         if rel != "docs/release-evidence.json" and not (root / rel).is_file() and rel not in overrides:
             continue
         text = json.dumps(data, indent=2) if rel == "docs/release-evidence.json" else text_for(rel, root, overrides)
-        for name, pattern in FORBIDDEN_PUBLIC_PATTERNS.items():
+        for name, pattern in private_link_patterns():
             if pattern.search(text):
                 out.append(finding("internal-metadata", rel, f"contains {name}",
                                    "keep ticket and approval-system details outside the repository"))
@@ -306,7 +309,8 @@ def self_test() -> tuple[int, int, list[str]]:
     tests.append(("missing document", value, {}, "path-missing"))
     design_path = base["documents"]["design"]
     design_text = (ROOT / design_path).read_text(encoding="utf-8")
-    tests.append(("internal metadata", mutated(), {design_path: design_text + "\nNSPECT-EXAMPLE\n"}, "internal-metadata"))
+    private_sample = "http://" + "nv/" + "private-review"
+    tests.append(("internal metadata", mutated(), {design_path: design_text + f"\n{private_sample}\n"}, "internal-metadata"))
     tests.append(("missing heading", mutated(), {design_path: design_text.replace("## Purpose and users", "## Users")}, "heading-missing"))
     value = mutated(); value["release_artifacts"].remove("cyclonedx-sbom")
     tests.append(("missing artifact", value, {}, "release-artifact"))
