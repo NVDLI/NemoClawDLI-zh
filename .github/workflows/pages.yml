@@ -54,6 +54,10 @@ jobs:
           python3 scripts/validation/contribution_safety_audit.py --self-test
           python3 scripts/validation/contribution_safety_audit.py --report docs/validation/contribution-safety.json
           python3 scripts/compliance/source_gate.py
+          python3 scripts/validation/course_dependency_integrity.py --self-test
+          python3 scripts/validation/course_dependency_integrity.py
+          python3 scripts/validation/cell_audit.py --self-test
+          python3 scripts/validation/cell_audit.py
           python3 scripts/security/audit_python_dependencies.py
           python3 scripts/security/audit_vulnerability_waivers.py
           python3 scripts/security/audit_dependency_locks.py --self-test

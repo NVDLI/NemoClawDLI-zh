@@ -58,8 +58,8 @@ REQUIRED_HEADINGS = {
     },
 }
 REQUIRED_DESIGN_ANCHORS = {
-    "static browser application", "localStorage", "personal or sensitive", "embedded media",
-    "access cookies", "no repository-operated database", "HTTPS and WSS", "Subresource Integrity",
+    "static browser application", "localStorage", "personal or sensitive", "Embedded media",
+    "access cookies", "no repository-operated database", "HTTPS and WSS", "browser dependency inventory",
     "SHA-256", "new patch tag",
 }
 REQUIRED_AUTOMATED_IDS = {f"A{index:02d}" for index in range(1, 14)}
@@ -67,23 +67,32 @@ REQUIRED_MANUAL_IDS = {f"M{index:02d}" for index in range(1, 12)}
 REQUIRED_WIRING = {
     ".gitlab-ci.yml": (
         "project_docs_explorer.py --self-test",
+        "course_dependency_integrity.py --self-test",
+        "cell_audit.py --self-test",
         "release_evidence_audit.py --self-test", "release_evidence_audit.py",
     ),
     ".github/workflows/pages.yml": (
         "project_docs_explorer.py --self-test",
+        "course_dependency_integrity.py --self-test",
+        "cell_audit.py --self-test",
         "release_evidence_audit.py --self-test", "release_evidence_audit.py",
     ),
     ".github/workflows/release.yml": (
         "project_docs_explorer.py --self-test",
+        "course_dependency_integrity.py --self-test",
+        "cell_audit.py --self-test",
         "release_evidence_audit.py --self-test", "release_evidence_audit.py",
     ),
     "scripts/git-hooks/pre-commit": ("release_evidence_audit.py",),
     "scripts/git-hooks/pre-push": (
-        "project_docs_explorer.py", "release_evidence_audit.py", "--self-test",
+        "project_docs_explorer.py", "course_dependency_integrity.py",
+        "cell_audit.py", "release_evidence_audit.py", "--self-test",
     ),
     "scripts/validation/validate_bundle.py": ("import release_evidence_audit as rea", '"release_evidence"'),
     "AGENT_QUICKSTART.md": (
         "project_docs_explorer.py --self-test",
+        "course_dependency_integrity.py --self-test",
+        "cell_audit.py --self-test",
         "release_evidence_audit.py --self-test", "release_evidence_audit.py",
     ),
     "CONTRIBUTING.md": ("release_evidence_audit.py --self-test", "release_evidence_audit.py"),
@@ -104,7 +113,13 @@ REQUIRED_WIRING = {
     "scripts/build/project_docs_explorer.py": (
         "local_markdown_targets", "missing or unsafe", "--self-test",
     ),
-    "scripts/build/SKILL.html": ("project_docs_explorer.py", "Docs projection detector"),
+    "scripts/build/SKILL.html": (
+        "project_docs_explorer.py", "Docs projection detector",
+        "vendor_browser_dependencies.mjs", "Browser package inventory",
+    ),
+    "scripts/validation/course_dependency_integrity.py": (
+        "same-origin-vendored", "source-reference inventory drifted", "--self-test",
+    ),
     "scripts/validation/SKILL.html": ("release_evidence_audit.py",),
 }
 ALLOWED_OWNERS = {"repository", "operator", "shared"}
@@ -321,7 +336,7 @@ def self_test() -> tuple[int, int, list[str]]:
     base = load_contract()
     baseline = audit_contract(base)
     if baseline:
-        return 0, 17, [f"baseline is not clean: {item['code']} {item['detail']}" for item in baseline]
+        return 0, 18, [f"baseline is not clean: {item['code']} {item['detail']}" for item in baseline]
     tests: list[tuple[str, dict, dict[str, str], str]] = []
 
     def mutated() -> dict:
@@ -378,6 +393,9 @@ def self_test() -> tuple[int, int, list[str]]:
     projection_text = (ROOT / projection_path).read_text(encoding="utf-8")
     tests.append(("missing Markdown target detector", mutated(),
                   {projection_path: projection_text.replace("local_markdown_targets", "removed_target_detector")},
+                  "wiring"))
+    tests.append(("missing browser dependency CI", mutated(),
+                  {ci_path: ci_text.replace("course_dependency_integrity.py --self-test", "browser dependency gate removed")},
                   "wiring"))
 
     passed = 0

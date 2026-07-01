@@ -130,7 +130,7 @@
     {
       "path": "cell_audit.py",
       "role": "cell contract",
-      "desc": "Checks runnable-cell transparency, logging, awaits, keys, and UI contract."
+      "desc": "Checks runnable-cell transparency, logging, awaits, keys, bundled editor assets, and UI contract with a focused asset-detector self-test."
     },
     {
       "path": "learner_flow_audit.py",
@@ -220,7 +220,7 @@
     {
       "path": "course_dependency_integrity.py",
       "role": "course dependency integrity",
-      "desc": "Pins fixed browser CDN assets to expected SRI hashes so a changed response cannot execute in the course."
+      "desc": "Validates exact same-origin browser packages, license evidence, artifact hashes, source references, and the absence of runtime package-CDN pulls."
     },
     {
       "path": "concept_order_audit.py",
@@ -264,7 +264,7 @@
   <div class="skill-cmd"><b>Layout links</b><code>python3 scripts/validation/validate_layout.py --quiet</code></div>
   <div class="skill-cmd"><b>HTML structure + detector</b><code>python3 scripts/validation/html_structure_audit.py &amp;&amp; python3 scripts/validation/html_structure_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>Stakeholder slides + detector</b><code>python3 scripts/validation/slides_audit.py &amp;&amp; python3 scripts/validation/slides_audit.py --self-test</code></div>
-  <div class="skill-cmd"><b>Cell contract</b><code>python3 scripts/validation/cell_audit.py</code></div>
+  <div class="skill-cmd"><b>Cell contract + detector</b><code>python3 scripts/validation/cell_audit.py --self-test &amp;&amp; python3 scripts/validation/cell_audit.py</code></div>
   <div class="skill-cmd"><b>Learner-flow static + detector</b><code>python3 scripts/validation/learner_flow_audit.py &amp;&amp; python3 scripts/validation/learner_flow_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>Learner-flow browser lifecycle</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/learner_flow_runtime_audit.py --site-root web</code></div>
   <div class="skill-cmd"><b>Contribution safety + detector</b><code>python3 scripts/validation/contribution_safety_audit.py &amp;&amp; python3 scripts/validation/contribution_safety_audit.py --self-test</code></div>
@@ -304,7 +304,7 @@
     <a class="skill-card" href="security_architecture_audit.py"><b>security_architecture_audit.py</b><span>Required security architecture gate. Derives CI jobs, runtime hosts, remote suffixes, and worker inventory from source; also checks public metadata boundaries, local-only classification, evidence, geometry, and SVG freshness.</span></a>
     <a class="skill-card" href="release_evidence_audit.py"><b>release_evidence_audit.py</b><span>Required product-design and release-test gate. Checks public-safe scope, data and cryptography inventories, evidence ownership, external-review boundaries, gate wiring, and mutation coverage.</span></a>
     <a class="skill-card" href="cell_ui_runtime_audit.py"><b>cell_ui_runtime_audit.py</b><span>rendered page screenshot audit. Renders desktop/narrow light/dark pages, writes paired initial/expanded screenshots, flags dark-only surfaces, and exercises mobile figure zoom, pan, and close behavior.</span></a>
-    <a class="skill-card" href="cell_audit.py"><b>cell_audit.py</b><span>cell contract. Checks runnable-cell transparency, logging, awaits, keys, and UI contract.</span></a>
+    <a class="skill-card" href="cell_audit.py"><b>cell_audit.py</b><span>cell contract. Checks runnable-cell transparency, logging, awaits, keys, bundled editor assets, and UI contract with a focused asset-detector self-test.</span></a>
     <a class="skill-card" href="learner_flow_audit.py"><b>learner_flow_audit.py</b><span>required learner-flow gate. Enforces Guided first visit, interactive-code collapse, saved depth, native inline disclosures, local questions, scope cues, readiness, lifecycle, viewport stability, and mutation coverage.</span></a>
     <a class="skill-card" href="learner_flow_runtime_audit.py"><b>learner_flow_runtime_audit.py</b><span>learner-flow browser gate. Exercises Guided code collapse/local reveal, authored defaults, saved depth, section overrides, reload/print, narrow keyboard behavior, prerequisites, and cell lifecycle transitions.</span></a>
     <a class="skill-card" href="contribution_safety_audit.py"><b>contribution_safety_audit.py</b><span>required contribution-safety gate. Holds governance and DCO, immutable action pins, locked workflow installs, fork-safe security workflows, submission evidence, hooks, PR permissions, and release authority together with mutation coverage.</span></a>
@@ -322,7 +322,7 @@
     <a class="skill-card" href="agent_process_audit.py"><b>agent_process_audit.py</b><span>Agent process audit. Checks issue/MR, taxonomy, validation, and safe-auth guardrail visibility.</span></a>
     <a class="skill-card" href="course_contract.py"><b>course_contract.py</b><span>Course contract audit. Holds the English course title, abstract, and objectives verbatim.</span></a>
     <a class="skill-card" href="course_content_contract.py"><b>course_content_contract.py</b><span>Required content contract. Locks retrieval/safety teaching promises and current product/platform qualifiers.</span></a>
-    <a class="skill-card" href="course_dependency_integrity.py"><b>course_dependency_integrity.py</b><span>Dependency integrity. Requires expected SRI hashes and CORS mode for fixed third-party browser assets.</span></a>
+    <a class="skill-card" href="course_dependency_integrity.py"><b>course_dependency_integrity.py</b><span>Dependency integrity. Validates exact locks, licenses, hashes, source references, and same-origin delivery.</span></a>
     <a class="skill-card" href="concept_order_audit.py"><b>concept_order_audit.py</b><span>Concept order audit. Keeps course terms defined before learner-facing prose or code depends on them.</span></a>
     <a class="skill-card" href="tenets.py"><b>tenets.py</b><span>tenet check. Checks platform tenets reflected in course files.</span></a>
     <a class="skill-card" href="nb_audit.py"><b>nb_audit.py</b><span>notebook audit. Detects notebook buffer corruption patterns.</span></a>

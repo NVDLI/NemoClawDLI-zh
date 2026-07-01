@@ -62,6 +62,7 @@ WEB_PAGE_DESC = {
         "04c-going-further": "Going further: the layered view and where to take the lab next.",
         "index":             "Human entry: course landing, API-key setup, and iframe opt-in control.",
         "glossary":          "Searchable glossary of the course's agent terms.",
+        "dependencies":      "Source-derived inventory of exact browser packages, licenses, hashes, and runtime references.",
         "studio":            "Authoring and inspection studio for the course pages.",
         "cert":              "Course completion certificate.",
         "courses":           "Catalog redirect stub.",

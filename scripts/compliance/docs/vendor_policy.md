@@ -12,6 +12,7 @@ Use these locations unless a more specific `SKILL.html` says otherwise.
 | Course image or diagram | `web/<course>/assets/` | `web/<course>/assets/SKILL.html` provenance |
 | Companion essay or source packet | `web/<course>/mats/` | `web/<course>/mats/SKILL.html` provenance |
 | Browser runtime code | `web/<course>/scripts/` | course scripts `SKILL.html` |
+| Vendored browser packages | `web/<course>/vendor/` | exact lock, generated package/asset inventory, license files, and integrity audit |
 | Course styles | `web/<course>/styles/` | course styles `SKILL.html` |
 | Shared service code or notebooks | `cpu/services/<service>/` | service `SKILL.html` |
 | Build, validation, or import tooling | `scripts/<group>/` | scripts group `SKILL.html` |
@@ -27,6 +28,7 @@ Allowed with provenance:
 - authored course prose and code under Apache-2.0
 - authored diagrams under Apache-2.0
 - generated indexes that can be reproduced from committed sources
+- exact third-party browser bundles whose lock, package versions, license texts, artifact hashes, and runtime references are committed and validated
 - source cards or summaries that cite public URLs without copying protected text
 - cached public material only when the source, owner, license, and redistribution disposition are recorded
 - datasets or model references only when approval and intended use are recorded

@@ -757,6 +757,14 @@ def main() -> int:
         n_assets = sum(1 for p in (out / "assets").rglob("*") if p.is_file())
         print(f"  copied assets/      ({n_assets} files)")
 
+    # Browser packages are resolved and bundled before release, then served from the same origin.
+    # Copy the exact hashed assets, package inventory, and license evidence into every projection.
+    vendor = web / "vendor"
+    if vendor.is_dir():
+        shutil.copytree(vendor, out / "vendor", dirs_exist_ok=True)
+        n_vendor = sum(1 for p in (out / "vendor").rglob("*") if p.is_file())
+        print(f"  copied vendor/      ({n_vendor} files)")
+
     # Ship the complete mats directory. mats/SKILL.html is a direct file index now, so every linked
     # cached markdown body, JSON index, and companion SVG must resolve in the deployed bundle.
     matsdir = web / "mats"

@@ -2,7 +2,8 @@
 import { CONTEXT_WINDOWS, contextWindow, coursePage, coursePages, escHtml, estimateTokens, formatSearchResults, getConfig, getKey, webSearch } from "./_shared.js";
 
 const RANDOM_ID_RADIX = 36;
-const MARKED_CDN_URL = "https://cdn.jsdelivr.net/npm/marked@14/+esm";
+const MARKED_VENDOR_URL = new URL("../vendor/marked-14.1.4.esm.js", import.meta.url).href;
+const LANGCHAIN_VENDOR_URL = new URL("../vendor/langchain-1.4.7.esm.min.js", import.meta.url).href;
 
 // Inject the shared .chatui-* stylesheet once; idempotent.
 // Kept separate from mountChatUI so a run-cell that inspects the panel still mounts it.
@@ -120,7 +121,7 @@ export function mountChatUI(container, opts = {}) {
   if (!el) return null;
   markLiveArtifact(el);
   // Markdown: load marked once (cached on window); render answers as HTML + hljs.
-  if (!window.__markedP) window.__markedP = import(MARKED_CDN_URL).then(m => m.marked || m.default).catch(() => null);
+  if (!window.__markedP) window.__markedP = import(MARKED_VENDOR_URL).then(m => m.marked || m.default).catch(() => null);
   let MARKED = null; window.__markedP.then(m => { MARKED = m; });
   const _sanitize = (html) => { const d = document.createElement("div"); d.innerHTML = html;
     d.querySelectorAll("script,iframe,style,object,embed,link,meta,form").forEach(n => n.remove());
@@ -465,7 +466,8 @@ export function mountChatUI(container, opts = {}) {
 }
 
 // Mount a live chat artifact backed by LangChain's createReactAgent.
-// It handles the CDN load, one agent per model with its own MemorySaver, token and tool streaming, and the no-key guard.
+// It lazy-loads the same-origin vendor bundle, builds one agent per model with its own MemorySaver,
+// and handles token/tool streaming plus the no-key guard.
 // A page therefore only declares its tools and prompt.
 export async function mountAgentChat(container, opts = {}) {
   /* @doc <code>helpers.mountAgentChat(el, opts)</code> ::
@@ -476,7 +478,7 @@ export async function mountAgentChat(container, opts = {}) {
        compactAtTokens, compactKeepMessages }</code>. Restored history seeds a fresh checkpoint;
        compaction summarizes older turns with the active model, preserves recent messages, and rotates
        to a new thread. <code>growLog:true</code> drops the panel's internal
-       scroll caps so a long transcript flows with the page instead of trapping the wheel. Loads LangChain from a CDN, builds one agent per model
+       scroll caps so a long transcript flows with the page instead of trapping the wheel. Loads the vendored LangChain bundle, builds one agent per model
        (MemorySaver for multi-turn), streams tokens + tool chips, guards the missing key. The
        off-the-shelf companion to <code>mountChatUI</code>.
   */
@@ -485,15 +487,14 @@ export async function mountAgentChat(container, opts = {}) {
   let LC = null;
   async function deps() {
     if (!LC) {
-      const LANGCHAIN_IMPORT_URLS = [
-        "https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm",
-        "https://cdn.jsdelivr.net/npm/@langchain/core@1.1.48/tools/+esm",
-        "https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/prebuilt/+esm",
-        "https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/+esm",
-        "https://cdn.jsdelivr.net/npm/zod@3/+esm",
-      ];
-      const [oai, core, prebuilt, lg, zod] = await Promise.all(LANGCHAIN_IMPORT_URLS.map(url => import(url)));
-      LC = { ChatOpenAI: oai.ChatOpenAI, tool: core.tool, createReactAgent: prebuilt.createReactAgent, MemorySaver: lg.MemorySaver, z: zod.z };
+      const bundle = await import(LANGCHAIN_VENDOR_URL);
+      LC = {
+        ChatOpenAI: bundle.ChatOpenAI,
+        tool: bundle.tool,
+        createReactAgent: bundle.createReactAgent,
+        MemorySaver: bundle.MemorySaver,
+        z: bundle.z,
+      };
     }
     return LC;
   }

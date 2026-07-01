@@ -32,6 +32,14 @@
 (function () {
   "use strict";
 
+  var EXPLORER_URL = document.currentScript && document.currentScript.src
+    ? document.currentScript.src : document.baseURI;
+  function vendorUrl(file) {
+    var path = new URL(EXPLORER_URL).pathname;
+    var directory = /\/nemoclaw\/_skill_explorer\.js$/.test(path) ? "vendor/" : "nemoclaw/vendor/";
+    return new URL(directory + file, EXPLORER_URL).href;
+  }
+
   // The single source of truth for the session latches. Every explorer, the course pages,
   // and the validator read and write THESE localStorage keys, never their own, so a
   // credential entered in one surface is live in all of them.
@@ -52,8 +60,8 @@
     }
   };
 
-  var HLJS_CSS = "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/github-dark.min.css";
-  var HLJS_JS = "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js";
+  var HLJS_CSS = vendorUrl("highlight-github-dark-11.10.0.min.css");
+  var HLJS_JS = vendorUrl("highlight-11.10.0.min.js");
 
   function el(tag, cls, html) {
     var n = document.createElement(tag);
@@ -250,10 +258,10 @@
   }
 
   // Markdown for the hub mode (the README reflection).
-  // Loads marked once from a CDN; falls back to a <pre> of the raw text if the CDN is blocked, so the page still reads.
+  // Loads the same-origin vendored Marked module once; raw text remains readable if loading fails.
   function loadMarked() {
     if (!window.__sxMarkedP) {
-      window.__sxMarkedP = import("https://cdn.jsdelivr.net/npm/marked@14/+esm")
+      window.__sxMarkedP = import(vendorUrl("marked-14.1.4.esm.js"))
         .then(function (m) { return m.marked || m.default; }).catch(function () { return null; });
     }
     return window.__sxMarkedP;

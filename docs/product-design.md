@@ -22,10 +22,11 @@ build toolchain.
 
 The supported release contains:
 
-- the source repository under the Apache License 2.0;
-- one browser course assembled from `web/nemoclaw/` and sparse locale overlays under `i18n/`;
-- a static Pages tree containing HTML, JavaScript, CSS, images, and course data;
-- a deterministic tagged archive, release manifest, resolved-environment SBOM, and checksums; and
+- the source repository under the Apache License 2.0.
+- one browser course assembled from `web/nemoclaw/` and sparse locale overlays under `i18n/`.
+- a static Pages tree containing HTML, JavaScript, CSS, images, and course data.
+- a deterministic tagged archive with a release manifest and checksums.
+- Python-environment and browser-runtime SBOMs.
 - versioned design, architecture, source-governance, and test evidence.
 
 The production course is a static browser application. It does not deploy a repository-operated API,
@@ -62,6 +63,7 @@ anchors.
 | Model service | Process model requests for exercises | External service with its own processing controls |
 | NemoClaw runtime | Hold agent sessions, workspace state, tools, and scheduled work | External or co-located runtime |
 | Cross-origin relays | Adapt approved browser requests where direct headers or iframe policy require it | Separately operated deployment dependency |
+| Vendored browser packages | Provide syntax, editing, Markdown, model-client, tool, schema, and agent-graph code from the static course origin | Versioned release artifact |
 | Validation system | Reject stale, unsafe, ungrounded, or unreproducible release states | Required CI and local feedback |
 
 The course can render without model or agent connectivity. Interactive exercises that require an
@@ -78,7 +80,8 @@ a credential broker.
 | Agent command, event, and workspace result | Transmitted to the selected NemoClaw runtime | Runtime operator | Authenticated gateway, runtime policy, learner-visible result |
 | Course preferences and local progress | Browser storage | Learner browser | Local-only state; learner can clear site data |
 | Static access logs | Host-dependent request metadata | Static-host operator | Outside course code; governed by the selected host |
-| Public dependencies and embedded media | HTTPS request metadata to declared asset and privacy-enhanced video hosts | External content provider | Version and integrity pins where supported, no-cookie video embeds, source validation |
+| Vendored browser dependencies | Loaded from the same static course origin | Static-host operator | Exact lock, package/license inventory, committed artifact SHA-256, source-reference validation |
+| Embedded media | HTTPS request metadata to privacy-enhanced video hosts | External content provider | No-cookie embeds and source validation |
 
 The static Pages path adds no repository-operated database, server-side learner profile, or cookie.
 Lab and launchable hosts can establish their own access cookies. Course code does not send credentials
@@ -99,7 +102,7 @@ cryptographic key. It relies on platform services:
 
 - HTTPS and WSS provide transport protection between browser, host, relays, model service, and runtime.
 - Bearer and gateway credentials provide service authentication.
-- Subresource Integrity pins eligible third-party browser assets.
+- SHA-256 binds each committed browser dependency asset to its generated public inventory.
 - SHA-256 digests bind the release archive, manifest, SBOM, and attached assets.
 
 Python packages used by local authoring or scanning may depend on standard cryptography libraries.
@@ -113,9 +116,11 @@ The intended release license is Apache-2.0. Contributions use the DCO and the in
 [`CONTRIBUTING.md`](../CONTRIBUTING.md). The source inventory and provenance beacons record copied,
 vendored, converted, and externally sourced material.
 
-Direct Python requirements are pinned. Transitive environments are locked. Browser dependencies with
-fixed URLs use version pins and Subresource Integrity where supported. The source gate rejects private
-links and unmanifested governed material. The generated SBOM is inventory evidence; an authorized
+Direct Python requirements are pinned. Transitive environments are locked. Browser packages use an
+exact npm lock and are bundled into same-origin assets before release. The public browser dependency inventory
+at `web/nemoclaw/dependencies.html` lists direct and bundled
+transitive packages, versions, licenses, asset hashes, and source references. The source gate rejects
+private links and unmanifested governed material. Generated inventories are evidence; an authorized
 review process decides whether each component is acceptable for the distribution.
 
 ## Security and reliability controls
@@ -147,7 +152,8 @@ Protected `main` is the reviewed source line, while branch previews are temporar
 public release starts from an existing protected annotated semantic tag contained in `main`.
 
 The release workflow validates the tag, rebuilds without live source drift, resolves the locked Python
-environment, emits a CycloneDX SBOM, packages the Pages tree, and writes checksums. A protected write
+environment, emits Python-environment and browser-runtime CycloneDX SBOMs, packages the Pages tree,
+and writes checksums. A protected write
 step creates a draft release. A human release owner reviews the evidence and publishes it only after
 the external approval state allows publication.
 
@@ -164,7 +170,7 @@ draft artifacts may be replaced before publication. The complete artifact contra
 | Product and data design | This document | `release_evidence_audit.py` |
 | Test execution and evidence ownership | `release-test-plan.md` | `release_evidence_audit.py` plus CI |
 | Source and license inventory | `scripts/compliance/docs/source_inventory.json` and provenance beacons | `source_gate.py` |
-| Dependencies and SBOM | manifests, locks, waiver registry, generated CycloneDX document | dependency, waiver, and SBOM policy audits |
+| Dependencies and SBOM | manifests, locks, browser package inventory, waiver registry, generated CycloneDX documents | dependency, browser integrity, waiver, and SBOM policy audits |
 | Release bytes | protected tag, archive, manifest, SBOM, checksums | release workflow and `package_release.py` |
 
 Reviewers must combine this repository evidence with live host configuration and external approval

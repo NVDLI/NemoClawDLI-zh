@@ -177,6 +177,10 @@ python3 scripts/skills/skill_consistency.py             # skill-meta vs the real
 python3 scripts/build/assemble_locale_overlay.py --self-test  # stale translations cannot publish
 python3 scripts/validation/localization_audit.py --self-test  # locale detector mutations
 for locale in pt-BR es-ES; do python3 scripts/validation/localization_audit.py --locale "$locale"; done  # drift + language contracts
+python3 scripts/validation/course_dependency_integrity.py --self-test # prove browser package/inventory detectors
+python3 scripts/validation/course_dependency_integrity.py # exact packages, licenses, hashes, references, same-origin delivery
+python3 scripts/validation/cell_audit.py --self-test      # prove bundled and split editor-asset detection
+python3 scripts/validation/cell_audit.py                  # runnable-cell and CodeMirror delivery contract
 python3 scripts/security/audit_python_dependencies.py    # declared floors/pins have no known PyPI/OSV vulns
 python3 scripts/security/audit_vulnerability_waivers.py  # accepted vuln exceptions are owned + unexpired
 python3 scripts/security/audit_dependency_locks.py --self-test  # lock detector rejects stale/unpinned mutations

@@ -15,7 +15,6 @@
         "points": [[400, 760], [550, 760]],
         "branches": {
           "browser_to_models": [550, 760],
-          "browser_to_dependencies": [550, 760],
           "browser_to_workers": [550, 760]
         }
       },
@@ -82,11 +81,6 @@
       "evidence": [{"path": "web/nemoclaw/03a-kickstart.html", "contains": ["Identity, tools", "/cli/gateway"]}, {"path": "web/nemoclaw/SKILL.html", "contains": ["Connect NemoClaw", "runtime endpoints"]}]
     },
     {
-      "id": "browser_dependencies", "label": "Browser-loaded dependencies", "detail": "pinned static assets and on-demand modules", "zone": "external", "kind": "external_static", "x": 650, "y": 780, "width": 300, "height": 105,
-      "controls": ["version pins", "SRI for static assets", "explicit on-demand imports"],
-      "evidence": [{"path": "scripts/validation/course_dependency_integrity.py", "contains": ["SRI", "crossorigin"]}, {"path": "web/nemoclaw/scripts/_chat.js", "contains": ["cdn.jsdelivr.net", "LANGCHAIN_IMPORT_URLS"]}, {"path": "web/nemoclaw/01a-loop.html", "contains": ["cdnjs.cloudflare.com", "integrity="]}]
-    },
-    {
       "id": "cors_workers", "label": "Cross-origin relays", "detail": "NemoClaw for Pages; models for iframes", "zone": "external", "kind": "external_proxy", "x": 650, "y": 625, "width": 300, "height": 105,
       "sensitive": ["caller bearer credential", "access assertion", "prompts and agent traffic"],
       "controls": ["explicit iframe or authenticated path", "upstream host restriction", "deployment-owner review"],
@@ -101,7 +95,6 @@
     {"id": "pages_to_browser", "from": "pages_host", "to": "browser", "protocol": "HTTPS", "data": "static course pages and assets", "auth": "public or host-controlled page access", "trust_boundary": "Pages host to learner device", "route": {"from_side": "bottom", "to_side": "top", "via": [[475, 560], [250, 560]]}, "evidence": [{"path": "docs/pages_deploy.md", "contains": ["fully client-side site"]}]},
     {"id": "launchable_to_browser", "from": "launchable_host", "to": "browser", "protocol": "same-origin HTTPS bootstrap", "data": "versioned course pages, assets, and startup credential handoff", "auth": "launchable browser session", "trust_boundary": "launchable host to learner browser", "sensitive": true, "route": {"from_side": "bottom", "to_side": "top", "via": [[1125, 560], [250, 560]]}, "evidence": [{"path": "docs/security-design.md", "contains": ["Startup-provided material", "same storage entry"]}]},
     {"id": "browser_to_models", "from": "browser", "to": "model_api", "protocol": "HTTPS", "data": "learner API credential, prompts, and responses", "auth": "learner-provided bearer credential", "trust_boundary": "learner browser to model service", "sensitive": true, "route": {"from_point": [550, 760], "to_side": "left", "to_fraction": 0.35, "via": [[1100, 760], [1100, 816.75]]}, "evidence": [{"path": "web/nemoclaw/scripts/_shared.js", "contains": ["Authorization", "integrate.api.nvidia.com/v1"]}]},
-    {"id": "browser_to_dependencies", "from": "browser", "to": "browser_dependencies", "protocol": "HTTPS", "data": "pinned JavaScript and CSS", "auth": "none; integrity or version pin validates bytes", "trust_boundary": "learner browser to public CDN", "route": {"from_point": [550, 760], "to_side": "left", "to_fraction": 0.5, "via": [[550, 832.5]]}, "evidence": [{"path": "web/nemoclaw/01a-loop.html", "contains": ["cdnjs.cloudflare.com", "integrity="]}, {"path": "web/nemoclaw/scripts/_chat.js", "contains": ["cdn.jsdelivr.net"]}]},
     {"id": "browser_to_workers", "from": "browser", "to": "cors_workers", "protocol": "HTTPS and WebSocket", "data": "static-hosted agent traffic or iframe model traffic", "auth": "caller bearer credential or access assertion", "trust_boundary": "learner browser to separately deployed relay", "sensitive": true, "route": {"from_point": [550, 760], "to_side": "left", "to_fraction": 0.5, "via": [[550, 677.5]]}, "evidence": [{"path": "web/nemoclaw/scripts/_openclaw.js", "contains": ["viaProxy: true", "cf_access_jwt"]}]},
     {"id": "workers_to_models", "from": "cors_workers", "to": "model_api", "protocol": "HTTPS", "data": "iframe-only model credential, prompts, and responses", "auth": "caller bearer credential", "trust_boundary": "iframe relay to model service", "conditional": true, "sensitive": true, "route": {"from_side": "bottom", "from_fraction": 0.5, "to_side": "top", "to_fraction": 0.5, "via": [[800, 740], [1300, 740]]}, "evidence": [{"path": "cors-proxy/cors-proxy-worker-build.js", "contains": ["Authorization", "integrate.api.nvidia.com"]}, {"path": "web/nemoclaw/scripts/_shared.js", "contains": ["iframeProxyModeEnabled"]}]},
     {"id": "workers_to_nemoclaw", "from": "cors_workers", "to": "nemoclaw", "protocol": "HTTPS and WebSocket", "data": "static-hosted agent requests, events, and access assertion", "auth": "access assertion and gateway credential", "trust_boundary": "static-host relay to required agent runtime", "sensitive": true, "route": {"from_side": "right", "from_fraction": 0.3, "to_side": "left", "to_fraction": 0.3}, "evidence": [{"path": "cors-proxy/cors-proxy-worker-openclaw.js", "contains": ["CF_Authorization", "WebSocket"]}]},
@@ -109,7 +102,7 @@
     {"id": "launchable_to_models", "from": "launchable_host", "to": "model_api", "protocol": "browser HTTPS using startup-provided credential", "data": "direct model requests from the launchable-hosted course", "auth": "learner credential from launchable startup", "trust_boundary": "launchable-hosted learner browser to model service", "route": {"from_point": [1490, 832.5], "to_side": "right", "to_fraction": 0.5}, "evidence": [{"path": "web/nemoclaw/scripts/_shared.js", "contains": ["integrate.api.nvidia.com/v1", "localStorage.getItem(\"nvapi\")"]}, {"path": "docs/security-design.md", "contains": ["Direct HTTPS", "launchable startup path"]}]}
   ],
   "coverage": {
-    "production_nodes": ["source", "ci", "artifact", "pages_host", "launchable_host", "browser", "model_api", "nemoclaw", "browser_dependencies", "cors_workers"],
+    "production_nodes": ["source", "ci", "artifact", "pages_host", "launchable_host", "browser", "model_api", "nemoclaw", "cors_workers"],
     "local_only_compose_services": {
       "lab": "local lab and authoring runtime; not deployed by the static course artifact",
       "llm_client": "local model gateway; production browser calls the external model service",
@@ -131,6 +124,6 @@
       "cors-proxy": "cors_workers",
       ".gitlab-ci.yml": "ci"
     },
-    "observed_contract_sha256": "7f0a8fd95dde2c8c2e4bd2e7a3f272dfc406727dd210eb5bbecea275ae3d1a48"
+    "observed_contract_sha256": "ed998bdc682493213a32b43609b38a5aa10dbd36b387d28b52de59f47bad3eed"
   }
 }

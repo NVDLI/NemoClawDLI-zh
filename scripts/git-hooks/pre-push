@@ -108,7 +108,20 @@ if [ -f "$SOURCE_GATE" ]; then
         exit 1
     fi
 fi
-# ── RULE 3d: Python dependency vulnerability floor guard ─────────────────────
+# ── RULE 3d: student-browser dependency inventory guard ─────────────────────
+BROWSER_DEPENDENCY_AUDIT="$T1/scripts/validation/course_dependency_integrity.py"
+if [ -f "$BROWSER_DEPENDENCY_AUDIT" ]; then
+    if ! python3 "$BROWSER_DEPENDENCY_AUDIT" --self-test \
+       || ! python3 "$BROWSER_DEPENDENCY_AUDIT" \
+       || ! python3 "$T1/scripts/validation/cell_audit.py" --self-test \
+       || ! python3 "$T1/scripts/validation/cell_audit.py"; then
+        echo ""
+        echo "pre-push: REFUSING PUSH - browser dependencies, vendored assets, or cell editor assets failed."
+        echo "Regenerate from the exact lock, review licenses and hashes, then rerun both audits."
+        exit 1
+    fi
+fi
+# ── RULE 3e: Python dependency vulnerability floor guard ─────────────────────
 # Fast source-level SCA guard: query PyPI/OSV metadata for dependency floors and
 # exact pins declared in requirements files and service Dockerfiles. Full transitive
 # SCA still belongs in the built test/lab environment with pip-audit or OSV-Scanner.
@@ -124,7 +137,7 @@ if [ -f "$DEPENDENCY_AUDIT" ]; then
 fi
 
 
-# ── RULE 3e: vulnerability waiver registry guard ────────────────────────────
+# ── RULE 3f: vulnerability waiver registry guard ────────────────────────────
 # Any accepted vulnerability exception must be explicit, owned, sourced, and
 # time-boxed. Expired waivers fail locally and in CI.
 WAIVER_AUDIT="$T1/scripts/security/audit_vulnerability_waivers.py"
@@ -138,7 +151,7 @@ if [ -f "$WAIVER_AUDIT" ]; then
     fi
 fi
 
-# ── RULE 3f: dependency lock guard ──────────────────────────────────────────
+# ── RULE 3g: dependency lock guard ──────────────────────────────────────────
 LOCK_AUDIT="$T1/scripts/security/audit_dependency_locks.py"
 if [ -f "$LOCK_AUDIT" ]; then
     if ! python3 "$LOCK_AUDIT" --self-test || ! python3 "$LOCK_AUDIT"; then
@@ -149,7 +162,7 @@ if [ -f "$LOCK_AUDIT" ]; then
     fi
 fi
 
-# ── RULE 3g: SBOM policy detector ───────────────────────────────────────────
+# ── RULE 3h: SBOM policy detector ───────────────────────────────────────────
 SBOM_POLICY="$T1/scripts/security/audit_sbom_policy.py"
 if [ -f "$SBOM_POLICY" ] && ! python3 "$SBOM_POLICY" --self-test; then
     echo ""
@@ -157,7 +170,7 @@ if [ -f "$SBOM_POLICY" ] && ! python3 "$SBOM_POLICY" --self-test; then
     exit 1
 fi
 
-# ── RULE 3h: release package determinism guard ───────────────────────────────
+# ── RULE 3i: release package determinism guard ───────────────────────────────
 PACKAGE_RELEASE="$T1/scripts/build/package_release.py"
 if [ -f "$PACKAGE_RELEASE" ]; then
     if ! python3 "$PACKAGE_RELEASE" --self-test; then

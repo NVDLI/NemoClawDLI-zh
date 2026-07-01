@@ -5,11 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Agente Profundo · Segurança do Agente</title>
 <link rel="stylesheet" href="styles/_style.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js" integrity="sha384-GdEWAbCjn+ghjX0gLx7/N1hyTVmPAjdC2OvoAA0RyNcAOhqwtT8qnbCxWle2+uJX" crossorigin="anonymous"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" integrity="sha384-zaeBlB/vwYsDRSlFajnDd7OydJ0cWk+c2OWybl3eSUf6hW2EbhlCsQPqKr3gkznT" crossorigin="anonymous"/>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css" integrity="sha384-05WuhgjXiqmZzcQ3vQRQ39HN356Yqb+SnhvELzFtpwS5b2IlqE8QsOO5LCSJ2znj" crossorigin="anonymous"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js" integrity="sha384-ZYmwuq4n2gOcNxMSiJ6jyTj+BbIrilr7p6dlq6q5nmSWKmsH9UU4K1qqjycMkfmR" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js" integrity="sha384-g0o+WW9mdIxA7LaaCKTkRm0M5TVT+Bb4s9eocxPsI2G0Xm0POG9iD6G6qP1IIsfS" crossorigin="anonymous"></script>
+<script src="vendor/highlight-11.10.0.min.js"></script>
+<link rel="stylesheet" href="vendor/codemirror-5.65.16.min.css"/>
+<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.16.min.css"/>
+<script src="vendor/codemirror-5.65.16.min.js"></script>
 <style>
   .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
   .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
@@ -140,8 +139,8 @@
  célula é executada de forma independente.</p>
 
   <div class="callout warn">
- <strong>As células de implementação precisam de acesso a pacotes externos.</strong> Elas
- importam bibliotecas fixadas de <code>cdn.jsdelivr.net</code>. Se o DNS de saída for bloqueado, o nó de importação falha antes de qualquer chamada de modelo.
+ <strong>As células de implementação usam o pacote de navegador incluído.</strong> Elas
+ importam o pacote exato da mesma origem registrado no <a href="dependencies.html">inventário de dependências do navegador</a>. A CI bloqueia a publicação quando o pacote, o lock, as licenças ou as referências no código divergem.
  </div>
 
   <!-- ── Part 3: ChatOpenAI ─────────────────────────────────────────────────── -->
@@ -418,12 +417,9 @@ mountCanvasFlow("#cell-m3c-p1", {
     {
       id: "import", icon: "📦", title: "Criar o cliente do modelo", x: 0, y: 0,
       summary: "Ler o endpoint ativo de getConfig(); o código do gráfico posterior permanece independente do endpoint.",
-      code: `// Load the external package bundle used by this example.
+      code: `// Load the same-origin vendor bundle used by this example.
 helpers.log("importando @langchain/openai ...");
-const LANGCHAIN_IMPORT_URLS = [
-  "https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm",
-];
-const [{ ChatOpenAI }] = await Promise.all(LANGCHAIN_IMPORT_URLS.map(url => import(url)));
+const { ChatOpenAI } = await import("./vendor/langchain-1.4.7.esm.min.js");
 helpers.log("importar OK");
 
 const cfg = await helpers.getConfig();
@@ -474,19 +470,10 @@ mountCanvasFlow("#cell-m3c-p2", {
     {
       id: "import", icon: "📦", title: "Carregar dependências do grafo", x: 0, y: 0,
       summary: "Carregar os pacotes do modelo, grafo, ferramenta e esquema.",
-      code: `// Load the external package bundle used by this example.
+      code: `// Load the same-origin vendor bundle used by this example.
 helpers.log("Importando o ecossistema LangChain...");
-const LANGCHAIN_IMPORT_URLS = [
-  "https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm",
-  "https://cdn.jsdelivr.net/npm/@langchain/core@1.1.48/tools/+esm",
-  "https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/prebuilt/+esm",
-  "https://cdn.jsdelivr.net/npm/zod@3/+esm",
-];
-const [oai, core, prebuilt, zod] = await Promise.all(LANGCHAIN_IMPORT_URLS.map(url => import(url)));
-const { ChatOpenAI }       = oai;
-const { tool }             = core;
-const { createReactAgent } = prebuilt;
-const { z }                = zod;
+const { ChatOpenAI, tool, createReactAgent, z } =
+  await import("./vendor/langchain-1.4.7.esm.min.js");
 state.deps = { ChatOpenAI, tool, createReactAgent, z };
 helpers.log("Importações OK");
 
@@ -582,19 +569,10 @@ mountCanvasFlow("#cell-m3c-p3", {
     {
       id: "setup", icon: "📦", title: "Criar o cliente do modelo", x: 0, y: 0,
       summary: "Repetir a configuração do modelo para que essa célula execute independentemente.",
-      code: `// Load the external package bundle used by this example.
+      code: `// Load the same-origin vendor bundle used by this example.
 helpers.log("Importando pacotes LangChain...");
-const LANGCHAIN_IMPORT_URLS = [
-  "https://cdn.jsdelivr.net/npm/@langchain/openai@1.4.7/+esm",
-  "https://cdn.jsdelivr.net/npm/@langchain/core@1.1.48/tools/+esm",
-  "https://cdn.jsdelivr.net/npm/@langchain/langgraph@1/prebuilt/+esm",
-  "https://cdn.jsdelivr.net/npm/zod@3/+esm",
-];
-const [oai, core, prebuilt, zod] = await Promise.all(LANGCHAIN_IMPORT_URLS.map(url => import(url)));
-const { ChatOpenAI }       = oai;
-const { tool }             = core;
-const { createReactAgent } = prebuilt;
-const { z }                = zod;
+const { ChatOpenAI, tool, createReactAgent, z } =
+  await import("./vendor/langchain-1.4.7.esm.min.js");
 state.deps = { ChatOpenAI, tool, createReactAgent, z };
 
 const cfg = await helpers.getConfig();

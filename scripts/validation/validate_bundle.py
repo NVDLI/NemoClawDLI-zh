@@ -467,8 +467,10 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         ok = False
         vl_fail.extend(f"course content contract: {path}: {detail}" for path, detail in cc_find)
 
+    cdi_scanned = 0
     try:
         cdi_find = cdi.audit()
+        cdi_scanned = cdi.inventory_size()
     except Exception as e:
         cdi_find = []
         suite_errors["course_dependency_integrity"] = str(e)
@@ -918,7 +920,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                              "Restore the source-backed teaching contract. Keep retrieval/safety explanations complete, product comparisons grounded in public sources, automation behavior scoped to the demonstrated configuration, and alpha platform claims qualified.")
                            for path, detail in cc_find],
         "course_dependency_integrity": [D("web/nemoclaw", detail, REQUIRED,
-                                          "Restore the expected SRI digest and crossorigin mode, or update the pinned digest only after reviewing the new dependency bytes.")
+                                          "Regenerate from the exact lock, review package and license changes, then restore the expected same-origin asset hash and source-reference inventory.")
                                         for detail in cdi_find],
         "helper_notebook": [D("web/nemoclaw/scripts/SKILL.html", x, REQUIRED,
                               "Use the shared helper API exposed by both runtime surfaces: log, log.h, log.json, log.kv, log.details, log.html, log.svg, log.draw, and log.clear.")
@@ -1115,7 +1117,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "slides": slides_scanned,
         "security_architecture": security_scanned,
         "release_evidence": release_evidence_scanned,
-        "course_dependency_integrity": 14,
+        "course_dependency_integrity": cdi_scanned,
         "grounding": len(grecs), "prose_variety": len(pv_rows), "prose_buzz": len(pv_rows), "redundancy": len(pv_rows), "grammar": len(pv_rows), "structure": len(pv_rows), "headings": len(pv_rows), "assertions": len(pv_rows), "word_echo": len(pv_rows), "comma_weight": len(pv_rows), "branding": len(pv_rows),
         "defer_copula": len(pv_rows), "dense_repeats": len(pv_rows), "over_verbage": len(pv_rows), "padding": len(pv_rows),
         "hollow_intro": len(pv_rows), "repeated_phrase": len(pv_rows), "vacuous_meta": len(pv_rows),
@@ -1271,7 +1273,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
           f"({localization_manifest.get('counts', {})})")
     print(f"  figure geometry : {len(dg_find)} runtime-figure finding(s) (text overlap / past bounds / connector-crosses-box / useless)")
     print(f"  course contract : {len(course_contract_find)} finding(s) (title / abstract / learning objectives)")
-    print(f"  dependency SRI  : {len(cdi_find)} finding(s) (fixed browser assets)")
+    print(f"  browser deps    : {len(cdi_find)} finding(s) over {cdi_scanned} package, asset, and notice records")
     print(f"  concept order   : {len(concept_order_find)} finding(s) (first-use definitions / prerequisite framing)")
     _cg = {k: len(v) for k, v in ch_fam.items()}
     print(f"  code hygiene    : {len(ch_rows)} finding(s) over {ch_scanned} code file(s) "

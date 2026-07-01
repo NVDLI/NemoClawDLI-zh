@@ -40,6 +40,24 @@ DIALOG = re.compile(r"\b(alert|confirm)\s*\(|\bwindow\s*\.\s*prompt\s*\(|documen
 INLINE_KEY = re.compile(r"nvapi-(?!…|123|FAKE|xxx|redacted|FILL|YOUR)[A-Za-z0-9_-]{8,}")
 
 
+def highlighter_missing(text: str) -> list[str]:
+    """Return the missing CodeMirror pieces for one HTML document.
+
+    The generated same-origin bundle contains core and the JavaScript mode. The
+    dependency-integrity gate owns its exact version, digest, and package lock.
+    """
+    vendored_bundle = bool(re.search(
+        r"[\"'](?:\.\./|\./)?vendor/codemirror-\d+\.\d+\.\d+\.min\.js[\"']",
+        text,
+        re.I,
+    ))
+    return [n for n, ok in (
+        ("CodeMirror core js", vendored_bundle or bool(re.search(r"codemirror(?:\.min)?\.js", text, re.I))),
+        ("javascript mode", vendored_bundle or "mode/javascript" in text.lower()),
+        ("editor css", bool(re.search(r"codemirror(?:-\d+\.\d+\.\d+)?(?:\.min)?\.css", text, re.I))),
+    ) if not ok]
+
+
 def strip_noise(c: str) -> str:
     """Blank strings + comments so `chat(` in either isn't read as a call.
     Strings first, so a // inside a string (a URL) can't eat the line."""
@@ -90,11 +108,7 @@ def audit_page(path: Path):
     # Otherwise the cell falls back to a plain, unhighlighted textarea.
     unhighlighted = []
     if re.search(r"mountRunCell\s*\(|mountCanvasFlow\s*\(", text):
-        miss = [n for n, ok in (
-            ("CodeMirror core js", bool(re.search(r"codemirror(?:\.min)?\.js", text, re.I))),
-            ("javascript mode",    "mode/javascript" in text.lower()),
-            ("editor css",         bool(re.search(r"codemirror(?:\.min)?\.css", text, re.I))),
-        ) if not ok]
+        miss = highlighter_missing(text)
         if miss:
             unhighlighted.append((rel, "editable cells but the syntax highlighter is not loaded (missing: "
                                   + ", ".join(miss) + "); the editor falls back to a plain, unhighlighted textarea"))
@@ -367,5 +381,22 @@ def run(verbose=True):
 
 
 if __name__ == "__main__":
+    if "--self-test" in sys.argv:
+        fixtures = (
+            ("same-origin bundle", '<script src="vendor/codemirror-5.65.16.min.js"></script><link href="vendor/codemirror-5.65.16.min.css">', []),
+            ("parent-path bundle", '<script src="../vendor/codemirror-5.65.16.min.js"></script><link href="../vendor/codemirror-5.65.16.min.css">', []),
+            ("split distribution", '<script src="codemirror.min.js"></script><script src="mode/javascript/javascript.min.js"></script><link href="codemirror.min.css">', []),
+            ("missing JavaScript", '<link href="vendor/codemirror-5.65.16.min.css">', ["CodeMirror core js", "javascript mode"]),
+            ("missing CSS", '<script src="vendor/codemirror-5.65.16.min.js"></script>', ["editor css"]),
+        )
+        failures = [(name, highlighter_missing(source), expected) for name, source, expected in fixtures
+                    if highlighter_missing(source) != expected]
+        if failures:
+            print(f"cell_audit self-test: {len(fixtures) - len(failures)}/{len(fixtures)} passed")
+            for name, actual, expected in failures:
+                print(f"  FAIL {name}: got {actual}, expected {expected}")
+            sys.exit(1)
+        print(f"cell_audit self-test: {len(fixtures)}/{len(fixtures)} passed")
+        sys.exit(0)
     r = run()
     sys.exit(1 if sum(len(v) for v in r.values()) else 0)

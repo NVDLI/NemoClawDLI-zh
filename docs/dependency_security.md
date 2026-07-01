@@ -198,8 +198,8 @@ when taking them on:
 5. Consider VEX only if downstream consumers need machine-readable non-affected
    statements. Until then, keep the waiver registry small, explicit, and expiring.
 6. Keep release SBOM retention aligned with [`release_artifacts.md`](release_artifacts.md).
-   The protected release workflow publishes the resolved Python CycloneDX SBOM beside each archive;
-   add image SBOMs when public release images exist.
+   The protected release workflow publishes resolved Python and student-browser CycloneDX SBOMs
+   beside each archive; add image SBOMs when public release images exist.
 
 ## Maintenance
 
