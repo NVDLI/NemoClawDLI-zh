@@ -228,7 +228,12 @@
       <li><code>"proxy"</code> encaminha a chamada pelo worker CORS e envia o JWT do Cloudflare Access em um cabeçalho.</li>
       <li><code>"direct"</code> chama a origem do launchable com <code>credentials:&nbsp;"include"</code> e sem JWT, usando o cookie do Cloudflare Access já presente no navegador.</li>
     </ul>
-    <p>Experimente os dois modos. Depois, abra a página em um navegador que nunca autenticou no launchable e tente novamente. O modo <code>"direct"</code> falhará: o cookie é <code>HttpOnly</code> e restrito à origem do launchable, portanto o navegador só o anexa ali. Como o launchable não envia cabeçalhos CORS para esta página, a resposta fica inacessível. Somente o JWT explícito enviado pelo proxy devolve o corpo.</p>
+    <p>
+      Em um curso hospedado separadamente no Pages, o modo direto depende de um cookie válido do
+      launchable e da política de resposta entre origens; a rota com JWT explícito usa o relay.
+      Quando o curso é incorporado ao mesmo launchable do NemoClaw que executa o runtime,
+      o modo direto usa a mesma origem e não precisa do relay.
+    </p>
 
     <div id="claw-raw-cell"></div>
 
@@ -420,11 +425,12 @@ helpers.log("Artefato exibido abaixo. Edite a configuração e execute novamente
       defaultToken: localStorage.getItem("nvapi") || "",
       fieldHelp: {
         url: `<p><strong>O que é:</strong> a URL base da API de modelos da NVIDIA. Ela já vem preenchida e não precisa ser alterada.</p>
-<p><strong>Como as solicitações chegam até ela:</strong> devido à política de mesma origem, o navegador não pode chamar
-<code>integrate.api.nvidia.com</code> diretamente. As solicitações passam por um Cloudflare Worker hospedado, que acrescenta
-os cabeçalhos CORS e encaminha sua chave sem alterações.</p>
-<p><strong>Execução local, fora do laboratório:</strong> chame <code>${NVIDIA_API_BASE_URL}</code> diretamente
-do script ou notebook. Fora do navegador, a restrição de mesma origem não se aplica e o proxy não é necessário.</p>`,
+<p><strong>Como as solicitações chegam até ela:</strong> por padrão, o runtime principal do curso chama
+<code>integrate.api.nvidia.com</code> diretamente. Esta sonda editável usa o relay CORS hospedado da API
+da NVIDIA para permitir a inspeção desse transporte. O curso só exige o relay quando o modo de proxy
+em iframe é ativado explicitamente.</p>
+<p><strong>Execução local:</strong> páginas no navegador, scripts e notebooks devem chamar
+<code>${NVIDIA_API_BASE_URL}</code> diretamente, exceto quando o ambiente de incorporação exigir o relay.</p>`,
 
         token: `<p><strong>O que é:</strong> sua chave da API NVIDIA, iniciada por <code>nvapi-</code>. O campo usa automaticamente
 a chave salva na página inicial do curso.</p>
@@ -631,9 +637,11 @@ localize <code>CF_Authorization</code> → copie todo o campo Value, uma string 
 Cole o valor aqui. Se a sonda parar após um intervalo longo, copie-o novamente; o JWT expira com a sessão.</p>
 <p><strong>Execução local:</strong> deixe o campo vazio. O OpenClaw local não possui a camada do Cloudflare Access.</p>
 <p><strong>Modo alternativo:</strong> necessário para a URL do Brev quando o OpenClaw local trava ou mostra <code>EPERM</code>.</p>
-<p><strong>Células do gateway:</strong> as sondas fetch enviam esse JWT em um cabeçalho. O WebSocket <code>/cli/gateway</code>
-não aceita cabeçalhos personalizados do navegador; quando o campo está preenchido, o curso encaminha as células do gateway do Brev
-pelo worker CORS do OpenClaw. O modo WebSocket direto só funciona depois que a URL do launchable renova o próprio cookie no navegador.</p>
+<p><strong>Células do gateway:</strong> as sondas fetch enviam esse JWT em um cabeçalho. Um curso hospedado
+separadamente encaminha o WebSocket <code>/cli/gateway</code> pelo worker CORS do OpenClaw quando este campo
+está preenchido, pois o construtor WebSocket do navegador não pode definir o cabeçalho do Access. Um curso
+hospedado no mesmo launchable do NemoClaw usa a rota direta de mesma origem. Em uma origem Pages separada, o
+modo WebSocket direto também depende de um cookie atual do launchable e da política entre origens.</p>
 <p><strong>Por que isso importa:</strong> a barreira <code>HttpOnly</code> explica por que sistemas de produção usam
 <em>tokens de serviço</em> em chamadas entre máquinas. Por definição, o fluxo de sessão do navegador não oferece acesso programático.</p>`,
       },

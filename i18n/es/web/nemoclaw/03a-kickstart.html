@@ -228,7 +228,12 @@
       <li><code>"proxy"</code> dirige la llamada por el worker de CORS y envía el JWT de Cloudflare Access en un encabezado.</li>
       <li><code>"direct"</code> llama al origen del launchable con <code>credentials:&nbsp;"include"</code> y sin JWT, apoyándose en la cookie de Cloudflare Access que ya posee el navegador.</li>
     </ul>
-    <p>Pruebe ambos modos. Después, abra la página en un navegador que nunca haya iniciado sesión en el launchable y vuelva a intentarlo. El modo <code>"direct"</code> siempre falla. La cookie es <code>HttpOnly</code> y está limitada al origen del launchable, por lo que el navegador la adjunta automáticamente solo allí. El launchable no envía un encabezado CORS para esta página y la respuesta queda fuera de alcance. Únicamente el JWT explícito, enviado mediante el proxy, devuelve el cuerpo.</p>
+    <p>
+      En un curso alojado por separado en Pages, el modo directo depende de una cookie válida del
+      launchable y de su política de respuesta entre orígenes; la ruta con JWT explícito usa el relay.
+      Cuando el curso se incorpora al mismo launchable de NemoClaw que ejecuta el runtime,
+      el modo directo utiliza el mismo origen y no necesita el relay.
+    </p>
 
     <div id="claw-raw-cell"></div>
 
@@ -420,11 +425,12 @@ helpers.log("rendered below. Edit the config and Run.");
       defaultToken: localStorage.getItem("nvapi") || "",
       fieldHelp: {
         url: `<p><strong>Qué es:</strong> la URL base de la API de modelos de NVIDIA. Ya está completa y no requiere cambios.</p>
-<p><strong>Cómo llegan las solicitudes:</strong> la política del mismo origen impide que el navegador llame directamente a
-<code>integrate.api.nvidia.com</code>. Las solicitudes pasan por un Cloudflare Worker alojado, que añade
-encabezados CORS y reenvía su clave sin cambios.</p>
-<p><strong>Ejecución local fuera del laboratorio:</strong> llame a <code>${NVIDIA_API_BASE_URL}</code> directamente
-desde su script o notebook. Fuera del navegador, la restricción del mismo origen no se aplica y el proxy no es necesario.</p>`,
+<p><strong>Cómo llegan las solicitudes:</strong> el runtime principal del curso llama a
+<code>integrate.api.nvidia.com</code> directamente de forma predeterminada. Esta sonda editable utiliza el
+relay CORS alojado de la API de NVIDIA para que pueda inspeccionar ese transporte. El curso solo requiere
+el relay cuando se activa explícitamente el modo proxy para iframe.</p>
+<p><strong>Ejecución local:</strong> las páginas del navegador, los scripts y los notebooks deben llamar a
+<code>${NVIDIA_API_BASE_URL}</code> directamente, salvo que el entorno que los incorpora requiera el relay.</p>`,
 
         token: `<p><strong>Qué es:</strong> su clave de la API de NVIDIA, que comienza por <code>nvapi-</code>. El campo utiliza automáticamente
 la clave guardada en la página principal del curso.</p>
@@ -632,9 +638,11 @@ busque la fila <code>CF_Authorization</code> → copie todo el campo Value, una 
 Péguelo aquí. Si la sonda deja de funcionar después de una pausa larga, vuelva a copiarlo; los JWT caducan con la sesión.</p>
 <p><strong>Ejecución local:</strong> deje este campo vacío. OpenClaw local no tiene una capa de Cloudflare Access.</p>
 <p><strong>Modo alternativo:</strong> es obligatorio para la URL de Brev cuando OpenClaw local está bloqueado o muestra <code>EPERM</code>.</p>
-<p><strong>Celdas del gateway:</strong> las sondas fetch envían este JWT en un encabezado. El WebSocket <code>/cli/gateway</code>
-no puede enviar encabezados personalizados desde el navegador, por lo que el curso dirige las celdas del gateway de Brev
-por el worker de CORS de OpenClaw cuando este campo contiene un valor. El modo WebSocket directo solo funciona después de que la URL del launchable haya renovado su cookie en el navegador.</p>
+<p><strong>Celdas del gateway:</strong> las sondas fetch envían este JWT en un encabezado. Un curso alojado
+por separado dirige el WebSocket <code>/cli/gateway</code> por el worker de CORS de OpenClaw cuando este campo
+contiene un valor, porque el constructor WebSocket del navegador no puede definir el encabezado de Access.
+Un curso alojado en el mismo launchable de NemoClaw utiliza la ruta directa del mismo origen. En un origen Pages
+separado, el modo WebSocket directo también depende de una cookie vigente del launchable y de su política entre orígenes.</p>
 <p><strong>Por qué importa:</strong> la barrera <code>HttpOnly</code> explica por qué los sistemas de producción utilizan
 <em>tokens de servicio</em> para llamadas entre máquinas. El flujo de sesión del navegador no ofrece acceso programático por diseño.</p>`,
       },

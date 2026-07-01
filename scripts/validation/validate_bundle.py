@@ -133,6 +133,7 @@ import course_content_contract as cc  # noqa: E402
 import course_dependency_integrity as cdi  # noqa: E402
 import html_structure_audit as hsa  # noqa: E402
 import slides_audit as sla  # noqa: E402
+import security_architecture_audit as saa  # noqa: E402
 from collections import defaultdict  # noqa: E402
 
 
@@ -265,6 +266,9 @@ SUITE_META = [
     ("figure_audit", "Figure audit", "recommended",
      "SVG text must be legible at its render size, no label may overflow its figure, and figures/images must carry aria-label / alt / rel=noopener. A figure too small to read or clipped at the frame is a silent defect no prose check sees.",
      "scripts/validation/figure_audit.py", "run"),
+    ("security_architecture", "Security architecture graph", "required",
+     "The release threat-model graph must match source-derived CI and browser topology, explicitly classify local-only Compose services and volumes, source every production node and flow from repository evidence, label trust-boundary authentication and sensitive data, exclude internal workflow metadata, avoid node and connector collisions, and keep its generated SVG projection current.",
+     "scripts/validation/security_architecture_audit.py", "audit"),
     ("cell_audit", "Cell & artifact contract", "recommended",
 
      "Every runnable cell shows its work in the panel, writes via helpers.log not console, awaits its model calls, inlines no key, keeps cell-only code in an editable cell, is syntax-highlighted by default, and keeps default-visible code and canvas copy readable. A hard-coded key is required-tier (it ships to every student); the rest are recommended.",
@@ -500,6 +504,21 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         vl_ok = False
         ok = False
         vl_fail.extend(f"slides: {item['path']}: {item['detail']}" for item in slides_find)
+
+    try:
+        security_model = json.loads(saa.MODEL.read_text(encoding="utf-8"))
+        security_find = saa.audit_model(security_model)
+        security_scanned = len(security_model.get("nodes", [])) + len(security_model.get("edges", []))
+    except Exception as e:
+        security_find, security_scanned = [], 0
+        suite_errors["security_architecture"] = str(e)
+        vl_ok = False
+        ok = False
+        vl_fail.append(f"security architecture audit error: {e}")
+    if security_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(f"security architecture: {item['path']}: {item['detail']}" for item in security_find)
 
     # grounding reference sweep (fast, no-llm). Folds the em-dash / ungrounded / cross
     # signals into the durable log so the cadence reflects content health, not just links.
@@ -866,6 +885,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "slides": [D(item["path"], f"[{item['code']}] {item['detail']}", REQUIRED,
                      "Repair the shared manifest or generated deck, then run slides_audit.py and its mutation self-test. Reuse the course prose rules; preserve evidence paths, screenshot provenance, speaker-note depth, image contrast, and isolated SVG color defaults.")
                    for item in slides_find],
+        "security_architecture": [D(item["path"], f"[{item['code']}] {item['detail']}", REQUIRED,
+                     "Review the source-derived production contract, update docs/security-architecture.json from repository evidence, regenerate the SVG, and run security_architecture_audit.py plus its mutation self-test. Keep browser paths visible and local lab services classified without drawing them as production.")
+                    for item in security_find],
         "course_content": [D(path, detail, REQUIRED,
                              "Restore the source-backed teaching contract. Keep retrieval/safety explanations complete, product comparisons grounded in public sources, automation behavior scoped to the demonstrated configuration, and alpha platform claims qualified.")
                            for path, detail in cc_find],
@@ -1065,6 +1087,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "reachability": reach.get("pages", 0), "page_audit": audit.get("pages", 0), "course_content": 8,
         "html_structure": len(hsa.source_pages(TASK1)),
         "slides": slides_scanned,
+        "security_architecture": security_scanned,
         "course_dependency_integrity": 14,
         "grounding": len(grecs), "prose_variety": len(pv_rows), "prose_buzz": len(pv_rows), "redundancy": len(pv_rows), "grammar": len(pv_rows), "structure": len(pv_rows), "headings": len(pv_rows), "assertions": len(pv_rows), "word_echo": len(pv_rows), "comma_weight": len(pv_rows), "branding": len(pv_rows),
         "defer_copula": len(pv_rows), "dense_repeats": len(pv_rows), "over_verbage": len(pv_rows), "padding": len(pv_rows),
@@ -1128,6 +1151,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "page_audit": audit,
         "html_structure": {"pages": len(hsa.source_pages(TASK1)), "findings": len(html_structure_find)},
         "slides": {"slides": slides_scanned, "findings": len(slides_find)},
+        "security_architecture": {"findings": len(security_find), "graph_items": security_scanned},
         "course_content": {"findings": len(cc_find)},
         "course_dependency_integrity": {"findings": len(cdi_find)},
         "prose_variety": {"pages": len(pv_rows), "flagged": len(pv_flagged), "flag_at": pv.FLAG_AT,
@@ -1179,6 +1203,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
           f"(stale tokens / missing assets / contract)")
     print(f"  course content  : {len(cc_find)} required content contract finding(s) (teaching, product, platform)")
     print(f"  overview slides : {len(slides_find)} required finding(s) over {slides_scanned} slides")
+    print(f"  security arch.   : {len(security_find)} required finding(s) over {security_scanned} nodes and flows")
     if not lang_en:
         print(f"  prose / buzz / branding : n/a for '{lang}' (English-prose style suites do not gate a translation)")
     if pv_rows and lang_en:
@@ -1300,6 +1325,7 @@ def _render_md(summary: dict) -> str:
          f"| cell audit (runnable-cell contract) | {sum(summary.get('cell_audit',{}).values())} | advisory |",
          f"| learner interaction flow | {summary.get('learner_flow',{}).get('findings',0)} | blocking |",
          f"| contribution safety | {summary.get('contribution_safety',{}).get('findings',0)} | blocking |",
+         f"| Security architecture graph | {summary.get('security_architecture',{}).get('findings',0)} | blocking |",
          f"| figure geometry (runtime figures) | {summary.get('diagram_geom',{}).get('findings',0)} | advisory |",
          f"| strays (unreachable from a SKILL hub) | {len(rc.get('strays',[]))} | {rc.get('real_strays','?')} real |",
          f"| release foyer (surfaces only RELEASED) | {'OK' if fy.get('ok') else 'FAIL'} | {len(fy.get('violations',[]))} blocking |",
@@ -1315,6 +1341,7 @@ def _render_md(summary: dict) -> str:
                    "prose_buzz": "Buzz cadence", "redundancy": "Redundancy", "grammar": "Grammar & composition", "grounding": "Grounding", "color_theme": "Color theme",
                    "figure_audit": "Figure audit", "cell_audit": "Cell contract", "diagram_geom": "Figure geometry",
                    "materials": "Materials", "reachability": "Reachability", "contribution_safety": "Contribution safety",
+                   "security_architecture": "Security architecture graph",
                    "word_echo": "Word echo", "comma_weight": "Comma weight", "assertions": "Bare assertions",
                    "headings": "Headings", "structure": "Structural rhythm", "branding": "Brand naming",
                    "defer_copula": "Deferred copula", "dense_repeats": "Dense repetition", "over_verbage": "Over-verbage",

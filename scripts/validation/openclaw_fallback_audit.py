@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
@@ -17,6 +18,7 @@ from _bootstrap import find_repo_root
 
 ROOT = find_repo_root(Path(__file__).resolve())
 NODE_CANDIDATES = [
+    os.environ.get("NODE_BIN"),
     os.environ.get("NODE"),
     shutil.which("node"),
     "/mnt/c/Users/vkudlay/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe",
@@ -146,8 +148,13 @@ def audit() -> list[str]:
     if not node:
         findings.append("node runtime not found for openclaw_worker_ws_audit.mjs")
     else:
+        node_env = os.environ.copy()
+        if node.suffix.lower() != ".exe":
+            writable_tmp = tempfile.gettempdir()
+            node_env.update({"TMPDIR": writable_tmp, "TMP": writable_tmp, "TEMP": writable_tmp})
         for script_key in ("worker_ws_audit", "gw_transport_audit", "gw_recover_compile_audit"):
-            proc = subprocess.run([str(node), str(FILES[script_key])], cwd=ROOT, text=True, capture_output=True)
+            proc = subprocess.run([str(node), str(FILES[script_key])], cwd=ROOT, env=node_env,
+                                  text=True, capture_output=True)
             if proc.returncode != 0:
                 detail = (proc.stdout + proc.stderr).strip().replace("\n", " | ")
                 findings.append(f"{FILES[script_key].name} failed: {detail}")

@@ -135,6 +135,8 @@ python3 scripts/validation/localization_audit.py --locale pt-BR
 python3 scripts/validation/localization_audit.py --locale es-ES
 python3 scripts/validation/slides_audit.py --self-test
 python3 scripts/validation/slides_audit.py
+python3 scripts/validation/security_architecture_audit.py --self-test
+python3 scripts/validation/security_architecture_audit.py
 python3 scripts/compliance/source_gate.py
 python3 scripts/security/audit_dependency_locks.py --self-test
 python3 scripts/security/audit_dependency_locks.py
@@ -143,6 +145,11 @@ python3 scripts/build/package_release.py --self-test
 bash scripts/runtime/run_engine.sh --self-test
 python3 scripts/validation/validate_bundle.py --scope ship
 ```
+
+Release threat-model evidence lives in [`docs/security-architecture.md`](docs/security-architecture.md).
+Its source-backed graph covers the learner runtime and release supply chain, then generates a
+review-neutral SVG. CI rejects missing services, unlabeled trust-boundary flows, broken evidence,
+connector collisions, and stale generated output.
 
 For browser or Studio changes, also use the containerized browser harness:
 

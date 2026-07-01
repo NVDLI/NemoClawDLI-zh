@@ -70,6 +70,11 @@ every commit in the proposed range. If the check fails, follow the repair guidan
 do not squash away another contributor's authorship or treat a signoff as permission to submit
 third-party material.
 
+For a stacked merge request whose target is another unmerged proposal branch, preserve the original
+signed commits. Do not use the host's squash or merge button: its generated commits do not inherit
+DCO trailers and will fail the parent proposal's complete-range check. Follow the maintainer-owned
+fast-forward or deliberate rebase/cherry-pick procedure in [`DCO.md`](DCO.md).
+
 ## Install the Hooks
 
 ```bash
@@ -94,6 +99,8 @@ python3 scripts/validation/validate_layout.py --quiet
 python3 scripts/skills/skill_consistency.py
 python3 scripts/validation/contribution_safety_audit.py --self-test
 python3 scripts/validation/contribution_safety_audit.py
+python3 scripts/validation/security_architecture_audit.py --self-test
+python3 scripts/validation/security_architecture_audit.py
 python3 scripts/build/assemble_locale_overlay.py --self-test
 python3 scripts/validation/localization_audit.py --self-test
 python3 scripts/validation/localization_audit.py --locale pt-BR
