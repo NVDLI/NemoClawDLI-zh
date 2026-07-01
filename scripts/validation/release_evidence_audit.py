@@ -74,7 +74,18 @@ REQUIRED_WIRING = {
     "AGENT_QUICKSTART.md": ("release_evidence_audit.py --self-test", "release_evidence_audit.py"),
     "CONTRIBUTING.md": ("release_evidence_audit.py --self-test", "release_evidence_audit.py"),
     "docs/agent_process.md": ("release_evidence_audit.py", "--self-test"),
-    "docs/SKILL.html": ("product-design.md", "release-test-plan.md", "release-evidence.json"),
+    "docs/SKILL.html": ("product-design.md", "release-test-plan.md", "release-evidence.json", '"render_markdown": true'),
+    "web/_skill_explorer.js": (
+        "safeMarkdownHtml", "new URLSearchParams(location.search", 'params.get("file")',
+        'params.get("view")', "writeFileUrl", 'addEventListener("popstate"',
+        "sx-heading-link",
+    ),
+    "scripts/build/build_pages.sh": (
+        "GOVERNANCE.json CODE_OF_CONDUCT.md DCO.md MAINTAINERS.md SUPPORT.md",
+        'cp "$T1/$f" "$OUT/$f"',
+        '"$T1/$d"/*.svg',
+        "docs explorer projection: missing or unsafe declared files",
+    ),
     "scripts/validation/SKILL.html": ("release_evidence_audit.py",),
 }
 ALLOWED_OWNERS = {"repository", "operator", "shared"}
@@ -291,7 +302,7 @@ def self_test() -> tuple[int, int, list[str]]:
     base = load_contract()
     baseline = audit_contract(base)
     if baseline:
-        return 0, 13, [f"baseline is not clean: {item['code']} {item['detail']}" for item in baseline]
+        return 0, 15, [f"baseline is not clean: {item['code']} {item['detail']}" for item in baseline]
     tests: list[tuple[str, dict, dict[str, str], str]] = []
 
     def mutated() -> dict:
@@ -328,6 +339,17 @@ def self_test() -> tuple[int, int, list[str]]:
                   "wiring"))
     tests.append(("missing test case", mutated(), {test_path: test_text.replace("| M09 |", "| MXX |")},
                   "test-id"))
+    explorer_path = "web/_skill_explorer.js"
+    explorer_text = (ROOT / explorer_path).read_text(encoding="utf-8")
+    tests.append(("missing document URL state", mutated(),
+                  {explorer_path: explorer_text.replace('params.get("file")', 'params.get("removed")')},
+                  "wiring"))
+    build_path = "scripts/build/build_pages.sh"
+    build_text = (ROOT / build_path).read_text(encoding="utf-8")
+    tests.append(("missing explorer artifact check", mutated(),
+                  {build_path: build_text.replace("docs explorer projection: missing or unsafe declared files",
+                                                 "explorer projection check removed")},
+                  "wiring"))
 
     passed = 0
     failures: list[str] = []

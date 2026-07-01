@@ -114,7 +114,7 @@ for d in cors-proxy deploy scripts docs workspace; do
         mkdir -p "$OUT/$d"
         # the explorer + the documented source it shows (read-only); skip caches + subdirs
         for f in "$T1/$d"/*.html "$T1/$d"/*.js "$T1/$d"/*.mjs "$T1/$d"/*.py \
-                 "$T1/$d"/*.sh "$T1/$d"/*.md "$T1/$d"/*.txt "$T1/$d"/*.yml "$T1/$d"/*.yaml "$T1/$d"/*.conf "$T1/$d"/*.json "$T1/$d"/Dockerfile; do
+                 "$T1/$d"/*.sh "$T1/$d"/*.md "$T1/$d"/*.txt "$T1/$d"/*.yml "$T1/$d"/*.yaml "$T1/$d"/*.conf "$T1/$d"/*.json "$T1/$d"/*.svg "$T1/$d"/Dockerfile; do
             [ -f "$f" ] && cp "$f" "$OUT/$d"/
         done
         if [ "$d" = "docs" ] && [ -d "$T1/docs/assets/repository-overview" ]; then
@@ -127,6 +127,33 @@ for d in cors-proxy deploy scripts docs workspace; do
         echo "[build_pages] explorer $d -> public/$d/ ($(find "$OUT/$d" -maxdepth 1 -type f | wc -l) files, source shipped read-only)"
     fi
 done
+
+# docs/SKILL.html also exposes the public repository-governance records one level above docs/.
+# Ship that declared set at the Pages root so rendered/source views, direct ?file= URLs, and
+# self-assessment all resolve against the same paths as the source checkout.
+for f in GOVERNANCE.json CODE_OF_CONDUCT.md DCO.md MAINTAINERS.md SUPPORT.md; do
+    test -f "$T1/$f"
+    cp "$T1/$f" "$OUT/$f"
+done
+python3 - "$OUT/docs/SKILL.html" "$OUT" <<'PROJ'
+import json, pathlib, re, sys
+
+skill = pathlib.Path(sys.argv[1]).resolve()
+artifact = pathlib.Path(sys.argv[2]).resolve()
+text = skill.read_text(encoding="utf-8")
+match = re.search(r'<script[^>]*id="explorer-config"[^>]*>(.*?)</script>', text, re.S)
+if not match:
+    raise SystemExit("docs explorer projection: missing explorer-config")
+config = json.loads(match.group(1))
+missing = []
+for entry in config.get("files", []):
+    target = (skill.parent / entry["path"]).resolve()
+    if not target.is_relative_to(artifact) or not target.is_file():
+        missing.append(entry["path"])
+if missing:
+    raise SystemExit("docs explorer projection: missing or unsafe declared files: " + ", ".join(missing))
+print(f"[build_pages] docs explorer projection: {len(config.get('files', []))} declared files resolve")
+PROJ
 
 if [ -f "$T1/docs/repository-overview.slides.json" ]; then
     test -f "$OUT/docs/repository-overview.html"

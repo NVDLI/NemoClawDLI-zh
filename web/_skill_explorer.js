@@ -72,6 +72,30 @@
              json: "json", html: "xml", htm: "xml", css: "css", md: "markdown", tf: "hcl",
              yml: "yaml", yaml: "yaml", toml: "ini", txt: "plaintext", dockerfile: "dockerfile" }[ext] || "plaintext";
   }
+  function isMarkdown(path) { return /\.(?:md|markdown)$/i.test(path || ""); }
+  function safeMarkdownHtml(html) {
+    var t = document.createElement("template");
+    t.innerHTML = html;
+    t.content.querySelectorAll("script,style,iframe,object,embed,link,meta,base,form,input,button,textarea,select").forEach(function (n) { n.remove(); });
+    t.content.querySelectorAll("*").forEach(function (n) {
+      Array.prototype.slice.call(n.attributes || []).forEach(function (a) {
+        var name = a.name.toLowerCase(), value = String(a.value || "").trim().toLowerCase();
+        if (name.indexOf("on") === 0 || ((name === "href" || name === "src" || name === "xlink:href") && /^(?:javascript|data):/.test(value))) {
+          n.removeAttribute(a.name);
+        }
+      });
+      if (n.tagName === "A" && n.getAttribute("target") === "_blank") n.setAttribute("rel", "noopener noreferrer");
+    });
+    return t.innerHTML;
+  }
+  function headingSlug(text, used) {
+    var base = String(text || "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "section";
+    var slug = base, n = 2;
+    while (used[slug]) { slug = base + "-" + n; n++; }
+    used[slug] = true;
+    return slug;
+  }
 
   function injectChrome() {
     // Apply a saved manual theme choice before any content is built (the framer renders its body in JS, so this is flash-free).
@@ -124,7 +148,7 @@
       ".sx-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:.5em}",
       ".sx-bar .fn{font-family:var(--mono);font-size:.9rem;color:var(--gs)}.sx-bar .rl{font-size:.8rem;color:var(--tf)}.sx-bar .sp{flex:1}",
       ".sx-btn{background:var(--e2);border:1px solid var(--e3);color:var(--td);border-radius:7px;padding:6px 12px;line-height:1;font:inherit;font-size:.78rem;cursor:pointer;transition:background .15s,border-color .15s,color .15s}",
-      ".sx-btn:hover{border-color:var(--g);color:var(--gs)}",
+      ".sx-btn:hover{border-color:var(--g);color:var(--gs)}a.sx-btn{text-decoration:none}a.sx-btn.on{border-color:var(--g);color:var(--gs);background:rgba(118,185,0,.08)}",
       ".sx-note{background:rgba(118,185,0,.07);border-left:3px solid var(--g);border-radius:0 7px 7px 0;padding:9px 13px;margin:.5em 0;font-size:.9rem;color:var(--tx)}",
       ".sx-code{margin:0;border:1px solid var(--e3);border-radius:8px;overflow:auto;max-height:62vh;background:var(--bg)}",
       ".sx-code table{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:.82rem}",
@@ -155,6 +179,9 @@
       ".sx-readme pre{background:var(--bg);border:1px solid var(--e3);border-radius:8px;padding:12px;overflow:auto}.sx-readme pre code{border:0;background:none;padding:0}",
       ".sx-readme table{border-collapse:collapse;font-size:.88rem;margin:.6em 0}.sx-readme td,.sx-readme th{border:1px solid var(--e3);padding:4px 10px;text-align:left}",
       ".sx-readme a{color:var(--g)}.sx-readme blockquote{border-left:3px solid var(--e3);margin:.6em 0;padding-left:1em;color:var(--tf)}",
+      ".sx-readme img{max-width:100%;height:auto}.sx-readme hr{border:0;border-top:1px solid var(--e3);margin:1.4em 0}",
+      ".sx-readme h1,.sx-readme h2,.sx-readme h3,.sx-readme h4,.sx-readme h5,.sx-readme h6{scroll-margin-top:4.5rem}",
+      ".sx-heading-link{margin-left:.45em;color:var(--tf)!important;text-decoration:none;font-size:.72em;opacity:0}.sx-readme h1:hover .sx-heading-link,.sx-readme h2:hover .sx-heading-link,.sx-readme h3:hover .sx-heading-link,.sx-readme h4:hover .sx-heading-link,.sx-heading-link:focus{opacity:1}",
       ".sx-hubsec{margin:0 0 1.4em}.sx-hubsec h2{font-size:1.05rem;color:var(--tx);border-bottom:1px solid var(--e3);padding-bottom:.3em;margin:0 0 .6em}",
       ".sx-hubgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(15rem,100%),1fr));gap:10px}",
       ".sx-card{display:block;background:var(--e1);border:1px solid var(--e3);border-radius:8px;padding:11px 13px;text-decoration:none}",
@@ -238,6 +265,7 @@
     this.ties = (cfg.ties && cfg.ties.length ? cfg.ties : ["build"]).filter(function (t) { return SESSIONS[t]; });
     this.cache = {};
     this.current = null;
+    this.currentView = null;
     this.health = {};
     this.viewerEl = null;
     this.railEl = null;
@@ -261,6 +289,42 @@
     return this.cfg.files || [];
   };
 
+  App.prototype.fileEntry = function (path) {
+    var files = this.files();
+    for (var i = 0; i < files.length; i++) if (files[i].path === path) return files[i];
+    return null;
+  };
+  App.prototype.defaultView = function (path) {
+    return isMarkdown(path) && this.cfg.render_markdown ? "render" : "source";
+  };
+  App.prototype.urlRequest = function () {
+    var params = new URLSearchParams(location.search || ""), path = params.get("file"), view = params.get("view");
+    if (!this.fileEntry(path)) path = null;
+    if (view !== "render" && view !== "source") view = null;
+    return { path: path, view: view };
+  };
+  App.prototype.fileHref = function (path, view, hash) {
+    var u = new URL(location.href);
+    u.searchParams.set("file", path);
+    if (view && view !== this.defaultView(path)) u.searchParams.set("view", view);
+    else u.searchParams.delete("view");
+    u.hash = hash || "";
+    return u.href;
+  };
+  App.prototype.writeFileUrl = function (path, view, hash, replace) {
+    var href = this.fileHref(path, view, hash);
+    try { history[replace ? "replaceState" : "pushState"]({ file: path, view: view }, "", href); } catch (e) {}
+  };
+  App.prototype.scrollToHash = function () {
+    if (!location.hash) return;
+    var id;
+    try { id = decodeURIComponent(location.hash.slice(1)); } catch (e) { return; }
+    requestAnimationFrame(function () {
+      var target = document.getElementById(id);
+      if (target) target.scrollIntoView({ block: "start" });
+    });
+  };
+
   App.prototype.fetchText = function (path) {
     var self = this;
     if (this.cache[path] != null) return Promise.resolve(this.cache[path]);
@@ -270,22 +334,87 @@
     }).then(function (t) { self.cache[path] = t; return t; });
   };
 
-  App.prototype.showFile = function (path, range, note) {
-    var self = this;
+  App.prototype.showFile = function (path, range, note, options) {
+    var self = this, opts = options || {}, f = this.fileEntry(path);
+    if (!f) return;
+    var view = opts.view || (range ? "source" : this.defaultView(path));
+    if (!isMarkdown(path) || (view !== "render" && view !== "source")) view = "source";
+    var hash = opts.hash == null ? "" : opts.hash;
     this.current = path;
+    this.currentView = view;
+    document.title = path + " · " + (this.cfg.title || "explore");
+    if (opts.updateUrl !== false) this.writeFileUrl(path, view, hash, !!opts.replace);
     this.paintRail();
     var main = this.viewerEl;
-    var f = this.files().filter(function (x) { return x.path === path; })[0] || { path: path };
     main.innerHTML = "";
     var bar = el("div", "sx-bar");
     bar.appendChild(el("span", "fn", esc(path)));
     if (f.role) bar.appendChild(el("span", "rl", "&middot; " + esc(f.role)));
     bar.appendChild(el("span", "sp"));
+    if (isMarkdown(path)) {
+      ["render", "source"].forEach(function (mode) {
+        var a = el("a", "sx-btn" + (view === mode ? " on" : ""), mode === "render" ? "Rendered" : "Source");
+        a.href = self.fileHref(path, mode, "");
+        a.onclick = function (e) { e.preventDefault(); self.showFile(path, null, note, { view: mode }); };
+        bar.appendChild(a);
+      });
+    }
+    var link = el("button", "sx-btn", "Copy link");
+    link.onclick = function () {
+      var href = self.fileHref(path, view, location.hash);
+      if (navigator.clipboard) navigator.clipboard.writeText(href).then(function () { link.textContent = "Copied"; setTimeout(function () { link.textContent = "Copy link"; }, 1200); }).catch(function () { window.prompt("Copy this document URL", href); });
+      else window.prompt("Copy this document URL", href);
+    };
     var copy = el("button", "sx-btn", "Copy"); copy.onclick = function () { self.copy(path); };
     var dl = el("button", "sx-btn", "Download"); dl.onclick = function () { self.download(path); };
-    bar.appendChild(copy); bar.appendChild(dl);
+    bar.appendChild(link); bar.appendChild(copy); bar.appendChild(dl);
     main.appendChild(bar);
     if (note) main.appendChild(el("div", "sx-note", esc(note)));
+    if (view === "render") {
+      var doc = el("article", "sx-readme");
+      doc.innerHTML = "<div class='sx-note'>Rendering " + esc(path) + "...</div>";
+      main.appendChild(doc);
+      Promise.all([this.fetchText(path), loadMarked()]).then(function (result) {
+        var text = result[0], marked = result[1];
+        if (!marked) {
+          doc.innerHTML = "<div class='sx-note'>The Markdown renderer could not load. Showing source text.</div><pre>" + esc(text) + "</pre>";
+          return;
+        }
+        doc.innerHTML = safeMarkdownHtml(marked.parse(text));
+        var used = {};
+        doc.querySelectorAll("h1,h2,h3,h4,h5,h6").forEach(function (h) {
+          var id = headingSlug(h.textContent, used); h.id = id;
+          var anchor = el("a", "sx-heading-link", "#");
+          anchor.href = self.fileHref(path, "render", "#" + id);
+          anchor.setAttribute("aria-label", "Link to " + h.textContent.trim());
+          h.appendChild(anchor);
+        });
+        doc.querySelectorAll("a[href]").forEach(function (a) {
+          var raw = a.getAttribute("href");
+          if (!raw || /^(?:mailto:|https?:)/i.test(raw)) return;
+          var target;
+          try { target = new URL(raw, new URL(path, location.href)); } catch (e) { return; }
+          var files = self.files(), match = null;
+          for (var i = 0; i < files.length; i++) {
+            var candidate = new URL(files[i].path, location.href);
+            if (candidate.pathname === target.pathname) { match = files[i]; break; }
+          }
+          if (!match) return;
+          var nextView = self.defaultView(match.path);
+          a.href = self.fileHref(match.path, nextView, target.hash);
+          a.onclick = function (e) {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+            e.preventDefault();
+            self.showFile(match.path, null, null, { view: nextView, hash: target.hash });
+          };
+        });
+        doc.querySelectorAll("pre code").forEach(function (b) { try { if (window.hljs) window.hljs.highlightElement(b); } catch (e) {} });
+        self.scrollToHash();
+      }).catch(function (e) {
+        doc.innerHTML = "<div class='sx-note'>Could not render " + esc(path) + ": " + esc(e.message) + "</div>";
+      });
+      return;
+    }
     var pre = el("pre", "sx-code", "<table><tbody></tbody></table>");
     main.appendChild(pre);
     this.fetchText(path).then(function (text) {
@@ -359,11 +488,16 @@
 
   App.prototype.fileButton = function (f) {
     var self = this, h = this.health[f.path];
-    var b = el("button", "sx-file" + (this.current === f.path ? " sel" : ""));
+    var b = el("a", "sx-file" + (this.current === f.path ? " sel" : ""));
+    b.href = this.fileHref(f.path, this.defaultView(f.path), "");
+    if (this.current === f.path) b.setAttribute("aria-current", "page");
     b.innerHTML = "<span class=nm><span>" + esc(f.path) + "</span>" +
       (h ? "<span class='sx-dot " + h + "' title='" + h + "'></span>" : "") + "</span>" +
       (f.role ? "<span class=rl>" + esc(f.role) + "</span>" : "");
-    b.onclick = function () { self.showFile(f.path); };
+    b.onclick = function (e) {
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      e.preventDefault(); self.showFile(f.path);
+    };
     return b;
   };
 
@@ -376,7 +510,7 @@
     Promise.all([this.fetchText(this.cfg.readme), loadMarked()]).then(function (r) {
       var text = r[0], marked = r[1];
       var d = el("div", "sx-readme");
-      d.innerHTML = marked ? marked.parse(text) : "<pre>" + esc(text) + "</pre>";
+      d.innerHTML = marked ? safeMarkdownHtml(marked.parse(text)) : "<pre>" + esc(text) + "</pre>";
       d.querySelectorAll("pre code").forEach(function (b) { try { if (window.hljs) window.hljs.highlightElement(b); } catch (e) {} });
       main.innerHTML = ""; main.appendChild(d);
     }).catch(function (e) {
@@ -430,7 +564,7 @@
       r.appendChild(el("h3", null, "Guided tour"));
       cfg.tour.forEach(function (t) {
         var b = el("button", "sx-tour", "<b>" + esc(t.title) + "</b>" + esc(t.file) + (t.lines ? " :" + t.lines[0] + "-" + t.lines[1] : ""));
-        b.onclick = function () { self.showFile(t.file, t.lines, t.note); };
+        b.onclick = function () { self.showFile(t.file, t.lines, t.note, { view: "source" }); };
         r.appendChild(b);
       });
     }
@@ -546,8 +680,18 @@
     if (hub) {
       if (cfg.readme) this.renderReadme(); else this.renderHubCards();
     } else {
-      var first = this.files()[0];
-      if (first) this.showFile(first.path);
+      var request = this.urlRequest(), first = request.path ? this.fileEntry(request.path) : this.files()[0];
+      if (first) {
+        var initialView = request.view || this.defaultView(first.path);
+        if (!isMarkdown(first.path)) initialView = "source";
+        this.showFile(first.path, null, null, { view: initialView, updateUrl: false, hash: location.hash });
+        this.writeFileUrl(first.path, initialView, location.hash, true);
+      }
+      window.addEventListener("popstate", function () {
+        var next = self.urlRequest(), fallback = self.files()[0], file = next.path ? self.fileEntry(next.path) : fallback;
+        if (file) self.showFile(file.path, null, null, { view: isMarkdown(file.path) ? (next.view || self.defaultView(file.path)) : "source", updateUrl: false, hash: location.hash });
+      });
+      window.addEventListener("hashchange", function () { self.scrollToHash(); });
       this.selfAssess();
     }
   };
