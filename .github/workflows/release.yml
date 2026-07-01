@@ -55,6 +55,8 @@ jobs:
           python3 scripts/validation/html_structure_audit.py --self-test
           python3 scripts/validation/slides_audit.py --self-test
           python3 scripts/build/build_repository_overview_html.py --check
+          python3 scripts/validation/release_evidence_audit.py --self-test
+          python3 scripts/validation/release_evidence_audit.py
           python3 scripts/build/assemble_locale_overlay.py --self-test
           python3 scripts/validation/localization_audit.py --self-test
           python3 scripts/validation/localization_audit.py --locale pt-BR

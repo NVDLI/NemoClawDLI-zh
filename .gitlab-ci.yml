@@ -69,6 +69,8 @@ test:
     # Semantic verifier: derives release jobs, runtime hosts, dynamic host suffixes, and worker
     # inventory from source; topology changes require an explicit architecture review.
     - python3 scripts/validation/security_architecture_audit.py
+    - python3 scripts/validation/release_evidence_audit.py --self-test
+    - python3 scripts/validation/release_evidence_audit.py
     - python3 scripts/build/assemble_locale_overlay.py --self-test
     - python3 scripts/validation/localization_audit.py --self-test
     - 'for locale in scripts/translate/locales/*; do if [ -f "$locale/profile.json" ]; then code="$(basename "$locale")"; python3 scripts/validation/localization_audit.py --locale "$code"; fi; done'

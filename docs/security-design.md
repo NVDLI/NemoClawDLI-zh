@@ -1,8 +1,11 @@
 # Security design record
 
-This document supplies the public system context needed to interpret
-[`security-architecture.svg`](security-architecture.svg). It is intentionally independent of any
-internal review system, program identifier, submission version, or approval state.
+This document supplies the public security context needed to interpret
+[`security-architecture.svg`](security-architecture.svg). The broader product scope, data inventory,
+cryptography inventory, release behavior, and test mapping live in
+[`product-design.md`](product-design.md) and [`release-test-plan.md`](release-test-plan.md). These
+documents remain independent of any internal review system, program identifier, submission version,
+or approval state.
 
 ## System scope
 

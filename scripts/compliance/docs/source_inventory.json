@@ -201,6 +201,24 @@
       "disposition": "review-neutral system scope, trust-boundary, control, and reconstruction record"
     },
     {
+      "path": "docs/product-design.md",
+      "kind": "authored-release-documentation",
+      "license": "Apache-2.0",
+      "disposition": "public product scope, runtime, data, integrity, and release design"
+    },
+    {
+      "path": "docs/release-test-plan.md",
+      "kind": "authored-release-documentation",
+      "license": "Apache-2.0",
+      "disposition": "public release verification plan and evidence criteria"
+    },
+    {
+      "path": "docs/release-evidence.json",
+      "kind": "authored-release-contract",
+      "license": "Apache-2.0",
+      "disposition": "machine-readable release evidence ownership and command map"
+    },
+    {
       "path": "docs/security-architecture.json",
       "kind": "authored-architecture-source",
       "license": "Apache-2.0",

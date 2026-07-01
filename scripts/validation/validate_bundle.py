@@ -134,6 +134,7 @@ import course_dependency_integrity as cdi  # noqa: E402
 import html_structure_audit as hsa  # noqa: E402
 import slides_audit as sla  # noqa: E402
 import security_architecture_audit as saa  # noqa: E402
+import release_evidence_audit as rea  # noqa: E402
 from collections import defaultdict  # noqa: E402
 
 
@@ -179,6 +180,9 @@ SUITE_META = [
     ("slides", "Repository overview slides", "required",
      "The hosted stakeholder deck must stay evidence-backed, substantial enough to present, free of the course's known prose regressions, visually legible, reproducible from its manifest, and safe to render outside the course theme. The suite reuses prose_variety and adds slide-only image, notes, provenance, SVG, and generated-output checks.",
      "scripts/validation/slides_audit.py", "audit_manifest"),
+    ("release_evidence", "Product design and release test plan", "required",
+     "The public product design, executable test plan, and machine-readable evidence map must cover the shipped static system, data and cryptography inventories, source and dependency controls, external-review ownership, release artifacts, and rollback without embedding private workflow metadata or claiming approval.",
+     "scripts/validation/release_evidence_audit.py", "audit_contract"),
     ("course_content", "Course content contract", "required",
      "Course promises that generic validators cannot infer: retrieval and safety figures keep their teaching contracts, product comparisons cite public sources, automation semantics stay scoped to the demonstrated configuration, and alpha platform claims retain availability and hardware qualifiers. Each finding names the missing contract piece.",
      "scripts/validation/course_content_contract.py", "run"),
@@ -519,6 +523,25 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         vl_ok = False
         ok = False
         vl_fail.extend(f"security architecture: {item['path']}: {item['detail']}" for item in security_find)
+
+    try:
+        release_contract = rea.load_contract()
+        release_evidence_find = rea.audit_contract(release_contract)
+        release_evidence_scanned = (len(release_contract.get("documents", {}))
+                                    + len(release_contract.get("evidence_areas", [])))
+    except Exception as e:
+        release_evidence_find, release_evidence_scanned = [], 0
+        suite_errors["release_evidence"] = str(e)
+        vl_ok = False
+        ok = False
+        vl_fail.append(f"release evidence audit error: {e}")
+    if release_evidence_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(
+            f"release evidence: {item['path']}: [{item['code']}] {item['detail']}"
+            for item in release_evidence_find
+        )
 
     # grounding reference sweep (fast, no-llm). Folds the em-dash / ungrounded / cross
     # signals into the durable log so the cadence reflects content health, not just links.
@@ -888,6 +911,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "security_architecture": [D(item["path"], f"[{item['code']}] {item['detail']}", REQUIRED,
                      "Review the source-derived production contract, update docs/security-architecture.json from repository evidence, regenerate the SVG, and run security_architecture_audit.py plus its mutation self-test. Keep browser paths visible and local lab services classified without drawing them as production.")
                     for item in security_find],
+        "release_evidence": [D(item["path"], f"[{item['code']}] {item['detail']}", REQUIRED,
+                     item["fix"])
+                    for item in release_evidence_find],
         "course_content": [D(path, detail, REQUIRED,
                              "Restore the source-backed teaching contract. Keep retrieval/safety explanations complete, product comparisons grounded in public sources, automation behavior scoped to the demonstrated configuration, and alpha platform claims qualified.")
                            for path, detail in cc_find],
@@ -1088,6 +1114,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "html_structure": len(hsa.source_pages(TASK1)),
         "slides": slides_scanned,
         "security_architecture": security_scanned,
+        "release_evidence": release_evidence_scanned,
         "course_dependency_integrity": 14,
         "grounding": len(grecs), "prose_variety": len(pv_rows), "prose_buzz": len(pv_rows), "redundancy": len(pv_rows), "grammar": len(pv_rows), "structure": len(pv_rows), "headings": len(pv_rows), "assertions": len(pv_rows), "word_echo": len(pv_rows), "comma_weight": len(pv_rows), "branding": len(pv_rows),
         "defer_copula": len(pv_rows), "dense_repeats": len(pv_rows), "over_verbage": len(pv_rows), "padding": len(pv_rows),
@@ -1152,6 +1179,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "html_structure": {"pages": len(hsa.source_pages(TASK1)), "findings": len(html_structure_find)},
         "slides": {"slides": slides_scanned, "findings": len(slides_find)},
         "security_architecture": {"findings": len(security_find), "graph_items": security_scanned},
+        "release_evidence": {"findings": len(release_evidence_find),
+                             "evidence_items": release_evidence_scanned},
         "course_content": {"findings": len(cc_find)},
         "course_dependency_integrity": {"findings": len(cdi_find)},
         "prose_variety": {"pages": len(pv_rows), "flagged": len(pv_flagged), "flag_at": pv.FLAG_AT,
@@ -1236,6 +1265,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
           f"(progressive disclosure / prerequisites / lifecycle / CPU baseline)")
     print(f"  contribution    : {len(contribution_safety_find)} required finding(s) "
           f"(intake / submissions / hooks / CI permissions / release authority)")
+    print(f"  release evidence: {len(release_evidence_find)} required finding(s) "
+          f"over {release_evidence_scanned} design, test, and ownership items")
     print(f"  localization    : {len(localization_find)} required finding(s) "
           f"({localization_manifest.get('counts', {})})")
     print(f"  figure geometry : {len(dg_find)} runtime-figure finding(s) (text overlap / past bounds / connector-crosses-box / useless)")

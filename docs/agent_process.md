@@ -30,6 +30,11 @@ This note is for agents and maintainers working across issues, merge requests, a
   or release-pipeline changes, update `docs/security-architecture.json`, regenerate its SVG, and run
   `python3 scripts/validation/security_architecture_audit.py --self-test` plus the audit. Production
   nodes remain source-backed; local-only Compose services and volumes remain explicitly classified.
+- For product scope, data handling, cryptography inventory, release evidence, or lifecycle test-plan
+  changes, update `docs/product-design.md`, `docs/release-test-plan.md`, and
+  `docs/release-evidence.json` together. Run `python3 scripts/validation/release_evidence_audit.py
+  --self-test` and then `python3 scripts/validation/release_evidence_audit.py`. Keep internal ticket
+  bodies, program identifiers, scanner details, reviewer records, and approval links outside the repo.
 
 ## Course title, abstract, and objectives
 

@@ -51,6 +51,9 @@ available without publishing noisy scanner detail as a supported product interfa
 The source-backed security architecture and generated SVG remain versioned under `docs/` so a reviewer
 can trace system boundaries to the exact source tag. They are engineering evidence rather than
 supported runtime interfaces and do not encode internal submissions or approval records.
+The tagged source also versions `docs/product-design.md`, `docs/release-test-plan.md`, and
+`docs/release-evidence.json`. Reviewers link those files at the exact release commit, then retain
+private scanner, reviewer, and approval records in the authorized release system.
 The workflow installs scanner tools in a separate environment, so scanner dependencies do not
 pollute the runtime SBOM. Scanner versions are pinned in the workflow so the same environment is
 serialized consistently until an explicit dependency update changes the tooling.
