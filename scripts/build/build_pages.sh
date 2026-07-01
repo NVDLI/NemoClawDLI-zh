@@ -128,32 +128,13 @@ for d in cors-proxy deploy scripts docs workspace; do
     fi
 done
 
-# docs/SKILL.html also exposes the public repository-governance records one level above docs/.
-# Ship that declared set at the Pages root so rendered/source views, direct ?file= URLs, and
-# self-assessment all resolve against the same paths as the source checkout.
-for f in GOVERNANCE.json CODE_OF_CONDUCT.md DCO.md MAINTAINERS.md SUPPORT.md; do
-    test -f "$T1/$f"
-    cp "$T1/$f" "$OUT/$f"
-done
-python3 - "$OUT/docs/SKILL.html" "$OUT" <<'PROJ'
-import json, pathlib, re, sys
-
-skill = pathlib.Path(sys.argv[1]).resolve()
-artifact = pathlib.Path(sys.argv[2]).resolve()
-text = skill.read_text(encoding="utf-8")
-match = re.search(r'<script[^>]*id="explorer-config"[^>]*>(.*?)</script>', text, re.S)
-if not match:
-    raise SystemExit("docs explorer projection: missing explorer-config")
-config = json.loads(match.group(1))
-missing = []
-for entry in config.get("files", []):
-    target = (skill.parent / entry["path"]).resolve()
-    if not target.is_relative_to(artifact) or not target.is_file():
-        missing.append(entry["path"])
-if missing:
-    raise SystemExit("docs explorer projection: missing or unsafe declared files: " + ", ".join(missing))
-print(f"[build_pages] docs explorer projection: {len(config.get('files', []))} declared files resolve")
-PROJ
+# Project every docs explorer declaration from source. Then inspect every declared Markdown
+# document and project its local link/image targets. This checks the final Pages tree rather than
+# assuming that a source-tree link remains valid after selective artifact assembly.
+python3 "$T1/scripts/build/project_docs_explorer.py" \
+    --source-skill "$T1/docs/SKILL.html" \
+    --source-root "$T1" \
+    --artifact-root "$OUT"
 
 if [ -f "$T1/docs/repository-overview.slides.json" ]; then
     test -f "$OUT/docs/repository-overview.html"

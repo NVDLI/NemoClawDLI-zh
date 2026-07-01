@@ -170,6 +170,7 @@ python3 scripts/validation/html_structure_audit.py --self-test  # prove browser-
 python3 scripts/validation/html_structure_audit.py         # EN + locale HTML structure
 python3 scripts/validation/security_architecture_audit.py --self-test # prove architecture drift detectors
 python3 scripts/validation/security_architecture_audit.py       # release/runtime trust-boundary graph
+python3 scripts/build/project_docs_explorer.py --self-test # prove rendered-doc artifact projection
 python3 scripts/validation/release_evidence_audit.py --self-test # prove design/test evidence detectors
 python3 scripts/validation/release_evidence_audit.py             # product design + release test plan
 python3 scripts/skills/skill_consistency.py             # skill-meta vs the real tree

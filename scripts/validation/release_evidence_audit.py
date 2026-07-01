@@ -65,27 +65,46 @@ REQUIRED_DESIGN_ANCHORS = {
 REQUIRED_AUTOMATED_IDS = {f"A{index:02d}" for index in range(1, 14)}
 REQUIRED_MANUAL_IDS = {f"M{index:02d}" for index in range(1, 12)}
 REQUIRED_WIRING = {
-    ".gitlab-ci.yml": ("release_evidence_audit.py --self-test", "release_evidence_audit.py"),
-    ".github/workflows/pages.yml": ("release_evidence_audit.py --self-test", "release_evidence_audit.py"),
-    ".github/workflows/release.yml": ("release_evidence_audit.py --self-test", "release_evidence_audit.py"),
+    ".gitlab-ci.yml": (
+        "project_docs_explorer.py --self-test",
+        "release_evidence_audit.py --self-test", "release_evidence_audit.py",
+    ),
+    ".github/workflows/pages.yml": (
+        "project_docs_explorer.py --self-test",
+        "release_evidence_audit.py --self-test", "release_evidence_audit.py",
+    ),
+    ".github/workflows/release.yml": (
+        "project_docs_explorer.py --self-test",
+        "release_evidence_audit.py --self-test", "release_evidence_audit.py",
+    ),
     "scripts/git-hooks/pre-commit": ("release_evidence_audit.py",),
-    "scripts/git-hooks/pre-push": ("release_evidence_audit.py", "--self-test"),
+    "scripts/git-hooks/pre-push": (
+        "project_docs_explorer.py", "release_evidence_audit.py", "--self-test",
+    ),
     "scripts/validation/validate_bundle.py": ("import release_evidence_audit as rea", '"release_evidence"'),
-    "AGENT_QUICKSTART.md": ("release_evidence_audit.py --self-test", "release_evidence_audit.py"),
+    "AGENT_QUICKSTART.md": (
+        "project_docs_explorer.py --self-test",
+        "release_evidence_audit.py --self-test", "release_evidence_audit.py",
+    ),
     "CONTRIBUTING.md": ("release_evidence_audit.py --self-test", "release_evidence_audit.py"),
     "docs/agent_process.md": ("release_evidence_audit.py", "--self-test"),
-    "docs/SKILL.html": ("product-design.md", "release-test-plan.md", "release-evidence.json", '"render_markdown": true'),
+    "docs/SKILL.html": (
+        "product-design.md", "release-test-plan.md", "release-evidence.json",
+        '"../RELEASE_STATUS.json"', '"render_markdown": true',
+    ),
     "web/_skill_explorer.js": (
         "safeMarkdownHtml", "new URLSearchParams(location.search", 'params.get("file")',
         'params.get("view")', "writeFileUrl", 'addEventListener("popstate"',
         "sx-heading-link",
     ),
     "scripts/build/build_pages.sh": (
-        "GOVERNANCE.json CODE_OF_CONDUCT.md DCO.md MAINTAINERS.md SUPPORT.md",
-        'cp "$T1/$f" "$OUT/$f"',
         '"$T1/$d"/*.svg',
-        "docs explorer projection: missing or unsafe declared files",
+        "project_docs_explorer.py",
     ),
+    "scripts/build/project_docs_explorer.py": (
+        "local_markdown_targets", "missing or unsafe", "--self-test",
+    ),
+    "scripts/build/SKILL.html": ("project_docs_explorer.py", "Docs projection detector"),
     "scripts/validation/SKILL.html": ("release_evidence_audit.py",),
 }
 ALLOWED_OWNERS = {"repository", "operator", "shared"}
@@ -302,7 +321,7 @@ def self_test() -> tuple[int, int, list[str]]:
     base = load_contract()
     baseline = audit_contract(base)
     if baseline:
-        return 0, 15, [f"baseline is not clean: {item['code']} {item['detail']}" for item in baseline]
+        return 0, 17, [f"baseline is not clean: {item['code']} {item['detail']}" for item in baseline]
     tests: list[tuple[str, dict, dict[str, str], str]] = []
 
     def mutated() -> dict:
@@ -347,8 +366,18 @@ def self_test() -> tuple[int, int, list[str]]:
     build_path = "scripts/build/build_pages.sh"
     build_text = (ROOT / build_path).read_text(encoding="utf-8")
     tests.append(("missing explorer artifact check", mutated(),
-                  {build_path: build_text.replace("docs explorer projection: missing or unsafe declared files",
+                  {build_path: build_text.replace("project_docs_explorer.py",
                                                  "explorer projection check removed")},
+                  "wiring"))
+    skill_path = "docs/SKILL.html"
+    skill_text = (ROOT / skill_path).read_text(encoding="utf-8")
+    tests.append(("missing publication projection", mutated(),
+                  {skill_path: skill_text.replace('"../RELEASE_STATUS.json"', '"../release-state-removed.json"')},
+                  "wiring"))
+    projection_path = "scripts/build/project_docs_explorer.py"
+    projection_text = (ROOT / projection_path).read_text(encoding="utf-8")
+    tests.append(("missing Markdown target detector", mutated(),
+                  {projection_path: projection_text.replace("local_markdown_targets", "removed_target_detector")},
                   "wiring"))
 
     passed = 0
