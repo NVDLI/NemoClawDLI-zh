@@ -17,6 +17,7 @@ CONFIG_RE = re.compile(
 FENCE_RE = re.compile(r"(?:^|\n)(?:```|~~~).*?(?=\n(?:```|~~~)(?:\n|$))", re.DOTALL)
 INLINE_LINK_RE = re.compile(r"!?\[[^\]\n]*\]\(\s*(<[^>\n]+>|[^)\s]+)")
 REFERENCE_LINK_RE = re.compile(r"^\s{0,3}\[[^\]\n]+\]:\s*(<[^>\n]+>|\S+)", re.MULTILINE)
+DOC_KINDS = {"authored", "canonical", "generated"}
 
 
 class ProjectionError(ValueError):
@@ -75,6 +76,92 @@ def copy_into_artifact(source: Path, source_root: Path, artifact_root: Path) -> 
     return destination
 
 
+def audit_catalog(source_skill: Path, source_root: Path) -> tuple[int, int]:
+    """Verify docs inventory, source/projection declarations, and contextual links."""
+    source_root = source_root.resolve()
+    source_skill = source_skill.resolve()
+    config = explorer_config(source_skill)
+    entries = config["files"]
+    seen: set[str] = set()
+    direct_entries: dict[Path, dict] = {}
+
+    for entry in entries:
+        if not isinstance(entry, dict) or not isinstance(entry.get("path"), str):
+            raise ProjectionError("docs catalog: every file entry needs a string path")
+        relative = entry["path"]
+        if relative in seen:
+            raise ProjectionError(f"docs catalog: duplicate file entry: {relative}")
+        seen.add(relative)
+        source = safe_source(
+            source_root, source_skill.parent, relative, context="catalog file"
+        )
+        if source.parent == source_skill.parent:
+            kind = entry.get("kind")
+            if kind not in DOC_KINDS:
+                raise ProjectionError(
+                    f"docs catalog: {relative} needs kind authored, canonical, or generated"
+                )
+            direct_entries[source] = entry
+
+    authored_on_disk = set(source_skill.parent.glob("*.md"))
+    authored_declared = {
+        path for path, entry in direct_entries.items() if entry.get("kind") == "authored"
+    }
+    missing = sorted(path.name for path in authored_on_disk - authored_declared)
+    extra = sorted(
+        path.name for path in authored_declared if path.suffix.lower() != ".md"
+    )
+    if missing:
+        raise ProjectionError(f"docs catalog: unlisted authored Markdown: {', '.join(missing)}")
+    if extra:
+        raise ProjectionError(f"docs catalog: authored entries must be Markdown: {', '.join(extra)}")
+
+    for path, entry in direct_entries.items():
+        kind = entry["kind"]
+        generated_from = entry.get("generated_from")
+        if kind == "generated":
+            if not isinstance(generated_from, str):
+                raise ProjectionError(
+                    f"docs catalog: generated file {path.name} needs generated_from"
+                )
+            canonical = safe_source(
+                source_root,
+                source_skill.parent,
+                generated_from,
+                context=f"canonical source for {path.name}",
+            )
+            canonical_entry = direct_entries.get(canonical)
+            if not canonical_entry or canonical_entry.get("kind") != "canonical":
+                raise ProjectionError(
+                    f"docs catalog: generated source for {path.name} is not canonical"
+                )
+        elif generated_from is not None:
+            raise ProjectionError(
+                f"docs catalog: only generated files may declare generated_from: {path.name}"
+            )
+
+    inbound = {path: 0 for path in authored_declared}
+    outbound = {path: 0 for path in authored_declared}
+    for markdown in authored_declared:
+        for relative in local_markdown_targets(markdown):
+            target = (markdown.parent / relative).resolve()
+            if target in authored_declared and target != markdown:
+                outbound[markdown] += 1
+                inbound[target] += 1
+
+    for markdown in sorted(authored_declared):
+        if not outbound[markdown]:
+            raise ProjectionError(
+                f"docs catalog: authored document has no contextual outbound link: {markdown.name}"
+            )
+        if not inbound[markdown]:
+            raise ProjectionError(
+                f"docs catalog: authored document has no contextual inbound link: {markdown.name}"
+            )
+
+    return len(direct_entries), sum(outbound.values())
+
+
 def project(source_skill: Path, source_root: Path, artifact_root: Path) -> tuple[int, int]:
     source_root = source_root.resolve()
     artifact_root = artifact_root.resolve()
@@ -82,6 +169,7 @@ def project(source_skill: Path, source_root: Path, artifact_root: Path) -> tuple
     if not source_skill.is_relative_to(source_root) or not source_skill.is_file():
         raise ProjectionError("docs explorer projection: source SKILL.html is outside the repository")
 
+    audit_catalog(source_skill, source_root)
     config = explorer_config(source_skill)
     declared: list[Path] = []
     for entry in config["files"]:
@@ -117,7 +205,7 @@ def project(source_skill: Path, source_root: Path, artifact_root: Path) -> tuple
 
 def self_test() -> tuple[int, int, list[str]]:
     failures: list[str] = []
-    total = 4
+    total = 9
     with tempfile.TemporaryDirectory(prefix="docs-projection-") as tmp:
         base = Path(tmp)
         root = base / "repo"
@@ -125,26 +213,39 @@ def self_test() -> tuple[int, int, list[str]]:
         docs.mkdir(parents=True)
         (root / "RELEASE_STATUS.json").write_text('{"state":"draft"}\n', encoding="utf-8")
         (docs / "design.md").write_text(
-            "[state](../RELEASE_STATUS.json) [outside](https://example.com)\n",
+            "[tests](test-plan.md) [state](../RELEASE_STATUS.json) "
+            "[outside](https://example.com)\n",
             encoding="utf-8",
         )
+        (docs / "test-plan.md").write_text("[design](design.md)\n", encoding="utf-8")
+        (docs / "architecture.json").write_text('{"nodes":[]}\n', encoding="utf-8")
+        (docs / "architecture.svg").write_text("<svg/>\n", encoding="utf-8")
         skill = docs / "SKILL.html"
         skill.write_text(
             '<script type="application/json" id="explorer-config">'
-            '{"files":[{"path":"design.md"}]}</script>\n',
+            '{"files":['
+            '{"path":"design.md","kind":"authored"},'
+            '{"path":"test-plan.md","kind":"authored"},'
+            '{"path":"architecture.json","kind":"canonical"},'
+            '{"path":"architecture.svg","kind":"generated",'
+            '"generated_from":"architecture.json"}'
+            ']}</script>\n',
             encoding="utf-8",
         )
 
         artifact = base / "artifact"
         declared, linked = project(skill, root, artifact)
         checks = [
-            (declared == 1 and linked == 1, "declared and linked counts"),
+            (declared == 4 and linked == 3, "declared and linked counts"),
             ((artifact / "docs/design.md").is_file(), "declared file projection"),
             ((artifact / "RELEASE_STATUS.json").is_file(), "Markdown target projection"),
+            (audit_catalog(skill, root) == (4, 2), "catalog and graph counts"),
         ]
         failures.extend(label for passed, label in checks if not passed)
 
-        (docs / "design.md").write_text("[missing](../missing.json)\n", encoding="utf-8")
+        (docs / "design.md").write_text(
+            "[tests](test-plan.md) [missing](../missing.json)\n", encoding="utf-8"
+        )
         try:
             project(skill, root, base / "broken-artifact")
         except ProjectionError as exc:
@@ -152,6 +253,62 @@ def self_test() -> tuple[int, int, list[str]]:
                 failures.append("missing target error classification")
         else:
             failures.append("missing target was accepted")
+
+        (docs / "design.md").write_text("No contextual link.\n", encoding="utf-8")
+        try:
+            audit_catalog(skill, root)
+        except ProjectionError as exc:
+            if "outbound link" not in str(exc):
+                failures.append("orphan error classification")
+        else:
+            failures.append("contextual orphan was accepted")
+
+        (docs / "design.md").write_text("[tests](test-plan.md)\n", encoding="utf-8")
+        (docs / "unlisted.md").write_text("[design](design.md)\n", encoding="utf-8")
+        try:
+            audit_catalog(skill, root)
+        except ProjectionError as exc:
+            if "unlisted authored Markdown" not in str(exc):
+                failures.append("unlisted document error classification")
+        else:
+            failures.append("unlisted authored document was accepted")
+        (docs / "unlisted.md").unlink()
+
+        broken_skill = docs / "BROKEN_SKILL.html"
+        broken_skill.write_text(
+            '<script type="application/json" id="explorer-config">'
+            '{"files":['
+            '{"path":"design.md","kind":"authored"},'
+            '{"path":"test-plan.md","kind":"authored"},'
+            '{"path":"architecture.json","kind":"canonical"},'
+            '{"path":"architecture.svg","kind":"generated"}'
+            ']}</script>\n',
+            encoding="utf-8",
+        )
+        try:
+            audit_catalog(broken_skill, root)
+        except ProjectionError as exc:
+            if "needs generated_from" not in str(exc):
+                failures.append("generated-source error classification")
+        else:
+            failures.append("generated file without canonical source was accepted")
+
+        duplicate_skill = docs / "DUPLICATE_SKILL.html"
+        duplicate_skill.write_text(
+            '<script type="application/json" id="explorer-config">'
+            '{"files":['
+            '{"path":"design.md","kind":"authored"},'
+            '{"path":"design.md","kind":"authored"}'
+            ']}</script>\n',
+            encoding="utf-8",
+        )
+        try:
+            audit_catalog(duplicate_skill, root)
+        except ProjectionError as exc:
+            if "duplicate file entry" not in str(exc):
+                failures.append("duplicate error classification")
+        else:
+            failures.append("duplicate catalog entry was accepted")
 
     return total - len(failures), total, failures
 
@@ -161,6 +318,7 @@ def main() -> int:
     parser.add_argument("--source-skill", type=Path)
     parser.add_argument("--source-root", type=Path)
     parser.add_argument("--artifact-root", type=Path)
+    parser.add_argument("--audit", action="store_true")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
 
@@ -170,6 +328,16 @@ def main() -> int:
         for failure in failures:
             print(f"  FAIL {failure}")
         return 1 if failures else 0
+    if args.audit:
+        source_root = (args.source_root or Path(__file__).resolve().parents[2]).resolve()
+        source_skill = (args.source_skill or source_root / "docs/SKILL.html").resolve()
+        try:
+            files, links = audit_catalog(source_skill, source_root)
+        except (OSError, ProjectionError) as exc:
+            print(exc)
+            return 1
+        print(f"docs catalog audit: PASS files={files} contextual_links={links}")
+        return 0
     if not (args.source_skill and args.source_root and args.artifact_root):
         parser.error("--source-skill, --source-root, and --artifact-root are required")
     try:

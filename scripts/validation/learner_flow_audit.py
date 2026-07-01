@@ -643,13 +643,17 @@ def audit_home(text: str) -> list[str]:
     return findings
 
 
-def audit_workflow_wiring(gitlab: str, github: str, pre_push: str, bundle: str) -> list[str]:
+def audit_workflow_wiring(
+    gitlab: str, github: str, release_gate: str, pre_push: str, bundle: str
+) -> list[str]:
     findings: list[str] = []
-    self_test = "python3 scripts/validation/learner_flow_audit.py --self-test"
-    _need(findings, self_test in gitlab,
-          ".gitlab-ci.yml: required test job must run learner-flow mutation tests")
-    _need(findings, self_test in github,
-          ".github/workflows/pages.yml: Pages test job must run learner-flow mutation tests")
+    shared_gate = "release_gate.py --tier ship"
+    _need(findings, shared_gate in gitlab,
+          ".gitlab-ci.yml: required test job must run the shared ship gate")
+    _need(findings, shared_gate in github,
+          ".github/workflows/pages.yml: Pages test job must run the shared ship gate")
+    _need(findings, 'learner_flow_audit.py", "--self-test"' in release_gate,
+          "scripts/validation/release_gate.py: shared ship gate must run learner-flow mutations")
     _need(findings, "learner_flow_audit.py\" --self-test" in pre_push,
           "scripts/git-hooks/pre-push: local push gate must run learner-flow mutation tests")
     _need(findings, "import learner_flow_audit as lfa" in bundle and
@@ -695,6 +699,7 @@ def audit_tree(root: Path = ROOT) -> list[str]:
     findings.extend(audit_workflow_wiring(
         (root / ".gitlab-ci.yml").read_text(encoding="utf-8"),
         (root / ".github/workflows/pages.yml").read_text(encoding="utf-8"),
+        (root / "scripts/validation/release_gate.py").read_text(encoding="utf-8"),
         (root / "scripts/git-hooks/pre-push").read_text(encoding="utf-8"),
         (root / "scripts/validation/validate_bundle.py").read_text(encoding="utf-8"),
     ))
@@ -919,10 +924,12 @@ def self_test() -> list[str]:
 
     gitlab = (ROOT / ".gitlab-ci.yml").read_text(encoding="utf-8")
     github = (ROOT / ".github/workflows/pages.yml").read_text(encoding="utf-8")
+    release_gate = (ROOT / "scripts/validation/release_gate.py").read_text(encoding="utf-8")
     pre_push = (ROOT / "scripts/git-hooks/pre-push").read_text(encoding="utf-8")
     bundle = (ROOT / "scripts/validation/validate_bundle.py").read_text(encoding="utf-8")
-    broken_gitlab = gitlab.replace("python3 scripts/validation/learner_flow_audit.py --self-test", "echo skipped", 1)
-    if not any(".gitlab-ci.yml" in finding for finding in audit_workflow_wiring(broken_gitlab, github, pre_push, bundle)):
+    broken_gitlab = gitlab.replace("release_gate.py --tier ship", "release_gate.py --tier fast", 1)
+    if not any(".gitlab-ci.yml" in finding for finding in audit_workflow_wiring(
+            broken_gitlab, github, release_gate, pre_push, bundle)):
         misses.append("detector missed missing GitLab learner-flow wiring")
     return misses
 

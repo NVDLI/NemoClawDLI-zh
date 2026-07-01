@@ -3,6 +3,9 @@
 This plan verifies the product defined in [`product-design.md`](product-design.md). It applies to a
 reviewed release candidate commit and its eventual protected tag. The machine-readable coverage map is
 [`release-evidence.json`](release-evidence.json).
+Detailed dependency procedures live in [`dependency_security.md`](dependency_security.md);
+artifact promotion lives in [`release_artifacts.md`](release_artifacts.md), and Pages assembly
+lives in [`pages_deploy.md`](pages_deploy.md).
 
 The plan separates repository checks from operator and external-review evidence. A passing pipeline
 does not approve legal terms, privacy, export classification, malware disposition, host configuration,
@@ -58,7 +61,14 @@ boundary.
 
 ## Automated test matrix
 
-Run from the repository root. Any nonzero exit blocks the candidate.
+Run the shared deterministic sequence from the repository root:
+
+```bash
+python3 scripts/validation/release_gate.py --tier ship
+```
+
+The matrix below explains its constituent claims and adds conditional browser, service,
+host, and external-review work. Any applicable nonzero exit blocks the candidate.
 
 | ID | Claim | Command | Pass condition | Evidence |
 |---|---|---|---|---|

@@ -1,6 +1,9 @@
 # Python dependency vulnerability guard
 
 This repo uses three layers for Python dependency security.
+Release evidence and acceptance rules live in
+[`release-test-plan.md`](release-test-plan.md); published SBOM retention and naming live
+in [`release_artifacts.md`](release_artifacts.md).
 
 ## Fast source gate
 

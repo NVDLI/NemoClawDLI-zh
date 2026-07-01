@@ -13,6 +13,7 @@
   "source_dir": "scripts/validation/",
   "summary": "Static and rendered validators for links, layout, prose, code hygiene, figures, cells, theme behavior, screenshots, and course contracts. These are gates, not prompt guidance.",
   "related": [
+    "scripts/validation/release_gate.py",
     "scripts/validation/validate_bundle.py",
     "scripts/validation/validate_layout.py",
     "scripts/validation/html_structure_audit.py",
@@ -62,6 +63,11 @@
     }
   },
   "files": [
+    {
+      "path": "release_gate.py",
+      "role": "shared validation ladder",
+      "desc": "Runs the deterministic fast or ship tier used by local contributors, GitLab, GitHub Pages, and the protected release workflow."
+    },
     {
       "path": "validate_bundle.py",
       "role": "ship gate",
@@ -260,6 +266,8 @@
   <div class="skill-note">Visual work is not done with static greps alone. Build or serve the page, run the rendered screenshot audit for the affected page, inspect the screenshots in the active harness, and show the relevant preview to the requester.</div>
   <h2>Executable checks</h2>
 <div class="skill-cmds">
+  <div class="skill-cmd"><b>Fast shared gate</b><code>python3 scripts/validation/release_gate.py --tier fast --no-write</code></div>
+  <div class="skill-cmd"><b>Complete shared gate</b><code>python3 scripts/validation/release_gate.py --tier ship</code></div>
   <div class="skill-cmd"><b>Ship gate</b><code>python3 scripts/validation/validate_bundle.py --no-write --scope ship</code></div>
   <div class="skill-cmd"><b>Layout links</b><code>python3 scripts/validation/validate_layout.py --quiet</code></div>
   <div class="skill-cmd"><b>HTML structure + detector</b><code>python3 scripts/validation/html_structure_audit.py &amp;&amp; python3 scripts/validation/html_structure_audit.py --self-test</code></div>
@@ -292,6 +300,7 @@
 </div>
   <h2>Linkage map</h2>
   <div class="skill-grid">
+    <a class="skill-card" href="release_gate.py"><b>release_gate.py</b><span>shared validation ladder. Keeps deterministic local, GitLab, GitHub Pages, and release checks aligned.</span></a>
     <a class="skill-card" href="validate_bundle.py"><b>validate_bundle.py</b><span>ship gate. Composes every validator into the release gate and durable report.</span></a>
     <a class="skill-card" href="validate_layout.py"><b>validate_layout.py</b><span>layout gate. Checks links, static mounts, and SKILL beacons.</span></a>
     <a class="skill-card" href="slides_audit.py"><b>slides_audit.py</b><span>stakeholder slide gate. Reuses prose rules and checks claim scope, an uninterrupted Module 1-4 sequence, module narrative, evidence breadth, note depth, screenshot contrast, SVG isolation, provenance, and generated output.</span></a>

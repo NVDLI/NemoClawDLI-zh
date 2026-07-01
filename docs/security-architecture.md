@@ -4,6 +4,8 @@ This repository keeps a machine-readable security architecture in
 [`security-architecture.json`](security-architecture.json) and a deterministic visual projection in
 [`security-architecture.svg`](security-architecture.svg). These files describe the system; they do
 not encode a particular internal review workflow, program identifier, submission version, or approval.
+Read [`security-design.md`](security-design.md) for the trust-boundary rationale and
+[`product-design.md`](product-design.md) for the complete released-product boundary.
 
 The production graph covers three connected concerns:
 

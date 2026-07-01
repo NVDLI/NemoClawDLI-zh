@@ -45,7 +45,7 @@
     {
       "id": "ci", "label": "Protected CI and review", "detail": "validation, CodeQL, SCA, human approval", "zone": "supply", "kind": "control", "x": 650, "y": 145, "width": 300, "height": 105,
       "controls": ["required validation", "DCO", "protected merge and release"],
-      "evidence": [{"path": ".gitlab-ci.yml", "contains": ["validate_bundle.py --scope ship", "human_review"]}, {"path": ".github/workflows/codeql.yml", "contains": ["javascript-typescript", "python"]}]
+      "evidence": [{"path": ".gitlab-ci.yml", "contains": ["release_gate.py --tier ship", "human_review"]}, {"path": "scripts/validation/release_gate.py", "contains": ["scripts/validation/validate_bundle.py", "scripts/validation/security_architecture_audit.py"]}, {"path": ".github/workflows/codeql.yml", "contains": ["javascript-typescript", "python"]}]
     },
     {
       "id": "artifact", "label": "Validated static course", "detail": "HTML, JavaScript, CSS, images, locale overlays", "zone": "supply", "kind": "artifact", "x": 1200, "y": 145, "width": 300, "height": 105,

@@ -1,6 +1,10 @@
 # CI/CD and client-side delivery
 
 This documents how the course tests itself and ships as a fully client-side site.
+It owns both production publication and temporary branch-preview behavior. The
+versioned tag and artifact contract lives in
+[`release_artifacts.md`](release_artifacts.md); trust boundaries live in
+[`security-design.md`](security-design.md).
 This is the standalone repository, so `.gitlab-ci.yml` and
 `.github/workflows/pages.yml` at the root are the live CI for this repo. Both run
 the same static gate and then build the same client-side site. GitLab Pages serves
@@ -45,12 +49,12 @@ steps badge themselves and short-circuit off-lab.
 The **static gate** runs in CI on every push, with no lab, GPU, or browser (the link
 engine runs headless under node):
 
+```bash
+python3 scripts/validation/release_gate.py --tier fast --no-write
 ```
-python3 scripts/validation/validate_layout.py --quiet     # surface-first layout + link glue
-python3 scripts/skills/skill_consistency.py            # skill-meta vs the real tree
-bash    scripts/runtime/run_engine.sh --self-test       # link-engine self-test (resolution, picker contract)
-python3 scripts/validation/validate_bundle.py --scope ship # grounding, reachability, page audit, em-dash
-```
+
+The complete release matrix and evidence expectations live in
+[`release-test-plan.md`](release-test-plan.md).
 
 The **client-side test runner** (`tests.html`) covers three layers in the browser:
 
@@ -82,6 +86,53 @@ stage when their rules select them.
 `pages` job builds `public/` and publishes either a production ref or a branch preview.
 GitLab Pages serves the private pre-release review surface under repository access
 controls. `pages_smoke` checks the live result before `human_review` can be played.
+
+#### Branch-preview behavior
+
+- `pages` is the only deploy job because this GitLab instance supports classic GitLab
+  Pages rather than parallel Pages deployments.
+- Production refs publish the normal root course. Ordinary branches publish a combined
+  artifact: a root rebuilt from an approved production ref plus branch content confined
+  to `/<branch-slug>/web/nemoclaw/`.
+- Root and branch foyers read `branches.json`, which lists only preview paths present in
+  the artifact. The interface also sends a same-origin `HEAD` request before showing an
+  option, so an unavailable target stays hidden.
+- Branch previews assemble canonical English and accepted same-branch locale overlays.
+  `languages.json` advertises only current reviewed translations; stale translations
+  fall back to canonical English.
+- Preview artifacts and review environments expire after three days. Preview URLs are
+  review surfaces, not durable course links.
+
+#### Storage and authority contract
+
+Classic Pages keeps one project artifact active. Publishing branch B replaces branch A's
+combined artifact, so only the latest staged branch is previewable and listed. A Git branch
+or an unplayed manual Pages job does not make a preview available.
+
+The preview job keeps both cleanup controls:
+
+- `artifacts.expire_in: 3 days` prevents downloadable `public/` artifacts from accumulating.
+- `environment.auto_stop_in: 3 days` bounds the review-environment list. Production uses
+  `never`.
+
+`scripts/validation/ci_storage_audit.py` enforces the retention shape.
+
+#### Branch-preview guardrails
+
+- Branch pushes cannot deploy automatically; the blocking `test` job must pass first.
+- The deploy compares `CI_COMMIT_SHA` with the live branch head and refuses stale pipelines.
+- The production root is rebuilt only from `PROD_PAGES_REF`, restricted to the default
+  branch or `nemoclaw-only`; branch content stays under the validated branch slug.
+- `branch_preview_manifest_audit.py` rejects missing artifact paths, unlisted previews,
+  stale schemas, missing readiness flags, and absent dependency evidence.
+- `pages_smoke` verifies the live root foyer, branch foyer, manifests, course URLs,
+  dependency dashboard, package inventory, and browser SBOM.
+- `resource_group: pages-site` serializes preview and production deployments.
+- `build_pages.sh` rejects unsafe output, course, source-mirror, and branch-prefix paths.
+
+This is not a parallel-preview system. Production refs and environments must remain
+protected because a branch may still propose changes to the workflow itself. Migrate to a
+separate staging project or true parallel Pages deployments when the host supports them.
 
 ### GitHub Pages (external release)
 

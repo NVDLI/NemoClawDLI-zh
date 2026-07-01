@@ -65,37 +65,27 @@ REQUIRED_DESIGN_ANCHORS = {
 REQUIRED_AUTOMATED_IDS = {f"A{index:02d}" for index in range(1, 14)}
 REQUIRED_MANUAL_IDS = {f"M{index:02d}" for index in range(1, 12)}
 REQUIRED_WIRING = {
-    ".gitlab-ci.yml": (
-        "project_docs_explorer.py --self-test",
-        "course_dependency_integrity.py --self-test",
-        "cell_audit.py --self-test",
-        "release_evidence_audit.py --self-test", "release_evidence_audit.py",
-    ),
-    ".github/workflows/pages.yml": (
-        "project_docs_explorer.py --self-test",
-        "course_dependency_integrity.py --self-test",
-        "cell_audit.py --self-test",
-        "release_evidence_audit.py --self-test", "release_evidence_audit.py",
-    ),
-    ".github/workflows/release.yml": (
-        "project_docs_explorer.py --self-test",
-        "course_dependency_integrity.py --self-test",
-        "cell_audit.py --self-test",
-        "release_evidence_audit.py --self-test", "release_evidence_audit.py",
-    ),
+    ".gitlab-ci.yml": ("release_gate.py --tier ship",),
+    ".github/workflows/pages.yml": ("release_gate.py --tier ship",),
+    ".github/workflows/release.yml": ("release_gate.py --tier ship",),
     "scripts/git-hooks/pre-commit": ("release_evidence_audit.py",),
     "scripts/git-hooks/pre-push": (
         "project_docs_explorer.py", "course_dependency_integrity.py",
         "cell_audit.py", "release_evidence_audit.py", "--self-test",
     ),
     "scripts/validation/validate_bundle.py": ("import release_evidence_audit as rea", '"release_evidence"'),
-    "AGENT_QUICKSTART.md": (
-        "project_docs_explorer.py --self-test",
-        "course_dependency_integrity.py --self-test",
-        "cell_audit.py --self-test",
-        "release_evidence_audit.py --self-test", "release_evidence_audit.py",
+    "scripts/validation/release_gate.py": (
+        "scripts/build/project_docs_explorer.py", '"--audit"',
+        "scripts/validation/course_dependency_integrity.py",
+        "scripts/validation/cell_audit.py",
+        "scripts/validation/release_evidence_audit.py", '"--self-test"',
     ),
-    "CONTRIBUTING.md": ("release_evidence_audit.py --self-test", "release_evidence_audit.py"),
+    "AGENT_QUICKSTART.md": (
+        "release_gate.py --tier fast --no-write", "release_gate.py --tier ship",
+    ),
+    "CONTRIBUTING.md": (
+        "release_gate.py --tier fast --no-write", "release_gate.py --tier ship",
+    ),
     "docs/agent_process.md": ("release_evidence_audit.py", "--self-test"),
     "docs/SKILL.html": (
         "product-design.md", "release-test-plan.md", "release-evidence.json",
@@ -114,7 +104,7 @@ REQUIRED_WIRING = {
         "local_markdown_targets", "missing or unsafe", "--self-test",
     ),
     "scripts/build/SKILL.html": (
-        "project_docs_explorer.py", "Docs projection detector",
+        "project_docs_explorer.py", "Docs catalog + projection",
         "vendor_browser_dependencies.mjs", "Browser package inventory",
     ),
     "scripts/validation/course_dependency_integrity.py": (
@@ -369,7 +359,7 @@ def self_test() -> tuple[int, int, list[str]]:
     ci_path = ".gitlab-ci.yml"
     ci_text = (ROOT / ci_path).read_text(encoding="utf-8")
     tests.append(("missing CI wiring", mutated(),
-                  {ci_path: ci_text.replace("release_evidence_audit.py --self-test", "release evidence removed")},
+                  {ci_path: ci_text.replace("release_gate.py --tier ship", "release gate removed")},
                   "wiring"))
     tests.append(("missing test case", mutated(), {test_path: test_text.replace("| M09 |", "| MXX |")},
                   "test-id"))
@@ -394,8 +384,10 @@ def self_test() -> tuple[int, int, list[str]]:
     tests.append(("missing Markdown target detector", mutated(),
                   {projection_path: projection_text.replace("local_markdown_targets", "removed_target_detector")},
                   "wiring"))
+    gate_path = "scripts/validation/release_gate.py"
+    gate_text = (ROOT / gate_path).read_text(encoding="utf-8")
     tests.append(("missing browser dependency CI", mutated(),
-                  {ci_path: ci_text.replace("course_dependency_integrity.py --self-test", "browser dependency gate removed")},
+                  {gate_path: gate_text.replace("course_dependency_integrity.py", "browser dependency gate removed")},
                   "wiring"))
 
     passed = 0

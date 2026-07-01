@@ -1,5 +1,9 @@
 # Issue standards and cadence
 
+This document owns issue anatomy, labels, tracker state, and public discussion routing.
+Agent execution guardrails live in [`agent_process.md`](agent_process.md); protected release
+authority lives in [`release_playbook.md`](release_playbook.md).
+
 This repo is a multi-course bundle in spirit, but the current release target is
 NemoClaw on the CPU service stack:
 
@@ -84,7 +88,19 @@ The current representative buckets are:
 
 ## Label standard
 
-Use the label taxonomy from `docs/release_playbook.md`.
+Use this taxonomy in GitLab and mirror it to GitHub when external intake opens.
+
+Area labels: `area:web`, `area:cpu`, `area:deploy`, `area:scripts`, `area:docs`,
+`area:materials`, `area:security`, `area:translation`.
+
+Kind labels: `kind:bug`, `kind:course-content`, `kind:source-correction`,
+`kind:accessibility`, `kind:question`, `kind:feature`, `kind:release`, `kind:validation`.
+
+Risk labels: `risk:learner-facing`, `risk:deployment`, `risk:security-privacy`,
+`risk:license-source`, `risk:generated-output`.
+
+Severity labels: `severity:blocker`, `severity:major`, `severity:minor`,
+`severity:advisory`.
 
 Minimum label set:
 
@@ -107,6 +123,9 @@ Preferred state cadence:
 | `state:blocked-platform` | Needs DLI/Brev/Cloudflare/runner access. |
 | `state:blocked-external-source` | Needs source/license/fact confirmation. |
 | `state:released` | Fix merged/deployed or issue intentionally complete. |
+
+Board columns: Needs triage, Needs evidence, Accepted, In progress, Review, Ready for
+release, Released, Closed no action.
 
 ## Validation mapping
 
@@ -138,3 +157,9 @@ content. Use GitHub Discussions for broad learning help; Issues for actionable w
 Security reports, secrets, private DLI URLs, Cloudflare headers, internal hostnames,
 and confidential scanner output belong in private GitLab or the configured private
 vulnerability reporting path, not public Issues.
+
+Recommended Discussion categories: Announcements, Questions, Course feedback, Ideas,
+Show and tell, Troubleshooting. Convert a Discussion to an Issue after it identifies a
+reproducible defect, concrete source correction, file-specific wording problem, or
+validated accessibility/runtime issue. Ask for locations and safe evidence; never ask a
+student to expose credentials, private URLs, or access headers.

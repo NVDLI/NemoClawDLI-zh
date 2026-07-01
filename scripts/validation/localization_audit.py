@@ -43,7 +43,14 @@ INTERFACE_CONTRACT = {
     "scripts/translate/localization_scope.py": ("en-shell", "data-localization-scope", "translation_sha"),
     "scripts/translate/locale_projection.py": ("project_locale_html", "missing localized shell segment"),
     "scripts/validation/localization_runtime_audit.py": ("pageerror", "language-menu entries are clipped", "Localization Studio"),
-    ".gitlab-ci.yml": ("assemble_locale_overlay.py --self-test", "localization_audit.py --self-test", "for locale in scripts/translate/locales/*"),
+    ".gitlab-ci.yml": ("release_gate.py --tier ship",),
+    ".github/workflows/pages.yml": ("release_gate.py --tier ship",),
+    ".github/workflows/release.yml": ("release_gate.py --tier ship",),
+    "scripts/validation/release_gate.py": (
+        'assemble_locale_overlay.py", "--self-test"',
+        'localization_audit.py", "--self-test"',
+        "scripts/translate/locales",
+    ),
     "scripts/translate/SKILL.html": ("locales/pt-BR/SKILL.html", "locales/es-ES/SKILL.html", "same-branch localization", "translate_svg_text.py"),
 }
 

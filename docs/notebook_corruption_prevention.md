@@ -1,5 +1,9 @@
 # Notebook corruption: causes, detection, and prevention
 
+Use this focused procedure when editing service documents under `cpu/`. General editing
+and validation rules live in [`agent_process.md`](agent_process.md); containerized service
+and page checks live in [`lab_runtime_testing.md`](lab_runtime_testing.md).
+
 ## Symptom
 
 Authored `.md` files under `cpu/` (the shared service docs)
