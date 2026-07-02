@@ -38,20 +38,22 @@ REQUIRED_FLOORS = {
     "aiohttp": "3.14.1",
 }
 
-# These packages are intentionally absent from the supported course/lab runtime.
-# Adding one back requires a demonstrated runtime use plus a fresh OSRB distribution
-# decision; a bare dependency declaration is not sufficient evidence.
-FORBIDDEN_DIRECT_REQUIREMENTS = {
-    "langserve": "retired unused dependency; reintroduction requires runtime evidence and an OSRB distribution decision",
-    "langgraph-cli": "retired unused in-memory runtime; it conflicts with the supported protobuf, cryptography, OpenTelemetry, and Starlette compatibility line",
-    "jupyter-archive": "unused optional Jupyter extension removed from the supported runtime and SBOM; reintroduction requires learner evidence and source/license disposition",
-    "jupyter-collaboration": "unused optional Jupyter extension removed from the supported runtime and SBOM; reintroduction requires learner evidence and source/license disposition",
-    "jupyter-resource-usage": "unused optional Jupyter extension removed from the supported runtime and SBOM; reintroduction requires learner evidence and source/license disposition",
-    "jupyterlab-language-pack-ja-jp": "unused language pack removed from the supported runtime and SBOM; reintroduction requires learner evidence and source/license disposition",
-    "jupyterlab-language-pack-zh-cn": "unused language pack removed from the supported runtime and SBOM; reintroduction requires learner evidence and source/license disposition",
-    "jupyterlab-language-pack-zh-tw": "unused language pack removed from the supported runtime and SBOM; reintroduction requires learner evidence and source/license disposition",
-    "pymupdf": "unused document processor removed from the supported runtime and SBOM; reintroduction requires runtime evidence and source/license disposition",
-}
+# Retired components are absent from the supported course/lab runtime.
+FORBIDDEN_DIRECT_REQUIREMENTS = dict.fromkeys(
+    (
+        "langserve",
+        "langgraph-cli",
+        "litellm",
+        "jupyter-archive",
+        "jupyter-collaboration",
+        "jupyter-resource-usage",
+        "jupyterlab-language-pack-ja-jp",
+        "jupyterlab-language-pack-zh-cn",
+        "jupyterlab-language-pack-zh-tw",
+        "pymupdf",
+    ),
+    "retired runtime component",
+)
 
 # BDSA-2025-123809 / upstream #26432: no released wheel through 7.35.1 contains
 # the complete Struct/Value/ListValue recursion fix. The runtime currently uses

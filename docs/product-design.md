@@ -146,6 +146,7 @@ Expected failure behavior:
 | Relay unavailable | Route-specific error is visible; course does not silently widen the allowed host set |
 | Stale browser credential | Learner can replace or clear it; no credential is copied into logs or source |
 | Validation or packaging failure | Promotion stops before deploy or draft release creation |
+| Required external artifact evidence missing | Draft may exist, but publication remains blocked |
 | Bad published version | Release owner publishes a new patch version; published tags and assets are not moved |
 
 ## Release, versioning, and rollback

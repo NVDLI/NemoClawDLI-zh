@@ -35,7 +35,7 @@ is the exact Python 3.11 transitive closure used by release installation and SBO
 Material refresh tooling and SCA tooling have separate locks under `scripts/materials/` and
 `scripts/security/`, so scanner packages do not appear as runtime components.
 
-Validate lock shape, direct-pin parity, and detector mutations:
+Validate lock shape, direct-pin parity, retired transitive components, and detector mutations:
 
 ```bash
 python3 scripts/security/audit_dependency_locks.py --self-test
@@ -51,13 +51,11 @@ uv pip compile scripts/security/requirements-sca.lock.in --python-version 3.11 -
 ```
 
 Review the full lock diff, rerun SCA, and commit each direct manifest with its lock. Exact versions
-stabilize resolution and SBOM identity; installed-environment SCA remains required. The direct gate
-also rejects unpinned workspace dependencies and dependencies intentionally removed from the runtime.
-`langserve`, `langgraph-cli`, unused optional Jupyter extensions and language packs, and
-`pymupdf` are such packages: no tracked course, notebook, service, or Jupyter configuration
-uses them. The CLI's in-memory runtime also conflicts with the supported protobuf,
-cryptography, OpenTelemetry, and Starlette compatibility line. Reintroduction requires
-demonstrated runtime or learner need plus current source/license and compatibility review.
+stabilize resolution and SBOM identity; installed-environment SCA remains required. Retired runtime
+components live in executable policy, not a prose exception list. The direct-manifest, resolved-lock,
+and generated-SBOM gates all reject them. When a package has no tracked runtime consumer, remove it
+and its transitive closure instead of documenting a reason to retain it.
+
 Run its network-free regression check with:
 
 ```bash
@@ -70,6 +68,14 @@ The check is wired into:
 - `scripts/git-hooks/pre-push`
 - `scripts/security/SKILL.html`, so an agent can discover and run it from the security visor
 - `AGENT_QUICKSTART.md`, so it appears in the normal validation cadence
+
+## Browser editor mode boundary
+
+The learner bundle vendors CodeMirror from an exact npm lock, but ships only the CSS, HTML-mixed,
+JavaScript, Python, and XML modes named in `scripts/browser-vendor/codemirror-entry.js`. The course
+does not ship the package's Markdown mode. `course_dependency_integrity.py` compares that entrypoint
+to the reviewed allowlist, and its self-test proves that substituting an unreviewed mode fails.
+Changing the mode set requires a bundle regeneration, dependency review, and browser validation.
 
 ## Waiver registry
 

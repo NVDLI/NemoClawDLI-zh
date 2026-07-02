@@ -24,11 +24,14 @@ VENDOR = COURSE / "vendor"
 MANIFEST = VENDOR / "browser-dependencies.json"
 LOCK = ROOT / "scripts" / "browser-vendor" / "package-lock.json"
 PACKAGE = ROOT / "scripts" / "browser-vendor" / "package.json"
+CODEMIRROR_ENTRY = ROOT / "scripts" / "browser-vendor" / "codemirror-entry.js"
 DASHBOARD = COURSE / "dependencies.html"
 PACKAGE_HOSTS = {"cdn.jsdelivr.net", "cdnjs.cloudflare.com", "esm.sh", "unpkg.com"}
 SOURCE_SUFFIXES = {".css", ".html", ".js", ".mjs"}
 EXCLUDED_PARTS = {"vendor", "standalone", "mats"}
 VENDOR_REF_RE = re.compile(r"(?<![A-Za-z0-9_-])(?:\.\.?/)?vendor/([A-Za-z0-9_.-]+)")
+CODEMIRROR_MODE_RE = re.compile(r'import\s+["\']codemirror/mode/([^/]+)/[^"\']+["\']\s*;')
+REVIEWED_CODEMIRROR_MODES = {"css", "htmlmixed", "javascript", "python", "xml"}
 
 
 def sha256(path: Path) -> str:
@@ -86,6 +89,19 @@ def audit(*, manifest_data: dict | None = None,
 
     direct = package.get("dependencies") or {}
     locked = lock.get("packages") or {}
+    entry_rel = CODEMIRROR_ENTRY.relative_to(ROOT).as_posix()
+    entry = overrides.get(
+        entry_rel,
+        CODEMIRROR_ENTRY.read_text(encoding="utf-8", errors="replace")
+        if CODEMIRROR_ENTRY.is_file() else "",
+    )
+    modes = set(CODEMIRROR_MODE_RE.findall(entry))
+    unexpected_modes = sorted(modes - REVIEWED_CODEMIRROR_MODES)
+    missing_modes = sorted(REVIEWED_CODEMIRROR_MODES - modes)
+    if unexpected_modes:
+        findings.append("unreviewed CodeMirror modes: " + ", ".join(unexpected_modes))
+    if missing_modes:
+        findings.append("reviewed CodeMirror modes missing from bundle entry: " + ", ".join(missing_modes))
     seen_packages: set[tuple[str, str]] = set()
     for row in manifest.get("packages") or []:
         name, version = row.get("name"), row.get("version")
@@ -194,6 +210,11 @@ def self_test() -> tuple[int, int, list[str]]:
     tests.append(("dashboard wiring", manifest,
                   {"web/nemoclaw/dependencies.html": dashboard.replace("vendor/browser-dependencies.json", "missing.json")},
                   "dashboard is missing required token"))
+    entry_rel = CODEMIRROR_ENTRY.relative_to(ROOT).as_posix()
+    entry = CODEMIRROR_ENTRY.read_text(encoding="utf-8")
+    tests.append(("editor mode allowlist", manifest,
+                  {entry_rel: entry.replace("mode/xml/xml.js", "mode/markdown/markdown.js")},
+                  "unreviewed CodeMirror modes"))
 
     failures = []
     for name, fixture, overrides, expected in tests:

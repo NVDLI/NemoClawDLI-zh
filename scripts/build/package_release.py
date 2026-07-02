@@ -15,6 +15,7 @@ from pathlib import Path, PurePosixPath
 
 SEMVER = re.compile(r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:[-+][0-9A-Za-z.-]+)?$")
 OBJECT_ID = re.compile(r"[0-9a-f]{40,64}$")
+MALWARE_SCAN_SUFFIXES = (".tar.gz", ".tgz", ".zip", ".whl", ".exe", ".msi", ".deb", ".rpm")
 
 
 def digest(path: Path) -> str:
@@ -23,6 +24,11 @@ def digest(path: Path) -> str:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             value.update(chunk)
     return value.hexdigest()
+
+
+def requires_malware_scan(path: Path) -> bool:
+    name = path.name.lower()
+    return any(name.endswith(suffix) for suffix in MALWARE_SCAN_SUFFIXES)
 
 
 def validate(tag: str, commit: str, tag_object: str, epoch: int, site: Path) -> None:
@@ -108,6 +114,12 @@ def package(site: Path, out: Path, tag: str, commit: str, tag_object: str,
             {"name": path.name, "sha256": digest(path), "size": path.stat().st_size}
             for path in sorted(copied, key=lambda item: item.name)
         ],
+        "external_evidence": {
+            "malware_scan_required": sorted(
+                path.name for path in (archive_path, *copied) if requires_malware_scan(path)
+            ),
+            "policy": "required-before-publication",
+        },
     }
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
@@ -130,12 +142,17 @@ def self_test() -> list[str]:
         (site / "assets" / "app.js").write_text("console.log('ok');\n", encoding="utf-8")
         sbom = root / "python-env.cdx.json"
         sbom.write_text('{"bomFormat":"CycloneDX"}\n', encoding="utf-8")
-        args = (site, "v1.2.3", "a" * 40, "b" * 40, 1_700_000_000, [sbom])
+        addon = root / "optional-addon.zip"
+        addon.write_bytes(b"archive fixture\n")
+        args = (site, "v1.2.3", "a" * 40, "b" * 40, 1_700_000_000, [sbom, addon])
         first = package(args[0], root / "one", *args[1:])
         (site / "index.html").chmod(0o600)
         second = package(args[0], root / "two", *args[1:])
         if first != second:
             failures.append("manifest changed across identical package inputs")
+        expected_scan = ["nemoclaw-v1.2.3.tar.gz", "optional-addon.zip"]
+        if first.get("external_evidence", {}).get("malware_scan_required") != expected_scan:
+            failures.append("manifest does not identify every archive requiring malware evidence")
         for name in ("nemoclaw-v1.2.3.tar.gz", "release-manifest.json", "SHA256SUMS"):
             if (root / "one" / name).read_bytes() != (root / "two" / name).read_bytes():
                 failures.append(f"non-deterministic release output: {name}")
