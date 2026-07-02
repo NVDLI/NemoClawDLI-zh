@@ -31,7 +31,7 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
 from _bootstrap import find_repo_root
 
 ROOT = find_repo_root(Path(__file__).resolve())
-TRANSLATION_REVISION = "locale-editorial-v4"
+TRANSLATION_REVISION = "locale-editorial-v5-source-draft"
 SKIP_TEXT = {"script", "style", "pre", "code", "svg", "noscript"}
 ATTRS = {"alt", "aria-label", "placeholder", "title"}
 BLOCK_TAGS = {"p", "li", "h1", "h2", "h3", "h4", "figcaption", "button", "option", "label", "summary", "td", "th", "a"}
@@ -203,6 +203,18 @@ def script_segments(raw: str) -> list[Segment]:
             text = match.group(2)
             if useful(text) and not inside_code(match.start(2)):
                 out.append(Segment(body_start + match.start(2), body_start + match.end(2), text, "script-ui"))
+            cursor = match.end()
+            while True:
+                continuation = re.match(r'\s*\+\s*(["\'])(.*?)(?<!\\)\1', body[cursor:], re.S)
+                if not continuation:
+                    break
+                extra = continuation.group(2)
+                extra_start = cursor + continuation.start(2)
+                if useful(extra) and not inside_code(extra_start):
+                    out.append(Segment(body_start + extra_start,
+                                       body_start + cursor + continuation.end(2),
+                                       extra, "script-ui"))
+                cursor += continuation.end()
         for call in UI_CALL_RE.finditer(body):
             if inside_code(call.start()):
                 continue
@@ -274,11 +286,11 @@ def api_key() -> str:
     raise RuntimeError("no NVIDIA_API_KEY or NGC_API_KEY available")
 
 
-def batches(items: list[tuple[str, str]], max_items: int = 16, max_chars: int = 6000) -> Iterable[list[tuple[str, str]]]:
-    batch: list[tuple[str, str]] = []
+def batches(items: list[tuple[str, ...]], max_items: int = 16, max_chars: int = 6000) -> Iterable[list[tuple[str, ...]]]:
+    batch: list[tuple[str, ...]] = []
     chars = 0
     for item in items:
-        size = len(item[1])
+        size = sum(len(value) for value in item[1:])
         if batch and (len(batch) >= max_items or chars + size > max_chars):
             yield batch
             batch, chars = [], 0
@@ -299,18 +311,29 @@ def parse_json_array(content: str) -> list[dict[str, str]]:
     return data
 
 
-def translate_batch(batch: list[tuple[str, str]], profile: dict, model: str, key: str, polish: bool,
+def translate_batch(batch: list[tuple[str, ...]], profile: dict, model: str, key: str, polish: bool,
                     ledger: UsageLedger, page: str) -> dict[str, str]:
     terminology = "; ".join(f"{source} => {target}" for source, target in profile.get("preferred_terms", {}).items())
     rejected = "; ".join(f"{phrase} ({fix})" for phrase, fix in profile.get("unfit_phrases", {}).items())
-    payload = [{"id": item_id, "source": source} for item_id, source in batch]
+    revising = bool(batch and len(batch[0]) == 3)
+    payload = [({"id": item[0], "source": item[1], "draft": item[2]}
+                if len(item) == 3 else {"id": item[0], "source": item[1]}) for item in batch]
     language_name = profile.get("language_name", profile["native_label"])
     audience = profile.get("audience", f"students and software developers who use {language_name}")
     locale_guidance = profile.get("generation_guidance", "Use natural technical language for the target audience.")
-    action = (f"Edit each {language_name} source for grammar, agreement, precision, rhythm, and natural technical flow. "
-              "Do not retranslate technical tokens that were deliberately preserved."
-              if polish else
-              f"Translate each source into natural {language_name}.")
+    review_dimensions = "; ".join(profile.get("review_protocol", {}).get("required_dimensions", []))
+    if revising:
+        action = (f"Revise each {language_name} draft against its English source. Preserve every technical fact and "
+                  "the full teaching sequence, but rewrite machine-like prose as fluent developer documentation. "
+                  "Do not merely patch spelling or grammar; replace unnatural syntax and literal calques.")
+    elif polish:
+        action = (f"Edit each {language_name} source for grammar, agreement, precision, rhythm, and natural technical flow. "
+                  "Do not retranslate technical tokens that were deliberately preserved.")
+    else:
+        action = f"Translate each source into natural {language_name}."
+    examples = profile.get("editorial_examples", [])
+    example_guidance = ("\nAuthoritative editorial examples (English source followed by style-PIC Spanish):\n" +
+                        json.dumps(examples, ensure_ascii=False, indent=2)) if examples else ""
     system = f"""You localize an NVIDIA course for {audience}.
 {action}
 Produce natural, publication-quality {language_name} while preserving full technical meaning and teaching sequence.
@@ -320,8 +343,10 @@ model IDs, product names, and English titles of cited papers/books. Do not trans
 Avoid literal calques. Check articles, gender, number, prepositions, rhythm, and sentence flow after translating. Prefer
 concise, fluent instructional prose. Avoid repetitive sentence openings, slogan cadence, and stacked noun phrases.
 {locale_guidance}
+Review dimensions: {review_dimensions or "semantic fidelity; technical precision; natural flow; grammar"}
 Terminology: {terminology}
-Rejected literal translations: {rejected}"""
+Rejected literal translations: {rejected}
+{example_guidance}"""
     started = time.monotonic()
     try:
         response = requests.post(
@@ -383,8 +408,10 @@ def clean_translation(source: str, target: str) -> str:
     return target
 
 
-def cache_key(locale: str, source: str) -> str:
-    return hashlib.sha256(f"{TRANSLATION_REVISION}\0{locale}\0{source}".encode("utf-8")).hexdigest()
+def cache_key(locale: str, source: str, draft: str = "", mode: str = "translate") -> str:
+    return hashlib.sha256(
+        f"{TRANSLATION_REVISION}\0{locale}\0{mode}\0{source}\0{draft}".encode("utf-8")
+    ).hexdigest()
 
 
 def load_cache(path: Path) -> dict[str, str]:
@@ -403,26 +430,43 @@ def save_cache(path: Path, cache: dict[str, str]) -> None:
 
 
 def translate_page(source_path: Path, target_path: Path, profile: dict, model: str, cache_path: Path,
-                   dry_run: bool, workers: int, polish: bool, ledger: UsageLedger) -> tuple[int, int]:
-    input_path = target_path if polish else source_path
-    if polish and not input_path.is_file():
+                   dry_run: bool, workers: int, polish: bool, revise: bool,
+                   ledger: UsageLedger) -> tuple[int, int]:
+    input_path = target_path if polish or revise else source_path
+    if (polish or revise) and not input_path.is_file():
         raise FileNotFoundError(f"cannot polish missing target: {target_path}")
     raw = input_path.read_text(encoding="utf-8")
     segments = extract_segments(raw)
+    source_segments = segments
+    if revise:
+        # Imported lazily: localization_scope imports extract_segments from this module.
+        from translate.localization_scope import translation_canonical
+        canonical_source = translation_canonical(source_path.read_text(encoding="utf-8"))
+        source_segments = extract_segments(canonical_source)
+        if (len(source_segments) != len(segments)
+                or [item.kind for item in source_segments] != [item.kind for item in segments]):
+            raise ValueError(
+                f"cannot revise source/target with different segment shape: "
+                f"source {len(source_segments)}, target {len(segments)}"
+            )
     cache = load_cache(cache_path)
-    distinct: dict[str, str] = {}
-    for segment in segments:
-        distinct.setdefault(cache_key(profile["locale"], segment.text), segment.text)
-    missing = [(key, text) for key, text in distinct.items()
-               if key not in cache or not valid_translation(text, clean_translation(text, cache[key]))]
-    label = f"{source_path.relative_to(ROOT)} ({'polish' if polish else 'translate'})"
+    mode = "revise" if revise else "polish" if polish else "translate"
+    distinct: dict[str, tuple[str, ...]] = {}
+    for source_segment, target_segment in zip(source_segments, segments):
+        draft = target_segment.text if revise else ""
+        key = cache_key(profile["locale"], source_segment.text, draft, mode)
+        distinct.setdefault(key, (source_segment.text, draft) if revise else (source_segment.text,))
+    missing = [(key, *values) for key, values in distinct.items()
+               if key not in cache or not valid_translation(
+                   values[-1] if revise else values[0], clean_translation(values[-1] if revise else values[0], cache[key]))]
+    label = f"{source_path.relative_to(ROOT)} ({mode})"
     print(f"{label}: {len(segments)} segments, {len(distinct)} distinct, {len(missing)} API", flush=True)
     if dry_run:
         return len(segments), len(missing)
     key = api_key()
     work = list(enumerate(batches(missing), 1))
 
-    def run_batch(index: int, batch: list[tuple[str, str]]) -> tuple[int, dict[str, str]]:
+    def run_batch(index: int, batch: list[tuple[str, ...]]) -> tuple[int, dict[str, str]]:
         translated: dict[str, str] | None = None
         for attempt in range(3):
             try:
@@ -436,24 +480,28 @@ def translate_page(source_path: Path, target_path: Path, profile: dict, model: s
         assert translated is not None
         accepted = {}
         bad = []
-        for item_id, source in batch:
-            target = clean_translation(source, restore_protected(source, translated.get(item_id, "")))
-            if valid_translation(source, target):
+        for item in batch:
+            item_id, source = item[:2]
+            protected_source = item[2] if len(item) == 3 else source
+            target = clean_translation(protected_source, restore_protected(protected_source, translated.get(item_id, "")))
+            if valid_translation(protected_source, target):
                 accepted[item_id] = target
             else:
-                bad.append((item_id, source))
-        for item_id, source in bad:
+                bad.append(item)
+        for item in bad:
+            item_id, source = item[:2]
+            protected_source = item[2] if len(item) == 3 else source
             repaired = ""
             for attempt in range(3):
                 try:
-                    one = translate_batch([(item_id, source)], profile, model, key, polish, ledger, label)
-                    repaired = clean_translation(source, restore_protected(source, one.get(item_id, "")))
-                    if valid_translation(source, repaired):
+                    one = translate_batch([item], profile, model, key, polish, ledger, label)
+                    repaired = clean_translation(protected_source, restore_protected(protected_source, one.get(item_id, "")))
+                    if valid_translation(protected_source, repaired):
                         break
                 except (requests.RequestException, RuntimeError, ValueError, json.JSONDecodeError):
                     pass
                 time.sleep(2 ** attempt)
-            if valid_translation(source, repaired):
+            if valid_translation(protected_source, repaired):
                 accepted[item_id] = repaired
             elif polish:
                 accepted[item_id] = source
@@ -470,9 +518,13 @@ def translate_page(source_path: Path, target_path: Path, profile: dict, model: s
             save_cache(cache_path, cache)
             print(f"  batch {index}/{len(work)}: {len(accepted)} translated", flush=True)
     replacements = []
-    for segment in segments:
-        value = clean_translation(segment.text, cache[cache_key(profile["locale"], segment.text)])
-        replacements.append((segment.start, segment.end, value))
+    for source_segment, target_segment in zip(source_segments, segments):
+        draft = target_segment.text if revise else ""
+        value = clean_translation(
+            target_segment.text,
+            cache[cache_key(profile["locale"], source_segment.text, draft, mode)],
+        )
+        replacements.append((target_segment.start, target_segment.end, value))
     translated_raw = raw
     for start, end, value in sorted(replacements, reverse=True):
         translated_raw = translated_raw[:start] + value + translated_raw[end:]
@@ -492,9 +544,13 @@ def main() -> int:
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--polish", action="store_true")
+    parser.add_argument("--revise-against-source", action="store_true",
+                        help="revise an existing locale target using both canonical English and current draft")
     parser.add_argument("--usage-report", type=Path,
                         help="write secret-free provider token/request accounting JSON")
     args = parser.parse_args()
+    if args.polish and args.revise_against_source:
+        parser.error("--polish and --revise-against-source are mutually exclusive")
     profile_path = ROOT / "scripts" / "translate" / "locales" / args.locale / "profile.json"
     profile = json.loads(profile_path.read_text(encoding="utf-8"))
     if args.cache is None:
@@ -511,7 +567,7 @@ def main() -> int:
         if not source.is_file() or not allowed or source.suffix != ".html":
             parser.error(f"not a learner-facing HTML source: {raw_page}")
         translate_page(source, locale_root / rel, profile, args.model, args.cache, args.dry_run, args.workers,
-                       args.polish, ledger)
+                       args.polish, args.revise_against_source, ledger)
     if args.usage_report:
         args.usage_report.parent.mkdir(parents=True, exist_ok=True)
         args.usage_report.write_text(json.dumps(ledger.report(), indent=2) + "\n", encoding="utf-8")

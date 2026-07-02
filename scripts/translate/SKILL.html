@@ -66,7 +66,7 @@
 <body>
 <section class="skill-static" aria-labelledby="skill-title">
   <h1 id="skill-title">Same-branch localization</h1>
-  <p>Begin at the target locale node. Review English and localized prose together; keep runtime and machine contracts canonical.</p>
+  <p>Begin at the target locale node. Review English and localized prose together; keep runtime and machine contracts canonical. When a locale pins a style-PIC reference, preserve that blob exactly and carry its decisions across the locale. Only a style-PIC-authored follow-up may update the origin commit and pinned digest.</p>
   <p>Use <code>data-localization-scope="en-shell"</code> only for an English-only presentation wrapper around unchanged translated prose. Mark its inline control <code>data-localization-scope="en"</code>. The digest still invalidates when body prose changes.</p>
   <h2>Executable checks</h2>
   <div class="skill-cmds">

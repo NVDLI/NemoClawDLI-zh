@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>El agente · Protección de agentes</title>
+<title>Agentes · Agentes Seguros</title>
 <link rel="stylesheet" href="styles/_style.css"/>
 <script src="vendor/highlight-11.10.0.min.js"></script>
 <link rel="stylesheet" href="vendor/codemirror-5.65.16.min.css"/>
@@ -36,16 +36,16 @@
 
   <div class="hero">
     <div class="eyebrow">Módulo 1 · Parte A de 3</div>
-    <h1>El <span>agente</span></h1>
-    <p class="lead">Un <strong>agente</strong> es una entidad que interactúa con un entorno en cualquier nivel significativo. Una persona en su día a día es un agente en ese sentido, así como un termostato que mantiene la temperatura de una sala o un coche autónomo que se desplaza por el tránsito.</p>
-    <p>Todos ellos <b> perciben </b> el ambiente por medio de sensores y <b> actúan </b> sobre él por medio de actuadores.
-Como cada acción alimenta la observación siguiente, percepción y acción forman un ciclo continuo,
-el <strong>ciclo percibir, razonar y actuar</strong> , que dura mientras el agente interactúa.
-Todos los agentes construidos en el curso siguen ese ciclo. Lo que cambia es cuánto pueden entender
+    <h1><span>Agente</span></h1>
+    <p class="lead">Un <strong>agente</strong> es una entidad que interactúa con un entorno determinado a cualquier nivel significativo. Una persona en su día a día es un agente en este sentido, así como también lo son un termostato que mantiene la temperatura de una sala o un coche autónomo que se desplaza por el tránsito.</p>
+    <p>Todos ellos <b> perciben </b> el entorno por medio de sensores y <b> actúan </b> sobre él por medio de actuadores.
+Cada acción influye, por tanto, en la siguiente observación del entorno formando un ciclo o bucle continuo:
+el <strong>ciclo percibir, razonar y actuar</strong>, que dura mientras el agente interactúa en dicho entorno.
+Todos los agentes construidos en el curso siguen este ciclo. Lo que cambia es cuánto pueden entender el entorno
 y hasta dónde llegan sus acciones.</p>
   </div>
 
-  <h2>Las tres partes del ciclo</h2>
+  <h2>Las tres etapas del ciclo de un agente</h2>
   <p>Cada iteración pasa por tres etapas, con nombres simples y funciones distintas.</p>
 
   <figure class="agent-loop-figure">
@@ -61,34 +61,33 @@ y hasta dónde llegan sus acciones.</p>
   
   <ul>
     <li><strong>La percepción</strong> proporciona todo lo que el agente sabe sobre el entorno.
-Un termostato lee un solo número: la temperatura actual. Un vehículo autónomo combina cámaras,
-radar y un mapa en un modelo de la carretera. El agente solo trabaja con lo que captura la percepción,
-porque las etapas siguientes no acceden al mundo directamente. Un vacío en la percepción permanece
-invisible para el resto del agente.</li>
-    <li><strong>El razonamiento</strong> transforma una percepción en una decisión. Un termostato compara la temperatura con un objetivo, mientras que un motor de ajedrez busca millones de movimientos y un vehículo autónomo ejecuta una política aprendida. Los agentes de este curso razonan mediante un modelo de lenguaje. Las herramientas, la memoria y la planificación se apoyan en este paso.</li>
-    <li><strong>La acción</strong> altera el ambiente para el propio agente y para otros participantes.
-Puede ser tan pequeña como accionar un relé o tan compleja como conducir un coche. En las páginas
-siguientes, el código expuesto al modelo recibe el nombre de <strong>herramienta</strong>, pues para el modelo
-representa otra acción disponible. Llamar a una herramienta significa solicitar que ese código sea
+Un termostato sólo lee un número: la temperatura actual. Un vehículo autónomo combina cámaras,
+radar y un mapa en un modelo de la carretera. Un agente sólo trabaja con lo que captura la percepción,
+porque las etapas siguientes no acceden al entorno directamente. Cualquier aspecto no detectado durante 
+la percepción permanece invisible para el resto del agente.</li>
+    <li><strong>El razonamiento</strong> transforma una percepción en una decisión. Un termostato compara la temperatura con un objetivo, mientras que un motor de ajedrez evalua millones de movimientos y un vehículo autónomo ejecuta una política aprendida. Los agentes de este curso razonan mediante un modelo de lenguaje. Las herramientas, la memoria y la planificación se apoyan en este paso.</li>
+    <li><strong>Una acción</strong> modifica el entorno para el propio agente y para otros participantes del mismo.
+Ésta puede ser tan pequeña como accionar un relé o tan compleja como conducir un coche. Más adelante en este curso, 
+el módelo del lenguaje realiza llamadas a differentes funciones software que han sido expuestas de alguna forma para dicho modelo. 
+Estas funciones reciben el nombre de  <strong>herramientas</strong> (del inglés <i>tool</i>)
+ya que para el modelo representan acciones disponible. Llamar a una herramienta significa solicitar que el código de esa función sea
 ejecutado como acción. El conjunto de acciones también define el alcance máximo del agente: por bueno que sea
-el razonamiento, el agente solo afecta al mundo mediante las acciones permitidas.</li>
+el razonamiento, el agente sólo afecta al mundo mediante las acciones permitidas.</li>
   </ul>
 
-  <div class="callout"><strong>La etapa de razonamiento puede ser sustituida.</strong> Percepción y acción no dependen
-de la función de decisión usada entre ellas. Una regla simple, un árbol de decisión, una rutina
-de búsqueda o una red neuronal pueden conducir el mismo ciclo. Mantener el ciclo como una estructura
-fija separa dos preguntas: ¿qué capacidad tiene el razonamiento y hasta dónde llegan las acciones?</div>
+  <div class="callout"><strong>El razonamiento puede ser reemplazado.</strong> Percepción y acción son independientes la función de decisión usada entre ellas. Una regla simple, un árbol de decisión, una rutina
+de búsqueda o una red neuronal pueden ejecutar el mismo ciclo. Construir el ciclo de un agente como una plantilla con dichos componentes plantea una pregunta doble: ¿qué capacidad tiene el razonamiento y hasta dónde llegan las acciones?</div>
 
-  <p>Los proyectos clásicos de agentes difieren en la etapa de decisión. El libro
+  <p>Las implementaciones clásicas de agentes difieren en la etapa de decisión (que como indicamos anteriormente tiene lugar durante la etapa de razonamiento). El libro
 <a href="https://aima.cs.berkeley.edu/" target="_blank" rel="noopener">Artificial Intelligence: A Modern Approach</a>,
-de Russell y Norvig, organiza estos proyectos en un espectro que va del agente reflejo a un agente
-de aprendizaje capaz de mejorar las propias reglas. El curso comienza con lógica rígida y después
+de Russell y Norvig, organiza estas implementaciones en un espectro que va del agente basado en reflejo a un agente
+de aprendizaje capaz de mejorar sus propias reglas. Este curso comienza con lógica rígida y después
 añade un modelo de lenguaje y contexto proyectado, acercando el ciclo de un agente orientado
 a objetivos y basado en un modelo. En los módulos siguientes, el ciclo continúa sobre un estado cambiante,
 el patrón que sirve de base para los agentes de aprendizaje.</p>
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/01a-loop-1.svg" style="aspect-ratio:1020 / 400"></div>
-    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Cuatro arquitecturas con estructura creciente: desde un agente reflejo que asigna acciones directamente a las entradas hasta un agente de aprendizaje que modifica sus propias reglas. Adaptado de <a href="https://aima.cs.berkeley.edu/" target="_blank" rel="noopener">Artificial Intelligence: A Modern Approach</a>, de Russell y Norvig (capítulo 1).</figcaption>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Cuatro arquitecturas con estructura creciente: desde un agente de reflejo que asigna acciones directamente a las entradas hasta un agente de aprendizaje que modifica sus propias reglas. Adaptado de <a href="https://aima.cs.berkeley.edu/" target="_blank" rel="noopener">Artificial Intelligence: A Modern Approach</a>, de Russell y Norvig (capítulo 1).</figcaption>
   </figure>
   
   
@@ -97,24 +96,23 @@ el patrón que sirve de base para los agentes de aprendizaje.</p>
   
   
   <h2>Un agente sin modelo de lenguaje</h2>
-  <p>La menor función de decisión es una única instrucción <code>if</code> . Aquí conduce una pista
-unidimensional limitada por paredes en las posiciones 0 y 9. Pulse Ejecutar y observe cómo la posición
-rebota entre las paredes mientras se ejecuta el ciclo.</p>
+  <p>La función de decisión más simple es la instrucción <code>if</code> . En el siguiente ejemplo, dicha instrucción guía una pista
+unidimensional limitada por paredes entre las posiciones 0 y 9. Pulsa Ejecutar y observa cómo la posición de la pista rebota entre las paredes mientras el ciclo se ejecuta.</p>
 
   <div id="cell-reflex"></div>
 
-  <p>Dos aspectos del código anterior merecen atención:</p>
+  <p>Dos aspectos del código anterior merecen especial atención:</p>
   <ul>
-    <li>El <strong>entorno</strong> (las paredes y la posición actual) vive en <code>state.env</code>, mientras que el estado interno del agente (su dirección) vive en <code>state.agent</code>. Mantenerlos separados permite que otro agente opere en el mismo entorno con un estado interno distinto.</li>
-    <li>El <strong>paso de razonamiento</strong> es una sola instrucción <code>if</code>. Sustituirla por un árbol de decisión, una red neuronal o un modelo de lenguaje solo cambia lo que ocurre entre percepción y acción. La estructura del ciclo, el estado y la acción permanecen iguales.</li>
+    <li>El <strong>entorno</strong> (las paredes y la posición actual) vive en <code>state.env</code>, mientras que el estado interno del agente (su dirección) vive en <code>state.agent</code>. Mantenerlos separados permite que otros agentes opere en el mismo entorno con un estado interno distinto.</li>
+    <li>El <strong>paso de razonamiento</strong> es una sola instrucción <code>if</code>. Sustituirla por un árbol de decisión, una red neuronal o un modelo de lenguaje sólo cambiará lo que ocurre entre percepción y acción. La estructura del ciclo, el estado y la acción permanecerían iguales.</li>
   </ul>
   
   
 
   <h2>Lo que cambia cuando el razonamiento llama un LLM</h2>
-  <p>La interfaz de Chat Completions se invoca como cualquier otra función: recibe una lista de mensajes y el nombre de un modelo, y devuelve un mensaje del asistente junto con metadatos.</p>
+  <p>La interfaz de <i>Chat Completions</i> se invoca como cualquier otra función: recibe una lista de mensajes y el nombre de un modelo, y devuelve el mensaje generado por el modelo junto con metadatos.</p>
 
-  <div class="callout"><strong>Acerca de <code>chat()</code>.</strong> Es la función auxiliar del curso que se ejecutará más adelante en esta página. El fragmento siguiente anticipa el formato de la llamada y los campos devueltos.</div>
+  <div class="callout"><strong>Acerca de <code>chat()</code>.</strong> Es la función auxiliar del curso que se ejecutará más adelante en esta página. El fragmento siguiente muestra el formato de la llamada y los campos devueltos.</div>
 
 <pre><code class="language-js">const reply = await chat({
   model:    "nvidia/nemotron-3-nano-30b-a3b",
@@ -124,15 +122,15 @@ rebota entre las paredes mientras se ejecuta el ciclo.</p>
 // reply.choices[0].finish_reason → "stop" | "tool_calls" | "length"
 </code></pre>
 
-  <p>Tres hechos sobre esa función determinan cómo deben funcionar los agentes construidos sobre ella:</p>
+  <p>Tres aspectos de esta función determinan cómo deben funcionar los agentes construidos sobre ella:</p>
   <ul>
-    <li><strong>Las llamadas no comparten estado.</strong> El servidor no conserva nada entre solicitudes. Para que el modelo recuerde un turno anterior, hay que enviárselo de nuevo. La "memoria" es una lista de mensajes que el código mantiene y reenvía.</li>
-    <li><strong>La salida tiene dos canales.</strong> Modelos de razonamiento regresan sus anotaciones de trabajo en
+    <li><strong>Las llamadas no comparten estado.</strong> El servidor no conserva nada entre solicitudes. Para que el modelo recuerde algún mensaje anterior, hay que enviárselo de nuevo. La "memoria" es una lista de mensajes que el código mantiene y reenvía.</li>
+    <li><strong>La salida tiene dos canales.</strong> Los modelos de razonamiento devuelven sus trazas de razonamiento o trabajo en
 <code>reasoning_content</code> y su respuesta final en
-<code>content</code>. Las notas sirven para inspeccionar el desarrollo; la siguiente etapa actúa sobre la respuesta de <code>content</code>.</li>
+<code>content</code>. Las trazas sirven para inspeccionar el desarrollo; la siguiente etapa actúa únicamente sobre la respuesta en <code>content</code>.</li>
     <li><strong>finish reason es la condición de salida del ciclo.</strong>
 <code>"stop"</code> significa que el modelo escribió su respuesta final. <code>"tool_calls"</code> significa que quiere que el código ejecute una función con nombre y devuelva el resultado.
-<code>"length"</code> significa que el presupuesto de tokens se agotó antes de terminar. El ciclo lee este campo para decidir qué hacer después.</li>
+<code>"length"</code> significa que el presupuesto de tokens se agotó antes de terminar. Durante el ciclo se lee este campo para decidir qué hacer después.</li>
   </ul>
 
   
@@ -140,24 +138,24 @@ rebota entre las paredes mientras se ejecuta el ciclo.</p>
   
   <p>Este curso usa la
 <a href="https://platform.openai.com/docs/api-reference/chat" target="_blank" rel="noopener">Chat Completions API</a>
-en todo el curso: mantiene la conversación como un array <code>messages[]</code> en el código y reenvía el array completo en cada turno. La API más reciente,
+que  mantiene la conversación como un array <code>messages[]</code> en el código y reenvía el array completo en cada llamada. La API más reciente,
 <a href="https://platform.openai.com/docs/api-reference/responses" target="_blank" rel="noopener">Respuestas API</a>
-puede, en cambio, mantener la conversación en el servidor: se envían solo la nueva entrada y una referencia al turno anterior. En ambos casos, el modelo sigue sin estado. La conversación vive fuera de él, en un estado que conserva el código o el servidor.</p>
+puede, en cambio, mantener la conversación en el servidor: se envían sólo la nueva entrada y una referencia la llamada anterior. En ambos casos, el modelo sigue sin estado. La conversación vive fuera de él, en un estado que se conserva en el código o el servidor.</p>
 
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/01a-loop-2.svg" style="aspect-ratio:840 / 222"></div>
-    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Las dos interfaces realizan la misma llamada sin estado. Solo cambia quién conserva la conversación entre turnos.</figcaption>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Las dos interfaces realizan la misma llamada sin estado. Solo cambia quién conserva la conversación entre llamadas.</figcaption>
   </figure>
   
   
 
-  <h2>Una llamada de verdad en su navegador</h2>
-  <p>La celda siguiente envía una solicitud de Chat Completions al modelo. Necesita una
-<a href="https://build.nvidia.com" target="_blank" rel="noopener">clave API de NVIDIA</a>, pero el nivel gratuito cubre todos los ejercicios. La inserta una vez, y el curso entonces la mantiene en su navegador y la reutiliza en todas las páginas, para que nunca la recoja dos veces.</p>
+  <h2>Un ejemplo real en el navegador</h2>
+  <p>La celda siguiente envía una solicitud de Chat Completions al modelo. Para ello, necesita una
+<a href="https://build.nvidia.com" target="_blank" rel="noopener">clave API de NVIDIA</a>. El nivel gratuito es suficiente para cubrir todos los ejercicios de este curso. Sólo tienes que añadir la clave una vez y el curso la mantendrá en el navegador, reutilizandola en todas las páginas.</p>
 
   <div id="key-panel"></div>
 
-  <p>Pulse Ejecutar para enviar una única solicitud. No hay un ciclo alrededor ni se conserva nada de un turno anterior.</p>
+  <p>Pulse Ejecutar para enviar una única solicitud. No hay un ciclo alrededor ni se conserva nada de una llamada anterior.</p>
 
   <div id="cell-onecall"></div>
 
@@ -166,49 +164,43 @@ puede, en cambio, mantener la conversación en el servidor: se envían solo la n
   
   <h3>Lo que <code>chat()</code> realmente envía</h3>
   <p><code>chat()</code> es una función auxiliar que envuelve un único
-<code>POST</code> HTTP común en formato de transmisión compatible con OpenAI. Esta solicitud carga tres cosas:</p>
+<code>POST</code> HTTP común en un formato compatible con OpenAI. Esta solicitud añade tres cosas:</p>
   <ul>
-    <li>la variable a la que enviar,</li>
-    <li>un encabezado <code>Authorization</code> que carga su clave,</li>
-    <li>y un cuerpo JSON con <code>model</code> y <code>messages</code> .</li>
+    <li>el endpoint donde el modelo acepta peticiones,</li>
+    <li>un encabezado <code>Authorization</code> que carga la clave de usuario,</li>
+    <li>y como contenido un JSON con <code>model</code> y <code>messages</code> .</li>
   </ul>
-  <p>La celda siguiente realiza esta llamada manualmente y muestra ambos lados. Abra <em>request</em> para ver qué sale del navegador con la clave omitida y <em>raw response</em> para inspeccionar el objeto completo devuelto por <code>chat()</code>.</p>
-  <p>Todos los endpoints de este curso hablan ese mismo formato, incluyendo el runtime del agente OpenClaw en el Módulo 3.</p>
+  <p>La celda siguiente realiza esta llamada manualmente y muestra el contenido enviado y la respuesta obtenida. Abre <em>request</em> para ver qué sale del navegador con la clave omitida y <em>raw response</em> para inspeccionar el objeto completo devuelto por <code>chat()</code>.</p>
+  <p>Todos los <i>endpoints</i> de este curso entienden este mismo formato, incluyendo el runtime del agente OpenClaw en el Módulo 3.</p>
 
   <div id="cell-wire"></div>
 
-  <div class="callout"><strong>Dos cosas que esa llamada hace discretamente, y por qué.</strong> Ninguna es mágica, y vale la pena entender ambas antes de confiar en ellas.
+  <div class="callout"><strong>Dos cosas que esa llamada hace discretamente, y por qué.</strong> Ninguna es mágia, y vale la pena entender ambas antes de confiar en ellas.
 <ul>
-<li> <strong>Su solicitud puede pasar por un proxy.</strong> Si selecciona la opción
-LMS/iframe al informar la clave, la solicitud no sigue directamente a
-<code>build.nvidia.com</code> . Como esta variable no vuelve los encabezados de
+<li> <strong>Una llamada o solicitud puede ser enviada a través de un proxy.</strong> Si seleccionaste la opción
+LMS/iframe al añadir la clave, la solicitud no alcanza directamente
+<code>build.nvidia.com</code>. A veces se necesitan encabezados especiales que algunos <i>endPoints</i> no añaden. Por ejemplo, los encabezados de
 <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS" target="_blank" rel="noopener">origen cruzado (CORS)</a>
-requerido por <code>fetch</code> en el navegador, la llamada pasa por un proxy que los añade.
-El proxy también añade una cabecera de asignación para identificar el tráfico del curso.
-La lección envía su clave en esta solicitud sin armarla ni reemplazarla. </li>
-<li> <strong>El streaming es encapsulado en un helper.</strong>
+requeridos por <code>fetch</code> en el navegador. Para solucionar este problema, se enrutar la llamada por un proxy que los añade.
+El proxy usado en este curso también añade una cabecera de asignación para identificar el tráfico del curso.
+La llamada también envía la clave sin almacenarla ni reemplazarla. </li>
+<li> <strong>La opción de streaming está encapsulada en una función helper.</strong>
 <code>chatStream()</code> envía la misma solicitud de chat con streaming activado y
 interpreta el flujo de eventos como texto de respuesta, texto de razonamiento, metadatos
-de uso y señal de término. El helper conecta estos elementos al panel de la lección y al botón
+de uso y señal de término. El helper conecta estos elementos al panel de esta lección y al botón
 Stop, dejando la celda concentrada en el concepto. El código fuente del helper se puede abrir
-por el menú de la celda. </li>
+usando el menú de la celda. </li>
 </ul></div>
   
-  
-
-  
-  
-  
   <h2>Cambiar la función de decisión sin cambiar el ciclo</h2>
-  <p>Ahora tienes las dos mitades de un agente. La función sin estado <code>chat()</code> combina
-con el ciclo percibir, razonar y actuar del agente reflejo anterior. Antes de conectar
-modelo al ciclo, observe la etapa de decisión con rutinas que <em>no</em> son modelos de lenguaje.</p>
+  <p>Por ahora tenemos las dos mitades de un agente. La función sin estado <code>chat()</code> se puede combinar con el ciclo percibir, razonar y actuar del agente de reflejo anterior. Antes de conectar un
+modelo al ciclo, observa la etapa de decisión con rutinas normales (es decir, que <em>no</em> son modelos de lenguaje).</p>
 
   <p>Ejecuta los nodos en orden. Cada uno aplica una regla de decisión diferente al mismo ciclo que resuelve el laberinto:</p>
   <ul>
-    <li>La regla constante "siempre este" alcanza el objetivo en un corredor recto, después se libra en la primera pared del laberinto, ya que un rumbo fijo no puede girar.</li>
-    <li>La <a href="https://en.wikipedia.org/wiki/Depth-first_search" target="_blank" rel="noopener">búsqueda en profundidad (DFS)</a> sigue una rama hasta el final antes de volver.</li>
-    <li><a href="https://en.wikipedia.org/wiki/Breadth-first_search" target="_blank" rel="noopener">búsqueda en anchura (BFS)</a> explora la frontera por niveles y encuentra el camino más corto en una rejilla sin pesos.</li>
+    <li>La regla constante "siempre este" alcanza el objetivo en un pasillo recto, después se bloquea en la primera pared del laberinto, ya que un rumbo fijo no puede girar.</li>
+    <li>La <a href="https://en.wikipedia.org/wiki/Depth-first_search" target="_blank" rel="noopener">búsqueda en profundidad (DFS)</a> sigue una rama hasta el final antes de retroceder.</li>
+    <li><a href="https://en.wikipedia.org/wiki/Breadth-first_search" target="_blank" rel="noopener">búsqueda en anchura (BFS)</a> explora la frontera por niveles y encuentra el camino más corto en una rejilla sin pesos en sus celdas.</li>
     <li>El <a href="https://en.wikipedia.org/wiki/A*_search_algorithm" target="_blank" rel="noopener">A*</a> utiliza una heurística de distancia para priorizar caminos prometedores sin perder la garantía de menor camino.</li>
   </ul>
 
@@ -216,72 +208,67 @@ modelo al ciclo, observe la etapa de decisión con rutinas que <em>no</em> son m
 
   <div class="callout"><strong>Solamente la etapa de decisión varía.</strong> DFS, BFS y A* leen el estado actual del
 laberinto y devuelven un movimiento. Una línea en el último nodo elige la función, mientras
-El siguiente ciclo permanece igual para cada opción. La llamada <code>chat()</code> puede
-ocupar la misma etapa. Dos bordes cambian: el código representa la percepción como texto y
-el modelo devuelve una llamada a herramienta que el código aplica.</div>
+el ciclo permanece igual para cada opción. La llamada <code>chat()</code> puede
+hacer esta función también. En este caso, hay dos cambios que considerar: el código representa la percepción como texto y el modelo devuelve una llamada a herramienta que el código aplica.</div>
 
   <h2>Cómo usar un modelo de lenguaje para elegir movimientos</h2>
-  <p>El ciclo todavía muestra el mundo y aplica un movimiento validado. Solamente la etapa de decisión
-Cambia. En lugar de DFS, BFS o A*, el modelo lee la representación del laberinto y solicita al
+  <p>El ciclo todavía lee el entorno y aplica un movimiento validado. Solamente la etapa de decisión
+cambia. En lugar de DFS, BFS o A*, el modelo lee la representación del laberinto y solicita al
 código una llamada <code>choose_direction</code> .</p>
-  <p>Ejecute las celdas en este orden y luego cambie un control por vez:</p>
+  <p>Ejecuta las celdas en este orden y luego cambie un control cada vez:</p>
   <ol>
-    <li>Comience por el nodo del mecanismo. exporta las utilidades y el resuelvedor compartido <code>state.runMaze</code> , que recorre corredores automáticamente y llama el modelo solamente en las bifurcaciones.</li>
-    <li>Ejecute el nodo editable del agente. <code>DIRECTIVE</code> es la instrucción principal del sistema; el objeto de opciones controla el modelo, el tamaño, el mapa textual, la imagen, el historial de movimientos, la ruta de coordenadas y la repetición del esquema de la herramienta.</li>
-    <li>Utilice primero los patrones funcionales. Después, active <code>includeImage</code> , cambie <code>model</code> para comparar modelos o defina <code>advanced</code> para ampliar el laberinto.</li>
+    <li>Comienza por el nodo motor. Éste exporta las utilidades y un resolutor compartido <code>state.runMaze</code> , que recorre los pasillos del laberinto automáticamente y que llama al modelo solamente en las bifurcaciones.</li>
+    <li>Ejecuta el nodo laberinto editable del agente. <code>DIRECTIVE</code> es la instrucción principal del sistema; con las opciones puedes controlar el modelo, el tamaño, el mapa textual, la imagen, el historial de movimientos, la ruta de coordenadas y la repetición del esquema de la herramienta.</li>
+    <li>Utiliza las opciones por defecto. Después, activa <code>includeImage</code> , cambia <code>model</code> para comparar modelos o utiliza <code>advanced</code> para ampliar el laberinto una vez funciona para el caso más simple.</li>
   </ol>
 
   <div id="cell-llm-maze"></div>
 
-  <div class="callout"><strong>Un schema transforma la respuesta en una acción tipada.</strong> La regla constante
-devuelve una string; BFS, una lista. <code>choose_direction</code> ofrece el mismo contrato
-al modelo y lo aplica por medio de JSON Schema. Así, el ciclo lee un valor tipado en lugar de
-interpretar texto libre, y el modelo de lenguaje ocupa la etapa de decisión antes usada por BFS y A*.</div>
+  <div class="callout"><strong>Un esquema transforma la respuesta en una acción tipada.</strong> La regla constante devuelve una string; BFS, una lista. <code>choose_direction</code> ofrece el mismo contrato
+al modelo y lo aplica por medio de un esquema JSON. Así, el ciclo lee un valor tipado en lugar de
+interpretar texto libre, y el modelo de lenguaje se encarga de la etapa de decisión antes ejecutada por BFS y A*.</div>
 
   <h2>El ciclo en detalle</h2>
-  <p>Al colocar <code>chat()</code> dentro del ciclo que reenvía el historial, cada turno adopta el mismo formato de cuatro etapas. Conviene nombrarlas ahora porque las cuestiones posteriores de seguridad y fiabilidad remiten a una de estas flechas.</p>
+  <p>Al colocar <code>chat()</code> dentro del ciclo que reenvía el historial, cada llamada adopta el mismo formato de cuatro etapas. Conviene nombrarlas ahora porque las cuestiones posteriores de seguridad y fiabilidad se remiten a éstas.</p>
   <ul>
-    <li><strong>Muestra localmente.</strong> Su código lee una parte del entorno, que puede ser la celda del laberinto y sus movimientos válidos, o el último mensaje del usuario, o el contenido de un archivo. Nunca intenta abarcar el mundo entero de una vez, porque todo lo que el turno exige es el estrecho pedazo de estado que el modelo necesita para actuar esta vez.</li>
-    <li><strong>Percibir localmente.</strong> Esta parte se convierte en un contexto completo y preparado: el prompt de sistema, el historial <code>messages[]</code>
-En marcha, resultados de herramientas anteriores y la parte que acabas de mostrar. Todo esto es texto puro. Para un agente LLM, la percepción <em>es</em> ingeniería de contexto.</li>
-    <li><strong>Actuar localmente.</strong> El modelo transforma este texto en más texto: una
+    <li><strong>Muestra local.</strong> El código lee una parte del entorno, que puede ser la celda del laberinto y sus movimientos válidos, o el último mensaje del usuario, o el contenido de un archivo. Nunca intenta abarcar el entorno entero de una vez, porque todo lo que el turno exige es el pedazo de estado que el modelo necesita para actuar esta vez.</li>
+    <li><strong>Percepción local.</strong> Esta parte se convierte en un contexto completo y preparado: el prompt de sistema, el historial <code>messages[]</code>, resultados de herramientas anteriores y la parte que acabas de muestrear. Todo esto es texto puro. Para un agente LLM, la percepción <em>es</em> ingeniería de contexto.</li>
+    <li><strong>Actuación local.</strong> El modelo transforma este texto en otro texto: una
 <em>señal de intención</em> , idealmente una llamada a herramienta tipada como
-<code>{ "move": "east" }</code> en vez de prosa libre. La intención solo solicita una acción, y nunca ejecuta una. Su código lea y aplica una actualización limitada al ambiente ( <code>doMove(...)</code> ), validando primero.</li>
-    <li><strong>Impactar localmente.</strong> La actualización cambia el mundo. Nada permanece
-dentro del modelo. El estado duradero está en el ambiente y en el contexto que el código reconstruirá.
-En el siguiente turno, el muestreo local lee el mundo alterado y el ciclo recomenza.</li>
+<code>{ "move": "east" }</code> en vez de prosa libre. La intención solo solicita una acción, y nunca ejecuta una. El código leará y aplicará una actualización en el entorno ( <code>doMove(...)</code> ), validandolo primero.</li>
+    <li><strong>Impacto local.</strong> La actualización cambia el entorno. Nada permanece
+dentro del modelo. El estado permanente está en el entorno y en el contexto que el código reconstruirá.
+En la siguiente iteración, el muestreo local leerá el nuevo entorno y el ciclo comienza de nuevo.</li>
   </ul>
-  <p>Observe el centro de la lista. El <strong>paso de percibir a actuar es una única transformación de texto a texto sin estado</strong>: entra un contexto completo y sale una señal de intención. El modelo solo transforma texto; percibir el mundo y convertir la intención en un cambio real siguen siendo tareas del código.</p>
-  <p>Esto deja el cuadro verde como la <em>única</em> parte que usted no escribió. Al diseñar un agente controla dos cosas: el contexto que entrega al modelo y lo que hace con la intención devuelta.</p>
+  <p>Observa el centro de la lista. El <strong>paso de percibir a actuar es una única transformación de texto a texto sin estado</strong>: entra un contexto completo y sale una señal de intención. El modelo solo transforma texto; percibir el mundo y convertir la intención en un cambio real siguen siendo tareas del código.</p>
+  <p>Esto deja el cuadrado verde como la <em>única</em> parte que el usuario no escribe. Al diseñar un agente, hay que prestar ateción a dos cosas: el contexto que entrega al modelo y lo que hace con la intención devuelta.</p>
 
   <figure style="margin:1.4em 0">
 <div class="fig-embed" data-svg-src="assets/figures/01a-loop-3.svg" style="aspect-ratio:920 / 450"></div>
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Mostrar → entender → (texto → texto) → actuar → impactar</figcaption>
   </figure>
 
-  <div class="callout"><strong>Cada paso del ciclo actúa localmente.</strong> El modelo lee una parte pequeña del mundo, como una sola celda del laberinto, y devuelve una acción limitada. Después, esa transformación de texto sin estado olvida lo que acaba de ver. Un agente capaz repite este ciclo modesto muchas veces; el entorno conserva el estado que alimentará el paso siguiente. El módulo 1b implementa el ciclo y permite observar cómo crece el contexto en cada turno.</div>
+  <div class="callout"><strong>Cada iteración del ciclo actúa localmente.</strong> El modelo lee una parte pequeña del mundo, como una sola celda del laberinto, y devuelve una acción limitada. Después, esa transformación de texto sin estado olvida lo que acaba de ver. Un agente repite este sencillo ciclo muchas veces; el entorno conserva el estado que alimentará el paso siguiente. El módulo 1b implementa este ciclo y permite observar cómo crece el contexto en cada iteración.</div>
 
   <h2>Antes de continuar</h2>
-  <p>Puede responder cada pregunta ajustando un control en la celda anterior del laberinto con LLM y ejecutándola de nuevo.</p>
+  <p>Puede responder cada pregunta ajustando el control en la celda anterior del laberinto con LLM y ejecutándola de nuevo.</p>
   <ol>
-    <li><strong>Tire el texto del modelo multimodal.</strong>
-Defina <code>includeText:false</code> y <code>includeImage:true</code> y ejecute nuevamente.
-Ahora el modelo ve solo la imagen del laberinto. ¿Él todavía alcanza el objetivo? Necesitas
+    <li><strong>Elimina el texto como entrada del modelo multimodal</strong>
+Defina <code>includeText:false</code> y <code>includeImage:true</code> y ejecuta nuevamente.
+Ahora el modelo ve solo la imagen del laberinto. ¿Todavía se alcanza el objetivo? ¿Se necesitan
 más decisiones que en la ejecución con texto y imagen?</li>
-    <li><strong>Retire el consejo de estrategia de DIRECTIVE.</strong>
-Elimine la línea que recomienda ramas aún no visitados y ejecute la misma celda. Comparar
-la cantidad de decisiones con la ejecución que contenía el consejo. En cuanto a esa competencia
-¿ vino de una sola frase?</li>
-    <li><strong>Cambie el modelo de decisión.</strong>
-Cambie <code>model:"vision"</code> a <code>model:"super"</code> y ejecute de nuevo.
-Ciclo, laberinto, percepción y acción permanecen iguales; solamente el modelo cambia. El modelo de
-¿El texto mayor alcanza el objetivo con menos decisiones?</li>
+    <li><strong>Retira la recomendación de estrategia de DIRECTIVE.</strong>
+Elimina la línea que recomienda ramas aún no visitados y ejecute la misma celda. Compara
+la cantidad de decisiones con la ejecución que contenía el consejo. ¿Qué parte de la competitividad del modelo se derivaba de esa recomendación?</li>
+    <li><strong>Cambia el modelo de decisión.</strong>
+Cambia <code>model:"vision"</code> a <code>model:"super"</code> y ejecuta de nuevo.
+El ciclo, laberinto, percepción y acción permanecen iguales; solamente el modelo cambia. ¿Alcanza el nuevo modelo el objetivo con menos decisiones?</li>
   </ol>
   
   
 
-  <h2>Pruebe · el modelo como una función pura</h2>
-  <p>El menor artefacto del curso es una única llamada <code>chat()</code> sin herramientas y sin memoria alrededor. Cada mensaje que usted envía se sustenta sola, ejecutando la función pura y sin estado que el ciclo va después envolver. Introduzca algo por debajo y observe la respuesta a la transmisión.</p>
+  <h2>Test · El modelo como una función pura</h2>
+  <p>El menor artefacto del curso es una única llamada <code>chat()</code> sin herramientas y sin memoria alrededor. Cada mensaje que se envía directamente a ejecutar la función pura y sin historia, y por tanto, sin el estado que el ciclo va a devolver. Escribe algo y observa la respuesta recibida.</p>
   <div id="loop-cell"></div>
   <div id="loop-artifact"></div>
   <script type="module">
@@ -333,7 +320,7 @@ hljs.highlightAll();
 // ── Canvas 1: a reflex agent with zero LLMs ──────────────────────────────────
 mountCanvasFlow("#cell-reflex", {
   label: "Agente reflejo en una pista 1-D · sin LLM, solo un if",
-  intro: "Setup crea el ambiente y el estado interno del agente; tick ejecuta un ciclo de percepción, decisión y acción; run repite la itisración 25 veces para mostrar la posición alternando entre las paredes.",
+  intro: "Setup crea el entorno y el estado interno del agente; tick ejecuta un ciclo de percepción, decisión y acción; run repite la iteracón 25 veces para mostrar la posición alternando entre las paredes.",
   edges: [
     { from: "setup", to: "tick" },
     { from: "tick",  to: "run"  },
@@ -341,8 +328,8 @@ mountCanvasFlow("#cell-reflex", {
 
   nodes: [
     {
-      id: "setup", icon: "🌍", title: "Medio ambiente + estado interno del agente", x: 0, y: 0,
-      summary: "Inicializa el ambiente, una pista limitada por las posiciones 0 y 9, y el estado interno del agente: posición inicial y dirección. Separar los dos estados permite cambiar la regla de decisión sin alterar el modelo del mundo.",
+      id: "setup", icon: "🌍", title: "Entorno + estado interno del agente", x: 0, y: 0,
+      summary: "Inicializa el entorno, una pista limitada por las posiciones 0 y 9, y el estado interno del agente: posición inicial y dirección. Separar los dos estados permite cambiar la regla de decisión sin alterar el modelo del mundo.",
       code: `// Set up the tiny world the loop will inspect.
 state.env = {
     leftWall:  0,
@@ -359,7 +346,7 @@ return { env: state.env, agent: state.agent };
 
     {
       id: "tick", icon: "🔁", title: "Una iteración: entender, decidir y actuar", x: 0, y: 1,
-      summary: "Lee el ambiente, decide la dirección y actualiza el estado. La decisión es una única instrucción if, mantenida mínima para dejar la estructura del ciclo visible sin la interferencia de un modelo.",
+      summary: "Lee el entorno, decide la dirección y actualiza el estado. La decisión es una única instrucción if, mantenida mínima para dejar la estructura del ciclo visible sin la interferencia de un modelo.",
       code: `// PERCEIVE
 const perception = {
   position:    state.env.position,
@@ -404,7 +391,7 @@ return { ticks: trace.length, finalPosition: state.env.position, trace };
 // ── Module 1a Part 4: maze + search reasoners ───────────────────────────────
 mountCanvasFlow("#cell-maze", {
   label: "Ciclo del agente con función de decisión reemplazable",
-  intro: "Ejecuta los nodos en orden. Setup exporta los helpers del laberinto; los de búsqueda muestran funciones de decisión fijas antes de la entrada del modelo de lenguaje. El código de infraestructura comienza recogido porque la lección trata del comportamiento, pero puede abrir cualquier regla.",
+  intro: "Ejecuta los nodos en orden. Setup exporta los helpers del laberinto; los de búsqueda muestran funciones de decisión fijas antes de la entrada del modelo de lenguaje. El código de infrastructura es simple porque la lección trata del comportamiento, pero puede abrir cualquier regla.",
   edges: [
     { from: "maze", to: "bfs"   },
     { from: "maze", to: "dfs"   },
@@ -415,7 +402,7 @@ mountCanvasFlow("#cell-maze", {
     {
       id: "maze", icon: "🌐", title: "Labirinto + regla constante", x: 0, y: 0,
       showCode: false,
-      summary: "Este nodo recoge la infraestructura del laberinto por patrón. Al abrirlo, lea de abajo hacia arriba: almacena helpers compartidos en state y ejecuta las animaciones que muestran por qué una regla fija no basta.",
+      summary: "Este nodo recoge la infraestructura del laberinto. Al abrirlo, lea de abajo hacia arriba: almacena helpers compartidos en state y ejecuta las animaciones que muestran por qué una regla fija no basta.",
       code: `// Reading guide: most of this block is support code. Start near the bottom where state.fn is
 
 // assigned, then read the two animations: a corridor that 'always east' can solve and a maze
@@ -674,7 +661,7 @@ return { stepsTotal: stepCount };
     {
       id: "bfs", icon: "🔍", title: "Decisión por BFS", x: 0, y: 1,
       showCode: false,
-      summary: "El código BFS comienza recogido. Al abrirlo, observe dos fases: primero marca las celdas examinadas; luego recorre el menor camino encontrado.",
+      summary: "El código BFS está oculto por defecto. Al expandirlo se pueden observar dos fases: primero marca las celdas examinadas; luego recorre el menor camino encontrado.",
       code: `// BFS is split into two readable phases: show the expanding frontier, then walk
 // the shortest path that came back from fn.bfsExplore(...).
 if (!state.fn) { helpers.log("Run the 'Maze + constant reasoner' node first."); return; }
@@ -760,7 +747,7 @@ mountCanvasFlow("#cell-llm-maze", {
       x: 0, y: 0,
       showCode: false,
 
-      summary: "El código del mecanismo comienza recogido porque trata principalmente de la infraestructura web. Al abrirlo, examine los nombres exportados al final: state.runMaze es el resuelvedor compartido llamado el nodo editable.",
+      summary: "El código del mecanismo comienza oculto para enfocar principalmente la infraestructura web. Al expandirlo, se pueden examinar los nombres exportados al final: state.runMaze es el resuelvedor compartido llamado el nodo editable.",
       code: `// Reading guide: this is infrastructure, not a required coding exercise. The run
 // node below is the intended editing surface. Expand this only if you want to inspect
 // how maps, images, tool calls, and corridor auto-walking are wired together.

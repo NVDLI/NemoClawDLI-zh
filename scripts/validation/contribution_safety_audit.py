@@ -615,7 +615,7 @@ def audit_submission(body: str) -> list[dict[str, str]]:
     if not re.search(r"(?im)\b(?:Addresses|Closes|Fixes)\s+#[0-9]+\b", body or ""):
         out.append(finding("submission-issue", "submission", "no explicit issue relationship",
                            "add Addresses #N, or Closes #N only when acceptance is fully met"))
-    if not re.search(r"(?im)^- \[[xX]\] `?(?:web/|cpu/|workspace/|deploy/|scripts/|docs/|materials)", body or ""):
+    if not re.search(r"(?im)^- \[[xX]\] `?(?:web/|i18n/|cpu/|workspace/|deploy/|scripts/|docs/|materials)", body or ""):
         out.append(finding("submission-surface", "submission", "no changed surface is checked",
                            "check every touched surface in ## Surfaces touched"))
     if not re.search(r"(?im)\b(?:PASS|FAIL|BLOCKED)\b", body or ""):
@@ -774,6 +774,9 @@ def self_test() -> list[str]:
     good = """## Summary\nBound the release path.\n## Issue link\nAddresses #12\n## Surfaces touched\n- [x] `workspace/`\n## Blast radius checked\nHooks and CI.\n## Validation evidence\nPASS: audit.\n## Human ownership\nRelease manager reviews.\n## Risk and rollback\nRevert commit.\n## Out of scope\nHost settings.\n"""
     if audit_submission(good):
         failures.append("valid submission fixture rejected")
+    localized = good.replace("- [x] `workspace/`", "- [x] `i18n/`")
+    if audit_submission(localized):
+        failures.append("valid localization submission fixture rejected")
     if not audit_publication_approval(ROOT):
         failures.append("pending release unexpectedly passed the external publication guard")
     for needle, expected in (("## Human ownership\nRelease manager reviews.\n", "submission-section"),

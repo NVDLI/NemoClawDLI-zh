@@ -53,7 +53,7 @@
   <div class="hero">
     <div class="eyebrow">Módulo 3 · Parte C de 3</div>
     <h1>El agente <span>siempre activo</span></h1>
-    <p class="lead">En el Módulo 3b, el agente se ejecutó cuando usted envió un mensaje. OpenClaw también puede iniciar trabajo desde skills, heartbeats, tareas <a href="https://en.wikipedia.org/wiki/Cron" target="_blank" rel="noopener">cron</a> y subagentes. Todas las rutas entran en el mismo ciclo del agente y el mismo sandbox de OpenShell; la sesión, la directiva y el activador determinan qué se ejecuta. Instalará una skill y observará una escritura iniciada por cron.</p>
+    <p class="lead">En el Módulo 3b, el agente se ejecutó cuando enviaste un mensaje. OpenClaw también puede iniciar trabajo desde skills, heartbeats, tareas <a href="https://en.wikipedia.org/wiki/Cron" target="_blank" rel="noopener">cron</a> y subagentes. Todas las rutas entran en el mismo ciclo del agente y el mismo sandbox de OpenShell; la sesión, la directiva y el activador determinan qué se ejecuta. Instalarás una skill y observarás una escritura iniciada por cron.</p>
 
     <div class="fig-embed" data-svg-src="assets/figures/03c-always-on-1.svg" style="aspect-ratio:820 / 478"></div>
   </div>
@@ -65,7 +65,7 @@
     <li>La <strong>directiva</strong> es el archivo Markdown que indica al agente qué debe hacer.</li>
     <li>El <strong>activador</strong> decide cuándo comienza una ejecución.</li>
   </ul>
-  <p>La tabla muestra la configuración del curso. Utilice los mismos tres campos para clasificar otros tipos de activadores; OpenClaw también ofrece modos de sesión adicionales.</p>
+  <p>La tabla muestra la configuración del curso. Usa los mismos tres campos para clasificar otros tipos de activadores; OpenClaw también ofrece modos de sesión adicionales.</p>
 
   <table class="knobs-table">
     <thead><tr><th>Nombre</th><th>Sesión</th><th>La directiva reside en</th><th>Activador</th></tr></thead>
@@ -77,26 +77,26 @@
     </tbody>
   </table>
 
-  <div class="callout">OpenClaw puede vincular una tarea cron a una <a href="https://docs.openclaw.ai/cron-vs-heartbeat" target="_blank" rel="noopener">sesión principal, aislada, actual o con nombre</a>. El curso utiliza ejecuciones cron aisladas para que cada demostración comience desde cero. En esta página ejecutará la skill y la tarea cron. El heartbeat y la llamada <code>delegate()</code> del subagente aparecen únicamente en la tabla; ninguna celda los activa, así que no espere que lo hagan.</div>
+  <div class="callout">OpenClaw puede vincular una tarea cron a una <a href="https://docs.openclaw.ai/cron-vs-heartbeat" target="_blank" rel="noopener">sesión principal, aislada, actual o con nombre</a>. El curso utiliza ejecuciones cron aisladas para que cada demostración comience desde cero. En esta página ejecutarás la skill y la tarea cron. El heartbeat y la llamada <code>delegate()</code> del subagente aparecen únicamente en la tabla; ninguna celda los activa, así que no esperes que lo hagan.</div>
 
-  <h2>Paso 1 · Añada una skill</h2>
-  <p>Una skill comienza como un archivo Markdown dentro de <code>skills/</code>, normalmente con un bloque breve de front matter o un encabezado que permite al runtime decidir cuándo mostrarla. El agente no carga todas las instrucciones a la vez; revela progresivamente la skill coincidente cuando el turno siguiente la necesita. No debe reiniciarlo, volver a implementarlo ni modificar el prompt de sistema.</p>
+  <h2>Paso 1 · Añade una skill</h2>
+  <p>Una skill comienza como un archivo Markdown dentro de <code>skills/</code>, normalmente con un bloque breve de front matter o un encabezado que permite al runtime decidir cuándo mostrarla. El agente no carga todas las instrucciones a la vez; revela progresivamente la skill coincidente cuando el turno siguiente la necesita. No necesitas reiniciarlo, volver a implementarlo ni modificar el prompt de sistema.</p>
 
   <div class="file-tree skill-file"><span class="fname"># skills/triage-incident.md</span>
 
-Cuando el usuario pregunte por un incidente de producción o pegue una línea de log que sugiera uno, siga este orden: 1. Confirme el servicio afectado y el intervalo de tiempo. 2. Abra el runbook de ese servicio desde /sandbox/runbooks/. 3. Sugiera la mitigación reversible más pequeña; no la ejecute. 4. Pregunte al usuario antes de abrir un ticket en Jira.</div>
+Cuando el usuario pregunte por un incidente de producción o pegue una línea de log que sugiera uno, sigue este orden: 1. Confirma el servicio afectado y el intervalo de tiempo. 2. Abre el runbook de ese servicio desde /sandbox/runbooks/. 3. Sugiere la mitigación reversible más pequeña; no la ejecutes. 4. Pregunta al usuario antes de abrir un ticket en Jira.</div>
 
-  <p>El widget siguiente pide al agente que instale exactamente esa skill y después envía una solicitud diseñada para coincidir con ella. La selección es automática: el agente compara su solicitud con la descripción de cada skill del workspace, por lo que el prompt no tiene que indicar cuál debe usar. Observe cómo el agente recurre a la skill nueva durante el segundo turno.</p>
+  <p>El widget siguiente pide al agente que instale exactamente esa skill y después envía una solicitud diseñada para coincidir con ella. La selección es automática: el agente compara tu solicitud con la descripción de cada skill del workspace, por lo que el prompt no tiene que indicar cuál debe usar. Observa cómo el agente recurre a la skill nueva durante el segundo turno.</p>
 
   <div id="fig-calls"></div>
 
-  <div class="callout"><p><strong>El mismo runtime de Kickstart.</strong> Está controlando el mismo agente OpenClaw que conectó en la página Kickstart.</p></div>
+  <div class="callout"><p><strong>El mismo runtime de Kickstart.</strong> Estás controlando el mismo agente OpenClaw que conectaste en la página Kickstart.</p></div>
 
   <div id="gw-recover"></div>
 
   <div id="cell-skill"></div>
 
-  <h2>Paso 2 · Examine el agente en ejecución</h2>
+  <h2>Paso 2 · Examina el agente en ejecución</h2>
 
   <p>Las tareas programadas residen en el gateway, no detrás de una ruta HTTP REST. La misma conexión WebSocket que utiliza la interfaz de control permite enumerarlas y administrarlas con los métodos cron <code>cron.list</code>, <code>cron.add</code> y <code>cron.remove</code>. Una tarea cron permite que un agente siempre activo actúe sin intervención humana porque el trabajo programado se inicia mediante su propio temporizador. Para esta demostración, el runtime crea una sesión aislada. OpenClaw puede vincular el trabajo programado con otro modo de sesión compatible cuando la continuidad resulta más importante que el aislamiento.</p>
 
@@ -105,17 +105,17 @@ Cuando el usuario pregunte por un incidente de producción o pegue una línea de
     <li>Se conecta y enumera las tareas cron ya instaladas.</li>
     <li>Instala una tarea de demostración que se activa cada minuto y añade una línea a <code>MEMORY.md</code>.</li>
     <li>Espera unos setenta segundos para que la tarea cruce el límite de un minuto y se ejecute por sí sola.</li>
-    <li>La celda siguiente lee las últimas líneas de <code>MEMORY.md</code> desde el sandbox, donde verá la línea que escribió el agente activado por cron sin recibir ninguna otra instrucción.</li>
+    <li>La celda siguiente lee las últimas líneas de <code>MEMORY.md</code> desde el sandbox y muestra la línea que escribió el agente activado por cron sin recibir ninguna otra instrucción.</li>
     <li>La última celda elimina la tarea para que no quede nada pendiente.</li>
   </ol>
-  <p>Ninguna persona inició esa escritura. La programación cron activó el trabajo por sí sola mientras usted no interactuaba con el agente.</p>
+  <p>Ninguna persona inició esa escritura. La programación cron activó el trabajo por sí sola mientras no interactuabas con el agente.</p>
 
   <div id="probe-cron"></div>
 
   <div class="callout warn"><strong>Las tareas cron se ejecutan sin supervisión.</strong> Una directiva programada que pida al agente «enviar el informe diario» se activará aunque nadie esté observando. El curso selecciona una sesión aislada para cada activación, de modo que un fallo en una ejecución no contamine la transcripción de la siguiente. Otras configuraciones de cron pueden conservar o vincular el contexto de sesión entre activaciones. El Módulo 4a añade una capa de contención a nivel del kernel. Cada acceso al sistema de archivos y conexión de red que intente el agente pasa por una lista explícita de permitidos antes de ejecutar la syscall. Una tarea programada con un comportamiento incorrecto solo podrá alcanzar lo que permita la política.</div>
 
   <h2>Cómo continuar</h2>
-  <p>El repositorio público de <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes</a> ofrece las mismas categorías generales de capacidades: skills reutilizables, memoria persistente, trabajo programado y un gateway de mensajería. Su implementación y sus valores predeterminados difieren de los de OpenClaw. Compare el límite de seguridad y el comportamiento de las sesiones, en lugar de suponer que nombres de funciones similares implican controles de riesgo equivalentes.</p>
+  <p>El repositorio público de <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes</a> ofrece las mismas categorías generales de capacidades: skills reutilizables, memoria persistente, trabajo programado y un gateway de mensajería. Su implementación y sus valores predeterminados difieren de los de OpenClaw. Compara el límite de seguridad y el comportamiento de las sesiones, en lugar de suponer que nombres de funciones similares implican controles de riesgo equivalentes.</p>
 
   <p>Cualquier entorno de ejecución capaz de escribir instrucciones reutilizables, programar trabajo y aceptar mensajes remotos puede conservar una directiva comprometida más allá de una conversación. El Módulo 4 separa esos controles de aplicación de los controles del sandbox que limitan el acceso a archivos, procesos y red.</p>
   <div class="callout warn"><strong>Hermes controla su superficie de mensajería.</strong> Su <a href="https://hermes-agent.nousresearch.com/docs/user-guide/security/" target="_blank" rel="noopener">guía de seguridad</a> documenta códigos de emparejamiento y listas de permitidos por plataforma o para usuarios globales. Cuando ninguna regla autoriza el acceso, se aplica <code>default: deny</code>. Esos controles de aplicación deciden quién puede comunicarse con el agente. Por separado, un sandbox del sistema operativo limita lo que pueden alcanzar sus herramientas.</div>
@@ -141,9 +141,9 @@ Cuando el usuario pregunte por un incidente de producción o pegue una línea de
     <p class="references-note">Lista completa en <a href="04c-going-further.html#refs">Para ir más lejos · Referencias</a>.</p>
   </div>
 
-  <h2>Pruebe · active una skill durante la conversación</h2>
-  <p>Converse con el agente mediante el gateway. Si instaló la skill de gestión de incidentes en el Paso 1, pegue un incidente y observe cómo el agente la selecciona durante el turno sin que usted indique su nombre.</p>
-  <p>Es el mismo mecanismo que utilizaría un heartbeat o una activación cron, pero impulsado por su mensaje en lugar de un temporizador.</p>
+  <h2>Prueba · activa una skill durante la conversación</h2>
+  <p>Conversa con el agente mediante el gateway. Si instalaste la skill de gestión de incidentes en el Paso 1, pega un incidente y observa cómo el agente la selecciona durante el turno sin que indiques su nombre.</p>
+  <p>Es el mismo mecanismo que utilizarían un heartbeat o una activación cron, pero aquí lo activa tu mensaje en lugar de un temporizador.</p>
   <div id="alwayson-cell"></div>
   <div id="alwayson-artifact"></div>
   <script type="module">
@@ -217,7 +217,7 @@ const gwChat = (sk, msg) => {
   const msgBlock = (msg && typeof msg === "object" && msg.raw)
     ? msg.raw
     : ("let message = " + JSON.stringify(msg) + ";");
-  return `if (!state.call) { helpers.log("Ejecute Conectar primero."); return; }
+  return `if (!state.call) { helpers.log("Ejecuta Conectar primero."); return; }
 
 // ── tune these ──────────────────────────────────────────────────────────────
 ${msgBlock}
@@ -331,7 +331,7 @@ state.out = _text;
 if (!_text.trim() && !_didResult && _toolStarts > 0) {
   helpers.log("⚠ DEGRADED: se iniciaron " + _toolStarts + " llamadas a herramientas, pero ninguna devolvió un resultado o una respuesta.");
   helpers.log("Una herramienta dejó de responder o el modelo está en un ciclo. Las filas anteriores muestran la herramienta y los argumentos exactos donde se detuvo.");
-  helpers.log("Ejecute la comprobación de estado, que detecta toolSearch, y después Recuperar. La celda de logs ofrece más detalles del runtime.");
+  helpers.log("Ejecuta la comprobación de estado, que detecta toolSearch, y después Recuperar. La celda de logs ofrece más detalles del runtime.");
 }
 `;
 };
@@ -340,8 +340,8 @@ if (!_text.trim() && !_didResult && _toolStarts > 0) {
 mountGwRecover("#gw-recover");
 
 mountCanvasFlow("#cell-skill", {
-  label: "Instale una skill y actívela",
-  intro: "En una sesión, el agente escribe la skill en disco, responde a una solicitud coincidente y comprueba la respuesta con la receta. Descubre la skill al leer su propio workspace, sin que usted tenga que nombrarla en el prompt.",
+    label: "Instala una skill y actívala",
+  intro: "En una sesión, el agente escribe la skill en disco, responde a una solicitud coincidente y comprueba la respuesta con la receta. Descubre la skill al leer su propio workspace, sin que tengas que nombrarla en el prompt.",
   edges: [
     { from: "sk-conn",    to: "sk-install" },
     { from: "sk-install", to: "sk-trigger" },
@@ -351,13 +351,13 @@ mountCanvasFlow("#cell-skill", {
     {
       id: "sk-conn", icon: "🔌", title: "Conectar", x: 0, y: 0,
       showCode: false,
-      summary: "Abra un WebSocket en el gateway y autentíquese. El flujo guarda la conexión en state.call para que los tres nodos siguientes puedan enviar turnos de chat sin volver a conectarse.",
+      summary: "Abre un WebSocket en el gateway y autentícate. El flujo guarda la conexión en state.call para que los tres nodos siguientes puedan enviar turnos de chat sin volver a conectarse.",
       code: GW_CONNECT + `state._sk = "quick-3c-skill";`,
     },
     {
-      id: "sk-install", icon: "🧩", title: "Turno 1 · instale la skill", x: 0, y: 1,
+      id: "sk-install", icon: "🧩", title: "Turno 1 · instala la skill", x: 0, y: 1,
       showCode: false,
-      summary: "Pida al agente que escriba skills/triage-incident.md en su workspace. La skill es una receta Markdown que el agente lee de forma automática en el turno siguiente, sin cambiar el prompt de sistema.",
+      summary: "Pide al agente que escriba skills/triage-incident.md en su workspace. La skill es una receta Markdown que el agente lee de forma automática en el turno siguiente, sin cambiar el prompt de sistema.",
       code: gwChat("quick-3c-skill",
         "Add a skill file at skills/triage-incident.md with this content:\n\n" +
         "When the user asks about a production incident, or pastes a log line suggesting one, " +
@@ -367,16 +367,16 @@ mountCanvasFlow("#cell-skill", {
         "4) ask the user before opening a Jira ticket. Confirm when the file is saved."),
     },
     {
-      id: "sk-trigger", icon: "🚨", title: "Turno 2 · active la skill", x: 0, y: 2,
+      id: "sk-trigger", icon: "🚨", title: "Turno 2 · activa la skill", x: 0, y: 2,
       showCode: false,
-      summary: "Envíe una pregunta sobre un incidente que coincida con las condiciones de activación de la skill. El prompt no la nombra; el agente compara la solicitud con las descripciones de las skills del workspace.",
+      summary: "Envía una pregunta sobre un incidente que coincida con las condiciones de activación de la skill. El prompt no la nombra; el agente compara la solicitud con las descripciones de las skills del workspace.",
       code: gwChat("quick-3c-skill",
         "I just got paged. checkout-service is throwing 502s in us-east-1 for the last 12 minutes. What should I do?"),
     },
     {
       id: "sk-check", icon: "🔬", title: "¿Seguió la receta?", x: 0, y: 3,
       showCode: false,
-      summary: "Examine la respuesta del agente para localizar los cuatro pasos de la skill: confirmar el alcance, abrir el runbook, proponer una mitigación reversible y detenerse antes de Jira.",
+      summary: "Examina la respuesta del agente para localizar los cuatro pasos de la skill: confirmar el alcance, abrir el runbook, proponer una mitigación reversible y detenerse antes de Jira.",
       code: `// Inspect the latest reply for signs that the skill recipe shaped it.
 helpers.log.details("agent reply", state.out);
 const r = (state.out || "").toLowerCase();
@@ -390,7 +390,7 @@ return { matched_steps: hits };
 
 mountCanvasFlow("#probe-cron", {
   label: "Gateway · administración de cron",
-  intro: "Administre tareas programadas mediante el WebSocket del gateway: enumere, añada, espere, examine MEMORY.md y elimine. El flujo completo deja evidencia visible de una escritura sin supervisión.",
+  intro: "Administra tareas programadas mediante el WebSocket del gateway: enumera, añade, espera, examina MEMORY.md y elimina. El flujo completo deja evidencia visible de una escritura sin supervisión.",
   edges: [
     { from: "cr-conn",  to: "cr-list"  },
     { from: "cr-list",  to: "cr-add"   },
@@ -401,13 +401,13 @@ mountCanvasFlow("#probe-cron", {
     {
       id: "cr-conn", icon: "🔌", title: "Conectar", x: 0, y: 0,
       showCode: false,
-      summary: "Abra el WebSocket del gateway y autentíquese.",
+      summary: "Abre el WebSocket del gateway y autentícate.",
       code: GW_CONNECT,
     },
     {
-      id: "cr-list", icon: "📋", title: "Enumere las tareas cron actuales", x: 0, y: 1,
+      id: "cr-list", icon: "📋", title: "Enumera las tareas cron actuales", x: 0, y: 1,
       showCode: false,
-      summary: "Llame a cron.list para ver lo que ya está programado. El array payload.jobs contiene el id, la programación y el prompt de cada tarea.",
+      summary: "Llama a cron.list para ver lo que ya está programado. El array payload.jobs contiene el id, la programación y el prompt de cada tarea.",
       code: `// Use the gateway socket to list scheduled jobs without changing anything.
 if (!state.call) { helpers.log("Run Connect first."); return; }
 const pl = await state.call("cron.list");
@@ -422,9 +422,9 @@ return { count: jobs.length };
 `,
     },
     {
-      id: "cr-add", icon: "➕", title: "Instale una tarea cron de demostración", x: 0, y: 2,
+      id: "cr-add", icon: "➕", title: "Instala una tarea cron de demostración", x: 0, y: 2,
       showCode: false,
-      summary: "Llame a cron.add con un id, una programación cron, cada minuto en este ejemplo, y el prompt que ejecutará el agente en cada activación. La tarea se ejecuta dentro del mismo sandbox que el ciclo habitual del agente.",
+      summary: "Llama a cron.add con un id, una programación cron, cada minuto en este ejemplo, y el prompt que ejecutará el agente en cada activación. La tarea se ejecuta dentro del mismo sandbox que el ciclo habitual del agente.",
       code: `// Install one short-lived demo cron job so the unattended path is visible.
 if (!state.call) { helpers.log("Run Connect first."); return; }
 const added = await state.call("cron.add", {
@@ -441,9 +441,9 @@ return { installed: "quick-3c-demo" };
 `,
     },
     {
-      id: "cr-watch", icon: "⏳", title: "Espere y después lea MEMORY.md", x: 0, y: 3,
+      id: "cr-watch", icon: "⏳", title: "Espera y después lee MEMORY.md", x: 0, y: 3,
       showCode: false,
-      summary: "Espere hasta cruzar el límite de un minuto y lea MEMORY.md mediante la terminal del operador. La línea nueva demuestra que el agente activado por cron escribió sin recibir un turno de chat. Mantenga el launchable abierto en otra pestaña para conservar la sesión de Cloudflare Access.",
+      summary: "Espera hasta cruzar el límite de un minuto y lee MEMORY.md mediante la terminal del operador. La línea nueva demuestra que el agente activado por cron escribió sin recibir un turno de chat. Mantén el launchable abierto en otra pestaña para conservar la sesión de Cloudflare Access.",
       code: `// The cron job is live and you are not driving it. Give it time to cross a
 // minute boundary so at least one tick fires, then read what it appended.
 const AGENT = "my-assistant";   // your agent's name, from GET /api/agent on the Kickstart page
@@ -462,9 +462,9 @@ helpers.log("the line(s) above were appended by the cron-fired agent, not by you
 `,
     },
     {
-      id: "cr-rm", icon: "🗑", title: "Elimine la tarea cron de demostración", x: 0, y: 4,
+      id: "cr-rm", icon: "🗑", title: "Elimina la tarea cron de demostración", x: 0, y: 4,
       showCode: false,
-      summary: "Llame a cron.remove para eliminar la tarea que acaba de añadir. Use cron.list para comprobar que el id ya no aparece.",
+      summary: "Llama a cron.remove para eliminar la tarea que acabas de añadir. Usa cron.list para comprobar que el id ya no aparece.",
       code: `// Remove the demo cron so the launchable does not keep running it.
 if (!state.call) { helpers.log("Run Connect first."); return; }
 const removed = await state.call("cron.remove", { id: "quick-3c-demo" });

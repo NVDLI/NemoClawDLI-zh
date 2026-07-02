@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Conecte NemoClaw · Seguridad de agentes</title>
+  <title>Conecta NemoClaw · Seguridad de agentes</title>
   <link rel="stylesheet" href="styles/_style.css"/>
   <script src="vendor/highlight-11.10.0.min.js"></script>
   <link rel="stylesheet" href="vendor/codemirror-5.65.16.min.css"/>
@@ -158,8 +158,8 @@
 
     <div class="hero">
       <div class="eyebrow">Módulo 3 · Parte A de 3 · Comienzan las llamadas en vivo</div>
-      <h1>Conecte el <span>stack de NemoClaw</span></h1>
-      <p class="lead">En los Módulos 1 y 2, la orquestación permaneció en el navegador. Un flujo de trabajo terminaba cuando la página dejaba de transportar sus mensajes, resultados intermedios o el estado de sus ramas. El Módulo 3 lleva los mismos patrones de agentes a un <a href="https://brev.nvidia.com/launchable/deploy?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS" target="_blank" rel="noopener">launchable de NemoClaw en Brev</a>. OpenClaw conserva el historial de la sesión y un workspace respaldado por archivos, sin dejar de ofrecer herramientas; OpenShell limita lo que ese agente en ejecución puede alcanzar. Desde el navegador, comparará la API de modelos sin estado con el gateway persistente de OpenClaw.</p>
+      <h1>Conecta el <span>stack de NemoClaw</span></h1>
+      <p class="lead">En los Módulos 1 y 2, la orquestación permaneció en el navegador. Un flujo de trabajo terminaba cuando la página dejaba de transportar sus mensajes, resultados intermedios o el estado de sus ramas. El Módulo 3 lleva los mismos patrones de agentes a un <a href="https://brev.nvidia.com/launchable/deploy?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS" target="_blank" rel="noopener">launchable de NemoClaw en Brev</a>. OpenClaw conserva el historial de la sesión y un workspace respaldado por archivos, sin dejar de ofrecer herramientas; OpenShell limita lo que ese agente en ejecución puede alcanzar. Desde el navegador, compararás la API de modelos sin estado con el gateway persistente de OpenClaw.</p>
       <figure style="margin:1.4em 0">
         <div class="fig-embed" data-svg-src="assets/figures/03a-kickstart-1.svg" style="aspect-ratio:1300 / 400"></div>
         <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">El acceso avanza desde HTTP de modelos sin estado, pasando por el estado de conversación en el servidor y los protocolos estándar de herramientas, hasta el WebSocket persistente que transmite una sesión activa de OpenClaw.</figcaption>
@@ -170,9 +170,9 @@
 
     <p>El diagrama recorre ese espectro de izquierda a derecha:</p>
     <ul>
-      <li><strong>Endpoints HTTP REST.</strong> El modelo responde a cada llamada de forma aislada: en <a href="https://platform.openai.com/docs/api-reference/chat" target="_blank" rel="noopener"><em>Chat Completions API</em></a>, su código transporta el historial; en <em>Responses API</em>, el servidor puede conservarlo.</li>
+      <li><strong>Endpoints HTTP REST.</strong> El modelo responde a cada llamada de forma aislada: en <a href="https://platform.openai.com/docs/api-reference/chat" target="_blank" rel="noopener"><em>Chat Completions API</em></a>, el código cliente transporta el historial; en <em>Responses API</em>, el servidor puede conservarlo.</li>
       <li><strong><a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">Model Context Protocol (MCP)</a>.</strong> Un protocolo estándar permite al runtime acceder a herramientas sin escribir una integración específica para cada una.</li>
-      <li><strong>Gateway persistente.</strong> OpenClaw mantiene un <code>/cli/gateway</code> <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API" target="_blank" rel="noopener">WebSocket</a> abierto y transmite eventos por <a href="https://www.jsonrpc.org/specification" target="_blank" rel="noopener">JSON-RPC</a>, en lugar de responder a una solicitud por vez.</li>
+      <li><strong>Gateway persistente.</strong> OpenClaw mantiene un <code>/cli/gateway</code> <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API" target="_blank" rel="noopener">WebSocket</a> abierto y transmite eventos mediante <a href="https://www.jsonrpc.org/specification" target="_blank" rel="noopener">JSON-RPC</a>, en lugar de responder a una solicitud por vez.</li>
     </ul>
 
     <!-- video removed: hour-long NemoClaw session, too long and distracting for an inline companion. Re-enable by uncommenting.
@@ -192,36 +192,36 @@
     </figure>
     -->
 
-    <h2>Los dos endpoints que usará a partir de ahora</h2>
-    <p>El endpoint del modelo responde mediante la misma API que utilizó antes. El gateway del launchable llega a un proceso de OpenClaw que conserva sesiones y puede ejecutar herramientas. El código de soporte para los protocolos permanece disponible en las celdas; siga principalmente el endpoint, la credencial y el límite de estado de cada interfaz.</p>
+    <h2>Los dos endpoints que usarás a partir de ahora</h2>
+    <p>El endpoint del modelo responde mediante la misma API que utilizaste antes. El gateway del launchable llega a un proceso de OpenClaw que conserva sesiones y puede ejecutar herramientas. El código de soporte de ambos protocolos permanece disponible en las celdas; presta atención al endpoint, la credencial y el límite de estado de cada interfaz.</p>
 
     <div class="url-pair">
-      <a class="url-card" href="https://build.nvidia.com" target="_blank" rel="noopener"><h3>build.nvidia.com</h3> <p>Chat Completions API. Sin estado: un POST, una respuesta, sin herramientas ni sesión. Genere una clave en API Keys.</p> <p style="color:var(--tf);font-size:.8rem">Su clave <code>nvapi-</code>. El proxy la reenvía sin cambios.</p></a>
+      <a class="url-card" href="https://build.nvidia.com" target="_blank" rel="noopener"><h3>build.nvidia.com</h3> <p>Chat Completions API. Sin estado: un POST, una respuesta, sin herramientas ni sesión. Genera una clave en API Keys.</p> <p style="color:var(--tf);font-size:.8rem">Tu clave <code>nvapi-</code>. El proxy la reenvía sin cambios.</p></a>
       <article class="url-card" style="border-left-color:var(--gs);background:rgba(118,185,0,.06)">
         <h3><a
           href="https://brev.nvidia.com/launchable/deploy/now?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS"
-          target="_blank" rel="noopener">Inicie NemoClaw en Brev</a></h3>
-        <p>La configuración crea un launchable que ejecuta OpenClaw dentro de OpenShell en <code>https://nemoclaw-&lt;id&gt;.brevlab.com</code>. La identidad, las herramientas, la memoria de sesión y la política del sandbox residen allí. El navegador llega al agente mediante el gateway WebSocket en <code>/cli/gateway</code>. Para una implementación local, siga el <a href="https://build.nvidia.com/spark/nemoclaw-applications" target="_blank" rel="noopener">playbook de configuración de NemoClaw</a> y mantenga el mismo límite de conexión.</p>
+          target="_blank" rel="noopener">Inicia NemoClaw en Brev</a></h3>
+        <p>La configuración crea un launchable que ejecuta OpenClaw dentro de OpenShell en <code>https://nemoclaw-&lt;id&gt;.brevlab.com</code>. La identidad, las herramientas, la memoria de sesión y la política del sandbox residen allí. El navegador llega al agente mediante el gateway WebSocket en <code>/cli/gateway</code>. Para una implementación local, sigue el <a href="https://build.nvidia.com/spark/nemoclaw-applications" target="_blank" rel="noopener">playbook de configuración de NemoClaw</a> y mantén el mismo límite de conexión.</p>
         <p style="color:var(--tf);font-size:.8rem">Autenticación mediante token del gateway. Sesiones mediante <code>x-openclaw-session-key</code>.</p>
       </article>
     </div>
 
-    <h2>Paso 1 · Pruebe los endpoints</h2>
+    <h2>Paso 1 · Prueba los endpoints</h2>
     <p>Los widgets siguientes envían una solicitud breve a cada endpoint y muestran la respuesta. Verde significa que está listo.</p>
 
     <div id="probe-llm"></div>
 
     <h3>Latencia y tiempo hasta el primer token por modelo</h3>
-    <p>Antes de elegir un modelo, mídalo. Las celdas siguientes obtienen del catálogo los modelos coincidentes, transmiten el mismo prompt breve a cada uno y registran el <em>tiempo hasta el primer token</em> (TTFT) y el tiempo total. La celda que consulta el catálogo comienza abierta para mostrar el filtro antes de ejecutar el benchmark.</p>
+    <p>Antes de elegir un modelo, mide su comportamiento. Las celdas siguientes obtienen del catálogo los modelos coincidentes, transmiten el mismo prompt breve a cada uno y registran el <em>tiempo hasta el primer token</em> (TTFT) y el tiempo total. La celda que consulta el catálogo comienza abierta para mostrar el filtro antes de ejecutar el benchmark.</p>
 
     <div id="bench-llm"></div>
 
     <div id="probe-claw"></div>
 
-    <div class="callout warn"><strong>Si la sonda de OpenClaw agota el tiempo de espera o devuelve 502.</strong> Es probable que el entorno de ejecución del agente aún esté arrancando: el launchable puede haberse iniciado antes de que OpenClaw terminara de cargar su política YAML. Espere 30 segundos y vuelva a ejecutar la sonda. Si sigue sin responder, utilice la celda Recuperar en la sección del gateway antes de continuar.</div>
+    <div class="callout warn"><strong>Si la sonda de OpenClaw agota el tiempo de espera o devuelve 502.</strong> Es probable que el runtime del agente aún esté arrancando: el launchable puede haberse iniciado antes de que OpenClaw terminara de cargar su política YAML. Espera 30 segundos y vuelve a ejecutar la sonda. Si sigue sin responder, usa la celda Recuperar en la sección del gateway antes de continuar.</div>
 
     <h3>La solicitud de la sonda como código editable</h3>
-    <p>Esta celda realiza la misma llamada que la sonda, con el código a la vista. Reutiliza la URL, el token y el JWT de Cloudflare que guardó la sonda. Edite <code>PATH</code>, <code>METHOD</code> y <code>BODY</code> para enviar otras solicitudes. El estado, los encabezados y el cuerpo aparecen debajo.</p>
+    <p>Esta celda realiza la misma llamada que la sonda, con el código a la vista. Reutiliza la URL, el token y el JWT de Cloudflare que guardó la sonda. Edita <code>PATH</code>, <code>METHOD</code> y <code>BODY</code> para enviar otras solicitudes. El estado, los encabezados y el cuerpo aparecen debajo.</p>
     <p><code>TRANSPORT</code> controla cómo llega la credencial al launchable:</p>
     <ul>
       <li><code>"proxy"</code> dirige la llamada por el worker de CORS y envía el JWT de Cloudflare Access en un encabezado.</li>
@@ -247,12 +247,12 @@
     <p>OpenClaw también implementa esa ruta internamente, pero esta página no puede alcanzarla porque la capa de Cloudflare Access del launchable bloquea el acceso desde el navegador.</p>
     <p>El canal que <em>sí está disponible</em> utiliza otro protocolo: un WebSocket en <code>/cli/gateway</code> que habla JSON-RPC.</p>
 
-    <div class="callout"><p>La interfaz de control de la pestaña del navegador no utiliza un canal privado especial. Se comunica con el agente mediante el mismo WebSocket en <code>/cli/gateway</code> que usted puede usar, y la única credencial necesaria es el token del gateway. La sonda descubre ese token para que no tenga que pegarlo. Una solicitud <code>GET /api/agent</code>, autorizada por su sesión de Cloudflare Access, lo devuelve en <code>agent.dashboardUrl</code>. Deje el campo vacío para que la sonda lo complete.</p></div>
+    <div class="callout"><p>La interfaz de control de la pestaña del navegador no utiliza un canal privado especial. Se comunica con el agente mediante el mismo WebSocket en <code>/cli/gateway</code> que puedes usar, y la única credencial necesaria es el token del gateway. La sonda descubre ese token para que no tengas que pegarlo. Una solicitud <code>GET /api/agent</code>, autorizada por tu sesión de Cloudflare Access, lo devuelve en <code>agent.dashboardUrl</code>. Deja el campo vacío para que la sonda lo complete.</p></div>
 
-    <p>Ese token posee el alcance <code>operator.admin</code>, la misma autoridad que la interfaz de control. Con él puede:</p>
+    <p>Ese token posee el alcance <code>operator.admin</code>, la misma autoridad que la interfaz de control. Con él puedes:</p>
     <ul>
       <li><code>models.list</code> enumera todos los modelos que ofrece el runtime.</li>
-      <li><code>cron.add</code> programa trabajo que se ejecuta sin su intervención.</li>
+      <li><code>cron.add</code> programa trabajo que se ejecuta sin tu intervención.</li>
       <li><code>chat.send</code> con una <code>sessionKey</code> envía un mensaje directamente al ciclo del agente.</li>
     </ul>
 
@@ -261,12 +261,12 @@
       <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Un único POST activa un ciclo dentro del gateway, donde la clave de sesión conserva la memoria para la llamada siguiente.</figcaption>
     </figure>
 
-    <h3>Primero, prepare un launchable nuevo</h3>
+    <h3>Primero, prepara un launchable nuevo</h3>
     <p>Un launchable nuevo de NemoClaw viene con <code>tools.toolSearch</code> activado. En un modelo más débil, esta opción puede impedir el uso correcto de herramientas:</p>
     <ul>
-      <li><strong>Síntoma:</strong> solicita un comando, no llega ninguna respuesta, la ejecución se detiene y termina por agotar el tiempo de espera.</li>
+      <li><strong>Síntoma:</strong> pides un comando, no llega ninguna respuesta, la ejecución se detiene y termina por agotar el tiempo de espera.</li>
       <li><strong>Causa:</strong> toolSearch permite que el modelo acceda a herramientas escribiendo código para un puente (<code>tool_search_code</code> &middot; &ldquo;run bridge code&rdquo;). El modelo débil puede quedar atrapado en ese puente en lugar de llamar <code>exec</code>.</li>
-      <li><strong>Solución:</strong> ejecute la comprobación de estado. Si <code>toolSearch</code> está activado, la celda Recuperar lo desactiva con <code>config.patch</code> y reinicia el runtime. Hágalo una vez por cada instancia nueva.</li>
+      <li><strong>Solución:</strong> ejecuta la comprobación de estado. Si <code>toolSearch</code> está activado, la celda Recuperar lo desactiva con <code>config.patch</code> y reinicia el runtime. Hazlo una vez por cada instancia nueva.</li>
     </ul>
 
     <figure style="margin:1.4em 0">
@@ -276,13 +276,13 @@
 
     <div id="gw-recover"></div>
 
-    <p>Con el runtime preparado, puede enviar un mensaje al ciclo del agente. Ejecute las tres celdas siguientes en orden: las primeras conectan y enumeran modelos y tareas cron; una celda posterior envía un turno de chat; la última transmite la traza. Lea la traza fila por fila:</p>
+    <p>Con el runtime preparado, puedes enviar un mensaje al ciclo del agente. Ejecuta las tres celdas siguientes en orden: las primeras conectan y enumeran modelos y tareas cron; una celda posterior envía un turno de chat; la última transmite la traza. Lee la traza fila por fila:</p>
     <ul>
       <li>Cada fila <code>⚙️</code> es una llamada a herramienta con sus argumentos de entrada.</li>
       <li>Cada fila <code>✓</code>/<code>✗</code> es el resultado de esa herramienta.</li>
-      <li>El gateway no reenvía el razonamiento del modelo, por lo que esta traza de entrada y salida ofrece la vista por pasos más detallada. Cuando una ejecución se detenga sin resultado, use la celda de logs anterior para seguir el runtime.</li>
+      <li>El gateway no reenvía el razonamiento del modelo, por lo que esta traza de entrada y salida ofrece la vista por pasos más detallada. Cuando una ejecución se detenga sin resultado, usa la celda de logs anterior para seguir el runtime.</li>
     </ul>
-    <p>Cada ejecución de chat comprueba su estado. Si aparece <code>⚠ DEGRADED</code>, vuelva aquí, ejecute Recuperar y repita el intento.</p>
+    <p>Cada ejecución de chat comprueba su estado. Si aparece <code>⚠ DEGRADED</code>, vuelve aquí, ejecuta Recuperar y repite el intento.</p>
 
     <div id="gw-demo"></div>
 
@@ -302,7 +302,7 @@
 
     <div id="session-call"></div>
 
-    <div class="callout warn"><strong>La clave de sesión es la única identificación de la conversación enviada por el cliente.</strong> A partir de ella, la pasarela recupera en el servidor toda la sesión antes de cada llamada; el cliente no necesita reenviar la transcripción. Dos claves diferentes siempre identifican sesiones separadas, aunque las conversaciones tengan contenido idéntico.</div>
+    <div class="callout warn"><strong>La clave de sesión es la única identificación de la conversación enviada por el cliente.</strong> A partir de ella, el gateway recupera en el servidor toda la sesión antes de cada llamada; el cliente no necesita reenviar la transcripción. Dos claves diferentes siempre identifican sesiones separadas, aunque las conversaciones tengan contenido idéntico.</div>
 
     <h2>Qué sigue</h2>
     <p>El Módulo 3b abre los archivos que configuran cada turno de OpenClaw. El Módulo 3c añade skills y activadores programados; después, el Módulo 4 comprueba cómo OpenShell limita las acciones que pueden iniciar esas instrucciones persistentes.</p>
@@ -311,16 +311,16 @@
       <h3>Referencias</h3>
       <ul>
         <li><a href="https://platform.openai.com/docs/api-reference/chat" target="_blank" rel="noopener">OpenAI Chat Completions API</a>. El formato del endpoint del modelo, incluido el campo <code>finish_reason</code> que muestra esta página.</li>
-        <li><a href="https://build.nvidia.com" target="_blank" rel="noopener">NVIDIA build.nvidia.com</a>. La API de modelos que utiliza el proxy del curso; pegue su clave nvapi- en el campo de autenticación.</li>
+        <li><a href="https://build.nvidia.com" target="_blank" rel="noopener">NVIDIA build.nvidia.com</a>. La API de modelos que utiliza el proxy del curso; pega tu clave nvapi- en el campo de autenticación.</li>
         <li><a href="https://docs.anthropic.com/en/docs/claude-code/overview" target="_blank" rel="noopener">Anthropic, <em>Claude Code</em> (docs)</a>. El patrón de directorio como sesión que la siguiente página aplica al editar la configuración de OpenClaw.</li>
         <li><a href="https://arxiv.org/abs/2304.03442" target="_blank" rel="noopener">Park et al., <em>Generative
-              Agents</em> (2023)</a>. Presenta memoria e identidad mantenidas en el servidor como estructuras duraderas de runtime, estándar aplicado aquí por la clave de sesión.</li>
+              Agents</em> (2023)</a>. Presenta memoria e identidad mantenidas en el servidor como estructuras duraderas del runtime, patrón implementado aquí mediante la clave de sesión.</li>
       </ul>
       <p class="references-note">Lista completa en <a href="04c-going-further.html#refs">Para ir más lejos · Referencias</a>.</p>
     </div>
 
-    <h2>Pruebe · hable con su launchable</h2>
-    <p>Cuando la sonda anterior esté en verde, este artefacto abrirá el mismo WebSocket en <code>/cli/gateway</code> y le permitirá conversar con su agente OpenClaw activo. Transmite la respuesta y muestra un indicador cada vez que el agente utiliza una herramienta. Todas las respuestas que aparecen aquí regresaron mediante esa conexión en vivo.</p>
+    <h2>Pruébalo · conversa con tu launchable</h2>
+    <p>Cuando la sonda anterior esté en verde, este artefacto abrirá el mismo WebSocket en <code>/cli/gateway</code> y te permitirá conversar con el agente OpenClaw activo. Transmite la respuesta y muestra un indicador cada vez que el agente utiliza una herramienta. Todas las respuestas que aparecen aquí regresaron mediante esa conexión en vivo.</p>
     <div id="kickstart-cell"></div>
     <div id="kickstart-artifact"></div>
     <script type="module">
@@ -417,7 +417,7 @@ helpers.log("rendered below. Edit the config and Run.");
 
     // ── Probe model endpoint ─────────────────────────────────────────────────────
     mountClawProbe("#probe-llm", {
-      label: "Pruebe el endpoint del modelo (build.nvidia.com)",
+      label: "Prueba el endpoint del modelo (build.nvidia.com)",
       intro: "",
       defaultUrl: NVIDIA_API_BASE_URL,
       proxyBase: "https://nvidia-api-cors-proxy.vkudlay.workers.dev",
@@ -426,15 +426,15 @@ helpers.log("rendered below. Edit the config and Run.");
         url: `<p><strong>Qué es:</strong> la URL base de la API de modelos de NVIDIA. Ya está completa y no requiere cambios.</p>
 <p><strong>Cómo llegan las solicitudes:</strong> el runtime principal del curso llama a
 <code>integrate.api.nvidia.com</code> directamente de forma predeterminada. Esta sonda editable utiliza el
-relay CORS alojado de la API de NVIDIA para que pueda inspeccionar ese transporte. El curso solo requiere
+relay CORS alojado de la API de NVIDIA para que puedas inspeccionar ese transporte. El curso solo requiere
 el relay cuando se activa explícitamente el modo proxy para iframe.</p>
 <p><strong>Ejecución local:</strong> las páginas del navegador, los scripts y los notebooks deben llamar a
 <code>${NVIDIA_API_BASE_URL}</code> directamente, salvo que el entorno que los incorpora requiera el relay.</p>`,
 
-        token: `<p><strong>Qué es:</strong> su clave de la API de NVIDIA, que comienza por <code>nvapi-</code>. El campo utiliza automáticamente
+        token: `<p><strong>Qué es:</strong> tu clave de la API de NVIDIA, que comienza por <code>nvapi-</code>. El campo utiliza automáticamente
 la clave guardada en la página principal del curso.</p>
 <p><strong>Cómo obtener una:</strong> inicie sesión en <a href="${NVIDIA_BUILD_URL}" target="_blank" rel="noopener">build.nvidia.com</a>
-y elija API Keys → Generate Key.</p>
+y elige API Keys → Generate Key.</p>
 <p><strong>Ejecución local:</strong> la misma clave funciona en todos los entornos. Guárdela en la variable de entorno
 <code>NVIDIA_API_KEY</code>, en lugar de pegarla en el código.</p>`,
       },
@@ -462,7 +462,7 @@ y elija API Keys → Generate Key.</p>
     mountRunCell("#bench-fetch-models", {
       label: "Obtenga los modelos coincidentes",
       openCode: true,
-      intro: "Ejecute primero esta breve solicitud de descubrimiento. Enumera los modelos que coinciden con el filtro editable; el código permanece visible porque modificar ese filtro forma parte del ejercicio.",
+      intro: "Ejecuta primero esta breve solicitud de descubrimiento. Enumera los modelos que coinciden con el filtro editable; el código permanece visible porque modificar ese filtro forma parte del ejercicio.",
       code: `// Fetch the model catalog and keep only the IDs this benchmark compares.
 const FILTER = ["120b", "glm", "kimi", "minimax"];
 const PROXY  = "https://nvidia-api-cors-proxy.vkudlay.workers.dev";
@@ -491,7 +491,7 @@ return { count: models.length };`,
     });
 
     mountRunCell("#bench-measure-models", {
-      label: "Mida el TTFT por modelo",
+      label: "Mide el TTFT por modelo",
       code: `// Stream one prompt through each selected model and measure first-token latency.
 if (!state.models?.length) { helpers.log("Run 'Fetch matching models' first."); return; }
 const PROMPT       = "List five prime numbers.";
@@ -612,30 +612,30 @@ return { ranked: ok.map(r => r.model), errors: results.filter(r => r.err).length
         return m ? m[1] : null;
       },
       fieldHelp: {
-        url: `<p><strong>Qué es:</strong> la URL raíz de su launchable de NemoClaw, que ejecuta OpenClaw dentro de OpenShell, sin <code>/v1</code> al final.</p>
+        url: `<p><strong>Qué es:</strong> la URL raíz de tu launchable de NemoClaw, que ejecuta OpenClaw dentro de OpenShell, sin <code>/v1</code> al final.</p>
 <p><strong>Cómo encontrarla:</strong> el panel de Brev la muestra como App URL:
 <code>https://nemoclaw-&lt;id&gt;.brevlab.com</code>.</p>
-<p><strong>Ejecución local:</strong> use <code>http://localhost:8088</code> o el puerto que exponga el contenedor de OpenClaw.
-No hay túnel de Cloudflare ni capa de CF Access: conéctese directamente y deje vacío el campo JWT de CF Access.</p>
-<p><strong>Alternativa inmediata:</strong> si OpenClaw local no arranca, devuelve errores de conexión o registra <code>EPERM</code>, detenga la sonda local. Use la App URL de Brev y pegue <code>CF_Authorization</code> debajo.</p>`,
+<p><strong>Ejecución local:</strong> usa <code>http://localhost:8088</code> o el puerto que exponga el contenedor de OpenClaw.
+No hay túnel de Cloudflare ni capa de CF Access: conéctate directamente y deja vacío el campo JWT de CF Access.</p>
+<p><strong>Alternativa inmediata:</strong> si OpenClaw local no arranca, devuelve errores de conexión o registra <code>EPERM</code>, detén la sonda local. Usa la App URL de Brev y pega <code>CF_Authorization</code> debajo.</p>`,
 
-        token: `<p><strong>Normalmente puede dejar este campo vacío.</strong> Ejecute <strong>GET /api/agent</strong> debajo.
-La sonda lee el token del gateway desde <code>agent.dashboardUrl</code> y completa el campo. La URL base y su JWT de CF Access
+        token: `<p><strong>Normalmente puedes dejar este campo vacío.</strong> Ejecuta <strong>GET /api/agent</strong> debajo.
+La sonda lee el token del gateway desde <code>agent.dashboardUrl</code> y completa el campo. La URL base y tu JWT de CF Access
 son suficientes para que el gateway lo devuelva.</p>
-<p><strong>Alternativa manual:</strong> si el campo no se completa, ejecute <code>printenv | grep TOKEN</code>
-en la terminal del launchable y pegue aquí el valor de <code>OPENCLAW_GATEWAY_TOKEN</code>, una cadena hexadecimal de 64 caracteres.</p>`,
+<p><strong>Alternativa manual:</strong> si el campo no se completa, ejecuta <code>printenv | grep TOKEN</code>
+en la terminal del launchable y pega aquí el valor de <code>OPENCLAW_GATEWAY_TOKEN</code>, una cadena hexadecimal de 64 caracteres.</p>`,
 
         cfJwt: `<p><strong>Qué es:</strong> un JWT de corta duración que Cloudflare Access exige antes de dirigir
-solicitudes al launchable. El navegador ya tiene uno: se guardó como cookie cuando abrió por primera vez
+solicitudes al launchable. El navegador ya tiene uno: se guardó como cookie cuando abriste por primera vez
 la URL del launchable y se autenticó.</p>
 <p><strong>Por qué JavaScript no puede leerlo:</strong> la cookie está marcada como <code>HttpOnly</code>, lo que impide que
 <code>document.cookie</code> la vea. La restricción es deliberada y evita que ataques XSS roben tokens de sesión.
 No existe una vía alternativa desde JavaScript.</p>
-<p><strong>Cómo obtenerlo:</strong> abra DevTools en la pestaña de NemoClaw →
-<strong>Application → Storage → Cookies → seleccione el dominio nemoclaw</strong> →
+<p><strong>Cómo obtenerlo:</strong> abre DevTools en la pestaña de NemoClaw →
+<strong>Application → Storage → Cookies → selecciona el dominio nemoclaw</strong> →
 busque la fila <code>CF_Authorization</code> → copie todo el campo Value, una cadena JWT larga.
-Péguelo aquí. Si la sonda deja de funcionar después de una pausa larga, vuelva a copiarlo; los JWT caducan con la sesión.</p>
-<p><strong>Ejecución local:</strong> deje este campo vacío. OpenClaw local no tiene una capa de Cloudflare Access.</p>
+Pégalo aquí. Si la sonda deja de funcionar después de una pausa larga, vuelve a copiarlo; los JWT caducan con la sesión.</p>
+<p><strong>Ejecución local:</strong> deja este campo vacío. OpenClaw local no tiene una capa de Cloudflare Access.</p>
 <p><strong>Modo alternativo:</strong> es obligatorio para la URL de Brev cuando OpenClaw local está bloqueado o muestra <code>EPERM</code>.</p>
 <p><strong>Celdas del gateway:</strong> las sondas fetch envían este JWT en un encabezado. Un curso alojado
 por separado dirige el WebSocket <code>/cli/gateway</code> por el worker de CORS de OpenClaw cuando este campo
@@ -656,7 +656,7 @@ separado, el modo WebSocket directo también depende de una cookie vigente del l
     mountRunCell("#claw-raw-cell", {
       label: "La solicitud de la sonda como código editable",
       openCode: true,
-      intro: "Use la interfaz de la sonda anterior en el recorrido habitual. Esta celda expone su solicitud para comparar el transporte mediante proxy con el directo o examinar una respuesta inesperada.",
+      intro: "Usa la interfaz de la sonda anterior en el recorrido habitual. Esta celda expone la solicitud para comparar el transporte mediante proxy con el directo o examinar una respuesta inesperada.",
       autorun: false,
       code: `// The probe saved its URL, token, and CF JWT in localStorage. Reuse them here.
 const proxy = localStorage.getItem('nemoclaw_clawurl')    || '';  // launchable via CORS worker
@@ -702,7 +702,7 @@ helpers.log.details('body', await res.text());
         ? msg.raw
         : ("let message = " + JSON.stringify(msg) + ";");
 
-      return `if (!state.call) { helpers.log("Ejecute Conectar primero."); return; }
+      return `if (!state.call) { helpers.log("Ejecuta Conectar primero."); return; }
 
 // ── tune these ──────────────────────────────────────────────────────────────
 ${msgBlock}
@@ -833,7 +833,7 @@ state.out = _text;
 if (!_text.trim() && !_didResult && _toolStarts > 0) {
   helpers.log("⚠ DEGRADED: se iniciaron " + _toolStarts + " llamadas a herramientas, pero ninguna devolvió un resultado o una respuesta.");
   helpers.log("   Una herramienta dejó de responder o el modelo está en un ciclo. Las filas ⚙️ anteriores muestran la herramienta y los argumentos exactos donde se detuvo.");
-  helpers.log("   Ejecute la comprobación de estado, que detecta toolSearch, y después Recuperar. Para obtener más detalles, la celda de logs sigue el runtime.");
+  helpers.log("   Ejecuta la comprobación de estado, que detecta toolSearch, y después Recuperar. Para obtener más detalles, la celda de logs sigue el runtime.");
 }
 `;
     };
@@ -848,13 +848,13 @@ if (!_text.trim() && !_didResult && _toolStarts > 0) {
       ],
       nodes: [
         {
-          id: "gw-connect", icon: "🔌", title: "Abra la conexión del gateway", x: 0, y: 0,
-          summary: "Abra un WebSocket en /cli/gateway, responda al frame de desafío del servidor con la credencial operator.admin y guarde un helper call() en el estado. Los nodos siguientes podrán enviar solicitudes tipadas sin repetir el intercambio inicial.",
+          id: "gw-connect", icon: "🔌", title: "Abre la conexión del gateway", x: 0, y: 0,
+      summary: "Abre un WebSocket en /cli/gateway, responde al frame de desafío del servidor con la credencial operator.admin y guarda un helper call() en el estado. Los nodos siguientes podrán enviar solicitudes tipadas sin repetir el intercambio inicial.",
           code: GW_CONNECT,
         },
 
         {
-          id: "gw-list", icon: "📋", title: "Llame a models.list y cron.list", x: 1, y: 0,
+          id: "gw-list", icon: "📋", title: "Llama a models.list y cron.list", x: 1, y: 0,
           showCode: false,
           summary: "Dos llamadas JSON-RPC pasan por la conexión abierta: models.list enumera los modelos que ofrece el runtime y cron.list informa de las tareas programadas.",
           code: `// Use the existing gateway socket to list models and scheduled jobs.
@@ -878,9 +878,9 @@ return { models: models?.models?.length, cronJobs: jobs.length };
         },
 
         {
-          id: "gw-chat", icon: "💬", title: "Envíe un mensaje de chat por streaming", x: 2, y: 0,
+          id: "gw-chat", icon: "💬", title: "Envía un mensaje de chat por streaming", x: 2, y: 0,
           showCode: false,
-          summary: "Llame a chat.send con una sessionKey nueva y transmita los frames de herramientas hasta el final de la ejecución. El sufijo nuevo mantiene aislada cada demostración y fuerza otra ejecución de herramientas. El prompt predeterminado ejecuta un comando; las alternativas comentadas prueban turnos más sencillos.",
+          summary: "Llama a chat.send con una sessionKey nueva y transmite los frames de herramientas hasta el final de la ejecución. El sufijo nuevo mantiene aislada cada demostración y fuerza otra ejecución de herramientas. El prompt predeterminado ejecuta un comando; las alternativas comentadas prueban turnos más sencillos.",
           code: gwChat({ raw: `"quick-3a-gw-" + Math.random().toString(36).slice(2, 8)` }, {
             raw:
               `// The LAST uncommented line wins; comment the bottom ones to try those above.
@@ -897,7 +897,7 @@ message = "Use your exec tool to run \`whoami\` and \`pwd\` in your sandbox, the
     // ── One session, carried memory: recall the earlier gw-chat turn ─────────────
     mountCanvasFlow("#session-call", {
       label: "La sessionKey rehidrata el historial entre turnos",
-      intro: "Registre un dato y recupérelo con la misma sessionKey; después, borre ese historial y elimine las sesiones desechables. La recuperación solo envía la pregunta nueva: el gateway restaura en el servidor el turno anterior.",
+      intro: "Registra un dato y recupéralo con la misma sessionKey; después, borra ese historial y elimina las sesiones desechables. La recuperación solo envía la pregunta nueva: el gateway restaura en el servidor el turno anterior.",
       edges: [
         { from: "sk-memory", to: "sk-clear" },
         { from: "sk-clear", to: "sk-cleanup" },
@@ -905,9 +905,9 @@ message = "Use your exec tool to run \`whoami\` and \`pwd\` in your sandbox, the
 
       nodes: [
         {
-          id: "sk-memory", icon: "🧠", title: "Registre un dato y después solicítelo", x: 0, y: 0,
+          id: "sk-memory", icon: "🧠", title: "Registra un dato y después solicítalo", x: 0, y: 0,
           showCode: false,
-          summary: "Envíe dos turnos con la misma sessionKey. El segundo contiene únicamente una pregunta de recuperación; el gateway restaura el primer turno antes de ejecutar el modelo. Una clave distinta identifica otro historial.",
+          summary: "Envía dos turnos con la misma sessionKey. El segundo contiene únicamente una pregunta de recuperación; el gateway restaura el primer turno antes de ejecutar el modelo. Una clave distinta identifica otro historial.",
           code: GW_CONNECT + `
 helpers.log("turn 1 · plant a fact");
 {
@@ -926,9 +926,9 @@ helpers.log(/BLUEJAY-7/i.test(state.out)
         },
 
         {
-          id: "sk-clear", icon: "🧹", title: "Borre la memoria de la sesión", x: 1, y: 0,
+          id: "sk-clear", icon: "🧹", title: "Borra la memoria de la sesión", x: 1, y: 0,
           showCode: false,
-          summary: "Borre con una llamada el historial que conserva el servidor. Ejecútela sobre la sesión de memoria anterior y repita el turno de recuperación: el código registrado desapareció con la conversación guardada. Cambie sessionKey para borrar cualquier otra sesión. Puede copiar esta operación donde necesite comenzar desde cero.",
+          summary: "Borra con una llamada el historial que conserva el servidor. Ejecútala sobre la sesión de memoria anterior y repite el turno de recuperación: el código registrado desapareció con la conversación guardada. Cambia sessionKey para borrar cualquier otra sesión. Puedes copiar esta operación donde necesites comenzar desde cero.",
           code: GW_CONNECT + `
 // One call wipes the conversation the gateway holds for this key.
 const sessionKey = "quick-3a-memory";
@@ -945,7 +945,7 @@ helpers.log("Re-run the recall turn above and the planted code is gone.");
         {
           id: "sk-cleanup", icon: "🗑", title: "Limpie las sesiones antiguas", x: 2, y: 0,
           showCode: false,
-          summary: "Cada sessionKey distinta deja una sesión que se acumula en la interfaz de control. Esta celda recorre la lista paginada y elimina las sesiones desechables, conservando únicamente la sesión principal. Edite KEEP para cambiar cuáles perduran; por ejemplo, /:(main|quick-3c-skill)$/ también conserva una sesión que le interese.",
+          summary: "Cada sessionKey distinta deja una sesión que se acumula en la interfaz de control. Esta celda recorre la lista paginada y elimina las sesiones desechables, conservando únicamente la sesión principal. Edita KEEP para cambiar cuáles perduran; por ejemplo, /:(main|quick-3c-skill)$/ también conserva una sesión que le interese.",
           code: GW_CONNECT + `
 // Keep these; delete the rest. The default keeps only the Main Session.
 const KEEP = /:main$/;
