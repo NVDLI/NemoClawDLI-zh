@@ -36,16 +36,35 @@ workflow:
     key: "$CI_JOB_NAME"
     paths:
       - .cache/pip
-  image: node:20-bookworm-slim
+  # Runner-resolved, immutable Node 20 image. Change only with a reviewed digest update.
+  image: node:20-bookworm-slim@sha256:25070a03f077f5860e4f2db8d147380678ed40ead415a21eaffd5a6208f61948
   # The available instance runners are all tagged; untagged jobs match none of them.
   # `pages` is the Shared Pages Runner (a Docker runner) that picks these up.
   tags: [pages]
+  retry:
+    max: 2
+    # Retry runner/control-plane faults. Never retry script failures: validation remains fail-closed.
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - api_failure
+      - scheduler_failure
   before_script:
-    - apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 python3-pip ca-certificates git >/dev/null
-    # The materials vendorer needs these for the build-time pull + the live drift check; the
-    # offline gate legs (validate_bundle's materials read) do not. Best-effort: if the install
-    # fails, the pull is deps-guarded and falls back to the committed snapshots.
-    - pip install --break-system-packages -q requests beautifulsoup4 markdownify lxml >/dev/null 2>&1 || true
+    - |
+      set -euo pipefail
+      retry_cmd() {
+        attempt=1
+        until "$@"; do
+          if [ "$attempt" -ge 3 ]; then return 1; fi
+          delay=$((attempt * 3))
+          echo "retrying transient setup command in ${delay}s (attempt $((attempt + 1))/3)" >&2
+          sleep "$delay"
+          attempt=$((attempt + 1))
+        done
+      }
+      retry_cmd apt-get update -qq
+      retry_cmd apt-get install -y -qq --no-install-recommends python3 python3-pip ca-certificates git >/dev/null
+      python3 -m pip install --break-system-packages -q --retries 5 --timeout 30 --requirement scripts/materials/requirements.lock >/dev/null
 
 test:
   <<: *with_python_node
@@ -58,16 +77,17 @@ test:
     - python3 scripts/validation/release_gate.py --tier ship
     - 'if [ -n "${CI_MERGE_REQUEST_IID:-}" ]; then python3 scripts/validation/contribution_safety_audit.py --submission-env CI_MERGE_REQUEST_DESCRIPTION; else echo "Submission contract: no merge-request context in this pipeline; protected-ref policy remains authoritative."; fi'
     - 'if [ -n "${CI_MERGE_REQUEST_DIFF_BASE_SHA:-}" ]; then python3 scripts/validation/contribution_safety_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"; else echo "DCO signoff: no merge-request commit range in this pipeline; pre-push and protected-ref policy remain authoritative."; fi'
-    # Live materials drift check: keep ordinary branch pipelines offline so arXiv/devblog rate
-    # limits do not make feature work noisy. validate_bundle still checks committed provenance on
-    # every branch; production refs and schedules perform the live re-fetch.
+    # Every shared gate verifies full committed SHA-256 provenance offline. Schedules remain strict
+    # live monitors; production pushes tolerate only classified transient source reachability.
     - |
       B="${CI_COMMIT_BRANCH:-${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-}}"
-      if [ "${CI_PIPELINE_SOURCE:-}" = "schedule" ] || [ "$B" = "${CI_DEFAULT_BRANCH:-main}" ] || [ "$B" = "nemoclaw-only" ]; then
-        python3 scripts/materials/pull_materials.py --check
+      if [ "${CI_PIPELINE_SOURCE:-}" = "schedule" ]; then
+        python3 scripts/materials/pull_materials.py --check --fetch-attempts 4 --retry-backoff 2 --host-delay 3
+      elif [ "$B" = "${CI_DEFAULT_BRANCH:-main}" ] || [ "$B" = "nemoclaw-only" ]; then
+        python3 scripts/materials/pull_materials.py --check --allow-transient-unreachable --fetch-attempts 4 --retry-backoff 2 --host-delay 3
       else
         echo "Skipping live materials drift check on branch '${B:-detached}' to avoid rate-limiting external sources."
-        echo "Offline provenance still runs inside scripts/validation/validate_bundle.py."
+        echo "Full-SHA offline provenance already passed inside release_gate.py."
       fi
   artifacts:
     when: always
@@ -106,7 +126,8 @@ security_deep_sca:
   stage: test
   timeout: 2h
   script:
-    - apt-get update -qq && apt-get install -y -qq --no-install-recommends python3-venv >/dev/null
+    - retry_cmd apt-get update -qq
+    - retry_cmd apt-get install -y -qq --no-install-recommends python3-venv >/dev/null
     - rm -rf .sca-runtime-venv .sca-tools-venv
     - python3 -m venv .sca-runtime-venv
     - python3 -m venv .sca-tools-venv

@@ -183,7 +183,7 @@
     "web/nemoclaw/02a-routing.html": {
       "source_sha256": "e059b993816304f9c47281321d058578d1f17d401b0a616a94eba1d591151ebd",
       "translation_sha256": "4882c9197cc71dfe50b8fa7f8d0c91c8500e562f66fcf45bc9f1e49c457547e8",
-      "target_sha256": "35daffb1aee80dd81ae49184cca81de561d7bc69cc2e85599bd42629f37e7fdb",
+      "target_sha256": "b0f4dd47da7454a9ed8059f214b1a235f629d47799c3d116c3a681d2a4a61939",
       "reviewed_on": "2026-07-01"
     },
     "web/nemoclaw/02b-rag.html": {

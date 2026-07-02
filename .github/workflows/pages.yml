@@ -33,7 +33,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Materials vendoring deps (for the live drift check)
-        run: python3 -m pip install --requirement scripts/materials/requirements.lock
+        run: python3 -m pip install --retries 5 --timeout 30 --requirement scripts/materials/requirements.lock
       - name: Static gate (layout, skill-meta, link-engine self-test, grounding)
         run: python3 scripts/validation/release_gate.py --tier ship
       - name: Pull request submission contract
@@ -48,7 +48,7 @@ jobs:
         run: python3 scripts/validation/contribution_safety_audit.py --commit-range "$DCO_RANGE"
       - name: Materials drift check (advisory; complains on drift, never blocks the deploy)
         continue-on-error: true
-        run: python3 scripts/materials/pull_materials.py --check
+        run: python3 scripts/materials/pull_materials.py --check --fetch-attempts 4 --retry-backoff 2 --host-delay 3
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
@@ -81,7 +81,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Materials vendoring deps (for the build-time pull)
-        run: python3 -m pip install --requirement scripts/materials/requirements.lock
+        run: python3 -m pip install --retries 5 --timeout 30 --requirement scripts/materials/requirements.lock
       - name: Build the client-side static site
         run: bash scripts/build/build_pages.sh public
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
