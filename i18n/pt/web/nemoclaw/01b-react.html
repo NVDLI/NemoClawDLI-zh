@@ -311,8 +311,8 @@ return { call1: r1.choices[0].finish_reason, call2: r2.choices[0].finish_reason 
 mountCanvasFlow("#cell-m2c-p3", {
   label: "O ciclo ReAct completo, construído do zero",
   intro: "O nó do usuário define o prompt e as instruções do sistema; o nó da ferramenta registra a função." +
-         "The loop calls the model, runs any requested tools, appends the observations, and repeats " +
-         "until finish_reason is 'stop'. Every step is logged, so you can see what the model decided.",
+         "O ciclo chama o modelo, executa as ferramentas solicitadas, acrescenta as observações e se repete " +
+         "até finish_reason ser 'stop'. Cada etapa é registrada para mostrar a decisão do modelo.",
   edges: [
     { from: "user", to: "loop" },
     { from: "tool", to: "loop" },
@@ -335,7 +335,7 @@ return state.userPrompt;
     {
       id: "tool", icon: "🛠", title: "Especificação da ferramenta", x: 2, y: 0,
       summary: "Registra get_current_time como a única ferramenta e conecta um executor JavaScript para executá-la." +
-               "The model only names the call; your code does the work.",
+               "O modelo apenas informa o nome da chamada; o código realiza o trabalho.",
       code: `// Define the tool schema the model can choose from next.
 state.TOOLS = [{
   type: "function",

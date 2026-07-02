@@ -114,14 +114,14 @@
  </p>
 
   <div class="callout warn">
- <strong>El coste de coordinación en términos concretos.</strong>
+ <strong>El coste de coordinación, en términos concretos.</strong>
  Cada límite entre agentes añade latencia de modelo y lógica de enrutamiento. También introduce otra fuente de
  mensajes mal formados y sustituye una secuencia fácil de leer por un recorrido distribuido entre varios trabajadores.
  </div>
 
   <p>
- Ese costo existe para cualquier tarea. La pregunta es si la estructura del trabajo aporta suficiente beneficio para
- compensarlo. Una tarea lineal que ya cabe en un solo prompt no recuperará el costo de llamadas y rutas adicionales.
+ Ese coste existe para cualquier tarea. La pregunta es si la estructura del trabajo aporta suficiente beneficio para
+compensarlo. Una tarea lineal que ya cabe en un solo prompt no compensará el coste de las llamadas y rutas adicionales.
  La división empieza a resultar útil cuando la propia tarea contiene una estructura difícil de resolver en la secuencia
  de un solo bucle. Cualquiera de estas condiciones puede inclinar la balanza:
  </p>
@@ -136,11 +136,11 @@
   
   
   
-  <h2>Ejecutar un pipeline ReWOO sobre el glosario de NVIDIA</h2>
+  <h2>Ejecuta un pipeline ReWOO sobre el glosario de NVIDIA</h2>
 
   <p>
  La celda siguiente ejecuta un pipeline ReWOO sobre el glosario de NVIDIA. Para cada consulta del plan usa
- <code>helpers.webSearch</code>, la búsqueda clasificada que conoció en el Módulo 1c. El
+ <code>helpers.webSearch</code>, la búsqueda ordenada por relevancia que conociste en el Módulo 1c. El
  <a href="glossary.html">explorador del glosario</a> muestra el índice completo y permite probar cualquier consulta que pueda emitir el planificador.
  </p>
   <p>
@@ -150,10 +150,10 @@
   <ol>
     <li><strong>Planificador.</strong> Una llamada al LLM, restringida por un esquema, genera una lista JSON con entre tres y cinco consultas.</li>
     <li><strong>Ejecutor.</strong> JavaScript sin llamadas al modelo. <code>Promise.all</code> ejecuta todas las consultas de forma concurrente.</li>
-    <li><strong>Sintetizador.</strong> Una segunda llamada al LLM lee los resultados y redacta el informe, con citas por índice de búsqueda.</li>
+    <li><strong>Sintetizador.</strong> Una segunda llamada al LLM lee los resultados y redacta el informe, citando cada búsqueda por su índice.</li>
   </ol>
   <p>
- En total: dos llamadas al LLM y N búsquedas paralelas en el glosario. Edite el objetivo y observe cómo cambia la lista de consultas.
+ En total: dos llamadas al LLM y N búsquedas paralelas en el glosario. Edita el objetivo y observa cómo cambia la lista de consultas.
  </p>
 
   <figure style="margin:1.4em 0">
@@ -164,7 +164,7 @@
   
 
   <!-- ── Part 4: Schema-bound triage ──────────────────────────────────────── -->
-  <h2>Enviar un ticket a un especialista con una enumeración fija</h2>
+  <h2>Envía un ticket a un especialista con una enumeración fija</h2>
 
   <p>
  El enrutamiento es otra forma de componer agentes: un agente clasifica la entrada y la entrega a un especialista.
@@ -182,14 +182,14 @@
   <div id="cell-m2a-triage"></div>
 
   <!-- ── Part 5: Parallel specialists ─────────────────────────────────────── -->
-  <h2>Distribuir una entrada entre varios especialistas</h2>
+  <h2>Distribuye una entrada entre varios especialistas</h2>
 
   <p>
  El pipeline ReWOO ya era paralelo: cada consulta planificada se ejecutó de forma concurrente sobre el glosario.
  Otro patrón habitual distribuye una entrada entre varios especialistas, cada uno con su propio prompt de sistema,
  y los ejecuta a la vez. En la traza, el tiempo total corresponde al especialista más lento; los demás se solapan
  dentro de la misma ventana. El diagrama de Gantt muestra la duración de cada uno. Todos comparten un solo resultado
- de búsqueda web, lo que mantiene acotado el costo.
+ de búsqueda web, lo que mantiene acotado el coste.
  </p>
 
   <div id="cell-m2a-parallel"></div>
@@ -198,12 +198,12 @@
   
   
   
-  <h2>Declarar especialistas con una fábrica</h2>
+  <h2>Declara especialistas con una fábrica</h2>
 
   <p>
  Los cuatro ejercicios anteriores construyeron pequeños agentes con las mismas piezas que el código de producción
  no debería repetir para cada especialista: una etiqueta de rol, un prompt de sistema, una lista de herramientas y
- un contrato de invocación. Una fábrica parametriza esas cuatro partes para que pueda declarar especialistas en vez de reescribirlos:
+ un contrato de invocación. Una fábrica parametriza esas cuatro partes para que puedas declarar especialistas en vez de reescribirlos:
  </p>
   <ul>
     <li><strong>Rol.</strong> Una etiqueta breve para registros y enrutamiento.</li>
@@ -224,9 +224,9 @@
 
   <h2>Antes de continuar</h2>
   <ol>
-    <li>El planificador ReWOO genera una lista JSON de consultas. ¿Qué falla si una consulta necesita un dato obtenido por otra consulta anterior? ¿A cuál de los dos patrones de esta página cambiaría?</li>
-    <li>El router usa una enumeración fija. ¿Qué debe hacer si el modelo devuelve una categoría no permitida? ¿Basta el esquema JSON o también necesita validación en la aplicación?</li>
-    <li>La fábrica parametriza rol, prompt de sistema, herramientas e invocación. ¿Qué quinto parámetro añadiría para impedir que un especialista invada el dominio de otro cuando la entrada sea ambigua?</li>
+    <li>El planificador ReWOO genera una lista JSON de consultas. ¿Qué falla si una consulta necesita un dato obtenido por otra consulta anterior? ¿A cuál de los dos patrones de esta página cambiarías?</li>
+    <li>El router usa una enumeración fija. ¿Qué debe hacer si el modelo devuelve una categoría no permitida? ¿Basta el esquema JSON o también necesitas validación en la aplicación?</li>
+    <li>La fábrica parametriza rol, prompt de sistema, herramientas e invocación. ¿Qué quinto parámetro añadirías para impedir que un especialista invada el dominio de otro cuando la entrada sea ambigua?</li>
   </ol>
 
   <div class="callout info" style="margin-top:2em">
@@ -249,9 +249,9 @@
     <p class="references-note">Lista completa en <a href="04c-going-further.html#refs">Para continuar · Referencias</a>.</p>
   </div>
 
-  <h2>Pruébelo · router de selección en vivo</h2>
+  <h2>Pruébalo · router de selección en vivo</h2>
   <p>
- Escriba una pregunta de soporte. El artefacto la clasifica con una llamada al modelo, dirige el ticket al prompt
+ Escribe una pregunta de soporte. El artefacto la clasifica con una llamada al modelo, dirige el ticket al prompt
  de sistema del especialista correspondiente y transmite su respuesta. Ejecuta el mismo patrón de clasificación y
  enrutamiento mostrado antes. Aquí las categorías corresponden a atención al cliente —facturación, soporte técnico,
  cuenta y otros—, no a una mesa de ayuda de TI. Al cambiar de dominio solo cambia la lista de categorías; el mecanismo permanece igual.
@@ -274,12 +274,12 @@ const SPECIALISTS = {
 
 helpers.mountChatUI("#router-artifact", {
   memory: true,
-  greeting: "Haga una pregunta sobre facturación, un problema técnico o su cuenta. La clasificaré, la dirigiré al especialista adecuado y responderé desde ese rol. Las preguntas posteriores conservan la conversación; 🧠 la borra y ✎ permite corregirla.",
+  greeting: "Ask a support question (billing, a technical error, your account…). I classify it, route it to a specialist, and answer in that voice. Follow-ups keep the conversation; the 🧠 toggle clears it, and ✎ edit rewinds.",
   models: [
-    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · rápido" },
-    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · más capaz" },
+    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
+    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
   ],
-  examples: ["Me cobraron dos veces la misma factura", "La aplicación falla cada vez que inicio sesión", "¿Cómo restablezco mi contraseña?", "Quiero el reembolso de la suscripción del mes pasado", "La API devuelve errores 500 desde esta mañana", "¿Cómo actualizo mi correo electrónico?"],
+  examples: ["I was double charged on my invoice", "The app crashes every time I log in", "How do I reset my password?", "I want a refund for last month's subscription", "The API returns 500 errors since this morning", "How do I update my email address?"],
   respond: async (text, ctx) => {
     const r = await helpers.chat({ messages: [
       { role: "system", content: "Classify the user's question into ONE category and reply with ONLY that word.\\nbilling = payments, charges, double charges, refunds, invoices, subscriptions\\ntechnical = errors, bugs, setup, configuration, how-to\\naccount = login, password, profile, security, access\\nother = anything that fits none of the above" },
@@ -287,7 +287,7 @@ helpers.mountChatUI("#router-artifact", {
     const raw = ((r.choices && r.choices[0] && r.choices[0].message.content) || "").trim();
     const cat = raw.toLowerCase().match(/billing|technical|account|other/);
     const c = cat ? cat[0] : "other";
-    ctx.view.tool("ruta → " + c, "respuesta del clasificador: " + (raw || "(vacía)"));
+    ctx.view.tool("routed → " + c, "classifier replied: " + (raw || "(empty)"));
 
     const s = await helpers.chatStream({ messages: [{ role: "system", content: SPECIALISTS[c] }, ...(ctx.history || []), { role: "user", content: text }], model: ctx.model, max_tokens: 8196, signal: ctx.signal },
       (t) => ctx.view.token(t), { onReasoning: (x) => ctx.view.reasoning(x) });
@@ -296,7 +296,7 @@ helpers.mountChatUI("#router-artifact", {
     if (inTok || outTok) ctx.view.usage({ input: inTok, output: outTok, model: s.model });
   },
 });
-helpers.log("El artefacto aparece abajo. Edite la configuración y ejecute de nuevo.");
+helpers.log("rendered below. Edit the config and Run.");
 
 /* mountChatUI renders the panel; respond() makes one classify call and one answer call. */
 `,
@@ -348,7 +348,7 @@ window.__extractJson = extractJson;
 // ── Part 3: ReWOO research pipeline ──────────────────────────────────────────
 mountCanvasFlow("#cell-m2a-rewoo", {
   label: "Planificar búsquedas paralelas en el glosario",
-  intro: "ReWOO escribe el plan completo antes de actuar. Después ejecuta cada herramienta sin volver a consultar al modelo y cierra el proceso con una llamada de síntesis. Edite el objetivo del nodo 1 y vuelva a ejecutar.",
+  intro: "ReWOO escribe el plan completo antes de actuar. Después ejecuta cada herramienta sin volver a consultar al modelo y cierra el proceso con una llamada de síntesis. Edita el objetivo del nodo 1 y vuelve a ejecutar.",
   edges: [
     { from: "goal",         to: "planner"  },
     { from: "planner",      to: "executor" },
@@ -358,7 +358,7 @@ mountCanvasFlow("#cell-m2a-rewoo", {
   nodes: [
     {
       id: "goal", icon: "🎯", title: "Objetivo de investigación", x: 0, y: 0,
-      summary: "El objetivo que impulsa todo el pipeline. Edítelo y vuelva a ejecutar para observar cómo el planificador genera otras consultas y el sintetizador produce un informe distinto.",
+      summary: "El objetivo que impulsa todo el pipeline. Edítalo y vuelve a ejecutar para observar cómo el planificador genera otras consultas y el sintetizador produce un informe distinto.",
       code: `// Set the student-editable prompt/input for the next step.
 state.goal = "How do retrieval-augmented generation, vector databases, and AI agents fit together?";
 return state.goal;
@@ -499,7 +499,7 @@ mountCanvasFlow("#cell-m2a-triage", {
   nodes: [
     {
       id: "ticket", icon: "👤", title: "Ticket del usuario", x: 0, y: 0,
-      summary: "El ticket que clasificará el agente de selección. Edítelo para probar distintos problemas y observe qué especialista elige el router.",
+      summary: "El ticket que clasificará el agente de selección. Edítalo para probar distintos problemas y observa qué especialista elige el router.",
       code: `// Set the student-editable prompt/input for the next step.
 state.ticket = "My laptop won't connect to the VPN. I've tried restarting and re-installing the client.";
 return state.ticket;
@@ -598,7 +598,7 @@ mountCanvasFlow("#cell-m2a-parallel", {
   nodes: [
     {
       id: "topic", icon: "👤", title: "Tema", x: 0, y: 0,
-      summary: "La pregunta que recibirán los tres especialistas. Como todos leen la misma entrada, puede comparar sus respuestas y aislar el efecto del prompt de sistema.",
+      summary: "La pregunta que recibirán los tres especialistas. Como todos leen la misma entrada, puedes comparar sus respuestas y aislar el efecto del prompt de sistema.",
       code: `// Set the student-editable prompt/input for the next step.
 state.topic = "Why does the transformer architecture need positional encoding?";
 return state.topic;
@@ -607,7 +607,7 @@ return state.topic;
 
     {
       id: "search", icon: "🌐", title: "Búsqueda compartida (1 llamada)", x: 0, y: 1,
-      summary: "Una sola búsqueda web cuyos resultados comparten los tres especialistas. Ejecutarla una vez y distribuir su salida mantiene acotado el costo, aunque se añadan más especialistas después.",
+      summary: "Una sola búsqueda web cuyos resultados comparten los tres especialistas. Ejecutarla una vez y distribuir su salida mantiene acotado el coste, aunque se añadan más especialistas después.",
       code: `// Fetch evidence the specialists will use for grounded answers.
 state.search  = await helpers.webSearch(state.topic, { maxResults: 4 });
 state.context = helpers.formatSearchResults(state.search);

@@ -28,6 +28,7 @@ from translate.translate_svg_text import extract_svg_segments
 
 ROOT = find_repo_root(Path(__file__).resolve())
 SKIP_TEXT = {"script", "style", "pre", "code", "svg", "noscript"}
+STRUCTURE_NEUTRAL_TAGS = {"i", "em"}
 INTERFACE_CONTRACT = {
     "web/nemoclaw/localization.html": ("id=\"loc-kinds\"", "data-kind=\"assets\"", "id=\"loc-filters\"", "id=\"loc-source\"", "id=\"loc-target\"", "scripts/localization_main.js"),
     "web/nemoclaw/scripts/localization_main.js": ("localization-", '"current", "stale", "blocked", "needs-review", "missing"', "reviewed_source_sha256", "asset_counts", 'activeKind === "assets"', "loc-locale"),
@@ -38,8 +39,16 @@ INTERFACE_CONTRACT = {
     "scripts/build/build_pages.sh": ("assemble_locale_overlay.py",),
     "scripts/build/assemble_locale_overlay.py": ("source_sha256", "translation_sha256", "self-test", "stale translation did not fall back"),
     "scripts/translate/translate_svg_text.py": ("extract_svg_segments", "data-locale", "--no-api", "svg_translations.json"),
+    "scripts/translate/translate_html_segments.py": ("review_protocol", "required_dimensions", "Review dimensions:",
+                                                        "--revise-against-source", "editorial_examples"),
     "scripts/translate/locales/pt-BR/svg_translations.json": ("Ambiente", "ETAPA DE DECISÃO", "Agentes com aprendizado"),
-    "scripts/translate/locales/es-ES/profile.json": ("es-ES", "agentes de IA", "generación aumentada por recuperación"),
+    "scripts/translate/locales/es-ES/profile.json": (
+        "es-ES", "agentes de IA", "generación aumentada por recuperación",
+        '"review_protocol"', '"native_editorial_signal"', '"style_reference"',
+        '"style_reference_origin_commit"', '"style_reference_sha256"', '"acceptance_boundary"',
+        '"editorial_patterns"', '"voice_rules"', '"orthography_rules"', '"english_function_words"',
+        '"foreign_function_words"', '"minimum_block_word_ratio"',
+    ),
     "scripts/translate/localization_scope.py": ("en-shell", "data-localization-scope", "translation_sha"),
     "scripts/translate/locale_projection.py": ("project_locale_html", "missing localized shell segment"),
     "scripts/validation/localization_runtime_audit.py": ("pageerror", "language-menu entries are clipped", "Localization Studio"),
@@ -84,12 +93,18 @@ class TagSkeleton(HTMLParser):
         self.tags: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() in STRUCTURE_NEUTRAL_TAGS:
+            return
         self.tags.append(f"<{tag.lower()}>")
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() in STRUCTURE_NEUTRAL_TAGS:
+            return
         self.tags.append(f"<{tag.lower()}/>")
 
     def handle_endtag(self, tag: str) -> None:
+        if tag.lower() in STRUCTURE_NEUTRAL_TAGS:
+            return
         self.tags.append(f"</{tag.lower()}>")
 
 
@@ -157,21 +172,86 @@ def code_templates(raw: str) -> list[str]:
 
 def scripted_ui_text(raw: str) -> str:
     """Extract common learner-facing object fields without treating model prompts as UI prose."""
-    raw = re.sub(r'(\bcode\s*:\s*(?:(?:[A-Za-z_$][\w$]*(?:\.[\w$]+)*)\s*\+\s*)*`)((?:\\.|[^`])*)(`)', r'\1\3', raw, flags=re.S)
-    values = []
-    pattern = r'\b(?:label|intro|title|summary|greeting|disabledMsg|kicker|socket)\s*:\s*(["\'])(.*?)(?<!\\)\1'
-    for match in re.finditer(pattern, raw, re.S):
-        values.append(match.group(2).replace("\\n", " "))
-    call_pattern = r'\b(?:helpers\.log|log(?:\.h|\.details|\.html)?|info|show)\s*\((.*?)\)\s*;'
-    for call in re.finditer(call_pattern, raw, re.S):
-        values.extend(match.group(2).replace("\\n", " ") for match in re.finditer(r'(["\'])(.*?)(?<!\\)\1', call.group(1), re.S))
-    for array in re.finditer(r'\blines\s*:\s*\[(.*?)\]', raw, re.S):
-        values.extend(match.group(2) for match in re.finditer(r'(["\'])(.*?)(?<!\\)\1', array.group(1), re.S))
-    values.extend(match.group(1) for match in re.finditer(r'\b(?:url|token|cfJwt)\s*:\s*`(.*?)`', raw, re.S))
-    for field in re.finditer(r'\b(?:greeting|disabledMsg)\s*:\s*([^\n]+)', raw):
-        if "?" in field.group(1):
-            values.extend(match.group(2) for match in re.finditer(r'(["\'])(.*?)(?<!\\)\1', field.group(1)))
+    values = [item.text.replace("\\n", " ") for item in extract_segments(raw)
+              if item.kind == "script-ui"]
     return re.sub(r"\s+", " ", " ".join(values)).strip()
+
+
+def editorial_pattern_quality(text: str, profile: dict) -> list[dict[str, str]]:
+    """Reject measurable machine-translation artifacts declared by a locale profile."""
+    out: list[dict[str, str]] = []
+    for rule in profile.get("editorial_patterns", []):
+        pattern = rule.get("pattern", "")
+        if pattern and re.search(pattern, text, re.I):
+            out.append({"code": rule.get("code", "locale-editorial-pattern"),
+                        "detail": rule.get("detail", f"unfit localized pattern: {pattern}")})
+    return out
+
+
+def orthography_quality(text: str, profile: dict, *, balance_text: str | None = None) -> list[dict[str, str]]:
+    """Reject locale-wide punctuation artifacts without interpreting HTML layout."""
+    rules = profile.get("orthography_rules", {})
+    out: list[dict[str, str]] = []
+    if rules.get("reject_space_before_punctuation") and re.search(
+            r"[\wÁÉÍÓÚÜÑáéíóúüñ)\]]\s+[.,;:](?!\w)", text):
+        out.append({"code": "locale-punctuation-spacing",
+                    "detail": "unexpected space before punctuation in learner-facing prose"})
+    if rules.get("require_balanced_opening_punctuation"):
+        punctuation = text if balance_text is None else balance_text
+        if punctuation.count("?") != punctuation.count("¿"):
+            out.append({"code": "locale-question-punctuation",
+                        "detail": "Spanish question marks are missing or have unmatched opening punctuation"})
+        if punctuation.count("!") != punctuation.count("¡"):
+            out.append({"code": "locale-exclamation-punctuation",
+                        "detail": "Spanish exclamation marks are missing or have unmatched opening punctuation"})
+    return out
+
+
+def mixed_language_quality(text: str, profile: dict) -> list[dict[str, str]]:
+    """Catch English prose residue by density, not an ever-growing phrase list."""
+    words = {word.lower() for word in profile.get("english_function_words", [])}
+    threshold = int(profile.get("english_function_word_threshold", 0))
+    if not words or not threshold:
+        return []
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        tokens = re.findall(r"\b[A-Za-z]+\b", sentence.lower())
+        matches = [token for token in tokens if token in words]
+        if len(matches) >= threshold:
+            excerpt = re.sub(r"\s+", " ", sentence).strip()[:180]
+            return [{"code": "locale-mixed-language",
+                     "detail": f"English function-word density suggests untranslated prose: {excerpt!r}"}]
+    return []
+
+
+def foreign_language_quality(text: str, profile: dict) -> list[dict[str, str]]:
+    """Catch residue from a known neighboring source language by sentence density."""
+    words = {word.casefold() for word in profile.get("foreign_function_words", [])}
+    threshold = int(profile.get("foreign_function_word_threshold", 0))
+    if not words or not threshold:
+        return []
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        tokens = re.findall(r"\b[^\W\d_]+\b", sentence.casefold(), re.UNICODE)
+        matches = [token for token in tokens if token in words]
+        if len(matches) >= threshold:
+            excerpt = re.sub(r"\s+", " ", sentence).strip()[:180]
+            return [{"code": "locale-foreign-language",
+                     "detail": f"neighboring-language density suggests untranslated prose: {excerpt!r}"}]
+    return []
+
+
+def repetition_quality(text: str, profile: dict) -> list[dict[str, str]]:
+    """Reject copy/paste repetition that is grammatical nonsense, not emphasis."""
+    if not profile.get("reject_accidental_repetition"):
+        return []
+    adjacent = re.search(r"(?i)\b([a-záéíóúüñ]{4,})\s+\1\b", text)
+    nested = re.search(r"(?i)\b([a-záéíóúüñ]{5,})\s+de(?:l| la)\s+\1\b", text)
+    phrase = re.search(
+        r"(?i)\b((?:[a-záéíóúüñ]{2,}\s+){1,4}[a-záéíóúüñ]{2,})\s+\1\b", text)
+    match = adjacent or nested or phrase
+    if not match:
+        return []
+    return [{"code": "locale-accidental-repetition",
+             "detail": f"accidental repeated word or phrase: {match.group(0)!r}"}]
 
 
 def citation_titles(raw: str) -> list[tuple[str, str]]:
@@ -254,6 +334,29 @@ def rhythm_quality(text: str, profile: dict) -> list[dict[str, str]]:
         if short_run and len(run) == short_run and all(length <= short_words for length in run):
             out.append({"code": "locale-choppy-run", "detail": f"{short_run} consecutive sentences have at most {short_words} words"})
             break
+    return out
+
+
+def voice_quality(text: str, profile: dict) -> list[dict[str, str]]:
+    """Reject explicit locale-level voice drift without pretending to parse all grammar."""
+    rules = profile.get("voice_rules", {})
+    out: list[dict[str, str]] = []
+    for phrase in rules.get("disallowed_formal_address", []):
+        if re.search(rf"(?i)\b{re.escape(phrase)}\b", text):
+            out.append({"code": "locale-formal-address",
+                        "detail": f"formal learner address remains: {phrase!r}"})
+            break
+    for phrase in rules.get("disallowed_formal_imperatives", []):
+        cue = r"(?:^|[.!?;·:]\s+|\b(?:ahora|después|primero|luego),?\s+)"
+        if re.search(rf"(?i){cue}{re.escape(phrase)}\b", text):
+            out.append({"code": "locale-formal-imperative",
+                        "detail": f"formal learner imperative remains: {phrase!r}"})
+            break
+    for rule in rules.get("disallowed_formal_patterns", []):
+        pattern = rule.get("pattern", "")
+        if pattern and re.search(pattern, text, re.I):
+            out.append({"code": rule.get("code", "locale-formal-address"),
+                        "detail": rule.get("detail", f"formal learner-address pattern remains: {pattern}")})
     return out
 
 
@@ -351,6 +454,7 @@ def svg_quality(source_raw: str, target_raw: str, profile: dict) -> list[dict[st
     for phrase, fix in profile.get("unfit_phrases", {}).items():
         if re.search(rf"(?i)\b{re.escape(phrase)}\b", visible):
             out.append({"code": "unfit-locale", "detail": f"{phrase!r}: {fix}"})
+    out.extend(voice_quality(visible, profile))
     out.extend(rhythm_quality(svg_prose_text(target_raw), profile))
     return out
 
@@ -384,13 +488,19 @@ def interface_findings(root: Path) -> list[dict[str, str]]:
     return out
 
 
-def page_quality(source_raw: str, target_raw: str, profile: dict, *, skill: bool = False) -> list[dict[str, str]]:
+def page_quality(source_raw: str, target_raw: str, profile: dict, *, skill: bool = False,
+                 enforce_editorial_patterns: bool = True) -> list[dict[str, str]]:
     out: list[dict[str, str]] = []
     if 'data-localization-scope="en-shell"' in source_raw:
         try:
-            target_raw = project_locale_html(source_raw, target_raw, profile.get("_shell_translations", {}))
+            # Projection validates the English-only wrapper map, but quality and
+            # integrity checks must inspect the committed sparse overlay itself.
+            # Checking only the projected result can silently replace bad target
+            # code or structure with canonical source before validators see it.
+            project_locale_html(source_raw, target_raw, profile.get("_shell_translations", {}))
         except ValueError as exc:
             return [{"code": "locale-projection", "detail": str(exc)}]
+        source_raw = translation_canonical(source_raw)
     expected_lang = profile["html_lang"]
     if html_lang(target_raw) != expected_lang:
         out.append({"code": "html-lang", "detail": f"expected <html lang=\"{expected_lang}\">"})
@@ -408,12 +518,29 @@ def page_quality(source_raw: str, target_raw: str, profile: dict, *, skill: bool
                 break
             source_words = len(re.findall(r"\b\w+\b", re.sub(r"<[^>]+>", " ", source_segment.text)))
             target_words = len(re.findall(r"\b\w+\b", re.sub(r"<[^>]+>", " ", target_segment.text)))
-            if source_segment.kind == "block" and source_words >= 12 and target_words / source_words < 0.35:
+            minimum_ratio = float(profile.get("minimum_block_word_ratio", 0.35))
+            if (source_segment.kind == "block" and source_words >= 12
+                    and target_words / source_words < minimum_ratio):
                 out.append({"code": "content-shortfall",
-                            "detail": f"segment {index} retained only {target_words}/{source_words} words"})
+                            "detail": (f"segment {index} retained only {target_words}/{source_words} words "
+                                       f"(minimum ratio {minimum_ratio:.2f})")})
                 break
     ui_text = scripted_ui_text(target_raw)
     visible = reader_text(target_raw) + " " + ui_text
+    # Preserve segment boundaries for voice rules. Concatenating blocks and UI
+    # fields with spaces can hide an imperative that begins a later segment.
+    voice_text = ". ".join(
+        re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", item.text))).strip()
+        for item in target_segments
+        if item.kind in {"block", "text", "attribute", "script-ui"}
+    )
+    repetition_text = ". ".join(
+        re.sub(r"\s+", " ", html.unescape(re.sub(
+            r"<[^>]+>", "", re.sub(r"<code\b[^>]*>.*?</code>", " ", item.text,
+                                     flags=re.I | re.S)))).strip()
+        for item in target_segments
+        if item.kind in {"block", "text", "attribute", "script-ui"}
+    )
     for _, title in citation_titles(target_raw):
         visible = visible.replace(html.unescape(re.sub(r"<[^>]+>", "", title)), "")
     source_reference_titles = set(reference_citation_titles(source_raw))
@@ -429,7 +556,7 @@ def page_quality(source_raw: str, target_raw: str, profile: dict, *, skill: bool
         if marker.lower() in ui_text.lower():
             out.append({"code": "untranslated-ui", "detail": f"scripted learner UI still contains {marker!r}"})
     for phrase, fix in profile.get("unfit_phrases", {}).items():
-        if re.search(rf"(?i)\b{re.escape(phrase)}\b", visible):
+        if re.search(rf"(?i)\b{re.escape(phrase)}\b", voice_text):
             out.append({"code": "unfit-locale", "detail": f"{phrase!r}: {fix}"})
     if (citation_titles(source_raw) != citation_titles(target_raw)
             or reference_citation_titles(source_raw) != reference_citation_titles(target_raw)):
@@ -448,6 +575,13 @@ def page_quality(source_raw: str, target_raw: str, profile: dict, *, skill: bool
         out.append({"code": "code-cell-drift", "detail": "localized runnable code differs from the canonical source"})
     if skill and skill_meta(source_raw) != skill_meta(target_raw):
         out.append({"code": "skill-meta-drift", "detail": "localized skill-meta differs from canonical JSON"})
+    if enforce_editorial_patterns:
+        out.extend(editorial_pattern_quality(voice_text, profile))
+        out.extend(voice_quality(voice_text, profile))
+        out.extend(orthography_quality(voice_text, profile, balance_text=visible))
+        out.extend(mixed_language_quality(visible, profile))
+        out.extend(foreign_language_quality(visible, profile))
+        out.extend(repetition_quality(repetition_text, profile))
     return out
 
 
@@ -479,6 +613,27 @@ def scan(root: Path, locale: str) -> tuple[list[dict[str, str]], dict]:
 
     reviews = state.get("reviews", {})
     asset_reviews = state.get("asset_reviews", {})
+    review_protocol = profile.get("review_protocol", {})
+    style_reference = review_protocol.get("style_reference")
+    if style_reference:
+        if style_reference not in declared:
+            findings.append({"code": "style-reference-boundary", "path": style_reference,
+                             "detail": "locale style reference must be a declared reviewed overlay"})
+        elif not reviews.get(style_reference, {}).get("target_sha256"):
+            findings.append({"code": "style-reference-review", "path": style_reference,
+                             "detail": "locale style reference needs an accepted target hash"})
+        expected_style_sha = review_protocol.get("style_reference_sha256", "")
+        origin_commit = review_protocol.get("style_reference_origin_commit", "")
+        style_target = locale_root / style_reference
+        if not re.fullmatch(r"[0-9a-f]{64}", expected_style_sha):
+            findings.append({"code": "style-reference-pin", "path": style_reference,
+                             "detail": "locale style reference needs a full pinned SHA-256"})
+        elif style_target.is_file() and sha(style_target.read_text(encoding="utf-8")) != expected_style_sha:
+            findings.append({"code": "style-reference-drift", "path": style_reference,
+                             "detail": "locale style reference differs from the style PIC's pinned blob"})
+        if not re.fullmatch(r"[0-9a-f]{40}", origin_commit):
+            findings.append({"code": "style-reference-origin", "path": style_reference,
+                             "detail": "locale style reference needs the full originating commit id"})
     for path in sorted(set(reviews) - declared):
         findings.append({"code": "review-orphan", "path": path,
                          "detail": "review entry is not present in overlay_files"})
@@ -498,7 +653,13 @@ def scan(root: Path, locale: str) -> tuple[list[dict[str, str]], dict]:
         target_digest = sha(target_raw) if target_raw else None
         reviewed_target = review.get("target_sha256")
         require_target_review = bool(profile.get("reviewed_target_hashes"))
-        quality = page_quality(source_raw, target_raw, profile, skill=source.name == "SKILL.html") if target_raw else []
+        quality = page_quality(
+            source_raw,
+            target_raw,
+            profile,
+            skill=source.name == "SKILL.html",
+            enforce_editorial_patterns=rel != style_reference,
+        ) if target_raw else []
         if not target_raw:
             status = "missing"
         elif not reviewed_digest or (require_target_review and not reviewed_target):
@@ -622,8 +783,10 @@ def accept(root: Path, locale: str, paths: list[str]) -> list[str]:
             continue
         source_raw = source.read_text(encoding="utf-8")
         target_raw = target.read_text(encoding="utf-8")
+        style_reference = profile.get("review_protocol", {}).get("style_reference")
         quality = (svg_quality(source_raw, target_raw, profile) if source.suffix == ".svg" else
-                   page_quality(source_raw, target_raw, profile, skill=source.name == "SKILL.html"))
+                   page_quality(source_raw, target_raw, profile, skill=source.name == "SKILL.html",
+                                enforce_editorial_patterns=rel != style_reference))
         if quality:
             errors.append(f"{rel}: " + "; ".join(item["detail"] for item in quality))
             continue
@@ -672,6 +835,21 @@ def self_test() -> list[str]:
         base, _ = scan(root, "pt-BR")
         if base:
             failures.append(f"clean fixture rejected: {base}")
+        profile["review_protocol"] = {"style_reference": "web/nemoclaw/missing-style-reference.html"}
+        (profile_dir / "profile.json").write_text(json.dumps(profile))
+        style_findings, _ = scan(root, "pt-BR")
+        if "style-reference-boundary" not in {item["code"] for item in style_findings}:
+            failures.append("undeclared locale style reference escaped detector")
+        profile["review_protocol"] = {
+            "style_reference": "web/nemoclaw/index.html",
+            "style_reference_origin_commit": "a" * 40,
+            "style_reference_sha256": "0" * 64,
+        }
+        (profile_dir / "profile.json").write_text(json.dumps(profile))
+        style_drift, _ = scan(root, "pt-BR")
+        if "style-reference-drift" not in {item["code"] for item in style_drift}:
+            failures.append("modified locale style reference escaped pinned-blob detector")
+        profile.pop("review_protocol")
         profile["reviewed_target_hashes"] = True
         (profile_dir / "profile.json").write_text(json.dumps(profile))
         state["reviews"]["web/nemoclaw/index.html"]["target_sha256"] = sha(target_raw)
@@ -701,6 +879,139 @@ def self_test() -> list[str]:
         line_target = '<html lang="pt-BR"><script>const x={lines:["Run the node"]}</script></html>'
         if "untranslated-ui" not in {item["code"] for item in page_quality(line_source, line_target, profile)}:
             failures.append("English diagram line escaped detector")
+        concat_ui_source = ('<html lang="en"><script>const x={intro:"Course home " + '
+                            '"Run the node"};</script></html>')
+        concat_ui_target = ('<html lang="pt-BR"><script>const x={intro:"Início do curso " + '
+                            '"Run the node"};</script></html>')
+        if "untranslated-ui" not in {
+                item["code"] for item in page_quality(concat_ui_source, concat_ui_target, profile)}:
+            failures.append("English continuation in concatenated learner UI escaped detector")
+        editorial_profile = {**profile, "editorial_patterns": [{
+            "code": "locale-article-agreement",
+            "pattern": r"\buna\s+mensaje\b",
+            "detail": "use un mensaje",
+        }]}
+        editorial_target = target_raw.replace("Início do curso", "Recebe una mensaje")
+        if "locale-article-agreement" not in {
+                item["code"] for item in page_quality(source_raw, editorial_target, editorial_profile)}:
+            failures.append("locale editorial grammar pattern escaped detector")
+        contraction_profile = {**profile, "editorial_patterns": [{
+            "code": "locale-contraction",
+            "pattern": r"\b(?:de el|a el)\b",
+            "detail": "use del or al",
+        }]}
+        contraction_target = target_raw.replace("Início do curso", "Conecta a el agente")
+        if "locale-contraction" not in {
+                item["code"] for item in page_quality(
+                    source_raw, contraction_target, contraction_profile)}:
+            failures.append("invalid Spanish contraction escaped detector")
+        boundary_contraction_source = ('<html lang="en"><table><tr><td>call '
+                                       'through</td><td>the agent decides</td></tr></table></html>')
+        boundary_contraction_target = ('<html lang="pt-BR"><table><tr><td>llamar a'
+                                       '</td><td>el agente decide</td></tr></table></html>')
+        if "locale-contraction" in {
+                item["code"] for item in page_quality(
+                    boundary_contraction_source, boundary_contraction_target,
+                    contraction_profile)}:
+            failures.append("editorial contraction detector crossed an HTML segment boundary")
+        emphasis_source = '<html lang="en"><p>Course home text</p></html>'
+        emphasis_target = '<html lang="pt-BR"><p>Texto do <i>curso</i></p></html>'
+        if "structure-tags" in {item["code"] for item in page_quality(emphasis_source, emphasis_target, profile)}:
+            failures.append("locale-only inline emphasis was rejected as structural drift")
+        voice_profile = {**profile, "voice_rules": {
+            "disallowed_formal_address": ["você"],
+            "disallowed_formal_imperatives": ["Execute"],
+        }}
+        formal_target = target_raw.replace("Início do curso", "Você. Execute o nó")
+        voice_codes = {item["code"] for item in page_quality(source_raw, formal_target, voice_profile)}
+        if not {"locale-formal-address", "locale-formal-imperative"} <= voice_codes:
+            failures.append("formal locale voice mutation escaped detector")
+        lower_formal_target = target_raw.replace("Início do curso", "Edita el objetivo. Después, ejecute otra vez")
+        lower_voice_profile = {**profile, "voice_rules": {"disallowed_formal_imperatives": ["ejecute"]}}
+        if "locale-formal-imperative" not in {
+                item["code"] for item in page_quality(source_raw, lower_formal_target, lower_voice_profile)}:
+            failures.append("mixed-register lowercase imperative escaped detector")
+        boundary_source = ('<html lang="en"><script>const x={label:"First field", '
+                           'summary:"Run the node"};</script></html>')
+        boundary_target = ('<html lang="pt-BR"><script>const x={label:"Primer campo", '
+                           'summary:"Ejecute el nodo"};</script></html>')
+        if "locale-formal-imperative" not in {
+                item["code"] for item in page_quality(
+                    boundary_source, boundary_target, lower_voice_profile)}:
+            failures.append("formal imperative at a later UI-segment boundary escaped detector")
+        register_profile = {**profile, "voice_rules": {"disallowed_formal_patterns": [{
+            "pattern": r"(?:^|[.!?;:]\s+)(?:Puede|Podrá)\s+(?:cambiar|seguir)\b",
+            "detail": "formal learner address",
+        }, {
+            "pattern": r"\bque\s+(?:conoció|construyó)\s+en\b",
+            "detail": "formal prior-activity address",
+        }, {
+            "pattern": r"\bdonde verá\s+(?:el|la|los|las)\b",
+            "detail": "formal learner observation",
+        }]}}
+        formal_narrative_target = target_raw.replace(
+            "Início do curso", "Puede cambiar el ejemplo. Es la API que conoció en el módulo anterior")
+        narrative_codes = {
+            item["code"] for item in page_quality(source_raw, formal_narrative_target, register_profile)}
+        if "locale-formal-address" not in narrative_codes:
+            failures.append("formal narrative learner address escaped detector")
+        formal_future_target = target_raw.replace(
+            "Início do curso", "Ejecuta la celda, donde verá el resultado")
+        if "locale-formal-address" not in {
+                item["code"] for item in page_quality(
+                    source_raw, formal_future_target, register_profile)}:
+            failures.append("formal future learner observation escaped detector")
+        impersonal_target = target_raw.replace(
+            "Início do curso", "Un modelo que puede cambiar el resultado")
+        if "locale-formal-address" in {
+                item["code"] for item in page_quality(source_raw, impersonal_target, register_profile)}:
+            failures.append("impersonal capability statement was misclassified as learner address")
+        spacing_profile = {**profile, "orthography_rules": {"reject_space_before_punctuation": True}}
+        spacing_target = target_raw.replace("Início do curso", "Conecta el agente . Después continúa")
+        if "locale-punctuation-spacing" not in {
+                item["code"] for item in page_quality(source_raw, spacing_target, spacing_profile)}:
+            failures.append("space-before-punctuation artifact escaped detector")
+        punctuation_profile = {**profile, "orthography_rules": {
+            "require_balanced_opening_punctuation": True,
+        }}
+        punctuation_target = target_raw.replace(
+            "Início do curso", "Qué cambia cuando ejecutas el agente?")
+        if "locale-question-punctuation" not in {
+                item["code"] for item in page_quality(
+                    source_raw, punctuation_target, punctuation_profile)}:
+            failures.append("missing Spanish opening-question punctuation escaped detector")
+        repeat_profile = {**profile, "reject_accidental_repetition": True}
+        repeat_target = target_raw.replace(
+            "Início do curso", "Separa la aplicación de la aplicación de políticas")
+        if "locale-accidental-repetition" not in {
+                item["code"] for item in page_quality(source_raw, repeat_target, repeat_profile)}:
+            failures.append("accidental nested repetition escaped detector")
+        repeated_phrase_target = target_raw.replace(
+            "Início do curso", "El agente conserva el contexto el agente conserva el contexto")
+        if "locale-accidental-repetition" not in {
+                item["code"] for item in page_quality(
+                    source_raw, repeated_phrase_target, repeat_profile)}:
+            failures.append("accidental repeated clause escaped detector")
+        mixed_profile = {**profile,
+                         "english_function_words": ["the", "and", "with", "your", "to"],
+                         "english_function_word_threshold": 2}
+        mixed_target = target_raw.replace(
+            "Início do curso", "Ejecuta the agent to continue")
+        if "locale-mixed-language" not in {
+                item["code"] for item in page_quality(source_raw, mixed_target, mixed_profile)}:
+            failures.append("short English residue escaped density detector")
+        foreign_profile = {**profile,
+                           "foreign_function_words": ["você", "não", "depois"],
+                           "foreign_function_word_threshold": 2}
+        foreign_target = target_raw.replace(
+            "Início do curso", "Você executa o agente; depois, leia o resultado")
+        if "locale-foreign-language" not in {
+                item["code"] for item in page_quality(source_raw, foreign_target, foreign_profile)}:
+            failures.append("neighboring-language residue escaped density detector")
+        subordinate_target = target_raw.replace("Início do curso", "Indica al agente que cite la fuente")
+        if "locale-formal-imperative" in {
+                item["code"] for item in page_quality(source_raw, subordinate_target, lower_voice_profile)}:
+            failures.append("subordinate present-tense verb was misclassified as a formal imperative")
         code_profile = {**profile, "canonical_code_templates": True}
         code_source = '<html lang="en"><script>const x={code:`return 1;`}</script></html>'
         code_target = '<html lang="pt-BR"><script>const x={code:`return 2;`}</script></html>'
@@ -714,6 +1025,15 @@ def self_test() -> list[str]:
         missing_target = '<html lang="pt-BR"><p></p></html>'
         if "content-segments" not in {item["code"] for item in page_quality(missing_source, missing_target, profile)}:
             failures.append("missing localized prose segment escaped detector")
+        compressed_source = ('<html lang="en"><p>This complete paragraph carries mechanism, '
+                             'boundary, consequence, evidence, operating guidance, and concrete '
+                             'instructions for every student.</p></html>')
+        compressed_target = '<html lang="pt-BR"><p>Parágrafo com mecanismo e limite.</p></html>'
+        ratio_profile = {**profile, "minimum_block_word_ratio": 0.6}
+        if "content-shortfall" not in {
+                item["code"] for item in page_quality(
+                    compressed_source, compressed_target, ratio_profile)}:
+            failures.append("compressed localized prose escaped retention-ratio detector")
         shifted_ui_source = ('<html lang="en"><script>const cells=['
                              '{label:"GET /healthz"},{label:"Describe workspace"}];</script></html>')
         shifted_ui_target = ('<html lang="pt-BR"><script>const cells=['
@@ -760,6 +1080,18 @@ def self_test() -> list[str]:
         profile["_shell_translations"] = {"Need detail?": "Precisa de detalhes?"}
         if page_quality(scoped_raw, target_raw, profile):
             failures.append("English-only presentation shell changed locale structure checks")
+        scoped_code_source = ('<html lang="en"><details data-localization-scope="en-shell">'
+                              '<summary data-localization-scope="en">Need detail?</summary>'
+                              '<div class="learning-block-body">Course home</div></details>'
+                              '<script>const x={code:`// Keep this exact\nreturn 1;`}</script></html>')
+        scoped_code_target = ('<html lang="pt-BR">Início do curso'
+                              '<script>const x={code:`// Keep this exact\nreturn 1;`}</script></html>')
+        scoped_code_mutation = scoped_code_target.replace("Keep this exact", "Compara this exact")
+        scoped_code_profile = {**profile, "canonical_code_templates": True}
+        if "code-cell-drift" not in {
+                item["code"] for item in page_quality(
+                    scoped_code_source, scoped_code_mutation, scoped_code_profile)}:
+            failures.append("en-shell projection masked raw localized code drift")
         profile["_shell_translations"] = {}
         if "locale-projection" not in {item["code"] for item in page_quality(scoped_raw, target_raw, profile)}:
             failures.append("missing localized presentation shell escaped detector")
@@ -795,7 +1127,9 @@ def self_test() -> list[str]:
             failures.append("clean localization interface fixture rejected")
         for rel, token in (("web/nemoclaw/scripts/_locale.js", "available_pages"),
                            ("web/nemoclaw/localization.html", 'id="loc-target"'),
-                           ("scripts/build/build_pages.sh", "assemble_locale_overlay.py")):
+                           ("scripts/build/build_pages.sh", "assemble_locale_overlay.py"),
+                           ("scripts/translate/translate_html_segments.py", "required_dimensions"),
+                           ("scripts/translate/locales/es-ES/profile.json", '"review_protocol"')):
             path = fixture / rel
             raw = path.read_text(encoding="utf-8")
             path.write_text(raw.replace(token, "removed-contract-token"), encoding="utf-8")

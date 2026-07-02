@@ -171,8 +171,8 @@
     "web/nemoclaw/01b-react.html": {
       "source_sha256": "a86e3c978eef9e4432323c5df42336ba609d8dc04f3954c69f536f8e9f242c5b",
       "translation_sha256": "be9b8ace15c5fb939a3d665e89c2fb0b748844a5beb0359ff779c1e9a7f2b807",
-      "target_sha256": "5dfa7468ab82c2aec43b96bd921c49406ef97887a9eb5737a1a985c260061403",
-      "reviewed_on": "2026-07-01"
+      "target_sha256": "3dfa346c59013b585a70ac774c1e1c1ea029afaeac9525a80706c47172a2bf6c",
+      "reviewed_on": "2026-07-02"
     },
     "web/nemoclaw/01c-tools.html": {
       "source_sha256": "390a4dfc6a1237c19346d482260ed121d1147be13329fb425ee54a6036accc2b",

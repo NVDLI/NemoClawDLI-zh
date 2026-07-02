@@ -62,8 +62,8 @@
       "file": "01b-react.html",
       "source_sha256": "be9b8ace15c5fb939a3d665e89c2fb0b748844a5beb0359ff779c1e9a7f2b807",
       "reviewed_source_sha256": "be9b8ace15c5fb939a3d665e89c2fb0b748844a5beb0359ff779c1e9a7f2b807",
-      "target_sha256": "5dfa7468ab82c2aec43b96bd921c49406ef97887a9eb5737a1a985c260061403",
-      "reviewed_target_sha256": "5dfa7468ab82c2aec43b96bd921c49406ef97887a9eb5737a1a985c260061403",
+      "target_sha256": "3dfa346c59013b585a70ac774c1e1c1ea029afaeac9525a80706c47172a2bf6c",
+      "reviewed_target_sha256": "3dfa346c59013b585a70ac774c1e1c1ea029afaeac9525a80706c47172a2bf6c",
       "status": "current",
       "quality": []
     },

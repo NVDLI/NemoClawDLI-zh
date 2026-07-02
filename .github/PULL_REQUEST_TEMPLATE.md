@@ -15,6 +15,7 @@ Addresses #
 ## Surfaces touched
 
 - [ ] `web/`
+- [ ] `i18n/`
 - [ ] `cpu/`
 - [ ] `workspace/`
 - [ ] `deploy/`
