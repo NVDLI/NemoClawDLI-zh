@@ -54,7 +54,7 @@
     {
       "path": "project_docs_explorer.py",
       "role": "rendered-document artifact gate",
-      "desc": "Projects declared docs and their local Markdown targets into Pages, rejecting missing or unsafe paths."
+      "desc": "Audits the docs catalog, contextual link graph, and canonical/generated declarations, then projects declared files and local Markdown targets into Pages."
     },
     {
       "path": "vendor_browser_dependencies.mjs",
@@ -130,7 +130,7 @@
   <div class="skill-cmds">
     <div class="skill-cmd"><b>Standalone bundle</b><code>python3 scripts/build/bundle_standalone.py --src web/nemoclaw --out /tmp/nemoclaw_bundle_check --clean --full</code></div>
     <div class="skill-cmd"><b>Pages build</b><code>bash scripts/build/build_pages.sh</code></div>
-    <div class="skill-cmd"><b>Docs projection detector</b><code>python3 scripts/build/project_docs_explorer.py --self-test</code></div>
+    <div class="skill-cmd"><b>Docs catalog + projection</b><code>python3 scripts/build/project_docs_explorer.py --self-test &amp;&amp; python3 scripts/build/project_docs_explorer.py --audit</code></div>
     <div class="skill-cmd"><b>Browser package inventory</b><code>python3 scripts/validation/course_dependency_integrity.py --self-test</code></div>
     <div class="skill-cmd"><b>Release package determinism</b><code>python3 scripts/build/package_release.py --self-test</code></div>
     <div class="skill-cmd"><b>Hosted slide deck</b><code>python3 scripts/build/build_repository_overview_html.py --check</code></div>
@@ -139,7 +139,7 @@
   <h2>Linkage map</h2>
   <div class="skill-grid">
     <a class="skill-card" href="build_pages.sh"><b>build_pages.sh</b><span>site assembler. Builds public/ from the client-side course and validation assets.</span></a>
-    <a class="skill-card" href="project_docs_explorer.py"><b>project_docs_explorer.py</b><span>rendered-document artifact gate. Projects declared docs and their local targets, then rejects missing paths.</span></a>
+    <a class="skill-card" href="project_docs_explorer.py"><b>project_docs_explorer.py</b><span>docs graph and projection gate. Rejects unlisted or orphaned authored docs, ambiguous generated files, and missing artifact targets.</span></a>
     <a class="skill-card" href="vendor_browser_dependencies.mjs"><b>vendor_browser_dependencies.mjs</b><span>browser dependency packager. Generates same-origin bundles, licenses, hashes, and source references from the exact lock.</span></a>
     <a class="skill-card" href="bundle_standalone.py"><b>bundle_standalone.py</b><span>standalone bundler. Copies and inlines the course into a self-contained web bundle.</span></a>
     <a class="skill-card" href="push_pages.sh"><b>push_pages.sh</b><span>Pages pusher. Pushes the assembled public/ output to the Pages target.</span></a>

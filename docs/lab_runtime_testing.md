@@ -6,6 +6,8 @@ and Chromium. The repository is mounted read-only into that image, so the test c
 exercise the same page code without copying source into a mutable container. Use
 `--smoke` for the container itself, `--render-only` for a real static page without
 the lab stack, and a normal URL run for the full lab-network path.
+The change-to-test mapping lives in [`agent_process.md`](agent_process.md); generated
+Pages behavior lives in [`pages_deploy.md`](pages_deploy.md).
 
 ## Security contract
 

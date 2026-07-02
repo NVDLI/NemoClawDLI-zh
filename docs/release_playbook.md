@@ -123,78 +123,17 @@ Use these when the mirror lands on GitHub:
 
 ## Public GitHub security baseline
 
-When the external mirror is public on GitHub, use GitHub-native security features
-for public intake and keep NVIDIA-hosted support services for private runtime,
-internal registries, confidential advisories, and DLI/Brev deployment evidence.
-Do not move secrets, launch URLs, NGC credentials, Cloudflare headers, or private
-scanner output to the public mirror.
+Enable the dependency graph, dependency review, Dependabot alerts, code scanning,
+secret scanning, push protection, private vulnerability reporting, and protected
+deployment environments before public intake. Fork jobs remain read-only and receive no
+secrets. Keep private runtime names, credentials, internal topology, confidential findings,
+and restricted scanner output in approved internal systems.
 
-Baseline for public GitHub availability:
-
-- Enable and monitor the dependency graph. Public repositories have dependency
-  graph support by default, and the graph can show direct/transitive dependency
-  paths, vulnerable packages, licenses, and SBOM export.
-- Enable Dependabot alerts and assign ownership. Dependabot alerts scan default
-  branch dependency data when advisory data changes or the dependency graph
-  changes; use them for public alert visibility, but keep repo-local SCA because
-  not every advisory, transitive path, image layer, or runtime install is covered.
-- Add `dependabot.yml` after the mirror has stable branch protection. Start with
-  `pip`, `github-actions`, and Docker ecosystem updates. Use grouped updates and
-  labels to avoid notification floods.
-- Require `dependency-review-action` on pull requests that change manifests or
-  lock files. For public repositories the action can enforce dependency review;
-  configure it to fail on vulnerable additions and to honor license allow/deny
-  policy when that policy is defined.
-- Enable CodeQL/code scanning. Public repositories can use code scanning; upload
-  SARIF from third-party tools if CodeQL does not cover a check. Treat code
-  scanning as complementary to repo validators, not a replacement.
-- Enable secret scanning and push protection. Public repositories get secret
-  scanning automatically for supported patterns; add custom patterns only after
-  NVIDIA/org-specific token formats are approved for that public repo. Rotate
-  leaked credentials immediately; history cleanup is secondary after revocation.
-- Keep `SECURITY.md` or the GitHub private vulnerability reporting path clear
-  before public intake. Security reports should not go through normal Issues.
-- Publish or retain SBOM artifacts from CI. Prefer CycloneDX JSON from the
-  resolved environment, and upload/submit dependency data where the host supports
-  it. If dependency submission and dependency review both run, run submission
-  first or configure retries so PR review does not race missing snapshots.
-
-NVIDIA-hosted support remains appropriate when any of these are true:
-
-- The scan needs private base images, NGC access, internal package indexes, or
-  DLI/Brev deployment credentials.
-- The report contains non-public component names, private URLs, customer data,
-  internal service topology, or sensitive exploit detail.
-- The job requires privileged container behavior such as the OpenClaw/OpenShell
-  runtime path, Docker socket access, or GPU/CUDA image assembly.
-- A finding needs confidential triage before the public mirror can safely show it.
-
-## Security hardening roadmap
-
-The current repo-local guardrails are the floor: fast dependency floor audit,
-waiver audit, resolved-environment SCA, SBOM artifacts, source gate, and ship
-validation. Work beyond that should be split into small MRs with clear ownership.
-
-| Step | Public GitHub path | NVIDIA/internal path | Notes |
-|---|---|---|---|
-| Reproducible Python resolution | Add lock or constraints and Dependabot update policy | Use internal CI cache or build image as reference resolver | Reduces drift between local, CI, and lab image. |
-| Image SCA | Build public-safe images and scan with Trivy/Grype/OSV, upload SARIF where useful | Scan NGC/private/DLI images in internal CI or registry tooling | Do not publish private layer names or credentials. |
-| Dependency review | Require `dependency-review-action` on PRs | Keep GitLab `security_deep_sca` for canonical branch until mirror becomes source | GitHub review is PR-diff oriented; deep SCA is resolved-env oriented. |
-| Code scanning | Enable CodeQL default setup plus SARIF uploads for extra tools | Run proprietary or NVIDIA-hosted checks internally when rules are not public-safe | Public alerts should be actionable without exposing private topology. |
-| Secret scanning | Use GitHub secret scanning, push protection, and approved custom patterns | Keep internal secret scans for NVIDIA/private token families | Rotate first; do not rely on history rewriting as mitigation. |
-| Waivers/VEX | Keep `vulnerability-waivers.json`; consider VEX only if downstream consumers need machine-readable non-affected status | Keep confidential exceptions internal until safe to disclose | Waivers must expire and name owner/source. |
-| Governance | CODEOWNERS + protected branches + required checks | GitLab protected refs and confidential issue workflow remain canonical | Add external CODEOWNERS only when real org/team handles exist. |
-
-Legitimate stopping points:
-
-- Do not force full image builds on every documentation PR; schedule them, run them
-  on dependency/runtime/image changes, or use cached signed build outputs.
-- Do not publish scanner reports that disclose private image names, internal URLs,
-  or exploit paths. Summarize public-safe status and keep evidence internal.
-- Do not add broad Dependabot automation until branch protection, labels, owners,
-  and triage capacity exist. Otherwise update noise hides real risk.
-- Do not create permanent waivers for unfixed upstream vulnerabilities. Use
-  time-boxed waivers or remove the dependency when the package is unused.
+Repository dependency floors, exact locks, SCA layers, waiver handling, SBOM boundaries,
+and the hardening backlog live in [`dependency_security.md`](dependency_security.md).
+Publication assets and retention live in [`release_artifacts.md`](release_artifacts.md).
+The complete release acceptance matrix lives in
+[`release-test-plan.md`](release-test-plan.md).
 
 ## Internal GitLab settings
 
@@ -268,134 +207,24 @@ Release checklist:
 7. Tag release from protected source.
 8. Publish release notes grouped by learner-facing, runtime/deploy, governance, and known issues.
 
-### GitHub release runbook
-
-The checked-in `.github/workflows/release.yml` prepares a release but cannot authorize one.
-The tag, artifact, retention, and recovery contract lives in
-[`docs/release_artifacts.md`](release_artifacts.md).
-
-1. Merge the release candidate through the protected `main` ruleset. Required `pages / test` must
-   pass on the final reviewed SHA.
-2. Have a release manager create a protected annotated semantic tag such as `v1.2.3` on a commit
-   contained in `main`. Do not retarget, delete, or reuse an existing release tag.
-3. Run the `release` workflow manually and provide that tag. The read-only job verifies the tag,
-   runs the full static/security gate, builds Pages without live material drift, creates a stable
-   versioned tar archive, release manifest, resolved-environment CycloneDX SBOM, `SHA256SUMS`, and
-   operator-only validation evidence.
-4. The write job waits on the protected `github-release` environment. A reviewer other than the
-   initiator checks the SHA, tag, validation artifact, checksum, known issues, and release notes.
-5. Approval grants `contents: write` only to the final job. It creates or refreshes a **Draft release**.
-   The workflow never publishes a release directly.
-6. A release manager reviews the draft, edits generated notes into learner-facing, runtime/deploy,
-   governance, and known-issue sections, verifies attached checksums, then publishes it in GitHub.
-7. Confirm the release and Pages deployment histories, inspect Rule Insights for denied or bypassed
-   operations, and record the release URL in the milestone. Any bypass needs an owner and rationale.
-
-Enable immutable releases on the external repository before the first publication. Build the draft
-and attach every asset before publishing because immutable release assets cannot be replaced later.
-
-If validation fails, fix through a new Issue-linked PR and create a new tag after merge. Never move a
-published tag, weaken a required check, approve your own environment job, or publish an artifact built
-from an unreviewed branch.
-
 ## CI/CD policy
 
-| Layer | Runs on | Blocks merge | Purpose |
-|---|---|---|---|
-| Static gate | every branch/PR | yes | structure, links, SKILL, source, course contract |
-| Dependency floor gate | every branch/PR | yes | prevent known vulnerable direct floors/pins from entering manifests |
-| Waiver gate | every branch/PR | yes | require owned, sourced, unexpired vulnerability exceptions |
-| Resolved-environment SCA | schedules, dependency/runtime changes, manual MR job | yes when dependency graph changes; otherwise advisory/manual | install workspace requirements, run `pip-audit --local --strict`, emit CycloneDX SBOM |
-| Image SCA | schedules, image/base/runtime changes, release candidates | yes for release candidates; too heavy for every prose PR | scan built service images and base layers |
-| Browser/runtime gate | runtime, Studio, OpenClaw, page JS changes | yes when touched | page execution and visual/runtime smoke |
-| Deployment gate | protected release branches and manual deploys | release manager | Pages and DLI platform evidence |
-
-Required external PR checks:
+`scripts/validation/release_gate.py` owns the deterministic command sequence used by GitLab,
+GitHub Pages, the protected release workflow, and local contributors:
 
 ```bash
-python3 scripts/validation/validate_layout.py --quiet
-python3 scripts/skills/skill_consistency.py
-python3 scripts/skills/skill_contract.py
-python3 scripts/compliance/source_gate.py
-python3 scripts/security/audit_python_dependencies.py
-python3 scripts/security/audit_vulnerability_waivers.py
-python3 scripts/security/audit_dependency_locks.py --self-test
-python3 scripts/security/audit_dependency_locks.py
-python3 scripts/figures/render_security_architecture.py --check
-python3 scripts/validation/security_architecture_audit.py --self-test
-python3 scripts/validation/security_architecture_audit.py
-python3 scripts/validation/release_evidence_audit.py --self-test
-python3 scripts/validation/release_evidence_audit.py
-bash scripts/runtime/run_engine.sh --self-test
-python3 scripts/validation/validate_bundle.py --scope ship
+python3 scripts/validation/release_gate.py --tier fast --no-write
+python3 scripts/validation/release_gate.py --tier ship
 ```
 
-For dependency changes, also run the resolved-environment SCA job or equivalent:
-
-```bash
-python3 -m venv .runtime-venv
-python3 -m venv .sca-venv
-.runtime-venv/bin/python -m pip install -r workspace/requirements.lock
-.sca-venv/bin/python -m pip install -r scripts/security/requirements-sca.lock
-PATH="$PWD/.sca-venv/bin:$PATH" .sca-venv/bin/python scripts/security/run_full_sca.py --execute --python-local --cyclonedx-env --out-dir scripts/security/reports/deep-workspace
-```
-
-For page runtime or Studio changes:
-
-```bash
-scripts/runtime/browser_env_probe.sh
-CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only
-```
-
-For deployment changes, parse compose YAML and run Compose config where the plugin exists:
-
-```bash
-python3 - <<'PY'
-from pathlib import Path
-import yaml
-for f in Path('deploy').glob('docker-compose*.yml'):
-    yaml.safe_load(f.read_text())
-    print('yaml ok', f)
-PY
-```
-
-```bash
-COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD \
-  python3 -m podman_compose -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml config
-```
-
-Use `docker compose` or `podman compose` only when `scripts/runtime/browser_env_probe.sh`
-shows that native Compose is installed. Docker may exist without Compose v2, and
-Podman may exist without `podman compose`; that is why the probe is the first step.
-
-## Label taxonomy
-
-Area labels: `area:web`, `area:cpu`, `area:deploy`, `area:scripts`, `area:docs`, `area:materials`, `area:security`, `area:translation`.
-
-Kind labels: `kind:bug`, `kind:course-content`, `kind:source-correction`, `kind:accessibility`, `kind:question`, `kind:feature`, `kind:release`, `kind:validation`.
-
-State labels: `state:needs-triage`, `state:needs-evidence`, `state:accepted`, `state:blocked-external-source`, `state:blocked-platform`, `state:ready-for-review`, `state:needs-release-note`.
-
-Risk labels: `risk:learner-facing`, `risk:deployment`, `risk:security-privacy`, `risk:license-source`, `risk:generated-output`.
-
-Severity labels: `severity:blocker`, `severity:major`, `severity:minor`, `severity:advisory`.
-
-Board columns: Needs triage, Needs evidence, Accepted, In progress, Review, Ready for release, Released, Closed no action.
-
-## Engagement model
-
-Use Discussions for learning and community signal. Use Issues for tracked work.
-
-Recommended discussion categories: Announcements, Questions, Course feedback, Ideas, Show and tell, Troubleshooting.
-
-Convert to Issue when a discussion identifies a reproducible defect, concrete source correction, course wording problem with a file/page, or validated accessibility/runtime issue. Keep broad learning help and future brainstorming in Discussions.
-
-Response standard:
-
-- Acknowledge with route, not promises.
-- Ask for exact page, runtime, command output, or source citation when missing.
-- Link relevant docs or validation command.
-- Do not ask students to expose API keys, tokens, private DLI URLs, or Cloudflare headers.
+Host workflows separately enforce submission shape, commit signoff ranges, live source drift,
+protected tags, deployment approval, and post-deploy smoke because those checks require host
+context. The full automated, browser, service, and external-evidence matrix lives in
+[`release-test-plan.md`](release-test-plan.md). Dependency resolution and SCA procedures live
+in [`dependency_security.md`](dependency_security.md). Pages staging and deployment mechanics
+live in [`pages_deploy.md`](pages_deploy.md). Containerized browser and Compose execution live
+in [`lab_runtime_testing.md`](lab_runtime_testing.md). Tracker labels and discussion routing
+live in [`issue_standards.md`](issue_standards.md).
 
 ## Kickstart settings checklist
 

@@ -95,26 +95,14 @@ and protected release actions close that gap.
 ## Validate Before Pushing
 
 ```bash
-python3 scripts/validation/validate_layout.py --quiet
-python3 scripts/skills/skill_consistency.py
-python3 scripts/validation/contribution_safety_audit.py --self-test
-python3 scripts/validation/contribution_safety_audit.py
-python3 scripts/validation/security_architecture_audit.py --self-test
-python3 scripts/validation/security_architecture_audit.py
-python3 scripts/validation/release_evidence_audit.py --self-test
-python3 scripts/validation/release_evidence_audit.py
-python3 scripts/build/assemble_locale_overlay.py --self-test
-python3 scripts/validation/localization_audit.py --self-test
-python3 scripts/validation/localization_audit.py --locale pt-BR
-python3 scripts/compliance/source_gate.py
-python3 scripts/security/audit_dependency_locks.py --self-test
-python3 scripts/security/audit_dependency_locks.py
-python3 scripts/security/audit_sbom_policy.py --self-test
-python3 scripts/build/package_release.py --self-test
-bash scripts/runtime/run_engine.sh --self-test
-python3 scripts/validation/validate_bundle.py --scope ship
+python3 scripts/validation/release_gate.py --tier fast --no-write
 python3 scripts/validation/tenets.py --check
 ```
+
+Run `python3 scripts/validation/release_gate.py --tier ship` before release or after a
+cross-cutting contract change. See
+[`docs/release-test-plan.md`](docs/release-test-plan.md) for the constituent checks and
+evidence expectations.
 
 Service-stack notebook tests need the lab services running:
 

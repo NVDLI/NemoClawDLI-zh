@@ -216,10 +216,7 @@ def audit() -> list[str]:
             findings.append(f"AGENT_QUICKSTART.md missing {label}: {token}")
 
     for label, token in {
-        "release playbook probe": "scripts/runtime/browser_env_probe.sh",
-        "release playbook docker compose caveat": "Docker may exist without Compose v2",
-        "release playbook podman compose caveat": "Podman may exist without `podman compose`",
-        "release playbook python compose": "python3 -m podman_compose",
+        "release playbook runtime guide": "lab_runtime_testing.md",
     }.items():
         if token not in release_playbook:
             findings.append(f"docs/release_playbook.md missing {label}: {token}")

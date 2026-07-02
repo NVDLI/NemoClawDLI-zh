@@ -6,6 +6,8 @@ cryptography inventory, release behavior, and test mapping live in
 [`product-design.md`](product-design.md) and [`release-test-plan.md`](release-test-plan.md). These
 documents remain independent of any internal review system, program identifier, submission version,
 or approval state.
+Regeneration commands and the public evidence boundary live in
+[`security-architecture.md`](security-architecture.md).
 
 ## System scope
 

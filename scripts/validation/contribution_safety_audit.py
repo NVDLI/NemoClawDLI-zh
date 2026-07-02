@@ -57,6 +57,7 @@ CONTRACT_FILES = (
     "scripts/git-hooks/pre-push",
     "scripts/skills/gen_skill_hierarchy.py",
     "scripts/validation/SKILL.html",
+    "scripts/validation/release_gate.py",
     "scripts/validation/validate_bundle.py",
     "scripts/validation/gitlab_governance_audit.py",
     "workspace/requirements.lock",
@@ -259,6 +260,23 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
                            "keep the complete submission gate block within the first 2700 characters"))
 
     pages = docs[".github/workflows/pages.yml"]
+    release_gate = docs["scripts/validation/release_gate.py"]
+    for token, code, fix in (
+        ('py("scripts/validation/contribution_safety_audit.py", "--self-test")',
+         "shared-safety-gate",
+         "run contribution-boundary mutations and emit its report from the shared gate"),
+        ("docs/validation/contribution-safety.json", "shared-safety-report",
+         "retain machine-readable contribution-boundary evidence in the shared gate"),
+        ('py("scripts/build/package_release.py", "--self-test")', "shared-package-selftest",
+         "test deterministic release packaging from the shared gate"),
+        ('py("scripts/security/audit_sbom_policy.py", "--self-test")',
+         "shared-sbom-policy-selftest",
+         "prove the SBOM policy detector from the shared gate"),
+        ('py("scripts/security/audit_dependency_locks.py", "--self-test")',
+         "shared-lock-selftest",
+         "prove dependency-lock mutations from the shared gate"),
+    ):
+        require(release_gate, token, "scripts/validation/release_gate.py", code, out, fix)
     require(pages, "  pull_request:\n", ".github/workflows/pages.yml", "github-pr-trigger", out,
             "run the required static gate on pull_request")
     if "pull_request_target:" in pages:
@@ -274,13 +292,11 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "pr-deploy-boundary", out, "prevent pull-request runs from reaching deployment")
     require(pages, "github.ref == 'refs/heads/main'", ".github/workflows/pages.yml",
             "pages-main-only", out, "prevent workflow_dispatch or non-main refs from deploying Pages")
-    require(pages, "contribution_safety_audit.py --self-test", ".github/workflows/pages.yml",
+    require(pages, "release_gate.py --tier ship", ".github/workflows/pages.yml",
             "github-safety-selftest", out, "run detector mutations in GitHub CI")
     require(pages, "contribution_safety_audit.py --require-publication-approved",
             ".github/workflows/pages.yml", "publication-deploy-guard", out,
             "refuse external Pages deployment until publication is approved")
-    require(pages, "package_release.py --self-test", ".github/workflows/pages.yml",
-            "github-package-selftest", out, "test deterministic release packaging in public CI")
     require(pages, "--submission-env CONTRIBUTION_BODY", ".github/workflows/pages.yml",
             "github-submission-contract", out, "validate the live pull-request body")
     require(pages, "--commit-range \"$DCO_RANGE\"", ".github/workflows/pages.yml",
@@ -289,8 +305,6 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
         out.append(finding("github-material-lock", ".github/workflows/pages.yml",
                            "test and deploy jobs must install material tooling from the reviewed lock",
                            "use scripts/materials/requirements.lock in both Python setup paths"))
-    require(pages, "audit_sbom_policy.py --self-test", ".github/workflows/pages.yml",
-            "github-sbom-policy-selftest", out, "prove the SBOM policy detector in public PR CI")
     for rel in (".github/workflows/pages.yml", ".github/workflows/release.yml",
                 ".github/workflows/codeql.yml", ".github/workflows/dependency-review.yml"):
         checkout_count = docs[rel].count("uses: actions/checkout@")
@@ -322,8 +336,9 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "release-immutable", out, "refuse to update a published release")
     require(release, 'git cat-file -t "refs/tags/$RELEASE_TAG"', ".github/workflows/release.yml",
             "release-annotated-tag", out, "refuse lightweight release tags")
-    for token in ("package_release.py --self-test", "release-manifest.json", "SHA256SUMS",
-                  "python-env.cdx.json", "release-assets/*"):
+    require(release, "release_gate.py --tier ship", ".github/workflows/release.yml",
+            "release-shared-gate", out, "run the shared deterministic gate before packaging")
+    for token in ("release-manifest.json", "SHA256SUMS", "python-env.cdx.json", "release-assets/*"):
         require(release, token, ".github/workflows/release.yml", "release-artifact-set", out,
                 f"retain required release artifact contract token: {token}")
     require(release, "contribution_safety_audit.py --require-publication-approved",
@@ -379,19 +394,13 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "retain runtime SBOM completeness and retired-component enforcement")
 
     gitlab = docs[".gitlab-ci.yml"]
-    require(gitlab, "contribution_safety_audit.py --self-test", ".gitlab-ci.yml",
+    require(gitlab, "release_gate.py --tier ship", ".gitlab-ci.yml",
             "gitlab-safety-selftest", out, "run detector mutations in GitLab CI")
-    require(gitlab, "package_release.py --self-test", ".gitlab-ci.yml",
-            "gitlab-package-selftest", out, "test deterministic release packaging in canonical CI")
-    require(gitlab, "--report docs/validation/contribution-safety.json", ".gitlab-ci.yml",
-            "gitlab-safety-report", out, "retain a machine-readable contribution-boundary report")
     require(gitlab, "CI_MERGE_REQUEST_DESCRIPTION", ".gitlab-ci.yml", "gitlab-submission-contract", out,
             "validate merge-request descriptions when CI has MR context")
     require(gitlab, '--commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"',
             ".gitlab-ci.yml", "gitlab-dco-check", out,
             "validate every merge-request commit signoff")
-    require(gitlab, "audit_dependency_locks.py --self-test", ".gitlab-ci.yml",
-            "gitlab-lock-selftest", out, "run dependency-lock mutations in canonical CI")
     require(gitlab, "audit_sbom_policy.py --sbom", ".gitlab-ci.yml", "gitlab-sbom-policy", out,
             "evaluate the generated runtime SBOM instead of only uploading it")
     require(gitlab, ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock",
@@ -458,12 +467,14 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "run the deterministic release-packaging self-test before push")
 
     playbook = docs["docs/release_playbook.md"]
-    for token in ("GitHub release runbook", "github-release", "Rule Insights", "Draft release",
-                  "Host settings are not versioned by this repository", "gitlab_governance_audit.py"):
+    for token in ("Host settings are not versioned by this repository", "gitlab_governance_audit.py",
+                  "release_artifacts.md", "release_gate.py --tier ship"):
         require(playbook, token, "docs/release_playbook.md", "release-playbook", out,
                 f"document {token} in the GitHub release/operator runbook")
-    require(playbook, "docs/release_artifacts.md", "docs/release_playbook.md",
-            "release-artifact-doc", out, "link the artifact and tag contract from the release runbook")
+    artifact_doc = docs["docs/release_artifacts.md"]
+    for token in ("GitHub release runbook", "github-release", "draft release", "immutable"):
+        require(artifact_doc, token, "docs/release_artifacts.md", "release-artifact-doc", out,
+                f"document {token} in the artifact and tag contract")
     package_source = docs["scripts/build/package_release.py"]
     for token in ('mtime=0', 'format=tarfile.PAX_FORMAT', '"release-manifest.json"', '"SHA256SUMS"'):
         require(package_source, token, "scripts/build/package_release.py", "release-package-contract", out,
@@ -586,7 +597,7 @@ def self_test() -> list[str]:
             ("mutable-action-ref", ".github/workflows/pages.yml", "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683", "actions/checkout@v4"),
             ("unpinned-workflow-install", ".github/workflows/pages.yml", "--requirement scripts/materials/requirements.lock", "requests beautifulsoup4 markdownify lxml"),
             ("github-material-lock", ".github/workflows/pages.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),
-            ("github-sbom-policy-selftest", ".github/workflows/pages.yml", "audit_sbom_policy.py --self-test", "audit_sbom_policy.py --help"),
+            ("shared-sbom-policy-selftest", "scripts/validation/release_gate.py", 'py("scripts/security/audit_sbom_policy.py", "--self-test")', 'py("scripts/security/audit_sbom_policy.py", "--help")'),
             ("pr-deploy-boundary", ".github/workflows/pages.yml", "if: github.event_name != 'pull_request'", "if: always()"),
             ("pages-main-only", ".github/workflows/pages.yml", "github.ref == 'refs/heads/main'", "github.ref != ''"),
             ("checkout-credential", ".github/workflows/pages.yml", "persist-credentials: false", "persist-credentials: true"),
@@ -613,9 +624,9 @@ def self_test() -> list[str]:
             ("prepush-package-selftest", "scripts/git-hooks/pre-push", "PACKAGE_RELEASE=", "PACKAGE_TEST="),
             ("prepush-lock-selftest", "scripts/git-hooks/pre-push", 'LOCK_AUDIT="$T1/scripts/security/audit_dependency_locks.py"', 'LOCK_AUDIT="$T1/scripts/security/noop.py"'),
             ("prepush-sbom-policy", "scripts/git-hooks/pre-push", 'SBOM_POLICY="$T1/scripts/security/audit_sbom_policy.py"', 'SBOM_POLICY="$T1/scripts/security/noop.py"'),
-            ("gitlab-safety-selftest", ".gitlab-ci.yml", "contribution_safety_audit.py --self-test", "contribution_safety_audit.py --version"),
+            ("gitlab-safety-selftest", ".gitlab-ci.yml", "release_gate.py --tier ship", "release_gate.py --tier fast"),
             ("gitlab-dco-check", ".gitlab-ci.yml", '--commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', '--commit-range "${CI_COMMIT_SHA}"'),
-            ("gitlab-lock-selftest", ".gitlab-ci.yml", "audit_dependency_locks.py --self-test", "audit_dependency_locks.py --version"),
+            ("shared-lock-selftest", "scripts/validation/release_gate.py", 'py("scripts/security/audit_dependency_locks.py", "--self-test")', 'py("scripts/security/audit_dependency_locks.py", "--version")'),
             ("gitlab-sbom-policy", ".gitlab-ci.yml", "audit_sbom_policy.py --sbom", "audit_sbom_policy.py --help"),
             ("gitlab-runtime-lock", ".gitlab-ci.yml", ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock", ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.txt"),
             ("gitlab-sca-lock", ".gitlab-ci.yml", ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock", ".sca-tools-venv/bin/python -m pip install -q pip-audit cyclonedx-bom"),

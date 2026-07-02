@@ -26,8 +26,10 @@ def _job_block(text: str, job: str) -> str:
 
 
 def main() -> int:
-    ci = _root() / ".gitlab-ci.yml"
+    root = _root()
+    ci = root / ".gitlab-ci.yml"
     text = ci.read_text(encoding="utf-8")
+    gate = (root / "scripts/validation/release_gate.py").read_text(encoding="utf-8")
     findings: list[str] = []
 
     pages = _job_block(text, "pages")
@@ -54,7 +56,8 @@ def main() -> int:
         (pages, r"branch_preview_manifest_audit\.py --artifact-root public --manifest \"public/\$CI_COMMIT_REF_SLUG/branches\.json\"", "pages job must validate branch foyer manifest paths"),
         (pages, r"--published-ref \"\$preview_ref=\$CI_COMMIT_REF_SLUG\"", "root manifest must list only the preview published in this artifact"),
         (test, r"allow_failure:\s*false", "test gate must block Pages deployment on required-tier failures"),
-        (test, r"branch_preview_manifest_audit\.py --self-test", "test gate must self-test branch availability detection"),
+        (test, r"release_gate\.py --tier ship", "test job must run the shared ship gate"),
+        (gate, r'branch_preview_manifest_audit\.py", "--self-test"', "shared gate must self-test branch availability detection"),
         (smoke, r"needs:\s*\[\"pages\"\]", "live Pages smoke must wait for the deploy job"),
         (smoke, r"branch_preview_manifest_audit\.py --base-url \"\$CI_PAGES_URL/\"", "post-deploy job must probe the live Pages root"),
         (smoke, r'preview_ref="\$\{CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-\$CI_COMMIT_REF_NAME\}"', "branch smoke must resolve branch and MR source refs"),

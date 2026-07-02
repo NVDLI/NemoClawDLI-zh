@@ -30,12 +30,8 @@ Describe related files, generated beacons, docs, validators, and runtime paths c
 Record `PASS`, `FAIL`, or `BLOCKED` beside each command you actually ran. A checked box without
 the result is not evidence.
 
-- [ ] `python3 scripts/validation/validate_layout.py --quiet`
-- [ ] `python3 scripts/skills/skill_consistency.py`
-- [ ] `python3 scripts/skills/skill_contract.py`
-- [ ] `python3 scripts/compliance/source_gate.py`
-- [ ] `bash scripts/runtime/run_engine.sh --self-test`
-- [ ] `python3 scripts/validation/validate_bundle.py --scope ship`
+- [ ] `python3 scripts/validation/release_gate.py --tier fast --no-write`
+- [ ] `python3 scripts/validation/release_gate.py --tier ship` for cross-cutting or release work
 - [ ] Browser/runtime check, if page JS, Studio, OpenClaw, or runnable cells changed
 - [ ] Build check, if navigation, deploy path, or Pages output changed
 

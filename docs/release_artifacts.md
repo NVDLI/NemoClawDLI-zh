@@ -2,6 +2,10 @@
 
 This contract separates preview deployment from versioned publication. The repository remains
 an internal release candidate until `RELEASE_STATUS.json` records external approval.
+The operator sequence and host settings live in
+[`release_playbook.md`](release_playbook.md); verification lives in
+[`release-test-plan.md`](release-test-plan.md), and Pages preview mechanics live in
+[`pages_deploy.md`](pages_deploy.md).
 
 ## Ref and artifact lanes
 
@@ -88,6 +92,23 @@ releases. GitHub then locks the published tag and assets and emits a release att
 
 Draft assets may be replaced after a failed review. Published assets and tags are immutable. A bad
 published artifact is superseded by a new patch version and a clear release note.
+
+## GitHub release runbook
+
+The checked-in `.github/workflows/release.yml` prepares a release but cannot authorize one.
+
+1. Merge the candidate through protected `main` after required checks pass on the reviewed SHA.
+2. A release manager creates a protected annotated SemVer tag on a commit contained in `main`.
+3. Run the release workflow with that tag. The read-only job verifies the tag and builds the
+   archive, manifest, browser and Python SBOMs, checksums, and operator evidence.
+4. The write job waits on the protected `github-release` environment. An eligible reviewer checks
+   the SHA, tag, evidence, known issues, and release notes before write authority is granted.
+5. The workflow creates or refreshes a draft release; it never publishes directly.
+6. A release manager reviews the draft, verifies attached assets, and publishes it.
+7. Review deployment history and ruleset insight. Record any authorized bypass with owner and reason.
+
+Enable immutable releases before the first publication. If validation fails, fix through a new
+issue-linked change and create a new tag after merge. Never move or reuse a published tag.
 
 Primary references: [Git annotated tags](https://git-scm.com/docs/git-tag),
 [GitHub immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases),

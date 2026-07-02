@@ -1,6 +1,10 @@
 # Agent process guardrails
 
 This note is for agents and maintainers working across issues, merge requests, and broad course prose. It turns repeated review feedback into a checklist that can be audited.
+Issue anatomy and tracker cadence live in [`issue_standards.md`](issue_standards.md).
+Runtime checks live in [`lab_runtime_testing.md`](lab_runtime_testing.md), and the
+service-document edit hazard lives in
+[`notebook_corruption_prevention.md`](notebook_corruption_prevention.md).
 
 ## Start from the tracker
 
@@ -53,6 +57,15 @@ This note is for agents and maintainers working across issues, merge requests, a
 ## Validation ladder
 
 - Always run `git diff --check`.
+- Treat `docs/validation/latest.md` and `latest.json` as the current finding inventory.
+  Do not maintain a second snapshot of counts or affected files in prose.
+- Fix the learner or operator problem. Do not hide a surface, add decorative structure,
+  flatten prose into stubs, or remove useful comments only to silence a detector.
+- Use advisory findings as review prompts. A lower count is evidence only when the diff is
+  clearer, safer, or easier to maintain.
+- Run the shared fast ladder with
+  `python3 scripts/validation/release_gate.py --tier fast --no-write`; use `--tier ship`
+  for the complete deterministic repository gate.
 - For governance, contribution, hook, CI, permission, or release changes, run `contribution_safety_audit.py`, its mutation self-test, and the full ship gate.
 - For dependency, service image, runtime package, or security-exception changes, run `python3 scripts/security/audit_python_dependencies.py` and `python3 scripts/security/audit_vulnerability_waivers.py` before the full gate.
 - For content or navigation changes, run `python3 scripts/skills/skill_consistency.py`, `python3 scripts/validation/validate_layout.py --quiet`, and `python3 scripts/validation/validate_bundle.py --no-write --scope ship`.
