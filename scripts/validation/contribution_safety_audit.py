@@ -558,6 +558,18 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
     for token in ('mtime=0', 'format=tarfile.PAX_FORMAT', '"release-manifest.json"', '"SHA256SUMS"'):
         require(package_source, token, "scripts/build/package_release.py", "release-package-contract", out,
                 f"keep deterministic release-packaging primitive: {token}")
+    package_manifest = re.search(
+        r'(?ms)^\s*manifest = \{.*?(?=^\s*manifest_path\.write_text)', package_source
+    )
+    if not package_manifest or '"malware_scan_required"' not in package_manifest.group(0):
+        out.append(finding(
+            "release-malware-evidence-contract", "scripts/build/package_release.py",
+            "release manifest does not identify archives requiring external malware evidence",
+            "make every packaged archive identify its required external malware evidence",
+        ))
+    require(artifact_doc, "required-before-publication", "docs/release_artifacts.md",
+            "release-malware-evidence-doc", out,
+            "document how the release manifest blocks publication pending authoritative evidence")
     require(docs["scripts/build/build_branch_manifest.py"], 'os.environ.get("SOURCE_DATE_EPOCH")',
             "scripts/build/build_branch_manifest.py", "release-build-epoch", out,
             "make generated branch metadata reproducible for tagged builds")
@@ -603,7 +615,7 @@ def audit_submission(body: str) -> list[dict[str, str]]:
     if not re.search(r"(?im)\b(?:Addresses|Closes|Fixes)\s+#[0-9]+\b", body or ""):
         out.append(finding("submission-issue", "submission", "no explicit issue relationship",
                            "add Addresses #N, or Closes #N only when acceptance is fully met"))
-    if not re.search(r"(?im)^- \[[xX]\] `?(?:web/|cpu/|deploy/|scripts/|docs/|materials)", body or ""):
+    if not re.search(r"(?im)^- \[[xX]\] `?(?:web/|cpu/|workspace/|deploy/|scripts/|docs/|materials)", body or ""):
         out.append(finding("submission-surface", "submission", "no changed surface is checked",
                            "check every touched surface in ## Surfaces touched"))
     if not re.search(r"(?im)\b(?:PASS|FAIL|BLOCKED)\b", body or ""):
@@ -689,6 +701,8 @@ def self_test() -> list[str]:
             ("release-annotated-tag", ".github/workflows/release.yml", 'git cat-file -t "refs/tags/$RELEASE_TAG"', 'git cat-file -t "$RELEASE_TAG^{commit}"'),
             ("release-artifact-set", ".github/workflows/release.yml", "release-assets/release-manifest.json", "release-assets/manifest.json"),
             ("release-package-contract", "scripts/build/package_release.py", "mtime=0", "mtime=None"),
+            ("release-malware-evidence-contract", "scripts/build/package_release.py", '"malware_scan_required"', '"scan_optional"'),
+            ("release-malware-evidence-doc", "docs/release_artifacts.md", "required-before-publication", "optional-after-publication"),
             ("release-build-epoch", "scripts/build/build_branch_manifest.py", 'os.environ.get("SOURCE_DATE_EPOCH")', 'os.environ.get("BUILD_TIME")'),
             ("publication-release-guard", ".github/workflows/release.yml", "contribution_safety_audit.py --require-publication-approved", "contribution_safety_audit.py"),
             ("publication-deploy-guard", ".github/workflows/pages.yml", "contribution_safety_audit.py --require-publication-approved", "contribution_safety_audit.py"),
@@ -757,7 +771,7 @@ def self_test() -> list[str]:
         if audit_publication_approval(fixture):
             failures.append("approved release rejected by the external publication guard")
 
-    good = """## Summary\nBound the release path.\n## Issue link\nAddresses #12\n## Surfaces touched\n- [x] `scripts/`\n## Blast radius checked\nHooks and CI.\n## Validation evidence\nPASS: audit.\n## Human ownership\nRelease manager reviews.\n## Risk and rollback\nRevert commit.\n## Out of scope\nHost settings.\n"""
+    good = """## Summary\nBound the release path.\n## Issue link\nAddresses #12\n## Surfaces touched\n- [x] `workspace/`\n## Blast radius checked\nHooks and CI.\n## Validation evidence\nPASS: audit.\n## Human ownership\nRelease manager reviews.\n## Risk and rollback\nRevert commit.\n## Out of scope\nHost settings.\n"""
     if audit_submission(good):
         failures.append("valid submission fixture rejected")
     if not audit_publication_approval(ROOT):

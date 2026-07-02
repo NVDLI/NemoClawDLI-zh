@@ -16,6 +16,7 @@ Addresses #
 
 - [ ] `web/`
 - [ ] `cpu/`
+- [ ] `workspace/`
 - [ ] `deploy/`
 - [ ] `scripts/`
 - [ ] `docs/`

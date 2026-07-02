@@ -67,7 +67,7 @@
     {
       "path": "audit_dependency_locks.py",
       "role": "dependency lock audit",
-      "desc": "Rejects non-exact, missing, or stale Python 3.11 runtime, material-tool, and SCA locks with mutation coverage."
+      "desc": "Rejects non-exact, missing, stale, or retired Python 3.11 runtime, material-tool, and SCA lock entries with mutation coverage."
     },
     {
       "path": "audit_sbom_policy.py",
@@ -136,7 +136,7 @@
     <a class="skill-card" href="iframe_proxy_worker_findings.md"><b>iframe_proxy_worker_findings.md</b><span>worker follow-up findings. Documents proxy-worker concerns for a later deployment-owner MR without changing worker source in this branch.</span></a>
     <a class="skill-card" href="audit_python_dependencies.py"><b>audit_python_dependencies.py</b><span>dependency vulnerability floor audit. Checks tracked Python declarations against PyPI/OSV metadata, exact workspace pins, and retired direct dependencies.</span></a>
     <a class="skill-card" href="audit_vulnerability_waivers.py"><b>audit_vulnerability_waivers.py</b><span>vulnerability waiver audit. Validates explicit, owned, sourced, and unexpired exceptions.</span></a>
-    <a class="skill-card" href="audit_dependency_locks.py"><b>audit_dependency_locks.py</b><span>dependency lock audit. Enforces exact Python 3.11 runtime, material-tool, and SCA closures plus direct-manifest parity.</span></a>
+    <a class="skill-card" href="audit_dependency_locks.py"><b>audit_dependency_locks.py</b><span>dependency lock audit. Enforces exact Python 3.11 closures, direct-manifest parity, and absence of retired runtime components.</span></a>
     <a class="skill-card" href="audit_sbom_policy.py"><b>audit_sbom_policy.py</b><span>runtime SBOM policy audit. Proves lock coverage, rejects retired components, and reports whether license metadata is SPDX, named, or absent.</span></a>
     <a class="skill-card" href="run_full_sca.py"><b>run_full_sca.py</b><span>full SCA and SBOM runner. Supports scanner-separated runtime targeting for clean release SBOMs.</span></a>
     <a class="skill-card" href="vulnerability-waivers.json"><b>vulnerability-waivers.json</b><span>waiver registry. Empty by default; temporary exceptions live here.</span></a>

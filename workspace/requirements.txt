@@ -30,7 +30,6 @@ langchain-text-splitters==1.1.2
 langgraph==1.2.6
 langgraph-sdk==0.4.2
 langsmith==0.9.3
-litellm==1.90.0
 mcp==1.28.1  # Model Context Protocol SDK for agent tool integration
 
 # Data & Retrieval

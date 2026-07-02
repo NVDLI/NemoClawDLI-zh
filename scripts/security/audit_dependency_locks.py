@@ -54,6 +54,13 @@ def audit(root: Path = ROOT) -> list[str]:
         for name, version in source.items():
             if lock.get(name) != version:
                 errors.append(f"{lock_rel}: stale direct pin {name}; expected {version}, found {lock.get(name, 'missing')}")
+    from audit_python_dependencies import FORBIDDEN_DIRECT_REQUIREMENTS
+    workspace_lock, _ = pins(root / "workspace/requirements.lock")
+    for name in sorted(set(workspace_lock) & set(FORBIDDEN_DIRECT_REQUIREMENTS)):
+        errors.append(
+            f"workspace/requirements.lock: retired runtime component present: {name}; "
+            "remove its direct or transitive dependency before release"
+        )
     return errors
 
 
@@ -74,6 +81,7 @@ def self_test() -> list[str]:
 
         mutations = (
             ("workspace/requirements.lock", "fastapi==0.138.2", "fastapi>=0.138.2"),
+            ("workspace/requirements.lock", "fastapi==0.138.2", "fastapi==0.138.2\nlitellm==0"),
             ("scripts/materials/requirements.lock", "requests==2.34.2", "requests==0.0.1"),
             ("scripts/security/requirements-sca.lock", "pip-audit==2.10.1", "# removed pip-audit"),
         )
