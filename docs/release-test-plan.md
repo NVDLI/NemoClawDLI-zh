@@ -75,7 +75,7 @@ host, and external-review work. Any applicable nonzero exit blocks the candidate
 | A01 | Design and test evidence remain complete and public-safe | `python3 scripts/validation/release_evidence_audit.py --self-test` then `python3 scripts/validation/release_evidence_audit.py` | Every mutation is detected; repository audit has zero findings | CI log and validation report |
 | A02 | Product topology matches implementation | `python3 scripts/figures/render_security_architecture.py --check`; `python3 scripts/validation/security_architecture_audit.py --self-test`; `python3 scripts/validation/security_architecture_audit.py` | Generated graph is current; mutation suite and audit pass | CI log and source-backed graph |
 | A03 | Contribution and release authority remain separated | `python3 scripts/validation/contribution_safety_audit.py --self-test`; `python3 scripts/validation/contribution_safety_audit.py` | Mutation suite and repository audit pass | CI report |
-| A04 | Required public files, license, sources, and private-link boundary are intact | `python3 scripts/compliance/source_gate.py` | Root license and terms pass; inventory resolves; no forbidden private links or provenance gaps | CI log |
+| A04 | Required public files, licenses, sources, and material provenance are intact | `python3 scripts/compliance/source_gate.py`; `python3 scripts/materials/pull_materials.py --self-test`; `python3 scripts/materials/pull_materials.py --verify-committed` | Root terms pass; inventory resolves; no forbidden private links; retry/tamper mutations pass; every committed material matches its manifest metadata, character count, and full SHA-256 without network access | CI log |
 | A05 | Dependency manifests and locks agree | `python3 scripts/security/audit_dependency_locks.py --self-test`; `python3 scripts/security/audit_dependency_locks.py` | Mutation suite passes and no lock drift exists | CI log |
 | A06 | Direct dependencies and accepted exceptions meet repository policy | `python3 scripts/security/audit_python_dependencies.py`; `python3 scripts/security/audit_vulnerability_waivers.py` | No unhandled vulnerable floor/pin; every exception is owned, sourced, and unexpired | CI log |
 | A07 | Resolved environment is scanned and inventoried | Run the isolated A07 procedure below, or the required `security_deep_sca` CI job | Scanner succeeds; SBOM covers expected locked components; retired components remain absent | Retained scanner and SBOM artifacts |
@@ -104,6 +104,11 @@ PATH="/tmp/nemoclaw-release-scanner/bin:$PATH" /tmp/nemoclaw-release-scanner/bin
 
 Final release evidence comes from the protected workflow's exact environment and retained artifact
 paths.
+
+Live source checks are separate from the deterministic matrix. Scheduled monitoring and protected
+release preparation run a strict retried `pull_materials.py --check`. A production-ref push may
+continue only when every live failure is classified as transient reachability; source drift,
+malformed content, unsafe redirects, TLS failures, and committed-provenance mismatches still block.
 
 ## Manual and external evidence matrix
 

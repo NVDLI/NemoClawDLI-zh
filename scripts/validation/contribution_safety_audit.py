@@ -49,6 +49,7 @@ CONTRACT_FILES = (
     "scripts/build/install-hooks.sh",
     "scripts/build/build_branch_manifest.py",
     "scripts/build/package_release.py",
+    "scripts/materials/pull_materials.py",
     "scripts/materials/requirements.lock",
     "scripts/security/audit_dependency_locks.py",
     "scripts/security/audit_sbom_policy.py",
@@ -62,6 +63,7 @@ CONTRACT_FILES = (
     "scripts/validation/gitlab_governance_audit.py",
     "workspace/requirements.lock",
     "workspace/Dockerfile",
+    "web/nemoclaw/mats/_materials.json",
 )
 
 
@@ -261,6 +263,19 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
 
     pages = docs[".github/workflows/pages.yml"]
     release_gate = docs["scripts/validation/release_gate.py"]
+    fast_gate = re.search(r"(?ms)^FAST_COMMANDS:.*?(?=^SHIP_COMMANDS:)", release_gate)
+    ship_gate = re.search(r"(?ms)^SHIP_COMMANDS:.*?(?=^def locale_commands)", release_gate)
+    fast_gate_text = fast_gate.group(0) if fast_gate else ""
+    ship_gate_text = ship_gate.group(0) if ship_gate else ""
+    if 'py("scripts/materials/pull_materials.py", "--verify-committed")' not in fast_gate_text:
+        out.append(finding("shared-material-provenance", "scripts/validation/release_gate.py",
+                           "fast gate lacks network-free committed material verification",
+                           "verify committed material snapshots without network access from every shared gate"))
+    if ('py("scripts/materials/pull_materials.py", "--verify-committed")' not in ship_gate_text
+            or 'py("scripts/materials/pull_materials.py", "--self-test")' not in ship_gate_text):
+        out.append(finding("shared-material-selftest", "scripts/validation/release_gate.py",
+                           "ship gate lacks material verification or its mutation fixtures",
+                           "prove retry classification and provenance tamper detection from the ship gate"))
     for token, code, fix in (
         ('py("scripts/validation/contribution_safety_audit.py", "--self-test")',
          "shared-safety-gate",
@@ -338,6 +353,9 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "release-annotated-tag", out, "refuse lightweight release tags")
     require(release, "release_gate.py --tier ship", ".github/workflows/release.yml",
             "release-shared-gate", out, "run the shared deterministic gate before packaging")
+    require(release, "pull_materials.py --check --fetch-attempts", ".github/workflows/release.yml",
+            "release-live-material-check", out,
+            "require a retried, strict live material check before release packaging")
     for token in ("release-manifest.json", "SHA256SUMS", "python-env.cdx.json", "release-assets/*"):
         require(release, token, ".github/workflows/release.yml", "release-artifact-set", out,
                 f"retain required release artifact contract token: {token}")
@@ -394,8 +412,40 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "retain runtime SBOM completeness and retired-component enforcement")
 
     gitlab = docs[".gitlab-ci.yml"]
+    image = re.search(r"(?m)^  image: node:20-bookworm-slim@sha256:([0-9a-f]+)$", gitlab)
+    if not image or len(image.group(1)) != 64:
+        out.append(finding("gitlab-image-pin", ".gitlab-ci.yml",
+                           "shared CI image is not pinned to a full immutable digest",
+                           "pin the reviewed Node 20 image to its runner-resolved SHA-256 digest"))
+    anchor = re.search(r"(?ms)^\.with_python_node:.*?(?=^test:\n)", gitlab)
+    anchor_text = anchor.group(0) if anchor else ""
+    for token in ("runner_system_failure", "stuck_or_timeout_failure", "api_failure", "scheduler_failure"):
+        if token not in anchor_text:
+            out.append(finding("gitlab-infrastructure-retry", ".gitlab-ci.yml",
+                               f"shared jobs do not retry infrastructure class {token}",
+                               "retry only runner and control-plane failures; never script failures"))
+    if re.search(r"(?m)^\s*-\s+script_failure\s*$", anchor_text):
+        out.append(finding("gitlab-script-retry", ".gitlab-ci.yml",
+                           "shared jobs retry validation script failures",
+                           "remove script_failure so drift and tampering remain fail-closed"))
+    if "scripts/materials/requirements.lock" not in anchor_text or "|| true" in anchor_text:
+        out.append(finding("gitlab-material-install", ".gitlab-ci.yml",
+                           "shared material tooling is not installed from its lock with fail-closed setup",
+                           "install scripts/materials/requirements.lock with bounded retries and no fail-open operator"))
     require(gitlab, "release_gate.py --tier ship", ".gitlab-ci.yml",
             "gitlab-safety-selftest", out, "run detector mutations in GitLab CI")
+    require(gitlab, "pull_materials.py --check --allow-transient-unreachable",
+            ".gitlab-ci.yml", "gitlab-transient-material-policy", out,
+            "allow only classified transient source reachability on production-ref pushes")
+    scheduled_material = re.search(
+        r'if \[ "\$\{CI_PIPELINE_SOURCE:-\}" = "schedule" \]; then\n\s+([^\n]+)', gitlab
+    )
+    if (not scheduled_material
+            or "pull_materials.py --check --fetch-attempts" not in scheduled_material.group(1)
+            or "--allow-transient-unreachable" in scheduled_material.group(1)):
+        out.append(finding("gitlab-scheduled-material-policy", ".gitlab-ci.yml",
+                           "scheduled material check is absent or not strict",
+                           "keep scheduled live checks strict and omit transient degradation"))
     require(gitlab, "CI_MERGE_REQUEST_DESCRIPTION", ".gitlab-ci.yml", "gitlab-submission-contract", out,
             "validate merge-request descriptions when CI has MR context")
     require(gitlab, '--commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"',
@@ -409,6 +459,35 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
     require(gitlab, ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock",
             ".gitlab-ci.yml", "gitlab-sca-lock", out,
             "keep scanner tooling isolated in its exact lock")
+
+    material_puller = docs["scripts/materials/pull_materials.py"]
+    for token, code, fix in (
+        ("TRANSIENT_HTTP_STATUS = {", "material-transient-classification",
+         "retain the bounded HTTP status allowlist for retries"),
+        ("refusing source redirect", "material-redirect-boundary",
+         "reject cross-host or non-HTTPS source redirects"),
+        ('re.fullmatch(r"[0-9a-f]{64}"', "material-full-sha",
+         "require a complete lowercase SHA-256 for every committed snapshot"),
+        ("def verify_committed", "material-offline-verifier",
+         "retain network-free snapshot, metadata, and digest verification"),
+        ("def check_passes", "material-fail-closed-policy",
+         "keep drift, permanent reachability failures, and tampering fail-closed"),
+        ('"--allow-transient-unreachable"', "material-explicit-degradation",
+         "make transient-only degradation an explicit caller decision"),
+    ):
+        require(material_puller, token, "scripts/materials/pull_materials.py", code, out, fix)
+    try:
+        material_records = json.loads(docs["web/nemoclaw/mats/_materials.json"]).get("materials", [])
+    except (TypeError, json.JSONDecodeError):
+        material_records = []
+        out.append(finding("material-provenance-json", "web/nemoclaw/mats/_materials.json",
+                           "material provenance is not valid JSON",
+                           "restore the reviewed material provenance inventory"))
+    for record in material_records:
+        if not re.fullmatch(r"[0-9a-f]{64}", record.get("sha256", "")):
+            out.append(finding("material-provenance-sha", "web/nemoclaw/mats/_materials.json",
+                               f"{record.get('name', '?')} lacks a full lowercase SHA-256",
+                               "refresh and review committed material provenance"))
     require(gitlab, 'CI_PIPELINE_SOURCE == "merge_request_event"', ".gitlab-ci.yml",
             "gitlab-mr-pipeline", out, "run open merge requests in MR context")
     require(gitlab, "$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS", ".gitlab-ci.yml",
@@ -597,6 +676,8 @@ def self_test() -> list[str]:
             ("mutable-action-ref", ".github/workflows/pages.yml", "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683", "actions/checkout@v4"),
             ("unpinned-workflow-install", ".github/workflows/pages.yml", "--requirement scripts/materials/requirements.lock", "requests beautifulsoup4 markdownify lxml"),
             ("github-material-lock", ".github/workflows/pages.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),
+            ("shared-material-provenance", "scripts/validation/release_gate.py", 'py("scripts/materials/pull_materials.py", "--verify-committed")', 'py("scripts/materials/pull_materials.py", "--list")'),
+            ("shared-material-selftest", "scripts/validation/release_gate.py", 'py("scripts/materials/pull_materials.py", "--self-test")', 'py("scripts/materials/pull_materials.py", "--help")'),
             ("shared-sbom-policy-selftest", "scripts/validation/release_gate.py", 'py("scripts/security/audit_sbom_policy.py", "--self-test")', 'py("scripts/security/audit_sbom_policy.py", "--help")'),
             ("pr-deploy-boundary", ".github/workflows/pages.yml", "if: github.event_name != 'pull_request'", "if: always()"),
             ("pages-main-only", ".github/workflows/pages.yml", "github.ref == 'refs/heads/main'", "github.ref != ''"),
@@ -612,6 +693,7 @@ def self_test() -> list[str]:
             ("publication-release-guard", ".github/workflows/release.yml", "contribution_safety_audit.py --require-publication-approved", "contribution_safety_audit.py"),
             ("publication-deploy-guard", ".github/workflows/pages.yml", "contribution_safety_audit.py --require-publication-approved", "contribution_safety_audit.py"),
             ("release-runtime-lock", ".github/workflows/release.yml", "workspace/requirements.lock", "workspace/requirements.txt"),
+            ("release-live-material-check", ".github/workflows/release.yml", "pull_materials.py --check --fetch-attempts", "pull_materials.py --list --fetch-attempts"),
             ("release-sca-lock", ".github/workflows/release.yml", "scripts/security/requirements-sca.lock", "pip-audit cyclonedx-bom"),
             ("release-sbom-policy", ".github/workflows/release.yml", "--sbom release-security/python-env.cdx.json", "--sbom release-security/unchecked.json"),
             ("discussion-route", ".github/ISSUE_TEMPLATE/config.yml", "/discussions", "/issues"),
@@ -625,6 +707,12 @@ def self_test() -> list[str]:
             ("prepush-lock-selftest", "scripts/git-hooks/pre-push", 'LOCK_AUDIT="$T1/scripts/security/audit_dependency_locks.py"', 'LOCK_AUDIT="$T1/scripts/security/noop.py"'),
             ("prepush-sbom-policy", "scripts/git-hooks/pre-push", 'SBOM_POLICY="$T1/scripts/security/audit_sbom_policy.py"', 'SBOM_POLICY="$T1/scripts/security/noop.py"'),
             ("gitlab-safety-selftest", ".gitlab-ci.yml", "release_gate.py --tier ship", "release_gate.py --tier fast"),
+            ("gitlab-image-pin", ".gitlab-ci.yml", "node:20-bookworm-slim@sha256:25070a03f077f5860e4f2db8d147380678ed40ead415a21eaffd5a6208f61948", "node:20-bookworm-slim"),
+            ("gitlab-infrastructure-retry", ".gitlab-ci.yml", "runner_system_failure", "runner_unsupported"),
+            ("gitlab-script-retry", ".gitlab-ci.yml", "runner_system_failure", "script_failure"),
+            ("gitlab-material-install", ".gitlab-ci.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),
+            ("gitlab-transient-material-policy", ".gitlab-ci.yml", "pull_materials.py --check --allow-transient-unreachable", "pull_materials.py --check --strict-unreachable"),
+            ("gitlab-scheduled-material-policy", ".gitlab-ci.yml", "pull_materials.py --check --fetch-attempts", "pull_materials.py --check --allow-transient-unreachable --fetch-attempts"),
             ("gitlab-dco-check", ".gitlab-ci.yml", '--commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', '--commit-range "${CI_COMMIT_SHA}"'),
             ("shared-lock-selftest", "scripts/validation/release_gate.py", 'py("scripts/security/audit_dependency_locks.py", "--self-test")', 'py("scripts/security/audit_dependency_locks.py", "--version")'),
             ("gitlab-sbom-policy", ".gitlab-ci.yml", "audit_sbom_policy.py --sbom", "audit_sbom_policy.py --help"),
@@ -633,6 +721,13 @@ def self_test() -> list[str]:
             ("gitlab-human-review", ".gitlab-ci.yml", "human_review:", "operator_review:"),
             ("gitlab-human-review-needs", ".gitlab-ci.yml", 'needs: ["test", "pages_smoke"]', 'needs: ["test"]'),
             ("gitlab-human-review-blocking", ".gitlab-ci.yml", '    - if: \'$CI_PIPELINE_SOURCE == "merge_request_event"\'\n      when: manual\n      allow_failure: false\n', '    - if: \'$CI_PIPELINE_SOURCE == "merge_request_event"\'\n      when: on_success\n      allow_failure: true\n'),
+            ("material-transient-classification", "scripts/materials/pull_materials.py", "TRANSIENT_HTTP_STATUS = {", "RETRYABLE_STATUS_REMOVED = {"),
+            ("material-redirect-boundary", "scripts/materials/pull_materials.py", "refusing source redirect", "following source redirect"),
+            ("material-full-sha", "scripts/materials/pull_materials.py", 're.fullmatch(r"[0-9a-f]{64}"', 're.fullmatch(r"[0-9a-f]{16}"'),
+            ("material-offline-verifier", "scripts/materials/pull_materials.py", "def verify_committed", "def verify_removed"),
+            ("material-fail-closed-policy", "scripts/materials/pull_materials.py", "def check_passes", "def check_removed"),
+            ("material-explicit-degradation", "scripts/materials/pull_materials.py", '"--allow-transient-unreachable"', '"--allow-all-unreachable"'),
+            ("material-provenance-sha", "web/nemoclaw/mats/_materials.json", "7a583caa8f1db1e66220cfa8963b7b37dcaf5655df0e1314f8794ea1ba5c8c94", "7a583caa8f1db1e6"),
             ("readme-boundary", "README.md", "Ideas are easy; code is gated", "Contribution overview"),
             ("agent-dco", "AGENTS.md", "Every proposed commit", "Every release"),
             ("release-status", "RELEASE_STATUS.json", '"pending-osrb-approval"', '"published"'),

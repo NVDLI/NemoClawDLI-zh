@@ -153,8 +153,9 @@ Expected failure behavior:
 Protected `main` is the reviewed source line, while branch previews are temporary review artifacts. A
 public release starts from an existing protected annotated semantic tag contained in `main`.
 
-The release workflow validates the tag, rebuilds without live source drift, resolves the locked Python
-environment, emits Python-environment and browser-runtime CycloneDX SBOMs, packages the Pages tree,
+The release workflow validates the tag, runs a strict retried live material-provenance check, then
+rebuilds with live material refresh disabled. It resolves the locked Python environment, emits
+Python-environment and browser-runtime CycloneDX SBOMs, packages the Pages tree,
 and writes checksums. A protected write
 step creates a draft release. A human release owner reviews the evidence and publishes it only after
 the external approval state allows publication.

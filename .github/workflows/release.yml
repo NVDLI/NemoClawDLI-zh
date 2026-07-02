@@ -43,7 +43,9 @@ jobs:
           test "$(git rev-parse HEAD)" = "$(git rev-parse "$RELEASE_TAG^{commit}")" || { echo "refusing release: checkout SHA differs from tag" >&2; exit 1; }
           echo "SOURCE_DATE_EPOCH=$(git show -s --format=%ct "$RELEASE_TAG^{commit}")" >> "$GITHUB_ENV"
       - name: Install public validation dependencies
-        run: python3 -m pip install --requirement scripts/materials/requirements.lock
+        run: python3 -m pip install --retries 5 --timeout 30 --requirement scripts/materials/requirements.lock
+      - name: Required live material provenance check
+        run: python3 scripts/materials/pull_materials.py --check --fetch-attempts 4 --retry-backoff 2 --host-delay 3
       - name: Required release gate
         run: python3 scripts/validation/release_gate.py --tier ship
       - name: Resolve release environment and emit SBOM

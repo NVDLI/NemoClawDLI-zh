@@ -84,10 +84,12 @@
   <nav class="skill-nav"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a></nav>
   <h1 id="skill-title">scripts/materials reference material tooling</h1>
   <p>Material vendoring and indexing tools for curated course references, glossary data, RAG indexes, and CLI readmes.</p>
-  <div class="skill-note">Material pulls may require network. The committed provenance file is what release validation reads offline.</div>
+  <div class="skill-note">Every shared gate verifies committed snapshots, manifest metadata, character counts, and full SHA-256 values without network access. Live checks add bounded retries; only production-ref pushes may tolerate classified transient reachability.</div>
   <h2>Executable checks</h2>
   <div class="skill-cmds">
-    <div class="skill-cmd"><b>Material provenance</b><code>python3 scripts/materials/pull_materials.py --check</code></div>
+    <div class="skill-cmd"><b>Offline provenance</b><code>python3 scripts/materials/pull_materials.py --verify-committed</code></div>
+    <div class="skill-cmd"><b>Strict live drift</b><code>python3 scripts/materials/pull_materials.py --check</code></div>
+    <div class="skill-cmd"><b>Retry and tamper fixtures</b><code>python3 scripts/materials/pull_materials.py --self-test</code></div>
     <div class="skill-cmd"><b>Dependency lock</b><code>python3 scripts/security/audit_dependency_locks.py</code></div>
     <div class="skill-cmd"><b>RAG index</b><code>python3 scripts/materials/build_rag_index.py --help</code></div>
     <div class="skill-cmd"><b>CLI readmes</b><code>python3 scripts/materials/build_cli_readmes.py --help</code></div>

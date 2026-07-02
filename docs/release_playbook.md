@@ -217,9 +217,15 @@ python3 scripts/validation/release_gate.py --tier fast --no-write
 python3 scripts/validation/release_gate.py --tier ship
 ```
 
-Host workflows separately enforce submission shape, commit signoff ranges, live source drift,
-protected tags, deployment approval, and post-deploy smoke because those checks require host
-context. The full automated, browser, service, and external-evidence matrix lives in
+Every shared gate verifies committed material snapshots and full SHA-256 provenance without network
+access. Host workflows add bounded live-source retries: schedules and protected releases remain
+strict, while production-ref pushes may tolerate only classified transient reachability. Drift,
+malformed content, unsafe redirects, TLS failures, and committed-provenance mismatches always fail.
+Jobs retry runner and control-plane failures, never validation script failures.
+
+Host workflows also enforce submission shape, commit signoff ranges, protected tags, deployment
+approval, and post-deploy smoke because those checks require host context. The full automated,
+browser, service, and external-evidence matrix lives in
 [`release-test-plan.md`](release-test-plan.md). Dependency resolution and SCA procedures live
 in [`dependency_security.md`](dependency_security.md). Pages staging and deployment mechanics
 live in [`pages_deploy.md`](pages_deploy.md). Containerized browser and Compose execution live

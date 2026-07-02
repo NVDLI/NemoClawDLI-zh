@@ -24,6 +24,7 @@ def py(path: str, *args: str) -> tuple[str, ...]:
 
 
 FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
+    py("scripts/materials/pull_materials.py", "--verify-committed"),
     py("scripts/validation/validate_layout.py", "--quiet"),
     py("scripts/skills/skill_consistency.py"),
     py("scripts/skills/skill_contract.py"),
@@ -35,6 +36,8 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
 
 
 SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
+    py("scripts/materials/pull_materials.py", "--self-test"),
+    py("scripts/materials/pull_materials.py", "--verify-committed"),
     py("scripts/validation/validate_layout.py", "--quiet"),
     py("scripts/skills/skill_consistency.py"),
     py("scripts/skills/skill_contract.py"),
@@ -122,6 +125,14 @@ def self_test() -> tuple[int, int, list[str]]:
         (
             py("scripts/build/project_docs_explorer.py", "--audit") in fast,
             "fast tier includes docs graph audit",
+        ),
+        (
+            py("scripts/materials/pull_materials.py", "--verify-committed") in fast,
+            "fast tier verifies committed material provenance without network access",
+        ),
+        (
+            py("scripts/materials/pull_materials.py", "--self-test") in ship,
+            "ship tier proves retry classification and tamper detection",
         ),
         (
             py("scripts/figures/render_security_architecture.py", "--check") in ship,
