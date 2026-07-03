@@ -2,7 +2,7 @@
 
 This repository is a course packaging and release workspace for NVIDIA DLI material and an
 internal candidate for external open-source publication. Publication remains pending OSRB
-approval. See [`RELEASE_STATUS.md`](RELEASE_STATUS.md) for the exact boundary.
+approval. See [`RELEASE_STATUS.json`](RELEASE_STATUS.json) for the canonical state.
 It keeps the authored course, shared runtime services, deployment configuration, and
 release validation in one source tree so a person or an agent can build, serve, audit,
 and ship the same artifact.
@@ -68,43 +68,22 @@ for the review workflow and locale-specific language guidance.
 
 ## Deployment
 
-Deployment files live under [`deploy/`](deploy/) so runtime orchestration is separate from
-authored course surfaces.
+Production ships a static browser artifact. It is published to a public static host or pinned and
+vendored by a co-located NemoClaw launchable. [`docs/pages_deploy.md`](docs/pages_deploy.md) owns
+those delivery paths and preview behavior.
 
-For local CPU bring-up from the repo root:
-
-```bash
-cp /path/to/.env-dev .env-dev
-COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD \
-  docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml up -d --build
-```
-
-Use the same `-f deploy/...` files with Podman Compose:
-
-```bash
-COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD \
-  python3 -m podman_compose -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml up -d --build
-```
-
-For DLI platform deployment, use the base compose file plus the production overlay:
-
-```bash
-docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.deployment.yml pull
-docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.deployment.yml up -d
-```
-
-The only service that receives key material is `llm_client`. Browser pages reach model
-services through declared proxy routes or direct learner-supplied keys. Other containers
-call the gateway over the compose network.
+The Compose files under [`deploy/`](deploy/) support local authoring and compatibility testing; they
+are not the production course topology. Bring-up and browser-test commands live in
+[`docs/lab_runtime_testing.md`](docs/lab_runtime_testing.md). Artifact and tag rules live in
+[`docs/release_artifacts.md`](docs/release_artifacts.md).
 
 ## Agent Visor
 
 The repo is intentionally agent-readable. Every agent-addressable directory carries a
 `SKILL.html` with a `skill-meta` JSON block. The root [`SKILL.html`](SKILL.html) is the
 ontology beacon for the bundle. It points to execution surfaces, deployment, tooling,
-and process docs. Agents should read [`AGENTS.md`](AGENTS.md), then
-[`AGENT_QUICKSTART.md`](AGENT_QUICKSTART.md), then the relevant `SKILL.html` before
-changing files.
+and process docs. Agents should read [`AGENTS.md`](AGENTS.md), then the relevant
+`SKILL.html` before changing files.
 
 ## Ideas are easy; code is gated
 
@@ -122,10 +101,17 @@ are the authority because hooks can be skipped. The contract and operator contro
 [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/release_playbook.md`](docs/release_playbook.md).
 
 Public governance is explicit: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) sets behavior and
-enforcement, [`SUPPORT.md`](SUPPORT.md) defines the best-effort support and lifecycle boundary,
-[`MAINTAINERS.md`](MAINTAINERS.md) defines role authority, and [`GOVERNANCE.json`](GOVERNANCE.json)
-exposes the same state to automation. Every contributed commit requires the DCO signoff described
-in [`DCO.md`](DCO.md).
+enforcement, [`SUPPORT.md`](SUPPORT.md) defines support and lifecycle boundaries, and
+[`DCO.md`](DCO.md) defines per-commit origin signoff.
+
+### Maintainer authority
+
+Repository maintainers route reviews and moderate intake. Surface owners review technical and
+learner impact. Release managers own protected tags, publication, and rollback. Security
+responders own private intake and coordinated remediation. Assignments live in host teams,
+rulesets, protected environments, and `CODEOWNERS` once stable public handles exist.
+Nobody approves their own final push or protected release. Agents may prepare patches and
+evidence; they cannot supply independent review, merge authority, or release approval.
 
 ## Verification
 
@@ -139,10 +125,9 @@ Before release or when changing a cross-cutting contract, run `--tier ship`. The
 command and evidence matrix lives in
 [`docs/release-test-plan.md`](docs/release-test-plan.md).
 
-Release threat-model evidence lives in [`docs/security-architecture.md`](docs/security-architecture.md).
-Its source-backed graph covers the learner runtime and release supply chain, then generates a
-review-neutral SVG. CI rejects missing services, unlabeled trust-boundary flows, broken evidence,
-connector collisions, and stale generated output.
+Release threat-model evidence lives in [`docs/security-design.md`](docs/security-design.md).
+Its source-backed graph covers the learner runtime and release supply chain. CI rejects missing
+services, unlabeled trust-boundary flows, broken evidence, connector collisions, and stale output.
 
 For browser or Studio changes, also use the containerized browser harness:
 
@@ -190,4 +175,4 @@ and [`scripts/compliance/docs/open_source_readiness.md`](scripts/compliance/docs
 ## License
 
 The proposed external release uses the [Apache License 2.0](LICENSE.md). External publication
-remains subject to [`RELEASE_STATUS.md`](RELEASE_STATUS.md).
+remains subject to [`RELEASE_STATUS.json`](RELEASE_STATUS.json).

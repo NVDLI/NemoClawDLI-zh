@@ -94,7 +94,7 @@ if [ -n "$STAGED_MDS" ]; then
         echo "This is almost certainly the IDE-buffer-merge race. To recover:"
         echo "  1. Close the affected .md files in VS Code."
         echo "  2. Restore a clean version (Write tool, or in-place dedupe for"
-        echo "     periodically-duplicated files; see docs/notebook_corruption_prevention.md)."
+        echo "     periodically-duplicated files; inspect scripts/validation/nb_audit.py --help)."
         echo "  3. Re-run 'python3 scripts/validation/nb_audit.py' to confirm clean."
         echo "  4. Re-stage and commit."
         exit 1

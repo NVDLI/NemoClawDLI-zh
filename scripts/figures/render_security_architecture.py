@@ -205,7 +205,7 @@ def render(model: dict) -> str:
 
     lines.extend([
         f'<line x1="48" y1="{height - 30}" x2="1552" y2="{height - 30}" stroke="#d1d5db"/>',
-        f'<text class="note" x="48" y="{height - 10}">Solid blue: ordinary flow · orange: sensitive flow · dashed: conditional browser path · source and regeneration instructions: docs/security-architecture.md</text>',
+        f'<text class="note" x="48" y="{height - 10}">Solid blue: ordinary flow · orange: sensitive flow · dashed: conditional browser path · design and regeneration instructions: docs/security-design.md</text>',
         "</svg>",
         "",
     ])

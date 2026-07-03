@@ -26,7 +26,6 @@ SCRIPT_SKILL = COURSE / "scripts" / "SKILL.html"
 RUNTIME_SKILL = ROOT / "scripts" / "runtime" / "SKILL.html"
 ROOT_SCRIPT_SKILL = ROOT / "scripts" / "SKILL.html"
 LAB_RUNTIME_DOC = ROOT / "docs" / "lab_runtime_testing.md"
-AGENT_QUICKSTART = ROOT / "AGENT_QUICKSTART.md"
 RELEASE_PLAYBOOK = ROOT / "docs" / "release_playbook.md"
 BROWSER_PROBE = ROOT / "scripts" / "runtime" / "browser_env_probe.sh"
 HELPER_NOTEBOOK_AUDIT = ROOT / "scripts" / "validation" / "helper_notebook_runtime_audit.py"
@@ -103,7 +102,6 @@ def audit() -> list[str]:
     runtime_skill = read(RUNTIME_SKILL)
     root_script_skill = read(ROOT_SCRIPT_SKILL)
     lab_doc = read(LAB_RUNTIME_DOC)
-    quickstart = read(AGENT_QUICKSTART)
     release_playbook = read(RELEASE_PLAYBOOK)
     browser_probe = read(BROWSER_PROBE) if BROWSER_PROBE.is_file() else ""
 
@@ -202,16 +200,6 @@ def audit() -> list[str]:
     }.items():
         if token not in lab_doc:
             findings.append(f"docs/lab_runtime_testing.md missing {label}: {token}")
-
-    for label, token in {
-        "quickstart probe": "scripts/runtime/browser_env_probe.sh",
-        "quickstart docker compose caveat": "Compose v2 plugin",
-        "quickstart podman compose caveat": "Podman may work while",
-        "quickstart do not stop": "not stop after `docker compose`",
-        "quickstart python compose": "python3 -m podman_compose",
-    }.items():
-        if token not in quickstart:
-            findings.append(f"AGENT_QUICKSTART.md missing {label}: {token}")
 
     for label, token in {
         "release playbook runtime guide": "lab_runtime_testing.md",

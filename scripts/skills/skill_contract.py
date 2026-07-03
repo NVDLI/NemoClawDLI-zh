@@ -20,9 +20,9 @@ Two readers, one file, so two checks:
           minified into one-line walls, and beacons do not expose numbered issue/MR/PR threads
           or user handles as course-facing provenance.
 
-The KINDS table below is the de-facto contract, read off the shipped tree, NOT the prose in
-SKILL_CONTRACT.md (whose schema section predates the surface-first taxonomy and is stale). The
-beacons are the contract; this encodes them so future drift from them surfaces.
+The KINDS table below is the contract implemented by the shipped tree and documented in
+SKILL_CONTRACT.md. A new kind becomes valid only when its first beacon, implementation,
+documentation, and mutation coverage arrive together.
 
 Usage:
   python3 scripts/skills/skill_contract.py            # schema + drift; exit 1 on any schema finding
@@ -59,11 +59,9 @@ KINDS = {
     "node:leaf":           {"req": ["node_type", "source_dir", "summary", "self_path"],
                             "label_any": ["title", "course"]},
 }
-SCHEMA_VALUES = {"service-skill/1.0", "service-index/1.0", "dir-skill/1.0",
-                 # documented-but-currently-unused; accepted so a course/surface skill is not flagged
-                 "course-skill/1.0", "surface-skill/1.0"}
+SCHEMA_VALUES = set(KINDS) - {"node:hub", "node:leaf"}
 NODE_TYPES = {"hub", "leaf", "directory-explorer"}
-VERSIONED = {"service-skill/1.0", "service-index/1.0", "course-skill/1.0", "surface-skill/1.0"}
+VERSIONED = {"service-skill/1.0", "service-index/1.0"}
 
 
 def classify(meta: dict):

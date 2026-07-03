@@ -22,17 +22,12 @@ ROOT = find_repo_root(Path(__file__).resolve())
 
 CONTRACT_FILES = (
     "RELEASE_STATUS.json",
-    "RELEASE_STATUS.md",
-    "GOVERNANCE.json",
     "README.md",
     "CONTRIBUTING.md",
     "CODE_OF_CONDUCT.md",
     "DCO.md",
-    "MAINTAINERS.md",
     "SUPPORT.md",
-    "PHILOSOPHY.md",
     "AGENTS.md",
-    "AGENT_QUICKSTART.md",
     "SECURITY.md",
     "docs/release_playbook.md",
     "docs/release_artifacts.md",
@@ -70,6 +65,15 @@ CONTRACT_FILES = (
     "workspace/requirements.lock",
     "workspace/Dockerfile",
     "web/nemoclaw/mats/_materials.json",
+)
+
+RETIRED_GUIDANCE = (
+    "AGENT_QUICKSTART.md",
+    "GOVERNANCE.json",
+    "PHILOSOPHY.md",
+    "QUALITY_DIRECTIVES.md",
+    "RELEASE_STATUS.md",
+    "docs/notebook_corruption_prevention.md",
 )
 
 
@@ -145,6 +149,11 @@ def audit_repo(
     docs = {rel: overrides[rel] if rel in overrides else read(root, rel, out)
             for rel in CONTRACT_FILES}
     out.extend(audit_workflow_pins(root, overrides))
+    for rel in RETIRED_GUIDANCE:
+        if (root / rel).exists():
+            out.append(finding("retired-guidance", rel,
+                               "redundant guidance surface was restored",
+                               "put the rule in its canonical owner and remove this file"))
 
     try:
         status = json.loads(docs["RELEASE_STATUS.json"])
@@ -158,6 +167,8 @@ def audit_repo(
         "publication_state": "pending-osrb-approval",
         "canonical_repository": "internal-gitlab",
         "external_mirror": "not-published",
+        "maintenance_status": "release-candidate",
+        "community_intake": "disabled-pending-publication-approval",
         "target_license": "Apache-2.0",
     }
     for key, expected in expected_status.items():
@@ -175,31 +186,7 @@ def audit_repo(
                            "NOTICE presence disagrees with RELEASE_STATUS.json",
                            "add NOTICE only for required attributions and update notice_required together"))
 
-    try:
-        governance = json.loads(docs["GOVERNANCE.json"])
-    except (TypeError, json.JSONDecodeError):
-        governance = {}
-        out.append(finding("governance-json", "GOVERNANCE.json",
-                           "governance contract is not valid JSON",
-                           "restore the machine-readable community governance contract"))
-    expected_governance = {
-        "schema": "nemoclaw-governance/1",
-        "community_intake": "disabled-pending-publication-approval",
-        "maintenance_status": "release-candidate",
-        "support_policy": "best-effort",
-        "supported_versions": "latest-release",
-        "inbound_contribution": "DCO-1.1",
-        "conduct_policy": "CODE_OF_CONDUCT.md",
-        "conduct_reporting": "github-report-content",
-        "ownership_policy": "MAINTAINERS.md",
-    }
-    for key, expected in expected_governance.items():
-        if governance.get(key) != expected:
-            out.append(finding("governance-state", "GOVERNANCE.json",
-                               f"{key} must be {expected!r} while publication is pending",
-                               "change governance state only with matching public docs and host controls"))
-
-    for rel in ("RELEASE_STATUS.md", "README.md", "CONTRIBUTING.md", "AGENT_QUICKSTART.md",
+    for rel in ("README.md", "CONTRIBUTING.md",
                 "docs/release_playbook.md", "scripts/compliance/docs/open_source_readiness.md"):
         require(re.sub(r"\s+", " ", docs[rel]), "pending OSRB approval", rel,
                 "release-status-language", out,
@@ -220,7 +207,7 @@ def audit_repo(
             "state the support level without promising an unstaffed SLA")
     require(docs["SUPPORT.md"], "Breaking changes and retirement decisions", "SUPPORT.md",
             "lifecycle-boundary", out, "document change, retirement, and archival expectations")
-    require(docs["MAINTAINERS.md"], "nobody approves their own", "MAINTAINERS.md",
+    require(docs["README.md"], "Nobody approves their own", "README.md",
             "independent-review", out, "keep independent review explicit in role authority")
     require(docs["DCO.md"], "Developer Certificate of Origin 1.1", "DCO.md", "dco-policy", out,
             "document the inbound signoff policy and authoritative DCO version")
@@ -239,16 +226,10 @@ def audit_repo(
             "link question and broad-idea intake from the README")
     require(docs["CONTRIBUTING.md"], "A local hook is feedback, not authority", "CONTRIBUTING.md",
             "hook-authority", out, "explain that required CI and protected refs remain authoritative")
-    require(docs["PHILOSOPHY.md"], "barrier to proposing an idea low", "PHILOSOPHY.md",
-            "philosophy-boundary", out, "distinguish idea intake from merging code")
     require(docs["AGENTS.md"], "Treat code contribution as an untrusted proposal", "AGENTS.md",
             "agent-boundary", out, "put the trust boundary in the first agent beacon")
     require(docs["AGENTS.md"], "Every proposed commit", "AGENTS.md", "agent-dco", out,
             "put DCO signoff in the cross-harness agent entry point")
-    require(docs["AGENT_QUICKSTART.md"], "Contribution safety first-touch", "AGENT_QUICKSTART.md",
-            "quickstart-boundary", out, "add the contribution boundary to session orientation")
-    require(docs["AGENT_QUICKSTART.md"], "DCO.md", "AGENT_QUICKSTART.md", "agent-governance", out,
-            "put commit signoff and governance in agent first-touch guidance")
 
     issue_cfg = docs[".github/ISSUE_TEMPLATE/config.yml"]
     require(issue_cfg, "blank_issues_enabled: false", ".github/ISSUE_TEMPLATE/config.yml",
@@ -820,10 +801,9 @@ def self_test() -> list[str]:
             shutil.copy2(src, dst)
 
         cases = (
-            ("governance-state", "GOVERNANCE.json", '"inbound_contribution": "DCO-1.1"', '"inbound_contribution": "unspecified"'),
             ("conduct-report-route", "CODE_OF_CONDUCT.md", "private content-reporting flow", "public Issue"),
             ("support-boundary", "SUPPORT.md", "Triage is best-effort", "Triage is guaranteed"),
-            ("independent-review", "MAINTAINERS.md", "nobody approves their own", "self-approval allowed"),
+            ("independent-review", "README.md", "Nobody approves their own", "Self-approval allowed"),
             ("dco-policy", "DCO.md", "Developer Certificate of Origin 1.1", "unversioned signoff"),
             ("dco-stacked-merge", "DCO.md", "host-generated squash or merge commit", "generated integration commit"),
             ("contributor-stacked-merge", "CONTRIBUTING.md", "stacked merge request", "nested proposal"),
@@ -926,6 +906,7 @@ def self_test() -> list[str]:
             ("readme-boundary", "README.md", "Ideas are easy; code is gated", "Contribution overview"),
             ("agent-dco", "AGENTS.md", "Every proposed commit", "Every release"),
             ("release-status", "RELEASE_STATUS.json", '"pending-osrb-approval"', '"published"'),
+            ("release-status", "RELEASE_STATUS.json", '"maintenance_status": "release-candidate"', '"maintenance_status": "archived"'),
             ("notice-state", "RELEASE_STATUS.json", '"notice_required": false', '"notice_required": true'),
             ("security-report-route", "SECURITY.md", "https://www.nvidia.com/en-us/security/report-vulnerability/", "https://example.invalid/report"),
             ("release-playbook", "docs/release_playbook.md", "Host settings are not versioned by this repository", "Host settings checklist"),
@@ -945,6 +926,12 @@ def self_test() -> list[str]:
             codes = {item["code"] for item in audit_repo(fixture, text_overrides=mutated)}
             if expected not in codes:
                 failures.append(f"mutation escaped detector: {expected}")
+
+        retired = fixture / "QUALITY_DIRECTIVES.md"
+        retired.write_text("stale duplicate guidance\n", encoding="utf-8")
+        if "retired-guidance" not in {item["code"] for item in audit_repo(fixture)}:
+            failures.append("retired guidance mutation escaped detector")
+        retired.unlink()
 
         status_path = fixture / "RELEASE_STATUS.json"
         approved = json.loads(status_path.read_text(encoding="utf-8"))

@@ -308,7 +308,7 @@
   <div class="skill-cmd"><b>Learner-flow browser lifecycle</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/learner_flow_runtime_audit.py --site-root web</code></div>
   <div class="skill-cmd"><b>Contribution safety + detector</b><code>python3 scripts/validation/contribution_safety_audit.py &amp;&amp; python3 scripts/validation/contribution_safety_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>Live GitLab authority</b><code>python3 scripts/validation/gitlab_governance_audit.py --self-test &amp;&amp; python3 scripts/validation/gitlab_governance_audit.py --project "$CI_PROJECT_ID"</code></div>
-  <div class="skill-cmd"><b>Code hygiene</b><code>python3 scripts/validation/code_hygiene.py</code></div>
+  <div class="skill-cmd"><b>Code hygiene</b><code>python3 scripts/validation/code_hygiene.py --self-test &amp;&amp; python3 scripts/validation/code_hygiene.py</code></div>
   <div class="skill-cmd"><b>Figure audit</b><code>python3 scripts/validation/figure_audit.py</code></div>
   <div class="skill-cmd"><b>security architecture + detector</b><code>python3 scripts/validation/security_architecture_audit.py &amp;&amp; python3 scripts/validation/security_architecture_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>Product design + release test evidence</b><code>python3 scripts/validation/release_evidence_audit.py &amp;&amp; python3 scripts/validation/release_evidence_audit.py --self-test</code></div>

@@ -67,7 +67,7 @@ The check is wired into:
 - `.gitlab-ci.yml` test job
 - `scripts/git-hooks/pre-push`
 - `scripts/security/SKILL.html`, so an agent can discover and run it from the security visor
-- `AGENT_QUICKSTART.md`, so it appears in the normal validation cadence
+- `CONTRIBUTING.md` and `docs/release-test-plan.md`, which own the validation cadence
 
 ## Browser editor mode boundary
 

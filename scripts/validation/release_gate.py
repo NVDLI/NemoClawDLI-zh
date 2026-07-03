@@ -71,6 +71,7 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/validation/branch_preview_manifest_audit.py", "--self-test"),
     py("scripts/validation/learner_flow_audit.py", "--self-test"),
     py("scripts/validation/html_structure_audit.py", "--self-test"),
+    py("scripts/validation/code_hygiene.py", "--self-test"),
     py("scripts/validation/slides_audit.py", "--self-test"),
     py("scripts/build/build_repository_overview_html.py", "--check"),
     py("scripts/figures/render_security_architecture.py", "--check"),
@@ -133,6 +134,9 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     py("scripts/validation/html_structure_audit.py", "--self-test"): (
         "scripts/validation/html_structure_audit.py",
     ),
+    py("scripts/validation/code_hygiene.py", "--self-test"): (
+        "scripts/validation/code_hygiene.py",
+    ),
     py("scripts/validation/slides_audit.py", "--self-test"): (
         "scripts/validation/slides_audit.py", "scripts/validation/prose_variety.py",
         "scripts/build/build_repository_overview*", "docs/repository-overview*",
@@ -158,8 +162,8 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     ),
     py("scripts/validation/contribution_safety_audit.py", "--self-test"): (
         ".github/*", ".github/**/*", ".gitlab-ci.yml", ".gitlab/*", ".gitlab/**/*",
-        "AGENTS.md", "AGENT_QUICKSTART.md", "CONTRIBUTING.md", "DCO.md", "GOVERNANCE.json",
-        "MAINTAINERS.md", "CODE_OF_CONDUCT.md", "SUPPORT.md", "SECURITY.md", "RELEASE_STATUS*",
+        "AGENTS.md", "CONTRIBUTING.md", "DCO.md", "RELEASE_STATUS.json",
+        "CODE_OF_CONDUCT.md", "SUPPORT.md", "SECURITY.md", "RELEASE_STATUS*",
         "docs/agent_process.md", "docs/release*", "docs/pages_deploy.md",
         "scripts/git-hooks/*", "scripts/build/install-hooks.sh", "scripts/build/build_pages.sh",
         "scripts/build/package_release.py", "scripts/validation/release_gate.py",

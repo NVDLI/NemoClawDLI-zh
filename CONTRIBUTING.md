@@ -2,7 +2,7 @@
 
 This repository is the internal release-candidate workspace for proposed open-source NVIDIA
 DLI course material. External publication remains pending OSRB approval; see
-[`RELEASE_STATUS.md`](RELEASE_STATUS.md).
+[`RELEASE_STATUS.json`](RELEASE_STATUS.json).
 It packages authored content, shared services, deployment, and validation in one release
 tree. Content is organized by execution surface: `web/` is browser-only and remote-service
 aware, `cpu/` is the shared microservice stack, and `deploy/` is the operator surface for
@@ -41,10 +41,10 @@ long rationale, screenshots, or logs.
 
 ## Orientation
 
-Read [`AGENT_QUICKSTART.md`](AGENT_QUICKSTART.md) first. Every directory carries a
+Read [`AGENTS.md`](AGENTS.md) first. Every directory carries a
 `SKILL.html` whose `skill-meta` JSON block is the machine-readable brain for that
-directory. [`SKILL_CONTRACT.md`](SKILL_CONTRACT.md) specifies that format and
-[`QUALITY_DIRECTIVES.md`](QUALITY_DIRECTIVES.md) sets the content bar.
+directory. [`SKILL_CONTRACT.md`](SKILL_CONTRACT.md) specifies that format. The root
+`SKILL.html` tenets and validation suites set the content bar.
 
 For localization, start at [`scripts/translate/SKILL.html`](scripts/translate/SKILL.html),
 then open the target locale node, such as [`scripts/translate/locales/pt-BR/SKILL.html`](scripts/translate/locales/pt-BR/SKILL.html)

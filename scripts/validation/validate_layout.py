@@ -38,7 +38,7 @@ HERE = Path(__file__).resolve()
 
 def _find_task1(start: Path) -> Path:
     for p in [start, *start.parents]:
-        if (p / "deploy" / "docker-compose.yml").is_file() or (p / "AGENT_QUICKSTART.md").is_file():
+        if (p / "deploy" / "docker-compose.yml").is_file() or (p / "AGENTS.md").is_file():
             return p
     return start.parents[1]
 

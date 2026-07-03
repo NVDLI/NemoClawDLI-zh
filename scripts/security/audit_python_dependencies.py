@@ -55,8 +55,8 @@ FORBIDDEN_DIRECT_REQUIREMENTS = dict.fromkeys(
     "retired runtime component",
 )
 
-# The release runtime uses generated binary messages. Keep the separate JSON conversion
-# surface out of cpu/ and workspace/ while the compatibility exception is active.
+# The release runtime uses generated binary messages.
+# Exclude JSON conversion calls while the compatibility exception is active.
 PROTOBUF_JSON_CONVERSION_RE = re.compile(
     r"\bgoogle\.protobuf\.json_format\b"
     r"|from\s+google\.protobuf\s+import\s+[^\n]*\bjson_format\b"
