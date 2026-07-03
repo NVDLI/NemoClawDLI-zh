@@ -25,6 +25,11 @@ def py(path: str, *args: str) -> tuple[str, ...]:
 
 FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/materials/pull_materials.py", "--verify-committed"),
+    py("scripts/validation/local_path_leak_audit.py", "--self-test"),
+    py("scripts/validation/local_path_leak_audit.py"),
+    py("scripts/validation/sensitive_content_audit.py", "--self-test"),
+    py("scripts/validation/sensitive_content_audit.py"),
+    py("scripts/validation/release_change_reminder.py", "--self-test"),
     py("scripts/validation/validate_layout.py", "--quiet"),
     py("scripts/skills/skill_consistency.py"),
     py("scripts/skills/skill_contract.py"),
@@ -38,6 +43,11 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
 SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/materials/pull_materials.py", "--self-test"),
     py("scripts/materials/pull_materials.py", "--verify-committed"),
+    py("scripts/validation/local_path_leak_audit.py", "--self-test"),
+    py("scripts/validation/local_path_leak_audit.py"),
+    py("scripts/validation/sensitive_content_audit.py", "--self-test"),
+    py("scripts/validation/sensitive_content_audit.py"),
+    py("scripts/validation/release_change_reminder.py", "--self-test"),
     py("scripts/validation/validate_layout.py", "--quiet"),
     py("scripts/skills/skill_consistency.py"),
     py("scripts/skills/skill_contract.py"),
@@ -133,6 +143,24 @@ def self_test() -> tuple[int, int, list[str]]:
         (
             py("scripts/materials/pull_materials.py", "--self-test") in ship,
             "ship tier proves retry classification and tamper detection",
+        ),
+        (
+            py("scripts/validation/local_path_leak_audit.py", "--self-test") in fast
+            and py("scripts/validation/local_path_leak_audit.py") in fast
+            and py("scripts/validation/local_path_leak_audit.py") in ship,
+            "fast and ship tiers reject contributor workstation paths",
+        ),
+        (
+            py("scripts/validation/sensitive_content_audit.py", "--self-test") in fast
+            and py("scripts/validation/sensitive_content_audit.py") in fast
+            and py("scripts/validation/sensitive_content_audit.py", "--self-test") in ship
+            and py("scripts/validation/sensitive_content_audit.py") in ship,
+            "fast and ship tiers reject restricted security and operational content",
+        ),
+        (
+            py("scripts/validation/release_change_reminder.py", "--self-test") in fast
+            and py("scripts/validation/release_change_reminder.py", "--self-test") in ship,
+            "fast and ship tiers prove release follow-up classification",
         ),
         (
             py("scripts/figures/render_security_architecture.py", "--check") in ship,

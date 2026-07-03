@@ -220,8 +220,8 @@ def classify(target: str, resolved: Path | None, src_file: Path) -> str:
     except ValueError:
         pass
     # Anchor the lookup on the repo root rather than on substring matches,
-    # so we don't accidentally pick up a "workspace" segment elsewhere in
-    # the absolute path (e.g. /media/.../vkudlay/courses/...).
+    # so we don't accidentally pick up a "workspace" segment from an
+    # unrelated host mount outside the repository.
     try:
         rel = resolved.relative_to(REPO).parts
     except ValueError:

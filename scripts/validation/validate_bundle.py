@@ -121,6 +121,7 @@ import figure_audit as fa  # noqa: E402
 import cell_audit as ca  # noqa: E402
 import learner_flow_audit as lfa  # noqa: E402
 import contribution_safety_audit as csa  # noqa: E402
+import sensitive_content_audit as sca  # noqa: E402
 import localization_audit as la  # noqa: E402
 import helper_notebook_runtime_audit as hna  # noqa: E402
 import studio_interface_audit as sia  # noqa: E402
@@ -284,6 +285,9 @@ SUITE_META = [
     ("contribution_safety", "Contribution safety", "required",
      "Ideas remain easy to submit while code, merge, deploy, and release authority stay separated. Templates expose evidence and ownership; hooks refuse without mutating; pull-request CI is read-only; required checks and protected environments gate writes.",
      "scripts/validation/contribution_safety_audit.py", "audit_repo"),
+    ("sensitive_content", "Sensitive content boundary", "required",
+     "Repository files, commit additions, and host-supplied submission metadata must not publish security-finding identifiers, exploit-specific notes, private service locations, corporate personal contacts, or concrete credentials. Private active-finding phrases are represented only by reviewed fingerprints.",
+     "scripts/validation/sensitive_content_audit.py", "audit"),
     ("helper_notebook", "Helper notebook contract", "required",
      "The runnable helper notebook must use the helper API exposed by its actual runtime surface. Static examples must not mix CanvasFlow-only and RunCell-only log helpers, because that ships a TypeError directly to students.",
      "scripts/validation/helper_notebook_runtime_audit.py", "static_audit"),
@@ -663,6 +667,21 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         ok = False
         vl_fail.extend(f"contribution safety: {x.get('path')}: {x.get('message')}"
                        for x in contribution_safety_find)
+
+    # Sensitive content (required): current-tree projection of the hook and host-event boundary.
+    try:
+        sensitive_rows, sensitive_scanned = sca.audit()
+        sensitive_find = [item.__dict__ for item in sensitive_rows]
+    except Exception as e:
+        sensitive_scanned = 0
+        sensitive_find = [{"path": "repository", "line": 0,
+                           "kind": f"sensitive content audit error: {e}"}]
+        suite_errors["sensitive_content"] = str(e)
+    if sensitive_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(f"sensitive content: {x.get('path')}:{x.get('line')}: {x.get('kind')}"
+                       for x in sensitive_find)
 
     # Same-branch localization contract (required): every declared locale is gated.
     localization_find = []
@@ -1056,6 +1075,11 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                                   f"[{x.get('code', 'finding')}] {x.get('message', '')}",
                                   REQUIRED, x.get("fix", "restore the contribution trust boundary"))
                                 for x in contribution_safety_find],
+        "sensitive_content": [D(x.get("path", "repository"),
+                                f"line {x.get('line', '?')}: {x.get('kind', 'restricted content')}",
+                                REQUIRED,
+                                "Move the detail to the approved private record and retain only generic controls or fingerprints in the repository.")
+                              for x in sensitive_find],
         "localization": [D(x.get("path", "i18n"),
                             f"[{x.get('code', 'finding')}] {x.get('detail', '')}",
                             REQUIRED,
@@ -1117,6 +1141,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "slides": slides_scanned,
         "security_architecture": security_scanned,
         "release_evidence": release_evidence_scanned,
+        "sensitive_content": sensitive_scanned,
         "course_dependency_integrity": cdi_scanned,
         "grounding": len(grecs), "prose_variety": len(pv_rows), "prose_buzz": len(pv_rows), "redundancy": len(pv_rows), "grammar": len(pv_rows), "structure": len(pv_rows), "headings": len(pv_rows), "assertions": len(pv_rows), "word_echo": len(pv_rows), "comma_weight": len(pv_rows), "branding": len(pv_rows),
         "defer_copula": len(pv_rows), "dense_repeats": len(pv_rows), "over_verbage": len(pv_rows), "padding": len(pv_rows),
@@ -1197,6 +1222,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "cell_audit": {k: len(v) for k, v in ca_find.items()},
         "learner_flow": {"findings": len(learner_flow_find)},
         "contribution_safety": {"findings": len(contribution_safety_find)},
+        "sensitive_content": {"findings": len(sensitive_find), "scanned": sensitive_scanned},
         "localization": {"findings": len(localization_find),
                          "counts": localization_manifest.get("counts", {})},
         "diagram_geom": {"findings": len(dg_find)},
@@ -1267,6 +1293,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
           f"(progressive disclosure / prerequisites / lifecycle / CPU baseline)")
     print(f"  contribution    : {len(contribution_safety_find)} required finding(s) "
           f"(intake / submissions / hooks / CI permissions / release authority)")
+    print(f"  sensitive data  : {len(sensitive_find)} required finding(s) over {sensitive_scanned} text inputs")
     print(f"  release evidence: {len(release_evidence_find)} required finding(s) "
           f"over {release_evidence_scanned} design, test, and ownership items")
     print(f"  localization    : {len(localization_find)} required finding(s) "
@@ -1358,6 +1385,7 @@ def _render_md(summary: dict) -> str:
          f"| cell audit (runnable-cell contract) | {sum(summary.get('cell_audit',{}).values())} | advisory |",
          f"| learner interaction flow | {summary.get('learner_flow',{}).get('findings',0)} | blocking |",
          f"| contribution safety | {summary.get('contribution_safety',{}).get('findings',0)} | blocking |",
+         f"| sensitive content boundary | {summary.get('sensitive_content',{}).get('findings',0)} | blocking |",
          f"| Security architecture graph | {summary.get('security_architecture',{}).get('findings',0)} | blocking |",
          f"| figure geometry (runtime figures) | {summary.get('diagram_geom',{}).get('findings',0)} | advisory |",
          f"| strays (unreachable from a SKILL hub) | {len(rc.get('strays',[]))} | {rc.get('real_strays','?')} real |",
@@ -1374,6 +1402,7 @@ def _render_md(summary: dict) -> str:
                    "prose_buzz": "Buzz cadence", "redundancy": "Redundancy", "grammar": "Grammar & composition", "grounding": "Grounding", "color_theme": "Color theme",
                    "figure_audit": "Figure audit", "cell_audit": "Cell contract", "diagram_geom": "Figure geometry",
                    "materials": "Materials", "reachability": "Reachability", "contribution_safety": "Contribution safety",
+                   "sensitive_content": "Sensitive content boundary",
                    "security_architecture": "Security architecture graph",
                    "word_echo": "Word echo", "comma_weight": "Comma weight", "assertions": "Bare assertions",
                    "headings": "Headings", "structure": "Structural rhythm", "branding": "Brand naming",

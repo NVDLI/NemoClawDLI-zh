@@ -46,6 +46,28 @@ jobs:
         env:
           DCO_RANGE: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
         run: python3 scripts/validation/contribution_safety_audit.py --commit-range "$DCO_RANGE"
+      - name: Pull request contributor-local boundary
+        if: github.event_name == 'pull_request'
+        env:
+          PATH_RANGE: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/validation/local_path_leak_audit.py --commit-range "$PATH_RANGE"
+      - name: Pull request sensitive metadata boundary
+        if: github.event_name == 'pull_request'
+        env:
+          SENSITIVE_TITLE: ${{ github.event.pull_request.title }}
+          SENSITIVE_BODY: ${{ github.event.pull_request.body }}
+          SENSITIVE_REF: ${{ github.event.pull_request.head.ref }}
+        run: python3 scripts/validation/sensitive_content_audit.py --submission-env SENSITIVE_TITLE --submission-env SENSITIVE_BODY --submission-env SENSITIVE_REF
+      - name: Pull request sensitive history boundary
+        if: github.event_name == 'pull_request'
+        env:
+          SENSITIVE_RANGE: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/validation/sensitive_content_audit.py --commit-range "$SENSITIVE_RANGE"
+      - name: Pull request external release follow-up reminder
+        if: github.event_name == 'pull_request'
+        env:
+          RELEASE_CHANGE_RANGE: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/validation/release_change_reminder.py --commit-range "$RELEASE_CHANGE_RANGE" --report docs/validation/release-change-reminder.json
       - name: Materials drift check (advisory; complains on drift, never blocks the deploy)
         continue-on-error: true
         run: python3 scripts/materials/pull_materials.py --check --fetch-attempts 4 --retry-backoff 2 --host-delay 3

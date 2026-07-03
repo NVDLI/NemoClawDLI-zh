@@ -383,11 +383,11 @@ def run(verbose=True):
 if __name__ == "__main__":
     if "--self-test" in sys.argv:
         fixtures = (
-            ("same-origin bundle", '<script src="vendor/codemirror-5.65.16.min.js"></script><link href="vendor/codemirror-5.65.16.min.css">', []),
-            ("parent-path bundle", '<script src="../vendor/codemirror-5.65.16.min.js"></script><link href="../vendor/codemirror-5.65.16.min.css">', []),
+            ("same-origin bundle", '<script src="vendor/codemirror-5.65.21.min.js"></script><link href="vendor/codemirror-5.65.21.min.css">', []),
+            ("parent-path bundle", '<script src="../vendor/codemirror-5.65.21.min.js"></script><link href="../vendor/codemirror-5.65.21.min.css">', []),
             ("split distribution", '<script src="codemirror.min.js"></script><script src="mode/javascript/javascript.min.js"></script><link href="codemirror.min.css">', []),
-            ("missing JavaScript", '<link href="vendor/codemirror-5.65.16.min.css">', ["CodeMirror core js", "javascript mode"]),
-            ("missing CSS", '<script src="vendor/codemirror-5.65.16.min.js"></script>', ["editor css"]),
+            ("missing JavaScript", '<link href="vendor/codemirror-5.65.21.min.css">', ["CodeMirror core js", "javascript mode"]),
+            ("missing CSS", '<script src="vendor/codemirror-5.65.21.min.js"></script>', ["editor css"]),
         )
         failures = [(name, highlighter_missing(source), expected) for name, source, expected in fixtures
                     if highlighter_missing(source) != expected]

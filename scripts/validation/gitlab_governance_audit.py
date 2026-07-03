@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import urllib.parse
 import urllib.request
@@ -211,12 +212,14 @@ def self_test() -> list[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--host", default="gitlab-master.nvidia.com")
-    parser.add_argument("--project", default="364401")
+    parser.add_argument("--host", default=os.environ.get("CI_SERVER_HOST", "gitlab.com"))
+    parser.add_argument("--project", default=os.environ.get("CI_PROJECT_ID", ""))
     parser.add_argument("--snapshot", help="read a previously captured aggregate JSON instead of GitLab")
     parser.add_argument("--report")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
+    if not args.self_test and not args.snapshot and not args.project:
+        parser.error("--project or CI_PROJECT_ID is required without --snapshot")
     if args.self_test:
         failures = self_test()
         findings = [item("self-test", x, "repair the detector") for x in failures]

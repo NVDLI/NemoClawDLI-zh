@@ -1,16 +1,13 @@
 #!/usr/bin/env bash
 # Install the repo's git hooks into .git/hooks/. Idempotent.
 #
-# Installs every hook in this directory's git-hooks/ (pre-commit, pre-push) so the
-# standalone repo (task1 as the root) runs the same gates the DLI wrapper runs via its
-# own core.hooksPath: pre-commit = nb_audit + canvas-HTML + page-runtime guard;
-# pre-push = rebase guard + SKILL consistency + layout + projection link gate.
+# Installs a small dispatcher for every hook in this directory's git-hooks/. The
+# dispatcher resolves the active worktree at invocation time, so linked worktrees run
+# their own branch's hook implementation instead of a stale sibling checkout.
 set -e
 
-# Anchor on this script's own directory so normal and linked worktrees resolve the same
-# canonical repository content root.
+# Anchor on this script's directory only for installation-time source validation.
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
-REPO_ROOT="$(git rev-parse --show-toplevel)"
 # `REPO_ROOT/.git` is a file in a linked worktree. Ask Git for the real hooks
 # path so installation works in ordinary clones and worktrees alike.
 HOOK_DIR="$(git rev-parse --git-path hooks)"
@@ -26,12 +23,29 @@ for name in pre-commit pre-push; do
     chmod +x "$src"
     if [ -L "$dst" ]; then
         rm "$dst"
-    elif [ -f "$dst" ]; then
+    elif [ -f "$dst" ] && ! grep -q "nemoclaw-worktree-dispatch" "$dst"; then
         echo "warning: $dst already exists; moving to ${dst}.bak"
         mv "$dst" "${dst}.bak"
     fi
-    ln -s "$src" "$dst"
-    echo "installed: $dst -> $src"
+    {
+        echo '#!/usr/bin/env bash'
+        echo '# nemoclaw-worktree-dispatch'
+        echo 'set -euo pipefail'
+        printf 'name=%q\n' "$name"
+        cat <<'DISPATCH'
+root="$(git rev-parse --show-toplevel)"
+content_root="$root"
+[ -d "$root/task1/scripts/git-hooks" ] && content_root="$root/task1"
+hook="$content_root/scripts/git-hooks/$name"
+if [ ! -x "$hook" ]; then
+    echo "git hook dispatcher: missing executable $hook" >&2
+    exit 1
+fi
+exec "$hook" "$@"
+DISPATCH
+    } > "$dst"
+    chmod +x "$dst"
+    echo "installed dispatcher: $dst -> active worktree scripts/git-hooks/$name"
 done
 
 echo ""

@@ -25,13 +25,34 @@ MANIFEST = VENDOR / "browser-dependencies.json"
 LOCK = ROOT / "scripts" / "browser-vendor" / "package-lock.json"
 PACKAGE = ROOT / "scripts" / "browser-vendor" / "package.json"
 CODEMIRROR_ENTRY = ROOT / "scripts" / "browser-vendor" / "codemirror-entry.js"
+CI_CONFIG = ROOT / ".gitlab-ci.yml"
 DASHBOARD = COURSE / "dependencies.html"
 PACKAGE_HOSTS = {"cdn.jsdelivr.net", "cdnjs.cloudflare.com", "esm.sh", "unpkg.com"}
 SOURCE_SUFFIXES = {".css", ".html", ".js", ".mjs"}
 EXCLUDED_PARTS = {"vendor", "standalone", "mats"}
 VENDOR_REF_RE = re.compile(r"(?<![A-Za-z0-9_-])(?:\.\.?/)?vendor/([A-Za-z0-9_.-]+)")
 CODEMIRROR_MODE_RE = re.compile(r'import\s+["\']codemirror/mode/([^/]+)/[^"\']+["\']\s*;')
+CODEMIRROR_MARKDOWN_RE = re.compile(r"codemirror(?:/[^/\s\"']+)?/mode/markdown/", re.IGNORECASE)
+CODEMIRROR_VERSION_REF_RE = re.compile(
+    r"codemirror(?:-monokai)?(?:/|@|-)(\d+\.\d+\.\d+)", re.IGNORECASE
+)
+EXTERNAL_CODEMIRROR_URL_RE = re.compile(r"https://[^\"';\s]*codemirror[^\"';\s]+", re.IGNORECASE)
+CODEMIRROR_CDN_RE = re.compile(
+    r"https://cdn\.jsdelivr\.net/npm/codemirror@(\d+\.\d+\.\d+)/([^\"';\s]+)", re.IGNORECASE
+)
 REVIEWED_CODEMIRROR_MODES = {"css", "htmlmixed", "javascript", "python", "xml"}
+EXACT_VERSION_RE = re.compile(r"(\d+)\.(\d+)\.(\d+)(?:[-+][0-9A-Za-z.-]+)?")
+MINIMUM_BROWSER_PACKAGE_VERSIONS = {"codemirror": (5, 65, 21)}
+CODEMIRROR_CDN_SRI = {
+    "lib/codemirror.min.css": "sha384-5051nNF3/zZWmqR8xLbnEemOtE5aiJ1EQkEq9vNXYOnGP/3BgYGknkOKuic0TtLg",
+    "theme/monokai.min.css": "sha384-quTpEUSU3EctO0q/LujapVfLi1W2HzJSa8AYlphQqdUVu4xv3L0FpJM4qiGlFtSG",
+    "lib/codemirror.min.js": "sha384-0g/X0mKSHhn466L6gmwQ9T6fCIeXJnwNSxvvJ0BdQtCDDS0FexoLx+DrxcZEZzEg",
+    "mode/javascript/javascript.min.js": "sha384-eFWmno3frUPpxd9HY3/D+mG053G//m0lzptejdowRL0e0ZDemrkiin1+tvD+6y3K",
+    "mode/python/python.min.js": "sha384-7b0bBxjCy1nOeHyF0JF7apxjgAqjgO0oIMT+YbJdWCD1XN2yyuH+Bszrto8jH/+8",
+    "mode/xml/xml.min.js": "sha384-5YtiW1wbHNoTba5dLtwu12JsaSHlEJUhEIrc2p2mUhj8Qu/IiT1fwoBFF5H6Cnrq",
+    "mode/css/css.min.js": "sha384-vp9dw4ad8wEEvNC9LEcNNyB7wbOKO5JDeyB7h2E/VVlVWUB1YluxFkQ9dPaM2gKI",
+    "mode/htmlmixed/htmlmixed.min.js": "sha384-oltMhhOH7bsTEI6KaMECnU25oNNADzTcMN3UpgnrG9wAE5OLkvjSZYzQm7LGm7DA",
+}
 
 
 def sha256(path: Path) -> str:
@@ -49,6 +70,19 @@ def runtime_sources() -> list[Path]:
         if path.is_file()
         and path.suffix.lower() in SOURCE_SUFFIXES
         and not EXCLUDED_PARTS.intersection(path.parts)
+    )
+
+
+def browser_projection_sources() -> list[Path]:
+    """Return browser sources, including tracked standalone projections."""
+    return sorted(
+        path
+        for base in (ROOT / "web", ROOT / "i18n")
+        if base.is_dir()
+        for path in base.rglob("*")
+        if path.is_file()
+        and path.suffix.lower() in SOURCE_SUFFIXES
+        and not {"vendor", "mats"}.intersection(path.parts)
     )
 
 
@@ -102,6 +136,44 @@ def audit(*, manifest_data: dict | None = None,
         findings.append("unreviewed CodeMirror modes: " + ", ".join(unexpected_modes))
     if missing_modes:
         findings.append("reviewed CodeMirror modes missing from bundle entry: " + ", ".join(missing_modes))
+    ci_text = overrides.get(".gitlab-ci.yml", CI_CONFIG.read_text(encoding="utf-8"))
+    ci_job = re.search(r"(?ms)^security_browser_sca:\s*\n(.*?)(?=^\S[^\n]*:\s*(?:$|&)|\Z)", ci_text)
+    ci_tokens = (
+        "npm audit --prefix scripts/browser-vendor",
+        "--package-lock-only",
+        "--audit-level=moderate",
+        "browser-npm-audit.json",
+        'CI_PIPELINE_SOURCE == "merge_request_event"',
+        "scripts/browser-vendor/package-lock.json",
+        "scripts/validation/course_dependency_integrity.py",
+    )
+    if not ci_job:
+        findings.append("GitLab CI is missing the security_browser_sca job")
+    else:
+        missing_ci = [token for token in ci_tokens if token not in ci_job.group(1)]
+        if missing_ci:
+            findings.append("security_browser_sca is incomplete: " + ", ".join(missing_ci))
+    for path in browser_projection_sources():
+        rel = path.relative_to(ROOT).as_posix()
+        text = overrides.get(rel, path.read_text(encoding="utf-8", errors="replace"))
+        if CODEMIRROR_MARKDOWN_RE.search(text):
+            findings.append(f"CodeMirror Markdown mode is outside the reviewed browser surface: {rel}")
+        minimum = MINIMUM_BROWSER_PACKAGE_VERSIONS["codemirror"]
+        for version in sorted(set(CODEMIRROR_VERSION_REF_RE.findall(text))):
+            if tuple(int(part) for part in version.split(".")) < minimum:
+                floor = ".".join(str(part) for part in minimum)
+                findings.append(f"browser projection uses CodeMirror below supported floor: {rel}: {version} < {floor}")
+        for url in EXTERNAL_CODEMIRROR_URL_RE.findall(text):
+            if not CODEMIRROR_CDN_RE.fullmatch(url):
+                findings.append(f"standalone projection uses an unreviewed CodeMirror CDN URL: {rel}: {url}")
+        for match in CODEMIRROR_CDN_RE.finditer(text):
+            asset = match.group(2)
+            expected_sri = CODEMIRROR_CDN_SRI.get(asset)
+            evidence = text[match.end():match.end() + 300]
+            if not expected_sri:
+                findings.append(f"standalone projection uses an unreviewed CodeMirror CDN asset: {rel}: {asset}")
+            elif expected_sri not in evidence or not re.search(r"crossorigin|crossOrigin", evidence):
+                findings.append(f"standalone CodeMirror asset lacks pinned integrity: {rel}: {asset}")
     seen_packages: set[tuple[str, str]] = set()
     for row in manifest.get("packages") or []:
         name, version = row.get("name"), row.get("version")
@@ -109,8 +181,15 @@ def audit(*, manifest_data: dict | None = None,
         if key in seen_packages:
             findings.append(f"duplicate package row: {name}@{version}")
         seen_packages.add(key)
-        if not re.fullmatch(r"\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?", str(version)):
+        version_match = EXACT_VERSION_RE.fullmatch(str(version))
+        if not version_match:
             findings.append(f"package version is not exact: {name}@{version}")
+        elif name in MINIMUM_BROWSER_PACKAGE_VERSIONS:
+            current = tuple(int(part) for part in version_match.groups())
+            minimum = MINIMUM_BROWSER_PACKAGE_VERSIONS[name]
+            if current < minimum:
+                floor = ".".join(str(part) for part in minimum)
+                findings.append(f"package is below supported security floor: {name}@{version}; require >= {floor}")
         lock_rows = [value for path, value in locked.items()
                      if path.endswith("node_modules/" + str(name)) and value.get("version") == version]
         if not lock_rows:
@@ -186,7 +265,7 @@ def audit(*, manifest_data: dict | None = None,
 def self_test() -> tuple[int, int, list[str]]:
     baseline = audit()
     if baseline:
-        return 0, 8, ["baseline is not clean: " + item for item in baseline]
+        return 0, 15, ["baseline is not clean: " + item for item in baseline]
     manifest = json.loads(MANIFEST.read_text())
     tests: list[tuple[str, dict, dict[str, str], str]] = []
 
@@ -196,6 +275,10 @@ def self_test() -> tuple[int, int, list[str]]:
     changed = copy.deepcopy(manifest)
     changed["packages"][0]["version"] = "1"
     tests.append(("inexact version", changed, {}, "version is not exact"))
+    changed = copy.deepcopy(manifest)
+    codemirror_row = next(row for row in changed["packages"] if row["name"] == "codemirror")
+    codemirror_row["version"] = "5.65.16"
+    tests.append(("browser security floor", changed, {}, "below supported security floor"))
     changed = copy.deepcopy(manifest)
     changed["delivery"] = "public-cdn"
     tests.append(("delivery boundary", changed, {}, "same-origin-vendored"))
@@ -215,6 +298,28 @@ def self_test() -> tuple[int, int, list[str]]:
     tests.append(("editor mode allowlist", manifest,
                   {entry_rel: entry.replace("mode/xml/xml.js", "mode/markdown/markdown.js")},
                   "unreviewed CodeMirror modes"))
+    sample = "web/nemoclaw/scripts/_chat.js"
+    source = (ROOT / sample).read_text(encoding="utf-8")
+    tests.append(("standalone editor boundary", manifest,
+                  {sample: source + '\nimport "codemirror/mode/markdown/markdown.js";'},
+                  "Markdown mode is outside the reviewed browser surface"))
+    sample = "web/nemoclaw/01a-loop.html"
+    source = (ROOT / sample).read_text(encoding="utf-8")
+    tests.append(("browser projection security floor", manifest,
+                  {sample: source.replace("5.65.21", "5.65.16")},
+                  "browser projection uses CodeMirror below supported floor"))
+    sample = "web/nemoclaw/standalone/studio.html"
+    source = (ROOT / sample).read_text(encoding="utf-8")
+    tests.append(("standalone CodeMirror integrity", manifest,
+                  {sample: source.replace(CODEMIRROR_CDN_SRI["lib/codemirror.min.js"], "sha384-invalid")},
+                  "standalone CodeMirror asset lacks pinned integrity"))
+    tests.append(("standalone CodeMirror host", manifest,
+                  {sample: source.replace("cdn.jsdelivr.net/npm/codemirror", "cdn.example.test/codemirror")},
+                  "standalone projection uses an unreviewed CodeMirror CDN URL"))
+    ci_source = CI_CONFIG.read_text(encoding="utf-8")
+    tests.append(("browser SCA CI wiring", manifest,
+                  {".gitlab-ci.yml": ci_source.replace("security_browser_sca:", "security_browser_scan:", 1)},
+                  "GitLab CI is missing the security_browser_sca job"))
 
     failures = []
     for name, fixture, overrides, expected in tests:

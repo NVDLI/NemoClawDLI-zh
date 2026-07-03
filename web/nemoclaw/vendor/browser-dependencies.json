@@ -9,7 +9,7 @@
     "scripts/browser-vendor/langchain-entry.js",
     "web/ and i18n/ runtime references"
   ],
-  "lock_sha256": "641159138da21305d39ebf42f7760609888df3456d8e27b3d70db9919f5ef988",
+  "lock_sha256": "10b45b9f35779a96ea672dd53a666335d61790ab90d38406cefa4073cd57ab94",
   "packages": [
     {
       "name": "@cfworker/json-schema",
@@ -73,13 +73,13 @@
     },
     {
       "name": "codemirror",
-      "version": "5.65.16",
+      "version": "5.65.21",
       "license": "MIT",
       "direct": true,
       "purpose": "Editable and read-only code cells.",
       "package_url": "https://www.npmjs.com/package/codemirror",
       "homepage": "https://codemirror.net/5/",
-      "license_file": "licenses/codemirror--5.65.16.txt"
+      "license_file": "licenses/codemirror--5.65.21.txt"
     },
     {
       "name": "eventemitter3",
@@ -194,7 +194,7 @@
   ],
   "assets": [
     {
-      "file": "codemirror-5.65.16.min.css",
+      "file": "codemirror-5.65.21.min.css",
       "media_type": "text/css",
       "bytes": 8720,
       "sha256": "eb494ea972d2661ef86f7f6ac656dd6786d721e49c9c1b46e1eb967e4b6f9bf3",
@@ -357,10 +357,10 @@
       ]
     },
     {
-      "file": "codemirror-5.65.16.min.js",
+      "file": "codemirror-5.65.21.min.js",
       "media_type": "text/javascript",
-      "bytes": 237247,
-      "sha256": "54761ad71363f25ecb39171181883a6bc5b0149f91c027cc3b2070727943811c",
+      "bytes": 237292,
+      "sha256": "36c8f0ad64c8cb940c7764dd506200ee3e93bdcca4abf0a2a5e76cfcd603f45e",
       "packages": [
         "codemirror"
       ],
@@ -520,7 +520,7 @@
       ]
     },
     {
-      "file": "codemirror-monokai-5.65.16.min.css",
+      "file": "codemirror-monokai-5.65.21.min.css",
       "media_type": "text/css",
       "bytes": 2179,
       "sha256": "2463dc6fd92019a0c7ca2aaa01d03116b280fa7c6ae01bf21df7c107d9b683e8",
@@ -971,7 +971,7 @@
   "sbom": {
     "file": "browser-sbom.cdx.json",
     "bytes": 7862,
-    "sha256": "a0740300bc1147168ec403c460e7a80d88ab269c38f640d3c3dbd8857ece42ff",
+    "sha256": "12013ac8a68b21567b14bd7f2d8bf783781430d9628831ebdf166527706d49b2",
     "component_count": 18
   }
 }

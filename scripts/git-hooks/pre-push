@@ -95,7 +95,44 @@ if [ -f "$CONTRACT" ]; then
     fi
 fi
 
-# ── RULE 3c: source and vendor-ingestion guard ───────────────────────────────
+# ── RULE 3c: contributor workstation path guard ─────────────────────────────
+LOCAL_PATH_AUDIT="$T1/scripts/validation/local_path_leak_audit.py"
+if [ -f "$LOCAL_PATH_AUDIT" ]; then
+    if ! python3 "$LOCAL_PATH_AUDIT" --self-test \
+       || ! python3 "$LOCAL_PATH_AUDIT" \
+       || ! python3 "$LOCAL_PATH_AUDIT" --commit-range origin/main..HEAD; then
+        echo ""
+        echo "pre-push: REFUSING PUSH - contributor-local path detected."
+        echo "Use repository-relative paths, environment variables, or a portable runtime helper."
+        exit 1
+    fi
+fi
+
+# ── RULE 3d: sensitive-content boundary ─────────────────────────────────────
+SENSITIVE_AUDIT="$T1/scripts/validation/sensitive_content_audit.py"
+if [ -f "$SENSITIVE_AUDIT" ]; then
+    if ! python3 "$SENSITIVE_AUDIT" --self-test \
+       || ! python3 "$SENSITIVE_AUDIT" \
+       || ! python3 "$SENSITIVE_AUDIT" --commit-range origin/main..HEAD; then
+        echo ""
+        echo "pre-push: REFUSING PUSH - restricted security or private operational content detected."
+        echo "The history check also rejects a detail added in one commit and removed later."
+        exit 1
+    fi
+fi
+
+# Proposed changes can require evidence that local CI cannot produce or approve. Emit the
+# operator checklist before the expensive gates so it cannot disappear inside later output.
+RELEASE_REMINDER="$T1/scripts/validation/release_change_reminder.py"
+if [ -f "$RELEASE_REMINDER" ] \
+   && { ! python3 "$RELEASE_REMINDER" --self-test \
+        || ! python3 "$RELEASE_REMINDER" --commit-range origin/main..HEAD; }; then
+    echo ""
+    echo "pre-push: REFUSING PUSH - release follow-up classification failed."
+    exit 1
+fi
+
+# ── RULE 3e: source and vendor-ingestion guard ───────────────────────────────
 # The root license, contribution terms, internal-link sweep, and governed-material
 # provenance all need to be clean before a source change leaves the workstation.
 SOURCE_GATE="$T1/scripts/compliance/source_gate.py"
@@ -108,7 +145,7 @@ if [ -f "$SOURCE_GATE" ]; then
         exit 1
     fi
 fi
-# ── RULE 3d: student-browser dependency inventory guard ─────────────────────
+# ── RULE 3f: student-browser dependency inventory guard ─────────────────────
 BROWSER_DEPENDENCY_AUDIT="$T1/scripts/validation/course_dependency_integrity.py"
 if [ -f "$BROWSER_DEPENDENCY_AUDIT" ]; then
     if ! python3 "$BROWSER_DEPENDENCY_AUDIT" --self-test \
@@ -121,7 +158,7 @@ if [ -f "$BROWSER_DEPENDENCY_AUDIT" ]; then
         exit 1
     fi
 fi
-# ── RULE 3e: Python dependency vulnerability floor guard ─────────────────────
+# ── RULE 3f: Python dependency vulnerability floor guard ─────────────────────
 # Fast source-level SCA guard: query PyPI/OSV metadata for dependency floors and
 # exact pins declared in requirements files and service Dockerfiles. Full transitive
 # SCA still belongs in the built test/lab environment with pip-audit or OSV-Scanner.
@@ -137,15 +174,15 @@ if [ -f "$DEPENDENCY_AUDIT" ]; then
 fi
 
 
-# ── RULE 3f: vulnerability waiver registry guard ────────────────────────────
-# Any accepted vulnerability exception must be explicit, owned, sourced, and
-# time-boxed. Expired waivers fail locally and in CI.
+# ── RULE 3g: vulnerability waiver registry guard ────────────────────────────
+# Any accepted exception must be fingerprinted, owned, controlled, scoped, and
+# time-boxed. Private finding details stay outside repository history.
 WAIVER_AUDIT="$T1/scripts/security/audit_vulnerability_waivers.py"
 if [ -f "$WAIVER_AUDIT" ]; then
     if ! python3 "$WAIVER_AUDIT"; then
         echo ""
-        echo "pre-push: REFUSING PUSH - vulnerability waiver registry failed."
-        echo "Fix the expired or malformed waiver, then run:"
+        echo "pre-push: REFUSING PUSH - security exception registry failed."
+        echo "Fix the expired or malformed exception, then run:"
         echo "  python3 scripts/security/audit_vulnerability_waivers.py"
         exit 1
     fi

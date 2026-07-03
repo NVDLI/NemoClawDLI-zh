@@ -22,6 +22,10 @@ service-document edit hazard lives in
 - Treat every patch as untrusted input, including patches from maintainers and capable agents.
   Require issue linkage, named surfaces, blast-radius evidence, command results, human ownership,
   risk, rollback, and explicit out-of-scope work.
+- Keep active-finding identifiers and narratives, private tracker or service locations, personal
+  corporate addresses, and credentials in approved private records. Repository text may contain
+  generic controls and opaque fingerprints only. Run `sensitive_content_audit.py` against the tree,
+  submission metadata, and the complete proposed commit range.
 - Install the hooks, but never claim they secure a repository. Local hooks provide early feedback
   and can be bypassed. Required CI validates the submitted commit; protected refs and environments
   control merge, deploy, and release authority.
@@ -67,7 +71,10 @@ service-document edit hazard lives in
   `python3 scripts/validation/release_gate.py --tier fast --no-write`; use `--tier ship`
   for the complete deterministic repository gate.
 - For governance, contribution, hook, CI, permission, or release changes, run `contribution_safety_audit.py`, its mutation self-test, and the full ship gate.
-- For dependency, service image, runtime package, or security-exception changes, run `python3 scripts/security/audit_python_dependencies.py` and `python3 scripts/security/audit_vulnerability_waivers.py` before the full gate.
+- For dependency, service image, runtime package, or security-exception changes, run `python3 scripts/security/audit_python_dependencies.py`, `python3 scripts/security/audit_vulnerability_waivers.py`, and `python3 scripts/validation/sensitive_content_audit.py --commit-range origin/main..HEAD` before the full gate.
+- Before push, run `python3 scripts/validation/release_change_reminder.py --commit-range origin/main..HEAD`.
+  Carry every reported threat/architecture, scan, open-source/license, and final-artifact action into
+  the authorized release record. A green repository pipeline does not complete those operator actions.
 - For content or navigation changes, run `python3 scripts/skills/skill_consistency.py`, `python3 scripts/validation/validate_layout.py --quiet`, and `python3 scripts/validation/validate_bundle.py --no-write --scope ship`.
 - For page title, navigation, or deploy-path changes, run `BUILD_PAGES_LANGS=0 scripts/build/build_pages.sh` before calling the MR ready.
 - For Studio, runnable-cell, browser-runtime, or OpenClaw changes, also run the browser/runtime harness named in `AGENT_QUICKSTART.md` and the relevant `scripts/validation/*_audit.py` file.
@@ -96,3 +103,6 @@ service-document edit hazard lives in
 - Read the current diff before editing. Preserve user changes in touched files.
 - Use repo-native tools from WSL for WSL worktrees. Do not use PowerShell `Set-Content` against WSL files.
 - If `apply_patch` is unavailable, a short repo-local rewrite script is acceptable, but inspect `git diff` immediately after it runs.
+- Never commit a contributor home, mounted drive, cache, tool-runtime, or absolute local file URI.
+  Use repository-relative paths, environment variables, or `scripts/runtime/` discovery helpers, then run
+  `python3 scripts/validation/local_path_leak_audit.py --self-test` and the audit itself.

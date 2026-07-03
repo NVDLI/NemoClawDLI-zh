@@ -16,6 +16,10 @@
     "scripts/validation/release_gate.py",
     "scripts/validation/validate_bundle.py",
     "scripts/validation/validate_layout.py",
+    "scripts/validation/local_path_leak_audit.py",
+    "scripts/validation/sensitive_content_audit.py",
+    "scripts/validation/sensitive-content-policy.json",
+    "scripts/validation/release_change_reminder.py",
     "scripts/validation/html_structure_audit.py",
     "scripts/validation/slides_audit.py",
     "scripts/validation/slides_runtime_audit.mjs",
@@ -77,6 +81,26 @@
       "path": "validate_layout.py",
       "role": "layout gate",
       "desc": "Checks links, static mounts, and SKILL beacons."
+    },
+    {
+      "path": "local_path_leak_audit.py",
+      "role": "workstation path boundary",
+      "desc": "Rejects contributor home, mounted-drive, cache, runtime, and absolute local file-URI paths across tracked and untracked source, symlink targets, and every proposed commit; includes mutation coverage and narrow runtime allowances."
+    },
+    {
+      "path": "sensitive_content_audit.py",
+      "role": "sensitive contribution boundary",
+      "desc": "Rejects restricted finding identifiers and narratives, private service hosts, personal corporate addresses, concrete credentials, and matching commit history or submission metadata without echoing matched values."
+    },
+    {
+      "path": "sensitive-content-policy.json",
+      "role": "public fingerprint policy",
+      "desc": "Stores only SHA-256 fingerprints for restricted prefixes, phrases, and hosts; a private overlay can extend the set without publishing its source values."
+    },
+    {
+      "path": "release_change_reminder.py",
+      "role": "external release follow-up reminder",
+      "desc": "Classifies a proposed diff into operator-owned threat, scan, open-source/license, and final-artifact actions without claiming that repository CI completed them."
     },
     {
       "path": "html_structure_audit.py",
@@ -270,13 +294,16 @@
   <div class="skill-cmd"><b>Complete shared gate</b><code>python3 scripts/validation/release_gate.py --tier ship</code></div>
   <div class="skill-cmd"><b>Ship gate</b><code>python3 scripts/validation/validate_bundle.py --no-write --scope ship</code></div>
   <div class="skill-cmd"><b>Layout links</b><code>python3 scripts/validation/validate_layout.py --quiet</code></div>
+  <div class="skill-cmd"><b>Contributor-local boundary</b><code>python3 scripts/validation/local_path_leak_audit.py --self-test &amp;&amp; python3 scripts/validation/local_path_leak_audit.py &amp;&amp; python3 scripts/validation/local_path_leak_audit.py --commit-range origin/main..HEAD</code></div>
+  <div class="skill-cmd"><b>Sensitive contribution boundary</b><code>python3 scripts/validation/sensitive_content_audit.py --self-test &amp;&amp; python3 scripts/validation/sensitive_content_audit.py &amp;&amp; python3 scripts/validation/sensitive_content_audit.py --commit-range origin/main..HEAD</code></div>
+  <div class="skill-cmd"><b>External release follow-up</b><code>python3 scripts/validation/release_change_reminder.py --self-test &amp;&amp; python3 scripts/validation/release_change_reminder.py --commit-range origin/main..HEAD</code></div>
   <div class="skill-cmd"><b>HTML structure + detector</b><code>python3 scripts/validation/html_structure_audit.py &amp;&amp; python3 scripts/validation/html_structure_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>Stakeholder slides + detector</b><code>python3 scripts/validation/slides_audit.py &amp;&amp; python3 scripts/validation/slides_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>Cell contract + detector</b><code>python3 scripts/validation/cell_audit.py --self-test &amp;&amp; python3 scripts/validation/cell_audit.py</code></div>
   <div class="skill-cmd"><b>Learner-flow static + detector</b><code>python3 scripts/validation/learner_flow_audit.py &amp;&amp; python3 scripts/validation/learner_flow_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>Learner-flow browser lifecycle</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/learner_flow_runtime_audit.py --site-root web</code></div>
   <div class="skill-cmd"><b>Contribution safety + detector</b><code>python3 scripts/validation/contribution_safety_audit.py &amp;&amp; python3 scripts/validation/contribution_safety_audit.py --self-test</code></div>
-  <div class="skill-cmd"><b>Live GitLab authority</b><code>python3 scripts/validation/gitlab_governance_audit.py --self-test &amp;&amp; python3 scripts/validation/gitlab_governance_audit.py --project 364401</code></div>
+  <div class="skill-cmd"><b>Live GitLab authority</b><code>python3 scripts/validation/gitlab_governance_audit.py --self-test &amp;&amp; python3 scripts/validation/gitlab_governance_audit.py --project "$CI_PROJECT_ID"</code></div>
   <div class="skill-cmd"><b>Code hygiene</b><code>python3 scripts/validation/code_hygiene.py</code></div>
   <div class="skill-cmd"><b>Figure audit</b><code>python3 scripts/validation/figure_audit.py</code></div>
   <div class="skill-cmd"><b>security architecture + detector</b><code>python3 scripts/validation/security_architecture_audit.py &amp;&amp; python3 scripts/validation/security_architecture_audit.py --self-test</code></div>
@@ -303,6 +330,10 @@
     <a class="skill-card" href="release_gate.py"><b>release_gate.py</b><span>shared validation ladder. Keeps deterministic local, GitLab, GitHub Pages, and release checks aligned.</span></a>
     <a class="skill-card" href="validate_bundle.py"><b>validate_bundle.py</b><span>ship gate. Composes every validator into the release gate and durable report.</span></a>
     <a class="skill-card" href="validate_layout.py"><b>validate_layout.py</b><span>layout gate. Checks links, static mounts, and SKILL beacons.</span></a>
+    <a class="skill-card" href="local_path_leak_audit.py"><b>local_path_leak_audit.py</b><span>contributor-local boundary. Rejects workstation paths in the current tree and every proposed commit.</span></a>
+    <a class="skill-card" href="sensitive_content_audit.py"><b>sensitive_content_audit.py</b><span>sensitive contribution boundary. Scans the tree, complete proposed history, and MR/PR metadata while reporting only category and location.</span></a>
+    <a class="skill-card" href="sensitive-content-policy.json"><b>sensitive-content-policy.json</b><span>public fingerprint policy. Stores hashes only; private CI can add an overlay through an environment-provided file.</span></a>
+    <a class="skill-card" href="release_change_reminder.py"><b>release_change_reminder.py</b><span>external release follow-up reminder. Converts changed paths into an operator checklist for authorized systems.</span></a>
     <a class="skill-card" href="slides_audit.py"><b>slides_audit.py</b><span>stakeholder slide gate. Reuses prose rules and checks claim scope, an uninterrupted Module 1-4 sequence, module narrative, evidence breadth, note depth, screenshot contrast, SVG isolation, provenance, and generated output.</span></a>
     <a class="skill-card" href="slides_runtime_audit.mjs"><b>slides_runtime_audit.mjs</b><span>stakeholder slide browser gate. Renders every slide and checks one-line titles, whitespace balance, navigation, images, notes, and stage bounds.</span></a>
     <a class="skill-card" href="grounding.py"><b>grounding.py</b><span>grounding sweep. Checks cited material association and source-grounding signals.</span></a>

@@ -3,8 +3,8 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install dependencies. Protobuf stays on its compatibility line; BDSA-2025-123809
-# is reachability-guarded and time-boxed in the vulnerability waiver registry.
+# Install dependencies. Protobuf stays on the compatibility line used by generated
+# binary OTLP/gRPC messages; JSON conversion is outside this service's runtime scope.
 RUN pip install --no-cache-dir \
     "fastapi>=0.138.1" \
     "starlette>=1.3.1" \

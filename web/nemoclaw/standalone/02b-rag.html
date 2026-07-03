@@ -2051,10 +2051,10 @@ pre .hljs                { color: #1f2328 !important; background: transparent !i
 
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.21/lib/codemirror.min.css" integrity="sha384-5051nNF3/zZWmqR8xLbnEemOtE5aiJ1EQkEq9vNXYOnGP/3BgYGknkOKuic0TtLg" crossorigin="anonymous"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.21/theme/monokai.min.css" integrity="sha384-quTpEUSU3EctO0q/LujapVfLi1W2HzJSa8AYlphQqdUVu4xv3L0FpJM4qiGlFtSG" crossorigin="anonymous"/>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.21/lib/codemirror.min.js" integrity="sha384-0g/X0mKSHhn466L6gmwQ9T6fCIeXJnwNSxvvJ0BdQtCDDS0FexoLx+DrxcZEZzEg" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.21/mode/javascript/javascript.min.js" integrity="sha384-eFWmno3frUPpxd9HY3/D+mG053G//m0lzptejdowRL0e0ZDemrkiin1+tvD+6y3K" crossorigin="anonymous"></script>
 <style>
   .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
   .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
@@ -3603,7 +3603,9 @@ helpers.viz.sideBySide(
     if (_cmPythonPromise) return _cmPythonPromise;
     _cmPythonPromise = new Promise((resolve, reject) => {
       const s = document.createElement("script");
-      s.src = "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js";
+      s.src = "https://cdn.jsdelivr.net/npm/codemirror@5.65.21/mode/python/python.min.js";
+      s.integrity = "sha384-7b0bBxjCy1nOeHyF0JF7apxjgAqjgO0oIMT+YbJdWCD1XN2yyuH+Bszrto8jH/+8";
+      s.crossOrigin = "anonymous";
       s.async = true;
       s.onload  = resolve;
       s.onerror = reject;
