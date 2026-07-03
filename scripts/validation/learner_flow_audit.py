@@ -44,6 +44,7 @@ LEARNING_VIEW_MIN_BLOCKS = {
 }
 LEARNING_TIERS = {"applied", "deep"}
 LEARNING_ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+REFERENCE_DISCLOSURE_ID_RE = re.compile(r"(?:references|reading-list)$")
 
 
 class LearningBlockParser(HTMLParser):
@@ -53,6 +54,7 @@ class LearningBlockParser(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.stack: list[tuple[str, set[str]]] = []
         self.blocks: list[dict] = []
+        self.reference_disclosures: list[dict] = []
         self.active: list[dict] = []
         self.nested_lines: list[int] = []
 
@@ -60,6 +62,9 @@ class LearningBlockParser(HTMLParser):
         values = {key: value or "" for key, value in attrs}
         classes = set(values.get("class", "").split())
         self.stack.append((tag, classes))
+        learning_id = values.get("data-learning-id", "")
+        if tag == "details" and ("references" in classes or REFERENCE_DISCLOSURE_ID_RE.search(learning_id)):
+            self.reference_disclosures.append({"line": self.getpos()[0], "attrs": values})
         if "data-learning-tier" in values:
             if self.active:
                 self.nested_lines.append(self.getpos()[0])
@@ -111,6 +116,7 @@ def audit_learning_runtime(learning: str, shared: str, css: str) -> list[str]:
         'LEARNING_DEPTH_KEY = "nemoclaw_learning_depth_v1"': "learning depth needs one versioned localStorage key",
         'return DEPTHS.has(depth) ? depth : "guided"': "first-time learners must start in Guided",
         'querySelectorAll?.("details.learning-block[data-learning-tier]")': "learning runtime must discover native optional disclosures",
+        'if (block.hasAttribute("data-learning-always-open"))': "reference disclosures must remain open in every learning view",
         'block.open = DEPTH_RANK[depth] >= required': "saved depth must set each optional disclosure's initial state",
         'CODE_DETAILS_SELECTOR = "details.rc-code-det, details.cf-panel-code-det"': "Guided must cover RunCell and CanvasFlow code disclosures",
         'detail.dataset.learningDefaultOpen = String(detail.open)': "non-Guided views must retain each code cell's authored default",
@@ -152,6 +158,21 @@ def audit_learning_runtime(learning: str, shared: str, css: str) -> list[str]:
           "live artifacts need a bounded transcript instead of unbounded page growth")
     _need(findings, "fetch(" not in learning and "XMLHttpRequest" not in learning and "sendBeacon" not in learning,
           "learning profile runtime must remain local and telemetry-free")
+    return findings
+
+
+def audit_reference_disclosures(path: Path, text: str) -> list[str]:
+    findings: list[str] = []
+    rel = path.relative_to(ROOT).as_posix()
+    parser = LearningBlockParser()
+    parser.feed(text)
+    for disclosure in parser.reference_disclosures:
+        line = disclosure["line"]
+        attrs = disclosure["attrs"]
+        _need(findings, "open" in attrs,
+              f"{rel}:{line}: reference disclosure must default open without JavaScript")
+        _need(findings, "data-learning-always-open" in attrs,
+              f"{rel}:{line}: reference disclosure must remain open in every learning view")
     return findings
 
 
@@ -696,6 +717,9 @@ def audit_tree(root: Path = ROOT) -> list[str]:
             text = page.read_text(encoding="utf-8")
             findings.extend(audit_lesson(page, text))
             findings.extend(audit_learning_lesson(page, text))
+            findings.extend(audit_reference_disclosures(page, text))
+    for page in sorted((root / "i18n").glob("*/web/*/0*.html")):
+        findings.extend(audit_reference_disclosures(page, page.read_text(encoding="utf-8")))
     home = (root / "web/nemoclaw/index.html").read_text(encoding="utf-8")
     findings.extend(audit_home(home))
     findings.extend(audit_workflow_wiring(
@@ -734,6 +758,7 @@ def self_test() -> list[str]:
     learning_cases = [
         ("remote learning-depth telemetry", learning + "\nfetch('/profile');", shared, css, "telemetry-free"),
         ("Complete first-visit default", learning.replace('return DEPTHS.has(depth) ? depth : "guided";', 'return DEPTHS.has(depth) ? depth : "complete";', 1), shared, css, "start in Guided"),
+        ("reference disclosure follows depth", learning.replace('if (block.hasAttribute("data-learning-always-open"))', 'if (false)', 1), shared, css, "reference disclosures must remain open"),
         ("Guided leaves code open", learning.replace('detail.open = depth === "guided" ? false', 'detail.open = depth === "guided" ? true', 1), shared, css, "collapse interactive code"),
         ("late code cells ignored", learning.replace("mountCodeObserver();", "", 1), shared, css, "mounted after shared chrome"),
         ("learning controls on support tools", learning.replace("if (!supportsLearningView()) return;", "", 1), shared, css, "course home and numbered lessons"),
@@ -865,6 +890,15 @@ def self_test() -> list[str]:
     for label, mutated, expected in learning_block_cases:
         if not any(expected in finding for finding in audit_learning_lesson(fixture_path, mutated)):
             misses.append(f"detector missed {label}")
+    reference_fixture = fixture.replace(
+        'class="learning-block" open',
+        'class="references learning-block" open data-learning-always-open',
+        1,
+    )
+    hidden_reference = reference_fixture.replace(" data-learning-always-open", "", 1)
+    if not any("reference disclosure must remain open" in finding
+               for finding in audit_reference_disclosures(fixture_path, hidden_reference)):
+        misses.append("detector missed hidden reference disclosure")
 
     page_path = ROOT / "web/nemoclaw/03b-openclaw.html"
     page = page_path.read_text(encoding="utf-8")

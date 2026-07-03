@@ -56,6 +56,10 @@ export function applyLearningDepth(depth = readLearningDepth(), root = document)
   if (!DEPTHS.has(depth)) depth = "guided";
   root.documentElement?.setAttribute("data-learning-depth", depth);
   root.querySelectorAll?.("details.learning-block[data-learning-tier]").forEach(block => {
+    if (block.hasAttribute("data-learning-always-open")) {
+      block.open = true;
+      return;
+    }
     const required = TIER_RANK[block.dataset.learningTier] ?? 2;
     block.open = DEPTH_RANK[depth] >= required;
   });
