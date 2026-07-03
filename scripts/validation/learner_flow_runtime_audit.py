@@ -32,6 +32,7 @@ const fixture = `<!doctype html><html lang="en"><head><meta charset="utf-8"><lin
   <div id="journey-map"></div>
   <details id="learning-applied" class="learning-block" open data-learning-id="fixture-applied" data-learning-tier="applied"><summary><span class="learning-scope">Applied · Build</span><span class="learning-question">Inspect the implementation detail?</span></summary><div class="learning-block-body"><h2>Applied detail</h2><p>Applied implementation detail stays available in the source and can be revealed without changing the canonical page.</p></div></details>
   <details id="learning-deep" class="learning-block" open data-learning-id="fixture-deep" data-learning-tier="deep"><summary><span class="learning-scope">Deep · Sources</span><span class="learning-question">Read the deeper reference?</span></summary><div class="learning-block-body"><h2>Deep detail</h2><p>Deep reference detail stays available in the source while guided and applied views keep the main path short.</p></div></details>
+  <details id="learning-reference" class="references learning-block" open data-learning-always-open data-learning-id="fixture-references" data-learning-tier="deep"><summary><span class="learning-scope">Deep · Sources</span><span class="learning-question">Read the primary paper sources?</span></summary><div class="learning-block-body"><h2>Primary sources</h2><p>Paper references stay visible on first load while the native disclosure still lets a learner collapse this list.</p></div></details>
   <div id="run-cell"></div><div id="canvas"></div><div id="chat"></div><div id="console"></div>
 </main><script type="module">
 import { mountRunCell, mountCanvasFlow, mountChatUI, mountConsole } from "/nemoclaw/scripts/_shared.js";
@@ -123,6 +124,11 @@ async function waitText(locator, pattern) {
   }, value);
   if (await depthSelect.inputValue() !== 'guided') throw new Error('first visit did not default to Guided');
   if (await page.locator('#learning-applied .learning-block-body').isVisible() || await page.locator('#learning-deep .learning-block-body').isVisible()) throw new Error('first visit did not collapse optional Guided sections');
+  const referenceBody = page.locator('#learning-reference .learning-block-body');
+  if (!await referenceBody.isVisible()) throw new Error('Guided hid the primary paper references');
+  await page.locator('#learning-reference > summary').click();
+  if (await referenceBody.isVisible()) throw new Error('always-open reference disclosure could not be collapsed locally');
+  await page.locator('#learning-reference > summary').click();
   if (!/Inspect the implementation detail\?/.test(await page.locator('#learning-applied > summary').innerText())) throw new Error('applied section did not ask its local question inline');
   const runCode = page.locator('#run-cell .rc-code-det');
   const canvasCodes = page.locator('#canvas .cf-panel-code-det');
@@ -155,6 +161,7 @@ async function waitText(locator, pattern) {
   await page.reload({ waitUntil:'networkidle' });
   await page.waitForFunction(() => window.fixtureMounted === true);
   if (await page.locator('#learning-applied .learning-block-body').isVisible() || await page.locator('#learning-deep .learning-block-body').isVisible()) throw new Error('reload did not restore Guided default');
+  if (!await page.locator('#learning-reference .learning-block-body').isVisible()) throw new Error('reload hid the primary paper references');
   await page.evaluate(() => { location.hash = 'learning-deep'; });
   if (!await page.locator('#learning-deep .learning-block-body').isVisible()) throw new Error('deep link did not reveal its collapsed disclosure');
   await page.locator('#learning-deep > summary').click();
@@ -249,7 +256,7 @@ async function waitText(locator, pattern) {
   const noJsContext = await browser.newContext({ javaScriptEnabled:false, viewport:{ width:800, height:700 } });
   const noJsPage = await noJsContext.newPage();
   await noJsPage.goto(`http://127.0.0.1:${port}/fixture.html`, { waitUntil:'domcontentloaded' });
-  if (!await noJsPage.locator('#learning-applied .learning-block-body').isVisible() || !await noJsPage.locator('#learning-deep .learning-block-body').isVisible()) throw new Error('no-JavaScript view hid authored content');
+  if (!await noJsPage.locator('#learning-applied .learning-block-body').isVisible() || !await noJsPage.locator('#learning-deep .learning-block-body').isVisible() || !await noJsPage.locator('#learning-reference .learning-block-body').isVisible()) throw new Error('no-JavaScript view hid authored content');
   await noJsContext.close();
   const supportPage = await browser.newPage({ viewport:{ width:800, height:700 } });
   await supportPage.goto(`http://127.0.0.1:${port}/support.html`, { waitUntil:'networkidle' });
