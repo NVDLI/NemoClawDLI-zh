@@ -4,13 +4,14 @@ What runtime, browser, service, or deployment behavior failed?
 
 ## Current release target
 
-- Course: `web/nemoclaw/` unless this is a bundle-wide issue
-- Runtime: CPU service stack (`cpu/`, `workspace/`, `deploy/`) unless stated otherwise
+- Course: static browser course under `web/nemoclaw/` unless this is bundle-wide
+- Production: public static host or co-located NemoClaw launchable
+- Local-only support: `cpu/`, `workspace/`, and `deploy/`
 - Bundle scope: course-specific or bundle-wide
 
 ## Environment
 
-- Local, DLI platform, Pages, or external mirror:
+- Local authoring, Pages, NemoClaw launchable, or another static host:
 - Browser/container engine:
 - Branch or commit:
 - URL path, without private tokens:

@@ -4,6 +4,10 @@
 *.sh   text eol=lf
 *.py   text eol=lf
 
+# The official NVIDIA SECURITY.md template is retained byte-for-byte. Its list indentation includes
+# space-before-tab sequences, so exempt only this immutable, hash-validated path from that diff rule.
+SECURITY.md text eol=lf whitespace=-space-before-tab
+
 # SVG is XML/text and worth diffing; keep it as text.
 *.svg  text
 

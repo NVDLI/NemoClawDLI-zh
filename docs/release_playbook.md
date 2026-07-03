@@ -1,10 +1,14 @@
 # Release playbook
 
-This playbook defines how this course bundle moves from internal GitLab development to an external NVIDIA mirror that can accept student reports and later direct student contributions. The repository stays a course packaging and release workspace: authored content, shared services, deployment, validation, and governance move together.
+This playbook defines how this course bundle moves from internal GitLab development to the
+reserved [`NVDLI/NemoClawDLI`](https://github.com/NVDLI/NemoClawDLI) repository, which can later
+accept student reports and direct contributions. The repository stays a course packaging and
+release workspace: authored content, deployment, validation, and governance move together.
 
-Current state: internal release candidate, with external publication pending OSRB approval. See
-[`RELEASE_STATUS.json`](../RELEASE_STATUS.json). Terms such as `released course` elsewhere in the
-repository identify courses selected for the learner foyer; they do not assert public publication.
+Current state: internal release candidate. The public repository name is reserved but not populated,
+and external publication remains pending OSRB approval. See [`RELEASE_STATUS.json`](../RELEASE_STATUS.json).
+Terms such as `released course` elsewhere in the repository identify courses selected for the
+learner foyer; they do not assert public publication.
 The GitHub Pages and release workflows must run
 `contribution_safety_audit.py --require-publication-approved` before external writes.
 
@@ -12,7 +16,8 @@ The GitHub Pages and release workflows must run
 
 Use a staged externalization model:
 
-1. **Internal canonical**: NVIDIA internal GitLab is source of truth. External mirror is off.
+1. **Internal canonical**: NVIDIA internal GitLab is source of truth. The reserved GitHub repository
+   contains no release artifact.
 2. **External read mirror**: publish a sanitized read mirror. Students can read, fork, and cite. Issues and pull requests stay closed or point to a discussion channel.
 3. **External intake**: enable Issues and Discussions. Accept evidence, repros, corrections, and source reports. Merge rights stay internal.
 4. **External contribution**: accept pull requests from forks with required checks, owner review, source governance, and release-manager merge.
@@ -49,9 +54,27 @@ substitute for the host audit log or a human review of who holds the named roles
 Surface ownership and task-specific gates live in the root `SKILL.html`, `docs/SKILL.html`,
 and nearest directory beacon.
 
-## External mirror settings
+## Maintainer operating plan
 
-When mirroring to `nvidia-external`, use internal GitLab as canonical and push mirror protected release refs outward.
+This playbook is the maintainer entry point. Detailed procedures remain with their executable or
+reviewable owners:
+
+| Responsibility | Canonical owner |
+|---|---|
+| Dependency management and software composition analysis | [`dependency_security.md`](dependency_security.md) |
+| Issue triage and tracker state | [`issue_standards.md`](issue_standards.md) |
+| CI/CD and protected publication | This playbook and [`pages_deploy.md`](pages_deploy.md) |
+| Testing and evidence ownership | [`release-test-plan.md`](release-test-plan.md) |
+| Release packaging, promotion, rollback, and recovery | [`release_artifacts.md`](release_artifacts.md) |
+| Version history | [`../CHANGELOG.md`](../CHANGELOG.md) |
+
+Maintainers review these owners when their related surface changes. Host assignments live in teams,
+rulesets, protected environments, and `CODEOWNERS` after stable public handles exist.
+
+## External repository population
+
+Populate `NVDLI/NemoClawDLI` only from a reviewed release tree. Internal GitLab remains canonical
+until the approved cutover records a different source of truth.
 
 Required constraints:
 
@@ -60,9 +83,9 @@ Required constraints:
 - Use SSH or a scoped release-bot token, not a personal account.
 - Protect `main`, `release/*`, and tags on the external host.
 - Run `source_gate.py` and `local_path_leak_audit.py` before mirror publication.
-- Approve the ancestry strategy before enabling a history-preserving mirror. If internal ancestry is
-  not approved for publication, initialize the external repository from the validated release tree
-  instead of copying internal commit history.
+- Approve the ancestry strategy before copying history. If internal ancestry is not approved for
+  publication, initialize the external repository from the validated release tree instead of
+  copying internal commit history.
 - Do not mirror CI secrets, DLI deploy credentials, model keys, Cloudflare headers, or private launch URLs.
 
 Branch policy:
@@ -77,7 +100,8 @@ Branch policy:
 
 ## External GitHub settings
 
-Use these when the mirror lands on GitHub:
+Configure these controls on `NVDLI/NemoClawDLI` before the repository accepts public content or
+community intake:
 
 - Enable Issues at External intake.
 - Enable Discussions for questions, learning friction, and broad ideas that are not actionable defects.
@@ -143,6 +167,23 @@ Issue and patch flow live in [`issue_standards.md`](issue_standards.md) and
 in [`release-test-plan.md`](release-test-plan.md). Use those contracts rather than maintaining a
 second checklist here.
 
+## Hotfix workflow
+
+Use a hotfix only for an urgent defect in a supported tagged release. Security reports stay in the
+private reporting route; public issues must not contain vulnerability detail.
+
+1. Start from the affected protected tag and link the accepted issue or private incident record.
+2. Limit the patch to the defect, its regression test, affected locale projections, and required
+   release evidence.
+3. Run the complete ship gate without change-aware skips, then require independent review and the
+   protected release action.
+4. Publish a new patch tag. Never move or replace the affected tag.
+5. Add the fix to `CHANGELOG.md`, publish the deterministic artifacts, and verify the supported
+   delivery paths before closing the issue.
+
+If the fix changes architecture, dependencies, collected data, distribution, or security controls,
+run the corresponding external review and scan steps again before publication.
+
 ## CI/CD policy
 
 `scripts/validation/release_gate.py` owns the deterministic command sequence used by GitLab,
@@ -187,6 +228,8 @@ Before public mirror:
 - [ ] This playbook is linked from docs SKILL and root SKILL.
 - [ ] GitLab issue/MR templates exist.
 - [ ] GitHub issue/PR templates exist.
+- [ ] GitHub Feature and Bug issue forms exist and route sensitive reports privately.
+- [ ] `CHANGELOG.md` records the pending release and is updated by the release-note owner.
 - [x] Code of Conduct and a public-safe private platform reporting route are repository-defined; verify host moderation before intake.
 - [ ] External repository protects `main` and `release/*`.
 - [ ] Active `v*` tag rules restrict create, update, and deletion.

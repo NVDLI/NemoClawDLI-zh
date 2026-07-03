@@ -8,8 +8,9 @@ Addresses #
 
 ## Current release target
 
-- Course: `web/nemoclaw/` unless this is bundle-wide
-- Runtime: CPU service stack (`cpu/`, `workspace/`, `deploy/`) unless stated otherwise
+- Course: static browser course under `web/nemoclaw/` unless this is bundle-wide
+- Production: public static host or co-located NemoClaw launchable
+- Local-only support: `cpu/`, `workspace/`, and `deploy/` unless specifically changed
 - Bundle scope: course-specific or bundle-wide
 
 ## Surfaces touched

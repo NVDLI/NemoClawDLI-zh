@@ -151,7 +151,8 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     ),
     py("scripts/validation/release_evidence_audit.py", "--self-test"): (
         "scripts/validation/release_evidence_audit.py", "docs/product-design.md",
-        "docs/release-test-plan.md", "docs/release-evidence.json", "RELEASE_STATUS*",
+        "docs/release-test-plan.md", "docs/release-evidence.json", "docs/release_playbook.md",
+        "CHANGELOG.md", ".github/ISSUE_TEMPLATE/*", "RELEASE_STATUS*",
     ),
     py("scripts/build/assemble_locale_overlay.py", "--self-test"): (
         "scripts/build/assemble_locale_overlay.py", "i18n/*/locale.json",
@@ -162,8 +163,8 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     ),
     py("scripts/validation/contribution_safety_audit.py", "--self-test"): (
         ".github/*", ".github/**/*", ".gitlab-ci.yml", ".gitlab/*", ".gitlab/**/*",
-        "AGENTS.md", "CONTRIBUTING.md", "DCO.md", "RELEASE_STATUS.json",
-        "CODE_OF_CONDUCT.md", "SUPPORT.md", "SECURITY.md", "RELEASE_STATUS*",
+        ".gitattributes", "AGENTS.md", "CONTRIBUTING.md", "DCO.md", "LICENSE", "RELEASE_STATUS.json",
+        "CODE_OF_CONDUCT.md", "SUPPORT.md", "SECURITY.md", "CHANGELOG.md", "RELEASE_STATUS*",
         "docs/agent_process.md", "docs/release*", "docs/pages_deploy.md",
         "scripts/git-hooks/*", "scripts/build/install-hooks.sh", "scripts/build/build_pages.sh",
         "scripts/build/package_release.py", "scripts/validation/release_gate.py",

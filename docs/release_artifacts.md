@@ -91,8 +91,9 @@ python3 scripts/build/package_release.py --self-test
 ```
 
 The generated manifest binds the archive to both the tag object and peeled commit. `SHA256SUMS`
-supports offline verification. When the external GitHub repository is created, enable immutable
-releases. GitHub then locks the published tag and assets and emits a release attestation.
+supports offline verification. Before the reserved external GitHub repository publishes its first
+release, enable immutable releases. GitHub then locks the published tag and assets and emits a
+release attestation.
 
 ## Promotion and recovery
 

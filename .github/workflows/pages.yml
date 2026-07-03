@@ -1,4 +1,4 @@
-# GitHub Pages for the "Building Agents" course: run the static gate, then build ./public
+# GitHub Pages for Securing Agents with OpenShell and NemoClaw: validate, then build ./public
 # and deploy to Pages. The link engine runs headless under node; no lab, GPU, or browser
 # is needed in CI.
 name: pages
