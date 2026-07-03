@@ -11,7 +11,7 @@
   "node_type": "directory-explorer",
   "title": "scripts/validation deterministic gates",
   "source_dir": "scripts/validation/",
-  "summary": "Static and rendered validators for links, layout, prose, code hygiene, figures, cells, theme behavior, screenshots, and course contracts. These are gates, not prompt guidance.",
+  "summary": "Static and rendered validators for repository work products, links, layout, prose, code hygiene, figures, cells, theme behavior, screenshots, and course contracts. These are gates, not prompt guidance.",
   "related": [
     "scripts/validation/release_gate.py",
     "scripts/validation/validate_bundle.py",
@@ -46,7 +46,8 @@
     "scripts/validation/course_dependency_integrity.py",
     "scripts/validation/concept_order_audit.py",
     "scripts/validation/security_architecture_audit.py",
-    "scripts/validation/release_evidence_audit.py"
+    "scripts/validation/release_evidence_audit.py",
+    "scripts/validation/repository_work_products_audit.py"
   ],
   "explorer": "../../web/_skill_explorer.js"
 }
@@ -55,7 +56,7 @@
 <script type="application/json" id="explorer-config">
 {
   "title": "scripts/validation deterministic gates",
-  "summary": "Static and rendered validators for links, layout, prose, code hygiene, figures, cells, theme behavior, screenshots, and course contracts. These are gates, not prompt guidance.",
+  "summary": "Static and rendered validators for repository work products, links, layout, prose, code hygiene, figures, cells, theme behavior, screenshots, and course contracts. These are gates, not prompt guidance.",
   "model": "nvidia/nemotron-3-nano-30b-a3b",
   "ties": [
     "build"
@@ -156,7 +157,12 @@
     {
       "path": "release_evidence_audit.py",
       "role": "product design and release test-plan gate",
-      "desc": "Required mutation-tested audit for public-safe design, executable test coverage, repository baseline files, evidence ownership, external-review boundaries, gate wiring, and prose quality."
+      "desc": "Required mutation-tested audit for public-safe design, executable test coverage, evidence ownership, external-review boundaries, gate wiring, and prose quality."
+    },
+    {
+      "path": "repository_work_products_audit.py",
+      "role": "public repository work-product gate",
+      "desc": "Required mutation-tested audit for work-product requirement levels, applicability, evidence paths, canonical policies, maintainer procedures, issue intake, and gate wiring."
     },
     {
       "path": "cell_ui_runtime_audit.py",
@@ -312,6 +318,7 @@
   <div class="skill-cmd"><b>Figure audit</b><code>python3 scripts/validation/figure_audit.py</code></div>
   <div class="skill-cmd"><b>security architecture + detector</b><code>python3 scripts/validation/security_architecture_audit.py &amp;&amp; python3 scripts/validation/security_architecture_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>Product design + release test evidence</b><code>python3 scripts/validation/release_evidence_audit.py &amp;&amp; python3 scripts/validation/release_evidence_audit.py --self-test</code></div>
+  <div class="skill-cmd"><b>Repository work products + detector</b><code>python3 scripts/validation/repository_work_products_audit.py &amp;&amp; python3 scripts/validation/repository_work_products_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>Rendered page screenshots</b><code>python3 scripts/validation/cell_ui_runtime_audit.py --site-root /tmp/nemoclaw_visual_preview --page /nemoclaw/02b-rag.html --screenshots /tmp/nemoclaw_visual_audit</code></div>
   <div class="skill-cmd"><b>Studio interface</b><code>python3 scripts/validation/studio_interface_audit.py</code></div>
   <div class="skill-cmd"><b>OpenClaw fallback + static frame lifecycle</b><code>python3 scripts/validation/openclaw_fallback_audit.py</code></div>
@@ -348,6 +355,7 @@
     <a class="skill-card" href="figure_audit.py"><b>figure_audit.py</b><span>figure audit. Checks static figure legibility, accessibility, and the shared mobile lightbox readability contract.</span></a>
     <a class="skill-card" href="security_architecture_audit.py"><b>security_architecture_audit.py</b><span>Required security architecture gate. Derives CI jobs, runtime hosts, remote suffixes, and worker inventory from source; also checks public metadata boundaries, local-only classification, evidence, geometry, and SVG freshness.</span></a>
     <a class="skill-card" href="release_evidence_audit.py"><b>release_evidence_audit.py</b><span>Required product-design and release-test gate. Checks public-safe scope, data and cryptography inventories, evidence ownership, external-review boundaries, gate wiring, and mutation coverage.</span></a>
+    <a class="skill-card" href="repository_work_products_audit.py"><b>repository_work_products_audit.py</b><span>Required repository work-product gate. Checks requirement levels, applicability, evidence paths, policy content, maintainer procedures, issue intake, gate wiring, and mutation coverage.</span></a>
     <a class="skill-card" href="cell_ui_runtime_audit.py"><b>cell_ui_runtime_audit.py</b><span>rendered page screenshot audit. Renders desktop/narrow light/dark pages, writes paired initial/expanded screenshots, flags dark-only surfaces, and exercises mobile figure zoom, pan, and close behavior.</span></a>
     <a class="skill-card" href="cell_audit.py"><b>cell_audit.py</b><span>cell contract. Checks runnable-cell transparency, logging, awaits, keys, bundled editor assets, and UI contract with a focused asset-detector self-test.</span></a>
     <a class="skill-card" href="learner_flow_audit.py"><b>learner_flow_audit.py</b><span>required learner-flow gate. Enforces Guided first visit, interactive-code collapse, default-visible paper references, saved depth, native inline disclosures, local questions, scope cues, readiness, lifecycle, viewport stability, and mutation coverage.</span></a>

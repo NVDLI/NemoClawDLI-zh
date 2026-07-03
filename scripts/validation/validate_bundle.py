@@ -136,6 +136,7 @@ import html_structure_audit as hsa  # noqa: E402
 import slides_audit as sla  # noqa: E402
 import security_architecture_audit as saa  # noqa: E402
 import release_evidence_audit as rea  # noqa: E402
+import repository_work_products_audit as rwpa  # noqa: E402
 from collections import defaultdict  # noqa: E402
 
 
@@ -184,6 +185,9 @@ SUITE_META = [
     ("release_evidence", "Product design and release test plan", "required",
      "The public product design, executable test plan, and machine-readable evidence map must cover the shipped static system, data and cryptography inventories, source and dependency controls, external-review ownership, release artifacts, and rollback without embedding private workflow metadata or claiming approval.",
      "scripts/validation/release_evidence_audit.py", "audit_contract"),
+    ("repository_work_products", "Repository work products", "required",
+     "Public repository work products must match their reviewed requirement and applicability levels. Required files, resolved evidence paths, policy content, issue intake, maintainer procedures, and validator wiring must remain complete.",
+     "scripts/validation/repository_work_products_audit.py", "audit_contract"),
     ("course_content", "Course content contract", "required",
      "Course promises that generic validators cannot infer: retrieval and safety figures keep their teaching contracts, product comparisons cite public sources, automation semantics stay scoped to the demonstrated configuration, and alpha platform claims retain availability and hardware qualifiers. Each finding names the missing contract piece.",
      "scripts/validation/course_content_contract.py", "run"),
@@ -328,18 +332,18 @@ def _span(lines: list[str], symbol: str, lang: str):
     if not symbol:
         return None
     if lang == "py":
-        pat = re.compile(r"^(\s*)(?:async\s+)?def\s+" + re.escape(symbol) + r"\b")
-        for i, ln in enumerate(lines):
-            m = pat.match(ln)
-            if not m:
-                continue
-            indent, end = len(m.group(1)), len(lines)
-            for j in range(i + 1, len(lines)):
-                s = lines[j]
-                if s.strip() and (len(s) - len(s.lstrip())) <= indent:
-                    end = j
-                    break
-            return [i + 1, end]
+        import ast
+        try:
+            tree = ast.parse("\n".join(lines))
+        except SyntaxError:
+            return None
+        matches = [
+            node for node in ast.walk(tree)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == symbol
+        ]
+        if matches:
+            node = min(matches, key=lambda item: item.lineno)
+            return [node.lineno, getattr(node, "end_lineno", node.lineno)]
         return None
     if lang in ("js", "mjs"):
         pat = re.compile(r"\bfunction\s+" + re.escape(symbol) + r"\b|\b"
@@ -548,6 +552,24 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         vl_fail.extend(
             f"release evidence: {item['path']}: [{item['code']}] {item['detail']}"
             for item in release_evidence_find
+        )
+
+    try:
+        work_product_contract = rwpa.load_contract()
+        repository_work_products_find = rwpa.audit_contract(work_product_contract)
+        repository_work_products_scanned = len(work_product_contract.get("repository_work_products", []))
+    except Exception as e:
+        repository_work_products_find, repository_work_products_scanned = [], 0
+        suite_errors["repository_work_products"] = str(e)
+        vl_ok = False
+        ok = False
+        vl_fail.append(f"repository work-product audit error: {e}")
+    if repository_work_products_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(
+            f"repository work products: {item['path']}: [{item['code']}] {item['detail']}"
+            for item in repository_work_products_find
         )
 
     # grounding reference sweep (fast, no-llm). Folds the em-dash / ungrounded / cross
@@ -936,6 +958,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "release_evidence": [D(item["path"], f"[{item['code']}] {item['detail']}", REQUIRED,
                      item["fix"])
                     for item in release_evidence_find],
+        "repository_work_products": [D(item["path"], f"[{item['code']}] {item['detail']}", REQUIRED,
+                     item["fix"])
+                    for item in repository_work_products_find],
         "course_content": [D(path, detail, REQUIRED,
                              "Restore the source-backed teaching contract. Keep retrieval/safety explanations complete, product comparisons grounded in public sources, automation behavior scoped to the demonstrated configuration, and alpha platform claims qualified.")
                            for path, detail in cc_find],
@@ -1142,6 +1167,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "slides": slides_scanned,
         "security_architecture": security_scanned,
         "release_evidence": release_evidence_scanned,
+        "repository_work_products": repository_work_products_scanned,
         "sensitive_content": sensitive_scanned,
         "course_dependency_integrity": cdi_scanned,
         "grounding": len(grecs), "prose_variety": len(pv_rows), "prose_buzz": len(pv_rows), "redundancy": len(pv_rows), "grammar": len(pv_rows), "structure": len(pv_rows), "headings": len(pv_rows), "assertions": len(pv_rows), "word_echo": len(pv_rows), "comma_weight": len(pv_rows), "branding": len(pv_rows),
@@ -1214,6 +1240,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "security_architecture": {"findings": len(security_find), "graph_items": security_scanned},
         "release_evidence": {"findings": len(release_evidence_find),
                              "evidence_items": release_evidence_scanned},
+        "repository_work_products": {"findings": len(repository_work_products_find),
+                                     "work_products": repository_work_products_scanned},
         "course_content": {"findings": len(cc_find)},
         "course_dependency_integrity": {"findings": len(cdi_find)},
         "prose_variety": {"pages": len(pv_rows), "flagged": len(pv_flagged), "flag_at": pv.FLAG_AT,
@@ -1302,6 +1330,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     print(f"  sensitive data  : {len(sensitive_find)} required finding(s) over {sensitive_scanned} text inputs")
     print(f"  release evidence: {len(release_evidence_find)} required finding(s) "
           f"over {release_evidence_scanned} design, test, and ownership items")
+    print(f"  repository files: {len(repository_work_products_find)} required finding(s) "
+          f"over {repository_work_products_scanned} reviewed work products")
     print(f"  localization    : {len(localization_find)} required finding(s) "
           f"({localization_manifest.get('counts', {})})")
     print(f"  figure geometry : {len(dg_find)} runtime-figure finding(s) (text overlap / past bounds / connector-crosses-box / useless)")
@@ -1392,6 +1422,7 @@ def _render_md(summary: dict) -> str:
          f"| cell audit (runnable-cell contract) | {sum(summary.get('cell_audit',{}).values())} | advisory |",
          f"| learner interaction flow | {summary.get('learner_flow',{}).get('findings',0)} | blocking |",
          f"| contribution safety | {summary.get('contribution_safety',{}).get('findings',0)} | blocking |",
+         f"| repository work products | {summary.get('repository_work_products',{}).get('findings',0)} | blocking |",
          f"| sensitive content boundary | {summary.get('sensitive_content',{}).get('findings',0)} | blocking |",
          f"| Security architecture graph | {summary.get('security_architecture',{}).get('findings',0)} | blocking |",
          f"| figure geometry (runtime figures) | {summary.get('diagram_geom',{}).get('findings',0)} | advisory |",
@@ -1411,6 +1442,7 @@ def _render_md(summary: dict) -> str:
                    "materials": "Materials", "reachability": "Reachability", "contribution_safety": "Contribution safety",
                    "sensitive_content": "Sensitive content boundary",
                    "security_architecture": "Security architecture graph",
+                   "repository_work_products": "Repository work products",
                    "word_echo": "Word echo", "comma_weight": "Comma weight", "assertions": "Bare assertions",
                    "headings": "Headings", "structure": "Structural rhythm", "branding": "Brand naming",
                    "defer_copula": "Deferred copula", "dense_repeats": "Dense repetition", "over_verbage": "Over-verbage",

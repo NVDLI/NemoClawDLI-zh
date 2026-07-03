@@ -103,7 +103,22 @@ def self_test() -> tuple[int, int, list[str]]:
         mutate(row)
         if not findings(row, "abc1234"):
             failures.append(f"missed {label} mutation")
-    total = len(mutations) + 1
+    from validate_bundle import _span
+    multiline = [
+        "def audit_contract(",
+        "    data: dict,",
+        "    *,",
+        "    root=None,",
+        ") -> list:",
+        "    value = data.get('value')",
+        "    return [value]",
+        "",
+        "def later():",
+        "    return None",
+    ]
+    if _span(multiline, "audit_contract", "py") != [1, 7]:
+        failures.append("multiline Python implementation span excludes the function body")
+    total = len(mutations) + 2
     return total - len(failures), total, failures
 
 
