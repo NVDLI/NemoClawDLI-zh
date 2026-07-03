@@ -257,8 +257,8 @@
       "pattern": "https?://[^\\s)\"<>]*(gitlab-master|github-onboarding)[^\\s)\"<>]*"
     },
     {
-      "name": "internal approval or bug host",
-      "pattern": "https?://[^\\s)\"<>]*(nvbugs|n[s]pect)[^\\s)\"<>]*"
+      "name": "private service host",
+      "pattern": "https?://[^\\s)\"<>]*\\.nvidia\\.(?:net|internal)/[^\\s)\"<>]*"
     }
   ]
 }

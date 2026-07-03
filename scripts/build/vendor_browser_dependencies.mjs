@@ -19,6 +19,8 @@ if (!fs.existsSync(lockPath) || !fs.existsSync(path.join(modules, "esbuild"))) {
 const { build } = await import(pathToFileURL(path.join(modules, "esbuild/lib/main.js")));
 const lock = JSON.parse(fs.readFileSync(lockPath, "utf8"));
 const direct = JSON.parse(fs.readFileSync(packagePath, "utf8")).dependencies;
+const codemirrorVersion = direct.codemirror;
+const codemirrorBase = `codemirror-${codemirrorVersion}`;
 fs.rmSync(vendor, { recursive: true, force: true });
 fs.mkdirSync(path.join(vendor, "licenses"), { recursive: true });
 
@@ -36,13 +38,13 @@ const buildResult = async (entry, outfile, options = {}) => build({
 });
 
 const highlight = await buildResult("highlight-entry.js", "highlight-11.10.0.min.js", { format: "iife" });
-const codemirror = await buildResult("codemirror-entry.js", "codemirror-5.65.16.min.js", { format: "iife" });
+const codemirror = await buildResult("codemirror-entry.js", `${codemirrorBase}.min.js`, { format: "iife" });
 const langchain = await buildResult("langchain-entry.js", "langchain-1.4.7.esm.min.js", { format: "esm" });
 
 const copies = [
   ["highlight.js/styles/github-dark.min.css", "highlight-github-dark-11.10.0.min.css"],
-  ["codemirror/lib/codemirror.css", "codemirror-5.65.16.min.css"],
-  ["codemirror/theme/monokai.css", "codemirror-monokai-5.65.16.min.css"],
+  ["codemirror/lib/codemirror.css", `${codemirrorBase}.min.css`],
+  ["codemirror/theme/monokai.css", `codemirror-monokai-${codemirrorVersion}.min.css`],
   ["marked/lib/marked.esm.js", "marked-14.1.4.esm.js"],
 ];
 for (const [source, target] of copies) {
@@ -119,9 +121,9 @@ const packages = [...packageRoots].map(packageRootPath => {
 const assetPackages = {
   "highlight-11.10.0.min.js": ["highlight.js"],
   "highlight-github-dark-11.10.0.min.css": ["highlight.js"],
-  "codemirror-5.65.16.min.js": ["codemirror"],
-  "codemirror-5.65.16.min.css": ["codemirror"],
-  "codemirror-monokai-5.65.16.min.css": ["codemirror"],
+  [`${codemirrorBase}.min.js`]: ["codemirror"],
+  [`${codemirrorBase}.min.css`]: ["codemirror"],
+  [`codemirror-monokai-${codemirrorVersion}.min.css`]: ["codemirror"],
   "marked-14.1.4.esm.js": ["marked"],
   "langchain-1.4.7.esm.min.js": [...packagesFromMeta(langchain.metafile)].map(packageName).sort(),
 };

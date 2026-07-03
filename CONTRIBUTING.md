@@ -83,10 +83,11 @@ bash scripts/build/install-hooks.sh
 
 This resolves Git's real hook directory, including linked worktrees, then installs two hooks:
 
-- `pre-commit`: protected-branch refusal, contribution-boundary audit, corruption guard,
-  canvas-HTML validation, and page-runtime smoke checks.
-- `pre-push`: behind-branch refusal, mutation-tested contribution and learner-flow contracts,
-  SKILL consistency, source/security checks, layout validation, and the release gate.
+- `pre-commit`: protected-branch refusal, contributor-local and sensitive-content boundaries,
+  contribution audit, corruption guard, canvas-HTML validation, and page-runtime smoke checks.
+- `pre-push`: behind-branch refusal, full-history sensitive-content checks, mutation-tested
+  contribution and learner-flow contracts, SKILL consistency, source/security checks, layout
+  validation, and the release gate.
 
 A local hook is feedback, not authority. Hooks are intentionally early and actionable, but
 Git allows them to be bypassed. Required CI, branch or tag rulesets, protected human review,

@@ -18,8 +18,8 @@ from typing import Iterable
 from urllib import error, parse, request
 
 
-DEFAULT_HOST = "gitlab-master.nvidia.com"
-DEFAULT_PROJECT_ID = "364401"
+DEFAULT_HOST = os.environ.get("CI_SERVER_HOST", "gitlab.com")
+DEFAULT_PROJECT_ID = os.environ.get("CI_PROJECT_ID", "")
 STANDARDS_ISSUE_TITLE = (
     "Standardize issue cadence for NemoClaw CPU release and reviewer-feedback tracker"
 )
@@ -578,6 +578,8 @@ def parse_args(argv: Iterable[str]) -> argparse.Namespace:
 
 def main(argv: Iterable[str] = sys.argv[1:]) -> int:
     args = parse_args(argv)
+    if not args.project_id:
+        raise SystemExit("--project-id or CI_PROJECT_ID is required")
     if args.dry_run:
         print(f"DRY target: {args.host}/projects/{args.project_id}")
         create_labels(None, True)  # type: ignore[arg-type]

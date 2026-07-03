@@ -10,11 +10,14 @@
   "node_type": "directory-explorer",
   "title": "scripts/git-hooks local hooks",
   "source_dir": "scripts/git-hooks/",
-  "summary": "Local git hook scripts that run source and release checks before commits or pushes. Install them from scripts/build/install-hooks.sh.",
+  "summary": "Local git hook scripts that reject contributor-local or sensitive content before commits or pushes, then run source and release checks. The installer writes shared Git dispatchers that resolve each active worktree's own hook implementation.",
   "related": [
     "scripts/git-hooks/pre-commit",
     "scripts/git-hooks/pre-push",
     "scripts/build/install-hooks.sh",
+    "scripts/validation/local_path_leak_audit.py",
+    "scripts/validation/sensitive_content_audit.py",
+    "scripts/validation/release_change_reminder.py",
     "scripts/compliance/source_gate.py",
     "scripts/security/audit_python_dependencies.py",
     "scripts/security/audit_vulnerability_waivers.py"
@@ -25,14 +28,14 @@
 <script type="application/json" id="explorer-config">
 {
   "title": "scripts/git-hooks local hooks",
-  "summary": "Local git hook scripts that run source and release checks before commits or pushes.",
+  "summary": "Local git hook scripts that run early content boundaries plus source and release checks before commits or pushes.",
   "model": "nvidia/nemotron-3-nano-30b-a3b",
   "nav": {"home": "../../web/index.html", "up": {"label": "scripts", "href": "../SKILL.html"}},
   "groups": [{"title": "Hook entrypoints", "files": [
-    {"path": "pre-commit", "role": "commit hook", "desc": "Runs the local pre-commit checks."},
-    {"path": "pre-push", "role": "push hook", "desc": "Runs the local pre-push checks."}
+    {"path": "pre-commit", "role": "commit hook", "desc": "Rejects protected-ref commits, contributor-local paths, and sensitive content before broader checks."},
+    {"path": "pre-push", "role": "push hook", "desc": "Scans the complete proposed history, prints operator-owned release follow-ups, then runs source, dependency, SKILL, layout, and release checks."}
   ]}],
-  "tour": [{"title": "Install hooks", "file": "../build/install-hooks.sh", "lines": [1, 80], "note": "Installer that copies these hooks into .git/hooks."}]
+  "tour": [{"title": "Install hooks", "file": "../build/install-hooks.sh", "lines": [1, 90], "note": "Installer that dispatches shared Git hooks to the active worktree."}]
 }
 </script>
 
@@ -45,19 +48,21 @@
 <section class="skill-static" aria-labelledby="skill-title">
   <nav class="skill-nav"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a></nav>
   <h1 id="skill-title">scripts/git-hooks local hooks</h1>
-  <p>Local git hooks live here. Install them from the grouped build tools; pre-push includes the dependency vulnerability floor audit and vulnerability waiver audit.</p>
+  <p>Local git hooks live here. Install them from the grouped build tools. Both hooks reject sensitive content; pre-push also scans every proposed commit before dependency and release checks.</p>
   <h2>Executable checks</h2>
   <div class="skill-cmds">
     <div class="skill-cmd"><b>Install hooks</b><code>bash scripts/build/install-hooks.sh</code></div>
     <div class="skill-cmd"><b>Source gate</b><code>python3 scripts/compliance/source_gate.py</code></div>
+    <div class="skill-cmd"><b>Sensitive boundary</b><code>python3 scripts/validation/sensitive_content_audit.py --self-test &amp;&amp; python3 scripts/validation/sensitive_content_audit.py --commit-range origin/main..HEAD</code></div>
+    <div class="skill-cmd"><b>Release follow-up reminder</b><code>python3 scripts/validation/release_change_reminder.py --self-test &amp;&amp; python3 scripts/validation/release_change_reminder.py --commit-range origin/main..HEAD</code></div>
     <div class="skill-cmd"><b>Dependency vulnerability</b><code>python3 scripts/security/audit_python_dependencies.py</code></div>
-    <div class="skill-cmd"><b>Vulnerability waivers</b><code>python3 scripts/security/audit_vulnerability_waivers.py</code></div>
+    <div class="skill-cmd"><b>Security exceptions</b><code>python3 scripts/security/audit_vulnerability_waivers.py</code></div>
   </div>
   <h2>Linkage map</h2>
   <div class="skill-grid">
     <a class="skill-card" href="pre-commit"><b>pre-commit</b><span>Local commit hook.</span></a>
     <a class="skill-card" href="pre-push"><b>pre-push</b><span>Local push hook.</span></a>
-    <a class="skill-card" href="../build/install-hooks.sh"><b>install-hooks.sh</b><span>Copies hooks into .git/hooks.</span></a>
+    <a class="skill-card" href="../build/install-hooks.sh"><b>install-hooks.sh</b><span>Writes shared Git dispatchers that execute the active worktree's hook files.</span></a>
   </div>
 </section>
 <div id="explorer"></div>

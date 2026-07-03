@@ -134,9 +134,9 @@
     {
       "type": "library",
       "name": "codemirror",
-      "version": "5.65.16",
-      "purl": "pkg:npm/codemirror@5.65.16",
-      "bom-ref": "pkg:npm/codemirror@5.65.16",
+      "version": "5.65.21",
+      "purl": "pkg:npm/codemirror@5.65.21",
+      "bom-ref": "pkg:npm/codemirror@5.65.21",
       "licenses": [
         {
           "license": {

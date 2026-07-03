@@ -42,6 +42,17 @@ the result is not evidence.
 Does this change dependencies, permissions, workflows, secrets handling, external sources,
 licensing, generated assets, or release/deploy authority? State `none` only after checking.
 
+## External release follow-up
+
+Run `python3 scripts/validation/release_change_reminder.py --commit-range origin/main..HEAD`.
+Record each applicable action as `REQUIRED`, `COMPLETE`, or `NOT APPLICABLE`; keep private links and
+review records in the authorized release system.
+
+- [ ] Threat and architecture assessment
+- [ ] Authoritative vulnerability and secret scans
+- [ ] Open-source and license review
+- [ ] Final-artifact SBOM, malware, and release evidence
+
 ## Human ownership
 
 Who reviewed the complete diff and can explain every surviving line? Who owns merge and release

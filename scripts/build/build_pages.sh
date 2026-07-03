@@ -69,7 +69,9 @@ else
         echo "[build_pages]   SKIP pull: vendoring deps (requests beautifulsoup4 markdownify lxml) not installed; using committed snapshots"
     fi
 fi
-python3 "$T1/scripts/validation/validate_bundle.py" --scope ship >/dev/null 2>&1 || true   # refresh docs/validation/latest.json post-pull
+# The published report must describe this tree. Never retain and copy a stale report when
+# validation fails; the earlier test job is not a substitute for build-time artifact integrity.
+python3 "$T1/scripts/validation/validate_bundle.py" --scope ship >/dev/null
 
 # ── 1. Courses: build the full self-hosted standalone straight into public/ ──
 # --full gives the lab experience (dark theme, topbar + journey-map + nav, interactive panels)

@@ -53,7 +53,7 @@ before each release train:
 
 ```bash
 python3 scripts/validation/gitlab_governance_audit.py --self-test
-python3 scripts/validation/gitlab_governance_audit.py --project 364401 \
+python3 scripts/validation/gitlab_governance_audit.py --project "$CI_PROJECT_ID" \
   --report docs/validation/gitlab-governance.json
 ```
 
@@ -88,7 +88,10 @@ Required constraints:
 - Keep divergent refs protected so mirror failures stop instead of overwriting unexpected external state.
 - Use SSH or a scoped release-bot token, not a personal account.
 - Protect `main`, `release/*`, and tags on the external host.
-- Run `source_gate.py` before mirror publication.
+- Run `source_gate.py` and `local_path_leak_audit.py` before mirror publication.
+- Approve the ancestry strategy before enabling a history-preserving mirror. If internal ancestry is
+  not approved for publication, initialize the external repository from the validated release tree
+  instead of copying internal commit history.
 - Do not mirror CI secrets, DLI deploy credentials, model keys, Cloudflare headers, or private launch URLs.
 
 Branch policy:
@@ -200,10 +203,11 @@ Release checklist:
 
 1. Confirm `web/nemoclaw/COURSE_CANON.md` unchanged unless formal course-governance approval exists.
 2. Run static gate and browser gate for runtime changes.
-3. Run `source_gate.py` and confirm no private URLs or provenance gaps.
-4. Build Pages with `BUILD_PAGES_LANGS=0 scripts/build/build_pages.sh`.
-5. Confirm release foyer surfaces only released courses.
-6. Confirm branch/tag protection and mirror direction.
+3. Run `source_gate.py` plus `local_path_leak_audit.py` and confirm no private URLs, provenance gaps, or contributor workstation paths.
+4. Run `release_change_reminder.py --commit-range origin/main..HEAD`; move each applicable operator action into the authorized release record.
+5. Build Pages with `BUILD_PAGES_LANGS=0 scripts/build/build_pages.sh`.
+6. Confirm release foyer surfaces only released courses.
+7. Confirm branch/tag protection and mirror direction.
 7. Tag release from protected source.
 8. Publish release notes grouped by learner-facing, runtime/deploy, governance, and known issues.
 
@@ -255,7 +259,7 @@ Before public mirror:
 - [ ] External repository has Discussions enabled, with pinned welcome guidance.
 - [ ] CODEOWNERS is added after org/team handles are real.
 - [ ] Mirror is protected-branch/tag-only until public contribution intake is ready.
-- [ ] `source_gate.py` passes on the mirrored ref.
+- [ ] `source_gate.py` and `local_path_leak_audit.py` pass on the mirrored ref; ancestry strategy is approved.
 - [ ] Public Pages deploy uses environment protection and concurrency.
 - [ ] `github-pages` and `github-release` require a reviewer, prevent self-review, and disallow admin bypass.
 - [ ] A test release produced a Draft release, checksum, validation report, and Rule Insights record.

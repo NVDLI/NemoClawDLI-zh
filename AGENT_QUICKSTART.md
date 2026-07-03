@@ -53,7 +53,27 @@ Source  → the repo root is canonical and holds EVERYTHING worth keeping. Edit 
 Scratch → /tmp for drafts, probes, one-shot scripts, audits, harness runs (ephemeral).
 Safety  → risky edit? branch + validate + commit.
 Keys    → llm_client only, never any other service.
+Paths   → never record contributor home, mount, cache, runtime, or file-URI paths.
+          Use repo-relative paths, environment variables, or repository runtime helpers.
+Private → never paste active-finding IDs, exploit notes, internal tracker/service locations,
+          personal corporate addresses, or credentials. Keep only generic controls and hashes.
 ```
+
+Run `python3 scripts/validation/local_path_leak_audit.py --self-test` and then the audit
+after changing scripts, commands, generated files, or tool/runtime discovery. The same check runs
+in pre-commit, pre-push, and both release-gate tiers. Pull-request CI also scans added lines in every
+proposed commit, so adding a leak and deleting it in a later commit cannot evade the boundary.
+
+Run `python3 scripts/validation/sensitive_content_audit.py --self-test`, the tree audit, and
+`python3 scripts/validation/sensitive_content_audit.py --commit-range origin/main..HEAD` after
+security, dependency, CI, issue, or release work. Local hooks, MR/PR event pipelines, and both
+release tiers enforce the same policy. Private active-finding fingerprints can be supplied through
+`SENSITIVE_CONTENT_POLICY_FILE`; the public policy never republishes the matched detail.
+
+Before pushing any dependency, runtime, workflow, deployment, security, or release-surface change,
+run `python3 scripts/validation/release_change_reminder.py --commit-range origin/main..HEAD`.
+Its checklist names operator-owned assessment, scan, open-source/license, and final-artifact work
+that repository CI cannot complete. Pre-push and MR/PR pipelines print the same reminder.
 
 Worth-keeping agent docs live in the repo by plain name (`AGENT_QUICKSTART.md`,
 `AGENTS.md`, `SKILL_CONTRACT.md`, `QUALITY_DIRECTIVES.md`, `docs/`). Git history is

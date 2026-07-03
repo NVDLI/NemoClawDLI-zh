@@ -173,7 +173,7 @@ draft artifacts may be replaced before publication. The complete artifact contra
 | Production topology | `security-architecture.json` | `security_architecture_audit.py` |
 | Product and data design | This document | `release_evidence_audit.py` |
 | Test execution and evidence ownership | `release-test-plan.md` | `release_evidence_audit.py` plus CI |
-| Source and license inventory | `scripts/compliance/docs/source_inventory.json` and provenance beacons | `source_gate.py` |
+| Source, license, and path hygiene | `scripts/compliance/docs/source_inventory.json`, provenance beacons, and repository-relative path policy | `source_gate.py` and `local_path_leak_audit.py` |
 | Dependencies and SBOM | manifests, locks, browser package inventory, waiver registry, generated CycloneDX documents | dependency, browser integrity, waiver, and SBOM policy audits |
 | Release bytes | protected tag, archive, manifest, SBOM, checksums | release workflow and `package_release.py` |
 

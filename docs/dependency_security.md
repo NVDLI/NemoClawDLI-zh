@@ -74,25 +74,29 @@ The check is wired into:
 The learner bundle vendors CodeMirror from an exact npm lock, but ships only the CSS, HTML-mixed,
 JavaScript, Python, and XML modes named in `scripts/browser-vendor/codemirror-entry.js`. The course
 does not ship the package's Markdown mode. `course_dependency_integrity.py` compares that entrypoint
-to the reviewed allowlist, and its self-test proves that substituting an unreviewed mode fails.
-Changing the mode set requires a bundle regeneration, dependency review, and browser validation.
+to the reviewed allowlist, enforces supported package floors, and mutation-tests both boundaries.
+Changing the version or mode set requires a bundle regeneration, dependency review, and browser validation.
+Relevant merge requests also run the required `security_browser_sca` npm advisory job and retain its
+machine-readable report as CI evidence.
 
 ## Waiver registry
 
-Known vulnerability exceptions must be explicit, owned, sourced, and time-boxed in:
+Temporary security exceptions must be explicit, owned, fingerprinted, and time-boxed in:
 
 ```bash
 scripts/security/vulnerability-waivers.json
 ```
 
-The registry is intentionally empty by default. Any entry must include:
+The registry never carries advisory text, scanner links, or exploit details. Those stay in the
+approved private review record. Any entry must include:
 
-- `id`: advisory ID, CVE, GHSA, or BDSA identifier
-- `package`: affected package or image component
-- `reason`: why the risk is accepted for this repo
+- `fingerprint`: lowercase SHA-256 of the private finding identifier
+- `component`: affected package or image component
+- `decision`: `not-affected` or `accepted-risk`
 - `owner`: accountable person or team
 - `expires`: `YYYY-MM-DD`
-- `source`: scanner report, issue, MR, or advisory URL
+- `control`: tracked executable guard
+- `scope`: bounded release surfaces covered by the decision
 
 Validate it with:
 
@@ -100,17 +104,10 @@ Validate it with:
 python3 scripts/security/audit_vulnerability_waivers.py
 ```
 
-Expired waivers fail locally and in CI. Use a waiver only when the scanner finding
-is not currently actionable; do not use it to bypass an available safe upgrade.
-
-The protobuf waiver for `BDSA-2025-123809` covers an upstream gap rather than a
-version preference. The original `Any` recursion fix shipped in `5.29.6`, but
-`Struct`, `Value`, and `ListValue` still bypass the JSON parser depth counter in
-released wheels through `7.35.1`. Upstream merged the complete fix in
-[`protocolbuffers/protobuf#27007`](https://github.com/protocolbuffers/protobuf/pull/27007).
-Until that fix reaches a stable wheel, `audit_python_dependencies.py` rejects any
-tracked runtime caller of `google.protobuf.json_format.Parse` or `ParseDict`, and
-the waiver expires so the dependency cannot remain accepted silently.
+Expired exceptions fail locally and in CI. Use an exception only when the private review record
+contains the decision and the repository carries an executable compensating control. The current
+compatibility exception rejects the unsupported protobuf JSON-conversion surface from tracked
+runtime code and expires so the decision cannot remain accepted silently.
 
 ## Full installed-environment SCA
 
