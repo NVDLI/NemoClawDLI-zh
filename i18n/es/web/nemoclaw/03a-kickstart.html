@@ -358,7 +358,7 @@ helpers.log("rendered below. Edit the config and Run.");
   </main>
 
   <script type="module">
-    import { buildNav, updateKeyPill, updateClawPill, mountJourneyMap, mountClawProbe, mountCanvasFlow, mountRunCell, GW_CONNECT, mountGwRecover, mountDiagram } from "./scripts/_shared.js";
+    import { buildNav, gatewayTokenFromAgentMetadata, getConfig, updateKeyPill, updateClawPill, mountJourneyMap, mountClawProbe, mountCanvasFlow, mountRunCell, GW_CONNECT, mountGwRecover, mountDiagram } from "./scripts/_shared.js";
     document.getElementById("nav").innerHTML = buildNav("03a-kickstart.html");
     const pill = document.getElementById("key-status");
     updateKeyPill(pill);
@@ -412,27 +412,25 @@ helpers.log("rendered below. Edit the config and Run.");
       ],
     });
 
-    const NVIDIA_API_BASE_URL = "https://integrate.api.nvidia.com/v1";
+    const MODEL_API_CONFIG = await getConfig();
+    const MODEL_API_BASE_URL = MODEL_API_CONFIG.url;
     const NVIDIA_BUILD_URL = "https://build.nvidia.com";
 
     // ── Probe model endpoint ─────────────────────────────────────────────────────
     mountClawProbe("#probe-llm", {
-      label: "Prueba el endpoint del modelo (build.nvidia.com)",
+      label: "Probar el endpoint activo del modelo",
       intro: "",
-      defaultUrl: NVIDIA_API_BASE_URL,
-      proxyBase: "https://nvidia-api-cors-proxy.vkudlay.workers.dev",
+      defaultUrl: MODEL_API_BASE_URL,
       defaultToken: localStorage.getItem("nvapi") || "",
       fieldHelp: {
-        url: `<p><strong>Qué es:</strong> la URL base de la API de modelos de NVIDIA. Ya está completa y no requiere cambios.</p>
-<p><strong>Cómo llegan las solicitudes:</strong> el runtime principal del curso llama a
-<code>integrate.api.nvidia.com</code> directamente de forma predeterminada. Esta sonda editable utiliza el
-relay CORS alojado de la API de NVIDIA para que puedas inspeccionar ese transporte. El curso solo requiere
-el relay cuando se activa explícitamente el modo proxy para iframe.</p>
-<p><strong>Ejecución local:</strong> las páginas del navegador, los scripts y los notebooks deben llamar a
-<code>${NVIDIA_API_BASE_URL}</code> directamente, salvo que el entorno que los incorpora requiera el relay.</p>`,
+        url: `<p><strong>Qué es:</strong> la URL base de la API de modelos guardada en la página inicial.</p>
+<p><strong>Cómo llegan las solicitudes:</strong> el valor predeterminado es <code>integrate.api.nvidia.com</code>.
+El instructor puede seleccionar una launchable compatible una sola vez; todas las lecciones y esta
+sonda reutilizan el valor. El proxy para iframe solo está disponible con el endpoint predeterminado.</p>
+<p><strong>Endpoint activo:</strong> <code>${MODEL_API_BASE_URL}</code>.</p>`,
 
-        token: `<p><strong>Qué es:</strong> tu clave de la API de NVIDIA, que comienza por <code>nvapi-</code>. El campo utiliza automáticamente
-la clave guardada en la página principal del curso.</p>
+        token: `<p><strong>Qué es:</strong> la clave bearer guardada con el endpoint activo.
+Las claves de la API de NVIDIA empiezan por <code>nvapi-</code>.</p>
 <p><strong>Cómo obtener una:</strong> inicie sesión en <a href="${NVIDIA_BUILD_URL}" target="_blank" rel="noopener">build.nvidia.com</a>
 y elige API Keys → Generate Key.</p>
 <p><strong>Ejecución local:</strong> la misma clave funciona en todos los entornos. Guárdela en la variable de entorno
@@ -465,14 +463,15 @@ y elige API Keys → Generate Key.</p>
       intro: "Ejecuta primero esta breve solicitud de descubrimiento. Enumera los modelos que coinciden con el filtro editable; el código permanece visible porque modificar ese filtro forma parte del ejercicio.",
       code: `// Fetch the model catalog and keep only the IDs this benchmark compares.
 const FILTER = ["120b", "glm", "kimi", "minimax"];
-const PROXY  = "https://nvidia-api-cors-proxy.vkudlay.workers.dev";
+const CFG      = await helpers.getConfig();
+const ENDPOINT = CFG.url.replace(/\/+$/, "");
 const KEY    = localStorage.getItem("nvapi") || "";
 
 if (!KEY) {
-  helpers.log("No nvapi- key saved. Go to the course home and save your key first.");
+  helpers.log("No API key saved. Go to the course home and save the endpoint and key first.");
   return;
 }
-const r = await fetch(PROXY + "/v1/models", {
+const r = await fetch(ENDPOINT + "/models", {
   headers: { Authorization: "Bearer " + KEY },
 });
 
@@ -485,7 +484,7 @@ if (!models.length) {
 }
 helpers.log(models.length + " model(s) to bench:\\n  " + models.join("\\n  "));
 state.models = models;
-state.proxy  = PROXY;
+state.endpoint = ENDPOINT;
 state.key    = KEY;
 return { count: models.length };`,
     });
@@ -510,7 +509,7 @@ async function bench(model) {
   let text = "", think = "", finish = null, err = null;
 
   try {
-    const r = await fetch(state.proxy + "/v1/chat/completions", {
+    const r = await fetch(state.endpoint + "/chat/completions", {
       method: "POST",
       headers: { Authorization: "Bearer " + state.key, "Content-Type": "application/json" },
       body: JSON.stringify({ model, messages: [{ role: "user", content: PROMPT }], max_tokens: MAX_TOKENS, stream: true }),
@@ -601,16 +600,13 @@ return { ranked: ok.map(r => r.model), errors: results.filter(r => r.err).length
       intro: "",
       defaultUrl: "",
       defaultToken: "",
-      proxyBase: "https://openclaw-cors-proxy.vkudlay.workers.dev",
+      proxyBase: "https://openclaw-cors-proxy.experiments.courses.nvidia.com",
       proxyMode: "prefix",
       syncCanvas: true,
       cfAccess: true,
 
       // GET /api/agent returns agent.dashboardUrl with the gateway token.
-      autofillToken: (j) => {
-        const m = (j?.agent?.dashboardUrl || "").match(/token=([a-f0-9]+)/i);
-        return m ? m[1] : null;
-      },
+      autofillToken: gatewayTokenFromAgentMetadata,
       fieldHelp: {
         url: `<p><strong>Qué es:</strong> la URL raíz de tu launchable de NemoClaw, que ejecuta OpenClaw dentro de OpenShell, sin <code>/v1</code> al final.</p>
 <p><strong>Cómo encontrarla:</strong> el panel de Brev la muestra como App URL:
@@ -622,8 +618,9 @@ No hay túnel de Cloudflare ni capa de CF Access: conéctate directamente y deja
         token: `<p><strong>Normalmente puedes dejar este campo vacío.</strong> Ejecuta <strong>GET /api/agent</strong> debajo.
 La sonda lee el token del gateway desde <code>agent.dashboardUrl</code> y completa el campo. La URL base y tu JWT de CF Access
 son suficientes para que el gateway lo devuelva.</p>
-<p><strong>Alternativa manual:</strong> si el campo no se completa, ejecuta <code>printenv | grep TOKEN</code>
-en la terminal del launchable y pega aquí el valor de <code>OPENCLAW_GATEWAY_TOKEN</code>, una cadena hexadecimal de 64 caracteres.</p>`,
+<p><strong>Alternativa manual:</strong> si el campo no se completa, ejecuta
+<code>printenv OPENCLAW_GATEWAY_TOKEN</code> en la terminal del launchable y pega aquí el valor completo. No supongas
+una longitud ni un conjunto de caracteres fijos.</p>`,
 
         cfJwt: `<p><strong>Qué es:</strong> un JWT de corta duración que Cloudflare Access exige antes de dirigir
 solicitudes al launchable. El navegador ya tiene uno: se guardó como cookie cuando abriste por primera vez

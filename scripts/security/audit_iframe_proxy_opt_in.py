@@ -1,19 +1,30 @@
 #!/usr/bin/env python3
 """Audit that iframe proxy support is explicit, bounded, and documented.
 
-This is a narrow source audit. It does not contact Cloudflare or NVIDIA; it checks
+This is a narrow source audit. It does not contact the hosted service; it checks
 that main keeps iframe execution available without silently routing normal course
-traffic through the hosted workers.
+traffic through the relay.
 """
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 import re
 import sys
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[2]
+BUILD_PROXY = "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com"
+OPENCLAW_PROXY = "https://openclaw-cors-proxy.experiments.courses.nvidia.com"
 
 CHECKS = [
+    (
+        "runtime supports one explicit model endpoint",
+        "web/nemoclaw/scripts/_shared.js",
+        ["DEFAULT_MODEL_API_BASE_URL", "MODEL_API_BASE_URL_KEY", "normalizeModelApiBaseUrl", "getModelApiBaseUrl", "export function setModelApiBaseUrl(raw)", 'params.get("base_url")'],
+        [r"function\s+suggestedModelApiBaseUrl[\s\S]{0,500}localStorage\.setItem"],
+    ),
     (
         "runtime exports iframe opt-in controls",
         "web/nemoclaw/scripts/_shared.js",
@@ -23,53 +34,136 @@ CHECKS = [
     (
         "runtime defaults direct and reserves worker for opt-in",
         "web/nemoclaw/scripts/_shared.js",
-        ["https://integrate.api.nvidia.com/v1", "IFRAME_PROXY_URL", "iframe_proxy", "lms_proxy", "iframeProxy: false", "iframeProxy: true"],
+        ["https://integrate.api.nvidia.com/v1", 'const IFRAME_PROXY_URL = "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1"', "iframe_proxy", "lms_proxy", "iframeProxy: false", "iframeProxy: true"],
         [r'const\s+DIRECT_URL\s*=\s*"https://nvidia-api-cors-proxy'],
     ),
     (
-        "billing header is sent on both direct and iframe-proxy paths",
+        "billing header stays on NVIDIA direct and iframe-proxy paths",
         "web/nemoclaw/scripts/_shared.js",
-        ['h.set("X-BILLING-SOURCE", BILLING_SOURCE)', 'const h = { "Content-Type": "application/json", "X-BILLING-SOURCE": BILLING_SOURCE }'],
+        ['billingAttributionEnabled(url)', 'billingAttributionEnabled(cfg.url)', 'host === "integrate.api.nvidia.com"', 'host === "nvidia-api-cors-proxy.experiments.courses.nvidia.com"'],
         [r'if\s*\(cfg\.iframeProxy\).*X-BILLING-SOURCE', r'if\s*\(iframeProxyModeEnabled\(\)\).*X-BILLING-SOURCE'],
     ),
     (
-        "key panel exposes explicit learner toggle",
+        "key panel exposes endpoint and iframe controls",
         "web/nemoclaw/scripts/_keypanel.js",
-        ["iframe-proxy-toggle", "Enable LMS/static iframe execution", "setIframeProxyMode"],
+        ['<input type="url" class="model-api-base-url"', "normalizeModelApiBaseUrl(endpointInput.value)", "setModelApiBaseUrl(endpoint)", "setIframeProxyMode(defaultEndpoint &&", "iframe-proxy-toggle", "Enable LMS/static iframe execution"],
         [],
     ),
     (
         "landing page names iframe mode as opt-in",
         "web/nemoclaw/index.html",
-        ["Enable LMS/static iframe mode only", "hosted CORS worker is used only"],
+        ["selected endpoint", "A custom endpoint belongs here only", "hosted CORS relay is limited"],
         [],
     ),
     (
-        "worker follow-up findings are documented",
-        "scripts/security/iframe_proxy_worker_findings.md",
-        ["This MR does not change", "X-BILLING-SOURCE", "ALLOWED_ORIGINS", "dedicated worker MR"],
+        "hosted endpoints are explicit in the relay explorer",
+        "scripts/cors-proxy/SKILL.html",
+        [BUILD_PROXY, OPENCLAW_PROXY, "reference implementations"],
         [],
+    ),
+    (
+        "reference implementation findings are documented",
+        "scripts/security/iframe_proxy_worker_findings.md",
+        ["reference implementations", "X-BILLING-SOURCE", "ALLOWED_ORIGINS", "deployment repository"],
+        [],
+    ),
+    (
+        "OpenClaw relay excludes model billing attribution",
+        "scripts/cors-proxy/cors-proxy-worker-openclaw.js",
+        ["x-openclaw-session-key", "CF-Access-Jwt-Assertion"],
+        [r"X-BILLING-SOURCE"],
     ),
 ]
 
 WORKER_FINDINGS = [
     (
         "build worker reflects page origins; review exact origin allowlist before deployment changes",
-        "cors-proxy/cors-proxy-worker-build.js",
+        "scripts/cors-proxy/cors-proxy-worker-build.js",
         ["Access-Control-Allow-Origin", "origin"],
     ),
     (
         "launchable worker keeps upstream host allowlist but still reflects page origins",
-        "cors-proxy/cors-proxy-worker-openclaw.js",
+        "scripts/cors-proxy/cors-proxy-worker-openclaw.js",
         ["brevlab.com", "Access-Control-Allow-Origin"],
     ),
 ]
 
 
-def main() -> int:
+def request(request: Request) -> tuple[int, dict[str, str], str]:
+    try:
+        response = urlopen(request, timeout=20)
+    except HTTPError as exc:
+        response = exc
+    status = response.status
+    headers = {key.lower(): value for key, value in response.headers.items()}
+    body = response.read(500).decode("utf-8", errors="replace")
+    return status, headers, body
+
+
+def live_findings() -> list[str]:
+    """Probe public, unauthenticated relay boundaries without sending credentials."""
+    origin = "https://relay-validator.invalid"
+    findings: list[str] = []
+    probes = (
+        (
+            "model relay preflight",
+            Request(
+                BUILD_PROXY + "/v1/chat/completions",
+                method="OPTIONS",
+                headers={
+                    "Origin": origin,
+                    "Access-Control-Request-Method": "POST",
+                    "Access-Control-Request-Headers": "authorization,content-type,x-billing-source",
+                },
+            ),
+            ("authorization", "content-type", "x-billing-source"),
+        ),
+        (
+            "OpenClaw relay preflight",
+            Request(
+                OPENCLAW_PROXY + "/https/example.com/health",
+                method="OPTIONS",
+                headers={
+                    "Origin": origin,
+                    "Access-Control-Request-Method": "GET",
+                    "Access-Control-Request-Headers": "authorization,x-openclaw-session-key",
+                },
+            ),
+            ("authorization", "x-openclaw-session-key"),
+        ),
+    )
+    for label, probe, required_headers in probes:
+        try:
+            status, headers, _ = request(probe)
+        except (OSError, URLError) as exc:
+            findings.append(f"{label} unreachable: {exc}")
+            continue
+        allow_headers = headers.get("access-control-allow-headers", "").lower()
+        if not 200 <= status < 300:
+            findings.append(f"{label} returned HTTP {status}")
+        if headers.get("access-control-allow-origin") != origin:
+            findings.append(f"{label} did not echo the requesting Origin")
+        for header in required_headers:
+            if header not in allow_headers:
+                findings.append(f"{label} does not allow {header}")
+
+    try:
+        status, _, body = request(Request(OPENCLAW_PROXY + "/https/example.com/health"))
+        if status != 403 or "allowlist" not in body.lower():
+            findings.append("OpenClaw relay did not reject an arbitrary upstream host")
+    except (OSError, URLError) as exc:
+        findings.append(f"OpenClaw upstream-boundary probe unreachable: {exc}")
+    return findings
+
+
+def source_findings(root: Path = ROOT, replacements: dict[str, tuple[str, str]] | None = None) -> list[str]:
+    replacements = replacements or {}
     failures: list[str] = []
     for label, rel, required, forbidden in CHECKS:
-        text = (ROOT / rel).read_text(encoding="utf-8")
+        text = (root / rel).read_text(encoding="utf-8")
+        if rel in replacements:
+            old, new = replacements[rel]
+            text = text.replace(old, new, 1)
         missing = [needle for needle in required if needle not in text]
         bad = [pat for pat in forbidden if re.search(pat, text)]
         if missing or bad:
@@ -79,7 +173,40 @@ def main() -> int:
             if bad:
                 parts.append("forbidden " + ", ".join(bad))
             failures.append(f"FAIL {label} ({rel}): " + "; ".join(parts))
-        else:
+    return failures
+
+
+def self_test() -> list[str]:
+    failures: list[str] = []
+    cases = (
+        ("saved model endpoint", "web/nemoclaw/scripts/_shared.js", "export function setModelApiBaseUrl(raw)", "function removedModelSetter(raw)"),
+        ("explicit setup field", "web/nemoclaw/scripts/_keypanel.js", '<input type="url" class="model-api-base-url"', '<input type="url" class="removed-endpoint-field"'),
+        ("custom endpoint bypasses iframe relay", "web/nemoclaw/scripts/_keypanel.js", "setIframeProxyMode(defaultEndpoint &&", "setIframeProxyMode(true &&"),
+        ("custom endpoint omits NVIDIA attribution", "web/nemoclaw/scripts/_shared.js", "if (billingAttributionEnabled(cfg.url))", "if (true)"),
+        ("credential destination warning", "web/nemoclaw/index.html", "selected endpoint", "configured service"),
+        ("OpenClaw excludes model billing attribution", "scripts/cors-proxy/cors-proxy-worker-openclaw.js", "x-openclaw-session-key, Accept", "x-openclaw-session-key, X-BILLING-SOURCE, Accept"),
+    )
+    for label, rel, old, new in cases:
+        if not source_findings(replacements={rel: (old, new)}):
+            failures.append(f"mutation escaped: {label}")
+    return failures
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--live", action="store_true", help="probe both public relay contracts without credentials")
+    parser.add_argument("--self-test", action="store_true", help="prove endpoint and relay mutation detectors")
+    args = parser.parse_args()
+    if args.self_test:
+        failures = self_test()
+        if failures:
+            print("\n".join(f"FAIL {item}" for item in failures), file=sys.stderr)
+            return 1
+        print("iframe/model endpoint audit self-test: PASS")
+        return 0
+    failures = source_findings()
+    for label, _, _, _ in CHECKS:
+        if not any(label in item for item in failures):
             print(f"PASS {label}")
     for label, rel, required in WORKER_FINDINGS:
         text = (ROOT / rel).read_text(encoding="utf-8")
@@ -88,6 +215,10 @@ def main() -> int:
             failures.append(f"FAIL worker finding source changed unexpectedly ({rel}): missing " + ", ".join(missing))
         else:
             print(f"NOTE {label} ({rel})")
+    if args.live:
+        failures.extend(f"FAIL {item}" for item in live_findings())
+        if not any(item.startswith("FAIL ") for item in failures):
+            print("PASS live hosted relay contracts")
     if failures:
         print("\n".join(failures), file=sys.stderr)
         return 1

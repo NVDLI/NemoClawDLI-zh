@@ -53,6 +53,11 @@ transport boundary while preserving those service roles. See the
 [`security design and architecture`](security-design.md) for detailed routes, trust zones, and evidence
 anchors.
 
+The default model route is NVIDIA's hosted API. The setup panel can persist one presenter-supplied,
+OpenAI-compatible HTTPS base URL for capacity fallback. A URL parameter may prefill that field but
+cannot activate it; the learner must review the destination and choose Save and verify. Iframe relay
+mode applies only to the default endpoint.
+
 ## Component design
 
 | Component | Responsibility | Release relationship |
@@ -76,7 +81,7 @@ a credential broker.
 
 | Data class | Storage or transfer | Retention owner | Design control |
 |---|---|---|---|
-| Model API credential | Browser `localStorage`; HTTPS to the selected model route | Learner browser and model-service operator | Password input, explicit clear action, never included in static files or repository CI |
+| Model API credential | Browser `localStorage`; HTTPS to the selected model route | Learner browser and model-service operator | Password input, visible destination, explicit save and clear actions, never included in static files or repository CI |
 | NemoClaw URL and gateway credential | Browser `localStorage`; HTTPS/WebSocket to the selected runtime route | Learner browser and runtime operator | Host validation, password input, route-specific authentication, replacement in the probe, browser site-data clearing |
 | Prompt and model response | Transmitted to the selected model service; displayed in the current page | Model-service operator and learner browser | Visible action, declared endpoint, no repository-operated copy |
 | Agent command, event, and workspace result | Transmitted to the selected NemoClaw runtime | Runtime operator | Authenticated gateway, runtime policy, learner-visible result |

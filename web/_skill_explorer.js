@@ -46,7 +46,7 @@
   var SESSIONS = {
     build: {
       kind: "key", keyVar: "nvapi", label: "build.nvidia.com key", placeholder: "nvapi-...",
-      endpoint: "https://nvidia-api-cors-proxy.vkudlay.workers.dev/v1", billing: "dli-nemoclaw-web",
+      endpoint: "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1", billing: "dli-nemoclaw-web",
       note: "Model calls. Stored as localStorage.nvapi, the same key the course uses."
     },
     openclaw: {

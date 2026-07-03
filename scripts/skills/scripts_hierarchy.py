@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
 
 GROUP_SKILLS = (
-    "browser-vendor", "build", "compliance", "dev", "edx", "figures",
+    "browser-vendor", "build", "compliance", "cors-proxy", "dev", "edx", "figures",
     "git-hooks", "materials", "runtime", "security", "skills", "translate",
     "validation",
 )

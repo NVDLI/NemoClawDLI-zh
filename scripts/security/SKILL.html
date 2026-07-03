@@ -30,8 +30,8 @@
     "scripts/validation/course_dependency_integrity.py",
     "docs/dependency_security.md",
     "web/nemoclaw/scripts/_shared.js",
-    "cors-proxy/cors-proxy-worker-build.js",
-    "cors-proxy/cors-proxy-worker-openclaw.js"
+    "scripts/cors-proxy/cors-proxy-worker-build.js",
+    "scripts/cors-proxy/cors-proxy-worker-openclaw.js"
   ],
   "explorer": "../../web/_skill_explorer.js"
 }
@@ -51,7 +51,7 @@
     {
       "path": "audit_iframe_proxy_opt_in.py",
       "role": "iframe relay contract audit",
-      "desc": "Checks that direct API use is default, iframe proxy mode is explicit, billing headers are always present for tracking, and hosted relay endpoints match the reviewed contract."
+      "desc": "Checks one-time model endpoint selection, explicit iframe mode, safe credential routing, billing headers, and hosted relay contracts."
     },
     {
       "path": "iframe_proxy_worker_findings.md",
@@ -124,8 +124,8 @@
   <div class="skill-note">Run commands from the repository root. Root-level script paths remain compatibility entrypoints; implementation files live in this directory tree.</div>
   <h2>Executable checks</h2>
   <div class="skill-cmds">
-    <div class="skill-cmd"><b>Hosted relay contract</b><code>python3 scripts/security/audit_iframe_proxy_opt_in.py &amp;&amp; python3 scripts/security/audit_iframe_proxy_opt_in.py --live</code></div>
-    <div class="skill-cmd"><b>Iframe proxy audit</b><code>python3 scripts/security/audit_iframe_proxy_opt_in.py</code></div>
+    <div class="skill-cmd"><b>Endpoint + hosted relay contract</b><code>python3 scripts/security/audit_iframe_proxy_opt_in.py --self-test &amp;&amp; python3 scripts/security/audit_iframe_proxy_opt_in.py</code></div>
+    <div class="skill-cmd"><b>Live hosted relays</b><code>python3 scripts/security/audit_iframe_proxy_opt_in.py --live</code></div>
     <div class="skill-cmd"><b>Dependency vulnerability audit</b><code>python3 scripts/security/audit_python_dependencies.py</code></div>
     <div class="skill-cmd"><b>Security exception audit</b><code>python3 scripts/security/audit_vulnerability_waivers.py</code></div>
     <div class="skill-cmd"><b>Sensitive contribution boundary</b><code>python3 scripts/validation/sensitive_content_audit.py --self-test &amp;&amp; python3 scripts/validation/sensitive_content_audit.py</code></div>
@@ -139,7 +139,7 @@
   </div>
   <h2>Linkage map</h2>
   <div class="skill-grid">
-    <a class="skill-card" href="audit_iframe_proxy_opt_in.py"><b>audit_iframe_proxy_opt_in.py</b><span>iframe relay audit. Checks that direct API use is default, iframe relay mode is explicit, billing headers remain present, and hosted endpoint contracts match.</span></a>
+    <a class="skill-card" href="audit_iframe_proxy_opt_in.py"><b>audit_iframe_proxy_opt_in.py</b><span>Model endpoint and iframe relay audit. Checks explicit persistence, credential destination warnings, default-only iframe proxying, billing headers, and hosted endpoint contracts.</span></a>
     <a class="skill-card" href="iframe_proxy_worker_findings.md"><b>iframe_proxy_worker_findings.md</b><span>hosted relay reference findings. Separates repository client-contract fixtures from the externally maintained deployment.</span></a>
     <a class="skill-card" href="audit_python_dependencies.py"><b>audit_python_dependencies.py</b><span>dependency vulnerability floor audit. Checks tracked Python declarations against PyPI/OSV metadata, exact workspace pins, and retired direct dependencies.</span></a>
     <a class="skill-card" href="audit_vulnerability_waivers.py"><b>audit_vulnerability_waivers.py</b><span>security exception audit. Validates opaque fingerprints, ownership, executable controls, scope, and expiry.</span></a>

@@ -59,14 +59,29 @@ const PT_TEXT = new Map(Object.entries({
   "click a row to inspect & edit its source": "clique em uma linha para inspecionar e editar o código-fonte",
   "in scope for this cell. Click a row to read its source": "disponível nesta célula. Clique em uma linha para ler o código-fonte",
   "✓ API key saved for this browser": "✓ Chave de API salva neste navegador",
+  "Model endpoint:": "Endpoint do modelo:",
+  "Model API base URL": "URL base da API de modelos",
+  "Custom endpoint uses direct browser requests": "O endpoint personalizado usa requisições diretas do navegador",
   "Enable LMS/static iframe execution": "Ativar execução em iframe LMS/estático",
   "Enable LMS/static iframe execution through the hosted proxy": "Ativar execução em iframe LMS/estático pelo proxy hospedado",
   "Change": "Alterar",
-  "NVIDIA API key (starts with": "Chave da API NVIDIA (começa com",
+  "API bearer key (NVIDIA keys start with": "Chave bearer da API (chaves NVIDIA começam com",
   "Save & verify": "Salvar e verificar",
   "No key yet?": "Ainda não tem uma chave?",
   "Sign up at build.nvidia.com →": "Cadastre-se em build.nvidia.com →",
-  "Free-tier models cover every exercise. Leave iframe mode off unless your host page needs it.": "Os modelos da camada gratuita atendem a todos os exercícios. Deixe o modo iframe desativado, a menos que a página hospedeira precise dele."
+  "Key should start with nvapi-": "A chave deve começar com nvapi-",
+  "Enter the key for this endpoint": "Informe a chave deste endpoint",
+  "Verifying?": "Verificando…",
+  "✓ Connected.": "✓ Conectado.",
+  "Model API base URL must use HTTPS": "A URL base da API de modelos deve usar HTTPS",
+  "Model API base URL cannot include credentials, query parameters, or a fragment": "A URL base da API de modelos não pode conter credenciais, parâmetros de consulta ou fragmento",
+  "Free-tier models cover every exercise. A presenter can prefill one compatible endpoint with": "Os modelos gratuitos atendem a todos os exercícios. O instrutor pode preencher previamente um endpoint compatível com",
+  ". Review it, then Save & verify once; every lesson reuses it.": ". Revise o endereço e selecione Salvar e verificar uma vez para que todas as aulas reutilizem essa configuração."
+}));
+
+const PT_PREFIXES = new Map(Object.entries({
+  "✓ Connected. Model replied: ": "✓ Conectado. O modelo respondeu: ",
+  "Connection failed: ": "Falha na conexão: "
 }));
 
 const PT_ATTRS = new Map(Object.entries({
@@ -78,7 +93,9 @@ const PT_ATTRS = new Map(Object.entries({
   "Run this cell": "Executar esta célula",
   "Restore every node's code to its original": "Restaurar o código original de todos os nós",
   "Restore this cell's original code and clear its output": "Restaurar o código original desta célula e limpar a saída",
-  "Copy current code": "Copiar o código atual"
+  "Copy current code": "Copiar o código atual",
+  "model key verified this session": "chave do modelo verificada nesta sessão",
+  "the saved nvapi key was refused (401/403). Re-enter it on Module 1a.": "a chave nvapi salva foi recusada (401/403). Informe-a novamente no Módulo 1a."
 }));
 
 const ES_TEXT = new Map(Object.entries({
@@ -97,8 +114,26 @@ const ES_TEXT = new Map(Object.entries({
   "↺ Reset": "↺ Restablecer", "↺ Reset code": "↺ Restablecer código", "Ready": "Listo",
   "empty until you Run": "vacío hasta ejecutar", "reset. empty until you Run": "restablecido; vacío hasta ejecutar",
   "click to collapse": "pulse para contraer", "click to expand": "pulse para ampliar",
+  "✓ API key saved for this browser": "✓ Clave de API guardada en este navegador",
+  "Model endpoint:": "Endpoint del modelo:", "Model API base URL": "URL base de la API de modelos",
+  "Custom endpoint uses direct browser requests": "El endpoint personalizado usa solicitudes directas del navegador",
+  "Enable LMS/static iframe execution": "Activar la ejecución en iframe LMS/estático",
+  "Enable LMS/static iframe execution through the hosted proxy": "Activar la ejecución en iframe LMS/estático mediante el proxy alojado",
+  "API bearer key (NVIDIA keys start with": "Clave bearer de la API (las claves NVIDIA empiezan por",
+  "Key should start with nvapi-": "La clave debe comenzar por nvapi-",
+  "Enter the key for this endpoint": "Introduzca la clave de este endpoint",
+  "Verifying?": "Verificando…", "✓ Connected.": "✓ Conectado.",
+  "Model API base URL must use HTTPS": "La URL base de la API de modelos debe usar HTTPS",
+  "Model API base URL cannot include credentials, query parameters, or a fragment": "La URL base de la API de modelos no puede incluir credenciales, parámetros de consulta ni fragmentos",
+  "Free-tier models cover every exercise. A presenter can prefill one compatible endpoint with": "Los modelos gratuitos cubren todos los ejercicios. El instructor puede precompletar un endpoint compatible con",
+  ". Review it, then Save & verify once; every lesson reuses it.": ". Revise la dirección y seleccione Guardar y verificar una vez para que todas las lecciones reutilicen esa configuración.",
   "Change": "Cambiar", "Save & verify": "Guardar y verificar", "No key yet?": "¿Aún no tiene una clave?",
   "Sign up at build.nvidia.com →": "Regístrese en build.nvidia.com →"
+}));
+
+const ES_PREFIXES = new Map(Object.entries({
+  "✓ Connected. Model replied: ": "✓ Conectado. El modelo respondió: ",
+  "Connection failed: ": "Error de conexión: "
 }));
 
 const ES_ATTRS = new Map(Object.entries({
@@ -107,15 +142,17 @@ const ES_ATTRS = new Map(Object.entries({
   "Run every node in order": "Ejecutar todos los nodos en orden", "Run this cell": "Ejecutar esta celda",
   "Restore every node's code to its original": "Restablecer el código original de todos los nodos",
   "Restore this cell's original code and clear its output": "Restablecer el código original de esta celda y borrar su salida",
-  "Copy current code": "Copiar el código actual"
+  "Copy current code": "Copiar el código actual",
+  "model key verified this session": "clave del modelo verificada en esta sesión",
+  "the saved nvapi key was refused (401/403). Re-enter it on Module 1a.": "la clave nvapi guardada fue rechazada (401/403). Introdúzcala de nuevo en el Módulo 1a."
 }));
 
 const LOCALIZED_UI = "#journey-map,.topbar,.cf-wrap,.rc-card,.chatui,.key-panel";
 
 function localeMaps() {
   const locale = document.documentElement.lang.toLowerCase();
-  if (locale === "pt-br") return { text: PT_TEXT, attrs: PT_ATTRS, previous: "Anterior: ", next: "Próxima: " };
-  if (locale === "es-es") return { text: ES_TEXT, attrs: ES_ATTRS, previous: "Anterior: ", next: "Siguiente: " };
+  if (locale === "pt-br") return { text: PT_TEXT, attrs: PT_ATTRS, prefixes: PT_PREFIXES, previous: "Anterior: ", next: "Próxima: " };
+  if (locale === "es-es") return { text: ES_TEXT, attrs: ES_ATTRS, prefixes: ES_PREFIXES, previous: "Anterior: ", next: "Siguiente: " };
   return null;
 }
 
@@ -126,6 +163,9 @@ function translatedText(value) {
   if (direct) return direct;
   for (const [prefix, replacement] of [["Previous: ", maps.previous], ["Next: ", maps.next]]) {
     if (value.startsWith(prefix)) return replacement + (maps.text.get(value.slice(prefix.length)) || value.slice(prefix.length));
+  }
+  for (const [prefix, replacement] of maps.prefixes) {
+    if (value.startsWith(prefix)) return replacement + value.slice(prefix.length);
   }
   return value;
 }

@@ -95,7 +95,7 @@ def runtime_contract(root: Path) -> tuple[list[str], list[str]]:
         parser.feed(path.read_text(encoding="utf-8", errors="replace"))
         urls.extend(parser.urls)
         scripts.extend(parser.scripts)
-    for folder in (root / "web/nemoclaw/scripts", root / "cors-proxy"):
+    for folder in (root / "web/nemoclaw/scripts", root / "scripts/cors-proxy"):
         for path in sorted(folder.glob("*.js")):
             scripts.append(path.read_text(encoding="utf-8", errors="replace"))
     for text in scripts:
@@ -121,7 +121,7 @@ def runtime_contract(root: Path) -> tuple[list[str], list[str]]:
 def observe_system(root: Path = ROOT) -> dict:
     stages, jobs = ci_contract((root / ".gitlab-ci.yml").read_text(encoding="utf-8"))
     hosts, suffixes = runtime_contract(root)
-    workers = sorted(path.relative_to(root).as_posix() for path in (root / "cors-proxy").glob("*worker*.js"))
+    workers = sorted(path.relative_to(root).as_posix() for path in (root / "scripts/cors-proxy").glob("*worker*.js"))
     return {
         "ci_stages": stages,
         "release_jobs": jobs,

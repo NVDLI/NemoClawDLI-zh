@@ -22,8 +22,8 @@ them. The architecture validator rejects unreviewed production dependencies.
 
 | Course host | Model service | NemoClaw runtime |
 |---|---|---|
-| Public static host | Direct HTTPS from the browser by default. | HTTPS and WebSocket through the reviewed cross-origin relay. |
-| Co-located launchable with a pinned course release | Direct HTTPS using credentials supplied through the launchable startup path and the course's existing browser credential mechanism. | Same-origin direct route to the launchable-created runtime; do not use the relay. |
+| Public static host | Direct HTTPS to the selected model endpoint. The default is NVIDIA-hosted; a presenter may supply a compatible capacity fallback. | HTTPS and WebSocket through the reviewed cross-origin relay. |
+| Co-located launchable with a pinned course release | Direct HTTPS using the endpoint and credentials supplied through the launchable startup path and the course's existing browser credential mechanism. | Same-origin direct route to the launchable-created runtime; do not use the relay. |
 | Either host embedded in an iframe | Model relay when explicit iframe proxy mode is enabled. | Follow the host-specific NemoClaw route above. |
 
 Relays are transport choices, not substitute services. The host changes the route, not the learning
@@ -41,8 +41,9 @@ contract.
 | Static host to browser | Same-origin vendored JavaScript and CSS | Host access policy | Exact lock, license inventory, artifact SHA-256, source-reference validation |
 
 Credentials are entered through password fields and retained in browser storage for reuse. They are
-not built into the static artifact or sent to repository CI. Prompts, responses, agent commands, and
-events cross the selected service boundaries. The repository adds no production application
+not built into the static artifact or sent to repository CI. The model destination is visible and
+requires an explicit save; a query parameter can only prefill it. Prompts, responses, agent commands,
+and events cross the selected service boundaries. The repository adds no production application
 database or server-side learner-data store.
 
 Startup-provided material in the co-located path populates the same storage entry consumed by the

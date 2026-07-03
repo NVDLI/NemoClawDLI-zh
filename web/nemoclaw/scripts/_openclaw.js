@@ -9,7 +9,7 @@ function _uniqueId(prefix = "") {
   return prefix + Math.random().toString(RANDOM_ID_RADIX).slice(2) + Date.now().toString(RANDOM_ID_RADIX);
 }
 
-const OPENCLAW_CORS_PROXY_BASE = "https://openclaw-cors-proxy.vkudlay.workers.dev";
+const OPENCLAW_CORS_PROXY_BASE = "https://openclaw-cors-proxy.experiments.courses.nvidia.com";
 
 export function openclawGatewayWsUrl(rawUrl, cfJwt = "", proxyBase = OPENCLAW_CORS_PROXY_BASE) {
   const raw = String(rawUrl || "").trim().replace(/\/+$/, "");
@@ -35,6 +35,18 @@ export function openclawGatewayWsUrl(rawUrl, cfJwt = "", proxyBase = OPENCLAW_CO
     }
   } catch (_) { /* fall back to direct URL for local or non-URL launchables */ }
   return { url: direct, displayUrl: direct, viaProxy: false, directUrl: direct, directDisplayUrl: direct };
+}
+
+export function gatewayTokenFromAgentMetadata(payload) {
+  const raw = String(payload?.agent?.dashboardUrl || "").trim();
+  if (!raw) return null;
+  try {
+    const parsed = new URL(raw, "https://nemoclaw.invalid/");
+    const fragment = new URLSearchParams(parsed.hash.replace(/^#/, ""));
+    return fragment.get("token") || parsed.searchParams.get("token") || null;
+  } catch (_) {
+    return null;
+  }
 }
 
 // Local launches connect directly to /cli/gateway; same-origin Brev course pages do too.
@@ -211,7 +223,7 @@ export function mountClawGateway(targetSel, opts = {}) {
     }
     const gateway = openclawGatewayWsUrl(rawUrl, cfJwt);
     const wsUrl = gateway.url;
-    _setStatus("connecting", gateway.viaProxy ? "via CF proxy" : "direct");
+    _setStatus("connecting", gateway.viaProxy ? "via hosted relay" : "direct");
     connectBtn.disabled = true;
     outEl.hidden = true;
     try {
@@ -840,7 +852,7 @@ const openclawGatewayWsUrl = (rawInput, jwtInput) => {
     const upstream = new URL(raw);
     const host = upstream.hostname.toLowerCase();
     if (jwt && (host === "brevlab.com" || host.endsWith(".brevlab.com"))) {
-      const proxied = new URL("https://openclaw-cors-proxy.vkudlay.workers.dev");
+      const proxied = new URL("https://openclaw-cors-proxy.experiments.courses.nvidia.com");
       proxied.protocol = "wss:";
       const upstreamPath = upstream.pathname.replace(new RegExp("/+$"), "");
       proxied.pathname = "/https/" + upstream.host + upstreamPath + "/cli/gateway";
@@ -851,22 +863,8 @@ const openclawGatewayWsUrl = (rawInput, jwtInput) => {
   return { url: direct, displayUrl: direct, viaProxy: false, directUrl: direct, directDisplayUrl: direct };
 };
 const gateway = openclawGatewayWsUrl(rawUrl, cfJwt);
-let wsUrl = gateway.url;
-helpers.log("→ " + gateway.displayUrl + (gateway.viaProxy ? "  (via CF proxy)" : ""));
-if (gateway.viaProxy) {
-  let proxyReady = false;
-  try {
-    const meta = await helpers.fetch("https://openclaw-cors-proxy.vkudlay.workers.dev/__nemoclaw_proxy_meta", { cache: "no-store" });
-    const txt = await meta.text();
-    proxyReady = meta.ok && txt.includes("ws-gateway");
-    if (proxyReady) helpers.log("  proxy worker: ws gateway enabled");
-    else helpers.log("  proxy worker stale; falling back to direct browser-cookie WebSocket: " + meta.status + " " + txt.slice(0, 80));
-  } catch (e) { helpers.log("  proxy worker version check failed; falling back to direct browser-cookie WebSocket: " + (e && e.message ? e.message : e)); }
-  if (!proxyReady) {
-    wsUrl = gateway.directUrl;
-    helpers.log("→ " + gateway.directDisplayUrl + "  (direct fallback; open the Brev URL first if this browser lacks the CF cookie)");
-  }
-}
+const wsUrl = gateway.url;
+helpers.log("→ " + gateway.displayUrl + (gateway.viaProxy ? "  (via hosted relay)" : ""));
 
 // Keep one live gateway socket per flow.
 if (state._ws) { try { state._ws.close(); } catch (_) {} state._chatCb = null; }

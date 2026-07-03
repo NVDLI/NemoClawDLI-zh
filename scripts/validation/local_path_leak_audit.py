@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reject contributor-local paths from repository source."""
+"""Reject contributor-local paths and identifiers from repository source."""
 from __future__ import annotations
 
 import argparse
@@ -58,6 +58,10 @@ PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "Codex runtime cache",
         re.compile(r"\.cache[\\/]+codex-runtimes[\\/]+", re.I),
+    ),
+    (
+        "contributor-local identifier",
+        re.compile(r"\bv[k]udlay\b", re.I),
     ),
 )
 
@@ -235,6 +239,7 @@ def self_test() -> tuple[int, int, list[str]]:
         ("host mount", slash + "media/disk/alice/project", True),
         ("local file URI", "file:" + slash * 3 + "tmp/report.html", True),
         ("runtime cache", ".cache" + slash + "codex-runtimes" + slash + "node", True),
+        ("contributor-local identifier", "v" + "kudlay", True),
         ("portable variables", "$HOME/.cache and ${TMPDIR:-/tmp} and file://", False),
         ("declared runtime identity", slash + "home/ocuser/.openclaw/workspace", False),
     )

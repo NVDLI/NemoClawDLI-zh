@@ -78,6 +78,15 @@ NVIDIA_API_KEY=$NVIDIA_API_KEY CLAW_URL=http://openclaw:8995 CLAW_TOKEN=dli-open
 For a remote launchable behind Cloudflare Access, also pass `CLAW_CF` and, when the
 gateway enforces an allowlisted origin, `CLAW_ORIGIN`.
 
+Use the focused check before a full agent run. It loads Module 3a, discovers the
+complete gateway token through the hosted HTTP relay, authenticates the hosted
+WebSocket relay, and calls one read-only gateway method.
+
+```bash
+CLAW_URL=$NEMOCLAW_URL CLAW_CF=$CF_AUTHORIZATION \
+  scripts/runtime/lab_runtime_test.sh --gateway-only
+```
+
 ## Useful knobs
 
 - `CONTAINER_ENGINE=podman|docker`: force one engine.
@@ -93,4 +102,5 @@ gateway enforces an allowlisted origin, `CLAW_ORIGIN`.
 errors, and in `--render-only` mode stops after static page inspection. In full mode
 it clicks every canvas `Run all` button, watches `/cli/gateway` WebSocket frames,
 and reports whether tool/command frames were observed when gateway credentials were
-provided.
+provided. `--gateway-only` isolates HTTP discovery, course token parsing, WebSocket
+authentication, and a read-only gateway call without starting an agent turn.

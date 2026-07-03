@@ -329,6 +329,7 @@ def self_test() -> tuple[int, int, list[str]]:
         ("private hostname", "https://" + "nspect" + ".nvidia.com/report", True),
         ("private hostname suffix", "https://branch." + "gitlab-master-pages" + ".nvidia.com", True),
         ("private project locator", "364" + "401", True),
+        ("contributor-local identifier", "v" + "kudlay", True),
         ("active detail", "Parse" + "Dict", True),
         ("corporate email", "person@" + "nvidia.com", True),
         ("public security role email", "psirt@" + "nvidia.com", False),

@@ -8,11 +8,12 @@ ENGINE=${CONTAINER_ENGINE:-}
 BUILD=1
 SMOKE=0
 RENDER_ONLY=0
+GATEWAY_ONLY=0
 URL=""
 
 usage() {
   cat <<'USAGE'
-Usage: scripts/runtime/lab_runtime_test.sh [--smoke] [--render-only] [--no-build] [URL]
+Usage: scripts/runtime/lab_runtime_test.sh [--smoke] [--render-only] [--gateway-only] [--no-build] [URL]
 
 Builds a small browser-test image with Node.js, playwright-core, and Chromium,
 then runs scripts/runtime/test_page_runtime.js from the repo bind-mounted read-only.
@@ -23,6 +24,8 @@ Examples:
   scripts/runtime/browser_env_probe.sh
   scripts/runtime/lab_runtime_test.sh --smoke
   scripts/runtime/lab_runtime_test.sh --render-only
+  CLAW_URL=https://nemoclaw-<id>.brevlab.com CLAW_CF=<CF_Authorization> \
+    scripts/runtime/lab_runtime_test.sh --gateway-only
   scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html
   CLAW_URL=http://openclaw:8995 CLAW_TOKEN=dli-openclaw-token \
     scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/03a-kickstart.html
@@ -45,6 +48,7 @@ while [[ $# -gt 0 ]]; do
     --help|-h) usage; exit 0 ;;
     --smoke) SMOKE=1; shift ;;
     --render-only) RENDER_ONLY=1; shift ;;
+    --gateway-only) GATEWAY_ONLY=1; shift ;;
     --no-build) BUILD=0; shift ;;
     --) shift; break ;;
     -*) echo "unknown option: $1" >&2; usage >&2; exit 2 ;;
@@ -96,9 +100,16 @@ node_args=()
 if [[ "$RENDER_ONLY" == "1" ]]; then
   node_args+=(--render-only --serve-static)
 fi
+if [[ "$GATEWAY_ONLY" == "1" ]]; then
+  node_args+=(--gateway-only --serve-static)
+fi
 
-if [[ -z "$URL" && "$RENDER_ONLY" == "1" ]]; then
-  URL="http://127.0.0.1:4173/nemoclaw/01a-loop.html"
+if [[ -z "$URL" ]]; then
+  if [[ "$GATEWAY_ONLY" == "1" ]]; then
+    URL="http://127.0.0.1:4173/nemoclaw/03a-kickstart.html"
+  elif [[ "$RENDER_ONLY" == "1" ]]; then
+    URL="http://127.0.0.1:4173/nemoclaw/01a-loop.html"
+  fi
 fi
 
 URL=${URL:-http://nginx/lab/static/nemoclaw/01a-loop.html}
@@ -112,7 +123,7 @@ case "$URL" in
     ;;
 esac
 
-if [[ "$RENDER_ONLY" == "1" ]]; then
+if [[ "$RENDER_ONLY" == "1" || "$GATEWAY_ONLY" == "1" ]]; then
   exec "$ENGINE" "${run_args[@]}" "${test_cmd[@]}" "${node_args[@]}" "$URL"
 fi
 
