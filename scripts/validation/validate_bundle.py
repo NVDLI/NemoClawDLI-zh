@@ -332,18 +332,18 @@ def _span(lines: list[str], symbol: str, lang: str):
     if not symbol:
         return None
     if lang == "py":
-        pat = re.compile(r"^(\s*)(?:async\s+)?def\s+" + re.escape(symbol) + r"\b")
-        for i, ln in enumerate(lines):
-            m = pat.match(ln)
-            if not m:
-                continue
-            indent, end = len(m.group(1)), len(lines)
-            for j in range(i + 1, len(lines)):
-                s = lines[j]
-                if s.strip() and (len(s) - len(s.lstrip())) <= indent:
-                    end = j
-                    break
-            return [i + 1, end]
+        import ast
+        try:
+            tree = ast.parse("\n".join(lines))
+        except SyntaxError:
+            return None
+        matches = [
+            node for node in ast.walk(tree)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == symbol
+        ]
+        if matches:
+            node = min(matches, key=lambda item: item.lineno)
+            return [node.lineno, getattr(node, "end_lineno", node.lineno)]
         return None
     if lang in ("js", "mjs"):
         pat = re.compile(r"\bfunction\s+" + re.escape(symbol) + r"\b|\b"
