@@ -234,7 +234,12 @@ def pptx_findings(manifest: dict, path: Path = PPTX) -> list[dict]:
     return out
 
 
-def audit_manifest(manifest: dict, root: Path = ROOT, html_text: str | None = None) -> list[dict]:
+def audit_manifest(
+    manifest: dict, root: Path = ROOT, html_text: str | None = None, *,
+    check_asset_quality: bool = True,
+    check_projection: bool = True,
+    check_pptx: bool = True,
+) -> list[dict]:
     out = []
     slides = manifest.get("slides")
     if manifest.get("schema") != "nemoclaw-stakeholder-slides/2":
@@ -330,14 +335,14 @@ def audit_manifest(manifest: dict, root: Path = ROOT, html_text: str | None = No
             target = safe_path(root, evidence)
             if target is None or not target.is_file():
                 out.append(finding("evidence", where, f"missing or unsafe evidence path: {evidence}"))
-            elif target.suffix.lower() == ".svg":
+            elif check_asset_quality and target.suffix.lower() == ".svg":
                 out.extend(svg_variable_findings(target, evidence))
         for asset in asset_values(slide):
             target = safe_path(root, asset)
             if target is None or not target.is_file():
                 out.append(finding("visual-asset", where, f"missing or unsafe visual asset: {asset}"))
                 continue
-            if target.suffix.lower() == ".png":
+            if check_asset_quality and target.suffix.lower() == ".png":
                 try:
                     stats = png_stats(target)
                 except Exception as exc:
@@ -351,9 +356,9 @@ def audit_manifest(manifest: dict, root: Path = ROOT, html_text: str | None = No
                     out.append(finding("capture-provenance", asset, "screenshot missing from captures.json"))
 
     out.extend(shared_prose_findings(manifest))
-    if html_text is None and root == ROOT and HTML.is_file():
+    if check_projection and html_text is None and root == ROOT and HTML.is_file():
         html_text = HTML.read_text(encoding="utf-8")
-    if html_text is not None:
+    if check_projection and html_text is not None:
         expected = html_builder.render(manifest)
         if html_text != expected:
             out.append(finding("generated-html", "docs/repository-overview.html", "generated deck is stale"))
@@ -367,7 +372,7 @@ def audit_manifest(manifest: dict, root: Path = ROOT, html_text: str | None = No
         if rendered_scopes != expected_scopes:
             out.append(finding("generated-scope", "docs/repository-overview.html",
                                "rendered claim scopes differ from manifest order"))
-    if root == ROOT:
+    if check_pptx and root == ROOT:
         out.extend(pptx_findings(manifest))
     return out
 
@@ -384,33 +389,39 @@ def _png_bytes(width: int, height: int, rgb: tuple[int, int, int]) -> bytes:
 def self_test() -> list[str]:
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     failures = []
+    def mutation_findings(value: dict) -> list[dict]:
+        # Mutation cases exercise manifest rules. Re-decoding every immutable screenshot,
+        # rebuilding HTML, and reopening the same PPTX for each case adds no detector evidence.
+        return audit_manifest(value, check_asset_quality=False,
+                              check_projection=False, check_pptx=False)
+
     mutated = copy.deepcopy(manifest)
     mutated["slides"][1]["title"] = "One workflow, two implementations"
-    if not any(x["code"] == "shared-prose-buzz" for x in audit_manifest(mutated)):
+    if not any(x["code"] == "shared-prose-buzz" for x in mutation_findings(mutated)):
         failures.append("buzz mutation escaped")
     mutated = copy.deepcopy(manifest)
     mutated["slides"][2]["notes"] = "Too short."
-    if not any(x["code"] == "speaker-notes-depth" for x in audit_manifest(mutated)):
+    if not any(x["code"] == "speaker-notes-depth" for x in mutation_findings(mutated)):
         failures.append("speaker-note mutation escaped")
     mutated = copy.deepcopy(manifest)
     mutated["slides"][2]["title"] = "This title is intentionally long enough to wrap across multiple rendered lines"
-    if not any(x["code"] == "title-length" for x in audit_manifest(mutated)):
+    if not any(x["code"] == "title-length" for x in mutation_findings(mutated)):
         failures.append("long title mutation escaped")
     mutated = copy.deepcopy(manifest)
     mutated["slides"][2]["lead"] = "A " + "needlessly extended explanation " * 6
-    if not any(x["code"] == "lead-length" for x in audit_manifest(mutated)):
+    if not any(x["code"] == "lead-length" for x in mutation_findings(mutated)):
         failures.append("long lead mutation escaped")
     mutated = copy.deepcopy(manifest)
     mutated["slides"][3]["visual"]["items"][0]["detail"] = "Needlessly extended body text " * 5
-    if not any(x["code"] == "body-length" for x in audit_manifest(mutated)):
+    if not any(x["code"] == "body-length" for x in mutation_findings(mutated)):
         failures.append("long body mutation escaped")
     mutated = copy.deepcopy(manifest)
     mutated["slides"][5]["evidence"].remove("web/nemoclaw/03c-always-on.html")
-    if not any(x["code"] == "claim-evidence" for x in audit_manifest(mutated)):
+    if not any(x["code"] == "claim-evidence" for x in mutation_findings(mutated)):
         failures.append("narrow module evidence mutation escaped")
     mutated = copy.deepcopy(manifest)
     mutated["slides"][6]["claim_scope"] = "page:04a"
-    if not any(x["code"] == "claim-scope" for x in audit_manifest(mutated)):
+    if not any(x["code"] == "claim-scope" for x in mutation_findings(mutated)):
         failures.append("module/page scope mutation escaped")
     mutated = copy.deepcopy(manifest)
     mutated["slides"][5].update({
@@ -423,7 +434,7 @@ def self_test() -> list[str]:
         {"label": "MCP", "detail": "Tool and resource integration."},
         {"label": "Gateway", "detail": "Long-lived session events."},
     ]
-    if not any(x["code"] == "claim-narrative" for x in audit_manifest(mutated)):
+    if not any(x["code"] == "claim-narrative" for x in mutation_findings(mutated)):
         failures.append("narrow Module 3 narrative mutation escaped")
     mutated = copy.deepcopy(manifest)
     browser_index = next(index for index, slide in enumerate(mutated["slides"])
@@ -432,11 +443,11 @@ def self_test() -> list[str]:
     module_three_index = next(index for index, slide in enumerate(mutated["slides"])
                               if slide.get("claim_scope") == "module:3")
     mutated["slides"].insert(module_three_index, browser_slide)
-    if not any(x["code"] == "module-sequence" for x in audit_manifest(mutated)):
+    if not any(x["code"] == "module-sequence" for x in mutation_findings(mutated)):
         failures.append("interrupted module sequence mutation escaped")
     mutated = copy.deepcopy(manifest)
     mutated["slides"][1]["visual"]["asset"] = "docs/assets/repository-overview/missing.png"
-    if not any(x["code"] == "visual-asset" for x in audit_manifest(mutated)):
+    if not any(x["code"] == "visual-asset" for x in mutation_findings(mutated)):
         failures.append("missing screenshot mutation escaped")
     with tempfile.TemporaryDirectory() as tmp:
         temp = Path(tmp)
@@ -448,7 +459,8 @@ def self_test() -> list[str]:
         svg.write_text('<svg xmlns="http://www.w3.org/2000/svg"><rect fill="var(--missing)"/></svg>', encoding="utf-8")
         if not svg_variable_findings(svg, "bad.svg"):
             failures.append("isolated SVG variable mutation escaped")
-    if not any(x["code"] == "generated-html" for x in audit_manifest(manifest, html_text="stale")):
+    if not any(x["code"] == "generated-html" for x in audit_manifest(
+            manifest, html_text="stale", check_asset_quality=False, check_pptx=False)):
         failures.append("stale HTML mutation escaped")
     return failures
 

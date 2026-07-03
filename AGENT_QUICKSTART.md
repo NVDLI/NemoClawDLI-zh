@@ -59,21 +59,16 @@ Private → never paste active-finding IDs, exploit notes, internal tracker/serv
           personal corporate addresses, or credentials. Keep only generic controls and hashes.
 ```
 
-Run `python3 scripts/validation/local_path_leak_audit.py --self-test` and then the audit
-after changing scripts, commands, generated files, or tool/runtime discovery. The same check runs
-in pre-commit, pre-push, and both release-gate tiers. Pull-request CI also scans added lines in every
-proposed commit, so adding a leak and deleting it in a later commit cannot evade the boundary.
+The installed pre-commit hook scans exact staged bytes for contributor-local paths and sensitive
+content. The shared gate scans the complete current tree and runs affected detector mutations.
+Pre-push and MR/PR CI scan every proposed commit, so adding a prohibited value and deleting it later
+cannot evade the boundary. Run a standalone audit only to diagnose its focused failure; do not replay
+every constituent after the shared gate passes. Private active-finding fingerprints can be supplied
+through `SENSITIVE_CONTENT_POLICY_FILE`; the public policy never republishes matched detail.
 
-Run `python3 scripts/validation/sensitive_content_audit.py --self-test`, the tree audit, and
-`python3 scripts/validation/sensitive_content_audit.py --commit-range origin/main..HEAD` after
-security, dependency, CI, issue, or release work. Local hooks, MR/PR event pipelines, and both
-release tiers enforce the same policy. Private active-finding fingerprints can be supplied through
-`SENSITIVE_CONTENT_POLICY_FILE`; the public policy never republishes the matched detail.
-
-Before pushing any dependency, runtime, workflow, deployment, security, or release-surface change,
-run `python3 scripts/validation/release_change_reminder.py --commit-range origin/main..HEAD`.
-Its checklist names operator-owned assessment, scan, open-source/license, and final-artifact work
-that repository CI cannot complete. Pre-push and MR/PR pipelines print the same reminder.
+Pre-push and MR/PR CI also run `release_change_reminder.py` over the proposed range. Its checklist
+names operator-owned assessment, scan, open-source/license, and final-artifact work that repository
+CI cannot complete.
 
 Worth-keeping agent docs live in the repo by plain name (`AGENT_QUICKSTART.md`,
 `AGENTS.md`, `SKILL_CONTRACT.md`, `QUALITY_DIRECTIVES.md`, `docs/`). Git history is
@@ -308,9 +303,9 @@ bash scripts/build/install-hooks.sh
 ```
 
 This symlinks `scripts/git-hooks/{pre-commit,pre-push}` into `.git/hooks/`.
-pre-commit covers notebook-corruption, canvas-HTML, and page-runtime guards.
-pre-push runs the rebase guard, skill_consistency, dependency vulnerability
-floor audit, validate_layout, and the link-projection gate.
+pre-commit runs cheap staged-content boundaries before focused file checks. pre-push verifies the
+base and complete proposed history, prints external follow-ups, then invokes one canonical ship gate.
+An identical clean commit can reuse its local success; CI always runs independently.
 
 CI: `.gitlab-ci.yml` and `.github/workflows/pages.yml` run the same gate, then
 `scripts/build/build_pages.sh` publishes a fully client-side site to GitLab Pages

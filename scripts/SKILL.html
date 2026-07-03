@@ -153,27 +153,15 @@
   <h1 id="skill-title">scripts/ bundle toolchain</h1>
   <p>The script tree is hierarchical. Implementations live in named subdirectories; the root holds only the directory beacon, bootstrap helper, and placeholder. Use runtime for the link engine, validation for gates, skills for SKILL contracts, build for packaging, compliance for source governance, materials for vendored references, figures for runtime diagram checks, edx for export helper pages, dev for local operator helpers, security for iframe proxy, dependency vulnerability, waiver, and SCA/SBOM audits, git-hooks for local hooks, and translate for same-branch localization.</p>
   <p>For course-cell helper examples, open <a href="../web/nemoclaw/scripts/SKILL.html">web/nemoclaw/scripts/SKILL.html</a>. It now reads like a runnable notebook: local examples run without services, while model and OpenClaw examples explain the key or podman deployment needed before they call live helpers.</p>
-  <div class="skill-note">Run commands from the repository root. Use grouped paths directly; new root-level scripts are rejected by the hierarchy guard. For Studio, runnable cells, or browser-page changes, run <code>scripts/runtime/browser_env_probe.sh</code> before deciding browser smoke is unavailable. OpenClaw fallback is gated by <code>python3 scripts/validation/openclaw_fallback_audit.py</code>.</div>
+  <div class="skill-note">Run commands from the repository root. Use the shared gate once for branch or release evidence. Open a grouped SKILL node and run a standalone validator only for focused iteration or diagnosis; do not replay the gate's constituents. For browser work, run <code>scripts/runtime/browser_env_probe.sh</code> before deciding smoke is unavailable.</div>
   <h2>Executable checks</h2>
   <div class="skill-cmds">
     <div class="skill-cmd"><b>Browser env probe</b><code>scripts/runtime/browser_env_probe.sh</code></div>
     <div class="skill-cmd"><b>Hierarchy guard</b><code>python3 scripts/skills/scripts_hierarchy.py</code></div>
-    <div class="skill-cmd"><b>SKILL schema</b><code>python3 scripts/skills/skill_contract.py</code></div>
-    <div class="skill-cmd"><b>Source gate</b><code>python3 scripts/compliance/source_gate.py</code></div>
-    <div class="skill-cmd"><b>Dependency vulnerability</b><code>python3 scripts/security/audit_python_dependencies.py</code></div>
-    <div class="skill-cmd"><b>Vulnerability waivers</b><code>python3 scripts/security/audit_vulnerability_waivers.py</code></div>
-    <div class="skill-cmd"><b>Full SCA plan</b><code>python3 scripts/security/run_full_sca.py</code></div>
-    <div class="skill-cmd"><b>Cross-file consistency</b><code>python3 scripts/skills/skill_consistency.py</code></div>
-    <div class="skill-cmd"><b>Shared fast gate</b><code>python3 scripts/validation/release_gate.py --tier fast --no-write</code></div>
-    <div class="skill-cmd"><b>Shared ship gate</b><code>python3 scripts/validation/release_gate.py --tier ship</code></div>
-    <div class="skill-cmd"><b>Layout links</b><code>python3 scripts/validation/validate_layout.py --quiet</code></div>
-    <div class="skill-cmd"><b>Engine self-test</b><code>bash scripts/runtime/run_engine.sh --self-test</code></div>
-    <div class="skill-cmd"><b>Studio helper audit</b><code>python3 scripts/validation/studio_interface_audit.py</code></div>
-    <div class="skill-cmd"><b>OpenClaw fallback</b><code>python3 scripts/validation/openclaw_fallback_audit.py</code></div>
-    <div class="skill-cmd"><b>Helper notebook static</b><code>python3 scripts/validation/helper_notebook_runtime_audit.py --no-container</code></div>
-    <div class="skill-cmd"><b>Helper notebook browser</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/helper_notebook_runtime_audit.py</code></div>
-    <div class="skill-cmd"><b>Studio responsive</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/studio_responsive_audit.py</code></div>
-    <div class="skill-cmd"><b>Ship gate</b><code>python3 scripts/validation/validate_bundle.py --no-write --scope ship</code></div>
+    <div class="skill-cmd"><b>Shared branch gate</b><code>python3 scripts/validation/release_gate.py --tier fast --no-write --changed-since origin/main</code></div>
+    <div class="skill-cmd"><b>Shared ship gate</b><code>python3 scripts/validation/release_gate.py --tier ship --no-write --changed-since origin/main</code></div>
+    <div class="skill-cmd"><b>Full release gate</b><code>python3 scripts/validation/release_gate.py --tier ship</code></div>
+    <div class="skill-cmd"><b>Full SCA</b><code>python3 scripts/security/run_full_sca.py</code></div>
   </div>
   <h2>Linkage map</h2>
   <div class="skill-grid">

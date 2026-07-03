@@ -70,8 +70,7 @@ REQUIRED_WIRING = {
     ".github/workflows/release.yml": ("release_gate.py --tier ship",),
     "scripts/git-hooks/pre-commit": ("release_evidence_audit.py",),
     "scripts/git-hooks/pre-push": (
-        "project_docs_explorer.py", "course_dependency_integrity.py",
-        "cell_audit.py", "release_evidence_audit.py", "--self-test",
+        "release_gate.py", "--tier ship --no-write --changed-since origin/main --reuse-success",
     ),
     "scripts/validation/validate_bundle.py": ("import release_evidence_audit as rea", '"release_evidence"'),
     "scripts/validation/release_gate.py": (

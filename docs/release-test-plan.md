@@ -133,8 +133,10 @@ Store links, identifiers, named reviewers, and detailed reports outside the publ
 ## Execution order
 
 1. Run focused tests while editing.
-2. Run A01 through A10 before pushing.
-3. Build the complete multilingual Pages tree and run A11.
+2. Run `release_gate.py --tier ship --no-write --changed-since origin/main` once before pushing. A01 through
+   A10 map claims inside that gate; they are not a second command checklist.
+3. Build the complete multilingual Pages tree and run A11. Reuse a prior report only when the
+   fail-closed report audit proves the same commit, ship scope, clean source tree, and required pass.
 4. Run A12 and A13 when the diff touches their runtime surfaces.
 5. Push the issue-linked branch and require CI on the submitted commit.
 6. Preview the tested commit and complete M01 through M06 far enough to expose review gaps.
@@ -142,6 +144,10 @@ Store links, identifiers, named reviewers, and detailed reports outside the publ
 8. Run the protected release workflow and retain its archive, manifest, SBOM, checksums, and reports.
 9. Complete M07 through M10 against the final source ref and packaged artifacts.
 10. Obtain M11. Publish only after the publication state and protected environment permit it.
+
+Release candidates omit `--changed-since` so every detector mutation runs. CI retains per-command
+timing evidence; recurring high-latency checks should be optimized at their canonical owner, not
+copied into a second abbreviated gate.
 
 ## Pass, failure, and exception rules
 

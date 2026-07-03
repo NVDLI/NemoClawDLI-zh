@@ -15,6 +15,7 @@
   "related": [
     "scripts/validation/release_gate.py",
     "scripts/validation/validate_bundle.py",
+    "scripts/validation/validation_report_audit.py",
     "scripts/validation/validate_layout.py",
     "scripts/validation/local_path_leak_audit.py",
     "scripts/validation/sensitive_content_audit.py",
@@ -76,6 +77,11 @@
       "path": "validate_bundle.py",
       "role": "ship gate",
       "desc": "Composes every validator into the release gate and durable report."
+    },
+    {
+      "path": "validation_report_audit.py",
+      "role": "same-commit report reuse gate",
+      "desc": "Rejects stale, failed, degraded, dirty-tree, or wrong-scope validation evidence before downstream builds skip regeneration."
     },
     {
       "path": "validate_layout.py",
@@ -287,16 +293,14 @@
   <h1 id="skill-title">scripts/validation deterministic gates</h1>
   <p>Static and rendered validators for links, layout, prose, code hygiene, figures, cells, theme behavior, screenshots, and course contracts. These are gates, not prompt guidance.</p>
   <div class="skill-note">Run commands from the repository root. Root-level script paths remain compatibility entrypoints; implementation files live in this directory tree.</div>
-  <div class="skill-note">Visual work is not done with static greps alone. Build or serve the page, run the rendered screenshot audit for the affected page, inspect the screenshots in the active harness, and show the relevant preview to the requester.</div>
+  <div class="skill-note">Use one shared gate for branch evidence. Commands below it are focused diagnostics and runtime checks, not a second checklist. Visual work still requires a served page, rendered screenshot audit, and inspection in the active harness.</div>
   <h2>Executable checks</h2>
 <div class="skill-cmds">
-  <div class="skill-cmd"><b>Fast shared gate</b><code>python3 scripts/validation/release_gate.py --tier fast --no-write</code></div>
-  <div class="skill-cmd"><b>Complete shared gate</b><code>python3 scripts/validation/release_gate.py --tier ship</code></div>
-  <div class="skill-cmd"><b>Ship gate</b><code>python3 scripts/validation/validate_bundle.py --no-write --scope ship</code></div>
-  <div class="skill-cmd"><b>Layout links</b><code>python3 scripts/validation/validate_layout.py --quiet</code></div>
-  <div class="skill-cmd"><b>Contributor-local boundary</b><code>python3 scripts/validation/local_path_leak_audit.py --self-test &amp;&amp; python3 scripts/validation/local_path_leak_audit.py &amp;&amp; python3 scripts/validation/local_path_leak_audit.py --commit-range origin/main..HEAD</code></div>
-  <div class="skill-cmd"><b>Sensitive contribution boundary</b><code>python3 scripts/validation/sensitive_content_audit.py --self-test &amp;&amp; python3 scripts/validation/sensitive_content_audit.py &amp;&amp; python3 scripts/validation/sensitive_content_audit.py --commit-range origin/main..HEAD</code></div>
-  <div class="skill-cmd"><b>External release follow-up</b><code>python3 scripts/validation/release_change_reminder.py --self-test &amp;&amp; python3 scripts/validation/release_change_reminder.py --commit-range origin/main..HEAD</code></div>
+  <div class="skill-cmd"><b>Fast shared gate</b><code>python3 scripts/validation/release_gate.py --tier fast --no-write --changed-since origin/main</code></div>
+  <div class="skill-cmd"><b>Complete shared gate</b><code>python3 scripts/validation/release_gate.py --tier ship --no-write --changed-since origin/main</code></div>
+  <div class="skill-cmd"><b>Contributor-local history</b><code>python3 scripts/validation/local_path_leak_audit.py --commit-range origin/main..HEAD</code></div>
+  <div class="skill-cmd"><b>Sensitive proposed history</b><code>python3 scripts/validation/sensitive_content_audit.py --commit-range origin/main..HEAD</code></div>
+  <div class="skill-cmd"><b>External release follow-up</b><code>python3 scripts/validation/release_change_reminder.py --commit-range origin/main..HEAD</code></div>
   <div class="skill-cmd"><b>HTML structure + detector</b><code>python3 scripts/validation/html_structure_audit.py &amp;&amp; python3 scripts/validation/html_structure_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>Stakeholder slides + detector</b><code>python3 scripts/validation/slides_audit.py &amp;&amp; python3 scripts/validation/slides_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>Cell contract + detector</b><code>python3 scripts/validation/cell_audit.py --self-test &amp;&amp; python3 scripts/validation/cell_audit.py</code></div>
@@ -329,6 +333,7 @@
   <div class="skill-grid">
     <a class="skill-card" href="release_gate.py"><b>release_gate.py</b><span>shared validation ladder. Keeps deterministic local, GitLab, GitHub Pages, and release checks aligned.</span></a>
     <a class="skill-card" href="validate_bundle.py"><b>validate_bundle.py</b><span>ship gate. Composes every validator into the release gate and durable report.</span></a>
+    <a class="skill-card" href="validation_report_audit.py"><b>validation_report_audit.py</b><span>same-commit report reuse gate. Rejects stale, failed, degraded, dirty-tree, or wrong-scope evidence before a downstream build skips regeneration.</span></a>
     <a class="skill-card" href="validate_layout.py"><b>validate_layout.py</b><span>layout gate. Checks links, static mounts, and SKILL beacons.</span></a>
     <a class="skill-card" href="local_path_leak_audit.py"><b>local_path_leak_audit.py</b><span>contributor-local boundary. Rejects workstation paths in the current tree and every proposed commit.</span></a>
     <a class="skill-card" href="sensitive_content_audit.py"><b>sensitive_content_audit.py</b><span>sensitive contribution boundary. Scans the tree, complete proposed history, and MR/PR metadata while reporting only category and location.</span></a>

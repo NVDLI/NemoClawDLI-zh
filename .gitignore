@@ -65,6 +65,13 @@ workspace/export/
 docs/validation/
 scripts/security/reports/
 .sca-venv/
+.sca-runtime-venv/
+.sca-tools-venv/
+.release-runtime-venv/
+.release-scan-venv/
+release-security/
+release-assets/
+release-evidence/
 .cache/pip/
 
 # Local env + secrets (never commit)

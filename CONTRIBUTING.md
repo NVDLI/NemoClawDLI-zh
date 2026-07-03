@@ -85,9 +85,9 @@ This resolves Git's real hook directory, including linked worktrees, then instal
 
 - `pre-commit`: protected-branch refusal, contributor-local and sensitive-content boundaries,
   contribution audit, corruption guard, canvas-HTML validation, and page-runtime smoke checks.
-- `pre-push`: behind-branch refusal, full-history sensitive-content checks, mutation-tested
-  contribution and learner-flow contracts, SKILL consistency, source/security checks, layout
-  validation, and the release gate.
+- `pre-push`: behind-branch refusal, complete-history signoff and content checks, external release
+  reminders, then one change-aware canonical ship gate. It may reuse only an identical clean local
+  success; required CI always reruns on the submitted commit.
 
 A local hook is feedback, not authority. Hooks are intentionally early and actionable, but
 Git allows them to be bypassed. Required CI, branch or tag rulesets, protected human review,
@@ -96,14 +96,14 @@ and protected release actions close that gap.
 ## Validate Before Pushing
 
 ```bash
-python3 scripts/validation/release_gate.py --tier fast --no-write
-python3 scripts/validation/tenets.py --check
+python3 scripts/validation/release_gate.py --tier fast --no-write --changed-since origin/main
 ```
 
-Run `python3 scripts/validation/release_gate.py --tier ship` before release or after a
-cross-cutting contract change. See
-[`docs/release-test-plan.md`](docs/release-test-plan.md) for the constituent checks and
-evidence expectations.
+Run `python3 scripts/validation/release_gate.py --tier ship --no-write --changed-since origin/main` once before
+pushing a proposal. The gate always audits the complete current tree and skips only unaffected
+detector mutation suites. Omit `--changed-since` for a release candidate. Use constituent commands
+only for focused iteration or diagnosis; the shared gate already composes them. See
+[`docs/release-test-plan.md`](docs/release-test-plan.md) for claim and evidence mapping.
 
 Service-stack notebook tests need the lab services running:
 

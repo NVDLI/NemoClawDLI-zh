@@ -69,9 +69,16 @@ else
         echo "[build_pages]   SKIP pull: vendoring deps (requests beautifulsoup4 markdownify lxml) not installed; using committed snapshots"
     fi
 fi
-# The published report must describe this tree. Never retain and copy a stale report when
-# validation fails; the earlier test job is not a substitute for build-time artifact integrity.
-python3 "$T1/scripts/validation/validate_bundle.py" --scope ship >/dev/null
+# The published report must describe this exact tree. A prior required job may supply its
+# same-commit report; reuse is fail-closed on schema, SHA, scope, required findings, and suite
+# status. Direct/local builds regenerate by default.
+if [ "${BUILD_PAGES_REUSE_VALIDATION:-0}" = "1" ]; then
+    python3 "$T1/scripts/validation/validation_report_audit.py" \
+        --report "$T1/docs/validation/latest.json" --expect-head
+    echo "[build_pages] reusing same-commit validation report"
+else
+    python3 "$T1/scripts/validation/validate_bundle.py" --scope ship
+fi
 
 # ── 1. Courses: build the full self-hosted standalone straight into public/ ──
 # --full gives the lab experience (dark theme, topbar + journey-map + nav, interactive panels)

@@ -31,9 +31,9 @@ service-document edit hazard lives in
   control merge, deploy, and release authority.
 - A hook must refuse and explain. It must not rebase, resolve conflicts, force-push, weaken a test,
   or otherwise mutate history to make a contribution pass.
-- For contribution, hook, workflow, permission, or release changes, run
-  `python3 scripts/validation/contribution_safety_audit.py --self-test` and then the audit itself.
-  The JSON report belongs in CI artifacts so a human can inspect the exact boundary that passed.
+- For contribution, hook, workflow, permission, or release changes, use the contribution audit for
+  focused iteration, then run the shared ship gate once. Its mutation suite and current-tree result
+  belong in CI artifacts so a human can inspect the exact boundary that passed.
 - For deployment topology, browser proxy, service, storage, privilege, authentication, secret-flow,
   or release-pipeline changes, update `docs/security-architecture.json`, regenerate its SVG, and run
   `python3 scripts/validation/security_architecture_audit.py --self-test` plus the audit. Production
@@ -67,15 +67,15 @@ service-document edit hazard lives in
   flatten prose into stubs, or remove useful comments only to silence a detector.
 - Use advisory findings as review prompts. A lower count is evidence only when the diff is
   clearer, safer, or easier to maintain.
-- Run the shared fast ladder with
-  `python3 scripts/validation/release_gate.py --tier fast --no-write`; use `--tier ship`
-  for the complete deterministic repository gate.
-- For governance, contribution, hook, CI, permission, or release changes, run `contribution_safety_audit.py`, its mutation self-test, and the full ship gate.
-- For dependency, service image, runtime package, or security-exception changes, run `python3 scripts/security/audit_python_dependencies.py`, `python3 scripts/security/audit_vulnerability_waivers.py`, and `python3 scripts/validation/sensitive_content_audit.py --commit-range origin/main..HEAD` before the full gate.
-- Before push, run `python3 scripts/validation/release_change_reminder.py --commit-range origin/main..HEAD`.
-  Carry every reported threat/architecture, scan, open-source/license, and final-artifact action into
-  the authorized release record. A green repository pipeline does not complete those operator actions.
-- For content or navigation changes, run `python3 scripts/skills/skill_consistency.py`, `python3 scripts/validation/validate_layout.py --quiet`, and `python3 scripts/validation/validate_bundle.py --no-write --scope ship`.
+- Run `python3 scripts/validation/release_gate.py --tier fast --no-write --changed-since origin/main`
+  for branch feedback. Run the ship tier once before push. Current-tree audits remain complete;
+  `--changed-since` skips only detector mutation suites whose implementation and contract inputs did
+  not change. Omit it for release-candidate validation.
+- Use standalone validators while editing or to diagnose the named shared-gate failure. Do not run a
+  full list of constituents and then rerun the gate that already composes them.
+- Pre-push classifies external release follow-ups over `origin/main..HEAD`. Carry reported
+  architecture, scan, open-source/license, and final-artifact actions into the authorized release
+  record. A green repository pipeline does not complete those operator actions.
 - For page title, navigation, or deploy-path changes, run `BUILD_PAGES_LANGS=0 scripts/build/build_pages.sh` before calling the MR ready.
 - For Studio, runnable-cell, browser-runtime, or OpenClaw changes, also run the browser/runtime harness named in `AGENT_QUICKSTART.md` and the relevant `scripts/validation/*_audit.py` file.
 - For learner-facing code or lab-flow changes, run `learner_flow_audit.py`, its mutation self-test, and `learner_flow_runtime_audit.py` against source and built Pages output. A closure claim needs evidence for disclosure, prerequisite readiness, Run/Stop/Reset, error recovery, and viewport stability; a screenshot of one happy state is insufficient.
