@@ -301,6 +301,9 @@ def gen_task():
 
     docs = [("README.md", "README.md", "What the release candidate is and how to run it (start here)."),
             ("RELEASE_STATUS.json", "RELEASE_STATUS.json", "Machine-readable publication and licensing state."),
+            ("CHANGELOG.md", "CHANGELOG.md", "Version history for public releases and pending changes."),
+            ("LICENSE", "LICENSE", "Apache License 2.0 for the proposed public release."),
+            ("SECURITY.md", "SECURITY.md", "Official NVIDIA private vulnerability-reporting policy."),
             ("AGENTS.md", "AGENTS.md", "Cross-harness agent contract and task routing."),
             ("CONTRIBUTING.md", "CONTRIBUTING.md", "How to contribute: hooks, the validation gate, conventions."),
             ("DCO.md", "DCO.md", "Required per-commit origin signoff and repair guidance."),
@@ -335,6 +338,7 @@ def gen_task():
             "release": {"surface": "web/index.html", "courses": rel_courses,
                         "publication_state": RELEASE_STATUS["publication_state"],
                         "external_mirror": RELEASE_STATUS["external_mirror"],
+                        "external_repository": RELEASE_STATUS["external_repository"],
                         "target_license": RELEASE_STATUS["target_license"],
                         "notice_required": RELEASE_STATUS["notice_required"],
                         "status_path": "RELEASE_STATUS.json",

@@ -27,12 +27,120 @@
   },
   "required_repository_files": [
     "README.md",
-    "LICENSE.md",
+    "LICENSE",
     "SECURITY.md",
     "CONTRIBUTING.md",
     "DCO.md",
     "CODE_OF_CONDUCT.md",
-    "SUPPORT.md"
+    "SUPPORT.md",
+    "CHANGELOG.md",
+    "docs/release_playbook.md",
+    ".github/ISSUE_TEMPLATE/bug.yml",
+    ".github/ISSUE_TEMPLATE/feature.yml",
+    ".github/PULL_REQUEST_TEMPLATE.md"
+  ],
+  "repository_work_products": [
+    {
+      "id": "maintainer-plan",
+      "requirement": "required",
+      "status": "satisfied",
+      "paths": [
+        "README.md",
+        "docs/release_playbook.md",
+        "docs/dependency_security.md",
+        "docs/issue_standards.md",
+        "docs/release-test-plan.md",
+        "docs/release_artifacts.md"
+      ]
+    },
+    {
+      "id": "readme",
+      "requirement": "show-stopper",
+      "status": "satisfied",
+      "paths": ["README.md"]
+    },
+    {
+      "id": "license",
+      "requirement": "show-stopper",
+      "status": "satisfied",
+      "paths": ["LICENSE"]
+    },
+    {
+      "id": "contributing",
+      "requirement": "required",
+      "status": "satisfied",
+      "paths": ["CONTRIBUTING.md", "DCO.md"]
+    },
+    {
+      "id": "security-policy",
+      "requirement": "show-stopper",
+      "status": "satisfied",
+      "paths": ["SECURITY.md"]
+    },
+    {
+      "id": "coding-guideline",
+      "requirement": "contextual",
+      "status": "satisfied",
+      "paths": ["CONTRIBUTING.md", "AGENTS.md", "SKILL.html"]
+    },
+    {
+      "id": "changelog",
+      "requirement": "required",
+      "status": "satisfied",
+      "paths": ["CHANGELOG.md"]
+    },
+    {
+      "id": "code-of-conduct",
+      "requirement": "required",
+      "status": "satisfied",
+      "paths": ["CODE_OF_CONDUCT.md"]
+    },
+    {
+      "id": "contributor-license-agreement",
+      "requirement": "contextual-show-stopper",
+      "status": "not-applicable",
+      "paths": [],
+      "rationale": "The Apache-2.0 contribution model uses DCO signoff and does not require a separate CLA."
+    },
+    {
+      "id": "citation",
+      "requirement": "optional",
+      "status": "not-selected",
+      "paths": []
+    },
+    {
+      "id": "issue-templates",
+      "requirement": "required",
+      "status": "satisfied",
+      "paths": [
+        ".github/ISSUE_TEMPLATE/bug.yml",
+        ".github/ISSUE_TEMPLATE/feature.yml"
+      ]
+    },
+    {
+      "id": "pull-request-template",
+      "requirement": "required",
+      "status": "satisfied",
+      "paths": [".github/PULL_REQUEST_TEMPLATE.md"]
+    },
+    {
+      "id": "release-roadmap",
+      "requirement": "optional",
+      "status": "not-selected",
+      "paths": []
+    },
+    {
+      "id": "developer-guide",
+      "requirement": "optional",
+      "status": "satisfied",
+      "paths": ["docs/product-design.md", "docs/release-test-plan.md"]
+    },
+    {
+      "id": "user-guide",
+      "requirement": "optional",
+      "status": "satisfied",
+      "paths": ["README.md", "web/nemoclaw/SKILL.html"]
+    }
   ],
   "release_artifacts": [
     "versioned-static-archive",

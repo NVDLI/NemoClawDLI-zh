@@ -6,9 +6,9 @@ Runtime checks live in [`lab_runtime_testing.md`](lab_runtime_testing.md).
 
 ## Start from the tracker
 
-- Use `docs/issue_standards.md` as the issue anatomy and label cadence. Current
-  work assumes `web/nemoclaw/` on the CPU service stack, while the repo stays
-  shaped as a multi-course bundle.
+- Use `docs/issue_standards.md` as the issue anatomy and label cadence. The production target is
+  the static `web/nemoclaw/` course; `cpu/`, `workspace/`, and `deploy/` support local authoring
+  and compatibility tests rather than the production course.
 - Read the issue or MR before editing. If network or auth blocks the read, say that and work from local evidence only.
 - Tie the MR to the tracker with `Addresses #N` unless the user explicitly says the change closes the issue. Do not write `Closes #N` for partial hygiene, exploratory prose, or a blast-radius pass.
 - Keep the branch name, commit message, and MR note aligned with the issue scope. If the work intentionally touches related issues, name those as related, not solved.

@@ -27,7 +27,7 @@
   ],
   "inventory_entries": [
     {
-      "path": "LICENSE.md",
+      "path": "LICENSE",
       "kind": "license",
       "license": "Apache-2.0",
       "disposition": "required root license"

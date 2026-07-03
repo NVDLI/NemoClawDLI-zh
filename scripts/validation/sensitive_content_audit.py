@@ -46,6 +46,7 @@ DIRECT_PATTERNS = (
     ("cloud account locator", re.compile(r"\barn:aws(?:-us-gov|-cn)?:[^:\s]*:[^:\s]*:\d{12}:", re.I)),
     ("corporate personal email", re.compile(r"\b[A-Za-z0-9._%+-]+@nvidia\.com\b", re.I)),
 )
+PUBLIC_ROLE_EMAILS = frozenset({"psirt@nvidia.com"})
 
 
 @dataclass(frozen=True)
@@ -212,6 +213,8 @@ def scan_text(path: str, text: str, policy: Policy) -> list[Finding]:
             add(match.start(), "private service hostname")
     for kind, pattern in DIRECT_PATTERNS:
         for match in pattern.finditer(text):
+            if kind == "corporate personal email" and match.group(0).casefold() in PUBLIC_ROLE_EMAILS:
+                continue
             add(match.start(), kind)
     offset = 0
     for line in text.splitlines(keepends=True):
@@ -328,6 +331,7 @@ def self_test() -> tuple[int, int, list[str]]:
         ("private project locator", "364" + "401", True),
         ("active detail", "Parse" + "Dict", True),
         ("corporate email", "person@" + "nvidia.com", True),
+        ("public security role email", "psirt@" + "nvidia.com", False),
         ("source token", "glpat-" + "a" * 24, True),
         ("signed credential", "eyJ" + "a" * 24 + "." + "b" * 12 + "." + "c" * 12, True),
         ("public standard", "RFC-6902", False),

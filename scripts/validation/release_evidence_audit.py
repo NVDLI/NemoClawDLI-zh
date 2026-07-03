@@ -28,8 +28,27 @@ REQUIRED_DOCUMENTS = {
     "release_artifacts", "publication_state",
 }
 REQUIRED_REPOSITORY_FILES = {
-    "README.md", "LICENSE.md", "SECURITY.md", "CONTRIBUTING.md", "DCO.md",
-    "CODE_OF_CONDUCT.md", "SUPPORT.md",
+    "README.md", "LICENSE", "SECURITY.md", "CONTRIBUTING.md", "DCO.md",
+    "CODE_OF_CONDUCT.md", "SUPPORT.md", "CHANGELOG.md", "docs/release_playbook.md",
+    ".github/ISSUE_TEMPLATE/bug.yml", ".github/ISSUE_TEMPLATE/feature.yml",
+    ".github/PULL_REQUEST_TEMPLATE.md",
+}
+EXPECTED_WORK_PRODUCTS = {
+    "maintainer-plan": ("required", "satisfied"),
+    "readme": ("show-stopper", "satisfied"),
+    "license": ("show-stopper", "satisfied"),
+    "contributing": ("required", "satisfied"),
+    "security-policy": ("show-stopper", "satisfied"),
+    "coding-guideline": ("contextual", "satisfied"),
+    "changelog": ("required", "satisfied"),
+    "code-of-conduct": ("required", "satisfied"),
+    "contributor-license-agreement": ("contextual-show-stopper", "not-applicable"),
+    "citation": ("optional", "not-selected"),
+    "issue-templates": ("required", "satisfied"),
+    "pull-request-template": ("required", "satisfied"),
+    "release-roadmap": ("optional", "not-selected"),
+    "developer-guide": ("optional", "satisfied"),
+    "user-guide": ("optional", "satisfied"),
 }
 REQUIRED_RELEASE_ARTIFACTS = {
     "versioned-static-archive", "release-manifest", "cyclonedx-sbom", "sha256-checksums",
@@ -88,7 +107,7 @@ REQUIRED_WIRING = {
     "docs/agent_process.md": ("release_evidence_audit.py", "--self-test"),
     "docs/SKILL.html": (
         "product-design.md", "release-test-plan.md", "release-evidence.json",
-        '"../RELEASE_STATUS.json"', '"render_markdown": true',
+        '"../RELEASE_STATUS.json"', '"../CHANGELOG.md"', '"render_markdown": true',
     ),
     "web/_skill_explorer.js": (
         "safeMarkdownHtml", "new URLSearchParams(location.search", 'params.get("file")',
@@ -191,6 +210,46 @@ def audit_contract(data: dict, *, root: Path = ROOT,
         if not (root / rel).is_file():
             out.append(finding("required-repo-file-missing", rel, "required repository file is absent",
                                "restore the public repository file"))
+
+    products = data.get("repository_work_products") or []
+    product_ids = [row.get("id") for row in products if isinstance(row, dict)]
+    if len(product_ids) != len(set(product_ids)):
+        out.append(finding("work-product-duplicate", "docs/release-evidence.json",
+                           "repository work-product IDs repeat", "keep one row per work product"))
+    for product_id in sorted(set(EXPECTED_WORK_PRODUCTS) - set(product_ids)):
+        out.append(finding("work-product-missing", "docs/release-evidence.json",
+                           f"repository work product omitted: {product_id}",
+                           "restore its requirement, disposition, and public paths"))
+    for row in products:
+        if not isinstance(row, dict):
+            out.append(finding("work-product-shape", "docs/release-evidence.json",
+                               "repository work product is not an object",
+                               "restore id, requirement, status, and paths"))
+            continue
+        product_id = str(row.get("id", "<missing>"))
+        expected = EXPECTED_WORK_PRODUCTS.get(product_id)
+        if expected and (row.get("requirement"), row.get("status")) != expected:
+            out.append(finding("work-product-disposition", "docs/release-evidence.json",
+                               f"{product_id} must be {expected[0]} / {expected[1]}",
+                               "restore the reviewed requirement and applicability decision"))
+        paths = row.get("paths")
+        if not isinstance(paths, list):
+            out.append(finding("work-product-paths", "docs/release-evidence.json",
+                               f"{product_id} paths must be a list", "restore the public evidence paths"))
+            continue
+        if row.get("status") == "satisfied" and not paths:
+            out.append(finding("work-product-paths", "docs/release-evidence.json",
+                               f"{product_id} claims satisfaction without evidence paths",
+                               "name at least one tracked public work product"))
+        for rel in paths:
+            if not isinstance(rel, str) or not rel or not (root / rel).exists():
+                out.append(finding("work-product-path", "docs/release-evidence.json",
+                                   f"{product_id} path does not resolve: {rel}",
+                                   "restore the tracked work product or correct its path"))
+        if row.get("status") == "not-applicable" and "Apache-2.0" not in str(row.get("rationale", "")):
+            out.append(finding("work-product-rationale", "docs/release-evidence.json",
+                               f"{product_id} lacks the reviewed Apache-2.0 rationale",
+                               "record why the contextual work product does not apply"))
 
     artifacts = set(data.get("release_artifacts") or [])
     for name in sorted(REQUIRED_RELEASE_ARTIFACTS - artifacts):
@@ -325,7 +384,7 @@ def self_test() -> tuple[int, int, list[str]]:
     base = load_contract()
     baseline = audit_contract(base)
     if baseline:
-        return 0, 18, [f"baseline is not clean: {item['code']} {item['detail']}" for item in baseline]
+        return 0, 23, [f"baseline is not clean: {item['code']} {item['detail']}" for item in baseline]
     tests: list[tuple[str, dict, dict[str, str], str]] = []
 
     def mutated() -> dict:
@@ -337,6 +396,18 @@ def self_test() -> tuple[int, int, list[str]]:
     tests.append(("false approval", value, {}, "external-status"))
     value = mutated(); value["required_repository_files"].remove("SECURITY.md")
     tests.append(("required file", value, {}, "required-repo-file"))
+    value = mutated(); value["repository_work_products"] = [
+        row for row in value["repository_work_products"] if row["id"] != "changelog"
+    ]
+    tests.append(("missing work product", value, {}, "work-product-missing"))
+    value = mutated(); value["repository_work_products"][0]["requirement"] = "optional"
+    tests.append(("work product level", value, {}, "work-product-disposition"))
+    value = mutated(); value["repository_work_products"][0]["paths"] = ["docs/missing-maintainer-plan.md"]
+    tests.append(("work product path", value, {}, "work-product-path"))
+    value = mutated(); value["repository_work_products"][8].pop("rationale")
+    tests.append(("contextual rationale", value, {}, "work-product-rationale"))
+    value = mutated(); value["repository_work_products"][1]["status"] = "not-selected"
+    tests.append(("show stopper status", value, {}, "work-product-disposition"))
     value = mutated(); value["evidence_areas"][0]["automated_commands"] = ["python3 scripts/validation/missing.py"]
     tests.append(("bad command", value, {}, "command-path"))
     value = mutated(); value["documents"]["design"] = "docs/missing.md"

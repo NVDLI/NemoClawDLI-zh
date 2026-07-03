@@ -130,9 +130,10 @@ The full operating creed is projected into the root `SKILL.html` skill-meta. Run
 
 This repository is licensed under Apache-2.0. Unless you clearly mark a submission as
 `Not a Contribution`, any contribution intentionally submitted for inclusion is offered
-under Apache-2.0, with the contribution terms in [`LICENSE.md`](LICENSE.md).
-Every commit must also carry the DCO 1.1 signoff defined in [`DCO.md`](DCO.md). The signoff
-certifies origin and submission rights; it does not transfer copyright or replace review.
+under Apache-2.0, with the contribution terms in [`LICENSE`](LICENSE).
+This Apache-2.0 project does not require a separate contributor license agreement. Every commit
+must carry the DCO 1.1 signoff defined in [`DCO.md`](DCO.md). The signoff certifies origin and
+submission rights; it does not transfer copyright or replace review.
 
 Do not submit material you do not have the right to contribute. Third-party text, images,
 datasets, model artifacts, copied examples, cached web pages, and generated assets need

@@ -1,17 +1,24 @@
-# Security policy
+## Security
 
-Do not report a vulnerability, credential, private URL, customer detail, or exploit path in a
-public Issue or Discussion.
+NVIDIA is dedicated to the security and trust of our software products and services, including all source code repositories managed through our organization.
 
-Report potential vulnerabilities through the
-[NVIDIA Product Security vulnerability form](https://www.nvidia.com/en-us/security/report-vulnerability/).
-Include the affected version or commit, impact, minimal reproduction, and any safe remediation
-idea. Do not include real tokens or learner data.
+If you need to report a security issue, please use the appropriate contact points outlined below. **Please do not report security vulnerabilities through GitHub.** If a potential security issue is inadvertently reported via a public issue or pull request, NVIDIA maintainers may limit public discussion and redirect the reporter to the appropriate private disclosure channels.
 
-After an external GitHub mirror exists, its private vulnerability reporting feature may be an
-additional route only when the repository visibly enables it. Never assume a repository-specific
-advisory URL exists, and never fall back to a public Issue.
+## Reporting Potential Security Vulnerability in an NVIDIA Product
 
-Course wording, accessibility, source corrections, and non-sensitive runtime defects belong in
-the structured Issue templates. Broad questions and ideas belong in Discussions after that
-external intake feature is enabled.
+To report a potential security vulnerability in any NVIDIA product:
+- Web: [Security Vulnerability Submission Form](https://www.nvidia.com/object/submit-security-vulnerability.html)
+- E-Mail: psirt@nvidia.com
+    - We encourage you to use the following PGP key for secure email communication: [NVIDIA public PGP Key for communication](https://www.nvidia.com/en-us/security/pgp-key)
+    - Please include the following information:
+   	 - Product/Driver name and version/branch that contains the vulnerability
+     - Type of vulnerability (code execution, denial of service, buffer overflow, etc.)
+   	 - Instructions to reproduce the vulnerability
+   	 - Proof-of-concept or exploit code
+   	 - Potential impact of the vulnerability, including how an attacker could exploit the vulnerability
+
+While NVIDIA currently does not have a bug bounty program, we do offer acknowledgement when an externally reported security issue is addressed under our coordinated vulnerability disclosure policy. Please visit our [Product Security Incident Response Team (PSIRT)](https://www.nvidia.com/en-us/security/psirt-policies/) policies page for more information.
+
+## NVIDIA Product Security
+
+For all security-related concerns, please visit NVIDIA's Product Security portal at https://www.nvidia.com/en-us/security

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -22,22 +23,32 @@ ROOT = find_repo_root(Path(__file__).resolve())
 
 CONTRACT_FILES = (
     "RELEASE_STATUS.json",
+    ".gitattributes",
     "README.md",
+    "LICENSE",
     "CONTRIBUTING.md",
     "CODE_OF_CONDUCT.md",
     "DCO.md",
     "SUPPORT.md",
     "AGENTS.md",
     "SECURITY.md",
+    "CHANGELOG.md",
     "docs/release_playbook.md",
     "docs/release_artifacts.md",
     "scripts/compliance/docs/open_source_readiness.md",
     ".github/ISSUE_TEMPLATE/config.yml",
+    ".github/ISSUE_TEMPLATE/bug.yml",
+    ".github/ISSUE_TEMPLATE/feature.yml",
+    ".github/ISSUE_TEMPLATE/course-content.yml",
+    ".github/ISSUE_TEMPLATE/runtime-deploy.yml",
+    ".github/ISSUE_TEMPLATE/source-licensing.yml",
     ".github/PULL_REQUEST_TEMPLATE.md",
     ".github/dependabot.yml",
     ".github/workflows/codeql.yml",
     ".github/workflows/dependency-review.yml",
     ".gitlab/merge_request_templates/Default.md",
+    ".gitlab/issue_templates/Bug report.md",
+    ".gitlab/issue_templates/Feature request.md",
     ".github/workflows/pages.yml",
     ".github/workflows/release.yml",
     ".gitlab-ci.yml",
@@ -66,6 +77,8 @@ CONTRACT_FILES = (
     "workspace/Dockerfile",
     "web/nemoclaw/mats/_materials.json",
 )
+
+SECURITY_TEMPLATE_SHA256 = "9b4fc75ece26b86b2bbb93a9f2abce9a853a35f74392dd8207224b274904b7f6"
 
 RETIRED_GUIDANCE = (
     "AGENT_QUICKSTART.md",
@@ -166,7 +179,8 @@ def audit_repo(
         "schema": "nemoclaw-release-status/1",
         "publication_state": "pending-osrb-approval",
         "canonical_repository": "internal-gitlab",
-        "external_mirror": "not-published",
+        "external_mirror": "reserved-not-populated",
+        "external_repository": "https://github.com/NVDLI/NemoClawDLI",
         "maintenance_status": "release-candidate",
         "community_intake": "disabled-pending-publication-approval",
         "target_license": "Apache-2.0",
@@ -191,13 +205,36 @@ def audit_repo(
         require(re.sub(r"\s+", " ", docs[rel]), "pending OSRB approval", rel,
                 "release-status-language", out,
                 "state that external publication remains pending OSRB approval")
-    require(docs["SECURITY.md"], "https://www.nvidia.com/en-us/security/report-vulnerability/",
-            "SECURITY.md", "security-report-route", out,
-            "make NVIDIA Product Security the stable private reporting route")
-    if "github.com/NVIDIA/NemoClawDLIOS/security/advisories/new" in docs["SECURITY.md"]:
-        out.append(finding("security-future-route", "SECURITY.md",
-                           "policy assumes a repository-specific advisory endpoint exists",
-                           "mention private vulnerability reporting only as conditional on enablement"))
+    for heading in ("# Securing Agents with OpenShell and NemoClaw", "## Requirements",
+                    "## Getting Started", "## Governance and Maintainers", "## Security",
+                    "## Support", "## Contributing", "## License"):
+        require(docs["README.md"], heading, "README.md", "readme-public-entrypoint", out,
+                f"add the project-specific {heading} section")
+    require(docs["README.md"], "https://github.com/NVDLI/NemoClawDLI", "README.md",
+            "external-repository", out, "link the reserved public repository by its exact owner and name")
+    for rel in ("LICENSE", "SECURITY.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md", "SUPPORT.md"):
+        require(docs["README.md"], f"]({rel})", "README.md", "readme-policy-link", out,
+                f"link {rel} from the public project entrypoint")
+    license_header = re.sub(r"\s+", " ", docs["LICENSE"]).strip()
+    if not license_header.startswith("Apache License Version 2.0, January 2004"):
+        out.append(finding("root-license", "LICENSE",
+                           "root LICENSE lacks the canonical Apache License 2.0 header",
+                           "restore the reviewed Apache License 2.0 text at the root LICENSE path"))
+    security_sha = hashlib.sha256(docs["SECURITY.md"].encode("utf-8")).hexdigest()
+    if security_sha != SECURITY_TEMPLATE_SHA256:
+        out.append(finding("security-template", "SECURITY.md",
+                           f"official repository template changed: sha256={security_sha}",
+                           "restore the NVIDIA-initialized SECURITY.md verbatim"))
+    require(docs[".gitattributes"], "SECURITY.md text eol=lf whitespace=-space-before-tab",
+            ".gitattributes", "security-template-whitespace", out,
+            "retain the path-scoped diff exception required by the verbatim template")
+
+    require(docs["CHANGELOG.md"], "# Changelog", "CHANGELOG.md", "changelog", out,
+            "restore the version-history entry point")
+    require(docs["CHANGELOG.md"], "## Unreleased", "CHANGELOG.md", "changelog", out,
+            "keep pending changes separate from immutable tagged releases")
+    require(docs["CHANGELOG.md"], "docs/release_artifacts.md", "CHANGELOG.md", "changelog", out,
+            "link version history to the release artifact contract")
 
     require(docs["CODE_OF_CONDUCT.md"], "private content-reporting flow", "CODE_OF_CONDUCT.md",
             "conduct-report-route", out, "retain a public-safe, non-Issue conduct reporting route")
@@ -209,6 +246,11 @@ def audit_repo(
             "lifecycle-boundary", out, "document change, retirement, and archival expectations")
     require(docs["README.md"], "Nobody approves their own", "README.md",
             "independent-review", out, "keep independent review explicit in role authority")
+    for token in ("## Maintainer operating plan", "Dependency management",
+                  "Issue triage", "CI/CD", "Testing", "Version history", "## Hotfix workflow"):
+        require(docs["docs/release_playbook.md"], token, "docs/release_playbook.md",
+                "maintainer-plan", out,
+                "keep dependency, release, issue/hotfix, CI/CD, and testing ownership discoverable")
     require(docs["DCO.md"], "Developer Certificate of Origin 1.1", "DCO.md", "dco-policy", out,
             "document the inbound signoff policy and authoritative DCO version")
     require(docs["DCO.md"], "git commit --signoff", "DCO.md", "dco-repair", out,
@@ -219,6 +261,9 @@ def audit_repo(
     require(docs["CONTRIBUTING.md"], "stacked merge request", "CONTRIBUTING.md",
             "contributor-stacked-merge", out,
             "put the signed-commit preservation rule in contributor first-touch guidance")
+    require(docs["CONTRIBUTING.md"], "does not require a separate contributor license agreement",
+            "CONTRIBUTING.md", "cla-applicability", out,
+            "state why Apache-2.0 plus DCO does not require a separate CLA")
 
     require(docs["README.md"], "Ideas are easy; code is gated", "README.md", "readme-boundary", out,
             "state the intake/code asymmetry in the README")
@@ -236,6 +281,35 @@ def audit_repo(
             "issue-structured", out, "keep structured issue intake enabled")
     require(issue_cfg, "/discussions", ".github/ISSUE_TEMPLATE/config.yml", "discussion-route", out,
             "route broad ideas and questions to Discussions")
+    require(issue_cfg, "https://github.com/NVDLI/NemoClawDLI/discussions",
+            ".github/ISSUE_TEMPLATE/config.yml", "external-repository", out,
+            "route Discussions to the reserved NVDLI/NemoClawDLI repository")
+    for rel in (".github/ISSUE_TEMPLATE/course-content.yml",
+                ".github/ISSUE_TEMPLATE/runtime-deploy.yml",
+                ".github/ISSUE_TEMPLATE/source-licensing.yml"):
+        require(docs[rel], "static `web/nemoclaw/` course", rel, "issue-production-scope", out,
+                "describe the static browser course without local CPU-service assumptions")
+    require(docs[".github/ISSUE_TEMPLATE/bug.yml"], "name: Bug report",
+            ".github/ISSUE_TEMPLATE/bug.yml", "issue-bug-template", out,
+            "retain explicit general Bug intake")
+    require(docs[".github/ISSUE_TEMPLATE/bug.yml"], "static `web/nemoclaw/` course",
+            ".github/ISSUE_TEMPLATE/bug.yml", "issue-production-scope", out,
+            "keep the public Bug form aligned to the production course")
+    require(docs[".github/ISSUE_TEMPLATE/bug.yml"], "private route in `SECURITY.md`",
+            ".github/ISSUE_TEMPLATE/bug.yml", "issue-security-route", out,
+            "route vulnerability reports away from public issue intake")
+    require(docs[".github/ISSUE_TEMPLATE/feature.yml"], "name: Feature request",
+            ".github/ISSUE_TEMPLATE/feature.yml", "issue-feature-template", out,
+            "retain explicit Feature intake")
+    require(docs[".github/ISSUE_TEMPLATE/feature.yml"], "Ideas require no patch",
+            ".github/ISSUE_TEMPLATE/feature.yml", "issue-feature-template", out,
+            "keep idea contribution low-friction")
+    require(docs[".gitlab/issue_templates/Bug report.md"], "private route in `SECURITY.md`",
+            ".gitlab/issue_templates/Bug report.md", "issue-security-route", out,
+            "keep internal and external Bug intake aligned")
+    require(docs[".gitlab/issue_templates/Feature request.md"], "## Desired outcome",
+            ".gitlab/issue_templates/Feature request.md", "issue-feature-template", out,
+            "keep internal and external Feature intake aligned")
 
     required_sections = (
         "## Issue link", "## Surfaces touched", "## Blast radius checked",
@@ -845,6 +919,13 @@ def self_test() -> list[str]:
             ("release-sca-lock", ".github/workflows/release.yml", "scripts/security/requirements-sca.lock", "pip-audit cyclonedx-bom"),
             ("release-sbom-policy", ".github/workflows/release.yml", "--sbom release-security/python-env.cdx.json", "--sbom release-security/unchecked.json"),
             ("discussion-route", ".github/ISSUE_TEMPLATE/config.yml", "/discussions", "/issues"),
+            ("external-repository", ".github/ISSUE_TEMPLATE/config.yml", "https://github.com/NVDLI/NemoClawDLI/discussions", "https://github.com/example/incorrect/discussions"),
+            ("issue-production-scope", ".github/ISSUE_TEMPLATE/runtime-deploy.yml", "static `web/nemoclaw/` course", "CPU service stack"),
+            ("issue-bug-template", ".github/ISSUE_TEMPLATE/bug.yml", "name: Bug report", "name: General report"),
+            ("issue-production-scope", ".github/ISSUE_TEMPLATE/bug.yml", "static `web/nemoclaw/` course", "unspecified application"),
+            ("issue-security-route", ".github/ISSUE_TEMPLATE/bug.yml", "private route in `SECURITY.md`", "public issue comments"),
+            ("issue-feature-template", ".github/ISSUE_TEMPLATE/feature.yml", "Ideas require no patch", "A patch is required"),
+            ("issue-feature-template", ".gitlab/issue_templates/Feature request.md", "## Desired outcome", "## Proposed implementation"),
             ("submission-template", ".github/PULL_REQUEST_TEMPLATE.md", "## Blast radius checked", "## Scope notes"),
             ("stacked-submission-template", ".gitlab/merge_request_templates/Default.md", "host-generated squash", "automatic integration"),
             ("gitlab-description-window", ".gitlab/merge_request_templates/Default.md", "## Validation evidence", "x" * 2700 + "\n## Validation evidence"),
@@ -904,11 +985,19 @@ def self_test() -> list[str]:
             ("material-explicit-degradation", "scripts/materials/pull_materials.py", '"--allow-transient-unreachable"', '"--allow-all-unreachable"'),
             ("material-provenance-sha", "web/nemoclaw/mats/_materials.json", "7a583caa8f1db1e66220cfa8963b7b37dcaf5655df0e1314f8794ea1ba5c8c94", "7a583caa8f1db1e6"),
             ("readme-boundary", "README.md", "Ideas are easy; code is gated", "Contribution overview"),
+            ("readme-public-entrypoint", "README.md", "## Requirements", "## Prerequisites"),
+            ("readme-policy-link", "README.md", "](CODE_OF_CONDUCT.md)", "](conduct-policy.md)"),
+            ("root-license", "LICENSE", "Apache License", "Example License"),
+            ("changelog", "CHANGELOG.md", "## Unreleased", "## Pending work"),
+            ("cla-applicability", "CONTRIBUTING.md", "does not require a separate contributor license agreement", "may require another agreement"),
             ("agent-dco", "AGENTS.md", "Every proposed commit", "Every release"),
             ("release-status", "RELEASE_STATUS.json", '"pending-osrb-approval"', '"published"'),
+            ("release-status", "RELEASE_STATUS.json", '"reserved-not-populated"', '"not-published"'),
             ("release-status", "RELEASE_STATUS.json", '"maintenance_status": "release-candidate"', '"maintenance_status": "archived"'),
             ("notice-state", "RELEASE_STATUS.json", '"notice_required": false', '"notice_required": true'),
-            ("security-report-route", "SECURITY.md", "https://www.nvidia.com/en-us/security/report-vulnerability/", "https://example.invalid/report"),
+            ("security-template", "SECURITY.md", "psirt@nvidia.com", "security@example.invalid"),
+            ("security-template-whitespace", ".gitattributes", "SECURITY.md text eol=lf whitespace=-space-before-tab", "SECURITY.md text eol=lf"),
+            ("maintainer-plan", "docs/release_playbook.md", "## Hotfix workflow", "## Urgent changes"),
             ("release-playbook", "docs/release_playbook.md", "Host settings are not versioned by this repository", "Host settings checklist"),
             ("workspace-lock-install", "workspace/Dockerfile", "pip3 install -r requirements.lock", "pip3 install -r requirements.txt"),
         )
