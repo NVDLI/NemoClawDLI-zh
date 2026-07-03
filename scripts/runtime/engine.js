@@ -644,8 +644,8 @@
     return { pages: pages, pages_with_findings: out.length, findings: out };
   }
 
-  // One process, one filesystem snapshot. The Python bundle gate consumes these related
-  // projections together; emitting them together avoids four Node startups and repeated reads.
+  // Emit related projections from one filesystem snapshot.
+  // The bundle gate avoids four Node startups and repeated reads.
   function bundleSnapshot(proj, includeGraph) {
     var out = {
       schema: "link-engine-bundle/1",

@@ -6,7 +6,7 @@ delivery paths, data handling, dependencies, and release behavior. The companion
 
 The publication state remains machine-readable in [`RELEASE_STATUS.json`](../RELEASE_STATUS.json).
 This design does not grant publication authority or record private review evidence.
-Detailed trust boundaries live in [`security-design.md`](security-design.md); versioned
+Detailed trust boundaries and graph instructions live in [`security-design.md`](security-design.md); versioned
 artifact behavior lives in [`release_artifacts.md`](release_artifacts.md).
 
 ## Purpose and users

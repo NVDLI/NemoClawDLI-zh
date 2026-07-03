@@ -37,10 +37,8 @@ export function openclawGatewayWsUrl(rawUrl, cfJwt = "", proxyBase = OPENCLAW_CO
   return { url: direct, displayUrl: direct, viaProxy: false, directUrl: direct, directDisplayUrl: direct };
 }
 
-// ── ClawGateway widget ───────────────────────────────────────────────────────
-// Live WebSocket client to /cli/gateway, reading URL + token from localStorage.
-// Local launches connect directly. Brev launches with a pasted CF_Authorization JWT
-// use the OpenClaw CORS worker because browser WebSocket constructors cannot set headers.
+// Local launches connect directly to /cli/gateway; same-origin Brev course pages do too.
+// Static-hosted cross-origin connections use the OpenClaw CORS worker to carry JWT auth.
 export function mountClawGateway(targetSel, opts = {}) {
   const target = typeof targetSel === "string" ? document.querySelector(targetSel) : targetSel;
   if (!target) return;

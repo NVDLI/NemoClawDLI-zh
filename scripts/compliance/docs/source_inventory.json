@@ -189,12 +189,6 @@
       "disposition": "browser captures of repository-owned Pages surfaces with selector provenance in captures.json"
     },
     {
-      "path": "docs/security-architecture.md",
-      "kind": "authored-security-documentation",
-      "license": "Apache-2.0",
-      "disposition": "operator instructions and public evidence boundary for the repository-owned security architecture"
-    },
-    {
       "path": "docs/security-design.md",
       "kind": "authored-security-documentation",
       "license": "Apache-2.0",

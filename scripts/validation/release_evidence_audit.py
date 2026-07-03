@@ -29,7 +29,7 @@ REQUIRED_DOCUMENTS = {
 }
 REQUIRED_REPOSITORY_FILES = {
     "README.md", "LICENSE.md", "SECURITY.md", "CONTRIBUTING.md", "DCO.md",
-    "CODE_OF_CONDUCT.md", "SUPPORT.md", "MAINTAINERS.md",
+    "CODE_OF_CONDUCT.md", "SUPPORT.md",
 }
 REQUIRED_RELEASE_ARTIFACTS = {
     "versioned-static-archive", "release-manifest", "cyclonedx-sbom", "sha256-checksums",
@@ -79,8 +79,8 @@ REQUIRED_WIRING = {
         "scripts/validation/cell_audit.py",
         "scripts/validation/release_evidence_audit.py", '"--self-test"',
     ),
-    "AGENT_QUICKSTART.md": (
-        "release_gate.py --tier fast --no-write", "release_gate.py --tier ship",
+    "AGENTS.md": (
+        "CONTRIBUTING.md", "docs/release-test-plan.md",
     ),
     "CONTRIBUTING.md": (
         "release_gate.py --tier fast --no-write", "release_gate.py --tier ship",

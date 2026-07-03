@@ -32,8 +32,7 @@
     "CONTRIBUTING.md",
     "DCO.md",
     "CODE_OF_CONDUCT.md",
-    "SUPPORT.md",
-    "MAINTAINERS.md"
+    "SUPPORT.md"
   ],
   "release_artifacts": [
     "versioned-static-archive",

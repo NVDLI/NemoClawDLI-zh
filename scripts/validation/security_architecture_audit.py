@@ -24,8 +24,7 @@ from render_security_architecture import edge_path, render  # noqa: E402
 
 MODEL = ROOT / "docs" / "security-architecture.json"
 SVG = ROOT / "docs" / "security-architecture.svg"
-DOC = ROOT / "docs" / "security-architecture.md"
-PROJECT_DOC = ROOT / "docs" / "security-design.md"
+DOC = ROOT / "docs" / "security-design.md"
 COMPOSE_FILES = (
     ROOT / "deploy" / "docker-compose.yml",
     ROOT / "deploy" / "docker-compose.override.yml",
@@ -204,7 +203,7 @@ def segments_overlap(a1: tuple[float, float], a2: tuple[float, float], b1: tuple
 def project_doc_findings(text: str) -> list[dict[str, str]]:
     tokens = (
         "## System scope",
-        "## Deployment variants",
+        "## Browser routing by host",
         "## Trust boundaries and data",
         "## Security controls",
         "## Release controls",
@@ -467,12 +466,11 @@ def audit_model(model: dict, *, root: Path = ROOT, svg_text: str | None = None) 
     doc_text = DOC.read_text(encoding="utf-8") if DOC.is_file() else ""
     for token in ("security-architecture.json", "security-architecture.svg", "render_security_architecture.py --check", "security_architecture_audit.py --self-test", "Browser routing by host", "embedded in an iframe", "do not use the relay", "internal program identifiers"):
         if token not in doc_text:
-            out.append(finding("operator-doc", "docs/security-architecture.md", f"missing operator instruction: {token}"))
+            out.append(finding("operator-doc", "docs/security-design.md", f"missing operator instruction: {token}"))
     project_doc_path = root / "docs" / "security-design.md"
     project_doc_text = project_doc_path.read_text(encoding="utf-8") if project_doc_path.is_file() else ""
     out.extend(project_doc_findings(project_doc_text))
     out.extend(public_metadata_findings({
-        "docs/security-architecture.md": doc_text,
         "docs/security-design.md": project_doc_text,
         "docs/security-architecture.svg": svg_text,
     }))
@@ -583,7 +581,7 @@ def self_test() -> list[str]:
     suffix = re.search(r"\.endsWith\(\s*[\"'](\.[A-Za-z0-9-]+\.[A-Za-z]{2,})[\"']\s*\)", 'host.endsWith(".new-runtime.test")')
     if parser.urls != ["https://new.cdn.test/app.js"] or not declared or declared.group("url") != "wss://new.model.test" or not suffix:
         failures.append("runtime observer missed an active resource, endpoint, or dynamic host suffix")
-    project_doc = PROJECT_DOC.read_text(encoding="utf-8")
+    project_doc = DOC.read_text(encoding="utf-8")
     missing_project_doc = project_doc.replace("## Trust boundaries and data", "## Data", 1)
     if "project-doc" not in {row["code"] for row in project_doc_findings(missing_project_doc)}:
         failures.append("detector missed project-document drift")

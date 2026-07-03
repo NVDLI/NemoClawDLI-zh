@@ -1,6 +1,6 @@
 // Low-fingerprint course depth control.
-// Optional sections use native <details>, so every section remains independently
-// openable and the complete course remains usable without JavaScript.
+// Native <details> keeps optional sections independent.
+// The complete course remains usable without JavaScript.
 
 export const LEARNING_DEPTH_KEY = "nemoclaw_learning_depth_v1";
 

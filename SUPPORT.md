@@ -28,4 +28,4 @@ work, or lack information after a reasonable request.
 
 Breaking changes and retirement decisions require an Issue, migration or replacement guidance,
 and a release note before the affected supported release changes. If maintenance ends, the README
-and `GOVERNANCE.json` must say so before the repository is archived or made read-only.
+and `RELEASE_STATUS.json` must say so before the repository is archived or made read-only.

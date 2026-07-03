@@ -118,8 +118,8 @@ function _buildDebugDet(e, code, ep) {
 
 
 // ── Shared cell shell/rendering primitives (CanvasFlow + RunCell) ─────────────
-// Keep the old rc/cf selectors for tests and Studio automation, but route the
-// learner-facing controls, code labels, and output rendering through one path.
+// Retain rc/cf selectors for tests and Studio automation.
+// Route learner controls, labels, and output through one renderer.
 const CELL_CANVAS_VISIBLE_LINES = 39;
 
 function _cellBtnHTML(kind, text, extraClass = "", title = "") {
@@ -1664,10 +1664,9 @@ export function mountRunCell(targetSel, opts) {
       }
     }
 
-    // ── Structured log API ────────────────────────────────────────────────
-    // Same renderer family as CanvasFlow: text, headings, JSON, details, kv,
-    // trusted HTML/SVG/draw, and clear. Plain strings stay plain; objects render
-    // as highlighted JSON instead of collapsing to [object Object].
+    // Structured log API.
+    // CanvasFlow and RunCell share text, JSON, details, HTML, SVG, drawing, and clear operations.
+    // Strings stay plain; objects render as highlighted JSON.
     let outputCount = 0;
     const counted = (el) => { outputCount++; return el; };
     const _appendText = (text, color = "") => counted(_appendCellText(out, text, "cell-log-line", color));

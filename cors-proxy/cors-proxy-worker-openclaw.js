@@ -1,4 +1,4 @@
-// https://openclaw-cors-proxy.vkudlay.workers.dev/
+// Browser proxy for NemoClaw launchables protected by Cloudflare Access.
 const WORKER_VERSION = "openclaw-cors-proxy/2026-06-26-ws-gateway";
 
 export default {
@@ -25,20 +25,17 @@ export default {
     }
     const rest = path.slice("https/".length);
     const host = (rest.split("/")[0] || "").toLowerCase();
-    // Host allowlist: this proxy reaches NemoClaw launchables only. Keep it tight,
-    // because the CF Access service token below is forwarded to the target host.
-    // Without this check the worker is an open relay that would leak that token
-    // (and any forwarded auth) to an arbitrary host an attacker names in the path.
+    // Restrict targets because requests carry Cloudflare Access credentials.
+    // Without this allowlist, an attacker could redirect those credentials to another host.
     const hostOk = /^[a-z0-9.-]+$/.test(host) && (host === "brevlab.com" || host.endsWith(".brevlab.com"));
     if (!hostOk) {
       return new Response('Upstream host not allowed (NemoClaw launchables only).', { status: 403, headers: { "Content-Type": "text/plain", ...cors } });
     }
     const targetSearch = new URLSearchParams(url.search);
     const fwdHeaders = new Headers(request.headers);
-    // Forward the JWT as the CF_Authorization cookie that Cloudflare Access checks.
-    // Fetch probes can send CF-Access-Jwt-Assertion. Browser WebSocket constructors
-    // cannot set headers, so the gateway path accepts the same value as a short-lived
-    // query parameter and strips it before forwarding upstream.
+    // Forward the JWT as the CF_Authorization cookie checked by Cloudflare Access.
+    // Browser WebSockets cannot set headers, so the gateway accepts a short-lived query value.
+    // Delete that value before forwarding the request.
     const cfJwt = fwdHeaders.get("CF-Access-Jwt-Assertion") || targetSearch.get("cf_access_jwt");
     targetSearch.delete("cf_access_jwt");
     const target = "https://" + rest + (targetSearch.toString() ? "?" + targetSearch.toString() : "");
@@ -53,9 +50,8 @@ export default {
 
     const isWebSocket = (request.headers.get("Upgrade") || "").toLowerCase() === "websocket";
     if (isWebSocket) {
-      // OpenClaw validates the WebSocket Origin during the gateway handshake.
-      // nginx pins this same trusted origin for /lab/openclaw; the Worker is the
-      // trusted CF/JWT terminator for the browser-only Brev path.
+      // OpenClaw validates Origin during the WebSocket handshake.
+      // nginx uses the same trusted origin; the Worker terminates CF/JWT authentication.
       fwdHeaders.set("Origin", "http://localhost:8088");
       const upstream = await fetch(target, { method: request.method, headers: fwdHeaders, redirect: "manual" });
       if (upstream.webSocket) return upstream;

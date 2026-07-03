@@ -305,13 +305,7 @@ helpers.log("Lab-only helpers");
 helpers.log("These helpers require the NemoClaw launchable or OpenClaw gateway:");
 helpers.log({ terminal: "helpers.terminal", openclawChat: "helpers.openclawChat", sandboxExec: "helpers.sandboxExec", policyGet: "helpers.policyGet", sandboxNetwork: "helpers.evalSandboxNetwork", sandboxFs: "helpers.evalSandboxFs", policyMap: "helpers.mountPolicyMap" });
 if (!location.pathname.includes("/lab/")) return { labSkipped: true };
-// In lab mode, uncomment targeted probes rather than running all of them blindly.
-// await helpers.terminal("pwd", { signal: helpers.signal });
-// await helpers.openclawChat([{ role: "user", content: "status" }], { signal: helpers.signal });
-// await helpers.sandboxExec("pwd", { signal: helpers.signal });
-// await helpers.policyGet({ signal: helpers.signal });
-// await helpers.evalSandboxNetwork({ signal: helpers.signal });
-// await helpers.evalSandboxFs({ signal: helpers.signal });
+// Run one helper at a time from a page that owns its inputs and expected result.
 `},
   ],
   edges: [{ from: "model-network", to: "lab-only" }],

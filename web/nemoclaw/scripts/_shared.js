@@ -460,7 +460,7 @@ console.table(state.__trace);`,
   log: {
     sig: "<code>helpers.log(...args)</code>",
     desc: `Append to this cell's <em>log</em> area. Plain values append as text; objects render as highlighted JSON. CanvasFlow and RunCell share the same surfaces: <code>log(...args)</code>, <code>log.h(title)</code>, <code>log.json(label?, value)</code>, <code>log.kv(object)</code>, <code>log.details(summary, body)</code>, <code>log.html(html)</code>, <code>log.svg(svgString)</code>, <code>log.draw(W, H, body, opts)</code>, and <code>log.clear()</code>.`,
-    src: `// helpers.log writes to THIS cell's log/output area. Plain values append as text; objects render as JSON.
+    src: `// Write to this cell's output; strings stay text and objects render as JSON.
 helpers.log.h("retrieval");                         // section heading
 helpers.log("retrieved", hits.length, "chunks");   // text line; extra args are space-joined
 helpers.log.json("usage", res.usage);               // labeled JSON rendering

@@ -40,7 +40,7 @@
   "nodes": [
     {
       "id": "source", "label": "Git repository", "detail": "static course source and release controls", "zone": "supply", "kind": "source", "x": 100, "y": 145, "width": 300, "height": 105,
-      "evidence": [{"path": "GOVERNANCE.json", "contains": ["release-candidate", "ownership_policy"]}]
+      "evidence": [{"path": "RELEASE_STATUS.json", "contains": ["pending-osrb-approval", "internal-gitlab"]}, {"path": "README.md", "contains": ["Maintainer authority", "Nobody approves their own"]}]
     },
     {
       "id": "ci", "label": "Protected CI and review", "detail": "validation, CodeQL, SCA, human approval", "zone": "supply", "kind": "control", "x": 650, "y": 145, "width": 300, "height": 105,
@@ -84,7 +84,7 @@
       "id": "cors_workers", "label": "Cross-origin relays", "detail": "NemoClaw for Pages; models for iframes", "zone": "external", "kind": "external_proxy", "x": 650, "y": 625, "width": 300, "height": 105,
       "sensitive": ["caller bearer credential", "access assertion", "prompts and agent traffic"],
       "controls": ["explicit iframe or authenticated path", "upstream host restriction", "deployment-owner review"],
-      "evidence": [{"path": "web/nemoclaw/scripts/_openclaw.js", "contains": ["Local launches connect directly", "use the OpenClaw CORS worker"]}, {"path": "cors-proxy/cors-proxy-worker-openclaw.js", "contains": ["CF_Authorization", "WebSocket"]}]
+      "evidence": [{"path": "web/nemoclaw/scripts/_openclaw.js", "contains": ["OPENCLAW_CORS_PROXY_BASE", "cf_access_jwt"]}, {"path": "cors-proxy/cors-proxy-worker-openclaw.js", "contains": ["CF_Authorization", "WebSocket"]}]
     }
   ],
   "edges": [

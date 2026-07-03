@@ -3,7 +3,7 @@
 This playbook defines how this course bundle moves from internal GitLab development to an external NVIDIA mirror that can accept student reports and later direct student contributions. The repository stays a course packaging and release workspace: authored content, shared services, deployment, validation, and governance move together.
 
 Current state: internal release candidate, with external publication pending OSRB approval. See
-[`RELEASE_STATUS.md`](../RELEASE_STATUS.md). Terms such as `released course` elsewhere in the
+[`RELEASE_STATUS.json`](../RELEASE_STATUS.json). Terms such as `released course` elsewhere in the
 repository identify courses selected for the learner foyer; they do not assert public publication.
 The GitHub Pages and release workflows must run
 `contribution_safety_audit.py --require-publication-approved` before external writes.
@@ -22,25 +22,11 @@ Default rule: **issue-first, patch-second**. Students with domain evidence file 
 
 ## Contribution trust model
 
-Repository governance is machine-readable in `GOVERNANCE.json` and projected into the public
-`CODE_OF_CONDUCT.md`, `SUPPORT.md`, `MAINTAINERS.md`, and `DCO.md`. DCO 1.1 signoff is checked for
-every proposed commit locally and in GitLab/GitHub CI. Signoff proves submission rights; required
-checks, independent review, and protected host authority still decide acceptance.
-
-The repository separates the cost of proposing knowledge from the authority to change a release.
-
-| Stage | Default access | Required evidence | Authority |
-|---|---|---|---|
-| Discussion | open | question, friction, or idea | none; no code changes |
-| Issue | open and structured | location, current/expected behavior, safe evidence | maintainer triage |
-| Branch or fork | contributor-owned | focused patch linked to an Issue | no protected-ref access |
-| PR or MR | untrusted proposal | surfaces, blast radius, commands and results, owner, risk, rollback | required CI plus human review |
-| Merge | restricted | current approved diff and required checks | protected branch or ruleset |
-| Pages or release | separately restricted | immutable SHA or tag, built artifact, smoke evidence | protected environment and release manager |
-
-An agent, novice, or maintainer may propose any of these artifacts. Identity or tool quality never
-substitutes for evidence. Local hooks push back early but are bypassable. CI validates the submitted
-commit. Protected refs, tag rules, and environments hold the irreversible authority.
+[`CONTRIBUTING.md`](../CONTRIBUTING.md) owns intake, submission evidence, signoff, and the
+validation ladder. [`issue_standards.md`](issue_standards.md) owns issue shape and tracker
+cadence. `README.md` owns maintainer authority; `CODE_OF_CONDUCT.md`, `SUPPORT.md`, and
+`DCO.md` own their named public policies. This playbook owns host and release-operator
+configuration.
 
 Host settings are not versioned by this repository. Workflow files can request read-only tokens,
 environments, and checks, but only a host administrator can activate rulesets, required reviewers,
@@ -60,23 +46,8 @@ python3 scripts/validation/gitlab_governance_audit.py --project "$CI_PROJECT_ID"
 The audit reports every weak host control with its exact setting. Its report is evidence, not a
 substitute for the host audit log or a human review of who holds the named roles.
 
-Current issue and MR templates assume `web/nemoclaw/` on the CPU service stack
-(`cpu/`, `workspace/`, and `deploy/`) as the active release target. Keep that
-explicit in each issue, then mark whether the finding is course-specific or
-bundle-wide so the same tracker can scale to future courses.
-
-## Surface ownership
-
-| Surface | Owner lane | Contribution shape | Required gate |
-|---|---|---|---|
-| `web/` | course content | wording, glossary, learner flow, accessibility, page runtime | `validate_bundle.py --scope ship`, browser harness for runtime |
-| `cpu/` | lab services | service docs, notebook repros, gateway behavior | service notebook test or documented repro |
-| `deploy/` | release engineering | local startup, DLI platform route, nginx/proxy behavior | compose parse, `run_engine.sh --self-test`, deploy preview if available |
-| `scripts/` | tooling | validator, build, runtime harness | targeted script test plus ship gate |
-| `web/nemoclaw/mats/` | source governance | citation, provenance, license correction | `source_gate.py`, materials pull/check when available |
-| `docs/` | maintainer docs | process, release, contribution docs, product design, test plan, security architecture evidence | `skill_consistency.py`, `validate_layout.py`, `release_evidence_audit.py`, `security_architecture_audit.py` for topology evidence |
-
-A PR should touch one coherent release concern. A deploy path change can touch `deploy/`, runtime projection, build output, docs, and validators. A wording fix should not.
+Surface ownership and task-specific gates live in the root `SKILL.html`, `docs/SKILL.html`,
+and nearest directory beacon.
 
 ## External mirror settings
 
@@ -164,52 +135,13 @@ Use these while GitLab remains canonical:
 - Use labels and milestones as the project-management source. Mirror the same taxonomy to GitHub.
 - Keep `docs/issue_standards.md` aligned with tracker labels, issue templates, and MR templates.
 
-## Workflow abstractions
+## Release workflow
 
-### Intake workflow
-
-1. **Question or discussion**: learner confusion, unclear concept, broad idea, request for explanation.
-2. **Issue**: reproducible defect, source correction, content ambiguity, accessibility issue, security/privacy concern.
-3. **Triage**: maintainer labels by area, kind, state, severity, and risk.
-4. **Decision**: accepted, needs evidence, duplicate, not planned, external-source blocked, or security-private.
-5. **Patch**: contributor or maintainer opens PR/MR linked with `Addresses #N`.
-6. **Validation**: required gate passes, evidence attached, source/license checked.
-7. **Merge**: release manager merges after owner review.
-8. **Release**: next release train picks the merged change by milestone.
-
-### Patch workflow
-
-Every PR/MR must answer:
-
-- What issue does this address?
-- Which surfaces changed?
-- What blast radius was checked?
-- Which validators ran?
-- Does this touch title, abstract, objectives, source/vendor material, secrets, deployment, or learner runtime?
-- What remains out of scope?
-
-### Release workflow
-
-Use milestones as release trains:
-
-| Milestone | Purpose | Exit criteria |
-|---|---|---|
-| `next-patch` | docs, content, validation, small source metadata fixes | required checks pass, no runtime change |
-| `next-minor` | new page behavior, deployment shape, contribution workflow | browser/build checks pass, notes drafted |
-| `platform-sync` | DLI platform deploy alignment | compose/proxy checks pass, manual deploy evidence |
-| `external-ready` | public mirror readiness | source gate clean, templates present, README/CONTRIBUTING coherent |
-
-Release checklist:
-
-1. Confirm `web/nemoclaw/COURSE_CANON.md` unchanged unless formal course-governance approval exists.
-2. Run static gate and browser gate for runtime changes.
-3. Run `source_gate.py` plus `local_path_leak_audit.py` and confirm no private URLs, provenance gaps, or contributor workstation paths.
-4. Run `release_change_reminder.py --commit-range origin/main..HEAD`; move each applicable operator action into the authorized release record.
-5. Build Pages with `BUILD_PAGES_LANGS=0 scripts/build/build_pages.sh`.
-6. Confirm release foyer surfaces only released courses.
-7. Confirm branch/tag protection and mirror direction.
-8. Tag release from protected source.
-9. Publish release notes grouped by learner-facing, runtime/deploy, governance, and known issues.
+Issue and patch flow live in [`issue_standards.md`](issue_standards.md) and
+[`CONTRIBUTING.md`](../CONTRIBUTING.md). Tag, artifact, promotion, and recovery steps live in
+[`release_artifacts.md`](release_artifacts.md). The acceptance sequence and evidence owners live
+in [`release-test-plan.md`](release-test-plan.md). Use those contracts rather than maintaining a
+second checklist here.
 
 ## CI/CD policy
 

@@ -2,7 +2,7 @@
 
 This repository is an internal release candidate prepared for a proposed Apache-2.0
 open-source publication. External publication remains pending OSRB approval. The canonical
-state is recorded in `RELEASE_STATUS.json` and explained in `RELEASE_STATUS.md`. This guide is
+state is recorded in `RELEASE_STATUS.json`. This guide is
 a release-safe operating procedure for contributors and maintainers. It intentionally avoids
 private ticket systems, internal wiki links, and company-only process URLs.
 

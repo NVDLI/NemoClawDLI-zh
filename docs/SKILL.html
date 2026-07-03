@@ -11,10 +11,9 @@
   "node_type": "directory-explorer",
   "title": "docs/ contributor, release, and design evidence",
   "source_dir": "docs/",
-  "summary": "Task-routed operating notes for contributors, testers, release owners, and reviewers. Start with agent_process and issue_standards for changes; pages_deploy and lab_runtime_testing for execution; product-design, release-test-plan, and release_playbook for release work; security-design and security-architecture for trust boundaries. Generated projections remain tied to declared canonical sources.",
+  "summary": "Task-routed operating notes with one owner per concern. Start with agent_process and issue_standards for changes; pages_deploy and lab_runtime_testing for execution; product-design and release-test-plan for release evidence; release_playbook for host settings; security-design for trust boundaries and graph operation. Generated projections remain tied to declared canonical sources.",
   "related": [
     "docs/pages_deploy.md",
-    "docs/notebook_corruption_prevention.md",
     "docs/lab_runtime_testing.md",
     "docs/agent_process.md",
     "docs/issue_standards.md",
@@ -24,15 +23,12 @@
     "docs/release-test-plan.md",
     "docs/release-evidence.json",
     "docs/dependency_security.md",
-    "docs/security-architecture.md",
     "docs/security-design.md",
     "docs/security-architecture.json",
     "docs/security-architecture.svg",
     "../RELEASE_STATUS.json",
-    "../GOVERNANCE.json",
     "../CODE_OF_CONDUCT.md",
     "../DCO.md",
-    "../MAINTAINERS.md",
     "../SUPPORT.md",
     "docs/repository-overview.html",
     "docs/repository-overview.slides.json",
@@ -46,7 +42,7 @@
 <script type="application/json" id="explorer-config">
 {
   "title": "docs/ \u00b7 contributor, release, and design evidence",
-  "summary": "Choose by task: contribute with agent_process and issue_standards; test with lab_runtime_testing; deploy with pages_deploy; release with product-design, release-test-plan, release_artifacts, and release_playbook; review trust boundaries with security-design and security-architecture. Markdown opens as a rendered document with shareable file and heading URLs.",
+  "summary": "Choose one owner: contribute with agent_process and issue_standards; test with lab_runtime_testing; deploy with pages_deploy; define product and evidence with product-design and release-test-plan; package with release_artifacts; configure hosts with release_playbook; review trust boundaries with security-design and security-architecture. Markdown opens with shareable file and heading URLs.",
   "model": "nvidia/nemotron-3-nano-30b-a3b",
   "render_markdown": true,
   "ties": [
@@ -65,12 +61,6 @@
       "kind": "authored",
       "role": "how the deploy works",
       "desc": "How build_pages.sh assembles the static site, how production and temporary branch previews publish it, and which storage and authority guardrails apply."
-    },
-    {
-      "path": "notebook_corruption_prevention.md",
-      "kind": "authored",
-      "role": "notebook edit hazard",
-      "desc": "The VS Code buffer-merge corruption pattern on notebook markdown edits, and the discipline (nb_audit, close the file) that avoids it."
     },
     {
       "path": "lab_runtime_testing.md",
@@ -93,8 +83,8 @@
     {
       "path": "release_playbook.md",
       "kind": "authored",
-      "role": "release playbook",
-      "desc": "External mirror, contribution intake, engagement, project management, and CI/CD release model."
+      "role": "release host playbook",
+      "desc": "External mirror and host settings, security baseline, CI/CD policy, and operator readiness checklist."
     },
     {
       "path": "release_artifacts.md",
@@ -127,16 +117,10 @@
       "desc": "Fast source-level dependency vulnerability floor audit, waiver policy, SBOM output, and full pip-audit/OSV/GitLab SCA guidance."
     },
     {
-      "path": "security-architecture.md",
-      "kind": "authored",
-      "role": "security architecture operator guide",
-      "desc": "Public evidence boundary, routing model, reconstruction method, and regeneration commands for the source-backed graph."
-    },
-    {
       "path": "security-design.md",
       "kind": "authored",
-      "role": "review-neutral security design",
-      "desc": "Production scope, deployment variants, trust boundaries, data classes, controls, limitations, and internal reconstruction steps without program metadata."
+      "role": "review-neutral security design and graph guide",
+      "desc": "Production scope, routing, trust boundaries, controls, public evidence limits, reconstruction, and graph regeneration without program metadata."
     },
     {
       "path": "security-architecture.json",
@@ -157,11 +141,6 @@
       "desc": "Public release boundary consumed by contribution and release controls."
     },
     {
-      "path": "../GOVERNANCE.json",
-      "role": "machine-readable governance state",
-      "desc": "Intake, maintenance, support, DCO, conduct, and ownership contract enforced by contribution safety validation."
-    },
-    {
       "path": "../CODE_OF_CONDUCT.md",
       "role": "community conduct",
       "desc": "Expected behavior, private reporting, recusal, and enforcement boundary."
@@ -170,11 +149,6 @@
       "path": "../DCO.md",
       "role": "commit origin signoff",
       "desc": "DCO 1.1 signoff requirement and failed-check repair path."
-    },
-    {
-      "path": "../MAINTAINERS.md",
-      "role": "role authority",
-      "desc": "Maintainer, surface owner, release manager, and security responder boundaries."
     },
     {
       "path": "../SUPPORT.md",
@@ -219,7 +193,6 @@
   <p>For browser-runtime discovery, start with <code>scripts/runtime/browser_env_probe.sh</code>; host Node.js, Chromium, and Playwright are optional.</p>
   <ul>
     <li><a href="pages_deploy.md">pages_deploy.md</a></li>
-    <li><a href="notebook_corruption_prevention.md">notebook_corruption_prevention.md</a></li>
     <li><a href="lab_runtime_testing.md">lab_runtime_testing.md</a></li>
     <li><a href="agent_process.md">agent_process.md</a></li>
     <li><a href="issue_standards.md">issue_standards.md</a></li>
@@ -229,15 +202,12 @@
     <li><a href="release-test-plan.md">release-test-plan.md</a></li>
     <li><a href="release-evidence.json">release-evidence.json</a></li>
     <li><a href="dependency_security.md">dependency_security.md</a></li>
-    <li><a href="security-architecture.md">security-architecture.md</a></li>
     <li><a href="security-design.md">security-design.md</a></li>
     <li><a href="security-architecture.json">security-architecture.json</a></li>
     <li><a href="security-architecture.svg">security-architecture.svg</a></li>
     <li><a href="../RELEASE_STATUS.json">RELEASE_STATUS.json</a></li>
-    <li><a href="../GOVERNANCE.json">GOVERNANCE.json</a></li>
     <li><a href="../CODE_OF_CONDUCT.md">CODE_OF_CONDUCT.md</a></li>
     <li><a href="../DCO.md">DCO.md</a></li>
-    <li><a href="../MAINTAINERS.md">MAINTAINERS.md</a></li>
     <li><a href="../SUPPORT.md">SUPPORT.md</a></li>
     <li><a href="repository-overview.html">repository-overview.html</a></li>
     <li><a href="repository-overview.slides.json">repository-overview.slides.json</a></li>

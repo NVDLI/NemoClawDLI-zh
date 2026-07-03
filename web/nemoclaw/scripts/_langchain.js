@@ -21,8 +21,8 @@ export const COURSE_PAGES = [
 ];
 
 // Public browser modules learners can inspect through the Course Assistant.
-// Keep this allow-list explicit: source access is broad enough to explain the course,
-// but cannot become an arbitrary same-origin file reader.
+// Keep this allowlist explicit.
+// Source access can explain the course without becoming a same-origin file reader.
 const COURSE_RUNTIME_FILES = [
   ["_shared.js", "course API surface and browser model helpers"],
   ["_canvas.js", "RunCell and CanvasFlow rendering/runtime"],

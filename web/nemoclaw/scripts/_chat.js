@@ -465,10 +465,9 @@ export function mountChatUI(container, opts = {}) {
   return { thread: ctx.thread, reset, stop, setDisabled, refreshPrerequisites, ctx };
 }
 
-// Mount a live chat artifact backed by LangChain's createReactAgent.
-// It lazy-loads the same-origin vendor bundle, builds one agent per model with its own MemorySaver,
-// and handles token/tool streaming plus the no-key guard.
-// A page therefore only declares its tools and prompt.
+// Mount a LangChain createReactAgent chat with one MemorySaver per model.
+// The helper loads the same-origin bundle, streams tokens and tools, and guards missing keys.
+// Pages supply only tools and a prompt.
 export async function mountAgentChat(container, opts = {}) {
   /* @doc <code>helpers.mountAgentChat(el, opts)</code> ::
        Live chat artifact on LangChain <code>createReactAgent</code>. <code>opts</code>: <code>{
@@ -555,8 +554,7 @@ export async function mountAgentChat(container, opts = {}) {
       const seedThread = !runtime.threads.has(ctx.thread);
       const messages = [];
       if (seedThread && opts.system) messages.push({ role: "system", content: typeof opts.system === "function" ? opts.system(ctx) : opts.system });
-      // A host can seed a visible, page-specific context without copying a second
-      // agent implementation. The chip makes that initial grounding inspectable.
+      // Seed inspectable page context without a second agent implementation.
       if (seedThread && opts.initialContext) {
         const context = await opts.initialContext(ctx);
         if (context && context.content) {

@@ -3,6 +3,8 @@
   "publication_state": "pending-osrb-approval",
   "canonical_repository": "internal-gitlab",
   "external_mirror": "not-published",
+  "maintenance_status": "release-candidate",
+  "community_intake": "disabled-pending-publication-approval",
   "target_license": "Apache-2.0",
   "notice_required": false,
   "released_courses": [

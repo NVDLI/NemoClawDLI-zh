@@ -113,8 +113,7 @@ function svgProblems(svg, { checkEdges = false } = {}) {
   }
   if (checkEdges) {
     const B = nodeBoxes(svg);                     // the diagram's node boxes
-    // Box-on-box overlap makes the diagrams hard to read. A tiny epsilon avoids false positives
-    // from decimal rounding, but any visible overlap is a design bug.
+    // Ignore decimal-rounding noise; report any visible box overlap.
     for (let a = 0; a < B.length; a++) for (let b = a + 1; b < B.length; b++) {
       const A = B[a], C = B[b];
       const ow = Math.max(0, Math.min(A.x + A.w, C.x + C.w) - Math.max(A.x, C.x));

@@ -76,8 +76,8 @@ WEB_SUPPORT = {
     "mats":    ("material provenance", "Source and connection level for every companion essay."),
 }
 SURFACE_LEAD = {
-    "cpu": "The shared microservice stack (llm_client, openclaw, sandbox-admin, docker_router) that the "
-           "browser course runs against. Open the service hub below.",
+    "cpu": "Local development and compatibility services. The production course is static and "
+           "connects to hosted model and NemoClaw endpoints. Open the service hub below.",
 }
 
 # Core tenets projected into root skill-meta; scripts/validation/tenets.py reports enforceable ones.
@@ -86,7 +86,7 @@ TENETS = {
         "Content is curated once and projected: pages live under execution surfaces, and "
         "bundle_standalone.py, build_pages.sh, and engine.js generate the standalone bundle, the "
         "Pages site, and the link graph from them. Add a delivery format by writing a generator, "
-        "so a fix to the source reaches every format. PHILOSOPHY.md is the long form.",
+        "so a fix to the source reaches every format.",
         "Anchor each page in a task that runs: build a working artifact a reader executes against "
         "the lab, and cut a page that only fills an outline. The aim is a change in what a reader "
         "can do.",
@@ -98,9 +98,8 @@ TENETS = {
         "Keep surface assumptions explicit: web/ is browser-only and cannot assume student-provisioned "
         "microservices; cpu/ owns shared service stacks; spark/ or gpu surfaces must declare their "
         "compute contract before content depends on them.",
-        "Ship the services a course drives (a model gateway, a sandboxed agent harness, a policy "
-        "control plane) and let them carry the mechanical work, so a reader's attention stays on "
-        "the decision the exercise is about.",
+        "Keep production browser delivery static. Hosted model and NemoClaw endpoints supply live "
+        "capabilities; cpu/ services exist for local development and compatibility testing.",
         "Ideas stay easy to contribute through structured Issues and, after external intake is enabled, "
         "Discussions. Code stays "
         "difficult to accept: treat every patch as untrusted, require issue linkage, blast-radius "
@@ -258,9 +257,8 @@ def gen_task():
     points humans at the curated release foyer."""
     surfaces = [(s, f"{s}/SKILL.html") for s in SURFACES if (TASK1 / s).is_dir()]
     sdesc = {"web": "Browser frontends: the course as styled web pages, remote services only "
-                    "(no local microservices). Assumes only a browser and the lab proxy.",
-             "cpu": "The shared microservice stack (llm_client, openclaw, sandbox-admin, docker_router) the browser "
-                    "course runs against. Assumes a CPU lab box."}
+                    "(no local microservices). Assumes only a browser and declared hosted endpoints.",
+             "cpu": "Local development and compatibility services. Not part of the static production deployment."}
     items = [(f"{s}/", h, sdesc.get(s, "")) for s, h in surfaces]
 
     # Non-course root layers: describe references, card tooling.
@@ -302,16 +300,12 @@ def gen_task():
                           "Link + topology viewer: how every page resolves and what reaches a SKILL hub."))
 
     docs = [("README.md", "README.md", "What the release candidate is and how to run it (start here)."),
-            ("RELEASE_STATUS.md", "RELEASE_STATUS.md", "Publication state, approval boundary, and NOTICE policy."),
             ("RELEASE_STATUS.json", "RELEASE_STATUS.json", "Machine-readable publication and licensing state."),
-            ("GOVERNANCE.json", "GOVERNANCE.json", "Machine-readable intake, support, signoff, conduct, and ownership state."),
-            ("AGENT_QUICKSTART.md", "AGENT_QUICKSTART.md", "Agent orientation: layout, services, rules."),
+            ("AGENTS.md", "AGENTS.md", "Cross-harness agent contract and task routing."),
             ("CONTRIBUTING.md", "CONTRIBUTING.md", "How to contribute: hooks, the validation gate, conventions."),
             ("DCO.md", "DCO.md", "Required per-commit origin signoff and repair guidance."),
             ("CODE_OF_CONDUCT.md", "CODE_OF_CONDUCT.md", "Community behavior, private reporting, and enforcement."),
             ("SUPPORT.md", "SUPPORT.md", "Support scope, response expectation, and lifecycle policy."),
-            ("MAINTAINERS.md", "MAINTAINERS.md", "Role authority and independent-review boundary."),
-            ("QUALITY_DIRECTIVES.md", "QUALITY_DIRECTIVES.md", "Pedagogical quality bar."),
             ("scripts/compliance/docs/open_source_readiness.md", "scripts/compliance/docs/open_source_readiness.md", "Release-safe readiness checklist and roles."),
             ("scripts/compliance/docs/vendor_policy.md", "scripts/compliance/docs/vendor_policy.md", "Source and vendor-ingestion policy."),
             ("SKILL_CONTRACT.md", "SKILL_CONTRACT.md", "The SKILL.html beacon spec.")]

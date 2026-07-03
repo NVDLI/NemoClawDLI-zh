@@ -2,9 +2,7 @@
 
 This note is for agents and maintainers working across issues, merge requests, and broad course prose. It turns repeated review feedback into a checklist that can be audited.
 Issue anatomy and tracker cadence live in [`issue_standards.md`](issue_standards.md).
-Runtime checks live in [`lab_runtime_testing.md`](lab_runtime_testing.md), and the
-service-document edit hazard lives in
-[`notebook_corruption_prevention.md`](notebook_corruption_prevention.md).
+Runtime checks live in [`lab_runtime_testing.md`](lab_runtime_testing.md).
 
 ## Start from the tracker
 
@@ -77,7 +75,7 @@ service-document edit hazard lives in
   architecture, scan, open-source/license, and final-artifact actions into the authorized release
   record. A green repository pipeline does not complete those operator actions.
 - For page title, navigation, or deploy-path changes, run `BUILD_PAGES_LANGS=0 scripts/build/build_pages.sh` before calling the MR ready.
-- For Studio, runnable-cell, browser-runtime, or OpenClaw changes, also run the browser/runtime harness named in `AGENT_QUICKSTART.md` and the relevant `scripts/validation/*_audit.py` file.
+- For Studio, runnable-cell, browser-runtime, or OpenClaw changes, also run the harness named in `lab_runtime_testing.md` and the relevant `scripts/validation/*_audit.py` file.
 - For learner-facing code or lab-flow changes, run `learner_flow_audit.py`, its mutation self-test, and `learner_flow_runtime_audit.py` against source and built Pages output. A closure claim needs evidence for disclosure, prerequisite readiness, Run/Stop/Reset, error recovery, and viewport stability; a screenshot of one happy state is insufficient.
 - For branch staging, require a passing blocking `test` job, confirm the Pages job SHA matches the live branch head, and probe the deployed course plus both branch manifests. Only paths present in the current classic-Pages artifact may appear in the foyer selector.
 - For a stateful browser bug, test the whole lifecycle: enter the state, leave it through a successful sibling result, leave it through an error, remount the component, then reload or navigate. Run that matrix against both source and built Pages output.
@@ -85,12 +83,10 @@ service-document edit hazard lives in
 
 ## Visual changes
 
-- Before touching a course image, SVG, diagram, or figure placement, read `web/nemoclaw/assets/SKILL.html` and classify the asset as a theme-aware course/provided SVG or a fixed-white conversion.
-- Non-conversion SVGs mount with `fig-embed` / `data-svg-src`; fixed-white conversions use `img` only when provenance marks `connection: "conversion"`.
-- Preserve meaningful diagram labels. Remove caption-like prose, contributor/process shorthand, and provenance from learner-facing SVG content; keep captions in page `figcaption` and provenance in `assets/SKILL.html`.
-- Preview the rendered result in the active agent harness and show the requester the screenshot, crop, or exact preview artifact path. Verify light and dark theme output when the figure can theme-switch.
-- At narrow width, inspect the inline overview and activate the figure lightbox. Labels must remain readable in the enlarged state, horizontal panning must work, and close/Escape controls must remain reachable.
-- Run `python3 scripts/validation/figure_audit.py`, `python3 scripts/compliance/source_gate.py`, and `python3 scripts/validation/validate_bundle.py --no-write --scope ship` before calling visual work ready.
+- `web/nemoclaw/assets/SKILL.html` owns mount, provenance, label, theme, lightbox,
+  and rendered-preview rules. Read it before changing an asset or its placement.
+- Run `figure_audit.py`, `source_gate.py`, and the ship bundle gate. Show the requester
+  the rendered result or name the exact harness blocker.
 
 ## Safe auth and metadata updates
 
