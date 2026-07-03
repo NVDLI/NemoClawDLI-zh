@@ -60,8 +60,8 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/validation/local_path_leak_audit.py", "--self-test"),
     py("scripts/validation/local_path_leak_audit.py"),
     # validate_bundle owns the current-tree sensitive, layout, architecture, release-evidence,
-    # localization, contribution, browser-dependency, and cell audits. Keep only their mutation
-    # suites here so one shared gate never scans the same tree twice.
+    # repository-work-product, localization, contribution, browser-dependency, and cell audits.
+    # Keep only their mutation suites here so one shared gate never scans the same tree twice.
     py("scripts/validation/sensitive_content_audit.py", "--self-test"),
     py("scripts/validation/release_change_reminder.py", "--self-test"),
     py("scripts/validation/validation_report_audit.py", "--self-test"),
@@ -79,6 +79,7 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/build/project_docs_explorer.py", "--self-test"),
     py("scripts/build/project_docs_explorer.py", "--audit"),
     py("scripts/validation/release_evidence_audit.py", "--self-test"),
+    py("scripts/validation/repository_work_products_audit.py", "--self-test"),
     py("scripts/build/assemble_locale_overlay.py", "--self-test"),
     py("scripts/validation/localization_audit.py", "--self-test"),
     py("scripts/validation/contribution_safety_audit.py", "--self-test"),
@@ -151,8 +152,16 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     ),
     py("scripts/validation/release_evidence_audit.py", "--self-test"): (
         "scripts/validation/release_evidence_audit.py", "docs/product-design.md",
-        "docs/release-test-plan.md", "docs/release-evidence.json", "docs/release_playbook.md",
-        "CHANGELOG.md", ".github/ISSUE_TEMPLATE/*", "RELEASE_STATUS*",
+        "docs/release-test-plan.md", "docs/release-evidence.json", "RELEASE_STATUS*",
+    ),
+    py("scripts/validation/repository_work_products_audit.py", "--self-test"): (
+        "scripts/validation/repository_work_products_audit.py", "docs/release-evidence.json",
+        "README.md", "LICENSE", "SECURITY.md", "CHANGELOG.md", "CONTRIBUTING.md",
+        "CODE_OF_CONDUCT.md", "docs/release_playbook.md", "docs/release-test-plan.md",
+        "docs/agent_process.md", ".gitattributes", ".github/ISSUE_TEMPLATE/*",
+        ".github/PULL_REQUEST_TEMPLATE.md", ".gitlab/issue_templates/*",
+        "scripts/validation/SKILL.html", "scripts/validation/release_gate.py",
+        "scripts/validation/validate_bundle.py", "scripts/git-hooks/pre-commit",
     ),
     py("scripts/build/assemble_locale_overlay.py", "--self-test"): (
         "scripts/build/assemble_locale_overlay.py", "i18n/*/locale.json",
@@ -163,8 +172,8 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     ),
     py("scripts/validation/contribution_safety_audit.py", "--self-test"): (
         ".github/*", ".github/**/*", ".gitlab-ci.yml", ".gitlab/*", ".gitlab/**/*",
-        ".gitattributes", "AGENTS.md", "CONTRIBUTING.md", "DCO.md", "LICENSE", "RELEASE_STATUS.json",
-        "CODE_OF_CONDUCT.md", "SUPPORT.md", "SECURITY.md", "CHANGELOG.md", "RELEASE_STATUS*",
+        "AGENTS.md", "CONTRIBUTING.md", "DCO.md", "LICENSE", "RELEASE_STATUS.json",
+        "CODE_OF_CONDUCT.md", "SUPPORT.md", "RELEASE_STATUS*",
         "docs/agent_process.md", "docs/release*", "docs/pages_deploy.md",
         "scripts/git-hooks/*", "scripts/build/install-hooks.sh", "scripts/build/build_pages.sh",
         "scripts/build/package_release.py", "scripts/validation/release_gate.py",

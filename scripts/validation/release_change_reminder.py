@@ -77,6 +77,17 @@ RULES = (
             "**/requirements*.lock", "scripts/build/*", "scripts/browser-vendor/*",
         ),
     ),
+    FollowUp(
+        "public-repository-work-products",
+        "Public repository work-product review",
+        "Re-review required, contextual, and optional public repository work products and record the designated approver's decision.",
+        (
+            "README.md", "LICENSE", "SECURITY.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md",
+            "CHANGELOG.md", ".github/ISSUE_TEMPLATE/*", ".github/PULL_REQUEST_TEMPLATE.md",
+            "docs/release_playbook.md", "docs/release-evidence.json",
+            "scripts/validation/repository_work_products_audit.py",
+        ),
+    ),
 )
 
 
@@ -124,7 +135,8 @@ def self_test() -> list[str]:
         ("topology", ["cors-proxy/reference.js"], {"threat-architecture-review", "verified-secret-scan"}),
         ("workflow", [".github/workflows/pages.yml"], {"threat-architecture-review", "verified-secret-scan"}),
         ("course", ["web/nemoclaw/01a-loop.html"], {"final-artifact-evidence"}),
-        ("ordinary docs", ["README.md"], set()),
+        ("work products", ["CHANGELOG.md"], {"public-repository-work-products"}),
+        ("ordinary docs", ["docs/issue_standards.md"], set()),
     )
     failures: list[str] = []
     for label, paths, expected in cases:
@@ -170,7 +182,7 @@ def main() -> int:
     args = parser.parse_args()
     if args.self_test:
         failures = self_test()
-        print(f"release change reminder self-test: {6 - len(failures)}/6 passed")
+        print(f"release change reminder self-test: {7 - len(failures)}/7 passed")
         for failure in failures:
             print("  FAIL " + failure)
         return 1 if failures else 0

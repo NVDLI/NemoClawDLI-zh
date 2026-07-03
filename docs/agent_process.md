@@ -41,6 +41,10 @@ Runtime checks live in [`lab_runtime_testing.md`](lab_runtime_testing.md).
   `docs/release-evidence.json` together. Run `python3 scripts/validation/release_evidence_audit.py
   --self-test` and then `python3 scripts/validation/release_evidence_audit.py`. Keep internal ticket
   bodies, program identifiers, scanner details, reviewer records, and approval links outside the repo.
+- For public repository policy or work-product changes, update the applicability matrix in
+  `docs/release-evidence.json`. Run `python3 scripts/validation/repository_work_products_audit.py --self-test`
+  and then `python3 scripts/validation/repository_work_products_audit.py`. Treat a
+  required file, unresolved evidence path, or validator-wiring finding as a release blocker.
 
 ## Course title, abstract, and objectives
 

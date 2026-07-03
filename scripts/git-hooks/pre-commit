@@ -59,6 +59,14 @@ if [ -f "$SAFETY" ] && ! python3 "$SAFETY"; then
     exit 1
 fi
 
+WORK_PRODUCTS="$T1/scripts/validation/repository_work_products_audit.py"
+if [ -f "$WORK_PRODUCTS" ] && ! python3 "$WORK_PRODUCTS"; then
+    echo ""
+    echo "[pre-commit] REFUSING COMMIT: public repository work-product contract failed."
+    echo "Repair the named requirement, applicability, evidence path, or validator wiring."
+    exit 1
+fi
+
 RELEASE_EVIDENCE="$T1/scripts/validation/release_evidence_audit.py"
 if [ -f "$RELEASE_EVIDENCE" ] && ! python3 "$RELEASE_EVIDENCE"; then
     echo ""

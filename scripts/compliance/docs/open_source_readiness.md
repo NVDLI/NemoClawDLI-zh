@@ -34,6 +34,9 @@ lives at `scripts/compliance/docs/vendor_policy.md`.
 The public work products have different requirement levels. Keep those levels explicit so an
 optional file cannot hide a missing release blocker.
 
+Run `python3 scripts/validation/repository_work_products_audit.py` after changing this baseline or
+its applicability matrix. Run its `--self-test` mode after changing the contract or detector.
+
 Show-stoppers:
 
 - `README.md`: purpose, requirements, quickstart, contribution, governance, support, security, and license links
