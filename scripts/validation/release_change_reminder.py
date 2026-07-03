@@ -34,7 +34,7 @@ RULES = (
         "Threat and architecture assessment",
         "Refresh the authorized assessment when topology, trust boundaries, authentication, data flow, or deployment changed.",
         (
-            ".github/workflows/*", ".gitlab-ci.yml", "cors-proxy/*", "deploy/*",
+            ".github/workflows/*", ".gitlab-ci.yml", "scripts/cors-proxy/*", "deploy/*",
             "docs/security-architecture.*", "docs/security-design.md",
             "web/nemoclaw/scripts/_openclaw.js", "web/nemoclaw/scripts/_shared.js",
         ),
@@ -47,6 +47,16 @@ RULES = (
             "**/Dockerfile", "**/*.Dockerfile", "**/requirements*.txt", "**/requirements*.lock",
             "scripts/browser-vendor/package.json", "scripts/browser-vendor/package-lock.json",
             "scripts/security/*", "web/nemoclaw/vendor/*",
+        ),
+    ),
+    FollowUp(
+        "privacy-data-review",
+        "Privacy and data-use review",
+        "Recheck the authorized privacy assessment when a destination, credential flow, browser storage, telemetry, or retention boundary changed.",
+        (
+            "docs/product-design.md", "docs/security-design.md", "web/nemoclaw/index.html",
+            "web/nemoclaw/scripts/_keypanel.js", "web/nemoclaw/scripts/_openclaw.js",
+            "web/nemoclaw/scripts/_shared.js",
         ),
     ),
     FollowUp(
@@ -64,7 +74,7 @@ RULES = (
         "Verified secret scan",
         "Run the authoritative secret scan on the final source ref after credential, workflow, proxy, or deployment handling changes.",
         (
-            ".github/workflows/*", ".gitlab-ci.yml", "cors-proxy/*", "deploy/*",
+            ".github/workflows/*", ".gitlab-ci.yml", "scripts/cors-proxy/*", "deploy/*",
             "scripts/security/*", "web/nemoclaw/scripts/_openclaw.js", "web/nemoclaw/scripts/_shared.js",
         ),
     ),
@@ -129,11 +139,12 @@ def changed_paths(commit_range: str, root: Path = ROOT) -> list[str]:
     return sorted({line.strip() for line in proc.stdout.splitlines() if line.strip()})
 
 
-def self_test() -> list[str]:
+def self_test() -> tuple[list[str], int]:
     cases = (
         ("dependency", ["workspace/requirements.lock"], {"authoritative-vulnerability-scan", "open-source-license-review", "final-artifact-evidence"}),
-        ("topology", ["cors-proxy/reference.js"], {"threat-architecture-review", "verified-secret-scan"}),
+        ("topology", ["scripts/cors-proxy/reference.js"], {"threat-architecture-review", "verified-secret-scan"}),
         ("workflow", [".github/workflows/pages.yml"], {"threat-architecture-review", "verified-secret-scan"}),
+        ("data route", ["web/nemoclaw/scripts/_shared.js"], {"threat-architecture-review", "privacy-data-review", "verified-secret-scan", "final-artifact-evidence"}),
         ("course", ["web/nemoclaw/01a-loop.html"], {"final-artifact-evidence"}),
         ("work products", ["CHANGELOG.md"], {"public-repository-work-products"}),
         ("ordinary docs", ["docs/issue_standards.md"], set()),
@@ -143,11 +154,11 @@ def self_test() -> list[str]:
         actual = {row["id"] for row in classify(paths)}
         if actual != expected:
             failures.append(f"{label}: expected {sorted(expected)}, got {sorted(actual)}")
-    combined = classify(["workspace/requirements.lock", "cors-proxy/reference.js"])
+    combined = classify(["workspace/requirements.lock", "scripts/cors-proxy/reference.js"])
     ids = [row["id"] for row in combined]
     if len(ids) != len(set(ids)):
         failures.append("combined paths emitted duplicate follow-up categories")
-    return failures
+    return failures, len(cases) + 1
 
 
 def emit(paths: list[str], rows: list[dict[str, object]], commit_range: str, report: str | None) -> int:
@@ -181,8 +192,8 @@ def main() -> int:
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
-        failures = self_test()
-        print(f"release change reminder self-test: {7 - len(failures)}/7 passed")
+        failures, total = self_test()
+        print(f"release change reminder self-test: {total - len(failures)}/{total} passed")
         for failure in failures:
             print("  FAIL " + failure)
         return 1 if failures else 0

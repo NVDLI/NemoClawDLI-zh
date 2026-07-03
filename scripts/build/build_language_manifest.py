@@ -12,7 +12,7 @@ LABELS = {
     "pt": "Portuguese",
     "es": "Spanish",
 }
-SKIP_DIRS = {"cors-proxy", "docs", "scripts", "workspace", "validated-source", "web", "nemoclaw"}
+SKIP_DIRS = {"docs", "scripts", "workspace", "validated-source", "web", "nemoclaw"}
 
 
 def clean_prefix(prefix: str) -> str:

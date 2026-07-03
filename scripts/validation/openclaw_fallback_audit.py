@@ -19,28 +19,30 @@ NODE_RUNNER = ROOT / "scripts" / "runtime" / "run_node.sh"
 FILES = {
     "kickstart": ROOT / "web" / "nemoclaw" / "03a-kickstart.html",
     "openclaw_js": ROOT / "web" / "nemoclaw" / "scripts" / "_openclaw.js",
-    "cors_worker": ROOT / "cors-proxy" / "cors-proxy-worker-openclaw.js",
+    "cors_worker": ROOT / "scripts" / "cors-proxy" / "cors-proxy-worker-openclaw.js",
     "runtime_js": ROOT / "scripts" / "runtime" / "test_page_runtime.js",
     "runtime_sh": ROOT / "scripts" / "runtime" / "lab_runtime_test.sh",
     "runtime_skill": ROOT / "scripts" / "runtime" / "SKILL.html",
     "scripts_skill": ROOT / "scripts" / "SKILL.html",
     "validation_skill": ROOT / "scripts" / "validation" / "SKILL.html",
     "worker_ws_audit": ROOT / "scripts" / "validation" / "openclaw_worker_ws_audit.mjs",
+    "gateway_token_audit": ROOT / "scripts" / "validation" / "gateway_token_audit.mjs",
     "gw_transport_audit": ROOT / "scripts" / "validation" / "gw_connect_transport_audit.mjs",
     "gw_recover_compile_audit": ROOT / "scripts" / "validation" / "gw_recover_compile_audit.mjs",
 }
 
 REQUIRED = {
     "kickstart": ["EPERM", "Brev App URL", "CF_Authorization", "Fail-fast backup"],
-    "openclaw_js": ["EPERM", "CF_Authorization", "Brev session URL", "stop local probing", "${fallback}${hint}", "openclawGatewayWsUrl", "cf_access_jwt", "hideHtmlFrame", ".claw-html-frame[hidden]"],
-    "cors_worker": ["WORKER_VERSION", "CF_Authorization", "CF-Access-Jwt-Assertion", "cf_access_jwt", "targetSearch.delete", "upstream.webSocket", "Origin", "http://localhost:8088"],
+    "openclaw_js": ["EPERM", "CF_Authorization", "Brev session URL", "stop local probing", "${fallback}${hint}", "openclawGatewayWsUrl", "cf_access_jwt", "https://openclaw-cors-proxy.experiments.courses.nvidia.com", "hideHtmlFrame", ".claw-html-frame[hidden]"],
+    "cors_worker": ["CF_Authorization", "CF-Access-Jwt-Assertion", "cf_access_jwt", "targetSearch.delete", "upstream.webSocket", "Origin", "http://localhost:8088"],
     "runtime_js": ["OPENCLAW_BACKUP_HINT", "preflightOpenClaw", "resolveOpenClawToken", "OPENCLAW_TOKEN: discovered", "localStorage.setItem('nemoclaw_clawcfjwt'", "RESULT: FAIL (OpenClaw credentials supplied", "toolsMissing) ? 1 : 0", "'/health'"],
     "runtime_sh": ["CLAW_CF=<CF_Authorization>", "Use Brev URL if local OpenClaw fails or shows EPERM"],
     "runtime_skill": ["OpenClaw fallback", "CF_Authorization", "EPERM", "CLAW_CF"],
     "scripts_skill": ["validation/SKILL.html"],
     "validation_skill": ["openclaw_fallback_audit.py", "OpenClaw fallback"],
     "worker_ws_audit": ["openclaw worker ws audit", "CF_Authorization", "http://localhost:8088", "upstream WebSocket response directly"],
-    "gw_transport_audit": ["gw connect transport audit", "falling back to direct browser-cookie WebSocket"],
+    "gateway_token_audit": ["gateway token audit", "gatewayTokenFromAgentMetadata", "gatewayTokenFromDashboardUrl", "--self-test"],
+    "gw_transport_audit": ["gw connect transport audit", "openclaw-cors-proxy.experiments.courses.nvidia.com", "via hosted relay"],
     "gw_recover_compile_audit": ["gw recover compile audit", "private _uniqueId"],
 }
 
@@ -115,8 +117,8 @@ def audit() -> list[str]:
         findings.append("web/nemoclaw/scripts/_openclaw.js runs each probe action twice")
     if "?cf_access_jwt=" in openclaw and "?cf_access_jwt=..." not in openclaw:
         findings.append("web/nemoclaw/scripts/_openclaw.js may log the raw CF Access JWT in gateway output")
-    if "cf_access_jwt=..." in openclaw and "__nemoclaw_proxy_meta" not in openclaw:
-        findings.append("GW_CONNECT should check the live proxy version before using Brev WebSocket proxy mode")
+    if "__nemoclaw_proxy_meta" in openclaw:
+        findings.append("GW_CONNECT depends on the retired worker metadata route instead of the hosted relay contract")
     if "setOutput(head + `   (HTML" in openclaw and "hideHtmlFrame(true);" not in openclaw:
         findings.append("web/nemoclaw/scripts/_openclaw.js does not clear stale HTML iframe before non-HTML output")
     findings.extend(probe_frame_findings(openclaw))
@@ -139,7 +141,7 @@ def audit() -> list[str]:
     if not NODE_RUNNER.is_file():
         findings.append("scripts/runtime/run_node.sh is missing")
     else:
-        for script_key in ("worker_ws_audit", "gw_transport_audit", "gw_recover_compile_audit"):
+        for script_key in ("worker_ws_audit", "gateway_token_audit", "gw_transport_audit", "gw_recover_compile_audit"):
             script = FILES[script_key].relative_to(ROOT)
             proc = subprocess.run([str(NODE_RUNNER), str(script)], cwd=ROOT,
                                   text=True, capture_output=True)

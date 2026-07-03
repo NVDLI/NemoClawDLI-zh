@@ -134,7 +134,7 @@ implementación segura con OpenClaw y NemoClaw™ de NVIDIA.</p>
   </div>
 
   <div class="howto">
-    <div class="step"><span class="n">1</span> <span><b>Introduce tu clave</b> a continuación. Las llamadas al modelo se envían a <a href="https://build.nvidia.com" target="_blank" rel="noopener"><code>build.nvidia.com</code></a>; una clave gratuita con prefijo <code>nvapi-</code> habilita todos los ejercicios. Activa el modo LMS/iframe estático solo si la página anfitriona necesita el worker de CORS.</span></div>
+    <div class="step"><span class="n">1</span> <span><b>Confirma el endpoint y la clave</b> a continuación. El valor predeterminado usa <a href="https://build.nvidia.com" target="_blank" rel="noopener"><code>build.nvidia.com</code></a>; durante eventos de capacidad, el instructor puede proporcionar un endpoint compatible. Active el modo iframe solo con el endpoint predeterminado.</span></div>
     <div class="step"><span class="n">2</span> <span><b>Sigue los módulos en orden</b> para recorrer la ruta predeterminada o abre directamente la tarea que necesites. Cada página termina con un artefacto activo en el navegador y deja disponible su JavaScript para que puedas inspeccionarlo y adaptarlo.</span></div>
     <div class="step"><span class="n">3</span> <span><b>Para usar el stack de agentes</b> en los Módulos 3 y 4, crea el launchable de NemoClaw cuando el curso lo solicite. El <a href="https://github.com/NVIDIA/NemoClaw" target="_blank" rel="noopener">blueprint de NemoClaw</a> ejecuta <a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener">OpenClaw</a> dentro de <a href="https://github.com/NVIDIA/OpenShell" target="_blank" rel="noopener">OpenShell</a>. Los servicios del curso usan CPU y modelos alojados, por lo que no es necesario administrar una GPU.</span></div>
   </div>
@@ -155,10 +155,12 @@ implementación segura con OpenClaw y NemoClaw™ de NVIDIA.</p>
   <!-- ── Key setup ─────────────────────────────────────────────────────── -->
   <div class="section" id="setup">
     <h2>Cómo introducir tu clave de API</h2>
-    <p class="help">El navegador guarda la clave en <code>localStorage</code>, por lo que permanece disponible al
-recargar la página y al abrir otras pestañas. También se comparte entre los dos cursos hasta que la eliminas con el botón Cambiar. Las solicitudes
-la envían a build.nvidia.com, pero nunca la escriben en una página. Solo el
-modo LMS/iframe estático utiliza el worker de CORS alojado.</p>
+    <p class="help">El navegador guarda la clave y la URL base de la API de modelos en
+<code>localStorage</code>. Una sola configuración se aplica a todas las lecciones y pestañas. Las
+solicitudes usan build.nvidia.com de forma predeterminada. El navegador envía la clave únicamente al
+endpoint seleccionado, sin insertarla en el contenido de la página. Un endpoint personalizado solo corresponde cuando el
+instructor lo proporcione e identifique. El proxy CORS alojado se limita al modo LMS/iframe estático con el
+endpoint predeterminado.</p>
     <div id="key-panel"></div>
   </div>
 

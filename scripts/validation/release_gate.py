@@ -46,6 +46,7 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/skills/skill_contract.py"),
     py("scripts/build/project_docs_explorer.py", "--self-test"),
     py("scripts/build/project_docs_explorer.py", "--audit"),
+    py("scripts/security/audit_iframe_proxy_opt_in.py"),
     py("scripts/compliance/source_gate.py"),
     py("scripts/validation/tenets.py", "--check"),
     py("scripts/runtime/module_check.py", "--dir", "web/nemoclaw"),
@@ -80,6 +81,7 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/build/project_docs_explorer.py", "--audit"),
     py("scripts/validation/release_evidence_audit.py", "--self-test"),
     py("scripts/validation/repository_work_products_audit.py", "--self-test"),
+    ("bash", "scripts/runtime/run_node.sh", "scripts/validation/gateway_token_audit.mjs", "--self-test"),
     py("scripts/build/assemble_locale_overlay.py", "--self-test"),
     py("scripts/validation/localization_audit.py", "--self-test"),
     py("scripts/validation/contribution_safety_audit.py", "--self-test"),
@@ -88,6 +90,8 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
         "--report",
         "docs/validation/contribution-safety.json",
     ),
+    py("scripts/security/audit_iframe_proxy_opt_in.py", "--self-test"),
+    py("scripts/security/audit_iframe_proxy_opt_in.py"),
     py("scripts/compliance/source_gate.py"),
     py("scripts/validation/course_dependency_integrity.py", "--self-test"),
     py("scripts/validation/cell_audit.py", "--self-test"),
@@ -163,12 +167,20 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
         "scripts/validation/SKILL.html", "scripts/validation/release_gate.py",
         "scripts/validation/validate_bundle.py", "scripts/git-hooks/pre-commit",
     ),
+    ("bash", "scripts/runtime/run_node.sh", "scripts/validation/gateway_token_audit.mjs", "--self-test"): (
+        "scripts/validation/gateway_token_audit.mjs", "scripts/validation/openclaw_fallback_audit.py",
+        "scripts/runtime/test_page_runtime.js", "web/nemoclaw/scripts/_openclaw.js",
+        "web/nemoclaw/scripts/_shared.js", "web/nemoclaw/03a-kickstart.html",
+        "i18n/pt/web/nemoclaw/03a-kickstart.html", "i18n/es/web/nemoclaw/03a-kickstart.html",
+    ),
     py("scripts/build/assemble_locale_overlay.py", "--self-test"): (
         "scripts/build/assemble_locale_overlay.py", "i18n/*/locale.json",
     ),
     py("scripts/validation/localization_audit.py", "--self-test"): (
         "scripts/validation/localization_audit.py", "scripts/translate/locales/*",
         "scripts/build/assemble_locale_overlay.py", "i18n/*/locale.json",
+        "web/nemoclaw/scripts/_keypanel.js", "web/nemoclaw/scripts/_locale.js",
+        "web/nemoclaw/scripts/_shared.js",
     ),
     py("scripts/validation/contribution_safety_audit.py", "--self-test"): (
         ".github/*", ".github/**/*", ".gitlab-ci.yml", ".gitlab/*", ".gitlab/**/*",
@@ -178,6 +190,11 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
         "scripts/git-hooks/*", "scripts/build/install-hooks.sh", "scripts/build/build_pages.sh",
         "scripts/build/package_release.py", "scripts/validation/release_gate.py",
         "scripts/validation/contribution_safety_audit.py", "scripts/security/*", "workspace/*",
+    ),
+    py("scripts/security/audit_iframe_proxy_opt_in.py", "--self-test"): (
+        "scripts/security/audit_iframe_proxy_opt_in.py", "scripts/cors-proxy/*",
+        "web/nemoclaw/index.html", "web/nemoclaw/scripts/_keypanel.js",
+        "web/nemoclaw/scripts/_shared.js",
     ),
     py("scripts/validation/course_dependency_integrity.py", "--self-test"): (
         "scripts/validation/course_dependency_integrity.py", "scripts/browser-vendor/*",

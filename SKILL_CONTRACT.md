@@ -35,7 +35,7 @@ mechanical drift. The kinds below are the de-facto contract, read off the shippe
 |---|---|---|---|
 | `service-skill/1.0` | `schema` | schema, service, address, source_dir, summary, interfaces, tests, title, version | `cpu/services/<svc>/` |
 | `service-index/1.0` | `schema` | schema, id, source_dir, summary, services, tests, title, version | `cpu/services/` |
-| `dir-skill/1.0` | `schema` (node_type `directory-explorer`) | schema, node_type, source_dir, summary, title, explorer | `scripts/`, `docs/`, `workspace/`, `cors-proxy/` |
+| `dir-skill/1.0` | `schema` (node_type `directory-explorer`) | schema, node_type, source_dir, summary, title, explorer | `scripts/`, `docs/`, `workspace/` |
 | hub | `node_type: hub` | node_type, children, and a label (`title` or `course`) | root, `web/`, `cpu/`, `web/nemoclaw/` |
 | leaf | `node_type: leaf` | node_type, source_dir, summary, self_path, label | `web/nemoclaw/assets/`, `web/nemoclaw/mats/` |
 

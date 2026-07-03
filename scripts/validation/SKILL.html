@@ -37,6 +37,7 @@
     "scripts/validation/helper_notebook_runtime_audit.py",
     "scripts/validation/studio_responsive_audit.py",
     "scripts/validation/openclaw_fallback_audit.py",
+    "scripts/validation/gateway_token_audit.mjs",
     "scripts/validation/openclaw_probe_frame_runtime_audit.py",
     "scripts/validation/branch_preview_manifest_audit.py",
     "scripts/validation/branch_preview_runtime_audit.py",
@@ -92,7 +93,7 @@
     {
       "path": "local_path_leak_audit.py",
       "role": "workstation path boundary",
-      "desc": "Rejects contributor home, mounted-drive, cache, runtime, and absolute local file-URI paths across tracked and untracked source, symlink targets, and every proposed commit; includes mutation coverage and narrow runtime allowances."
+      "desc": "Rejects contributor home, mounted-drive, cache, runtime, absolute local file-URI paths, and contributor-local identifiers across tracked and untracked source, symlink targets, and every proposed commit; includes mutation coverage and narrow runtime allowances."
     },
     {
       "path": "sensitive_content_audit.py",
@@ -230,6 +231,11 @@
       "desc": "Checks that credentialed OpenClaw tests fail fast, fallback guidance remains usable, and the probe statically clears stale HTML frames."
     },
     {
+      "path": "gateway_token_audit.mjs",
+      "role": "OpenClaw gateway-token contract",
+      "desc": "Executes URL-safe fragment and query token fixtures, checks EN/PT/ES probe wiring, and mutation-tests the browser harness relay path."
+    },
+    {
       "path": "openclaw_probe_frame_runtime_audit.py",
       "role": "OpenClaw probe frame browser audit",
       "desc": "Uses containerized Chromium to prove HTML probe frames disappear after JSON, network-error, Cloudflare-login, remount, and reload transitions."
@@ -322,6 +328,7 @@
   <div class="skill-cmd"><b>Rendered page screenshots</b><code>python3 scripts/validation/cell_ui_runtime_audit.py --site-root /tmp/nemoclaw_visual_preview --page /nemoclaw/02b-rag.html --screenshots /tmp/nemoclaw_visual_audit</code></div>
   <div class="skill-cmd"><b>Studio interface</b><code>python3 scripts/validation/studio_interface_audit.py</code></div>
   <div class="skill-cmd"><b>OpenClaw fallback + static frame lifecycle</b><code>python3 scripts/validation/openclaw_fallback_audit.py</code></div>
+  <div class="skill-cmd"><b>Gateway token + detector</b><code>bash scripts/runtime/run_node.sh scripts/validation/gateway_token_audit.mjs &amp;&amp; bash scripts/runtime/run_node.sh scripts/validation/gateway_token_audit.mjs --self-test</code></div>
   <div class="skill-cmd"><b>OpenClaw frame browser lifecycle</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/openclaw_probe_frame_runtime_audit.py --site-root web</code></div>
   <div class="skill-cmd"><b>Pages branch availability</b><code>python3 scripts/validation/branch_preview_manifest_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>Pages branch selector browser</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/branch_preview_runtime_audit.py --site-root public</code></div>
@@ -342,7 +349,7 @@
     <a class="skill-card" href="validate_bundle.py"><b>validate_bundle.py</b><span>ship gate. Composes every validator into the release gate and durable report.</span></a>
     <a class="skill-card" href="validation_report_audit.py"><b>validation_report_audit.py</b><span>same-commit report reuse gate. Rejects stale, failed, degraded, dirty-tree, or wrong-scope evidence before a downstream build skips regeneration.</span></a>
     <a class="skill-card" href="validate_layout.py"><b>validate_layout.py</b><span>layout gate. Checks links, static mounts, and SKILL beacons.</span></a>
-    <a class="skill-card" href="local_path_leak_audit.py"><b>local_path_leak_audit.py</b><span>contributor-local boundary. Rejects workstation paths in the current tree and every proposed commit.</span></a>
+    <a class="skill-card" href="local_path_leak_audit.py"><b>local_path_leak_audit.py</b><span>contributor-local boundary. Rejects workstation paths and local identifiers in the current tree and every proposed commit.</span></a>
     <a class="skill-card" href="sensitive_content_audit.py"><b>sensitive_content_audit.py</b><span>sensitive contribution boundary. Scans the tree, complete proposed history, and MR/PR metadata while reporting only category and location.</span></a>
     <a class="skill-card" href="sensitive-content-policy.json"><b>sensitive-content-policy.json</b><span>public fingerprint policy. Stores hashes only; private CI can add an overlay through an environment-provided file.</span></a>
     <a class="skill-card" href="release_change_reminder.py"><b>release_change_reminder.py</b><span>external release follow-up reminder. Converts changed paths into an operator checklist for authorized systems.</span></a>
@@ -362,13 +369,14 @@
     <a class="skill-card" href="learner_flow_runtime_audit.py"><b>learner_flow_runtime_audit.py</b><span>learner-flow browser gate. Exercises Guided code collapse/local reveal, authored defaults, saved depth, section overrides, reload/print, narrow keyboard behavior, prerequisites, and cell lifecycle transitions.</span></a>
     <a class="skill-card" href="contribution_safety_audit.py"><b>contribution_safety_audit.py</b><span>required contribution-safety gate. Holds governance and DCO, immutable action pins, locked workflow installs, fork-safe security workflows, submission evidence, hooks, PR permissions, and release authority together with mutation coverage.</span></a>
     <a class="skill-card" href="gitlab_governance_audit.py"><b>gitlab_governance_audit.py</b><span>read-only live-host gate. Reports whether GitLab protects main, release tags, production deploys and approvers, and the explicit human-review action while detecting one-operator deadlocks or authority widening.</span></a>
-    <a class="skill-card" href="localization_audit.py"><b>localization_audit.py</b><span>required locale gate. Rejects runtime copies, stale accepted hashes, machine-contract drift, untranslated UI, locale-specific prose artifacts, and Spanish runnable-code drift; emits the Localization Studio manifest.</span></a>
+    <a class="skill-card" href="localization_audit.py"><b>localization_audit.py</b><span>required locale gate. Rejects runtime copies, stale accepted hashes, machine-contract drift, untranslated runtime UI, locale-specific prose artifacts, and Spanish runnable-code drift; mutation-tests endpoint setup copy and emits the Localization Studio manifest.</span></a>
     <a class="skill-card" href="localization_runtime_audit.py"><b>localization_runtime_audit.py</b><span>browser locale gate. Exercises English, Portuguese, and Spanish same-page switching, fallback routing, responsive menu behavior, translated SVG geometry, and Localization Studio comparison frames.</span></a>
     <a class="skill-card" href="reference_graph.py"><b>reference_graph.py</b><span>reference graph. Audits cross-course reference coupling.</span></a>
     <a class="skill-card" href="studio_interface_audit.py"><b>studio_interface_audit.py</b><span>studio interface audit. Checks studio controls, local assets, static read-only mode, lab write mode, and documentation.</span></a>
     <a class="skill-card" href="helper_notebook_runtime_audit.py"><b>helper_notebook_runtime_audit.py</b><span>helper notebook audit. Checks CanvasFlow and RunCell helper API use, then can launch containerized Playwright to click every notebook run control.</span></a>
     <a class="skill-card" href="studio_responsive_audit.py"><b>studio_responsive_audit.py</b><span>studio responsive audit. Uses containerized Playwright to stress narrow and short Studio viewports for scrollable topbar controls and sidebar panel floors.</span></a>
     <a class="skill-card" href="openclaw_fallback_audit.py"><b>openclaw_fallback_audit.py</b><span>OpenClaw fallback audit. Checks fail-fast behavior, backup guidance, and static probe-frame cleanup.</span></a>
+    <a class="skill-card" href="gateway_token_audit.mjs"><b>gateway_token_audit.mjs</b><span>Gateway-token contract. Exercises URL-safe token formats, locale wiring, hosted-relay discovery, and mutation coverage.</span></a>
     <a class="skill-card" href="openclaw_probe_frame_runtime_audit.py"><b>openclaw_probe_frame_runtime_audit.py</b><span>OpenClaw probe frame browser audit. Exercises HTML-to-JSON/error/access-warning cleanup plus remount and reload.</span></a>
     <a class="skill-card" href="branch_preview_manifest_audit.py"><b>branch_preview_manifest_audit.py</b><span>Pages branch manifest audit. Rejects selector entries without published paths or browser dependency evidence, self-tests detection, and probes live Pages output.</span></a>
     <a class="skill-card" href="branch_preview_runtime_audit.py"><b>branch_preview_runtime_audit.py</b><span>Pages branch selector browser audit. Injects a ghost preview and proves root/branch foyers hide it.</span></a>

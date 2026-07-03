@@ -7,7 +7,7 @@ export default {
     const cors = {
       "Access-Control-Allow-Origin":  origin,
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-      "Access-Control-Allow-Headers": "Authorization, Content-Type, x-openclaw-session-key, X-BILLING-SOURCE, Accept, CF-Access-Jwt-Assertion",
+      "Access-Control-Allow-Headers": "Authorization, Content-Type, x-openclaw-session-key, Accept, CF-Access-Jwt-Assertion",
       "Access-Control-Max-Age":       "86400",
     };
     if (request.method === "OPTIONS") {
@@ -15,11 +15,6 @@ export default {
     }
     const url  = new URL(request.url);
     const path = url.pathname.slice(1);
-    if (path === "__nemoclaw_proxy_meta") {
-      return new Response(JSON.stringify({ version: WORKER_VERSION, websocket: true }), {
-        headers: { "Content-Type": "application/json", ...cors },
-      });
-    }
     if (!path.startsWith("https/")) {
       return new Response('Use /https/<host>/<path> (drop the ://).', { status: 400, headers: { "Content-Type": "text/plain", ...cors } });
     }
@@ -66,7 +61,6 @@ export default {
     });
     const out = new Response(upstream.body, upstream);
     for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
-    out.headers.set("X-NemoClaw-Proxy-Version", WORKER_VERSION);
     return out;
   },
 };

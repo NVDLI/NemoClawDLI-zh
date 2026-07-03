@@ -120,7 +120,7 @@ cp "$T1/web/nemoclaw/assets/favicon.ico" "$OUT/favicon.ico"
 # because the deploy mirrors that relative shape (public/web/_skill_explorer.js + public/<dir>/).
 mkdir -p "$OUT/web"
 cp "$T1/web/_skill_explorer.js" "$OUT/web/_skill_explorer.js"
-for d in cors-proxy deploy scripts docs workspace; do
+for d in deploy scripts docs workspace; do
     if [ -d "$T1/$d" ]; then
         mkdir -p "$OUT/$d"
         # the explorer + the documented source it shows (read-only); skip caches + subdirs
@@ -159,7 +159,7 @@ fi
 # exists on Pages (the foyer is the site-root index.html and the root hub is a source-layout dev
 # artifact that is not deployed). Point the logo at the foyer and drop the redundant up-link so
 # the topbar has no dead targets on the live site.
-for d in cors-proxy deploy scripts docs workspace; do
+for d in deploy scripts docs workspace; do
     f="$OUT/$d/SKILL.html"
     [ -f "$f" ] || continue
     python3 - "$f" <<'PROJ'

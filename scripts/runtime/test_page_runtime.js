@@ -16,16 +16,18 @@ try {
 const args = process.argv.slice(2);
 const smoke = args.includes('--smoke');
 const renderOnly = args.includes('--render-only');
+const gatewayOnly = args.includes('--gateway-only');
 const serveStatic = args.includes('--serve-static');
 const DEFAULT_LAB_URL = 'http://nginx/lab/static/nemoclaw/01a-loop.html';
 const STATIC_SERVER_URL = 'http://127.0.0.1:4173';
 const LOOPBACK_ORIGIN = 'http:' + '//127.0.0.1';
-const url = args.find(a => a !== '--smoke' && a !== '--render-only' && a !== '--serve-static') || DEFAULT_LAB_URL;
+const url = args.find(a => a !== '--smoke' && a !== '--render-only' && a !== '--gateway-only' && a !== '--serve-static') || DEFAULT_LAB_URL;
 const CLAW_URL = process.env.CLAW_URL || '';
 let CLAW_TOKEN = process.env.CLAW_TOKEN || '';
 const CLAW_CF = process.env.CLAW_CF || '';
 const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY || '';
 const DIRECT_API_URL = process.env.NVIDIA_API_URL || 'https://integrate.api.nvidia.com/v1';
+const OPENCLAW_CORS_PROXY_BASE = 'https://openclaw-cors-proxy.experiments.courses.nvidia.com';
 const OPENCLAW_BACKUP_HINT = 'Use backup OpenClaw: set CLAW_URL=https://nemoclaw-<id>.brevlab.com CLAW_TOKEN=<gateway token> CLAW_CF=<CF_Authorization>. If local OpenClaw shows EPERM, stop local probing and use the Brev session URL plus CF_Authorization.';
 
 // Locate the chromium-headless-shell binary.
@@ -83,18 +85,45 @@ function joinUrl(base, pathPart) {
   return base.replace(/\/+$/, '') + pathPart;
 }
 
+function openClawHttpUrl(pathPart) {
+  const direct = joinUrl(CLAW_URL, pathPart);
+  if (!CLAW_CF) return direct;
+  try {
+    const upstream = new URL(CLAW_URL);
+    if (!/(^|\.)brevlab\.com$/i.test(upstream.hostname)) return direct;
+    const proxy = new URL(OPENCLAW_CORS_PROXY_BASE);
+    const upstreamPath = upstream.pathname.replace(/\/+$/, '');
+    proxy.pathname = `/https/${upstream.host}${upstreamPath}${pathPart}`;
+    return proxy.href;
+  } catch (_) {
+    return direct;
+  }
+}
+
+function gatewayTokenFromDashboardUrl(raw) {
+  if (!raw) return '';
+  try {
+    const parsed = new URL(String(raw), 'https://nemoclaw.invalid/');
+    const fragment = new URLSearchParams(parsed.hash.replace(/^#/, ''));
+    return fragment.get('token') || parsed.searchParams.get('token') || '';
+  } catch (_) {
+    return '';
+  }
+}
+
 async function resolveOpenClawToken() {
   if (CLAW_TOKEN || !(CLAW_URL && CLAW_CF)) return;
   const timeout = withTimeout(8000);
   try {
-    const resp = await fetch(joinUrl(CLAW_URL, '/api/agent'), {
+    const resp = await fetch(openClawHttpUrl('/api/agent'), {
       headers: { Accept: 'application/json, text/plain, */*', 'CF-Access-Jwt-Assertion': CLAW_CF },
       signal: timeout.signal,
     });
     const body = await resp.text();
-    const m = body.match(/token=([a-f0-9]{16,})/i);
-    if (resp.ok && m) {
-      CLAW_TOKEN = m[1];
+    let discovered = '';
+    try { discovered = gatewayTokenFromDashboardUrl(JSON.parse(body)?.agent?.dashboardUrl); } catch (_) {}
+    if (resp.ok && discovered) {
+      CLAW_TOKEN = discovered;
       console.log('OPENCLAW_TOKEN: discovered from /api/agent');
     } else {
       console.log('OPENCLAW_TOKEN: not discovered from /api/agent (' + resp.status + ')');
@@ -115,7 +144,7 @@ async function preflightOpenClaw() {
   const attempts = [];
   for (const pathPart of targets) {
     const timeout = withTimeout(6000);
-    const target = joinUrl(CLAW_URL, pathPart);
+    const target = openClawHttpUrl(pathPart);
     try {
       const resp = await fetch(target, { headers, signal: timeout.signal });
       attempts.push(`${resp.status} ${target}`);
@@ -316,6 +345,91 @@ function findChrome() {
     await browser.close();
     if (staticServer) staticServer.close();
     process.exit(fail ? 1 : 0);
+  }
+
+  if (gatewayOnly) {
+    if (!(CLAW_URL && CLAW_CF)) {
+      throw new Error('--gateway-only requires CLAW_URL and CLAW_CF');
+    }
+    const result = await page.evaluate(async ({ clawUrl, cfJwt, proxyBase }) => {
+      const output = {
+        httpStatus: 0,
+        token: false,
+        viaProxy: false,
+        challenge: false,
+        connect: false,
+        rpc: false,
+        error: '',
+      };
+      try {
+        const mod = await import(new URL('./scripts/_shared.js', location.href).href);
+        const upstream = new URL(clawUrl);
+        const gateway = mod.openclawGatewayWsUrl(clawUrl, cfJwt, proxyBase);
+        output.viaProxy = gateway.viaProxy;
+        if (!gateway.viaProxy) throw new Error('course helper did not select hosted relay');
+        const proxy = new URL(proxyBase);
+        proxy.pathname = `/https/${upstream.host}${upstream.pathname.replace(/\/+$/, '')}/api/agent`;
+        const response = await fetch(proxy, {
+          headers: { Accept: 'application/json', 'CF-Access-Jwt-Assertion': cfJwt },
+        });
+        output.httpStatus = response.status;
+        if (!response.ok) throw new Error(`agent metadata returned HTTP ${response.status}`);
+        const token = mod.gatewayTokenFromAgentMetadata(await response.json());
+        output.token = !!token;
+        if (!token) throw new Error('agent metadata omitted a gateway token');
+
+        await new Promise((resolve, reject) => {
+          const socket = new WebSocket(gateway.url);
+          const timer = setTimeout(() => reject(new Error('gateway check timed out')), 20000);
+          const finish = error => {
+            clearTimeout(timer);
+            try { socket.close(); } catch (_) {}
+            error ? reject(error) : resolve();
+          };
+          socket.onerror = () => finish(new Error('gateway WebSocket error'));
+          socket.onmessage = event => {
+            let data;
+            try { data = JSON.parse(event.data); } catch (_) { return; }
+            if (data.event === 'connect.challenge') {
+              output.challenge = true;
+              socket.send(JSON.stringify({
+                type: 'req', id: 'browser-connect', method: 'connect',
+                params: {
+                  minProtocol: 4, maxProtocol: 4,
+                  client: { id: 'openclaw-control-ui', version: '0.1.0', platform: 'browser', mode: 'webchat' },
+                  caps: ['tool-events'], role: 'operator',
+                  scopes: ['operator.read', 'operator.write', 'operator.admin'],
+                  auth: { token },
+                },
+              }));
+              return;
+            }
+            if (data.type !== 'res') return;
+            if (data.id === 'browser-connect') {
+              if (!data.ok) return finish(new Error(data.error?.message || 'gateway connect rejected'));
+              output.connect = true;
+              socket.send(JSON.stringify({ type: 'req', id: 'browser-rpc', method: 'models.list', params: {} }));
+              return;
+            }
+            if (data.id === 'browser-rpc') {
+              if (!data.ok) return finish(new Error(data.error?.message || 'gateway RPC rejected'));
+              output.rpc = true;
+              finish();
+            }
+          };
+        });
+      } catch (error) {
+        output.error = error?.message || String(error);
+      }
+      return output;
+    }, { clawUrl: CLAW_URL, cfJwt: CLAW_CF, proxyBase: OPENCLAW_CORS_PROXY_BASE });
+    console.log('GATEWAY_CHECK:', JSON.stringify(result));
+    const passed = result.httpStatus === 200 && result.token && result.viaProxy
+      && result.challenge && result.connect && result.rpc && !result.error;
+    console.log(passed ? 'RESULT: PASS (hosted OpenClaw relay)' : 'RESULT: FAIL (hosted OpenClaw relay)');
+    await browser.close();
+    if (staticServer) staticServer.close();
+    process.exit(passed ? 0 : 1);
   }
 
   // Inject credentials after the probe widget mounts, or it clears them.

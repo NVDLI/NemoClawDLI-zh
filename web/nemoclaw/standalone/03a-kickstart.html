@@ -2312,7 +2312,7 @@ pre .hljs                { color: #1f2328 !important; background: transparent !i
 // same page HTML works in the lab static host, an external iframe, or opened as a
 // local file, all identically, because it only ever talks to remotes.
 
-const DIRECT_URL = "https://nvidia-api-cors-proxy.vkudlay.workers.dev/v1";
+const DIRECT_URL = "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1";
 // Web-cell model contract. The short course standardises on the fast Nemotron
 // nano model: it carries the reasoning channel and is quick enough for live
 // browser cells. DEFAULT_MODEL is what chat() uses when a cell passes no model;
@@ -7288,12 +7288,12 @@ mountClawProbe("#probe-llm", {
   label: "Probe model endpoint (build.nvidia.com)",
   intro: "",
   defaultUrl:   "https://integrate.api.nvidia.com/v1",
-  proxyBase:    "https://nvidia-api-cors-proxy.vkudlay.workers.dev",
+  proxyBase:    "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com",
   defaultToken: localStorage.getItem("nvapi") || "",
   fieldHelp: {
     url: `<p><strong>What it is:</strong> The NVIDIA model API base. Pre-filled, no changes needed.</p>
 <p><strong>How requests reach it:</strong> The browser can't call <code>integrate.api.nvidia.com</code> directly because
-of the same-origin policy. Requests route through a hosted Cloudflare Worker that adds CORS headers and
+of the same-origin policy. Requests route through a hosted relay that adds CORS headers and
 forwards your key unchanged.</p>
 <p><strong>Running locally (not in the lab):</strong> Call <code>https://integrate.api.nvidia.com/v1</code> directly
 from your script or notebook. No proxy needed outside a browser context, where the same-origin restriction doesn't apply.</p>`,
@@ -7328,7 +7328,7 @@ mountCanvasFlow("#bench-llm", {
       id: "fetch-models", icon: "📋", title: "Fetch matching models", x: 0, y: 0,
       summary: "Pull the model catalog from the proxy and keep only models whose ID contains one of the filter substrings. Adjust FILTER to change which models run in the benchmark.",
       code: `const FILTER = ["120b", "glm", "kimi", "minimax"];
-const PROXY  = "https://nvidia-api-cors-proxy.vkudlay.workers.dev";
+const PROXY  = "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com";
 const KEY    = localStorage.getItem("nvapi") || "";
 if (!KEY) {
   helpers.log("No nvapi- key saved. Go to the course home and save your key first.");
@@ -7461,7 +7461,7 @@ mountClawProbe("#probe-claw", {
   intro: "",
   defaultUrl:   "",
   defaultToken: "",
-  proxyBase:    "https://openclaw-cors-proxy.vkudlay.workers.dev",
+  proxyBase:    "https://openclaw-cors-proxy.experiments.courses.nvidia.com",
   proxyMode:    "prefix",
   syncCanvas:   true,
   cfAccess:     true,

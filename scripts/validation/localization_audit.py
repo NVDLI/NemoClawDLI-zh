@@ -32,7 +32,8 @@ STRUCTURE_NEUTRAL_TAGS = {"i", "em"}
 INTERFACE_CONTRACT = {
     "web/nemoclaw/localization.html": ("id=\"loc-kinds\"", "data-kind=\"assets\"", "id=\"loc-filters\"", "id=\"loc-source\"", "id=\"loc-target\"", "scripts/localization_main.js"),
     "web/nemoclaw/scripts/localization_main.js": ("localization-", '"current", "stale", "blocked", "needs-review", "missing"', "reviewed_source_sha256", "asset_counts", 'activeKind === "assets"', "loc-locale"),
-    "web/nemoclaw/scripts/_locale.js": ("mountLanguageMenu", "available_pages", 'aria-haspopup', "languageFallback", "language-fallback-badge"),
+    "web/nemoclaw/scripts/_locale.js": ("mountLanguageMenu", "available_pages", 'aria-haspopup', "languageFallback", "language-fallback-badge", "PT_PREFIXES", "ES_PREFIXES"),
+    "web/nemoclaw/scripts/_keypanel.js": ("mountKeyPanel", "model-api-base-url", "Save &amp; verify"),
     "web/nemoclaw/scripts/_shared.js": ("mountLanguageMenu()",),
     "web/nemoclaw/studio.html": ('href="localization.html"',),
     "scripts/build/build_language_manifest.py": ("native_label", "available_pages", "localization-"),
@@ -62,6 +63,28 @@ INTERFACE_CONTRACT = {
     ),
     "scripts/translate/SKILL.html": ("locales/pt-BR/SKILL.html", "locales/es-ES/SKILL.html", "same-branch localization", "translate_svg_text.py"),
 }
+
+RUNTIME_UI_TRANSLATION_KEYS = (
+    "✓ API key saved for this browser",
+    "Model endpoint:",
+    "Model API base URL",
+    "Custom endpoint uses direct browser requests",
+    "Enable LMS/static iframe execution",
+    "Enable LMS/static iframe execution through the hosted proxy",
+    "API bearer key (NVIDIA keys start with",
+    "Key should start with nvapi-",
+    "Enter the key for this endpoint",
+    "Verifying?",
+    "✓ Connected.",
+    "✓ Connected. Model replied: ",
+    "Connection failed: ",
+    "Model API base URL must use HTTPS",
+    "Model API base URL cannot include credentials, query parameters, or a fragment",
+    "Free-tier models cover every exercise. A presenter can prefill one compatible endpoint with",
+    ". Review it, then Save & verify once; every lesson reuses it.",
+    "model key verified this session",
+    "the saved nvapi key was refused (401/403). Re-enter it on Module 1a.",
+)
 
 
 class ReaderText(HTMLParser):
@@ -485,6 +508,31 @@ def interface_findings(root: Path) -> list[dict[str, str]]:
         for token in tokens:
             if token not in raw:
                 out.append({"code": "interface-contract", "path": rel, "detail": f"missing contract token: {token}"})
+    locale_path = root / "web/nemoclaw/scripts/_locale.js"
+    if locale_path.is_file():
+        locale_raw = locale_path.read_text(encoding="utf-8")
+        runtime_raw = html.unescape("\n".join(
+            path.read_text(encoding="utf-8")
+            for path in (
+                root / "web/nemoclaw/scripts/_keypanel.js",
+                root / "web/nemoclaw/scripts/_shared.js",
+            )
+            if path.is_file()
+        ))
+        for key in RUNTIME_UI_TRANSLATION_KEYS:
+            needle = json.dumps(key, ensure_ascii=False) + ":"
+            if locale_raw.count(needle) < 2:
+                out.append({
+                    "code": "runtime-ui-translation",
+                    "path": "web/nemoclaw/scripts/_locale.js",
+                    "detail": f"runtime UI key must have reviewed Portuguese and Spanish mappings: {key}",
+                })
+            if key not in runtime_raw:
+                out.append({
+                    "code": "runtime-ui-source-contract",
+                    "path": "web/nemoclaw/scripts/_keypanel.js",
+                    "detail": f"reviewed runtime UI key no longer matches its source string: {key}",
+                })
     return out
 
 
@@ -1136,6 +1184,21 @@ def self_test() -> list[str]:
             if "interface-contract" not in {item["code"] for item in interface_findings(fixture)}:
                 failures.append(f"interface mutation escaped detector: {rel}: {token}")
             path.write_text(raw, encoding="utf-8")
+        path = fixture / "web/nemoclaw/scripts/_locale.js"
+        raw = path.read_text(encoding="utf-8")
+        key = RUNTIME_UI_TRANSLATION_KEYS[0]
+        needle = json.dumps(key, ensure_ascii=False) + ":"
+        path.write_text(raw.replace(needle, '"removed-runtime-ui-key":', 1), encoding="utf-8")
+        if "runtime-ui-translation" not in {item["code"] for item in interface_findings(fixture)}:
+            failures.append("runtime UI translation mutation escaped detector")
+        path.write_text(raw, encoding="utf-8")
+        path = fixture / "web/nemoclaw/scripts/_keypanel.js"
+        raw = path.read_text(encoding="utf-8")
+        key = RUNTIME_UI_TRANSLATION_KEYS[1]
+        path.write_text(raw.replace(key, "removed source UI key", 1), encoding="utf-8")
+        if "runtime-ui-source-contract" not in {item["code"] for item in interface_findings(fixture)}:
+            failures.append("runtime UI source mutation escaped detector")
+        path.write_text(raw, encoding="utf-8")
     return failures
 
 
