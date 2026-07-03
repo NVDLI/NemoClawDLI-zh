@@ -64,6 +64,7 @@ CONTRACT_FILES = (
     "scripts/validation/sensitive-content-policy.json",
     "scripts/validation/release_change_reminder.py",
     "scripts/validation/release_gate.py",
+    "scripts/validation/validation_report_audit.py",
     "scripts/validation/validate_bundle.py",
     "scripts/validation/gitlab_governance_audit.py",
     "workspace/requirements.lock",
@@ -94,11 +95,15 @@ def top_permissions(workflow: str) -> str:
     return match.group(1) if match else ""
 
 
-def audit_workflow_pins(root: Path) -> list[dict[str, str]]:
+def audit_workflow_pins(
+    root: Path, text_overrides: dict[str, str] | None = None,
+) -> list[dict[str, str]]:
     out: list[dict[str, str]] = []
+    overrides = text_overrides or {}
     for path in sorted((root / ".github/workflows").glob("*.yml")):
         rel = path.relative_to(root).as_posix()
-        for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        raw = overrides[rel] if rel in overrides else path.read_text(encoding="utf-8")
+        for line_no, line in enumerate(raw.splitlines(), 1):
             action = re.search(r"\buses:\s*([^\s]+)", line)
             if action and not action.group(1).startswith("./"):
                 ref = action.group(1).rsplit("@", 1)[-1]
@@ -132,10 +137,14 @@ def audit_publication_approval(root: Path = ROOT) -> list[dict[str, str]]:
     return []
 
 
-def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
+def audit_repo(
+    root: Path = ROOT, *, text_overrides: dict[str, str] | None = None,
+) -> list[dict[str, str]]:
     out: list[dict[str, str]] = []
-    docs = {rel: read(root, rel, out) for rel in CONTRACT_FILES}
-    out.extend(audit_workflow_pins(root))
+    overrides = text_overrides or {}
+    docs = {rel: overrides[rel] if rel in overrides else read(root, rel, out)
+            for rel in CONTRACT_FILES}
+    out.extend(audit_workflow_pins(root, overrides))
 
     try:
         status = json.loads(docs["RELEASE_STATUS.json"])
@@ -268,16 +277,23 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
 
     pages = docs[".github/workflows/pages.yml"]
     build_pages = docs["scripts/build/build_pages.sh"]
-    require(build_pages, 'validate_bundle.py" --scope ship >/dev/null',
+    require(build_pages, 'python3 "$T1/scripts/validation/validate_bundle.py" --scope ship',
             "scripts/build/build_pages.sh", "pages-fresh-validation-report", out,
-            "regenerate the published validation report from the current tree")
+            "regenerate validation by default when no trusted same-commit report is supplied")
+    require(build_pages, 'validation_report_audit.py"',
+            "scripts/build/build_pages.sh", "pages-report-reuse-audit", out,
+            "validate schema, commit, scope, and required results before report reuse")
     if re.search(r"validate_bundle\.py[^\n]*\|\|\s*true", build_pages):
         out.append(finding("pages-validation-fail-open", "scripts/build/build_pages.sh",
                            "Pages can retain and publish a stale validation report after refresh failure",
                            "fail the build when the current-tree report cannot be regenerated"))
+    if re.search(r"validation_report_audit\.py[^\n]*(?:\|\|\s*true|&&\s*true)", build_pages):
+        out.append(finding("pages-report-reuse-fail-open", "scripts/build/build_pages.sh",
+                           "Pages can reuse a report after its trust audit fails",
+                           "make same-commit report verification a required build step"))
     release_gate = docs["scripts/validation/release_gate.py"]
     fast_gate = re.search(r"(?ms)^FAST_COMMANDS:.*?(?=^SHIP_COMMANDS:)", release_gate)
-    ship_gate = re.search(r"(?ms)^SHIP_COMMANDS:.*?(?=^def locale_commands)", release_gate)
+    ship_gate = re.search(r"(?ms)^SHIP_COMMANDS:.*?(?=^# Mutation suites)", release_gate)
     fast_gate_text = fast_gate.group(0) if fast_gate else ""
     ship_gate_text = ship_gate.group(0) if ship_gate else ""
     if 'py("scripts/materials/pull_materials.py", "--verify-committed")' not in fast_gate_text:
@@ -295,12 +311,10 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
                            "fast or ship gate lacks workstation-path mutation coverage",
                            "run workstation-path mutations from both shared gate tiers"))
     sensitive_selftest = 'py("scripts/validation/sensitive_content_audit.py", "--self-test")'
-    sensitive_audit = 'py("scripts/validation/sensitive_content_audit.py")'
-    if (sensitive_selftest not in fast_gate_text or sensitive_selftest not in ship_gate_text
-            or sensitive_audit not in fast_gate_text or sensitive_audit not in ship_gate_text):
+    if sensitive_selftest not in fast_gate_text or sensitive_selftest not in ship_gate_text:
         out.append(finding("shared-sensitive-content", "scripts/validation/release_gate.py",
-                           "fast or ship gate lacks sensitive-content mutations or the tree audit",
-                           "run the sensitive-content self-test and audit from both shared gate tiers"))
+                           "fast or ship gate lacks sensitive-content mutation coverage",
+                           "run sensitive-content mutations from both shared tiers; validate_bundle owns the tree scan"))
     reminder_selftest = 'py("scripts/validation/release_change_reminder.py", "--self-test")'
     if reminder_selftest not in fast_gate_text or reminder_selftest not in ship_gate_text:
         out.append(finding("shared-release-reminder", "scripts/validation/release_gate.py",
@@ -321,6 +335,17 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
          "shared-lock-selftest",
          "prove dependency-lock mutations from the shared gate"),
     ):
+        require(ship_gate_text, token, "scripts/validation/release_gate.py", code, out, fix)
+    report_selftest = 'py("scripts/validation/validation_report_audit.py", "--self-test")'
+    if report_selftest not in fast_gate_text or report_selftest not in ship_gate_text:
+        out.append(finding("shared-report-reuse-selftest", "scripts/validation/release_gate.py",
+                           "fast or ship gate lacks report-reuse mutation coverage",
+                           "prove stale, failed, and mismatched reports from both shared tiers"))
+    for token, code, fix in (
+        ('"--changed-since"', "shared-change-aware-gate", "retain fail-closed change-aware mutation selection"),
+        ('"--timing-report"', "shared-gate-timing", "retain per-command latency evidence for CI optimization"),
+        ('"--reuse-success"', "shared-local-reuse", "retain identical-clean-commit local success reuse"),
+    ):
         require(release_gate, token, "scripts/validation/release_gate.py", code, out, fix)
     require(pages, "  pull_request:\n", ".github/workflows/pages.yml", "github-pr-trigger", out,
             "run the required static gate on pull_request")
@@ -339,6 +364,14 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "pages-main-only", out, "prevent workflow_dispatch or non-main refs from deploying Pages")
     require(pages, "release_gate.py --tier ship", ".github/workflows/pages.yml",
             "github-safety-selftest", out, "run detector mutations in GitHub CI")
+    require(pages, '--changed-since "$GATE_BASE"', ".github/workflows/pages.yml",
+            "github-change-aware-gate", out, "skip only unaffected mutation fixtures on proposal commits")
+    require(pages, "--timing-report docs/validation/release-gate-timings.json",
+            ".github/workflows/pages.yml", "github-gate-timing", out,
+            "retain per-command gate timing evidence")
+    require(pages, "BUILD_PAGES_REUSE_VALIDATION=1", ".github/workflows/pages.yml",
+            "github-report-reuse", out,
+            "reuse the required same-commit gate report instead of rescanning during build")
     require(pages, "contribution_safety_audit.py --require-publication-approved",
             ".github/workflows/pages.yml", "publication-deploy-guard", out,
             "refuse external Pages deployment until publication is approved")
@@ -470,12 +503,32 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
         out.append(finding("gitlab-script-retry", ".gitlab-ci.yml",
                            "shared jobs retry validation script failures",
                            "remove script_failure so drift and tampering remain fail-closed"))
-    if "scripts/materials/requirements.lock" not in anchor_text or "|| true" in anchor_text:
+    if ("scripts/materials/requirements.lock" not in anchor_text
+            or 'MATERIAL_TOOLS_REQUIRED:-0' not in anchor_text or "|| true" in anchor_text):
         out.append(finding("gitlab-material-install", ".gitlab-ci.yml",
-                           "shared material tooling is not installed from its lock with fail-closed setup",
-                           "install scripts/materials/requirements.lock with bounded retries and no fail-open operator"))
+                           "material tooling is not conditionally installed from its lock with fail-closed setup",
+                           "install the lock only for jobs that consume material tooling, with no fail-open operator"))
+    pages_materials = re.search(r"(?ms)^pages:\n(.*?)(?=^pages_smoke:\n)", gitlab)
+    if not pages_materials or 'MATERIAL_TOOLS_REQUIRED: "1"' not in pages_materials.group(1):
+        out.append(finding("gitlab-pages-material-install", ".gitlab-ci.yml",
+                           "Pages lacks material tooling needed by protected-root bundle validation",
+                           "enable the locked material environment for every Pages build, including previews"))
     require(gitlab, "release_gate.py --tier ship", ".gitlab-ci.yml",
             "gitlab-safety-selftest", out, "run detector mutations in GitLab CI")
+    require(gitlab, 'GATE_ARGS+=(--changed-since "$GATE_BASE")', ".gitlab-ci.yml",
+            "gitlab-change-aware-gate", out, "skip only unaffected mutation fixtures on proposal commits")
+    require(gitlab, "--timing-report docs/validation/release-gate-timings.json",
+            ".gitlab-ci.yml", "gitlab-gate-timing", out,
+            "retain per-command gate timing evidence")
+    for token in (
+        'BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"',
+        "BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh public",
+    ):
+        require(gitlab, token, ".gitlab-ci.yml", "gitlab-report-reuse", out,
+                "reuse the required same-commit gate report instead of rescanning current-ref Pages builds")
+    require(gitlab, 'git worktree add --quiet --detach /tmp/nemoclaw-prod-root "origin/$prod_ref"',
+            ".gitlab-ci.yml", "gitlab-protected-root-worktree", out,
+            "build protected-root previews from a real detached worktree so Git-backed audits remain available")
     require(gitlab, "pull_materials.py --check --allow-transient-unreachable",
             ".gitlab-ci.yml", "gitlab-transient-material-policy", out,
             "allow only classified transient source reachability on production-ref pushes")
@@ -580,8 +633,12 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "run the fast contribution-boundary audit before staged-file checks")
     require(precommit, "local_path_leak_audit.py", "scripts/git-hooks/pre-commit", "precommit-local-path", out,
             "reject contributor workstation paths before broader staged-file checks")
+    require(precommit, '"$LOCAL_PATH_AUDIT" --staged', "scripts/git-hooks/pre-commit",
+            "precommit-local-path-staged", out, "scan exact staged bytes at commit time")
     require(precommit, "sensitive_content_audit.py", "scripts/git-hooks/pre-commit", "precommit-sensitive", out,
             "reject security-finding details and private operational data before commit")
+    require(precommit, '"$SENSITIVE_AUDIT" --staged', "scripts/git-hooks/pre-commit",
+            "precommit-sensitive-staged", out, "scan exact staged bytes at commit time")
     prep = docs["scripts/git-hooks/pre-push"]
     if "git pull --rebase" in prep:
         out.append(finding("mutating-prepush", "scripts/git-hooks/pre-push",
@@ -603,28 +660,33 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "run the contribution-boundary audit and its mutations before push")
     require(prep, "local_path_leak_audit.py", "scripts/git-hooks/pre-push", "prepush-local-path", out,
             "reject contributor workstation paths before source leaves the workstation")
-    require(prep, 'python3 "$SAFETY" --commit-range origin/main..HEAD',
+    require(prep, 'RANGE="origin/main..HEAD"', "scripts/git-hooks/pre-push", "prepush-range", out,
+            "define one complete proposed-history range")
+    require(prep, 'python3 "$SAFETY" --commit-range "$RANGE"',
             "scripts/git-hooks/pre-push", "prepush-dco", out,
             "reject unsigned topic-branch commits before push")
-    require(prep, 'python3 "$LOCAL_PATH_AUDIT" --commit-range origin/main..HEAD',
+    require(prep, 'python3 "$LOCAL_PATH_AUDIT" --commit-range "$RANGE"',
             "scripts/git-hooks/pre-push", "prepush-local-path-range", out,
             "reject contributor-local additions even when a later commit removes them")
-    require(prep, 'python3 "$SENSITIVE_AUDIT" --commit-range origin/main..HEAD',
+    require(prep, 'python3 "$SENSITIVE_AUDIT" --commit-range "$RANGE"',
             "scripts/git-hooks/pre-push", "prepush-sensitive-range", out,
             "reject restricted details even when a later commit removes them")
-    require(prep, 'python3 "$RELEASE_REMINDER" --commit-range origin/main..HEAD',
+    require(prep, 'python3 "$RELEASE_REMINDER" --commit-range "$RANGE"',
             "scripts/git-hooks/pre-push", "prepush-release-reminder", out,
             "show operator-owned external release follow-ups before push")
     for rel in (".github/PULL_REQUEST_TEMPLATE.md", ".gitlab/merge_request_templates/Default.md"):
         require(docs[rel], "## External release follow-up", rel, "submission-release-reminder", out,
                 "retain the external release follow-up section in contribution templates")
-    require(prep, 'LOCK_AUDIT="$T1/scripts/security/audit_dependency_locks.py"', "scripts/git-hooks/pre-push",
-            "prepush-lock-selftest", out, "reject stale or unpinned dependency locks before push")
-    require(prep, 'SBOM_POLICY="$T1/scripts/security/audit_sbom_policy.py"', "scripts/git-hooks/pre-push",
-            "prepush-sbom-policy", out, "run the SBOM policy mutation detector before push")
-    require(prep, 'PACKAGE_RELEASE="$T1/scripts/build/package_release.py"',
-            "scripts/git-hooks/pre-push", "prepush-package-selftest", out,
-            "run the deterministic release-packaging self-test before push")
+    require(prep, 'release_gate.py', "scripts/git-hooks/pre-push", "prepush-canonical-gate", out,
+            "delegate deterministic checks to the canonical release gate")
+    require(prep, '--tier ship --no-write --changed-since origin/main --reuse-success',
+            "scripts/git-hooks/pre-push", "prepush-canonical-gate", out,
+            "run one change-aware ship gate and reuse only identical clean local success")
+    for duplicate in ("LOCK_AUDIT=", "SBOM_POLICY=", "PACKAGE_RELEASE=", "validate_bundle.py"):
+        if duplicate in prep:
+            out.append(finding("prepush-duplicate-gate", "scripts/git-hooks/pre-push",
+                               f"pre-push re-expands canonical gate work: {duplicate}",
+                               "keep history checks explicit and delegate deterministic checks once to release_gate.py"))
 
     playbook = docs["docs/release_playbook.md"]
     for token in ("Host settings are not versioned by this repository", "gitlab_governance_audit.py",
@@ -766,8 +828,10 @@ def self_test() -> list[str]:
             ("dco-stacked-merge", "DCO.md", "host-generated squash or merge commit", "generated integration commit"),
             ("contributor-stacked-merge", "CONTRIBUTING.md", "stacked merge request", "nested proposal"),
             ("github-pr-trigger", ".github/workflows/pages.yml", "  pull_request:\n", "  # pull_request removed\n"),
-            ("pages-fresh-validation-report", "scripts/build/build_pages.sh", 'validate_bundle.py" --scope ship >/dev/null', 'validate_bundle.py" --scope ship --help >/dev/null'),
-            ("pages-validation-fail-open", "scripts/build/build_pages.sh", 'validate_bundle.py" --scope ship >/dev/null', 'validate_bundle.py" --scope ship >/dev/null || true'),
+            ("pages-fresh-validation-report", "scripts/build/build_pages.sh", 'python3 "$T1/scripts/validation/validate_bundle.py" --scope ship', 'python3 "$T1/scripts/validation/missing_bundle_gate.py" --scope ship'),
+            ("pages-report-reuse-audit", "scripts/build/build_pages.sh", 'validation_report_audit.py"', 'missing_report_audit.py"'),
+            ("pages-validation-fail-open", "scripts/build/build_pages.sh", 'python3 "$T1/scripts/validation/validate_bundle.py" --scope ship', 'python3 "$T1/scripts/validation/validate_bundle.py" --scope ship || true'),
+            ("pages-report-reuse-fail-open", "scripts/build/build_pages.sh", 'validation_report_audit.py" \\', 'validation_report_audit.py" || true #'),
             ("mutable-action-ref", ".github/workflows/pages.yml", "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683", "actions/checkout@v4"),
             ("unpinned-workflow-install", ".github/workflows/pages.yml", "--requirement scripts/materials/requirements.lock", "requests beautifulsoup4 markdownify lxml"),
             ("github-material-lock", ".github/workflows/pages.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),
@@ -776,6 +840,10 @@ def self_test() -> list[str]:
             ("shared-local-path-selftest", "scripts/validation/release_gate.py", 'py("scripts/validation/local_path_leak_audit.py", "--self-test")', 'py("scripts/validation/local_path_leak_audit.py", "--help")'),
             ("shared-sensitive-content", "scripts/validation/release_gate.py", 'py("scripts/validation/sensitive_content_audit.py", "--self-test")', 'py("scripts/validation/sensitive_content_audit.py", "--help")'),
             ("shared-release-reminder", "scripts/validation/release_gate.py", 'py("scripts/validation/release_change_reminder.py", "--self-test")', 'py("scripts/validation/release_change_reminder.py", "--help")'),
+            ("shared-report-reuse-selftest", "scripts/validation/release_gate.py", 'py("scripts/validation/validation_report_audit.py", "--self-test")', 'py("scripts/validation/validation_report_audit.py", "--help")'),
+            ("shared-change-aware-gate", "scripts/validation/release_gate.py", '"--changed-since"', '"--changed-around"'),
+            ("shared-gate-timing", "scripts/validation/release_gate.py", '"--timing-report"', '"--no-timing-report"'),
+            ("shared-local-reuse", "scripts/validation/release_gate.py", '"--reuse-success"', '"--ignore-success"'),
             ("shared-sbom-policy-selftest", "scripts/validation/release_gate.py", 'py("scripts/security/audit_sbom_policy.py", "--self-test")', 'py("scripts/security/audit_sbom_policy.py", "--help")'),
             ("pr-deploy-boundary", ".github/workflows/pages.yml", "if: github.event_name != 'pull_request'", "if: always()"),
             ("pages-main-only", ".github/workflows/pages.yml", "github.ref == 'refs/heads/main'", "github.ref != ''"),
@@ -803,22 +871,28 @@ def self_test() -> list[str]:
             ("mutating-prepush", "scripts/git-hooks/pre-push", "REFUSING PUSH - origin/main is", "git pull --rebase origin main # REFUSING PUSH - origin/main is"),
             ("fetch-fail-open", "scripts/git-hooks/pre-push", "if ! git fetch origin main --quiet; then", "git fetch origin main --quiet || exit 0\n    if false; then"),
             ("remote-fail-open", "scripts/git-hooks/pre-push", "if [ \"$REMOTE\" = \"origin\" ]; then", "[ \"$REMOTE\" = \"origin\" ] || exit 0\nif false; then"),
-            ("prepush-package-selftest", "scripts/git-hooks/pre-push", "PACKAGE_RELEASE=", "PACKAGE_TEST="),
-            ("prepush-lock-selftest", "scripts/git-hooks/pre-push", 'LOCK_AUDIT="$T1/scripts/security/audit_dependency_locks.py"', 'LOCK_AUDIT="$T1/scripts/security/noop.py"'),
-            ("prepush-sbom-policy", "scripts/git-hooks/pre-push", 'SBOM_POLICY="$T1/scripts/security/audit_sbom_policy.py"', 'SBOM_POLICY="$T1/scripts/security/noop.py"'),
             ("precommit-local-path", "scripts/git-hooks/pre-commit", "local_path_leak_audit.py", "local_path_check_removed.py"),
+            ("precommit-local-path-staged", "scripts/git-hooks/pre-commit", '"$LOCAL_PATH_AUDIT" --staged', '"$LOCAL_PATH_AUDIT"'),
             ("prepush-local-path", "scripts/git-hooks/pre-push", "local_path_leak_audit.py", "local_path_check_removed.py"),
             ("precommit-sensitive", "scripts/git-hooks/pre-commit", "sensitive_content_audit.py", "sensitive_content_check_removed.py"),
-            ("prepush-dco", "scripts/git-hooks/pre-push", 'python3 "$SAFETY" --commit-range origin/main..HEAD', 'python3 "$SAFETY" --help'),
-            ("prepush-local-path-range", "scripts/git-hooks/pre-push", 'python3 "$LOCAL_PATH_AUDIT" --commit-range origin/main..HEAD', 'python3 "$LOCAL_PATH_AUDIT" --help'),
-            ("prepush-sensitive-range", "scripts/git-hooks/pre-push", 'python3 "$SENSITIVE_AUDIT" --commit-range origin/main..HEAD', 'python3 "$SENSITIVE_AUDIT" --help'),
-            ("prepush-release-reminder", "scripts/git-hooks/pre-push", 'python3 "$RELEASE_REMINDER" --commit-range origin/main..HEAD', 'python3 "$RELEASE_REMINDER" --help'),
+            ("precommit-sensitive-staged", "scripts/git-hooks/pre-commit", '"$SENSITIVE_AUDIT" --staged', '"$SENSITIVE_AUDIT"'),
+            ("prepush-range", "scripts/git-hooks/pre-push", 'RANGE="origin/main..HEAD"', 'RANGE="HEAD"'),
+            ("prepush-dco", "scripts/git-hooks/pre-push", 'python3 "$SAFETY" --commit-range "$RANGE"', 'python3 "$SAFETY" --help'),
+            ("prepush-local-path-range", "scripts/git-hooks/pre-push", 'python3 "$LOCAL_PATH_AUDIT" --commit-range "$RANGE"', 'python3 "$LOCAL_PATH_AUDIT" --help'),
+            ("prepush-sensitive-range", "scripts/git-hooks/pre-push", 'python3 "$SENSITIVE_AUDIT" --commit-range "$RANGE"', 'python3 "$SENSITIVE_AUDIT" --help'),
+            ("prepush-release-reminder", "scripts/git-hooks/pre-push", 'python3 "$RELEASE_REMINDER" --commit-range "$RANGE"', 'python3 "$RELEASE_REMINDER" --help'),
+            ("prepush-canonical-gate", "scripts/git-hooks/pre-push", '--tier ship --no-write --changed-since origin/main --reuse-success', '--tier fast'),
             ("worktree-hook-dispatch", "scripts/build/install-hooks.sh", 'hook="$content_root/scripts/git-hooks/$name"', 'hook="$HERE/git-hooks/$name"'),
             ("gitlab-safety-selftest", ".gitlab-ci.yml", "release_gate.py --tier ship", "release_gate.py --tier fast"),
+            ("gitlab-change-aware-gate", ".gitlab-ci.yml", 'GATE_ARGS+=(--changed-since "$GATE_BASE")', 'GATE_ARGS=() # no change selection'),
+            ("gitlab-gate-timing", ".gitlab-ci.yml", "--timing-report docs/validation/release-gate-timings.json", "--no-timing-report"),
+            ("gitlab-report-reuse", ".gitlab-ci.yml", 'BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"', 'BUILD_PAGES_REUSE_VALIDATION=0 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"'),
+            ("gitlab-protected-root-worktree", ".gitlab-ci.yml", 'git worktree add --quiet --detach /tmp/nemoclaw-prod-root "origin/$prod_ref"', 'git archive "origin/$prod_ref" | tar -x -C /tmp/nemoclaw-prod-root'),
             ("gitlab-image-pin", ".gitlab-ci.yml", "node:20-bookworm-slim@sha256:25070a03f077f5860e4f2db8d147380678ed40ead415a21eaffd5a6208f61948", "node:20-bookworm-slim"),
             ("gitlab-infrastructure-retry", ".gitlab-ci.yml", "runner_system_failure", "runner_unsupported"),
             ("gitlab-script-retry", ".gitlab-ci.yml", "runner_system_failure", "script_failure"),
             ("gitlab-material-install", ".gitlab-ci.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),
+            ("gitlab-pages-material-install", ".gitlab-ci.yml", '  variables:\n    MATERIAL_TOOLS_REQUIRED: "1"\n  needs: ["test"]', '  variables:\n    MATERIAL_TOOLS_REQUIRED: "0"\n  needs: ["test"]'),
             ("gitlab-transient-material-policy", ".gitlab-ci.yml", "pull_materials.py --check --allow-transient-unreachable", "pull_materials.py --check --strict-unreachable"),
             ("gitlab-scheduled-material-policy", ".gitlab-ci.yml", "pull_materials.py --check --fetch-attempts", "pull_materials.py --check --allow-transient-unreachable --fetch-attempts"),
             ("gitlab-complete-history", ".gitlab-ci.yml", 'GIT_DEPTH: "0"', 'GIT_DEPTH: "20"'),
@@ -830,6 +904,9 @@ def self_test() -> list[str]:
             ("github-sensitive-submission", ".github/workflows/pages.yml", "sensitive_content_audit.py --submission-env SENSITIVE_TITLE", "sensitive_content_audit.py --help"),
             ("github-sensitive-range", ".github/workflows/pages.yml", 'sensitive_content_audit.py --commit-range "$SENSITIVE_RANGE"', 'sensitive_content_audit.py --help'),
             ("github-release-reminder", ".github/workflows/pages.yml", 'release_change_reminder.py --commit-range "$RELEASE_CHANGE_RANGE"', 'release_change_reminder.py --help'),
+            ("github-change-aware-gate", ".github/workflows/pages.yml", '--changed-since "$GATE_BASE"', '--changed-around "$GATE_BASE"'),
+            ("github-gate-timing", ".github/workflows/pages.yml", "--timing-report docs/validation/release-gate-timings.json", "--no-timing-report"),
+            ("github-report-reuse", ".github/workflows/pages.yml", "BUILD_PAGES_REUSE_VALIDATION=1", "BUILD_PAGES_REUSE_VALIDATION=0"),
             ("gitlab-release-reminder", ".gitlab-ci.yml", 'release_change_reminder.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', 'release_change_reminder.py --help'),
             ("submission-release-reminder", ".github/PULL_REQUEST_TEMPLATE.md", "## External release follow-up", "## Optional follow-up"),
             ("shared-lock-selftest", "scripts/validation/release_gate.py", 'py("scripts/security/audit_dependency_locks.py", "--self-test")', 'py("scripts/security/audit_dependency_locks.py", "--version")'),
@@ -854,19 +931,20 @@ def self_test() -> list[str]:
             ("release-playbook", "docs/release_playbook.md", "Host settings are not versioned by this repository", "Host settings checklist"),
             ("workspace-lock-install", "workspace/Dockerfile", "pip3 install -r requirements.lock", "pip3 install -r requirements.txt"),
         )
-        originals: dict[str, str] = {}
+        originals = {
+            rel: (fixture / rel).read_text(encoding="utf-8")
+            for rel in CONTRACT_FILES
+        }
         for expected, rel, old, new in cases:
-            path = fixture / rel
-            originals.setdefault(rel, path.read_text(encoding="utf-8"))
             raw = originals[rel]
             if old not in raw:
                 failures.append(f"fixture token missing for {expected}: {rel}: {old}")
                 continue
-            path.write_text(raw.replace(old, new, 1), encoding="utf-8")
-            codes = {item["code"] for item in audit_repo(fixture)}
+            mutated = dict(originals)
+            mutated[rel] = raw.replace(old, new, 1)
+            codes = {item["code"] for item in audit_repo(fixture, text_overrides=mutated)}
             if expected not in codes:
                 failures.append(f"mutation escaped detector: {expected}")
-            path.write_text(raw, encoding="utf-8")
 
         status_path = fixture / "RELEASE_STATUS.json"
         approved = json.loads(status_path.read_text(encoding="utf-8"))

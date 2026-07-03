@@ -208,8 +208,8 @@ Release checklist:
 5. Build Pages with `BUILD_PAGES_LANGS=0 scripts/build/build_pages.sh`.
 6. Confirm release foyer surfaces only released courses.
 7. Confirm branch/tag protection and mirror direction.
-7. Tag release from protected source.
-8. Publish release notes grouped by learner-facing, runtime/deploy, governance, and known issues.
+8. Tag release from protected source.
+9. Publish release notes grouped by learner-facing, runtime/deploy, governance, and known issues.
 
 ## CI/CD policy
 
@@ -217,9 +217,19 @@ Release checklist:
 GitHub Pages, the protected release workflow, and local contributors:
 
 ```bash
-python3 scripts/validation/release_gate.py --tier fast --no-write
-python3 scripts/validation/release_gate.py --tier ship
+python3 scripts/validation/release_gate.py --tier fast --no-write --changed-since origin/main
+python3 scripts/validation/release_gate.py --tier ship --no-write --changed-since origin/main
 ```
+
+Proposal gates always run complete current-tree audits. They skip only unaffected mutation suites,
+record per-command timing in CI, and keep exact history/metadata checks in host context. Local
+pre-push may reuse an identical clean-commit success. CI never trusts that workstation cache.
+Release-candidate and tagged-release workflows omit `--changed-since` and run every mutation.
+
+Pages builds normally regenerate the validation report. A downstream build job may reuse the
+required upstream report only after checking its schema, commit, ship scope, required findings,
+suite status, and clean source tree. This removes a duplicate full scan without weakening artifact
+authorization.
 
 Every shared gate verifies committed material snapshots and full SHA-256 provenance without network
 access. Host workflows add bounded live-source retries: schedules and protected releases remain

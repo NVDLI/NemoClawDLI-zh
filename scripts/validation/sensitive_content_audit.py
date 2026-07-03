@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import hashlib
 import json
 import os
@@ -109,6 +110,12 @@ def load_policy(default: Path = DEFAULT_POLICY) -> Policy:
 
 
 def repository_files(root: Path = ROOT) -> list[Path]:
+    probe = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"], cwd=root,
+        env=isolated_git_env(), check=False, capture_output=True, text=True,
+    )
+    if probe.returncode or Path(probe.stdout.strip()).resolve() != root.resolve():
+        return source_archive_files(root)
     result = subprocess.run(
         ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
         cwd=root,
@@ -119,6 +126,57 @@ def repository_files(root: Path = ROOT) -> list[Path]:
     if result.returncode:
         raise RuntimeError("git ls-files failed; cannot prove sensitive-content hygiene")
     return [root / os.fsdecode(item) for item in result.stdout.split(b"\0") if item]
+
+
+def source_archive_files(root: Path) -> list[Path]:
+    """Discover source in a git archive used by protected-ref Pages builds."""
+    if not root.is_dir():
+        raise RuntimeError(f"source root is not a directory: {root}")
+    skipped_paths = {"public", "docs/validation", "scripts/security/reports"}
+    skipped_names = {
+        ".git", ".cache", ".figtools", "__pycache__", "node_modules",
+        "grounding_cache", ".release-runtime-venv", ".release-scan-venv",
+        ".sca-runtime-venv", ".sca-tools-venv",
+    }
+    rows: list[Path] = []
+    for current, dirs, files in os.walk(root, followlinks=False):
+        base = Path(current)
+        dirs[:] = [
+            name for name in dirs
+            if name not in skipped_names
+            and (base / name).relative_to(root).as_posix() not in skipped_paths
+        ]
+        rows.extend(base / name for name in files)
+    return sorted(rows)
+
+
+def staged_texts(root: Path = ROOT) -> list[tuple[str, str]]:
+    """Read exact proposed file content from the Git index, not the mutable worktree."""
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z"],
+        cwd=root,
+        env=isolated_git_env(),
+        check=False,
+        capture_output=True,
+    )
+    if result.returncode:
+        raise RuntimeError("git diff --cached failed; cannot prove staged sensitive-content hygiene")
+    rows: list[tuple[str, str]] = []
+    for item in result.stdout.split(b"\0"):
+        if not item:
+            continue
+        rel = os.fsdecode(item)
+        shown = subprocess.run(
+            ["git", "show", f":{rel}"],
+            cwd=root,
+            env=isolated_git_env(),
+            check=False,
+            capture_output=True,
+        )
+        if shown.returncode or b"\0" in shown.stdout:
+            continue
+        rows.append((rel, shown.stdout.decode("utf-8", errors="replace")))
+    return rows
 
 
 def file_text(path: Path) -> str | None:
@@ -167,17 +225,46 @@ def scan_text(path: str, text: str, policy: Policy) -> list[Finding]:
     return findings
 
 
-def audit(root: Path = ROOT, policy: Policy | None = None) -> tuple[list[Finding], int]:
+def _scan_repository_path(item: tuple[Path, str, Policy]) -> tuple[list[Finding], int]:
+    path, rel, policy = item
+    text = file_text(path)
+    if text is None:
+        return [], 0
+    return scan_text(rel, text, policy), 1
+
+
+def audit(
+    root: Path = ROOT,
+    policy: Policy | None = None,
+    *,
+    workers: int | None = None,
+) -> tuple[list[Finding], int]:
     active = policy or load_policy()
     findings: list[Finding] = []
     scanned = 0
-    for path in repository_files(root):
-        text = file_text(path)
-        if text is None:
-            continue
-        scanned += 1
-        findings.extend(scan_text(path.relative_to(root).as_posix(), text, active))
+    paths = repository_files(root)
+    if workers is None:
+        raw_workers = os.environ.get("SENSITIVE_AUDIT_WORKERS", "")
+        workers = int(raw_workers) if raw_workers.isdigit() else min(4, os.cpu_count() or 1)
+    work = [(path, path.relative_to(root).as_posix(), active) for path in paths]
+    if workers > 1 and len(work) >= 32:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as pool:
+            for rows, count in pool.map(_scan_repository_path, work, chunksize=8):
+                findings.extend(rows)
+                scanned += count
+    else:
+        for item in work:
+            rows, count = _scan_repository_path(item)
+            findings.extend(rows)
+            scanned += count
     return sorted(findings, key=lambda item: (item.path, item.line, item.kind)), scanned
+
+
+def audit_staged(root: Path = ROOT, policy: Policy | None = None) -> tuple[list[Finding], int]:
+    active = policy or load_policy()
+    rows = staged_texts(root)
+    findings = [finding for path, text in rows for finding in scan_text(path, text, active)]
+    return sorted(findings, key=lambda item: (item.path, item.line, item.kind)), len(rows)
 
 
 def audit_commit_range(commit_range: str, root: Path = ROOT, policy: Policy | None = None) -> tuple[list[Finding], int]:
@@ -272,6 +359,9 @@ def self_test() -> tuple[int, int, list[str]]:
         signoff = "Signed-off-by: Fixture <person@" + "nvidia.com>"
         (root / "tracked.txt").write_text("B" + "DSA-2026-123456\n", encoding="utf-8")
         subprocess.run(["git", "add", "tracked.txt"], cwd=root, env=env, check=True)
+        staged_rows, _ = audit_staged(root, policy)
+        if not any(item.path == "tracked.txt" for item in staged_rows):
+            failures.append("staged-index discovery: proposed restricted detail was not rejected")
         subprocess.run(
             ["git", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "commit", "-qm", "temporary detail", "-m", signoff],
             cwd=root,
@@ -289,7 +379,17 @@ def self_test() -> tuple[int, int, list[str]]:
         rows, _ = audit_commit_range(f"{base}..HEAD", root, policy)
         if not any(item.path.endswith(":tracked.txt") for item in rows):
             failures.append("commit range: removed intermediate detail was not rejected")
-    total = len(examples) + 1
+    with tempfile.TemporaryDirectory(prefix="sensitive-archive-") as temp_dir:
+        archive = Path(temp_dir)
+        (archive / "source.txt").write_text("B" + "DSA-2026-123456\n", encoding="utf-8")
+        (archive / "docs/validation").mkdir(parents=True)
+        (archive / "docs/validation/generated.txt").write_text(
+            "B" + "DSA-2026-999999\n", encoding="utf-8"
+        )
+        rows, scanned = audit(archive, policy, workers=1)
+        if scanned != 1 or not any(item.path == "source.txt" for item in rows):
+            failures.append("source-archive discovery: source content was not scanned exactly once")
+    total = len(examples) + 3
     return total - len(failures), total, failures
 
 
@@ -318,6 +418,7 @@ def emit(findings: list[Finding], label: str, scanned: int, report: str | None) 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--staged", action="store_true", help="scan exact file content staged in the Git index")
     parser.add_argument("--commit-range", metavar="BASE..HEAD")
     parser.add_argument("--submission-env", action="append", default=[], metavar="NAME")
     parser.add_argument("--report")
@@ -333,6 +434,9 @@ def main() -> int:
         if args.commit_range:
             findings, scanned = audit_commit_range(args.commit_range, policy=policy)
             return emit(findings, f"commit range {args.commit_range}", scanned, args.report)
+        if args.staged:
+            findings, scanned = audit_staged(policy=policy)
+            return emit(findings, "staged index", scanned, args.report)
         if args.submission_env:
             text = "\n".join(os.environ.get(name, "") for name in args.submission_env)
             findings = scan_text("submission", text, policy)

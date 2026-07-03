@@ -186,9 +186,7 @@ def audit() -> list[str]:
 
     for label, token in {
         "scripts beacon probe": "scripts/runtime/browser_env_probe.sh",
-        "scripts beacon browser note": "browser smoke is unavailable",
         "scripts helper notebook link": "web/nemoclaw/scripts/SKILL.html",
-        "scripts helper notebook audit": "Studio helper audit",
         "scripts helper notebook style": "runnable notebook",
     }.items():
         if token not in root_script_skill:

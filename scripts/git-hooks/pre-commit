@@ -31,8 +31,7 @@ esac
 # Workstation paths are cheap to detect and unsafe to record. Run this before
 # broader repository checks so a local runtime/cache path fails at first touch.
 LOCAL_PATH_AUDIT="$T1/scripts/validation/local_path_leak_audit.py"
-if [ -f "$LOCAL_PATH_AUDIT" ] \
-   && { ! python3 "$LOCAL_PATH_AUDIT" --self-test || ! python3 "$LOCAL_PATH_AUDIT"; }; then
+if [ -f "$LOCAL_PATH_AUDIT" ] && ! python3 "$LOCAL_PATH_AUDIT" --staged; then
     echo ""
     echo "[pre-commit] REFUSING COMMIT: contributor workstation path detected."
     echo "Use repository-relative paths, environment variables, or a portable runtime helper."
@@ -42,8 +41,7 @@ fi
 # Finding identifiers, exploit notes, private service locations, and concrete credentials
 # stay outside the repository. Run this beside the workstation-path guard at first touch.
 SENSITIVE_AUDIT="$T1/scripts/validation/sensitive_content_audit.py"
-if [ -f "$SENSITIVE_AUDIT" ] \
-   && { ! python3 "$SENSITIVE_AUDIT" --self-test || ! python3 "$SENSITIVE_AUDIT"; }; then
+if [ -f "$SENSITIVE_AUDIT" ] && ! python3 "$SENSITIVE_AUDIT" --staged; then
     echo ""
     echo "[pre-commit] REFUSING COMMIT: restricted security or private operational content detected."
     echo "Move the detail to the approved private record; keep only generic controls in the repository."

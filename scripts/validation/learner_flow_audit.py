@@ -654,8 +654,10 @@ def audit_workflow_wiring(
           ".github/workflows/pages.yml: Pages test job must run the shared ship gate")
     _need(findings, 'learner_flow_audit.py", "--self-test"' in release_gate,
           "scripts/validation/release_gate.py: shared ship gate must run learner-flow mutations")
-    _need(findings, "learner_flow_audit.py\" --self-test" in pre_push,
-          "scripts/git-hooks/pre-push: local push gate must run learner-flow mutation tests")
+    _need(findings,
+          "release_gate.py" in pre_push and
+          "--tier ship --no-write --changed-since origin/main --reuse-success" in pre_push,
+          "scripts/git-hooks/pre-push: local push gate must delegate learner-flow coverage to the canonical ship gate")
     _need(findings, "import learner_flow_audit as lfa" in bundle and
           '("learner_flow", "Learner interaction flow", "required"' in bundle and
           "learner_flow_find = lfa.audit_tree()" in bundle,
@@ -931,6 +933,11 @@ def self_test() -> list[str]:
     if not any(".gitlab-ci.yml" in finding for finding in audit_workflow_wiring(
             broken_gitlab, github, release_gate, pre_push, bundle)):
         misses.append("detector missed missing GitLab learner-flow wiring")
+    broken_pre_push = pre_push.replace("--tier ship --no-write --changed-since origin/main --reuse-success",
+                                       "--tier fast", 1)
+    if not any("scripts/git-hooks/pre-push" in finding for finding in audit_workflow_wiring(
+            gitlab, github, release_gate, broken_pre_push, bundle)):
+        misses.append("detector missed missing canonical pre-push learner-flow wiring")
     return misses
 
 

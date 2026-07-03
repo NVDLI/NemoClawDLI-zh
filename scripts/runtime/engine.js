@@ -644,6 +644,20 @@
     return { pages: pages, pages_with_findings: out.length, findings: out };
   }
 
+  // One process, one filesystem snapshot. The Python bundle gate consumes these related
+  // projections together; emitting them together avoids four Node startups and repeated reads.
+  function bundleSnapshot(proj, includeGraph) {
+    var out = {
+      schema: "link-engine-bundle/1",
+      check: check(proj),
+      reachability: reachability(proj),
+      foyer_release: foyerReleaseCheck(proj),
+      page_audit: pageAudit(proj)
+    };
+    if (includeGraph) out.graph = graphJson(proj);
+    return out;
+  }
+
   // ── self-test: pin the engine to known projection facts (repo-relative) ───────
   function selfTest(proj) {
     var checks = [];
@@ -663,6 +677,9 @@
     expect("relative link resolves within course", r.course === "nemoclaw", r.course);
     var fr = foyerReleaseCheck(proj);
     expect("release foyer surfaces only RELEASED courses (contract honored)", fr.ok, "surfaced=" + JSON.stringify(fr.surfaced_courses) + " violations=" + JSON.stringify(fr.violations.map(function (v) { return v.kind; })));
+    var embedded = replaceEmbeddedSnapshot("  let DATA = {};\n", { schema: "fixture/1" });
+    expect("indented graph snapshot marker is replaceable",
+      embedded === '  let DATA = {"schema":"fixture/1"};\n', embedded);
     var npass = 0; for (var i = 0; i < checks.length; i++) if (checks[i][1]) npass++;
     return { checks: checks, npass: npass };
   }
@@ -670,11 +687,23 @@
   // ── node IO adapter + CLI ──────────────────────────────────────────────────
   function nodeIO(task1) {
     var fs = require("fs"), path = require("path");
+    var readCache = {}, existsCache = {}, walkCache = null;
     function abs(rel) { return rel ? path.join(task1, rel) : task1; }
-    function read(rel) { try { return fs.readFileSync(abs(rel), "utf8"); } catch (e) { return null; } }
-    function exists(rel) { try { return fs.existsSync(abs(rel)); } catch (e) { return false; } }
+    function read(rel) {
+      if (has(readCache, rel)) return readCache[rel];
+      try { readCache[rel] = fs.readFileSync(abs(rel), "utf8"); }
+      catch (e) { readCache[rel] = null; }
+      return readCache[rel];
+    }
+    function exists(rel) {
+      if (has(existsCache, rel)) return existsCache[rel];
+      try { existsCache[rel] = fs.existsSync(abs(rel)); }
+      catch (e) { existsCache[rel] = false; }
+      return existsCache[rel];
+    }
     function listDir(rel) { try { return fs.readdirSync(abs(rel), { withFileTypes: true }); } catch (e) { return []; } }
     function walk() {
+      if (walkCache !== null) return walkCache.slice();
       var out = [], seen = {};
       function rec(dirRel) {
         var ents = listDir(dirRel);
@@ -688,21 +717,28 @@
       for (var i = 0; i < CRAWL_TOP.length; i++) if (exists(CRAWL_TOP[i])) rec(CRAWL_TOP[i]);
       var rootEnts = listDir(""); rootEnts.sort(function (a, b) { return a.name < b.name ? -1 : (a.name > b.name ? 1 : 0); });
       for (var j = 0; j < rootEnts.length; j++) { var e = rootEnts[j]; if (!e.isDirectory() && !junkFile(e.name) && PAGE_EXT.indexOf(lc(extOf(e.name))) >= 0 && !has(seen, e.name)) { seen[e.name] = 1; out.push(e.name); } }
-      return out;
+      walkCache = out;
+      return walkCache.slice();
     }
     return { root: task1, read: read, exists: exists, walk: walk };
+  }
+
+  function replaceEmbeddedSnapshot(html, graph) {
+    var data = "let DATA = " + JSON.stringify(graph) + ";";
+    var lines = html.split("\n"), done = false;
+    for (var i = 0; i < lines.length; i++) {
+      var marker = lines[i].match(/^(\s*)let DATA = /);
+      if (marker) { lines[i] = marker[1] + data; done = true; break; }
+    }
+    return done ? lines.join("\n") : null;
   }
 
   function embedSnapshot(proj, htmlRel) {
     var io = proj.io, html = io.read(htmlRel);
     if (html == null) return false;
-    var data = "let DATA = " + JSON.stringify(graphJson(proj)) + ";\n";
-    var lines = html.split("\n"), done = false;
-    for (var i = 0; i < lines.length; i++) {
-      if (lines[i].indexOf("let DATA = ") === 0) { lines[i] = data.replace(/\n$/, ""); done = true; break; }
-    }
-    if (!done) return false;
-    require("fs").writeFileSync(require("path").join(io.root, htmlRel), lines.join("\n"));
+    var rendered = replaceEmbeddedSnapshot(html, graphJson(proj));
+    if (rendered == null) return false;
+    require("fs").writeFileSync(require("path").join(io.root, htmlRel), rendered);
     return true;
   }
 
@@ -726,6 +762,8 @@
     if (argv.indexOf("--foyer-json") >= 0) { process.stdout.write(JSON.stringify(foyerReleaseCheck(proj)) + "\n"); }
     if (argv.indexOf("--graph-json") >= 0) { process.stdout.write(JSON.stringify(graphJson(proj)) + "\n"); }
     if (argv.indexOf("--audit-json") >= 0) { process.stdout.write(JSON.stringify(pageAudit(proj)) + "\n"); }
+    if (argv.indexOf("--bundle-json") >= 0) { process.stdout.write(JSON.stringify(bundleSnapshot(proj, false)) + "\n"); }
+    if (argv.indexOf("--bundle-graph-json") >= 0) { process.stdout.write(JSON.stringify(bundleSnapshot(proj, true)) + "\n"); }
     if (argv.indexOf("--audit") >= 0) {
       var au = pageAudit(proj);
       process.stdout.write("  · page audit: " + au.pages + " .html, " + au.pages_with_findings + " with drift\n");
@@ -756,7 +794,9 @@
     graphNavigable: graphNavigable, normUrl: normUrl, isCitation: isCitation,
     parseEntrypoint: parseEntrypoint, parseCompose: parseCompose, parseNginx: parseNginx,
     graphJson: graphJson, reachability: reachability, check: check, foyerReleaseCheck: foyerReleaseCheck,
-    pageAudit: pageAudit, selfTest: selfTest, embedSnapshot: embedSnapshot, nodeIO: nodeIO, iterPages: iterPages, readForLinks: readForLinks
+    bundleSnapshot: bundleSnapshot,
+    pageAudit: pageAudit, selfTest: selfTest, replaceEmbeddedSnapshot: replaceEmbeddedSnapshot,
+    embedSnapshot: embedSnapshot, nodeIO: nodeIO, iterPages: iterPages, readForLinks: readForLinks
   };
 
   if (typeof require !== "undefined" && typeof module !== "undefined" && require.main === module) {

@@ -35,7 +35,18 @@ jobs:
       - name: Materials vendoring deps (for the live drift check)
         run: python3 -m pip install --retries 5 --timeout 30 --requirement scripts/materials/requirements.lock
       - name: Static gate (layout, skill-meta, link-engine self-test, grounding)
-        run: python3 scripts/validation/release_gate.py --tier ship
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          GATE_BASE=""
+          if [ "$EVENT_NAME" = "pull_request" ]; then GATE_BASE="$PR_BASE_SHA"; fi
+          if [ "$EVENT_NAME" = "push" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then GATE_BASE="$BEFORE_SHA"; fi
+          GATE_ARGS=()
+          if [ -n "$GATE_BASE" ]; then GATE_ARGS+=(--changed-since "$GATE_BASE"); fi
+          python3 scripts/validation/release_gate.py --tier ship "${GATE_ARGS[@]}" \
+            --timing-report docs/validation/release-gate-timings.json
       - name: Pull request submission contract
         if: github.event_name == 'pull_request'
         env:
@@ -94,6 +105,10 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: gate-report
+          path: docs/validation
       - name: Verify external publication approval
         run: python3 scripts/validation/contribution_safety_audit.py --require-publication-approved
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -105,7 +120,7 @@ jobs:
       - name: Materials vendoring deps (for the build-time pull)
         run: python3 -m pip install --retries 5 --timeout 30 --requirement scripts/materials/requirements.lock
       - name: Build the client-side static site
-        run: bash scripts/build/build_pages.sh public
+        run: BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh public
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with:

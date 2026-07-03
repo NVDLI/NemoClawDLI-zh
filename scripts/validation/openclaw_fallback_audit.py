@@ -37,7 +37,7 @@ REQUIRED = {
     "runtime_js": ["OPENCLAW_BACKUP_HINT", "preflightOpenClaw", "resolveOpenClawToken", "OPENCLAW_TOKEN: discovered", "localStorage.setItem('nemoclaw_clawcfjwt'", "RESULT: FAIL (OpenClaw credentials supplied", "toolsMissing) ? 1 : 0", "'/health'"],
     "runtime_sh": ["CLAW_CF=<CF_Authorization>", "Use Brev URL if local OpenClaw fails or shows EPERM"],
     "runtime_skill": ["OpenClaw fallback", "CF_Authorization", "EPERM", "CLAW_CF"],
-    "scripts_skill": ["OpenClaw fallback", "python3 scripts/validation/openclaw_fallback_audit.py"],
+    "scripts_skill": ["validation/SKILL.html"],
     "validation_skill": ["openclaw_fallback_audit.py", "OpenClaw fallback"],
     "worker_ws_audit": ["openclaw worker ws audit", "CF_Authorization", "http://localhost:8088", "upstream WebSocket response directly"],
     "gw_transport_audit": ["gw connect transport audit", "falling back to direct browser-cookie WebSocket"],

@@ -47,7 +47,7 @@ jobs:
       - name: Required live material provenance check
         run: python3 scripts/materials/pull_materials.py --check --fetch-attempts 4 --retry-backoff 2 --host-delay 3
       - name: Required release gate
-        run: python3 scripts/validation/release_gate.py --tier ship
+        run: python3 scripts/validation/release_gate.py --tier ship --timing-report docs/validation/release-gate-timings.json
       - name: Resolve release environment and emit SBOM
         run: |
           set -euo pipefail
@@ -70,7 +70,7 @@ jobs:
           set -euo pipefail
           export BUILD_PAGES_LANGS=0
           export BUILD_PAGES_PULL_MATERIALS=0
-          bash scripts/build/build_pages.sh public
+          BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh public
           mkdir -p release-assets release-evidence
           cp release-security/python-env.cdx.json "release-security/nemoclaw-$RELEASE_TAG.python-env.cdx.json"
           cp web/nemoclaw/vendor/browser-sbom.cdx.json "release-security/nemoclaw-$RELEASE_TAG.browser.cdx.json"

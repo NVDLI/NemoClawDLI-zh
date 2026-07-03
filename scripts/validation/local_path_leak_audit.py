@@ -86,6 +86,34 @@ def repository_files(root: Path = ROOT) -> list[Path]:
     return [root / os.fsdecode(item) for item in proc.stdout.split(b"\0") if item]
 
 
+def staged_texts(root: Path = ROOT) -> list[tuple[str, str]]:
+    proc = subprocess.run(
+        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z"],
+        cwd=root,
+        env=isolated_git_env(),
+        check=False,
+        capture_output=True,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError("git diff --cached failed; cannot prove staged path hygiene")
+    rows: list[tuple[str, str]] = []
+    for item in proc.stdout.split(b"\0"):
+        if not item:
+            continue
+        rel = os.fsdecode(item)
+        shown = subprocess.run(
+            ["git", "show", f":{rel}"],
+            cwd=root,
+            env=isolated_git_env(),
+            check=False,
+            capture_output=True,
+        )
+        if shown.returncode or b"\0" in shown.stdout:
+            continue
+        rows.append((rel, shown.stdout.decode("utf-8", errors="replace")))
+    return rows
+
+
 def file_text(path: Path) -> str | None:
     try:
         if path.is_symlink():
@@ -128,6 +156,12 @@ def audit(root: Path = ROOT) -> tuple[list[Finding], int]:
         scanned += 1
         findings.extend(scan_text(path.relative_to(root).as_posix(), text))
     return sorted(findings, key=lambda item: (item.path, item.line, item.kind)), scanned
+
+
+def audit_staged(root: Path = ROOT) -> tuple[list[Finding], int]:
+    rows = staged_texts(root)
+    findings = [finding for path, text in rows for finding in scan_text(path, text)]
+    return sorted(findings, key=lambda item: (item.path, item.line, item.kind)), len(rows)
 
 
 def audit_commit_range(commit_range: str, root: Path = ROOT) -> tuple[list[Finding], int]:
@@ -224,6 +258,13 @@ def self_test() -> tuple[int, int, list[str]]:
         rows, _ = audit(root)
         if not any(row.path == "untracked.txt" for row in rows):
             failures.append("working-tree discovery: untracked path leak was not rejected")
+        (root / "tracked.txt").write_text(slash + "home/alice/staged\n", encoding="utf-8")
+        subprocess.run(["git", "add", "tracked.txt"], cwd=root, env=git_env, check=True)
+        rows, _ = audit_staged(root)
+        if not any(row.path == "tracked.txt" for row in rows):
+            failures.append("staged-index discovery: proposed path leak was not rejected")
+        (root / "tracked.txt").write_text("portable=$HOME/project\n", encoding="utf-8")
+        subprocess.run(["git", "add", "tracked.txt"], cwd=root, env=git_env, check=True)
         link = root / "runtime-link"
         try:
             link.symlink_to("C:" + backslash + "Users" + backslash + "alice" + backslash + "node.exe")
@@ -266,13 +307,14 @@ def self_test() -> tuple[int, int, list[str]]:
         rows, _ = audit_commit_range(f"{base}..HEAD", root)
         if not any(row.path.endswith(":tracked.txt") for row in rows):
             failures.append("commit-range discovery: removed intermediate leak was not rejected")
-    total = len(cases) + 3
+    total = len(cases) + 4
     return total - len(failures), total, failures
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--staged", action="store_true", help="scan exact file content staged in the Git index")
     parser.add_argument("--commit-range", help="also reject path additions in every commit in RANGE")
     args = parser.parse_args()
     if args.self_test:
@@ -283,7 +325,7 @@ def main() -> int:
         return 1 if failures else 0
 
     try:
-        findings, scanned = audit()
+        findings, scanned = audit_staged() if args.staged else audit()
         commits = 0
         if args.commit_range:
             range_findings, commits = audit_commit_range(args.commit_range)
@@ -297,7 +339,8 @@ def main() -> int:
             print(f"  {finding.path}:{finding.line}: {finding.kind}")
         return 1
     suffix = f", {commits} commits" if args.commit_range else ""
-    print(f"local path leak audit: OK ({scanned} text files{suffix})")
+    label = "staged files" if args.staged else "text files"
+    print(f"local path leak audit: OK ({scanned} {label}{suffix})")
     return 0
 
 

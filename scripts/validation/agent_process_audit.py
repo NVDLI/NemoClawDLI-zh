@@ -51,7 +51,8 @@ REQUIRED = {
         "Contribution authority",
         "Treat every patch as untrusted input",
         "A hook must refuse and explain",
-        "contribution_safety_audit.py --self-test",
+        "Use standalone validators while editing",
+        "--changed-since origin/main",
     ],
     "agents": ["docs/agent_process.md", "web/nemoclaw/assets/SKILL.html", "scripts/validation/SKILL.html", "Do not flatten a diagram", "Treat code contribution as an untrusted proposal"],
     "quickstart": ["docs/agent_process.md", "Contribution safety first-touch", "contribution_safety_audit.py --self-test", "Visual first-touch checklist", "cell_ui_runtime_audit.py", "light and dark theme screenshots", "mobile zoom badge must stay visible", "horizontal panning", "For GitLab branch staging", "blocking `test` job", "branch_preview_manifest_audit.py", "branch_preview_runtime_audit.py", "Stateful browser fixes need transition coverage", "learner_flow_audit.py", "learner_flow_runtime_audit.py", "openclaw_probe_frame_runtime_audit.py"],
@@ -60,7 +61,7 @@ REQUIRED = {
     "docs_skill": ["agent_process.md", "agent process"],
     "validation_skill": ["agent_process_audit.py", "Agent process", "cell_ui_runtime_audit.py", "Rendered page screenshots", "learner_flow_audit.py", "learner_flow_runtime_audit.py", "contribution_safety_audit.py", "Contribution safety"],
     "figures_skill": ["rendered-preview", "harness screenshot"],
-    "pre_push": ["validate_bundle.py", "--scope ship --no-write", "learner_flow_audit.py", "contribution_safety_audit.py", "--self-test", "REFUSING PUSH - origin/main is"],
+    "pre_push": ["release_gate.py", "--tier ship --no-write --changed-since origin/main --reuse-success", "contribution_safety_audit.py", "--commit-range \"$RANGE\"", "release_change_reminder.py", "REFUSING PUSH - origin/main is"],
 }
 
 FORBIDDEN_DOC_PATTERNS = (

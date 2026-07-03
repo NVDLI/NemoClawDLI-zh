@@ -415,7 +415,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     lang_en = lang == "en"
     na_suites = set() if lang_en else set(_EN_PROSE_SUITES)
     proj = lp.Projection(TASK1)
-    rep = lp.check(proj)
+    engine_bundle = lp.bundle_snapshot(proj, include_graph=write)
+    rep = engine_bundle["check"]
     s = rep["stats"]
 
     # validate_layout (static mount paths + notebooks + SKILL beacons; live-links skip if lab down)
@@ -429,7 +430,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     suite_errors = {}
 
     try:
-        reach = lp.reachability(proj)
+        reach = engine_bundle["reachability"]
     except Exception as e:
         reach = {"pages": 0, "reachable": 0, "strays": [], "real_strays": -1, "expected_strays": -1}
         suite_errors["reachability"] = str(e); vl_fail.append(f"reachability error: {e}")
@@ -437,7 +438,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     # release-foyer contract: the foyer surfaces only RELEASED courses. This is ship-blocking
     # because the foyer IS the release surface, so leaking an unreleased course onto it is a real defect.
     try:
-        foyer = lp.foyer_release_check(proj)
+        foyer = engine_bundle["foyer_release"]
     except Exception as e:
         foyer = {"ok": False, "released": list(lp.RELEASED), "surfaced_courses": [],
                  "violations": [{"kind": "error", "detail": str(e)}]}
@@ -447,7 +448,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     # per-.html drift audit (every page auto-verifies through the engine: stale tokens, missing
     # assets, skill-meta / foyer-release contract drift). Advisory: surfaced, never ship-blocking.
     try:
-        audit = lp.page_audit(proj)
+        audit = engine_bundle["page_audit"]
     except Exception as e:
         audit = {"pages": 0, "pages_with_findings": -1, "findings": []}
         suite_errors["page_audit"] = str(e); vl_fail.append(f"page audit error: {e}")
@@ -1155,7 +1156,11 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "concept_order": 1,
         "materials": materials.get("count", 0),
         "skill_schema": skc_scanned, "skill_drift": skc_scanned,
-        "localization": len(localization_manifest.get("pages", [])),
+        "localization": sum(
+            len(item.get("pages", []))
+            for item in localization_manifest.values()
+            if isinstance(item, dict)
+        ),
     }
     _layout_own = [x for x in vl_fail if x.startswith("[")]
 
@@ -1192,6 +1197,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     advisory = gradient[RECOMMENDED] + gradient[CONSIDER]
 
     summary = {
+        "schema": "bundle-validation/1",
         "generated": _report_stamp(stamp),
         "git_sha": _git_sha(), "scope": scope, "lang": lang,
         "translation_na_suites": sorted(na_suites), "ok": ok,
@@ -1330,7 +1336,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
              "association": mat_assoc}, indent=2))
         # single source for the viewer: refresh the embedded DATA snapshot in link_graph.html
         # so its offline default reflects current reality (the in-lab Rescan still overrides).
-        lp.embed_snapshot(proj)
+        if not lp.embed_graph_snapshot(engine_bundle["graph"]):
+            raise RuntimeError("link_graph.html has no DATA snapshot marker")
         print(f"  wrote docs/validation/latest.{{json,md}} plus mat_association.json "
               f"and the link_graph.html snapshot (via engine.js)")
 
