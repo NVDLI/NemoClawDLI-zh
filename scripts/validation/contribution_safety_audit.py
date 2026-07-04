@@ -285,6 +285,10 @@ def audit_repo(
     require(build_pages, 'validation_report_audit.py"',
             "scripts/build/build_pages.sh", "pages-report-reuse-audit", out,
             "validate schema, commit, scope, and required results before report reuse")
+    require(build_pages,
+            'if [ "$REUSE_VALIDATION" = "1" ] && [ "$PULL_MATERIALS" != "0" ]; then',
+            "scripts/build/build_pages.sh", "pages-report-reuse-immutable", out,
+            "prevent live material writes before auditing a same-commit report")
     if re.search(r"validate_bundle\.py[^\n]*\|\|\s*true", build_pages):
         out.append(finding("pages-validation-fail-open", "scripts/build/build_pages.sh",
                            "Pages can retain and publish a stale validation report after refresh failure",
@@ -374,6 +378,9 @@ def audit_repo(
     require(pages, "BUILD_PAGES_REUSE_VALIDATION=1", ".github/workflows/pages.yml",
             "github-report-reuse", out,
             "reuse the required same-commit gate report instead of rescanning during build")
+    require(pages, "BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1",
+            ".github/workflows/pages.yml", "github-immutable-report-reuse", out,
+            "build committed material snapshots before reusing the same-commit report")
     require(pages, "contribution_safety_audit.py --require-publication-approved",
             ".github/workflows/pages.yml", "publication-deploy-guard", out,
             "refuse external Pages deployment until publication is approved")
@@ -393,10 +400,10 @@ def audit_repo(
     require(pages, 'release_change_reminder.py --commit-range "$RELEASE_CHANGE_RANGE"',
             ".github/workflows/pages.yml", "github-release-reminder", out,
             "show external release follow-ups from the pull-request diff")
-    if pages.count("scripts/materials/requirements.lock") != 2:
+    if pages.count("scripts/materials/requirements.lock") != 1:
         out.append(finding("github-material-lock", ".github/workflows/pages.yml",
-                           "test and deploy jobs must install material tooling from the reviewed lock",
-                           "use scripts/materials/requirements.lock in both Python setup paths"))
+                           "the live material check must install tooling once from the reviewed lock",
+                           "install scripts/materials/requirements.lock in the test job only"))
     for rel in (".github/workflows/pages.yml", ".github/workflows/release.yml",
                 ".github/workflows/codeql.yml", ".github/workflows/dependency-review.yml"):
         checkout_count = docs[rel].count("uses: actions/checkout@")
@@ -523,11 +530,11 @@ def audit_repo(
             ".gitlab-ci.yml", "gitlab-gate-timing", out,
             "retain per-command gate timing evidence")
     for token in (
-        'BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"',
-        "BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh public",
+        'BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"',
+        "BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh public",
     ):
-        require(gitlab, token, ".gitlab-ci.yml", "gitlab-report-reuse", out,
-                "reuse the required same-commit gate report instead of rescanning current-ref Pages builds")
+        require(gitlab, token, ".gitlab-ci.yml", "gitlab-immutable-report-reuse", out,
+                "build committed snapshots before reusing the required same-commit report")
     require(gitlab, 'git worktree add --quiet --detach /tmp/nemoclaw-prod-root "origin/$prod_ref"',
             ".gitlab-ci.yml", "gitlab-protected-root-worktree", out,
             "build protected-root previews from a real detached worktree so Git-backed audits remain available")
@@ -831,6 +838,7 @@ def self_test() -> list[str]:
             ("github-pr-trigger", ".github/workflows/pages.yml", "  pull_request:\n", "  # pull_request removed\n"),
             ("pages-fresh-validation-report", "scripts/build/build_pages.sh", 'python3 "$T1/scripts/validation/validate_bundle.py" --scope ship', 'python3 "$T1/scripts/validation/missing_bundle_gate.py" --scope ship'),
             ("pages-report-reuse-audit", "scripts/build/build_pages.sh", 'validation_report_audit.py"', 'missing_report_audit.py"'),
+            ("pages-report-reuse-immutable", "scripts/build/build_pages.sh", 'if [ "$REUSE_VALIDATION" = "1" ] && [ "$PULL_MATERIALS" != "0" ]; then', 'if [ "$REUSE_VALIDATION" = "2" ] && [ "$PULL_MATERIALS" != "0" ]; then'),
             ("pages-validation-fail-open", "scripts/build/build_pages.sh", 'python3 "$T1/scripts/validation/validate_bundle.py" --scope ship', 'python3 "$T1/scripts/validation/validate_bundle.py" --scope ship || true'),
             ("pages-report-reuse-fail-open", "scripts/build/build_pages.sh", 'validation_report_audit.py" \\', 'validation_report_audit.py" || true #'),
             ("mutable-action-ref", ".github/workflows/pages.yml", "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683", "actions/checkout@v4"),
@@ -889,7 +897,7 @@ def self_test() -> list[str]:
             ("gitlab-safety-selftest", ".gitlab-ci.yml", "release_gate.py --tier ship", "release_gate.py --tier fast"),
             ("gitlab-change-aware-gate", ".gitlab-ci.yml", 'GATE_ARGS+=(--changed-since "$GATE_BASE")', 'GATE_ARGS=() # no change selection'),
             ("gitlab-gate-timing", ".gitlab-ci.yml", "--timing-report docs/validation/release-gate-timings.json", "--no-timing-report"),
-            ("gitlab-report-reuse", ".gitlab-ci.yml", 'BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"', 'BUILD_PAGES_REUSE_VALIDATION=0 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"'),
+            ("gitlab-immutable-report-reuse", ".gitlab-ci.yml", 'BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"', 'BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"'),
             ("gitlab-protected-root-worktree", ".gitlab-ci.yml", 'git worktree add --quiet --detach /tmp/nemoclaw-prod-root "origin/$prod_ref"', 'git archive "origin/$prod_ref" | tar -x -C /tmp/nemoclaw-prod-root'),
             ("gitlab-image-pin", ".gitlab-ci.yml", "node:20-bookworm-slim@sha256:25070a03f077f5860e4f2db8d147380678ed40ead415a21eaffd5a6208f61948", "node:20-bookworm-slim"),
             ("gitlab-infrastructure-retry", ".gitlab-ci.yml", "runner_system_failure", "runner_unsupported"),
@@ -910,6 +918,7 @@ def self_test() -> list[str]:
             ("github-change-aware-gate", ".github/workflows/pages.yml", '--changed-since "$GATE_BASE"', '--changed-around "$GATE_BASE"'),
             ("github-gate-timing", ".github/workflows/pages.yml", "--timing-report docs/validation/release-gate-timings.json", "--no-timing-report"),
             ("github-report-reuse", ".github/workflows/pages.yml", "BUILD_PAGES_REUSE_VALIDATION=1", "BUILD_PAGES_REUSE_VALIDATION=0"),
+            ("github-immutable-report-reuse", ".github/workflows/pages.yml", "BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1", "BUILD_PAGES_REUSE_VALIDATION=1"),
             ("gitlab-release-reminder", ".gitlab-ci.yml", 'release_change_reminder.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', 'release_change_reminder.py --help'),
             ("submission-release-reminder", ".github/PULL_REQUEST_TEMPLATE.md", "## External release follow-up", "## Optional follow-up"),
             ("shared-lock-selftest", "scripts/validation/release_gate.py", 'py("scripts/security/audit_dependency_locks.py", "--self-test")', 'py("scripts/security/audit_dependency_locks.py", "--version")'),

@@ -252,7 +252,7 @@ pages:
         remote_sha="$(git rev-parse "refs/remotes/origin/$preview_ref^{commit}")"
         test "$remote_sha" = "$CI_COMMIT_SHA" || { echo "refusing stale preview: pipeline=$CI_COMMIT_SHA remote=$remote_sha" >&2; exit 1; }
         export BUILD_PAGES_COURSE_PREFIX="web"
-        BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"
+        BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"
         python3 scripts/build/build_branch_manifest.py --out "public/$CI_COMMIT_REF_SLUG/branches.json" --current-ref "$preview_ref" --current-slug "$CI_COMMIT_REF_SLUG"
         test -f "public/$CI_COMMIT_REF_SLUG/index.html"
         test -f "public/$CI_COMMIT_REF_SLUG/branches.json"
@@ -297,7 +297,7 @@ pages:
         python3 scripts/validation/branch_preview_manifest_audit.py --artifact-root public --manifest public/branches.json --expect-preview "$preview_ref=$CI_COMMIT_REF_SLUG"
         python3 scripts/validation/branch_preview_manifest_audit.py --artifact-root public --manifest "public/$CI_COMMIT_REF_SLUG/branches.json" --expect-preview "$preview_ref=$CI_COMMIT_REF_SLUG"
       else
-        BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh public
+        BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh public
         test -f public/nemoclaw/index.html
         test -f public/branches.json
         test -f public/languages.json

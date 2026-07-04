@@ -26,7 +26,20 @@ OUT="${1:-$T1/public}"
 # Build the source language at $OUT root, then each sparse same-branch overlay under i18n/<lang>/
 # over canonical web/ and into $OUT/<lang>/. BUILD_PAGES_LANGS=0 disables that loop.
 LANGS="${BUILD_PAGES_LANGS:-1}"
-PULL_MATERIALS="${BUILD_PAGES_PULL_MATERIALS:-1}"
+REUSE_VALIDATION="${BUILD_PAGES_REUSE_VALIDATION:-0}"
+# Reusing a same-commit report requires the source tree to remain byte-for-byte at HEAD.
+# Fresh local builds may still refresh material snapshots before regenerating validation.
+if [ -n "${BUILD_PAGES_PULL_MATERIALS+x}" ]; then
+    PULL_MATERIALS="$BUILD_PAGES_PULL_MATERIALS"
+elif [ "$REUSE_VALIDATION" = "1" ]; then
+    PULL_MATERIALS="0"
+else
+    PULL_MATERIALS="1"
+fi
+if [ "$REUSE_VALIDATION" = "1" ] && [ "$PULL_MATERIALS" != "0" ]; then
+    echo "[build_pages]   ERROR: report reuse requires BUILD_PAGES_PULL_MATERIALS=0" >&2
+    exit 1
+fi
 COURSE_PREFIX="${BUILD_PAGES_COURSE_PREFIX:-}"
 COURSE_PREFIX="${COURSE_PREFIX#/}"; COURSE_PREFIX="${COURSE_PREFIX%/}"
 SOURCE_MIRROR_PREFIX="${BUILD_PAGES_SOURCE_MIRROR_PREFIX:-}"
@@ -72,7 +85,7 @@ fi
 # The published report must describe this exact tree. A prior required job may supply its
 # same-commit report; reuse is fail-closed on schema, SHA, scope, required findings, and suite
 # status. Direct/local builds regenerate by default.
-if [ "${BUILD_PAGES_REUSE_VALIDATION:-0}" = "1" ]; then
+if [ "$REUSE_VALIDATION" = "1" ]; then
     python3 "$T1/scripts/validation/validation_report_audit.py" \
         --report "$T1/docs/validation/latest.json" --expect-head
     echo "[build_pages] reusing same-commit validation report"
