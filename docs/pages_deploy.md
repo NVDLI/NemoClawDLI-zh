@@ -156,3 +156,8 @@ the NemoClaw repository owns the production launchable integration and deploymen
 Both providers call the same `scripts/build/build_pages.sh`, so the GitLab pre-release and
 the GitHub external site are byte-identical builds. Only one course ships: the
 `web/nemoclaw/` browser course, bundled into `public/nemoclaw/`.
+
+Deploy jobs build only committed material snapshots. The preceding gate verifies their complete
+digests and performs the policy-appropriate live drift check; the assembler then reuses that
+same-commit report without changing tracked source bytes. A fresh local build may refresh materials
+only when it also regenerates validation.
