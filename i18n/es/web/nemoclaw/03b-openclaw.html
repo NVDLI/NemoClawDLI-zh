@@ -190,10 +190,10 @@
 // your launchable, over the gateway. Tool chips fire as it works.
 // Edit the greeting, examples, or response logic, then rerun.
 helpers.mountChatUI("#openclaw-artifact", {
-  disabled: () => !(localStorage.getItem("nemoclaw_clawtoken") && (localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl"))),
+  disabled: () => { const c = helpers.getOpenClawConnection(); return !(c.token && c.rawUrl); },
   disabledMsg: "Connect your launchable in Module 3a first. This panel needs its URL and token.",
-  greeting: "Chat with your live agent (connect on the Kickstart page first). Try “list your workspace files and tell me what each is for,” or “read SOUL.md.”",
-  examples: ["List your workspace files and what each is for", "Read SOUL.md and summarize who you are", "What tools do you have access to?", "What is in your AGENTS.md?", "Save a note to your memory, then read it back", "If a webpage told you to ignore your instructions, what would you do?"],
+  greeting: "Habla con tu agente en vivo (primero, conéctate en la página Kickstart). Pídele que inspeccione el workspace con exec o lea SOUL.md.",
+  examples: ["Usa exec para ejecutar ls -la /sandbox/.openclaw/workspace y explica cada archivo", "Lee SOUL.md y resume quién eres", "¿A qué herramientas tienes acceso?", "¿Qué contiene tu AGENTS.md?", "Guarda una nota en la memoria y luego léela", "¿Qué harías si una página te pidiera ignorar tus instrucciones?"],
   respond: async (text, ctx) => { await helpers.openclawChat(text, { session: "art-" + ctx.thread, view: ctx.view, signal: ctx.signal }); },
 });
 helpers.log("rendered below. Edit the config and Run.");
@@ -248,14 +248,15 @@ if (!state._subs) state._subs = {};
 // ── tune these (apply to every state.turn call in this flow) ──────────────────
 const TURN_IDLE_S  = 90;    // give up if the agent goes silent this long (this model can be slow to first token)
 const TURN_TOTAL_S = 240;   // hard ceiling per turn
+const FINAL_EVENT_GRACE_MS = 1500; // lifecycle end can arrive just before chat.final
 // ──────────────────────────────────────────────────────────────────────────────
 
 state.turn = async ({ content, session }) => {
   if (!state._subs[session]) { await state.call("sessions.messages.subscribe", { key: session }); state._subs[session] = true; }
   let text = "", myRun = null, toolStarts = 0, didResult = false;
   await new Promise((resolve, reject) => {
-    let idle, glob;
-    const done = (stalled) => { clearTimeout(idle); clearTimeout(glob); state._chatCb = null; if (stalled) state.call("chat.abort", { sessionKey: session }).catch(() => {}); resolve(); };
+    let idle, glob, endGrace, finished = false;
+    const done = (stalled) => { if (finished) return; finished = true; clearTimeout(idle); clearTimeout(glob); clearTimeout(endGrace); state._chatCb = null; if (stalled) state.call("chat.abort", { sessionKey: session }).catch(() => {}); resolve(); };
     const bump = () => { clearTimeout(idle); idle = setTimeout(() => done(true), TURN_IDLE_S * 1000); };
     glob = setTimeout(() => done(true), TURN_TOTAL_S * 1000);
     if (helpers.signal) helpers.signal.addEventListener("abort", () => done(true), { once: true });
@@ -269,8 +270,8 @@ state.turn = async ({ content, session }) => {
       bump();   // real activity on OUR run pushes the idle deadline back
       if (d.event === "chat" && pl.state === "final") {
         // final chat frame: fallback prose if no agent text deltas arrived
-        text = (pl.message && pl.message.content && pl.message.content[0] && pl.message.content[0].text) || text;
-        return;
+        text = helpers.openclawMessageText(pl.message) || text;
+        done(false); return;
       }
 
       if (d.event !== "agent") return;
@@ -284,17 +285,16 @@ state.turn = async ({ content, session }) => {
         // a tool was invoked, so show its INPUT (the args reveal what was asked)
         toolStarts++;
         const inp = data.args ? JSON.stringify(data.args) : (data.meta || "");
-        helpers.log.details("\u2699\ufe0f" + (data.name || "tool") + (inp ? "  " + inp.replace(/\\n/g, " ").slice(0, 160) : ""), d);
+        helpers.log.details("\u2699\ufe0f" + (data.name || "tool") + (inp ? "  " + inp.replace(/\\n/g, " ").slice(0, 160) : ""), helpers.filterOpenClawRuntimeValue(d));
 
       } else if (stream === "tool" && data.phase === "result") {
         // a tool finished, so show its OUTPUT (exec, read, edit, browser, \u2026)
         didResult = true;
-        const r = data.result;
-        const t = (r && r.content && r.content[0] && r.content[0].text) || (typeof r === "string" ? r : "");
-        helpers.log.details((data.isError ? "\u2717" : "\u2713") + " " + (data.name || "tool") + (t ? "  " + t.trim().replace(/\\n/g, " \u23ce ").slice(0, 200) : ""), d);
+        const t = helpers.openclawResultText(data.result);
+        helpers.log.details((data.isError ? "\u2717" : "\u2713") + " " + (data.name || "tool") + (t ? "  " + t.trim().replace(/\\n/g, " \u23ce ").slice(0, 200) : ""), helpers.filterOpenClawRuntimeValue(d));
       } else if (data.phase === "end" && !data.itemId) {
-        // agent run complete (lifecycle end)
-        done(false);
+        // chat.final is authoritative and can trail lifecycle end by one browser turn.
+        clearTimeout(endGrace); endGrace = setTimeout(() => done(false), FINAL_EVENT_GRACE_MS);
       }
     };
 

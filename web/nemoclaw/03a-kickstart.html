@@ -234,6 +234,11 @@
     <p>The widgets below make a small request to each endpoint and show
       what comes back. Green = ready.</p>
 
+    <h3>Model route settings</h3>
+    <p>The model probe is a read-only mirror of the persistent chat route configured on the course home
+      page or in Module 1a. Change it here once; the benchmark and later lessons reuse that route. The
+      NemoClaw launchable settings below remain separate.</p>
+    <div id="model-route-settings"></div>
     <div id="probe-llm"></div>
 
     <h3>Latency and time to first token across models</h3>
@@ -262,7 +267,7 @@
       below.</p>
     <p><code>TRANSPORT</code> controls how the credential reaches the launchable:</p>
     <ul>
-      <li><code>"proxy"</code> routes through the CORS worker and sends the CF Access JWT as a header.</li>
+      <li><code>"configured"</code> follows the relay toggle saved above. Cross-origin Brev uses the NVIDIA relay by default.</li>
       <li><code>"direct"</code> calls the launchable origin with <code>credentials:&nbsp;"include"</code> and no JWT, relying on the CF Access cookie your browser already holds.</li>
     </ul>
     <p>
@@ -433,12 +438,12 @@
         code: `// This opens the same /cli/gateway WebSocket the probe above used; openclawChat
 // streams the reply into the view and fires a chip per tool call.
 helpers.mountChatUI("#kickstart-artifact", {
-  disabled: () => !(localStorage.getItem("nemoclaw_clawtoken") && (localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl"))),
+  disabled: () => { const c = helpers.getOpenClawConnection(); return !(c.token && c.rawUrl); },
   disabledMsg: "Connect the launchable in the probe above. This panel unlocks as soon as its URL and token are saved.",
-  greeting: "Connect your launchable in the probe above, then say hi, or ask me to run whoami and pwd with my exec tool.",
+  greeting: "Connect your launchable in the probe above, then say hi or ask the agent to run whoami and pwd with exec.",
   examples: [
-    "Run whoami and pwd with your exec tool",
-    "List the files in your workspace and what each is for",
+    "Use your exec tool to run whoami and pwd, then report both results",
+    "Use your exec tool to run ls -la /sandbox/.openclaw/workspace, then explain each file",
     "What model are you running on?",
     "What tools can you call?",
     "Read your SOUL.md and summarize who you are",
@@ -460,7 +465,7 @@ helpers.log("rendered below. Edit the config and Run.");
   </main>
 
   <script type="module">
-    import { buildNav, gatewayTokenFromAgentMetadata, getConfig, updateKeyPill, updateClawPill, mountJourneyMap, mountClawProbe, mountCanvasFlow, mountRunCell, GW_CONNECT, mountGwRecover, mountDiagram } from "./scripts/_shared.js";
+    import { buildNav, gatewayTokenFromAgentMetadata, getConfig, modelRequestCredentials, updateKeyPill, updateClawPill, mountJourneyMap, mountClawProbe, mountModelEndpointProbe, mountKeyPanel, mountCanvasFlow, mountRunCell, GW_CONNECT, mountGwRecover, mountDiagram } from "./scripts/_shared.js";
     document.getElementById("nav").innerHTML = buildNav("03a-kickstart.html");
     const pill = document.getElementById("key-status");
     updateKeyPill(pill);
@@ -514,16 +519,19 @@ helpers.log("rendered below. Edit the config and Run.");
       ],
     });
 
-    const MODEL_API_CONFIG = await getConfig();
-    const MODEL_API_BASE_URL = MODEL_API_CONFIG.url;
     const NVIDIA_BUILD_URL = "https://build.nvidia.com";
 
     // ── Probe model endpoint ─────────────────────────────────────────────────────
-    mountClawProbe("#probe-llm", {
+    async function renderModelEndpointProbe() {
+      const MODEL_API_CONFIG = await getConfig();
+      const MODEL_API_BASE_URL = MODEL_API_CONFIG.url;
+      mountModelEndpointProbe("#probe-llm", {
       label: "Probe active model endpoint",
-      intro: "",
+      intro: "Read-only mirror of the saved chat route. Change it in Model route settings above; it never reads or writes NemoClaw launchable values.",
       defaultUrl: MODEL_API_BASE_URL,
       defaultToken: localStorage.getItem("nvapi") || "",
+      credentials: modelRequestCredentials(MODEL_API_BASE_URL),
+      failureHint: "Check the model route saved above, its bearer key, public HTTPS tunnel, and served model ID.",
       fieldHelp: {
         url: `<p><strong>What it is:</strong> The model API base saved on the course home page.</p>
 <p><strong>How requests reach it:</strong> The default is <code>integrate.api.nvidia.com</code>.
@@ -547,13 +555,19 @@ NVIDIA API keys start with <code>nvapi-</code>.</p>
         {
           label: "Hello chat", path: "/chat/completions", method: "POST",
           body: () => ({
-            model: "nvidia/nemotron-3-nano-30b-a3b",
+            model: MODEL_API_CONFIG.model,
             max_tokens: 8196,   // reasoning model: leave room past the thinking for the answer
             messages: [{ role: "user", content: "In one sentence: who runs you?" }],
           })
         },
       ],
     });
+    }
+    mountKeyPanel(document.getElementById("model-route-settings"), {
+      onSave: renderModelEndpointProbe,
+      onClear: renderModelEndpointProbe,
+    });
+    await renderModelEndpointProbe();
 
     // ── TTFT / latency benchmark across matching models ──────────────────────────
     const bench = document.querySelector("#bench-llm");
@@ -566,20 +580,20 @@ NVIDIA API keys start with <code>nvapi-</code>.</p>
       code: `// Fetch the model catalog and keep only the IDs this benchmark compares.
 const FILTER = ["120b", "glm", "kimi", "minimax"];
 const CFG      = await helpers.getConfig();
-const ENDPOINT = CFG.url.replace(/\/+$/, "");
+const ENDPOINT = CFG.url.replace(/\\/+$/, "");
 const KEY    = localStorage.getItem("nvapi") || "";
 
 if (!KEY) {
   helpers.log("No API key saved. Go to the course home and save the endpoint and key first.");
   return;
 }
-const r = await fetch(ENDPOINT + "/models", {
+const r = await helpers.browserChatFetch()(ENDPOINT + "/models", {
   headers: { Authorization: "Bearer " + KEY },
 });
 
 if (!r.ok) { helpers.log("models fetch failed: HTTP " + r.status); return; }
 const { data } = await r.json();
-const models = data.map(m => m.id).filter(id => FILTER.some(s => id.includes(s)));
+const models = data.map(m => m.id).filter(id => FILTER.some(s => id.toLowerCase().includes(s.toLowerCase())));
 if (!models.length) {
   helpers.log("No models matched filter: " + FILTER.join(", "));
   return;
@@ -611,7 +625,7 @@ async function bench(model) {
   let text = "", think = "", finish = null, err = null;
 
   try {
-    const r = await fetch(state.endpoint + "/chat/completions", {
+    const r = await helpers.browserChatFetch()(state.endpoint + "/chat/completions", {
       method: "POST",
       headers: { Authorization: "Bearer " + state.key, "Content-Type": "application/json" },
       body: JSON.stringify({ model, messages: [{ role: "user", content: PROMPT }], max_tokens: MAX_TOKENS, stream: true }),
@@ -702,10 +716,11 @@ return { ranked: ok.map(r => r.model), errors: results.filter(r => r.err).length
       intro: "",
       defaultUrl: "",
       defaultToken: "",
-      proxyBase: "https://openclaw-cors-proxy.experiments.courses.nvidia.com",
-      proxyMode: "prefix",
+      proxyControls: true,
       syncCanvas: true,
       cfAccess: true,
+      unexpectedHtmlHint: "Expected JSON but received the OpenClaw Control page. The request reached the launchable root instead of this API path. Keep Base URL at the launchable origin and retry; this response is not a health result.",
+      helpHint: "Need a value? Select the ? beside that field. Start with Base URL; GET /api/agent fills the bearer token.",
 
       // GET /api/agent returns agent.dashboardUrl with the gateway token.
       autofillToken: gatewayTokenFromAgentMetadata,
@@ -736,18 +751,20 @@ Paste it here. Re-copy it if the probe stops working after a long break, since J
 <p><strong>Running locally:</strong> Leave this field empty. Local OpenClaw has no Cloudflare Access layer.</p>
 <p><strong>Backup mode:</strong> Required for the Brev URL when local OpenClaw is wedged or shows <code>EPERM</code>.</p>
 <p><strong>Gateway cells:</strong> The fetch probes use this JWT as a header. A separately hosted
-course routes the <code>/cli/gateway</code> WebSocket through the OpenClaw CORS worker when this field
-is present because browser WebSocket constructors cannot set the Access header. A course hosted in
+course routes the <code>/cli/gateway</code> WebSocket through the shared relay; when this field is
+present, the relay attaches the Access header that browser WebSocket constructors cannot set. A course hosted in
 the same NemoClaw launchable uses the same-origin direct route. For a separate Pages origin, direct
 WebSocket mode also depends on a current launchable browser cookie and its cross-origin policy.</p>
 <p><strong>Why this matters:</strong> The <code>HttpOnly</code> wall is exactly why production systems use
 <em>service tokens</em> for machine-to-machine calls. The browser session flow has no programmatic
 escape hatch by design.</p>`,
+        proxy: `<p><strong>Keep this enabled</strong> when a separately hosted course connects to a Brev launchable. The shared NVIDIA relay carries the Access assertion and required WebSocket headers. Disable it for a same-origin vendored course or an explicitly compatible direct deployment.</p>`,
+        proxyBase: `<p><strong>One shared setting:</strong> this defaults to the NVIDIA-hosted relay and persists for Modules 3a–4b. Presenters can also prefill it with <code>?openclaw_proxy_base=...</code> and enable or disable it with <code>?openclaw_proxy=1</code> or <code>0</code>.</p>`,
       },
 
       actions: [
-        { label: "GET /healthz", path: "/healthz", method: "GET" },
-        { label: "GET /api/agent", path: "/api/agent", method: "GET" },
+        { label: "GET /healthz", path: "/healthz", method: "GET", expectJson: true },
+        { label: "GET /api/agent", path: "/api/agent", method: "GET", expectJson: true },
       ],
     });
 
@@ -758,25 +775,28 @@ escape hatch by design.</p>`,
       intro: "Use the probe UI above for the normal path. This cell exposes its request so you can compare proxy and direct transport or inspect an unexpected response.",
       autorun: false,
       code: `// The probe saved its URL, token, and CF JWT in localStorage. Reuse them here.
-const proxy = localStorage.getItem('nemoclaw_clawurl')    || '';  // launchable via CORS worker
-const url   = localStorage.getItem('nemoclaw_clawrawurl') || '';  // launchable origin, direct
-const token = localStorage.getItem('nemoclaw_clawtoken')  || '';
-const jwt   = localStorage.getItem('nemoclaw_clawcfjwt')  || '';
+const connection = helpers.getOpenClawConnection();
+const configured = connection.effectiveUrl; // follows the saved relay toggle
+const url   = connection.rawUrl;             // launchable origin, direct
+const token = connection.token;
+const jwt   = connection.accessJwt;
 if (!url) return helpers.log('Run the probe above first.');
 
 const METHOD    = 'GET';
 const PATH      = '/api/agent';   // any route the runtime serves
 const BODY      = null;           // e.g. { key: 'value' }
-const TRANSPORT = 'proxy';        // 'proxy': CORS worker, JWT header. 'direct': launchable, browser CF cookie.
-// Gateway cells below also use the worker for Brev WebSockets when CF_Authorization is present.
+const TRANSPORT = 'configured';   // 'configured': saved relay toggle. 'direct': bypass the relay.
+// The configured relay also applies to Brev WebSockets; CF_Authorization is attached when present.
 
 const direct  = TRANSPORT === 'direct';
+const target  = direct ? url : (configured || url);
+const viaRelay = !direct && target !== url;
 const headers = { Accept: 'application/json, text/html, */*' };
 if (token)            headers.Authorization = 'Bearer ' + token;
-if (!direct && jwt)   headers['CF-Access-Jwt-Assertion'] = jwt;
+if (viaRelay && jwt)  headers['CF-Access-Jwt-Assertion'] = jwt;
 if (BODY)             headers['Content-Type'] = 'application/json';
 
-const res = await helpers.fetch((direct ? url : proxy) + PATH, {
+const res = await helpers.fetch(target + PATH, {
   method: METHOD,
   headers,
   body: BODY ? JSON.stringify(BODY) : null,
@@ -808,6 +828,7 @@ ${msgBlock}
 const sessionKey      = ${skExpr};   // which agent session to talk to
 const IDLE_TIMEOUT_S  = 90;          // give up if the agent goes silent this long
 const TOTAL_TIMEOUT_S = 240;         // hard ceiling for the whole turn
+const FINAL_EVENT_GRACE_MS = 1500;   // lifecycle end can arrive just before chat.final
 // ──────────────────────────────────────────────────────────────────────────────
 helpers.log("→ " + message);
 
@@ -842,9 +863,10 @@ let _text = "", _finalEv, _t0 = performance.now(), _ttft = 0, _myRun = null;
 let _toolStarts = 0, _didResult = false;            // for the degradation check below
 const IDLE_MS = IDLE_TIMEOUT_S * 1000, GLOBAL_MS = TOTAL_TIMEOUT_S * 1000;
 await new Promise((resolve, reject) => {
-  let _idle, _global;
+  let _idle, _global, _endGrace, _finished = false;
   function finish(why, stalled) {
-    clearTimeout(_idle); clearTimeout(_global); state._chatCb = null;
+    if (_finished) return; _finished = true;
+    clearTimeout(_idle); clearTimeout(_global); clearTimeout(_endGrace); state._chatCb = null;
     if (why) helpers.log(why);
 
     // Abort timed-out runs server-side so they stop consuming work and leaking frames.
@@ -871,8 +893,8 @@ await new Promise((resolve, reject) => {
     if (d.event === "chat" && pl.state === "final") {
       // final chat frame: fallback prose if no agent text deltas arrived
       _finalEv = d;
-      _text = pl.message?.content?.[0]?.text || _text;
-      return;
+      _text = helpers.openclawMessageText(pl.message) || _text;
+      finish(); return;
     }
     if (d.event !== "agent") return;
 
@@ -889,19 +911,18 @@ await new Promise((resolve, reject) => {
       // Show tool input; bad args often explain hangs.
       _toolStarts++;
       const inp = data.args ? JSON.stringify(data.args) : (data.meta || "");
-      helpers.log.details("⚙️ " + (data.name || "tool") + (inp ? "  " + inp.replace(/\\n/g, " ").slice(0, 160) : ""), d);
+      helpers.log.details("⚙️ " + (data.name || "tool") + (inp ? "  " + inp.replace(/\\n/g, " ").slice(0, 160) : ""), helpers.filterOpenClawRuntimeValue(d));
 
     } else if (stream === "tool" && data.phase === "result") {
       // a tool finished, so show its OUTPUT (works for exec, read, edit, browser, …)
       _didResult = true;
-      const r = data.result;
-      const txt = (r && r.content && r.content[0] && r.content[0].text) || (typeof r === "string" ? r : "");
+      const txt = helpers.openclawResultText(data.result);
       const mark = data.isError ? "✗" : "✓";
-      helpers.log.details(mark + " " + (data.name || "tool") + (txt ? "  " + txt.trim().replace(/\\n/g, " ⏎ ").slice(0, 200) : ""), d);
+      helpers.log.details(mark + " " + (data.name || "tool") + (txt ? "  " + txt.trim().replace(/\\n/g, " ⏎ ").slice(0, 200) : ""), helpers.filterOpenClawRuntimeValue(d));
 
     } else if (data.phase === "end" && !data.itemId) {
-      // agent run complete (lifecycle end)
-      finish();
+      // chat.final is authoritative and can trail lifecycle end by one browser turn.
+      clearTimeout(_endGrace); _endGrace = setTimeout(() => finish(), FINAL_EVENT_GRACE_MS);
     }
    } catch (e) {
     // A throw inside a WS frame handler is otherwise swallowed silently and looks like a hang, so surface it instead of hiding the failure.

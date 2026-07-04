@@ -7,12 +7,17 @@ export const DEFAULT_MODEL_API_BASE_URL = "https://integrate.api.nvidia.com/v1";
 const IFRAME_PROXY_URL = "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1";
 const IFRAME_PROXY_OPT_IN_KEY = "nemoclaw_iframe_proxy_opt_in";
 const MODEL_API_BASE_URL_KEY = "nemoclaw_model_api_base_url_v1";
+const MODEL_ID_KEY = "nemoclaw_model_id_v1";
+const EMBEDDING_API_BASE_URL_KEY = "nemoclaw_embedding_api_base_url_v1";
+const EMBEDDING_MODEL_ID_KEY = "nemoclaw_embedding_model_id_v1";
+const EMBEDDING_API_KEY = "nemoclaw_embedding_api_key_v1";
 // Billing attribution is sent on direct and iframe-proxy calls.
 const BILLING_SOURCE = "dli-nemoclaw-web";
 // Web-cell model contract. DEFAULT_MODEL is chat() fallback; REASONING_MODEL is explicit.
 
 // Keep DEFAULT_MODEL / REASONING_MODEL in sync with the skill-meta models in SKILL.html.
-const DEFAULT_MODEL   = "nvidia/nemotron-3-nano-30b-a3b";
+export const DEFAULT_MODEL = "nvidia/nemotron-3-nano-30b-a3b";
+export const DEFAULT_EMBEDDING_MODEL = "nvidia/llama-nemotron-embed-1b-v2";
 export const REASONING_MODEL = "nvidia/nemotron-3-nano-30b-a3b";
 
 // ── Lab-only step detection ─────────────────────────────────────────────────
@@ -68,10 +73,24 @@ export function normalizeModelApiBaseUrl(raw) {
   const url = new URL(text);
   const localHttp = url.protocol === "http:" && ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
   if (url.protocol !== "https:" && !localHttp) throw new Error("Model API base URL must use HTTPS");
+  const pageLocation = globalThis.location;
+  if (localHttp && pageLocation?.protocol === "https:" && !["localhost", "127.0.0.1"].includes(pageLocation.hostname)) {
+    throw new Error("localhost points to this browser, not the Brev VM. Expose port 5000 with Brev Using Tunnels and paste its HTTPS URL ending in /v1");
+  }
+  if (/\.brevlab\.com$/i.test(url.hostname) && /^\/lab(?:\/|$)/.test(url.pathname)) {
+    throw new Error("A Brev Jupyter /lab URL is not a model API. Expose port 5000 with Brev Using Tunnels and paste its HTTPS URL ending in /v1");
+  }
   if (url.username || url.password || url.search || url.hash) {
     throw new Error("Model API base URL cannot include credentials, query parameters, or a fragment");
   }
   return url.href.replace(/\/+$/, "");
+}
+
+export function normalizeModelId(raw, fallback = DEFAULT_MODEL) {
+  const model = String(raw || "").trim();
+  if (!model) return fallback;
+  if (/\s/.test(model) || model.length > 240) throw new Error("Model ID must be one non-empty value without spaces");
+  return model;
 }
 
 export function suggestedModelApiBaseUrl() {
@@ -80,6 +99,27 @@ export function suggestedModelApiBaseUrl() {
     const raw = params.get("model_base_url") || params.get("base_url");
     return raw ? normalizeModelApiBaseUrl(raw) : getModelApiBaseUrl();
   } catch (_) { return getModelApiBaseUrl(); }
+}
+
+export function suggestedModelId() {
+  try {
+    const raw = new URLSearchParams(location.search || "").get("model");
+    return raw ? normalizeModelId(raw) : getModelId();
+  } catch (_) { return getModelId(); }
+}
+
+export function suggestedEmbeddingApiBaseUrl() {
+  try {
+    const raw = new URLSearchParams(location.search || "").get("embedding_base_url");
+    return raw ? normalizeModelApiBaseUrl(raw) : getEmbeddingApiBaseUrl();
+  } catch (_) { return getEmbeddingApiBaseUrl(); }
+}
+
+export function suggestedEmbeddingModelId() {
+  try {
+    const raw = new URLSearchParams(location.search || "").get("embedding_model");
+    return raw ? normalizeModelId(raw, DEFAULT_EMBEDDING_MODEL) : getEmbeddingModelId();
+  } catch (_) { return getEmbeddingModelId(); }
 }
 
 export function getModelApiBaseUrl() {
@@ -97,6 +137,50 @@ export function setModelApiBaseUrl(raw) {
   } catch (_) {}
   _cfgPromise = null;
   return normalized;
+}
+
+export function getModelId() {
+  try { return normalizeModelId(localStorage.getItem(MODEL_ID_KEY)); }
+  catch (_) { return DEFAULT_MODEL; }
+}
+
+export function setModelId(raw) {
+  const model = normalizeModelId(raw);
+  try {
+    if (model === DEFAULT_MODEL) localStorage.removeItem(MODEL_ID_KEY);
+    else localStorage.setItem(MODEL_ID_KEY, model);
+    sessionStorage.removeItem(CONFIG_KEY);
+  } catch (_) {}
+  _cfgPromise = null;
+  return model;
+}
+
+export function getEmbeddingApiBaseUrl() {
+  try { return normalizeModelApiBaseUrl(localStorage.getItem(EMBEDDING_API_BASE_URL_KEY)); }
+  catch (_) { return DEFAULT_MODEL_API_BASE_URL; }
+}
+
+export function setEmbeddingApiBaseUrl(raw) {
+  const endpoint = normalizeModelApiBaseUrl(raw);
+  try {
+    if (endpoint === DEFAULT_MODEL_API_BASE_URL) localStorage.removeItem(EMBEDDING_API_BASE_URL_KEY);
+    else localStorage.setItem(EMBEDDING_API_BASE_URL_KEY, endpoint);
+  } catch (_) {}
+  return endpoint;
+}
+
+export function getEmbeddingModelId() {
+  try { return normalizeModelId(localStorage.getItem(EMBEDDING_MODEL_ID_KEY), DEFAULT_EMBEDDING_MODEL); }
+  catch (_) { return DEFAULT_EMBEDDING_MODEL; }
+}
+
+export function setEmbeddingModelId(raw) {
+  const model = normalizeModelId(raw, DEFAULT_EMBEDDING_MODEL);
+  try {
+    if (model === DEFAULT_EMBEDDING_MODEL) localStorage.removeItem(EMBEDDING_MODEL_ID_KEY);
+    else localStorage.setItem(EMBEDDING_MODEL_ID_KEY, model);
+  } catch (_) {}
+  return model;
 }
 
 function billingAttributionEnabled(url) {
@@ -123,29 +207,44 @@ export function setIframeProxyMode(enabled) {
 
 export async function getConfig() {
   /* @doc <code>helpers.getConfig()</code> ::
-       Returns the active endpoint config <code>{ mode, url, model, needsKey, iframeProxy }</code>.
-       The default is NVIDIA's hosted API. A presenter can save one compatible base URL on the
-       course home page. LMS/static iframe mode is available only on the default route. */
+       Returns the active chat config <code>{ mode, url, model, needsKey, iframeProxy }</code>.
+       A presenter can save one compatible chat endpoint and model on the course home page.
+       Embeddings retain their own route. LMS/static iframe mode is available only on the default chat route. */
   if (_cfgPromise) return _cfgPromise;
   _cfgPromise = (async () => {
     const modelApiBaseUrl = getModelApiBaseUrl();
+    const model = getModelId();
     const useIframeProxy = iframeProxyModeEnabled() && modelApiBaseUrl === DEFAULT_MODEL_API_BASE_URL;
     try {
       const c = sessionStorage.getItem(CONFIG_KEY);
       if (c) {
         const cached = JSON.parse(c);
-        if (!!cached.iframeProxy === useIframeProxy) return cached;
+        if (!!cached.iframeProxy === useIframeProxy && cached.model === model &&
+            cached.url === (useIframeProxy ? IFRAME_PROXY_URL : modelApiBaseUrl)) return cached;
       }
     } catch (_) {}
 
     const cfg = useIframeProxy
-      ? { mode: "direct", url: IFRAME_PROXY_URL, model: DEFAULT_MODEL, needsKey: true, iframeProxy: true }
-      : { mode: "direct", url: modelApiBaseUrl, model: DEFAULT_MODEL, needsKey: true, iframeProxy: false };
+      ? { mode: "direct", url: IFRAME_PROXY_URL, model, needsKey: true, iframeProxy: true }
+      : { mode: "direct", url: modelApiBaseUrl, model, needsKey: true, iframeProxy: false };
 
     try { sessionStorage.setItem(CONFIG_KEY, JSON.stringify(cfg)); } catch (_) {}
     return cfg;
   })();
   return _cfgPromise;
+}
+
+export async function getEmbeddingConfig() {
+  /* @doc <code>helpers.getEmbeddingConfig()</code> ::
+       Returns the persistent embedding <code>{ url, model }</code> route. It defaults to NVIDIA's
+       hosted API and does not change when a presenter selects a Brev chat endpoint. */
+  return {
+    mode: "direct",
+    url: getEmbeddingApiBaseUrl(),
+    model: getEmbeddingModelId(),
+    needsKey: true,
+    iframeProxy: false,
+  };
 }
 
 // Key management
@@ -162,20 +261,49 @@ export function setKey(k) {
 }
 export function hasKey() { return !!getKey(); }
 
+export function getEmbeddingKey() {
+  try {
+    const stored = localStorage.getItem(EMBEDDING_API_KEY);
+    if (stored) return stored;
+    const active = getKey();
+    return active?.startsWith("nvapi-") ? active : null;
+  } catch (_) { return null; }
+}
+
+export function setEmbeddingKey(k) {
+  const key = String(k || "").trim();
+  try {
+    if (key) localStorage.setItem(EMBEDDING_API_KEY, key);
+    else localStorage.removeItem(EMBEDDING_API_KEY);
+  } catch (_) {}
+}
+
+export function isDefaultModelApiBaseUrl(url) {
+  try {
+    const host = new URL(url, location.href).hostname;
+    return host === "integrate.api.nvidia.com" || host === "nvidia-api-cors-proxy.experiments.courses.nvidia.com";
+  } catch (_) { return false; }
+}
+
+export function modelRequestCredentials(url) {
+  return isDefaultModelApiBaseUrl(url) ? "same-origin" : "include";
+}
+
 // The OpenAI JS SDK (what ChatOpenAI uses) attaches x-stainless-* headers.
 // Strip x-stainless-* headers for browser hosts that reject them during preflight.
 export function browserChatFetch() {
   /* @doc <code>helpers.browserChatFetch()</code> ::
        Returns a <code>fetch</code> that strips the OpenAI SDK's <code>x-stainless-*</code>
        headers. NVIDIA model routes also receive the <code>X-BILLING-SOURCE</code> tracking tag.
-       Pass it as <code>configuration.fetch</code> when constructing a browser
-       <code>ChatOpenAI</code>. */
+       Custom routes include their browser session credentials. Pass it as
+       <code>configuration.fetch</code> when constructing a browser <code>ChatOpenAI</code>. */
   return async (url, init = {}) => {
     const h = init.headers instanceof Headers ? init.headers : new Headers(init.headers || {});
     for (const k of [...h.keys()]) { if (k.startsWith("x-stainless")) h.delete(k); }
     if (billingAttributionEnabled(url)) h.set("X-BILLING-SOURCE", BILLING_SOURCE);
     else h.delete("X-BILLING-SOURCE");
-    const r = await fetch(url, { ...init, headers: h });
+    const r = await fetchRetry(url, { ...init, headers: h, credentials: modelRequestCredentials(url) },
+      { retries: 2, backoffMs: 250, timeoutMs: 60000 });
     // Wrap non-JSON HTTP errors so the SDK surfaces the real status and body.
     if (!r.ok && !(r.headers.get("content-type") || "").toLowerCase().includes("application/json")) {
       const txt = await r.text().catch(() => "");
@@ -240,10 +368,10 @@ export { fetchRetry };
 
 // Headers shared by model requests. NVIDIA routes receive course attribution; a presenter-selected
 // compatible endpoint receives only standard content and authorization headers.
-export function _apiHeaders(cfg) {
+export function _apiHeaders(cfg, keyOverride = null) {
   const h = { "Content-Type": "application/json" };
   if (billingAttributionEnabled(cfg.url)) h["X-BILLING-SOURCE"] = BILLING_SOURCE;
-  if (cfg.needsKey) h["Authorization"] = `Bearer ${getKey()}`;
+  if (cfg.needsKey) h["Authorization"] = `Bearer ${keyOverride || getKey()}`;
   return h;
 }
 
@@ -255,7 +383,7 @@ export async function chat({ messages, tools = null, model = null, temperature =
        One-shot, non-streaming chat completion. Returns the raw OpenAI-shape response. Use
        when you just want the final message. */
   const cfg = await getConfig();
-  const useModel = model || cfg.model;
+  const useModel = isDefaultModelApiBaseUrl(cfg.url) ? (model || cfg.model) : cfg.model;
   const body = { model: useModel, messages, temperature, max_tokens };
   if (tools?.length)   body.tools           = tools;
   if (response_format) body.response_format = response_format;
@@ -267,7 +395,7 @@ export async function chat({ messages, tools = null, model = null, temperature =
     method: "POST",
     headers,
     body: JSON.stringify(body),
-    credentials: "same-origin",
+    credentials: modelRequestCredentials(cfg.url),
     signal,
   });
   if (!resp.ok) {
@@ -301,7 +429,7 @@ export async function chatStream(opts, onChunk, extra = {}) {
   const onReasoning = extra.onReasoning || null;
   const onMeta = extra.onMeta || null;
   const cfg = await getConfig();
-  const useModel = model || cfg.model;
+  const useModel = isDefaultModelApiBaseUrl(cfg.url) ? (model || cfg.model) : cfg.model;
 
   const headers = _apiHeaders(cfg);
 
@@ -312,7 +440,7 @@ export async function chatStream(opts, onChunk, extra = {}) {
   if (opts.extra_body)  Object.assign(body, opts.extra_body);
 
   const resp = await fetchRetry(`${cfg.url}/chat/completions`, {
-    method: "POST", headers, body: JSON.stringify(body), credentials: "same-origin", signal,
+    method: "POST", headers, body: JSON.stringify(body), credentials: modelRequestCredentials(cfg.url), signal,
   });
   if (!resp.ok) {
     const txt = await resp.text();
@@ -474,7 +602,8 @@ export const VIZ_BUILDERS = makeViz(() => {});
 export const HELPER_FNS = {
   chat, chatStream, webSearch, instantAnswer, formatSearchResults,
   embed, cosineSim, fetchRetry, getConfig, getKey, getModelApiBaseUrl, setModelApiBaseUrl, terminal,
-  coursePage, coursePages, contextWindow, estimateTokens, browserChatFetch, diagramSVG, ganttBarsSVG, mountFigures, openFigureLightbox, wireFigureZoom, mountChatUI, mountAgentChat, mountConsole, mountKeyPanel, openclawChat, openclawGatewayWsUrl,
+  coursePage, coursePages, contextWindow, estimateTokens, browserChatFetch, diagramSVG, ganttBarsSVG, mountFigures, openFigureLightbox, wireFigureZoom, mountChatUI, mountAgentChat, mountConsole, mountKeyPanel, mountModelEndpointProbe, openclawChat, openclawGatewayWsUrl, getOpenClawConnection, setOpenClawConnection, getOpenClawProxyConfig, setOpenClawProxyConfig,
+  filterOpenClawRuntimeNoise, filterOpenClawRuntimeValue, openclawMessageText, openclawResultText,
   evalSandboxNetwork, evalSandboxFs, sandboxExec, policyGet, mountPolicyMap,
 };
 // Menu entries that are values or closures rather than plain exported functions.
@@ -779,7 +908,9 @@ async function keyAccepted() {
   if (cached) return cached === "1";
   const cfg = await getConfig();
   try {
-    const r = await fetchRetry(`${cfg.url}/models`, { headers: _apiHeaders(cfg) }, { retries: 0, timeoutMs: 7000 });
+    const r = await fetchRetry(`${cfg.url}/models`, {
+      headers: _apiHeaders(cfg), credentials: modelRequestCredentials(cfg.url),
+    }, { retries: 0, timeoutMs: 7000 });
     if (r.status === 401 || r.status === 403) { sessionStorage.setItem("nvapi_ok", "0"); return false; }
     if (r.ok) sessionStorage.setItem("nvapi_ok", "1");
     return r.ok;
@@ -802,9 +933,9 @@ export async function updateKeyPill(pill) {
 // The connect.challenge frame arrives only when the browser's Cloudflare Access session is still valid, so this detects an expired session that mere url+token presence cannot.
 // Best-effort, ~6s cap.
 function clawSessionOk(timeoutMs = 6000) {
-  const rawUrl = localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl") || "";
-  if (!rawUrl) return Promise.resolve(false);
-  const wsUrl = rawUrl.replace(/\/+$/, "").replace(/^https/, "wss").replace(/^http(?!s)/, "ws") + "/cli/gateway";
+  const connection = getOpenClawConnection();
+  if (!connection.rawUrl) return Promise.resolve(false);
+  const wsUrl = openclawGatewayWsUrl(connection.rawUrl, connection.accessJwt).url;
   return new Promise(res => {
     let done = false, ws;
     const finish = ok => { if (done) return; done = true; try { ws.close(); } catch (_) {} res(ok); };
@@ -820,8 +951,9 @@ function clawSessionOk(timeoutMs = 6000) {
 // stored url+token says nothing about whether the Cloudflare Access session still works.
 export async function updateClawPill(pill) {
   if (!pill) return;
-  const url   = localStorage.getItem("nemoclaw_clawurl")   || "";
-  const token = localStorage.getItem("nemoclaw_clawtoken") || "";
+  const connection = getOpenClawConnection();
+  const url = connection.rawUrl;
+  const token = connection.token;
   if (!(url && token)) { pill.textContent = "No OpenClaw"; pill.classList.remove("set"); pill.title = ""; return; }
   const host = url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
   pill.textContent = "OpenClaw …"; pill.classList.add("set"); pill.title = host + " · checking session";
@@ -844,12 +976,16 @@ export { mountKeyPanel };
 // ── openclaw → _openclaw.js ─────────────────────────────────────────
 // Re-exported here so the helper registry/menu and existing page imports are unchanged.
 import {
-  gatewayTokenFromAgentMetadata, mountClawGateway, mountClawProbe, openclawChat,
-  openclawGatewayWsUrl, GW_CONNECT, mountGwRecover,
+  gatewayTokenFromAgentMetadata, getOpenClawConnection, getOpenClawProxyConfig, mountClawGateway, mountClawProbe,
+  mountEndpointProbe, mountModelEndpointProbe, openclawChat, openclawGatewayWsUrl,
+  filterOpenClawRuntimeNoise, filterOpenClawRuntimeValue, openclawMessageText, openclawResultText,
+  setOpenClawConnection, setOpenClawProxyConfig, GW_CONNECT, mountGwRecover,
 } from "./_openclaw.js";
 export {
-  gatewayTokenFromAgentMetadata, mountClawGateway, mountClawProbe, openclawChat,
-  openclawGatewayWsUrl, GW_CONNECT, mountGwRecover,
+  gatewayTokenFromAgentMetadata, getOpenClawConnection, getOpenClawProxyConfig, mountClawGateway, mountClawProbe,
+  mountEndpointProbe, mountModelEndpointProbe, openclawChat, openclawGatewayWsUrl,
+  filterOpenClawRuntimeNoise, filterOpenClawRuntimeValue, openclawMessageText, openclawResultText,
+  setOpenClawConnection, setOpenClawProxyConfig, GW_CONNECT, mountGwRecover,
 };
 
 

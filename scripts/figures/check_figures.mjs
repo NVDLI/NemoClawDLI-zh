@@ -9,7 +9,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const NEMO = process.env.FIG_NEMO || path.resolve(HERE, "..", "..", "web", "nemoclaw");
 const COURSE_SCRIPTS = path.join(NEMO, "scripts");
 // Stage an ESM shim beside course modules so relative imports resolve under Node.
-const tmp = path.join(COURSE_SCRIPTS, ".figcheck_shared.mjs");
+const tmp = path.join(COURSE_SCRIPTS, `.figcheck_shared-${process.pid}.mjs`);
 fs.writeFileSync(tmp, fs.readFileSync(path.join(COURSE_SCRIPTS, "_shared.js")));
 let shared;
 try { shared = await import("file://" + tmp); }

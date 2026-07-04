@@ -1,5 +1,5 @@
 // _chat.js holds the live chat-artifact widgets (ensureChatStyles, mountChatUI, mountAgentChat) that used to live in _shared.js.
-import { CONTEXT_WINDOWS, contextWindow, coursePage, coursePages, escHtml, estimateTokens, formatSearchResults, getConfig, getKey, webSearch } from "./_shared.js";
+import { browserChatFetch, CONTEXT_WINDOWS, contextWindow, coursePage, coursePages, escHtml, estimateTokens, formatSearchResults, getConfig, getKey, isDefaultModelApiBaseUrl, webSearch } from "./_shared.js";
 
 const RANDOM_ID_RADIX = 36;
 const MARKED_VENDOR_URL = new URL("../vendor/marked-14.1.4.esm.js", import.meta.url).href;
@@ -414,7 +414,7 @@ export function mountChatUI(container, opts = {}) {
       if (epoch !== resetEpoch) return;
       turn.classList.remove("chatui-cursor");
       if (curAC.signal.aborted) view.note("⏹ stopped");
-      else if (!answered && !errored) { const d = document.createElement("div"); d.className = "chatui-msg chatui-bot"; d.textContent = "(no answer)"; turn.appendChild(d); }
+      else if (!answered && !errored) view.error(opts.emptyResponseMessage || "No displayable answer arrived. Retry once; if it repeats, inspect the tool trace and this page's recovery guidance.");
       addMsgControls("bot", () => (roundAnswer && roundAnswer._t) || turn.innerText || "", false);   // copy the reply
       // Record the completed turn so ctx.history can carry it into the next call while memory is on.
       if (memoryEnabled && !curAC.signal.aborted && !errored) {
@@ -499,28 +499,21 @@ export async function mountAgentChat(container, opts = {}) {
   }
   const runtimes = {};
   async function getRuntime(model) {
-    if (!runtimes[model]) {
+    const cfg = await getConfig();
+    const activeModel = isDefaultModelApiBaseUrl(cfg.url) ? model : cfg.model;
+    if (!runtimes[activeModel]) {
       const d = await deps();
-      const cfg = await getConfig();
       const baseURL = cfg.url.startsWith("http") ? cfg.url : (window.location.origin + cfg.url);
       // The OpenAI SDK adds x-stainless-* platform headers that the CORS proxy rejects in preflights.
       // Strip them with a custom fetch wrapper.
-      const _fetchNoStainless = (url, init) => {
-        if (init && init.headers) {
-          const h = init.headers instanceof Headers ? init.headers : new Headers(init.headers);
-          for (const k of [...h.keys()]) { if (k.startsWith("x-stainless")) h.delete(k); }
-          init = { ...init, headers: h };
-        }
-        return fetch(url, init);
-      };
       const llm = new d.ChatOpenAI({ configuration: { baseURL, dangerouslyAllowBrowser: true,
-        fetch: _fetchNoStainless },
-        apiKey: cfg.needsKey ? getKey() : "no-key-needed", model, temperature: 0, maxTokens: 16384 });
+        fetch: browserChatFetch() },
+        apiKey: cfg.needsKey ? getKey() : "no-key-needed", model: activeModel, temperature: 0, maxTokens: 16384 });
       const tools = opts.buildTools
         ? opts.buildTools({ tool: d.tool, z: d.z, coursePage, coursePages, webSearch, formatSearchResults }) : [];
-      runtimes[model] = { llm, agent: d.createReactAgent({ llm, tools, checkpointer: new d.MemorySaver() }), threads: new Set() };
+      runtimes[activeModel] = { llm, agent: d.createReactAgent({ llm, tools, checkpointer: new d.MemorySaver() }), threads: new Set() };
     }
-    return runtimes[model];
+    return runtimes[activeModel];
   }
   return mountChatUI(el, {
     modules: opts.modules, models: opts.models, intro: opts.intro, greeting: opts.greeting, examples: opts.examples, growLog: opts.growLog,
@@ -738,9 +731,11 @@ export function mountConsole(container, { prompt = "$", greeting = "", suggestio
       stopBtn.hidden = false;
       setState("Running. Press Stop to cancel.", "running");
       try {
-        if (onSubmit) await onSubmit(line, con, { signal: runAC.signal });
+        const outcome = onSubmit ? await onSubmit(line, con, { signal: runAC.signal }) : null;
         if (runAC.signal.aborted) con.write("⏹ stopped", "da-dim");
-        setState(runAC.signal.aborted ? "Stopped. Ready to run again." : "Ready", "ready");
+        if (runAC.signal.aborted) setState("Stopped. Ready to run again.", "ready");
+        else if (outcome && outcome.status === "error") setState(outcome.message || "Command failed. Read the error, then retry.", "error");
+        else setState("Ready", "ready");
       } catch (err) {
         if (runAC.signal.aborted || (err && err.name === "AbortError")) {
           con.write("⏹ stopped", "da-dim");

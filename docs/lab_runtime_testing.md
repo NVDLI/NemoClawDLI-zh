@@ -46,6 +46,29 @@ container, opens `web/nemoclaw/01a-loop.html`, counts canvas controls, and repor
 page errors. It is the fastest guard for agents that changed static assets or page
 glue but do not need model calls yet.
 
+## Exercise Course Assistant artifacts
+
+Use the live artifact mode after changing the page assistant, its prompt, tool
+schemas, or sandbox. It submits three representative requests, requires accepted
+artifact-tool results, opens each preview, and verifies that a control changes the
+rendered state. The local static origin uses the repository's configured model
+relay because the direct service admits deployed course origins, not localhost.
+
+```bash
+NVIDIA_API_KEY=$NVIDIA_API_KEY \
+  scripts/runtime/lab_runtime_test.sh --assistant-artifacts
+```
+
+Pass a deployed course page URL to validate its real origin and exact branch
+artifact. The harness reports statuses and counts, not credentials or generated
+source.
+
+```bash
+NVIDIA_API_KEY=$NVIDIA_API_KEY \
+  scripts/runtime/lab_runtime_test.sh --no-build --assistant-artifacts \
+  https://pages.example/course-branch/web/nemoclaw/02b-rag.html
+```
+
 ## Run against the lab stack
 
 Start the dev stack with the compose frontend reported by `scripts/runtime/browser_env_probe.sh`.
@@ -87,6 +110,12 @@ CLAW_URL=$NEMOCLAW_URL CLAW_CF=$CF_AUTHORIZATION \
   scripts/runtime/lab_runtime_test.sh --gateway-only
 ```
 
+Add `--terminal-contract` to exercise the launchable's `/ws/terminal` route. It tries
+the authenticated direct PTY used by the browser, retains the configured relay as a
+fallback, runs `openshell sandbox list`, and requires a non-empty transcript. Add
+`--cron-contract` to create a temporary structured cron job, query its run history,
+and remove it; each opt-in check cleans up before exit.
+
 ## Useful knobs
 
 - `CONTAINER_ENGINE=podman|docker`: force one engine.
@@ -104,3 +133,7 @@ it clicks every canvas `Run all` button, watches `/cli/gateway` WebSocket frames
 and reports whether tool/command frames were observed when gateway credentials were
 provided. `--gateway-only` isolates HTTP discovery, course token parsing, WebSocket
 authentication, and a read-only gateway call without starting an agent turn.
+`--gateway-only --terminal-contract` also exercises the operator PTY used by Modules
+3c and 4b, so a healthy gateway cannot mask a broken direct or fallback terminal route.
+`--assistant-artifacts` uses the live Course Assistant to generate and interact
+with representative browser artifacts; it is credentialed and therefore opt-in.

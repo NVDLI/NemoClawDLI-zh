@@ -6,7 +6,7 @@
   "native_label": "Español",
   "html_lang": "es-ES",
   "source_language": "en",
-  "canonical_code_templates": true,
+  "canonical_code_templates": false,
   "reviewed_target_hashes": true,
   "language_name": "neutral technical Spanish",
   "audience": "Spanish-speaking students and software developers across regions",
@@ -30,10 +30,10 @@
     }
   ],
   "review_protocol": {
-    "native_editorial_signal": "Treat edits from the designated language style PIC as authoritative and preserve the pinned reference blob exactly. A correction requires a style-PIC-authored follow-up and a deliberate pin update; agents and maintainers do not silently revise its wording.",
+    "native_editorial_signal": "Treat edits from the designated language style PIC as authoritative and preserve the pinned learner-visible wording exactly. Canonical runtime code may advance without changing the editorial pin. A prose correction requires a style-PIC-authored follow-up and a deliberate pin update; agents and maintainers do not silently revise its wording.",
     "style_reference": "web/nemoclaw/01a-loop.html",
     "style_reference_origin_commit": "0d0f6be530db7c5ace3706a7703271d9f34c7b75",
-    "style_reference_sha256": "0bf94704f32ce4dbc12f7b578ac6689b40d401956d13f85d4976f4afac65002b",
+    "style_reference_editorial_sha256": "10ab76fc9522d33a95a62602a51ae242611cda23de5340fee5bb074c18ec60ad",
     "triage_states": [
       "keep",
       "revise",

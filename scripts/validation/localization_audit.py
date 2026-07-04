@@ -21,8 +21,9 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
         sys.path.insert(0, str(_p / "scripts"))
         break
 from _bootstrap import find_repo_root
+from translate.code_localization import code_contract_literals, code_templates, js_shape
 from translate.locale_projection import project_locale_html
-from translate.localization_scope import translation_canonical, translation_sha
+from translate.localization_scope import editorial_sha, translation_canonical, translation_sha
 from translate.translate_html_segments import extract_segments, protected_tokens
 from translate.translate_svg_text import extract_svg_segments
 
@@ -34,7 +35,9 @@ INTERFACE_CONTRACT = {
     "web/nemoclaw/scripts/localization_main.js": ("localization-", '"current", "stale", "blocked", "needs-review", "missing"', "reviewed_source_sha256", "asset_counts", 'activeKind === "assets"', "loc-locale"),
     "web/nemoclaw/scripts/_locale.js": ("mountLanguageMenu", "available_pages", 'aria-haspopup', "languageFallback", "language-fallback-badge", "PT_PREFIXES", "ES_PREFIXES"),
     "web/nemoclaw/scripts/_keypanel.js": ("mountKeyPanel", "model-api-base-url", "Save &amp; verify"),
-    "web/nemoclaw/scripts/_shared.js": ("mountLanguageMenu()",),
+    "web/nemoclaw/scripts/_connection.js": ("DEFAULT_OPENCLAW_PROXY_BASE", "openclaw_proxy", "migrateOpenClawConnectionStorage"),
+    "web/nemoclaw/scripts/_openclaw.js": ("mountClawProbe", "mountModelEndpointProbe", "connectionKind", "Hosted relay", "Use for cross-origin Brev connections"),
+    "web/nemoclaw/scripts/_shared.js": ("mountLanguageMenu()", "mountModelEndpointProbe"),
     "web/nemoclaw/studio.html": ('href="localization.html"',),
     "scripts/build/build_language_manifest.py": ("native_label", "available_pages", "localization-"),
     "scripts/build/build_pages.sh": ("assemble_locale_overlay.py",),
@@ -46,12 +49,13 @@ INTERFACE_CONTRACT = {
     "scripts/translate/locales/es-ES/profile.json": (
         "es-ES", "agentes de IA", "generación aumentada por recuperación",
         '"review_protocol"', '"native_editorial_signal"', '"style_reference"',
-        '"style_reference_origin_commit"', '"style_reference_sha256"', '"acceptance_boundary"',
+        '"style_reference_origin_commit"', '"style_reference_editorial_sha256"', '"acceptance_boundary"',
         '"editorial_patterns"', '"voice_rules"', '"orthography_rules"', '"english_function_words"',
         '"foreign_function_words"', '"minimum_block_word_ratio"',
     ),
     "scripts/translate/localization_scope.py": ("en-shell", "data-localization-scope", "translation_sha"),
-    "scripts/translate/locale_projection.py": ("project_locale_html", "missing localized shell segment"),
+    "scripts/translate/locale_projection.py": ("project_locale_html", "project_localized_code_templates", "missing localized shell segment"),
+    "scripts/translate/code_localization.py": ("project_localized_code_templates", "code_contract_literals", "localized runnable code contract differs"),
     "scripts/validation/localization_runtime_audit.py": ("pageerror", "language-menu entries are clipped", "Localization Studio"),
     ".gitlab-ci.yml": ("release_gate.py --tier ship",),
     ".github/workflows/pages.yml": ("release_gate.py --tier ship",),
@@ -66,7 +70,36 @@ INTERFACE_CONTRACT = {
 
 RUNTIME_UI_TRANSLATION_KEYS = (
     "✓ API key saved for this browser",
-    "Model endpoint:",
+    "Chat route:",
+    "Embedding route:",
+    "Chat API base URL",
+    "Chat model ID",
+    "Chat API bearer key (NVIDIA keys start with",
+    "Embedding route (persistent and independent)",
+    "Embedding exercises keep this route when the chat route changes.",
+    "Embedding API base URL",
+    "Embedding model ID",
+    "Embedding API bearer key",
+    "Base URL",
+    "Bearer token",
+    "CF Access JWT",
+    "Hosted relay",
+    "Relay URL",
+    "Use for cross-origin Brev connections",
+    "Brev fallback: expose port 5000 with Using Tunnels, make the tunnel public, then paste its /v1 URL, key EMPTY, and served model ID. A private tunnel cannot accept cross-origin course requests. Do not paste the Jupyter /lab URL or localhost.",
+    "Open Brev connectivity steps →",
+    "Model discovery did not return JSON. Confirm the Brev tunnel is public, then try again",
+    "A presenter can prefill ?base_url=...&model=.... Save once; every lesson reuses both routes.",
+    "Discovering models and verifying…",
+    "Enter the key for the embedding route",
+    "model discovery returned no model IDs",
+    "embedding model discovery returned no model IDs",
+    "Model ID is not served by this endpoint. Choose one of: ",
+    "Embedding model ID is not served by this endpoint. Choose one of: ",
+    "model discovery failed: ",
+    "embedding model discovery failed: ",
+    "localhost points to this browser, not the Brev VM. Expose port 5000 with Brev Using Tunnels and paste its HTTPS URL ending in /v1",
+    "A Brev Jupyter /lab URL is not a model API. Expose port 5000 with Brev Using Tunnels and paste its HTTPS URL ending in /v1",
     "Model API base URL",
     "Custom endpoint uses direct browser requests",
     "Enable LMS/static iframe execution",
@@ -74,14 +107,11 @@ RUNTIME_UI_TRANSLATION_KEYS = (
     "API bearer key (NVIDIA keys start with",
     "Key should start with nvapi-",
     "Enter the key for this endpoint",
-    "Verifying?",
     "✓ Connected.",
     "✓ Connected. Model replied: ",
     "Connection failed: ",
     "Model API base URL must use HTTPS",
     "Model API base URL cannot include credentials, query parameters, or a fragment",
-    "Free-tier models cover every exercise. A presenter can prefill one compatible endpoint with",
-    ". Review it, then Save & verify once; every lesson reuses it.",
     "model key verified this session",
     "the saved nvapi key was refused (401/403). Re-enter it on Module 1a.",
 )
@@ -147,50 +177,10 @@ def tag_skeleton(raw: str) -> list[str]:
     return parser.tags
 
 
-def js_shape(raw: str) -> str:
-    """Remove comments, whitespace, and string text while retaining executable tokens."""
-    out: list[str] = []
-    i = 0
-    while i < len(raw):
-        char = raw[i]
-        following = raw[i + 1] if i + 1 < len(raw) else ""
-        if char == "/" and following == "/":
-            i += 2
-            while i < len(raw) and raw[i] not in "\r\n":
-                i += 1
-            continue
-        if char == "/" and following == "*":
-            end = raw.find("*/", i + 2)
-            i = len(raw) if end < 0 else end + 2
-            continue
-        if char in {'"', "'", "`"}:
-            quote = char
-            i += 1
-            while i < len(raw):
-                if raw[i] == "\\":
-                    i += 2
-                    continue
-                if raw[i] == quote:
-                    i += 1
-                    break
-                i += 1
-            out.append("S")
-            continue
-        if not char.isspace():
-            out.append(char)
-        i += 1
-    return "".join(out)
-
-
 def script_shapes(raw: str) -> list[str]:
     inline = re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", raw, re.S | re.I)
     cells = re.findall(r"\bcode\s*:\s*`((?:\\.|[^`])*)`", raw, re.S)
     return [js_shape(item) for item in inline + cells]
-
-
-def code_templates(raw: str) -> list[str]:
-    """Return runnable cell bodies; localization may change chrome, never executable examples."""
-    return re.findall(r'\bcode\s*:\s*(?:(?:[A-Za-z_$][\w$]*(?:\.[\w$]+)*)\s*\+\s*)*`((?:\\.|[^`])*)`', raw, re.S)
 
 
 def scripted_ui_text(raw: str) -> str:
@@ -515,6 +505,7 @@ def interface_findings(root: Path) -> list[dict[str, str]]:
             path.read_text(encoding="utf-8")
             for path in (
                 root / "web/nemoclaw/scripts/_keypanel.js",
+                root / "web/nemoclaw/scripts/_openclaw.js",
                 root / "web/nemoclaw/scripts/_shared.js",
             )
             if path.is_file()
@@ -619,6 +610,8 @@ def page_quality(source_raw: str, target_raw: str, profile: dict, *, skill: bool
         out.append({"code": "structure-tags", "detail": "HTML tag order differs from the canonical source"})
     if script_shapes(source_raw) != script_shapes(target_raw):
         out.append({"code": "script-structure", "detail": "executable JavaScript structure differs from the canonical source"})
+    if code_contract_literals(source_raw) != code_contract_literals(target_raw):
+        out.append({"code": "code-contract-drift", "detail": "localized runnable code changed protocol or configuration literals"})
     if profile.get("canonical_code_templates") and code_templates(source_raw) != code_templates(target_raw):
         out.append({"code": "code-cell-drift", "detail": "localized runnable code differs from the canonical source"})
     if skill and skill_meta(source_raw) != skill_meta(target_raw):
@@ -670,15 +663,15 @@ def scan(root: Path, locale: str) -> tuple[list[dict[str, str]], dict]:
         elif not reviews.get(style_reference, {}).get("target_sha256"):
             findings.append({"code": "style-reference-review", "path": style_reference,
                              "detail": "locale style reference needs an accepted target hash"})
-        expected_style_sha = review_protocol.get("style_reference_sha256", "")
+        expected_style_sha = review_protocol.get("style_reference_editorial_sha256", "")
         origin_commit = review_protocol.get("style_reference_origin_commit", "")
         style_target = locale_root / style_reference
         if not re.fullmatch(r"[0-9a-f]{64}", expected_style_sha):
             findings.append({"code": "style-reference-pin", "path": style_reference,
                              "detail": "locale style reference needs a full pinned SHA-256"})
-        elif style_target.is_file() and sha(style_target.read_text(encoding="utf-8")) != expected_style_sha:
+        elif style_target.is_file() and editorial_sha(style_target.read_text(encoding="utf-8")) != expected_style_sha:
             findings.append({"code": "style-reference-drift", "path": style_reference,
-                             "detail": "locale style reference differs from the style PIC's pinned blob"})
+                             "detail": "locale style reference prose differs from the style PIC's editorial pin"})
         if not re.fullmatch(r"[0-9a-f]{40}", origin_commit):
             findings.append({"code": "style-reference-origin", "path": style_reference,
                              "detail": "locale style reference needs the full originating commit id"})
@@ -891,12 +884,18 @@ def self_test() -> list[str]:
         profile["review_protocol"] = {
             "style_reference": "web/nemoclaw/index.html",
             "style_reference_origin_commit": "a" * 40,
-            "style_reference_sha256": "0" * 64,
+            "style_reference_editorial_sha256": editorial_sha(target_raw),
         }
         (profile_dir / "profile.json").write_text(json.dumps(profile))
+        (target_dir / "index.html").write_text(target_raw.replace("const x=1", "const x=2"))
+        runtime_style, _ = scan(root, "pt-BR")
+        if "style-reference-drift" in {item["code"] for item in runtime_style}:
+            failures.append("runtime-only style-reference change tripped editorial pin")
+        (target_dir / "index.html").write_text(target_raw.replace("Início do curso", "Curso inicial"))
         style_drift, _ = scan(root, "pt-BR")
         if "style-reference-drift" not in {item["code"] for item in style_drift}:
-            failures.append("modified locale style reference escaped pinned-blob detector")
+            failures.append("modified locale style prose escaped editorial-pin detector")
+        (target_dir / "index.html").write_text(target_raw)
         profile.pop("review_protocol")
         profile["reviewed_target_hashes"] = True
         (profile_dir / "profile.json").write_text(json.dumps(profile))
@@ -1069,6 +1068,21 @@ def self_test() -> list[str]:
         concat_target = '<html lang="pt-BR"><script>const x={code: PREFIX + `return 2;`}</script></html>'
         if "code-cell-drift" not in {item["code"] for item in page_quality(concat_source, concat_target, code_profile)}:
             failures.append("concatenated runnable-code mutation escaped detector")
+        localized_code_profile = {**profile, "canonical_code_templates": False}
+        localized_code_source = ('<html lang="en"><script>const x={code:`'
+                                 'const job=await state.call("cron.add",{kind:"agentTurn"});'
+                                 'helpers.log("installed job");`}</script></html>')
+        localized_code_target = ('<html lang="pt-BR"><script>const x={code:`'
+                                 'const job=await state.call("cron.add",{kind:"agentTurn"});'
+                                 'helpers.log("tarefa instalada");`}</script></html>')
+        localized_codes = {item["code"] for item in page_quality(
+            localized_code_source, localized_code_target, localized_code_profile)}
+        if "script-structure" in localized_codes or "code-contract-drift" in localized_codes:
+            failures.append("translated runnable-code message was treated as executable drift")
+        contract_target = localized_code_target.replace('"cron.add"', '"cron.agregar"')
+        if "code-contract-drift" not in {item["code"] for item in page_quality(
+                localized_code_source, contract_target, localized_code_profile)}:
+            failures.append("localized RPC method mutation escaped detector")
         missing_source = '<html lang="en"><p>Course home contains a complete explanatory paragraph for students.</p></html>'
         missing_target = '<html lang="pt-BR"><p></p></html>'
         if "content-segments" not in {item["code"] for item in page_quality(missing_source, missing_target, profile)}:

@@ -3,18 +3,17 @@
  * A folder's SKILL.html drops in a config and this script turns it into a live explorer:
  * an index that documents and points at every file in the folder (flat or grouped into
  * sections), an in-context source viewer (real file text, syntax-highlighted), guided
- * source tours, an LLM-assisted code explainer (build.nvidia.com through the course CORS
- * proxy), and a self-assess pass that fetches every documented file and reports drift
+ * source tours, an LLM-assisted code explainer (through the active course model route),
+ * and a self-assess pass that fetches every documented file and reports drift
  * against a recorded byte fingerprint. Read-only: it opens, tours, copies, and downloads
  * source; it never writes.
  *
  * One framer, parameterized. The validator UI, the course pages, and every folder explorer
- * share ONE definition of the session latches through the SESSIONS registry below, so a
- * build.nvidia.com key (nvapi) or an OpenClaw launchable (nemoclaw_clawrawurl / token) set
- * anywhere is seen everywhere. A config picks which ties it needs.
+ * share the course model registry. The explorer stores only the canonical build.nvidia.com
+ * key (`nvapi`); model URL, model ID, routing, and attribution come from the course runtime.
  *
- * No dependency on the course _shared.js, so a folder at any depth can use it via a relative
- * path. The config lives inline as <script type="application/json" id="explorer-config">.
+ * The renderer resolves the canonical course runtime from either deployed location. The config
+ * lives inline as <script type="application/json" id="explorer-config">.
  * File paths are relative to the SKILL.html, so the same page works in the lab and on deploy.
  *
  * Config shape:
@@ -40,19 +39,23 @@
     return new URL(directory + file, EXPLORER_URL).href;
   }
 
-  // The single source of truth for the session latches. Every explorer, the course pages,
-  // and the validator read and write THESE localStorage keys, never their own, so a
-  // credential entered in one surface is live in all of them.
+  var COURSE_RUNTIME_PROMISE = null;
+  function courseRuntime() {
+    if (COURSE_RUNTIME_PROMISE) return COURSE_RUNTIME_PROMISE;
+    var path = new URL(EXPLORER_URL).pathname;
+    var relative = /\/nemoclaw\/_skill_explorer\.js$/.test(path)
+      ? "scripts/_shared.js"
+      : "nemoclaw/scripts/_shared.js";
+    COURSE_RUNTIME_PROMISE = import(new URL(relative, EXPLORER_URL).href);
+    return COURSE_RUNTIME_PROMISE;
+  }
+
+  // Explorer-only presentation for shared course credentials. Endpoint and model ownership
+  // stays in web/nemoclaw/scripts/_shared.js; ask() calls that runtime instead of rebuilding it.
   var SESSIONS = {
     build: {
       kind: "key", keyVar: "nvapi", label: "build.nvidia.com key", placeholder: "nvapi-...",
-      endpoint: "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1", billing: "dli-nemoclaw-web",
-      note: "Model calls. Stored as localStorage.nvapi, the same key the course uses."
-    },
-    openclaw: {
-      kind: "gateway", urlVar: "nemoclaw_clawrawurl", tokenVar: "nemoclaw_clawtoken",
-      label: "OpenClaw launchable", placeholder: "https://nemoclaw-<id>.brevlab.com",
-      note: "The live agent gateway. URL + token in localStorage.nemoclaw_clawrawurl / .nemoclaw_clawtoken, shared with the course."
+      note: "Model calls use the chat route and model saved on the course home page or in Module 1a."
     },
     service: {
       kind: "proxy", label: "in-network services",
@@ -280,12 +283,11 @@
     this.answerEl = null;
   }
 
-  // The first key-bearing tie drives the LLM explainer (which credential + endpoint it uses).
+  // The first key-bearing tie drives the LLM explainer credential.
   App.prototype.keyTie = function () {
     for (var i = 0; i < this.ties.length; i++) { var s = SESSIONS[this.ties[i]]; if (s.kind === "key") return s; }
     return SESSIONS.build;
   };
-  App.prototype.proxy = function () { return (this.cfg.proxy || this.keyTie().endpoint).replace(/\/+$/, ""); };
   App.prototype.key = function () { return localStorage.getItem(this.keyTie().keyVar) || ""; };
 
   App.prototype.files = function () {
@@ -477,17 +479,14 @@
           "Be concrete and brief. Reference line numbers and identifiers from the file. If the question is not " +
           "answerable from this file, say so.";
       var user = (hub ? "REPOSITORY README (" : "FILE: ") + self.current + (hub ? ")" : "") + "\n\n" + code + "\n\nQUESTION: " + question;
-      var headers = { "Content-Type": "application/json", "Authorization": "Bearer " + k };
-      if (tie.billing) headers["X-BILLING-SOURCE"] = tie.billing;
-      return fetch(self.proxy() + "/chat/completions", {
-        method: "POST", headers: headers,
-        body: JSON.stringify({ model: self.cfg.model || "nvidia/nemotron-3-nano-30b-a3b",
-                               messages: [{ role: "system", content: sys }, { role: "user", content: user }],
-                               max_tokens: 1024, temperature: 0.2 })
+      return courseRuntime().then(function (shared) {
+        return shared.chat({
+          model: self.cfg.model || null,
+          messages: [{ role: "system", content: sys }, { role: "user", content: user }],
+          max_tokens: 1024,
+          temperature: 0.2
+        });
       });
-    }).then(function (r) {
-      if (!r.ok) return r.text().then(function (t) { throw new Error("HTTP " + r.status + " " + t.slice(0, 200)); });
-      return r.json();
     }).then(function (j) {
       var msg = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
       ans.className = "sx-answer"; ans.textContent = msg || "(no answer)";
@@ -598,12 +597,6 @@
         var inp = el("input"); inp.type = "password"; inp.placeholder = s.placeholder; inp.value = localStorage.getItem(s.keyVar) || "";
         inp.oninput = function () { localStorage.setItem(s.keyVar, inp.value.trim()); };
         row.appendChild(inp);
-      } else if (s.kind === "gateway") {
-        var url = el("input"); url.placeholder = s.placeholder; url.value = localStorage.getItem(s.urlVar) || "";
-        url.oninput = function () { localStorage.setItem(s.urlVar, url.value.trim()); };
-        var tok = el("input"); tok.type = "password"; tok.placeholder = "token"; tok.value = localStorage.getItem(s.tokenVar) || "";
-        tok.oninput = function () { localStorage.setItem(s.tokenVar, tok.value.trim()); };
-        row.appendChild(url); row.appendChild(tok);
       }
       parent.appendChild(row);
       parent.appendChild(el("div", "sx-tie", "<span class=svc style='font-size:.78rem'>" + esc(s.note) + "</span>"));
@@ -676,12 +669,12 @@
     ta.addEventListener("keydown", function (e) { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send.click(); } });
     ask.appendChild(send);
     this.answerEl = el("div", "sx-answer");
-    this.answerEl.textContent = "Open a file, then ask. Answers come from build.nvidia.com through the course proxy, keyed in your browser only.";
+    this.answerEl.textContent = "Open a file, then ask. Answers use the course model route and browser-stored key.";
     ask.appendChild(this.answerEl);
     main.appendChild(ask);
 
     this.answerEl.textContent = hub
-      ? "Ask about the repo, or follow a link to explore a folder. Answers come from build.nvidia.com through the course proxy, keyed in your browser only."
+      ? "Ask about the repo, or follow a link to explore a folder. Answers use the course model route and browser-stored key."
       : this.answerEl.textContent;
 
     this.paintRail();

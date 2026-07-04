@@ -245,11 +245,13 @@ def audit_page_assistant(assistant: str, shared: str, chat: str, css: str) -> li
         'ctx.history = ctx.replaceHistory([': "Course Assistant compaction must replace old history with durable memory",
         'ctx.thread = ctx.rotateThread()': "Course Assistant compaction must rotate to a fresh bounded agent thread",
         'name: "queue_course_artifact"': "Course Assistant must queue generated browser code into a real artifact view",
+        'Nemotron Super 120B · recommended': "Course Assistant artifact requests must default to the model validated for tool use",
         'export function parseInlineCourseSourceIntent': "Course Assistant must detect source arguments emitted as plain JSON",
         'recoverInlineToolIntent: async answer =>': "Course Assistant must recover a model that prints source arguments instead of invoking its tool",
         'ctx.view.discardAnswer()': "shared agent chat must replace recovered tool JSON with the synthesized answer",
         'export function artifactFromMarkdown': "Course Assistant must detect generated HTML/JavaScript without model tool compliance",
-        'onAssistantMessage: answer =>': "Course Assistant must auto-fill fenced browser code after completed replies",
+        'onAssistantMessage: async answer =>': "Course Assistant must auto-fill fenced or raw browser code after completed replies",
+        'raw.search(/(?:<!doctype': "Course Assistant must recover complete raw HTML when the model skips its tool",
         'data-course-assistant-view="artifact"': "Course Assistant needs a discoverable Artifact tab",
         'data-course-artifact-html': "Course Assistant Artifact view needs an editable HTML surface",
         'sandbox="allow-scripts"': "Course Assistant artifact preview must run in an origin-isolated sandbox",
@@ -259,10 +261,18 @@ def audit_page_assistant(assistant: str, shared: str, chat: str, css: str) -> li
         'filter(name => !["embed", "cosineSim"].includes(name))': "Course Assistant must reject lesson helpers absent from the artifact sandbox",
         'input.length > 16': "Course Assistant embedding bridge must bound artifact requests",
         'export function artifactJavaScriptIssue': "Course Assistant must validate generated JavaScript without a model call",
+        'export function artifactCodeIssue': "Course Assistant must validate inline HTML scripts as well as the JavaScript editor",
+        'new DOMParser().parseFromString(html, "text/html")': "Course Assistant must inspect scripts embedded in generated HTML",
+        'External scripts are unavailable in the artifact sandbox': "Course Assistant must reject generated third-party script loading",
+        'Network and browser storage APIs are unavailable in the artifact sandbox': "Course Assistant must reject APIs blocked by the artifact sandbox",
         'Artifact embedding is asynchronous. Assign its result with await course.embed(...) or await helpers.embed(...)': "Course Assistant must reject unawaited embedding requests through either alias",
         'Artifact embed inputType must be': "Course Assistant must reject unsupported embedding input types",
-        '(async () => {\\n${javascript}\\n})();': "Course Assistant runner must support top-level await without exposing imports",
-        'Artifact rejected: ${issue}': "Course Assistant tool must return invalid artifact code to the agent for correction",
+        '(async () => {\\n${javascript}\\n})().then(': "Course Assistant runner must support top-level await without exposing imports",
+        'const validateArtifactRuntime = artifact => new Promise': "Course Assistant must test generated artifacts before accepting them",
+        'type: "artifact-probe"': "Course Assistant runtime validation must exercise generated controls",
+        'Artifact rejected before execution: ${issue}': "Course Assistant tool must return static artifact failures to the agent for correction",
+        'Artifact rejected at runtime: ${runtimeIssue}': "Course Assistant tool must return runtime artifact failures to the agent for correction",
+        'Validated and queued browser artifact': "Course Assistant must claim success only after artifact validation",
         'class="course-artifact-api"': "Course Assistant editor must show its asynchronous embedding contract",
         'data-course-artifact-clear': "Course Assistant must expose a preview clear control",
         'flushArtifactSave(); clearArtifactPreview(copy.previewCleared);': "Course Assistant preview clear must preserve artifact source",
@@ -301,9 +311,14 @@ def audit_page_assistant(assistant: str, shared: str, chat: str, css: str) -> li
     _need(findings, ".course-assistant-panel > header button {" in css and
           ".course-assistant-panel header button {" not in css,
           "Course Assistant close-button sizing must not leak into nested History controls")
-    _need(findings, assistant.count("artifactJavaScriptIssue(javascript)") >= 2 and
-          "artifactJavaScriptIssue(artifact.javascript)" in assistant,
-          "Course Assistant must validate manual runs, tool queues, and fenced-code capture")
+    _need(findings, assistant.count("artifactCodeIssue(") >= 4 and
+          "await validateArtifactRuntime(artifact)" in assistant and
+          "await validateArtifactRuntime(candidate)" in assistant,
+          "Course Assistant must validate manual runs, tool queues, and fallback capture")
+    _need(findings, assistant.count('URL.createObjectURL(new Blob([') >= 2,
+          "Course Assistant artifact preview must avoid fragile srcdoc injection in visible and validation frames")
+    _need(findings, assistant.count("input.length > 16") >= 2,
+          "Course Assistant visible and validation bridges must bound artifact requests")
     _need(findings, ".course-artifact-api" in css,
           "Course Assistant artifact API contract needs visible bounded styling")
     _need(findings, ".course-assistant-body .chatui-log { max-height: none !important; min-height: 0; flex: 1; }" in css,
@@ -329,6 +344,152 @@ def audit_course_source_runtime(langchain: str) -> list[str]:
     }
     for token, message in contract.items():
         _need(findings, token in langchain, message)
+    return findings
+
+
+def audit_model_routes(shared: str, keypanel: str, rag: str, chat: str, openclaw: str,
+                       pages: dict[str, str]) -> list[str]:
+    """Keep one persistent chat failover without coupling or weakening embeddings."""
+    findings: list[str] = []
+    contract = {
+        'const MODEL_ID_KEY = "nemoclaw_model_id_v1"': "chat model selection needs persistent storage",
+        'const EMBEDDING_API_BASE_URL_KEY = "nemoclaw_embedding_api_base_url_v1"': "embedding endpoint needs storage independent from chat",
+        'const EMBEDDING_MODEL_ID_KEY = "nemoclaw_embedding_model_id_v1"': "embedding model needs storage independent from chat",
+        'const EMBEDDING_API_KEY = "nemoclaw_embedding_api_key_v1"': "embedding credential needs storage independent from chat",
+        '.get("model")': "presenter links must prefill the chat model with the chat endpoint",
+        '.get("embedding_base_url")': "presenter links must support an independent embedding endpoint",
+        '.get("embedding_model")': "presenter links must support an independent embedding model",
+        'A Brev Jupyter /lab URL is not a model API': "Brev setup must reject the Jupyter page as a model endpoint",
+        'localhost points to this browser, not the Brev VM': "Brev setup must reject VM-localhost from hosted course pages",
+        'return isDefaultModelApiBaseUrl(url) ? "same-origin" : "include"': "custom model routes need credentialed cross-origin requests",
+        'const useModel = isDefaultModelApiBaseUrl(cfg.url) ? (model || cfg.model) : cfg.model': "custom chat routes must override lesson-specific hosted model IDs",
+        'credentials: modelRequestCredentials(url)': "browser SDK calls must reuse custom-route credentials",
+        'const r = await fetchRetry(url': "browser SDK calls must retry transient header/network failures",
+        'headers: _apiHeaders(cfg), credentials: modelRequestCredentials(cfg.url)': "key status must verify through the custom route transport",
+    }
+    for token, message in contract.items():
+        _need(findings, token in shared, message)
+    key_contract = {
+        'class="model-id"': "chat setup needs a visible model ID",
+        'class="embedding-api-base-url"': "setup needs an independently editable embedding endpoint",
+        'class="embedding-model-id"': "setup needs an independently editable embedding model",
+        'class="embedding-api-key"': "setup needs an independently editable embedding credential",
+        'endpoint + "/models"': "custom chat setup must discover the served model before saving",
+        'embeddingEndpoint + "/models"': "custom embedding setup must discover the served model before saving",
+        'models.length === 1': "single-model launchables must auto-select their served model",
+        'expose port 5000': "Brev setup must name the service port and tunnel boundary",
+        'make the tunnel public': "Brev setup must prevent private-tunnel CORS failures",
+        'Do not paste the Jupyter /lab URL or localhost': "Brev setup must distinguish browser and VM addresses",
+        'https://docs.nvidia.com/brev/cli/connectivity': "Brev setup must link the public tunnel instructions",
+    }
+    for token, message in key_contract.items():
+        _need(findings, token in keypanel, message)
+    _need(findings, "getEmbeddingConfig" in rag and "getEmbeddingKey" in rag and
+          "modelRequestCredentials(cfg.url)" in rag and
+          "cfg.model === DEFAULT_EMBEDDING_MODEL" in rag,
+          "embedding calls must use their independent persistent route")
+    _need(findings, "isDefaultModelApiBaseUrl(cfg.url) ? model : cfg.model" in chat and
+          "fetch: browserChatFetch()" in chat,
+          "shared agent chat must honor the configured custom model and browser transport")
+    _need(findings, 'credentials: action.credentials || opts.credentials || "same-origin"' in openclaw,
+          "generic probes must permit an explicit credential mode")
+    for locale in ("en", "pt", "es"):
+        loop = pages[f"{locale}-01a"]
+        react = pages[f"{locale}-01b"]
+        kickstart = pages[f"{locale}-03a"]
+        _need(findings, "model: cfg.model" in loop and "helpers.browserChatFetch()(url" in loop,
+              f"{locale} Module 1a raw request must use the persistent chat route")
+        _need(findings, "helpers.isDefaultModelApiBaseUrl(cfg.url) ? model : cfg.model" in react and
+              "fetch: helpers.browserChatFetch()" in react,
+              f"{locale} Module 1b LangChain request must use the persistent chat route")
+        _need(findings, "model: MODEL_API_CONFIG.model" in kickstart and
+              "credentials: modelRequestCredentials(MODEL_API_BASE_URL)" in kickstart and
+              kickstart.count("helpers.browserChatFetch()") >= 2 and
+              'mountModelEndpointProbe("#probe-llm"' in kickstart and
+              'mountClawProbe("#probe-llm"' not in kickstart and
+              'id="model-route-settings"' in kickstart and
+              'mountKeyPanel(document.getElementById("model-route-settings")' in kickstart,
+              f"{locale} Module 3a probes must use the persistent chat route")
+    return findings
+
+
+def audit_runtime_integrations(
+    openclaw: str, openshell: str, chat: str, pages: dict[str, str]
+) -> list[str]:
+    """Guard browser/runtime handoffs whose partial success can mislead learners."""
+    findings: list[str] = []
+    _need(findings, 'class="claw-help-mark"' in openclaw and
+          'class="claw-help-hint"' in openclaw,
+          "OpenClaw probe field help needs a visible question-mark cue and instruction")
+    _need(findings, 'POLICY_YAML_MODULE_URL = "../vendor/js-yaml-5.2.1.esm.min.js"' in openshell and
+          "await import(POLICY_YAML_MODULE_URL)" in openshell,
+          "live-policy parsing must use the pinned same-origin YAML module")
+    _need(findings, "parseError" in openshell and "JS_YAML_CDN_URL" not in openshell,
+          "live-policy parsing must expose parser errors instead of swallowing them")
+    terminal_contract = {
+        'function settle()': "operator terminal must settle socket, timers, and abort listener through one path",
+        'function fail(error)': "operator terminal must reject through the shared settlement path",
+        'const wsUrls = direct.url && direct.url !== routed.url ? [direct.url, routed.url] : [routed.url]': "cross-origin terminal must try the authenticated direct PTY before its relay fallback",
+        'if (candidate >= wsUrls.length) return fail(terminalOpenError());': "operator terminal must fail once after exhausting connection routes",
+        'else { ws = null; openNext(); }': "operator terminal close-before-open must advance or settle instead of leaving timers alive",
+        'error.code = "TERMINAL_OPEN_TIMEOUT"': "operator terminal open failures need a stable machine-readable code",
+    }
+    for token, message in terminal_contract.items():
+        _need(findings, token in openshell, message)
+    _need(findings, 'new URL("../vendor/langchain-1.4.7.esm.min.js", import.meta.url)' in chat,
+          "shared agent chat must load LangChain from the committed same-origin bundle")
+
+    for locale in ("en", "pt", "es"):
+        kickstart = pages[f"{locale}-03a"]
+        cron = pages[f"{locale}-03c"]
+        cli = pages[f"{locale}-04b"]
+        safety = pages[f"{locale}-04a"]
+        react = pages[f"{locale}-01b"]
+        tools = pages[f"{locale}-01c"]
+        deep = pages[f"{locale}-02c"]
+        _need(findings, "helpHint:" in kickstart and
+              "autofillToken: gatewayTokenFromAgentMetadata" in kickstart,
+              f"{locale} Module 3a must expose connection-value help and token autofill")
+        _need(findings, r'CFG.url.replace(/\\/+$/, "")' in kickstart,
+              f"{locale} Module 3a must preserve the slash regex escape inside its runnable template")
+        for token in (
+            'name = "quick-3c-demo"',
+            'schedule: { kind: "cron", expr: "* * * * *", tz: "UTC" }',
+            'sessionTarget: "isolated"',
+            'wakeMode: "now"',
+            'kind: "agentTurn"',
+            "state.demoCronId = added.id",
+            'state.demoCronId || j.name === "quick-3c-demo"',
+            'state.call("cron.remove", { id: job.id })',
+            'state.call("cron.runs", { id: state.demoCronId, limit: 20 })',
+            "const POLL_MS = 5000",
+            "progress.textContent =",
+            'progress.setAttribute("aria-live", "polite")',
+            "const before = await helpers.terminal(",
+        ):
+            _need(findings, token in cron,
+                  f"{locale} Module 3c must keep the current structured cron contract: {token}")
+        for obsolete in (
+            'id:       "quick-3c-demo"',
+            'schedule: "* * * * *"',
+            'prompt:   "Append one short line',
+            "const WAIT_S = 70",
+        ):
+            _need(findings, obsolete not in cron,
+                  f"{locale} Module 3c restored obsolete cron.add field: {obsolete.strip()}")
+        _need(findings, "p.parseError" in safety,
+              f"{locale} Module 4a must explain live-policy parser failure")
+        _need(findings, cli.count('return { status: "error", message:') >= 3,
+              f"{locale} Module 4b terminal failures must preserve an error state")
+        page_relative_vendor = 'import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href)'
+        _need(findings, page_relative_vendor in react and deep.count(page_relative_vendor) == 3,
+              f"{locale} Modules 1b/2c must resolve the same-origin LangChain bundle from the lesson URL")
+        _need(findings, 'import("./vendor/' not in react + deep,
+              f"{locale} runnable cells must not resolve page vendors relative to scripts/_canvas.js")
+        _need(findings, "helpers.mountAgentChat" in tools,
+              f"{locale} Module 1c must use the shared same-origin agent runtime")
+        _need(findings, "cdn.jsdelivr.net/npm/@langchain" not in react + tools,
+              f"{locale} Modules 1b/1c must not restore remote LangChain imports")
     return findings
 
 
@@ -468,6 +629,10 @@ def audit_runtime_sources(canvas: str, chat: str) -> list[str]:
         'b.textContent = "⏹ Stop"': "CanvasFlow Run all must become Stop while work is active",
         'resultsDet.open = true': "CanvasFlow must reveal results when a node runs",
         'class="cf-status-bar" role="status"': "CanvasFlow completion state must be a programmatic status region",
+        '__courseHelperErrorLogged': "CanvasFlow helper failures must be marked so one error is not rendered repeatedly",
+        'if (!e.__courseHelperErrorLogged)': "CanvasFlow must not duplicate an error already shown by its helper wrapper",
+        'statusBar.textContent = "✗ stopped at "': "CanvasFlow summary must name the failed step instead of repeating its full error",
+        'return el;': "structured logs must return their element so long-running steps can update one status line",
         "running = false, runEpoch = 0": "CanvasFlow resets must invalidate stale async completion",
         "const epoch = ++runEpoch;": "RunCell resets must invalidate stale async completion",
     }
@@ -490,7 +655,8 @@ def audit_runtime_sources(canvas: str, chat: str) -> list[str]:
         'class="da-console-state" role="status"': "console readiness/run/error state must be programmatically visible",
         'class="da-chip da-stop"': "console commands must expose Stop",
         'runAC = new AbortController()': "console Stop must own an AbortController",
-        'onSubmit(line, con, { signal: runAC.signal })': "console commands must receive the Stop signal",
+        'const outcome = onSubmit ? await onSubmit(line, con, { signal: runAC.signal }) : null': "console commands must receive the Stop signal and return a visible outcome",
+        'outcome.status === "error"': "caught console failures must retain an error state instead of reverting to Ready",
         'class="da-chip da-clear"': "console commands must expose Clear",
         "resetEpoch = 0": "chat Reset must invalidate stale async completion",
         'el.classList.add("course-artifact")': "live artifacts need the shared artifact cue",
@@ -686,6 +852,44 @@ def audit_workflow_wiring(
     return findings
 
 
+def audit_assistant_artifact_harness(runtime: str, wrapper: str, docs: str, skill: str) -> list[str]:
+    """Keep real model-generated artifact checks explicit, credentialed, and reproducible."""
+    findings: list[str] = []
+    contract = {
+        "const assistantArtifacts = args.includes('--assistant-artifacts')": "Course Assistant artifacts need an explicit live runtime mode",
+        "if (!NVIDIA_API_KEY) throw new Error('--assistant-artifacts requires NVIDIA_API_KEY')": "live artifact generation must fail closed without a model credential",
+        "nemotron-3-super-120b": "live artifact validation must verify the supported default model",
+        "toolBodies.some(text => /Validated and queued browser artifact/": "live artifact validation must require an accepted tool result",
+        "!validated || !sourceChars || !controlCount || !changed": "live artifact validation must require source, controls, and a state transition",
+        "nemoclaw_iframe_proxy_opt_in": "localhost artifact tests must use the configured model relay instead of a CORS-incompatible direct route",
+        "const terminalContract = args.includes('--terminal-contract')": "operator terminal needs an explicit live relay contract mode",
+        "output.terminalOpen = transcript.frames > 0": "live terminal contract must require a non-empty PTY transcript",
+        "id: 'browser-cron-runs', method: 'cron.runs'": "live cron contract must verify the run-history RPC used by Module 3c",
+    }
+    for token, message in contract.items():
+        _need(findings, token in runtime, f"scripts/runtime/test_page_runtime.js: {message}")
+    _need(findings, runtime.count("Build a runnable") >= 3,
+          "scripts/runtime/test_page_runtime.js: live artifact mode must cover a diagram, dashboard, and quiz")
+    _need(findings, '--assistant-artifacts) ASSISTANT_ARTIFACTS=1' in wrapper and
+          'node_args+=(--assistant-artifacts --serve-static)' in wrapper and
+          'NVIDIA_API_KEY NVIDIA_API_URL' in wrapper and
+          '|| "$ASSISTANT_ARTIFACTS" == "1"' in wrapper,
+          "scripts/runtime/lab_runtime_test.sh: wrapper must expose the live artifact mode and pass only explicit model settings")
+    _need(findings, "lab_runtime_test.sh --assistant-artifacts" in docs,
+          "docs/lab_runtime_testing.md: live artifact reproduction command must remain documented")
+    _need(findings, "Live Course Assistant artifacts" in skill and "--assistant-artifacts" in skill,
+          "scripts/runtime/SKILL.html: nearby skill beacon must expose live artifact validation")
+    _need(findings, '--terminal-contract) TERMINAL_CONTRACT=1' in wrapper and
+          'node_args+=(--terminal-contract)' in wrapper and
+          '--terminal-contract requires --gateway-only' in wrapper,
+          "scripts/runtime/lab_runtime_test.sh: wrapper must expose the opt-in hosted terminal contract")
+    _need(findings, "--gateway-only --terminal-contract" in docs,
+          "docs/lab_runtime_testing.md: hosted operator-terminal reproduction must remain documented")
+    _need(findings, "Hosted operator terminal" in skill and "--terminal-contract" in skill,
+          "scripts/runtime/SKILL.html: nearby skill beacon must expose hosted terminal validation")
+    return findings
+
+
 def audit_tree(root: Path = ROOT) -> list[str]:
     findings = audit_runtime_sources(
         (root / "web/nemoclaw/scripts/_canvas.js").read_text(encoding="utf-8"),
@@ -704,6 +908,34 @@ def audit_tree(root: Path = ROOT) -> list[str]:
     ))
     findings.extend(audit_course_source_runtime(
         (root / "web/nemoclaw/scripts/_langchain.js").read_text(encoding="utf-8"),
+    ))
+    findings.extend(audit_assistant_artifact_harness(
+        (root / "scripts/runtime/test_page_runtime.js").read_text(encoding="utf-8"),
+        (root / "scripts/runtime/lab_runtime_test.sh").read_text(encoding="utf-8"),
+        (root / "docs/lab_runtime_testing.md").read_text(encoding="utf-8"),
+        (root / "scripts/runtime/SKILL.html").read_text(encoding="utf-8"),
+    ))
+    runtime_pages = {}
+    for locale, prefix in (
+        ("en", root / "web/nemoclaw"),
+        ("pt", root / "i18n/pt/web/nemoclaw"),
+        ("es", root / "i18n/es/web/nemoclaw"),
+    ):
+        for module in ("01a-loop", "01b-react", "01c-tools", "02c-deep", "03a-kickstart", "03c-always-on", "04a-safety", "04b-modern-clis"):
+            runtime_pages[f"{locale}-{module[:3]}"] = (prefix / f"{module}.html").read_text(encoding="utf-8")
+    findings.extend(audit_model_routes(
+        (root / "web/nemoclaw/scripts/_shared.js").read_text(encoding="utf-8"),
+        (root / "web/nemoclaw/scripts/_keypanel.js").read_text(encoding="utf-8"),
+        (root / "web/nemoclaw/scripts/_rag.js").read_text(encoding="utf-8"),
+        (root / "web/nemoclaw/scripts/_chat.js").read_text(encoding="utf-8"),
+        (root / "web/nemoclaw/scripts/_openclaw.js").read_text(encoding="utf-8"),
+        runtime_pages,
+    ))
+    findings.extend(audit_runtime_integrations(
+        (root / "web/nemoclaw/scripts/_openclaw.js").read_text(encoding="utf-8"),
+        (root / "web/nemoclaw/scripts/_openshell.js").read_text(encoding="utf-8"),
+        (root / "web/nemoclaw/scripts/_chat.js").read_text(encoding="utf-8"),
+        runtime_pages,
     ))
     findings.extend(audit_deep_research_artifact(
         (root / "web/nemoclaw/02c-deep.html").read_text(encoding="utf-8"),
@@ -747,6 +979,8 @@ def self_test() -> list[str]:
         ("missing chat prerequisite gate", canvas, chat.replace("const setDisabled = (blocked", "const ignoreDisabled = (blocked", 1), "prerequisite gate"),
         ("missing chat reset epoch", canvas, chat.replace("resetEpoch = 0", "resetEpochMissing = 0", 1), "stale async completion"),
         ("missing artifact cue", canvas, chat.replace('el.classList.add("course-artifact")', 'el.classList.add("ordinary-cell")', 1), "artifact cue"),
+        ("duplicated helper error", canvas.replace('if (!e.__courseHelperErrorLogged)', 'if (true)', 1), chat, "must not duplicate"),
+        ("console failure resets to Ready", canvas, chat.replace('outcome.status === "error"', 'false', 1), "retain an error state"),
     ]
     for label, mutated_canvas, mutated_chat, expected in runtime_mutations:
         if not any(expected in finding for finding in audit_runtime_sources(mutated_canvas, mutated_chat)):
@@ -825,9 +1059,11 @@ def self_test() -> list[str]:
         ("shared chat loses navigation tail", assistant, shared, chat.replace('window.addEventListener("pagehide", snapshotBeforeNavigation', 'window.addEventListener("never", snapshotBeforeNavigation', 1), css, "flush the latest streamed text"),
         ("shared chat drops artifact capture", assistant, shared, chat.replace('onAssistantMessage: opts.onAssistantMessage', 'onAssistantMessage: null', 1), css, "deterministic artifact capture"),
         ("assistant loses artifact queue", assistant.replace('name: "queue_course_artifact"', 'name: "missing_artifact_queue"', 1), shared, chat, css, "queue generated browser code"),
+        ("assistant defaults artifact work to weak model", assistant.replace('Nemotron Super 120B · recommended', 'Nemotron Super 120B · optional', 1), shared, chat, css, "model validated for tool use"),
         ("assistant loses 120B source recovery", assistant.replace('recoverInlineToolIntent: async answer =>', 'recoverLostIntent: async answer =>', 1), shared, chat, css, "prints source arguments"),
         ("shared chat preserves raw tool JSON", assistant, shared, chat.replace('ctx.view.discardAnswer()', 'void recovered', 1), css, "replace recovered tool JSON"),
         ("assistant loses fenced-code capture", assistant.replace('export function artifactFromMarkdown', 'function removedArtifactFromMarkdown', 1), shared, chat, css, "detect generated HTML/JavaScript"),
+        ("assistant loses raw HTML recovery", assistant.replace('raw.search(/(?:<!doctype', 'raw.search(/never-match', 1), shared, chat, css, "recover complete raw HTML"),
         ("assistant loses artifact tab", assistant.replace('data-course-assistant-view="artifact"', 'data-missing-view="artifact"'), shared, chat, css, "discoverable Artifact tab"),
         ("assistant artifact escapes sandbox", assistant.replace('sandbox="allow-scripts"', 'sandbox="allow-scripts allow-same-origin"', 1), shared, chat, css, "origin-isolated sandbox"),
         ("assistant artifact returns to srcdoc", assistant.replace('URL.createObjectURL(new Blob([', 'artifactFrame.srcdoc = ([', 1), shared, chat, css, "fragile srcdoc"),
@@ -835,10 +1071,14 @@ def self_test() -> list[str]:
         ("assistant artifact allows unavailable lesson helpers", assistant.replace('filter(name => !["embed", "cosineSim"].includes(name))', 'filter(name => false)', 1), shared, chat, css, "absent from the artifact sandbox"),
         ("assistant artifact bridge unbounded", assistant.replace('input.length > 16', 'false', 1), shared, chat, css, "bound artifact requests"),
         ("assistant artifact loses validator", assistant.replace('export function artifactJavaScriptIssue', 'function removedArtifactJavaScriptIssue', 1), shared, chat, css, "validate generated JavaScript"),
+        ("assistant artifact ignores inline scripts", assistant.replace('export function artifactCodeIssue', 'function removedArtifactCodeIssue', 1), shared, chat, css, "inline HTML scripts"),
         ("assistant artifact allows unawaited embed", assistant.replace('Artifact embedding is asynchronous. Assign its result with await course.embed(...) or await helpers.embed(...)', 'Embeddings failed', 1), shared, chat, css, "unawaited embedding"),
         ("assistant artifact allows bad input type", assistant.replace('Artifact embed inputType must be', 'Embedding option failed'), shared, chat, css, "unsupported embedding input types"),
-        ("assistant artifact validation misses queue and run", assistant.replace('artifactJavaScriptIssue(javascript)', 'removedArtifactCheck(javascript)'), shared, chat, css, "manual runs, tool queues"),
-        ("assistant artifact loses async runner", assistant.replace('(async () => {\\n${javascript}\\n})();', '${javascript}', 1), shared, chat, css, "top-level await"),
+        ("assistant artifact validation misses manual run", assistant.replace('artifactCodeIssue({', 'removedArtifactCheck({', 1), shared, chat, css, "manual runs, tool queues"),
+        ("assistant artifact skips runtime validation", assistant.replace('const validateArtifactRuntime = artifact => new Promise', 'const validateArtifactRuntime = artifact => Promise.resolve("") && new Promise', 1), shared, chat, css, "test generated artifacts"),
+        ("assistant artifact tool skips runtime validation", assistant.replace('await validateArtifactRuntime(candidate)', '""', 1), shared, chat, css, "manual runs, tool queues"),
+        ("assistant artifact loses interaction probe", assistant.replace('type: "artifact-probe"', 'type: "artifact-unchecked"', 1), shared, chat, css, "exercise generated controls"),
+        ("assistant artifact loses async runner", assistant.replace('(async () => {\\n${javascript}\\n})().then(', 'Promise.resolve().then(', 1), shared, chat, css, "top-level await"),
         ("assistant artifact hides API contract", assistant.replace('class="course-artifact-api"', 'class="removed-artifact-api"', 1), shared, chat, css, "show its asynchronous embedding contract"),
         ("assistant artifact clear becomes destructive", assistant.replace('flushArtifactSave(); clearArtifactPreview(copy.previewCleared);', 'activeSession().artifact = null;', 1), shared, chat, css, "preserve artifact source"),
         ("assistant artifact loses editor", assistant.replace('window.CodeMirror.fromTextArea', 'window.MissingEditor.fromTextArea', 1), shared, chat, css, "course editor"),
@@ -858,6 +1098,26 @@ def self_test() -> list[str]:
         if not any(expected in finding for finding in audit_page_assistant(mutated_assistant, mutated_shared, mutated_chat, mutated_css)):
             misses.append(f"detector missed {label}")
 
+    assistant_runtime = (ROOT / "scripts/runtime/test_page_runtime.js").read_text(encoding="utf-8")
+    runtime_wrapper = (ROOT / "scripts/runtime/lab_runtime_test.sh").read_text(encoding="utf-8")
+    runtime_docs = (ROOT / "docs/lab_runtime_testing.md").read_text(encoding="utf-8")
+    runtime_skill = (ROOT / "scripts/runtime/SKILL.html").read_text(encoding="utf-8")
+    assistant_harness_cases = [
+        ("live artifact mode removed", assistant_runtime.replace("const assistantArtifacts = args.includes('--assistant-artifacts')", "const assistantArtifacts = false", 1), runtime_wrapper, runtime_docs, runtime_skill, "explicit live runtime mode"),
+        ("live artifact accepts unvalidated tool", assistant_runtime.replace("toolBodies.some(text => /Validated and queued browser artifact/", "toolBodies.some(text => /Queued/", 1), runtime_wrapper, runtime_docs, runtime_skill, "accepted tool result"),
+        ("live artifact skips interactions", assistant_runtime.replace("!validated || !sourceChars || !controlCount || !changed", "!validated || !sourceChars", 1), runtime_wrapper, runtime_docs, runtime_skill, "source, controls, and a state transition"),
+        ("live artifact wrapper removed", assistant_runtime, runtime_wrapper.replace('--assistant-artifacts) ASSISTANT_ARTIFACTS=1', '--removed) ASSISTANT_ARTIFACTS=1', 1), runtime_docs, runtime_skill, "wrapper must expose"),
+        ("remote artifact test forced onto lab network", assistant_runtime, runtime_wrapper.replace(' || "$ASSISTANT_ARTIFACTS" == "1"', '', 1), runtime_docs, runtime_skill, "wrapper must expose"),
+        ("hosted terminal mode removed", assistant_runtime.replace("const terminalContract = args.includes('--terminal-contract')", "const terminalContract = false", 1), runtime_wrapper, runtime_docs, runtime_skill, "explicit live relay contract"),
+        ("hosted terminal wrapper removed", assistant_runtime, runtime_wrapper.replace('--terminal-contract) TERMINAL_CONTRACT=1', '--removed) TERMINAL_CONTRACT=1', 1), runtime_docs, runtime_skill, "opt-in hosted terminal"),
+        ("hosted terminal docs removed", assistant_runtime, runtime_wrapper, runtime_docs.replace('--gateway-only --terminal-contract', '--gateway-only', 1), runtime_skill, "operator-terminal reproduction"),
+        ("hosted terminal skill removed", assistant_runtime, runtime_wrapper, runtime_docs, runtime_skill.replace('Hosted operator terminal', 'Hosted shell', 1), "hosted terminal validation"),
+        ("cron run-history check removed", assistant_runtime.replace("id: 'browser-cron-runs', method: 'cron.runs'", "id: 'browser-cron-remove', method: 'cron.remove'", 1), runtime_wrapper, runtime_docs, runtime_skill, "run-history RPC"),
+    ]
+    for label, mutated_runtime, mutated_wrapper, mutated_docs, mutated_skill, expected in assistant_harness_cases:
+        if not any(expected in finding for finding in audit_assistant_artifact_harness(mutated_runtime, mutated_wrapper, mutated_docs, mutated_skill)):
+            misses.append(f"detector missed {label}")
+
     langchain = (ROOT / "web/nemoclaw/scripts/_langchain.js").read_text(encoding="utf-8")
     source_cases = [
         ("course source loses shared fetch", langchain.replace('const COURSE_HTML_CACHE = new Map()', 'const COURSE_HTML_CACHE = null', 1), "share one page fetch"),
@@ -870,6 +1130,61 @@ def self_test() -> list[str]:
     ]
     for label, mutated_langchain, expected in source_cases:
         if not any(expected in finding for finding in audit_course_source_runtime(mutated_langchain)):
+            misses.append(f"detector missed {label}")
+
+    openclaw = (ROOT / "web/nemoclaw/scripts/_openclaw.js").read_text(encoding="utf-8")
+    openshell = (ROOT / "web/nemoclaw/scripts/_openshell.js").read_text(encoding="utf-8")
+    runtime_chat = (ROOT / "web/nemoclaw/scripts/_chat.js").read_text(encoding="utf-8")
+    runtime_pages = {}
+    for locale, prefix in (
+        ("en", ROOT / "web/nemoclaw"),
+        ("pt", ROOT / "i18n/pt/web/nemoclaw"),
+        ("es", ROOT / "i18n/es/web/nemoclaw"),
+    ):
+        for module in ("01a-loop", "01b-react", "01c-tools", "02c-deep", "03a-kickstart", "03c-always-on", "04a-safety", "04b-modern-clis"):
+            runtime_pages[f"{locale}-{module[:3]}"] = (prefix / f"{module}.html").read_text(encoding="utf-8")
+    keypanel = (ROOT / "web/nemoclaw/scripts/_keypanel.js").read_text(encoding="utf-8")
+    rag = (ROOT / "web/nemoclaw/scripts/_rag.js").read_text(encoding="utf-8")
+    route_cases = [
+        ("chat model persistence removed", shared.replace('const MODEL_ID_KEY = "nemoclaw_model_id_v1"', 'const MODEL_ID_KEY = "removed"', 1), keypanel, rag, runtime_chat, openclaw, "chat model selection"),
+        ("embedding endpoint persistence removed", shared.replace('const EMBEDDING_API_BASE_URL_KEY = "nemoclaw_embedding_api_base_url_v1"', 'const EMBEDDING_API_BASE_URL_KEY = MODEL_API_BASE_URL_KEY', 1), keypanel, rag, runtime_chat, openclaw, "independent from chat"),
+        ("custom credentials omitted", shared.replace('return isDefaultModelApiBaseUrl(url) ? "same-origin" : "include"', 'return "same-origin"', 1), keypanel, rag, runtime_chat, openclaw, "credentialed cross-origin"),
+        ("browser SDK retry removed", shared.replace('const r = await fetchRetry(url', 'const r = await fetch(url', 1), keypanel, rag, runtime_chat, openclaw, "retry transient"),
+        ("single-model discovery removed", shared, keypanel.replace("models.length === 1", "models.length === 0"), rag, runtime_chat, openclaw, "auto-select"),
+        ("embedding reuses chat config", shared, keypanel, rag.replace("getEmbeddingConfig", "getConfig"), runtime_chat, openclaw, "independent persistent route"),
+        ("agent chat ignores custom model", shared, keypanel, rag, runtime_chat.replace("isDefaultModelApiBaseUrl(cfg.url) ? model : cfg.model", "model", 1), openclaw, "configured custom model"),
+    ]
+    for label, mutated_shared, mutated_keypanel, mutated_rag, mutated_chat, mutated_openclaw, expected in route_cases:
+        if not any(expected in finding for finding in audit_model_routes(
+                mutated_shared, mutated_keypanel, mutated_rag, mutated_chat, mutated_openclaw, runtime_pages)):
+            misses.append(f"detector missed {label}")
+    integration_cases = [
+        ("hidden probe help", openclaw.replace('class="claw-help-mark"', 'class="hidden-help-mark"', 1), openshell, runtime_chat, runtime_pages, "question-mark cue"),
+        ("remote policy parser", openclaw, openshell.replace('../vendor/js-yaml-5.2.1.esm.min.js', 'https://cdn.invalid/js-yaml.js', 1), runtime_chat, runtime_pages, "same-origin YAML"),
+        ("swallowed policy parser error", openclaw, openshell.replace("parseError", "ignoredParserError"), runtime_chat, runtime_pages, "expose parser errors"),
+        ("remote shared LangChain", openclaw, openshell, runtime_chat.replace('../vendor/langchain-1.4.7.esm.min.js', 'https://cdn.invalid/langchain.js', 1), runtime_pages, "same-origin bundle"),
+        ("terminal timeout bypasses settlement", openclaw, openshell.replace('if (candidate >= wsUrls.length) return fail(terminalOpenError());', 'if (candidate >= wsUrls.length) return reject(terminalOpenError());', 1), runtime_chat, runtime_pages, "must fail once"),
+        ("terminal direct fallback removed", openclaw, openshell.replace('[direct.url, routed.url]', '[routed.url]', 1), runtime_chat, runtime_pages, "authenticated direct PTY"),
+    ]
+    for label, mutated_openclaw, mutated_openshell, mutated_chat, mutated_pages, expected in integration_cases:
+        if not any(expected in finding for finding in audit_runtime_integrations(
+                mutated_openclaw, mutated_openshell, mutated_chat, mutated_pages)):
+            misses.append(f"detector missed {label}")
+    page_cases = [
+        ("Module 3a hidden value help", "en-03a", "helpHint:", "removedHelpHint:", "connection-value help"),
+        ("Module 3a consumed regex escape", "en-03a", r'CFG.url.replace(/\\/+$/, "")', r'CFG.url.replace(/\/+$/, "")', "regex escape"),
+        ("Module 3c string schedule", "en-03c", 'schedule: { kind: "cron", expr: "* * * * *", tz: "UTC" }', 'schedule: "* * * * *"', "structured cron contract"),
+        ("Module 3c fixed blind wait", "en-03c", "const POLL_MS = 5000", "const WAIT_S = 70", "structured cron contract"),
+        ("Module 4b stale Ready state", "pt-04b", 'return { status: "error", message:', 'return con.write(', "preserve an error state"),
+        ("Module 4a hidden parse failure", "pt-04a", "p.parseError", "p.hiddenError", "explain live-policy parser failure"),
+        ("Module 1b module-relative import", "es-01b", 'import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href)', 'import("./vendor/langchain-1.4.7.esm.min.js")', "lesson URL"),
+        ("Module 2c module-relative import", "pt-02c", 'import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href)', 'import("./vendor/langchain-1.4.7.esm.min.js")', "lesson URL"),
+    ]
+    for label, key, old, new, expected in page_cases:
+        mutated_pages = dict(runtime_pages)
+        mutated_pages[key] = mutated_pages[key].replace(old, new, 1)
+        if not any(expected in finding for finding in audit_runtime_integrations(
+                openclaw, openshell, runtime_chat, mutated_pages)):
             misses.append(f"detector missed {label}")
 
     fixture_path = ROOT / "web/nemoclaw/01a-loop.html"

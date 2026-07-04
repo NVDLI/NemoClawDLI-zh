@@ -399,7 +399,7 @@ helpers.log("CLI agent mounted below. Give it a goal and watch it drive the runt
 // persistent connection a one-shot terminal cannot hold, so chatting lives in the panel below.
 
 function launchableUrl() {
-  let u = localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl") || "";
+  let u = helpers.getOpenClawConnection().rawUrl;
   while (u.length && u[u.length - 1] === "/") u = u.slice(0, -1);
   return u;
 }
@@ -425,7 +425,10 @@ async function run(cmd, con, ctx) {
     const inner = t.slice(5).trim();
     if (!inner) return con.write('usage: agent <command>   runs <command> inside your agent sandbox, for example: agent ls', "da-dim");
     let r;
-    try { r = await helpers.sandboxExec(inner, { signal: ctx.signal }); } catch (e) { return con.write(String((e && e.message) || e), "da-err"); }
+    try { r = await helpers.sandboxExec(inner, { signal: ctx.signal }); } catch (e) {
+      con.write(String((e && e.message) || e), "da-err");
+      return { status: "error", message: "Command failed. Read the message, then retry." };
+    }
     con.write((r.output || "").trimEnd() || "(no output)");
     const h = hintFor(r.output); if (h) con.write(h, "da-dim");
     return;
@@ -435,7 +438,8 @@ async function run(cmd, con, ctx) {
   try {
     await helpers.terminal(t, { totalMs: 120000, idleMs: 8000, signal: ctx.signal, onChunk: function (c) { if (c) { got = true; captured += c; con.raw(c); } } });
   } catch (e) {
-    return con.write(String((e && e.message) || e), "da-err");
+    con.write(String((e && e.message) || e), "da-err");
+    return { status: "error", message: "Terminal connection failed. Re-authenticate, then retry." };
   }
   if (!got) con.write("(no output)", "da-dim");
   const h = hintFor(captured); if (h) con.write(h, "da-dim");
@@ -476,20 +480,19 @@ helpers.log("launchable terminal mounted below. If it says no launchable, connec
       code: `// Chat with your live OpenClaw agent over the /cli/gateway (helpers.openclawChat). It streams the
 // The terminal streams replies, tool calls, slash commands, and live gateway results.
 function connected() {
-  return !!(localStorage.getItem("nemoclaw_clawtoken") && (localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl")));
+  const c = helpers.getOpenClawConnection();
+  return !!(c.token && c.rawUrl);
 }
 
 // Reuse one operator socket; every slash query still hits the gateway fresh.
 let _gw = null;
 function gwUrl() {
-  let u = localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl") || "";
-  while (u.length && u[u.length - 1] === "/") u = u.slice(0, -1);
-  if (u.indexOf("https") === 0) u = "wss" + u.slice(5); else if (u.indexOf("http") === 0) u = "ws" + u.slice(4);
-  return u + "/cli/gateway";
+  const c = helpers.getOpenClawConnection();
+  return helpers.openclawGatewayWsUrl(c.rawUrl, c.accessJwt).url;
 }
 function gwCall(method, params) {
   return new Promise(function (resolve, reject) {
-    const token = localStorage.getItem("nemoclaw_clawtoken") || "";
+    const token = helpers.getOpenClawConnection().token;
     if (!token) return reject(new Error("Connect on Module 3a first (URL + token)."));
     function send(sock) {
       const id = Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -516,7 +519,7 @@ function gwCall(method, params) {
   });
 }
 const SLASH =["/help", "/clear", "/branch", "/reset", "/new", "/compact", "/model", "/models", "/usage", "/status", "/context", "/think", "/config", "/agents", "/subagents", "/mcp", "/tasks", "/review", "/whoami", "/commands"];
-const CHIPS =["/help", "/model", "/status", "/reset", "What can you do?", "Summarize your workspace and your SOUL.md", "List the files in your workspace"];
+const CHIPS =["/help", "/model", "/status", "/reset", "What can you do?", "Summarize your workspace and your SOUL.md", "Use exec to run ls -la /sandbox/.openclaw/workspace"];
 let session = "main";
 // Warm new sessions once so onboarding does not consume the first real question.
 const _warmP = {};
@@ -590,7 +593,10 @@ const con = helpers.mountConsole("#agent-chat", {
     try {
       const r = await helpers.openclawChat(msg, { session: session, view: view, signal: ctx.signal });
       if (!view.streamed) c.write(r || (isCmd ? "(done)" : "(no reply)"));
-    } catch (e) { c.write((e && e.message) || String(e), "da-err"); }
+    } catch (e) {
+      c.write((e && e.message) || String(e), "da-err");
+      return { status: "error", message: "Agent request failed. Read the message, then retry." };
+    }
     // /reset wipes the session back to fresh, so it will onboard again: re-warm it in the background.
     if (m === "/reset") { unmarkWarmed(session); warm(session); }
   },
