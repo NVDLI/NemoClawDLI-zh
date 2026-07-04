@@ -55,6 +55,13 @@ CODEMIRROR_CDN_SRI = {
 }
 
 
+def is_transient_generated_source(path: Path) -> bool:
+    """Exclude the short-lived ESM shim created by concurrent figure checks."""
+    return path.name == ".figcheck_shared.mjs" or (
+        path.name.startswith(".figcheck_shared-") and path.suffix == ".mjs"
+    )
+
+
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -69,6 +76,7 @@ def runtime_sources() -> list[Path]:
         for path in base.rglob("*")
         if path.is_file()
         and path.suffix.lower() in SOURCE_SUFFIXES
+        and not is_transient_generated_source(path)
         and not EXCLUDED_PARTS.intersection(path.parts)
     )
 
@@ -82,6 +90,7 @@ def browser_projection_sources() -> list[Path]:
         for path in base.rglob("*")
         if path.is_file()
         and path.suffix.lower() in SOURCE_SUFFIXES
+        and not is_transient_generated_source(path)
         and not {"vendor", "mats"}.intersection(path.parts)
     )
 
@@ -335,7 +344,13 @@ def self_test() -> tuple[int, int, list[str]]:
         probe_path = Path(probe.name)
         if probe_path not in runtime_sources():
             failures.append("working-tree discovery: untracked runtime source was not examined")
-    total = len(tests) + 2
+    with tempfile.NamedTemporaryFile(
+        dir=COURSE / "scripts", prefix=".figcheck_shared-", suffix=".mjs"
+    ) as probe:
+        probe_path = Path(probe.name)
+        if probe_path in browser_projection_sources():
+            failures.append("working-tree discovery: transient figure shim was examined")
+    total = len(tests) + 3
     return total - len(failures), total, failures
 
 

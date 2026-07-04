@@ -956,7 +956,9 @@ helpers.viz.sideBySide(
 
     const log = (...args) => {
       // Dicts and lists are pretty-printed + syntax-highlighted; plain values stay text.
-      s.logs.push(appendLogLine(logEl, args));
+      const el = appendLogLine(logEl, args);
+      s.logs.push(el);
+      return el;
     };
     // Capture a cell's console.{log,warn,error,info} into the panel log (warn/error tinted) and mirror to the real console, so console statements show in the panel, not just devtools.
     // Injected as a `console` parameter that shadows the global only inside the cell, never leaking.
@@ -1065,12 +1067,18 @@ helpers.viz.sideBySide(
       // Wrap each network helper so an error is logged into the panel's per-run log before bubbling, so a student's empty `catch (_) {}` cannot silently swallow 524s, JSON errors, or bad tool calls.
       // Sync stays sync, async keeps its promise, the wrapper rethrows; _raw is the unwrapped fn.
       function withErrLog(label, fn) {
+        const markLogged = (e) => {
+          if (e && (typeof e === "object" || typeof e === "function")) {
+            try { Object.defineProperty(e, "__courseHelperErrorLogged", { value: true, configurable: true }); } catch (_) {}
+          }
+          return e;
+        };
         const wrapped = function (...args) {
           let r;
           try { r = fn.apply(this, args); }
-          catch (e) { try { log(`✗ ${label} error: ${e.message || e}`); } catch (_) {} throw e; }
+          catch (e) { try { log(`✗ ${label} error: ${e.message || e}`); } catch (_) {} throw markLogged(e); }
           if (r && typeof r.then === "function")
-            return r.catch(e => { try { log(`✗ ${label} error: ${e.message || e}`); } catch (_) {} throw e; });
+            return r.catch(e => { try { log(`✗ ${label} error: ${e.message || e}`); } catch (_) {} throw markLogged(e); });
           return r;
         };
         wrapped._raw = fn;
@@ -1166,10 +1174,12 @@ helpers.viz.sideBySide(
         flowEdgesInto(nodeId, false);
         throw e;
       }
-      const err = document.createElement("div");
-      err.className = "cf-panel-error";
-      err.textContent = "✗ " + (e.name || "Error") + ": " + e.message;
-      outEl.appendChild(err);
+      if (!e.__courseHelperErrorLogged) {
+        const err = document.createElement("div");
+        err.className = "cf-panel-error";
+        err.textContent = "✗ " + (e.name || "Error") + ": " + e.message;
+        outEl.appendChild(err);
+      }
       // Surface where it failed: map the stack to a CodeMirror line, mark it, open the code dropdown, and append a Debug-info panel (snippet plus stack).
       const _ep = _parseErrLine(e);
       const _codeForErr = (s.cm ? s.cm.getValue() : s.code) || "";
@@ -1240,7 +1250,8 @@ helpers.viz.sideBySide(
         statusBar.textContent = "⏹ stopped after " + ran + " of " + nodes.length + " nodes";
         statusBar.className = "cf-status-bar";
       } else {
-        statusBar.textContent = "✗ stopped: " + e.message;
+        const failedNode = nodes[ran];
+        statusBar.textContent = "✗ stopped at " + (failedNode?.title || failedNode?.id || "failed step");
         statusBar.className = "cf-status-bar err";
       }
     } finally {
@@ -1672,13 +1683,15 @@ export function mountRunCell(targetSel, opts) {
     const _appendText = (text, color = "") => counted(_appendCellText(out, text, "cell-log-line", color));
     const _appendJson = (obj, label = null) => counted(_appendCellJson(out, obj, label));
     const log = (...args) => {
+      let last = null;
       const texts = [];
-      const flush = () => { if (texts.length) { _appendText(texts.join(" ")); texts.length = 0; } };
+      const flush = () => { if (texts.length) { last = _appendText(texts.join(" ")); texts.length = 0; } };
       args.forEach(a => {
-        if (a && typeof a === "object") { flush(); _appendJson(a); }
+        if (a && typeof a === "object") { flush(); last = _appendJson(a); }
         else texts.push(String(a));
       });
       flush();
+      return last;
     };
     _installStructuredLog(log, out, counted);
     const clear = () => { out.innerHTML = ""; outputCount = 0; };

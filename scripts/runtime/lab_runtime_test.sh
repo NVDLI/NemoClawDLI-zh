@@ -9,11 +9,15 @@ BUILD=1
 SMOKE=0
 RENDER_ONLY=0
 GATEWAY_ONLY=0
+CRON_CONTRACT=0
+TERMINAL_CONTRACT=0
+CHAT_CONTRACT=0
+ASSISTANT_ARTIFACTS=0
 URL=""
 
 usage() {
   cat <<'USAGE'
-Usage: scripts/runtime/lab_runtime_test.sh [--smoke] [--render-only] [--gateway-only] [--no-build] [URL]
+Usage: scripts/runtime/lab_runtime_test.sh [--smoke] [--render-only] [--gateway-only] [--cron-contract] [--terminal-contract] [--chat-contract] [--assistant-artifacts] [--no-build] [URL]
 
 Builds a small browser-test image with Node.js, playwright-core, and Chromium,
 then runs scripts/runtime/test_page_runtime.js from the repo bind-mounted read-only.
@@ -25,7 +29,11 @@ Examples:
   scripts/runtime/lab_runtime_test.sh --smoke
   scripts/runtime/lab_runtime_test.sh --render-only
   CLAW_URL=https://nemoclaw-<id>.brevlab.com CLAW_CF=<CF_Authorization> \
-    scripts/runtime/lab_runtime_test.sh --gateway-only
+  scripts/runtime/lab_runtime_test.sh --gateway-only
+  scripts/runtime/lab_runtime_test.sh --gateway-only --cron-contract
+  scripts/runtime/lab_runtime_test.sh --gateway-only --terminal-contract
+  scripts/runtime/lab_runtime_test.sh --gateway-only --chat-contract
+  NVIDIA_API_KEY=$NVIDIA_API_KEY scripts/runtime/lab_runtime_test.sh --assistant-artifacts
   scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html
   CLAW_URL=http://openclaw:8995 CLAW_TOKEN=dli-openclaw-token \
     scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/03a-kickstart.html
@@ -39,6 +47,7 @@ Environment:
   CLAW_URL=url                       OpenClaw base URL. Use Brev URL if local OpenClaw fails or shows EPERM.
   CLAW_TOKEN=token                   OpenClaw gateway bearer token; optional for Brev when /api/agent can discover it with CLAW_CF.
   CLAW_CF=jwt                        CF_Authorization value for remote Brev launchables.
+  OPENCLAW_CORS_PROXY_BASE=url       Override the OpenClaw relay for an explicit test deployment.
   PLAYWRIGHT_VERSION=1.55.0          Override build arg for the runtime image.
 USAGE
 }
@@ -49,6 +58,10 @@ while [[ $# -gt 0 ]]; do
     --smoke) SMOKE=1; shift ;;
     --render-only) RENDER_ONLY=1; shift ;;
     --gateway-only) GATEWAY_ONLY=1; shift ;;
+    --cron-contract) CRON_CONTRACT=1; shift ;;
+    --terminal-contract) TERMINAL_CONTRACT=1; shift ;;
+    --chat-contract) CHAT_CONTRACT=1; shift ;;
+    --assistant-artifacts) ASSISTANT_ARTIFACTS=1; shift ;;
     --no-build) BUILD=0; shift ;;
     --) shift; break ;;
     -*) echo "unknown option: $1" >&2; usage >&2; exit 2 ;;
@@ -86,7 +99,7 @@ fi
 
 run_args=(run --rm -v "$ROOT:/workspace:ro" -w /workspace -e NODE_PATH=/opt/nemoclaw-runtime/node_modules)
 test_cmd=(--entrypoint node "$IMAGE" scripts/runtime/test_page_runtime.js)
-for env_name in NVIDIA_API_KEY CLAW_URL CLAW_TOKEN CLAW_CF CLAW_ORIGIN DEBUG_WS CHROME_BIN PLAYWRIGHT_BROWSERS_PATH; do
+for env_name in NVIDIA_API_KEY NVIDIA_API_URL CLAW_URL CLAW_TOKEN CLAW_CF CLAW_ORIGIN OPENCLAW_CORS_PROXY_BASE DEBUG_WS CHROME_BIN PLAYWRIGHT_BROWSERS_PATH; do
   if [[ -n "${!env_name:-}" ]]; then
     run_args+=(-e "$env_name=${!env_name}")
   fi
@@ -103,12 +116,29 @@ fi
 if [[ "$GATEWAY_ONLY" == "1" ]]; then
   node_args+=(--gateway-only --serve-static)
 fi
+if [[ "$CRON_CONTRACT" == "1" ]]; then
+  [[ "$GATEWAY_ONLY" == "1" ]] || { echo "--cron-contract requires --gateway-only" >&2; exit 2; }
+  node_args+=(--cron-contract)
+fi
+if [[ "$TERMINAL_CONTRACT" == "1" ]]; then
+  [[ "$GATEWAY_ONLY" == "1" ]] || { echo "--terminal-contract requires --gateway-only" >&2; exit 2; }
+  node_args+=(--terminal-contract)
+fi
+if [[ "$CHAT_CONTRACT" == "1" ]]; then
+  [[ "$GATEWAY_ONLY" == "1" ]] || { echo "--chat-contract requires --gateway-only" >&2; exit 2; }
+  node_args+=(--chat-contract)
+fi
+if [[ "$ASSISTANT_ARTIFACTS" == "1" ]]; then
+  node_args+=(--assistant-artifacts --serve-static)
+fi
 
 if [[ -z "$URL" ]]; then
   if [[ "$GATEWAY_ONLY" == "1" ]]; then
     URL="http://127.0.0.1:4173/nemoclaw/03a-kickstart.html"
   elif [[ "$RENDER_ONLY" == "1" ]]; then
     URL="http://127.0.0.1:4173/nemoclaw/01a-loop.html"
+  elif [[ "$ASSISTANT_ARTIFACTS" == "1" ]]; then
+    URL="http://127.0.0.1:4173/nemoclaw/02b-rag.html"
   fi
 fi
 
@@ -123,7 +153,7 @@ case "$URL" in
     ;;
 esac
 
-if [[ "$RENDER_ONLY" == "1" || "$GATEWAY_ONLY" == "1" ]]; then
+if [[ "$RENDER_ONLY" == "1" || "$GATEWAY_ONLY" == "1" || "$ASSISTANT_ARTIFACTS" == "1" ]]; then
   exec "$ENGINE" "${run_args[@]}" "${test_cmd[@]}" "${node_args[@]}" "$URL"
 fi
 

@@ -30,6 +30,7 @@ const path = require('path');
 const { chromium } = require('playwright-core');
 
 const root = process.env.SITE_ROOT || '/site';
+const sourceMode = process.env.SOURCE_MODE === '1';
 const pagePath = process.env.PAGE_PATH || '/nemoclaw/03a-kickstart.html';
 const port = Number(process.env.SITE_PORT || 4197);
 const timeoutMs = Number(process.env.AUDIT_TIMEOUT_MS || 120000);
@@ -37,7 +38,9 @@ const screenshot = process.env.SCREENSHOT_PATH || '';
 const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json; charset=utf-8', '.svg':'image/svg+xml', '.png':'image/png' };
 
 function safeJoin(base, urlPath) {
-  const clean = decodeURIComponent(urlPath.split('?')[0]).replace(/^\/+/, '');
+  const decoded = decodeURIComponent(urlPath.split('?')[0]);
+  const projected = decoded.startsWith('/lab/static/') ? decoded.slice('/lab/static/'.length) : decoded;
+  const clean = projected.replace(/^\/+/, '');
   const out = path.resolve(base, clean);
   if (!out.startsWith(path.resolve(base))) throw new Error('path escape');
   return out;
@@ -47,6 +50,11 @@ const server = http.createServer((req, res) => {
   try { file = safeJoin(root, req.url || '/'); } catch (_) { res.writeHead(403); res.end('forbidden'); return; }
   if (fs.existsSync(file) && fs.statSync(file).isDirectory()) file = path.join(file, 'index.html');
   fs.readFile(file, (err, data) => {
+    if (err && sourceMode && path.basename(file) === 'languages.json') {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end('{"languages":[]}');
+      return;
+    }
     if (err) { res.writeHead(404); res.end('not found'); return; }
     res.writeHead(200, { 'content-type': mime[path.extname(file)] || 'application/octet-stream' });
     res.end(data);
@@ -64,14 +72,49 @@ function fail(message) { throw new Error(message); }
   const consoleErrors = [];
   page.on('pageerror', err => pageErrors.push(err.message || String(err)));
   page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
+  page.on('response', response => {
+    if (response.status() >= 400) consoleErrors.push(`HTTP ${response.status()}: ${response.url()}`);
+  });
   const url = `http://127.0.0.1:${port}${pagePath}`;
   await page.goto(url, { waitUntil: 'networkidle', timeout: timeoutMs });
 
   const result = await page.evaluate(async () => {
+    const retired = 'https://retired-personal-relay.' + 'workers.dev/https/nemoclaw-test123.brevlab.com';
+    localStorage.removeItem('nemoclaw_clawrawurl');
+    localStorage.setItem('nemoclaw_clawurl', retired);
     const host = document.createElement('section');
     host.id = 'frame-lifecycle-audit';
     (document.querySelector('main') || document.body).prepend(host);
     const mod = await import('/nemoclaw/scripts/_openclaw.js?frame-lifecycle-audit=' + Date.now());
+    mod.mountClawProbe(host, {
+      defaultUrl: '', defaultToken: '', intro: '', actions: [],
+      cfAccess: true, proxyControls: true, syncCanvas: true,
+    });
+    const urlInput = host.querySelector('.claw-url');
+    const proxyToggle = host.querySelector('.claw-proxy-enabled');
+    const proxyInput = host.querySelector('.claw-proxy-base');
+    const approved = 'https://openclaw-cors-proxy.experiments.courses.nvidia.com';
+    if (urlInput.value !== 'https://nemoclaw-test123.brevlab.com')
+      throw new Error('retired saved URL was not healed: ' + urlInput.value);
+    if (!proxyToggle.checked || proxyInput.value !== approved)
+      throw new Error('relay controls did not default to NVIDIA: ' + proxyInput.value);
+    if ((localStorage.getItem('nemoclaw_clawurl') || '').includes('workers.dev'))
+      throw new Error('retired worker survived localStorage migration');
+    proxyToggle.checked = false;
+    proxyToggle.dispatchEvent(new Event('change'));
+    if (localStorage.getItem('nemoclaw_clawurl') !== 'https://nemoclaw-test123.brevlab.com')
+      throw new Error('relay toggle off did not select direct route');
+    proxyToggle.checked = true;
+    proxyToggle.dispatchEvent(new Event('change'));
+    if (!(localStorage.getItem('nemoclaw_clawurl') || '').startsWith(approved + '/https/nemoclaw-test123.brevlab.com'))
+      throw new Error('relay toggle on did not restore NVIDIA route');
+    const connection = {
+      raw: localStorage.getItem('nemoclaw_clawrawurl'),
+      effective: localStorage.getItem('nemoclaw_clawurl'),
+      proxyEnabled: proxyToggle.checked,
+      proxyBase: proxyInput.value,
+    };
+    host.innerHTML = '';
     const realFetch = window.fetch;
     let queued = [];
     window.fetch = async () => {
@@ -85,6 +128,7 @@ function fail(message) { throw new Error(message); }
       defaultToken: '',
       intro: '',
       actions: [],
+      unexpectedHtmlHint: 'synthetic API-path warning',
     });
     const action = { path: '/probe' };
     const frameState = () => {
@@ -115,6 +159,16 @@ function fail(message) { throw new Error(message); }
     await probe.run(action);
     const html = frameState();
     assertVisible('HTML response', html);
+
+    queued.push(new Response('<!doctype html><title>OpenClaw Control</title><openclaw-app></openclaw-app>', {
+      status: 200, headers: { 'content-type': 'text/html' },
+    }));
+    await probe.run({ path: '/healthz', expectJson: true });
+    const unexpectedApiHtml = frameState();
+    assertCleared('HTML response for JSON API action', unexpectedApiHtml);
+    const unexpectedApiOutput = host.querySelector('.claw-out')?.textContent || '';
+    if (!unexpectedApiOutput.includes('synthetic API-path warning'))
+      throw new Error('JSON API action did not explain the unexpected HTML response: ' + unexpectedApiOutput);
 
     queued.push(new Response(JSON.stringify({ ok: true }), {
       status: 200, headers: { 'content-type': 'application/json' },
@@ -154,7 +208,7 @@ function fail(message) { throw new Error(message); }
     const remount = frameState();
     if (remount.exists) throw new Error('remount retained an HTML frame: ' + JSON.stringify(remount));
     window.fetch = realFetch;
-    return { html, json, networkError, accessWarning, remount };
+    return { connection, html, unexpectedApiHtml, json, networkError, accessWarning, remount };
   });
 
   await page.reload({ waitUntil: 'networkidle', timeout: timeoutMs });
@@ -211,6 +265,7 @@ def main() -> int:
     cmd += [
         "-e", "NODE_PATH=/opt/nemoclaw-runtime/node_modules",
         "-e", "SITE_ROOT=/site",
+        "-e", f"SOURCE_MODE={int(site_root == (ROOT / 'web').resolve())}",
         "-e", f"PAGE_PATH={args.page}",
         "-e", f"AUDIT_TIMEOUT_MS={args.timeout_ms}",
         "-v", f"{site_root}:/site:ro",

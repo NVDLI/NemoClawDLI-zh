@@ -274,7 +274,7 @@
       code: `// Describe a goal in plain words; the agent plans the shell commands it would run.
 // The cell runs each in YOUR sandbox and shows the command, its output, and its exit code.
 helpers.mountChatUI("#trajectory-artifact", {
-  disabled: () => !(localStorage.getItem("nemoclaw_clawtoken") && (localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl"))),
+  disabled: () => { const c = helpers.getOpenClawConnection(); return !(c.token && c.rawUrl); },
   disabledMsg: "Primeiro conecte o launchable no Módulo 3a. Este exercício executa comandos em seu sandbox.",
   greeting: "Descreva um objetivo. Vou planejar os comandos de shell que um agente usaria, executá-los em ordem no sandbox e mostrar cada resultado. Observe o que cada comando revela: um segredo exibido na tela já vazou, mesmo que a rede bloqueie uma etapa posterior.",
   models: [
@@ -614,7 +614,8 @@ helpers.log("");
 helpers.log(p.status || "(no status header returned)");
 
 if (!p.policy) {
-  helpers.log("\\n(não foi possível interpretar a política. Mantenha o launchable aberto em outra aba para preservar a sessão do Cloudflare Access, execute novamente e confira o nome com: openshell sandbox list)");
+  helpers.log("\\nNão foi possível interpretar a política ativa: " + (p.parseError || "erro desconhecido do analisador"));
+  helpers.log("Mantenha o launchable aberto em outra aba, execute novamente e confira o nome com: openshell sandbox list");
   helpers.log.details("saída bruta", p.raw);
   return;
 }

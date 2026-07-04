@@ -15,8 +15,9 @@ standalone runtime modules, styles, data, machine-contract pages, and untranslat
 Each `i18n/<code>/localization_state.json` allow-lists localized HTML and reviewed SVGs whose embedded text
 differs by language. Other assets stay canonical.
 During a build, `assemble_locale_overlay.py` copies canonical `web/` and applies only those declared
-files. The audit requires equivalent HTML and executable structure while allowing localized UI
-strings inside a page. Everything else is inherited verbatim.
+files. The audit requires equivalent HTML, executable structure, identifiers, routes, and protocol
+literals. Reviewed prompts, logs, errors, and comments inside runnable cells remain localized.
+Everything else is inherited verbatim.
 
 Do not copy runtime files into `i18n/`. If a localized page needs different behavior, make the
 canonical runtime locale-aware and test both languages. Localized SVGs are the narrow asset
@@ -66,7 +67,7 @@ python3 scripts/translate/translate_html_segments.py \
 # 4. Add the HTML path to localization_state.json. Review every block in Studio.
 #    Repair calques manually and add reusable failures to profile.json unfit_phrases.
 #    Keep executable structure, identifiers, URLs, product names, cited titles,
-#    model prompts, and skill-meta canonical.
+#    API/config literals, and skill-meta canonical. Translate learner-facing prompts and output.
 
 # 5. Accept only the exact English base that a human reviewed.
 python3 scripts/validation/localization_audit.py \

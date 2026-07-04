@@ -59,6 +59,23 @@ const PT_TEXT = new Map(Object.entries({
   "click a row to inspect & edit its source": "clique em uma linha para inspecionar e editar o código-fonte",
   "in scope for this cell. Click a row to read its source": "disponível nesta célula. Clique em uma linha para ler o código-fonte",
   "✓ API key saved for this browser": "✓ Chave de API salva neste navegador",
+  "Chat route:": "Rota de chat:",
+  "Embedding route:": "Rota de embeddings:",
+  "Chat API base URL": "URL base da API de chat",
+  "Chat model ID": "ID do modelo de chat",
+  "Chat API bearer key (NVIDIA keys start with": "Chave bearer da API de chat (chaves NVIDIA começam com",
+  "Embedding route (persistent and independent)": "Rota de embeddings (persistente e independente)",
+  "Embedding exercises keep this route when the chat route changes.": "Os exercícios de embeddings mantêm esta rota quando a rota de chat muda.",
+  "Embedding API base URL": "URL base da API de embeddings",
+  "Embedding model ID": "ID do modelo de embeddings",
+  "Embedding API bearer key": "Chave bearer da API de embeddings",
+  "Base URL": "URL base",
+  "Bearer token": "Token bearer",
+  "CF Access JWT": "JWT do CF Access",
+  "Hosted relay": "Relay hospedado",
+  "Relay URL": "URL do relay",
+  "Use for cross-origin Brev connections": "Usar em conexões do Brev entre origens",
+  "saved separately": "salva separadamente",
   "Model endpoint:": "Endpoint do modelo:",
   "Model API base URL": "URL base da API de modelos",
   "Custom endpoint uses direct browser requests": "O endpoint personalizado usa requisições diretas do navegador",
@@ -72,16 +89,32 @@ const PT_TEXT = new Map(Object.entries({
   "Key should start with nvapi-": "A chave deve começar com nvapi-",
   "Enter the key for this endpoint": "Informe a chave deste endpoint",
   "Verifying?": "Verificando…",
+  "Discovering models and verifying…": "Descobrindo modelos e verificando…",
   "✓ Connected.": "✓ Conectado.",
   "Model API base URL must use HTTPS": "A URL base da API de modelos deve usar HTTPS",
   "Model API base URL cannot include credentials, query parameters, or a fragment": "A URL base da API de modelos não pode conter credenciais, parâmetros de consulta ou fragmento",
+  "Model ID must be one non-empty value without spaces": "O ID do modelo deve ser um único valor não vazio e sem espaços",
+  "localhost points to this browser, not the Brev VM. Expose port 5000 with Brev Using Tunnels and paste its HTTPS URL ending in /v1": "localhost aponta para este navegador, não para a VM do Brev. Exponha a porta 5000 com Using Tunnels e cole a URL HTTPS terminada em /v1",
+  "A Brev Jupyter /lab URL is not a model API. Expose port 5000 with Brev Using Tunnels and paste its HTTPS URL ending in /v1": "Uma URL /lab do Jupyter no Brev não é uma API de modelo. Exponha a porta 5000 com Using Tunnels e cole a URL HTTPS terminada em /v1",
+  "The default embedding route needs an nvapi- key": "A rota padrão de embeddings precisa de uma chave nvapi-",
+  "Enter the key for the embedding route": "Informe a chave da rota de embeddings",
+  "model discovery returned no model IDs": "A descoberta de modelos não retornou IDs de modelo",
+  "embedding model discovery returned no model IDs": "A descoberta de modelos de embeddings não retornou IDs de modelo",
+  "Brev fallback: expose port 5000 with Using Tunnels, make the tunnel public, then paste its /v1 URL, key EMPTY, and served model ID. A private tunnel cannot accept cross-origin course requests. Do not paste the Jupyter /lab URL or localhost.": "Fallback do Brev: exponha a porta 5000 com Using Tunnels, torne o túnel público e cole a URL /v1, a chave EMPTY e o ID do modelo servido. Um túnel privado não aceita requisições do curso entre origens. Não cole a URL /lab do Jupyter nem localhost.",
+  "Open Brev connectivity steps →": "Abrir as etapas de conectividade do Brev →",
+  "Model discovery did not return JSON. Confirm the Brev tunnel is public, then try again": "A descoberta de modelos não retornou JSON. Confirme que o túnel do Brev é público e tente novamente",
+  "A presenter can prefill ?base_url=...&model=.... Save once; every lesson reuses both routes.": "O instrutor pode preencher ?base_url=...&model=.... Salve uma vez; todas as aulas reutilizam as duas rotas.",
   "Free-tier models cover every exercise. A presenter can prefill one compatible endpoint with": "Os modelos gratuitos atendem a todos os exercícios. O instrutor pode preencher previamente um endpoint compatível com",
   ". Review it, then Save & verify once; every lesson reuses it.": ". Revise o endereço e selecione Salvar e verificar uma vez para que todas as aulas reutilizem essa configuração."
 }));
 
 const PT_PREFIXES = new Map(Object.entries({
   "✓ Connected. Model replied: ": "✓ Conectado. O modelo respondeu: ",
-  "Connection failed: ": "Falha na conexão: "
+  "Connection failed: ": "Falha na conexão: ",
+  "Model ID is not served by this endpoint. Choose one of: ": "O ID do modelo não é servido por este endpoint. Escolha um destes: ",
+  "Embedding model ID is not served by this endpoint. Choose one of: ": "O ID do modelo de embeddings não é servido por este endpoint. Escolha um destes: ",
+  "model discovery failed: ": "a descoberta de modelos falhou: ",
+  "embedding model discovery failed: ": "a descoberta de modelos de embeddings falhou: "
 }));
 
 const PT_ATTRS = new Map(Object.entries({
@@ -115,6 +148,16 @@ const ES_TEXT = new Map(Object.entries({
   "empty until you Run": "vacío hasta ejecutar", "reset. empty until you Run": "restablecido; vacío hasta ejecutar",
   "click to collapse": "pulse para contraer", "click to expand": "pulse para ampliar",
   "✓ API key saved for this browser": "✓ Clave de API guardada en este navegador",
+  "Chat route:": "Ruta de chat:", "Embedding route:": "Ruta de embeddings:",
+  "Chat API base URL": "URL base de la API de chat", "Chat model ID": "ID del modelo de chat",
+  "Chat API bearer key (NVIDIA keys start with": "Clave bearer de la API de chat (las claves NVIDIA empiezan por",
+  "Embedding route (persistent and independent)": "Ruta de embeddings (persistente e independiente)",
+  "Embedding exercises keep this route when the chat route changes.": "Los ejercicios de embeddings conservan esta ruta cuando cambia la ruta de chat.",
+  "Embedding API base URL": "URL base de la API de embeddings", "Embedding model ID": "ID del modelo de embeddings",
+  "Embedding API bearer key": "Clave bearer de la API de embeddings", "saved separately": "guardada por separado",
+  "Base URL": "URL base", "Bearer token": "Token bearer", "CF Access JWT": "JWT de CF Access",
+  "Hosted relay": "Relay alojado", "Relay URL": "URL del relay",
+  "Use for cross-origin Brev connections": "Usar para conexiones de Brev entre orígenes",
   "Model endpoint:": "Endpoint del modelo:", "Model API base URL": "URL base de la API de modelos",
   "Custom endpoint uses direct browser requests": "El endpoint personalizado usa solicitudes directas del navegador",
   "Enable LMS/static iframe execution": "Activar la ejecución en iframe LMS/estático",
@@ -122,9 +165,20 @@ const ES_TEXT = new Map(Object.entries({
   "API bearer key (NVIDIA keys start with": "Clave bearer de la API (las claves NVIDIA empiezan por",
   "Key should start with nvapi-": "La clave debe comenzar por nvapi-",
   "Enter the key for this endpoint": "Introduzca la clave de este endpoint",
-  "Verifying?": "Verificando…", "✓ Connected.": "✓ Conectado.",
+  "Verifying?": "Verificando…", "Discovering models and verifying…": "Descubriendo modelos y verificando…", "✓ Connected.": "✓ Conectado.",
   "Model API base URL must use HTTPS": "La URL base de la API de modelos debe usar HTTPS",
   "Model API base URL cannot include credentials, query parameters, or a fragment": "La URL base de la API de modelos no puede incluir credenciales, parámetros de consulta ni fragmentos",
+  "Model ID must be one non-empty value without spaces": "El ID del modelo debe ser un único valor no vacío y sin espacios",
+  "localhost points to this browser, not the Brev VM. Expose port 5000 with Brev Using Tunnels and paste its HTTPS URL ending in /v1": "localhost apunta a este navegador, no a la VM de Brev. Exponga el puerto 5000 con Using Tunnels y pegue su URL HTTPS terminada en /v1",
+  "A Brev Jupyter /lab URL is not a model API. Expose port 5000 with Brev Using Tunnels and paste its HTTPS URL ending in /v1": "Una URL /lab de Jupyter en Brev no es una API de modelo. Exponga el puerto 5000 con Using Tunnels y pegue su URL HTTPS terminada en /v1",
+  "The default embedding route needs an nvapi- key": "La ruta predeterminada de embeddings necesita una clave nvapi-",
+  "Enter the key for the embedding route": "Introduzca la clave de la ruta de embeddings",
+  "model discovery returned no model IDs": "El descubrimiento de modelos no devolvió IDs de modelo",
+  "embedding model discovery returned no model IDs": "El descubrimiento de modelos de embeddings no devolvió IDs de modelo",
+  "Brev fallback: expose port 5000 with Using Tunnels, make the tunnel public, then paste its /v1 URL, key EMPTY, and served model ID. A private tunnel cannot accept cross-origin course requests. Do not paste the Jupyter /lab URL or localhost.": "Alternativa de Brev: exponga el puerto 5000 con Using Tunnels, haga público el túnel y pegue la URL /v1, la clave EMPTY y el ID del modelo servido. Un túnel privado no acepta solicitudes del curso entre orígenes. No pegue la URL /lab de Jupyter ni localhost.",
+  "Open Brev connectivity steps →": "Abrir los pasos de conectividad de Brev →",
+  "Model discovery did not return JSON. Confirm the Brev tunnel is public, then try again": "El descubrimiento de modelos no devolvió JSON. Confirme que el túnel de Brev sea público e inténtelo de nuevo",
+  "A presenter can prefill ?base_url=...&model=.... Save once; every lesson reuses both routes.": "El instructor puede precompletar ?base_url=...&model=.... Guarde una vez; todas las lecciones reutilizan ambas rutas.",
   "Free-tier models cover every exercise. A presenter can prefill one compatible endpoint with": "Los modelos gratuitos cubren todos los ejercicios. El instructor puede precompletar un endpoint compatible con",
   ". Review it, then Save & verify once; every lesson reuses it.": ". Revise la dirección y seleccione Guardar y verificar una vez para que todas las lecciones reutilicen esa configuración.",
   "Change": "Cambiar", "Save & verify": "Guardar y verificar", "No key yet?": "¿Aún no tiene una clave?",
@@ -133,7 +187,11 @@ const ES_TEXT = new Map(Object.entries({
 
 const ES_PREFIXES = new Map(Object.entries({
   "✓ Connected. Model replied: ": "✓ Conectado. El modelo respondió: ",
-  "Connection failed: ": "Error de conexión: "
+  "Connection failed: ": "Error de conexión: ",
+  "Model ID is not served by this endpoint. Choose one of: ": "El ID del modelo no se sirve en este endpoint. Elija uno de estos: ",
+  "Embedding model ID is not served by this endpoint. Choose one of: ": "El ID del modelo de embeddings no se sirve en este endpoint. Elija uno de estos: ",
+  "model discovery failed: ": "falló el descubrimiento de modelos: ",
+  "embedding model discovery failed: ": "falló el descubrimiento de modelos de embeddings: "
 }));
 
 const ES_ATTRS = new Map(Object.entries({
@@ -147,7 +205,7 @@ const ES_ATTRS = new Map(Object.entries({
   "the saved nvapi key was refused (401/403). Re-enter it on Module 1a.": "la clave nvapi guardada fue rechazada (401/403). Introdúzcala de nuevo en el Módulo 1a."
 }));
 
-const LOCALIZED_UI = "#journey-map,.topbar,.cf-wrap,.rc-card,.chatui,.key-panel";
+const LOCALIZED_UI = "#journey-map,.topbar,.cf-wrap,.rc-card,.chatui,.key-panel,.claw-probe";
 
 function localeMaps() {
   const locale = document.documentElement.lang.toLowerCase();

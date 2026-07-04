@@ -20,9 +20,9 @@ OPENCLAW_PROXY = "https://openclaw-cors-proxy.experiments.courses.nvidia.com"
 
 CHECKS = [
     (
-        "runtime supports one explicit model endpoint",
+        "runtime supports independent chat and embedding routes",
         "web/nemoclaw/scripts/_shared.js",
-        ["DEFAULT_MODEL_API_BASE_URL", "MODEL_API_BASE_URL_KEY", "normalizeModelApiBaseUrl", "getModelApiBaseUrl", "export function setModelApiBaseUrl(raw)", 'params.get("base_url")'],
+        ["DEFAULT_MODEL_API_BASE_URL", "MODEL_API_BASE_URL_KEY", "EMBEDDING_API_BASE_URL_KEY", "normalizeModelApiBaseUrl", "getModelApiBaseUrl", "getEmbeddingApiBaseUrl", "export function setModelApiBaseUrl(raw)", "export function setEmbeddingApiBaseUrl(raw)", 'params.get("base_url")', '.get("embedding_base_url")'],
         [r"function\s+suggestedModelApiBaseUrl[\s\S]{0,500}localStorage\.setItem"],
     ),
     (
@@ -44,15 +44,15 @@ CHECKS = [
         [r'if\s*\(cfg\.iframeProxy\).*X-BILLING-SOURCE', r'if\s*\(iframeProxyModeEnabled\(\)\).*X-BILLING-SOURCE'],
     ),
     (
-        "key panel exposes endpoint and iframe controls",
+        "key panel exposes independent routes and iframe controls",
         "web/nemoclaw/scripts/_keypanel.js",
-        ['<input type="url" class="model-api-base-url"', "normalizeModelApiBaseUrl(endpointInput.value)", "setModelApiBaseUrl(endpoint)", "setIframeProxyMode(defaultEndpoint &&", "iframe-proxy-toggle", "Enable LMS/static iframe execution"],
+        ['<input type="url" class="model-api-base-url"', '<input type="url" class="embedding-api-base-url"', "normalizeModelApiBaseUrl(endpointInput.value)", "normalizeModelApiBaseUrl(embeddingEndpointInput.value)", "setModelApiBaseUrl(endpoint)", "setEmbeddingApiBaseUrl(embeddingEndpoint)", "setIframeProxyMode(defaultEndpoint &&", "iframe-proxy-toggle", "Enable LMS/static iframe execution"],
         [],
     ),
     (
         "landing page names iframe mode as opt-in",
         "web/nemoclaw/index.html",
-        ["selected endpoint", "A custom endpoint belongs here only", "hosted CORS relay is limited"],
+        ["sends each saved key only to its selected endpoint", "chat endpoint belongs here only", "hosted CORS relay is limited"],
         [],
     ),
     (
@@ -72,6 +72,25 @@ CHECKS = [
         "scripts/cors-proxy/cors-proxy-worker-openclaw.js",
         ["x-openclaw-session-key", "CF-Access-Jwt-Assertion"],
         [r"X-BILLING-SOURCE"],
+    ),
+    (
+        "OpenClaw relay is centralized, persistent, and optional",
+        "web/nemoclaw/scripts/_connection.js",
+        [OPENCLAW_PROXY, "OPENCLAW_PROXY_BASE_KEY", "OPENCLAW_PROXY_ENABLED_KEY", 'params.get("openclaw_proxy")', 'params.get("openclaw_proxy_base")', "migrateOpenClawConnectionStorage", "shouldProxyOpenClaw", "upstream.origin !== loc.origin"],
+        [],
+    ),
+    (
+        "OpenClaw probe exposes shared relay controls",
+        "web/nemoclaw/03a-kickstart.html",
+        ["proxyControls: true", "?openclaw_proxy_base=...", "?openclaw_proxy=1", "TRANSPORT = 'configured'"],
+        [r'proxyBase\s*:\s*"https://openclaw-cors-proxy'],
+    ),
+    (
+        "OpenShell terminal reuses OpenClaw routing with authenticated direct fallback",
+        "web/nemoclaw/scripts/_openshell.js",
+        ['getOpenClawConnection', 'openclawWebSocketUrl(rawUrl, "/ws/terminal?cmd="',
+         '{ enabled: false, base: "" }', '[direct.url, routed.url]'],
+        [r'rawUrl\.replace\(\^https[\s\S]{0,120}/ws/terminal'],
     ),
 ]
 
@@ -179,12 +198,18 @@ def source_findings(root: Path = ROOT, replacements: dict[str, tuple[str, str]] 
 def self_test() -> list[str]:
     failures: list[str] = []
     cases = (
-        ("saved model endpoint", "web/nemoclaw/scripts/_shared.js", "export function setModelApiBaseUrl(raw)", "function removedModelSetter(raw)"),
+        ("saved chat endpoint", "web/nemoclaw/scripts/_shared.js", "export function setModelApiBaseUrl(raw)", "function removedModelSetter(raw)"),
+        ("saved embedding endpoint", "web/nemoclaw/scripts/_shared.js", "export function setEmbeddingApiBaseUrl(raw)", "function removedEmbeddingSetter(raw)"),
         ("explicit setup field", "web/nemoclaw/scripts/_keypanel.js", '<input type="url" class="model-api-base-url"', '<input type="url" class="removed-endpoint-field"'),
         ("custom endpoint bypasses iframe relay", "web/nemoclaw/scripts/_keypanel.js", "setIframeProxyMode(defaultEndpoint &&", "setIframeProxyMode(true &&"),
         ("custom endpoint omits NVIDIA attribution", "web/nemoclaw/scripts/_shared.js", "if (billingAttributionEnabled(cfg.url))", "if (true)"),
         ("credential destination warning", "web/nemoclaw/index.html", "selected endpoint", "configured service"),
         ("OpenClaw excludes model billing attribution", "scripts/cors-proxy/cors-proxy-worker-openclaw.js", "x-openclaw-session-key, Accept", "x-openclaw-session-key, X-BILLING-SOURCE, Accept"),
+        ("OpenClaw relay toggle", "web/nemoclaw/scripts/_connection.js", 'params.get("openclaw_proxy")', 'params.get("removed_openclaw_proxy")'),
+        ("OpenClaw same-origin bypass", "web/nemoclaw/scripts/_connection.js", "upstream.origin !== loc.origin", "true"),
+        ("OpenClaw probe controls", "web/nemoclaw/03a-kickstart.html", "proxyControls: true", "proxyControls: false"),
+        ("OpenShell shared routing", "web/nemoclaw/scripts/_openshell.js", 'openclawWebSocketUrl(rawUrl, "/ws/terminal?cmd="', 'removedWebSocketRouter(rawUrl, "/ws/terminal?cmd="'),
+        ("OpenShell direct terminal fallback", "web/nemoclaw/scripts/_openshell.js", '[direct.url, routed.url]', '[routed.url]'),
     )
     for label, rel, old, new in cases:
         if not source_findings(replacements={rel: (old, new)}):

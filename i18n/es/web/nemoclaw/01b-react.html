@@ -378,7 +378,7 @@ if (cfg.needsKey && !helpers.getKey()) {
 
 helpers.log("loading LangChain ...");
 const { ChatOpenAI, tool, createReactAgent, MemorySaver, z } =
-  await import("./vendor/langchain-1.4.7.esm.min.js");
+  await import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href);
 
 const PAGES   = helpers.coursePages();             // includes "overview" (the course home)
 const baseURL = cfg.url.startsWith("http") ? cfg.url : (window.location.origin + cfg.url);
@@ -394,20 +394,12 @@ const SYSTEM  =
 // One createReactAgent per model; each keeps its own MemorySaver for multi-turn.
 const agents = {};
 function getAgent(model) {
-  if (!agents[model]) {
-    // Strip OpenAI SDK x-stainless-* headers before CORS preflight.
-    const _fetchNoStainless = (url, init) => {
-      if (init && init.headers) {
-        const h = init.headers instanceof Headers ? init.headers : new Headers(init.headers);
-        for (const k of [...h.keys()]) { if (k.startsWith("x-stainless")) h.delete(k); }
-        init = { ...init, headers: h };
-      }
-      return fetch(url, init);
-    };
+  const activeModel = helpers.isDefaultModelApiBaseUrl(cfg.url) ? model : cfg.model;
+  if (!agents[activeModel]) {
     const llm = new ChatOpenAI({
-      configuration: { baseURL, dangerouslyAllowBrowser: true, fetch: _fetchNoStainless },
+      configuration: { baseURL, dangerouslyAllowBrowser: true, fetch: helpers.browserChatFetch() },
       apiKey: cfg.needsKey ? helpers.getKey() : "no-key-needed",
-      model, temperature: 0, maxTokens: 16384,
+      model: activeModel, temperature: 0, maxTokens: 16384,
     });
     const readCoursePage = tool(
       async ({ page }) => await helpers.coursePage(page),
@@ -415,9 +407,9 @@ function getAgent(model) {
         description: "Read a page of THIS course and return its text as markdown.",
         schema: z.object({ page: z.enum(PAGES.map(p => p.id)).describe("which page, e.g. 01b-react") }) },
     );
-    agents[model] = createReactAgent({ llm, tools: [readCoursePage], checkpointer: new MemorySaver() });
+    agents[activeModel] = createReactAgent({ llm, tools: [readCoursePage], checkpointer: new MemorySaver() });
   }
-  return agents[model];
+  return agents[activeModel];
 }
 
 // The artifact is a live chat panel, not a transcript dump.

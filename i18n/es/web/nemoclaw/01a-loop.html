@@ -1385,7 +1385,7 @@ if (cfg.needsKey) {
   headers.Authorization = "Bearer " + KEY;
 }
 const body = {
-  model: "nvidia/nemotron-3-nano-30b-a3b",
+  model: cfg.model,
   messages: [{ role: "user", content: "In one sentence: who runs you?" }],
   max_tokens: 8196,  // a reasoning model spends tokens thinking first. Leave room for the answer
 };
@@ -1395,7 +1395,7 @@ log("→ POST " + url);
 log.details("request (key redacted)", { headers: { ...headers, Authorization: "Bearer nvapi-...redacted" }, body });
 
 // 2) Send it, then read what comes BACK.
-const r = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+const r = await helpers.browserChatFetch()(url, { method: "POST", headers, body: JSON.stringify(body) });
 log("← HTTP " + r.status + " " + r.statusText);
 // Check HTTP status before parsing so failures show the real response body.
 if (!r.ok) {

@@ -19,6 +19,7 @@ NODE_RUNNER = ROOT / "scripts" / "runtime" / "run_node.sh"
 FILES = {
     "kickstart": ROOT / "web" / "nemoclaw" / "03a-kickstart.html",
     "openclaw_js": ROOT / "web" / "nemoclaw" / "scripts" / "_openclaw.js",
+    "connection_js": ROOT / "web" / "nemoclaw" / "scripts" / "_connection.js",
     "cors_worker": ROOT / "scripts" / "cors-proxy" / "cors-proxy-worker-openclaw.js",
     "runtime_js": ROOT / "scripts" / "runtime" / "test_page_runtime.js",
     "runtime_sh": ROOT / "scripts" / "runtime" / "lab_runtime_test.sh",
@@ -29,21 +30,24 @@ FILES = {
     "gateway_token_audit": ROOT / "scripts" / "validation" / "gateway_token_audit.mjs",
     "gw_transport_audit": ROOT / "scripts" / "validation" / "gw_connect_transport_audit.mjs",
     "gw_recover_compile_audit": ROOT / "scripts" / "validation" / "gw_recover_compile_audit.mjs",
+    "connection_audit": ROOT / "scripts" / "validation" / "openclaw_connection_audit.mjs",
 }
 
 REQUIRED = {
     "kickstart": ["EPERM", "Brev App URL", "CF_Authorization", "Fail-fast backup"],
-    "openclaw_js": ["EPERM", "CF_Authorization", "Brev session URL", "stop local probing", "${fallback}${hint}", "openclawGatewayWsUrl", "cf_access_jwt", "https://openclaw-cors-proxy.experiments.courses.nvidia.com", "hideHtmlFrame", ".claw-html-frame[hidden]"],
+    "openclaw_js": ["EPERM", "CF_Authorization", "Brev session URL", "stop local probing", "${fallback}${hint}", "openclawGatewayWsUrl", "getOpenClawProxyConfig", "proxyControls", "hideHtmlFrame", ".claw-html-frame[hidden]"],
+    "connection_js": ["DEFAULT_OPENCLAW_PROXY_BASE", "OPENCLAW_PROXY_BASE_KEY", "OPENCLAW_PROXY_ENABLED_KEY", "openclaw_proxy_base", "openclaw_proxy", "migrateOpenClawConnectionStorage", "workers\\.dev", "openclawWebSocketUrl"],
     "cors_worker": ["CF_Authorization", "CF-Access-Jwt-Assertion", "cf_access_jwt", "targetSearch.delete", "upstream.webSocket", "Origin", "http://localhost:8088"],
-    "runtime_js": ["OPENCLAW_BACKUP_HINT", "preflightOpenClaw", "resolveOpenClawToken", "OPENCLAW_TOKEN: discovered", "localStorage.setItem('nemoclaw_clawcfjwt'", "RESULT: FAIL (OpenClaw credentials supplied", "toolsMissing) ? 1 : 0", "'/health'"],
-    "runtime_sh": ["CLAW_CF=<CF_Authorization>", "Use Brev URL if local OpenClaw fails or shows EPERM"],
-    "runtime_skill": ["OpenClaw fallback", "CF_Authorization", "EPERM", "CLAW_CF"],
+    "runtime_js": ["OPENCLAW_BACKUP_HINT", "OPENCLAW_CORS_PROXY_BASE", "preflightOpenClaw", "resolveOpenClawToken", "OPENCLAW_TOKEN: discovered", "shared.setOpenClawConnection({ rawUrl: u, token: t, accessJwt: cf })", "RESULT: FAIL (OpenClaw credentials supplied", "toolsMissing) ? 1 : 0", "'/health'"],
+    "runtime_sh": ["CLAW_CF=<CF_Authorization>", "OPENCLAW_CORS_PROXY_BASE", "Use Brev URL if local OpenClaw fails or shows EPERM"],
+    "runtime_skill": ["OpenClaw fallback", "CF_Authorization", "EPERM", "CLAW_CF", "OPENCLAW_CORS_PROXY_BASE"],
     "scripts_skill": ["validation/SKILL.html"],
     "validation_skill": ["openclaw_fallback_audit.py", "OpenClaw fallback"],
     "worker_ws_audit": ["openclaw worker ws audit", "CF_Authorization", "http://localhost:8088", "upstream WebSocket response directly"],
     "gateway_token_audit": ["gateway token audit", "gatewayTokenFromAgentMetadata", "gatewayTokenFromDashboardUrl", "--self-test"],
     "gw_transport_audit": ["gw connect transport audit", "openclaw-cors-proxy.experiments.courses.nvidia.com", "via hosted relay"],
     "gw_recover_compile_audit": ["gw recover compile audit", "private _uniqueId"],
+    "connection_audit": ["openclaw connection audit", "retired relay", "same-origin vendored course", "terminal helper", "04b-modern-clis.html"],
 }
 
 
@@ -134,14 +138,16 @@ def audit() -> list[str]:
         decoded = m.group(1).replace(r"\/", "/")
         if "replace(//" in decoded:
             findings.append("GW_CONNECT template decodes to invalid regex/comment syntax; avoid slash regex literals inside stringified cells")
-        if "openclawGatewayWsUrl" in decoded and 'new RegExp("/+$")' not in decoded:
-            findings.append('GW_CONNECT gateway URL helper must avoid slash regex literals; use new RegExp("/+$")')
+        if "helpers.openclawGatewayWsUrl(rawUrl, cfJwt)" not in decoded:
+            findings.append("GW_CONNECT must call the shared configurable gateway router")
+        if "const openclawGatewayWsUrl" in decoded:
+            findings.append("GW_CONNECT duplicates the shared gateway router")
         if "_uniqueId(" in decoded:
             findings.append("GW_CONNECT/recover cell code references private module helper _uniqueId; use local nextId")
     if not NODE_RUNNER.is_file():
         findings.append("scripts/runtime/run_node.sh is missing")
     else:
-        for script_key in ("worker_ws_audit", "gateway_token_audit", "gw_transport_audit", "gw_recover_compile_audit"):
+        for script_key in ("worker_ws_audit", "gateway_token_audit", "gw_transport_audit", "gw_recover_compile_audit", "connection_audit"):
             script = FILES[script_key].relative_to(ROOT)
             proc = subprocess.run([str(NODE_RUNNER), str(script)], cwd=ROOT,
                                   text=True, capture_output=True)

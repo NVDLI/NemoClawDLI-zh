@@ -17,17 +17,21 @@ const args = process.argv.slice(2);
 const smoke = args.includes('--smoke');
 const renderOnly = args.includes('--render-only');
 const gatewayOnly = args.includes('--gateway-only');
+const cronContract = args.includes('--cron-contract');
+const terminalContract = args.includes('--terminal-contract');
+const chatContract = args.includes('--chat-contract');
+const assistantArtifacts = args.includes('--assistant-artifacts');
 const serveStatic = args.includes('--serve-static');
 const DEFAULT_LAB_URL = 'http://nginx/lab/static/nemoclaw/01a-loop.html';
 const STATIC_SERVER_URL = 'http://127.0.0.1:4173';
 const LOOPBACK_ORIGIN = 'http:' + '//127.0.0.1';
-const url = args.find(a => a !== '--smoke' && a !== '--render-only' && a !== '--gateway-only' && a !== '--serve-static') || DEFAULT_LAB_URL;
+const url = args.find(a => !['--smoke', '--render-only', '--gateway-only', '--cron-contract', '--terminal-contract', '--chat-contract', '--assistant-artifacts', '--serve-static'].includes(a)) || DEFAULT_LAB_URL;
 const CLAW_URL = process.env.CLAW_URL || '';
 let CLAW_TOKEN = process.env.CLAW_TOKEN || '';
 const CLAW_CF = process.env.CLAW_CF || '';
 const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY || '';
 const DIRECT_API_URL = process.env.NVIDIA_API_URL || 'https://integrate.api.nvidia.com/v1';
-const OPENCLAW_CORS_PROXY_BASE = 'https://openclaw-cors-proxy.experiments.courses.nvidia.com';
+const OPENCLAW_CORS_PROXY_BASE = process.env.OPENCLAW_CORS_PROXY_BASE || 'https://openclaw-cors-proxy.experiments.courses.nvidia.com';
 const OPENCLAW_BACKUP_HINT = 'Use backup OpenClaw: set CLAW_URL=https://nemoclaw-<id>.brevlab.com CLAW_TOKEN=<gateway token> CLAW_CF=<CF_Authorization>. If local OpenClaw shows EPERM, stop local probing and use the Brev session URL plus CF_Authorization.';
 
 // Locate the chromium-headless-shell binary.
@@ -302,18 +306,100 @@ function findChrome() {
 
   // The web course is remote-service-only: browser pages call integrate.api.nvidia.com directly with the learner's nvapi key.
   // The harness mirrors that path.
-  await page.addInitScript(({ apiKey, apiUrl }) => {
+  await page.addInitScript(({ apiKey, apiUrl, useIframeProxy }) => {
     try {
-      sessionStorage.setItem("__nv_slim_cfg_v1", JSON.stringify({
-        mode: "direct", url: apiUrl,
-        model: "nvidia/nemotron-3-nano-30b-a3b", needsKey: true, iframeProxy: false,
-      }));
+      const defaultUrl = "https://integrate.api.nvidia.com/v1";
+      if (apiUrl === defaultUrl) localStorage.removeItem("nemoclaw_model_api_base_url_v1");
+      else localStorage.setItem("nemoclaw_model_api_base_url_v1", apiUrl);
+      localStorage.removeItem("nemoclaw_model_id_v1");
+      sessionStorage.removeItem("__nv_slim_cfg_v1");
+      if (useIframeProxy) localStorage.setItem("nemoclaw_iframe_proxy_opt_in", "1");
       if (apiKey) localStorage.setItem("nvapi", apiKey);
     } catch (_) {}
-  }, { apiKey: NVIDIA_API_KEY, apiUrl: DIRECT_API_URL });
+  }, {
+    apiKey: NVIDIA_API_KEY,
+    apiUrl: DIRECT_API_URL,
+    useIframeProxy: assistantArtifacts && ['127.0.0.1', 'localhost'].includes(new URL(url).hostname) && DIRECT_API_URL === 'https://integrate.api.nvidia.com/v1',
+  });
 
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
   await page.waitForTimeout(2000);
+
+  if (assistantArtifacts) {
+    if (!NVIDIA_API_KEY) throw new Error('--assistant-artifacts requires NVIDIA_API_KEY');
+    const prompts = [
+      'Build a runnable interactive agent-loop diagram with Observe, Reason, Act, and Update. Include Next and Reset buttons that visibly advance and reset the active step.',
+      'Build a runnable context-budget dashboard for four agents. Include Normal load and Overloaded controls that update bar widths, values, and warning state.',
+      'Build a runnable three-question quiz about retrieval and cosine similarity from this page. Include selectable answers, immediate feedback, a score, and Restart.',
+    ];
+    const results = [];
+    for (let index = 0; index < prompts.length; index++) {
+      if (index) {
+        await page.evaluate(() => localStorage.removeItem('nemoclaw_course_assistant_sessions_v1'));
+        await page.reload({ waitUntil:'domcontentloaded', timeout:20000 });
+      }
+      await page.locator('.course-assistant-launcher').click();
+      const panel = page.locator('.course-assistant-panel');
+      await panel.waitFor({ state:'visible' });
+      const chat = panel.locator('.course-assistant-body');
+      const model = await chat.locator('.chatui-model').inputValue();
+      if (!/nemotron-3-super-120b/i.test(model)) throw new Error(`Course Assistant artifact default is not the validated model: ${model}`);
+      await chat.locator('.chatui-text').fill(prompts[index]);
+      await chat.locator('.chatui-send').click();
+      await page.waitForFunction(() => document.querySelector('.course-assistant-body .chatui-send')?.textContent.trim() === 'Send', null, { timeout:180000 });
+      const toolBodies = await chat.locator('.chatui-tool-body').allInnerTexts();
+      const validated = toolBodies.some(text => /Validated and queued browser artifact/.test(text));
+      const rejections = toolBodies.filter(text => /Artifact rejected (?:before execution|at runtime)/.test(text));
+      const chatErrors = await chat.locator('.chatui-msg.err,.chatui-warn').allInnerTexts();
+      await panel.locator('[data-course-assistant-view="artifact"]').click();
+      const sourceChars = await panel.evaluate(node => {
+        const html = node.querySelector('[data-course-artifact-html]');
+        const javascript = node.querySelector('[data-course-artifact-js]');
+        return (html.__courseAssistantEditor?.getValue() || html.value || '').length +
+          (javascript.__courseAssistantEditor?.getValue() || javascript.value || '').length;
+      });
+      const frame = panel.frameLocator('.course-assistant-artifact iframe');
+      await frame.locator('body').waitFor({ state:'attached', timeout:10000 });
+      const snapshot = () => frame.locator('body').evaluate(body => JSON.stringify({
+        text:body.innerText,
+        controls:[...body.querySelectorAll('button,input,select,textarea')].map(control => ({
+          tag:control.tagName, type:control.type, value:control.value, checked:control.checked,
+          disabled:control.disabled, hidden:control.hidden, className:control.className,
+          style:control.getAttribute('style') || '',
+        })),
+        states:[...body.querySelectorAll('[class],[style]')].slice(0,80).map(node => [node.className, node.getAttribute('style') || '']),
+      }));
+      const before = await snapshot();
+      const controls = frame.locator('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled])');
+      const controlCount = await controls.count();
+      let changed = false;
+      for (let controlIndex = 0; controlIndex < Math.min(controlCount, 12) && !changed; controlIndex++) {
+        const control = controls.nth(controlIndex);
+        if (!await control.isVisible().catch(() => false)) continue;
+        const tag = await control.evaluate(node => node.tagName);
+        const type = await control.getAttribute('type') || '';
+        try {
+          if (tag === 'SELECT') await control.selectOption({ index:0 });
+          else if (tag === 'TEXTAREA' || (tag === 'INPUT' && !['button','submit','radio','checkbox'].includes(type))) await control.fill('probe');
+          else await control.click({ timeout:3000 });
+          await page.waitForTimeout(180);
+          changed = await snapshot() !== before;
+        } catch (_) {}
+      }
+      const status = await panel.locator('.course-artifact-actions [role="status"]').innerText();
+      const result = { prompt:index + 1, model, validated, rejections:rejections.length, chatErrors, sourceChars, controlCount, changed, status };
+      results.push(result);
+      if (!validated || !sourceChars || !controlCount || !changed || chatErrors.length || /error|rejected|erro/i.test(status)) {
+        console.log('COURSE_ASSISTANT_ARTIFACTS:', JSON.stringify(results, null, 2));
+        throw new Error(`Course Assistant artifact ${index + 1} failed validation: ${JSON.stringify(result)}`);
+      }
+    }
+    console.log('COURSE_ASSISTANT_ARTIFACTS:', JSON.stringify(results, null, 2));
+    console.log('RESULT: PASS (live Course Assistant artifact generation)');
+    await browser.close();
+    if (staticServer) staticServer.close();
+    process.exit(0);
+  }
 
   if (renderOnly) {
     const pageInfo = await page.evaluate(() => {
@@ -351,7 +437,7 @@ function findChrome() {
     if (!(CLAW_URL && CLAW_CF)) {
       throw new Error('--gateway-only requires CLAW_URL and CLAW_CF');
     }
-    const result = await page.evaluate(async ({ clawUrl, cfJwt, proxyBase }) => {
+    const result = await page.evaluate(async ({ clawUrl, cfJwt, proxyBase, cronContract, terminalContract, chatContract }) => {
       const output = {
         httpStatus: 0,
         token: false,
@@ -359,6 +445,18 @@ function findChrome() {
         challenge: false,
         connect: false,
         rpc: false,
+        cronAdd: false,
+        cronRuns: false,
+        cronRemove: false,
+        cleanupId: '',
+        terminalOpen: false,
+        terminalFrames: 0,
+        chatText: false,
+        chatRendered: false,
+        chatTools: 0,
+        chatToolNames: [],
+        chatToolErrors: 0,
+        chatNoise: false,
         error: '',
       };
       try {
@@ -414,18 +512,88 @@ function findChrome() {
             if (data.id === 'browser-rpc') {
               if (!data.ok) return finish(new Error(data.error?.message || 'gateway RPC rejected'));
               output.rpc = true;
+              if (!cronContract) return finish();
+              socket.send(JSON.stringify({
+                type: 'req', id: 'browser-cron-add', method: 'cron.add',
+                params: {
+                  name: `course-runtime-audit-${Date.now()}`,
+                  schedule: { kind: 'cron', expr: '0 0 1 1 *', tz: 'UTC' },
+                  sessionTarget: 'isolated', wakeMode: 'now',
+                  payload: { kind: 'agentTurn', message: 'Runtime contract audit. No action is required.' },
+                },
+              }));
+              return;
+            }
+            if (data.id === 'browser-cron-add') {
+              if (!data.ok) return finish(new Error(data.error?.message || 'cron.add rejected'));
+              const id = data.payload?.id;
+              if (!id) return finish(new Error('cron.add returned no job id'));
+              output.cronAdd = true;
+              output.cleanupId = id;
+              socket.send(JSON.stringify({ type: 'req', id: 'browser-cron-runs', method: 'cron.runs', params: { id, limit: 20 } }));
+              return;
+            }
+            if (data.id === 'browser-cron-runs') {
+              if (!data.ok || !Array.isArray(data.payload?.entries)) return finish(new Error(data.error?.message || 'cron.runs rejected'));
+              output.cronRuns = true;
+              socket.send(JSON.stringify({ type: 'req', id: 'browser-cron-remove', method: 'cron.remove', params: { id: output.cleanupId } }));
+              return;
+            }
+            if (data.id === 'browser-cron-remove') {
+              if (!data.ok) return finish(new Error(data.error?.message || `cron.remove rejected for ${output.cleanupId}`));
+              output.cronRemove = true;
+              output.cleanupId = '';
               finish();
             }
           };
         });
+        if (terminalContract) {
+          mod.setOpenClawConnection({ rawUrl: clawUrl, token, accessJwt: cfJwt });
+          const transcript = await mod.terminal('openshell sandbox list', {
+            idleMs: 4000,
+            totalMs: 20000,
+            openMs: 12000,
+          });
+          output.terminalFrames = transcript.frames;
+          output.terminalOpen = transcript.frames > 0 && !!String(transcript.output || '').trim();
+        }
+        if (chatContract) {
+          mod.setOpenClawConnection({ rawUrl: clawUrl, token, accessJwt: cfJwt });
+          const rendered = [], tools = [];
+          const view = {
+            token: value => rendered.push(String(value || '')),
+            tool: (label, body) => {
+              const node = document.createElement('details');
+              const summary = document.createElement('summary'); summary.textContent = '🔧 ' + label;
+              const result = document.createElement('div'); result.className = 'chatui-tool-body'; result.textContent = body || '';
+              node.append(summary, result); tools.push(node); return node;
+            },
+            usage: () => {},
+          };
+          const text = await mod.openclawChat(
+            'Use your exec tool to run whoami and pwd, then report both results.',
+            { session: 'course-live-chat-audit-' + Date.now(), view, idleMs: 90000, totalMs: 180000, finalGraceMs: 3000 },
+          );
+          const transcript = [text, rendered.join(''), ...tools.map(node => node.textContent || '')].join('\n');
+          output.chatText = !!String(text || '').trim();
+          output.chatRendered = !!rendered.join('').trim();
+          output.chatTools = tools.length;
+          output.chatToolNames = tools.map(node => (node.querySelector('summary')?.textContent || '').replace(/^🔧\s*/, '').split(' · ')[0]);
+          output.chatToolErrors = tools.filter(node => node.classList.contains('err')).length;
+          output.chatNoise = /oom_score_adj/.test(transcript);
+        }
       } catch (error) {
         output.error = error?.message || String(error);
       }
       return output;
-    }, { clawUrl: CLAW_URL, cfJwt: CLAW_CF, proxyBase: OPENCLAW_CORS_PROXY_BASE });
+    }, { clawUrl: CLAW_URL, cfJwt: CLAW_CF, proxyBase: OPENCLAW_CORS_PROXY_BASE, cronContract, terminalContract, chatContract });
     console.log('GATEWAY_CHECK:', JSON.stringify(result));
     const passed = result.httpStatus === 200 && result.token && result.viaProxy
-      && result.challenge && result.connect && result.rpc && !result.error;
+      && result.challenge && result.connect && result.rpc && !result.error
+      && (!cronContract || (result.cronAdd && result.cronRuns && result.cronRemove && !result.cleanupId))
+      && (!terminalContract || (result.terminalOpen && result.terminalFrames > 0))
+      && (!chatContract || (result.chatText && result.chatRendered && result.chatTools > 0
+        && result.chatToolNames.includes('exec') && result.chatToolErrors === 0 && !result.chatNoise));
     console.log(passed ? 'RESULT: PASS (hosted OpenClaw relay)' : 'RESULT: FAIL (hosted OpenClaw relay)');
     await browser.close();
     if (staticServer) staticServer.close();
@@ -434,11 +602,9 @@ function findChrome() {
 
   // Inject credentials after the probe widget mounts, or it clears them.
   if (CLAW_URL && CLAW_TOKEN) {
-    await page.evaluate(([u, t, cf]) => {
-      localStorage.setItem('nemoclaw_clawrawurl', u);
-      localStorage.setItem('nemoclaw_clawurl', u);
-      localStorage.setItem('nemoclaw_clawtoken', t);
-      if (cf) localStorage.setItem('nemoclaw_clawcfjwt', cf);
+    await page.evaluate(async ([u, t, cf]) => {
+      const shared = await import(new URL('./scripts/_shared.js', location.href).href);
+      shared.setOpenClawConnection({ rawUrl: u, token: t, accessJwt: cf });
     }, [CLAW_URL, CLAW_TOKEN, CLAW_CF]);
     console.log('CREDS: injected', CLAW_URL, CLAW_CF ? '(CF JWT stored for gateway proxy)' : '');
   } else {

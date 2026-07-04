@@ -134,7 +134,7 @@ implementación segura con OpenClaw y NemoClaw™ de NVIDIA.</p>
   </div>
 
   <div class="howto">
-    <div class="step"><span class="n">1</span> <span><b>Confirma el endpoint y la clave</b> a continuación. El valor predeterminado usa <a href="https://build.nvidia.com" target="_blank" rel="noopener"><code>build.nvidia.com</code></a>; durante eventos de capacidad, el instructor puede proporcionar un endpoint compatible. Active el modo iframe solo con el endpoint predeterminado.</span></div>
+    <div class="step"><span class="n">1</span> <span><b>Confirma las rutas de modelos</b> a continuación. El chat y los embeddings usan <a href="https://build.nvidia.com" target="_blank" rel="noopener"><code>build.nvidia.com</code></a> de forma predeterminada. Durante un evento de capacidad, configura una vez el endpoint de chat de Brev proporcionado por el instructor; la ruta independiente de embeddings permanece sin cambios. Activa el modo iframe solo con el endpoint de chat predeterminado.</span></div>
     <div class="step"><span class="n">2</span> <span><b>Sigue los módulos en orden</b> para recorrer la ruta predeterminada o abre directamente la tarea que necesites. Cada página termina con un artefacto activo en el navegador y deja disponible su JavaScript para que puedas inspeccionarlo y adaptarlo.</span></div>
     <div class="step"><span class="n">3</span> <span><b>Para usar el stack de agentes</b> en los Módulos 3 y 4, crea el launchable de NemoClaw cuando el curso lo solicite. El <a href="https://github.com/NVIDIA/NemoClaw" target="_blank" rel="noopener">blueprint de NemoClaw</a> ejecuta <a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener">OpenClaw</a> dentro de <a href="https://github.com/NVIDIA/OpenShell" target="_blank" rel="noopener">OpenShell</a>. Los servicios del curso usan CPU y modelos alojados, por lo que no es necesario administrar una GPU.</span></div>
   </div>
@@ -155,12 +155,12 @@ implementación segura con OpenClaw y NemoClaw™ de NVIDIA.</p>
   <!-- ── Key setup ─────────────────────────────────────────────────────── -->
   <div class="section" id="setup">
     <h2>Cómo introducir tu clave de API</h2>
-    <p class="help">El navegador guarda la clave y la URL base de la API de modelos en
-<code>localStorage</code>. Una sola configuración se aplica a todas las lecciones y pestañas. Las
-solicitudes usan build.nvidia.com de forma predeterminada. El navegador envía la clave únicamente al
-endpoint seleccionado, sin insertarla en el contenido de la página. Un endpoint personalizado solo corresponde cuando el
-instructor lo proporcione e identifique. El proxy CORS alojado se limita al modo LMS/iframe estático con el
-endpoint predeterminado.</p>
+    <p class="help">El navegador guarda las rutas de chat y embeddings en <code>localStorage</code>; una sola
+configuración se aplica a todas las lecciones y pestañas. El navegador envía cada clave guardada solo a su
+endpoint seleccionado. Usa un endpoint de chat personalizado únicamente cuando lo proporcione el instructor.
+Las rutas de chat de Brev requieren un túnel HTTPS público al puerto <code>5000</code>; los túneles privados no aceptan solicitudes del curso entre orígenes. Ni la URL <code>/lab</code>
+de Jupyter ni <code>localhost:5000</code> son accesibles desde la página del curso. El proxy CORS alojado se
+limita al modo LMS/iframe estático con el endpoint predeterminado.</p>
     <div id="key-panel"></div>
   </div>
 

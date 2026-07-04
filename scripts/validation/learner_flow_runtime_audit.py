@@ -266,8 +266,11 @@ async function waitText(locator, pattern) {
   const localizedPage = await browser.newPage({ viewport:{ width:390, height:700 } });
   await localizedPage.goto(`http://127.0.0.1:${port}/localized.html`, { waitUntil:'networkidle' });
   await localizedPage.waitForFunction(() => window.localizedMounted === true);
-  if (await localizedPage.locator('.learning-depth-control').count()) throw new Error('English pilot controls mounted on a localized course page');
-  if (!await localizedPage.locator('#localized-detail p').isVisible()) throw new Error('English pilot changed localized content visibility');
+  const localizedControl = localizedPage.locator('.learning-depth-control');
+  if (await localizedControl.count() !== 1 || !/^Detalhe/.test(await localizedControl.innerText())) throw new Error('localized course page lost its Portuguese depth control');
+  const localizedOptions = await localizedControl.locator('option').allInnerTexts();
+  if (localizedOptions.join('|') !== 'Guiado|Aplicado|Completo') throw new Error(`localized depth options are not Portuguese: ${JSON.stringify(localizedOptions)}`);
+  if (!await localizedPage.locator('#localized-detail p').isVisible()) throw new Error('localized depth control changed authored content visibility');
   await localizedPage.close();
 
   const historyContext = await browser.newContext({ viewport:{ width:800, height:700 } });
@@ -311,13 +314,14 @@ async function waitText(locator, pattern) {
   if (!courseSearch.length || courseSearch.length > 4 || courseSearch.some(result => !result.id || !result.excerpt || result.excerpt.length > 900)) throw new Error(`page assistant course search is not bounded/useful: ${JSON.stringify(courseSearch)}`);
   const sourceAccess = await coursePage.evaluate(async () => {
     const { courseCode, courseCodeArtifacts, courseRuntimeFiles, courseRuntimeSource } = await import('./scripts/_langchain.js');
-    const { artifactFromMarkdown, artifactJavaScriptIssue, parseInlineCourseSourceIntent, resolveCourseSourceUri } = await import('./scripts/_course_assistant.js');
+    const { artifactFromMarkdown, artifactCodeIssue, artifactJavaScriptIssue, parseInlineCourseSourceIntent, resolveCourseSourceUri } = await import('./scripts/_course_assistant.js');
     const artifacts = await courseCodeArtifacts('02c-deep');
     const deep = await courseCode('02c-deep', 'deep-src');
     const runtimeFiles = courseRuntimeFiles();
     const shared = await courseRuntimeSource('_shared.js');
     const rejected = await courseRuntimeSource('../index.html');
     const captured = artifactFromMarkdown('```html\n<button id="captured">Captured</button>\n```\n```javascript\ndocument.querySelector("#captured").dataset.ready = "yes";\n```', 'Captured artifact');
+    const rawCaptured = artifactFromMarkdown('Here is the artifact.\n<!doctype html><html><body><button id="raw">Raw</button><script>document.querySelector("#raw").dataset.ready="yes";</script></body></html>\nReady.', 'Raw artifact');
     const recoveredIntent = parseInlineCourseSourceIntent('{"uri":"deep-src"}');
     const recoveredSource = await resolveCourseSourceUri(recoveredIntent?.uri, '02c-deep');
     return {
@@ -328,6 +332,10 @@ async function waitText(locator, pattern) {
       sharedIsExact:/The web course runs JavaScript only\./.test(shared) && /mountCourseAssistant/.test(shared),
       traversalRejected:/unknown runtime file/.test(rejected),
       fencedArtifactCaptured:captured?.title === 'Captured artifact' && /captured/.test(captured.html) && /dataset\.ready/.test(captured.javascript),
+      rawArtifactCaptured:rawCaptured?.title === 'Raw artifact' && /^<!doctype html>/i.test(rawCaptured.html) && !/Here is the artifact/.test(rawCaptured.html) && !/Ready\.$/.test(rawCaptured.html),
+      inlineScriptGuard:/browser storage APIs/.test(artifactCodeIssue({ html:'<script>localStorage.setItem("x", "y")</script>', javascript:'' })),
+      externalScriptGuard:/External scripts/.test(artifactCodeIssue({ html:'<script src="https://example.com/demo.js"></script>', javascript:'' })),
+      inlineHelperGuard:/helpers\.mountChatUI/.test(artifactCodeIssue({ html:'<script>helpers.mountChatUI("#app")</script>', javascript:'' })),
       inlineSourceRecovered:recoveredIntent?.uri === 'deep-src' && /Course source: 02c-deep · deep-src/.test(recoveredSource?.content || ''),
       artifactAsyncGuard:/asynchronous/.test(artifactJavaScriptIssue('const embeddings = course.embed(["hello"], { inputType: "query" });')),
       artifactInputGuard:/inputType/.test(artifactJavaScriptIssue('const embeddings = await course.embed(["hello"], { inputType: "text" });')),
@@ -338,7 +346,7 @@ async function waitText(locator, pattern) {
       helperAllowlistGuard:/helpers\.mountChatUI/.test(artifactJavaScriptIssue('helpers.mountChatUI("#app");')),
     };
   });
-  if (!sourceAccess.artifactIds.includes('deep-src') || !sourceAccess.artifactIds.some(id => /^module-/.test(id)) || sourceAccess.indexHasBodies || !sourceAccess.deepIsJavaScript || !sourceAccess.runtimeFiles.includes('_shared.js') || !sourceAccess.sharedIsExact || !sourceAccess.traversalRejected || !sourceAccess.fencedArtifactCaptured || !sourceAccess.inlineSourceRecovered || !sourceAccess.artifactAsyncGuard || !sourceAccess.artifactInputGuard || !sourceAccess.artifactTopLevelAwait || !sourceAccess.artifactCombinedGuard || !sourceAccess.helperAliasAllowed || !sourceAccess.helperAsyncGuard || !sourceAccess.helperAllowlistGuard) throw new Error(`Course Assistant source/artifact access is incomplete or unsafe: ${JSON.stringify(sourceAccess)}`);
+  if (!sourceAccess.artifactIds.includes('deep-src') || !sourceAccess.artifactIds.some(id => /^module-/.test(id)) || sourceAccess.indexHasBodies || !sourceAccess.deepIsJavaScript || !sourceAccess.runtimeFiles.includes('_shared.js') || !sourceAccess.sharedIsExact || !sourceAccess.traversalRejected || !sourceAccess.fencedArtifactCaptured || !sourceAccess.rawArtifactCaptured || !sourceAccess.inlineScriptGuard || !sourceAccess.externalScriptGuard || !sourceAccess.inlineHelperGuard || !sourceAccess.inlineSourceRecovered || !sourceAccess.artifactAsyncGuard || !sourceAccess.artifactInputGuard || !sourceAccess.artifactTopLevelAwait || !sourceAccess.artifactCombinedGuard || !sourceAccess.helperAliasAllowed || !sourceAccess.helperAsyncGuard || !sourceAccess.helperAllowlistGuard) throw new Error(`Course Assistant source/artifact access is incomplete or unsafe: ${JSON.stringify(sourceAccess)}`);
   const sessionCap = await coursePage.evaluate(async () => {
     const { saveCourseAssistantStore, loadCourseAssistantStore } = await import('./scripts/_course_assistant.js');
     const values = new Map();
@@ -447,6 +455,36 @@ async function waitText(locator, pattern) {
   artifactFrame = crossPanel.frameLocator('.course-assistant-artifact iframe');
   await artifactFrame.locator('#bridge-result').waitFor({ state:'visible' });
   if (!/^1\.0\|.*accepts 1-16 non-empty strings/.test(await artifactFrame.locator('#bridge-result').innerText())) throw new Error('Course Assistant artifact helper facade did not expose cosineSim/embed or enforce its request bound');
+  await crossPanel.evaluate(panel => {
+    panel.querySelector('[data-course-artifact-html]').__courseAssistantEditor.setValue('<script>localStorage.setItem("blocked", "yes")</script>');
+    panel.querySelector('[data-course-artifact-js]').__courseAssistantEditor.setValue('');
+  });
+  await crossPanel.locator('[data-course-artifact-run]').click();
+  if (!/browser storage APIs/.test(await crossPanel.locator('.course-artifact-actions [role="status"]').innerText())) throw new Error('Course Assistant artifact validation ignored blocked APIs inside inline HTML scripts');
+  await crossPage.evaluate(() => {
+    window.__courseArtifactReadyChannels = [];
+    window.addEventListener('message', event => {
+      if (event.data?.type === 'artifact-ready' && event.data?.channel) window.__courseArtifactReadyChannels.push(event.data.channel);
+    });
+  });
+  await crossPanel.evaluate(panel => {
+    panel.querySelector('[data-course-artifact-html]').__courseAssistantEditor.setValue('<button id="broken-control" onclick="missingArtifactMethod()">Broken control</button>');
+    panel.querySelector('[data-course-artifact-js]').__courseAssistantEditor.setValue('');
+  });
+  await crossPanel.locator('[data-course-artifact-run]').click();
+  await crossPage.waitForFunction(() => window.__courseArtifactReadyChannels?.length > 0);
+  await crossPage.evaluate(() => {
+    const frame = document.querySelector('.course-assistant-artifact iframe');
+    const channel = window.__courseArtifactReadyChannels.at(-1);
+    frame.contentWindow.postMessage({ channel, type:'artifact-probe' }, '*');
+  });
+  await crossPage.waitForFunction(() => /missingArtifactMethod/.test(document.querySelector('.course-artifact-actions [role="status"]')?.textContent || ''));
+  await crossPanel.evaluate(panel => {
+    panel.querySelector('[data-course-artifact-html]').__courseAssistantEditor.setValue('<div>Broken initialization</div><script>document.querySelector("#missing-target").style.width="1px";</script>');
+    panel.querySelector('[data-course-artifact-js]').__courseAssistantEditor.setValue('');
+  });
+  await crossPanel.locator('[data-course-artifact-run]').click();
+  await crossPage.waitForFunction(() => /Cannot read properties of null/.test(document.querySelector('.course-artifact-actions [role="status"]')?.textContent || ''));
   await crossPanel.evaluate(panel => panel.querySelector('[data-course-artifact-js]').__courseAssistantEditor.setValue('const { broken } from "./_shared.js";'));
   await crossPanel.locator('[data-course-artifact-run]').click();
   if (!/Syntax error|Imports are unavailable/.test(await crossPanel.locator('.course-artifact-actions [role="status"]').innerText())) throw new Error('Course Assistant artifact did not surface generated JavaScript failure before execution');
@@ -488,7 +526,9 @@ async function waitText(locator, pattern) {
   await coursePage.locator('#cell-m3b-p1 .rc-card').waitFor({ state:'visible' });
   const courseBlocks = coursePage.locator('details.learning-block[data-learning-tier]');
   if (await courseBlocks.count() !== 8) throw new Error('02b learning depth lost one of its eight local disclosures');
-  if (await coursePage.locator('details.learning-block .learning-block-body:visible').count()) throw new Error('02b Guided left optional narrative visible');
+  const guidedBodies = coursePage.locator('details.learning-block .learning-block-body:visible');
+  const guidedReferences = coursePage.locator('details.learning-block[data-learning-always-open] .learning-block-body:visible');
+  if (await guidedBodies.count() !== await guidedReferences.count()) throw new Error('02b Guided left optional narrative visible outside the always-open references');
   if (await coursePage.locator('#cell-m3b-p1 .cf-canvas').count() || !await coursePage.locator('#cell-m3b-p1 .rc-card').count()) throw new Error('02b single embedding regressed from RunCell to CanvasFlow');
   if (await coursePage.locator('[data-learning-id="graphrag-global-questions"] .learning-block-body').isVisible()) throw new Error('02b Guided left GraphRAG visible');
   const guidedHeight = await coursePage.evaluate(() => document.documentElement.scrollHeight);

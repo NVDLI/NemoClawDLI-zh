@@ -78,3 +78,4 @@ release-evidence/
 .env
 .secret
 scripts/.figtools/
+web/nemoclaw/scripts/.figcheck_shared-*.mjs

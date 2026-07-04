@@ -14,6 +14,9 @@ const storage = new Map([
 ]);
 
 globalThis.localStorage = { getItem: k => storage.get(k) || '', setItem: (k, v) => storage.set(k, String(v)) };
+globalThis.location = new URL('https://course.example.test/nemoclaw/03a-kickstart.html');
+const connectionSource = fs.readFileSync('web/nemoclaw/scripts/_connection.js', 'utf8');
+const connection = await import('data:text/javascript;base64,' + Buffer.from(connectionSource).toString('base64'));
 const opened = [];
 class FakeWebSocket {
   constructor(url) {
@@ -38,6 +41,8 @@ globalThis.WebSocket = FakeWebSocket;
 const helpers = {
   log: msg => logs.push(String(msg)),
   fetch: async () => { throw new Error('GW_CONNECT must not probe a retired metadata route'); },
+  getOpenClawConnection: () => connection.getOpenClawConnection(),
+  openclawGatewayWsUrl: (raw, jwt) => connection.openclawWebSocketUrl(raw, '/cli/gateway', jwt),
   signal: null,
 };
 const state = {};
