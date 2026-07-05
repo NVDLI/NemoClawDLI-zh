@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // Browser runtime harness. Host entrypoint: scripts/runtime/lab_runtime_test.sh [--smoke] [url].
 // Set CLAW_URL + CLAW_TOKEN to exercise OpenClaw gateway nodes.
-// With OpenClaw credentials, zero tool frames is a hard failure.
+// Full-page mode runs CanvasFlows sequentially and verifies gateway activity only
+// for flows whose visible source uses the OpenClaw gateway. Tool-specific evidence
+// belongs to --chat-contract because many valid gateway flows are chat- or RPC-only.
 
 const fs = require('fs');
 const http = require('http');
@@ -270,16 +272,18 @@ function findChrome() {
     page.on('websocket', s => console.log('  [ws.open]', s.url()));
   }
 
-  // Gateway frame counts prove the agent loop actually ran.
-  const ws = { sockets: 0, allFrames: 0, evtKinds: {}, resErr: [], agentFrames: 0, toolStarts: [], cmdEnds: [], chatFinals: 0, errors: 0 };
+  // Gateway frame counts prove the connection and any agent loop actually ran.
+  const ws = { sockets: 0, allFrames: 0, challenges: 0, resOk: 0, evtKinds: {}, resErr: [], agentFrames: 0, toolStarts: [], cmdEnds: [], chatFinals: 0, errors: 0 };
   page.on('websocket', sock => {
     if (!/\/cli\/gateway/.test(sock.url())) return;
     ws.sockets++;
     sock.on('framereceived', f => {
       ws.allFrames++;
       let d; try { d = JSON.parse(typeof f.payload === 'string' ? f.payload : f.payload.toString()); } catch { return; }
+      if (d.type === 'res' && d.ok === true) ws.resOk++;
       if (d.type === 'res' && d.ok === false) { ws.errors++; ws.resErr.push((d.error && d.error.message) || '?'); }
       if (d.event) ws.evtKinds[d.event] = (ws.evtKinds[d.event] || 0) + 1;
+      if (d.event === 'connect.challenge') ws.challenges++;
       if (d.type !== 'event') return;
       if (d.event === 'chat' && d.payload && d.payload.state === 'final') ws.chatFinals++;
       if (d.event !== 'agent') return;
@@ -309,8 +313,13 @@ function findChrome() {
   await page.addInitScript(({ apiKey, apiUrl, useIframeProxy }) => {
     try {
       const defaultUrl = "https://integrate.api.nvidia.com/v1";
-      if (apiUrl === defaultUrl) localStorage.removeItem("nemoclaw_model_api_base_url_v1");
-      else localStorage.setItem("nemoclaw_model_api_base_url_v1", apiUrl);
+      if (apiUrl === defaultUrl) {
+        localStorage.removeItem("nemoclaw_model_api_base_url_v1");
+        localStorage.removeItem("nemoclaw_embedding_api_base_url_v1");
+      } else {
+        localStorage.setItem("nemoclaw_model_api_base_url_v1", apiUrl);
+        localStorage.setItem("nemoclaw_embedding_api_base_url_v1", apiUrl);
+      }
       localStorage.removeItem("nemoclaw_model_id_v1");
       sessionStorage.removeItem("__nv_slim_cfg_v1");
       if (useIframeProxy) localStorage.setItem("nemoclaw_iframe_proxy_opt_in", "1");
@@ -611,22 +620,65 @@ function findChrome() {
     console.log('CREDS: none (gateway nodes will short-circuit on the probe guard)');
   }
 
-  // Click "Run all" on every canvas flow.
-  // Each flow runs its nodes sequentially (connect → … → chat) on a shared state, so this drives the full handshake.
-  const flowCount = await page.evaluate(() => {
-    const btns = document.querySelectorAll('.cf-btn-run');
-    btns.forEach(b => b.click());
-    return btns.length;
-  });
+  // Run page-level flows one at a time. Nodes are sequential inside each CanvasFlow,
+  // but clicking every flow together races recovery/session cleanup against chat or cron work.
+  const flowCount = await page.locator('.cf-btn-run').count();
+  const flowRuns = [];
   console.log('FLOWS:', flowCount);
-
-  // Settle: agent runs that call tools take longer than plain LLM calls, and the chat node's own timeout is 90s, so allow up to 120s.
-  let settled = false;
-  for (let i = 0; i < 240; i++) {
-    await page.waitForTimeout(500);
-    settled = await page.evaluate(() => document.querySelectorAll('.cf-panel.cf-running').length === 0);
-    if (settled) break;
+  let settled = true;
+  for (let index = 0; index < flowCount; index++) {
+    const metadata = await page.evaluate(i => {
+      const button = document.querySelectorAll('.cf-btn-run')[i];
+      const flow = button?.closest('.cf-wrap');
+      const source = [...(flow?.querySelectorAll('textarea.cf-panel-code') || [])]
+        .map(textarea => textarea.value || textarea.textContent || '')
+        .join('\n');
+      return {
+        label: (flow?.querySelector('.cf-label')?.textContent || `flow ${i + 1}`).trim(),
+        expectsGateway: /\bopenclawGatewayWsUrl\b|\bopenclawChat\b|\/cli\/gateway/.test(source),
+      };
+    }, index);
+    const before = {
+      sockets: ws.sockets, allFrames: ws.allFrames, challenges: ws.challenges,
+      resOk: ws.resOk, errors: ws.errors, agentFrames: ws.agentFrames,
+      toolStarts: ws.toolStarts.length, cmdEnds: ws.cmdEnds.length, chatFinals: ws.chatFinals,
+    };
+    // Some flows live inside collapsed Guided-mode sections. Programmatic click keeps
+    // full-course auditing independent of the learner's current disclosure preference.
+    await page.evaluate(i => document.querySelectorAll('.cf-btn-run')[i]?.click(), index);
+    try {
+      await page.waitForFunction(i => {
+        const button = document.querySelectorAll('.cf-btn-run')[i];
+        const flow = button?.closest('.cf-wrap');
+        const status = (flow?.querySelector('.cf-status-bar')?.textContent || '').trim();
+        return !!button && !flow?.querySelector('.cf-panel.running') && !!status;
+      }, index, { timeout: 240000 });
+    } catch (_) {
+      settled = false;
+    }
+    const status = await page.evaluate(i => {
+      const button = document.querySelectorAll('.cf-btn-run')[i];
+      const flow = button?.closest('.cf-wrap');
+      return (flow?.querySelector('.cf-status-bar')?.textContent || '').trim();
+    }, index);
+    const activity = {
+      sockets: ws.sockets - before.sockets,
+      allFrames: ws.allFrames - before.allFrames,
+      challenges: ws.challenges - before.challenges,
+      resOk: ws.resOk - before.resOk,
+      errors: ws.errors - before.errors,
+      agentFrames: ws.agentFrames - before.agentFrames,
+      toolStarts: ws.toolStarts.length - before.toolStarts,
+      cmdEnds: ws.cmdEnds.length - before.cmdEnds,
+      chatFinals: ws.chatFinals - before.chatFinals,
+    };
+    const gatewayOk = !metadata.expectsGateway || (
+      activity.allFrames > 0 && activity.resOk > 0 && activity.errors === 0
+    );
+    flowRuns.push({ index, ...metadata, status, gatewayOk, ws: activity });
+    if (!settled) break;
   }
+  console.log('FLOW_RUNS:', JSON.stringify(flowRuns, null, 2));
   console.log('SETTLED:', settled);
 
   // Per-node status: error text + how many <details> blocks rendered (tool trace).
@@ -651,15 +703,15 @@ function findChrome() {
   const nodeErr = Object.values(nodeStatus).some(v => v.error);
   const noFlows = flowCount === 0;
   const hardFail = errors.length > 0 || nodeErr || !settled || noFlows;
-  // If credentials were supplied, the run should have produced tool frames.
-  const expectedTools = !!(CLAW_URL && CLAW_TOKEN);
-  const toolsMissing = expectedTools && ws.toolStarts.length === 0 && ws.cmdEnds.length === 0;
+  const gatewayMissing = !!(CLAW_URL && CLAW_TOKEN)
+    && flowRuns.some(flow => flow.expectsGateway && !flow.gatewayOk);
 
   if (hardFail) console.log('RESULT: FAIL (errors / unsettled nodes / no flows)');
-  else if (toolsMissing) console.log('RESULT: FAIL (OpenClaw credentials supplied but NO tool/command frames observed). ' + OPENCLAW_BACKUP_HINT);
-  else console.log('RESULT: PASS' + (expectedTools ? ` (${ws.toolStarts.length} tool starts, ${ws.cmdEnds.length} command ends)` : ''));
+  else if (gatewayMissing) console.log('RESULT: FAIL (OpenClaw gateway activity missing for a gateway-backed flow). ' + OPENCLAW_BACKUP_HINT);
+  else console.log('RESULT: PASS' + (flowRuns.some(flow => flow.expectsGateway)
+    ? ` (${ws.allFrames} gateway frames, ${ws.chatFinals} chat finals, ${ws.toolStarts.length} tool starts)` : ''));
 
   await browser.close();
   if (staticServer) staticServer.close();
-  process.exit((hardFail || toolsMissing) ? 1 : 0);
+  process.exit((hardFail || gatewayMissing) ? 1 : 0);
 })().catch(e => { console.error('FATAL:', e.message); process.exit(1); });
