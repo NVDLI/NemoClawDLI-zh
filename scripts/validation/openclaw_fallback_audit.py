@@ -38,7 +38,7 @@ REQUIRED = {
     "openclaw_js": ["EPERM", "CF_Authorization", "Brev session URL", "stop local probing", "${fallback}${hint}", "openclawGatewayWsUrl", "getOpenClawProxyConfig", "proxyControls", "hideHtmlFrame", ".claw-html-frame[hidden]"],
     "connection_js": ["DEFAULT_OPENCLAW_PROXY_BASE", "OPENCLAW_PROXY_BASE_KEY", "OPENCLAW_PROXY_ENABLED_KEY", "openclaw_proxy_base", "openclaw_proxy", "migrateOpenClawConnectionStorage", "workers\\.dev", "openclawWebSocketUrl"],
     "cors_worker": ["CF_Authorization", "CF-Access-Jwt-Assertion", "cf_access_jwt", "targetSearch.delete", "upstream.webSocket", "Origin", "http://localhost:8088"],
-    "runtime_js": ["OPENCLAW_BACKUP_HINT", "OPENCLAW_CORS_PROXY_BASE", "preflightOpenClaw", "resolveOpenClawToken", "OPENCLAW_TOKEN: discovered", "shared.setOpenClawConnection({ rawUrl: u, token: t, accessJwt: cf })", "RESULT: FAIL (OpenClaw credentials supplied", "toolsMissing) ? 1 : 0", "'/health'"],
+    "runtime_js": ["OPENCLAW_BACKUP_HINT", "OPENCLAW_CORS_PROXY_BASE", "preflightOpenClaw", "resolveOpenClawToken", "OPENCLAW_TOKEN: discovered", "shared.setOpenClawConnection({ rawUrl: u, token: t, accessJwt: cf })", "RESULT: FAIL (OpenClaw gateway activity missing", "gatewayMissing) ? 1 : 0", "'/health'"],
     "runtime_sh": ["CLAW_CF=<CF_Authorization>", "OPENCLAW_CORS_PROXY_BASE", "Use Brev URL if local OpenClaw fails or shows EPERM"],
     "runtime_skill": ["OpenClaw fallback", "CF_Authorization", "EPERM", "CLAW_CF", "OPENCLAW_CORS_PROXY_BASE"],
     "scripts_skill": ["validation/SKILL.html"],

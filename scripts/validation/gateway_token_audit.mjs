@@ -173,6 +173,22 @@ function audit(overrides = {}) {
       || !files.runtime.includes('!result.chatNoise')) {
     findings.push('browser harness lacks the focused live OpenClaw chat contract');
   }
+  if (!files.runtime.includes("document.querySelectorAll('.cf-btn-run')[i]")
+      || !files.runtime.includes("for (let index = 0; index < flowCount; index++)")
+      || !files.runtime.includes("document.querySelectorAll('.cf-btn-run')[i]?.click()")
+      || files.runtime.includes("btns.forEach(b => b.click())")) {
+    findings.push('full-canvas harness must run page-level flows sequentially');
+  }
+  if (!files.runtime.includes("flow?.querySelector('.cf-panel.running')")
+      || files.runtime.includes(".cf-panel.cf-running")) {
+    findings.push('full-canvas harness does not wait for the CanvasFlow running class');
+  }
+  if (!files.runtime.includes('expectsGateway:')
+      || !files.runtime.includes('activity.allFrames > 0 && activity.resOk > 0')
+      || !files.runtime.includes('const gatewayMissing =')
+      || files.runtime.includes('const expectedTools = !!(CLAW_URL && CLAW_TOKEN)')) {
+    findings.push('full-canvas harness must use flow-specific gateway evidence instead of a blanket tool requirement');
+  }
   if (!files.lab.includes('--cron-contract requires --gateway-only')
       || !files.lab.includes('node_args+=(--cron-contract)')) {
     findings.push('lab runtime wrapper does not expose the opt-in cron contract check');
@@ -209,6 +225,10 @@ function selfTest() {
     ['cron wrapper', { lab: base.lab.replace('node_args+=(--cron-contract)', 'node_args+=(--missing-contract)') }],
     ['live chat harness', { runtime: base.runtime.replace("args.includes('--chat-contract')", 'false') }],
     ['live chat wrapper', { lab: base.lab.replace('node_args+=(--chat-contract)', 'node_args+=(--missing-chat-contract)') }],
+    ['parallel full-canvas flows', { runtime: base.runtime.replace('for (let index = 0; index < flowCount; index++)', 'for (const index of [0])') }],
+    ['hidden full-canvas flow click', { runtime: base.runtime.replace("document.querySelectorAll('.cf-btn-run')[i]?.click()", "document.querySelectorAll('.cf-btn-run')[0]?.click()") }],
+    ['wrong full-canvas running selector', { runtime: base.runtime.replace("flow?.querySelector('.cf-panel.running')", "flow?.querySelector('.cf-panel.cf-running')") }],
+    ['blanket full-canvas tool requirement', { runtime: base.runtime.replace('const gatewayMissing =', 'const expectedTools =') }],
     ['runtime noise filter', { runtimeText: base.runtimeText.replace('/proc\\/self\\/oom_score_adj', '/proc/noise') }],
     ['nested runtime filter', { runtimeText: base.runtimeText.replace('filterOpenClawRuntimeValue(value)', 'removedRuntimeValueFilter(value)') }],
     ['final event delivery', { helper: base.helper.replace('deliverFull(openclawMessageText(pl.message)); done(false);', 'done(false);') }],

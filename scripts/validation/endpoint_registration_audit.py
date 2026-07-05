@@ -24,7 +24,7 @@ PAGES = (
 PROTECTED_WRITERS = {
     "nemoclaw_model_api_base_url_v1": {SHARED, RUNTIME_HARNESS},
     "nemoclaw_model_id_v1": {SHARED, RUNTIME_HARNESS},
-    "nemoclaw_embedding_api_base_url_v1": {SHARED},
+    "nemoclaw_embedding_api_base_url_v1": {SHARED, RUNTIME_HARNESS},
     "nemoclaw_embedding_model_id_v1": {SHARED},
     "nemoclaw_embedding_api_key_v1": {SHARED},
     "nvapi": {SHARED, KEYPANEL, RUNTIME_HARNESS, EXPLORER},

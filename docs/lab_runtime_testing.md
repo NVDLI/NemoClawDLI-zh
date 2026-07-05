@@ -129,9 +129,11 @@ and remove it; each opt-in check cleans up before exit.
 
 `scripts/runtime/test_page_runtime.js` opens the page, records JavaScript console/page
 errors, and in `--render-only` mode stops after static page inspection. In full mode
-it clicks every canvas `Run all` button, watches `/cli/gateway` WebSocket frames,
-and reports whether tool/command frames were observed when gateway credentials were
-provided. `--gateway-only` isolates HTTP discovery, course token parsing, WebSocket
+it runs each canvas `Run all` flow sequentially, waits for the flow's real running state
+to settle, and requires authenticated `/cli/gateway` response activity from flows whose
+visible source uses the gateway. Tool calls are required by the focused `--chat-contract`
+instead of every gateway flow because valid course flows may be chat-only or RPC-only.
+`--gateway-only` isolates HTTP discovery, course token parsing, WebSocket
 authentication, and a read-only gateway call without starting an agent turn.
 `--gateway-only --terminal-contract` also exercises the operator PTY used by Modules
 3c and 4b, so a healthy gateway cannot mask a broken direct or fallback terminal route.
