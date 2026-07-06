@@ -136,8 +136,9 @@
       "reviewed_on": "2026-06-29"
     },
     "web/nemoclaw/assets/figures/04a-openshell-architecture.svg": {
-      "source_sha256": "0adbf9ac1d02909e82a343b1b3d261b8ab5fbe0a7bebee53d58f74c964c8fac7",
-      "reviewed_on": "2026-06-29"
+      "source_sha256": "e9e64a77afba7642ceaa7aff366f6295c708cd6e0f3b3abfe185558fc65f65cf",
+      "target_sha256": "3c4f4f0828582645afdb09e834d7daf3e76e784693d7f2a7346e34eb48e4882b",
+      "reviewed_on": "2026-07-06"
     },
     "web/nemoclaw/assets/figures/04a-safety-1.svg": {
       "source_sha256": "9a6a9abbc24d0241bf3b26fc954f2bf1c4d752a17336f94eb1ade45553ec56b3",
