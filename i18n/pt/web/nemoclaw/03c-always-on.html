@@ -476,6 +476,10 @@ return { installed: added.id, name };
       summary: "Consulte cron uma vez e termine imediatamente. Execute o nó novamente após o minuto agendado ou ative o modo de espera opcional.",
       code: `// Consulte uma vez por padrão para não bloquear a lição durante 90 segundos.
 // O estado de cron.list é a alternativa compatível com runtimes anteriores.
+if (typeof state.call !== "function" || !state.demoCronId) {
+  helpers.log("Conecte o OpenClaw no Módulo 3a e execute primeiro os nós de configuração do cron.");
+  return;
+}
 const AGENT = "my-assistant";   // nome do agente, obtido com GET /api/agent na página Kickstart
 const POLL_MS = 5000;
 const AUTO_WATCH = false;

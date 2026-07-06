@@ -177,6 +177,10 @@ def audit_runtime_contract():
          "helpers.log must expose the same h/json/kv/clear surfaces in CanvasFlow and RunCell")
     need(src.count('_installStructuredLog(log,') >= 2,
          "CanvasFlow and RunCell must both install structured logging through _installStructuredLog")
+    need('div.dataset.logText = plain.join(" ");' in src and "return div;" in src,
+         "helpers.log must return its created status element consistently in CanvasFlow and RunCell")
+    need('err.className = "cell-runtime-error";' in src,
+         "RunCell failures need a stable marker for Studio all-cell validation")
     need("export function delay(ms, signal = null)" in shared and "fetchRetry, delay," in shared,
          "student cells need one shared Stop-aware helpers.delay implementation")
     need("helpers.signal = ac.signal;" in src and "helpers.delay = (ms, signal = ac.signal)" in src,

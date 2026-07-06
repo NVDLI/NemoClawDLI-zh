@@ -55,7 +55,10 @@ async function open(browser, pageName, init) {
 
 (async () => {
   await listen();
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    executablePath: process.env.CHROME_BIN || undefined,
+  });
   const results = {};
 
   // Shared terminal/console: a failed socket settles once and leaves visible error state.
@@ -108,6 +111,43 @@ async function open(browser, pageName, init) {
       fail('terminal fail-once/error-state contract failed: ' + JSON.stringify(results.terminalFailure));
     }
     if (errors.length) fail('shared terminal browser errors: ' + JSON.stringify(errors));
+    await page.close();
+  }
+
+  // A failed direct Brev socket must not consume the relay's own open window.
+  {
+    const { page, errors } = await open(browser, '01b-react.html');
+    results.terminalFallbackBudget = await page.evaluate(async () => {
+      const connection = await import('./scripts/_connection.js?terminal-fallback-audit=' + Date.now());
+      const openshell = await import('./scripts/_openshell.js?terminal-fallback-audit=' + Date.now());
+      connection.setOpenClawConnection({
+        rawUrl: 'https://terminal-audit.brevlab.com', token: 'test-token', accessJwt: 'test-cf-jwt',
+      });
+      const RealWebSocket = window.WebSocket;
+      let sockets = 0;
+      class DirectThenRelaySocket {
+        constructor() {
+          this.index = ++sockets;
+          if (this.index === 2) setTimeout(() => this.onopen?.(), 15);
+        }
+        close() {}
+        send() {}
+      }
+      window.WebSocket = DirectThenRelaySocket;
+      let result = null, error = null;
+      try {
+        result = await openshell.terminal('bash', { openMs: 20, totalMs: 80, idleMs: 5 });
+      } catch (caught) {
+        error = caught.message;
+      }
+      window.WebSocket = RealWebSocket;
+      return { sockets, result, error };
+    });
+    if (results.terminalFallbackBudget.sockets !== 2 || results.terminalFallbackBudget.error ||
+        !results.terminalFallbackBudget.result) {
+      fail('terminal relay open-budget contract failed: ' + JSON.stringify(results.terminalFallbackBudget));
+    }
+    if (errors.length) fail('terminal relay browser errors: ' + JSON.stringify(errors));
     await page.close();
   }
 
@@ -451,9 +491,9 @@ async function open(browser, pageName, init) {
     const remove = results.cron.calls.find(call => call.method === 'cron.remove');
     const runs = results.cron.calls.filter(call => call.method === 'cron.runs');
     if (!add || !remove || runs.length < 2 || results.cron.stateId !== 'job-runtime-audit' ||
-        results.cron.remaining !== 0 || results.cron.terminalCalls !== 2 ||
-        results.cron.watch?.polls !== 1 || results.cron.watch?.run_status !== 'ok' ||
-        results.cron.watch?.memory_changed !== true) {
+        results.cron.remaining !== 0 || results.cron.terminalCalls !== 1 ||
+        results.cron.runHistoryReads !== 2 || results.cron.watch?.polls !== 1 ||
+        results.cron.watch?.run_status !== 'ok' || results.cron.watch?.auto_watch !== false) {
       fail('cron lifecycle failed: ' + JSON.stringify(results.cron));
     }
     if (errors.length) fail('3c browser errors: ' + JSON.stringify(errors));
@@ -535,8 +575,8 @@ async function open(browser, pageName, init) {
   // Built Pages roots contain locale overlays. Prove runtime guidance stayed translated.
   results.locales = {};
   for (const [locale, helpPattern, cronPattern, policyPattern] of [
-    ['pt', /Precisa de um valor/, /Adicione uma linha curta[\s\S]*Aguardando uma execução cron concluída/, /Não foi possível interpretar/],
-    ['es', /Necesitas un valor/, /Añade una línea breve[\s\S]*Esperando una ejecución cron terminada/, /No se pudo interpretar/],
+    ['pt', /Precisa de um valor/, /Adicione uma linha curta[\s\S]*aguardando uma execução cron concluída/i, /Não foi possível interpretar/],
+    ['es', /Necesitas un valor/, /Añade una línea breve[\s\S]*esperando una ejecución cron terminada/i, /No se pudo interpretar/],
   ]) {
     const kickstartPath = `/${locale}/nemoclaw/03a-kickstart.html`;
     if (!fs.existsSync(safeJoin(root, kickstartPath))) continue;
@@ -586,6 +626,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--site-root", default="web", help="source or built site root")
     parser.add_argument("--image", default=DEFAULT_IMAGE, help="browser runtime image")
     parser.add_argument("--engine", default=os.environ.get("CONTAINER_ENGINE") or "podman")
+    parser.add_argument(
+        "--direct", action="store_true",
+        help="run Node/Chromium directly in an already-isolated Linux test host",
+    )
     parser.add_argument("--timeout-ms", type=int, default=120000)
     return parser.parse_args()
 
@@ -600,20 +644,29 @@ def main() -> int:
     with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as handle:
         handle.write(RUNTIME_JS)
         script = Path(handle.name)
-    command = [args.engine, "run", "--rm", "--entrypoint", "node"]
-    if args.engine.endswith("podman"):
-        command.append("--userns=keep-id")
-    command += [
-        "-e", "NODE_PATH=/opt/nemoclaw-runtime/node_modules",
-        "-e", "SITE_ROOT=/site",
-        "-e", f"AUDIT_TIMEOUT_MS={args.timeout_ms}",
-        "-v", f"{site_root}:/site:ro",
-        "-v", f"{script}:/tmp/runtime_integration_browser_audit.js:ro",
-        args.image, "/tmp/runtime_integration_browser_audit.js",
-    ]
+    env = None
+    if args.direct:
+        command = ["node", str(script)]
+        env = os.environ.copy()
+        env.update({
+            "SITE_ROOT": str(site_root),
+            "AUDIT_TIMEOUT_MS": str(args.timeout_ms),
+        })
+    else:
+        command = [args.engine, "run", "--rm", "--entrypoint", "node"]
+        if args.engine.endswith("podman"):
+            command.append("--userns=keep-id")
+        command += [
+            "-e", "NODE_PATH=/opt/nemoclaw-runtime/node_modules",
+            "-e", "SITE_ROOT=/site",
+            "-e", f"AUDIT_TIMEOUT_MS={args.timeout_ms}",
+            "-v", f"{site_root}:/site:ro",
+            "-v", f"{script}:/tmp/runtime_integration_browser_audit.js:ro",
+            args.image, "/tmp/runtime_integration_browser_audit.js",
+        ]
     try:
         proc = subprocess.run(
-            command, cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            command, cwd=ROOT, env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             timeout=args.timeout_ms / 1000 + 60,
         )
     except FileNotFoundError:

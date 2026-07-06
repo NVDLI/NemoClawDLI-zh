@@ -31,15 +31,21 @@ export async function terminal(cmd, { send = [], idleMs = 5000, totalMs = 25000,
     ? openclawWebSocketUrl(rawUrl, terminalPath, "", { enabled: false, base: "" })
     : routed;
   const wsUrls = direct.url && direct.url !== routed.url ? [direct.url, routed.url] : [routed.url];
+  let launchableOrigin = rawUrl;
+  try { launchableOrigin = new URL(rawUrl).origin; } catch (_) {}
   // Drop xterm control sequences so the returned text reads like a transcript.
   const strip = s => String(s)
     .replace(/\x1b\[[0-9;?]*[A-Za-z]/g, "").replace(/\x1b\][^\x07]*\x07/g, "")
     .replace(/\x1b[()][AB0]/g, "").replace(/[\r\x07]/g, "");
   const clean = s => filterOpenClawRuntimeNoise(strip(s));
   const terminalOpenError = () => {
+    const accessHint = routed.viaProxy
+      ? (cfJwt
+          ? "Both the direct socket and hosted relay failed. Paste a fresh CF_Authorization value in Module 3a, then re-run."
+          : "The hosted relay has no CF_Authorization value. Paste one in Module 3a, then re-run.")
+      : "Reopen the launchable and verify that its terminal route is running.";
     const error = new Error(
-      `Terminal did not open in ${Math.ceil(openMs / 1000)}s. Your Cloudflare Access session likely expired. ` +
-      "Open your launchable URL (https://nemoclaw-<id>.brevlab.com) in a new tab to re-authenticate, then re-run."
+      `Terminal did not open for ${launchableOrigin}. ` + accessHint
     );
     error.name = "TerminalConnectionError";
     error.code = "TERMINAL_OPEN_TIMEOUT";
@@ -49,7 +55,6 @@ export async function terminal(cmd, { send = [], idleMs = 5000, totalMs = 25000,
     let raw = "", frames = 0, opened = false, idleT = null, exitCode = null;
     let ws = null, candidate = 0, openT = null;
     let finished = false, abortHandler = null;
-    const startedAt = Date.now();
     const totalT = setTimeout(() => opened ? finish() : fail(terminalOpenError()), totalMs);
     function settle() {
       if (finished) return false;
@@ -78,8 +83,9 @@ export async function terminal(cmd, { send = [], idleMs = 5000, totalMs = 25000,
       try { socket = new WebSocket(wsUrls[routeIndex]); }
       catch (_) { return openNext(); }
       ws = socket;
-      const remaining = Math.max(1, openMs - (Date.now() - startedAt));
-      const budget = wsUrls.length > 1 && routeIndex === 0 ? Math.min(8000, remaining) : remaining;
+      // Direct and relay are independent handshakes. Do not let a slow direct failure consume
+      // the relay's open window; totalMs remains the overall bound for the complete terminal call.
+      const budget = wsUrls.length > 1 && routeIndex === 0 ? Math.min(8000, openMs) : openMs;
       openT = setTimeout(() => {
         if (finished || opened || socket !== ws) return;
         try { socket.close(); } catch (_) {}

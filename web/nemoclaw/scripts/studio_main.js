@@ -1245,6 +1245,7 @@ async function triggerRunAll(idoc) {
     return 0;
   }
   let ran = 0;
+  const failures = [];
   runNote.textContent = `running 0/${btns.length} runnable block(s)`;
   for (const btn of btns) {
     if (!isRunnableButton(btn)) continue;
@@ -1258,9 +1259,16 @@ async function triggerRunAll(idoc) {
       setStatus('run all stopped: ' + e.message, 'warn');
       return ran;
     }
+    const scope = btn.closest('.cf-wrap,.rc-wrap,[id]');
+    const flowFailure = scope?.querySelector('.cf-status-bar.err');
+    const cellFailure = scope?.querySelector('.cf-panel-error,.cell-runtime-error');
+    const failure = flowFailure || cellFailure;
+    if (failure) failures.push((failure.textContent || 'runtime error').trim());
   }
-  runNote.textContent = `ran ${ran}/${btns.length} runnable block(s)`;
-  setStatus('run all complete: ' + ran + ' runnable block(s)', 'ok');
+  runNote.textContent = `ran ${ran}/${btns.length} runnable block(s) · ${failures.length} failed`;
+  setStatus(failures.length
+    ? `run all finished: ${failures.length} failed`
+    : `run all complete: ${ran} runnable block(s)`, failures.length ? 'warn' : 'ok');
   return ran;
 }
 

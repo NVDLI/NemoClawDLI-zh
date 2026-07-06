@@ -231,15 +231,15 @@
       "reviewed_on": "2026-07-05"
     },
     "web/nemoclaw/03b-openclaw.html": {
-      "source_sha256": "4da490409d3ec1c5895b5f99b009329b5ee1469fd1b19f9848df9a3da5bd9a91",
-      "translation_sha256": "f8decadd971dec49f5bc7fb805a963ffbf0d88181d5cf62aef8a6ee149d2fbaf",
-      "target_sha256": "988067a9a07236999b279f7b129b70f5c66443ad4893751d563478f0e1eb3a5a",
-      "reviewed_on": "2026-07-04"
+      "source_sha256": "e558913ac1fdb5838bdedddab8774af3b3e4b0374983201f42c06d7f5c7c30d7",
+      "translation_sha256": "41924f97e6ed7eaa601183f73108c52ba4e359c1300a605df4b940ea3818d58f",
+      "target_sha256": "db2e1d5cf9149a3d0e82ce56a9db6eb0d07d69376aa33a50c6cae2ffca2828b5",
+      "reviewed_on": "2026-07-06"
     },
     "web/nemoclaw/03c-always-on.html": {
-      "source_sha256": "766a7bae7bde0058df1bdd4d847512576ec1f1a5fb38aae36b3059f01b839da6",
-      "target_sha256": "28523fccc259e84247c130962ccbd603ec7393f5f8ce3718ec53eddfe9f5e398",
-      "reviewed_on": "2026-07-05"
+      "source_sha256": "9a81b76b6062f1207cd4e41a1450bca1697204980405ffa7ad14e5857b4c8e52",
+      "target_sha256": "bfa3200db30aa3d3dae1d979e1a0addad6465918818a67343b4ee5479e43d915",
+      "reviewed_on": "2026-07-06"
     },
     "web/nemoclaw/04a-safety.html": {
       "source_sha256": "ec4543daab165e0864d5bec3afae43ba24ba1befd9650021c805199409644fcf",
