@@ -437,6 +437,7 @@ def audit_runtime_integrations(
         'const wsUrls = direct.url && direct.url !== routed.url ? [direct.url, routed.url] : [routed.url]': "cross-origin terminal must try the authenticated direct PTY before its relay fallback",
         'if (candidate >= wsUrls.length) return fail(terminalOpenError());': "operator terminal must fail once after exhausting connection routes",
         'else { ws = null; openNext(); }': "operator terminal close-before-open must advance or settle instead of leaving timers alive",
+        'const budget = wsUrls.length > 1 && routeIndex === 0 ? Math.min(8000, openMs) : openMs;': "operator terminal relay must receive its own full open timeout",
         'error.code = "TERMINAL_OPEN_TIMEOUT"': "operator terminal open failures need a stable machine-readable code",
     }
     for token, message in terminal_contract.items():
@@ -448,6 +449,7 @@ def audit_runtime_integrations(
 
     for locale in ("en", "pt", "es"):
         kickstart = pages[f"{locale}-03a"]
+        workspace = pages[f"{locale}-03b"]
         cron = pages[f"{locale}-03c"]
         cli = pages[f"{locale}-04b"]
         safety = pages[f"{locale}-04a"]
@@ -459,6 +461,10 @@ def audit_runtime_integrations(
               f"{locale} Module 3a must expose connection-value help and token autofill")
         _need(findings, r'CFG.url.replace(/\\/+$/, "")' in kickstart,
               f"{locale} Module 3a must preserve the slash regex escape inside its runnable template")
+        _need(findings, workspace.count('if (typeof state.turn !== "function")') >= 2,
+              f"{locale} Module 3b dependent turns must explain a missing OpenClaw setup instead of throwing")
+        _need(findings, 'if (typeof state.call !== "function" || !state.demoCronId)' in cron,
+              f"{locale} Module 3c cron watch must explain a missing OpenClaw setup instead of throwing")
         for token in (
             'name = "quick-3c-demo"',
             'schedule: { kind: "cron", expr: "* * * * *", tz: "UTC" }',
@@ -933,7 +939,7 @@ def audit_tree(root: Path = ROOT) -> list[str]:
         ("pt", root / "i18n/pt/web/nemoclaw"),
         ("es", root / "i18n/es/web/nemoclaw"),
     ):
-        for module in ("01a-loop", "01b-react", "01c-tools", "02c-deep", "03a-kickstart", "03c-always-on", "04a-safety", "04b-modern-clis"):
+        for module in ("01a-loop", "01b-react", "01c-tools", "02c-deep", "03a-kickstart", "03b-openclaw", "03c-always-on", "04a-safety", "04b-modern-clis"):
             runtime_pages[f"{locale}-{module[:3]}"] = (prefix / f"{module}.html").read_text(encoding="utf-8")
     findings.extend(audit_model_routes(
         (root / "web/nemoclaw/scripts/_shared.js").read_text(encoding="utf-8"),
@@ -1155,7 +1161,7 @@ def self_test() -> list[str]:
         ("pt", ROOT / "i18n/pt/web/nemoclaw"),
         ("es", ROOT / "i18n/es/web/nemoclaw"),
     ):
-        for module in ("01a-loop", "01b-react", "01c-tools", "02c-deep", "03a-kickstart", "03c-always-on", "04a-safety", "04b-modern-clis"):
+        for module in ("01a-loop", "01b-react", "01c-tools", "02c-deep", "03a-kickstart", "03b-openclaw", "03c-always-on", "04a-safety", "04b-modern-clis"):
             runtime_pages[f"{locale}-{module[:3]}"] = (prefix / f"{module}.html").read_text(encoding="utf-8")
     keypanel = (ROOT / "web/nemoclaw/scripts/_keypanel.js").read_text(encoding="utf-8")
     rag = (ROOT / "web/nemoclaw/scripts/_rag.js").read_text(encoding="utf-8")
@@ -1180,6 +1186,7 @@ def self_test() -> list[str]:
         ("remote shared LangChain", openclaw, openshell, runtime_chat.replace('../vendor/langchain-1.4.7.esm.min.js', 'https://cdn.invalid/langchain.js', 1), runtime_pages, "same-origin bundle"),
         ("terminal timeout bypasses settlement", openclaw, openshell.replace('if (candidate >= wsUrls.length) return fail(terminalOpenError());', 'if (candidate >= wsUrls.length) return reject(terminalOpenError());', 1), runtime_chat, runtime_pages, "must fail once"),
         ("terminal direct fallback removed", openclaw, openshell.replace('[direct.url, routed.url]', '[routed.url]', 1), runtime_chat, runtime_pages, "authenticated direct PTY"),
+        ("terminal relay budget reused", openclaw, openshell.replace('Math.min(8000, openMs) : openMs', 'Math.min(8000, openMs) : 1', 1), runtime_chat, runtime_pages, "own full open timeout"),
     ]
     for label, mutated_openclaw, mutated_openshell, mutated_chat, mutated_pages, expected in integration_cases:
         if not any(expected in finding for finding in audit_runtime_integrations(
@@ -1190,6 +1197,8 @@ def self_test() -> list[str]:
         ("Module 3a consumed regex escape", "en-03a", r'CFG.url.replace(/\\/+$/, "")', r'CFG.url.replace(/\/+$/, "")', "regex escape"),
         ("Module 3c string schedule", "en-03c", 'schedule: { kind: "cron", expr: "* * * * *", tz: "UTC" }', 'schedule: "* * * * *"', "structured cron contract"),
         ("Module 3c fixed blind wait", "en-03c", "const POLL_MS = 5000", "const WAIT_S = 70", "structured cron contract"),
+        ("Module 3b missing setup guard", "en-03b", 'if (typeof state.turn !== "function")', 'if (typeof state.turn === "function")', "missing OpenClaw setup"),
+        ("Module 3c missing setup guard", "en-03c", 'if (typeof state.call !== "function" || !state.demoCronId)', 'if (typeof state.call === "function")', "missing OpenClaw setup"),
         ("Module 4b stale Ready state", "pt-04b", 'return { status: "error", message:', 'return con.write(', "preserve an error state"),
         ("Module 4a hidden parse failure", "pt-04a", "p.parseError", "p.hiddenError", "explain live-policy parser failure"),
         ("Module 1b module-relative import", "es-01b", 'import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href)', 'import("./vendor/langchain-1.4.7.esm.min.js")', "lesson URL"),

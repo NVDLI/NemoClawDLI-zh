@@ -376,6 +376,10 @@ helpers.log(state.a);
       showCode: false,
       summary: "Envía la misma pregunta a la sesión de auditoría. Su SOUL.md indica al agente que exponga primero los riesgos y cite el fragmento que comenta. Ambas respuestas aparecen aquí para comparar las voces ante una entrada idéntica.",
       code: `// Reuses state.question + state.turn from the Default-SOUL node above. Run that first.
+if (typeof state.turn !== "function") {
+  helpers.log("Conecta OpenClaw en el Módulo 3a y ejecuta primero Default SOUL.");
+  return;
+}
 const b = await state.turn({ content: state.question, session: "quick-3b-soul-auditor" });
 helpers.log("── default ──"); helpers.log(state.a);
 helpers.log("\\n── auditor ──"); helpers.log(b);
@@ -411,6 +415,10 @@ helpers.log(state.r1);
       showCode: false,
       summary: "Un turno nuevo en la misma sesión pregunta qué recuerda el agente. El modelo no conserva el turno 1; la preferencia perdura porque el runtime la transportó mediante la sesión y el MEMORY.md guardado. La comprobación confirma que las palabras clave llegaron.",
       code: `// Ask the same session what it retained after the write turn.
+if (typeof state.turn !== "function") {
+  helpers.log("Conecta OpenClaw en el Módulo 3a y ejecuta primero el Turno 1.");
+  return;
+}
 const r2 = await state.turn({
   content: "What do you remember about how I like to receive code review?",
   session: "quick-3b-memory",

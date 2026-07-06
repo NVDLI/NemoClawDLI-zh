@@ -1296,7 +1296,8 @@ function _logReplacer() {
 }
 
 // Append one log line to `logEl`. A dict or list is pretty-printed and syntax-highlighted (highlight.js when present, indented JSON as fallback), while plain values stay text.
-// Shared by every log surface (canvas nodes, captured console, run cells); returns the line's plain text.
+// Shared by every log surface (canvas nodes, captured console, run cells); returns the created
+// element so learner code can update an in-place status line consistently in both cell types.
 function appendLogLine(logEl, args, opts) {
   opts = opts || {};
   const div = document.createElement("div");
@@ -1328,7 +1329,8 @@ function appendLogLine(logEl, args, opts) {
     plain.push(String(a));
   });
   logEl.appendChild(div);
-  return plain.join(" ");
+  div.dataset.logText = plain.join(" ");
+  return div;
 }
 
 function _docFor(name) {
@@ -1733,6 +1735,7 @@ export function mountRunCell(targetSel, opts) {
         _emptyState("⏹ stopped");
       } else {
         const err = document.createElement("div");
+        err.className = "cell-runtime-error";
         err.style.cssText = "padding:10px 14px;color:var(--err);font-family:ui-monospace,monospace;font-size:.82rem;white-space:pre-wrap;";
         err.textContent = "✗ " + (e.name || "Error") + ": " + e.message;
         out.appendChild(err);

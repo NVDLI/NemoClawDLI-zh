@@ -554,6 +554,10 @@ return { installed: added.id, name };
       summary: "Check cron once and return immediately. Re-run after the scheduled minute, or opt into the commented watch mode when you specifically want automatic polling.",
       code: `// Check once by default so the lesson never traps you in a 90-second wait.
 // cron.list state is the compatibility fallback for older runtimes.
+if (typeof state.call !== "function" || !state.demoCronId) {
+  helpers.log("Connect OpenClaw in Module 3a, then run the cron setup nodes first.");
+  return;
+}
 const AGENT = "my-assistant";   // your agent's name, from GET /api/agent on the Kickstart page
 const POLL_MS = 5000;
 const AUTO_WATCH = false;

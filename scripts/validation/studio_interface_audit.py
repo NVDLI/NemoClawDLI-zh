@@ -51,6 +51,8 @@ REQUIRED_JS = {
     "run-all selector": ".cf-btn-run,.rc-run,.cell-run",
     "ordered run queue": "async function triggerRunAll",
     "run completion waiter": "function waitForRunComplete",
+    "run failure collector": "const failures = []",
+    "run failure summary": "runnable block(s) · ${failures.length} failed",
     "default page load": "loadPage(p || MODULES[0].file)",
     "block editor locator": "function _locateBlockInFile",
     "no stale lite CSS path": "styles/styles/_lite_overlay.css",
