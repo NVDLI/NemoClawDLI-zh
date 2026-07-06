@@ -36,6 +36,7 @@ def py(path: str, *args: str) -> tuple[str, ...]:
 
 
 FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
+    py("scripts/build/bundle_standalone.py", "--self-test"),
     py("scripts/materials/pull_materials.py", "--verify-committed"),
     py("scripts/validation/local_path_leak_audit.py", "--self-test"),
     py("scripts/validation/local_path_leak_audit.py"),
@@ -58,6 +59,7 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
 
 
 SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
+    py("scripts/build/bundle_standalone.py", "--self-test"),
     py("scripts/materials/pull_materials.py", "--self-test"),
     py("scripts/materials/pull_materials.py", "--verify-committed"),
     py("scripts/validation/local_path_leak_audit.py", "--self-test"),
@@ -118,6 +120,11 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
 # Proposal runs may skip a mutation suite only when none of its implementation or contract
 # inputs changed. Full release runs omit --changed-since and execute every suite.
 MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
+    py("scripts/build/bundle_standalone.py", "--self-test"): (
+        "scripts/build/bundle_standalone.py", "scripts/build/build_pages.sh",
+        "web/nemoclaw/*.html", "web/nemoclaw/assets/figures/*",
+        "i18n/*/web/nemoclaw/*.html",
+    ),
     py("scripts/materials/pull_materials.py", "--self-test"): (
         "scripts/materials/pull_materials.py", "scripts/materials/requirements*",
     ),
