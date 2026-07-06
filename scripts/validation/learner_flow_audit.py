@@ -664,6 +664,10 @@ def audit_runtime_sources(canvas: str, chat: str) -> list[str]:
         "markLiveArtifact(root);": "live console artifacts need the shared artifact cue",
         'el.id.endsWith("-artifact")': "artifact cues must not spill onto ordinary teaching cells",
         "export function markLiveArtifacts(root = document)": "artifact placeholders need cues before optional mounts run",
+        "export function resolveChatMarkdownUrl": "chat Markdown needs an independently testable deployed-subpath resolver",
+        'const parentDirectory = new URL("../", courseDirectory)': "chat Markdown root-relative URLs must resolve from the deployed course site",
+        '/\\/web\\/$/i.test(parentDirectory.pathname)': "branch previews must skip their source-only web directory",
+        "rebaseChatMarkdownUrls(elm);": "rendered chat links and images must stay inside the deployed course subpath",
     }
     for token, message in chat_contract.items():
         _need(findings, token in chat, message)
@@ -980,6 +984,7 @@ def self_test() -> list[str]:
         ("missing chat prerequisite gate", canvas, chat.replace("const setDisabled = (blocked", "const ignoreDisabled = (blocked", 1), "prerequisite gate"),
         ("missing chat reset epoch", canvas, chat.replace("resetEpoch = 0", "resetEpochMissing = 0", 1), "stale async completion"),
         ("missing artifact cue", canvas, chat.replace('el.classList.add("course-artifact")', 'el.classList.add("ordinary-cell")', 1), "artifact cue"),
+        ("chat root link escapes deployed subpath", canvas, chat.replace("rebaseChatMarkdownUrls(elm);", "", 1), "deployed course subpath"),
         ("duplicated helper error", canvas.replace('if (!e.__courseHelperErrorLogged)', 'if (true)', 1), chat, "must not duplicate"),
         ("console failure resets to Ready", canvas, chat.replace('outcome.status === "error"', 'false', 1), "retain an error state"),
     ]
