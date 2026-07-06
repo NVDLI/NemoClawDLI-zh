@@ -369,6 +369,10 @@ def audit_model_routes(shared: str, keypanel: str, rag: str, chat: str, openclaw
     }
     for token, message in contract.items():
         _need(findings, token in shared, message)
+    helper_registry = re.search(r"export const HELPER_FNS = \{(.*?)\n\};", shared, re.S)
+    _need(findings, helper_registry is not None and
+          "isDefaultModelApiBaseUrl" in helper_registry.group(1),
+          "learner cells must expose the default-model route predicate they call")
     key_contract = {
         'class="model-id"': "chat setup needs a visible model ID",
         'class="embedding-api-base-url"': "setup needs an independently editable embedding endpoint",
@@ -1159,6 +1163,7 @@ def self_test() -> list[str]:
         ("chat model persistence removed", shared.replace('const MODEL_ID_KEY = "nemoclaw_model_id_v1"', 'const MODEL_ID_KEY = "removed"', 1), keypanel, rag, runtime_chat, openclaw, "chat model selection"),
         ("embedding endpoint persistence removed", shared.replace('const EMBEDDING_API_BASE_URL_KEY = "nemoclaw_embedding_api_base_url_v1"', 'const EMBEDDING_API_BASE_URL_KEY = MODEL_API_BASE_URL_KEY', 1), keypanel, rag, runtime_chat, openclaw, "independent from chat"),
         ("custom credentials omitted", shared.replace('return isDefaultModelApiBaseUrl(url) ? "same-origin" : "include"', 'return "same-origin"', 1), keypanel, rag, runtime_chat, openclaw, "credentialed cross-origin"),
+        ("learner route predicate omitted", shared.replace(', isDefaultModelApiBaseUrl, terminal', ', terminal', 1), keypanel, rag, runtime_chat, openclaw, "expose the default-model route predicate"),
         ("browser SDK retry removed", shared.replace('const r = await fetchRetry(url', 'const r = await fetch(url', 1), keypanel, rag, runtime_chat, openclaw, "retry transient"),
         ("single-model discovery removed", shared, keypanel.replace("models.length === 1", "models.length === 0"), rag, runtime_chat, openclaw, "auto-select"),
         ("embedding reuses chat config", shared, keypanel, rag.replace("getEmbeddingConfig", "getConfig"), runtime_chat, openclaw, "independent persistent route"),

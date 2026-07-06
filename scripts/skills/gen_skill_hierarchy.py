@@ -64,7 +64,6 @@ WEB_PAGE_DESC = {
         "glossary":          "Searchable glossary of the course's agent terms.",
         "dependencies":      "Source-derived inventory of exact browser packages, licenses, hashes, and runtime references.",
         "studio":            "Authoring and inspection studio for the course pages.",
-        "cert":              "Course completion certificate.",
         "courses":           "Catalog redirect stub.",
     },
 }

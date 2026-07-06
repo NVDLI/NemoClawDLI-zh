@@ -94,6 +94,7 @@ REQUIRED_WIRING = {
     "scripts/build/build_pages.sh": (
         '"$T1/$d"/*.svg',
         "project_docs_explorer.py",
+        "-path 'web/nemoclaw/standalone' -prune",
     ),
     "scripts/build/project_docs_explorer.py": (
         "local_markdown_targets", "missing or unsafe", "--self-test",
