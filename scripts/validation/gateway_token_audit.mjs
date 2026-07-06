@@ -8,6 +8,7 @@ const PATHS = {
   openshell: 'web/nemoclaw/scripts/_openshell.js',
   chat: 'web/nemoclaw/scripts/_chat.js',
   shared: 'web/nemoclaw/scripts/_shared.js',
+  cliRuntime: 'web/nemoclaw/scripts/_openclaw_cli.js',
   runtime: 'scripts/runtime/test_page_runtime.js',
   lab: 'scripts/runtime/lab_runtime_test.sh',
   en: 'web/nemoclaw/03a-kickstart.html',
@@ -141,9 +142,12 @@ function audit(overrides = {}) {
     }
   }
   for (const key of ['en4b', 'pt4b', 'es4b']) {
-    if (!files[key].includes('helpers.openclawGatewayWsUrl(c.rawUrl, c.accessJwt).url')) {
-      findings.push(`${key}: Module 4b gateway bypasses shared OpenClaw routing`);
+    if (!files[key].includes('helpers.mountOpenClawCli("#agent-chat")')) {
+      findings.push(`${key}: Module 4b bypasses the shared OpenClaw CLI runtime`);
     }
+  }
+  if (!files.cliRuntime.includes('runtime.openclawGatewayWsUrl(connection.rawUrl, connection.accessJwt).url')) {
+    findings.push('OpenClaw CLI runtime bypasses shared OpenClaw routing');
   }
 
   if (!files.shared.includes('gatewayTokenFromAgentMetadata')) {
@@ -216,7 +220,8 @@ function selfTest() {
     ['shared relay controls', { en: base.en.replace('proxyControls: true', 'proxyControls: false') }],
     ['terminal relay', { openshell: base.openshell.replace('openclawWebSocketUrl(rawUrl, "/ws/terminal?cmd="', 'directTerminalUrl(rawUrl, "/ws/terminal?cmd="') }],
     ['terminal direct fallback', { openshell: base.openshell.replace('[direct.url, routed.url]', '[routed.url]') }],
-    ['downstream gateway', { en4b: base.en4b.replace('helpers.openclawGatewayWsUrl(c.rawUrl, c.accessJwt).url', 'c.rawUrl + "/cli/gateway"') }],
+    ['downstream gateway', { cliRuntime: base.cliRuntime.replace('runtime.openclawGatewayWsUrl(connection.rawUrl, connection.accessJwt).url', 'connection.rawUrl + "/cli/gateway"') }],
+    ['downstream page boundary', { en4b: base.en4b.replace('helpers.mountOpenClawCli("#agent-chat")', 'mountDirectCli("#agent-chat")') }],
     ['shared export', { shared: base.shared.replaceAll('gatewayTokenFromAgentMetadata', 'removedGatewayTokenParser') }],
     ['harness relay', { runtime: base.runtime.replaceAll('openclaw-cors-proxy.experiments.courses.nvidia.com', 'relay.invalid') }],
     ['focused browser check', { runtime: base.runtime.replace("args.includes('--gateway-only')", 'false') }],

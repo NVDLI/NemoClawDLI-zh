@@ -78,13 +78,18 @@ ok(openclaw.includes('if (route.viaProxy && cfJwt) headers["CF-Access-Jwt-Assert
   'direct HTTP mode sends the relay-only Access assertion');
 ok(openclaw.includes('getOpenClawConnection()') && openclaw.includes('setOpenClawConnection({'),
   'OpenClaw widgets bypass the shared connection registry');
+const openclawCli = fs.readFileSync('web/nemoclaw/scripts/_openclaw_cli.js', 'utf8');
+ok(openclawCli.includes('runtime.openclawGatewayWsUrl(connection.rawUrl, connection.accessJwt).url'),
+  'OpenClaw CLI runtime bypasses shared gateway routing');
+ok(!openclawCli.includes('return u + "/cli/gateway"'),
+  'OpenClaw CLI runtime rebuilt a direct gateway URL');
 for (const path of [
   'web/nemoclaw/04b-modern-clis.html',
   'i18n/pt/web/nemoclaw/04b-modern-clis.html',
   'i18n/es/web/nemoclaw/04b-modern-clis.html',
 ]) {
   const page = fs.readFileSync(path, 'utf8');
-  ok(page.includes('helpers.openclawGatewayWsUrl(c.rawUrl, c.accessJwt).url'), `${path} bypasses shared gateway routing`);
+  ok(page.includes('helpers.mountOpenClawCli("#agent-chat")'), `${path} bypasses the shared CLI runtime`);
   ok(!page.includes('return u + "/cli/gateway"'), `${path} rebuilt a direct gateway URL`);
 }
 

@@ -190,16 +190,16 @@
       "reviewed_on": "2026-07-03"
     },
     "web/nemoclaw/01a-loop.html": {
-      "source_sha256": "39f678299622f0d2061459867af8843f7f8aa20b42a20e82b5388dd9a80b4efa",
-      "translation_sha256": "ad74ad1d25d76b7b2eb11bb3cb494e53f3eefbf61278253719bb9c73d14b6dfd",
-      "target_sha256": "6946d11a0e2596a8b830dfbf4b59868db54711466b67eda7b1079164ae6a10ce",
-      "reviewed_on": "2026-07-03"
+      "source_sha256": "c5bf333e889f725626ea64087247cdcdf4c3540d03694b2714881de5233c7d85",
+      "translation_sha256": "37a63193c71af56969a561979bbaa7bf2841adaa99ba5f1580ccc07a1e01f7dd",
+      "target_sha256": "80c043a6e9675164cabbb29b9fc3bd0dfd425ab83acc165926b2514e8e7686ef",
+      "reviewed_on": "2026-07-05"
     },
     "web/nemoclaw/01b-react.html": {
-      "source_sha256": "10e0171c5e08cb4001e8069612f9f3f57f834e5558c3d19f98f3f70e10573874",
-      "translation_sha256": "2661511cdebf5ba8295595666cb93221905fc6419f94fb55449d692abed5bd39",
-      "target_sha256": "b764cce5fbe79457946d6597e791ef217135797de4a9002a5ce924bacc6cb497",
-      "reviewed_on": "2026-07-03"
+      "source_sha256": "93836d42153a770379cb4f6e02b5584ade443c6a1da8a7cc7674efccd4ab45b6",
+      "translation_sha256": "1d8f7cb4ccb236ff23641fe1d11347eee65dd75308f6437302d48c42187f67aa",
+      "target_sha256": "0b40b97d1680ffed70ef261e215f24cd94450e9b84a9b99270d772cd43512f13",
+      "reviewed_on": "2026-07-05"
     },
     "web/nemoclaw/01c-tools.html": {
       "source_sha256": "70bc98db580422729de5092eda77d5cbf631605172970aeb4344c79f552eb825",
@@ -226,9 +226,9 @@
       "reviewed_on": "2026-07-03"
     },
     "web/nemoclaw/03a-kickstart.html": {
-      "source_sha256": "3ef243796e0f431a8b7016813b62ad3107f2e2b41f31fddc3fef42727443fc5f",
-      "target_sha256": "2fb30ed469b13c37f31462c285eb829c46e28852157389c41988c030218cd00f",
-      "reviewed_on": "2026-07-04"
+      "source_sha256": "4555c167b99daf9c7c6fddda2299f3bc316bf22ab2c8c17e9e4203845b4df607",
+      "target_sha256": "ed02fd56a6529b6c124370710095b9404c62d1e7e2d82497cac999ce6fdedc1a",
+      "reviewed_on": "2026-07-05"
     },
     "web/nemoclaw/03b-openclaw.html": {
       "source_sha256": "4da490409d3ec1c5895b5f99b009329b5ee1469fd1b19f9848df9a3da5bd9a91",
@@ -237,21 +237,21 @@
       "reviewed_on": "2026-07-04"
     },
     "web/nemoclaw/03c-always-on.html": {
-      "source_sha256": "c6c489166f3c91abc1476162c4e3ec92d1575da8e0fb90f47d5bbbde6fba2796",
-      "target_sha256": "463be383eda6b21c42d00300fade17b1370f71dc1d2cfaebd9032f41510a15f8",
-      "reviewed_on": "2026-07-04"
+      "source_sha256": "766a7bae7bde0058df1bdd4d847512576ec1f1a5fb38aae36b3059f01b839da6",
+      "target_sha256": "28523fccc259e84247c130962ccbd603ec7393f5f8ce3718ec53eddfe9f5e398",
+      "reviewed_on": "2026-07-05"
     },
     "web/nemoclaw/04a-safety.html": {
-      "source_sha256": "fee324919232b1d8ec39c50416cc4edf73912416c4aa136b1201ec2bc0df951c",
-      "translation_sha256": "09fa5d68d6ee717d8a7aef7323bdcb21591573eca1ab46b2276fbb469d654b9f",
-      "target_sha256": "2703f8b304ec0bd37aee511dcc7897e4e4854e24a1eb46c32418bb657086556d",
-      "reviewed_on": "2026-07-04"
+      "source_sha256": "ec4543daab165e0864d5bec3afae43ba24ba1befd9650021c805199409644fcf",
+      "translation_sha256": "e5083f174e1122384b074c3a49370b098257960ea5e5abf861542c9c29d6159a",
+      "target_sha256": "7d8d5030fd89d2ba09f9693c070d1707be29e1dac772690cfa24bd8142f247ab",
+      "reviewed_on": "2026-07-05"
     },
     "web/nemoclaw/04b-modern-clis.html": {
-      "source_sha256": "42adbcf6d50385088076c4724d44a04619dbe2d588f3ab807d62317d69803df4",
-      "translation_sha256": "0e1fa270f43e2bba813ca25a3241387cbd75e5b168ac7eca09c79d3bb01fb059",
-      "target_sha256": "896e30a34d2e283b6ddb7b50c307eb6c851fc3a331b6e2300f21b5894a434d4c",
-      "reviewed_on": "2026-07-04"
+      "source_sha256": "f7b7b5fb2b535c5b3fa1537842133ad9fb5616f4e5a7707eee24c71dc52023bd",
+      "translation_sha256": "0aa2cbac5e3f966c03ad43fcfd3d84da86def04ff00784dbe586c1c1c96d16eb",
+      "target_sha256": "49c2d35205e9bd2f84f7d680ebd0a38f9e4ed4878394a86087d89fd4db63281d",
+      "reviewed_on": "2026-07-05"
     },
     "web/nemoclaw/04c-going-further.html": {
       "source_sha256": "eeb16b83806be79345ac4c838389fe746af757f605b303c86ef632e80b1d7b82",

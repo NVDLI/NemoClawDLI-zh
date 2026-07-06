@@ -403,12 +403,9 @@ mountCanvasFlow("#cell-maze", {
       id: "maze", icon: "🌐", title: "Labirinto + regla constante", x: 0, y: 0,
       showCode: false,
       summary: "Este nodo recoge la infraestructura del laberinto. Al abrirlo, lea de abajo hacia arriba: almacena helpers compartidos en state y ejecuta las animaciones que muestran por qué una regla fija no basta.",
-      code: `// Reading guide: most of this block is support code. Start near the bottom where state.fn is
-
-// assigned, then read the two animations: a corridor that 'always east' can solve and a maze
-// where that same fixed rule stalls. The search nodes reuse these helpers instead of redefining them.
-// Maze-generation plumbing: builds the grid and the move utilities every later
-// node reads from state. The later nodes swap the decision rule.
+      code: `// Guía de lectura: casi todo este bloque es código de soporte.
+// Empieza al final, donde se asigna state.fn, y después lee las dos animaciones.
+// Los nodos de búsqueda reutilizan estos helpers con distintas reglas de decisión.
 
 
 // lcg is a tiny seeded random-number generator, so a given seed always builds the same maze (reproducible runs).
@@ -417,31 +414,52 @@ function lcg(seed) {
   return () => { s = (Math.imul(1664525, s) + 1013904223) >>> 0; return s / 4294967296; };
 }
 
-function generateMaze(cols, rows, seed, loopFactor = 0.15) {
-  const rng = lcg(seed), W = cols * 2 + 1, H = rows * 2 + 1;
-  const g = Array.from({ length: H }, () => Array(W).fill('#'));
-  function sh(a) { for (let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a; }
-  function carve(cx, cy) {
-    for (const [dx, dy] of sh([[0,-2],[0,2],[-2,0],[2,0]])) {
-      const [nx, ny] = [cx+dx, cy+dy];
-      if (nx>=1 && nx<W-1 && ny>=1 && ny<H-1 && g[ny][nx]==='#') {
-        g[cy+dy/2][cx+dx/2] = '.'; g[ny][nx] = '.'; carve(nx, ny);
+function generateMaze(columns, rows, seed, loopFactor = 0.15) {
+  const random = lcg(seed);
+  const width = columns * 2 + 1;
+  const height = rows * 2 + 1;
+  const grid = Array.from({ length: height }, () => Array(width).fill('#'));
+
+  function shuffle(values) {
+    for (let index = values.length - 1; index > 0; index--) {
+      const swapIndex = Math.floor(random() * (index + 1));
+      [values[index], values[swapIndex]] = [values[swapIndex], values[index]];
+    }
+    return values;
+  }
+
+  function carve(cellX, cellY) {
+    const directions = [[0, -2], [0, 2], [-2, 0], [2, 0]];
+    for (const [deltaX, deltaY] of shuffle(directions)) {
+      const nextX = cellX + deltaX;
+      const nextY = cellY + deltaY;
+      const inside = nextX >= 1 && nextX < width - 1 && nextY >= 1 && nextY < height - 1;
+      if (inside && grid[nextY][nextX] === '#') {
+        grid[cellY + deltaY / 2][cellX + deltaX / 2] = '.';
+        grid[nextY][nextX] = '.';
+        carve(nextX, nextY);
       }
     }
   }
-  g[1][1] = '.'; carve(1, 1); g[1][1] = 'S'; g[H-2][W-2] = 'G';
+
+  grid[1][1] = '.';
+  carve(1, 1);
+  grid[1][1] = 'S';
+  grid[height - 2][width - 2] = 'G';
 
   // Add a few extra openings so the maze has forks and junctions.
-  const rng2 = lcg((seed ^ 0x5A5A5A5A) >>> 0);
-  for (let y = 1; y < H-1; y++) {
-    for (let x = 1; x < W-1; x++) {
-      if (g[y][x] !== '#' || rng2() > loopFactor) continue;
-      const horiz = (y%2===0) && (x%2===1) && g[y][x-1]!=='#' && g[y][x+1]!=='#';
-      const vert  = (x%2===0) && (y%2===1) && g[y-1][x]!=='#' && g[y+1][x]!=='#';
-      if (horiz || vert) g[y][x] = '.';
+  const loopRandom = lcg((seed ^ 0x5A5A5A5A) >>> 0);
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      if (grid[y][x] !== '#' || loopRandom() > loopFactor) continue;
+      const horizontalOpening = y % 2 === 0 && x % 2 === 1
+        && grid[y][x - 1] !== '#' && grid[y][x + 1] !== '#';
+      const verticalOpening = x % 2 === 0 && y % 2 === 1
+        && grid[y - 1][x] !== '#' && grid[y + 1][x] !== '#';
+      if (horizontalOpening || verticalOpening) grid[y][x] = '.';
     }
   }
-  return g.map(r => r.join(''));
+  return grid.map(row => row.join(''));
 }
 
 const DIRS = { north:[0,-1], south:[0,1], east:[1,0], west:[-1,0] };
@@ -566,7 +584,7 @@ async function animRun(grid, start, goal, getDir, maxSteps, elId, msPerStep) {
   for (let i = 0; i < maxSteps; i++) {
     const el = document.getElementById(elId);
     if (el) el.innerHTML = renderMaze(grid, pos, goal, visited, \`step \${i + 1}\`);
-    await new Promise(r => setTimeout(r, msPerStep));
+    await helpers.delay(msPerStep);
     const dir = getDir(i, pos, validMoves(grid, pos));
     const rv = doMove(grid, pos, dir);
     pos = rv.pos; steps++;
@@ -590,7 +608,7 @@ async function animStall(grid, start, goal, dir, elId, msPerStep) {
   for (;;) {
     const el = document.getElementById(elId);
     if (el) el.innerHTML = renderMaze(grid, pos, goal, visited, \`'always \${dir}' · move \${moves + 1}\`);
-    await new Promise(r => setTimeout(r, msPerStep));
+    await helpers.delay(msPerStep);
     const rv = doMove(grid, pos, dir);
     if (!rv.ok) break;
     pos = rv.pos; visited.push([...pos]); moves++;
@@ -645,7 +663,7 @@ helpers.log.html(\`<div id="\${UID}" style="margin:6px 0"></div>\`);
 for (const dir of steps) {
   const el = document.getElementById(UID);
   if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, visited, \`DFS · step \${stepCount + 1}\`);
-  await new Promise(r => setTimeout(r, 55));
+  await helpers.delay(55);
   const rv = fn.doMove(grid, pos, dir);
   pos = rv.pos; stepCount++;
   if (rv.ok) visited.push([...pos]);
@@ -679,7 +697,7 @@ for (const cell of exploreOrder) {
   const el = document.getElementById(UID);
   if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, [],
     \`BFS searching · \${explored.size} of \${exploreOrder.length} cells\`, explored);
-  await new Promise(r => setTimeout(r, 32));
+  await helpers.delay(32);
 }
 
 // Phase 2: walk the path
@@ -688,7 +706,7 @@ for (const dir of path) {
   const el = document.getElementById(UID);
   if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, visited,
     \`BFS walking · step \${steps + 1} of \${path.length}\`, explored);
-  await new Promise(r => setTimeout(r, 90));
+  await helpers.delay(90);
   const rv = fn.doMove(grid, pos, dir);
   pos = rv.pos; steps++;
   if (rv.ok) visited.push([...pos]);
@@ -720,7 +738,7 @@ for (const dir of path) {
   const el = document.getElementById(UID);
   if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, visited,
     \`A* · step \${steps + 1} of \${path.length}\`);
-  await new Promise(r => setTimeout(r, 85));
+  await helpers.delay(85);
   const rv = fn.doMove(grid, pos, dir);
   pos = rv.pos; steps++;
   if (rv.ok) visited.push([...pos]);
@@ -748,12 +766,9 @@ mountCanvasFlow("#cell-llm-maze", {
       showCode: false,
 
       summary: "El código del mecanismo comienza oculto para enfocar principalmente la infraestructura web. Al expandirlo, se pueden examinar los nombres exportados al final: state.runMaze es el resuelvedor compartido llamado el nodo editable.",
-      code: `// Reading guide: this is infrastructure, not a required coding exercise. The run
-// node below is the intended editing surface. Expand this only if you want to inspect
-// how maps, images, tool calls, and corridor auto-walking are wired together.
-// Maze-generation plumbing, stored in state so the run node can use it.
-// The lesson is the decision-step swap: the same loop that ran DFS, BFS, and A*
-// now drives a language model over this maze instead.
+      code: `// Guía de lectura: esto es infraestructura, no un ejercicio obligatorio.
+// El nodo de ejecución es la superficie editable; abre este bloque para inspeccionar su soporte.
+// El mismo bucle de DFS, BFS y A* ahora dirige un modelo de lenguaje por el laberinto.
 
 
 // lcg is a tiny seeded random-number generator, so a given seed always builds the same maze (reproducible runs).
@@ -762,31 +777,52 @@ function lcg(seed) {
   return () => { s = (Math.imul(1664525, s) + 1013904223) >>> 0; return s / 4294967296; };
 }
 
-function generateMaze(cols, rows, seed, loopFactor = 0.15) {
-  const rng = lcg(seed), W = cols * 2 + 1, H = rows * 2 + 1;
-  const g = Array.from({ length: H }, () => Array(W).fill('#'));
-  function sh(a) { for (let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a; }
-  function carve(cx, cy) {
-    for (const [dx, dy] of sh([[0,-2],[0,2],[-2,0],[2,0]])) {
-      const [nx, ny] = [cx+dx, cy+dy];
-      if (nx>=1 && nx<W-1 && ny>=1 && ny<H-1 && g[ny][nx]==='#') {
-        g[cy+dy/2][cx+dx/2] = '.'; g[ny][nx] = '.'; carve(nx, ny);
+function generateMaze(columns, rows, seed, loopFactor = 0.15) {
+  const random = lcg(seed);
+  const width = columns * 2 + 1;
+  const height = rows * 2 + 1;
+  const grid = Array.from({ length: height }, () => Array(width).fill('#'));
+
+  function shuffle(values) {
+    for (let index = values.length - 1; index > 0; index--) {
+      const swapIndex = Math.floor(random() * (index + 1));
+      [values[index], values[swapIndex]] = [values[swapIndex], values[index]];
+    }
+    return values;
+  }
+
+  function carve(cellX, cellY) {
+    const directions = [[0, -2], [0, 2], [-2, 0], [2, 0]];
+    for (const [deltaX, deltaY] of shuffle(directions)) {
+      const nextX = cellX + deltaX;
+      const nextY = cellY + deltaY;
+      const inside = nextX >= 1 && nextX < width - 1 && nextY >= 1 && nextY < height - 1;
+      if (inside && grid[nextY][nextX] === '#') {
+        grid[cellY + deltaY / 2][cellX + deltaX / 2] = '.';
+        grid[nextY][nextX] = '.';
+        carve(nextX, nextY);
       }
     }
   }
-  g[1][1] = '.'; carve(1, 1); g[1][1] = 'S'; g[H-2][W-2] = 'G';
+
+  grid[1][1] = '.';
+  carve(1, 1);
+  grid[1][1] = 'S';
+  grid[height - 2][width - 2] = 'G';
 
   // Add a few extra openings so the maze has forks and junctions.
-  const rng2 = lcg((seed ^ 0x5A5A5A5A) >>> 0);
-  for (let y = 1; y < H-1; y++) {
-    for (let x = 1; x < W-1; x++) {
-      if (g[y][x] !== '#' || rng2() > loopFactor) continue;
-      const horiz = (y%2===0) && (x%2===1) && g[y][x-1]!=='#' && g[y][x+1]!=='#';
-      const vert  = (x%2===0) && (y%2===1) && g[y-1][x]!=='#' && g[y+1][x]!=='#';
-      if (horiz || vert) g[y][x] = '.';
+  const loopRandom = lcg((seed ^ 0x5A5A5A5A) >>> 0);
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      if (grid[y][x] !== '#' || loopRandom() > loopFactor) continue;
+      const horizontalOpening = y % 2 === 0 && x % 2 === 1
+        && grid[y][x - 1] !== '#' && grid[y][x + 1] !== '#';
+      const verticalOpening = x % 2 === 0 && y % 2 === 1
+        && grid[y - 1][x] !== '#' && grid[y + 1][x] !== '#';
+      if (horizontalOpening || verticalOpening) grid[y][x] = '.';
     }
   }
-  return g.map(r => r.join(''));
+  return grid.map(row => row.join(''));
 }
 
 const DIRS = { north:[0,-1], south:[0,1], east:[1,0], west:[-1,0] };
@@ -1137,7 +1173,7 @@ state.runMaze = async function(h, state, opts) {
       if (!mv.ok) break;
       prevPos = pos; pos = mv.pos; visited.push([pos[0], pos[1]]); actions.push(step[0].toUpperCase());
       show((label || 'walk') + ' ' + step[0].toUpperCase());
-      await new Promise(function(res) { setTimeout(res, 60); });
+      await h.delay(60);
       if (mv.done) return true;
     }
     return false;
@@ -1261,7 +1297,7 @@ state.runMaze = async function(h, state, opts) {
         if (!mv2.ok) { walled = L2D[steps[s]]; break; }
         pathStr += steps[s]; prevPos = pos; pos = mv2.pos; visited.push([pos[0], pos[1]]); actions.push(steps[s]);
         show('decision ' + decision + ' · ' + pathStr);
-        await new Promise(function(res) { setTimeout(res, 80); });
+        await h.delay(80);
         if (mv2.done) { done = true; break; }
       }
 
@@ -1288,7 +1324,7 @@ state.runMaze = async function(h, state, opts) {
         ? 'Executed ' + (pathStr || '(none)') + ', then hit a wall going ' + walled + '.'
         : 'Executed ' + (pathStr || '(none)') + '.';
       reply(stepNote + walkedNote + ' Now at ' + JSON.stringify(pos) + '. Available: ' + availStr(pos) + '.');
-      await new Promise(function(res) { setTimeout(res, 200); });
+      await h.delay(200);
     }
   } finally {
     if (wrap) wrap.style.display = 'none';
@@ -1355,6 +1391,8 @@ const reply = await chat({
 
 const m  = reply.choices[0].message;
 const fr = reply.choices[0].finish_reason;
+// Visibilidad opcional: descomenta para revisar la respuesta completa del proveedor.
+// log.details("respuesta sin procesar", reply);
 log("finish_reason:", fr);
 log("");
 if (m.reasoning_content) {
@@ -1389,6 +1427,8 @@ const body = {
   messages: [{ role: "user", content: "In one sentence: who runs you?" }],
   max_tokens: 8196,  // a reasoning model spends tokens thinking first. Leave room for the answer
 };
+// Entrada alternativa: descomenta para comparar la misma solicitud con otra pregunta.
+// body.messages[0].content = "En una frase: ¿qué es un bucle de agente?";
 
 // What goes OUT, with the key redacted so a screenshot never leaks it.
 log("→ POST " + url);

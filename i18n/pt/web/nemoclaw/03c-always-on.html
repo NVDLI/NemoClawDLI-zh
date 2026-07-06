@@ -471,48 +471,31 @@ return { installed: added.id, name };
 `,
     },
     {
-      id: "cr-watch", icon: "⏳", title: "Acompanhe e leia MEMORY.md", x: 0, y: 3,
+      id: "cr-watch", icon: "⏳", title: "Confira a execução e leia MEMORY.md", x: 0, y: 3,
       showCode: false,
-      summary: "Verifique primeiro o terminal do operador e consulte o histórico de execuções cron a cada cinco segundos. A etapa termina assim que uma nova execução for concluída, mostra o tempo decorrido e compara MEMORY.md antes e depois.",
-      code: `// Verify terminal access before waiting, then poll the gateway until this job
-// reports a new run. cron.list state is the compatibility fallback for older runtimes.
-const AGENT = "my-assistant";   // your agent's name, from GET /api/agent on the Kickstart page
+      summary: "Consulte cron uma vez e termine imediatamente. Execute o nó novamente após o minuto agendado ou ative o modo de espera opcional.",
+      code: `// Consulte uma vez por padrão para não bloquear a lição durante 90 segundos.
+// O estado de cron.list é a alternativa compatível com runtimes anteriores.
+const AGENT = "my-assistant";   // nome do agente, obtido com GET /api/agent na página Kickstart
 const POLL_MS = 5000;
-const MAX_WAIT_MS = 90000;
+const AUTO_WATCH = false;
+// Modo alternativo: mude AUTO_WATCH para true para consultar por até 90 segundos.
 const MEMORY_CMD = "echo '=== MEMORY.md (tail) ==='; tail -n 8 .openclaw/workspace/MEMORY.md 2>/dev/null || echo '(no MEMORY.md yet)'";
 const runStamp = entry => Math.max(Number(entry?.ts || 0), Number(entry?.runAtMs || 0));
-const memoryBody = text => {
-  const marker = "=== MEMORY.md (tail) ===";
-  const value = String(text || "");
-  const at = value.lastIndexOf(marker);
-  return (at >= 0 ? value.slice(at + marker.length) : value).trim();
-};
-function pause(ms) {
-  if (helpers.signal?.aborted) { const error = new Error("Interrompido"); error.name = "AbortError"; return Promise.reject(error); }
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => { helpers.signal?.removeEventListener("abort", stop); resolve(); }, ms);
-    const stop = () => { clearTimeout(timer); const error = new Error("Interrompido"); error.name = "AbortError"; reject(error); };
-    helpers.signal?.addEventListener("abort", stop, { once: true });
-  });
-}
-
-helpers.log("Verificando o acesso ao terminal do operador antes da espera…");
-const before = await helpers.terminal(
-  "openshell sandbox connect " + AGENT,
-  { send: [MEMORY_CMD], idleMs: 2500, totalMs: 18000 }
-);
-const beforeMemory = memoryBody(before.output);
 
 const baseline = Number(state.demoCronBaselineRunAt || 0);
 const startedAt = Date.now();
 let observed = null;
 let polls = 0;
 let historyWarningShown = false;
-const progress = helpers.log("Aguardando uma execução cron concluída · 0s decorridos · consulta a cada 5s");
+const maxPolls = AUTO_WATCH ? 18 : 1;
+const progress = helpers.log(AUTO_WATCH
+  ? "aguardando uma execução cron concluída · consulta a cada 5s"
+  : "consultando uma vez o estado de cron");
 progress.setAttribute("role", "status");
 progress.setAttribute("aria-live", "polite");
 
-while (Date.now() - startedAt <= MAX_WAIT_MS) {
+while (polls < maxPolls) {
   polls++;
   let entries = [];
   try {
@@ -520,7 +503,7 @@ while (Date.now() - startedAt <= MAX_WAIT_MS) {
     entries = history?.entries || history?.runs || [];
   } catch (_) {
     if (!historyWarningShown) {
-      helpers.log("cron.runs não está disponível; consultando o estado de cron.list.");
+      helpers.log("cron.runs não está disponível; usando o estado de cron.list.");
       historyWarningShown = true;
     }
   }
@@ -529,18 +512,18 @@ while (Date.now() - startedAt <= MAX_WAIT_MS) {
   const latestEntry = entries.reduce((latest, entry) => runStamp(entry) > runStamp(latest) ? entry : latest, null);
   const latestStamp = Math.max(runStamp(latestEntry), Number(job?.state?.lastRunAtMs || 0));
   const status = latestEntry?.status || job?.state?.lastRunStatus || job?.state?.lastStatus || "ainda não concluída";
-  const elapsed = Math.floor((Date.now() - startedAt) / 1000);
-  progress.textContent = "Aguardando uma execução cron concluída · " + elapsed + "s decorridos · " + status + " · consulta " + polls;
   if (latestStamp > baseline) {
     observed = { stamp: latestStamp, status };
-    progress.textContent = "✓ execução cron registrada após " + elapsed + "s · " + status + " · " + polls + " consultas";
+    progress.textContent = "✓ execução cron registrada · " + status + " · " + polls + " consulta" + (polls === 1 ? "" : "s");
     break;
   }
-  if (Date.now() - startedAt >= MAX_WAIT_MS) break;
-  await pause(POLL_MS);
+  progress.textContent = status + " · consulta " + polls + " de " + maxPolls;
+  if (polls < maxPolls) await helpers.delay(POLL_MS);
 }
 
-if (!observed) helpers.log("Nenhuma execução concluída foi registrada em 90s. Lendo MEMORY.md uma vez para você inspecionar o resultado.");
+if (!observed) helpers.log(AUTO_WATCH
+  ? "Nenhuma execução concluída foi registrada em 90s."
+  : "Ainda não há uma execução nova. Execute este nó após o minuto agendado ou ative AUTO_WATCH.");
 
 helpers.log("Lendo MEMORY.md do sandbox '" + AGENT + "' pelo terminal do operador…");
 const { output, raw, frames } = await helpers.terminal(
@@ -549,12 +532,14 @@ const { output, raw, frames } = await helpers.terminal(
 );
 helpers.log(output);
 helpers.log.details("transcrição bruta (" + frames + " quadros WebSocket)", raw);
-const afterMemory = memoryBody(output);
-const memoryChanged = !!afterMemory && afterMemory !== beforeMemory;
-helpers.log(memoryChanged
-  ? "MEMORY.md mudou enquanto ninguém controlava o agente."
-  : "O fim de MEMORY.md não mudou; confira o estado cron acima antes de continuar.");
-return { elapsed_s: Math.floor((Date.now() - startedAt) / 1000), polls, run_status: observed?.status || "não observada", memory_changed: memoryChanged };
+// Visibilidade opcional: remova o comentário para inspecionar a observação cron completa.
+// helpers.log.json("observação cron", observed);
+return {
+  elapsed_s: Math.floor((Date.now() - startedAt) / 1000),
+  polls,
+  run_status: observed?.status || "não observada",
+  auto_watch: AUTO_WATCH,
+};
 `,
     },
     {

@@ -894,6 +894,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "copy_surface": (RECOMMENDED, "Shorten learner-facing canvas chrome. Let the page heading carry module "
                          "coordinates, keep labels and titles task-focused, and move implementation inventories "
                          "into the expandable code rather than a second prose layer."),
+        "run_cell_style": (RECOMMENDED, "Keep the editable RunCell small and legible, return its structured "
+                           "outcome, use Stop-aware waits, and provide a commented diagnostic or alternate input "
+                           "where it helps a learner inspect the result."),
     }
     _FIG_FIX = {
         "tiny": (RECOMMENDED, "Raise the text to a rendered font-size of at least 11px; below that it is "
@@ -1322,7 +1325,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
           f"ui-contract {len(ca_find.get('ui_contract', []))}, "
           f"code-surface {len(ca_find.get('code_surface', []))}, "
           f"readability {len(ca_find.get('readability', []))}, "
-          f"copy {len(ca_find.get('copy_surface', []))})")
+          f"copy {len(ca_find.get('copy_surface', []))}, "
+          f"run-cell-style {len(ca_find.get('run_cell_style', []))})")
     print(f"  learner flow    : {len(learner_flow_find)} required finding(s) "
           f"(progressive disclosure / prerequisites / lifecycle / CPU baseline)")
     print(f"  contribution    : {len(contribution_safety_find)} required finding(s) "

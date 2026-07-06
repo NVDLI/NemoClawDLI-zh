@@ -471,48 +471,31 @@ return { installed: added.id, name };
 `,
     },
     {
-      id: "cr-watch", icon: "⏳", title: "Observa la ejecución y lee MEMORY.md", x: 0, y: 3,
+      id: "cr-watch", icon: "⏳", title: "Comprueba la ejecución y lee MEMORY.md", x: 0, y: 3,
       showCode: false,
-      summary: "Verifica primero la terminal del operador y consulta el historial de ejecuciones cron cada cinco segundos. El paso termina cuando concluye una ejecución nueva, muestra el tiempo transcurrido y compara MEMORY.md antes y después.",
-      code: `// Verify terminal access before waiting, then poll the gateway until this job
-// reports a new run. cron.list state is the compatibility fallback for older runtimes.
-const AGENT = "my-assistant";   // your agent's name, from GET /api/agent on the Kickstart page
+      summary: "Consulta cron una vez y termina de inmediato. Vuelve a ejecutar el nodo después del minuto programado o activa el modo de espera opcional.",
+      code: `// Consulta una vez de forma predeterminada para no bloquear la lección durante 90 segundos.
+// El estado de cron.list es la alternativa compatible con runtimes anteriores.
+const AGENT = "my-assistant";   // nombre del agente, obtenido con GET /api/agent en Kickstart
 const POLL_MS = 5000;
-const MAX_WAIT_MS = 90000;
+const AUTO_WATCH = false;
+// Modo alternativo: cambia AUTO_WATCH a true para consultar durante un máximo de 90 segundos.
 const MEMORY_CMD = "echo '=== MEMORY.md (tail) ==='; tail -n 8 .openclaw/workspace/MEMORY.md 2>/dev/null || echo '(no MEMORY.md yet)'";
 const runStamp = entry => Math.max(Number(entry?.ts || 0), Number(entry?.runAtMs || 0));
-const memoryBody = text => {
-  const marker = "=== MEMORY.md (tail) ===";
-  const value = String(text || "");
-  const at = value.lastIndexOf(marker);
-  return (at >= 0 ? value.slice(at + marker.length) : value).trim();
-};
-function pause(ms) {
-  if (helpers.signal?.aborted) { const error = new Error("Detenido"); error.name = "AbortError"; return Promise.reject(error); }
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => { helpers.signal?.removeEventListener("abort", stop); resolve(); }, ms);
-    const stop = () => { clearTimeout(timer); const error = new Error("Detenido"); error.name = "AbortError"; reject(error); };
-    helpers.signal?.addEventListener("abort", stop, { once: true });
-  });
-}
-
-helpers.log("Verificando el acceso a la terminal del operador antes de esperar…");
-const before = await helpers.terminal(
-  "openshell sandbox connect " + AGENT,
-  { send: [MEMORY_CMD], idleMs: 2500, totalMs: 18000 }
-);
-const beforeMemory = memoryBody(before.output);
 
 const baseline = Number(state.demoCronBaselineRunAt || 0);
 const startedAt = Date.now();
 let observed = null;
 let polls = 0;
 let historyWarningShown = false;
-const progress = helpers.log("Esperando una ejecución cron terminada · 0s transcurridos · consulta cada 5s");
+const maxPolls = AUTO_WATCH ? 18 : 1;
+const progress = helpers.log(AUTO_WATCH
+  ? "esperando una ejecución cron terminada · consulta cada 5s"
+  : "consultando una vez el estado de cron");
 progress.setAttribute("role", "status");
 progress.setAttribute("aria-live", "polite");
 
-while (Date.now() - startedAt <= MAX_WAIT_MS) {
+while (polls < maxPolls) {
   polls++;
   let entries = [];
   try {
@@ -520,7 +503,7 @@ while (Date.now() - startedAt <= MAX_WAIT_MS) {
     entries = history?.entries || history?.runs || [];
   } catch (_) {
     if (!historyWarningShown) {
-      helpers.log("cron.runs no está disponible; consultando el estado de cron.list.");
+      helpers.log("cron.runs no está disponible; se usará el estado de cron.list.");
       historyWarningShown = true;
     }
   }
@@ -529,18 +512,18 @@ while (Date.now() - startedAt <= MAX_WAIT_MS) {
   const latestEntry = entries.reduce((latest, entry) => runStamp(entry) > runStamp(latest) ? entry : latest, null);
   const latestStamp = Math.max(runStamp(latestEntry), Number(job?.state?.lastRunAtMs || 0));
   const status = latestEntry?.status || job?.state?.lastRunStatus || job?.state?.lastStatus || "aún no terminada";
-  const elapsed = Math.floor((Date.now() - startedAt) / 1000);
-  progress.textContent = "Esperando una ejecución cron terminada · " + elapsed + "s transcurridos · " + status + " · consulta " + polls;
   if (latestStamp > baseline) {
     observed = { stamp: latestStamp, status };
-    progress.textContent = "✓ ejecución cron registrada tras " + elapsed + "s · " + status + " · " + polls + " consultas";
+    progress.textContent = "✓ ejecución cron registrada · " + status + " · " + polls + " consulta" + (polls === 1 ? "" : "s");
     break;
   }
-  if (Date.now() - startedAt >= MAX_WAIT_MS) break;
-  await pause(POLL_MS);
+  progress.textContent = status + " · consulta " + polls + " de " + maxPolls;
+  if (polls < maxPolls) await helpers.delay(POLL_MS);
 }
 
-if (!observed) helpers.log("No se registró una ejecución terminada en 90s. Leyendo MEMORY.md una vez para que puedas revisar el resultado.");
+if (!observed) helpers.log(AUTO_WATCH
+  ? "No se registró una ejecución terminada en 90s."
+  : "Todavía no hay una ejecución nueva. Vuelve a ejecutar este nodo después del minuto programado o activa AUTO_WATCH.");
 
 helpers.log("Leyendo MEMORY.md del sandbox '" + AGENT + "' mediante la terminal del operador…");
 const { output, raw, frames } = await helpers.terminal(
@@ -549,12 +532,14 @@ const { output, raw, frames } = await helpers.terminal(
 );
 helpers.log(output);
 helpers.log.details("transcripción sin procesar (" + frames + " tramas WebSocket)", raw);
-const afterMemory = memoryBody(output);
-const memoryChanged = !!afterMemory && afterMemory !== beforeMemory;
-helpers.log(memoryChanged
-  ? "MEMORY.md cambió mientras nadie controlaba al agente."
-  : "El final de MEMORY.md no cambió; revisa el estado de cron antes de continuar.");
-return { elapsed_s: Math.floor((Date.now() - startedAt) / 1000), polls, run_status: observed?.status || "no observada", memory_changed: memoryChanged };
+// Visibilidad opcional: descomenta para revisar la observación cron completa.
+// helpers.log.json("observación cron", observed);
+return {
+  elapsed_s: Math.floor((Date.now() - startedAt) / 1000),
+  polls,
+  run_status: observed?.status || "no observada",
+  auto_watch: AUTO_WATCH,
+};
 `,
     },
     {

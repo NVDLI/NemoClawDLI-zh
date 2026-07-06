@@ -24,7 +24,7 @@ const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright-core');
 
-const root = '/site';
+const root = process.env.SITE_ROOT || '/site';
 const port = 4203;
 const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json' };
 const fixture = `<!doctype html><html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="/nemoclaw/styles/_style.css"></head><body data-learning-view>
@@ -41,7 +41,7 @@ window.runApi = mountRunCell("#run-cell", {
   openCode: true,
   label: "fixture run cell",
   intro: "Read the outcome first. Open code only to change the wait.",
-  code: \`await new Promise((resolve, reject) => {\n  const timer = setTimeout(resolve, 5000);\n  AbortSignal.addEventListener("abort", () => { clearTimeout(timer); reject(new DOMException("stopped", "AbortError")); }, { once: true });\n});\nlog("finished");\`,
+  code: \`helpers.log("process started");\nawait helpers.delay(5000);\nreturn { finished: true };\`,
 });
 window.canvasApi = mountCanvasFlow("#canvas", {
   label: "fixture flow", intro: "A cancellable wait followed by a visible result.", edges:[{from:"wait",to:"finish"}], nodes: [{ id:"wait", title:"Wait", x:0, y:0,
@@ -108,7 +108,10 @@ async function waitText(locator, pattern) {
 
 (async () => {
   await new Promise(resolve => server.listen(port, '127.0.0.1', resolve));
-  const browser = await chromium.launch({ headless:true });
+  const browser = await chromium.launch({
+    headless:true,
+    executablePath:process.env.CHROME_BIN || undefined,
+  });
   const page = await browser.newPage({ viewport:{ width:1100, height:900 } });
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message || String(error)));
@@ -216,6 +219,14 @@ async function waitText(locator, pattern) {
   await runButton.click();
   await waitText(page.locator('#run-cell .rc-out'), /stopped/);
   await waitText(runButton, /Run$/);
+  await page.locator('#run-cell .rc-code').evaluate(el => {
+    el.value = 'helpers.log("process detail"); return { useful: 42, status: "complete" };';
+  });
+  await runButton.click();
+  await waitText(page.locator('#run-cell .rc-out'), /process detail/);
+  await waitText(page.locator('#run-cell .rc-out'), /returned value/);
+  const returnText = await page.locator('#run-cell .rc-out').innerText();
+  if (!/useful/.test(returnText) || !/42/.test(returnText)) throw new Error('RunCell log suppressed its structured returned value');
   await page.locator('#run-cell .rc-code').evaluate(el => { el.value = 'throw new Error("fixture boom")'; });
   await runButton.click();
   await waitText(page.locator('#run-cell .rc-out'), /fixture boom/);
@@ -346,7 +357,7 @@ async function waitText(locator, pattern) {
       helperAllowlistGuard:/helpers\.mountChatUI/.test(artifactJavaScriptIssue('helpers.mountChatUI("#app");')),
     };
   });
-  if (!sourceAccess.artifactIds.includes('deep-src') || !sourceAccess.artifactIds.some(id => /^module-/.test(id)) || sourceAccess.indexHasBodies || !sourceAccess.deepIsJavaScript || !sourceAccess.runtimeFiles.includes('_shared.js') || !sourceAccess.sharedIsExact || !sourceAccess.traversalRejected || !sourceAccess.fencedArtifactCaptured || !sourceAccess.rawArtifactCaptured || !sourceAccess.inlineScriptGuard || !sourceAccess.externalScriptGuard || !sourceAccess.inlineHelperGuard || !sourceAccess.inlineSourceRecovered || !sourceAccess.artifactAsyncGuard || !sourceAccess.artifactInputGuard || !sourceAccess.artifactTopLevelAwait || !sourceAccess.artifactCombinedGuard || !sourceAccess.helperAliasAllowed || !sourceAccess.helperAsyncGuard || !sourceAccess.helperAllowlistGuard) throw new Error(`Course Assistant source/artifact access is incomplete or unsafe: ${JSON.stringify(sourceAccess)}`);
+  if (!sourceAccess.artifactIds.includes('deep-src') || !sourceAccess.artifactIds.some(id => /^module-/.test(id)) || sourceAccess.indexHasBodies || !sourceAccess.deepIsJavaScript || !sourceAccess.runtimeFiles.includes('_shared.js') || !sourceAccess.runtimeFiles.includes('_openclaw_cli.js') || !sourceAccess.sharedIsExact || !sourceAccess.traversalRejected || !sourceAccess.fencedArtifactCaptured || !sourceAccess.rawArtifactCaptured || !sourceAccess.inlineScriptGuard || !sourceAccess.externalScriptGuard || !sourceAccess.inlineHelperGuard || !sourceAccess.inlineSourceRecovered || !sourceAccess.artifactAsyncGuard || !sourceAccess.artifactInputGuard || !sourceAccess.artifactTopLevelAwait || !sourceAccess.artifactCombinedGuard || !sourceAccess.helperAliasAllowed || !sourceAccess.helperAsyncGuard || !sourceAccess.helperAllowlistGuard) throw new Error(`Course Assistant source/artifact access is incomplete or unsafe: ${JSON.stringify(sourceAccess)}`);
   const sessionCap = await coursePage.evaluate(async () => {
     const { saveCourseAssistantStore, loadCourseAssistantStore } = await import('./scripts/_course_assistant.js');
     const values = new Map();
@@ -625,6 +636,8 @@ def main() -> int:
     parser.add_argument("--site-root", default="web")
     parser.add_argument("--image", default=DEFAULT_IMAGE)
     parser.add_argument("--engine", default=os.environ.get("CONTAINER_ENGINE") or "podman")
+    parser.add_argument("--direct-node", action="store_true",
+                        help="run Node directly in a prepared browser environment")
     args = parser.parse_args()
     site_arg = Path(args.site_root)
     site_root = site_arg.resolve() if site_arg.is_absolute() else (ROOT / site_arg).resolve()
@@ -634,18 +647,25 @@ def main() -> int:
     with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as handle:
         handle.write(RUNTIME_JS)
         script = Path(handle.name)
-    cmd = [args.engine, "run", "--rm", "--entrypoint", "node"]
-    if args.engine.endswith("podman"):
-        cmd.append("--userns=keep-id")
-    cmd += [
-        "-e", "NODE_PATH=/opt/nemoclaw-runtime/node_modules",
-        "-v", f"{site_root}:/site:ro",
-        "-v", f"{script}:/tmp/learner_flow_runtime_audit.js:ro",
-        args.image,
-        "/tmp/learner_flow_runtime_audit.js",
-    ]
+    if args.direct_node:
+        cmd = ["node", str(script)]
+        run_env = os.environ.copy()
+        run_env["SITE_ROOT"] = str(site_root)
+    else:
+        cmd = [args.engine, "run", "--rm", "--entrypoint", "node"]
+        if args.engine.endswith("podman"):
+            cmd.append("--userns=keep-id")
+        cmd += [
+            "-e", "NODE_PATH=/opt/nemoclaw-runtime/node_modules",
+            "-v", f"{site_root}:/site:ro",
+            "-v", f"{script}:/tmp/learner_flow_runtime_audit.js:ro",
+            args.image,
+            "/tmp/learner_flow_runtime_audit.js",
+        ]
+        run_env = None
     try:
-        proc = subprocess.run(cmd, cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=180)
+        proc = subprocess.run(cmd, cwd=ROOT, text=True, stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT, timeout=180, env=run_env)
     except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
         print(f"learner_flow_runtime_audit: FAIL\n  - {exc}")
         return 1
