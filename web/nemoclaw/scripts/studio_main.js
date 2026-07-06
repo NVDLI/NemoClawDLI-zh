@@ -24,8 +24,9 @@ const API_CANDIDATES = [
   '/lab/api/contents/nemoclaw/',
 ];
 const COMMENT_FILE  = 'studio_comments.json';
+const STATIC_EXPORT = /(?:^|\/)course-static(?:\/|$)/.test(location.pathname);
 let contentApiBase  = null;
-let contentApiReady = false;
+let contentApiReady = STATIC_EXPORT;
 const SNAPSHOT_SEL  = 'h1,h2,h3,p,li,td,.callout,.hero .lead,.cf-panel-title';
 const ANNOTATE_SYS  = `You are a concise teaching assistant for an AI agent engineering course.
 A student just ran a code exercise and got the following output. In 2–4 sentences explain what
@@ -753,7 +754,12 @@ function directPageUrl(file) {
 }
 
 async function resolveContentApi(file=currentFile) {
-  if (contentApiReady) return contentApiBase;
+  if (contentApiReady) {
+    if (!contentApiBase && writeNote) {
+      writeNote.textContent = 'Read-only static preview: Jupyter contents API not available on this origin.';
+    }
+    return contentApiBase;
+  }
   if (!file) return null;
   for (const base of API_CANDIDATES) {
     try {
