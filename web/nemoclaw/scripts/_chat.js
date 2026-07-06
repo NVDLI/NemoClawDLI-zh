@@ -5,6 +5,25 @@ const RANDOM_ID_RADIX = 36;
 const MARKED_VENDOR_URL = new URL("../vendor/marked-14.1.4.esm.js", import.meta.url).href;
 const LANGCHAIN_VENDOR_URL = new URL("../vendor/langchain-1.4.7.esm.min.js", import.meta.url).href;
 
+export function resolveChatMarkdownUrl(raw, pageHref = globalThis.location?.href) {
+  const value = String(raw || "").trim();
+  if (!/^\/(?!\/)/.test(value) || !pageHref) return value;
+  const courseDirectory = new URL("./", pageHref);
+  const parentDirectory = new URL("../", courseDirectory);
+  const deployedSiteRoot = /\/web\/$/i.test(parentDirectory.pathname)
+    ? new URL("../", parentDirectory)
+    : parentDirectory;
+  return new URL(value.slice(1), deployedSiteRoot).href;
+}
+
+function rebaseChatMarkdownUrls(root) {
+  root.querySelectorAll("a[href],img[src]").forEach(element => {
+    const attribute = element.hasAttribute("href") ? "href" : "src";
+    const value = element.getAttribute(attribute);
+    if (/^\/(?!\/)/.test(value || "")) element.setAttribute(attribute, resolveChatMarkdownUrl(value));
+  });
+}
+
 // Inject the shared .chatui-* stylesheet once; idempotent.
 // Kept separate from mountChatUI so a run-cell that inspects the panel still mounts it.
 // Such a cell calls helpers.mountChatUI.toString() and gets the styles intact.
@@ -127,7 +146,7 @@ export function mountChatUI(container, opts = {}) {
     d.querySelectorAll("script,iframe,style,object,embed,link,meta,form").forEach(n => n.remove());
     d.querySelectorAll("*").forEach(n => [...n.attributes].forEach(a => { if (/^on/i.test(a.name) || /javascript:/i.test(a.value)) n.removeAttribute(a.name); }));
     return d.innerHTML; };
-  const renderMd = (elm, t) => { if (MARKED) { elm.innerHTML = _sanitize(MARKED.parse(t)); if (window.hljs) elm.querySelectorAll("pre code").forEach(b => { try { window.hljs.highlightElement(b); } catch (_) {} }); } else { elm.textContent = t; } };
+  const renderMd = (elm, t) => { if (MARKED) { elm.innerHTML = _sanitize(MARKED.parse(t)); rebaseChatMarkdownUrls(elm); if (window.hljs) elm.querySelectorAll("pre code").forEach(b => { try { window.hljs.highlightElement(b); } catch (_) {} }); } else { elm.textContent = t; } };
   ensureChatStyles();
   const modules = opts.modules || [];
   const models  = opts.models || [];
