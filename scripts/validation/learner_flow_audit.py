@@ -418,6 +418,7 @@ def audit_runtime_integrations(
 ) -> list[str]:
     """Guard browser/runtime handoffs whose partial success can mislead learners."""
     findings: list[str] = []
+    cli_runtime = (ROOT / "web/nemoclaw/scripts/_openclaw_cli.js").read_text(encoding="utf-8")
     _need(findings, 'class="claw-help-mark"' in openclaw and
           'class="claw-help-hint"' in openclaw,
           "OpenClaw probe field help needs a visible question-mark cue and instruction")
@@ -438,6 +439,8 @@ def audit_runtime_integrations(
         _need(findings, token in openshell, message)
     _need(findings, 'new URL("../vendor/langchain-1.4.7.esm.min.js", import.meta.url)' in chat,
           "shared agent chat must load LangChain from the committed same-origin bundle")
+    _need(findings, 'return { status: "error", message:' in cli_runtime,
+          "shared OpenClaw CLI failures must preserve an error state")
 
     for locale in ("en", "pt", "es"):
         kickstart = pages[f"{locale}-03a"]
@@ -465,7 +468,7 @@ def audit_runtime_integrations(
             "const POLL_MS = 5000",
             "progress.textContent =",
             'progress.setAttribute("aria-live", "polite")',
-            "const before = await helpers.terminal(",
+            "const { output, raw, frames } = await helpers.terminal(",
         ):
             _need(findings, token in cron,
                   f"{locale} Module 3c must keep the current structured cron contract: {token}")
@@ -479,7 +482,7 @@ def audit_runtime_integrations(
                   f"{locale} Module 3c restored obsolete cron.add field: {obsolete.strip()}")
         _need(findings, "p.parseError" in safety,
               f"{locale} Module 4a must explain live-policy parser failure")
-        _need(findings, cli.count('return { status: "error", message:') >= 3,
+        _need(findings, cli.count('return { status: "error", message:') >= 2,
               f"{locale} Module 4b terminal failures must preserve an error state")
         page_relative_vendor = 'import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href)'
         _need(findings, page_relative_vendor in react and deep.count(page_relative_vendor) == 3,

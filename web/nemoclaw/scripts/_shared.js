@@ -567,6 +567,19 @@ export {
 // The _chat.js -> _shared.js import cycle is load-safe because the refs sit inside function bodies, which run only after both modules finish loading.
 import { ensureChatStyles, markLiveArtifacts, mountChatUI, mountAgentChat, mountConsole } from "./_chat.js";
 export { ensureChatStyles, markLiveArtifacts, mountChatUI, mountAgentChat, mountConsole };
+import { mountOpenClawCliRuntime } from "./_openclaw_cli.js";
+
+export function mountOpenClawCli(target) {
+  /* @doc <code>helpers.mountOpenClawCli(target)</code> ::
+       Mount the live OpenClaw command/chat artifact without copying gateway RPC,
+       session-tab, autocomplete, and rendering plumbing into a learner cell. */
+  return mountOpenClawCliRuntime(target, {
+    mountConsole,
+    getOpenClawConnection,
+    openclawGatewayWsUrl,
+    openclawChat,
+  });
+}
 
 // Render search results into one text blob (numbered snippets with title + body + url) that the LLM can read as a tool result.
 export function formatSearchResults(searchOut) {
@@ -588,6 +601,23 @@ export function formatSearchResults(searchOut) {
   }).join("\n\n");
 }
 
+export function delay(ms, signal = null) {
+  /* @doc <code>helpers.delay(ms)</code> ::
+       Wait without trapping the learner in a running cell. CanvasFlow and RunCell
+       automatically connect this helper to their Stop button; pass another
+       <code>AbortSignal</code> only when the wait belongs to a different lifecycle. */
+  const waitMs = Number(ms);
+  if (!Number.isFinite(waitMs) || waitMs < 0) throw new TypeError("helpers.delay expects a non-negative number of milliseconds");
+  if (signal?.aborted) return Promise.reject(new DOMException("stopped", "AbortError"));
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(done, waitMs);
+    function cleanup() { signal?.removeEventListener("abort", stop); }
+    function done() { cleanup(); resolve(); }
+    function stop() { clearTimeout(timer); cleanup(); reject(new DOMException("stopped", "AbortError")); }
+    signal?.addEventListener("abort", stop, { once: true });
+  });
+}
+
 // ── viz.* builders → _viz.js ─────────────────────────────────────────────────
 
 // The canvas visualization builders (makeViz) live in _viz.js, imported here because both mountCanvasFlow and the VIZ_BUILDERS registry below use it.
@@ -601,8 +631,8 @@ export const VIZ_BUILDERS = makeViz(() => {});
 // `viz.*` source comes from the live viz object once a node has run; `state`, `fetch`, `trace`, and `log` are described by SPECIALS, since they are values and closures, not module functions.
 export const HELPER_FNS = {
   chat, chatStream, webSearch, instantAnswer, formatSearchResults,
-  embed, cosineSim, fetchRetry, getConfig, getKey, getModelApiBaseUrl, setModelApiBaseUrl, terminal,
-  coursePage, coursePages, contextWindow, estimateTokens, browserChatFetch, diagramSVG, ganttBarsSVG, mountFigures, openFigureLightbox, wireFigureZoom, mountChatUI, mountAgentChat, mountConsole, mountKeyPanel, mountModelEndpointProbe, openclawChat, openclawGatewayWsUrl, getOpenClawConnection, setOpenClawConnection, getOpenClawProxyConfig, setOpenClawProxyConfig,
+  embed, cosineSim, fetchRetry, delay, getConfig, getKey, getModelApiBaseUrl, setModelApiBaseUrl, terminal,
+  coursePage, coursePages, contextWindow, estimateTokens, browserChatFetch, diagramSVG, ganttBarsSVG, mountFigures, openFigureLightbox, wireFigureZoom, mountChatUI, mountAgentChat, mountConsole, mountOpenClawCli, mountKeyPanel, mountModelEndpointProbe, openclawChat, openclawGatewayWsUrl, getOpenClawConnection, setOpenClawConnection, getOpenClawProxyConfig, setOpenClawProxyConfig,
   filterOpenClawRuntimeNoise, filterOpenClawRuntimeValue, openclawMessageText, openclawResultText,
   evalSandboxNetwork, evalSandboxFs, sandboxExec, policyGet, mountPolicyMap,
 };
@@ -654,7 +684,7 @@ helpers.log.clear();                                 // clear this cell's log/ou
   },
   signal: {
     sig: "<code>helpers.signal</code>",
-    desc: `The <code>AbortSignal</code> for this run, wired to the Stop button. Pass it to <code>helpers.chat</code>/<code>chatStream</code> (they accept it automatically), to <code>helpers.fetch</code>, or to your own <code>WebSocket</code> cleanup so a long run actually cancels when the student hits Stop.`,
+    desc: `The <code>AbortSignal</code> for this run, wired to the Stop button. <code>helpers.delay</code>, <code>helpers.chat</code>, and <code>chatStream</code> use it automatically. Pass it to <code>helpers.fetch</code> or to your own <code>WebSocket</code> cleanup so a long run actually cancels when the student hits Stop.`,
     src: `// AbortSignal for this run.
 const r = await helpers.fetch(url, { signal: helpers.signal });
 helpers.signal.addEventListener("abort", () => ws.close(), { once: true });`,

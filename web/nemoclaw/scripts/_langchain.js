@@ -31,6 +31,7 @@ const COURSE_RUNTIME_FILES = [
   ["_langchain.js", "course-page, source, and token helpers"],
   ["_learning.js", "Guided disclosure behavior"],
   ["_openclaw.js", "OpenClaw gateway and probe controls"],
+  ["_openclaw_cli.js", "OpenClaw CLI gateway, branches, and command discovery"],
   ["_openshell.js", "OpenShell policy and terminal helpers"],
   ["_rag.js", "retrieval helpers"],
   ["_glossary.js", "curated-material search"],

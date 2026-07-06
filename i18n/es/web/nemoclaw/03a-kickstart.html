@@ -491,6 +491,8 @@ const r = await helpers.browserChatFetch()(ENDPOINT + "/models", {
 
 if (!r.ok) { helpers.log("models fetch failed: HTTP " + r.status); return; }
 const { data } = await r.json();
+// Visibilidad opcional: descomenta para revisar todos los identificadores antes del filtro.
+// helpers.log.json("todos los modelos", data.map(model => model.id));
 const models = data.map(m => m.id).filter(id => FILTER.some(s => id.toLowerCase().includes(s.toLowerCase())));
 if (!models.length) {
   helpers.log("No models matched filter: " + FILTER.join(", "));
@@ -517,6 +519,9 @@ const TTFT_TIMEOUT = 30000;   // ms; give up on a model with no first token by n
 // Time first-token latency and count both reasoning and answer tokens.
 async function bench(model) {
   const ctrl  = new AbortController();
+  const stop = () => ctrl.abort();
+  if (helpers.signal.aborted) ctrl.abort();
+  else helpers.signal.addEventListener("abort", stop, { once: true });
   const guard = setTimeout(() => ctrl.abort(), TTFT_TIMEOUT);   // first-token watchdog
   const t0 = performance.now();
   let ttft = null, total = null, tokens = 0, reasoning = 0, gapSum = 0, last = t0;
@@ -566,7 +571,10 @@ async function bench(model) {
     }
   } catch (e) {
     err = e.name === "AbortError" ? ("no first token in " + (TTFT_TIMEOUT / 1000) + "s") : e.message;
-  } finally { clearTimeout(guard); }
+  } finally {
+    clearTimeout(guard);
+    helpers.signal.removeEventListener("abort", stop);
+  }
   const avgGap = tokens > 1 ? Math.round(gapSum / (tokens - 1)) : null;   // mean inter-token latency
   return { model, ttft, total, tokens, reasoning, avgGap, text, think, finish, err };
 }
@@ -604,6 +612,8 @@ if (ok.length) {
     String(r.ttft ?? "n/a").padStart(5) + "ms · " + String(r.avgGap ?? "n/a").padStart(4) + "ms/tok · " + r.tokens + " tok"));
 }
 state.results = results;
+// Visibilidad opcional: descomenta para revisar todos los registros de tiempo.
+// helpers.log.json("mediciones", results);
 return { ranked: ok.map(r => r.model), errors: results.filter(r => r.err).length };`,
     });
 

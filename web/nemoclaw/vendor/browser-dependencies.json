@@ -915,7 +915,7 @@
       "references": [
         {
           "source": "i18n/es/web/nemoclaw/01b-react.html",
-          "line": 381
+          "line": 383
         },
         {
           "source": "i18n/es/web/nemoclaw/02c-deep.html",
@@ -931,7 +931,7 @@
         },
         {
           "source": "i18n/pt/web/nemoclaw/01b-react.html",
-          "line": 419
+          "line": 421
         },
         {
           "source": "i18n/pt/web/nemoclaw/02c-deep.html",
@@ -947,7 +947,7 @@
         },
         {
           "source": "web/nemoclaw/01b-react.html",
-          "line": 452
+          "line": 454
         },
         {
           "source": "web/nemoclaw/02c-deep.html",

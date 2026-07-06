@@ -240,6 +240,8 @@ const r1 = await chat({
   messages: [{ role: "user", content: "In one sentence, what is an agent's ReAct loop?" }],
   max_tokens: 8196,  // reasoning models think first; leave room past reasoning_content
 });
+// Visibilidad opcional: descomenta para revisar la primera respuesta completa.
+// log.details("respuesta 1 sin procesar", r1);
 log.h("call 1 · no tools offered");
 log("finish_reason:", r1.choices[0].finish_reason);   // "stop" means the answer is ready and the loop can exit
 log(r1.choices[0].message.content || "(used its whole budget thinking; raise max_tokens)");

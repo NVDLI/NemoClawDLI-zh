@@ -126,6 +126,29 @@ The full operating creed is projected into the root `SKILL.html` skill-meta. Run
 - `deploy/` owns compose and nginx configuration.
 - Do not commit lab-generated runtime output, caches, or the `public/` Pages build.
 
+### Student-visible code
+
+Runnable cells are teaching surfaces, not convenient places to hide application plumbing.
+
+- Keep an editable RunCell at or below 120 nonblank lines. Move transport, rendering, session,
+  and compatibility machinery behind a named helper whose contract the cell can show and return.
+- Use descriptive names. Single letters are reserved for familiar local coordinates or tiny loop
+  indexes; a cell must not make the learner decode a collection of unrelated one-letter variables.
+- Put one logical statement on a line. A compact expression may be readable, but repeated
+  multi-statement lines are not an acceptable substitute for structure.
+- Return the structured outcome. Use `helpers.log` for progress and evidence, not as a weaker
+  replacement for the value the exercise computed. The runtime must display both when both exist.
+- Use the RunCell or CanvasFlow Stop signal for every long operation. Prefer `helpers.delay(ms)`
+  to raw timer promises, and combine a cell signal with any timeout-specific AbortController.
+- When an intermediate value or alternate input helps the lesson, include one clearly labeled,
+  commented-out `helpers.log.json(...)`, `helpers.log.details(...)`, or alternate assignment at
+  the relevant line so a learner can reveal it without inventing instrumentation from scratch.
+- Name cross-cell `state` inputs and outputs near the top of the cell, guard missing prerequisites,
+  and return a compact summary of the state written for the next step.
+
+`python3 scripts/validation/cell_audit.py --self-test` mutation-tests these rules; the normal
+`cell_audit.py` run enforces their deterministic subset across every numbered lesson.
+
 ## Contribution Terms
 
 This repository is licensed under Apache-2.0. Unless you clearly mark a submission as

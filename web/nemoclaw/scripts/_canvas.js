@@ -1102,6 +1102,8 @@ helpers.viz.sideBySide(
       const _sig = runAC ? runAC.signal : null;
       helpers.signal = _sig || undefined;
       if (_sig) {
+        const _delay = helpers.delay;
+        helpers.delay = (ms, signal = _sig) => _delay(ms, signal);
         const _withSig = (o) => (o && typeof o === "object" && o.signal == null) ? { ...o, signal: _sig } : o;
         const _chat = helpers.chat, _stream = helpers.chatStream, _term = helpers.terminal;
         if (_chat)   helpers.chat       = (o, ...r) => _chat(_withSig(o), ...r);
@@ -1383,11 +1385,11 @@ function _buildHelperRows(allow) {
     ["Launchable terminal",     ["terminal"]],
     ["OpenShell policy",        ["evalSandboxNetwork", "evalSandboxFs", "sandboxExec"]],
     ["Course content",          ["coursePage", "coursePages"]],
-    ["Live artifacts",          ["mountChatUI", "mountAgentChat", "mountKeyPanel"]],
+    ["Live artifacts",          ["mountChatUI", "mountAgentChat", "mountOpenClawCli", "mountKeyPanel"]],
     ["Diagram strings",         ["diagramSVG", "ganttBarsSVG"]],
     ["OpenClaw gateway",        ["openclawChat"]],
     ["Config",                  ["getConfig", "getKey"]],
-    ["Run control",             ["signal"]],
+    ["Run control",             ["signal", "delay"]],
     ["Instrumentation",         ["trace", "log"]],
   ];
   const vizNames = typeof VIZ_BUILDERS !== "undefined" ? Object.keys(VIZ_BUILDERS).map(k => "viz." + k) : [];
@@ -1703,6 +1705,9 @@ export function mountRunCell(targetSel, opts) {
       // `helpers` mirrors the canvas-cell convention (helpers.embed, helpers.log, helpers.mountChatUI) so a run-cell can mount a full artifact, not only call chat().
       // The bare names below stay for back-compat with older cells.
       const helpers = Object.assign({}, HELPER_FNS, { log, clear, fetch: (...a) => window.fetch(...a) });
+      helpers.signal = ac.signal;
+      const runDelay = helpers.delay;
+      helpers.delay = (ms, signal = ac.signal) => runDelay(ms, signal);
       const argNames = ["chat", "chatStream", "webSearch", "instantAnswer", "formatSearchResults", "log", "clear", "MODEL", "REASONING_MODEL", "AbortSignal", "helpers", "state",       ...Object.keys(schemaVars)];
       const argVals  = [chat,    chatStream,   webSearch,   instantAnswer,   formatSearchResults,   log,   clear,   null,    REASONING_MODEL,  ac.signal,    helpers,   _runCellState, ...Object.values(schemaVars)];
       // Read from CodeMirror if present; otherwise from the textarea.
@@ -1711,12 +1716,13 @@ export function mountRunCell(targetSel, opts) {
       const fn = new Function(...argNames,
         `"use strict"; return (async () => {\n${codeText}\n})();`);
       const result = await fn(...argVals);
-      if (!ac.signal.aborted && outputCount === 0) {
-        if (result === undefined) {
+      if (!ac.signal.aborted) {
+        if (result === undefined && outputCount === 0) {
           _emptyState("(completed; no log output and no returned value)");
-        } else if (typeof result === "object" && result !== null) {
+        } else if (result !== undefined && typeof result === "object" && result !== null) {
           _appendJson(result, "returned value");
-        } else {
+        } else if (result !== undefined) {
+          counted(_appendCellHeading(out, "returned value"));
           _appendText(String(result));
         }
       }

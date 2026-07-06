@@ -720,11 +720,12 @@ async function probe(command, mechanism) {
   return { command, blocked, mechanism: mech };
 }
 const question = (q) => { helpers.log(""); helpers.log.html("<span style='color:var(--gs);font-weight:700'>" + _esc(q) + "</span>"); };
+const results = [];
 
 question("Can I reach the open internet?");
-await probe("curl -sS -m 8 -o /dev/null -w 'code=%{http_code}' https://example.com", "network");
-await probe("curl -sS -m 8 -o /dev/null -w 'code=%{http_code}' https://en.wikipedia.org", "network");
-await probe("curl -sS -m 6 -o /dev/null -w 'code=%{http_code}' http://169.254.169.254/latest/meta-data/", "network");
+results.push(await probe("curl -sS -m 8 -o /dev/null -w 'code=%{http_code}' https://example.com", "network"));
+results.push(await probe("curl -sS -m 8 -o /dev/null -w 'code=%{http_code}' https://en.wikipedia.org", "network"));
+results.push(await probe("curl -sS -m 6 -o /dev/null -w 'code=%{http_code}' http://169.254.169.254/latest/meta-data/", "network"));
 helpers.log([
   "→ The network namespace plus the OPA egress proxy refuse every curl.",
   "The allowlist is bound to the openclaw binary, so a plain curl reaches nothing.",
@@ -732,9 +733,9 @@ helpers.log([
 ].join(" "));
 
 question("Can I install software, to pull in new code?");
-await probe("apt-get install -y cowsay", "non-root");
-await probe("pip install --break-system-packages --retries 0 --timeout 5 --no-input cowsay", "network");
-await probe("npm install --no-audit --no-fund left-pad", "network");
+results.push(await probe("apt-get install -y cowsay", "non-root"));
+results.push(await probe("pip install --break-system-packages --retries 0 --timeout 5 --no-input cowsay", "network"));
+results.push(await probe("npm install --no-audit --no-fund left-pad", "network"));
 helpers.log([
   "→ No. apt needs root it does not have.",
   "pip and npm run, but the egress proxy refuses their downloads.",
@@ -742,10 +743,10 @@ helpers.log([
 ].join(" "));
 
 question("Can I become root, or escape the container?");
-await probe("sudo id", "not installed");
-await probe("nsenter -t 1 -m -- id", "seccomp / non-root");
-await probe("docker ps", "not installed");
-await probe("cat /proc/1/environ", "non-root");
+results.push(await probe("sudo id", "not installed"));
+results.push(await probe("nsenter -t 1 -m -- id", "seccomp / non-root"));
+results.push(await probe("docker ps", "not installed"));
+results.push(await probe("cat /proc/1/environ", "non-root"));
 helpers.log([
   "→ No path up or out.",
   "sudo and docker are absent, entering the host namespace is denied,",
@@ -753,10 +754,10 @@ helpers.log([
 ].join(" "));
 
 question("Can I rewrite my own persona, and is locking it real?");
-await probe("ls -la /sandbox/.openclaw/workspace/SOUL.md", "Landlock");
-await probe("chmod 0444 /sandbox/.openclaw/workspace/SOUL.md", "Landlock");
-await probe("chmod 0644 /sandbox/.openclaw/workspace/SOUL.md", "Landlock");
-await probe("chattr +i /sandbox/.openclaw/workspace/SOUL.md", "non-root");
+results.push(await probe("ls -la /sandbox/.openclaw/workspace/SOUL.md", "Landlock"));
+results.push(await probe("chmod 0444 /sandbox/.openclaw/workspace/SOUL.md", "Landlock"));
+results.push(await probe("chmod 0644 /sandbox/.openclaw/workspace/SOUL.md", "Landlock"));
+results.push(await probe("chattr +i /sandbox/.openclaw/workspace/SOUL.md", "non-root"));
 helpers.log([
   "→ SOUL.md sits in a writable tree and the agent owns it, so it can undo chmod.",
   "The lock it cannot pick is chattr +i, which needs root.",
@@ -765,6 +766,9 @@ helpers.log([
 
 helpers.log("");
 helpers.log("Edit any command, add a probe('your command') line, or ask a new question. One program per line: no shell, so no pipes or &&.");
+// Optional visibility: uncomment to inspect every raw probe result before the summary return.
+// helpers.log.json("all probe results", results);
+return { probes: results.length, denied: results.filter(result => result.blocked).length, results };
 `,
 });
 
@@ -794,6 +798,8 @@ if (!p.policy) {
 }
 
 const nets = Object.keys(p.policy.network_policies || {});
+// Optional visibility: uncomment to inspect the destination names as JSON.
+// helpers.log.json("network policy names", nets);
 helpers.log("\\nyour live policy: egress is deny-by-default, with " + nets.length + " allowed destinations (" + nets.join(", ") + ").");
 helpers.log("the predict cell below computes from this exact policy.");
 helpers.log.details("raw policy returned (the YAML openshell printed)", p.raw);
