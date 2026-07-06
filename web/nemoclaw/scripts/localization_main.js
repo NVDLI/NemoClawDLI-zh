@@ -1,6 +1,9 @@
 const $ = selector => document.querySelector(selector);
 const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
-const manifestCandidates = ["../languages.json", "../../languages.json", "../../../languages.json", "../../../../languages.json"];
+const courseParent = new URL(".", location.href).pathname.replace(/\/$/, "").split("/").at(-2);
+const manifestCandidates = ["web", "es", "pt"].includes(courseParent)
+  ? ["../../languages.json", "../languages.json", "../../../languages.json", "../../../../languages.json"]
+  : ["../languages.json", "../../languages.json", "../../../languages.json", "../../../../languages.json"];
 let drift, languages, activeStatus = "all", activeKind = "pages", selected;
 const localeSelect = $("#loc-locale");
 

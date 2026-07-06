@@ -32,7 +32,7 @@ SKIP_TEXT = {"script", "style", "pre", "code", "svg", "noscript"}
 STRUCTURE_NEUTRAL_TAGS = {"i", "em"}
 INTERFACE_CONTRACT = {
     "web/nemoclaw/localization.html": ("id=\"loc-kinds\"", "data-kind=\"assets\"", "id=\"loc-filters\"", "id=\"loc-source\"", "id=\"loc-target\"", "scripts/localization_main.js"),
-    "web/nemoclaw/scripts/localization_main.js": ("localization-", '"current", "stale", "blocked", "needs-review", "missing"', "reviewed_source_sha256", "asset_counts", 'activeKind === "assets"', "loc-locale"),
+    "web/nemoclaw/scripts/localization_main.js": ("localization-", '"current", "stale", "blocked", "needs-review", "missing"', "reviewed_source_sha256", "asset_counts", 'activeKind === "assets"', "loc-locale", 'courseParent', '["web", "es", "pt"].includes(courseParent)'),
     "web/nemoclaw/scripts/_locale.js": ("mountLanguageMenu", "available_pages", 'aria-haspopup', "languageFallback", "language-fallback-badge", "PT_PREFIXES", "ES_PREFIXES"),
     "web/nemoclaw/scripts/_keypanel.js": ("mountKeyPanel", "model-api-base-url", "Save &amp; verify"),
     "web/nemoclaw/scripts/_connection.js": ("DEFAULT_OPENCLAW_PROXY_BASE", "openclaw_proxy", "migrateOpenClawConnectionStorage"),
