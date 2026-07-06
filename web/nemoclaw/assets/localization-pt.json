@@ -120,20 +120,20 @@
     {
       "path": "web/nemoclaw/03b-openclaw.html",
       "file": "03b-openclaw.html",
-      "source_sha256": "f8decadd971dec49f5bc7fb805a963ffbf0d88181d5cf62aef8a6ee149d2fbaf",
-      "reviewed_source_sha256": "f8decadd971dec49f5bc7fb805a963ffbf0d88181d5cf62aef8a6ee149d2fbaf",
-      "target_sha256": "8da0c328b65fb4ce1b0193f26c4434885f7780bcaabdb544eafecf3ecfda519d",
-      "reviewed_target_sha256": "8da0c328b65fb4ce1b0193f26c4434885f7780bcaabdb544eafecf3ecfda519d",
+      "source_sha256": "41924f97e6ed7eaa601183f73108c52ba4e359c1300a605df4b940ea3818d58f",
+      "reviewed_source_sha256": "41924f97e6ed7eaa601183f73108c52ba4e359c1300a605df4b940ea3818d58f",
+      "target_sha256": "de5d7388f49e69b193ab0c35becb7f6147339547ba845bae0e0ba71a0ea3280b",
+      "reviewed_target_sha256": "de5d7388f49e69b193ab0c35becb7f6147339547ba845bae0e0ba71a0ea3280b",
       "status": "current",
       "quality": []
     },
     {
       "path": "web/nemoclaw/03c-always-on.html",
       "file": "03c-always-on.html",
-      "source_sha256": "766a7bae7bde0058df1bdd4d847512576ec1f1a5fb38aae36b3059f01b839da6",
-      "reviewed_source_sha256": "766a7bae7bde0058df1bdd4d847512576ec1f1a5fb38aae36b3059f01b839da6",
-      "target_sha256": "b533d6cc78da78fc76e70344380cd761e4aa7f3e162f968218cd9782c53021a0",
-      "reviewed_target_sha256": "b533d6cc78da78fc76e70344380cd761e4aa7f3e162f968218cd9782c53021a0",
+      "source_sha256": "9a81b76b6062f1207cd4e41a1450bca1697204980405ffa7ad14e5857b4c8e52",
+      "reviewed_source_sha256": "9a81b76b6062f1207cd4e41a1450bca1697204980405ffa7ad14e5857b4c8e52",
+      "target_sha256": "266e4d7038e996be68dc23b1a5cc744ef891446af318c273e2c393455fd5d7b5",
+      "reviewed_target_sha256": "266e4d7038e996be68dc23b1a5cc744ef891446af318c273e2c393455fd5d7b5",
       "status": "current",
       "quality": []
     },
@@ -170,7 +170,7 @@
     {
       "path": "web/nemoclaw/SKILL.html",
       "file": "SKILL.html",
-      "source_sha256": "08a4acf1048ea43f6dc2eb5eaec9f500cd73948ddd9eebe4085b7e99a2462b30",
+      "source_sha256": "d4e1360f896abeea8674529f7e6868719e647ae013c904a0d72e0e34396de7c8",
       "reviewed_source_sha256": null,
       "target_sha256": null,
       "reviewed_target_sha256": null,
@@ -422,10 +422,10 @@
     {
       "path": "web/nemoclaw/assets/figures/04a-openshell-architecture.svg",
       "file": "04a-openshell-architecture.svg",
-      "source_sha256": "0adbf9ac1d02909e82a343b1b3d261b8ab5fbe0a7bebee53d58f74c964c8fac7",
-      "reviewed_source_sha256": "0adbf9ac1d02909e82a343b1b3d261b8ab5fbe0a7bebee53d58f74c964c8fac7",
-      "target_sha256": "4f1585fec42425506caa39a42fd049ec4d9a9b026a07331a6f0f4123c807a0b4",
-      "reviewed_target_sha256": null,
+      "source_sha256": "e9e64a77afba7642ceaa7aff366f6295c708cd6e0f3b3abfe185558fc65f65cf",
+      "reviewed_source_sha256": "e9e64a77afba7642ceaa7aff366f6295c708cd6e0f3b3abfe185558fc65f65cf",
+      "target_sha256": "3c4f4f0828582645afdb09e834d7daf3e76e784693d7f2a7346e34eb48e4882b",
+      "reviewed_target_sha256": "3c4f4f0828582645afdb09e834d7daf3e76e784693d7f2a7346e34eb48e4882b",
       "status": "current",
       "quality": []
     },

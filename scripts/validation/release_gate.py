@@ -8,8 +8,8 @@ GitLab, GitHub Pages, and the protected release workflow.
 Use ``--changed-since`` on proposal branches. Current-tree audits still run, while expensive
 mutation suites run only when their validator or protected contract changed. Omit the option
 for a full release execution. Successful clean local runs are recorded under the worktree's
-Git directory; ``--reuse-success`` may reuse only the identical commit and gate definition.
-CI never depends on that local optimization.
+Git directory unless ``--no-write`` is active; ``--reuse-success`` may reuse only the identical
+commit and gate definition. CI never depends on that local optimization.
 """
 from __future__ import annotations
 
@@ -351,7 +351,10 @@ def record_success(
     *, tier: str, no_write: bool, commands: list[tuple[str, ...]], changed_base: str | None,
     duration: float, executed: int, skipped: int,
 ) -> None:
-    if os.environ.get("CI") or not _clean():
+    # --no-write is used by read-only host mounts (including the Apple Container runner). The
+    # success cache is durable validator output too; following a worktree .git pointer to write it
+    # would violate the mode and can turn an otherwise green gate into a bookkeeping failure.
+    if no_write or os.environ.get("CI") or not _clean():
         return
     path = _cache_path()
     head = _head()

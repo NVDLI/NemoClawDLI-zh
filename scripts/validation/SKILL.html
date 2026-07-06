@@ -152,7 +152,7 @@
     {
       "path": "figure_audit.py",
       "role": "figure audit",
-      "desc": "Checks static figure legibility, accessibility, and the shared mobile lightbox readability contract."
+      "desc": "Checks static figure legibility, accessibility, injected-SVG style scoping, and the shared mobile lightbox readability contract."
     },
     {
       "path": "security_architecture_audit.py",
@@ -172,7 +172,7 @@
     {
       "path": "cell_ui_runtime_audit.py",
       "role": "rendered page screenshot audit",
-      "desc": "Renders pages in desktop and narrow viewports across light and dark themes, writes paired initial and expanded screenshots, flags dark-only surfaces, and exercises mobile figure zoom, pan, and close behavior."
+      "desc": "Renders pages in desktop and narrow viewports across light and dark themes, writes paired initial and expanded screenshots, flags wrong-tone cell and generated-graph surfaces in either theme, and exercises mobile figure zoom, pan, and close behavior."
     },
     {
       "path": "cell_audit.py",
@@ -387,11 +387,11 @@
     <a class="skill-card" href="prose_variety.py"><b>prose_variety.py</b><span>prose cadence. Finds rhythm, buzz, grammar, and structural prose issues.</span></a>
     <a class="skill-card" href="code_hygiene.py"><b>code_hygiene.py</b><span>code bloat and style. Scans code comments, walls, duplication, size, constants, and prose tells in code.</span></a>
     <a class="skill-card" href="color_theme.py"><b>color_theme.py</b><span>theme check. Flags inline or non-theme-dynamic colors.</span></a>
-    <a class="skill-card" href="figure_audit.py"><b>figure_audit.py</b><span>figure audit. Checks static figure legibility, accessibility, and the shared mobile lightbox readability contract.</span></a>
+    <a class="skill-card" href="figure_audit.py"><b>figure_audit.py</b><span>figure audit. Checks static figure legibility, accessibility, injected-SVG style scoping, and the shared mobile lightbox readability contract.</span></a>
     <a class="skill-card" href="security_architecture_audit.py"><b>security_architecture_audit.py</b><span>Required security architecture gate. Derives CI jobs, runtime hosts, remote suffixes, and worker inventory from source; also checks public metadata boundaries, local-only classification, evidence, geometry, and SVG freshness.</span></a>
     <a class="skill-card" href="release_evidence_audit.py"><b>release_evidence_audit.py</b><span>Required product-design and release-test gate. Checks public-safe scope, data and cryptography inventories, evidence ownership, external-review boundaries, gate wiring, and mutation coverage.</span></a>
     <a class="skill-card" href="repository_work_products_audit.py"><b>repository_work_products_audit.py</b><span>Required repository work-product gate. Checks requirement levels, applicability, evidence paths, policy content, maintainer procedures, issue intake, gate wiring, and mutation coverage.</span></a>
-    <a class="skill-card" href="cell_ui_runtime_audit.py"><b>cell_ui_runtime_audit.py</b><span>rendered page screenshot audit. Renders desktop/narrow light/dark pages, writes paired initial/expanded screenshots, flags dark-only surfaces, and exercises mobile figure zoom, pan, and close behavior.</span></a>
+    <a class="skill-card" href="cell_ui_runtime_audit.py"><b>cell_ui_runtime_audit.py</b><span>rendered page screenshot audit. Renders desktop/narrow light/dark pages, writes paired initial/expanded screenshots, flags wrong-tone cell and generated-graph surfaces in either theme, and exercises mobile figure zoom, pan, and close behavior.</span></a>
     <a class="skill-card" href="cell_audit.py"><b>cell_audit.py</b><span>cell contract. Checks runnable-cell transparency, logging, awaits, keys, bundled editor assets, and UI contract with a focused asset-detector self-test.</span></a>
     <a class="skill-card" href="learner_flow_audit.py"><b>learner_flow_audit.py</b><span>required learner-flow gate. Enforces Guided first visit, interactive-code collapse, default-visible paper references, saved depth, native inline disclosures, local questions, scope cues, readiness, lifecycle, viewport stability, and mutation coverage.</span></a>
     <a class="skill-card" href="learner_flow_runtime_audit.py"><b>learner_flow_runtime_audit.py</b><span>learner-flow browser gate. Exercises Guided code collapse/local reveal, authored defaults, saved depth, section overrides, reload/print, narrow keyboard behavior, prerequisites, and cell lifecycle transitions.</span></a>
