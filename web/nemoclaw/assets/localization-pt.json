@@ -24,7 +24,7 @@
     "stale": 0,
     "blocked": 0,
     "needs-review": 0,
-    "missing": 6
+    "missing": 5
   },
   "pages": [
     {
@@ -171,16 +171,6 @@
       "path": "web/nemoclaw/SKILL.html",
       "file": "SKILL.html",
       "source_sha256": "08a4acf1048ea43f6dc2eb5eaec9f500cd73948ddd9eebe4085b7e99a2462b30",
-      "reviewed_source_sha256": null,
-      "target_sha256": null,
-      "reviewed_target_sha256": null,
-      "status": "missing",
-      "quality": []
-    },
-    {
-      "path": "web/nemoclaw/cert.html",
-      "file": "cert.html",
-      "source_sha256": "82168d549dbe9900495a90f41820a36c29e674e3c6d74bd8df88226a2b30c0c9",
       "reviewed_source_sha256": null,
       "target_sha256": null,
       "reviewed_target_sha256": null,

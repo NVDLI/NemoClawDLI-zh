@@ -289,6 +289,9 @@ def audit_repo(
             'if [ "$REUSE_VALIDATION" = "1" ] && [ "$PULL_MATERIALS" != "0" ]; then',
             "scripts/build/build_pages.sh", "pages-report-reuse-immutable", out,
             "prevent live material writes before auditing a same-commit report")
+    require(build_pages, "-path 'web/nemoclaw/standalone' -prune",
+            "scripts/build/build_pages.sh", "pages-source-mirror-prunes-generated", out,
+            "exclude ignored standalone build output from the validated-source mirror")
     if re.search(r"validate_bundle\.py[^\n]*\|\|\s*true", build_pages):
         out.append(finding("pages-validation-fail-open", "scripts/build/build_pages.sh",
                            "Pages can retain and publish a stale validation report after refresh failure",
@@ -839,6 +842,7 @@ def self_test() -> list[str]:
             ("pages-fresh-validation-report", "scripts/build/build_pages.sh", 'python3 "$T1/scripts/validation/validate_bundle.py" --scope ship', 'python3 "$T1/scripts/validation/missing_bundle_gate.py" --scope ship'),
             ("pages-report-reuse-audit", "scripts/build/build_pages.sh", 'validation_report_audit.py"', 'missing_report_audit.py"'),
             ("pages-report-reuse-immutable", "scripts/build/build_pages.sh", 'if [ "$REUSE_VALIDATION" = "1" ] && [ "$PULL_MATERIALS" != "0" ]; then', 'if [ "$REUSE_VALIDATION" = "2" ] && [ "$PULL_MATERIALS" != "0" ]; then'),
+            ("pages-source-mirror-prunes-generated", "scripts/build/build_pages.sh", "-path 'web/nemoclaw/standalone' -prune", "-path 'web/nemoclaw/standalone' -print"),
             ("pages-validation-fail-open", "scripts/build/build_pages.sh", 'python3 "$T1/scripts/validation/validate_bundle.py" --scope ship', 'python3 "$T1/scripts/validation/validate_bundle.py" --scope ship || true'),
             ("pages-report-reuse-fail-open", "scripts/build/build_pages.sh", 'validation_report_audit.py" \\', 'validation_report_audit.py" || true #'),
             ("mutable-action-ref", ".github/workflows/pages.yml", "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683", "actions/checkout@v4"),

@@ -200,7 +200,9 @@ done
 if [ -d "$T1/web/nemoclaw" ]; then
     mirror_out="$OUT/${SOURCE_MIRROR_PREFIX:+$SOURCE_MIRROR_PREFIX/}"
     mkdir -p "$mirror_out"
-    ( cd "$T1" && find web/nemoclaw -type f         \( -name '*.html' -o -name '*.md' -o -name '*.css' -o -name '*.js' -o -name '*.svg' -o -name '*.json' \) -print0       | tar --null -cf - -T - ) | ( cd "$mirror_out" && tar -xf - )
+    ( cd "$T1" && find web/nemoclaw -path 'web/nemoclaw/standalone' -prune -o -type f \
+        \( -name '*.html' -o -name '*.md' -o -name '*.css' -o -name '*.js' -o -name '*.svg' -o -name '*.json' \) \
+        -print0 | tar --null -cf - -T - ) | ( cd "$mirror_out" && tar -xf - )
     echo "[build_pages] validated source -> ${mirror_out%/}/web/nemoclaw/ ($(find "$mirror_out/web/nemoclaw" -type f | wc -l) text files, read-only for the report preview)"
 fi
 

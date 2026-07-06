@@ -354,8 +354,8 @@ def run(verbose=True):
         for snippet, reason in scan_js_theme_bake(t):  # render-time color bakes (output frozen vs the toggle)
             bake.append((rel, snippet, reason))
     # Not theme-flipped student pages: the LMS studio export, the agent beacon, the course
-    # picker, and the cert page carry their own palettes and are out of the light/dark scope.
-    OUT_OF_SCOPE = {"studio.html", "SKILL.html", "courses.html", "cert.html"}
+    # picker carry their own palettes and are out of the light/dark scope.
+    OUT_OF_SCOPE = {"studio.html", "SKILL.html", "courses.html"}
     for f in sorted(NEMO.glob("*.html")) + sorted(WEB.glob("*.html")):
         if f.name in OUT_OF_SCOPE:
             continue
