@@ -27,6 +27,7 @@ REQUIRED = {
     "process_doc": [
         "Addresses #N",
         "Closes #N",
+        "Remaining issue work",
         "NemoClaw is the reference stack",
         "OpenClaw is the agent harness",
         "OpenShell is the sandbox boundary",

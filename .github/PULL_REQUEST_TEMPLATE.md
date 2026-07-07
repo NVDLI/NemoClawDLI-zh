@@ -4,7 +4,7 @@ What changed and why?
 
 ## Issue link
 
-Addresses #
+Closes #
 
 ## Current release target
 
@@ -81,3 +81,6 @@ What could regress? What exact commit, flag, workflow, or artifact restores the 
 ## Out of scope
 
 Name adjacent work deliberately excluded from this change.
+
+Relationship rule: keep `Closes #N` when this PR satisfies every acceptance criterion. A partial
+PR uses `Addresses #N` and adds `## Remaining issue work` with the unmet criteria.

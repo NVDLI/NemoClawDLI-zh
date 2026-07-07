@@ -26,9 +26,11 @@ questions before editing:
 3. What evidence proves this is real?
 4. What validation would make the fix reviewable?
 
-Use `Addresses #N` from an MR unless the MR fully resolves the issue. Do not use
-`Closes #N` for exploratory cleanup, partial hygiene, or a broad pass that only
-improves one slice of a composite issue.
+Use `Closes #N` from an MR that satisfies every acceptance criterion so the host closes the issue
+on merge. A partial MR uses `Addresses #N` and includes a `Remaining issue work` section naming
+the unmet criteria. Do not use `Closes #N` for exploratory cleanup, partial hygiene, or a broad pass
+that only improves one slice of a composite issue. Recheck the relationship at handoff after the
+final diff and validation evidence are known.
 
 Use the general Bug form for reproducible defects and the Feature form for concrete improvements.
 The course-content, runtime/deployment, and source/licensing forms collect deeper evidence for those
