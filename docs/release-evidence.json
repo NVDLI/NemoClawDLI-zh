@@ -4,6 +4,7 @@
     "design": "docs/product-design.md",
     "test_plan": "docs/release-test-plan.md",
     "security_design": "docs/security-design.md",
+    "security_control_disposition": "docs/security-control-disposition.md",
     "security_architecture": "docs/security-architecture.json",
     "release_artifacts": "docs/release_artifacts.md",
     "publication_state": "RELEASE_STATUS.json"
@@ -233,6 +234,17 @@
       "external_evidence": "operator-required"
     },
     {
+      "id": "threat-control-disposition",
+      "owner": "shared",
+      "automated_commands": [
+        "python3 scripts/validation/threat_control_audit.py --self-test",
+        "python3 scripts/validation/threat_control_audit.py",
+        "python3 scripts/validation/pages_artifact_integrity.py --self-test",
+        "python3 scripts/validation/repository_sync_audit.py --self-test"
+      ],
+      "external_evidence": "operator-required"
+    },
+    {
       "id": "release-artifacts",
       "owner": "shared",
       "automated_commands": [
@@ -264,6 +276,8 @@
       "final-artifact-vulnerability-scan",
       "malware-scan",
       "host-controls",
+      "source-integration",
+      "external-service-controls",
       "release-decision"
     ]
   }

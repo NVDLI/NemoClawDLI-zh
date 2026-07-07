@@ -5,6 +5,9 @@ This document explains the machine-readable
 [`security-architecture.svg`](security-architecture.svg) projection. The broader product scope,
 data and cryptography inventories, release behavior, and test mapping live in
 [`product-design.md`](product-design.md) and [`release-test-plan.md`](release-test-plan.md).
+The review disposition for repository-owned, host-owned, provider-owned, residual, and
+non-applicable requirements lives in
+[`security-control-disposition.md`](security-control-disposition.md).
 This record contains no internal workflow, program identifier, submission version, or approval.
 
 ## System scope

@@ -6,6 +6,11 @@ Learning Institute course on building and securing agent systems. The planned pu
 yet populated. External publication remains pending OSRB approval; see
 [`RELEASE_STATUS.json`](RELEASE_STATUS.json) for the canonical state.
 
+The selected operating model is an NVIDIA-owned Full-OSS-Project, intended as OSS Type I. After
+approved cutover, the public GitHub repository becomes the canonical source and the primary home
+for planning, issues, contributions, CI, and releases. Internal GitLab remains an integration and
+validation consumer. The governing system must still record and approve that classification.
+
 The course starts with a model call and builds toward tool use, workflows, retrieval, deep
 research, OpenClaw, and OpenShell sandbox policy. English, Brazilian Portuguese, and Spanish are
 built from one branch and checked for translation drift.
@@ -177,6 +182,9 @@ command and evidence matrix lives in
 Release threat-model evidence lives in [`docs/security-design.md`](docs/security-design.md).
 Its source-backed graph covers the learner runtime and release supply chain. CI rejects missing
 services, unlabeled trust-boundary flows, broken evidence, connector collisions, and stale output.
+Repository-owned mitigations, unresolved host or provider requirements, residual risks, and
+non-applicable recommendations are separated in
+[`docs/security-control-disposition.md`](docs/security-control-disposition.md).
 
 For browser or Studio changes, also use the containerized browser harness:
 

@@ -135,6 +135,7 @@ import course_dependency_integrity as cdi  # noqa: E402
 import html_structure_audit as hsa  # noqa: E402
 import slides_audit as sla  # noqa: E402
 import security_architecture_audit as saa  # noqa: E402
+import threat_control_audit as tca  # noqa: E402
 import release_evidence_audit as rea  # noqa: E402
 import repository_work_products_audit as rwpa  # noqa: E402
 from collections import defaultdict  # noqa: E402
@@ -278,6 +279,9 @@ SUITE_META = [
     ("security_architecture", "Security architecture graph", "required",
      "The release threat-model graph must match source-derived CI and browser topology, explicitly classify local-only Compose services and volumes, source every production node and flow from repository evidence, label trust-boundary authentication and sensitive data, exclude internal workflow metadata, avoid node and connector collisions, and keep its generated SVG projection current.",
      "scripts/validation/security_architecture_audit.py", "audit"),
+    ("threat_controls", "Threat control disposition", "required",
+     "Repository-owned mitigations must remain automated while host, provider, residual, and non-applicable requirements stay explicit. Pages artifacts are bounded, safely extracted, deployed without rebuilding, verified byte-for-byte after publication, and reconciled across public GitHub and internal GitLab without force updates.",
+     "scripts/validation/threat_control_audit.py", "audit"),
     ("cell_audit", "Cell & artifact contract", "recommended",
 
      "Every runnable cell shows its work in the panel, writes via helpers.log not console, awaits its model calls, inlines no key, keeps cell-only code in an editable cell, is syntax-highlighted by default, and keeps default-visible code and canvas copy readable. A hard-coded key is required-tier (it ships to every student); the rest are recommended.",
@@ -534,6 +538,23 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         vl_ok = False
         ok = False
         vl_fail.extend(f"security architecture: {item['path']}: {item['detail']}" for item in security_find)
+
+    try:
+        threat_control_find = tca.audit()
+        threat_control_scanned = sum(len(tokens) for tokens in tca.REQUIRED_TOKENS.values())
+    except Exception as e:
+        threat_control_find, threat_control_scanned = [], 0
+        suite_errors["threat_controls"] = str(e)
+        vl_ok = False
+        ok = False
+        vl_fail.append(f"threat control audit error: {e}")
+    if threat_control_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(
+            f"threat control: {item['path']}: [{item['code']}] {item['detail']}"
+            for item in threat_control_find
+        )
 
     try:
         release_contract = rea.load_contract()
@@ -960,6 +981,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "security_architecture": [D(item["path"], f"[{item['code']}] {item['detail']}", REQUIRED,
                      "Review the source-derived production contract, update docs/security-architecture.json from repository evidence, regenerate the SVG, and run security_architecture_audit.py plus its mutation self-test. Keep browser paths visible and local lab services classified without drawing them as production.")
                     for item in security_find],
+        "threat_controls": [D(item["path"], f"[{item['code']}] {item['detail']}", REQUIRED,
+                     "Restore the bounded artifact, safe extraction, post-deploy verification, repository synchronization, or explicit external-control disposition, then run threat_control_audit.py and its mutation self-test.")
+                    for item in threat_control_find],
         "release_evidence": [D(item["path"], f"[{item['code']}] {item['detail']}", REQUIRED,
                      item["fix"])
                     for item in release_evidence_find],
@@ -1171,6 +1195,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "html_structure": len(hsa.source_pages(TASK1)),
         "slides": slides_scanned,
         "security_architecture": security_scanned,
+        "threat_controls": threat_control_scanned,
         "release_evidence": release_evidence_scanned,
         "repository_work_products": repository_work_products_scanned,
         "sensitive_content": sensitive_scanned,
@@ -1243,6 +1268,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "html_structure": {"pages": len(hsa.source_pages(TASK1)), "findings": len(html_structure_find)},
         "slides": {"slides": slides_scanned, "findings": len(slides_find)},
         "security_architecture": {"findings": len(security_find), "graph_items": security_scanned},
+        "threat_controls": {"findings": len(threat_control_find), "controls": threat_control_scanned},
         "release_evidence": {"findings": len(release_evidence_find),
                              "evidence_items": release_evidence_scanned},
         "repository_work_products": {"findings": len(repository_work_products_find),
@@ -1300,6 +1326,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     print(f"  course content  : {len(cc_find)} required content contract finding(s) (teaching, product, platform)")
     print(f"  overview slides : {len(slides_find)} required finding(s) over {slides_scanned} slides")
     print(f"  security arch.   : {len(security_find)} required finding(s) over {security_scanned} nodes and flows")
+    print(f"  threat controls  : {len(threat_control_find)} required finding(s) over "
+          f"{threat_control_scanned} repository control assertions")
     if not lang_en:
         print(f"  prose / buzz / branding : n/a for '{lang}' (English-prose style suites do not gate a translation)")
     if pv_rows and lang_en:
@@ -1432,6 +1460,7 @@ def _render_md(summary: dict) -> str:
          f"| repository work products | {summary.get('repository_work_products',{}).get('findings',0)} | blocking |",
          f"| sensitive content boundary | {summary.get('sensitive_content',{}).get('findings',0)} | blocking |",
          f"| Security architecture graph | {summary.get('security_architecture',{}).get('findings',0)} | blocking |",
+         f"| Threat control disposition | {summary.get('threat_controls',{}).get('findings',0)} | blocking |",
          f"| figure geometry (runtime figures) | {summary.get('diagram_geom',{}).get('findings',0)} | advisory |",
          f"| strays (unreachable from a SKILL hub) | {len(rc.get('strays',[]))} | {rc.get('real_strays','?')} real |",
          f"| release foyer (surfaces only RELEASED) | {'OK' if fy.get('ok') else 'FAIL'} | {len(fy.get('violations',[]))} blocking |",
@@ -1449,6 +1478,7 @@ def _render_md(summary: dict) -> str:
                    "materials": "Materials", "reachability": "Reachability", "contribution_safety": "Contribution safety",
                    "sensitive_content": "Sensitive content boundary",
                    "security_architecture": "Security architecture graph",
+                   "threat_controls": "Threat control disposition",
                    "repository_work_products": "Repository work products",
                    "word_echo": "Word echo", "comma_weight": "Comma weight", "assertions": "Bare assertions",
                    "headings": "Headings", "structure": "Structural rhythm", "branding": "Brand naming",

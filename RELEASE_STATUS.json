@@ -4,6 +4,7 @@
   "canonical_repository": "internal-gitlab",
   "external_mirror": "reserved-not-populated",
   "external_repository": "https://github.com/NVDLI/NemoClawDLI",
+  "intended_oss_type": "Type-I",
   "maintenance_status": "release-candidate",
   "community_intake": "disabled-pending-publication-approval",
   "target_license": "Apache-2.0",

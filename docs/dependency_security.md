@@ -196,9 +196,10 @@ when taking them on:
    Grype, or OSV-Scanner for public images; keep NVIDIA/private base image scans
    in internal CI or registry tooling when image names/layers are not public-safe.
 3. Enable and smoke-test the host dependency graph, Dependabot alerts, CodeQL upload,
-   secret scanning, and push protection when mirrored externally. Repo-owned update,
-   dependency-review, and CodeQL workflow definitions are already versioned. Keep
-   GitLab/internal jobs authoritative while GitLab remains canonical.
+   secret scanning, and push protection at public cutover. Repo-owned update,
+   dependency-review, and CodeQL workflow definitions are already versioned. Before cutover,
+   GitLab jobs protect the prepublication candidate. After cutover, GitHub checks protect canonical
+   public source and internal GitLab repeats the required scans on each imported commit.
 4. Add `CODEOWNERS` and protected-branch rules for dependency manifests, Dockerfiles,
    `scripts/security/*`, CI files, deploy files, and waiver registry changes.
 5. Consider VEX only if downstream consumers need machine-readable non-affected

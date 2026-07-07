@@ -45,6 +45,8 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/validation/release_change_reminder.py", "--self-test"),
     py("scripts/validation/validation_report_audit.py", "--self-test"),
     py("scripts/validation/pages_artifact_integrity.py", "--self-test"),
+    py("scripts/validation/threat_control_audit.py", "--self-test"),
+    py("scripts/validation/repository_sync_audit.py", "--self-test"),
     py("scripts/skills/skill_consistency.py"),
     py("scripts/skills/skill_contract.py"),
     py("scripts/build/project_docs_explorer.py", "--self-test"),
@@ -74,6 +76,8 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/validation/release_change_reminder.py", "--self-test"),
     py("scripts/validation/validation_report_audit.py", "--self-test"),
     py("scripts/validation/pages_artifact_integrity.py", "--self-test"),
+    py("scripts/validation/threat_control_audit.py", "--self-test"),
+    py("scripts/validation/repository_sync_audit.py", "--self-test"),
     py("scripts/skills/skill_consistency.py"),
     py("scripts/skills/skill_contract.py"),
     py("scripts/validation/ci_storage_audit.py"),
@@ -126,7 +130,7 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
 MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     py("scripts/build/build_security_review_package.py", "--self-test"): (
         "scripts/build/build_security_review_package.py", "docs/product-design.md",
-        "docs/security-design.md", "docs/release-test-plan.md",
+        "docs/security-design.md", "docs/security-control-disposition.md", "docs/release-test-plan.md",
         "docs/SKILL.html", "scripts/build/SKILL.html",
     ),
     py("scripts/build/bundle_standalone.py", "--self-test"): (
@@ -153,6 +157,16 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     py("scripts/validation/pages_artifact_integrity.py", "--self-test"): (
         "scripts/validation/pages_artifact_integrity.py", "scripts/build/build_pages.sh",
         ".github/workflows/pages.yml", "docs/pages_deploy.md", "docs/release-test-plan.md",
+    ),
+    py("scripts/validation/threat_control_audit.py", "--self-test"): (
+        "scripts/validation/threat_control_audit.py", "scripts/validation/pages_artifact_integrity.py",
+        "scripts/validation/repository_sync_audit.py", ".github/workflows/pages.yml",
+        ".github/workflows/release.yml", ".gitlab-ci.yml", "docs/release_playbook.md",
+        "docs/security-control-disposition.md",
+    ),
+    py("scripts/validation/repository_sync_audit.py", "--self-test"): (
+        "scripts/validation/repository_sync_audit.py", ".gitlab-ci.yml",
+        "docs/release_playbook.md",
     ),
     py("scripts/validation/branch_preview_manifest_audit.py", "--self-test"): (
         "scripts/validation/branch_preview_manifest_audit.py", "scripts/build/build_branch_manifest.py",

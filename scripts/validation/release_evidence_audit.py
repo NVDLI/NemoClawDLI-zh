@@ -24,7 +24,7 @@ CONTRACT = ROOT / "docs" / "release-evidence.json"
 SOURCE_INVENTORY = ROOT / "scripts" / "compliance" / "docs" / "source_inventory.json"
 
 REQUIRED_DOCUMENTS = {
-    "design", "test_plan", "security_design", "security_architecture",
+    "design", "test_plan", "security_design", "security_control_disposition", "security_architecture",
     "release_artifacts", "publication_state",
 }
 REQUIRED_RELEASE_ARTIFACTS = {
@@ -34,11 +34,12 @@ REQUIRED_AREAS = {
     "registration-context", "repository-baseline", "source-and-licenses", "privacy-and-data",
     "cryptography-and-export", "secret-scanning", "vulnerability-scanning", "malware-scanning",
     "architecture-and-deployment", "release-artifacts", "release-approval",
+    "threat-control-disposition",
 }
 REQUIRED_EXTERNAL_CATEGORIES = {
     "registration", "public-repository-hosting", "legal-and-license", "export", "privacy",
     "verified-secret-scan", "final-artifact-vulnerability-scan", "malware-scan", "host-controls",
-    "release-decision",
+    "source-integration", "external-service-controls", "release-decision",
 }
 REQUIRED_HEADINGS = {
     "design": {
@@ -51,6 +52,11 @@ REQUIRED_HEADINGS = {
         "Scope", "Roles and evidence ownership", "Entry criteria", "Test environments",
         "Automated test matrix", "Manual and external evidence matrix", "Execution order",
         "Pass, failure, and exception rules", "Exit criteria", "Evidence record",
+    },
+    "security_control_disposition": {
+        "Status vocabulary", "Source and contribution controls", "Build and artifact controls",
+        "Static hosting and browser controls", "Relay, model, launchable, and runtime controls",
+        "Publication blockers and retained risks",
     },
 }
 REQUIRED_DESIGN_ANCHORS = {
@@ -74,6 +80,7 @@ REQUIRED_WIRING = {
         "scripts/validation/course_dependency_integrity.py",
         "scripts/validation/cell_audit.py",
         "scripts/validation/release_evidence_audit.py", '"--self-test"',
+        "scripts/validation/threat_control_audit.py", '"--self-test"',
     ),
     "AGENTS.md": (
         "CONTRIBUTING.md", "docs/release-test-plan.md",
@@ -84,6 +91,7 @@ REQUIRED_WIRING = {
     "docs/agent_process.md": ("release_evidence_audit.py", "--self-test"),
     "docs/SKILL.html": (
         "product-design.md", "release-test-plan.md", "release-evidence.json",
+        "security-control-disposition.md",
         '"../RELEASE_STATUS.json"', '"../CHANGELOG.md"', '"render_markdown": true',
     ),
     "web/_skill_explorer.js": (
@@ -107,6 +115,9 @@ REQUIRED_WIRING = {
         "same-origin-vendored", "source-reference inventory drifted", "--self-test",
     ),
     "scripts/validation/SKILL.html": ("release_evidence_audit.py",),
+    "scripts/validation/threat_control_audit.py": (
+        "pages_artifact_integrity.py", "repository_sync_audit.py", "Not verified",
+    ),
 }
 ALLOWED_OWNERS = {"repository", "operator", "shared"}
 ALLOWED_EXTERNAL_STATUS = "operator-required"
@@ -246,7 +257,10 @@ def audit_contract(data: dict, *, root: Path = ROOT,
                            "external evidence retention or repository approval boundary changed",
                            "keep private evidence external and prevent self-approval claims"))
 
-    public_paths = [documents.get("design"), documents.get("test_plan"), "docs/release-evidence.json"]
+    public_paths = [
+        documents.get("design"), documents.get("test_plan"),
+        documents.get("security_control_disposition"), "docs/release-evidence.json",
+    ]
     for rel in filter(None, public_paths):
         if rel != "docs/release-evidence.json" and not (root / rel).is_file() and rel not in overrides:
             continue

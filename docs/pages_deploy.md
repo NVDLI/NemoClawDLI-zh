@@ -140,15 +140,20 @@ separate staging project or true parallel Pages deployments when the host suppor
 from deployment on pushes to the default branch. The read-only `build-and-verify` job
 builds `public/`, verifies that `gate.json` names the same commit, rejects symlinks and
 remote executable references, writes a SHA-256 inventory, and exercises the generated
-tree in Chromium. Only that immutable `github-pages` artifact can reach the `deploy` job.
+tree in Chromium. The artifact gate also caps file count, individual and total size,
+directory depth, archive size, and expansion ratio. Only that immutable `github-pages`
+artifact can reach the `deploy` job.
 
 Protect the `github-pages` environment with required reviewers and prevent self-review.
 The reviewer inspects the completed build, browser logs, and downloadable artifact before
 approving deployment. After approval, the deploy job downloads the same Actions artifact,
-extracts it, and verifies its embedded SHA-256 inventory again before `deploy-pages` receives
+rejects traversal, links, devices, duplicate members, unsupported types, and resource-bound
+violations before extraction, then verifies its embedded SHA-256 inventory again before `deploy-pages` receives
 write and OIDC permissions. A source checkout or a newly rebuilt tree is never substituted at
-that boundary. Artifact checks reduce accidental or unauthorized execution paths; the required
-human review remains responsible for judging the intended HTML and JavaScript behavior.
+that boundary. A separate read-only job waits for the HTTPS deployment, requires the live
+manifest to equal the reviewed manifest, and downloads every listed object to compare its digest.
+Artifact checks reduce accidental or unauthorized execution paths; the required human review
+remains responsible for judging the intended HTML and JavaScript behavior.
 
 This is the first-class public course. A future `docs.nvidia.com/learning/nemoclaw` entry
 will route learners into this low-friction static experience.

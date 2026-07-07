@@ -139,6 +139,8 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -149,8 +151,34 @@ jobs:
           path: reviewed-pages-artifact
       - name: Reverify the reviewed immutable artifact
         run: |
-          mkdir reviewed-public
-          tar -xf reviewed-pages-artifact/artifact.tar -C reviewed-public
+          python3 scripts/validation/pages_artifact_integrity.py \
+            --archive reviewed-pages-artifact/artifact.tar --extract-to reviewed-public
           python3 scripts/validation/pages_artifact_integrity.py --root reviewed-public --expect-sha "${GITHUB_SHA::7}" --check-manifest reviewed-public/pages-sha256.txt
       - id: deploy
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
+
+  verify-deployment:
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: github-pages
+          path: reviewed-pages-artifact
+      - name: Compare live Pages with the reviewed artifact
+        run: |
+          python3 scripts/validation/pages_artifact_integrity.py \
+            --archive reviewed-pages-artifact/artifact.tar --extract-to reviewed-public
+          python3 scripts/validation/pages_artifact_integrity.py \
+            --root reviewed-public --expect-sha "${GITHUB_SHA::7}" \
+            --check-manifest reviewed-public/pages-sha256.txt
+          python3 scripts/validation/pages_artifact_integrity.py \
+            --base-url "${{ needs.deploy.outputs.page_url }}" --expect-sha "${GITHUB_SHA::7}" \
+            --root reviewed-public --check-manifest reviewed-public/pages-sha256.txt \
+            --attempts 24 --delay 5

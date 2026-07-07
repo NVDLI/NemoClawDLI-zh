@@ -92,8 +92,9 @@ TENETS = {
         "Order is a default, not a gate: keep pages usable out of sequence, with no enforced "
         "prerequisites or knowledge checks, so a reader can act on partial understanding and "
         "return for the next layer.",
-        "Target an open external release after approval: Apache 2.0, no gate or paywall, the "
-        "foyer surfacing only the selected courses, and mats cited by public URL.",
+        "Target an NVIDIA-owned Full-OSS-Project after approval: OSS Type I, Apache 2.0, no gate "
+        "or paywall, public planning and contribution, the foyer surfacing only the selected "
+        "courses, and mats cited by public URL.",
         "Keep surface assumptions explicit: web/ is browser-only and cannot assume student-provisioned "
         "microservices; cpu/ owns shared service stacks; spark/ or gpu surfaces must declare their "
         "compute contract before content depends on them.",
@@ -338,6 +339,7 @@ def gen_task():
                         "publication_state": RELEASE_STATUS["publication_state"],
                         "external_mirror": RELEASE_STATUS["external_mirror"],
                         "external_repository": RELEASE_STATUS["external_repository"],
+                        "intended_oss_type": RELEASE_STATUS["intended_oss_type"],
                         "target_license": RELEASE_STATUS["target_license"],
                         "notice_required": RELEASE_STATUS["notice_required"],
                         "status_path": "RELEASE_STATUS.json",
