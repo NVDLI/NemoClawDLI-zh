@@ -641,9 +641,8 @@ return { indexed: state.index.length, dim: vecs[0].length };
     {
       id: "query", icon: "❓", title: "Consulta del usuario", x: 1, y: 0,
       summary: "La pregunta utilizada para recuperar. Al cambiarla varía la clasificación porque usa el tipo de entrada 'query', cuyo vector apunta a pasajes pertinentes y no solo a texto idéntico.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Prueba otra consulta y observa cómo cambia la clasificación.
 state.query = "what is the difference between react and rewoo?";
-// Try another query and rerun to watch the ranking shift:
 // state.query = "what does the openshell sandbox do?";           // single-fact lookup
 // state.query = "how do RAG and a deep-research agent compare?"; // spans several passages
 return state.query;
@@ -725,9 +724,8 @@ return { indexed: state.chunkIndex.length };
     {
       id: "query", icon: "❓", title: "Consulta del usuario", x: 1, y: 0,
       summary: "La consulta usa la misma estructura que el ejemplo anterior. Edítala y vuelve a ejecutar para observar qué documento padre queda primero.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Prueba otra consulta y observa qué documento padre queda primero.
 state.query = "When does each retrieval pattern beat the other?";
-// Other queries to try; each returns the full parent document:
 // state.query = "how does chunking change what the model sees?";
 // state.query = "what is a reranker, and when is it worth the step?";
 return state.query;
@@ -847,7 +845,7 @@ return { tool: state.RETRIEVE_SCHEMA[0].function.name };
     {
       id: "query", icon: "❓", title: "Consulta del usuario", x: 1, y: 0,
       summary: "La pregunta se acompaña de un prompt de sistema que indica cuándo usar la herramienta: solo si hacen falta hechos concretos que el conocimiento del modelo no cubre con seguridad. El modelo decide en cada turno, en vez de recuperar siempre.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Elige una pregunta que deba recuperar, omitir la recuperación o ser ambigua.
 
 const EXAMPLES = {
   default: "What model does this course use, and does it need an API key?",

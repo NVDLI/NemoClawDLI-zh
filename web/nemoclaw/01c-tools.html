@@ -475,7 +475,7 @@ mountCanvasFlow("#cell-m2b-p3", {
     {
       id: "question", icon: "👤", title: "User question", x: 1, y: 0,
       summary: "Try an arithmetic, a definition, or something either tool could handle.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Choose an example or write a question that makes the tool choice interesting.
 
 const EXAMPLES = {
   default: "What is 2 to the power of 10?",
@@ -554,8 +554,10 @@ mountCanvasFlow("#cell-m2b-p4", {
     {
       id: "input", icon: "👤", title: "User input", x: 0, y: 0,
       summary: "Holds the question the student asks, which you can edit before rerunning.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Try another model-family question, or write your own.
 state.question = "What is the NVIDIA Nemotron model family and what is it good at?";
+// state.question = "Which NVIDIA model family is designed for reasoning?";
+// state.question = "How does NVIDIA NIM differ from a model checkpoint?";
 return state.question;
 `,
     },
@@ -767,8 +769,10 @@ return { tool_name: state.TOOLS[0].function.name };
     {
       id: "user", icon: "👤", title: "User question (to the main agent)", x: 2, y: 1,
       summary: "Edit this to try a question like 'How many pro-plan customers do we have?' or 'Who has the most tickets in the last 30 days?'",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Ask about a different customer segment or activity signal.
 state.userQuestion = "Which EU customers are on the pro plan, and how active are they?";
+// state.userQuestion = "How many pro-plan customers signed up this quarter?";
+// state.userQuestion = "Who opened the most tickets in the last 30 days?";
 return state.userQuestion;
 `,
     },
@@ -860,8 +864,10 @@ return state.tools.map(t => t.function.name);
     {
       id: "user", icon: "👤", title: "User question", x: 2, y: 1,
       summary: "The question the model answers using the discovered glossary tools. A definitional ask is served by glossary_search, while a request for a specific term by slug goes to glossary_lookup.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Try a broad definition or request a specific glossary term.
 state.question = "What is retrieval-augmented generation, and what does a vector database have to do with it?";
+// state.question = "What is an AI agent?";
+// state.question = "Look up the glossary term with the slug vector-database.";
 return state.question;
 `,
     },

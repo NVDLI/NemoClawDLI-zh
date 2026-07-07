@@ -619,7 +619,7 @@ return { tools: ["write_file", "read_file", "list_files"], vfs_state: Object.key
     {
       id: "planner", icon: "🧠", title: "Planeje subtarefas tipadas", x: 1, y: 1,
       summary: "Saída estruturada evita a análise de um plano de texto livre.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Mude a entrega e observe o planejador criar novas subtarefas tipadas.
 state.goal = [
   "Research NVIDIA NIM (NVIDIA Inference Microservices) and produce three files: ",
   "nim_overview.md, a technical overview of what NIM is and how it works; ",
@@ -627,8 +627,8 @@ state.goal = [
   "nim_vs_hosting.md, a short comparison of using a managed NIM endpoint versus self-hosting a model directly, ",
   "covering latency, operational overhead, and when each makes sense.",
 ].join("");
-// Edit this string to try a different multi-file research goal.
-
+// state.goal = "Compare RAG evaluation methods and produce metrics.md, risks.md, and test_plan.md.";
+// state.goal = "Research agent memory and produce short_term.md, long_term.md, and tradeoffs.md.";
 
 // withStructuredOutput binds the output to this schema and returns a parsed object.
 
