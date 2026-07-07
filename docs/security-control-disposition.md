@@ -28,10 +28,12 @@ release approval.
 | Git history and object exhaustion | Human approval required | CI jobs have explicit timeouts and hosted runners have bounded resources. A shallow clone is not universal because DCO and release ancestry checks require history. | Host administrators retain object-size limits; release workflows fetch only the history they require. |
 | Public and internal source synchronization | Verified | Public changes are detected by a scheduled, read-only fetch that executes only the trusted internal audit script. Differences stop the job and require an integration MR. No job force-pushes either protected branch. | Configure the weekly host schedule after the public repository is populated and review every reconciliation MR. |
 
-The selected public operating model is an NVIDIA-owned Full-OSS-Project intended as OSS Type I.
-After approved cutover, public GitHub is canonical for project activity and internal GitLab is an
-integration and validation consumer. The authoritative lifecycle record must confirm the Type I
-classification and the relationship between the public and internal systems.
+The selected public operating model for the NemoClaw DLI course repository is an NVIDIA-owned
+Full-OSS-Project intended as OSS Type I. After approved cutover, public GitHub is canonical for
+course-repository activity and internal GitLab is an integration and validation consumer. This
+classification does not apply to the NemoClaw product, launchable, runtime, or their release
+processes. The authoritative lifecycle record must confirm the course repository's Type I
+classification and the relationship between the public and internal course systems.
 
 ## Build and artifact controls
 

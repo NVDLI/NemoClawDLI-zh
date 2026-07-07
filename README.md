@@ -6,10 +6,13 @@ Learning Institute course on building and securing agent systems. The planned pu
 yet populated. External publication remains pending OSRB approval; see
 [`RELEASE_STATUS.json`](RELEASE_STATUS.json) for the canonical state.
 
-The selected operating model is an NVIDIA-owned Full-OSS-Project, intended as OSS Type I. After
-approved cutover, the public GitHub repository becomes the canonical source and the primary home
-for planning, issues, contributions, CI, and releases. Internal GitLab remains an integration and
-validation consumer. The governing system must still record and approve that classification.
+The selected operating model for this DLI course repository, `NVDLI/NemoClawDLI`, is an
+NVIDIA-owned Full-OSS-Project intended as OSS Type I. After approved cutover, that course
+repository becomes the canonical source and the primary home for course planning, issues,
+contributions, CI, and releases. Internal GitLab remains an integration and validation consumer.
+This classification does not apply to the NemoClaw product, launchable, runtime, or their release
+processes. They are external dependencies used by some lessons. The governing system must still
+record and approve the course repository classification.
 
 The course starts with a model call and builds toward tool use, workflows, retrieval, deep
 research, OpenClaw, and OpenShell sandbox policy. English, Brazilian Portuguese, and Spanish are

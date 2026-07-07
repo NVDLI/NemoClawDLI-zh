@@ -23,7 +23,14 @@ REQUIRED_TOKENS = {
         "Browser certificate pinning | Not applicable",
         "Client-side prompt complexity detection | Not applicable",
         "Relay schema, route, frame-size, and rate enforcement | Unknown",
+        "classification does not apply to the NemoClaw product, launchable, runtime, or their release",
         "Repository evidence does not grant Legal, OSRB, Export, Privacy, Product Security, SCM, host, or",
+    ),
+    "docs/product-design.md": (
+        "The Type I subject is only the DLI course repository",
+        "product, launchable, runtime, relays",
+        "outside this classification",
+        "external integration dependencies",
     ),
     "scripts/validation/pages_artifact_integrity.py": (
         "MAX_FILE_COUNT",
@@ -85,12 +92,18 @@ REQUIRED_TOKENS = {
         "integration/github-main",
         "never force-push",
         "intended as **OSS Type I**",
+        "This classification is limited to `NVDLI/NemoClawDLI`",
+        "classify or release the NemoClaw product",
     ),
     "RELEASE_STATUS.json": (
         '"publication_state": "pending-osrb-approval"',
         '"external_mirror": "reserved-not-populated"',
         '"canonical_repository": "internal-gitlab"',
         '"intended_oss_type": "Type-I"',
+        '"oss_scope": "nemoclaw-dli-course-repository"',
+        '"NemoClaw product"',
+        '"NemoClaw launchable"',
+        '"NemoClaw runtime"',
     ),
 }
 
@@ -161,6 +174,7 @@ def self_test() -> list[str]:
     release = read(".github/workflows/release.yml", {})
     disposition = read(DISPOSITION, {})
     playbook = read("docs/release_playbook.md", {})
+    product_design = read("docs/product-design.md", {})
     tests.append((
         "post-deploy verification",
         {".github/workflows/pages.yml": pages.replace("verify-deployment:", "verification-removed:", 1)},
@@ -200,6 +214,15 @@ def self_test() -> list[str]:
         {"docs/release_playbook.md": playbook.replace("OSS Type I", "OSS Type II", 1)},
         "missing-control-token",
     ))
+    tests.append((
+        "course versus product scope",
+        {"docs/product-design.md": product_design.replace(
+            "The Type I subject is only the DLI course repository",
+            "The Type I subject is the complete NemoClaw product",
+            1,
+        )},
+        "missing-control-token",
+    ))
     failures: list[str] = []
     for label, overrides, expected in tests:
         codes = {item["code"] for item in audit(text_overrides=overrides)}
@@ -214,7 +237,7 @@ def main() -> int:
     args = parser.parse_args()
     if args.self_test:
         failures = self_test()
-        total = 7
+        total = 8
         print(f"threat control self-test: {total - len(failures)}/{total} passed")
         for failure in failures:
             print("  " + failure)
