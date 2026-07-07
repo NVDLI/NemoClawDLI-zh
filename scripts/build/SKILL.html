@@ -11,7 +11,7 @@
   "node_type": "directory-explorer",
   "title": "scripts/build packaging and deploy helpers",
   "source_dir": "scripts/build/",
-  "summary": "Build and publishing helpers for the static bundle, branch manifests, language manifests, hooks, and edX export.",
+  "summary": "Build and publishing helpers for the static bundle, branch manifests, language manifests, hooks, edX export, and the composed VATA security-review document.",
   "related": [
     "scripts/build/build_pages.sh",
     "scripts/build/project_docs_explorer.py",
@@ -23,6 +23,7 @@
     "scripts/build/build_branch_manifest.py"
     ,"scripts/build/package_release.py",
     "scripts/build/build_repository_overview_html.py",
+    "scripts/build/build_vata_submission.py",
     "scripts/build/build_repository_overview.mjs",
     "scripts/build/capture_repository_overview.mjs"
   ],
@@ -102,6 +103,11 @@
       "desc": "Builds docs/repository-overview.html from the shared slide manifest and checks generated-output freshness."
     },
     {
+      "path": "build_vata_submission.py",
+      "role": "VATA document composer",
+      "desc": "Builds one public-safe VATA supporting document from product design, security design, and the release test plan."
+    },
+    {
       "path": "build_repository_overview.mjs",
       "role": "PowerPoint slide generator",
       "desc": "Builds docs/repository-overview.pptx with artifact-tool from the same manifest."
@@ -134,6 +140,7 @@
     <div class="skill-cmd"><b>Browser package inventory</b><code>python3 scripts/validation/course_dependency_integrity.py --self-test</code></div>
     <div class="skill-cmd"><b>Release package determinism</b><code>python3 scripts/build/package_release.py --self-test</code></div>
     <div class="skill-cmd"><b>Hosted slide deck</b><code>python3 scripts/build/build_repository_overview_html.py --check</code></div>
+    <div class="skill-cmd"><b>VATA upload package</b><code>python3 scripts/build/build_vata_submission.py --package</code></div>
     <div class="skill-cmd"><b>edX export</b><code>python3 scripts/build/publish_edx.py --help</code></div>
   </div>
   <h2>Linkage map</h2>
@@ -149,6 +156,7 @@
     <a class="skill-card" href="build_language_manifest.py"><b>build_language_manifest.py</b><span>language manifest. Builds language-branch metadata for translated bundles.</span></a>
     <a class="skill-card" href="package_release.py"><b>package_release.py</b><span>deterministic release packager. Builds the versioned archive, manifest, release assets, checksums, and required external-evidence list.</span></a>
     <a class="skill-card" href="build_repository_overview_html.py"><b>build_repository_overview_html.py</b><span>hosted slide generator. Projects the shared manifest into a keyboard-navigable HTML deck.</span></a>
+    <a class="skill-card" href="build_vata_submission.py"><b>build_vata_submission.py</b><span>VATA document composer. Produces one public-safe review packet from the canonical design and test records.</span></a>
     <a class="skill-card" href="build_repository_overview.mjs"><b>build_repository_overview.mjs</b><span>PowerPoint generator. Projects the shared manifest into the offline PPTX deck.</span></a>
     <a class="skill-card" href="capture_repository_overview.mjs"><b>capture_repository_overview.mjs</b><span>browser evidence capture. Records real course, Studio, and validation surfaces for slide use.</span></a>
   </div>
