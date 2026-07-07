@@ -134,6 +134,7 @@ Store links, identifiers, named reviewers, and detailed reports outside the publ
 | M08 | Authoritative vulnerability scan | Scan every final released artifact; review severity, age, fix availability, and artifact-specific dispositions | No overdue fixable Critical/High finding lacks an approved disposition, mitigation, and remediation plan | Release owner and risk authority |
 | M09 | Malware scan | Read `release-manifest.json.external_evidence`; submit every file in `malware_scan_required` to the qualified scanner, and record applicability for the remaining text-only assets | Every listed artifact has zero malicious and zero suspicious detections, or an authorized false-positive disposition; the external record closes the manifest's `required-before-publication` policy | Release owner and malware reviewer |
 | M10 | Live host controls | Verify HTTPS, protected default branch and tags, required checks, immutable release settings, private vulnerability intake, a `github-pages` environment with required reviewers and self-review prevention, the weekly public-to-internal integration schedule, and the recorded CSP/CDN/WAF decision | Live configuration matches the design, disposition record, and release playbook | Host administrator and release owner |
+| M10a | Generated threat-analysis reconciliation | First compare the generated Target of Evaluation with the package's threat-analysis invariants and correct scope or fact drift. Then compare findings with `security-control-disposition.md` by aggregate control theme, correct private row-level statuses that contradict evidence, assign service controls to their operators, and retain unresolved signing, hosting, credential, and service requirements. | The generated Target of Evaluation matches the canonical invariants; every generated status has an evidence-backed owner and disposition in the authorized review system; the public repository contains no private row-by-row assessment | Product Security reviewer and release owner |
 | M11 | Final release review | Review the exact tag, pipeline, generated-tree browser results, downloadable Pages artifact and its SHA-256 inventory, Pages smoke, archive manifest, SBOM, checksums, known issues, external evidence, and rollback plan before approving the deployment environment | Authorized reviewer records an approved decision against the exact artifact | Release reviewer |
 
 ## Execution order
@@ -149,7 +150,8 @@ Store links, identifiers, named reviewers, and detailed reports outside the publ
 7. Freeze the release candidate under a protected annotated tag only after repository review.
 8. Run the protected release workflow and retain its archive, manifest, SBOM, checksums, and reports.
 9. Complete M07 through M10 against the final source ref and packaged artifacts.
-10. Obtain M11. Publish only after the publication state and protected environment permit it.
+10. Complete M10a, then obtain M11. Publish only after the publication state and protected
+    environment permit it.
 
 Release candidates omit `--changed-since` so every detector mutation runs. CI retains per-command
 timing evidence; recurring high-latency checks should be optimized at their canonical owner, not
@@ -176,7 +178,8 @@ copied into a second abbreviated gate.
 - The external integration audit has run on its declared cadence and any external-ahead or diverged state has a reviewed reconciliation record.
 - The protected tag points to that commit and is contained in protected `main`.
 - Archive, manifest, SBOM, checksums, and retained validation evidence agree on version and commit.
-- M01 through M11 are complete or formally Not Applicable through the authorized process.
+- M01 through M11, including M10a, are complete or formally Not Applicable through the authorized
+  process.
 - Known issues, mitigations, rollback, and support scope were reviewed.
 - The authorized release reviewer recorded approval.
 

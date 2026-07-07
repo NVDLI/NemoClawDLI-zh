@@ -18,6 +18,24 @@ supplements [`security-design.md`](security-design.md) and the executable eviden
 Repository evidence does not grant Legal, OSRB, Export, Privacy, Product Security, SCM, host, or
 release approval.
 
+## Review synthesis
+
+Generated threat reports are advisory inputs. Their risk labels and requirement statuses can
+conflict with the source-backed design or assign a provider control to browser code. Private review
+rows are intentionally reconciled into control themes rather than versioned one-to-one in the public
+repository. The authorized reviewer records any row-level correction in the private review system.
+
+| Control theme | State | Evidence and disposition | Owner or next action |
+|---|---|---|---|
+| Reviewed source through deployed bytes | Verified | Required CI rejects unexpected executable references, records a complete SHA-256 inventory, preserves one reviewed artifact through deployment, and compares the live tree with that inventory. | Keep the build, extraction, deployment, and live-byte checks bound to the same commit and artifact. |
+| Cryptographic artifact attestation | Not verified | The inventory detects substitution across the trusted handoff, but it is not a signature and does not supply non-falsifiable provenance. | Release and Product Security owners decide whether an approved signing identity and verification step are required. |
+| Encrypted traffic metadata and learning-path inference | Not applicable | The course is a public static site. Padding every response, merging all modules, or prefetching the complete course would add cost and degrade accessibility without hiding DNS, SNI, timing, or host access metadata from a network observer. | Static-host and learner-network operators own metadata privacy. Course modules remain cacheable and independently navigable. |
+| Browser-readable bearer credentials and proof-of-possession redesign | Human approval required | Direct browser calls require JavaScript-readable credentials. HttpOnly cookies would require a same-origin credential broker, and proof-of-possession requires issuer and model-service support. Either change alters the static-client architecture. | Hosting, credential-issuer, model-service, Privacy, and Product Security owners decide whether to accept the documented browser boundary or approve a brokered design. |
+| Compromised browser execution context | Not applicable | Course JavaScript cannot keep a credential or prompt confidential from a malicious extension, endpoint compromise, or successful script execution in the same origin. | Endpoint administration owns browser compromise. Repository controls reduce injection opportunities and provide explicit save and clear actions. |
+| Relay request validation and service-side tool authorization | Unknown | The repository constrains destinations and credential routing, but it cannot prove a deployed relay's schema, body and frame bounds, identity quotas, or a model or runtime service's command authorization. | Relay, model-service, launchable, and runtime owners provide live deployment evidence. |
+| Generated assessment status reconciliation | Human approval required | A generated report can mark a control as absent even when the cited repository evidence is present, or mark an external control complete without operational evidence. | The authorized reviewer compares each aggregate theme with this disposition and corrects the private assessment before accepting its risk result. |
+| Threat-analysis input fidelity | Human approval required | The generated submission package fronts canonical scope, public-source, browser credential, CI privilege, artifact-integrity, and external-service invariants. A generated Target of Evaluation can still omit or contradict those facts and thereby change risk scores without a source or deployment change. | Before reviewing individual threats, the authorized reviewer compares the generated Target of Evaluation with the package invariants and corrects any drift in the private system. |
+
 ## Source and contribution controls
 
 | Concern | State | Evidence and disposition | Owner or next action |
@@ -81,6 +99,9 @@ The authorized review record must separately resolve the following items:
 5. Operational evidence from every required service for its identity, input-validation,
    resource-isolation, observability, and incident-response controls.
 6. Credential lifetime, audience, revocation, replay, and shared-device handling.
+7. Reconciliation of the generated Target of Evaluation with the package invariants, followed by
+   generated threat-report status reconciliation with repository and service-owner evidence,
+   recorded by aggregate control theme in public and at row level only in the private review system.
 
 An automated repository pass proves only the controls implemented in this source tree. Unknown,
 not-verified, and human-owned requirements remain visible rather than being converted into a false

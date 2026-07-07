@@ -26,6 +26,34 @@ Docker Compose files under `deploy/` and services under `cpu/services/` support 
 tests. They are absent from the production static-site pipeline unless a future deployment adds
 them. The architecture validator rejects unreviewed production dependencies.
 
+## Threat-analysis invariants
+
+Use these statements as the canonical Target of Evaluation summary. A generated summary that
+contradicts one of them must be corrected before its risk labels or requirement statuses are
+accepted.
+
+- The subject is the DLI course repository and its static course artifact. The NemoClaw product,
+  launchable, runtime, model service, and relay deployments are external dependencies, not releases
+  or security boundaries owned by this repository.
+- The intended OSS Type I source and published course artifact are public. Their confidentiality
+  after publication is not a security objective. Pre-publication confidentiality and Git transport
+  configuration remain host-owned controls, and secrets are forbidden from source and build output.
+- The learner browser is untrusted. Model and gateway bearer credentials are JavaScript-readable
+  values retained in `localStorage`; browser storage is not a vault. A compromised browser context
+  can read them. HttpOnly cookies require a same-origin broker, and proof-of-possession requires
+  issuer and service support.
+- Proposed-change validation executes untrusted repository code only in read-only jobs. Those jobs
+  receive no deployment credentials or release keys. A reviewed protected-branch build produces the
+  artifact, and a separately permissioned deployment job uses short-lived GitHub OIDC,
+  protected-environment review, serialized publication, artifact re-verification, and live-byte
+  comparison.
+- The repository records a complete SHA-256 inventory and preserves one reviewed artifact through
+  deployment. Cryptographic signing or provenance attestation is Not verified; a checksum is not a
+  signature.
+- Live host, launchable, relay, model-service, and runtime controls are Unknown until their owners
+  supply evidence. This design does not assume mTLS, DPoP, zero-retention model processing,
+  prompt-injection detection, private Git networking, or a curated private package registry.
+
 ## Browser routing by host
 
 | Course host | Model service | NemoClaw runtime |
@@ -57,6 +85,15 @@ database or server-side learner-data store.
 Startup-provided material in the co-located path populates the same storage entry consumed by the
 course helpers. The course separately caches only a non-authoritative verification result for the
 browser session.
+
+An attacker who already executes code in the learner's browser context can read JavaScript-accessible
+credentials and observe prompts or responses before transport encryption. The static course cannot
+create a stronger secret boundary inside that compromised context. Moving credentials to HttpOnly
+cookies would require a same-origin credential broker, while proof-of-possession tokens require
+credential-issuer and service support. Those are hosting and service architecture decisions, not a
+client-only mitigation. Repository controls instead prevent unreviewed executable dependencies,
+constrain credential destinations, render untrusted output safely, and give learners explicit save,
+replace, and clear actions.
 
 ## Security controls
 
