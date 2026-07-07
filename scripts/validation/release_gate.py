@@ -43,6 +43,7 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/validation/sensitive_content_audit.py", "--self-test"),
     py("scripts/validation/release_change_reminder.py", "--self-test"),
     py("scripts/validation/validation_report_audit.py", "--self-test"),
+    py("scripts/validation/pages_artifact_integrity.py", "--self-test"),
     py("scripts/skills/skill_consistency.py"),
     py("scripts/skills/skill_contract.py"),
     py("scripts/build/project_docs_explorer.py", "--self-test"),
@@ -70,6 +71,7 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/validation/sensitive_content_audit.py", "--self-test"),
     py("scripts/validation/release_change_reminder.py", "--self-test"),
     py("scripts/validation/validation_report_audit.py", "--self-test"),
+    py("scripts/validation/pages_artifact_integrity.py", "--self-test"),
     py("scripts/skills/skill_consistency.py"),
     py("scripts/skills/skill_contract.py"),
     py("scripts/validation/ci_storage_audit.py"),
@@ -140,6 +142,10 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     py("scripts/validation/validation_report_audit.py", "--self-test"): (
         "scripts/validation/validation_report_audit.py", "scripts/validation/validate_bundle.py",
         "scripts/build/build_pages.sh", ".gitlab-ci.yml", ".github/workflows/*",
+    ),
+    py("scripts/validation/pages_artifact_integrity.py", "--self-test"): (
+        "scripts/validation/pages_artifact_integrity.py", "scripts/build/build_pages.sh",
+        ".github/workflows/pages.yml", "docs/pages_deploy.md", "docs/release-test-plan.md",
     ),
     py("scripts/validation/branch_preview_manifest_audit.py", "--self-test"): (
         "scripts/validation/branch_preview_manifest_audit.py", "scripts/build/build_branch_manifest.py",

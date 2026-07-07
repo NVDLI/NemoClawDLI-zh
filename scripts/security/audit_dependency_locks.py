@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 PAIRS = (
     ("workspace/requirements.txt", "workspace/requirements.lock"),
+    ("cpu/services/sandbox_admin/requirements.txt", "workspace/requirements.lock"),
     ("scripts/materials/requirements.lock.in", "scripts/materials/requirements.lock"),
     ("scripts/security/requirements-sca.lock.in", "scripts/security/requirements-sca.lock"),
 )
@@ -82,6 +83,8 @@ def self_test() -> list[str]:
         mutations = (
             ("workspace/requirements.lock", "fastapi==0.138.2", "fastapi>=0.138.2"),
             ("workspace/requirements.lock", "fastapi==0.138.2", "fastapi==0.138.2\nlitellm==0"),
+            ("cpu/services/sandbox_admin/requirements.txt", "docker==7.1.0", "docker"),
+            ("cpu/services/sandbox_admin/requirements.txt", "uvicorn[standard]==0.49.0", "uvicorn[standard]"),
             ("scripts/materials/requirements.lock", "requests==2.34.2", "requests==0.0.1"),
             ("scripts/security/requirements-sca.lock", "pip-audit==2.10.1", "# removed pip-audit"),
         )
