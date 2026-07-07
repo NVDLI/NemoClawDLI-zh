@@ -51,6 +51,9 @@
     "scripts/validation/course_dependency_integrity.py",
     "scripts/validation/concept_order_audit.py",
     "scripts/validation/security_architecture_audit.py",
+    "scripts/validation/threat_control_audit.py",
+    "scripts/validation/repository_sync_audit.py",
+    "scripts/validation/pages_artifact_integrity.py",
     "scripts/validation/release_evidence_audit.py",
     "scripts/validation/repository_work_products_audit.py"
   ],
@@ -158,6 +161,21 @@
       "path": "security_architecture_audit.py",
       "role": "security architecture graph gate",
       "desc": "Required mutation-tested production scope, source-derived topology drift, local-only classification, evidence, trust-boundary, geometry, and generated-SVG freshness audit."
+    },
+    {
+      "path": "threat_control_audit.py",
+      "role": "security control disposition gate",
+      "desc": "Mutation-tested wiring for bounded Pages artifacts, safe extraction, post-deploy byte verification, dual-repository integration, immutable workflow pins, job timeouts, and explicit external or non-applicable ownership."
+    },
+    {
+      "path": "repository_sync_audit.py",
+      "role": "public-to-internal source drift classifier",
+      "desc": "Read-only classification of equivalent, external-ahead, internal-ahead, and diverged GitHub/GitLab refs; external changes require a normal integration MR."
+    },
+    {
+      "path": "pages_artifact_integrity.py",
+      "role": "Pages artifact and deployment integrity gate",
+      "desc": "Bounds the static tree and archive, safely extracts regular files, verifies the same-commit SHA-256 inventory, and compares every live Pages object after deployment."
     },
     {
       "path": "release_evidence_audit.py",
@@ -348,6 +366,9 @@
   <div class="skill-cmd"><b>Code hygiene</b><code>python3 scripts/validation/code_hygiene.py --self-test &amp;&amp; python3 scripts/validation/code_hygiene.py</code></div>
   <div class="skill-cmd"><b>Figure audit</b><code>python3 scripts/validation/figure_audit.py</code></div>
   <div class="skill-cmd"><b>security architecture + detector</b><code>python3 scripts/validation/security_architecture_audit.py &amp;&amp; python3 scripts/validation/security_architecture_audit.py --self-test</code></div>
+  <div class="skill-cmd"><b>Threat controls + detector</b><code>python3 scripts/validation/threat_control_audit.py &amp;&amp; python3 scripts/validation/threat_control_audit.py --self-test</code></div>
+  <div class="skill-cmd"><b>Repository integration classifier</b><code>python3 scripts/validation/repository_sync_audit.py --self-test</code></div>
+  <div class="skill-cmd"><b>Pages artifact integrity</b><code>python3 scripts/validation/pages_artifact_integrity.py --self-test</code></div>
   <div class="skill-cmd"><b>Product design + release test evidence</b><code>python3 scripts/validation/release_evidence_audit.py &amp;&amp; python3 scripts/validation/release_evidence_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>Repository work products + detector</b><code>python3 scripts/validation/repository_work_products_audit.py &amp;&amp; python3 scripts/validation/repository_work_products_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>Rendered page screenshots</b><code>python3 scripts/validation/cell_ui_runtime_audit.py --site-root /tmp/nemoclaw_visual_preview --page /nemoclaw/02b-rag.html --screenshots /tmp/nemoclaw_visual_audit</code></div>
@@ -389,6 +410,9 @@
     <a class="skill-card" href="color_theme.py"><b>color_theme.py</b><span>theme check. Flags inline or non-theme-dynamic colors.</span></a>
     <a class="skill-card" href="figure_audit.py"><b>figure_audit.py</b><span>figure audit. Checks static figure legibility, accessibility, injected-SVG style scoping, and the shared mobile lightbox readability contract.</span></a>
     <a class="skill-card" href="security_architecture_audit.py"><b>security_architecture_audit.py</b><span>Required security architecture gate. Derives CI jobs, runtime hosts, remote suffixes, and worker inventory from source; also checks public metadata boundaries, local-only classification, evidence, geometry, and SVG freshness.</span></a>
+    <a class="skill-card" href="threat_control_audit.py"><b>threat_control_audit.py</b><span>Required threat-control gate. Keeps repository mitigations executable and host, provider, residual, and non-applicable requirements explicit.</span></a>
+    <a class="skill-card" href="repository_sync_audit.py"><b>repository_sync_audit.py</b><span>Read-only public-to-internal source drift classifier. External changes stop for a reviewed integration MR.</span></a>
+    <a class="skill-card" href="pages_artifact_integrity.py"><b>pages_artifact_integrity.py</b><span>Pages bounds, safe archive extraction, manifest continuity, and live byte-for-byte deployment verification.</span></a>
     <a class="skill-card" href="release_evidence_audit.py"><b>release_evidence_audit.py</b><span>Required product-design and release-test gate. Checks public-safe scope, data and cryptography inventories, evidence ownership, external-review boundaries, gate wiring, and mutation coverage.</span></a>
     <a class="skill-card" href="repository_work_products_audit.py"><b>repository_work_products_audit.py</b><span>Required repository work-product gate. Checks requirement levels, applicability, evidence paths, policy content, maintainer procedures, issue intake, gate wiring, and mutation coverage.</span></a>
     <a class="skill-card" href="cell_ui_runtime_audit.py"><b>cell_ui_runtime_audit.py</b><span>rendered page screenshot audit. Renders desktop/narrow light/dark pages, writes paired initial/expanded screenshots, flags wrong-tone cell and generated-graph surfaces in either theme, and exercises mobile figure zoom, pan, and close behavior.</span></a>

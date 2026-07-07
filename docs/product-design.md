@@ -9,6 +9,13 @@ This design does not grant publication authority or record private review eviden
 Detailed trust boundaries and graph instructions live in [`security-design.md`](security-design.md); versioned
 artifact behavior lives in [`release_artifacts.md`](release_artifacts.md).
 
+The selected operating model is an NVIDIA-owned Full-OSS-Project intended as OSS Type I. Once the
+approved cutover populates the reserved repository, public GitHub is canonical for source,
+planning, issues, contributions, CI, and releases. Internal GitLab receives reviewed public
+changes on the defined integration cadence and adds internal validation or deployment without
+becoming a private development source. The authoritative lifecycle record must still confirm the
+classification and publication decision.
+
 ## Purpose and users
 
 The product teaches learners how agent loops, tools, retrieval, persistent runtimes, and sandbox

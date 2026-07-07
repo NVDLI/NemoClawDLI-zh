@@ -49,6 +49,10 @@ Runtime checks live in [`lab_runtime_testing.md`](lab_runtime_testing.md).
   `docs/release-evidence.json`. Run `python3 scripts/validation/repository_work_products_audit.py --self-test`
   and then `python3 scripts/validation/repository_work_products_audit.py`. Treat a
   required file, unresolved evidence path, or validator-wiring finding as a release blocker.
+- For a new threat or security requirement, update `docs/security-control-disposition.md` and its
+  actual enforcement surface together. Run `python3 scripts/validation/threat_control_audit.py
+  --self-test` and then `python3 scripts/validation/threat_control_audit.py`. Do not translate a
+  host or provider requirement into a false client-side mitigation.
 
 ## Course title, abstract, and objectives
 

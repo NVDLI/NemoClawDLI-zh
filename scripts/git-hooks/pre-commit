@@ -75,6 +75,14 @@ if [ -f "$RELEASE_EVIDENCE" ] && ! python3 "$RELEASE_EVIDENCE"; then
     exit 1
 fi
 
+THREAT_CONTROLS="$T1/scripts/validation/threat_control_audit.py"
+if [ -f "$THREAT_CONTROLS" ] && ! python3 "$THREAT_CONTROLS"; then
+    echo ""
+    echo "[pre-commit] REFUSING COMMIT: security control disposition or enforcement drifted."
+    echo "Restore the bounded artifact, deployment verification, repository integration, or external-control boundary."
+    exit 1
+fi
+
 if [ ! -f "$AUDIT" ]; then
     # Audit script not present in this repo; nothing to check.
     exit 0

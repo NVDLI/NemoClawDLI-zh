@@ -22,6 +22,7 @@ DIAGRAM = ROOT / "docs" / "security-architecture.svg"
 SOURCES = (
     ROOT / "docs" / "product-design.md",
     ROOT / "docs" / "security-design.md",
+    ROOT / "docs" / "security-control-disposition.md",
     ROOT / "docs" / "release-test-plan.md",
 )
 
@@ -63,7 +64,7 @@ def render() -> str:
         "",
         "## Composition and authority",
         "",
-        "This design preserves the complete text of the repository's three canonical review records. Product scope, data handling, privacy, and cryptography come from `product-design.md`; trust boundaries and security controls come from `security-design.md`; verification claims and evidence ownership come from `release-test-plan.md`. The separate diagram is generated from `security-architecture.json` and validated against implementation evidence.",
+        "This design preserves the complete text of the repository's four canonical review records. Product scope, data handling, privacy, and cryptography come from `product-design.md`; trust boundaries and security controls come from `security-design.md`; repository, host, provider, residual, and non-applicable requirements come from `security-control-disposition.md`; verification claims and evidence ownership come from `release-test-plan.md`. The separate diagram is generated from `security-architecture.json` and validated against implementation evidence.",
     ]
     for index, source in enumerate(SOURCES, 1):
         title, body = demote_body(source.read_text(encoding="utf-8"))

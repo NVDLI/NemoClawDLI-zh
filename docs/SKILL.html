@@ -11,7 +11,7 @@
   "node_type": "directory-explorer",
   "title": "docs/ contributor, release, and design evidence",
   "source_dir": "docs/",
-  "summary": "Task-routed operating notes with one owner per concern. Start with agent_process and issue_standards for changes; pages_deploy and lab_runtime_testing for execution; product-design and release-test-plan for release evidence; release_playbook for host settings; security-design for trust boundaries and graph operation. Generate security-review-design.md when one document must compose the complete public-safe design and verification record. Generated projections remain tied to declared canonical sources.",
+  "summary": "Task-routed operating notes with one owner per concern. Start with agent_process and issue_standards for changes; pages_deploy and lab_runtime_testing for execution; product-design and release-test-plan for release evidence; release_playbook for host settings; security-design for trust boundaries; security-control-disposition for repository, host, provider, residual, and non-applicable requirements. Generate security-review-design.md when one document must compose the complete public-safe design and verification record. Generated projections remain tied to declared canonical sources.",
   "related": [
     "docs/pages_deploy.md",
     "docs/lab_runtime_testing.md",
@@ -24,6 +24,7 @@
     "docs/release-evidence.json",
     "docs/dependency_security.md",
     "docs/security-design.md",
+    "docs/security-control-disposition.md",
     "docs/security-architecture.json",
     "docs/security-architecture.svg",
     "scripts/build/build_security_review_package.py",
@@ -48,7 +49,7 @@
 <script type="application/json" id="explorer-config">
 {
   "title": "docs/ \u00b7 contributor, release, and design evidence",
-  "summary": "Choose one owner: contribute with agent_process and issue_standards; test with lab_runtime_testing; deploy with pages_deploy; define product and evidence with product-design and release-test-plan; package with release_artifacts; configure hosts with release_playbook; review trust boundaries with security-design and security-architecture. Generate one composed supporting design and pair it with the architecture SVG for review submission. Markdown opens with shareable file and heading URLs.",
+  "summary": "Choose one owner: contribute with agent_process and issue_standards; test with lab_runtime_testing; deploy with pages_deploy; define product and evidence with product-design and release-test-plan; package with release_artifacts; configure hosts with release_playbook; review trust boundaries with security-design and security-architecture; classify repository, host, provider, residual, and non-applicable requirements with security-control-disposition. Generate one composed supporting design and pair it with the architecture SVG for review submission. Markdown opens with shareable file and heading URLs.",
   "model": "nvidia/nemotron-3-nano-30b-a3b",
   "render_markdown": true,
   "ties": [
@@ -127,6 +128,12 @@
       "kind": "authored",
       "role": "review-neutral security design and graph guide",
       "desc": "Production scope, routing, trust boundaries, controls, public evidence limits, reconstruction, and graph regeneration without program metadata."
+    },
+    {
+      "path": "security-control-disposition.md",
+      "kind": "authored",
+      "role": "security requirement disposition",
+      "desc": "Separates verified repository controls from unverified signing and hosting gaps, provider-owned runtime controls, residual risks, and recommendations that do not apply to a static browser application."
     },
     {
       "path": "security-architecture.json",
@@ -243,6 +250,7 @@
     <li><a href="release-evidence.json">release-evidence.json</a></li>
     <li><a href="dependency_security.md">dependency_security.md</a></li>
     <li><a href="security-design.md">security-design.md</a></li>
+    <li><a href="security-control-disposition.md">security-control-disposition.md</a></li>
     <li><a href="security-architecture.json">security-architecture.json</a></li>
     <li><a href="security-architecture.svg">security-architecture.svg</a></li>
     <li><a href="../README.md">README.md</a></li>

@@ -16,6 +16,7 @@ permissions:
 jobs:
   validate-and-package:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -103,6 +104,7 @@ jobs:
   draft-release:
     needs: validate-and-package
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     environment:
       name: github-release
     permissions:
@@ -114,6 +116,8 @@ jobs:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: release-${{ inputs.tag }}
+      - name: Reverify downloaded release assets
+        run: cd release-assets && sha256sum --check SHA256SUMS
       - name: Create or refresh draft release
         env:
           GH_TOKEN: ${{ github.token }}

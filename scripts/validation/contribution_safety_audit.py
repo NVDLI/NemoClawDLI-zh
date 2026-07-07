@@ -412,9 +412,12 @@ def audit_repo(
     require(pages, "--write-manifest public/pages-sha256.txt",
             ".github/workflows/pages.yml", "github-pages-artifact-integrity", out,
             "hash and inspect the generated Pages tree before uploading it")
-    require(pages, "--check-manifest reviewed-public/pages-sha256.txt",
-            ".github/workflows/pages.yml", "github-pages-artifact-reverification", out,
-            "reverify the approved immutable artifact immediately before deployment")
+    if pages.count("--check-manifest reviewed-public/pages-sha256.txt") < 3:
+        out.append(finding(
+            "github-pages-artifact-reverification", ".github/workflows/pages.yml",
+            "deployment, post-deployment extraction, and live-site checks do not all verify the reviewed Pages manifest",
+            "reverify the immutable artifact before deployment, after bounded extraction, and against the live site",
+        ))
     require(pages, "--submission-env CONTRIBUTION_BODY", ".github/workflows/pages.yml",
             "github-submission-contract", out, "validate the live pull-request body")
     require(pages, "--commit-range \"$DCO_RANGE\"", ".github/workflows/pages.yml",

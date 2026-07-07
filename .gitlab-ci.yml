@@ -111,6 +111,28 @@ test:
       - docs/validation/
     expire_in: 30 days
 
+external_integration_audit:
+  <<: *with_python_node
+  stage: test
+  allow_failure: false
+  script:
+    - test "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH"
+    # Fetch public objects but execute only the audit script from the trusted internal checkout.
+    # Any external difference stops here and requires a normal reviewed integration MR.
+    - git fetch --no-tags --filter=blob:none --depth=256 https://github.com/NVDLI/NemoClawDLI.git +refs/heads/main:refs/remotes/external/main
+    - python3 scripts/validation/repository_sync_audit.py --internal-ref "$CI_COMMIT_SHA" --external-ref refs/remotes/external/main --report docs/validation/external-integration.json
+  artifacts:
+    when: always
+    name: "external-integration-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - docs/validation/external-integration.json
+    expire_in: 30 days
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $EXTERNAL_INTEGRATION_AUDIT == "1"'
+      when: on_success
+      allow_failure: false
+    - when: never
+
 security_browser_sca:
   <<: *with_python_node
   stage: test
