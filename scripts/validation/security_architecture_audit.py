@@ -31,6 +31,7 @@ COMPOSE_FILES = (
     ROOT / "deploy" / "docker-compose.deployment.yml",
 )
 RELEASE_STAGES = {"deploy", "verify", "review"}
+EXPECTED_SVG_TITLE = "Security architecture for the DLI course Securing Agents with OpenShell and NemoClaw"
 URL_HOST_RE = re.compile(r"(?:https?|wss?)://[A-Za-z0-9][A-Za-z0-9._-]*", re.I)
 DECLARED_URL_RE = re.compile(
     r"(?:const|let|var)\s+[A-Z0-9_]*(?:URL|URI|BASE|ORIGIN|ENDPOINT|PROXY)[A-Z0-9_]*\s*=\s*[\"'`](?P<url>(?:https?|wss?)://[A-Za-z0-9][A-Za-z0-9._-]*)",
@@ -459,9 +460,21 @@ def audit_model(model: dict, *, root: Path = ROOT, svg_text: str | None = None) 
         svg_text = SVG.read_text(encoding="utf-8") if SVG.is_file() else ""
     if expected_svg is not None and svg_text != expected_svg:
         out.append(finding("stale-svg", "docs/security-architecture.svg", "projection differs from the canonical JSON graph"))
-    for token in ('role="img"', 'aria-labelledby="title desc"', 'data-architecture-schema="nemoclaw-security-architecture/1"'):
+    for token in (
+        'role="img"',
+        'aria-labelledby="title desc"',
+        'data-architecture-schema="nemoclaw-security-architecture/1"',
+        f'<title id="title">{EXPECTED_SVG_TITLE}</title>',
+        f'<text class="title" x="48" y="48">{EXPECTED_SVG_TITLE}</text>',
+    ):
         if token not in svg_text:
             out.append(finding("svg-accessibility", "docs/security-architecture.svg", f"missing {token}"))
+    if "NemoClaw course security architecture" in svg_text:
+        out.append(finding(
+            "scope-title",
+            "docs/security-architecture.svg",
+            "diagram title conflates the DLI course review with the NemoClaw product",
+        ))
 
     doc_text = DOC.read_text(encoding="utf-8") if DOC.is_file() else ""
     for token in ("security-architecture.json", "security-architecture.svg", "render_security_architecture.py --check", "security_architecture_audit.py --self-test", "Browser routing by host", "embedded in an iframe", "do not use the relay", "internal program identifiers"):
@@ -572,6 +585,9 @@ def self_test() -> list[str]:
             failures.append(f"detector missed {label}: expected {wanted}, got {sorted(codes)}")
     if "stale-svg" not in {row["code"] for row in audit_model(base, svg_text=expected_svg.replace("Flow register", "Flow registry", 1))}:
         failures.append("detector missed stale SVG")
+    wrong_title = expected_svg.replace(EXPECTED_SVG_TITLE, "NemoClaw course security architecture")
+    if "scope-title" not in {row["code"] for row in audit_model(base, svg_text=wrong_title)}:
+        failures.append("detector missed product-like diagram title")
     probe_stages, probe_jobs = ci_contract("stages: [test, deploy, review]\n\npages:\n  stage: deploy\n\nrelease_check:\n  stage: review\n")
     if probe_stages != ["test", "deploy", "review"] or probe_jobs != {"pages": "deploy", "release_check": "review"}:
         failures.append(f"CI observer missed a release topology change: {probe_stages}, {probe_jobs}")
@@ -606,7 +622,7 @@ def main() -> int:
             for detail in failures:
                 print(f"FAIL {detail}")
             return 1
-        print("security_architecture_audit self-test: 23/23 mutation detectors passed")
+        print("security_architecture_audit self-test: 24/24 mutation detectors passed")
         return 0
     findings = audit()
     if args.json:

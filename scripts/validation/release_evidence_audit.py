@@ -54,7 +54,7 @@ REQUIRED_HEADINGS = {
         "Pass, failure, and exception rules", "Exit criteria", "Evidence record",
     },
     "security_control_disposition": {
-        "Status vocabulary", "Source and contribution controls", "Build and artifact controls",
+        "Status vocabulary", "Review synthesis", "Source and contribution controls", "Build and artifact controls",
         "Static hosting and browser controls", "Relay, model, launchable, and runtime controls",
         "Publication blockers and retained risks",
     },
@@ -311,6 +311,17 @@ def audit_contract(data: dict, *, root: Path = ROOT,
         for test_id in sorted((REQUIRED_AUTOMATED_IDS | REQUIRED_MANUAL_IDS) - test_ids):
             out.append(finding("test-id", test_path, f"missing release test {test_id}",
                                "restore the test, pass condition, evidence, and owner"))
+        for anchor in (
+            "| M10a | Generated threat-analysis reconciliation |",
+            "public repository contains no private row-by-row assessment",
+        ):
+            if anchor not in plan:
+                out.append(finding(
+                    "threat-reconciliation",
+                    test_path,
+                    f"missing generated-review evidence boundary: {anchor}",
+                    "restore aggregate public reconciliation and private row-level ownership",
+                ))
     for rel, tokens in REQUIRED_WIRING.items():
         if not (root / rel).is_file():
             out.append(finding("wiring-path", rel, "required release-evidence surface is missing",
@@ -363,6 +374,10 @@ def self_test() -> tuple[int, int, list[str]]:
                   "wiring"))
     tests.append(("missing test case", mutated(), {test_path: test_text.replace("| M09 |", "| MXX |")},
                   "test-id"))
+    tests.append(("missing threat reconciliation", mutated(),
+                  {test_path: test_text.replace("| M10a | Generated threat-analysis reconciliation |",
+                                               "| M10a | Generated review removed |")},
+                  "threat-reconciliation"))
     explorer_path = "web/_skill_explorer.js"
     explorer_text = (ROOT / explorer_path).read_text(encoding="utf-8")
     tests.append(("missing document URL state", mutated(),

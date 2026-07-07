@@ -14,6 +14,7 @@ WORKFLOWS = (".github/workflows/pages.yml", ".github/workflows/release.yml")
 REQUIRED_TOKENS = {
     DISPOSITION: (
         "## Status vocabulary",
+        "## Review synthesis",
         "## Source and contribution controls",
         "## Build and artifact controls",
         "## Static hosting and browser controls",
@@ -23,6 +24,12 @@ REQUIRED_TOKENS = {
         "Browser certificate pinning | Not applicable",
         "Client-side prompt complexity detection | Not applicable",
         "Relay schema, route, frame-size, and rate enforcement | Unknown",
+        "rows are intentionally reconciled into control themes rather than versioned one-to-one",
+        "Encrypted traffic metadata and learning-path inference | Not applicable",
+        "Browser-readable bearer credentials and proof-of-possession redesign | Human approval required",
+        "Generated assessment status reconciliation | Human approval required",
+        "Threat-analysis input fidelity | Human approval required",
+        "generated Target of Evaluation with the package invariants",
         "classification does not apply to the NemoClaw product, launchable, runtime, or their release",
         "Repository evidence does not grant Legal, OSRB, Export, Privacy, Product Security, SCM, host, or",
     ),
@@ -31,6 +38,16 @@ REQUIRED_TOKENS = {
         "product, launchable, runtime, relays",
         "outside this classification",
         "external integration dependencies",
+    ),
+    "docs/security-design.md": (
+        "## Threat-analysis invariants",
+        "canonical Target of Evaluation summary",
+        "published course artifact are public",
+        "bearer credentials are JavaScript-readable",
+        "values retained in `localStorage`",
+        "no deployment credentials or release keys",
+        "Cryptographic signing or provenance attestation is Not verified",
+        "does not assume mTLS, DPoP, zero-retention model processing",
     ),
     "scripts/validation/pages_artifact_integrity.py": (
         "MAX_FILE_COUNT",
@@ -94,6 +111,19 @@ REQUIRED_TOKENS = {
         "intended as **OSS Type I**",
         "This classification is limited to `NVDLI/NemoClawDLI`",
         "classify or release the NemoClaw product",
+    ),
+    "docs/release-test-plan.md": (
+        "| M10a | Generated threat-analysis reconciliation |",
+        "generated Target of Evaluation matches the canonical invariants",
+        "public repository contains no private row-by-row assessment",
+        "Complete M10a, then obtain M11",
+    ),
+    "scripts/build/build_security_review_package.py": (
+        "aggregate control theme",
+        "do not copy private review rows one-to-one",
+        "Generated risk labels and mitigation statuses remain advisory",
+        "section_body",
+        '"Threat-analysis invariants"',
     ),
     "RELEASE_STATUS.json": (
         '"publication_state": "pending-osrb-approval"',
@@ -175,6 +205,7 @@ def self_test() -> list[str]:
     disposition = read(DISPOSITION, {})
     playbook = read("docs/release_playbook.md", {})
     product_design = read("docs/product-design.md", {})
+    security_design = read("docs/security-design.md", {})
     tests.append((
         "post-deploy verification",
         {".github/workflows/pages.yml": pages.replace("verify-deployment:", "verification-removed:", 1)},
@@ -223,6 +254,42 @@ def self_test() -> list[str]:
         )},
         "missing-control-token",
     ))
+    tests.append((
+        "aggregate generated-review reconciliation",
+        {DISPOSITION: disposition.replace(
+            "rows are intentionally reconciled into control themes rather than versioned one-to-one",
+            "Private review rows are copied into the public repository",
+            1,
+        )},
+        "missing-control-token",
+    ))
+    tests.append((
+        "browser credential architecture boundary",
+        {DISPOSITION: disposition.replace(
+            "Browser-readable bearer credentials and proof-of-possession redesign | Human approval required",
+            "Browser-readable bearer credentials and proof-of-possession redesign | Verified",
+            1,
+        )},
+        "missing-control-token",
+    ))
+    tests.append((
+        "generated target fidelity review",
+        {DISPOSITION: disposition.replace(
+            "Threat-analysis input fidelity | Human approval required",
+            "Threat-analysis input fidelity | Verified",
+            1,
+        )},
+        "missing-control-token",
+    ))
+    tests.append((
+        "submission browser fact",
+        {"docs/security-design.md": security_design.replace(
+            "bearer credentials are JavaScript-readable",
+            "browser storage is not used for credentials",
+            1,
+        )},
+        "missing-control-token",
+    ))
     failures: list[str] = []
     for label, overrides, expected in tests:
         codes = {item["code"] for item in audit(text_overrides=overrides)}
@@ -237,7 +304,7 @@ def main() -> int:
     args = parser.parse_args()
     if args.self_test:
         failures = self_test()
-        total = 8
+        total = 12
         print(f"threat control self-test: {total - len(failures)}/{total} passed")
         for failure in failures:
             print("  " + failure)

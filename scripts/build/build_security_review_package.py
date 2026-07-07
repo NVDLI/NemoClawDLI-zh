@@ -19,6 +19,7 @@ ROOT = find_repo_root(Path(__file__).resolve())
 OUTPUT = ROOT / "artifacts" / "security-review" / "security-review-design.md"
 PACKAGE = ROOT / "artifacts" / "security-review" / "securing-agents-dli-course-security-review.zip"
 DIAGRAM = ROOT / "docs" / "security-architecture.svg"
+ANALYSIS_SOURCE = ROOT / "docs" / "security-design.md"
 SOURCES = (
     ROOT / "docs" / "product-design.md",
     ROOT / "docs" / "security-design.md",
@@ -50,7 +51,28 @@ def demote_body(markdown: str) -> tuple[str, str]:
     return title, "\n".join(output).strip()
 
 
+def section_body(markdown: str, heading: str) -> str:
+    """Return the body under one level-two heading."""
+    marker = f"## {heading}"
+    lines = markdown.splitlines()
+    try:
+        start = lines.index(marker) + 1
+    except ValueError as exc:
+        raise ValueError(f"missing section: {heading}") from exc
+    end = next(
+        (index for index in range(start, len(lines)) if lines[index].startswith("## ")),
+        len(lines),
+    )
+    body = "\n".join(lines[start:end]).strip()
+    if not body:
+        raise ValueError(f"empty section: {heading}")
+    return body
+
+
 def render() -> str:
+    analysis_contract = section_body(
+        ANALYSIS_SOURCE.read_text(encoding="utf-8"), "Threat-analysis invariants"
+    )
     parts = [
         "# Security review design for the DLI course Securing Agents with OpenShell and NemoClaw",
         "",
@@ -60,11 +82,16 @@ def render() -> str:
         "",
         "- Use this file as the single supporting design document.",
         "- Use the separately packaged `security-architecture.svg` as the architecture diagram.",
+        "- Reconcile generated threat findings by aggregate control theme; do not copy private review rows one-to-one into the public repository.",
         "- Enter program identifiers, reviewer records, scan details, and approval state in the review system; they are intentionally absent from this public-safe design.",
+        "",
+        "## Threat-analysis invariants",
+        "",
+        analysis_contract,
         "",
         "## Composition and authority",
         "",
-        "This design preserves the complete text of the repository's four canonical review records. Product scope, data handling, privacy, and cryptography come from `product-design.md`; trust boundaries and security controls come from `security-design.md`; repository, host, provider, residual, and non-applicable requirements come from `security-control-disposition.md`; verification claims and evidence ownership come from `release-test-plan.md`. The separate diagram is generated from `security-architecture.json` and validated against implementation evidence.",
+        "This design preserves the complete text of the repository's four canonical review records. Product scope, data handling, privacy, and cryptography come from `product-design.md`; trust boundaries and security controls come from `security-design.md`; repository, host, provider, residual, and non-applicable requirements come from `security-control-disposition.md`; verification claims and evidence ownership come from `release-test-plan.md`. Generated risk labels and mitigation statuses remain advisory until an authorized reviewer reconciles them with this source-backed evidence. The separate diagram is generated from `security-architecture.json` and validated against implementation evidence.",
     ]
     for index, source in enumerate(SOURCES, 1):
         title, body = demote_body(source.read_text(encoding="utf-8"))
@@ -100,6 +127,8 @@ def self_test() -> int:
     assert title == "Example"
     assert "### Section" in body
     assert "```text\n## literal\n```" in body
+    sample = "# Example\n\n## Chosen\n\nKeep me.\n\n## Other\n\nSkip me.\n"
+    assert section_body(sample, "Chosen") == "Keep me."
     assert all(path.is_file() for path in SOURCES)
     assert DIAGRAM.is_file()
     document = render()
@@ -107,6 +136,15 @@ def self_test() -> int:
         "# Security review design for the DLI course Securing Agents with OpenShell and NemoClaw\n"
     )
     assert "# NemoClaw security review design" not in document
+    assert "aggregate control theme" in document
+    assert "Generated risk labels and mitigation statuses remain advisory" in document
+    assert "## Threat-analysis invariants" in document
+    assert "bearer credentials are JavaScript-readable" in document
+    assert "values retained in `localStorage`" in document
+    assert "published course artifact are public" in document
+    assert "no deployment credentials or release keys" in document
+    assert "Cryptographic signing or provenance attestation is Not verified" in document
+    assert "does not assume mTLS, DPoP, zero-retention model processing" in document
     first = package_bytes(document)
     assert first == package_bytes(render())
     with zipfile.ZipFile(io.BytesIO(first)) as archive:
