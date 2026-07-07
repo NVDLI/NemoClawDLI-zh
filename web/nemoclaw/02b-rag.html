@@ -753,9 +753,8 @@ return { indexed: state.index.length, dim: vecs[0].length };
     {
       id: "query", icon: "❓", title: "User query", x: 1, y: 0,
       summary: "The question to retrieve against. Changing it changes which passages rank highest, because the query is embedded using the 'query' input type, which produces a vector that the model has trained to point toward relevant passages rather than toward identical text.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Try another query and rerun to watch the ranking shift.
 state.query = "what is the difference between react and rewoo?";
-// Try another query and rerun to watch the ranking shift:
 // state.query = "what does the openshell sandbox do?";           // single-fact lookup
 // state.query = "how do RAG and a deep-research agent compare?"; // spans several passages
 return state.query;
@@ -837,9 +836,8 @@ return { indexed: state.chunkIndex.length };
     {
       id: "query", icon: "❓", title: "User query", x: 1, y: 0,
       summary: "The question being asked, structured the same way as in the previous canvas. Edit it and re-run to see which parent document rises to the top.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Try another query and watch which parent document ranks first.
 state.query = "When does each retrieval pattern beat the other?";
-// Other queries to try; each returns the full parent document:
 // state.query = "how does chunking change what the model sees?";
 // state.query = "what is a reranker, and when is it worth the step?";
 return state.query;
@@ -959,7 +957,7 @@ return { tool: state.RETRIEVE_SCHEMA[0].function.name };
     {
       id: "query", icon: "❓", title: "User query", x: 1, y: 0,
       summary: "The user's question, plus a system prompt that instructs the model to use the retrieve tool only when it needs specific facts it cannot answer confidently from training knowledge. With that instruction in place, the model weighs each turn and chooses whether to retrieve, instead of retrieving on every call.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Choose a prompt that should retrieve, skip retrieval, or be ambiguous.
 
 const EXAMPLES = {
   default: "What model does this course use, and does it need an API key?",

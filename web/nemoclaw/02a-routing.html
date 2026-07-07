@@ -389,8 +389,10 @@ mountCanvasFlow("#cell-m2a-rewoo", {
     {
       id: "goal", icon: "🎯", title: "Research goal", x: 0, y: 0,
       summary: "The research goal that drives the entire pipeline. Edit it and rerun to see how the planner generates a different set of queries and the synthesizer produces a different brief.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Change the research goal and watch the planner rewrite its queries.
 state.goal = "How do retrieval-augmented generation, vector databases, and AI agents fit together?";
+// state.goal = "How do evaluation methods differ for retrieval and generation?";
+// state.goal = "When should an agent use a tool instead of answer directly?";
 return state.goal;
 `,
     },
@@ -530,8 +532,10 @@ mountCanvasFlow("#cell-m2a-triage", {
     {
       id: "ticket", icon: "👤", title: "User ticket", x: 0, y: 0,
       summary: "The support ticket the triage agent will classify. Edit it to try different problem types and watch the router pick a different specialist each time.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Try a billing or account-access ticket and watch the route change.
 state.ticket = "My laptop won't connect to the VPN. I've tried restarting and re-installing the client.";
+// state.ticket = "I was charged twice for the same subscription this month.";
+// state.ticket = "My account is locked after I changed phones.";
 return state.ticket;
 `,
     },
@@ -629,8 +633,10 @@ mountCanvasFlow("#cell-m2a-parallel", {
     {
       id: "topic", icon: "👤", title: "Topic", x: 0, y: 0,
       summary: "The question that all three specialists will receive. Because every specialist reads the same input, you can compare their outputs directly and see how the system prompt alone shapes the response.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Ask a new topic and compare how each specialist frames it.
 state.topic = "Why does the transformer architecture need positional encoding?";
+// state.topic = "When is retrieval more useful than fine-tuning?";
+// state.topic = "How should an agent decide whether to call a tool?";
 return state.topic;
 `,
     },
@@ -769,8 +775,10 @@ return { specialists: [state.arithmetician.role, state.translator.role] };
     {
       id: "run", icon: "🚀", title: "Run both on the same input", x: 0, y: 2,
       summary: "Sends the same input to both specialists concurrently and renders their replies side by side. The factory body is identical for both, so any divergence in the two responses traces back to their system prompts, and the side-by-side view lets you spot that divergence at a glance.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Give both specialists a new translation-and-arithmetic request.
 state.input = "Translate 'thirty-seven times eleven' and then evaluate the arithmetic.";
+// state.input = "Translate 'the square root of one hundred forty-four' and solve it.";
+// state.input = "Evaluate twenty-five times sixteen, then translate the result into French.";
 helpers.log("input:", state.input);
 
 const [arithRes, transRes] = await Promise.all([

@@ -430,7 +430,7 @@ mountCanvasFlow("#cell-m2b-p3", {
     {
       id: "question", icon: "👤", title: "Pergunta do usuário", x: 1, y: 0,
       summary: "Tente uma operação aritmética, uma definição ou algo que qualquer ferramenta possa lidar.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Escolha um exemplo ou escreva uma pergunta que torne a escolha da ferramenta interessante.
 
 const EXAMPLES = {
   default: "What is 2 to the power of 10?",
@@ -509,8 +509,10 @@ mountCanvasFlow("#cell-m2b-p4", {
     {
       id: "input", icon: "👤", title: "Entrada do usuário", x: 0, y: 0,
       summary: "Armazena a pergunta que o aluno faz, que você pode editar antes de executar novamente.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Experimente outra pergunta sobre modelos ou escreva a sua.
 state.question = "What is the NVIDIA Nemotron model family and what is it good at?";
+// state.question = "Which NVIDIA model family is designed for reasoning?";
+// state.question = "How does NVIDIA NIM differ from a model checkpoint?";
 return state.question;
 `,
     },
@@ -722,8 +724,10 @@ return { tool_name: state.TOOLS[0].function.name };
     {
       id: "user", icon: "👤", title: "Pergunta do usuário (para o agente principal)", x: 2, y: 1,
       summary: "Edite isso para tentar uma pergunta como 'Quantos clientes do plano profissional temos?' ou 'Quem tem o maior número de tickets nos últimos 30 dias?'",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Pergunte sobre outro segmento de clientes ou sinal de atividade.
 state.userQuestion = "Which EU customers are on the pro plan, and how active are they?";
+// state.userQuestion = "How many pro-plan customers signed up this quarter?";
+// state.userQuestion = "Who opened the most tickets in the last 30 days?";
 return state.userQuestion;
 `,
     },
@@ -815,8 +819,10 @@ return state.tools.map(t => t.function.name);
     {
       id: "user", icon: "👤", title: "Pergunta do usuário", x: 2, y: 1,
       summary: "A pergunta que o modelo responde usando as ferramentas de glossário descobertas. Uma pergunta definicional é atendida por glossary_search, enquanto um pedido de um termo específico por slug vai para glossary_lookup.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Experimente uma definição ampla ou peça um termo específico do glossário.
 state.question = "What is retrieval-augmented generation, and what does a vector database have to do with it?";
+// state.question = "What is an AI agent?";
+// state.question = "Look up the glossary term with the slug vector-database.";
 return state.question;
 `,
     },
