@@ -1,6 +1,7 @@
-## Unlocked: track latest compatible versions per project policy.
-fastapi>=0.138.1
-starlette>=1.3.1
-uvicorn[standard]
-pyyaml
-docker
+## Exact service pins. Keep these aligned with workspace/requirements.lock so
+## source and nSpect inventories always have an unambiguous package version.
+fastapi==0.138.2
+starlette==1.3.1
+uvicorn[standard]==0.49.0
+pyyaml==6.0.3
+docker==7.1.0

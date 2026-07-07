@@ -54,6 +54,8 @@ browser session.
 
 - Static validation covers page structure, learner flow, provenance, localization, dependency
   pins, architecture drift, contribution boundaries, and release artifacts.
+- GitHub Pages builds in a read-only job, rejects unexpected executable references and artifact
+  substitution, records every generated file by SHA-256, and exercises the exact tree in Chromium.
 - Eligible browser dependencies require exact versions and subresource integrity.
 - Cross-origin relays are restricted to reviewed routes and authentication behavior.
 - NemoClaw applies launch authentication, gateway checks, and sandbox policy.
@@ -67,8 +69,11 @@ design before release.
 ## Release controls
 
 Required CI validates source, builds the static artifact, checks configured deployed URLs, and
-records human ownership. Branch previews are isolated and time-bound. A separate protected-tag path
-produces deterministic archives, a release manifest, an SBOM, and checksums.
+records human ownership. Branch previews are isolated and time-bound. GitHub Pages deploys only the
+immutable artifact that passed generated-tree integrity checks and browser tests; the protected
+`github-pages` environment requires human review after those results exist, and the deploy job
+rechecks the artifact manifest before publication. A separate protected-tag path produces
+deterministic archives, a release manifest, an SBOM, and checksums.
 
 Python dependencies support local authoring and tests, not the production browser runtime. Direct
 manifests and transitive locks are checked for parity. Scanner tooling uses a separate locked

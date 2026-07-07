@@ -63,6 +63,7 @@ CONTRACT_FILES = (
     "scripts/validation/release_change_reminder.py",
     "scripts/validation/release_gate.py",
     "scripts/validation/validation_report_audit.py",
+    "scripts/validation/pages_artifact_integrity.py",
     "scripts/validation/validate_bundle.py",
     "scripts/validation/gitlab_governance_audit.py",
     "workspace/requirements.lock",
@@ -216,6 +217,9 @@ def audit_repo(
             "conduct-recusal", out, "require recusal when a maintainer is named in a report")
     require(docs["SUPPORT.md"], "Triage is best-effort", "SUPPORT.md", "support-boundary", out,
             "state the support level without promising an unstaffed SLA")
+    require(docs["SUPPORT.md"], "[#ask-security](https://nvidia.slack.com/archives/CAHCG5005)",
+            "SUPPORT.md", "product-security-question-route", out,
+            "route general employee product-security questions to #ask-security without replacing private vulnerability intake")
     require(docs["SUPPORT.md"], "Breaking changes and retirement decisions", "SUPPORT.md",
             "lifecycle-boundary", out, "document change, retirement, and archival expectations")
     require(docs["README.md"], "Nobody approves their own", "README.md",
@@ -350,6 +354,11 @@ def audit_repo(
         out.append(finding("shared-report-reuse-selftest", "scripts/validation/release_gate.py",
                            "fast or ship gate lacks report-reuse mutation coverage",
                            "prove stale, failed, and mismatched reports from both shared tiers"))
+    artifact_selftest = 'py("scripts/validation/pages_artifact_integrity.py", "--self-test")'
+    if artifact_selftest not in fast_gate_text or artifact_selftest not in ship_gate_text:
+        out.append(finding("shared-pages-artifact-selftest", "scripts/validation/release_gate.py",
+                           "fast or ship gate lacks Pages artifact-integrity mutation coverage",
+                           "prove artifact substitution, remote execution, and manifest mutations from both shared tiers"))
     for token, code, fix in (
         ('"--changed-since"', "shared-change-aware-gate", "retain fail-closed change-aware mutation selection"),
         ('"--timing-report"', "shared-gate-timing", "retain per-command latency evidence for CI optimization"),
@@ -367,10 +376,14 @@ def audit_repo(
         out.append(finding("github-global-permissions", ".github/workflows/pages.yml",
                            "workflow-level permissions are not read-only",
                            "keep contents: read globally and grant Pages writes only to the deploy job"))
-    require(pages, "if: github.event_name != 'pull_request'", ".github/workflows/pages.yml",
-            "pr-deploy-boundary", out, "prevent pull-request runs from reaching deployment")
-    require(pages, "github.ref == 'refs/heads/main'", ".github/workflows/pages.yml",
-            "pages-main-only", out, "prevent workflow_dispatch or non-main refs from deploying Pages")
+    if pages.count("if: github.event_name != 'pull_request'") < 2:
+        out.append(finding("pr-deploy-boundary", ".github/workflows/pages.yml",
+                           "both artifact creation and deployment must exclude pull-request runs",
+                           "prevent pull-request runs from building or deploying the production Pages artifact"))
+    if pages.count("github.ref == 'refs/heads/main'") < 2:
+        out.append(finding("pages-main-only", ".github/workflows/pages.yml",
+                           "both artifact creation and deployment must require refs/heads/main",
+                           "prevent workflow_dispatch or non-main refs from building or deploying Pages"))
     require(pages, "release_gate.py --tier ship", ".github/workflows/pages.yml",
             "github-safety-selftest", out, "run detector mutations in GitHub CI")
     require(pages, '--changed-since "$GATE_BASE"', ".github/workflows/pages.yml",
@@ -387,6 +400,21 @@ def audit_repo(
     require(pages, "contribution_safety_audit.py --require-publication-approved",
             ".github/workflows/pages.yml", "publication-deploy-guard", out,
             "refuse external Pages deployment until publication is approved")
+    require(pages, "needs: build-and-verify", ".github/workflows/pages.yml",
+            "github-reviewed-artifact-handoff", out,
+            "make the protected deployment consume only the completed artifact-verification job")
+    require(pages, "name: github-pages", ".github/workflows/pages.yml",
+            "github-pages-review-environment", out,
+            "gate the deploy job behind the protected github-pages environment")
+    require(pages, "runtime_integration_browser_audit.py --site-root public --engine docker",
+            ".github/workflows/pages.yml", "github-pages-browser-review", out,
+            "exercise the generated course artifact in Chromium before requesting deployment approval")
+    require(pages, "--write-manifest public/pages-sha256.txt",
+            ".github/workflows/pages.yml", "github-pages-artifact-integrity", out,
+            "hash and inspect the generated Pages tree before uploading it")
+    require(pages, "--check-manifest reviewed-public/pages-sha256.txt",
+            ".github/workflows/pages.yml", "github-pages-artifact-reverification", out,
+            "reverify the approved immutable artifact immediately before deployment")
     require(pages, "--submission-env CONTRIBUTION_BODY", ".github/workflows/pages.yml",
             "github-submission-contract", out, "validate the live pull-request body")
     require(pages, "--commit-range \"$DCO_RANGE\"", ".github/workflows/pages.yml",
@@ -834,6 +862,7 @@ def self_test() -> list[str]:
         cases = (
             ("conduct-report-route", "CODE_OF_CONDUCT.md", "private content-reporting flow", "public Issue"),
             ("support-boundary", "SUPPORT.md", "Triage is best-effort", "Triage is guaranteed"),
+            ("product-security-question-route", "SUPPORT.md", "[#ask-security](https://nvidia.slack.com/archives/CAHCG5005)", "#security-help"),
             ("independent-review", "README.md", "Nobody approves their own", "Self-approval allowed"),
             ("dco-policy", "DCO.md", "Developer Certificate of Origin 1.1", "unversioned signoff"),
             ("dco-stacked-merge", "DCO.md", "host-generated squash or merge commit", "generated integration commit"),
@@ -854,6 +883,7 @@ def self_test() -> list[str]:
             ("shared-sensitive-content", "scripts/validation/release_gate.py", 'py("scripts/validation/sensitive_content_audit.py", "--self-test")', 'py("scripts/validation/sensitive_content_audit.py", "--help")'),
             ("shared-release-reminder", "scripts/validation/release_gate.py", 'py("scripts/validation/release_change_reminder.py", "--self-test")', 'py("scripts/validation/release_change_reminder.py", "--help")'),
             ("shared-report-reuse-selftest", "scripts/validation/release_gate.py", 'py("scripts/validation/validation_report_audit.py", "--self-test")', 'py("scripts/validation/validation_report_audit.py", "--help")'),
+            ("shared-pages-artifact-selftest", "scripts/validation/release_gate.py", 'py("scripts/validation/pages_artifact_integrity.py", "--self-test")', 'py("scripts/validation/pages_artifact_integrity.py", "--help")'),
             ("shared-change-aware-gate", "scripts/validation/release_gate.py", '"--changed-since"', '"--changed-around"'),
             ("shared-gate-timing", "scripts/validation/release_gate.py", '"--timing-report"', '"--no-timing-report"'),
             ("shared-local-reuse", "scripts/validation/release_gate.py", '"--reuse-success"', '"--ignore-success"'),
@@ -873,6 +903,10 @@ def self_test() -> list[str]:
             ("release-build-epoch", "scripts/build/build_branch_manifest.py", 'os.environ.get("SOURCE_DATE_EPOCH")', 'os.environ.get("BUILD_TIME")'),
             ("publication-release-guard", ".github/workflows/release.yml", "contribution_safety_audit.py --require-publication-approved", "contribution_safety_audit.py"),
             ("publication-deploy-guard", ".github/workflows/pages.yml", "contribution_safety_audit.py --require-publication-approved", "contribution_safety_audit.py"),
+            ("github-reviewed-artifact-handoff", ".github/workflows/pages.yml", "needs: build-and-verify", "needs: test"),
+            ("github-pages-browser-review", ".github/workflows/pages.yml", "runtime_integration_browser_audit.py --site-root public --engine docker", "runtime_integration_browser_audit.py --site-root web --engine docker"),
+            ("github-pages-artifact-integrity", ".github/workflows/pages.yml", "--write-manifest public/pages-sha256.txt", "--write-manifest web/pages-sha256.txt"),
+            ("github-pages-artifact-reverification", ".github/workflows/pages.yml", "--check-manifest reviewed-public/pages-sha256.txt", "--write-manifest reviewed-public/pages-sha256.txt"),
             ("release-runtime-lock", ".github/workflows/release.yml", "workspace/requirements.lock", "workspace/requirements.txt"),
             ("release-live-material-check", ".github/workflows/release.yml", "pull_materials.py --check --fetch-attempts", "pull_materials.py --list --fetch-attempts"),
             ("release-sca-lock", ".github/workflows/release.yml", "scripts/security/requirements-sca.lock", "pip-audit cyclonedx-bom"),

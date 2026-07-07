@@ -247,6 +247,7 @@ Before public mirror:
 - [ ] `source_gate.py` and `local_path_leak_audit.py` pass on the mirrored ref; ancestry strategy is approved.
 - [ ] Public Pages deploy uses environment protection and concurrency.
 - [ ] `github-pages` and `github-release` require a reviewer, prevent self-review, and disallow admin bypass.
+- [ ] The Pages reviewer inspects the completed generated-tree browser job and immutable artifact SHA-256 inventory before approving `github-pages`; the deploy job's manifest recheck passes.
 - [ ] A test release produced a Draft release, checksum, validation report, and Rule Insights record.
 
 Before student PR intake:
