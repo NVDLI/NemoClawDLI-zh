@@ -186,6 +186,7 @@
         "python3 scripts/compliance/source_gate.py",
         "python3 scripts/compliance/third_party_inventory_audit.py --self-test",
         "python3 scripts/compliance/third_party_inventory_audit.py",
+        "python3 scripts/compliance/render_sbom_license_inventory.py --self-test",
         "python3 scripts/validation/local_path_leak_audit.py --self-test",
         "python3 scripts/validation/local_path_leak_audit.py",
         "python3 scripts/security/audit_dependency_locks.py",

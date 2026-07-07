@@ -69,6 +69,12 @@ Source of truth: [`scripts/browser-vendor/package-lock.json`](scripts/browser-ve
 | browser-runtime | p-timeout | 3.2.0 | MIT | [`licenses/p-timeout--3.2.0.txt`](web/nemoclaw/vendor/licenses/p-timeout--3.2.0.txt) |
 | browser-runtime | zod | 3.25.76 | MIT | [`licenses/zod--3.25.76.txt`](web/nemoclaw/vendor/licenses/zod--3.25.76.txt) |
 
+### Why a Python license appears in the browser table
+
+`argparse@2.0.1` is a JavaScript npm package used transitively by `js-yaml@5.2.1`.
+`Python-2.0` is the package's declared license identifier; no Python interpreter or Python package
+is included in the browser bundle by that dependency.
+
 ## Python runtime and repository-tool packages
 
 Sources of truth are the exact lock files named in the Scope column. The same package/version is shown once with every applicable scope. License expressions were resolved from the exact-version PyPI metadata; legacy ambiguous `BSD` metadata was checked against the package license text.
@@ -346,6 +352,22 @@ Sources of truth are the exact lock files named in the Scope column. The same pa
 | workspace-runtime | zipp | 4.1.0 | MIT | [PyPI](https://pypi.org/pypi/zipp/4.1.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
 | workspace-runtime | zstandard | 0.25.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/zstandard/0.25.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
 
+### Less common license families and their scope
+
+These identifiers are not themselves a failed review. Distribution form, modification, linking,
+notices, and source-availability obligations still require the accountable open-source review.
+
+| Identifier | Packages in this inventory | Scope note |
+|---|---|---|
+| MPL-2.0 | `certifi`, `fqdn`; compound expressions for `orjson` and `tqdm` | Runtime dependencies; MPL is file-level copyleft, so retain upstream terms and review the exact distributed form. |
+| LGPL-2.0-or-later | `chardet` | Security-tooling environment only; it is not in the learner browser artifact or workspace runtime lock. |
+| PSF-2.0 | `aiohappyeyeballs`, `defusedxml`, `matplotlib`, `typing-extensions`; compound expression for `greenlet` | Permissive Python ecosystem dependencies. |
+| 0BSD, Zlib, CC0-1.0 | Compound expression for `numpy` | NumPy's exact-version metadata accounts for bundled or incorporated subcomponents; these are not separate direct requirements. |
+| ISC | `isoduration`, `pexpect`, `ptyprocess`, `shellingham` | Permissive runtime dependencies. |
+
+No package row in this inventory declares GPL. The only GNU-family expression is the
+`LGPL-2.0-or-later` tooling entry above.
+
 ## Direct container, runtime, and operating-system declarations
 
 These are direct Dockerfile declarations not represented as Python or browser-lock rows above. Mixed images and operating-system packages require the exact built-image SBOM before distribution; a tag or source declaration cannot supply their complete transitive license set.
@@ -364,6 +386,30 @@ These are direct Dockerfile declarations not represented as Python or browser-lo
 | workspace OS packages | python3.11, python3.11-dev, python3-pip, build-essential, bash, curl, unzip, wget, git, libgl1, tree, jq, nodejs, npm, poppler-utils | base-image-resolved | NOASSERTION | `workspace/Dockerfile`; exact versions and licenses come from built-image SBOM |
 | OpenClaw OS packages | jq, socat, tree, curl, git, gettext-base | base-image-resolved | NOASSERTION | `cpu/services/openclaw/openclaw_shell.Dockerfile`; exact versions and licenses come from built-image SBOM |
 | router OS packages | python3, py3-pip | base-image-resolved | NOASSERTION | `cpu/services/docker_router/Dockerfile`; exact versions and licenses come from built-image SBOM |
+
+### Resolving `NOASSERTION` after an image scan
+
+A mixed container image or operating-system layer does not have one honest aggregate SPDX license.
+Do not replace an image-level `NOASSERTION` with the license of its best-known component. Instead:
+
+1. Pin or record the exact image digest.
+2. Generate a CycloneDX JSON SBOM from that digest with the approved image scanner.
+3. Render a component-level static appendix:
+
+   ```text
+   python3 scripts/compliance/render_sbom_license_inventory.py \
+     --sbom <cyclonedx.json> \
+     --artifact-id <image-name>@sha256:<64-hex-digest> \
+     --out <artifact-license-inventory.md>
+   ```
+
+4. Retain the exact SBOM with the release evidence and review every component still reported as
+   `NOASSERTION`. The renderer uses an exact package/version entry from this file only when the
+   scanner lacks an SPDX identifier or expression; it labels that source as an
+   `exact package/version static fallback` rather than scanner evidence.
+
+The generated appendix enumerates component licenses but does not convert the aggregate mixed-image
+row into a single-license claim.
 
 ## Third-party course-material relationships
 

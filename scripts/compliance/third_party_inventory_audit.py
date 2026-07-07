@@ -43,6 +43,14 @@ REQUIRED_DISTRIBUTION_LINES = (
     'cp "$T1/LICENSE" "$OUT/LICENSE"',
     'cp "$T1/THIRD_PARTY_LICENSES.md" "$OUT/THIRD_PARTY_LICENSES.md"',
 )
+REQUIRED_EXPLANATIONS = (
+    "`argparse@2.0.1` is a JavaScript npm package used transitively by `js-yaml@5.2.1`.",
+    "No package row in this inventory declares GPL.",
+    "`LGPL-2.0-or-later` tooling entry",
+    "A mixed container image or operating-system layer does not have one honest aggregate SPDX license.",
+    "scripts/compliance/render_sbom_license_inventory.py",
+    "exact package/version static fallback",
+)
 
 
 def read(path: str, overrides: dict[str, str]) -> str:
@@ -96,6 +104,9 @@ def audit(overrides: dict[str, str] | None = None) -> list[str]:
     browser_rows = rows(section(document, "Browser runtime and browser-build packages"))
     browser_index = {(row[1], row[2]): row for row in browser_rows if len(row) >= 4}
     lock = json.loads(read("scripts/browser-vendor/package-lock.json", overrides))
+    js_yaml = (lock.get("packages") or {}).get("node_modules/js-yaml") or {}
+    if (js_yaml.get("dependencies") or {}).get("argparse") != "^2.0.1":
+        findings.append("browser dependency trace changed: js-yaml no longer declares argparse ^2.0.1")
     for path, item in (lock.get("packages") or {}).items():
         if not path:
             continue
@@ -138,6 +149,9 @@ def audit(overrides: dict[str, str] | None = None) -> list[str]:
     for fact in REQUIRED_CONTAINER_FACTS:
         if fact not in document:
             findings.append(f"missing container boundary fact: {fact}")
+    for explanation in REQUIRED_EXPLANATIONS:
+        if explanation not in document:
+            findings.append(f"missing license-scope explanation: {explanation}")
     dockerfile = read("cpu/services/llm_client/llm_client.Dockerfile", overrides)
     for pin in REQUIRED_LLM_PINS:
         if pin not in dockerfile:
@@ -164,6 +178,7 @@ def self_test() -> tuple[int, int, list[str]]:
         ("material row", {INVENTORY: document.replace("| web/nemoclaw/assets/figures/fig2_react.svg |", "| removed/fig2_react.svg |", 1)}, "missing external-material row"),
         ("service pin", {"cpu/services/llm_client/llm_client.Dockerfile": dockerfile.replace("uvicorn[standard]==0.49.0", "uvicorn[standard]", 1)}, "llm-client dependency is not exact"),
         ("artifact distribution", {"scripts/build/build_pages.sh": pages_build.replace('cp "$T1/THIRD_PARTY_LICENSES.md" "$OUT/THIRD_PARTY_LICENSES.md"', "# removed third-party inventory", 1)}, "Pages artifact does not distribute required license file"),
+        ("argparse explanation", {INVENTORY: document.replace("`argparse@2.0.1` is a JavaScript npm package used transitively by `js-yaml@5.2.1`.", "argparse is unexplained.", 1)}, "missing license-scope explanation"),
     )
     failures = []
     passed = 0

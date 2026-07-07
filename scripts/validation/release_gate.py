@@ -56,6 +56,7 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     ("bash", "scripts/runtime/run_node.sh", "scripts/validation/openclaw_connection_audit.mjs"),
     py("scripts/compliance/source_gate.py"),
     py("scripts/compliance/third_party_inventory_audit.py"),
+    py("scripts/compliance/render_sbom_license_inventory.py", "--self-test"),
     py("scripts/validation/tenets.py", "--check"),
     py("scripts/runtime/module_check.py", "--dir", "web/nemoclaw"),
     py("scripts/runtime/module_check.py", "--dir", "web"),
@@ -111,6 +112,7 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/compliance/source_gate.py"),
     py("scripts/compliance/third_party_inventory_audit.py", "--self-test"),
     py("scripts/compliance/third_party_inventory_audit.py"),
+    py("scripts/compliance/render_sbom_license_inventory.py", "--self-test"),
     py("scripts/validation/course_dependency_integrity.py", "--self-test"),
     py("scripts/validation/cell_audit.py", "--self-test"),
     py("scripts/security/audit_python_dependencies.py"),
@@ -137,6 +139,10 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
         "workspace/requirements*", "scripts/materials/requirements*",
         "scripts/security/requirements*", "cpu/services/*", "web/nemoclaw/assets/SKILL.html",
         "web/nemoclaw/mats/SKILL.html", "scripts/build/build_pages.sh",
+    ),
+    py("scripts/compliance/render_sbom_license_inventory.py", "--self-test"): (
+        "THIRD_PARTY_LICENSES.md", "scripts/compliance/render_sbom_license_inventory.py",
+        "scripts/compliance/third_party_inventory_audit.py",
     ),
     py("scripts/build/build_security_review_package.py", "--self-test"): (
         "scripts/build/build_security_review_package.py", "docs/product-design.md",
