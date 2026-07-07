@@ -314,21 +314,21 @@ def audit_repo(
                            "fast gate lacks network-free committed material verification",
                            "verify committed material snapshots without network access from every shared gate"))
     if ('py("scripts/materials/pull_materials.py", "--verify-committed")' not in ship_gate_text
-            or 'py("scripts/materials/pull_materials.py", "--self-test")' not in ship_gate_text):
+            or 'unit_test("materials")' not in ship_gate_text):
         out.append(finding("shared-material-selftest", "scripts/validation/release_gate.py",
                            "ship gate lacks material verification or its mutation fixtures",
                            "prove retry classification and provenance tamper detection from the ship gate"))
-    local_path_selftest = 'py("scripts/validation/local_path_leak_audit.py", "--self-test")'
+    local_path_selftest = 'unit_test("local_path_leak_audit")'
     if local_path_selftest not in fast_gate_text or local_path_selftest not in ship_gate_text:
         out.append(finding("shared-local-path-selftest", "scripts/validation/release_gate.py",
                            "fast or ship gate lacks workstation-path mutation coverage",
                            "run workstation-path mutations from both shared gate tiers"))
-    sensitive_selftest = 'py("scripts/validation/sensitive_content_audit.py", "--self-test")'
+    sensitive_selftest = 'unit_test("sensitive_content_audit")'
     if sensitive_selftest not in fast_gate_text or sensitive_selftest not in ship_gate_text:
         out.append(finding("shared-sensitive-content", "scripts/validation/release_gate.py",
                            "fast or ship gate lacks sensitive-content mutation coverage",
                            "run sensitive-content mutations from both shared tiers; validate_bundle owns the tree scan"))
-    reminder_selftest = 'py("scripts/validation/release_change_reminder.py", "--self-test")'
+    reminder_selftest = 'unit_test("release_change_reminder")'
     if reminder_selftest not in fast_gate_text or reminder_selftest not in ship_gate_text:
         out.append(finding("shared-release-reminder", "scripts/validation/release_gate.py",
                            "fast or ship gate lacks release follow-up classifier mutations",
@@ -349,16 +349,22 @@ def audit_repo(
          "prove dependency-lock mutations from the shared gate"),
     ):
         require(ship_gate_text, token, "scripts/validation/release_gate.py", code, out, fix)
-    report_selftest = 'py("scripts/validation/validation_report_audit.py", "--self-test")'
+    report_selftest = 'unit_test("validation_report_audit")'
     if report_selftest not in fast_gate_text or report_selftest not in ship_gate_text:
         out.append(finding("shared-report-reuse-selftest", "scripts/validation/release_gate.py",
                            "fast or ship gate lacks report-reuse mutation coverage",
                            "prove stale, failed, and mismatched reports from both shared tiers"))
-    artifact_selftest = 'py("scripts/validation/pages_artifact_integrity.py", "--self-test")'
+    artifact_selftest = 'unit_test("pages_artifact_integrity")'
     if artifact_selftest not in fast_gate_text or artifact_selftest not in ship_gate_text:
         out.append(finding("shared-pages-artifact-selftest", "scripts/validation/release_gate.py",
                            "fast or ship gate lacks Pages artifact-integrity mutation coverage",
                            "prove artifact substitution, remote execution, and manifest mutations from both shared tiers"))
+    if "HARNESS_CONTRACT" not in fast_gate_text or "HARNESS_CONTRACT" not in ship_gate_text:
+        out.append(finding(
+            "shared-standard-test-contract", "scripts/validation/release_gate.py",
+            "fast or ship gate lacks standard-framework test-harness enforcement",
+            "run the unittest harness contract from both shared tiers",
+        ))
     for token, code, fix in (
         ('"--changed-since"', "shared-change-aware-gate", "retain fail-closed change-aware mutation selection"),
         ('"--timing-report"', "shared-gate-timing", "retain per-command latency evidence for CI optimization"),
@@ -891,12 +897,13 @@ def self_test() -> list[str]:
             ("unpinned-workflow-install", ".github/workflows/pages.yml", "--requirement scripts/materials/requirements.lock", "requests beautifulsoup4 markdownify lxml"),
             ("github-material-lock", ".github/workflows/pages.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),
             ("shared-material-provenance", "scripts/validation/release_gate.py", 'py("scripts/materials/pull_materials.py", "--verify-committed")', 'py("scripts/materials/pull_materials.py", "--list")'),
-            ("shared-material-selftest", "scripts/validation/release_gate.py", 'py("scripts/materials/pull_materials.py", "--self-test")', 'py("scripts/materials/pull_materials.py", "--help")'),
-            ("shared-local-path-selftest", "scripts/validation/release_gate.py", 'py("scripts/validation/local_path_leak_audit.py", "--self-test")', 'py("scripts/validation/local_path_leak_audit.py", "--help")'),
-            ("shared-sensitive-content", "scripts/validation/release_gate.py", 'py("scripts/validation/sensitive_content_audit.py", "--self-test")', 'py("scripts/validation/sensitive_content_audit.py", "--help")'),
-            ("shared-release-reminder", "scripts/validation/release_gate.py", 'py("scripts/validation/release_change_reminder.py", "--self-test")', 'py("scripts/validation/release_change_reminder.py", "--help")'),
-            ("shared-report-reuse-selftest", "scripts/validation/release_gate.py", 'py("scripts/validation/validation_report_audit.py", "--self-test")', 'py("scripts/validation/validation_report_audit.py", "--help")'),
-            ("shared-pages-artifact-selftest", "scripts/validation/release_gate.py", 'py("scripts/validation/pages_artifact_integrity.py", "--self-test")', 'py("scripts/validation/pages_artifact_integrity.py", "--help")'),
+            ("shared-material-selftest", "scripts/validation/release_gate.py", 'unit_test("materials")', 'py("scripts/materials/pull_materials.py", "--help")'),
+            ("shared-local-path-selftest", "scripts/validation/release_gate.py", 'unit_test("local_path_leak_audit")', 'py("scripts/validation/local_path_leak_audit.py", "--help")'),
+            ("shared-sensitive-content", "scripts/validation/release_gate.py", 'unit_test("sensitive_content_audit")', 'py("scripts/validation/sensitive_content_audit.py", "--help")'),
+            ("shared-release-reminder", "scripts/validation/release_gate.py", 'unit_test("release_change_reminder")', 'py("scripts/validation/release_change_reminder.py", "--help")'),
+            ("shared-report-reuse-selftest", "scripts/validation/release_gate.py", 'unit_test("validation_report_audit")', 'py("scripts/validation/validation_report_audit.py", "--help")'),
+            ("shared-pages-artifact-selftest", "scripts/validation/release_gate.py", 'unit_test("pages_artifact_integrity")', 'py("scripts/validation/pages_artifact_integrity.py", "--help")'),
+            ("shared-standard-test-contract", "scripts/validation/release_gate.py", "    HARNESS_CONTRACT,\n", "    # standard contract removed\n"),
             ("shared-change-aware-gate", "scripts/validation/release_gate.py", '"--changed-since"', '"--changed-around"'),
             ("shared-gate-timing", "scripts/validation/release_gate.py", '"--timing-report"', '"--no-timing-report"'),
             ("shared-local-reuse", "scripts/validation/release_gate.py", '"--reuse-success"', '"--ignore-success"'),

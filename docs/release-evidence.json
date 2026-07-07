@@ -173,7 +173,7 @@
       "owner": "shared",
       "automated_commands": [
         "python3 scripts/compliance/source_gate.py",
-        "python3 scripts/validation/local_path_leak_audit.py --self-test",
+        "python3 -m unittest -v tests/validation/test_embedded_validator_suites.py tests/validation/test_test_harness_contract.py",
         "python3 scripts/validation/local_path_leak_audit.py",
         "python3 scripts/security/audit_dependency_locks.py",
         "python3 scripts/security/audit_sbom_policy.py --self-test"
@@ -227,7 +227,7 @@
       "id": "architecture-and-deployment",
       "owner": "shared",
       "automated_commands": [
-        "python3 scripts/validation/security_architecture_audit.py --self-test",
+        "python3 -m unittest -v tests/validation/test_embedded_validator_suites.py",
         "python3 scripts/validation/security_architecture_audit.py",
         "python3 scripts/validation/contribution_safety_audit.py --self-test"
       ],
@@ -237,10 +237,9 @@
       "id": "threat-control-disposition",
       "owner": "shared",
       "automated_commands": [
-        "python3 scripts/validation/threat_control_audit.py --self-test",
+        "python3 -m unittest -v tests/validation/test_embedded_validator_suites.py tests/validation/test_test_harness_contract.py",
         "python3 scripts/validation/threat_control_audit.py",
-        "python3 scripts/validation/pages_artifact_integrity.py --self-test",
-        "python3 scripts/validation/repository_sync_audit.py --self-test"
+        "python3 -m unittest -v tests/validation/test_embedded_validator_suites.py tests/validation/test_test_harness_contract.py"
       ],
       "external_evidence": "operator-required"
     },
@@ -257,7 +256,7 @@
       "id": "release-approval",
       "owner": "operator",
       "automated_commands": [
-        "python3 scripts/validation/release_change_reminder.py --self-test",
+        "python3 -m unittest -v tests/validation/test_embedded_validator_suites.py tests/validation/test_test_harness_contract.py",
         "python3 scripts/validation/contribution_safety_audit.py --require-publication-approved"
       ],
       "external_evidence": "operator-required"

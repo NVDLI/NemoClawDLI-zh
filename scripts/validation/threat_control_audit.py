@@ -68,8 +68,8 @@ REQUIRED_TOKENS = {
         "canonical public GitHub",
     ),
     "scripts/validation/release_gate.py": (
-        'py("scripts/validation/threat_control_audit.py", "--self-test")',
-        'py("scripts/validation/repository_sync_audit.py", "--self-test")',
+        'unit_test("threat_control_audit")',
+        'unit_test("repository_sync_audit")',
     ),
     "scripts/validation/validate_bundle.py": (
         "import threat_control_audit as tca",
@@ -304,8 +304,7 @@ def main() -> int:
     args = parser.parse_args()
     if args.self_test:
         failures = self_test()
-        total = 12
-        print(f"threat control self-test: {total - len(failures)}/{total} passed")
+        print("threat control self-test: " + ("FAIL" if failures else "PASS"))
         for failure in failures:
             print("  " + failure)
         return 1 if failures else 0

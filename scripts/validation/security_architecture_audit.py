@@ -477,7 +477,7 @@ def audit_model(model: dict, *, root: Path = ROOT, svg_text: str | None = None) 
         ))
 
     doc_text = DOC.read_text(encoding="utf-8") if DOC.is_file() else ""
-    for token in ("security-architecture.json", "security-architecture.svg", "render_security_architecture.py --check", "security_architecture_audit.py --self-test", "Browser routing by host", "embedded in an iframe", "do not use the relay", "internal program identifiers"):
+    for token in ("security-architecture.json", "security-architecture.svg", "render_security_architecture.py --check", "tests/validation/test_embedded_validator_suites.py", "Browser routing by host", "embedded in an iframe", "do not use the relay", "internal program identifiers"):
         if token not in doc_text:
             out.append(finding("operator-doc", "docs/security-design.md", f"missing operator instruction: {token}"))
     project_doc_path = root / "docs" / "security-design.md"
@@ -622,7 +622,7 @@ def main() -> int:
             for detail in failures:
                 print(f"FAIL {detail}")
             return 1
-        print("security_architecture_audit self-test: 24/24 mutation detectors passed")
+        print("security_architecture_audit self-test: PASS")
         return 0
     findings = audit()
     if args.json:

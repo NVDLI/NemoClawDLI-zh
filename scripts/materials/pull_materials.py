@@ -465,10 +465,7 @@ def self_test():
     if check_passes(drifted, [], True) or check_passes([], [{"detail": "tampered"}], True):
         failures.append("drift or tampering passed degraded policy")
 
-    print(f"materials self-test: {7 - len(failures)}/7 passed")
-    for failure in failures:
-        print(f"  FAIL {failure}")
-    return 1 if failures else 0
+    return failures
 
 
 def cmd_glossary(check):
@@ -565,7 +562,11 @@ def main():
     if a.self_test:
         if not _need_requests():
             return 2
-        return self_test()
+        failures = self_test()
+        print("materials self-test: " + ("FAIL" if failures else "PASS"))
+        for failure in failures:
+            print(f"  FAIL {failure}")
+        return 1 if failures else 0
 
     if a.verify_committed:
         findings = verify_committed()

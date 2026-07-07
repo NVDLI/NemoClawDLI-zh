@@ -579,13 +579,11 @@ return state.question;'''
         if not any("alternate assignment" in item for item in prompt_experiment_code_findings(missing_alternates)):
             failures.append(("missing prompt alternatives", prompt_experiment_code_findings(missing_alternates), ["alternate assignment"]))
         if failures:
-            total = len(fixtures) + 6
-            print(f"cell_audit self-test: {total - len(failures)}/{total} passed")
+            print("cell_audit self-test: FAIL")
             for name, actual, expected in failures:
                 print(f"  FAIL {name}: got {actual}, expected {expected}")
             sys.exit(1)
-        total = len(fixtures) + 6
-        print(f"cell_audit self-test: {total}/{total} passed")
+        print("cell_audit self-test: PASS")
         sys.exit(0)
     r = run()
     sys.exit(1 if sum(len(v) for v in r.values()) else 0)
