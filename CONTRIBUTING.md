@@ -3,9 +3,11 @@
 This repository is the internal release-candidate workspace for proposed open-source NVIDIA
 DLI course material. External publication remains pending OSRB approval; see
 [`RELEASE_STATUS.json`](RELEASE_STATUS.json).
-The selected publication target is a Full-OSS-Project intended as OSS Type I. After cutover,
-public GitHub owns the canonical planning, issue, contribution, CI, and release flow; internal
-GitLab consumes reviewed public changes for additional validation and internal deployment.
+The selected publication target for the DLI course repository is a Full-OSS-Project intended as
+OSS Type I. After cutover, public GitHub owns the canonical course planning, issue, contribution,
+CI, and release flow; internal GitLab consumes reviewed public changes for additional validation
+and internal deployment. This scope does not classify or release the NemoClaw product,
+launchable, or runtime.
 It packages authored content, shared services, deployment, and validation in one release
 tree. Content is organized by execution surface: `web/` is browser-only and remote-service
 aware, `cpu/` is the shared microservice stack, and `deploy/` is the operator surface for

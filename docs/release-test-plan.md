@@ -48,6 +48,8 @@ boundary.
 - Direct requirements and transitive locks agree.
 - No known external approval is represented as complete by repository text.
 - The candidate publication state matches `RELEASE_STATUS.json`.
+- The OSS registration scope names the DLI course repository and excludes the separately owned
+  NemoClaw product, launchable, runtime, and service deployments.
 
 ## Test environments
 
@@ -122,8 +124,8 @@ Store links, identifiers, named reviewers, and detailed reports outside the publ
 
 | ID | Evidence | Procedure | Pass condition | Owner |
 |---|---|---|---|---|
-| M01 | Program and release registration | Compare purpose, intended OSS Type I class, attributes, contacts, version, source, and release status with the reviewed design | Required fields are present and accurate for the final release, including the Full-OSS-Project classification | Release owner |
-| M02 | Public repository baseline | Confirm the external repository is in the approved organization and review README, LICENSE, verbatim SECURITY policy, contribution and coding guidance, conduct, changelog, maintainer plan, Feature and Bug issue forms, and pull-request template | Host location and required work products are accepted, and public GitHub is configured as the canonical planning, issue, contribution, CI, and release home | Repository owner and approver |
+| M01 | Course program and release registration | Compare the NemoClaw DLI course purpose, intended OSS Type I class, attributes, contacts, version, course source, excluded product scope, and release status with the reviewed design | Required fields accurately identify the Full-OSS DLI course repository without claiming the NemoClaw product, launchable, or runtime | Release owner |
+| M02 | Public course repository baseline | Confirm the course repository is in the approved organization and review README, LICENSE, verbatim SECURITY policy, contribution and coding guidance, conduct, changelog, maintainer plan, Feature and Bug issue forms, and pull-request template | Host location and required work products are accepted, and public GitHub is configured as the canonical course planning, issue, contribution, CI, and release home | Repository owner and approver |
 | M03 | Product legal/open-source terms | Submit the final release request and answer follow-up questions | Authorized legal/open-source reviewer records approval | External reviewer |
 | M04 | OSS license disposition | Register the final source and released artifacts; correct inventory data; review every actionable component | Zero released components lack required license disposition | Release owner and external reviewer |
 | M05 | Export classification | Supply the cryptography inventory, distribution method, and principal use from the design; answer follow-up questions | Authorized export reviewer closes the review and the registration reflects it | External reviewer |

@@ -12,6 +12,11 @@ This record contains no internal workflow, program identifier, submission versio
 
 ## System scope
 
+This security record covers the NemoClaw DLI course repository and the static course artifact it
+builds. It does not classify or release the NemoClaw product, launchable, runtime, model service,
+or relay deployments. Those systems appear below only as external dependencies and trust
+boundaries exercised by course lessons.
+
 Protected CI builds one static HTML, JavaScript, CSS, image, and locale artifact. The primary
 delivery path uses a public static host. An alternative integration pins a reviewed course release
 and vendors the static tree into a co-located launchable landing page. Both paths execute the course

@@ -2,7 +2,7 @@
 
 This playbook defines how this course bundle moves from internal prepublication staging to the
 reserved [`NVDLI/NemoClawDLI`](https://github.com/NVDLI/NemoClawDLI) repository, which becomes the
-canonical Full-OSS-Project after approved cutover. The repository keeps authored content,
+canonical Full-OSS DLI course repository after approved cutover. The repository keeps authored content,
 deployment, validation, public planning, and governance together.
 
 Current state: internal release candidate. The public repository name is reserved but not populated,
@@ -36,7 +36,7 @@ Use a cutover and integration model:
 1. **Internal release candidate**: NVIDIA internal GitLab is the prepublication source of truth. The
    reserved GitHub repository contains no release artifact.
 2. **Approved public cutover**: populate GitHub from the reviewed release tree, activate the required
-   host controls, and record GitHub as the canonical project repository.
+   host controls, and record GitHub as the canonical course repository.
 3. **Full public operation**: manage planning, Issues, Discussions, pull requests, public CI, tags,
    and releases on GitHub. NVIDIA retains merge and release authority through protected review.
 4. **Governed internal integration**: audit public `main` from trusted internal CI every week. Public changes
@@ -45,10 +45,13 @@ Use a cutover and integration model:
 5. **Release train**: tag public releases and publish Pages from protected GitHub refs. Internal DLI
    deployment remains a separate manual promotion of the same reviewed public commit.
 
-The selected public project is an NVIDIA-owned Full-OSS-Project intended as **OSS Type I**.
-Prepublication staging in GitLab does not make the end state partially open source. The governing
-system must still record and approve the Type I classification, source relationship, and cutover.
-Repository text and green CI cannot make that approval.
+The selected public course repository, `NVDLI/NemoClawDLI`, is an NVIDIA-owned Full-OSS-Project
+intended as **OSS Type I**. Prepublication staging in GitLab does not make the course repository
+partially open source.
+This classification is limited to `NVDLI/NemoClawDLI` and its static course artifacts. It does not
+classify or release the NemoClaw product, launchable, runtime, or service deployments. The
+governing system must still record and approve the course classification, source relationship,
+and cutover. Repository text and green CI cannot make that approval.
 
 Default rule: **issue-first, patch-second**. Students with domain evidence file structured Issues. Students who can carry a fix through validation open PRs using the structured release process.
 

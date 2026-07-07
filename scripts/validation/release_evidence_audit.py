@@ -62,7 +62,8 @@ REQUIRED_HEADINGS = {
 REQUIRED_DESIGN_ANCHORS = {
     "static browser application", "localStorage", "personal or sensitive", "Embedded media",
     "access cookies", "no repository-operated database", "HTTPS and WSS", "browser dependency inventory",
-    "SHA-256", "new patch tag",
+    "SHA-256", "new patch tag", "The Type I subject is only the DLI course repository",
+    "product, launchable, runtime, relays", "outside this classification",
 }
 REQUIRED_AUTOMATED_IDS = {f"A{index:02d}" for index in range(1, 14)}
 REQUIRED_MANUAL_IDS = {f"M{index:02d}" for index in range(1, 12)}

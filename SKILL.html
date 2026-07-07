@@ -47,6 +47,12 @@
     "external_mirror": "reserved-not-populated",
     "external_repository": "https://github.com/NVDLI/NemoClawDLI",
     "intended_oss_type": "Type-I",
+    "oss_scope": "nemoclaw-dli-course-repository",
+    "excluded_product_scope": [
+      "NemoClaw product",
+      "NemoClaw launchable",
+      "NemoClaw runtime"
+    ],
     "target_license": "Apache-2.0",
     "notice_required": false,
     "status_path": "RELEASE_STATUS.json",
@@ -57,7 +63,7 @@
       "Content is curated once and projected: pages live under execution surfaces, and bundle_standalone.py, build_pages.sh, and engine.js generate the standalone bundle, the Pages site, and the link graph from them. Add a delivery format by writing a generator, so a fix to the source reaches every format.",
       "Anchor each page in a task that runs: build a working artifact a reader executes against the lab, and cut a page that only fills an outline. The aim is a change in what a reader can do.",
       "Order is a default, not a gate: keep pages usable out of sequence, with no enforced prerequisites or knowledge checks, so a reader can act on partial understanding and return for the next layer.",
-      "Target an NVIDIA-owned Full-OSS-Project after approval: OSS Type I, Apache 2.0, no gate or paywall, public planning and contribution, the foyer surfacing only the selected courses, and mats cited by public URL.",
+      "Target the NVIDIA-owned DLI course repository as a Full-OSS-Project after approval: OSS Type I, Apache 2.0, no gate or paywall, public course planning and contribution, the foyer surfacing only the selected courses, and mats cited by public URL. This does not classify or release the NemoClaw product or runtime.",
       "Keep surface assumptions explicit: web/ is browser-only and cannot assume student-provisioned microservices; cpu/ owns shared service stacks; spark/ or gpu surfaces must declare their compute contract before content depends on them.",
       "Keep production browser delivery static. Hosted model and NemoClaw endpoints supply live capabilities; cpu/ services exist for local development and compatibility testing.",
       "Ideas stay easy to contribute through structured Issues and, after external intake is enabled, Discussions. Code stays difficult to accept: treat every patch as untrusted, require issue linkage, blast-radius evidence, deterministic gates, human ownership, protected refs, and gated releases."

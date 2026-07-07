@@ -9,11 +9,16 @@ This design does not grant publication authority or record private review eviden
 Detailed trust boundaries and graph instructions live in [`security-design.md`](security-design.md); versioned
 artifact behavior lives in [`release_artifacts.md`](release_artifacts.md).
 
-The selected operating model is an NVIDIA-owned Full-OSS-Project intended as OSS Type I. Once the
-approved cutover populates the reserved repository, public GitHub is canonical for source,
-planning, issues, contributions, CI, and releases. Internal GitLab receives reviewed public
-changes on the defined integration cadence and adds internal validation or deployment without
-becoming a private development source. The authoritative lifecycle record must still confirm the
+The selected operating model for the NemoClaw DLI course repository is an NVIDIA-owned
+Full-OSS-Project intended as OSS Type I. Once the approved cutover populates the reserved
+repository, public GitHub is canonical for course source, planning, issues, contributions, CI, and
+releases. Internal GitLab receives reviewed public course changes on the defined integration
+cadence and adds internal validation or deployment without becoming a private development source.
+
+The Type I subject is only the DLI course repository and its static course artifacts. The NemoClaw
+product, launchable, runtime, relays, and operational configuration are outside this classification
+and release scope. Those systems remain external integration dependencies with separate owners and
+lifecycle records. The authoritative lifecycle record must still confirm the course repository
 classification and publication decision.
 
 ## Purpose and users
