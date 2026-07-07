@@ -29,6 +29,7 @@
   "required_repository_files": [
     "README.md",
     "LICENSE",
+    "THIRD_PARTY_LICENSES.md",
     "SECURITY.md",
     "CONTRIBUTING.md",
     "DCO.md",
@@ -65,6 +66,16 @@
       "requirement": "show-stopper",
       "status": "satisfied",
       "paths": ["LICENSE"]
+    },
+    {
+      "id": "third-party-inventory",
+      "requirement": "required",
+      "status": "satisfied",
+      "paths": [
+        "THIRD_PARTY_LICENSES.md",
+        "web/nemoclaw/vendor/licenses",
+        "web/nemoclaw/vendor/browser-dependencies.json"
+      ]
     },
     {
       "id": "contributing",
@@ -173,6 +184,8 @@
       "owner": "shared",
       "automated_commands": [
         "python3 scripts/compliance/source_gate.py",
+        "python3 scripts/compliance/third_party_inventory_audit.py --self-test",
+        "python3 scripts/compliance/third_party_inventory_audit.py",
         "python3 scripts/validation/local_path_leak_audit.py --self-test",
         "python3 scripts/validation/local_path_leak_audit.py",
         "python3 scripts/security/audit_dependency_locks.py",

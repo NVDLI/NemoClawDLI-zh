@@ -236,4 +236,7 @@ and [`scripts/compliance/docs/open_source_readiness.md`](scripts/compliance/docs
 
 The proposed external release uses the [Apache License 2.0](LICENSE). Contributions use the same
 inbound license plus [Developer Certificate of Origin](DCO.md) signoff; this Apache-2.0 project does
-not require a separate CLA.
+not require a separate CLA. The static
+[third-party software and material inventory](THIRD_PARTY_LICENSES.md) lists package versions,
+SPDX license expressions, checked-in browser license texts, container-SBOM boundaries, and sourced
+course-material relationships.
