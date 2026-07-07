@@ -11,7 +11,7 @@
   "node_type": "directory-explorer",
   "title": "docs/ contributor, release, and design evidence",
   "source_dir": "docs/",
-  "summary": "Task-routed operating notes with one owner per concern. Start with agent_process and issue_standards for changes; pages_deploy and lab_runtime_testing for execution; product-design and release-test-plan for release evidence; release_playbook for host settings; security-design for trust boundaries and graph operation. Generate vata-submission.md when one VATA document must compose the complete public-safe design and verification record. Generated projections remain tied to declared canonical sources.",
+  "summary": "Task-routed operating notes with one owner per concern. Start with agent_process and issue_standards for changes; pages_deploy and lab_runtime_testing for execution; product-design and release-test-plan for release evidence; release_playbook for host settings; security-design for trust boundaries and graph operation. Generate security-review-design.md when one document must compose the complete public-safe design and verification record. Generated projections remain tied to declared canonical sources.",
   "related": [
     "docs/pages_deploy.md",
     "docs/lab_runtime_testing.md",
@@ -26,7 +26,7 @@
     "docs/security-design.md",
     "docs/security-architecture.json",
     "docs/security-architecture.svg",
-    "scripts/build/build_vata_submission.py",
+    "scripts/build/build_security_review_package.py",
     "../README.md",
     "../RELEASE_STATUS.json",
     "../CHANGELOG.md",
@@ -48,7 +48,7 @@
 <script type="application/json" id="explorer-config">
 {
   "title": "docs/ \u00b7 contributor, release, and design evidence",
-  "summary": "Choose one owner: contribute with agent_process and issue_standards; test with lab_runtime_testing; deploy with pages_deploy; define product and evidence with product-design and release-test-plan; package with release_artifacts; configure hosts with release_playbook; review trust boundaries with security-design and security-architecture. For VATA, generate one composed supporting document and pair it with the architecture SVG. Markdown opens with shareable file and heading URLs.",
+  "summary": "Choose one owner: contribute with agent_process and issue_standards; test with lab_runtime_testing; deploy with pages_deploy; define product and evidence with product-design and release-test-plan; package with release_artifacts; configure hosts with release_playbook; review trust boundaries with security-design and security-architecture. Generate one composed supporting design and pair it with the architecture SVG for review submission. Markdown opens with shareable file and heading URLs.",
   "model": "nvidia/nemotron-3-nano-30b-a3b",
   "render_markdown": true,
   "ties": [
@@ -215,16 +215,16 @@
   ]
 }
 </script>
-<style data-vata-build="1">
-.vata-build{padding:20px clamp(18px,4vw,44px);border-bottom:1px solid #2a2a2a;background:#0d0d0d;color:#f2f2f2;font:15px/1.55 system-ui,sans-serif}.vata-build h1{margin:0 0 8px;color:#76b900;font-size:1.45rem}.vata-build p{max-width:78rem;color:#c8c8c8}.vata-build code{display:block;margin:8px 0;padding:9px 11px;overflow:auto;white-space:nowrap;border:1px solid #2a2a2a;border-radius:8px;background:#111;color:#f2f2f2;font-family:ui-monospace,Consolas,monospace}.vata-build a{color:#aee23a}
+<style data-security-review-build="1">
+.security-review-build{padding:20px clamp(18px,4vw,44px);border-bottom:1px solid #2a2a2a;background:#0d0d0d;color:#f2f2f2;font:15px/1.55 system-ui,sans-serif}.security-review-build h1{margin:0 0 8px;color:#76b900;font-size:1.45rem}.security-review-build p{max-width:78rem;color:#c8c8c8}.security-review-build code{display:block;margin:8px 0;padding:9px 11px;overflow:auto;white-space:nowrap;border:1px solid #2a2a2a;border-radius:8px;background:#111;color:#f2f2f2;font-family:ui-monospace,Consolas,monospace}.security-review-build a{color:#aee23a}
 </style>
 </head>
 <body>
-<section class="vata-build" aria-labelledby="vata-build-title">
-  <h1 id="vata-build-title">VATA submission pair</h1>
-  <p>Generate one download package containing the composed supporting document and the existing <a href="security-architecture.svg">security architecture diagram</a>. The generated archive stays under ignored <code style="display:inline;padding:0;border:0;background:none">artifacts/</code> and contains exactly those two upload files.</p>
-  <code>python3 scripts/build/build_vata_submission.py --package</code>
-  <code>python3 scripts/build/build_vata_submission.py --self-test &amp;&amp; python3 scripts/figures/render_security_architecture.py --check &amp;&amp; python3 scripts/validation/security_architecture_audit.py</code>
+<section class="security-review-build" aria-labelledby="security-review-build-title">
+  <h1 id="security-review-build-title">Security review package</h1>
+  <p>For Threat and Vulnerability Analysis submission, generate one download package containing the composed supporting design and the existing <a href="security-architecture.svg">security architecture diagram</a>. The generated archive stays under ignored <code style="display:inline;padding:0;border:0;background:none">artifacts/</code> and contains exactly those two upload files.</p>
+  <code>python3 scripts/build/build_security_review_package.py --package</code>
+  <code>python3 scripts/build/build_security_review_package.py --self-test &amp;&amp; python3 scripts/figures/render_security_architecture.py --check &amp;&amp; python3 scripts/validation/security_architecture_audit.py</code>
 </section>
 <div id="explorer"></div>
 <noscript>
