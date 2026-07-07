@@ -795,9 +795,19 @@ def audit_submission(body: str) -> list[dict[str, str]]:
         if not match or not match.group(1).strip():
             out.append(finding("submission-section", "submission", f"missing or empty section: {section}",
                                f"fill ## {section} with concrete evidence"))
-    if not re.search(r"(?im)\b(?:Addresses|Closes|Fixes)\s+#[0-9]+\b", body or ""):
+    relationship = re.search(r"(?im)\b(?:Addresses|Closes|Fixes)\s+#[0-9]+\b", body or "")
+    if not relationship:
         out.append(finding("submission-issue", "submission", "no explicit issue relationship",
                            "add Addresses #N, or Closes #N only when acceptance is fully met"))
+    elif relationship.group(0).lower().startswith("addresses"):
+        remaining = re.search(r"(?ms)^## Remaining issue work\s*\n(.*?)(?=^## |\Z)", body or "")
+        if not remaining or not remaining.group(1).strip():
+            out.append(finding(
+                "submission-issue-remains", "submission",
+                "Addresses #N does not say which acceptance criteria remain unmet",
+                "use Closes #N when the issue is fully satisfied, or add a substantive "
+                "## Remaining issue work section",
+            ))
     if not re.search(r"(?im)^- \[[xX]\] `?(?:web/|i18n/|cpu/|workspace/|deploy/|scripts/|docs/|materials)", body or ""):
         out.append(finding("submission-surface", "submission", "no changed surface is checked",
                            "check every touched surface in ## Surfaces touched"))
@@ -1014,7 +1024,7 @@ def self_test() -> list[str]:
         if audit_publication_approval(fixture):
             failures.append("approved release rejected by the external publication guard")
 
-    good = """## Summary\nBound the release path.\n## Issue link\nAddresses #12\n## Surfaces touched\n- [x] `workspace/`\n## Blast radius checked\nHooks and CI.\n## Validation evidence\nPASS: audit.\n## Human ownership\nRelease manager reviews.\n## Risk and rollback\nRevert commit.\n## Out of scope\nHost settings.\n"""
+    good = """## Summary\nBound the release path.\n## Issue link\nCloses #12\n## Surfaces touched\n- [x] `workspace/`\n## Blast radius checked\nHooks and CI.\n## Validation evidence\nPASS: audit.\n## Human ownership\nRelease manager reviews.\n## Risk and rollback\nRevert commit.\n## Out of scope\nHost settings.\n"""
     if audit_submission(good):
         failures.append("valid submission fixture rejected")
     localized = good.replace("- [x] `workspace/`", "- [x] `i18n/`")
@@ -1022,8 +1032,16 @@ def self_test() -> list[str]:
         failures.append("valid localization submission fixture rejected")
     if not audit_publication_approval(ROOT):
         failures.append("pending release unexpectedly passed the external publication guard")
+    partial = good.replace("Closes #12", "Addresses #12").replace(
+        "## Out of scope", "## Remaining issue work\nHost approval remains.\n## Out of scope", 1)
+    if audit_submission(partial):
+        failures.append("valid partial submission fixture rejected")
+    if "submission-issue-remains" not in {
+        item["code"] for item in audit_submission(good.replace("Closes #12", "Addresses #12"))
+    }:
+        failures.append("partial issue relationship without remaining work escaped detector")
     for needle, expected in (("## Human ownership\nRelease manager reviews.\n", "submission-section"),
-                             ("Addresses #12", "submission-issue"), ("PASS: audit.", "submission-evidence")):
+                             ("Closes #12", "submission-issue"), ("PASS: audit.", "submission-evidence")):
         codes = {item["code"] for item in audit_submission(good.replace(needle, "", 1))}
         if expected not in codes:
             failures.append(f"submission mutation escaped detector: {expected}")

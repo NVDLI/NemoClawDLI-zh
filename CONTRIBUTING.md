@@ -25,8 +25,11 @@ a concrete defect. Neither route requires code. Report vulnerabilities privately
 
 Use the direct patch path when you can carry the change through the structured release
 process. The full release and external-mirror model lives in [`docs/release_playbook.md`](docs/release_playbook.md). A direct MR should update the source, declared blast-radius files, and validators
-when the failure class should not recur. Link the tracker with `Addresses #N` unless the
-change fully closes the issue.
+when the failure class should not recur. An issue-scoped change that satisfies every acceptance
+criterion uses `Closes #N` so the host closes the issue on merge. A partial change uses
+`Addresses #N` and includes a `Remaining issue work` section naming the unmet criteria. Compare
+the final diff and evidence with the issue checklist before handoff; do not leave a fully satisfied
+issue on a non-closing relationship.
 
 A patch is not trusted because a person or agent produced it, or because it passes one local
 command. It becomes eligible to merge only after required CI runs on the submitted commit,
