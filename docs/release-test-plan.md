@@ -5,7 +5,9 @@ reviewed release candidate commit and its eventual protected tag. The machine-re
 [`release-evidence.json`](release-evidence.json).
 Detailed dependency procedures live in [`dependency_security.md`](dependency_security.md).
 Security requirement dispositions live in
-[`security-control-disposition.md`](security-control-disposition.md).
+[`security-control-disposition.md`](security-control-disposition.md); the aggregate control,
+mitigation, trigger, and verification register is
+[`security-control-themes.json`](security-control-themes.json).
 Artifact promotion lives in [`release_artifacts.md`](release_artifacts.md), and Pages assembly
 lives in [`pages_deploy.md`](pages_deploy.md).
 
@@ -135,7 +137,7 @@ Store links, identifiers, named reviewers, and detailed reports outside the publ
 | M08 | Authoritative vulnerability scan | Scan every final released artifact; review severity, age, fix availability, and artifact-specific dispositions | No overdue fixable Critical/High finding lacks an approved disposition, mitigation, and remediation plan | Release owner and risk authority |
 | M09 | Malware scan | Read `release-manifest.json.external_evidence`; submit every file in `malware_scan_required` to the qualified scanner, and record applicability for the remaining text-only assets | Every listed artifact has zero malicious and zero suspicious detections, or an authorized false-positive disposition; the external record closes the manifest's `required-before-publication` policy | Release owner and malware reviewer |
 | M10 | Live host controls | Verify HTTPS, protected default branch and tags, required checks, immutable release settings, private vulnerability intake, a `github-pages` environment with required reviewers and self-review prevention, the weekly public-to-internal integration schedule, and the recorded CSP/CDN/WAF decision | Live configuration matches the design, disposition record, and release playbook | Host administrator and release owner |
-| M10a | Generated threat-analysis reconciliation | First compare the generated Target of Evaluation with the package's threat-analysis invariants and correct scope or fact drift. Then compare findings with `security-control-disposition.md` by aggregate control theme, correct private row-level statuses that contradict evidence, assign service controls to their operators, and retain unresolved signing, hosting, credential, and service requirements. | The generated Target of Evaluation matches the canonical invariants; every generated status has an evidence-backed owner and disposition in the authorized review system; the public repository contains no private row-by-row assessment | Product Security reviewer and release owner |
+| M10a | Generated threat-analysis reconciliation | Correct Target of Evaluation scope and fact drift, then map each private finding to `security-control-themes.json`; assign external controls to their operators and keep unresolved requirements open. | The Target of Evaluation matches the canonical invariants; every status has current evidence and an owner; future candidates are never treated as implemented; the public repository contains no private row-by-row assessment | Product Security reviewer and release owner |
 | M11 | Final release review | Review the exact tag, pipeline, generated-tree browser results, downloadable Pages artifact and its SHA-256 inventory, Pages smoke, archive manifest, SBOM, checksums, known issues, external evidence, and rollback plan before approving the deployment environment | Authorized reviewer records an approved decision against the exact artifact | Release reviewer |
 
 ## Execution order

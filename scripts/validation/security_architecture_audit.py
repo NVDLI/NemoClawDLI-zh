@@ -25,6 +25,7 @@ from render_security_architecture import edge_path, render  # noqa: E402
 MODEL = ROOT / "docs" / "security-architecture.json"
 SVG = ROOT / "docs" / "security-architecture.svg"
 DOC = ROOT / "docs" / "security-design.md"
+CONTROL_REGISTER = ROOT / "docs" / "security-control-themes.json"
 COMPOSE_FILES = (
     ROOT / "deploy" / "docker-compose.yml",
     ROOT / "deploy" / "docker-compose.override.yml",
@@ -32,6 +33,10 @@ COMPOSE_FILES = (
 )
 RELEASE_STAGES = {"deploy", "verify", "review"}
 EXPECTED_SVG_TITLE = "Security architecture for the DLI course Securing Agents with OpenShell and NemoClaw"
+TOE_NODE_IDS = {"source", "artifact", "browser"}
+EXTERNAL_NODE_IDS = {"ci", "pages_host", "launchable_host", "model_api", "nemoclaw"}
+TOE_ASSURANCE = "REPOSITORY EVIDENCE"
+EXTERNAL_ASSURANCE = "NO LIVE EVIDENCE FROM EXTERNAL OPERATOR"
 URL_HOST_RE = re.compile(r"(?:https?|wss?)://[A-Za-z0-9][A-Za-z0-9._-]*", re.I)
 DECLARED_URL_RE = re.compile(
     r"(?:const|let|var)\s+[A-Z0-9_]*(?:URL|URI|BASE|ORIGIN|ENDPOINT|PROXY)[A-Z0-9_]*\s*=\s*[\"'`](?P<url>(?:https?|wss?)://[A-Za-z0-9][A-Za-z0-9._-]*)",
@@ -210,9 +215,12 @@ def project_doc_findings(text: str) -> list[dict[str, str]]:
         "## Release controls",
         "## Evidence and reconstruction",
         "security-architecture.svg",
-        "pins a reviewed course release",
+        "may select a reviewed course release",
+        "external and unattested",
         "existing browser credential mechanism",
         "Same-origin direct route",
+        "only solid green nodes are Target of Evaluation components",
+        "External-to-external internals are excluded",
         "Repository validators support human analysis",
     )
     return [
@@ -223,15 +231,46 @@ def project_doc_findings(text: str) -> list[dict[str, str]]:
 
 def audit_model(model: dict, *, root: Path = ROOT, svg_text: str | None = None) -> list[dict[str, str]]:
     out: list[dict[str, str]] = []
-    if model.get("schema") != "nemoclaw-security-architecture/1":
-        out.append(finding("schema", "docs/security-architecture.json", "schema must be nemoclaw-security-architecture/1"))
+    if model.get("schema") != "nemoclaw-security-architecture/2":
+        out.append(finding("schema", "docs/security-architecture.json", "schema must be nemoclaw-security-architecture/2"))
     system = model.get("system", {})
-    if not system.get("scope"):
-        out.append(finding("system-metadata", "docs/security-architecture.json", "system.scope is required"))
+    try:
+        control_target = json.loads(CONTROL_REGISTER.read_text(encoding="utf-8"))["target_of_evaluation"]
+    except (OSError, json.JSONDecodeError, KeyError) as exc:
+        out.append(finding("ownership-source", "docs/security-control-themes.json", str(exc)))
+        control_target = {}
+    if system.get("target_of_evaluation") != control_target.get("owned"):
+        out.append(finding(
+            "toe-cross-document", "docs/security-architecture.json",
+            "diagram Target of Evaluation differs from the canonical control register",
+        ))
+    if system.get("external_context") != control_target.get("external_dependencies"):
+        out.append(finding(
+            "external-cross-document", "docs/security-architecture.json",
+            "diagram external context differs from the canonical control register",
+        ))
+    if "Only Target of Evaluation entries are course-owned components" not in str(
+        system.get("ownership_rule", "")
+    ):
+        out.append(finding(
+            "ownership-rule", "docs/security-architecture.json",
+            "diagram does not state the fail-closed ownership rule",
+        ))
     forbidden_metadata = {"program", "nspect_id", "version", "release_type"}
     leaked = sorted(forbidden_metadata.intersection(model) | forbidden_metadata.intersection(system))
     if leaked:
         out.append(finding("internal-metadata", "docs/security-architecture.json", f"public graph contains internal workflow metadata: {leaked}"))
+    model_text = json.dumps(model, ensure_ascii=False).casefold()
+    for phrase in (
+        "secure course delivery architecture",
+        "hardened pipeline",
+        "immutable, verified build artifact",
+    ):
+        if phrase in model_text:
+            out.append(finding(
+                "architecture-overclaim", "docs/security-architecture.json",
+                f"diagram makes an unsupported assurance claim: {phrase}",
+            ))
 
     zones_list = model.get("zones", [])
     nodes_list = model.get("nodes", [])
@@ -255,7 +294,7 @@ def audit_model(model: dict, *, root: Path = ROOT, svg_text: str | None = None) 
         if not zone:
             out.append(finding("node-zone", "docs/security-architecture.json", f"{node_id} names unknown zone {node.get('zone')}"))
             continue
-        for key in ("label", "detail", "kind", "x", "y", "width", "height"):
+        for key in ("label", "detail", "kind", "ownership", "assurance", "x", "y", "width", "height"):
             if node.get(key) in (None, ""):
                 out.append(finding("node-field", "docs/security-architecture.json", f"{node_id}.{key} is required"))
         if not (
@@ -265,9 +304,20 @@ def audit_model(model: dict, *, root: Path = ROOT, svg_text: str | None = None) 
             and node.get("y", 0) + node.get("height", 0) <= zone["y"] + zone["height"]
         ):
             out.append(finding("node-bounds", "docs/security-architecture.json", f"{node_id} escapes zone {zone['id']}"))
-        if node.get("privileged") and len(node.get("controls", [])) < 2:
+        ownership = node.get("ownership")
+        if ownership not in {"toe", "external"}:
+            out.append(finding("node-ownership", "docs/security-architecture.json", f"{node_id} has invalid ownership {ownership}"))
+        if ownership == "toe" and node.get("assurance") != TOE_ASSURANCE:
+            out.append(finding("toe-assurance", "docs/security-architecture.json", f"{node_id} lacks repository-evidence assurance"))
+        if ownership == "external" and node.get("assurance") != EXTERNAL_ASSURANCE:
+            out.append(finding("external-assurance", "docs/security-architecture.json", f"{node_id} lacks the no-live-evidence warning"))
+        if ownership == "external" and node.get("controls"):
+            out.append(finding("external-control-claim", "docs/security-architecture.json", f"{node_id} presents external controls as current"))
+        if ownership == "toe" and not node.get("controls"):
+            out.append(finding("toe-controls", "docs/security-architecture.json", f"{node_id} has no evidence-backed repository controls"))
+        if node.get("privileged") and ownership == "toe" and len(node.get("controls", [])) < 2:
             out.append(finding("privileged-controls", "docs/security-architecture.json", f"{node_id} needs at least two explicit controls"))
-        if node.get("sensitive") and not node.get("controls"):
+        if node.get("sensitive") and ownership == "toe" and not node.get("controls"):
             out.append(finding("sensitive-controls", "docs/security-architecture.json", f"{node_id} handles sensitive data without controls"))
         if not node.get("evidence"):
             out.append(finding("node-evidence", "docs/security-architecture.json", f"{node_id} has no repository evidence"))
@@ -314,7 +364,7 @@ def audit_model(model: dict, *, root: Path = ROOT, svg_text: str | None = None) 
                 value = route.get(field, 0.5)
                 if not isinstance(value, (int, float)) or not 0 <= value <= 1:
                     out.append(finding("edge-port", "docs/security-architecture.json", f"{edge_id}.{field} must be between 0 and 1"))
-            for point in [*( [route["from_point"]] if route.get("from_point") else []), *route.get("via", []), *( [route["to_point"]] if route.get("to_point") else [])]:
+            for point in [*( [route["from_point"]] if route.get("from_point") else []), *route.get("via", []), *( [route["to_point"]] if route.get("to_point") else []), *( [route["badge_point"]] if route.get("badge_point") else [])]:
                 if not isinstance(point, list) or len(point) != 2 or not (0 <= point[0] <= canvas_w and 0 <= point[1] <= canvas_h):
                     out.append(finding("edge-route", "docs/security-architecture.json", f"{edge_id} has an invalid route point: {point}"))
         path_text, _mx, _my = edge_path(source, target, route)
@@ -394,13 +444,14 @@ def audit_model(model: dict, *, root: Path = ROOT, svg_text: str | None = None) 
         if node_id not in nodes or nodes[node_id].get("conditional"):
             out.append(finding("required-service", "docs/security-architecture.json", f"{node_id} must remain a required, non-conditional service"))
     route_contract = {
+        "source_to_ci": False,
+        "ci_to_artifact": False,
         "artifact_to_pages": False,
         "artifact_to_launchable": False,
+        "pages_to_browser": False,
+        "launchable_to_browser": False,
         "browser_to_models": False,
-        "workers_to_models": True,
-        "workers_to_nemoclaw": False,
-        "launchable_starts_nemoclaw": False,
-        "launchable_to_models": False,
+        "browser_to_nemoclaw": False,
     }
     indexed_edges = {edge.get("id"): edge for edge in edges}
     for edge_id, conditional in route_contract.items():
@@ -432,17 +483,27 @@ def audit_model(model: dict, *, root: Path = ROOT, svg_text: str | None = None) 
         out.append(finding("compose-coverage", "docs/security-architecture.json", f"local-only Compose classification mismatch: expected {sorted(actual_services)}, classified {sorted(local_services)}"))
     if set(local_volumes) != actual_volumes:
         out.append(finding("volume-coverage", "docs/security-architecture.json", f"local-only volume classification mismatch: expected {sorted(actual_volumes)}, classified {sorted(local_volumes)}"))
-    production_nodes = coverage.get("production_nodes", [])
-    if set(production_nodes) != set(nodes):
-        out.append(finding("production-coverage", "docs/security-architecture.json", f"production node inventory mismatch: graph {sorted(nodes)}, inventory {sorted(production_nodes)}"))
+    if set(coverage.get("toe_nodes", [])) != TOE_NODE_IDS:
+        out.append(finding("toe-node-coverage", "docs/security-architecture.json", "TOE node inventory changed"))
+    if set(coverage.get("external_context_nodes", [])) != EXTERNAL_NODE_IDS:
+        out.append(finding("external-node-coverage", "docs/security-architecture.json", "external-context node inventory changed"))
+    actual_toe = {node["id"] for node in nodes_list if node.get("ownership") == "toe"}
+    actual_external = {node["id"] for node in nodes_list if node.get("ownership") == "external"}
+    if actual_toe != TOE_NODE_IDS or actual_external != EXTERNAL_NODE_IDS:
+        out.append(finding("node-ownership-coverage", "docs/security-architecture.json", "node ownership does not match the reviewed boundary"))
     for node in nodes_list:
         if node.get("compose_service") or node.get("id") in actual_services:
-            out.append(finding("local-only-node", "docs/security-architecture.json", f"{node.get('id')} represents a local-only Compose service in the production graph"))
-    for surface, node_id in coverage.get("production_surfaces", {}).items():
+            out.append(finding("local-only-node", "docs/security-architecture.json", f"{node.get('id')} represents a local-only Compose service in the architecture graph"))
+    for surface, node_id in coverage.get("repository_surfaces", {}).items():
         if not (root / surface).exists():
-            out.append(finding("surface-path", "docs/security-architecture.json", f"production surface {surface} does not exist"))
+            out.append(finding("surface-path", "docs/security-architecture.json", f"repository surface {surface} does not exist"))
         if node_id not in nodes:
-            out.append(finding("coverage-node", "docs/security-architecture.json", f"production surface {surface} maps to unknown node {node_id}"))
+            out.append(finding("coverage-node", "docs/security-architecture.json", f"repository surface {surface} maps to unknown node {node_id}"))
+        elif nodes[node_id].get("ownership") != "toe":
+            out.append(finding("surface-ownership", "docs/security-architecture.json", f"repository surface {surface} maps to external node {node_id}"))
+    references = coverage.get("non_deployed_reference_sources", {})
+    if set(references) != {"scripts/cors-proxy"} or not (root / "scripts/cors-proxy").is_dir():
+        out.append(finding("reference-source-boundary", "docs/security-architecture.json", "relay examples are not explicitly non-deployed reference sources"))
 
     observed_digest = contract_digest(observe_system(root))
     reviewed_digest = coverage.get("observed_contract_sha256", "")
@@ -463,7 +524,10 @@ def audit_model(model: dict, *, root: Path = ROOT, svg_text: str | None = None) 
     for token in (
         'role="img"',
         'aria-labelledby="title desc"',
-        'data-architecture-schema="nemoclaw-security-architecture/1"',
+        'data-architecture-schema="nemoclaw-security-architecture/2"',
+        "COURSE-OWNED",
+        "EXTERNAL DEPENDENCY",
+        "LIVE CONTROLS NOT ATTESTED",
         f'<title id="title">{EXPECTED_SVG_TITLE}</title>',
         f'<text class="title" x="48" y="48">{EXPECTED_SVG_TITLE}</text>',
     ):
@@ -498,7 +562,7 @@ def audit() -> list[dict[str, str]]:
     return audit_model(model)
 
 
-def self_test() -> list[str]:
+def self_test() -> tuple[list[str], int]:
     base = json.loads(MODEL.read_text(encoding="utf-8"))
     expected_svg = render(base)
     cases = []
@@ -508,15 +572,40 @@ def self_test() -> list[str]:
     cases.append(("compose coverage", mutation, expected_svg, "compose-coverage"))
 
     mutation = copy.deepcopy(base)
-    mutation["coverage"]["production_nodes"].remove("artifact")
-    cases.append(("production coverage", mutation, expected_svg, "production-coverage"))
+    mutation["coverage"]["toe_nodes"].remove("artifact")
+    cases.append(("TOE node coverage", mutation, expected_svg, "toe-node-coverage"))
+
+    mutation = copy.deepcopy(base)
+    mutation["system"]["target_of_evaluation"] = mutation["system"]["target_of_evaluation"][1:]
+    cases.append(("cross-document TOE", mutation, expected_svg, "toe-cross-document"))
+
+    mutation = copy.deepcopy(base)
+    external = next(node for node in mutation["nodes"] if node["id"] == "model_api")
+    external["controls"] = ["provider guarantees tenant isolation"]
+    cases.append(("external control claim", mutation, expected_svg, "external-control-claim"))
+
+    mutation = copy.deepcopy(base)
+    next(node for node in mutation["nodes"] if node["id"] == "nemoclaw")["assurance"] = "VERIFIED"
+    cases.append(("external assurance promotion", mutation, expected_svg, "external-assurance"))
+
+    mutation = copy.deepcopy(base)
+    next(node for node in mutation["nodes"] if node["id"] == "pages_host")["ownership"] = "toe"
+    cases.append(("external node ownership promotion", mutation, expected_svg, "node-ownership-coverage"))
+
+    mutation = copy.deepcopy(base)
+    mutation["coverage"].pop("non_deployed_reference_sources")
+    cases.append(("relay example deployment boundary", mutation, expected_svg, "reference-source-boundary"))
+
+    mutation = copy.deepcopy(base)
+    mutation["nodes"][0]["detail"] = "secure course delivery architecture"
+    cases.append(("unsupported architecture assurance", mutation, expected_svg, "architecture-overclaim"))
 
     mutation = copy.deepcopy(base)
     next(node for node in mutation["nodes"] if node["id"] == "nemoclaw")["conditional"] = True
     cases.append(("required NemoClaw service", mutation, expected_svg, "required-service"))
 
     mutation = copy.deepcopy(base)
-    next(edge for edge in mutation["edges"] if edge["id"] == "workers_to_nemoclaw")["conditional"] = True
+    next(edge for edge in mutation["edges"] if edge["id"] == "browser_to_nemoclaw")["conditional"] = True
     cases.append(("hosting route contract", mutation, expected_svg, "routing-contract"))
 
     mutation = copy.deepcopy(base)
@@ -524,12 +613,12 @@ def self_test() -> list[str]:
     cases.append(("edge port bounds", mutation, expected_svg, "edge-port"))
 
     mutation = copy.deepcopy(base)
-    dependency_edge = next(edge for edge in mutation["edges"] if edge["id"] == "browser_to_workers")
-    dependency_edge["route"]["via"] = [[1100, 760], [1100, 677.5]]
+    dependency_edge = next(edge for edge in mutation["edges"] if edge["id"] == "browser_to_nemoclaw")
+    dependency_edge["route"]["via"] = [[800, 917.5], [800, 767.5]]
     cases.append(("edge overlap", mutation, expected_svg, "edge-overlap"))
 
     mutation = copy.deepcopy(base)
-    mutation["layout"]["shared_trunks"][0]["branches"].pop("browser_to_workers")
+    mutation["layout"]["shared_trunks"][0]["branches"].pop("browser_to_nemoclaw")
     cases.append(("shared trunk coverage", mutation, expected_svg, "trunk-coverage"))
 
     mutation = copy.deepcopy(base)
@@ -561,7 +650,7 @@ def self_test() -> list[str]:
     cases.append(("boundary authentication", mutation, expected_svg, "edge-field"))
 
     mutation = copy.deepcopy(base)
-    next(edge for edge in mutation["edges"] if edge["id"] == "browser_to_workers")["data"] = ""
+    next(edge for edge in mutation["edges"] if edge["id"] == "browser_to_nemoclaw")["data"] = ""
     cases.append(("sensitive flow", mutation, expected_svg, "sensitive-flow"))
 
     mutation = copy.deepcopy(base)
@@ -575,36 +664,44 @@ def self_test() -> list[str]:
     cases.append(("node overlap", mutation, expected_svg, "node-overlap"))
 
     mutation = copy.deepcopy(base)
-    next(edge for edge in mutation["edges"] if edge["id"] == "browser_to_models")["route"] = {"from_point": [550, 760], "to_side": "left", "to_fraction": 0.35, "via": [[550, 677.5], [1100, 677.5], [1100, 816.75]]}
+    next(edge for edge in mutation["edges"] if edge["id"] == "browser_to_models")["route"] = {"from_point": [550, 760], "to_side": "left", "to_fraction": 0.35, "via": [[800, 760], [800, 677.5], [1300, 677.5], [1300, 816.75]]}
     cases.append(("edge crosses node", mutation, expected_svg, "edge-cross-node"))
 
     failures = []
+    total = 0
     for label, model, svg, wanted in cases:
+        total += 1
         codes = {row["code"] for row in audit_model(model, svg_text=svg)}
         if wanted not in codes:
             failures.append(f"detector missed {label}: expected {wanted}, got {sorted(codes)}")
+    total += 1
     if "stale-svg" not in {row["code"] for row in audit_model(base, svg_text=expected_svg.replace("Flow register", "Flow registry", 1))}:
         failures.append("detector missed stale SVG")
+    total += 1
     wrong_title = expected_svg.replace(EXPECTED_SVG_TITLE, "NemoClaw course security architecture")
     if "scope-title" not in {row["code"] for row in audit_model(base, svg_text=wrong_title)}:
         failures.append("detector missed product-like diagram title")
+    total += 1
     probe_stages, probe_jobs = ci_contract("stages: [test, deploy, review]\n\npages:\n  stage: deploy\n\nrelease_check:\n  stage: review\n")
     if probe_stages != ["test", "deploy", "review"] or probe_jobs != {"pages": "deploy", "release_check": "review"}:
         failures.append(f"CI observer missed a release topology change: {probe_stages}, {probe_jobs}")
+    total += 1
     parser = RuntimeHTMLParser()
     parser.feed('<script src="https://new.cdn.test/app.js"></script>')
     declared = DECLARED_URL_RE.search('const MODEL_API_URL = `wss://new.model.test/v1`;')
     suffix = re.search(r"\.endsWith\(\s*[\"'](\.[A-Za-z0-9-]+\.[A-Za-z]{2,})[\"']\s*\)", 'host.endsWith(".new-runtime.test")')
     if parser.urls != ["https://new.cdn.test/app.js"] or not declared or declared.group("url") != "wss://new.model.test" or not suffix:
         failures.append("runtime observer missed an active resource, endpoint, or dynamic host suffix")
+    total += 1
     project_doc = DOC.read_text(encoding="utf-8")
     missing_project_doc = project_doc.replace("## Trust boundaries and data", "## Data", 1)
     if "project-doc" not in {row["code"] for row in project_doc_findings(missing_project_doc)}:
         failures.append("detector missed project-document drift")
+    total += 1
     leaked = {row["code"] for row in public_metadata_findings({"fixture": "TA" "VA report for nS" "pect program NSP" "ECT-TEST-ID"})}
     if leaked != {"internal-review-name", "internal-program-id"}:
         failures.append(f"public metadata detector missed internal workflow language: {sorted(leaked)}")
-    return failures
+    return failures, total
 
 
 def main() -> int:
@@ -617,12 +714,12 @@ def main() -> int:
         print(json.dumps(observe_system(), indent=2))
         return 0
     if args.self_test:
-        failures = self_test()
+        failures, total = self_test()
         if failures:
             for detail in failures:
                 print(f"FAIL {detail}")
             return 1
-        print("security_architecture_audit self-test: 24/24 mutation detectors passed")
+        print(f"security_architecture_audit self-test: {total - len(failures)}/{total} mutation detectors passed")
         return 0
     findings = audit()
     if args.json:
