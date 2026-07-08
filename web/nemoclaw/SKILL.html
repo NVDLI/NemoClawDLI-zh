@@ -102,6 +102,14 @@
     {
       "name": "mats",
       "path": "web/nemoclaw/mats/SKILL.html"
+    },
+    {
+      "name": "standalone",
+      "path": "web/nemoclaw/standalone/SKILL.html"
+    },
+    {
+      "name": "vendor",
+      "path": "web/nemoclaw/vendor/SKILL.html"
     }
   ]
 }
@@ -250,6 +258,21 @@
           "desc": "Source and connection level for every companion essay."
         }
       ]
+    },
+    {
+      "title": "Distribution",
+      "items": [
+        {
+          "label": "standalone export",
+          "href": "standalone/SKILL.html",
+          "desc": "Standalone-export source and fixed assets generated from the canonical course."
+        },
+        {
+          "label": "browser vendor",
+          "href": "vendor/SKILL.html",
+          "desc": "Pinned same-origin browser packages, metadata, SBOM, and license texts."
+        }
+      ]
     }
   ],
   "nav": {
@@ -300,6 +323,11 @@
   <ul>
     <li><a href="assets/SKILL.html">image provenance</a></li>
     <li><a href="mats/SKILL.html">material provenance</a></li>
+  </ul>
+  <h2>Distribution</h2>
+  <ul>
+    <li><a href="standalone/SKILL.html">standalone export</a></li>
+    <li><a href="vendor/SKILL.html">browser vendor</a></li>
   </ul>
 </noscript>
 <script src="../_skill_explorer.js"></script>

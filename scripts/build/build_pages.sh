@@ -134,31 +134,14 @@ cp "$T1/THIRD_PARTY_LICENSES.md" "$OUT/THIRD_PARTY_LICENSES.md"
 mkdir -p "$OUT/scripts/compliance/docs"
 cp "$T1/scripts/compliance/docs/sbom_generation.md" "$OUT/scripts/compliance/docs/sbom_generation.md"
 
-# ── 2b. SKILL explorers: the reusable framer + each explorer folder, source shipped
-# as read-only assets so a student with a key can read AND ask about the real code on
-# the live site without leaving the HTML space. Each folder's SKILL.html references the
-# framer as ../web/_skill_explorer.js and its files as ./<file>, which resolve here too
-# because the deploy mirrors that relative shape (public/web/_skill_explorer.js + public/<dir>/).
-mkdir -p "$OUT/web"
-cp "$T1/web/_skill_explorer.js" "$OUT/web/_skill_explorer.js"
-for d in deploy scripts docs workspace; do
-    if [ -d "$T1/$d" ]; then
-        mkdir -p "$OUT/$d"
-        # the explorer + the documented source it shows (read-only); skip caches + subdirs
-        for f in "$T1/$d"/*.html "$T1/$d"/*.js "$T1/$d"/*.mjs "$T1/$d"/*.py \
-                 "$T1/$d"/*.sh "$T1/$d"/*.md "$T1/$d"/*.txt "$T1/$d"/*.yml "$T1/$d"/*.yaml "$T1/$d"/*.conf "$T1/$d"/*.json "$T1/$d"/*.svg "$T1/$d"/Dockerfile; do
-            [ -f "$f" ] && cp "$f" "$OUT/$d"/
-        done
-        if [ "$d" = "docs" ] && [ -d "$T1/docs/assets/repository-overview" ]; then
-            mkdir -p "$OUT/docs/assets/repository-overview"
-            cp "$T1"/docs/assets/repository-overview/* "$OUT/docs/assets/repository-overview"/
-        fi
-        if [ "$d" = "docs" ]; then
-            for f in "$T1/docs"/*.pptx; do [ -f "$f" ] && cp "$f" "$OUT/docs"/; done
-        fi
-        echo "[build_pages] explorer $d -> public/$d/ ($(find "$OUT/$d" -maxdepth 1 -type f | wc -l) files, source shipped read-only)"
-    fi
-done
+# ── 2b. SKILL explorers: project the exact Git source set, including proposed files.
+# Every source directory owns a SKILL.html and every explorer must retain the files it documents.
+# A shallow top-level copy leaves nested renderers present but unusable, so the projection is
+# exhaustive and byte-verified while ignored build output remains excluded by Git.
+python3 "$T1/scripts/build/project_source_tree.py" \
+    --source-root "$T1" \
+    --artifact-root "$OUT"
+echo "[build_pages] source explorers -> public/ ($(find "$OUT" -name SKILL.html -type f | wc -l) SKILL contracts)"
 
 # Project every docs explorer declaration from source. Then inspect every declared Markdown
 # document and project its local link/image targets. This checks the final Pages tree rather than
@@ -175,23 +158,17 @@ if [ -f "$T1/docs/repository-overview.slides.json" ]; then
     if [ -f "$T1/docs/repository-overview.pptx" ]; then test -f "$OUT/docs/repository-overview.pptx"; fi
 fi
 
-# Project each shipped explorer's topbar nav to the Pages layout. In the lab/source tree the
-# logo home is ../web/index.html and the up-breadcrumb is the root SKILL.html hub; neither path
-# exists on Pages (the foyer is the site-root index.html and the root hub is a source-layout dev
-# artifact that is not deployed). Point the logo at the foyer and drop the redundant up-link so
-# the topbar has no dead targets on the live site.
-for d in deploy scripts docs workspace; do
-    f="$OUT/$d/SKILL.html"
-    [ -f "$f" ] || continue
-    python3 - "$f" <<'PROJ'
-import sys, re, json
-p = sys.argv[1]; s = open(p).read()
+# Project every shipped explorer's home link to the Pages foyer. Parent SKILL contracts are now
+# present at their source-relative paths, so up-links remain useful and are retained.
+find "$OUT" -name SKILL.html -type f -print0 | while IFS= read -r -d '' f; do
+    python3 - "$f" "$OUT" <<'PROJ'
+import sys, re, json, os
+p, root = sys.argv[1:]; s = open(p).read()
 m = re.search(r'(<script[^>]*id="explorer-config"[^>]*>)(.*?)(</script>)', s, re.S)
 if m:
     cfg = json.loads(m.group(2))
     nav = cfg.get("nav", {})
-    nav["home"] = "../index.html"   # the foyer is the bundle front door on Pages
-    nav.pop("up", None)             # no source-layout root hub on the live site
+    nav["home"] = os.path.relpath(os.path.join(root, "index.html"), os.path.dirname(p))
     cfg["nav"] = nav
     s = s[:m.start(2)] + json.dumps(cfg, indent=2) + s[m.end(2):]
     open(p, "w").write(s)

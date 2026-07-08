@@ -11,6 +11,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 INVENTORY = "THIRD_PARTY_LICENSES.md"
 RUNBOOK = "scripts/compliance/docs/sbom_generation.md"
+COMPLIANCE_SKILL = "scripts/compliance/SKILL.html"
+CSV_EXPORTER = "scripts/compliance/export_third_party_csv.py"
+CSV_PREVIEW = "scripts/compliance/third_party_export_ui.js"
 PYTHON_LOCKS = (
     "workspace/requirements.lock",
     "scripts/materials/requirements.lock",
@@ -69,6 +72,7 @@ REQUIRED_RUNBOOK_TEXT = (
     "source-tree.cdx.json",
     "source-tree.spdx.json",
 )
+REQUIRED_EXPORT_CATEGORIES = {"vendored", "build-input", "validation", "local-authoring", "all"}
 
 
 def read(path: str, overrides: dict[str, str]) -> str:
@@ -112,6 +116,46 @@ def provenance(path: str, overrides: dict[str, str]) -> dict:
         re.S,
     )
     return json.loads(match.group(1)) if match else {}
+
+
+def export_contract_findings(overrides: dict[str, str]) -> list[str]:
+    findings = []
+    skill = read(COMPLIANCE_SKILL, overrides)
+    match = re.search(r'<script[^>]+id=["\']skill-meta["\'][^>]*>(.*?)</script>', skill, re.S)
+    try:
+        meta = json.loads(match.group(1)) if match else {}
+    except json.JSONDecodeError:
+        meta = {}
+    export = next((item for item in meta.get("exports", []) if item.get("id") == "swipat-component-table"), None)
+    if not export:
+        findings.append("missing parameterized SWIPAT component export in scripts/compliance/SKILL.html")
+    else:
+        categories = set((export.get("categories") or {}).keys())
+        if not REQUIRED_EXPORT_CATEGORIES <= categories:
+            findings.append("SWIPAT component export does not distinguish every distribution relationship")
+        if export.get("default_category") != "vendored":
+            findings.append("SWIPAT component export must default to vendored and distributed components")
+        if export.get("preview_mount") != "third-party-export-preview":
+            findings.append("SWIPAT component export does not declare its in-page preview mount")
+        parameters = " ".join(export.get("parameters") or [])
+        for flag in ("--category", "--repository", "--project-ref", "--output"):
+            if flag not in parameters:
+                findings.append(f"SWIPAT component export parameter is missing: {flag}")
+    for token in (
+        'id="third-party-export-preview"',
+        "data-export-category",
+        "data-export-license",
+        "data-export-search",
+        "data-export-download",
+        '<script src="third_party_export_ui.js"></script>',
+    ):
+        if token not in skill:
+            findings.append(f"SWIPAT in-page preview control is missing: {token}")
+    preview = read(CSV_PREVIEW, overrides)
+    for token in ("vendored", "build-input", "validation", "local-authoring", "dataset.exportReady"):
+        if token not in preview:
+            findings.append(f"SWIPAT preview implementation is incomplete: {token}")
+    return findings
 
 
 def audit(overrides: dict[str, str] | None = None) -> list[str]:
@@ -174,6 +218,7 @@ def audit(overrides: dict[str, str] | None = None) -> list[str]:
     for instruction in REQUIRED_RUNBOOK_TEXT:
         if instruction not in runbook:
             findings.append(f"missing SBOM acquisition instruction: {instruction}")
+    findings.extend(export_contract_findings(overrides))
     dockerfile = read("cpu/services/llm_client/llm_client.Dockerfile", overrides)
     for pin in REQUIRED_LLM_PINS:
         if pin not in dockerfile:
@@ -194,6 +239,7 @@ def self_test() -> tuple[int, int, list[str]]:
     runbook = read(RUNBOOK, {})
     dockerfile = read("cpu/services/llm_client/llm_client.Dockerfile", {})
     pages_build = read("scripts/build/build_pages.sh", {})
+    compliance_skill = read(COMPLIANCE_SKILL, {})
     mutations = (
         ("browser row", {INVENTORY: document.replace("| browser-runtime | codemirror | 5.65.21 |", "| removed | codemirror | 0 |", 1)}, "missing browser package row"),
         ("Python row", {INVENTORY: re.sub(r"(?m)^\| [^\n|]+ \| fastapi \| 0\.138\.2 \|.*$", "| removed | fastapi | 0 |", document, count=1)}, "missing Python package row"),
@@ -205,6 +251,8 @@ def self_test() -> tuple[int, int, list[str]]:
         ("argparse explanation", {INVENTORY: document.replace("`argparse@2.0.1` is a JavaScript npm package used transitively by `js-yaml@5.2.1`.", "argparse is unexplained.", 1)}, "missing license-scope explanation"),
         ("acquisition procedure", {INVENTORY: document.replace("## Reproducing license-evidence acquisition", "## Undocumented acquisition", 1)}, "missing license-scope explanation"),
         ("SBOM runbook", {RUNBOOK: runbook.replace("# SBOM generation and attachment runbook", "# Missing runbook contract", 1)}, "missing SBOM acquisition instruction"),
+        ("reviewer CSV export", {COMPLIANCE_SKILL: compliance_skill.replace('"id": "swipat-component-table"', '"id": "removed-export"', 1)}, "missing parameterized SWIPAT component export"),
+        ("reviewer CSV preview", {COMPLIANCE_SKILL: compliance_skill.replace('id="third-party-export-preview"', 'id="removed-preview"', 1)}, "SWIPAT in-page preview control is missing"),
     )
     failures = []
     passed = 0

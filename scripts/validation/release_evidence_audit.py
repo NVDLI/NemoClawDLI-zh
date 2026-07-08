@@ -101,7 +101,8 @@ REQUIRED_WIRING = {
         "sx-heading-link",
     ),
     "scripts/build/build_pages.sh": (
-        '"$T1/$d"/*.svg',
+        "project_source_tree.py",
+        "--artifact-root",
         "project_docs_explorer.py",
         "-path 'web/nemoclaw/standalone' -prune",
     ),
@@ -339,7 +340,7 @@ def self_test() -> tuple[int, int, list[str]]:
     base = load_contract()
     baseline = audit_contract(base)
     if baseline:
-        return 0, 17, [f"baseline is not clean: {item['code']} {item['detail']}" for item in baseline]
+        return 0, 0, [f"baseline is not clean: {item['code']} {item['detail']}" for item in baseline]
     tests: list[tuple[str, dict, dict[str, str], str]] = []
 
     def mutated() -> dict:
@@ -388,6 +389,10 @@ def self_test() -> tuple[int, int, list[str]]:
     tests.append(("missing explorer artifact check", mutated(),
                   {build_path: build_text.replace("project_docs_explorer.py",
                                                  "explorer projection check removed")},
+                  "wiring"))
+    tests.append(("missing exhaustive source projection", mutated(),
+                  {build_path: build_text.replace("project_source_tree.py",
+                                                 "source projection removed")},
                   "wiring"))
     skill_path = "docs/SKILL.html"
     skill_text = (ROOT / skill_path).read_text(encoding="utf-8")

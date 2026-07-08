@@ -255,7 +255,9 @@ def audit(*, manifest_data: dict | None = None,
             if urlsplit(url.rstrip(".,;:]}")).hostname in PACKAGE_HOSTS:
                 findings.append(f"runtime still pulls a package CDN: {rel}: {url}")
         for target in VENDOR_REF_RE.findall(text):
-            if target not in asset_names and target not in {"browser-dependencies.json", "browser-sbom.cdx.json"}:
+            if target not in asset_names and target not in {
+                "SKILL.html", "browser-dependencies.json", "browser-sbom.cdx.json"
+            }:
                 findings.append(f"runtime references unmanifested vendor asset: {rel}: {target}")
 
     dashboard = overrides.get(

@@ -81,7 +81,7 @@
     var ext = (path.split(".").pop() || "").toLowerCase();
     return { js: "javascript", mjs: "javascript", ts: "typescript", py: "python", sh: "bash",
              json: "json", html: "xml", htm: "xml", css: "css", md: "markdown", tf: "hcl",
-             yml: "yaml", yaml: "yaml", toml: "ini", txt: "plaintext", dockerfile: "dockerfile" }[ext] || "plaintext";
+             yml: "yaml", yaml: "yaml", toml: "ini", txt: "plaintext", dockerfile: "plaintext" }[ext] || "plaintext";
   }
   function isMarkdown(path) { return /\.(?:md|markdown)$/i.test(path || ""); }
   function safeMarkdownHtml(html) {

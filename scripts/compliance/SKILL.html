@@ -14,13 +14,47 @@
   "related": [
     "scripts/compliance/source_gate.py",
     "scripts/compliance/third_party_inventory_audit.py",
+    "scripts/compliance/export_third_party_csv.py",
+    "scripts/compliance/third_party_export_ui.js",
     "scripts/compliance/render_sbom_license_inventory.py",
     "scripts/compliance/docs/sbom_generation.md",
     "../../THIRD_PARTY_LICENSES.md",
     "scripts/compliance/docs/source_inventory.json",
     "scripts/compliance/docs/vendor_policy.md"
   ],
+  "exports": [
+    {
+      "id": "swipat-component-table",
+      "label": "SWIPAT third-party component CSV",
+      "format": "csv",
+      "preview_mount": "third-party-export-preview",
+      "command": "python3 scripts/compliance/export_third_party_csv.py",
+      "default_category": "vendored",
+      "categories": {
+        "vendored": "Copied into web/nemoclaw/vendor and distributed with the static course",
+        "build-input": "Downloaded by npm for browser assembly, not distributed as standalone packages",
+        "validation": "Downloaded into local or CI Python environments, not vendored or shipped",
+        "local-authoring": "Referenced or pulled for the optional local-authoring stack, not shipped with the static course",
+        "all": "All software relationships above"
+      },
+      "parameters": [
+        "--category <vendored|build-input|validation|local-authoring|all>",
+        "--base-container <description>",
+        "--repository <internal-repository-url>",
+        "--project-ref <reviewed-ref>",
+        "--output <csv-path>"
+      ]
+    }
+  ],
   "explorer": "../../web/_skill_explorer.js"
+}
+</script>
+<script type="application/json" id="third-party-export-config">
+{
+  "vendor_manifest": "../../web/nemoclaw/vendor/browser-dependencies.json",
+  "inventory": "../../THIRD_PARTY_LICENSES.md",
+  "repository": "https://github.com/NVDLI/NemoClawDLI",
+  "project_ref": "main"
 }
 </script>
 <script type="application/json" id="explorer-config">
@@ -50,6 +84,16 @@
       "desc": "Keeps the static Markdown package/version/SPDX and external-material list aligned with exact repository inputs."
     },
     {
+      "path": "export_third_party_csv.py",
+      "role": "parameterized reviewer export",
+      "desc": "Writes the exact nine-column SWIPAT CSV shape with explicit vendored, build-input, validation, and local-authoring classifications."
+    },
+    {
+      "path": "third_party_export_ui.js",
+      "role": "reviewer preview",
+      "desc": "Renders, filters, and downloads the same component classifications directly in this SKILL page."
+    },
+    {
       "path": "render_sbom_license_inventory.py",
       "role": "post-scan license renderer",
       "desc": "Turns a digest-bound CycloneDX SBOM into a static component-license appendix without converting unresolved rows into guessed licenses."
@@ -70,6 +114,7 @@
 <style data-skill-static="1">
 .skill-static{padding:24px clamp(18px,4vw,44px);border-bottom:1px solid #2a2a2a;background:#0d0d0d;color:#f2f2f2;font:15px/1.55 system-ui,sans-serif}
 .skill-static a{color:#76b900}.skill-static h1{margin:.1em 0 .25em;color:#76b900;font-size:1.65rem}.skill-static h2{font-size:1.02rem;margin:1.2rem 0 .45rem}.skill-static p{max-width:76rem;color:#b0b0b0}.skill-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:.7rem 0}.skill-card{border:1px solid #2a2a2a;background:#161616;border-radius:8px;padding:12px 14px}.skill-card b{display:block;color:#aee23a;margin-bottom:4px}.skill-card span{color:#b0b0b0;font-size:.9rem}.skill-cmds{display:grid;gap:8px;margin:.7rem 0}.skill-cmd{display:grid;grid-template-columns:minmax(140px,220px) 1fr;gap:8px;align-items:center;border:1px solid #2a2a2a;border-radius:8px;background:#111;padding:9px 11px}.skill-cmd b{color:#aee23a}.skill-cmd code{display:block;overflow:auto;white-space:nowrap;color:#f2f2f2}.skill-note{border-left:3px solid #76b900;background:rgba(118,185,0,.08);padding:10px 13px;margin:.8rem 0;color:#ddd}.skill-nav{display:flex;gap:12px;flex-wrap:wrap;margin:.8rem 0}.skill-nav a{border:1px solid #2a2a2a;border-radius:999px;padding:5px 10px;text-decoration:none}@media(max-width:700px){.skill-cmd{grid-template-columns:1fr}.skill-static{padding:18px}}
+.export-preview{margin-top:1rem}.export-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:.8rem 0}.export-controls label{display:grid;gap:4px;color:#b0b0b0;font-size:.85rem}.export-controls input,.export-controls select,.export-controls button{min-height:38px;border:1px solid #3a3a3a;border-radius:6px;background:#111;color:#f2f2f2;padding:7px 9px}.export-controls button{cursor:pointer;border-color:#76b900;color:#aee23a}.export-status{display:flex;justify-content:space-between;gap:12px;color:#b0b0b0}.export-table-wrap{max-height:34rem;overflow:auto;border:1px solid #2a2a2a;border-radius:8px}.export-table{border-collapse:collapse;min-width:1500px;width:100%;font-size:.82rem}.export-table th{position:sticky;top:0;background:#202020;color:#aee23a;text-align:left;z-index:1}.export-table th,.export-table td{padding:8px 9px;border-bottom:1px solid #2a2a2a;vertical-align:top}.export-table td{color:#d5d5d5}.export-table a{overflow-wrap:anywhere}@media(prefers-color-scheme:light){.export-controls input,.export-controls select{background:#fff;color:#1a1a1a}.export-table th{background:#eef1f4;color:#4a7a00}.export-table td{color:#333}}
 </style></head>
 <body>
 <section class="skill-static" aria-labelledby="skill-title">
@@ -82,13 +127,58 @@
     <div class="skill-cmd"><b>Source gate</b><code>python3 scripts/compliance/source_gate.py</code></div>
     <div class="skill-cmd"><b>JSON output</b><code>python3 scripts/compliance/source_gate.py --json</code></div>
     <div class="skill-cmd"><b>Third-party list</b><code>python3 scripts/compliance/third_party_inventory_audit.py --self-test &amp;&amp; python3 scripts/compliance/third_party_inventory_audit.py</code></div>
+    <div class="skill-cmd"><b>Vendored SWIPAT CSV</b><code>python3 scripts/compliance/export_third_party_csv.py --output /tmp/nemoclaw-vendored.csv</code></div>
+    <div class="skill-cmd"><b>All software relationships</b><code>python3 scripts/compliance/export_third_party_csv.py --category all --project-ref &lt;reviewed-ref&gt; --output /tmp/nemoclaw-all-software.csv</code></div>
     <div class="skill-cmd"><b>Post-scan licenses</b><code>python3 scripts/compliance/render_sbom_license_inventory.py --sbom &lt;cyclonedx.json&gt; --artifact-id &lt;digest-bound-artifact&gt; --out &lt;inventory.md&gt;</code></div>
   </div>
   <div class="skill-note">Keep the static inventory compact. The complete npm, Python, source-tree, conditional image, material-provenance, evidence-retention, and attachment commands live in <a href="docs/sbom_generation.md">the SBOM generation runbook</a>.</div>
+  <section class="export-preview" aria-labelledby="export-preview-title">
+    <h2 id="export-preview-title">SWIPAT component-table preview</h2>
+    <p>The default view answers which components are copied into this repository and distributed with the static course. Choose another relationship only when the review asks for build, validation, or local-authoring inputs.</p>
+    <div id="third-party-export-preview">
+      <div class="export-controls">
+        <label>Relationship category
+          <select data-export-category>
+            <option value="vendored" selected>Vendored and distributed</option>
+            <option value="build-input">Browser build inputs</option>
+            <option value="validation">Validation environment</option>
+            <option value="local-authoring">Local-authoring stack</option>
+            <option value="all">All software relationships</option>
+          </select>
+        </label>
+        <label>Dependency relationship<select data-export-relationship><option value="">All relationships</option></select></label>
+        <label>License identifier<select data-export-license><option value="">All licenses</option></select></label>
+        <label>Search<input data-export-search type="search" placeholder="package, scope, or comment"/></label>
+        <label>Base container<input data-export-base value="Not Applicable - static browser course"/></label>
+        <label>Export<button type="button" data-export-download>Download filtered CSV</button></label>
+      </div>
+      <div class="export-status"><span data-export-count>Loading preview...</span><span>Exact SWIPAT nine-column shape</span></div>
+      <div class="export-table-wrap">
+        <table class="export-table">
+          <thead>
+            <tr>
+              <th>Package / Component Name</th>
+              <th>Version</th>
+              <th>License</th>
+              <th>Link to Component's License</th>
+              <th>Method of Distribution</th>
+              <th>Usage Method with NV proprietary code</th>
+              <th>Comments</th>
+              <th>Location where component was downloaded from</th>
+              <th>Link to internal IT Controlled Repository</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
   <h2>Linkage map</h2>
   <div class="skill-grid">
     <a class="skill-card" href="source_gate.py"><b>source_gate.py</b><span>Release-source and vendor-ingestion gate.</span></a>
     <a class="skill-card" href="third_party_inventory_audit.py"><b>third_party_inventory_audit.py</b><span>Static package, license, container-boundary, and material-provenance inventory gate.</span></a>
+    <a class="skill-card" href="export_third_party_csv.py"><b>export_third_party_csv.py</b><span>Parameterized SWIPAT component-table export with explicit distribution categories.</span></a>
+    <a class="skill-card" href="third_party_export_ui.js"><b>third_party_export_ui.js</b><span>In-page preview, filters, and filtered CSV download.</span></a>
     <a class="skill-card" href="render_sbom_license_inventory.py"><b>render_sbom_license_inventory.py</b><span>Digest-bound CycloneDX to static Markdown license reconciliation.</span></a>
     <a class="skill-card" href="docs/sbom_generation.md"><b>sbom_generation.md</b><span>Copyable scan commands and attachment evidence contract.</span></a>
     <a class="skill-card" href="docs/SKILL.html"><b>scripts/compliance/docs</b><span>Release-safe guidance and machine-readable inventory.</span></a>
@@ -101,10 +191,13 @@
   <h1>scripts/compliance source gates</h1>
   <ul>
     <li><a href="third_party_inventory_audit.py">third_party_inventory_audit.py</a></li>
+    <li><a href="export_third_party_csv.py">export_third_party_csv.py</a></li>
+    <li><a href="third_party_export_ui.js">third_party_export_ui.js</a></li>
     <li><a href="render_sbom_license_inventory.py">render_sbom_license_inventory.py</a></li>
     <li><a href="source_gate.py">source_gate.py</a></li>
   </ul>
 </noscript>
 <script src="../../web/_skill_explorer.js"></script>
+<script src="third_party_export_ui.js"></script>
 </body>
 </html>
