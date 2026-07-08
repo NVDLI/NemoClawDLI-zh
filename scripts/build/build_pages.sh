@@ -310,7 +310,7 @@ fi
 
 # Fail closed on the generated destinations too. Source checks alone cannot prove that
 # standalone bundling and locale projection preserved the requested course attribution.
-attribution_args=(--artifact-root "$OUT" --artifact-root "$OUT/${COURSE_PREFIX:+$COURSE_PREFIX/}nemoclaw")
+attribution_args=(--artifact-root "$OUT/${COURSE_PREFIX:+$COURSE_PREFIX/}nemoclaw")
 if [ "$LANGS" = 1 ]; then
     for d in "$OUT"/*/nemoclaw; do
         [ -d "$d" ] && attribution_args+=(--artifact-root "$d")
