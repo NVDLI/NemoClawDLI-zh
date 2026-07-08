@@ -119,11 +119,13 @@ are not the production course topology. Bring-up and browser-test commands live 
 
 ## Agent Visor
 
-The repo is intentionally agent-readable. Every agent-addressable directory carries a
+The repo is intentionally agent-readable. Every source directory carries a
 `SKILL.html` with a `skill-meta` JSON block. The root [`SKILL.html`](SKILL.html) is the
 ontology beacon for the bundle. It points to execution surfaces, deployment, tooling,
 and process docs. Agents should read [`AGENTS.md`](AGENTS.md), then the relevant
-`SKILL.html` before changing files.
+`SKILL.html` before changing files. The source-directory set is discovered exhaustively from
+tracked and proposed files; there is no beacon opt-out for locale, vendor, data, workflow, or
+runtime-seed directories.
 
 ## Ideas are easy; code is gated
 

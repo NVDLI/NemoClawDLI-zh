@@ -314,12 +314,15 @@ SUITE_META = [
     ("concept_order", "Concept order contract", "required",
      "Core vocabulary in the early agent curriculum must be defined before learner-facing prose or code relies on it. This prevents glossary-hover patches and keeps prerequisite fixes structural.",
      "scripts/validation/concept_order_audit.py", "audit"),
-    ("skill_schema", "SKILL contract", "recommended",
+    ("skill_schema", "SKILL contract", "required",
      "Every SKILL.html skill-meta must be a well-formed contract of its kind: it classifies into one known kind (service-skill, service-index, dir-skill, hub, leaf), carries that kind's required keys, uses a known schema/node_type value and a semver version where the kind has one, and only valid notebook status values. An agent samples this block to work in a directory, so a malformed beacon is a contract an agent cannot trust. Each entry names the SKILL and the missing or invalid field.",
      "scripts/skills/skill_contract.py", "schema_findings"),
-    ("skill_drift", "SKILL drift", "recommended",
-     "Every SKILL.html beacon must match its directory: source_dir / human_landing point at the real location, the notebook list is complete, and hub children exist on disk. Drift means the brain describes a directory it no longer reflects. python3 scripts/skills/skill_contract.py --fix repairs the mechanical cases.",
+    ("skill_drift", "SKILL coverage and drift", "required",
+     "Every tracked or proposed source directory and ancestor must contain SKILL.html, with no exemption mechanism. Each beacon must match its directory: source_dir / human_landing point at the real location, the notebook list is complete, and hub children exist on disk. Drift means the brain describes a directory it no longer reflects. python3 scripts/skills/gen_directory_beacons.py creates missing mechanical contracts and skill_contract.py --fix repairs metadata drift.",
      "scripts/skills/skill_contract.py", "run"),
+    ("skill_renderer", "SKILL renderer", "required",
+     "Every SKILL.html must provide meaningful human-readable content, resolve its local renderer assets, load the shared explorer it declares, and expose only configured source files that exist. Browser runtime validation then loads every beacon and rejects page errors, missing renderer resources, unmounted explorers, and unreadable file entries.",
+     "scripts/skills/skill_contract.py", "renderer_findings"),
     ("diagram_geom", "Figure geometry", "recommended",
      "mountDiagram and the policy map are drawn by JavaScript at runtime, so the static figure audit never sees them. This renders each and flags overlapping text, text past the bounds, a connector crossing a box it does not link, and a relational diagram that draws no edges.",
      "scripts/figures/check_figures.mjs", "svgProblems"),
@@ -817,15 +820,14 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         ok = False
         vl_fail.extend(f"concept order: {x}" for x in concept_order_find)
 
-    # SKILL contract (advisory): every skill-meta is a well-formed beacon of its kind (schema leg)
-    # and matches its directory (drift leg, reused from skill_audit). The agent-facing half of the
-    # contract: a malformed or stale beacon is what an agent samples and is misled by.
+    # SKILL contract (required): exhaustive directory coverage, valid metadata, accurate scope,
+    # and a renderer that works for the human reader are one fail-closed contract.
     try:
         skc_find = skc.run(verbose=False)
         skc_scanned = sum(1 for _ in skc.sa.skills())   # skills() is a generator, not a list
     except Exception as e:
-        skc_find, skc_scanned = {"schema": [], "drift": []}, 0
-        suite_errors["skill_schema"] = suite_errors["skill_drift"] = str(e)
+        skc_find, skc_scanned = {"schema": [], "drift": [], "renderer": []}, 0
+        suite_errors["skill_schema"] = suite_errors["skill_drift"] = suite_errors["skill_renderer"] = str(e)
         vl_fail.append(f"skill contract error: {e}")
 
     # figure geometry (advisory): render the runtime figures (mountDiagram + mountPolicyMap) and flag overlapping text, out-of-bounds text, stray connectors, and edgeless diagrams.
@@ -1140,15 +1142,18 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                             REQUIRED,
                             "Open web/nemoclaw/localization.html, repair the named locale prose/structure/drift issue, then accept the reviewed source hash with localization_audit.py.")
                          for x in localization_find],
-        "skill_schema": [D(p, d, RECOMMENDED,
+        "skill_schema": [D(p, d, REQUIRED,
                            "Make the skill-meta a valid contract of its kind: add the missing required key, "
                            "correct the schema/node_type value, give version a semver MAJOR.MINOR.PATCH, or set a "
                            "valid notebook status (ready/setup/wip/ref). See SKILL_CONTRACT.md.")
                          for p, d in skc_find.get("schema", [])],
-        "skill_drift": [D(p, d, RECOMMENDED,
-                          "The beacon no longer matches its directory. Run python3 scripts/skills/skill_contract.py --fix "
-                          "to repair source_dir / human_landing / the notebook list, or fix the hub child path by hand.")
+        "skill_drift": [D(p, d, REQUIRED,
+                          "The source directory lacks a beacon or its beacon no longer matches. Run python3 scripts/skills/gen_directory_beacons.py "
+                          "to create missing contracts, then use skill_contract.py --fix for metadata drift or repair the hub child path by hand.")
                         for p, d in skc_find.get("drift", [])],
+        "skill_renderer": [D(p, d, REQUIRED,
+                             "Repair the human renderer, use directory-relative assets, load the declared shared explorer exactly once, and keep every configured file resolvable.")
+                           for p, d in skc_find.get("renderer", [])],
         "diagram_geom": [D(d.get("page"), f"{d.get('sel','')}: {d.get('detail','')}", RECOMMENDED,
                            "Adjust the runtime figure: keep labels from overlapping, text inside the bounds, connectors "
                            "only crossing boxes they link, and a relational diagram actually drawing its edges.")
@@ -1211,7 +1216,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "course_contract": 1,
         "concept_order": 1,
         "materials": materials.get("count", 0),
-        "skill_schema": skc_scanned, "skill_drift": skc_scanned,
+        "skill_schema": skc_scanned, "skill_drift": skc_scanned, "skill_renderer": skc_scanned,
         "localization": sum(
             len(item.get("pages", []))
             for item in localization_manifest.values()
