@@ -1,0 +1,196 @@
+#!/usr/bin/env python3
+"""Render every source SKILL.html with Playwright and fail on broken UI contracts."""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts" / "skills"))
+import skill_audit
+
+DEFAULT_IMAGE = "nemoclaw/lab-runtime-test:local"
+
+RUNTIME_JS = r"""
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const { chromium } = require('playwright-core');
+
+const root = process.env.SITE_ROOT || '/site';
+const skillFiles = JSON.parse(fs.readFileSync(process.env.SKILL_FILES || '/tmp/skill-files.json', 'utf8'));
+const port = 4214;
+const mime = {
+  '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8',
+  '.mjs':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8',
+  '.json':'application/json; charset=utf-8', '.svg':'image/svg+xml',
+  '.png':'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.ico':'image/x-icon',
+  '.md':'text/markdown; charset=utf-8', '.txt':'text/plain; charset=utf-8',
+};
+
+function safeJoin(urlPath) {
+  const clean = decodeURIComponent(urlPath.split('?')[0]).replace(/^\/+/, '');
+  const output = path.resolve(root, clean);
+  if (!output.startsWith(path.resolve(root))) throw new Error('path escape');
+  return output;
+}
+
+const server = http.createServer((request, response) => {
+  let file;
+  try { file = safeJoin(request.url || '/'); }
+  catch (_) { response.writeHead(403); response.end('forbidden'); return; }
+  if (fs.existsSync(file) && fs.statSync(file).isDirectory()) file = path.join(file, 'index.html');
+  fs.readFile(file, (error, data) => {
+    if (error) { response.writeHead(404); response.end('not found'); return; }
+    response.writeHead(200, { 'content-type': mime[path.extname(file).toLowerCase()] || 'application/octet-stream' });
+    response.end(request.method === 'HEAD' ? undefined : data);
+  });
+});
+
+async function inspect(browser, file) {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  const errors = [];
+  page.on('pageerror', error => errors.push(`pageerror: ${error.message || String(error)}`));
+  page.on('console', message => {
+    if (message.type() !== 'error') return;
+    const text = message.text();
+    if (/^Failed to load resource: the server responded with a status of 404/.test(text)) return;
+    errors.push(`console: ${text}`);
+  });
+  page.on('response', response => {
+    const type = response.request().resourceType();
+    if (response.status() >= 400 && ['document', 'script', 'stylesheet', 'image', 'font'].includes(type)) {
+      errors.push(`${type} HTTP ${response.status()}: ${response.url()}`);
+    }
+  });
+  try {
+    const response = await page.goto(`http://127.0.0.1:${port}/${file}`, { waitUntil:'domcontentloaded', timeout:30000 });
+    await page.waitForTimeout(500);
+    if (!response || !response.ok()) errors.push(`document HTTP ${response && response.status()}`);
+    const state = await page.evaluate(() => {
+      const parse = id => { try { return JSON.parse(document.getElementById(id)?.textContent || ''); } catch (_) { return null; } };
+      const config = document.getElementById('explorer-config');
+      return {
+        meta: !!parse('skill-meta'),
+        config: !config || !!parse('explorer-config'),
+        visibleText: (document.body?.innerText || '').trim().length,
+        explorer: !!config,
+        mounted: !!document.querySelector('.sx-topbar') && !!document.querySelector('.sx-main'),
+        gone: document.querySelectorAll('.sx-dot.gone').length,
+      };
+    });
+    if (!state.meta) errors.push('skill-meta did not parse');
+    if (!state.config) errors.push('explorer-config did not parse');
+    if (!state.visibleText) errors.push('renderer produced no visible text');
+    if (state.explorer && !state.mounted) errors.push('shared explorer did not mount');
+    if (state.gone) errors.push(`${state.gone} configured file(s) did not load`);
+  } catch (error) {
+    errors.push(`navigation: ${error.message || String(error)}`);
+  }
+  await page.close();
+  return { file, errors: [...new Set(errors)] };
+}
+
+(async () => {
+  await new Promise(resolve => server.listen(port, '127.0.0.1', resolve));
+  const browser = await chromium.launch({
+    headless:true,
+    executablePath:process.env.CHROME_BIN || undefined,
+  });
+  const findings = [];
+  let cursor = 0;
+  async function worker() {
+    while (cursor < skillFiles.length) {
+      const file = skillFiles[cursor++];
+      const result = await inspect(browser, file);
+      if (result.errors.length) findings.push(result);
+    }
+  }
+  await Promise.all(Array.from({ length: 4 }, worker));
+  await browser.close();
+  server.close();
+  console.log(JSON.stringify({ files:skillFiles.length, findings }, null, 2));
+  if (findings.length) process.exit(1);
+})().catch(error => {
+  try { server.close(); } catch (_) {}
+  console.error(error.stack || String(error));
+  process.exit(1);
+});
+"""
+
+
+def run(args: argparse.Namespace) -> int:
+    site = Path(args.site_root).resolve()
+    if not site.is_dir():
+        print(f"skill_renderer_runtime_audit: FAIL\n  - site root missing: {site}")
+        return 1
+    files = [str(path.relative_to(ROOT)) for path in skill_audit.skills()]
+    temp_parent = site.parent if args.engine == "apple" else None
+    with tempfile.TemporaryDirectory(prefix="skill-renderer-audit-", dir=temp_parent) as temp:
+        temp_path = Path(temp)
+        script = temp_path / "audit.js"
+        manifest = temp_path / "skill-files.json"
+        script.write_text(RUNTIME_JS, encoding="utf-8")
+        manifest.write_text(json.dumps(files), encoding="utf-8")
+        if args.engine == "apple":
+            command = [
+                "container", "machine", "run", "--root", "--name", args.machine,
+                "--workdir", str(site),
+                "--env", f"NODE_PATH={args.node_path}",
+                "--env", f"CHROME_BIN={args.chrome_bin}",
+                "--env", f"SITE_ROOT={site}",
+                "--env", f"SKILL_FILES={manifest}",
+                "--", "node", str(script),
+            ]
+        else:
+            command = [args.engine, "run", "--rm", "--entrypoint", "node"]
+            if args.engine.endswith("podman"):
+                command.append("--userns=keep-id")
+            command += [
+                "-e", "NODE_PATH=/opt/nemoclaw-runtime/node_modules",
+                "-e", "SITE_ROOT=/site",
+                "-e", "SKILL_FILES=/tmp/skill-files.json",
+                "-v", f"{site}:/site:ro",
+                "-v", f"{script}:/tmp/skill-renderer-audit.js:ro",
+                "-v", f"{manifest}:/tmp/skill-files.json:ro",
+                args.image,
+                "/tmp/skill-renderer-audit.js",
+            ]
+        try:
+            result = subprocess.run(
+                command,
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                timeout=args.timeout_seconds,
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+            print(f"skill_renderer_runtime_audit: FAIL\n  - {exc}")
+            return 1
+    print(result.stdout.rstrip())
+    print("skill_renderer_runtime_audit: " + ("OK" if result.returncode == 0 else "FAIL"))
+    return result.returncode
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--site-root", default=str(ROOT))
+    default_engine = os.environ.get("CONTAINER_ENGINE") or ("apple" if shutil.which("container") else "docker")
+    parser.add_argument("--engine", default=default_engine, help="apple, docker, or podman")
+    parser.add_argument("--image", default=DEFAULT_IMAGE)
+    parser.add_argument("--machine", default=os.environ.get("APPLE_CONTAINER_MACHINE") or "nemoclaw-test")
+    parser.add_argument("--node-path", default=os.environ.get("APPLE_CONTAINER_NODE_PATH") or "/opt/nemoclaw-runtime/node_modules")
+    parser.add_argument("--chrome-bin", default=os.environ.get("APPLE_CONTAINER_CHROME_BIN") or "/opt/nemoclaw-runtime/chromium-1187/chrome-linux/headless_shell")
+    parser.add_argument("--timeout-seconds", type=int, default=240)
+    return run(parser.parse_args())
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -11,7 +11,7 @@
   "node_type": "directory-explorer",
   "title": "docs/ contributor, release, and design evidence",
   "source_dir": "docs/",
-  "summary": "Task-routed operating notes with one owner per concern. Start with agent_process and issue_standards for changes; pages_deploy and lab_runtime_testing for execution; product-design and release-test-plan for release evidence; release_playbook for host settings; security-design for trust boundaries; security-control-disposition for repository, host, provider, residual, and non-applicable requirements. Generate security-review-design.md when one document must compose the complete public-safe design and verification record. Generated projections remain tied to declared canonical sources.",
+  "summary": "Task-routed operating notes with one owner per concern. Start with agent_process and issue_standards for changes; pages_deploy and lab_runtime_testing for execution; product-design and release-test-plan for release evidence; release_playbook for host settings; security-design for trust boundaries; security-control-themes for aggregate mitigations; security-control-disposition for the short human status view. Generate security-review-design.md when one self-contained public-safe design and verification record is needed.",
   "related": [
     "docs/pages_deploy.md",
     "docs/lab_runtime_testing.md",
@@ -25,6 +25,7 @@
     "docs/dependency_security.md",
     "docs/security-design.md",
     "docs/security-control-disposition.md",
+    "docs/security-control-themes.json",
     "docs/security-architecture.json",
     "docs/security-architecture.svg",
     "scripts/build/build_security_review_package.py",
@@ -49,7 +50,7 @@
 <script type="application/json" id="explorer-config">
 {
   "title": "docs/ \u00b7 contributor, release, and design evidence",
-  "summary": "Choose one owner: contribute with agent_process and issue_standards; test with lab_runtime_testing; deploy with pages_deploy; define product and evidence with product-design and release-test-plan; package with release_artifacts; configure hosts with release_playbook; review trust boundaries with security-design and security-architecture; classify repository, host, provider, residual, and non-applicable requirements with security-control-disposition. Generate one composed supporting design and pair it with the architecture SVG for review submission. Markdown opens with shareable file and heading URLs.",
+  "summary": "Choose one owner: contribute with agent_process and issue_standards; test with lab_runtime_testing; deploy with pages_deploy; define product and evidence with product-design and release-test-plan; package with release_artifacts; configure hosts with release_playbook; review trust boundaries with security-design and security-architecture; maintain aggregate mitigations in security-control-themes and the short status view in security-control-disposition. Generate one self-contained supporting design and pair it with the architecture SVG. Markdown opens with shareable file and heading URLs.",
   "model": "nvidia/nemotron-3-nano-30b-a3b",
   "render_markdown": true,
   "ties": [
@@ -133,7 +134,13 @@
       "path": "security-control-disposition.md",
       "kind": "authored",
       "role": "security requirement disposition",
-      "desc": "Separates verified repository controls from unverified signing and hosting gaps, provider-owned runtime controls, residual risks, and recommendations that do not apply to a static browser application."
+      "desc": "Short human view of repository, host, provider, residual, and non-applicable control states."
+    },
+    {
+      "path": "security-control-themes.json",
+      "kind": "canonical",
+      "role": "aggregate security control register",
+      "desc": "Machine-readable Target of Evaluation ownership, current controls, anticipated mitigations, triggers, and verification expectations used by the self-contained review design."
     },
     {
       "path": "security-architecture.json",
@@ -229,7 +236,7 @@
 <body>
 <section class="security-review-build" aria-labelledby="security-review-build-title">
   <h1 id="security-review-build-title">Security review package</h1>
-  <p>For Threat and Vulnerability Analysis submission, generate one download package containing the composed supporting design and the existing <a href="security-architecture.svg">security architecture diagram</a>. The generated archive stays under ignored <code style="display:inline;padding:0;border:0;background:none">artifacts/</code> and contains exactly those two upload files.</p>
+  <p>Generate one self-contained supporting design plus the existing <a href="security-architecture.svg">security architecture diagram</a>. The design embeds its scope, data assumptions, aggregate controls, anticipated mitigations, triggers, and verification expectations; repository paths are traceability labels rather than required links. The ignored archive contains exactly the two upload files.</p>
   <code>python3 scripts/build/build_security_review_package.py --package</code>
   <code>python3 scripts/build/build_security_review_package.py --self-test &amp;&amp; python3 scripts/figures/render_security_architecture.py --check &amp;&amp; python3 scripts/validation/security_architecture_audit.py</code>
 </section>
@@ -251,6 +258,7 @@
     <li><a href="dependency_security.md">dependency_security.md</a></li>
     <li><a href="security-design.md">security-design.md</a></li>
     <li><a href="security-control-disposition.md">security-control-disposition.md</a></li>
+    <li><a href="security-control-themes.json">security-control-themes.json</a></li>
     <li><a href="security-architecture.json">security-architecture.json</a></li>
     <li><a href="security-architecture.svg">security-architecture.svg</a></li>
     <li><a href="../README.md">README.md</a></li>

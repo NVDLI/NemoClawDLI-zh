@@ -49,10 +49,14 @@ long rationale, screenshots, or logs.
 
 ## Orientation
 
-Read [`AGENTS.md`](AGENTS.md) first. Every directory carries a
+Read [`AGENTS.md`](AGENTS.md) first. Every source directory carries a
 `SKILL.html` whose `skill-meta` JSON block is the machine-readable brain for that
 directory. [`SKILL_CONTRACT.md`](SKILL_CONTRACT.md) specifies that format. The root
 `SKILL.html` tenets and validation suites set the content bar.
+
+Adding a directory also adds its beacon. Run `python3 scripts/skills/gen_directory_beacons.py`,
+then review the generated summary and links. CI derives the complete directory set from tracked
+and proposed files and provides no exemption mechanism.
 
 For localization, start at [`scripts/translate/SKILL.html`](scripts/translate/SKILL.html),
 then open the target locale node, such as [`scripts/translate/locales/pt-BR/SKILL.html`](scripts/translate/locales/pt-BR/SKILL.html)

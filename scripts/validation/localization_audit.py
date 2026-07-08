@@ -636,7 +636,14 @@ def scan(root: Path, locale: str) -> tuple[list[dict[str, str]], dict]:
     declared = {Path(item).as_posix() for item in state.get("overlay_files", [])}
     declared_assets = {Path(item).as_posix() for item in state.get("asset_files", [])}
     declared_all = declared | declared_assets
-    actual = {path.relative_to(locale_root).as_posix() for path in overlay_root.rglob("*") if path.is_file()}
+    # SKILL.html is the required directory contract for the locale source tree, not a translated
+    # overlay payload. The global SKILL gate validates every one exhaustively; localization still
+    # rejects any other undeclared file.
+    actual = {
+        path.relative_to(locale_root).as_posix()
+        for path in overlay_root.rglob("*")
+        if path.is_file() and path.name != "SKILL.html"
+    }
     findings: list[dict[str, str]] = interface_findings(root) if (root / "web/nemoclaw/localization.html").exists() else []
     for path in sorted(actual - declared_all):
         findings.append({"code": "overlay-extra", "path": path,
@@ -688,7 +695,9 @@ def scan(root: Path, locale: str) -> tuple[list[dict[str, str]], dict]:
         source_raw = source.read_text(encoding="utf-8")
         scoped = 'data-localization-scope="en-shell"' in source_raw
         source_digest = translation_sha(source_raw) if scoped else sha(source_raw)
-        target_raw = target.read_text(encoding="utf-8") if target.is_file() else ""
+        target_raw = target.read_text(encoding="utf-8") if target.is_file() and (
+            target.name != "SKILL.html" or rel in declared
+        ) else ""
         review = reviews.get(rel) or {}
         reviewed_digest = review.get("translation_sha256") if scoped else review.get("source_sha256")
         target_digest = sha(target_raw) if target_raw else None

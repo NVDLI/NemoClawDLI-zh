@@ -28,6 +28,8 @@ SUITES = {
     "sensitive_content_audit": "scripts.validation.sensitive_content_audit",
     "slides_audit": "scripts.validation.slides_audit",
     "threat_control_audit": "scripts.validation.threat_control_audit",
+    "third_party_inventory_audit": "scripts.compliance.third_party_inventory_audit",
+    "render_sbom_license_inventory": "scripts.compliance.render_sbom_license_inventory",
     "validation_report_audit": "scripts.validation.validation_report_audit",
 }
 

@@ -66,6 +66,8 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     unit_test("threat_control_audit"),
     unit_test("repository_sync_audit"),
     py("scripts/skills/skill_consistency.py"),
+    py("scripts/skills/gen_directory_beacons.py", "--check"),
+    py("scripts/skills/test_skill_contract.py"),
     py("scripts/skills/skill_contract.py"),
     unit_test("project_docs_explorer"),
     HARNESS_CONTRACT,
@@ -74,6 +76,9 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/validation/endpoint_registration_audit.py"),
     ("bash", "scripts/runtime/run_node.sh", "scripts/validation/openclaw_connection_audit.mjs"),
     py("scripts/compliance/source_gate.py"),
+    py("scripts/compliance/third_party_inventory_audit.py"),
+    unit_test("third_party_inventory_audit"),
+    unit_test("render_sbom_license_inventory"),
     py("scripts/validation/tenets.py", "--check"),
     py("scripts/runtime/module_check.py", "--dir", "web/nemoclaw"),
     py("scripts/runtime/module_check.py", "--dir", "web"),
@@ -98,6 +103,8 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     unit_test("threat_control_audit"),
     unit_test("repository_sync_audit"),
     py("scripts/skills/skill_consistency.py"),
+    py("scripts/skills/gen_directory_beacons.py", "--check"),
+    py("scripts/skills/test_skill_contract.py"),
     py("scripts/skills/skill_contract.py"),
     py("scripts/validation/ci_storage_audit.py"),
     py("scripts/validation/branch_preview_manifest_audit.py", "--self-test"),
@@ -128,6 +135,9 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/validation/endpoint_registration_audit.py"),
     ("bash", "scripts/runtime/run_node.sh", "scripts/validation/openclaw_connection_audit.mjs"),
     py("scripts/compliance/source_gate.py"),
+    py("scripts/compliance/third_party_inventory_audit.py"),
+    unit_test("third_party_inventory_audit"),
+    unit_test("render_sbom_license_inventory"),
     unit_test("course_dependency_integrity"),
     cli_unit_test("cell_audit"),
     py("scripts/security/audit_python_dependencies.py"),
@@ -147,6 +157,17 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
 # Proposal runs may skip a mutation suite only when none of its implementation or contract
 # inputs changed. Full release runs omit --changed-since and execute every suite.
 MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
+    unit_test("third_party_inventory_audit"): (
+        "THIRD_PARTY_LICENSES.md", "scripts/compliance/third_party_inventory_audit.py",
+        "scripts/browser-vendor/package-lock.json", "web/nemoclaw/vendor/*",
+        "workspace/requirements*", "scripts/materials/requirements*",
+        "scripts/security/requirements*", "cpu/services/*", "web/nemoclaw/assets/SKILL.html",
+        "web/nemoclaw/mats/SKILL.html", "scripts/build/build_pages.sh",
+    ),
+    unit_test("render_sbom_license_inventory"): (
+        "THIRD_PARTY_LICENSES.md", "scripts/compliance/render_sbom_license_inventory.py",
+        "scripts/compliance/third_party_inventory_audit.py",
+    ),
     py("scripts/build/build_security_review_package.py", "--self-test"): (
         "scripts/build/build_security_review_package.py", "docs/product-design.md",
         "docs/security-design.md", "docs/security-control-disposition.md", "docs/release-test-plan.md",

@@ -5,8 +5,8 @@ This document explains the machine-readable
 [`security-architecture.svg`](security-architecture.svg) projection. The broader product scope,
 data and cryptography inventories, release behavior, and test mapping live in
 [`product-design.md`](product-design.md) and [`release-test-plan.md`](release-test-plan.md).
-The review disposition for repository-owned, host-owned, provider-owned, residual, and
-non-applicable requirements lives in
+Aggregate current controls, future candidates, triggers, and verification expectations live in
+[`security-control-themes.json`](security-control-themes.json). The shorter human status view is
 [`security-control-disposition.md`](security-control-disposition.md).
 This record contains no internal workflow, program identifier, submission version, or approval.
 
@@ -17,10 +17,12 @@ builds. It does not classify or release the NemoClaw product, launchable, runtim
 or relay deployments. Those systems appear below only as external dependencies and trust
 boundaries exercised by course lessons.
 
-Protected CI builds one static HTML, JavaScript, CSS, image, and locale artifact. The primary
-delivery path uses a public static host. An alternative integration pins a reviewed course release
-and vendors the static tree into a co-located launchable landing page. Both paths execute the course
-in the learner browser and connect to required model and NemoClaw services.
+The repository owns source and workflow definitions; an external source host and CI service execute
+those workflows. They produce one static HTML, JavaScript, CSS, image, and locale artifact. A public
+static host or co-located launchable serves that artifact. Course code then runs in the learner's
+untrusted browser and connects to external model and NemoClaw services.
+The co-located launchable may select a reviewed course release for vendoring, but its intake and
+deployment remain external and unattested by this repository.
 
 Docker Compose files under `deploy/` and services under `cpu/services/` support local authoring and
 tests. They are absent from the production static-site pipeline unless a future deployment adds
@@ -33,8 +35,9 @@ contradicts one of them must be corrected before its risk labels or requirement 
 accepted.
 
 - The subject is the DLI course repository and its static course artifact. The NemoClaw product,
-  launchable, runtime, model service, and relay deployments are external dependencies, not releases
-  or security boundaries owned by this repository.
+  source host and CI service, static host, launchable, runtime, model service, browser environment,
+  and relay deployments are external dependencies, not releases or security boundaries owned by
+  this repository.
 - The intended OSS Type I source and published course artifact are public. Their confidentiality
   after publication is not a security objective. Pre-publication confidentiality and Git transport
   configuration remain host-owned controls, and secrets are forbidden from source and build output.
@@ -43,10 +46,18 @@ accepted.
   can read them. HttpOnly cookies require a same-origin broker, and proof-of-possession requires
   issuer and service support.
 - Proposed-change validation executes untrusted repository code only in read-only jobs. Those jobs
-  receive no deployment credentials or release keys. A reviewed protected-branch build produces the
-  artifact, and a separately permissioned deployment job uses short-lived GitHub OIDC,
-  protected-environment review, serialized publication, artifact re-verification, and live-byte
-  comparison.
+  hold no signing key, model API credential, runtime credential, production-service secret, or
+  deployment key. The workflow separates artifact build from a deployment job configured for
+  short-lived GitHub OIDC, serialized publication, artifact re-verification, and live-byte
+  comparison. Required protected-environment review is live host evidence, not a repository fact.
+- CI does not write Git refs or repository content. Logs and test results are job artifacts or
+  external records. Branch and merge-request validation is normal; protected annotated tags only
+  identify release candidates.
+- A protected-environment reviewer is a human actor, not a component. A static host serves bytes;
+  repository workflows, not the host, enforce build and deployment gates.
+- In the architecture diagram, only solid green nodes are Target of Evaluation components. Dashed
+  gray nodes are external context with no live-control attestation. Edges state expected integration
+  routes and data, not verified external configuration. External-to-external internals are excluded.
 - The repository records a complete SHA-256 inventory and preserves one reviewed artifact through
   deployment. Cryptographic signing or provenance attestation is Not verified; a checksum is not a
   signature.
@@ -58,7 +69,7 @@ accepted.
 
 | Course host | Model service | NemoClaw runtime |
 |---|---|---|
-| Public static host | Direct HTTPS to the selected model endpoint. The default is NVIDIA-hosted; a presenter may supply a compatible capacity fallback. | HTTPS and WebSocket through the reviewed cross-origin relay. |
+| Public static host | Direct HTTPS to the selected model endpoint. The default is NVIDIA-hosted; a presenter may supply a compatible capacity fallback. | HTTPS and WebSocket through the configured cross-origin relay; live relay controls require operator evidence. |
 | Co-located launchable with a pinned course release | Direct HTTPS using the endpoint and credentials supplied through the launchable startup path and the course's existing browser credential mechanism. | Same-origin direct route to the launchable-created runtime; do not use the relay. |
 | Either host embedded in an iframe | Model relay when explicit iframe proxy mode is enabled. | Follow the host-specific NemoClaw route above. |
 
@@ -69,8 +80,8 @@ contract.
 
 | Boundary | Transport and data | Authentication | Primary controls |
 |---|---|---|---|
-| Contributor to protected CI | Git source and commit metadata | Developer identity and protected review | Required validators, DCO, protected merge and release permissions |
-| CI to static host | Validated static bundle | Protected deployment identity | Serialized publication, post-deploy checks, human review |
+| Course source to external CI | Public source and commit metadata | Developer identity; live policy requires operator evidence | Repository validators and DCO; live identity and review settings unverified |
+| External CI to static host | Static bundle and SHA-256 inventory | Workflow-requested deployment identity; live rules unverified | Bounded artifact, manifest recheck, and post-deploy byte comparison |
 | Static host to learner device | HTTPS pages and assets | Public or host-controlled access | Relative paths, locale integrity, preview isolation, URL checks |
 | Browser to model service | HTTPS credential, prompts, and responses | Learner-provided bearer credential | TLS, password input, direct route by default, optional iframe relay |
 | Browser to NemoClaw | HTTPS and WebSocket commands, events, and gateway credential | Gateway credential plus hosting identity | Host restriction, credential handling, sandbox policy, host-specific routing |
@@ -101,9 +112,9 @@ replace, and clear actions.
   pins, architecture drift, contribution boundaries, and release artifacts.
 - GitHub Pages builds in a read-only job, rejects unexpected executable references and artifact
   substitution, records every generated file by SHA-256, and exercises the exact tree in Chromium.
-- Eligible browser dependencies require exact versions and subresource integrity.
-- Cross-origin relays are restricted to reviewed routes and authentication behavior.
-- NemoClaw applies launch authentication, gateway checks, and sandbox policy.
+- Browser dependencies require exact versions, a generated integrity inventory, and same-origin delivery.
+- Course code selects reviewed relay routes and authentication behavior; live relay enforcement is Unknown until the operator supplies evidence.
+- Course code expects launch authentication, gateway checks, and sandbox policy; their deployed state is Unknown until launchable and runtime owners supply evidence.
 - Secrets, live credentials, internal deployment identifiers, scan output, and approval records do
   not belong in this document or graph.
 
@@ -113,11 +124,9 @@ design before release.
 
 ## Release controls
 
-Required CI validates source, builds the static artifact, checks configured deployed URLs, and
-records human ownership. Branch previews are isolated and time-bound. GitHub Pages deploys only the
-immutable artifact that passed generated-tree integrity checks and browser tests; the protected
-`github-pages` environment requires human review after those results exist, and the deploy job
-rechecks the artifact manifest before publication. A separate protected-tag path produces
+Repository workflow definitions validate source, build the static artifact, check configured URLs,
+and record human ownership. They request isolated branch previews and manifest-preserving Pages
+deployment; live source-host enforcement remains operator evidence. A separate tag workflow produces
 deterministic archives, a release manifest, an SBOM, and checksums.
 
 Python dependencies support local authoring and tests, not the production browser runtime. Direct

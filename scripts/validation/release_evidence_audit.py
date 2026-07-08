@@ -24,8 +24,8 @@ CONTRACT = ROOT / "docs" / "release-evidence.json"
 SOURCE_INVENTORY = ROOT / "scripts" / "compliance" / "docs" / "source_inventory.json"
 
 REQUIRED_DOCUMENTS = {
-    "design", "test_plan", "security_design", "security_control_disposition", "security_architecture",
-    "release_artifacts", "publication_state",
+    "design", "test_plan", "security_design", "security_control_disposition",
+    "security_control_themes", "security_architecture", "release_artifacts", "publication_state",
 }
 REQUIRED_RELEASE_ARTIFACTS = {
     "versioned-static-archive", "release-manifest", "cyclonedx-sbom", "sha256-checksums",
@@ -93,7 +93,7 @@ REQUIRED_WIRING = {
     "docs/agent_process.md": ("release_evidence_audit.py", "unittest discover -v -s tests/validation"),
     "docs/SKILL.html": (
         "product-design.md", "release-test-plan.md", "release-evidence.json",
-        "security-control-disposition.md",
+        "security-control-disposition.md", "security-control-themes.json",
         '"../RELEASE_STATUS.json"', '"../CHANGELOG.md"', '"render_markdown": true',
     ),
     "web/_skill_explorer.js": (
