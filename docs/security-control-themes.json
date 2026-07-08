@@ -1,0 +1,195 @@
+{
+  "schema": "nemoclaw-security-control-themes/1",
+  "target_of_evaluation": {
+    "owned": [
+      "DLI course source and repository CI definitions",
+      "validated static course artifact",
+      "course JavaScript, HTML, CSS, images, and locale overlays executed by the learner browser"
+    ],
+    "external_dependencies": [
+      "source host and CI execution service",
+      "static hosting service",
+      "co-located launchable",
+      "learner browser and device",
+      "model service",
+      "NemoClaw runtime",
+      "cross-origin relays"
+    ],
+    "local_only": [
+      "cpu/services",
+      "deploy",
+      "workspace"
+    ],
+    "ownership_rule": "A data-flow participant is not a repository-owned component. External controls remain unknown until the responsible operator supplies live evidence.",
+    "classification_rule": "The intended OSS Type I classification applies only to the NemoClaw DLI course repository and its static course artifacts.",
+    "explicit_facts": [
+      "Course source and released static artifacts are public; their confidentiality is not a security objective.",
+      "Proposed-change build and validation jobs hold no signing key, model API credential, runtime credential, production-service secret, or deployment key.",
+      "Artifact signing and provenance attestation are not implemented.",
+      "CI does not write Git refs or repository content; logs and test results are job artifacts or external records.",
+      "A protected-environment reviewer is a human actor, not a system component.",
+      "The static host serves bytes; repository workflows, not the host, enforce build and deployment gates.",
+      "Branch and merge-request validation is normal; protected annotated tags identify release candidates only.",
+      "Model, relay, launchable, runtime, and live-host controls remain unknown without current operator evidence."
+    ]
+  },
+  "assessment_status_rules": [
+    "Current status and current-control evidence take precedence over recommendations or future work.",
+    "A future candidate is not implemented and cannot support a Mitigated status.",
+    "An external control without current operator evidence remains Not Mitigated.",
+    "A contradiction between a claimed mitigation and the Target of Evaluation resolves to the conservative status.",
+    "A human reviewer or release owner is an actor, not a system component or automated control."
+  ],
+  "themes": [
+    {
+      "id": "source-ci-trust",
+      "title": "Source and CI trust",
+      "state": "shared-verification-required",
+      "owner": "repository and source-host administrators",
+      "current_control": "Read-only contribution jobs receive no deployment credentials; workflows use immutable action pins, required validation, DCO, and job timeouts.",
+      "evidence": [
+        ".github/workflows/pages.yml",
+        ".github/workflows/release.yml",
+        "scripts/validation/contribution_safety_audit.py"
+      ],
+      "future_candidate": "NO LIVE EVIDENCE. The source-host operator would need to demonstrate live MFA, protected branches and tags, reviewer policy, bypass restrictions, commit-signature policy, and retained audit records.",
+      "trigger": "Before public cutover and after any source-host or release-authority change.",
+      "verification": "Host administrator exports current ruleset, reviewer, bypass, identity, and audit evidence for the exact release ref."
+    },
+    {
+      "id": "build-supply-chain",
+      "title": "Build supply chain",
+      "state": "partially-verified",
+      "owner": "repository and release owners",
+      "current_control": "Python and browser dependencies use exact locks; browser bundles have license, source-reference, and SHA-256 inventories; SCA and SBOM checks are release gates.",
+      "evidence": [
+        "scripts/browser-vendor/package-lock.json",
+        "scripts/validation/course_dependency_integrity.py",
+        "scripts/security/run_full_sca.py"
+      ],
+      "future_candidate": "NOT IMPLEMENTED. If release policy requires stronger dependency-origin guarantees, the release owner would need to adopt an approved package mirror or offline cache and a hermetic, reproducible builder.",
+      "trigger": "When dependency sources, build runners, package registries, or release assurance requirements change.",
+      "verification": "Rebuild the same ref in two clean approved environments; compare artifacts, dependency closure, SBOMs, and provenance records."
+    },
+    {
+      "id": "artifact-integrity",
+      "title": "Artifact integrity and publication",
+      "state": "partially-verified",
+      "owner": "repository, release, and Product Security owners",
+      "current_control": "One bounded artifact is safely extracted, reverified against its complete SHA-256 inventory, deployed without rebuilding, and compared byte-for-byte with the live site.",
+      "evidence": [
+        "scripts/validation/pages_artifact_integrity.py",
+        ".github/workflows/pages.yml",
+        "docs/release_artifacts.md"
+      ],
+      "future_candidate": "NOT IMPLEMENTED. If checksum continuity is insufficient for release policy, the release owner would need to add an approved signing identity and verifiable artifact attestation.",
+      "trigger": "Before release if Product Security or release policy requires cryptographic provenance.",
+      "verification": "Verify signature and attestation subject, issuer, source ref, workflow identity, and artifact digest before promotion."
+    },
+    {
+      "id": "static-host-browser",
+      "title": "Static host and browser execution",
+      "state": "shared-verification-required",
+      "owner": "repository and static-host operators",
+      "current_control": "Course checks reject remote executable dependencies and unsafe URLs; untrusted model output is rendered through reviewed text or sanitization paths.",
+      "evidence": [
+        "scripts/validation/pages_artifact_integrity.py",
+        "scripts/validation/course_dependency_integrity.py",
+        "scripts/validation/runtime_integration_browser_audit.py"
+      ],
+      "future_candidate": "NO LIVE EVIDENCE. The hosting operator would need to demonstrate response-header CSP, HSTS, immutable caching, WAF, bandwidth limits, and any approved fronting CDN controls.",
+      "trigger": "Before public hosting and after host, CDN, browser dependency, or executable-content changes.",
+      "verification": "Probe live response headers and deployed bytes; review CSP violations and browser tests against the exact release artifact."
+    },
+    {
+      "id": "browser-credentials",
+      "title": "Browser-held credentials",
+      "state": "architecture-decision-required",
+      "owner": "hosting, credential-issuer, service, Privacy, and Product Security owners",
+      "current_control": "The static client uses password inputs, visible destinations, explicit save and clear actions, and route-specific credentials. Browser-readable localStorage is documented as an untrusted boundary.",
+      "evidence": [
+        "docs/product-design.md",
+        "docs/security-design.md",
+        "web/nemoclaw/scripts/_keypanel.js"
+      ],
+      "future_candidate": "NOT IMPLEMENTED. A future credential design could use shorter-lived, audience-scoped, revocable credentials; HttpOnly cookies require a same-origin broker, and proof-of-possession requires issuer and service support.",
+      "trigger": "Before accepting browser-held production credentials or when issuer capabilities change.",
+      "verification": "Document lifetime, audience, revocation, replay, referrer, shared-device, and storage behavior; test clear and expiry flows."
+    },
+    {
+      "id": "relay-boundary",
+      "title": "Relay boundary",
+      "state": "external-evidence-required",
+      "owner": "relay operators",
+      "current_control": "The course selects reviewed routes and sends only route-specific authentication, but repository fixtures do not attest the hosted relay.",
+      "evidence": [
+        "scripts/security/audit_iframe_proxy_opt_in.py",
+        "scripts/validation/openclaw_connection_audit.mjs",
+        "scripts/cors-proxy"
+      ],
+      "future_candidate": "NO LIVE EVIDENCE. The relay operator would need to demonstrate destination and method allowlists, schema and safe-deserialization rules, body and WebSocket-frame limits, object authorization, identity quotas, timeouts, rate limits, and its mTLS decision.",
+      "trigger": "Before a relay is approved for production and after any route or authentication change.",
+      "verification": "Relay owner supplies deployed configuration, negative tests, authorization tests, rate-limit results, TLS evidence, logging, retention, and incident-response ownership."
+    },
+    {
+      "id": "model-service-boundary",
+      "title": "Model-service boundary",
+      "state": "external-evidence-required",
+      "owner": "model-service and credential-issuer operators",
+      "current_control": "The course shows the selected endpoint, constrains endpoint registration, and treats prompts, outputs, and credentials as untrusted service traffic.",
+      "evidence": [
+        "scripts/security/audit_iframe_proxy_opt_in.py",
+        "scripts/validation/endpoint_registration_audit.py",
+        "docs/product-design.md"
+      ],
+      "future_candidate": "NO LIVE EVIDENCE. The model-service operator would need to demonstrate server-side authorization, instruction and tool boundaries, payload and token limits, concurrency, timeouts, spend controls, tenant isolation, retention policy, and abuse monitoring.",
+      "trigger": "Before approving a model endpoint and after provider, model, credential, or data-processing changes.",
+      "verification": "Service owner supplies authorization, quota, isolation, logging, retention, incident-response, and adversarial-test evidence."
+    },
+    {
+      "id": "launchable-runtime-boundary",
+      "title": "Launchable and runtime boundary",
+      "state": "external-evidence-required",
+      "owner": "launchable and NemoClaw runtime operators",
+      "current_control": "The course documents same-origin co-located routing and expected sandbox behavior; it does not deploy or attest the launchable or runtime.",
+      "evidence": [
+        "docs/security-design.md",
+        "scripts/validation/openclaw_connection_browser_audit.mjs",
+        "web/nemoclaw/03a-kickstart.html"
+      ],
+      "future_candidate": "NO LIVE EVIDENCE. Launchable and runtime operators would need to demonstrate pinned course intake, authenticated bootstrap, private listeners, configuration schema, safe deserialization, tenant and sandbox isolation, tool allowlists, quotas, credential binding, and patch ownership.",
+      "trigger": "Before each launchable/runtime release used by the course and after control-plane or sandbox changes.",
+      "verification": "Operators supply release identity, deployed configuration, isolation and escape tests, quota tests, authorization tests, and incident-response evidence."
+    },
+    {
+      "id": "availability-resource-controls",
+      "title": "Availability and resource controls",
+      "state": "shared-verification-required",
+      "owner": "repository, host, relay, model-service, and runtime operators",
+      "current_control": "Repository jobs and static artifacts have time, file-count, file-size, total-size, depth, archive-size, and expansion-ratio bounds.",
+      "evidence": [
+        "scripts/validation/pages_artifact_integrity.py",
+        ".github/workflows/pages.yml",
+        ".github/workflows/release.yml"
+      ],
+      "future_candidate": "NO LIVE EVIDENCE. External operators would need to demonstrate per-identity request, payload, token, concurrency, connection, CPU, memory, disk, spend, and egress limits with safe backpressure.",
+      "trigger": "Before production load and after traffic, capacity, pricing, or service-topology changes.",
+      "verification": "Run bounded load and abuse tests; retain quota, timeout, backpressure, alert, and recovery evidence from each operator."
+    },
+    {
+      "id": "assessment-fidelity",
+      "title": "Assessment fidelity",
+      "state": "human-review-required",
+      "owner": "release owner and Product Security reviewer",
+      "current_control": "The package separates repository ownership from external dependencies and publishes aggregate themes rather than private finding rows.",
+      "evidence": [
+        "docs/security-design.md",
+        "docs/security-control-disposition.md",
+        "scripts/build/build_security_review_package.py"
+      ],
+      "future_candidate": "NOT IMPLEMENTED. Before accepting generated risk output, a human reviewer would need to correct scope, ownership, facts, and statuses and keep unresolved external controls open until evidence exists.",
+      "trigger": "For every generated assessment and after any architecture or control change.",
+      "verification": "A human reviewer maps each private finding to one aggregate theme, records evidence and owner, and rejects unsupported mitigated claims."
+    }
+  ]
+}
