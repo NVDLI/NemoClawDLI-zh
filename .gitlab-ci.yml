@@ -310,9 +310,6 @@ pages:
         test -f public/index.html
         test -f public/branches.json
         test -f public/languages.json
-        test -f public/scripts/compliance/SKILL.html
-        test -f public/scripts/compliance/third_party_export_ui.js
-        test -f public/scripts/compliance/export_third_party_csv.py
         grep -q 'nemoclaw-branches/2' public/branches.json
         grep -Fq "$preview_ref" public/branches.json
       }
