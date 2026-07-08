@@ -145,13 +145,28 @@ def page(rel: Path, files: list[Path], directories: list[Path]) -> str:
             "up": {"label": "parent", "href": parent_skill},
         },
     }
-    if file_rows:
+    binary_names = {
+        name for name in direct_files
+        if Path(name).suffix.lower() in {".ico", ".jpeg", ".jpg", ".png", ".pptx", ".pdf", ".zip"}
+    }
+    if file_rows and not binary_names:
         config["files"] = file_rows
         if child_rows:
             config["related"] = child_rows
     else:
         config["mode"] = "hub"
-        config["links"] = [{"title": "Child directories", "items": child_rows}]
+        groups = []
+        if file_rows:
+            groups.append({
+                "title": "Files",
+                "items": [
+                    {"label": row["path"], "href": row["path"], "desc": row["desc"]}
+                    for row in file_rows
+                ],
+            })
+        if child_rows:
+            groups.append({"title": "Child directories", "items": child_rows})
+        config["links"] = groups
 
     file_links = "\n".join(
         f'      <li><a href="{html.escape(name)}"><code>{html.escape(name)}</code></a></li>'

@@ -5,6 +5,7 @@
     "test_plan": "docs/release-test-plan.md",
     "security_design": "docs/security-design.md",
     "security_control_disposition": "docs/security-control-disposition.md",
+    "security_control_themes": "docs/security-control-themes.json",
     "security_architecture": "docs/security-architecture.json",
     "release_artifacts": "docs/release_artifacts.md",
     "publication_state": "RELEASE_STATUS.json"

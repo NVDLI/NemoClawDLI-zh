@@ -15,6 +15,7 @@
     "scripts/compliance/source_gate.py",
     "scripts/compliance/third_party_inventory_audit.py",
     "scripts/compliance/export_third_party_csv.py",
+    "scripts/compliance/export_legal_scope_csv.py",
     "scripts/compliance/third_party_export_ui.js",
     "scripts/compliance/render_sbom_license_inventory.py",
     "scripts/compliance/docs/sbom_generation.md",
@@ -41,6 +42,28 @@
         "--category <vendored|build-input|validation|local-authoring|all>",
         "--base-container <description>",
         "--repository <internal-repository-url>",
+        "--project-ref <reviewed-ref>",
+        "--output <csv-path>"
+      ]
+    },
+    {
+      "id": "legal-scope-map",
+      "label": "Third-party legal-scope relationship map",
+      "format": "csv",
+      "preview_mount": "legal-scope-preview",
+      "command": "python3 scripts/compliance/export_legal_scope_csv.py",
+      "default_category": "all",
+      "categories": {
+        "referenced-source": "External work cited, summarized, or used as inspiration without vendoring it wholesale",
+        "tooling-not-distributed": "Validation, build-only, or authoring software not shipped in the static course",
+        "recreated-asset": "Repository-authored recreation distributed with recorded source terms",
+        "vendored-material": "Copied or format-shifted course material distributed with source terms",
+        "vendored-browser-code": "Third-party code copied into and executed by the static browser course",
+        "all": "Every recorded legal relationship"
+      },
+      "parameters": [
+        "--category <relationship-category|all>",
+        "--repository <review-repository-url>",
         "--project-ref <reviewed-ref>",
         "--output <csv-path>"
       ]
@@ -89,6 +112,11 @@
       "desc": "Writes the exact nine-column SWIPAT CSV shape with explicit vendored, build-input, validation, and local-authoring classifications."
     },
     {
+      "path": "export_legal_scope_csv.py",
+      "role": "legal-scope relationship export",
+      "desc": "Separates reference-only, tooling-only, recreated, vendored-material, and browser-code relationships with corroborating evidence."
+    },
+    {
       "path": "third_party_export_ui.js",
       "role": "reviewer preview",
       "desc": "Renders, filters, and downloads the same component classifications directly in this SKILL page."
@@ -129,6 +157,7 @@
     <div class="skill-cmd"><b>Third-party list</b><code>python3 scripts/compliance/third_party_inventory_audit.py --self-test &amp;&amp; python3 scripts/compliance/third_party_inventory_audit.py</code></div>
     <div class="skill-cmd"><b>Vendored SWIPAT CSV</b><code>python3 scripts/compliance/export_third_party_csv.py --output /tmp/nemoclaw-vendored.csv</code></div>
     <div class="skill-cmd"><b>All software relationships</b><code>python3 scripts/compliance/export_third_party_csv.py --category all --project-ref &lt;reviewed-ref&gt; --output /tmp/nemoclaw-all-software.csv</code></div>
+    <div class="skill-cmd"><b>Legal-scope map</b><code>python3 scripts/compliance/export_legal_scope_csv.py --category all --project-ref &lt;reviewed-ref&gt; --output /tmp/nemoclaw-legal-scope.csv</code></div>
     <div class="skill-cmd"><b>Post-scan licenses</b><code>python3 scripts/compliance/render_sbom_license_inventory.py --sbom &lt;cyclonedx.json&gt; --artifact-id &lt;digest-bound-artifact&gt; --out &lt;inventory.md&gt;</code></div>
   </div>
   <div class="skill-note">Keep the static inventory compact. The complete npm, Python, source-tree, conditional image, material-provenance, evidence-retention, and attachment commands live in <a href="docs/sbom_generation.md">the SBOM generation runbook</a>.</div>
@@ -173,11 +202,47 @@
       </div>
     </div>
   </section>
+  <section class="export-preview" aria-labelledby="legal-scope-title">
+    <h2 id="legal-scope-title">Legal-scope relationship preview</h2>
+    <p>This separate view prevents a reference, derivative asset, cached document, development tool, and distributed browser package from being mistaken for the same legal relationship. Every row links the external source or package, the recorded license or terms, and the exact repository evidence used to corroborate the classification.</p>
+    <div class="skill-note"><strong>How to answer the review:</strong> use <em>Referenced source</em> for cited or summarized works, <em>Tooling not distributed</em> for CI/local dependencies, <em>Recreated asset</em> for repository-authored derivatives, <em>Vendored material</em> for copied or format-shifted documents/assets, and <em>Vendored browser code</em> for code shipped to learners. The SWIPAT table above remains software-only.</div>
+    <div id="legal-scope-preview">
+      <div class="export-controls">
+        <label>Scope category
+          <select data-scope-category>
+            <option value="all" selected>All legal relationships</option>
+            <option value="referenced-source">Referenced source</option>
+            <option value="tooling-not-distributed">Tooling not distributed</option>
+            <option value="recreated-asset">Recreated asset</option>
+            <option value="vendored-material">Vendored material</option>
+            <option value="vendored-browser-code">Vendored browser code</option>
+          </select>
+        </label>
+        <label>Artifact relationship<select data-scope-relationship><option value="">All relationships</option></select></label>
+        <label>Recorded license or terms<select data-scope-terms><option value="">All recorded terms</option></select></label>
+        <label>Search<input data-scope-search type="search" placeholder="file, package, source, or terms"/></label>
+        <label>Export<button type="button" data-scope-download>Download filtered scope CSV</button></label>
+      </div>
+      <div class="export-status"><span data-scope-count>Loading scope preview...</span><span>Evidence-linked; no software/material conflation</span></div>
+      <div class="export-table-wrap">
+        <table class="export-table">
+          <thead><tr>
+            <th>Repository Item</th><th>Scope Category</th><th>Artifact Relationship</th>
+            <th>Distributed by NVIDIA in This Repository</th><th>Executed in Learner Browser</th>
+            <th>External Source or Package</th><th>Recorded License or Terms</th>
+            <th>Corroborating Repository Evidence</th><th>Legal Scope Note</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
   <h2>Linkage map</h2>
   <div class="skill-grid">
     <a class="skill-card" href="source_gate.py"><b>source_gate.py</b><span>Release-source and vendor-ingestion gate.</span></a>
     <a class="skill-card" href="third_party_inventory_audit.py"><b>third_party_inventory_audit.py</b><span>Static package, license, container-boundary, and material-provenance inventory gate.</span></a>
     <a class="skill-card" href="export_third_party_csv.py"><b>export_third_party_csv.py</b><span>Parameterized SWIPAT component-table export with explicit distribution categories.</span></a>
+    <a class="skill-card" href="export_legal_scope_csv.py"><b>export_legal_scope_csv.py</b><span>Evidence-linked scope map for references, tooling, recreations, vendored materials, and browser code.</span></a>
     <a class="skill-card" href="third_party_export_ui.js"><b>third_party_export_ui.js</b><span>In-page preview, filters, and filtered CSV download.</span></a>
     <a class="skill-card" href="render_sbom_license_inventory.py"><b>render_sbom_license_inventory.py</b><span>Digest-bound CycloneDX to static Markdown license reconciliation.</span></a>
     <a class="skill-card" href="docs/sbom_generation.md"><b>sbom_generation.md</b><span>Copyable scan commands and attachment evidence contract.</span></a>
@@ -192,6 +257,7 @@
   <ul>
     <li><a href="third_party_inventory_audit.py">third_party_inventory_audit.py</a></li>
     <li><a href="export_third_party_csv.py">export_third_party_csv.py</a></li>
+    <li><a href="export_legal_scope_csv.py">export_legal_scope_csv.py</a></li>
     <li><a href="third_party_export_ui.js">third_party_export_ui.js</a></li>
     <li><a href="render_sbom_license_inventory.py">render_sbom_license_inventory.py</a></li>
     <li><a href="source_gate.py">source_gate.py</a></li>

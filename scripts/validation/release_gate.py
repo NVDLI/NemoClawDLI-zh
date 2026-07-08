@@ -60,6 +60,7 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/compliance/source_gate.py"),
     py("scripts/compliance/third_party_inventory_audit.py"),
     py("scripts/compliance/export_third_party_csv.py", "--self-test"),
+    py("scripts/compliance/export_legal_scope_csv.py", "--self-test"),
     py("scripts/compliance/render_sbom_license_inventory.py", "--self-test"),
     py("scripts/validation/tenets.py", "--check"),
     py("scripts/runtime/module_check.py", "--dir", "web/nemoclaw"),
@@ -120,6 +121,7 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/compliance/third_party_inventory_audit.py", "--self-test"),
     py("scripts/compliance/third_party_inventory_audit.py"),
     py("scripts/compliance/export_third_party_csv.py", "--self-test"),
+    py("scripts/compliance/export_legal_scope_csv.py", "--self-test"),
     py("scripts/compliance/render_sbom_license_inventory.py", "--self-test"),
     py("scripts/validation/course_dependency_integrity.py", "--self-test"),
     py("scripts/validation/cell_audit.py", "--self-test"),
@@ -155,6 +157,11 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     py("scripts/compliance/export_third_party_csv.py", "--self-test"): (
         "THIRD_PARTY_LICENSES.md", "scripts/compliance/export_third_party_csv.py",
         "scripts/compliance/third_party_inventory_audit.py", "scripts/compliance/SKILL.html",
+        "scripts/compliance/third_party_export_ui.js", "web/nemoclaw/vendor/browser-dependencies.json",
+    ),
+    py("scripts/compliance/export_legal_scope_csv.py", "--self-test"): (
+        "THIRD_PARTY_LICENSES.md", "scripts/compliance/export_legal_scope_csv.py",
+        "scripts/compliance/export_third_party_csv.py", "scripts/compliance/SKILL.html",
         "scripts/compliance/third_party_export_ui.js", "web/nemoclaw/vendor/browser-dependencies.json",
     ),
     py("scripts/build/build_security_review_package.py", "--self-test"): (

@@ -13,6 +13,7 @@ INVENTORY = "THIRD_PARTY_LICENSES.md"
 RUNBOOK = "scripts/compliance/docs/sbom_generation.md"
 COMPLIANCE_SKILL = "scripts/compliance/SKILL.html"
 CSV_EXPORTER = "scripts/compliance/export_third_party_csv.py"
+SCOPE_EXPORTER = "scripts/compliance/export_legal_scope_csv.py"
 CSV_PREVIEW = "scripts/compliance/third_party_export_ui.js"
 PYTHON_LOCKS = (
     "workspace/requirements.lock",
@@ -73,6 +74,10 @@ REQUIRED_RUNBOOK_TEXT = (
     "source-tree.spdx.json",
 )
 REQUIRED_EXPORT_CATEGORIES = {"vendored", "build-input", "validation", "local-authoring", "all"}
+REQUIRED_SCOPE_CATEGORIES = {
+    "referenced-source", "tooling-not-distributed", "recreated-asset",
+    "vendored-material", "vendored-browser-code", "all",
+}
 
 
 def read(path: str, overrides: dict[str, str]) -> str:
@@ -141,6 +146,17 @@ def export_contract_findings(overrides: dict[str, str]) -> list[str]:
         for flag in ("--category", "--repository", "--project-ref", "--output"):
             if flag not in parameters:
                 findings.append(f"SWIPAT component export parameter is missing: {flag}")
+    scope_export = next((item for item in meta.get("exports", []) if item.get("id") == "legal-scope-map"), None)
+    if not scope_export:
+        findings.append("missing legal-scope relationship export in scripts/compliance/SKILL.html")
+    else:
+        categories = set((scope_export.get("categories") or {}).keys())
+        if not REQUIRED_SCOPE_CATEGORIES <= categories:
+            findings.append("legal-scope export does not distinguish every review relationship")
+        if scope_export.get("default_category") != "all":
+            findings.append("legal-scope export must default to the complete relationship map")
+        if scope_export.get("preview_mount") != "legal-scope-preview":
+            findings.append("legal-scope export does not declare its in-page preview mount")
     for token in (
         'id="third-party-export-preview"',
         "data-export-category",
@@ -148,11 +164,19 @@ def export_contract_findings(overrides: dict[str, str]) -> list[str]:
         "data-export-search",
         "data-export-download",
         '<script src="third_party_export_ui.js"></script>',
+        'id="legal-scope-preview"',
+        "data-scope-category",
+        "data-scope-terms",
+        "data-scope-download",
     ):
         if token not in skill:
             findings.append(f"SWIPAT in-page preview control is missing: {token}")
     preview = read(CSV_PREVIEW, overrides)
-    for token in ("vendored", "build-input", "validation", "local-authoring", "dataset.exportReady"):
+    for token in (
+        "vendored", "build-input", "validation", "local-authoring", "dataset.exportReady",
+        "referenced-source", "tooling-not-distributed", "recreated-asset", "vendored-material",
+        "vendored-browser-code", "Corroborating Repository Evidence",
+    ):
         if token not in preview:
             findings.append(f"SWIPAT preview implementation is incomplete: {token}")
     return findings
@@ -253,6 +277,7 @@ def self_test() -> tuple[int, int, list[str]]:
         ("SBOM runbook", {RUNBOOK: runbook.replace("# SBOM generation and attachment runbook", "# Missing runbook contract", 1)}, "missing SBOM acquisition instruction"),
         ("reviewer CSV export", {COMPLIANCE_SKILL: compliance_skill.replace('"id": "swipat-component-table"', '"id": "removed-export"', 1)}, "missing parameterized SWIPAT component export"),
         ("reviewer CSV preview", {COMPLIANCE_SKILL: compliance_skill.replace('id="third-party-export-preview"', 'id="removed-preview"', 1)}, "SWIPAT in-page preview control is missing"),
+        ("legal-scope export", {COMPLIANCE_SKILL: compliance_skill.replace('"id": "legal-scope-map"', '"id": "removed-scope"', 1)}, "missing legal-scope relationship export"),
     )
     failures = []
     passed = 0

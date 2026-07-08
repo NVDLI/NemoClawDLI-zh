@@ -15,6 +15,12 @@
   ];
   var OTHER = "Other (Please describe in Comments)";
   var INTERNAL = "Internal Use Only";
+  var SCOPE_HEADER = [
+    "Repository Item", "Scope Category", "Artifact Relationship",
+    "Distributed by NVIDIA in This Repository", "Executed in Learner Browser",
+    "External Source or Package", "Recorded License or Terms",
+    "Corroborating Repository Evidence", "Legal Scope Note"
+  ];
 
   function parseLinks(text) {
     var out = [], pattern = /\[([^\]]+)]\(([^)]+)\)/g, match;
@@ -165,6 +171,55 @@
     return all.map(function (row) { return row.map(csvCell).join(","); }).join("\n") + "\n";
   }
 
+  function plainCsv(header, rows) {
+    return [header].concat(rows.map(function (row) { return row.cells; }))
+      .map(function (row) { return row.map(csvCell).join(","); }).join("\n") + "\n";
+  }
+
+  function materialScopeRows(markdown, config) {
+    return tableRows(markdown, "Third-party course-material relationships").filter(function (row) {
+      return row.length >= 5;
+    }).map(function (row) {
+      var relationship = row[1];
+      var links = parseLinks(row[4]);
+      var source = links.length ? links[0].url : row[4];
+      var category, distributed, note;
+      if (relationship === "recreation") {
+        category = "recreated-asset"; distributed = "Yes";
+        note = "A repository-authored recreation is distributed; review the recorded source terms before release.";
+      } else if (relationship === "conversion") {
+        category = "vendored-material"; distributed = "Yes";
+        note = "A copied or format-shifted material artifact is distributed; the source terms remain controlling.";
+      } else {
+        category = "referenced-source"; distributed = "Yes - repository-authored item";
+        note = "The repository item is distributed, but the external work is cited, summarized, used as inspiration, or compiled as links rather than vendored wholesale.";
+      }
+      return { category:category, relationship:relationship, terms:row[3], cells:[
+        row[0], category, relationship, distributed, "No", source, row[3], repoFile(config, row[0]),
+        "Source label: " + row[2] + ". " + note
+      ]};
+    });
+  }
+
+  function legalSoftwareRows(manifest, markdown, config) {
+    var rows = vendoredRows(manifest, config).map(function (row) {
+      return {category:"vendored-browser-code", relationship:row.relationship, terms:row.cells[2], cells:[
+        row.cells[0] + "@" + row.cells[1], "vendored-browser-code", row.relationship,
+        "Yes", "Yes", row.cells[7], row.cells[2], row.cells[8],
+        "Copied into the same-origin static course; the repository license text and package source corroborate scope."
+      ]};
+    });
+    buildRows(markdown, config).filter(function (row) {
+      return row.relationship === "browser-build-only";
+    }).concat(validationRows(markdown, config), localRows(markdown, config)).forEach(function (row) {
+      rows.push({category:"tooling-not-distributed", relationship:row.relationship, terms:row.cells[2], cells:[
+        row.cells[0] + "@" + row.cells[1], "tooling-not-distributed", row.relationship,
+        "No", "No", row.cells[7], row.cells[2], row.cells[8], row.cells[6]
+      ]});
+    });
+    return rows;
+  }
+
   function text(node, value) {
     node.textContent = String(value == null ? "" : value);
   }
@@ -258,18 +313,94 @@
     });
   }
 
+  function mountScope(config, target) {
+    return Promise.all([
+      fetch(config.vendor_manifest).then(function (response) {
+        if (!response.ok) throw new Error("vendor manifest HTTP " + response.status);
+        return response.json();
+      }),
+      fetch(config.inventory).then(function (response) {
+        if (!response.ok) throw new Error("inventory HTTP " + response.status);
+        return response.text();
+      })
+    ]).then(function (sources) {
+      var rows = materialScopeRows(sources[1], config).concat(legalSoftwareRows(sources[0], sources[1], config));
+      var category = target.querySelector("[data-scope-category]");
+      var relationship = target.querySelector("[data-scope-relationship]");
+      var terms = target.querySelector("[data-scope-terms]");
+      var search = target.querySelector("[data-scope-search]");
+      var body = target.querySelector("tbody");
+      var count = target.querySelector("[data-scope-count]");
+
+      function options(select, values, label) {
+        select.replaceChildren();
+        var any = document.createElement("option"); any.value = ""; text(any, label); select.appendChild(any);
+        Array.from(new Set(values)).sort().forEach(function (value) {
+          var option = document.createElement("option"); option.value = value; text(option, value); select.appendChild(option);
+        });
+      }
+      function visibleRows() {
+        var query = search.value.trim().toLowerCase();
+        return rows.filter(function (row) {
+          return (category.value === "all" || row.category === category.value) &&
+            (!relationship.value || row.relationship === relationship.value) &&
+            (!terms.value || row.terms === terms.value) &&
+            (!query || row.cells.join(" ").toLowerCase().indexOf(query) >= 0);
+        });
+      }
+      function dependentOptions() {
+        var categoryRows = rows.filter(function (row) { return category.value === "all" || row.category === category.value; });
+        options(relationship, categoryRows.map(function (row) { return row.relationship; }), "All relationships");
+        options(terms, categoryRows.map(function (row) { return row.terms; }), "All recorded terms");
+      }
+      function paint() {
+        var visible = visibleRows(); body.replaceChildren();
+        visible.forEach(function (row) {
+          var tr = document.createElement("tr");
+          row.cells.forEach(function (value, index) {
+            var td = document.createElement("td");
+            if ([5, 7].indexOf(index) >= 0 && /^https?:/.test(value)) {
+              var anchor = document.createElement("a"); anchor.href = value; anchor.target = "_blank";
+              anchor.rel = "noopener noreferrer"; text(anchor, value); td.appendChild(anchor);
+            } else text(td, value);
+            tr.appendChild(td);
+          }); body.appendChild(tr);
+        });
+        text(count, visible.length + " relationship" + (visible.length === 1 ? "" : "s"));
+        target.dataset.exportReady = "1";
+      }
+      category.addEventListener("change", function () { dependentOptions(); paint(); });
+      relationship.addEventListener("change", paint); terms.addEventListener("change", paint); search.addEventListener("input", paint);
+      target.querySelector("[data-scope-download]").addEventListener("click", function () {
+        var blob = new Blob([plainCsv(SCOPE_HEADER, visibleRows())], {type:"text/csv;charset=utf-8"});
+        var link = document.createElement("a"); link.href = URL.createObjectURL(blob);
+        link.download = "nemoclaw-legal-scope-" + category.value + ".csv";
+        document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(link.href);
+      });
+      dependentOptions(); paint(); return rows;
+    }).catch(function (error) {
+      target.dataset.exportError = error.message;
+      text(target.querySelector("[data-scope-count]"), "Preview failed: " + error.message);
+      throw error;
+    });
+  }
+
   function boot() {
     var target = document.getElementById("third-party-export-preview");
+    var scopeTarget = document.getElementById("legal-scope-preview");
     var configNode = document.getElementById("third-party-export-config");
-    if (!target || !configNode) return;
+    if ((!target && !scopeTarget) || !configNode) return;
     try {
-      mount(JSON.parse(configNode.textContent), target);
+      var config = JSON.parse(configNode.textContent);
+      if (target) mount(config, target);
+      if (scopeTarget) mountScope(config, scopeTarget);
     } catch (error) {
-      target.dataset.exportError = error.message;
+      if (target) target.dataset.exportError = error.message;
+      if (scopeTarget) scopeTarget.dataset.exportError = error.message;
     }
   }
 
-  window.ThirdPartyExportUI = { mount: mount, csv: csv, header: HEADER.slice() };
+  window.ThirdPartyExportUI = { mount: mount, mountScope:mountScope, csv: csv, header: HEADER.slice(), scopeHeader:SCOPE_HEADER.slice() };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 })();

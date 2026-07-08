@@ -200,6 +200,12 @@ def _config_paths(config: dict) -> list[str]:
                 paths.append(item["path"])
     if config.get("readme"):
         paths.append(config["readme"])
+    for group in config.get("links", []) or []:
+        if not isinstance(group, dict):
+            continue
+        for item in group.get("items", []) or []:
+            if isinstance(item, dict) and item.get("href"):
+                paths.append(item["href"])
     return paths
 
 
@@ -268,7 +274,6 @@ def renderer_findings_for(skill: Path, root: Path) -> list[str]:
             scripts = [token for token in tokens if token.endswith((".py", ".js", ".mjs", ".sh"))]
             if scripts and not (root / scripts[0]).is_file():
                 findings.append(f"export {export.get('id', number)!r} command target is missing: {scripts[0]!r}")
-
     if config is not None:
         if "explorer" not in parser.ids:
             findings.append("explorer-config has no #explorer mount")
@@ -290,7 +295,7 @@ def renderer_findings_for(skill: Path, root: Path) -> list[str]:
                     )
         for reference in _config_paths(config):
             target = _local_target(skill, reference, root)
-            if target is None or not target.is_file():
+            if target is not None and not target.is_file():
                 findings.append(f"explorer-config file is missing: {reference!r}")
     elif not (parser.has_main or parser.has_section):
         findings.append("custom renderer needs a semantic <main> or <section> human view")
