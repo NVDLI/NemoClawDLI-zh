@@ -200,7 +200,7 @@ LITE_KEY_PANEL_JS = r"""
         '<label for="_lite_key_in">NVIDIA API key (nvapi-…)</label>' +
         '<input id="_lite_key_in" type="password" placeholder="nvapi-…" autocomplete="off"/>' +
         '<button id="_lite_key_btn">Save & verify</button>' +
-        '<div class="key-hint">Free key at <a href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com</a>. Stored in sessionStorage; cleared when this tab closes.</div>' +
+        '<div class="key-hint">Free key at <a href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener">build.nvidia.com</a>. Stored in sessionStorage; cleared when this tab closes.</div>' +
         (message ? '<div class="key-err">' + message + '</div>' : '') +
       '</div>';
     var inp = panel.querySelector("#_lite_key_in");

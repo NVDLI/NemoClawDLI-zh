@@ -2132,14 +2132,14 @@ pre .hljs                { color: #1f2328 !important; background: transparent !i
      calls and the agent runtime handles agent calls; nothing else is involved.</p>
 
   <div class="url-pair">
-    <a class="url-card" href="https://build.nvidia.com" target="_blank" rel="noopener">
+    <a class="url-card" href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener">
       <h3>build.nvidia.com</h3>
       <p>Chat Completions API. Stateless: one POST, one reply,
          no tools or session. Generate a key at API Keys.</p>
       <p style="color:var(--tf);font-size:.8rem">Your <code>nvapi-</code> key.
          The proxy forwards it unchanged.</p>
     </a>
-    <a class="url-card" href="https://brev.nvidia.com/launchable/deploy/now?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS" target="_blank" rel="noopener" style="border-left-color:#aee23a;background:rgba(118,185,0,.06)">
+    <a class="url-card" href="https://brev.nvidia.com/launchable/deploy?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS&amp;ncid=ref-dli-759990" target="_blank" rel="noopener" style="border-left-color:#aee23a;background:rgba(118,185,0,.06)">
       <h3>NemoClaw launchable</h3>
       <p>The OpenClaw agent runtime on Brev, at
          <code>https://nemoclaw-&lt;id&gt;.brevlab.com</code>. Identity, tools,
@@ -2283,7 +2283,7 @@ pre .hljs                { color: #1f2328 !important; background: transparent !i
     <h3>References</h3>
     <ul>
       <li><a href="https://platform.openai.com/docs/api-reference/chat" target="_blank" rel="noopener">OpenAI Chat Completions API</a>. The wire format the model endpoint speaks, including the <code>finish_reason</code> field this page surfaces.</li>
-      <li><a href="https://build.nvidia.com" target="_blank" rel="noopener">NVIDIA build.nvidia.com</a>. The model API behind the course proxy; paste your nvapi- key in the bearer field to authenticate.</li>
+      <li><a href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener">NVIDIA build.nvidia.com</a>. The model API behind the course proxy; paste your nvapi- key in the bearer field to authenticate.</li>
       <li><a href="https://docs.anthropic.com/en/docs/claude-code/overview" target="_blank" rel="noopener">Anthropic, <em>Claude Code</em> (docs)</a>. The directory-as-session pattern that the next page edits to change what OpenClaw is.</li>
       <li><a href="https://arxiv.org/abs/2304.03442" target="_blank" rel="noopener">Park et al., <em>Generative Agents</em> (2023)</a>. Establishes server-side memory plus identity as durable runtime structure, the model the session-key header implements.</li>
     </ul>
@@ -6097,7 +6097,7 @@ export function mountKeyPanel(container, opts = {}) {
         <button class="btn">Save &amp; verify</button>
         <div class="status"></div>
         <p style="margin:.8em 0 0;font-size:.8rem;color:var(--tf,#8a8a8a)">
-          No key yet? <a href="https://build.nvidia.com" target="_blank" rel="noopener">Sign up at build.nvidia.com &rarr;</a>
+          No key yet? <a href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener">Sign up at build.nvidia.com &rarr;</a>
           Free-tier models cover every exercise.
         </p>
       </div>`;
@@ -7121,7 +7121,7 @@ return { lines: lines.length };
         '<label for="_lite_key_in">NVIDIA API key (nvapi-…)</label>' +
         '<input id="_lite_key_in" type="password" placeholder="nvapi-…" autocomplete="off"/>' +
         '<button id="_lite_key_btn">Save & verify</button>' +
-        '<div class="key-hint">Free key at <a href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com</a>. Stored in sessionStorage; cleared when this tab closes.</div>' +
+        '<div class="key-hint">Free key at <a href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener">build.nvidia.com</a>. Stored in sessionStorage; cleared when this tab closes.</div>' +
         (message ? '<div class="key-err">' + message + '</div>' : '') +
       '</div>';
     var inp = panel.querySelector("#_lite_key_in");
@@ -7298,7 +7298,7 @@ forwards your key unchanged.</p>
 from your script or notebook. No proxy needed outside a browser context, where the same-origin restriction doesn't apply.</p>`,
     token: `<p><strong>What it is:</strong> Your NVIDIA API key, starting with <code>nvapi-</code>. Autofills from the key
 you saved on the course home page.</p>
-<p><strong>How to get one:</strong> Sign in at <a href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com</a>
+<p><strong>How to get one:</strong> Sign in at <a href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener">build.nvidia.com</a>
 → API Keys → Generate Key.</p>
 <p><strong>Running locally:</strong> Same key works everywhere. Store it as an environment variable
 (<code>NVIDIA_API_KEY</code>) rather than pasting it into code.</p>`,

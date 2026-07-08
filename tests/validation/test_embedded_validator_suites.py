@@ -20,6 +20,7 @@ for _path in (
 
 SUITES = {
     "course_dependency_integrity": "scripts.validation.course_dependency_integrity",
+    "external_link_attribution_audit": "scripts.validation.external_link_attribution_audit",
     "export_legal_scope_csv": "scripts.compliance.export_legal_scope_csv",
     "export_third_party_csv": "scripts.compliance.export_third_party_csv",
     "gitlab_ci_policy": "scripts.validation.gitlab_ci_policy",
