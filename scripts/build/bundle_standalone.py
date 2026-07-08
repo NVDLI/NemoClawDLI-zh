@@ -28,6 +28,7 @@ Usage:
 from __future__ import annotations
 import argparse
 import hashlib
+import os
 import re
 import shutil
 import sys
@@ -525,6 +526,34 @@ def _version_figure_sources(html: str, page_dir: Path) -> str:
     return FIGURE_SOURCE_RE.sub(replace, html)
 
 
+SKILL_EXPLORER_REF_RE = re.compile(
+    r'(?P<quote>["\'])(?:\.\.?/)*_skill_explorer\.js(?P=quote)'
+)
+
+
+def _rewrite_skill_explorer_paths(out: Path) -> int:
+    """Keep every copied nested SKILL renderer inside the standalone bundle.
+
+    Generated directory contracts carry paths relative to the source repository's
+    ``web/`` root. A standalone course has a different root, so copied assets,
+    materials, and vendor contracts must point to the explorer shipped at ``out``.
+    """
+    explorer = out / "_skill_explorer.js"
+    if not explorer.is_file():
+        return 0
+    changed = 0
+    for skill in out.rglob("SKILL.html"):
+        relative = Path(os.path.relpath(explorer, skill.parent)).as_posix()
+        source = skill.read_text(encoding="utf-8")
+        updated = SKILL_EXPLORER_REF_RE.sub(
+            lambda match: f'{match.group("quote")}{relative}{match.group("quote")}', source
+        )
+        if updated != source:
+            skill.write_text(updated, encoding="utf-8")
+            changed += 1
+    return changed
+
+
 def _self_test() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -552,6 +581,20 @@ def _self_test() -> int:
         assert second_digest != first_digest
         assert f'assets/figure.svg?v={second_digest}' in second
         assert first_digest not in second
+
+        bundle = root / "public" / "nemoclaw"
+        nested = bundle / "assets" / "figures" / "SKILL.html"
+        nested.parent.mkdir(parents=True)
+        (bundle / "_skill_explorer.js").write_text("fixture", encoding="utf-8")
+        nested.write_text(
+            '<script type="application/json" id="skill-meta">'
+            '{"explorer":"../../../_skill_explorer.js"}</script>'
+            '<script src="../../../_skill_explorer.js"></script>',
+            encoding="utf-8",
+        )
+        assert _rewrite_skill_explorer_paths(bundle) == 1
+        rewritten = nested.read_text(encoding="utf-8")
+        assert rewritten.count('"../../_skill_explorer.js"') == 2
     print("bundle_standalone self-test: PASS")
     return 0
 
@@ -859,6 +902,10 @@ def main() -> int:
         shutil.copytree(matsdir, out / "mats", dirs_exist_ok=True)
         n_mats = sum(1 for p in (out / "mats").rglob("*") if p.is_file())
         print(f"  copied mats/        ({n_mats} files)")
+
+    rewritten_skills = _rewrite_skill_explorer_paths(out)
+    if rewritten_skills:
+        print(f"  rebased SKILL renderers ({rewritten_skills} files)")
 
     print(f"\n{len(pages)} pages → {out}/")
     return 0

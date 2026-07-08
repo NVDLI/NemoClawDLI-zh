@@ -74,13 +74,14 @@ td:first-child{font-family:var(--mono);font-size:.85em;color:var(--gs);white-spa
 </style>
 </head>
 <body>
-<nav>
+<header data-skill-header="1">
+<nav aria-label="Skill navigation">
   <span class="logo">NVIDIA DLI</span>
   <span class="crumb">/ <a href="/lab/static/SKILL.html">workspace</a> / services / llm_client</span>
   <span class="spacer"></span>
   <span class="badge">service-skill</span>
-  <span class="badge">llm_client:9000</span>
-</nav>
+  <span class="badge">llm_client:9000</span> <span aria-hidden="true"> · </span> <a data-skill-nav="map" href="../../../SKILL.html">Repository map</a></nav>
+</header>
 
 <main>
   <h1>llm_client</h1>

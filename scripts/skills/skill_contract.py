@@ -148,6 +148,10 @@ class _RendererParser(HTMLParser):
         self.resources: list[tuple[str, str]] = []
         self.has_main = False
         self.has_section = False
+        self.has_skill_header = False
+        self._skill_header_depth = 0
+        self._skill_nav_depth = 0
+        self.skill_header_links: list[str] = []
         self._hidden = 0
         self.text: list[str] = []
 
@@ -157,6 +161,17 @@ class _RendererParser(HTMLParser):
             self.ids.add(values["id"])
         self.has_main = self.has_main or tag == "main"
         self.has_section = self.has_section or tag == "section"
+        if tag == "header" and values.get("data-skill-header") == "1":
+            self.has_skill_header = True
+            self._skill_header_depth = 1
+        elif self._skill_header_depth:
+            self._skill_header_depth += 1
+        if self._skill_header_depth and tag == "nav":
+            self._skill_nav_depth = 1
+        elif self._skill_nav_depth:
+            self._skill_nav_depth += 1
+        if self._skill_nav_depth and tag == "a" and values.get("href"):
+            self.skill_header_links.append(values["href"])
         if tag in {"script", "style"}:
             self._hidden += 1
         if tag == "script" and values.get("src"):
@@ -167,6 +182,10 @@ class _RendererParser(HTMLParser):
             self.resources.append((tag, values["src"]))
 
     def handle_endtag(self, tag: str) -> None:
+        if self._skill_nav_depth:
+            self._skill_nav_depth -= 1
+        if self._skill_header_depth:
+            self._skill_header_depth -= 1
         if tag in {"script", "style"} and self._hidden:
             self._hidden -= 1
 
@@ -244,6 +263,10 @@ def renderer_findings_for(skill: Path, root: Path) -> list[str]:
     visible = " ".join(parser.text).strip()
     if len(visible) < 20:
         findings.append("human renderer has no meaningful visible text")
+    if not parser.has_skill_header:
+        findings.append("missing semantic skill navigation header")
+    elif len(set(parser.skill_header_links)) < 2:
+        findings.append("skill navigation header needs at least two distinct links")
 
     if isinstance(meta, dict):
         exports = meta.get("exports", [])

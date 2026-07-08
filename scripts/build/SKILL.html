@@ -134,7 +134,9 @@
 </head>
 <body>
 <section class="skill-static" aria-labelledby="skill-title">
-  <nav class="skill-nav"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a></nav>
+  <header data-skill-header="1">
+<nav class="skill-nav" aria-label="Skill navigation"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a> <span aria-hidden="true"> · </span> <a data-skill-nav="map" href="../../SKILL.html">Repository map</a></nav>
+</header>
   <h1 id="skill-title">scripts/build packaging and deploy helpers</h1>
   <p>Build and publishing helpers for the static bundle, branch manifests, language manifests, hooks, and edX export.</p>
   <div class="skill-note">Some build commands write generated output. Use temporary output paths for checks unless you intend to update release artifacts.</div>

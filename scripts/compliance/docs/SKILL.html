@@ -77,7 +77,9 @@
 </head>
 <body>
 <section class="skill-static" aria-labelledby="skill-title">
-  <nav class="skill-nav"><a href="../../../web/index.html">Home</a><a href="../SKILL.html">scripts/compliance</a></nav>
+  <header data-skill-header="1">
+<nav class="skill-nav" aria-label="Skill navigation"><a href="../../../web/index.html">Home</a><a href="../SKILL.html">scripts/compliance</a> <span aria-hidden="true"> · </span> <a data-skill-nav="map" href="../../../SKILL.html">Repository map</a></nav>
+</header>
   <h1 id="skill-title">scripts/compliance/docs release readiness</h1>
   <p>Release-safe process docs live here so source governance stays with the scripts that enforce it. These files avoid private process links and describe contributor-facing requirements only.</p>
   <div class="skill-note">Use these docs with <code>python3 scripts/compliance/source_gate.py</code> before adding assets, mats, datasets, cached references, or copied examples.</div>

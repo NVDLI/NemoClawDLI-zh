@@ -224,6 +224,66 @@
     node.textContent = String(value == null ? "" : value);
   }
 
+  function selectedValues(container) {
+    return new Set(Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(function (input) {
+      return input.value;
+    }));
+  }
+
+  function choiceGroup(container, values, selected, onChange) {
+    container.replaceChildren();
+    var actions = document.createElement("span"); actions.className = "filter-actions";
+    var all = document.createElement("button"); all.type = "button"; text(all, "All");
+    var none = document.createElement("button"); none.type = "button"; text(none, "None");
+    actions.append(all, none); container.appendChild(actions);
+    var chips = document.createElement("span"); chips.className = "filter-chips"; container.appendChild(chips);
+    values.forEach(function (value) {
+      var label = document.createElement("label"); label.className = "filter-chip";
+      var input = document.createElement("input"); input.type = "checkbox"; input.value = value;
+      input.checked = selected.has(value); input.addEventListener("change", onChange);
+      var caption = document.createElement("span"); text(caption, value);
+      label.append(input, caption); chips.appendChild(label);
+    });
+    all.addEventListener("click", function () {
+      chips.querySelectorAll('input[type="checkbox"]').forEach(function (input) { input.checked = true; });
+      onChange();
+    });
+    none.addEventListener("click", function () {
+      chips.querySelectorAll('input[type="checkbox"]').forEach(function (input) { input.checked = false; });
+      onChange();
+    });
+  }
+
+  function sortedRows(rows, state) {
+    if (state.index == null) return rows.slice();
+    var direction = state.direction === "desc" ? -1 : 1;
+    return rows.map(function (row, index) { return {row:row, index:index}; }).sort(function (left, right) {
+      var compared = String(left.row.cells[state.index] || "").localeCompare(
+        String(right.row.cells[state.index] || ""), undefined, {numeric:true, sensitivity:"base"}
+      );
+      return compared ? compared * direction : left.index - right.index;
+    }).map(function (item) { return item.row; });
+  }
+
+  function sortableHeaders(table, state, onChange) {
+    table.querySelectorAll("thead th").forEach(function (th, index) {
+      var label = th.textContent.trim(); th.replaceChildren(); th.setAttribute("aria-sort", "none");
+      var button = document.createElement("button"); button.type = "button"; button.dataset.sortIndex = String(index);
+      button.className = "sort-button"; button.setAttribute("aria-label", "Sort by " + label);
+      var caption = document.createElement("span"); text(caption, label);
+      var arrow = document.createElement("span"); arrow.className = "sort-arrow"; text(arrow, "↕");
+      button.append(caption, arrow); th.appendChild(button);
+      button.addEventListener("click", function () {
+        if (state.index === index) state.direction = state.direction === "asc" ? "desc" : "asc";
+        else { state.index = index; state.direction = "asc"; }
+        table.querySelectorAll("thead th").forEach(function (item) { item.setAttribute("aria-sort", "none"); });
+        table.querySelectorAll(".sort-arrow").forEach(function (item) { text(item, "↕"); });
+        th.setAttribute("aria-sort", state.direction === "asc" ? "ascending" : "descending");
+        text(arrow, state.direction === "asc" ? "↑" : "↓"); onChange();
+      });
+    });
+  }
+
   function mount(config, target) {
     return Promise.all([
       fetch(config.vendor_manifest).then(function (response) {
@@ -239,43 +299,42 @@
         .concat(buildRows(sources[1], config))
         .concat(validationRows(sources[1], config))
         .concat(localRows(sources[1], config));
-      var category = target.querySelector("[data-export-category]");
-      var relationship = target.querySelector("[data-export-relationship]");
-      var license = target.querySelector("[data-export-license]");
+      var category = target.querySelector("[data-export-category-group]");
+      var relationship = target.querySelector("[data-export-relationship-group]");
+      var license = target.querySelector("[data-export-license-group]");
       var search = target.querySelector("[data-export-search]");
       var base = target.querySelector("[data-export-base]");
       var body = target.querySelector("tbody");
       var count = target.querySelector("[data-export-count]");
-
-      Array.from(new Set(rows.map(function (row) { return row.cells[2]; }))).sort().forEach(function (value) {
-        var option = document.createElement("option"); text(option, value); option.value = value; license.appendChild(option);
-      });
+      var sortState = {index:null, direction:"asc"};
+      var categories = Array.from(new Set(rows.map(function (row) { return row.category; }))).sort();
 
       function visibleRows() {
         var query = search.value.trim().toLowerCase();
+        var selectedCategories = selectedValues(category);
+        var selectedRelationships = selectedValues(relationship);
+        var selectedLicenses = selectedValues(license);
         return rows.filter(function (row) {
-          return (category.value === "all" || row.category === category.value) &&
-            (!relationship.value || row.relationship === relationship.value) &&
-            (!license.value || row.cells[2] === license.value) &&
+          return selectedCategories.has(row.category) && selectedRelationships.has(row.relationship) &&
+            selectedLicenses.has(row.cells[2]) &&
             (!query || row.cells.join(" ").toLowerCase().indexOf(query) >= 0);
         });
       }
 
       function relationshipOptions() {
-        var current = relationship.value;
-        var options = Array.from(new Set(rows.filter(function (row) {
-          return category.value === "all" || row.category === category.value;
+        var selectedCategories = selectedValues(category);
+        var categoryRows = Array.from(new Set(rows.filter(function (row) {
+          return selectedCategories.has(row.category);
         }).map(function (row) { return row.relationship; }))).sort();
-        relationship.replaceChildren();
-        var any = document.createElement("option"); any.value = ""; text(any, "All relationships"); relationship.appendChild(any);
-        options.forEach(function (value) {
-          var option = document.createElement("option"); option.value = value; text(option, value); relationship.appendChild(option);
-        });
-        relationship.value = options.indexOf(current) >= 0 ? current : "";
+        var licenses = Array.from(new Set(rows.filter(function (row) {
+          return selectedCategories.has(row.category);
+        }).map(function (row) { return row.cells[2]; }))).sort();
+        choiceGroup(relationship, categoryRows, new Set(categoryRows), paint);
+        choiceGroup(license, licenses, new Set(licenses), paint);
       }
 
       function paint() {
-        var visible = visibleRows();
+        var visible = sortedRows(visibleRows(), sortState);
         body.replaceChildren();
         visible.forEach(function (row) {
           var tr = document.createElement("tr");
@@ -292,18 +351,16 @@
         target.dataset.exportReady = "1";
       }
 
-      category.addEventListener("change", function () { relationshipOptions(); paint(); });
-      relationship.addEventListener("change", paint);
-      license.addEventListener("change", paint);
       search.addEventListener("input", paint);
       target.querySelector("[data-export-download]").addEventListener("click", function () {
-        var blob = new Blob([csv(visibleRows(), base.value)], { type: "text/csv;charset=utf-8" });
+        var blob = new Blob([csv(sortedRows(visibleRows(), sortState), base.value)], { type: "text/csv;charset=utf-8" });
         var link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = "nemoclaw-third-party-components-" + category.value + ".csv";
+        link.download = "nemoclaw-third-party-components-filtered.csv";
         document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(link.href);
       });
-      relationshipOptions(); paint();
+      choiceGroup(category, categories, new Set(["vendored"]), function () { relationshipOptions(); paint(); });
+      relationshipOptions(); sortableHeaders(target.querySelector("table"), sortState, paint); paint();
       return rows;
     }).catch(function (error) {
       target.dataset.exportError = error.message;
@@ -325,36 +382,35 @@
       })
     ]).then(function (sources) {
       var rows = materialScopeRows(sources[1], config).concat(legalSoftwareRows(sources[0], sources[1], config));
-      var category = target.querySelector("[data-scope-category]");
-      var relationship = target.querySelector("[data-scope-relationship]");
-      var terms = target.querySelector("[data-scope-terms]");
+      var category = target.querySelector("[data-scope-category-group]");
+      var relationship = target.querySelector("[data-scope-relationship-group]");
+      var terms = target.querySelector("[data-scope-terms-group]");
       var search = target.querySelector("[data-scope-search]");
       var body = target.querySelector("tbody");
       var count = target.querySelector("[data-scope-count]");
-
-      function options(select, values, label) {
-        select.replaceChildren();
-        var any = document.createElement("option"); any.value = ""; text(any, label); select.appendChild(any);
-        Array.from(new Set(values)).sort().forEach(function (value) {
-          var option = document.createElement("option"); option.value = value; text(option, value); select.appendChild(option);
-        });
-      }
+      var sortState = {index:null, direction:"asc"};
+      var categories = Array.from(new Set(rows.map(function (row) { return row.category; }))).sort();
       function visibleRows() {
         var query = search.value.trim().toLowerCase();
+        var selectedCategories = selectedValues(category);
+        var selectedRelationships = selectedValues(relationship);
+        var selectedTerms = selectedValues(terms);
         return rows.filter(function (row) {
-          return (category.value === "all" || row.category === category.value) &&
-            (!relationship.value || row.relationship === relationship.value) &&
-            (!terms.value || row.terms === terms.value) &&
+          return selectedCategories.has(row.category) && selectedRelationships.has(row.relationship) &&
+            selectedTerms.has(row.terms) &&
             (!query || row.cells.join(" ").toLowerCase().indexOf(query) >= 0);
         });
       }
       function dependentOptions() {
-        var categoryRows = rows.filter(function (row) { return category.value === "all" || row.category === category.value; });
-        options(relationship, categoryRows.map(function (row) { return row.relationship; }), "All relationships");
-        options(terms, categoryRows.map(function (row) { return row.terms; }), "All recorded terms");
+        var selectedCategories = selectedValues(category);
+        var categoryRows = rows.filter(function (row) { return selectedCategories.has(row.category); });
+        var relationships = Array.from(new Set(categoryRows.map(function (row) { return row.relationship; }))).sort();
+        var recordedTerms = Array.from(new Set(categoryRows.map(function (row) { return row.terms; }))).sort();
+        choiceGroup(relationship, relationships, new Set(relationships), paint);
+        choiceGroup(terms, recordedTerms, new Set(recordedTerms), paint);
       }
       function paint() {
-        var visible = visibleRows(); body.replaceChildren();
+        var visible = sortedRows(visibleRows(), sortState); body.replaceChildren();
         visible.forEach(function (row) {
           var tr = document.createElement("tr");
           row.cells.forEach(function (value, index) {
@@ -369,15 +425,15 @@
         text(count, visible.length + " relationship" + (visible.length === 1 ? "" : "s"));
         target.dataset.exportReady = "1";
       }
-      category.addEventListener("change", function () { dependentOptions(); paint(); });
-      relationship.addEventListener("change", paint); terms.addEventListener("change", paint); search.addEventListener("input", paint);
+      search.addEventListener("input", paint);
       target.querySelector("[data-scope-download]").addEventListener("click", function () {
-        var blob = new Blob([plainCsv(SCOPE_HEADER, visibleRows())], {type:"text/csv;charset=utf-8"});
+        var blob = new Blob([plainCsv(SCOPE_HEADER, sortedRows(visibleRows(), sortState))], {type:"text/csv;charset=utf-8"});
         var link = document.createElement("a"); link.href = URL.createObjectURL(blob);
-        link.download = "nemoclaw-legal-scope-" + category.value + ".csv";
+        link.download = "nemoclaw-legal-scope-filtered.csv";
         document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(link.href);
       });
-      dependentOptions(); paint(); return rows;
+      choiceGroup(category, categories, new Set(categories), function () { dependentOptions(); paint(); });
+      dependentOptions(); sortableHeaders(target.querySelector("table"), sortState, paint); paint(); return rows;
     }).catch(function (error) {
       target.dataset.exportError = error.message;
       text(target.querySelector("[data-scope-count]"), "Preview failed: " + error.message);

@@ -159,14 +159,16 @@ def export_contract_findings(overrides: dict[str, str]) -> list[str]:
             findings.append("legal-scope export does not declare its in-page preview mount")
     for token in (
         'id="third-party-export-preview"',
-        "data-export-category",
-        "data-export-license",
+        "data-export-category-group",
+        "data-export-relationship-group",
+        "data-export-license-group",
         "data-export-search",
         "data-export-download",
         '<script src="third_party_export_ui.js"></script>',
         'id="legal-scope-preview"',
-        "data-scope-category",
-        "data-scope-terms",
+        "data-scope-category-group",
+        "data-scope-relationship-group",
+        "data-scope-terms-group",
         "data-scope-download",
     ):
         if token not in skill:
@@ -176,6 +178,7 @@ def export_contract_findings(overrides: dict[str, str]) -> list[str]:
         "vendored", "build-input", "validation", "local-authoring", "dataset.exportReady",
         "referenced-source", "tooling-not-distributed", "recreated-asset", "vendored-material",
         "vendored-browser-code", "Corroborating Repository Evidence",
+        "selectedValues", "choiceGroup", "sortedRows", "sortableHeaders", "dataset.sortIndex",
     ):
         if token not in preview:
             findings.append(f"SWIPAT preview implementation is incomplete: {token}")
@@ -277,7 +280,10 @@ def self_test() -> tuple[int, int, list[str]]:
         ("SBOM runbook", {RUNBOOK: runbook.replace("# SBOM generation and attachment runbook", "# Missing runbook contract", 1)}, "missing SBOM acquisition instruction"),
         ("reviewer CSV export", {COMPLIANCE_SKILL: compliance_skill.replace('"id": "swipat-component-table"', '"id": "removed-export"', 1)}, "missing parameterized SWIPAT component export"),
         ("reviewer CSV preview", {COMPLIANCE_SKILL: compliance_skill.replace('id="third-party-export-preview"', 'id="removed-preview"', 1)}, "SWIPAT in-page preview control is missing"),
+        ("multi-select preview", {COMPLIANCE_SKILL: compliance_skill.replace("data-export-license-group", "data-export-license-single", 1)}, "SWIPAT in-page preview control is missing"),
+        ("column sort preview", {CSV_PREVIEW: read(CSV_PREVIEW, {}).replace("sortableHeaders", "removedSortableHeaders")}, "SWIPAT preview implementation is incomplete"),
         ("legal-scope export", {COMPLIANCE_SKILL: compliance_skill.replace('"id": "legal-scope-map"', '"id": "removed-scope"', 1)}, "missing legal-scope relationship export"),
+        ("legal-scope multi-select", {COMPLIANCE_SKILL: compliance_skill.replace("data-scope-relationship-group", "data-scope-relationship-single", 1)}, "SWIPAT in-page preview control is missing"),
     )
     failures = []
     passed = 0

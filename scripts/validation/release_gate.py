@@ -49,6 +49,8 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/validation/repository_sync_audit.py", "--self-test"),
     py("scripts/skills/skill_consistency.py"),
     py("scripts/skills/gen_directory_beacons.py", "--check"),
+    py("scripts/skills/normalize_skill_headers.py", "--self-test"),
+    py("scripts/skills/normalize_skill_headers.py", "--check"),
     py("scripts/skills/test_skill_contract.py"),
     py("scripts/skills/skill_contract.py"),
     py("scripts/build/project_docs_explorer.py", "--self-test"),
@@ -87,6 +89,8 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/validation/repository_sync_audit.py", "--self-test"),
     py("scripts/skills/skill_consistency.py"),
     py("scripts/skills/gen_directory_beacons.py", "--check"),
+    py("scripts/skills/normalize_skill_headers.py", "--self-test"),
+    py("scripts/skills/normalize_skill_headers.py", "--check"),
     py("scripts/skills/test_skill_contract.py"),
     py("scripts/skills/skill_contract.py"),
     py("scripts/validation/ci_storage_audit.py"),
@@ -143,6 +147,10 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
 # Proposal runs may skip a mutation suite only when none of its implementation or contract
 # inputs changed. Full release runs omit --changed-since and execute every suite.
 MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
+    py("scripts/skills/normalize_skill_headers.py", "--self-test"): (
+        "scripts/skills/normalize_skill_headers.py", "scripts/skills/gen_directory_beacons.py",
+        "SKILL_CONTRACT.md", "**/SKILL.html",
+    ),
     py("scripts/compliance/third_party_inventory_audit.py", "--self-test"): (
         "THIRD_PARTY_LICENSES.md", "scripts/compliance/third_party_inventory_audit.py",
         "scripts/browser-vendor/package-lock.json", "web/nemoclaw/vendor/*",

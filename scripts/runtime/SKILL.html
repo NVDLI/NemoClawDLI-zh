@@ -120,7 +120,9 @@
 </head>
 <body>
 <section class="skill-static" aria-labelledby="skill-title">
-  <nav class="skill-nav"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a></nav>
+  <header data-skill-header="1">
+<nav class="skill-nav" aria-label="Skill navigation"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a> <span aria-hidden="true"> · </span> <a data-skill-nav="map" href="../../SKILL.html">Repository map</a></nav>
+</header>
   <h1 id="skill-title">scripts/runtime link and browser runtime</h1>
   <p>Runtime-facing tooling: the single JavaScript link engine, the browser topology viewer, and the thin Python and shell shims that run the same engine in CI.</p>
   <div class="skill-note">Browser/container harness commands that need Playwright or lab networking belong here; static gates stay in scripts/validation. Before claiming browser smoke unavailable, run <code>scripts/runtime/browser_env_probe.sh</code>; host Node, Chromium, and Playwright are optional because the test image carries them. Docker may exist without <code>docker compose</code>, and Podman may exist without <code>podman compose</code>. If native Compose is unavailable but the probe reports <code>podman-compose-via-python: yes</code>, use <code>python3 -m podman_compose</code>. <strong>OpenClaw fallback:</strong> if local OpenClaw fails, hangs, or logs <code>EPERM</code>, stop local probing and run the credentialed page harness with the Brev URL plus <code>CF_Authorization</code> in <code>CLAW_CF</code>. The harness stores URL/token/JWT in the same <code>localStorage</code> keys the course page uses and can discover the gateway token from <code>/api/agent</code> when <code>CLAW_TOKEN</code> is absent. Override the relay only for an explicit test deployment with <code>OPENCLAW_CORS_PROXY_BASE</code>; the course UI persists the equivalent setting once from Module 3a.</div>

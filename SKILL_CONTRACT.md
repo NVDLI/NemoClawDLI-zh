@@ -60,7 +60,11 @@ build output is outside the source set by construction; tracked locale overlays,
 workflow directories, data directories, and runtime skill seeds remain inside it.
 
 `gen_directory_beacons.py` creates the standard dual-reader contract for a newly discovered
-directory. `skill_contract.py` then validates the metadata, directory accuracy, human-readable
+directory. Every beacon also has a semantic `<header data-skill-header="1">` containing a
+navigation region with at least two distinct destinations. The standard header points home, up
+to the parent contract, and around to the repository map. Run `normalize_skill_headers.py --apply`
+after importing a hand-authored beacon and use `--check` in automated validation.
+`skill_contract.py` then validates the metadata, directory accuracy, human-readable
 body, shared-renderer wiring, local assets, and configured file paths. The Playwright renderer
 audit loads every discovered beacon and rejects runtime errors or an explorer that fails to mount.
 
@@ -103,6 +107,10 @@ Each export names its format, command, parameters, default category, and an in-p
 The page must render the current rows before offering a download. Filtering and downloading operate
 on the visible classification so a reviewer can distinguish distributed code from build inputs,
 validation installs, and local-authoring references without reconstructing that distinction from prose.
+Use checkbox groups for independent multi-selection. Radio buttons represent one mutually exclusive
+choice and are therefore unsuitable when a reviewer needs several categories or licenses at once.
+Tabular previews expose ascending and descending sorting on every column, and the filtered download
+preserves the visible sort order.
 
 ---
 
