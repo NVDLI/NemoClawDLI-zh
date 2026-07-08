@@ -137,8 +137,8 @@
     {
       "path": "web/nemoclaw/assets/favicon.ico",
       "kind": "course-asset",
-      "license": "Apache-2.0",
-      "disposition": "course favicon"
+      "license": "external-terms",
+      "disposition": "NVIDIA corporate favicon; NVIDIA Logo and Brand Guidelines and trademark rights apply"
     },
     {
       "path": "web/nemoclaw/assets/cli_readme_claude-code.txt",
