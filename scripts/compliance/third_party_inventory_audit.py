@@ -44,6 +44,13 @@ REQUIRED_DISTRIBUTION_LINES = (
     'cp "$T1/THIRD_PARTY_LICENSES.md" "$OUT/THIRD_PARTY_LICENSES.md"',
 )
 REQUIRED_EXPLANATIONS = (
+    "## Reproducing license-evidence acquisition",
+    "Package names are never discovered by searching the web",
+    "npm view <name>@<version> license dist.integrity repository --json",
+    "https://pypi.org/pypi/<normalized-name>/<version>/json",
+    "syft <image-name>@sha256:<64-hex-digest>",
+    "Those extractors acquire content, not permission.",
+    "Scanner-provided SPDX identifiers or expressions win.",
     "`argparse@2.0.1` is a JavaScript npm package used transitively by `js-yaml@5.2.1`.",
     "No package row in this inventory declares GPL.",
     "`LGPL-2.0-or-later` tooling entry",
@@ -179,6 +186,7 @@ def self_test() -> tuple[int, int, list[str]]:
         ("service pin", {"cpu/services/llm_client/llm_client.Dockerfile": dockerfile.replace("uvicorn[standard]==0.49.0", "uvicorn[standard]", 1)}, "llm-client dependency is not exact"),
         ("artifact distribution", {"scripts/build/build_pages.sh": pages_build.replace('cp "$T1/THIRD_PARTY_LICENSES.md" "$OUT/THIRD_PARTY_LICENSES.md"', "# removed third-party inventory", 1)}, "Pages artifact does not distribute required license file"),
         ("argparse explanation", {INVENTORY: document.replace("`argparse@2.0.1` is a JavaScript npm package used transitively by `js-yaml@5.2.1`.", "argparse is unexplained.", 1)}, "missing license-scope explanation"),
+        ("acquisition procedure", {INVENTORY: document.replace("## Reproducing license-evidence acquisition", "## Undocumented acquisition", 1)}, "missing license-scope explanation"),
     )
     failures = []
     passed = 0

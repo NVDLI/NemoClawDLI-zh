@@ -6,6 +6,134 @@ The root [Apache-2.0 license](LICENSE) covers NVIDIA-authored project code. Per-
 
 External pages that are only linked or summarized are not software dependencies. They are listed separately at the end so redistribution and inspiration are not conflated.
 
+## Reproducing license-evidence acquisition
+
+The inventory is derived from exact repository inputs and immutable scan artifacts.
+Package names are never discovered by searching the web, and a search-engine result is never accepted as license
+evidence. Run these steps at the reviewed commit, record every tool version, and retain the raw lock,
+metadata response, license text, or SBOM beside the generated result.
+
+| Surface | How components are enumerated | How license evidence is acquired | Retained evidence |
+|---|---|---|---|
+| Browser npm graph | Every non-root `packages` entry in `scripts/browser-vendor/package-lock.json`; the shipped subset comes from esbuild metafiles during vendoring | SPDX identifier from the exact lock entry; for a shipped package, copy its installed `LICENSE`/`LICENCE` file, or use a reviewed `license-overrides/` text only when the package omits that file | Lock file and SHA-256, generated browser manifest/SBOM, copied license text, asset hashes |
+| Python environments | Every exact `==` pin in the four lock/declaration files enforced by `third_party_inventory_audit.py`, plus the three CUDA wheel pins | Exact-version PyPI JSON at `https://pypi.org/pypi/<normalized-name>/<version>/json`; prefer `license_expression`/core metadata, then inspect the exact distribution's license file or tagged upstream source when metadata is named, legacy, or absent | URL recorded in each row, exact lock, scanner SBOM, static SPDX disposition |
+| Direct images and OS packages | `FROM` and package-install declarations in the tracked Dockerfiles | Resolve the candidate image to its registry digest, scan that digest to CycloneDX JSON with the approved image scanner, then enumerate component licenses; never infer all layer licenses from the base-image name | Image name plus digest, scanner/tool version, raw CycloneDX JSON and SHA-256, rendered component appendix |
+| Direct non-Python runtimes | Exact version in the Dockerfile or deployment input | Exact npm version metadata and package license for OpenClaw; exact tagged upstream release and root license for OPA | Versioned upstream URL and tracked declaration |
+| Course materials and figures | External `source_url` rows in the asset/material provenance beacons | Fetch content only through the typed materials vendorer; determine reuse terms from the cited source or its explicit license, and preserve `no reuse license stated` when no grant is present | Committed snapshot, provenance URL/relationship/terms, byte count and SHA-256 |
+
+### Browser packages and license texts
+
+```bash
+cd scripts/browser-vendor
+npm ci
+cd ../..
+scripts/runtime/run_node.sh scripts/build/vendor_browser_dependencies.mjs
+python3 scripts/validation/course_dependency_integrity.py --self-test
+python3 scripts/validation/course_dependency_integrity.py
+python3 scripts/compliance/third_party_inventory_audit.py
+```
+
+`npm ci` verifies and installs the committed lock. The vendoring script uses esbuild metafiles to
+identify code actually bundled for learners. It reads each exact version and SPDX identifier from
+the lock, copies the installed package's license text, builds `browser-dependencies.json` and
+`browser-sbom.cdx.json`, and records SHA-256 values. The static table below intentionally includes
+the complete build graph; rows marked `browser-runtime` are the shipped subset. An exact
+`npm view <name>@<version> license dist.integrity repository --json` query may corroborate registry
+metadata during review, but it does not override the committed lock or reviewed license text.
+
+### Python package metadata and installed-environment scan
+
+The deterministic inventory parser accepts exact pins from:
+
+- `workspace/requirements.lock`
+- `scripts/materials/requirements.lock`
+- `scripts/security/requirements-sca.lock`
+- `cpu/services/sandbox_admin/requirements.txt`
+- the exact CUDA wheel declarations for `torch`, `torchvision`, and `torchaudio`
+
+For each normalized name and version, retrieve the version-specific PyPI JSON URL shown in its
+table row. Accept an SPDX expression supplied by current core metadata. If PyPI or the CycloneDX
+component supplies only a human-readable name, legacy classifier, or nothing, inspect the license
+file from that exact wheel/source distribution and the source tag before recording a static SPDX
+mapping. Do not map a generic label such as `BSD` without that inspection.
+
+Reproduce the installed-environment evidence with separate runtime and scanner environments:
+
+```bash
+python3 -m venv /tmp/nemoclaw-release-runtime
+python3 -m venv /tmp/nemoclaw-release-scanner
+/tmp/nemoclaw-release-runtime/bin/python -m pip install -r workspace/requirements.lock
+/tmp/nemoclaw-release-scanner/bin/python -m pip install -r scripts/security/requirements-sca.lock
+RUNTIME_SITE=$(/tmp/nemoclaw-release-runtime/bin/python -c 'import sysconfig; print(sysconfig.get_path("purelib"))')
+PATH="/tmp/nemoclaw-release-scanner/bin:$PATH" /tmp/nemoclaw-release-scanner/bin/python \
+  scripts/security/run_full_sca.py --execute --require-tools --python-local --cyclonedx-env \
+  --python-executable /tmp/nemoclaw-release-runtime/bin/python --python-path "$RUNTIME_SITE" \
+  --out-dir /tmp/nemoclaw-release-sca
+/tmp/nemoclaw-release-scanner/bin/python scripts/security/audit_sbom_policy.py \
+  --sbom /tmp/nemoclaw-release-sca/python-env.cdx.json
+```
+
+Then bind the result to the immutable artifact identity and render the static appendix:
+
+```bash
+python3 scripts/compliance/render_sbom_license_inventory.py \
+  --sbom /tmp/nemoclaw-release-sca/python-env.cdx.json \
+  --artifact-id <artifact-name>@sha256:<64-hex-digest> \
+  --out <artifact-license-inventory.md>
+```
+
+### Images, operating-system packages, and `NOASSERTION`
+
+First build the candidate, resolve every mutable tag to its registry `sha256` digest, and save the
+digest in the release record. With the approved scanner installed, the canonical acquisition shape
+is:
+
+```bash
+syft <image-name>@sha256:<64-hex-digest> \
+  -o cyclonedx-json=<image-name>.cdx.json
+python3 scripts/compliance/render_sbom_license_inventory.py \
+  --sbom <image-name>.cdx.json \
+  --artifact-id <image-name>@sha256:<64-hex-digest> \
+  --out <image-name>-licenses.md
+```
+
+Use the scanner and version approved for the release environment; `syft` above documents the
+required CycloneDX command shape, not an approval of an unreviewed tool installation. Retain the
+scanner version, database timestamp when applicable, raw SBOM, SBOM SHA-256, image digest, and
+rendered Markdown. Image-level `NOASSERTION` remains truthful because a mixed image has no single
+license; the appendix supplies the actionable component-level results.
+
+### Materials and figures
+
+```bash
+python3 scripts/materials/pull_materials.py --list
+python3 scripts/materials/pull_materials.py --verify-committed
+python3 scripts/materials/pull_materials.py --check
+python3 scripts/compliance/third_party_inventory_audit.py
+```
+
+The materials vendorer uses typed extractors: NVIDIA blog article HTML, the arXiv API for paper
+metadata, and the NVIDIA glossary extractor. It enforces HTTPS, same-host redirects, bounded
+responses and retries, then records source URL, relationship, character/byte count, and SHA-256.
+Those extractors acquire content, not permission. A reviewer must determine the cited source's
+terms; absent an explicit reuse grant, the inventory must continue to say so. Figure provenance is
+read from `web/nemoclaw/assets/SKILL.html`, and material provenance from
+`web/nemoclaw/mats/SKILL.html`; the audit fails if an external source row is omitted here.
+
+### Reconciliation and precedence
+
+1. Scanner-provided SPDX identifiers or expressions win.
+2. A static mapping may fill scanner named/missing metadata only for the exact normalized package
+   name and exact version, and is labeled `exact package/version static fallback`.
+3. A named license without a reviewed exact-version mapping remains unresolved.
+4. Missing metadata remains `NOASSERTION`; it is never changed by guessing from a project name.
+5. External-source terms remain descriptive when they are not an OSS SPDX license.
+
+The deterministic CI gate reads committed evidence without network access. Live PyPI, registry,
+and source retrieval is a separate acquisition/review activity so upstream drift cannot silently
+change a release. This process produces review evidence; it does not replace open-source or legal
+approval.
+
 ## Browser runtime and browser-build packages
 
 Source of truth: [`scripts/browser-vendor/package-lock.json`](scripts/browser-vendor/package-lock.json). Rows marked `browser-runtime` also appear in the shipped browser manifest and have checked-in license text. Platform-specific esbuild packages are build-only optional packages.

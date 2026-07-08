@@ -74,7 +74,7 @@
 <section class="skill-static" aria-labelledby="skill-title">
   <nav class="skill-nav"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a></nav>
   <h1 id="skill-title">scripts/compliance source gates</h1>
-  <p>Compliance tooling covers the repository's release-source posture: Apache-2.0 license, inbound contribution terms, private URL sweep, and provenance coverage for governed assets and materials.</p>
+  <p>Compliance tooling covers the repository's release-source posture: Apache-2.0 license, inbound contribution terms, reproducible package/license evidence acquisition, private URL sweep, and provenance coverage for governed assets and materials.</p>
   <div class="skill-note">This is a pre-review gate. It prevents known bad states before legal review; it does not replace legal review.</div>
   <h2>Executable checks</h2>
   <div class="skill-cmds">
@@ -83,6 +83,7 @@
     <div class="skill-cmd"><b>Third-party list</b><code>python3 scripts/compliance/third_party_inventory_audit.py --self-test &amp;&amp; python3 scripts/compliance/third_party_inventory_audit.py</code></div>
     <div class="skill-cmd"><b>Post-scan licenses</b><code>python3 scripts/compliance/render_sbom_license_inventory.py --sbom &lt;cyclonedx.json&gt; --artifact-id &lt;digest-bound-artifact&gt; --out &lt;inventory.md&gt;</code></div>
   </div>
+  <div class="skill-note">The complete acquisition procedure (npm lock and installed license texts, exact-version PyPI JSON, isolated Python CycloneDX scan, digest-bound image SBOM, material provenance, evidence retention, and precedence) is embedded in <a href="../../THIRD_PARTY_LICENSES.md#reproducing-license-evidence-acquisition">THIRD_PARTY_LICENSES.md</a> so an exported static list remains self-contained.</div>
   <h2>Linkage map</h2>
   <div class="skill-grid">
     <a class="skill-card" href="source_gate.py"><b>source_gate.py</b><span>Release-source and vendor-ingestion gate.</span></a>
