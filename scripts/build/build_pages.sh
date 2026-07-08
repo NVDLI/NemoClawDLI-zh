@@ -179,16 +179,18 @@ done
 # The validation report names offenders by repo-relative path (e.g. web/nemoclaw/01a-loop.html)
 # and previews the exact source the validator checked. The course itself deploys as the bundled
 # standalone under public/nemoclaw/, which is TRANSFORMED, so the report would otherwise have no
-# way to show what the validator actually saw. Mirror the source text files (no binary assets) to
-# public/web/nemoclaw/ so those paths resolve. These are fetched as text by the report, never
-# navigated to as pages, so the /lab/static and _shared.js references inside them do not matter.
+# way to show what the validator actually saw. Mirror the complete source files to
+# public/web/nemoclaw/ so those paths resolve. SKILL pages in this mirror remain directly
+# reachable, so carry their shared explorer and referenced image evidence as well. A review
+# mirror must not create a second class of visibly broken directory contracts.
 if [ -d "$T1/web/nemoclaw" ]; then
     mirror_out="$OUT/${SOURCE_MIRROR_PREFIX:+$SOURCE_MIRROR_PREFIX/}"
-    mkdir -p "$mirror_out"
+    mkdir -p "$mirror_out/web"
+    cp "$T1/web/_skill_explorer.js" "$mirror_out/web/_skill_explorer.js"
     ( cd "$T1" && find web/nemoclaw -path 'web/nemoclaw/standalone' -prune -o -type f \
-        \( -name '*.html' -o -name '*.md' -o -name '*.css' -o -name '*.js' -o -name '*.svg' -o -name '*.json' \) \
         -print0 | tar --null -cf - -T - ) | ( cd "$mirror_out" && tar -xf - )
-    echo "[build_pages] validated source -> ${mirror_out%/}/web/nemoclaw/ ($(find "$mirror_out/web/nemoclaw" -type f | wc -l) text files, read-only for the report preview)"
+    test -f "$mirror_out/web/_skill_explorer.js"
+    echo "[build_pages] validated source -> ${mirror_out%/}/web/nemoclaw/ ($(find "$mirror_out/web/nemoclaw" -type f | wc -l) files, read-only for the report preview)"
 fi
 
 # ── 3. CI gate artifacts: the authoritative test results, surfaced statically ──
