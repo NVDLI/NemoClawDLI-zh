@@ -75,6 +75,7 @@
     return (manifest.packages || []).map(function (pkg) {
       var licensePath = "web/nemoclaw/vendor/" + pkg.license_file;
       var relationship = pkg.direct ? "direct" : "transitive";
+      var source = pkg.direct ? "This project selected it directly." : "Another browser package requires it.";
       return {
         category: "vendored",
         relationship: relationship,
@@ -85,8 +86,8 @@
           repoFile(config, licensePath),
           OTHER,
           OTHER,
-          "Vendored and distributed with the static course as same-origin browser code. " +
-            "Relationship: " + relationship + ". Purpose: " + pkg.purpose + " Shipped asset(s): " +
+          "Learners receive this code as part of the browser course. " + source +
+            " Relationship: " + relationship + ". Used for: " + pkg.purpose + " Browser file(s): " +
             ((assets[pkg.name] || []).sort().join(", ") || "shared browser bundle") + ". " +
             "Used with NVIDIA-authored Apache-2.0 course source; no proprietary-code claim.",
           npmPage(pkg.name, String(pkg.version)),
@@ -106,9 +107,8 @@
         relationship: scope,
         cells: [
           name, version, row[3], npmPage(name, version), INTERNAL, OTHER,
-          "Category: " + scope + ". Downloaded by npm during the deterministic browser build and not " +
-            "copied as a standalone package into the released static course. " +
-            (scope === "browser-bundle-input" ? "Its code contributes to a generated browser bundle." : "It executes only as build tooling.") +
+          "Category: " + scope + ". Course authors download this package while building the browser course. " +
+            (scope === "browser-bundle-input" ? "Some of its code becomes part of a generated browser file, but learners do not receive the package as a separate dependency." : "It runs only during the build; learners do not receive it.") +
             " No proprietary-code claim.",
           npmPage(name, version), repoFile(config, "scripts/browser-vendor/package-lock.json")
         ]
@@ -128,8 +128,8 @@
         relationship: row[0],
         cells: [
           row[1], row[2], row[3], upstream, INTERNAL, OTHER,
-          "Downloaded into the " + row[0] + " environment for local authoring or repository validation. " +
-            "Not vendored in the repository and not shipped in the static learner course. No proprietary-code claim.",
+          "Course authors or CI use this package to prepare or check the course (" + row[0] + "). " +
+            "Learners do not receive it from the static course. No proprietary-code claim.",
           upstream, repoFile(config, lock)
         ]
       };
@@ -149,8 +149,8 @@
         relationship: row[0],
         cells: [
           row[1], row[2], row[3], upstream, INTERNAL, OTHER,
-          "Category: " + row[0] + ". Referenced or pulled for local authoring and compatibility testing; " +
-            "not distributed with the static learner course. " + cleanEvidence,
+          "Category: " + row[0] + ". This is an optional local-authoring or compatibility dependency. " +
+            "Learners do not receive it from the static course. " + cleanEvidence,
           upstream || row[1], repoFile(config, pathMatch ? pathMatch[1] : "THIRD_PARTY_LICENSES.md")
         ]
       };
@@ -230,18 +230,96 @@
     }));
   }
 
-  function choiceGroup(container, values, selected, onChange) {
+  var FILTER_LABELS = {
+    softwareCategory: {
+      "vendored": "Included in the course",
+      "build-input": "Used only to build the course",
+      "validation": "Used only to check the course",
+      "local-authoring": "Optional authoring tool"
+    },
+    softwareRelationship: {
+      "direct": "Chosen directly by this project",
+      "transitive": "Required by another package",
+      "browser-bundle-input": "Built into the browser course",
+      "browser-build-only": "Runs only while building browser files",
+      "browser binary": "Browser used for automated checks",
+      "workspace-runtime": "Runs in the optional author workspace",
+      "material-tooling": "Processes course materials",
+      "security-tooling": "Checks dependencies and security",
+      "sandbox-admin-runtime": "Runs the sandbox administration service",
+      "service base image": "Starting image for a local service",
+      "workspace base image": "Starting image for the author workspace",
+      "workspace OS packages": "Operating-system packages in the author workspace",
+      "router OS packages": "Operating-system packages in the local router",
+      "OpenClaw runtime": "Runs OpenClaw in the optional local stack",
+      "OpenClaw OS packages": "Operating-system packages in the OpenClaw image",
+      "OpenShell build image": "Image used to build OpenShell locally",
+      "OpenShell runtime image": "Image used to run OpenShell locally",
+      "policy engine": "Evaluates local sandbox policy"
+    },
+    scopeCategory: {
+      "referenced-source": "Referenced, not copied",
+      "tooling-not-distributed": "Used by authors or checks, not given to learners",
+      "recreated-asset": "Recreated by the course authors",
+      "vendored-material": "Copied into the course",
+      "vendored-browser-code": "Browser code shipped to learners"
+    },
+    scopeRelationship: {
+      "recreation": "Recreated from a source",
+      "conversion": "Copied into another format",
+      "summary": "Summarized",
+      "inspiration": "Used as inspiration",
+      "compilation": "Collected as links or references",
+      "original": "Original source",
+      "original course graphic": "Original course graphic",
+      "direct": "Chosen directly by this project",
+      "transitive": "Required by another package",
+      "browser-build-only": "Used only to build browser files",
+      "validation or authoring dependency": "Used to check or author the course",
+      "local-authoring declaration": "Optional local-authoring dependency"
+    },
+    license: {
+      "NOASSERTION": "Needs source-specific review"
+    }
+  };
+
+  function friendlyChoice(value, kind) {
+    var labels = FILTER_LABELS[kind] || {};
+    var main = labels[value];
+    if (!main && kind === "softwareRelationship" && value.indexOf(",") >= 0) {
+      main = value.split(",").map(function (part) {
+        var clean = part.trim(); return labels[clean] || clean;
+      }).join(" + ");
+    }
+    return { main:main || value, detail:main ? value : "" };
+  }
+
+  function preferredOrder(values, preferred) {
+    var rank = new Map(preferred.map(function (value, index) { return [value, index]; }));
+    return values.slice().sort(function (left, right) {
+      var a = rank.has(left) ? rank.get(left) : preferred.length;
+      var b = rank.has(right) ? rank.get(right) : preferred.length;
+      return a - b || left.localeCompare(right);
+    });
+  }
+
+  function choiceGroup(container, values, selected, onChange, kind) {
     container.replaceChildren();
     var actions = document.createElement("span"); actions.className = "filter-actions";
-    var all = document.createElement("button"); all.type = "button"; text(all, "All");
-    var none = document.createElement("button"); none.type = "button"; text(none, "None");
+    var all = document.createElement("button"); all.type = "button"; text(all, "Select all");
+    var none = document.createElement("button"); none.type = "button"; text(none, "Clear");
     actions.append(all, none); container.appendChild(actions);
     var chips = document.createElement("span"); chips.className = "filter-chips"; container.appendChild(chips);
     values.forEach(function (value) {
       var label = document.createElement("label"); label.className = "filter-chip";
       var input = document.createElement("input"); input.type = "checkbox"; input.value = value;
       input.checked = selected.has(value); input.addEventListener("change", onChange);
-      var caption = document.createElement("span"); text(caption, value);
+      var words = friendlyChoice(value, kind);
+      var caption = document.createElement("span"); caption.className = "filter-label";
+      var main = document.createElement("span"); text(main, words.main); caption.appendChild(main);
+      if (words.detail) {
+        var detail = document.createElement("small"); text(detail, words.detail); caption.appendChild(detail);
+      }
       label.append(input, caption); chips.appendChild(label);
     });
     all.addEventListener("click", function () {
@@ -307,7 +385,9 @@
       var body = target.querySelector("tbody");
       var count = target.querySelector("[data-export-count]");
       var sortState = {index:null, direction:"asc"};
-      var categories = Array.from(new Set(rows.map(function (row) { return row.category; }))).sort();
+      var categories = preferredOrder(Array.from(new Set(rows.map(function (row) { return row.category; }))), [
+        "vendored", "build-input", "validation", "local-authoring"
+      ]);
 
       function visibleRows() {
         var query = search.value.trim().toLowerCase();
@@ -329,8 +409,8 @@
         var licenses = Array.from(new Set(rows.filter(function (row) {
           return selectedCategories.has(row.category);
         }).map(function (row) { return row.cells[2]; }))).sort();
-        choiceGroup(relationship, categoryRows, new Set(categoryRows), paint);
-        choiceGroup(license, licenses, new Set(licenses), paint);
+        choiceGroup(relationship, categoryRows, new Set(categoryRows), paint, "softwareRelationship");
+        choiceGroup(license, licenses, new Set(licenses), paint, "license");
       }
 
       function paint() {
@@ -359,7 +439,7 @@
         link.download = "nemoclaw-third-party-components-filtered.csv";
         document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(link.href);
       });
-      choiceGroup(category, categories, new Set(["vendored"]), function () { relationshipOptions(); paint(); });
+      choiceGroup(category, categories, new Set(["vendored"]), function () { relationshipOptions(); paint(); }, "softwareCategory");
       relationshipOptions(); sortableHeaders(target.querySelector("table"), sortState, paint); paint();
       return rows;
     }).catch(function (error) {
@@ -389,7 +469,9 @@
       var body = target.querySelector("tbody");
       var count = target.querySelector("[data-scope-count]");
       var sortState = {index:null, direction:"asc"};
-      var categories = Array.from(new Set(rows.map(function (row) { return row.category; }))).sort();
+      var categories = preferredOrder(Array.from(new Set(rows.map(function (row) { return row.category; }))), [
+        "vendored-browser-code", "vendored-material", "recreated-asset", "referenced-source", "tooling-not-distributed"
+      ]);
       function visibleRows() {
         var query = search.value.trim().toLowerCase();
         var selectedCategories = selectedValues(category);
@@ -406,8 +488,8 @@
         var categoryRows = rows.filter(function (row) { return selectedCategories.has(row.category); });
         var relationships = Array.from(new Set(categoryRows.map(function (row) { return row.relationship; }))).sort();
         var recordedTerms = Array.from(new Set(categoryRows.map(function (row) { return row.terms; }))).sort();
-        choiceGroup(relationship, relationships, new Set(relationships), paint);
-        choiceGroup(terms, recordedTerms, new Set(recordedTerms), paint);
+        choiceGroup(relationship, relationships, new Set(relationships), paint, "scopeRelationship");
+        choiceGroup(terms, recordedTerms, new Set(recordedTerms), paint, "license");
       }
       function paint() {
         var visible = sortedRows(visibleRows(), sortState); body.replaceChildren();
@@ -432,7 +514,7 @@
         link.download = "nemoclaw-legal-scope-filtered.csv";
         document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(link.href);
       });
-      choiceGroup(category, categories, new Set(categories), function () { dependentOptions(); paint(); });
+      choiceGroup(category, categories, new Set(categories), function () { dependentOptions(); paint(); }, "scopeCategory");
       dependentOptions(); sortableHeaders(target.querySelector("table"), sortState, paint); paint(); return rows;
     }).catch(function (error) {
       target.dataset.exportError = error.message;

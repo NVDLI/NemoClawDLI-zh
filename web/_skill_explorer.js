@@ -146,7 +146,7 @@
       // Hand-authored and generated static SKILL bodies remain useful without JS. Once the
       // shared renderer loads, bind them to its palette so one theme choice colors whole page.
       ".skill-static{background:var(--bg)!important;color:var(--tx)!important;border-color:var(--e3)!important}",
-      ".skill-static p,.skill-static .skill-card span,.skill-static .export-status,.skill-static .filter-field legend{color:var(--td)!important}",
+      ".skill-static p,.skill-static .skill-card span,.skill-static .export-status,.skill-static .filter-field legend,.skill-static .export-controls>label{color:var(--td)!important}",
       ".skill-static h1,.skill-static a,.skill-static .skill-card b,.skill-static .skill-cmd b{color:var(--gs)!important}",
       ".skill-static h2,.skill-static h3,.skill-static .skill-cmd code{color:var(--tx)!important}",
       ".skill-static .skill-card,.skill-static .skill-cmd,.skill-static .filter-field,.skill-static .export-table-wrap{background:var(--e1)!important;border-color:var(--e3)!important}",

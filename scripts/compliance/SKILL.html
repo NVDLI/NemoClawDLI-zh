@@ -144,7 +144,9 @@
 .skill-static a{color:#76b900}.skill-static h1{margin:.1em 0 .25em;color:#76b900;font-size:1.65rem}.skill-static h2{font-size:1.02rem;margin:1.2rem 0 .45rem}.skill-static p{max-width:76rem;color:#b0b0b0}.skill-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:.7rem 0}.skill-card{border:1px solid #2a2a2a;background:#161616;border-radius:8px;padding:12px 14px}.skill-card b{display:block;color:#aee23a;margin-bottom:4px}.skill-card span{color:#b0b0b0;font-size:.9rem}.skill-cmds{display:grid;gap:8px;margin:.7rem 0}.skill-cmd{display:grid;grid-template-columns:minmax(140px,220px) 1fr;gap:8px;align-items:center;border:1px solid #2a2a2a;border-radius:8px;background:#111;padding:9px 11px}.skill-cmd b{color:#aee23a}.skill-cmd code{display:block;overflow:auto;white-space:nowrap;color:#f2f2f2}.skill-note{border-left:3px solid #76b900;background:rgba(118,185,0,.08);padding:10px 13px;margin:.8rem 0;color:#ddd}.skill-nav{display:flex;gap:12px;flex-wrap:wrap;margin:.8rem 0}.skill-nav a{border:1px solid #2a2a2a;border-radius:999px;padding:5px 10px;text-decoration:none}@media(max-width:700px){.skill-cmd{grid-template-columns:1fr}.skill-static{padding:18px}}
 .export-preview{margin-top:1rem}.export-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:.8rem 0}.export-controls label{display:grid;gap:4px;color:#b0b0b0;font-size:.85rem}.export-controls input,.export-controls select,.export-controls button{min-height:38px;border:1px solid #3a3a3a;border-radius:6px;background:#111;color:#f2f2f2;padding:7px 9px}.export-controls button{cursor:pointer;border-color:#76b900;color:#aee23a}.export-status{display:flex;justify-content:space-between;gap:12px;color:#b0b0b0}.export-table-wrap{max-height:34rem;overflow:auto;border:1px solid #2a2a2a;border-radius:8px}.export-table{border-collapse:collapse;min-width:1500px;width:100%;font-size:.82rem}.export-table th{position:sticky;top:0;background:#202020;color:#aee23a;text-align:left;z-index:1}.export-table th,.export-table td{padding:8px 9px;border-bottom:1px solid #2a2a2a;vertical-align:top}.export-table td{color:#d5d5d5}.export-table a{overflow-wrap:anywhere}@media(prefers-color-scheme:light){.export-controls input,.export-controls select{background:#fff;color:#1a1a1a}.export-table th{background:#eef1f4;color:#4a7a00}.export-table td{color:#333}}
 .filter-field{border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;min-width:0}.filter-field legend{color:#b0b0b0;font-size:.85rem;padding:0 4px}.filter-choice-group{display:grid;gap:7px}.filter-actions{display:flex;gap:6px}.filter-actions button{min-height:28px;padding:3px 9px}.filter-chips{display:flex;gap:6px;flex-wrap:wrap;max-height:8rem;overflow:auto}.filter-chip{display:inline-flex!important;grid-template-columns:none!important;align-items:center;gap:5px!important;border:1px solid #3a3a3a;border-radius:999px;padding:4px 8px!important;color:#ddd!important;cursor:pointer}.filter-chip:has(input:checked){border-color:#76b900;background:rgba(118,185,0,.14);color:#f2f2f2!important}.filter-chip input{min-height:auto!important;width:auto;margin:0;padding:0}.sort-button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;border:0;background:transparent;color:inherit;font:inherit;font-weight:700;text-align:left;cursor:pointer;padding:0}.sort-arrow{font-size:1rem}.export-table th[aria-sort="ascending"],.export-table th[aria-sort="descending"]{background:#293719}
-.filter-guide{max-width:76rem;margin:.55rem 0 1rem;padding-left:1.35rem;color:#d5d5d5}.filter-guide li{margin:.28rem 0}.filter-guide code,.filter-guide strong{color:#f2f2f2}
+.filter-guide{max-width:76rem;margin:.55rem 0 1rem;padding-left:1.35rem;color:#d5d5d5}.filter-guide li{margin:.35rem 0}.filter-guide code,.filter-guide strong{color:#f2f2f2}.filter-label{display:grid;gap:1px}.filter-label small{font:11px/1.2 ui-monospace,Consolas,monospace;opacity:.72}
+#third-party-export-preview [data-export-category-group] .filter-chips,#legal-scope-preview [data-scope-category-group] .filter-chips{max-height:none;overflow:visible}
+#third-party-export-preview [data-export-relationship-group] .filter-chips,#legal-scope-preview [data-scope-relationship-group] .filter-chips{max-height:14rem}
 </style></head>
 <body>
 <section class="skill-static" aria-labelledby="skill-title">
@@ -164,26 +166,26 @@
     <div class="skill-cmd"><b>Legal-scope map</b><code>python3 scripts/compliance/export_legal_scope_csv.py --category all --project-ref &lt;reviewed-ref&gt; --output /tmp/nemoclaw-legal-scope.csv</code></div>
     <div class="skill-cmd"><b>Post-scan licenses</b><code>python3 scripts/compliance/render_sbom_license_inventory.py --sbom &lt;cyclonedx.json&gt; --artifact-id &lt;digest-bound-artifact&gt; --out &lt;inventory.md&gt;</code></div>
   </div>
-  <div class="skill-note">Keep the static inventory compact. The complete npm, Python, source-tree, conditional image, material-provenance, evidence-retention, and attachment commands live in <a href="docs/sbom_generation.md">the SBOM generation runbook</a>.</div>
+  <div class="skill-note">Need to reproduce the evidence? The <a href="docs/sbom_generation.md">SBOM generation runbook</a> lists the commands used to identify packages, verify recorded licenses, scan files and images, and prepare review attachments.</div>
   <section class="export-preview" aria-labelledby="export-preview-title">
-    <h2 id="export-preview-title">SWIPAT component-table preview</h2>
+    <h2 id="export-preview-title">How software is used and distributed</h2>
     <ol class="filter-guide" aria-label="SWIPAT filter meanings">
-      <li><strong>Relationship categories describe distribution.</strong> <code>vendored</code> is copied into and shipped with the static browser course; <code>build-input</code> is downloaded for browser assembly but is not shipped as a standalone package; <code>validation</code> is installed only in local or CI Python environments; <code>local-authoring</code> is declared for optional authoring or compatibility work and is not shipped.</li>
-      <li><strong>Dependency relationships describe the role inside the selected category.</strong> For vendored code, <code>direct</code> is declared by this project and <code>transitive</code> arrives through another package. Build rows use <code>browser-bundle-input</code> or <code>browser-build-only</code>. Validation and authoring rows retain their literal environment scopes from the checked inventory.</li>
-      <li><strong>License identifiers are exact recorded expressions.</strong> Multi-license <code>AND</code>/<code>OR</code> expressions stay intact. <code>NOASSERTION</code> means the scan cannot truthfully assign one package-level SPDX conclusion; it is not a license grant.</li>
-      <li><strong>Selection logic is predictable.</strong> Checked values are ORed within a filter group and ANDed across category, relationship, license, and text search. <em>All</em> checks every visible choice; <em>None</em> clears that group.</li>
-      <li><strong>Search, sort, and export operate on the same rows.</strong> Search matches any displayed field. Select a column header once for ascending order and again for descending order. Download writes only the visible rows in that order; the base-container field changes only the CSV annotation.</li>
+      <li><strong>Start with <em>How this project uses it</em>.</strong> <em>Included in the course</em> means learners receive the code. <em>Used only to build the course</em>, <em>Used only to check the course</em>, and <em>Optional authoring tool</em> mean learners do not receive that package from this repository.</li>
+      <li><strong>Use <em>Where it comes from</em> only when you need more detail.</strong> It tells you whether this project chose the package directly, another package brought it in, or it belongs to a particular build, check, or authoring task.</li>
+      <li><strong><em>License or terms</em> shows the exact recorded result.</strong> <em>Needs source-specific review</em> means the scan could not support one package-level answer. Follow the row's license and evidence links instead of treating that label as permission.</li>
+      <li><strong>Combine choices naturally.</strong> A row appears only when it matches at least one checked choice in every filter section. Search narrows those results. <em>Select all</em> includes every choice; <em>Clear</em> hides them.</li>
+      <li><strong>The table and download always match.</strong> Select a column heading to sort. <em>Download what you see</em> exports the visible rows in the visible order. The container field only adds a note to the spreadsheet.</li>
     </ol>
     <div id="third-party-export-preview">
       <div class="export-controls">
-        <fieldset class="filter-field"><legend>Relationship categories</legend><div class="filter-choice-group" data-export-category-group></div></fieldset>
-        <fieldset class="filter-field"><legend>Dependency relationships</legend><div class="filter-choice-group" data-export-relationship-group></div></fieldset>
-        <fieldset class="filter-field"><legend>License identifiers</legend><div class="filter-choice-group" data-export-license-group></div></fieldset>
-        <label>Search<input data-export-search type="search" placeholder="package, scope, or comment"/></label>
-        <label>Base container<input data-export-base value="Not Applicable - static browser course"/></label>
-        <label>Export<button type="button" data-export-download>Download filtered CSV</button></label>
+        <fieldset class="filter-field"><legend>How this project uses it</legend><div class="filter-choice-group" data-export-category-group></div></fieldset>
+        <fieldset class="filter-field"><legend>Where it comes from</legend><div class="filter-choice-group" data-export-relationship-group></div></fieldset>
+        <fieldset class="filter-field"><legend>License or terms</legend><div class="filter-choice-group" data-export-license-group></div></fieldset>
+        <label>Find a package or purpose<input data-export-search type="search" placeholder="Try a package name or words such as security"/></label>
+        <label>Container used (usually not applicable)<input data-export-base value="Not Applicable - static browser course"/></label>
+        <label>Export<button type="button" data-export-download>Download what you see</button></label>
       </div>
-      <div class="export-status"><span data-export-count>Loading preview...</span><span>Exact SWIPAT nine-column shape</span></div>
+      <div class="export-status"><span data-export-count>Loading preview...</span><span>SWIPAT spreadsheet format</span></div>
       <div class="export-table-wrap">
         <table class="export-table">
           <thead>
@@ -205,21 +207,20 @@
     </div>
   </section>
   <section class="export-preview" aria-labelledby="legal-scope-title">
-    <h2 id="legal-scope-title">Legal-scope relationship preview</h2>
+    <h2 id="legal-scope-title">How sources and materials are used</h2>
     <ol class="filter-guide" aria-label="Legal-scope filter meanings">
-      <li><strong>Scope categories describe what NVIDIA distributes.</strong> <code>referenced-source</code> cites, summarizes, or draws inspiration from an external work without copying it wholesale; <code>tooling-not-distributed</code> covers build, validation, and authoring software absent from the static course; <code>recreated-asset</code> is a repository-authored derivative; <code>vendored-material</code> is a copied or format-shifted document or asset; <code>vendored-browser-code</code> is copied third-party code shipped to and executed by learners.</li>
-      <li><strong>Artifact relationships preserve the narrower recorded fact.</strong> Material rows retain values such as <code>recreation</code>, <code>conversion</code>, <code>summary</code>, <code>inspiration</code>, or <code>compilation</code>; browser-code rows use <code>direct</code>/<code>transitive</code>; tooling rows name the build or environment scope.</li>
-      <li><strong>Recorded licenses or terms are evidence, not inferred grants.</strong> The filter uses the exact SPDX expression or source-terms label in the inventory. <code>NOASSERTION</code> remains visible when no single supported conclusion exists.</li>
-      <li><strong>Selection logic matches the software table.</strong> Values are ORed within a group and ANDed across scope category, artifact relationship, terms, and text search. Search covers every displayed field.</li>
-      <li><strong>Each result answers the legal-scope questions directly.</strong> The row states whether NVIDIA distributes it here, whether learner browsers execute it, the external source, recorded terms, repository evidence, and the reason for its classification. Sorting and download preserve the visible filtered order.</li>
+      <li><strong>Start with <em>What happened to the source?</em></strong> The choices distinguish a source that was only referenced, a tool learners never receive, an asset recreated by the course authors, material copied into the course, and browser code shipped to learners.</li>
+      <li><strong><em>How was it used?</em> adds the precise action.</strong> Examples include summarized, used as inspiration, recreated, converted to another format, selected directly, or brought in by another package.</li>
+      <li><strong><em>License or source terms</em> reports what the evidence says.</strong> It does not invent permission where the source is unclear. Open the source and repository-evidence links to corroborate a row.</li>
+      <li><strong>Filtering and downloading work like the software table.</strong> A result must match every filter section and the search text. Sorting and <em>Download what you see</em> preserve exactly what is visible.</li>
     </ol>
     <div id="legal-scope-preview">
       <div class="export-controls">
-        <fieldset class="filter-field"><legend>Scope categories</legend><div class="filter-choice-group" data-scope-category-group></div></fieldset>
-        <fieldset class="filter-field"><legend>Artifact relationships</legend><div class="filter-choice-group" data-scope-relationship-group></div></fieldset>
-        <fieldset class="filter-field"><legend>Recorded licenses or terms</legend><div class="filter-choice-group" data-scope-terms-group></div></fieldset>
-        <label>Search<input data-scope-search type="search" placeholder="file, package, source, or terms"/></label>
-        <label>Export<button type="button" data-scope-download>Download filtered scope CSV</button></label>
+        <fieldset class="filter-field"><legend>What happened to the source?</legend><div class="filter-choice-group" data-scope-category-group></div></fieldset>
+        <fieldset class="filter-field"><legend>How was it used?</legend><div class="filter-choice-group" data-scope-relationship-group></div></fieldset>
+        <fieldset class="filter-field"><legend>License or source terms</legend><div class="filter-choice-group" data-scope-terms-group></div></fieldset>
+        <label>Find a file, source, or package<input data-scope-search type="search" placeholder="Try a filename, source, or package"/></label>
+        <label>Export<button type="button" data-scope-download>Download what you see</button></label>
       </div>
       <div class="export-status"><span data-scope-count>Loading scope preview...</span><span>Evidence-linked; no software/material conflation</span></div>
       <div class="export-table-wrap">

@@ -74,9 +74,10 @@ def vendored_rows(base: str, ref: str) -> list[list[str]]:
         license_path = "web/nemoclaw/vendor/" + package["license_file"]
         relationship = "direct" if package.get("direct") else "transitive"
         shipped = ", ".join(sorted(assets.get(name, []))) or "shared browser bundle"
+        source = "This project selected it directly." if package.get("direct") else "Another browser package requires it."
         comments = (
-            "Vendored and distributed with the static course as same-origin browser code. "
-            f"Relationship: {relationship}. Purpose: {package['purpose']} Shipped asset(s): {shipped}. "
+            f"Learners receive this code as part of the browser course. {source} "
+            f"Relationship: {relationship}. Used for: {package['purpose']} Browser file(s): {shipped}. "
             "Used with NVIDIA-authored Apache-2.0 course source; no proprietary-code claim."
         )
         rows.append([
@@ -100,14 +101,12 @@ def browser_build_rows(base: str, ref: str) -> list[list[str]]:
     for scope, name, version, license_id, _evidence, *_ in parsed:
         if scope not in {"browser-bundle-input", "browser-build-only"}:
             continue
-        description = (
-            "Downloaded by npm during the deterministic browser build and not copied as a standalone "
-            "package into the released static course. "
-        )
+        description = "Course authors download this package while building the browser course. "
         description += (
-            "Its code contributes to a generated browser bundle."
+            "Some of its code becomes part of a generated browser file, but learners do not receive "
+            "the package as a separate dependency."
             if scope == "browser-bundle-input"
-            else "It executes only as build tooling."
+            else "It runs only during the build; learners do not receive it."
         )
         rows.append([
             name,
@@ -142,8 +141,8 @@ def python_rows(base: str, ref: str) -> list[list[str]]:
             upstream,
             INTERNAL,
             OTHER,
-            f"Downloaded into the {scope} environment for local authoring or repository validation. "
-            "Not vendored in the repository and not shipped in the static learner course. No proprietary-code claim.",
+            f"Course authors or CI use this package to prepare or check the course ({scope}). "
+            "Learners do not receive it from the static course. No proprietary-code claim.",
             upstream,
             internal,
         ])
@@ -169,8 +168,8 @@ def local_authoring_rows(base: str, ref: str) -> list[list[str]]:
             upstream,
             INTERNAL,
             OTHER,
-            f"Category: {scope}. Referenced or pulled for local authoring and compatibility testing; "
-            f"not distributed with the static learner course. {markdown_link_labels(evidence)}",
+            f"Category: {scope}. This is an optional local-authoring or compatibility dependency. "
+            f"Learners do not receive it from the static course. {markdown_link_labels(evidence)}",
             upstream or name,
             internal,
         ])

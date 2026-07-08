@@ -172,9 +172,11 @@ def export_contract_findings(overrides: dict[str, str]) -> list[str]:
         "data-scope-download",
         'aria-label="SWIPAT filter meanings"',
         'aria-label="Legal-scope filter meanings"',
-        "ORed within a filter group and ANDed across",
-        "base-container field changes only the CSV annotation",
-        "whether NVIDIA distributes it here",
+        "How this project uses it",
+        "Used only to check the course",
+        "A row appears only when it matches at least one checked choice in every filter section",
+        "Download what you see",
+        "What happened to the source?",
     ):
         if token not in skill:
             findings.append(f"SWIPAT in-page preview control is missing: {token}")
@@ -184,9 +186,20 @@ def export_contract_findings(overrides: dict[str, str]) -> list[str]:
         "referenced-source", "tooling-not-distributed", "recreated-asset", "vendored-material",
         "vendored-browser-code", "Corroborating Repository Evidence",
         "selectedValues", "choiceGroup", "sortedRows", "sortableHeaders", "dataset.sortIndex",
+        "FILTER_LABELS", "Included in the course", "Referenced, not copied",
+        "Needs source-specific review", "friendlyChoice",
     ):
         if token not in preview:
             findings.append(f"SWIPAT preview implementation is incomplete: {token}")
+    for path in (CSV_EXPORTER, CSV_PREVIEW):
+        export_source = read(path, overrides)
+        for token in (
+            "Learners receive this code as part of the browser course.",
+            "Course authors or CI use this package to prepare or check the course",
+            "Learners do not receive it from the static course.",
+        ):
+            if token not in export_source:
+                findings.append(f"reviewer export lacks plain-language usage explanation: {path}: {token}")
     return findings
 
 
@@ -289,7 +302,9 @@ def self_test() -> tuple[int, int, list[str]]:
         ("column sort preview", {CSV_PREVIEW: read(CSV_PREVIEW, {}).replace("sortableHeaders", "removedSortableHeaders")}, "SWIPAT preview implementation is incomplete"),
         ("legal-scope export", {COMPLIANCE_SKILL: compliance_skill.replace('"id": "legal-scope-map"', '"id": "removed-scope"', 1)}, "missing legal-scope relationship export"),
         ("legal-scope multi-select", {COMPLIANCE_SKILL: compliance_skill.replace("data-scope-relationship-group", "data-scope-relationship-single", 1)}, "SWIPAT in-page preview control is missing"),
-        ("filter semantics", {COMPLIANCE_SKILL: compliance_skill.replace("ORed within a filter group and ANDed across", "combined somehow", 1)}, "SWIPAT in-page preview control is missing"),
+        ("filter semantics", {COMPLIANCE_SKILL: compliance_skill.replace("A row appears only when it matches at least one checked choice in every filter section", "filters combine somehow", 1)}, "SWIPAT in-page preview control is missing"),
+        ("plain-language filter labels", {CSV_PREVIEW: read(CSV_PREVIEW, {}).replace("Included in the course", "vendored technical label", 1)}, "SWIPAT preview implementation is incomplete"),
+        ("plain-language export explanation", {CSV_EXPORTER: read(CSV_EXPORTER, {}).replace("Learners receive this code as part of the browser course.", "Vendored package.", 1)}, "reviewer export lacks plain-language usage explanation"),
     )
     failures = []
     passed = 0
