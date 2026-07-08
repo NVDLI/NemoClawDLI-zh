@@ -67,9 +67,9 @@ def material_rows(base: str, ref: str) -> list[list[str]]:
         if relationship == "recreation":
             category = "recreated-asset"
             note = "A repository-authored recreation is distributed; review the recorded source terms before release."
-        elif relationship == "conversion":
+        elif relationship in {"conversion", "provided course asset"}:
             category = "vendored-material"
-            note = "A copied or format-shifted material artifact is distributed; the source terms remain controlling."
+            note = "A copied, provided, or format-shifted material artifact is distributed; the source terms remain controlling."
         else:
             category = "referenced-source"
             note = (
@@ -183,10 +183,16 @@ def self_test() -> list[str]:
         (ROOT / inventory.INVENTORY).read_text(encoding="utf-8"),
         "Third-party course-material relationships",
     )))
-    material_relationships = {"recreation", "conversion", "summary", "inspiration", "compilation", "original", "original course graphic"}
+    material_relationships = {
+        "recreation", "conversion", "provided course asset", "summary", "inspiration",
+        "compilation", "original", "original course graphic",
+    }
     exported_material_count = sum(row[2] in material_relationships for row in rows)
     if exported_material_count != material_count:
         findings.append("scope export does not exactly cover the material-provenance table")
+    favicon = next((row for row in rows if row[0] == "web/nemoclaw/assets/favicon.ico"), None)
+    if not favicon or favicon[1] != "vendored-material" or favicon[2] != "provided course asset":
+        findings.append("NVIDIA favicon is not exported as a provided, vendored brand asset")
     documents = document_inventory()
     expected_documents = len(documents.get("arxiv_papers", [])) + len(documents.get("nvidia_documents", []))
     if sum(row[2] in {"paper citation", "document source"} for row in rows) != expected_documents:

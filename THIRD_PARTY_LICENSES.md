@@ -501,6 +501,7 @@ This is not a dependency table. It records every provenance row with an external
 
 | Repository file | Relationship | External source | Recorded terms | Source |
 |---|---|---|---|---|
+| web/nemoclaw/assets/favicon.ico | provided course asset | NVIDIA corporate favicon | NVIDIA Logo and Brand Guidelines; trademark rights reserved | [source](https://www.nvidia.com/favicon.ico); [terms](https://www.nvidia.com/en-us/about-nvidia/legal-info/logo-brand-usage/) |
 | web/nemoclaw/assets/figures/01a-loop-1.svg | inspiration | Russell & Norvig, AIMA ch.1 | (c) Pearson; no reuse license stated | [source](https://aima.cs.berkeley.edu/) |
 | web/nemoclaw/assets/figures/01a-loop-2.svg | inspiration | OpenAI API docs | OpenAI terms | [source](https://platform.openai.com/docs) |
 | web/nemoclaw/assets/figures/01b-react-1.svg | original | original course diagram; ReAct (Yao et al. 2022) | CC-BY-4.0 | [source](https://arxiv.org/abs/2210.03629) |
