@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import csv
 import io
+import json
 import sys
 from pathlib import Path
 
@@ -13,6 +14,7 @@ import third_party_inventory_audit as inventory
 
 
 ROOT = Path(__file__).resolve().parents[2]
+DOCUMENT_INVENTORY = ROOT / "scripts/compliance/docs/document_sources.json"
 CATEGORIES = (
     "referenced-source",
     "tooling-not-distributed",
@@ -28,21 +30,40 @@ HEADER = (
     "Executed in Learner Browser",
     "External Source or Package",
     "Recorded License or Terms",
+    "Source Author(s)",
+    "License or Author Evidence",
     "Corroborating Repository Evidence",
     "Legal Scope Note",
 )
+
+
+def document_inventory() -> dict:
+    return json.loads(DOCUMENT_INVENTORY.read_text(encoding="utf-8"))
+
+
+def source_metadata(repository_file: str, source_url: str, documents: dict) -> tuple[str, str, str]:
+    for item in documents.get("arxiv_papers", []):
+        if item.get("source_url") == source_url:
+            return ", ".join(item.get("authors", [])), item.get("license_url", ""), item.get("reuse_summary", "")
+    for item in documents.get("nvidia_documents", []):
+        if repository_file in item.get("repository_items", []):
+            authors = ", ".join(item.get("authors", [])) or "No author listed on official source page"
+            return authors, item.get("author_evidence_url", source_url), ""
+    return "Not recorded for this source", source_url, ""
 
 
 def material_rows(base: str, ref: str) -> list[list[str]]:
     document = (ROOT / inventory.INVENTORY).read_text(encoding="utf-8")
     rows = inventory.rows(inventory.section(document, "Third-party course-material relationships"))
     output: list[list[str]] = []
+    documents = document_inventory()
     for row in rows:
         if len(row) < 5 or row[0] == "Repository file":
             continue
         repository_file, relationship, source_name, terms, source_cell = row[:5]
         links = software.markdown_links(source_cell)
         source_url = links[0][1] if links else source_cell
+        authors, source_evidence, reuse_summary = source_metadata(repository_file, source_url, documents)
         if relationship == "recreation":
             category = "recreated-asset"
             note = "A repository-authored recreation is distributed; review the recorded source terms before release."
@@ -63,10 +84,37 @@ def material_rows(base: str, ref: str) -> list[list[str]]:
             "No",
             source_url,
             terms,
+            authors,
+            source_evidence,
             software.repository_file(base, ref, repository_file),
-            f"Source label: {source_name}. {note}",
+            f"Source label: {source_name}. {note}" + (f" {reuse_summary}" if reuse_summary else ""),
         ])
     return output
+
+
+def document_rows(base: str, ref: str) -> list[list[str]]:
+    data = document_inventory()
+    rows: list[list[str]] = []
+    for item in data.get("arxiv_papers", []):
+        evidence_path = (item.get("cited_from") or ["THIRD_PARTY_LICENSES.md"])[0]
+        rows.append([
+            f"arXiv:{item['arxiv_id']}", "referenced-source", "paper citation",
+            "No - the paper is linked, not copied by this record", "No", item["source_url"], item["license"],
+            ", ".join(item["authors"]), item["license_url"], software.repository_file(base, ref, evidence_path),
+            f"Official arXiv license checked {item['verified_on']}. {item['reuse_summary']} "
+            f"Canonical citations: {', '.join(item['cited_from'])}",
+        ])
+    for item in data.get("nvidia_documents", []):
+        evidence_path = (item.get("repository_items") or ["THIRD_PARTY_LICENSES.md"])[0]
+        authors = ", ".join(item.get("authors", [])) or "No author listed on official source page"
+        rows.append([
+            item["title"], "referenced-source", "document source", "See related repository-item rows", "No",
+            item["source_url"], item["terms"], authors, item["author_evidence_url"],
+            software.repository_file(base, ref, evidence_path),
+            f"Official source checked {item['verified_on']}. Related repository items: "
+            f"{', '.join(item.get('repository_items', []))}",
+        ])
+    return rows
 
 
 def tooling_rows(base: str, ref: str) -> list[list[str]]:
@@ -76,17 +124,17 @@ def tooling_rows(base: str, ref: str) -> list[list[str]]:
             continue
         rows.append([
             f"{item[0]}@{item[1]}", "tooling-not-distributed", "browser-build-only", "No", "No",
-            item[7], item[2], item[8], item[6],
+            item[7], item[2], "Not applicable to software package", item[3] or item[7], item[8], item[6],
         ])
     for item in software.python_rows(base, ref):
         rows.append([
             f"{item[0]}@{item[1]}", "tooling-not-distributed", "validation or authoring dependency",
-            "No", "No", item[7], item[2], item[8], item[6],
+            "No", "No", item[7], item[2], "Not applicable to software package", item[3] or item[7], item[8], item[6],
         ])
     for item in software.local_authoring_rows(base, ref):
         rows.append([
             f"{item[0]}@{item[1]}", "tooling-not-distributed", "local-authoring declaration",
-            "No", "No", item[7], item[2], item[8], item[6],
+            "No", "No", item[7], item[2], "Not applicable to software package", item[3] or item[7], item[8], item[6],
         ])
     return rows
 
@@ -97,14 +145,14 @@ def browser_code_rows(base: str, ref: str) -> list[list[str]]:
         rows.append([
             f"{item[0]}@{item[1]}", "vendored-browser-code",
             "direct" if "Relationship: direct." in item[6] else "transitive",
-            "Yes", "Yes", item[7], item[2], item[8],
+            "Yes", "Yes", item[7], item[2], "Not applicable to software package", item[3], item[8],
             "Copied into the same-origin static course; the linked repository license text and package source corroborate scope.",
         ])
     return rows
 
 
 def scope_rows(categories: list[str], base: str, ref: str) -> list[list[str]]:
-    rows = material_rows(base, ref) + tooling_rows(base, ref) + browser_code_rows(base, ref)
+    rows = document_rows(base, ref) + material_rows(base, ref) + tooling_rows(base, ref) + browser_code_rows(base, ref)
     return [row for row in rows if row[1] in categories]
 
 
@@ -121,7 +169,7 @@ def validate(rows: list[list[str]]) -> list[str]:
     for number, row in enumerate(rows, 2):
         if len(row) != len(HEADER):
             findings.append(f"row {number} has {len(row)} columns instead of {len(HEADER)}")
-        elif any(not row[index].strip() for index in (0, 1, 2, 3, 5, 6, 7, 8)):
+        elif any(not row[index].strip() for index in (0, 1, 2, 3, 5, 6, 7, 8, 9, 10)):
             findings.append(f"row {number} lacks scope, source, terms, evidence, or disposition detail")
     return findings
 
@@ -135,9 +183,14 @@ def self_test() -> list[str]:
         (ROOT / inventory.INVENTORY).read_text(encoding="utf-8"),
         "Third-party course-material relationships",
     )))
-    exported_material_count = sum(row[1] in {"referenced-source", "recreated-asset", "vendored-material"} for row in rows)
+    material_relationships = {"recreation", "conversion", "summary", "inspiration", "compilation", "original", "original course graphic"}
+    exported_material_count = sum(row[2] in material_relationships for row in rows)
     if exported_material_count != material_count:
         findings.append("scope export does not exactly cover the material-provenance table")
+    documents = document_inventory()
+    expected_documents = len(documents.get("arxiv_papers", [])) + len(documents.get("nvidia_documents", []))
+    if sum(row[2] in {"paper citation", "document source"} for row in rows) != expected_documents:
+        findings.append("scope export does not exactly cover the document-source inventory")
     return findings
 
 

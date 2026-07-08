@@ -7,7 +7,7 @@
 
 :root {
   /* Light theme. Overrides the dark-theme vars in styles/_style.css. */
-  --g:   #76b900;
+  --g:   #4f7f00;
   --gd:  #2f6a00;
   --gs:  #4a7a00;
   --bg:  #ffffff;
@@ -649,7 +649,7 @@ svg[style*="background: #0d0d0d"] {
 }
 .cell-btn:hover:not([disabled]) { border-color: #76b900 !important; background: #f6f8fa !important; }
 .cell-btn-run {
-  background: linear-gradient(180deg, #8fcd00 0%, #76b900 100%) !important;
+  background: #8fcd00 !important;
   color: #000 !important;
   border: 1px solid #4a7a00 !important;
   box-shadow: 0 2px 6px rgba(118,185,0,0.25) !important;

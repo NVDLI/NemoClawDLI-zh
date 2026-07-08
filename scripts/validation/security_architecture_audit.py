@@ -125,7 +125,10 @@ def runtime_contract(root: Path) -> tuple[list[str], list[str]]:
 
 
 def observe_system(root: Path = ROOT) -> dict:
-    stages, jobs = ci_contract((root / ".gitlab-ci.yml").read_text(encoding="utf-8"))
+    stages, jobs = ci_contract("\n".join(
+        (root / rel).read_text(encoding="utf-8")
+        for rel in (".gitlab/ci/core.yml", ".gitlab/ci/sca.yml")
+    ))
     hosts, suffixes = runtime_contract(root)
     workers = sorted(path.relative_to(root).as_posix() for path in (root / "scripts/cors-proxy").glob("*worker*.js"))
     return {

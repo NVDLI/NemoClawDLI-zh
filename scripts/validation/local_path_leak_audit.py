@@ -69,6 +69,9 @@ PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
 # bound to one source file; new paths or new consumers require deliberate review.
 RUNTIME_ALLOWANCES = {
     "cpu/services/openclaw/hooks/env-discover.sh": ("/" + "home/ocuser/",),
+    # A maintainer identity is necessary and enforceable in the host's ownership file.
+    # The same identifier remains prohibited in every other repository path.
+    ".gitlab/CODEOWNERS": ("v" + "kudlay",),
 }
 
 
@@ -240,6 +243,7 @@ def self_test() -> list[str]:
         ("local file URI", "file:" + slash * 3 + "tmp/report.html", True),
         ("runtime cache", ".cache" + slash + "codex-runtimes" + slash + "node", True),
         ("contributor-local identifier", "v" + "kudlay", True),
+        ("declared code owner", "@" + "v" + "kudlay", False),
         ("portable variables", "$HOME/.cache and ${TMPDIR:-/tmp} and file://", False),
         ("declared runtime identity", slash + "home/ocuser/.openclaw/workspace", False),
     )
@@ -248,7 +252,7 @@ def self_test() -> list[str]:
         path = (
             "cpu/services/openclaw/hooks/env-discover.sh"
             if label == "declared runtime identity"
-            else "fixture.txt"
+            else ".gitlab/CODEOWNERS" if label == "declared code owner" else "fixture.txt"
         )
         rejected = bool(scan_text(path, sample))
         if rejected != should_fail:

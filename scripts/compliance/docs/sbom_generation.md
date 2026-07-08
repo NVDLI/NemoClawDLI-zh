@@ -142,6 +142,40 @@ permission. A reviewer determines the cited source's terms; when no explicit reu
 the inventory continues to say so. Figure and material provenance come from their respective
 `SKILL.html` beacons, and the inventory audit rejects a missing external-source row.
 
+### Paper licenses and NVIDIA document authors
+
+The document-source acquisition is separate from content vendoring. It scans canonical course and
+material files for every arXiv ID, reads each official arXiv abstract page's “Rights to this article”
+link, and records the title, full author list, selected license, license URL, reuse meaning, and every
+canonical citation location. It reads published NVIDIA JSON-LD bylines when present. If an official
+NVIDIA page publishes no byline, the record says `not-listed-on-source` instead of guessing an owner.
+
+Generate a review candidate without overwriting the committed evidence:
+
+```bash
+python3 scripts/compliance/source_document_audit.py \
+  --refresh \
+  --output /tmp/document_sources.json
+diff -u scripts/compliance/docs/document_sources.json /tmp/document_sources.json
+```
+
+After a human has checked source URLs, licenses, bylines, and repository-item mappings, replace the
+committed JSON deliberately and project its static Markdown tables:
+
+```bash
+cp /tmp/document_sources.json scripts/compliance/docs/document_sources.json
+python3 scripts/compliance/source_document_audit.py --update-markdown
+python3 scripts/compliance/source_document_audit.py
+python3 scripts/compliance/export_legal_scope_csv.py \
+  --category all \
+  --output /tmp/nemoclaw-document-and-legal-scope.csv
+```
+
+The normal audit and CI never use the network. They reject a missing or stale arXiv record, a license
+label that disagrees with its evidence URL, citation-location drift, an NVIDIA material without an
+author/source record, and Markdown that no longer matches the reviewed JSON. The arXiv non-exclusive
+distribution license is recorded as a limited arXiv distribution grant, not an open reuse license.
+
 ## Attachment manifest
 
 The normal attachment bundle contains:

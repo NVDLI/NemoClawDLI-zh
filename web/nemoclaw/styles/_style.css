@@ -762,13 +762,13 @@ body.python-mode .cf-btn-reset-kernel:hover:not([disabled]) {
 .cell-btn:active { transform: translateY(1px); }
 .cell-btn[disabled] { opacity: .6; cursor: not-allowed; }
 .cell-btn-run {
-  background: linear-gradient(180deg, #8fcd00 0%, #76b900 100%);
+  background: #8fcd00;
   color: #000;
   border-color: #4a7a00;
   box-shadow: 0 2px 6px rgba(118,185,0,0.3);
 }
 .cell-btn-run:hover:not([disabled]) {
-  background: linear-gradient(180deg, #a3dd1f 0%, #8fcd00 100%);
+  background: #a3dd1f;
   border-color: #76b900;
 }
 .cell-btn-reset { color: var(--td); }
@@ -896,6 +896,7 @@ body.python-mode .cf-btn-reset-kernel:hover:not([disabled]) {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
+  overflow-x: auto;
   background-color: var(--bg);
   background-image: radial-gradient(circle, var(--e3) 1px, transparent 1px);
   background-size: 22px 22px;
@@ -1424,17 +1425,18 @@ body.python-mode .cf-btn-reset-kernel:hover:not([disabled]) {
 .cf-debug-codeline-err { background: rgba(215,78,78,.18); color: #ffaaaa; }
 .cf-debug-lineno {
   flex-shrink: 0; width: 22px; text-align: right;
-  color: #4a4a4a; user-select: none;
+  color: var(--tf); user-select: none;
 }
 .cf-debug-codeline-err .cf-debug-lineno { color: #d74e4e; font-weight: 700; }
 .cf-debug-stack {
   padding: 5px 14px; margin: 0;
   font-family: ui-monospace, monospace; font-size: .7rem;
-  color: #5a5a5a; white-space: pre-wrap; word-break: break-all;
+  color: var(--tf); white-space: pre-wrap; word-break: break-all;
   border-top: 1px solid rgba(215,78,78,.12);
 }
 
 @media (max-width: 720px) {
+  main table { display: block; width: 100%; max-width: 100%; overflow-x: auto; }
   .cf-stage { padding: 18px 16px; }
   .cf-canvas { gap: 40px 30px; }
   .cf-node { padding: 10px 12px; }
@@ -1827,7 +1829,7 @@ body.python-mode .py-mode-jlab-link { display: inline-block; }
   --dg-arrow:#57606a;
   --dg-env:#0969da; --dg-agent:#4a7a00; --dg-tool:#7c3aed;
   --dg-data:#9a6700; --dg-model:#0d9488; --dg-neutral:#57606a;
-  --g:#76b900; --gd:#2f6a00; --gs:#4a7a00;
+  --g:#4f7f00; --gd:#2f6a00; --gs:#4a7a00;
   --bg:#ffffff; --e1:#f6f8fa; --e2:#eef1f4; --e3:#e1e6eb;
   --code-surface:#f8fafc;
   --bd:#d0d7de; --tx:#1a1a1a; --td:#3b3b3b; --tf:#57606a;

@@ -76,7 +76,7 @@
     {
       "path": "skill_renderer_runtime_audit.py",
       "role": "Playwright renderer gate",
-      "desc": "Loads every discovered beacon in the standard Chromium runtime and rejects errors, missing resources, and unmounted explorers."
+      "desc": "Loads every discovered HTML file in the standard Chromium runtime, rejects theme-dependent contrast, and applies navigation/export checks to every beacon."
     },
     {
       "path": "test_skill_contract.py",
@@ -126,7 +126,7 @@
     <a class="skill-card" href="gen_directory_beacons.py"><b>gen_directory_beacons.py</b><span>directory contract generator. Creates the standard dual-reader beacon for every discovered source directory.</span></a>
     <a class="skill-card" href="normalize_skill_headers.py"><b>normalize_skill_headers.py</b><span>navigation normalizer. Gives every beacon a semantic header with home, parent, and repository-map routes.</span></a>
     <a class="skill-card" href="gen_skill_hierarchy.py"><b>gen_skill_hierarchy.py</b><span>hub generator. Generates hub SKILL pages from the live tree.</span></a>
-    <a class="skill-card" href="skill_renderer_runtime_audit.py"><b>skill_renderer_runtime_audit.py</b><span>Playwright renderer gate. Loads every beacon in Chromium and rejects broken UI contracts.</span></a>
+    <a class="skill-card" href="skill_renderer_runtime_audit.py"><b>skill_renderer_runtime_audit.py</b><span>Required Playwright renderer gate. Discovers every HTML file without an allowlist, checks desktop/narrow layout and dark/light color dependencies, and applies the additional navigation/export contract to every beacon.</span></a>
     <a class="skill-card" href="test_skill_contract.py"><b>test_skill_contract.py</b><span>standard framework tests. Mutation coverage for directory discovery and renderer failures.</span></a>
     <a class="skill-card" href="scripts_hierarchy.py"><b>scripts_hierarchy.py</b><span>script layout guardrail. Ensures implementation files stay in subdirectories and root files remain compatibility entrypoints.</span></a>
   </div>

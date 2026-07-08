@@ -44,6 +44,9 @@ CONTRACT_FILES = (
     ".github/workflows/pages.yml",
     ".github/workflows/release.yml",
     ".gitlab-ci.yml",
+    ".gitlab/CODEOWNERS",
+    ".gitlab/ci/core.yml",
+    ".gitlab/ci/sca.yml",
     "scripts/build/build_pages.sh",
     "scripts/build/install-hooks.sh",
     "scripts/build/build_branch_manifest.py",
@@ -66,6 +69,7 @@ CONTRACT_FILES = (
     "scripts/validation/pages_artifact_integrity.py",
     "scripts/validation/validate_bundle.py",
     "scripts/validation/gitlab_governance_audit.py",
+    "scripts/validation/gitlab_ci_policy.py",
     "workspace/requirements.lock",
     "workspace/Dockerfile",
     "web/nemoclaw/mats/_materials.json",
@@ -535,8 +539,10 @@ def audit_repo(
             "scripts/security/audit_sbom_policy.py", "sbom-policy-detector", out,
             "retain runtime SBOM completeness and retired-component enforcement")
 
-    gitlab = docs[".gitlab-ci.yml"]
-    image = re.search(r"(?m)^  image: node:20-bookworm-slim@sha256:([0-9a-f]+)$", gitlab)
+    gitlab_core = docs[".gitlab/ci/core.yml"]
+    gitlab_sca = docs[".gitlab/ci/sca.yml"]
+    gitlab = gitlab_core + "\n" + gitlab_sca
+    image = re.search(r"(?m)^  image: node:20-bookworm-slim@sha256:([0-9a-f]+)$", gitlab_core)
     if not image or len(image.group(1)) != 64:
         out.append(finding("gitlab-image-pin", ".gitlab-ci.yml",
                            "shared CI image is not pinned to a full immutable digest",
@@ -626,9 +632,27 @@ def audit_repo(
     require(gitlab, ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock",
             ".gitlab-ci.yml", "gitlab-runtime-lock", out,
             "scan the exact runtime closure rather than resolving direct requirements again")
-    require(gitlab, ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock",
-            ".gitlab-ci.yml", "gitlab-sca-lock", out,
-            "keep scanner tooling isolated in its exact lock")
+    scanner_install = ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock"
+    for job_name in ("security_sca", "security_deep_sca"):
+        match = re.search(rf"(?ms)^{job_name}:\n(.*?)(?=^[A-Za-z0-9_.-]+:\n|\Z)", gitlab_sca)
+        require(match.group(1) if match else "", scanner_install,
+                ".gitlab/ci/sca.yml", "gitlab-sca-lock", out,
+                f"install scanner tooling from its exact lock in {job_name}")
+    optional_mr_scan = """    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: manual
+      allow_failure: true"""
+    for job_name, automatic_path, code in (
+        ("security_browser_sca", "scripts/browser-vendor/package-lock.json", "gitlab-browser-sca-rules"),
+        ("security_deep_sca", "workspace/requirements.lock", "gitlab-deep-sca-rules"),
+    ):
+        match = re.search(rf"(?ms)^{job_name}:\n(.*?)(?=^[A-Za-z0-9_.-]+:\n|\Z)", gitlab)
+        body = match.group(1) if match else ""
+        require(body, automatic_path, ".gitlab-ci.yml", code, out,
+                f"run {job_name} automatically when its dependency surface changes")
+        require(body, optional_mr_scan, ".gitlab-ci.yml", f"{code}-manual", out,
+                f"leave {job_name} available as a non-blocking MR opt-in")
+        require(body, "- .gitlab/ci/sca.yml", ".gitlab/ci/sca.yml", f"{code}-ci-sensitive", out,
+                f"rerun {job_name} when its self-contained scanner policy changes")
 
     material_puller = docs["scripts/materials/pull_materials.py"]
     for token, code, fix in (
@@ -668,8 +692,17 @@ def audit_repo(
             "keep Pages blocked on the required test job")
     require(gitlab, "human_review:", ".gitlab-ci.yml", "gitlab-human-review", out,
             "keep an explicit human acceptance job after preview validation")
-    require(gitlab, 'needs: ["test", "pages_smoke"]', ".gitlab-ci.yml", "gitlab-human-review-needs", out,
-            "make human acceptance wait for static gates and live preview smoke")
+    require(gitlab, "theme_runtime:", ".gitlab-ci.yml", "gitlab-theme-runtime", out,
+            "render every generated HTML file in the required dark/light browser matrix")
+    require(gitlab, 'skill_renderer_runtime_audit.py --site-root "$THEME_SITE_ROOT"', ".gitlab-ci.yml",
+            "gitlab-theme-runtime-command", out,
+            "run the exhaustive theme audit against the exact Pages artifact")
+    require(gitlab, 'THEME_SITE_ROOT="public/$CI_COMMIT_REF_SLUG"', ".gitlab-ci.yml",
+            "gitlab-theme-runtime-preview-root", out,
+            "audit every branch-owned HTML page without re-auditing the protected production-root copy")
+    require(gitlab, 'needs: ["test", "pages_smoke", "theme_runtime"]', ".gitlab-ci.yml",
+            "gitlab-human-review-needs", out,
+            "make human acceptance wait for static gates, live preview smoke, and all-HTML theme rendering")
     require(gitlab, "name: human-review", ".gitlab-ci.yml", "gitlab-human-review-environment", out,
             "bind human acceptance to the protected human-review environment")
     human_review = re.search(r"(?ms)^human_review:\n(.*?)(?=^[A-Za-z0-9_.-]+:\n|\Z)", gitlab)
@@ -961,26 +994,26 @@ def self_test() -> list[str]:
             ("prepush-release-reminder", "scripts/git-hooks/pre-push", 'python3 "$RELEASE_REMINDER" --commit-range "$RANGE"', 'python3 "$RELEASE_REMINDER" --help'),
             ("prepush-canonical-gate", "scripts/git-hooks/pre-push", '--tier ship --no-write --changed-since origin/main --reuse-success', '--tier fast'),
             ("worktree-hook-dispatch", "scripts/build/install-hooks.sh", 'hook="$content_root/scripts/git-hooks/$name"', 'hook="$HERE/git-hooks/$name"'),
-            ("gitlab-safety-selftest", ".gitlab-ci.yml", "release_gate.py --tier ship", "release_gate.py --tier fast"),
-            ("gitlab-change-aware-gate", ".gitlab-ci.yml", 'GATE_ARGS+=(--changed-since "$GATE_BASE")', 'GATE_ARGS=() # no change selection'),
-            ("gitlab-gate-timing", ".gitlab-ci.yml", "--timing-report docs/validation/release-gate-timings.json", "--no-timing-report"),
-            ("gitlab-immutable-report-reuse", ".gitlab-ci.yml", 'BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"', 'BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"'),
-            ("gitlab-protected-root-worktree", ".gitlab-ci.yml", 'git worktree add --quiet --detach /tmp/nemoclaw-prod-root "origin/$prod_ref"', 'git archive "origin/$prod_ref" | tar -x -C /tmp/nemoclaw-prod-root'),
-            ("gitlab-image-pin", ".gitlab-ci.yml", "node:20-bookworm-slim@sha256:25070a03f077f5860e4f2db8d147380678ed40ead415a21eaffd5a6208f61948", "node:20-bookworm-slim"),
-            ("gitlab-infrastructure-retry", ".gitlab-ci.yml", "runner_system_failure", "runner_unsupported"),
-            ("gitlab-script-retry", ".gitlab-ci.yml", "runner_system_failure", "script_failure"),
-            ("gitlab-material-install", ".gitlab-ci.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),
-            ("gitlab-pages-material-install", ".gitlab-ci.yml", '  variables:\n    MATERIAL_TOOLS_REQUIRED: "1"\n  needs: ["test"]', '  variables:\n    MATERIAL_TOOLS_REQUIRED: "0"\n  needs: ["test"]'),
-            ("gitlab-preview-ref-fetch", ".gitlab-ci.yml", 'git fetch "$preview_remote" "+refs/heads/$branch:refs/remotes/$preview_namespace/$branch" --quiet', 'git fetch "$preview_remote" "+refs/heads/$branch:refs/remotes/$preview_namespace/$branch" --quiet || true'),
-            ("gitlab-preview-ref-fetch", ".gitlab-ci.yml", 'preview_remote="$CI_MERGE_REQUEST_SOURCE_PROJECT_URL"', 'preview_remote="origin"'),
-            ("gitlab-transient-material-policy", ".gitlab-ci.yml", "pull_materials.py --check --allow-transient-unreachable", "pull_materials.py --check --strict-unreachable"),
-            ("gitlab-scheduled-material-policy", ".gitlab-ci.yml", "pull_materials.py --check --fetch-attempts", "pull_materials.py --check --allow-transient-unreachable --fetch-attempts"),
-            ("gitlab-complete-history", ".gitlab-ci.yml", 'GIT_DEPTH: "0"', 'GIT_DEPTH: "20"'),
-            ("gitlab-dco-check", ".gitlab-ci.yml", 'contribution_safety_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', 'contribution_safety_audit.py --commit-range "${CI_COMMIT_SHA}"'),
-            ("gitlab-local-path-range", ".gitlab-ci.yml", 'local_path_leak_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', 'local_path_leak_audit.py --help'),
+            ("gitlab-safety-selftest", ".gitlab/ci/core.yml", "release_gate.py --tier ship", "release_gate.py --tier fast"),
+            ("gitlab-change-aware-gate", ".gitlab/ci/core.yml", 'GATE_ARGS+=(--changed-since "$GATE_BASE")', 'GATE_ARGS=() # no change selection'),
+            ("gitlab-gate-timing", ".gitlab/ci/core.yml", "--timing-report docs/validation/release-gate-timings.json", "--no-timing-report"),
+            ("gitlab-immutable-report-reuse", ".gitlab/ci/core.yml", 'BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"', 'BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"'),
+            ("gitlab-protected-root-worktree", ".gitlab/ci/core.yml", 'git worktree add --quiet --detach /tmp/nemoclaw-prod-root "origin/$prod_ref"', 'git archive "origin/$prod_ref" | tar -x -C /tmp/nemoclaw-prod-root'),
+            ("gitlab-image-pin", ".gitlab/ci/core.yml", "node:20-bookworm-slim@sha256:25070a03f077f5860e4f2db8d147380678ed40ead415a21eaffd5a6208f61948", "node:20-bookworm-slim"),
+            ("gitlab-infrastructure-retry", ".gitlab/ci/core.yml", "runner_system_failure", "runner_unsupported"),
+            ("gitlab-script-retry", ".gitlab/ci/core.yml", "runner_system_failure", "script_failure"),
+            ("gitlab-material-install", ".gitlab/ci/core.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),
+            ("gitlab-pages-material-install", ".gitlab/ci/core.yml", '  variables:\n    MATERIAL_TOOLS_REQUIRED: "1"\n  needs: ["test"]', '  variables:\n    MATERIAL_TOOLS_REQUIRED: "0"\n  needs: ["test"]'),
+            ("gitlab-preview-ref-fetch", ".gitlab/ci/core.yml", 'git fetch "$preview_remote" "+refs/heads/$branch:refs/remotes/$preview_namespace/$branch" --quiet', 'git fetch "$preview_remote" "+refs/heads/$branch:refs/remotes/$preview_namespace/$branch" --quiet || true'),
+            ("gitlab-preview-ref-fetch", ".gitlab/ci/core.yml", 'preview_remote="$CI_MERGE_REQUEST_SOURCE_PROJECT_URL"', 'preview_remote="origin"'),
+            ("gitlab-transient-material-policy", ".gitlab/ci/core.yml", "pull_materials.py --check --allow-transient-unreachable", "pull_materials.py --check --strict-unreachable"),
+            ("gitlab-scheduled-material-policy", ".gitlab/ci/core.yml", "pull_materials.py --check --fetch-attempts", "pull_materials.py --check --allow-transient-unreachable --fetch-attempts"),
+            ("gitlab-complete-history", ".gitlab/ci/core.yml", 'GIT_DEPTH: "0"', 'GIT_DEPTH: "20"'),
+            ("gitlab-dco-check", ".gitlab/ci/core.yml", 'contribution_safety_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', 'contribution_safety_audit.py --commit-range "${CI_COMMIT_SHA}"'),
+            ("gitlab-local-path-range", ".gitlab/ci/core.yml", 'local_path_leak_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', 'local_path_leak_audit.py --help'),
             ("github-local-path-range", ".github/workflows/pages.yml", 'local_path_leak_audit.py --commit-range "$PATH_RANGE"', 'local_path_leak_audit.py --help'),
-            ("gitlab-sensitive-submission", ".gitlab-ci.yml", "sensitive_content_audit.py --submission-env CI_MERGE_REQUEST_TITLE", "sensitive_content_audit.py --help"),
-            ("gitlab-sensitive-range", ".gitlab-ci.yml", 'sensitive_content_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', 'sensitive_content_audit.py --help'),
+            ("gitlab-sensitive-submission", ".gitlab/ci/core.yml", "sensitive_content_audit.py --submission-env CI_MERGE_REQUEST_TITLE", "sensitive_content_audit.py --help"),
+            ("gitlab-sensitive-range", ".gitlab/ci/core.yml", 'sensitive_content_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', 'sensitive_content_audit.py --help'),
             ("github-sensitive-submission", ".github/workflows/pages.yml", "sensitive_content_audit.py --submission-env SENSITIVE_TITLE", "sensitive_content_audit.py --help"),
             ("github-sensitive-range", ".github/workflows/pages.yml", 'sensitive_content_audit.py --commit-range "$SENSITIVE_RANGE"', 'sensitive_content_audit.py --help'),
             ("github-release-reminder", ".github/workflows/pages.yml", 'release_change_reminder.py --commit-range "$RELEASE_CHANGE_RANGE"', 'release_change_reminder.py --help'),
@@ -988,15 +1021,18 @@ def self_test() -> list[str]:
             ("github-gate-timing", ".github/workflows/pages.yml", "--timing-report docs/validation/release-gate-timings.json", "--no-timing-report"),
             ("github-report-reuse", ".github/workflows/pages.yml", "BUILD_PAGES_REUSE_VALIDATION=1", "BUILD_PAGES_REUSE_VALIDATION=0"),
             ("github-immutable-report-reuse", ".github/workflows/pages.yml", "BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1", "BUILD_PAGES_REUSE_VALIDATION=1"),
-            ("gitlab-release-reminder", ".gitlab-ci.yml", 'release_change_reminder.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', 'release_change_reminder.py --help'),
+            ("gitlab-release-reminder", ".gitlab/ci/core.yml", 'release_change_reminder.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', 'release_change_reminder.py --help'),
             ("submission-release-reminder", ".github/PULL_REQUEST_TEMPLATE.md", "## External release follow-up", "## Optional follow-up"),
             ("shared-lock-selftest", "scripts/validation/release_gate.py", 'py("scripts/security/audit_dependency_locks.py", "--self-test")', 'py("scripts/security/audit_dependency_locks.py", "--version")'),
-            ("gitlab-sbom-policy", ".gitlab-ci.yml", "audit_sbom_policy.py --sbom", "audit_sbom_policy.py --help"),
-            ("gitlab-runtime-lock", ".gitlab-ci.yml", ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock", ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.txt"),
-            ("gitlab-sca-lock", ".gitlab-ci.yml", ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock", ".sca-tools-venv/bin/python -m pip install -q pip-audit cyclonedx-bom"),
-            ("gitlab-human-review", ".gitlab-ci.yml", "human_review:", "operator_review:"),
-            ("gitlab-human-review-needs", ".gitlab-ci.yml", 'needs: ["test", "pages_smoke"]', 'needs: ["test"]'),
-            ("gitlab-human-review-blocking", ".gitlab-ci.yml", '    - if: \'$CI_PIPELINE_SOURCE == "merge_request_event"\'\n      when: manual\n      allow_failure: false\n', '    - if: \'$CI_PIPELINE_SOURCE == "merge_request_event"\'\n      when: on_success\n      allow_failure: true\n'),
+            ("gitlab-sbom-policy", ".gitlab/ci/sca.yml", "audit_sbom_policy.py --sbom", "audit_sbom_policy.py --help"),
+            ("gitlab-runtime-lock", ".gitlab/ci/sca.yml", ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock", ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.txt"),
+            ("gitlab-sca-lock", ".gitlab/ci/sca.yml", ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock", ".sca-tools-venv/bin/python -m pip install -q pip-audit cyclonedx-bom"),
+            ("gitlab-human-review", ".gitlab/ci/core.yml", "human_review:", "operator_review:"),
+            ("gitlab-theme-runtime", ".gitlab/ci/core.yml", "theme_runtime:", "theme_runtime_removed:"),
+            ("gitlab-theme-runtime-command", ".gitlab/ci/core.yml", 'skill_renderer_runtime_audit.py --site-root "$THEME_SITE_ROOT"', "skill_renderer_runtime_audit.py --site-root selected"),
+            ("gitlab-theme-runtime-preview-root", ".gitlab/ci/core.yml", 'THEME_SITE_ROOT="public/$CI_COMMIT_REF_SLUG"', 'THEME_SITE_ROOT="public"'),
+            ("gitlab-human-review-needs", ".gitlab/ci/core.yml", 'needs: ["test", "pages_smoke", "theme_runtime"]', 'needs: ["test", "pages_smoke"]'),
+            ("gitlab-human-review-blocking", ".gitlab/ci/core.yml", '    - if: \'$CI_PIPELINE_SOURCE == "merge_request_event"\'\n      when: manual\n      allow_failure: false\n', '    - if: \'$CI_PIPELINE_SOURCE == "merge_request_event"\'\n      when: on_success\n      allow_failure: true\n'),
             ("material-transient-classification", "scripts/materials/pull_materials.py", "TRANSIENT_HTTP_STATUS = {", "RETRYABLE_STATUS_REMOVED = {"),
             ("material-redirect-boundary", "scripts/materials/pull_materials.py", "refusing source redirect", "following source redirect"),
             ("material-full-sha", "scripts/materials/pull_materials.py", 're.fullmatch(r"[0-9a-f]{64}"', 're.fullmatch(r"[0-9a-f]{16}"'),

@@ -1,0 +1,367 @@
+# Core GitLab CI for the NemoClaw course: static gates plus isolated GitLab Pages deploys.
+#
+# Jobs:
+#   test            runs the static gate headless under node. No lab, GPU, or browser.
+#   pages           deploys production manually, or deploys a manual branch preview on the
+#                   same Pages host under $CI_PAGES_URL/$CI_COMMIT_REF_SLUG/web/nemoclaw/.
+#   theme_runtime   renders every generated HTML file wide/narrow and dark/light with no opt-outs.
+#   human_review    records the designated human operator's approval of the tested live preview.
+#
+# Isolation contract:
+#   - branch previews are manual and live under public/<branch-slug>/web/nemoclaw;
+#   - preview Pages artifacts rebuild the production root from a protected ref, then add the branch preview;
+#   - downloadable Pages job artifacts expire quickly to avoid storage growth;
+#   - the branch foyer at public/<branch-slug>/index.html reads a static branch manifest;
+#   - production refs still require a manual job start;
+#   - branch names are normalized through CI_COMMIT_REF_SLUG before becoming URLs.
+
+stages: [test, deploy, verify, review]
+
+variables:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  # Complete history is required for DCO, contributor-local, and sensitive-content range gates.
+  GIT_DEPTH: "0"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  MATERIAL_TOOLS_REQUIRED: "0"
+
+# Open merge requests run one MR-context pipeline so the submission contract sees
+# the actual MR body. Branch pipelines remain available before an MR exists.
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+
+.with_python_node: &with_python_node
+  cache:
+    key: "$CI_JOB_NAME"
+    paths:
+      - .cache/pip
+  # Runner-resolved, immutable Node 20 image. Change only with a reviewed digest update.
+  image: node:20-bookworm-slim@sha256:25070a03f077f5860e4f2db8d147380678ed40ead415a21eaffd5a6208f61948
+  # The available instance runners are all tagged; untagged jobs match none of them.
+  # `pages` is the Shared Pages Runner (a Docker runner) that picks these up.
+  tags: [pages]
+  retry:
+    max: 2
+    # Retry runner/control-plane faults. Never retry script failures: validation remains fail-closed.
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - api_failure
+      - scheduler_failure
+  before_script:
+    - |
+      set -euo pipefail
+      retry_cmd() {
+        attempt=1
+        until "$@"; do
+          if [ "$attempt" -ge 3 ]; then return 1; fi
+          delay=$((attempt * 3))
+          echo "retrying transient setup command in ${delay}s (attempt $((attempt + 1))/3)" >&2
+          sleep "$delay"
+          attempt=$((attempt + 1))
+        done
+      }
+      retry_cmd apt-get update -qq
+      retry_cmd apt-get install -y -qq --no-install-recommends python3 python3-pip ca-certificates git >/dev/null
+      if [ "${MATERIAL_TOOLS_REQUIRED:-0}" = "1" ]; then
+        python3 -m pip install --break-system-packages -q --retries 5 --timeout 30 --requirement scripts/materials/requirements.lock >/dev/null
+      fi
+
+test:
+  <<: *with_python_node
+  stage: test
+  variables:
+    MATERIAL_TOOLS_REQUIRED: "1"
+  # Required gate: Pages may publish only after every required-tier release check passes.
+  allow_failure: false
+  script:
+    # The canonical English course and sparse same-branch locale overlays ship together.
+    # release_gate.py owns the deterministic sequence shared with GitHub and local runs.
+    - |
+      GATE_BASE="${CI_MERGE_REQUEST_DIFF_BASE_SHA:-${CI_COMMIT_BEFORE_SHA:-}}"
+      GATE_ARGS=()
+      case "$GATE_BASE" in ""|0000000000000000000000000000000000000000) ;; *) GATE_ARGS+=(--changed-since "$GATE_BASE");; esac
+      python3 scripts/validation/release_gate.py --tier ship "${GATE_ARGS[@]}" \
+        --timing-report docs/validation/release-gate-timings.json
+    - 'if [ -n "${CI_MERGE_REQUEST_IID:-}" ]; then python3 scripts/validation/contribution_safety_audit.py --submission-env CI_MERGE_REQUEST_DESCRIPTION; else echo "Submission contract: no merge-request context in this pipeline; protected-ref policy remains authoritative."; fi'
+    - 'if [ -n "${CI_MERGE_REQUEST_DIFF_BASE_SHA:-}" ]; then python3 scripts/validation/contribution_safety_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"; else echo "DCO signoff: no merge-request commit range in this pipeline; pre-push and protected-ref policy remain authoritative."; fi'
+    - 'if [ -n "${CI_MERGE_REQUEST_DIFF_BASE_SHA:-}" ]; then python3 scripts/validation/local_path_leak_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"; else echo "Contributor-local range: no merge-request commit range; current-tree audit already passed in release_gate.py."; fi'
+    - 'if [ -n "${CI_MERGE_REQUEST_IID:-}" ]; then python3 scripts/validation/sensitive_content_audit.py --submission-env CI_MERGE_REQUEST_TITLE --submission-env CI_MERGE_REQUEST_DESCRIPTION --submission-env CI_MERGE_REQUEST_SOURCE_BRANCH_NAME; else echo "Sensitive submission metadata: no merge-request context; current-tree audit already passed in release_gate.py."; fi'
+    - 'if [ -n "${CI_MERGE_REQUEST_DIFF_BASE_SHA:-}" ]; then python3 scripts/validation/sensitive_content_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"; else echo "Sensitive history: no merge-request commit range; current-tree audit already passed in release_gate.py."; fi'
+    - 'if [ -n "${CI_MERGE_REQUEST_DIFF_BASE_SHA:-}" ]; then python3 scripts/validation/release_change_reminder.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}" --report docs/validation/release-change-reminder.json; else echo "Release follow-up reminder: no merge-request commit range; run it before release against the final candidate."; fi'
+    # Every shared gate verifies full committed SHA-256 provenance offline. Schedules remain strict
+    # live monitors; production pushes tolerate only classified transient source reachability.
+    - |
+      B="${CI_COMMIT_BRANCH:-${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-}}"
+      if [ "${CI_PIPELINE_SOURCE:-}" = "schedule" ]; then
+        python3 scripts/materials/pull_materials.py --check --fetch-attempts 4 --retry-backoff 2 --host-delay 3
+      elif [ "$B" = "${CI_DEFAULT_BRANCH:-main}" ] || [ "$B" = "nemoclaw-only" ]; then
+        python3 scripts/materials/pull_materials.py --check --allow-transient-unreachable --fetch-attempts 4 --retry-backoff 2 --host-delay 3
+      else
+        echo "Skipping live materials drift check on branch '${B:-detached}' to avoid rate-limiting external sources."
+        echo "Full-SHA offline provenance already passed inside release_gate.py."
+      fi
+  artifacts:
+    when: always
+    name: "gate-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - docs/validation/
+    expire_in: 30 days
+
+external_integration_audit:
+  <<: *with_python_node
+  stage: test
+  allow_failure: false
+  script:
+    - test "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH"
+    # Fetch public objects but execute only the audit script from the trusted internal checkout.
+    # Any external difference stops here and requires a normal reviewed integration MR.
+    - git fetch --no-tags --filter=blob:none --depth=256 https://github.com/NVDLI/NemoClawDLI.git +refs/heads/main:refs/remotes/external/main
+    - python3 scripts/validation/repository_sync_audit.py --internal-ref "$CI_COMMIT_SHA" --external-ref refs/remotes/external/main --report docs/validation/external-integration.json
+  artifacts:
+    when: always
+    name: "external-integration-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - docs/validation/external-integration.json
+    expire_in: 30 days
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $EXTERNAL_INTEGRATION_AUDIT == "1"'
+      when: on_success
+      allow_failure: false
+    - when: never
+
+pages:
+  <<: *with_python_node
+  stage: deploy
+  # Branch previews rebuild the protected production root, whose bundle gate imports
+  # localization/material tooling even when live pulls are disabled.
+  variables:
+    MATERIAL_TOOLS_REQUIRED: "1"
+  needs: ["test"]
+  resource_group: pages-site
+  script:
+    # This GitLab instance still uses classic Pages: only the job literally named
+    # `pages` can publish. Branch previews therefore ship a combined artifact
+    # with production rebuilt from a protected ref plus the branch under /<slug>/.
+    - |
+      set -euo pipefail
+      refresh_branch_ref() {
+        branch="$1"
+        preview_remote="origin"
+        preview_namespace="origin"
+        if [ -n "${CI_MERGE_REQUEST_SOURCE_PROJECT_URL:-}" ]; then
+          preview_remote="$CI_MERGE_REQUEST_SOURCE_PROJECT_URL"
+          preview_namespace="preview-source"
+        fi
+        git fetch "$preview_remote" "+refs/heads/$branch:refs/remotes/$preview_namespace/$branch" --quiet
+        printf 'refs/remotes/%s/%s\n' "$preview_namespace" "$branch"
+      }
+      build_branch_preview() {
+        test -n "$CI_COMMIT_REF_SLUG"
+        preview_ref="${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-$CI_COMMIT_REF_NAME}"
+        case "$CI_COMMIT_REF_SLUG" in *..*|*/*|*\*) echo "unsafe CI_COMMIT_REF_SLUG=$CI_COMMIT_REF_SLUG" >&2; exit 1;; esac
+        preview_remote_ref="$(refresh_branch_ref "$preview_ref")"
+        remote_sha="$(git rev-parse "$preview_remote_ref^{commit}")"
+        test "$remote_sha" = "$CI_COMMIT_SHA" || { echo "refusing stale preview: pipeline=$CI_COMMIT_SHA remote=$remote_sha" >&2; exit 1; }
+        export BUILD_PAGES_COURSE_PREFIX="web"
+        BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"
+        python3 scripts/build/build_branch_manifest.py --out "public/$CI_COMMIT_REF_SLUG/branches.json" --current-ref "$preview_ref" --current-slug "$CI_COMMIT_REF_SLUG"
+        test -f "public/$CI_COMMIT_REF_SLUG/index.html"
+        test -f "public/$CI_COMMIT_REF_SLUG/branches.json"
+        test -f "public/$CI_COMMIT_REF_SLUG/languages.json"
+        test -f "public/$CI_COMMIT_REF_SLUG/web/nemoclaw/index.html"
+        test -f "public/$CI_COMMIT_REF_SLUG/validated-source/web/nemoclaw/index.html"
+        test -f "public/$CI_COMMIT_REF_SLUG/scripts/compliance/SKILL.html"
+        test -f "public/$CI_COMMIT_REF_SLUG/scripts/compliance/third_party_export_ui.js"
+        test -f "public/$CI_COMMIT_REF_SLUG/scripts/compliance/export_third_party_csv.py"
+        test -f "public/$CI_COMMIT_REF_SLUG/scripts/compliance/export_legal_scope_csv.py"
+        grep -q 'href="web/nemoclaw/index.html"' "public/$CI_COMMIT_REF_SLUG/index.html"
+        grep -q 'href="web/nemoclaw/assets/favicon.ico"' "public/$CI_COMMIT_REF_SLUG/index.html"
+        grep -q 'return "web/nemoclaw/"' "public/$CI_COMMIT_REF_SLUG/index.html"
+        grep -q 'web/nemoclaw/' "public/$CI_COMMIT_REF_SLUG/languages.json"
+        for locale in i18n/*; do if [ -d "$locale/web/nemoclaw" ]; then code="$(basename "$locale")"; test -f "public/$CI_COMMIT_REF_SLUG/$code/nemoclaw/index.html"; grep -q "$code/nemoclaw/" "public/$CI_COMMIT_REF_SLUG/languages.json"; fi; done
+      }
+      build_production_root_from_ref() {
+        preview_ref="${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-$CI_COMMIT_REF_NAME}"
+        prod_ref="${PROD_PAGES_REF:-$CI_DEFAULT_BRANCH}"
+        case "$prod_ref" in "$CI_DEFAULT_BRANCH"|nemoclaw-only) ;; *) echo "refusing unapproved PROD_PAGES_REF=$prod_ref" >&2; exit 1;; esac
+        echo "building production root from protected ref: $prod_ref"
+        rm -rf /tmp/nemoclaw-prod-root
+        git fetch origin "$prod_ref:refs/remotes/origin/$prod_ref" --quiet
+        git worktree prune
+        git worktree add --quiet --detach /tmp/nemoclaw-prod-root "origin/$prod_ref"
+        if ! (cd /tmp/nemoclaw-prod-root && bash scripts/build/build_pages.sh "$CI_PROJECT_DIR/public"); then
+          git worktree remove --force /tmp/nemoclaw-prod-root >/dev/null 2>&1 || true
+          return 1
+        fi
+        git worktree remove --force /tmp/nemoclaw-prod-root
+        refresh_branch_ref "$preview_ref" >/dev/null
+        python3 scripts/build/build_branch_manifest.py --out public/branches.json --current-ref "$prod_ref" --current-slug "$prod_ref" --published-ref "$preview_ref=$CI_COMMIT_REF_SLUG"
+        test -f public/nemoclaw/index.html
+        test -f public/index.html
+        test -f public/branches.json
+        test -f public/languages.json
+        grep -q 'nemoclaw-branches/2' public/branches.json
+        grep -Fq "$preview_ref" public/branches.json
+      }
+      if [ "${PAGES_PREVIEW:-0}" = "1" ]; then
+        preview_ref="${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-$CI_COMMIT_REF_NAME}"
+        rm -rf public
+        export BUILD_PAGES_PULL_MATERIALS=0
+        build_production_root_from_ref
+        build_branch_preview
+        python3 scripts/validation/branch_preview_manifest_audit.py --artifact-root public --manifest public/branches.json --expect-preview "$preview_ref=$CI_COMMIT_REF_SLUG"
+        python3 scripts/validation/branch_preview_manifest_audit.py --artifact-root public --manifest "public/$CI_COMMIT_REF_SLUG/branches.json" --expect-preview "$preview_ref=$CI_COMMIT_REF_SLUG"
+      else
+        BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh public
+        test -f public/nemoclaw/index.html
+        test -f public/branches.json
+        test -f public/languages.json
+      fi
+      # This GitLab instance reports CI_PAGES_URL with http:// even though the
+      # review surface is HTTPS. Publish the canonical URL through dotenv so
+      # the MR environment button never relies on an HTTP redirect.
+      pages_environment_url="${PAGES_ENVIRONMENT_URL/http:/https:}"
+      printf 'PAGES_DEPLOYED_URL=%s\n' "$pages_environment_url" > pages-environment.env
+  artifacts:
+    paths:
+      - public
+    reports:
+      dotenv: pages-environment.env
+    expire_in: 3 days
+  environment:
+    name: "$PAGES_ENVIRONMENT_NAME"
+    url: "$PAGES_DEPLOYED_URL"
+    auto_stop_in: "$PAGES_AUTO_STOP_IN"
+  rules:
+    # Branch previews are real GitLab Pages deploys, but production root is rebuilt from the
+    # protected production ref and the branch only gets /<slug>/ plus /<slug>/web/nemoclaw/.
+    - if: '$CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_BRANCH != "nemoclaw-only" && $CI_COMMIT_BRANCH !~ /^translate-/ && $CI_PIPELINE_SOURCE != "schedule"'
+      variables:
+        PAGES_PREVIEW: "1"
+        PAGES_ENVIRONMENT_NAME: "review/$CI_COMMIT_REF_SLUG"
+        PAGES_ENVIRONMENT_URL: "$CI_PAGES_URL/$CI_COMMIT_REF_SLUG/web/nemoclaw/"
+        PAGES_AUTO_STOP_IN: "3 days"
+      when: manual
+      allow_failure: false
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME !~ /^translate-/ && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != "nemoclaw-only"'
+      variables:
+        PAGES_PREVIEW: "1"
+        PAGES_ENVIRONMENT_NAME: "review/$CI_COMMIT_REF_SLUG"
+        PAGES_ENVIRONMENT_URL: "$CI_PAGES_URL/$CI_COMMIT_REF_SLUG/web/nemoclaw/"
+        PAGES_AUTO_STOP_IN: "3 days"
+      when: manual
+      allow_failure: false
+    # Production lock: production deploys are manual only. Pushes to production refs run tests,
+    # but no one gets a new production Pages artifact without explicitly starting this job.
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      variables:
+        PAGES_ENVIRONMENT_NAME: "production"
+        PAGES_ENVIRONMENT_URL: "$CI_PAGES_URL/nemoclaw/"
+        PAGES_AUTO_STOP_IN: "never"
+      when: manual
+      allow_failure: false
+    - if: '$CI_COMMIT_BRANCH == "nemoclaw-only"'
+      variables:
+        PAGES_ENVIRONMENT_NAME: "production"
+        PAGES_ENVIRONMENT_URL: "$CI_PAGES_URL/nemoclaw/"
+        PAGES_AUTO_STOP_IN: "never"
+      when: manual
+      allow_failure: false
+    - when: never
+
+pages_smoke:
+  image: python:3.11-slim
+  tags: [pages]
+  stage: verify
+  needs: ["pages"]
+  script:
+    - |
+      set -eu
+      if [ "${PAGES_PREVIEW:-0}" = "1" ]; then
+        preview_ref="${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-$CI_COMMIT_REF_NAME}"
+        python3 scripts/validation/branch_preview_manifest_audit.py --base-url "$CI_PAGES_URL/" --expect-preview "$preview_ref=$CI_COMMIT_REF_SLUG" --attempts 30 --delay 5
+      else
+        python3 scripts/validation/branch_preview_manifest_audit.py --base-url "$CI_PAGES_URL/" --attempts 30 --delay 5
+      fi
+  rules:
+    - if: '$CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_BRANCH != "nemoclaw-only" && $CI_COMMIT_BRANCH !~ /^translate-/ && $CI_PIPELINE_SOURCE != "schedule"'
+      variables:
+        PAGES_PREVIEW: "1"
+      when: on_success
+      allow_failure: false
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME !~ /^translate-/ && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != "nemoclaw-only"'
+      variables:
+        PAGES_PREVIEW: "1"
+      when: on_success
+      allow_failure: false
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH == "nemoclaw-only"'
+      when: on_success
+      allow_failure: false
+    - when: never
+
+theme_runtime:
+  image: mcr.microsoft.com/playwright:v1.55.0-noble@sha256:b27e719ecbfef153e13fd24e8341736733bf2658b229677eb21ff57ff5d7fb29
+  tags: [pages]
+  stage: verify
+  needs:
+    - job: pages
+      artifacts: true
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - api_failure
+      - scheduler_failure
+  before_script:
+    - npm install --no-save --ignore-scripts --package-lock=false playwright-core@1.55.0
+  script:
+    - |
+      set -eu
+      THEME_SITE_ROOT=public
+      if [ "${PAGES_PREVIEW:-0}" = "1" ]; then
+        THEME_SITE_ROOT="public/$CI_COMMIT_REF_SLUG"
+      fi
+      test -d "$THEME_SITE_ROOT"
+      python3 scripts/skills/skill_renderer_runtime_audit.py --site-root "$THEME_SITE_ROOT" --engine current --node-path "$CI_PROJECT_DIR/node_modules" --chrome-bin auto --timeout-seconds 600
+  rules:
+    - if: '$CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_BRANCH != "nemoclaw-only" && $CI_COMMIT_BRANCH !~ /^translate-/ && $CI_PIPELINE_SOURCE != "schedule"'
+      variables:
+        PAGES_PREVIEW: "1"
+      when: on_success
+      allow_failure: false
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME !~ /^translate-/ && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != "nemoclaw-only"'
+      variables:
+        PAGES_PREVIEW: "1"
+      when: on_success
+      allow_failure: false
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH == "nemoclaw-only"'
+      when: on_success
+      allow_failure: false
+    - when: never
+
+# A one-person maintainer project cannot honestly require an independent second reviewer.
+# This blocking action still keeps merge authority human, explicit, protected, and observable:
+# it becomes playable only after the exact commit's static gates and live preview both pass.
+# Protect the `human-review` environment on the GitLab host and name eligible operators directly.
+human_review:
+  image: python:3.11-slim
+  tags: [pages]
+  stage: review
+  needs: ["test", "pages_smoke", "theme_runtime"]
+  environment:
+    name: human-review
+  script:
+    - test -n "${CI_MERGE_REQUEST_IID:-}"
+    - test -n "${CI_COMMIT_SHA:-}"
+    - echo "Human operator accepted MR !$CI_MERGE_REQUEST_IID at $CI_COMMIT_SHA after required gates and live preview smoke."
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: manual
+      allow_failure: false
+    - when: never

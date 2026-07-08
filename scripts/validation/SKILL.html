@@ -33,6 +33,7 @@
     "scripts/validation/learner_flow_runtime_audit.py",
     "scripts/validation/runtime_integration_browser_audit.py",
     "scripts/validation/contribution_safety_audit.py",
+    "scripts/validation/gitlab_ci_policy.py",
     "scripts/validation/gitlab_governance_audit.py",
     "scripts/validation/studio_interface_audit.py",
     "scripts/validation/helper_notebook_runtime_audit.py",
@@ -149,8 +150,8 @@
     },
     {
       "path": "color_theme.py",
-      "role": "theme check",
-      "desc": "Flags inline or non-theme-dynamic colors."
+      "role": "required theme gate",
+      "desc": "Includes Studio and every canonical page automatically; rejects inline literals, undefined variables, and render-time color bakes."
     },
     {
       "path": "figure_audit.py",
@@ -216,6 +217,11 @@
       "path": "contribution_safety_audit.py",
       "role": "contribution and release boundary",
       "desc": "Required audit and mutation suite for release-candidate status, governance state, DCO commit signoff, conduct/support/ownership policy, immutable action pins, locked workflow installs, fork-safe security workflows, private security routing, structured submissions, and gated deploy/release authority."
+    },
+    {
+      "path": "gitlab_ci_policy.py",
+      "role": "GitLab CI structural policy",
+      "desc": "Mutation-tested gate for the inert root manifest, isolated core and SCA modules, narrow scanner triggers, locked scan commands, and named ownership of workflow trust boundaries."
     },
     {
       "path": "gitlab_governance_audit.py",
@@ -364,6 +370,7 @@
   <div class="skill-cmd"><b>Learner-flow browser lifecycle</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/learner_flow_runtime_audit.py --site-root web</code></div>
   <div class="skill-cmd"><b>Runtime integration browser lifecycle</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/runtime_integration_browser_audit.py --site-root web</code></div>
   <div class="skill-cmd"><b>Contribution safety + detector</b><code>python3 scripts/validation/contribution_safety_audit.py &amp;&amp; python3 scripts/validation/contribution_safety_audit.py --self-test</code></div>
+  <div class="skill-cmd"><b>GitLab CI structure + detector</b><code>python3 scripts/validation/gitlab_ci_policy.py --self-test &amp;&amp; python3 scripts/validation/gitlab_ci_policy.py</code></div>
   <div class="skill-cmd"><b>Live GitLab authority</b><code>python3 scripts/validation/gitlab_governance_audit.py --self-test &amp;&amp; python3 scripts/validation/gitlab_governance_audit.py --project "$CI_PROJECT_ID"</code></div>
   <div class="skill-cmd"><b>Code hygiene</b><code>python3 scripts/validation/code_hygiene.py --self-test &amp;&amp; python3 scripts/validation/code_hygiene.py</code></div>
   <div class="skill-cmd"><b>Figure audit</b><code>python3 scripts/validation/figure_audit.py</code></div>
@@ -410,7 +417,7 @@
     <a class="skill-card" href="grounding.py"><b>grounding.py</b><span>grounding sweep. Checks cited material association and source-grounding signals.</span></a>
     <a class="skill-card" href="prose_variety.py"><b>prose_variety.py</b><span>prose cadence. Finds rhythm, buzz, grammar, and structural prose issues.</span></a>
     <a class="skill-card" href="code_hygiene.py"><b>code_hygiene.py</b><span>code bloat and style. Scans code comments, walls, duplication, size, constants, and prose tells in code.</span></a>
-    <a class="skill-card" href="color_theme.py"><b>color_theme.py</b><span>theme check. Flags inline or non-theme-dynamic colors.</span></a>
+    <a class="skill-card" href="color_theme.py"><b>color_theme.py</b><span>Required theme gate. Includes Studio and every canonical page by default; flags inline literals, undefined variables, and render-time color bakes.</span></a>
     <a class="skill-card" href="figure_audit.py"><b>figure_audit.py</b><span>figure audit. Checks static figure legibility, accessibility, injected-SVG style scoping, and the shared mobile lightbox readability contract.</span></a>
     <a class="skill-card" href="security_architecture_audit.py"><b>security_architecture_audit.py</b><span>Required security architecture gate. Derives CI jobs, runtime hosts, remote suffixes, and worker inventory from source; also checks public metadata boundaries, local-only classification, evidence, geometry, and SVG freshness.</span></a>
     <a class="skill-card" href="threat_control_audit.py"><b>threat_control_audit.py</b><span>Required threat-control gate. Validates Target of Evaluation ownership, aggregate anticipated mitigations, evidence paths, external boundaries, and security overclaims.</span></a>
@@ -424,6 +431,7 @@
     <a class="skill-card" href="learner_flow_runtime_audit.py"><b>learner_flow_runtime_audit.py</b><span>learner-flow browser gate. Exercises Guided code collapse/local reveal, authored defaults, saved depth, section overrides, reload/print, narrow keyboard behavior, prerequisites, and cell lifecycle transitions.</span></a>
     <a class="skill-card" href="runtime_integration_browser_audit.py"><b>runtime_integration_browser_audit.py</b><span>runtime integration browser gate. Executes model-route persistence, SKILL explorer reuse, typed 3a probes, the agent bundle, cron lifecycle, and live-policy state transition in Chromium.</span></a>
     <a class="skill-card" href="contribution_safety_audit.py"><b>contribution_safety_audit.py</b><span>required contribution-safety gate. Holds governance and DCO, immutable action pins, locked workflow installs, fork-safe security workflows, submission evidence, hooks, PR permissions, and release authority together with mutation coverage.</span></a>
+    <a class="skill-card" href="gitlab_ci_policy.py"><b>gitlab_ci_policy.py</b><span>GitLab CI structural gate. Keeps the root manifest inert, SCA self-contained and change-sensitive, scan commands locked, and workflow paths assigned to named owners.</span></a>
     <a class="skill-card" href="gitlab_governance_audit.py"><b>gitlab_governance_audit.py</b><span>read-only live-host gate. Reports whether GitLab protects main, release tags, production deploys and approvers, and the explicit human-review action while detecting one-operator deadlocks or authority widening.</span></a>
     <a class="skill-card" href="localization_audit.py"><b>localization_audit.py</b><span>required locale gate. Rejects runtime copies, stale accepted hashes, machine-contract drift, untranslated runtime UI, locale-specific prose artifacts, and Spanish runnable-code drift; mutation-tests endpoint setup copy and emits the Localization Studio manifest.</span></a>
     <a class="skill-card" href="localization_runtime_audit.py"><b>localization_runtime_audit.py</b><span>browser locale gate. Exercises English, Portuguese, and Spanish same-page switching, fallback routing, responsive menu behavior, translated SVG geometry, and Localization Studio comparison frames.</span></a>

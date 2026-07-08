@@ -57,7 +57,7 @@ INTERFACE_CONTRACT = {
     "scripts/translate/locale_projection.py": ("project_locale_html", "project_localized_code_templates", "missing localized shell segment"),
     "scripts/translate/code_localization.py": ("project_localized_code_templates", "code_contract_literals", "localized runnable code contract differs"),
     "scripts/validation/localization_runtime_audit.py": ("pageerror", "language-menu entries are clipped", "Localization Studio"),
-    ".gitlab-ci.yml": ("release_gate.py --tier ship",),
+    ".gitlab/ci/core.yml": ("release_gate.py --tier ship",),
     ".github/workflows/pages.yml": ("release_gate.py --tier ship",),
     ".github/workflows/release.yml": ("release_gate.py --tier ship",),
     "scripts/validation/release_gate.py": (

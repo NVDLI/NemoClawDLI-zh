@@ -853,7 +853,7 @@ def audit_workflow_wiring(
     findings: list[str] = []
     shared_gate = "release_gate.py --tier ship"
     _need(findings, shared_gate in gitlab,
-          ".gitlab-ci.yml: required test job must run the shared ship gate")
+          ".gitlab/ci/core.yml: required test job must run the shared ship gate")
     _need(findings, shared_gate in github,
           ".github/workflows/pages.yml: Pages test job must run the shared ship gate")
     _need(findings, 'learner_flow_audit.py", "--self-test"' in release_gate,
@@ -973,7 +973,7 @@ def audit_tree(root: Path = ROOT) -> list[str]:
     home = (root / "web/nemoclaw/index.html").read_text(encoding="utf-8")
     findings.extend(audit_home(home))
     findings.extend(audit_workflow_wiring(
-        (root / ".gitlab-ci.yml").read_text(encoding="utf-8"),
+        (root / ".gitlab/ci/core.yml").read_text(encoding="utf-8"),
         (root / ".github/workflows/pages.yml").read_text(encoding="utf-8"),
         (root / "scripts/validation/release_gate.py").read_text(encoding="utf-8"),
         (root / "scripts/git-hooks/pre-push").read_text(encoding="utf-8"),
@@ -1297,13 +1297,13 @@ def self_test() -> list[str]:
     if not any("CPU baseline" in finding for finding in audit_home(broken)):
         misses.append("detector missed missing CPU baseline")
 
-    gitlab = (ROOT / ".gitlab-ci.yml").read_text(encoding="utf-8")
+    gitlab = (ROOT / ".gitlab/ci/core.yml").read_text(encoding="utf-8")
     github = (ROOT / ".github/workflows/pages.yml").read_text(encoding="utf-8")
     release_gate = (ROOT / "scripts/validation/release_gate.py").read_text(encoding="utf-8")
     pre_push = (ROOT / "scripts/git-hooks/pre-push").read_text(encoding="utf-8")
     bundle = (ROOT / "scripts/validation/validate_bundle.py").read_text(encoding="utf-8")
     broken_gitlab = gitlab.replace("release_gate.py --tier ship", "release_gate.py --tier fast", 1)
-    if not any(".gitlab-ci.yml" in finding for finding in audit_workflow_wiring(
+    if not any(".gitlab/ci/core.yml" in finding for finding in audit_workflow_wiring(
             broken_gitlab, github, release_gate, pre_push, bundle)):
         misses.append("detector missed missing GitLab learner-flow wiring")
     broken_pre_push = pre_push.replace("--tier ship --no-write --changed-since origin/main --reuse-success",

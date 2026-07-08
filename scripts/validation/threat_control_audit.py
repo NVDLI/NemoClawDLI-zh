@@ -151,7 +151,7 @@ REQUIRED_TOKENS = {
         "cd release-assets && sha256sum --check SHA256SUMS",
         "timeout-minutes:",
     ),
-    ".gitlab-ci.yml": (
+    ".gitlab/ci/core.yml": (
         "external_integration_audit:",
         'EXTERNAL_INTEGRATION_AUDIT == "1"',
         "https://github.com/NVDLI/NemoClawDLI.git",

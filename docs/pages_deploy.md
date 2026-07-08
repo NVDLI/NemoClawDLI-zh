@@ -77,16 +77,19 @@ stage when their rules select them.
 2. **Pages build** is manual. Production refs publish the root site; ordinary branches
    publish an isolated preview path beside a root rebuilt from an approved production ref.
    The job calls `scripts/build/build_pages.sh public` and publishes the `public/` artifact.
-3. **Pages smoke** verifies the deployed manifest and every advertised course URL.
-4. **Human review** becomes available only after the exact commit passes the static gate
-   and live deployment smoke test.
+3. **Pages verification** checks the deployed manifest and every advertised course URL,
+   then renders every generated HTML file at desktop and narrow widths in dark and light mode without an allowlist.
+4. **Human review** becomes available only after the exact commit passes the static gate,
+   live deployment smoke, and exhaustive theme rendering.
 
 ### GitLab Pages (private pre-release)
 
-`.gitlab-ci.yml` defines `test`, `deploy`, `verify`, and `review` stages. The manual
+The inert `.gitlab-ci.yml` includes owner-gated core and SCA modules. `.gitlab/ci/core.yml`
+defines `test`, `deploy`, `verify`, and `review` stages. The manual
 `pages` job builds `public/` and publishes either a production ref or a branch preview.
 GitLab Pages serves the private pre-release review surface under repository access
-controls. `pages_smoke` checks the live result before `human_review` can be played.
+controls. `pages_smoke` checks the live result and `theme_runtime` checks every generated
+HTML file at desktop and narrow widths in dark and light mode before `human_review` can be played.
 
 #### Branch-preview behavior
 
@@ -128,6 +131,11 @@ The preview job keeps both cleanup controls:
   stale schemas, missing readiness flags, and absent dependency evidence.
 - `pages_smoke` verifies the live root foyer, branch foyer, manifests, course URLs,
   dependency dashboard, package inventory, and browser SBOM.
+- `theme_runtime` discovers every generated `.html` file recursively and renders both
+  themes. In branch pipelines it audits the complete branch-owned preview subtree; production
+  pipelines audit the complete production artifact. The protected production-root copy bundled
+  beside a branch preview belongs to the already-published production ref and is not silently
+  reclassified as branch output. There is no per-file opt-in, exclusion list, or non-blocking result.
 - `resource_group: pages-site` serializes preview and production deployments.
 - `build_pages.sh` rejects unsafe output, course, source-mirror, and branch-prefix paths.
 
