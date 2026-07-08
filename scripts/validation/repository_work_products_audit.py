@@ -66,7 +66,7 @@ WIRING = {
         "Repository work products + detector",
     ),
     "scripts/validation/release_gate.py": (
-        'py("scripts/validation/repository_work_products_audit.py", "--self-test")',
+        'unit_test("repository_work_products_audit")',
     ),
     "scripts/validation/validate_bundle.py": (
         "import repository_work_products_audit as rwpa",
@@ -76,11 +76,11 @@ WIRING = {
         "repository_work_products_audit.py",
     ),
     "docs/release-test-plan.md": (
-        "repository_work_products_audit.py --self-test",
+        "unittest discover -v -s tests/validation",
         "repository_work_products_audit.py",
     ),
     "docs/agent_process.md": (
-        "repository_work_products_audit.py --self-test",
+        "unittest discover -v -s tests/validation",
         "repository_work_products_audit.py",
     ),
 }
@@ -340,11 +340,11 @@ def audit_contract(
     return out
 
 
-def self_test() -> tuple[int, int, list[str]]:
+def self_test() -> list[str]:
     base = load_contract()
     baseline = audit_contract(base)
     if baseline:
-        return 0, 0, [f"baseline is not clean: {row['code']} {row['path']} {row['detail']}" for row in baseline]
+        return [f"baseline is not clean: {row['code']} {row['path']} {row['detail']}" for row in baseline]
 
     tests: list[tuple[str, dict, dict[str, str], set[str], set[str], str]] = []
 
@@ -410,7 +410,7 @@ def self_test() -> tuple[int, int, list[str]]:
     raw = (ROOT / "scripts/validation/release_gate.py").read_text(encoding="utf-8")
     add("release gate", mutated(), "work-product-wiring", overrides={
         "scripts/validation/release_gate.py": raw.replace(
-            'py("scripts/validation/repository_work_products_audit.py", "--self-test")',
+            'unit_test("repository_work_products_audit")',
             'py("scripts/validation/repository_work_products_audit.py", "--help")',
         ),
     })
@@ -421,20 +421,20 @@ def self_test() -> tuple[int, int, list[str]]:
         ),
     })
     replace("scripts/git-hooks/pre-commit", "repository_work_products_audit.py", "repository_policy_removed.py", "work-product-wiring", "pre-commit")
-    replace("docs/release-test-plan.md", "repository_work_products_audit.py --self-test", "repository_work_products_audit.py --help", "work-product-wiring", "test plan")
-    replace("docs/agent_process.md", "repository_work_products_audit.py --self-test", "repository_work_products_audit.py --help", "work-product-wiring", "agent process")
+    for rel, name in (("docs/release-test-plan.md", "test plan"), ("docs/agent_process.md", "agent process")):
+        raw = (ROOT / rel).read_text(encoding="utf-8")
+        add(name, mutated(), "work-product-wiring", overrides={
+            rel: raw.replace("unittest discover -v -s tests/validation", "unittest --help"),
+        })
 
-    passed = 0
     failures: list[str] = []
     for name, data, overrides, missing, present, expected in tests:
         codes = {row["code"] for row in audit_contract(
             data, text_overrides=overrides, missing_paths=missing, present_paths=present,
         )}
-        if expected in codes:
-            passed += 1
-        else:
+        if expected not in codes:
             failures.append(f"{name}: expected {expected}, got {sorted(codes)}")
-    return passed, len(tests), failures
+    return failures
 
 
 def main() -> int:
@@ -443,8 +443,8 @@ def main() -> int:
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
     if args.self_test:
-        passed, total, failures = self_test()
-        print(f"repository work-product self-test: {passed}/{total} mutation detectors passed")
+        failures = self_test()
+        print("repository work-product self-test: " + ("FAIL" if failures else "PASS"))
         for failure in failures:
             print("  FAIL " + failure)
         return 1 if failures else 0

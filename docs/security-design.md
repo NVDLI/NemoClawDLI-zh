@@ -159,7 +159,7 @@ configuration, provider controls, publication approval, or completion of a secur
 
 ```bash
 python3 scripts/figures/render_security_architecture.py --check
-python3 scripts/validation/security_architecture_audit.py --self-test
+python3 -m unittest -v tests/validation/test_embedded_validator_suites.py
 python3 scripts/validation/security_architecture_audit.py
 ```
 

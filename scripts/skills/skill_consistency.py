@@ -244,7 +244,7 @@ def inv_lifecycle_allowlist():
 
 # Dangling refs: dgx/ and mats paths stay recognized so stale SKILL links fail loudly.
 _PREFIXES = ("task1/", "cpu/", "web/", "dgx/", "repos/", ".github/", ".gitlab/", "i18n/",
-             "deploy/", "docs/", "scripts/", "workspace/")
+             "deploy/", "docs/", "scripts/", "tests/", "workspace/")
 
 
 def _resolve(ref: str, base: Path | None = None) -> Path | None:

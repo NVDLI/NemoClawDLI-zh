@@ -146,7 +146,7 @@
     <div class="skill-cmd"><b>Pages build</b><code>bash scripts/build/build_pages.sh</code></div>
     <div class="skill-cmd"><b>Docs catalog + projection</b><code>python3 scripts/build/project_docs_explorer.py --self-test &amp;&amp; python3 scripts/build/project_docs_explorer.py --audit</code></div>
     <div class="skill-cmd"><b>Source explorer projection</b><code>python3 scripts/build/project_source_tree.py --self-test</code></div>
-    <div class="skill-cmd"><b>Browser package inventory</b><code>python3 scripts/validation/course_dependency_integrity.py --self-test</code></div>
+    <div class="skill-cmd"><b>Browser package inventory</b><code>python3 -m unittest -v tests.validation.test_embedded_validator_suites.ValidatorSelfTests.test_course_dependency_integrity</code></div>
     <div class="skill-cmd"><b>Release package determinism</b><code>python3 scripts/build/package_release.py --self-test</code></div>
     <div class="skill-cmd"><b>Hosted slide deck</b><code>python3 scripts/build/build_repository_overview_html.py --check</code></div>
     <div class="skill-cmd"><b>Security review package</b><code>python3 scripts/build/build_security_review_package.py --package</code></div>

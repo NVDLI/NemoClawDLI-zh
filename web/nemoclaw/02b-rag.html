@@ -877,7 +877,7 @@ const cards = state.docs.map((d) => {
   const isWinnerParent = d.id === parent.id;
   const rows = docChunks.map((c) => {
     const isTop = c === top;
-    return '<div style="margin:3px 0;padding:5px 8px;border-radius:5px;border-left:3px solid ' +
+    return '<div style="margin:3px 0;padding:5px 8px;border-radius:5px;border:1px solid ' +
       (isTop ? "var(--g,#76b900)" : "var(--bd,#2a2a2a)") + (isTop ? ";background:rgba(118,185,0,.12)" : "") + '">' +
       '<div style="font-family:var(--mono,monospace);font-size:11px;color:' + (isTop ? "var(--gs,#aee23a)" : "var(--tf,#8a8a8a)") + '">chunk ' + c.idx + " · score " + c.score.toFixed(3) + (isTop ? " ★ returned" : "") + '</div>' +
       '<div style="font-size:12px;color:var(--td,#b0b0b0)">' + esc(c.text) + '</div></div>';

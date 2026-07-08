@@ -203,9 +203,8 @@ def project(source_skill: Path, source_root: Path, artifact_root: Path) -> tuple
     return len(declared), len(linked)
 
 
-def self_test() -> tuple[int, int, list[str]]:
+def self_test() -> list[str]:
     failures: list[str] = []
-    total = 9
     with tempfile.TemporaryDirectory(prefix="docs-projection-") as tmp:
         base = Path(tmp)
         root = base / "repo"
@@ -310,7 +309,7 @@ def self_test() -> tuple[int, int, list[str]]:
         else:
             failures.append("duplicate catalog entry was accepted")
 
-    return total - len(failures), total, failures
+    return failures
 
 
 def main() -> int:
@@ -323,8 +322,8 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.self_test:
-        passed, total, failures = self_test()
-        print(f"docs explorer projection self-test: {passed}/{total} passed")
+        failures = self_test()
+        print("docs explorer projection self-test: " + ("FAIL" if failures else "PASS"))
         for failure in failures:
             print(f"  FAIL {failure}")
         return 1 if failures else 0

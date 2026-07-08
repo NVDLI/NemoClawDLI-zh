@@ -72,7 +72,7 @@ def read_report(path: Path) -> dict:
     return data
 
 
-def self_test() -> tuple[int, int, list[str]]:
+def self_test() -> list[str]:
     valid = {
         "schema": SCHEMA,
         "git_sha": "abc1234",
@@ -118,8 +118,7 @@ def self_test() -> tuple[int, int, list[str]]:
     ]
     if _span(multiline, "audit_contract", "py") != [1, 7]:
         failures.append("multiline Python implementation span excludes the function body")
-    total = len(mutations) + 2
-    return total - len(failures), total, failures
+    return failures
 
 
 def main() -> int:
@@ -130,8 +129,8 @@ def main() -> int:
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
-        passed, total, failures = self_test()
-        print(f"validation report self-test: {passed}/{total} passed")
+        failures = self_test()
+        print("validation report self-test: " + ("FAIL" if failures else "PASS"))
         for item in failures:
             print("  FAIL " + item)
         return 1 if failures else 0

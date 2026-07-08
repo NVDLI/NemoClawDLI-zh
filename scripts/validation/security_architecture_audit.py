@@ -541,7 +541,7 @@ def audit_model(model: dict, *, root: Path = ROOT, svg_text: str | None = None) 
         ))
 
     doc_text = DOC.read_text(encoding="utf-8") if DOC.is_file() else ""
-    for token in ("security-architecture.json", "security-architecture.svg", "render_security_architecture.py --check", "security_architecture_audit.py --self-test", "Browser routing by host", "embedded in an iframe", "do not use the relay", "internal program identifiers"):
+    for token in ("security-architecture.json", "security-architecture.svg", "render_security_architecture.py --check", "tests/validation/test_embedded_validator_suites.py", "Browser routing by host", "embedded in an iframe", "do not use the relay", "internal program identifiers"):
         if token not in doc_text:
             out.append(finding("operator-doc", "docs/security-design.md", f"missing operator instruction: {token}"))
     project_doc_path = root / "docs" / "security-design.md"
@@ -562,7 +562,7 @@ def audit() -> list[dict[str, str]]:
     return audit_model(model)
 
 
-def self_test() -> tuple[list[str], int]:
+def self_test() -> list[str]:
     base = json.loads(MODEL.read_text(encoding="utf-8"))
     expected_svg = render(base)
     cases = []
@@ -668,40 +668,32 @@ def self_test() -> tuple[list[str], int]:
     cases.append(("edge crosses node", mutation, expected_svg, "edge-cross-node"))
 
     failures = []
-    total = 0
     for label, model, svg, wanted in cases:
-        total += 1
         codes = {row["code"] for row in audit_model(model, svg_text=svg)}
         if wanted not in codes:
             failures.append(f"detector missed {label}: expected {wanted}, got {sorted(codes)}")
-    total += 1
     if "stale-svg" not in {row["code"] for row in audit_model(base, svg_text=expected_svg.replace("Flow register", "Flow registry", 1))}:
         failures.append("detector missed stale SVG")
-    total += 1
     wrong_title = expected_svg.replace(EXPECTED_SVG_TITLE, "NemoClaw course security architecture")
     if "scope-title" not in {row["code"] for row in audit_model(base, svg_text=wrong_title)}:
         failures.append("detector missed product-like diagram title")
-    total += 1
     probe_stages, probe_jobs = ci_contract("stages: [test, deploy, review]\n\npages:\n  stage: deploy\n\nrelease_check:\n  stage: review\n")
     if probe_stages != ["test", "deploy", "review"] or probe_jobs != {"pages": "deploy", "release_check": "review"}:
         failures.append(f"CI observer missed a release topology change: {probe_stages}, {probe_jobs}")
-    total += 1
     parser = RuntimeHTMLParser()
     parser.feed('<script src="https://new.cdn.test/app.js"></script>')
     declared = DECLARED_URL_RE.search('const MODEL_API_URL = `wss://new.model.test/v1`;')
     suffix = re.search(r"\.endsWith\(\s*[\"'](\.[A-Za-z0-9-]+\.[A-Za-z]{2,})[\"']\s*\)", 'host.endsWith(".new-runtime.test")')
     if parser.urls != ["https://new.cdn.test/app.js"] or not declared or declared.group("url") != "wss://new.model.test" or not suffix:
         failures.append("runtime observer missed an active resource, endpoint, or dynamic host suffix")
-    total += 1
     project_doc = DOC.read_text(encoding="utf-8")
     missing_project_doc = project_doc.replace("## Trust boundaries and data", "## Data", 1)
     if "project-doc" not in {row["code"] for row in project_doc_findings(missing_project_doc)}:
         failures.append("detector missed project-document drift")
-    total += 1
     leaked = {row["code"] for row in public_metadata_findings({"fixture": "TA" "VA report for nS" "pect program NSP" "ECT-TEST-ID"})}
     if leaked != {"internal-review-name", "internal-program-id"}:
         failures.append(f"public metadata detector missed internal workflow language: {sorted(leaked)}")
-    return failures, total
+    return failures
 
 
 def main() -> int:
@@ -714,12 +706,12 @@ def main() -> int:
         print(json.dumps(observe_system(), indent=2))
         return 0
     if args.self_test:
-        failures, total = self_test()
+        failures = self_test()
         if failures:
             for detail in failures:
                 print(f"FAIL {detail}")
             return 1
-        print(f"security_architecture_audit self-test: {total - len(failures)}/{total} mutation detectors passed")
+        print("security_architecture_audit self-test: PASS")
         return 0
     findings = audit()
     if args.json:

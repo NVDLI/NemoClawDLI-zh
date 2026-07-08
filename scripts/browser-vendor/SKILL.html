@@ -53,7 +53,7 @@
   <h1 id="skill-title">Exact browser package inputs</h1>
   <p>Package changes start here. Generated files remain committed so production builds never resolve packages from the network. The dependency audit enforces supported package floors, an explicit CodeMirror mode allowlist, and pinned standalone fallbacks.</p>
   <h2>Executable checks</h2>
-  <code class="skill-cmd">python3 scripts/validation/course_dependency_integrity.py --self-test &amp;&amp; python3 scripts/validation/course_dependency_integrity.py</code>
+  <code class="skill-cmd">python3 -m unittest discover -v -s tests/validation &amp;&amp; python3 scripts/validation/course_dependency_integrity.py</code>
   <code class="skill-cmd">security_browser_sca</code>
   <h2>Linkage map</h2>
   <p><a href="README.md">Update procedure</a> → <a href="../build/vendor_browser_dependencies.mjs">generator</a> → <a href="../../web/nemoclaw/vendor/browser-dependencies.json">generated manifest</a> → <a href="../../web/nemoclaw/dependencies.html">public inventory</a>.</p>

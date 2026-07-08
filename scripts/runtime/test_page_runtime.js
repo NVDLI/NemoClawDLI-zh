@@ -262,6 +262,9 @@ function findChrome() {
   page.on('pageerror', err => errors.push('PAGE_ERROR: ' + err.message));
   page.on('requestfailed', req => {
     const failure = req.failure();
+    // Chromium may mark a completed HEAD probe as aborted because no response body follows.
+    // HTTP error responses remain visible through the response listener below.
+    if (req.method() === 'HEAD' && failure && failure.errorText === 'net::ERR_ABORTED') return;
     resourceErrors.push(`FAILED ${req.url()} ${failure ? failure.errorText : ''}`.trim());
   });
   page.on('response', resp => {
@@ -333,6 +336,9 @@ function findChrome() {
 
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
   await page.waitForTimeout(2000);
+  // Render checks include foyer manifest probes. Let those finite HEAD requests settle before
+  // closing Chromium; otherwise Playwright reports the close itself as net::ERR_ABORTED.
+  if (renderOnly) await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
 
   if (assistantArtifacts) {
     if (!NVIDIA_API_KEY) throw new Error('--assistant-artifacts requires NVIDIA_API_KEY');

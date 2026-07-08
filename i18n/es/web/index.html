@@ -102,7 +102,6 @@
 
   .path-card {
     background: var(--e1); border: 1px solid var(--e3); border-radius: 12px;
-    border-left: 3px solid var(--g);
     padding: 22px 24px; text-decoration: none;
     transition: border-color .15s, transform .15s, background .15s;
     display: flex; flex-direction: column; gap: 8px;
@@ -119,8 +118,8 @@
                       font-size: .92rem; }
 
   .callout {
-    border-left: 3px solid var(--g); background: rgba(118,185,0,.07);
-    padding: 12px 18px; border-radius: 0 8px 8px 0; margin: 1.6em 0;
+    border: 1px solid var(--e3); background: rgba(118,185,0,.07);
+    padding: 12px 18px; border-radius: 8px; margin: 1.6em 0;
     font-size: .92rem; color: var(--td);
   }
   .callout strong { color: var(--gs); }
@@ -354,7 +353,8 @@ Comentarios:
   function probeUrl(url) {
     return url ? url.replace(/\/?$/, "/index.html") : null;
   }
-  fetch("branches.json", { cache: "no-store" }).then(function (r) {
+  var manifestUrl = document.documentElement.lang === "en" ? "branches.json" : "../branches.json";
+  fetch(manifestUrl, { cache: "no-store" }).then(function (r) {
     if (!r.ok) throw new Error("no branch manifest");
     return r.json();
   }).then(function (data) {

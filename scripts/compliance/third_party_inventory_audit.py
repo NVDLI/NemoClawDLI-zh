@@ -276,10 +276,10 @@ def audit(overrides: dict[str, str] | None = None) -> list[str]:
     return findings
 
 
-def self_test() -> tuple[int, int, list[str]]:
+def self_test() -> list[str]:
     baseline = audit()
     if baseline:
-        return 0, 0, ["baseline is not clean: " + finding for finding in baseline]
+        return ["baseline is not clean: " + finding for finding in baseline]
     document = read(INVENTORY, {})
     runbook = read(RUNBOOK, {})
     dockerfile = read("cpu/services/llm_client/llm_client.Dockerfile", {})
@@ -307,14 +307,11 @@ def self_test() -> tuple[int, int, list[str]]:
         ("plain-language export explanation", {CSV_EXPORTER: read(CSV_EXPORTER, {}).replace("Learners receive this code as part of the browser course.", "Vendored package.", 1)}, "reviewer export lacks plain-language usage explanation"),
     )
     failures = []
-    passed = 0
     for label, overrides, expected in mutations:
         observed = audit(overrides)
-        if any(expected in finding for finding in observed):
-            passed += 1
-        else:
+        if not any(expected in finding for finding in observed):
             failures.append(f"mutation escaped: {label}")
-    return passed, len(mutations), failures
+    return failures
 
 
 def main() -> int:
@@ -322,8 +319,8 @@ def main() -> int:
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
-        passed, total, failures = self_test()
-        print(f"third-party inventory self-test: {passed}/{total} mutation detectors passed")
+        failures = self_test()
+        print("third-party inventory self-test: " + ("FAIL" if failures else "PASS"))
         for failure in failures:
             print(f"  {failure}")
         return 1 if failures else 0

@@ -14,6 +14,7 @@
   --e1:  #f6f8fa;
   --e2:  #eef1f4;
   --e3:  #e1e6eb;
+  --code-surface: #f8fafc;
   --bd:  #d0d7de;
   --tx:  #1a1a1a;
   --td:  #3b3b3b;
@@ -149,12 +150,11 @@ a:hover { color: #1a4d10; }
 
 /* Callouts. */
 .callout {
-  border-left: 3px solid #76b900;
   background: #f0f8e6;
   color: #3b3b3b;
 }
-.callout.warn { border-left-color: #bf8700; background: #fff8c5; }
-.callout.info { border-left-color: #0969da; background: #ddf4ff; }
+.callout.warn { background: #fff8c5; }
+.callout.info { background: #ddf4ff; }
 .callout strong { color: #1a1a1a; }
 
 /* ── Code blocks ──────────────────────────────────────────────────────────
@@ -184,7 +184,7 @@ code,
 }
 
 pre {
-  background: #f6f8fa !important;
+  background: var(--code-surface) !important;
   color: #1f2328 !important;
   border: 1px solid #d0d7de !important;
   border-radius: 6px !important;
@@ -366,14 +366,12 @@ svg[style*="background: #0d0d0d"] {
 .nb-card .mod  { color: #57606a !important; }
 .nb-card .name { color: #4a7a00 !important; }
 .nb-card .svcs { color: #57606a !important; }
-.nb-card.cert       { border-left-color: #6f42c1 !important; }
 .nb-card.cert .name { color: #6f42c1 !important; }
 
 /* Cert callout. The purple tint stays, but force readable text in light mode. */
 .cert-callout {
   background: #f3eeff !important;
   border-color: rgba(111,66,193,0.35) !important;
-  border-left-color: #6f42c1 !important;
 }
 .cert-callout .py-label { color: #6f42c1 !important; }
 .cert-callout p         { color: #3b3b3b !important; }

@@ -111,7 +111,7 @@ def render(sbom_path: Path, artifact_id: str, inventory_path: Path) -> tuple[str
     return "\n".join(lines) + "\n", unresolved
 
 
-def self_test() -> tuple[int, int, list[str]]:
+def self_test() -> list[str]:
     tests: list[tuple[str, bool]] = []
     with tempfile.TemporaryDirectory(prefix="sbom-license-inventory-") as directory:
         root = Path(directory)
@@ -146,7 +146,7 @@ def self_test() -> tuple[int, int, list[str]]:
         except ValueError:
             tests.append(("mutable identity rejected", True))
     failures = [name for name, passed in tests if not passed]
-    return len(tests) - len(failures), len(tests), failures
+    return failures
 
 
 def main() -> int:
@@ -159,8 +159,8 @@ def main() -> int:
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
-        passed, total, failures = self_test()
-        print(f"SBOM license inventory self-test: {passed}/{total} mutation cases passed")
+        failures = self_test()
+        print("SBOM license inventory self-test: " + ("FAIL" if failures else "PASS"))
         for failure in failures:
             print(f"  {failure}")
         return 1 if failures else 0
