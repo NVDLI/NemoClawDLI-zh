@@ -1060,9 +1060,69 @@ export function mountThemeToggle() {
   else bar.appendChild(btn);
 }
 
+function headingId(text, occupied) {
+  const base = String(text || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "section";
+  let candidate = base;
+  let suffix = 2;
+  while (occupied.has(candidate)) candidate = `${base}-${suffix++}`;
+  occupied.add(candidate);
+  return candidate;
+}
+
+function headingLinkIcon() {
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.setAttribute("viewBox", "0 0 24 24");
+  icon.setAttribute("aria-hidden", "true");
+  icon.setAttribute("focusable", "false");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", "M10.6 13.4a4.5 4.5 0 0 0 6.36.01l2.12-2.12a4.5 4.5 0 0 0-6.36-6.36l-1.21 1.2m1.9 4.47a4.5 4.5 0 0 0-6.37-.01l-2.12 2.12a4.5 4.5 0 1 0 6.37 6.36l1.2-1.2");
+  path.setAttribute("fill", "none");
+  path.setAttribute("stroke", "currentColor");
+  path.setAttribute("stroke-width", "2");
+  path.setAttribute("stroke-linecap", "round");
+  path.setAttribute("stroke-linejoin", "round");
+  icon.append(path);
+  return icon;
+}
+
+export function mountHeadingLinks() {
+  const main = document.querySelector("main");
+  if (!main) return;
+  const occupied = new Set([...document.querySelectorAll("[id]")].map((node) => node.id));
+  main.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((heading) => {
+    if (heading.classList.contains("heading-link-target")) return;
+    if (!heading.id) heading.id = headingId(heading.textContent, occupied);
+    else occupied.add(heading.id);
+
+    heading.classList.add("heading-link-target");
+    const label = heading.textContent.trim();
+    heading.setAttribute("aria-label", label);
+    const icon = document.createElement("a");
+    icon.className = "heading-anchor";
+    icon.href = `#${heading.id}`;
+    icon.setAttribute("aria-label", `Link to ${label}`);
+    icon.title = "Copy link to this section";
+    icon.append(headingLinkIcon());
+    heading.prepend(icon);
+
+    if (!heading.querySelector("a:not(.heading-anchor)")) {
+      const title = document.createElement("a");
+      title.className = "heading-permalink";
+      title.href = `#${heading.id}`;
+      while (heading.lastChild && heading.lastChild !== icon) title.prepend(heading.lastChild);
+      heading.append(title);
+    }
+  });
+}
+
 // Auto-mount on any page that ships a topbar (the lab and the full standalone).
 if (typeof document !== "undefined") {
-  const _boot = () => { mountLearningView(); mountThemeToggle(); mountLanguageMenu(); mountFigures(); markLiveArtifacts(); mountCourseLicenseNote(); mountCourseAssistant({ embed }); };
+  const _boot = () => { mountLearningView(); mountThemeToggle(); mountLanguageMenu(); mountHeadingLinks(); mountFigures(); markLiveArtifacts(); mountCourseLicenseNote(); mountCourseAssistant({ embed }); };
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", _boot);
   } else {
