@@ -139,7 +139,7 @@ def changed_paths(commit_range: str, root: Path = ROOT) -> list[str]:
     return sorted({line.strip() for line in proc.stdout.splitlines() if line.strip()})
 
 
-def self_test() -> tuple[list[str], int]:
+def self_test() -> list[str]:
     cases = (
         ("dependency", ["workspace/requirements.lock"], {"authoritative-vulnerability-scan", "open-source-license-review", "final-artifact-evidence"}),
         ("topology", ["scripts/cors-proxy/reference.js"], {"threat-architecture-review", "verified-secret-scan"}),
@@ -158,7 +158,7 @@ def self_test() -> tuple[list[str], int]:
     ids = [row["id"] for row in combined]
     if len(ids) != len(set(ids)):
         failures.append("combined paths emitted duplicate follow-up categories")
-    return failures, len(cases) + 1
+    return failures
 
 
 def emit(paths: list[str], rows: list[dict[str, object]], commit_range: str, report: str | None) -> int:
@@ -192,8 +192,8 @@ def main() -> int:
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
-        failures, total = self_test()
-        print(f"release change reminder self-test: {total - len(failures)}/{total} passed")
+        failures = self_test()
+        print("release change reminder self-test: " + ("FAIL" if failures else "PASS"))
         for failure in failures:
             print("  FAIL " + failure)
         return 1 if failures else 0

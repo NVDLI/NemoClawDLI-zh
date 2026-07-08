@@ -680,8 +680,7 @@
     var embedded = replaceEmbeddedSnapshot("  let DATA = {};\n", { schema: "fixture/1" });
     expect("indented graph snapshot marker is replaceable",
       embedded === '  let DATA = {"schema":"fixture/1"};\n', embedded);
-    var npass = 0; for (var i = 0; i < checks.length; i++) if (checks[i][1]) npass++;
-    return { checks: checks, npass: npass };
+    return checks;
   }
 
   // ── node IO adapter + CLI ──────────────────────────────────────────────────
@@ -749,10 +748,11 @@
     function arg(name) { var i = argv.indexOf(name); return i >= 0 && i + 1 < argv.length ? argv[i + 1] : null; }
     var rc = 0;
     if (argv.indexOf("--self-test") >= 0) {
-      var st = selfTest(proj);
-      for (var i = 0; i < st.checks.length; i++) { var c = st.checks[i]; process.stdout.write("  " + (c[1] ? "✓" : "✗") + " " + c[0] + (c[1] ? "" : "   [" + c[2] + "]") + "\n"); }
-      process.stdout.write("engine self-test: " + st.npass + "/" + st.checks.length + " pass\n");
-      if (st.npass !== st.checks.length) rc = 1;
+      var checks = selfTest(proj);
+      for (var i = 0; i < checks.length; i++) { var c = checks[i]; process.stdout.write("  " + (c[1] ? "✓" : "✗") + " " + c[0] + (c[1] ? "" : "   [" + c[2] + "]") + "\n"); }
+      var failed = checks.some(function (c) { return !c[1]; });
+      process.stdout.write("engine self-test: " + (failed ? "FAIL" : "PASS") + "\n");
+      if (failed) rc = 1;
     }
     if (argv.indexOf("--graph") >= 0) { var p = arg("--graph"); fs.writeFileSync(p, JSON.stringify(graphJson(proj), null, 2)); process.stdout.write("viewer DATA snapshot -> " + p + "\n"); }
     if (argv.indexOf("--embed") >= 0) { var ok = embedSnapshot(proj, "scripts/runtime/link_graph.html"); process.stdout.write("link_graph.html embedded snapshot " + (ok ? "refreshed" : "NOT updated (DATA line not found)") + "\n"); }

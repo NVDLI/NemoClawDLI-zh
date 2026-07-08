@@ -477,7 +477,7 @@ def main() -> int:
             for item in failures:
                 print(f"slides_audit self-test: FAIL: {item}", file=sys.stderr)
             return 1
-        print("slides_audit self-test: PASS (13 mutations rejected)")
+        print("slides_audit self-test: PASS")
         return 0
     findings = audit_manifest(json.loads(args.manifest.read_text(encoding="utf-8")))
     if args.report:

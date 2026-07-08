@@ -356,8 +356,8 @@
   <div class="skill-cmd"><b>Sensitive proposed history</b><code>python3 scripts/validation/sensitive_content_audit.py --commit-range origin/main..HEAD</code></div>
   <div class="skill-cmd"><b>External release follow-up</b><code>python3 scripts/validation/release_change_reminder.py --commit-range origin/main..HEAD</code></div>
   <div class="skill-cmd"><b>HTML structure + detector</b><code>python3 scripts/validation/html_structure_audit.py &amp;&amp; python3 scripts/validation/html_structure_audit.py --self-test</code></div>
-  <div class="skill-cmd"><b>Stakeholder slides + detector</b><code>python3 scripts/validation/slides_audit.py &amp;&amp; python3 scripts/validation/slides_audit.py --self-test</code></div>
-  <div class="skill-cmd"><b>Cell contract + detector</b><code>python3 scripts/validation/cell_audit.py --self-test &amp;&amp; python3 scripts/validation/cell_audit.py</code></div>
+  <div class="skill-cmd"><b>Stakeholder slides + detector</b><code>python3 scripts/validation/slides_audit.py &amp;&amp; python3 -m unittest -v tests/validation/test_embedded_validator_suites.py</code></div>
+  <div class="skill-cmd"><b>Cell contract + detector</b><code>python3 -m unittest discover -v -s tests/validation &amp;&amp; python3 scripts/validation/cell_audit.py</code></div>
   <div class="skill-cmd"><b>Learner-flow static + detector</b><code>python3 scripts/validation/learner_flow_audit.py &amp;&amp; python3 scripts/validation/learner_flow_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>Learner-flow browser lifecycle</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/learner_flow_runtime_audit.py --site-root web</code></div>
   <div class="skill-cmd"><b>Runtime integration browser lifecycle</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/runtime_integration_browser_audit.py --site-root web</code></div>
@@ -365,16 +365,17 @@
   <div class="skill-cmd"><b>Live GitLab authority</b><code>python3 scripts/validation/gitlab_governance_audit.py --self-test &amp;&amp; python3 scripts/validation/gitlab_governance_audit.py --project "$CI_PROJECT_ID"</code></div>
   <div class="skill-cmd"><b>Code hygiene</b><code>python3 scripts/validation/code_hygiene.py --self-test &amp;&amp; python3 scripts/validation/code_hygiene.py</code></div>
   <div class="skill-cmd"><b>Figure audit</b><code>python3 scripts/validation/figure_audit.py</code></div>
-  <div class="skill-cmd"><b>security architecture + detector</b><code>python3 scripts/validation/security_architecture_audit.py &amp;&amp; python3 scripts/validation/security_architecture_audit.py --self-test</code></div>
-  <div class="skill-cmd"><b>Threat controls + detector</b><code>python3 scripts/validation/threat_control_audit.py &amp;&amp; python3 scripts/validation/threat_control_audit.py --self-test</code></div>
-  <div class="skill-cmd"><b>Repository integration classifier</b><code>python3 scripts/validation/repository_sync_audit.py --self-test</code></div>
-  <div class="skill-cmd"><b>Pages artifact integrity</b><code>python3 scripts/validation/pages_artifact_integrity.py --self-test</code></div>
-  <div class="skill-cmd"><b>Product design + release test evidence</b><code>python3 scripts/validation/release_evidence_audit.py &amp;&amp; python3 scripts/validation/release_evidence_audit.py --self-test</code></div>
-  <div class="skill-cmd"><b>Repository work products + detector</b><code>python3 scripts/validation/repository_work_products_audit.py &amp;&amp; python3 scripts/validation/repository_work_products_audit.py --self-test</code></div>
+  <div class="skill-cmd"><b>security architecture + detector</b><code>python3 scripts/validation/security_architecture_audit.py &amp;&amp; python3 -m unittest -v tests/validation/test_embedded_validator_suites.py</code></div>
+  <div class="skill-cmd"><b>Threat controls + detector</b><code>python3 scripts/validation/threat_control_audit.py &amp;&amp; python3 -m unittest -v tests/validation/test_embedded_validator_suites.py tests/validation/test_test_harness_contract.py</code></div>
+  <div class="skill-cmd"><b>Standard test harness contract</b><code>python3 -m unittest -v tests/validation</code></div>
+  <div class="skill-cmd"><b>Repository integration classifier</b><code>python3 -m unittest discover -v -s tests/validation</code></div>
+  <div class="skill-cmd"><b>Pages artifact integrity</b><code>python3 -m unittest discover -v -s tests/validation</code></div>
+  <div class="skill-cmd"><b>Product design + release test evidence</b><code>python3 -m unittest discover -v -s tests/validation &amp;&amp; python3 scripts/validation/release_evidence_audit.py</code></div>
+  <div class="skill-cmd"><b>Repository work products + detector</b><code>python3 -m unittest discover -v -s tests/validation &amp;&amp; python3 scripts/validation/repository_work_products_audit.py</code></div>
   <div class="skill-cmd"><b>Rendered page screenshots</b><code>python3 scripts/validation/cell_ui_runtime_audit.py --site-root /tmp/nemoclaw_visual_preview --page /nemoclaw/02b-rag.html --screenshots /tmp/nemoclaw_visual_audit</code></div>
   <div class="skill-cmd"><b>Studio interface</b><code>python3 scripts/validation/studio_interface_audit.py</code></div>
   <div class="skill-cmd"><b>OpenClaw fallback + static frame lifecycle</b><code>python3 scripts/validation/openclaw_fallback_audit.py</code></div>
-  <div class="skill-cmd"><b>Gateway/chat contract + detector</b><code>bash scripts/runtime/run_node.sh scripts/validation/gateway_token_audit.mjs &amp;&amp; bash scripts/runtime/run_node.sh scripts/validation/gateway_token_audit.mjs --self-test</code></div>
+  <div class="skill-cmd"><b>Gateway/chat contract + detector</b><code>bash scripts/runtime/run_node.sh tests/runtime/test_embedded_validator_suites.mjs &amp;&amp; bash scripts/runtime/run_node.sh scripts/validation/gateway_token_audit.mjs</code></div>
   <div class="skill-cmd"><b>Endpoint registration ownership</b><code>python3 scripts/validation/endpoint_registration_audit.py &amp;&amp; python3 scripts/validation/endpoint_registration_audit.py --self-test</code></div>
   <div class="skill-cmd"><b>OpenClaw connection routing</b><code>bash scripts/runtime/run_node.sh scripts/validation/openclaw_connection_audit.mjs</code></div>
   <div class="skill-cmd"><b>OpenClaw connection browser</b><code>CONTAINER_ENGINE=podman podman run --rm -v "$PWD:/workspace:ro" -w /workspace -e NODE_PATH=/opt/nemoclaw-runtime/node_modules --entrypoint node nemoclaw/lab-runtime-test:local scripts/validation/openclaw_connection_browser_audit.mjs</code></div>

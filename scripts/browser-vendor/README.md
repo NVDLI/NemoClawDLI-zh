@@ -12,7 +12,7 @@ cd scripts/browser-vendor
 npm ci
 cd ../..
 scripts/runtime/run_node.sh scripts/build/vendor_browser_dependencies.mjs
-python3 scripts/validation/course_dependency_integrity.py --self-test
+python3 -m unittest discover -v -s tests/validation
 python3 scripts/validation/course_dependency_integrity.py
 ```
 

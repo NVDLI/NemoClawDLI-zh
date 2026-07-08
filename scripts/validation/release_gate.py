@@ -35,30 +35,50 @@ def py(path: str, *args: str) -> tuple[str, ...]:
     return (PYTHON, path, *args)
 
 
+def unit_test(name: str) -> tuple[str, ...]:
+    return py(
+        "-m", "unittest", "-v",
+        f"tests.validation.test_embedded_validator_suites.ValidatorSelfTests.test_{name}",
+    )
+
+
+def cli_unit_test(name: str) -> tuple[str, ...]:
+    return py(
+        "-m", "unittest", "-v",
+        f"tests.validation.test_embedded_validator_suites.ValidatorCliTests.test_{name}",
+    )
+
+
+HARNESS_CONTRACT = py("-m", "unittest", "-v", "tests.validation.test_test_harness_contract")
+NODE_VALIDATOR_TESTS = ("bash", "scripts/runtime/run_node.sh", "tests/runtime/test_embedded_validator_suites.mjs")
+
+
 FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/build/bundle_standalone.py", "--self-test"),
     py("scripts/build/build_security_review_package.py", "--self-test"),
     py("scripts/materials/pull_materials.py", "--verify-committed"),
-    py("scripts/validation/local_path_leak_audit.py", "--self-test"),
+    unit_test("local_path_leak_audit"),
     py("scripts/validation/local_path_leak_audit.py"),
-    py("scripts/validation/sensitive_content_audit.py", "--self-test"),
-    py("scripts/validation/release_change_reminder.py", "--self-test"),
-    py("scripts/validation/validation_report_audit.py", "--self-test"),
-    py("scripts/validation/pages_artifact_integrity.py", "--self-test"),
-    py("scripts/validation/threat_control_audit.py", "--self-test"),
-    py("scripts/validation/repository_sync_audit.py", "--self-test"),
+    unit_test("sensitive_content_audit"),
+    unit_test("release_change_reminder"),
+    unit_test("validation_report_audit"),
+    unit_test("pages_artifact_integrity"),
+    unit_test("threat_control_audit"),
+    unit_test("repository_sync_audit"),
     py("scripts/skills/skill_consistency.py"),
     py("scripts/skills/gen_directory_beacons.py", "--check"),
     py("scripts/skills/test_skill_contract.py"),
     py("scripts/skills/skill_contract.py"),
-    py("scripts/build/project_docs_explorer.py", "--self-test"),
+    unit_test("project_docs_explorer"),
+    HARNESS_CONTRACT,
     py("scripts/build/project_docs_explorer.py", "--audit"),
     py("scripts/security/audit_iframe_proxy_opt_in.py"),
     py("scripts/validation/endpoint_registration_audit.py"),
     ("bash", "scripts/runtime/run_node.sh", "scripts/validation/openclaw_connection_audit.mjs"),
     py("scripts/compliance/source_gate.py"),
     py("scripts/compliance/third_party_inventory_audit.py"),
-    py("scripts/compliance/render_sbom_license_inventory.py", "--self-test"),
+    unit_test("third_party_inventory_audit"),
+    unit_test("render_sbom_license_inventory"),
     py("scripts/validation/tenets.py", "--check"),
     py("scripts/runtime/module_check.py", "--dir", "web/nemoclaw"),
     py("scripts/runtime/module_check.py", "--dir", "web"),
@@ -69,19 +89,19 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
 SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/build/bundle_standalone.py", "--self-test"),
     py("scripts/build/build_security_review_package.py", "--self-test"),
-    py("scripts/materials/pull_materials.py", "--self-test"),
+    unit_test("materials"),
     py("scripts/materials/pull_materials.py", "--verify-committed"),
-    py("scripts/validation/local_path_leak_audit.py", "--self-test"),
+    unit_test("local_path_leak_audit"),
     py("scripts/validation/local_path_leak_audit.py"),
     # validate_bundle owns the current-tree sensitive, layout, architecture, release-evidence,
     # repository-work-product, localization, contribution, browser-dependency, and cell audits.
     # Keep only their mutation suites here so one shared gate never scans the same tree twice.
-    py("scripts/validation/sensitive_content_audit.py", "--self-test"),
-    py("scripts/validation/release_change_reminder.py", "--self-test"),
-    py("scripts/validation/validation_report_audit.py", "--self-test"),
-    py("scripts/validation/pages_artifact_integrity.py", "--self-test"),
-    py("scripts/validation/threat_control_audit.py", "--self-test"),
-    py("scripts/validation/repository_sync_audit.py", "--self-test"),
+    unit_test("sensitive_content_audit"),
+    unit_test("release_change_reminder"),
+    unit_test("validation_report_audit"),
+    unit_test("pages_artifact_integrity"),
+    unit_test("threat_control_audit"),
+    unit_test("repository_sync_audit"),
     py("scripts/skills/skill_consistency.py"),
     py("scripts/skills/gen_directory_beacons.py", "--check"),
     py("scripts/skills/test_skill_contract.py"),
@@ -91,15 +111,16 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/validation/learner_flow_audit.py", "--self-test"),
     py("scripts/validation/html_structure_audit.py", "--self-test"),
     py("scripts/validation/code_hygiene.py", "--self-test"),
-    py("scripts/validation/slides_audit.py", "--self-test"),
+    unit_test("slides_audit"),
     py("scripts/build/build_repository_overview_html.py", "--check"),
     py("scripts/figures/render_security_architecture.py", "--check"),
-    py("scripts/validation/security_architecture_audit.py", "--self-test"),
-    py("scripts/build/project_docs_explorer.py", "--self-test"),
+    unit_test("security_architecture_audit"),
+    unit_test("project_docs_explorer"),
+    HARNESS_CONTRACT,
     py("scripts/build/project_docs_explorer.py", "--audit"),
-    py("scripts/validation/release_evidence_audit.py", "--self-test"),
-    py("scripts/validation/repository_work_products_audit.py", "--self-test"),
-    ("bash", "scripts/runtime/run_node.sh", "scripts/validation/gateway_token_audit.mjs", "--self-test"),
+    unit_test("release_evidence_audit"),
+    unit_test("repository_work_products_audit"),
+    NODE_VALIDATOR_TESTS,
     py("scripts/build/assemble_locale_overlay.py", "--self-test"),
     py("scripts/validation/localization_audit.py", "--self-test"),
     py("scripts/validation/contribution_safety_audit.py", "--self-test"),
@@ -114,18 +135,17 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/validation/endpoint_registration_audit.py"),
     ("bash", "scripts/runtime/run_node.sh", "scripts/validation/openclaw_connection_audit.mjs"),
     py("scripts/compliance/source_gate.py"),
-    py("scripts/compliance/third_party_inventory_audit.py", "--self-test"),
     py("scripts/compliance/third_party_inventory_audit.py"),
-    py("scripts/compliance/render_sbom_license_inventory.py", "--self-test"),
-    py("scripts/validation/course_dependency_integrity.py", "--self-test"),
-    py("scripts/validation/cell_audit.py", "--self-test"),
+    unit_test("third_party_inventory_audit"),
+    unit_test("render_sbom_license_inventory"),
+    unit_test("course_dependency_integrity"),
+    cli_unit_test("cell_audit"),
     py("scripts/security/audit_python_dependencies.py"),
     py("scripts/security/audit_vulnerability_waivers.py"),
     py("scripts/security/audit_dependency_locks.py", "--self-test"),
     py("scripts/security/audit_dependency_locks.py"),
     py("scripts/security/audit_sbom_policy.py", "--self-test"),
     py("scripts/build/package_release.py", "--self-test"),
-    ("bash", "scripts/runtime/run_engine.sh", "--self-test"),
     py("scripts/validation/tenets.py", "--check"),
     py("scripts/runtime/module_check.py", "--dir", "web/nemoclaw"),
     py("scripts/runtime/module_check.py", "--dir", "web"),
@@ -137,14 +157,14 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
 # Proposal runs may skip a mutation suite only when none of its implementation or contract
 # inputs changed. Full release runs omit --changed-since and execute every suite.
 MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
-    py("scripts/compliance/third_party_inventory_audit.py", "--self-test"): (
+    unit_test("third_party_inventory_audit"): (
         "THIRD_PARTY_LICENSES.md", "scripts/compliance/third_party_inventory_audit.py",
         "scripts/browser-vendor/package-lock.json", "web/nemoclaw/vendor/*",
         "workspace/requirements*", "scripts/materials/requirements*",
         "scripts/security/requirements*", "cpu/services/*", "web/nemoclaw/assets/SKILL.html",
         "web/nemoclaw/mats/SKILL.html", "scripts/build/build_pages.sh",
     ),
-    py("scripts/compliance/render_sbom_license_inventory.py", "--self-test"): (
+    unit_test("render_sbom_license_inventory"): (
         "THIRD_PARTY_LICENSES.md", "scripts/compliance/render_sbom_license_inventory.py",
         "scripts/compliance/third_party_inventory_audit.py",
     ),
@@ -158,33 +178,33 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
         "web/nemoclaw/*.html", "web/nemoclaw/assets/figures/*",
         "i18n/*/web/nemoclaw/*.html",
     ),
-    py("scripts/materials/pull_materials.py", "--self-test"): (
+    unit_test("materials"): (
         "scripts/materials/pull_materials.py", "scripts/materials/requirements*",
     ),
-    py("scripts/validation/local_path_leak_audit.py", "--self-test"): (
+    unit_test("local_path_leak_audit"): (
         "scripts/validation/local_path_leak_audit.py",
     ),
-    py("scripts/validation/sensitive_content_audit.py", "--self-test"): (
+    unit_test("sensitive_content_audit"): (
         "scripts/validation/sensitive_content_audit.py", "scripts/validation/sensitive-content-policy.json",
     ),
-    py("scripts/validation/release_change_reminder.py", "--self-test"): (
+    unit_test("release_change_reminder"): (
         "scripts/validation/release_change_reminder.py",
     ),
-    py("scripts/validation/validation_report_audit.py", "--self-test"): (
+    unit_test("validation_report_audit"): (
         "scripts/validation/validation_report_audit.py", "scripts/validation/validate_bundle.py",
         "scripts/build/build_pages.sh", ".gitlab-ci.yml", ".github/workflows/*",
     ),
-    py("scripts/validation/pages_artifact_integrity.py", "--self-test"): (
+    unit_test("pages_artifact_integrity"): (
         "scripts/validation/pages_artifact_integrity.py", "scripts/build/build_pages.sh",
         ".github/workflows/pages.yml", "docs/pages_deploy.md", "docs/release-test-plan.md",
     ),
-    py("scripts/validation/threat_control_audit.py", "--self-test"): (
+    unit_test("threat_control_audit"): (
         "scripts/validation/threat_control_audit.py", "scripts/validation/pages_artifact_integrity.py",
         "scripts/validation/repository_sync_audit.py", ".github/workflows/pages.yml",
         ".github/workflows/release.yml", ".gitlab-ci.yml", "docs/release_playbook.md",
         "docs/security-control-disposition.md",
     ),
-    py("scripts/validation/repository_sync_audit.py", "--self-test"): (
+    unit_test("repository_sync_audit"): (
         "scripts/validation/repository_sync_audit.py", ".gitlab-ci.yml",
         "docs/release_playbook.md",
     ),
@@ -202,23 +222,23 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     py("scripts/validation/code_hygiene.py", "--self-test"): (
         "scripts/validation/code_hygiene.py",
     ),
-    py("scripts/validation/slides_audit.py", "--self-test"): (
+    unit_test("slides_audit"): (
         "scripts/validation/slides_audit.py", "scripts/validation/prose_variety.py",
         "scripts/build/build_repository_overview*", "docs/repository-overview*",
         "docs/assets/repository-overview/*",
     ),
-    py("scripts/validation/security_architecture_audit.py", "--self-test"): (
+    unit_test("security_architecture_audit"): (
         "scripts/validation/security_architecture_audit.py", "scripts/figures/render_security_architecture.py",
         "docs/security-architecture*", ".gitlab-ci.yml", ".github/workflows/*",
     ),
-    py("scripts/build/project_docs_explorer.py", "--self-test"): (
+    unit_test("project_docs_explorer"): (
         "scripts/build/project_docs_explorer.py", "docs/SKILL.html",
     ),
-    py("scripts/validation/release_evidence_audit.py", "--self-test"): (
+    unit_test("release_evidence_audit"): (
         "scripts/validation/release_evidence_audit.py", "docs/product-design.md",
         "docs/release-test-plan.md", "docs/release-evidence.json", "RELEASE_STATUS*",
     ),
-    py("scripts/validation/repository_work_products_audit.py", "--self-test"): (
+    unit_test("repository_work_products_audit"): (
         "scripts/validation/repository_work_products_audit.py", "docs/release-evidence.json",
         "README.md", "LICENSE", "SECURITY.md", "CHANGELOG.md", "CONTRIBUTING.md",
         "CODE_OF_CONDUCT.md", "docs/release_playbook.md", "docs/release-test-plan.md",
@@ -227,7 +247,7 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
         "scripts/validation/SKILL.html", "scripts/validation/release_gate.py",
         "scripts/validation/validate_bundle.py", "scripts/git-hooks/pre-commit",
     ),
-    ("bash", "scripts/runtime/run_node.sh", "scripts/validation/gateway_token_audit.mjs", "--self-test"): (
+    NODE_VALIDATOR_TESTS: (
         "scripts/validation/gateway_token_audit.mjs", "scripts/validation/openclaw_fallback_audit.py",
         "scripts/validation/openclaw_connection_audit.mjs", "scripts/runtime/test_page_runtime.js",
         "scripts/runtime/lab_runtime_test.sh", "web/nemoclaw/scripts/_connection.js",
@@ -235,6 +255,8 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
         "web/nemoclaw/scripts/_shared.js", "web/nemoclaw/03a-kickstart.html", "web/nemoclaw/04b-modern-clis.html",
         "i18n/pt/web/nemoclaw/03a-kickstart.html", "i18n/es/web/nemoclaw/03a-kickstart.html",
         "i18n/pt/web/nemoclaw/04b-modern-clis.html", "i18n/es/web/nemoclaw/04b-modern-clis.html",
+        "scripts/runtime/engine.js", "scripts/runtime/link_projection.py", "scripts/runtime/run_engine.sh",
+        "scripts/runtime/run_node.sh", "deploy/*", "workspace/entrypoint.sh",
     ),
     py("scripts/build/assemble_locale_overlay.py", "--self-test"): (
         "scripts/build/assemble_locale_overlay.py", "scripts/translate/code_localization.py",
@@ -269,11 +291,11 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
         "scripts/runtime/test_page_runtime.js", "scripts/validation/runtime_integration_browser_audit.py",
         "i18n/pt/web/nemoclaw/03a-kickstart.html", "i18n/es/web/nemoclaw/03a-kickstart.html",
     ),
-    py("scripts/validation/course_dependency_integrity.py", "--self-test"): (
+    unit_test("course_dependency_integrity"): (
         "scripts/validation/course_dependency_integrity.py", "scripts/browser-vendor/*",
         "scripts/build/vendor_browser_dependencies.mjs", "web/nemoclaw/vendor/*",
     ),
-    py("scripts/validation/cell_audit.py", "--self-test"): (
+    cli_unit_test("cell_audit"): (
         "scripts/validation/cell_audit.py", "web/nemoclaw/scripts/*", "web/nemoclaw/vendor/*",
     ),
     py("scripts/security/audit_dependency_locks.py", "--self-test"): (
@@ -286,9 +308,10 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     py("scripts/build/package_release.py", "--self-test"): (
         "scripts/build/package_release.py", "docs/release_artifacts.md", ".github/workflows/release.yml",
     ),
-    ("bash", "scripts/runtime/run_engine.sh", "--self-test"): (
-        "scripts/runtime/engine.js", "scripts/runtime/link_projection.py", "scripts/runtime/run_engine.sh",
-        "scripts/runtime/run_node.sh", "deploy/*", "workspace/entrypoint.sh",
+    HARNESS_CONTRACT: (
+        "tests/validation/test_test_harness_contract.py", "scripts/**/*.py",
+        "scripts/**/*.js", "scripts/**/*.mjs", "scripts/**/*.sh",
+        "workspace/**/*.py", "cpu/**/*.py", "deploy/**/*.py",
     ),
 }
 
@@ -436,13 +459,15 @@ def write_timing_report(path: str | None, report: dict) -> None:
     target.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
 
 
-def self_test() -> tuple[int, int, list[str]]:
+def self_test() -> list[str]:
     failures: list[str] = []
     fast = commands_for("fast", no_write=True)
     ship = commands_for("ship", no_write=False)
     mutation_commands = {
         command for command in ship
-        if "--self-test" in command or command == ("bash", "scripts/runtime/run_engine.sh", "--self-test")
+        if "--self-test" in command
+        or ("-m" in command and "unittest" in command)
+        or command == NODE_VALIDATOR_TESTS
     }
     checks = [
         (len(fast) < len(ship), "fast tier is smaller than ship tier"),
@@ -458,9 +483,9 @@ def self_test() -> tuple[int, int, list[str]]:
          "ship tier delegates locale current-tree audits to validate_bundle"),
         (mutation_commands <= set(MUTATION_IMPACTS),
          "every mutation command declares change-impact inputs"),
-        (not mutation_affected(py("scripts/validation/slides_audit.py", "--self-test"), {"web/nemoclaw/01a-loop.html"}),
+        (not mutation_affected(unit_test("slides_audit"), {"web/nemoclaw/01a-loop.html"}),
          "unrelated course prose does not trigger slide mutation fixtures"),
-        (mutation_affected(py("scripts/validation/slides_audit.py", "--self-test"), {"docs/repository-overview.slides.json"}),
+        (mutation_affected(unit_test("slides_audit"), {"docs/repository-overview.slides.json"}),
          "slide source triggers slide mutation fixtures"),
         (py("scripts/validation/tenets.py", "--check") in fast and py("scripts/validation/tenets.py", "--check") in ship,
          "shared tiers include the tenets projection"),
@@ -473,7 +498,7 @@ def self_test() -> tuple[int, int, list[str]]:
          "no-write mode suppresses durable contribution report"),
     ]
     failures.extend(label for passed, label in checks if not passed)
-    return len(checks) - len(failures), len(checks), failures
+    return failures
 
 
 def main() -> int:
@@ -488,8 +513,8 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.self_test:
-        passed, total, failures = self_test()
-        print(f"release gate self-test: {passed}/{total} passed")
+        failures = self_test()
+        print("release gate self-test: " + ("FAIL" if failures else "PASS"))
         for failure in failures:
             print(f"  FAIL {failure}")
         return 1 if failures else 0

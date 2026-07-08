@@ -207,7 +207,7 @@ def audit_commit_range(commit_range: str, root: Path = ROOT) -> tuple[list[Findi
     return sorted(findings, key=lambda item: (item.path, item.line, item.kind)), len(commits)
 
 
-def self_test() -> tuple[int, int, list[str]]:
+def self_test() -> list[str]:
     slash = "/"
     backslash = "\\"
     cases = (
@@ -312,8 +312,7 @@ def self_test() -> tuple[int, int, list[str]]:
         rows, _ = audit_commit_range(f"{base}..HEAD", root)
         if not any(row.path.endswith(":tracked.txt") for row in rows):
             failures.append("commit-range discovery: removed intermediate leak was not rejected")
-    total = len(cases) + 4
-    return total - len(failures), total, failures
+    return failures
 
 
 def main() -> int:
@@ -323,8 +322,8 @@ def main() -> int:
     parser.add_argument("--commit-range", help="also reject path additions in every commit in RANGE")
     args = parser.parse_args()
     if args.self_test:
-        passed, total, failures = self_test()
-        print(f"local path leak self-test: {passed}/{total} passed")
+        failures = self_test()
+        print("local path leak self-test: " + ("FAIL" if failures else "PASS"))
         for finding in failures:
             print("  FAIL " + finding)
         return 1 if failures else 0

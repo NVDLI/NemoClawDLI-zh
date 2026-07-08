@@ -117,6 +117,11 @@ detector mutation suites. Omit `--changed-since` for a release candidate. Use co
 only for focused iteration or diagnosis; the shared gate already composes them. See
 [`docs/release-test-plan.md`](docs/release-test-plan.md) for claim and evidence mapping.
 
+Python validator fixtures run under standard-library `unittest` discovery, and JavaScript fixtures
+run under Node's built-in `node:test`. Add framework-visible tests under `tests/`; do not maintain
+numeric totals in CLI output. The harness contract rejects manual pass denominators and fixed
+self-test totals from the shared fast and ship gates.
+
 Service-stack notebook tests need the lab services running:
 
 ```bash
@@ -158,7 +163,7 @@ Runnable cells are teaching surfaces, not convenient places to hide application 
 - Name cross-cell `state` inputs and outputs near the top of the cell, guard missing prerequisites,
   and return a compact summary of the state written for the next step.
 
-`python3 scripts/validation/cell_audit.py --self-test` mutation-tests these rules; the normal
+`python3 -m unittest discover -v -s tests/validation` mutation-tests these rules; the normal
 `cell_audit.py` run enforces their deterministic subset across every numbered lesson.
 
 ## Contribution Terms

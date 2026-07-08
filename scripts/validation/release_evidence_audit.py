@@ -80,8 +80,9 @@ REQUIRED_WIRING = {
         "scripts/build/project_docs_explorer.py", '"--audit"',
         "scripts/validation/course_dependency_integrity.py",
         "scripts/validation/cell_audit.py",
-        "scripts/validation/release_evidence_audit.py", '"--self-test"',
-        "scripts/validation/threat_control_audit.py", '"--self-test"',
+        'unit_test("release_evidence_audit")',
+        'unit_test("threat_control_audit")',
+        "HARNESS_CONTRACT", "test_test_harness_contract",
     ),
     "AGENTS.md": (
         "CONTRIBUTING.md", "docs/release-test-plan.md",
@@ -89,7 +90,7 @@ REQUIRED_WIRING = {
     "CONTRIBUTING.md": (
         "release_gate.py --tier fast --no-write", "release_gate.py --tier ship",
     ),
-    "docs/agent_process.md": ("release_evidence_audit.py", "--self-test"),
+    "docs/agent_process.md": ("release_evidence_audit.py", "unittest discover -v -s tests/validation"),
     "docs/SKILL.html": (
         "product-design.md", "release-test-plan.md", "release-evidence.json",
         "security-control-disposition.md", "security-control-themes.json",
@@ -161,7 +162,7 @@ def command_path(command: str) -> str | None:
         return None
     for token in tokens:
         token = token.rstrip(";")
-        if token.startswith(("scripts/", "workspace/")):
+        if token.startswith(("scripts/", "workspace/", "tests/")):
             return token
     return None
 
@@ -335,11 +336,11 @@ def audit_contract(data: dict, *, root: Path = ROOT,
     return out
 
 
-def self_test() -> tuple[int, int, list[str]]:
+def self_test() -> list[str]:
     base = load_contract()
     baseline = audit_contract(base)
     if baseline:
-        return 0, 17, [f"baseline is not clean: {item['code']} {item['detail']}" for item in baseline]
+        return [f"baseline is not clean: {item['code']} {item['detail']}" for item in baseline]
     tests: list[tuple[str, dict, dict[str, str], str]] = []
 
     def mutated() -> dict:
@@ -405,15 +406,12 @@ def self_test() -> tuple[int, int, list[str]]:
                   {gate_path: gate_text.replace("course_dependency_integrity.py", "browser dependency gate removed")},
                   "wiring"))
 
-    passed = 0
     failures: list[str] = []
     for name, fixture, overrides, expected in tests:
         codes = {item["code"] for item in audit_contract(fixture, text_overrides=overrides)}
-        if expected in codes:
-            passed += 1
-        else:
+        if expected not in codes:
             failures.append(f"{name}: expected {expected}, got {sorted(codes)}")
-    return passed, len(tests), failures
+    return failures
 
 
 def main() -> int:
@@ -422,13 +420,13 @@ def main() -> int:
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
     if args.self_test:
-        passed, total, failures = self_test()
+        failures = self_test()
         if failures:
-            print(f"release_evidence_audit self-test: {passed}/{total} passed")
+            print("release_evidence_audit self-test: FAIL")
             for item in failures:
                 print(f"  FAIL {item}")
             return 1
-        print(f"release_evidence_audit self-test: {passed}/{total} mutation detectors passed")
+        print("release_evidence_audit self-test: PASS")
         return 0
     try:
         rows = audit_contract(load_contract())

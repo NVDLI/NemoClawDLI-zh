@@ -128,7 +128,7 @@
     <div class="skill-cmd"><b>Live hosted relays</b><code>python3 scripts/security/audit_iframe_proxy_opt_in.py --live</code></div>
     <div class="skill-cmd"><b>Dependency vulnerability audit</b><code>python3 scripts/security/audit_python_dependencies.py</code></div>
     <div class="skill-cmd"><b>Security exception audit</b><code>python3 scripts/security/audit_vulnerability_waivers.py</code></div>
-    <div class="skill-cmd"><b>Sensitive contribution boundary</b><code>python3 scripts/validation/sensitive_content_audit.py --self-test &amp;&amp; python3 scripts/validation/sensitive_content_audit.py</code></div>
+    <div class="skill-cmd"><b>Sensitive contribution boundary</b><code>python3 -m unittest discover -v -s tests/validation &amp;&amp; python3 scripts/validation/sensitive_content_audit.py</code></div>
     <div class="skill-cmd"><b>Dependency locks</b><code>python3 scripts/security/audit_dependency_locks.py --self-test &amp;&amp; python3 scripts/security/audit_dependency_locks.py</code></div>
     <div class="skill-cmd"><b>SBOM policy detector</b><code>python3 scripts/security/audit_sbom_policy.py --self-test</code></div>
     <div class="skill-cmd"><b>Browser SCA</b><code>security_browser_sca</code></div>

@@ -101,7 +101,7 @@ def main() -> int:
     args = parser.parse_args()
     if args.self_test:
         failures = self_test()
-        print(f"repository sync self-test: {5 - len(failures)}/5 passed")
+        print("repository sync self-test: " + ("FAIL" if failures else "PASS"))
         for failure in failures:
             print("  " + failure)
         return 1 if failures else 0

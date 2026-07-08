@@ -273,10 +273,10 @@ def audit(*, manifest_data: dict | None = None,
     return findings
 
 
-def self_test() -> tuple[int, int, list[str]]:
+def self_test() -> list[str]:
     baseline = audit()
     if baseline:
-        return 0, 15, ["baseline is not clean: " + item for item in baseline]
+        return ["baseline is not clean: " + item for item in baseline]
     manifest = json.loads(MANIFEST.read_text())
     tests: list[tuple[str, dict, dict[str, str], str]] = []
 
@@ -352,8 +352,7 @@ def self_test() -> tuple[int, int, list[str]]:
         probe_path = Path(probe.name)
         if probe_path in browser_projection_sources():
             failures.append("working-tree discovery: transient figure shim was examined")
-    total = len(tests) + 3
-    return total - len(failures), total, failures
+    return failures
 
 
 def main() -> int:
@@ -361,8 +360,8 @@ def main() -> int:
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
-        passed, total, failures = self_test()
-        print(f"course_dependency_integrity self-test: {passed}/{total} passed")
+        failures = self_test()
+        print("course_dependency_integrity self-test: " + ("FAIL" if failures else "PASS"))
         for row in failures:
             print("  FAIL " + row)
         return 1 if failures else 0

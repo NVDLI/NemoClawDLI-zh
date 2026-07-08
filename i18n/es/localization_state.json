@@ -175,8 +175,8 @@
   },
   "reviews": {
     "web/index.html": {
-      "source_sha256": "84b57cdbbfdc816141f74552bccf70be75ada44094eb41bdef00cdad5bbdb181",
-      "target_sha256": "95ef992951ac1f271d0f3eb928dfe9587c2edacd5779e9749e7d3addf38e82e1",
+      "source_sha256": "6b6af58d59259c2d6b47ef0679a8690879404f4fad64a83f16cb883e5126ab81",
+      "target_sha256": "8de7485db371dfd935070ad32d793df3534c6f6aa5f7a7d0a2c2684d1a10596f",
       "reviewed_on": "2026-07-08"
     },
     "web/courses.html": {
