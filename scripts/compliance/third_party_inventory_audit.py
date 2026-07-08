@@ -10,6 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 INVENTORY = "THIRD_PARTY_LICENSES.md"
+RUNBOOK = "scripts/compliance/docs/sbom_generation.md"
 PYTHON_LOCKS = (
     "workspace/requirements.lock",
     "scripts/materials/requirements.lock",
@@ -45,18 +46,27 @@ REQUIRED_DISTRIBUTION_LINES = (
 )
 REQUIRED_EXPLANATIONS = (
     "## Reproducing license-evidence acquisition",
-    "Package names are never discovered by searching the web",
-    "npm view <name>@<version> license dist.integrity repository --json",
-    "https://pypi.org/pypi/<normalized-name>/<version>/json",
-    "syft <image-name>@sha256:<64-hex-digest>",
-    "Those extractors acquire content, not permission.",
-    "Scanner-provided SPDX identifiers or expressions win.",
+    "scripts/compliance/docs/sbom_generation.md",
+    "Generated SBOM bodies are attached to the review record rather than committed here.",
     "`argparse@2.0.1` is a JavaScript npm package used transitively by `js-yaml@5.2.1`.",
     "No package row in this inventory declares GPL.",
     "`LGPL-2.0-or-later` tooling entry",
     "A mixed container image or operating-system layer does not have one honest aggregate SPDX license.",
-    "scripts/compliance/render_sbom_license_inventory.py",
     "exact package/version static fallback",
+)
+REQUIRED_RUNBOOK_TEXT = (
+    "# SBOM generation and attachment runbook",
+    "The static course release does not distribute the local-authoring container images.",
+    "npm view <name>@<version> license dist.integrity repository --json",
+    "https://pypi.org/pypi/<normalized-name>/<version>/json",
+    "anchore/syft:v1.44.0 scan dir:/src",
+    "IMAGE=<registry>/<repository>@sha256:<64-hex-digest>",
+    "Those extractors acquire content",
+    "scripts/compliance/render_sbom_license_inventory.py",
+    "browser-runtime.cdx.json",
+    "python-env.cdx.json",
+    "source-tree.cdx.json",
+    "source-tree.spdx.json",
 )
 
 
@@ -106,6 +116,7 @@ def provenance(path: str, overrides: dict[str, str]) -> dict:
 def audit(overrides: dict[str, str] | None = None) -> list[str]:
     overrides = overrides or {}
     document = read(INVENTORY, overrides)
+    runbook = read(RUNBOOK, overrides)
     findings: list[str] = []
 
     browser_rows = rows(section(document, "Browser runtime and browser-build packages"))
@@ -159,6 +170,9 @@ def audit(overrides: dict[str, str] | None = None) -> list[str]:
     for explanation in REQUIRED_EXPLANATIONS:
         if explanation not in document:
             findings.append(f"missing license-scope explanation: {explanation}")
+    for instruction in REQUIRED_RUNBOOK_TEXT:
+        if instruction not in runbook:
+            findings.append(f"missing SBOM acquisition instruction: {instruction}")
     dockerfile = read("cpu/services/llm_client/llm_client.Dockerfile", overrides)
     for pin in REQUIRED_LLM_PINS:
         if pin not in dockerfile:
@@ -176,6 +190,7 @@ def self_test() -> tuple[int, int, list[str]]:
     if baseline:
         return 0, 0, ["baseline is not clean: " + finding for finding in baseline]
     document = read(INVENTORY, {})
+    runbook = read(RUNBOOK, {})
     dockerfile = read("cpu/services/llm_client/llm_client.Dockerfile", {})
     pages_build = read("scripts/build/build_pages.sh", {})
     mutations = (
@@ -187,6 +202,7 @@ def self_test() -> tuple[int, int, list[str]]:
         ("artifact distribution", {"scripts/build/build_pages.sh": pages_build.replace('cp "$T1/THIRD_PARTY_LICENSES.md" "$OUT/THIRD_PARTY_LICENSES.md"', "# removed third-party inventory", 1)}, "Pages artifact does not distribute required license file"),
         ("argparse explanation", {INVENTORY: document.replace("`argparse@2.0.1` is a JavaScript npm package used transitively by `js-yaml@5.2.1`.", "argparse is unexplained.", 1)}, "missing license-scope explanation"),
         ("acquisition procedure", {INVENTORY: document.replace("## Reproducing license-evidence acquisition", "## Undocumented acquisition", 1)}, "missing license-scope explanation"),
+        ("SBOM runbook", {RUNBOOK: runbook.replace("# SBOM generation and attachment runbook", "# Missing runbook contract", 1)}, "missing SBOM acquisition instruction"),
     )
     failures = []
     passed = 0

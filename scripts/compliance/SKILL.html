@@ -15,6 +15,7 @@
     "scripts/compliance/source_gate.py",
     "scripts/compliance/third_party_inventory_audit.py",
     "scripts/compliance/render_sbom_license_inventory.py",
+    "scripts/compliance/docs/sbom_generation.md",
     "../../THIRD_PARTY_LICENSES.md",
     "scripts/compliance/docs/source_inventory.json",
     "scripts/compliance/docs/vendor_policy.md"
@@ -83,12 +84,13 @@
     <div class="skill-cmd"><b>Third-party list</b><code>python3 scripts/compliance/third_party_inventory_audit.py --self-test &amp;&amp; python3 scripts/compliance/third_party_inventory_audit.py</code></div>
     <div class="skill-cmd"><b>Post-scan licenses</b><code>python3 scripts/compliance/render_sbom_license_inventory.py --sbom &lt;cyclonedx.json&gt; --artifact-id &lt;digest-bound-artifact&gt; --out &lt;inventory.md&gt;</code></div>
   </div>
-  <div class="skill-note">The complete acquisition procedure (npm lock and installed license texts, exact-version PyPI JSON, isolated Python CycloneDX scan, digest-bound image SBOM, material provenance, evidence retention, and precedence) is embedded in <a href="../../THIRD_PARTY_LICENSES.md#reproducing-license-evidence-acquisition">THIRD_PARTY_LICENSES.md</a> so an exported static list remains self-contained.</div>
+  <div class="skill-note">Keep the static inventory compact. The complete npm, Python, source-tree, conditional image, material-provenance, evidence-retention, and attachment commands live in <a href="docs/sbom_generation.md">the SBOM generation runbook</a>.</div>
   <h2>Linkage map</h2>
   <div class="skill-grid">
     <a class="skill-card" href="source_gate.py"><b>source_gate.py</b><span>Release-source and vendor-ingestion gate.</span></a>
     <a class="skill-card" href="third_party_inventory_audit.py"><b>third_party_inventory_audit.py</b><span>Static package, license, container-boundary, and material-provenance inventory gate.</span></a>
     <a class="skill-card" href="render_sbom_license_inventory.py"><b>render_sbom_license_inventory.py</b><span>Digest-bound CycloneDX to static Markdown license reconciliation.</span></a>
+    <a class="skill-card" href="docs/sbom_generation.md"><b>sbom_generation.md</b><span>Copyable scan commands and attachment evidence contract.</span></a>
     <a class="skill-card" href="docs/SKILL.html"><b>scripts/compliance/docs</b><span>Release-safe guidance and machine-readable inventory.</span></a>
   </div>
   <h2>Interactive explorer</h2>
