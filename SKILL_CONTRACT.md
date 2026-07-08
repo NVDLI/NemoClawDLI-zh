@@ -14,9 +14,13 @@ If both readers can do their job from this one file, the contract holds.
 
 ```
 SKILL.html lives in <dir>/SKILL.html              (dual-reader, ships to students)
+Every source directory has SKILL.html             (Git-tracked and proposed files define the exhaustive set)
+No directory exemptions or opt-outs               (locale, vendor, data, hidden workflow, and seed directories all participate)
 skill-meta JSON is the AUTHORITATIVE machine contract
 /tmp holds scratch/agent work (ephemeral, never committed); worth-keeping agent docs live in the repo by name
-No SKILL.md anywhere; the JSON block replaces it.
+No SKILL.md as a repository directory beacon; the JSON block replaces it. OpenClaw runtime skill
+packages may retain their native `SKILL.md` payload, and their source directories still carry a
+separate `SKILL.html` repository contract.
 No AUDIT.md beacons; audit findings go to /tmp or git history.
 ```
 
@@ -47,6 +51,19 @@ Hub beacons index immediate children. Per-directory detail stays in the child be
 The root `SKILL.html` is the ontology beacon for the whole repository; `web/SKILL.html`
 and `cpu/SKILL.html` are surface hubs.
 
+## Exhaustive discovery
+
+`skill_audit.py` derives the directory set from `git ls-files --cached --others
+--exclude-standard`. For every tracked or proposed file, its directory and every ancestor through
+the repository root must contain `SKILL.html`. The algorithm has no exclusion list. Gitignored
+build output is outside the source set by construction; tracked locale overlays, vendor trees,
+workflow directories, data directories, and runtime skill seeds remain inside it.
+
+`gen_directory_beacons.py` creates the standard dual-reader contract for a newly discovered
+directory. `skill_contract.py` then validates the metadata, directory accuracy, human-readable
+body, shared-renderer wiring, local assets, and configured file paths. The Playwright renderer
+audit loads every discovered beacon and rejects runtime errors or an explorer that fails to mount.
+
 ---
 
 ## Where docs live
@@ -75,6 +92,17 @@ Every change to a page or notebook in `<dir>/` MUST be reflected in the
 SKILL.html of that directory in the same commit. If the page or notebook count
 changed, the JSON count changes. If a model swapped, the `models` block changes.
 The SKILL.html is the source of truth. Staleness in this file is a CI failure.
+
+A newly added directory must receive its own beacon in the same commit. Parent coverage never
+substitutes for the child contract.
+
+### Reviewer exports
+
+When a directory contract offers a generated review document, declare it in `skill-meta.exports`.
+Each export names its format, command, parameters, default category, and an in-page preview mount.
+The page must render the current rows before offering a download. Filtering and downloading operate
+on the visible classification so a reviewer can distinguish distributed code from build inputs,
+validation installs, and local-authoring references without reconstructing that distinction from prose.
 
 ---
 
