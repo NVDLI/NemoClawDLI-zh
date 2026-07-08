@@ -75,6 +75,9 @@ def audit(snapshot: dict[str, object]) -> list[dict[str, str]]:
         if not merge_levels or max(merge_levels) < 40:
             out.append(item("main-merge-owner", "main merge access is not assigned to maintainers",
                             "allow maintainers to merge after gates"))
+        if not main.get("code_owner_approval_required"):
+            out.append(item("main-code-owner-approval", "main does not require Code Owner approval",
+                            "require Code Owner approval so CI and gate owners must accept trust-boundary changes"))
 
     tags = snapshot.get("protected_tags") or []
     release_tag = next((t for t in tags if t.get("name") in ("v*", "v*.*.*")), None)
@@ -162,6 +165,7 @@ def good_fixture() -> dict[str, object]:
                     "only_allow_merge_if_all_discussions_are_resolved": True,
                     "allow_pipeline_trigger_approve_deployment": True},
         "protected_branches": [{"name": "main", "allow_force_push": False,
+                                "code_owner_approval_required": True,
                                 "push_access_levels": [{"access_level": 0}],
                                 "merge_access_levels": [{"access_level": 40}]}],
         "protected_tags": [{"name": "v*", "create_access_levels": [{"access_level": 40, "user_id": 10}]}],
@@ -185,6 +189,7 @@ def self_test() -> list[str]:
         ("discussions-not-required", lambda x: x["project"].update(only_allow_merge_if_all_discussions_are_resolved=False)),
         ("main-direct-push", lambda x: x["protected_branches"][0].update(push_access_levels=[{"access_level": 40}])),
         ("main-force-push", lambda x: x["protected_branches"][0].update(allow_force_push=True)),
+        ("main-code-owner-approval", lambda x: x["protected_branches"][0].update(code_owner_approval_required=False)),
         ("release-tags-unprotected", lambda x: x.update(protected_tags=[])),
         ("release-tag-role-bypass", lambda x: x["protected_tags"][0].update(create_access_levels=[{"access_level": 40}])),
         ("release-tag-operator-drift",

@@ -224,7 +224,7 @@ async function applyLiteMode(idoc) {
 function removeLiteMode(idoc) {
   if (!idoc) return;
   idoc.getElementById('_studio_lite')?.remove();
-  frame.style.background = '#0d0d0d';
+  frame.style.background = 'var(--bg)';
 }
 
 liteBtn.addEventListener('click', async () => {
@@ -607,7 +607,7 @@ function _injectBlockPick(idoc) {
         cursor: pointer !important;
       }
       ._beSelected {
-        outline: 2px solid #76b900 !important;
+        outline: 2px solid var(--g) !important;
         outline-offset: 2px !important;
         background: rgba(118,185,0,.05) !important;
       }
@@ -945,8 +945,8 @@ function highlightEls(els, idoc) {
     s.id = 'studio-flash-style';
     s.textContent = `
       @keyframes _stFlash{
-        0%{outline:3px solid #76b900;background:rgba(118,185,0,.18)}
-        80%{outline:3px solid #76b900;background:rgba(118,185,0,.06)}
+        0%{outline:3px solid var(--g);background:rgba(118,185,0,.18)}
+        80%{outline:3px solid var(--g);background:rgba(118,185,0,.06)}
         100%{outline:none;background:transparent}
       }
       ._stChanged{animation:_stFlash 2.2s ease forwards;border-radius:4px}
@@ -1047,26 +1047,26 @@ function injectStyles(idoc) {
   s.id = '_stStyles';
   s.textContent = `
     ._stBadge{
-      display:inline-block;background:#d1242f;color:#fff;
+      display:inline-block;background:var(--err);color:#fff;
       font-size:10px;font-weight:700;border-radius:10px;
       padding:1px 5px;margin-left:5px;cursor:pointer;
       vertical-align:middle;user-select:none;font-family:Arial,sans-serif;
       transition:background .1s;
     }
-    ._stBadge:hover{background:#a11825}
+    ._stBadge:hover{background:color-mix(in srgb,var(--err) 82%,black)}
     body._stPick *{cursor:crosshair!important}
     body._stPick h1:hover,body._stPick h2:hover,body._stPick h3:hover,
     body._stPick p:hover,body._stPick li:hover,body._stPick td:hover,
     body._stPick .callout:hover,body._stPick .hero:hover{
-      outline:2px dashed #76b900!important;
+      outline:2px dashed var(--g)!important;
     }
     .studio-annotation{
-      background:rgba(118,185,0,.09);border-left:3px solid #76b900;
+      background:rgba(118,185,0,.09);border-left:3px solid var(--g);
       border-radius:0 6px 6px 0;padding:8px 12px;margin:8px 0 4px;
-      font-size:.8rem;color:#d0d0d0;line-height:1.5;
+      font-size:.8rem;color:var(--td);line-height:1.5;
     }
     .studio-annotation .ann-head{
-      font-size:.68rem;color:#76b900;font-weight:700;
+      font-size:.68rem;color:var(--g);font-weight:700;
       margin-bottom:4px;letter-spacing:.06em;text-transform:uppercase;
     }
     .studio-annotation.ann-loading{opacity:.45}
@@ -1074,17 +1074,17 @@ function injectStyles(idoc) {
       display:inline-flex;align-items:center;gap:3px;
       font-size:.72rem;font-family:Arial,sans-serif;
       padding:2px 8px;border-radius:5px;
-      border:1px solid #4a7a00;background:rgba(118,185,0,.1);
-      color:#76b900;cursor:pointer;margin-left:8px;font-weight:600;
+      border:1px solid var(--gd);background:rgba(118,185,0,.1);
+      color:var(--g);cursor:pointer;margin-left:8px;font-weight:600;
       line-height:1.5;transition:background .1s;
     }
     ._stSaveBtn:hover{background:rgba(118,185,0,.22)}
-    ._stSaveBtn.ok{background:rgba(118,185,0,.28);color:#aee23a}
+    ._stSaveBtn.ok{background:rgba(118,185,0,.28);color:var(--gs)}
     ._stAnnBtn{
       font-size:.7rem;font-family:Arial,sans-serif;
       padding:2px 8px;border-radius:5px;
-      border:1px solid #4a7a00;background:rgba(118,185,0,.08);
-      color:#76b900;cursor:pointer;font-weight:600;
+      border:1px solid var(--gd);background:rgba(118,185,0,.08);
+      color:var(--g);cursor:pointer;font-weight:600;
       margin-left:8px;transition:background .1s;
     }
     ._stAnnBtn:hover{background:rgba(118,185,0,.2)}

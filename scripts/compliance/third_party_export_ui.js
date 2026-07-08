@@ -19,6 +19,7 @@
     "Repository Item", "Scope Category", "Artifact Relationship",
     "Distributed by NVIDIA in This Repository", "Executed in Learner Browser",
     "External Source or Package", "Recorded License or Terms",
+    "Source Author(s)", "License or Author Evidence",
     "Corroborating Repository Evidence", "Legal Scope Note"
   ];
 
@@ -176,13 +177,29 @@
       .map(function (row) { return row.map(csvCell).join(","); }).join("\n") + "\n";
   }
 
-  function materialScopeRows(markdown, config) {
+  function sourceMetadata(repositoryFile, sourceUrl, documents) {
+    var paper = (documents.arxiv_papers || []).find(function (item) { return item.source_url === sourceUrl; });
+    if (paper) return {
+      authors:paper.authors.join(", "), evidence:paper.license_url, note:paper.reuse_summary
+    };
+    var nvidia = (documents.nvidia_documents || []).find(function (item) {
+      return (item.repository_items || []).indexOf(repositoryFile) >= 0;
+    });
+    if (nvidia) return {
+      authors:nvidia.authors.length ? nvidia.authors.join(", ") : "No author listed on official source page",
+      evidence:nvidia.author_evidence_url, note:""
+    };
+    return {authors:"Not recorded for this source", evidence:sourceUrl, note:""};
+  }
+
+  function materialScopeRows(markdown, documents, config) {
     return tableRows(markdown, "Third-party course-material relationships").filter(function (row) {
       return row.length >= 5;
     }).map(function (row) {
       var relationship = row[1];
       var links = parseLinks(row[4]);
       var source = links.length ? links[0].url : row[4];
+      var metadata = sourceMetadata(row[0], source, documents);
       var category, distributed, note;
       if (relationship === "recreation") {
         category = "recreated-asset"; distributed = "Yes";
@@ -195,17 +212,42 @@
         note = "The repository item is distributed, but the external work is cited, summarized, used as inspiration, or compiled as links rather than vendored wholesale.";
       }
       return { category:category, relationship:relationship, terms:row[3], cells:[
-        row[0], category, relationship, distributed, "No", source, row[3], repoFile(config, row[0]),
-        "Source label: " + row[2] + ". " + note
+        row[0], category, relationship, distributed, "No", source, row[3], metadata.authors,
+        metadata.evidence, repoFile(config, row[0]),
+        "Source label: " + row[2] + ". " + note + (metadata.note ? " " + metadata.note : "")
       ]};
     });
+  }
+
+  function documentScopeRows(documents, config) {
+    var rows = (documents.arxiv_papers || []).map(function (item) {
+      var evidencePath = item.cited_from[0] || "THIRD_PARTY_LICENSES.md";
+      return {category:"referenced-source", relationship:"paper citation", terms:item.license, cells:[
+        "arXiv:" + item.arxiv_id, "referenced-source", "paper citation",
+        "No - the paper is linked, not copied by this record", "No", item.source_url, item.license,
+        item.authors.join(", "), item.license_url, repoFile(config, evidencePath),
+        "Official arXiv license checked " + item.verified_on + ". " + item.reuse_summary +
+          " Canonical citations: " + item.cited_from.join(", ")
+      ]};
+    });
+    (documents.nvidia_documents || []).forEach(function (item) {
+      var evidencePath = item.repository_items[0] || "THIRD_PARTY_LICENSES.md";
+      rows.push({category:"referenced-source", relationship:"document source", terms:item.terms, cells:[
+        item.title, "referenced-source", "document source", "See related repository-item rows", "No",
+        item.source_url, item.terms,
+        item.authors.length ? item.authors.join(", ") : "No author listed on official source page",
+        item.author_evidence_url, repoFile(config, evidencePath),
+        "Official source checked " + item.verified_on + ". Related repository items: " + item.repository_items.join(", ")
+      ]});
+    });
+    return rows;
   }
 
   function legalSoftwareRows(manifest, markdown, config) {
     var rows = vendoredRows(manifest, config).map(function (row) {
       return {category:"vendored-browser-code", relationship:row.relationship, terms:row.cells[2], cells:[
         row.cells[0] + "@" + row.cells[1], "vendored-browser-code", row.relationship,
-        "Yes", "Yes", row.cells[7], row.cells[2], row.cells[8],
+        "Yes", "Yes", row.cells[7], row.cells[2], "Not applicable to software package", row.cells[3], row.cells[8],
         "Copied into the same-origin static course; the repository license text and package source corroborate scope."
       ]};
     });
@@ -214,7 +256,8 @@
     }).concat(validationRows(markdown, config), localRows(markdown, config)).forEach(function (row) {
       rows.push({category:"tooling-not-distributed", relationship:row.relationship, terms:row.cells[2], cells:[
         row.cells[0] + "@" + row.cells[1], "tooling-not-distributed", row.relationship,
-        "No", "No", row.cells[7], row.cells[2], row.cells[8], row.cells[6]
+        "No", "No", row.cells[7], row.cells[2], "Not applicable to software package", row.cells[3] || row.cells[7],
+        row.cells[8], row.cells[6]
       ]});
     });
     return rows;
@@ -272,6 +315,8 @@
       "compilation": "Collected as links or references",
       "original": "Original source",
       "original course graphic": "Original course graphic",
+      "paper citation": "Research paper citation",
+      "document source": "NVIDIA document record",
       "direct": "Chosen directly by this project",
       "transitive": "Required by another package",
       "browser-build-only": "Used only to build browser files",
@@ -322,13 +367,22 @@
       }
       label.append(input, caption); chips.appendChild(label);
     });
+    function updateSummary() {
+      var summary = container.closest("details");
+      var count = summary && summary.querySelector("[data-filter-count]");
+      if (count) text(count, selectedValues(container).size + "/" + values.length);
+    }
+    container.querySelectorAll('input[type="checkbox"]').forEach(function (input) {
+      input.addEventListener("change", updateSummary);
+    });
+    updateSummary();
     all.addEventListener("click", function () {
       chips.querySelectorAll('input[type="checkbox"]').forEach(function (input) { input.checked = true; });
-      onChange();
+      updateSummary(); onChange();
     });
     none.addEventListener("click", function () {
       chips.querySelectorAll('input[type="checkbox"]').forEach(function (input) { input.checked = false; });
-      onChange();
+      updateSummary(); onChange();
     });
   }
 
@@ -343,23 +397,78 @@
     }).map(function (item) { return item.row; });
   }
 
-  function sortableHeaders(table, state, onChange) {
+  function sortableHeaders(table, state, onChange, sortIndexes) {
     table.querySelectorAll("thead th").forEach(function (th, index) {
+      var sortIndex = sortIndexes ? sortIndexes[index] : index;
       var label = th.textContent.trim(); th.replaceChildren(); th.setAttribute("aria-sort", "none");
-      var button = document.createElement("button"); button.type = "button"; button.dataset.sortIndex = String(index);
+      var button = document.createElement("button"); button.type = "button"; button.dataset.sortIndex = String(sortIndex);
       button.className = "sort-button"; button.setAttribute("aria-label", "Sort by " + label);
       var caption = document.createElement("span"); text(caption, label);
       var arrow = document.createElement("span"); arrow.className = "sort-arrow"; text(arrow, "↕");
       button.append(caption, arrow); th.appendChild(button);
       button.addEventListener("click", function () {
-        if (state.index === index) state.direction = state.direction === "asc" ? "desc" : "asc";
-        else { state.index = index; state.direction = "asc"; }
+        if (state.index === sortIndex) state.direction = state.direction === "asc" ? "desc" : "asc";
+        else { state.index = sortIndex; state.direction = "asc"; }
         table.querySelectorAll("thead th").forEach(function (item) { item.setAttribute("aria-sort", "none"); });
         table.querySelectorAll(".sort-arrow").forEach(function (item) { text(item, "↕"); });
         th.setAttribute("aria-sort", state.direction === "asc" ? "ascending" : "descending");
         text(arrow, state.direction === "asc" ? "↑" : "↓"); onChange();
       });
     });
+  }
+
+  function externalLink(url, label) {
+    var anchor = document.createElement("a"); anchor.href = url; anchor.target = "_blank";
+    anchor.rel = "noopener noreferrer"; text(anchor, label || url); return anchor;
+  }
+
+  function tableCell(label) {
+    var td = document.createElement("td"); td.dataset.label = label; return td;
+  }
+
+  function stacked(primary, secondary) {
+    var wrapper = document.createElement("span"); wrapper.className = "cell-stack";
+    var top = document.createElement("strong"); text(top, primary); wrapper.appendChild(top);
+    if (secondary) { var small = document.createElement("small"); text(small, secondary); wrapper.appendChild(small); }
+    return wrapper;
+  }
+
+  function evidenceDetails(summary, lines) {
+    var details = document.createElement("details"); details.className = "row-evidence";
+    var heading = document.createElement("summary"); text(heading, summary); details.appendChild(heading);
+    lines.forEach(function (line) {
+      var paragraph = document.createElement("p");
+      if (line.url) paragraph.appendChild(externalLink(line.url, line.label)); else text(paragraph, line.label);
+      details.appendChild(paragraph);
+    });
+    return details;
+  }
+
+  function renderSoftwareRow(row) {
+    var tr = document.createElement("tr"), td;
+    td = tableCell("Component"); td.appendChild(stacked(row.cells[0], row.cells[1])); tr.appendChild(td);
+    td = tableCell("License"); td.appendChild(externalLink(row.cells[3], row.cells[2])); tr.appendChild(td);
+    td = tableCell("Learner delivery"); td.appendChild(stacked(friendlyChoice(row.category, "softwareCategory").main,
+      friendlyChoice(row.relationship, "softwareRelationship").main)); tr.appendChild(td);
+    td = tableCell("Purpose"); text(td, row.cells[6]); tr.appendChild(td);
+    td = tableCell("Evidence"); td.appendChild(evidenceDetails("Open evidence", [
+      {url:row.cells[7], label:"Upstream package"}, {url:row.cells[8], label:"Repository evidence"}
+    ])); tr.appendChild(td);
+    return tr;
+  }
+
+  function renderScopeRow(row) {
+    var tr = document.createElement("tr"), td;
+    td = tableCell("Item"); td.appendChild(stacked(row.cells[0], friendlyChoice(row.relationship, "scopeRelationship").main)); tr.appendChild(td);
+    td = tableCell("Use and delivery"); td.appendChild(stacked(friendlyChoice(row.category, "scopeCategory").main,
+      row.cells[3] + (row.cells[4] === "Yes" ? "; runs in learner browser" : ""))); tr.appendChild(td);
+    td = tableCell("Source and terms"); td.appendChild(externalLink(row.cells[5], row.cells[6])); tr.appendChild(td);
+    td = tableCell("Author(s)"); text(td, row.cells[7]); tr.appendChild(td);
+    td = tableCell("Evidence and notes"); td.appendChild(evidenceDetails("Open review details", [
+      {url:row.cells[8], label:"Source terms or byline"}, {url:row.cells[9], label:"Repository evidence"},
+      {label:row.cells[10]}
+    ])); tr.appendChild(td);
+    return tr;
   }
 
   function mount(config, target) {
@@ -417,15 +526,7 @@
         var visible = sortedRows(visibleRows(), sortState);
         body.replaceChildren();
         visible.forEach(function (row) {
-          var tr = document.createElement("tr");
-          row.cells.forEach(function (value, index) {
-            var td = document.createElement("td");
-            if ((index === 3 || index === 7 || index === 8) && /^https?:/.test(value)) {
-              var anchor = document.createElement("a"); anchor.href = value; anchor.target = "_blank"; anchor.rel = "noopener noreferrer"; text(anchor, value); td.appendChild(anchor);
-            } else text(td, value);
-            tr.appendChild(td);
-          });
-          body.appendChild(tr);
+          body.appendChild(renderSoftwareRow(row));
         });
         text(count, visible.length + " component" + (visible.length === 1 ? "" : "s"));
         target.dataset.exportReady = "1";
@@ -440,7 +541,7 @@
         document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(link.href);
       });
       choiceGroup(category, categories, new Set(["vendored"]), function () { relationshipOptions(); paint(); }, "softwareCategory");
-      relationshipOptions(); sortableHeaders(target.querySelector("table"), sortState, paint); paint();
+      relationshipOptions(); sortableHeaders(target.querySelector("table"), sortState, paint, [0, 2, 4, 6, 8]); paint();
       return rows;
     }).catch(function (error) {
       target.dataset.exportError = error.message;
@@ -459,9 +560,15 @@
       fetch(config.inventory).then(function (response) {
         if (!response.ok) throw new Error("inventory HTTP " + response.status);
         return response.text();
+      }),
+      fetch(config.document_sources).then(function (response) {
+        if (!response.ok) throw new Error("document source inventory HTTP " + response.status);
+        return response.json();
       })
     ]).then(function (sources) {
-      var rows = materialScopeRows(sources[1], config).concat(legalSoftwareRows(sources[0], sources[1], config));
+      var rows = documentScopeRows(sources[2], config)
+        .concat(materialScopeRows(sources[1], sources[2], config))
+        .concat(legalSoftwareRows(sources[0], sources[1], config));
       var category = target.querySelector("[data-scope-category-group]");
       var relationship = target.querySelector("[data-scope-relationship-group]");
       var terms = target.querySelector("[data-scope-terms-group]");
@@ -494,15 +601,7 @@
       function paint() {
         var visible = sortedRows(visibleRows(), sortState); body.replaceChildren();
         visible.forEach(function (row) {
-          var tr = document.createElement("tr");
-          row.cells.forEach(function (value, index) {
-            var td = document.createElement("td");
-            if ([5, 7].indexOf(index) >= 0 && /^https?:/.test(value)) {
-              var anchor = document.createElement("a"); anchor.href = value; anchor.target = "_blank";
-              anchor.rel = "noopener noreferrer"; text(anchor, value); td.appendChild(anchor);
-            } else text(td, value);
-            tr.appendChild(td);
-          }); body.appendChild(tr);
+          body.appendChild(renderScopeRow(row));
         });
         text(count, visible.length + " relationship" + (visible.length === 1 ? "" : "s"));
         target.dataset.exportReady = "1";
@@ -514,8 +613,8 @@
         link.download = "nemoclaw-legal-scope-filtered.csv";
         document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(link.href);
       });
-      choiceGroup(category, categories, new Set(categories), function () { dependentOptions(); paint(); }, "scopeCategory");
-      dependentOptions(); sortableHeaders(target.querySelector("table"), sortState, paint); paint(); return rows;
+      choiceGroup(category, categories, new Set(["referenced-source", "recreated-asset", "vendored-material"]), function () { dependentOptions(); paint(); }, "scopeCategory");
+      dependentOptions(); sortableHeaders(target.querySelector("table"), sortState, paint, [0, 1, 6, 7, 10]); paint(); return rows;
     }).catch(function (error) {
       target.dataset.exportError = error.message;
       text(target.querySelector("[data-scope-count]"), "Preview failed: " + error.message);

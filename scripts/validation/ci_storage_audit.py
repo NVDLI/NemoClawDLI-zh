@@ -27,7 +27,7 @@ def _job_block(text: str, job: str) -> str:
 
 def main() -> int:
     root = _root()
-    ci = root / ".gitlab-ci.yml"
+    ci = root / ".gitlab" / "ci" / "core.yml"
     text = ci.read_text(encoding="utf-8")
     gate = (root / "scripts/validation/release_gate.py").read_text(encoding="utf-8")
     findings: list[str] = []

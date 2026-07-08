@@ -68,7 +68,7 @@ REQUIRED_DESIGN_ANCHORS = {
 REQUIRED_AUTOMATED_IDS = {f"A{index:02d}" for index in range(1, 14)}
 REQUIRED_MANUAL_IDS = {f"M{index:02d}" for index in range(1, 12)}
 REQUIRED_WIRING = {
-    ".gitlab-ci.yml": ("release_gate.py --tier ship",),
+    ".gitlab/ci/core.yml": ("release_gate.py --tier ship",),
     ".github/workflows/pages.yml": ("release_gate.py --tier ship",),
     ".github/workflows/release.yml": ("release_gate.py --tier ship",),
     "scripts/git-hooks/pre-commit": ("release_evidence_audit.py",),
@@ -369,7 +369,7 @@ def self_test() -> list[str]:
     test_path = base["documents"]["test_plan"]
     test_text = (ROOT / test_path).read_text(encoding="utf-8")
     tests.append(("broken crosslink", mutated(), {test_path: test_text.replace("product-design.md", "design.md")}, "test-links"))
-    ci_path = ".gitlab-ci.yml"
+    ci_path = ".gitlab/ci/core.yml"
     ci_text = (ROOT / ci_path).read_text(encoding="utf-8")
     tests.append(("missing CI wiring", mutated(),
                   {ci_path: ci_text.replace("release_gate.py --tier ship", "release gate removed")},

@@ -25,7 +25,7 @@ MANIFEST = VENDOR / "browser-dependencies.json"
 LOCK = ROOT / "scripts" / "browser-vendor" / "package-lock.json"
 PACKAGE = ROOT / "scripts" / "browser-vendor" / "package.json"
 CODEMIRROR_ENTRY = ROOT / "scripts" / "browser-vendor" / "codemirror-entry.js"
-CI_CONFIG = ROOT / ".gitlab-ci.yml"
+CI_CONFIG = ROOT / ".gitlab" / "ci" / "sca.yml"
 DASHBOARD = COURSE / "dependencies.html"
 PACKAGE_HOSTS = {"cdn.jsdelivr.net", "cdnjs.cloudflare.com", "esm.sh", "unpkg.com"}
 SOURCE_SUFFIXES = {".css", ".html", ".js", ".mjs"}
@@ -145,7 +145,8 @@ def audit(*, manifest_data: dict | None = None,
         findings.append("unreviewed CodeMirror modes: " + ", ".join(unexpected_modes))
     if missing_modes:
         findings.append("reviewed CodeMirror modes missing from bundle entry: " + ", ".join(missing_modes))
-    ci_text = overrides.get(".gitlab-ci.yml", CI_CONFIG.read_text(encoding="utf-8"))
+    ci_rel = CI_CONFIG.relative_to(ROOT).as_posix()
+    ci_text = overrides.get(ci_rel, CI_CONFIG.read_text(encoding="utf-8"))
     ci_job = re.search(r"(?ms)^security_browser_sca:\s*\n(.*?)(?=^\S[^\n]*:\s*(?:$|&)|\Z)", ci_text)
     ci_tokens = (
         "npm audit --prefix scripts/browser-vendor",
@@ -329,7 +330,7 @@ def self_test() -> list[str]:
                   "standalone projection uses an unreviewed CodeMirror CDN URL"))
     ci_source = CI_CONFIG.read_text(encoding="utf-8")
     tests.append(("browser SCA CI wiring", manifest,
-                  {".gitlab-ci.yml": ci_source.replace("security_browser_sca:", "security_browser_scan:", 1)},
+                  {".gitlab/ci/sca.yml": ci_source.replace("security_browser_sca:", "security_browser_scan:", 1)},
                   "GitLab CI is missing the security_browser_sca job"))
 
     failures = []

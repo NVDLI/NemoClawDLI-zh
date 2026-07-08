@@ -34,7 +34,7 @@ RULES = (
         "Threat and architecture assessment",
         "Refresh the authorized assessment when topology, trust boundaries, authentication, data flow, or deployment changed.",
         (
-            ".github/workflows/*", ".gitlab-ci.yml", "scripts/cors-proxy/*", "deploy/*",
+            ".github/workflows/*", ".gitlab-ci.yml", ".gitlab/ci/*", "scripts/cors-proxy/*", "deploy/*",
             "docs/security-architecture.*", "docs/security-design.md",
             "web/nemoclaw/scripts/_openclaw.js", "web/nemoclaw/scripts/_shared.js",
         ),
@@ -74,7 +74,7 @@ RULES = (
         "Verified secret scan",
         "Run the authoritative secret scan on the final source ref after credential, workflow, proxy, or deployment handling changes.",
         (
-            ".github/workflows/*", ".gitlab-ci.yml", "scripts/cors-proxy/*", "deploy/*",
+            ".github/workflows/*", ".gitlab-ci.yml", ".gitlab/ci/*", "scripts/cors-proxy/*", "deploy/*",
             "scripts/security/*", "web/nemoclaw/scripts/_openclaw.js", "web/nemoclaw/scripts/_shared.js",
         ),
     ),

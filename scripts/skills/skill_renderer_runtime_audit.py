@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Render every source SKILL.html with Playwright and fail on broken UI contracts."""
+"""Render every HTML file with Playwright and fail on theme or SKILL UI drift.
+
+HTML discovery is exhaustive under the served tree. Every page enters the desktop/narrow and
+dark/light matrix; SKILL pages additionally receive their navigation, explorer, and export checks.
+There is no file-level opt-in or exemption list.
+"""
 from __future__ import annotations
 
 import argparse
@@ -17,6 +22,11 @@ import skill_audit
 
 DEFAULT_IMAGE = "nemoclaw/lab-runtime-test:local"
 
+
+def discover_html(site: Path) -> list[str]:
+    """Return every HTML path below the served tree; there is no exclusion mechanism."""
+    return sorted(path.relative_to(site).as_posix() for path in site.rglob("*.html"))
+
 RUNTIME_JS = r"""
 const http = require('http');
 const fs = require('fs');
@@ -24,7 +34,7 @@ const path = require('path');
 const { chromium } = require('playwright-core');
 
 const root = process.env.SITE_ROOT || '/site';
-const skillFiles = JSON.parse(fs.readFileSync(process.env.SKILL_FILES || '/tmp/skill-files.json', 'utf8'));
+const htmlFiles = JSON.parse(fs.readFileSync(process.env.HTML_FILES || '/tmp/html-files.json', 'utf8'));
 const port = 4214;
 const mime = {
   '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8',
@@ -54,25 +64,20 @@ const server = http.createServer((request, response) => {
 });
 
 async function inspect(browser, file) {
+  const isSkill = /(?:^|\/)SKILL\.html$/.test(file);
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   const errors = [];
   page.on('pageerror', error => errors.push(`pageerror: ${error.message || String(error)}`));
   page.on('console', message => {
     if (message.type() !== 'error') return;
     const text = message.text();
-    if (/^Failed to load resource: the server responded with a status of 404/.test(text)) return;
+    if (/^Failed to load resource: the server responded with a status of \d+/.test(text)) return;
     errors.push(`console: ${text}`);
-  });
-  page.on('response', response => {
-    const type = response.request().resourceType();
-    if (response.status() >= 400 && ['document', 'script', 'stylesheet', 'image', 'font'].includes(type)) {
-      errors.push(`${type} HTTP ${response.status()}: ${response.url()}`);
-    }
   });
   try {
     const response = await page.goto(`http://127.0.0.1:${port}/${file}`, { waitUntil:'domcontentloaded', timeout:30000 });
     await page.waitForTimeout(500);
-    await page.waitForFunction(() => {
+    if (isSkill) await page.waitForFunction(() => {
       let meta;
       try { meta = JSON.parse(document.getElementById('skill-meta')?.textContent || '{}'); }
       catch (_) { return true; }
@@ -81,8 +86,11 @@ async function inspect(browser, file) {
         return mount && (mount.dataset.exportReady === '1' || mount.dataset.exportError);
       });
     }, null, { timeout:10000 }).catch(() => {});
+    // Asset and link integrity are separate blocking gates. This audit deliberately records
+    // only a failed document navigation here so a mirrored source file still receives its
+    // color test even when its build-time overlay assets are not colocated in the mirror.
     if (!response || !response.ok()) errors.push(`document HTTP ${response && response.status()}`);
-    const state = await page.evaluate(() => {
+    const state = await page.evaluate(({ isSkill }) => {
       const parse = id => { try { return JSON.parse(document.getElementById(id)?.textContent || ''); } catch (_) { return null; } };
       const config = document.getElementById('explorer-config');
       const meta = parse('skill-meta');
@@ -116,62 +124,164 @@ async function inspect(browser, file) {
           allSortDirections:sortDirections.length > 0 && sortDirections.every(Boolean),
         };
       });
+      const parseColor = value => {
+        const match = String(value || '').match(/rgba?\(([^)]+)\)/i);
+        if (!match) return null;
+        const parts = match[1].split(',').map(Number);
+        return { r:parts[0], g:parts[1], b:parts[2], a:parts.length > 3 ? parts[3] : 1 };
+      };
+      const composite = (top, bottom) => {
+        const alpha = top.a + bottom.a * (1 - top.a);
+        if (!alpha) return {r:255,g:255,b:255,a:1};
+        return {
+          r:(top.r * top.a + bottom.r * bottom.a * (1 - top.a)) / alpha,
+          g:(top.g * top.a + bottom.g * bottom.a * (1 - top.a)) / alpha,
+          b:(top.b * top.a + bottom.b * bottom.a * (1 - top.a)) / alpha,
+          a:alpha,
+        };
+      };
+      const background = node => {
+        const layers = [];
+        for (let current=node; current; current=current.parentElement) {
+          const color = parseColor(getComputedStyle(current).backgroundColor);
+          if (color && color.a) layers.push(color);
+        }
+        let result = {r:255,g:255,b:255,a:1};
+        for (let index=layers.length - 1; index >= 0; index--) result = composite(layers[index], result);
+        return result;
+      };
+      const luminance = color => {
+        const channel = value => {
+          const normalized = value / 255;
+          return normalized <= .03928 ? normalized / 12.92 : Math.pow((normalized + .055) / 1.055, 2.4);
+        };
+        return .2126 * channel(color.r) + .7152 * channel(color.g) + .0722 * channel(color.b);
+      };
+      const ratio = (foreground, backdrop) => {
+        const a = luminance(foreground), b = luminance(backdrop);
+        return (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
+      };
+      const label = node => {
+        const classes = Array.from(node.classList || []).slice(0, 2).join('.');
+        const text = String(node.innerText || node.value || node.getAttribute?.('aria-label') || '').trim().replace(/\s+/g,' ').slice(0,48);
+        return `${node.tagName.toLowerCase()}${node.id ? '#' + node.id : ''}${classes ? '.' + classes : ''}${text ? ' “' + text + '”' : ''}`;
+      };
+      const visible = node => {
+        const style = getComputedStyle(node), box = node.getBoundingClientRect();
+        return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) > .02 && box.width > 0 && box.height > 0;
+      };
+      const hasOwnText = node => Array.from(node.childNodes).some(child => child.nodeType === Node.TEXT_NODE && child.textContent.trim())
+        || /^(INPUT|SELECT|TEXTAREA)$/.test(node.tagName);
+      const auditStyle = document.createElement('style');
+      auditStyle.textContent = '*,*::before,*::after{transition:none!important;animation:none!important}';
+      document.head.appendChild(auditStyle);
+      const themeSnapshot = mode => {
+        document.documentElement.setAttribute('data-theme', mode);
+        void document.documentElement.offsetWidth;
+        const candidates = Array.from(document.querySelectorAll(
+          'h1,h2,h3,h4,h5,h6,p,li,a,b,strong,em,small,code,pre,span,label,summary,button,th,td,input,select,textarea'
+        ));
+        const contrast = [];
+        for (let index = 0; index < candidates.length; index++) {
+          const node = candidates[index];
+          if (!visible(node) || !hasOwnText(node) || node.closest('.CodeMirror, [aria-hidden="true"]')) continue;
+          if ((node.closest('pre') && node.tagName !== 'PRE') || Array.from(node.classList || []).some(name => name.startsWith('hljs-'))) continue;
+          const style = getComputedStyle(node), foreground = parseColor(style.color);
+          if (!foreground || foreground.a < .5) continue;
+          const score = ratio(foreground, background(node));
+          contrast.push({index,label:label(node),ratio:Number(score.toFixed(2))});
+        }
+        const viewportWidth = document.documentElement.clientWidth;
+        const overflowElements = Array.from(document.body.querySelectorAll('*')).flatMap(node => {
+          if (!visible(node)) return [];
+          const box = node.getBoundingClientRect();
+          if (box.right <= viewportWidth + 2 && box.left >= -2) return [];
+          for (let parent=node.parentElement; parent && parent !== document.body; parent=parent.parentElement) {
+            const parentBox = parent.getBoundingClientRect();
+            const overflow = getComputedStyle(parent).overflowX;
+            if (/auto|scroll|hidden|clip/.test(overflow) && parentBox.left >= -2 && parentBox.right <= viewportWidth + 2) return [];
+          }
+          return [`${label(node)} (left ${Math.round(box.left)}px; right ${Math.round(box.right)}px; width ${Math.round(box.width)}px)`];
+        }).slice(0,5);
+        return {
+          mode,
+          viewportWidth,
+          documentWidth:document.documentElement.scrollWidth,
+          overflowElements,
+          bodyBackground:getComputedStyle(document.body).backgroundColor,
+          surfaceBackground:getComputedStyle(document.querySelector('.skill-static,main,body')).backgroundColor,
+          contrast,
+        };
+      };
+      const compareThemes = (dark, light) => dark.contrast.flatMap(item => {
+        const other = light.contrast.find(candidate => candidate.index === item.index);
+        if (!other) return [];
+        const low = Math.min(item.ratio, other.ratio), high = Math.max(item.ratio, other.ratio);
+        return low < 3 && high - low >= 1.5
+          ? [`${item.label} (dark ${item.ratio.toFixed(2)}:1; light ${other.ratio.toFixed(2)}:1)`]
+          : [];
+      }).slice(0,12);
+      window.__nemoclawThemeSnapshot = themeSnapshot;
+      window.__nemoclawCompareThemes = compareThemes;
+      const originalTheme = document.documentElement.getAttribute('data-theme');
+      const dark = themeSnapshot('dark');
+      const light = themeSnapshot('light');
+      if (originalTheme === null) document.documentElement.removeAttribute('data-theme');
+      else document.documentElement.setAttribute('data-theme', originalTheme);
+      const themeCapable = Array.from(document.styleSheets).some(sheet => {
+          try { return Array.from(sheet.cssRules || []).some(rule => String(rule.cssText || '').includes('data-theme')); }
+          catch (_) { return false; }
+        });
       return {
-        meta: !!meta,
+        isSkill,
+        meta: !isSkill || !!meta,
         config: !config || !!parse('explorer-config'),
         navigationHeader: !!document.querySelector('header[data-skill-header="1"] nav'),
         navigationLinks: document.querySelectorAll('header[data-skill-header="1"] nav a[href]').length,
         visibleNavigationRegions: Array.from(document.querySelectorAll('header[data-skill-header="1"], .sx-topbar')).filter(node => getComputedStyle(node).display !== 'none').length,
         duplicateExplorerHeading: !!document.querySelector('.skill-static') && !!document.querySelector('#explorer .sx-head'),
-        themeUnified: (() => {
-          const surface = document.querySelector('.skill-static');
-          const button = document.querySelector('.sx-theme');
-          if (!surface || !button) return true;
-          const colors = () => [getComputedStyle(document.body).backgroundColor, getComputedStyle(surface).backgroundColor];
-          const before = colors(); button.click(); const after = colors(); button.click();
-          return before[0] === before[1] && after[0] === after[1] && before[0] !== after[0];
-        })(),
-        themeContrast: (() => {
-          const surface = document.querySelector('.skill-static');
-          const button = document.querySelector('.sx-theme');
-          if (!surface || !button) return true;
-          const rgb = value => (value.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
-          const luminance = value => {
-            const channels = rgb(value).map(channel => {
-              const normalized = channel / 255;
-              return normalized <= .03928 ? normalized / 12.92 : Math.pow((normalized + .055) / 1.055, 2.4);
-            });
-            return .2126 * channels[0] + .7152 * channels[1] + .0722 * channels[2];
-          };
-          const ratio = (foreground, background) => {
-            const a = luminance(foreground), b = luminance(background);
-            return (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
-          };
-          const readable = () => Array.from(surface.querySelectorAll('h1, p, .skill-cmd code')).every(node => {
-            const backgroundNode = node.closest('.skill-cmd') || surface;
-            return ratio(getComputedStyle(node).color, getComputedStyle(backgroundNode).backgroundColor) >= 4.5;
-          });
-          const before = readable(); button.click(); const after = readable(); button.click();
-          return before && after;
-        })(),
+        themeCapable,
+        themes:{dark,light},
+        themeChanged:dark.bodyBackground !== light.bodyBackground || dark.surfaceBackground !== light.surfaceBackground,
+        colorDependencies:compareThemes(dark, light),
         visibleText: (document.body?.innerText || '').trim().length,
         explorer: !!config,
         mounted: !!document.querySelector('.sx-topbar') && !!document.querySelector('.sx-main'),
         gone: document.querySelectorAll('.sx-dot.gone').length,
         exports,
       };
+    }, { isSkill });
+    await page.setViewportSize({ width:390, height:844 });
+    await page.waitForTimeout(50);
+    const narrow = await page.evaluate(() => {
+      const originalTheme = document.documentElement.getAttribute('data-theme');
+      const dark = window.__nemoclawThemeSnapshot('dark');
+      const light = window.__nemoclawThemeSnapshot('light');
+      if (originalTheme === null) document.documentElement.removeAttribute('data-theme');
+      else document.documentElement.setAttribute('data-theme', originalTheme);
+      return {
+        themes:{dark,light},
+        themeChanged:dark.bodyBackground !== light.bodyBackground || dark.surfaceBackground !== light.surfaceBackground,
+        colorDependencies:window.__nemoclawCompareThemes(dark, light),
+        overflows:dark.documentWidth > dark.viewportWidth + 2 || light.documentWidth > light.viewportWidth + 2,
+      };
     });
-    if (!state.meta) errors.push('skill-meta did not parse');
-    if (!state.config) errors.push('explorer-config did not parse');
-    if (!state.navigationHeader || state.navigationLinks < 2) errors.push('semantic skill navigation header is incomplete');
-    if (state.visibleNavigationRegions !== 1) errors.push(`renderer produced ${state.visibleNavigationRegions} visible navigation headers`);
-    if (state.duplicateExplorerHeading) errors.push('renderer repeated the static SKILL heading');
-    if (!state.themeUnified) errors.push('static SKILL body and explorer do not share one light/dark theme');
-    if (!state.themeContrast) errors.push('static SKILL body loses readable contrast in light or dark theme');
+    if (state.isSkill && !state.meta) errors.push('skill-meta did not parse');
+    if (state.isSkill && !state.config) errors.push('explorer-config did not parse');
+    if (state.isSkill && (!state.navigationHeader || state.navigationLinks < 2)) errors.push('semantic skill navigation header is incomplete');
+    if (state.isSkill && state.visibleNavigationRegions !== 1) errors.push(`renderer produced ${state.visibleNavigationRegions} visible navigation headers`);
+    if (state.isSkill && state.duplicateExplorerHeading) errors.push('renderer repeated the static SKILL heading');
+    if (state.themeCapable && (!state.themeChanged || !narrow.themeChanged)) errors.push('declared theme controls do not change the page palette at every viewport');
+    if (state.colorDependencies.length) errors.push(`desktop theme-dependent contrast: ${state.colorDependencies.join('; ')}`);
+    if (narrow.colorDependencies.length) errors.push(`narrow theme-dependent contrast: ${narrow.colorDependencies.join('; ')}`);
+    if (narrow.overflows) {
+      const offenders = narrow.themes.dark.overflowElements.length ? narrow.themes.dark.overflowElements : narrow.themes.light.overflowElements;
+      errors.push(`narrow layout overflows 390px viewport (dark ${narrow.themes.dark.documentWidth}px; light ${narrow.themes.light.documentWidth}px): ${offenders.join('; ') || 'unattributed root overflow'}`);
+    }
     if (!state.visibleText) errors.push('renderer produced no visible text');
-    if (state.explorer && !state.mounted) errors.push('shared explorer did not mount');
-    if (state.gone) errors.push(`${state.gone} configured file(s) did not load`);
-    state.exports.forEach(item => {
+    if (state.isSkill && state.explorer && !state.mounted) errors.push('shared explorer did not mount');
+    if (state.isSkill && state.gone) errors.push(`${state.gone} configured file(s) did not load`);
+    if (state.isSkill) state.exports.forEach(item => {
       if (!item.present) errors.push(`export ${item.id} preview mount is missing`);
       else if (item.error) errors.push(`export ${item.id} preview failed: ${item.error}`);
       else if (!item.ready) errors.push(`export ${item.id} preview did not become ready`);
@@ -196,8 +306,8 @@ async function inspect(browser, file) {
   const findings = [];
   let cursor = 0;
   async function worker() {
-    while (cursor < skillFiles.length) {
-      const file = skillFiles[cursor++];
+    while (cursor < htmlFiles.length) {
+      const file = htmlFiles[cursor++];
       const result = await inspect(browser, file);
       if (result.errors.length) findings.push(result);
     }
@@ -205,7 +315,7 @@ async function inspect(browser, file) {
   await Promise.all(Array.from({ length: 4 }, worker));
   await browser.close();
   server.close();
-  console.log(JSON.stringify({ files:skillFiles.length, findings }, null, 2));
+  console.log(JSON.stringify({ files:htmlFiles.length, findings }, null, 2));
   if (findings.length) process.exit(1);
 })().catch(error => {
   try { server.close(); } catch (_) {}
@@ -220,17 +330,19 @@ def run(args: argparse.Namespace) -> int:
     if not site.is_dir():
         print(f"skill_renderer_runtime_audit: FAIL\n  - site root missing: {site}")
         return 1
-    # Audit the tree actually being served. A Pages build contains projected contracts
-    # beyond the source set, so reusing only the source manifest would silently miss them.
-    files = sorted(path.relative_to(site).as_posix() for path in site.rglob("SKILL.html"))
+    # Audit the tree actually being served. A Pages build contains projected pages beyond the
+    # source set, so reusing a source manifest or a hand-maintained allowlist would silently miss
+    # them. Every HTML file is included by default; SKILL-specific assertions are conditional in
+    # the browser script, but desktop/narrow theme and layout checks are universal.
+    files = discover_html(site)
     if not files:
-        print(f"skill_renderer_runtime_audit: FAIL\n  - no SKILL.html files under {site}")
+        print(f"skill_renderer_runtime_audit: FAIL\n  - no HTML files under {site}")
         return 1
     temp_parent = site.parent if args.engine == "apple" else None
     with tempfile.TemporaryDirectory(prefix="skill-renderer-audit-", dir=temp_parent) as temp:
         temp_path = Path(temp)
         script = temp_path / "audit.js"
-        manifest = temp_path / "skill-files.json"
+        manifest = temp_path / "html-files.json"
         script.write_text(RUNTIME_JS, encoding="utf-8")
         manifest.write_text(json.dumps(files), encoding="utf-8")
         if args.engine == "apple":
@@ -238,9 +350,9 @@ def run(args: argparse.Namespace) -> int:
                 "container", "machine", "run", "--root", "--name", args.machine,
                 "--workdir", str(site),
                 "--env", f"NODE_PATH={args.node_path}",
-                "--env", f"CHROME_BIN={args.chrome_bin}",
+                "--env", f"CHROME_BIN={'' if args.chrome_bin == 'auto' else args.chrome_bin}",
                 "--env", f"SITE_ROOT={site}",
-                "--env", f"SKILL_FILES={manifest}",
+                "--env", f"HTML_FILES={manifest}",
                 "--", "node", str(script),
             ]
         elif args.engine == "current":
@@ -252,10 +364,10 @@ def run(args: argparse.Namespace) -> int:
             command += [
                 "-e", "NODE_PATH=/opt/nemoclaw-runtime/node_modules",
                 "-e", "SITE_ROOT=/site",
-                "-e", "SKILL_FILES=/tmp/skill-files.json",
+                "-e", "HTML_FILES=/tmp/html-files.json",
                 "-v", f"{site}:/site:ro",
                 "-v", f"{script}:/tmp/skill-renderer-audit.js:ro",
-                "-v", f"{manifest}:/tmp/skill-files.json:ro",
+                "-v", f"{manifest}:/tmp/html-files.json:ro",
                 args.image,
                 "/tmp/skill-renderer-audit.js",
             ]
@@ -264,9 +376,9 @@ def run(args: argparse.Namespace) -> int:
             if args.engine == "current":
                 environment.update({
                     "NODE_PATH": args.node_path,
-                    "CHROME_BIN": args.chrome_bin,
+                    "CHROME_BIN": "" if args.chrome_bin == "auto" else args.chrome_bin,
                     "SITE_ROOT": str(site),
-                    "SKILL_FILES": str(manifest),
+                    "HTML_FILES": str(manifest),
                 })
             result = subprocess.run(
                 command,

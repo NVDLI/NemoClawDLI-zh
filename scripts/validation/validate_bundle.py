@@ -270,7 +270,7 @@ SUITE_META = [
     ("staccato_cadence", "Staccato cadence", "consider",
      "Prose that reads choppy even when sentence lengths vary: a copular 'X is the Y, a Z' appositive, two-plus setup/payoff reveals (mid-sentence colons or comma-appositives), short clauses welded dense, or breaks spaced so evenly the cadence turns mechanical. The sentence-length rhythm score is blind to it. Resolution per kind: a paragraph under 5 clauses cannot trip uniform-breaks (split it), lists are removed from the scan (lift a real enumeration into a substantive <ul>), combine choppy clauses for break-dense, and dismiss break-dense that is only code/URL tokens. Each finding carries its specific recipe.",
      "scripts/validation/prose_variety.py", "staccato_cadence"),
-    ("color_theme", "Color theme", "recommended",
+    ("color_theme", "Color theme", "required",
      "Every DOM color must be theme-dynamic: no hard-coded literal in an inline style, no undefined CSS variable. An inline literal outranks the light-theme rules and stays dark in light mode. Each entry names the literal and the page; replace it with a theme var.",
      "scripts/validation/color_theme.py", "run"),
     ("figure_audit", "Figure audit", "recommended",
@@ -666,10 +666,14 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     for r in ch_rows:
         ch_fam[r.get("family")].append(r)
 
-    # color theme (advisory): inline color literals + undefined var() refs that can't flip light/dark.
+    # Color theme (required): inline literals, undefined vars, and render-time color bakes block.
     try:
         ct_find = ct.run(verbose=False)
         ct_inline, ct_undef, ct_bake = len(ct_find["inline"]), len(ct_find["undefined_var"]), len(ct_find.get("bake", []))
+        if ct_inline + ct_undef + ct_bake:
+            vl_ok = False
+            ok = False
+            vl_fail.append(f"color theme: {ct_inline + ct_undef + ct_bake} non-theme-dynamic color use(s)")
     except Exception as e:
         ct_find, ct_inline, ct_undef, ct_bake = {"inline": [], "undefined_var": [], "bake": []}, 0, 0, 0
         suite_errors["color_theme"] = str(e); vl_fail.append(f"color theme error: {e}")
@@ -1111,15 +1115,15 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                       for s in pv_structure],
         "grounding": [D(fo.get("path"), "; ".join(fo.get("issues", [])), RECOMMENDED, _ground_fix(fo.get("issues", [])))
                       for fo in gfind],
-        "color_theme": ([D(f, f"{tok} on {prop}", RECOMMENDED,
+        "color_theme": ([D(f, f"{tok} on {prop}", REQUIRED,
                            f"Replace {tok} with a theme variable (var(--g), var(--e1), var(--tx), …). A literal in an "
                            f"inline style outranks the light-theme rules and stays dark in light mode.")
                          for f, tok, prop in ct_find.get("inline", [])]
-                        + [D(f, f"undefined var {n}", RECOMMENDED,
+                        + [D(f, f"undefined var {n}", REQUIRED,
                              f"Define {n} in :root or switch to an existing theme var. An undefined var() resolves to "
                              f"nothing, so the color silently drops out.")
                            for f, n in ct_find.get("undefined_var", [])]
-                        + [D(f, "render-time color bake", RECOMMENDED,
+                        + [D(f, "render-time color bake", REQUIRED,
                              f"{reason}. {snippet} — this output ignores the theme toggle and freezes on the "
                              f"theme that was active when it rendered.")
                            for f, snippet, reason in ct_find.get("bake", [])]),
@@ -1457,7 +1461,7 @@ def _render_md(summary: dict) -> str:
          f"| · em-dash pages | {g.get('em_dash_pages','?')} | advisory |",
          f"| prose variety (narrative pages flagged) | {summary.get('prose_variety',{}).get('flagged','?')} / {summary.get('prose_variety',{}).get('pages','?')} | advisory |",
          f"| · buzz cadence (antithesis/numeric) | {len(summary.get('prose_variety',{}).get('antithesis',[]))} | advisory |",
-         f"| color theme (non-theme-dynamic colors) | {summary.get('color_theme',{}).get('inline',0) + summary.get('color_theme',{}).get('undefined_var',0) + summary.get('color_theme',{}).get('bake',0)} | advisory |",
+         f"| color theme (non-theme-dynamic colors) | {summary.get('color_theme',{}).get('inline',0) + summary.get('color_theme',{}).get('undefined_var',0) + summary.get('color_theme',{}).get('bake',0)} | blocking |",
          f"| figure audit (legibility / formatting) | {sum(summary.get('figure_audit',{}).values())} | advisory |",
          f"| cell audit (runnable-cell contract) | {sum(summary.get('cell_audit',{}).values())} | advisory |",
          f"| learner interaction flow | {summary.get('learner_flow',{}).get('findings',0)} | blocking |",

@@ -24,6 +24,8 @@
       --cross: #a371f7;
       --cyc: #58a6ff;
       --stray: #ff7b72;
+      --child: #ff9bce;
+      --go-ink: #000000;
     }
 
     :root[data-theme="light"] {
@@ -32,8 +34,16 @@
       --line: #e1e6eb;
       --tf: #1a1a1a;
       --mut: #57606a;
-      --g: #76b900;
+      --g: #365e00;
       --gs: #57606a;
+      --ok: #006b2a;
+      --dead: #a40e26;
+      --iso: #704d00;
+      --cross: #5f2db3;
+      --cyc: #005ea8;
+      --stray: #a40e26;
+      --child: #8c2a67;
+      --go-ink: #ffffff;
       color-scheme: light;
     }
 
@@ -228,7 +238,7 @@
 
     button.go {
       background: var(--g);
-      color: #000;
+      color: var(--go-ink);
       font-weight: 700;
       border-color: var(--g)
     }
@@ -883,7 +893,7 @@
         `<div class=stat><span>internal links</span><b>${E.length}</b></div>` +
         `<div class=stat><span>components</span><b>${compInfo.length}</b></div>` +
         `<div class=stat><span>navigable reachable from SKILL</span><b>${reachNav}/${navTotal}</b></div>` +
-        `<div class=stat><span>strays</span><b style="color:${strayInfo.size ? '#ff7b72' : '#3fb950'}">${strayInfo.size}</b></div>` +
+        `<div class=stat><span>strays</span><b style="color:${strayInfo.size ? 'var(--stray)' : 'var(--ok)'}">${strayInfo.size}</b></div>` +
         `<div class=stat><span>dead / cross</span><b>${(DATA.issues.dead || []).length} / ${(DATA.issues.cross_course || []).length}</b></div>`;
     }
     function renderConn() {
@@ -892,23 +902,23 @@
       const row = ([n, i]) => `<div class=item data-f="${n.id}"><span>${n.id}</span><span class=why>${i.reason}</span></div>`;
       document.getElementById("conn").innerHTML =
         `<details open><summary><span>connectivity · components</span><span class=cnt style="background:var(--line)">${compInfo.length}</span></summary>` +
-        `<div class=lst>` + big.map(c => `<div class=item>#${c.id} · ${c.size} nodes · ${c.hasSkill ? '<span style="color:#3fb950">SKILL</span>' : '<span style="color:#ff7b72">no SKILL</span>'} · ${c.courses.join(", ").slice(0, 60)}</div>`).join("") + `</div></details>` +
-        `<details ${all.length ? 'open' : ''}><summary><span style="color:#ff7b72">strays · navigation gaps</span><span class=cnt style="background:rgba(255,123,114,.2);color:#ff7b72">${all.length}</span></summary>` +
-        `<div class=lst>` + (all.length ? all.map(row).join("") : `<div class=item><span style="color:#8b949e">none, since every navigable page reaches a SKILL hub</span></div>`) + `</div></details>`;
+        `<div class=lst>` + big.map(c => `<div class=item>#${c.id} · ${c.size} nodes · ${c.hasSkill ? '<span style="color:var(--ok)">SKILL</span>' : '<span style="color:var(--stray)">no SKILL</span>'} · ${c.courses.join(", ").slice(0, 60)}</div>`).join("") + `</div></details>` +
+        `<details ${all.length ? 'open' : ''}><summary><span style="color:var(--stray)">strays · navigation gaps</span><span class=cnt style="background:color-mix(in srgb,var(--stray) 20%,transparent);color:var(--stray)">${all.length}</span></summary>` +
+        `<div class=lst>` + (all.length ? all.map(row).join("") : `<div class=item><span style="color:var(--mut)">none, since every navigable page reaches a SKILL hub</span></div>`) + `</div></details>`;
     }
     function edgeRow(e) { return `<div class=item data-f="${e.from}"><span>${e.from.split('/').slice(-1)[0]}</span> <span class=arr>→</span> <span class=b>${(e.to || '').split('/').slice(-1)[0] || e.to}</span></div>`; }
     function nodeRow(id) { return `<div class=item data-f="${id}">${id.split('/').slice(-2).join('/')}</div>`; }
     function block(title, color, items, render) {
       if (!items || !items.length) return "";
-      return `<details><summary><span style="color:${color}">${title}</span><span class=cnt style="background:${color}22;color:${color}">${items.length}</span></summary><div class=lst>` + items.map(render).join("") + `</div></details>`;
+      return `<details><summary><span style="color:${color}">${title}</span><span class=cnt style="background:color-mix(in srgb,${color} 13%,transparent);color:${color}">${items.length}</span></summary><div class=lst>` + items.map(render).join("") + `</div></details>`;
     }
     function renderLists() {
       const i = DATA.issues;
       document.getElementById("lists").innerHTML =
-        block("dead links", "#f85149", i.dead, edgeRow) +
-        block("cross-course", "#a371f7", i.cross_course, edgeRow) +
-        block("child→SKILL", "#ff9bce", i.child_to_skill, edgeRow) +
-        block("isolated", "#d29922", i.isolated, nodeRow);
+        block("dead links", "var(--dead)", i.dead, edgeRow) +
+        block("cross-course", "var(--cross)", i.cross_course, edgeRow) +
+        block("child→SKILL", "var(--child)", i.child_to_skill, edgeRow) +
+        block("isolated", "var(--iso)", i.isolated, nodeRow);
       bindFocus();
     }
     function bindFocus() { document.querySelectorAll("[data-f]").forEach(el => el.onclick = () => focus(el.dataset.f)); markSelected(); }

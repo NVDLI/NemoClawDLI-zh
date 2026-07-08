@@ -134,13 +134,22 @@ cp "$T1/THIRD_PARTY_LICENSES.md" "$OUT/THIRD_PARTY_LICENSES.md"
 mkdir -p "$OUT/scripts/compliance/docs"
 cp "$T1/scripts/compliance/docs/sbom_generation.md" "$OUT/scripts/compliance/docs/sbom_generation.md"
 
-# ── 2b. SKILL explorers: project the exact Git source set, including proposed files.
+# ── 2b. SKILL explorers: project authoring sources, including proposed files.
 # Every source directory owns a SKILL.html and every explorer must retain the files it documents.
 # A shallow top-level copy leaves nested renderers present but unusable, so the projection is
-# exhaustive and byte-verified while ignored build output remains excluded by Git.
+# exhaustive and byte-verified while generated standalone delivery output is rebuilt only at its
+# canonical route above.
 python3 "$T1/scripts/build/project_source_tree.py" \
     --source-root "$T1" \
     --artifact-root "$OUT"
+# Locale HTML is authored as overlays and receives canonical styles during assembly. Copy those
+# styles beside the read-only source projection too, so every emitted HTML file remains directly
+# renderable by the exhaustive browser matrix.
+for locale_source in "$OUT"/i18n/*/web/nemoclaw; do
+    [ -d "$locale_source" ] || continue
+    mkdir -p "$locale_source/styles"
+    cp -R "$T1/web/nemoclaw/styles/." "$locale_source/styles/"
+done
 echo "[build_pages] source explorers -> public/ ($(find "$OUT" -name SKILL.html -type f | wc -l) SKILL contracts)"
 
 # Project every docs explorer declaration from source. Then inspect every declared Markdown

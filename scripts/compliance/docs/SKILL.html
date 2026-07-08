@@ -14,6 +14,7 @@
   "related": [
     "scripts/compliance/docs/open_source_readiness.md",
     "scripts/compliance/docs/sbom_generation.md",
+    "scripts/compliance/docs/document_sources.json",
     "scripts/compliance/docs/vendor_policy.md",
     "scripts/compliance/docs/source_inventory.json",
     "scripts/compliance/SKILL.html"
@@ -56,6 +57,11 @@
       "path": "source_inventory.json",
       "role": "machine inventory",
       "desc": "Inputs consumed by scripts/compliance/source_gate.py."
+    },
+    {
+      "path": "document_sources.json",
+      "role": "document source evidence",
+      "desc": "Official-source paper licenses, paper authors, NVIDIA bylines, and repository-item mappings."
     }
   ],
   "related": [
@@ -91,6 +97,7 @@
     <a class="skill-card" href="sbom_generation.md"><b>sbom_generation.md</b><span>Exact SBOM generation and attachment procedure.</span></a>
     <a class="skill-card" href="vendor_policy.md"><b>vendor_policy.md</b><span>Source placement, allowed material, and provenance rules.</span></a>
     <a class="skill-card" href="source_inventory.json"><b>source_inventory.json</b><span>Machine-readable inventory consumed by the source gate.</span></a>
+    <a class="skill-card" href="document_sources.json"><b>document_sources.json</b><span>Reviewed arXiv license and NVIDIA author evidence.</span></a>
   </div>
   <h2>Interactive explorer</h2>
   <p>The explorer below opens the policy files and verifies documented paths against the repository tree.</p>
@@ -103,6 +110,7 @@
     <li><a href="sbom_generation.md">sbom_generation.md</a></li>
     <li><a href="vendor_policy.md">vendor_policy.md</a></li>
     <li><a href="source_inventory.json">source_inventory.json</a></li>
+    <li><a href="document_sources.json">document_sources.json</a></li>
   </ul>
 </noscript>
 <script src="../../../web/_skill_explorer.js"></script>

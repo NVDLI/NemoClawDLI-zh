@@ -151,8 +151,8 @@
   },
   "reviews": {
     "web/index.html": {
-      "source_sha256": "6b6af58d59259c2d6b47ef0679a8690879404f4fad64a83f16cb883e5126ab81",
-      "target_sha256": "2156bbf185f05856e04f7915e2bc5ef7c31a3d91dda8bf53b64b7ac3f7f2cb9e",
+      "source_sha256": "789e27ffba307fd78e98d0ece601e4bb8c57b9df81d45f2b75f7b76cf7ea980b",
+      "target_sha256": "76d8de7975c3a9c26e3df815cbd10af78af10ca025644d76a6a4cb3f502323b0",
       "reviewed_on": "2026-07-08"
     },
     "web/courses.html": {
@@ -161,8 +161,8 @@
       "reviewed_on": "2026-07-08"
     },
     "web/nemoclaw/index.html": {
-      "source_sha256": "44e88d3968cc1c9941a2413fe7650061c98b2bd1958cacee676e2a23a40c7ca4",
-      "target_sha256": "fa14e68ce2eb9b85ed7bcde8a4ee3f83e28fa3554eaedd1647cdd90a2e5358eb",
+      "source_sha256": "f7dac85f0d36107a631aad5c960c7c8474b344e4c45cf02ca85986d67921eb02",
+      "target_sha256": "857f03d740c1ecb01b8a75b18f05d35475792a19c893e7e6e0dea1d5d60afe13",
       "reviewed_on": "2026-07-08"
     },
     "web/nemoclaw/01a-loop.html": {

@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Project the exact Git source tree into Pages so every SKILL explorer remains usable."""
+"""Project authoring sources into Pages so every SKILL explorer remains usable.
+
+Tracked generated delivery output is rebuilt elsewhere in the artifact and is not projected a
+second time. This prevents stale standalone output from becoming a second served course tree.
+"""
 from __future__ import annotations
 
 import argparse
@@ -10,12 +14,20 @@ import tempfile
 import unittest
 from pathlib import Path
 
+GENERATED_OUTPUT_PREFIXES = (("web", "nemoclaw", "standalone"),)
+
+
+def is_authoring_source(path: Path) -> bool:
+    parts = path.parts
+    return not any(parts[:len(prefix)] == prefix for prefix in GENERATED_OUTPUT_PREFIXES)
+
 
 def source_files(root: Path) -> list[Path]:
     raw = subprocess.check_output(
         ["git", "-C", str(root), "ls-files", "--cached", "--others", "--exclude-standard", "-z"]
     )
-    return sorted(Path(item.decode()) for item in raw.split(b"\0") if item)
+    return sorted(path for item in raw.split(b"\0") if item
+                  for path in (Path(item.decode()),) if is_authoring_source(path))
 
 
 def digest(path: Path) -> str:
@@ -54,7 +66,11 @@ class ProjectionTests(unittest.TestCase):
             (root / "SKILL.html").write_text("root", encoding="utf-8")
             (root / "nested").mkdir()
             (root / "nested" / "tracked.txt").write_text("tracked", encoding="utf-8")
+            generated = root / "web" / "nemoclaw" / "standalone" / "index.html"
+            generated.parent.mkdir(parents=True)
+            generated.write_text("generated", encoding="utf-8")
             subprocess.run(["git", "-C", str(root), "add", ".gitignore", "SKILL.html", "nested/tracked.txt"], check=True)
+            subprocess.run(["git", "-C", str(root), "add", "web/nemoclaw/standalone/index.html"], check=True)
             (root / "nested" / "proposed.txt").write_text("proposed", encoding="utf-8")
             (root / "ignored").mkdir()
             (root / "ignored" / "build.txt").write_text("ignored", encoding="utf-8")
@@ -64,6 +80,7 @@ class ProjectionTests(unittest.TestCase):
             self.assertTrue((output / "nested" / "tracked.txt").is_file())
             self.assertTrue((output / "nested" / "proposed.txt").is_file())
             self.assertFalse((output / "ignored" / "build.txt").exists())
+            self.assertFalse((output / "web" / "nemoclaw" / "standalone" / "index.html").exists())
 
 
 def main() -> int:

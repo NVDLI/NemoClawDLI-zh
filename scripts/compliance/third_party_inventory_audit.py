@@ -172,11 +172,13 @@ def export_contract_findings(overrides: dict[str, str]) -> list[str]:
         "data-scope-download",
         'aria-label="SWIPAT filter meanings"',
         'aria-label="Legal-scope filter meanings"',
-        "How this project uses it",
-        "Used only to check the course",
-        "Choices in different sections narrow the results together",
+        "How learners receive it",
+        "Choices in one filter are alternatives; different filters narrow together",
         "Download what you see",
         "What happened to the source?",
+        "skill-shell",
+        "white-space:pre-wrap",
+        "Download visible rows",
     ):
         if token not in skill:
             findings.append(f"SWIPAT in-page preview control is missing: {token}")
@@ -188,6 +190,7 @@ def export_contract_findings(overrides: dict[str, str]) -> list[str]:
         "selectedValues", "choiceGroup", "sortedRows", "sortableHeaders", "dataset.sortIndex",
         "FILTER_LABELS", "Included in the course", "Referenced, not copied",
         "Needs source-specific review", "friendlyChoice",
+        "documentScopeRows", "document_sources", "Source Author(s)", "renderScopeRow", "dataset.label",
     ):
         if token not in preview:
             findings.append(f"SWIPAT preview implementation is incomplete: {token}")
@@ -302,7 +305,9 @@ def self_test() -> list[str]:
         ("column sort preview", {CSV_PREVIEW: read(CSV_PREVIEW, {}).replace("sortableHeaders", "removedSortableHeaders")}, "SWIPAT preview implementation is incomplete"),
         ("legal-scope export", {COMPLIANCE_SKILL: compliance_skill.replace('"id": "legal-scope-map"', '"id": "removed-scope"', 1)}, "missing legal-scope relationship export"),
         ("legal-scope multi-select", {COMPLIANCE_SKILL: compliance_skill.replace('<div class="filter-choice-group" data-scope-relationship-group>', '<div class="filter-choice-group" data-scope-relationship-single>', 1)}, "SWIPAT in-page preview control is missing"),
-        ("filter semantics", {COMPLIANCE_SKILL: compliance_skill.replace("Choices in different sections narrow the results together", "filters combine somehow", 1)}, "SWIPAT in-page preview control is missing"),
+        ("document-source preview", {CSV_PREVIEW: read(CSV_PREVIEW, {}).replace("documentScopeRows", "removedScopeDocuments")}, "SWIPAT preview implementation is incomplete"),
+        ("wrapped commands", {COMPLIANCE_SKILL: compliance_skill.replace("white-space:pre-wrap", "white-space:nowrap", 1)}, "SWIPAT in-page preview control is missing"),
+        ("filter semantics", {COMPLIANCE_SKILL: compliance_skill.replace("Choices in one filter are alternatives; different filters narrow together", "filters combine somehow", 1)}, "SWIPAT in-page preview control is missing"),
         ("plain-language filter labels", {CSV_PREVIEW: read(CSV_PREVIEW, {}).replace("Included in the course", "vendored technical label", 1)}, "SWIPAT preview implementation is incomplete"),
         ("plain-language export explanation", {CSV_EXPORTER: read(CSV_EXPORTER, {}).replace("Learners receive this code as part of the browser course.", "Vendored package.", 1)}, "reviewer export lacks plain-language usage explanation"),
     )

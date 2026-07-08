@@ -199,6 +199,10 @@ Use these for prepublication staging and the internal integration copy after cut
 
 - Protect `main`, `nemoclaw-only`, `release/*`, and tags.
 - Set `main` push access to No one, disable force push, and allow maintainers to merge only through MRs.
+- Require Code Owner approval on `main`. `.gitlab/CODEOWNERS` assigns the inert root manifest,
+  core and SCA modules, release gate, governance validators, hooks, and GitHub workflows to named
+  owners. Keep this host setting enabled; a repository cannot protect a validator from an author
+  who is allowed to replace both the validator and its workflow without owner approval.
 - Require a successful pipeline and resolved discussions. In a one-operator project, require the
   protected manual `human_review` job after the exact commit's live preview smoke; restrict its
   environment to named human operators. With two active maintainers, prefer an independent MR

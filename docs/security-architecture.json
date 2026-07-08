@@ -48,16 +48,16 @@
     },
     {
       "id": "ci", "label": "External CI execution & review", "detail": "Runs course workflows; live controls are not attested", "zone": "supply", "kind": "external_control", "ownership": "external", "assurance": "NO LIVE EVIDENCE FROM EXTERNAL OPERATOR", "x": 650, "y": 150, "width": 300, "height": 105,
-      "evidence": [{"path": ".gitlab-ci.yml", "contains": ["release_gate.py --tier ship", "human_review"]}, {"path": "scripts/validation/release_gate.py", "contains": ["scripts/validation/validate_bundle.py", "scripts/validation/security_architecture_audit.py"]}, {"path": ".github/workflows/pages.yml", "contains": ["build-and-verify", "name: github-pages"]}, {"path": ".github/workflows/codeql.yml", "contains": ["javascript-typescript", "python"]}]
+      "evidence": [{"path": ".gitlab/ci/core.yml", "contains": ["release_gate.py --tier ship", "human_review"]}, {"path": "scripts/validation/release_gate.py", "contains": ["scripts/validation/validate_bundle.py", "scripts/validation/security_architecture_audit.py"]}, {"path": ".github/workflows/pages.yml", "contains": ["build-and-verify", "name: github-pages"]}, {"path": ".github/workflows/codeql.yml", "contains": ["javascript-typescript", "python"]}]
     },
     {
       "id": "artifact", "label": "Static course artifact", "detail": "Course-owned public HTML, JS, CSS, images, and locales", "zone": "supply", "kind": "artifact", "ownership": "toe", "assurance": "REPOSITORY EVIDENCE", "x": 1200, "y": 150, "width": 300, "height": 105,
       "controls": ["bounded artifact", "complete SHA-256 file inventory", "locale integrity checks", "generated-tree browser test"],
-      "evidence": [{"path": "scripts/build/build_pages.sh", "contains": ["fully client-side site", "public/nemoclaw/"]}, {"path": "scripts/validation/pages_artifact_integrity.py", "contains": ["MANIFEST_SCHEMA", "remote script source"]}, {"path": ".gitlab-ci.yml", "contains": ["build_pages.sh", "pages_smoke"]}]
+      "evidence": [{"path": "scripts/build/build_pages.sh", "contains": ["fully client-side site", "public/nemoclaw/"]}, {"path": "scripts/validation/pages_artifact_integrity.py", "contains": ["MANIFEST_SCHEMA", "remote script source"]}, {"path": ".gitlab/ci/core.yml", "contains": ["build_pages.sh", "pages_smoke"]}]
     },
     {
       "id": "pages_host", "label": "External static host", "detail": "Serves course bytes; live controls are not attested", "zone": "hosting", "kind": "external_hosting", "ownership": "external", "ownership_align": "left", "assurance": "NO LIVE EVIDENCE FROM EXTERNAL OPERATOR", "x": 300, "y": 450, "width": 350, "height": 105,
-      "evidence": [{"path": "docs/pages_deploy.md", "contains": ["GitLab Pages", "GitHub Pages", "byte-identical builds"]}, {"path": ".github/workflows/pages.yml", "contains": ["needs: build-and-verify", "Reverify the reviewed immutable artifact"]}, {"path": ".gitlab-ci.yml", "contains": ["resource_group: pages-site", "PAGES_ENVIRONMENT_URL"]}]
+      "evidence": [{"path": "docs/pages_deploy.md", "contains": ["GitLab Pages", "GitHub Pages", "byte-identical builds"]}, {"path": ".github/workflows/pages.yml", "contains": ["needs: build-and-verify", "Reverify the reviewed immutable artifact"]}, {"path": ".gitlab/ci/core.yml", "contains": ["resource_group: pages-site", "PAGES_ENVIRONMENT_URL"]}]
     },
     {
       "id": "launchable_host", "label": "External co-located launchable", "detail": "Integration target; deployment is not attested here", "zone": "hosting", "kind": "external_hosting", "ownership": "external", "assurance": "NO LIVE EVIDENCE FROM EXTERNAL OPERATOR", "x": 950, "y": 450, "width": 350, "height": 105,
@@ -82,7 +82,7 @@
   ],
   "edges": [
     {"id": "source_to_ci", "from": "source", "to": "ci", "protocol": "Git transport; live host configuration unverified", "data": "proposed public source and commit metadata", "auth": "developer identity and review policy; operator evidence required", "trust_boundary": "TOE source to external source host and CI execution", "evidence": [{"path": "CONTRIBUTING.md", "contains": ["required CI", "protected-ref"]}]},
-    {"id": "ci_to_artifact", "from": "ci", "to": "artifact", "protocol": "external CI execution of course workflow", "data": "public static course bundle", "auth": "CI job identity; live runner controls unverified", "trust_boundary": "external build execution to TOE artifact", "evidence": [{"path": ".gitlab-ci.yml", "contains": ["needs: [\"test\"]", "build_pages.sh"]}]},
+    {"id": "ci_to_artifact", "from": "ci", "to": "artifact", "protocol": "external CI execution of course workflow", "data": "public static course bundle", "auth": "CI job identity; live runner controls unverified", "trust_boundary": "external build execution to TOE artifact", "evidence": [{"path": ".gitlab/ci/core.yml", "contains": ["needs: [\"test\"]", "build_pages.sh"]}]},
     {"id": "artifact_to_pages", "from": "artifact", "to": "pages_host", "protocol": "repository workflow artifact handoff", "data": "public static course bundle and SHA-256 inventory", "auth": "deployment identity requested by workflow; live host rules unverified", "trust_boundary": "TOE artifact to external static host", "route": {"from_side": "bottom", "from_fraction": 0.35, "to_side": "top", "to_fraction": 0.9, "via": [[1305, 330], [615, 330]], "badge_point": [960, 330]}, "evidence": [{"path": "docs/pages_deploy.md", "contains": ["required reviewers", "verifies its embedded SHA-256 inventory again"]}, {"path": ".github/workflows/pages.yml", "contains": ["actions/upload-pages-artifact", "actions/deploy-pages"]}]},
     {"id": "artifact_to_launchable", "from": "artifact", "to": "launchable_host", "protocol": "external vendoring integration", "data": "public static course tree and integration metadata", "auth": "external release identities; no live evidence", "trust_boundary": "TOE artifact to external launchable", "route": {"from_side": "bottom", "from_fraction": 0.65, "to_side": "top", "to_fraction": 0.1, "via": [[1395, 360], [985, 360]], "badge_point": [1190, 360]}, "evidence": [{"path": "docs/security-design.md", "contains": ["may select a reviewed course release", "external and unattested"]}]},
     {"id": "pages_to_browser", "from": "pages_host", "to": "browser", "protocol": "declared HTTPS route; live host configuration unverified", "data": "public course pages and assets", "auth": "public or host-controlled access; live policy unverified", "trust_boundary": "external static host to TOE client code in learner device", "route": {"from_side": "bottom", "to_side": "top", "to_fraction": 0.25, "via": [[475, 605], [175, 605]], "badge_point": [325, 605]}, "evidence": [{"path": "docs/pages_deploy.md", "contains": ["fully client-side site"]}]},
@@ -112,11 +112,12 @@
       "web": "browser",
       "scripts/build/build_pages.sh": "artifact",
       ".gitlab-ci.yml": "source",
+      ".gitlab/ci": "source",
       ".github/workflows": "source"
     },
     "non_deployed_reference_sources": {
       "scripts/cors-proxy": "course examples and client-contract fixtures; not the operated relay deployment"
     },
-    "observed_contract_sha256": "84b365b9a3d37dfa0dfc25bbd96a637493136d5885960b560b3dced9ad053d87"
+    "observed_contract_sha256": "c06a2733b579709e8443b07f63880b6902b058da4c7e3376a5291c3fe4915dff"
   }
 }

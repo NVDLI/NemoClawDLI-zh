@@ -47,6 +47,11 @@ DIRECT_PATTERNS = (
     ("corporate personal email", re.compile(r"\b[A-Za-z0-9._%+-]+@nvidia\.com\b", re.I)),
 )
 PUBLIC_ROLE_EMAILS = frozenset({"psirt@nvidia.com"})
+PATH_PHRASE_ALLOWANCES = {
+    # Ownership files must name a real host principal. Keep this single-token allowance
+    # scoped to CODEOWNERS; the same identity stays blocked in prose, code, and metadata.
+    ".gitlab/CODEOWNERS": frozenset({"v" + "kudlay"}),
+}
 
 
 @dataclass(frozen=True)
@@ -222,7 +227,8 @@ def scan_text(path: str, text: str, policy: Policy) -> list[Finding]:
         for start in range(len(tokens)):
             for size in range(1, min(policy.max_phrase_tokens, len(tokens) - start) + 1):
                 phrase = " ".join(token for token, _ in tokens[start:start + size])
-                if digest(phrase) in policy.phrases:
+                if (phrase not in PATH_PHRASE_ALLOWANCES.get(path, frozenset())
+                        and digest(phrase) in policy.phrases):
                     add(offset + tokens[start][1], "restricted active-finding detail")
         offset += len(line)
     return findings
@@ -330,6 +336,7 @@ def self_test() -> list[str]:
         ("private hostname suffix", "https://branch." + "gitlab-master-pages" + ".nvidia.com", True),
         ("private project locator", "364" + "401", True),
         ("contributor-local identifier", "v" + "kudlay", True),
+        ("declared code owner", "@" + "v" + "kudlay", False),
         ("active detail", "Parse" + "Dict", True),
         ("corporate email", "person@" + "nvidia.com", True),
         ("public security role email", "psirt@" + "nvidia.com", False),
@@ -342,7 +349,8 @@ def self_test() -> list[str]:
     )
     failures: list[str] = []
     for label, sample, should_fail in examples:
-        rejected = bool(scan_text("fixture.txt", sample, policy))
+        path = ".gitlab/CODEOWNERS" if label == "declared code owner" else "fixture.txt"
+        rejected = bool(scan_text(path, sample, policy))
         if rejected != should_fail:
             failures.append(f"{label}: expected rejected={should_fail}, got {rejected}")
 

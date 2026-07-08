@@ -51,6 +51,8 @@ def cli_unit_test(name: str) -> tuple[str, ...]:
 
 HARNESS_CONTRACT = py("-m", "unittest", "-v", "tests.validation.test_test_harness_contract")
 NODE_VALIDATOR_TESTS = ("bash", "scripts/runtime/run_node.sh", "tests/runtime/test_embedded_validator_suites.mjs")
+COLOR_THEME_TESTS = py("-m", "unittest", "-v", "tests.validation.test_color_theme")
+THEME_RUNTIME_CONTRACT_TESTS = py("-m", "unittest", "-v", "tests.validation.test_theme_runtime_contract")
 
 
 FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
@@ -65,6 +67,8 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     unit_test("pages_artifact_integrity"),
     unit_test("threat_control_audit"),
     unit_test("repository_sync_audit"),
+    unit_test("gitlab_ci_policy"),
+    py("scripts/validation/gitlab_ci_policy.py"),
     py("scripts/skills/skill_consistency.py"),
     py("scripts/skills/gen_directory_beacons.py", "--check"),
     py("scripts/skills/normalize_skill_headers.py", "--self-test"),
@@ -79,6 +83,8 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/validation/endpoint_registration_audit.py"),
     ("bash", "scripts/runtime/run_node.sh", "scripts/validation/openclaw_connection_audit.mjs"),
     py("scripts/compliance/source_gate.py"),
+    py("scripts/compliance/source_document_audit.py"),
+    unit_test("source_document_audit"),
     py("scripts/compliance/third_party_inventory_audit.py"),
     unit_test("third_party_inventory_audit"),
     unit_test("export_third_party_csv"),
@@ -87,6 +93,9 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/validation/tenets.py", "--check"),
     py("scripts/runtime/module_check.py", "--dir", "web/nemoclaw"),
     py("scripts/runtime/module_check.py", "--dir", "web"),
+    COLOR_THEME_TESTS,
+    THEME_RUNTIME_CONTRACT_TESTS,
+    py("scripts/validation/color_theme.py"),
     py("scripts/validation/validate_bundle.py", "--scope", "ship", "--no-write"),
 )
 
@@ -107,6 +116,8 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     unit_test("pages_artifact_integrity"),
     unit_test("threat_control_audit"),
     unit_test("repository_sync_audit"),
+    unit_test("gitlab_ci_policy"),
+    py("scripts/validation/gitlab_ci_policy.py"),
     py("scripts/skills/skill_consistency.py"),
     py("scripts/skills/gen_directory_beacons.py", "--check"),
     py("scripts/skills/normalize_skill_headers.py", "--self-test"),
@@ -143,6 +154,8 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/validation/endpoint_registration_audit.py"),
     ("bash", "scripts/runtime/run_node.sh", "scripts/validation/openclaw_connection_audit.mjs"),
     py("scripts/compliance/source_gate.py"),
+    py("scripts/compliance/source_document_audit.py"),
+    unit_test("source_document_audit"),
     py("scripts/compliance/third_party_inventory_audit.py"),
     unit_test("third_party_inventory_audit"),
     unit_test("export_third_party_csv"),
@@ -159,6 +172,9 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/validation/tenets.py", "--check"),
     py("scripts/runtime/module_check.py", "--dir", "web/nemoclaw"),
     py("scripts/runtime/module_check.py", "--dir", "web"),
+    COLOR_THEME_TESTS,
+    THEME_RUNTIME_CONTRACT_TESTS,
+    py("scripts/validation/color_theme.py"),
     py("scripts/validation/validate_bundle.py", "--scope", "ship"),
 )
 
@@ -167,6 +183,19 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
 # Proposal runs may skip a mutation suite only when none of its implementation or contract
 # inputs changed. Full release runs omit --changed-since and execute every suite.
 MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
+    COLOR_THEME_TESTS: (
+        "scripts/validation/color_theme.py", "tests/validation/test_color_theme.py",
+        "web/**/*.html", "web/**/*.css", "web/**/*.js", "web/**/*.mjs", "web/**/*.svg",
+    ),
+    THEME_RUNTIME_CONTRACT_TESTS: (
+        "scripts/skills/skill_renderer_runtime_audit.py",
+        "tests/validation/test_theme_runtime_contract.py", ".gitlab/ci/core.yml", "**/*.html",
+    ),
+    unit_test("source_document_audit"): (
+        "scripts/compliance/source_document_audit.py", "scripts/compliance/docs/document_sources.json",
+        "THIRD_PARTY_LICENSES.md", "web/nemoclaw/*.html", "web/nemoclaw/mats/*",
+        "web/nemoclaw/assets/SKILL.html",
+    ),
     py("scripts/skills/normalize_skill_headers.py", "--self-test"): (
         "scripts/skills/normalize_skill_headers.py", "scripts/skills/gen_directory_beacons.py",
         "SKILL_CONTRACT.md", "**/SKILL.html",
@@ -220,7 +249,7 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     ),
     unit_test("validation_report_audit"): (
         "scripts/validation/validation_report_audit.py", "scripts/validation/validate_bundle.py",
-        "scripts/build/build_pages.sh", ".gitlab-ci.yml", ".github/workflows/*",
+        "scripts/build/build_pages.sh", ".gitlab-ci.yml", ".gitlab/ci/*", ".github/workflows/*",
     ),
     unit_test("pages_artifact_integrity"): (
         "scripts/validation/pages_artifact_integrity.py", "scripts/build/build_pages.sh",
@@ -229,20 +258,25 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     unit_test("threat_control_audit"): (
         "scripts/validation/threat_control_audit.py", "scripts/validation/pages_artifact_integrity.py",
         "scripts/validation/repository_sync_audit.py", ".github/workflows/pages.yml",
-        ".github/workflows/release.yml", ".gitlab-ci.yml", "docs/release_playbook.md",
+        ".github/workflows/release.yml", ".gitlab-ci.yml", ".gitlab/ci/*", "docs/release_playbook.md",
         "docs/security-control-disposition.md",
     ),
     unit_test("repository_sync_audit"): (
-        "scripts/validation/repository_sync_audit.py", ".gitlab-ci.yml",
+        "scripts/validation/repository_sync_audit.py", ".gitlab-ci.yml", ".gitlab/ci/*",
         "docs/release_playbook.md",
+    ),
+    unit_test("gitlab_ci_policy"): (
+        ".gitlab-ci.yml", ".gitlab/ci/*", ".gitlab/CODEOWNERS",
+        "scripts/validation/gitlab_ci_policy.py", "scripts/validation/release_gate.py",
     ),
     py("scripts/validation/branch_preview_manifest_audit.py", "--self-test"): (
         "scripts/validation/branch_preview_manifest_audit.py", "scripts/build/build_branch_manifest.py",
-        "web/index.html", ".gitlab-ci.yml",
+        "web/index.html", ".gitlab-ci.yml", ".gitlab/ci/core.yml",
     ),
     py("scripts/validation/learner_flow_audit.py", "--self-test"): (
         "scripts/validation/learner_flow_audit.py", "web/nemoclaw/scripts/*", "web/nemoclaw/styles/*",
         "web/nemoclaw/0*.html", "i18n/*/web/nemoclaw/0*.html", "scripts/browser-vendor/*",
+        ".gitlab/ci/core.yml",
     ),
     py("scripts/validation/html_structure_audit.py", "--self-test"): (
         "scripts/validation/html_structure_audit.py",
@@ -257,7 +291,7 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     ),
     unit_test("security_architecture_audit"): (
         "scripts/validation/security_architecture_audit.py", "scripts/figures/render_security_architecture.py",
-        "docs/security-architecture*", ".gitlab-ci.yml", ".github/workflows/*",
+        "docs/security-architecture*", ".gitlab-ci.yml", ".gitlab/ci/*", ".github/workflows/*",
     ),
     unit_test("project_docs_explorer"): (
         "scripts/build/project_docs_explorer.py", "docs/SKILL.html",
@@ -265,6 +299,7 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     unit_test("release_evidence_audit"): (
         "scripts/validation/release_evidence_audit.py", "docs/product-design.md",
         "docs/release-test-plan.md", "docs/release-evidence.json", "RELEASE_STATUS*",
+        ".gitlab/ci/core.yml",
     ),
     unit_test("repository_work_products_audit"): (
         "scripts/validation/repository_work_products_audit.py", "docs/release-evidence.json",
@@ -321,7 +356,7 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     ),
     unit_test("course_dependency_integrity"): (
         "scripts/validation/course_dependency_integrity.py", "scripts/browser-vendor/*",
-        "scripts/build/vendor_browser_dependencies.mjs", "web/nemoclaw/vendor/*",
+        "scripts/build/vendor_browser_dependencies.mjs", "web/nemoclaw/vendor/*", ".gitlab/ci/sca.yml",
     ),
     cli_unit_test("cell_audit"): (
         "scripts/validation/cell_audit.py", "web/nemoclaw/scripts/*", "web/nemoclaw/vendor/*",
