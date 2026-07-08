@@ -54,7 +54,7 @@
     <div class="eyebrow">Módulo 3 · Parte B de 3</div>
     <h1>El agente <span>OpenClaw</span></h1>
     <p class="lead">El Módulo 3a conectó el navegador a un runtime persistente. OpenClaw es el <em>entorno de ejecución del agente</em> dentro de ese stack de NemoClaw: combina un modelo y herramientas con una sesión en el servidor y un workspace respaldado por archivos.</p>
-    <p class="lead">NemoClaw aporta el blueprint que empaqueta este entorno con OpenShell y la política de implementación. OpenClaw, en lugar de un orquestador independiente escrito en Python, dirige cada turno e incorpora los archivos del workspace al contexto activo. En esta página examinarás esos archivos, compararás dos configuraciones de personalidad y guardarás memoria que perdura más allá de una llamada al modelo.</p>
+    <p class="lead">NemoClaw aporta el blueprint que empaqueta este entorno con OpenShell y la política de despliegue. Es OpenClaw, en lugar de un orquestador independiente escrito en Python, quien dirige cada turno en la conversación e incorpora los archivos del workspace al contexto activo. En esta página examinarás esos archivos, compararás dos configuraciones de personalidad y guardarás información en una memoria que perdura más allá de una llamada al modelo.</p>
 <figure style="margin:1.4em 0"><div class="fig-embed" data-svg-src="assets/figures/03b-openclaw-1.svg" style="aspect-ratio:780 / 413"></div><figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">La estructura del directorio es la configuración: editar un archivo cambia la información que leerá el turno siguiente.</figcaption></figure>
 
   </div>
@@ -74,26 +74,26 @@
     <span class="fname">MEMORY.md</span>        <span class="ftype">memoria a largo plazo seleccionada (solo en la sesión principal)</span>
     <span class="fname">skills/</span>          <span class="ftype">paquetes Markdown para cada skill (página siguiente)</span></div>
 
-  <p>La memoria tiene <a href="https://arxiv.org/abs/2310.08560" target="_blank" rel="noopener">dos niveles</a>. Mientras trabaja, el agente añade notas sin procesar a un archivo con fecha dentro de <code>memory/</code>. Después resume lo que debe perdurar en la memoria seleccionada a largo plazo, <code>MEMORY.md</code>. El runtime carga <code>MEMORY.md</code> en la sesión principal y lo excluye de contextos compartidos o grupales, de modo que las notas personales permanezcan privadas. Más adelante leerás ambos archivos directamente desde el sandbox activo.</p>
+  <p>La memoria se organiza en torno a <a href="https://arxiv.org/abs/2310.08560" target="_blank" rel="noopener">dos niveles</a>. Mientras trabaja, el agente añade notas sin procesar a un archivo con fecha dentro de <code>memory/</code>. Después resume lo que debe perdurar en la memoria seleccionada a largo plazo, <code>MEMORY.md</code>. El runtime carga <code>MEMORY.md</code> en la sesión principal y lo excluye de contextos compartidos o grupales, de modo que las notas personales permanezcan privadas. Más adelante leerás ambos archivos directamente desde el sandbox activo.</p>
 
   <div class="callout">
-    <strong>Trata el autorrelato como evidencia.</strong> Pregunta al agente qué contiene su prompt y compara la respuesta con el workspace activo en el Paso 1b:
+    <strong>Trata el autoinforme como evidencia.</strong> Pregunta al agente qué contiene su prompt y compara la respuesta con el workspace activo en el Paso 1b:
     <ul>
       <li>qué reglas de personalidad están activas,</li>
-      <li>qué herramientas aparecen en su lista,</li>
+      <li>qué herramientas aparecen en su lista</li>
       <li>o qué recuerda sobre ti.</li>
     </ul>
   </div>
 
   <h2>Paso 1 · Pide al agente que se describa</h2>
-  <p>En un turno, la celda siguiente pide a OpenClaw que enumere los archivos de su workspace y explique la función de cada uno. La respuesta refleja tanto lo que el entorno incorpora al prompt como lo que sus herramientas pueden ver. Edita un archivo y vuelve a ejecutar la celda para cambiar el informe.</p>
+  <p>En un turno, la celda siguiente pide a OpenClaw que enumere los archivos de su workspace y explique la función de cada uno. La respuesta refleja tanto lo que el entorno incorpora al prompt como lo que sus herramientas pueden ver, por lo que editar un archivo y volver a ejecutar la celda cambiará el informe generado.</p>
 
   <figure style="margin:1.4em 0">
     <div id="fig-calls"></div>
-    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Como el gateway incorpora la carpeta al prompt antes de cada turno, editar un archivo cambia la respuesta siguiente.</figcaption>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Dado que el gateway incorpora la carpeta al prompt antes de cada turno, editar un archivo cambia la respuesta siguiente de forma inmediata.</figcaption>
   </figure>
 
-  <div class="callout"><p><strong>El mismo runtime de Kickstart.</strong> Estas celdas reutilizan el launchable conectado en 3a. El curso expone su gateway, no la ruta interna <code>/v1/chat/completions</code>. Si una celda registra <code>⚠ DEGRADED</code> o deja de responder, ejecuta Recuperar una vez para esa instancia nueva. En una implementación local, usa el <a href="https://build.nvidia.com/spark/nemoclaw-applications" target="_blank" rel="noopener">playbook de configuración de NemoClaw</a> y mantén el mismo contrato del gateway.</p></div>
+  <div class="callout"><p><strong>El mismo runtime de Kickstart.</strong> Estas celdas reutilizan el launchable conectado en el Módulo 3a. El curso expone su gateway en lugar de la ruta interna <code>/v1/chat/completions</code>. Si una celda registra <code>⚠ DEGRADED</code> o deja de responder, ejecuta Recuperar una vez para esa instancia nueva. En una implementación local, usa el <a href="https://build.nvidia.com/spark/nemoclaw-applications" target="_blank" rel="noopener">playbook de configuración de NemoClaw</a> y mantén el mismo contrato del gateway.</p></div>
 
   <div id="gw-recover"></div>
 
@@ -102,27 +102,27 @@
 
 
 
-  <h2>Paso 1b · Lee el workspace por tu cuenta</h2>
+  <h2>Paso 1b · Lee el workspace tú mismo</h2>
   <p>En el Paso 1, el agente <em>describió</em> sus archivos; no tienes que aceptar lo que afirma sin comprobarlo. Hasta ahora, el único canal era el gateway que transporta tus mensajes al agente.</p>
-  <p>El launchable también expone una terminal del operador: un shell en el host, <em>por encima</em> del sandbox del agente, al que Cloudflare protege. El helper <code>helpers.terminal()</code> abre ese shell directamente desde esta página mediante dos puntos de entrada:</p>
+  <p>El launchable también expone una terminal: un shell en el host, <em>por encima</em> del sandbox del agente, al que Cloudflare protege. La función de ayuda <code>helpers.terminal()</code> abre ese shell directamente desde esta página a través de dos puntos de entrada:</p>
   <ul>
     <li><code>helpers.terminal("bash")</code> abre el shell de la VM del host, donde puedes ejecutar <code>openshell sandbox list</code>.</li>
     <li><code>helpers.terminal("openshell sandbox connect &lt;agent&gt;")</code> te lleva <em>dentro</em> del sandbox donde se ejecuta el agente y reside el workspace.</li>
   </ul>
-  <p>OpenShell es el sandbox a nivel del kernel que contiene al agente. Por ahora, trátalo como el límite entre operador y agente que el Módulo 4 definirá por completo y comprobará directamente. El nombre utilizado por el comando de conexión procede de <code>GET /api/agent</code>, la misma llamada que usó Kickstart para descubrir el launchable.</p>
-  <p>La celda siguiente entra en el sandbox y lee tres archivos de la instancia activa: SOUL.md, la memoria diaria y el MEMORY.md seleccionado. Edita la lista de comandos y vuelve a ejecutar la celda para explorar cualquier otro archivo.</p>
+  <p>OpenShell es el sandbox a nivel del kernel que contiene al agente. Por ahora, trátalo como el límite entre operador y agente que el Módulo 4 definirá por completo y probará directamente. El nombre del agente en el comando de conexión procede de <code>GET /api/agent</code>, la misma llamada que usó Kickstart para descubrir el launchable.</p>
+  <p>La celda siguiente se conecta al sandbox y lee tres archivos de la instancia activa: SOUL.md, la memoria diaria y el MEMORY.md seleccionado. Edita la lista de comandos y vuelve a ejecutar la celda para explorar cualquier otro archivo.</p>
 
   <div id="cell-workspace-term"></div>
 
-  <div class="callout"><strong>El launchable tiene dos planos de autoridad.</strong> El primero es la terminal, que se ejecuta como operador por encima del límite del sandbox y puede leer todos los archivos y enumerar los sandboxes. El agente ocupa el segundo plano. Comparte la máquina con la terminal, pero se ejecuta bajo la política más restrictiva de OpenShell que se comprueba en el Módulo 4.</div>
+  <div class="callout"><strong>El launchable tiene dos planos de autoridad.</strong> El primero es la terminal, que se ejecuta como operador por encima del límite del sandbox y puede leer todos los archivos y enumerar los sandboxes. El agente ocupa el segundo plano. Comparte la máquina con la terminal, pero se ejecuta bajo la política más restrictiva de OpenShell que pondremos a prueba en el Módulo 4.</div>
 
 
 
   <h2>Paso 2 · Dos escenarios, lado a lado</h2>
   <p>Como la personalidad es un archivo, sustituir la definición de SOUL.md cambia la voz del agente. El mecanismo real consiste en escribir el archivo: guarda una nueva definición de personalidad y el turno siguiente la incorpora por sí solo.</p>
-  <p>Una edición real tarda en apreciarse, por lo que la celda siguiente simula el cambio. Envía dos sesiones etiquetadas y el launchable asigna cada clave de sesión a una variante predefinida de SOUL.md. Así, dos configuraciones responden a la misma pregunta sin que edites ningún archivo.</p>
+  <p>Observar una edición real en el disco lleva tiempo, por lo que la celda de abajo simula dicho intercambio. Envía dos sesiones etiquetadas y el launchable asigna cada clave de sesión a una variante predefinida de SOUL.md. Así, dos configuraciones responden a la misma pregunta sin que edites ningún archivo.</p>
 
-  <div class="callout"><strong>El enrutamiento por clave de sesión es un recurso del laboratorio.</strong> La imagen de NemoClaw incluye un conjunto de variantes predefinidas de SOUL.md y vincula el sufijo de una clave de sesión con una de ellas, únicamente para mostrar dos voces con un clic. Fuera del laboratorio, el gateway no dispone de esas variantes: dos claves leerían el mismo SOUL.md y devolverían respuestas con la misma personalidad. En una implementación real, cambia la personalidad editando SOUL.md.</div>
+  <div class="callout"><strong>El enrutamiento por clave de sesión es un recurso del laboratorio.</strong> La imagen de NemoClaw incluye un conjunto de variantes predefinidas de SOUL.md y vincula el sufijo de una clave de sesión con una de ellas, únicamente para mostrar dos voces con un clic. Fuera del laboratorio, el gateway no dispone de esas variantes: dos claves leerían el mismo SOUL.md y devolverían respuestas con la misma personalidad. En una implementación real, cambiarás la personalidad editando SOUL.md.</div>
 
   <div class="scenario">
     <div class="card">
@@ -139,22 +139,22 @@
 
   <div id="cell-personas"></div>
 
-  <div class="callout"><strong>La voz está en el archivo.</strong> Las respuestas difieren porque el runtime incorporó una definición de SOUL distinta al prompt de cada sesión. Para cambiar la personalidad real, edita ese archivo o añade un <a href="https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview" target="_blank" rel="noopener">paquete de skills</a>; el turno siguiente verá el cambio. En el Paso 1b leíste el SOUL.md activo desde el sandbox. Editarlo recorre la misma ruta en sentido inverso.</div>
+  <div class="callout"><strong>La voz está en el archivo.</strong> Las respuestas difieren porque el runtime incorporó al prompt de cada sesión una definición de SOUL distinta. Para cambiar la personalidad real, edita ese archivo o añade un <a href="https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview" target="_blank" rel="noopener">paquete de skills</a>; el turno siguiente verá el cambio. En el Paso 1b leíste el SOUL.md activo desde el sandbox. Editarlo recorre la misma ruta en sentido inverso.</div>
 
   <h2>Paso 3 · El agente edita su propio contexto</h2>
-  <p>Pide al agente que guarde una preferencia en MEMORY.md y solicítala en el turno siguiente. El modelo no tiene estado persistente, por lo que el segundo turno solo puede responder porque el runtime conservó la preferencia en el historial de sesión y en el MEMORY.md que guardó el agente.</p>
-  <p>Esos almacenes tienen alcances distintos. El historial pertenece a tu sesión. <code>MEMORY.md</code> puede trasladar un dato guardado a una sesión nueva cuya transcripción empieza vacía.</p>
+  <p>Pídele al agente que guarde una preferencia en MEMORY.md y solicítala en el turno siguiente. El modelo no tiene estado persistente, por lo que el segundo turno solo puede responder porque el runtime conservó la preferencia en el historial de sesión y en el MEMORY.md que guardó el agente.</p>
+  <p>Esos almacenes tienen alcances distintos. El historial pertenece a tu sesión actual únicamente. <code>MEMORY.md</code> puede trasladar un dato guardado a una sesión nueva cuya transcripción empieza vacía.</p>
 
   <div id="cell-memory"></div>
 
   <div class="callout warn">
-    <strong>Esta separación afecta directamente a la seguridad.</strong> Como el agente puede reescribir su propio contexto, la capa de contención situada debajo debe impedir que una escritura incorrecta cause daños reales. OpenClaw modifica libremente los archivos Markdown de su workspace, mientras que el sandbox de OpenShell impide que esa misma escritura alcance:
+    <strong>Esta separación afecta directamente a la seguridad.</strong> Dado que el agente puede reescribir su propio contexto, la capa de contención situada debajo debe impedir que una escritura incorrecta cause daños reales. OpenClaw modifica libremente los archivos Markdown de su workspace, mientras que el sandbox de OpenShell impide que esa misma escritura alcance:
     <ul>
       <li>el sistema de archivos de host,</li>
-      <li>la red más amplia,</li>
+      <li>la red más amplia</li>
       <li>o el workspace de otro agente.</li>
     </ul>
-    <p>En el módulo siguiente, un agente con privilegios excesivos de forma deliberada intentará cruzar ese límite.</p>
+    <p>En el Módulo 4, un agente con privilegios deliberadamente excesivos intentará cruzar ese límite.</p>
   </div>
 
   <div class="references">
@@ -163,7 +163,7 @@
       <li><a href="https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/how-to-build-safer-autonomous-agent-using-openclaw" target="_blank" rel="noopener">NVIDIA, <em>How to Build a Safer Autonomous Agent using OpenClaw</em></a>. Referencia complementaria sobre OpenClaw, OpenShell y la arquitectura de agente en sandbox usada aquí.</li>
       <li><a href="https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview" target="_blank" rel="noopener">Anthropic, <em>Claude Skills</em> (docs)</a>. OpenClaw utiliza el mismo patrón de archivo como contexto: el runtime incorpora un archivo Markdown al prompt de sistema y lo convierte en una capacidad que el agente puede invocar.</li>
       <li><a href="https://docs.anthropic.com/en/docs/claude-code/overview" target="_blank" rel="noopener">Claude Code</a>. Agente de CLI utilizado en producción; muestra cómo un directorio de workspace, la memoria persistente y una superficie de herramientas se combinan a escala.</li>
-      <li><a href="https://arxiv.org/abs/2310.08560" target="_blank" rel="noopener">Packer et al., <em>MemGPT: Towards LLMs as Operating Systems</em> (2023)</a>. La jerarquía explícita de memoria que sustenta el ciclo de escritura y recuperación de MEMORY.md en esta página.</li>
+      <li><a href="https://arxiv.org/abs/2310.08560" target="_blank" rel="noopener">Packer et al., <em>MemGPT: Towards LLMs as Operating Systems</em> (2023)</a>. La jerarquía explícita de memoria que sustenta el bucle de escritura y recuperación de MEMORY.md en esta página.</li>
       <li><a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">Model Context Protocol (MCP)</a>. Formato interoperable que los agentes de CLI utilizan para descubrir herramientas en tiempo de ejecución, en lugar de registrarlas directamente en el código.</li>
       <li><a href="https://docs.kernel.org/userspace-api/landlock.html" target="_blank" rel="noopener">Landlock LSM</a>. Primitiva de sandbox del sistema de archivos en el kernel que limita el alcance del impacto cuando el agente escribe en su propio contexto.</li>
       <li><a href="https://man7.org/linux/man-pages/man2/seccomp.2.html" target="_blank" rel="noopener">seccomp (man 2)</a>. La capa de sandbox que filtra syscalls en el núcleo y se explorará en el Módulo 4.</li>
@@ -175,7 +175,7 @@
   <p>Todo lo visto en esta página converge en un panel: una conversación real con el agente OpenClaw que se ejecuta en tu launchable. Pídele que realice cualquiera de estas acciones y observa los indicadores de herramientas mientras trabaja:</p>
   <ul>
     <li>describir su workspace,</li>
-    <li>leer un archivo,</li>
+    <li>leer un archivo</li>
     <li>o ejecutar un comando.</li>
   </ul>
   <p>Edita un archivo del workspace y cambiará la respuesta siguiente del agente.</p>
@@ -204,8 +204,8 @@ helpers.log("rendered below. Edit the config and Run.");
   </script>
 
   <div class="foot-nav">
-    <a href="03a-kickstart.html">← Módulo 3a: Conectar NemoClaw</a>
-    <a class="next" href="03c-always-on.html">Módulo 3c: Siempre conectado →</a>
+    <a href="03a-kickstart.html">← Módulo 3a: Conecta NemoClaw</a>
+    <a class="next" href="03c-always-on.html">Módulo 3c: Siempre activo →</a>
   </div>
 </main>
 
@@ -284,7 +284,7 @@ state.turn = async ({ content, session }) => {
         // a tool was invoked, so show its INPUT (the args reveal what was asked)
         toolStarts++;
         const inp = data.args ? JSON.stringify(data.args) : (data.meta || "");
-        helpers.log.details("\u2699\ufe0f" + (data.name || "tool") + (inp ? "  " + inp.replace(/\\n/g, " ").slice(0, 160) : ""), d);
+        helpers.log.details("\u2699\ufe0f " + (data.name || "tool") + (inp ? "  " + inp.replace(/\\n/g, " ").slice(0, 160) : ""), d);
 
       } else if (stream === "tool" && data.phase === "result") {
         // a tool finished, so show its OUTPUT (exec, read, edit, browser, \u2026)
@@ -303,7 +303,7 @@ state.turn = async ({ content, session }) => {
       .then(res => { myRun = (res && res.runId) || null; })
       .catch(e => { clearTimeout(idle); clearTimeout(glob); state._chatCb = null; reject(e); });
   });
-  if (!text.trim() && !didResult && toolStarts > 0) helpers.log("\u26a0 DEGRADED: se iniciaron " + toolStarts + " herramientas, pero ninguna devolvió resultado. Prepare el runtime en Kickstart (3a): Comprobación de estado y Recuperar.");
+  if (!text.trim() && !didResult && toolStarts > 0) helpers.log("\u26a0 DEGRADED: se iniciaron " + toolStarts + " llamadas a herramientas, pero ninguna devolvió un resultado o una respuesta. Prepara el runtime en Kickstart (3a): Comprobación de estado y Recuperar.");
   return text;
 };
 `;
@@ -386,7 +386,7 @@ helpers.log("\\n── auditor ──"); helpers.log(b);
 
 mountCanvasFlow("#cell-memory", {
   label: "El agente escribe en MEMORY.md y recupera el dato",
-  intro: "Dos turnos en una sesión: el agente guarda una preferencia en MEMORY.md y un turno nuevo la solicita. El modelo no conserva estado. La preferencia perdura porque el runtime la transporta mediante la sesión que conserva y el MEMORY.md que guardó el agente; los pesos no cambian.",
+  intro: "Dos turnos en una sesión: el agente guarda una preferencia en MEMORY.md y un turno nuevo la solicita. El modelo no conserva estado. La preferencia perdura porque el runtime conserva el historial de la sesión y el archivo MEMORY.md que escribió el agente; los pesos no cambian.",
 
   edges: [
     { from: "write", to: "recall" },
@@ -409,7 +409,7 @@ helpers.log(state.r1);
     {
       id: "recall", icon: "💭", title: "Turno 2 · solicita la preferencia", x: 1, y: 0,
       showCode: false,
-      summary: "Un turno nuevo en la misma sesión pregunta qué recuerda el agente. El modelo no conserva el turno 1; la preferencia perdura porque el runtime la transportó mediante la sesión y el MEMORY.md guardado. La comprobación confirma que las palabras clave llegaron.",
+      summary: "Un turno nuevo en la misma sesión pregunta qué recuerda el agente. El modelo no conserva el turno 1; la preferencia perdura porque el runtime conserva el historial de la sesión y el archivo MEMORY.md que escribió el agente. La comprobación confirma que las palabras clave llegaron.",
       code: `// Ask the same session what it retained after the write turn.
 const r2 = await state.turn({
   content: "What do you remember about how I like to receive code review?",

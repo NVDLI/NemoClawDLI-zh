@@ -63,37 +63,37 @@
     <div class="eyebrow">Módulo 2 · Parte C de 3</div>
     <h1><span>Agentes de investigación profunda</span></h1>
     <p class="lead">
- El Módulo 2 trata el alcance del flujo de trabajo como una superficie de control. La Parte A presentó un entorno de ejecución que decide qué contexto cruza cada límite, qué puede ramificarse y cómo avanzan los resultados por un pipeline. La Parte B aplicó ese control a un pipeline de recuperación definido por el desarrollador y a su paquete de contexto acotado.
+ El Módulo 2 trata el alcance del flujo de trabajo como una interfaz de control. La Parte A introdujo una estructura de control que decide qué contexto cruza cada límite en la interfaz, qué puede ramificarse y cómo avanzan los resultados por un pipeline. La Parte B aplicó ese control a un pipeline de recuperación definido por el desarrollador y acotado por su contexto.
  </p>
     <p class="lead">
- Un agente de <em>investigación profunda</em> aplica la misma idea a una pregunta cuya evidencia desbordaría una sola conversación. En tiempo de ejecución, un planificador elige ramas independientes y entrega a cada trabajador únicamente la pregunta original, la tarea asignada y las herramientas necesarias. Los historiales de las demás ramas quedan fuera. Una etapa final sintetiza la evidencia que conservaron los trabajadores. Primero ejecuta el patrón; después examina su implementación.
+ Un agente de <em>investigación profunda</em> aplica la misma idea a una pregunta cuya evidencia desbordaría una sola conversación. En tiempo de ejecución, un planificador elige ramas independientes y entrega a cada trabajador únicamente la pregunta original, la tarea asignada y las herramientas necesarias. Los historiales de las demás ramas quedan fuera. Una etapa final sintetiza la evidencia que los trabajadores conservan. Primero ejecuta el patrón; después examina su implementación.
  </p>
   </div>
 
   <h2>Cómo cambia el límite del flujo de trabajo</h2>
   <p>
- En todo el Módulo 2, el flujo de trabajo externo controla el alcance y el movimiento de los datos. La recuperación y la investigación profunda sitúan ese límite en lugares distintos.
+ En todo el Módulo 2, el flujo de trabajo externo controla el alcance y el movimiento de los datos. La recuperación y la investigación profunda ubican este límite de manera diferente.
  </p>
   <ul>
-    <li><strong>Flujo de indexación.</strong> El desarrollador define el pipeline, y la generación recibe el paquete de recuperación acotado de la Parte B.</li>
-    <li><strong>Flujo de investigación profunda.</strong> El planificador crea ramas en tiempo de ejecución. Los trabajadores reciben contexto específico para su tarea y guardan evidencia para la síntesis.</li>
+    <li><strong>Flujo de trabajo de indexación.</strong> El desarrollador define el pipeline, y la generación recibe el contexto de recuperación acotado de la Parte B.</li>
+    <li><strong>Flujo de trabajo de investigación profunda.</strong> El planificador crea ramas en tiempo de ejecución. Los trabajadores reciben contexto específico para su tarea y guardan evidencia para la síntesis.</li>
   </ul>
   <p>
- Cualquiera de los dos flujos puede incluir un ciclo ReAct en una etapa que deba adaptarse a resultados intermedios.
+ Cualquiera de los dos flujos puede incluir un bucle ReAct en una etapa que deba adaptarse a resultados intermedios.
  </p>
 
   <h2>Por qué un contexto compartido falla</h2>
   <p>
- Un solo ciclo <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">ReAct</a> mantiene todas las instrucciones y observaciones en un solo historial. Así, las evidencias anteriores compiten con cada nuevo resultado de herramienta. Con el tiempo, el propio historial se convierte en parte del problema.
+ Un solo bucle <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">ReAct</a> mantiene todas las instrucciones y observaciones en un solo historial. Así, las evidencias anteriores compiten con el resultado de cada nueva herramienta. Con el tiempo, el propio historial se convierte en parte del problema.
  </p>
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/02c-deep-1.svg" style="aspect-ratio:680 / 430"></div>
     <figcaption>Un coordinador asigna tareas concretas. Los trabajadores independientes devuelven evidencia mediante almacenamiento compartido, y una etapa final la combina.</figcaption>
   </figure>
   <ul>
-    <li><strong>Desbordamiento:</strong> la evidencia y la salida de las herramientas exceden la ventana de contexto.</li>
+    <li><strong>Desbordamiento (Overflow):</strong> la evidencia y la salida de las herramientas exceden la ventana de contexto.</li>
     <li><strong>Degradación del contexto:</strong> la evidencia relevante está presente, pero recibe un peso insuficiente (<a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu et al.</a>).</li>
-    <li><strong>Interferencia:</strong> el razonamiento de una rama distrae a la siguiente.</li>
+    <li><strong>Interferencia:</strong> el razonamiento de una rama contamina a la siguiente rama.</li>
   </ul>
 
   <h2>Cómo avanza la investigación por el flujo de trabajo</h2>
@@ -104,7 +104,7 @@
     </div>
     <div class="deep-stage" id="deep-stage-investigate">
       <div class="deep-stage-label">2 · Investigar</div>
-      <p>Cada <strong>subagente</strong> recibe una tarea en un contexto nuevo que excluye los historiales de las demás ramas.</p>
+      <p>Cada <strong>subagente</strong> recibe una tarea en un contexto nuevo que excluye por completo los historiales de las demás ramas.</p>
     </div>
     <div class="deep-stage" id="deep-stage-preserve">
       <div class="deep-stage-label">3 · Preservar</div>
@@ -112,18 +112,17 @@
     </div>
     <div class="deep-stage" id="deep-stage-synthesize">
       <div class="deep-stage-label">4 · Sintetizar</div>
-      <p>El orquestador lee la evidencia guardada y produce una respuesta cuyas afirmaciones pueden rastrearse hasta sus ramas.</p>
+      <p>El orquestador lee la evidencia guardada y produce una respuesta cuyas afirmaciones siguen siendo trazables hasta sus respectivas ramas de origen.</p>
     </div>
   </div>
 
   <div class="callout info">
- <strong>Un contexto nuevo no es un sandbox.</strong> El aislamiento de contexto separa
-el razonamiento de las ramas, mientras que el sandbox limita el acceso al sistema operativo.
-El artefacto del navegador que aparece a continuación no tiene shell; el ejemplo manual posterior utiliza
+ <strong>Un contexto limpio no es un sandbox.</strong> El aislamiento de contexto separa el razonamiento de las ramas, mientras que el sandbox limita el acceso al sistema operativo.
+El artefacto del navegador que ves más abajo no tiene shell; en cambio, el ejemplo manual posterior utiliza
 un sistema de archivos en memoria para mostrar el estado compartido.
  </div>
 
-  <h2>Intenta · planificar → investigar → sintetizar</h2>
+  <h2>Prueba · planificar → investigar → sintetizar</h2>
   <p>
  Plantea una pregunta de investigación y observa cómo el agente crea ramas que se ejecutan
 en paralelo sobre materiales externos seleccionados y el contenido del curso antes de redactar una respuesta con citas.
@@ -134,13 +133,10 @@ puedes examinar las operaciones activas sin esperar a que finalice toda la ejecu
   <div id="deep-artifact"></div>
 
   <h2>Inspecciona la implementación</h2>
-  <p>Las tres celdas siguientes aíslan una capa de implementación a la vez, comenzando
-con el adaptador del modelo y terminando con el agente de investigación completo. Cada
-celda se ejecuta de forma independiente.</p>
+  <p>Las siguientes tres celdas aíslan una capa de implementación a la vez, comenzando con el adaptador del modelo y terminando con el agente de investigación completo. Cada celda se ejecuta de forma independiente.</p>
 
   <div class="callout warn">
- <strong>Las celdas de implementación usan el paquete de navegador incluido.</strong> Importan
-el mismo paquete servido desde el origen y registrado en el <a href="dependencies.html">inventario de dependencias del navegador</a>. La CI bloquea la publicación si cambian el paquete, el archivo de bloqueo, las licencias o las referencias del código.
+ <strong>Las celdas de implementación usan el paquete de navegador incluido.</strong> Importan exactamente el mismo paquete servido desde el mismo origen y registrado en el <a href="dependencies.html">inventario de dependencias del navegador</a>. La integración continua (CI, del inglés Continuous Integration) bloquea la publicación si el paquete, el archivo de bloqueo, las licencias o las referencias del código cambian.
  </div>
 
 
@@ -151,7 +147,7 @@ el mismo paquete servido desde el origen y registrado en el <a href="dependencie
   <h2>1 · Conecta el modelo</h2>
   <p>
  <code>ChatOpenAI</code> encapsula cualquier endpoint compatible con OpenAI. La celda lee
-la URL y la credencial activas mediante <code>helpers.getConfig()</code>, por lo que el
+la URL y las credenciales mediante <code>helpers.getConfig()</code>, por lo que el
 resto del grafo no depende de dónde se ejecuta el modelo.
  </p>
 
@@ -161,16 +157,16 @@ resto del grafo no depende de dónde se ejecuta el modelo.
  produce mensajes parciales. Ambos implementan la interfaz <code>Runnable</code> de LangChain.</p>
 
   <!-- ── Part 4: LangGraph createReactAgent ───────────────────────────────── -->
-  <h2>2 · Convierte el ciclo en un grafo</h2>
+  <h2>2 · Convierte el bucle en un grafo</h2>
   <p>
- <code>createReactAgent({llm, tools})</code> convierte el ciclo ReAct del Módulo 1
+ <code>createReactAgent({llm, tools})</code> convierte el bucle ReAct del Módulo 1
 en nodos explícitos de modelo y herramientas. El grafo compilado puede ejecutarse por sí solo o
-convertirse en un nodo de un flujo de trabajo mayor.
+convertirse en un nodo de un flujo de trabajo más grande.
  </p>
 
   <div id="cell-m3c-p2"></div>
 
-  <p>Usa un grafo cuando un ciclo simple ya no pueda expresar el flujo de control necesario.</p>
+  <p>Regla de oro: diseña un grafo cuando un bucle simple ya no pueda expresar el flujo de control necesario.</p>
 
   <!-- ── Part 5: Deep agent (planner + sub-agents + VFS) ──────────────────── -->
   <h2>3 · Ensambla el agente de investigación</h2>
@@ -231,7 +227,7 @@ helpers.mountChatUI("#deep-artifact", {
   examples: [
     "How does this course's OpenShell sandbox relate to agent safety in general?",
     "What is RAG, and how does this course build it?",
-    "Compara the ReAct loop with the deep-agent pattern",
+    "Compare the ReAct loop with the deep-agent pattern",
     "What are the main failure modes of autonomous agents?",
     "How do production CLI agents sandbox themselves?",
     "Trace this course from a single LLM call to an always-on agent",
@@ -402,8 +398,8 @@ helpers.log("Renderizado abajo. Edita la configuración y vuelve a ejecutar.");
   </script>
 
   <div class="foot-nav">
-    <a href="02b-rag.html">← Módulo 2b: El agente de índice</a>
-    <a class="next" href="03a-kickstart.html">Módulo 3a: Inicio →</a>
+    <a href="02b-rag.html">← Módulo 2b: El agente de indexación</a>
+    <a class="next" href="03a-kickstart.html">Módulo 3a: Conecta NemoClaw →</a>
   </div>
 </main>
 
@@ -517,7 +513,7 @@ return { name: state.getCurrentTime.name, description: state.getCurrentTime.desc
 
     {
       id: "build", icon: "📐", title: "Compila el grafo ReAct", x: 0, y: 2,
-      summary: "El modelo y la herramienta forman el ciclo de decisión y ejecución del Módulo 1.",
+      summary: "El modelo y la herramienta forman el bucle de decisión y ejecución del Módulo 1.",
       code: `// Construct the agent from the model, tools, and prompt.
 state.agent = state.deps.createReactAgent({
   llm:   state.llm,
@@ -564,7 +560,7 @@ return {
 
 // ── M3c P3: hand-rolled deep agent (planner + sub-agents + VFS) ─────────────
 mountCanvasFlow("#cell-m3c-p3", {
-  label: "Ensamble el flujo de investigación",
+  label: "Ensambla el flujo de investigación",
   intro: "Estos nodos exponen los límites de contexto, la evidencia guardada y la ruta de síntesis.",
   edges: [
     { from: "setup",      to: "planner" },
@@ -626,7 +622,7 @@ return { tools: ["write_file", "read_file", "list_files"], vfs_state: Object.key
     },
 
     {
-      id: "planner", icon: "🧠", title: "Planifique subtareas tipadas", x: 1, y: 1,
+      id: "planner", icon: "🧠", title: "Planifica subtareas tipadas", x: 1, y: 1,
       summary: "La salida estructurada evita tener que analizar un plan de texto libre.",
       code: `// Set the student-editable prompt/input for the next step.
 state.goal = [

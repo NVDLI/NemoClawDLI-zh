@@ -143,7 +143,7 @@ implementación segura con OpenClaw y NemoClaw™ de NVIDIA.</p>
     <h2>Objetivos de aprendizaje</h2>
     <p class="help" id="learning-objectives-intro">Al concluir el curso, sabrás:</p>
     <ul>
-      <li id="learning-objective-1">Construir un ciclo básico de agente e identificar sus componentes centrales.</li>
+      <li id="learning-objective-1">Construir un bucle básico de agente e identificar sus componentes centrales.</li>
       <li id="learning-objective-2">Implementar uso confiable de herramientas y llamadas de función en un sistema de agentes.</li>
       <li id="learning-objective-3">Diseñar y coordinar sistemas multiagentes con patrones estructurados de enrutamiento.</li>
       <li id="learning-objective-4">Desarrollar pipelines automatizados de evaluación para medir el rendimiento y la fiabilidad.</li>
@@ -155,8 +155,7 @@ implementación segura con OpenClaw y NemoClaw™ de NVIDIA.</p>
   <!-- ── Key setup ─────────────────────────────────────────────────────── -->
   <div class="section" id="setup">
     <h2>Cómo introducir tu clave de API</h2>
-    <p class="help">El navegador guarda la clave en <code>localStorage</code>, por lo que permanece disponible al
-recargar la página y al abrir otras pestañas. También se comparte entre los dos cursos hasta que la eliminas con el botón Cambiar. Las solicitudes
+    <p class="help">El navegador guarda la clave en <code>localStorage</code>, por lo que persistirá tras recargar la página o cambiar de pestaña, aplicándose a ambos cursos hasta que la elimines con el botón Change. Las solicitudes
 la envían a build.nvidia.com, pero nunca la escriben en una página. Solo el
 modo LMS/iframe estático utiliza el worker de CORS alojado.</p>
     <div id="key-panel"></div>
@@ -166,8 +165,8 @@ modo LMS/iframe estático utiliza el worker de CORS alojado.</p>
   <div class="section">
     <h2>Cómo explorar el material</h2>
     <p class="help">El orden de los módulos ofrece un camino guiado, pero cada página también funciona de forma
-independiente. En el recorrido completo, cada módulo aprovecha el anterior: el ciclo ejecutado en
-navegador se convierte en un workflow de alcance controlado; este workflow pasa a un runtime de
+independiente. En el recorrido completo, cada módulo aprovecha el anterior: el bucle ejecutado en
+navegador se convierte en un flujo de trabajo de alcance controlado; este flujo de trabajo pasa a un runtime de
 agente persistente; y el alcance mayor del runtime justifica el límite impuesto por el sistema
 operativo. Empieza por la tarea que necesites. Cada página termina en un artefacto activo
 y mantiene disponible el código de soporte. Puedes modificar los ejemplos en el navegador, alojarlos por tu cuenta
@@ -176,20 +175,20 @@ o proporcionar este repositorio como contexto a un agente de código para una im
     <div class="module-grid">
       <div class="module-card">
         <a class="mc-main" href="./01a-loop.html"><div class="num"> Módulo 1 · aproximadamente 1 hora · 3 páginas </div>
-<h3> Fundamentos · Ciclo · ReAct · Herramientas </h3>
-<p> Construye el ciclo de agente más pequeño, añade el patrón ReAct y transforma funciones comunes en herramientas que el modelo pueda solicitar. </p></a>
+<h3> Fundamentos · Bucle · ReAct · Herramientas </h3>
+<p> Construye el bucle de agente más pequeño, añade el patrón ReAct y transforma funciones comunes en herramientas que el modelo pueda solicitar. </p></a>
         <div class="pages">
-          <a href="./01a-loop.html">1a Ciclo</a> ·
+          <a href="./01a-loop.html">1a Bucle</a> ·
           <a href="./01b-react.html">1b ReAct</a> ·
           <a href="./01c-tools.html">1c Herramientas</a>
         </div>
       </div>
       <div class="module-card">
         <a class="mc-main" href="./02a-routing.html"><div class="num"> Módulo 2 · aproximadamente 1 hora · 3 páginas </div>
-<h3> Patrones avanzados · Workflows · RAG · Agentes profundos </h3>
+<h3> Patrones avanzados · Flujos de trabajo · RAG · Agentes profundos </h3>
 <p>Distribuye trabajo entre llamadas, recupera material del curso como herramienta y usa planificadores que creen subagentes.</p></a>
         <div class="pages">
-          <a href="./02a-routing.html">2a Workflows</a> ·
+          <a href="./02a-routing.html">2a Flujos de trabajo</a> ·
           <a href="./02b-rag.html">2b RAG</a> ·
           <a href="./02c-deep.html">2c Agentes profundos</a>
         </div>
@@ -206,11 +205,11 @@ o proporcionar este repositorio como contexto a un agente de código para una im
       </div>
       <div class="module-card live">
         <a class="mc-main" href="./04a-safety.html"><div class="num"> Módulo 4 · aproximadamente 1 hora · 3 páginas </div>
-<h3> Protección con OpenShell · CLIs modernos · Próximos pasos </h3>
+<h3> Protección con OpenShell · CLI modernos · Próximos pasos </h3>
 <p> Pasa del comportamiento de OpenClaw al límite de políticas que NemoClaw monta con OpenShell; después, compara agentes de CLI modernos y estándares actuales de protección. </p></a>
         <div class="pages">
           <a href="./04a-safety.html">4a OpenShell</a> ·
-          <a href="./04b-modern-clis.html">4b CLIs modernos</a> ·
+          <a href="./04b-modern-clis.html">4b CLI modernos</a> ·
           <a href="./04c-going-further.html">4c Siguientes pasos</a>
         </div>
       </div>
@@ -235,7 +234,7 @@ todos los materiales, el nivel de cada fuente, la API activa y la búsqueda que 
       <a class="sys-card runtime" href="https://brev.nvidia.com/launchable/deploy/now?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS" target="_blank" rel="noopener"><div class="sys-label"> Stack de agentes </div>
 <div class="sys-name"> Launchable de NemoClaw en Brev </div>
 <div class="sys-desc">
-Este es el stack de agentes en sandbox usado en el taller. OpenClaw proporciona el entorno de ejecución del
+Este es el stack de agentes en sandbox usado en el curso. OpenClaw proporciona el entorno de ejecución del
 agente, OpenShell aplica el sandbox y NemoClaw organiza los componentes en una implementación
 de referencia. De forma predeterminada, el entorno utiliza un launchable de Brev; también puedes implementarlo
 localmente y adaptar el código.
