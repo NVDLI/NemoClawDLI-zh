@@ -32,6 +32,7 @@ browser, with no server logic:
 | `public/link-graph.html` + `engine.js` | the link-graph viewer (engine runs in-browser; offline uses the embedded snapshot) |
 | `public/tests.html` | the client-side test runner (below) |
 | `public/validation.html` + `gate.json` | the CI gate report, rendered from `docs/validation/latest.json` |
+| `public/LICENSE` + `THIRD_PARTY_LICENSES.md` | Apache-2.0 terms and the static third-party package/license/material inventory |
 
 The course pages inline their own CSS and JS and use relative links, so the course
 dir is browsable from a Pages subpath. Live model calls use the student's own NVIDIA
