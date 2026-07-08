@@ -263,14 +263,15 @@ pages:
     # with production rebuilt from a protected ref plus the branch under /<slug>/.
     - |
       set -euo pipefail
-      refresh_branch_refs() {
-        git fetch origin '+refs/heads/*:refs/remotes/origin/*' --quiet 2>/dev/null || true
+      refresh_branch_ref() {
+        branch="$1"
+        git fetch origin "+refs/heads/$branch:refs/remotes/origin/$branch" --quiet
       }
       build_branch_preview() {
         test -n "$CI_COMMIT_REF_SLUG"
         preview_ref="${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-$CI_COMMIT_REF_NAME}"
         case "$CI_COMMIT_REF_SLUG" in *..*|*/*|*\*) echo "unsafe CI_COMMIT_REF_SLUG=$CI_COMMIT_REF_SLUG" >&2; exit 1;; esac
-        refresh_branch_refs
+        refresh_branch_ref "$preview_ref"
         remote_sha="$(git rev-parse "refs/remotes/origin/$preview_ref^{commit}")"
         test "$remote_sha" = "$CI_COMMIT_SHA" || { echo "refusing stale preview: pipeline=$CI_COMMIT_SHA remote=$remote_sha" >&2; exit 1; }
         export BUILD_PAGES_COURSE_PREFIX="web"
@@ -301,7 +302,7 @@ pages:
           return 1
         fi
         git worktree remove --force /tmp/nemoclaw-prod-root
-        refresh_branch_refs
+        refresh_branch_ref "$preview_ref"
         python3 scripts/build/build_branch_manifest.py --out public/branches.json --current-ref "$prod_ref" --current-slug "$prod_ref" --published-ref "$preview_ref=$CI_COMMIT_REF_SLUG"
         test -f public/nemoclaw/index.html
         test -f public/index.html
