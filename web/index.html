@@ -364,7 +364,8 @@
   function probeUrl(url) {
     return url ? url.replace(/\/?$/, "/index.html") : null;
   }
-  fetch("branches.json", { cache: "no-store" }).then(function (r) {
+  var manifestUrl = document.documentElement.lang === "en" ? "branches.json" : "../branches.json";
+  fetch(manifestUrl, { cache: "no-store" }).then(function (r) {
     if (!r.ok) throw new Error("no branch manifest");
     return r.json();
   }).then(function (data) {
