@@ -107,7 +107,9 @@
 </head>
 <body>
 <section class="skill-static" aria-labelledby="skill-title">
-  <nav class="skill-nav"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a></nav>
+  <header data-skill-header="1">
+<nav class="skill-nav" aria-label="Skill navigation"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a> <span aria-hidden="true"> · </span> <a data-skill-nav="map" href="../../SKILL.html">Repository map</a></nav>
+</header>
   <h1 id="skill-title">CORS relay contracts</h1>
   <p>These references define the browser contract expected from the hosted model and NemoClaw relays. Deployment ownership stays outside this repository.</p>
   <div class="skill-note">Run commands from the repository root. The reference workers support review and validation; they do not deploy the hosted endpoints.</div>

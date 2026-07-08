@@ -81,7 +81,9 @@
 </head>
 <body>
 <section class="skill-static" aria-labelledby="skill-title">
-  <nav class="skill-nav"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a></nav>
+  <header data-skill-header="1">
+<nav class="skill-nav" aria-label="Skill navigation"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a> <span aria-hidden="true"> · </span> <a data-skill-nav="map" href="../../SKILL.html">Repository map</a></nav>
+</header>
   <h1 id="skill-title">scripts/materials reference material tooling</h1>
   <p>Material vendoring and indexing tools for curated course references, glossary data, RAG indexes, and CLI readmes.</p>
   <div class="skill-note">Every shared gate verifies committed snapshots, manifest metadata, character counts, and full SHA-256 values without network access. Live checks add bounded retries; only production-ref pushes may tolerate classified transient reachability.</div>

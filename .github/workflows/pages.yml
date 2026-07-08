@@ -116,7 +116,7 @@ jobs:
         run: docker build --build-arg PLAYWRIGHT_VERSION=1.55.0 -f scripts/runtime/lab-runtime/Containerfile -t nemoclaw/lab-runtime-test:local .
       - name: Verify and exercise the exact Pages artifact
         run: |
-          python3 scripts/skills/skill_renderer_runtime_audit.py --site-root . --engine docker
+          python3 scripts/skills/skill_renderer_runtime_audit.py --site-root public --engine docker
           python3 scripts/validation/validation_report_audit.py --report public/gate.json --expect-sha "${GITHUB_SHA::7}"
           python3 scripts/validation/branch_preview_manifest_audit.py --artifact-root public --manifest public/branches.json
           python3 scripts/validation/pages_artifact_integrity.py --root public --expect-sha "${GITHUB_SHA::7}" --write-manifest public/pages-sha256.txt

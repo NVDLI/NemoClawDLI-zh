@@ -44,7 +44,9 @@
 </head>
 <body>
 <section class="skill-static" aria-labelledby="skill-title">
-  <nav class="skill-nav"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a></nav>
+  <header data-skill-header="1">
+<nav class="skill-nav" aria-label="Skill navigation"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a> <span aria-hidden="true"> · </span> <a data-skill-nav="map" href="../../SKILL.html">Repository map</a></nav>
+</header>
   <h1 id="skill-title">scripts/git-hooks local hooks</h1>
   <p>Local hooks provide early feedback. pre-commit scans staged bytes. pre-push scans every proposed commit, then invokes one canonical gate; required CI reruns independently.</p>
   <h2>Executable checks</h2>

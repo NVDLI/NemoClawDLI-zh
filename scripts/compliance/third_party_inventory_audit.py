@@ -11,6 +11,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 INVENTORY = "THIRD_PARTY_LICENSES.md"
 RUNBOOK = "scripts/compliance/docs/sbom_generation.md"
+COMPLIANCE_SKILL = "scripts/compliance/SKILL.html"
+CSV_EXPORTER = "scripts/compliance/export_third_party_csv.py"
+SCOPE_EXPORTER = "scripts/compliance/export_legal_scope_csv.py"
+CSV_PREVIEW = "scripts/compliance/third_party_export_ui.js"
 PYTHON_LOCKS = (
     "workspace/requirements.lock",
     "scripts/materials/requirements.lock",
@@ -69,6 +73,11 @@ REQUIRED_RUNBOOK_TEXT = (
     "source-tree.cdx.json",
     "source-tree.spdx.json",
 )
+REQUIRED_EXPORT_CATEGORIES = {"vendored", "build-input", "validation", "local-authoring", "all"}
+REQUIRED_SCOPE_CATEGORIES = {
+    "referenced-source", "tooling-not-distributed", "recreated-asset",
+    "vendored-material", "vendored-browser-code", "all",
+}
 
 
 def read(path: str, overrides: dict[str, str]) -> str:
@@ -112,6 +121,86 @@ def provenance(path: str, overrides: dict[str, str]) -> dict:
         re.S,
     )
     return json.loads(match.group(1)) if match else {}
+
+
+def export_contract_findings(overrides: dict[str, str]) -> list[str]:
+    findings = []
+    skill = read(COMPLIANCE_SKILL, overrides)
+    match = re.search(r'<script[^>]+id=["\']skill-meta["\'][^>]*>(.*?)</script>', skill, re.S)
+    try:
+        meta = json.loads(match.group(1)) if match else {}
+    except json.JSONDecodeError:
+        meta = {}
+    export = next((item for item in meta.get("exports", []) if item.get("id") == "swipat-component-table"), None)
+    if not export:
+        findings.append("missing parameterized SWIPAT component export in scripts/compliance/SKILL.html")
+    else:
+        categories = set((export.get("categories") or {}).keys())
+        if not REQUIRED_EXPORT_CATEGORIES <= categories:
+            findings.append("SWIPAT component export does not distinguish every distribution relationship")
+        if export.get("default_category") != "vendored":
+            findings.append("SWIPAT component export must default to vendored and distributed components")
+        if export.get("preview_mount") != "third-party-export-preview":
+            findings.append("SWIPAT component export does not declare its in-page preview mount")
+        parameters = " ".join(export.get("parameters") or [])
+        for flag in ("--category", "--repository", "--project-ref", "--output"):
+            if flag not in parameters:
+                findings.append(f"SWIPAT component export parameter is missing: {flag}")
+    scope_export = next((item for item in meta.get("exports", []) if item.get("id") == "legal-scope-map"), None)
+    if not scope_export:
+        findings.append("missing legal-scope relationship export in scripts/compliance/SKILL.html")
+    else:
+        categories = set((scope_export.get("categories") or {}).keys())
+        if not REQUIRED_SCOPE_CATEGORIES <= categories:
+            findings.append("legal-scope export does not distinguish every review relationship")
+        if scope_export.get("default_category") != "all":
+            findings.append("legal-scope export must default to the complete relationship map")
+        if scope_export.get("preview_mount") != "legal-scope-preview":
+            findings.append("legal-scope export does not declare its in-page preview mount")
+    for token in (
+        'id="third-party-export-preview"',
+        '<div class="filter-choice-group" data-export-category-group>',
+        '<div class="filter-choice-group" data-export-relationship-group>',
+        '<div class="filter-choice-group" data-export-license-group>',
+        "data-export-search",
+        "data-export-download",
+        '<script src="third_party_export_ui.js"></script>',
+        'id="legal-scope-preview"',
+        '<div class="filter-choice-group" data-scope-category-group>',
+        '<div class="filter-choice-group" data-scope-relationship-group>',
+        '<div class="filter-choice-group" data-scope-terms-group>',
+        "data-scope-download",
+        'aria-label="SWIPAT filter meanings"',
+        'aria-label="Legal-scope filter meanings"',
+        "How this project uses it",
+        "Used only to check the course",
+        "Choices in different sections narrow the results together",
+        "Download what you see",
+        "What happened to the source?",
+    ):
+        if token not in skill:
+            findings.append(f"SWIPAT in-page preview control is missing: {token}")
+    preview = read(CSV_PREVIEW, overrides)
+    for token in (
+        "vendored", "build-input", "validation", "local-authoring", "dataset.exportReady",
+        "referenced-source", "tooling-not-distributed", "recreated-asset", "vendored-material",
+        "vendored-browser-code", "Corroborating Repository Evidence",
+        "selectedValues", "choiceGroup", "sortedRows", "sortableHeaders", "dataset.sortIndex",
+        "FILTER_LABELS", "Included in the course", "Referenced, not copied",
+        "Needs source-specific review", "friendlyChoice",
+    ):
+        if token not in preview:
+            findings.append(f"SWIPAT preview implementation is incomplete: {token}")
+    for path in (CSV_EXPORTER, CSV_PREVIEW):
+        export_source = read(path, overrides)
+        for token in (
+            "Learners receive this code as part of the browser course.",
+            "Course authors or CI use this package to prepare or check the course",
+            "Learners do not receive it from the static course.",
+        ):
+            if token not in export_source:
+                findings.append(f"reviewer export lacks plain-language usage explanation: {path}: {token}")
+    return findings
 
 
 def audit(overrides: dict[str, str] | None = None) -> list[str]:
@@ -174,6 +263,7 @@ def audit(overrides: dict[str, str] | None = None) -> list[str]:
     for instruction in REQUIRED_RUNBOOK_TEXT:
         if instruction not in runbook:
             findings.append(f"missing SBOM acquisition instruction: {instruction}")
+    findings.extend(export_contract_findings(overrides))
     dockerfile = read("cpu/services/llm_client/llm_client.Dockerfile", overrides)
     for pin in REQUIRED_LLM_PINS:
         if pin not in dockerfile:
@@ -194,6 +284,7 @@ def self_test() -> list[str]:
     runbook = read(RUNBOOK, {})
     dockerfile = read("cpu/services/llm_client/llm_client.Dockerfile", {})
     pages_build = read("scripts/build/build_pages.sh", {})
+    compliance_skill = read(COMPLIANCE_SKILL, {})
     mutations = (
         ("browser row", {INVENTORY: document.replace("| browser-runtime | codemirror | 5.65.21 |", "| removed | codemirror | 0 |", 1)}, "missing browser package row"),
         ("Python row", {INVENTORY: re.sub(r"(?m)^\| [^\n|]+ \| fastapi \| 0\.138\.2 \|.*$", "| removed | fastapi | 0 |", document, count=1)}, "missing Python package row"),
@@ -205,6 +296,15 @@ def self_test() -> list[str]:
         ("argparse explanation", {INVENTORY: document.replace("`argparse@2.0.1` is a JavaScript npm package used transitively by `js-yaml@5.2.1`.", "argparse is unexplained.", 1)}, "missing license-scope explanation"),
         ("acquisition procedure", {INVENTORY: document.replace("## Reproducing license-evidence acquisition", "## Undocumented acquisition", 1)}, "missing license-scope explanation"),
         ("SBOM runbook", {RUNBOOK: runbook.replace("# SBOM generation and attachment runbook", "# Missing runbook contract", 1)}, "missing SBOM acquisition instruction"),
+        ("reviewer CSV export", {COMPLIANCE_SKILL: compliance_skill.replace('"id": "swipat-component-table"', '"id": "removed-export"', 1)}, "missing parameterized SWIPAT component export"),
+        ("reviewer CSV preview", {COMPLIANCE_SKILL: compliance_skill.replace('id="third-party-export-preview"', 'id="removed-preview"', 1)}, "SWIPAT in-page preview control is missing"),
+        ("multi-select preview", {COMPLIANCE_SKILL: compliance_skill.replace("data-export-license-group", "data-export-license-single", 1)}, "SWIPAT in-page preview control is missing"),
+        ("column sort preview", {CSV_PREVIEW: read(CSV_PREVIEW, {}).replace("sortableHeaders", "removedSortableHeaders")}, "SWIPAT preview implementation is incomplete"),
+        ("legal-scope export", {COMPLIANCE_SKILL: compliance_skill.replace('"id": "legal-scope-map"', '"id": "removed-scope"', 1)}, "missing legal-scope relationship export"),
+        ("legal-scope multi-select", {COMPLIANCE_SKILL: compliance_skill.replace('<div class="filter-choice-group" data-scope-relationship-group>', '<div class="filter-choice-group" data-scope-relationship-single>', 1)}, "SWIPAT in-page preview control is missing"),
+        ("filter semantics", {COMPLIANCE_SKILL: compliance_skill.replace("Choices in different sections narrow the results together", "filters combine somehow", 1)}, "SWIPAT in-page preview control is missing"),
+        ("plain-language filter labels", {CSV_PREVIEW: read(CSV_PREVIEW, {}).replace("Included in the course", "vendored technical label", 1)}, "SWIPAT preview implementation is incomplete"),
+        ("plain-language export explanation", {CSV_EXPORTER: read(CSV_EXPORTER, {}).replace("Learners receive this code as part of the browser course.", "Vendored package.", 1)}, "reviewer export lacks plain-language usage explanation"),
     )
     failures = []
     for label, overrides, expected in mutations:

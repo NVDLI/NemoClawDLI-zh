@@ -102,7 +102,8 @@ REQUIRED_WIRING = {
         "sx-heading-link",
     ),
     "scripts/build/build_pages.sh": (
-        '"$T1/$d"/*.svg',
+        "project_source_tree.py",
+        "--artifact-root",
         "project_docs_explorer.py",
         "-path 'web/nemoclaw/standalone' -prune",
     ),
@@ -389,6 +390,10 @@ def self_test() -> list[str]:
     tests.append(("missing explorer artifact check", mutated(),
                   {build_path: build_text.replace("project_docs_explorer.py",
                                                  "explorer projection check removed")},
+                  "wiring"))
+    tests.append(("missing exhaustive source projection", mutated(),
+                  {build_path: build_text.replace("project_source_tree.py",
+                                                 "source projection removed")},
                   "wiring"))
     skill_path = "docs/SKILL.html"
     skill_text = (ROOT / skill_path).read_text(encoding="utf-8")

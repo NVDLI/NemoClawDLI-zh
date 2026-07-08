@@ -9,12 +9,19 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-for _path in (ROOT / "scripts" / "validation", ROOT / "scripts" / "build", ROOT / "scripts" / "materials"):
+for _path in (
+    ROOT / "scripts" / "validation",
+    ROOT / "scripts" / "build",
+    ROOT / "scripts" / "materials",
+    ROOT / "scripts" / "compliance",
+):
     sys.path.insert(0, str(_path))
 
 
 SUITES = {
     "course_dependency_integrity": "scripts.validation.course_dependency_integrity",
+    "export_legal_scope_csv": "scripts.compliance.export_legal_scope_csv",
+    "export_third_party_csv": "scripts.compliance.export_third_party_csv",
     "local_path_leak_audit": "scripts.validation.local_path_leak_audit",
     "materials": "scripts.materials.pull_materials",
     "pages_artifact_integrity": "scripts.validation.pages_artifact_integrity",

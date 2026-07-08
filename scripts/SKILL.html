@@ -155,7 +155,9 @@
 </head>
 <body>
 <section class="skill-static" aria-labelledby="skill-title">
-  <nav class="skill-nav"><a href="../web/index.html">Home</a><a href="../SKILL.html">repo root</a></nav>
+  <header data-skill-header="1">
+<nav class="skill-nav" aria-label="Skill navigation"><a href="../web/index.html">Home</a><a href="../SKILL.html">repo root</a></nav>
+</header>
   <h1 id="skill-title">scripts/ bundle toolchain</h1>
   <p>The script tree is hierarchical. Implementations live in named subdirectories; the root holds only the directory beacon, bootstrap helper, and placeholder. Use runtime for the link engine, validation for gates, skills for SKILL contracts, build for packaging, compliance for source governance, cors-proxy for relay reference contracts, materials for vendored references, figures for runtime diagram checks, edx for export helper pages, dev for local operator helpers, security for dependency vulnerability, exception, and SCA/SBOM audits, git-hooks for local hooks, and translate for same-branch localization.</p>
   <p>For course-cell helper examples, open <a href="../web/nemoclaw/scripts/SKILL.html">web/nemoclaw/scripts/SKILL.html</a>. It now reads like a runnable notebook: local examples run without services, while model and OpenClaw examples explain the key or podman deployment needed before they call live helpers.</p>

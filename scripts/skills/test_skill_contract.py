@@ -30,7 +30,7 @@ def page(script: str = "../web/_skill_explorer.js", file_name: str = "item.txt")
     return f'''<!DOCTYPE html><html><head>
 <script type="application/json" id="skill-meta">{json.dumps(meta)}</script>
 <script type="application/json" id="explorer-config">{json.dumps(config)}</script>
-</head><body><main><h1>Fixture directory</h1><p>{meta["summary"]}</p></main>
+</head><body><header data-skill-header="1"><nav aria-label="Skill navigation"><a href="../SKILL.html">Up</a><a href="../index.html">Home</a></nav></header><main><h1>Fixture directory</h1><p>{meta["summary"]}</p></main>
 <div id="explorer"></div><script src="{script}"></script></body></html>'''
 
 
@@ -80,9 +80,25 @@ class RendererContractTests(unittest.TestCase):
     def test_missing_configured_file_fails(self) -> None:
         self.assertTrue(any("explorer-config file is missing" in finding for finding in self.findings(page(file_name="gone.txt"))))
 
+    def test_missing_navigation_header_fails(self) -> None:
+        text = page().replace('<header data-skill-header="1"><nav aria-label="Skill navigation"><a href="../SKILL.html">Up</a><a href="../index.html">Home</a></nav></header>', "")
+        self.assertTrue(any("missing semantic skill navigation header" in finding for finding in self.findings(text)))
+
+    def test_navigation_header_needs_two_destinations(self) -> None:
+        text = page().replace('<a href="../index.html">Home</a>', '<a href="../SKILL.html">Home</a>')
+        self.assertTrue(any("at least two distinct links" in finding for finding in self.findings(text)))
+
     def test_custom_renderer_needs_semantic_human_view(self) -> None:
-        text = '<!DOCTYPE html><html><head><script type="application/json" id="skill-meta">{"node_type":"leaf","source_dir":"fixture/","summary":"fixture","self_path":"fixture/SKILL.html","title":"fixture"}</script></head><body><div>fixture body text that is long enough to inspect</div></body></html>'
+        text = '<!DOCTYPE html><html><head><script type="application/json" id="skill-meta">{"node_type":"leaf","source_dir":"fixture/","summary":"fixture","self_path":"fixture/SKILL.html","title":"fixture"}</script></head><body><header data-skill-header="1"><nav><a href="../SKILL.html">Up</a><a href="../index.html">Home</a></nav></header><div>fixture body text that is long enough to inspect</div></body></html>'
         self.assertTrue(any("semantic <main> or <section>" in finding for finding in self.findings(text)))
+
+    def test_parameterized_export_needs_preview_mount(self) -> None:
+        text = page().replace(
+            '"explorer": "../web/_skill_explorer.js"',
+            '"explorer": "../web/_skill_explorer.js", "exports": [{"id":"review-csv","label":"Review CSV","format":"csv","preview_mount":"review-preview","command":"python3 fixture/export.py","parameters":["--output <path>"]}]',
+        )
+        self.assertTrue(any("preview mount #review-preview is missing" in finding for finding in self.findings(text)))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

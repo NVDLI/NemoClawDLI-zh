@@ -115,6 +115,7 @@ def page(rel: Path, files: list[Path], directories: list[Path]) -> str:
     summary = summary_for(rel)
     explorer_rel = os.path.relpath(ROOT / "web" / "_skill_explorer.js", absolute)
     home_rel = os.path.relpath(ROOT / "web" / "index.html", absolute)
+    map_rel = os.path.relpath(ROOT / "SKILL.html", absolute)
     parent_skill = "SKILL.html" if rel == Path(".") else os.path.relpath(
         (ROOT if rel.parent == Path(".") else ROOT / rel.parent) / "SKILL.html", absolute
     )
@@ -197,7 +198,9 @@ def page(rel: Path, files: list[Path], directories: list[Path]) -> str:
 </head>
 <body>
 <section class="skill-static" aria-labelledby="skill-title">
-  <nav><a href="{html.escape(home_rel)}">Course home</a> · <a href="{html.escape(parent_skill)}">Parent contract</a></nav>
+  <header data-skill-header="1">
+  <nav aria-label="Skill navigation"><a href="{html.escape(home_rel)}">Course home</a> · <a href="{html.escape(parent_skill)}">Parent contract</a> · <a data-skill-nav="map" href="{html.escape(map_rel)}">Repository map</a></nav>
+  </header>
   <h1 id="skill-title">{html.escape(title)}</h1>
   <p>{html.escape(summary)}</p>
   <div class="skill-columns">

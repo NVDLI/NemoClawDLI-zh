@@ -289,6 +289,10 @@ pages:
         test -f "public/$CI_COMMIT_REF_SLUG/languages.json"
         test -f "public/$CI_COMMIT_REF_SLUG/web/nemoclaw/index.html"
         test -f "public/$CI_COMMIT_REF_SLUG/validated-source/web/nemoclaw/index.html"
+        test -f "public/$CI_COMMIT_REF_SLUG/scripts/compliance/SKILL.html"
+        test -f "public/$CI_COMMIT_REF_SLUG/scripts/compliance/third_party_export_ui.js"
+        test -f "public/$CI_COMMIT_REF_SLUG/scripts/compliance/export_third_party_csv.py"
+        test -f "public/$CI_COMMIT_REF_SLUG/scripts/compliance/export_legal_scope_csv.py"
         grep -q 'href="web/nemoclaw/index.html"' "public/$CI_COMMIT_REF_SLUG/index.html"
         grep -q 'href="web/nemoclaw/assets/favicon.ico"' "public/$CI_COMMIT_REF_SLUG/index.html"
         grep -q 'return "web/nemoclaw/"' "public/$CI_COMMIT_REF_SLUG/index.html"
@@ -332,13 +336,20 @@ pages:
         test -f public/branches.json
         test -f public/languages.json
       fi
+      # This GitLab instance reports CI_PAGES_URL with http:// even though the
+      # review surface is HTTPS. Publish the canonical URL through dotenv so
+      # the MR environment button never relies on an HTTP redirect.
+      pages_environment_url="${PAGES_ENVIRONMENT_URL/http:/https:}"
+      printf 'PAGES_DEPLOYED_URL=%s\n' "$pages_environment_url" > pages-environment.env
   artifacts:
     paths:
       - public
+    reports:
+      dotenv: pages-environment.env
     expire_in: 3 days
   environment:
     name: "$PAGES_ENVIRONMENT_NAME"
-    url: "$PAGES_ENVIRONMENT_URL"
+    url: "$PAGES_DEPLOYED_URL"
     auto_stop_in: "$PAGES_AUTO_STOP_IN"
   rules:
     # Branch previews are real GitLab Pages deploys, but production root is rebuilt from the

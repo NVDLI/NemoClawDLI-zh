@@ -14,13 +14,70 @@
   "related": [
     "scripts/compliance/source_gate.py",
     "scripts/compliance/third_party_inventory_audit.py",
+    "scripts/compliance/export_third_party_csv.py",
+    "scripts/compliance/export_legal_scope_csv.py",
+    "scripts/compliance/third_party_export_ui.js",
     "scripts/compliance/render_sbom_license_inventory.py",
     "scripts/compliance/docs/sbom_generation.md",
     "../../THIRD_PARTY_LICENSES.md",
     "scripts/compliance/docs/source_inventory.json",
     "scripts/compliance/docs/vendor_policy.md"
   ],
+  "exports": [
+    {
+      "id": "swipat-component-table",
+      "label": "SWIPAT third-party component CSV",
+      "format": "csv",
+      "preview_mount": "third-party-export-preview",
+      "command": "python3 scripts/compliance/export_third_party_csv.py",
+      "default_category": "vendored",
+      "categories": {
+        "vendored": "Copied into web/nemoclaw/vendor and distributed with the static course",
+        "build-input": "Downloaded by npm for browser assembly, not distributed as standalone packages",
+        "validation": "Downloaded into local or CI Python environments, not vendored or shipped",
+        "local-authoring": "Referenced or pulled for the optional local-authoring stack, not shipped with the static course",
+        "all": "All software relationships above"
+      },
+      "parameters": [
+        "--category <vendored|build-input|validation|local-authoring|all>",
+        "--base-container <description>",
+        "--repository <internal-repository-url>",
+        "--project-ref <reviewed-ref>",
+        "--output <csv-path>"
+      ]
+    },
+    {
+      "id": "legal-scope-map",
+      "label": "Third-party legal-scope relationship map",
+      "format": "csv",
+      "preview_mount": "legal-scope-preview",
+      "command": "python3 scripts/compliance/export_legal_scope_csv.py",
+      "default_category": "all",
+      "categories": {
+        "referenced-source": "External work cited, summarized, or used as inspiration without vendoring it wholesale",
+        "tooling-not-distributed": "Validation, build-only, or authoring software not shipped in the static course",
+        "recreated-asset": "Repository-authored recreation distributed with recorded source terms",
+        "vendored-material": "Copied or format-shifted course material distributed with source terms",
+        "vendored-browser-code": "Third-party code copied into and executed by the static browser course",
+        "all": "Every recorded legal relationship"
+      },
+      "parameters": [
+        "--category <relationship-category|all>",
+        "--repository <review-repository-url>",
+        "--project-ref <reviewed-ref>",
+        "--output <csv-path>"
+      ]
+    }
+  ],
   "explorer": "../../web/_skill_explorer.js"
+}
+</script>
+<script type="application/json" id="third-party-export-config">
+{
+  "vendor_manifest": "../../web/nemoclaw/vendor/browser-dependencies.json",
+  "inventory": "../../THIRD_PARTY_LICENSES.md",
+  "repository": "https://github.com/NVDLI/NemoClawDLI",
+  "project_ref": "main"
 }
 </script>
 <script type="application/json" id="explorer-config">
@@ -50,6 +107,21 @@
       "desc": "Keeps the static Markdown package/version/SPDX and external-material list aligned with exact repository inputs."
     },
     {
+      "path": "export_third_party_csv.py",
+      "role": "parameterized reviewer export",
+      "desc": "Writes the exact nine-column SWIPAT CSV shape with explicit vendored, build-input, validation, and local-authoring classifications."
+    },
+    {
+      "path": "export_legal_scope_csv.py",
+      "role": "legal-scope relationship export",
+      "desc": "Separates reference-only, tooling-only, recreated, vendored-material, and browser-code relationships with corroborating evidence."
+    },
+    {
+      "path": "third_party_export_ui.js",
+      "role": "reviewer preview",
+      "desc": "Renders, filters, and downloads the same component classifications directly in this SKILL page."
+    },
+    {
       "path": "render_sbom_license_inventory.py",
       "role": "post-scan license renderer",
       "desc": "Turns a digest-bound CycloneDX SBOM into a static component-license appendix without converting unresolved rows into guessed licenses."
@@ -70,41 +142,124 @@
 <style data-skill-static="1">
 .skill-static{padding:24px clamp(18px,4vw,44px);border-bottom:1px solid #2a2a2a;background:#0d0d0d;color:#f2f2f2;font:15px/1.55 system-ui,sans-serif}
 .skill-static a{color:#76b900}.skill-static h1{margin:.1em 0 .25em;color:#76b900;font-size:1.65rem}.skill-static h2{font-size:1.02rem;margin:1.2rem 0 .45rem}.skill-static p{max-width:76rem;color:#b0b0b0}.skill-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:.7rem 0}.skill-card{border:1px solid #2a2a2a;background:#161616;border-radius:8px;padding:12px 14px}.skill-card b{display:block;color:#aee23a;margin-bottom:4px}.skill-card span{color:#b0b0b0;font-size:.9rem}.skill-cmds{display:grid;gap:8px;margin:.7rem 0}.skill-cmd{display:grid;grid-template-columns:minmax(140px,220px) 1fr;gap:8px;align-items:center;border:1px solid #2a2a2a;border-radius:8px;background:#111;padding:9px 11px}.skill-cmd b{color:#aee23a}.skill-cmd code{display:block;overflow:auto;white-space:nowrap;color:#f2f2f2}.skill-note{border-left:3px solid #76b900;background:rgba(118,185,0,.08);padding:10px 13px;margin:.8rem 0;color:#ddd}.skill-nav{display:flex;gap:12px;flex-wrap:wrap;margin:.8rem 0}.skill-nav a{border:1px solid #2a2a2a;border-radius:999px;padding:5px 10px;text-decoration:none}@media(max-width:700px){.skill-cmd{grid-template-columns:1fr}.skill-static{padding:18px}}
+.export-preview{margin-top:1rem}.export-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:.8rem 0}.export-controls label{display:grid;gap:4px;color:#b0b0b0;font-size:.85rem}.export-controls input,.export-controls select,.export-controls button{min-height:38px;border:1px solid #3a3a3a;border-radius:6px;background:#111;color:#f2f2f2;padding:7px 9px}.export-controls button{cursor:pointer;border-color:#76b900;color:#aee23a}.export-status{display:flex;justify-content:space-between;gap:12px;color:#b0b0b0}.export-table-wrap{max-height:34rem;overflow:auto;border:1px solid #2a2a2a;border-radius:8px}.export-table{border-collapse:collapse;min-width:1500px;width:100%;font-size:.82rem}.export-table th{position:sticky;top:0;background:#202020;color:#aee23a;text-align:left;z-index:1}.export-table th,.export-table td{padding:8px 9px;border-bottom:1px solid #2a2a2a;vertical-align:top}.export-table td{color:#d5d5d5}.export-table a{overflow-wrap:anywhere}@media(prefers-color-scheme:light){.export-controls input,.export-controls select{background:#fff;color:#1a1a1a}.export-table th{background:#eef1f4;color:#4a7a00}.export-table td{color:#333}}
+.filter-field{border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;min-width:0}.filter-field legend{color:#b0b0b0;font-size:.85rem;padding:0 4px}.filter-choice-group{display:grid;gap:7px}.filter-actions{display:flex;gap:6px}.filter-actions button{min-height:28px;padding:3px 9px}.filter-chips{display:flex;gap:6px;flex-wrap:wrap;max-height:8rem;overflow:auto}.filter-chip{display:inline-flex!important;grid-template-columns:none!important;align-items:center;gap:5px!important;border:1px solid #3a3a3a;border-radius:999px;padding:4px 8px!important;color:#ddd!important;cursor:pointer}.filter-chip:has(input:checked){border-color:#76b900;background:rgba(118,185,0,.14);color:#f2f2f2!important}.filter-chip input{min-height:auto!important;width:auto;margin:0;padding:0}.sort-button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;border:0;background:transparent;color:inherit;font:inherit;font-weight:700;text-align:left;cursor:pointer;padding:0}.sort-arrow{font-size:1rem}.export-table th[aria-sort="ascending"],.export-table th[aria-sort="descending"]{background:#293719}
+.filter-guide{max-width:76rem;margin:.55rem 0 1rem;padding-left:1.35rem;color:#d5d5d5}.filter-guide li{margin:.35rem 0}.filter-guide code,.filter-guide strong{color:#f2f2f2}.filter-label{display:grid;gap:1px}.filter-label small{font:11px/1.2 ui-monospace,Consolas,monospace;opacity:.72}
+#third-party-export-preview [data-export-category-group] .filter-chips,#legal-scope-preview [data-scope-category-group] .filter-chips{max-height:none;overflow:visible}
+#third-party-export-preview [data-export-relationship-group] .filter-chips,#legal-scope-preview [data-scope-relationship-group] .filter-chips{max-height:14rem}
 </style></head>
 <body>
 <section class="skill-static" aria-labelledby="skill-title">
-  <nav class="skill-nav"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a></nav>
+  <header data-skill-header="1">
+<nav class="skill-nav" aria-label="Skill navigation"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a> <span aria-hidden="true"> · </span> <a data-skill-nav="map" href="../../SKILL.html">Repository map</a></nav>
+</header>
   <h1 id="skill-title">scripts/compliance source gates</h1>
-  <p>Compliance tooling covers the repository's release-source posture: Apache-2.0 license, inbound contribution terms, reproducible package/license evidence acquisition, private URL sweep, and provenance coverage for governed assets and materials.</p>
-  <div class="skill-note">This is a pre-review gate. It prevents known bad states before legal review; it does not replace legal review.</div>
+  <p>Compliance tooling enforces release-source requirements for licensing, contribution terms, package evidence, and private URLs. Governed assets and materials must also carry provenance.</p>
+  <div class="skill-note">These checks run before legal review, which remains required.</div>
   <h2>Executable checks</h2>
   <div class="skill-cmds">
     <div class="skill-cmd"><b>Source gate</b><code>python3 scripts/compliance/source_gate.py</code></div>
     <div class="skill-cmd"><b>JSON output</b><code>python3 scripts/compliance/source_gate.py --json</code></div>
     <div class="skill-cmd"><b>Third-party list</b><code>python3 scripts/compliance/third_party_inventory_audit.py --self-test &amp;&amp; python3 scripts/compliance/third_party_inventory_audit.py</code></div>
+    <div class="skill-cmd"><b>Vendored SWIPAT CSV</b><code>python3 scripts/compliance/export_third_party_csv.py --output /tmp/nemoclaw-vendored.csv</code></div>
+    <div class="skill-cmd"><b>All software relationships</b><code>python3 scripts/compliance/export_third_party_csv.py --category all --project-ref &lt;reviewed-ref&gt; --output /tmp/nemoclaw-all-software.csv</code></div>
+    <div class="skill-cmd"><b>Legal-scope map</b><code>python3 scripts/compliance/export_legal_scope_csv.py --category all --project-ref &lt;reviewed-ref&gt; --output /tmp/nemoclaw-legal-scope.csv</code></div>
     <div class="skill-cmd"><b>Post-scan licenses</b><code>python3 scripts/compliance/render_sbom_license_inventory.py --sbom &lt;cyclonedx.json&gt; --artifact-id &lt;digest-bound-artifact&gt; --out &lt;inventory.md&gt;</code></div>
   </div>
-  <div class="skill-note">Keep the static inventory compact. The complete npm, Python, source-tree, conditional image, material-provenance, evidence-retention, and attachment commands live in <a href="docs/sbom_generation.md">the SBOM generation runbook</a>.</div>
+  <div class="skill-note">Need to reproduce the evidence? The <a href="docs/sbom_generation.md">SBOM generation runbook</a> explains how to identify packages and verify recorded licenses. It also covers file and image scans plus review attachments.</div>
+  <section class="export-preview" aria-labelledby="export-preview-title">
+    <h2 id="export-preview-title">How software is used and distributed</h2>
+    <ol class="filter-guide" aria-label="SWIPAT filter meanings">
+      <li><strong>Do learners receive it?</strong> <em>Included in the course</em> means yes. Choices such as <em>Used only to check the course</em> identify packages kept in authoring or CI environments.</li>
+      <li><strong>Why is it here?</strong> <em>Where it comes from</em> separates packages chosen directly from dependencies and task-specific tools. <em>License or terms</em> gives the recorded result. <em>Needs source-specific review</em> points to evidence and does not grant permission.</li>
+      <li><strong>Need a smaller list?</strong> Check several choices in one section to include any of them. Choices in different sections narrow the results together. Search narrows them again. <em>Download what you see</em> keeps the same rows and sort order. The container field only adds a spreadsheet note.</li>
+    </ol>
+    <div id="third-party-export-preview">
+      <div class="export-controls">
+        <fieldset class="filter-field"><legend>How this project uses it</legend><div class="filter-choice-group" data-export-category-group></div></fieldset>
+        <fieldset class="filter-field"><legend>Where it comes from</legend><div class="filter-choice-group" data-export-relationship-group></div></fieldset>
+        <fieldset class="filter-field"><legend>License or terms</legend><div class="filter-choice-group" data-export-license-group></div></fieldset>
+        <label>Find a package or purpose<input data-export-search type="search" placeholder="Try a package name or words such as security"/></label>
+        <label>Container used (usually not applicable)<input data-export-base value="Not Applicable - static browser course"/></label>
+        <label>Export<button type="button" data-export-download>Download what you see</button></label>
+      </div>
+      <div class="export-status"><span data-export-count>Loading preview...</span><span>SWIPAT spreadsheet format</span></div>
+      <div class="export-table-wrap">
+        <table class="export-table">
+          <thead>
+            <tr>
+              <th>Package / Component Name</th>
+              <th>Version</th>
+              <th>License</th>
+              <th>Link to Component's License</th>
+              <th>Method of Distribution</th>
+              <th>Usage Method with NV proprietary code</th>
+              <th>Comments</th>
+              <th>Location where component was downloaded from</th>
+              <th>Link to internal IT Controlled Repository</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+  <section class="export-preview" aria-labelledby="legal-scope-title">
+    <h2 id="legal-scope-title">How sources and materials are used</h2>
+    <ol class="filter-guide" aria-label="Legal-scope filter meanings">
+      <li><strong>Was it shipped?</strong> <em>What happened to the source?</em> separates reference-only sources from anything shipped to learners. Its other choices identify author-only tools and distinguish recreated assets from copied material or browser code.</li>
+      <li><strong>What changed?</strong> <em>How was it used?</em> records whether the course summarized, converted, recreated, or imported it.</li>
+      <li><strong>Can I verify the row?</strong> <em>License or source terms</em> shows the recorded terms and links to supporting source/repository evidence. Unclear evidence stays unclear.</li>
+    </ol>
+    <div id="legal-scope-preview">
+      <div class="export-controls">
+        <fieldset class="filter-field"><legend>What happened to the source?</legend><div class="filter-choice-group" data-scope-category-group></div></fieldset>
+        <fieldset class="filter-field"><legend>How was it used?</legend><div class="filter-choice-group" data-scope-relationship-group></div></fieldset>
+        <fieldset class="filter-field"><legend>License or source terms</legend><div class="filter-choice-group" data-scope-terms-group></div></fieldset>
+        <label>Find a file, source, or package<input data-scope-search type="search" placeholder="Try a filename, source, or package"/></label>
+        <label>Export<button type="button" data-scope-download>Download what you see</button></label>
+      </div>
+      <div class="export-status"><span data-scope-count>Loading scope preview...</span><span>Evidence-linked; no software/material conflation</span></div>
+      <div class="export-table-wrap">
+        <table class="export-table">
+          <thead><tr>
+            <th>Repository Item</th><th>Scope Category</th><th>Artifact Relationship</th>
+            <th>Distributed by NVIDIA in This Repository</th><th>Executed in Learner Browser</th>
+            <th>External Source or Package</th><th>Recorded License or Terms</th>
+            <th>Corroborating Repository Evidence</th><th>Legal Scope Note</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
   <h2>Linkage map</h2>
   <div class="skill-grid">
     <a class="skill-card" href="source_gate.py"><b>source_gate.py</b><span>Release-source and vendor-ingestion gate.</span></a>
     <a class="skill-card" href="third_party_inventory_audit.py"><b>third_party_inventory_audit.py</b><span>Static package, license, container-boundary, and material-provenance inventory gate.</span></a>
+    <a class="skill-card" href="export_third_party_csv.py"><b>export_third_party_csv.py</b><span>Parameterized SWIPAT component-table export with explicit distribution categories.</span></a>
+    <a class="skill-card" href="export_legal_scope_csv.py"><b>export_legal_scope_csv.py</b><span>Evidence-linked scope map for references, tooling, recreations, vendored materials, and browser code.</span></a>
+    <a class="skill-card" href="third_party_export_ui.js"><b>third_party_export_ui.js</b><span>In-page preview, filters, and filtered CSV download.</span></a>
     <a class="skill-card" href="render_sbom_license_inventory.py"><b>render_sbom_license_inventory.py</b><span>Digest-bound CycloneDX to static Markdown license reconciliation.</span></a>
     <a class="skill-card" href="docs/sbom_generation.md"><b>sbom_generation.md</b><span>Copyable scan commands and attachment evidence contract.</span></a>
     <a class="skill-card" href="docs/SKILL.html"><b>scripts/compliance/docs</b><span>Release-safe guidance and machine-readable inventory.</span></a>
   </div>
   <h2>Interactive explorer</h2>
-  <p>The explorer below opens source files, tours important sections, and checks documented paths against the repository tree.</p>
+  <p>The explorer opens source files and their important sections. It also checks documented paths against the repository tree.</p>
 </section>
 <div id="explorer"></div>
 <noscript>
   <h1>scripts/compliance source gates</h1>
   <ul>
     <li><a href="third_party_inventory_audit.py">third_party_inventory_audit.py</a></li>
+    <li><a href="export_third_party_csv.py">export_third_party_csv.py</a></li>
+    <li><a href="export_legal_scope_csv.py">export_legal_scope_csv.py</a></li>
+    <li><a href="third_party_export_ui.js">third_party_export_ui.js</a></li>
     <li><a href="render_sbom_license_inventory.py">render_sbom_license_inventory.py</a></li>
     <li><a href="source_gate.py">source_gate.py</a></li>
   </ul>
 </noscript>
 <script src="../../web/_skill_explorer.js"></script>
+<script src="third_party_export_ui.js"></script>
 </body>
 </html>
