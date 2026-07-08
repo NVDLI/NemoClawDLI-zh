@@ -138,6 +138,28 @@
       ".sx-topbar .sx-theme{margin-left:auto;flex:0 0 auto;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1;cursor:pointer;background:transparent;color:var(--td);border:1px solid var(--e3);border-radius:7px}",
       ":root[data-theme=\"light\"] .sx-topbar{background:var(--bg)}",
       "@media(prefers-color-scheme:light){:root:not([data-theme=\"dark\"]) .sx-topbar{background:var(--bg)}}",
+      ".sx-page-topbar{background:var(--bg)!important;color:var(--tx)!important;border-color:var(--e3)!important}",
+      ".sx-page-topbar .sx-page-nav{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0}",
+      ".sx-page-topbar .sx-page-nav a{color:var(--td)!important;border:0!important;padding:0!important;text-decoration:none}",
+      ".sx-page-topbar .sx-page-nav a:first-child{color:var(--gs)!important;font-weight:700;letter-spacing:.04em}",
+      ".sx-page-topbar .sx-page-nav a:hover{color:var(--gs)!important}",
+      // Hand-authored and generated static SKILL bodies remain useful without JS. Once the
+      // shared renderer loads, bind them to its palette so one theme choice colors whole page.
+      ".skill-static{background:var(--bg)!important;color:var(--tx)!important;border-color:var(--e3)!important}",
+      ".skill-static p,.skill-static .skill-card span,.skill-static .export-status,.skill-static .filter-field legend{color:var(--td)!important}",
+      ".skill-static h1,.skill-static a,.skill-static .skill-card b,.skill-static .skill-cmd b{color:var(--gs)!important}",
+      ".skill-static h2,.skill-static h3,.skill-static .skill-cmd code{color:var(--tx)!important}",
+      ".skill-static .skill-card,.skill-static .skill-cmd,.skill-static .filter-field,.skill-static .export-table-wrap{background:var(--e1)!important;border-color:var(--e3)!important}",
+      ".skill-static .skill-note{background:rgba(118,185,0,.08)!important;color:var(--tx)!important}",
+      ".skill-static input,.skill-static select,.skill-static button{background:var(--bg)!important;color:var(--tx)!important;border-color:var(--e3)!important}",
+      ".skill-static .filter-chip{background:var(--e1)!important;color:var(--td)!important;border-color:var(--e3)!important}",
+      ".skill-static .filter-chip:has(input:checked){background:rgba(118,185,0,.14)!important;color:var(--tx)!important;border-color:var(--g)!important}",
+      ".skill-static .export-table th{background:var(--e2)!important;color:var(--gs)!important;border-color:var(--e3)!important}",
+      ".skill-static .export-table td{color:var(--td)!important;border-color:var(--e3)!important}",
+      ".skill-static .filter-guide,.skill-static .filter-guide li{color:var(--td)!important}",
+      ".skill-static .filter-guide strong,.skill-static .filter-guide code{color:var(--tx)!important}",
+      // Shared wide-screen frame. Existing tables/source panels keep their own overflow behavior.
+      ".skill-static,.sx-head,.sx-wrap,.rp-head,.rp-wrap{width:100%;max-width:88rem;margin-left:auto;margin-right:auto}",
       ".sx-head{padding:1.1rem clamp(1rem,4vw,2rem) .6rem;border-bottom:1px solid var(--e3)}",
       ".sx-head h1{margin:.1em 0;font-size:1.45rem;color:var(--g)}",
       ".sx-lead{color:var(--td);max-width:64rem;font-size:.95rem}",
@@ -629,6 +651,21 @@
   // so it survives the modes that set mount.innerHTML. nav = { home, up:{label,href} } from config.
   App.prototype.mountTopbar = function () {
     var nav = this.cfg.nav || {}, home = nav.home || "index.html";
+    var existing = document.querySelector('header[data-skill-header="1"]');
+    if (existing) {
+      existing.classList.add("sx-topbar", "sx-page-topbar");
+      var existingNav = existing.querySelector("nav");
+      if (existingNav) existingNav.classList.add("sx-page-nav");
+      if (!existing.querySelector(".sx-theme")) {
+        var theme = el("button", "sx-theme");
+        theme.type = "button";
+        theme.setAttribute("aria-label", "Toggle dark or light theme");
+        existing.appendChild(theme);
+      }
+      if (existing !== document.body.firstElementChild) document.body.insertBefore(existing, document.body.firstChild);
+      wireThemeToggle(existing.querySelector(".sx-theme"));
+      return existing;
+    }
     var h = '<div class="sx-topbar"><a class="sx-logo" href="' + home + '">NVIDIA DLI</a>';
     if (nav.up) h += '<a class="sx-up" href="' + nav.up.href + '">&uarr; ' + esc(nav.up.label) + '</a>';
     h += '<span class="sx-crumb">' + esc(this.cfg.title || "") + '</span>';
@@ -642,11 +679,13 @@
     if (cfg.mode === "report") return this.mountReport();
     if (cfg.mode === "tests") return this.mountTests();
     this.mountTopbar();
-    var head = el("header", "sx-head");
-    head.appendChild(el("p", null, "<a href='#' onclick='history.length>1?history.back():null;return false'>&larr; back</a>"));
-    head.appendChild(el("h1", null, esc(cfg.title || "Folder explorer")));
-    if (cfg.summary) head.appendChild(el("p", "sx-lead", esc(cfg.summary)));
-    this.mount.appendChild(head);
+    if (!document.querySelector(".skill-static")) {
+      var head = el("header", "sx-head");
+      head.appendChild(el("p", null, "<a href='#' onclick='history.length>1?history.back():null;return false'>&larr; back</a>"));
+      head.appendChild(el("h1", null, esc(cfg.title || "Folder explorer")));
+      if (cfg.summary) head.appendChild(el("p", "sx-lead", esc(cfg.summary)));
+      this.mount.appendChild(head);
+    }
 
     var wrap = el("div", "sx-wrap");
     this.railEl = el("nav", "sx-rail");

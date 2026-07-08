@@ -121,6 +121,39 @@ async function inspect(browser, file) {
         config: !config || !!parse('explorer-config'),
         navigationHeader: !!document.querySelector('header[data-skill-header="1"] nav'),
         navigationLinks: document.querySelectorAll('header[data-skill-header="1"] nav a[href]').length,
+        visibleNavigationRegions: Array.from(document.querySelectorAll('header[data-skill-header="1"], .sx-topbar')).filter(node => getComputedStyle(node).display !== 'none').length,
+        duplicateExplorerHeading: !!document.querySelector('.skill-static') && !!document.querySelector('#explorer .sx-head'),
+        themeUnified: (() => {
+          const surface = document.querySelector('.skill-static');
+          const button = document.querySelector('.sx-theme');
+          if (!surface || !button) return true;
+          const colors = () => [getComputedStyle(document.body).backgroundColor, getComputedStyle(surface).backgroundColor];
+          const before = colors(); button.click(); const after = colors(); button.click();
+          return before[0] === before[1] && after[0] === after[1] && before[0] !== after[0];
+        })(),
+        themeContrast: (() => {
+          const surface = document.querySelector('.skill-static');
+          const button = document.querySelector('.sx-theme');
+          if (!surface || !button) return true;
+          const rgb = value => (value.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+          const luminance = value => {
+            const channels = rgb(value).map(channel => {
+              const normalized = channel / 255;
+              return normalized <= .03928 ? normalized / 12.92 : Math.pow((normalized + .055) / 1.055, 2.4);
+            });
+            return .2126 * channels[0] + .7152 * channels[1] + .0722 * channels[2];
+          };
+          const ratio = (foreground, background) => {
+            const a = luminance(foreground), b = luminance(background);
+            return (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
+          };
+          const readable = () => Array.from(surface.querySelectorAll('h1, p, .skill-cmd code')).every(node => {
+            const backgroundNode = node.closest('.skill-cmd') || surface;
+            return ratio(getComputedStyle(node).color, getComputedStyle(backgroundNode).backgroundColor) >= 4.5;
+          });
+          const before = readable(); button.click(); const after = readable(); button.click();
+          return before && after;
+        })(),
         visibleText: (document.body?.innerText || '').trim().length,
         explorer: !!config,
         mounted: !!document.querySelector('.sx-topbar') && !!document.querySelector('.sx-main'),
@@ -131,6 +164,10 @@ async function inspect(browser, file) {
     if (!state.meta) errors.push('skill-meta did not parse');
     if (!state.config) errors.push('explorer-config did not parse');
     if (!state.navigationHeader || state.navigationLinks < 2) errors.push('semantic skill navigation header is incomplete');
+    if (state.visibleNavigationRegions !== 1) errors.push(`renderer produced ${state.visibleNavigationRegions} visible navigation headers`);
+    if (state.duplicateExplorerHeading) errors.push('renderer repeated the static SKILL heading');
+    if (!state.themeUnified) errors.push('static SKILL body and explorer do not share one light/dark theme');
+    if (!state.themeContrast) errors.push('static SKILL body loses readable contrast in light or dark theme');
     if (!state.visibleText) errors.push('renderer produced no visible text');
     if (state.explorer && !state.mounted) errors.push('shared explorer did not mount');
     if (state.gone) errors.push(`${state.gone} configured file(s) did not load`);

@@ -170,6 +170,11 @@ def export_contract_findings(overrides: dict[str, str]) -> list[str]:
         "data-scope-relationship-group",
         "data-scope-terms-group",
         "data-scope-download",
+        'aria-label="SWIPAT filter meanings"',
+        'aria-label="Legal-scope filter meanings"',
+        "ORed within a filter group and ANDed across",
+        "base-container field changes only the CSV annotation",
+        "whether NVIDIA distributes it here",
     ):
         if token not in skill:
             findings.append(f"SWIPAT in-page preview control is missing: {token}")
@@ -284,6 +289,7 @@ def self_test() -> tuple[int, int, list[str]]:
         ("column sort preview", {CSV_PREVIEW: read(CSV_PREVIEW, {}).replace("sortableHeaders", "removedSortableHeaders")}, "SWIPAT preview implementation is incomplete"),
         ("legal-scope export", {COMPLIANCE_SKILL: compliance_skill.replace('"id": "legal-scope-map"', '"id": "removed-scope"', 1)}, "missing legal-scope relationship export"),
         ("legal-scope multi-select", {COMPLIANCE_SKILL: compliance_skill.replace("data-scope-relationship-group", "data-scope-relationship-single", 1)}, "SWIPAT in-page preview control is missing"),
+        ("filter semantics", {COMPLIANCE_SKILL: compliance_skill.replace("ORed within a filter group and ANDed across", "combined somehow", 1)}, "SWIPAT in-page preview control is missing"),
     )
     failures = []
     passed = 0

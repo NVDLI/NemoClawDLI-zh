@@ -978,7 +978,7 @@
       "references": [
         {
           "source": "web/_skill_explorer.js",
-          "line": 267
+          "line": 289
         },
         {
           "source": "web/nemoclaw/scripts/_chat.js",

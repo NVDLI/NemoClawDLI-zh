@@ -60,9 +60,12 @@ build output is outside the source set by construction; tracked locale overlays,
 workflow directories, data directories, and runtime skill seeds remain inside it.
 
 `gen_directory_beacons.py` creates the standard dual-reader contract for a newly discovered
-directory. Every beacon also has a semantic `<header data-skill-header="1">` containing a
-navigation region with at least two distinct destinations. The standard header points home, up
-to the parent contract, and around to the repository map. Run `normalize_skill_headers.py --apply`
+directory. Every beacon also has one semantic `<header data-skill-header="1">` containing a
+navigation region with at least two distinct destinations. The shared explorer reuses that header;
+it must not mount parallel navigation chrome or repeat the static page heading. The standard header
+points home, up to the parent contract, and around to the repository map. Static content and the
+interactive explorer share the same `data-theme` palette and retain readable contrast in both modes.
+Run `normalize_skill_headers.py --apply`
 after importing a hand-authored beacon and use `--check` in automated validation.
 `skill_contract.py` then validates the metadata, directory accuracy, human-readable
 body, shared-renderer wiring, local assets, and configured file paths. The Playwright renderer
