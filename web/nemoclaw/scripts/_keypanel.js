@@ -8,7 +8,7 @@ import {
   iframeProxyModeEnabled, setIframeProxyMode,
 } from "./_shared.js";
 
-const BUILD_SIGNUP_URL = "https://build.nvidia.com";
+const BUILD_SIGNUP_URL = "https://build.nvidia.com/?ncid=ref-dli-146986";
 
 export function mountKeyPanel(container, opts = {}) {
   /* @doc <code>helpers.mountKeyPanel(el)</code> ::

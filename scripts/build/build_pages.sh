@@ -308,5 +308,15 @@ if [ -f "$T1/scripts/build/build_language_manifest.py" ]; then
     python3 "$T1/scripts/build/build_language_manifest.py" --out "$OUT/languages.json" --site-root "$OUT" --course-prefix "$COURSE_PREFIX" || echo "[build_pages] language manifest skipped"
 fi
 
+# Fail closed on the generated destinations too. Source checks alone cannot prove that
+# standalone bundling and locale projection preserved the requested course attribution.
+attribution_args=(--artifact-root "$OUT" --artifact-root "$OUT/${COURSE_PREFIX:+$COURSE_PREFIX/}nemoclaw")
+if [ "$LANGS" = 1 ]; then
+    for d in "$OUT"/*/nemoclaw; do
+        [ -d "$d" ] && attribution_args+=(--artifact-root "$d")
+    done
+fi
+python3 "$T1/scripts/validation/external_link_attribution_audit.py" "${attribution_args[@]}"
+
 echo "[build_pages] done -> $OUT"
 echo "[build_pages] preview locally: python3 -m http.server -d $OUT 8000"

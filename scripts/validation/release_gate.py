@@ -61,6 +61,8 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/materials/pull_materials.py", "--verify-committed"),
     unit_test("local_path_leak_audit"),
     py("scripts/validation/local_path_leak_audit.py"),
+    unit_test("external_link_attribution_audit"),
+    py("scripts/validation/external_link_attribution_audit.py"),
     unit_test("sensitive_content_audit"),
     unit_test("release_change_reminder"),
     unit_test("validation_report_audit"),
@@ -107,6 +109,8 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/materials/pull_materials.py", "--verify-committed"),
     unit_test("local_path_leak_audit"),
     py("scripts/validation/local_path_leak_audit.py"),
+    unit_test("external_link_attribution_audit"),
+    py("scripts/validation/external_link_attribution_audit.py"),
     # validate_bundle owns the current-tree sensitive, layout, architecture, release-evidence,
     # repository-work-product, localization, contribution, browser-dependency, and cell audits.
     # Keep only their mutation suites here so one shared gate never scans the same tree twice.
@@ -240,6 +244,12 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     ),
     unit_test("local_path_leak_audit"): (
         "scripts/validation/local_path_leak_audit.py",
+    ),
+    unit_test("external_link_attribution_audit"): (
+        "scripts/validation/external_link_attribution_audit.py", "scripts/build/bundle_standalone.py",
+        "web/*.html", "web/*.js", "web/nemoclaw/*.html", "web/nemoclaw/scripts/*.js",
+        "web/nemoclaw/standalone/*.html", "web/nemoclaw/standalone/scripts/*.js",
+        "i18n/*/web/*.html", "i18n/*/web/nemoclaw/*.html",
     ),
     unit_test("sensitive_content_audit"): (
         "scripts/validation/sensitive_content_audit.py", "scripts/validation/sensitive-content-policy.json",
