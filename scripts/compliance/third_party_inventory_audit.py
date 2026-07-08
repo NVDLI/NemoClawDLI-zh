@@ -43,6 +43,7 @@ REQUIRED_LLM_PINS = (
 REQUIRED_DISTRIBUTION_LINES = (
     'cp "$T1/LICENSE" "$OUT/LICENSE"',
     'cp "$T1/THIRD_PARTY_LICENSES.md" "$OUT/THIRD_PARTY_LICENSES.md"',
+    'cp "$T1/scripts/compliance/docs/sbom_generation.md" "$OUT/scripts/compliance/docs/sbom_generation.md"',
 )
 REQUIRED_EXPLANATIONS = (
     "## Reproducing license-evidence acquisition",
@@ -200,6 +201,7 @@ def self_test() -> tuple[int, int, list[str]]:
         ("material row", {INVENTORY: document.replace("| web/nemoclaw/assets/figures/fig2_react.svg |", "| removed/fig2_react.svg |", 1)}, "missing external-material row"),
         ("service pin", {"cpu/services/llm_client/llm_client.Dockerfile": dockerfile.replace("uvicorn[standard]==0.49.0", "uvicorn[standard]", 1)}, "llm-client dependency is not exact"),
         ("artifact distribution", {"scripts/build/build_pages.sh": pages_build.replace('cp "$T1/THIRD_PARTY_LICENSES.md" "$OUT/THIRD_PARTY_LICENSES.md"', "# removed third-party inventory", 1)}, "Pages artifact does not distribute required license file"),
+        ("runbook distribution", {"scripts/build/build_pages.sh": pages_build.replace('cp "$T1/scripts/compliance/docs/sbom_generation.md" "$OUT/scripts/compliance/docs/sbom_generation.md"', "# removed SBOM runbook", 1)}, "Pages artifact does not distribute required license file"),
         ("argparse explanation", {INVENTORY: document.replace("`argparse@2.0.1` is a JavaScript npm package used transitively by `js-yaml@5.2.1`.", "argparse is unexplained.", 1)}, "missing license-scope explanation"),
         ("acquisition procedure", {INVENTORY: document.replace("## Reproducing license-evidence acquisition", "## Undocumented acquisition", 1)}, "missing license-scope explanation"),
         ("SBOM runbook", {RUNBOOK: runbook.replace("# SBOM generation and attachment runbook", "# Missing runbook contract", 1)}, "missing SBOM acquisition instruction"),

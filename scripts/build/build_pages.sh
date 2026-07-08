@@ -127,9 +127,12 @@ cp "$T1/scripts/runtime/link_graph.html" "$OUT/link-graph.html"
 cp "$T1/web/nemoclaw/assets/favicon.ico" "$OUT/favicon.ico"
 
 # Ship the project license and the static third-party inventory at the artifact root. Course UI
-# links resolve here, and downstream static-host distributions must carry both files.
+# links resolve here, and downstream static-host distributions must carry both files. Preserve the
+# runbook path referenced by the inventory without shipping generated SBOM bodies.
 cp "$T1/LICENSE" "$OUT/LICENSE"
 cp "$T1/THIRD_PARTY_LICENSES.md" "$OUT/THIRD_PARTY_LICENSES.md"
+mkdir -p "$OUT/scripts/compliance/docs"
+cp "$T1/scripts/compliance/docs/sbom_generation.md" "$OUT/scripts/compliance/docs/sbom_generation.md"
 
 # ── 2b. SKILL explorers: the reusable framer + each explorer folder, source shipped
 # as read-only assets so a student with a key can read AND ask about the real code on
