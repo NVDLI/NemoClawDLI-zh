@@ -131,7 +131,7 @@
   </div>
 
   <div class="howto">
-    <div class="step"><span class="n">1</span><span><b>Drop in your key</b> below. Model calls go to <a href="https://build.nvidia.com" target="_blank" rel="noopener"><code>build.nvidia.com</code></a>; a free <code>nvapi-</code> key unlocks every exercise. Enable LMS/static iframe mode only when your host page needs the CORS worker.</span></div>
+    <div class="step"><span class="n">1</span><span><b>Confirm the model routes</b> below. Chat and embeddings default to <a href="https://build.nvidia.com" target="_blank" rel="noopener"><code>build.nvidia.com</code></a>. During a capacity event, set the presenter-provided Brev chat endpoint once; the independent embedding route remains unchanged. Enable iframe mode only with the default chat endpoint.</span></div>
     <div class="step"><span class="n">2</span><span><b>Follow the modules</b> in order for the default path, or jump to the task you need. Every page ends in a live browser artifact, with its JavaScript available for inspection and adaptation.</span></div>
     <div class="step"><span class="n">3</span><span><b>For the agent stack</b> in Modules 3&ndash;4, create a NemoClaw launchable when the course asks for it; it hosts the course's <a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener">OpenClaw</a>-in-<a href="https://github.com/NVIDIA/OpenShell" target="_blank" rel="noopener">OpenShell</a> stack as defined by the <a href="https://github.com/NVIDIA/NemoClaw" target="_blank" rel="noopener">NemoClaw blueprint</a>. The course service stack is CPU-based and uses hosted model endpoints, so these exercises do not require a learner-managed GPU.</span></div>
   </div>
@@ -153,10 +153,12 @@
   <div class="section" id="setup">
     <h2>Entering Your API Key</h2>
     <p class="help">
-      Your browser saves the key in <code>localStorage</code>, so it persists
-      across reloads and tabs and carries over to both courses until you clear it
-      with the Change button. Requests send it to build.nvidia.com and never write it into any page.
-      Only LMS/static iframe mode uses the hosted CORS worker.
+      Your browser saves the chat and embedding routes in <code>localStorage</code>, so one setup applies
+      across lessons and tabs. The browser sends each saved key only to its selected endpoint. A custom
+      chat endpoint belongs here only when your presenter supplies it. Brev chat routes require a public HTTPS
+      tunnel to port <code>5000</code>; private tunnels cannot accept cross-origin course requests. Neither the Jupyter <code>/lab</code> URL nor
+      <code>localhost:5000</code> is reachable from the course page. The hosted CORS relay is limited to
+      default-endpoint LMS/static iframe mode.
     </p>
     <div id="key-panel"></div>
   </div>

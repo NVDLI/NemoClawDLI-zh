@@ -6,9 +6,9 @@
 <title>Agentes de investigación profunda · Seguridad de agentes</title>
 <link rel="stylesheet" href="styles/_style.css"/>
 <script src="vendor/highlight-11.10.0.min.js"></script>
-<link rel="stylesheet" href="vendor/codemirror-5.65.16.min.css"/>
-<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.16.min.css"/>
-<script src="vendor/codemirror-5.65.16.min.js"></script>
+<link rel="stylesheet" href="vendor/codemirror-5.65.21.min.css"/>
+<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.min.css"/>
+<script src="vendor/codemirror-5.65.21.min.js"></script>
 <style>
   .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
   .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
@@ -66,7 +66,7 @@
  El Módulo 2 trata el alcance del flujo de trabajo como una superficie de control. La Parte A presentó un entorno de ejecución que decide qué contexto cruza cada límite, qué puede ramificarse y cómo avanzan los resultados por un pipeline. La Parte B aplicó ese control a un pipeline de recuperación definido por el desarrollador y a su paquete de contexto acotado.
  </p>
     <p class="lead">
- Un agente de <em>investigación profunda</em> aplica la misma idea a una pregunta cuya evidencia desbordaría una sola conversación. En tiempo de ejecución, un planificador elige ramas independientes y entrega a cada trabajador únicamente la pregunta original, la tarea asignada y las herramientas necesarias. Los historiales de las demás ramas quedan fuera. Una etapa final sintetiza la evidencia que conservaron los trabajadores. Primero ejecute el patrón; después examine su implementación.
+ Un agente de <em>investigación profunda</em> aplica la misma idea a una pregunta cuya evidencia desbordaría una sola conversación. En tiempo de ejecución, un planificador elige ramas independientes y entrega a cada trabajador únicamente la pregunta original, la tarea asignada y las herramientas necesarias. Los historiales de las demás ramas quedan fuera. Una etapa final sintetiza la evidencia que conservaron los trabajadores. Primero ejecuta el patrón; después examina su implementación.
  </p>
   </div>
 
@@ -100,7 +100,7 @@
   <div class="deep-stages">
     <div class="deep-stage" id="deep-stage-plan">
       <div class="deep-stage-label">1 · Planificar</div>
-      <p>El <strong>orquestador</strong> transforma la pregunta en tareas independientes, haciendo que el alcance deseado sea inspeccionable antes del inicio del trabajo.</p>
+      <p>El <strong>orquestador</strong> transforma la pregunta en tareas independientes, de modo que el alcance queda visible antes de comenzar el trabajo.</p>
     </div>
     <div class="deep-stage" id="deep-stage-investigate">
       <div class="deep-stage-label">2 · Investigar</div>
@@ -123,24 +123,24 @@ El artefacto del navegador que aparece a continuación no tiene shell; el ejempl
 un sistema de archivos en memoria para mostrar el estado compartido.
  </div>
 
-  <h2>Intente · planificar → investigar → sintetizar</h2>
+  <h2>Intenta · planificar → investigar → sintetizar</h2>
   <p>
- Plantee una pregunta de investigación y observe cómo el agente crea ramas que se ejecutan
+ Plantea una pregunta de investigación y observa cómo el agente crea ramas que se ejecutan
 en paralelo sobre materiales externos seleccionados y el contenido del curso antes de redactar una respuesta con citas.
-Cada trabajador transmite su avance en un panel enfocable, de modo que pueda
-examinar las operaciones activas sin esperar a que termine toda la ejecución paralela.
+Cada trabajador transmite su avance en un panel que puedes enfocar de forma independiente. Así
+puedes examinar las operaciones activas sin esperar a que finalice toda la ejecución paralela.
  </p>
   <div id="deep-cell"></div>
   <div id="deep-artifact"></div>
 
-  <h2>Inspeccione la implementación</h2>
+  <h2>Inspecciona la implementación</h2>
   <p>Las tres celdas siguientes aíslan una capa de implementación a la vez, comenzando
 con el adaptador del modelo y terminando con el agente de investigación completo. Cada
 celda se ejecuta de forma independiente.</p>
 
   <div class="callout warn">
  <strong>Las celdas de implementación usan el paquete de navegador incluido.</strong> Importan
-el paquete exacto del mismo origen registrado en el <a href="dependencies.html">inventario de dependencias del navegador</a>. La CI bloquea la publicación si cambian el paquete, el lock, las licencias o las referencias del código.
+el mismo paquete servido desde el origen y registrado en el <a href="dependencies.html">inventario de dependencias del navegador</a>. La CI bloquea la publicación si cambian el paquete, el archivo de bloqueo, las licencias o las referencias del código.
  </div>
 
 
@@ -148,7 +148,7 @@ el paquete exacto del mismo origen registrado en el <a href="dependencies.html">
 
 
   <!-- ── Part 3: ChatOpenAI ─────────────────────────────────────────────────── -->
-  <h2>1 · Conectar el modelo</h2>
+  <h2>1 · Conecta el modelo</h2>
   <p>
  <code>ChatOpenAI</code> encapsula cualquier endpoint compatible con OpenAI. La celda lee
 la URL y la credencial activas mediante <code>helpers.getConfig()</code>, por lo que el
@@ -161,7 +161,7 @@ resto del grafo no depende de dónde se ejecuta el modelo.
  produce mensajes parciales. Ambos implementan la interfaz <code>Runnable</code> de LangChain.</p>
 
   <!-- ── Part 4: LangGraph createReactAgent ───────────────────────────────── -->
-  <h2>2 · Convierta el ciclo en un grafo</h2>
+  <h2>2 · Convierte el ciclo en un grafo</h2>
   <p>
  <code>createReactAgent({llm, tools})</code> convierte el ciclo ReAct del Módulo 1
 en nodos explícitos de modelo y herramientas. El grafo compilado puede ejecutarse por sí solo o
@@ -170,10 +170,10 @@ convertirse en un nodo de un flujo de trabajo mayor.
 
   <div id="cell-m3c-p2"></div>
 
-  <p>Utilice un grafo cuando un ciclo simple ya no pueda expresar el flujo de control necesario.</p>
+  <p>Usa un grafo cuando un ciclo simple ya no pueda expresar el flujo de control necesario.</p>
 
   <!-- ── Part 5: Deep agent (planner + sub-agents + VFS) ──────────────────── -->
-  <h2>3 · Ensamble el agente de investigación</h2>
+  <h2>3 · Ensambla el agente de investigación</h2>
   <p>
  Esta celda expone cada etapa como un nodo independiente, con archivos compartidos visibles
 entre la delegación y la síntesis. El paquete <a href="https://github.com/langchain-ai/deepagentsjs" target="_blank" rel="noopener"><code>deepagents</code></a>
@@ -182,7 +182,7 @@ entre la delegación y la síntesis. El paquete <a href="https://github.com/lang
 
   <div id="cell-m3c-p3"></div>
 
-  <h2>Compruebe su comprensión</h2>
+  <h2>Comprueba tu comprensión</h2>
   <ol>
     <li>¿Qué entra en el contexto de cada subagente y qué queda fuera?</li>
     <li>¿Por qué preservar los resultados en lugar de pasar una transcripción en crecimiento?</li>
@@ -196,8 +196,8 @@ entre la delegación y la síntesis. El paquete <a href="https://github.com/lang
 
     <h3>Referencias</h3>
     <ul>
-      <li><a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu et al., <em>Lost in the Middle</em></a>. Evidencias de fallas relacionadas a la posición en el contexto.</li>
-      <li><a href="https://blog.langchain.com/deep-agents/" target="_blank" rel="noopener">LangChain, <em>Deep Agents</em></a> y <a href="https://github.com/langchain-ai/deepagentsjs" target="_blank" rel="noopener">Aplicación JavaScript</a>.</li>
+      <li><a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu et al., <em>Lost in the Middle</em></a>. Evidencia sobre fallos relacionados con la posición de la información dentro del contexto.</li>
+      <li><a href="https://blog.langchain.com/deep-agents/" target="_blank" rel="noopener">LangChain, <em>Deep Agents</em></a> e <a href="https://github.com/langchain-ai/deepagentsjs" target="_blank" rel="noopener">implementación en JavaScript</a>.</li>
       <li><a href="https://developer.nvidia.com/blog/add-a-specialized-deep-research-skill-to-agent-harnesses/" target="_blank" rel="noopener">Skill de investigación profunda de NVIDIA AI-Q</a> y su <a href="https://github.com/NVIDIA-AI-Blueprints/aiq" target="_blank" rel="noopener">blueprint</a>.</li>
       <li><a href="https://developer.nvidia.com/case-studies/scientific-literature-ai-nvidia-nemotron" target="_blank" rel="noopener">Kosmos</a>. Un ejemplo de investigación científica multiagente.</li>
     </ul>
@@ -231,7 +231,7 @@ helpers.mountChatUI("#deep-artifact", {
   examples: [
     "How does this course's OpenShell sandbox relate to agent safety in general?",
     "What is RAG, and how does this course build it?",
-    "Compare the ReAct loop with the deep-agent pattern",
+    "Compara the ReAct loop with the deep-agent pattern",
     "What are the main failure modes of autonomous agents?",
     "How do production CLI agents sandbox themselves?",
     "Trace this course from a single LLM call to an always-on agent",
@@ -390,7 +390,7 @@ helpers.mountChatUI("#deep-artifact", {
     if (s.usage) ctx.view.usage({ input: s.usage.prompt_tokens, output: s.usage.completion_tokens, model: s.model });
   },
 });
-helpers.log("renderizado abajo. Edite la configuración y ejecute.");
+helpers.log("Renderizado abajo. Edita la configuración y vuelve a ejecutar.");
   </script>
   <script type="module">
     import { mountRunCell } from "./scripts/_shared.js";
@@ -419,16 +419,16 @@ hljs.highlightAll();
 window.DEEP_AGENT_MAX_TOKENS = 8196;
 
 mountCanvasFlow("#cell-m3c-p1", {
-  label: "Conecte LangChain al modelo activo",
-  intro: "Cree el cliente del modelo desde la configuración del curso e inspeccione el mensaje que devuelve invoke().",
+  label: "Conecta LangChain al modelo activo",
+  intro: "Crea el cliente del modelo a partir de la configuración del curso e inspecciona el mensaje que devuelve invoke().",
   edges: [{ from: "import", to: "invoke" }],
   nodes: [
     {
-      id: "import", icon: "📦", title: "Cree el cliente del modelo", x: 0, y: 0,
-      summary: "Lea el endpoint activo desde getConfig(); el código posterior del grafo no depende del endpoint.",
+    id: "import", icon: "📦", title: "Crea el cliente del modelo", x: 0, y: 0,
+      summary: "Lee el endpoint activo desde getConfig(); el código posterior del grafo no depende del endpoint.",
       code: `// Load the same-origin vendor bundle used by this example.
 helpers.log("importing @langchain/openai ...");
-const { ChatOpenAI } = await import("./vendor/langchain-1.4.7.esm.min.js");
+const { ChatOpenAI } = await import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href);
 helpers.log("import OK");
 
 const cfg = await helpers.getConfig();
@@ -467,8 +467,8 @@ return {
 
 // ── M3c P2: LangGraph ReAct agent ────────────────────────────────────────────
 mountCanvasFlow("#cell-m3c-p2", {
-  label: "Construya un grafo ReAct",
-  intro: "Añada una herramienta tipada, compile el grafo e inspeccione la trayectoria de mensajes resultante.",
+  label: "Construye un grafo ReAct",
+  intro: "Añade una herramienta tipada, compila el grafo e inspecciona la trayectoria de mensajes resultante.",
   edges: [
     { from: "import", to: "tool" },
     { from: "tool",   to: "build" },
@@ -477,12 +477,12 @@ mountCanvasFlow("#cell-m3c-p2", {
 
   nodes: [
     {
-      id: "import", icon: "📦", title: "Cargue las dependencias del grafo", x: 0, y: 0,
-      summary: "Cargue los paquetes del modelo, el grafo, las herramientas y los esquemas.",
+      id: "import", icon: "📦", title: "Carga las dependencias del grafo", x: 0, y: 0,
+      summary: "Carga los paquetes del modelo, el grafo, las herramientas y los esquemas.",
       code: `// Load the same-origin vendor bundle used by this example.
 helpers.log("importing langchain ecosystem...");
 const { ChatOpenAI, tool, createReactAgent, z } =
-  await import("./vendor/langchain-1.4.7.esm.min.js");
+  await import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href);
 state.deps = { ChatOpenAI, tool, createReactAgent, z };
 helpers.log("imports OK");
 
@@ -499,7 +499,7 @@ return { imports: Object.keys(state.deps) };
     },
 
     {
-      id: "tool", icon: "🛠", title: "Declare una herramienta horaria tipada", x: 0, y: 1,
+    id: "tool", icon: "🛠", title: "Declara una herramienta horaria tipada", x: 0, y: 1,
       summary: "Un esquema de Zod proporciona al modelo y al runtime el mismo contrato validado.",
       code: `// Pull the LangChain helpers this agent cell needs.
 const { tool, z } = state.deps;
@@ -516,7 +516,7 @@ return { name: state.getCurrentTime.name, description: state.getCurrentTime.desc
     },
 
     {
-      id: "build", icon: "📐", title: "Compile el grafo ReAct", x: 0, y: 2,
+      id: "build", icon: "📐", title: "Compila el grafo ReAct", x: 0, y: 2,
       summary: "El modelo y la herramienta forman el ciclo de decisión y ejecución del Módulo 1.",
       code: `// Construct the agent from the model, tools, and prompt.
 state.agent = state.deps.createReactAgent({
@@ -528,8 +528,8 @@ return { graph_compiled: true };
     },
 
     {
-      id: "invoke", icon: "🚀", title: "Examine la trayectoria", x: 0, y: 3,
-      summary: "Ejecute el grafo y muestre sus mensajes, incluidas las llamadas a herramientas y sus resultados.",
+      id: "invoke", icon: "🚀", title: "Examina la trayectoria", x: 0, y: 3,
+      summary: "Ejecuta el grafo y muestra sus mensajes, incluidas las llamadas a herramientas y sus resultados.",
       code: `// Ask the agent a concrete question to drive the loop.
 const question = "What time is it right now in UTC?";
 // Try another (uncomment one) and rerun to watch the trajectory change:
@@ -576,12 +576,12 @@ mountCanvasFlow("#cell-m3c-p3", {
 
   nodes: [
     {
-      id: "setup", icon: "📦", title: "Cree el cliente del modelo", x: 0, y: 0,
-      summary: "Repita la configuración del modelo para que esta celda se ejecute de forma independiente.",
+    id: "setup", icon: "📦", title: "Crea el cliente del modelo", x: 0, y: 0,
+      summary: "Repite la configuración del modelo para que esta celda se ejecute de forma independiente.",
       code: `// Load the same-origin vendor bundle used by this example.
 helpers.log("importing LangChain bundles...");
 const { ChatOpenAI, tool, createReactAgent, z } =
-  await import("./vendor/langchain-1.4.7.esm.min.js");
+  await import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href);
 state.deps = { ChatOpenAI, tool, createReactAgent, z };
 
 const cfg = await helpers.getConfig();
@@ -598,7 +598,7 @@ return { imports: Object.keys(state.deps) };
     },
 
     {
-      id: "vfs", icon: "🗂", title: "Cree herramientas para compartir evidencia", x: 2, y: 0,
+    id: "vfs", icon: "🗂", title: "Crea herramientas para compartir evidencia", x: 2, y: 0,
       summary: "Los trabajadores intercambian evidencia mediante archivos en memoria, no mediante historiales compartidos.",
       code: `// Pull the LangChain helpers this agent cell needs.
 const { tool, z } = state.deps;
@@ -628,7 +628,7 @@ return { tools: ["write_file", "read_file", "list_files"], vfs_state: Object.key
     {
       id: "planner", icon: "🧠", title: "Planifique subtareas tipadas", x: 1, y: 1,
       summary: "La salida estructurada evita tener que analizar un plan de texto libre.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Cambia el entregable y observa cómo el planificador crea nuevas subtareas.
 state.goal = [
   "Research NVIDIA NIM (NVIDIA Inference Microservices) and produce three files: ",
   "nim_overview.md, a technical overview of what NIM is and how it works; ",
@@ -636,8 +636,8 @@ state.goal = [
   "nim_vs_hosting.md, a short comparison of using a managed NIM endpoint versus self-hosting a model directly, ",
   "covering latency, operational overhead, and when each makes sense.",
 ].join("");
-// Edit this string to try a different multi-file research goal.
-
+// state.goal = "Compare RAG evaluation methods and produce metrics.md, risks.md, and test_plan.md.";
+// state.goal = "Research agent memory and produce short_term.md, long_term.md, and tradeoffs.md.";
 
 // withStructuredOutput binds the output to this schema and returns a parsed object.
 
@@ -666,7 +666,7 @@ return out;
     },
 
     {
-      id: "dispatcher", icon: "🚀", title: "Ejecute trabajadores con tareas acotadas", x: 1, y: 2,
+      id: "dispatcher", icon: "🚀", title: "Ejecuta trabajadores con tareas acotadas", x: 1, y: 2,
       summary: "Cada trabajador recibe su tarea y la lista de archivos guardados. Los historiales de las demás ramas quedan fuera de su contexto.",
       code: `// Pull the LangChain helpers this agent cell needs.
 const { createReactAgent } = state.deps;
@@ -697,8 +697,8 @@ return state.subResults;
     },
 
     {
-      id: "synth", icon: "🧠", title: "Sintetice la evidencia guardada", x: 1, y: 3,
-      summary: "Lea los archivos de los trabajadores, cite sus nombres y escriba final_report.md.",
+      id: "synth", icon: "🧠", title: "Sintetiza la evidencia guardada", x: 1, y: 3,
+      summary: "Lee los archivos de los trabajadores, cita sus nombres y escribe final_report.md.",
       code: `// Inspect the virtual files the deep agent can read.
 const paths = Object.keys(state.vfs);
 if (!paths.length) {
@@ -732,9 +732,9 @@ return { synthesised: true, source_files: paths, report_chars: state.synthesis.l
     },
 
     {
-      id: "render", icon: "📊", title: "Muestre el flujo de trabajo observado", x: 1, y: 4,
+      id: "render", icon: "📊", title: "Muestra el flujo de trabajo observado", x: 1, y: 4,
       showCode: false,
-      summary: "Muestre los trabajadores y los recuentos de archivos registrados durante esta ejecución.",
+      summary: "Muestra los trabajadores y los recuentos de archivos registrados durante esta ejecución.",
       code: `// Reading guide: this block does not run another model call. It turns state.subResults
 // Build the diagram directly from the run: orchestrator, workers, synthesizer.
 

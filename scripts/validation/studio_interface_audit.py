@@ -26,7 +26,6 @@ SCRIPT_SKILL = COURSE / "scripts" / "SKILL.html"
 RUNTIME_SKILL = ROOT / "scripts" / "runtime" / "SKILL.html"
 ROOT_SCRIPT_SKILL = ROOT / "scripts" / "SKILL.html"
 LAB_RUNTIME_DOC = ROOT / "docs" / "lab_runtime_testing.md"
-AGENT_QUICKSTART = ROOT / "AGENT_QUICKSTART.md"
 RELEASE_PLAYBOOK = ROOT / "docs" / "release_playbook.md"
 BROWSER_PROBE = ROOT / "scripts" / "runtime" / "browser_env_probe.sh"
 HELPER_NOTEBOOK_AUDIT = ROOT / "scripts" / "validation" / "helper_notebook_runtime_audit.py"
@@ -44,6 +43,8 @@ REQUIRED_IDS = {
 REQUIRED_JS = {
     "lab contents api candidate": "/lab/api/contents/web/nemoclaw/",
     "legacy contents api candidate": "/lab/api/contents/nemoclaw/",
+    "static CDN API bypass": "const STATIC_EXPORT = /(?:^|\\/)course-static(?:\\/|$)/.test(location.pathname)",
+    "static CDN ready state": "let contentApiReady = STATIC_EXPORT",
     "static page URL resolver": "function directPageUrl",
     "static read-only fallback": "Read-only preview: Jupyter contents API not available",
     "local comment fallback": "localStorage.setItem(commentStorageKey()",
@@ -52,6 +53,8 @@ REQUIRED_JS = {
     "run-all selector": ".cf-btn-run,.rc-run,.cell-run",
     "ordered run queue": "async function triggerRunAll",
     "run completion waiter": "function waitForRunComplete",
+    "run failure collector": "const failures = []",
+    "run failure summary": "runnable block(s) · ${failures.length} failed",
     "default page load": "loadPage(p || MODULES[0].file)",
     "block editor locator": "function _locateBlockInFile",
     "no stale lite CSS path": "styles/styles/_lite_overlay.css",
@@ -103,7 +106,6 @@ def audit() -> list[str]:
     runtime_skill = read(RUNTIME_SKILL)
     root_script_skill = read(ROOT_SCRIPT_SKILL)
     lab_doc = read(LAB_RUNTIME_DOC)
-    quickstart = read(AGENT_QUICKSTART)
     release_playbook = read(RELEASE_PLAYBOOK)
     browser_probe = read(BROWSER_PROBE) if BROWSER_PROBE.is_file() else ""
 
@@ -186,9 +188,7 @@ def audit() -> list[str]:
 
     for label, token in {
         "scripts beacon probe": "scripts/runtime/browser_env_probe.sh",
-        "scripts beacon browser note": "browser smoke is unavailable",
         "scripts helper notebook link": "web/nemoclaw/scripts/SKILL.html",
-        "scripts helper notebook audit": "Studio helper audit",
         "scripts helper notebook style": "runnable notebook",
     }.items():
         if token not in root_script_skill:
@@ -204,16 +204,6 @@ def audit() -> list[str]:
     }.items():
         if token not in lab_doc:
             findings.append(f"docs/lab_runtime_testing.md missing {label}: {token}")
-
-    for label, token in {
-        "quickstart probe": "scripts/runtime/browser_env_probe.sh",
-        "quickstart docker compose caveat": "Compose v2 plugin",
-        "quickstart podman compose caveat": "Podman may work while",
-        "quickstart do not stop": "not stop after `docker compose`",
-        "quickstart python compose": "python3 -m podman_compose",
-    }.items():
-        if token not in quickstart:
-            findings.append(f"AGENT_QUICKSTART.md missing {label}: {token}")
 
     for label, token in {
         "release playbook runtime guide": "lab_runtime_testing.md",

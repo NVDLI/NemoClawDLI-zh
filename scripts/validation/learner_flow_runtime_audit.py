@@ -24,7 +24,7 @@ const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright-core');
 
-const root = '/site';
+const root = process.env.SITE_ROOT || '/site';
 const port = 4203;
 const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json' };
 const fixture = `<!doctype html><html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="/nemoclaw/styles/_style.css"></head><body data-learning-view>
@@ -32,6 +32,7 @@ const fixture = `<!doctype html><html lang="en"><head><meta charset="utf-8"><lin
   <div id="journey-map"></div>
   <details id="learning-applied" class="learning-block" open data-learning-id="fixture-applied" data-learning-tier="applied"><summary><span class="learning-scope">Applied · Build</span><span class="learning-question">Inspect the implementation detail?</span></summary><div class="learning-block-body"><h2>Applied detail</h2><p>Applied implementation detail stays available in the source and can be revealed without changing the canonical page.</p></div></details>
   <details id="learning-deep" class="learning-block" open data-learning-id="fixture-deep" data-learning-tier="deep"><summary><span class="learning-scope">Deep · Sources</span><span class="learning-question">Read the deeper reference?</span></summary><div class="learning-block-body"><h2>Deep detail</h2><p>Deep reference detail stays available in the source while guided and applied views keep the main path short.</p></div></details>
+  <details id="learning-reference" class="references learning-block" open data-learning-always-open data-learning-id="fixture-references" data-learning-tier="deep"><summary><span class="learning-scope">Deep · Sources</span><span class="learning-question">Read the primary paper sources?</span></summary><div class="learning-block-body"><h2>Primary sources</h2><p>Paper references stay visible on first load while the native disclosure still lets a learner collapse this list.</p></div></details>
   <div id="run-cell"></div><div id="canvas"></div><div id="chat"></div><div id="console"></div>
 </main><script type="module">
 import { mountRunCell, mountCanvasFlow, mountChatUI, mountConsole } from "/nemoclaw/scripts/_shared.js";
@@ -40,7 +41,7 @@ window.runApi = mountRunCell("#run-cell", {
   openCode: true,
   label: "fixture run cell",
   intro: "Read the outcome first. Open code only to change the wait.",
-  code: \`await new Promise((resolve, reject) => {\n  const timer = setTimeout(resolve, 5000);\n  AbortSignal.addEventListener("abort", () => { clearTimeout(timer); reject(new DOMException("stopped", "AbortError")); }, { once: true });\n});\nlog("finished");\`,
+  code: \`helpers.log("process started");\nawait helpers.delay(5000);\nreturn { finished: true };\`,
 });
 window.canvasApi = mountCanvasFlow("#canvas", {
   label: "fixture flow", intro: "A cancellable wait followed by a visible result.", edges:[{from:"wait",to:"finish"}], nodes: [{ id:"wait", title:"Wait", x:0, y:0,
@@ -107,7 +108,10 @@ async function waitText(locator, pattern) {
 
 (async () => {
   await new Promise(resolve => server.listen(port, '127.0.0.1', resolve));
-  const browser = await chromium.launch({ headless:true });
+  const browser = await chromium.launch({
+    headless:true,
+    executablePath:process.env.CHROME_BIN || undefined,
+  });
   const page = await browser.newPage({ viewport:{ width:1100, height:900 } });
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message || String(error)));
@@ -123,6 +127,11 @@ async function waitText(locator, pattern) {
   }, value);
   if (await depthSelect.inputValue() !== 'guided') throw new Error('first visit did not default to Guided');
   if (await page.locator('#learning-applied .learning-block-body').isVisible() || await page.locator('#learning-deep .learning-block-body').isVisible()) throw new Error('first visit did not collapse optional Guided sections');
+  const referenceBody = page.locator('#learning-reference .learning-block-body');
+  if (!await referenceBody.isVisible()) throw new Error('Guided hid the primary paper references');
+  await page.locator('#learning-reference > summary').click();
+  if (await referenceBody.isVisible()) throw new Error('always-open reference disclosure could not be collapsed locally');
+  await page.locator('#learning-reference > summary').click();
   if (!/Inspect the implementation detail\?/.test(await page.locator('#learning-applied > summary').innerText())) throw new Error('applied section did not ask its local question inline');
   const runCode = page.locator('#run-cell .rc-code-det');
   const canvasCodes = page.locator('#canvas .cf-panel-code-det');
@@ -155,6 +164,7 @@ async function waitText(locator, pattern) {
   await page.reload({ waitUntil:'networkidle' });
   await page.waitForFunction(() => window.fixtureMounted === true);
   if (await page.locator('#learning-applied .learning-block-body').isVisible() || await page.locator('#learning-deep .learning-block-body').isVisible()) throw new Error('reload did not restore Guided default');
+  if (!await page.locator('#learning-reference .learning-block-body').isVisible()) throw new Error('reload hid the primary paper references');
   await page.evaluate(() => { location.hash = 'learning-deep'; });
   if (!await page.locator('#learning-deep .learning-block-body').isVisible()) throw new Error('deep link did not reveal its collapsed disclosure');
   await page.locator('#learning-deep > summary').click();
@@ -209,6 +219,14 @@ async function waitText(locator, pattern) {
   await runButton.click();
   await waitText(page.locator('#run-cell .rc-out'), /stopped/);
   await waitText(runButton, /Run$/);
+  await page.locator('#run-cell .rc-code').evaluate(el => {
+    el.value = 'helpers.log("process detail"); return { useful: 42, status: "complete" };';
+  });
+  await runButton.click();
+  await waitText(page.locator('#run-cell .rc-out'), /process detail/);
+  await waitText(page.locator('#run-cell .rc-out'), /returned value/);
+  const returnText = await page.locator('#run-cell .rc-out').innerText();
+  if (!/useful/.test(returnText) || !/42/.test(returnText)) throw new Error('RunCell log suppressed its structured returned value');
   await page.locator('#run-cell .rc-code').evaluate(el => { el.value = 'throw new Error("fixture boom")'; });
   await runButton.click();
   await waitText(page.locator('#run-cell .rc-out'), /fixture boom/);
@@ -249,7 +267,7 @@ async function waitText(locator, pattern) {
   const noJsContext = await browser.newContext({ javaScriptEnabled:false, viewport:{ width:800, height:700 } });
   const noJsPage = await noJsContext.newPage();
   await noJsPage.goto(`http://127.0.0.1:${port}/fixture.html`, { waitUntil:'domcontentloaded' });
-  if (!await noJsPage.locator('#learning-applied .learning-block-body').isVisible() || !await noJsPage.locator('#learning-deep .learning-block-body').isVisible()) throw new Error('no-JavaScript view hid authored content');
+  if (!await noJsPage.locator('#learning-applied .learning-block-body').isVisible() || !await noJsPage.locator('#learning-deep .learning-block-body').isVisible() || !await noJsPage.locator('#learning-reference .learning-block-body').isVisible()) throw new Error('no-JavaScript view hid authored content');
   await noJsContext.close();
   const supportPage = await browser.newPage({ viewport:{ width:800, height:700 } });
   await supportPage.goto(`http://127.0.0.1:${port}/support.html`, { waitUntil:'networkidle' });
@@ -259,8 +277,11 @@ async function waitText(locator, pattern) {
   const localizedPage = await browser.newPage({ viewport:{ width:390, height:700 } });
   await localizedPage.goto(`http://127.0.0.1:${port}/localized.html`, { waitUntil:'networkidle' });
   await localizedPage.waitForFunction(() => window.localizedMounted === true);
-  if (await localizedPage.locator('.learning-depth-control').count()) throw new Error('English pilot controls mounted on a localized course page');
-  if (!await localizedPage.locator('#localized-detail p').isVisible()) throw new Error('English pilot changed localized content visibility');
+  const localizedControl = localizedPage.locator('.learning-depth-control');
+  if (await localizedControl.count() !== 1 || !/^Detalhe/.test(await localizedControl.innerText())) throw new Error('localized course page lost its Portuguese depth control');
+  const localizedOptions = await localizedControl.locator('option').allInnerTexts();
+  if (localizedOptions.join('|') !== 'Guiado|Aplicado|Completo') throw new Error(`localized depth options are not Portuguese: ${JSON.stringify(localizedOptions)}`);
+  if (!await localizedPage.locator('#localized-detail p').isVisible()) throw new Error('localized depth control changed authored content visibility');
   await localizedPage.close();
 
   const historyContext = await browser.newContext({ viewport:{ width:800, height:700 } });
@@ -304,13 +325,14 @@ async function waitText(locator, pattern) {
   if (!courseSearch.length || courseSearch.length > 4 || courseSearch.some(result => !result.id || !result.excerpt || result.excerpt.length > 900)) throw new Error(`page assistant course search is not bounded/useful: ${JSON.stringify(courseSearch)}`);
   const sourceAccess = await coursePage.evaluate(async () => {
     const { courseCode, courseCodeArtifacts, courseRuntimeFiles, courseRuntimeSource } = await import('./scripts/_langchain.js');
-    const { artifactFromMarkdown, artifactJavaScriptIssue, parseInlineCourseSourceIntent, resolveCourseSourceUri } = await import('./scripts/_course_assistant.js');
+    const { artifactFromMarkdown, artifactCodeIssue, artifactJavaScriptIssue, parseInlineCourseSourceIntent, resolveCourseSourceUri } = await import('./scripts/_course_assistant.js');
     const artifacts = await courseCodeArtifacts('02c-deep');
     const deep = await courseCode('02c-deep', 'deep-src');
     const runtimeFiles = courseRuntimeFiles();
     const shared = await courseRuntimeSource('_shared.js');
     const rejected = await courseRuntimeSource('../index.html');
     const captured = artifactFromMarkdown('```html\n<button id="captured">Captured</button>\n```\n```javascript\ndocument.querySelector("#captured").dataset.ready = "yes";\n```', 'Captured artifact');
+    const rawCaptured = artifactFromMarkdown('Here is the artifact.\n<!doctype html><html><body><button id="raw">Raw</button><script>document.querySelector("#raw").dataset.ready="yes";</script></body></html>\nReady.', 'Raw artifact');
     const recoveredIntent = parseInlineCourseSourceIntent('{"uri":"deep-src"}');
     const recoveredSource = await resolveCourseSourceUri(recoveredIntent?.uri, '02c-deep');
     return {
@@ -321,6 +343,10 @@ async function waitText(locator, pattern) {
       sharedIsExact:/The web course runs JavaScript only\./.test(shared) && /mountCourseAssistant/.test(shared),
       traversalRejected:/unknown runtime file/.test(rejected),
       fencedArtifactCaptured:captured?.title === 'Captured artifact' && /captured/.test(captured.html) && /dataset\.ready/.test(captured.javascript),
+      rawArtifactCaptured:rawCaptured?.title === 'Raw artifact' && /^<!doctype html>/i.test(rawCaptured.html) && !/Here is the artifact/.test(rawCaptured.html) && !/Ready\.$/.test(rawCaptured.html),
+      inlineScriptGuard:/browser storage APIs/.test(artifactCodeIssue({ html:'<script>localStorage.setItem("x", "y")</script>', javascript:'' })),
+      externalScriptGuard:/External scripts/.test(artifactCodeIssue({ html:'<script src="https://example.com/demo.js"></script>', javascript:'' })),
+      inlineHelperGuard:/helpers\.mountChatUI/.test(artifactCodeIssue({ html:'<script>helpers.mountChatUI("#app")</script>', javascript:'' })),
       inlineSourceRecovered:recoveredIntent?.uri === 'deep-src' && /Course source: 02c-deep · deep-src/.test(recoveredSource?.content || ''),
       artifactAsyncGuard:/asynchronous/.test(artifactJavaScriptIssue('const embeddings = course.embed(["hello"], { inputType: "query" });')),
       artifactInputGuard:/inputType/.test(artifactJavaScriptIssue('const embeddings = await course.embed(["hello"], { inputType: "text" });')),
@@ -331,7 +357,7 @@ async function waitText(locator, pattern) {
       helperAllowlistGuard:/helpers\.mountChatUI/.test(artifactJavaScriptIssue('helpers.mountChatUI("#app");')),
     };
   });
-  if (!sourceAccess.artifactIds.includes('deep-src') || !sourceAccess.artifactIds.some(id => /^module-/.test(id)) || sourceAccess.indexHasBodies || !sourceAccess.deepIsJavaScript || !sourceAccess.runtimeFiles.includes('_shared.js') || !sourceAccess.sharedIsExact || !sourceAccess.traversalRejected || !sourceAccess.fencedArtifactCaptured || !sourceAccess.inlineSourceRecovered || !sourceAccess.artifactAsyncGuard || !sourceAccess.artifactInputGuard || !sourceAccess.artifactTopLevelAwait || !sourceAccess.artifactCombinedGuard || !sourceAccess.helperAliasAllowed || !sourceAccess.helperAsyncGuard || !sourceAccess.helperAllowlistGuard) throw new Error(`Course Assistant source/artifact access is incomplete or unsafe: ${JSON.stringify(sourceAccess)}`);
+  if (!sourceAccess.artifactIds.includes('deep-src') || !sourceAccess.artifactIds.some(id => /^module-/.test(id)) || sourceAccess.indexHasBodies || !sourceAccess.deepIsJavaScript || !sourceAccess.runtimeFiles.includes('_shared.js') || !sourceAccess.runtimeFiles.includes('_openclaw_cli.js') || !sourceAccess.sharedIsExact || !sourceAccess.traversalRejected || !sourceAccess.fencedArtifactCaptured || !sourceAccess.rawArtifactCaptured || !sourceAccess.inlineScriptGuard || !sourceAccess.externalScriptGuard || !sourceAccess.inlineHelperGuard || !sourceAccess.inlineSourceRecovered || !sourceAccess.artifactAsyncGuard || !sourceAccess.artifactInputGuard || !sourceAccess.artifactTopLevelAwait || !sourceAccess.artifactCombinedGuard || !sourceAccess.helperAliasAllowed || !sourceAccess.helperAsyncGuard || !sourceAccess.helperAllowlistGuard) throw new Error(`Course Assistant source/artifact access is incomplete or unsafe: ${JSON.stringify(sourceAccess)}`);
   const sessionCap = await coursePage.evaluate(async () => {
     const { saveCourseAssistantStore, loadCourseAssistantStore } = await import('./scripts/_course_assistant.js');
     const values = new Map();
@@ -440,6 +466,36 @@ async function waitText(locator, pattern) {
   artifactFrame = crossPanel.frameLocator('.course-assistant-artifact iframe');
   await artifactFrame.locator('#bridge-result').waitFor({ state:'visible' });
   if (!/^1\.0\|.*accepts 1-16 non-empty strings/.test(await artifactFrame.locator('#bridge-result').innerText())) throw new Error('Course Assistant artifact helper facade did not expose cosineSim/embed or enforce its request bound');
+  await crossPanel.evaluate(panel => {
+    panel.querySelector('[data-course-artifact-html]').__courseAssistantEditor.setValue('<script>localStorage.setItem("blocked", "yes")</script>');
+    panel.querySelector('[data-course-artifact-js]').__courseAssistantEditor.setValue('');
+  });
+  await crossPanel.locator('[data-course-artifact-run]').click();
+  if (!/browser storage APIs/.test(await crossPanel.locator('.course-artifact-actions [role="status"]').innerText())) throw new Error('Course Assistant artifact validation ignored blocked APIs inside inline HTML scripts');
+  await crossPage.evaluate(() => {
+    window.__courseArtifactReadyChannels = [];
+    window.addEventListener('message', event => {
+      if (event.data?.type === 'artifact-ready' && event.data?.channel) window.__courseArtifactReadyChannels.push(event.data.channel);
+    });
+  });
+  await crossPanel.evaluate(panel => {
+    panel.querySelector('[data-course-artifact-html]').__courseAssistantEditor.setValue('<button id="broken-control" onclick="missingArtifactMethod()">Broken control</button>');
+    panel.querySelector('[data-course-artifact-js]').__courseAssistantEditor.setValue('');
+  });
+  await crossPanel.locator('[data-course-artifact-run]').click();
+  await crossPage.waitForFunction(() => window.__courseArtifactReadyChannels?.length > 0);
+  await crossPage.evaluate(() => {
+    const frame = document.querySelector('.course-assistant-artifact iframe');
+    const channel = window.__courseArtifactReadyChannels.at(-1);
+    frame.contentWindow.postMessage({ channel, type:'artifact-probe' }, '*');
+  });
+  await crossPage.waitForFunction(() => /missingArtifactMethod/.test(document.querySelector('.course-artifact-actions [role="status"]')?.textContent || ''));
+  await crossPanel.evaluate(panel => {
+    panel.querySelector('[data-course-artifact-html]').__courseAssistantEditor.setValue('<div>Broken initialization</div><script>document.querySelector("#missing-target").style.width="1px";</script>');
+    panel.querySelector('[data-course-artifact-js]').__courseAssistantEditor.setValue('');
+  });
+  await crossPanel.locator('[data-course-artifact-run]').click();
+  await crossPage.waitForFunction(() => /Cannot read properties of null/.test(document.querySelector('.course-artifact-actions [role="status"]')?.textContent || ''));
   await crossPanel.evaluate(panel => panel.querySelector('[data-course-artifact-js]').__courseAssistantEditor.setValue('const { broken } from "./_shared.js";'));
   await crossPanel.locator('[data-course-artifact-run]').click();
   if (!/Syntax error|Imports are unavailable/.test(await crossPanel.locator('.course-artifact-actions [role="status"]').innerText())) throw new Error('Course Assistant artifact did not surface generated JavaScript failure before execution');
@@ -481,7 +537,9 @@ async function waitText(locator, pattern) {
   await coursePage.locator('#cell-m3b-p1 .rc-card').waitFor({ state:'visible' });
   const courseBlocks = coursePage.locator('details.learning-block[data-learning-tier]');
   if (await courseBlocks.count() !== 8) throw new Error('02b learning depth lost one of its eight local disclosures');
-  if (await coursePage.locator('details.learning-block .learning-block-body:visible').count()) throw new Error('02b Guided left optional narrative visible');
+  const guidedBodies = coursePage.locator('details.learning-block .learning-block-body:visible');
+  const guidedReferences = coursePage.locator('details.learning-block[data-learning-always-open] .learning-block-body:visible');
+  if (await guidedBodies.count() !== await guidedReferences.count()) throw new Error('02b Guided left optional narrative visible outside the always-open references');
   if (await coursePage.locator('#cell-m3b-p1 .cf-canvas').count() || !await coursePage.locator('#cell-m3b-p1 .rc-card').count()) throw new Error('02b single embedding regressed from RunCell to CanvasFlow');
   if (await coursePage.locator('[data-learning-id="graphrag-global-questions"] .learning-block-body').isVisible()) throw new Error('02b Guided left GraphRAG visible');
   const guidedHeight = await coursePage.evaluate(() => document.documentElement.scrollHeight);
@@ -578,6 +636,8 @@ def main() -> int:
     parser.add_argument("--site-root", default="web")
     parser.add_argument("--image", default=DEFAULT_IMAGE)
     parser.add_argument("--engine", default=os.environ.get("CONTAINER_ENGINE") or "podman")
+    parser.add_argument("--direct-node", action="store_true",
+                        help="run Node directly in a prepared browser environment")
     args = parser.parse_args()
     site_arg = Path(args.site_root)
     site_root = site_arg.resolve() if site_arg.is_absolute() else (ROOT / site_arg).resolve()
@@ -587,18 +647,25 @@ def main() -> int:
     with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as handle:
         handle.write(RUNTIME_JS)
         script = Path(handle.name)
-    cmd = [args.engine, "run", "--rm", "--entrypoint", "node"]
-    if args.engine.endswith("podman"):
-        cmd.append("--userns=keep-id")
-    cmd += [
-        "-e", "NODE_PATH=/opt/nemoclaw-runtime/node_modules",
-        "-v", f"{site_root}:/site:ro",
-        "-v", f"{script}:/tmp/learner_flow_runtime_audit.js:ro",
-        args.image,
-        "/tmp/learner_flow_runtime_audit.js",
-    ]
+    if args.direct_node:
+        cmd = ["node", str(script)]
+        run_env = os.environ.copy()
+        run_env["SITE_ROOT"] = str(site_root)
+    else:
+        cmd = [args.engine, "run", "--rm", "--entrypoint", "node"]
+        if args.engine.endswith("podman"):
+            cmd.append("--userns=keep-id")
+        cmd += [
+            "-e", "NODE_PATH=/opt/nemoclaw-runtime/node_modules",
+            "-v", f"{site_root}:/site:ro",
+            "-v", f"{script}:/tmp/learner_flow_runtime_audit.js:ro",
+            args.image,
+            "/tmp/learner_flow_runtime_audit.js",
+        ]
+        run_env = None
     try:
-        proc = subprocess.run(cmd, cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=180)
+        proc = subprocess.run(cmd, cwd=ROOT, text=True, stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT, timeout=180, env=run_env)
     except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
         print(f"learner_flow_runtime_audit: FAIL\n  - {exc}")
         return 1

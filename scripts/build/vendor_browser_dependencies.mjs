@@ -19,6 +19,8 @@ if (!fs.existsSync(lockPath) || !fs.existsSync(path.join(modules, "esbuild"))) {
 const { build } = await import(pathToFileURL(path.join(modules, "esbuild/lib/main.js")));
 const lock = JSON.parse(fs.readFileSync(lockPath, "utf8"));
 const direct = JSON.parse(fs.readFileSync(packagePath, "utf8")).dependencies;
+const codemirrorVersion = direct.codemirror;
+const codemirrorBase = `codemirror-${codemirrorVersion}`;
 fs.rmSync(vendor, { recursive: true, force: true });
 fs.mkdirSync(path.join(vendor, "licenses"), { recursive: true });
 
@@ -36,13 +38,14 @@ const buildResult = async (entry, outfile, options = {}) => build({
 });
 
 const highlight = await buildResult("highlight-entry.js", "highlight-11.10.0.min.js", { format: "iife" });
-const codemirror = await buildResult("codemirror-entry.js", "codemirror-5.65.16.min.js", { format: "iife" });
+const codemirror = await buildResult("codemirror-entry.js", `${codemirrorBase}.min.js`, { format: "iife" });
 const langchain = await buildResult("langchain-entry.js", "langchain-1.4.7.esm.min.js", { format: "esm" });
+const yaml = await buildResult("js-yaml-entry.js", "js-yaml-5.2.1.esm.min.js", { format: "esm" });
 
 const copies = [
   ["highlight.js/styles/github-dark.min.css", "highlight-github-dark-11.10.0.min.css"],
-  ["codemirror/lib/codemirror.css", "codemirror-5.65.16.min.css"],
-  ["codemirror/theme/monokai.css", "codemirror-monokai-5.65.16.min.css"],
+  ["codemirror/lib/codemirror.css", `${codemirrorBase}.min.css`],
+  ["codemirror/theme/monokai.css", `codemirror-monokai-${codemirrorVersion}.min.css`],
   ["marked/lib/marked.esm.js", "marked-14.1.4.esm.js"],
 ];
 for (const [source, target] of copies) {
@@ -70,12 +73,14 @@ const packageRoots = new Set([
   ...packagesFromMeta(highlight.metafile),
   ...packagesFromMeta(codemirror.metafile),
   ...packagesFromMeta(langchain.metafile),
+  ...packagesFromMeta(yaml.metafile),
 ]);
 
 const purposes = {
   "highlight.js": "Syntax highlighting in course pages and source explorers.",
   "codemirror": "Editable and read-only code cells.",
   "marked": "Markdown rendering for chat output and repository documents.",
+  "js-yaml": "Parsing the live OpenShell policy returned to sandbox exercises.",
   "@langchain/openai": "OpenAI-compatible browser model client used by agent exercises.",
   "@langchain/core": "Tool and message primitives used by agent exercises.",
   "@langchain/langgraph": "Agent construction and checkpoint memory used by agent exercises.",
@@ -119,10 +124,11 @@ const packages = [...packageRoots].map(packageRootPath => {
 const assetPackages = {
   "highlight-11.10.0.min.js": ["highlight.js"],
   "highlight-github-dark-11.10.0.min.css": ["highlight.js"],
-  "codemirror-5.65.16.min.js": ["codemirror"],
-  "codemirror-5.65.16.min.css": ["codemirror"],
-  "codemirror-monokai-5.65.16.min.css": ["codemirror"],
+  [`${codemirrorBase}.min.js`]: ["codemirror"],
+  [`${codemirrorBase}.min.css`]: ["codemirror"],
+  [`codemirror-monokai-${codemirrorVersion}.min.css`]: ["codemirror"],
   "marked-14.1.4.esm.js": ["marked"],
+  "js-yaml-5.2.1.esm.min.js": [...packagesFromMeta(yaml.metafile)].map(packageName).sort(),
   "langchain-1.4.7.esm.min.js": [...packagesFromMeta(langchain.metafile)].map(packageName).sort(),
 };
 
@@ -212,6 +218,7 @@ const manifest = {
     "scripts/browser-vendor/package-lock.json",
     "scripts/browser-vendor/highlight-entry.js",
     "scripts/browser-vendor/codemirror-entry.js",
+    "scripts/browser-vendor/js-yaml-entry.js",
     "scripts/browser-vendor/langchain-entry.js",
     "web/ and i18n/ runtime references",
   ],

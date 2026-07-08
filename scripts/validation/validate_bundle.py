@@ -121,6 +121,7 @@ import figure_audit as fa  # noqa: E402
 import cell_audit as ca  # noqa: E402
 import learner_flow_audit as lfa  # noqa: E402
 import contribution_safety_audit as csa  # noqa: E402
+import sensitive_content_audit as sca  # noqa: E402
 import localization_audit as la  # noqa: E402
 import helper_notebook_runtime_audit as hna  # noqa: E402
 import studio_interface_audit as sia  # noqa: E402
@@ -134,7 +135,9 @@ import course_dependency_integrity as cdi  # noqa: E402
 import html_structure_audit as hsa  # noqa: E402
 import slides_audit as sla  # noqa: E402
 import security_architecture_audit as saa  # noqa: E402
+import threat_control_audit as tca  # noqa: E402
 import release_evidence_audit as rea  # noqa: E402
+import repository_work_products_audit as rwpa  # noqa: E402
 from collections import defaultdict  # noqa: E402
 
 
@@ -183,6 +186,9 @@ SUITE_META = [
     ("release_evidence", "Product design and release test plan", "required",
      "The public product design, executable test plan, and machine-readable evidence map must cover the shipped static system, data and cryptography inventories, source and dependency controls, external-review ownership, release artifacts, and rollback without embedding private workflow metadata or claiming approval.",
      "scripts/validation/release_evidence_audit.py", "audit_contract"),
+    ("repository_work_products", "Repository work products", "required",
+     "Public repository work products must match their reviewed requirement and applicability levels. Required files, resolved evidence paths, policy content, issue intake, maintainer procedures, and validator wiring must remain complete.",
+     "scripts/validation/repository_work_products_audit.py", "audit_contract"),
     ("course_content", "Course content contract", "required",
      "Course promises that generic validators cannot infer: retrieval and safety figures keep their teaching contracts, product comparisons cite public sources, automation semantics stay scoped to the demonstrated configuration, and alpha platform claims retain availability and hardware qualifiers. Each finding names the missing contract piece.",
      "scripts/validation/course_content_contract.py", "run"),
@@ -273,6 +279,9 @@ SUITE_META = [
     ("security_architecture", "Security architecture graph", "required",
      "The release threat-model graph must match source-derived CI and browser topology, explicitly classify local-only Compose services and volumes, source every production node and flow from repository evidence, label trust-boundary authentication and sensitive data, exclude internal workflow metadata, avoid node and connector collisions, and keep its generated SVG projection current.",
      "scripts/validation/security_architecture_audit.py", "audit"),
+    ("threat_controls", "Threat control disposition", "required",
+     "Repository-owned mitigations must remain automated while host, provider, residual, and non-applicable requirements stay explicit. Pages artifacts are bounded, safely extracted, deployed without rebuilding, verified byte-for-byte after publication, and reconciled across public GitHub and internal GitLab without force updates.",
+     "scripts/validation/threat_control_audit.py", "audit"),
     ("cell_audit", "Cell & artifact contract", "recommended",
 
      "Every runnable cell shows its work in the panel, writes via helpers.log not console, awaits its model calls, inlines no key, keeps cell-only code in an editable cell, is syntax-highlighted by default, and keeps default-visible code and canvas copy readable. A hard-coded key is required-tier (it ships to every student); the rest are recommended.",
@@ -284,6 +293,9 @@ SUITE_META = [
     ("contribution_safety", "Contribution safety", "required",
      "Ideas remain easy to submit while code, merge, deploy, and release authority stay separated. Templates expose evidence and ownership; hooks refuse without mutating; pull-request CI is read-only; required checks and protected environments gate writes.",
      "scripts/validation/contribution_safety_audit.py", "audit_repo"),
+    ("sensitive_content", "Sensitive content boundary", "required",
+     "Repository files, commit additions, and host-supplied submission metadata must not publish security-finding identifiers, exploit-specific notes, private service locations, corporate personal contacts, or concrete credentials. Private active-finding phrases are represented only by reviewed fingerprints.",
+     "scripts/validation/sensitive_content_audit.py", "audit"),
     ("helper_notebook", "Helper notebook contract", "required",
      "The runnable helper notebook must use the helper API exposed by its actual runtime surface. Static examples must not mix CanvasFlow-only and RunCell-only log helpers, because that ships a TypeError directly to students.",
      "scripts/validation/helper_notebook_runtime_audit.py", "static_audit"),
@@ -302,12 +314,15 @@ SUITE_META = [
     ("concept_order", "Concept order contract", "required",
      "Core vocabulary in the early agent curriculum must be defined before learner-facing prose or code relies on it. This prevents glossary-hover patches and keeps prerequisite fixes structural.",
      "scripts/validation/concept_order_audit.py", "audit"),
-    ("skill_schema", "SKILL contract", "recommended",
+    ("skill_schema", "SKILL contract", "required",
      "Every SKILL.html skill-meta must be a well-formed contract of its kind: it classifies into one known kind (service-skill, service-index, dir-skill, hub, leaf), carries that kind's required keys, uses a known schema/node_type value and a semver version where the kind has one, and only valid notebook status values. An agent samples this block to work in a directory, so a malformed beacon is a contract an agent cannot trust. Each entry names the SKILL and the missing or invalid field.",
      "scripts/skills/skill_contract.py", "schema_findings"),
-    ("skill_drift", "SKILL drift", "recommended",
-     "Every SKILL.html beacon must match its directory: source_dir / human_landing point at the real location, the notebook list is complete, and hub children exist on disk. Drift means the brain describes a directory it no longer reflects. python3 scripts/skills/skill_contract.py --fix repairs the mechanical cases.",
+    ("skill_drift", "SKILL coverage and drift", "required",
+     "Every tracked or proposed source directory and ancestor must contain SKILL.html, with no exemption mechanism. Each beacon must match its directory: source_dir / human_landing point at the real location, the notebook list is complete, and hub children exist on disk. Drift means the brain describes a directory it no longer reflects. python3 scripts/skills/gen_directory_beacons.py creates missing mechanical contracts and skill_contract.py --fix repairs metadata drift.",
      "scripts/skills/skill_contract.py", "run"),
+    ("skill_renderer", "SKILL renderer", "required",
+     "Every SKILL.html must provide meaningful human-readable content, resolve its local renderer assets, load the shared explorer it declares, and expose only configured source files that exist. Browser runtime validation then loads every beacon and rejects page errors, missing renderer resources, unmounted explorers, and unreadable file entries.",
+     "scripts/skills/skill_contract.py", "renderer_findings"),
     ("diagram_geom", "Figure geometry", "recommended",
      "mountDiagram and the policy map are drawn by JavaScript at runtime, so the static figure audit never sees them. This renders each and flags overlapping text, text past the bounds, a connector crossing a box it does not link, and a relational diagram that draws no edges.",
      "scripts/figures/check_figures.mjs", "svgProblems"),
@@ -324,18 +339,18 @@ def _span(lines: list[str], symbol: str, lang: str):
     if not symbol:
         return None
     if lang == "py":
-        pat = re.compile(r"^(\s*)(?:async\s+)?def\s+" + re.escape(symbol) + r"\b")
-        for i, ln in enumerate(lines):
-            m = pat.match(ln)
-            if not m:
-                continue
-            indent, end = len(m.group(1)), len(lines)
-            for j in range(i + 1, len(lines)):
-                s = lines[j]
-                if s.strip() and (len(s) - len(s.lstrip())) <= indent:
-                    end = j
-                    break
-            return [i + 1, end]
+        import ast
+        try:
+            tree = ast.parse("\n".join(lines))
+        except SyntaxError:
+            return None
+        matches = [
+            node for node in ast.walk(tree)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == symbol
+        ]
+        if matches:
+            node = min(matches, key=lambda item: item.lineno)
+            return [node.lineno, getattr(node, "end_lineno", node.lineno)]
         return None
     if lang in ("js", "mjs"):
         pat = re.compile(r"\bfunction\s+" + re.escape(symbol) + r"\b|\b"
@@ -411,7 +426,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     lang_en = lang == "en"
     na_suites = set() if lang_en else set(_EN_PROSE_SUITES)
     proj = lp.Projection(TASK1)
-    rep = lp.check(proj)
+    engine_bundle = lp.bundle_snapshot(proj, include_graph=write)
+    rep = engine_bundle["check"]
     s = rep["stats"]
 
     # validate_layout (static mount paths + notebooks + SKILL beacons; live-links skip if lab down)
@@ -425,7 +441,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     suite_errors = {}
 
     try:
-        reach = lp.reachability(proj)
+        reach = engine_bundle["reachability"]
     except Exception as e:
         reach = {"pages": 0, "reachable": 0, "strays": [], "real_strays": -1, "expected_strays": -1}
         suite_errors["reachability"] = str(e); vl_fail.append(f"reachability error: {e}")
@@ -433,7 +449,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     # release-foyer contract: the foyer surfaces only RELEASED courses. This is ship-blocking
     # because the foyer IS the release surface, so leaking an unreleased course onto it is a real defect.
     try:
-        foyer = lp.foyer_release_check(proj)
+        foyer = engine_bundle["foyer_release"]
     except Exception as e:
         foyer = {"ok": False, "released": list(lp.RELEASED), "surfaced_courses": [],
                  "violations": [{"kind": "error", "detail": str(e)}]}
@@ -443,7 +459,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     # per-.html drift audit (every page auto-verifies through the engine: stale tokens, missing
     # assets, skill-meta / foyer-release contract drift). Advisory: surfaced, never ship-blocking.
     try:
-        audit = lp.page_audit(proj)
+        audit = engine_bundle["page_audit"]
     except Exception as e:
         audit = {"pages": 0, "pages_with_findings": -1, "findings": []}
         suite_errors["page_audit"] = str(e); vl_fail.append(f"page audit error: {e}")
@@ -527,6 +543,23 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         vl_fail.extend(f"security architecture: {item['path']}: {item['detail']}" for item in security_find)
 
     try:
+        threat_control_find = tca.audit()
+        threat_control_scanned = sum(len(tokens) for tokens in tca.REQUIRED_TOKENS.values())
+    except Exception as e:
+        threat_control_find, threat_control_scanned = [], 0
+        suite_errors["threat_controls"] = str(e)
+        vl_ok = False
+        ok = False
+        vl_fail.append(f"threat control audit error: {e}")
+    if threat_control_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(
+            f"threat control: {item['path']}: [{item['code']}] {item['detail']}"
+            for item in threat_control_find
+        )
+
+    try:
         release_contract = rea.load_contract()
         release_evidence_find = rea.audit_contract(release_contract)
         release_evidence_scanned = (len(release_contract.get("documents", {}))
@@ -543,6 +576,24 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         vl_fail.extend(
             f"release evidence: {item['path']}: [{item['code']}] {item['detail']}"
             for item in release_evidence_find
+        )
+
+    try:
+        work_product_contract = rwpa.load_contract()
+        repository_work_products_find = rwpa.audit_contract(work_product_contract)
+        repository_work_products_scanned = len(work_product_contract.get("repository_work_products", []))
+    except Exception as e:
+        repository_work_products_find, repository_work_products_scanned = [], 0
+        suite_errors["repository_work_products"] = str(e)
+        vl_ok = False
+        ok = False
+        vl_fail.append(f"repository work-product audit error: {e}")
+    if repository_work_products_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(
+            f"repository work products: {item['path']}: [{item['code']}] {item['detail']}"
+            for item in repository_work_products_find
         )
 
     # grounding reference sweep (fast, no-llm). Folds the em-dash / ungrounded / cross
@@ -664,6 +715,21 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         vl_fail.extend(f"contribution safety: {x.get('path')}: {x.get('message')}"
                        for x in contribution_safety_find)
 
+    # Sensitive content (required): current-tree projection of the hook and host-event boundary.
+    try:
+        sensitive_rows, sensitive_scanned = sca.audit()
+        sensitive_find = [item.__dict__ for item in sensitive_rows]
+    except Exception as e:
+        sensitive_scanned = 0
+        sensitive_find = [{"path": "repository", "line": 0,
+                           "kind": f"sensitive content audit error: {e}"}]
+        suite_errors["sensitive_content"] = str(e)
+    if sensitive_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(f"sensitive content: {x.get('path')}:{x.get('line')}: {x.get('kind')}"
+                       for x in sensitive_find)
+
     # Same-branch localization contract (required): every declared locale is gated.
     localization_find = []
     localization_manifest = {"pages": [], "counts": {}}
@@ -754,15 +820,14 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         ok = False
         vl_fail.extend(f"concept order: {x}" for x in concept_order_find)
 
-    # SKILL contract (advisory): every skill-meta is a well-formed beacon of its kind (schema leg)
-    # and matches its directory (drift leg, reused from skill_audit). The agent-facing half of the
-    # contract: a malformed or stale beacon is what an agent samples and is misled by.
+    # SKILL contract (required): exhaustive directory coverage, valid metadata, accurate scope,
+    # and a renderer that works for the human reader are one fail-closed contract.
     try:
         skc_find = skc.run(verbose=False)
         skc_scanned = sum(1 for _ in skc.sa.skills())   # skills() is a generator, not a list
     except Exception as e:
-        skc_find, skc_scanned = {"schema": [], "drift": []}, 0
-        suite_errors["skill_schema"] = suite_errors["skill_drift"] = str(e)
+        skc_find, skc_scanned = {"schema": [], "drift": [], "renderer": []}, 0
+        suite_errors["skill_schema"] = suite_errors["skill_drift"] = suite_errors["skill_renderer"] = str(e)
         vl_fail.append(f"skill contract error: {e}")
 
     # figure geometry (advisory): render the runtime figures (mountDiagram + mountPolicyMap) and flag overlapping text, out-of-bounds text, stray connectors, and edgeless diagrams.
@@ -852,6 +917,11 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "copy_surface": (RECOMMENDED, "Shorten learner-facing canvas chrome. Let the page heading carry module "
                          "coordinates, keep labels and titles task-focused, and move implementation inventories "
                          "into the expandable code rather than a second prose layer."),
+        "run_cell_style": (RECOMMENDED, "Keep the editable RunCell small and legible, return its structured "
+                           "outcome, use Stop-aware waits, and provide a commented diagnostic or alternate input "
+                           "where it helps a learner inspect the result."),
+        "prompt_experiment": (RECOMMENDED, "Address the learner directly in prompt-input cells and provide "
+                              "two commented alternative assignments or an EXAMPLES selector."),
     }
     _FIG_FIX = {
         "tiny": (RECOMMENDED, "Raise the text to a rendered font-size of at least 11px; below that it is "
@@ -913,9 +983,15 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "security_architecture": [D(item["path"], f"[{item['code']}] {item['detail']}", REQUIRED,
                      "Review the source-derived production contract, update docs/security-architecture.json from repository evidence, regenerate the SVG, and run security_architecture_audit.py plus its mutation self-test. Keep browser paths visible and local lab services classified without drawing them as production.")
                     for item in security_find],
+        "threat_controls": [D(item["path"], f"[{item['code']}] {item['detail']}", REQUIRED,
+                     "Restore the bounded artifact, safe extraction, post-deploy verification, repository synchronization, or explicit external-control disposition, then run threat_control_audit.py and its mutation self-test.")
+                    for item in threat_control_find],
         "release_evidence": [D(item["path"], f"[{item['code']}] {item['detail']}", REQUIRED,
                      item["fix"])
                     for item in release_evidence_find],
+        "repository_work_products": [D(item["path"], f"[{item['code']}] {item['detail']}", REQUIRED,
+                     item["fix"])
+                    for item in repository_work_products_find],
         "course_content": [D(path, detail, REQUIRED,
                              "Restore the source-backed teaching contract. Keep retrieval/safety explanations complete, product comparisons grounded in public sources, automation behavior scoped to the demonstrated configuration, and alpha platform claims qualified.")
                            for path, detail in cc_find],
@@ -1056,20 +1132,28 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                                   f"[{x.get('code', 'finding')}] {x.get('message', '')}",
                                   REQUIRED, x.get("fix", "restore the contribution trust boundary"))
                                 for x in contribution_safety_find],
+        "sensitive_content": [D(x.get("path", "repository"),
+                                f"line {x.get('line', '?')}: {x.get('kind', 'restricted content')}",
+                                REQUIRED,
+                                "Move the detail to the approved private record and retain only generic controls or fingerprints in the repository.")
+                              for x in sensitive_find],
         "localization": [D(x.get("path", "i18n"),
                             f"[{x.get('code', 'finding')}] {x.get('detail', '')}",
                             REQUIRED,
                             "Open web/nemoclaw/localization.html, repair the named locale prose/structure/drift issue, then accept the reviewed source hash with localization_audit.py.")
                          for x in localization_find],
-        "skill_schema": [D(p, d, RECOMMENDED,
+        "skill_schema": [D(p, d, REQUIRED,
                            "Make the skill-meta a valid contract of its kind: add the missing required key, "
                            "correct the schema/node_type value, give version a semver MAJOR.MINOR.PATCH, or set a "
                            "valid notebook status (ready/setup/wip/ref). See SKILL_CONTRACT.md.")
                          for p, d in skc_find.get("schema", [])],
-        "skill_drift": [D(p, d, RECOMMENDED,
-                          "The beacon no longer matches its directory. Run python3 scripts/skills/skill_contract.py --fix "
-                          "to repair source_dir / human_landing / the notebook list, or fix the hub child path by hand.")
+        "skill_drift": [D(p, d, REQUIRED,
+                          "The source directory lacks a beacon or its beacon no longer matches. Run python3 scripts/skills/gen_directory_beacons.py "
+                          "to create missing contracts, then use skill_contract.py --fix for metadata drift or repair the hub child path by hand.")
                         for p, d in skc_find.get("drift", [])],
+        "skill_renderer": [D(p, d, REQUIRED,
+                             "Repair the human renderer, use directory-relative assets, load the declared shared explorer exactly once, and keep every configured file resolvable.")
+                           for p, d in skc_find.get("renderer", [])],
         "diagram_geom": [D(d.get("page"), f"{d.get('sel','')}: {d.get('detail','')}", RECOMMENDED,
                            "Adjust the runtime figure: keep labels from overlapping, text inside the bounds, connectors "
                            "only crossing boxes they link, and a relational diagram actually drawing its edges.")
@@ -1116,7 +1200,10 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "html_structure": len(hsa.source_pages(TASK1)),
         "slides": slides_scanned,
         "security_architecture": security_scanned,
+        "threat_controls": threat_control_scanned,
         "release_evidence": release_evidence_scanned,
+        "repository_work_products": repository_work_products_scanned,
+        "sensitive_content": sensitive_scanned,
         "course_dependency_integrity": cdi_scanned,
         "grounding": len(grecs), "prose_variety": len(pv_rows), "prose_buzz": len(pv_rows), "redundancy": len(pv_rows), "grammar": len(pv_rows), "structure": len(pv_rows), "headings": len(pv_rows), "assertions": len(pv_rows), "word_echo": len(pv_rows), "comma_weight": len(pv_rows), "branding": len(pv_rows),
         "defer_copula": len(pv_rows), "dense_repeats": len(pv_rows), "over_verbage": len(pv_rows), "padding": len(pv_rows),
@@ -1129,8 +1216,12 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "course_contract": 1,
         "concept_order": 1,
         "materials": materials.get("count", 0),
-        "skill_schema": skc_scanned, "skill_drift": skc_scanned,
-        "localization": len(localization_manifest.get("pages", [])),
+        "skill_schema": skc_scanned, "skill_drift": skc_scanned, "skill_renderer": skc_scanned,
+        "localization": sum(
+            len(item.get("pages", []))
+            for item in localization_manifest.values()
+            if isinstance(item, dict)
+        ),
     }
     _layout_own = [x for x in vl_fail if x.startswith("[")]
 
@@ -1167,6 +1258,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     advisory = gradient[RECOMMENDED] + gradient[CONSIDER]
 
     summary = {
+        "schema": "bundle-validation/1",
         "generated": _report_stamp(stamp),
         "git_sha": _git_sha(), "scope": scope, "lang": lang,
         "translation_na_suites": sorted(na_suites), "ok": ok,
@@ -1181,8 +1273,11 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "html_structure": {"pages": len(hsa.source_pages(TASK1)), "findings": len(html_structure_find)},
         "slides": {"slides": slides_scanned, "findings": len(slides_find)},
         "security_architecture": {"findings": len(security_find), "graph_items": security_scanned},
+        "threat_controls": {"findings": len(threat_control_find), "controls": threat_control_scanned},
         "release_evidence": {"findings": len(release_evidence_find),
                              "evidence_items": release_evidence_scanned},
+        "repository_work_products": {"findings": len(repository_work_products_find),
+                                     "work_products": repository_work_products_scanned},
         "course_content": {"findings": len(cc_find)},
         "course_dependency_integrity": {"findings": len(cdi_find)},
         "prose_variety": {"pages": len(pv_rows), "flagged": len(pv_flagged), "flag_at": pv.FLAG_AT,
@@ -1197,6 +1292,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "cell_audit": {k: len(v) for k, v in ca_find.items()},
         "learner_flow": {"findings": len(learner_flow_find)},
         "contribution_safety": {"findings": len(contribution_safety_find)},
+        "sensitive_content": {"findings": len(sensitive_find), "scanned": sensitive_scanned},
         "localization": {"findings": len(localization_find),
                          "counts": localization_manifest.get("counts", {})},
         "diagram_geom": {"findings": len(dg_find)},
@@ -1235,6 +1331,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     print(f"  course content  : {len(cc_find)} required content contract finding(s) (teaching, product, platform)")
     print(f"  overview slides : {len(slides_find)} required finding(s) over {slides_scanned} slides")
     print(f"  security arch.   : {len(security_find)} required finding(s) over {security_scanned} nodes and flows")
+    print(f"  threat controls  : {len(threat_control_find)} required finding(s) over "
+          f"{threat_control_scanned} repository control assertions")
     if not lang_en:
         print(f"  prose / buzz / branding : n/a for '{lang}' (English-prose style suites do not gate a translation)")
     if pv_rows and lang_en:
@@ -1262,13 +1360,18 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
           f"ui-contract {len(ca_find.get('ui_contract', []))}, "
           f"code-surface {len(ca_find.get('code_surface', []))}, "
           f"readability {len(ca_find.get('readability', []))}, "
-          f"copy {len(ca_find.get('copy_surface', []))})")
+          f"copy {len(ca_find.get('copy_surface', []))}, "
+          f"run-cell-style {len(ca_find.get('run_cell_style', []))}, "
+          f"prompt-experiment {len(ca_find.get('prompt_experiment', []))})")
     print(f"  learner flow    : {len(learner_flow_find)} required finding(s) "
           f"(progressive disclosure / prerequisites / lifecycle / CPU baseline)")
     print(f"  contribution    : {len(contribution_safety_find)} required finding(s) "
           f"(intake / submissions / hooks / CI permissions / release authority)")
+    print(f"  sensitive data  : {len(sensitive_find)} required finding(s) over {sensitive_scanned} text inputs")
     print(f"  release evidence: {len(release_evidence_find)} required finding(s) "
           f"over {release_evidence_scanned} design, test, and ownership items")
+    print(f"  repository files: {len(repository_work_products_find)} required finding(s) "
+          f"over {repository_work_products_scanned} reviewed work products")
     print(f"  localization    : {len(localization_find)} required finding(s) "
           f"({localization_manifest.get('counts', {})})")
     print(f"  figure geometry : {len(dg_find)} runtime-figure finding(s) (text overlap / past bounds / connector-crosses-box / useless)")
@@ -1303,7 +1406,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
              "association": mat_assoc}, indent=2))
         # single source for the viewer: refresh the embedded DATA snapshot in link_graph.html
         # so its offline default reflects current reality (the in-lab Rescan still overrides).
-        lp.embed_snapshot(proj)
+        if not lp.embed_graph_snapshot(engine_bundle["graph"]):
+            raise RuntimeError("link_graph.html has no DATA snapshot marker")
         print(f"  wrote docs/validation/latest.{{json,md}} plus mat_association.json "
               f"and the link_graph.html snapshot (via engine.js)")
 
@@ -1358,7 +1462,10 @@ def _render_md(summary: dict) -> str:
          f"| cell audit (runnable-cell contract) | {sum(summary.get('cell_audit',{}).values())} | advisory |",
          f"| learner interaction flow | {summary.get('learner_flow',{}).get('findings',0)} | blocking |",
          f"| contribution safety | {summary.get('contribution_safety',{}).get('findings',0)} | blocking |",
+         f"| repository work products | {summary.get('repository_work_products',{}).get('findings',0)} | blocking |",
+         f"| sensitive content boundary | {summary.get('sensitive_content',{}).get('findings',0)} | blocking |",
          f"| Security architecture graph | {summary.get('security_architecture',{}).get('findings',0)} | blocking |",
+         f"| Threat control disposition | {summary.get('threat_controls',{}).get('findings',0)} | blocking |",
          f"| figure geometry (runtime figures) | {summary.get('diagram_geom',{}).get('findings',0)} | advisory |",
          f"| strays (unreachable from a SKILL hub) | {len(rc.get('strays',[]))} | {rc.get('real_strays','?')} real |",
          f"| release foyer (surfaces only RELEASED) | {'OK' if fy.get('ok') else 'FAIL'} | {len(fy.get('violations',[]))} blocking |",
@@ -1374,7 +1481,10 @@ def _render_md(summary: dict) -> str:
                    "prose_buzz": "Buzz cadence", "redundancy": "Redundancy", "grammar": "Grammar & composition", "grounding": "Grounding", "color_theme": "Color theme",
                    "figure_audit": "Figure audit", "cell_audit": "Cell contract", "diagram_geom": "Figure geometry",
                    "materials": "Materials", "reachability": "Reachability", "contribution_safety": "Contribution safety",
+                   "sensitive_content": "Sensitive content boundary",
                    "security_architecture": "Security architecture graph",
+                   "threat_controls": "Threat control disposition",
+                   "repository_work_products": "Repository work products",
                    "word_echo": "Word echo", "comma_weight": "Comma weight", "assertions": "Bare assertions",
                    "headings": "Headings", "structure": "Structural rhythm", "branding": "Brand naming",
                    "defer_copula": "Deferred copula", "dense_repeats": "Dense repetition", "over_verbage": "Over-verbage",

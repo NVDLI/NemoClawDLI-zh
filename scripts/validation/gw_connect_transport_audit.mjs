@@ -14,6 +14,9 @@ const storage = new Map([
 ]);
 
 globalThis.localStorage = { getItem: k => storage.get(k) || '', setItem: (k, v) => storage.set(k, String(v)) };
+globalThis.location = new URL('https://course.example.test/nemoclaw/03a-kickstart.html');
+const connectionSource = fs.readFileSync('web/nemoclaw/scripts/_connection.js', 'utf8');
+const connection = await import('data:text/javascript;base64,' + Buffer.from(connectionSource).toString('base64'));
 const opened = [];
 class FakeWebSocket {
   constructor(url) {
@@ -37,7 +40,9 @@ globalThis.WebSocket = FakeWebSocket;
 
 const helpers = {
   log: msg => logs.push(String(msg)),
-  fetch: async url => new Response('Use /https/<host>/<path> (drop the ://).', { status: 400 }),
+  fetch: async () => { throw new Error('GW_CONNECT must not probe a retired metadata route'); },
+  getOpenClawConnection: () => connection.getOpenClawConnection(),
+  openclawGatewayWsUrl: (raw, jwt) => connection.openclawWebSocketUrl(raw, '/cli/gateway', jwt),
   signal: null,
 };
 const state = {};
@@ -45,7 +50,7 @@ const fn = new Function('state', 'helpers', 'h', 'console', '"use strict"; retur
 await fn(state, helpers, helpers, console);
 
 if (opened.length !== 1) throw new Error(`expected one WebSocket, saw ${opened.length}`);
-const expected = 'wss://nemoclaw-v6paslvp5.brevlab.com/cli/gateway';
-if (opened[0] !== expected) throw new Error(`expected direct fallback ${expected}, got ${opened[0]}`);
-if (!logs.some(x => x.includes('falling back to direct browser-cookie WebSocket'))) throw new Error('missing stale-worker fallback log');
+const expected = 'wss://openclaw-cors-proxy.experiments.courses.nvidia.com/https/nemoclaw-v6paslvp5.brevlab.com/cli/gateway?cf_access_jwt=test.jwt';
+if (opened[0] !== expected) throw new Error(`expected hosted relay ${expected}, got ${opened[0]}`);
+if (!logs.some(x => x.includes('via hosted relay'))) throw new Error('missing hosted-relay transport log');
 console.log('gw connect transport audit: ok');

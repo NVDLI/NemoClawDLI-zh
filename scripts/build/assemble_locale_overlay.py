@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Assemble one sparse language overlay over the canonical web tree.
 
-Localized prose and reviewed SVG text are allowed to diverge. Runtime code, styles, data, and
-untranslated pages always come from `web/`, so a language cannot silently fork the application.
+Localized prose, reviewed runnable-code language, and reviewed SVG text may diverge. Executable
+structure, protocol literals, runtime modules, styles, data, and untranslated pages stay canonical,
+so a language cannot silently fork the application or silently fall back to English learner output.
 The committed overlay allow-lists in `localization_state.json` are the only locale files applied.
 """
 from __future__ import annotations
@@ -20,6 +21,7 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
         sys.path.insert(0, str(_p / "scripts"))
         break
 from _bootstrap import find_repo_root
+from translate.code_localization import project_localized_code_templates
 from translate.locale_projection import project_locale_html
 from translate.localization_scope import translation_sha
 
@@ -117,6 +119,18 @@ def self_test() -> list[str]:
         projected = (out / rel).read_text(encoding="utf-8")
         if "<details" not in projected or "Precisa de detalhes?" not in projected or "Fonte em português" not in projected:
             failures.append("localized prose was not projected into the current presentation shell")
+        code_source = ('<script>const cell={code:`const job=await state.call("cron.add",'
+                       '{kind:"agentTurn"}); helpers.log("Installed job");`};</script>')
+        code_target = code_source.replace("Installed job", "Tarefa instalada")
+        code_projected = project_localized_code_templates(code_source, code_target, code_source)
+        if "Tarefa instalada" not in code_projected or 'state.call("cron.add"' not in code_projected:
+            failures.append("localized runnable-code text was not projected onto canonical structure")
+        try:
+            project_localized_code_templates(
+                code_source, code_target.replace('"cron.add"', '"cron.adicionar"'), code_source)
+            failures.append("localized runnable-code RPC drift was projected")
+        except ValueError:
+            pass
         source.write_text(scoped.replace("Need detail?", "Open detail?"), encoding="utf-8")
         try:
             assemble(locale, out, canonical)

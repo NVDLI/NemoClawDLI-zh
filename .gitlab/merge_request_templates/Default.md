@@ -4,18 +4,21 @@ What changed and why?
 
 ## Issue link
 
-Addresses #
+Closes #
 
 ## Current release target
 
-- Course: `web/nemoclaw/` unless this is bundle-wide
-- Runtime: CPU service stack (`cpu/`, `workspace/`, `deploy/`) unless stated otherwise
+- Course: static browser course under `web/nemoclaw/` unless this is bundle-wide
+- Production: public static host or co-located NemoClaw launchable
+- Local-only support: `cpu/`, `workspace/`, and `deploy/` unless specifically changed
 - Bundle scope: course-specific or bundle-wide
 
 ## Surfaces touched
 
 - [ ] `web/`
+- [ ] `i18n/`
 - [ ] `cpu/`
+- [ ] `workspace/`
 - [ ] `deploy/`
 - [ ] `scripts/`
 - [ ] `docs/`
@@ -39,6 +42,17 @@ the result is not evidence.
 
 Does this change dependencies, permissions, workflows, secrets handling, external sources,
 licensing, generated assets, or release/deploy authority? State `none` only after checking.
+
+## External release follow-up
+
+Run `python3 scripts/validation/release_change_reminder.py --commit-range origin/main..HEAD`.
+Record each applicable action as `REQUIRED`, `COMPLETE`, or `NOT APPLICABLE`; keep private links and
+review records in the authorized release system.
+
+- [ ] Threat and architecture assessment
+- [ ] Authoritative vulnerability and secret scans
+- [ ] Open-source and license review
+- [ ] Final-artifact SBOM, malware, and release evidence
 
 ## Human ownership
 
@@ -67,3 +81,6 @@ What could regress? What exact commit, flag, workflow, or artifact restores the 
 ## Out of scope
 
 Name adjacent work deliberately excluded from this change.
+
+Relationship rule: keep `Closes #N` when this MR satisfies every acceptance criterion. A partial
+MR uses `Addresses #N` and adds `## Remaining issue work` with the unmet criteria.

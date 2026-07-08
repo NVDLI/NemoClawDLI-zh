@@ -2,7 +2,12 @@
 
 This repository is the internal release-candidate workspace for proposed open-source NVIDIA
 DLI course material. External publication remains pending OSRB approval; see
-[`RELEASE_STATUS.md`](RELEASE_STATUS.md).
+[`RELEASE_STATUS.json`](RELEASE_STATUS.json).
+The selected publication target for the DLI course repository is a Full-OSS-Project intended as
+OSS Type I. After cutover, public GitHub owns the canonical course planning, issue, contribution,
+CI, and release flow; internal GitLab consumes reviewed public changes for additional validation
+and internal deployment. This scope does not classify or release the NemoClaw product,
+launchable, or runtime.
 It packages authored content, shared services, deployment, and validation in one release
 tree. Content is organized by execution surface: `web/` is browser-only and remote-service
 aware, `cpu/` is the shared microservice stack, and `deploy/` is the operator surface for
@@ -25,8 +30,11 @@ a concrete defect. Neither route requires code. Report vulnerabilities privately
 
 Use the direct patch path when you can carry the change through the structured release
 process. The full release and external-mirror model lives in [`docs/release_playbook.md`](docs/release_playbook.md). A direct MR should update the source, declared blast-radius files, and validators
-when the failure class should not recur. Link the tracker with `Addresses #N` unless the
-change fully closes the issue.
+when the failure class should not recur. An issue-scoped change that satisfies every acceptance
+criterion uses `Closes #N` so the host closes the issue on merge. A partial change uses
+`Addresses #N` and includes a `Remaining issue work` section naming the unmet criteria. Compare
+the final diff and evidence with the issue checklist before handoff; do not leave a fully satisfied
+issue on a non-closing relationship.
 
 A patch is not trusted because a person or agent produced it, or because it passes one local
 command. It becomes eligible to merge only after required CI runs on the submitted commit,
@@ -41,10 +49,14 @@ long rationale, screenshots, or logs.
 
 ## Orientation
 
-Read [`AGENT_QUICKSTART.md`](AGENT_QUICKSTART.md) first. Every directory carries a
+Read [`AGENTS.md`](AGENTS.md) first. Every source directory carries a
 `SKILL.html` whose `skill-meta` JSON block is the machine-readable brain for that
-directory. [`SKILL_CONTRACT.md`](SKILL_CONTRACT.md) specifies that format and
-[`QUALITY_DIRECTIVES.md`](QUALITY_DIRECTIVES.md) sets the content bar.
+directory. [`SKILL_CONTRACT.md`](SKILL_CONTRACT.md) specifies that format. The root
+`SKILL.html` tenets and validation suites set the content bar.
+
+Adding a directory also adds its beacon. Run `python3 scripts/skills/gen_directory_beacons.py`,
+then review the generated summary and links. CI derives the complete directory set from tracked
+and proposed files and provides no exemption mechanism.
 
 For localization, start at [`scripts/translate/SKILL.html`](scripts/translate/SKILL.html),
 then open the target locale node, such as [`scripts/translate/locales/pt-BR/SKILL.html`](scripts/translate/locales/pt-BR/SKILL.html)
@@ -83,10 +95,11 @@ bash scripts/build/install-hooks.sh
 
 This resolves Git's real hook directory, including linked worktrees, then installs two hooks:
 
-- `pre-commit`: protected-branch refusal, contribution-boundary audit, corruption guard,
-  canvas-HTML validation, and page-runtime smoke checks.
-- `pre-push`: behind-branch refusal, mutation-tested contribution and learner-flow contracts,
-  SKILL consistency, source/security checks, layout validation, and the release gate.
+- `pre-commit`: protected-branch refusal, contributor-local and sensitive-content boundaries,
+  contribution audit, corruption guard, canvas-HTML validation, and page-runtime smoke checks.
+- `pre-push`: behind-branch refusal, complete-history signoff and content checks, external release
+  reminders, then one change-aware canonical ship gate. It may reuse only an identical clean local
+  success; required CI always reruns on the submitted commit.
 
 A local hook is feedback, not authority. Hooks are intentionally early and actionable, but
 Git allows them to be bypassed. Required CI, branch or tag rulesets, protected human review,
@@ -95,14 +108,14 @@ and protected release actions close that gap.
 ## Validate Before Pushing
 
 ```bash
-python3 scripts/validation/release_gate.py --tier fast --no-write
-python3 scripts/validation/tenets.py --check
+python3 scripts/validation/release_gate.py --tier fast --no-write --changed-since origin/main
 ```
 
-Run `python3 scripts/validation/release_gate.py --tier ship` before release or after a
-cross-cutting contract change. See
-[`docs/release-test-plan.md`](docs/release-test-plan.md) for the constituent checks and
-evidence expectations.
+Run `python3 scripts/validation/release_gate.py --tier ship --no-write --changed-since origin/main` once before
+pushing a proposal. The gate always audits the complete current tree and skips only unaffected
+detector mutation suites. Omit `--changed-since` for a release candidate. Use constituent commands
+only for focused iteration or diagnosis; the shared gate already composes them. See
+[`docs/release-test-plan.md`](docs/release-test-plan.md) for claim and evidence mapping.
 
 Service-stack notebook tests need the lab services running:
 
@@ -125,13 +138,37 @@ The full operating creed is projected into the root `SKILL.html` skill-meta. Run
 - `deploy/` owns compose and nginx configuration.
 - Do not commit lab-generated runtime output, caches, or the `public/` Pages build.
 
+### Student-visible code
+
+Runnable cells are teaching surfaces, not convenient places to hide application plumbing.
+
+- Keep an editable RunCell at or below 120 nonblank lines. Move transport, rendering, session,
+  and compatibility machinery behind a named helper whose contract the cell can show and return.
+- Use descriptive names. Single letters are reserved for familiar local coordinates or tiny loop
+  indexes; a cell must not make the learner decode a collection of unrelated one-letter variables.
+- Put one logical statement on a line. A compact expression may be readable, but repeated
+  multi-statement lines are not an acceptable substitute for structure.
+- Return the structured outcome. Use `helpers.log` for progress and evidence, not as a weaker
+  replacement for the value the exercise computed. The runtime must display both when both exist.
+- Use the RunCell or CanvasFlow Stop signal for every long operation. Prefer `helpers.delay(ms)`
+  to raw timer promises, and combine a cell signal with any timeout-specific AbortController.
+- When an intermediate value or alternate input helps the lesson, include one clearly labeled,
+  commented-out `helpers.log.json(...)`, `helpers.log.details(...)`, or alternate assignment at
+  the relevant line so a learner can reveal it without inventing instrumentation from scratch.
+- Name cross-cell `state` inputs and outputs near the top of the cell, guard missing prerequisites,
+  and return a compact summary of the state written for the next step.
+
+`python3 scripts/validation/cell_audit.py --self-test` mutation-tests these rules; the normal
+`cell_audit.py` run enforces their deterministic subset across every numbered lesson.
+
 ## Contribution Terms
 
 This repository is licensed under Apache-2.0. Unless you clearly mark a submission as
 `Not a Contribution`, any contribution intentionally submitted for inclusion is offered
-under Apache-2.0, with the contribution terms in [`LICENSE.md`](LICENSE.md).
-Every commit must also carry the DCO 1.1 signoff defined in [`DCO.md`](DCO.md). The signoff
-certifies origin and submission rights; it does not transfer copyright or replace review.
+under Apache-2.0, with the contribution terms in [`LICENSE`](LICENSE).
+This Apache-2.0 project does not require a separate contributor license agreement. Every commit
+must carry the DCO 1.1 signoff defined in [`DCO.md`](DCO.md). The signoff certifies origin and
+submission rights; it does not transfer copyright or replace review.
 
 Do not submit material you do not have the right to contribute. Third-party text, images,
 datasets, model artifacts, copied examples, cached web pages, and generated assets need

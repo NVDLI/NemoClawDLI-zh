@@ -28,6 +28,26 @@ case "$BRANCH" in
         ;;
 esac
 
+# Workstation paths are cheap to detect and unsafe to record. Run this before
+# broader repository checks so a local runtime/cache path fails at first touch.
+LOCAL_PATH_AUDIT="$T1/scripts/validation/local_path_leak_audit.py"
+if [ -f "$LOCAL_PATH_AUDIT" ] && ! python3 "$LOCAL_PATH_AUDIT" --staged; then
+    echo ""
+    echo "[pre-commit] REFUSING COMMIT: contributor workstation path detected."
+    echo "Use repository-relative paths, environment variables, or a portable runtime helper."
+    exit 1
+fi
+
+# Finding identifiers, exploit notes, private service locations, and concrete credentials
+# stay outside the repository. Run this beside the workstation-path guard at first touch.
+SENSITIVE_AUDIT="$T1/scripts/validation/sensitive_content_audit.py"
+if [ -f "$SENSITIVE_AUDIT" ] && ! python3 "$SENSITIVE_AUDIT" --staged; then
+    echo ""
+    echo "[pre-commit] REFUSING COMMIT: restricted security or private operational content detected."
+    echo "Move the detail to the approved private record; keep only generic controls in the repository."
+    exit 1
+fi
+
 # The contribution boundary is deliberately cheap and first. If a change weakens
 # issue intake, PR evidence, CI permissions, hooks, or release approval, fail before
 # the contributor spends time on deeper content/runtime gates.
@@ -39,11 +59,27 @@ if [ -f "$SAFETY" ] && ! python3 "$SAFETY"; then
     exit 1
 fi
 
+WORK_PRODUCTS="$T1/scripts/validation/repository_work_products_audit.py"
+if [ -f "$WORK_PRODUCTS" ] && ! python3 "$WORK_PRODUCTS"; then
+    echo ""
+    echo "[pre-commit] REFUSING COMMIT: public repository work-product contract failed."
+    echo "Repair the named requirement, applicability, evidence path, or validator wiring."
+    exit 1
+fi
+
 RELEASE_EVIDENCE="$T1/scripts/validation/release_evidence_audit.py"
 if [ -f "$RELEASE_EVIDENCE" ] && ! python3 "$RELEASE_EVIDENCE"; then
     echo ""
     echo "[pre-commit] REFUSING COMMIT: product design or release test evidence is incomplete."
     echo "Repair the named public document, ownership map, beacon, or validator wiring."
+    exit 1
+fi
+
+THREAT_CONTROLS="$T1/scripts/validation/threat_control_audit.py"
+if [ -f "$THREAT_CONTROLS" ] && ! python3 "$THREAT_CONTROLS"; then
+    echo ""
+    echo "[pre-commit] REFUSING COMMIT: security control disposition or enforcement drifted."
+    echo "Restore the bounded artifact, deployment verification, repository integration, or external-control boundary."
     exit 1
 fi
 
@@ -74,7 +110,7 @@ if [ -n "$STAGED_MDS" ]; then
         echo "This is almost certainly the IDE-buffer-merge race. To recover:"
         echo "  1. Close the affected .md files in VS Code."
         echo "  2. Restore a clean version (Write tool, or in-place dedupe for"
-        echo "     periodically-duplicated files; see docs/notebook_corruption_prevention.md)."
+        echo "     periodically-duplicated files; inspect scripts/validation/nb_audit.py --help)."
         echo "  3. Re-run 'python3 scripts/validation/nb_audit.py' to confirm clean."
         echo "  4. Re-stage and commit."
         exit 1

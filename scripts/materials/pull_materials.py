@@ -20,13 +20,16 @@ Outputs (all committed, so review, grounding, and the build see exactly what get
   web/nemoclaw/mats/_materials.json  provenance per material: url, host, tier, title, blurb,
                                      fetched, sha256, bytes, status
 
-Two modes, one transparent vocabulary (ok / DRIFTED / UNREACHABLE):
+Three modes, one transparent vocabulary (ok / DRIFTED / UNREACHABLE):
   PULL  (contributors + the deploy build): fetch, (re)write the markdown, update provenance.
         A per-material failure NEVER aborts the run: it keeps the committed snapshot and
         records status="unreachable" so the failure is loud, never silent.
-  CHECK (--check; the gate + pre-push): re-fetch, recompute the fingerprint, compare it to the
-        committed provenance, and report each material ok / DRIFTED / UNREACHABLE with the exact
-        one-line fix. Writes nothing. Exits 0 only if every material is ok.
+  VERIFY (--verify-committed; every gate): verify the committed snapshot and its full SHA-256,
+        manifest metadata, and character count without using the network. Any mismatch fails.
+  CHECK (--check; schedules + release): first run VERIFY, then re-fetch with bounded retries,
+        recompute the fingerprint, and report ok / DRIFTED / UNREACHABLE. Writes nothing. Drift,
+        malformed responses, unsafe redirects, TLS failures, and provenance mismatches always fail.
+        A caller may explicitly tolerate only classified transient reachability failures.
 
 The same status + fix text is what the gate folds into docs/validation/latest.{json,md}, which
 build_pages.sh projects to the student-facing validator screen (validation.html / gate.json), so
@@ -36,6 +39,7 @@ Usage:
   python3 scripts/materials/pull_materials.py                 # pull the light on-demand materials (deploy-build default)
   python3 scripts/materials/pull_materials.py --all            # also refresh the heavy glossary tier (index + deep articles)
   python3 scripts/materials/pull_materials.py --only papers   # one host: glossary | blogs | papers
+  python3 scripts/materials/pull_materials.py --verify-committed # offline snapshot + provenance check
   python3 scripts/materials/pull_materials.py --check          # drift check, no writes (CI / pre-push)
   python3 scripts/materials/pull_materials.py --check --json    # machine-readable status (the gate reads this)
   python3 scripts/materials/pull_materials.py --list           # print the manifest and exit
@@ -49,7 +53,10 @@ import hashlib
 import json
 import os
 import sys
+import tempfile
+import time
 from pathlib import Path
+from urllib.parse import urlsplit
 
 for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
     if (_p / "scripts" / "_bootstrap.py").exists():
@@ -69,6 +76,18 @@ CATALOG_MATS = os.path.join(MATS, "materials_index.json")
 CATALOG_ASSET = os.path.join(REPO, "web", "nemoclaw", "assets", "materials_index.json")
 UA = {"User-Agent": "Mozilla/5.0 (NVIDIA DLI course materials vendoring)"}
 ARXIV_API_URL = "https://export.arxiv.org/api/query?id_list="
+FETCH_ATTEMPTS = 4
+RETRY_BACKOFF = 1.0
+MAX_RESPONSE_BYTES = 8 * 1024 * 1024
+TRANSIENT_HTTP_STATUS = {408, 425, 429, 500, 502, 503, 504}
+
+
+class FetchFailure(RuntimeError):
+    """A classified source-fetch failure that callers may handle without guessing."""
+
+    def __init__(self, message: str, *, transient: bool):
+        super().__init__(message)
+        self.transient = transient
 
 # ── manifest ──────────────────────────────────────────────────────────────────
 # Add or change a material here, then re-run the matching extractor.
@@ -106,11 +125,76 @@ def _need_deps():
         return False
 
 
-def _fetch(url):
+def _need_requests():
+    try:
+        import requests  # noqa: F401
+        return True
+    except ImportError:
+        sys.stderr.write("pull_materials self-test needs: requests\n")
+        return False
+
+
+def _transient_request_error(exc) -> bool:
     import requests
-    r = requests.get(url, headers=UA, timeout=30)
-    r.raise_for_status()
-    return r.text
+    if isinstance(exc, requests.exceptions.SSLError):
+        return False
+    if isinstance(exc, (requests.exceptions.Timeout, requests.exceptions.ConnectionError)):
+        return True
+    if isinstance(exc, requests.exceptions.HTTPError) and exc.response is not None:
+        return exc.response.status_code in TRANSIENT_HTTP_STATUS
+    return False
+
+
+def _retry_delay(response, attempt: int, backoff: float) -> float:
+    retry_after = (getattr(response, "headers", {}) or {}).get("Retry-After", "")
+    if str(retry_after).strip().isdigit():
+        return min(float(retry_after), 60.0)
+    return min(backoff * (2 ** (attempt - 1)), 30.0)
+
+
+def _fetch(url, *, attempts=None, backoff=None, get=None, sleep=time.sleep):
+    import requests
+    attempts = FETCH_ATTEMPTS if attempts is None else max(1, int(attempts))
+    backoff = RETRY_BACKOFF if backoff is None else max(0.0, float(backoff))
+    get = get or requests.get
+    requested = urlsplit(url)
+    if requested.scheme != "https" or not requested.hostname:
+        raise FetchFailure(f"refusing non-HTTPS or hostless source URL: {url}", transient=False)
+
+    for attempt in range(1, attempts + 1):
+        response = None
+        try:
+            response = get(url, headers=UA, timeout=30, allow_redirects=True)
+            response.raise_for_status()
+            final = urlsplit(response.url)
+            if final.scheme != "https" or final.hostname != requested.hostname:
+                raise FetchFailure(
+                    f"refusing source redirect {requested.hostname} -> {final.hostname or '?'}",
+                    transient=False,
+                )
+            content = response.content
+            if len(content) > MAX_RESPONSE_BYTES:
+                raise FetchFailure(
+                    f"response exceeds {MAX_RESPONSE_BYTES} bytes", transient=False
+                )
+            return response.text
+        except FetchFailure:
+            raise
+        except requests.exceptions.RequestException as exc:
+            transient = _transient_request_error(exc)
+            if transient and attempt < attempts:
+                delay = _retry_delay(response, attempt, backoff)
+                print(
+                    f"  retry {attempt}/{attempts - 1} after transient fetch failure "
+                    f"({type(exc).__name__}); waiting {delay:g}s",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                sleep(delay)
+                continue
+            raise FetchFailure(
+                f"{exc} (attempts={attempt})", transient=transient
+            ) from exc
 
 
 # ── extractors: url -> (title, blurb, markdown_body) ──────────────────────────
@@ -178,7 +262,7 @@ def _render(mat, title, body):
 
 
 def _sha(s):
-    return hashlib.sha256(s.encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
 
 def _md_path(mat):
@@ -190,6 +274,66 @@ def _load_provenance():
         with open(MATERIALS_JSON, encoding="utf-8") as fh:
             return {r["name"]: r for r in json.load(fh).get("materials", [])}
     return {}
+
+
+def verify_committed(*, manifest=None, provenance_path=None, mats_dir=None):
+    """Verify committed snapshots against exact manifest metadata and full SHA-256 values.
+
+    This check is deliberately network-free. It makes a transient source outage irrelevant to
+    ordinary validation while keeping local or submitted snapshot tampering fail-closed.
+    """
+    manifest = list(MANIFEST if manifest is None else manifest)
+    provenance_path = Path(MATERIALS_JSON if provenance_path is None else provenance_path)
+    mats_dir = Path(MATS if mats_dir is None else mats_dir)
+    findings = []
+
+    names = [m.get("name") for m in manifest]
+    for name in sorted({name for name in names if names.count(name) > 1}):
+        findings.append({"name": name, "detail": "duplicate manifest name"})
+    try:
+        raw = json.loads(provenance_path.read_text(encoding="utf-8"))
+        records = raw.get("materials", [])
+        if not isinstance(records, list):
+            raise ValueError("materials must be a list")
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        return [{"name": provenance_path.name, "detail": f"cannot read provenance: {exc}"}]
+
+    record_names = [r.get("name") for r in records if isinstance(r, dict)]
+    for name in sorted({name for name in record_names if record_names.count(name) > 1}):
+        findings.append({"name": name, "detail": "duplicate provenance name"})
+    by_name = {r.get("name"): r for r in records if isinstance(r, dict)}
+    expected = {m.get("name") for m in manifest}
+    actual = set(by_name)
+    for name in sorted(expected - actual):
+        findings.append({"name": name, "detail": "missing provenance record"})
+    for name in sorted((actual - expected), key=lambda value: str(value)):
+        findings.append({"name": str(name), "detail": "unexpected provenance record"})
+
+    for mat in manifest:
+        name = mat["name"]
+        rec = by_name.get(name)
+        if not rec:
+            continue
+        for field in ("url", "host", "tier"):
+            if rec.get(field) != mat.get(field):
+                findings.append({"name": name, "detail": f"{field} differs from manifest"})
+        if rec.get("status") != "ok":
+            findings.append({"name": name, "detail": "committed provenance status is not ok"})
+        digest = rec.get("sha256", "")
+        if not re.fullmatch(r"[0-9a-f]{64}", digest):
+            findings.append({"name": name, "detail": "sha256 is not a full lowercase digest"})
+        snapshot = mats_dir / f"{name}.md"
+        try:
+            text = snapshot.read_text(encoding="utf-8")
+        except OSError as exc:
+            findings.append({"name": name, "detail": f"cannot read snapshot: {exc}"})
+            continue
+        actual_digest = _sha(text)
+        if digest != actual_digest:
+            findings.append({"name": name, "detail": f"snapshot SHA-256 mismatch ({digest} -> {actual_digest})"})
+        if rec.get("bytes") != len(text):
+            findings.append({"name": name, "detail": f"snapshot character count mismatch ({rec.get('bytes')} -> {len(text)})"})
+    return findings
 
 
 def _selected(only):
@@ -223,18 +367,108 @@ def pull_one(mat):
 
 def check_one(mat, prov):
     """Re-fetch and compare the freshly-rendered fingerprint to the committed provenance.
-    Returns (status, detail) with status in ok / drifted / unreachable. Writes nothing."""
+    Returns (status, detail, transient) with status in ok / drifted / unreachable."""
     have = prov.get(mat["name"])
     try:
         title, blurb, body = EXTRACTORS[mat["host"]](mat["url"])
         fresh = _sha(_render(mat, title, body))
-    except Exception as exc:  # noqa: BLE001
-        return "unreachable", str(exc)[:160]
+    except FetchFailure as exc:
+        return "unreachable", str(exc)[:160], exc.transient
+    except Exception as exc:  # noqa: BLE001 - malformed content is permanent until corrected
+        return "unreachable", str(exc)[:160], False
     if not have or "sha256" not in have:
-        return "drifted", "no committed fingerprint yet (never pulled)"
+        return "drifted", "no committed fingerprint yet (never pulled)", False
     if fresh != have["sha256"]:
-        return "drifted", f"source changed since {have.get('fetched', '?')} ({have['sha256']} -> {fresh})"
-    return "ok", ""
+        return "drifted", f"source changed since {have.get('fetched', '?')} ({have['sha256']} -> {fresh})", False
+    return "ok", "", False
+
+
+def check_passes(rows, tampered, allow_transient_unreachable=False):
+    if tampered or any(row["status"] == "drifted" for row in rows):
+        return False
+    unreachable = [row for row in rows if row["status"] == "unreachable"]
+    return not unreachable or (
+        allow_transient_unreachable and all(row.get("transient") for row in unreachable)
+    )
+
+
+def self_test():
+    import requests
+
+    failures = []
+
+    class FakeResponse:
+        def __init__(self, status, url="https://example.test/source", text="ok", headers=None):
+            self.status_code = status
+            self.url = url
+            self.text = text
+            self.content = text.encode("utf-8")
+            self.headers = headers or {}
+
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                exc = requests.exceptions.HTTPError(f"{self.status_code} response")
+                exc.response = self
+                raise exc
+
+    sequence = iter([FakeResponse(429), FakeResponse(503), FakeResponse(200)])
+    calls = []
+
+    def fake_get(*args, **kwargs):
+        calls.append((args, kwargs))
+        return next(sequence)
+
+    if _fetch("https://example.test/source", attempts=3, backoff=0, get=fake_get, sleep=lambda _: None) != "ok" or len(calls) != 3:
+        failures.append("transient 429/503 responses were not retried to success")
+
+    calls.clear()
+    try:
+        _fetch("https://example.test/source", attempts=4, get=lambda *a, **k: (calls.append(1) or FakeResponse(404)), sleep=lambda _: None)
+        failures.append("permanent HTTP failure unexpectedly passed")
+    except FetchFailure as exc:
+        if exc.transient or len(calls) != 1:
+            failures.append("permanent HTTP failure was retried or misclassified")
+
+    try:
+        _fetch("https://example.test/source", get=lambda *a, **k: FakeResponse(200, url="https://other.test/source"))
+        failures.append("cross-host redirect unexpectedly passed")
+    except FetchFailure as exc:
+        if exc.transient:
+            failures.append("cross-host redirect misclassified as transient")
+
+    with tempfile.TemporaryDirectory(prefix="material-provenance-") as td:
+        root = Path(td)
+        mat = {"name": "fixture", "url": "https://example.test/source", "host": "fixture", "tier": "on_demand"}
+        text = "# Fixture\n"
+        (root / "fixture.md").write_text(text, encoding="utf-8")
+        provenance = root / "_materials.json"
+        record = {**mat, "status": "ok", "sha256": _sha(text), "bytes": len(text)}
+        provenance.write_text(json.dumps({"materials": [record]}), encoding="utf-8")
+        if verify_committed(manifest=[mat], provenance_path=provenance, mats_dir=root):
+            failures.append("clean committed snapshot rejected")
+        (root / "fixture.md").write_text(text + "tamper\n", encoding="utf-8")
+        if not verify_committed(manifest=[mat], provenance_path=provenance, mats_dir=root):
+            failures.append("snapshot tampering escaped verifier")
+        (root / "fixture.md").write_text(text, encoding="utf-8")
+        changed = dict(record, url="https://example.test/changed")
+        provenance.write_text(json.dumps({"materials": [changed]}), encoding="utf-8")
+        if not verify_committed(manifest=[mat], provenance_path=provenance, mats_dir=root):
+            failures.append("provenance metadata tampering escaped verifier")
+
+    transient = [{"status": "unreachable", "transient": True}]
+    permanent = [{"status": "unreachable", "transient": False}]
+    drifted = [{"status": "drifted", "transient": False}]
+    if not check_passes(transient, [], True):
+        failures.append("explicit transient-only degradation was rejected")
+    if check_passes(transient, [], False) or check_passes(permanent, [], True):
+        failures.append("unapproved or permanent reachability failure passed")
+    if check_passes(drifted, [], True) or check_passes([], [{"detail": "tampered"}], True):
+        failures.append("drift or tampering passed degraded policy")
+
+    print(f"materials self-test: {7 - len(failures)}/7 passed")
+    for failure in failures:
+        print(f"  FAIL {failure}")
+    return 1 if failures else 0
 
 
 def cmd_glossary(check):
@@ -291,16 +525,24 @@ def build_catalog():
 
 
 def main():
-    """Entry point for both modes. CHECK (--check) is what the gate and pre-push run: it re-fetches
-    each source, recomputes the fingerprint, and fails if any material DRIFTED from its committed
-    snapshot or is UNREACHABLE, so a stale or vanished citation is caught before it misleads a student.
-    PULL (the default, contributors + deploy build) re-fetches and rewrites the committed markdown and
-    provenance. A per-material failure never aborts the run; it is recorded as unreachable, loudly."""
+    """Run offline verification, live drift checks, or an explicit material refresh."""
+    global FETCH_ATTEMPTS, RETRY_BACKOFF
     ap = argparse.ArgumentParser(
         description="Pull course materials from their web sources into committed markdown.",
         formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
     ap.add_argument("--only", choices=list(ONLY_MAP), help="restrict to one host type")
     ap.add_argument("--check", action="store_true", help="drift check (re-fetch + compare); writes nothing")
+    ap.add_argument("--verify-committed", action="store_true",
+                    help="network-free committed snapshot and provenance verification")
+    ap.add_argument("--self-test", action="store_true", help="run retry, classification, and tamper fixtures")
+    ap.add_argument("--fetch-attempts", type=int, default=FETCH_ATTEMPTS,
+                    help=f"maximum attempts for transient source failures (default: {FETCH_ATTEMPTS})")
+    ap.add_argument("--retry-backoff", type=float, default=RETRY_BACKOFF,
+                    help=f"initial exponential retry delay in seconds (default: {RETRY_BACKOFF:g})")
+    ap.add_argument("--host-delay", type=float, default=3.0,
+                    help="delay between live checks against the same source host (default: 3)")
+    ap.add_argument("--allow-transient-unreachable", action="store_true",
+                    help="with --check only, tolerate classified transient reachability failures; drift and tampering still fail")
     ap.add_argument("--all", action="store_true",
                     help="also refresh the heavy glossary tier (index + 7 deep articles + images); "
                          "the default pulls only the light on-demand materials, which is what the deploy build runs")
@@ -309,6 +551,33 @@ def main():
                     help="rebuild only materials_index.json (glossary + on-demand) from existing data, no fetch")
     ap.add_argument("--json", action="store_true", help="machine-readable status (for the gate)")
     a = ap.parse_args()
+
+    if a.fetch_attempts < 1 or a.retry_backoff < 0 or a.host_delay < 0:
+        ap.error("fetch attempts must be positive; delay values cannot be negative")
+    if a.allow_transient_unreachable and not a.check:
+        ap.error("--allow-transient-unreachable requires --check")
+    if sum(bool(mode) for mode in (a.check, a.verify_committed, a.self_test, a.catalog, a.list)) > 1:
+        ap.error("choose one of --check, --verify-committed, --self-test, --catalog, or --list")
+
+    FETCH_ATTEMPTS = a.fetch_attempts
+    RETRY_BACKOFF = a.retry_backoff
+
+    if a.self_test:
+        if not _need_requests():
+            return 2
+        return self_test()
+
+    if a.verify_committed:
+        findings = verify_committed()
+        if a.json:
+            print(json.dumps({"clean": not findings, "findings": findings}, indent=2))
+        elif findings:
+            print("committed materials verification: FAIL")
+            for item in findings:
+                print(f"  {item['name']}: {item['detail']}")
+        else:
+            print(f"committed materials verification: PASS ({len(MANIFEST)} snapshots, full SHA-256)")
+        return 1 if findings else 0
 
     if a.catalog:                                 # --catalog: rebuild the searchable index from existing data, no fetch
         build_catalog()
@@ -329,20 +598,42 @@ def main():
 
     # ── CHECK mode (the gate + pre-push) ──────────────────────────────────────
     if a.check:
+        tampered = verify_committed()
+        if tampered:
+            if a.json:
+                print(json.dumps({"checked": 0, "ok": 0, "drifted": [], "unreachable": [],
+                                  "tampered": tampered, "clean": False, "degraded": False,
+                                  "rows": []}, indent=2))
+            else:
+                print("materials drift check: FAIL before network access")
+                for item in tampered:
+                    print(f"  TAMPERED    {item['name']}: {item['detail']}")
+            return 1
         prov = _load_provenance()                 # the committed fingerprints to compare against
         rows, drifted, unreachable = [], [], []
+        previous_host = None
         for mat in sel:
-            status, detail = check_one(mat, prov)  # re-fetch + compare; never writes
+            if previous_host == mat["host"] and a.host_delay:
+                time.sleep(a.host_delay)
+            previous_host = mat["host"]
+            status, detail, transient = check_one(mat, prov)  # re-fetch + compare; never writes
             rows.append({"name": mat["name"], "url": mat["url"], "host": mat["host"],
-                         "tier": mat["tier"], "status": status, "detail": detail})
+                         "tier": mat["tier"], "status": status, "detail": detail,
+                         "transient": transient})
             if status == "drifted":               # source text changed since it was vendored
                 drifted.append(mat)
             elif status == "unreachable":         # source could not be fetched (kept the snapshot)
                 unreachable.append(mat)
         gstat = cmd_glossary(check=True) if do_glossary else None
         if gstat and gstat != "ok":
-            unreachable.append({"name": "glossary", "host": "glossary"})
-        ok = len(rows) - len(drifted) - len(unreachable)
+            glossary_row = {"name": "glossary", "url": "", "host": "glossary",
+                            "tier": "cached", "status": "unreachable",
+                            "detail": "committed glossary index is invalid", "transient": False}
+            rows.append(glossary_row)
+            unreachable.append(glossary_row)
+        ok = sum(row["status"] == "ok" for row in rows)
+        passes = check_passes(rows, tampered, a.allow_transient_unreachable)
+        degraded = bool(unreachable) and passes
         if not a.json:
             print("\nmaterials drift check  (re-fetch + fingerprint vs committed provenance)")
             for r in rows:
@@ -354,14 +645,17 @@ def main():
                     print(f"               fix: python3 scripts/materials/pull_materials.py --only {fix}   (then commit)")
             print(f"\n  {ok}/{len(rows)} ok"
                   + (f" · {len(drifted)} drifted" if drifted else "")
-                  + (f" · {len(unreachable)} unreachable" if unreachable else ""))
+                  + (f" · {len(unreachable)} unreachable" if unreachable else "")
+                  + (" · allowed transient degradation" if degraded else ""))
         else:
             print(json.dumps({"checked": len(rows), "ok": ok,
                               "drifted": [r["name"] for r in rows if r["status"] == "drifted"],
                               "unreachable": [r["name"] for r in rows if r["status"] == "unreachable"],
+                              "tampered": tampered,
                               "clean": not drifted and not unreachable,
+                              "degraded": degraded,
                               "rows": rows}, indent=2))
-        return 0 if (not drifted and not unreachable) else 1
+        return 0 if passes else 1
 
     # ── PULL mode (contributors + the deploy build) ───────────────────────────
     os.makedirs(MATS, exist_ok=True)

@@ -18,8 +18,8 @@ from typing import Iterable
 from urllib import error, parse, request
 
 
-DEFAULT_HOST = "gitlab-master.nvidia.com"
-DEFAULT_PROJECT_ID = "364401"
+DEFAULT_HOST = os.environ.get("CI_SERVER_HOST", "gitlab.com")
+DEFAULT_PROJECT_ID = os.environ.get("CI_PROJECT_ID", "")
 STANDARDS_ISSUE_TITLE = (
     "Standardize issue cadence for NemoClaw CPU release and reviewer-feedback tracker"
 )
@@ -374,8 +374,9 @@ def issue_body(issue: IssueRefresh) -> str:
         "",
         "## Current release target",
         "",
-        "- Course: `web/nemoclaw/`",
-        "- Runtime: CPU service stack (`cpu/`, `workspace/`, `deploy/`)",
+        "- Course: static browser course under `web/nemoclaw/`",
+        "- Production: public static host or co-located NemoClaw launchable",
+        "- Local-only support: `cpu/`, `workspace/`, and `deploy/`",
         f"- Bundle scope: {issue.scope}",
         "",
         "## Evidence",
@@ -406,12 +407,13 @@ def issue_body(issue: IssueRefresh) -> str:
 def standards_issue_body() -> str:
     return """## Summary
 
-Standardize issue cadence, labels, and tracker/MR expectations for the current NemoClaw CPU release while preserving the repo as a future multi-course bundle.
+Standardize issue cadence, labels, and tracker/MR expectations for the current static NemoClaw course while preserving the repo as a future multi-course bundle.
 
 ## Current release target
 
-- Course: `web/nemoclaw/`
-- Runtime: CPU service stack (`cpu/`, `workspace/`, `deploy/`)
+- Course: static browser course under `web/nemoclaw/`
+- Production: public static host or co-located NemoClaw launchable
+- Local-only support: `cpu/`, `workspace/`, and `deploy/`
 - Bundle scope: bundle-wide process standard with current-course examples
 
 ## Evidence
@@ -431,7 +433,7 @@ Standardize issue cadence, labels, and tracker/MR expectations for the current N
 
 ## Acceptance criteria
 
-- [ ] Issue standards name the current NemoClaw-on-CPU target and future bundle scope.
+- [ ] Issue standards name the current static browser target and future bundle scope.
 - [ ] Issue and MR templates make course/runtime/bundle scope explicit.
 - [ ] Open reviewer-feedback issues preserve the PDF critique as summarized, public-safe evidence.
 - [ ] Open operational/security issues use the same issue anatomy and label cadence.
@@ -578,6 +580,8 @@ def parse_args(argv: Iterable[str]) -> argparse.Namespace:
 
 def main(argv: Iterable[str] = sys.argv[1:]) -> int:
     args = parse_args(argv)
+    if not args.project_id:
+        raise SystemExit("--project-id or CI_PROJECT_ID is required")
     if args.dry_run:
         print(f"DRY target: {args.host}/projects/{args.project_id}")
         create_labels(None, True)  # type: ignore[arg-type]

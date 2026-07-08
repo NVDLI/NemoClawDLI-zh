@@ -1680,8 +1680,7 @@ svg[style*="background: #0d0d0d"] {
   color: #1f2328 !important;
 }
 
-/* Pages that style their SVGs via a page-local <style> block (e.g. cert.html's
-   `.topo-svg svg { background:#0d0d0d }`) don't get the substitution above,
+/* Pages that style their SVGs via a page-local <style> block don't get the substitution above,
    because those rules win on specificity. Patch with !important per-page selector. */
 .topo-svg svg {
   background: #f6f8fa !important;
@@ -2051,10 +2050,10 @@ pre .hljs                { color: #1f2328 !important; background: transparent !i
 
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.21/lib/codemirror.min.css" integrity="sha384-5051nNF3/zZWmqR8xLbnEemOtE5aiJ1EQkEq9vNXYOnGP/3BgYGknkOKuic0TtLg" crossorigin="anonymous"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.21/theme/monokai.min.css" integrity="sha384-quTpEUSU3EctO0q/LujapVfLi1W2HzJSa8AYlphQqdUVu4xv3L0FpJM4qiGlFtSG" crossorigin="anonymous"/>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.21/lib/codemirror.min.js" integrity="sha384-0g/X0mKSHhn466L6gmwQ9T6fCIeXJnwNSxvvJ0BdQtCDDS0FexoLx+DrxcZEZzEg" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.21/mode/javascript/javascript.min.js" integrity="sha384-eFWmno3frUPpxd9HY3/D+mG053G//m0lzptejdowRL0e0ZDemrkiin1+tvD+6y3K" crossorigin="anonymous"></script>
 <style>
   .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
   .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
@@ -2312,7 +2311,7 @@ pre .hljs                { color: #1f2328 !important; background: transparent !i
 // same page HTML works in the lab static host, an external iframe, or opened as a
 // local file, all identically, because it only ever talks to remotes.
 
-const DIRECT_URL = "https://nvidia-api-cors-proxy.vkudlay.workers.dev/v1";
+const DIRECT_URL = "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1";
 // Web-cell model contract. The short course standardises on the fast Nemotron
 // nano model: it carries the reasoning channel and is quick enough for live
 // browser cells. DEFAULT_MODEL is what chat() uses when a cell passes no model;
@@ -3495,7 +3494,9 @@ helpers.viz.sideBySide(
     if (_cmPythonPromise) return _cmPythonPromise;
     _cmPythonPromise = new Promise((resolve, reject) => {
       const s = document.createElement("script");
-      s.src = "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js";
+      s.src = "https://cdn.jsdelivr.net/npm/codemirror@5.65.21/mode/python/python.min.js";
+      s.integrity = "sha384-7b0bBxjCy1nOeHyF0JF7apxjgAqjgO0oIMT+YbJdWCD1XN2yyuH+Bszrto8jH/+8";
+      s.crossOrigin = "anonymous";
       s.async = true;
       s.onload  = resolve;
       s.onerror = reject;
@@ -7286,12 +7287,12 @@ mountClawProbe("#probe-llm", {
   label: "Probe model endpoint (build.nvidia.com)",
   intro: "",
   defaultUrl:   "https://integrate.api.nvidia.com/v1",
-  proxyBase:    "https://nvidia-api-cors-proxy.vkudlay.workers.dev",
+  proxyBase:    "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com",
   defaultToken: localStorage.getItem("nvapi") || "",
   fieldHelp: {
     url: `<p><strong>What it is:</strong> The NVIDIA model API base. Pre-filled, no changes needed.</p>
 <p><strong>How requests reach it:</strong> The browser can't call <code>integrate.api.nvidia.com</code> directly because
-of the same-origin policy. Requests route through a hosted Cloudflare Worker that adds CORS headers and
+of the same-origin policy. Requests route through a hosted relay that adds CORS headers and
 forwards your key unchanged.</p>
 <p><strong>Running locally (not in the lab):</strong> Call <code>https://integrate.api.nvidia.com/v1</code> directly
 from your script or notebook. No proxy needed outside a browser context, where the same-origin restriction doesn't apply.</p>`,
@@ -7326,7 +7327,7 @@ mountCanvasFlow("#bench-llm", {
       id: "fetch-models", icon: "📋", title: "Fetch matching models", x: 0, y: 0,
       summary: "Pull the model catalog from the proxy and keep only models whose ID contains one of the filter substrings. Adjust FILTER to change which models run in the benchmark.",
       code: `const FILTER = ["120b", "glm", "kimi", "minimax"];
-const PROXY  = "https://nvidia-api-cors-proxy.vkudlay.workers.dev";
+const PROXY  = "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com";
 const KEY    = localStorage.getItem("nvapi") || "";
 if (!KEY) {
   helpers.log("No nvapi- key saved. Go to the course home and save your key first.");
@@ -7459,7 +7460,7 @@ mountClawProbe("#probe-claw", {
   intro: "",
   defaultUrl:   "",
   defaultToken: "",
-  proxyBase:    "https://openclaw-cors-proxy.vkudlay.workers.dev",
+  proxyBase:    "https://openclaw-cors-proxy.experiments.courses.nvidia.com",
   proxyMode:    "prefix",
   syncCanvas:   true,
   cfAccess:     true,

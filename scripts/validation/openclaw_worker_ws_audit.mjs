@@ -5,7 +5,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const root = process.cwd();
-const sourcePath = path.join(root, 'cors-proxy/cors-proxy-worker-openclaw.js');
+const sourcePath = path.join(root, 'scripts/cors-proxy/cors-proxy-worker-openclaw.js');
 const source = fs.readFileSync(sourcePath, 'utf8');
 const tmpPath = path.join(os.tmpdir(), `openclaw-worker-${process.pid}.mjs`);
 fs.writeFileSync(tmpPath, source, 'utf8');

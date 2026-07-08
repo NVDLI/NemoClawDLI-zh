@@ -6,9 +6,9 @@
 <title>OpenShell · Seguridad de agentes</title>
 <link rel="stylesheet" href="styles/_style.css"/>
 <script src="vendor/highlight-11.10.0.min.js"></script>
-<link rel="stylesheet" href="vendor/codemirror-5.65.16.min.css"/>
-<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.16.min.css"/>
-<script src="vendor/codemirror-5.65.16.min.js"></script>
+<link rel="stylesheet" href="vendor/codemirror-5.65.21.min.css"/>
+<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.min.css"/>
+<script src="vendor/codemirror-5.65.21.min.js"></script>
 <style>
   .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
   .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
@@ -91,7 +91,7 @@
     <div class="eyebrow">Módulo 4 · Parte A de 3</div>
     <h1>El sandbox de <span>OpenShell</span></h1>
     <p class="lead">El Módulo 3 proporcionó a OpenClaw contexto persistente y activadores sin supervisión. Las reglas del prompt y las comprobaciones del entorno de ejecución aún influyen en lo que intenta hacer; OpenShell sitúa la decisión final de permitir o denegar en un sandbox que el agente no puede reescribir.</p>
-    <p class="lead">En esta página enviará comandos reales a su launchable, leerá cada veredicto y lo relacionará con la regla que lo produjo. Después examinará un segundo límite: el plano de control del operador situado por encima del sandbox.</p>
+    <p class="lead">En esta página enviarás comandos reales a tu launchable, leerás cada veredicto y lo relacionarás con la regla que lo produjo. Después examinarás un segundo límite: el plano de control del operador situado por encima del sandbox.</p>
   </div>
 
   <!-- video removed: short teaser, more distraction than signal. Re-enable by uncommenting.
@@ -108,42 +108,42 @@
 
   <figure class="architecture-map">
     <div class="fig-embed" data-svg-src="assets/figures/04a-openshell-architecture.svg"></div>
-    <figcaption>OpenShell separa la entrada de control, la aplicación de políticas, el estado del agente, el acceso a herramientas y el enrutamiento de modelos. Mantenga este mapa a la vista mientras la página avanza desde el propósito del sandbox hasta las comprobaciones de la política activa.</figcaption>
+    <figcaption>OpenShell separa la entrada de control, la aplicación de políticas, el estado del agente, el acceso a herramientas y el enrutamiento de modelos. Mantén este mapa a la vista mientras la página avanza desde el propósito del sandbox hasta las comprobaciones de la política activa.</figcaption>
   </figure>
 
-  <div class="callout"><strong>Mantenga separados los tres productos al rastrear la aplicación de políticas.</strong> <ul> <li><a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener">OpenClaw</a> es el framework del agente. Decide qué herramienta utilizar y qué acción intentar.</li> <li><a href="https://github.com/NVIDIA/openshell" target="_blank" rel="noopener">OpenShell</a> es el runtime de seguridad. Limita los archivos, destinos de red y operaciones del sistema operativo disponibles para esa acción.</li> <li><a href="https://www.nvidia.com/en-us/ai/nemoclaw/" target="_blank" rel="noopener">NemoClaw</a> es el stack de referencia que empaqueta OpenClaw y OpenShell con comandos del ciclo de vida, ajustes de políticas, orientación para la inferencia y valores predeterminados de implementación.</li> </ul> <p>OpenShell no depende de un agente específico. El mismo límite puede contener OpenClaw, <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes</a>, <a href="https://github.com/langchain-ai/deepagents" target="_blank" rel="noopener">LangChain deepagents</a> u otro proceso que necesite contención a nivel del sistema operativo.</p></div>
+  <div class="callout"><strong>Mantén separados los tres productos al rastrear la aplicación de políticas.</strong> <ul> <li><a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener">OpenClaw</a> es el framework del agente. Decide qué herramienta utilizar y qué acción intentar.</li> <li><a href="https://github.com/NVIDIA/openshell" target="_blank" rel="noopener">OpenShell</a> es el runtime de seguridad. Limita los archivos, destinos de red y operaciones del sistema operativo disponibles para esa acción.</li> <li><a href="https://www.nvidia.com/en-us/ai/nemoclaw/" target="_blank" rel="noopener">NemoClaw</a> es el stack de referencia que empaqueta OpenClaw y OpenShell con comandos del ciclo de vida, ajustes de políticas, orientación para la inferencia y valores predeterminados de implementación.</li> </ul> <p>OpenShell no depende de un agente específico. El mismo límite puede contener OpenClaw, <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes</a>, <a href="https://github.com/langchain-ai/deepagents" target="_blank" rel="noopener">LangChain deepagents</a> u otro proceso que necesite contención a nivel del sistema operativo.</p></div>
 
   <h2>Dónde interviene cada capa de defensa</h2>
-  <p>Suponga que contenido no confiable indica a un agente que lea una credencial y la envíe fuera del entorno. Tres capas distintas pueden detener esa acción, y cada una responde a una pregunta diferente.</p>
+  <p>Supón que contenido no confiable indica a un agente que lea una credencial y la envíe fuera del entorno. Tres capas distintas pueden detener esa acción, y cada una responde a una pregunta diferente.</p>
   <ul>
-    <li><strong>El prompt orienta la intención.</strong> Una regla como “no revele credenciales” describe el comportamiento esperado. Aún así, <a href="https://arxiv.org/abs/2302.12173" target="_blank" rel="noopener">contenido recuperado malicioso</a>, la salida de una herramienta u otro agente pueden engañar el modelo. Esta capa influye en la decisión; no reduce la autoridad concedida por el runtime.</li>
+    <li><strong>El prompt orienta la intención.</strong> Una regla como «no reveles credenciales» describe el comportamiento esperado. Aun así, el <a href="https://arxiv.org/abs/2302.12173" target="_blank" rel="noopener">contenido recuperado malicioso</a>, la salida de una herramienta u otro agente pueden engañar al modelo. Esta capa influye en la decisión; no reduce la autoridad concedida por el runtime.</li>
     <li><strong>El entorno de ejecución valida la solicitud.</strong> OpenClaw o Hermes pueden rechazar una forma de shell no admitida, una llamada a herramienta prohibida o un argumento con formato incorrecto antes de que la solicitud llegue al sistema operativo. Esa comprobación determinista resulta útil, pero sigue siendo lógica de aplicación que puede estar mal configurada, desactualizada o comprometida.</li>
     <li><strong>El sandbox limita el resultado.</strong> OpenShell solo concede al proceso la autoridad permitida por la política. Si fallan tanto el prompt como el entorno de ejecución, el sistema operativo aún puede denegar una operación de archivo, red o proceso antes de que se complete.</li>
   </ul>
-  <p>El trabajo práctico de esta página mide esa capa final. Intentará una acción, observará el veredicto de permiso o denegación y relacionará el resultado con el mecanismo que lo aplicó.</p>
+  <p>El trabajo práctico de esta página mide esa capa final. Intentarás una acción, observarás el veredicto de permiso o denegación y relacionarás el resultado con el mecanismo que lo aplicó.</p>
 
   <details class="vocab-menu">
     <summary>Por qué la aplicación de políticas debe estar por debajo del modelo</summary>
     <div class="vocab-clusters">
       <div class="vocab-cluster" id="principle-zero-trust">
-        <h3>Suponga que una solicitud de apariencia válida aún puede causar daño</h3>
-        <p><a href="https://csrc.nist.gov/pubs/sp/800/207/final" target="_blank" rel="noopener">Zero trust</a> rechaza la confianza implícita basada únicamente en el origen de una solicitud. La <a href="https://genai.owasp.org/llmrisk/llm01-prompt-injection/" target="_blank" rel="noopener">guía de OWASP sobre inyección de prompts</a> aplica la misma disciplina a los agentes: limite las herramientas, restrinja los privilegios y suponga que el contenido externo puede dirigir al modelo.</p>
+        <h3>Supón que una solicitud de apariencia válida aún puede causar daño</h3>
+        <p><a href="https://csrc.nist.gov/pubs/sp/800/207/final" target="_blank" rel="noopener">Zero trust</a> rechaza la confianza implícita basada únicamente en el origen de una solicitud. La <a href="https://genai.owasp.org/llmrisk/llm01-prompt-injection/" target="_blank" rel="noopener">guía de OWASP sobre inyección de prompts</a> aplica la misma disciplina a los agentes: limita las herramientas, restringe los privilegios y supone que el contenido externo puede dirigir al modelo.</p>
       </div>
       <div class="vocab-cluster" id="principle-least-privilege">
-        <h3>Conceda únicamente la autoridad que necesita la tarea</h3>
+        <h3>Concede únicamente la autoridad que necesita la tarea</h3>
         <p><a href="https://www.cs.virginia.edu/~evans/cs551/saltzer/" target="_blank" rel="noopener">Saltzer y Schroeder</a> lo describieron como el principio de mínimo privilegio: cada componente recibe únicamente los permisos necesarios para su trabajo. Esta disciplina es anterior a los agentes y se aplica directamente en este contexto.</p>
       </div>
       <div class="vocab-cluster" id="principle-measured-boundaries">
-        <h3>Mida los límites en lugar de intentar demostrar la intención</h3>
+        <h3>Mide los límites en lugar de intentar demostrar la intención</h3>
         <p>El <a href="https://en.wikipedia.org/wiki/Rice%27s_theorem" target="_blank" rel="noopener">teorema de Rice</a>
-           descarta una prueba general para el comportamiento no trivial de programas arbitrarios. Un agente que ejecuta código merece la misma cautela: mida los límites de lo que se ejecuta, en lugar de suponer que una comprobación estática puede demostrar que toda acción futura será segura.</p>
+           descarta una prueba general para el comportamiento no trivial de programas arbitrarios. Un agente que ejecuta código merece la misma cautela: mide los límites de lo que se ejecuta, en lugar de suponer que una comprobación estática puede demostrar que toda acción futura será segura.</p>
       </div>
     </div>
   </details>
 
   <div id="sandbox-mechanisms"></div>
   <h2>Cómo responden los mecanismos del sandbox a preguntas comprobables</h2>
-  <p>Este launchable combina cuatro mecanismos del sistema operativo. Cada uno responde a una pregunta que puede comprobar, y juntos aplican la política en más de un límite. Lea la política activa más adelante en la página antes de considerar universal cualquier garantía.</p>
+  <p>Este launchable combina cuatro mecanismos del sistema operativo. Cada uno responde a una pregunta que puede comprobar, y juntos aplican la política en más de un límite. Lee la política activa más adelante en la página antes de considerar universal cualquier garantía.</p>
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/04a-safety-1.svg" style="aspect-ratio:720 / 320"></div>
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Reglas de prompt y protecciones de la aplicación orientan al agente; la contención del kernel impone el límite final. La flecha bloqueada representa una acción interrumpida antes de llegar al disco o a la red.</figcaption>
@@ -156,7 +156,7 @@
     </div>
     <div class="layer-card">
       <h3>2 · ¿Qué archivos puede alcanzar?</h3>
-      <p><a href="https://docs.kernel.org/userspace-api/landlock.html" target="_blank" rel="noopener"><strong>Landlock</strong></a> es un módulo de seguridad de Linux que restringe el acceso futuro al sistema de archivos. Aquí limita las operaciones nuevas a las rutas que concede la política. La aplicación es sólida, pero el modo de compatibilidad, OverlayFS y los descriptores abiertos antes de imponer la restricción siguen importando. Lea la política activa y pruebe la ruta que pretende exponer.</p>
+      <p><a href="https://docs.kernel.org/userspace-api/landlock.html" target="_blank" rel="noopener"><strong>Landlock</strong></a> es un módulo de seguridad de Linux que restringe el acceso futuro al sistema de archivos. Aquí limita las operaciones nuevas a las rutas que concede la política. La aplicación es sólida, pero el modo de compatibilidad, OverlayFS y los descriptores abiertos antes de imponer la restricción siguen importando. Lee la política activa y prueba la ruta que pretendes exponer.</p>
     </div>
     <div class="layer-card">
       <h3>3 · ¿Qué operaciones del núcleo puede solicitar?</h3>
@@ -194,7 +194,7 @@
           <dt>Derechos del entorno</dt>
           <dd>Acceso que, de otro modo, un proceso heredaría del sistema operativo, del proceso padre, de los montajes o de las credenciales.</dd>
           <dt>Árbol del workspace</dt>
-          <dd>Subárbol de directorios que concede una política. Compruebe la política activa y la compatibilidad del kernel antes de tratarlo como un límite completo del sistema de archivos.</dd>
+          <dd>Subárbol de directorios que concede una política. Comprueba la política activa y la compatibilidad del kernel antes de tratarlo como un límite completo del sistema de archivos.</dd>
           <dt>Montaje enlazado</dt>
           <dd>Subárbol del sistema de archivos que se hace visible en otra ruta, incluso a través de límites de chroot. <a href="https://man7.org/linux/man-pages/man2/mount.2.html" target="_blank" rel="noopener">mount(2)</a></dd>
           <dt>Condición de carrera con symlinks</dt>
@@ -234,8 +234,8 @@
     </div>
   </details>
 
-  <h2>Prepare primero el runtime</h2>
-  <p>Antes de controlar el sandbox, restablezca el estado correcto del agente mediante Recuperar si el runtime está degradado. Así, cada celda activa posterior tendrá un agente funcional con el que comunicarse.</p>
+  <h2>Prepara primero el runtime</h2>
+  <p>Antes de controlar el sandbox, restablece el estado correcto del agente mediante Recuperar si el runtime está degradado. Así, cada celda activa posterior tendrá un agente funcional con el que comunicarse.</p>
   <p>El diagrama traza lo que ocurre en cada llamada a herramienta, y las celdas siguientes permiten realizar esas llamadas y leer la respuesta del kernel.</p>
 
   <div class="callout"><p><strong>El mismo runtime de Kickstart.</strong> Cada celda controla al agente OpenClaw conectado en esa página.</p></div>
@@ -247,34 +247,34 @@
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Reglas de prompt y protecciones de la aplicación orientan al agente; la contención del kernel impone el límite final. La flecha bloqueada representa una acción interrumpida antes de llegar al disco o a la red.</figcaption>
   </figure>
 
-  <h2>Observe cómo decide el kernel</h2>
-  <p>Los cuatro mecanismos anteriores están activos en el entorno del laboratorio. Puede observar cada decisión en lugar de confiar únicamente en el diagrama.</p>
-  <p>La celda siguiente ejecuta un comando a la vez en el sandbox y devuelve tres datos:</p>
+  <h2>Observa cómo decide el kernel</h2>
+  <p>Los cuatro mecanismos anteriores están activos en el entorno del laboratorio. Puedes observar cada decisión en lugar de confiar únicamente en el diagrama.</p>
+  <p>La celda siguiente ejecuta un comando a la vez. Planteas una pregunta, la celda ejecuta el comando correspondiente en el sandbox y devuelve tres datos:</p>
   <ul>
     <li>el veredicto que devolvió el kernel,</li>
     <li>el mecanismo que lo decidió,</li>
     <li>y la línea de evidencia que sustenta la decisión.</li>
   </ul>
-  <p>El catálogo inicial recorre las preguntas que plantearía sobre un entorno como este, desde el acceso a Internet abierto hasta la modificación de la personalidad del agente. Puede editar cualquier comando o añadir su propia sonda.</p>
+  <p>El catálogo inicial recorre las preguntas que plantearías sobre un entorno como este, desde el acceso abierto a Internet hasta la modificación de la personalidad del agente. Puedes editar cualquier comando o añadir tu propia sonda.</p>
   <div id="cell-layers"></div>
 
 
 
 
-  <h2>Avance: una trayectoria completa</h2>
-  <p>Un agente real encadena varios comandos para alcanzar un objetivo que ninguna celda aislada intenta por sí sola. Describa uno en el campo siguiente. El agente planifica toda la secuencia de comandos de shell, ejecuta cada comando en el sandbox y muestra los resultados en orden. Observe el plan y el punto donde el kernel impide continuar porque la contención detiene la trayectoria.</p>
-  <p>La misma regla de los comandos aislados sigue vigente. Un secreto que se imprime en cualquier paso ya quedó expuesto, aunque se deniegue un intento posterior de egress. Después de observarlo, edite el objetivo o el prompt de planificación y pruebe otra trayectoria.</p>
+  <h2>Avanza: una trayectoria completa</h2>
+  <p>Un agente real encadena varios comandos para alcanzar un objetivo que ninguna celda aislada intenta por sí sola. Describe uno en el campo siguiente. El agente planifica toda la secuencia de comandos de shell, ejecuta cada comando en el sandbox y muestra los resultados en orden. Observa el plan y el punto donde el kernel impide continuar porque la contención detiene la trayectoria.</p>
+  <p>La misma regla de los comandos aislados sigue vigente. Un secreto que se imprime en cualquier paso ya quedó expuesto, aunque se deniegue un intento posterior de egress. Después de observarlo, edita el objetivo o el prompt de planificación y prueba otra trayectoria.</p>
   <div id="trajectory-cell"></div>
   <div id="trajectory-artifact"></div>
   <script type="module">
     import { mountRunCell } from "./scripts/_shared.js";
     mountRunCell("#trajectory-cell", {
-      label: "Describa un objetivo y ejecute la trayectoria del agente, en código",
+      label: "Describe un objetivo y ejecuta la trayectoria del agente, en código",
       autorun: true,
       code: `// Describe a goal in plain words; the agent plans the shell commands it would run.
 // The cell runs each in YOUR sandbox and shows the command, its output, and its exit code.
 helpers.mountChatUI("#trajectory-artifact", {
-  disabled: () => !(localStorage.getItem("nemoclaw_clawtoken") && (localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl"))),
+  disabled: () => { const c = helpers.getOpenClawConnection(); return !(c.token && c.rawUrl); },
   disabledMsg: "Connect your launchable in Module 3a first. This exercise runs commands in your sandbox.",
   greeting: "Describe a goal and I plan the shell commands an agent would run for it, then we run each one in your sandbox and read the result, in order. Watch what each command returns. A secret that prints to the screen has already left the box, whatever the network blocks afterward.",
   models: [
@@ -335,23 +335,23 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
 
 
 
-  <h2>Lea la política activa del launchable y visualícela como un mapa</h2>
-  <p>Los veredictos observados proceden de un archivo de políticas. Léalo desde el launchable antes de confiar en sus garantías. La celda siguiente llama a <code>helpers.policyGet()</code>, que ejecuta <code>openshell policy get</code> mediante la terminal del operador y analiza el resultado.</p>
-  <p>A partir de aquí, la página calcula los resultados desde la política de <em>su</em> instancia, no desde un ejemplo incorporado. El código de la celda permanece en un desplegable para que pueda examinar la llamada exacta sin convertirla en la lección principal.</p>
+  <h2>Lee la política activa del launchable y visualízala como un mapa</h2>
+  <p>Los veredictos observados proceden de un archivo de políticas. Léelo desde el launchable antes de confiar en sus garantías. La celda siguiente llama a <code>helpers.policyGet()</code>, que ejecuta <code>openshell policy get</code> mediante la terminal del operador y analiza el resultado.</p>
+  <p>A partir de aquí, la página calcula los resultados desde la política de <em>tu</em> instancia, no desde un ejemplo incorporado. El código de la celda permanece en un desplegable para que puedas examinar la llamada exacta sin convertirla en la lección principal.</p>
 
   <div id="cell-live-policy"></div>
 
-  <p>Con la política disponible, la celda la dibuja como un mapa interactivo. Los nodos de la derecha incluyen endpoints que nombra la política y algunos destinos que ninguna regla permite. Cambie el binario solicitante y observe cómo cambian las conexiones. El kernel decide según el binario, no solo el host: <code>integrate.api.nvidia.com</code> puede estar disponible para <code>openclaw</code> y denegado para <code>curl</code>.</p>
-  <p>Haga clic en cualquier destino para abrir la regla que lo gobierna, los binarios que permite y la justificación del veredicto. <strong>Ver el código fuente de la política</strong> muestra el mismo YAML que obtuvo en el paso anterior.</p>
+  <p>Con la política disponible, la celda la dibuja como un mapa interactivo. Los nodos de la derecha incluyen endpoints que nombra la política y algunos destinos que ninguna regla permite. Cambia el binario solicitante y observa cómo cambian las conexiones. El kernel decide según el binario, no solo el host: <code>integrate.api.nvidia.com</code> puede estar disponible para <code>openclaw</code> y denegado para <code>curl</code>.</p>
+  <p>Haz clic en cualquier destino para abrir la regla que lo gobierna, los binarios que permite y la justificación del veredicto. <strong>Ver el código fuente de la política</strong> muestra el mismo YAML que obtuvo en el paso anterior.</p>
   <div class="callout"><strong>Plano del token de operador.</strong> La franja ámbar está por encima del punto de aplicación: representa el eje de escalada que las reglas de egress nunca ven.</div>
 
   <div id="policy-map"></div>
 
-  <h2>Demuestre dónde contiene el sandbox y confírmelo en vivo</h2>
-  <p>No tiene que aceptar la garantía de robustez sin pruebas. <code>openshell policy prove</code> comprueba una propiedad de la política o devuelve un contraejemplo, mientras el proxy toma una decisión determinista de permitir o denegar en cada conexión. La celda calcula esa misma decisión en el navegador desde la política real del launchable, ejecuta la acción en el sandbox activo y comprueba que el veredicto del kernel coincide con la predicción.</p>
-  <p>El ejercicio destaca la identidad del <em>binario</em>. La política concede egress por programa, no solo por host. Por ello, <code>openclaw</code> puede alcanzar el endpoint de inferencia mientras se deniega un <code>curl</code> al mismo destino. Elija una acción para ver de inmediato el veredicto estático y su confirmación activa.</p>
+  <h2>Demuestra dónde contiene el sandbox y confírmalo en vivo</h2>
+  <p>No tienes que aceptar una garantía de robustez sin pruebas. <code>openshell policy prove</code> comprueba una propiedad de la política o devuelve un contraejemplo, mientras el proxy toma una decisión determinista de permitir o denegar en cada conexión. La celda calcula esa misma decisión en el navegador desde la política real del launchable, ejecuta la acción en el sandbox activo y comprueba que el veredicto del kernel coincide con la predicción.</p>
+  <p>El ejercicio destaca la identidad del <em>binario</em>. La política concede egress por programa, no por host, así que el proxy comprueba qué binario abrió la conexión antes de evaluar el destino. Por ello, <code>openclaw</code> puede alcanzar el endpoint de inferencia mientras se deniega un <code>curl</code> al mismo destino. Elige una acción para ver de inmediato el veredicto estático y su confirmación activa; la acción del endpoint de inferencia muestra con mayor claridad este cambio de resultado para un mismo host.</p>
 
-  <div class="callout"><strong>La confirmación utiliza la instancia real.</strong> Cada acción se ejecuta en el launchable conectado en Kickstart mediante <code>openshell sandbox exec</code>. Mantenga el launchable abierto en otra pestaña para conservar la sesión de Cloudflare Access.</div>
+  <div class="callout"><strong>La confirmación utiliza la instancia real.</strong> Cada acción se ejecuta en el launchable conectado en Kickstart mediante <code>openshell sandbox exec</code>. Mantén el launchable abierto en otra pestaña para conservar la sesión de Cloudflare Access.</div>
 
   <div id="sbx-pick"></div>
   <script type="module">
@@ -380,7 +380,7 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
       window.__sbxAction = s.a;
       Object.values(btns).forEach((b) => b.classList.remove("on"));
       btns[s.id].classList.add("on");
-      disp.textContent = "the agent tries to " + s.intent + "   ·   " + describe(s.a) + "   ·   run Confirm next, then Compare";
+      disp.textContent = "the agent tries to " + s.intent + "   ·   " + describe(s.a) + "   ·   run Confirm next, then Compara";
       if (run) runPredict();
     };
     [...new Set(SCEN.map((s) => s.group))].forEach((g) => {
@@ -406,7 +406,7 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
   <div class="callout">Cuando coinciden el veredicto previsto y el resultado en vivo, la política hace exactamente lo que indica el análisis estático. Una diferencia revela un comportamiento que la predicción no capturó, ya sea por un ajuste inesperado, una diferencia del entorno o una carencia del modelo de análisis. Investigue antes de confiar en el límite.</div>
 
   <h2>Por encima del sandbox: el plano de control</h2>
-  <p>Hasta ahora ha medido lo que puede hacer el <em>agente</em>. La pregunta más amplia es quién puede reconfigurarlo mediante el plano situado por encima del sandbox. En esta instancia, se accede a ese plano mediante el mismo <code>OPENCLAW_GATEWAY_TOKEN</code> del Módulo 3, con alcance <code>operator.admin</code>. Ninguna de esas operaciones pasa por el sandbox del agente.</p>
+  <p>Hasta ahora has medido lo que puede hacer el <em>agente</em>. La pregunta más amplia es quién puede reconfigurarlo mediante el plano situado por encima del sandbox. En esta instancia, se accede a ese plano mediante el mismo <code>OPENCLAW_GATEWAY_TOKEN</code> del Módulo 3, con alcance <code>operator.admin</code>. Ninguna de esas operaciones pasa por el sandbox del agente.</p>
   <p>Ese token permite:</p>
   <ul>
     <li><code>agents.files.get</code> lee y establece directamente archivos de personalidad, como SOUL.md y AGENTS.md.</li>
@@ -416,11 +416,11 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
     <li><code>sessions.reset</code> y <code>delete</code> borran memoria; <code>gateway.restart.request</code> reinicia el runtime.</li>
   </ul>
   <p>Combinadas, estas llamadas forman una ruta de escalada. Un atacante puede leer la personalidad, crear una tarea cron para ejecutarla más tarde, ampliar la configuración, redirigir una tarea activa y reiniciar el runtime para aplicar la nueva configuración.</p>
-  <p>El sandbox gobierna las syscalls del agente; estas operaciones pertenecen al plano de control. La solidez del sandbox y el alcance administrativo son propiedades distintas. Evalúe ambas.</p>
+  <p>El sandbox gobierna las syscalls del agente, pero estas operaciones pertenecen al plano de control y no son llamadas al sistema iniciadas por el agente. La solidez del sandbox y el alcance administrativo son propiedades distintas. Un equipo puede restringir el primero y dejar abierto el segundo; evalúa ambos límites.</p>
 
-  <div class="callout warn">El sandbox puede contener fallos e incluso el compromiso directo del agente, pero no ve quién controla el plano administrativo. Proteja ese acceso como si fuera root. En esta instancia, permite reconfigurar la identidad y crear tareas programadas fuera del alcance de las comprobaciones del sandbox.</div>
+  <div class="callout warn">La protección es deliberadamente unilateral. El sandbox conserva su solidez frente a los errores del agente e incluso frente a su compromiso directo, pero no tiene visibilidad sobre quién controla el plano administrativo situado por encima. Protege el acceso a ese plano como si fuera root. En esta instancia, quien lo controla puede reconfigurar la identidad del agente y crear tareas programadas completamente fuera del alcance de las comprobaciones del sandbox.</div>
 
-  <p>Enumere ese alcance en el launchable. La celda solo realiza lecturas y no cambia la configuración.</p>
+  <p>Enumera ese alcance en el launchable. La celda solo realiza lecturas y no cambia la configuración.</p>
 
   <div id="cell-token"></div>
 
@@ -444,7 +444,7 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
     <li><strong>Preservación entre pares.</strong> En una flota, el contexto social puede alterar el criterio de un agente al evaluar o detener a otro. Las pruebas de regresión del comportamiento deben detectar ese cambio.</li>
   </ul>
 
-  <h3>Elija el control por el modo de fallo</h3>
+  <h3>Elige el control por el modo de fallo</h3>
   <p>Un sandbox limita lo que puede alcanzar un proceso comprometido. La aplicación y las prácticas operativas aún deben tomar decisiones cuyo significado resulta invisible para el kernel.</p>
   <div class="control-map-scroll" role="region" aria-label="Modos de fallo del agente y sus controles de ejecución" tabindex="0">
   <table class="control-map">
@@ -458,9 +458,9 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
     </tbody>
   </table>
   </div>
-  <p>Las categorías se corresponden con el <a href="https://genai.owasp.org/2025/12/09/owasp-top-10-for-agentic-applications-the-benchmark-for-agentic-security-in-the-age-of-autonomous-ai/" target="_blank" rel="noopener">OWASP Top 10 para aplicaciones de agentes</a>. Utilice la tabla para elegir un punto de aplicación, en lugar de exigir a una capa que reconozca todos los tipos de daño.</p>
+  <p>Las categorías se corresponden con el <a href="https://genai.owasp.org/2025/12/09/owasp-top-10-for-agentic-applications-the-benchmark-for-agentic-security-in-the-age-of-autonomous-ai/" target="_blank" rel="noopener">OWASP Top 10 para aplicaciones de agentes</a>. Usa la tabla para elegir un punto de aplicación, en lugar de exigir a una capa que reconozca todos los tipos de daño.</p>
 
-  <div class="callout warn">El sandbox establece una base, no una defensa completa. Conceda al agente el conjunto mínimo de accesos necesarios, compruebe sus garantías y añada controles en las capas superiores para los fallos que el kernel no puede ver.</div>
+  <div class="callout warn">El sandbox establece una base, no una defensa completa. Concede al agente el conjunto mínimo de accesos necesarios, comprueba sus garantías y añade controles en las capas superiores para los fallos que el kernel no puede ver.</div>
 
   <div class="references">
     <h3>Referencias</h3>
@@ -515,8 +515,8 @@ mountDiagram("#fig-calls", {
 // ── Intuition 1: watch the kernel decide ────────────────────────────────────
 mountRunCell("#cell-layers", {
   openCode: false,
-  label: "Pregunte cualquier cosa al entorno, en código",
-  intro: "Ejecute primero las preguntas preparadas y compare cada veredicto, mecanismo y línea de evidencia. Abra la implementación únicamente cuando quiera cambiar un comando o añadir una sonda.",
+  label: "Pregunta cualquier cosa al entorno, en código",
+  intro: "Ejecuta primero las preguntas preparadas y compara cada veredicto, mecanismo y línea de evidencia. Abre la implementación únicamente cuando quieras cambiar un comando o añadir una sonda.",
   code: `// You write the COMMAND; probe() runs it in your sandbox.
 // It prints the verdict (the exit code), the deciding mechanism, and a line of evidence.
 // For egress it also reads the HTTP status: a denied tunnel exits non-zero, while a denied plain request returns 403 at exit 0.
@@ -547,11 +547,12 @@ async function probe(command, mechanism) {
   return { command, blocked, mechanism: mech };
 }
 const question = (q) => { helpers.log(""); helpers.log.html("<span style='color:var(--gs);font-weight:700'>" + _esc(q) + "</span>"); };
+const results = [];
 
 question("Can I reach the open internet?");
-await probe("curl -sS -m 8 -o /dev/null -w 'code=%{http_code}' https://example.com", "network");
-await probe("curl -sS -m 8 -o /dev/null -w 'code=%{http_code}' https://en.wikipedia.org", "network");
-await probe("curl -sS -m 6 -o /dev/null -w 'code=%{http_code}' http://169.254.169.254/latest/meta-data/", "network");
+results.push(await probe("curl -sS -m 8 -o /dev/null -w 'code=%{http_code}' https://example.com", "network"));
+results.push(await probe("curl -sS -m 8 -o /dev/null -w 'code=%{http_code}' https://en.wikipedia.org", "network"));
+results.push(await probe("curl -sS -m 6 -o /dev/null -w 'code=%{http_code}' http://169.254.169.254/latest/meta-data/", "network"));
 helpers.log([
   "→ The network namespace plus the OPA egress proxy refuse every curl.",
   "The allowlist is bound to the openclaw binary, so a plain curl reaches nothing.",
@@ -559,9 +560,9 @@ helpers.log([
 ].join(" "));
 
 question("Can I install software, to pull in new code?");
-await probe("apt-get install -y cowsay", "non-root");
-await probe("pip install --break-system-packages --retries 0 --timeout 5 --no-input cowsay", "network");
-await probe("npm install --no-audit --no-fund left-pad", "network");
+results.push(await probe("apt-get install -y cowsay", "non-root"));
+results.push(await probe("pip install --break-system-packages --retries 0 --timeout 5 --no-input cowsay", "network"));
+results.push(await probe("npm install --no-audit --no-fund left-pad", "network"));
 helpers.log([
   "→ No. apt needs root it does not have.",
   "pip and npm run, but the egress proxy refuses their downloads.",
@@ -569,10 +570,10 @@ helpers.log([
 ].join(" "));
 
 question("Can I become root, or escape the container?");
-await probe("sudo id", "not installed");
-await probe("nsenter -t 1 -m -- id", "seccomp / non-root");
-await probe("docker ps", "not installed");
-await probe("cat /proc/1/environ", "non-root");
+results.push(await probe("sudo id", "not installed"));
+results.push(await probe("nsenter -t 1 -m -- id", "seccomp / non-root"));
+results.push(await probe("docker ps", "not installed"));
+results.push(await probe("cat /proc/1/environ", "non-root"));
 helpers.log([
   "→ No path up or out.",
   "sudo and docker are absent, entering the host namespace is denied,",
@@ -580,10 +581,10 @@ helpers.log([
 ].join(" "));
 
 question("Can I rewrite my own persona, and is locking it real?");
-await probe("ls -la /sandbox/.openclaw/workspace/SOUL.md", "Landlock");
-await probe("chmod 0444 /sandbox/.openclaw/workspace/SOUL.md", "Landlock");
-await probe("chmod 0644 /sandbox/.openclaw/workspace/SOUL.md", "Landlock");
-await probe("chattr +i /sandbox/.openclaw/workspace/SOUL.md", "non-root");
+results.push(await probe("ls -la /sandbox/.openclaw/workspace/SOUL.md", "Landlock"));
+results.push(await probe("chmod 0444 /sandbox/.openclaw/workspace/SOUL.md", "Landlock"));
+results.push(await probe("chmod 0644 /sandbox/.openclaw/workspace/SOUL.md", "Landlock"));
+results.push(await probe("chattr +i /sandbox/.openclaw/workspace/SOUL.md", "non-root"));
 helpers.log([
   "→ SOUL.md sits in a writable tree and the agent owns it, so it can undo chmod.",
   "The lock it cannot pick is chattr +i, which needs root.",
@@ -592,6 +593,9 @@ helpers.log([
 
 helpers.log("");
 helpers.log("Edit any command, add a probe('your command') line, or ask a new question. One program per line: no shell, so no pipes or &&.");
+// Visibilidad opcional: descomenta para revisar cada resultado antes del resumen.
+// helpers.log.json("todos los resultados", results);
+return { probes: results.length, denied: results.filter(result => result.blocked).length, results };
 `,
 });
 
@@ -605,8 +609,8 @@ helpers.log("Edit any command, add a probe('your command') line, or ask a new qu
 
 // ── Read your live policy, draw the map from it ───────────────────────────────
 mountRunCell("#cell-live-policy", {
-  label: "Lea la política activa del launchable",
-  intro: "Obtenga la política activa mediante la terminal del operador y muestre su YAML; después, compárela con la instantánea que utiliza el mapa. Mantenga el launchable abierto para conservar la sesión de Cloudflare Access y conéctelo primero en el Módulo 3a si fuera necesario. La llamada exacta permanece en el desplegable de código.",
+  label: "Lee la política activa del launchable",
+  intro: "Obtén la política activa mediante la terminal del operador y muestra su YAML; después, compárala con la instantánea que utiliza el mapa. Mantén el launchable abierto para conservar la sesión de Cloudflare Access y conéctalo primero en el Módulo 3a si fuera necesario. La llamada exacta permanece en el desplegable de código.",
   code: `// helpers.policyGet() returns the command, raw output, status, and parsed policy.
 const p = await helpers.policyGet();
 helpers.log("called:  " + p.command);          // the exact command that ran on your box
@@ -614,12 +618,15 @@ helpers.log("");
 helpers.log(p.status || "(no status header returned)");
 
 if (!p.policy) {
-  helpers.log("\\n(could not parse a policy body. Keep your launchable open in another tab so its Cloudflare Access session is valid, then re-run. Check the sandbox name with: openshell sandbox list)");
+  helpers.log("\\nNo se pudo interpretar la política activa: " + (p.parseError || "error desconocido del analizador"));
+  helpers.log("Mantén el launchable abierto en otra pestaña, vuelve a ejecutar y comprueba el nombre con: openshell sandbox list");
   helpers.log.details("raw output", p.raw);
   return;
 }
 
 const nets = Object.keys(p.policy.network_policies || {});
+// Visibilidad opcional: descomenta para revisar los destinos como JSON.
+// helpers.log.json("nombres de políticas de red", nets);
 helpers.log("\\nyour live policy: egress is deny-by-default, with " + nets.length + " allowed destinations (" + nets.join(", ") + ").");
 helpers.log("the predict cell below computes from this exact policy.");
 helpers.log.details("raw policy returned (the YAML openshell printed)", p.raw);
@@ -636,7 +643,7 @@ return { agent, networks: nets };
 // ── Predict, then confirm against the live kernel ─────────────────────────────
 mountCanvasFlow("#cell-predict-confirm", {
   label: "Veredicto estático frente al sandbox activo",
-  intro: "Ejecute primero la celda de la política activa. Elija una acción, use Predecir para evaluar en el navegador el veredicto de la política y Confirmar para ejecutarla con openshell sandbox exec. Comparar comprueba si coinciden el resultado estático y el resultado en vivo. El código permanece en el desplegable.",
+  intro: "Ejecuta primero la celda de la política activa. Elige una acción, usa Predecir para evaluar en el navegador el veredicto de la política y Confirmar para ejecutarla con openshell sandbox exec. Comparar comprueba si coinciden el resultado estático y el resultado en vivo. El código permanece en el desplegable.",
   edges: [
     { from: "predict", to: "confirm" },
     { from: "confirm", to: "compare" },
@@ -646,7 +653,7 @@ mountCanvasFlow("#cell-predict-confirm", {
     {
       id: "predict", icon: "🧮", title: "Predecir (estático, en el navegador)", x: 0, y: 0,
       showCode: false,
-      summary: "Calcule el veredicto de la política para la acción elegida sin utilizar la red. Los botones establecen window.__sbxAction; este nodo lee la acción y ejecuta la misma evaluación de permiso o denegación que utiliza el proxy, calculada en el navegador desde la política activa y no desde un ejemplo incorporado.",
+      summary: "Calcula el veredicto de la política para la acción elegida sin utilizar la red. Los botones establecen window.__sbxAction; este nodo lee la acción y ejecuta la misma evaluación de permiso o denegación que utiliza el proxy, calculada en el navegador desde la política activa y no desde un ejemplo incorporado.",
       code: `// This predicts from YOUR launchable's live policy. Run the live-policy cell above first
 // so window.__SBX_POLICY is set; there is one policy here, not a baked copy.
 const policy = window.__SBX_POLICY;
@@ -676,7 +683,7 @@ return verdict;
     {
       id: "confirm", icon: "🛂", title: "Confirmar (en vivo, dentro del sandbox)", x: 1, y: 0,
       showCode: false,
-      summary: "Ejecute la conexión candidata dentro del sandbox activo mediante openshell sandbox exec y lea la decisión del kernel. Un egress bloqueado devuelve un túnel CONNECT con 403 o un código 000; una conexión permitida devuelve un estado HTTP real.",
+      summary: "Ejecuta la conexión candidata dentro del sandbox activo mediante openshell sandbox exec y lee la decisión del kernel. Un egress bloqueado devuelve un túnel CONNECT con 403 o un código 000; una conexión permitida devuelve un estado HTTP real.",
       code: `// Execute the selected network action inside the live sandbox and read the verdict.
 if (!state.action) { helpers.log("Run the predict node first."); return; }
 const a = state.action;
@@ -706,7 +713,7 @@ return { observed: state.observed, exitCode: res.exitCode };
     {
       id: "compare", icon: "✅", title: "¿Están de acuerdo?", x: 2, y: 0,
       showCode: false,
-      summary: "Compare la predicción estática con el resultado en vivo del kernel. Si coinciden, la política se comporta como indica el análisis estático. Si difieren, existe una política inesperada o una brecha real que merece investigación.",
+      summary: "Compara la predicción estática con el resultado en vivo del kernel. Si coinciden, la política se comporta como indica el análisis estático. Si difieren, existe una política inesperada o una brecha real que merece investigación.",
       code: `// Compare the browser-side prediction with the kernel result from Confirm.
 if (!state.predicted || !state.observed) { helpers.log("Run predict and confirm first."); return; }
 const match = state.predicted === state.observed;
@@ -728,20 +735,20 @@ return { predicted: state.predicted, observed: state.observed, agree: match };
 // ── Enumerate the token's reach (read-only) ──────────────────────────────────
 mountCanvasFlow("#cell-token", {
   label: "¿Qué puede ver un token operator.admin?",
-  intro: "Utilice el mismo token del chat para llamar a la parte de solo lectura de la superficie operator.admin y mostrar las respuestas sin procesar. Ninguna operación escribe datos; solo mide el alcance del token. Para establecer la URL y el token, conéctese primero en la página Kickstart del Módulo 3a.",
+    intro: "Usa el mismo token del chat para llamar a la parte de solo lectura de la superficie operator.admin y mostrar las respuestas sin procesar. Ninguna operación escribe datos; solo mide el alcance del token. Para establecer la URL y el token, conéctate primero en la página Kickstart del Módulo 3a.",
   edges: [ { from: "tok-conn", to: "tok-survey" } ],
 
   nodes: [
     {
-      id: "tok-conn", icon: "🔌", title: "Conéctese como operator.admin", x: 0, y: 0,
+      id: "tok-conn", icon: "🔌", title: "Conéctate como operator.admin", x: 0, y: 0,
       showCode: false,
-      summary: "Abra el WebSocket del gateway y declare el alcance operator.admin con el mismo token que utiliza la interfaz de control. No necesita ninguna credencial adicional: el token del chat ya contiene ese alcance.",
+      summary: "Abre el WebSocket del gateway y declara el alcance operator.admin con el mismo token que utiliza la interfaz de control. No necesitas ninguna credencial adicional: el token del chat ya contiene ese alcance.",
       code: GW_CONNECT,
     },
     {
-      id: "tok-survey", icon: "🗝️", title: "Examine el alcance", x: 1, y: 0,
+      id: "tok-survey", icon: "🗝️", title: "Examina el alcance", x: 1, y: 0,
       showCode: false,
-      summary: "Llame a la parte de lectura de la superficie administrativa: la personalidad en disco, la programación cron, las sesiones activas, los modelos ofrecidos y la configuración completa. Cada línea procede del mismo token y llega más allá del punto de aplicación del sandbox.",
+      summary: "Llama a la parte de lectura de la superficie administrativa: la personalidad en disco, la programación cron, las sesiones activas, los modelos ofrecidos y la configuración completa. Cada línea procede del mismo token y llega más allá del punto de aplicación del sandbox.",
       code: `// Survey the read-only admin surface reachable by the current gateway token.
 if (!state.call) { helpers.log("Run Connect first."); return; }
 const soul = await state.call("agents.files.get", { agentId: "main", name: "SOUL.md" });

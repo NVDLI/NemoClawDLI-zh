@@ -117,12 +117,12 @@ def covered(path: str, covered_paths: set[str]) -> bool:
 
 
 def check_root_license(fails: list[str], oks: list[str]) -> None:
-    path = ROOT / "LICENSE.md"
+    path = ROOT / "LICENSE"
     text = path.read_text(encoding="utf-8", errors="replace") if path.is_file() else ""
     if "Apache License" in text and "Version 2.0" in text:
         oks.append("root license: Apache-2.0")
     else:
-        fails.append("root license: LICENSE.md must be Apache License 2.0")
+        fails.append("root license: LICENSE must be Apache License 2.0")
 
 
 def check_contribution_terms(fails: list[str], oks: list[str]) -> None:

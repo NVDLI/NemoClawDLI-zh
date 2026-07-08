@@ -11,7 +11,7 @@
   "node_type": "directory-explorer",
   "title": "scripts/build packaging and deploy helpers",
   "source_dir": "scripts/build/",
-  "summary": "Build and publishing helpers for the static bundle, branch manifests, language manifests, hooks, and edX export.",
+  "summary": "Build and publishing helpers for the static bundle, branch manifests, language manifests, hooks, edX export, and the composed security review design.",
   "related": [
     "scripts/build/build_pages.sh",
     "scripts/build/project_docs_explorer.py",
@@ -23,6 +23,7 @@
     "scripts/build/build_branch_manifest.py"
     ,"scripts/build/package_release.py",
     "scripts/build/build_repository_overview_html.py",
+    "scripts/build/build_security_review_package.py",
     "scripts/build/build_repository_overview.mjs",
     "scripts/build/capture_repository_overview.mjs"
   ],
@@ -94,12 +95,17 @@
     {
       "path": "package_release.py",
       "role": "deterministic release packager",
-      "desc": "Builds a normalized versioned archive, release manifest, copied SBOM assets, and SHA256SUMS with a reproducibility self-test."
+      "desc": "Builds a normalized versioned archive, release manifest with required external artifact evidence, copied SBOM assets, and SHA256SUMS with a reproducibility self-test."
     },
     {
       "path": "build_repository_overview_html.py",
       "role": "hosted slide generator",
       "desc": "Builds docs/repository-overview.html from the shared slide manifest and checks generated-output freshness."
+    },
+    {
+      "path": "build_security_review_package.py",
+      "role": "security review design composer",
+      "desc": "Builds one compact, self-contained public-safe design from canonical scope, aggregate controls, anticipated mitigations, and verification evidence."
     },
     {
       "path": "build_repository_overview.mjs",
@@ -134,6 +140,7 @@
     <div class="skill-cmd"><b>Browser package inventory</b><code>python3 scripts/validation/course_dependency_integrity.py --self-test</code></div>
     <div class="skill-cmd"><b>Release package determinism</b><code>python3 scripts/build/package_release.py --self-test</code></div>
     <div class="skill-cmd"><b>Hosted slide deck</b><code>python3 scripts/build/build_repository_overview_html.py --check</code></div>
+    <div class="skill-cmd"><b>Security review package</b><code>python3 scripts/build/build_security_review_package.py --package</code></div>
     <div class="skill-cmd"><b>edX export</b><code>python3 scripts/build/publish_edx.py --help</code></div>
   </div>
   <h2>Linkage map</h2>
@@ -144,11 +151,12 @@
     <a class="skill-card" href="bundle_standalone.py"><b>bundle_standalone.py</b><span>standalone bundler. Copies and inlines the course into a self-contained web bundle.</span></a>
     <a class="skill-card" href="push_pages.sh"><b>push_pages.sh</b><span>Pages pusher. Pushes the assembled public/ output to the Pages target.</span></a>
     <a class="skill-card" href="publish_edx.py"><b>publish_edx.py</b><span>edX export. Creates the iframe-friendly edX surface.</span></a>
-    <a class="skill-card" href="install-hooks.sh"><b>install-hooks.sh</b><span>hook installer. Installs local git hooks that run repo gates.</span></a>
+    <a class="skill-card" href="install-hooks.sh"><b>install-hooks.sh</b><span>hook installer. Writes shared dispatchers that run the active worktree's repository gates.</span></a>
     <a class="skill-card" href="build_branch_manifest.py"><b>build_branch_manifest.py</b><span>branch manifest. Lists only production and preview paths published in the current Pages artifact.</span></a>
     <a class="skill-card" href="build_language_manifest.py"><b>build_language_manifest.py</b><span>language manifest. Builds language-branch metadata for translated bundles.</span></a>
-    <a class="skill-card" href="package_release.py"><b>package_release.py</b><span>deterministic release packager. Builds the versioned archive, manifest, release assets, and checksums.</span></a>
+    <a class="skill-card" href="package_release.py"><b>package_release.py</b><span>deterministic release packager. Builds the versioned archive, manifest, release assets, checksums, and required external-evidence list.</span></a>
     <a class="skill-card" href="build_repository_overview_html.py"><b>build_repository_overview_html.py</b><span>hosted slide generator. Projects the shared manifest into a keyboard-navigable HTML deck.</span></a>
+    <a class="skill-card" href="build_security_review_package.py"><b>build_security_review_package.py</b><span>Security review design composer. Produces one compact, self-contained design and deterministic two-file upload archive.</span></a>
     <a class="skill-card" href="build_repository_overview.mjs"><b>build_repository_overview.mjs</b><span>PowerPoint generator. Projects the shared manifest into the offline PPTX deck.</span></a>
     <a class="skill-card" href="capture_repository_overview.mjs"><b>capture_repository_overview.mjs</b><span>browser evidence capture. Records real course, Studio, and validation surfaces for slide use.</span></a>
   </div>

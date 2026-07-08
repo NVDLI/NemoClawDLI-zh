@@ -19,3 +19,12 @@ python3 scripts/validation/course_dependency_integrity.py
 Run the install in the repository's disposable Node container when host Node.js is absent. Do not
 hand-edit generated vendor files or the dependency inventory. Reviewers must inspect lock changes,
 the dashboard, licenses, bundle size, and browser behavior before accepting an update.
+
+The CodeMirror entrypoint is intentionally limited to CSS, HTML-mixed, JavaScript, Python, and XML.
+Adding or replacing a mode changes the reviewed browser surface and must first update the allowlist
+in `course_dependency_integrity.py`; the mutation suite rejects an unreviewed mode. The same audit
+enforces supported package security floors, so regenerating from a downgraded lock still fails.
+Tracked standalone projections use exact-version fallbacks with pinned integrity; the audit checks
+their version, asset allowlist, and SRI alongside the same-origin course bundle.
+Merge requests that change these inputs run the required `security_browser_sca` job. It records the
+npm advisory result and reruns the offline dependency-integrity contract before review.

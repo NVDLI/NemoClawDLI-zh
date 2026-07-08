@@ -24,8 +24,9 @@ const API_CANDIDATES = [
   '/lab/api/contents/nemoclaw/',
 ];
 const COMMENT_FILE  = 'studio_comments.json';
+const STATIC_EXPORT = /(?:^|\/)course-static(?:\/|$)/.test(location.pathname);
 let contentApiBase  = null;
-let contentApiReady = false;
+let contentApiReady = STATIC_EXPORT;
 const SNAPSHOT_SEL  = 'h1,h2,h3,p,li,td,.callout,.hero .lead,.cf-panel-title';
 const ANNOTATE_SYS  = `You are a concise teaching assistant for an AI agent engineering course.
 A student just ran a code exercise and got the following output. In 2–4 sentences explain what
@@ -753,7 +754,12 @@ function directPageUrl(file) {
 }
 
 async function resolveContentApi(file=currentFile) {
-  if (contentApiReady) return contentApiBase;
+  if (contentApiReady) {
+    if (!contentApiBase && writeNote) {
+      writeNote.textContent = 'Read-only static preview: Jupyter contents API not available on this origin.';
+    }
+    return contentApiBase;
+  }
   if (!file) return null;
   for (const base of API_CANDIDATES) {
     try {
@@ -1245,6 +1251,7 @@ async function triggerRunAll(idoc) {
     return 0;
   }
   let ran = 0;
+  const failures = [];
   runNote.textContent = `running 0/${btns.length} runnable block(s)`;
   for (const btn of btns) {
     if (!isRunnableButton(btn)) continue;
@@ -1258,9 +1265,16 @@ async function triggerRunAll(idoc) {
       setStatus('run all stopped: ' + e.message, 'warn');
       return ran;
     }
+    const scope = btn.closest('.cf-wrap,.rc-wrap,[id]');
+    const flowFailure = scope?.querySelector('.cf-status-bar.err');
+    const cellFailure = scope?.querySelector('.cf-panel-error,.cell-runtime-error');
+    const failure = flowFailure || cellFailure;
+    if (failure) failures.push((failure.textContent || 'runtime error').trim());
   }
-  runNote.textContent = `ran ${ran}/${btns.length} runnable block(s)`;
-  setStatus('run all complete: ' + ran + ' runnable block(s)', 'ok');
+  runNote.textContent = `ran ${ran}/${btns.length} runnable block(s) · ${failures.length} failed`;
+  setStatus(failures.length
+    ? `run all finished: ${failures.length} failed`
+    : `run all complete: ${ran} runnable block(s)`, failures.length ? 'warn' : 'ok');
   return ran;
 }
 

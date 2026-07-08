@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>El Agente de Índice · Seguridad de Agentes</title>
+<title>El agente de índice · Seguridad de agentes</title>
 <link rel="stylesheet" href="styles/_style.css"/>
 <script src="vendor/highlight-11.10.0.min.js"></script>
-<link rel="stylesheet" href="vendor/codemirror-5.65.16.min.css"/>
-<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.16.min.css"/>
-<script src="vendor/codemirror-5.65.16.min.js"></script>
+<link rel="stylesheet" href="vendor/codemirror-5.65.21.min.css"/>
+<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.min.css"/>
+<script src="vendor/codemirror-5.65.21.min.js"></script>
 <style>
   .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
   .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
@@ -68,11 +68,11 @@ El ejemplo recorre ese proceso con prosa no estructurada y luego presenta la rec
     
   <h2>El origen de RAG: un sistema entrenado de extremo a extremo</h2>
   <p>
- La versión de RAG más habitual hoy omite gran parte del diseño original. Conocer esa diferencia cambia la forma de entender el recuperador que va a conectar.
+ La versión de RAG más habitual hoy omite gran parte del diseño original. Conocer esa diferencia cambia la forma de entender el recuperador que vas a conectar.
  </p>
   <p>
  Cuando <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis y sus colaboradores</a> acuñaron el término
-generación aumentada por recuperación en 2020, no describían un modelo con un buscador añadido. El <strong>recuperador y el generador se entrenaban juntos</strong> para la tarea. Lea primero la figura de izquierda a derecha y después observe la flecha superior.
+generación aumentada por recuperación en 2020, no describían un modelo con un buscador añadido. El <strong>recuperador y el generador se entrenaban juntos</strong> para la tarea. Lee primero la figura de izquierda a derecha y después observa la flecha superior.
  </p>
   <div style="display:flex;justify-content:center;margin:1.4em 0">
     <figure style="margin:0;max-width:940px;width:100%">
@@ -93,21 +93,21 @@ con la retropropagación de la línea superior que la mayoría de los sistemas a
   <!-- ── Why production simplified it ── -->
   <h2>Por qué el RAG de hoy descarta el entrenamiento conjunto</h2>
   <p>
- Hoy casi nadie entrena RAG de ese modo por dos razones prácticas. No puede retropropagar a través de un modelo avanzado al que accede mediante una API. Incluso con un modelo alojado por usted, el entrenamiento conjunto del recuperador y el generador resulta costoso y fácil de desestabilizar.
+ Hoy casi nadie entrena RAG de ese modo por dos razones prácticas. No se puede retropropagar a través de un modelo avanzado al que se accede mediante una API. Incluso con un modelo alojado por ti, el entrenamiento conjunto del recuperador y el generador resulta costoso y fácil de desestabilizar.
  </p>
   <p>
  La práctica convergió en un montaje más sencillo: tomar un modelo existente, mantenerlo congelado y anteponerle un recuperador para que el prompt llegue cargado de evidencia, sin entrenar nada. Las partes se construyen por separado y se conectan después. Con el tiempo, «RAG» pasó a designar ese acoplamiento, no el sistema optimizado conjuntamente que describía el artículo.
  </p>
   <div class="callout">
- <strong>El costo del acoplamiento.</strong> Un recuperador que nunca recibe la señal de pérdida del generador solo puede estimar qué necesita este. La calidad queda limitada por la adecuación del modelo de embeddings a los datos. El reranking, la reescritura de consultas y un modelo de embeddings ajustado recuperan parte de lo que ofrecía el entrenamiento conjunto. Un stack de recuperación riguroso añade etapas para recuperar el resto. Entender el acoplamiento como sustituto pragmático de un sistema unificado permite ver su techo y qué controles pueden elevarlo.
+ <strong>El coste del acoplamiento.</strong> Un recuperador que nunca recibe la señal de pérdida del generador solo puede estimar qué necesita este. La calidad queda limitada por la adecuación del modelo de embeddings a los datos. El reranking, la reescritura de consultas y un modelo de embeddings ajustado recuperan parte de lo que ofrecía el entrenamiento conjunto. Un stack de recuperación riguroso añade etapas para recuperar el resto. Entender el acoplamiento como sustituto pragmático de un sistema unificado permite ver su techo y qué controles pueden elevarlo.
  </div>
     
   
 
   <!-- ── The practical pipeline you build ── -->
-  <h2>El pipeline de recuperación y generación que construirá</h2>
+  <h2>El pipeline de recuperación y generación que vas a construir</h2>
   <p>
- Con ese límite presente, observe el montaje completo. Un recuperador opera delante del modelo congelado en dos líneas temporales. Una construye el índice con antelación; la otra atiende solicitudes en vivo contra ese índice. La figura muestra ambas.</p>
+ Con ese límite presente, observa el montaje completo. Un recuperador opera delante del modelo congelado en dos líneas temporales. Una construye el índice con antelación; la otra atiende solicitudes en vivo contra ese índice. La figura muestra ambas.</p>
   <figure style="margin:1.4em 0 1.8em">
     <div class="fig-embed" data-svg-src="assets/figures/02b-rag-1.svg" style="aspect-ratio:1220 / 480"></div>
     <figcaption>
@@ -115,8 +115,8 @@ con la retropropagación de la línea superior que la mayoría de los sistemas a
 y <a href="https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-with-nvidia-ai-langchain-ai-endpoints/" target="_blank" rel="noopener">Amit Bleiweiss, <em>tips for building a RAG pipeline</em></a> (NVIDIA, 2024).</figcaption>
   </figure>
   <div class="callout">
-    <p class="pipeline-stage"><strong>Offline:</strong> construya el índice una vez, genere el embedding de cada pasaje y guárdelo para búsquedas rápidas.</p>
-    <p class="pipeline-stage"><strong>En vivo:</strong> genere el embedding de la pregunta, recupere los pasajes top-K y entréguelos al modelo junto con la pregunta.</p>
+    <p class="pipeline-stage"><strong>Offline:</strong> construye el índice una vez, genera el embedding de cada pasaje y guárdalo para búsquedas rápidas.</p>
+    <p class="pipeline-stage"><strong>En vivo:</strong> genera el embedding de la pregunta, recupera los pasajes top-K y entrégalos al modelo junto con la pregunta.</p>
   </div>
   <p>
  El resto de la página construye el recorrido en vivo etapa por etapa.</p>
@@ -125,22 +125,22 @@ y <a href="https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-wi
   
     
     
-  <h2>Definir el paquete de contexto antes de elegir el almacenamiento</h2>
+  <h2>Define el paquete de contexto antes de elegir el almacenamiento</h2>
   <p>
- Antes de elegir una primitiva de recuperación, defina un <strong>paquete</strong>: el conjunto completo y acotado de contexto que circulará por el pipeline.</p>
+ Antes de elegir una primitiva de recuperación, define un <strong>paquete</strong>: el conjunto completo y acotado de contexto que circulará por el pipeline.</p>
   <ul>
     <li><strong>Para un sistema sencillo de preguntas y respuestas de un solo turno</strong>, el paquete puede ser pequeño: la pregunta, unos pocos fragmentos recuperados y la respuesta.</li>
     <li><strong>Para un agente autónomo</strong>, el paquete es la memoria de trabajo que conserva durante varios turnos: restricciones, decisiones anteriores, resultados parciales, herramientas disponibles y reglas operativas.</li>
     <li><strong>Para un agente de índice de alcance arbitrario</strong>, el paquete de salida puede contener solo los fragmentos recuperados, sus fuentes, puntuaciones de relevancia y quizá un resumen. Un paquete interno distinto puede representar el pipeline lineal de la solicitud en vivo o un bucle ReAct que evalúa la relevancia y reintenta hasta reunir suficiente contexto.</li>
   </ul>
   <p>
- El principio del paquete impone una disciplina: <em>defina el paquete antes de elegir la base de datos</em>. Elegir primero un almacén vectorial y esperar que cubra todo origina muchas historias de «funcionó en la demostración, pero falló en producción». La taxonomía siguiente permite comprobar si una primitiva puede entregar el paquete que exige la tarea.</p>
+ El principio del paquete impone una disciplina: <em>define el paquete antes de elegir la base de datos</em>. Elegir primero un almacén vectorial y esperar que cubra todo origina muchas historias de «funcionó en la demostración, pero falló en producción». La taxonomía siguiente permite comprobar si una primitiva puede entregar el paquete que exige la tarea.</p>
 
   <h2>Dónde encaja MCP en un sistema de recuperación</h2>
   <p>
  MCP ofrece una frontera para descubrir e invocar fuentes externas de contexto. El agente aún necesita un runtime que decida cuándo recuperar, valide el resultado y lo combine con el estado de la tarea. Otras fronteras transportan otras partes del sistema: las skills agrupan instrucciones reutilizables, A2A puede dirigir trabajo a especialistas remotos y los protocolos de interfaz pueden transmitir el estado generado a una aplicación.</p>
   <p>
- La figura separa esas fronteras. Léala de izquierda a derecha para seguir la entrada de contexto mediante MCP y la entrega de tareas mediante A2A; de abajo arriba, para seguir la intermediación de capacidades mediante skills, la ejecución en el runtime y la experiencia generada.</p>
+ La figura separa esas fronteras. Léela de izquierda a derecha para seguir la entrada de contexto mediante MCP y la entrega de tareas mediante A2A; de abajo arriba, para seguir la intermediación de capacidades mediante skills, la ejecución en el runtime y la experiencia generada.</p>
   <figure style="margin:1.4em 0 1.8em">
     <div class="fig-embed" data-svg-src="assets/figures/02b-retrieval-boundaries.svg" style="aspect-ratio:1100 / 460"></div>
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">
@@ -149,16 +149,16 @@ y <a href="https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-wi
   </figure>
 
   <!-- ── Part 2: Four data shapes ──────────────────────────────────────────── -->
-  <h2>Asociar una primitiva de recuperación a la forma de los datos</h2>
+  <h2>Asocia una primitiva de recuperación a la forma de los datos</h2>
   <p>
- Cada forma de datos exige una primitiva adecuada. Si elige la vía equivocada, el sistema seguirá devolviendo resultados plausibles mientras omite lo que pide la consulta, sin emitir ningún error. La tabla relaciona cada forma con su primitiva.
+ Cada forma de datos exige una primitiva adecuada. Si eliges la vía equivocada, el sistema seguirá devolviendo resultados plausibles mientras omite lo que pide la consulta, sin emitir ningún error. La tabla relaciona cada forma con su primitiva.
  </p>
 
   <table style="width:100%;border-collapse:collapse;font-size:.9rem;margin:.8em 0">
     <thead><tr style="border-bottom:2px solid var(--bd)">
       <th style="text-align:left;padding:8px 12px;color:var(--td);font-size:.78rem;text-transform:uppercase">Forma</th>
       <th style="text-align:left;padding:8px 12px;color:var(--td);font-size:.78rem;text-transform:uppercase">Ejemplos</th>
-      <th style="text-align:left;padding:8px 12px;color:var(--td);font-size:.78rem;text-transform:uppercase">Primitivo correcto</th>
+      <th style="text-align:left;padding:8px 12px;color:var(--td);font-size:.78rem;text-transform:uppercase">Primitiva adecuada</th>
     </tr></thead>
     <tbody>
       <tr><td style="padding:8px 12px"><strong>Prosa no estructurada</strong></td><td style="padding:8px 12px">Documentos, artículos, comentarios de código, transcripciones</td><td style="padding:8px 12px">Vector denso y reranking con cross-encoder</td></tr>
@@ -182,7 +182,7 @@ y <a href="https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-wi
     <li><strong>Generar</strong> una respuesta fundamentada en ellos.</li>
   </ul>
   <p>
- Los agentes de índice que gestionan otras primitivas suelen conservar esta estructura y cambiar la lógica de búsqueda, representación y verificación. Experimente con la forma que mejor se ajuste a sus datos.
+ Los agentes de índice que gestionan otras primitivas suelen conservar esta estructura y cambiar la lógica de búsqueda, representación y verificación. Experimenta con la opción que mejor se ajuste a tus datos.
  </p>
     
   
@@ -227,7 +227,7 @@ y <a href="https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-wi
  Una «base de datos vectorial» presenta una interfaz elaborada para una tarea sencilla: almacena cada pasaje junto a su embedding y devuelve los top-K más cercanos al embedding de la consulta según la similitud coseno. En el navegador, el núcleo cabe en treinta líneas de JavaScript.
  </p>
   <p>
- La celda siguiente construye un agente de índice sobre unos pocos documentos. Edite el corpus y la consulta; después observe qué pasajes llegan a las primeras posiciones y por qué.
+ La celda siguiente construye un agente de índice sobre unos pocos documentos. Edita el corpus y la consulta; después observa qué pasajes llegan a las primeras posiciones y por qué.
  </p>
 
   <div id="cell-m3b-p2"></div>
@@ -250,7 +250,7 @@ y <a href="https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-wi
     
   <h2>Buscar fragmentos pequeños y devolver el documento padre</h2>
   <p>
- Un agente de índice top-K básico afronta una tensión entre recall y precisión que ningún modelo de embeddings elimina. Debe elegir entre fragmentos breves y documentos largos:
+ Un agente de índice top-K básico afronta una tensión entre recall y precisión que ningún modelo de embeddings elimina. Debes elegir entre fragmentos breves y documentos largos:
  </p>
   <ul>
     <li>Los fragmentos breves producen embeddings precisos —el vector representa una idea concreta—, pero aportan poco contexto.</li>
@@ -274,7 +274,7 @@ y <a href="https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-wi
   
     
     
-  <h2>Presentar el índice como una herramienta que el modelo puede invocar</h2>
+  <h2>Presenta el índice como una herramienta que el modelo puede invocar</h2>
   <p>
  Un índice aislado solo responde cuando algo lo consulta. Se convierte en un <strong>agente de índice</strong> cuando se presenta como una herramienta que el modelo puede elegir. Así, el modelo decide cuándo merece la pena recuperar datos. La celda lo hace en cinco etapas:
  </p>
@@ -298,7 +298,7 @@ y <a href="https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-wi
     
   <h2>Cómo se construyen las otras tres formas</h2>
   <p>
- Ya construyó la vía de la prosa no estructurada desde el corpus hasta la respuesta. Las otras tres aparecen aquí para que pueda reconocerlas y elegir la primitiva adecuada. Cada una tiene un patrón de producción establecido:
+ Ya has construido la vía de la prosa no estructurada desde el corpus hasta la respuesta. Las otras tres aparecen aquí para que puedas reconocerlas y elegir la primitiva adecuada. Cada una tiene un patrón de producción establecido:
  </p>
   <ul>
     <li><strong>Documentos jerárquicos.</strong> Un segmentador conserva la jerarquía de títulos y combina extracción atómica de tablas, punteros al elemento padre y un índice doble para búsqueda estructural y semántica. Se indexan fragmentos hijos para mejorar el recall y se recupera el padre correspondiente para que el modelo lea la cláusula dentro de su sección.</li>
@@ -315,7 +315,7 @@ y <a href="https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-wi
     
   <h2>Cuando top-K es la herramienta equivocada: GraphRAG y preguntas globales</h2>
   <p>
- Cada recuperador de esta página responde a una <em>pregunta local</em> cuya respuesta aparece en unos pocos pasajes que top-K puede encontrar, como qué dice un contrato sobre la rescisión o qué artículo introdujo <a href="https://arxiv.org/abs/2212.10496" target="_blank" rel="noopener">HyDE</a>. Otra clase de pregunta no tiene respuesta en ningún pasaje aislado. Si pregunta por los temas principales de mil documentos, la respuesta emerge del corpus completo.
+ Cada recuperador de esta página responde a una <em>pregunta local</em> cuya respuesta aparece en unos pocos pasajes que top-K puede encontrar, como qué dice un contrato sobre la rescisión o qué artículo introdujo <a href="https://arxiv.org/abs/2212.10496" target="_blank" rel="noopener">HyDE</a>. Otra clase de pregunta no tiene respuesta en ningún pasaje aislado. Si preguntas por los temas principales de mil documentos, la respuesta emerge del corpus completo.
  </p>
   <p>
  Top-K devuelve solo las tres mejores coincidencias. El modelo resume esos fragmentos sin ver los otros 997 pasajes del corpus. GraphRAG
@@ -324,7 +324,7 @@ cambia la forma del problema en vez de aumentar K. Durante la indexación usa un
  </p>
   <ul>
     <li>leer el corpus y extraer entidades y las relaciones entre ellas en un grafo de conocimiento;</li>
-    <li>detectar <a href="https://en.wikipedia.org/wiki/Community_structure" target="_blank" rel="noopener">comunidades</a>, grupos de entidades densamente conectadas;</li>
+    <li>detectar las <a href="https://en.wikipedia.org/wiki/Community_structure" target="_blank" rel="noopener">comunidades</a> del grafo, es decir, grupos de entidades densamente conectadas;</li>
     <li>resumir cada comunidad por separado.</li>
   </ul>
   <p>
@@ -342,7 +342,7 @@ cambia la forma del problema en vez de aumentar K. Durante la indexación usa un
   </div>
 
   <p>
- La celda muestra la diferencia en un corpus pequeño mediante el pipeline real. Responde a una pregunta global de dos maneras: recuperación top-K básica y map-reduce de GraphRAG sobre comunidades identificadas. Observe cómo top-K usa los fragmentos cuyas palabras coinciden con la pregunta, mientras que las comunidades recuperan el tema del corpus completo. Edite el corpus, las comunidades o la pregunta y vuelva a ejecutar.
+ La celda muestra la diferencia en un corpus pequeño mediante el pipeline real. Responde a una pregunta global de dos maneras: recuperación top-K básica y map-reduce de GraphRAG sobre comunidades identificadas. Observa cómo top-K usa los fragmentos cuyas palabras coinciden con la pregunta, mientras que las comunidades recuperan el tema del corpus completo. Edita el corpus, las comunidades o la pregunta y vuelve a ejecutar.
  </p>
   <div id="cell-graphrag"></div>
   <script type="module">
@@ -477,9 +477,9 @@ helpers.log("Notice the global theme top-K misses but the community pass recover
     
   
 
-  <h2>Pruébelo · recuperación en vivo</h2>
-  <p>Formule una pregunta. El artefacto usa el mismo endpoint de la página para generar su embedding y clasifica un corpus pequeño mediante similitud coseno. Las barras muestran todas las puntuaciones. Después, el modelo responde a partir de los pasajes mejor clasificados y los cita. Cambie la pregunta y observe cómo varía el orden.</p>
-  <p>El corpus se procesó offline y se distribuye junto a la página como índice preconstruido; solo la pregunta necesita un embedding en vivo. Así puede observar la separación entre indexación y servicio. Las preguntas de ejemplo también incluyen vectores preconstruidos y recuperan resultados antes de añadir una clave; al editar un pasaje, solo se vuelve a procesar ese pasaje.</p>
+  <h2>Pruébalo · recuperación en vivo</h2>
+  <p>Formula una pregunta. El artefacto usa el mismo endpoint de la página para generar su embedding y clasifica un corpus pequeño mediante similitud coseno. Las barras muestran todas las puntuaciones. Después, el modelo responde a partir de los pasajes mejor clasificados y los cita. Cambia la pregunta y observa cómo varía el orden.</p>
+  <p>El corpus se procesó offline y se distribuye junto a la página como índice preconstruido; solo la pregunta necesita un embedding en vivo. Así puedes observar la separación entre indexación y servicio. Las preguntas de ejemplo también incluyen vectores preconstruidos y recuperan resultados antes de añadir una clave; al editar un pasaje, solo se vuelve a procesar ese pasaje.</p>
   <div id="rag-cell"></div>
   <div id="rag-artifact"></div>
   <script type="module">
@@ -520,12 +520,12 @@ async function loadIndex() {
 
 helpers.mountChatUI("#rag-artifact", {
   memory: true,
-  greeting: "Pregunte sobre cualquier tema del curso. Generaré el embedding de su pregunta, clasificaré un corpus pequeño por similitud coseno y responderé con las mejores coincidencias. Las preguntas posteriores conservan la conversación; 🧠 la borra y ✎ permite corregirla.",
+  greeting: "Ask about anything from this course. I embed your question, rank a small corpus by cosine similarity, and answer from the best matches. Follow-ups keep the conversation (each still retrieves fresh); the 🧠 toggle clears it, and ✎ edit rewinds.",
   models: [
-    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · rápido" },
-    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · más capaz" },
+    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
+    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
   ],
-  examples: ["¿Qué es la generación aumentada por recuperación?", "¿Por qué usar similitud coseno?", "¿Cómo funciona el bucle ReAct?", "¿Qué es una herramienta en términos mecánicos?", "¿Qué hace el sandbox de OpenShell?", "¿Qué es un agente de investigación profunda?"],
+  examples: ["What is retrieval-augmented generation?", "Why use cosine similarity?", "How does the ReAct loop work?", "What is a tool, mechanically?", "What does the OpenShell sandbox do?", "What is a deep research agent?"],
   respond: async (text, ctx) => {
     const idx = await loadIndex();
     // corpus vectors come from the prebuilt index; only passages it does not cover (edits) embed live
@@ -560,7 +560,7 @@ helpers.log("rendered below. Edit the config and Run.");
 
   <div class="foot-nav">
     <a href="02a-routing.html">← Módulo 2a: Workflows</a>
-    <a class="next" href="02c-deep.html">Módulo 2c: Agentes Profundos →</a>
+    <a class="next" href="02c-deep.html">Módulo 2c: Agentes profundos →</a>
   </div>
 </main>
 
@@ -576,7 +576,7 @@ hljs.highlightAll();
 mountRunCell("#cell-m3b-p1", {
   openCode: false,
   label: "Inspeccionar un embedding",
-  intro: "El modelo predeterminado devuelve 2048 valores. Elija un ejemplo y compruebe la longitud fija y la magnitud normalizada cercana a 1. Cambie EXAMPLE o añada su propio texto.",
+  intro: "El modelo predeterminado devuelve 2048 valores. Elige un ejemplo y comprueba la longitud fija y la magnitud normalizada cercana a 1. Cambia EXAMPLE o añade tu propio texto.",
   code: `const EXAMPLES = [
   "The transformer architecture replaced recurrent neural networks for sequence modeling.",
   "What replaced recurrent neural networks for sequence modeling?",
@@ -611,7 +611,7 @@ mountCanvasFlow("#cell-m3b-p2", {
   nodes: [
     {
       id: "corpus", icon: "📚", title: "Corpus", x: 0, y: 0,
-      summary: "Ocho pasajes breves sobre patrones de agentes, recuperación y API de modelos. La variedad permite observar qué pasajes eleva cada consulta y cuáles deja atrás. Edite cualquiera y vuelva a ejecutar para cambiar el índice.",
+      summary: "Ocho pasajes breves sobre patrones de agentes, recuperación y API de modelos. La variedad permite observar qué pasajes eleva cada consulta y cuáles deja atrás. Edita cualquiera y vuelve a ejecutar para cambiar el índice.",
       code: `// Seed the small dataset this retrieval example searches.
 state.corpus = [
   "ReAct interleaves reasoning steps with tool calls, deciding what to do next after each observation.",
@@ -641,9 +641,8 @@ return { indexed: state.index.length, dim: vecs[0].length };
     {
       id: "query", icon: "❓", title: "Consulta del usuario", x: 1, y: 0,
       summary: "La pregunta utilizada para recuperar. Al cambiarla varía la clasificación porque usa el tipo de entrada 'query', cuyo vector apunta a pasajes pertinentes y no solo a texto idéntico.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Prueba otra consulta y observa cómo cambia la clasificación.
 state.query = "what is the difference between react and rewoo?";
-// Try another query and rerun to watch the ranking shift:
 // state.query = "what does the openshell sandbox do?";           // single-fact lookup
 // state.query = "how do RAG and a deep-research agent compare?"; // spans several passages
 return state.query;
@@ -724,10 +723,9 @@ return { indexed: state.chunkIndex.length };
     },
     {
       id: "query", icon: "❓", title: "Consulta del usuario", x: 1, y: 0,
-      summary: "La consulta usa la misma estructura que el ejemplo anterior. Edítela y vuelva a ejecutar para observar qué documento padre queda primero.",
-      code: `// Set the student-editable prompt/input for the next step.
+      summary: "La consulta usa la misma estructura que el ejemplo anterior. Edítala y vuelve a ejecutar para observar qué documento padre queda primero.",
+      code: `// TODO: Prueba otra consulta y observa qué documento padre queda primero.
 state.query = "When does each retrieval pattern beat the other?";
-// Other queries to try; each returns the full parent document:
 // state.query = "how does chunking change what the model sees?";
 // state.query = "what is a reranker, and when is it worth the step?";
 return state.query;
@@ -824,7 +822,7 @@ return { indexed: state.index.length, dim: vecs[0].length };
     {
       id: "tool", icon: "📄", title: "Especificación de la herramienta de recuperación", x: 2, y: 0,
       showCode: false,
-      summary: "Declara la herramienta mediante un esquema JSON. El modelo solo ve el nombre, la descripción y los tipos de parámetros, no la implementación de similitud coseno. Así puede cambiar el backend sin modificar el contrato dirigido al modelo.",
+      summary: "Declara la herramienta mediante un esquema JSON. El modelo solo ve el nombre, la descripción y los tipos de parámetros, no la implementación de similitud coseno. Así puedes cambiar el backend sin modificar el contrato dirigido al modelo.",
       code: `// Define the tool schema the model can choose from next.
 state.RETRIEVE_SCHEMA = [{
   type: "function",
@@ -847,7 +845,7 @@ return { tool: state.RETRIEVE_SCHEMA[0].function.name };
     {
       id: "query", icon: "❓", title: "Consulta del usuario", x: 1, y: 0,
       summary: "La pregunta se acompaña de un prompt de sistema que indica cuándo usar la herramienta: solo si hacen falta hechos concretos que el conocimiento del modelo no cubre con seguridad. El modelo decide en cada turno, en vez de recuperar siempre.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Elige una pregunta que deba recuperar, omitir la recuperación o ser ambigua.
 
 const EXAMPLES = {
   default: "What model does this course use, and does it need an API key?",
@@ -873,7 +871,7 @@ return state.query;
     },
     {
       id: "agent", icon: "🧠", title: "Agente decide", x: 1, y: 1,
-      summary: "La primera llamada al LLM conoce la herramienta. Si devuelve tool calls, solicita al código que ejecute la recuperación y le entregue los resultados. Si finish_reason es 'stop', respondió sin recuperar.",
+      summary: "La primera llamada al LLM conoce la herramienta. Si devuelve tool_calls, solicita al código que ejecute la recuperación y le entregue los resultados. Si finish_reason es 'stop', respondió sin recuperar.",
       code: `// Send the prepared messages and stream the model response.
 state.s1 = await helpers.chatStream({
   messages:   state.messages,

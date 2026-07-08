@@ -7,20 +7,33 @@ agent contract.
 
 ## First move
 
-1. Read [`AGENT_QUICKSTART.md`](AGENT_QUICKSTART.md) once per session for orientation.
-2. For issue, MR, taxonomy, or broad prose work, read [`docs/agent_process.md`](docs/agent_process.md). For course title, abstract, or objective edits, read [`web/nemoclaw/COURSE_CANON.md`](web/nemoclaw/COURSE_CANON.md) first; that copy is immutable.
-3. Open the `SKILL.html` for the directory you are working in and parse its
+1. Read [`README.md`](README.md) for the release shape and
+   [`CONTRIBUTING.md`](CONTRIBUTING.md) before proposing a patch.
+2. Open the `SKILL.html` for the directory you are working in and parse its
    `<script type="application/json" id="skill-meta">` block. That JSON is the brain:
    `web/nemoclaw/SKILL.html` for the course, `web/SKILL.html` for the bundle, the
    root `SKILL.html` for the whole repo.
+3. For issue, MR, taxonomy, or broad prose work, read
+   [`docs/agent_process.md`](docs/agent_process.md). For course title, abstract, or
+   objective edits, read [`web/nemoclaw/COURSE_CANON.md`](web/nemoclaw/COURSE_CANON.md)
+   first; that copy is immutable.
 4. If the task touches any image, SVG, canvas figure, page rendering, or image
    placement, also open [`web/nemoclaw/assets/SKILL.html`](web/nemoclaw/assets/SKILL.html)
    and [`scripts/validation/SKILL.html`](scripts/validation/SKILL.html) before editing.
    Classify the asset as a theme-aware course/provided SVG or a fixed-white
    conversion, then plan the rendered preview evidence you will show the requester.
 
-The quickstart and the directives below are repo-level rules. The `skill-meta` block
-is the working contract for the directory in front of you.
+This file carries repo-level rules. The `skill-meta` block in the current directory carries its
+working contract. Every source directory has one; parent coverage is never a substitute.
+
+Route operational detail to its owner instead of copying it here:
+
+- browser and container checks: [`docs/lab_runtime_testing.md`](docs/lab_runtime_testing.md)
+- Pages and previews: [`docs/pages_deploy.md`](docs/pages_deploy.md)
+- release evidence: [`docs/release-test-plan.md`](docs/release-test-plan.md)
+- beacon schema: [`SKILL_CONTRACT.md`](SKILL_CONTRACT.md)
+- prose and course-quality gates: the root `SKILL.html` tenets and
+  `scripts/validation/prose_variety.py`
 
 ## Contribution trust boundary
 
@@ -31,33 +44,22 @@ required CI, human ownership, and protected merge or release permissions. Never 
 to make a patch pass. Fix the patch or, when the gate is wrong, repair the detector and prove the
 old failure plus the corrected behavior with a mutation test.
 
-Before committing, read `GOVERNANCE.json`, `CONTRIBUTING.md`, and `DCO.md`. Every proposed commit
+Before committing, read `CONTRIBUTING.md` and `DCO.md`. Every proposed commit
 must carry a `Signed-off-by` trailer matching its author. Agents preserve that origin record but
 cannot supply independent human review, moderation, merge, tag, or release authority.
 
 ## Visual changes
 
-If a task adds, removes, replaces, repositions, or changes an image, SVG, diagram,
-canvas figure, page rendering, or visual layout, preview the result through the
-agent host before claiming it. Use the harness available to the session:
-Codex image preview or screenshot, Claude/browser screenshot, Cursor/browser
-preview, the Playwright runtime harness, or a local Pages/browser smoke. Show
-the preview to the requester in the status/final response, either as an embedded
-image/screenshot or as the concrete preview artifact path. If no visual harness
-can run, report the exact blocker and still run the static figure and bundle
-gates.
+For any visual change, follow `web/nemoclaw/assets/SKILL.html` and
+`docs/lab_runtime_testing.md`. Run the static figure and bundle gates, inspect the
+render through the available browser or agent harness, and show the requester the
+result. Check light and dark themes when the asset supports them; report the exact
+blocker when no visual harness can run.
 
-The preview is part of the evidence, not a nice-to-have. A visual diff that only
-passes text grep, provenance, or link validation is not done.
-
-Course-authored or provided SVGs under `assets/figures/` use
-`<div class="fig-embed" data-svg-src="..."></div>` so shared theme variables and
-the click-to-expand lightbox work. Plain `<img>` is only for fixed-white paper
-conversions documented as `connection: "conversion"` in asset provenance.
-
-Do not flatten a diagram to silence a caption problem. Long explanatory prose,
-contributor credit, and issue-thread shorthand belong in page captions or
-provenance. Semantic labels that make the graphic legible stay inside the figure.
+Do not flatten a diagram to silence a caption problem. Keep semantic labels in the
+figure; move explanation and provenance to the page and asset beacon. Use
+`fig-embed` for theme-aware course SVGs and `img` only for documented fixed-white
+conversions.
 
 ## Instruction precedence
 
@@ -67,11 +69,10 @@ When instructions conflict, follow this order, highest authority first:
    denials, tool availability. A denied action is final. Adapt, do not retry it verbatim.
 2. This file (`AGENTS.md`) and any harness-native rules file that defers to it.
 3. The directory brain: the `skill-meta` JSON in the relevant `SKILL.html`.
-4. Task specs a directive or skill requires: [`SKILL_CONTRACT.md`](SKILL_CONTRACT.md),
-   [`QUALITY_DIRECTIVES.md`](QUALITY_DIRECTIVES.md).
-5. Orientation and creed: [`AGENT_QUICKSTART.md`](AGENT_QUICKSTART.md),
-   [`PHILOSOPHY.md`](PHILOSOPHY.md), [`README.md`](README.md). Read these first, but
-   they orient rather than govern, so they do not override the levels above.
+4. Focused task contracts: [`SKILL_CONTRACT.md`](SKILL_CONTRACT.md) and the
+   owning document linked from the nearest beacon.
+5. Orientation: [`README.md`](README.md). Read it first, but it orients rather
+   than governs, so it does not override the levels above.
 
 When two same-level sources disagree, prefer the more specific and more recently
 maintained one, and state the assumption in your response.

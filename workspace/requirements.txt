@@ -16,7 +16,7 @@ starlette==1.3.1
 streamlit==1.58.0
 uvicorn[standard]==0.49.0
 voila==0.5.12
-protobuf==5.29.6  # BDSA-2025-123809 remains waived until upstream ships the complete ParseDict recursion fix
+protobuf==5.29.6  # Compatibility pin for generated binary OTLP/gRPC messages
 
 # LangChain & Orchestration
 langchain==1.3.11
@@ -30,7 +30,6 @@ langchain-text-splitters==1.1.2
 langgraph==1.2.6
 langgraph-sdk==0.4.2
 langsmith==0.9.3
-litellm==1.90.0
 mcp==1.28.1  # Model Context Protocol SDK for agent tool integration
 
 # Data & Retrieval

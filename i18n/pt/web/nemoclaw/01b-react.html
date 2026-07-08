@@ -6,9 +6,9 @@
 <title>O Ciclo ReAct · Segurança de Agentes</title>
 <link rel="stylesheet" href="styles/_style.css"/>
 <script src="vendor/highlight-11.10.0.min.js"></script>
-<link rel="stylesheet" href="vendor/codemirror-5.65.16.min.css"/>
-<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.16.min.css"/>
-<script src="vendor/codemirror-5.65.16.min.js"></script>
+<link rel="stylesheet" href="vendor/codemirror-5.65.21.min.css"/>
+<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.min.css"/>
+<script src="vendor/codemirror-5.65.21.min.js"></script>
 <style>
   .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
   .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
@@ -278,6 +278,8 @@ const r1 = await chat({
   messages: [{ role: "user", content: "In one sentence, what is an agent's ReAct loop?" }],
   max_tokens: 8196,  // reasoning models think first; leave room past reasoning_content
 });
+// Visibilidade opcional: remova o comentário para inspecionar a primeira resposta completa.
+// log.details("resposta 1 bruta", r1);
 log.h("chamada 1 · nenhuma ferramenta oferecida");
 log("finish_reason:", r1.choices[0].finish_reason);   // "stop" means the answer is ready and the loop can exit
 log(r1.choices[0].message.content || "(used its whole budget thinking; raise max_tokens)");
@@ -311,8 +313,8 @@ return { call1: r1.choices[0].finish_reason, call2: r2.choices[0].finish_reason 
 mountCanvasFlow("#cell-m2c-p3", {
   label: "O ciclo ReAct completo, construído do zero",
   intro: "O nó do usuário define o prompt e as instruções do sistema; o nó da ferramenta registra a função." +
-         "The loop calls the model, runs any requested tools, appends the observations, and repeats " +
-         "until finish_reason is 'stop'. Every step is logged, so you can see what the model decided.",
+         "O ciclo chama o modelo, executa as ferramentas solicitadas, acrescenta as observações e se repete " +
+         "até finish_reason ser 'stop'. Cada etapa é registrada para mostrar a decisão do modelo.",
   edges: [
     { from: "user", to: "loop" },
     { from: "tool", to: "loop" },
@@ -335,7 +337,7 @@ return state.userPrompt;
     {
       id: "tool", icon: "🛠", title: "Especificação da ferramenta", x: 2, y: 0,
       summary: "Registra get_current_time como a única ferramenta e conecta um executor JavaScript para executá-la." +
-               "The model only names the call; your code does the work.",
+               "O modelo apenas informa o nome da chamada; o código realiza o trabalho.",
       code: `// Define the tool schema the model can choose from next.
 state.TOOLS = [{
   type: "function",
@@ -416,7 +418,7 @@ if (cfg.needsKey && !helpers.getKey()) {
 
 helpers.log("Carregando LangChain...");
 const { ChatOpenAI, tool, createReactAgent, MemorySaver, z } =
-  await import("./vendor/langchain-1.4.7.esm.min.js");
+  await import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href);
 
 const PAGES   = helpers.coursePages();             // includes "overview" (the course home)
 const baseURL = cfg.url.startsWith("http") ? cfg.url : (window.location.origin + cfg.url);
@@ -432,20 +434,12 @@ const SYSTEM  =
 // One createReactAgent per model; each keeps its own MemorySaver for multi-turn.
 const agents = {};
 function getAgent(model) {
-  if (!agents[model]) {
-    // Strip OpenAI SDK x-stainless-* headers before CORS preflight.
-    const _fetchNoStainless = (url, init) => {
-      if (init && init.headers) {
-        const h = init.headers instanceof Headers ? init.headers : new Headers(init.headers);
-        for (const k of [...h.keys()]) { if (k.startsWith("x-stainless")) h.delete(k); }
-        init = { ...init, headers: h };
-      }
-      return fetch(url, init);
-    };
+  const activeModel = helpers.isDefaultModelApiBaseUrl(cfg.url) ? model : cfg.model;
+  if (!agents[activeModel]) {
     const llm = new ChatOpenAI({
-      configuration: { baseURL, dangerouslyAllowBrowser: true, fetch: _fetchNoStainless },
+      configuration: { baseURL, dangerouslyAllowBrowser: true, fetch: helpers.browserChatFetch() },
       apiKey: cfg.needsKey ? helpers.getKey() : "no-key-needed",
-      model, temperature: 0, maxTokens: 16384,
+      model: activeModel, temperature: 0, maxTokens: 16384,
     });
     const readCoursePage = tool(
       async ({ page }) => await helpers.coursePage(page),
@@ -453,9 +447,9 @@ function getAgent(model) {
         description: "Read a page of THIS course and return its text as markdown.",
         schema: z.object({ page: z.enum(PAGES.map(p => p.id)).describe("which page, e.g. 01b-react") }) },
     );
-    agents[model] = createReactAgent({ llm, tools: [readCoursePage], checkpointer: new MemorySaver() });
+    agents[activeModel] = createReactAgent({ llm, tools: [readCoursePage], checkpointer: new MemorySaver() });
   }
-  return agents[model];
+  return agents[activeModel];
 }
 
 // The artifact is a live chat panel, not a transcript dump.

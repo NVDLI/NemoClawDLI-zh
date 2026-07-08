@@ -445,8 +445,11 @@ a > code { color: inherit; }
   border-radius: var(--r); padding: 28px 32px; margin: 2em 0;
 }
 .key-panel label { display: block; margin-bottom: .4em; font-size: .85rem; color: #b0b0b0; color: var(--td); }
+.key-panel input + label,
+.key-panel details + .btn { margin-top: 12px; }
 .key-panel input[type="password"],
-.key-panel input[type="text"] {
+.key-panel input[type="text"],
+.key-panel input[type="url"] {
   width: 100%; padding: 10px 14px;
   background: #1e1e1e; background: var(--e2);
   border: 1px solid #2a2a2a; border-color: var(--bd);
@@ -472,12 +475,19 @@ a > code { color: inherit; }
   color: var(--gs); font-family: var(--mono); font-size: .88rem;
   white-space: nowrap;
 }
+.key-endpoint-label { color: var(--td); font-size: .82rem; overflow-wrap: anywhere; }
 .key-panel .key-change-btn { margin: 0; padding: 7px 16px; font-size: .82rem; }
 .key-panel .iframe-proxy-toggle-row {
   display: inline-flex; align-items: center; gap: 8px;
-  margin: 0 12%.75em 0 .2em; color: var(--td); font-size: .86rem;
+  margin: .75em 0 .2em; color: var(--td); font-size: .86rem;
 }
 .key-panel .iframe-proxy-toggle-row input { flex: 0 0 auto; }
+.key-panel .embedding-route {
+  margin-top: 14px; padding: 10px 14px 14px;
+  border: 1px solid var(--bd); border-radius: 6px;
+}
+.key-panel .embedding-route summary { cursor: pointer; color: var(--td); font-size: .86rem; }
+.key-panel .embedding-route p { color: var(--tf); font-size: .8rem; }
 .key-panel .btn {
   margin-top: 12px; padding: 10px 24px;
   background: #76b900; background: var(--g);

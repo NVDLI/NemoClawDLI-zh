@@ -26,7 +26,20 @@ OUT="${1:-$T1/public}"
 # Build the source language at $OUT root, then each sparse same-branch overlay under i18n/<lang>/
 # over canonical web/ and into $OUT/<lang>/. BUILD_PAGES_LANGS=0 disables that loop.
 LANGS="${BUILD_PAGES_LANGS:-1}"
-PULL_MATERIALS="${BUILD_PAGES_PULL_MATERIALS:-1}"
+REUSE_VALIDATION="${BUILD_PAGES_REUSE_VALIDATION:-0}"
+# Reusing a same-commit report requires the source tree to remain byte-for-byte at HEAD.
+# Fresh local builds may still refresh material snapshots before regenerating validation.
+if [ -n "${BUILD_PAGES_PULL_MATERIALS+x}" ]; then
+    PULL_MATERIALS="$BUILD_PAGES_PULL_MATERIALS"
+elif [ "$REUSE_VALIDATION" = "1" ]; then
+    PULL_MATERIALS="0"
+else
+    PULL_MATERIALS="1"
+fi
+if [ "$REUSE_VALIDATION" = "1" ] && [ "$PULL_MATERIALS" != "0" ]; then
+    echo "[build_pages]   ERROR: report reuse requires BUILD_PAGES_PULL_MATERIALS=0" >&2
+    exit 1
+fi
 COURSE_PREFIX="${BUILD_PAGES_COURSE_PREFIX:-}"
 COURSE_PREFIX="${COURSE_PREFIX#/}"; COURSE_PREFIX="${COURSE_PREFIX%/}"
 SOURCE_MIRROR_PREFIX="${BUILD_PAGES_SOURCE_MIRROR_PREFIX:-}"
@@ -69,7 +82,16 @@ else
         echo "[build_pages]   SKIP pull: vendoring deps (requests beautifulsoup4 markdownify lxml) not installed; using committed snapshots"
     fi
 fi
-python3 "$T1/scripts/validation/validate_bundle.py" --scope ship >/dev/null 2>&1 || true   # refresh docs/validation/latest.json post-pull
+# The published report must describe this exact tree. A prior required job may supply its
+# same-commit report; reuse is fail-closed on schema, SHA, scope, required findings, and suite
+# status. Direct/local builds regenerate by default.
+if [ "$REUSE_VALIDATION" = "1" ]; then
+    python3 "$T1/scripts/validation/validation_report_audit.py" \
+        --report "$T1/docs/validation/latest.json" --expect-head
+    echo "[build_pages] reusing same-commit validation report"
+else
+    python3 "$T1/scripts/validation/validate_bundle.py" --scope ship
+fi
 
 # ── 1. Courses: build the full self-hosted standalone straight into public/ ──
 # --full gives the lab experience (dark theme, topbar + journey-map + nav, interactive panels)
@@ -104,6 +126,14 @@ cp "$T1/scripts/runtime/link_graph.html" "$OUT/link-graph.html"
 # Favicon at the site root for the foyer + aux pages (the course carries its own under assets/).
 cp "$T1/web/nemoclaw/assets/favicon.ico" "$OUT/favicon.ico"
 
+# Ship the project license and the static third-party inventory at the artifact root. Course UI
+# links resolve here, and downstream static-host distributions must carry both files. Preserve the
+# runbook path referenced by the inventory without shipping generated SBOM bodies.
+cp "$T1/LICENSE" "$OUT/LICENSE"
+cp "$T1/THIRD_PARTY_LICENSES.md" "$OUT/THIRD_PARTY_LICENSES.md"
+mkdir -p "$OUT/scripts/compliance/docs"
+cp "$T1/scripts/compliance/docs/sbom_generation.md" "$OUT/scripts/compliance/docs/sbom_generation.md"
+
 # ── 2b. SKILL explorers: the reusable framer + each explorer folder, source shipped
 # as read-only assets so a student with a key can read AND ask about the real code on
 # the live site without leaving the HTML space. Each folder's SKILL.html references the
@@ -111,7 +141,7 @@ cp "$T1/web/nemoclaw/assets/favicon.ico" "$OUT/favicon.ico"
 # because the deploy mirrors that relative shape (public/web/_skill_explorer.js + public/<dir>/).
 mkdir -p "$OUT/web"
 cp "$T1/web/_skill_explorer.js" "$OUT/web/_skill_explorer.js"
-for d in cors-proxy deploy scripts docs workspace; do
+for d in deploy scripts docs workspace; do
     if [ -d "$T1/$d" ]; then
         mkdir -p "$OUT/$d"
         # the explorer + the documented source it shows (read-only); skip caches + subdirs
@@ -150,7 +180,7 @@ fi
 # exists on Pages (the foyer is the site-root index.html and the root hub is a source-layout dev
 # artifact that is not deployed). Point the logo at the foyer and drop the redundant up-link so
 # the topbar has no dead targets on the live site.
-for d in cors-proxy deploy scripts docs workspace; do
+for d in deploy scripts docs workspace; do
     f="$OUT/$d/SKILL.html"
     [ -f "$f" ] || continue
     python3 - "$f" <<'PROJ'
@@ -178,7 +208,9 @@ done
 if [ -d "$T1/web/nemoclaw" ]; then
     mirror_out="$OUT/${SOURCE_MIRROR_PREFIX:+$SOURCE_MIRROR_PREFIX/}"
     mkdir -p "$mirror_out"
-    ( cd "$T1" && find web/nemoclaw -type f         \( -name '*.html' -o -name '*.md' -o -name '*.css' -o -name '*.js' -o -name '*.svg' -o -name '*.json' \) -print0       | tar --null -cf - -T - ) | ( cd "$mirror_out" && tar -xf - )
+    ( cd "$T1" && find web/nemoclaw -path 'web/nemoclaw/standalone' -prune -o -type f \
+        \( -name '*.html' -o -name '*.md' -o -name '*.css' -o -name '*.js' -o -name '*.svg' -o -name '*.json' \) \
+        -print0 | tar --null -cf - -T - ) | ( cd "$mirror_out" && tar -xf - )
     echo "[build_pages] validated source -> ${mirror_out%/}/web/nemoclaw/ ($(find "$mirror_out/web/nemoclaw" -type f | wc -l) text files, read-only for the report preview)"
 fi
 

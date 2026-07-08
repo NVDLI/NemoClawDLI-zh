@@ -6,9 +6,9 @@
 <title>Agente Profundo · Segurança do Agente</title>
 <link rel="stylesheet" href="styles/_style.css"/>
 <script src="vendor/highlight-11.10.0.min.js"></script>
-<link rel="stylesheet" href="vendor/codemirror-5.65.16.min.css"/>
-<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.16.min.css"/>
-<script src="vendor/codemirror-5.65.16.min.js"></script>
+<link rel="stylesheet" href="vendor/codemirror-5.65.21.min.css"/>
+<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.min.css"/>
+<script src="vendor/codemirror-5.65.21.min.js"></script>
 <style>
   .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
   .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
@@ -419,7 +419,7 @@ mountCanvasFlow("#cell-m3c-p1", {
       summary: "Ler o endpoint ativo de getConfig(); o código do gráfico posterior permanece independente do endpoint.",
       code: `// Load the same-origin vendor bundle used by this example.
 helpers.log("importando @langchain/openai ...");
-const { ChatOpenAI } = await import("./vendor/langchain-1.4.7.esm.min.js");
+const { ChatOpenAI } = await import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href);
 helpers.log("importar OK");
 
 const cfg = await helpers.getConfig();
@@ -473,7 +473,7 @@ mountCanvasFlow("#cell-m3c-p2", {
       code: `// Load the same-origin vendor bundle used by this example.
 helpers.log("Importando o ecossistema LangChain...");
 const { ChatOpenAI, tool, createReactAgent, z } =
-  await import("./vendor/langchain-1.4.7.esm.min.js");
+  await import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href);
 state.deps = { ChatOpenAI, tool, createReactAgent, z };
 helpers.log("Importações OK");
 
@@ -572,7 +572,7 @@ mountCanvasFlow("#cell-m3c-p3", {
       code: `// Load the same-origin vendor bundle used by this example.
 helpers.log("Importando pacotes LangChain...");
 const { ChatOpenAI, tool, createReactAgent, z } =
-  await import("./vendor/langchain-1.4.7.esm.min.js");
+  await import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href);
 state.deps = { ChatOpenAI, tool, createReactAgent, z };
 
 const cfg = await helpers.getConfig();
@@ -619,7 +619,7 @@ return { tools: ["write_file", "read_file", "list_files"], vfs_state: Object.key
     {
       id: "planner", icon: "🧠", title: "Planeje subtarefas tipadas", x: 1, y: 1,
       summary: "Saída estruturada evita a análise de um plano de texto livre.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Mude a entrega e observe o planejador criar novas subtarefas tipadas.
 state.goal = [
   "Research NVIDIA NIM (NVIDIA Inference Microservices) and produce three files: ",
   "nim_overview.md, a technical overview of what NIM is and how it works; ",
@@ -627,8 +627,8 @@ state.goal = [
   "nim_vs_hosting.md, a short comparison of using a managed NIM endpoint versus self-hosting a model directly, ",
   "covering latency, operational overhead, and when each makes sense.",
 ].join("");
-// Edit this string to try a different multi-file research goal.
-
+// state.goal = "Compare RAG evaluation methods and produce metrics.md, risks.md, and test_plan.md.";
+// state.goal = "Research agent memory and produce short_term.md, long_term.md, and tradeoffs.md.";
 
 // withStructuredOutput binds the output to this schema and returns a parsed object.
 

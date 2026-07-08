@@ -9,7 +9,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const NEMO = process.env.FIG_NEMO || path.resolve(HERE, "..", "..", "web", "nemoclaw");
 const COURSE_SCRIPTS = path.join(NEMO, "scripts");
 // Stage an ESM shim beside course modules so relative imports resolve under Node.
-const tmp = path.join(COURSE_SCRIPTS, ".figcheck_shared.mjs");
+const tmp = path.join(COURSE_SCRIPTS, `.figcheck_shared-${process.pid}.mjs`);
 fs.writeFileSync(tmp, fs.readFileSync(path.join(COURSE_SCRIPTS, "_shared.js")));
 let shared;
 try { shared = await import("file://" + tmp); }
@@ -113,8 +113,7 @@ function svgProblems(svg, { checkEdges = false } = {}) {
   }
   if (checkEdges) {
     const B = nodeBoxes(svg);                     // the diagram's node boxes
-    // Box-on-box overlap makes the diagrams hard to read. A tiny epsilon avoids false positives
-    // from decimal rounding, but any visible overlap is a design bug.
+    // Ignore decimal-rounding noise; report any visible box overlap.
     for (let a = 0; a < B.length; a++) for (let b = a + 1; b < B.length; b++) {
       const A = B[a], C = B[b];
       const ow = Math.max(0, Math.min(A.x + A.w, C.x + C.w) - Math.max(A.x, C.x));

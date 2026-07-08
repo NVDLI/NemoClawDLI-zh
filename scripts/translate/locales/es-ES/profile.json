@@ -6,11 +6,50 @@
   "native_label": "Español",
   "html_lang": "es-ES",
   "source_language": "en",
-  "canonical_code_templates": true,
+  "canonical_code_templates": false,
   "reviewed_target_hashes": true,
   "language_name": "neutral technical Spanish",
   "audience": "Spanish-speaking students and software developers across regions",
-  "generation_guidance": "Prefer internationally understandable technical Spanish. Use direct usted-neutral imperatives only where the English addresses the learner. Keep established developer terms when translating them would obscure the code or product interface.",
+  "generation_guidance": "Prefer internationally understandable technical Spanish. Use the pinned prose in 01a-loop.html as the editorial style reference: retain its wording, explanatory cadence, developer vocabulary, and local choice of direct or impersonal address exactly. Do not normalize or correct a style-PIC edit in an agent-authored follow-up. Keep established developer terms when translating them would obscure the code or product interface.",
+  "editorial_examples": [
+    {
+      "source": "An agent is an entity that interacts with an environment at any meaningful level. A person going about their day is an agent in this sense, and so is a thermostat holding a room at temperature or a self-driving car making its way through traffic.",
+      "target": "Un agente es una entidad que interactúa con un entorno determinado a cualquier nivel significativo. Una persona en su día a día es un agente en este sentido, así como también lo son un termostato que mantiene la temperatura de una sala o un coche autónomo que se desplaza por el tránsito."
+    },
+    {
+      "source": "All of them perceive their environment through sensors and act on it through actuators. Because each action feeds the next observation, perceiving and acting fold into one continuous cycle.",
+      "target": "Todos ellos perciben el entorno por medio de sensores y actúan sobre él por medio de actuadores. Cada acción influye, por tanto, en la siguiente observación del entorno formando un ciclo o bucle continuo."
+    },
+    {
+      "source": "You call the chat-completions interface like any other function: hand it a list of messages and a model name, and it hands back one assistant message plus metadata.",
+      "target": "La interfaz de Chat Completions se invoca como cualquier otra función: recibe una lista de mensajes y el nombre de un modelo, y devuelve el mensaje generado por el modelo junto con metadatos."
+    },
+    {
+      "source": "Calls do not share state. Between requests the server holds nothing for you. If you want the model to remember the previous turn, you send that turn again.",
+      "target": "Las llamadas no comparten estado. El servidor no conserva nada entre solicitudes. Para que el modelo recuerde algún mensaje anterior, hay que enviárselo de nuevo."
+    }
+  ],
+  "review_protocol": {
+    "native_editorial_signal": "Treat edits from the designated language style PIC as authoritative and preserve the pinned learner-visible wording exactly. Canonical runtime code may advance without changing the editorial pin. A prose correction requires a style-PIC-authored follow-up and a deliberate pin update; agents and maintainers do not silently revise its wording.",
+    "style_reference": "web/nemoclaw/01a-loop.html",
+    "style_reference_origin_commit": "0d0f6be530db7c5ace3706a7703271d9f34c7b75",
+    "style_reference_editorial_sha256": "10ab76fc9522d33a95a62602a51ae242611cda23de5340fee5bb074c18ec60ad",
+    "triage_states": [
+      "keep",
+      "revise",
+      "reject"
+    ],
+    "required_dimensions": [
+      "semantic fidelity and retained information",
+      "natural language used by software developers",
+      "technical precision",
+      "consistent learner voice",
+      "spelling, grammar, and agreement",
+      "canonical executable and document structure"
+    ],
+    "static_validation_limit": "Static checks catch known residues, calques, structure drift, and measurable rhythm. They do not certify natural Spanish.",
+    "acceptance_boundary": "Accept source and target hashes only after side-by-side rendered review of the exact target."
+  },
   "terminology_sources": [
     {
       "url": "https://www.nvidia.com/es-es/ai/",
@@ -52,6 +91,10 @@
     "loop": "ciclo",
     "tool call": "llamada a herramienta",
     "tool": "herramienta",
+    "environment": "entorno",
+    "schema": "esquema",
+    "helper": "helper",
+    "hidden by default": "oculto por defecto",
     "context rot": "degradación del contexto",
     "array": "array",
     "harness": "entorno de ejecución",
@@ -88,6 +131,8 @@
     "fijación canónica": "Use 'modelo fijado' o 'versión fijada'.",
     "despachar una rama": "Use 'enviar una tarea' o 'dirigir el flujo', según el contexto.",
     "hacer proxy": "Use 'reenviar' o 'actuar como proxy'.",
+    "código recogido": "Use 'código oculto por defecto'.",
+    "llamada de verdad": "Use 'llamada real' o 'ejemplo real', según el contexto.",
     "marca hacia abajo": "Use 'Markdown'.",
     "trifecta letal": "Use 'tríada letal'.",
     "Antrópico": "No traduzca el nombre propio Anthropic.",
@@ -135,8 +180,226 @@
     "carregá": "Residuo portugués; use 'cargar'.",
     "lerá": "Residuo portugués; use 'leerá'.",
     "sua": "Residuo portugués; use el posesivo español correspondiente.",
-    "não": "Residuo portugués; use 'no'."
+    "não": "Residuo portugués; use 'no'.",
+    "inspecione": "Use 'inspecciona'.",
+    "del cero": "Use 'desde cero'.",
+    "puede ser informada": "Calco impropio; use 'puedes configurar' o una formulación directa.",
+    "la anterior aparece": "No use 'anterior' para preview; describa las entradas de vista previa.",
+    "costo": "Para es-ES y la terminología del curso, use 'coste'.",
+    "harness": "En prosa visible, use 'entorno de ejecución' o 'sistema que rodea el modelo'."
   },
+  "editorial_patterns": [
+    {
+      "code": "locale-article-agreement",
+      "pattern": "\\b(?:una\\s+(?:agente|array|entorno|esquema|framework|mensaje|modelo|problema|prompt|runtime|sandbox|sistema|stack)|un\\s+(?:API|celda|clave|herramienta|interfaz|llamada|política|red|respuesta|ruta|sesión))\\b",
+      "detail": "Concordancia incorrecta entre el artículo y el sustantivo técnico."
+    },
+    {
+      "code": "locale-contraction",
+      "pattern": "\\b(?:de el|a el)\\b",
+      "detail": "Use la contracción española correspondiente: 'del' o 'al'."
+    },
+    {
+      "code": "locale-role-calque",
+      "pattern": "\\bpapel\\s+(?:de\\s+)?tool\\b",
+      "detail": "Calco de role: use 'mensaje con el rol tool'."
+    },
+    {
+      "code": "locale-control-flow-calque",
+      "pattern": "\\b(?:volver\\s+content|flujo\\s+de\\s+fallback|apuntado\\s+para|preconstruido\\s+y\\s+apuntado)\\b",
+      "detail": "Reformule el flujo de control con español técnico natural."
+    },
+    {
+      "code": "locale-generated-word",
+      "pattern": "\\b(?:rotea(?:n|r)?|recham\\w*|recobido|retornando)\\b",
+      "detail": "Verbo impropio o generado por traducción automática."
+    },
+    {
+      "code": "locale-information-calque",
+      "pattern": "\\b(?:subutilizar\\s+informaciones|medio\\s+débil|pasar\\s+la\\s+conversación\\s+para)\\b",
+      "detail": "Calco literal: describa la información o transferencia de forma natural."
+    },
+    {
+      "code": "locale-malformed-question",
+      "pattern": "\\b(?:El\\s+modelo\\s+¿|otra\\s+¿\\s*respuesta)\\b",
+      "detail": "Interrogación mal formada; reescriba la pregunta completa."
+    },
+    {
+      "code": "locale-mixed-ui",
+      "pattern": "\\b(?:rather\\s+than|the\\s+model|the\\s+loop|the\\s+results|until\\s+finish_reason|and\\s+the\\s+model|Edit\\s+MODEL)\\b",
+      "detail": "Un fragmento funcional en inglés permanece en la interfaz localizada."
+    }
+  ],
+  "voice_rules": {
+    "disallowed_formal_imperatives": [
+      "abra",
+      "aloje",
+      "añada",
+      "borre",
+      "cambie",
+      "cargue",
+      "cite",
+      "combine",
+      "compile",
+      "complete",
+      "compruebe",
+      "configure",
+      "conecte",
+      "conceda",
+      "consulte",
+      "continúe",
+      "copie",
+      "construya",
+      "cree",
+      "calcule",
+      "conéctese",
+      "autentíquese",
+      "declare",
+      "deje",
+      "defina",
+      "describa",
+      "descargue",
+      "dirija",
+      "edite",
+      "ejecute",
+      "elija",
+      "envíe",
+      "escriba",
+      "experimente",
+      "explore",
+      "genere",
+      "guarde",
+      "haga",
+      "inspeccione",
+      "instale",
+      "implemente",
+      "introduzca",
+      "lea",
+      "léala",
+      "léalo",
+      "llame",
+      "lleve",
+      "mantenga",
+      "mida",
+      "modifique",
+      "muestre",
+      "observe",
+      "pegue",
+      "permita",
+      "proporcione",
+      "proteja",
+      "pregunte",
+      "pruebe",
+      "pulse",
+      "recupere",
+      "rechace",
+      "repita",
+      "responda",
+      "revise",
+      "seleccione",
+      "siga",
+      "solicite",
+      "sintetice",
+      "sustituya",
+      "trate",
+      "use",
+      "valide",
+      "vea",
+      "verifique",
+      "vuelva"
+    ],
+    "disallowed_formal_patterns": [
+      {
+        "code": "locale-formal-address",
+        "pattern": "\\busted(?:es)?\\b",
+        "detail": "El curso usa trato directo de tú o formulación impersonal; no use usted."
+      },
+      {
+        "code": "locale-formal-address",
+        "pattern": "(?:^|[.!?;]\\s+)(?:Puede|Podrá)\\s+(?:abrir|añadir|cambiar|comenzar|comparar|conectar|continuar|copiar|declarar|editar|ejecutar|elegir|explorar|inspeccionar|leer|modificar|observar|pegar|probar|proporcionar|recuperar|retomar|seguir|seleccionar|sustituir|usar|volver)\\b",
+        "detail": "Una instrucción al estudiante conserva el tratamiento formal; use segunda persona de tú."
+      },
+      {
+        "code": "locale-formal-address",
+        "pattern": "\\bpara que pueda\\s+(?:abrir|añadir|cambiar|comparar|conectar|declarar|editar|ejecutar|elegir|explorar|inspeccionar|leer|observar|probar|seguir|usar)\\b",
+        "detail": "La finalidad dirigida al estudiante conserva el tratamiento formal."
+      },
+      {
+        "code": "locale-formal-address",
+        "pattern": "\\bque\\s+(?:conoció|construyó|leyó|comprobó|preparó|utilizó|estudió)(?:\\s+y\\s+(?:leyó|comprobó|utilizó))?\\s+(?:en|durante)\\b",
+        "detail": "La referencia a una actividad previa del estudiante conserva el tratamiento formal."
+      },
+      {
+        "code": "locale-formal-address",
+        "pattern": "\\bDesde el navegador,\\s+comparará\\b",
+        "detail": "La descripción de la actividad futura conserva el tratamiento formal."
+      },
+      {
+        "code": "locale-formal-address",
+        "pattern": "\\bLas sesiones[^.]{0,100}:\\s+puede\\s+retomar\\b",
+        "detail": "La instrucción para retomar una sesión conserva el tratamiento formal."
+      },
+      {
+        "code": "locale-formal-address",
+        "pattern": "(?:^|[.!?;]\\s+)(?:Normalmente|Después|También),?\\s+puede\\s+(?:cambiar|conectar|copiar|dejar|editar|ejecutar|elegir|inspeccionar|probar|seguir|usar)\\b",
+        "detail": "La instrucción adverbial conserva el tratamiento formal."
+      },
+      {
+        "code": "locale-formal-address",
+        "pattern": "(?:^|[.!?;]\\s+)(?:Así|Como resultado),?\\s+puede\\s+(?:cambiar|comparar|editar|observar|probar|seguir|usar)\\b",
+        "detail": "La instrucción de consecuencia conserva el tratamiento formal."
+      },
+      {
+        "code": "locale-formal-address",
+        "pattern": "(?:^|[.!?;]\\s+)Debe\\s+(?:añadir|cambiar|comprobar|conectar|decidir|elegir|editar|ejecutar|observar|probar|usar|validar)\\b",
+        "detail": "La obligación dirigida al estudiante conserva el tratamiento formal."
+      },
+      {
+        "code": "locale-formal-address",
+        "pattern": "\\bComo [^.!?]{0,100},\\s+puede\\s+(?:cambiar|comparar|observar|probar|usar)\\b",
+        "detail": "La instrucción comparativa conserva el tratamiento formal."
+      },
+      {
+        "code": "locale-formal-address",
+        "pattern": "\\b(?:Introduce|Escribe|Guarda|Pega)\\s+su\\b|(?:^|[.!?;]\\s+)Su clave\\b|\\bpertenece a su sesión\\b|\\bno tiene que aceptar su palabra\\b",
+        "detail": "La referencia directa al estudiante conserva un posesivo o giro formal."
+      },
+      {
+        "code": "locale-formal-address",
+        "pattern": "¿[^?]{0,180}\\b(?:cambiaría|añadiría|elegiría|haría|usaría)\\b|¿[^?]{0,180}\\b(?:también|además)\\s+necesita\\b",
+        "detail": "Una pregunta dirigida al estudiante conserva el tratamiento formal."
+      },
+      {
+        "code": "locale-formal-address",
+        "pattern": "\\bA estas alturas ha\\s+(?:creado|construido|medido|situado|utilizado)\\b|(?:^|[.!?;]\\s+)No debe\\s+(?:modificar|reiniciar|volver)\\b|(?:^|[.!?;]\\s+)Está\\s+(?:controlando|utilizando)\\s+[^.!?]{0,100}\\bque\\s+(?:conectó|creó|configuró)\\b",
+        "detail": "La narración de una actividad del estudiante conserva el tratamiento formal."
+      },
+      {
+        "code": "locale-formal-address",
+        "pattern": "\\bdonde verá\\s+(?:el|la|los|las)\\b",
+        "detail": "La descripción de lo que observará el estudiante conserva el tratamiento formal."
+      }
+    ]
+  },
+  "orthography_rules": {
+    "reject_space_before_punctuation": true,
+    "require_balanced_opening_punctuation": true
+  },
+  "english_function_words": [
+    "the", "and", "that", "this", "these", "those", "with", "from", "into", "your",
+    "you", "when", "then", "before", "after", "through", "without", "while", "where",
+    "which", "what", "why", "how", "will", "would", "should", "could", "must", "on",
+    "to", "of", "for", "in", "is", "are", "not", "as", "at", "by"
+  ],
+  "english_function_word_threshold": 2,
+  "foreign_function_words": [
+    "você", "vocês", "não", "uma", "umas", "pelo", "pela", "pelos", "pelas", "seu",
+    "sua", "seus", "suas", "isso", "isto", "também", "ainda", "depois", "então", "onde",
+    "através"
+  ],
+  "foreign_function_word_threshold": 2,
+  "reject_accidental_repetition": true,
+  "minimum_block_word_ratio": 0.6,
   "rhythm_rules": {
     "max_sentence_words": 65,
     "repeated_opening_run": 4,
@@ -144,13 +407,17 @@
     "short_sentence_words": 5
   },
   "context_rules": {
-    "runtime": "Mantenga runtime al nombrar el componente técnico. Use 'en tiempo de ejecución' para indicar cuándo ocurre algo.",
-    "workflow": "Use 'flujo de trabajo' en la explicación; preserve identificadores y nombres de producto.",
-    "guardrail": "Use 'medida de protección' en prosa general; preserve Guardrails en nombres propios.",
-    "stack": "Mantenga stack en arquitectura de software cuando conecte mejor con el producto y el código.",
-    "stateless": "Use 'sin estado'.",
-    "blast radius": "Use 'alcance del impacto'.",
-    "allowlist": "Prefiera 'lista de permitidos'; preserve el identificador técnico en código o políticas."
+    "runtime": "Conserva runtime al nombrar el componente técnico. Usa 'en tiempo de ejecución' para indicar cuándo ocurre algo.",
+    "workflow": "Usa 'flujo de trabajo' en la explicación; conserva identificadores y nombres de producto.",
+    "guardrail": "Usa 'medida de protección' en prosa general; conserva Guardrails en nombres propios.",
+    "stack": "Conserva stack en arquitectura de software cuando conecte mejor con el producto y el código.",
+    "stateless": "Usa 'sin estado'.",
+    "blast radius": "Usa 'alcance del impacto'.",
+    "allowlist": "Prefiere 'lista de permitidos'; conserva el identificador técnico en código o políticas.",
+    "environment": "Usa 'entorno' para el mundo o sistema con el que interactúa un agente; reserva 'medio ambiente' para el sentido ecológico.",
+    "call, turn, iteration": "Usa 'llamada' para una invocación de API o función, 'turno' para una intervención conversacional e 'iteración' para una repetición del ciclo.",
+    "collapsed code": "Usa 'oculto por defecto' o 'contraído' para una sección de código cerrada; no uses 'recogido'.",
+    "helper": "Conserva 'helper' cuando conecte con el nombre usado por desarrolladores y el código; usa 'función auxiliar' cuando no exista esa conexión."
   },
   "canonical_english_titles": [
     "How to Build an AI Agent",
@@ -159,6 +426,7 @@
     "How to Customize AI Agents",
     "How to Build Deep AI Agents",
     "How to Build a Safer Autonomous Agent using OpenClaw",
+    "Build a secure always-on local AI agent with NemoClaw",
     "What Is Agentic AI?",
     "What OpenClaw agents mean for every organization"
   ],
@@ -178,6 +446,6 @@
     "API", "Blueprint", "Blueprints", "Cloudflare", "CodeMirror", "Codex", "Docker",
     "framework", "Git", "GitLab", "JavaScript", "JupyterLab", "LLM", "NemoClaw",
     "NVIDIA", "OpenClaw", "OpenShell", "prompt", "Python", "RAG", "runtime", "sandbox",
-    "stack", "Studio", "workflow"
+    "helper", "stack", "Studio", "workflow"
   ]
 }

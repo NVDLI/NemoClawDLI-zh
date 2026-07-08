@@ -64,7 +64,6 @@ WEB_PAGE_DESC = {
         "glossary":          "Searchable glossary of the course's agent terms.",
         "dependencies":      "Source-derived inventory of exact browser packages, licenses, hashes, and runtime references.",
         "studio":            "Authoring and inspection studio for the course pages.",
-        "cert":              "Course completion certificate.",
         "courses":           "Catalog redirect stub.",
     },
 }
@@ -74,10 +73,12 @@ WEB_SUPPORT = {
     "styles":  ("course styles", "Shared course CSS plus the light iframe/export overlay."),
     "assets":  ("image provenance", "Source, license, connection level, theme mode, mount style, and visual-preview duty for every image."),
     "mats":    ("material provenance", "Source and connection level for every companion essay."),
+    "standalone": ("standalone export", "Standalone-export source and fixed assets generated from the canonical course."),
+    "vendor": ("browser vendor", "Pinned same-origin browser packages, metadata, SBOM, and license texts."),
 }
 SURFACE_LEAD = {
-    "cpu": "The shared microservice stack (llm_client, openclaw, sandbox-admin, docker_router) that the "
-           "browser course runs against. Open the service hub below.",
+    "cpu": "Local development and compatibility services. The production course is static and "
+           "connects to hosted model and NemoClaw endpoints. Open the service hub below.",
 }
 
 # Core tenets projected into root skill-meta; scripts/validation/tenets.py reports enforceable ones.
@@ -86,21 +87,22 @@ TENETS = {
         "Content is curated once and projected: pages live under execution surfaces, and "
         "bundle_standalone.py, build_pages.sh, and engine.js generate the standalone bundle, the "
         "Pages site, and the link graph from them. Add a delivery format by writing a generator, "
-        "so a fix to the source reaches every format. PHILOSOPHY.md is the long form.",
+        "so a fix to the source reaches every format.",
         "Anchor each page in a task that runs: build a working artifact a reader executes against "
         "the lab, and cut a page that only fills an outline. The aim is a change in what a reader "
         "can do.",
         "Order is a default, not a gate: keep pages usable out of sequence, with no enforced "
         "prerequisites or knowledge checks, so a reader can act on partial understanding and "
         "return for the next layer.",
-        "Target an open external release after approval: Apache 2.0, no gate or paywall, the "
-        "foyer surfacing only the selected courses, and mats cited by public URL.",
+        "Target the NVIDIA-owned DLI course repository as a Full-OSS-Project after approval: OSS "
+        "Type I, Apache 2.0, no gate or paywall, public course planning and contribution, the "
+        "foyer surfacing only the selected courses, and mats cited by public URL. This does not "
+        "classify or release the NemoClaw product or runtime.",
         "Keep surface assumptions explicit: web/ is browser-only and cannot assume student-provisioned "
         "microservices; cpu/ owns shared service stacks; spark/ or gpu surfaces must declare their "
         "compute contract before content depends on them.",
-        "Ship the services a course drives (a model gateway, a sandboxed agent harness, a policy "
-        "control plane) and let them carry the mechanical work, so a reader's attention stays on "
-        "the decision the exercise is about.",
+        "Keep production browser delivery static. Hosted model and NemoClaw endpoints supply live "
+        "capabilities; cpu/ services exist for local development and compatibility testing.",
         "Ideas stay easy to contribute through structured Issues and, after external intake is enabled, "
         "Discussions. Code stays "
         "difficult to accept: treat every patch as untrusted, require issue linkage, blast-radius "
@@ -113,8 +115,9 @@ TENETS = {
         "Content is organized by execution surface: web/ holds browser-only courses and course-scoped "
         "reference packets; cpu/ holds shared microservices; deploy/ holds compose and nginx; "
         "future spark/ or gpu surfaces must state their compute contract before use.",
-        "The brain is each directory's SKILL.html skill-meta JSON, not a SKILL.md. Parse it "
-        "first, then walk children: task to surface to course to content. Visual work must also "
+        "The brain is each source directory's SKILL.html skill-meta JSON, not a SKILL.md. Git-tracked "
+        "and proposed files define the exhaustive directory set, with no opt-outs. Parse the current "
+        "directory first, then walk children: task to surface to course to content. Visual work must also "
         "read the asset provenance beacon and validation beacon before edits.",
         "One link engine (scripts/runtime/engine.js) is the single source for resolution, crawl, "
         "reachability, and the release contract; it runs headless and in-browser, with no "
@@ -258,9 +261,8 @@ def gen_task():
     points humans at the curated release foyer."""
     surfaces = [(s, f"{s}/SKILL.html") for s in SURFACES if (TASK1 / s).is_dir()]
     sdesc = {"web": "Browser frontends: the course as styled web pages, remote services only "
-                    "(no local microservices). Assumes only a browser and the lab proxy.",
-             "cpu": "The shared microservice stack (llm_client, openclaw, sandbox-admin, docker_router) the browser "
-                    "course runs against. Assumes a CPU lab box."}
+                    "(no local microservices). Assumes only a browser and declared hosted endpoints.",
+             "cpu": "Local development and compatibility services. Not part of the static production deployment."}
     items = [(f"{s}/", h, sdesc.get(s, "")) for s, h in surfaces]
 
     # Non-course root layers: describe references, card tooling.
@@ -284,7 +286,7 @@ def gen_task():
     # Source explorers and topology tools are discovered from disk.
     import re as _re
     explorers = []
-    for d in sorted(p for p in TASK1.iterdir() if p.is_dir() and not p.name.startswith(".")):
+    for d in sorted(p for p in TASK1.iterdir() if p.is_dir()):
         sk = d / "SKILL.html"
         if d.name in SURFACES or not sk.is_file():
             continue
@@ -302,16 +304,15 @@ def gen_task():
                           "Link + topology viewer: how every page resolves and what reaches a SKILL hub."))
 
     docs = [("README.md", "README.md", "What the release candidate is and how to run it (start here)."),
-            ("RELEASE_STATUS.md", "RELEASE_STATUS.md", "Publication state, approval boundary, and NOTICE policy."),
             ("RELEASE_STATUS.json", "RELEASE_STATUS.json", "Machine-readable publication and licensing state."),
-            ("GOVERNANCE.json", "GOVERNANCE.json", "Machine-readable intake, support, signoff, conduct, and ownership state."),
-            ("AGENT_QUICKSTART.md", "AGENT_QUICKSTART.md", "Agent orientation: layout, services, rules."),
+            ("CHANGELOG.md", "CHANGELOG.md", "Version history for public releases and pending changes."),
+            ("LICENSE", "LICENSE", "Apache License 2.0 for the proposed public release."),
+            ("SECURITY.md", "SECURITY.md", "Official NVIDIA private vulnerability-reporting policy."),
+            ("AGENTS.md", "AGENTS.md", "Cross-harness agent contract and task routing."),
             ("CONTRIBUTING.md", "CONTRIBUTING.md", "How to contribute: hooks, the validation gate, conventions."),
             ("DCO.md", "DCO.md", "Required per-commit origin signoff and repair guidance."),
             ("CODE_OF_CONDUCT.md", "CODE_OF_CONDUCT.md", "Community behavior, private reporting, and enforcement."),
             ("SUPPORT.md", "SUPPORT.md", "Support scope, response expectation, and lifecycle policy."),
-            ("MAINTAINERS.md", "MAINTAINERS.md", "Role authority and independent-review boundary."),
-            ("QUALITY_DIRECTIVES.md", "QUALITY_DIRECTIVES.md", "Pedagogical quality bar."),
             ("scripts/compliance/docs/open_source_readiness.md", "scripts/compliance/docs/open_source_readiness.md", "Release-safe readiness checklist and roles."),
             ("scripts/compliance/docs/vendor_policy.md", "scripts/compliance/docs/vendor_policy.md", "Source and vendor-ingestion policy."),
             ("SKILL_CONTRACT.md", "SKILL_CONTRACT.md", "The SKILL.html beacon spec.")]
@@ -341,6 +342,10 @@ def gen_task():
             "release": {"surface": "web/index.html", "courses": rel_courses,
                         "publication_state": RELEASE_STATUS["publication_state"],
                         "external_mirror": RELEASE_STATUS["external_mirror"],
+                        "external_repository": RELEASE_STATUS["external_repository"],
+                        "intended_oss_type": RELEASE_STATUS["intended_oss_type"],
+                        "oss_scope": RELEASE_STATUS["oss_scope"],
+                        "excluded_product_scope": RELEASE_STATUS["excluded_product_scope"],
                         "target_license": RELEASE_STATUS["target_license"],
                         "notice_required": RELEASE_STATUS["notice_required"],
                         "status_path": "RELEASE_STATUS.json",
@@ -433,6 +438,7 @@ def gen_web_course_hubs():
         support_files = [p for p in support_files if p.is_file()]
         implementation = [p for p in support_files if p.parent.name in {"scripts", "styles"}]
         provenance = [p for p in support_files if p.parent.name in {"assets", "mats"}]
+        distribution = [p for p in support_files if p.parent.name in {"standalone", "vendor"}]
         sections = [("Pages", None, [(p.stem, p.relative_to(d).as_posix(), pd.get(p.stem, "")) for p in primary])]
         if subindex:
             sections.append(("Collections", "Sub-collections with their own launcher; open one to "
@@ -455,6 +461,10 @@ def gen_web_course_hubs():
                              "and companion materials.",
                              [(WEB_SUPPORT[p.parent.name][0], p.relative_to(d).as_posix(), WEB_SUPPORT[p.parent.name][1])
                               for p in provenance]))
+        if distribution:
+            sections.append(("Distribution", "Standalone and same-origin dependency surfaces shipped with the course.",
+                             [(WEB_SUPPORT[p.parent.name][0], p.relative_to(d).as_posix(), WEB_SUPPORT[p.parent.name][1])
+                              for p in distribution]))
         meta = {"node_type": "hub", "level": "course", "surface": "web", "course": d.name,
                 "self_path": f"web/{d.name}/SKILL.html",
                 "children": [{"name": _label(p), "path": p.relative_to(TASK1).as_posix()} for p in pages]

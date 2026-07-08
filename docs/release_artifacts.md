@@ -45,7 +45,7 @@ Each public draft receives:
 
 - `nemoclaw-vX.Y.Z.tar.gz`: deterministic built Pages tree under a versioned top-level directory
 - `release-manifest.json`: schema, tag object, commit, source epoch, archive digest, file count,
-  and attached-asset digests
+  attached-asset digests, and the archives requiring external malware evidence
 - `nemoclaw-vX.Y.Z.python-env.cdx.json`: CycloneDX SBOM for the resolved release environment
 - `nemoclaw-vX.Y.Z.browser.cdx.json`: CycloneDX SBOM for JavaScript packages shipped to learners
 - `SHA256SUMS`: digest list for every published asset
@@ -63,6 +63,20 @@ The workflow installs scanner tools in a separate environment, so scanner depend
 pollute the runtime SBOM. Scanner versions are pinned in the workflow so the same environment is
 serialized consistently until an explicit dependency update changes the tooling.
 
+## External artifact evidence
+
+Packaging writes `external_evidence.policy` as `required-before-publication` and lists the course
+archive, plus any additional executable or archive asset, under `malware_scan_required`. This field
+is a release rule, not a scan result or current status. The authoritative system owns the disposition
+and reviewer record; the public manifest identifies the exact filenames and the checksums bind them
+to the tag.
+
+After the protected workflow prepares a draft, the release owner submits every listed artifact to
+the qualified scanner and records zero malicious and zero suspicious detections, or an authorized
+false-positive disposition. Text-only manifests, SBOMs, and checksum files receive an explicit
+applicability decision rather than being silently omitted. The public workflow does not hold private
+scanner credentials or claim that repository validation satisfies this external control.
+
 ## Reproducibility rules
 
 `scripts/build/package_release.py` normalizes file order, owner, group, mode, archive time, gzip
@@ -77,8 +91,9 @@ python3 scripts/build/package_release.py --self-test
 ```
 
 The generated manifest binds the archive to both the tag object and peeled commit. `SHA256SUMS`
-supports offline verification. When the external GitHub repository is created, enable immutable
-releases. GitHub then locks the published tag and assets and emits a release attestation.
+supports offline verification. Before the reserved external GitHub repository publishes its first
+release, enable immutable releases. GitHub then locks the published tag and assets and emits a
+release attestation.
 
 ## Promotion and recovery
 
@@ -104,8 +119,10 @@ The checked-in `.github/workflows/release.yml` prepares a release but cannot aut
 4. The write job waits on the protected `github-release` environment. An eligible reviewer checks
    the SHA, tag, evidence, known issues, and release notes before write authority is granted.
 5. The workflow creates or refreshes a draft release; it never publishes directly.
-6. A release manager reviews the draft, verifies attached assets, and publishes it.
-7. Review deployment history and ruleset insight. Record any authorized bypass with owner and reason.
+6. Read `release-manifest.json.external_evidence`, submit every listed artifact, and retain the
+   authoritative disposition against the exact checksums.
+7. A release manager reviews the draft, verifies attached assets and external evidence, and publishes it.
+8. Review deployment history and ruleset insight. Record any authorized bypass with owner and reason.
 
 Enable immutable releases before the first publication. If validation fails, fix through a new
 issue-linked change and create a new tag after merge. Never move or reuse a published tag.

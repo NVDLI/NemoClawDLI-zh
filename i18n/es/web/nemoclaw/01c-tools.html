@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Herramientas Escala · Seguridad de agente</title>
+<title>Herramientas a escala · Seguridad del agente</title>
 <link rel="stylesheet" href="styles/_style.css"/>
 <script src="vendor/highlight-11.10.0.min.js"></script>
-<link rel="stylesheet" href="vendor/codemirror-5.65.16.min.css"/>
-<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.16.min.css"/>
-<script src="vendor/codemirror-5.65.16.min.js"></script>
+<link rel="stylesheet" href="vendor/codemirror-5.65.21.min.css"/>
+<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.min.css"/>
+<script src="vendor/codemirror-5.65.21.min.js"></script>
 <style>
   .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
   .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
@@ -35,22 +35,22 @@
   <div class="hero">
     <div class="eyebrow">Módulo 1 · Parte C de 3</div>
     <h1>Herramientas <span>a escala</span></h1>
-    <p class="lead">En el Módulo 1b, usted conectó una sola herramienta al ciclo del agente: el modelo solicitó una función con nombre, el entorno de ejecución la ejecutó y el resultado regresó a la llamada siguiente. Ese recorrido no cambia. Lo que crece es la superficie de herramientas: el modelo debe elegir entre más descripciones y cada herramienta puede ocultar una capacidad mayor.</p>
+    <p class="lead">En el Módulo 1b, conectaste una sola herramienta al ciclo del agente: el modelo solicitó una función con nombre, el runtime la ejecutó y el resultado se incorporó a la llamada siguiente. Ese recorrido no cambia. Lo que crece es la superficie de herramientas: el modelo debe elegir entre más descripciones y cada herramienta puede ocultar una capacidad mayor.</p>
     <p>La página sigue este contrato desde funciones locales hasta un backend de búsqueda, un subagente y, finalmente, un servidor de Model Context Protocol (MCP). Son distintas formas de proporcionar capacidades al mismo ciclo. Una lista de herramientas extensa también consume contexto y puede reducir la fiabilidad del enrutamiento, lo que motiva los flujos de trabajo acotados del Módulo 2.</p>
   </div>
 
   <h2>El contrato de llamada a herramientas permanece fijo</h2>
-  <p>La figura traza el ciclo a partir de 1b. Las secciones posteriores cambian de donde viene el esquema y lo que el ejecutor hace, mientras que el modelo todavía solicita una herramienta nombrada y lee su resultado.</p>
+  <p>La figura retoma el ciclo de 1b. Las secciones posteriores cambian el origen del esquema y el trabajo del ejecutor, mientras el modelo sigue solicitando una herramienta por nombre y leyendo su resultado.</p>
 
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/01c-tools-1.svg" style="aspect-ratio:860 / 414"></div>
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">El LLM solicita una llamada, el código responde y el LLM concluye. El modelo nunca ejecuta la función.</figcaption>
   </figure>
 
-  <div class="callout"><strong>El servidor aplica el esquema.</strong> Antes de la llamada función estructurada, las aplicaciones solían extraer XML personalizado o JSON escrito a mano del texto del modelo. Una parodia podía romper el analizador. El campo de herramientas transporta el contrato por separado; así, el mecanismo de servicio puede restringir los argumentos al esquema y volver un campo <code>tool_calls</code> consistente. Su código de encaminamiento puede entonces contar con <code>tc.function.name</code> y <code>tc.function.arguments</code> presentes y analisables.</div>
+  <div class="callout"><strong>El servidor aplica el esquema.</strong> Antes de las llamadas a funciones estructuradas, las aplicaciones solían extraer XML personalizado o JSON escrito a mano del texto del modelo. Una paráfrasis podía romper el analizador. El campo de herramientas transporta el contrato por separado; así, el servicio puede restringir los argumentos al esquema y devolver un campo <code>tool_calls</code> coherente. Tu código de enrutamiento puede contar entonces con que <code>tc.function.name</code> y <code>tc.function.arguments</code> estén presentes y se puedan analizar.</div>
 
   <h2>Cómo el modelo elige entre varias herramientas</h2>
-  <p>Los agentes rara vez tienen una única herramienta. Con más de una, el modelo decide qué llamar con base en el campo <code>description</code> .</p>
+  <p>Los agentes rara vez disponen de una única herramienta. Cuando hay varias, el modelo decide a cuál llamar a partir del campo <code>description</code>.</p>
   <p>La celda siguiente proporciona al modelo dos herramientas y una pregunta que exige elegir. La visualización muestra qué camino tomó y por qué.</p>
 
   <figure style="margin:1.4em 0">
@@ -58,15 +58,15 @@
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Editar cualquier descripción cambia el enrutamiento del modelo, ya que el campo de descripción es una de las superficies de ingeniería de prompt con mayor impacto en un agente que usa herramientas.</figcaption>
   </figure>
 
-  <h2>Conectando <code>glossary_search</code> a una herramienta real</h2>
-  <p>La celda conecta <code>glossary_search</code> a un catálogo de términos de NVIDIA en la página. La búsqueda clasificada se ejecuta en el navegador sin una clave y vuelve definiciones cortas con enlaces de fuente. La <code>web_search</code> compartida del curso aplica la misma clasificación al catálogo completo. Abra el <a href="glossary.html">explorador de glosario</a> para inspeccionar cada término, leer la fuente de <code>webSearch</code> y <code>instantAnswer</code> en vivo o realizar la consulta.</p>
-  <p>La siguiente sección intercambia el ejecutador por una búsqueda de término exacto detrás del <em>mismo</em> contrato de herramienta. Así, observa el contrato permanecer fijo mientras el backend cambia.</p>
+  <h2>Conecta <code>glossary_search</code> a una herramienta real</h2>
+  <p>La celda conecta <code>glossary_search</code> con un catálogo de términos de NVIDIA incluido en la página. La búsqueda clasificada se ejecuta en el navegador, sin clave, y devuelve definiciones breves con enlaces a las fuentes. La herramienta <code>web_search</code> compartida por el curso aplica la misma clasificación al catálogo completo. Abre el <a href="glossary.html">explorador del glosario</a> para inspeccionar cada término, consultar las fuentes de <code>webSearch</code> e <code>instantAnswer</code> o ejecutar una búsqueda.</p>
+  <p>La sección siguiente sustituye el ejecutor por una búsqueda exacta de términos, pero mantiene el <em>mismo</em> contrato de herramienta. El backend cambia; el contrato que utiliza el modelo permanece fijo.</p>
 
   <div class="callout"><strong>El nombre de una herramienta debe describir una capacidad.</strong>
 Una herramienta llamada <code>nvidia_glossary_api</code> es frágil: cambiar el backend
 fuerza a actualizar cada prompt que referencia el nombre. Una herramienta llamada
-<code>glossary_search</code> describe lo que el llamador necesita. Búsqueda clasificada, búsqueda exacta,
-o un índice más rico puede estar detrás de ese contrato sin alterar el prompt del agente.</div>
+<code>glossary_search</code> describe lo que necesita el modelo que realiza la llamada. Una búsqueda ordenada por relevancia, una búsqueda exacta
+o un índice más completo pueden situarse detrás de ese contrato sin alterar el prompt del agente.</div>
 
   <div id="cell-m2b-p4"></div>
 
@@ -77,9 +77,9 @@ o un índice más rico puede estar detrás de ese contrato sin alterar el prompt
   <p>El mismo ciclo se ejecuta aquí como un script <code>mountRunCell</code> plano, con un cambio: el ejecutor.
 La búsqueda anterior devolvió un resumen breve para varios resultados. Este backend devuelve el artículo completo que mejor coincide, recuperado de la página de glosario almacenada en caché. El esquema y el ciclo no cambian; solo mejora la fuente que alimenta <code>glossary_search</code>.</p>
 
-  <div class="callout"><strong>El modelo sólo ve el contrato.</strong> Le pide <code>glossary_search</code> con una
-consulta natural y lee lo que es devuelto, sin saber cuál backend respondió. Puede comenzar con un índice de resúmenes y más tarde sustituir por artículos completos o una búsqueda en vivo sin tocar en el ciclo. La precisión puede cambiar
-Cuando un backend resuelve una correspondencia de manera diferente, pero el contrato se mantiene.</div>
+  <div class="callout"><strong>El modelo sólo ve el contrato.</strong> Invoca <code>glossary_search</code> con una
+consulta en lenguaje natural y lee el valor devuelto, sin saber qué backend respondió. Se puede comenzar con un índice de resúmenes y sustituirlo más adelante por artículos completos o una búsqueda en vivo sin modificar el ciclo. La precisión puede variar
+si cada backend resuelve las coincidencias de forma distinta, pero el contrato se mantiene.</div>
 
   <div id="cell-m2b-p4b"></div>
   
@@ -89,20 +89,19 @@ Cuando un backend resuelve una correspondencia de manera diferente, pero el cont
   
   
   <h2>Un agente completo detrás de una sola herramienta</h2>
-  <p>Una herramienta no necesita ser una pequeña función. Un subagente entero puede estar detrás de una sola
-llamada a herramienta. El modelo llamador aún ve un contrato. El agente detrás puede consultarse
-base de datos, ejecutar código o buscar un repositorio sin exponer estas herramientas internas al
+  <p>Una herramienta no necesita ser una función pequeña. Un subagente completo puede estar detrás de una sola
+llamada a herramienta. El modelo que realiza la llamada sigue viendo un único contrato. El agente del otro lado puede consultar
+una base de datos, ejecutar código o buscar en un repositorio sin exponer esas herramientas internas al
 ciclo principal.</p>
-  <p>La siguiente celda expone un subagente que conoce una pequeña tabla de clientes
-Es una herramienta de lenguaje natural. El agente principal nunca ve las líneas
-y solo puede hacer preguntas.</p>
+  <p>La celda siguiente expone como herramienta un subagente que conoce una pequeña tabla de clientes.
+El agente principal nunca ve las filas: sólo puede formular preguntas en lenguaje natural.</p>
 
   <div id="cell-m2b-p5"></div>
 
-  <div class="callout"><strong>La palanca de la carga cognitiva.</strong>
+  <div class="callout"><strong>La carga cognitiva también se controla.</strong>
 Cada herramienta adicional, campo de esquema y frase de descripción consume
-contexto que el agente principal podría usar para su tarea. Una lista de herramientas plana y extensa tiende a tener un desempeño peor que un pequeño conjunto de herramientas apoyadas por
-subagentes, porque cada ciclo sólo ve las herramientas relevantes para su nivel.</div>
+contexto que el agente principal podría usar para su tarea. Una lista de herramientas plana y extensa suele rendir peor que un conjunto pequeño respaldado por
+subagentes, porque cada ciclo solo ve las herramientas pertinentes para su nivel.</div>
   
   
 
@@ -110,48 +109,49 @@ subagentes, porque cada ciclo sólo ve las herramientas relevantes para su nivel
   
   
   
-  <p>El Protocolo de Contexto del Modelo (MCP) proporciona una forma estándar para servir herramientas. El agente recupera la lista de herramientas que un
-El servidor ofrece una llamada <code>tools/list</code> , así que invoca cualquiera de ellas con
-<code>tools/call</code> . Estas herramientas viven en un proceso separado que el agente
-conecta y consulta cuando se inicia. Como el protocolo es el mismo
-En todos los lugares, el agente puede conectarse a servidores adicionales sin aprender una nueva
-interfaz para cada uno. Utilice MCP cuando el descubrimiento de herramientas y el transporte necesitan un protocolo compartido. Utilice una función local, una habilidad de repositorio o una llamada API directa cuando el entorno de ejecución
-Ya sabe dónde vive la capacidad y cómo invocarla.</p>
+  <p>Model Context Protocol (MCP) define una interfaz estándar para publicar herramientas. El agente
+obtiene mediante <code>tools/list</code> la lista que ofrece un servidor e invoca cada herramienta con
+<code>tools/call</code>. Estas herramientas pueden ejecutarse en otro proceso, al que el agente se
+conecta durante la inicialización. Como todos los servidores comparten el protocolo, el agente puede
+incorporar nuevas fuentes de herramientas sin implementar una interfaz distinta para cada una. MCP
+resulta útil cuando el descubrimiento y el transporte requieren un protocolo común. Si el runtime ya
+conoce la ubicación y la forma de invocar una capacidad, suele bastar una función local, una skill
+del repositorio o una llamada directa a una API.</p>
 
   <div class="callout"><strong>El descubrimiento es una frontera de confianza.</strong>
-Trate una respuesta <code>tools/list</code> como entrada no confiable. Antes de conectarse al servidor:
+Trata una respuesta <code>tools/list</code> como entrada no confiable. Antes de conectarte al servidor:
 <ul>
-<li> verifique su identidad, </li>
-<li> muestra las capacidades solicitadas al usuario, </li>
-<li> conceda el menor alcance útil, </li>
-<li> y vincule cada credencial a la audiencia de ese servidor. </li>
+<li>verifica su identidad;</li>
+<li>muestra al usuario las capacidades solicitadas;</li>
+<li>concede el menor alcance necesario;</li>
+<li>vincula cada credencial con la audiencia de ese servidor.</li>
 </ul>
 Para conexión remota y
-descubrimiento OAuth, rechace destinos privados y link-local y valide todos los redireccionamientos. A
+descubrimiento OAuth, rechaza destinos privados y de enlace local, y valida todas las redirecciones. La
 <a href="https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices" target="_blank" rel="noopener">orientación de seguridad de MCP</a>
-atribuye consentimiento, manipulación de token y controles de falsificación de solicitud de servidor (SSRF) al cliente.</div>
+asigna al cliente la responsabilidad sobre el consentimiento, el manejo de tokens y los controles contra falsificación de solicitudes del lado del servidor (SSRF).</div>
 
   <div class="fig-embed" data-svg-src="assets/figures/01c-tools-2.svg" style="aspect-ratio:720 / 320"></div>
   <p>La celda siguiente simula un servidor MCP pequeño en JavaScript puro con el
 mismo formato <a href="https://www.jsonrpc.org/specification" target="_blank" rel="noopener">JSON-RPC</a> que MCP define (sin transporte). El agente recupera
-la lista de herramientas, pasa los esquemas para el modelo y encamina
-<code>tool_calls</code> al controlador <code>tools/call</code> del servidor. El ciclo del agente es idéntico;
-byte por byte, al de una llamada de herramienta normal; cambia solo el origen de la lista de herramientas.</p>
+la lista de herramientas, entrega los esquemas al modelo y dirige cada elemento de
+<code>tool_calls</code> al controlador <code>tools/call</code> del servidor. El ciclo del agente es
+idéntico al de una llamada a herramienta normal; sólo cambia el origen de la lista.</p>
 
   <div id="cell-m2b-p6"></div>
 
-  <p>El módulo 2 mantiene ese contrato de herramienta y cambia la estructura externa. Un workflow puede conducir
-llamadas a través de un pipeline fijo, distribuir trabajo en ramificaciones o delegar una tarea enfocada
-otro ciclo sin exponer todas las herramientas internas al llamador.</p>
+  <p>El módulo 2 conserva este contrato y modifica la estructura que lo rodea. Un workflow puede dirigir
+las llamadas mediante un pipeline fijo, distribuir el trabajo entre varias ramas o delegar una tarea
+acotada a otro ciclo sin exponer todas sus herramientas internas al agente que realiza la llamada.</p>
   
   
 
   <h2>Antes de continuar</h2>
   <ol>
-    <li>¿Qué sucede cuando el modelo llama una herramienta con argumentos que no pasan por la validación? El ciclo actual falla; ¿cómo trataría el error de modo controlado sin hacer el modelo creer que la llamada fue exitosa?</li>
-    <li>El subagente usado como herramienta es opaco para el agente principal. Además de la respuesta, ¿qué información debería regresar para que el agente principal decida confiar en él en el próximo turno?</li>
+    <li>¿Qué sucede cuando el modelo llama a una herramienta con argumentos que no superan la validación? El ciclo actual falla. ¿Cómo gestionarías el error de forma controlada sin hacer creer al modelo que la llamada tuvo éxito?</li>
+    <li>El subagente utilizado como herramienta es opaco para el agente principal. Además de la respuesta, ¿qué información debería devolver para que el agente principal decida si puede confiar en ella durante el turno siguiente?</li>
     <li>El parámetro <code>tool_choice</code> se puede definir como <code>"required"</code> o como un nombre de herramienta específico. ¿Cuándo conviene forzar una llamada a herramienta y qué riesgo introduce esa decisión?</li>
-    <li>Antes de añadir un servidor MCP remoto a este agente, ¿qué identidad, alcance de capacidad, audiencia del token y destinos de red verificaría? ¿Cuál de ellos se convierte en un camino SSRF cuando acepto sin validación?</li>
+    <li>Antes de añadir un servidor MCP remoto, ¿qué identidad, alcance, audiencia del token y destinos de red verificarías? ¿Cuál de esos campos puede abrir una ruta SSRF si se acepta sin validación?</li>
   </ol>
 
   <div class="references">
@@ -159,21 +159,20 @@ otro ciclo sin exponer todas las herramientas internas al llamador.</p>
     
     <h3>Referencias</h3>
     <ul>
-      <li><a href="https://arxiv.org/abs/2302.04761" target="_blank" rel="noopener">Schick et al., <em>Toolformer: Language Models Can Teach Themselves to Use Tools</em> (2023)</a> . El artículo que estableció el uso de herramientas de autosupervisión; lo que todas las especificaciones posteriores de llamada de función son variaciones.</li>
-      <li><a href="https://platform.openai.com/docs/guides/function-calling" target="_blank" rel="noopener">Guía de llamada de función de OpenAI</a> . La especificación seguida por la carga <code>tools=[…]</code> ; el endpoint hospedado de build encamina ese formato a cualquier proveedor.</li>
-      <li><a href="https://modelcontextprotocol.io/specification" target="_blank" rel="noopener">Especificación del Protocolo de Contexto de Modelo (MCP)</a> . La capa de descubrimiento de herramientas y servicio de herramientas entre proveedores cubierta en la sección MCP de este módulo (originada por Anthropic, ahora un proyecto abierto); complementa la llamada función en la capa de tiempo de ejecución del agente.</li>
-      <li><a href="https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices" target="_blank" rel="noopener">Mejores prácticas de seguridad de MCP</a> . Consentimiento, credenciales limitadas por audiencia, controles SSRF y riesgos de ejecución de servidor local para clientes y operadores del MCP.</li>
-      <li><a href="https://docs.anthropic.com/en/docs/agents-and-tools/tool-use" target="_blank" rel="noopener">Referencia de uso de herramientas de Anthropic</a> . La implementación paralela para Claude, útil como una comparación entre proveedores.</li>
+      <li><a href="https://arxiv.org/abs/2302.04761" target="_blank" rel="noopener">Schick et al., <em>Toolformer: Language Models Can Teach Themselves to Use Tools</em> (2023)</a>. Presenta el aprendizaje autosupervisado del uso de herramientas, mecanismo sobre el que se apoyan muchas especificaciones posteriores de llamada a funciones.</li>
+      <li><a href="https://platform.openai.com/docs/guides/function-calling" target="_blank" rel="noopener">Guía de llamada de función de OpenAI</a>. Describe el formato utilizado por <code>tools=[…]</code>; el endpoint alojado en build dirige ese formato al proveedor correspondiente.</li>
+      <li><a href="https://modelcontextprotocol.io/specification" target="_blank" rel="noopener">Especificación de Model Context Protocol (MCP)</a>. Define la capa interoperable de descubrimiento y servicio de herramientas que complementa la llamada a funciones en el runtime del agente.</li>
+      <li><a href="https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices" target="_blank" rel="noopener">Mejores prácticas de seguridad de MCP</a>. Consentimiento, credenciales limitadas por audiencia, controles SSRF y riesgos de ejecución de servidor local para clientes y operadores del MCP.</li>
+      <li><a href="https://docs.anthropic.com/en/docs/agents-and-tools/tool-use" target="_blank" rel="noopener">Referencia de uso de herramientas de Anthropic</a>. La implementación paralela para Claude, útil como comparación entre proveedores.</li>
     </ul>
-    <p class="references-note">Lista completa de <a href="04c-going-further.html#refs">Ir Además · Referencias</a> .</p>
+    <p class="references-note">Consulta la lista completa en <a href="04c-going-further.html#refs">Para continuar · Referencias</a>.</p>
     
   </div>
 
-  <h2>Intente · un agente con dos herramientas reales</h2>
+  <h2>Pruébalo · un agente con dos herramientas reales</h2>
   <p>Este artefacto ejecuta un agente <a href="https://python.langchain.com/" target="_blank" rel="noopener">LangChain</a> <code>createReactAgent</code> conectado a las dos funciones cuyos
 contratos acabas de leer: <code>calculate</code> para aritmética y <code>glossary_search</code>
-contra el glosario NVIDIA en la página que gira en el navegador sin una clave. Pida un número que no pueda calcular en la cabeza o un término para definir, y observe el chip de la herramienta encender antes de que el chip de la herramienta pueda encender.
-La respuesta se transmitirá.</p>
+contra el glosario de NVIDIA incluido en la página, que funciona en el navegador sin una clave. Pide un número que no pueda calcular mentalmente o un término que quieras definir, y observa cómo aparece el indicador de la herramienta antes de que la respuesta empiece a transmitirse.</p>
   <div id="tools-cell"></div>
   <div id="tools-artifact"></div>
   <script type="module">
@@ -223,7 +222,7 @@ helpers.log("rendered below. Edit the config and Run.");
   </script>
 
   <div class="foot-nav">
-    <a href="01b-react.html">← Módulo 1b: El Ciclo del agente</a>
+    <a href="01b-react.html">← Módulo 1b: El ciclo ReAct</a>
     <a class="next" href="02a-routing.html">Módulo 2a: Flujos de trabajo →</a>
   </div>
 </main>
@@ -400,7 +399,7 @@ window.formatGlossaryResults = formatGlossaryResults;
 // ── multi-tool routing ─────────────────────────────────────
 mountCanvasFlow("#cell-m2b-p3", {
   label: "dos herramientas, el modelo enruta",
-  intro: "Tres raíces se conectan a un LLM, y editar cualquier descripción de herramienta cambia la forma en que el modelo rotea. La cadena de descripción es una de las superficies de ingeniería de prompt más competitivas en cualquier agente que utiliza herramientas.",
+  intro: "Tres nodos convergen en un LLM. Al modificar la descripción de una herramienta cambia la decisión de enrutamiento del modelo. La descripción es una de las superficies de ingeniería de prompts con mayor impacto en un agente que utiliza herramientas.",
   edges: [
     { from: "question", to: "llm" },
     { from: "tool_a",   to: "llm" },
@@ -409,8 +408,8 @@ mountCanvasFlow("#cell-m2b-p3", {
   nodes: [
     {
       id: "question", icon: "👤", title: "Pregunta del usuario", x: 1, y: 0,
-      summary: "Intente una operación aritmética, una definición o algo que cualquier herramienta pueda manejar.",
-      code: `// Set the student-editable prompt/input for the next step.
+      summary: "Prueba una operación aritmética, una definición o una consulta que pueda resolver una de las dos herramientas.",
+      code: `// TODO: Elige un ejemplo o escribe una pregunta que haga interesante la elección de herramienta.
 
 const EXAMPLES = {
   default: "What is 2 to the power of 10?",
@@ -425,7 +424,7 @@ return state.question;
     },
     {
       id: "tool_a", icon: "🛠", title: "Herramienta A · calcular", x: 0, y: 1,
-      summary: "Limitado a expresiones aritméticas solo. Su descripción dice explícitamente para no usarlo para definiciones o preguntas conceptuales, lo que dirige el modelo a la otra herramienta cuando la intención es explicativa.",
+      summary: "Acepta únicamente expresiones aritméticas. La descripción excluye definiciones y preguntas conceptuales para dirigir esas consultas hacia la otra herramienta.",
       code: `// Describe the calculator tool so the model knows when to route to it.
 state.toolA = {
   type: "function",
@@ -441,7 +440,7 @@ return state.toolA.function.name;
     },
     {
       id: "tool_b", icon: "🛠", title: "Herramienta B · explicar concepto", x: 2, y: 1,
-      summary: "Limitado a definiciones y preguntas conceptuales solo. Su descripción instruye el modelo a no usarlo para operaciones aritméticas, lo que impide que las dos herramientas concurran en entradas superpuestas.",
+      summary: "Responde únicamente a definiciones y preguntas conceptuales. La descripción excluye operaciones aritméticas para evitar que ambas herramientas compitan por la misma consulta.",
       code: `// Describe the explainer tool so conceptual questions route here.
 state.toolB = {
   type: "function",
@@ -457,7 +456,7 @@ return state.toolB.function.name;
     },
     {
       id: "llm", icon: "🧠", title: "Llamada LLM · el modelo enruta", x: 1, y: 2,
-      summary: "Transmite el modelo mientras él razona sobre las descripciones de las dos herramientas y, a continuación, vuelve la decisión de enrutamiento. La ruta depende casi enteramente de las cadenas de descripción, entonces edite una y ejecute nuevamente para ver el modelo cambiar de idea.",
+      summary: "Transmite la respuesta mientras el modelo compara las descripciones y muestra la decisión de enrutamiento. Modifica una descripción y vuelve a ejecutar el nodo para comprobar si cambia la ruta elegida.",
       code: `// Ask the model to choose one of the two tool descriptions above.
 const s = await helpers.chatStream({
   messages: [{ role: "user", content: state.question }],
@@ -477,8 +476,8 @@ return { routed_to: tc.function.name, arguments: JSON.parse(tc.function.argument
 
 // ── glossary_search via the in-page NVIDIA glossary server ──
 mountCanvasFlow("#cell-m2b-p4", {
-  label: "búsqueda glosario vía servidor de glosario MCP de NVIDIA en la página",
-  intro: "Cada nodo escribe en un objeto de estado compartido que los nosotros posteriores lee. Abra cualquier nodo para editar su JS y ejecutarlo solo o ejecute todo el gráfico.",
+  label: "búsqueda en el glosario mediante el servidor incluido en la página",
+  intro: "Cada nodo escribe en un objeto de estado compartido que leen los nodos posteriores. Abre un nodo para editar y ejecutar su JavaScript de forma aislada, o ejecuta el grafo completo.",
   edges: [
     { from: "input", to: "llm1" },
     { from: "tool",  to: "llm1" },
@@ -489,14 +488,16 @@ mountCanvasFlow("#cell-m2b-p4", {
     {
       id: "input", icon: "👤", title: "Entrada del usuario", x: 0, y: 0,
       summary: "Almacena la pregunta que hace el alumno, que puede editar antes de volver a ejecutar.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Prueba otra pregunta sobre modelos o escribe la tuya.
 state.question = "What is the NVIDIA Nemotron model family and what is it good at?";
+// state.question = "Which NVIDIA model family is designed for reasoning?";
+// state.question = "How does NVIDIA NIM differ from a model checkpoint?";
 return state.question;
 `,
     },
     {
       id: "tool", icon: "📄", title: "Especificación de la herramienta", x: 2, y: 0,
-      summary: "El esquema JSON de búsqueda glosario que el modelo lee. Tiene la misma forma que cualquier herramienta asume; sólo el nombre y la descripción dicen lo que hace.",
+      summary: "Define el esquema JSON que lee el modelo. Conserva la forma común de cualquier herramienta; el nombre y la descripción expresan la capacidad concreta.",
       code: `// Define the tool schema the model can choose from next.
 state.SEARCH_SCHEMA = [{
   type: "function",
@@ -515,7 +516,7 @@ return { name: state.SEARCH_SCHEMA[0].function.name };
     },
     {
       id: "llm1", icon: "🧠", title: "Llamada LLM #1", x: 1, y: 1,
-      summary: "Fuerza la búsqueda glosario para que el ciclo completo de la herramienta permanezca visible. El modelo proporciona la consulta de búsqueda; el enrutamiento de herramientas autónomo es la lección arriba y el comportamiento del artefacto final.",
+      summary: "Fuerza una búsqueda para mantener visible el ciclo completo de la herramienta. El modelo genera la consulta; la sección anterior y el artefacto final muestran el enrutamiento autónomo.",
       code: `// Send the prepared messages and stream the model response.
 state.messages = [
   { role: "system", content: "You are a research assistant. Ground answers in glossary_search results; never answer factual questions from memory." },
@@ -536,7 +537,7 @@ return {
     },
     {
       id: "search", icon: "🌐", title: "búsqueda glosario", x: 1, y: 2,
-      summary: "El ejecutor. Llama al servidor de glosario MCP de NVIDIA en la página (definido en la parte superior de esta página) vía herramientas/llamada y obtiene entradas de glosario de NVIDIA clasificadas. El catálogo y la búsqueda se ejecutan localmente en su navegador, sin clave y sin llamada red.",
+      summary: "Actúa como ejecutor: llama al servidor de glosario incluido en la página mediante tools/call y devuelve entradas clasificadas. El catálogo y la búsqueda se ejecutan localmente en el navegador, sin clave ni solicitud de red.",
       code: `// Handle the tool-call result from the previous model turn.
 if (!state.s1.tool_calls.length) {
   // No tool call here: the model either answered from training (it has content) or ran out of tokens mid-call.
@@ -566,7 +567,7 @@ return { query: state.query, count: meta.count, source: meta.source };
     },
     {
       id: "llm2", icon: "🧠", title: "Llamada LLM #2", x: 1, y: 3,
-      summary: "Sintetize la respuesta final a partir de los resultados de la investigación. Observe que esta llamada no pasa ninguna herramienta, por lo tanto, debe responder sobre la base de lo que la llamada #1 recuperó, en lugar de solicitar otra investigación. Eso es lo que convierte un resultado de herramienta en una respuesta final.",
+      summary: "Sintetiza la respuesta final a partir de los resultados recuperados. Esta llamada no recibe herramientas, por lo que debe responder con la información obtenida por la llamada 1 en lugar de iniciar otra búsqueda.",
       code: `// Handle the tool-call result from the previous model turn.
 if (state.skipped) {
   return { final_answer: state.s1.content || "(" + (state.reason || "no answer") + ")",
@@ -589,8 +590,8 @@ return answer || "(the model did not produce a final answer; try Run again)";
 
 // ── the same glossary_search tool, swapped to exact lookup ─
 mountRunCell("#cell-m2b-p4b", {
-  label: "la misma herramienta de búsqueda de glosario, intercambiada para un backend de artículo completo",
-  intro: "Mantenga el contrato de búsqueda de glosario y troque por un backend más rico que devuelve el artículo en caché del mejor término. Edite la pregunta y ejecute de nuevo; artículos completos incluyen bases de datos de vectores, generación aumentada por recuperación (RAG), grandes modelos de lenguaje (LLMs), agentes de IA y agentes profundos.",
+  label: "el mismo contrato de búsqueda con un backend de artículos completos",
+  intro: "Mantén el contrato de búsqueda y sustituye el backend por otro que devuelva el artículo almacenado en caché del término más relevante. Modifica la pregunta y vuelve a ejecutar el flujo; hay artículos sobre bases de datos vectoriales, RAG, LLM, agentes de IA y agentes profundos.",
   code: `// Same glossary_search the model already knows, but a richer backend behind it: instead of a
 // one-line blurb, it returns the term's full NVIDIA glossary article (mats/glossary_raw/<slug>.md).
 const SEARCH_SCHEMA = [{
@@ -629,8 +630,8 @@ return article
 
 // ── agents as tools ────────────────────────────────────────
 mountCanvasFlow("#cell-m2b-p5", {
-  label: "agentes como herramientas · oculte la base de datos, exponga la pregunta",
-  intro: "El agente de nivel superior recibe una única herramienta de consulta al base de datos del cliente apoyada por un subagente que conoce el esquema (un pequeño array JS hace a veces SQL). Las líneas brutas nunca alcanzan el llamador, que formula una pregunta y recibe una respuesta en lenguaje natural en retorno.",
+  label: "agentes como herramientas · ocultar los datos, exponer la capacidad",
+  intro: "El agente principal recibe una única herramienta de consulta respaldada por un subagente que conoce el esquema de datos; un pequeño array de JavaScript sustituye aquí a SQL. Las filas sin procesar nunca llegan al agente principal, que formula una pregunta y recibe una respuesta en lenguaje natural.",
   edges: [
     { from: "sub_data",  to: "sub_agent" },
     { from: "tool_spec", to: "main_llm" },
@@ -641,7 +642,7 @@ mountCanvasFlow("#cell-m2b-p5", {
   nodes: [
     {
       id: "sub_data", icon: "🗃", title: "Datos ocultos (el mundo del subagente)", x: 0, y: 0,
-      summary: "Una tabla de clientes en página que el agente principal nunca verá y que una versión real reemplazaría por una conexión SQL más autenticación de nivel de línea.",
+      summary: "Representa una tabla de clientes que el agente principal nunca ve. En producción, se sustituiría por una conexión SQL con autenticación y controles de acceso por fila.",
       code: `// Seed the small dataset this retrieval example searches.
 state.customers = [
   { id: 1001, name: "Aiyana Brooks",  plan: "pro",   region: "us-west", joined: "2024-03-12", tickets_30d: 1 },
@@ -655,8 +656,8 @@ return { rows: state.customers.length, schema_fields: Object.keys(state.customer
 `,
     },
     {
-      id: "sub_agent", icon: "🤖", title: "Subagente · consulta banco de dados do cliente", x: 0, y: 1,
-      summary: "Conoce el esquema de la tabla y responde a una pregunta en lenguaje natural por medio de una llamada LLM con las líneas incorporadas en su prompt de sistema.",
+      id: "sub_agent", icon: "🤖", title: "Subagente · consultar los datos de clientes", x: 0, y: 1,
+      summary: "Conoce el esquema de la tabla y responde a una pregunta en lenguaje natural mediante una llamada al LLM que incorpora las filas en el prompt del sistema.",
       code: `// Define the mock database tool the agent may call.
 state.queryCustomerDB = async function(question) {
   // The sub-agent's world: a tight system prompt that hides the table, and the rows as context.
@@ -679,7 +680,7 @@ return { sub_agent: "query_customer_db", world_rows: state.customers.length };
     },
     {
       id: "tool_spec", icon: "📄", title: "Especificación de la herramienta (para el agente principal)", x: 2, y: 0,
-      summary: "El esquema que el agente principal ve, que expone la capacidad sola y no proporciona detalles sobre la tabla subyacente.",
+      summary: "Es el único esquema que ve el agente principal: expone la capacidad sin revelar detalles de la tabla subyacente.",
       code: `// Define the tool schema the model can choose from next.
 state.TOOLS = [{
   type: "function",
@@ -701,15 +702,17 @@ return { tool_name: state.TOOLS[0].function.name };
     },
     {
       id: "user", icon: "👤", title: "Pregunta del usuario (para el agente principal)", x: 2, y: 1,
-      summary: "Edite esta pregunta. Pruebe, por ejemplo, cuántos clientes usan el plan profesional o quién abrió más tickets durante los últimos 30 días.",
-      code: `// Set the student-editable prompt/input for the next step.
+      summary: "Edita esta pregunta. Prueba, por ejemplo, cuántos clientes usan el plan profesional o quién abrió más tickets durante los últimos 30 días.",
+      code: `// TODO: Pregunta por otro segmento de clientes o señal de actividad.
 state.userQuestion = "Which EU customers are on the pro plan, and how active are they?";
+// state.userQuestion = "How many pro-plan customers signed up this quarter?";
+// state.userQuestion = "Who opened the most tickets in the last 30 days?";
 return state.userQuestion;
 `,
     },
     {
       id: "main_llm", icon: "🧠", title: "Agente principal · llamada LLM simple", x: 1, y: 2,
-      summary: "Vendo solo una herramienta, el agente principal decide si debe preguntar al subagente o responder directamente.",
+      summary: "Al ver una sola herramienta, el agente principal decide si debe consultar al subagente o responder directamente.",
       code: `// Send the prepared messages and stream the model response.
 state.mainMessages = [
   { role: "system", content: "You are a customer-success agent. When the user asks about customer data, call query_customer_db rather than guessing." },
@@ -728,7 +731,7 @@ return {
     },
     {
       id: "dispatch", icon: "📤", title: "Reenviar al subagente · sintetizar respuesta final", x: 1, y: 3,
-      summary: "Una vez que el agente de nivel superior llama la herramienta, pasamos la pregunta en lenguaje natural para el subagente, anexamos su respuesta y solicitamos la respuesta dirigida al usuario.",
+      summary: "Cuando el agente principal llama a la herramienta, el flujo envía la pregunta al subagente, añade su respuesta al historial y solicita una respuesta final para el usuario.",
       code: `// Handle the tool-call result from the previous model turn.
 if (!state.s1.tool_calls.length) {
   helpers.log("main agent answered directly without using the sub-agent");
@@ -760,8 +763,8 @@ return s2.content || s2.reasoning || "(empty)";
 
 // ── MCP-shaped tool server ─────────────────────────────────
 mountCanvasFlow("#cell-m2b-p6", {
-  label: "Servidor de herramientas en formato MCP · descubrimiento + encaminamiento",
-  intro: "Un servidor MCP simulado en la página expone dos herramientas por medio de tools/list y tools/call, sin red. El agente descubre la lista de herramientas, pasa los esquemas al LLM y encamina las llamadas del modelo de vuelta por tools/call. Cambia sólo el origen de la herramienta; el ciclo del agente permanece idéntico al de una llamada normal.",
+  label: "Servidor de herramientas compatible con MCP · descubrimiento y enrutamiento",
+  intro: "Un servidor MCP simulado en la página expone dos herramientas mediante tools/list y tools/call, sin utilizar la red. El agente descubre la lista, entrega los esquemas al LLM y dirige las llamadas del modelo a tools/call. Sólo cambia el origen de las herramientas; el ciclo conserva la misma estructura.",
   edges: [
     { from: "server",   to: "discover" },
     { from: "discover", to: "llm" },
@@ -771,7 +774,7 @@ mountCanvasFlow("#cell-m2b-p6", {
   nodes: [
     {
       id: "server", icon: "🖥", title: "Servidor MCP en la página", x: 0, y: 0,
-      summary: "Introduzca un servidor en la página con tools/list y tools/call en forma de JSON-RPC de MCP. Un servidor MCP implantado carga estas llamadas sobre stdio o HTTP en lugar del mismo proceso JavaScript .",
+      summary: "Define un servidor en la página con tools/list y tools/call en formato JSON-RPC. Un servidor MCP desplegado transportaría estas llamadas mediante stdio o HTTP en lugar de ejecutarlas en el mismo proceso JavaScript.",
       code: `// The same in-page glossary server the search cell called directly, now reached through
 // Discover tools through MCP instead of hard-coding direct calls.
 state.mcpServer = window.glossaryMCP;
@@ -781,7 +784,7 @@ return { exposes: ["tools/list", "tools/call"], tools: listed.tools.map(t => t.n
     },
     {
       id: "discover", icon: "🔎", title: "Cliente · tools/list", x: 0, y: 1,
-      summary: "El cliente inicia la conexión MCP: llama a tools/list en el servidor y convierte cada esquema de entrada devuelto al formato de llamada de funciones de OpenAI, para que el modelo lo lea como un array de herramientas normal.",
+      summary: "El cliente inicia la conexión MCP: llama a tools/list y convierte cada esquema de entrada al formato de llamada a funciones compatible con OpenAI, de modo que el modelo lo lea como un array de herramientas normal.",
       code: `// Ask the mock MCP server which tools it exposes.
 const list = await state.mcpServer.request("tools/list");
 helpers.log("discovered " + list.tools.length + " tools");
@@ -794,15 +797,17 @@ return state.tools.map(t => t.function.name);
     },
     {
       id: "user", icon: "👤", title: "Pregunta del usuario", x: 2, y: 1,
-      summary: "La pregunta que el modelo responde usando las herramientas de glosario descubiertas. Una pregunta definicional es atendida por glossary search, mientras que una solicitud de un término específico por slug va a glossary lookup.",
-      code: `// Set the student-editable prompt/input for the next step.
+      summary: "Es la pregunta que el modelo resolverá mediante las herramientas descubiertas. glossary_search atiende definiciones generales; glossary_lookup recupera un término específico a partir de su slug.",
+      code: `// TODO: Prueba una definición amplia o solicita un término concreto del glosario.
 state.question = "What is retrieval-augmented generation, and what does a vector database have to do with it?";
+// state.question = "What is an AI agent?";
+// state.question = "Look up the glossary term with the slug vector-database.";
 return state.question;
 `,
     },
     {
       id: "llm", icon: "🧠", title: "LLM (ve las herramientas descubiertas)", x: 1, y: 2,
-      summary: "La misma llamada a chatStream se ejecuta sin cambios porque el ciclo no necesita saber si las herramientas proceden de un array fijado en el código o de un servidor MCP remoto. La etapa de descubrimiento permite sustituir esa fuente sin modificar el ciclo.",
+      summary: "La llamada a chatStream no cambia: el ciclo no necesita saber si las herramientas proceden de un array fijado en el código o de un servidor MCP remoto. La etapa de descubrimiento permite sustituir la fuente sin modificar el ciclo.",
       code: `// Send the prepared messages and stream the model response.
 state.messages = [{ role: "user", content: state.question }];
 state.s1 = await helpers.chatStream({
@@ -823,7 +828,7 @@ return {
     },
     {
       id: "dispatch", icon: "📤", title: "Cliente → tools/call → LLM #2", x: 1, y: 3,
-      summary: "Cierra el ciclo: por cada llamada a herramienta solicitada por el modelo, este nodo la envía a tools/call en el servidor, adjunta el resultado como mensaje de herramienta y vuelve a llamar al modelo para generar la respuesta final.",
+      summary: "Cierra el ciclo: envía cada llamada solicitada por el modelo a tools/call, añade el resultado como mensaje de herramienta y vuelve a invocar el modelo para generar la respuesta final.",
       code: `// Handle the tool-call result from the previous model turn.
 if (!state.s1.tool_calls.length) return state.s1.content || "(model answered directly)";
 for (const tc of state.s1.tool_calls) {

@@ -160,7 +160,7 @@ Fi14AAAAAElFTkSuQmCC"/>
 <text fill="var(--gfx-teal,#67ab9f)" xml:space="preserve" transform="matrix(.7188796 0 0 .7188796 0 0)" font-size="16" font-family="Helvetica"><tspan y="69" x="521.263" text-anchor="middle">Documentos</tspan></text>
 <text fill="var(--gfx-teal,#67ab9f)" xml:space="preserve" transform="matrix(.7188796 0 0 .7188796 0 0)" font-size="16" font-family="Helvetica"><tspan y="88" x="519.490" text-anchor="middle">Índice</tspan></text>
 <path transform="matrix(.7188796,0,0,.7188796,0,0)" d="M4 3H174V34H4Z" fill="var(--gfx-paper-tint-teal,#ccffff)"/>
-<text xml:space="preserve" transform="matrix(.7188796 0 0 .7188796 0 0)" font-size="12" font-family="Courier New"><tspan y="23" x="76.800" text-anchor="middle">Defina «oído medio»</tspan></text>
+<text xml:space="preserve" transform="matrix(.7188796 0 0 .7188796 0 0)" font-size="12" font-family="Courier New"><tspan y="23" x="76.800" text-anchor="middle">Define «oído medio»</tspan></text>
 <text fill="var(--gfx-blue,#0000ff)" xml:space="preserve" transform="matrix(.7188796 0 0 .7188796 0 0)" font-size="12" font-family="Courier New" font-weight="bold"><tspan y="23" x="148.8125 156.0125 163.2125">(x)</tspan></text>
 <text xml:space="preserve" transform="matrix(.7188796 0 0 .7188796 0 0)" font-size="12" font-family="Helvetica"><tspan y="49" x="83.813" text-anchor="middle">Respuesta a preguntas:</tspan></text>
 <text xml:space="preserve" transform="matrix(.7188796 0 0 .7188796 0 0)" font-size="12" font-family="Helvetica"><tspan y="63" x="82.487" text-anchor="middle">Consulta de la pregunta</tspan></text>

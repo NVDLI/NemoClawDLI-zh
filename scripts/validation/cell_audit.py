@@ -122,6 +122,7 @@ def audit_runtime_contract():
     and editable code above the output, keep code collapsed by default unless a cell opts in, and reset
     one cell or node without rebuilding the whole page."""
     src = (WEB / "nemoclaw" / "scripts" / "_canvas.js").read_text(errors="ignore")
+    shared = (WEB / "nemoclaw" / "scripts" / "_shared.js").read_text(errors="ignore")
     findings = []
 
     def need(ok: bool, msg: str):
@@ -176,6 +177,20 @@ def audit_runtime_contract():
          "helpers.log must expose the same h/json/kv/clear surfaces in CanvasFlow and RunCell")
     need(src.count('_installStructuredLog(log,') >= 2,
          "CanvasFlow and RunCell must both install structured logging through _installStructuredLog")
+    need('div.dataset.logText = plain.join(" ");' in src and "return div;" in src,
+         "helpers.log must return its created status element consistently in CanvasFlow and RunCell")
+    need('err.className = "cell-runtime-error";' in src,
+         "RunCell failures need a stable marker for Studio all-cell validation")
+    need("export function delay(ms, signal = null)" in shared and "fetchRetry, delay," in shared,
+         "student cells need one shared Stop-aware helpers.delay implementation")
+    need("helpers.signal = ac.signal;" in src and "helpers.delay = (ms, signal = ac.signal)" in src,
+         "RunCell must expose its Stop signal and inject it into helpers.delay")
+    need("helpers.delay = (ms, signal = _sig)" in src,
+         "CanvasFlow must inject its Stop signal into helpers.delay")
+    need("if (!ac.signal.aborted && outputCount === 0)" not in src and
+         'else if (result !== undefined && typeof result === "object"' in src and
+         '_appendJson(result, "returned value")' in src,
+         "RunCell must render a returned value even after the cell logged process output")
     return findings
 
 
@@ -190,6 +205,25 @@ CANVAS_LABEL_WORD_LIMIT = 14
 CANVAS_TITLE_WORD_LIMIT = 10
 CANVAS_COPY_WORD_LIMIT = 55
 CANVAS_COPY_RE = re.compile(r'\b(label|intro|title|summary)\s*:\s*(["\'])((?:\\.|(?!\2).)*)\2', re.S)
+RUN_CELL_LINE_LIMIT = 120
+RUN_CELL_COMPRESSED_LIMIT = 4
+RUN_CELL_SINGLE_LETTER_LIMIT = 5
+OPTIONAL_VISIBILITY_RE = re.compile(
+    r"^\s*//\s*(?:(?:helpers\.)?log(?:\.(?:details|json|kv))?\s*\(|Optional visibility:|Alternate input:)",
+    re.M | re.I,
+)
+RAW_SLEEP_RE = re.compile(r"await\s+new\s+Promise\([^\n]*(?:setTimeout|sleep)", re.I)
+PROMPT_ASSIGNMENT_RE = re.compile(
+    r'^\s*state\.(question|userQuestion|goal|ticket|topic|input|query)\s*=\s*(?:["\'\[]|EXAMPLES\b)',
+    re.M,
+)
+PROMPT_BANNED_NARRATION = "Set the student-editable prompt/input for the next step."
+PROMPT_PAGE_COUNTS = {
+    "01c-tools.html": 4,
+    "02a-routing.html": 4,
+    "02b-rag.html": 3,
+    "02c-deep.html": 1,
+}
 
 
 def _is_visible_cell(block: str, code_start: int, lines: int, canvas: bool) -> bool:
@@ -330,6 +364,106 @@ def audit_canvas_copy():
     return findings
 
 
+def run_cell_style_findings(code: str) -> list[str]:
+    """Return objective clarity findings for one editable RunCell body.
+
+    RunCells are the course's copy-and-edit surface. Infrastructure belongs behind a
+    named helper; process logs may explain progress, but a structured return remains
+    the outcome; and long waits must use the Stop-aware shared delay.
+    """
+    findings = []
+    lines = [line for line in code.splitlines() if line.strip()]
+    if len(lines) > RUN_CELL_LINE_LIMIT:
+        findings.append(f"has {len(lines)} nonblank lines (limit {RUN_CELL_LINE_LIMIT}); move infrastructure behind a named helper")
+    compressed = [line for line in lines if line.count(";") >= 3]
+    if len(compressed) > RUN_CELL_COMPRESSED_LIMIT:
+        findings.append(f"has {len(compressed)} compressed multi-statement lines (limit {RUN_CELL_COMPRESSED_LIMIT})")
+    declarations = re.findall(r"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)", strip_noise(code))
+    single_letter = sorted({name for name in declarations if len(name) == 1})
+    if len(single_letter) > RUN_CELL_SINGLE_LETTER_LIMIT:
+        findings.append("declares too many single-letter variables: " + ", ".join(single_letter))
+    if RAW_SLEEP_RE.search(strip_noise(code)):
+        findings.append("uses a raw awaited timer; use Stop-aware helpers.delay(ms)")
+    if "new AbortController" in code and "browserChatFetch" in code and "helpers.signal.addEventListener" not in code:
+        findings.append("owns a fetch AbortController without wiring the RunCell Stop signal")
+    has_structured_return = bool(re.search(r"^return\s*\{", strip_noise(code), re.M))
+    has_process_log = bool(re.search(r"(?<![\w.])(?:helpers\.)?log(?:\.|\s*\()", strip_noise(code)))
+    if has_structured_return and has_process_log and not OPTIONAL_VISIBILITY_RE.search(code):
+        findings.append("logs process output and returns a result but offers no commented optional visibility line")
+    return findings
+
+
+def prompt_experiment_code_findings(code: str) -> list[str]:
+    """Require prompt cells to invite an edit and provide runnable alternatives."""
+    assignments = list(PROMPT_ASSIGNMENT_RE.finditer(code))
+    if not assignments:
+        return []
+    findings = []
+    if PROMPT_BANNED_NARRATION.lower() in code.lower():
+        findings.append("uses mechanical student-editable prompt/input narration")
+    if not re.search(r"^\s*//\s*TODO:\s*\S", code, re.M):
+        findings.append("does not address the learner with a TODO experiment prompt")
+    for variable in sorted({match.group(1) for match in assignments}):
+        alternatives = re.findall(rf"^\s*//\s*state\.{re.escape(variable)}\s*=", code, re.M)
+        has_examples = bool(re.search(r"\bconst\s+EXAMPLES\s*=\s*\{", code))
+        if not has_examples and len(alternatives) < 2:
+            findings.append(
+                f"state.{variable} offers {len(alternatives)} commented alternate assignment(s); provide two or an EXAMPLES selector"
+            )
+    return findings
+
+
+def audit_prompt_experiments():
+    """Audit the issue-scoped prompt cells in every reviewed language overlay."""
+    findings = []
+    roots = (
+        TASK1 / "web" / "nemoclaw",
+        TASK1 / "i18n" / "es" / "web" / "nemoclaw",
+        TASK1 / "i18n" / "pt" / "web" / "nemoclaw",
+    )
+    for root in roots:
+        for filename, expected in PROMPT_PAGE_COUNTS.items():
+            path = root / filename
+            text = path.read_text(errors="ignore")
+            rel = str(path.relative_to(TASK1))
+            if PROMPT_BANNED_NARRATION.lower() in text.lower():
+                findings.append((rel, "mechanical student-editable prompt/input narration remains"))
+            prompt_cells = []
+            for match in CODE.finditer(text):
+                code = match.group(1)
+                if PROMPT_ASSIGNMENT_RE.search(code):
+                    prompt_cells.append(match)
+                    line_no = text[:match.start()].count("\n") + 1
+                    for message in prompt_experiment_code_findings(code):
+                        findings.append((rel, f"line {line_no}: {message}"))
+            if len(prompt_cells) != expected:
+                findings.append((rel, f"found {len(prompt_cells)} prompt-input cells; expected {expected}"))
+    return findings
+
+
+def audit_run_cell_style():
+    findings = []
+    for path in sorted((WEB / "nemoclaw").glob("0*.html")):
+        text = path.read_text(errors="ignore")
+        rel = str(path.relative_to(WEB.parent))
+        mounts = list(CANVAS_MOUNT_RE.finditer(text))
+        for i, mount in enumerate(mounts):
+            if not text.startswith("mountRunCell", mount.start()):
+                continue
+            start = mount.start()
+            end = mounts[i + 1].start() if i + 1 < len(mounts) else len(text)
+            block = text[start:end]
+            code_match = CODE.search(block)
+            if not code_match:
+                continue
+            label_match = re.search(r'label:\s*"([^"]+)"', block[:code_match.start()])
+            label = label_match.group(1) if label_match else "unlabeled RunCell"
+            line_no = text[:start + code_match.start()].count("\n") + 1
+            for message in run_cell_style_findings(code_match.group(1)):
+                findings.append((rel, f"line {line_no}: '{label}' {message}"))
+    return findings
+
+
 def run(verbose=True):
     """Driver: audit every numbered lesson page's runnable cells and aggregate the findings. It exists
     so the gate and a reviewer get one accounting of cells that violate the runnable-cell contract.
@@ -341,6 +475,8 @@ def run(verbose=True):
 
     readability = audit_visible_code_hygiene()
     copy_surface = audit_canvas_copy()
+    run_cell_style = audit_run_cell_style()
+    prompt_experiment = audit_prompt_experiments()
 
     for p in pages:
         o, c, u, d, k, st, uh = audit_page(p)  # per-page findings, by category
@@ -363,40 +499,93 @@ def run(verbose=True):
 
         show("visible learner code hygiene", readability, lambda it: f"{it[0]}  {it[1]}")
         show("learner-facing canvas copy", copy_surface, lambda it: f"{it[0]}  {it[1]}")
+        show("student RunCell style", run_cell_style, lambda it: f"{it[0]}  {it[1]}")
+        show("prompt experimentation", prompt_experiment, lambda it: f"{it[0]}  {it[1]}")
 
         total = (len(opaque) + len(console) + len(unawaited) + len(dialog) + len(key) + len(static)
                  + len(unhi) + len(ui_contract) + len(code_surface) + len(readability)
-                 + len(copy_surface))
+                 + len(copy_surface) + len(run_cell_style) + len(prompt_experiment))
         print(f"\ncell_audit: {total} finding(s) (opaque {len(opaque)}, console {len(console)}, "
               f"unawaited {len(unawaited)}, dialog {len(dialog)}, inline-key {len(key)}, static {len(static)}, "
 
               f"unhighlighted {len(unhi)}, ui-contract {len(ui_contract)}, code-surface {len(code_surface)}, "
-              f"readability {len(readability)}, copy {len(copy_surface)})")
+              f"readability {len(readability)}, copy {len(copy_surface)}, run-cell-style {len(run_cell_style)}, "
+              f"prompt-experiment {len(prompt_experiment)})")
 
     return {"opaque": opaque, "console": console, "unawaited": unawaited,
             "dialog": dialog, "inline_key": key, "static_cell_code": static,
             "unhighlighted": unhi, "ui_contract": ui_contract,
             "code_surface": code_surface, "readability": readability,
-            "copy_surface": copy_surface}
+            "copy_surface": copy_surface, "run_cell_style": run_cell_style,
+            "prompt_experiment": prompt_experiment}
 
 
 if __name__ == "__main__":
     if "--self-test" in sys.argv:
         fixtures = (
-            ("same-origin bundle", '<script src="vendor/codemirror-5.65.16.min.js"></script><link href="vendor/codemirror-5.65.16.min.css">', []),
-            ("parent-path bundle", '<script src="../vendor/codemirror-5.65.16.min.js"></script><link href="../vendor/codemirror-5.65.16.min.css">', []),
+            ("same-origin bundle", '<script src="vendor/codemirror-5.65.21.min.js"></script><link href="vendor/codemirror-5.65.21.min.css">', []),
+            ("parent-path bundle", '<script src="../vendor/codemirror-5.65.21.min.js"></script><link href="../vendor/codemirror-5.65.21.min.css">', []),
             ("split distribution", '<script src="codemirror.min.js"></script><script src="mode/javascript/javascript.min.js"></script><link href="codemirror.min.css">', []),
-            ("missing JavaScript", '<link href="vendor/codemirror-5.65.16.min.css">', ["CodeMirror core js", "javascript mode"]),
-            ("missing CSS", '<script src="vendor/codemirror-5.65.16.min.js"></script>', ["editor css"]),
+            ("missing JavaScript", '<link href="vendor/codemirror-5.65.21.min.css">', ["CodeMirror core js", "javascript mode"]),
+            ("missing CSS", '<script src="vendor/codemirror-5.65.21.min.js"></script>', ["editor css"]),
         )
         failures = [(name, highlighter_missing(source), expected) for name, source, expected in fixtures
                     if highlighter_missing(source) != expected]
+        good_style = '''const response = await helpers.browserChatFetch()(url, { signal: helpers.signal });
+helpers.log("request complete");
+// helpers.log.json("raw response", response);
+return { ok: response.ok };'''
+        bad_style = '''const a = 1;
+const b = 2;
+const c = 3;
+const d = 4;
+const e = 5;
+const f = 6;
+const controller = new AbortController();
+await new Promise(resolve => setTimeout(resolve, 1000));
+await helpers.browserChatFetch()(url, { signal: controller.signal });
+helpers.log("request complete");
+return { ok: true };'''
+        if run_cell_style_findings(good_style):
+            failures.append(("clear RunCell style", run_cell_style_findings(good_style), []))
+        bad_findings = run_cell_style_findings(bad_style)
+        expected_style = ("single-letter", "raw awaited timer", "without wiring", "no commented optional visibility")
+        missing_style = [token for token in expected_style if not any(token in item for item in bad_findings)]
+        if missing_style:
+            failures.append(("adversarial RunCell style", bad_findings, list(expected_style)))
+        too_large = "\n".join(f"const value{i} = {i};" for i in range(RUN_CELL_LINE_LIMIT + 1))
+        if not any("nonblank lines" in item for item in run_cell_style_findings(too_large)):
+            failures.append(("oversized RunCell style", run_cell_style_findings(too_large), ["nonblank lines"]))
+        good_prompt = '''// TODO: Try another question or write your own.
+state.question = "What is an AI agent?";
+// state.question = "When should an agent call a tool?";
+// state.question = "How does agent memory work?";
+return state.question;'''
+        good_examples = '''// TODO: Choose an example or write your own.
+const EXAMPLES = { default: "What is RAG?", alternate: "What is ReAct?" };
+state.question = EXAMPLES.default;
+return state.question;'''
+        if prompt_experiment_code_findings(good_prompt) or prompt_experiment_code_findings(good_examples):
+            failures.append(("valid prompt experiments", prompt_experiment_code_findings(good_prompt), []))
+        banned_prompt = good_prompt.replace(
+            "// TODO: Try another question or write your own.",
+            "// Set the student-editable prompt/input for the next step.",
+        )
+        if not any("mechanical" in item for item in prompt_experiment_code_findings(banned_prompt)):
+            failures.append(("banned prompt narration", prompt_experiment_code_findings(banned_prompt), ["mechanical"]))
+        missing_alternates = '''// TODO: Try another question or write your own.
+state.question = "What is an AI agent?";
+return state.question;'''
+        if not any("alternate assignment" in item for item in prompt_experiment_code_findings(missing_alternates)):
+            failures.append(("missing prompt alternatives", prompt_experiment_code_findings(missing_alternates), ["alternate assignment"]))
         if failures:
-            print(f"cell_audit self-test: {len(fixtures) - len(failures)}/{len(fixtures)} passed")
+            total = len(fixtures) + 6
+            print(f"cell_audit self-test: {total - len(failures)}/{total} passed")
             for name, actual, expected in failures:
                 print(f"  FAIL {name}: got {actual}, expected {expected}")
             sys.exit(1)
-        print(f"cell_audit self-test: {len(fixtures)}/{len(fixtures)} passed")
+        total = len(fixtures) + 6
+        print(f"cell_audit self-test: {total}/{total} passed")
         sys.exit(0)
     r = run()
     sys.exit(1 if sum(len(v) for v in r.values()) else 0)

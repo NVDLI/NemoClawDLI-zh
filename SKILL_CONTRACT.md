@@ -14,9 +14,13 @@ If both readers can do their job from this one file, the contract holds.
 
 ```
 SKILL.html lives in <dir>/SKILL.html              (dual-reader, ships to students)
+Every source directory has SKILL.html             (Git-tracked and proposed files define the exhaustive set)
+No directory exemptions or opt-outs               (locale, vendor, data, hidden workflow, and seed directories all participate)
 skill-meta JSON is the AUTHORITATIVE machine contract
 /tmp holds scratch/agent work (ephemeral, never committed); worth-keeping agent docs live in the repo by name
-No SKILL.md anywhere; the JSON block replaces it.
+No SKILL.md as a repository directory beacon; the JSON block replaces it. OpenClaw runtime skill
+packages may retain their native `SKILL.md` payload, and their source directories still carry a
+separate `SKILL.html` repository contract.
 No AUDIT.md beacons; audit findings go to /tmp or git history.
 ```
 
@@ -35,89 +39,30 @@ mechanical drift. The kinds below are the de-facto contract, read off the shippe
 |---|---|---|---|
 | `service-skill/1.0` | `schema` | schema, service, address, source_dir, summary, interfaces, tests, title, version | `cpu/services/<svc>/` |
 | `service-index/1.0` | `schema` | schema, id, source_dir, summary, services, tests, title, version | `cpu/services/` |
-| `dir-skill/1.0` | `schema` (node_type `directory-explorer`) | schema, node_type, source_dir, summary, title, explorer | `scripts/`, `docs/`, `workspace/`, `cors-proxy/` |
+| `dir-skill/1.0` | `schema` (node_type `directory-explorer`) | schema, node_type, source_dir, summary, title, explorer | `scripts/`, `docs/`, `workspace/` |
 | hub | `node_type: hub` | node_type, children, and a label (`title` or `course`) | root, `web/`, `cpu/`, `web/nemoclaw/` |
 | leaf | `node_type: leaf` | node_type, source_dir, summary, self_path, label | `web/nemoclaw/assets/`, `web/nemoclaw/mats/` |
 
-The two example schemas below (`course-skill/1.0`, `surface-skill/1.0`) are kept as the
-reference shape for a notebook course and a notebook-surface hub. No directory in this
-bundle currently uses them (the short course is web pages, not notebooks), but the tester
-accepts them so a notebook course added later validates without a code change.
+Only schemas present in the repository are valid. Add a new kind to the implementation,
+this table, and its mutation coverage in the same change that adds the first instance.
+Do not reserve speculative schema names.
 
----
+Hub beacons index immediate children. Per-directory detail stays in the child beacon.
+The root `SKILL.html` is the ontology beacon for the whole repository; `web/SKILL.html`
+and `cpu/SKILL.html` are surface hubs.
 
-## skill-meta schema (course / directory)
+## Exhaustive discovery
 
-```json
-{
-  "schema":         "course-skill/1.0",
-  "course":         "Display Title",
-  "id":             "folder_name",
-  "version":        "1.2.0",
-  "source_dir":     "cpu/services/llm_client/",
-  "human_landing":  "cpu/services/llm_client/SKILL.html",
+`skill_audit.py` derives the directory set from `git ls-files --cached --others
+--exclude-standard`. For every tracked or proposed file, its directory and every ancestor through
+the repository root must contain `SKILL.html`. The algorithm has no exclusion list. Gitignored
+build output is outside the source set by construction; tracked locale overlays, vendor trees,
+workflow directories, data directories, and runtime skill seeds remain inside it.
 
-  "summary":        "One paragraph. Same as the hero blurb the student reads.",
-
-  "notebook_count": 1,
-  "notebooks": [
-    {"file":"00_llm_client.md", "topic":"...", "section":"services", "status":"ready"}
-  ],
-
-  "services":       {"llm_client":"llm_client:9000"},
-  "base_url":       "http://llm_client:9000/v1",
-  "models": {
-    "primary":   "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
-    "judge":     "nvidia/nemotron-3-super-120b-a12b",
-    "embedding": "nvidia/nv-embedqa-mistral-7b-v2"
-  },
-
-  "directives": [
-    "Always route through http://llm_client:9000/v1. No api.nvidia.com calls.",
-    "Temperature 0.3 default (0 only when the lesson teaches determinism).",
-    "directory-specific rule N"
-  ],
-
-  "known_issues": [
-    {"id":"folder-01","note":"...", "fix_ref":"commit sha"}
-  ],
-
-  "success_criteria": {
-    "all_notebooks_pass_or_soft": true,
-    "ci_status_required":         "passing|unstable"
-  },
-
-  "do_not_propagate": ["SKILL.md","AUDIT.md","*.audit.md","blog_*.md"]
-}
-```
-
-`status` values: `ready` (clean), `setup` (needs prep cell),
-`wip` (don't ship), `ref` (reference-only).
-
----
-
-## skill-meta schema (surface hub)
-
-A surface hub indexes the directories under it. `web/SKILL.html` indexes the web
-surface; `cpu/SKILL.html` indexes the services. The hub carries:
-
-```json
-{
-  "schema":      "surface-skill/1.0",
-  "surface":     "web",
-  "version":     "1.x.x",
-  "audit_date":  "YYYY-MM-DD",
-  "entries": [{"id":"nemoclaw","skill_html":"nemoclaw/SKILL.html","notebook_count":0}],
-  "services":    {"llm_client":"llm_client:9000", ...}
-}
-```
-
-Per-directory detail does NOT live in the hub. Only the index.
-
-The root `SKILL.html` is the ontology beacon for the whole repo: it documents
-every immediate child (web, cpu, repos, scripts, workspace, docs) so an
-agent can orient from one file. The mats reference layer is course-scoped under
-`web/nemoclaw/mats/`, documented as part of the course.
+`gen_directory_beacons.py` creates the standard dual-reader contract for a newly discovered
+directory. `skill_contract.py` then validates the metadata, directory accuracy, human-readable
+body, shared-renderer wiring, local assets, and configured file paths. The Playwright renderer
+audit loads every discovered beacon and rejects runtime errors or an explorer that fails to mount.
 
 ---
 
@@ -126,9 +71,10 @@ agent can orient from one file. The mats reference layer is course-scoped under
 | Doc | Path | Audience |
 |---|---|---|
 | Per-directory brain | `<dir>/SKILL.html` | both |
-| Repo entry point | `AGENT_QUICKSTART.md` | agents |
+| Repo entry point | `AGENTS.md` | agents |
 | Contract spec | `SKILL_CONTRACT.md` (this file) | agents |
-| Quality directives | `QUALITY_DIRECTIVES.md` | agents |
+| Course contract | `web/nemoclaw/SKILL.html` | both |
+| Focused operating docs | `docs/` | contributors and operators |
 | Scratch | `/tmp` (ephemeral) | agents |
 
 ---
@@ -147,13 +93,24 @@ SKILL.html of that directory in the same commit. If the page or notebook count
 changed, the JSON count changes. If a model swapped, the `models` block changes.
 The SKILL.html is the source of truth. Staleness in this file is a CI failure.
 
+A newly added directory must receive its own beacon in the same commit. Parent coverage never
+substitutes for the child contract.
+
+### Reviewer exports
+
+When a directory contract offers a generated review document, declare it in `skill-meta.exports`.
+Each export names its format, command, parameters, default category, and an in-page preview mount.
+The page must render the current rows before offering a download. Filtering and downloading operate
+on the visible classification so a reviewer can distinguish distributed code from build inputs,
+validation installs, and local-authoring references without reconstructing that distinction from prose.
+
 ---
 
-## What is agent-only (kept in the repo by name; scratch in /tmp)
+## Durable guidance and scratch
 
-Anything the student must never see, kept worth-keeping in the repo by plain name:
+Durable contributor guidance stays tracked and may appear in repository navigation:
 
-- This contract spec, AGENT_QUICKSTART, QUALITY_DIRECTIVES
+- This contract spec and `AGENTS.md`
 - The reference docs under `docs/`
 
 Throwaway audits, reruns, and one-shot scripts go to `/tmp` and are never

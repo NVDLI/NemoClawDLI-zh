@@ -48,6 +48,12 @@ NVIDIA_API_KEY
 # the bundler there by hand, so it is ignored too.
 public/
 web/*/standalone/
+!web/*/standalone/
+web/*/standalone/*
+!web/*/standalone/SKILL.html
+!web/*/standalone/assets/
+web/*/standalone/assets/*
+!web/*/standalone/assets/SKILL.html
 
 # ── Lab-generated runtime artifacts (never commit) ──────────────────────────
 # Produced by running notebooks/services in the lab (root-owned in dev), not course
@@ -65,9 +71,17 @@ workspace/export/
 docs/validation/
 scripts/security/reports/
 .sca-venv/
+.sca-runtime-venv/
+.sca-tools-venv/
+.release-runtime-venv/
+.release-scan-venv/
+release-security/
+release-assets/
+release-evidence/
 .cache/pip/
 
 # Local env + secrets (never commit)
 .env
 .secret
 scripts/.figtools/
+web/nemoclaw/scripts/.figcheck_shared-*.mjs

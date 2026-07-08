@@ -6,10 +6,11 @@
     "scripts/browser-vendor/package-lock.json",
     "scripts/browser-vendor/highlight-entry.js",
     "scripts/browser-vendor/codemirror-entry.js",
+    "scripts/browser-vendor/js-yaml-entry.js",
     "scripts/browser-vendor/langchain-entry.js",
     "web/ and i18n/ runtime references"
   ],
-  "lock_sha256": "641159138da21305d39ebf42f7760609888df3456d8e27b3d70db9919f5ef988",
+  "lock_sha256": "18102896f22e118ce48c2077d257fcd7cc0a55478372d586de662246eda1d13c",
   "packages": [
     {
       "name": "@cfworker/json-schema",
@@ -73,13 +74,13 @@
     },
     {
       "name": "codemirror",
-      "version": "5.65.16",
+      "version": "5.65.21",
       "license": "MIT",
       "direct": true,
       "purpose": "Editable and read-only code cells.",
       "package_url": "https://www.npmjs.com/package/codemirror",
       "homepage": "https://codemirror.net/5/",
-      "license_file": "licenses/codemirror--5.65.16.txt"
+      "license_file": "licenses/codemirror--5.65.21.txt"
     },
     {
       "name": "eventemitter3",
@@ -110,6 +111,16 @@
       "package_url": "https://www.npmjs.com/package/js-tiktoken",
       "homepage": "https://github.com/dqbd/tiktoken",
       "license_file": "licenses/js-tiktoken--1.0.21.txt"
+    },
+    {
+      "name": "js-yaml",
+      "version": "5.2.1",
+      "license": "MIT",
+      "direct": true,
+      "purpose": "Parsing the live OpenShell policy returned to sandbox exercises.",
+      "package_url": "https://www.npmjs.com/package/js-yaml",
+      "homepage": "nodeca/js-yaml",
+      "license_file": "licenses/js-yaml--5.2.1.txt"
     },
     {
       "name": "langsmith",
@@ -194,7 +205,7 @@
   ],
   "assets": [
     {
-      "file": "codemirror-5.65.16.min.css",
+      "file": "codemirror-5.65.21.min.css",
       "media_type": "text/css",
       "bytes": 8720,
       "sha256": "eb494ea972d2661ef86f7f6ac656dd6786d721e49c9c1b46e1eb967e4b6f9bf3",
@@ -357,10 +368,10 @@
       ]
     },
     {
-      "file": "codemirror-5.65.16.min.js",
+      "file": "codemirror-5.65.21.min.js",
       "media_type": "text/javascript",
-      "bytes": 237247,
-      "sha256": "54761ad71363f25ecb39171181883a6bc5b0149f91c027cc3b2070727943811c",
+      "bytes": 237292,
+      "sha256": "36c8f0ad64c8cb940c7764dd506200ee3e93bdcca4abf0a2a5e76cfcd603f45e",
       "packages": [
         "codemirror"
       ],
@@ -520,7 +531,7 @@
       ]
     },
     {
-      "file": "codemirror-monokai-5.65.16.min.css",
+      "file": "codemirror-monokai-5.65.21.min.css",
       "media_type": "text/css",
       "bytes": 2179,
       "sha256": "2463dc6fd92019a0c7ca2aaa01d03116b280fa7c6ae01bf21df7c107d9b683e8",
@@ -789,7 +800,7 @@
         },
         {
           "source": "web/_skill_explorer.js",
-          "line": 64
+          "line": 67
         },
         {
           "source": "web/nemoclaw/01a-loop.html",
@@ -860,7 +871,22 @@
       "references": [
         {
           "source": "web/_skill_explorer.js",
-          "line": 63
+          "line": 66
+        }
+      ]
+    },
+    {
+      "file": "js-yaml-5.2.1.esm.min.js",
+      "media_type": "text/javascript",
+      "bytes": 41801,
+      "sha256": "62aaf0b69b6b09a438fbc18ee22be0acf6c4f158331c6baad0e9a44beec498f2",
+      "packages": [
+        "js-yaml"
+      ],
+      "references": [
+        {
+          "source": "web/nemoclaw/scripts/_openshell.js",
+          "line": 8
         }
       ]
     },
@@ -889,7 +915,7 @@
       "references": [
         {
           "source": "i18n/es/web/nemoclaw/01b-react.html",
-          "line": 380
+          "line": 383
         },
         {
           "source": "i18n/es/web/nemoclaw/02c-deep.html",
@@ -905,7 +931,7 @@
         },
         {
           "source": "i18n/pt/web/nemoclaw/01b-react.html",
-          "line": 419
+          "line": 421
         },
         {
           "source": "i18n/pt/web/nemoclaw/02c-deep.html",
@@ -921,7 +947,7 @@
         },
         {
           "source": "web/nemoclaw/01b-react.html",
-          "line": 452
+          "line": 454
         },
         {
           "source": "web/nemoclaw/02c-deep.html",
@@ -952,7 +978,7 @@
       "references": [
         {
           "source": "web/_skill_explorer.js",
-          "line": 264
+          "line": 267
         },
         {
           "source": "web/nemoclaw/scripts/_chat.js",
@@ -963,6 +989,11 @@
   ],
   "legal_notices": [
     {
+      "file": "js-yaml-5.2.1.esm.min.js.LEGAL.txt",
+      "bytes": 126,
+      "sha256": "6eddbafc56f1fac3ec82a231a61965fc6a76186ebf28fab19452212c447f7eba"
+    },
+    {
       "file": "langchain-1.4.7.esm.min.js.LEGAL.txt",
       "bytes": 860,
       "sha256": "ebb1e385d21514bec6ad6e8318c0622c796e0eb0ce01c9d14a33fd3a83a420f7"
@@ -970,8 +1001,8 @@
   ],
   "sbom": {
     "file": "browser-sbom.cdx.json",
-    "bytes": 7862,
-    "sha256": "a0740300bc1147168ec403c460e7a80d88ab269c38f640d3c3dbd8857ece42ff",
-    "component_count": 18
+    "bytes": 8261,
+    "sha256": "86718e54e7acf1a59f78392204695c8c5e0c079735029f6c011cc2a5a034b581",
+    "component_count": 19
   }
 }

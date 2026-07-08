@@ -27,10 +27,13 @@ Usage:
 """
 from __future__ import annotations
 import argparse
+import hashlib
 import re
 import shutil
 import sys
+import tempfile
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
     if (_p / "scripts" / "_bootstrap.py").exists():
@@ -80,6 +83,10 @@ UPDATE_PILL_RE = re.compile(rf'^\s*updateKeyPill\({_NESTED_ARGS}\);\s*$', re.MUL
 BUILD_NAV_RE = re.compile(
     rf'^\s*document\.getElementById\("nav"\)\.innerHTML\s*=\s*buildNav\({_NESTED_ARGS}\);\s*$',
     re.MULTILINE,
+)
+FIGURE_SOURCE_RE = re.compile(
+    r'(?P<prefix>\bdata-svg-src\s*=\s*)(?P<quote>["\'])(?P<url>[^"\']+)(?P=quote)',
+    re.IGNORECASE,
 )
 
 
@@ -481,6 +488,74 @@ def _strip_lab_anchors(html: str) -> str:
     return LAB_ANCHOR_RE.sub(lambda m: m.group(3), html)
 
 
+def _version_figure_sources(html: str, page_dir: Path) -> str:
+    """Give local SVG figure requests a deterministic content cache key.
+
+    CloudFront can retain an older object at an unchanged asset URL even after
+    the referring HTML has refreshed. Because mountFigures fetches these SVGs
+    and injects their markup into the page, stale SVG styles can affect the
+    whole course. A content-derived query makes every changed figure a new
+    request while preserving relative URLs and external references.
+    """
+    root = page_dir.resolve()
+
+    def replace(match: re.Match[str]) -> str:
+        raw_url = match.group("url")
+        parsed = urlsplit(raw_url)
+        if parsed.scheme or parsed.netloc or parsed.path.startswith("/"):
+            return match.group(0)
+        if not parsed.path.lower().endswith(".svg"):
+            return match.group(0)
+
+        asset = (page_dir / parsed.path).resolve()
+        try:
+            asset.relative_to(root)
+        except ValueError:
+            return match.group(0)
+        if not asset.is_file():
+            return match.group(0)
+
+        digest = hashlib.sha256(asset.read_bytes()).hexdigest()[:12]
+        query = [(key, value) for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+                 if key != "v"]
+        query.append(("v", digest))
+        versioned = urlunsplit(("", "", parsed.path, urlencode(query), parsed.fragment))
+        return f'{match.group("prefix")}{match.group("quote")}{versioned}{match.group("quote")}'
+
+    return FIGURE_SOURCE_RE.sub(replace, html)
+
+
+def _self_test() -> int:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        asset = root / "assets" / "figure.svg"
+        asset.parent.mkdir(parents=True)
+        asset.write_text("<svg>first</svg>", encoding="utf-8")
+        first_digest = hashlib.sha256(asset.read_bytes()).hexdigest()[:12]
+        source = (
+            '<div data-svg-src="assets/figure.svg"></div>'
+            '<div data-svg-src="assets/figure.svg?mode=full#detail"></div>'
+            '<div data-svg-src="https://example.com/figure.svg"></div>'
+            '<div data-svg-src="assets/missing.svg"></div>'
+        )
+        first = _version_figure_sources(source, root)
+        assert f'assets/figure.svg?v={first_digest}' in first
+        assert f'assets/figure.svg?mode=full&amp;' not in first
+        assert f'assets/figure.svg?mode=full&v={first_digest}#detail' in first
+        assert 'https://example.com/figure.svg' in first
+        assert 'assets/missing.svg' in first
+        assert _version_figure_sources(source, root) == first
+
+        asset.write_text("<svg>second</svg>", encoding="utf-8")
+        second_digest = hashlib.sha256(asset.read_bytes()).hexdigest()[:12]
+        second = _version_figure_sources(source, root)
+        assert second_digest != first_digest
+        assert f'assets/figure.svg?v={second_digest}' in second
+        assert first_digest not in second
+    print("bundle_standalone self-test: PASS")
+    return 0
+
+
 def _apply_svg_subs(html: str) -> str:
     """Replace dark-theme inline colors inside SVG element bodies. The match
     is scoped to real SVG element spans so prose, code, and inline color
@@ -544,7 +619,11 @@ def bundle_one(html_path: Path, css_text: str, lite_css: str, shared_js: str,
     """
     html = html_path.read_text(encoding="utf-8")
 
-    # 0) A generated SKILL hub loads ../_skill_explorer.js (the renderer lives one dir up so it serves
+    # 0) Version local fetched SVGs by content. This applies to full and lite
+    #    exports and to every locale assembled through the same bundler.
+    html = _version_figure_sources(html, html_path.parent)
+
+    # 0b) A generated SKILL hub loads ../_skill_explorer.js (the renderer lives one dir up so it serves
     #    every surface). The bundle is flat, so point it at the sibling copy shipped alongside the pages.
     html = html.replace('src="../_skill_explorer.js"', 'src="_skill_explorer.js"')
 
@@ -611,6 +690,11 @@ def bundle_one(html_path: Path, css_text: str, lite_css: str, shared_js: str,
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
+        "--self-test",
+        action="store_true",
+        help="Exercise deterministic SVG content versioning and exit.",
+    )
+    ap.add_argument(
         "--src",
         type=Path,
         default=WEB_DIR,
@@ -638,6 +722,9 @@ def main() -> int:
              "light, chrome-free iframe export for the edX navigator.",
     )
     args = ap.parse_args()
+
+    if args.self_test:
+        return _self_test()
 
     # Resolve --src: accept either an absolute path or a name relative to the task1/ root.
     web = args.src

@@ -114,8 +114,8 @@
     },
     "web/nemoclaw/assets/figures/rag_arch_2021.svg": {
       "source_sha256": "021eb9d444f12ef30b76b61aba241d874a0bdf6de55c8fd168ac75e6b23438f6",
-      "target_sha256": "65fc483966b7ac94d320c704ac1c8b6a2bd579ced6a21dcbcf0430b8909312dd",
-      "reviewed_on": "2026-06-30"
+      "target_sha256": "5af46d943a8b89e21512cd2ea3e81e5c7d42e1ac50672317a0e4ee01b689aae2",
+      "reviewed_on": "2026-07-02"
     },
     "web/nemoclaw/assets/figures/02b-rag-1.svg": {
       "source_sha256": "57c344f16d7b5dc468c666e95419602038946a3c86e1af8db4b6f1a5f6da8b46",
@@ -158,9 +158,9 @@
       "reviewed_on": "2026-06-30"
     },
     "web/nemoclaw/assets/figures/04a-openshell-architecture.svg": {
-      "source_sha256": "0adbf9ac1d02909e82a343b1b3d261b8ab5fbe0a7bebee53d58f74c964c8fac7",
-      "target_sha256": "3b8a26be57a45e01039d80cce22edeb464ccadd33bac228402974f03ed1bbecf",
-      "reviewed_on": "2026-06-30"
+      "source_sha256": "e9e64a77afba7642ceaa7aff366f6295c708cd6e0f3b3abfe185558fc65f65cf",
+      "target_sha256": "706623893de2192656d7914e32f2d8a1043e7d08bf22c75bc5d0f53aea479861",
+      "reviewed_on": "2026-07-06"
     },
     "web/nemoclaw/assets/figures/04a-safety-1.svg": {
       "source_sha256": "9a6a9abbc24d0241bf3b26fc954f2bf1c4d752a17336f94eb1ade45553ec56b3",
@@ -175,89 +175,89 @@
   },
   "reviews": {
     "web/index.html": {
-      "source_sha256": "78aa307db64851a947338e98e7e6a11e5fdc085a087b3209632c8d467587723c",
-      "target_sha256": "1d6af8926358d3bd3dddf08447ecf901634d308c806361ea2381dafa207e4a77",
-      "reviewed_on": "2026-06-30"
+      "source_sha256": "99629b64c3ad7ab1979576ba13e45f6c8612df27c4faa8e647969b2e9e69bc0d",
+      "target_sha256": "f23ac83ee47c03a4c79d86232265a189b4b484e5c5cffaebae9826f8d79179a4",
+      "reviewed_on": "2026-07-08"
     },
     "web/courses.html": {
       "source_sha256": "09b7448fb0f3d1cbff33c59a7f93f9031f12e53e21b31ef564f54f14d264d42c",
-      "target_sha256": "f0cb28709d65cedac8a2e3126de848509161ffed6a14041cff3509d5cdb2b854",
-      "reviewed_on": "2026-06-30"
+      "target_sha256": "a6c7ac9aff65a604191ea291c4188f50bc2593b31b036ff392ab42c534cf8f62",
+      "reviewed_on": "2026-07-02"
     },
     "web/nemoclaw/index.html": {
-      "source_sha256": "1d038ab0d2ec1593868d13f8327c179798a963a57302d16dabfe569be8339347",
-      "target_sha256": "4e2c29ff73713834ddb6a198cf4735585f0ec2cf2f5563f77d5d146c84f05f54",
-      "reviewed_on": "2026-07-01"
+      "source_sha256": "28cf3f9ab7ae5f5ce6ceabe820beadb2d61f7b17363c514b416919e0799ebf7c",
+      "target_sha256": "27de9bad0df00f22b78e2ecfce79be50a36f07f1be5994a2267a69d6314dc9e4",
+      "reviewed_on": "2026-07-03"
     },
     "web/nemoclaw/01a-loop.html": {
-      "source_sha256": "3182778177b6f90f1eb39fd869a352f9ec4782221581b0ea47b4d4085246d440",
-      "translation_sha256": "fda06522b15b63e4431e7b5bb031bc87ae849b8042105ed3832dc12bf342379e",
-      "target_sha256": "1d8dae8e3889442d4a832259c9879f7b42d687e37e3398af989cae78146a0c77",
-      "reviewed_on": "2026-07-01"
+      "source_sha256": "c5bf333e889f725626ea64087247cdcdf4c3540d03694b2714881de5233c7d85",
+      "translation_sha256": "37a63193c71af56969a561979bbaa7bf2841adaa99ba5f1580ccc07a1e01f7dd",
+      "target_sha256": "80c043a6e9675164cabbb29b9fc3bd0dfd425ab83acc165926b2514e8e7686ef",
+      "reviewed_on": "2026-07-05"
     },
     "web/nemoclaw/01b-react.html": {
-      "source_sha256": "a86e3c978eef9e4432323c5df42336ba609d8dc04f3954c69f536f8e9f242c5b",
-      "translation_sha256": "be9b8ace15c5fb939a3d665e89c2fb0b748844a5beb0359ff779c1e9a7f2b807",
-      "target_sha256": "e29625de79e678d37745beca669ae8a0c4990738014306caabcb230ce0e6bd85",
-      "reviewed_on": "2026-07-01"
+      "source_sha256": "93836d42153a770379cb4f6e02b5584ade443c6a1da8a7cc7674efccd4ab45b6",
+      "translation_sha256": "1d8f7cb4ccb236ff23641fe1d11347eee65dd75308f6437302d48c42187f67aa",
+      "target_sha256": "0b40b97d1680ffed70ef261e215f24cd94450e9b84a9b99270d772cd43512f13",
+      "reviewed_on": "2026-07-05"
     },
     "web/nemoclaw/01c-tools.html": {
-      "source_sha256": "390a4dfc6a1237c19346d482260ed121d1147be13329fb425ee54a6036accc2b",
-      "translation_sha256": "0b0a7b0aa884e382465ec8bde50498e0ea68977ec7c9bfe56a0fa49af383c2e6",
-      "target_sha256": "a85d1a7e024ac60f1346e712d98768483f4180d2f8b32304ae557ef8e08fe26b",
-      "reviewed_on": "2026-07-01"
+      "source_sha256": "20d7181d01562a00e37e5652aa4a75f36e072d112aaf008640017ce2746784df",
+      "translation_sha256": "ffa946440d14abdc8a9550422c28660fce88389844cc7fa869ed49259e4fc676",
+      "target_sha256": "f25829c5c26769cb7dd11e8de96496a6ef17949a0cfda2d2f0c8056860ee6a84",
+      "reviewed_on": "2026-07-07"
     },
     "web/nemoclaw/02a-routing.html": {
-      "source_sha256": "e059b993816304f9c47281321d058578d1f17d401b0a616a94eba1d591151ebd",
-      "translation_sha256": "4882c9197cc71dfe50b8fa7f8d0c91c8500e562f66fcf45bc9f1e49c457547e8",
-      "target_sha256": "a14148b4ab7e4b475ae297755b90a10bc4a93b17273a6d62091ce6784ef4aac8",
-      "reviewed_on": "2026-07-01"
+      "source_sha256": "48dae63c9caf0df4fcc0cc78ff230392a6d08b4682fe0634f46d4b1286a75f05",
+      "translation_sha256": "15ed5f5482d20fa6f2c87496def72b209dbc9bf0597c25181802f191b360fad3",
+      "target_sha256": "626631ef570864d1aab39b9758380adbb4a6bd93756b189e5e537153b2b8acf9",
+      "reviewed_on": "2026-07-07"
     },
     "web/nemoclaw/02b-rag.html": {
-      "source_sha256": "2fb745af63c5b4767aa9bf885daf6f8a4f293657dcd26a5f1ef47f8efabdcf24",
-      "translation_sha256": "d200782ef9ace9c090c68685852beca264eb950841005740ebfe0fc2dc3fca30",
-      "target_sha256": "7b151c16102910ebe14582854ee94d29c38011747ddbb4f8be88eef998662609",
-      "reviewed_on": "2026-07-01"
+      "source_sha256": "22da690a909d5b792ce05e025933302dc7e967aac5af408daa506c48a920a18f",
+      "translation_sha256": "cfcdf03ad644639a23a00c48777a0a65a4fdf2cf563e13a345ae2934c1edcdde",
+      "target_sha256": "1a89b8c786da4b504546e589a2ce3c83008ab4573ae451453de2d0d47ffecc54",
+      "reviewed_on": "2026-07-07"
     },
     "web/nemoclaw/02c-deep.html": {
-      "source_sha256": "2268077596b7192eb2e1a91c8cb530cbc8f9720b5e3e186e983ceff15543f461",
-      "translation_sha256": "09c47d6072d10c2e2703f9afcbe13e1f7a0a30b18ad718060f3fb326e38939ad",
-      "target_sha256": "d176df521db584004c9eaa5b49bf805e37a5d2417eeec2cdd9d48b7418f8628a",
-      "reviewed_on": "2026-07-01"
+      "source_sha256": "96fe1e5ee5ea52e31377eed5755eab5d3a8b4602436c72060a8f81ce759f1cf1",
+      "translation_sha256": "9f7bce72d205e5e7fb4acaa6ee4be21df02a263ee6ee7afd89741475dedd8f36",
+      "target_sha256": "16329ecd58676a9da3989d882a1c1845e8268270e65c711b8e77f1c843c90661",
+      "reviewed_on": "2026-07-07"
     },
     "web/nemoclaw/03a-kickstart.html": {
-      "source_sha256": "b753ce56597e40970fdccddb21f4a3bc96822743b71d778c0cd4318492efb79c",
-      "target_sha256": "7681ee1033a6783a7a5d31c17cb9c76346359f7cef709264369c7d1202d10243",
-      "reviewed_on": "2026-07-01"
+      "source_sha256": "4555c167b99daf9c7c6fddda2299f3bc316bf22ab2c8c17e9e4203845b4df607",
+      "target_sha256": "ed02fd56a6529b6c124370710095b9404c62d1e7e2d82497cac999ce6fdedc1a",
+      "reviewed_on": "2026-07-05"
     },
     "web/nemoclaw/03b-openclaw.html": {
-      "source_sha256": "19baf45933b4423933c41d55535215ef7294250768192c369e4ba1798d5388a1",
-      "translation_sha256": "d8da43dd2e92cfd6500135980a4a938364aa95ae4ba9d37a1158a3162511ebec",
-      "target_sha256": "59b05b7efcd0555412cce3c8e59bed3d51e76e55a3f3862c5a8c5bb0acf489cc",
-      "reviewed_on": "2026-07-01"
+      "source_sha256": "e558913ac1fdb5838bdedddab8774af3b3e4b0374983201f42c06d7f5c7c30d7",
+      "translation_sha256": "41924f97e6ed7eaa601183f73108c52ba4e359c1300a605df4b940ea3818d58f",
+      "target_sha256": "db2e1d5cf9149a3d0e82ce56a9db6eb0d07d69376aa33a50c6cae2ffca2828b5",
+      "reviewed_on": "2026-07-06"
     },
     "web/nemoclaw/03c-always-on.html": {
-      "source_sha256": "ee19c7f2f50d1c00d608992d8ebb3048b6b664c348131becc27a5f3ca00baf9e",
-      "target_sha256": "ea64f384110ea9b87fb6edcd4aa7930b2929ce85a1f9bbc011c10789f5bed59b",
-      "reviewed_on": "2026-07-01"
+      "source_sha256": "9a81b76b6062f1207cd4e41a1450bca1697204980405ffa7ad14e5857b4c8e52",
+      "target_sha256": "bfa3200db30aa3d3dae1d979e1a0addad6465918818a67343b4ee5479e43d915",
+      "reviewed_on": "2026-07-06"
     },
     "web/nemoclaw/04a-safety.html": {
-      "source_sha256": "1eab29d6ddaa40ef09a03f82e147274548a13ab5a71515b720ae7447a72b8b1a",
-      "translation_sha256": "3a4c4e1301fdd0bf1ea67ef40c14771c06d6aa2aa1c8578f35d18e4bac1e9c9c",
-      "target_sha256": "b7f17010f28048be36a85b21a7b29aa0d18e28154ef8f1b6718df296d2bfe59a",
-      "reviewed_on": "2026-07-01"
+      "source_sha256": "ec4543daab165e0864d5bec3afae43ba24ba1befd9650021c805199409644fcf",
+      "translation_sha256": "e5083f174e1122384b074c3a49370b098257960ea5e5abf861542c9c29d6159a",
+      "target_sha256": "7d8d5030fd89d2ba09f9693c070d1707be29e1dac772690cfa24bd8142f247ab",
+      "reviewed_on": "2026-07-05"
     },
     "web/nemoclaw/04b-modern-clis.html": {
-      "source_sha256": "c9bfad38c08b2481b67ab20e27a89337947f32a7b0a981c977be6e99ac78d997",
-      "translation_sha256": "f37649191598d6b00d7836971b134ff33f800eed2d444d3fddb559b40affdc19",
-      "target_sha256": "6f28f7c30cf827f82e16bd90cf706e665e35ce75023db10f4808354603d84873",
-      "reviewed_on": "2026-07-01"
+      "source_sha256": "f7b7b5fb2b535c5b3fa1537842133ad9fb5616f4e5a7707eee24c71dc52023bd",
+      "translation_sha256": "0aa2cbac5e3f966c03ad43fcfd3d84da86def04ff00784dbe586c1c1c96d16eb",
+      "target_sha256": "49c2d35205e9bd2f84f7d680ebd0a38f9e4ed4878394a86087d89fd4db63281d",
+      "reviewed_on": "2026-07-05"
     },
     "web/nemoclaw/04c-going-further.html": {
-      "source_sha256": "61e8129866dedf0b1f952b51c14a2a68a402eb1bd75466ee0de06f46f7bf1686",
-      "translation_sha256": "1cffd5630e5d7286ae6171fb9dcfecfb0c615b698111eb1f1943430ac04c33a7",
-      "target_sha256": "76a6182682bff62dd62457938a2abb8070fb53fb049653de68d7d265f73875c6",
-      "reviewed_on": "2026-07-01"
+      "source_sha256": "eeb16b83806be79345ac4c838389fe746af757f605b303c86ef632e80b1d7b82",
+      "translation_sha256": "2061631f5cbb21540b3c33777d82f935ade3a819cbd4ab7ecefc14d6b0d7e974",
+      "target_sha256": "47722b0bb0f8fff7559ace96605d71de78b3195c0c665b977dbbf5be72418fbe",
+      "reviewed_on": "2026-07-02"
     }
   }
 }

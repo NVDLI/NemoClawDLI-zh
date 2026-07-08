@@ -1,5 +1,12 @@
 // _keypanel.js holds the inline API-key setup panel (mountKeyPanel) that used to live in _shared.js.
-import { chat, hasKey, setKey, updateKeyPill, iframeProxyModeEnabled, setIframeProxyMode } from "./_shared.js";
+import {
+  DEFAULT_MODEL, DEFAULT_MODEL_API_BASE_URL, browserChatFetch, chat,
+  getEmbeddingApiBaseUrl, getEmbeddingKey, getEmbeddingModelId, getKey, getModelApiBaseUrl, getModelId,
+  hasKey, normalizeModelApiBaseUrl, normalizeModelId, setEmbeddingApiBaseUrl, setEmbeddingKey,
+  setEmbeddingModelId, setKey, setModelApiBaseUrl, setModelId, suggestedEmbeddingApiBaseUrl,
+  suggestedEmbeddingModelId, suggestedModelApiBaseUrl, suggestedModelId, updateKeyPill,
+  iframeProxyModeEnabled, setIframeProxyMode,
+} from "./_shared.js";
 
 const BUILD_SIGNUP_URL = "https://build.nvidia.com";
 
@@ -13,14 +20,23 @@ export function mountKeyPanel(container, opts = {}) {
   const el = typeof container === "string" ? document.querySelector(container) : container;
   if (!el) return null;
   const _clean = raw => raw.trim().replace(/[^ -~]/g, "");
+  const _attr = raw => String(raw).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   function _draw() {
-    const proxyChecked = iframeProxyModeEnabled();
-    if (hasKey()) {
+    const keySaved = hasKey();
+    const modelApiBaseUrl = keySaved ? getModelApiBaseUrl() : suggestedModelApiBaseUrl();
+    const modelId = keySaved ? getModelId() : suggestedModelId();
+    const embeddingApiBaseUrl = keySaved ? getEmbeddingApiBaseUrl() : suggestedEmbeddingApiBaseUrl();
+    const embeddingModelId = keySaved ? getEmbeddingModelId() : suggestedEmbeddingModelId();
+    const customEndpoint = modelApiBaseUrl !== DEFAULT_MODEL_API_BASE_URL;
+    const proxyChecked = !customEndpoint && iframeProxyModeEnabled();
+    if (keySaved) {
       el.innerHTML = `<div class="key-panel key-panel-saved">
         <span class="key-saved-label">&#10003; API key saved for this browser</span>
+        <span class="key-endpoint-label">Chat route: <code>${_attr(modelApiBaseUrl)}</code> · <code>${_attr(modelId)}</code></span>
+        <span class="key-endpoint-label">Embedding route: <code>${_attr(embeddingApiBaseUrl)}</code> · <code>${_attr(embeddingModelId)}</code></span>
         <label class="iframe-proxy-toggle-row">
-          <input type="checkbox" class="iframe-proxy-toggle" ${proxyChecked ? "checked" : ""}/>
-          Enable LMS/static iframe execution
+          <input type="checkbox" class="iframe-proxy-toggle" ${proxyChecked ? "checked" : ""} ${customEndpoint ? "disabled" : ""}/>
+          ${customEndpoint ? "Custom endpoint uses direct browser requests" : "Enable LMS/static iframe execution"}
         </label>
         <button class="btn key-change-btn">Change</button>
       </div>`;
@@ -39,43 +55,151 @@ export function mountKeyPanel(container, opts = {}) {
       };
     } else {
       el.innerHTML = `<div class="key-panel">
-        <label>NVIDIA API key (starts with <code>nvapi-</code>)</label>
-        <input type="password" placeholder="nvapi-&hellip;" autocomplete="off" spellcheck="false"/>
+        <label>Chat API base URL</label>
+        <input type="url" class="model-api-base-url" value="${_attr(modelApiBaseUrl)}"
+               placeholder="https://integrate.api.nvidia.com/v1" autocomplete="off" spellcheck="false"/>
+        <label>Chat model ID</label>
+        <input type="text" class="model-id" value="${_attr(modelId)}"
+               placeholder="model/provider-id" autocomplete="off" spellcheck="false"/>
+        <label>Chat API bearer key (NVIDIA keys start with <code>nvapi-</code>)</label>
+        <input type="password" class="model-api-key" placeholder="nvapi-&hellip; or EMPTY" autocomplete="off" spellcheck="false"/>
         <label class="iframe-proxy-toggle-row">
           <input type="checkbox" class="iframe-proxy-toggle" ${proxyChecked ? "checked" : ""}/>
           Enable LMS/static iframe execution through the hosted proxy
         </label>
+        <details class="embedding-route">
+          <summary>Embedding route (persistent and independent)</summary>
+          <p>Embedding exercises keep this route when the chat route changes.</p>
+          <label>Embedding API base URL</label>
+          <input type="url" class="embedding-api-base-url" value="${_attr(embeddingApiBaseUrl)}"
+                 placeholder="https://integrate.api.nvidia.com/v1" autocomplete="off" spellcheck="false"/>
+          <label>Embedding model ID</label>
+          <input type="text" class="embedding-model-id" value="${_attr(embeddingModelId)}"
+                 placeholder="nvidia/llama-nemotron-embed-1b-v2" autocomplete="off" spellcheck="false"/>
+          <label>Embedding API bearer key</label>
+          <input type="password" class="embedding-api-key" placeholder="${getEmbeddingKey() ? "saved separately" : "nvapi-&hellip;"}" autocomplete="off" spellcheck="false"/>
+        </details>
         <button class="btn">Save &amp; verify</button>
         <div class="status"></div>
         <p style="margin:.8em 0 0;font-size:.8rem;color:var(--tf,#8a8a8a)">
           No key yet? <a href="${BUILD_SIGNUP_URL}" target="_blank" rel="noopener">Sign up at build.nvidia.com &rarr;</a>
-          Free-tier models cover every exercise. Leave iframe mode off unless your host page needs it.
+          Brev fallback: expose port 5000 with Using Tunnels, make the tunnel public, then paste its /v1 URL, key EMPTY, and served model ID. A private tunnel cannot accept cross-origin course requests. Do not paste the Jupyter /lab URL or localhost.
+          <a href="https://docs.nvidia.com/brev/cli/connectivity" target="_blank" rel="noopener">Open Brev connectivity steps &rarr;</a>
+          A presenter can prefill ?base_url=...&amp;model=.... Save once; every lesson reuses both routes.
         </p>
       </div>`;
-      const input = el.querySelector("input[type='password']");
+      const input = el.querySelector(".model-api-key");
+      const endpointInput = el.querySelector(".model-api-base-url");
+      const modelInput = el.querySelector(".model-id");
+      const embeddingEndpointInput = el.querySelector(".embedding-api-base-url");
+      const embeddingModelInput = el.querySelector(".embedding-model-id");
+      const embeddingKeyInput = el.querySelector(".embedding-api-key");
       const status = el.querySelector(".status");
       const btn = el.querySelector(".btn");
+      const toggle = el.querySelector(".iframe-proxy-toggle");
+      const syncEndpointMode = () => {
+        let custom = true;
+        try { custom = normalizeModelApiBaseUrl(endpointInput.value) !== DEFAULT_MODEL_API_BASE_URL; } catch (_) {}
+        toggle.disabled = custom;
+        if (custom) toggle.checked = false;
+      };
+      endpointInput.addEventListener("input", syncEndpointMode);
+      syncEndpointMode();
       async function save() {
         const key = _clean(input.value);
-        if (!key.startsWith("nvapi-")) {
-          status.className = "status err"; status.textContent = "Key should start with nvapi-"; return;
-        }
-        status.className = "status"; status.textContent = "Verifying?";
+        let endpoint, model, embeddingEndpoint, embeddingModel;
         try {
-          const toggle = el.querySelector(".iframe-proxy-toggle");
-          setIframeProxyMode(!!toggle?.checked);
+          endpoint = normalizeModelApiBaseUrl(endpointInput.value);
+          model = normalizeModelId(modelInput.value);
+          embeddingEndpoint = normalizeModelApiBaseUrl(embeddingEndpointInput.value);
+          embeddingModel = normalizeModelId(embeddingModelInput.value, getEmbeddingModelId());
+        }
+        catch (e) { status.className = "status err"; status.textContent = e.message; return; }
+        const defaultEndpoint = endpoint === DEFAULT_MODEL_API_BASE_URL;
+        if ((defaultEndpoint && !key.startsWith("nvapi-")) || (!defaultEndpoint && !key)) {
+          status.className = "status err";
+          status.textContent = defaultEndpoint ? "Key should start with nvapi-" : "Enter the key for this endpoint";
+          return;
+        }
+        let embeddingKey = _clean(embeddingKeyInput.value) || getEmbeddingKey() || (defaultEndpoint ? key : "");
+        if (!embeddingKey) {
+          status.className = "status err";
+          status.textContent = "Enter the key for the embedding route";
+          return;
+        }
+        if (embeddingEndpoint === DEFAULT_MODEL_API_BASE_URL && !embeddingKey.startsWith("nvapi-")) {
+          status.className = "status err";
+          status.textContent = "The default embedding route needs an nvapi- key";
+          return;
+        }
+        status.className = "status"; status.textContent = "Discovering models and verifying…";
+        const previousEndpoint = getModelApiBaseUrl();
+        const previousModel = getModelId();
+        const previousKey = getKey();
+        const previousEmbeddingEndpoint = getEmbeddingApiBaseUrl();
+        const previousEmbeddingModel = getEmbeddingModelId();
+        const previousEmbeddingKey = getEmbeddingKey();
+        const previousProxyMode = iframeProxyModeEnabled();
+        try {
+          if (!defaultEndpoint) {
+            const response = await browserChatFetch()(endpoint + "/models", {
+              headers: { Authorization: "Bearer " + key },
+            });
+            if (!response.ok) throw new Error("model discovery failed: HTTP " + response.status);
+            let payload;
+            try { payload = await response.json(); }
+            catch (_) {
+              throw new Error("Model discovery did not return JSON. Confirm the Brev tunnel is public, then try again");
+            }
+            const models = (payload.data || []).map(item => item?.id).filter(Boolean);
+            if (!models.length) throw new Error("model discovery returned no model IDs");
+            if (models.length === 1 && (!modelInput.value.trim() || model === DEFAULT_MODEL || !models.includes(model))) {
+              model = models[0];
+              modelInput.value = model;
+            } else if (!models.includes(model)) {
+              throw new Error("Model ID is not served by this endpoint. Choose one of: " + models.join(", "));
+            }
+          }
+          if (embeddingEndpoint !== DEFAULT_MODEL_API_BASE_URL) {
+            const response = await browserChatFetch()(embeddingEndpoint + "/models", {
+              headers: { Authorization: "Bearer " + embeddingKey },
+            });
+            if (!response.ok) throw new Error("embedding model discovery failed: HTTP " + response.status);
+            const payload = await response.json().catch(() => null);
+            const models = (payload?.data || []).map(item => item?.id).filter(Boolean);
+            if (!models.length) throw new Error("embedding model discovery returned no model IDs");
+            if (models.length === 1 && !models.includes(embeddingModel)) {
+              embeddingModel = models[0];
+              embeddingModelInput.value = embeddingModel;
+            } else if (!models.includes(embeddingModel)) {
+              throw new Error("Embedding model ID is not served by this endpoint. Choose one of: " + models.join(", "));
+            }
+          }
+          if (previousKey?.startsWith("nvapi-") && !previousEmbeddingKey) setEmbeddingKey(previousKey);
+          setModelApiBaseUrl(endpoint);
+          setModelId(model);
+          setIframeProxyMode(defaultEndpoint && !!toggle?.checked);
           setKey(key);
+          setEmbeddingApiBaseUrl(embeddingEndpoint);
+          setEmbeddingModelId(embeddingModel);
+          setEmbeddingKey(embeddingKey);
           // Give the reasoning-model probe enough tokens to reach its final answer.
-          const r = await chat({ messages: [{ role: "user", content: "Reply with the single word: ready" }], max_tokens: 8196 });
+          const r = await chat({ messages: [{ role: "user", content: "Reply with the single word: ready" }], max_tokens: 1024 });
           const reply = r.choices?.[0]?.message?.content?.trim();
           status.className = "status ok";
-          status.textContent = reply ? `? Connected. Model replied: "${reply}"` : "? Connected.";
+          status.textContent = reply ? `✓ Connected. Model replied: "${reply}"` : "✓ Connected.";
           const pill = document.getElementById("key-status");
           if (pill) updateKeyPill(pill);
           if (opts.onSave) opts.onSave(key);
           setTimeout(_draw, 1400);
         } catch (e) {
-          localStorage.removeItem("nvapi");
+          if (previousKey) setKey(previousKey); else localStorage.removeItem("nvapi");
+          setModelApiBaseUrl(previousEndpoint);
+          setModelId(previousModel);
+          setEmbeddingApiBaseUrl(previousEmbeddingEndpoint);
+          setEmbeddingModelId(previousEmbeddingModel);
+          setEmbeddingKey(previousEmbeddingKey || "");
+          setIframeProxyMode(previousProxyMode);
           status.className = "status err"; status.textContent = `Connection failed: ${e.message}`;
         }
       }

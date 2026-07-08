@@ -118,8 +118,8 @@ function _buildDebugDet(e, code, ep) {
 
 
 // ── Shared cell shell/rendering primitives (CanvasFlow + RunCell) ─────────────
-// Keep the old rc/cf selectors for tests and Studio automation, but route the
-// learner-facing controls, code labels, and output rendering through one path.
+// Retain rc/cf selectors for tests and Studio automation.
+// Route learner controls, labels, and output through one renderer.
 const CELL_CANVAS_VISIBLE_LINES = 39;
 
 function _cellBtnHTML(kind, text, extraClass = "", title = "") {
@@ -956,7 +956,9 @@ helpers.viz.sideBySide(
 
     const log = (...args) => {
       // Dicts and lists are pretty-printed + syntax-highlighted; plain values stay text.
-      s.logs.push(appendLogLine(logEl, args));
+      const el = appendLogLine(logEl, args);
+      s.logs.push(el);
+      return el;
     };
     // Capture a cell's console.{log,warn,error,info} into the panel log (warn/error tinted) and mirror to the real console, so console statements show in the panel, not just devtools.
     // Injected as a `console` parameter that shadows the global only inside the cell, never leaking.
@@ -1065,12 +1067,18 @@ helpers.viz.sideBySide(
       // Wrap each network helper so an error is logged into the panel's per-run log before bubbling, so a student's empty `catch (_) {}` cannot silently swallow 524s, JSON errors, or bad tool calls.
       // Sync stays sync, async keeps its promise, the wrapper rethrows; _raw is the unwrapped fn.
       function withErrLog(label, fn) {
+        const markLogged = (e) => {
+          if (e && (typeof e === "object" || typeof e === "function")) {
+            try { Object.defineProperty(e, "__courseHelperErrorLogged", { value: true, configurable: true }); } catch (_) {}
+          }
+          return e;
+        };
         const wrapped = function (...args) {
           let r;
           try { r = fn.apply(this, args); }
-          catch (e) { try { log(`✗ ${label} error: ${e.message || e}`); } catch (_) {} throw e; }
+          catch (e) { try { log(`✗ ${label} error: ${e.message || e}`); } catch (_) {} throw markLogged(e); }
           if (r && typeof r.then === "function")
-            return r.catch(e => { try { log(`✗ ${label} error: ${e.message || e}`); } catch (_) {} throw e; });
+            return r.catch(e => { try { log(`✗ ${label} error: ${e.message || e}`); } catch (_) {} throw markLogged(e); });
           return r;
         };
         wrapped._raw = fn;
@@ -1094,6 +1102,8 @@ helpers.viz.sideBySide(
       const _sig = runAC ? runAC.signal : null;
       helpers.signal = _sig || undefined;
       if (_sig) {
+        const _delay = helpers.delay;
+        helpers.delay = (ms, signal = _sig) => _delay(ms, signal);
         const _withSig = (o) => (o && typeof o === "object" && o.signal == null) ? { ...o, signal: _sig } : o;
         const _chat = helpers.chat, _stream = helpers.chatStream, _term = helpers.terminal;
         if (_chat)   helpers.chat       = (o, ...r) => _chat(_withSig(o), ...r);
@@ -1166,10 +1176,12 @@ helpers.viz.sideBySide(
         flowEdgesInto(nodeId, false);
         throw e;
       }
-      const err = document.createElement("div");
-      err.className = "cf-panel-error";
-      err.textContent = "✗ " + (e.name || "Error") + ": " + e.message;
-      outEl.appendChild(err);
+      if (!e.__courseHelperErrorLogged) {
+        const err = document.createElement("div");
+        err.className = "cf-panel-error";
+        err.textContent = "✗ " + (e.name || "Error") + ": " + e.message;
+        outEl.appendChild(err);
+      }
       // Surface where it failed: map the stack to a CodeMirror line, mark it, open the code dropdown, and append a Debug-info panel (snippet plus stack).
       const _ep = _parseErrLine(e);
       const _codeForErr = (s.cm ? s.cm.getValue() : s.code) || "";
@@ -1240,7 +1252,8 @@ helpers.viz.sideBySide(
         statusBar.textContent = "⏹ stopped after " + ran + " of " + nodes.length + " nodes";
         statusBar.className = "cf-status-bar";
       } else {
-        statusBar.textContent = "✗ stopped: " + e.message;
+        const failedNode = nodes[ran];
+        statusBar.textContent = "✗ stopped at " + (failedNode?.title || failedNode?.id || "failed step");
         statusBar.className = "cf-status-bar err";
       }
     } finally {
@@ -1283,7 +1296,8 @@ function _logReplacer() {
 }
 
 // Append one log line to `logEl`. A dict or list is pretty-printed and syntax-highlighted (highlight.js when present, indented JSON as fallback), while plain values stay text.
-// Shared by every log surface (canvas nodes, captured console, run cells); returns the line's plain text.
+// Shared by every log surface (canvas nodes, captured console, run cells); returns the created
+// element so learner code can update an in-place status line consistently in both cell types.
 function appendLogLine(logEl, args, opts) {
   opts = opts || {};
   const div = document.createElement("div");
@@ -1315,7 +1329,8 @@ function appendLogLine(logEl, args, opts) {
     plain.push(String(a));
   });
   logEl.appendChild(div);
-  return plain.join(" ");
+  div.dataset.logText = plain.join(" ");
+  return div;
 }
 
 function _docFor(name) {
@@ -1372,11 +1387,11 @@ function _buildHelperRows(allow) {
     ["Launchable terminal",     ["terminal"]],
     ["OpenShell policy",        ["evalSandboxNetwork", "evalSandboxFs", "sandboxExec"]],
     ["Course content",          ["coursePage", "coursePages"]],
-    ["Live artifacts",          ["mountChatUI", "mountAgentChat", "mountKeyPanel"]],
+    ["Live artifacts",          ["mountChatUI", "mountAgentChat", "mountOpenClawCli", "mountKeyPanel"]],
     ["Diagram strings",         ["diagramSVG", "ganttBarsSVG"]],
     ["OpenClaw gateway",        ["openclawChat"]],
     ["Config",                  ["getConfig", "getKey"]],
-    ["Run control",             ["signal"]],
+    ["Run control",             ["signal", "delay"]],
     ["Instrumentation",         ["trace", "log"]],
   ];
   const vizNames = typeof VIZ_BUILDERS !== "undefined" ? Object.keys(VIZ_BUILDERS).map(k => "viz." + k) : [];
@@ -1664,22 +1679,23 @@ export function mountRunCell(targetSel, opts) {
       }
     }
 
-    // ── Structured log API ────────────────────────────────────────────────
-    // Same renderer family as CanvasFlow: text, headings, JSON, details, kv,
-    // trusted HTML/SVG/draw, and clear. Plain strings stay plain; objects render
-    // as highlighted JSON instead of collapsing to [object Object].
+    // Structured log API.
+    // CanvasFlow and RunCell share text, JSON, details, HTML, SVG, drawing, and clear operations.
+    // Strings stay plain; objects render as highlighted JSON.
     let outputCount = 0;
     const counted = (el) => { outputCount++; return el; };
     const _appendText = (text, color = "") => counted(_appendCellText(out, text, "cell-log-line", color));
     const _appendJson = (obj, label = null) => counted(_appendCellJson(out, obj, label));
     const log = (...args) => {
+      let last = null;
       const texts = [];
-      const flush = () => { if (texts.length) { _appendText(texts.join(" ")); texts.length = 0; } };
+      const flush = () => { if (texts.length) { last = _appendText(texts.join(" ")); texts.length = 0; } };
       args.forEach(a => {
-        if (a && typeof a === "object") { flush(); _appendJson(a); }
+        if (a && typeof a === "object") { flush(); last = _appendJson(a); }
         else texts.push(String(a));
       });
       flush();
+      return last;
     };
     _installStructuredLog(log, out, counted);
     const clear = () => { out.innerHTML = ""; outputCount = 0; };
@@ -1691,6 +1707,9 @@ export function mountRunCell(targetSel, opts) {
       // `helpers` mirrors the canvas-cell convention (helpers.embed, helpers.log, helpers.mountChatUI) so a run-cell can mount a full artifact, not only call chat().
       // The bare names below stay for back-compat with older cells.
       const helpers = Object.assign({}, HELPER_FNS, { log, clear, fetch: (...a) => window.fetch(...a) });
+      helpers.signal = ac.signal;
+      const runDelay = helpers.delay;
+      helpers.delay = (ms, signal = ac.signal) => runDelay(ms, signal);
       const argNames = ["chat", "chatStream", "webSearch", "instantAnswer", "formatSearchResults", "log", "clear", "MODEL", "REASONING_MODEL", "AbortSignal", "helpers", "state",       ...Object.keys(schemaVars)];
       const argVals  = [chat,    chatStream,   webSearch,   instantAnswer,   formatSearchResults,   log,   clear,   null,    REASONING_MODEL,  ac.signal,    helpers,   _runCellState, ...Object.values(schemaVars)];
       // Read from CodeMirror if present; otherwise from the textarea.
@@ -1699,12 +1718,13 @@ export function mountRunCell(targetSel, opts) {
       const fn = new Function(...argNames,
         `"use strict"; return (async () => {\n${codeText}\n})();`);
       const result = await fn(...argVals);
-      if (!ac.signal.aborted && outputCount === 0) {
-        if (result === undefined) {
+      if (!ac.signal.aborted) {
+        if (result === undefined && outputCount === 0) {
           _emptyState("(completed; no log output and no returned value)");
-        } else if (typeof result === "object" && result !== null) {
+        } else if (result !== undefined && typeof result === "object" && result !== null) {
           _appendJson(result, "returned value");
-        } else {
+        } else if (result !== undefined) {
+          counted(_appendCellHeading(out, "returned value"));
           _appendText(String(result));
         }
       }
@@ -1715,6 +1735,7 @@ export function mountRunCell(targetSel, opts) {
         _emptyState("⏹ stopped");
       } else {
         const err = document.createElement("div");
+        err.className = "cell-runtime-error";
         err.style.cssText = "padding:10px 14px;color:var(--err);font-family:ui-monospace,monospace;font-size:.82rem;white-space:pre-wrap;";
         err.textContent = "✗ " + (e.name || "Error") + ": " + e.message;
         out.appendChild(err);

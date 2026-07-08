@@ -22,22 +22,20 @@ ROOT = find_repo_root(Path(__file__).resolve())
 
 CONTRACT_FILES = (
     "RELEASE_STATUS.json",
-    "RELEASE_STATUS.md",
-    "GOVERNANCE.json",
     "README.md",
+    "LICENSE",
     "CONTRIBUTING.md",
     "CODE_OF_CONDUCT.md",
     "DCO.md",
-    "MAINTAINERS.md",
     "SUPPORT.md",
-    "PHILOSOPHY.md",
     "AGENTS.md",
-    "AGENT_QUICKSTART.md",
-    "SECURITY.md",
     "docs/release_playbook.md",
     "docs/release_artifacts.md",
     "scripts/compliance/docs/open_source_readiness.md",
     ".github/ISSUE_TEMPLATE/config.yml",
+    ".github/ISSUE_TEMPLATE/course-content.yml",
+    ".github/ISSUE_TEMPLATE/runtime-deploy.yml",
+    ".github/ISSUE_TEMPLATE/source-licensing.yml",
     ".github/PULL_REQUEST_TEMPLATE.md",
     ".github/dependabot.yml",
     ".github/workflows/codeql.yml",
@@ -46,9 +44,11 @@ CONTRACT_FILES = (
     ".github/workflows/pages.yml",
     ".github/workflows/release.yml",
     ".gitlab-ci.yml",
+    "scripts/build/build_pages.sh",
     "scripts/build/install-hooks.sh",
     "scripts/build/build_branch_manifest.py",
     "scripts/build/package_release.py",
+    "scripts/materials/pull_materials.py",
     "scripts/materials/requirements.lock",
     "scripts/security/audit_dependency_locks.py",
     "scripts/security/audit_sbom_policy.py",
@@ -57,11 +57,27 @@ CONTRACT_FILES = (
     "scripts/git-hooks/pre-push",
     "scripts/skills/gen_skill_hierarchy.py",
     "scripts/validation/SKILL.html",
+    "scripts/validation/local_path_leak_audit.py",
+    "scripts/validation/sensitive_content_audit.py",
+    "scripts/validation/sensitive-content-policy.json",
+    "scripts/validation/release_change_reminder.py",
     "scripts/validation/release_gate.py",
+    "scripts/validation/validation_report_audit.py",
+    "scripts/validation/pages_artifact_integrity.py",
     "scripts/validation/validate_bundle.py",
     "scripts/validation/gitlab_governance_audit.py",
     "workspace/requirements.lock",
     "workspace/Dockerfile",
+    "web/nemoclaw/mats/_materials.json",
+)
+
+RETIRED_GUIDANCE = (
+    "AGENT_QUICKSTART.md",
+    "GOVERNANCE.json",
+    "PHILOSOPHY.md",
+    "QUALITY_DIRECTIVES.md",
+    "RELEASE_STATUS.md",
+    "docs/notebook_corruption_prevention.md",
 )
 
 
@@ -87,11 +103,15 @@ def top_permissions(workflow: str) -> str:
     return match.group(1) if match else ""
 
 
-def audit_workflow_pins(root: Path) -> list[dict[str, str]]:
+def audit_workflow_pins(
+    root: Path, text_overrides: dict[str, str] | None = None,
+) -> list[dict[str, str]]:
     out: list[dict[str, str]] = []
+    overrides = text_overrides or {}
     for path in sorted((root / ".github/workflows").glob("*.yml")):
         rel = path.relative_to(root).as_posix()
-        for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        raw = overrides[rel] if rel in overrides else path.read_text(encoding="utf-8")
+        for line_no, line in enumerate(raw.splitlines(), 1):
             action = re.search(r"\buses:\s*([^\s]+)", line)
             if action and not action.group(1).startswith("./"):
                 ref = action.group(1).rsplit("@", 1)[-1]
@@ -125,10 +145,19 @@ def audit_publication_approval(root: Path = ROOT) -> list[dict[str, str]]:
     return []
 
 
-def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
+def audit_repo(
+    root: Path = ROOT, *, text_overrides: dict[str, str] | None = None,
+) -> list[dict[str, str]]:
     out: list[dict[str, str]] = []
-    docs = {rel: read(root, rel, out) for rel in CONTRACT_FILES}
-    out.extend(audit_workflow_pins(root))
+    overrides = text_overrides or {}
+    docs = {rel: overrides[rel] if rel in overrides else read(root, rel, out)
+            for rel in CONTRACT_FILES}
+    out.extend(audit_workflow_pins(root, overrides))
+    for rel in RETIRED_GUIDANCE:
+        if (root / rel).exists():
+            out.append(finding("retired-guidance", rel,
+                               "redundant guidance surface was restored",
+                               "put the rule in its canonical owner and remove this file"))
 
     try:
         status = json.loads(docs["RELEASE_STATUS.json"])
@@ -141,7 +170,10 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
         "schema": "nemoclaw-release-status/1",
         "publication_state": "pending-osrb-approval",
         "canonical_repository": "internal-gitlab",
-        "external_mirror": "not-published",
+        "external_mirror": "reserved-not-populated",
+        "external_repository": "https://github.com/NVDLI/NemoClawDLI",
+        "maintenance_status": "release-candidate",
+        "community_intake": "disabled-pending-publication-approval",
         "target_license": "Apache-2.0",
     }
     for key, expected in expected_status.items():
@@ -159,52 +191,38 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
                            "NOTICE presence disagrees with RELEASE_STATUS.json",
                            "add NOTICE only for required attributions and update notice_required together"))
 
-    try:
-        governance = json.loads(docs["GOVERNANCE.json"])
-    except (TypeError, json.JSONDecodeError):
-        governance = {}
-        out.append(finding("governance-json", "GOVERNANCE.json",
-                           "governance contract is not valid JSON",
-                           "restore the machine-readable community governance contract"))
-    expected_governance = {
-        "schema": "nemoclaw-governance/1",
-        "community_intake": "disabled-pending-publication-approval",
-        "maintenance_status": "release-candidate",
-        "support_policy": "best-effort",
-        "supported_versions": "latest-release",
-        "inbound_contribution": "DCO-1.1",
-        "conduct_policy": "CODE_OF_CONDUCT.md",
-        "conduct_reporting": "github-report-content",
-        "ownership_policy": "MAINTAINERS.md",
-    }
-    for key, expected in expected_governance.items():
-        if governance.get(key) != expected:
-            out.append(finding("governance-state", "GOVERNANCE.json",
-                               f"{key} must be {expected!r} while publication is pending",
-                               "change governance state only with matching public docs and host controls"))
-
-    for rel in ("RELEASE_STATUS.md", "README.md", "CONTRIBUTING.md", "AGENT_QUICKSTART.md",
+    for rel in ("README.md", "CONTRIBUTING.md",
                 "docs/release_playbook.md", "scripts/compliance/docs/open_source_readiness.md"):
         require(re.sub(r"\s+", " ", docs[rel]), "pending OSRB approval", rel,
                 "release-status-language", out,
                 "state that external publication remains pending OSRB approval")
-    require(docs["SECURITY.md"], "https://www.nvidia.com/en-us/security/report-vulnerability/",
-            "SECURITY.md", "security-report-route", out,
-            "make NVIDIA Product Security the stable private reporting route")
-    if "github.com/NVIDIA/NemoClawDLIOS/security/advisories/new" in docs["SECURITY.md"]:
-        out.append(finding("security-future-route", "SECURITY.md",
-                           "policy assumes a repository-specific advisory endpoint exists",
-                           "mention private vulnerability reporting only as conditional on enablement"))
-
+    for heading in ("# Securing Agents with OpenShell and NemoClaw", "## Requirements",
+                    "## Getting Started", "## Governance and Maintainers", "## Security",
+                    "## Support", "## Contributing", "## License"):
+        require(docs["README.md"], heading, "README.md", "readme-public-entrypoint", out,
+                f"add the project-specific {heading} section")
+    require(docs["README.md"], "https://github.com/NVDLI/NemoClawDLI", "README.md",
+            "external-repository", out, "link the reserved public repository by its exact owner and name")
+    for rel in ("LICENSE", "SECURITY.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md", "SUPPORT.md"):
+        require(docs["README.md"], f"]({rel})", "README.md", "readme-policy-link", out,
+                f"link {rel} from the public project entrypoint")
+    license_header = re.sub(r"\s+", " ", docs["LICENSE"]).strip()
+    if not license_header.startswith("Apache License Version 2.0, January 2004"):
+        out.append(finding("root-license", "LICENSE",
+                           "root LICENSE lacks the canonical Apache License 2.0 header",
+                           "restore the reviewed Apache License 2.0 text at the root LICENSE path"))
     require(docs["CODE_OF_CONDUCT.md"], "private content-reporting flow", "CODE_OF_CONDUCT.md",
             "conduct-report-route", out, "retain a public-safe, non-Issue conduct reporting route")
     require(docs["CODE_OF_CONDUCT.md"], "must not decide its outcome", "CODE_OF_CONDUCT.md",
             "conduct-recusal", out, "require recusal when a maintainer is named in a report")
     require(docs["SUPPORT.md"], "Triage is best-effort", "SUPPORT.md", "support-boundary", out,
             "state the support level without promising an unstaffed SLA")
+    require(docs["SUPPORT.md"], "[#ask-security](https://nvidia.slack.com/archives/CAHCG5005)",
+            "SUPPORT.md", "product-security-question-route", out,
+            "route general employee product-security questions to #ask-security without replacing private vulnerability intake")
     require(docs["SUPPORT.md"], "Breaking changes and retirement decisions", "SUPPORT.md",
             "lifecycle-boundary", out, "document change, retirement, and archival expectations")
-    require(docs["MAINTAINERS.md"], "nobody approves their own", "MAINTAINERS.md",
+    require(docs["README.md"], "Nobody approves their own", "README.md",
             "independent-review", out, "keep independent review explicit in role authority")
     require(docs["DCO.md"], "Developer Certificate of Origin 1.1", "DCO.md", "dco-policy", out,
             "document the inbound signoff policy and authoritative DCO version")
@@ -216,6 +234,9 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
     require(docs["CONTRIBUTING.md"], "stacked merge request", "CONTRIBUTING.md",
             "contributor-stacked-merge", out,
             "put the signed-commit preservation rule in contributor first-touch guidance")
+    require(docs["CONTRIBUTING.md"], "does not require a separate contributor license agreement",
+            "CONTRIBUTING.md", "cla-applicability", out,
+            "state why Apache-2.0 plus DCO does not require a separate CLA")
 
     require(docs["README.md"], "Ideas are easy; code is gated", "README.md", "readme-boundary", out,
             "state the intake/code asymmetry in the README")
@@ -223,23 +244,24 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "link question and broad-idea intake from the README")
     require(docs["CONTRIBUTING.md"], "A local hook is feedback, not authority", "CONTRIBUTING.md",
             "hook-authority", out, "explain that required CI and protected refs remain authoritative")
-    require(docs["PHILOSOPHY.md"], "barrier to proposing an idea low", "PHILOSOPHY.md",
-            "philosophy-boundary", out, "distinguish idea intake from merging code")
     require(docs["AGENTS.md"], "Treat code contribution as an untrusted proposal", "AGENTS.md",
             "agent-boundary", out, "put the trust boundary in the first agent beacon")
     require(docs["AGENTS.md"], "Every proposed commit", "AGENTS.md", "agent-dco", out,
             "put DCO signoff in the cross-harness agent entry point")
-    require(docs["AGENT_QUICKSTART.md"], "Contribution safety first-touch", "AGENT_QUICKSTART.md",
-            "quickstart-boundary", out, "add the contribution boundary to session orientation")
-    require(docs["AGENT_QUICKSTART.md"], "DCO.md", "AGENT_QUICKSTART.md", "agent-governance", out,
-            "put commit signoff and governance in agent first-touch guidance")
 
     issue_cfg = docs[".github/ISSUE_TEMPLATE/config.yml"]
     require(issue_cfg, "blank_issues_enabled: false", ".github/ISSUE_TEMPLATE/config.yml",
             "issue-structured", out, "keep structured issue intake enabled")
     require(issue_cfg, "/discussions", ".github/ISSUE_TEMPLATE/config.yml", "discussion-route", out,
             "route broad ideas and questions to Discussions")
-
+    require(issue_cfg, "https://github.com/NVDLI/NemoClawDLI/discussions",
+            ".github/ISSUE_TEMPLATE/config.yml", "external-repository", out,
+            "route Discussions to the reserved NVDLI/NemoClawDLI repository")
+    for rel in (".github/ISSUE_TEMPLATE/course-content.yml",
+                ".github/ISSUE_TEMPLATE/runtime-deploy.yml",
+                ".github/ISSUE_TEMPLATE/source-licensing.yml"):
+        require(docs[rel], "static `web/nemoclaw/` course", rel, "issue-production-scope", out,
+                "describe the static browser course without local CPU-service assumptions")
     required_sections = (
         "## Issue link", "## Surfaces touched", "## Blast radius checked",
         "## Validation evidence", "## Human ownership", "## Risk and rollback", "## Out of scope",
@@ -260,7 +282,57 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
                            "keep the complete submission gate block within the first 2700 characters"))
 
     pages = docs[".github/workflows/pages.yml"]
+    build_pages = docs["scripts/build/build_pages.sh"]
+    require(build_pages, 'python3 "$T1/scripts/validation/validate_bundle.py" --scope ship',
+            "scripts/build/build_pages.sh", "pages-fresh-validation-report", out,
+            "regenerate validation by default when no trusted same-commit report is supplied")
+    require(build_pages, 'validation_report_audit.py"',
+            "scripts/build/build_pages.sh", "pages-report-reuse-audit", out,
+            "validate schema, commit, scope, and required results before report reuse")
+    require(build_pages,
+            'if [ "$REUSE_VALIDATION" = "1" ] && [ "$PULL_MATERIALS" != "0" ]; then',
+            "scripts/build/build_pages.sh", "pages-report-reuse-immutable", out,
+            "prevent live material writes before auditing a same-commit report")
+    require(build_pages, "-path 'web/nemoclaw/standalone' -prune",
+            "scripts/build/build_pages.sh", "pages-source-mirror-prunes-generated", out,
+            "exclude ignored standalone build output from the validated-source mirror")
+    if re.search(r"validate_bundle\.py[^\n]*\|\|\s*true", build_pages):
+        out.append(finding("pages-validation-fail-open", "scripts/build/build_pages.sh",
+                           "Pages can retain and publish a stale validation report after refresh failure",
+                           "fail the build when the current-tree report cannot be regenerated"))
+    if re.search(r"validation_report_audit\.py[^\n]*(?:\|\|\s*true|&&\s*true)", build_pages):
+        out.append(finding("pages-report-reuse-fail-open", "scripts/build/build_pages.sh",
+                           "Pages can reuse a report after its trust audit fails",
+                           "make same-commit report verification a required build step"))
     release_gate = docs["scripts/validation/release_gate.py"]
+    fast_gate = re.search(r"(?ms)^FAST_COMMANDS:.*?(?=^SHIP_COMMANDS:)", release_gate)
+    ship_gate = re.search(r"(?ms)^SHIP_COMMANDS:.*?(?=^# Mutation suites)", release_gate)
+    fast_gate_text = fast_gate.group(0) if fast_gate else ""
+    ship_gate_text = ship_gate.group(0) if ship_gate else ""
+    if 'py("scripts/materials/pull_materials.py", "--verify-committed")' not in fast_gate_text:
+        out.append(finding("shared-material-provenance", "scripts/validation/release_gate.py",
+                           "fast gate lacks network-free committed material verification",
+                           "verify committed material snapshots without network access from every shared gate"))
+    if ('py("scripts/materials/pull_materials.py", "--verify-committed")' not in ship_gate_text
+            or 'py("scripts/materials/pull_materials.py", "--self-test")' not in ship_gate_text):
+        out.append(finding("shared-material-selftest", "scripts/validation/release_gate.py",
+                           "ship gate lacks material verification or its mutation fixtures",
+                           "prove retry classification and provenance tamper detection from the ship gate"))
+    local_path_selftest = 'py("scripts/validation/local_path_leak_audit.py", "--self-test")'
+    if local_path_selftest not in fast_gate_text or local_path_selftest not in ship_gate_text:
+        out.append(finding("shared-local-path-selftest", "scripts/validation/release_gate.py",
+                           "fast or ship gate lacks workstation-path mutation coverage",
+                           "run workstation-path mutations from both shared gate tiers"))
+    sensitive_selftest = 'py("scripts/validation/sensitive_content_audit.py", "--self-test")'
+    if sensitive_selftest not in fast_gate_text or sensitive_selftest not in ship_gate_text:
+        out.append(finding("shared-sensitive-content", "scripts/validation/release_gate.py",
+                           "fast or ship gate lacks sensitive-content mutation coverage",
+                           "run sensitive-content mutations from both shared tiers; validate_bundle owns the tree scan"))
+    reminder_selftest = 'py("scripts/validation/release_change_reminder.py", "--self-test")'
+    if reminder_selftest not in fast_gate_text or reminder_selftest not in ship_gate_text:
+        out.append(finding("shared-release-reminder", "scripts/validation/release_gate.py",
+                           "fast or ship gate lacks release follow-up classifier mutations",
+                           "run the release-change reminder self-test from both shared gate tiers"))
     for token, code, fix in (
         ('py("scripts/validation/contribution_safety_audit.py", "--self-test")',
          "shared-safety-gate",
@@ -276,6 +348,22 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
          "shared-lock-selftest",
          "prove dependency-lock mutations from the shared gate"),
     ):
+        require(ship_gate_text, token, "scripts/validation/release_gate.py", code, out, fix)
+    report_selftest = 'py("scripts/validation/validation_report_audit.py", "--self-test")'
+    if report_selftest not in fast_gate_text or report_selftest not in ship_gate_text:
+        out.append(finding("shared-report-reuse-selftest", "scripts/validation/release_gate.py",
+                           "fast or ship gate lacks report-reuse mutation coverage",
+                           "prove stale, failed, and mismatched reports from both shared tiers"))
+    artifact_selftest = 'py("scripts/validation/pages_artifact_integrity.py", "--self-test")'
+    if artifact_selftest not in fast_gate_text or artifact_selftest not in ship_gate_text:
+        out.append(finding("shared-pages-artifact-selftest", "scripts/validation/release_gate.py",
+                           "fast or ship gate lacks Pages artifact-integrity mutation coverage",
+                           "prove artifact substitution, remote execution, and manifest mutations from both shared tiers"))
+    for token, code, fix in (
+        ('"--changed-since"', "shared-change-aware-gate", "retain fail-closed change-aware mutation selection"),
+        ('"--timing-report"', "shared-gate-timing", "retain per-command latency evidence for CI optimization"),
+        ('"--reuse-success"', "shared-local-reuse", "retain identical-clean-commit local success reuse"),
+    ):
         require(release_gate, token, "scripts/validation/release_gate.py", code, out, fix)
     require(pages, "  pull_request:\n", ".github/workflows/pages.yml", "github-pr-trigger", out,
             "run the required static gate on pull_request")
@@ -288,23 +376,68 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
         out.append(finding("github-global-permissions", ".github/workflows/pages.yml",
                            "workflow-level permissions are not read-only",
                            "keep contents: read globally and grant Pages writes only to the deploy job"))
-    require(pages, "if: github.event_name != 'pull_request'", ".github/workflows/pages.yml",
-            "pr-deploy-boundary", out, "prevent pull-request runs from reaching deployment")
-    require(pages, "github.ref == 'refs/heads/main'", ".github/workflows/pages.yml",
-            "pages-main-only", out, "prevent workflow_dispatch or non-main refs from deploying Pages")
+    if pages.count("if: github.event_name != 'pull_request'") < 2:
+        out.append(finding("pr-deploy-boundary", ".github/workflows/pages.yml",
+                           "both artifact creation and deployment must exclude pull-request runs",
+                           "prevent pull-request runs from building or deploying the production Pages artifact"))
+    if pages.count("github.ref == 'refs/heads/main'") < 2:
+        out.append(finding("pages-main-only", ".github/workflows/pages.yml",
+                           "both artifact creation and deployment must require refs/heads/main",
+                           "prevent workflow_dispatch or non-main refs from building or deploying Pages"))
     require(pages, "release_gate.py --tier ship", ".github/workflows/pages.yml",
             "github-safety-selftest", out, "run detector mutations in GitHub CI")
+    require(pages, '--changed-since "$GATE_BASE"', ".github/workflows/pages.yml",
+            "github-change-aware-gate", out, "skip only unaffected mutation fixtures on proposal commits")
+    require(pages, "--timing-report docs/validation/release-gate-timings.json",
+            ".github/workflows/pages.yml", "github-gate-timing", out,
+            "retain per-command gate timing evidence")
+    require(pages, "BUILD_PAGES_REUSE_VALIDATION=1", ".github/workflows/pages.yml",
+            "github-report-reuse", out,
+            "reuse the required same-commit gate report instead of rescanning during build")
+    require(pages, "BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1",
+            ".github/workflows/pages.yml", "github-immutable-report-reuse", out,
+            "build committed material snapshots before reusing the same-commit report")
     require(pages, "contribution_safety_audit.py --require-publication-approved",
             ".github/workflows/pages.yml", "publication-deploy-guard", out,
             "refuse external Pages deployment until publication is approved")
+    require(pages, "needs: build-and-verify", ".github/workflows/pages.yml",
+            "github-reviewed-artifact-handoff", out,
+            "make the protected deployment consume only the completed artifact-verification job")
+    require(pages, "name: github-pages", ".github/workflows/pages.yml",
+            "github-pages-review-environment", out,
+            "gate the deploy job behind the protected github-pages environment")
+    require(pages, "runtime_integration_browser_audit.py --site-root public --engine docker",
+            ".github/workflows/pages.yml", "github-pages-browser-review", out,
+            "exercise the generated course artifact in Chromium before requesting deployment approval")
+    require(pages, "--write-manifest public/pages-sha256.txt",
+            ".github/workflows/pages.yml", "github-pages-artifact-integrity", out,
+            "hash and inspect the generated Pages tree before uploading it")
+    if pages.count("--check-manifest reviewed-public/pages-sha256.txt") < 3:
+        out.append(finding(
+            "github-pages-artifact-reverification", ".github/workflows/pages.yml",
+            "deployment, post-deployment extraction, and live-site checks do not all verify the reviewed Pages manifest",
+            "reverify the immutable artifact before deployment, after bounded extraction, and against the live site",
+        ))
     require(pages, "--submission-env CONTRIBUTION_BODY", ".github/workflows/pages.yml",
             "github-submission-contract", out, "validate the live pull-request body")
     require(pages, "--commit-range \"$DCO_RANGE\"", ".github/workflows/pages.yml",
             "github-dco-check", out, "validate every pull-request commit signoff")
-    if pages.count("scripts/materials/requirements.lock") != 2:
+    require(pages, 'local_path_leak_audit.py --commit-range "$PATH_RANGE"',
+            ".github/workflows/pages.yml", "github-local-path-range", out,
+            "reject contributor-local additions in every pull-request commit")
+    require(pages, "sensitive_content_audit.py --submission-env SENSITIVE_TITLE",
+            ".github/workflows/pages.yml", "github-sensitive-submission", out,
+            "scan pull-request title, body, and source ref from the webhook event")
+    require(pages, 'sensitive_content_audit.py --commit-range "$SENSITIVE_RANGE"',
+            ".github/workflows/pages.yml", "github-sensitive-range", out,
+            "reject restricted details in every pull-request commit")
+    require(pages, 'release_change_reminder.py --commit-range "$RELEASE_CHANGE_RANGE"',
+            ".github/workflows/pages.yml", "github-release-reminder", out,
+            "show external release follow-ups from the pull-request diff")
+    if pages.count("scripts/materials/requirements.lock") != 1:
         out.append(finding("github-material-lock", ".github/workflows/pages.yml",
-                           "test and deploy jobs must install material tooling from the reviewed lock",
-                           "use scripts/materials/requirements.lock in both Python setup paths"))
+                           "the live material check must install tooling once from the reviewed lock",
+                           "install scripts/materials/requirements.lock in the test job only"))
     for rel in (".github/workflows/pages.yml", ".github/workflows/release.yml",
                 ".github/workflows/codeql.yml", ".github/workflows/dependency-review.yml"):
         checkout_count = docs[rel].count("uses: actions/checkout@")
@@ -338,6 +471,9 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "release-annotated-tag", out, "refuse lightweight release tags")
     require(release, "release_gate.py --tier ship", ".github/workflows/release.yml",
             "release-shared-gate", out, "run the shared deterministic gate before packaging")
+    require(release, "pull_materials.py --check --fetch-attempts", ".github/workflows/release.yml",
+            "release-live-material-check", out,
+            "require a retried, strict live material check before release packaging")
     for token in ("release-manifest.json", "SHA256SUMS", "python-env.cdx.json", "release-assets/*"):
         require(release, token, ".github/workflows/release.yml", "release-artifact-set", out,
                 f"retain required release artifact contract token: {token}")
@@ -394,13 +530,89 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "retain runtime SBOM completeness and retired-component enforcement")
 
     gitlab = docs[".gitlab-ci.yml"]
+    image = re.search(r"(?m)^  image: node:20-bookworm-slim@sha256:([0-9a-f]+)$", gitlab)
+    if not image or len(image.group(1)) != 64:
+        out.append(finding("gitlab-image-pin", ".gitlab-ci.yml",
+                           "shared CI image is not pinned to a full immutable digest",
+                           "pin the reviewed Node 20 image to its runner-resolved SHA-256 digest"))
+    anchor = re.search(r"(?ms)^\.with_python_node:.*?(?=^test:\n)", gitlab)
+    anchor_text = anchor.group(0) if anchor else ""
+    for token in ("runner_system_failure", "stuck_or_timeout_failure", "api_failure", "scheduler_failure"):
+        if token not in anchor_text:
+            out.append(finding("gitlab-infrastructure-retry", ".gitlab-ci.yml",
+                               f"shared jobs do not retry infrastructure class {token}",
+                               "retry only runner and control-plane failures; never script failures"))
+    if re.search(r"(?m)^\s*-\s+script_failure\s*$", anchor_text):
+        out.append(finding("gitlab-script-retry", ".gitlab-ci.yml",
+                           "shared jobs retry validation script failures",
+                           "remove script_failure so drift and tampering remain fail-closed"))
+    if ("scripts/materials/requirements.lock" not in anchor_text
+            or 'MATERIAL_TOOLS_REQUIRED:-0' not in anchor_text or "|| true" in anchor_text):
+        out.append(finding("gitlab-material-install", ".gitlab-ci.yml",
+                           "material tooling is not conditionally installed from its lock with fail-closed setup",
+                           "install the lock only for jobs that consume material tooling, with no fail-open operator"))
+    pages_materials = re.search(r"(?ms)^pages:\n(.*?)(?=^pages_smoke:\n)", gitlab)
+    if not pages_materials or 'MATERIAL_TOOLS_REQUIRED: "1"' not in pages_materials.group(1):
+        out.append(finding("gitlab-pages-material-install", ".gitlab-ci.yml",
+                           "Pages lacks material tooling needed by protected-root bundle validation",
+                           "enable the locked material environment for every Pages build, including previews"))
+    preview_fetch = 'git fetch origin "+refs/heads/$branch:refs/remotes/origin/$branch" --quiet'
+    if (gitlab.count(preview_fetch) != 1
+            or gitlab.count('refresh_branch_ref "$preview_ref"') != 2
+            or re.search(rf"{re.escape(preview_fetch)}[^\n]*\|\|\s*true", gitlab)):
+        out.append(finding("gitlab-preview-ref-fetch", ".gitlab-ci.yml",
+                           "Pages preview source-ref refresh is missing, ambiguous, or fail-open",
+                           "fetch the exact preview branch twice with one fail-closed helper before comparing or publishing its SHA"))
     require(gitlab, "release_gate.py --tier ship", ".gitlab-ci.yml",
             "gitlab-safety-selftest", out, "run detector mutations in GitLab CI")
+    require(gitlab, 'GATE_ARGS+=(--changed-since "$GATE_BASE")', ".gitlab-ci.yml",
+            "gitlab-change-aware-gate", out, "skip only unaffected mutation fixtures on proposal commits")
+    require(gitlab, "--timing-report docs/validation/release-gate-timings.json",
+            ".gitlab-ci.yml", "gitlab-gate-timing", out,
+            "retain per-command gate timing evidence")
+    for token in (
+        'BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"',
+        "BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh public",
+    ):
+        require(gitlab, token, ".gitlab-ci.yml", "gitlab-immutable-report-reuse", out,
+                "build committed snapshots before reusing the required same-commit report")
+    require(gitlab, 'git worktree add --quiet --detach /tmp/nemoclaw-prod-root "origin/$prod_ref"',
+            ".gitlab-ci.yml", "gitlab-protected-root-worktree", out,
+            "build protected-root previews from a real detached worktree so Git-backed audits remain available")
+    require(gitlab, "pull_materials.py --check --allow-transient-unreachable",
+            ".gitlab-ci.yml", "gitlab-transient-material-policy", out,
+            "allow only classified transient source reachability on production-ref pushes")
+    scheduled_material = re.search(
+        r'if \[ "\$\{CI_PIPELINE_SOURCE:-\}" = "schedule" \]; then\n\s+([^\n]+)', gitlab
+    )
+    if (not scheduled_material
+            or "pull_materials.py --check --fetch-attempts" not in scheduled_material.group(1)
+            or "--allow-transient-unreachable" in scheduled_material.group(1)):
+        out.append(finding("gitlab-scheduled-material-policy", ".gitlab-ci.yml",
+                           "scheduled material check is absent or not strict",
+                           "keep scheduled live checks strict and omit transient degradation"))
     require(gitlab, "CI_MERGE_REQUEST_DESCRIPTION", ".gitlab-ci.yml", "gitlab-submission-contract", out,
             "validate merge-request descriptions when CI has MR context")
-    require(gitlab, '--commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"',
+    require(gitlab, 'GIT_DEPTH: "0"', ".gitlab-ci.yml", "gitlab-complete-history", out,
+            "fetch complete history so every proposed commit can be scanned")
+    require(gitlab, 'contribution_safety_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"',
             ".gitlab-ci.yml", "gitlab-dco-check", out,
             "validate every merge-request commit signoff")
+    require(gitlab,
+            'local_path_leak_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"',
+            ".gitlab-ci.yml", "gitlab-local-path-range", out,
+            "reject contributor-local additions in every merge-request commit")
+    require(gitlab, "sensitive_content_audit.py --submission-env CI_MERGE_REQUEST_TITLE",
+            ".gitlab-ci.yml", "gitlab-sensitive-submission", out,
+            "scan merge-request metadata supplied by the host event")
+    require(gitlab,
+            'sensitive_content_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"',
+            ".gitlab-ci.yml", "gitlab-sensitive-range", out,
+            "reject restricted details in every merge-request commit")
+    require(gitlab,
+            'release_change_reminder.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"',
+            ".gitlab-ci.yml", "gitlab-release-reminder", out,
+            "show external release follow-ups from the merge-request diff")
     require(gitlab, "audit_sbom_policy.py --sbom", ".gitlab-ci.yml", "gitlab-sbom-policy", out,
             "evaluate the generated runtime SBOM instead of only uploading it")
     require(gitlab, ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock",
@@ -409,6 +621,35 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
     require(gitlab, ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock",
             ".gitlab-ci.yml", "gitlab-sca-lock", out,
             "keep scanner tooling isolated in its exact lock")
+
+    material_puller = docs["scripts/materials/pull_materials.py"]
+    for token, code, fix in (
+        ("TRANSIENT_HTTP_STATUS = {", "material-transient-classification",
+         "retain the bounded HTTP status allowlist for retries"),
+        ("refusing source redirect", "material-redirect-boundary",
+         "reject cross-host or non-HTTPS source redirects"),
+        ('re.fullmatch(r"[0-9a-f]{64}"', "material-full-sha",
+         "require a complete lowercase SHA-256 for every committed snapshot"),
+        ("def verify_committed", "material-offline-verifier",
+         "retain network-free snapshot, metadata, and digest verification"),
+        ("def check_passes", "material-fail-closed-policy",
+         "keep drift, permanent reachability failures, and tampering fail-closed"),
+        ('"--allow-transient-unreachable"', "material-explicit-degradation",
+         "make transient-only degradation an explicit caller decision"),
+    ):
+        require(material_puller, token, "scripts/materials/pull_materials.py", code, out, fix)
+    try:
+        material_records = json.loads(docs["web/nemoclaw/mats/_materials.json"]).get("materials", [])
+    except (TypeError, json.JSONDecodeError):
+        material_records = []
+        out.append(finding("material-provenance-json", "web/nemoclaw/mats/_materials.json",
+                           "material provenance is not valid JSON",
+                           "restore the reviewed material provenance inventory"))
+    for record in material_records:
+        if not re.fullmatch(r"[0-9a-f]{64}", record.get("sha256", "")):
+            out.append(finding("material-provenance-sha", "web/nemoclaw/mats/_materials.json",
+                               f"{record.get('name', '?')} lacks a full lowercase SHA-256",
+                               "refresh and review committed material provenance"))
     require(gitlab, 'CI_PIPELINE_SOURCE == "merge_request_event"', ".gitlab-ci.yml",
             "gitlab-mr-pipeline", out, "run open merge requests in MR context")
     require(gitlab, "$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS", ".gitlab-ci.yml",
@@ -432,11 +673,22 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
     install = docs["scripts/build/install-hooks.sh"]
     require(install, "git rev-parse --git-path hooks", "scripts/build/install-hooks.sh", "worktree-hooks", out,
             "resolve the real hooks directory for normal and linked worktrees")
+    require(install, 'hook="$content_root/scripts/git-hooks/$name"', "scripts/build/install-hooks.sh",
+            "worktree-hook-dispatch", out,
+            "dispatch shared Git hooks to the active worktree's implementation")
     precommit = docs["scripts/git-hooks/pre-commit"]
     require(precommit, "REFUSING COMMIT on protected branch", "scripts/git-hooks/pre-commit",
             "protected-local-commit", out, "refuse local commits on main, nemoclaw-only, and release/*")
     require(precommit, "contribution_safety_audit.py", "scripts/git-hooks/pre-commit", "precommit-safety", out,
             "run the fast contribution-boundary audit before staged-file checks")
+    require(precommit, "local_path_leak_audit.py", "scripts/git-hooks/pre-commit", "precommit-local-path", out,
+            "reject contributor workstation paths before broader staged-file checks")
+    require(precommit, '"$LOCAL_PATH_AUDIT" --staged', "scripts/git-hooks/pre-commit",
+            "precommit-local-path-staged", out, "scan exact staged bytes at commit time")
+    require(precommit, "sensitive_content_audit.py", "scripts/git-hooks/pre-commit", "precommit-sensitive", out,
+            "reject security-finding details and private operational data before commit")
+    require(precommit, '"$SENSITIVE_AUDIT" --staged', "scripts/git-hooks/pre-commit",
+            "precommit-sensitive-staged", out, "scan exact staged bytes at commit time")
     prep = docs["scripts/git-hooks/pre-push"]
     if "git pull --rebase" in prep:
         out.append(finding("mutating-prepush", "scripts/git-hooks/pre-push",
@@ -456,15 +708,35 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
             "refuse a behind branch instead of silently rewriting it")
     require(prep, "contribution_safety_audit.py", "scripts/git-hooks/pre-push", "prepush-safety", out,
             "run the contribution-boundary audit and its mutations before push")
-    require(prep, "--commit-range origin/main..HEAD", "scripts/git-hooks/pre-push", "prepush-dco", out,
+    require(prep, "local_path_leak_audit.py", "scripts/git-hooks/pre-push", "prepush-local-path", out,
+            "reject contributor workstation paths before source leaves the workstation")
+    require(prep, 'RANGE="origin/main..HEAD"', "scripts/git-hooks/pre-push", "prepush-range", out,
+            "define one complete proposed-history range")
+    require(prep, 'python3 "$SAFETY" --commit-range "$RANGE"',
+            "scripts/git-hooks/pre-push", "prepush-dco", out,
             "reject unsigned topic-branch commits before push")
-    require(prep, 'LOCK_AUDIT="$T1/scripts/security/audit_dependency_locks.py"', "scripts/git-hooks/pre-push",
-            "prepush-lock-selftest", out, "reject stale or unpinned dependency locks before push")
-    require(prep, 'SBOM_POLICY="$T1/scripts/security/audit_sbom_policy.py"', "scripts/git-hooks/pre-push",
-            "prepush-sbom-policy", out, "run the SBOM policy mutation detector before push")
-    require(prep, 'PACKAGE_RELEASE="$T1/scripts/build/package_release.py"',
-            "scripts/git-hooks/pre-push", "prepush-package-selftest", out,
-            "run the deterministic release-packaging self-test before push")
+    require(prep, 'python3 "$LOCAL_PATH_AUDIT" --commit-range "$RANGE"',
+            "scripts/git-hooks/pre-push", "prepush-local-path-range", out,
+            "reject contributor-local additions even when a later commit removes them")
+    require(prep, 'python3 "$SENSITIVE_AUDIT" --commit-range "$RANGE"',
+            "scripts/git-hooks/pre-push", "prepush-sensitive-range", out,
+            "reject restricted details even when a later commit removes them")
+    require(prep, 'python3 "$RELEASE_REMINDER" --commit-range "$RANGE"',
+            "scripts/git-hooks/pre-push", "prepush-release-reminder", out,
+            "show operator-owned external release follow-ups before push")
+    for rel in (".github/PULL_REQUEST_TEMPLATE.md", ".gitlab/merge_request_templates/Default.md"):
+        require(docs[rel], "## External release follow-up", rel, "submission-release-reminder", out,
+                "retain the external release follow-up section in contribution templates")
+    require(prep, 'release_gate.py', "scripts/git-hooks/pre-push", "prepush-canonical-gate", out,
+            "delegate deterministic checks to the canonical release gate")
+    require(prep, '--tier ship --no-write --changed-since origin/main --reuse-success',
+            "scripts/git-hooks/pre-push", "prepush-canonical-gate", out,
+            "run one change-aware ship gate and reuse only identical clean local success")
+    for duplicate in ("LOCK_AUDIT=", "SBOM_POLICY=", "PACKAGE_RELEASE=", "validate_bundle.py"):
+        if duplicate in prep:
+            out.append(finding("prepush-duplicate-gate", "scripts/git-hooks/pre-push",
+                               f"pre-push re-expands canonical gate work: {duplicate}",
+                               "keep history checks explicit and delegate deterministic checks once to release_gate.py"))
 
     playbook = docs["docs/release_playbook.md"]
     for token in ("Host settings are not versioned by this repository", "gitlab_governance_audit.py",
@@ -479,6 +751,18 @@ def audit_repo(root: Path = ROOT) -> list[dict[str, str]]:
     for token in ('mtime=0', 'format=tarfile.PAX_FORMAT', '"release-manifest.json"', '"SHA256SUMS"'):
         require(package_source, token, "scripts/build/package_release.py", "release-package-contract", out,
                 f"keep deterministic release-packaging primitive: {token}")
+    package_manifest = re.search(
+        r'(?ms)^\s*manifest = \{.*?(?=^\s*manifest_path\.write_text)', package_source
+    )
+    if not package_manifest or '"malware_scan_required"' not in package_manifest.group(0):
+        out.append(finding(
+            "release-malware-evidence-contract", "scripts/build/package_release.py",
+            "release manifest does not identify archives requiring external malware evidence",
+            "make every packaged archive identify its required external malware evidence",
+        ))
+    require(artifact_doc, "required-before-publication", "docs/release_artifacts.md",
+            "release-malware-evidence-doc", out,
+            "document how the release manifest blocks publication pending authoritative evidence")
     require(docs["scripts/build/build_branch_manifest.py"], 'os.environ.get("SOURCE_DATE_EPOCH")',
             "scripts/build/build_branch_manifest.py", "release-build-epoch", out,
             "make generated branch metadata reproducible for tagged builds")
@@ -521,10 +805,20 @@ def audit_submission(body: str) -> list[dict[str, str]]:
         if not match or not match.group(1).strip():
             out.append(finding("submission-section", "submission", f"missing or empty section: {section}",
                                f"fill ## {section} with concrete evidence"))
-    if not re.search(r"(?im)\b(?:Addresses|Closes|Fixes)\s+#[0-9]+\b", body or ""):
+    relationship = re.search(r"(?im)\b(?:Addresses|Closes|Fixes)\s+#[0-9]+\b", body or "")
+    if not relationship:
         out.append(finding("submission-issue", "submission", "no explicit issue relationship",
                            "add Addresses #N, or Closes #N only when acceptance is fully met"))
-    if not re.search(r"(?im)^- \[[xX]\] `?(?:web/|cpu/|deploy/|scripts/|docs/|materials)", body or ""):
+    elif relationship.group(0).lower().startswith("addresses"):
+        remaining = re.search(r"(?ms)^## Remaining issue work\s*\n(.*?)(?=^## |\Z)", body or "")
+        if not remaining or not remaining.group(1).strip():
+            out.append(finding(
+                "submission-issue-remains", "submission",
+                "Addresses #N does not say which acceptance criteria remain unmet",
+                "use Closes #N when the issue is fully satisfied, or add a substantive "
+                "## Remaining issue work section",
+            ))
+    if not re.search(r"(?im)^- \[[xX]\] `?(?:web/|i18n/|cpu/|workspace/|deploy/|scripts/|docs/|materials)", body or ""):
         out.append(finding("submission-surface", "submission", "no changed surface is checked",
                            "check every touched surface in ## Surfaces touched"))
     if not re.search(r"(?im)\b(?:PASS|FAIL|BLOCKED)\b", body or ""):
@@ -586,17 +880,33 @@ def self_test() -> list[str]:
             shutil.copy2(src, dst)
 
         cases = (
-            ("governance-state", "GOVERNANCE.json", '"inbound_contribution": "DCO-1.1"', '"inbound_contribution": "unspecified"'),
             ("conduct-report-route", "CODE_OF_CONDUCT.md", "private content-reporting flow", "public Issue"),
             ("support-boundary", "SUPPORT.md", "Triage is best-effort", "Triage is guaranteed"),
-            ("independent-review", "MAINTAINERS.md", "nobody approves their own", "self-approval allowed"),
+            ("product-security-question-route", "SUPPORT.md", "[#ask-security](https://nvidia.slack.com/archives/CAHCG5005)", "#security-help"),
+            ("independent-review", "README.md", "Nobody approves their own", "Self-approval allowed"),
             ("dco-policy", "DCO.md", "Developer Certificate of Origin 1.1", "unversioned signoff"),
             ("dco-stacked-merge", "DCO.md", "host-generated squash or merge commit", "generated integration commit"),
             ("contributor-stacked-merge", "CONTRIBUTING.md", "stacked merge request", "nested proposal"),
             ("github-pr-trigger", ".github/workflows/pages.yml", "  pull_request:\n", "  # pull_request removed\n"),
+            ("pages-fresh-validation-report", "scripts/build/build_pages.sh", 'python3 "$T1/scripts/validation/validate_bundle.py" --scope ship', 'python3 "$T1/scripts/validation/missing_bundle_gate.py" --scope ship'),
+            ("pages-report-reuse-audit", "scripts/build/build_pages.sh", 'validation_report_audit.py"', 'missing_report_audit.py"'),
+            ("pages-report-reuse-immutable", "scripts/build/build_pages.sh", 'if [ "$REUSE_VALIDATION" = "1" ] && [ "$PULL_MATERIALS" != "0" ]; then', 'if [ "$REUSE_VALIDATION" = "2" ] && [ "$PULL_MATERIALS" != "0" ]; then'),
+            ("pages-source-mirror-prunes-generated", "scripts/build/build_pages.sh", "-path 'web/nemoclaw/standalone' -prune", "-path 'web/nemoclaw/standalone' -print"),
+            ("pages-validation-fail-open", "scripts/build/build_pages.sh", 'python3 "$T1/scripts/validation/validate_bundle.py" --scope ship', 'python3 "$T1/scripts/validation/validate_bundle.py" --scope ship || true'),
+            ("pages-report-reuse-fail-open", "scripts/build/build_pages.sh", 'validation_report_audit.py" \\', 'validation_report_audit.py" || true #'),
             ("mutable-action-ref", ".github/workflows/pages.yml", "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683", "actions/checkout@v4"),
             ("unpinned-workflow-install", ".github/workflows/pages.yml", "--requirement scripts/materials/requirements.lock", "requests beautifulsoup4 markdownify lxml"),
             ("github-material-lock", ".github/workflows/pages.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),
+            ("shared-material-provenance", "scripts/validation/release_gate.py", 'py("scripts/materials/pull_materials.py", "--verify-committed")', 'py("scripts/materials/pull_materials.py", "--list")'),
+            ("shared-material-selftest", "scripts/validation/release_gate.py", 'py("scripts/materials/pull_materials.py", "--self-test")', 'py("scripts/materials/pull_materials.py", "--help")'),
+            ("shared-local-path-selftest", "scripts/validation/release_gate.py", 'py("scripts/validation/local_path_leak_audit.py", "--self-test")', 'py("scripts/validation/local_path_leak_audit.py", "--help")'),
+            ("shared-sensitive-content", "scripts/validation/release_gate.py", 'py("scripts/validation/sensitive_content_audit.py", "--self-test")', 'py("scripts/validation/sensitive_content_audit.py", "--help")'),
+            ("shared-release-reminder", "scripts/validation/release_gate.py", 'py("scripts/validation/release_change_reminder.py", "--self-test")', 'py("scripts/validation/release_change_reminder.py", "--help")'),
+            ("shared-report-reuse-selftest", "scripts/validation/release_gate.py", 'py("scripts/validation/validation_report_audit.py", "--self-test")', 'py("scripts/validation/validation_report_audit.py", "--help")'),
+            ("shared-pages-artifact-selftest", "scripts/validation/release_gate.py", 'py("scripts/validation/pages_artifact_integrity.py", "--self-test")', 'py("scripts/validation/pages_artifact_integrity.py", "--help")'),
+            ("shared-change-aware-gate", "scripts/validation/release_gate.py", '"--changed-since"', '"--changed-around"'),
+            ("shared-gate-timing", "scripts/validation/release_gate.py", '"--timing-report"', '"--no-timing-report"'),
+            ("shared-local-reuse", "scripts/validation/release_gate.py", '"--reuse-success"', '"--ignore-success"'),
             ("shared-sbom-policy-selftest", "scripts/validation/release_gate.py", 'py("scripts/security/audit_sbom_policy.py", "--self-test")', 'py("scripts/security/audit_sbom_policy.py", "--help")'),
             ("pr-deploy-boundary", ".github/workflows/pages.yml", "if: github.event_name != 'pull_request'", "if: always()"),
             ("pages-main-only", ".github/workflows/pages.yml", "github.ref == 'refs/heads/main'", "github.ref != ''"),
@@ -608,24 +918,68 @@ def self_test() -> list[str]:
             ("release-annotated-tag", ".github/workflows/release.yml", 'git cat-file -t "refs/tags/$RELEASE_TAG"', 'git cat-file -t "$RELEASE_TAG^{commit}"'),
             ("release-artifact-set", ".github/workflows/release.yml", "release-assets/release-manifest.json", "release-assets/manifest.json"),
             ("release-package-contract", "scripts/build/package_release.py", "mtime=0", "mtime=None"),
+            ("release-malware-evidence-contract", "scripts/build/package_release.py", '"malware_scan_required"', '"scan_optional"'),
+            ("release-malware-evidence-doc", "docs/release_artifacts.md", "required-before-publication", "optional-after-publication"),
             ("release-build-epoch", "scripts/build/build_branch_manifest.py", 'os.environ.get("SOURCE_DATE_EPOCH")', 'os.environ.get("BUILD_TIME")'),
             ("publication-release-guard", ".github/workflows/release.yml", "contribution_safety_audit.py --require-publication-approved", "contribution_safety_audit.py"),
             ("publication-deploy-guard", ".github/workflows/pages.yml", "contribution_safety_audit.py --require-publication-approved", "contribution_safety_audit.py"),
+            ("github-reviewed-artifact-handoff", ".github/workflows/pages.yml", "needs: build-and-verify", "needs: test"),
+            ("github-pages-browser-review", ".github/workflows/pages.yml", "runtime_integration_browser_audit.py --site-root public --engine docker", "runtime_integration_browser_audit.py --site-root web --engine docker"),
+            ("github-pages-artifact-integrity", ".github/workflows/pages.yml", "--write-manifest public/pages-sha256.txt", "--write-manifest web/pages-sha256.txt"),
+            ("github-pages-artifact-reverification", ".github/workflows/pages.yml", "--check-manifest reviewed-public/pages-sha256.txt", "--write-manifest reviewed-public/pages-sha256.txt"),
             ("release-runtime-lock", ".github/workflows/release.yml", "workspace/requirements.lock", "workspace/requirements.txt"),
+            ("release-live-material-check", ".github/workflows/release.yml", "pull_materials.py --check --fetch-attempts", "pull_materials.py --list --fetch-attempts"),
             ("release-sca-lock", ".github/workflows/release.yml", "scripts/security/requirements-sca.lock", "pip-audit cyclonedx-bom"),
             ("release-sbom-policy", ".github/workflows/release.yml", "--sbom release-security/python-env.cdx.json", "--sbom release-security/unchecked.json"),
             ("discussion-route", ".github/ISSUE_TEMPLATE/config.yml", "/discussions", "/issues"),
+            ("external-repository", ".github/ISSUE_TEMPLATE/config.yml", "https://github.com/NVDLI/NemoClawDLI/discussions", "https://github.com/example/incorrect/discussions"),
+            ("issue-production-scope", ".github/ISSUE_TEMPLATE/runtime-deploy.yml", "static `web/nemoclaw/` course", "CPU service stack"),
             ("submission-template", ".github/PULL_REQUEST_TEMPLATE.md", "## Blast radius checked", "## Scope notes"),
             ("stacked-submission-template", ".gitlab/merge_request_templates/Default.md", "host-generated squash", "automatic integration"),
             ("gitlab-description-window", ".gitlab/merge_request_templates/Default.md", "## Validation evidence", "x" * 2700 + "\n## Validation evidence"),
             ("mutating-prepush", "scripts/git-hooks/pre-push", "REFUSING PUSH - origin/main is", "git pull --rebase origin main # REFUSING PUSH - origin/main is"),
             ("fetch-fail-open", "scripts/git-hooks/pre-push", "if ! git fetch origin main --quiet; then", "git fetch origin main --quiet || exit 0\n    if false; then"),
             ("remote-fail-open", "scripts/git-hooks/pre-push", "if [ \"$REMOTE\" = \"origin\" ]; then", "[ \"$REMOTE\" = \"origin\" ] || exit 0\nif false; then"),
-            ("prepush-package-selftest", "scripts/git-hooks/pre-push", "PACKAGE_RELEASE=", "PACKAGE_TEST="),
-            ("prepush-lock-selftest", "scripts/git-hooks/pre-push", 'LOCK_AUDIT="$T1/scripts/security/audit_dependency_locks.py"', 'LOCK_AUDIT="$T1/scripts/security/noop.py"'),
-            ("prepush-sbom-policy", "scripts/git-hooks/pre-push", 'SBOM_POLICY="$T1/scripts/security/audit_sbom_policy.py"', 'SBOM_POLICY="$T1/scripts/security/noop.py"'),
+            ("precommit-local-path", "scripts/git-hooks/pre-commit", "local_path_leak_audit.py", "local_path_check_removed.py"),
+            ("precommit-local-path-staged", "scripts/git-hooks/pre-commit", '"$LOCAL_PATH_AUDIT" --staged', '"$LOCAL_PATH_AUDIT"'),
+            ("prepush-local-path", "scripts/git-hooks/pre-push", "local_path_leak_audit.py", "local_path_check_removed.py"),
+            ("precommit-sensitive", "scripts/git-hooks/pre-commit", "sensitive_content_audit.py", "sensitive_content_check_removed.py"),
+            ("precommit-sensitive-staged", "scripts/git-hooks/pre-commit", '"$SENSITIVE_AUDIT" --staged', '"$SENSITIVE_AUDIT"'),
+            ("prepush-range", "scripts/git-hooks/pre-push", 'RANGE="origin/main..HEAD"', 'RANGE="HEAD"'),
+            ("prepush-dco", "scripts/git-hooks/pre-push", 'python3 "$SAFETY" --commit-range "$RANGE"', 'python3 "$SAFETY" --help'),
+            ("prepush-local-path-range", "scripts/git-hooks/pre-push", 'python3 "$LOCAL_PATH_AUDIT" --commit-range "$RANGE"', 'python3 "$LOCAL_PATH_AUDIT" --help'),
+            ("prepush-sensitive-range", "scripts/git-hooks/pre-push", 'python3 "$SENSITIVE_AUDIT" --commit-range "$RANGE"', 'python3 "$SENSITIVE_AUDIT" --help'),
+            ("prepush-release-reminder", "scripts/git-hooks/pre-push", 'python3 "$RELEASE_REMINDER" --commit-range "$RANGE"', 'python3 "$RELEASE_REMINDER" --help'),
+            ("prepush-canonical-gate", "scripts/git-hooks/pre-push", '--tier ship --no-write --changed-since origin/main --reuse-success', '--tier fast'),
+            ("worktree-hook-dispatch", "scripts/build/install-hooks.sh", 'hook="$content_root/scripts/git-hooks/$name"', 'hook="$HERE/git-hooks/$name"'),
             ("gitlab-safety-selftest", ".gitlab-ci.yml", "release_gate.py --tier ship", "release_gate.py --tier fast"),
-            ("gitlab-dco-check", ".gitlab-ci.yml", '--commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', '--commit-range "${CI_COMMIT_SHA}"'),
+            ("gitlab-change-aware-gate", ".gitlab-ci.yml", 'GATE_ARGS+=(--changed-since "$GATE_BASE")', 'GATE_ARGS=() # no change selection'),
+            ("gitlab-gate-timing", ".gitlab-ci.yml", "--timing-report docs/validation/release-gate-timings.json", "--no-timing-report"),
+            ("gitlab-immutable-report-reuse", ".gitlab-ci.yml", 'BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"', 'BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"'),
+            ("gitlab-protected-root-worktree", ".gitlab-ci.yml", 'git worktree add --quiet --detach /tmp/nemoclaw-prod-root "origin/$prod_ref"', 'git archive "origin/$prod_ref" | tar -x -C /tmp/nemoclaw-prod-root'),
+            ("gitlab-image-pin", ".gitlab-ci.yml", "node:20-bookworm-slim@sha256:25070a03f077f5860e4f2db8d147380678ed40ead415a21eaffd5a6208f61948", "node:20-bookworm-slim"),
+            ("gitlab-infrastructure-retry", ".gitlab-ci.yml", "runner_system_failure", "runner_unsupported"),
+            ("gitlab-script-retry", ".gitlab-ci.yml", "runner_system_failure", "script_failure"),
+            ("gitlab-material-install", ".gitlab-ci.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),
+            ("gitlab-pages-material-install", ".gitlab-ci.yml", '  variables:\n    MATERIAL_TOOLS_REQUIRED: "1"\n  needs: ["test"]', '  variables:\n    MATERIAL_TOOLS_REQUIRED: "0"\n  needs: ["test"]'),
+            ("gitlab-preview-ref-fetch", ".gitlab-ci.yml", 'git fetch origin "+refs/heads/$branch:refs/remotes/origin/$branch" --quiet', 'git fetch origin "+refs/heads/$branch:refs/remotes/origin/$branch" --quiet || true'),
+            ("gitlab-transient-material-policy", ".gitlab-ci.yml", "pull_materials.py --check --allow-transient-unreachable", "pull_materials.py --check --strict-unreachable"),
+            ("gitlab-scheduled-material-policy", ".gitlab-ci.yml", "pull_materials.py --check --fetch-attempts", "pull_materials.py --check --allow-transient-unreachable --fetch-attempts"),
+            ("gitlab-complete-history", ".gitlab-ci.yml", 'GIT_DEPTH: "0"', 'GIT_DEPTH: "20"'),
+            ("gitlab-dco-check", ".gitlab-ci.yml", 'contribution_safety_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', 'contribution_safety_audit.py --commit-range "${CI_COMMIT_SHA}"'),
+            ("gitlab-local-path-range", ".gitlab-ci.yml", 'local_path_leak_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', 'local_path_leak_audit.py --help'),
+            ("github-local-path-range", ".github/workflows/pages.yml", 'local_path_leak_audit.py --commit-range "$PATH_RANGE"', 'local_path_leak_audit.py --help'),
+            ("gitlab-sensitive-submission", ".gitlab-ci.yml", "sensitive_content_audit.py --submission-env CI_MERGE_REQUEST_TITLE", "sensitive_content_audit.py --help"),
+            ("gitlab-sensitive-range", ".gitlab-ci.yml", 'sensitive_content_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', 'sensitive_content_audit.py --help'),
+            ("github-sensitive-submission", ".github/workflows/pages.yml", "sensitive_content_audit.py --submission-env SENSITIVE_TITLE", "sensitive_content_audit.py --help"),
+            ("github-sensitive-range", ".github/workflows/pages.yml", 'sensitive_content_audit.py --commit-range "$SENSITIVE_RANGE"', 'sensitive_content_audit.py --help'),
+            ("github-release-reminder", ".github/workflows/pages.yml", 'release_change_reminder.py --commit-range "$RELEASE_CHANGE_RANGE"', 'release_change_reminder.py --help'),
+            ("github-change-aware-gate", ".github/workflows/pages.yml", '--changed-since "$GATE_BASE"', '--changed-around "$GATE_BASE"'),
+            ("github-gate-timing", ".github/workflows/pages.yml", "--timing-report docs/validation/release-gate-timings.json", "--no-timing-report"),
+            ("github-report-reuse", ".github/workflows/pages.yml", "BUILD_PAGES_REUSE_VALIDATION=1", "BUILD_PAGES_REUSE_VALIDATION=0"),
+            ("github-immutable-report-reuse", ".github/workflows/pages.yml", "BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1", "BUILD_PAGES_REUSE_VALIDATION=1"),
+            ("gitlab-release-reminder", ".gitlab-ci.yml", 'release_change_reminder.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', 'release_change_reminder.py --help'),
+            ("submission-release-reminder", ".github/PULL_REQUEST_TEMPLATE.md", "## External release follow-up", "## Optional follow-up"),
             ("shared-lock-selftest", "scripts/validation/release_gate.py", 'py("scripts/security/audit_dependency_locks.py", "--self-test")', 'py("scripts/security/audit_dependency_locks.py", "--version")'),
             ("gitlab-sbom-policy", ".gitlab-ci.yml", "audit_sbom_policy.py --sbom", "audit_sbom_policy.py --help"),
             ("gitlab-runtime-lock", ".gitlab-ci.yml", ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock", ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.txt"),
@@ -633,27 +987,46 @@ def self_test() -> list[str]:
             ("gitlab-human-review", ".gitlab-ci.yml", "human_review:", "operator_review:"),
             ("gitlab-human-review-needs", ".gitlab-ci.yml", 'needs: ["test", "pages_smoke"]', 'needs: ["test"]'),
             ("gitlab-human-review-blocking", ".gitlab-ci.yml", '    - if: \'$CI_PIPELINE_SOURCE == "merge_request_event"\'\n      when: manual\n      allow_failure: false\n', '    - if: \'$CI_PIPELINE_SOURCE == "merge_request_event"\'\n      when: on_success\n      allow_failure: true\n'),
+            ("material-transient-classification", "scripts/materials/pull_materials.py", "TRANSIENT_HTTP_STATUS = {", "RETRYABLE_STATUS_REMOVED = {"),
+            ("material-redirect-boundary", "scripts/materials/pull_materials.py", "refusing source redirect", "following source redirect"),
+            ("material-full-sha", "scripts/materials/pull_materials.py", 're.fullmatch(r"[0-9a-f]{64}"', 're.fullmatch(r"[0-9a-f]{16}"'),
+            ("material-offline-verifier", "scripts/materials/pull_materials.py", "def verify_committed", "def verify_removed"),
+            ("material-fail-closed-policy", "scripts/materials/pull_materials.py", "def check_passes", "def check_removed"),
+            ("material-explicit-degradation", "scripts/materials/pull_materials.py", '"--allow-transient-unreachable"', '"--allow-all-unreachable"'),
+            ("material-provenance-sha", "web/nemoclaw/mats/_materials.json", "7a583caa8f1db1e66220cfa8963b7b37dcaf5655df0e1314f8794ea1ba5c8c94", "7a583caa8f1db1e6"),
             ("readme-boundary", "README.md", "Ideas are easy; code is gated", "Contribution overview"),
+            ("readme-public-entrypoint", "README.md", "## Requirements", "## Prerequisites"),
+            ("readme-policy-link", "README.md", "](CODE_OF_CONDUCT.md)", "](conduct-policy.md)"),
+            ("root-license", "LICENSE", "Apache License", "Example License"),
+            ("cla-applicability", "CONTRIBUTING.md", "does not require a separate contributor license agreement", "may require another agreement"),
             ("agent-dco", "AGENTS.md", "Every proposed commit", "Every release"),
             ("release-status", "RELEASE_STATUS.json", '"pending-osrb-approval"', '"published"'),
+            ("release-status", "RELEASE_STATUS.json", '"reserved-not-populated"', '"not-published"'),
+            ("release-status", "RELEASE_STATUS.json", '"maintenance_status": "release-candidate"', '"maintenance_status": "archived"'),
             ("notice-state", "RELEASE_STATUS.json", '"notice_required": false', '"notice_required": true'),
-            ("security-report-route", "SECURITY.md", "https://www.nvidia.com/en-us/security/report-vulnerability/", "https://example.invalid/report"),
             ("release-playbook", "docs/release_playbook.md", "Host settings are not versioned by this repository", "Host settings checklist"),
             ("workspace-lock-install", "workspace/Dockerfile", "pip3 install -r requirements.lock", "pip3 install -r requirements.txt"),
         )
-        originals: dict[str, str] = {}
+        originals = {
+            rel: (fixture / rel).read_text(encoding="utf-8")
+            for rel in CONTRACT_FILES
+        }
         for expected, rel, old, new in cases:
-            path = fixture / rel
-            originals.setdefault(rel, path.read_text(encoding="utf-8"))
             raw = originals[rel]
             if old not in raw:
                 failures.append(f"fixture token missing for {expected}: {rel}: {old}")
                 continue
-            path.write_text(raw.replace(old, new, 1), encoding="utf-8")
-            codes = {item["code"] for item in audit_repo(fixture)}
+            mutated = dict(originals)
+            mutated[rel] = raw.replace(old, new, 1)
+            codes = {item["code"] for item in audit_repo(fixture, text_overrides=mutated)}
             if expected not in codes:
                 failures.append(f"mutation escaped detector: {expected}")
-            path.write_text(raw, encoding="utf-8")
+
+        retired = fixture / "QUALITY_DIRECTIVES.md"
+        retired.write_text("stale duplicate guidance\n", encoding="utf-8")
+        if "retired-guidance" not in {item["code"] for item in audit_repo(fixture)}:
+            failures.append("retired guidance mutation escaped detector")
+        retired.unlink()
 
         status_path = fixture / "RELEASE_STATUS.json"
         approved = json.loads(status_path.read_text(encoding="utf-8"))
@@ -662,13 +1035,24 @@ def self_test() -> list[str]:
         if audit_publication_approval(fixture):
             failures.append("approved release rejected by the external publication guard")
 
-    good = """## Summary\nBound the release path.\n## Issue link\nAddresses #12\n## Surfaces touched\n- [x] `scripts/`\n## Blast radius checked\nHooks and CI.\n## Validation evidence\nPASS: audit.\n## Human ownership\nRelease manager reviews.\n## Risk and rollback\nRevert commit.\n## Out of scope\nHost settings.\n"""
+    good = """## Summary\nBound the release path.\n## Issue link\nCloses #12\n## Surfaces touched\n- [x] `workspace/`\n## Blast radius checked\nHooks and CI.\n## Validation evidence\nPASS: audit.\n## Human ownership\nRelease manager reviews.\n## Risk and rollback\nRevert commit.\n## Out of scope\nHost settings.\n"""
     if audit_submission(good):
         failures.append("valid submission fixture rejected")
+    localized = good.replace("- [x] `workspace/`", "- [x] `i18n/`")
+    if audit_submission(localized):
+        failures.append("valid localization submission fixture rejected")
     if not audit_publication_approval(ROOT):
         failures.append("pending release unexpectedly passed the external publication guard")
+    partial = good.replace("Closes #12", "Addresses #12").replace(
+        "## Out of scope", "## Remaining issue work\nHost approval remains.\n## Out of scope", 1)
+    if audit_submission(partial):
+        failures.append("valid partial submission fixture rejected")
+    if "submission-issue-remains" not in {
+        item["code"] for item in audit_submission(good.replace("Closes #12", "Addresses #12"))
+    }:
+        failures.append("partial issue relationship without remaining work escaped detector")
     for needle, expected in (("## Human ownership\nRelease manager reviews.\n", "submission-section"),
-                             ("Addresses #12", "submission-issue"), ("PASS: audit.", "submission-evidence")):
+                             ("Closes #12", "submission-issue"), ("PASS: audit.", "submission-evidence")):
         codes = {item["code"] for item in audit_submission(good.replace(needle, "", 1))}
         if expected not in codes:
             failures.append(f"submission mutation escaped detector: {expected}")

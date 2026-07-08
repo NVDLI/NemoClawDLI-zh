@@ -1325,7 +1325,7 @@ def _pages(scope: str):
     for f in sorted(lp._iter_pages(TASK1)):
         rel = f.relative_to(TASK1).as_posix()
         suf = f.suffix.lower()
-        if f.name in ("SKILL.html", "studio.html", "courses.html", "cert.html", "LICENSE.md"):
+        if f.name in ("SKILL.html", "studio.html", "courses.html", "LICENSE"):
             continue
         # vendored mats (now course-scoped under web/nemoclaw/mats/, both .md and .html snapshots)
         # are external reference packets, never authored narrative, so they are excluded by segment.

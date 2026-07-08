@@ -29,7 +29,7 @@ HERE = Path(__file__).resolve()
 
 def _find_task1(start: Path) -> Path:
     for p in [start, *start.parents]:
-        if (p / "deploy" / "docker-compose.yml").is_file() or (p / "AGENT_QUICKSTART.md").is_file():
+        if (p / "deploy" / "docker-compose.yml").is_file() or (p / "AGENTS.md").is_file():
             return p
     return start.parents[1]
 
@@ -241,6 +241,29 @@ def page_audit(proj: Projection | None = None) -> dict:
     """Per-.html drift audit (stale tokens, missing assets, skill-meta / foyer-release contract
     drift) from engine.js, so every page auto-verifies through the one engine."""
     return _engine_json("--audit-json")
+
+
+def bundle_snapshot(proj: Projection | None = None, *, include_graph: bool = False) -> dict:
+    """Return the related link projections from one engine process and filesystem snapshot."""
+    flag = "--bundle-graph-json" if include_graph else "--bundle-json"
+    data = _engine_json(flag)
+    if data.get("schema") != "link-engine-bundle/1":
+        raise RuntimeError("engine.js returned an unsupported bundle snapshot")
+    return data
+
+
+def embed_graph_snapshot(graph: dict) -> bool:
+    """Embed graph data already produced by engine.js without launching it again."""
+    html_path = TASK1 / "scripts" / "runtime" / "link_graph.html"
+    lines = html_path.read_text(encoding="utf-8").splitlines()
+    replacement = "let DATA = " + json.dumps(graph, separators=(",", ":")) + ";"
+    for index, line in enumerate(lines):
+        marker = re.match(r"^(\s*)let DATA = ", line)
+        if marker:
+            lines[index] = marker.group(1) + replacement
+            html_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            return True
+    return False
 
 
 def embed_snapshot(proj: Projection | None = None) -> bool:

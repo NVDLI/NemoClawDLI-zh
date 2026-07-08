@@ -89,7 +89,7 @@ def _is_ours(rel: str) -> bool:
     parts = rel.split("/")
     if any(p in lp.SKIP_DIR for p in parts):
         return False
-    if lp.is_mat_path(rel) or "repos" in parts or "node_modules" in parts:
+    if lp.is_mat_path(rel) or any(p in parts for p in ("repos", "node_modules", "vendor")):
         return False
     return not rel.endswith(".min.js")
 
@@ -98,7 +98,7 @@ def _iter_files(scope: str):
     """(path, rel, suffix) for every code file we own. ship scope is the released course plus
     its shared infra; all scope adds workspace and service code. Vendored and generated trees
     are always skipped."""
-    ship = ("web/nemoclaw/", "scripts/", "cpu/services/", "cors-proxy/", "web/_shared",
+    ship = ("web/nemoclaw/", "scripts/", "cpu/services/", "web/_shared",
             "web/index", "web/courses")
     for f in sorted(TASK1.rglob("*")):
         if not f.is_file() or f.suffix not in (".py", ".js", ".mjs", ".html", ".htm"):
@@ -778,6 +778,22 @@ def cell_hygiene(f: Path):
     return out
 
 
+def self_test() -> list[str]:
+    """Reject generated dependency source while retaining authored browser code."""
+    failures = []
+    cases = {
+        "web/nemoclaw/vendor/marked.esm.js": False,
+        "scripts/.figtools/node_modules/pkg/index.js": False,
+        "web/nemoclaw/mats/reference.js": False,
+        "web/nemoclaw/scripts/_shared.js": True,
+        "scripts/runtime/engine.js": True,
+    }
+    for rel, expected in cases.items():
+        if _is_ours(rel) != expected:
+            failures.append(f"source ownership misclassified: {rel}")
+    return failures
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Repo-wide code-hygiene validator.",
                                  formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
@@ -785,7 +801,16 @@ def main() -> int:
     ap.add_argument("--kind", help="one family: " + ", ".join(FAMILIES))
     ap.add_argument("--file", help="limit to one file (path fragment)")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--self-test", action="store_true")
     a = ap.parse_args()
+    if a.self_test:
+        failures = self_test()
+        if failures:
+            for item in failures:
+                print(item)
+            return 1
+        print("code_hygiene self-test: PASS")
+        return 0
     fams = [a.kind] if a.kind else None
     rows = scan(a.scope, fams)
     if a.file:

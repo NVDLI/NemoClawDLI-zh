@@ -6,9 +6,9 @@
 <title>Deep Agents · Securing Agents</title>
 <link rel="stylesheet" href="styles/_style.css"/>
 <script src="vendor/highlight-11.10.0.min.js"></script>
-<link rel="stylesheet" href="vendor/codemirror-5.65.16.min.css"/>
-<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.16.min.css"/>
-<script src="vendor/codemirror-5.65.16.min.js"></script>
+<link rel="stylesheet" href="vendor/codemirror-5.65.21.min.css"/>
+<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.min.css"/>
+<script src="vendor/codemirror-5.65.21.min.js"></script>
 <style>
   .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
   .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
@@ -206,7 +206,7 @@
   </div>
   </details>
 
-  <details class="references learning-block" open data-learning-id="deep-agent-references" data-learning-tier="deep" data-localization-scope="en-shell">
+  <details class="references learning-block" open data-learning-always-open data-learning-id="deep-agent-references" data-learning-tier="deep" data-localization-scope="en-shell">
   <summary data-localization-scope="en"><span class="learning-scope">Deep · Sources</span><span class="learning-question">Trace the deep-research implementation sources?</span></summary>
   <div class="learning-block-body">
     <h3>References</h3>
@@ -443,7 +443,7 @@ mountCanvasFlow("#cell-m3c-p1", {
       summary: "Read the active endpoint from getConfig(); later graph code stays endpoint-independent.",
       code: `// Load the same-origin vendor bundle used by this example.
 helpers.log("importing @langchain/openai ...");
-const { ChatOpenAI } = await import("./vendor/langchain-1.4.7.esm.min.js");
+const { ChatOpenAI } = await import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href);
 helpers.log("import OK");
 
 const cfg = await helpers.getConfig();
@@ -497,7 +497,7 @@ mountCanvasFlow("#cell-m3c-p2", {
       code: `// Load the same-origin vendor bundle used by this example.
 helpers.log("importing langchain ecosystem...");
 const { ChatOpenAI, tool, createReactAgent, z } =
-  await import("./vendor/langchain-1.4.7.esm.min.js");
+  await import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href);
 state.deps = { ChatOpenAI, tool, createReactAgent, z };
 helpers.log("imports OK");
 
@@ -596,7 +596,7 @@ mountCanvasFlow("#cell-m3c-p3", {
       code: `// Load the same-origin vendor bundle used by this example.
 helpers.log("importing LangChain bundles...");
 const { ChatOpenAI, tool, createReactAgent, z } =
-  await import("./vendor/langchain-1.4.7.esm.min.js");
+  await import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href);
 state.deps = { ChatOpenAI, tool, createReactAgent, z };
 
 const cfg = await helpers.getConfig();
@@ -643,7 +643,7 @@ return { tools: ["write_file", "read_file", "list_files"], vfs_state: Object.key
     {
       id: "planner", icon: "🧠", title: "Plan typed subtasks", x: 1, y: 1,
       summary: "Structured output avoids parsing a free-text plan.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Change the deliverable and watch the planner create new typed subtasks.
 state.goal = [
   "Research NVIDIA NIM (NVIDIA Inference Microservices) and produce three files: ",
   "nim_overview.md, a technical overview of what NIM is and how it works; ",
@@ -651,8 +651,8 @@ state.goal = [
   "nim_vs_hosting.md, a short comparison of using a managed NIM endpoint versus self-hosting a model directly, ",
   "covering latency, operational overhead, and when each makes sense.",
 ].join("");
-// Edit this string to try a different multi-file research goal.
-
+// state.goal = "Compare RAG evaluation methods and produce metrics.md, risks.md, and test_plan.md.";
+// state.goal = "Research agent memory and produce short_term.md, long_term.md, and tradeoffs.md.";
 
 // withStructuredOutput binds the output to this schema and returns a parsed object.
 

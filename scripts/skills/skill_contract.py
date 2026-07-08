@@ -6,7 +6,7 @@ directory (drift); skill_consistency proves duplicated facts agree across files.
 them check the one thing the SKILL contract is actually about: that each
 `<script id="skill-meta">` block is a well-formed contract of its kind. This is that leg.
 
-Two readers, one file, so two checks:
+Two readers, one file, so three checks:
 
   SCHEMA  Every skill-meta classifies into exactly one kind and carries that kind's
           required keys, a known schema/node_type value, a semver version where the kind
@@ -16,22 +16,31 @@ Two readers, one file, so two checks:
           location, the notebook list is complete, hub children exist. Reused wholesale
           from skill_audit (its detector is the source of truth; --fix delegates to it).
 
+          Exhaustive discovery is part of this leg. Every tracked or proposed source
+          directory and ancestor must contain SKILL.html. There is no exemption mechanism.
+
   SOURCE  SKILL.html source stays reviewable and durable: static card/command grids are not
           minified into one-line walls, and beacons do not expose numbered issue/MR/PR threads
           or user handles as course-facing provenance.
 
-The KINDS table below is the de-facto contract, read off the shipped tree, NOT the prose in
-SKILL_CONTRACT.md (whose schema section predates the surface-first taxonomy and is stale). The
-beacons are the contract; this encodes them so future drift from them surfaces.
+  RENDER  The human half has meaningful visible content, local renderer resources resolve,
+          explorer-config mounts the declared shared renderer exactly once, and every configured
+          source file exists. Playwright supplies the separate runtime rendering proof.
+
+The KINDS table below is the contract implemented by the shipped tree and documented in
+SKILL_CONTRACT.md. A new kind becomes valid only when its first beacon, implementation,
+documentation, and mutation coverage arrive together.
 
 Usage:
-  python3 scripts/skills/skill_contract.py            # schema + drift; exit 1 on any schema finding
-  python3 scripts/skills/skill_contract.py --json     # machine-readable {schema:[...], drift:[...]}
+  python3 scripts/skills/skill_contract.py            # schema + coverage/drift + renderer
+  python3 scripts/skills/skill_contract.py --json     # machine-readable finding groups
   python3 scripts/skills/skill_contract.py --fix      # mechanical drift fixes (delegated to skill_audit)
 """
 from __future__ import annotations
 import argparse, json, re, sys
+from html.parser import HTMLParser
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
     if (_p / "scripts" / "_bootstrap.py").exists():
@@ -45,7 +54,7 @@ import skill_audit as sa  # drift detector + --fix engine + skills()/parse_meta(
 TASK1 = sa.TASK1
 _SEMVER = re.compile(r"^\d+\.\d+\.\d+([.\-+].*)?$")
 _STATUS = {"ready", "setup", "wip", "ref"}
-_PROCESS_REF = re.compile(r"(?:GitLab\s+issue\s*#?\d+|\bissue\s*#\d+|\bMR\s*!?\d+|\bPR\s*#?\d+|merge request\s*!?\d+|pull request\s*#?\d+|@(?!media\b|supports\b|keyframes\b|font-face\b|import\b)[A-Za-z0-9_][A-Za-z0-9_.-]*)", re.I)
+_PROCESS_REF = re.compile(r"(?:GitLab\s+issue\s*#?\d+|\bissue\s*#\d+|\bMR\s*!?\d+|\bPR\s*#?\d+|merge request\s*!?\d+|pull request\s*#?\d+|@(?!media\b|supports\b|keyframes\b|font-face\b|import\b)(?![A-Za-z0-9_.-]+__)[A-Za-z0-9_][A-Za-z0-9_.-]*)", re.I)
 
 # Contract matrix: classify by schema/node_type and require stable beacon keys.
 KINDS = {
@@ -59,11 +68,9 @@ KINDS = {
     "node:leaf":           {"req": ["node_type", "source_dir", "summary", "self_path"],
                             "label_any": ["title", "course"]},
 }
-SCHEMA_VALUES = {"service-skill/1.0", "service-index/1.0", "dir-skill/1.0",
-                 # documented-but-currently-unused; accepted so a course/surface skill is not flagged
-                 "course-skill/1.0", "surface-skill/1.0"}
+SCHEMA_VALUES = set(KINDS) - {"node:hub", "node:leaf"}
 NODE_TYPES = {"hub", "leaf", "directory-explorer"}
-VERSIONED = {"service-skill/1.0", "service-index/1.0", "course-skill/1.0", "surface-skill/1.0"}
+VERSIONED = {"service-skill/1.0", "service-index/1.0"}
 
 
 def classify(meta: dict):
@@ -134,9 +141,153 @@ def source_quality_findings():
     return out
 
 
+class _RendererParser(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.ids: set[str] = set()
+        self.resources: list[tuple[str, str]] = []
+        self.has_main = False
+        self.has_section = False
+        self._hidden = 0
+        self.text: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        values = {key.lower(): (value or "") for key, value in attrs}
+        if values.get("id"):
+            self.ids.add(values["id"])
+        self.has_main = self.has_main or tag == "main"
+        self.has_section = self.has_section or tag == "section"
+        if tag in {"script", "style"}:
+            self._hidden += 1
+        if tag == "script" and values.get("src"):
+            self.resources.append(("script", values["src"]))
+        elif tag == "link" and "stylesheet" in values.get("rel", "").lower() and values.get("href"):
+            self.resources.append(("stylesheet", values["href"]))
+        elif tag in {"img", "source"} and values.get("src"):
+            self.resources.append((tag, values["src"]))
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in {"script", "style"} and self._hidden:
+            self._hidden -= 1
+
+    def handle_data(self, data: str) -> None:
+        if not self._hidden and data.strip():
+            self.text.append(data.strip())
+
+
+def _local_target(skill: Path, reference: str, root: Path) -> Path | None:
+    parsed = urlsplit(reference)
+    if parsed.scheme or parsed.netloc or not parsed.path or parsed.path.startswith("data:"):
+        return None
+    path = unquote(parsed.path)
+    if path.startswith("/lab/static/"):
+        return root / path.removeprefix("/lab/static/")
+    if path.startswith("/"):
+        return root / path.lstrip("/")
+    return (skill.parent / path).resolve()
+
+
+def _config_paths(config: dict) -> list[str]:
+    paths: list[str] = []
+    for item in config.get("files", []) or []:
+        if isinstance(item, dict) and item.get("path"):
+            paths.append(item["path"])
+    for group in config.get("groups", []) or []:
+        if not isinstance(group, dict):
+            continue
+        for item in group.get("files", []) or []:
+            if isinstance(item, dict) and item.get("path"):
+                paths.append(item["path"])
+    if config.get("readme"):
+        paths.append(config["readme"])
+    for group in config.get("links", []) or []:
+        if not isinstance(group, dict):
+            continue
+        for item in group.get("items", []) or []:
+            if isinstance(item, dict) and item.get("href"):
+                paths.append(item["href"])
+    return paths
+
+
+def renderer_findings_for(skill: Path, root: Path) -> list[str]:
+    text = skill.read_text(encoding="utf-8", errors="replace")
+    parser = _RendererParser()
+    try:
+        parser.feed(text)
+    except Exception as exc:
+        return [f"HTML parser failed: {exc}"]
+    findings: list[str] = []
+    meta, _ = sa.parse_meta(text)
+    config_match = re.search(
+        r'<script type="application/json" id="explorer-config">(.*?)</script>', text, re.S
+    )
+    config = None
+    if config_match:
+        try:
+            config = json.loads(config_match.group(1))
+        except Exception as exc:
+            findings.append(f"explorer-config JSON does not parse: {exc}")
+
+    for kind, reference in parser.resources:
+        target = _local_target(skill, reference, root)
+        if kind == "script" and reference.startswith("/"):
+            findings.append(f"renderer script uses root-absolute URL {reference!r}; use a directory-relative source URL")
+        if target is not None:
+            try:
+                target.relative_to(root.resolve())
+            except ValueError:
+                findings.append(f"{kind} resource escapes the repository: {reference!r}")
+                continue
+            if not target.is_file():
+                findings.append(f"{kind} resource is missing: {reference!r}")
+
+    visible = " ".join(parser.text).strip()
+    if len(visible) < 20:
+        findings.append("human renderer has no meaningful visible text")
+
+    if config is not None:
+        if "explorer" not in parser.ids:
+            findings.append("explorer-config has no #explorer mount")
+        explorer_scripts = [ref for kind, ref in parser.resources if kind == "script" and "_skill_explorer.js" in ref]
+        if len(explorer_scripts) != 1:
+            findings.append(f"explorer-config requires exactly one shared _skill_explorer.js renderer; found {len(explorer_scripts)}")
+        if isinstance(meta, dict) and meta.get("schema") == "dir-skill/1.0":
+            declared = meta.get("explorer")
+            if not declared:
+                findings.append("dir-skill renderer does not declare skill-meta.explorer")
+            elif not explorer_scripts:
+                findings.append("declared explorer is not loaded by the page")
+            else:
+                declared_target = _local_target(skill, declared, root)
+                loaded_target = _local_target(skill, explorer_scripts[0], root)
+                if declared_target != loaded_target:
+                    findings.append(
+                        f"skill-meta.explorer {declared!r} does not match loaded renderer {explorer_scripts[0]!r}"
+                    )
+        for reference in _config_paths(config):
+            target = _local_target(skill, reference, root)
+            if target is not None and not target.is_file():
+                findings.append(f"explorer-config file is missing: {reference!r}")
+    elif not (parser.has_main or parser.has_section):
+        findings.append("custom renderer needs a semantic <main> or <section> human view")
+    return findings
+
+
+def renderer_findings() -> list[tuple[str, str]]:
+    out = []
+    for skill in sa.skills():
+        rel = str(skill.relative_to(TASK1))
+        out.extend((rel, detail) for detail in renderer_findings_for(skill, TASK1))
+    return out
+
+
 def run(verbose: bool = False) -> dict:
-    """Gate entrypoint. Returns {"schema": [(page, detail)], "drift": [(page, detail)]}."""
-    return {"schema": schema_findings() + source_quality_findings(), "drift": sa.audit(fix=False)}
+    """Gate entrypoint. Return schema, exhaustive coverage/drift, and renderer findings."""
+    return {
+        "schema": schema_findings() + source_quality_findings(),
+        "drift": sa.audit(fix=False),
+        "renderer": renderer_findings(),
+    }
 
 
 def main():
@@ -151,18 +302,21 @@ def main():
     res = run()
     if a.json:
         print(json.dumps({k: [{"page": p, "detail": d} for p, d in v] for k, v in res.items()}, indent=2))
-        return 1 if res["schema"] else 0
+        return 1 if any(res.values()) else 0
 
-    if not res["schema"] and not res["drift"]:
-        print("skill_contract: ✅ every skill-meta is a valid, accurate beacon of its kind")
+    if not res["schema"] and not res["drift"] and not res["renderer"]:
+        print("skill_contract: ✅ every source directory has a valid, accurate, renderable SKILL.html")
         return 0
-    for label, items, stream in (("schema", res["schema"], sys.stderr), ("drift", res["drift"], sys.stderr)):
+    for label, items, stream in (
+        ("schema", res["schema"], sys.stderr),
+        ("drift", res["drift"], sys.stderr),
+        ("renderer", res["renderer"], sys.stderr),
+    ):
         if items:
             print(f"skill_contract: ✗ {len(items)} {label} finding(s):", file=stream)
             for p, d in items:
                 print(f"  {p}: {d}", file=stream)
-    # Schema findings are the contract leg and gate the standalone exit; drift mirrors skill_audit.
-    return 1 if res["schema"] else 0
+    return 1
 
 
 if __name__ == "__main__":

@@ -3,44 +3,46 @@
 // Also openclawChat, GW_CONNECT, and the recover flow.
 
 import { updateClawPill, escHtml, _escAttr, mountCanvasFlow } from "./_shared.js";
+import {
+  DEFAULT_OPENCLAW_PROXY_BASE, getOpenClawConnection, getOpenClawProxyConfig, migrateOpenClawConnectionStorage,
+  normalizeOpenClawLaunchableUrl, normalizeOpenClawProxyBase, openclawHttpUrl,
+  openclawWebSocketUrl, setOpenClawConnection, setOpenClawProxyConfig,
+} from "./_connection.js";
+import { filterOpenClawRuntimeNoise, filterOpenClawRuntimeValue, openclawMessageText, openclawResultText } from "./_runtime_text.js";
+
+export {
+  DEFAULT_OPENCLAW_PROXY_BASE, getOpenClawConnection, getOpenClawProxyConfig, migrateOpenClawConnectionStorage,
+  normalizeOpenClawLaunchableUrl, normalizeOpenClawProxyBase, openclawHttpUrl,
+  openclawWebSocketUrl, setOpenClawConnection, setOpenClawProxyConfig,
+};
+export { filterOpenClawRuntimeNoise, filterOpenClawRuntimeValue, openclawMessageText, openclawResultText };
 
 const RANDOM_ID_RADIX = 36;
 function _uniqueId(prefix = "") {
   return prefix + Math.random().toString(RANDOM_ID_RADIX).slice(2) + Date.now().toString(RANDOM_ID_RADIX);
 }
 
-const OPENCLAW_CORS_PROXY_BASE = "https://openclaw-cors-proxy.vkudlay.workers.dev";
-
-export function openclawGatewayWsUrl(rawUrl, cfJwt = "", proxyBase = OPENCLAW_CORS_PROXY_BASE) {
-  const raw = String(rawUrl || "").trim().replace(/\/+$/, "");
-  const jwt = String(cfJwt || "").trim();
-  if (!raw) return { url: "", displayUrl: "", viaProxy: false, directUrl: "", directDisplayUrl: "" };
-  const direct = raw.replace(/^https/i, "wss").replace(/^http(?!s)/i, "ws") + "/cli/gateway";
-  try {
-    const upstream = new URL(raw);
-    if (jwt && /(^|\.)brevlab\.com$/i.test(upstream.hostname) && proxyBase) {
-      const proxied = new URL(proxyBase);
-      proxied.protocol = proxied.protocol === "http:" ? "ws:" : "wss:";
-      const proxyPath = proxied.pathname.replace(/\/+$/, "");
-      const upstreamPath = upstream.pathname.replace(/\/+$/, "");
-      proxied.pathname = proxyPath + "/https/" + upstream.host + upstreamPath + "/cli/gateway";
-      proxied.search = "cf_access_jwt=" + encodeURIComponent(jwt);
-      return {
-        url: proxied.href,
-        displayUrl: proxied.origin + proxied.pathname + "?cf_access_jwt=...",
-        viaProxy: true,
-        directUrl: direct,
-        directDisplayUrl: direct,
-      };
-    }
-  } catch (_) { /* fall back to direct URL for local or non-URL launchables */ }
-  return { url: direct, displayUrl: direct, viaProxy: false, directUrl: direct, directDisplayUrl: direct };
+export function openclawGatewayWsUrl(rawUrl, cfJwt = "", proxyBase = null, proxyEnabled = null) {
+  const config = proxyBase === null
+    ? getOpenClawProxyConfig()
+    : { base: normalizeOpenClawProxyBase(proxyBase), enabled: proxyEnabled !== false };
+  return openclawWebSocketUrl(rawUrl, "/cli/gateway", cfJwt, config);
 }
 
-// ── ClawGateway widget ───────────────────────────────────────────────────────
-// Live WebSocket client to /cli/gateway, reading URL + token from localStorage.
-// Local launches connect directly. Brev launches with a pasted CF_Authorization JWT
-// use the OpenClaw CORS worker because browser WebSocket constructors cannot set headers.
+export function gatewayTokenFromAgentMetadata(payload) {
+  const raw = String(payload?.agent?.dashboardUrl || "").trim();
+  if (!raw) return null;
+  try {
+    const parsed = new URL(raw, "https://nemoclaw.invalid/");
+    const fragment = new URLSearchParams(parsed.hash.replace(/^#/, ""));
+    return fragment.get("token") || parsed.searchParams.get("token") || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+// Local launches connect directly to /cli/gateway; same-origin Brev course pages do too.
+// Static-hosted cross-origin connections use the OpenClaw CORS worker to carry JWT auth.
 export function mountClawGateway(targetSel, opts = {}) {
   const target = typeof targetSel === "string" ? document.querySelector(targetSel) : targetSel;
   if (!target) return;
@@ -51,15 +53,13 @@ export function mountClawGateway(targetSel, opts = {}) {
   const sessionKey = opts.sessionKey || "agent:main:main";
   const autoConnect = !!opts.autoConnect;
 
-  // Credentials from localStorage (written by mountClawProbe syncCanvas:true).
-  // The raw URL key builds the WS URL against the actual launchable.
-  // _CLAWPROBE_KEY_URL holds the CF CORS proxy, which is wrong for WS.
+  // Credentials from the shared OpenClaw connection registry.
   function _creds() {
+    const connection = getOpenClawConnection();
     return {
-      rawUrl: localStorage.getItem(_CLAWPROBE_KEY_RAW_URL) ||
-              localStorage.getItem(_CLAWPROBE_KEY_URL)     || "",
-      token:  localStorage.getItem(_CLAWPROBE_KEY_TOKEN)   || "",
-      cfJwt:  localStorage.getItem(_CLAWPROBE_KEY_CFJWT)   || "",
+      rawUrl: connection.rawUrl,
+      token: connection.token,
+      cfJwt: connection.accessJwt,
     };
   }
 
@@ -213,7 +213,7 @@ export function mountClawGateway(targetSel, opts = {}) {
     }
     const gateway = openclawGatewayWsUrl(rawUrl, cfJwt);
     const wsUrl = gateway.url;
-    _setStatus("connecting", gateway.viaProxy ? "via CF proxy" : "direct");
+    _setStatus("connecting", gateway.viaProxy ? "via hosted relay" : "direct");
     connectBtn.disabled = true;
     outEl.hidden = true;
     try {
@@ -247,25 +247,27 @@ export function mountClawGateway(targetSel, opts = {}) {
           const chatDiv = outEl.querySelector(".gw-chat-out");
 
           await new Promise((resolve, reject) => {
+            let endGrace, safety, finished = false;
+            const finish = () => { if (finished) return; finished = true; clearTimeout(endGrace); clearTimeout(safety); _chatCb = null; resolve(); };
             _chatCb = d => {
               const evt = d.event || "";
               const pl  = d.payload || {};
               if (evt === "chat" && pl.state === "delta") {
-                fullText = pl.message?.content?.[0]?.text || (fullText + (pl.deltaText || ""));
+                fullText = openclawMessageText(pl.message) || filterOpenClawRuntimeNoise(fullText + (pl.deltaText || ""));
                 chatDiv.textContent = fullText;
               } else if (evt === "agent" && pl.stream === "lifecycle" && pl.data?.phase === "end") {
-                _chatCb = null;
-                resolve();
+                clearTimeout(endGrace); endGrace = setTimeout(finish, 1500);
               } else if (evt === "chat" && pl.state === "final") {
-                fullText = pl.message?.content?.[0]?.text || fullText;
+                fullText = openclawMessageText(pl.message) || fullText;
                 chatDiv.textContent = fullText;
+                finish();
               }
             };
             const msg = typeof action.message === "function" ? action.message() : (action.message || "Hello");
             _call("chat.send", { sessionKey, idempotencyKey: ikey, message: msg })
-              .catch(e => { _chatCb = null; reject(e); });
+              .catch(e => { finished = true; clearTimeout(endGrace); clearTimeout(safety); _chatCb = null; reject(e); });
             // Safety timeout
-            setTimeout(() => { _chatCb = null; resolve(); }, 60000);
+            safety = setTimeout(finish, 60000);
           });
         } else {
           // Standard method call
@@ -302,19 +304,23 @@ export function mountClawGateway(targetSel, opts = {}) {
   return { call: _call };
 }
 
-// ── ClawProbe widget ─────────────────────────────────────────────────────────
-// Paste-your-URL surface for a base URL + bearer token (both saved in localStorage).
-// Caller-supplied `fetch` actions print their responses; pages 3a/3b/3c/4a vary `actions`.
-const _CLAWPROBE_KEY_URL     = "nemoclaw_clawurl";
-const _CLAWPROBE_KEY_RAW_URL = "nemoclaw_clawrawurl"; // raw (pre-proxy) URL for WS
-const _CLAWPROBE_KEY_TOKEN   = "nemoclaw_clawtoken";
-const _CLAWPROBE_KEY_CFJWT   = "nemoclaw_clawcfjwt";
-
-export function mountClawProbe(targetSel, opts = {}) {
+// ── Endpoint probe widget ─────────────────────────────────────────────────────
+// OpenClaw probes own launchable state. Model probes are read-only mirrors of the
+// model registry configured by mountKeyPanel; they never read or write OpenClaw keys.
+export function mountEndpointProbe(targetSel, opts = {}) {
   const target = typeof targetSel === "string" ? document.querySelector(targetSel) : targetSel;
   if (!target) return;
 
-  const defaultUrl   = (opts.defaultUrl   || "/lab/openclaw").replace(/\/+$/, "");
+  const connectionKind = opts.connectionKind || "isolated";
+  if (!["isolated", "model", "openclaw"].includes(connectionKind)) {
+    throw new Error(`Unknown endpoint probe kind: ${connectionKind}`);
+  }
+  const isOpenClaw = connectionKind === "openclaw";
+  const openClawConnection = isOpenClaw
+    ? getOpenClawConnection()
+    : { rawUrl: "", effectiveUrl: "", token: "", accessJwt: "" };
+  const suppliedDefault = opts.defaultUrl !== undefined ? opts.defaultUrl : (isOpenClaw ? "/lab/openclaw" : "");
+  const defaultUrl = _normalizeBaseUrl(openClawConnection.rawUrl || suppliedDefault);
   // Respect an explicit empty token from the no-bearer llm_client probe.
   // A bare `|| default` would turn "" into the openclaw token.
   // llm_client then forwards it upstream and the model backend rejects with a 400.
@@ -328,53 +334,30 @@ export function mountClawProbe(targetSel, opts = {}) {
   const actions      = opts.actions || [];
   const label        = opts.label || "Live OpenClaw probe";
   const intro        = opts.intro !== undefined ? opts.intro : "Paste the base URL of a running OpenClaw service. If local OpenClaw fails, stops booting, or reports EPERM, stop local probing and use the backup Brev session URL plus CF_Authorization.";
+  const helpHint     = opts.helpHint || "Need a value? Select the ? beside that field for its source and fallback.";
 
   function _normalizeBaseUrl(raw) {
+    if (isOpenClaw) return normalizeOpenClawLaunchableUrl(raw);
     const text = String(raw || "").trim();
-    if (!text) return "";
-    try {
-      const u = new URL(text);
-      u.hash = "";
-      // Brev launchables are rooted at the origin. Trim pasted app paths like /chat?session=main.
-      if (/\.brevlab\.com$/i.test(u.hostname)) return u.origin;
-      return u.href.replace(/\/+$/, "");
-    } catch (_) {
-      return text.replace(/\/+$/, "");
-    }
+    return text.replace(/\/+$/, "");
   }
 
-  // Key saved url+token by base URL so probes for different services do not share auth.
-  // Same-URL openclaw probes (3a/3b/3c) still share with each other.
-  // llm_client and sandbox-admin keep their own key, so no token bleeds into llm_client.
-  const _grp     = defaultUrl.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "") || "default";
-  // The openclaw probes keep the legacy key for the 3a/3b/3c mountCanvasFlow cells.
-  // Those cells read it directly to share url+token; other services get a scoped key.
-  const _shared  = (_grp === "lab_openclaw");
-  const keyUrl   = _shared ? _CLAWPROBE_KEY_URL   : (_CLAWPROBE_KEY_URL   + ":" + _grp);
-  const keyToken = _shared ? _CLAWPROBE_KEY_TOKEN : (_CLAWPROBE_KEY_TOKEN + ":" + _grp);
-  // Strip any stale proxy prefix so the input always shows the raw target URL.
-  // Earlier builds wrote the effective (proxied) URL into the probe's own slot.
-  // Those values would get double-proxied on reload, so heal them here.
-  const _storedUrl = localStorage.getItem(keyUrl);
-  const _stripPb   = (opts.proxyBase || "").replace(/\/+$/, "");
-  const _strippedUrl = (_stripPb && (opts.proxyMode || "origin") === "prefix" &&
-                        _storedUrl && _storedUrl.startsWith(_stripPb + "/https/"))
-    ? "https://" + _storedUrl.slice(_stripPb.length + "/https/".length)
-    : _storedUrl;
-  if (_strippedUrl !== _storedUrl && _strippedUrl)
-    localStorage.setItem(keyUrl, _strippedUrl); // heal stale storage
-  const savedUrl   = _normalizeBaseUrl(_strippedUrl || defaultUrl);
-  let savedToken = localStorage.getItem(keyToken) || defaultToken;
-  // A no-bearer probe must never inherit a stale openclaw token from before key scoping.
-  // Blank it so llm_client sends no bearer.
-  if (defaultToken === "" && savedToken === "dli-openclaw-token") savedToken = "";
-  const keyCfJwt  = _CLAWPROBE_KEY_CFJWT + ":" + _grp;
-  const savedCfJwt = opts.cfAccess ? (localStorage.getItem(keyCfJwt) || "") : "";
+  // Only an OpenClaw probe owns launchable persistence. Model settings remain owned by
+  // _shared.js + _keypanel.js and arrive here through explicit defaults.
+  const savedUrl = isOpenClaw ? _normalizeBaseUrl(openClawConnection.rawUrl || defaultUrl) : defaultUrl;
+  const savedToken = isOpenClaw
+    ? (openClawConnection.token || defaultToken)
+    : defaultToken;
+  const savedCfJwt = isOpenClaw && opts.cfAccess
+    ? openClawConnection.accessJwt
+    : "";
+  const proxyControls = isOpenClaw && opts.cfAccess && opts.proxyControls !== false;
+  const savedProxy = isOpenClaw ? getOpenClawProxyConfig() : { enabled: false, base: "" };
 
   // Label helper. A key with fieldHelp content renders a toggle button.
   // A key without it renders a plain label. Both match the .claw-lf sizing exactly.
   const _lbl = (key, text) => opts.fieldHelp?.[key]
-    ? `<button type="button" class="claw-lf claw-help-trigger" data-field="${key}" aria-expanded="false">${text}</button>`
+    ? `<button type="button" class="claw-lf claw-help-trigger" data-field="${key}" aria-expanded="false">${text}<span class="claw-help-mark" aria-hidden="true">?</span></button>`
     : `<label class="claw-lf">${text}</label>`;
   // Help panel rendered immediately after its row (hidden by default).
   const _hlp = (key) => {
@@ -383,21 +366,24 @@ export function mountClawProbe(targetSel, opts = {}) {
   };
 
   target.innerHTML = `
-    <div class="claw-probe">
+    <div class="claw-probe" data-connection-kind="${connectionKind}">
       <div class="claw-head">
         <div class="claw-label">${escHtml(label)}</div>
         ${intro ? `<div class="claw-intro">${escHtml(intro)}</div>` : ""}
+        ${opts.fieldHelp ? `<div class="claw-help-hint">${escHtml(helpHint)}</div>` : ""}
       </div>
       <div class="claw-row">
         ${_lbl("url", "Base URL")}
         <input class="claw-input claw-url" type="text" spellcheck="false" autocapitalize="off"
-               placeholder="https://your-tunnel.example.com" value="${_escAttr(savedUrl)}"/>
+               placeholder="https://your-tunnel.example.com" value="${_escAttr(savedUrl)}"
+               ${opts.readOnly ? 'readonly aria-readonly="true"' : ""}/>
       </div>
       ${_hlp("url")}
       <div class="claw-row">
         ${_lbl("token", "Bearer token")}
         <input class="claw-input claw-token" type="password" spellcheck="false" autocapitalize="off"
-               placeholder="${_escAttr(tokenPlaceholder)}" value="${_escAttr(savedToken)}"/>
+               placeholder="${_escAttr(tokenPlaceholder)}" value="${_escAttr(savedToken)}"
+               ${opts.readOnly ? 'readonly aria-readonly="true"' : ""}/>
         <button type="button" class="claw-btn alt claw-eye" title="Show token" aria-label="Show or hide token">👁</button>
       </div>
       ${_hlp("token")}
@@ -410,6 +396,19 @@ export function mountClawProbe(targetSel, opts = {}) {
         <button type="button" class="claw-btn alt claw-eye claw-eye-jwt" title="Show JWT" aria-label="Show or hide CF Access JWT">👁</button>
       </div>
       ${_hlp("cfJwt")}` : ""}
+      ${proxyControls ? `
+      <div class="claw-row claw-proxy-row">
+        ${_lbl("proxy", "Hosted relay")}
+        <label class="claw-proxy-toggle"><input class="claw-proxy-enabled" type="checkbox" ${savedProxy.enabled ? "checked" : ""}/>
+          Use for cross-origin Brev connections</label>
+      </div>
+      ${_hlp("proxy")}
+      <div class="claw-row claw-proxy-base-row">
+        ${_lbl("proxyBase", "Relay URL")}
+        <input class="claw-input claw-proxy-base" type="url" spellcheck="false" autocapitalize="off"
+               value="${_escAttr(savedProxy.base)}" ${savedProxy.enabled ? "" : "disabled"}/>
+      </div>
+      ${_hlp("proxyBase")}` : ""}
       <div class="claw-actions"></div>
       <pre class="claw-out" aria-live="polite"></pre>
     </div>
@@ -424,10 +423,12 @@ export function mountClawProbe(targetSel, opts = {}) {
       .claw-head{margin-bottom:.8em}
       .claw-label{font-weight:700;font-size:.95rem;color:var(--gs,#aee23a);margin-bottom:.2em}
       .claw-intro{font-size:.86rem;color:var(--td,#b0b0b0);line-height:1.5}
+      .claw-help-hint{font-size:.8rem;color:var(--td,#b0b0b0);line-height:1.45;margin-top:.35em}
       .claw-row{display:flex;align-items:center;gap:8px;margin:.4em 0}
       .claw-lf{font-family:var(--mono,monospace);font-size:.75rem;color:var(--tf,#8a8a8a);width:96px;flex:0 0 96px;text-transform:uppercase;letter-spacing:.04em}
       .claw-input{flex:1;background:var(--e2,#1e1e1e);border:1px solid var(--bd,#2a2a2a);border-radius:5px;padding:7px 10px;color:var(--tx,#f2f2f2);font-family:var(--mono,monospace);font-size:.82rem;min-width:0}
       .claw-input:focus{outline:none;border-color:var(--g,#76b900)}
+      .claw-input[readonly]{opacity:.82;cursor:default}
       .claw-actions{display:flex;flex-wrap:wrap;gap:6px;margin:.7em 0 .5em}
       .claw-btn{background:var(--g,#76b900);color:#000;border:0;border-radius:5px;padding:6px 14px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit}
       .claw-btn:hover{background:var(--gs,#aee23a)}
@@ -435,13 +436,16 @@ export function mountClawProbe(targetSel, opts = {}) {
       .claw-btn.alt{background:var(--e2,#1e1e1e);color:var(--gs,#aee23a);border:1px solid var(--bd,#2a2a2a)}
       .claw-btn.alt:hover{border-color:var(--g,#76b900)}
       .claw-eye{flex:0 0 auto;padding:5px 9px;font-size:.88rem;line-height:1}
-      .claw-help-trigger{background:none;border:none;padding:0;cursor:pointer;text-align:left;width:96px;flex:0 0 96px;font-family:var(--mono,monospace);font-size:.75rem;color:var(--tf,#8a8a8a);text-transform:uppercase;letter-spacing:.04em;text-decoration:underline dotted;text-underline-offset:2px;line-height:inherit}
+      .claw-help-trigger{background:none;border:none;padding:0;cursor:pointer;text-align:left;width:96px;flex:0 0 96px;font-family:var(--mono,monospace);font-size:.75rem;color:var(--tf,#8a8a8a);text-transform:uppercase;letter-spacing:.04em;line-height:inherit}
       .claw-help-trigger:hover,.claw-help-trigger[aria-expanded="true"]{color:var(--gs,#aee23a);text-decoration-style:solid}
+      .claw-help-mark{display:inline-grid;place-items:center;width:1.25em;height:1.25em;margin-left:.45em;border:1px solid currentColor;border-radius:50%;font-weight:800;line-height:1}
       .claw-help-panel{padding:8px 12px 8px 104px;font-size:.82rem;line-height:1.65;color:var(--td,#b0b0b0);border-left:2px solid var(--bd,#2a2a2a);margin:.1em 0 .5em}
       .claw-help-panel p{margin:.3em 0}.claw-help-panel p:first-child{margin-top:0}.claw-help-panel p:last-child{margin-bottom:0}
       .claw-help-panel code{font-size:.88em;background:var(--e2,#0d0d0d);padding:1px 5px;border-radius:3px;color:var(--gs,#aee23a)}
       .claw-help-panel strong{color:var(--tx,#f2f2f2)}
       .claw-help-panel a{color:var(--gs,#aee23a)}
+      .claw-proxy-toggle{display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--td,#b0b0b0)}
+      .claw-proxy-toggle input{accent-color:var(--g,#76b900)}
       .claw-out{background:var(--e2,#0d0d0d);border:1px solid var(--bd,#2a2a2a);border-radius:5px;padding:10px 12px;font-family:var(--mono,monospace);font-size:.78rem;line-height:1.5;color:var(--tx,#f2f2f2);min-height:60px;max-height:340px;overflow:auto;white-space:pre-wrap;word-break:break-word;margin:0}
       .claw-out.ok{border-color:var(--gd,#4a7a00)}
       .claw-out.err{border-color:var(--err,#a04040);color:var(--err,#ffb0b0)}
@@ -474,6 +478,8 @@ export function mountClawProbe(targetSel, opts = {}) {
 
   const cfJwtInp  = opts.cfAccess ? target.querySelector(".claw-cfjwt")    : null;
   const eyeJwtBtn = opts.cfAccess ? target.querySelector(".claw-eye-jwt")   : null;
+  const proxyEnabledInp = proxyControls ? target.querySelector(".claw-proxy-enabled") : null;
+  const proxyBaseInp = proxyControls ? target.querySelector(".claw-proxy-base") : null;
   if (eyeJwtBtn && cfJwtInp) {
     eyeJwtBtn.addEventListener("click", () => {
       const showing = cfJwtInp.type !== "password";
@@ -483,41 +489,22 @@ export function mountClawProbe(targetSel, opts = {}) {
   }
   if (cfJwtInp) {
     cfJwtInp.addEventListener("input", () => {
-      localStorage.setItem(keyCfJwt, cfJwtInp.value.trim());
-      _syncCanvasKeys(urlInp.value.trim(), tokenInp.value.trim(), cfJwtInp.value.trim());
+      _saveOpenClawConnection(urlInp.value.trim(), tokenInp.value.trim(), cfJwtInp.value.trim());
     });
   }
   const outEl    = target.querySelector(".claw-out");
   const actBox   = target.querySelector(".claw-actions");
 
-  // _syncCanvasKeys and _effectiveUrl read from opts directly, not the const aliases below.
-  // That keeps them safe to call during mountClawProbe init, before those consts are reached.
-  function _effectiveUrl(raw) {
-    const pb = (opts.proxyBase || "").replace(/\/+$/, "");
-    const pm = opts.proxyMode  || "origin";
-    if (!pb || !raw) return raw;
-    // Idempotent guard: already routed through this proxy → return as-is.
-    if (raw.startsWith(pb + "/")) return raw;
-    if (pm === "prefix") {
-      // Encode as <proxyBase>/https/<host>/<path>, avoiding the `://` double-slash.
-      // Cloudflare URL normalisation collapses that before the worker sees the request.
-      // The worker rebuilds https:// from the scheme prefix; only HTTPS targets work.
-      if (raw.startsWith("https://")) return pb + "/https/" + raw.slice("https://".length);
-      return raw;
-    }
-    // "origin" mode: replace the scheme+host with proxyBase.
-    try {
-      const u = new URL(raw);
-      return pb + u.pathname + u.search;
-    } catch (_) { return raw; }
+  function _proxyConfig() {
+    if (!proxyControls) return getOpenClawProxyConfig();
+    const base = normalizeOpenClawProxyBase(proxyBaseInp?.value || DEFAULT_OPENCLAW_PROXY_BASE);
+    return { enabled: !!proxyEnabledInp?.checked, base };
   }
 
-  function _syncCanvasKeys(rawUrl, rawToken, rawCfJwt) {
+  function _saveOpenClawConnection(rawUrl, rawToken, rawCfJwt) {
+    if (!isOpenClaw) return;
+    setOpenClawConnection({ rawUrl, token: rawToken, accessJwt: opts.cfAccess ? rawCfJwt : undefined });
     if (!opts.syncCanvas) return;
-    localStorage.setItem(_CLAWPROBE_KEY_URL,     _effectiveUrl(rawUrl)); // proxy URL for fetch
-    localStorage.setItem(_CLAWPROBE_KEY_RAW_URL, rawUrl);                // raw URL for WS
-    localStorage.setItem(_CLAWPROBE_KEY_TOKEN,   rawToken);
-    if (opts.cfAccess) localStorage.setItem(_CLAWPROBE_KEY_CFJWT, rawCfJwt || "");
     updateClawPill(document.getElementById("claw-status"));
     window.dispatchEvent(new Event("nemoclaw:prerequisites"));
   }
@@ -525,16 +512,33 @@ export function mountClawProbe(targetSel, opts = {}) {
   urlInp.addEventListener("input", () => {
     const raw = _normalizeBaseUrl(urlInp.value);
     if (urlInp.value.trim() !== raw) urlInp.value = raw;
-    localStorage.setItem(keyUrl, raw);
-    _syncCanvasKeys(raw, tokenInp.value.trim(), cfJwtInp?.value.trim());
+    _saveOpenClawConnection(raw, tokenInp.value.trim(), cfJwtInp?.value.trim());
   });
   tokenInp.addEventListener("input", () => {
     const tok = tokenInp.value.trim();
-    localStorage.setItem(keyToken, tok);
-    _syncCanvasKeys(_normalizeBaseUrl(urlInp.value), tok, cfJwtInp?.value.trim());
+    _saveOpenClawConnection(_normalizeBaseUrl(urlInp.value), tok, cfJwtInp?.value.trim());
   });
+  if (proxyEnabledInp && proxyBaseInp) {
+    const saveProxy = () => {
+      try {
+        const config = setOpenClawProxyConfig({
+          enabled: proxyEnabledInp.checked,
+          base: proxyBaseInp.value,
+        });
+        proxyBaseInp.value = config.base;
+        proxyBaseInp.disabled = !config.enabled;
+        proxyBaseInp.setCustomValidity("");
+        _saveOpenClawConnection(_normalizeBaseUrl(urlInp.value), tokenInp.value.trim(), cfJwtInp?.value.trim());
+      } catch (e) {
+        proxyBaseInp.setCustomValidity(e.message);
+        proxyBaseInp.reportValidity();
+      }
+    };
+    proxyEnabledInp.addEventListener("change", saveProxy);
+    proxyBaseInp.addEventListener("change", saveProxy);
+  }
   // Initialise canvas keys on page load with whatever is already stored.
-  _syncCanvasKeys(savedUrl, savedToken, savedCfJwt);
+  _saveOpenClawConnection(savedUrl, savedToken, savedCfJwt);
 
   function hideHtmlFrame(clear = false) {
     const fr = target.querySelector(".claw-html-frame");
@@ -565,11 +569,15 @@ export function mountClawProbe(targetSel, opts = {}) {
     outEl.textContent = text;
   }
 
-  // Used by runAction to annotate the output line with "(via proxy)".
-  const _proxyBase = (opts.proxyBase || "").replace(/\/+$/, "");
-
-  function _fetchUrl(displayUrl) {
-    return _effectiveUrl(displayUrl);
+  // Used by runAction. Keep the normalized launchable origin and API path separate. Brev launchable
+  // normalization intentionally drops UI paths; combining them here would turn
+  // /healthz or /api/agent into a request for the OpenClaw Control page at /.
+  function _fetchUrl(baseUrl, pathAndQuery) {
+    const displayUrl = baseUrl.replace(/\/+$/, "") + (pathAndQuery.startsWith("/") ? pathAndQuery : "/" + pathAndQuery);
+    if (!isOpenClaw) {
+      return { url: displayUrl, displayUrl, viaProxy: false, directUrl: displayUrl, directDisplayUrl: displayUrl };
+    }
+    return openclawHttpUrl(baseUrl, pathAndQuery, _proxyConfig());
   }
 
   async function runAction(action) {
@@ -577,8 +585,10 @@ export function mountClawProbe(targetSel, opts = {}) {
     if (urlInp.value.trim() !== base) urlInp.value = base;
     if (!base) { setOutput("Set a base URL above first.", "err"); return; }
     const token = (tokenInp.value || "").trim();
-    const displayUrl = base + (action.path || "/");
-    const fetchTarget = _fetchUrl(displayUrl);
+    const actionPath = action.path || "/";
+    const displayUrl = base + (actionPath.startsWith("/") ? actionPath : "/" + actionPath);
+    const route = _fetchUrl(base, actionPath);
+    const fetchTarget = route.url;
     const method = action.method || "GET";
     let body = null;
     if (typeof action.body === "function") {
@@ -590,10 +600,10 @@ export function mountClawProbe(targetSel, opts = {}) {
     const cfJwt = cfJwtInp ? cfJwtInp.value.trim() : "";
     const headers = { "Accept": "application/json, text/html, */*" };
     if (token) headers["Authorization"]          = "Bearer " + token;
-    if (cfJwt) headers["CF-Access-Jwt-Assertion"] = cfJwt;
+    if (route.viaProxy && cfJwt) headers["CF-Access-Jwt-Assertion"] = cfJwt;
     if (body)  headers["Content-Type"]            = "application/json";
 
-    const showUrl = _proxyBase ? displayUrl + "  (via proxy)" : displayUrl;
+    const showUrl = route.viaProxy ? displayUrl + "  (via hosted relay)" : displayUrl + "  (direct)";
     setOutput(`→ ${method} ${showUrl}\n   …in flight`);
     // Hide any previous HTML frame while a new request is in flight.
     hideHtmlFrame(true);
@@ -603,6 +613,7 @@ export function mountClawProbe(targetSel, opts = {}) {
         method,
         headers,
         body: body ? JSON.stringify(body) : null,
+        credentials: action.credentials || opts.credentials || "same-origin",
       });
       const dt = Math.round(performance.now() - t0);
       const ct = r.headers.get("content-type") || "";
@@ -618,6 +629,12 @@ export function mountClawProbe(targetSel, opts = {}) {
             " (it lasts about a day).\n\nFix: open your NemoClaw tab → DevTools → Application → Storage → Cookies →" +
             " click the nemoclaw domain → copy the CF_Authorization value → paste it into the CF Access JWT field" +
             " above and probe again.", "err");
+          hideHtmlFrame(true);
+          return;
+        }
+        if (action.expectJson) {
+          setOutput(head + "\n\n" + (opts.unexpectedHtmlHint ||
+            "Expected JSON but received an HTML page. Confirm that the request kept its API path and that the launchable relay is current."), "err");
           hideHtmlFrame(true);
           return;
         }
@@ -654,8 +671,7 @@ export function mountClawProbe(targetSel, opts = {}) {
               const found = opts.autofillToken(j);
               if (found && found !== tokenInp.value.trim()) {
                 tokenInp.value = found;
-                localStorage.setItem(keyToken, found);
-                _syncCanvasKeys(_normalizeBaseUrl(urlInp.value), found, cfJwtInp ? cfJwtInp.value.trim() : "");
+                _saveOpenClawConnection(_normalizeBaseUrl(urlInp.value), found, cfJwtInp ? cfJwtInp.value.trim() : "");
                 printed += "\n\n↳ bearer token auto-filled from this response (" + found.slice(0, 8) + "…). Ready for the gateway steps below.";
               }
             } catch (_) { /* response shape didn't match; leave the field as-is */ }
@@ -667,6 +683,11 @@ export function mountClawProbe(targetSel, opts = {}) {
       }
     } catch (e) {
       const dt = Math.round(performance.now() - t0);
+      if (!isOpenClaw) {
+        const hint = opts.failureHint || "Check the saved model route, bearer key, served model ID, and public HTTPS tunnel.";
+        setOutput(`✗ network error after ${dt}ms\n   ${String(e?.message || e)}\n\n${hint}`, "err");
+        return;
+      }
       const fallback = /EPERM|Failed to fetch|NetworkError|Load failed|ECONN|ERR_CONNECTION|timed out|502|503/i.test(e?.message || "")
         ? "\nBackup: if local OpenClaw failed to start or logs EPERM, stop local probing. Paste your NemoClaw Brev session URL (https://nemoclaw-<id>.brevlab.com), then paste CF_Authorization from DevTools into the CF Access JWT field.\n"
         : "";
@@ -702,6 +723,19 @@ export function mountClawProbe(targetSel, opts = {}) {
   };
 }
 
+export function mountClawProbe(targetSel, opts = {}) {
+  return mountEndpointProbe(targetSel, { ...opts, connectionKind: "openclaw" });
+}
+
+export function mountModelEndpointProbe(targetSel, opts = {}) {
+  return mountEndpointProbe(targetSel, {
+    ...opts,
+    connectionKind: "model",
+    readOnly: true,
+    tokenPlaceholder: opts.tokenPlaceholder || "nvapi-… or EMPTY",
+  });
+}
+
 
 // ── Gateway plumbing, shared by 03a/03b/03c/04a ─────────────────────────────
 // GW_CONNECT opens /cli/gateway, runs the handshake, and parks state.call/state._ws.
@@ -711,7 +745,7 @@ export function mountClawProbe(targetSel, opts = {}) {
 // It keeps one socket per tab and reads the URL + token the probe stored.
 // The gateway-page artifacts use it as their mountChatUI respond.
 let _ocSock = null;
-export async function openclawChat(message, { session = "main", onToken, onTool, view, signal = null, idleMs = 90000, totalMs = 240000 } = {}) {
+export async function openclawChat(message, { session = "main", onToken, onTool, view, signal = null, idleMs = 90000, totalMs = 240000, finalGraceMs = 1500 } = {}) {
   /* @doc <code>helpers.openclawChat(message, {session, onToken, onTool, view})</code> :: Send one
        chat turn to the live OpenClaw agent over the <code>/cli/gateway</code>
        WebSocket and stream the reply. Reads the launchable URL + token from the OpenClaw probe
@@ -723,9 +757,10 @@ export async function openclawChat(message, { session = "main", onToken, onTool,
        yourself.) The gateway streams no reasoning channel, so none is shown. Reuse the same
        <code>session</code> for multi-turn. The gateway companion to chat()/createReactAgent.
   */
-  const rawUrl = (localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl") || "").replace(/\/+$/, "");
-  const token  = localStorage.getItem("nemoclaw_clawtoken") || "";
-  const cfJwt  = localStorage.getItem("nemoclaw_clawcfjwt") || "";
+  const connection = getOpenClawConnection();
+  const rawUrl = connection.rawUrl.replace(/\/+$/, "");
+  const token = connection.token;
+  const cfJwt = connection.accessJwt;
   if (!rawUrl || !token) throw new Error("Connect first on the Kickstart page (3a): set your launchable URL + token in the probe.");
   const gateway = openclawGatewayWsUrl(rawUrl, cfJwt);
   const wsUrl = gateway.url;
@@ -762,18 +797,28 @@ export async function openclawChat(message, { session = "main", onToken, onTool,
   const sock = _ocSock;
   if (!sock.subs[session]) { await sock.call("sessions.messages.subscribe", { key: session }); sock.subs[session] = true; }
   // Pull readable text out of a gateway tool result / partial result, in full.
-  const resText = (r) => { if (r == null) return ""; if (typeof r === "string") return r;
-    if (Array.isArray(r.content)) return r.content.map(c => c && c.text || "").join("\n");
-    return JSON.stringify(r); };
+  const resText = openclawResultText;
   // One-line summary of a tool's args for the chip label (command, path, query…).
   const argSummary = (a) => { if (a == null) return ""; if (typeof a === "string") return a;
     const v = a.command || a.path || a.query || a.file || Object.values(a)[0]; return v == null ? "" : String(v); };
   return await new Promise((resolve, reject) => {
-    let text = "", myRun = null, idle, glob, toolStarts = 0, usedTok = 0, winTok = 0, lastModel = "", finished = false, sawAgent = false;
+    let text = "", deliveredText = "", myRun = null, idle, glob, endGrace, toolStarts = 0, usedTok = 0, winTok = 0, lastModel = "", finished = false;
     const chips = {};   // toolCallId -> chip element (stack-ordered, never reused)
-    const done = (stalled) => { if (finished) return; finished = true; clearTimeout(idle); clearTimeout(glob); sock.setCb(null);
+    const deliverFull = (full) => {
+      full = filterOpenClawRuntimeNoise(full);
+      if (!full) return;
+      let delta = "";
+      if (!deliveredText) delta = full;
+      else if (full.startsWith(deliveredText)) delta = full.slice(deliveredText.length);
+      if (delta) { if (view) view.token(delta); else if (onToken) onToken(delta); }
+      if (full.length >= text.length) text = full;
+      if (full.length >= deliveredText.length) deliveredText = full;
+    };
+    const done = (stalled) => { if (finished) return; finished = true; clearTimeout(idle); clearTimeout(glob); clearTimeout(endGrace); sock.setCb(null);
       if (stalled) sock.call("chat.abort", { sessionKey: session }).catch(() => {});
-      if (!text.trim() && toolStarts > 0) text = "(the agent ran " + toolStarts + " tool(s) but returned no text. Try the Health check / Recover cells on Kickstart)";
+      if (!text.trim()) deliverFull(toolStarts > 0
+        ? "The agent completed " + toolStarts + " tool call(s) but returned no final text. Retry once; if it repeats, run Health check on Kickstart."
+        : "The gateway completed the turn without a displayable reply. Retry once; if it repeats, run Health check on Kickstart.");
       if (view && usedTok) view.usage({ context: usedTok, window: winTok || undefined, model: lastModel });
       resolve(text); };
     const bump = () => { clearTimeout(idle); idle = setTimeout(() => done(true), idleMs); };
@@ -792,16 +837,13 @@ export async function openclawChat(message, { session = "main", onToken, onTool,
       if (pl.totalTokens) usedTok = pl.totalTokens;
       if (pl.contextTokens) winTok = pl.contextTokens;
       if (pl.model) lastModel = pl.model;
-      if (d.event === "chat" && pl.state === "final") { const ft = (pl.message && pl.message.content && pl.message.content[0] && pl.message.content[0].text) || ""; if (ft) text = ft; if (!sawAgent && ft) done(false); return; }
+      if (d.event === "chat" && pl.state === "final") { deliverFull(openclawMessageText(pl.message)); done(false); return; }
       if (d.event !== "agent") return;
       const sk = pl.sessionKey || ""; if (sk !== session && !sk.endsWith(":" + session)) return;
-      sawAgent = true;
       const data = pl.data || {}, stream = pl.stream || "";
       const id = data.toolCallId;
       if (stream === "assistant" || ("delta" in data && "text" in data)) {
-        const full = data.text || text;
-        if (full.length > text.length) { const delta = full.slice(text.length); if (view) view.token(delta); else if (onToken) onToken(delta); }
-        text = full;
+        deliverFull(data.text || text);
       }
       else if (stream === "tool" && data.phase === "start") {
         toolStarts++; const name = data.name || "tool"; const sum = argSummary(data.args);
@@ -815,7 +857,10 @@ export async function openclawChat(message, { session = "main", onToken, onTool,
         const c = chips[id], b = c.querySelector(".chatui-tool-body"); if (b) b.textContent = resText(data.result);
         if (data.isError) { c.classList.add("err"); const s = c.querySelector("summary"); if (s) s.textContent = s.textContent.replace("🔧", "✗"); }
       }
-      else if (data.phase === "end" && !data.itemId) { done(false); }
+      else if (data.phase === "end" && !data.itemId) {
+        clearTimeout(endGrace);
+        endGrace = setTimeout(() => done(false), finalGraceMs);
+      }
     });
 
     bump();
@@ -826,49 +871,17 @@ export async function openclawChat(message, { session = "main", onToken, onTool,
 }
 
 export const GW_CONNECT = `
-const rawUrl = localStorage.getItem("nemoclaw_clawrawurl") ||
-               localStorage.getItem("nemoclaw_clawurl") || "";
-const token  = localStorage.getItem("nemoclaw_clawtoken") || "";
-const cfJwt  = localStorage.getItem("nemoclaw_clawcfjwt") || "";
+const connection = helpers.getOpenClawConnection();
+const rawUrl = connection.rawUrl;
+const token = connection.token;
+const cfJwt = connection.accessJwt;
 if (!rawUrl || !token) {
   helpers.log("Fill in the OpenClaw probe above first. If local OpenClaw failed or showed EPERM, use the backup Brev session URL plus CF_Authorization.");
   return;
 }
-const openclawGatewayWsUrl = (rawInput, jwtInput) => {
-  const raw = String(rawInput || "").trim().replace(new RegExp("/+$"), "");
-  const jwt = String(jwtInput || "").trim();
-  const direct = raw.replace(/^https/i, "wss").replace(/^http(?!s)/i, "ws") + "/cli/gateway";
-  try {
-    const upstream = new URL(raw);
-    const host = upstream.hostname.toLowerCase();
-    if (jwt && (host === "brevlab.com" || host.endsWith(".brevlab.com"))) {
-      const proxied = new URL("https://openclaw-cors-proxy.vkudlay.workers.dev");
-      proxied.protocol = "wss:";
-      const upstreamPath = upstream.pathname.replace(new RegExp("/+$"), "");
-      proxied.pathname = "/https/" + upstream.host + upstreamPath + "/cli/gateway";
-      proxied.search = "cf_access_jwt=" + encodeURIComponent(jwt);
-      return { url: proxied.href, displayUrl: proxied.origin + proxied.pathname + "?cf_access_jwt=...", viaProxy: true, directUrl: direct, directDisplayUrl: direct };
-    }
-  } catch (_) {}
-  return { url: direct, displayUrl: direct, viaProxy: false, directUrl: direct, directDisplayUrl: direct };
-};
-const gateway = openclawGatewayWsUrl(rawUrl, cfJwt);
-let wsUrl = gateway.url;
-helpers.log("→ " + gateway.displayUrl + (gateway.viaProxy ? "  (via CF proxy)" : ""));
-if (gateway.viaProxy) {
-  let proxyReady = false;
-  try {
-    const meta = await helpers.fetch("https://openclaw-cors-proxy.vkudlay.workers.dev/__nemoclaw_proxy_meta", { cache: "no-store" });
-    const txt = await meta.text();
-    proxyReady = meta.ok && txt.includes("ws-gateway");
-    if (proxyReady) helpers.log("  proxy worker: ws gateway enabled");
-    else helpers.log("  proxy worker stale; falling back to direct browser-cookie WebSocket: " + meta.status + " " + txt.slice(0, 80));
-  } catch (e) { helpers.log("  proxy worker version check failed; falling back to direct browser-cookie WebSocket: " + (e && e.message ? e.message : e)); }
-  if (!proxyReady) {
-    wsUrl = gateway.directUrl;
-    helpers.log("→ " + gateway.directDisplayUrl + "  (direct fallback; open the Brev URL first if this browser lacks the CF cookie)");
-  }
-}
+const gateway = helpers.openclawGatewayWsUrl(rawUrl, cfJwt);
+const wsUrl = gateway.url;
+helpers.log("→ " + gateway.displayUrl + (gateway.viaProxy ? "  (via hosted relay)" : ""));
 
 // Keep one live gateway socket per flow.
 if (state._ws) { try { state._ws.close(); } catch (_) {} state._chatCb = null; }

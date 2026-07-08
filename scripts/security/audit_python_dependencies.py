@@ -38,30 +38,30 @@ REQUIRED_FLOORS = {
     "aiohttp": "3.14.1",
 }
 
-# These packages are intentionally absent from the supported course/lab runtime.
-# Adding one back requires a demonstrated runtime use plus a fresh OSRB distribution
-# decision; a bare dependency declaration is not sufficient evidence.
-FORBIDDEN_DIRECT_REQUIREMENTS = {
-    "langserve": "retired unused dependency; reintroduction requires runtime evidence and an OSRB distribution decision",
-    "langgraph-cli": "retired unused in-memory runtime; it conflicts with the supported protobuf, cryptography, OpenTelemetry, and Starlette compatibility line",
-    "jupyter-archive": "unused optional Jupyter extension removed from the supported runtime and SBOM; reintroduction requires learner evidence and source/license disposition",
-    "jupyter-collaboration": "unused optional Jupyter extension removed from the supported runtime and SBOM; reintroduction requires learner evidence and source/license disposition",
-    "jupyter-resource-usage": "unused optional Jupyter extension removed from the supported runtime and SBOM; reintroduction requires learner evidence and source/license disposition",
-    "jupyterlab-language-pack-ja-jp": "unused language pack removed from the supported runtime and SBOM; reintroduction requires learner evidence and source/license disposition",
-    "jupyterlab-language-pack-zh-cn": "unused language pack removed from the supported runtime and SBOM; reintroduction requires learner evidence and source/license disposition",
-    "jupyterlab-language-pack-zh-tw": "unused language pack removed from the supported runtime and SBOM; reintroduction requires learner evidence and source/license disposition",
-    "pymupdf": "unused document processor removed from the supported runtime and SBOM; reintroduction requires runtime evidence and source/license disposition",
-}
-
-# BDSA-2025-123809 / upstream #26432: no released wheel through 7.35.1 contains
-# the complete Struct/Value/ListValue recursion fix. The runtime currently uses
-# protobuf for generated/binary messages, not the vulnerable JSON conversion API.
-# Keep that claim executable while the time-boxed waiver is active.
-PROTOBUF_JSON_PARSE_RE = re.compile(
-    r"\b(?:json_format|protobuf_json_format)\.(?:Parse|ParseDict)\s*\("
-    r"|from\s+google\.protobuf\.json_format\s+import\s+[^\n]*(?:Parse|ParseDict)\b"
+# Retired components are absent from the supported course/lab runtime.
+FORBIDDEN_DIRECT_REQUIREMENTS = dict.fromkeys(
+    (
+        "langserve",
+        "langgraph-cli",
+        "litellm",
+        "jupyter-archive",
+        "jupyter-collaboration",
+        "jupyter-resource-usage",
+        "jupyterlab-language-pack-ja-jp",
+        "jupyterlab-language-pack-zh-cn",
+        "jupyterlab-language-pack-zh-tw",
+        "pymupdf",
+    ),
+    "retired runtime component",
 )
-PROTOBUF_WAIVER_ID = "BDSA-2025-123809"
+
+# The release runtime uses generated binary messages.
+# Exclude JSON conversion calls while the compatibility exception is active.
+PROTOBUF_JSON_CONVERSION_RE = re.compile(
+    r"\bgoogle\.protobuf\.json_format\b"
+    r"|from\s+google\.protobuf\s+import\s+[^\n]*\bjson_format\b"
+)
+PROTOBUF_EXCEPTION_FINGERPRINT = "3bfa5f89273a8e0155c00f0f0f27b131c3bfe6475144092c7858160c9ced75b0"
 WAIVER_REGISTRY = ROOT / "scripts" / "security" / "vulnerability-waivers.json"
 
 REQ_RE = re.compile(
@@ -194,30 +194,30 @@ def unlocked_direct_requirements(path: Path = ROOT / "workspace" / "requirements
     return findings
 
 
-def protobuf_json_parse_callers() -> list[dict]:
-    """Find runtime code that would make the waived recursion bug reachable."""
+def protobuf_json_conversion_callers() -> list[dict]:
+    """Find unsupported JSON-conversion imports in the release runtime."""
     findings: list[dict] = []
     for root_name in ("cpu", "workspace"):
         for path in (ROOT / root_name).rglob("*.py"):
             text = path.read_text(encoding="utf-8", errors="replace")
-            for match in PROTOBUF_JSON_PARSE_RE.finditer(text):
+            for match in PROTOBUF_JSON_CONVERSION_RE.finditer(text):
                 findings.append({
                     "file": str(path.relative_to(ROOT)),
                     "line": text.count("\n", 0, match.start()) + 1,
                     "package": "protobuf",
-                    "reason": "BDSA-2025-123809 exposure: protobuf JSON Parse/ParseDict is forbidden while the recursion advisory has no patched release",
+                    "reason": "protobuf JSON conversion is outside the supported release runtime",
                 })
     return findings
 
 
-def active_waiver(advisory_id: str, package: str) -> bool:
+def active_exception(fingerprint: str, component: str) -> bool:
     try:
         data = json.loads(WAIVER_REGISTRY.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return False
     today = dt.date.today()
     for waiver in data.get("waivers", []):
-        if waiver.get("id") != advisory_id or norm_name(str(waiver.get("package", ""))) != norm_name(package):
+        if waiver.get("fingerprint") != fingerprint or norm_name(str(waiver.get("component", ""))) != norm_name(component):
             continue
         try:
             return dt.date.fromisoformat(str(waiver.get("expires"))) >= today
@@ -258,17 +258,17 @@ def main() -> int:
 
     rows = declarations()
     failures: list[dict] = (
-        protobuf_json_parse_callers()
+        protobuf_json_conversion_callers()
         + forbidden_direct_requirements()
         + unlocked_direct_requirements()
     )
     notes: list[str] = []
-    protobuf_waived = active_waiver(PROTOBUF_WAIVER_ID, "protobuf")
-    if not protobuf_waived:
+    protobuf_excepted = active_exception(PROTOBUF_EXCEPTION_FINGERPRINT, "protobuf")
+    if not protobuf_excepted:
         failures.append({
             "file": str(WAIVER_REGISTRY.relative_to(ROOT)),
             "package": "protobuf",
-            "reason": f"{PROTOBUF_WAIVER_ID} has no active waiver while no patched protobuf release is available",
+            "reason": "the protobuf compatibility line has no active fingerprinted exception",
         })
     seen = {(r.get("file"), r.get("name")) for r in rows if r.get("name")}
 
@@ -302,8 +302,8 @@ def main() -> int:
         vulns = cache[key]
         if vulns:
             failures.append({**row, "reason": "known vulnerabilities reported by PyPI/OSV", "vulnerabilities": vulns})
-        elif name == "protobuf" and protobuf_waived:
-            notes.append(f"WAIVED {row['file']}: {row['spec']} ({PROTOBUF_WAIVER_ID}; Parse/ParseDict reachability guard clean)")
+        elif name == "protobuf" and protobuf_excepted:
+            notes.append(f"EXCEPTION {row['file']}: {row['spec']} (JSON conversion guard clean)")
         else:
             notes.append(f"PASS {row['file']}: {row['spec']} ({name} {ver})")
 

@@ -9,7 +9,7 @@
   "node_type": "directory-explorer",
   "title": "perfil de localización es-ES",
   "source_dir": "scripts/translate/locales/es-ES/",
-  "summary": "Contrato para un español técnico neutro: fuentes públicas de NVIDIA, términos preferidos, calcos rechazados, ritmo, límites de la validación estática y revisión visual de SVG.",
+  "summary": "Contrato para un español técnico neutro: fuentes públicas de NVIDIA, triage de correcciones humanas, vocabulario de desarrolladores, calcos rechazados, límites de la validación estática y revisión renderizada.",
   "related": [
     "scripts/translate/locales/es-ES/profile.json",
     "scripts/translate/locales/es-ES/README.md",
@@ -26,13 +26,13 @@
 <script type="application/json" id="explorer-config">
 {
   "title": "es-ES · perfil de localización",
-  "summary": "Use este nodo antes de traducir o revisar. Conserve el contenido técnico y la secuencia pedagógica en un español natural para estudiantes y profesionales de software de distintas regiones.",
+  "summary": "Use este nodo antes de traducir o revisar. Las decisiones del responsable de estilo del idioma gobiernan la voz, el ritmo y el vocabulario; conserve además el contenido técnico y la secuencia pedagógica para desarrolladores de distintas regiones.",
   "nav": {"home": "../../../../web/index.html", "up": {"label": "herramientas de traducción", "href": "../../SKILL.html"}},
   "groups": [{
     "title": "Contrato es-ES",
     "files": [
-      {"path": "README.md", "role": "guía editorial", "desc": "Naturalidad, alcance regional, precisión técnica y revisión humana."},
-      {"path": "profile.json", "role": "perfil analizable", "desc": "Fuentes, términos, ritmo, marcadores de inglés y calcos rechazados."},
+      {"path": "README.md", "role": "guía editorial", "desc": "Matriz keep/revise/reject, naturalidad, voz, precisión técnica y aceptación después de revisar el render exacto."},
+      {"path": "profile.json", "role": "perfil analizable", "desc": "Protocolo de revisión, fuentes, términos, ritmo, marcadores de inglés y calcos rechazados."},
       {"path": "../../translate_html_segments.py", "role": "generador de borradores", "desc": "Traducción de bloques protegidos y telemetría; no acepta hashes de revisión."},
       {"path": "../../translate_svg_text.py", "role": "generador de SVG", "desc": "Traduce etiquetas y descripciones sin alterar la geometría."},
       {"path": "svg_translations.json", "role": "texto SVG revisado", "desc": "Mapa reproducible entre el texto canónico y las etiquetas en español."},
@@ -47,12 +47,15 @@
 <section class="skill-static" aria-labelledby="skill-title">
   <h1 id="skill-title">Contrato de localización es-ES</h1>
   <p>Traduzca la idea, no la sintaxis inglesa. Mantenga el código y los nombres propios canónicos. Prefiera un español técnico claro entre regiones y revise cada figura renderizada.</p>
+  <p>Las correcciones del responsable de estilo del idioma son la referencia para voz, ritmo y vocabulario. Conserve exactamente el blob fijado en <code>profile.json</code>. Una corrección requiere un seguimiento firmado por el responsable de estilo y una actualización deliberada del commit de origen y del SHA-256; un agente no modifica la referencia.</p>
+  <p>Use <code>i18n/es/web/nemoclaw/01a-loop.html</code> como referencia editorial y mantenga su elección local entre tratamiento directo e impersonal. Distinga llamadas, turnos e iteraciones. Acepte hashes solo después de revisar el destino exacto en Localization Studio.</p>
   <h2>Verificaciones ejecutables / Executable checks</h2>
   <div class="skill-cmds">
     <div class="skill-cmd"><b>Deriva y calidad es-ES</b><code>python3 scripts/validation/localization_audit.py --locale es-ES</code></div>
     <div class="skill-cmd"><b>Pruebas de mutación</b><code>python3 scripts/validation/localization_audit.py --self-test</code></div>
     <div class="skill-cmd"><b>Comparación en navegador</b><code>CONTAINER_ENGINE=podman python3 scripts/validation/localization_runtime_audit.py</code></div>
     <div class="skill-cmd"><b>Borrador medido</b><code>python3 scripts/translate/translate_html_segments.py --locale es-ES web/nemoclaw/PAGE.html --usage-report /tmp/es-usage.json</code></div>
+    <div class="skill-cmd"><b>Revisión con origen</b><code>python3 scripts/translate/translate_html_segments.py --locale es-ES --revise-against-source web/nemoclaw/PAGE.html --usage-report /tmp/es-revision.json</code></div>
   </div>
   <h2>Mapa de vínculos / Linkage map</h2>
   <div class="skill-grid">

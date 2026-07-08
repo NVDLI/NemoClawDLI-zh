@@ -239,7 +239,6 @@
       model about it (bring a key), or inspect how the pieces connect and verify.
     </p>
     <div class="src-links">
-      <a href="/lab/static/cors-proxy/SKILL.html">CORS proxy workers</a>
       <a href="/lab/static/scripts/SKILL.html">The toolchain</a>
       <a href="/lab/static/docs/SKILL.html">Deploy &amp; agent notes</a>
       <a href="/lab/static/workspace/SKILL.html">The lab image</a>
@@ -365,7 +364,8 @@
   function probeUrl(url) {
     return url ? url.replace(/\/?$/, "/index.html") : null;
   }
-  fetch("branches.json", { cache: "no-store" }).then(function (r) {
+  var manifestUrl = document.documentElement.lang === "en" ? "branches.json" : "../branches.json";
+  fetch(manifestUrl, { cache: "no-store" }).then(function (r) {
     if (!r.ok) throw new Error("no branch manifest");
     return r.json();
   }).then(function (data) {

@@ -20,7 +20,7 @@
       "title": "Securing Agents with OpenShell and NemoClaw",
       "lead": "Repository tour for course reviewers, developers, and release owners",
       "footer": "Internal release candidate · external publication pending OSRB approval",
-      "evidence": ["web/nemoclaw/COURSE_CANON.md", "RELEASE_STATUS.md"],
+      "evidence": ["web/nemoclaw/COURSE_CANON.md", "RELEASE_STATUS.json"],
       "notes": "Open with the repository's canonical course title. This deck is not a substitute for the course and does not claim a public release. It explains how the learner path, browser artifacts, contribution controls, localization workflow, and release gates fit together. The review question is practical: can each audience find the surface it owns and verify the evidence behind it?"
     },
     {
@@ -269,8 +269,8 @@
           {"label": "Public release", "detail": "Annotated SemVer tag, source archive, manifest, SBOM, checksums, and OSRB approval.", "status": "pending OSRB"}
         ]
       },
-      "evidence": ["docs/pages_deploy.md", "docs/release_playbook.md", "docs/release_artifacts.md", "RELEASE_STATUS.md", ".gitlab-ci.yml"],
-      "notes": "A preview answers whether the submitted commit renders and behaves as expected. It does not assign a version or authorize public distribution. Internal production is a protected deployment from an approved ref. Public release adds a SemVer tag and immutable release artifacts, including provenance, an SBOM, and checksums. External publication remains blocked until RELEASE_STATUS.md records OSRB approval. The lanes stay separate so a convenient preview cannot accidentally become release authority."
+      "evidence": ["docs/pages_deploy.md", "docs/release_playbook.md", "docs/release_artifacts.md", "RELEASE_STATUS.json", ".gitlab-ci.yml"],
+      "notes": "A preview answers whether the submitted commit renders and behaves as expected. It does not assign a version or authorize public distribution. Internal production is a protected deployment from an approved ref. Public release adds a SemVer tag and immutable release artifacts, including provenance, an SBOM, and checksums. External publication remains blocked until RELEASE_STATUS.json records approval. The lanes stay separate so a convenient preview cannot accidentally become release authority."
     },
     {
       "id": "review-path",
@@ -284,10 +284,10 @@
           {"label": "Course reviewer", "path": "web/nemoclaw/index.html", "detail": "Follow the learner route and run the browser artifacts."},
           {"label": "Instructor", "path": "web/nemoclaw/COURSE_CANON.md", "detail": "Check objectives, prerequisites, progression, and teaching evidence."},
           {"label": "Developer", "path": "SKILL.html", "detail": "Read the nearest contract, declare blast radius, and run focused checks."},
-          {"label": "Release owner", "path": "validation.html + RELEASE_STATUS.md", "detail": "Review the tested SHA, findings, deployment evidence, and publication state."}
+          {"label": "Release owner", "path": "validation.html + RELEASE_STATUS.json", "detail": "Review the tested SHA, findings, deployment evidence, and publication state."}
         ]
       },
-      "evidence": ["web/nemoclaw/index.html", "web/nemoclaw/COURSE_CANON.md", "SKILL.html", "RELEASE_STATUS.md", "docs/release_playbook.md"],
+      "evidence": ["web/nemoclaw/index.html", "web/nemoclaw/COURSE_CANON.md", "SKILL.html", "RELEASE_STATUS.json", "docs/release_playbook.md"],
       "notes": "Close with navigation rather than a slogan. Course reviewers should experience the material in order and inspect the artifacts as learners do. Instructors can compare that experience with the canonical objectives. Developers should begin at the nearest SKILL beacon and use the validation ladder for the touched surfaces. Release owners should review the exact tested commit, the rendered preview, gate findings, deployment authority, and the explicit publication state."
     }
   ]

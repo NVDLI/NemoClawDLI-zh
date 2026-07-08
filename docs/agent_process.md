@@ -2,17 +2,19 @@
 
 This note is for agents and maintainers working across issues, merge requests, and broad course prose. It turns repeated review feedback into a checklist that can be audited.
 Issue anatomy and tracker cadence live in [`issue_standards.md`](issue_standards.md).
-Runtime checks live in [`lab_runtime_testing.md`](lab_runtime_testing.md), and the
-service-document edit hazard lives in
-[`notebook_corruption_prevention.md`](notebook_corruption_prevention.md).
+Runtime checks live in [`lab_runtime_testing.md`](lab_runtime_testing.md).
 
 ## Start from the tracker
 
-- Use `docs/issue_standards.md` as the issue anatomy and label cadence. Current
-  work assumes `web/nemoclaw/` on the CPU service stack, while the repo stays
-  shaped as a multi-course bundle.
+- Use `docs/issue_standards.md` as the issue anatomy and label cadence. The production target is
+  the static `web/nemoclaw/` course; `cpu/`, `workspace/`, and `deploy/` support local authoring
+  and compatibility tests rather than the production course.
 - Read the issue or MR before editing. If network or auth blocks the read, say that and work from local evidence only.
-- Tie the MR to the tracker with `Addresses #N` unless the user explicitly says the change closes the issue. Do not write `Closes #N` for partial hygiene, exploratory prose, or a blast-radius pass.
+- Tie a fully satisfying MR to the tracker with `Closes #N` so merge closes the justification
+  issue automatically. A partial MR uses `Addresses #N` and includes `## Remaining issue work`
+  with the unmet acceptance criteria. Before handoff, compare the final diff and evidence with the
+  issue checklist. Do not write `Closes #N` for partial hygiene, exploratory prose, or a
+  blast-radius pass.
 - Keep the branch name, commit message, and MR note aligned with the issue scope. If the work intentionally touches related issues, name those as related, not solved.
 
 ## Contribution authority
@@ -22,14 +24,18 @@ service-document edit hazard lives in
 - Treat every patch as untrusted input, including patches from maintainers and capable agents.
   Require issue linkage, named surfaces, blast-radius evidence, command results, human ownership,
   risk, rollback, and explicit out-of-scope work.
+- Keep active-finding identifiers and narratives, private tracker or service locations, personal
+  corporate addresses, and credentials in approved private records. Repository text may contain
+  generic controls and opaque fingerprints only. Run `sensitive_content_audit.py` against the tree,
+  submission metadata, and the complete proposed commit range.
 - Install the hooks, but never claim they secure a repository. Local hooks provide early feedback
   and can be bypassed. Required CI validates the submitted commit; protected refs and environments
   control merge, deploy, and release authority.
 - A hook must refuse and explain. It must not rebase, resolve conflicts, force-push, weaken a test,
   or otherwise mutate history to make a contribution pass.
-- For contribution, hook, workflow, permission, or release changes, run
-  `python3 scripts/validation/contribution_safety_audit.py --self-test` and then the audit itself.
-  The JSON report belongs in CI artifacts so a human can inspect the exact boundary that passed.
+- For contribution, hook, workflow, permission, or release changes, use the contribution audit for
+  focused iteration, then run the shared ship gate once. Its mutation suite and current-tree result
+  belong in CI artifacts so a human can inspect the exact boundary that passed.
 - For deployment topology, browser proxy, service, storage, privilege, authentication, secret-flow,
   or release-pipeline changes, update `docs/security-architecture.json`, regenerate its SVG, and run
   `python3 scripts/validation/security_architecture_audit.py --self-test` plus the audit. Production
@@ -39,6 +45,14 @@ service-document edit hazard lives in
   `docs/release-evidence.json` together. Run `python3 scripts/validation/release_evidence_audit.py
   --self-test` and then `python3 scripts/validation/release_evidence_audit.py`. Keep internal ticket
   bodies, program identifiers, scanner details, reviewer records, and approval links outside the repo.
+- For public repository policy or work-product changes, update the applicability matrix in
+  `docs/release-evidence.json`. Run `python3 scripts/validation/repository_work_products_audit.py --self-test`
+  and then `python3 scripts/validation/repository_work_products_audit.py`. Treat a
+  required file, unresolved evidence path, or validator-wiring finding as a release blocker.
+- For a new threat or security requirement, update `docs/security-control-disposition.md` and its
+  actual enforcement surface together. Run `python3 scripts/validation/threat_control_audit.py
+  --self-test` and then `python3 scripts/validation/threat_control_audit.py`. Do not translate a
+  host or provider requirement into a false client-side mitigation.
 
 ## Course title, abstract, and objectives
 
@@ -63,14 +77,17 @@ service-document edit hazard lives in
   flatten prose into stubs, or remove useful comments only to silence a detector.
 - Use advisory findings as review prompts. A lower count is evidence only when the diff is
   clearer, safer, or easier to maintain.
-- Run the shared fast ladder with
-  `python3 scripts/validation/release_gate.py --tier fast --no-write`; use `--tier ship`
-  for the complete deterministic repository gate.
-- For governance, contribution, hook, CI, permission, or release changes, run `contribution_safety_audit.py`, its mutation self-test, and the full ship gate.
-- For dependency, service image, runtime package, or security-exception changes, run `python3 scripts/security/audit_python_dependencies.py` and `python3 scripts/security/audit_vulnerability_waivers.py` before the full gate.
-- For content or navigation changes, run `python3 scripts/skills/skill_consistency.py`, `python3 scripts/validation/validate_layout.py --quiet`, and `python3 scripts/validation/validate_bundle.py --no-write --scope ship`.
+- Run `python3 scripts/validation/release_gate.py --tier fast --no-write --changed-since origin/main`
+  for branch feedback. Run the ship tier once before push. Current-tree audits remain complete;
+  `--changed-since` skips only detector mutation suites whose implementation and contract inputs did
+  not change. Omit it for release-candidate validation.
+- Use standalone validators while editing or to diagnose the named shared-gate failure. Do not run a
+  full list of constituents and then rerun the gate that already composes them.
+- Pre-push classifies external release follow-ups over `origin/main..HEAD`. Carry reported
+  architecture, scan, open-source/license, and final-artifact actions into the authorized release
+  record. A green repository pipeline does not complete those operator actions.
 - For page title, navigation, or deploy-path changes, run `BUILD_PAGES_LANGS=0 scripts/build/build_pages.sh` before calling the MR ready.
-- For Studio, runnable-cell, browser-runtime, or OpenClaw changes, also run the browser/runtime harness named in `AGENT_QUICKSTART.md` and the relevant `scripts/validation/*_audit.py` file.
+- For Studio, runnable-cell, browser-runtime, or OpenClaw changes, also run the harness named in `lab_runtime_testing.md` and the relevant `scripts/validation/*_audit.py` file.
 - For learner-facing code or lab-flow changes, run `learner_flow_audit.py`, its mutation self-test, and `learner_flow_runtime_audit.py` against source and built Pages output. A closure claim needs evidence for disclosure, prerequisite readiness, Run/Stop/Reset, error recovery, and viewport stability; a screenshot of one happy state is insufficient.
 - For branch staging, require a passing blocking `test` job, confirm the Pages job SHA matches the live branch head, and probe the deployed course plus both branch manifests. Only paths present in the current classic-Pages artifact may appear in the foyer selector.
 - For a stateful browser bug, test the whole lifecycle: enter the state, leave it through a successful sibling result, leave it through an error, remount the component, then reload or navigate. Run that matrix against both source and built Pages output.
@@ -78,12 +95,10 @@ service-document edit hazard lives in
 
 ## Visual changes
 
-- Before touching a course image, SVG, diagram, or figure placement, read `web/nemoclaw/assets/SKILL.html` and classify the asset as a theme-aware course/provided SVG or a fixed-white conversion.
-- Non-conversion SVGs mount with `fig-embed` / `data-svg-src`; fixed-white conversions use `img` only when provenance marks `connection: "conversion"`.
-- Preserve meaningful diagram labels. Remove caption-like prose, contributor/process shorthand, and provenance from learner-facing SVG content; keep captions in page `figcaption` and provenance in `assets/SKILL.html`.
-- Preview the rendered result in the active agent harness and show the requester the screenshot, crop, or exact preview artifact path. Verify light and dark theme output when the figure can theme-switch.
-- At narrow width, inspect the inline overview and activate the figure lightbox. Labels must remain readable in the enlarged state, horizontal panning must work, and close/Escape controls must remain reachable.
-- Run `python3 scripts/validation/figure_audit.py`, `python3 scripts/compliance/source_gate.py`, and `python3 scripts/validation/validate_bundle.py --no-write --scope ship` before calling visual work ready.
+- `web/nemoclaw/assets/SKILL.html` owns mount, provenance, label, theme, lightbox,
+  and rendered-preview rules. Read it before changing an asset or its placement.
+- Run `figure_audit.py`, `source_gate.py`, and the ship bundle gate. Show the requester
+  the rendered result or name the exact harness blocker.
 
 ## Safe auth and metadata updates
 
@@ -96,3 +111,6 @@ service-document edit hazard lives in
 - Read the current diff before editing. Preserve user changes in touched files.
 - Use repo-native tools from WSL for WSL worktrees. Do not use PowerShell `Set-Content` against WSL files.
 - If `apply_patch` is unavailable, a short repo-local rewrite script is acceptable, but inspect `git diff` immediately after it runs.
+- Never commit a contributor home, mounted drive, cache, tool-runtime, or absolute local file URI.
+  Use repository-relative paths, environment variables, or `scripts/runtime/` discovery helpers, then run
+  `python3 scripts/validation/local_path_leak_audit.py --self-test` and the audit itself.

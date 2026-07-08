@@ -6,9 +6,9 @@
 <title>Fluxos de trabalho · Segurança de agentes</title>
 <link rel="stylesheet" href="styles/_style.css"/>
 <script src="vendor/highlight-11.10.0.min.js"></script>
-<link rel="stylesheet" href="vendor/codemirror-5.65.16.min.css"/>
-<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.16.min.css"/>
-<script src="vendor/codemirror-5.65.16.min.js"></script>
+<link rel="stylesheet" href="vendor/codemirror-5.65.21.min.css"/>
+<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.min.css"/>
+<script src="vendor/codemirror-5.65.21.min.js"></script>
 <style>
   .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
   .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
@@ -40,7 +40,7 @@
 
   <div class="hero">
     <div class="eyebrow">Módulo 2 · Parte A de 3</div>
-    <h1>O <span>fluxo de trabalho</span> do agente</h1>
+    <h1>O <span>Worflow</span> do Agente</h1>
     <p class="lead">
  Um único ciclo ReAct lida com a maioria das tarefas pontuais, mas problemas mais difíceis às vezes precisam
  de uma estrutura que organize o trabalho antes que chegue o próximo resultado de ferramenta. Um <strong>agente de workflow</strong>
@@ -344,8 +344,10 @@ mountCanvasFlow("#cell-m2a-rewoo", {
     {
       id: "goal", icon: "🎯", title: "Objetivo de pesquisa", x: 0, y: 0,
       summary: "O objetivo de pesquisa que impulsiona toda a pipeline. Edite-o e reexecute para ver como o planejador gera um conjunto diferente de consultas e o sintetizador produz um resumo diferente.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Mude o objetivo e observe o planejador reescrever as consultas.
 state.goal = "How do retrieval-augmented generation, vector databases, and AI agents fit together?";
+// state.goal = "How do evaluation methods differ for retrieval and generation?";
+// state.goal = "When should an agent use a tool instead of answer directly?";
 return state.goal;
 `,
     },
@@ -485,8 +487,10 @@ mountCanvasFlow("#cell-m2a-triage", {
     {
       id: "ticket", icon: "👤", title: "Ticket do usuário", x: 0, y: 0,
       summary: "O ticket de suporte que o agente de triagem irá classificar. Edite-o para tentar diferentes tipos de problemas e observe o roteador escolher um especialista diferente cada vez.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Experimente um ticket de cobrança ou acesso e observe a mudança da rota.
 state.ticket = "My laptop won't connect to the VPN. I've tried restarting and re-installing the client.";
+// state.ticket = "I was charged twice for the same subscription this month.";
+// state.ticket = "My account is locked after I changed phones.";
 return state.ticket;
 `,
     },
@@ -584,8 +588,10 @@ mountCanvasFlow("#cell-m2a-parallel", {
     {
       id: "topic", icon: "👤", title: "Tópico", x: 0, y: 0,
       summary: "A pergunta que os três especialistas receberão. Como cada especialista lê a mesma entrada, você pode comparar suas saídas diretamente e ver como o prompt do sistema sozinho molda a resposta.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Faça outra pergunta e compare como cada especialista a apresenta.
 state.topic = "Why does the transformer architecture need positional encoding?";
+// state.topic = "When is retrieval more useful than fine-tuning?";
+// state.topic = "How should an agent decide whether to call a tool?";
 return state.topic;
 `,
     },
@@ -724,8 +730,10 @@ return { specialists: [state.arithmetician.role, state.translator.role] };
     {
       id: "run", icon: "🚀", title: "Executar ambos na mesma entrada", x: 0, y: 2,
       summary: "Envia a mesma entrada para ambos os especialistas concorrentemente e renderiza suas respostas lado a lado. O corpo da fábrica é idêntico para ambos, então qualquer divergência nas duas respostas remonta aos seus prompts do sistema, e a visualização lado a lado permite que você detecte essa divergência de um só olhar.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Proponha outra tarefa que combine tradução e aritmética.
 state.input = "Translate 'thirty-seven times eleven' and then evaluate the arithmetic.";
+// state.input = "Translate 'the square root of one hundred forty-four' and solve it.";
+// state.input = "Evaluate twenty-five times sixteen, then translate the result into French.";
 helpers.log("entrada:", state.input);
 
 const [arithRes, transRes] = await Promise.all([
