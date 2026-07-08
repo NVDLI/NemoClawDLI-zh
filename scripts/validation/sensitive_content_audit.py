@@ -312,7 +312,7 @@ def audit_commit_range(commit_range: str, root: Path = ROOT, policy: Policy | No
     return sorted(findings, key=lambda item: (item.path, item.line, item.kind)), len(commits)
 
 
-def self_test() -> tuple[int, int, list[str]]:
+def self_test() -> list[str]:
     policy = load_policy()
     examples = (
         ("year and serial", "C" + "VE-2026-12345", True),
@@ -394,8 +394,7 @@ def self_test() -> tuple[int, int, list[str]]:
         rows, scanned = audit(archive, policy, workers=1)
         if scanned != 1 or not any(item.path == "source.txt" for item in rows):
             failures.append("source-archive discovery: source content was not scanned exactly once")
-    total = len(examples) + 3
-    return total - len(failures), total, failures
+    return failures
 
 
 def emit(findings: list[Finding], label: str, scanned: int, report: str | None) -> int:
@@ -431,8 +430,8 @@ def main() -> int:
     try:
         policy = load_policy()
         if args.self_test:
-            passed, total, failures = self_test()
-            print(f"sensitive content self-test: {passed}/{total} passed")
+            failures = self_test()
+            print("sensitive content self-test: " + ("FAIL" if failures else "PASS"))
             for failure in failures:
                 print("  FAIL " + failure)
             return 1 if failures else 0

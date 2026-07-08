@@ -129,8 +129,8 @@ REQUIRED_TOKENS = {
         "canonical public GitHub",
     ),
     "scripts/validation/release_gate.py": (
-        'py("scripts/validation/threat_control_audit.py", "--self-test")',
-        'py("scripts/validation/repository_sync_audit.py", "--self-test")',
+        'unit_test("threat_control_audit")',
+        'unit_test("repository_sync_audit")',
     ),
     "scripts/validation/validate_bundle.py": (
         "import threat_control_audit as tca",
@@ -389,7 +389,7 @@ def audit(*, text_overrides: dict[str, str] | None = None) -> list[dict[str, str
     return findings
 
 
-def self_test() -> tuple[int, int, list[str]]:
+def self_test() -> list[str]:
     baseline = audit()
     if baseline:
         failures = [
@@ -544,15 +544,12 @@ def self_test() -> tuple[int, int, list[str]]:
         {DISPOSITION: disposition + "\nStatus: mitigated\n"},
         "false-mitigation",
     ))
-    passed = 0
     failures: list[str] = []
     for label, overrides, expected in tests:
         codes = {item["code"] for item in audit(text_overrides=overrides)}
-        if expected in codes:
-            passed += 1
-        else:
+        if expected not in codes:
             failures.append(f"mutation escaped: {label}; got {sorted(codes)}")
-    return passed, len(tests), failures
+    return failures
 
 
 def main() -> int:
@@ -560,8 +557,8 @@ def main() -> int:
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
-        passed, total, failures = self_test()
-        print(f"threat control self-test: {passed}/{total} mutation detectors passed")
+        failures = self_test()
+        print("threat control self-test: " + ("FAIL" if failures else "PASS"))
         for failure in failures:
             print("  " + failure)
         return 1 if failures else 0

@@ -38,20 +38,20 @@ Runtime checks live in [`lab_runtime_testing.md`](lab_runtime_testing.md).
   belong in CI artifacts so a human can inspect the exact boundary that passed.
 - For deployment topology, browser proxy, service, storage, privilege, authentication, secret-flow,
   or release-pipeline changes, update `docs/security-architecture.json`, regenerate its SVG, and run
-  `python3 scripts/validation/security_architecture_audit.py --self-test` plus the audit. Production
+  `python3 -m unittest -v tests/validation/test_embedded_validator_suites.py` plus the audit. Production
   nodes remain source-backed; local-only Compose services and volumes remain explicitly classified.
 - For product scope, data handling, cryptography inventory, release evidence, or lifecycle test-plan
   changes, update `docs/product-design.md`, `docs/release-test-plan.md`, and
-  `docs/release-evidence.json` together. Run `python3 scripts/validation/release_evidence_audit.py
-  --self-test` and then `python3 scripts/validation/release_evidence_audit.py`. Keep internal ticket
+  `docs/release-evidence.json` together. Run `python3 -m unittest discover -v -s tests/validation`
+  and then `python3 scripts/validation/release_evidence_audit.py`. Keep internal ticket
   bodies, program identifiers, scanner details, reviewer records, and approval links outside the repo.
 - For public repository policy or work-product changes, update the applicability matrix in
-  `docs/release-evidence.json`. Run `python3 scripts/validation/repository_work_products_audit.py --self-test`
+  `docs/release-evidence.json`. Run `python3 -m unittest discover -v -s tests/validation`
   and then `python3 scripts/validation/repository_work_products_audit.py`. Treat a
   required file, unresolved evidence path, or validator-wiring finding as a release blocker.
 - For a new threat or security requirement, update `docs/security-control-disposition.md` and its
-  actual enforcement surface together. Run `python3 scripts/validation/threat_control_audit.py
-  --self-test` and then `python3 scripts/validation/threat_control_audit.py`. Do not translate a
+  actual enforcement surface together. Run `python3 -m unittest discover -v -s tests/validation`
+  and then `python3 scripts/validation/threat_control_audit.py`. Do not translate a
   host or provider requirement into a false client-side mitigation.
 
 ## Course title, abstract, and objectives
@@ -71,6 +71,9 @@ Runtime checks live in [`lab_runtime_testing.md`](lab_runtime_testing.md).
 ## Validation ladder
 
 - Always run `git diff --check`.
+- Run validator fixtures through `python3 -m unittest -v tests/validation`. Framework discovery
+  owns test accounting and failure rendering. Do not print hand-maintained fractions, literal
+  mutation totals, or fixed totals minus a failure count from validator code.
 - Treat `docs/validation/latest.md` and `latest.json` as the current finding inventory.
   Do not maintain a second snapshot of counts or affected files in prose.
 - Fix the learner or operator problem. Do not hide a surface, add decorative structure,
@@ -113,4 +116,4 @@ Runtime checks live in [`lab_runtime_testing.md`](lab_runtime_testing.md).
 - If `apply_patch` is unavailable, a short repo-local rewrite script is acceptable, but inspect `git diff` immediately after it runs.
 - Never commit a contributor home, mounted drive, cache, tool-runtime, or absolute local file URI.
   Use repository-relative paths, environment variables, or `scripts/runtime/` discovery helpers, then run
-  `python3 scripts/validation/local_path_leak_audit.py --self-test` and the audit itself.
+  `python3 -m unittest discover -v -s tests/validation` and the local-path audit itself.

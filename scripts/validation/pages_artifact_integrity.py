@@ -491,8 +491,7 @@ def main() -> int:
     args = parser.parse_args()
     if args.self_test:
         failures = self_test()
-        total = 14
-        print(f"Pages artifact integrity self-test: {total - len(failures)}/{total} passed")
+        print("Pages artifact integrity self-test: " + ("FAIL" if failures else "PASS"))
         for finding in failures:
             print("  " + finding)
         return 1 if failures else 0

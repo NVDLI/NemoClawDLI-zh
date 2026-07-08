@@ -249,7 +249,7 @@ function selfTest() {
   for (const [label, overrides] of mutations) {
     if (!audit(overrides).length) failures.push(`missed ${label} mutation`);
   }
-  return { passed: mutations.length - failures.length, total: mutations.length, failures };
+  return failures;
 }
 
 async function runtimeTextBehaviorFindings(source) {
@@ -276,13 +276,11 @@ async function runtimeTextBehaviorFindings(source) {
 }
 
 if (process.argv.includes('--self-test')) {
-  const result = selfTest();
-  result.total += 5;
-  result.failures.push(...await runtimeTextBehaviorFindings(readAll().runtimeText));
-  result.passed = result.total - result.failures.length;
-  console.log(`gateway token self-test: ${result.passed}/${result.total} passed`);
-  for (const failure of result.failures) console.error(`  FAIL ${failure}`);
-  process.exit(result.failures.length ? 1 : 0);
+  const failures = selfTest();
+  failures.push(...await runtimeTextBehaviorFindings(readAll().runtimeText));
+  console.log(`gateway token self-test: ${failures.length ? 'FAIL' : 'PASS'}`);
+  for (const failure of failures) console.error(`  FAIL ${failure}`);
+  process.exit(failures.length ? 1 : 0);
 }
 
 const findings = [...audit(), ...await runtimeTextBehaviorFindings(readAll().runtimeText)];
