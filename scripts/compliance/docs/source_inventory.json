@@ -33,6 +33,12 @@
       "disposition": "required root license"
     },
     {
+      "path": "THIRD_PARTY_LICENSES.md",
+      "kind": "third-party-inventory",
+      "license": "mixed-per-entry",
+      "disposition": "static dependency, license-identifier, container-boundary, and material-provenance list"
+    },
+    {
       "path": "CONTRIBUTING.md",
       "kind": "contribution_terms",
       "license": "Apache-2.0",

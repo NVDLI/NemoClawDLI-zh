@@ -23,8 +23,8 @@ agent contract.
    Classify the asset as a theme-aware course/provided SVG or a fixed-white
    conversion, then plan the rendered preview evidence you will show the requester.
 
-This file carries repo-level rules. The nearest `skill-meta` block carries the working
-contract for the directory in front of you.
+This file carries repo-level rules. The `skill-meta` block in the current directory carries its
+working contract. Every source directory has one; parent coverage is never a substitute.
 
 Route operational detail to its owner instead of copying it here:
 

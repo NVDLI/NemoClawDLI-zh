@@ -556,6 +556,13 @@ def audit_repo(
         out.append(finding("gitlab-pages-material-install", ".gitlab-ci.yml",
                            "Pages lacks material tooling needed by protected-root bundle validation",
                            "enable the locked material environment for every Pages build, including previews"))
+    preview_fetch = 'git fetch origin "+refs/heads/$branch:refs/remotes/origin/$branch" --quiet'
+    if (gitlab.count(preview_fetch) != 1
+            or gitlab.count('refresh_branch_ref "$preview_ref"') != 2
+            or re.search(rf"{re.escape(preview_fetch)}[^\n]*\|\|\s*true", gitlab)):
+        out.append(finding("gitlab-preview-ref-fetch", ".gitlab-ci.yml",
+                           "Pages preview source-ref refresh is missing, ambiguous, or fail-open",
+                           "fetch the exact preview branch twice with one fail-closed helper before comparing or publishing its SHA"))
     require(gitlab, "release_gate.py --tier ship", ".gitlab-ci.yml",
             "gitlab-safety-selftest", out, "run detector mutations in GitLab CI")
     require(gitlab, 'GATE_ARGS+=(--changed-since "$GATE_BASE")', ".gitlab-ci.yml",
@@ -955,6 +962,7 @@ def self_test() -> list[str]:
             ("gitlab-script-retry", ".gitlab-ci.yml", "runner_system_failure", "script_failure"),
             ("gitlab-material-install", ".gitlab-ci.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),
             ("gitlab-pages-material-install", ".gitlab-ci.yml", '  variables:\n    MATERIAL_TOOLS_REQUIRED: "1"\n  needs: ["test"]', '  variables:\n    MATERIAL_TOOLS_REQUIRED: "0"\n  needs: ["test"]'),
+            ("gitlab-preview-ref-fetch", ".gitlab-ci.yml", 'git fetch origin "+refs/heads/$branch:refs/remotes/origin/$branch" --quiet', 'git fetch origin "+refs/heads/$branch:refs/remotes/origin/$branch" --quiet || true'),
             ("gitlab-transient-material-policy", ".gitlab-ci.yml", "pull_materials.py --check --allow-transient-unreachable", "pull_materials.py --check --strict-unreachable"),
             ("gitlab-scheduled-material-policy", ".gitlab-ci.yml", "pull_materials.py --check --fetch-attempts", "pull_materials.py --check --allow-transient-unreachable --fetch-attempts"),
             ("gitlab-complete-history", ".gitlab-ci.yml", 'GIT_DEPTH: "0"', 'GIT_DEPTH: "20"'),

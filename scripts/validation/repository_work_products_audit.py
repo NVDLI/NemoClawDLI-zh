@@ -23,6 +23,7 @@ EXPECTED_LEVELS = {
     "maintainer-plan": "required",
     "readme": "show-stopper",
     "license": "show-stopper",
+    "third-party-inventory": "required",
     "contributing": "required",
     "security-policy": "show-stopper",
     "coding-guideline": "contextual",
@@ -40,6 +41,7 @@ EXPECTED_LEVELS = {
 REQUIRED_REPOSITORY_FILES = {
     "README.md",
     "LICENSE",
+    "THIRD_PARTY_LICENSES.md",
     "SECURITY.md",
     "CONTRIBUTING.md",
     "DCO.md",
@@ -263,6 +265,7 @@ def audit_contract(
 
     readme = text("README.md")
     for token in ("](CHANGELOG.md)", "](docs/release_playbook.md)", "](SECURITY.md)",
+                     "](THIRD_PARTY_LICENSES.md)",
                      "](CONTRIBUTING.md)", "](CODE_OF_CONDUCT.md)"):
         if token not in readme:
             out.append(finding(
@@ -341,12 +344,15 @@ def self_test() -> tuple[int, int, list[str]]:
     base = load_contract()
     baseline = audit_contract(base)
     if baseline:
-        return 0, 33, [f"baseline is not clean: {row['code']} {row['path']} {row['detail']}" for row in baseline]
+        return 0, 0, [f"baseline is not clean: {row['code']} {row['path']} {row['detail']}" for row in baseline]
 
     tests: list[tuple[str, dict, dict[str, str], set[str], set[str], str]] = []
 
     def mutated() -> dict:
         return copy.deepcopy(base)
+
+    def product(data: dict, product_id: str) -> dict:
+        return next(row for row in data["repository_work_products"] if row["id"] == product_id)
 
     def add(name: str, data: dict, expected: str, *, overrides: dict[str, str] | None = None,
             missing: set[str] | None = None, present: set[str] | None = None) -> None:
@@ -361,21 +367,21 @@ def self_test() -> tuple[int, int, list[str]]:
     add("duplicate work product", value, "work-product-duplicate")
     value = mutated(); value["repository_work_products"].append({"id": "unreviewed", "requirement": "optional", "status": "not-selected", "paths": []})
     add("unrecognized work product", value, "work-product-unrecognized")
-    value = mutated(); value["repository_work_products"][0]["requirement"] = "optional"
+    value = mutated(); product(value, "maintainer-plan")["requirement"] = "optional"
     add("requirement drift", value, "work-product-level")
-    value = mutated(); value["repository_work_products"][1]["status"] = "not-selected"
+    value = mutated(); product(value, "readme")["status"] = "not-selected"
     add("show stopper status", value, "work-product-status")
-    value = mutated(); value["repository_work_products"][5]["status"] = "not-selected"
+    value = mutated(); product(value, "coding-guideline")["status"] = "not-selected"
     add("coding applicability", value, "work-product-status")
-    value = mutated(); value["repository_work_products"][8].pop("rationale")
+    value = mutated(); product(value, "contributor-license-agreement").pop("rationale")
     add("CLA rationale", value, "work-product-applicability")
-    value = mutated(); value["repository_work_products"][9]["status"] = "unknown"
+    value = mutated(); product(value, "citation")["status"] = "unknown"
     add("optional status", value, "work-product-status")
-    value = mutated(); value["repository_work_products"][0]["paths"] = []
+    value = mutated(); product(value, "maintainer-plan")["paths"] = []
     add("satisfied without paths", value, "work-product-paths")
-    value = mutated(); value["repository_work_products"][9]["paths"] = ["CITATION.cff"]
+    value = mutated(); product(value, "citation")["paths"] = ["CITATION.cff"]
     add("unselected with paths", value, "work-product-paths")
-    value = mutated(); value["repository_work_products"][0]["paths"] = ["docs/missing-plan.md"]
+    value = mutated(); product(value, "maintainer-plan")["paths"] = ["docs/missing-plan.md"]
     add("broken evidence path", value, "work-product-path")
     add("CLA presence drift", mutated(), "work-product-presence-drift", present={"CLA.md"})
     add("citation presence drift", mutated(), "work-product-presence-drift", present={"CITATION.cff"})

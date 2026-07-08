@@ -73,6 +73,8 @@ WEB_SUPPORT = {
     "styles":  ("course styles", "Shared course CSS plus the light iframe/export overlay."),
     "assets":  ("image provenance", "Source, license, connection level, theme mode, mount style, and visual-preview duty for every image."),
     "mats":    ("material provenance", "Source and connection level for every companion essay."),
+    "standalone": ("standalone export", "Standalone-export source and fixed assets generated from the canonical course."),
+    "vendor": ("browser vendor", "Pinned same-origin browser packages, metadata, SBOM, and license texts."),
 }
 SURFACE_LEAD = {
     "cpu": "Local development and compatibility services. The production course is static and "
@@ -113,8 +115,9 @@ TENETS = {
         "Content is organized by execution surface: web/ holds browser-only courses and course-scoped "
         "reference packets; cpu/ holds shared microservices; deploy/ holds compose and nginx; "
         "future spark/ or gpu surfaces must state their compute contract before use.",
-        "The brain is each directory's SKILL.html skill-meta JSON, not a SKILL.md. Parse it "
-        "first, then walk children: task to surface to course to content. Visual work must also "
+        "The brain is each source directory's SKILL.html skill-meta JSON, not a SKILL.md. Git-tracked "
+        "and proposed files define the exhaustive directory set, with no opt-outs. Parse the current "
+        "directory first, then walk children: task to surface to course to content. Visual work must also "
         "read the asset provenance beacon and validation beacon before edits.",
         "One link engine (scripts/runtime/engine.js) is the single source for resolution, crawl, "
         "reachability, and the release contract; it runs headless and in-browser, with no "
@@ -283,7 +286,7 @@ def gen_task():
     # Source explorers and topology tools are discovered from disk.
     import re as _re
     explorers = []
-    for d in sorted(p for p in TASK1.iterdir() if p.is_dir() and not p.name.startswith(".")):
+    for d in sorted(p for p in TASK1.iterdir() if p.is_dir()):
         sk = d / "SKILL.html"
         if d.name in SURFACES or not sk.is_file():
             continue
@@ -435,6 +438,7 @@ def gen_web_course_hubs():
         support_files = [p for p in support_files if p.is_file()]
         implementation = [p for p in support_files if p.parent.name in {"scripts", "styles"}]
         provenance = [p for p in support_files if p.parent.name in {"assets", "mats"}]
+        distribution = [p for p in support_files if p.parent.name in {"standalone", "vendor"}]
         sections = [("Pages", None, [(p.stem, p.relative_to(d).as_posix(), pd.get(p.stem, "")) for p in primary])]
         if subindex:
             sections.append(("Collections", "Sub-collections with their own launcher; open one to "
@@ -457,6 +461,10 @@ def gen_web_course_hubs():
                              "and companion materials.",
                              [(WEB_SUPPORT[p.parent.name][0], p.relative_to(d).as_posix(), WEB_SUPPORT[p.parent.name][1])
                               for p in provenance]))
+        if distribution:
+            sections.append(("Distribution", "Standalone and same-origin dependency surfaces shipped with the course.",
+                             [(WEB_SUPPORT[p.parent.name][0], p.relative_to(d).as_posix(), WEB_SUPPORT[p.parent.name][1])
+                              for p in distribution]))
         meta = {"node_type": "hub", "level": "course", "surface": "web", "course": d.name,
                 "self_path": f"web/{d.name}/SKILL.html",
                 "children": [{"name": _label(p), "path": p.relative_to(TASK1).as_posix()} for p in pages]

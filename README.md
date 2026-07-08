@@ -119,11 +119,13 @@ are not the production course topology. Bring-up and browser-test commands live 
 
 ## Agent Visor
 
-The repo is intentionally agent-readable. Every agent-addressable directory carries a
+The repo is intentionally agent-readable. Every source directory carries a
 `SKILL.html` with a `skill-meta` JSON block. The root [`SKILL.html`](SKILL.html) is the
 ontology beacon for the bundle. It points to execution surfaces, deployment, tooling,
 and process docs. Agents should read [`AGENTS.md`](AGENTS.md), then the relevant
-`SKILL.html` before changing files.
+`SKILL.html` before changing files. The source-directory set is discovered exhaustively from
+tracked and proposed files; there is no beacon opt-out for locale, vendor, data, workflow, or
+runtime-seed directories.
 
 ## Ideas are easy; code is gated
 
@@ -236,4 +238,7 @@ and [`scripts/compliance/docs/open_source_readiness.md`](scripts/compliance/docs
 
 The proposed external release uses the [Apache License 2.0](LICENSE). Contributions use the same
 inbound license plus [Developer Certificate of Origin](DCO.md) signoff; this Apache-2.0 project does
-not require a separate CLA.
+not require a separate CLA. The static
+[third-party software and material inventory](THIRD_PARTY_LICENSES.md) lists package versions,
+SPDX license expressions, checked-in browser license texts, container-SBOM boundaries, and sourced
+course-material relationships.

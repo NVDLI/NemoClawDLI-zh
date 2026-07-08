@@ -48,6 +48,8 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/validation/threat_control_audit.py", "--self-test"),
     py("scripts/validation/repository_sync_audit.py", "--self-test"),
     py("scripts/skills/skill_consistency.py"),
+    py("scripts/skills/gen_directory_beacons.py", "--check"),
+    py("scripts/skills/test_skill_contract.py"),
     py("scripts/skills/skill_contract.py"),
     py("scripts/build/project_docs_explorer.py", "--self-test"),
     py("scripts/build/project_docs_explorer.py", "--audit"),
@@ -55,6 +57,8 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/validation/endpoint_registration_audit.py"),
     ("bash", "scripts/runtime/run_node.sh", "scripts/validation/openclaw_connection_audit.mjs"),
     py("scripts/compliance/source_gate.py"),
+    py("scripts/compliance/third_party_inventory_audit.py"),
+    py("scripts/compliance/render_sbom_license_inventory.py", "--self-test"),
     py("scripts/validation/tenets.py", "--check"),
     py("scripts/runtime/module_check.py", "--dir", "web/nemoclaw"),
     py("scripts/runtime/module_check.py", "--dir", "web"),
@@ -79,6 +83,8 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/validation/threat_control_audit.py", "--self-test"),
     py("scripts/validation/repository_sync_audit.py", "--self-test"),
     py("scripts/skills/skill_consistency.py"),
+    py("scripts/skills/gen_directory_beacons.py", "--check"),
+    py("scripts/skills/test_skill_contract.py"),
     py("scripts/skills/skill_contract.py"),
     py("scripts/validation/ci_storage_audit.py"),
     py("scripts/validation/branch_preview_manifest_audit.py", "--self-test"),
@@ -108,6 +114,9 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/validation/endpoint_registration_audit.py"),
     ("bash", "scripts/runtime/run_node.sh", "scripts/validation/openclaw_connection_audit.mjs"),
     py("scripts/compliance/source_gate.py"),
+    py("scripts/compliance/third_party_inventory_audit.py", "--self-test"),
+    py("scripts/compliance/third_party_inventory_audit.py"),
+    py("scripts/compliance/render_sbom_license_inventory.py", "--self-test"),
     py("scripts/validation/course_dependency_integrity.py", "--self-test"),
     py("scripts/validation/cell_audit.py", "--self-test"),
     py("scripts/security/audit_python_dependencies.py"),
@@ -128,6 +137,17 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
 # Proposal runs may skip a mutation suite only when none of its implementation or contract
 # inputs changed. Full release runs omit --changed-since and execute every suite.
 MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
+    py("scripts/compliance/third_party_inventory_audit.py", "--self-test"): (
+        "THIRD_PARTY_LICENSES.md", "scripts/compliance/third_party_inventory_audit.py",
+        "scripts/browser-vendor/package-lock.json", "web/nemoclaw/vendor/*",
+        "workspace/requirements*", "scripts/materials/requirements*",
+        "scripts/security/requirements*", "cpu/services/*", "web/nemoclaw/assets/SKILL.html",
+        "web/nemoclaw/mats/SKILL.html", "scripts/build/build_pages.sh",
+    ),
+    py("scripts/compliance/render_sbom_license_inventory.py", "--self-test"): (
+        "THIRD_PARTY_LICENSES.md", "scripts/compliance/render_sbom_license_inventory.py",
+        "scripts/compliance/third_party_inventory_audit.py",
+    ),
     py("scripts/build/build_security_review_package.py", "--self-test"): (
         "scripts/build/build_security_review_package.py", "docs/product-design.md",
         "docs/security-design.md", "docs/security-control-disposition.md", "docs/release-test-plan.md",

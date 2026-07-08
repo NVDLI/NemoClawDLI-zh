@@ -1,108 +1,97 @@
 # Security control disposition
 
-This record classifies security requirements raised during architecture review without copying
-private review identifiers or treating generated recommendations as automatically applicable. It
-supplements [`security-design.md`](security-design.md) and the executable evidence map in
-[`release-test-plan.md`](release-test-plan.md).
+This is the short human view of the canonical aggregate register in
+[`security-control-themes.json`](security-control-themes.json). The generated review design embeds
+the full register so exported reviewers do not need repository links. Private findings remain in the
+authorized review system. Scope and trust-boundary detail remains in the
+[`security design`](security-design.md).
 
 ## Status vocabulary
 
-- **Verified** means a repository file or deterministic command supplies the stated evidence.
-- **Not verified** means the control is absent, incomplete, or cannot yet be demonstrated.
-- **Unknown** means the responsible service or host has not supplied reviewable evidence.
-- **Human approval required** means an accountable host, service, release, or security owner must
-  decide and record the result outside this public repository.
-- **Not applicable** means the recommendation does not match the product boundary or cannot be
-  implemented by a browser application. The rationale is part of the disposition.
+- **Verified:** repository evidence proves the control.
+- **Partially verified:** repository evidence covers only part of the boundary.
+- **External evidence required:** an operator must prove the live control.
+- **Architecture decision required:** mitigation would change the static-client design.
+- **Human review required:** an accountable reviewer must reconcile evidence and status.
+- **Not applicable:** the control cannot meet the stated objective in this product boundary.
 
-Repository evidence does not grant Legal, OSRB, Export, Privacy, Product Security, SCM, host, or
-release approval.
+Current status and evidence take precedence over future work. A future candidate is not
+implemented and cannot support a Mitigated status. An external control without current operator
+evidence remains Not Mitigated; contradictions resolve to the conservative status.
+
+Repository evidence does not grant Legal, open-source, Export, Privacy, Product Security, source-host,
+host, service, or release approval.
 
 ## Review synthesis
 
-Generated threat reports are advisory inputs. Their risk labels and requirement statuses can
-conflict with the source-backed design or assign a provider control to browser code. Private review
-rows are intentionally reconciled into control themes rather than versioned one-to-one in the public
-repository. The authorized reviewer records any row-level correction in the private review system.
+Generated assessments can misclassify recommendations as current controls or expand the course
+boundary. Correct scope, evidence, ownership, and status before accepting their risk output.
 
-| Control theme | State | Evidence and disposition | Owner or next action |
-|---|---|---|---|
-| Reviewed source through deployed bytes | Verified | Required CI rejects unexpected executable references, records a complete SHA-256 inventory, preserves one reviewed artifact through deployment, and compares the live tree with that inventory. | Keep the build, extraction, deployment, and live-byte checks bound to the same commit and artifact. |
-| Cryptographic artifact attestation | Not verified | The inventory detects substitution across the trusted handoff, but it is not a signature and does not supply non-falsifiable provenance. | Release and Product Security owners decide whether an approved signing identity and verification step are required. |
-| Encrypted traffic metadata and learning-path inference | Not applicable | The course is a public static site. Padding every response, merging all modules, or prefetching the complete course would add cost and degrade accessibility without hiding DNS, SNI, timing, or host access metadata from a network observer. | Static-host and learner-network operators own metadata privacy. Course modules remain cacheable and independently navigable. |
-| Browser-readable bearer credentials and proof-of-possession redesign | Human approval required | Direct browser calls require JavaScript-readable credentials. HttpOnly cookies would require a same-origin credential broker, and proof-of-possession requires issuer and model-service support. Either change alters the static-client architecture. | Hosting, credential-issuer, model-service, Privacy, and Product Security owners decide whether to accept the documented browser boundary or approve a brokered design. |
-| Compromised browser execution context | Not applicable | Course JavaScript cannot keep a credential or prompt confidential from a malicious extension, endpoint compromise, or successful script execution in the same origin. | Endpoint administration owns browser compromise. Repository controls reduce injection opportunities and provide explicit save and clear actions. |
-| Relay request validation and service-side tool authorization | Unknown | The repository constrains destinations and credential routing, but it cannot prove a deployed relay's schema, body and frame bounds, identity quotas, or a model or runtime service's command authorization. | Relay, model-service, launchable, and runtime owners provide live deployment evidence. |
-| Generated assessment status reconciliation | Human approval required | A generated report can mark a control as absent even when the cited repository evidence is present, or mark an external control complete without operational evidence. | The authorized reviewer compares each aggregate theme with this disposition and corrects the private assessment before accepting its risk result. |
-| Threat-analysis input fidelity | Human approval required | The generated submission package fronts canonical scope, public-source, browser credential, CI privilege, artifact-integrity, and external-service invariants. A generated Target of Evaluation can still omit or contradict those facts and thereby change risk scores without a source or deployment change. | Before reviewing individual threats, the authorized reviewer compares the generated Target of Evaluation with the package invariants and corrects any drift in the private system. |
+Public evidence stays aggregated by control theme. Do not version private review rows one-to-one.
+
+| Theme | State | Why it remains open |
+|---|---|---|
+| Source and CI trust | Shared verification required | Repository workflows are reviewable; live identity, branch, bypass, and reviewer settings are host evidence. |
+| Build supply chain | Partially verified | Exact locks, inventories, SCA, and SBOM exist; hermetic or reproducible build assurance is a release-policy decision. |
+| Artifact integrity | Partially verified | Byte continuity is verified; cryptographic signature and provenance attestation are not verified. |
+| Static host and browser | Shared verification required | Static code checks are verified; response headers, WAF, cache policy, and availability are host controls. |
+| Browser-held credentials | Architecture decision required | JavaScript-readable credentials are inherent to direct browser calls; a broker or proof-of-possession changes other systems. |
+| Relay, model, launchable, and runtime | External evidence required | The repository tests client contracts but cannot attest deployed service authorization, isolation, quotas, or retention. |
+| Assessment fidelity | Human review required | Generated scope, ownership, and statuses must be reconciled with evidence. |
 
 ## Source and contribution controls
 
-| Concern | State | Evidence and disposition | Owner or next action |
-|---|---|---|---|
-| Encrypted Git transport and server identity | Human approval required | The playbook requires HTTPS or SSH with certificate or host-key verification. Network path and host configuration are not repository facts. | GitHub and GitLab administrators verify live transport and identity settings. |
-| Protected branches, tags, and review | Human approval required | Workflow files enforce required checks, DCO, read-only pull-request permissions, and protected deployment steps. Rulesets, bypass lists, and reviewer assignments remain host settings. | Host administrators verify rulesets and Rule Insights before publication. |
-| Untrusted contribution isolation | Verified | Pull-request jobs use read-only permissions, persist no checkout credential, receive no course secrets, and cannot deploy. | `contribution_safety_audit.py` prevents workflow drift. |
-| Git history and object exhaustion | Human approval required | CI jobs have explicit timeouts and hosted runners have bounded resources. A shallow clone is not universal because DCO and release ancestry checks require history. | Host administrators retain object-size limits; release workflows fetch only the history they require. |
-| Public and internal source synchronization | Verified | Public changes are detected by a scheduled, read-only fetch that executes only the trusted internal audit script. Differences stop the job and require an integration MR. No job force-pushes either protected branch. | Configure the weekly host schedule after the public repository is populated and review every reconciliation MR. |
-
-The selected public operating model for the NemoClaw DLI course repository is an NVIDIA-owned
-Full-OSS-Project intended as OSS Type I. After approved cutover, public GitHub is canonical for
-course-repository activity and internal GitLab is an integration and validation consumer. This
-classification does not apply to the NemoClaw product, launchable, runtime, or their release
-processes. The authoritative lifecycle record must confirm the course repository's Type I
-classification and the relationship between the public and internal course systems.
+- Verified: pull-request jobs are read-only, receive no deployment credentials, use immutable action
+  pins, and run required validation with timeouts.
+- Host evidence required: MFA, protected branches and tags, required reviewers, bypass restrictions,
+  commit-signature policy, and immutable audit history.
+- The intended OSS Type I classification applies only to the NemoClaw DLI course repository and its
+  static course artifacts. It does not classify or release the NemoClaw product, launchable,
+  runtime, relays, or services.
 
 ## Build and artifact controls
 
-| Concern | State | Evidence and disposition | Owner or next action |
-|---|---|---|---|
-| Mutable workflow or package dependencies | Verified | GitHub Actions use full commit SHAs. Python and browser dependencies use exact reviewed locks and inventories. | Dependency and contribution audits fail on mutable workflow pins or lock drift. |
-| Build resource exhaustion | Verified | Pages and release jobs have timeouts. The Pages tree and downloaded archive have maximum file count, per-file size, total size, depth, archive size, and expansion-ratio limits. | `pages_artifact_integrity.py --self-test` mutation-tests every bound. Host CPU, memory, disk, and egress quotas remain provider controls. |
-| Post-validation artifact substitution | Verified | CI creates one manifest-bearing Pages artifact. Deployment safely extracts that artifact, rechecks every byte, deploys it without rebuilding, then a read-only job compares the live site with the reviewed manifest. | The protected environment reviewer approves the artifact-producing commit; post-deploy mismatch fails CI. |
-| Unsafe archive extraction | Verified | Deployment rejects absolute paths, traversal, duplicate members, links, devices, unsupported member types, excessive depth, and resource-limit violations before materializing the tree. | Keep extraction inside `pages_artifact_integrity.py`; do not replace it with raw `tar -xf`. |
-| Cryptographic artifact signature and signed provenance | Not verified | SHA-256 inventories detect substitution when their trusted handoff is preserved, but a checksum is not a signature. No repository file proves a protected signing identity or artifact attestation. | Release and Product Security owners decide whether GitHub artifact attestations or another signing service is required before publication. |
-| Confidentiality of a public course artifact | Not applicable | Once published, HTML, JavaScript, CSS, documentation, endpoints intended for clients, and dependency metadata are public by design. Secret and private-location scanning remains required before publication. | Protect unreleased artifacts at the host and keep secrets out of every generated tree. |
+- Verified: exact dependency locks, dependency inventories, bounded artifacts, safe extraction,
+  complete SHA-256 inventory, single-artifact promotion, and post-deploy byte comparison.
+- Not verified: an approved signing identity and cryptographic provenance attestation.
+- Conditional next step: add a hermetic, reproducible builder and approved package mirror if release
+  policy requires stronger dependency-origin assurance.
 
 ## Static hosting and browser controls
 
-| Concern | State | Evidence and disposition | Owner or next action |
-|---|---|---|---|
-| Remote executable dependency injection | Verified | The published artifact rejects remote scripts, remote stylesheets, remote base URLs, unreviewed browser dependencies, and manifest drift. | Keep executable dependencies same-origin, vendored, pinned, inventoried, and scanned. |
-| Strict response-header CSP, immutable cache headers, and WAF rate limits | Not verified | GitHub Pages does not provide repository-controlled response headers or WAF policy. A meta policy cannot provide all response-header protections, and the interactive course currently contains reviewed inline code. | The hosting owner must accept the residual risk or place an approved CDN or host in front of the site and verify live headers. |
-| Same-origin Subresource Integrity | Not applicable | A same-origin hash in HTML is not an independent trust anchor if the HTML and asset can be replaced together. The reviewed whole-tree manifest plus post-deploy byte comparison covers that substitution boundary. | Retain package provenance and whole-artifact integrity instead of claiming redundant same-origin hashes solve host compromise. |
-| Browser certificate pinning | Not applicable | A static browser application cannot enforce independent certificate pinning for ordinary HTTPS or WSS requests. Browser and platform trust stores enforce certificate validation. | Hosting and relay owners maintain TLS, HSTS, certificate lifecycle, and approved enterprise interception policy. |
-| Malicious model output in the DOM | Verified | Model output is rendered as text or through the reviewed sanitizer and URL checks; it is not accepted as arbitrary executable markup. | Runtime browser audits retain the rendering and navigation boundary. |
-| Browser extensions and compromised learner devices | Not applicable | Course JavaScript cannot secure a browser execution context already controlled by an extension or endpoint attacker. | Learner endpoint policy and browser administration own this risk. The course warns that browser storage is not a vault. |
-| Client-side prompt complexity detection | Not applicable | A learner controls the browser and can bypass client checks. Heuristic detection of costly reasoning is unreliable. | Model and relay services enforce payload, token, concurrency, timeout, rate, and spend limits. Client limits may improve usability but are not a security boundary. |
+- Verified: no remote executable dependencies, reviewed URL policy, exact browser dependency
+  inventory, and safe model-output rendering.
+- Host evidence required: HTTPS and HSTS state, response-header CSP, immutable caching, WAF and
+  bandwidth limits, availability, and incident response.
+- Not applicable as independent controls: browser certificate pinning and same-origin Subresource
+  Integrity. Browser trust stores own certificate validation; replacing same-origin HTML and assets
+  together defeats an asset-only hash. Whole-artifact verification covers the repository boundary.
+- Endpoint compromise or a malicious browser extension can read browser-visible credentials and
+  content. Course code reduces injection opportunities but cannot make a compromised browser safe.
 
 ## Relay, model, launchable, and runtime controls
 
-| Concern | State | Evidence and disposition | Owner or next action |
-|---|---|---|---|
-| Relay schema, route, frame-size, and rate enforcement | Unknown | The course registers reviewed endpoints and sends route-specific credentials, but it cannot prove a separately deployed relay's runtime limits. | Relay owners provide deployment evidence for allowlists, schemas, body and frame limits, identity quotas, timeouts, and TLS. |
-| Short-lived and audience-scoped credentials | Unknown | The browser does not mint model, relay, Cloudflare, or gateway credentials. Learner-supplied keys can have provider-defined lifetimes. | Credential issuers document lifetime, audience, revocation, replay, and proof-of-possession decisions. |
-| Model instruction, authorization, and compute controls | Unknown | Client prompts and valid credentials are untrusted. Browser code cannot enforce server instruction hierarchy, tool authorization, fair scheduling, or tenant quotas. | Model-service owners provide server-side validation, authorization, safety, rate, token, timeout, and concurrency evidence. |
-| Launchable bootstrap and runtime isolation | Unknown | The repository documents expected TLS, launch authentication, sandbox policy, and allowlisted tool behavior. The live platform configuration is outside the static artifact. | Launchable and NemoClaw owners verify private listeners, configuration schema, safe deserialization, session quotas, sandbox policy, and credential binding. |
-| End-to-end encryption through a relay | Human approval required | A blind relay design changes protocol, observability, credential, and operational requirements. TLS to each reviewed endpoint is already required. | Architecture and service owners decide whether relay-readable payloads are acceptable or a protocol change is warranted. |
+These systems are external dependencies. Their owners must prove, as applicable:
+
+- destination, method, schema, body, frame, deserialization, and object-authorization enforcement;
+- credential lifetime, audience, revocation, replay, binding, and mTLS decisions;
+- request, token, concurrency, connection, compute, storage, spend, and egress quotas;
+- instruction and tool authorization, tenant and sandbox isolation, logging, retention, alerting,
+  patching, recovery, and incident response.
+
+The course repository can test route selection and client behavior. It cannot convert missing live
+service evidence into a mitigation.
 
 ## Publication blockers and retained risks
 
-Before public publication, repository-owned checks must pass on the exact source and Pages artifact.
-The authorized review record must separately resolve the following items:
+Before publication, authorized owners must resolve:
 
-1. Live GitHub rulesets, protected environments, security features, bypass lists, and immutable
-   release settings.
-2. The weekly external-to-internal integration schedule and its named reconciliation owner.
-3. Artifact signing or attestation requirements and the protected signing identity, if required.
-4. The hosting decision for CSP, cache headers, WAF controls, bandwidth limits, and availability.
-5. Operational evidence from every required service for its identity, input-validation,
-   resource-isolation, observability, and incident-response controls.
-6. Credential lifetime, audience, revocation, replay, and shared-device handling.
-7. Reconciliation of the generated Target of Evaluation with the package invariants, followed by
-   generated threat-report status reconciliation with repository and service-owner evidence,
-   recorded by aggregate control theme in public and at row level only in the private review system.
+- Live source-host rules, identities, reviewers, bypasses, and scheduled public-to-internal sync.
+- Artifact signing and provenance policy.
+- Static-host security-header, cache, WAF, capacity, and availability decisions.
+- Browser credential lifetime, audience, revocation, replay, storage, and shared-device behavior.
+- Relay, model-service, launchable, and runtime evidence listed above.
+- Authoritative secret, vulnerability, malware, license, privacy, and release reviews.
+- Generated scope and status reconciliation against `security-control-themes.json`.
 
-An automated repository pass proves only the controls implemented in this source tree. Unknown,
-not-verified, and human-owned requirements remain visible rather than being converted into a false
-mitigation claim.
+Unknown, partial, architecture-decision, shared-verification, and human-review states remain open.
