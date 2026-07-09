@@ -251,7 +251,7 @@ async function inspect(browser, file) {
           unresolved:unresolved.length,
           coveredSubjects:sbomEvidence?.querySelectorAll('tr[data-sbom-subject="1"]').length || 0,
           brokenLicenseLinks:unresolved.filter(row => row.querySelector('td[data-label="License"] a')).length,
-          usefulEvidence:unresolved.every(row => /not distributed|immutable image digest/i.test(
+          usefulEvidence:unresolved.every(row => /learners do not receive[\s\S]*scan the exact image/i.test(
             row.querySelector('td[data-label="Evidence"]')?.textContent || ''
           )),
         };
@@ -299,9 +299,13 @@ async function inspect(browser, file) {
           ciLinksState:sbomEvidence.querySelector('[data-ci-links-state]')?.dataset.ciLinksState || '',
           ciArtifactLinks:sbomEvidence.querySelectorAll('a[data-evidence-link="ci-artifact"]').length,
           ciComponentRows:sbomEvidence.querySelectorAll('[data-ci-component-preview="1"] tbody tr').length,
+          clarificationRows:sbomEvidence.querySelectorAll('[data-license-clarification="1"] tbody tr').length,
           invalidEvidenceLinks,
           deadLocalEvidenceLinks:localEvidenceChecks.filter(Boolean),
           text:sbomEvidence.innerText || '',
+          visibleTechnicalTerms:['security_deep_sca','security_image_sca','CycloneDX','SHA-256','artifact path'].filter(term =>
+            (sbomEvidence.innerText || '').includes(term)
+          ),
         } : null,
         noAssertionView,
       };
@@ -362,12 +366,21 @@ async function inspect(browser, file) {
         errors.push('available CI evidence does not link all three generated artifacts');
       } else if (state.sbomEvidence.ciLinksState === 'available' && !state.sbomEvidence.ciComponentRows) {
         errors.push('available CI evidence does not render the linked SBOM component licenses');
+      } else if (state.sbomEvidence.ciLinksState === 'available' && !state.sbomEvidence.clarificationRows) {
+        errors.push('available CI evidence does not foreground packages needing license clarification');
       } else if (!['available', 'incomplete', 'unavailable'].includes(state.sbomEvidence.ciLinksState)) {
         errors.push('CI artifact evidence lacks an explicit availability state');
-      } else if (!state.sbomEvidence.text.includes('not distributed to learners')
-          || !state.sbomEvidence.text.includes('security_deep_sca')
-          || !state.sbomEvidence.text.includes('security_image_sca')) {
-        errors.push('SBOM evidence preview omits distribution, CI, or conditional-scan guidance');
+      } else if (!/Learners receive these \d+ packages/.test(state.sbomEvidence.text)
+          || !state.sbomEvidence.text.includes('Learners do not receive these packages')
+          || !state.sbomEvidence.text.includes('Learners do not receive these tools')
+          || !state.sbomEvidence.text.includes('Files for auditors and automation')) {
+        errors.push('software review does not answer learner delivery before exposing audit detail');
+      } else if (state.sbomEvidence.ciLinksState === 'available'
+          && (!state.sbomEvidence.text.includes('packages checked')
+            || !state.sbomEvidence.text.includes('need package-by-package review'))) {
+        errors.push('available package scan does not summarize useful review outcomes');
+      } else if (state.sbomEvidence.visibleTechnicalTerms.length) {
+        errors.push(`software review exposes implementation jargon before disclosure: ${state.sbomEvidence.visibleTechnicalTerms.join(', ')}`);
       }
     }
     if (state.noAssertionView) {

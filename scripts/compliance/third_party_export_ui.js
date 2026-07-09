@@ -566,6 +566,29 @@
     return details;
   }
 
+  function appendFacts(card, facts) {
+    var list = document.createElement("ul"); list.className = "sbom-facts";
+    facts.forEach(function (fact) {
+      var item = document.createElement("li");
+      if (fact.attention) item.className = "needs-review";
+      var value = document.createElement("strong"); text(value, fact.value); item.appendChild(value);
+      var label = document.createElement("span"); text(label, fact.label); item.appendChild(label);
+      list.appendChild(item);
+    });
+    card.appendChild(list);
+  }
+
+  function auditLabel(label) {
+    return {
+      "CycloneDX SBOM":"Machine-readable package list",
+      "Evidence manifest":"Scan record",
+      "License appendix":"License report",
+      "CI job definition":"How the package scan runs",
+      "SBOM generation and retrieval runbook":"Step-by-step reproduction guide",
+      "Checked Python package inventory":"Repository package declarations"
+    }[label] || label;
+  }
+
   function appendComponentPreview(card, components, summaryLabel) {
     var details = document.createElement("details");
     var summary = document.createElement("summary"); text(summary, summaryLabel); details.appendChild(summary);
@@ -600,16 +623,17 @@
     if (!record) return lines;
     var subject = evidenceSubject(record, row);
     if (record.state === "available") {
-      lines.push({url:record._resolvedHref, label:"CycloneDX SBOM; SHA-256 verified in this view", kind:"local"});
+      lines.push({url:record._resolvedHref, label:"Machine-readable package list", kind:"local",
+        note:"The page checks this file against the recorded integrity hash before using it."});
     } else if (record.state === "ci-generated") {
       (record.evidence_links || []).forEach(function (link) {
-        lines.push({url:link._resolvedHref, label:link.label, kind:"local"});
+        lines.push({url:link._resolvedHref, label:auditLabel(link.label), kind:"local"});
       });
       if (catalog._ciEvidence && catalog._ciEvidence.record_id === record.id) {
         (catalog._ciEvidence.artifacts || []).filter(function (artifact) {
           return artifact.status === "available" && artifact.href;
         }).forEach(function (artifact) {
-          lines.push({url:artifact.href, label:artifact.label + " from tested CI job", kind:"ci-artifact"});
+          lines.push({url:artifact.href, label:auditLabel(artifact.label), kind:"ci-artifact"});
         });
         if (catalog._ciEvidence.state !== "available") {
           lines.push({label:"CI artifact links flagged " + catalog._ciEvidence.state + ": " + catalog._ciEvidence.reason});
@@ -617,13 +641,12 @@
       }
     } else {
       if (subject) {
-        lines.push({url:subject._declarationHref, label:"Repository declaration", kind:"local"});
-        lines.push({url:subject.upstream_href, label:"Official upstream source", kind:"external"});
-        lines.push({url:subject.license_hint_href, label:"License-family evidence", kind:"external",
-          note:subject.license_hint + " Checked " + subject.verified_on + "."});
+        lines.push({url:subject._declarationHref, label:"Where this project declares it", kind:"local"});
+        lines.push({url:subject.upstream_href, label:"Official source", kind:"external"});
+        lines.push({url:subject.license_hint_href, label:"License information", kind:"external",
+          note:subject.license_hint + " Sources checked " + subject.verified_on + "."});
       }
-      lines.push({label:"Not distributed to learners. Before distribution, run " + record.ci.job +
-        " against an immutable image digest."});
+      lines.push({label:"Learners do not receive this tool. Scan the exact image before any future distribution."});
     }
     return lines;
   }
@@ -648,56 +671,84 @@
       var card = document.createElement("article"); card.className = "sbom-card";
       var title = document.createElement("h3"); text(title, record.description); card.appendChild(title);
       var state = document.createElement("span"); state.className = "sbom-state";
-      text(state, record.distribution === "distributed" ? "Shipped to learners" : "Not shipped to learners");
+      state.dataset.distribution = record.distribution;
+      if (record.id === "browser-runtime") text(state, "Learners receive these " + record.sbom.component_count + " packages");
+      else if (record.id === "python-validation-environment") text(state, "Learners do not receive these packages");
+      else text(state, "Learners do not receive these tools");
       card.appendChild(state);
       var explanation = document.createElement("p");
       if (record.state === "available") {
-        text(explanation, record.sbom.component_count + " components; " + record.sbom.license_metadata.spdx +
-          " carry SPDX metadata. The linked file passed its recorded SHA-256 check.");
+        text(explanation, "Every browser package has a recorded license identifier.");
         card.appendChild(explanation);
-        var link = externalLink(record._resolvedHref, "Open linked CycloneDX SBOM", "local"); card.appendChild(link);
-        appendComponentPreview(card, record._components, "Preview component licenses");
+        appendComponentPreview(card, record._components, "Review all " + record.sbom.component_count + " package licenses");
+        card.appendChild(evidenceDetails("Files for auditors and automation", [
+          {url:record._resolvedHref, label:"Machine-readable package list (CycloneDX JSON)", kind:"local",
+            note:"The page checks this file against its recorded integrity hash before displaying package data."}
+        ]));
       } else if (record.state === "ci-generated") {
-        text(explanation, "The " + record.ci.job + " job creates a commit-bound SBOM, evidence manifest, and license appendix. " +
-          "A validated preview links the exact job artifact; a versioned release replaces this record with immutable release assets.");
+        text(explanation, "Automated checks and contributor tools share a separate Python environment.");
         card.appendChild(explanation);
-        card.appendChild(evidenceDetails("Open definitions and retrieval instructions", (record.evidence_links || []).map(function (item) {
-          return {url:item._resolvedHref, label:item.label, kind:"local"};
-        })));
         var runtime = catalog._ciEvidence && catalog._ciEvidence.record_id === record.id ? catalog._ciEvidence : null;
-        var runtimeState = document.createElement("p"); runtimeState.className = "sbom-runtime-state";
-        runtimeState.dataset.ciLinksState = runtime ? runtime.state : "unavailable";
-        text(runtimeState, runtime ? runtime.reason : "No CI artifact-link record was supplied by this build.");
-        card.appendChild(runtimeState);
-        if (runtime && runtime.job_url) card.appendChild(externalLink(runtime.job_url, "Open producing CI job", "ci-job"));
+        var auditLines = (record.evidence_links || []).map(function (item) {
+          return {url:item._resolvedHref, label:auditLabel(item.label), kind:"local"};
+        });
+        if (runtime && runtime.job_url) {
+          auditLines.push({url:runtime.job_url, label:"Build that produced this package list", kind:"ci-job",
+            note:runtime.source_commit ? "Source commit " + runtime.source_commit.slice(0, 12) : ""});
+        }
         var artifactLines = runtime && runtime.artifacts && runtime.artifacts.length ? runtime.artifacts.map(function (artifact) {
           return artifact.status === "available" && artifact.href ?
-            {url:artifact.href, label:artifact.label, kind:"ci-artifact", note:artifact.repository_path} :
-            {label:artifact.label + " unavailable", note:artifact.repository_path + ". " + (artifact.reason || "No live link was emitted.")};
+            {url:artifact.href, label:auditLabel(artifact.label), kind:"ci-artifact", note:artifact.repository_path} :
+            {label:auditLabel(artifact.label) + " unavailable", note:artifact.repository_path + ". " + (artifact.reason || "No link is available for this build.")};
         }) : [
-          {label:"CycloneDX SBOM unavailable in this build", note:record.ci.sbom_artifact_path},
-          {label:"Evidence manifest unavailable in this build", note:record.ci.manifest_artifact_path},
-          {label:"License appendix unavailable in this build", note:record.ci.appendix_artifact_path}
+          {label:"Machine-readable package list unavailable", note:record.ci.sbom_artifact_path},
+          {label:"Scan record unavailable", note:record.ci.manifest_artifact_path},
+          {label:"License report unavailable", note:record.ci.appendix_artifact_path}
         ];
-        card.appendChild(evidenceDetails("CI artifacts and status", artifactLines));
+        auditLines = auditLines.concat(artifactLines);
         if (runtime && runtime._integrity === "verified") {
           var sbomArtifact = runtime.artifacts.find(function (artifact) { return artifact.label === "CycloneDX SBOM"; });
-          var summaryText = runtime._components.length + " resolved components; " +
-            ((sbomArtifact.license_metadata || {}).spdx || 0) + " carry SPDX metadata. " +
-            "The staged copy matches the producing job artifact SHA-256.";
-          var verified = document.createElement("p"); text(verified, summaryText); card.appendChild(verified);
-          card.appendChild(externalLink(runtime._resolvedPreviewHref, "Open staged CycloneDX copy", "local"));
-          var ciPreview = appendComponentPreview(card, runtime._components, "Preview resolved Python licenses");
+          var metadata = sbomArtifact.license_metadata || {};
+          var recorded = (metadata.spdx || 0) + (metadata.named || 0);
+          var unresolved = runtime._components.filter(function (component) {
+            return componentLicense(component) === "NOASSERTION";
+          });
+          appendFacts(card, [
+            {value:runtime._components.length, label:"packages checked"},
+            {value:recorded, label:"have recorded license information"},
+            {value:unresolved.length, label:"need package-by-package review", attention:unresolved.length > 0}
+          ]);
+          if (unresolved.length) {
+            var unresolvedPreview = appendComponentPreview(card, unresolved,
+              "Review " + unresolved.length + " packages needing license clarification");
+            unresolvedPreview.dataset.licenseClarification = "1";
+          }
+          var ciPreview = appendComponentPreview(card, runtime._components, "Review all " + runtime._components.length + " Python package licenses");
           ciPreview.dataset.ciComponentPreview = "1";
+          auditLines.unshift({url:runtime._resolvedPreviewHref, label:"Machine-readable package list served with this preview", kind:"local"});
+        } else {
+          var unavailable = document.createElement("p"); unavailable.className = "sbom-notice";
+          text(unavailable, "This preview does not include the generated Python package list. The repository declarations and reproduction guide remain available below.");
+          card.appendChild(unavailable);
         }
+        var auditFiles = evidenceDetails("Files for auditors and automation", auditLines);
+        auditFiles.dataset.ciLinksState = runtime ? runtime.state : "unavailable";
+        card.appendChild(auditFiles);
       } else {
-        text(explanation, "These declarations are not distributed to learners. Each row links the exact repository declaration, the upstream source, and a non-authoritative license hint. " +
-          "Distribution still requires " + record.ci.job + " against an immutable image digest.");
+        text(explanation, "These " + (record.subjects || []).length +
+          " entries support local development and compatibility checks. Containers and operating systems combine software from many sources, so the review keeps their license information separate.");
         card.appendChild(explanation);
+        var future = document.createElement("p"); future.className = "sbom-notice";
+        text(future, "If one of these tools is ever distributed, scan that exact version before release.");
+        card.appendChild(future);
+        var subjectDetails = document.createElement("details");
+        var subjectSummary = document.createElement("summary");
+        text(subjectSummary, "Review " + (record.subjects || []).length + " optional tools and source terms");
+        subjectDetails.appendChild(subjectSummary);
         var subjectWrap = document.createElement("div"); subjectWrap.className = "sbom-subjects";
         var subjectTable = document.createElement("table");
         var subjectHead = document.createElement("thead"), subjectHeadRow = document.createElement("tr");
-        ["Declaration", "License hint", "Evidence"].forEach(function (label) {
+        ["Tool or image", "What the license evidence says", "Check the source"].forEach(function (label) {
           var th = document.createElement("th"); text(th, label); subjectHeadRow.appendChild(th);
         });
         subjectHead.appendChild(subjectHeadRow); subjectTable.appendChild(subjectHead);
@@ -707,13 +758,13 @@
           var name = document.createElement("td"); name.appendChild(stacked(subject.component, subject.version)); tr.appendChild(name);
           var hint = document.createElement("td"); hint.dataset.licenseHint = "1"; text(hint, subject.license_hint); tr.appendChild(hint);
           var links = document.createElement("td"); links.className = "sbom-subject-links";
-          links.appendChild(externalLink(subject._declarationHref, "Repository declaration", "local"));
-          links.appendChild(externalLink(subject.upstream_href, "Official upstream", "external"));
-          links.appendChild(externalLink(subject.license_hint_href, "License evidence", "external"));
-          var checked = document.createElement("small"); text(checked, "Links checked " + subject.verified_on); links.appendChild(checked);
+          links.appendChild(externalLink(subject._declarationHref, "Where this project declares it", "local"));
+          links.appendChild(externalLink(subject.upstream_href, "Official source", "external"));
+          links.appendChild(externalLink(subject.license_hint_href, "License information", "external"));
+          var checked = document.createElement("small"); text(checked, "Sources checked " + subject.verified_on); links.appendChild(checked);
           tr.appendChild(links); subjectBody.appendChild(tr);
         });
-        subjectTable.appendChild(subjectBody); subjectWrap.appendChild(subjectTable); card.appendChild(subjectWrap);
+        subjectTable.appendChild(subjectBody); subjectWrap.appendChild(subjectTable); subjectDetails.appendChild(subjectWrap); card.appendChild(subjectDetails);
       }
       target.appendChild(card);
     });

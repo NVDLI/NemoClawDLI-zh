@@ -5,7 +5,7 @@
       "id": "browser-runtime",
       "state": "available",
       "distribution": "distributed",
-      "description": "Browser packages copied into and shipped with the static learner course.",
+      "description": "Learner course",
       "selectors": [
         {
           "category": "vendored"
@@ -31,7 +31,7 @@
       "id": "python-validation-environment",
       "state": "ci-generated",
       "distribution": "not-distributed",
-      "description": "Resolved Python environment used by course checks and optional authoring tools. Learners do not receive these packages from the static course.",
+      "description": "Course development",
       "selectors": [
         {
           "category": "validation"
@@ -68,7 +68,7 @@
       "id": "local-authoring-image-boundary",
       "state": "conditional",
       "distribution": "not-distributed",
-      "description": "Container images, browser binaries, and operating-system package groups used only by optional local authoring or compatibility checks.",
+      "description": "Optional contributor tools",
       "selectors": [
         {
           "category": "local-authoring"

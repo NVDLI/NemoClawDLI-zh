@@ -176,8 +176,10 @@ def export_contract_findings(overrides: dict[str, str]) -> list[str]:
         "data-scope-download",
         'aria-label="SWIPAT filter meanings"',
         'aria-label="Legal-scope filter meanings"',
+        "Software and license review",
+        "Does a learner receive this software?",
         "How learners receive it",
-        "Choices in one filter are alternatives; different filters narrow together",
+        "You can choose several options in one filter",
         "Download what you see",
         "What happened to the source?",
         "skill-shell",
@@ -196,10 +198,20 @@ def export_contract_findings(overrides: dict[str, str]) -> list[str]:
         "No single aggregate license", "friendlyChoice",
         "documentScopeRows", "document_sources", "Source Author(s)", "renderScopeRow", "dataset.label",
         "sbom_evidence", "ci_sbom_evidence", "renderSbomEvidence", "linkedSbomComponents",
-        "dataset.sbomSubject", "license_hint", "not distributed to learners",
+        "dataset.sbomSubject", "license_hint", 'Learners receive these " + record.sbom.component_count + " packages',
+        "Learners do not receive these packages", "Learners do not receive these tools",
+        "packages needing license clarification", "Files for auditors and automation",
     ):
         if token not in preview:
             findings.append(f"SWIPAT preview implementation is incomplete: {token}")
+    for phrase in (
+        "The linked file passed its recorded SHA-256 check",
+        "Every link was read through the GitLab job-artifact API",
+        "Open producing CI job",
+        "Preview resolved Python licenses",
+    ):
+        if phrase in preview or phrase in skill:
+            findings.append(f"reviewer-facing software copy exposes build-centric status language: {phrase}")
     for path in (CSV_EXPORTER, CSV_PREVIEW):
         export_source = read(path, overrides)
         for token in (
@@ -322,8 +334,10 @@ def self_test() -> list[str]:
         ("legal-scope multi-select", {COMPLIANCE_SKILL: compliance_skill.replace('<div class="filter-choice-group" data-scope-relationship-group>', '<div class="filter-choice-group" data-scope-relationship-single>', 1)}, "SWIPAT in-page preview control is missing"),
         ("document-source preview", {CSV_PREVIEW: read(CSV_PREVIEW, {}).replace("documentScopeRows", "removedScopeDocuments")}, "SWIPAT preview implementation is incomplete"),
         ("wrapped commands", {COMPLIANCE_SKILL: compliance_skill.replace("white-space:pre-wrap", "white-space:nowrap", 1)}, "SWIPAT in-page preview control is missing"),
-        ("filter semantics", {COMPLIANCE_SKILL: compliance_skill.replace("Choices in one filter are alternatives; different filters narrow together", "filters combine somehow", 1)}, "SWIPAT in-page preview control is missing"),
+        ("filter semantics", {COMPLIANCE_SKILL: compliance_skill.replace("You can choose several options in one filter", "filters combine somehow", 1)}, "SWIPAT in-page preview control is missing"),
         ("plain-language filter labels", {CSV_PREVIEW: read(CSV_PREVIEW, {}).replace("Included in the course", "vendored technical label", 1)}, "SWIPAT preview implementation is incomplete"),
+        ("outsider-first software review", {CSV_PREVIEW: read(CSV_PREVIEW, {}).replace('Learners receive these " + record.sbom.component_count + " packages', "Distributed payload", 1)}, "SWIPAT preview implementation is incomplete"),
+        ("build-centric software review", {CSV_PREVIEW: read(CSV_PREVIEW, {}).replace("Every browser package has", "Every link was read through the GitLab job-artifact API. Every browser package has", 1)}, "reviewer-facing software copy exposes build-centric status language"),
         ("plain-language export explanation", {CSV_EXPORTER: read(CSV_EXPORTER, {}).replace("Learners receive this code as part of the browser course.", "Vendored package.", 1)}, "reviewer export lacks plain-language usage explanation"),
     )
     failures = []
