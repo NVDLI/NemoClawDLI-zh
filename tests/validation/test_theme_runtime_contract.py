@@ -64,6 +64,35 @@ class ThemeRuntimeContractTests(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(token, source)
 
+    def test_runtime_executes_the_pyodide_skill_contract(self) -> None:
+        source = theme_runtime.RUNTIME_JS
+        for token in (
+            "scripts/pyodide/SKILL.html",
+            "new Function(globalThis.__pyodideWorkerSource)",
+            "editorCount !== runtimeContract.count + 1",
+            "syntaxTokens < runtimeContract.count",
+            "CodeMirror surfaces are not consistently theme-aware",
+            "Shift+Enter did not run the cell and focus the next editor",
+            "scratch REPL did not preserve namespace or execution order",
+            "final expression did not render as notebook output",
+            "Pyodide background process did not register and complete across cells",
+            "Pyodide artifact did not preserve a highlighted preview and exact downloadable bytes",
+            "playground.runAll()",
+            "Pyodide chat did not preserve repeated user input",
+            "Pyodide intentional error did not render its traceback",
+            "Pyodide traceback did not highlight the failing source line",
+            "Pyodide display pipeline did not render highlighted JSON/code, Markdown, HTML, and tables",
+            "Pyodide syntax output is hard-wrapped or artificially narrow",
+            "Pyodide helper menu did not preview, edit, and apply the live helper source",
+            "Pyodide rich output sanitizer admitted executable or network-active HTML",
+            "Pyodide build.nvidia.com path did not consume streamed SSE tokens",
+            "Pyodide WebSocket round trip did not connect, send, and receive",
+            "Pyodide rendered a model credential into page output",
+            "Pyodide Reset did not clear cell state",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, source)
+
 
 class ScaTriggerContractTests(unittest.TestCase):
     def test_expensive_scans_are_automatic_only_for_relevant_inputs(self) -> None:

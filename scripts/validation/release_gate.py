@@ -53,6 +53,7 @@ HARNESS_CONTRACT = py("-m", "unittest", "-v", "tests.validation.test_test_harnes
 NODE_VALIDATOR_TESTS = ("bash", "scripts/runtime/run_node.sh", "tests/runtime/test_embedded_validator_suites.mjs")
 COLOR_THEME_TESTS = py("-m", "unittest", "-v", "tests.validation.test_color_theme")
 THEME_RUNTIME_CONTRACT_TESTS = py("-m", "unittest", "-v", "tests.validation.test_theme_runtime_contract")
+PYODIDE_RUNTIME_SMOKE = ("bash", "scripts/runtime/run_node.sh", "scripts/pyodide/runtime_smoke.mjs", "--cdn")
 
 
 FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
@@ -87,6 +88,9 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/compliance/source_gate.py"),
     py("scripts/compliance/source_document_audit.py"),
     unit_test("source_document_audit"),
+    py("scripts/pyodide/integration_audit.py"),
+    unit_test("pyodide_integration_audit"),
+    PYODIDE_RUNTIME_SMOKE,
     py("scripts/compliance/third_party_inventory_audit.py"),
     unit_test("third_party_inventory_audit"),
     unit_test("export_third_party_csv"),
@@ -162,6 +166,9 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/compliance/source_gate.py"),
     py("scripts/compliance/source_document_audit.py"),
     unit_test("source_document_audit"),
+    py("scripts/pyodide/integration_audit.py"),
+    unit_test("pyodide_integration_audit"),
+    PYODIDE_RUNTIME_SMOKE,
     py("scripts/compliance/third_party_inventory_audit.py"),
     unit_test("third_party_inventory_audit"),
     unit_test("export_third_party_csv"),
@@ -201,6 +208,15 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
         "scripts/compliance/source_document_audit.py", "scripts/compliance/docs/document_sources.json",
         "THIRD_PARTY_LICENSES.md", "web/nemoclaw/*.html", "web/nemoclaw/mats/*",
         "web/nemoclaw/assets/SKILL.html",
+    ),
+    unit_test("pyodide_integration_audit"): (
+        "scripts/pyodide/*", "tests/validation/test_embedded_validator_suites.py",
+        "scripts/validation/release_gate.py", "scripts/validation/release_change_reminder.py",
+        "web/**/*", "i18n/**/*",
+    ),
+    PYODIDE_RUNTIME_SMOKE: (
+        "scripts/pyodide/*", "scripts/pyodide/examples/*",
+        "scripts/validation/release_gate.py",
     ),
     py("scripts/skills/normalize_skill_headers.py", "--self-test"): (
         "scripts/skills/normalize_skill_headers.py", "scripts/skills/gen_directory_beacons.py",

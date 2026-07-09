@@ -100,6 +100,53 @@ Source of truth: [`scripts/browser-vendor/package-lock.json`](scripts/browser-ve
 `Python-2.0` is the package's declared license identifier; no Python interpreter or Python package
 is included in the browser bundle by that dependency.
 
+## Evaluated Pyodide candidate, not distributed in the learner artifact
+
+The course does not currently contain or ship the components in this section. They are listed so a
+reviewer can evaluate a specific future browser-Python option without reconstructing its package
+closure. [`scripts/pyodide/candidate-components.json`](scripts/pyodide/candidate-components.json)
+records the exact artifact filenames, SHA-256 values, source pattern, and review boundary.
+
+The Core profile is the smallest candidate. The Network profile reproduces the dependency closure
+selected by the task-supplied local reference implementation. Adding any of these files to the learner
+artifact still requires the final component, security, privacy, and distribution decisions from the
+authorized reviewers. A version or package change requires refreshed evidence.
+
+The runnable documentation page under `scripts/pyodide/` fetches the pinned Core runtime from
+jsDelivr after a reader selects Run. It executes those files in the browser but does not copy them
+into this repository or the learner course artifact. The manifest records both loader entrypoints
+and every supporting file with a SHA-256; `runtime_smoke.mjs --cdn` verifies the same runtime before
+executing every example.
+
+| Candidate profile | Component | Version | SPDX license expression | Evidence |
+|---|---|---|---|---|
+| Build input | ws | 8.20.0 | MIT | [npm](https://www.npmjs.com/package/ws/v/8.20.0) |
+| Core | pyodide | 0.27.7 | MPL-2.0 | [upstream license](https://github.com/pyodide/pyodide/blob/0.27.7/LICENSE) |
+| Core | cpython-standard-library | 3.12.7 | PSF-2.0 | [upstream license](https://github.com/python/cpython/blob/v3.12.7/LICENSE) |
+| Network | annotated-types | 0.6.0 | MIT | [PyPI](https://pypi.org/project/annotated-types/0.6.0/) |
+| Network | anyio | 4.9.0 | MIT | [PyPI](https://pypi.org/project/anyio/4.9.0/) |
+| Network | certifi | 2024.12.14 | MPL-2.0 | [PyPI](https://pypi.org/project/certifi/2024.12.14/) |
+| Network | charset-normalizer | 3.3.2 | MIT | [PyPI](https://pypi.org/project/charset-normalizer/3.3.2/) |
+| Network | distro | 1.9.0 | Apache-2.0 | [PyPI](https://pypi.org/project/distro/1.9.0/) |
+| Network | httpx | 0.28.1 | BSD-3-Clause | [PyPI](https://pypi.org/project/httpx/0.28.1/) |
+| Network | idna | 3.7 | BSD-3-Clause | [PyPI](https://pypi.org/project/idna/3.7/) |
+| Network | jiter | 0.8.2 | MIT | [PyPI](https://pypi.org/project/jiter/0.8.2/) |
+| Network | openai | 1.68.2 | Apache-2.0 | [PyPI](https://pypi.org/project/openai/1.68.2/) |
+| Network | openssl | 1.1.1w | OpenSSL | [exact tag license](https://github.com/openssl/openssl/blob/OpenSSL_1_1_1w/LICENSE) |
+| Network | pydantic | 2.10.5 | MIT | [PyPI](https://pypi.org/project/pydantic/2.10.5/) |
+| Network | pydantic-core | 2.27.2 | MIT | [PyPI](https://pypi.org/project/pydantic-core/2.27.2/) |
+| Network | pyodide-http | 0.2.1 | MIT | [PyPI](https://pypi.org/project/pyodide-http/0.2.1/) |
+| Network | requests | 2.31.0 | Apache-2.0 | [PyPI](https://pypi.org/project/requests/2.31.0/) |
+| Network | sniffio | 1.3.1 | MIT OR Apache-2.0 | [PyPI](https://pypi.org/project/sniffio/1.3.1/) |
+| Network | ssl | 1.0.0 | PSF-2.0 AND OpenSSL | [Pyodide recipe](https://github.com/pyodide/pyodide/blob/0.27.7/packages/ssl/meta.yaml); [CPython license](https://github.com/python/cpython/blob/v3.12.7/LICENSE); [OpenSSL license](https://github.com/openssl/openssl/blob/OpenSSL_1_1_1w/LICENSE) |
+| Network | typing-extensions | 4.11.0 | PSF-2.0 | [PyPI](https://pypi.org/project/typing-extensions/4.11.0/) |
+| Network | urllib3 | 2.2.3 | MIT | [PyPI](https://pypi.org/project/urllib3/2.2.3/) |
+
+The Pyodide 0.27.7 OpenSSL recipe labels OpenSSL 1.1.1w as Apache-2.0. The exact upstream
+OpenSSL 1.1.1w tag instead carries the legacy OpenSSL and SSLeay terms, represented here by the
+`OpenSSL` SPDX identifier. The authorized reviewer must resolve that metadata conflict before the
+Network profile is distributed.
+
 ## Python runtime and repository-tool packages
 
 Sources of truth are the exact lock files named in the Scope column. The same package/version is shown once with every applicable scope. License expressions were resolved from the exact-version PyPI metadata; legacy ambiguous `BSD` metadata was checked against the package license text.
