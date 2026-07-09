@@ -83,9 +83,8 @@ Runtime checks live in [`lab_runtime_testing.md`](lab_runtime_testing.md).
 Follow [`course-prose-style.md`](course-prose-style.md) for learner-facing explanations and
 instructions. Use the rules below when a change also affects repository-wide terminology.
 
-- Define the vocabulary before rewriting pages. NemoClaw is the reference stack. OpenClaw is the
-  agent harness, OpenShell is the sandbox boundary, and the Brev launchable is the hosted course
-  deployment.
+- Define the vocabulary before rewriting pages. NemoClaw is the reference stack, while OpenClaw is the agent harness.
+  OpenShell is the sandbox boundary for the stack, and the Brev launchable is the hosted course deployment used by learners.
 - Grep every learner-facing surface for the terms being changed: course pages, generated SKILL descriptors, navigation helpers, edX helper pages, and script docs.
 - Avoid replacement framing that creates new buzz. Patterns such as `not X; do Y`, `first-class part`, `peer runtime`, and `closest public sibling` need concrete nouns or should be cut.
 - When a title, page order, or generated descriptor changes, update the generator and regenerated SKILL beacon together. Do not hand-edit generated SKILL output without updating its source.
@@ -117,8 +116,8 @@ instructions. Use the rules below when a change also affects repository-wide ter
 - For Studio, runnable-cell, browser-runtime, or OpenClaw changes, also run the harness named in `lab_runtime_testing.md` and the relevant `scripts/validation/*_audit.py` file.
 - For learner-facing code or lab-flow changes, run `learner_flow_audit.py`, its mutation self-test,
   and `learner_flow_runtime_audit.py` against source and built Pages output. A closure claim needs
-  evidence for disclosure and prerequisite readiness. It must cover Run/Stop/Reset plus error
-  recovery. Include viewport stability as well. A screenshot of one happy state is insufficient.
+  evidence for disclosure, prerequisite readiness, Run/Stop/Reset, error recovery, and viewport stability.
+  A screenshot of one happy state is insufficient.
 - For branch staging, require a passing blocking `test` job, confirm the Pages job SHA matches the live branch head, and probe the deployed course plus both branch manifests. Only paths present in the current classic-Pages artifact may appear in the foyer selector.
 - For a stateful browser bug, test the whole lifecycle. Enter the state, then leave it through both
   a successful sibling result and an error. Remount the component before reloading or navigating.
