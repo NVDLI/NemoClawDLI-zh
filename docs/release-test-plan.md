@@ -10,6 +10,8 @@ mitigation, trigger, and verification register is
 [`security-control-themes.json`](security-control-themes.json).
 Artifact promotion lives in [`release_artifacts.md`](release_artifacts.md), and Pages assembly
 lives in [`pages_deploy.md`](pages_deploy.md).
+The [English course prose review](english-course-prose-review.md) records the learner-only scan and
+the human disposition of each editorial recommendation.
 
 The plan separates repository checks from operator and external-review evidence. A passing pipeline
 does not approve legal terms, privacy, export classification, malware disposition, host configuration,
