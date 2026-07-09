@@ -192,7 +192,8 @@ pages:
         export BUILD_PAGES_COURSE_PREFIX="web"
         BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"
         write_ci_sbom_links "public/$CI_COMMIT_REF_SLUG"
-        python3 scripts/build/build_branch_manifest.py --out "public/$CI_COMMIT_REF_SLUG/branches.json" --current-ref "$preview_ref" --current-slug "$CI_COMMIT_REF_SLUG"
+        python3 scripts/build/build_branch_manifest.py --out "public/$CI_COMMIT_REF_SLUG/branches.json" --current-ref "$preview_ref" --current-slug "$CI_COMMIT_REF_SLUG" --site-root-prefix ../
+        python3 scripts/build/project_artifact_manifests.py public --manifest-root "public/$CI_COMMIT_REF_SLUG"
         test -f "public/$CI_COMMIT_REF_SLUG/index.html"
         test -f "public/$CI_COMMIT_REF_SLUG/branches.json"
         test -f "public/$CI_COMMIT_REF_SLUG/languages.json"
@@ -204,7 +205,6 @@ pages:
         test -f "public/$CI_COMMIT_REF_SLUG/scripts/compliance/export_legal_scope_csv.py"
         grep -q 'href="web/nemoclaw/index.html"' "public/$CI_COMMIT_REF_SLUG/index.html"
         grep -q 'href="web/nemoclaw/assets/favicon.ico"' "public/$CI_COMMIT_REF_SLUG/index.html"
-        grep -q 'return "web/nemoclaw/"' "public/$CI_COMMIT_REF_SLUG/index.html"
         grep -q 'web/nemoclaw/' "public/$CI_COMMIT_REF_SLUG/languages.json"
         for locale in i18n/*; do if [ -d "$locale/web/nemoclaw" ]; then code="$(basename "$locale")"; test -f "public/$CI_COMMIT_REF_SLUG/$code/nemoclaw/index.html"; grep -q "$code/nemoclaw/" "public/$CI_COMMIT_REF_SLUG/languages.json"; fi; done
       }
@@ -224,6 +224,7 @@ pages:
         git worktree remove --force /tmp/nemoclaw-prod-root
         refresh_branch_ref "$preview_ref" >/dev/null
         python3 scripts/build/build_branch_manifest.py --out public/branches.json --current-ref "$prod_ref" --current-slug "$prod_ref" --published-ref "$preview_ref=$CI_COMMIT_REF_SLUG"
+        python3 scripts/build/project_artifact_manifests.py public
         test -f public/nemoclaw/index.html
         test -f public/index.html
         test -f public/branches.json
@@ -239,6 +240,7 @@ pages:
         build_branch_preview
         python3 scripts/validation/branch_preview_manifest_audit.py --artifact-root public --manifest public/branches.json --expect-preview "$preview_ref=$CI_COMMIT_REF_SLUG"
         python3 scripts/validation/branch_preview_manifest_audit.py --artifact-root public --manifest "public/$CI_COMMIT_REF_SLUG/branches.json" --expect-preview "$preview_ref=$CI_COMMIT_REF_SLUG"
+        python3 scripts/validation/artifact_link_audit.py "public/$CI_COMMIT_REF_SLUG"
       else
         BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh public
         write_ci_sbom_links public
@@ -384,11 +386,13 @@ theme_runtime:
     - |
       set -eu
       THEME_SITE_ROOT=public
+      THEME_SCAN_ROOT=public
       if [ "${PAGES_PREVIEW:-0}" = "1" ]; then
-        THEME_SITE_ROOT="public/$CI_COMMIT_REF_SLUG"
+        THEME_SCAN_ROOT="public/$CI_COMMIT_REF_SLUG"
       fi
       test -d "$THEME_SITE_ROOT"
-      python3 scripts/skills/skill_renderer_runtime_audit.py --site-root "$THEME_SITE_ROOT" --engine current --node-path "$CI_PROJECT_DIR/node_modules" --chrome-bin auto --timeout-seconds 600
+      test -d "$THEME_SCAN_ROOT"
+      python3 scripts/skills/skill_renderer_runtime_audit.py --site-root "$THEME_SITE_ROOT" --scan-root "$THEME_SCAN_ROOT" --engine current --node-path "$CI_PROJECT_DIR/node_modules" --chrome-bin auto --timeout-seconds 600
   rules:
     - if: '$CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_BRANCH != "nemoclaw-only" && $CI_COMMIT_BRANCH !~ /^translate-/ && $CI_PIPELINE_SOURCE != "schedule"'
       variables:

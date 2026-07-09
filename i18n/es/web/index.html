@@ -42,15 +42,15 @@
      the course and framer pages, so the foyer toggles with the rest of the stack. Forced by the
      topbar toggle (data-theme), or applied automatically when the OS prefers light. */
   :root[data-theme="light"] {
-    --g:#4f7f00; --gd:#2f6a00; --gs:#4a7a00;
+    --g:#3f6900; --gd:#2f5500; --gs:#3f6900;
     --bg:#ffffff; --e1:#f6f8fa; --e2:#eef1f4; --e3:#e1e6eb;
-    --tx:#1a1a1a; --td:#3b3b3b; --tf:#57606a; color-scheme:light;
+    --tx:#1a1a1a; --td:#3b3b3b; --tf:#4b5563; color-scheme:light;
   }
   @media (prefers-color-scheme: light) {
     :root:not([data-theme="dark"]):not([data-theme="light"]) {
-      --g:#4f7f00; --gd:#2f6a00; --gs:#4a7a00;
+      --g:#3f6900; --gd:#2f5500; --gs:#3f6900;
       --bg:#ffffff; --e1:#f6f8fa; --e2:#eef1f4; --e3:#e1e6eb;
-      --tx:#1a1a1a; --td:#3b3b3b; --tf:#57606a; color-scheme:light;
+      --tx:#1a1a1a; --td:#3b3b3b; --tf:#4b5563; color-scheme:light;
     }
   }
   .theme-toggle { width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center;
@@ -142,6 +142,8 @@
     border:1px solid var(--g); border-radius:7px; padding:8px 12px; cursor:pointer;
     text-decoration:none; line-height:1.2;
   }
+  :root[data-theme="light"] .switcher-row button,
+  :root[data-theme="light"] .switcher-row a:not(.secondary) { color:#fff; }
   .switcher-row a.secondary { color:var(--td); background:transparent; border-color:var(--e3); }
   .switcher-meta { color:var(--tf); font-size:.82rem; margin-top:.5em; }
 
@@ -323,79 +325,59 @@ Comentarios:
   var prod = document.getElementById("branch-prod");
   var meta = document.getElementById("branch-meta");
   if (!box || !sel || !open || !meta) return;
-  function cleanUrl(u) {
-    if (!u || /^[a-z]+:/i.test(u)) return null;
-    var parts = u.split("/");
-    var depth = 0;
-    for (var i = 0; i < parts.length; i += 1) {
-      if (!parts[i] || parts[i] === ".") continue;
-      if (parts[i] === "..") { depth -= 1; if (depth < -1) return null; }
-      else { depth += 1; }
-    }
-    return u;
+  function sameOriginUrl(raw, base) {
+    if (!raw) return null;
+    try {
+      var target = new URL(raw, base);
+      return target.origin === window.location.origin ? target.href : null;
+    } catch (_) { return null; }
   }
-  function cleanSlug(s) {
-    return /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(s || "") ? s : null;
-  }
-  function branchRootPrefix(currentSlug) {
-    var parts = window.location.pathname.split("/").filter(Boolean);
-    var last = parts[parts.length - 1] || "";
-    if (last === "index.html") last = parts[parts.length - 2] || "";
-    return currentSlug && last === currentSlug ? "../" : "";
-  }
-  function targetUrl(branch, prefix, currentSlug) {
-    if (!branch) return null;
-    if (branch.kind === "production") return prefix + "nemoclaw/";
-    var slug = cleanSlug(branch.slug);
-    if (slug && currentSlug && slug === currentSlug) return "web/nemoclaw/";
-    return slug ? prefix + slug + "/web/nemoclaw/" : cleanUrl(branch.url);
+  function targetUrl(branch, manifestUrl) {
+    return branch ? sameOriginUrl(branch.url, manifestUrl) : null;
   }
   function probeUrl(url) {
     return url ? url.replace(/\/?$/, "/index.html") : null;
   }
-  var manifestUrl = document.documentElement.lang === "en" ? "branches.json" : "../branches.json";
+  var manifestUrl = new URL(document.documentElement.lang === "en" ? "branches.json" : "../branches.json", window.location.href);
   fetch(manifestUrl, { cache: "no-store" }).then(function (r) {
     if (!r.ok) throw new Error("no branch manifest");
     return r.json();
   }).then(function (data) {
-    var currentSlug = data.current && cleanSlug(data.current.slug);
-    var prefix = branchRootPrefix(currentSlug);
     var candidates = Array.isArray(data.branches) ? data.branches.filter(function (b) {
-      return b && b.preview_ready === true && targetUrl(b, prefix, currentSlug);
+      return b && b.preview_ready === true && targetUrl(b, manifestUrl);
     }) : [];
     return Promise.all(candidates.map(function (b) {
-      var url = targetUrl(b, prefix, currentSlug);
+      var url = targetUrl(b, manifestUrl);
       return fetch(probeUrl(url), { method: "HEAD", cache: "no-store" }).then(function (r) {
         return r.ok ? b : null;
       }).catch(function () { return null; });
     })).then(function (checked) {
-      return { data: data, currentSlug: currentSlug, prefix: prefix, branches: checked.filter(Boolean) };
+      return { data: data, branches: checked.filter(Boolean) };
     });
   }).then(function (state) {
     var data = state.data;
-    var currentSlug = state.currentSlug;
-    var prefix = state.prefix;
     var branches = state.branches;
     if (!branches.length) return;
     sel.innerHTML = "";
     branches.forEach(function (b) {
       var opt = document.createElement("option");
-      opt.value = targetUrl(b, prefix, currentSlug);
+      opt.value = targetUrl(b, manifestUrl);
       opt.textContent = (b.current ? "current: " : "") + b.name + " · " + (b.kind || "preview");
       opt.dataset.name = b.name || "";
       opt.dataset.kind = b.kind || "preview";
       sel.appendChild(opt);
     });
     var current = branches.find(function (b) { return b.current; });
-    if (current) sel.value = targetUrl(current, prefix, currentSlug);
-    if (prod) prod.href = prefix + "nemoclaw/";
+    if (current) sel.value = targetUrl(current, manifestUrl);
+    var production = branches.find(function (b) { return b.kind === "production"; });
+    if (prod) prod.href = targetUrl(production, manifestUrl) || sameOriginUrl(data.production_url, manifestUrl) || prod.href;
     function paint() {
       var opt = sel.options[sel.selectedIndex];
       meta.textContent = opt ? ("Selected: " + opt.dataset.name + " (" + opt.dataset.kind + ")") : "";
     }
     sel.addEventListener("change", paint);
     open.addEventListener("click", function () {
-      var url = cleanUrl(sel.value);
+      var url = sameOriginUrl(sel.value, window.location.href);
       if (url) window.location.href = url;
     });
     paint();

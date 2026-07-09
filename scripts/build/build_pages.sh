@@ -148,8 +148,17 @@ python3 "$T1/scripts/build/project_source_tree.py" \
 # renderable by the exhaustive browser matrix.
 for locale_source in "$OUT"/i18n/*/web/nemoclaw; do
     [ -d "$locale_source" ] || continue
-    mkdir -p "$locale_source/styles"
-    cp -R "$T1/web/nemoclaw/styles/." "$locale_source/styles/"
+    # Sparse locale sources are useful for authors, but emitted HTML must still be runnable. Fill
+    # every absent canonical support file without overwriting a localized overlay.
+    while IFS= read -r -d '' canonical; do
+        relative="${canonical#$T1/web/nemoclaw/}"
+        target="$locale_source/$relative"
+        if [ ! -e "$target" ]; then
+            mkdir -p "$(dirname "$target")"
+            cp "$canonical" "$target"
+        fi
+    done < <(find "$T1/web/nemoclaw" -path "$T1/web/nemoclaw/standalone" -prune -o -type f -print0)
+    cp "$T1/web/_skill_explorer.js" "$(dirname "$locale_source")/_skill_explorer.js"
 done
 echo "[build_pages] source explorers -> public/ ($(find "$OUT" -name SKILL.html -type f | wc -l) SKILL contracts)"
 
@@ -219,6 +228,7 @@ cat > "$OUT/validation.html" <<'HTML'
 <script src="web/_skill_explorer.js"></script>
 </body></html>
 HTML
+printf '{"critiques":[]}\n' > "$OUT/critique.json"
 echo "[build_pages] validation.html (framer report mode) written"
 
 # ── 4. Landing page: the authoritative foyer (web/index.html), PROJECTED to Pages ──
@@ -290,7 +300,9 @@ if [ "$LANGS" = 1 ] && [ -d "$T1/i18n" ]; then
             python3 - "$locale_tmp/web/index.html" "$OUT/$lang/index.html" <<'PROJ'
 import sys, re
 src, out = sys.argv[1], sys.argv[2]
-s = open(src).read().replace("/lab/static/", "")
+s = open(src).read()
+s = s.replace("/lab/static/nemoclaw/", "nemoclaw/")
+s = s.replace("/lab/static/", "../")
 s = re.sub(r'<!-- build:deploy-tools[^>]*-->', '', s)   # the Pages-only tool links are root-only
 open(out, "w").write(s)
 PROJ
@@ -309,6 +321,10 @@ if [ -f "$T1/scripts/build/build_language_manifest.py" ]; then
     python3 "$T1/scripts/build/build_language_manifest.py" --out "$OUT/languages.json" --site-root "$OUT" --course-prefix "$COURSE_PREFIX" || echo "[build_pages] language manifest skipped"
 fi
 
+# Source mirrors execute the same foyer and locale runtime as their production projections.
+# Give every discovered mirror manifests and license paths derived from this artifact root.
+python3 "$T1/scripts/build/project_artifact_manifests.py" "$OUT"
+
 # Fail closed on the generated destinations too. Source checks alone cannot prove that
 # standalone bundling and locale projection preserved the requested course attribution.
 attribution_args=(--artifact-root "$OUT/${COURSE_PREFIX:+$COURSE_PREFIX/}nemoclaw")
@@ -318,6 +334,16 @@ if [ "$LANGS" = 1 ]; then
     done
 fi
 python3 "$T1/scripts/validation/external_link_attribution_audit.py" "${attribution_args[@]}"
+
+# Rebase every generated local URL, explorer, and semantic header after all root and locale
+# projections exist. Lab-static repository paths stay at artifact root; relocated course paths
+# resolve through COURSE_PREFIX only when no root target exists.
+python3 "$T1/scripts/build/project_artifact_navigation.py" "$OUT" \
+    --lab-static-prefix "$COURSE_PREFIX"
+
+# Treat the output directory as the exact static-host boundary. Every HTML file and every local
+# navigation/resource URL must remain inside it and resolve; there are no per-page exemptions.
+python3 "$T1/scripts/validation/artifact_link_audit.py" "$OUT"
 
 echo "[build_pages] done -> $OUT"
 echo "[build_pages] preview locally: python3 -m http.server -d $OUT 8000"

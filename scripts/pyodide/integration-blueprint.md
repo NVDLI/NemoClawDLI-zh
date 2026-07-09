@@ -38,12 +38,13 @@ fetches the pinned core runtime from the documented CDN only when a reader runs 
 
 ## Integration order
 
-Start with Core unless a named lesson requires network access.
+Start with the browser-only runtime. Add the HTTP/API package set only when a named lesson requires
+outbound requests or an OpenAI-compatible Python client.
 
-| Profile | Includes | Use it for |
+| Evaluated use | Includes | Use it for |
 |---|---|---|
-| Core | Pyodide 0.27.7 and CPython 3.12.7 standard library | Browser-only Python exercises |
-| Network | Core plus the exact wheel closure in the candidate inventory | A lesson that explicitly needs `requests` or the Python OpenAI client |
+| Browser-only runtime (`core`) | Pyodide 0.27.7 and CPython 3.12.7 standard library | Python exercises that do not make network requests |
+| Future HTTP/API support (`network`) | Browser-only runtime plus the exact reviewed wheel closure | A future lesson that explicitly needs `requests` or an OpenAI-compatible Python client |
 
 Keep the interpreter in a module worker. The page sends plain source and inputs, then receives a
 plain result. Stop terminates the worker. Reset starts a new worker and clears Python globals,

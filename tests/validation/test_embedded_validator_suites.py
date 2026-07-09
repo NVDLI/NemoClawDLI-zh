@@ -19,6 +19,7 @@ for _path in (
 
 
 SUITES = {
+    "artifact_link_audit": "scripts.validation.artifact_link_audit",
     "course_dependency_integrity": "scripts.validation.course_dependency_integrity",
     "external_link_attribution_audit": "scripts.validation.external_link_attribution_audit",
     "export_legal_scope_csv": "scripts.compliance.export_legal_scope_csv",

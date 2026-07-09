@@ -127,11 +127,6 @@ STYLE_BLOCK = re.compile(r"<style\b[^>]*>(.*?)</style>", re.S | re.I)
 # A stylesheet injected from JS: `styleEl.textContent = `...css...``.
 # The OpenClaw probe does exactly this, so its rules were invisible to both scan_inline and the <style> scan.
 STYLE_TEXTCONTENT = re.compile(r"\.textContent\s*=\s*`((?:[^`\\]|\\.)*)`", re.S)
-# The CodeMirror editor and the deepagents-cli terminal (.da-term) are intentionally dark in both
-# themes, so their rules are out of scope: a terminal pane stays dark on a light page by convention.
-_CM_SEL = re.compile(r"CodeMirror|\.cm-|\.da-term", re.I)
-
-
 def scan_style_blocks(text: str):
     """Hard-coded colors in CSS rulesets, whether in a <style> tag or injected from JS via
     `el.textContent = `...``. scan_inline only sees style= attributes and .style/.cssText, so a
@@ -149,8 +144,6 @@ def scan_style_blocks(text: str):
     bad = []
     for blk in blocks:
         for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", blk):
-            if _CM_SEL.search(m.group(1)):
-                continue
             bad += bad_in_style_body(m.group(2))
     return bad
 

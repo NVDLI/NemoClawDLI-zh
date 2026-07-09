@@ -108,26 +108,33 @@
     return slug;
   }
 
-  function injectChrome() {
+  function injectChrome(loadSourceHighlighter) {
     // Apply a saved manual theme choice before any content is built (the framer renders its body in JS, so this is flash-free).
     // With no saved choice the palette below follows the OS.
     try { var _t = localStorage.getItem("theme"); if (_t) document.documentElement.setAttribute("data-theme", _t); } catch (e) {}
-    if (document.head.querySelector('link[data-hljs]')) return;
-    var css = el("link"); css.rel = "stylesheet"; css.href = HLJS_CSS; css.dataset.hljs = "1";
-    document.head.appendChild(css);
-    if (!window.hljs) { var js = el("script"); js.src = HLJS_JS; js.defer = true; document.head.appendChild(js); }
+    if (loadSourceHighlighter && !document.head.querySelector('link[data-hljs]')) {
+      var css = el("link"); css.rel = "stylesheet"; css.href = HLJS_CSS; css.dataset.hljs = "1";
+      document.head.appendChild(css);
+    }
+    if (loadSourceHighlighter && !window.hljs) { var js = el("script"); js.src = HLJS_JS; js.defer = true; document.head.appendChild(js); }
+    if (document.head.querySelector('style[data-skill-chrome]')) return;
     var s = el("style");
-    var LIGHT = "--g:#4f7f00;--gs:#4a7a00;--bg:#ffffff;--e1:#f6f8fa;--e2:#eef1f4;--e3:#e1e6eb;--tx:#1a1a1a;--td:#3b3b3b;--tf:#57606a;--err:#d1242f;--warn:#9a6700;color-scheme:light";
+    s.dataset.skillChrome = "1";
+    var LIGHT = "--g:#3f6900;--gs:#3f6900;--bg:#ffffff;--e1:#f6f8fa;--e2:#eef1f4;--e3:#e1e6eb;--tx:#1a1a1a;--td:#3b3b3b;--tf:#4b5563;--acc:#0969da;--reason:#8250df;--artifact-text:#0969da;--err:#a31520;--warn:#9a6700;color-scheme:light";
     s.textContent = [
       ":root{--g:#76b900;--gs:#aee23a;--bg:#0d0d0d;--e1:#161616;--e2:#1e1e1e;--e3:#2a2a2a;",
-      "--tx:#f2f2f2;--td:#b0b0b0;--tf:#8a8a8a;--err:#ff7b72;--warn:#e3b341;--mono:ui-monospace,Consolas,monospace}",
+      "--tx:#f2f2f2;--td:#b0b0b0;--tf:#8a8a8a;--acc:#3b82f6;--reason:#c4b5fd;--artifact-text:#9bdcff;--err:#ff7b72;--warn:#e3b341;--mono:ui-monospace,Consolas,monospace}",
       // Light palette: the same shared tokens flipped. Forced by the topbar toggle (data-theme), and
       // applied automatically when the OS prefers light and the reader has made no manual choice.
       // Same contract and token values as the course pages, so the whole stack themes as one.
       ":root[data-theme=\"light\"]{" + LIGHT + "}",
       "@media(prefers-color-scheme:light){:root:not([data-theme=\"dark\"]):not([data-theme=\"light\"]){" + LIGHT + "}}",
       "*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.55 system-ui,sans-serif}",
-      "a{color:var(--g)}code{font-family:var(--mono)}",
+      "a{color:var(--g)}code{font-family:var(--mono);max-width:100%;overflow-wrap:anywhere;word-break:break-word}",
+      "body>main{width:100%;max-width:88rem;margin:0 auto;padding:1rem clamp(1rem,4vw,2rem);min-width:0}body>main pre{max-width:100%;overflow:auto}body>main pre code{white-space:pre-wrap;word-break:break-word}",
+      ":root[data-theme=\"light\"] body h2,:root[data-theme=\"light\"] body h3{color:var(--tx)!important}",
+      ":root[data-theme=\"light\"] body th{color:var(--tx)!important}",
+      ":root[data-theme=\"light\"] .console button:not(.danger){color:#fff!important}",
       // shared sticky topbar (the equivalent of the course nav, for every framer page):
       // always a way back (home + up); links are real <a href> so the link graph sees them.
       ".sx-topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;flex-wrap:wrap;",
@@ -158,7 +165,7 @@
       ".skill-static .export-table td{color:var(--td)!important;border-color:var(--e3)!important}",
       ".skill-static .filter-guide,.skill-static .filter-guide li{color:var(--td)!important}",
       ".skill-static .filter-guide strong,.skill-static .filter-guide code{color:var(--tx)!important}",
-      ".skill-static pre,.skill-static code{max-width:100%;overflow-wrap:anywhere}.skill-static pre{overflow:auto}",
+      ".skill-static pre,.skill-static code{max-width:100%;overflow-wrap:anywhere}.skill-static pre{overflow:auto}.skill-static pre code{white-space:pre-wrap;word-break:break-word}",
       ".skill-static .skill-cmds,.skill-static .skill-grid,.skill-static .skill-cmd,.skill-static .skill-card{min-width:0;max-width:100%}",
       // Shared wide-screen frame. Existing tables/source panels keep their own overflow behavior.
       ".skill-static,.sx-head,.sx-wrap,.rp-head,.rp-wrap{width:100%;max-width:88rem;margin-left:auto;margin-right:auto}",
@@ -203,6 +210,7 @@
       ".sx-answer{background:var(--e1);border:1px solid var(--e3);border-radius:8px;padding:11px 14px;margin-top:.7em;white-space:pre-wrap;font-size:.92rem;line-height:1.6}",
       ".sx-answer.err{border-color:var(--err);color:var(--err)}",
       ".sx-send{background:var(--g);color:#0a0a0a;border:0;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;margin-top:.5em}",
+      ":root[data-theme=\"light\"] .sx-send{color:#fff}",
       ".sx-send:disabled{opacity:.5;cursor:wait}",
       ".sx-related a{display:inline-block;margin:0 12px 6px 0;font-size:.84rem}",
       "a.sx-file{text-decoration:none}a.sx-file:hover{text-decoration:none}",
@@ -218,6 +226,14 @@
       ".sx-readme a{color:var(--g)}.sx-readme blockquote{border-left:3px solid var(--e3);margin:.6em 0;padding-left:1em;color:var(--tf)}",
       ".sx-readme img{max-width:100%;height:auto}.sx-readme hr{border:0;border-top:1px solid var(--e3);margin:1.4em 0}",
       ".sx-readme h1,.sx-readme h2,.sx-readme h3,.sx-readme h4,.sx-readme h5,.sx-readme h6{scroll-margin-top:4.5rem}",
+      ":root[data-theme=\"light\"] .hljs{color:var(--tx)!important}:root[data-theme=\"light\"] .hljs-comment,:root[data-theme=\"light\"] .hljs-quote,:root[data-theme=\"light\"] .hljs-meta{color:var(--tf)!important}",
+      ":root[data-theme=\"light\"] .hljs-string,:root[data-theme=\"light\"] .hljs-attr,:root[data-theme=\"light\"] .hljs-addition,:root[data-theme=\"light\"] .hljs-emphasis,:root[data-theme=\"light\"] .hljs-name,:root[data-theme=\"light\"] .hljs-bullet,:root[data-theme=\"light\"] .hljs-strong{color:var(--g)!important}",
+      ".hljs-section{color:var(--artifact-text)!important}",
+      ":root[data-theme=\"light\"] .hljs-keyword,:root[data-theme=\"light\"] .hljs-type,:root[data-theme=\"light\"] .hljs-doctag{color:var(--reason)!important}",
+      ":root[data-theme=\"light\"] .hljs-number,:root[data-theme=\"light\"] .hljs-literal,:root[data-theme=\"light\"] .hljs-attr,:root[data-theme=\"light\"] .hljs-variable{color:var(--acc)!important}",
+      ":root[data-theme=\"light\"] .hljs-built_in,:root[data-theme=\"light\"] .hljs-operator,:root[data-theme=\"light\"] .hljs-attribute,:root[data-theme=\"light\"] .hljs-template-variable,:root[data-theme=\"light\"] .hljs-symbol,:root[data-theme=\"light\"] .hljs-bullet,:root[data-theme=\"light\"] .hljs-selector-attr{color:var(--acc)!important}",
+      ":root[data-theme=\"light\"] .hljs-regexp,:root[data-theme=\"light\"] .hljs-subst,:root[data-theme=\"light\"] .hljs-selector-tag,:root[data-theme=\"light\"] .hljs-selector-pseudo{color:var(--reason)!important}",
+      ":root[data-theme=\"light\"] .hljs-title,:root[data-theme=\"light\"] .hljs-section,:root[data-theme=\"light\"] .hljs-selector-class,:root[data-theme=\"light\"] .hljs-selector-id{color:var(--acc)!important}:root[data-theme=\"light\"] .hljs-code{color:var(--tf)!important}",
       ".sx-heading-link{margin-left:.45em;color:var(--tf)!important;text-decoration:none;font-size:.72em;opacity:0}.sx-readme h1:hover .sx-heading-link,.sx-readme h2:hover .sx-heading-link,.sx-readme h3:hover .sx-heading-link,.sx-readme h4:hover .sx-heading-link,.sx-heading-link:focus{opacity:1}",
       ".sx-hubsec{margin:0 0 1.4em}.sx-hubsec h2{font-size:1.05rem;color:var(--tx);border-bottom:1px solid var(--e3);padding-bottom:.3em;margin:0 0 .6em}",
       ".sx-hubgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(15rem,100%),1fr));gap:10px;min-width:0;max-width:100%}",
@@ -274,6 +290,7 @@
       ".rp-bar button{background:var(--e2);border:1px solid var(--e3);color:var(--tx);border-radius:7px;padding:7px 14px;font:inherit;font-weight:600;cursor:pointer}.rp-bar button.prim{background:var(--g);color:#0a0a0a;border-color:var(--g)}",
       ".ts-row{display:flex;align-items:center;gap:10px;margin:.5em 0}.ts-badge{font-family:var(--mono);font-size:.76rem;padding:2px 9px;border-radius:999px;border:1px solid var(--e3);color:var(--td)}",
       ".ts-badge.ok{background:var(--g);color:#000;border-color:var(--g)}.ts-badge.err{background:var(--err);color:#fff;border-color:var(--err)}.ts-badge.run{color:var(--gs)}",
+      ":root[data-theme=\"light\"] .rp-bar button.prim,:root[data-theme=\"light\"] .ts-badge.ok{color:#fff}",
       ".ts-pre{background:var(--e1);border:1px solid var(--e3);border-radius:8px;padding:12px;font:12px/1.5 var(--mono);overflow:auto;white-space:pre-wrap;margin:.4em 0}",
       ".ts-grid{display:grid;grid-template-columns:auto 1fr;gap:0;border:1px solid var(--e3);border-radius:8px;overflow:hidden;margin:.5em 0;font-size:.86rem}",
       ".ts-grid div{padding:6px 12px;border-bottom:1px solid var(--e3)}.ts-grid .k{font-family:var(--mono);color:var(--gs);font-size:.8rem;background:var(--e1)}"
@@ -672,6 +689,7 @@
     }
     var h = '<div class="sx-topbar"><a class="sx-logo" href="' + home + '">NVIDIA DLI</a>';
     if (nav.up) h += '<a class="sx-up" href="' + nav.up.href + '">&uarr; ' + esc(nav.up.label) + '</a>';
+    if (nav.map) h += '<a class="sx-map" href="' + nav.map.href + '">' + esc(nav.map.label || "Map") + '</a>';
     h += '<span class="sx-crumb">' + esc(this.cfg.title || "") + '</span>';
     h += '<button type="button" class="sx-theme" aria-label="Toggle dark or light theme"></button></div>';
     this.mount.insertAdjacentHTML("afterbegin", h);
@@ -1035,13 +1053,20 @@
 
   function boot() {
     var cfgEl = document.getElementById("explorer-config");
-    if (!cfgEl) return;
+    var metaEl = document.getElementById("skill-meta");
+    if (!cfgEl && !metaEl) return;
+    injectChrome(!!cfgEl);
+    if (!cfgEl) {
+      var meta = {};
+      try { meta = JSON.parse(metaEl.textContent); } catch (e) {}
+      new App({ title: meta.title || meta.course || meta.service || "Directory" }, document.body).mountTopbar();
+      return;
+    }
     var cfg;
     try { cfg = JSON.parse(cfgEl.textContent); } catch (e) {
       document.body.appendChild(el("pre", null, "explorer-config JSON did not parse: " + esc(e.message)));
       return;
     }
-    injectChrome();
     var mount = document.getElementById("explorer") || document.body;
     new App(cfg, mount).mountUI();
   }

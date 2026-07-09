@@ -11,9 +11,9 @@
   --bd:  #2a2a2a;
   --tx:  #f2f2f2;
   --td:  #b0b0b0;
-  --tf:  #6a6a6a;
+  --tf:  #8a8a8a;
   --acc: #3b82f6;
-  --err: #ef4444;
+  --err: #ff6b6b;
   --warn: #e3b341;
   --reason: #c4b5fd;
   --artifact: #9bdcff;
@@ -412,7 +412,7 @@ pre:has(> code) > code {
 .hljs-string,
 .hljs-attr           { color: #c3e88d; }
 .hljs-comment,
-.hljs-quote          { color: #6a6a6a; font-style: italic; }
+.hljs-quote          { color: #8a8a8a; font-style: italic; }
 .hljs-title,
 .hljs-function .hljs-title,
 .hljs-title.function_{ color: #82aaff; }
@@ -425,7 +425,7 @@ pre:has(> code) > code {
 .hljs-template-variable { color: #a6accd; }
 .hljs-operator,
 .hljs-punctuation    { color: #89ddff; }
-.hljs-meta           { color: #6a6a6a; }
+.hljs-meta           { color: #8a8a8a; }
 .hljs-selector-class,
 .hljs-selector-id    { color: #82aaff; }
 .hljs-deletion       { color: #ef4444; }
@@ -1425,9 +1425,9 @@ body.python-mode .cf-btn-reset-kernel:hover:not([disabled]) {
 .cf-debug-codeline-err { background: rgba(215,78,78,.18); color: #ffaaaa; }
 .cf-debug-lineno {
   flex-shrink: 0; width: 22px; text-align: right;
-  color: var(--tf); user-select: none;
+  color: #a0a0a0; user-select: none;
 }
-.cf-debug-codeline-err .cf-debug-lineno { color: #d74e4e; font-weight: 700; }
+.cf-debug-codeline-err .cf-debug-lineno { color: var(--err); font-weight: 700; }
 .cf-debug-stack {
   padding: 5px 14px; margin: 0;
   font-family: ui-monospace, monospace; font-size: .7rem;
@@ -1829,14 +1829,20 @@ body.python-mode .py-mode-jlab-link { display: inline-block; }
   --dg-arrow:#57606a;
   --dg-env:#0969da; --dg-agent:#4a7a00; --dg-tool:#7c3aed;
   --dg-data:#9a6700; --dg-model:#0d9488; --dg-neutral:#57606a;
-  --g:#4f7f00; --gd:#2f6a00; --gs:#4a7a00;
+  --g:#3f6900; --gd:#2f5500; --gs:#3f6900;
   --bg:#ffffff; --e1:#f6f8fa; --e2:#eef1f4; --e3:#e1e6eb;
   --code-surface:#f8fafc;
-  --bd:#d0d7de; --tx:#1a1a1a; --td:#3b3b3b; --tf:#57606a;
-  --acc:#0969da; --err:#d1242f; --warn:#9a6700; --reason:#8250df;
+  --bd:#d0d7de; --tx:#1a1a1a; --td:#3b3b3b; --tf:#4b5563;
+  --acc:#0969da; --err:#a31520; --warn:#9a6700; --reason:#8250df;
   --artifact:#54aeff; --artifact-text:#0969da;
 }
 :root[data-theme="light"] body { background: var(--bg); color: var(--tx); }
+:root[data-theme="light"] .topbar .navpill.cur,
+:root[data-theme="light"] .course-assistant-open,
+:root[data-theme="light"] .cell-run,
+:root[data-theme="light"] .key-panel .btn,
+:root[data-theme="light"] .foot-nav a.next,
+:root[data-theme="light"] .loc-filter.active { color:#fff; }
 /* GFX figures: flip their internal palette, and override the inline dark canvas + border. An
    author !important beats the figures' normal inline style, so no per-figure edits are needed. */
 :root[data-theme="light"] .gfx-dark {
@@ -1907,21 +1913,21 @@ svg.dg-svg { font-family: var(--sans); }
 :root[data-theme="light"] .hljs-selector-tag { color: #a626a4; }
 :root[data-theme="light"] .hljs-string,
 :root[data-theme="light"] .hljs-attr,
-:root[data-theme="light"] .hljs-addition { color: #50a14f; }
+:root[data-theme="light"] .hljs-addition { color: #2f6f31; }
 :root[data-theme="light"] .hljs-comment,
 :root[data-theme="light"] .hljs-quote,
-:root[data-theme="light"] .hljs-meta { color: #a0a1a7; }
+:root[data-theme="light"] .hljs-meta { color: #59636e; }
 :root[data-theme="light"] .hljs-title,
 :root[data-theme="light"] .hljs-function .hljs-title,
 :root[data-theme="light"] .hljs-title.function_,
 :root[data-theme="light"] .hljs-selector-class,
-:root[data-theme="light"] .hljs-selector-id { color: #4078f2; }
+:root[data-theme="light"] .hljs-selector-id { color: #1f5fbf; }
 :root[data-theme="light"] .hljs-number,
 :root[data-theme="light"] .hljs-literal { color: #986801; }
 :root[data-theme="light"] .hljs-built_in,
 :root[data-theme="light"] .hljs-type,
 :root[data-theme="light"] .hljs-operator,
-:root[data-theme="light"] .hljs-punctuation { color: #0184bc; }
+:root[data-theme="light"] .hljs-punctuation { color: #0b6384; }
 :root[data-theme="light"] .hljs-params,
 :root[data-theme="light"] .hljs-variable,
 :root[data-theme="light"] .hljs-template-variable { color: #383a42; }
@@ -1987,24 +1993,36 @@ svg.dg-svg { font-family: var(--sans); }
   background: var(--bg);
 }
 
-/* CodeMirror editors (mounted with the monokai theme) -> a light editor in light mode. */
+/* CodeMirror uses one shared layout and token contract on every course page. */
+:root .CodeMirror { height:auto !important; font-family:var(--mono); font-size:.84rem; line-height:1.55; border-radius:0; }
+:root .CodeMirror-scroll { min-height:0; overflow-y:hidden !important; }
+:root .CodeMirror-vscrollbar { display:none; }
+:root .CodeMirror-gutters { background:var(--bg); border-right:1px solid var(--bd); }
+:root .CodeMirror-linenumber { color:var(--tf); padding:0 8px 0 6px; font-size:.76rem; }
+:root .CodeMirror-lines { padding:10px 0; }
+:root .cm-s-monokai.CodeMirror { background:var(--bg); color:var(--tx); }
+:root .cm-s-monokai .CodeMirror-cursor { border-left:2px solid var(--gs); }
+:root .cm-s-monokai .CodeMirror-selected { background:rgba(174,226,58,.18); }
+:root .cm-s-monokai .cm-comment { color:#a0a0a0; }
+:root .cm-s-monokai .cm-keyword,
+:root .cm-s-monokai .cm-builtin { color:#ff79c6; }
 :root[data-theme="light"] .cm-s-monokai.CodeMirror { background: var(--bg); color: #383a42; }
 :root[data-theme="light"] .cm-s-monokai .CodeMirror-gutters { background: var(--e2); border-right-color: var(--bd); }
-:root[data-theme="light"] .cm-s-monokai .CodeMirror-linenumber { color: #a0a1a7; }
+:root[data-theme="light"] .cm-s-monokai .CodeMirror-linenumber { color: #59636e; }
 :root[data-theme="light"] .cm-s-monokai .CodeMirror-cursor { border-left-color: #383a42; }
 :root[data-theme="light"] .cm-s-monokai div.CodeMirror-selected { background: #d7e6ff; }
-:root[data-theme="light"] .cm-s-monokai .cm-comment { color: #a0a1a7; }
+:root[data-theme="light"] .cm-s-monokai .cm-comment { color: #59636e; }
 :root[data-theme="light"] .cm-s-monokai .cm-keyword,
 :root[data-theme="light"] .cm-s-monokai .cm-builtin { color: #a626a4; }
 :root[data-theme="light"] .cm-s-monokai .cm-string,
-:root[data-theme="light"] .cm-s-monokai .cm-string-2 { color: #50a14f; }
+:root[data-theme="light"] .cm-s-monokai .cm-string-2 { color: #2f6f31; }
 :root[data-theme="light"] .cm-s-monokai .cm-number,
 :root[data-theme="light"] .cm-s-monokai .cm-atom { color: #986801; }
 :root[data-theme="light"] .cm-s-monokai .cm-def,
 :root[data-theme="light"] .cm-s-monokai .cm-variable,
 :root[data-theme="light"] .cm-s-monokai .cm-variable-2,
 :root[data-theme="light"] .cm-s-monokai .cm-operator { color: #383a42; }
-:root[data-theme="light"] .cm-s-monokai .cm-property { color: #4078f2; }
+:root[data-theme="light"] .cm-s-monokai .cm-property { color: #1f5fbf; }
 :root[data-theme="light"] .cm-s-monokai .cm-tag { color: #e45649; }
 
 /* Python-mode accents: light-on-dark purples -> a dark purple readable on light. */
@@ -2018,7 +2036,11 @@ svg.dg-svg { font-family: var(--sans); }
 :root[data-theme="light"] .py-mode-jlab-link:hover { color: #6f42c1; }
 :root[data-theme="light"] .py-mode-label.on .py-mode-thumb { background: #8250df; }
 :root[data-theme="light"] .py-mode-track { background: var(--e3); border-color: var(--bd); }
-:root[data-theme="light"] .cf-det-chip-alt { color: #0969da; }
+:root[data-theme="light"] .cf-det-chip-alt { color: #0755ad; }
+:root[data-theme="light"] .chatui-send:not(.stop) { color:#fff; }
+:root[data-theme="light"] .cf-debug-sum { color:var(--err); }
+:root[data-theme="light"] .cf-debug-codeline .cf-debug-lineno { color:#374151; }
+:root[data-theme="light"] .cf-debug-codeline-err .cf-debug-lineno { color:var(--err); }
 
 /* Error / debug surfaces: light-on-dark reds -> readable on light. */
 :root[data-theme="light"] .cf-panel-error,

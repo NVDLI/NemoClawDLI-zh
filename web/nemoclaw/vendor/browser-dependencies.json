@@ -915,51 +915,51 @@
       "references": [
         {
           "source": "i18n/es/web/nemoclaw/01b-react.html",
-          "line": 383
+          "line": 374
         },
         {
           "source": "i18n/es/web/nemoclaw/02c-deep.html",
-          "line": 428
-        },
-        {
-          "source": "i18n/es/web/nemoclaw/02c-deep.html",
-          "line": 482
-        },
-        {
-          "source": "i18n/es/web/nemoclaw/02c-deep.html",
-          "line": 581
-        },
-        {
-          "source": "i18n/pt/web/nemoclaw/01b-react.html",
-          "line": 421
-        },
-        {
-          "source": "i18n/pt/web/nemoclaw/02c-deep.html",
           "line": 419
         },
         {
-          "source": "i18n/pt/web/nemoclaw/02c-deep.html",
+          "source": "i18n/es/web/nemoclaw/02c-deep.html",
           "line": 473
         },
         {
-          "source": "i18n/pt/web/nemoclaw/02c-deep.html",
+          "source": "i18n/es/web/nemoclaw/02c-deep.html",
           "line": 572
         },
         {
+          "source": "i18n/pt/web/nemoclaw/01b-react.html",
+          "line": 412
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/02c-deep.html",
+          "line": 410
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/02c-deep.html",
+          "line": 464
+        },
+        {
+          "source": "i18n/pt/web/nemoclaw/02c-deep.html",
+          "line": 563
+        },
+        {
           "source": "web/nemoclaw/01b-react.html",
-          "line": 454
+          "line": 445
         },
         {
           "source": "web/nemoclaw/02c-deep.html",
-          "line": 443
+          "line": 434
         },
         {
           "source": "web/nemoclaw/02c-deep.html",
-          "line": 497
+          "line": 488
         },
         {
           "source": "web/nemoclaw/02c-deep.html",
-          "line": 596
+          "line": 587
         },
         {
           "source": "web/nemoclaw/scripts/_chat.js",
@@ -978,7 +978,7 @@
       "references": [
         {
           "source": "web/_skill_explorer.js",
-          "line": 293
+          "line": 310
         },
         {
           "source": "web/nemoclaw/scripts/_chat.js",

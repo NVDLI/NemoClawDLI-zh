@@ -21,7 +21,8 @@ import third_party_inventory_audit as inventory
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_REPOSITORY = "https://github.com/NVDLI/NemoClawDLI"
-CATEGORIES = ("vendored", "build-input", "validation", "local-authoring")
+CATEGORIES = ("vendored", "build-input", "validation", "local-authoring", "evaluated-candidate")
+PYODIDE_CANDIDATES = ROOT / "scripts/pyodide/candidate-components.json"
 HEADER = (
     "Package / Component Name",
     "Version",
@@ -182,12 +183,58 @@ def local_authoring_rows(base: str, ref: str) -> list[list[str]]:
     return rows
 
 
+def evaluated_candidate_rows(base: str, ref: str) -> list[list[str]]:
+    """Expose the complete reviewed Pyodide candidate closure without implying distribution."""
+    document = json.loads(PYODIDE_CANDIDATES.read_text(encoding="utf-8"))
+    live_demo = document["live_demo"]
+    use_labels = {
+        "acquisition": "Future asset-preparation helper",
+        "core": "Separate browser-Python demonstration",
+        "network": "Future outbound HTTP and model-API support",
+    }
+    role_labels = {
+        "build-input": "download helper used while preparing browser files",
+        "runtime-core": "runtime required by the separate demonstration",
+        "direct": "package selected for the proposed capability",
+        "transitive": "dependency brought in by a selected package",
+    }
+    rows = []
+    for component in document["components"]:
+        profile = component["profile"]
+        if profile == "core":
+            download = live_demo["base_url"]
+        else:
+            download = component["license_evidence_url"]
+        review_note = component.get("review_note", "")
+        comments = (
+            f"Evaluated use: {use_labels.get(profile, 'Possible future capability')}. "
+            f"Component role: {role_labels.get(component['relationship'], component['relationship'])}. "
+            f"{document['profiles'][profile]['description']} "
+            "Human approval remains required before distribution."
+        )
+        if review_note:
+            comments += f" Review note: {review_note}"
+        rows.append([
+            component["name"],
+            str(component["version"]),
+            component["license_expression"],
+            component["license_evidence_url"],
+            INTERNAL,
+            OTHER,
+            comments,
+            download,
+            repository_file(base, ref, "scripts/pyodide/candidate-components.json"),
+        ])
+    return rows
+
+
 def component_rows(categories: list[str], base: str, ref: str) -> list[list[str]]:
     loaders = {
         "vendored": vendored_rows,
         "build-input": browser_build_rows,
         "validation": python_rows,
         "local-authoring": local_authoring_rows,
+        "evaluated-candidate": evaluated_candidate_rows,
     }
     rows = []
     for category in CATEGORIES:

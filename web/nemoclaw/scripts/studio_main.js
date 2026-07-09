@@ -24,9 +24,9 @@ const API_CANDIDATES = [
   '/lab/api/contents/nemoclaw/',
 ];
 const COMMENT_FILE  = 'studio_comments.json';
-const STATIC_EXPORT = /(?:^|\/)course-static(?:\/|$)/.test(location.pathname);
+const LAB_AUTHORING = location.pathname.startsWith('/lab/static/');
 let contentApiBase  = null;
-let contentApiReady = STATIC_EXPORT;
+let contentApiReady = !LAB_AUTHORING;
 const SNAPSHOT_SEL  = 'h1,h2,h3,p,li,td,.callout,.hero .lead,.cf-panel-title';
 const ANNOTATE_SYS  = `You are a concise teaching assistant for an AI agent engineering course.
 A student just ran a code exercise and got the following output. In 2–4 sentences explain what

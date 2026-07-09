@@ -26,6 +26,11 @@ def core_job(name: str, next_name: str) -> str:
 
 
 class ThemeRuntimeContractTests(unittest.TestCase):
+    def test_browser_vendor_refresh_preserves_skill_contracts(self):
+        source = (ROOT / "scripts/build/vendor_browser_dependencies.mjs").read_text(encoding="utf-8")
+        self.assertNotIn('fs.rmSync(vendor, { recursive: true', source)
+        self.assertIn('item.name === "SKILL.html"', source)
+
     def test_discovery_includes_every_nested_html_file(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -38,68 +43,82 @@ class ThemeRuntimeContractTests(unittest.TestCase):
                 ["index.html", "nested/SKILL.html", "vendor/page.html"],
             )
 
+    def test_artifact_scan_root_has_no_file_exemptions(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            site = Path(directory)
+            preview = site / "preview"
+            for path in (site / "index.html", preview / "index.html", preview / "nested/page.html"):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("<!doctype html>", encoding="utf-8")
+            self.assertEqual(
+                ["preview/index.html", "preview/nested/page.html"],
+                theme_runtime.discover_html(site, preview),
+            )
+            with self.assertRaises(ValueError):
+                theme_runtime.discover_html(site, site.parent)
+
     def test_runtime_has_dark_light_dependency_detection(self) -> None:
         source = theme_runtime.RUNTIME_JS
-        for token in ("themeSnapshot('dark')", "themeSnapshot('light')", "colorDependencies", "themeChanged"):
+        for token in (
+            "themeSnapshot('dark')",
+            "themeSnapshot('light')",
+            "contrastFailures",
+            "themeControl",
+            "SKILL theme control is missing or ineffective",
+        ):
             with self.subTest(token=token):
                 self.assertIn(token, source)
+        self.assertNotIn("themeCapable", source)
+        self.assertNotIn("node.closest('.CodeMirror", source)
 
-    def test_preview_audits_the_branch_owned_tree(self) -> None:
-        source = (ROOT / ".gitlab/ci/core.yml").read_text(encoding="utf-8")
-        self.assertIn('THEME_SITE_ROOT="public/$CI_COMMIT_REF_SLUG"', source)
-        self.assertIn('skill_renderer_runtime_audit.py --site-root "$THEME_SITE_ROOT"', source)
+    def test_preview_serves_the_deployment_and_exhausts_its_owned_artifact(self) -> None:
+        job = core_job("theme_runtime", "human_review")
+        self.assertIn("THEME_SITE_ROOT=public", job)
+        self.assertIn('THEME_SCAN_ROOT="public/$CI_COMMIT_REF_SLUG"', job)
+        self.assertIn('--site-root "$THEME_SITE_ROOT" --scan-root "$THEME_SCAN_ROOT"', job)
+        self.assertNotIn('THEME_SITE_ROOT="public/$CI_COMMIT_REF_SLUG"', job)
+
+    def test_manifest_rewrites_reproject_every_discovered_mirror(self) -> None:
+        pages = core_job("pages", "pages_smoke")
+        self.assertIn(
+            'project_artifact_manifests.py public --manifest-root "public/$CI_COMMIT_REF_SLUG"',
+            pages,
+        )
+        self.assertIn('project_artifact_manifests.py public\n', pages)
+        self.assertIn('artifact_link_audit.py "public/$CI_COMMIT_REF_SLUG"', pages)
+        build = (ROOT / "scripts/build/build_pages.sh").read_text(encoding="utf-8")
+        self.assertIn('project_artifact_manifests.py" "$OUT"', build)
 
     def test_runtime_keeps_universal_narrow_layout_coverage(self) -> None:
         source = theme_runtime.RUNTIME_JS
         for token in (
             "setViewportSize({ width:390, height:844 })",
-            "narrow theme-dependent contrast",
+            "narrow contrast",
             "narrow layout overflows 390px viewport",
             "documentWidth:document.documentElement.scrollWidth",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, source)
 
-    def test_runtime_requires_useful_linked_sbom_rendering(self) -> None:
+    def test_runtime_checks_every_internal_url_and_owned_request(self) -> None:
         source = theme_runtime.RUNTIME_JS
         for token in (
-            "sbomEvidenceReady",
-            "linked SBOM rendered no component licenses",
-            "security_deep_sca",
-            "security_image_sca",
+            "urlAttributes = ['href', 'src', 'poster', 'action', 'data-svg-src']",
+            "document.querySelectorAll('*')",
+            "isSkill = await page.evaluate",
+            "!!document.getElementById('skill-meta')",
+            "internal response HTTP",
+            "internal request failed",
+            "internal URLs failed",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, source)
+        self.assertNotIn("anchor.dataset.evidenceLink === 'local'", source)
 
-    def test_runtime_executes_the_pyodide_skill_contract(self) -> None:
-        source = theme_runtime.RUNTIME_JS
-        for token in (
-            "scripts/pyodide/SKILL.html",
-            "new Function(globalThis.__pyodideWorkerSource)",
-            "editorCount !== runtimeContract.count + 1",
-            "syntaxTokens < runtimeContract.count",
-            "CodeMirror surfaces are not consistently theme-aware",
-            "Shift+Enter did not run the cell and focus the next editor",
-            "scratch REPL did not preserve namespace or execution order",
-            "final expression did not render as notebook output",
-            "Pyodide background process did not register and complete across cells",
-            "Pyodide artifact did not preserve a highlighted preview and exact downloadable bytes",
-            "playground.runAll()",
-            "Pyodide chat did not preserve repeated user input",
-            "Pyodide intentional error did not render its traceback",
-            "Pyodide traceback did not highlight the failing source line",
-            "Pyodide display pipeline did not render highlighted JSON/code, Markdown, HTML, and tables",
-            "Pyodide syntax output is hard-wrapped or artificially narrow",
-            "Pyodide helper menu did not preview, edit, and apply the live helper source",
-            "Pyodide rich output sanitizer admitted executable or network-active HTML",
-            "Pyodide build.nvidia.com path did not consume streamed SSE tokens",
-            "Pyodide WebSocket round trip did not connect, send, and receive",
-            "Pyodide rendered a model credential into page output",
-            "Pyodide Reset did not clear cell state",
-        ):
-            with self.subTest(token=token):
-                self.assertIn(token, source)
-
+    def test_pages_build_has_an_unconditional_artifact_boundary_gate(self) -> None:
+        source = (ROOT / "scripts/build/build_pages.sh").read_text(encoding="utf-8")
+        self.assertIn('artifact_link_audit.py" "$OUT"', source)
+        self.assertNotIn("ARTIFACT_LINK_AUDIT", source)
 
 class ScaTriggerContractTests(unittest.TestCase):
     def test_pages_does_not_wait_on_an_unplayed_manual_sca_job(self) -> None:

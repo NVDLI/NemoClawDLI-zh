@@ -16,11 +16,12 @@
   /* Light theme: <html data-theme="light"> flips the palette (mirrors _lite_overlay.css). The
      bundler injects the pre-paint init that sets data-theme; _shared.js mounts the toggle. */
   :root[data-theme="light"] {
-    --g:#4f7f00; --gd:#2f6a00; --gs:#4a7a00;
+    --g:#3f6900; --gd:#2f5500; --gs:#3f6900;
     --bg:#ffffff; --e1:#f6f8fa; --e2:#eef1f4; --e3:#e1e6eb;
-    --tx:#1a1a1a; --td:#3b3b3b; --tf:#57606a;
+    --tx:#1a1a1a; --td:#3b3b3b; --tf:#4b5563;
   }
   :root[data-theme="light"] body { background: var(--bg); color: var(--tx); }
+  :root[data-theme="light"] .howto .n,:root[data-theme="light"] .start-row a.primary{color:#fff}
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { background: var(--bg); color: var(--tx);
                font-family: var(--sans); font-size: 15px; line-height: 1.55; }

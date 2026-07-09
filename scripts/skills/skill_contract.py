@@ -326,6 +326,16 @@ def renderer_findings_for(skill: Path, root: Path) -> list[str]:
     elif len(set(parser.skill_header_links)) < 2:
         findings.append("skill navigation header needs at least two distinct links")
 
+    explorer_scripts = [
+        reference for kind, reference in parser.resources
+        if kind == "script" and "_skill_explorer.js" in reference
+    ]
+    if len(explorer_scripts) != 1:
+        findings.append(
+            "every SKILL page requires exactly one shared _skill_explorer.js shell; "
+            f"found {len(explorer_scripts)}"
+        )
+
     if isinstance(meta, dict):
         exports = meta.get("exports", [])
         if exports and not isinstance(exports, list):
@@ -358,9 +368,6 @@ def renderer_findings_for(skill: Path, root: Path) -> list[str]:
     if config is not None:
         if "explorer" not in parser.ids:
             findings.append("explorer-config has no #explorer mount")
-        explorer_scripts = [ref for kind, ref in parser.resources if kind == "script" and "_skill_explorer.js" in ref]
-        if len(explorer_scripts) != 1:
-            findings.append(f"explorer-config requires exactly one shared _skill_explorer.js renderer; found {len(explorer_scripts)}")
         if isinstance(meta, dict) and meta.get("schema") == "dir-skill/1.0":
             declared = meta.get("explorer")
             if not declared:

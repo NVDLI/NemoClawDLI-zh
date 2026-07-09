@@ -8,7 +8,7 @@
 <style>
   :root[data-theme="light"] {
     --bg:#ffffff; --e1:#f6f8fa; --e2:#eef1f4; --e3:#e5e8ec; --bd:#d0d7de;
-    --tx:#1a1f24; --td:#4b5563; --tf:#6b7280; --g:#4a7a00; --gd:#3f6900; --gs:#4a7a00;
+    --tx:#1a1f24; --td:#4b5563; --tf:#4b5563; --g:#3f6900; --gd:#2f5500; --gs:#3f6900;
     color-scheme: light;
   }
   :root[data-theme="dark"] { color-scheme: dark; }
@@ -20,6 +20,7 @@
   .theme-toggle { display:inline-flex; gap:4px; padding:4px; border:1px solid var(--bd); border-radius:8px; background:var(--e1); }
   .theme-toggle button { border:0; border-radius:6px; padding:7px 10px; cursor:pointer; font:700 .76rem var(--mono); color:var(--td); background:transparent; }
   .theme-toggle button[aria-pressed="true"] { background:var(--g); color:#0a0a0a; }
+  :root[data-theme="light"] .theme-toggle button[aria-pressed="true"] { color:#fff; }
   .note { border:1px solid var(--bd); border-radius:8px; padding:10px 12px; background:var(--e1); color:var(--td); }
   .pv-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:14px; margin:1em 0; }
   .pv-card { border:1px solid var(--bd); border-radius:8px; padding:11px 12px; background:var(--e1); font-size:.8rem; }
@@ -730,5 +731,6 @@
 })();
 </script>
 </main>
+<script src="../../_skill_explorer.js"></script>
 </body>
 </html>

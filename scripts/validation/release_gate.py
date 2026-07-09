@@ -53,11 +53,18 @@ HARNESS_CONTRACT = py("-m", "unittest", "-v", "tests.validation.test_test_harnes
 NODE_VALIDATOR_TESTS = ("bash", "scripts/runtime/run_node.sh", "tests/runtime/test_embedded_validator_suites.mjs")
 COLOR_THEME_TESTS = py("-m", "unittest", "-v", "tests.validation.test_color_theme")
 THEME_RUNTIME_CONTRACT_TESTS = py("-m", "unittest", "-v", "tests.validation.test_theme_runtime_contract")
+ARTIFACT_NAVIGATION_TESTS = py("-m", "unittest", "-v", "tests.validation.test_artifact_navigation_projection")
+CONTRIBUTION_LANGUAGE_OWNERSHIP_TESTS = py(
+    "-m", "unittest", "-v", "tests.validation.test_contribution_language_ownership",
+)
+FOYER_BRANCH_PATH_TESTS = py("-m", "unittest", "-v", "tests.validation.test_foyer_branch_paths")
 PYODIDE_RUNTIME_SMOKE = ("bash", "scripts/runtime/run_node.sh", "scripts/pyodide/runtime_smoke.mjs", "--cdn")
 
 
 FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/build/bundle_standalone.py", "--self-test"),
+    unit_test("artifact_link_audit"),
+    ARTIFACT_NAVIGATION_TESTS,
     py("scripts/build/build_security_review_package.py", "--self-test"),
     py("scripts/materials/pull_materials.py", "--verify-committed"),
     unit_test("local_path_leak_audit"),
@@ -110,6 +117,8 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
 
 SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/build/bundle_standalone.py", "--self-test"),
+    unit_test("artifact_link_audit"),
+    ARTIFACT_NAVIGATION_TESTS,
     py("scripts/build/build_security_review_package.py", "--self-test"),
     unit_test("materials"),
     py("scripts/materials/pull_materials.py", "--verify-committed"),
@@ -152,6 +161,8 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     NODE_VALIDATOR_TESTS,
     py("scripts/build/assemble_locale_overlay.py", "--self-test"),
     py("scripts/validation/localization_audit.py", "--self-test"),
+    FOYER_BRANCH_PATH_TESTS,
+    CONTRIBUTION_LANGUAGE_OWNERSHIP_TESTS,
     py("scripts/validation/contribution_safety_audit.py", "--self-test"),
     py(
         "scripts/validation/contribution_safety_audit.py",
@@ -196,6 +207,17 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
 # Proposal runs may skip a mutation suite only when none of its implementation or contract
 # inputs changed. Full release runs omit --changed-since and execute every suite.
 MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
+    unit_test("artifact_link_audit"): (
+        "scripts/validation/artifact_link_audit.py", "scripts/build/bundle_standalone.py",
+        "scripts/build/build_pages.sh", "tests/validation/test_embedded_validator_suites.py",
+        "**/*.html",
+    ),
+    ARTIFACT_NAVIGATION_TESTS: (
+        "scripts/build/bundle_standalone.py", "scripts/build/project_artifact_navigation.py",
+        "scripts/build/project_artifact_manifests.py", "scripts/build/build_branch_manifest.py",
+        "scripts/validation/artifact_link_audit.py",
+        "tests/validation/test_artifact_navigation_projection.py", "**/*.html",
+    ),
     COLOR_THEME_TESTS: (
         "scripts/validation/color_theme.py", "tests/validation/test_color_theme.py",
         "web/**/*.html", "web/**/*.css", "web/**/*.js", "web/**/*.mjs", "web/**/*.svg",
@@ -374,6 +396,15 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
         "scripts/git-hooks/*", "scripts/build/install-hooks.sh", "scripts/build/build_pages.sh",
         "scripts/build/package_release.py", "scripts/validation/release_gate.py",
         "scripts/validation/contribution_safety_audit.py", "scripts/security/*", "workspace/*",
+    ),
+    CONTRIBUTION_LANGUAGE_OWNERSHIP_TESTS: (
+        "scripts/validation/contribution_safety_audit.py",
+        "tests/validation/test_contribution_language_ownership.py",
+        "web/nemoclaw/*", "i18n/*/web/nemoclaw/*",
+    ),
+    FOYER_BRANCH_PATH_TESTS: (
+        "tests/validation/test_foyer_branch_paths.py",
+        "web/index.html", "i18n/*/web/index.html",
     ),
     py("scripts/security/audit_iframe_proxy_opt_in.py", "--self-test"): (
         "scripts/security/audit_iframe_proxy_opt_in.py", "scripts/cors-proxy/*",

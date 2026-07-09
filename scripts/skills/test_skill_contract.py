@@ -96,7 +96,11 @@ class RendererContractTests(unittest.TestCase):
 
     def test_missing_shared_renderer_fails(self) -> None:
         text = page().replace('<script src="../web/_skill_explorer.js"></script>', "")
-        self.assertTrue(any("exactly one shared" in finding for finding in self.findings(text)))
+        self.assertTrue(any("every SKILL page requires exactly one shared" in finding for finding in self.findings(text)))
+
+    def test_leaf_without_explorer_config_still_requires_shared_shell(self) -> None:
+        text = '<!DOCTYPE html><html><head><script type="application/json" id="skill-meta">{"node_type":"leaf","source_dir":"fixture/","summary":"fixture","self_path":"fixture/SKILL.html","title":"fixture"}</script></head><body><header data-skill-header="1"><nav><a href="../SKILL.html">Up</a><a href="../index.html">Home</a></nav></header><main>fixture body text that is long enough to inspect</main><script src="../web/_skill_explorer.js"></script></body></html>'
+        self.assertEqual(self.findings(text), [])
 
     def test_root_absolute_renderer_fails(self) -> None:
         self.assertTrue(any("root-absolute" in finding for finding in self.findings(page("/web/_skill_explorer.js"))))

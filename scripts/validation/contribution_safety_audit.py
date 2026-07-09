@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from html.parser import HTMLParser
 from pathlib import Path
 
 for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
@@ -367,6 +368,9 @@ def audit_repo(
         ('py("scripts/validation/contribution_safety_audit.py", "--self-test")',
          "shared-safety-gate",
          "run contribution-boundary mutations and emit its report from the shared gate"),
+        ("CONTRIBUTION_LANGUAGE_OWNERSHIP_TESTS,",
+         "shared-language-ownership-test",
+         "run the standard visible-prose ownership tests from the shared gate"),
         ("docs/validation/contribution-safety.json", "shared-safety-report",
          "retain machine-readable contribution-boundary evidence in the shared gate"),
         ('py("scripts/build/package_release.py", "--self-test")', "shared-package-selftest",
@@ -744,12 +748,35 @@ def audit_repo(
             "keep an explicit human acceptance job after preview validation")
     require(gitlab, "theme_runtime:", ".gitlab-ci.yml", "gitlab-theme-runtime", out,
             "render every generated HTML file in the required dark/light browser matrix")
-    require(gitlab, 'skill_renderer_runtime_audit.py --site-root "$THEME_SITE_ROOT"', ".gitlab-ci.yml",
+    require(gitlab, '--site-root "$THEME_SITE_ROOT" --scan-root "$THEME_SCAN_ROOT"', ".gitlab-ci.yml",
             "gitlab-theme-runtime-command", out,
-            "run the exhaustive theme audit against the exact Pages artifact")
-    require(gitlab, 'THEME_SITE_ROOT="public/$CI_COMMIT_REF_SLUG"', ".gitlab-ci.yml",
-            "gitlab-theme-runtime-preview-root", out,
-            "audit every branch-owned HTML page without re-auditing the protected production-root copy")
+            "serve the complete deployment while exhaustively scanning the owned artifact root")
+    require(gitlab, "THEME_SITE_ROOT=public", ".gitlab-ci.yml",
+            "gitlab-theme-runtime-deployed-root", out,
+            "audit the complete deployed Pages tree, including protected production and previews")
+    if 'THEME_SITE_ROOT="public/$CI_COMMIT_REF_SLUG"' in gitlab:
+        out.append(finding(
+            "gitlab-theme-runtime-narrowed-root", ".gitlab-ci.yml",
+            "theme runtime narrows a combined Pages deployment to one preview subdirectory",
+            "audit public so every deployed HTML file enters the browser matrix",
+        ))
+    require(
+        gitlab,
+        'project_artifact_manifests.py public --manifest-root "public/$CI_COMMIT_REF_SLUG"',
+        ".gitlab-ci.yml", "gitlab-preview-manifest-projection", out,
+        "reproject every branch mirror after CI rewrites the preview manifest",
+    )
+    if not re.search(r"(?m)^\s*python3 scripts/build/project_artifact_manifests\.py public\s*$", gitlab):
+        out.append(finding(
+            "gitlab-production-manifest-projection", ".gitlab-ci.yml",
+            "production manifest rewrites are not projected into every discovered mirror",
+            "run project_artifact_manifests.py public after rewriting public/branches.json",
+        ))
+    require(
+        gitlab, 'artifact_link_audit.py "public/$CI_COMMIT_REF_SLUG"', ".gitlab-ci.yml",
+        "gitlab-combined-artifact-link-audit", out,
+        "reaudit the complete branch artifact after every CI manifest rewrite",
+    )
     require(gitlab, 'needs: ["test", "pages_smoke", "theme_runtime"]', ".gitlab-ci.yml",
             "gitlab-human-review-needs", out,
             "make human acceptance wait for static gates, live preview smoke, and all-HTML theme rendering")
@@ -935,12 +962,14 @@ def audit_commit_records(records: list[tuple[str, str, str, str]]) -> list[dict[
 
 def audit_language_ownership(
     changed_paths: list[str], changelog: str, commit_messages: list[str],
+    learner_prose_paths: set[str] | None = None,
 ) -> list[dict[str, str]]:
     """Require public credit and explicit review for learner-prose localization changes."""
     out: list[dict[str, str]] = []
-    locale_pages = [path for path in changed_paths if re.fullmatch(
+    prose_candidates = learner_prose_paths if learner_prose_paths is not None else set(changed_paths)
+    locale_pages = [path for path in prose_candidates if re.fullmatch(
         r"i18n/[^/]+/web/nemoclaw/[0-9]{2}[a-z]-[^/]+\.html", path)]
-    canonical_pages = [path for path in changed_paths if re.fullmatch(
+    canonical_pages = [path for path in prose_candidates if re.fullmatch(
         r"web/nemoclaw/[0-9]{2}[a-z]-[^/]+\.html", path)]
     if not locale_pages:
         return out
@@ -962,6 +991,83 @@ def audit_language_ownership(
             "split ownership by proposal or add Localization-Review: <locale>=<public reviewer name>",
         ))
     return out
+
+
+class _LearnerText(HTMLParser):
+    """Extract text a learner can perceive without treating URLs as prose."""
+
+    LEARNER_ATTRIBUTES = {"alt", "aria-label", "placeholder", "title"}
+    HIDDEN_ELEMENTS = {"script", "style", "template"}
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.hidden_depth = 0
+        self.parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.casefold() in self.HIDDEN_ELEMENTS:
+            self.hidden_depth += 1
+            return
+        if self.hidden_depth:
+            return
+        for name, value in attrs:
+            if name.casefold() in self.LEARNER_ATTRIBUTES and value:
+                self.parts.append(value)
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if self.hidden_depth or tag.casefold() in self.HIDDEN_ELEMENTS:
+            return
+        for name, value in attrs:
+            if name.casefold() in self.LEARNER_ATTRIBUTES and value:
+                self.parts.append(value)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.casefold() in self.HIDDEN_ELEMENTS and self.hidden_depth:
+            self.hidden_depth -= 1
+
+    def handle_data(self, data: str) -> None:
+        if not self.hidden_depth:
+            self.parts.append(data)
+
+
+def learner_text(raw: str) -> str:
+    parser = _LearnerText()
+    parser.feed(raw)
+    parser.close()
+    return " ".join(" ".join(parser.parts).split())
+
+
+def changed_learner_prose_paths(
+    rev_range: str, changed_paths: list[str], root: Path = ROOT,
+) -> set[str]:
+    """Return course pages whose rendered prose changed across a Git range.
+
+    Ownership follows what a learner reads, including accessibility labels. A
+    local URL, class, hash, or other transport-only edit is still reviewed by
+    its functional gates but is not misreported as a translation rewrite.
+    Missing or unreadable blobs fail closed as prose changes.
+    """
+    endpoints = re.fullmatch(r"(.+?)\.{2,3}(.+)", rev_range)
+    candidates = [path for path in changed_paths if re.fullmatch(
+        r"(?:i18n/[^/]+/)?web/nemoclaw/[0-9]{2}[a-z]-[^/]+\.html", path)]
+    if not endpoints:
+        return set(candidates)
+    base, head = endpoints.groups()
+    changed: set[str] = set()
+    for path in candidates:
+        blobs: list[str] = []
+        for revision in (base, head):
+            result = subprocess.run(
+                ["git", "show", f"{revision}:{path}"], cwd=root,
+                capture_output=True, text=True,
+            )
+            if result.returncode:
+                changed.add(path)
+                break
+            blobs.append(result.stdout)
+        if len(blobs) == 2 and learner_text(blobs[0]) != learner_text(blobs[1]):
+            changed.add(path)
+    return changed
 
 
 def audit_commit_range(rev_range: str, root: Path = ROOT) -> list[dict[str, str]]:
@@ -996,8 +1102,9 @@ def audit_commit_range(rev_range: str, root: Path = ROOT) -> list[dict[str, str]
     except (subprocess.CalledProcessError, OSError) as exc:
         return [finding("commit-range", "git", f"cannot inspect changed paths: {exc}",
                         "fetch the base ref and restore CHANGELOG.md")]
+    prose_paths = changed_learner_prose_paths(rev_range, changed, root)
     return audit_commit_records(records) + audit_language_ownership(
-        changed, changelog, [record[3] for record in records])
+        changed, changelog, [record[3] for record in records], prose_paths)
 
 
 def self_test() -> list[str]:
@@ -1041,6 +1148,7 @@ def self_test() -> list[str]:
             ("shared-local-path-selftest", "scripts/validation/release_gate.py", 'unit_test("local_path_leak_audit")', 'py("scripts/validation/local_path_leak_audit.py", "--help")'),
             ("shared-sensitive-content", "scripts/validation/release_gate.py", 'unit_test("sensitive_content_audit")', 'py("scripts/validation/sensitive_content_audit.py", "--help")'),
             ("shared-release-reminder", "scripts/validation/release_gate.py", 'unit_test("release_change_reminder")', 'py("scripts/validation/release_change_reminder.py", "--help")'),
+            ("shared-language-ownership-test", "scripts/validation/release_gate.py", "    CONTRIBUTION_LANGUAGE_OWNERSHIP_TESTS,", '    py("scripts/validation/contribution_safety_audit.py", "--help"),'),
             ("shared-report-reuse-selftest", "scripts/validation/release_gate.py", 'unit_test("validation_report_audit")', 'py("scripts/validation/validation_report_audit.py", "--help")'),
             ("shared-pages-artifact-selftest", "scripts/validation/release_gate.py", 'unit_test("pages_artifact_integrity")', 'py("scripts/validation/pages_artifact_integrity.py", "--help")'),
             ("shared-standard-test-contract", "scripts/validation/release_gate.py", "    HARNESS_CONTRACT,\n", "    # standard contract removed\n"),
@@ -1134,8 +1242,11 @@ def self_test() -> list[str]:
             ("gitlab-sca-lock", ".gitlab/ci/sca.yml", ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock", ".sca-tools-venv/bin/python -m pip install -q pip-audit cyclonedx-bom"),
             ("gitlab-human-review", ".gitlab/ci/core.yml", "human_review:", "operator_review:"),
             ("gitlab-theme-runtime", ".gitlab/ci/core.yml", "theme_runtime:", "theme_runtime_removed:"),
-            ("gitlab-theme-runtime-command", ".gitlab/ci/core.yml", 'skill_renderer_runtime_audit.py --site-root "$THEME_SITE_ROOT"', "skill_renderer_runtime_audit.py --site-root selected"),
-            ("gitlab-theme-runtime-preview-root", ".gitlab/ci/core.yml", 'THEME_SITE_ROOT="public/$CI_COMMIT_REF_SLUG"', 'THEME_SITE_ROOT="public"'),
+            ("gitlab-theme-runtime-command", ".gitlab/ci/core.yml", '--site-root "$THEME_SITE_ROOT" --scan-root "$THEME_SCAN_ROOT"', "--site-root selected"),
+            ("gitlab-theme-runtime-deployed-root", ".gitlab/ci/core.yml", "THEME_SITE_ROOT=public", 'THEME_SITE_ROOT="public/$CI_COMMIT_REF_SLUG"'),
+            ("gitlab-preview-manifest-projection", ".gitlab/ci/core.yml", 'project_artifact_manifests.py public --manifest-root "public/$CI_COMMIT_REF_SLUG"', "project_artifact_manifests.py public/preview"),
+            ("gitlab-production-manifest-projection", ".gitlab/ci/core.yml", "        python3 scripts/build/project_artifact_manifests.py public\n", "        python3 scripts/build/project_artifact_manifests.py public-root\n"),
+            ("gitlab-combined-artifact-link-audit", ".gitlab/ci/core.yml", 'artifact_link_audit.py "public/$CI_COMMIT_REF_SLUG"', "artifact_link_audit.py selected-preview"),
             ("gitlab-human-review-needs", ".gitlab/ci/core.yml", 'needs: ["test", "pages_smoke", "theme_runtime"]', 'needs: ["test", "pages_smoke"]'),
             ("gitlab-human-review-blocking", ".gitlab/ci/core.yml", '    - if: \'$CI_PIPELINE_SOURCE == "merge_request_event"\'\n      when: manual\n      allow_failure: false\n', '    - if: \'$CI_PIPELINE_SOURCE == "merge_request_event"\'\n      when: on_success\n      allow_failure: true\n'),
             ("material-transient-classification", "scripts/materials/pull_materials.py", "TRANSIENT_HTTP_STATUS = {", "RETRYABLE_STATUS_REMOVED = {"),
@@ -1224,6 +1335,16 @@ def self_test() -> list[str]:
     locale_path = "i18n/es/web/nemoclaw/01a-loop.html"
     canonical_path = "web/nemoclaw/01a-loop.html"
     credited = "## Unreleased\n\n- Thanks to Example Contributor for the Spanish translation.\n"
+    href_before = '<a href="../index.html" aria-label="Inicio">Volver</a>'
+    href_after = '<a href="index.html" aria-label="Inicio">Volver</a>'
+    if learner_text(href_before) != learner_text(href_after):
+        failures.append("transport-only href change was misclassified as learner prose")
+    if learner_text(href_after) == learner_text(
+            '<a href="index.html" aria-label="Inicio del curso">Volver</a>'):
+        failures.append("learner-facing accessibility prose change escaped classification")
+    if audit_language_ownership(
+            [locale_path, canonical_path], "", ["Navigation update"], set()):
+        failures.append("transport-only localized HTML change required prose ownership")
     if audit_language_ownership([locale_path, "CHANGELOG.md"], credited, ["Locale update"]):
         failures.append("credited locale-only change rejected")
     ownership_cases = (

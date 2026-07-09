@@ -77,9 +77,11 @@ REQUIRED_RUNBOOK_TEXT = (
     "source-tree.cdx.json",
     "source-tree.spdx.json",
 )
-REQUIRED_EXPORT_CATEGORIES = {"vendored", "build-input", "validation", "local-authoring", "all"}
+REQUIRED_EXPORT_CATEGORIES = {
+    "vendored", "build-input", "validation", "local-authoring", "evaluated-candidate", "all",
+}
 REQUIRED_SCOPE_CATEGORIES = {
-    "referenced-source", "tooling-not-distributed", "recreated-asset",
+    "external-source-record", "referenced-source", "tooling-not-distributed", "recreated-asset",
     "vendored-material", "vendored-browser-code", "all",
 }
 
@@ -191,19 +193,29 @@ def export_contract_findings(overrides: dict[str, str]) -> list[str]:
     preview = read(CSV_PREVIEW, overrides)
     for token in (
         "vendored", "build-input", "validation", "local-authoring", "dataset.exportReady",
-        "referenced-source", "tooling-not-distributed", "recreated-asset", "vendored-material",
+        "external-source-record", "referenced-source", "tooling-not-distributed", "recreated-asset", "vendored-material",
         "vendored-browser-code", "Corroborating Repository Evidence",
         "selectedValues", "choiceGroup", "sortedRows", "sortableHeaders", "dataset.sortIndex",
-        "FILTER_LABELS", "Included in the course", "Referenced, not copied",
+        "FILTER_LABELS", "Included in the course", "External document citation record",
         "No single aggregate license", "friendlyChoice",
-        "documentScopeRows", "document_sources", "Source Author(s)", "renderScopeRow", "dataset.label",
+        "documentScopeRows", "document use roll-up", "document_sources", "Source Author(s)", "renderScopeRow", "dataset.label",
         "sbom_evidence", "ci_sbom_evidence", "renderSbomEvidence", "linkedSbomComponents",
         "dataset.sbomSubject", "license_hint", 'Learners receive these " + record.sbom.component_count + " packages',
         "Learners do not receive these packages", "Learners do not receive these tools",
         "packages needing license clarification", "Files for auditors and automation",
+        "evaluated-candidate", "evaluatedCandidateRows", "pyodide_candidates",
+        "Evaluated option, not shipped", "candidate-components.json",
+        "Future outbound HTTP and model-API support", "Component role:",
     ):
         if token not in preview:
             findings.append(f"SWIPAT preview implementation is incomplete: {token}")
+    for opaque_label in ("Profile: network", "Optional network-profile candidate"):
+        if opaque_label in preview or opaque_label in skill:
+            findings.append(f"reviewer-facing software copy exposes an opaque implementation label: {opaque_label}")
+    scope_exporter = read(SCOPE_EXPORTER, overrides)
+    for placeholder in ("See related repository-item rows", "Referenced, not copied"):
+        if placeholder in preview or placeholder in scope_exporter or placeholder in skill:
+            findings.append(f"legal-scope export delegates or misstates distribution: {placeholder}")
     for phrase in (
         "The linked file passed its recorded SHA-256 check",
         "Every link was read through the GitLab job-artifact API",
@@ -336,6 +348,8 @@ def self_test() -> list[str]:
         ("wrapped commands", {COMPLIANCE_SKILL: compliance_skill.replace("white-space:pre-wrap", "white-space:nowrap", 1)}, "SWIPAT in-page preview control is missing"),
         ("filter semantics", {COMPLIANCE_SKILL: compliance_skill.replace("You can choose several options in one filter", "filters combine somehow", 1)}, "SWIPAT in-page preview control is missing"),
         ("plain-language filter labels", {CSV_PREVIEW: read(CSV_PREVIEW, {}).replace("Included in the course", "vendored technical label", 1)}, "SWIPAT preview implementation is incomplete"),
+        ("misclassified document roll-up", {CSV_PREVIEW: read(CSV_PREVIEW, {}).replace("External document citation record", "Referenced, not copied", 1)}, "legal-scope export delegates or misstates distribution"),
+        ("delegated document distribution", {SCOPE_EXPORTER: read(SCOPE_EXPORTER, {}).replace('distribution = f"Yes - copied or converted into {copied} repository item(s)"', 'distribution = "See related repository-item rows"', 1)}, "legal-scope export delegates or misstates distribution"),
         ("outsider-first software review", {CSV_PREVIEW: read(CSV_PREVIEW, {}).replace('Learners receive these " + record.sbom.component_count + " packages', "Distributed payload", 1)}, "SWIPAT preview implementation is incomplete"),
         ("build-centric software review", {CSV_PREVIEW: read(CSV_PREVIEW, {}).replace("Every browser package has", "Every link was read through the GitLab job-artifact API. Every browser package has", 1)}, "reviewer-facing software copy exposes build-centric status language"),
         ("plain-language export explanation", {CSV_EXPORTER: read(CSV_EXPORTER, {}).replace("Learners receive this code as part of the browser course.", "Vendored package.", 1)}, "reviewer export lacks plain-language usage explanation"),

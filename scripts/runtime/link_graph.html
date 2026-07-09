@@ -19,7 +19,7 @@
       --g: #76b900;
       --gs: #8a8a8a;
       --ok: #3fb950;
-      --dead: #f85149;
+      --dead: #ff7b72;
       --iso: #d29922;
       --cross: #a371f7;
       --cyc: #58a6ff;
@@ -947,6 +947,7 @@
     const SKIP_DIR = /^(\.|__pycache__|node_modules|export|standalone|_paper_cache|repos_index|docstore_index|artifacts|skills-seed|generated_images|sample_videos|_offloaded_tracks|dist|build|venv|composer|validation)$/;
     const PAGE_RE = /\.(html?|md|ipynb)$/i;
     const CRAWL_TOP = ["web", "cpu", "docs", "scripts"];   // matches engine.iterPages (mats now recurse under web/)
+    const LAB_AUTHORING = location.pathname.startsWith("/lab/static/");
 
 
     async function capi(path) {
@@ -1043,6 +1044,7 @@
     document.getElementById("btn-fit").addEventListener("click", () => { fit(); kick(); });
     document.getElementById("btn-rescan").addEventListener("click", async () => {
       const st = document.getElementById("scan-status"); const btn = document.getElementById("btn-rescan");
+      if (!LAB_AUTHORING) { st.textContent = "Live rescan is available in the lab authoring view; using embedded data."; return; }
       btn.disabled = true; const t0 = Date.now();
       try {
         const fresh = await liveAnalyze(msg => { st.textContent = msg; });
@@ -1056,7 +1058,7 @@
     build(); renderCourseFilter(); renderAll(); resize(); fit(); kick(1);
     // auto-rescan on load when served from the lab, so the default view is the LIVE truth.
     // never a stale embedded snapshot. Falls back silently to the embedded data when offline.
-    (async () => { try { await capi(""); document.getElementById("btn-rescan").click(); } catch (e) { } })();
+    if (LAB_AUTHORING) (async () => { try { await capi(""); document.getElementById("btn-rescan").click(); } catch (e) { } })();
   </script>
 </body>
 

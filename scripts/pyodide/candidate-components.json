@@ -2,7 +2,7 @@
   "schema": "pyodide-candidate-components/1.0",
   "status": "planned-not-distributed",
   "review_state": "human-approval-required",
-  "reviewed_snapshot_sha256": "9cb907d8fa26a7e6ba1e7175d09f0cb48a08bdb35086d1076626770f9eb51504",
+  "reviewed_snapshot_sha256": "c9e9f2d0532d06a23eaa2eea34b045fc54039a58c587cba491816ae0b3143cc5",
   "purpose": "Exact candidate inventory for a future browser-Python course integration. These files are not present in or shipped by the current learner course.",
   "source_pattern": {
     "kind": "task-supplied-local-reference",
@@ -32,15 +32,15 @@
   },
   "profiles": {
     "acquisition": {
-      "description": "npm dependency used while acquiring the Pyodide package. It is not copied into the static learner artifact by the evaluated recipe.",
+      "description": "Download helper considered for a future asset-preparation tool. It would run only while preparing browser files and would not be included in the learner course.",
       "components": ["ws"]
     },
     "core": {
-      "description": "Smallest evaluated browser-Python runtime. Network packages are excluded.",
+      "description": "Python runtime and standard library used by the separate repository demonstration. The browser fetches them from a pinned CDN only after a reader selects Run; they are not included in the learner course.",
       "components": ["pyodide", "cpython-standard-library"]
     },
     "network": {
-      "description": "Optional network and OpenAI client closure. This profile needs explicit open-source, security, privacy, and relay review before distribution.",
+      "description": "Packages considered only for a future browser-Python activity that makes outbound HTTPS requests or calls an OpenAI-compatible model API. The current demonstration does not load them. Adoption requires separate open-source, security, privacy, and relay review.",
       "root_packages": ["requests", "pyodide-http", "openai"],
       "components": [
         "annotated-types", "anyio", "certifi", "charset-normalizer", "distro", "httpx", "idna",
