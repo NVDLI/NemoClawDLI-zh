@@ -142,11 +142,11 @@ pages:
   # localization/material tooling even when live pulls are disabled.
   variables:
     MATERIAL_TOOLS_REQUIRED: "1"
-  needs:
-    - job: test
-    - job: security_deep_sca
-      optional: true
-      artifacts: true
+  # Generic previews depend only on the required ship gate. A rules:needs override below
+  # imports deep-SCA evidence when that scanner is automatic for the changed inputs.
+  # Do not add a top-level optional need on the manual scanner: GitLab 16.8 marks the
+  # downstream Pages job skipped when the manual job is present but unplayed.
+  needs: ["test"]
   resource_group: pages-site
   script:
     # This GitLab instance still uses classic Pages: only the job literally named
@@ -167,6 +167,10 @@ pages:
       }
       write_ci_sbom_links() {
         output_root="$1"
+        if [ -z "${DEEP_SCA_JOB_ID:-}" ]; then
+          echo "No deep-SCA artifact belongs to this pipeline; retaining unavailable CI evidence state."
+          return 0
+        fi
         python3 scripts/compliance/sbom_evidence.py \
           --write-ci-links \
           --ci-links-out "$output_root/scripts/compliance/docs/ci_sbom_evidence.json" \
@@ -261,6 +265,42 @@ pages:
     # Branch previews are real GitLab Pages deploys, but production root is rebuilt from the
     # protected production ref and the branch only gets /<slug>/ plus /<slug>/web/nemoclaw/.
     - if: '$CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_BRANCH != "nemoclaw-only" && $CI_COMMIT_BRANCH !~ /^translate-/ && $CI_PIPELINE_SOURCE != "schedule"'
+      variables:
+        PAGES_PREVIEW: "1"
+        PAGES_ENVIRONMENT_NAME: "review/$CI_COMMIT_REF_SLUG"
+        PAGES_ENVIRONMENT_URL: "$CI_PAGES_URL/$CI_COMMIT_REF_SLUG/web/nemoclaw/"
+        PAGES_AUTO_STOP_IN: "3 days"
+      when: manual
+      allow_failure: false
+    # The deep scanner is automatic only for these dependency/evidence inputs. In that
+    # case Pages waits for it and receives its dotenv plus report tree. Keep this path
+    # list aligned with security_deep_sca.rules in .gitlab/ci/sca.yml.
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME !~ /^translate-/ && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != "nemoclaw-only"'
+      changes:
+        - workspace/requirements.txt
+        - workspace/requirements.lock
+        - workspace/Dockerfile
+        - cpu/services/sandbox_admin/requirements.txt
+        - cpu/services/docker_router/Dockerfile
+        - cpu/services/llm_client/llm_client.Dockerfile
+        - scripts/security/audit_python_dependencies.py
+        - scripts/security/audit_vulnerability_waivers.py
+        - scripts/security/audit_dependency_locks.py
+        - scripts/security/audit_sbom_policy.py
+        - scripts/security/requirements-sca.lock.in
+        - scripts/security/requirements-sca.lock
+        - scripts/security/run_full_sca.py
+        - scripts/security/vulnerability-waivers.json
+        - scripts/compliance/render_sbom_license_inventory.py
+        - scripts/compliance/sbom_evidence.py
+        - scripts/compliance/third_party_export_ui.js
+        - scripts/compliance/docs/sbom_evidence.json
+        - scripts/compliance/docs/ci_sbom_evidence.json
+        - .gitlab/ci/sca.yml
+      needs:
+        - job: test
+        - job: security_deep_sca
+          artifacts: true
       variables:
         PAGES_PREVIEW: "1"
         PAGES_ENVIRONMENT_NAME: "review/$CI_COMMIT_REF_SLUG"

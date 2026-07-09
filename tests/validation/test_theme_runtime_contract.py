@@ -18,6 +18,13 @@ def ci_job(name: str) -> str:
     return source[start : next_job if next_job >= 0 else len(source)]
 
 
+def core_job(name: str, next_name: str) -> str:
+    source = (ROOT / ".gitlab/ci/core.yml").read_text(encoding="utf-8")
+    start = source.index(f"{name}:\n")
+    end = source.index(f"\n{next_name}:\n", start)
+    return source[start:end]
+
+
 class ThemeRuntimeContractTests(unittest.TestCase):
     def test_discovery_includes_every_nested_html_file(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -95,6 +102,27 @@ class ThemeRuntimeContractTests(unittest.TestCase):
 
 
 class ScaTriggerContractTests(unittest.TestCase):
+    def test_pages_does_not_wait_on_an_unplayed_manual_sca_job(self) -> None:
+        pages = core_job("pages", "pages_smoke")
+        header = pages.split("  script:\n", 1)[0]
+        self.assertIn('needs: ["test"]', header)
+        self.assertNotIn("optional: true", header)
+        self.assertIn('if [ -z "${DEEP_SCA_JOB_ID:-}" ]', pages)
+        self.assertIn("- job: security_deep_sca\n          artifacts: true", pages)
+
+    def test_pages_deep_sca_override_tracks_scanner_inputs(self) -> None:
+        pages = core_job("pages", "pages_smoke")
+        scanner = ci_job("security_deep_sca")
+        for path in (
+            "workspace/requirements.lock",
+            "scripts/security/requirements-sca.lock",
+            "scripts/compliance/sbom_evidence.py",
+            ".gitlab/ci/sca.yml",
+        ):
+            with self.subTest(path=path):
+                self.assertIn(f"- {path}", scanner)
+                self.assertIn(f"- {path}", pages)
+
     def test_expensive_scans_are_automatic_only_for_relevant_inputs(self) -> None:
         cases = {
             "security_browser_sca": "scripts/browser-vendor/package-lock.json",
