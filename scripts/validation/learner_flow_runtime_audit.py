@@ -324,7 +324,7 @@ async function waitText(locator, pattern) {
   });
   if (!courseSearch.length || courseSearch.length > 4 || courseSearch.some(result => !result.id || !result.excerpt || result.excerpt.length > 900)) throw new Error(`page assistant course search is not bounded/useful: ${JSON.stringify(courseSearch)}`);
   const sourceAccess = await coursePage.evaluate(async () => {
-    const { courseCode, courseCodeArtifacts, courseRuntimeFiles, courseRuntimeSource } = await import('./scripts/_langchain.js');
+    const { courseCode, courseCodeArtifacts, courseRuntimeFiles, courseRuntimeSource, resolveCoursePageUrl } = await import('./scripts/_langchain.js');
     const { artifactFromMarkdown, artifactCodeIssue, artifactJavaScriptIssue, parseInlineCourseSourceIntent, resolveCourseSourceUri } = await import('./scripts/_course_assistant.js');
     const artifacts = await courseCodeArtifacts('02c-deep');
     const deep = await courseCode('02c-deep', 'deep-src');
@@ -355,9 +355,11 @@ async function waitText(locator, pattern) {
       helperAliasAllowed:artifactJavaScriptIssue('const embeddings = await helpers.embed(["hello"], { inputType: "query" }); const score = helpers.cosineSim(embeddings[0], embeddings[0]);') === '',
       helperAsyncGuard:/asynchronous/.test(artifactJavaScriptIssue('const embeddings = helpers.embed(["hello"], { inputType: "query" });')),
       helperAllowlistGuard:/helpers\.mountChatUI/.test(artifactJavaScriptIssue('helpers.mountChatUI("#app");')),
+      deployedOverviewUrl:resolveCoursePageUrl('overview', 'https://pages.example/NemoClawDLIOS/nemoclaw/01a-loop.html'),
+      deployedLessonUrl:resolveCoursePageUrl('02b-rag', 'https://pages.example/NemoClawDLIOS/nemoclaw/01a-loop.html'),
     };
   });
-  if (!sourceAccess.artifactIds.includes('deep-src') || !sourceAccess.artifactIds.some(id => /^module-/.test(id)) || sourceAccess.indexHasBodies || !sourceAccess.deepIsJavaScript || !sourceAccess.runtimeFiles.includes('_shared.js') || !sourceAccess.runtimeFiles.includes('_openclaw_cli.js') || !sourceAccess.sharedIsExact || !sourceAccess.traversalRejected || !sourceAccess.fencedArtifactCaptured || !sourceAccess.rawArtifactCaptured || !sourceAccess.inlineScriptGuard || !sourceAccess.externalScriptGuard || !sourceAccess.inlineHelperGuard || !sourceAccess.inlineSourceRecovered || !sourceAccess.artifactAsyncGuard || !sourceAccess.artifactInputGuard || !sourceAccess.artifactTopLevelAwait || !sourceAccess.artifactCombinedGuard || !sourceAccess.helperAliasAllowed || !sourceAccess.helperAsyncGuard || !sourceAccess.helperAllowlistGuard) throw new Error(`Course Assistant source/artifact access is incomplete or unsafe: ${JSON.stringify(sourceAccess)}`);
+  if (!sourceAccess.artifactIds.includes('deep-src') || !sourceAccess.artifactIds.some(id => /^module-/.test(id)) || sourceAccess.indexHasBodies || !sourceAccess.deepIsJavaScript || !sourceAccess.runtimeFiles.includes('_shared.js') || !sourceAccess.runtimeFiles.includes('_openclaw_cli.js') || !sourceAccess.sharedIsExact || !sourceAccess.traversalRejected || !sourceAccess.fencedArtifactCaptured || !sourceAccess.rawArtifactCaptured || !sourceAccess.inlineScriptGuard || !sourceAccess.externalScriptGuard || !sourceAccess.inlineHelperGuard || !sourceAccess.inlineSourceRecovered || !sourceAccess.artifactAsyncGuard || !sourceAccess.artifactInputGuard || !sourceAccess.artifactTopLevelAwait || !sourceAccess.artifactCombinedGuard || !sourceAccess.helperAliasAllowed || !sourceAccess.helperAsyncGuard || !sourceAccess.helperAllowlistGuard || sourceAccess.deployedOverviewUrl !== 'https://pages.example/NemoClawDLIOS/index.html' || sourceAccess.deployedLessonUrl !== 'https://pages.example/NemoClawDLIOS/nemoclaw/02b-rag.html') throw new Error(`Course Assistant source/artifact access is incomplete or unsafe: ${JSON.stringify(sourceAccess)}`);
   const sessionCap = await coursePage.evaluate(async () => {
     const { saveCourseAssistantStore, loadCourseAssistantStore } = await import('./scripts/_course_assistant.js');
     const values = new Map();

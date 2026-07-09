@@ -16,7 +16,23 @@ COURSE_EVIDENCE = (
     "dependencies.html",
     "vendor/browser-dependencies.json",
     "vendor/browser-sbom.cdx.json",
+    "scripts/_langchain.js",
 )
+
+
+def audit_course_source_resolver(source: str, label: str) -> list[str]:
+    findings: list[str] = []
+    for token in (
+        "export function resolveCoursePageUrl",
+        'const courseDirectory = new URL("./", pageHref)',
+        'new URL(id === "overview" ? "../index.html" : id + ".html", courseDirectory)',
+        "fetch(resolveCoursePageUrl(id)",
+    ):
+        if token not in source:
+            findings.append(f"{label} Course Assistant source resolver is missing: {token}")
+    if '"../../index.html"' in source:
+        findings.append(f"{label} Course Assistant overview escapes the deployed project subpath")
+    return findings
 
 
 def audit_course_evidence(course_root: Path, label: str) -> list[str]:
@@ -27,6 +43,11 @@ def audit_course_evidence(course_root: Path, label: str) -> list[str]:
     dashboard = (course_root / "dependencies.html").read_text(encoding="utf-8", errors="replace")
     if "Browser dependency inventory" not in dashboard or "vendor/browser-dependencies.json" not in dashboard:
         findings.append(f"{label} dependency dashboard is not wired to its inventory")
+    langchain = course_root / "scripts/_langchain.js"
+    if langchain.is_file():
+        findings.extend(audit_course_source_resolver(
+            langchain.read_text(encoding="utf-8", errors="replace"), label
+        ))
     try:
         manifest = json.loads((course_root / "vendor/browser-dependencies.json").read_text())
         sbom = json.loads((course_root / "vendor/browser-sbom.cdx.json").read_text())
@@ -145,6 +166,17 @@ def self_test() -> list[str]:
             "Browser dependency inventory vendor/browser-dependencies.json", encoding="utf-8"
         )
         (root / "ready" / "web" / "nemoclaw" / "vendor").mkdir()
+        (root / "ready" / "web" / "nemoclaw" / "scripts").mkdir()
+        resolver = (
+            'export function resolveCoursePageUrl(pageId, pageHref) {\n'
+            '  const id = pageId;\n'
+            '  const courseDirectory = new URL("./", pageHref);\n'
+            '  return new URL(id === "overview" ? "../index.html" : id + ".html", courseDirectory).href;\n'
+            '}\nfetch(resolveCoursePageUrl(id), { credentials: "same-origin" });\n'
+        )
+        (root / "ready" / "web" / "nemoclaw" / "scripts" / "_langchain.js").write_text(
+            resolver, encoding="utf-8"
+        )
         (root / "ready" / "web" / "nemoclaw" / "vendor" / "browser-dependencies.json").write_text(
             json.dumps({"delivery": "same-origin-vendored", "packages": [{"name": "fixture"}]}), encoding="utf-8"
         )
@@ -186,6 +218,15 @@ def self_test() -> list[str]:
         missing.unlink()
         if not any("missing course evidence" in finding for finding in audit(root, manifest, ["ready=ready"])):
             misses.append("detector missed absent browser dependency evidence")
+        (root / "ready" / "web" / "nemoclaw" / "vendor" / "browser-sbom.cdx.json").write_text(
+            json.dumps({"bomFormat": "CycloneDX", "components": [{"name": "fixture"}]}), encoding="utf-8"
+        )
+        bad_resolver = resolver.replace('"../index.html"', '"../../index.html"')
+        (root / "ready" / "web" / "nemoclaw" / "scripts" / "_langchain.js").write_text(
+            bad_resolver, encoding="utf-8"
+        )
+        if not any("escapes the deployed project subpath" in finding for finding in audit(root, manifest, ["ready=ready"])):
+            misses.append("detector missed Course Assistant project-subpath escape")
     return misses
 
 
@@ -203,6 +244,8 @@ def audit_live_course_evidence(course_url: str, label: str) -> list[str]:
         dashboard = fetch(urllib.parse.urljoin(course_url, "dependencies.html")).decode("utf-8", "replace")
         manifest = json.loads(fetch(urllib.parse.urljoin(course_url, "vendor/browser-dependencies.json")))
         sbom = json.loads(fetch(urllib.parse.urljoin(course_url, "vendor/browser-sbom.cdx.json")))
+        source = fetch(urllib.parse.urljoin(course_url, "scripts/_langchain.js")).decode("utf-8", "replace")
+        fetch(urllib.parse.urljoin(course_url, "../index.html"), "HEAD")
     except (urllib.error.URLError, TimeoutError, RuntimeError, json.JSONDecodeError) as exc:
         return [f"{label} live browser dependency evidence unavailable: {exc}"]
     packages = manifest.get("packages") if isinstance(manifest.get("packages"), list) else []
@@ -213,6 +256,7 @@ def audit_live_course_evidence(course_url: str, label: str) -> list[str]:
         findings.append(f"{label} live browser dependency inventory is empty or not same-origin")
     if sbom.get("bomFormat") != "CycloneDX" or len(components) != len(packages):
         findings.append(f"{label} live browser SBOM does not cover the package inventory")
+    findings.extend(audit_course_source_resolver(source, label))
     return findings
 
 
