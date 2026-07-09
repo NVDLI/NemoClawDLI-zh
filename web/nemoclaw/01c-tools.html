@@ -136,13 +136,13 @@
   <h2>Hiding a whole agent behind a single tool</h2>
   <p>
     A tool need not be a small function. An entire sub-agent can sit behind a single
-    tool call. The calling model still sees one contract. The agent behind it may query a
+    tool call. To the calling model, the sub-agent remains one contract. Behind that contract, it may query a
     database, run code, or search a repository without exposing those internal tools to the
     main loop.
   </p>
   <p>
     The cell below exposes a sub-agent that knows a small customer table
-    as one natural-language tool. The main agent never sees the rows
+    as one natural-language tool. Its caller never sees the rows
     and can only ask questions.
   </p>
 
@@ -163,8 +163,8 @@
   <summary data-localization-scope="en"><span class="learning-scope">Applied · Build</span><span class="learning-question">Need the MCP discovery and invocation flow?</span></summary>
   <div class="learning-block-body">
   <p>
-    Model Context Protocol (MCP) gives tool serving a standard shape. The agent retrieves the list of tools a
-    server offers with a <code>tools/list</code> call, then invokes any one of them with
+    Model Context Protocol (MCP) gives tool serving a standard shape. The agent retrieves a server's
+    catalog with <code>tools/list</code> and invokes a selected entry with
     <code>tools/call</code>. Those tools live in a separate process that the agent
     connects to and queries when it starts up. Because the protocol is the same
     everywhere, the agent can connect to additional servers without learning a new

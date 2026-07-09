@@ -350,6 +350,14 @@ def pattern_contract() -> list[str]:
     if (TASK1 / "scripts/compliance/SKILL.html").is_file() and not any(
             rel == "scripts/compliance/SKILL.html" for _, rel in _pages("ship")):
         misses.append("SKILL.html default prose scope")
+    course_paths = {rel for _, rel in _pages("course")}
+    expected_course_paths = {
+        path.relative_to(TASK1).as_posix()
+        for path in (TASK1 / "web/nemoclaw").glob("[0-9][0-9][a-z]-*.html")
+    }
+    expected_course_paths.add("web/nemoclaw/index.html")
+    if course_paths != expected_course_paths or any(path.endswith("SKILL.html") for path in course_paths):
+        misses.append("canonical learner-course prose scope")
     mechanical_slot = (
         "Start with How this project uses it. Included in the course means learners receive the code. "
         "Used only to build the course, Used only to check the course, and Optional authoring tool "
@@ -428,6 +436,50 @@ def grammar_hits(prose) -> list:
     return out
 
 
+_MD_LIST_START = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+(.*)$")
+_MD_SKIP = re.compile(r"^\s*(?:#{1,6}\s|[>|])")
+_MD_LINK = re.compile(r"\[([^\]]*)\]\([^)]+\)")
+
+
+def _markdown_chunks(body: str) -> list[str]:
+    """Return complete Markdown paragraphs and list items without orphaning wrapped lines."""
+    chunks: list[str] = []
+    paragraph: list[str] = []
+    lines = body.splitlines()
+
+    def flush() -> None:
+        if paragraph:
+            chunks.append(_MD_LINK.sub(r"\1", " ".join(paragraph)))
+            paragraph.clear()
+
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        item = _MD_LIST_START.match(line)
+        if item:
+            flush()
+            parts = [item.group(1).strip()]
+            index += 1
+            while index < len(lines):
+                continuation = lines[index]
+                if not continuation.strip() or _MD_LIST_START.match(continuation):
+                    break
+                if re.match(r"^\s{2,}\S", continuation):
+                    parts.append(continuation.strip())
+                    index += 1
+                    continue
+                break
+            chunks.append(_MD_LINK.sub(r"\1", " ".join(parts)))
+            continue
+        if not line.strip() or _MD_SKIP.match(line):
+            flush()
+        else:
+            paragraph.append(line.strip())
+        index += 1
+    flush()
+    return chunks
+
+
 def narrative(f: Path) -> list:
     """The authored narrative of a page as a list of paragraph chunks (each <p>, or each markdown
     paragraph). Kept as separate chunks so a paragraph break counts as a sentence boundary and a
@@ -454,9 +506,7 @@ def narrative(f: Path) -> list:
             ordered_chunks.append((m.start(), _TAG.sub(" ", inner)))
         raw_chunks = [text for _, text in sorted(ordered_chunks)]
     else:
-        body = re.sub(r"^\s*#{1,6}\s.*$", " ", body, flags=re.M)   # drop md headings
-        body = re.sub(r"^\s*[-*|>].*$", " ", body, flags=re.M)      # drop md lists / tables / quotes
-        raw_chunks = re.split(r"\n\s*\n", body)                     # a blank line separates paragraphs
+        raw_chunks = _markdown_chunks(body)
     chunks = []
     for c in raw_chunks:
         c = html.unescape(re.sub(r"\s+", " ", c)).strip()
@@ -1377,11 +1427,19 @@ def tells(m: dict) -> list[str]:
 
 
 def _pages(scope: str):
-    """Authored narrative pages: the student-facing course HTML and every repository SKILL.html.
-    With --scope all, the repo's prose .md docs are added too. Generated app hubs, vendored mats,
-    and the license (a different genre where terseness and lists are expected) are skipped."""
-    candidates = set(lp._iter_pages(TASK1))
-    candidates.update(TASK1.rglob("SKILL.html"))
+    """Select the requested authored prose surface.
+
+    ``course`` is the canonical learner journey: its landing page and numbered modules only.
+    ``ship`` adds other authored browser pages and every repository SKILL contract. ``all`` also
+    considers eligible Markdown outside scripts/ and docs/. Generated app hubs, vendored mats, and
+    the license (a different genre where terseness and lists are expected) are skipped.
+    """
+    if scope == "course":
+        course_root = TASK1 / "web" / "nemoclaw"
+        candidates = {course_root / "index.html", *course_root.glob("[0-9][0-9][a-z]-*.html")}
+    else:
+        candidates = set(lp._iter_pages(TASK1))
+        candidates.update(TASK1.rglob("SKILL.html"))
     for f in sorted(candidates):
         rel = f.relative_to(TASK1).as_posix()
         if set(f.relative_to(TASK1).parts) & {".git", "i18n", "node_modules", ".venv", "venv", "artifacts"}:
@@ -1458,8 +1516,9 @@ def main() -> int:
     ap = argparse.ArgumentParser(
         description="Measure human-like prose variety (sentence-length spread, enumeration, clause welding).",
         formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
-    ap.add_argument("--scope", choices=["ship", "all"], default="ship",
-                    help="ship = course narrative under web/ (default); all = also the repo's prose .md docs")
+    ap.add_argument("--scope", choices=["course", "ship", "all"], default="ship",
+                    help=("course = the landing page and numbered learner modules; ship = all authored "
+                          "browser/SKILL prose (default); all = also eligible repository Markdown"))
     ap.add_argument("--page", help="analyze one page (relative path) and print its sentences with word counts")
     ap.add_argument("--text", help="score a snippet of prose directly (handy while rewriting)")
     ap.add_argument("--json", action="store_true", help="machine-readable output (the gate reads this)")
