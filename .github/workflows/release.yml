@@ -48,7 +48,9 @@ jobs:
       - name: Required live material provenance check
         run: python3 scripts/materials/pull_materials.py --check --fetch-attempts 4 --retry-backoff 2 --host-delay 3
       - name: Required release gate
-        run: python3 scripts/validation/release_gate.py --tier ship --timing-report docs/validation/release-gate-timings.json
+        run: |
+          python3 scripts/validation/release_gate.py --tier ship --timing-report docs/validation/release-gate-timings.json
+          python3 scripts/compliance/sbom_evidence.py --check-external-links
       - name: Resolve release environment and emit SBOM
         run: |
           set -euo pipefail

@@ -4,10 +4,16 @@ from __future__ import annotations
 
 import argparse
 import copy
+import datetime as dt
 import hashlib
 import json
+import os
 import re
 import tempfile
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from pathlib import Path
 
 import render_sbom_license_inventory as license_inventory
@@ -19,6 +25,8 @@ INVENTORY = ROOT / "THIRD_PARTY_LICENSES.md"
 COMMIT = re.compile(r"^[0-9a-f]{40}(?:[0-9a-f]{24})?$")
 ALLOWED_STATES = {"available", "ci-generated", "conditional"}
 ALLOWED_DISTRIBUTION = {"distributed", "not-distributed", "conditional-release"}
+CI_LINK_SCHEMA = "nemoclaw-ci-evidence-links/1"
+SUBJECT_LINK_FIELDS = ("declaration_href", "upstream_href", "license_hint_href")
 
 
 def digest(path: Path) -> str:
@@ -66,6 +74,73 @@ def resolve_catalog_path(href: str) -> Path:
     if ROOT.resolve() not in path.parents:
         raise ValueError(f"SBOM href escapes the repository: {href}")
     return path
+
+
+def is_external_href(href: str) -> bool:
+    return urllib.parse.urlparse(href).scheme in {"http", "https"}
+
+
+def href_finding(label: str, field: str, href: object, *, require_local_file: bool = False) -> str | None:
+    if not isinstance(href, str) or not href.strip():
+        return f"{label}: {field} is missing"
+    parsed = urllib.parse.urlparse(href)
+    if parsed.scheme:
+        if parsed.scheme != "https" or not parsed.netloc:
+            return f"{label}: {field} must be an absolute HTTPS URL"
+        return None
+    if href.startswith(("#", "/")) or "<" in href or ">" in href:
+        return f"{label}: {field} is not a usable repository-relative link"
+    if require_local_file:
+        try:
+            path = resolve_catalog_path(href)
+        except ValueError as error:
+            return f"{label}: {error}"
+        if not path.is_file():
+            return f"{label}: {field} points to a missing repository file: {href}"
+    return None
+
+
+def external_hrefs(document: dict) -> list[str]:
+    values: set[str] = set()
+    for record in document.get("records", []):
+        for subject in record.get("subjects", []):
+            for field in ("upstream_href", "license_hint_href"):
+                href = subject.get(field)
+                if isinstance(href, str) and is_external_href(href):
+                    values.add(href)
+    return sorted(values)
+
+
+def check_external_links(document: dict, attempts: int = 3, timeout: float = 20.0) -> list[str]:
+    """Read one byte from each authoritative external link and report terminal failures."""
+    findings: list[str] = []
+    for href in external_hrefs(document):
+        last_error = "unknown error"
+        for attempt in range(1, attempts + 1):
+            request = urllib.request.Request(
+                href,
+                headers={
+                    "Range": "bytes=0-0",
+                    "User-Agent": "NemoClawDLI-license-evidence-check/1.0",
+                },
+            )
+            try:
+                with urllib.request.urlopen(request, timeout=timeout) as response:
+                    if 200 <= response.status < 400:
+                        last_error = ""
+                        break
+                    last_error = f"HTTP {response.status}"
+            except urllib.error.HTTPError as error:
+                last_error = f"HTTP {error.code}"
+                if 400 <= error.code < 500 and error.code not in {408, 429}:
+                    break
+            except (urllib.error.URLError, TimeoutError, OSError) as error:
+                last_error = str(getattr(error, "reason", error))
+            if attempt < attempts:
+                time.sleep(attempt)
+        if last_error:
+            findings.append(f"dead or unreachable evidence link: {href} ({last_error})")
+    return findings
 
 
 def audit_catalog(document: dict | None = None) -> list[str]:
@@ -125,11 +200,41 @@ def audit_catalog(document: dict | None = None) -> list[str]:
             for key in ("job", "sbom_artifact_path", "manifest_artifact_path", "appendix_artifact_path", "retention_days"):
                 if not ci.get(key):
                     findings.append(f"{label}: CI evidence location lacks {key}")
+            for index, link in enumerate(record.get("evidence_links", []), start=1):
+                if not isinstance(link, dict) or not link.get("label"):
+                    findings.append(f"{label}: evidence link {index} lacks a label")
+                    continue
+                finding = href_finding(label, f"evidence link {index}", link.get("href"), require_local_file=True)
+                if finding:
+                    findings.append(finding)
         elif record.get("state") == "conditional":
             if record.get("distribution") != "not-distributed":
                 findings.append(f"{label}: conditional inventory is currently distributed")
             if record.get("required_before_distribution") != "digest-bound-component-sbom":
                 findings.append(f"{label}: distribution does not require a digest-bound component SBOM")
+            subjects = record.get("subjects") or []
+            for index, subject in enumerate(subjects, start=1):
+                subject_label = f"{label} subject {index}"
+                if not isinstance(subject, dict):
+                    findings.append(f"{subject_label}: entry is not an object")
+                    continue
+                if not subject.get("license_hint"):
+                    findings.append(f"{subject_label}: license hint is missing")
+                try:
+                    verified = dt.date.fromisoformat(str(subject.get("verified_on", "")))
+                    if verified > dt.date.today() or (dt.date.today() - verified).days > 90:
+                        findings.append(f"{subject_label}: evidence-link verification date is stale or in the future")
+                except ValueError:
+                    findings.append(f"{subject_label}: verified_on is missing or malformed")
+                for field in SUBJECT_LINK_FIELDS:
+                    finding = href_finding(
+                        subject_label,
+                        field,
+                        subject.get(field),
+                        require_local_file=field == "declaration_href",
+                    )
+                    if finding:
+                        findings.append(finding)
 
     conditional = next((record for record in records if record.get("id") == "local-authoring-image-boundary"), {})
     declared = {
@@ -140,6 +245,76 @@ def audit_catalog(document: dict | None = None) -> list[str]:
     if declared != inventory_noassertion():
         findings.append("local-authoring NOASSERTION subjects do not match the checked inventory")
     return findings
+
+
+def ci_link_catalog(args: argparse.Namespace) -> tuple[dict, int]:
+    """Resolve one pipeline job and verify each named artifact before exposing browser links."""
+    output = {
+        "schema": CI_LINK_SCHEMA,
+        "record_id": "python-validation-environment",
+        "state": "unavailable",
+        "source_commit": args.ci_commit,
+        "pipeline_url": args.ci_pipeline_url,
+        "reason": "The expected CI artifact was not available in this validated pipeline.",
+        "artifacts": [],
+    }
+    token = os.environ.get(args.ci_job_token_env, "")
+    if not token:
+        output["reason"] = f"{args.ci_job_token_env} was unavailable while resolving CI evidence."
+        return output, 1
+    api_root = args.ci_api_url.rstrip("/")
+    project_id = urllib.parse.quote(args.ci_project_id, safe="")
+    ref = urllib.parse.quote(args.ci_ref, safe="")
+    artifact_root = f"{api_root}/projects/{project_id}/jobs/artifacts/{ref}/raw"
+    manifest_path = urllib.parse.quote(args.ci_manifest_artifact_path, safe="/")
+    manifest_url = f"{artifact_root}/{manifest_path}?job={urllib.parse.quote(args.ci_artifact_job, safe='')}"
+    request = urllib.request.Request(manifest_url, headers={"JOB-TOKEN": token})
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            manifest = json.load(response)
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError) as error:
+        output["reason"] = f"The CI evidence manifest could not be read: {getattr(error, 'reason', error)}"
+        return output, 1
+    records = manifest.get("records") if isinstance(manifest, dict) else None
+    if not isinstance(records, list) or len(records) != 1 or records[0].get("source_commit") != args.ci_commit:
+        output["reason"] = "The latest CI artifact for this ref does not identify the preview commit."
+        return output, 1
+    output["job_url"] = args.ci_pipeline_url
+    missing = 0
+    for kind, path in (
+        ("CycloneDX SBOM", args.ci_sbom_artifact_path),
+        ("Evidence manifest", args.ci_manifest_artifact_path),
+        ("License appendix", args.ci_appendix_artifact_path),
+    ):
+        encoded_path = urllib.parse.quote(path, safe="/")
+        api_href = (
+            f"{artifact_root}/{encoded_path}?job={urllib.parse.quote(args.ci_artifact_job, safe='')}"
+        )
+        artifact_request = urllib.request.Request(
+            api_href,
+            headers={"JOB-TOKEN": token, "Range": "bytes=0-0"},
+        )
+        entry = {"label": kind, "repository_path": path, "status": "missing"}
+        try:
+            with urllib.request.urlopen(artifact_request, timeout=20) as response:
+                if response.status not in {200, 206}:
+                    raise ValueError(f"HTTP {response.status}")
+            entry["status"] = "available"
+            entry["href"] = (
+                args.ci_project_url.rstrip("/") + "/-/jobs/artifacts/" + ref + "/raw/" + encoded_path +
+                "?job=" + urllib.parse.quote(args.ci_artifact_job, safe="")
+            )
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError) as error:
+            missing += 1
+            entry["reason"] = f"Artifact read failed: {getattr(error, 'reason', error)}"
+        output["artifacts"].append(entry)
+    if missing:
+        output["state"] = "incomplete"
+        output["reason"] = f"{missing} expected artifact path(s) were missing from the successful job."
+    else:
+        output["state"] = "available"
+        output["reason"] = "Every link was read through the GitLab job-artifact API before this preview was built."
+    return output, missing
 
 
 def emit(args: argparse.Namespace) -> tuple[dict, int]:
@@ -224,6 +399,12 @@ def self_test() -> list[str]:
     incomplete = copy.deepcopy(clean)
     incomplete["records"][-1]["subjects"] = incomplete["records"][-1]["subjects"][:-1]
     mutations.append(("NOASSERTION coverage", incomplete, "subjects do not match"))
+    no_hint = copy.deepcopy(clean)
+    no_hint["records"][-1]["subjects"][0].pop("license_hint")
+    mutations.append(("license hint", no_hint, "license hint is missing"))
+    dead_local = copy.deepcopy(clean)
+    dead_local["records"][-1]["subjects"][0]["declaration_href"] = "../../../missing.Dockerfile"
+    mutations.append(("local evidence link", dead_local, "missing repository file"))
     for label, mutation, expected in mutations:
         if not any(expected in finding for finding in audit_catalog(mutation)):
             failures.append(f"mutation escaped: {label}")
@@ -259,7 +440,9 @@ def self_test() -> list[str]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--check-external-links", action="store_true")
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--write-ci-links", action="store_true")
     parser.add_argument("--compose-release-catalog", action="store_true")
     parser.add_argument("--base-catalog", type=Path, default=CATALOG)
     parser.add_argument("--generated-manifest", type=Path)
@@ -283,6 +466,18 @@ def main() -> int:
     parser.add_argument("--manifest-out", type=Path)
     parser.add_argument("--inventory", type=Path, default=INVENTORY)
     parser.add_argument("--allow-unresolved", action="store_true")
+    parser.add_argument("--ci-links-out", type=Path)
+    parser.add_argument("--ci-api-url")
+    parser.add_argument("--ci-project-id")
+    parser.add_argument("--ci-project-url")
+    parser.add_argument("--ci-ref")
+    parser.add_argument("--ci-pipeline-url", default="")
+    parser.add_argument("--ci-commit", default="")
+    parser.add_argument("--ci-artifact-job", default="security_deep_sca")
+    parser.add_argument("--ci-job-token-env", default="CI_JOB_TOKEN")
+    parser.add_argument("--ci-sbom-artifact-path", default="scripts/security/reports/deep-workspace/python-env.cdx.json")
+    parser.add_argument("--ci-manifest-artifact-path", default="scripts/security/reports/deep-workspace/sbom-evidence.json")
+    parser.add_argument("--ci-appendix-artifact-path", default="scripts/security/reports/deep-workspace/python-license-appendix.md")
     args = parser.parse_args()
 
     if args.self_test:
@@ -292,8 +487,26 @@ def main() -> int:
             print(f"  {failure}")
         return 1 if failures else 0
 
-    if args.check:
+    if args.write_ci_links:
+        missing = [flag for flag, value in {
+            "--ci-links-out": args.ci_links_out,
+            "--ci-api-url": args.ci_api_url,
+            "--ci-project-id": args.ci_project_id,
+            "--ci-project-url": args.ci_project_url,
+            "--ci-ref": args.ci_ref,
+        }.items() if not value]
+        if missing:
+            parser.error("CI link emission requires " + ", ".join(missing))
+        output, unresolved = ci_link_catalog(args)
+        args.ci_links_out.parent.mkdir(parents=True, exist_ok=True)
+        args.ci_links_out.write_text(json.dumps(output, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        print(f"wrote CI SBOM evidence links: state={output['state']} unresolved={unresolved}")
+        return 0
+
+    if args.check or args.check_external_links:
         findings = audit_catalog()
+        if args.check_external_links and not findings:
+            findings.extend(check_external_links(json.loads(CATALOG.read_text(encoding="utf-8"))))
         print("SBOM evidence catalog: " + (f"FAIL ({len(findings)})" if findings else "PASS"))
         for finding in findings:
             print(f"  {finding}")

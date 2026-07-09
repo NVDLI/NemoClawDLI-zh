@@ -140,6 +140,9 @@ security_deep_sca:
         - scripts/security/vulnerability-waivers.json
         - scripts/compliance/render_sbom_license_inventory.py
         - scripts/compliance/sbom_evidence.py
+        - scripts/compliance/third_party_export_ui.js
+        - scripts/compliance/docs/sbom_evidence.json
+        - scripts/compliance/docs/ci_sbom_evidence.json
         - .gitlab/ci/sca.yml
       when: on_success
       allow_failure: false

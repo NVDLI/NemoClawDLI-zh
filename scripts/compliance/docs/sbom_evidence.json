@@ -44,6 +44,20 @@
         "appendix_artifact_path": "scripts/security/reports/deep-workspace/python-license-appendix.md",
         "retention_days": 30
       },
+      "evidence_links": [
+        {
+          "label": "CI job definition",
+          "href": "../../../.gitlab/ci/sca.yml"
+        },
+        {
+          "label": "SBOM generation and retrieval runbook",
+          "href": "sbom_generation.md"
+        },
+        {
+          "label": "Checked Python package inventory",
+          "href": "../../../THIRD_PARTY_LICENSES.md"
+        }
+      ],
       "release_asset_patterns": [
         "nemoclaw-vX.Y.Z.python-env.cdx.json",
         "nemoclaw-vX.Y.Z.python-sbom-evidence.json",
@@ -71,16 +85,96 @@
         "retention_days": 30
       },
       "subjects": [
-        {"component": "nvcr.io/nvidia/cuda", "version": "12.8.1-cudnn-devel-ubuntu22.04"},
-        {"component": "docker", "version": "20.10"},
-        {"component": "python", "version": "3.11-slim"},
-        {"component": "python", "version": "3.12-slim"},
-        {"component": "ghcr.io/nvidia/openshell/cluster", "version": "0.0.8"},
-        {"component": "ghcr.io/nvidia/openshell-community/sandboxes/base", "version": "latest"},
-        {"component": "Chromium installed by Playwright", "version": "Playwright 1.61.0 channel"},
-        {"component": "python3.11, python3.11-dev, python3-pip, build-essential, bash, curl, unzip, wget, git, libgl1, tree, jq, nodejs, npm, poppler-utils", "version": "base-image-resolved"},
-        {"component": "jq, socat, tree, curl, git, gettext-base", "version": "base-image-resolved"},
-        {"component": "python3, py3-pip", "version": "base-image-resolved"}
+        {
+          "component": "nvcr.io/nvidia/cuda",
+          "version": "12.8.1-cudnn-devel-ubuntu22.04",
+          "declaration_href": "../../../workspace/Dockerfile",
+          "upstream_href": "https://catalog.ngc.nvidia.com/orgs/nvidia/containers/cuda",
+          "license_hint": "Mixed NVIDIA CUDA and Ubuntu image. The image has no honest package-level SPDX answer; use the digest-bound component SBOM before distribution.",
+          "license_hint_href": "https://catalog.ngc.nvidia.com/orgs/nvidia/containers/cuda",
+          "verified_on": "2026-07-08"
+        },
+        {
+          "component": "docker",
+          "version": "20.10",
+          "declaration_href": "../../../cpu/services/docker_router/Dockerfile",
+          "upstream_href": "https://hub.docker.com/_/docker",
+          "license_hint": "The image combines Docker software and Alpine packages. Component licenses, not one image-level identifier, control.",
+          "license_hint_href": "https://hub.docker.com/_/docker",
+          "verified_on": "2026-07-08"
+        },
+        {
+          "component": "python",
+          "version": "3.11-slim",
+          "declaration_href": "../../../cpu/services/llm_client/llm_client.Dockerfile",
+          "upstream_href": "https://hub.docker.com/_/python",
+          "license_hint": "Python-2.0 describes CPython, not the complete Debian-based image. Debian packages retain separate licenses.",
+          "license_hint_href": "https://docs.python.org/3/license.html",
+          "verified_on": "2026-07-08"
+        },
+        {
+          "component": "python",
+          "version": "3.12-slim",
+          "declaration_href": "../../../cpu/services/sandbox_admin/Dockerfile",
+          "upstream_href": "https://hub.docker.com/_/python",
+          "license_hint": "Python-2.0 describes CPython, not the complete Debian-based image. Debian packages retain separate licenses.",
+          "license_hint_href": "https://docs.python.org/3/license.html",
+          "verified_on": "2026-07-08"
+        },
+        {
+          "component": "ghcr.io/nvidia/openshell/cluster",
+          "version": "0.0.8",
+          "declaration_href": "../../../cpu/services/openclaw/openclaw_shell.Dockerfile",
+          "upstream_href": "https://github.com/NVIDIA/OpenShell",
+          "license_hint": "The OpenShell repository is Apache-2.0. That is a source-family hint, not a conclusion for every package in this image.",
+          "license_hint_href": "https://github.com/NVIDIA/OpenShell/blob/main/LICENSE",
+          "verified_on": "2026-07-08"
+        },
+        {
+          "component": "ghcr.io/nvidia/openshell-community/sandboxes/base",
+          "version": "latest",
+          "declaration_href": "../../../cpu/services/openclaw/openclaw_shell.Dockerfile",
+          "upstream_href": "https://github.com/NVIDIA/OpenShell",
+          "license_hint": "The related OpenShell source is Apache-2.0. The mutable image tag still needs an immutable digest and component SBOM before distribution.",
+          "license_hint_href": "https://github.com/NVIDIA/OpenShell/blob/main/LICENSE",
+          "verified_on": "2026-07-08"
+        },
+        {
+          "component": "Chromium installed by Playwright",
+          "version": "Playwright 1.61.0 channel",
+          "declaration_href": "../../../workspace/Dockerfile",
+          "upstream_href": "https://playwright.dev/docs/browsers",
+          "license_hint": "Chromium is a multi-license browser distribution. Its top-level BSD-3-Clause file does not replace the bundled third-party notices.",
+          "license_hint_href": "https://chromium.googlesource.com/chromium/src/+/main/LICENSE",
+          "verified_on": "2026-07-08"
+        },
+        {
+          "component": "python3.11, python3.11-dev, python3-pip, build-essential, bash, curl, unzip, wget, git, libgl1, tree, jq, nodejs, npm, poppler-utils",
+          "version": "base-image-resolved",
+          "declaration_href": "../../../workspace/Dockerfile",
+          "upstream_href": "https://packages.ubuntu.com/jammy/",
+          "license_hint": "Package-specific Ubuntu terms apply. Exact versions and licenses come from the digest-bound built-image SBOM.",
+          "license_hint_href": "https://packages.ubuntu.com/jammy/",
+          "verified_on": "2026-07-08"
+        },
+        {
+          "component": "jq, socat, tree, curl, git, gettext-base",
+          "version": "base-image-resolved",
+          "declaration_href": "../../../cpu/services/openclaw/openclaw_shell.Dockerfile",
+          "upstream_href": "https://packages.debian.org/bookworm/",
+          "license_hint": "Package-specific Debian terms apply. Exact versions and licenses come from the digest-bound built-image SBOM.",
+          "license_hint_href": "https://packages.debian.org/bookworm/",
+          "verified_on": "2026-07-08"
+        },
+        {
+          "component": "python3, py3-pip",
+          "version": "base-image-resolved",
+          "declaration_href": "../../../cpu/services/docker_router/Dockerfile",
+          "upstream_href": "https://pkgs.alpinelinux.org/packages",
+          "license_hint": "Package-specific Alpine terms apply. Exact versions and licenses come from the digest-bound built-image SBOM.",
+          "license_hint_href": "https://pkgs.alpinelinux.org/packages",
+          "verified_on": "2026-07-08"
+        }
       ]
     }
   ]

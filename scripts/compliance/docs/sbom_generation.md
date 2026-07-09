@@ -41,6 +41,20 @@ python3 scripts/compliance/sbom_evidence.py --check
 python3 scripts/compliance/sbom_evidence.py --self-test
 ```
 
+The offline check rejects missing repository declarations, malformed URLs, stale link-check dates,
+and incomplete license hints. Scheduled CI and protected release preparation also read the official
+external URLs with bounded retries:
+
+```bash
+python3 scripts/compliance/sbom_evidence.py --check-external-links
+```
+
+The source checkout carries `ci_sbom_evidence.json` with an explicit `unavailable` state. GitLab
+Pages replaces it for the tested preview by querying the current pipeline, reading one byte from
+each expected job-artifact path with `CI_JOB_TOKEN`, and emitting clickable direct-job links only
+for paths that succeeded. Missing jobs and paths remain visible as unavailable; the renderer never
+turns an expected path into an unverified link.
+
 Evidence emission calls `scripts/compliance/render_sbom_license_inventory.py` to create the
 component-level Markdown appendix from the same digest-bound CycloneDX input.
 

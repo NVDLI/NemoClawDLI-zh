@@ -195,7 +195,8 @@ def export_contract_findings(overrides: dict[str, str]) -> list[str]:
         "FILTER_LABELS", "Included in the course", "Referenced, not copied",
         "No single aggregate license", "friendlyChoice",
         "documentScopeRows", "document_sources", "Source Author(s)", "renderScopeRow", "dataset.label",
-        "sbom_evidence", "renderSbomEvidence", "linkedSbomComponents", "No SBOM is required for the static course",
+        "sbom_evidence", "ci_sbom_evidence", "renderSbomEvidence", "linkedSbomComponents",
+        "dataset.sbomSubject", "license_hint", "not distributed to learners",
     ):
         if token not in preview:
             findings.append(f"SWIPAT preview implementation is incomplete: {token}")

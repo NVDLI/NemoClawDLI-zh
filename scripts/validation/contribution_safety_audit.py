@@ -611,11 +611,13 @@ def audit_repo(
             ".gitlab-ci.yml", "gitlab-transient-material-policy", out,
             "allow only classified transient source reachability on production-ref pushes")
     scheduled_material = re.search(
-        r'if \[ "\$\{CI_PIPELINE_SOURCE:-\}" = "schedule" \]; then\n\s+([^\n]+)', gitlab
+        r'if \[ "\$\{CI_PIPELINE_SOURCE:-\}" = "schedule" \]; then\n(?P<body>.*?)(?=\n\s+elif )',
+        gitlab,
+        re.S,
     )
     if (not scheduled_material
-            or "pull_materials.py --check --fetch-attempts" not in scheduled_material.group(1)
-            or "--allow-transient-unreachable" in scheduled_material.group(1)):
+            or "pull_materials.py --check --fetch-attempts" not in scheduled_material.group("body")
+            or "--allow-transient-unreachable" in scheduled_material.group("body")):
         out.append(finding("gitlab-scheduled-material-policy", ".gitlab-ci.yml",
                            "scheduled material check is absent or not strict",
                            "keep scheduled live checks strict and omit transient degradation"))
@@ -708,8 +710,11 @@ def audit_repo(
             "gitlab-pipeline-dedup", out, "suppress duplicate branch pipelines after an MR opens")
     require(gitlab, "CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-$CI_COMMIT_REF_NAME", ".gitlab-ci.yml",
             "gitlab-preview-ref", out, "resolve branch-preview refs in branch and MR pipelines")
-    require(gitlab, 'needs: ["test"]', ".gitlab-ci.yml", "gitlab-deploy-gate", out,
-            "keep Pages blocked on the required test job")
+    pages_body = pages_materials.group(1) if pages_materials else ""
+    if not (re.search(r"(?m)^\s+- job:\s*test\s*$", pages_body) or 'needs: ["test"]' in pages_body):
+        out.append(finding("gitlab-deploy-gate", ".gitlab-ci.yml",
+                           "Pages does not declare the required test job as a dependency",
+                           "keep Pages blocked on the required test job"))
     require(gitlab, "human_review:", ".gitlab-ci.yml", "gitlab-human-review", out,
             "keep an explicit human acceptance job after preview validation")
     require(gitlab, "theme_runtime:", ".gitlab-ci.yml", "gitlab-theme-runtime", out,
@@ -1026,7 +1031,8 @@ def self_test() -> list[str]:
             ("gitlab-infrastructure-retry", ".gitlab/ci/core.yml", "runner_system_failure", "runner_unsupported"),
             ("gitlab-script-retry", ".gitlab/ci/core.yml", "runner_system_failure", "script_failure"),
             ("gitlab-material-install", ".gitlab/ci/core.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),
-            ("gitlab-pages-material-install", ".gitlab/ci/core.yml", '  variables:\n    MATERIAL_TOOLS_REQUIRED: "1"\n  needs: ["test"]', '  variables:\n    MATERIAL_TOOLS_REQUIRED: "0"\n  needs: ["test"]'),
+            ("gitlab-pages-material-install", ".gitlab/ci/core.yml", '  # localization/material tooling even when live pulls are disabled.\n  variables:\n    MATERIAL_TOOLS_REQUIRED: "1"', '  # localization/material tooling even when live pulls are disabled.\n  variables:\n    MATERIAL_TOOLS_REQUIRED: "0"'),
+            ("gitlab-deploy-gate", ".gitlab/ci/core.yml", "    - job: test", "    - job: skipped_test"),
             ("gitlab-preview-ref-fetch", ".gitlab/ci/core.yml", 'git fetch "$preview_remote" "+refs/heads/$branch:refs/remotes/$preview_namespace/$branch" --quiet', 'git fetch "$preview_remote" "+refs/heads/$branch:refs/remotes/$preview_namespace/$branch" --quiet || true'),
             ("gitlab-preview-ref-fetch", ".gitlab/ci/core.yml", 'preview_remote="$CI_MERGE_REQUEST_SOURCE_PROJECT_URL"', 'preview_remote="origin"'),
             ("gitlab-transient-material-policy", ".gitlab/ci/core.yml", "pull_materials.py --check --allow-transient-unreachable", "pull_materials.py --check --strict-unreachable"),

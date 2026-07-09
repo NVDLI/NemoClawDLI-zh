@@ -68,7 +68,9 @@ interactive explorer share the same `data-theme` palette and retain readable con
 Run `normalize_skill_headers.py --apply`
 after importing a hand-authored beacon and use `--check` in automated validation.
 `skill_contract.py` then validates the metadata, directory accuracy, human-readable
-body, shared-renderer wiring, local assets, and configured file paths. The Playwright renderer
+body, shared-renderer wiring, local assets, and configured file paths. It also crawls visible links
+and explorer links from the root beacon. Every source beacon must be reachable; a present but
+disconnected `SKILL.html` is a failure. The Playwright renderer
 audit loads every discovered beacon and rejects runtime errors or an explorer that fails to mount.
 
 ---

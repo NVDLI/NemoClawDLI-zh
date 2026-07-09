@@ -175,6 +175,15 @@
       if (catalog.schema !== "nemoclaw-sbom-evidence/1" || !Array.isArray(catalog.records)) {
         throw new Error("unsupported SBOM evidence catalog");
       }
+      catalog._catalogUrl = catalogUrl;
+      (catalog.records || []).forEach(function (record) {
+        (record.evidence_links || []).forEach(function (link) {
+          link._resolvedHref = new URL(link.href, catalogUrl).href;
+        });
+        (record.subjects || []).forEach(function (subject) {
+          subject._declarationHref = new URL(subject.declaration_href, catalogUrl).href;
+        });
+      });
       return Promise.all(catalog.records.map(function (record) {
         if (record.state !== "available" || !record.sbom || !record.sbom.href) return record;
         var href = new URL(record.sbom.href, catalogUrl).href;
@@ -200,7 +209,20 @@
             return record;
           });
         });
-      })).then(function () { return catalog; });
+      })).then(function () {
+        if (!config.ci_sbom_evidence) return catalog;
+        var runtimeUrl = new URL(config.ci_sbom_evidence, document.baseURI).href;
+        return fetch(runtimeUrl).then(function (response) {
+          if (!response.ok) throw new Error("CI SBOM evidence HTTP " + response.status);
+          return response.json();
+        }).then(function (runtime) {
+          if (runtime.schema !== "nemoclaw-ci-evidence-links/1") {
+            throw new Error("unsupported CI SBOM evidence link catalog");
+          }
+          catalog._ciEvidence = runtime;
+          return catalog;
+        });
+      });
     });
   }
 
@@ -217,6 +239,12 @@
     }) || null;
   }
 
+  function evidenceSubject(record, row) {
+    return (record && record.subjects || []).find(function (subject) {
+      return subject.component === row.cells[0] && String(subject.version) === String(row.cells[1]);
+    }) || null;
+  }
+
   function componentLicense(component) {
     var values = [];
     (component.licenses || []).forEach(function (item) {
@@ -225,6 +253,11 @@
       if (value && values.indexOf(value) < 0) values.push(value);
     });
     return values.join("; ") || "NOASSERTION";
+  }
+
+  function spdxHref(value) {
+    return /^[A-Za-z0-9.+-]+$/.test(value) && value !== "NOASSERTION" ?
+      "https://spdx.org/licenses/" + encodeURIComponent(value) + ".html" : "";
   }
 
   function csvCell(value) {
@@ -486,9 +519,11 @@
     });
   }
 
-  function externalLink(url, label) {
+  function externalLink(url, label, evidenceKind) {
     var anchor = document.createElement("a"); anchor.href = url; anchor.target = "_blank";
-    anchor.rel = "noopener noreferrer"; text(anchor, label || url); return anchor;
+    anchor.rel = "noopener noreferrer";
+    if (evidenceKind) anchor.dataset.evidenceLink = evidenceKind;
+    text(anchor, label || url); return anchor;
   }
 
   function tableCell(label) {
@@ -507,7 +542,11 @@
     var heading = document.createElement("summary"); text(heading, summary); details.appendChild(heading);
     lines.forEach(function (line) {
       var paragraph = document.createElement("p");
-      if (line.url) paragraph.appendChild(externalLink(line.url, line.label)); else text(paragraph, line.label);
+      if (line.url) paragraph.appendChild(externalLink(line.url, line.label, line.kind || "external"));
+      else text(paragraph, line.label);
+      if (line.note) {
+        var note = document.createElement("small"); text(note, line.note); paragraph.appendChild(note);
+      }
       details.appendChild(paragraph);
     });
     return details;
@@ -520,14 +559,32 @@
     if (row.cells[8]) lines.push({url:row.cells[8], label:"Repository evidence"});
     var record = evidenceRecord(catalog, row);
     if (!record) return lines;
+    var subject = evidenceSubject(record, row);
     if (record.state === "available") {
-      lines.push({url:record._resolvedHref, label:"CycloneDX SBOM; SHA-256 verified in this view"});
+      lines.push({url:record._resolvedHref, label:"CycloneDX SBOM; SHA-256 verified in this view", kind:"local"});
     } else if (record.state === "ci-generated") {
-      lines.push({label:"CI evidence: " + record.ci.job + " produces " + record.ci.sbom_artifact_path +
-        ", its manifest, and its license appendix; retained " + record.ci.retention_days + " days."});
+      (record.evidence_links || []).forEach(function (link) {
+        lines.push({url:link._resolvedHref, label:link.label, kind:"local"});
+      });
+      if (catalog._ciEvidence && catalog._ciEvidence.record_id === record.id) {
+        (catalog._ciEvidence.artifacts || []).filter(function (artifact) {
+          return artifact.status === "available" && artifact.href;
+        }).forEach(function (artifact) {
+          lines.push({url:artifact.href, label:artifact.label + " from tested CI job", kind:"ci-artifact"});
+        });
+        if (catalog._ciEvidence.state !== "available") {
+          lines.push({label:"CI artifact links flagged " + catalog._ciEvidence.state + ": " + catalog._ciEvidence.reason});
+        }
+      }
     } else {
-      lines.push({label:"No SBOM is required for the static course because this software is not distributed to learners. " +
-        "Before distribution, run " + record.ci.job + " against an immutable image digest."});
+      if (subject) {
+        lines.push({url:subject._declarationHref, label:"Repository declaration", kind:"local"});
+        lines.push({url:subject.upstream_href, label:"Official upstream source", kind:"external"});
+        lines.push({url:subject.license_hint_href, label:"License-family evidence", kind:"external",
+          note:subject.license_hint + " Checked " + subject.verified_on + "."});
+      }
+      lines.push({label:"Not distributed to learners. Before distribution, run " + record.ci.job +
+        " against an immutable image digest."});
     }
     return lines;
   }
@@ -559,7 +616,7 @@
         text(explanation, record.sbom.component_count + " components; " + record.sbom.license_metadata.spdx +
           " carry SPDX metadata. The linked file passed its recorded SHA-256 check.");
         card.appendChild(explanation);
-        var link = externalLink(record._resolvedHref, "Open linked CycloneDX SBOM"); card.appendChild(link);
+        var link = externalLink(record._resolvedHref, "Open linked CycloneDX SBOM", "local"); card.appendChild(link);
         var details = document.createElement("details");
         var summary = document.createElement("summary"); text(summary, "Preview component licenses"); details.appendChild(summary);
         var wrap = document.createElement("div"); wrap.className = "sbom-components";
@@ -571,26 +628,64 @@
         var body = document.createElement("tbody");
         (record._components || []).forEach(function (component) {
           var tr = document.createElement("tr");
-          [component.name || "<unnamed>", component.version || "<unversioned>", componentLicense(component)].forEach(function (value) {
+          [component.name || "<unnamed>", component.version || "<unversioned>"].forEach(function (value) {
             var td = document.createElement("td"); text(td, value); tr.appendChild(td);
           });
+          var license = componentLicense(component), licenseCell = document.createElement("td");
+          var licenseHref = spdxHref(license);
+          if (licenseHref) licenseCell.appendChild(externalLink(licenseHref, license, "external"));
+          else text(licenseCell, license);
+          tr.appendChild(licenseCell);
           body.appendChild(tr);
         });
         table.appendChild(body); wrap.appendChild(table); details.appendChild(wrap); card.appendChild(details);
       } else if (record.state === "ci-generated") {
         text(explanation, "The " + record.ci.job + " job creates a commit-bound SBOM, evidence manifest, and license appendix. " +
-          "GitLab retains that job artifact for " + record.ci.retention_days + " days; a versioned release copies the same files into release assets.");
+          "A validated preview links the exact job artifact; a versioned release replaces this record with immutable release assets.");
         card.appendChild(explanation);
-        card.appendChild(evidenceDetails("Show artifact paths", [
-          {label:record.ci.sbom_artifact_path}, {label:record.ci.manifest_artifact_path}, {label:record.ci.appendix_artifact_path}
-        ]));
-      } else {
-        text(explanation, "No SBOM is required for the static course because these images and operating-system packages are not distributed to learners. " +
-          "If one is proposed for distribution, " + record.ci.job + " requires its immutable registry digest and emits component-level evidence.");
-        card.appendChild(explanation);
-        card.appendChild(evidenceDetails("Show covered declarations", (record.subjects || []).map(function (subject) {
-          return {label:subject.component + " @ " + subject.version};
+        card.appendChild(evidenceDetails("Open definitions and retrieval instructions", (record.evidence_links || []).map(function (item) {
+          return {url:item._resolvedHref, label:item.label, kind:"local"};
         })));
+        var runtime = catalog._ciEvidence && catalog._ciEvidence.record_id === record.id ? catalog._ciEvidence : null;
+        var runtimeState = document.createElement("p"); runtimeState.className = "sbom-runtime-state";
+        runtimeState.dataset.ciLinksState = runtime ? runtime.state : "unavailable";
+        text(runtimeState, runtime ? runtime.reason : "No CI artifact-link record was supplied by this build.");
+        card.appendChild(runtimeState);
+        if (runtime && runtime.job_url) card.appendChild(externalLink(runtime.job_url, "Open tested CI pipeline", "ci-job"));
+        var artifactLines = runtime && runtime.artifacts && runtime.artifacts.length ? runtime.artifacts.map(function (artifact) {
+          return artifact.status === "available" && artifact.href ?
+            {url:artifact.href, label:artifact.label, kind:"ci-artifact", note:artifact.repository_path} :
+            {label:artifact.label + " unavailable", note:artifact.repository_path + ". " + (artifact.reason || "No live link was emitted.")};
+        }) : [
+          {label:"CycloneDX SBOM unavailable in this build", note:record.ci.sbom_artifact_path},
+          {label:"Evidence manifest unavailable in this build", note:record.ci.manifest_artifact_path},
+          {label:"License appendix unavailable in this build", note:record.ci.appendix_artifact_path}
+        ];
+        card.appendChild(evidenceDetails("CI artifacts and status", artifactLines));
+      } else {
+        text(explanation, "These declarations are not distributed to learners. Each row links the exact repository declaration, the upstream source, and a non-authoritative license hint. " +
+          "Distribution still requires " + record.ci.job + " against an immutable image digest.");
+        card.appendChild(explanation);
+        var subjectWrap = document.createElement("div"); subjectWrap.className = "sbom-subjects";
+        var subjectTable = document.createElement("table");
+        var subjectHead = document.createElement("thead"), subjectHeadRow = document.createElement("tr");
+        ["Declaration", "License hint", "Evidence"].forEach(function (label) {
+          var th = document.createElement("th"); text(th, label); subjectHeadRow.appendChild(th);
+        });
+        subjectHead.appendChild(subjectHeadRow); subjectTable.appendChild(subjectHead);
+        var subjectBody = document.createElement("tbody");
+        (record.subjects || []).forEach(function (subject) {
+          var tr = document.createElement("tr"); tr.dataset.sbomSubject = "1";
+          var name = document.createElement("td"); name.appendChild(stacked(subject.component, subject.version)); tr.appendChild(name);
+          var hint = document.createElement("td"); hint.dataset.licenseHint = "1"; text(hint, subject.license_hint); tr.appendChild(hint);
+          var links = document.createElement("td"); links.className = "sbom-subject-links";
+          links.appendChild(externalLink(subject._declarationHref, "Repository declaration", "local"));
+          links.appendChild(externalLink(subject.upstream_href, "Official upstream", "external"));
+          links.appendChild(externalLink(subject.license_hint_href, "License evidence", "external"));
+          var checked = document.createElement("small"); text(checked, "Links checked " + subject.verified_on); links.appendChild(checked);
+          tr.appendChild(links); subjectBody.appendChild(tr);
+        });
+        subjectTable.appendChild(subjectBody); subjectWrap.appendChild(subjectTable); card.appendChild(subjectWrap);
       }
       target.appendChild(card);
     });

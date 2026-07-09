@@ -93,7 +93,7 @@ async function inspect(browser, file) {
     // only a failed document navigation here so a mirrored source file still receives its
     // color test even when its build-time overlay assets are not colocated in the mirror.
     if (!response || !response.ok()) errors.push(`document HTTP ${response && response.status()}`);
-    const state = await page.evaluate(({ isSkill }) => {
+    const state = await page.evaluate(async ({ isSkill }) => {
       const parse = id => { try { return JSON.parse(document.getElementById(id)?.textContent || ''); } catch (_) { return null; } };
       const config = document.getElementById('explorer-config');
       const meta = parse('skill-meta');
@@ -249,13 +249,28 @@ async function inspect(browser, file) {
         noAssertionView = {
           rows:rows.length,
           unresolved:unresolved.length,
-          coveredSubjects:sbomEvidence?.querySelectorAll('.sbom-card:last-child .row-evidence p').length || 0,
+          coveredSubjects:sbomEvidence?.querySelectorAll('tr[data-sbom-subject="1"]').length || 0,
           brokenLicenseLinks:unresolved.filter(row => row.querySelector('td[data-label="License"] a')).length,
           usefulEvidence:unresolved.every(row => /not distributed|immutable image digest/i.test(
             row.querySelector('td[data-label="Evidence"]')?.textContent || ''
           )),
         };
       }
+      const evidenceAnchors = Array.from(document.querySelectorAll('a[data-evidence-link]'));
+      const invalidEvidenceLinks = evidenceAnchors.filter(anchor => {
+        const raw = anchor.getAttribute('href') || '';
+        return !raw || raw === '#' || /^javascript:/i.test(raw);
+      }).map(anchor => anchor.textContent.trim());
+      const localEvidenceChecks = await Promise.all(evidenceAnchors.filter(anchor =>
+        anchor.dataset.evidenceLink === 'local' && new URL(anchor.href).origin === location.origin
+      ).map(async anchor => {
+        try {
+          const response = await fetch(anchor.href, {method:'HEAD'});
+          return response.ok ? '' : `${anchor.textContent.trim()} HTTP ${response.status}`;
+        } catch (error) {
+          return `${anchor.textContent.trim()} ${error.message || String(error)}`;
+        }
+      }));
       return {
         isSkill,
         meta: !isSkill || !!meta,
@@ -278,6 +293,13 @@ async function inspect(browser, file) {
           error:sbomEvidence.dataset.sbomEvidenceError || '',
           cards:sbomEvidence.querySelectorAll('.sbom-card').length,
           componentRows:sbomEvidence.querySelectorAll('.sbom-components tbody tr').length,
+          subjectRows:sbomEvidence.querySelectorAll('tr[data-sbom-subject="1"]').length,
+          subjectHints:sbomEvidence.querySelectorAll('tr[data-sbom-subject="1"] [data-license-hint="1"]').length,
+          subjectLinks:Array.from(sbomEvidence.querySelectorAll('tr[data-sbom-subject="1"]')).map(row => row.querySelectorAll('a[data-evidence-link]').length),
+          ciLinksState:sbomEvidence.querySelector('[data-ci-links-state]')?.dataset.ciLinksState || '',
+          ciArtifactLinks:sbomEvidence.querySelectorAll('a[data-evidence-link="ci-artifact"]').length,
+          invalidEvidenceLinks,
+          deadLocalEvidenceLinks:localEvidenceChecks.filter(Boolean),
           text:sbomEvidence.innerText || '',
         } : null,
         noAssertionView,
@@ -327,7 +349,19 @@ async function inspect(browser, file) {
       else if (!state.sbomEvidence.ready) errors.push('SBOM evidence preview did not become ready');
       else if (state.sbomEvidence.cards < 3) errors.push('SBOM evidence preview does not distinguish all evidence states');
       else if (!state.sbomEvidence.componentRows) errors.push('linked SBOM rendered no component licenses');
-      else if (!state.sbomEvidence.text.includes('not distributed to learners')
+      else if (!state.sbomEvidence.subjectRows
+          || state.sbomEvidence.subjectHints !== state.sbomEvidence.subjectRows
+          || state.sbomEvidence.subjectLinks.some(count => count < 3)) {
+        errors.push('conditional SBOM rows lack declaration, upstream, or license-hint evidence');
+      } else if (state.sbomEvidence.invalidEvidenceLinks.length) {
+        errors.push(`SBOM evidence contains unusable links: ${state.sbomEvidence.invalidEvidenceLinks.join('; ')}`);
+      } else if (state.sbomEvidence.deadLocalEvidenceLinks.length) {
+        errors.push(`SBOM evidence contains dead local links: ${state.sbomEvidence.deadLocalEvidenceLinks.join('; ')}`);
+      } else if (state.sbomEvidence.ciLinksState === 'available' && state.sbomEvidence.ciArtifactLinks < 3) {
+        errors.push('available CI evidence does not link all three generated artifacts');
+      } else if (!['available', 'incomplete', 'unavailable'].includes(state.sbomEvidence.ciLinksState)) {
+        errors.push('CI artifact evidence lacks an explicit availability state');
+      } else if (!state.sbomEvidence.text.includes('not distributed to learners')
           || !state.sbomEvidence.text.includes('security_deep_sca')
           || !state.sbomEvidence.text.includes('security_image_sca')) {
         errors.push('SBOM evidence preview omits distribution, CI, or conditional-scan guidance');
