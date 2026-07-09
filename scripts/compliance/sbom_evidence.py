@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import tempfile
 import time
 import urllib.error
@@ -264,10 +265,13 @@ def ci_link_catalog(args: argparse.Namespace) -> tuple[dict, int]:
         return output, 1
     api_root = args.ci_api_url.rstrip("/")
     project_id = urllib.parse.quote(args.ci_project_id, safe="")
-    ref = urllib.parse.quote(args.ci_ref, safe="")
-    artifact_root = f"{api_root}/projects/{project_id}/jobs/artifacts/{ref}/raw"
+    job_id = str(args.ci_artifact_job_id or "")
+    if not job_id.isdigit():
+        output["reason"] = "The producing CI job ID was unavailable; no artifact links were inferred from a ref."
+        return output, 1
+    artifact_root = f"{api_root}/projects/{project_id}/jobs/{job_id}/artifacts"
     manifest_path = urllib.parse.quote(args.ci_manifest_artifact_path, safe="/")
-    manifest_url = f"{artifact_root}/{manifest_path}?job={urllib.parse.quote(args.ci_artifact_job, safe='')}"
+    manifest_url = f"{artifact_root}/{manifest_path}"
     request = urllib.request.Request(manifest_url, headers={"JOB-TOKEN": token})
     try:
         with urllib.request.urlopen(request, timeout=20) as response:
@@ -277,19 +281,19 @@ def ci_link_catalog(args: argparse.Namespace) -> tuple[dict, int]:
         return output, 1
     records = manifest.get("records") if isinstance(manifest, dict) else None
     if not isinstance(records, list) or len(records) != 1 or records[0].get("source_commit") != args.ci_commit:
-        output["reason"] = "The latest CI artifact for this ref does not identify the preview commit."
+        output["reason"] = "The producing CI artifact does not identify the preview commit."
         return output, 1
-    output["job_url"] = args.ci_pipeline_url
+    output["job_url"] = args.ci_project_url.rstrip("/") + "/-/jobs/" + job_id
     missing = 0
+    artifact_source_root = args.ci_artifact_root.resolve()
+    args.ci_preview_root.mkdir(parents=True, exist_ok=True)
     for kind, path in (
         ("CycloneDX SBOM", args.ci_sbom_artifact_path),
         ("Evidence manifest", args.ci_manifest_artifact_path),
         ("License appendix", args.ci_appendix_artifact_path),
     ):
         encoded_path = urllib.parse.quote(path, safe="/")
-        api_href = (
-            f"{artifact_root}/{encoded_path}?job={urllib.parse.quote(args.ci_artifact_job, safe='')}"
-        )
+        api_href = f"{artifact_root}/{encoded_path}"
         artifact_request = urllib.request.Request(
             api_href,
             headers={"JOB-TOKEN": token, "Range": "bytes=0-0"},
@@ -299,12 +303,26 @@ def ci_link_catalog(args: argparse.Namespace) -> tuple[dict, int]:
             with urllib.request.urlopen(artifact_request, timeout=20) as response:
                 if response.status not in {200, 206}:
                     raise ValueError(f"HTTP {response.status}")
+            source = (artifact_source_root / path).resolve()
+            if artifact_source_root != source and artifact_source_root not in source.parents:
+                raise ValueError("artifact path escapes its downloaded root")
+            if not source.is_file():
+                raise ValueError("downloaded artifact is absent from the Pages workspace")
+            destination = args.ci_preview_root / source.name
+            shutil.copy2(source, destination)
             entry["status"] = "available"
             entry["href"] = (
-                args.ci_project_url.rstrip("/") + "/-/jobs/artifacts/" + ref + "/raw/" + encoded_path +
-                "?job=" + urllib.parse.quote(args.ci_artifact_job, safe="")
+                args.ci_project_url.rstrip("/") + "/-/jobs/" + job_id +
+                "/artifacts/file/" + encoded_path
             )
-        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError) as error:
+            entry["preview_href"] = os.path.relpath(destination, args.ci_links_out.parent).replace(os.sep, "/")
+            entry["sha256"] = digest(source)
+            entry["bytes"] = source.stat().st_size
+            if kind == "CycloneDX SBOM":
+                sbom = load_sbom(source)
+                entry["component_count"] = len(sbom["components"])
+                entry["license_metadata"] = license_summary(sbom["components"])
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError, OSError) as error:
             missing += 1
             entry["reason"] = f"Artifact read failed: {getattr(error, 'reason', error)}"
         output["artifacts"].append(entry)
@@ -470,10 +488,11 @@ def main() -> int:
     parser.add_argument("--ci-api-url")
     parser.add_argument("--ci-project-id")
     parser.add_argument("--ci-project-url")
-    parser.add_argument("--ci-ref")
     parser.add_argument("--ci-pipeline-url", default="")
     parser.add_argument("--ci-commit", default="")
-    parser.add_argument("--ci-artifact-job", default="security_deep_sca")
+    parser.add_argument("--ci-artifact-job-id")
+    parser.add_argument("--ci-artifact-root", type=Path, default=ROOT)
+    parser.add_argument("--ci-preview-root", type=Path)
     parser.add_argument("--ci-job-token-env", default="CI_JOB_TOKEN")
     parser.add_argument("--ci-sbom-artifact-path", default="scripts/security/reports/deep-workspace/python-env.cdx.json")
     parser.add_argument("--ci-manifest-artifact-path", default="scripts/security/reports/deep-workspace/sbom-evidence.json")
@@ -493,7 +512,8 @@ def main() -> int:
             "--ci-api-url": args.ci_api_url,
             "--ci-project-id": args.ci_project_id,
             "--ci-project-url": args.ci_project_url,
-            "--ci-ref": args.ci_ref,
+            "--ci-artifact-job-id": args.ci_artifact_job_id,
+            "--ci-preview-root": args.ci_preview_root,
         }.items() if not value]
         if missing:
             parser.error("CI link emission requires " + ", ".join(missing))

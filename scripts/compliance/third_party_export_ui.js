@@ -166,6 +166,26 @@
     }).join("");
   }
 
+  function verifiedSbom(href, metadata, label) {
+    return fetch(href).then(function (response) {
+      if (!response.ok) throw new Error(label + " SBOM HTTP " + response.status);
+      return response.arrayBuffer();
+    }).then(function (raw) {
+      if (!window.crypto || !window.crypto.subtle) throw new Error("browser SHA-256 is unavailable");
+      return window.crypto.subtle.digest("SHA-256", raw).then(function (hash) {
+        if (bytesToHex(hash) !== metadata.sha256) throw new Error(label + " SBOM SHA-256 mismatch");
+        var sbom = JSON.parse(new TextDecoder("utf-8").decode(raw));
+        if (sbom.bomFormat !== "CycloneDX" || !Array.isArray(sbom.components)) {
+          throw new Error(label + " is not a CycloneDX component inventory");
+        }
+        if (sbom.components.length !== metadata.component_count) {
+          throw new Error(label + " component count does not match its evidence record");
+        }
+        return {href:href, components:sbom.components};
+      });
+    });
+  }
+
   function linkedSbomComponents(config) {
     var catalogUrl = new URL(config.sbom_evidence, document.baseURI).href;
     return fetch(catalogUrl).then(function (response) {
@@ -187,27 +207,11 @@
       return Promise.all(catalog.records.map(function (record) {
         if (record.state !== "available" || !record.sbom || !record.sbom.href) return record;
         var href = new URL(record.sbom.href, catalogUrl).href;
-        return fetch(href).then(function (response) {
-          if (!response.ok) throw new Error(record.id + " SBOM HTTP " + response.status);
-          return response.arrayBuffer();
-        }).then(function (raw) {
-          if (!window.crypto || !window.crypto.subtle) throw new Error("browser SHA-256 is unavailable");
-          return window.crypto.subtle.digest("SHA-256", raw).then(function (hash) {
-            var actual = bytesToHex(hash);
-            if (actual !== record.sbom.sha256) throw new Error(record.id + " SBOM SHA-256 mismatch");
-            var documentText = new TextDecoder("utf-8").decode(raw);
-            var sbom = JSON.parse(documentText);
-            if (sbom.bomFormat !== "CycloneDX" || !Array.isArray(sbom.components)) {
-              throw new Error(record.id + " is not a CycloneDX component inventory");
-            }
-            if (sbom.components.length !== record.sbom.component_count) {
-              throw new Error(record.id + " component count does not match its evidence record");
-            }
-            record._resolvedHref = href;
-            record._components = sbom.components;
-            record._integrity = "verified";
-            return record;
-          });
+        return verifiedSbom(href, record.sbom, record.id).then(function (verified) {
+          record._resolvedHref = verified.href;
+          record._components = verified.components;
+          record._integrity = "verified";
+          return record;
         });
       })).then(function () {
         if (!config.ci_sbom_evidence) return catalog;
@@ -220,7 +224,17 @@
             throw new Error("unsupported CI SBOM evidence link catalog");
           }
           catalog._ciEvidence = runtime;
-          return catalog;
+          var artifact = (runtime.artifacts || []).find(function (item) {
+            return item.label === "CycloneDX SBOM" && item.status === "available" && item.preview_href;
+          });
+          if (!artifact) return catalog;
+          var previewHref = new URL(artifact.preview_href, runtimeUrl).href;
+          return verifiedSbom(previewHref, artifact, "CI-generated Python environment").then(function (verified) {
+            runtime._resolvedPreviewHref = verified.href;
+            runtime._components = verified.components;
+            runtime._integrity = "verified";
+            return catalog;
+          });
         });
       });
     });
@@ -552,6 +566,31 @@
     return details;
   }
 
+  function appendComponentPreview(card, components, summaryLabel) {
+    var details = document.createElement("details");
+    var summary = document.createElement("summary"); text(summary, summaryLabel); details.appendChild(summary);
+    var wrap = document.createElement("div"); wrap.className = "sbom-components";
+    var table = document.createElement("table"), head = document.createElement("thead"), headRow = document.createElement("tr");
+    ["Component", "Version", "License"].forEach(function (label) {
+      var th = document.createElement("th"); text(th, label); headRow.appendChild(th);
+    });
+    head.appendChild(headRow); table.appendChild(head);
+    var body = document.createElement("tbody");
+    (components || []).forEach(function (component) {
+      var tr = document.createElement("tr");
+      [component.name || "<unnamed>", component.version || "<unversioned>"].forEach(function (value) {
+        var td = document.createElement("td"); text(td, value); tr.appendChild(td);
+      });
+      var license = componentLicense(component), licenseCell = document.createElement("td");
+      var licenseHref = spdxHref(license);
+      if (licenseHref) licenseCell.appendChild(externalLink(licenseHref, license, "external"));
+      else text(licenseCell, license);
+      tr.appendChild(licenseCell); body.appendChild(tr);
+    });
+    table.appendChild(body); wrap.appendChild(table); details.appendChild(wrap); card.appendChild(details);
+    return details;
+  }
+
   function evidenceLines(row, catalog) {
     var lines = [];
     if (/^https?:/.test(row.cells[7])) lines.push({url:row.cells[7], label:"Upstream package"});
@@ -617,28 +656,7 @@
           " carry SPDX metadata. The linked file passed its recorded SHA-256 check.");
         card.appendChild(explanation);
         var link = externalLink(record._resolvedHref, "Open linked CycloneDX SBOM", "local"); card.appendChild(link);
-        var details = document.createElement("details");
-        var summary = document.createElement("summary"); text(summary, "Preview component licenses"); details.appendChild(summary);
-        var wrap = document.createElement("div"); wrap.className = "sbom-components";
-        var table = document.createElement("table"), head = document.createElement("thead"), headRow = document.createElement("tr");
-        ["Component", "Version", "License"].forEach(function (label) {
-          var th = document.createElement("th"); text(th, label); headRow.appendChild(th);
-        });
-        head.appendChild(headRow); table.appendChild(head);
-        var body = document.createElement("tbody");
-        (record._components || []).forEach(function (component) {
-          var tr = document.createElement("tr");
-          [component.name || "<unnamed>", component.version || "<unversioned>"].forEach(function (value) {
-            var td = document.createElement("td"); text(td, value); tr.appendChild(td);
-          });
-          var license = componentLicense(component), licenseCell = document.createElement("td");
-          var licenseHref = spdxHref(license);
-          if (licenseHref) licenseCell.appendChild(externalLink(licenseHref, license, "external"));
-          else text(licenseCell, license);
-          tr.appendChild(licenseCell);
-          body.appendChild(tr);
-        });
-        table.appendChild(body); wrap.appendChild(table); details.appendChild(wrap); card.appendChild(details);
+        appendComponentPreview(card, record._components, "Preview component licenses");
       } else if (record.state === "ci-generated") {
         text(explanation, "The " + record.ci.job + " job creates a commit-bound SBOM, evidence manifest, and license appendix. " +
           "A validated preview links the exact job artifact; a versioned release replaces this record with immutable release assets.");
@@ -651,7 +669,7 @@
         runtimeState.dataset.ciLinksState = runtime ? runtime.state : "unavailable";
         text(runtimeState, runtime ? runtime.reason : "No CI artifact-link record was supplied by this build.");
         card.appendChild(runtimeState);
-        if (runtime && runtime.job_url) card.appendChild(externalLink(runtime.job_url, "Open tested CI pipeline", "ci-job"));
+        if (runtime && runtime.job_url) card.appendChild(externalLink(runtime.job_url, "Open producing CI job", "ci-job"));
         var artifactLines = runtime && runtime.artifacts && runtime.artifacts.length ? runtime.artifacts.map(function (artifact) {
           return artifact.status === "available" && artifact.href ?
             {url:artifact.href, label:artifact.label, kind:"ci-artifact", note:artifact.repository_path} :
@@ -662,6 +680,16 @@
           {label:"License appendix unavailable in this build", note:record.ci.appendix_artifact_path}
         ];
         card.appendChild(evidenceDetails("CI artifacts and status", artifactLines));
+        if (runtime && runtime._integrity === "verified") {
+          var sbomArtifact = runtime.artifacts.find(function (artifact) { return artifact.label === "CycloneDX SBOM"; });
+          var summaryText = runtime._components.length + " resolved components; " +
+            ((sbomArtifact.license_metadata || {}).spdx || 0) + " carry SPDX metadata. " +
+            "The staged copy matches the producing job artifact SHA-256.";
+          var verified = document.createElement("p"); text(verified, summaryText); card.appendChild(verified);
+          card.appendChild(externalLink(runtime._resolvedPreviewHref, "Open staged CycloneDX copy", "local"));
+          var ciPreview = appendComponentPreview(card, runtime._components, "Preview resolved Python licenses");
+          ciPreview.dataset.ciComponentPreview = "1";
+        }
       } else {
         text(explanation, "These declarations are not distributed to learners. Each row links the exact repository declaration, the upstream source, and a non-authoritative license hint. " +
           "Distribution still requires " + record.ci.job + " against an immutable image digest.");

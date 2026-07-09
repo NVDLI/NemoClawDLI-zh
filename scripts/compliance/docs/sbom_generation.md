@@ -49,11 +49,15 @@ external URLs with bounded retries:
 python3 scripts/compliance/sbom_evidence.py --check-external-links
 ```
 
-The source checkout carries `ci_sbom_evidence.json` with an explicit `unavailable` state. GitLab
-Pages replaces it for the tested preview by querying the current pipeline, reading one byte from
-each expected job-artifact path with `CI_JOB_TOKEN`, and emitting clickable direct-job links only
-for paths that succeeded. Missing jobs and paths remain visible as unavailable; the renderer never
-turns an expected path into an unverified link.
+The source checkout carries `ci_sbom_evidence.json` with an explicit `unavailable` state. The deep
+SCA job exports its numeric job ID as a dotenv report, and Pages receives that job's artifacts
+through an explicit `needs` edge. Pages then reads one byte from each expected path through the
+job-ID artifact API with `CI_JOB_TOKEN`. It emits clickable direct-job links only after the
+manifest names the exact preview commit and every expected path succeeds. A missing producing job,
+commit mismatch, or missing path stays visibly unavailable; a branch or job-name guess never turns
+into an evidence link. The verified files are also copied beside the staged evidence catalog. That
+same-origin CycloneDX copy is SHA-256 checked in the browser before the license view renders its
+resolved Python component rows; the GitLab links remain the provenance and retention authority.
 
 Evidence emission calls `scripts/compliance/render_sbom_license_inventory.py` to create the
 component-level Markdown appendix from the same digest-bound CycloneDX input.

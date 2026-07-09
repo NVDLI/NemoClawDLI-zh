@@ -112,11 +112,14 @@ security_deep_sca:
     - PATH="$CI_PROJECT_DIR/.sca-tools-venv/bin:$PATH" .sca-tools-venv/bin/python scripts/security/run_full_sca.py --execute --require-tools --python-local --cyclonedx-env --python-executable "$CI_PROJECT_DIR/.sca-runtime-venv/bin/python" --python-path "$RUNTIME_SITE" --out-dir scripts/security/reports/deep-workspace
     - .sca-tools-venv/bin/python scripts/security/audit_sbom_policy.py --sbom scripts/security/reports/deep-workspace/python-env.cdx.json --report scripts/security/reports/deep-workspace/sbom-policy.json
     - .sca-tools-venv/bin/python scripts/compliance/sbom_evidence.py --sbom scripts/security/reports/deep-workspace/python-env.cdx.json --artifact-name "python-validation-$CI_COMMIT_SHA" --record-id python-validation-environment --description "Resolved Python validation environment; not distributed to learners" --distribution not-distributed --category validation --source-commit "$CI_COMMIT_SHA" --ci-job "$CI_JOB_NAME" --pipeline-url "$CI_PIPELINE_URL" --job-url "$CI_JOB_URL" --retention-days 30 --sbom-href python-env.cdx.json --appendix-href python-license-appendix.md --appendix-out scripts/security/reports/deep-workspace/python-license-appendix.md --manifest-out scripts/security/reports/deep-workspace/sbom-evidence.json
+    - printf 'DEEP_SCA_JOB_ID=%s\n' "$CI_JOB_ID" > scripts/security/reports/deep-workspace/job.env
   artifacts:
     when: always
     name: "security-deep-sca-$CI_COMMIT_SHORT_SHA"
     paths:
       - scripts/security/reports/deep-workspace/
+    reports:
+      dotenv: scripts/security/reports/deep-workspace/job.env
     expire_in: 30 days
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'

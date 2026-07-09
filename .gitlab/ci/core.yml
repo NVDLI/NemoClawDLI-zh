@@ -146,7 +146,7 @@ pages:
     - job: test
     - job: security_deep_sca
       optional: true
-      artifacts: false
+      artifacts: true
   resource_group: pages-site
   script:
     # This GitLab instance still uses classic Pages: only the job literally named
@@ -173,7 +173,8 @@ pages:
           --ci-api-url "$CI_API_V4_URL" \
           --ci-project-id "$CI_PROJECT_ID" \
           --ci-project-url "$CI_PROJECT_URL" \
-          --ci-ref "${CI_MERGE_REQUEST_REF_PATH:-$CI_COMMIT_REF_NAME}" \
+          --ci-artifact-job-id "${DEEP_SCA_JOB_ID:-}" \
+          --ci-preview-root "$output_root/scripts/compliance/docs/ci" \
           --ci-pipeline-url "$CI_PIPELINE_URL" \
           --ci-commit "$CI_COMMIT_SHA"
       }

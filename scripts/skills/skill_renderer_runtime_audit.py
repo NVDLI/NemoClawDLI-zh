@@ -298,6 +298,7 @@ async function inspect(browser, file) {
           subjectLinks:Array.from(sbomEvidence.querySelectorAll('tr[data-sbom-subject="1"]')).map(row => row.querySelectorAll('a[data-evidence-link]').length),
           ciLinksState:sbomEvidence.querySelector('[data-ci-links-state]')?.dataset.ciLinksState || '',
           ciArtifactLinks:sbomEvidence.querySelectorAll('a[data-evidence-link="ci-artifact"]').length,
+          ciComponentRows:sbomEvidence.querySelectorAll('[data-ci-component-preview="1"] tbody tr').length,
           invalidEvidenceLinks,
           deadLocalEvidenceLinks:localEvidenceChecks.filter(Boolean),
           text:sbomEvidence.innerText || '',
@@ -359,6 +360,8 @@ async function inspect(browser, file) {
         errors.push(`SBOM evidence contains dead local links: ${state.sbomEvidence.deadLocalEvidenceLinks.join('; ')}`);
       } else if (state.sbomEvidence.ciLinksState === 'available' && state.sbomEvidence.ciArtifactLinks < 3) {
         errors.push('available CI evidence does not link all three generated artifacts');
+      } else if (state.sbomEvidence.ciLinksState === 'available' && !state.sbomEvidence.ciComponentRows) {
+        errors.push('available CI evidence does not render the linked SBOM component licenses');
       } else if (!['available', 'incomplete', 'unavailable'].includes(state.sbomEvidence.ciLinksState)) {
         errors.push('CI artifact evidence lacks an explicit availability state');
       } else if (!state.sbomEvidence.text.includes('not distributed to learners')
