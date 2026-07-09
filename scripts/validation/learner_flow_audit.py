@@ -332,6 +332,10 @@ def audit_course_source_runtime(langchain: str) -> list[str]:
     contract = {
         'const COURSE_RUNTIME_FILES = [': "course runtime source needs an explicit public allow-list",
         'const COURSE_HTML_CACHE = new Map()': "prose and code-index reads must share one page fetch",
+        'export function resolveCoursePageUrl': "course source reads need an independently testable deployed-subpath resolver",
+        'const courseDirectory = new URL("./", pageHref)': "course source reads must anchor to the current deployed course directory",
+        'new URL(id === "overview" ? "../index.html" : id + ".html", courseDirectory)': "course overview must remain inside the deployed project subpath",
+        'fetch(resolveCoursePageUrl(id)': "course source fetches must use the deployed-subpath resolver",
         'COURSE_RUNTIME_FILES.find(([name]) => name === safe)': "runtime source reads must remain allow-listed",
         'script[type="text/plain"][id]': "course source index must discover text-backed lesson artifacts",
         'script[type="module"]:not([src])': "course source index must discover inline page modules",
@@ -1141,6 +1145,7 @@ def self_test() -> list[str]:
     langchain = (ROOT / "web/nemoclaw/scripts/_langchain.js").read_text(encoding="utf-8")
     source_cases = [
         ("course source loses shared fetch", langchain.replace('const COURSE_HTML_CACHE = new Map()', 'const COURSE_HTML_CACHE = null', 1), "share one page fetch"),
+        ("course overview escapes deployed subpath", langchain.replace('new URL(id === "overview" ? "../index.html" : id + ".html", courseDirectory)', 'new URL(id === "overview" ? "../../index.html" : id + ".html", courseDirectory)', 1), "deployed project subpath"),
         ("runtime source loses allow-list", langchain.replace('COURSE_RUNTIME_FILES.find(([name]) => name === safe)', 'COURSE_RUNTIME_FILES[0]', 1), "remain allow-listed"),
         ("lesson source ignores text artifacts", langchain.replace('script[type="text/plain"][id]', 'script[data-missing]', 1), "text-backed lesson artifacts"),
         ("lesson source ignores page modules", langchain.replace('script[type="module"]:not([src])', 'script[data-missing-module]', 1), "inline page modules"),

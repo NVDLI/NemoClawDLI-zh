@@ -46,8 +46,11 @@ function _courseId(pageId) {
   return String(pageId || "").trim().replace(/\.html$/, "");
 }
 
-function _coursePath(id) {
-  return id === "overview" ? "../../index.html" : id + ".html";
+export function resolveCoursePageUrl(pageId, pageHref = globalThis.location?.href) {
+  if (!pageHref) throw new Error("course page URL requires a browser location");
+  const id = _courseId(pageId);
+  const courseDirectory = new URL("./", pageHref);
+  return new URL(id === "overview" ? "../index.html" : id + ".html", courseDirectory).href;
 }
 
 const COURSE_HTML_CACHE = new Map();
@@ -55,7 +58,7 @@ async function _courseHtml(pageId) {
   const id = _courseId(pageId);
   if (!COURSE_PAGES.some(page => page.id === id)) return { id, html: "", error: `(unknown page "${id}")` };
   if (!COURSE_HTML_CACHE.has(id)) COURSE_HTML_CACHE.set(id, (async () => {
-    const response = await fetch(_coursePath(id), { credentials: "same-origin" });
+    const response = await fetch(resolveCoursePageUrl(id), { credentials: "same-origin" });
     if (!response.ok) throw new Error(`course source "${id}" → ${response.status}`);
     return { id, html: await response.text(), error: "" };
   })());
