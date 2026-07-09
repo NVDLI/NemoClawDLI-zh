@@ -436,6 +436,50 @@ def grammar_hits(prose) -> list:
     return out
 
 
+_MD_LIST_START = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+(.*)$")
+_MD_SKIP = re.compile(r"^\s*(?:#{1,6}\s|[>|])")
+_MD_LINK = re.compile(r"\[([^\]]*)\]\([^)]+\)")
+
+
+def _markdown_chunks(body: str) -> list[str]:
+    """Return complete Markdown paragraphs and list items without orphaning wrapped lines."""
+    chunks: list[str] = []
+    paragraph: list[str] = []
+    lines = body.splitlines()
+
+    def flush() -> None:
+        if paragraph:
+            chunks.append(_MD_LINK.sub(r"\1", " ".join(paragraph)))
+            paragraph.clear()
+
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        item = _MD_LIST_START.match(line)
+        if item:
+            flush()
+            parts = [item.group(1).strip()]
+            index += 1
+            while index < len(lines):
+                continuation = lines[index]
+                if not continuation.strip() or _MD_LIST_START.match(continuation):
+                    break
+                if re.match(r"^\s{2,}\S", continuation):
+                    parts.append(continuation.strip())
+                    index += 1
+                    continue
+                break
+            chunks.append(_MD_LINK.sub(r"\1", " ".join(parts)))
+            continue
+        if not line.strip() or _MD_SKIP.match(line):
+            flush()
+        else:
+            paragraph.append(line.strip())
+        index += 1
+    flush()
+    return chunks
+
+
 def narrative(f: Path) -> list:
     """The authored narrative of a page as a list of paragraph chunks (each <p>, or each markdown
     paragraph). Kept as separate chunks so a paragraph break counts as a sentence boundary and a
@@ -462,9 +506,7 @@ def narrative(f: Path) -> list:
             ordered_chunks.append((m.start(), _TAG.sub(" ", inner)))
         raw_chunks = [text for _, text in sorted(ordered_chunks)]
     else:
-        body = re.sub(r"^\s*#{1,6}\s.*$", " ", body, flags=re.M)   # drop md headings
-        body = re.sub(r"^\s*[-*|>].*$", " ", body, flags=re.M)      # drop md lists / tables / quotes
-        raw_chunks = re.split(r"\n\s*\n", body)                     # a blank line separates paragraphs
+        raw_chunks = _markdown_chunks(body)
     chunks = []
     for c in raw_chunks:
         c = html.unescape(re.sub(r"\s+", " ", c)).strip()

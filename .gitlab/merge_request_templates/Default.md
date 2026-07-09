@@ -82,5 +82,8 @@ What could regress? What exact commit, flag, workflow, or artifact restores the 
 
 Name adjacent work deliberately excluded from this change.
 
+If localized learner prose changed, name its language reviewer and Changelog credit. If only canonical
+English changed, confirm localized prose stayed byte-identical or explain the coordinated ownership.
+
 Relationship rule: keep `Closes #N` when this MR satisfies every acceptance criterion. A partial
 MR uses `Addresses #N` and adds `## Remaining issue work` with the unmet criteria.

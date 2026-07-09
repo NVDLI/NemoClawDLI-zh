@@ -53,8 +53,8 @@
       The harness can scope a workflow around a model call, a deterministic step,
       a specialist loop, or a group of parallel branches. At each boundary, it decides
       what context crosses, what can branch, and which results feed the next pipeline
-      stage. This section uses fan-out and fixed routing to show that control without
-      replacing the ReAct loop from the previous page.
+      stage. Fan-out and fixed routing make that control visible without replacing the
+      ReAct loop from the previous page.
     </p>
   </div>
 
@@ -110,14 +110,13 @@
     Many real systems borrow from each approach at once. The tools a ReAct loop calls
     might internally run a planned, ReWOO-style pipeline, and a planner that lays its
     work out in advance still needs sub-agents to execute each step, which are usually
-    ReAct loops in their own right. They are all just software components, free to
-    compose wherever their strengths fit.
+    ReAct loops in their own right. Compose these software components wherever their
+    strengths fit, reserving a Workflow Agent for tasks that split into independent workstreams.
   </div>
 
   <h2>When a single loop beats splitting into agents</h2>
   <p>
-    A Workflow Agent pays off only when the task splits into independent
-    workstreams. Without them, the coordination overhead of multi-agent
+    Without independent workstreams, the coordination overhead of multi-agent
     composition buys nothing, and one plain loop stays faster and easier
     to debug.
   </p>

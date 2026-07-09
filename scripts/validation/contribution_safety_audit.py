@@ -22,6 +22,7 @@ ROOT = find_repo_root(Path(__file__).resolve())
 
 CONTRACT_FILES = (
     "RELEASE_STATUS.json",
+    "CHANGELOG.md",
     "README.md",
     "LICENSE",
     "CONTRIBUTING.md",
@@ -31,6 +32,8 @@ CONTRACT_FILES = (
     "AGENTS.md",
     "docs/release_playbook.md",
     "docs/release_artifacts.md",
+    "docs/agent_process.md",
+    "docs/course-prose-style.md",
     "scripts/compliance/docs/open_source_readiness.md",
     ".github/ISSUE_TEMPLATE/config.yml",
     ".github/ISSUE_TEMPLATE/course-content.yml",
@@ -248,8 +251,26 @@ def audit_repo(
             "state the intake/code asymmetry in the README")
     require(docs["README.md"], "Discussions", "README.md", "readme-intake", out,
             "link question and broad-idea intake from the README")
-    require(docs["CONTRIBUTING.md"], "A local hook is feedback, not authority", "CONTRIBUTING.md",
+    require(docs["CONTRIBUTING.md"], "Required CI and protected refs remain authoritative", "CONTRIBUTING.md",
             "hook-authority", out, "explain that required CI and protected refs remain authoritative")
+    require(docs["CONTRIBUTING.md"], "Contributor credit and localization ownership",
+            "CONTRIBUTING.md", "contributor-credit-policy", out,
+            "document public Changelog credit and locale prose ownership")
+    require(docs["CONTRIBUTING.md"], "Localization-Review:", "CONTRIBUTING.md",
+            "localization-review-policy", out,
+            "document the reviewer trailer for coordinated canonical and locale prose changes")
+    require(docs["docs/agent_process.md"], "Preserve contributor and locale ownership",
+            "docs/agent_process.md", "agent-localization-ownership", out,
+            "keep contributor credit and locale ownership in the agent handoff checklist")
+    require(docs["docs/course-prose-style.md"], "Course prose writing contract",
+            "docs/course-prose-style.md", "course-prose-contract", out,
+            "keep durable learner-facing prose rules in one neutral contract")
+    require(docs["docs/course-prose-style.md"], "Automated signals identify passages",
+            "docs/course-prose-style.md", "prose-review-judgment", out,
+            "state that automated prose signals require contextual human disposition")
+    require(docs["docs/course-prose-style.md"], "Locale ownership",
+            "docs/course-prose-style.md", "prose-locale-ownership", out,
+            "preserve language-review ownership in the prose contract")
     require(docs["AGENTS.md"], "Treat code contribution as an untrusted proposal", "AGENTS.md",
             "agent-boundary", out, "put the trust boundary in the first agent beacon")
     require(docs["AGENTS.md"], "Every proposed commit", "AGENTS.md", "agent-dco", out,
@@ -278,6 +299,9 @@ def audit_repo(
                     f"add the required {section} section")
         require(docs[rel], "host-generated squash", rel, "stacked-submission-template", out,
                 "require a signed-commit preservation plan for stacked proposals")
+        require(docs[rel], "localized learner prose changed", rel,
+                "localization-ownership-template", out,
+                "ask who reviewed localized prose and where the contributor is credited")
     gitlab_template = docs[".gitlab/merge_request_templates/Default.md"]
     missing_in_window = [section for section in ("## Summary", *required_sections)
                          if section not in gitlab_template[:2700]]
@@ -908,6 +932,37 @@ def audit_commit_records(records: list[tuple[str, str, str, str]]) -> list[dict[
     return out
 
 
+def audit_language_ownership(
+    changed_paths: list[str], changelog: str, commit_messages: list[str],
+) -> list[dict[str, str]]:
+    """Require public credit and explicit review for learner-prose localization changes."""
+    out: list[dict[str, str]] = []
+    locale_pages = [path for path in changed_paths if re.fullmatch(
+        r"i18n/[^/]+/web/nemoclaw/[0-9]{2}[a-z]-[^/]+\.html", path)]
+    canonical_pages = [path for path in changed_paths if re.fullmatch(
+        r"web/nemoclaw/[0-9]{2}[a-z]-[^/]+\.html", path)]
+    if not locale_pages:
+        return out
+
+    unreleased = re.search(r"(?ms)^## Unreleased\s*$\n(.*?)(?=^## |\Z)", changelog)
+    has_public_credit = bool(unreleased and re.search(r"(?i)\bThanks to\b", unreleased.group(1)))
+    if "CHANGELOG.md" not in changed_paths or not has_public_credit:
+        out.append(finding(
+            "contributor-credit", "CHANGELOG.md",
+            "localized learner prose changed without an Unreleased public contributor credit",
+            "add a concise 'Thanks to <public name>' entry; do not publish private contact details",
+        ))
+    if canonical_pages and not any(re.search(
+            r"(?im)^Localization-Review:\s*[^=\s]+\s*=\s*\S.+$", message)
+            for message in commit_messages):
+        out.append(finding(
+            "mixed-language-ownership", "git",
+            "canonical and localized learner prose changed without a Localization-Review trailer",
+            "split ownership by proposal or add Localization-Review: <locale>=<public reviewer name>",
+        ))
+    return out
+
+
 def audit_commit_range(rev_range: str, root: Path = ROOT) -> list[dict[str, str]]:
     try:
         result = subprocess.run(
@@ -931,7 +986,17 @@ def audit_commit_range(rev_range: str, root: Path = ROOT) -> list[dict[str, str]
     if not records:
         return [finding("commit-range", "git", f"range {rev_range} contains no commits",
                         "pass the proposed commit range as BASE..HEAD")]
-    return audit_commit_records(records)
+    try:
+        changed = subprocess.run(
+            ["git", "diff", "--name-only", rev_range], cwd=root, check=True,
+            capture_output=True, text=True,
+        ).stdout.splitlines()
+        changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
+    except (subprocess.CalledProcessError, OSError) as exc:
+        return [finding("commit-range", "git", f"cannot inspect changed paths: {exc}",
+                        "fetch the base ref and restore CHANGELOG.md")]
+    return audit_commit_records(records) + audit_language_ownership(
+        changed, changelog, [record[3] for record in records])
 
 
 def self_test() -> list[str]:
@@ -953,6 +1018,13 @@ def self_test() -> list[str]:
             ("dco-policy", "DCO.md", "Developer Certificate of Origin 1.1", "unversioned signoff"),
             ("dco-stacked-merge", "DCO.md", "host-generated squash or merge commit", "generated integration commit"),
             ("contributor-stacked-merge", "CONTRIBUTING.md", "stacked merge request", "nested proposal"),
+            ("hook-authority", "CONTRIBUTING.md", "Required CI and protected refs remain authoritative", "Local hooks are authoritative"),
+            ("contributor-credit-policy", "CONTRIBUTING.md", "Contributor credit and localization ownership", "Anonymous integration"),
+            ("localization-review-policy", "CONTRIBUTING.md", "Localization-Review:", "Translation-Note:"),
+            ("agent-localization-ownership", "docs/agent_process.md", "Preserve contributor and locale ownership", "Rewrite translations automatically"),
+            ("course-prose-contract", "docs/course-prose-style.md", "Course prose writing contract", "English review snapshot"),
+            ("prose-review-judgment", "docs/course-prose-style.md", "Automated signals identify passages", "Scores decide every rewrite"),
+            ("prose-locale-ownership", "docs/course-prose-style.md", "Locale ownership", "Translation rewrite"),
             ("github-pr-trigger", ".github/workflows/pages.yml", "  pull_request:\n", "  # pull_request removed\n"),
             ("pages-fresh-validation-report", "scripts/build/build_pages.sh", 'python3 "$T1/scripts/validation/validate_bundle.py" --scope ship', 'python3 "$T1/scripts/validation/missing_bundle_gate.py" --scope ship'),
             ("pages-report-reuse-audit", "scripts/build/build_pages.sh", 'validation_report_audit.py"', 'missing_report_audit.py"'),
@@ -1006,6 +1078,7 @@ def self_test() -> list[str]:
             ("issue-production-scope", ".github/ISSUE_TEMPLATE/runtime-deploy.yml", "static `web/nemoclaw/` course", "CPU service stack"),
             ("submission-template", ".github/PULL_REQUEST_TEMPLATE.md", "## Blast radius checked", "## Scope notes"),
             ("stacked-submission-template", ".gitlab/merge_request_templates/Default.md", "host-generated squash", "automatic integration"),
+            ("localization-ownership-template", ".github/PULL_REQUEST_TEMPLATE.md", "localized learner prose changed", "translation files changed"),
             ("gitlab-description-window", ".gitlab/merge_request_templates/Default.md", "## Validation evidence", "x" * 2700 + "\n## Validation evidence"),
             ("mutating-prepush", "scripts/git-hooks/pre-push", "REFUSING PUSH - origin/main is", "git pull --rebase origin main # REFUSING PUSH - origin/main is"),
             ("fetch-fail-open", "scripts/git-hooks/pre-push", "if ! git fetch origin main --quiet; then", "git fetch origin main --quiet || exit 0\n    if false; then"),
@@ -1147,6 +1220,24 @@ def self_test() -> list[str]:
     ):
         if "commit-signoff" not in {item["code"] for item in audit_commit_records(record)}:
             failures.append("commit signoff mutation escaped detector")
+    locale_path = "i18n/es/web/nemoclaw/01a-loop.html"
+    canonical_path = "web/nemoclaw/01a-loop.html"
+    credited = "## Unreleased\n\n- Thanks to Example Contributor for the Spanish translation.\n"
+    if audit_language_ownership([locale_path, "CHANGELOG.md"], credited, ["Locale update"]):
+        failures.append("credited locale-only change rejected")
+    ownership_cases = (
+        ([locale_path], credited, ["Locale update"], "contributor-credit"),
+        ([locale_path, "CHANGELOG.md"], "## Unreleased\n\n- Locale update.\n", ["Locale update"], "contributor-credit"),
+        ([locale_path, canonical_path, "CHANGELOG.md"], credited, ["Mixed update"], "mixed-language-ownership"),
+    )
+    for paths, changelog, messages, expected in ownership_cases:
+        codes = {item["code"] for item in audit_language_ownership(paths, changelog, messages)}
+        if expected not in codes:
+            failures.append(f"language ownership mutation escaped detector: {expected}")
+    reviewed = "Mixed update\n\nLocalization-Review: es=Example Reviewer\n"
+    if audit_language_ownership(
+            [locale_path, canonical_path, "CHANGELOG.md"], credited, [reviewed]):
+        failures.append("reviewed mixed-language change rejected")
     return failures
 
 

@@ -21,7 +21,7 @@
     "docs/release_artifacts.md",
     "docs/product-design.md",
     "docs/release-test-plan.md",
-    "docs/english-course-prose-review.md",
+    "docs/course-prose-style.md",
     "docs/release-evidence.json",
     "docs/dependency_security.md",
     "docs/security-design.md",
@@ -114,10 +114,10 @@
       "desc": "Maps product claims to automated commands, manual checks, external evidence, pass criteria, execution order, and final acceptance."
     },
     {
-      "path": "english-course-prose-review.md",
+      "path": "course-prose-style.md",
       "kind": "authored",
-      "role": "English learner-prose review",
-      "desc": "Developer-language rules derived from expert review, plus findings and recommendations for every canonical learner page."
+      "role": "course prose writing contract",
+      "desc": "Durable rules for clear technical explanations, direct teaching, evidence-based review, and locale ownership."
     },
     {
       "path": "release-evidence.json",
@@ -246,15 +246,15 @@
 </header>
 <section class="security-review-build" aria-labelledby="security-review-build-title">
   <h1 id="security-review-build-title">Security review package</h1>
-  <p>Generate one self-contained supporting design plus the existing <a href="security-architecture.svg">security architecture diagram</a>. The design embeds its scope, data assumptions, aggregate controls, anticipated mitigations, triggers, and verification expectations; repository paths are traceability labels rather than required links. The ignored archive contains exactly the two upload files.</p>
+  <p>Generate one supporting design. Pair it with the existing <a href="security-architecture.svg">security architecture diagram</a>. The design defines the review scope and data assumptions while recording each control beside its mitigation trigger and expected verification. Repository paths preserve traceability from every claim to its evidence. The ignored archive contains exactly two upload files.</p>
   <code>python3 scripts/build/build_security_review_package.py --package</code>
   <code>python3 scripts/build/build_security_review_package.py --self-test &amp;&amp; python3 scripts/figures/render_security_architecture.py --check &amp;&amp; python3 scripts/validation/security_architecture_audit.py</code>
 </section>
 <div id="explorer"></div>
 <noscript>
   <h1>docs/ contributor, release, and design evidence</h1>
-  <p>Choose by task: contribution, testing, deployment, release evidence, security architecture, or stakeholder presentation.</p>
-  <p>For browser-runtime discovery, start with <code>scripts/runtime/browser_env_probe.sh</code>; host Node.js, Chromium, and Playwright are optional.</p>
+  <p>Choose the document that matches your task. The catalog separates contribution and test guidance from deployment instructions, so each concern has a clear owner. Release evidence has its own route. Security architecture and stakeholder presentations do too.</p>
+  <p>Start browser-runtime discovery with <code>scripts/runtime/browser_env_probe.sh</code>. Host-side browser tools are optional.</p>
   <ul>
     <li><a href="pages_deploy.md">pages_deploy.md</a></li>
     <li><a href="lab_runtime_testing.md">lab_runtime_testing.md</a></li>
@@ -264,7 +264,7 @@
     <li><a href="release_artifacts.md">release_artifacts.md</a></li>
     <li><a href="product-design.md">product-design.md</a></li>
     <li><a href="release-test-plan.md">release-test-plan.md</a></li>
-    <li><a href="english-course-prose-review.md">english-course-prose-review.md</a></li>
+    <li><a href="course-prose-style.md">course-prose-style.md</a></li>
     <li><a href="release-evidence.json">release-evidence.json</a></li>
     <li><a href="dependency_security.md">dependency_security.md</a></li>
     <li><a href="security-design.md">security-design.md</a></li>

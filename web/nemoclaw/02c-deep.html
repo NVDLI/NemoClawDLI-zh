@@ -187,8 +187,8 @@
   <!-- ── Part 5: Deep agent (planner + sub-agents + VFS) ──────────────────── -->
   <h2>3 · Assemble the research agent</h2>
   <p>
-    This cell exposes each stage as its own node, with shared files visible
-    between delegation and synthesis. The <a href="https://github.com/langchain-ai/deepagentsjs" target="_blank" rel="noopener"><code>deepagents</code></a>
+    Each stage runs as its own node, and shared files remain visible between
+    delegation and synthesis. The <a href="https://github.com/langchain-ai/deepagentsjs" target="_blank" rel="noopener"><code>deepagents</code></a>
     package wraps a similar pattern for Node.js applications.
   </p>
 
@@ -296,8 +296,8 @@ helpers.mountChatUI("#deep-artifact", {
     // Show the parsed plan so each branch's source, target, and goal are visible.
     ctx.view.tool("plan", { branches });
 
-    // Build a live HTML operation board. Each branch owns one left-aligned,
-    // independently scrollable panel and begins updating before its siblings finish.
+    // Build a live HTML operation board with one independently scrollable, left-aligned panel per branch.
+    // Each panel begins updating before its siblings finish.
     const board = ctx.view.html(
       '<section class="research-board" aria-label="Live research operations">' +
       '<header><strong>Parallel research</strong><span class="research-board-status" role="status" aria-live="polite">Starting workers…</span></header>' +
