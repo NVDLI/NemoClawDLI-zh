@@ -711,7 +711,8 @@ def audit_repo(
     require(gitlab, "CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-$CI_COMMIT_REF_NAME", ".gitlab-ci.yml",
             "gitlab-preview-ref", out, "resolve branch-preview refs in branch and MR pipelines")
     pages_body = pages_materials.group(1) if pages_materials else ""
-    if not (re.search(r"(?m)^\s+- job:\s*test\s*$", pages_body) or 'needs: ["test"]' in pages_body):
+    pages_header = pages_body.split("\n  script:\n", 1)[0]
+    if not (re.search(r"(?m)^\s+- job:\s*test\s*$", pages_header) or 'needs: ["test"]' in pages_header):
         out.append(finding("gitlab-deploy-gate", ".gitlab-ci.yml",
                            "Pages does not declare the required test job as a dependency",
                            "keep Pages blocked on the required test job"))
@@ -1032,7 +1033,7 @@ def self_test() -> list[str]:
             ("gitlab-script-retry", ".gitlab/ci/core.yml", "runner_system_failure", "script_failure"),
             ("gitlab-material-install", ".gitlab/ci/core.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),
             ("gitlab-pages-material-install", ".gitlab/ci/core.yml", '  # localization/material tooling even when live pulls are disabled.\n  variables:\n    MATERIAL_TOOLS_REQUIRED: "1"', '  # localization/material tooling even when live pulls are disabled.\n  variables:\n    MATERIAL_TOOLS_REQUIRED: "0"'),
-            ("gitlab-deploy-gate", ".gitlab/ci/core.yml", "    - job: test", "    - job: skipped_test"),
+            ("gitlab-deploy-gate", ".gitlab/ci/core.yml", '  needs: ["test"]', '  needs: ["skipped_test"]'),
             ("gitlab-preview-ref-fetch", ".gitlab/ci/core.yml", 'git fetch "$preview_remote" "+refs/heads/$branch:refs/remotes/$preview_namespace/$branch" --quiet', 'git fetch "$preview_remote" "+refs/heads/$branch:refs/remotes/$preview_namespace/$branch" --quiet || true'),
             ("gitlab-preview-ref-fetch", ".gitlab/ci/core.yml", 'preview_remote="$CI_MERGE_REQUEST_SOURCE_PROJECT_URL"', 'preview_remote="origin"'),
             ("gitlab-transient-material-policy", ".gitlab/ci/core.yml", "pull_materials.py --check --allow-transient-unreachable", "pull_materials.py --check --strict-unreachable"),

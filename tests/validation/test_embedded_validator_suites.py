@@ -28,6 +28,7 @@ SUITES = {
     "materials": "scripts.materials.pull_materials",
     "pages_artifact_integrity": "scripts.validation.pages_artifact_integrity",
     "project_docs_explorer": "scripts.build.project_docs_explorer",
+    "pyodide_integration_audit": "scripts.pyodide.integration_audit",
     "release_change_reminder": "scripts.validation.release_change_reminder",
     "release_evidence_audit": "scripts.validation.release_evidence_audit",
     "release_gate": "scripts.validation.release_gate",

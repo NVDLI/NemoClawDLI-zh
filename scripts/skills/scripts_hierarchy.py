@@ -16,7 +16,7 @@ SCRIPTS = ROOT / "scripts"
 
 GROUP_SKILLS = (
     "browser-vendor", "build", "compliance", "cors-proxy", "dev", "edx", "figures",
-    "git-hooks", "materials", "runtime", "security", "skills", "translate",
+    "git-hooks", "materials", "pyodide", "runtime", "security", "skills", "translate",
     "validation",
 )
 ROOT_ALLOW = {".gitkeep", "SKILL.html", "_bootstrap.py"}

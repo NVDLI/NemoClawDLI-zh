@@ -65,7 +65,7 @@ RULES = (
         "Refresh component inventory, distribution method, license disposition, and authorized open-source review for changed third-party inputs.",
         (
             "**/Dockerfile", "**/*.Dockerfile", "**/requirements*.txt", "**/requirements*.lock",
-            "scripts/browser-vendor/*", "scripts/materials/*", "web/nemoclaw/mats/*",
+            "scripts/browser-vendor/*", "scripts/materials/*", "scripts/pyodide/*", "web/nemoclaw/mats/*",
             "web/nemoclaw/vendor/*",
         ),
     ),
@@ -146,6 +146,7 @@ def self_test() -> list[str]:
         ("workflow", [".github/workflows/pages.yml"], {"threat-architecture-review", "verified-secret-scan"}),
         ("data route", ["web/nemoclaw/scripts/_shared.js"], {"threat-architecture-review", "privacy-data-review", "verified-secret-scan", "final-artifact-evidence"}),
         ("course", ["web/nemoclaw/01a-loop.html"], {"final-artifact-evidence"}),
+        ("planned Pyodide", ["scripts/pyodide/candidate-components.json"], {"open-source-license-review"}),
         ("work products", ["CHANGELOG.md"], {"public-repository-work-products"}),
         ("ordinary docs", ["docs/issue_standards.md"], set()),
     )

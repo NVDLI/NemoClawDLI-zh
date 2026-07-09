@@ -18,6 +18,13 @@ def ci_job(name: str) -> str:
     return source[start : next_job if next_job >= 0 else len(source)]
 
 
+def core_job(name: str, next_name: str) -> str:
+    source = (ROOT / ".gitlab/ci/core.yml").read_text(encoding="utf-8")
+    start = source.index(f"{name}:\n")
+    end = source.index(f"\n{next_name}:\n", start)
+    return source[start:end]
+
+
 class ThemeRuntimeContractTests(unittest.TestCase):
     def test_discovery_includes_every_nested_html_file(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -64,8 +71,58 @@ class ThemeRuntimeContractTests(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(token, source)
 
+    def test_runtime_executes_the_pyodide_skill_contract(self) -> None:
+        source = theme_runtime.RUNTIME_JS
+        for token in (
+            "scripts/pyodide/SKILL.html",
+            "new Function(globalThis.__pyodideWorkerSource)",
+            "editorCount !== runtimeContract.count + 1",
+            "syntaxTokens < runtimeContract.count",
+            "CodeMirror surfaces are not consistently theme-aware",
+            "Shift+Enter did not run the cell and focus the next editor",
+            "scratch REPL did not preserve namespace or execution order",
+            "final expression did not render as notebook output",
+            "Pyodide background process did not register and complete across cells",
+            "Pyodide artifact did not preserve a highlighted preview and exact downloadable bytes",
+            "playground.runAll()",
+            "Pyodide chat did not preserve repeated user input",
+            "Pyodide intentional error did not render its traceback",
+            "Pyodide traceback did not highlight the failing source line",
+            "Pyodide display pipeline did not render highlighted JSON/code, Markdown, HTML, and tables",
+            "Pyodide syntax output is hard-wrapped or artificially narrow",
+            "Pyodide helper menu did not preview, edit, and apply the live helper source",
+            "Pyodide rich output sanitizer admitted executable or network-active HTML",
+            "Pyodide build.nvidia.com path did not consume streamed SSE tokens",
+            "Pyodide WebSocket round trip did not connect, send, and receive",
+            "Pyodide rendered a model credential into page output",
+            "Pyodide Reset did not clear cell state",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, source)
+
 
 class ScaTriggerContractTests(unittest.TestCase):
+    def test_pages_does_not_wait_on_an_unplayed_manual_sca_job(self) -> None:
+        pages = core_job("pages", "pages_smoke")
+        header = pages.split("  script:\n", 1)[0]
+        self.assertIn('needs: ["test"]', header)
+        self.assertNotIn("optional: true", header)
+        self.assertIn('if [ -z "${DEEP_SCA_JOB_ID:-}" ]', pages)
+        self.assertIn("- job: security_deep_sca\n          artifacts: true", pages)
+
+    def test_pages_deep_sca_override_tracks_scanner_inputs(self) -> None:
+        pages = core_job("pages", "pages_smoke")
+        scanner = ci_job("security_deep_sca")
+        for path in (
+            "workspace/requirements.lock",
+            "scripts/security/requirements-sca.lock",
+            "scripts/compliance/sbom_evidence.py",
+            ".gitlab/ci/sca.yml",
+        ):
+            with self.subTest(path=path):
+                self.assertIn(f"- {path}", scanner)
+                self.assertIn(f"- {path}", pages)
+
     def test_expensive_scans_are_automatic_only_for_relevant_inputs(self) -> None:
         cases = {
             "security_browser_sca": "scripts/browser-vendor/package-lock.json",
