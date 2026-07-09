@@ -2062,4 +2062,152 @@ svg.dg-svg { font-family: var(--sans); }
 .gw-table td{padding:.2rem .5rem .2rem 0;color:var(--tf,#e0e0e0);vertical-align:top}
 .gw-table tr:hover td{background:var(--e1)}
 
+/* NVIDIA Agentic AI Learning Path cards on 4c. */
+#learning-path .step-card {
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+#learning-path .step-card-media {
+  display: block;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--e2);
+  border-bottom: 1px solid var(--bd);
+}
+#learning-path .step-card-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .18s ease;
+}
+#learning-path .step-card-media:hover img,
+#learning-path .step-card-media:focus-visible img { transform: scale(1.025); }
+#learning-path .step-card-media:focus-visible {
+  outline: 2px solid var(--g);
+  outline-offset: -2px;
+}
+#learning-path .step-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 14px 16px 16px;
+}
+#learning-path .step-card-body p { flex: 1; }
+#learning-path .step-card-body .btn { align-self: flex-start; }
+@media (prefers-reduced-motion: reduce) {
+  #learning-path .step-card-media img { transition: none; }
+  #learning-path .step-card-media:hover img,
+  #learning-path .step-card-media:focus-visible img { transform: none; }
+}
+
+/* Source-linked figures and the uniform 4c helper-article grid. */
+.resource-aside-section::after {
+  display: block;
+  clear: both;
+  content: "";
+}
+.resource-aside-figure {
+  float: right;
+  width: min(43%, 430px);
+  margin: 0 0 16px 24px;
+  overflow: hidden;
+  border: 1px solid var(--bd);
+  border-radius: 8px;
+  background: var(--e1);
+}
+.resource-aside-media {
+  display: block;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #fff;
+}
+.resource-aside-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transition: transform .18s ease;
+}
+.resource-aside-media--cover img { object-fit: cover; }
+.resource-aside-media--contain img {
+  padding: 8px;
+  object-fit: contain;
+}
+.resource-aside-media:hover img,
+.resource-aside-media:focus-visible img { transform: scale(1.025); }
+.resource-aside-media:focus-visible {
+  outline: 2px solid var(--g);
+  outline-offset: -2px;
+}
+.resource-aside-figure figcaption {
+  padding: 7px 10px;
+  border-top: 1px solid var(--bd);
+  color: var(--td);
+  font-size: .72rem;
+  line-height: 1.4;
+}
+main .lp-helpers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+main .lp-helpers li {
+  min-width: 0;
+  margin: 0;
+  padding: 13px 15px;
+  border: 1px solid var(--bd);
+  border-radius: 16px;
+  background: var(--e1);
+}
+main .lp-helpers li > a:first-child {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.deployment-lessons { margin-top: 18px; }
+.deployment-lessons > .section {
+  margin: 0;
+  padding: 0;
+  border-top: 0;
+}
+.going-further-assistant {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--g);
+  background: var(--e1);
+}
+.going-further-assistant p { margin: 0; }
+.going-further-assistant .course-assistant-open { white-space: nowrap; }
+@media (max-width: 900px) {
+  main .lp-helpers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .resource-aside-figure {
+    float: none;
+    width: 100%;
+    margin: 0 0 16px;
+  }
+  main .lp-helpers { grid-template-columns: 1fr; }
+  .going-further-assistant {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .resource-aside-media img { transition: none; }
+  .resource-aside-media:hover img,
+  .resource-aside-media:focus-visible img { transform: none; }
+}
+
 main code { overflow-wrap: anywhere; word-break: break-word; }

@@ -1090,6 +1090,252 @@ function headingLinkIcon() {
   return icon;
 }
 
+const LEARNING_PATH_IMAGES = Object.freeze({
+  "how-to-build-an-ai-agent": "how-to-build-ai-agent-ari.jpg",
+  "how-to-build-agentic-ai-rag": "agentic-rag-application-ari.jpg",
+  "how-to-evaluate-ai-agents": "how-to-evaluate-ai-agents.jpg",
+  "how-to-customize-ai-agents": "how-to-customize-ai-agents.jpg",
+  "how-to-build-deep-ai-agents": "how-to-build-deep-ai-agents.jpg",
+  "how-to-build-safer-autonomous-agent-using-openclaw": "how-to-build-a-safer-autonomous-agent-using-nemo-claw.jpg",
+});
+const LEARNING_PATH_IMAGE_ROOT = "https://developer.download.nvidia.com/images/learning-pathways/";
+
+const RESOURCE_FIGURES = Object.freeze({
+  "https://build.nvidia.com/spark/nemoclaw-applications?ncid=ref-dli-146986": {
+    image: "https://build.nvidia.com/opengraph-image.jpg?6ec102a0470b935b&ncid=ref-dli-146986",
+    fit: "cover",
+  },
+  "https://developer.nvidia.com/nemo-retriever": {
+    image: "https://developer.download.nvidia.com/images/nemo-retriever/nemo-retriever-diagram-1920x1080.jpg",
+    fit: "contain",
+  },
+});
+
+const FIGURE_SOURCE_LABELS = Object.freeze({
+  en: "Image source",
+  es: "Fuente de la imagen",
+  pt: "Fonte da imagem",
+});
+
+const GOING_FURTHER_TEXT = Object.freeze({
+  en: {
+    assistantPrompt: "Want to inspect this page or trace a concept across modules?",
+    assistantButton: "Ask about this course",
+    knowledgeIntro: "The Index Agent in Module 2b used a small in-page corpus. These resources show how to prepare, retrieve, and guard production data.",
+    interfaceHeading: "Carry the browser interface forward",
+  },
+  es: {
+    assistantPrompt: "¿Quieres consultar esta página o seguir un concepto entre módulos?",
+    assistantButton: "Pregunta sobre el curso",
+    knowledgeIntro: "El agente de índice del Módulo 2b utilizó un corpus pequeño dentro de la página. Estos recursos muestran cómo preparar, recuperar y proteger datos de producción.",
+    interfaceHeading: "Lleva la interfaz del navegador a otros entornos",
+  },
+  pt: {
+    assistantPrompt: "Quer consultar esta página ou acompanhar um conceito entre módulos?",
+    assistantButton: "Pergunte sobre o curso",
+    knowledgeIntro: "O agente de índice do Módulo 2b usou um pequeno corpus na própria página. Estes recursos mostram como preparar, recuperar e proteger dados de produção.",
+    interfaceHeading: "Leve a interface do navegador para outros ambientes",
+  },
+});
+
+function canonicalResourceUrl(href) {
+  try {
+    const url = new URL(href, globalThis.location?.href);
+    const base = `${url.origin}${url.pathname.replace(/\/$/, "")}`;
+    const ncid = url.searchParams.get("ncid");
+    return ncid ? `${base}?ncid=${encodeURIComponent(ncid)}` : base;
+  } catch (_) {
+    return "";
+  }
+}
+
+export function learningPathImageUrl(href) {
+  try {
+    const slug = new URL(href, globalThis.location?.href).pathname.split("/").filter(Boolean).pop();
+    const file = LEARNING_PATH_IMAGES[slug];
+    return file ? `${LEARNING_PATH_IMAGE_ROOT}${file}` : "";
+  } catch (_) {
+    return "";
+  }
+}
+
+export function mountLearningPathCards(root = document) {
+  root.querySelectorAll("#learning-path .step-card").forEach((card) => {
+    if (card.querySelector(":scope > .step-card-media")) return;
+    const heading = card.querySelector("h3");
+    const button = card.querySelector("a.btn[href]");
+    const imageUrl = learningPathImageUrl(button?.href);
+    if (!heading || !button || !imageUrl) return;
+
+    const title = heading.textContent.split("·").slice(1).join("·").trim() || heading.textContent.trim();
+    const media = document.createElement("a");
+    media.className = "step-card-media";
+    media.href = button.href;
+    media.target = button.target;
+    media.rel = button.rel;
+    media.setAttribute("aria-label", `${button.textContent.replace("→", "").trim()}: ${title}`);
+    const image = document.createElement("img");
+    image.src = imageUrl;
+    image.alt = title;
+    image.loading = "lazy";
+    image.decoding = "async";
+    image.referrerPolicy = "no-referrer";
+    media.append(image);
+
+    const body = document.createElement("div");
+    body.className = "step-card-body";
+    while (card.firstChild) body.append(card.firstChild);
+    card.append(media, body);
+  });
+}
+
+export function mountResourceFigures(root = document) {
+  root.querySelectorAll('a[href^="https://"]').forEach((sourceLink) => {
+    const resource = RESOURCE_FIGURES[canonicalResourceUrl(sourceLink.href)];
+    const section = sourceLink.closest(".section");
+    if (!resource || !section || section.querySelector(":scope > .resource-aside-figure")) return;
+
+    const title = sourceLink.textContent.trim();
+    if (!title) return;
+
+    const media = document.createElement("a");
+    media.className = `resource-aside-media resource-aside-media--${resource.fit}`;
+    media.href = sourceLink.href;
+    media.target = sourceLink.target;
+    media.rel = sourceLink.rel;
+    media.setAttribute("aria-label", title);
+
+    const image = document.createElement("img");
+    image.src = resource.image;
+    image.alt = title;
+    image.loading = "lazy";
+    image.decoding = "async";
+    image.referrerPolicy = "no-referrer";
+    media.append(image);
+
+    const locale = root.documentElement?.lang?.split("-")[0] || "en";
+    const caption = document.createElement("figcaption");
+    caption.append(`${FIGURE_SOURCE_LABELS[locale] || FIGURE_SOURCE_LABELS.en}: `);
+    const captionLink = sourceLink.cloneNode(true);
+    captionLink.textContent = title;
+    caption.append(captionLink);
+
+    const figure = document.createElement("figure");
+    figure.className = "resource-aside-figure";
+    figure.append(media, caption);
+    section.classList.add("resource-aside-section");
+    section.querySelector(":scope > h2")?.insertAdjacentElement("afterend", figure);
+  });
+}
+
+function trimAfterFirstSentence(element) {
+  if (!element) return;
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+  const trailing = [];
+  let foundEnd = false;
+  while (walker.nextNode()) {
+    const text = walker.currentNode;
+    if (foundEnd) {
+      trailing.push(text);
+      continue;
+    }
+    const sentenceEnd = text.data.indexOf(".");
+    if (sentenceEnd < 0) continue;
+    text.data = text.data.slice(0, sentenceEnd + 1);
+    foundEnd = true;
+  }
+  trailing.forEach(text => text.remove());
+}
+
+export function mountGoingFurtherLayout(root = document) {
+  const main = root.querySelector("main");
+  const learningPath = root.querySelector("#learning-path");
+  const whereNext = root.querySelector('details[data-learning-id="production-divergence"]');
+  const readingList = root.querySelector('details[data-learning-id="course-reading-list"]');
+  const deploy = root.querySelector('a[href*="/spark/nemoclaw-applications"]')?.closest(".section");
+  const addKnowledge = root.querySelector('a[href="https://developer.nvidia.com/nemo-retriever"]')?.closest(".section");
+  const carryInterface = root.querySelector('a[href*="use-live-artifacts-in-claude-cowork"]')?.closest(".section");
+  const built = root.querySelector('a[href*="building-effective-agents"]')?.closest(".section");
+  const deploymentLessons = root.querySelector(".pattern-list")?.closest(".section");
+  const helperList = root.querySelector(".lp-helpers");
+  const assistantButton = root.querySelector("#open-course-assistant");
+  const whereSection = whereNext?.querySelector(".section");
+  if (!main || !learningPath || !whereNext || !readingList || !deploy || !addKnowledge
+      || !carryInterface || !built || !deploymentLessons || !helperList || !assistantButton || !whereSection) return;
+  if (main.dataset.goingFurtherLayout === "ready") return;
+
+  const helperHeading = helperList.previousElementSibling;
+  if (helperHeading?.matches("h2, h3, h4")) whereSection.append(helperHeading, helperList);
+
+  const lessonEyebrow = deploymentLessons.querySelector(":scope > .section-eyebrow");
+  const lessonHeading = deploymentLessons.querySelector(":scope > h2");
+  const lessonDisclosure = root.createElement("details");
+  lessonDisclosure.className = "learning-block deployment-lessons";
+  const lessonSummary = root.createElement("summary");
+  const lessonScope = root.createElement("span");
+  lessonScope.className = "learning-scope";
+  lessonScope.textContent = lessonEyebrow?.textContent.trim() || "Lessons";
+  const lessonQuestion = root.createElement("span");
+  lessonQuestion.className = "learning-question";
+  lessonQuestion.textContent = lessonHeading?.textContent.trim() || "Review before deployment";
+  lessonSummary.append(lessonScope, lessonQuestion);
+  lessonEyebrow?.remove();
+  lessonHeading?.remove();
+  lessonDisclosure.append(lessonSummary, deploymentLessons);
+  whereSection.append(lessonDisclosure);
+
+  const assistantButtonRow = assistantButton.closest("p");
+  const assistantCallout = assistantButtonRow?.previousElementSibling;
+  const assistantParagraph = assistantCallout?.previousElementSibling;
+  const assistantHeading = assistantParagraph?.previousElementSibling;
+  const builtParagraphs = [...built.querySelectorAll(":scope > p")];
+  trimAfterFirstSentence(builtParagraphs.at(-1));
+  const locale = root.documentElement?.lang?.split("-")[0] || "en";
+  const pageText = GOING_FURTHER_TEXT[locale] || GOING_FURTHER_TEXT.en;
+  const knowledgeIntro = addKnowledge.querySelector(":scope > p");
+  const interfaceHeading = carryInterface.querySelector(":scope > h2");
+  if (knowledgeIntro) knowledgeIntro.textContent = pageText.knowledgeIntro;
+  if (interfaceHeading) interfaceHeading.textContent = pageText.interfaceHeading;
+  if (assistantParagraph && assistantCallout && assistantButtonRow) {
+    assistantParagraph.textContent = pageText.assistantPrompt;
+    assistantButton.textContent = pageText.assistantButton;
+    const handoff = root.createElement("div");
+    handoff.className = "going-further-assistant";
+    handoff.append(assistantParagraph, assistantButtonRow);
+    built.append(assistantCallout, handoff);
+  }
+  if (assistantHeading?.matches("h2")) assistantHeading.remove();
+
+  built.dataset.goingFurtherSection = "built";
+  deploy.dataset.goingFurtherSection = "deploy";
+  addKnowledge.dataset.goingFurtherSection = "knowledge";
+  carryInterface.dataset.goingFurtherSection = "interface";
+  whereSection.dataset.goingFurtherSection = "next";
+  learningPath.dataset.goingFurtherSection = "learning-path";
+  readingList.dataset.goingFurtherSection = "sources";
+  readingList.removeAttribute("data-learning-always-open");
+  readingList.open = false;
+
+  whereNext.replaceWith(whereSection);
+
+  main.insertBefore(built, deploy);
+  deploy.insertAdjacentElement("afterend", addKnowledge);
+  addKnowledge.insertAdjacentElement("afterend", carryInterface);
+  carryInterface.insertAdjacentElement("afterend", whereSection);
+  whereSection.insertAdjacentElement("afterend", learningPath);
+  learningPath.insertAdjacentElement("afterend", readingList);
+  main.dataset.goingFurtherLayout = "ready";
+}
+
+export function mountCourseFavicon(root = document) {
+  if (root.head?.querySelector('link[rel~="icon"]')) return;
+  const link = root.createElement("link");
+  link.rel = "icon";
+  link.type = "image/x-icon";
+  link.href = new URL("../assets/favicon.ico", import.meta.url).href;
+  root.head?.append(link);
+}
+
 export function mountHeadingLinks() {
   const main = document.querySelector("main");
   if (!main) return;
@@ -1122,7 +1368,8 @@ export function mountHeadingLinks() {
 
 // Auto-mount on any page that ships a topbar (the lab and the full standalone).
 if (typeof document !== "undefined") {
-  const _boot = () => { mountLearningView(); mountThemeToggle(); mountLanguageMenu(); mountHeadingLinks(); mountFigures(); markLiveArtifacts(); mountCourseLicenseNote(); mountCourseAssistant({ embed }); };
+  mountCourseFavicon();
+  const _boot = () => { mountLearningView(); mountThemeToggle(); mountLanguageMenu(); mountLearningPathCards(); mountResourceFigures(); mountGoingFurtherLayout(); mountHeadingLinks(); mountFigures(); markLiveArtifacts(); mountCourseLicenseNote(); mountCourseAssistant({ embed }); };
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", _boot);
   } else {

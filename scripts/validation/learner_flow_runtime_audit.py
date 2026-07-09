@@ -594,6 +594,69 @@ async function waitText(locator, pattern) {
   const furtherPage = await courseContext.newPage();
   await furtherPage.goto(`http://127.0.0.1:${port}/nemoclaw/04c-going-further.html`, { waitUntil:'domcontentloaded' });
   if (await furtherPage.locator('#capstone-artifact, #capstone-cell').count()) throw new Error('04c still duplicates the always-available Course Assistant');
+  const faviconUrl = await furtherPage.locator('head link[rel~="icon"]').getAttribute('href');
+  if (!faviconUrl?.endsWith('/nemoclaw/assets/favicon.ico')) throw new Error(`04c did not pin the course favicon inside its deployed subpath: ${faviconUrl}`);
+  const learningPathCards = await furtherPage.locator('#learning-path .step-card').evaluateAll(cards => cards.map(card => {
+    const media = card.querySelector(':scope > .step-card-media');
+    const image = media?.querySelector('img');
+    const button = card.querySelector('a.btn[href]');
+    return {
+      hasMedia:!!media,
+      hrefMatches:media?.href === button?.href,
+      imageUrl:image?.src || '',
+      alt:image?.alt || '',
+      lazy:image?.loading === 'lazy',
+      privateReferrer:image?.referrerPolicy === 'no-referrer',
+    };
+  }));
+  if (!learningPathCards.length || learningPathCards.some(card => !card.hasMedia || !card.hrefMatches || !card.imageUrl.startsWith('https://developer.download.nvidia.com/images/learning-pathways/') || !card.alt || !card.lazy || !card.privateReferrer)) throw new Error(`04c learning-path cards lost their linked NVIDIA course art: ${JSON.stringify(learningPathCards)}`);
+  const resourceFigures = await furtherPage.locator('figure.resource-aside-figure').evaluateAll(figures => figures.map(figure => {
+    const source = figure.querySelector('figcaption a[href]');
+    const media = figure.querySelector(':scope > a.resource-aside-media');
+    const image = media?.querySelector('img');
+    return {
+      hrefMatches:Boolean(source && media && source.href === media.href),
+      imageUrl:image?.src || '',
+      alt:image?.alt || '',
+      lazy:image?.loading === 'lazy',
+      privateReferrer:image?.referrerPolicy === 'no-referrer',
+      hasCaption:Boolean(figure.querySelector('figcaption')?.textContent.trim()),
+    };
+  }));
+  const officialImageHosts = new Set(['build.nvidia.com', 'developer.download.nvidia.com']);
+  if (!resourceFigures.length || resourceFigures.some(item => !item.hrefMatches || !officialImageHosts.has(new URL(item.imageUrl).hostname) || !item.alt || !item.lazy || !item.privateReferrer || !item.hasCaption)) throw new Error(`04c resource figures lost their source-linked NVIDIA art: ${JSON.stringify(resourceFigures)}`);
+  const helperGrid = await furtherPage.locator('.lp-helpers').evaluate(list => ({
+    display:getComputedStyle(list).display,
+    items:[...list.children].map(item => ({ hasLink:Boolean(item.querySelector('a[href]')), borderRadius:getComputedStyle(item).borderRadius })),
+    promotedRows:list.querySelectorAll('.resource-spotlight, .resource-aside-figure').length,
+  }));
+  if (helperGrid.display !== 'grid' || !helperGrid.items.length || helperGrid.items.some(item => !item.hasLink || item.borderRadius === '0px') || helperGrid.promotedRows) throw new Error(`04c helper articles are not a uniform card grid: ${JSON.stringify(helperGrid)}`);
+  const furtherLayout = await furtherPage.locator('main').evaluate(main => {
+    const sections = [...main.children]
+      .map(node => node.dataset?.goingFurtherSection)
+      .filter(Boolean);
+    const built = main.querySelector('[data-going-further-section="built"]');
+    const next = main.querySelector('[data-going-further-section="next"]');
+    const lessons = next?.querySelector('details.deployment-lessons');
+    return {
+      sections,
+      assistantIntegrated:Boolean(built?.querySelector('#open-course-assistant')),
+      retiredArtifactCopy:Boolean(built?.textContent.includes('no longer mounts a second capstone chat')),
+      helperInsideNext:Boolean(next?.querySelector('.lp-helpers')),
+      lessonsInsideNext:Boolean(lessons),
+      lessonsHidden:Boolean(lessons && !lessons.open),
+      nextVisible:Boolean(next && (!next.matches('details') || next.open)),
+      sourcesHidden:Boolean(!main.querySelector('[data-going-further-section="sources"]')?.open),
+      malformedAssistantCopy:Boolean(built?.textContent.includes('lesson, It')),
+      namedAssistantCopy:Boolean(built?.textContent.includes('Course Assistant')),
+      compactAssistantHandoff:Boolean(built?.querySelector('.going-further-assistant #open-course-assistant')),
+      artifactHeading:Boolean(main.querySelector('[data-going-further-section="interface"] > h2')?.textContent.toLowerCase().includes('artifact')),
+      redundantNextSummary:Boolean(next?.matches('details')),
+      detachedAssistantHeading:[...main.querySelectorAll(':scope > h2')].some(heading => /course assistant/i.test(heading.textContent)),
+    };
+  });
+  const expectedFurtherOrder = ['built', 'deploy', 'knowledge', 'interface', 'next', 'learning-path', 'sources'];
+  if (furtherLayout.sections.join('|') !== expectedFurtherOrder.join('|') || !furtherLayout.assistantIntegrated || furtherLayout.retiredArtifactCopy || !furtherLayout.helperInsideNext || !furtherLayout.lessonsInsideNext || !furtherLayout.lessonsHidden || !furtherLayout.nextVisible || !furtherLayout.sourcesHidden || furtherLayout.malformedAssistantCopy || furtherLayout.namedAssistantCopy || !furtherLayout.compactAssistantHandoff || furtherLayout.artifactHeading || furtherLayout.redundantNextSummary || furtherLayout.detachedAssistantHeading) throw new Error(`04c content hierarchy drifted: ${JSON.stringify(furtherLayout)}`);
   await furtherPage.locator('#open-course-assistant').click();
   if (!await furtherPage.locator('.course-assistant-panel').isVisible()) throw new Error('04c Course Assistant handoff does not open the shared panel');
 
