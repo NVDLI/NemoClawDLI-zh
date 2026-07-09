@@ -45,6 +45,12 @@ path and populates the same browser `localStorage` entry used by the course key 
 it does not introduce another credential channel. Lab-only
 steps badge themselves and short-circuit off-lab.
 
+Each course directory is also validated as an independent deployment root. The build
+discovers every HTML file and every local navigation or resource URL, then rejects
+missing targets, missing fragments, root-absolute paths, and paths that leave that
+directory. The same browser run checks every same-origin request and link response.
+There is no page, path, or file exemption list.
+
 ## What gets tested, and where
 
 The **static gate** runs in CI on every push, with no lab, GPU, or browser (the link

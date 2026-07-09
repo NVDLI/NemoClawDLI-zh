@@ -43,8 +43,8 @@ REQUIRED_IDS = {
 REQUIRED_JS = {
     "lab contents api candidate": "/lab/api/contents/web/nemoclaw/",
     "legacy contents api candidate": "/lab/api/contents/nemoclaw/",
-    "static CDN API bypass": "const STATIC_EXPORT = /(?:^|\\/)course-static(?:\\/|$)/.test(location.pathname)",
-    "static CDN ready state": "let contentApiReady = STATIC_EXPORT",
+    "lab-only authoring API": "const LAB_AUTHORING = location.pathname.startsWith('/lab/static/')",
+    "static ready state": "let contentApiReady = !LAB_AUTHORING",
     "static page URL resolver": "function directPageUrl",
     "static read-only fallback": "Read-only preview: Jupyter contents API not available",
     "local comment fallback": "localStorage.setItem(commentStorageKey()",

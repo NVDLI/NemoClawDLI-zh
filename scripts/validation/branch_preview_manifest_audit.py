@@ -114,20 +114,23 @@ def audit(artifact_root: Path, manifest: Path, expected: list[str] | None = None
             production += 1
             course_root = artifact_root / "nemoclaw"
             target = course_root / "index.html"
-            expected_url = "nemoclaw/"
             if not expected:
                 findings.extend(audit_course_evidence(course_root, name))
         elif kind == "preview":
             previews[name] = slug
             course_root = artifact_root / slug / "web" / "nemoclaw"
             target = course_root / "index.html"
-            expected_url = f"{slug}/web/nemoclaw/"
             findings.extend(audit_course_evidence(course_root, name))
         else:
             findings.append(f"invalid branch kind for {name}: {kind!r}")
             continue
-        if item.get("url") != expected_url:
-            findings.append(f"{name} URL must be {expected_url!r}, got {item.get('url')!r}")
+        raw_url = item.get("url")
+        parsed = urllib.parse.urlsplit(raw_url if isinstance(raw_url, str) else "")
+        resolved = (manifest.parent / parsed.path).resolve() if parsed.path and not parsed.scheme and not parsed.netloc else None
+        if resolved != course_root.resolve():
+            findings.append(
+                f"{name} URL must resolve from {manifest.parent} to {course_root}, got {raw_url!r}"
+            )
         if not target.is_file():
             findings.append(f"{name} advertises missing preview target: {target}")
 
@@ -195,6 +198,16 @@ def self_test() -> list[str]:
         manifest.write_text(json.dumps(base), encoding="utf-8")
         if audit(root, manifest, ["ready=ready"]):
             misses.append("valid artifact rejected")
+        nested = json.loads(json.dumps(base))
+        nested["current"] = {"name": "ready", "slug": "ready"}
+        nested["branches"][0]["url"] = "../nemoclaw/"
+        nested["branches"][0]["current"] = False
+        nested["branches"][1]["url"] = "web/nemoclaw/"
+        nested["branches"][1]["current"] = True
+        nested_manifest = root / "ready" / "branches.json"
+        nested_manifest.write_text(json.dumps(nested), encoding="utf-8")
+        if audit(root, nested_manifest, ["ready=ready"]):
+            misses.append("valid nested manifest rejected")
         cases = []
         ghost = json.loads(json.dumps(base))
         ghost["branches"].append({"name": "ghost", "slug": "ghost", "kind": "preview", "url": "ghost/web/nemoclaw/", "preview_ready": True, "current": False})

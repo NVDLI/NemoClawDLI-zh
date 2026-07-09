@@ -38,9 +38,9 @@ EXPECTED_LIVE_CORE_ASSETS = EXPECTED_CORE_ASSETS | {"pyodide.js"}
 # Profiles encode distribution roles.
 # They separate npm build input, core runtime, and optional network packages.
 PROFILE_LABELS = {
-    "acquisition": "Build input",
-    "core": "Core",
-    "network": "Network",
+    "acquisition": "Future asset preparation",
+    "core": "Separate demonstration runtime",
+    "network": "Future HTTP/API support",
 }
 PROFILE_RELATIONSHIPS = {
     "acquisition": {"build-input"},
@@ -84,7 +84,7 @@ EXAMPLE_MARKERS = {
 # The audit aligns the blueprint with the machine-readable state boundary.
 REQUIRED_BLUEPRINT_TEXT = (
     "The learner course does not contain or distribute Pyodide",
-    "Start with Core unless a named lesson requires network access.",
+    "Start with the browser-only runtime. Add the HTTP/API package set only when a named lesson requires outbound requests",
     "Do not use unrestricted `micropip.install()`",
     "Stop terminates the worker. Reset starts a new worker",
     "Pyodide follows browser networking rules.",
@@ -383,6 +383,13 @@ def audit(
     ):
         if marker not in contract_source:
             findings.append(f"Pyodide execution contract lost display behavior: {marker}")
+    markdown_helper = re.search(r"def display_markdown\(source\):(?P<body>.*?)(?=\ndef display_html)", contract_source, re.S)
+    if not markdown_helper or not all(
+        marker in markdown_helper.group("body") for marker in ("course_displays.append", '"type": "text/markdown"', '"data": str(source)')
+    ):
+        findings.append("Pyodide Markdown helper hides its output contract behind unrelated helpers")
+    if "display(Markdown(source))" in contract_source:
+        findings.append("Pyodide Markdown helper still relies on an opaque wrapper chain")
     for marker in (
         "CodeMirror.fromTextArea", 'mode: "course-python"', "lineNumbers: true",
         '"Shift-Enter"', '"Ctrl-Enter"', '"Cmd-Enter"', "PYODIDE_NOTEBOOK_EDITOR",

@@ -42,10 +42,11 @@
         "build-input": "Downloaded by npm for browser assembly, not distributed as standalone packages",
         "validation": "Downloaded into local or CI Python environments, not vendored or shipped",
         "local-authoring": "Referenced or pulled for the optional local-authoring stack, not shipped with the static course",
+        "evaluated-candidate": "Software evaluated for possible future use; not shipped with the learner course",
         "all": "All software relationships above"
       },
       "parameters": [
-        "--category <vendored|build-input|validation|local-authoring|all>",
+        "--category <vendored|build-input|validation|local-authoring|evaluated-candidate|all>",
         "--base-container <description>",
         "--repository <internal-repository-url>",
         "--project-ref <reviewed-ref>",
@@ -60,7 +61,8 @@
       "command": "python3 scripts/compliance/export_legal_scope_csv.py",
       "default_category": "all",
       "categories": {
-        "referenced-source": "External work cited, summarized, or used as inspiration without vendoring it wholesale",
+        "external-source-record": "External document and license record; the row states whether the document itself is distributed",
+        "referenced-source": "Repository-authored item that cites, summarizes, compiles, or draws inspiration from an external source without copying it wholesale",
         "tooling-not-distributed": "Validation, build-only, or authoring software not shipped in the static course",
         "recreated-asset": "Repository-authored recreation distributed with recorded source terms",
         "vendored-material": "Copied or format-shifted course material distributed with source terms",
@@ -82,6 +84,7 @@
 {
   "vendor_manifest": "../../web/nemoclaw/vendor/browser-dependencies.json",
   "inventory": "../../THIRD_PARTY_LICENSES.md",
+  "pyodide_candidates": "../pyodide/candidate-components.json",
   "document_sources": "docs/document_sources.json",
   "sbom_evidence": "docs/sbom_evidence.json",
   "ci_sbom_evidence": "docs/ci_sbom_evidence.json",
@@ -154,6 +157,10 @@
     {
       "label": "vendor policy",
       "href": "docs/vendor_policy.md"
+    },
+    {
+      "label": "Evaluated browser-runtime evidence",
+      "href": "../pyodide/SKILL.html"
     }
   ]
 }
@@ -194,13 +201,13 @@
   <div class="skill-note">To reproduce a scan, follow the <a href="docs/sbom_generation.md">SBOM generation runbook</a>. It explains where the package list comes from and how to prepare review files.</div>
   <section class="export-preview" aria-labelledby="sbom-evidence-title">
     <h2 id="sbom-evidence-title">Software and license review</h2>
-    <p>Does a learner receive this software? The first section covers code included in the course. The next two cover tools used only to create or check it. Open the details when you need package names or source records.</p>
+    <p>Does a learner receive this software? Included code ships with the course. Build, validation, authoring, and evaluated options do not. Each row explains what the software does, when it would run, and where its license evidence came from.</p>
     <div id="sbom-evidence-preview" class="sbom-evidence-grid" aria-live="polite"><span>Loading SBOM evidence...</span></div>
   </section>
   <section class="export-preview" aria-labelledby="export-preview-title">
     <h2 id="export-preview-title">How software is used and distributed</h2>
     <ol class="filter-guide" aria-label="SWIPAT filter meanings">
-      <li><strong>Start with learner delivery.</strong> Included means shipped in the course. Every other choice stays in a course-development environment.</li>
+      <li><strong>Start with learner delivery.</strong> Included means shipped in the course. Every other choice is not shipped. For evaluated options, the row states whether a separate demonstration loads the component or whether it was only considered for future work.</li>
       <li><strong>Narrow only when useful.</strong> You can choose several options in one filter. Search and <em>Download what you see</em> use the same visible rows.</li>
     </ol>
     <div id="third-party-export-preview">
@@ -230,8 +237,8 @@
   <section class="export-preview" aria-labelledby="legal-scope-title">
     <h2 id="legal-scope-title">How sources and materials are used</h2>
     <ol class="filter-guide" aria-label="Legal-scope filter meanings">
-      <li><strong>Start with what happened.</strong> The first filter separates linked works from material copied into the course. It also identifies tools used only by course authors.</li>
-      <li><strong>Verify the source.</strong> Paper rows show the license selected on arXiv. NVIDIA rows show the published byline when one is available. Open a row to check the source record.</li>
+      <li><strong>Start with what happened.</strong> Citation records describe an external document. Repository rows distinguish authored references, recreations, copied material, browser code, and author-only tools.</li>
+      <li><strong>Read document roll-ups directly.</strong> Each NVIDIA document states how many related files were copied, converted, recreated, or authored as references. Paper rows state that the citation record does not distribute the paper itself.</li>
     </ol>
     <div id="legal-scope-preview">
       <div class="filter-strip">
@@ -265,7 +272,7 @@
     <a class="skill-card" href="source_document_audit.py"><b>source_document_audit.py</b><span>Offline coverage gate plus explicit official-source refresh for paper licenses and NVIDIA bylines.</span></a>
     <a class="skill-card" href="docs/sbom_generation.md"><b>sbom_generation.md</b><span>Copyable scan commands and attachment evidence contract.</span></a>
     <a class="skill-card" href="docs/SKILL.html"><b>scripts/compliance/docs</b><span>Release-safe guidance and machine-readable inventory.</span></a>
-    <a class="skill-card" href="../pyodide/SKILL.html"><b>scripts/pyodide</b><span>Planned browser-Python profiles, exact candidate components, license evidence, and the undeclared-distribution gate.</span></a>
+    <a class="skill-card" href="../pyodide/SKILL.html"><b>scripts/pyodide</b><span>Runnable browser-Python design, evaluated dependencies, license evidence, and distribution checks.</span></a>
   </div>
   <h2>Interactive explorer</h2>
   <p>The explorer opens source files and their important sections. It also checks documented paths against the repository tree.</p>

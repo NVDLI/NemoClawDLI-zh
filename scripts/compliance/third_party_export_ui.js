@@ -160,6 +160,42 @@
     });
   }
 
+  function evaluatedCandidateRows(document, config) {
+    var liveDemo = document.live_demo || {};
+    var profiles = document.profiles || {};
+    var useLabels = {
+      acquisition: "Future asset-preparation helper",
+      core: "Separate browser-Python demonstration",
+      network: "Future outbound HTTP and model-API support"
+    };
+    var roleLabels = {
+      "build-input": "download helper used while preparing browser files",
+      "runtime-core": "runtime required by the separate demonstration",
+      direct: "package selected for the proposed capability",
+      transitive: "dependency brought in by a selected package"
+    };
+    return (document.components || []).map(function (component) {
+      var profile = component.profile;
+      var download = component.license_evidence_url;
+      if (profile === "core") download = liveDemo.base_url || download;
+      var profileDescription = profiles[profile] && profiles[profile].description ? profiles[profile].description :
+        "This software was evaluated for possible future use and is not included in the learner course.";
+      var comments = "Evaluated use: " + (useLabels[profile] || "Possible future capability") + ". Component role: " +
+        (roleLabels[component.relationship] || component.relationship) + ". " + profileDescription +
+        " Human approval remains required before distribution.";
+      if (component.review_note) comments += " Review note: " + component.review_note;
+      return {
+        category: "evaluated-candidate",
+        relationship: "candidate-" + profile + "-" + component.relationship,
+        cells: [
+          component.name, String(component.version), component.license_expression,
+          component.license_evidence_url, INTERNAL, OTHER, comments, download,
+          repoFile(config, "scripts/pyodide/candidate-components.json")
+        ]
+      };
+    });
+  }
+
   function bytesToHex(buffer) {
     return Array.from(new Uint8Array(buffer)).map(function (value) {
       return value.toString(16).padStart(2, "0");
@@ -320,7 +356,7 @@
       if (relationship === "recreation") {
         category = "recreated-asset"; distributed = "Yes";
         note = "A repository-authored recreation is distributed; review the recorded source terms before release.";
-      } else if (relationship === "conversion") {
+      } else if (relationship === "conversion" || relationship === "provided course asset") {
         category = "vendored-material"; distributed = "Yes";
         note = "A copied or format-shifted material artifact is distributed; the source terms remain controlling.";
       } else {
@@ -335,31 +371,51 @@
     });
   }
 
-  function documentScopeRows(documents, config) {
+  function documentScopeRows(documents, markdown, config) {
+    var relationshipByItem = {};
+    tableRows(markdown, "Third-party course-material relationships").forEach(function (row) {
+      if (row.length >= 2) relationshipByItem[row[0]] = row[1];
+    });
     var rows = (documents.arxiv_papers || []).map(function (item) {
       var evidencePath = item.cited_from[0] || "THIRD_PARTY_LICENSES.md";
-      return {category:"referenced-source", relationship:"paper citation", terms:item.license, cells:[
-        "arXiv:" + item.arxiv_id, "referenced-source", "paper citation",
-        "No - the paper is linked, not copied by this record", "No", item.source_url, item.license,
+      return {category:"external-source-record", relationship:"paper citation", terms:item.license, cells:[
+        "arXiv:" + item.arxiv_id, "external-source-record", "paper citation",
+        "No - this row records an external paper cited from " + item.cited_from.length + " repository item(s); it does not distribute the paper", "No", item.source_url, item.license,
         item.authors.join(", "), item.license_url, repoFile(config, evidencePath),
         "Official arXiv license checked " + item.verified_on + ". " + item.reuse_summary +
           " Canonical citations: " + item.cited_from.join(", ")
       ]};
     });
     (documents.nvidia_documents || []).forEach(function (item) {
-      var evidencePath = item.repository_items[0] || "THIRD_PARTY_LICENSES.md";
-      rows.push({category:"referenced-source", relationship:"document source", terms:item.terms, cells:[
-        item.title, "referenced-source", "document source", "See related repository-item rows", "No",
+      var repositoryItems = item.repository_items || [];
+      var missing = repositoryItems.filter(function (path) { return !relationshipByItem[path]; });
+      if (missing.length) throw new Error("NVIDIA document has unclassified repository items: " + item.title + ": " + missing.join(", "));
+      var counts = {};
+      repositoryItems.forEach(function (path) {
+        var relationship = relationshipByItem[path];
+        counts[relationship] = (counts[relationship] || 0) + 1;
+      });
+      var copied = (counts.conversion || 0) + (counts["provided course asset"] || 0);
+      var recreated = counts.recreation || 0;
+      var category = copied ? "vendored-material" : recreated ? "recreated-asset" : "referenced-source";
+      var distributed = copied ? "Yes - copied or converted into " + copied + " repository item(s)" :
+        recreated ? "Yes - represented by " + recreated + " repository-authored recreation(s)" :
+        "Yes - represented by " + repositoryItems.length + " repository-authored reference item(s); the external document is not copied wholesale";
+      var evidencePath = repositoryItems[0] || "THIRD_PARTY_LICENSES.md";
+      var uses = Object.keys(counts).sort().map(function (name) { return name + ": " + counts[name]; }).join(", ");
+      rows.push({category:category, relationship:"document use roll-up", terms:item.terms, cells:[
+        item.title, category, "document use roll-up", distributed, "No",
         item.source_url, item.terms,
         item.authors.length ? item.authors.join(", ") : "No author listed on official source page",
         item.author_evidence_url, repoFile(config, evidencePath),
-        "Official source checked " + item.verified_on + ". Related repository items: " + item.repository_items.join(", ")
+        "Official source checked " + item.verified_on + ". Classified uses: " + uses +
+          ". Repository items: " + repositoryItems.join(", ")
       ]});
     });
     return rows;
   }
 
-  function legalSoftwareRows(manifest, markdown, config) {
+  function legalSoftwareRows(manifest, markdown, candidates, config) {
     var rows = vendoredRows(manifest, config).map(function (row) {
       return {category:"vendored-browser-code", relationship:row.relationship, terms:row.cells[2], cells:[
         row.cells[0] + "@" + row.cells[1], "vendored-browser-code", row.relationship,
@@ -369,10 +425,12 @@
     });
     buildRows(markdown, config).filter(function (row) {
       return row.relationship === "browser-build-only";
-    }).concat(validationRows(markdown, config), localRows(markdown, config)).forEach(function (row) {
+    }).concat(validationRows(markdown, config), localRows(markdown, config), evaluatedCandidateRows(candidates, config)).forEach(function (row) {
+      var browserExecution = row.category === "evaluated-candidate" && row.relationship.indexOf("candidate-core-") === 0 ?
+        "Only if a repository-documentation reader selects Run; not in the learner course" : "No";
       rows.push({category:"tooling-not-distributed", relationship:row.relationship, terms:row.cells[2], cells:[
         row.cells[0] + "@" + row.cells[1], "tooling-not-distributed", row.relationship,
-        "No", "No", row.cells[7], row.cells[2], "Not applicable to software package", row.cells[3] || row.cells[7],
+        "No", browserExecution, row.cells[7], row.cells[2], "Not applicable to software package", row.cells[3] || row.cells[7],
         row.cells[8], row.cells[6]
       ]});
     });
@@ -394,7 +452,8 @@
       "vendored": "Included in the course",
       "build-input": "Used only to build the course",
       "validation": "Used only to check the course",
-      "local-authoring": "Optional authoring tool"
+      "local-authoring": "Optional authoring tool",
+      "evaluated-candidate": "Evaluated option, not shipped"
     },
     softwareRelationship: {
       "direct": "Chosen directly by this project",
@@ -417,7 +476,8 @@
       "policy engine": "Evaluates local sandbox policy"
     },
     scopeCategory: {
-      "referenced-source": "Referenced, not copied",
+      "external-source-record": "External document citation record",
+      "referenced-source": "Repository-authored reference to an external source",
       "tooling-not-distributed": "Used by authors or checks, not given to learners",
       "recreated-asset": "Recreated by the course authors",
       "vendored-material": "Copied into the course",
@@ -432,7 +492,7 @@
       "original": "Original source",
       "original course graphic": "Original course graphic",
       "paper citation": "Research paper citation",
-      "document source": "NVIDIA document record",
+      "document use roll-up": "External document and every related repository use",
       "direct": "Chosen directly by this project",
       "transitive": "Required by another package",
       "browser-build-only": "Used only to build browser files",
@@ -447,6 +507,18 @@
   function friendlyChoice(value, kind) {
     var labels = FILTER_LABELS[kind] || {};
     var main = labels[value];
+    if (!main && kind === "softwareRelationship" && value.indexOf("candidate-") === 0) {
+      var candidateParts = value.split("-");
+      var profile = candidateParts[1] || "unknown";
+      var role = candidateParts.slice(2).join("-");
+      main = profile === "core" ? "Separate browser-Python demo runtime" :
+        profile === "network" && role === "direct" ? "Future HTTP/API support — selected package" :
+        profile === "network" ? "Future HTTP/API support — package dependency" :
+        "Future asset-preparation helper";
+    }
+    if (!main && kind === "scopeRelationship" && value.indexOf("candidate-") === 0) {
+      main = "Evaluated software option, not distributed";
+    }
     if (!main && kind === "softwareRelationship" && value.indexOf(",") >= 0) {
       main = value.split(",").map(function (part) {
         var clean = part.trim(); return labels[clean] || clean;
@@ -798,12 +870,17 @@
         if (!response.ok) throw new Error("inventory HTTP " + response.status);
         return response.text();
       }),
+      fetch(config.pyodide_candidates).then(function (response) {
+        if (!response.ok) throw new Error("Pyodide candidate inventory HTTP " + response.status);
+        return response.json();
+      }),
       evidencePromise || linkedSbomComponents(config)
     ]).then(function (sources) {
       var rows = vendoredRows(sources[0], config)
         .concat(buildRows(sources[1], config))
         .concat(validationRows(sources[1], config))
-        .concat(localRows(sources[1], config));
+        .concat(localRows(sources[1], config))
+        .concat(evaluatedCandidateRows(sources[2], config));
       var category = target.querySelector("[data-export-category-group]");
       var relationship = target.querySelector("[data-export-relationship-group]");
       var license = target.querySelector("[data-export-license-group]");
@@ -813,7 +890,7 @@
       var count = target.querySelector("[data-export-count]");
       var sortState = {index:null, direction:"asc"};
       var categories = preferredOrder(Array.from(new Set(rows.map(function (row) { return row.category; }))), [
-        "vendored", "build-input", "validation", "local-authoring"
+        "vendored", "build-input", "validation", "local-authoring", "evaluated-candidate"
       ]);
 
       function visibleRows() {
@@ -844,7 +921,7 @@
         var visible = sortedRows(visibleRows(), sortState);
         body.replaceChildren();
         visible.forEach(function (row) {
-          body.appendChild(renderSoftwareRow(row, sources[2]));
+          body.appendChild(renderSoftwareRow(row, sources[3]));
         });
         text(count, visible.length + " component" + (visible.length === 1 ? "" : "s"));
         target.dataset.exportReady = "1";
@@ -882,11 +959,15 @@
       fetch(config.document_sources).then(function (response) {
         if (!response.ok) throw new Error("document source inventory HTTP " + response.status);
         return response.json();
+      }),
+      fetch(config.pyodide_candidates).then(function (response) {
+        if (!response.ok) throw new Error("Pyodide candidate inventory HTTP " + response.status);
+        return response.json();
       })
     ]).then(function (sources) {
-      var rows = documentScopeRows(sources[2], config)
+      var rows = documentScopeRows(sources[2], sources[1], config)
         .concat(materialScopeRows(sources[1], sources[2], config))
-        .concat(legalSoftwareRows(sources[0], sources[1], config));
+        .concat(legalSoftwareRows(sources[0], sources[1], sources[3], config));
       var category = target.querySelector("[data-scope-category-group]");
       var relationship = target.querySelector("[data-scope-relationship-group]");
       var terms = target.querySelector("[data-scope-terms-group]");
@@ -895,7 +976,7 @@
       var count = target.querySelector("[data-scope-count]");
       var sortState = {index:null, direction:"asc"};
       var categories = preferredOrder(Array.from(new Set(rows.map(function (row) { return row.category; }))), [
-        "vendored-browser-code", "vendored-material", "recreated-asset", "referenced-source", "tooling-not-distributed"
+        "vendored-browser-code", "vendored-material", "recreated-asset", "referenced-source", "external-source-record", "tooling-not-distributed"
       ]);
       function visibleRows() {
         var query = search.value.trim().toLowerCase();
@@ -931,7 +1012,7 @@
         link.download = "nemoclaw-legal-scope-filtered.csv";
         document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(link.href);
       });
-      choiceGroup(category, categories, new Set(["referenced-source", "recreated-asset", "vendored-material"]), function () { dependentOptions(); paint(); }, "scopeCategory");
+      choiceGroup(category, categories, new Set(["external-source-record", "referenced-source", "recreated-asset", "vendored-material"]), function () { dependentOptions(); paint(); }, "scopeCategory");
       dependentOptions(); sortableHeaders(target.querySelector("table"), sortState, paint, [0, 1, 6, 7, 10]); paint(); return rows;
     }).catch(function (error) {
       target.dataset.exportError = error.message;

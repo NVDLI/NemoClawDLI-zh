@@ -431,9 +431,11 @@ export function mountEndpointProbe(targetSel, opts = {}) {
       .claw-input[readonly]{opacity:.82;cursor:default}
       .claw-actions{display:flex;flex-wrap:wrap;gap:6px;margin:.7em 0 .5em}
       .claw-btn{background:var(--g,#76b900);color:#000;border:0;border-radius:5px;padding:6px 14px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit}
+      :root[data-theme="light"] .claw-btn{color:#fff}
       .claw-btn:hover{background:var(--gs,#aee23a)}
       .claw-btn:disabled{opacity:.5;cursor:wait}
       .claw-btn.alt{background:var(--e2,#1e1e1e);color:var(--gs,#aee23a);border:1px solid var(--bd,#2a2a2a)}
+      :root[data-theme="light"] .claw-btn.alt{color:var(--g,#3f6900)}
       .claw-btn.alt:hover{border-color:var(--g,#76b900)}
       .claw-eye{flex:0 0 auto;padding:5px 9px;font-size:.88rem;line-height:1}
       .claw-help-trigger{background:none;border:none;padding:0;cursor:pointer;text-align:left;width:96px;flex:0 0 96px;font-family:var(--mono,monospace);font-size:.75rem;color:var(--tf,#8a8a8a);text-transform:uppercase;letter-spacing:.04em;line-height:inherit}

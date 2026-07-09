@@ -21,8 +21,16 @@ const lock = JSON.parse(fs.readFileSync(lockPath, "utf8"));
 const direct = JSON.parse(fs.readFileSync(packagePath, "utf8")).dependencies;
 const codemirrorVersion = direct.codemirror;
 const codemirrorBase = `codemirror-${codemirrorVersion}`;
-fs.rmSync(vendor, { recursive: true, force: true });
+fs.mkdirSync(vendor, { recursive: true });
+for (const item of fs.readdirSync(vendor, { withFileTypes: true })) {
+  if (item.name === "SKILL.html" || item.name === "licenses") continue;
+  fs.rmSync(path.join(vendor, item.name), { recursive: true, force: true });
+}
 fs.mkdirSync(path.join(vendor, "licenses"), { recursive: true });
+for (const item of fs.readdirSync(path.join(vendor, "licenses"), { withFileTypes: true })) {
+  if (item.name === "SKILL.html") continue;
+  fs.rmSync(path.join(vendor, "licenses", item.name), { recursive: true, force: true });
+}
 
 const output = name => path.join(vendor, name);
 const buildResult = async (entry, outfile, options = {}) => build({

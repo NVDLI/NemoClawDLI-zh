@@ -117,7 +117,11 @@ def display_text(source):
     course_displays.append({"type": "text/plain", "data": str(source)})
 
 def display_markdown(source):
-    display(Markdown(source))
+    """Render Markdown through the notebook's sanitized rich-output path."""
+    course_displays.append({
+        "type": "text/markdown",
+        "data": str(source),
+    })
 
 def display_html(source):
     display(HTML(source))
@@ -299,7 +303,7 @@ jsonlib.dumps(reply, default=str)
     ["display_code", "display_code(source, language='python')", "Render source code with language-aware syntax highlighting."],
     ["display_table", "display_table(rows, headers=None)", "Render dictionaries or row sequences as a safe HTML table."],
     ["display_artifact", "display_artifact(filename, content, mime_type='text/plain', language='')", "Preview a generated file and offer it for download without executing it."],
-    ["display_markdown", "display_markdown(source)", "Render sanitized Markdown."],
+    ["display_markdown", "display_markdown(source)", "Send Markdown directly to the notebook's sanitized rich-output renderer."],
     ["display_html", "display_html(source)", "Render sanitized HTML."],
     ["clear_output", "clear_output(wait=False)", "Clear output accumulated during the current execution."],
     ["register_background", "register_background(name, awaitable)", "Register a named asyncio task that survives later cell executions."],

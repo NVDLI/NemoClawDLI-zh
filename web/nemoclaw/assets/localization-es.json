@@ -30,10 +30,10 @@
     {
       "path": "web/index.html",
       "file": "index.html",
-      "source_sha256": "789e27ffba307fd78e98d0ece601e4bb8c57b9df81d45f2b75f7b76cf7ea980b",
-      "reviewed_source_sha256": "789e27ffba307fd78e98d0ece601e4bb8c57b9df81d45f2b75f7b76cf7ea980b",
-      "target_sha256": "bfb22fcc9ea9e9011719f39bf5765fd707b90125051e3389edd412b9f18c64de",
-      "reviewed_target_sha256": "bfb22fcc9ea9e9011719f39bf5765fd707b90125051e3389edd412b9f18c64de",
+      "source_sha256": "7e9efae80e22cb3d4f63db420a12ac50a2c6b0fed65c1f2a7b90721de7476511",
+      "reviewed_source_sha256": "7e9efae80e22cb3d4f63db420a12ac50a2c6b0fed65c1f2a7b90721de7476511",
+      "target_sha256": "3dfea1f5b5597698178fa503743edd5319a8f3cd1b90aec2b80d3d9cbe74d303",
+      "reviewed_target_sha256": "3dfea1f5b5597698178fa503743edd5319a8f3cd1b90aec2b80d3d9cbe74d303",
       "status": "current",
       "quality": []
     },

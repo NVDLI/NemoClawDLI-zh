@@ -46,6 +46,7 @@ export function ensureChatStyles() {
       .chatui-modchip{font-family:var(--mono,monospace);font-size:.68rem;color:var(--td,#b0b0b0);background:var(--e1,#161616);border:1px solid var(--bd,#2a2a2a);border-radius:999px;padding:2px 9px;cursor:pointer}
       .chatui-modchip:hover{border-color:var(--g,#76b900)}
       .chatui-modchip.on{background:var(--g,#76b900);color:#0a0a0a;border-color:var(--g,#76b900);font-weight:700}
+      :root[data-theme="light"] .chatui-modchip.on{color:#fff}
       .chatui-log{padding:14px 14px 6px;max-height:480px;overflow-y:auto;display:flex;flex-direction:column;gap:9px}
       .chatui-grow .chatui-log,.chatui-grow .chatui-tool-body,.chatui-grow .chatui-think-body,.chatui-grow .chatui-bot pre{max-height:none}
       .chatui-intro{font-size:.84rem;color:var(--tf,#8a8a8a);line-height:1.5}

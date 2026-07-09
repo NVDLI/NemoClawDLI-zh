@@ -68,6 +68,7 @@ def audit(root: Path = ROOT) -> list[dict[str, str]]:
     sca = read(root, ".gitlab/ci/sca.yml", out)
     owners = read(root, ".gitlab/CODEOWNERS", out)
     release_gate = read(root, "scripts/validation/release_gate.py", out)
+    pages_builder = read(root, "scripts/build/build_pages.sh", out)
 
     if root_ci != ROOT_CI:
         out.append(finding(
@@ -174,6 +175,12 @@ def audit(root: Path = ROOT) -> list[dict[str, str]]:
     require(release_gate, 'unit_test("gitlab_ci_policy")', "ci-policy-not-gated",
             "scripts/validation/release_gate.py", out,
             "run the mutation-tested CI policy in both fast and ship gates")
+    require(release_gate, 'unit_test("artifact_link_audit")', "artifact-policy-not-gated",
+            "scripts/validation/release_gate.py", out,
+            "run the exhaustive artifact-link mutation suite in both fast and ship gates")
+    require(pages_builder, 'artifact_link_audit.py" "$OUT"', "artifact-boundary-not-gated",
+            "scripts/build/build_pages.sh", out,
+            "reject every broken, missing, absolute, or deployment-root-escaping local URL before Pages upload")
     return out
 
 
@@ -182,7 +189,7 @@ def self_test() -> list[str]:
         rel: (ROOT / rel).read_text(encoding="utf-8")
         for rel in (
             ".gitlab-ci.yml", ".gitlab/ci/core.yml", ".gitlab/ci/sca.yml",
-            ".gitlab/CODEOWNERS", "scripts/validation/release_gate.py",
+            ".gitlab/CODEOWNERS", "scripts/validation/release_gate.py", "scripts/build/build_pages.sh",
         )
     }
     root_owner_line = next(line for line in files[".gitlab/CODEOWNERS"].splitlines()
@@ -204,6 +211,10 @@ def self_test() -> list[str]:
          "/.gitlab-ci.yml"),
         ("ci-policy-not-gated", "scripts/validation/release_gate.py", 'unit_test("gitlab_ci_policy")',
          'unit_test("repository_sync_audit")'),
+        ("artifact-policy-not-gated", "scripts/validation/release_gate.py", 'unit_test("artifact_link_audit")',
+         'unit_test("repository_sync_audit")'),
+        ("artifact-boundary-not-gated", "scripts/build/build_pages.sh", 'artifact_link_audit.py" "$OUT"',
+         'artifact_link_audit.py" "$OPTIONAL_OUT"'),
     )
     failures: list[str] = []
     with tempfile.TemporaryDirectory() as directory:

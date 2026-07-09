@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import csv
 import io
 import json
@@ -16,6 +17,7 @@ import third_party_inventory_audit as inventory
 ROOT = Path(__file__).resolve().parents[2]
 DOCUMENT_INVENTORY = ROOT / "scripts/compliance/docs/document_sources.json"
 CATEGORIES = (
+    "external-source-record",
     "referenced-source",
     "tooling-not-distributed",
     "recreated-asset",
@@ -94,25 +96,53 @@ def material_rows(base: str, ref: str) -> list[list[str]]:
 
 def document_rows(base: str, ref: str) -> list[list[str]]:
     data = document_inventory()
+    inventory_document = (ROOT / inventory.INVENTORY).read_text(encoding="utf-8")
+    provenance_rows = inventory.rows(inventory.section(
+        inventory_document, "Third-party course-material relationships"
+    ))
+    relationship_by_item = {
+        row[0]: row[1] for row in provenance_rows
+        if len(row) >= 2 and row[0] != "Repository file"
+    }
     rows: list[list[str]] = []
     for item in data.get("arxiv_papers", []):
         evidence_path = (item.get("cited_from") or ["THIRD_PARTY_LICENSES.md"])[0]
         rows.append([
-            f"arXiv:{item['arxiv_id']}", "referenced-source", "paper citation",
-            "No - the paper is linked, not copied by this record", "No", item["source_url"], item["license"],
+            f"arXiv:{item['arxiv_id']}", "external-source-record", "paper citation",
+            f"No - this row records an external paper cited from {len(item['cited_from'])} repository item(s); it does not distribute the paper", "No", item["source_url"], item["license"],
             ", ".join(item["authors"]), item["license_url"], software.repository_file(base, ref, evidence_path),
             f"Official arXiv license checked {item['verified_on']}. {item['reuse_summary']} "
             f"Canonical citations: {', '.join(item['cited_from'])}",
         ])
     for item in data.get("nvidia_documents", []):
-        evidence_path = (item.get("repository_items") or ["THIRD_PARTY_LICENSES.md"])[0]
+        repository_items = item.get("repository_items") or []
+        missing = [path for path in repository_items if path not in relationship_by_item]
+        if missing:
+            raise ValueError(f"NVIDIA document {item['title']!r} has unclassified repository items: {missing}")
+        counts = Counter(relationship_by_item[path] for path in repository_items)
+        copied = counts["conversion"] + counts["provided course asset"]
+        recreated = counts["recreation"]
+        if copied:
+            category = "vendored-material"
+            distribution = f"Yes - copied or converted into {copied} repository item(s)"
+        elif recreated:
+            category = "recreated-asset"
+            distribution = f"Yes - represented by {recreated} repository-authored recreation(s)"
+        else:
+            category = "referenced-source"
+            distribution = (
+                f"Yes - represented by {len(repository_items)} repository-authored reference item(s); "
+                "the external document is not copied wholesale"
+            )
+        evidence_path = (repository_items or ["THIRD_PARTY_LICENSES.md"])[0]
         authors = ", ".join(item.get("authors", [])) or "No author listed on official source page"
+        uses = ", ".join(f"{name}: {count}" for name, count in sorted(counts.items()))
         rows.append([
-            item["title"], "referenced-source", "document source", "See related repository-item rows", "No",
+            item["title"], category, "document use roll-up", distribution, "No",
             item["source_url"], item["terms"], authors, item["author_evidence_url"],
             software.repository_file(base, ref, evidence_path),
-            f"Official source checked {item['verified_on']}. Related repository items: "
-            f"{', '.join(item.get('repository_items', []))}",
+            f"Official source checked {item['verified_on']}. Classified uses: {uses}. "
+            f"Repository items: {', '.join(repository_items)}",
         ])
     return rows
 
@@ -171,6 +201,8 @@ def validate(rows: list[list[str]]) -> list[str]:
             findings.append(f"row {number} has {len(row)} columns instead of {len(HEADER)}")
         elif any(not row[index].strip() for index in (0, 1, 2, 3, 5, 6, 7, 8, 9, 10)):
             findings.append(f"row {number} lacks scope, source, terms, evidence, or disposition detail")
+        elif "see related" in row[3].lower():
+            findings.append(f"row {number} delegates its distribution answer instead of stating it")
     return findings
 
 
@@ -195,8 +227,13 @@ def self_test() -> list[str]:
         findings.append("NVIDIA favicon is not exported as a provided, vendored brand asset")
     documents = document_inventory()
     expected_documents = len(documents.get("arxiv_papers", [])) + len(documents.get("nvidia_documents", []))
-    if sum(row[2] in {"paper citation", "document source"} for row in rows) != expected_documents:
+    if sum(row[2] in {"paper citation", "document use roll-up"} for row in rows) != expected_documents:
         findings.append("scope export does not exactly cover the document-source inventory")
+    nvidia_rollups = [row for row in rows if row[2] == "document use roll-up"]
+    if len(nvidia_rollups) != len(documents.get("nvidia_documents", [])):
+        findings.append("scope export does not produce one classified roll-up per NVIDIA document")
+    if any(not row[3].startswith("Yes - ") for row in nvidia_rollups):
+        findings.append("NVIDIA document roll-ups do not state their repository distribution directly")
     return findings
 
 

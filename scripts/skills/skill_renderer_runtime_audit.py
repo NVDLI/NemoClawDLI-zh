@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Render every HTML file with Playwright and fail on theme or SKILL UI drift.
 
-HTML discovery is exhaustive under the served tree. Every page enters the desktop/narrow and
-dark/light matrix; SKILL pages additionally receive their navigation, explorer, and export checks.
-There is no file-level opt-in or exemption list.
+HTML discovery is exhaustive under the selected artifact root, which must be inside the served
+deployment root. Every selected page enters the desktop/narrow and dark/light matrix; SKILL pages
+additionally receive their navigation, explorer, and export checks. There is no file-level opt-in
+or exemption list.
 """
 from __future__ import annotations
 
@@ -15,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import Optional
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts" / "skills"))
@@ -23,9 +25,12 @@ import skill_audit
 DEFAULT_IMAGE = "nemoclaw/lab-runtime-test:local"
 
 
-def discover_html(site: Path) -> list[str]:
-    """Return every HTML path below the served tree; there is no exclusion mechanism."""
-    return sorted(path.relative_to(site).as_posix() for path in site.rglob("*.html"))
+def discover_html(site: Path, scan_root: Optional[Path] = None) -> list[str]:
+    """Return every HTML path below one artifact root, relative to its served deployment."""
+    site = site.resolve()
+    scan = (scan_root or site).resolve()
+    scan.relative_to(site)
+    return sorted(path.relative_to(site).as_posix() for path in scan.rglob("*.html"))
 
 RUNTIME_JS = r"""
 const http = require('http');
@@ -48,7 +53,8 @@ const mime = {
 function safeJoin(urlPath) {
   const clean = decodeURIComponent(urlPath.split('?')[0]).replace(/^\/+/, '');
   const output = path.resolve(root, clean);
-  if (!output.startsWith(path.resolve(root))) throw new Error('path escape');
+  const resolvedRoot = path.resolve(root);
+  if (output !== resolvedRoot && !output.startsWith(resolvedRoot + path.sep)) throw new Error('path escape');
   return output;
 }
 
@@ -97,14 +103,35 @@ server.on('upgrade', (request, socket) => {
 });
 
 async function inspect(browser, file) {
-  const isSkill = /(?:^|\/)SKILL\.html$/.test(file);
+  let isSkill = /(?:^|\/)SKILL\.html$/.test(file);
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   const errors = [];
+  const ownedOrigin = `http://127.0.0.1:${port}`;
+  const successfulOwned = new Set();
+  let closing = false;
   page.on('pageerror', error => errors.push(`pageerror: ${error.message || String(error)}`));
+  page.on('response', response => {
+    const url = new URL(response.url());
+    if (url.origin === ownedOrigin) {
+      if (response.status() < 400) successfulOwned.add(url.href);
+      else errors.push(`internal response HTTP ${response.status()}: ${url.pathname}`);
+    }
+  });
+  page.on('requestfailed', request => {
+    const url = new URL(request.url());
+    if (url.origin === ownedOrigin && !closing && !successfulOwned.has(url.href)
+        && request.headers()['x-static-artifact-audit'] !== '1') {
+      errors.push(`internal request failed: ${url.pathname}: ${request.failure()?.errorText || 'unknown error'}`);
+    }
+  });
   page.on('console', message => {
     if (message.type() !== 'error') return;
     const text = message.text();
-    if (/^Failed to load resource: the server responded with a status of \d+/.test(text)) return;
+    if (/^Failed to load resource:/.test(text)) {
+      const locationUrl = message.location().url;
+      try { if (locationUrl && new URL(locationUrl).origin !== ownedOrigin) return; }
+      catch (_) {}
+    }
     errors.push(`console: ${text}`);
   });
   if (file.endsWith('scripts/pyodide/SKILL.html')) {
@@ -132,6 +159,9 @@ async function inspect(browser, file) {
   try {
     const response = await page.goto(`http://127.0.0.1:${port}/${file}`, { waitUntil:'domcontentloaded', timeout:30000 });
     await page.waitForTimeout(500);
+    isSkill = await page.evaluate(() =>
+      /(?:^|\/)SKILL\.html$/.test(location.pathname) || !!document.getElementById('skill-meta')
+    );
     if (isSkill) await page.waitForFunction(() => {
       let meta;
       try { meta = JSON.parse(document.getElementById('skill-meta')?.textContent || '{}'); }
@@ -144,9 +174,6 @@ async function inspect(browser, file) {
         return !evidence || evidence.dataset.sbomEvidenceReady === '1' || evidence.dataset.sbomEvidenceError;
       })();
     }, null, { timeout:10000 }).catch(() => {});
-    // Asset and link integrity are separate blocking gates. This audit deliberately records
-    // only a failed document navigation here so a mirrored source file still receives its
-    // color test even when its build-time overlay assets are not colocated in the mirror.
     if (!response || !response.ok()) errors.push(`document HTTP ${response && response.status()}`);
     if (file.endsWith('scripts/pyodide/SKILL.html')) {
       try {
@@ -187,7 +214,7 @@ async function inspect(browser, file) {
           const replFirst = await playground.runRepl();
           playground.replEditor.setValue('shared_value += 1\nshared_value');
           const replSecond = await playground.runRepl();
-          playground.replEditor.setValue('display_markdown("**REPL rich output**")');
+          playground.replEditor.setValue('display_markdown("**REPL rich output** with `visible code`")');
           const replRich = await playground.runRepl();
           playground.replEditor.setValue(`display_html('<img src="https://invalid.example/pixel"><script>globalThis.__pyodideUnsafe = true</script><strong>safe HTML</strong>')`);
           await playground.runRepl();
@@ -202,6 +229,33 @@ async function inspect(browser, file) {
           await playground.revertHelper('display_json');
           const replOutput = document.querySelector('[data-repl-transcript]').textContent;
           const replRichStrong = document.querySelector('[data-repl-transcript] .py-rich-output strong')?.textContent || '';
+          const channel = value => {
+            const match = String(value).match(/[\d.]+/g) || [];
+            return match.slice(0, 3).map(Number);
+          };
+          const luminance = value => channel(value).map(item => {
+            const normalized = item / 255;
+            return normalized <= 0.03928 ? normalized / 12.92 : Math.pow((normalized + 0.055) / 1.055, 2.4);
+          }).reduce((sum, item, index) => sum + item * [0.2126, 0.7152, 0.0722][index], 0);
+          const contrast = (foreground, background) => {
+            const lighter = Math.max(luminance(foreground), luminance(background));
+            const darker = Math.min(luminance(foreground), luminance(background));
+            return (lighter + 0.05) / (darker + 0.05);
+          };
+          const richContrast = mode => {
+            document.documentElement.setAttribute('data-theme', mode);
+            const root = document.querySelector('[data-repl-transcript] .py-rich-output');
+            const prose = root?.querySelector('p');
+            const inlineCode = root?.querySelector('code');
+            return {
+              prose: root && prose ? contrast(getComputedStyle(prose).color, getComputedStyle(root).backgroundColor) : 0,
+              code: inlineCode ? contrast(getComputedStyle(inlineCode).color, getComputedStyle(inlineCode).backgroundColor) : 0,
+            };
+          };
+          const richContrastDark = richContrast('dark');
+          const richContrastLight = richContrast('light');
+          if (originalTheme === null) document.documentElement.removeAttribute('data-theme');
+          else document.documentElement.setAttribute('data-theme', originalTheme);
           const unsafeRichOutput = !!document.querySelector('[data-repl-transcript] .py-rich-output script, [data-repl-transcript] .py-rich-output img')
             || !!globalThis.__pyodideUnsafe;
           const passed = workerSyntax === 'ok' ? await Promise.race([
@@ -267,7 +321,8 @@ async function inspect(browser, file) {
             && [...document.querySelectorAll('[data-output-for]')].every(node => !node.textContent.trim())
             && !document.querySelector('[data-repl-transcript]').textContent.trim();
           return {
-            workerSyntax, count, editorCount, syntaxTokens, editorDark, editorLight, replFirst, replSecond, replRich, replOutput, replRichStrong, unsafeRichOutput,
+            workerSyntax, count, editorCount, syntaxTokens, editorDark, editorLight, replFirst, replSecond, replRich, replOutput, replRichStrong,
+            richContrastDark, richContrastLight, unsafeRichOutput,
             passed, statuses, notebookDisplay: notebookDisplay?.textContent || '', backgroundReply, artifactReply,
             artifactFilename: artifactCard?.dataset.artifactFilename || '', artifactDownloadName: artifactDownload?.download || '',
             artifactContent, artifactPreviewTokens, firstChat,
@@ -294,6 +349,10 @@ async function inspect(browser, file) {
           errors.push('Pyodide scratch REPL did not preserve namespace or execution order');
         }
         if (runtimeContract.unsafeRichOutput) errors.push('Pyodide rich output sanitizer admitted executable or network-active HTML');
+        if (Math.min(runtimeContract.richContrastDark?.prose || 0, runtimeContract.richContrastDark?.code || 0,
+            runtimeContract.richContrastLight?.prose || 0, runtimeContract.richContrastLight?.code || 0) < 4.5) {
+          errors.push(`Pyodide Markdown output does not maintain readable contrast in both themes (${JSON.stringify({dark:runtimeContract.richContrastDark,light:runtimeContract.richContrastLight})})`);
+        }
         if (runtimeContract.count < 8 || runtimeContract.passed !== runtimeContract.count || runtimeContract.statuses.some(item => item !== 'Passed')) {
           errors.push(`Pyodide progressive cells failed: ${runtimeContract.passed}/${runtimeContract.count}`);
         }
@@ -427,10 +486,12 @@ async function inspect(browser, file) {
       const hasOwnText = node => Array.from(node.childNodes).some(child => child.nodeType === Node.TEXT_NODE && child.textContent.trim())
         || /^(INPUT|SELECT|TEXTAREA)$/.test(node.tagName);
       const auditStyle = document.createElement('style');
-      auditStyle.textContent = '*,*::before,*::after{transition:none!important;animation:none!important}';
+      auditStyle.textContent = 'html[data-theme] body *,html[data-theme] body *::before,html[data-theme] body *::after{transition:none!important;animation:none!important}';
       document.head.appendChild(auditStyle);
       const themeSnapshot = mode => {
         document.documentElement.setAttribute('data-theme', mode);
+        void document.documentElement.offsetWidth;
+        document.getAnimations().forEach(animation => { try { animation.finish(); } catch (_) {} });
         void document.documentElement.offsetWidth;
         const candidates = Array.from(document.querySelectorAll(
           'h1,h2,h3,h4,h5,h6,p,li,a,b,strong,em,small,code,pre,span,label,summary,button,th,td,input,select,textarea'
@@ -438,12 +499,14 @@ async function inspect(browser, file) {
         const contrast = [];
         for (let index = 0; index < candidates.length; index++) {
           const node = candidates[index];
-          if (!visible(node) || !hasOwnText(node) || node.closest('.CodeMirror, [aria-hidden="true"]')) continue;
-          if ((node.closest('pre') && node.tagName !== 'PRE') || Array.from(node.classList || []).some(name => name.startsWith('hljs-'))) continue;
+          if (!visible(node) || !hasOwnText(node) || node.closest('[aria-hidden="true"]')) continue;
           const style = getComputedStyle(node), foreground = parseColor(style.color);
           if (!foreground || foreground.a < .5) continue;
           const score = ratio(foreground, background(node));
-          contrast.push({index,label:label(node),ratio:Number(score.toFixed(2))});
+          const size = parseFloat(style.fontSize) || 16;
+          const weight = parseInt(style.fontWeight, 10) || 400;
+          const threshold = size >= 24 || (size >= 18.66 && weight >= 700) ? 3 : 4.5;
+          contrast.push({index,label:label(node),ratio:Number(score.toFixed(2)),threshold});
         }
         const viewportWidth = document.documentElement.clientWidth;
         const overflowElements = Array.from(document.body.querySelectorAll('*')).flatMap(node => {
@@ -467,25 +530,35 @@ async function inspect(browser, file) {
           contrast,
         };
       };
-      const compareThemes = (dark, light) => dark.contrast.flatMap(item => {
-        const other = light.contrast.find(candidate => candidate.index === item.index);
-        if (!other) return [];
-        const low = Math.min(item.ratio, other.ratio), high = Math.max(item.ratio, other.ratio);
-        return low < 3 && high - low >= 1.5
-          ? [`${item.label} (dark ${item.ratio.toFixed(2)}:1; light ${other.ratio.toFixed(2)}:1)`]
-          : [];
-      }).slice(0,12);
+      const contrastFailures = snapshot => snapshot.contrast
+        .filter(item => item.ratio + .01 < item.threshold)
+        .map(item => `${item.label} (${snapshot.mode} ${item.ratio.toFixed(2)}:1; requires ${item.threshold.toFixed(1)}:1)`)
+        .slice(0,20);
       window.__nemoclawThemeSnapshot = themeSnapshot;
-      window.__nemoclawCompareThemes = compareThemes;
+      window.__nemoclawContrastFailures = contrastFailures;
       const originalTheme = document.documentElement.getAttribute('data-theme');
       const dark = themeSnapshot('dark');
       const light = themeSnapshot('light');
       if (originalTheme === null) document.documentElement.removeAttribute('data-theme');
       else document.documentElement.setAttribute('data-theme', originalTheme);
-      const themeCapable = Array.from(document.styleSheets).some(sheet => {
-          try { return Array.from(sheet.cssRules || []).some(rule => String(rule.cssText || '').includes('data-theme')); }
-          catch (_) { return false; }
-        });
+      const themeButton = document.querySelector('button[aria-label="Toggle dark or light theme"]');
+      const storedTheme = (() => { try { return localStorage.getItem('theme'); } catch (_) { return null; } })();
+      document.documentElement.setAttribute('data-theme', 'dark');
+      const buttonDark = getComputedStyle(document.body).backgroundColor;
+      themeButton?.click();
+      const buttonLight = getComputedStyle(document.body).backgroundColor;
+      const themeControl = {
+        count:document.querySelectorAll('button[aria-label="Toggle dark or light theme"]').length,
+        visible:!!themeButton && visible(themeButton),
+        switched:document.documentElement.getAttribute('data-theme') === 'light',
+        paletteChanged:buttonDark !== buttonLight,
+      };
+      if (originalTheme === null) document.documentElement.removeAttribute('data-theme');
+      else document.documentElement.setAttribute('data-theme', originalTheme);
+      try {
+        if (storedTheme === null) localStorage.removeItem('theme');
+        else localStorage.setItem('theme', storedTheme);
+      } catch (_) {}
       const softwareMount = document.getElementById('third-party-export-preview');
       const localCategory = softwareMount?.querySelector('[data-export-category-group] input[value="local-authoring"]');
       let noAssertionView = null;
@@ -511,14 +584,26 @@ async function inspect(browser, file) {
         const raw = anchor.getAttribute('href') || '';
         return !raw || raw === '#' || /^javascript:/i.test(raw);
       }).map(anchor => anchor.textContent.trim());
-      const localEvidenceChecks = await Promise.all(evidenceAnchors.filter(anchor =>
-        anchor.dataset.evidenceLink === 'local' && new URL(anchor.href).origin === location.origin
-      ).map(async anchor => {
+      const urlAttributes = ['href', 'src', 'poster', 'action', 'data-svg-src'];
+      const localUrls = new Set();
+      document.querySelectorAll('*').forEach(node => {
+        urlAttributes.forEach(attribute => {
+          if (node.hasAttribute(attribute)) localUrls.add(node.getAttribute(attribute));
+        });
+        String(node.getAttribute('srcset') || '').split(',').forEach(candidate => {
+          const value = candidate.trim().split(/\s+/)[0];
+          if (value) localUrls.add(value);
+        });
+      });
+      const internalUrlChecks = await Promise.all(Array.from(localUrls).map(async raw => {
         try {
-          const response = await fetch(anchor.href, {method:'HEAD'});
-          return response.ok ? '' : `${anchor.textContent.trim()} HTTP ${response.status}`;
+          if (!raw) return 'empty internal URL';
+          const url = new URL(raw, location.href);
+          if (url.origin !== location.origin) return '';
+          const response = await fetch(url.href, {method:'HEAD', headers:{'x-static-artifact-audit':'1'}});
+          return response.ok ? '' : `${raw} HTTP ${response.status}`;
         } catch (error) {
-          return `${anchor.textContent.trim()} ${error.message || String(error)}`;
+          return `${raw} ${error.message || String(error)}`;
         }
       }));
       return {
@@ -529,15 +614,16 @@ async function inspect(browser, file) {
         navigationLinks: document.querySelectorAll('header[data-skill-header="1"] nav a[href]').length,
         visibleNavigationRegions: Array.from(document.querySelectorAll('header[data-skill-header="1"], .sx-topbar')).filter(node => getComputedStyle(node).display !== 'none').length,
         duplicateExplorerHeading: !!document.querySelector('.skill-static') && !!document.querySelector('#explorer .sx-head'),
-        themeCapable,
+        themeControl,
         themes:{dark,light},
         themeChanged:dark.bodyBackground !== light.bodyBackground || dark.surfaceBackground !== light.surfaceBackground,
-        colorDependencies:compareThemes(dark, light),
+        contrastFailures:[...contrastFailures(dark),...contrastFailures(light)],
         visibleText: (document.body?.innerText || '').trim().length,
         explorer: !!config,
         mounted: !!document.querySelector('.sx-topbar') && !!document.querySelector('.sx-main'),
         gone: document.querySelectorAll('.sx-dot.gone').length,
         exports,
+        deadInternalUrls:internalUrlChecks.filter(Boolean),
         sbomEvidence: sbomEvidence ? {
           ready:sbomEvidence.dataset.sbomEvidenceReady === '1',
           error:sbomEvidence.dataset.sbomEvidenceError || '',
@@ -551,7 +637,6 @@ async function inspect(browser, file) {
           ciComponentRows:sbomEvidence.querySelectorAll('[data-ci-component-preview="1"] tbody tr').length,
           clarificationRows:sbomEvidence.querySelectorAll('[data-license-clarification="1"] tbody tr').length,
           invalidEvidenceLinks,
-          deadLocalEvidenceLinks:localEvidenceChecks.filter(Boolean),
           text:sbomEvidence.innerText || '',
           visibleTechnicalTerms:['security_deep_sca','security_image_sca','CycloneDX','SHA-256','artifact path'].filter(term =>
             (sbomEvidence.innerText || '').includes(term)
@@ -571,7 +656,11 @@ async function inspect(browser, file) {
       return {
         themes:{dark,light},
         themeChanged:dark.bodyBackground !== light.bodyBackground || dark.surfaceBackground !== light.surfaceBackground,
-        colorDependencies:window.__nemoclawCompareThemes(dark, light),
+        contrastFailures:[...window.__nemoclawContrastFailures(dark),...window.__nemoclawContrastFailures(light)],
+        themeButtonVisible:Array.from(document.querySelectorAll('button[aria-label="Toggle dark or light theme"]')).some(node => {
+          const style=getComputedStyle(node), box=node.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden' && box.width > 0 && box.height > 0;
+        }),
         overflows:dark.documentWidth > dark.viewportWidth + 2 || light.documentWidth > light.viewportWidth + 2,
       };
     });
@@ -580,14 +669,19 @@ async function inspect(browser, file) {
     if (state.isSkill && (!state.navigationHeader || state.navigationLinks < 2)) errors.push('semantic skill navigation header is incomplete');
     if (state.isSkill && state.visibleNavigationRegions !== 1) errors.push(`renderer produced ${state.visibleNavigationRegions} visible navigation headers`);
     if (state.isSkill && state.duplicateExplorerHeading) errors.push('renderer repeated the static SKILL heading');
-    if (state.themeCapable && (!state.themeChanged || !narrow.themeChanged)) errors.push('declared theme controls do not change the page palette at every viewport');
-    if (state.colorDependencies.length) errors.push(`desktop theme-dependent contrast: ${state.colorDependencies.join('; ')}`);
-    if (narrow.colorDependencies.length) errors.push(`narrow theme-dependent contrast: ${narrow.colorDependencies.join('; ')}`);
+    if (state.isSkill && (state.themeControl.count !== 1 || !state.themeControl.visible
+        || !state.themeControl.switched || !state.themeControl.paletteChanged || !narrow.themeButtonVisible)) {
+      errors.push(`SKILL theme control is missing or ineffective (${JSON.stringify({desktop:state.themeControl,narrowVisible:narrow.themeButtonVisible})})`);
+    }
+    if (!state.themeChanged || !narrow.themeChanged) errors.push('dark/light palettes do not change the page at every viewport');
+    if (state.contrastFailures.length) errors.push(`desktop contrast: ${state.contrastFailures.join('; ')}`);
+    if (narrow.contrastFailures.length) errors.push(`narrow contrast: ${narrow.contrastFailures.join('; ')}`);
     if (narrow.overflows) {
       const offenders = narrow.themes.dark.overflowElements.length ? narrow.themes.dark.overflowElements : narrow.themes.light.overflowElements;
       errors.push(`narrow layout overflows 390px viewport (dark ${narrow.themes.dark.documentWidth}px; light ${narrow.themes.light.documentWidth}px): ${offenders.join('; ') || 'unattributed root overflow'}`);
     }
     if (!state.visibleText) errors.push('renderer produced no visible text');
+    if (state.deadInternalUrls.length) errors.push(`internal URLs failed: ${state.deadInternalUrls.join('; ')}`);
     if (state.isSkill && state.explorer && !state.mounted) errors.push('shared explorer did not mount');
     if (state.isSkill && state.gone) errors.push(`${state.gone} configured file(s) did not load`);
     if (state.isSkill) state.exports.forEach(item => {
@@ -610,8 +704,6 @@ async function inspect(browser, file) {
         errors.push('conditional SBOM rows lack declaration, upstream, or license-hint evidence');
       } else if (state.sbomEvidence.invalidEvidenceLinks.length) {
         errors.push(`SBOM evidence contains unusable links: ${state.sbomEvidence.invalidEvidenceLinks.join('; ')}`);
-      } else if (state.sbomEvidence.deadLocalEvidenceLinks.length) {
-        errors.push(`SBOM evidence contains dead local links: ${state.sbomEvidence.deadLocalEvidenceLinks.join('; ')}`);
       } else if (state.sbomEvidence.ciLinksState === 'available' && state.sbomEvidence.ciArtifactLinks < 3) {
         errors.push('available CI evidence does not link all three generated artifacts');
       } else if (state.sbomEvidence.ciLinksState === 'available' && !state.sbomEvidence.ciComponentRows) {
@@ -646,6 +738,7 @@ async function inspect(browser, file) {
   } catch (error) {
     errors.push(`navigation: ${error.message || String(error)}`);
   }
+  closing = true;
   await page.close();
   return { file, errors: [...new Set(errors)] };
 }
@@ -683,11 +776,18 @@ def run(args: argparse.Namespace) -> int:
     if not site.is_dir():
         print(f"skill_renderer_runtime_audit: FAIL\n  - site root missing: {site}")
         return 1
-    # Audit the tree actually being served. A Pages build contains projected pages beyond the
-    # source set, so reusing a source manifest or a hand-maintained allowlist would silently miss
-    # them. Every HTML file is included by default; SKILL-specific assertions are conditional in
-    # the browser script, but desktop/narrow theme and layout checks are universal.
-    files = discover_html(site)
+    scan_root = Path(args.scan_root).resolve() if args.scan_root else site
+    try:
+        scan_root.relative_to(site)
+    except ValueError:
+        print(f"skill_renderer_runtime_audit: FAIL\n  - scan root escapes served tree: {scan_root}")
+        return 1
+    if not scan_root.is_dir():
+        print(f"skill_renderer_runtime_audit: FAIL\n  - scan root missing: {scan_root}")
+        return 1
+    # Every HTML file below the artifact boundary is included. Serving may use a parent deployment
+    # root so intentional links to a separately validated sibling artifact resolve realistically.
+    files = discover_html(site, scan_root)
     if not files:
         print(f"skill_renderer_runtime_audit: FAIL\n  - no HTML files under {site}")
         return 1
@@ -753,6 +853,7 @@ def run(args: argparse.Namespace) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--site-root", default=str(ROOT))
+    parser.add_argument("--scan-root", help="artifact subtree to discover exhaustively; must be inside --site-root")
     default_engine = os.environ.get("CONTAINER_ENGINE") or ("apple" if shutil.which("container") else "docker")
     parser.add_argument("--engine", default=default_engine, help="apple, current, docker, or podman")
     parser.add_argument("--image", default=DEFAULT_IMAGE)
