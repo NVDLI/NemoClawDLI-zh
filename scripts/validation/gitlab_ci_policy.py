@@ -17,6 +17,7 @@ include:
   - local: "/.gitlab/ci/sca.yml"
 """
 SCA_JOBS = ("security_browser_sca", "security_sca", "security_deep_sca")
+IMAGE_SCA_JOB = "security_image_sca"
 OWNER_PATHS = (
     "/.gitlab-ci.yml",
     "/.gitlab/ci/",
@@ -91,7 +92,7 @@ def audit(root: Path = ROOT) -> list[dict[str, str]]:
     for token in (
         "inherit:\n    default: false\n    variables: false",
         "node:20-bookworm-slim@sha256:25070a03f077f5860e4f2db8d147380678ed40ead415a21eaffd5a6208f61948",
-        "retry_cmd apt-get install -y -qq --no-install-recommends python3 python3-pip python3-venv ca-certificates git",
+        "retry_cmd apt-get install -y -qq --no-install-recommends python3 python3-pip python3-venv ca-certificates curl git",
     ):
         require(sca, token, "sca-self-contained", ".gitlab/ci/sca.yml", out,
                 "restore the isolated image, inheritance boundary, and explicit scanner prerequisites")
@@ -135,9 +136,35 @@ def audit(root: Path = ROOT) -> list[dict[str, str]]:
         ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock",
         ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock",
         "audit_sbom_policy.py --sbom",
+        "scripts/compliance/sbom_evidence.py --sbom scripts/security/reports/deep-workspace/python-env.cdx.json",
     ):
         require(sca, token, "sca-required-command", ".gitlab/ci/sca.yml", out,
                 "restore the locked dependency scan and SBOM policy command")
+
+    image = job_block(sca, IMAGE_SCA_JOB)
+    if not image:
+        out.append(finding("missing-image-sca-job", ".gitlab/ci/sca.yml", "conditional image scanner is missing",
+                           "restore the digest-gated image SBOM job"))
+    else:
+        for token in (
+            "<<: *sca_base",
+            'SYFT_VERSION: "1.44.0"',
+            'SYFT_LINUX_AMD64_SHA256: "0e91737aee2b5baf1d255b959630194a302335d848ff97bb07921eb6205b5f5a"',
+            "sha256sum --check --strict",
+            'registry:$SBOM_IMAGE',
+            '--artifact-id "$SBOM_IMAGE"',
+            "--allow-unresolved",
+            "expire_in: 30 days",
+            "when: manual",
+            "allow_failure: false",
+            "- when: never",
+        ):
+            require(image, token, "image-sca-boundary", ".gitlab/ci/sca.yml", out,
+                    "keep image scanning digest-bound, opt-in, checksum-pinned, and evidence-producing")
+        if "schedule" in image or "when: on_success" in image:
+            out.append(finding("image-sca-default-run", ".gitlab/ci/sca.yml",
+                               "image scanning can run without an explicit digest opt-in",
+                               "keep the image job absent until SBOM_IMAGE supplies an immutable digest"))
 
     for path in OWNER_PATHS:
         if not re.search(rf"(?m)^{re.escape(path)}\s+@\S+", owners):
@@ -171,6 +198,8 @@ def self_test() -> list[str]:
          "        - .gitlab-ci.yml"),
         ("sca-required-command", ".gitlab/ci/sca.yml", "audit_sbom_policy.py --sbom",
          "audit_sbom_policy.py --help"),
+        ("image-sca-boundary", ".gitlab/ci/sca.yml", "sha256sum --check --strict",
+         "sha256sum --version"),
         ("missing-code-owner", ".gitlab/CODEOWNERS", root_owner_line,
          "/.gitlab-ci.yml"),
         ("ci-policy-not-gated", "scripts/validation/release_gate.py", 'unit_test("gitlab_ci_policy")',

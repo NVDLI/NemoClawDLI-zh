@@ -133,10 +133,12 @@
     <div class="skill-cmd"><b>Sensitive contribution boundary</b><code>python3 -m unittest discover -v -s tests/validation &amp;&amp; python3 scripts/validation/sensitive_content_audit.py</code></div>
     <div class="skill-cmd"><b>Dependency locks</b><code>python3 scripts/security/audit_dependency_locks.py --self-test &amp;&amp; python3 scripts/security/audit_dependency_locks.py</code></div>
     <div class="skill-cmd"><b>SBOM policy detector</b><code>python3 scripts/security/audit_sbom_policy.py --self-test</code></div>
+    <div class="skill-cmd"><b>SBOM evidence links</b><code>python3 scripts/compliance/sbom_evidence.py --self-test &amp;&amp; python3 scripts/compliance/sbom_evidence.py --check</code></div>
     <div class="skill-cmd"><b>Browser SCA</b><code>security_browser_sca</code></div>
     <div class="skill-cmd"><b>Full SCA plan</b><code>python3 scripts/security/run_full_sca.py</code></div>
     <div class="skill-cmd"><b>Full SCA execute</b><code>python3 scripts/security/run_full_sca.py --execute --python-local --cyclonedx-env</code></div>
     <div class="skill-cmd"><b>Deep CI SCA</b><code>security_deep_sca</code></div>
+    <div class="skill-cmd"><b>Digest-bound image SCA</b><code>SBOM_IMAGE=&lt;immutable-image-reference&gt; security_image_sca</code></div>
     <div class="skill-cmd"><b>Ship gate</b><code>python3 scripts/validation/validate_bundle.py --no-write --scope ship</code></div>
   </div>
   <h2>Linkage map</h2>
@@ -147,6 +149,7 @@
     <a class="skill-card" href="audit_vulnerability_waivers.py"><b>audit_vulnerability_waivers.py</b><span>security exception audit. Validates opaque fingerprints, ownership, executable controls, scope, and expiry.</span></a>
     <a class="skill-card" href="audit_dependency_locks.py"><b>audit_dependency_locks.py</b><span>dependency lock audit. Enforces exact Python 3.11 closures, direct-manifest parity, and absence of retired runtime components.</span></a>
     <a class="skill-card" href="audit_sbom_policy.py"><b>audit_sbom_policy.py</b><span>runtime SBOM policy audit. Proves lock coverage, rejects retired components, and reports whether license metadata is SPDX, named, or absent.</span></a>
+    <a class="skill-card" href="../compliance/sbom_evidence.py"><b>sbom_evidence.py</b><span>Verifies the committed catalog and emits commit-bound manifests plus reconciled license appendices from CI SBOMs.</span></a>
     <a class="skill-card" href="run_full_sca.py"><b>run_full_sca.py</b><span>full SCA and SBOM runner. Supports scanner-separated runtime targeting for clean release SBOMs.</span></a>
     <a class="skill-card" href="vulnerability-waivers.json"><b>vulnerability-waivers.json</b><span>fingerprinted exception registry. Public metadata never republishes private finding details.</span></a>
     <a class="skill-card" href="../../docs/dependency_security.md"><b>dependency_security.md</b><span>standard integration path for fast source checks, waiver policy, SBOM output, full SCA scans, and GitLab Dependency Scanning.</span></a>

@@ -1,0 +1,87 @@
+{
+  "schema": "nemoclaw-sbom-evidence/1",
+  "records": [
+    {
+      "id": "browser-runtime",
+      "state": "available",
+      "distribution": "distributed",
+      "description": "Browser packages copied into and shipped with the static learner course.",
+      "selectors": [
+        {
+          "category": "vendored"
+        }
+      ],
+      "sbom": {
+        "href": "../../../web/nemoclaw/vendor/browser-sbom.cdx.json",
+        "repository_path": "web/nemoclaw/vendor/browser-sbom.cdx.json",
+        "sha256": "86718e54e7acf1a59f78392204695c8c5e0c079735029f6c011cc2a5a034b581",
+        "bytes": 8261,
+        "format": "CycloneDX",
+        "spec_version": "1.6",
+        "component_count": 19,
+        "license_metadata": {
+          "spdx": 19,
+          "named": 0,
+          "missing": 0
+        }
+      },
+      "retention": "Repository history and versioned release archive"
+    },
+    {
+      "id": "python-validation-environment",
+      "state": "ci-generated",
+      "distribution": "not-distributed",
+      "description": "Resolved Python environment used by course checks and optional authoring tools. Learners do not receive these packages from the static course.",
+      "selectors": [
+        {
+          "category": "validation"
+        }
+      ],
+      "ci": {
+        "job": "security_deep_sca",
+        "sbom_artifact_path": "scripts/security/reports/deep-workspace/python-env.cdx.json",
+        "manifest_artifact_path": "scripts/security/reports/deep-workspace/sbom-evidence.json",
+        "appendix_artifact_path": "scripts/security/reports/deep-workspace/python-license-appendix.md",
+        "retention_days": 30
+      },
+      "release_asset_patterns": [
+        "nemoclaw-vX.Y.Z.python-env.cdx.json",
+        "nemoclaw-vX.Y.Z.python-sbom-evidence.json",
+        "nemoclaw-vX.Y.Z.python-license-appendix.md"
+      ]
+    },
+    {
+      "id": "local-authoring-image-boundary",
+      "state": "conditional",
+      "distribution": "not-distributed",
+      "description": "Container images, browser binaries, and operating-system package groups used only by optional local authoring or compatibility checks.",
+      "selectors": [
+        {
+          "category": "local-authoring"
+        }
+      ],
+      "noassertion_meaning": "A mixed image or operating-system layer has no honest single aggregate SPDX license. This is not permission and does not mean every component license is unknown.",
+      "required_before_distribution": "digest-bound-component-sbom",
+      "ci": {
+        "job": "security_image_sca",
+        "activation": "Set SBOM_IMAGE to an immutable registry image digest and run the manual job.",
+        "sbom_artifact_path": "scripts/security/reports/image/image.cdx.json",
+        "manifest_artifact_path": "scripts/security/reports/image/sbom-evidence.json",
+        "appendix_artifact_path": "scripts/security/reports/image/image-license-appendix.md",
+        "retention_days": 30
+      },
+      "subjects": [
+        {"component": "nvcr.io/nvidia/cuda", "version": "12.8.1-cudnn-devel-ubuntu22.04"},
+        {"component": "docker", "version": "20.10"},
+        {"component": "python", "version": "3.11-slim"},
+        {"component": "python", "version": "3.12-slim"},
+        {"component": "ghcr.io/nvidia/openshell/cluster", "version": "0.0.8"},
+        {"component": "ghcr.io/nvidia/openshell-community/sandboxes/base", "version": "latest"},
+        {"component": "Chromium installed by Playwright", "version": "Playwright 1.61.0 channel"},
+        {"component": "python3.11, python3.11-dev, python3-pip, build-essential, bash, curl, unzip, wget, git, libgl1, tree, jq, nodejs, npm, poppler-utils", "version": "base-image-resolved"},
+        {"component": "jq, socat, tree, curl, git, gettext-base", "version": "base-image-resolved"},
+        {"component": "python3, py3-pip", "version": "base-image-resolved"}
+      ]
+    }
+  ]
+}

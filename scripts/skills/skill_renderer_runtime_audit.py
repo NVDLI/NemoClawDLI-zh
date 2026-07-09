@@ -84,7 +84,10 @@ async function inspect(browser, file) {
       return (meta.exports || []).every(item => {
         const mount = document.getElementById(item.preview_mount);
         return mount && (mount.dataset.exportReady === '1' || mount.dataset.exportError);
-      });
+      }) && (() => {
+        const evidence = document.getElementById('sbom-evidence-preview');
+        return !evidence || evidence.dataset.sbomEvidenceReady === '1' || evidence.dataset.sbomEvidenceError;
+      })();
     }, null, { timeout:10000 }).catch(() => {});
     // Asset and link integrity are separate blocking gates. This audit deliberately records
     // only a failed document navigation here so a mirrored source file still receives its
@@ -94,6 +97,7 @@ async function inspect(browser, file) {
       const parse = id => { try { return JSON.parse(document.getElementById(id)?.textContent || ''); } catch (_) { return null; } };
       const config = document.getElementById('explorer-config');
       const meta = parse('skill-meta');
+      const sbomEvidence = document.getElementById('sbom-evidence-preview');
       const exports = (meta?.exports || []).map(item => {
         const mount = document.getElementById(item.preview_mount);
         const categoryGroup = mount?.querySelector('.filter-choice-group');
@@ -232,6 +236,26 @@ async function inspect(browser, file) {
           try { return Array.from(sheet.cssRules || []).some(rule => String(rule.cssText || '').includes('data-theme')); }
           catch (_) { return false; }
         });
+      const softwareMount = document.getElementById('third-party-export-preview');
+      const localCategory = softwareMount?.querySelector('[data-export-category-group] input[value="local-authoring"]');
+      let noAssertionView = null;
+      if (localCategory) {
+        softwareMount.querySelectorAll('[data-export-category-group] input[type="checkbox"]').forEach(input => {
+          input.checked = input === localCategory;
+        });
+        localCategory.dispatchEvent(new Event('change', {bubbles:true}));
+        const rows = Array.from(softwareMount.querySelectorAll('tbody tr'));
+        const unresolved = rows.filter(row => row.querySelector('td[data-label="License"]')?.innerText.includes('NOASSERTION'));
+        noAssertionView = {
+          rows:rows.length,
+          unresolved:unresolved.length,
+          coveredSubjects:sbomEvidence?.querySelectorAll('.sbom-card:last-child .row-evidence p').length || 0,
+          brokenLicenseLinks:unresolved.filter(row => row.querySelector('td[data-label="License"] a')).length,
+          usefulEvidence:unresolved.every(row => /not distributed|immutable image digest/i.test(
+            row.querySelector('td[data-label="Evidence"]')?.textContent || ''
+          )),
+        };
+      }
       return {
         isSkill,
         meta: !isSkill || !!meta,
@@ -249,6 +273,14 @@ async function inspect(browser, file) {
         mounted: !!document.querySelector('.sx-topbar') && !!document.querySelector('.sx-main'),
         gone: document.querySelectorAll('.sx-dot.gone').length,
         exports,
+        sbomEvidence: sbomEvidence ? {
+          ready:sbomEvidence.dataset.sbomEvidenceReady === '1',
+          error:sbomEvidence.dataset.sbomEvidenceError || '',
+          cards:sbomEvidence.querySelectorAll('.sbom-card').length,
+          componentRows:sbomEvidence.querySelectorAll('.sbom-components tbody tr').length,
+          text:sbomEvidence.innerText || '',
+        } : null,
+        noAssertionView,
       };
     }, { isSkill });
     await page.setViewportSize({ width:390, height:844 });
@@ -290,6 +322,27 @@ async function inspect(browser, file) {
       else if (!item.multiChanged) errors.push(`export ${item.id} multi-select filters did not change the visible rows`);
       else if (item.sortButtons !== item.headerCount || !item.allSortDirections) errors.push(`export ${item.id} does not toggle every column between ascending and descending`);
     });
+    if (state.sbomEvidence) {
+      if (state.sbomEvidence.error) errors.push(`SBOM evidence preview failed: ${state.sbomEvidence.error}`);
+      else if (!state.sbomEvidence.ready) errors.push('SBOM evidence preview did not become ready');
+      else if (state.sbomEvidence.cards < 3) errors.push('SBOM evidence preview does not distinguish all evidence states');
+      else if (!state.sbomEvidence.componentRows) errors.push('linked SBOM rendered no component licenses');
+      else if (!state.sbomEvidence.text.includes('not distributed to learners')
+          || !state.sbomEvidence.text.includes('security_deep_sca')
+          || !state.sbomEvidence.text.includes('security_image_sca')) {
+        errors.push('SBOM evidence preview omits distribution, CI, or conditional-scan guidance');
+      }
+    }
+    if (state.noAssertionView) {
+      if (!state.noAssertionView.unresolved) errors.push('local-authoring view rendered no NOASSERTION rows');
+      else if (state.noAssertionView.unresolved !== state.noAssertionView.coveredSubjects) {
+        errors.push('NOASSERTION rows and conditional SBOM subjects do not match');
+      } else if (state.noAssertionView.brokenLicenseLinks) {
+        errors.push('NOASSERTION is rendered as a dead license link');
+      } else if (!state.noAssertionView.usefulEvidence) {
+        errors.push('NOASSERTION rows omit distribution or immutable-scan guidance');
+      }
+    }
   } catch (error) {
     errors.push(`navigation: ${error.message || String(error)}`);
   }

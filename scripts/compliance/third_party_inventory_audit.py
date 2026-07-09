@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 INVENTORY = "THIRD_PARTY_LICENSES.md"
 RUNBOOK = "scripts/compliance/docs/sbom_generation.md"
+EVIDENCE_CATALOG = "scripts/compliance/docs/sbom_evidence.json"
 COMPLIANCE_SKILL = "scripts/compliance/SKILL.html"
 CSV_EXPORTER = "scripts/compliance/export_third_party_csv.py"
 SCOPE_EXPORTER = "scripts/compliance/export_legal_scope_csv.py"
@@ -48,6 +49,7 @@ REQUIRED_DISTRIBUTION_LINES = (
     'cp "$T1/LICENSE" "$OUT/LICENSE"',
     'cp "$T1/THIRD_PARTY_LICENSES.md" "$OUT/THIRD_PARTY_LICENSES.md"',
     'cp "$T1/scripts/compliance/docs/sbom_generation.md" "$OUT/scripts/compliance/docs/sbom_generation.md"',
+    'cp "$T1/scripts/compliance/docs/sbom_evidence.json" "$OUT/scripts/compliance/docs/sbom_evidence.json"',
 )
 REQUIRED_EXPLANATIONS = (
     "## Reproducing license-evidence acquisition",
@@ -64,10 +66,12 @@ REQUIRED_RUNBOOK_TEXT = (
     "The static course release does not distribute the local-authoring container images.",
     "npm view <name>@<version> license dist.integrity repository --json",
     "https://pypi.org/pypi/<normalized-name>/<version>/json",
-    "anchore/syft:v1.44.0 scan dir:/src",
+    "anchore/syft:v1.44.0@sha256:86fde6445b483d902fe011dd9f68c4987dd94e07da1e9edc004e3c2422650de6 scan dir:/src",
     "IMAGE=<registry>/<repository>@sha256:<64-hex-digest>",
     "Those extractors acquire content",
     "scripts/compliance/render_sbom_license_inventory.py",
+    "scripts/compliance/sbom_evidence.py",
+    "scripts/compliance/docs/sbom_evidence.json",
     "browser-runtime.cdx.json",
     "python-env.cdx.json",
     "source-tree.cdx.json",
@@ -189,8 +193,9 @@ def export_contract_findings(overrides: dict[str, str]) -> list[str]:
         "vendored-browser-code", "Corroborating Repository Evidence",
         "selectedValues", "choiceGroup", "sortedRows", "sortableHeaders", "dataset.sortIndex",
         "FILTER_LABELS", "Included in the course", "Referenced, not copied",
-        "Needs source-specific review", "friendlyChoice",
+        "No single aggregate license", "friendlyChoice",
         "documentScopeRows", "document_sources", "Source Author(s)", "renderScopeRow", "dataset.label",
+        "sbom_evidence", "renderSbomEvidence", "linkedSbomComponents", "No SBOM is required for the static course",
     ):
         if token not in preview:
             findings.append(f"SWIPAT preview implementation is incomplete: {token}")
@@ -210,6 +215,10 @@ def audit(overrides: dict[str, str] | None = None) -> list[str]:
     overrides = overrides or {}
     document = read(INVENTORY, overrides)
     runbook = read(RUNBOOK, overrides)
+    try:
+        evidence_catalog = json.loads(read(EVIDENCE_CATALOG, overrides))
+    except (json.JSONDecodeError, OSError):
+        evidence_catalog = {}
     findings: list[str] = []
 
     browser_rows = rows(section(document, "Browser runtime and browser-build packages"))
@@ -266,6 +275,11 @@ def audit(overrides: dict[str, str] | None = None) -> list[str]:
     for instruction in REQUIRED_RUNBOOK_TEXT:
         if instruction not in runbook:
             findings.append(f"missing SBOM acquisition instruction: {instruction}")
+    if evidence_catalog.get("schema") != "nemoclaw-sbom-evidence/1":
+        findings.append("missing machine-readable SBOM evidence catalog")
+    states = {record.get("state") for record in evidence_catalog.get("records", []) if isinstance(record, dict)}
+    if states != {"available", "ci-generated", "conditional"}:
+        findings.append("SBOM evidence catalog does not distinguish available, CI-generated, and conditional evidence")
     findings.extend(export_contract_findings(overrides))
     dockerfile = read("cpu/services/llm_client/llm_client.Dockerfile", overrides)
     for pin in REQUIRED_LLM_PINS:
