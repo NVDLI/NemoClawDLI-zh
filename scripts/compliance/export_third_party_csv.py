@@ -161,6 +161,12 @@ def local_authoring_rows(base: str, ref: str) -> list[list[str]]:
         upstream = next((url for _label, url in links if url.startswith(("http://", "https://"))), "")
         paths = re.findall(r"`([^`]+(?:Dockerfile|requirements\.txt))`", evidence)
         internal = repository_file(base, ref, paths[0]) if paths else repository_file(base, ref, inventory.INVENTORY)
+        evidence_catalog = repository_file(base, ref, "scripts/compliance/docs/sbom_evidence.json")
+        license_note = (
+            " NOASSERTION is the aggregate label for a mixed artifact, not a license grant. "
+            f"Current distribution and required scan evidence: {evidence_catalog}."
+            if license_id == "NOASSERTION" else ""
+        )
         rows.append([
             name,
             version,
@@ -169,7 +175,7 @@ def local_authoring_rows(base: str, ref: str) -> list[list[str]]:
             INTERNAL,
             OTHER,
             f"Category: {scope}. This is an optional local-authoring or compatibility dependency. "
-            f"Learners do not receive it from the static course. {markdown_link_labels(evidence)}",
+            f"Learners do not receive it from the static course.{license_note} {markdown_link_labels(evidence)}",
             upstream or name,
             internal,
         ])

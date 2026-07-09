@@ -395,22 +395,27 @@ No package row in this inventory declares GPL. The only GNU-family expression is
 
 ## Direct container, runtime, and operating-system declarations
 
-These are direct Dockerfile declarations not represented as Python or browser-lock rows above. Mixed images and operating-system packages require the exact built-image SBOM before distribution; a tag or source declaration cannot supply their complete transitive license set.
+These are direct Dockerfile declarations not represented as Python or browser-lock rows above. They
+belong to optional authoring and compatibility environments, not the static course delivered to
+learners. The [SBOM evidence catalog](scripts/compliance/docs/sbom_evidence.json) records that
+distribution boundary and the CI artifact paths used when a component inventory is generated.
+Mixed images and operating-system packages require the exact built-image SBOM before distribution;
+a tag or source declaration cannot supply their complete transitive license set.
 
 | Scope | Component | Declared version | SPDX license | Evidence / disposition |
 |---|---|---|---|---|
-| workspace base image | nvcr.io/nvidia/cuda | 12.8.1-cudnn-devel-ubuntu22.04 | NOASSERTION | mixed NVIDIA and Ubuntu image; `workspace/Dockerfile` |
-| service base image | docker | 20.10 | NOASSERTION | mixed image; `cpu/services/docker_router/Dockerfile` |
-| service base image | python | 3.11-slim | NOASSERTION | Python-2.0 plus mixed Debian image; `cpu/services/llm_client/llm_client.Dockerfile` |
-| service base image | python | 3.12-slim | NOASSERTION | Python-2.0 plus mixed Debian image; `cpu/services/sandbox_admin/Dockerfile` |
-| OpenShell build image | ghcr.io/nvidia/openshell/cluster | 0.0.8 | NOASSERTION | image SBOM required; `cpu/services/openclaw/openclaw_shell.Dockerfile` |
-| OpenShell runtime image | ghcr.io/nvidia/openshell-community/sandboxes/base | latest | NOASSERTION | mutable tag; exact image digest and SBOM required before distribution |
+| workspace base image | nvcr.io/nvidia/cuda | 12.8.1-cudnn-devel-ubuntu22.04 | NOASSERTION | not distributed with the static course; mixed NVIDIA and Ubuntu image; `workspace/Dockerfile`; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
+| service base image | docker | 20.10 | NOASSERTION | not distributed with the static course; mixed image; `cpu/services/docker_router/Dockerfile`; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
+| service base image | python | 3.11-slim | NOASSERTION | not distributed with the static course; Python-2.0 plus mixed Debian image; `cpu/services/llm_client/llm_client.Dockerfile`; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
+| service base image | python | 3.12-slim | NOASSERTION | not distributed with the static course; Python-2.0 plus mixed Debian image; `cpu/services/sandbox_admin/Dockerfile`; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
+| OpenShell build image | ghcr.io/nvidia/openshell/cluster | 0.0.8 | NOASSERTION | not distributed with the static course; image SBOM required before distribution; `cpu/services/openclaw/openclaw_shell.Dockerfile`; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
+| OpenShell runtime image | ghcr.io/nvidia/openshell-community/sandboxes/base | latest | NOASSERTION | not distributed with the static course; mutable tag; exact image digest and SBOM required before distribution; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
 | OpenClaw runtime | openclaw | 2026.5.28 | MIT | [npm](https://www.npmjs.com/package/openclaw/v/2026.5.28) |
 | policy engine | Open Policy Agent | 1.4.2 | Apache-2.0 | [upstream](https://github.com/open-policy-agent/opa/releases/tag/v1.4.2) |
-| browser binary | Chromium installed by Playwright | Playwright 1.61.0 channel | NOASSERTION | multi-license browser distribution; built-image SBOM required |
-| workspace OS packages | python3.11, python3.11-dev, python3-pip, build-essential, bash, curl, unzip, wget, git, libgl1, tree, jq, nodejs, npm, poppler-utils | base-image-resolved | NOASSERTION | `workspace/Dockerfile`; exact versions and licenses come from built-image SBOM |
-| OpenClaw OS packages | jq, socat, tree, curl, git, gettext-base | base-image-resolved | NOASSERTION | `cpu/services/openclaw/openclaw_shell.Dockerfile`; exact versions and licenses come from built-image SBOM |
-| router OS packages | python3, py3-pip | base-image-resolved | NOASSERTION | `cpu/services/docker_router/Dockerfile`; exact versions and licenses come from built-image SBOM |
+| browser binary | Chromium installed by Playwright | Playwright 1.61.0 channel | NOASSERTION | not distributed with the static course; multi-license browser distribution; exact component evidence required before separate distribution; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
+| workspace OS packages | python3.11, python3.11-dev, python3-pip, build-essential, bash, curl, unzip, wget, git, libgl1, tree, jq, nodejs, npm, poppler-utils | base-image-resolved | NOASSERTION | not distributed with the static course; `workspace/Dockerfile`; exact versions and licenses come from a digest-bound image SBOM; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
+| OpenClaw OS packages | jq, socat, tree, curl, git, gettext-base | base-image-resolved | NOASSERTION | not distributed with the static course; `cpu/services/openclaw/openclaw_shell.Dockerfile`; exact versions and licenses come from a digest-bound image SBOM; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
+| router OS packages | python3, py3-pip | base-image-resolved | NOASSERTION | not distributed with the static course; `cpu/services/docker_router/Dockerfile`; exact versions and licenses come from a digest-bound image SBOM; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
 
 ### Resolving `NOASSERTION` after an image scan
 
@@ -419,7 +424,10 @@ Do not replace an image-level `NOASSERTION` with the license of its best-known c
 image is itself proposed for distribution, follow the digest-bound image procedure in the
 [`SBOM generation and attachment runbook`](scripts/compliance/docs/sbom_generation.md). The
 generated appendix enumerates component licenses but does not convert the aggregate mixed-image row
-into a single-license claim.
+into a single-license claim. The catalog distinguishes three states: a linked SBOM available in the
+repository, a commit-bound SBOM generated by CI, and a conditional scan that does not exist because
+the corresponding artifact is not distributed. CI manifests record the source commit, artifact
+identity, SBOM hash, component count, license summary, job URL, and retention period.
 
 ## Document source evidence
 

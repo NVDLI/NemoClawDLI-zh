@@ -50,6 +50,30 @@ class DirectoryCoverageTests(unittest.TestCase):
         )
 
 
+class SkillGraphTests(unittest.TestCase):
+    def test_disconnected_beacon_fails_until_root_path_exists(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            child = root / "scripts" / "compliance"
+            child.mkdir(parents=True)
+            root_skill = root / "SKILL.html"
+            scripts_skill = root / "scripts" / "SKILL.html"
+            compliance_skill = child / "SKILL.html"
+            root_skill.write_text('<html><body><a href="scripts/SKILL.html">scripts</a></body></html>', encoding="utf-8")
+            scripts_skill.write_text('<html><body><p>Scripts without a child link.</p></body></html>', encoding="utf-8")
+            compliance_skill.write_text('<html><body><p>Compliance evidence.</p></body></html>', encoding="utf-8")
+            skills = [root_skill, scripts_skill, compliance_skill]
+            findings = skill_contract.skill_graph_findings(root, skills)
+            self.assertIn(
+                ("scripts/compliance/SKILL.html", "beacon is disconnected from the root SKILL graph"),
+                findings,
+            )
+            scripts_skill.write_text(
+                '<html><body><a href="compliance/SKILL.html">compliance</a></body></html>', encoding="utf-8"
+            )
+            self.assertEqual(skill_contract.skill_graph_findings(root, skills), [])
+
+
 class RendererContractTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()

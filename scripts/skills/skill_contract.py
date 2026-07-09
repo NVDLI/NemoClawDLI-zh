@@ -19,6 +19,9 @@ Two readers, one file, so three checks:
           Exhaustive discovery is part of this leg. Every tracked or proposed source
           directory and ancestor must contain SKILL.html. There is no exemption mechanism.
 
+  GRAPH   Every discovered beacon is reachable from root SKILL.html through a visible link
+          or an explorer link. A present but disconnected beacon is still unusable.
+
   SOURCE  SKILL.html source stays reviewable and durable: static card/command grids are not
           minified into one-line walls, and beacons do not expose numbered issue/MR/PR threads
           or user handles as course-facing provenance.
@@ -152,6 +155,7 @@ class _RendererParser(HTMLParser):
         self._skill_header_depth = 0
         self._skill_nav_depth = 0
         self.skill_header_links: list[str] = []
+        self.links: list[str] = []
         self._hidden = 0
         self.text: list[str] = []
 
@@ -172,6 +176,8 @@ class _RendererParser(HTMLParser):
             self._skill_nav_depth += 1
         if self._skill_nav_depth and tag == "a" and values.get("href"):
             self.skill_header_links.append(values["href"])
+        if tag == "a" and values.get("href"):
+            self.links.append(values["href"])
         if tag in {"script", "style"}:
             self._hidden += 1
         if tag == "script" and values.get("src"):
@@ -226,6 +232,58 @@ def _config_paths(config: dict) -> list[str]:
             if isinstance(item, dict) and item.get("href"):
                 paths.append(item["href"])
     return paths
+
+
+def _skill_references(value: object) -> list[str]:
+    """Collect local SKILL.html references from machine-readable metadata."""
+    if isinstance(value, str):
+        return [value] if urlsplit(value).path.endswith("SKILL.html") else []
+    if isinstance(value, list):
+        return [item for child in value for item in _skill_references(child)]
+    if isinstance(value, dict):
+        return [item for child in value.values() for item in _skill_references(child)]
+    return []
+
+
+def skill_graph_findings(root: Path, skill_paths: list[Path] | None = None) -> list[tuple[str, str]]:
+    """Require every beacon to be reachable from the root through declared or visible links."""
+    root = root.resolve()
+    paths = sorted((skill_paths or list(root.rglob("SKILL.html"))))
+    skills = {path.resolve() for path in paths}
+    root_skill = (root / "SKILL.html").resolve()
+    if root_skill not in skills:
+        return [("SKILL.html", "root beacon is missing from the discovered SKILL graph")]
+    edges: dict[Path, set[Path]] = {path: set() for path in skills}
+    for skill in skills:
+        text = skill.read_text(encoding="utf-8", errors="replace")
+        parser = _RendererParser()
+        try:
+            parser.feed(text)
+        except Exception:
+            continue
+        config_match = re.search(
+            r'<script type="application/json" id="explorer-config">(.*?)</script>', text, re.S
+        )
+        try:
+            config = json.loads(config_match.group(1)) if config_match else {}
+        except Exception:
+            config = {}
+        references = parser.links + _skill_references(config)
+        for reference in references:
+            target = _local_target(skill, reference, root)
+            if target is not None and target.resolve() in skills:
+                edges[skill].add(target.resolve())
+    reached = {root_skill}
+    pending = [root_skill]
+    while pending:
+        current = pending.pop()
+        for target in edges[current] - reached:
+            reached.add(target)
+            pending.append(target)
+    return [
+        (str(path.relative_to(root)), "beacon is disconnected from the root SKILL graph")
+        for path in sorted(skills - reached)
+    ]
 
 
 def renderer_findings_for(skill: Path, root: Path) -> list[str]:
@@ -338,6 +396,7 @@ def run(verbose: bool = False) -> dict:
     return {
         "schema": schema_findings() + source_quality_findings(),
         "drift": sa.audit(fix=False),
+        "graph": skill_graph_findings(TASK1, list(sa.skills())),
         "renderer": renderer_findings(),
     }
 
@@ -356,12 +415,13 @@ def main():
         print(json.dumps({k: [{"page": p, "detail": d} for p, d in v] for k, v in res.items()}, indent=2))
         return 1 if any(res.values()) else 0
 
-    if not res["schema"] and not res["drift"] and not res["renderer"]:
+    if not any(res.values()):
         print("skill_contract: ✅ every source directory has a valid, accurate, renderable SKILL.html")
         return 0
     for label, items, stream in (
         ("schema", res["schema"], sys.stderr),
         ("drift", res["drift"], sys.stderr),
+        ("graph", res["graph"], sys.stderr),
         ("renderer", res["renderer"], sys.stderr),
     ):
         if items:

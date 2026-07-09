@@ -20,6 +20,48 @@ mkdir -p "$OUT"
 Do not commit `$OUT`. Attach its reviewed files to the issue or merge request, then retain the same
 files in the authorized release evidence record.
 
+## Evidence catalog and retention
+
+[`scripts/compliance/docs/sbom_evidence.json`](sbom_evidence.json) is the compact index used by the license view. It records
+three different states instead of presenting every missing aggregate license as the same problem:
+
+- `available`: the linked SBOM is in the repository and the catalog pins its SHA-256 and component count;
+- `ci-generated`: the SBOM, evidence manifest, and license appendix are produced for an exact commit;
+- `conditional`: the software is not distributed by the static course, so its digest-bound scan is
+  required only if that artifact is later proposed for distribution.
+
+GitLab SCA artifacts expire after 30 days. They support merge review but are not permanent release
+evidence. A versioned public release copies its Python SBOM, evidence manifest, and license appendix
+into release assets. It also composes a release catalog whose relative links resolve to the
+versioned Python and browser SBOM filenames. Any distributed image must receive the same treatment.
+Verify the committed catalog and its linked browser SBOM with:
+
+```bash
+python3 scripts/compliance/sbom_evidence.py --check
+python3 scripts/compliance/sbom_evidence.py --self-test
+```
+
+The offline check rejects missing repository declarations, malformed URLs, stale link-check dates,
+and incomplete license hints. Scheduled CI and protected release preparation also read the official
+external URLs with bounded retries:
+
+```bash
+python3 scripts/compliance/sbom_evidence.py --check-external-links
+```
+
+The source checkout carries `ci_sbom_evidence.json` with an explicit `unavailable` state. The deep
+SCA job exports its numeric job ID as a dotenv report, and Pages receives that job's artifacts
+through an explicit `needs` edge. Pages then reads one byte from each expected path through the
+job-ID artifact API with `CI_JOB_TOKEN`. It emits clickable direct-job links only after the
+manifest names the exact preview commit and every expected path succeeds. A missing producing job,
+commit mismatch, or missing path stays visibly unavailable; a branch or job-name guess never turns
+into an evidence link. The verified files are also copied beside the staged evidence catalog. That
+same-origin CycloneDX copy is SHA-256 checked in the browser before the license view renders its
+resolved Python component rows; the GitLab links remain the provenance and retention authority.
+
+Evidence emission calls `scripts/compliance/render_sbom_license_inventory.py` to create the
+component-level Markdown appendix from the same digest-bound CycloneDX input.
+
 ## Browser runtime CycloneDX
 
 The browser generator enumerates the packages actually included by the esbuild metafiles, copies
@@ -59,6 +101,17 @@ PATH="/tmp/nemoclaw-release-scanner/bin:$PATH" /tmp/nemoclaw-release-scanner/bin
   --report "$OUT/python-scan/sbom-policy.json"
 cp "$OUT/python-scan/python-env.cdx.json" "$OUT/python-env.cdx.json"
 cp "$OUT/python-scan/sbom-policy.json" "$OUT/sbom-policy.json"
+python3 scripts/compliance/sbom_evidence.py \
+  --sbom "$OUT/python-env.cdx.json" \
+  --artifact-name "python-validation-$COMMIT" \
+  --record-id python-validation-environment \
+  --description "Resolved Python validation environment; not distributed to learners" \
+  --distribution not-distributed \
+  --category validation \
+  --source-commit "$COMMIT" \
+  --ci-job manual-review \
+  --appendix-out "$OUT/python-license-appendix.md" \
+  --manifest-out "$OUT/python-sbom-evidence.json"
 ```
 
 When reusing the CI result, first verify the job SHA equals `$COMMIT`, download the complete
@@ -74,7 +127,7 @@ checkout. The explicit source name and full commit make the output identity revi
 container run --rm \
   --mount type=bind,source="$PWD",target=/src,readonly \
   --mount type=bind,source="$OUT",target=/out \
-  anchore/syft:v1.44.0 scan dir:/src \
+  anchore/syft:v1.44.0@sha256:86fde6445b483d902fe011dd9f68c4987dd94e07da1e9edc004e3c2422650de6 scan dir:/src \
   --source-name NemoClawDLIOS \
   --source-version "$COMMIT" \
   -q \
@@ -85,7 +138,7 @@ container run --rm \
 Record the scanner identity:
 
 ```bash
-container run --rm anchore/syft:v1.44.0 version
+container run --rm anchore/syft:v1.44.0@sha256:86fde6445b483d902fe011dd9f68c4987dd94e07da1e9edc004e3c2422650de6 version
 ```
 
 ## Digest-bound container image SBOM
@@ -99,15 +152,24 @@ IMAGE=<registry>/<repository>@sha256:<64-hex-digest>
 PLATFORM=linux/amd64
 container run --rm \
   --mount type=bind,source="$OUT",target=/out \
-  anchore/syft:v1.44.0 scan "registry:$IMAGE" \
+  anchore/syft:v1.44.0@sha256:86fde6445b483d902fe011dd9f68c4987dd94e07da1e9edc004e3c2422650de6 scan "registry:$IMAGE" \
   --platform "$PLATFORM" \
   -q \
   -o cyclonedx-json=/out/image.cdx.json \
   -o spdx-json=/out/image.spdx.json
-python3 scripts/compliance/render_sbom_license_inventory.py \
+python3 scripts/compliance/sbom_evidence.py \
   --sbom "$OUT/image.cdx.json" \
+  --artifact-name "$IMAGE" \
   --artifact-id "$IMAGE" \
-  --out "$OUT/image-licenses.md"
+  --record-id scanned-container-image \
+  --description "Digest-bound component inventory for an image proposed for distribution" \
+  --distribution conditional-release \
+  --category local-authoring \
+  --source-commit "$COMMIT" \
+  --ci-job manual-review \
+  --appendix-out "$OUT/image-license-appendix.md" \
+  --manifest-out "$OUT/image-sbom-evidence.json" \
+  --allow-unresolved
 ```
 
 A mixed image still has no honest single SPDX license. The generated component appendix resolves
@@ -183,6 +245,8 @@ The normal attachment bundle contains:
 - `browser-runtime.cdx.json`
 - `python-env.cdx.json`
 - `sbom-policy.json`
+- `python-license-appendix.md`
+- `python-sbom-evidence.json`
 - `source-tree.cdx.json`
 - `source-tree.spdx.json`
 - a short manifest naming the commit, commands, tools, counts, byte sizes, and SHA-256 values
@@ -194,6 +258,8 @@ shasum -a 256 \
   "$OUT/browser-runtime.cdx.json" \
   "$OUT/python-env.cdx.json" \
   "$OUT/sbom-policy.json" \
+  "$OUT/python-license-appendix.md" \
+  "$OUT/python-sbom-evidence.json" \
   "$OUT/source-tree.cdx.json" \
   "$OUT/source-tree.spdx.json"
 ```

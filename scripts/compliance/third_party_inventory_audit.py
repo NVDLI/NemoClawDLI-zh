@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 INVENTORY = "THIRD_PARTY_LICENSES.md"
 RUNBOOK = "scripts/compliance/docs/sbom_generation.md"
+EVIDENCE_CATALOG = "scripts/compliance/docs/sbom_evidence.json"
 COMPLIANCE_SKILL = "scripts/compliance/SKILL.html"
 CSV_EXPORTER = "scripts/compliance/export_third_party_csv.py"
 SCOPE_EXPORTER = "scripts/compliance/export_legal_scope_csv.py"
@@ -48,6 +49,7 @@ REQUIRED_DISTRIBUTION_LINES = (
     'cp "$T1/LICENSE" "$OUT/LICENSE"',
     'cp "$T1/THIRD_PARTY_LICENSES.md" "$OUT/THIRD_PARTY_LICENSES.md"',
     'cp "$T1/scripts/compliance/docs/sbom_generation.md" "$OUT/scripts/compliance/docs/sbom_generation.md"',
+    'cp "$T1/scripts/compliance/docs/sbom_evidence.json" "$OUT/scripts/compliance/docs/sbom_evidence.json"',
 )
 REQUIRED_EXPLANATIONS = (
     "## Reproducing license-evidence acquisition",
@@ -64,10 +66,12 @@ REQUIRED_RUNBOOK_TEXT = (
     "The static course release does not distribute the local-authoring container images.",
     "npm view <name>@<version> license dist.integrity repository --json",
     "https://pypi.org/pypi/<normalized-name>/<version>/json",
-    "anchore/syft:v1.44.0 scan dir:/src",
+    "anchore/syft:v1.44.0@sha256:86fde6445b483d902fe011dd9f68c4987dd94e07da1e9edc004e3c2422650de6 scan dir:/src",
     "IMAGE=<registry>/<repository>@sha256:<64-hex-digest>",
     "Those extractors acquire content",
     "scripts/compliance/render_sbom_license_inventory.py",
+    "scripts/compliance/sbom_evidence.py",
+    "scripts/compliance/docs/sbom_evidence.json",
     "browser-runtime.cdx.json",
     "python-env.cdx.json",
     "source-tree.cdx.json",
@@ -172,8 +176,10 @@ def export_contract_findings(overrides: dict[str, str]) -> list[str]:
         "data-scope-download",
         'aria-label="SWIPAT filter meanings"',
         'aria-label="Legal-scope filter meanings"',
+        "Software and license review",
+        "Does a learner receive this software?",
         "How learners receive it",
-        "Choices in one filter are alternatives; different filters narrow together",
+        "You can choose several options in one filter",
         "Download what you see",
         "What happened to the source?",
         "skill-shell",
@@ -189,11 +195,23 @@ def export_contract_findings(overrides: dict[str, str]) -> list[str]:
         "vendored-browser-code", "Corroborating Repository Evidence",
         "selectedValues", "choiceGroup", "sortedRows", "sortableHeaders", "dataset.sortIndex",
         "FILTER_LABELS", "Included in the course", "Referenced, not copied",
-        "Needs source-specific review", "friendlyChoice",
+        "No single aggregate license", "friendlyChoice",
         "documentScopeRows", "document_sources", "Source Author(s)", "renderScopeRow", "dataset.label",
+        "sbom_evidence", "ci_sbom_evidence", "renderSbomEvidence", "linkedSbomComponents",
+        "dataset.sbomSubject", "license_hint", 'Learners receive these " + record.sbom.component_count + " packages',
+        "Learners do not receive these packages", "Learners do not receive these tools",
+        "packages needing license clarification", "Files for auditors and automation",
     ):
         if token not in preview:
             findings.append(f"SWIPAT preview implementation is incomplete: {token}")
+    for phrase in (
+        "The linked file passed its recorded SHA-256 check",
+        "Every link was read through the GitLab job-artifact API",
+        "Open producing CI job",
+        "Preview resolved Python licenses",
+    ):
+        if phrase in preview or phrase in skill:
+            findings.append(f"reviewer-facing software copy exposes build-centric status language: {phrase}")
     for path in (CSV_EXPORTER, CSV_PREVIEW):
         export_source = read(path, overrides)
         for token in (
@@ -210,6 +228,10 @@ def audit(overrides: dict[str, str] | None = None) -> list[str]:
     overrides = overrides or {}
     document = read(INVENTORY, overrides)
     runbook = read(RUNBOOK, overrides)
+    try:
+        evidence_catalog = json.loads(read(EVIDENCE_CATALOG, overrides))
+    except (json.JSONDecodeError, OSError):
+        evidence_catalog = {}
     findings: list[str] = []
 
     browser_rows = rows(section(document, "Browser runtime and browser-build packages"))
@@ -266,6 +288,11 @@ def audit(overrides: dict[str, str] | None = None) -> list[str]:
     for instruction in REQUIRED_RUNBOOK_TEXT:
         if instruction not in runbook:
             findings.append(f"missing SBOM acquisition instruction: {instruction}")
+    if evidence_catalog.get("schema") != "nemoclaw-sbom-evidence/1":
+        findings.append("missing machine-readable SBOM evidence catalog")
+    states = {record.get("state") for record in evidence_catalog.get("records", []) if isinstance(record, dict)}
+    if states != {"available", "ci-generated", "conditional"}:
+        findings.append("SBOM evidence catalog does not distinguish available, CI-generated, and conditional evidence")
     findings.extend(export_contract_findings(overrides))
     dockerfile = read("cpu/services/llm_client/llm_client.Dockerfile", overrides)
     for pin in REQUIRED_LLM_PINS:
@@ -307,8 +334,10 @@ def self_test() -> list[str]:
         ("legal-scope multi-select", {COMPLIANCE_SKILL: compliance_skill.replace('<div class="filter-choice-group" data-scope-relationship-group>', '<div class="filter-choice-group" data-scope-relationship-single>', 1)}, "SWIPAT in-page preview control is missing"),
         ("document-source preview", {CSV_PREVIEW: read(CSV_PREVIEW, {}).replace("documentScopeRows", "removedScopeDocuments")}, "SWIPAT preview implementation is incomplete"),
         ("wrapped commands", {COMPLIANCE_SKILL: compliance_skill.replace("white-space:pre-wrap", "white-space:nowrap", 1)}, "SWIPAT in-page preview control is missing"),
-        ("filter semantics", {COMPLIANCE_SKILL: compliance_skill.replace("Choices in one filter are alternatives; different filters narrow together", "filters combine somehow", 1)}, "SWIPAT in-page preview control is missing"),
+        ("filter semantics", {COMPLIANCE_SKILL: compliance_skill.replace("You can choose several options in one filter", "filters combine somehow", 1)}, "SWIPAT in-page preview control is missing"),
         ("plain-language filter labels", {CSV_PREVIEW: read(CSV_PREVIEW, {}).replace("Included in the course", "vendored technical label", 1)}, "SWIPAT preview implementation is incomplete"),
+        ("outsider-first software review", {CSV_PREVIEW: read(CSV_PREVIEW, {}).replace('Learners receive these " + record.sbom.component_count + " packages', "Distributed payload", 1)}, "SWIPAT preview implementation is incomplete"),
+        ("build-centric software review", {CSV_PREVIEW: read(CSV_PREVIEW, {}).replace("Every browser package has", "Every link was read through the GitLab job-artifact API. Every browser package has", 1)}, "reviewer-facing software copy exposes build-centric status language"),
         ("plain-language export explanation", {CSV_EXPORTER: read(CSV_EXPORTER, {}).replace("Learners receive this code as part of the browser course.", "Vendored package.", 1)}, "reviewer export lacks plain-language usage explanation"),
     )
     failures = []

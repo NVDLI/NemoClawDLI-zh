@@ -28,6 +28,7 @@ from _bootstrap import add_script_paths, find_repo_root
 HERE = Path(__file__).resolve()
 TASK1 = find_repo_root(HERE)
 add_script_paths(TASK1 / "scripts")
+import normalize_skill_headers
 SURFACES = ("web", "cpu")
 MARKER = "gen_skill_hierarchy.py"   # presence in a SKILL.html => safe to regenerate
 RELEASE_STATUS = json.loads((TASK1 / "RELEASE_STATUS.json").read_text(encoding="utf-8"))
@@ -250,6 +251,8 @@ def framer_page(meta, title, sections, actions=None, readme=None, summary=None, 
 
 
 def write(path: Path, content: str):
+    if path.name == "SKILL.html":
+        content = normalize_skill_headers.normalize(path, content)
     path.write_text(content); print("wrote", path.relative_to(TASK1))
 
 
@@ -298,7 +301,14 @@ def gen_task():
         if em.get("node_type") == "directory-explorer":
             explorers.append((f"{d.name}/", f"{d.name}/SKILL.html",
                               (em.get("summary", "") or "").split(". ")[0][:140]))
-    src_items = list(explorers)
+    priority_nodes = []
+    if (TASK1 / "scripts" / "compliance" / "SKILL.html").is_file():
+        priority_nodes.append((
+            "License and distribution evidence",
+            "scripts/compliance/SKILL.html",
+            "Review shipped software, source terms, SBOM evidence, and downloadable inventories.",
+        ))
+    src_items = priority_nodes + list(explorers)
     if (TASK1 / "scripts" / "link_graph.html").is_file():
         src_items.append(("scripts/runtime/link_graph.html", "scripts/runtime/link_graph.html",
                           "Link + topology viewer: how every page resolves and what reaches a SKILL hub."))
@@ -352,7 +362,7 @@ def gen_task():
                         "note": "the foyer selection does not imply external publication approval"},
             "tenets": TENETS,
             "children": ([{"name": s, "path": f"{s}/SKILL.html"} for s, _ in surfaces]
-                         + [{"name": n.rstrip("/"), "path": h} for (n, h, _d) in explorers])}
+                         + [{"name": n.rstrip("/"), "path": h} for (n, h, _d) in priority_nodes + explorers])}
 
     write(TASK1 / "SKILL.html",
           framer_page(meta, "Building Agents · NVIDIA DLI bundle",

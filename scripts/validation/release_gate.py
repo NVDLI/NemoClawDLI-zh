@@ -92,6 +92,8 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     unit_test("export_third_party_csv"),
     unit_test("export_legal_scope_csv"),
     unit_test("render_sbom_license_inventory"),
+    unit_test("sbom_evidence"),
+    py("scripts/compliance/sbom_evidence.py", "--check"),
     py("scripts/validation/tenets.py", "--check"),
     py("scripts/runtime/module_check.py", "--dir", "web/nemoclaw"),
     py("scripts/runtime/module_check.py", "--dir", "web"),
@@ -214,6 +216,12 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     unit_test("render_sbom_license_inventory"): (
         "THIRD_PARTY_LICENSES.md", "scripts/compliance/render_sbom_license_inventory.py",
         "scripts/compliance/third_party_inventory_audit.py",
+    ),
+    unit_test("sbom_evidence"): (
+        "THIRD_PARTY_LICENSES.md", "scripts/compliance/sbom_evidence.py",
+        "scripts/compliance/render_sbom_license_inventory.py",
+        "scripts/compliance/docs/sbom_evidence.json", "web/nemoclaw/vendor/browser-sbom.cdx.json",
+        ".gitlab/ci/sca.yml", ".github/workflows/release.yml",
     ),
     unit_test("export_third_party_csv"): (
         "THIRD_PARTY_LICENSES.md", "scripts/compliance/export_third_party_csv.py",

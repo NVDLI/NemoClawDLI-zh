@@ -55,6 +55,8 @@ CONTRACT_FILES = (
     "scripts/materials/requirements.lock",
     "scripts/security/audit_dependency_locks.py",
     "scripts/security/audit_sbom_policy.py",
+    "scripts/compliance/sbom_evidence.py",
+    "scripts/compliance/docs/sbom_evidence.json",
     "scripts/security/requirements-sca.lock",
     "scripts/git-hooks/pre-commit",
     "scripts/git-hooks/pre-push",
@@ -498,8 +500,14 @@ def audit_repo(
             "release-runtime-lock", out, "build the release environment from the Python 3.11 runtime lock")
     require(release, "scripts/security/requirements-sca.lock", ".github/workflows/release.yml",
             "release-sca-lock", out, "install scanners from their isolated reviewed lock")
-    require(release, "--sbom release-security/python-env.cdx.json", ".github/workflows/release.yml",
+    require(release, "--report release-security/sbom-policy.json", ".github/workflows/release.yml",
             "release-sbom-policy", out, "evaluate and retain SBOM policy evidence before release")
+    for token in ("python-sbom-evidence.json", "python-license-appendix.md", "sbom-evidence-catalog.json"):
+        require(release, token, ".github/workflows/release.yml", "release-sbom-evidence", out,
+                f"retain versioned SBOM evidence asset: {token}")
+    require(release, "--manifest-out release-security/python-sbom-evidence.json",
+            ".github/workflows/release.yml", "release-sbom-evidence-generation", out,
+            "generate the evidence manifest from the same Python SBOM packaged for release")
 
     dependency_review = docs[".github/workflows/dependency-review.yml"]
     require(dependency_review, "  pull_request:\n", ".github/workflows/dependency-review.yml",
@@ -538,6 +546,12 @@ def audit_repo(
     require(docs["scripts/security/audit_sbom_policy.py"], "retired-component",
             "scripts/security/audit_sbom_policy.py", "sbom-policy-detector", out,
             "retain runtime SBOM completeness and retired-component enforcement")
+    require(docs["scripts/compliance/sbom_evidence.py"], "digest-bound-component-sbom",
+            "scripts/compliance/sbom_evidence.py", "sbom-evidence-detector", out,
+            "retain distribution-aware SBOM evidence and immutable-link checks")
+    require(docs["scripts/compliance/docs/sbom_evidence.json"], '"state": "conditional"',
+            "scripts/compliance/docs/sbom_evidence.json", "sbom-evidence-catalog", out,
+            "retain the explicit conditional image-SBOM boundary")
 
     gitlab_core = docs[".gitlab/ci/core.yml"]
     gitlab_sca = docs[".gitlab/ci/sca.yml"]
@@ -597,11 +611,13 @@ def audit_repo(
             ".gitlab-ci.yml", "gitlab-transient-material-policy", out,
             "allow only classified transient source reachability on production-ref pushes")
     scheduled_material = re.search(
-        r'if \[ "\$\{CI_PIPELINE_SOURCE:-\}" = "schedule" \]; then\n\s+([^\n]+)', gitlab
+        r'if \[ "\$\{CI_PIPELINE_SOURCE:-\}" = "schedule" \]; then\n(?P<body>.*?)(?=\n\s+elif )',
+        gitlab,
+        re.S,
     )
     if (not scheduled_material
-            or "pull_materials.py --check --fetch-attempts" not in scheduled_material.group(1)
-            or "--allow-transient-unreachable" in scheduled_material.group(1)):
+            or "pull_materials.py --check --fetch-attempts" not in scheduled_material.group("body")
+            or "--allow-transient-unreachable" in scheduled_material.group("body")):
         out.append(finding("gitlab-scheduled-material-policy", ".gitlab-ci.yml",
                            "scheduled material check is absent or not strict",
                            "keep scheduled live checks strict and omit transient degradation"))
@@ -629,6 +645,12 @@ def audit_repo(
             "show external release follow-ups from the merge-request diff")
     require(gitlab, "audit_sbom_policy.py --sbom", ".gitlab-ci.yml", "gitlab-sbom-policy", out,
             "evaluate the generated runtime SBOM instead of only uploading it")
+    require(gitlab, "scripts/compliance/sbom_evidence.py --sbom scripts/security/reports/deep-workspace/python-env.cdx.json",
+            ".gitlab/ci/sca.yml", "gitlab-sbom-evidence", out,
+            "emit a commit-bound manifest and reconciled license appendix beside the Python SBOM")
+    for token in ("security_image_sca:", "sha256sum --check --strict", '--artifact-id "$SBOM_IMAGE"'):
+        require(gitlab_sca, token, ".gitlab/ci/sca.yml", "gitlab-image-sbom-boundary", out,
+                "keep image scanning opt-in, immutable, checksum-pinned, and evidence-producing")
     require(gitlab, ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock",
             ".gitlab-ci.yml", "gitlab-runtime-lock", out,
             "scan the exact runtime closure rather than resolving direct requirements again")
@@ -688,8 +710,11 @@ def audit_repo(
             "gitlab-pipeline-dedup", out, "suppress duplicate branch pipelines after an MR opens")
     require(gitlab, "CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-$CI_COMMIT_REF_NAME", ".gitlab-ci.yml",
             "gitlab-preview-ref", out, "resolve branch-preview refs in branch and MR pipelines")
-    require(gitlab, 'needs: ["test"]', ".gitlab-ci.yml", "gitlab-deploy-gate", out,
-            "keep Pages blocked on the required test job")
+    pages_body = pages_materials.group(1) if pages_materials else ""
+    if not (re.search(r"(?m)^\s+- job:\s*test\s*$", pages_body) or 'needs: ["test"]' in pages_body):
+        out.append(finding("gitlab-deploy-gate", ".gitlab-ci.yml",
+                           "Pages does not declare the required test job as a dependency",
+                           "keep Pages blocked on the required test job"))
     require(gitlab, "human_review:", ".gitlab-ci.yml", "gitlab-human-review", out,
             "keep an explicit human acceptance job after preview validation")
     require(gitlab, "theme_runtime:", ".gitlab-ci.yml", "gitlab-theme-runtime", out,
@@ -950,6 +975,8 @@ def self_test() -> list[str]:
             ("shared-gate-timing", "scripts/validation/release_gate.py", '"--timing-report"', '"--no-timing-report"'),
             ("shared-local-reuse", "scripts/validation/release_gate.py", '"--reuse-success"', '"--ignore-success"'),
             ("shared-sbom-policy-selftest", "scripts/validation/release_gate.py", 'py("scripts/security/audit_sbom_policy.py", "--self-test")', 'py("scripts/security/audit_sbom_policy.py", "--help")'),
+            ("sbom-evidence-detector", "scripts/compliance/sbom_evidence.py", "digest-bound-component-sbom", "tag-only-sbom"),
+            ("sbom-evidence-catalog", "scripts/compliance/docs/sbom_evidence.json", '"state": "conditional"', '"state": "available-later"'),
             ("pr-deploy-boundary", ".github/workflows/pages.yml", "if: github.event_name != 'pull_request'", "if: always()"),
             ("pages-main-only", ".github/workflows/pages.yml", "github.ref == 'refs/heads/main'", "github.ref != ''"),
             ("checkout-credential", ".github/workflows/pages.yml", "persist-credentials: false", "persist-credentials: true"),
@@ -972,7 +999,8 @@ def self_test() -> list[str]:
             ("release-runtime-lock", ".github/workflows/release.yml", "workspace/requirements.lock", "workspace/requirements.txt"),
             ("release-live-material-check", ".github/workflows/release.yml", "pull_materials.py --check --fetch-attempts", "pull_materials.py --list --fetch-attempts"),
             ("release-sca-lock", ".github/workflows/release.yml", "scripts/security/requirements-sca.lock", "pip-audit cyclonedx-bom"),
-            ("release-sbom-policy", ".github/workflows/release.yml", "--sbom release-security/python-env.cdx.json", "--sbom release-security/unchecked.json"),
+            ("release-sbom-policy", ".github/workflows/release.yml", "--report release-security/sbom-policy.json", "--report release-security/unchecked-policy.json"),
+            ("release-sbom-evidence-generation", ".github/workflows/release.yml", "--manifest-out release-security/python-sbom-evidence.json", "--manifest-out release-security/unchecked-evidence.json"),
             ("discussion-route", ".github/ISSUE_TEMPLATE/config.yml", "/discussions", "/issues"),
             ("external-repository", ".github/ISSUE_TEMPLATE/config.yml", "https://github.com/NVDLI/NemoClawDLI/discussions", "https://github.com/example/incorrect/discussions"),
             ("issue-production-scope", ".github/ISSUE_TEMPLATE/runtime-deploy.yml", "static `web/nemoclaw/` course", "CPU service stack"),
@@ -1003,7 +1031,8 @@ def self_test() -> list[str]:
             ("gitlab-infrastructure-retry", ".gitlab/ci/core.yml", "runner_system_failure", "runner_unsupported"),
             ("gitlab-script-retry", ".gitlab/ci/core.yml", "runner_system_failure", "script_failure"),
             ("gitlab-material-install", ".gitlab/ci/core.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),
-            ("gitlab-pages-material-install", ".gitlab/ci/core.yml", '  variables:\n    MATERIAL_TOOLS_REQUIRED: "1"\n  needs: ["test"]', '  variables:\n    MATERIAL_TOOLS_REQUIRED: "0"\n  needs: ["test"]'),
+            ("gitlab-pages-material-install", ".gitlab/ci/core.yml", '  # localization/material tooling even when live pulls are disabled.\n  variables:\n    MATERIAL_TOOLS_REQUIRED: "1"', '  # localization/material tooling even when live pulls are disabled.\n  variables:\n    MATERIAL_TOOLS_REQUIRED: "0"'),
+            ("gitlab-deploy-gate", ".gitlab/ci/core.yml", "    - job: test", "    - job: skipped_test"),
             ("gitlab-preview-ref-fetch", ".gitlab/ci/core.yml", 'git fetch "$preview_remote" "+refs/heads/$branch:refs/remotes/$preview_namespace/$branch" --quiet', 'git fetch "$preview_remote" "+refs/heads/$branch:refs/remotes/$preview_namespace/$branch" --quiet || true'),
             ("gitlab-preview-ref-fetch", ".gitlab/ci/core.yml", 'preview_remote="$CI_MERGE_REQUEST_SOURCE_PROJECT_URL"', 'preview_remote="origin"'),
             ("gitlab-transient-material-policy", ".gitlab/ci/core.yml", "pull_materials.py --check --allow-transient-unreachable", "pull_materials.py --check --strict-unreachable"),
@@ -1025,6 +1054,8 @@ def self_test() -> list[str]:
             ("submission-release-reminder", ".github/PULL_REQUEST_TEMPLATE.md", "## External release follow-up", "## Optional follow-up"),
             ("shared-lock-selftest", "scripts/validation/release_gate.py", 'py("scripts/security/audit_dependency_locks.py", "--self-test")', 'py("scripts/security/audit_dependency_locks.py", "--version")'),
             ("gitlab-sbom-policy", ".gitlab/ci/sca.yml", "audit_sbom_policy.py --sbom", "audit_sbom_policy.py --help"),
+            ("gitlab-sbom-evidence", ".gitlab/ci/sca.yml", "scripts/compliance/sbom_evidence.py --sbom scripts/security/reports/deep-workspace/python-env.cdx.json", "scripts/compliance/sbom_evidence.py --help"),
+            ("gitlab-image-sbom-boundary", ".gitlab/ci/sca.yml", "sha256sum --check --strict", "sha256sum --version"),
             ("gitlab-runtime-lock", ".gitlab/ci/sca.yml", ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock", ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.txt"),
             ("gitlab-sca-lock", ".gitlab/ci/sca.yml", ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock", ".sca-tools-venv/bin/python -m pip install -q pip-audit cyclonedx-bom"),
             ("gitlab-human-review", ".gitlab/ci/core.yml", "human_review:", "operator_review:"),

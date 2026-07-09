@@ -15,8 +15,6 @@ def ci_job(name: str) -> str:
     source = (ROOT / ".gitlab/ci/sca.yml").read_text(encoding="utf-8")
     start = source.index(f"{name}:\n")
     next_job = source.find("\nsecurity_", start + len(name) + 2)
-    if name == "security_deep_sca":
-        next_job = source.find("\npages:\n", start)
     return source[start : next_job if next_job >= 0 else len(source)]
 
 
@@ -55,6 +53,17 @@ class ThemeRuntimeContractTests(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(token, source)
 
+    def test_runtime_requires_useful_linked_sbom_rendering(self) -> None:
+        source = theme_runtime.RUNTIME_JS
+        for token in (
+            "sbomEvidenceReady",
+            "linked SBOM rendered no component licenses",
+            "security_deep_sca",
+            "security_image_sca",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, source)
+
 
 class ScaTriggerContractTests(unittest.TestCase):
     def test_expensive_scans_are_automatic_only_for_relevant_inputs(self) -> None:
@@ -77,6 +86,15 @@ class ScaTriggerContractTests(unittest.TestCase):
         for job_name in ("security_browser_sca", "security_deep_sca"):
             with self.subTest(job=job_name):
                 self.assertIn(optional_rule, ci_job(job_name))
+
+    def test_image_scan_requires_an_explicit_immutable_digest(self) -> None:
+        job = ci_job("security_image_sca")
+        self.assertIn("$SBOM_IMAGE =~", job)
+        self.assertIn("@sha256:[0-9a-f]{64}", job)
+        self.assertIn("when: manual", job)
+        self.assertIn("- when: never", job)
+        self.assertNotIn("schedule", job)
+        self.assertNotIn("when: on_success", job)
 
 if __name__ == "__main__":
     unittest.main()

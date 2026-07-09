@@ -133,6 +133,7 @@ cp "$T1/LICENSE" "$OUT/LICENSE"
 cp "$T1/THIRD_PARTY_LICENSES.md" "$OUT/THIRD_PARTY_LICENSES.md"
 mkdir -p "$OUT/scripts/compliance/docs"
 cp "$T1/scripts/compliance/docs/sbom_generation.md" "$OUT/scripts/compliance/docs/sbom_generation.md"
+cp "$T1/scripts/compliance/docs/sbom_evidence.json" "$OUT/scripts/compliance/docs/sbom_evidence.json"
 
 # ── 2b. SKILL explorers: project authoring sources, including proposed files.
 # Every source directory owns a SKILL.html and every explorer must retain the files it documents.

@@ -84,16 +84,20 @@ async function inspect(browser, file) {
       return (meta.exports || []).every(item => {
         const mount = document.getElementById(item.preview_mount);
         return mount && (mount.dataset.exportReady === '1' || mount.dataset.exportError);
-      });
+      }) && (() => {
+        const evidence = document.getElementById('sbom-evidence-preview');
+        return !evidence || evidence.dataset.sbomEvidenceReady === '1' || evidence.dataset.sbomEvidenceError;
+      })();
     }, null, { timeout:10000 }).catch(() => {});
     // Asset and link integrity are separate blocking gates. This audit deliberately records
     // only a failed document navigation here so a mirrored source file still receives its
     // color test even when its build-time overlay assets are not colocated in the mirror.
     if (!response || !response.ok()) errors.push(`document HTTP ${response && response.status()}`);
-    const state = await page.evaluate(({ isSkill }) => {
+    const state = await page.evaluate(async ({ isSkill }) => {
       const parse = id => { try { return JSON.parse(document.getElementById(id)?.textContent || ''); } catch (_) { return null; } };
       const config = document.getElementById('explorer-config');
       const meta = parse('skill-meta');
+      const sbomEvidence = document.getElementById('sbom-evidence-preview');
       const exports = (meta?.exports || []).map(item => {
         const mount = document.getElementById(item.preview_mount);
         const categoryGroup = mount?.querySelector('.filter-choice-group');
@@ -232,6 +236,41 @@ async function inspect(browser, file) {
           try { return Array.from(sheet.cssRules || []).some(rule => String(rule.cssText || '').includes('data-theme')); }
           catch (_) { return false; }
         });
+      const softwareMount = document.getElementById('third-party-export-preview');
+      const localCategory = softwareMount?.querySelector('[data-export-category-group] input[value="local-authoring"]');
+      let noAssertionView = null;
+      if (localCategory) {
+        softwareMount.querySelectorAll('[data-export-category-group] input[type="checkbox"]').forEach(input => {
+          input.checked = input === localCategory;
+        });
+        localCategory.dispatchEvent(new Event('change', {bubbles:true}));
+        const rows = Array.from(softwareMount.querySelectorAll('tbody tr'));
+        const unresolved = rows.filter(row => row.querySelector('td[data-label="License"]')?.innerText.includes('NOASSERTION'));
+        noAssertionView = {
+          rows:rows.length,
+          unresolved:unresolved.length,
+          coveredSubjects:sbomEvidence?.querySelectorAll('tr[data-sbom-subject="1"]').length || 0,
+          brokenLicenseLinks:unresolved.filter(row => row.querySelector('td[data-label="License"] a')).length,
+          usefulEvidence:unresolved.every(row => /learners do not receive[\s\S]*scan the exact image/i.test(
+            row.querySelector('td[data-label="Evidence"]')?.textContent || ''
+          )),
+        };
+      }
+      const evidenceAnchors = Array.from(document.querySelectorAll('a[data-evidence-link]'));
+      const invalidEvidenceLinks = evidenceAnchors.filter(anchor => {
+        const raw = anchor.getAttribute('href') || '';
+        return !raw || raw === '#' || /^javascript:/i.test(raw);
+      }).map(anchor => anchor.textContent.trim());
+      const localEvidenceChecks = await Promise.all(evidenceAnchors.filter(anchor =>
+        anchor.dataset.evidenceLink === 'local' && new URL(anchor.href).origin === location.origin
+      ).map(async anchor => {
+        try {
+          const response = await fetch(anchor.href, {method:'HEAD'});
+          return response.ok ? '' : `${anchor.textContent.trim()} HTTP ${response.status}`;
+        } catch (error) {
+          return `${anchor.textContent.trim()} ${error.message || String(error)}`;
+        }
+      }));
       return {
         isSkill,
         meta: !isSkill || !!meta,
@@ -249,6 +288,26 @@ async function inspect(browser, file) {
         mounted: !!document.querySelector('.sx-topbar') && !!document.querySelector('.sx-main'),
         gone: document.querySelectorAll('.sx-dot.gone').length,
         exports,
+        sbomEvidence: sbomEvidence ? {
+          ready:sbomEvidence.dataset.sbomEvidenceReady === '1',
+          error:sbomEvidence.dataset.sbomEvidenceError || '',
+          cards:sbomEvidence.querySelectorAll('.sbom-card').length,
+          componentRows:sbomEvidence.querySelectorAll('.sbom-components tbody tr').length,
+          subjectRows:sbomEvidence.querySelectorAll('tr[data-sbom-subject="1"]').length,
+          subjectHints:sbomEvidence.querySelectorAll('tr[data-sbom-subject="1"] [data-license-hint="1"]').length,
+          subjectLinks:Array.from(sbomEvidence.querySelectorAll('tr[data-sbom-subject="1"]')).map(row => row.querySelectorAll('a[data-evidence-link]').length),
+          ciLinksState:sbomEvidence.querySelector('[data-ci-links-state]')?.dataset.ciLinksState || '',
+          ciArtifactLinks:sbomEvidence.querySelectorAll('a[data-evidence-link="ci-artifact"]').length,
+          ciComponentRows:sbomEvidence.querySelectorAll('[data-ci-component-preview="1"] tbody tr').length,
+          clarificationRows:sbomEvidence.querySelectorAll('[data-license-clarification="1"] tbody tr').length,
+          invalidEvidenceLinks,
+          deadLocalEvidenceLinks:localEvidenceChecks.filter(Boolean),
+          text:sbomEvidence.innerText || '',
+          visibleTechnicalTerms:['security_deep_sca','security_image_sca','CycloneDX','SHA-256','artifact path'].filter(term =>
+            (sbomEvidence.innerText || '').includes(term)
+          ),
+        } : null,
+        noAssertionView,
       };
     }, { isSkill });
     await page.setViewportSize({ width:390, height:844 });
@@ -290,6 +349,50 @@ async function inspect(browser, file) {
       else if (!item.multiChanged) errors.push(`export ${item.id} multi-select filters did not change the visible rows`);
       else if (item.sortButtons !== item.headerCount || !item.allSortDirections) errors.push(`export ${item.id} does not toggle every column between ascending and descending`);
     });
+    if (state.sbomEvidence) {
+      if (state.sbomEvidence.error) errors.push(`SBOM evidence preview failed: ${state.sbomEvidence.error}`);
+      else if (!state.sbomEvidence.ready) errors.push('SBOM evidence preview did not become ready');
+      else if (state.sbomEvidence.cards < 3) errors.push('SBOM evidence preview does not distinguish all evidence states');
+      else if (!state.sbomEvidence.componentRows) errors.push('linked SBOM rendered no component licenses');
+      else if (!state.sbomEvidence.subjectRows
+          || state.sbomEvidence.subjectHints !== state.sbomEvidence.subjectRows
+          || state.sbomEvidence.subjectLinks.some(count => count < 3)) {
+        errors.push('conditional SBOM rows lack declaration, upstream, or license-hint evidence');
+      } else if (state.sbomEvidence.invalidEvidenceLinks.length) {
+        errors.push(`SBOM evidence contains unusable links: ${state.sbomEvidence.invalidEvidenceLinks.join('; ')}`);
+      } else if (state.sbomEvidence.deadLocalEvidenceLinks.length) {
+        errors.push(`SBOM evidence contains dead local links: ${state.sbomEvidence.deadLocalEvidenceLinks.join('; ')}`);
+      } else if (state.sbomEvidence.ciLinksState === 'available' && state.sbomEvidence.ciArtifactLinks < 3) {
+        errors.push('available CI evidence does not link all three generated artifacts');
+      } else if (state.sbomEvidence.ciLinksState === 'available' && !state.sbomEvidence.ciComponentRows) {
+        errors.push('available CI evidence does not render the linked SBOM component licenses');
+      } else if (state.sbomEvidence.ciLinksState === 'available' && !state.sbomEvidence.clarificationRows) {
+        errors.push('available CI evidence does not foreground packages needing license clarification');
+      } else if (!['available', 'incomplete', 'unavailable'].includes(state.sbomEvidence.ciLinksState)) {
+        errors.push('CI artifact evidence lacks an explicit availability state');
+      } else if (!/Learners receive these \d+ packages/.test(state.sbomEvidence.text)
+          || !state.sbomEvidence.text.includes('Learners do not receive these packages')
+          || !state.sbomEvidence.text.includes('Learners do not receive these tools')
+          || !state.sbomEvidence.text.includes('Files for auditors and automation')) {
+        errors.push('software review does not answer learner delivery before exposing audit detail');
+      } else if (state.sbomEvidence.ciLinksState === 'available'
+          && (!state.sbomEvidence.text.includes('packages checked')
+            || !state.sbomEvidence.text.includes('need package-by-package review'))) {
+        errors.push('available package scan does not summarize useful review outcomes');
+      } else if (state.sbomEvidence.visibleTechnicalTerms.length) {
+        errors.push(`software review exposes implementation jargon before disclosure: ${state.sbomEvidence.visibleTechnicalTerms.join(', ')}`);
+      }
+    }
+    if (state.noAssertionView) {
+      if (!state.noAssertionView.unresolved) errors.push('local-authoring view rendered no NOASSERTION rows');
+      else if (state.noAssertionView.unresolved !== state.noAssertionView.coveredSubjects) {
+        errors.push('NOASSERTION rows and conditional SBOM subjects do not match');
+      } else if (state.noAssertionView.brokenLicenseLinks) {
+        errors.push('NOASSERTION is rendered as a dead license link');
+      } else if (!state.noAssertionView.usefulEvidence) {
+        errors.push('NOASSERTION rows omit distribution or immutable-scan guidance');
+      }
+    }
   } catch (error) {
     errors.push(`navigation: ${error.message || String(error)}`);
   }

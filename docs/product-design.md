@@ -174,6 +174,7 @@ public release starts from an existing protected annotated semantic tag containe
 The release workflow validates the tag, runs a strict retried live material-provenance check, then
 rebuilds with live material refresh disabled. It resolves the locked Python environment, emits
 Python-environment and browser-runtime CycloneDX SBOMs, packages the Pages tree,
+generates a commit-bound evidence manifest and component license appendix, packages the Pages tree,
 and writes checksums. A protected write
 step creates a draft release. A human release owner reviews the evidence and publishes it only after
 the external approval state allows publication.

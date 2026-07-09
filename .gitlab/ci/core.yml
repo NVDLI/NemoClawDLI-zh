@@ -98,6 +98,7 @@ test:
     - |
       B="${CI_COMMIT_BRANCH:-${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-}}"
       if [ "${CI_PIPELINE_SOURCE:-}" = "schedule" ]; then
+        python3 scripts/compliance/sbom_evidence.py --check-external-links
         python3 scripts/materials/pull_materials.py --check --fetch-attempts 4 --retry-backoff 2 --host-delay 3
       elif [ "$B" = "${CI_DEFAULT_BRANCH:-main}" ] || [ "$B" = "nemoclaw-only" ]; then
         python3 scripts/materials/pull_materials.py --check --allow-transient-unreachable --fetch-attempts 4 --retry-backoff 2 --host-delay 3
@@ -141,7 +142,11 @@ pages:
   # localization/material tooling even when live pulls are disabled.
   variables:
     MATERIAL_TOOLS_REQUIRED: "1"
-  needs: ["test"]
+  needs:
+    - job: test
+    - job: security_deep_sca
+      optional: true
+      artifacts: true
   resource_group: pages-site
   script:
     # This GitLab instance still uses classic Pages: only the job literally named
@@ -160,6 +165,19 @@ pages:
         git fetch "$preview_remote" "+refs/heads/$branch:refs/remotes/$preview_namespace/$branch" --quiet
         printf 'refs/remotes/%s/%s\n' "$preview_namespace" "$branch"
       }
+      write_ci_sbom_links() {
+        output_root="$1"
+        python3 scripts/compliance/sbom_evidence.py \
+          --write-ci-links \
+          --ci-links-out "$output_root/scripts/compliance/docs/ci_sbom_evidence.json" \
+          --ci-api-url "$CI_API_V4_URL" \
+          --ci-project-id "$CI_PROJECT_ID" \
+          --ci-project-url "$CI_PROJECT_URL" \
+          --ci-artifact-job-id "${DEEP_SCA_JOB_ID:-}" \
+          --ci-preview-root "$output_root/scripts/compliance/docs/ci" \
+          --ci-pipeline-url "$CI_PIPELINE_URL" \
+          --ci-commit "$CI_COMMIT_SHA"
+      }
       build_branch_preview() {
         test -n "$CI_COMMIT_REF_SLUG"
         preview_ref="${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-$CI_COMMIT_REF_NAME}"
@@ -169,6 +187,7 @@ pages:
         test "$remote_sha" = "$CI_COMMIT_SHA" || { echo "refusing stale preview: pipeline=$CI_COMMIT_SHA remote=$remote_sha" >&2; exit 1; }
         export BUILD_PAGES_COURSE_PREFIX="web"
         BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"
+        write_ci_sbom_links "public/$CI_COMMIT_REF_SLUG"
         python3 scripts/build/build_branch_manifest.py --out "public/$CI_COMMIT_REF_SLUG/branches.json" --current-ref "$preview_ref" --current-slug "$CI_COMMIT_REF_SLUG"
         test -f "public/$CI_COMMIT_REF_SLUG/index.html"
         test -f "public/$CI_COMMIT_REF_SLUG/branches.json"
@@ -218,6 +237,7 @@ pages:
         python3 scripts/validation/branch_preview_manifest_audit.py --artifact-root public --manifest "public/$CI_COMMIT_REF_SLUG/branches.json" --expect-preview "$preview_ref=$CI_COMMIT_REF_SLUG"
       else
         BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh public
+        write_ci_sbom_links public
         test -f public/nemoclaw/index.html
         test -f public/branches.json
         test -f public/languages.json
