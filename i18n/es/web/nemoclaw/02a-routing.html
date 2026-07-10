@@ -43,7 +43,7 @@
     <p>
  El motor de ejecución puede delimitar un flujo de trabajo alrededor de una llamada al modelo, una etapa determinista,
  un bucle especializado o un conjunto de ramas paralelas. En cada caso decide qué contexto usar,
- qué trabajo puede ramificarse y qué resultados alimentan la siguiente etapa del flujo de trabajo. Esta sección usa <i>fan-out</i> (de uno a muchos) y enrutamiento fijo 
+ qué trabajo puede ramificarse y qué resultados alimentan la siguiente etapa del flujo de trabajo. Esta sección usa <i>fan-out</i> (de uno a muchos) y enrutamiento fijo
  para demostrar el comportamiento sin cambiar el agente ReAct de la sección anterior.
  </p>
   </div>
@@ -106,7 +106,7 @@
 
   <div class="callout warn">
  <strong>El coste de coordinación, en términos concretos.</strong>
- Cada interacción entre agentes añade latencia a las llamadas al modelo y lógica de enrutamiento. También introduce otra fuente de mensajes mal formados, 
+ Cada interacción entre agentes añade latencia a las llamadas al modelo y lógica de enrutamiento. También introduce otra fuente de mensajes mal formados,
  además de sustituir una secuencia fácil de leer por un recorrido distribuido entre varios trabajadores.
  </div>
 

@@ -125,7 +125,7 @@
     <ul>
       <li><strong>Endpoints HTTP REST.</strong> El modelo responde a cada llamada de forma aislada: en <a href="https://platform.openai.com/docs/api-reference/chat" target="_blank" rel="noopener"><em>Chat Completions API</em></a>, el código cliente transporta el historial; en <em>Responses API</em>, el servidor puede conservarlo.</li>
       <li><strong><a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">Model Context Protocol (MCP)</a>.</strong> Un protocolo estándar permite al runtime acceder a herramientas sin escribir una integración específica para cada una.</li>
-      <li><strong>Gateway persistente.</strong> OpenClaw mantiene abierto un <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API" target="_blank" rel="noopener">WebSocket</a> en <code>/cli/gateway</code> y transmite eventos mediante <a href="https://www.jsonrpc.org/specification" target="_blank" rel="noopener">JSON-RPC</a>, en lugar de responder a una solicitud cada vez.</li>
+      <li><strong>Gateway persistente.</strong> OpenClaw mantiene abierto <code>/cli/gateway</code> como <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API" target="_blank" rel="noopener">WebSocket</a> y transmite eventos mediante <a href="https://www.jsonrpc.org/specification" target="_blank" rel="noopener">JSON-RPC</a>, en lugar de responder a una solicitud cada vez.</li>
     </ul>
 
     <!-- video removed: hour-long NemoClaw session, too long and distracting for an inline companion. Re-enable by uncommenting.
@@ -186,12 +186,13 @@
       <li><code>"direct"</code> llama al origen del launchable con <code>credentials:&nbsp;"include"</code> y sin JWT, apoyándose en la cookie de Cloudflare Access que ya posee el navegador.</li>
     </ul>
     <p>
-      En un curso alojado por separado en Pages, el modo <code>direct</code> depende de una cookie válida del
-      launchable y de su política de respuesta de origen cruzado (CORS); la ruta con JWT explícito usa el relay.
+      Los launchables con Pomerium conservan su sesión firmada en el navegador. El curso usa sus WebSockets
+      directos y lee los dos endpoints de inicialización mediante una solicitud fija al loopback desde esa
+      terminal autenticada. Los launchables con Cloudflare Access usan el relay alojado y su campo de sesión explícito.
       Cuando el curso se incorpora al mismo launchable de NemoClaw que ejecuta el runtime,
-      el modo <code>direct</code> utiliza el mismo origen y no necesita el relay.
+      el modo direct utiliza el mismo origen y no necesita el relay.
     </p>
- 
+
     <div id="claw-raw-cell"></div>
 
     <h2>Paso 2 · El gateway</h2>

@@ -400,7 +400,7 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
   <p>Hasta ahora has medido lo que puede hacer el <em>agente</em>. La pregunta más amplia es quién puede reconfigurarlo a través del plano situado por encima del sandbox. La forma de acceder a ese plano depende del sistema, y en esta máquina dicho plano es un único gateway al que accedes con el mismo <code>OPENCLAW_GATEWAY_TOKEN</code> del Módulo 3, con alcance <code>operator.admin</code>. Ninguna de esas operaciones pasa por el sandbox del agente.</p>
   <p>Ese token permite:</p>
   <ul>
-    <li><code>agents.files.get</code> y <code>agents.files.set</code> leen y establecen directamente archivos de personalidad, como SOUL.md y AGENTS.md.</li>
+    <li><code>agents.files.get</code> y agents.files.set leen y establecen directamente archivos de personalidad, como SOUL.md y AGENTS.md.</li>
     <li><code>cron.add</code> y <code>cron.list</code> controlan tareas que pueden activarse después de terminar la conversación.</li>
     <li><code>config.get</code> y <code>config.patch</code> controlan toda la configuración del agente: el modelo, las herramientas e incluso <code>toolSearch</code>.</li>
     <li><code>chat.send</code> envía un mensaje a mitad de la tarea que redirige al agente mientras sigue pareciendo que está trabajando en tu solicitud original.</li>

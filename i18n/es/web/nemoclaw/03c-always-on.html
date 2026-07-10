@@ -93,10 +93,10 @@ Cuando el usuario pregunte por un incidente de producción o pegue una línea de
 
   <p>El widget siguiente recorre el ciclo de vida completo de una tarea cron:</p>
   <ol>
-    <li>Se conecta al gateway.</li>
-    <li>Enumera las tareas cron ya instaladas.</li>
+    <li>Se conecta al gateway y enumera las tareas cron ya instaladas.</li>
     <li>Instala una tarea de demostración que se activa cada minuto y añade una línea a <code>MEMORY.md</code>.</li>
-    <li>Espera unos setenta segundos para que la tarea cruce el límite de un minuto; después, lee las últimas líneas de <code>MEMORY.md</code> desde el sandbox y muestra la línea que escribió el agente activado por cron sin recibir ninguna otra instrucción.</li>
+    <li>Espera unos setenta segundos para que la tarea cruce el límite de un minuto y se ejecute por sí sola.</li>
+    <li>La celda siguiente lee las últimas líneas de <code>MEMORY.md</code> desde el sandbox y muestra la línea que escribió el agente activado por cron sin recibir ninguna otra instrucción.</li>
     <li>Elimina la tarea para que no quede nada pendiente.</li>
   </ol>
   <p>Ninguna persona inició esa escritura. La programación cron activó el trabajo por sí sola mientras no interactuabas con el agente.</p>

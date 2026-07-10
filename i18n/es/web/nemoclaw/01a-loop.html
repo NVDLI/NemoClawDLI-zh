@@ -54,12 +54,12 @@ y hasta dónde llegan sus acciones.</p>
     <li><strong>La percepción</strong> proporciona todo lo que el agente sabe sobre el entorno.
 Un termostato solo lee un número: la temperatura actual. Un vehículo autónomo combina cámaras,
 radar y un mapa en un modelo de la carretera. Un agente solo trabaja con lo que captura la percepción,
-porque las etapas siguientes no acceden al entorno directamente. Cualquier aspecto no detectado durante 
+porque las etapas siguientes no acceden al entorno directamente. Cualquier aspecto no detectado durante
 la percepción permanece invisible para el resto del agente.</li>
     <li><strong>El razonamiento</strong> transforma una percepción en una decisión. Un termostato compara la temperatura con un objetivo, mientras que un motor de ajedrez evalúa millones de movimientos y un vehículo autónomo ejecuta una política aprendida. Los agentes de este curso razonan mediante un modelo de lenguaje. Las herramientas, la memoria y la planificación se apoyan en este paso.</li>
     <li><strong>Una acción</strong> modifica el entorno para el propio agente y para otros participantes del mismo.
-Esta puede ser tan pequeña como accionar un relé o tan compleja como conducir un coche. Más adelante en este curso, 
-el modelo de lenguaje realiza llamadas a diferentes funciones de software que han sido expuestas de alguna forma para dicho modelo. 
+Esta puede ser tan pequeña como accionar un relé o tan compleja como conducir un coche. Más adelante en este curso,
+el modelo de lenguaje realiza llamadas a diferentes funciones de software que han sido expuestas de alguna forma para dicho modelo.
 Estas funciones reciben el nombre de  <strong>herramientas</strong> (del inglés <i>tool</i>)
 ya que para el modelo representan acciones disponibles. Llamar a una herramienta significa solicitar que el código de esa función sea
 ejecutado como acción. El conjunto de acciones también define el alcance máximo del agente: por bueno que sea
@@ -119,7 +119,7 @@ unidimensional limitada por paredes entre las posiciones 0 y 9. Pulsa Ejecutar y
     <li><strong>La salida tiene dos canales.</strong> Los modelos de razonamiento devuelven sus trazas de razonamiento o trabajo en
 <code>reasoning_content</code> y su respuesta final en
 <code>content</code>. Las trazas sirven para inspeccionar el desarrollo; la siguiente etapa actúa únicamente sobre la respuesta en <code>content</code>.</li>
-    <li><strong><code>finish_reason</code> es la condición de salida del bucle.</strong>
+    <li><strong>finish_reason es la condición de salida del bucle.</strong>
 <code>"stop"</code> significa que el modelo escribió su respuesta final. <code>"tool_calls"</code> significa que quiere que el código ejecute una función con nombre y devuelva el resultado.
 <code>"length"</code> significa que el presupuesto de tokens se agotó antes de terminar. Durante el bucle se lee este campo para decidir qué hacer después.</li>
   </ul>
