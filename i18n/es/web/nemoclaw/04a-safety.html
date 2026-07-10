@@ -342,7 +342,7 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
   <p>No tienes que aceptar una garantía de robustez sin pruebas. <code>openshell policy prove</code> comprueba una propiedad de la política o devuelve un contraejemplo, mientras el proxy toma una decisión determinista de permitir o denegar en cada conexión. La celda calcula esa misma decisión en el navegador desde la política real del launchable, ejecuta la acción en el sandbox activo y comprueba que el veredicto del kernel coincide con la predicción.</p>
   <p>El ejercicio destaca la identidad del <em>binario</em>. La política concede egress por programa, no por host, así que el proxy comprueba qué binario abrió la conexión antes de evaluar el destino. Por ello, <code>openclaw</code> puede alcanzar el endpoint de inferencia mientras se deniega un <code>curl</code> al mismo destino. Elige una acción para ver de inmediato el veredicto estático y su confirmación activa; la acción del endpoint de inferencia muestra con mayor claridad este cambio de resultado para un mismo host.</p>
 
-  <div class="callout"><strong>La confirmación utiliza la instancia real.</strong> Cada acción se ejecuta en el launchable conectado en Kickstart mediante <code>openshell sandbox exec</code>. Mantén el launchable abierto en otra pestaña para conservar la sesión de Cloudflare Access.</div>
+  <div class="callout"><strong>La confirmación utiliza la instancia real.</strong> Cada acción se ejecuta en el launchable conectado en Kickstart mediante <code>openshell sandbox exec</code>. Mantén el launchable abierto en otra pestaña para conservar la sesión de acceso.</div>
 
   <div id="sbx-pick"></div>
   <script type="module">
@@ -601,7 +601,7 @@ return { probes: results.length, denied: results.filter(result => result.blocked
 // ── Read your live policy, draw the map from it ───────────────────────────────
 mountRunCell("#cell-live-policy", {
   label: "Lee la política activa del launchable",
-  intro: "Obtén la política activa mediante la terminal del operador y muestra su YAML; después, compárala con la instantánea que utiliza el mapa. Mantén el launchable abierto para conservar la sesión de Cloudflare Access y conéctalo primero en el Módulo 3a si fuera necesario. La llamada exacta permanece en el desplegable de código.",
+  intro: "Obtén la política activa mediante la terminal del operador y muestra su YAML; después, compárala con la instantánea que utiliza el mapa. Mantén el launchable abierto para conservar la sesión de acceso y conéctalo primero en el Módulo 3a si fuera necesario. La llamada exacta permanece en el desplegable de código.",
   code: `// helpers.policyGet() returns the command, raw output, status, and parsed policy.
 const p = await helpers.policyGet();
 helpers.log("called:  " + p.command);          // the exact command that ran on your box

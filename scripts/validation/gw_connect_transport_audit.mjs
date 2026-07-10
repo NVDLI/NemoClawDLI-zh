@@ -13,10 +13,18 @@ const logs = [];
 const storage = new Map([
   ['nemoclaw_clawrawurl', 'https://nemoclaw-v6paslvp5.brevlab.com'],
   ['nemoclaw_clawtoken', 'test-token'],
-  ['nemoclaw_clawcfjwt', 'test.jwt'],
+  ['nemoclaw_openclaw_access_provider_v1', 'cloudflare'],
+  ['nemoclaw_openclaw_access_session_v1', 'test.jwt'],
 ]);
 
-globalThis.localStorage = { getItem: k => storage.get(k) || '', setItem: (k, v) => storage.set(k, String(v)) };
+const tabStorage = new Map();
+const storageApi = values => ({
+  getItem: key => values.get(key) || '',
+  setItem: (key, value) => values.set(key, String(value)),
+  removeItem: key => values.delete(key),
+});
+globalThis.localStorage = storageApi(storage);
+globalThis.sessionStorage = storageApi(tabStorage);
 globalThis.location = new URL('https://course.example.test/nemoclaw/03a-kickstart.html');
 const connectionSource = fs.readFileSync('web/nemoclaw/scripts/_connection.js', 'utf8');
 const connection = await import('data:text/javascript;base64,' + Buffer.from(connectionSource).toString('base64'));
@@ -45,7 +53,8 @@ const helpers = {
   log: msg => logs.push(String(msg)),
   fetch: async () => { throw new Error('GW_CONNECT must not probe a retired metadata route'); },
   getOpenClawConnection: () => connection.getOpenClawConnection(),
-  openclawGatewayWsUrl: (raw, jwt) => connection.openclawWebSocketUrl(raw, '/cli/gateway', jwt),
+  openclawGatewayWsUrl: (raw, session, proxyBase, proxyEnabled, provider) =>
+    connection.openclawWebSocketUrl(raw, '/cli/gateway', session, undefined, provider),
   signal: null,
 };
 const state = {};

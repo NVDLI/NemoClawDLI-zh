@@ -402,7 +402,9 @@ def audit_model_routes(shared: str, keypanel: str, rag: str, chat: str, openclaw
     _need(findings, "isDefaultModelApiBaseUrl(cfg.url) ? model : cfg.model" in chat and
           "fetch: browserChatFetch()" in chat,
           "shared agent chat must honor the configured custom model and browser transport")
-    _need(findings, 'credentials: action.credentials || opts.credentials || "same-origin"' in openclaw,
+    _need(findings, re.search(
+        r'credentials:\s*action\.credentials\s*\|\|\s*opts\.credentials\s*\|\|', openclaw
+    ) is not None,
           "generic probes must permit an explicit credential mode")
     for locale in ("en", "pt", "es"):
         loop = pages[f"{locale}-01a"]
@@ -1182,6 +1184,7 @@ def self_test() -> list[str]:
         ("single-model discovery removed", shared, keypanel.replace("models.length === 1", "models.length === 0"), rag, runtime_chat, openclaw, "auto-select"),
         ("embedding reuses chat config", shared, keypanel, rag.replace("getEmbeddingConfig", "getConfig"), runtime_chat, openclaw, "independent persistent route"),
         ("agent chat ignores custom model", shared, keypanel, rag, runtime_chat.replace("isDefaultModelApiBaseUrl(cfg.url) ? model : cfg.model", "model", 1), openclaw, "configured custom model"),
+        ("probe credential override removed", shared, keypanel, rag, runtime_chat, openclaw.replace("action.credentials || opts.credentials || ", "", 1), "explicit credential mode"),
     ]
     for label, mutated_shared, mutated_keypanel, mutated_rag, mutated_chat, mutated_openclaw, expected in route_cases:
         if not any(expected in finding for finding in audit_model_routes(

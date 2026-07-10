@@ -342,7 +342,7 @@ helpers.log("Agente de trajetória exibido abaixo. Descreva um objetivo e acompa
   <p><code>openshell policy prove</code> verifica uma propriedade da política ou devolve um contraexemplo. Em cada conexão, o proxy também produz uma decisão determinística de permitir ou negar. A célula calcula o resultado a partir da política do launchable, executa a ação no sandbox e compara a resposta real com a previsão.</p>
   <p>O exercício destaca a identidade do <em>binário</em>. A política concede saída por programa, não apenas por host. Por isso, <code>openclaw</code> pode alcançar o endpoint de inferência enquanto um <code>curl</code> para o mesmo destino é negado. Escolha uma ação para ver o veredito estático e a confirmação ativa.</p>
 
-  <div class="callout"><strong>A confirmação usa a instância real.</strong> Cada ação é executada no launchable conectado no Kickstart por <code>openshell sandbox exec</code>. Mantenha o launchable aberto em outra aba para preservar a sessão do Cloudflare Access.</div>
+  <div class="callout"><strong>A confirmação usa a instância real.</strong> Cada ação é executada no launchable conectado no Kickstart por <code>openshell sandbox exec</code>. Mantenha o launchable aberto em outra aba para preservar a sessão de acesso.</div>
 
   <div id="sbx-pick"></div>
   <script type="module">
@@ -601,7 +601,7 @@ return { probes: results.length, denied: results.filter(result => result.blocked
 // ── Read your live policy, draw the map from it ───────────────────────────────
 mountRunCell("#cell-live-policy", {
   label: "Leia a política ao vivo do seu launchable",
-  intro: "Obtenha a política ativa pelo terminal do operador e exiba seu YAML. Depois, compare-a com o snapshot usado pelo mapa. Mantenha o launchable aberto para preservar a sessão do Cloudflare Access; se necessário, conecte-o primeiro no Módulo 3a. A chamada exata permanece no painel de código.",
+  intro: "Obtenha a política ativa pelo terminal do operador e exiba seu YAML. Depois, compare-a com o snapshot usado pelo mapa. Mantenha o launchable aberto para preservar a sessão de acesso; se necessário, conecte-o primeiro no Módulo 3a. A chamada exata permanece no painel de código.",
   code: `// helpers.policyGet() returns the command, raw output, status, and parsed policy.
 const p = await helpers.policyGet();
 helpers.log("comando:  " + p.command);          // the exact command that ran on your box

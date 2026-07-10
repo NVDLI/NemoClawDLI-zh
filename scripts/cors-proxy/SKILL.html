@@ -42,7 +42,7 @@
     {
       "path": "cors-proxy-worker-openclaw.js",
       "role": "launchable relay reference",
-      "desc": "Reference behavior for the NemoClaw launchable relay. It restricts upstream hosts to brevlab.com and subdomains and describes the required HTTP and WebSocket boundary.",
+      "desc": "Reference behavior for the NemoClaw launchable relay. It restricts upstream hosts to the approved Cloudflare Access and Pomerium Brev families and describes the required HTTP and WebSocket boundary.",
       "bytes": 3481
     }
   ],
@@ -66,22 +66,22 @@
       "note": "The reference reflects the request origin. The hosted deployment owns its origin policy."
     },
     {
-      "title": "Launchable upstream host check",
+      "title": "Launchable host and provider check",
       "file": "cors-proxy-worker-openclaw.js",
       "lines": [
         21,
         28
       ],
-      "note": "Current launchable worker keeps a brevlab.com upstream host allowlist."
+      "note": "The relay accepts only the approved Brev host families and rejects a provider that does not match its target host."
     },
     {
-      "title": "Access JWT handling",
+      "title": "Access-session handling",
       "file": "cors-proxy-worker-openclaw.js",
       "lines": [
         30,
         40
       ],
-      "note": "The worker rewrites a caller-provided Access JWT into the CF_Authorization cookie expected by the target launchable. Fetch callers use CF-Access-Jwt-Assertion; browser WebSocket callers use cf_access_jwt because WebSocket constructors cannot set headers. WebSocket upgrades must return the upstream 101 response directly and pin Origin to http://localhost:8088 for the OpenClaw gateway allowlist."
+      "note": "Fetch callers provide neutral provider and session headers. Browser WebSocket callers use equivalent query fields because WebSocket constructors cannot set headers. The relay removes those fields and creates only CF_Authorization for Cloudflare Access or _pomerium for Pomerium. WebSocket upgrades return the upstream 101 response directly and pin Origin to http://localhost:8088 for the OpenClaw gateway allowlist."
     }
   ],
   "related": [
@@ -111,7 +111,7 @@
 <nav class="skill-nav" aria-label="Skill navigation"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a> <span aria-hidden="true"> · </span> <a data-skill-nav="map" href="../../SKILL.html">Repository map</a></nav>
 </header>
   <h1 id="skill-title">CORS relay contracts</h1>
-  <p>These references define the browser contract expected from the hosted model and NemoClaw relays. Deployment ownership stays outside this repository.</p>
+  <p>These references define the browser contract expected from the hosted model and NemoClaw relays. The reference launchable relay supports Cloudflare Access and Pomerium while binding each access session to its approved host family. The production course relays Cloudflare traffic only; Pomerium stays in the signed-in browser and connects directly. Deployment ownership stays outside this repository.</p>
   <div class="skill-note">Run commands from the repository root. The reference workers support review and validation; they do not deploy the hosted endpoints.</div>
   <h2>Executable checks</h2>
   <div class="skill-cmds">

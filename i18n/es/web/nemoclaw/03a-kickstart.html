@@ -154,7 +154,7 @@
         <h3><a
           href="https://brev.nvidia.com/launchable/deploy?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS&amp;ncid=ref-dli-759990"
           target="_blank" rel="noopener">Inicia NemoClaw en Brev</a></h3>
-        <p>La configuración crea un launchable que ejecuta OpenClaw dentro de OpenShell en <code>https://nemoclaw-&lt;id&gt;.brevlab.com</code>. La identidad, las herramientas, la memoria de sesión y la política del sandbox residen allí. El navegador llega al agente mediante el gateway WebSocket en <code>/cli/gateway</code>. Para una implementación local, sigue el <a href="https://build.nvidia.com/spark/nemoclaw-applications?ncid=ref-dli-146986" target="_blank" rel="noopener">playbook de configuración de NemoClaw</a> y mantén el mismo límite de conexión.</p>
+        <p>La configuración crea un launchable que ejecuta OpenClaw dentro de OpenShell. La App URL puede usar la familia Brev con Cloudflare Access o Pomerium; el menú de conexión admite ambas. La identidad, las herramientas, la memoria de sesión y la política del sandbox residen allí. El navegador llega al agente mediante el gateway WebSocket en <code>/cli/gateway</code>. Para una implementación local, sigue el <a href="https://build.nvidia.com/spark/nemoclaw-applications?ncid=ref-dli-146986" target="_blank" rel="noopener">playbook de configuración de NemoClaw</a> y mantén el mismo límite de conexión.</p>
         <p style="color:var(--tf);font-size:.8rem">Autenticación mediante token del gateway. Sesiones mediante <code>x-openclaw-session-key</code>.</p>
       </article>
     </div>
@@ -179,15 +179,15 @@
     <div class="callout warn"><strong>Si la sonda de OpenClaw agota el tiempo de espera o devuelve 502.</strong> Es probable que el runtime del agente aún esté arrancando: el launchable puede haberse iniciado antes de que OpenClaw terminara de cargar su política YAML. Espera 30 segundos y vuelve a ejecutar la sonda. Si sigue sin responder, usa la celda Recuperar en la sección del gateway antes de continuar.</div>
 
     <h3>La solicitud de la sonda como código editable</h3>
-    <p>Esta celda realiza la misma llamada que la sonda, con el código a la vista. Reutiliza la URL, el token y el JWT de Cloudflare que guardó la sonda. Edita <code>PATH</code>, <code>METHOD</code> y <code>BODY</code> para enviar otras solicitudes. El estado, los encabezados y el cuerpo aparecen debajo.</p>
+    <p>Esta celda realiza la misma llamada que la sonda, con el código a la vista. Reutiliza la URL, el token, el proveedor y la sesión de acceso que guardó la sonda. Edita <code>PATH</code>, <code>METHOD</code> y <code>BODY</code> para enviar otras solicitudes. El estado, los encabezados y el cuerpo aparecen debajo.</p>
     <p><code>TRANSPORT</code> controla cómo llega la credencial al launchable:</p>
     <ul>
       <li><code>"configured"</code> sigue la opción de relay guardada arriba. Brev entre orígenes usa el relay de NVIDIA de forma predeterminada.</li>
-      <li><code>"direct"</code> llama al origen del launchable con <code>credentials:&nbsp;"include"</code> y sin JWT, apoyándose en la cookie de Cloudflare Access que ya posee el navegador.</li>
+      <li><code>"direct"</code> llama al origen del launchable con <code>credentials:&nbsp;"include"</code>, usando la cookie correspondiente que ya posee el navegador.</li>
     </ul>
     <p>
       En un curso alojado por separado en Pages, el modo directo depende de una cookie válida del
-      launchable y de su política de respuesta entre orígenes; la ruta con JWT explícito usa el relay.
+      launchable y de su política de respuesta entre orígenes; la ruta con sesión de acceso explícita usa el relay.
       Cuando el curso se incorpora al mismo launchable de NemoClaw que ejecuta el runtime,
       el modo directo utiliza el mismo origen y no necesita el relay.
     </p>
@@ -202,10 +202,10 @@
       <li>El cuerpo JSON transporta <code>model</code> y <code>messages</code>.</li>
       <li>Un encabezado <code>Authorization</code> identifica al solicitante.</li>
     </ul>
-    <p>OpenClaw también implementa esa ruta internamente, pero esta página no puede alcanzarla porque la capa de Cloudflare Access del launchable bloquea el acceso desde el navegador.</p>
+    <p>OpenClaw también implementa esa ruta internamente, pero un curso alojado por separado la alcanza mediante la capa de acceso del launchable y el relay, no como una solicitud de navegador sin autenticación.</p>
     <p>El canal que <em>sí está disponible</em> utiliza otro protocolo: un WebSocket en <code>/cli/gateway</code> que habla JSON-RPC.</p>
 
-    <div class="callout"><p>La interfaz de control de la pestaña del navegador no utiliza un canal privado especial. Se comunica con el agente mediante el mismo WebSocket en <code>/cli/gateway</code> que puedes usar, y la única credencial necesaria es el token del gateway. La sonda descubre ese token para que no tengas que pegarlo. Una solicitud <code>GET /api/agent</code>, autorizada por tu sesión de Cloudflare Access, lo devuelve en <code>agent.dashboardUrl</code>. Deja el campo vacío para que la sonda lo complete.</p></div>
+    <div class="callout"><p>La interfaz de control de la pestaña del navegador no utiliza un canal privado especial. Se comunica con el agente mediante el mismo WebSocket en <code>/cli/gateway</code> que puedes usar, y la única credencial necesaria es el token del gateway. La sonda descubre ese token para que no tengas que pegarlo. Una solicitud <code>GET /api/agent</code>, autorizada por tu sesión del launchable, lo devuelve en <code>agent.dashboardUrl</code>. Deja el campo vacío para que la sonda lo complete.</p></div>
 
     <p>Ese token posee el alcance <code>operator.admin</code>, la misma autoridad que la interfaz de control. Con él puedes:</p>
     <ul>
@@ -219,17 +219,17 @@
       <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Un único POST activa un ciclo dentro del gateway, donde la clave de sesión conserva la memoria para la llamada siguiente.</figcaption>
     </figure>
 
-    <h3>Primero, prepara un launchable nuevo</h3>
-    <p>Un launchable nuevo de NemoClaw viene con <code>tools.toolSearch</code> activado. En un modelo más débil, esta opción puede impedir el uso correcto de herramientas:</p>
+    <h3>Comprueba antes de cambiar el runtime</h3>
+    <p>Los launchables compatibles de NemoClaw suelen mostrar <code>tools.toolSearch=false</code>. Una configuración personalizada aún puede activarlo, por lo que la comprobación de estado lee el valor activo antes de que Recuperar cambie algo:</p>
     <ul>
       <li><strong>Síntoma:</strong> pides un comando, no llega ninguna respuesta, la ejecución se detiene y termina por agotar el tiempo de espera.</li>
       <li><strong>Causa:</strong> toolSearch permite que el modelo acceda a herramientas escribiendo código para un puente (<code>tool_search_code</code> &middot; &ldquo;run bridge code&rdquo;). El modelo débil puede quedar atrapado en ese puente en lugar de llamar <code>exec</code>.</li>
-      <li><strong>Solución:</strong> ejecuta la comprobación de estado. Si <code>toolSearch</code> está activado, la celda Recuperar lo desactiva con <code>config.patch</code> y reinicia el runtime. Hazlo una vez por cada instancia nueva.</li>
+      <li><strong>Recuperación:</strong> ejecuta la comprobación de estado. Si <code>toolSearch</code> está activado y falla la sonda de exec, Recuperar puede desactivarlo con <code>config.patch</code>. La limpieza de sesiones y el reinicio siguen siendo opcionales.</li>
     </ul>
 
     <figure style="margin:1.4em 0">
       <div id="fig-toolsearch"></div>
-      <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Si un modelo débil se queda atrapado en toolSearch, Recuperar desactiva la opción para que exec se llame directamente.</figcaption>
+      <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">La ruta saludable usa exec directamente. Recuperar cambia toolSearch solo cuando la comprobación activa lo encuentra habilitado.</figcaption>
     </figure>
 
     <div id="gw-recover"></div>
@@ -350,14 +350,14 @@ helpers.log("rendered below. Edit the config and Run.");
 
     // ── toolSearch trap vs fix (the resilience graphic) ──────────────────────────
     mountDiagram("#fig-toolsearch", {
-      kicker: "UNA OPCIÓN DECIDE SI EXEC SE EJECUTA",
-      title: "Cómo toolSearch bloquea exec y cómo Recuperar lo corrige",
+      kicker: "COMPRUEBA EL VALOR ACTIVO ANTES DE REPARAR",
+      title: "toolSearch es un modo de fallo condicional",
       maxWidth: 1040, boxW: 252, boxH: 98, gapX: 92, rowGap: 76,
       nodes: [
-        { id: "on", label: "toolSearch activado", kind: "neutral", x: 0, y: 0, lines: ["valor predeterminado del launchable"] },
+        { id: "on", label: "toolSearch activado", kind: "neutral", x: 0, y: 0, lines: ["configuración personalizada"] },
         { id: "loop", label: "tool_search_code", kind: "tool", x: 1, y: 0, lines: ["el modelo repite", "el puente de código"] },
         { id: "stall", label: "sin salida", kind: "neutral", x: 2, y: 0, lines: ["exec no se ejecuta"] },
-        { id: "off", label: "toolSearch desactivado", kind: "model", x: 0, y: 1, lines: ["después de Recuperar"] },
+        { id: "off", label: "toolSearch desactivado", kind: "model", x: 0, y: 1, lines: ["configuración saludable"] },
         { id: "exec", label: "exec", kind: "tool", x: 1, y: 1, lines: ["el modelo llama", "al shell directamente"] },
         { id: "ok", label: "salida del comando", kind: "env", x: 2, y: 1, lines: ["el shell se ejecuta"] },
       ],
@@ -587,39 +587,18 @@ return { ranked: ok.map(r => r.model), errors: results.filter(r => r.err).length
       autofillToken: gatewayTokenFromAgentMetadata,
       fieldHelp: {
         url: `<p><strong>Qué es:</strong> la URL raíz de tu launchable de NemoClaw, que ejecuta OpenClaw dentro de OpenShell, sin <code>/v1</code> al final.</p>
-<p><strong>Cómo encontrarla:</strong> el panel de Brev la muestra como App URL:
-<code>https://nemoclaw-&lt;id&gt;.brevlab.com</code>.</p>
-<p><strong>Ejecución local:</strong> usa <code>http://localhost:8088</code> o el puerto que exponga el contenedor de OpenClaw.
-No hay túnel de Cloudflare ni capa de CF Access: conéctate directamente y deja vacío el campo JWT de CF Access.</p>
-<p><strong>Alternativa inmediata:</strong> si OpenClaw local no arranca, devuelve errores de conexión o registra <code>EPERM</code>, detén la sonda local. Usa la App URL de Brev y pega <code>CF_Authorization</code> debajo.</p>`,
+<p><strong>Cómo encontrarla:</strong> copia la App URL del panel de Brev. Funcionan los dos tipos de launchable compatibles. Para OpenClaw local, usa <code>http://localhost:8088</code> o el puerto expuesto y deja vacía la Sesión de acceso.</p>`,
 
         token: `<p><strong>Normalmente puedes dejar este campo vacío.</strong> Ejecuta <strong>GET /api/agent</strong> debajo.
-La sonda lee el token del gateway desde <code>agent.dashboardUrl</code> y completa el campo. La URL base y tu JWT de CF Access
-son suficientes para que el gateway lo devuelva.</p>
+La sonda lee el token del gateway desde <code>agent.dashboardUrl</code> y completa el campo. Para Pomerium, basta con abrir el launchable e iniciar sesión. Cloudflare también necesita la Sesión de acceso de abajo.</p>
 <p><strong>Alternativa manual:</strong> si el campo no se completa, ejecuta
 <code>printenv OPENCLAW_GATEWAY_TOKEN</code> en la terminal del launchable y pega aquí el valor completo. No supongas
 una longitud ni un conjunto de caracteres fijos.</p>`,
 
-        cfJwt: `<p><strong>Qué es:</strong> un JWT de corta duración que Cloudflare Access exige antes de dirigir
-solicitudes al launchable. El navegador ya tiene uno: se guardó como cookie cuando abriste por primera vez
-la URL del launchable y se autenticó.</p>
-<p><strong>Por qué JavaScript no puede leerlo:</strong> la cookie está marcada como <code>HttpOnly</code>, lo que impide que
-<code>document.cookie</code> la vea. La restricción es deliberada y evita que ataques XSS roben tokens de sesión.
-No existe una vía alternativa desde JavaScript.</p>
-<p><strong>Cómo obtenerlo:</strong> abre DevTools en la pestaña de NemoClaw →
-<strong>Application → Storage → Cookies → selecciona el dominio nemoclaw</strong> →
-busque la fila <code>CF_Authorization</code> → copie todo el campo Value, una cadena JWT larga.
-Pégalo aquí. Si la sonda deja de funcionar después de una pausa larga, vuelve a copiarlo; los JWT caducan con la sesión.</p>
-<p><strong>Ejecución local:</strong> deja este campo vacío. OpenClaw local no tiene una capa de Cloudflare Access.</p>
-<p><strong>Modo alternativo:</strong> es obligatorio para la URL de Brev cuando OpenClaw local está bloqueado o muestra <code>EPERM</code>.</p>
-<p><strong>Celdas del gateway:</strong> las sondas fetch envían este JWT en un encabezado. Un curso alojado
-por separado dirige el WebSocket <code>/cli/gateway</code> por el relay compartido; cuando este campo contiene
-un valor, el relay añade el encabezado de Access que el constructor WebSocket del navegador no puede definir.
-Un curso alojado en el mismo launchable de NemoClaw utiliza la ruta directa del mismo origen. En un origen Pages
-separado, el modo WebSocket directo también depende de una cookie vigente del launchable y de su política entre orígenes.</p>
-<p><strong>Por qué importa:</strong> la barrera <code>HttpOnly</code> explica por qué los sistemas de producción utilizan
-<em>tokens de servicio</em> para llamadas entre máquinas. El flujo de sesión del navegador no ofrece acceso programático por diseño.</p>`,
-        proxy: `<p><strong>Mantén esta opción activada</strong> cuando un curso alojado por separado se conecte a un launchable de Brev. El relay compartido de NVIDIA transporta la aserción de acceso y las cabeceras WebSocket necesarias. Desactívala para un curso servido en el mismo origen o una implementación directa explícitamente compatible.</p>`,
+        accessProvider: `<p><strong>Automático</strong> elige según la App URL. Un launchable <code>*.brevlab.com</code> usa <strong>Cloudflare Access</strong> mediante el relay alojado. Un launchable <code>*.apps.run.brev.nvidia.com</code> usa <strong>Pomerium</strong> directamente mediante el navegador autenticado.</p>`,
+        accessSession: `<p>Este campo es solo para <strong>Cloudflare Access</strong>. Abre ese launchable, inicia sesión y copia el valor completo de <code>CF_Authorization</code> desde DevTools → <strong>Application → Storage → Cookies</strong>.</p>
+<p>Para <strong>Pomerium</strong>, el campo queda desactivado. Abre el launchable e inicia sesión; su cookie <code>HttpOnly</code> permanece en el navegador y nunca se copia al código ni al almacenamiento del curso.</p>`,
+        proxy: `<p>El relay compartido de NVIDIA se usa para launchables de <strong>Cloudflare Access</strong> entre orígenes. Pomerium se conecta directamente con la sesión autenticada del navegador, aunque esta opción siga activada para conservar la compatibilidad con Cloudflare.</p>`,
         proxyBase: `<p><strong>Una configuración compartida:</strong> el valor predeterminado es el relay alojado por NVIDIA y persiste de los Módulos 3a a 4b. El instructor también puede rellenarlo con <code>?openclaw_proxy_base=...</code> y activarlo o desactivarlo con <code>?openclaw_proxy=1</code> o <code>0</code>.</p>`,
       },
 
@@ -635,33 +614,47 @@ separado, el modo WebSocket directo también depende de una cookie vigente del l
       openCode: true,
       intro: "Usa la interfaz de la sonda anterior en el recorrido habitual. Esta celda expone la solicitud para comparar el transporte mediante proxy con el directo o examinar una respuesta inesperada.",
       autorun: false,
-      code: `// The probe saved its URL, token, and CF JWT in localStorage. Reuse them here.
+      code: `// The probe saved the launchable URL and selected access provider.
 const connection = helpers.getOpenClawConnection();
 const configured = connection.effectiveUrl; // follows the saved relay toggle
 const url   = connection.rawUrl;             // launchable origin, direct
 const token = connection.token;
-const jwt   = connection.accessJwt;
+const provider = connection.resolvedAccessProvider;
+const session  = connection.accessSession;
 if (!url) return helpers.log('Run the probe above first.');
 
 const METHOD    = 'GET';
-const PATH      = '/api/agent';   // any route the runtime serves
+const PATH      = '/api/agent';   // read-only bootstrap endpoint
+// const PATH   = '/healthz';     // alternate read-only bootstrap endpoint
 const BODY      = null;           // e.g. { key: 'value' }
 const TRANSPORT = 'configured';   // 'configured': saved relay toggle. 'direct': bypass the relay.
-// The configured relay also applies to Brev WebSockets; CF_Authorization is attached when present.
+// Pomerium keeps its HttpOnly cookie in the browser. Its authenticated terminal
+// reads this fixed endpoint over launchable loopback, so no cookie enters course code.
+if (provider === 'pomerium') {
+  const result = await helpers.openclawLoopbackProbe(PATH, { baseUrl: url, signal: helpers.signal });
+  helpers.log.kv({ status: result.status + ' ' + result.statusText, transport: result.transport });
+  helpers.log.details('cuerpo', result.body);
+  return result.json ?? result.body;
+}
+
+// Cloudflare Access uses the configured hosted relay.
 
 const direct  = TRANSPORT === 'direct';
 const target  = direct ? url : (configured || url);
 const viaRelay = !direct && target !== url;
 const headers = { Accept: 'application/json, text/html, */*' };
 if (token)            headers.Authorization = 'Bearer ' + token;
-if (viaRelay && jwt)  headers['CF-Access-Jwt-Assertion'] = jwt;
+if (viaRelay && session) {
+  headers['X-OpenClaw-Access-Provider'] = provider;
+  headers['X-OpenClaw-Access-Session'] = session;
+}
 if (BODY)             headers['Content-Type'] = 'application/json';
 
 const res = await helpers.fetch(target + PATH, {
   method: METHOD,
   headers,
   body: BODY ? JSON.stringify(BODY) : null,
-  credentials: direct ? 'include' : 'same-origin',   // 'include' sends the CF cookie this browser holds
+  credentials: direct ? 'include' : 'same-origin',   // direct mode sends the launchable cookie held by this browser
 });
 
 helpers.log.kv({ status: res.status + ' ' + res.statusText, type: res.type });

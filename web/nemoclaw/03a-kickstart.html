@@ -171,9 +171,7 @@
         <h3><a
           href="https://brev.nvidia.com/launchable/deploy?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS&amp;ncid=ref-dli-759990"
           target="_blank" rel="noopener">Launch NemoClaw on Brev</a></h3>
-        <p>The setup creates a launchable that runs OpenClaw inside OpenShell, at
-          <code>https://nemoclaw-&lt;id&gt;.brevlab.com</code>. Identity, tools,
-          session memory, and sandbox policy live there. The browser reaches the agent through
+        <p>The setup creates a launchable that runs OpenClaw inside OpenShell. Its App URL may use the Cloudflare Access or Pomerium Brev host family; the connection dropdown below accepts either. Identity, tools, session memory, and sandbox policy live there. The browser reaches the agent through
           the WebSocket gateway at <code>/cli/gateway</code>. For a local deployment, follow the
           <a href="https://build.nvidia.com/spark/nemoclaw-applications?ncid=ref-dli-146986" target="_blank" rel="noopener">NemoClaw setup playbook</a>
           and keep the same connection boundary.
@@ -215,17 +213,18 @@
 
     <h3>The probe's request, as editable code</h3>
     <p>The exposed code makes the same request as the probe. It reuses the URL, token,
-      and CF JWT the probe saved. Edit <code>PATH</code>, <code>METHOD</code>,
+      access provider, and session the probe saved. Edit <code>PATH</code>, <code>METHOD</code>,
       and <code>BODY</code> to send other requests. The status, headers, and body come back
       below.</p>
     <p><code>TRANSPORT</code> controls how the credential reaches the launchable:</p>
     <ul>
       <li><code>"configured"</code> follows the relay toggle saved above. Cross-origin Brev uses the NVIDIA relay by default.</li>
-      <li><code>"direct"</code> calls the launchable origin with <code>credentials:&nbsp;"include"</code> and no JWT, relying on the CF Access cookie your browser already holds.</li>
+      <li><code>"direct"</code> calls the launchable origin with <code>credentials:&nbsp;"include"</code>, relying on the matching launchable cookie your browser already holds.</li>
     </ul>
     <p>
-      On a separately hosted Pages course, direct mode depends on a valid launchable cookie
-      and the launchable's cross-origin response policy; the explicit JWT route uses the relay.
+      Pomerium launchables keep their signed session in the browser. The course uses their direct
+      WebSockets and reads the two bootstrap endpoints through a fixed loopback request in that
+      authenticated terminal. Cloudflare Access launchables use the hosted relay and its explicit session field.
       When the course is vendored inside the same NemoClaw launchable as its runtime,
       direct mode is same-origin and the relay is not needed.
     </p>
@@ -241,9 +240,7 @@
       <li>The JSON body carries <code>model</code> and <code>messages</code>.</li>
       <li>An <code>Authorization</code> header names the caller.</li>
     </ul>
-    <p>OpenClaw implements that same route internally too, but it is not reachable from
-      this page, since the launchable's Cloudflare Access layer blocks it from the
-      browser.</p>
+    <p>OpenClaw implements that same route internally too, but a separately hosted course reaches it through the launchable access layer and relay rather than as an unauthenticated browser request.</p>
     <p>The channel that <em>is</em> open to you runs a different protocol, a
       WebSocket at <code>/cli/gateway</code> speaking JSON-RPC.
     </p>
@@ -254,7 +251,7 @@
         open to you, and the only credential it needs is the gateway token. The probe above
         discovers that token for you, so you never paste it in. A
         <code>GET /api/agent</code> returns it under the field <code>agent.dashboardUrl</code>,
-        a read that your Cloudflare Access login authorises, so you can leave the
+        a read that your launchable session authorises, so you can leave the
         token field blank and let probing fill it in.</p>
     </div>
 
@@ -272,9 +269,8 @@
       <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">A single POST drives a loop inside the gateway, where the session key carries memory forward to the next call.</figcaption>
     </figure>
 
-    <h3>First, shape a fresh launchable</h3>
-    <p>A brand-new NemoClaw launchable ships with <code>tools.toolSearch</code> turned
-      on, and that one flag breaks tool use on a weaker model:</p>
+    <h3>Check before changing runtime settings</h3>
+    <p>Supported NemoClaw launchables normally report <code>tools.toolSearch=false</code>. A custom configuration can still enable it, so the health check reads the live value before Recover changes anything:</p>
     <ul>
       <li><strong>Symptom:</strong> you ask for a command, nothing comes back,
         the run stalls, and then it times out.</li>
@@ -283,14 +279,12 @@
         code&rdquo;), and the model loops on that bridge instead of calling
         <code>exec</code>.
       </li>
-      <li><strong>Fix:</strong> run the health check; if <code>toolSearch</code> is on,
-        the Recover cell turns it off with <code>config.patch</code> and restarts the
-        runtime. Do this once per fresh instance.</li>
+      <li><strong>Recovery:</strong> run the health check. If <code>toolSearch</code> is on and the exec probe fails, Recover can turn it off with <code>config.patch</code>. Session clearing and restart remain opt-in.</li>
     </ul>
 
     <figure style="margin:1.4em 0">
       <div id="fig-toolsearch"></div>
-      <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">With toolSearch on a weak model loops instead of calling exec, until Recover flips the flag so exec runs.</figcaption>
+      <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">The healthy path uses exec directly. Recover changes toolSearch only when the live check finds it enabled.</figcaption>
     </figure>
 
     <div id="gw-recover"></div>
@@ -452,14 +446,14 @@ helpers.log("rendered below. Edit the config and Run.");
 
     // ── toolSearch trap vs fix (the resilience graphic) ──────────────────────────
     mountDiagram("#fig-toolsearch", {
-      kicker: "ONE FLAG DECIDES WHETHER EXEC RUNS",
-      title: "How toolSearch breaks exec, and how Recover fixes it",
+      kicker: "CHECK THE LIVE VALUE BEFORE REPAIR",
+      title: "toolSearch is a conditional failure mode",
       maxWidth: 1040, boxW: 252, boxH: 98, gapX: 92, rowGap: 76,
       nodes: [
-        { id: "on", label: "toolSearch ON", kind: "neutral", x: 0, y: 0, lines: ["fresh-launchable default"] },
+        { id: "on", label: "toolSearch ON", kind: "neutral", x: 0, y: 0, lines: ["custom configuration"] },
         { id: "loop", label: "tool_search_code", kind: "tool", x: 1, y: 0, lines: ["model loops on the", "code bridge"] },
         { id: "stall", label: "no output", kind: "neutral", x: 2, y: 0, lines: ["exec never runs"] },
-        { id: "off", label: "toolSearch OFF", kind: "model", x: 0, y: 1, lines: ["after Recover"] },
+        { id: "off", label: "toolSearch OFF", kind: "model", x: 0, y: 1, lines: ["healthy setting"] },
         { id: "exec", label: "exec", kind: "tool", x: 1, y: 1, lines: ["model calls the", "shell directly"] },
         { id: "ok", label: "command output", kind: "env", x: 2, y: 1, lines: ["the shell runs"] },
       ],
@@ -689,39 +683,17 @@ return { ranked: ok.map(r => r.model), errors: results.filter(r => r.err).length
       autofillToken: gatewayTokenFromAgentMetadata,
       fieldHelp: {
         url: `<p><strong>What it is:</strong> The root URL of your NemoClaw launchable running OpenClaw inside OpenShell, with no trailing <code>/v1</code>.</p>
-<p><strong>How to find it:</strong> Your Brev dashboard shows it as the App URL:
-<code>https://nemoclaw-&lt;id&gt;.brevlab.com</code>.</p>
-<p><strong>Running locally:</strong> Use <code>http://localhost:8088</code> (or the port your OpenClaw container
-exposes). No Cloudflare tunnel, no CF Access layer, so connect directly and leave the CF Access JWT field empty.</p>
-<p><strong>Fail-fast backup:</strong> If local OpenClaw fails to start, returns connection errors, or logs <code>EPERM</code>, stop local probing. Use the Brev App URL instead, then paste <code>CF_Authorization</code> below.</p>`,
+<p><strong>How to find it:</strong> Copy the App URL from the Brev dashboard. Either supported launchable type works. For local OpenClaw, use <code>http://localhost:8088</code> or its exposed port and leave Access session empty.</p>`,
 
         token: `<p><strong>Usually you can leave this blank.</strong> Run <strong>GET /api/agent</strong> below and the probe
-reads the gateway token out of <code>agent.dashboardUrl</code> and fills this field for you. The base URL plus your
-CF Access JWT is all the gateway needs to hand it back.</p>
+reads the gateway token out of <code>agent.dashboardUrl</code> and fills this field for you. For Pomerium, opening the launchable and signing in is enough. Cloudflare also needs its Access session below.</p>
 <p><strong>Manual fallback:</strong> If autofill doesn't fire, run <code>printenv OPENCLAW_GATEWAY_TOKEN</code> in your
 launchable terminal and paste the complete value here. Do not assume a fixed length or character set.</p>`,
 
-        cfJwt: `<p><strong>What it is:</strong> A short-lived JWT that Cloudflare Access requires before routing
-requests to your launchable. Your browser already holds one. It was set as a cookie when you first opened
-the launchable URL and authenticated.</p>
-<p><strong>Why JavaScript can't read it:</strong> The cookie is marked <code>HttpOnly</code>, which prevents
-<code>document.cookie</code> from seeing it. That restriction is intentional. It blocks XSS attacks from
-stealing session tokens. There is no JS escape hatch; this is by design.</p>
-<p><strong>How to get it:</strong> Open DevTools on your NemoClaw tab →
-<strong>Application → Storage → Cookies → click the nemoclaw domain</strong> →
-find the <code>CF_Authorization</code> row → copy the full Value (a long JWT string).
-Paste it here. Re-copy it if the probe stops working after a long break, since JWTs expire with your session.</p>
-<p><strong>Running locally:</strong> Leave this field empty. Local OpenClaw has no Cloudflare Access layer.</p>
-<p><strong>Backup mode:</strong> Required for the Brev URL when local OpenClaw is wedged or shows <code>EPERM</code>.</p>
-<p><strong>Gateway cells:</strong> The fetch probes use this JWT as a header. A separately hosted
-course routes the <code>/cli/gateway</code> WebSocket through the shared relay; when this field is
-present, the relay attaches the Access header that browser WebSocket constructors cannot set. A course hosted in
-the same NemoClaw launchable uses the same-origin direct route. For a separate Pages origin, direct
-WebSocket mode also depends on a current launchable browser cookie and its cross-origin policy.</p>
-<p><strong>Why this matters:</strong> The <code>HttpOnly</code> wall is exactly why production systems use
-<em>service tokens</em> for machine-to-machine calls. The browser session flow has no programmatic
-escape hatch by design.</p>`,
-        proxy: `<p><strong>Keep this enabled</strong> when a separately hosted course connects to a Brev launchable. The shared NVIDIA relay carries the Access assertion and required WebSocket headers. Disable it for a same-origin vendored course or an explicitly compatible direct deployment.</p>`,
+        accessProvider: `<p><strong>Automatic</strong> chooses from the App URL. A <code>*.brevlab.com</code> launchable uses <strong>Cloudflare Access</strong> through the hosted relay. A <code>*.apps.run.brev.nvidia.com</code> launchable uses <strong>Pomerium</strong> directly through the signed-in browser.</p>`,
+        accessSession: `<p>This field is only for <strong>Cloudflare Access</strong>. Open that launchable, sign in, then copy the complete <code>CF_Authorization</code> value from DevTools → <strong>Application → Storage → Cookies</strong>.</p>
+<p>For <strong>Pomerium</strong>, the field is disabled. Open the launchable and sign in; its <code>HttpOnly</code> cookie stays in the browser and is never copied into course code or storage.</p>`,
+        proxy: `<p>The shared NVIDIA relay is used for cross-origin <strong>Cloudflare Access</strong> launchables. Pomerium connects directly with the browser's signed-in session, even when this toggle remains enabled for Cloudflare compatibility.</p>`,
         proxyBase: `<p><strong>One shared setting:</strong> this defaults to the NVIDIA-hosted relay and persists for Modules 3a–4b. Presenters can also prefill it with <code>?openclaw_proxy_base=...</code> and enable or disable it with <code>?openclaw_proxy=1</code> or <code>0</code>.</p>`,
       },
 
@@ -737,33 +709,47 @@ escape hatch by design.</p>`,
       openCode: true,
       intro: "Use the probe UI above for the normal path. This cell exposes its request so you can compare proxy and direct transport or inspect an unexpected response.",
       autorun: false,
-      code: `// The probe saved its URL, token, and CF JWT in localStorage. Reuse them here.
+      code: `// The probe saved the launchable URL and selected access provider.
 const connection = helpers.getOpenClawConnection();
 const configured = connection.effectiveUrl; // follows the saved relay toggle
 const url   = connection.rawUrl;             // launchable origin, direct
 const token = connection.token;
-const jwt   = connection.accessJwt;
+const provider = connection.resolvedAccessProvider;
+const session  = connection.accessSession;
 if (!url) return helpers.log('Run the probe above first.');
 
 const METHOD    = 'GET';
-const PATH      = '/api/agent';   // any route the runtime serves
+const PATH      = '/api/agent';   // read-only bootstrap endpoint
+// const PATH   = '/healthz';     // alternate read-only bootstrap endpoint
 const BODY      = null;           // e.g. { key: 'value' }
 const TRANSPORT = 'configured';   // 'configured': saved relay toggle. 'direct': bypass the relay.
-// The configured relay also applies to Brev WebSockets; CF_Authorization is attached when present.
 
+// Pomerium keeps its HttpOnly cookie in the browser. Its authenticated terminal
+// reads this fixed endpoint over launchable loopback, so no cookie enters course code.
+if (provider === 'pomerium') {
+  const result = await helpers.openclawLoopbackProbe(PATH, { baseUrl: url, signal: helpers.signal });
+  helpers.log.kv({ status: result.status + ' ' + result.statusText, transport: result.transport });
+  helpers.log.details('body', result.body);
+  return result.json ?? result.body;
+}
+
+// Cloudflare Access uses the configured hosted relay.
 const direct  = TRANSPORT === 'direct';
 const target  = direct ? url : (configured || url);
 const viaRelay = !direct && target !== url;
 const headers = { Accept: 'application/json, text/html, */*' };
 if (token)            headers.Authorization = 'Bearer ' + token;
-if (viaRelay && jwt)  headers['CF-Access-Jwt-Assertion'] = jwt;
+if (viaRelay && session) {
+  headers['X-OpenClaw-Access-Provider'] = provider;
+  headers['X-OpenClaw-Access-Session'] = session;
+}
 if (BODY)             headers['Content-Type'] = 'application/json';
 
 const res = await helpers.fetch(target + PATH, {
   method: METHOD,
   headers,
   body: BODY ? JSON.stringify(BODY) : null,
-  credentials: direct ? 'include' : 'same-origin',   // 'include' sends the CF cookie this browser holds
+  credentials: direct ? 'include' : 'same-origin',   // direct mode sends the launchable cookie held by this browser
 });
 
 helpers.log.kv({ status: res.status + ' ' + res.statusText, type: res.type });

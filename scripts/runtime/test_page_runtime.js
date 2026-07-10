@@ -33,11 +33,15 @@ const LOOPBACK_ORIGIN = 'http:' + '//127.0.0.1';
 const url = args.find(a => !['--smoke', '--render-only', '--gateway-only', '--cron-contract', '--terminal-contract', '--chat-contract', '--assistant-artifacts', '--serve-static'].includes(a)) || DEFAULT_LAB_URL;
 const CLAW_URL = process.env.CLAW_URL || '';
 let CLAW_TOKEN = process.env.CLAW_TOKEN || '';
-const CLAW_CF = process.env.CLAW_CF || '';
+const CLAW_ACCESS_SESSION = process.env.CLAW_ACCESS_SESSION || process.env.CLAW_CF || '';
+const inferredAccessProvider = /(^|\.)apps\.run\.brev\.nvidia\.com$/i.test((() => { try { return new URL(CLAW_URL).hostname; } catch { return ''; } })())
+  ? 'pomerium'
+  : 'cloudflare';
+const CLAW_ACCESS_PROVIDER = (process.env.CLAW_ACCESS_PROVIDER || inferredAccessProvider).toLowerCase();
 const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY || '';
 const DIRECT_API_URL = process.env.NVIDIA_API_URL || 'https://integrate.api.nvidia.com/v1';
 const OPENCLAW_CORS_PROXY_BASE = process.env.OPENCLAW_CORS_PROXY_BASE || 'https://openclaw-cors-proxy.experiments.courses.nvidia.com';
-const OPENCLAW_BACKUP_HINT = 'Use backup OpenClaw: set CLAW_URL=https://nemoclaw-<id>.brevlab.com CLAW_TOKEN=<gateway token> CLAW_CF=<CF_Authorization>. If local OpenClaw shows EPERM, stop local probing and use the Brev session URL plus CF_Authorization.';
+const OPENCLAW_BACKUP_HINT = 'For a remote launchable test, set CLAW_URL and CLAW_ACCESS_PROVIDER. The isolated browser harness accepts CLAW_ACCESS_SESSION only to seed its temporary browser context; the course never reads or stores a Pomerium cookie. CLAW_TOKEN is optional when /api/agent can discover it.';
 
 // Locate the chromium-headless-shell binary.
 // The install path moves between playwright versions, so glob the known roots instead of hardcoding one.
@@ -96,10 +100,10 @@ function joinUrl(base, pathPart) {
 
 function openClawHttpUrl(pathPart) {
   const direct = joinUrl(CLAW_URL, pathPart);
-  if (!CLAW_CF) return direct;
+  if (!CLAW_ACCESS_SESSION || CLAW_ACCESS_PROVIDER === 'pomerium') return direct;
   try {
     const upstream = new URL(CLAW_URL);
-    if (!/(^|\.)brevlab\.com$/i.test(upstream.hostname)) return direct;
+    if (!/(^|\.)brevlab\.com$/i.test(upstream.hostname) && !/(^|\.)apps\.run\.brev\.nvidia\.com$/i.test(upstream.hostname)) return direct;
     const proxy = new URL(OPENCLAW_CORS_PROXY_BASE);
     const upstreamPath = upstream.pathname.replace(/\/+$/, '');
     proxy.pathname = `/https/${upstream.host}${upstreamPath}${pathPart}`;
@@ -121,11 +125,18 @@ function gatewayTokenFromDashboardUrl(raw) {
 }
 
 async function resolveOpenClawToken() {
-  if (CLAW_TOKEN || !(CLAW_URL && CLAW_CF)) return;
+  // A Pomerium session is sender-bound and exists only in the browser context.
+  // Its token bootstrap runs after navigation through the direct terminal socket.
+  if (CLAW_ACCESS_PROVIDER === 'pomerium') return;
+  if (CLAW_TOKEN || !(CLAW_URL && CLAW_ACCESS_SESSION)) return;
   const timeout = withTimeout(8000);
   try {
     const resp = await fetch(openClawHttpUrl('/api/agent'), {
-      headers: { Accept: 'application/json, text/plain, */*', 'CF-Access-Jwt-Assertion': CLAW_CF },
+      headers: {
+        Accept: 'application/json, text/plain, */*',
+        'X-OpenClaw-Access-Provider': CLAW_ACCESS_PROVIDER,
+        'X-OpenClaw-Access-Session': CLAW_ACCESS_SESSION,
+      },
       signal: timeout.signal,
     });
     const body = await resp.text();
@@ -145,10 +156,14 @@ async function resolveOpenClawToken() {
 }
 
 async function preflightOpenClaw() {
+  if (CLAW_ACCESS_PROVIDER === 'pomerium') return;
   await resolveOpenClawToken();
   if (!(CLAW_URL && CLAW_TOKEN)) return;
   const headers = { Accept: 'application/json, text/plain, */*', Authorization: `Bearer ${CLAW_TOKEN}` };
-  if (CLAW_CF) headers['CF-Access-Jwt-Assertion'] = CLAW_CF;
+  if (CLAW_ACCESS_SESSION) {
+    headers['X-OpenClaw-Access-Provider'] = CLAW_ACCESS_PROVIDER;
+    headers['X-OpenClaw-Access-Session'] = CLAW_ACCESS_SESSION;
+  }
   const targets = ['/health', '/healthz', '/api/agent'];
   const attempts = [];
   for (const pathPart of targets) {
@@ -302,16 +317,15 @@ function findChrome() {
     });
   });
 
-  // For a remote *.brevlab.com launchable, the browser needs the CF_Authorization cookie to clear Cloudflare Access before the WS upgrade.
-  // Set it for the launchable host (derived from CLAW_URL) so the headless browser authenticates exactly like a logged-in student.
-  if (CLAW_CF && CLAW_URL) {
+  // Direct-mode checks mirror a logged-in browser by setting only the cookie
+  // associated with the chosen access provider.
+  if (CLAW_ACCESS_SESSION && CLAW_URL) {
     try {
       const host = new URL(CLAW_URL).hostname;
-      // SameSite=None + Secure so the browser sends it on the cross-site wss upgrade (the page origin differs from the launchable).
-      // A Lax cookie is withheld cross-site and CF 302s the handshake, so no challenge arrives.
-      await page.context().addCookies([{ name: 'CF_Authorization', value: CLAW_CF, domain: host, path: '/', secure: true, sameSite: 'None' }]);
-      console.log('CF_COOKIE: set for', host);
-    } catch (e) { console.log('CF_COOKIE: skipped (' + e.message + ')'); }
+      const name = CLAW_ACCESS_PROVIDER === 'pomerium' ? '_pomerium' : 'CF_Authorization';
+      await page.context().addCookies([{ name, value: CLAW_ACCESS_SESSION, domain: host, path: '/', secure: true, sameSite: 'None' }]);
+      console.log('ACCESS_COOKIE: set provider=' + CLAW_ACCESS_PROVIDER + ' host=' + host);
+    } catch (e) { console.log('ACCESS_COOKIE: skipped (' + e.message + ')'); }
   }
 
   // The web course is remote-service-only: browser pages call integrate.api.nvidia.com directly with the learner's nvapi key.
@@ -452,10 +466,10 @@ function findChrome() {
   }
 
   if (gatewayOnly) {
-    if (!(CLAW_URL && CLAW_CF)) {
-      throw new Error('--gateway-only requires CLAW_URL and CLAW_CF');
+    if (!(CLAW_URL && CLAW_ACCESS_SESSION)) {
+      throw new Error('--gateway-only requires CLAW_URL and CLAW_ACCESS_SESSION');
     }
-    const result = await page.evaluate(async ({ clawUrl, cfJwt, proxyBase, cronContract, terminalContract, chatContract }) => {
+    const result = await page.evaluate(async ({ clawUrl, accessProvider, accessSession, proxyBase, cronContract, terminalContract, chatContract }) => {
       const output = {
         httpStatus: 0,
         token: false,
@@ -479,20 +493,34 @@ function findChrome() {
       };
       try {
         const mod = await import(new URL('./scripts/_shared.js', location.href).href);
-        const upstream = new URL(clawUrl);
-        const gateway = mod.openclawGatewayWsUrl(clawUrl, cfJwt, proxyBase);
+        mod.setOpenClawConnection({ rawUrl: clawUrl, accessProvider, accessSession });
+        const gateway = mod.openclawGatewayWsUrl(clawUrl, accessSession, proxyBase, true, accessProvider);
         output.viaProxy = gateway.viaProxy;
-        if (!gateway.viaProxy) throw new Error('course helper did not select hosted relay');
-        const proxy = new URL(proxyBase);
-        proxy.pathname = `/https/${upstream.host}${upstream.pathname.replace(/\/+$/, '')}/api/agent`;
-        const response = await fetch(proxy, {
-          headers: { Accept: 'application/json', 'CF-Access-Jwt-Assertion': cfJwt },
-        });
-        output.httpStatus = response.status;
-        if (!response.ok) throw new Error(`agent metadata returned HTTP ${response.status}`);
-        const token = mod.gatewayTokenFromAgentMetadata(await response.json());
+        let metadata;
+        if (accessProvider === 'pomerium') {
+          const response = await mod.openclawLoopbackProbe('/api/agent', { baseUrl: clawUrl });
+          output.httpStatus = response.status;
+          metadata = response.json;
+        } else {
+          if (!gateway.viaProxy) throw new Error('Cloudflare course helper did not select hosted relay');
+          const upstream = new URL(clawUrl);
+          const proxy = new URL(proxyBase);
+          proxy.pathname = `/https/${upstream.host}${upstream.pathname.replace(/\/+$/, '')}/api/agent`;
+          const response = await fetch(proxy, {
+            headers: {
+              Accept: 'application/json',
+              'X-OpenClaw-Access-Provider': accessProvider,
+              'X-OpenClaw-Access-Session': accessSession,
+            },
+          });
+          output.httpStatus = response.status;
+          if (!response.ok) throw new Error(`agent metadata returned HTTP ${response.status}`);
+          metadata = await response.json();
+        }
+        const token = mod.gatewayTokenFromAgentMetadata(metadata);
         output.token = !!token;
         if (!token) throw new Error('agent metadata omitted a gateway token');
+        mod.setOpenClawConnection({ rawUrl: clawUrl, token, accessProvider, accessSession });
 
         await new Promise((resolve, reject) => {
           const socket = new WebSocket(gateway.url);
@@ -566,7 +594,7 @@ function findChrome() {
           };
         });
         if (terminalContract) {
-          mod.setOpenClawConnection({ rawUrl: clawUrl, token, accessJwt: cfJwt });
+          mod.setOpenClawConnection({ rawUrl: clawUrl, token, accessProvider, accessSession });
           const transcript = await mod.terminal('openshell sandbox list', {
             idleMs: 4000,
             totalMs: 20000,
@@ -576,7 +604,7 @@ function findChrome() {
           output.terminalOpen = transcript.frames > 0 && !!String(transcript.output || '').trim();
         }
         if (chatContract) {
-          mod.setOpenClawConnection({ rawUrl: clawUrl, token, accessJwt: cfJwt });
+          mod.setOpenClawConnection({ rawUrl: clawUrl, token, accessProvider, accessSession });
           const rendered = [], tools = [];
           const view = {
             token: value => rendered.push(String(value || '')),
@@ -604,27 +632,40 @@ function findChrome() {
         output.error = error?.message || String(error);
       }
       return output;
-    }, { clawUrl: CLAW_URL, cfJwt: CLAW_CF, proxyBase: OPENCLAW_CORS_PROXY_BASE, cronContract, terminalContract, chatContract });
+    }, { clawUrl: CLAW_URL, accessProvider: CLAW_ACCESS_PROVIDER, accessSession: CLAW_ACCESS_SESSION, proxyBase: OPENCLAW_CORS_PROXY_BASE, cronContract, terminalContract, chatContract });
     console.log('GATEWAY_CHECK:', JSON.stringify(result));
-    const passed = result.httpStatus === 200 && result.token && result.viaProxy
+    const expectedProxy = CLAW_ACCESS_PROVIDER === 'cloudflare';
+    const passed = result.httpStatus === 200 && result.token && result.viaProxy === expectedProxy
       && result.challenge && result.connect && result.rpc && !result.error
       && (!cronContract || (result.cronAdd && result.cronRuns && result.cronRemove && !result.cleanupId))
       && (!terminalContract || (result.terminalOpen && result.terminalFrames > 0))
       && (!chatContract || (result.chatText && result.chatRendered && result.chatTools > 0
         && result.chatToolNames.includes('exec') && result.chatToolErrors === 0 && !result.chatNoise));
-    console.log(passed ? 'RESULT: PASS (hosted OpenClaw relay)' : 'RESULT: FAIL (hosted OpenClaw relay)');
+    console.log(passed ? 'RESULT: PASS (live OpenClaw transport)' : 'RESULT: FAIL (live OpenClaw transport)');
     await browser.close();
     if (staticServer) staticServer.close();
     process.exit(passed ? 0 : 1);
   }
 
-  // Inject credentials after the probe widget mounts, or it clears them.
-  if (CLAW_URL && CLAW_TOKEN) {
-    await page.evaluate(async ([u, t, cf]) => {
+  // Inject credentials after the probe widget mounts, or it clears them. A
+  // Pomerium browser test discovers the gateway token through the authenticated
+  // direct terminal; the HttpOnly cookie never enters course-accessible storage.
+  if (CLAW_URL && (CLAW_TOKEN || CLAW_ACCESS_PROVIDER === 'pomerium')) {
+    const injected = await page.evaluate(async ([u, t, provider, session]) => {
       const shared = await import(new URL('./scripts/_shared.js', location.href).href);
-      shared.setOpenClawConnection({ rawUrl: u, token: t, accessJwt: cf });
-    }, [CLAW_URL, CLAW_TOKEN, CLAW_CF]);
-    console.log('CREDS: injected', CLAW_URL, CLAW_CF ? '(CF JWT stored for gateway proxy)' : '');
+      if (!t && provider === 'pomerium') {
+        shared.setOpenClawConnection({ rawUrl: u, accessProvider: provider });
+        const metadata = await shared.openclawLoopbackProbe('/api/agent', { baseUrl: u });
+        t = shared.gatewayTokenFromAgentMetadata(metadata.json);
+        if (!t) throw new Error('agent metadata omitted a gateway token');
+      }
+      shared.setOpenClawConnection({ rawUrl: u, token: t, accessProvider: provider, accessSession: session });
+      return { token: !!t, accessSessionStored: !!shared.getOpenClawConnection().accessSession };
+    }, [CLAW_URL, CLAW_TOKEN, CLAW_ACCESS_PROVIDER, CLAW_ACCESS_SESSION]);
+    console.log('CREDS: injected', CLAW_URL,
+      CLAW_ACCESS_PROVIDER === 'pomerium'
+        ? '(Pomerium session remained browser-only)'
+        : (injected.accessSessionStored ? '(Cloudflare relay session is tab-scoped)' : ''));
   } else {
     console.log('CREDS: none (gateway nodes will short-circuit on the probe guard)');
   }

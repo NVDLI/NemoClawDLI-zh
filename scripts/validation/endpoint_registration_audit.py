@@ -35,12 +35,14 @@ PROTECTED_WRITERS = {
     "nemoclaw_clawrawurl": {CONNECTION},
     "nemoclaw_clawtoken": {CONNECTION},
     "nemoclaw_clawcfjwt": {CONNECTION},
+    "nemoclaw_openclaw_access_provider_v1": {CONNECTION},
+    "nemoclaw_openclaw_access_session_v1": {CONNECTION},
     "nemoclaw_openclaw_proxy_base_v1": {CONNECTION},
     "nemoclaw_openclaw_proxy_enabled_v1": {CONNECTION},
 }
 
 MODEL_QUERY_KEYS = ("base_url", "model_base_url", "model", "embedding_base_url", "embedding_model")
-OPENCLAW_QUERY_KEYS = ("openclaw_url", "openclaw_proxy_base", "openclaw_proxy")
+OPENCLAW_QUERY_KEYS = ("openclaw_url", "openclaw_proxy_base", "openclaw_proxy", "openclaw_access_provider")
 
 
 def source_files() -> list[Path]:
@@ -96,7 +98,7 @@ def audit(overrides: dict[str, str] | None = None) -> list[str]:
 
     if 'sessionStorage.setItem("__nv_slim_cfg_v1"' in runtime:
         findings.append("runtime harness bypasses the model registry with a private config cache write")
-    if "shared.setOpenClawConnection({ rawUrl: u, token: t, accessJwt: cf })" not in runtime:
+    if "shared.setOpenClawConnection({ rawUrl: u, token: t, accessProvider: provider, accessSession: session })" not in runtime:
         findings.append("runtime harness bypasses the OpenClaw connection registry")
     if "courseRuntime().then(function (shared)" not in explorer or "return shared.chat({" not in explorer:
         findings.append("SKILL explorer bypasses the canonical course model registry")
@@ -123,8 +125,10 @@ def audit(overrides: dict[str, str] | None = None) -> list[str]:
         'export const OPENCLAW_RAW_URL_KEY = "nemoclaw_clawrawurl"',
         'export const OPENCLAW_TOKEN_KEY = "nemoclaw_clawtoken"',
         'export const OPENCLAW_ACCESS_JWT_KEY = "nemoclaw_clawcfjwt"',
+        'export const OPENCLAW_ACCESS_PROVIDER_KEY = "nemoclaw_openclaw_access_provider_v1"',
+        'export const OPENCLAW_ACCESS_SESSION_KEY = "nemoclaw_openclaw_access_session_v1"',
         "export function getOpenClawConnection()",
-        "export function setOpenClawConnection({ rawUrl, token, accessJwt } = {})",
+        "export function setOpenClawConnection({ rawUrl, token, accessProvider, accessSession, accessJwt } = {})",
     )
     for token in connection_contract:
         if token not in connection:

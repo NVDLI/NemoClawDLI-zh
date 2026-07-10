@@ -28,7 +28,7 @@ Examples:
   scripts/runtime/browser_env_probe.sh
   scripts/runtime/lab_runtime_test.sh --smoke
   scripts/runtime/lab_runtime_test.sh --render-only
-  CLAW_URL=https://nemoclaw-<id>.brevlab.com CLAW_CF=<CF_Authorization> \
+  CLAW_URL=https://<launchable-host> CLAW_ACCESS_PROVIDER=cloudflare|pomerium CLAW_ACCESS_SESSION=<cookie-value> \
   scripts/runtime/lab_runtime_test.sh --gateway-only
   scripts/runtime/lab_runtime_test.sh --gateway-only --cron-contract
   scripts/runtime/lab_runtime_test.sh --gateway-only --terminal-contract
@@ -37,7 +37,7 @@ Examples:
   scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html
   CLAW_URL=http://openclaw:8995 CLAW_TOKEN=dli-openclaw-token \
     scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/03a-kickstart.html
-  CLAW_URL=https://nemoclaw-<id>.brevlab.com CLAW_TOKEN=<gateway-token> CLAW_CF=<CF_Authorization> \
+  CLAW_URL=https://<launchable-host> CLAW_TOKEN=<gateway-token> CLAW_ACCESS_PROVIDER=cloudflare|pomerium CLAW_ACCESS_SESSION=<cookie-value> \
     scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/03a-kickstart.html
 
 Environment:
@@ -45,8 +45,10 @@ Environment:
   LAB_RUNTIME_IMAGE=name:tag         Override image tag.
   LAB_RUNTIME_NETWORK=nvidia-llm     Network for full lab tests; default matches deploy/docker-compose.yml.
   CLAW_URL=url                       OpenClaw base URL. Use Brev URL if local OpenClaw fails or shows EPERM.
-  CLAW_TOKEN=token                   OpenClaw gateway bearer token; optional for Brev when /api/agent can discover it with CLAW_CF.
-  CLAW_CF=jwt                        CF_Authorization value for remote Brev launchables.
+  CLAW_TOKEN=token                   OpenClaw gateway bearer token; optional for Brev when /api/agent can discover it.
+  CLAW_ACCESS_PROVIDER=name          cloudflare or pomerium; inferred from approved Brev hosts when omitted.
+  CLAW_ACCESS_SESSION=value          Cloudflare relay session, or a Pomerium cookie injected only into the harness's ephemeral browser context.
+  CLAW_CF=jwt                        Legacy alias for a Cloudflare access session.
   OPENCLAW_CORS_PROXY_BASE=url       Override the OpenClaw relay for an explicit test deployment.
   PLAYWRIGHT_VERSION=1.55.0          Override build arg for the runtime image.
 USAGE
@@ -99,7 +101,7 @@ fi
 
 run_args=(run --rm -v "$ROOT:/workspace:ro" -w /workspace -e NODE_PATH=/opt/nemoclaw-runtime/node_modules)
 test_cmd=(--entrypoint node "$IMAGE" scripts/runtime/test_page_runtime.js)
-for env_name in NVIDIA_API_KEY NVIDIA_API_URL CLAW_URL CLAW_TOKEN CLAW_CF CLAW_ORIGIN OPENCLAW_CORS_PROXY_BASE DEBUG_WS CHROME_BIN PLAYWRIGHT_BROWSERS_PATH; do
+for env_name in NVIDIA_API_KEY NVIDIA_API_URL CLAW_URL CLAW_TOKEN CLAW_ACCESS_PROVIDER CLAW_ACCESS_SESSION CLAW_CF CLAW_ORIGIN OPENCLAW_CORS_PROXY_BASE DEBUG_WS CHROME_BIN PLAYWRIGHT_BROWSERS_PATH; do
   if [[ -n "${!env_name:-}" ]]; then
     run_args+=(-e "$env_name=${!env_name}")
   fi

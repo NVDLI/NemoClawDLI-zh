@@ -40,7 +40,10 @@ function ok(condition, message) { if (!condition) throw new Error(message); }
 
 try {
   await listen();
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    ...(process.env.CHROME_BIN ? { executablePath: process.env.CHROME_BIN } : {}),
+  });
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   const errors = [];
   const probeRequests = [];
@@ -54,6 +57,7 @@ try {
       localStorage.setItem('nvapi', 'EMPTY');
       localStorage.removeItem('nemoclaw_clawrawurl');
       localStorage.setItem('nemoclaw_clawurl', retired);
+      window.__terminalUrls = [];
       class FakeWebSocket {
         static OPEN = 1;
         constructor(url) {
@@ -61,6 +65,17 @@ try {
           setTimeout(() => {
             this.readyState = FakeWebSocket.OPEN;
             this.onopen?.();
+            if (/\/ws\/terminal/.test(url)) {
+              window.__terminalUrls.push(url);
+              const command = new URL(url).searchParams.get('cmd') || '';
+              const body = command.endsWith('http://127.0.0.1/healthz')
+                ? JSON.stringify({ status: 'ok' })
+                : JSON.stringify({ agent: { dashboardUrl: '/#token=pomerium-probe-token_456' } });
+              this.emit({ type: 'data', data: body }, 1);
+              this.emit({ type: 'exit', code: 0 }, 2);
+              setTimeout(() => this.close(), 3);
+              return;
+            }
             this.emit({ type: 'event', event: 'connect.challenge', payload: {} });
           }, 0);
         }
@@ -105,12 +120,27 @@ try {
   });
   await page.route('https://openclaw-cors-proxy.experiments.courses.nvidia.com/**', async route => {
     const url = route.request().url();
-    probeRequests.push(url);
+    const headers = route.request().headers();
+    const legacyCloudflare = headers['cf-access-jwt-assertion'] || '';
+    probeRequests.push({
+      url,
+      provider: headers['x-openclaw-access-provider'] || (legacyCloudflare ? 'cloudflare' : ''),
+      session: headers['x-openclaw-access-session'] || legacyCloudflare,
+      authorization: headers.authorization || '',
+    });
     if (url.endsWith('/healthz')) {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) });
       return;
     }
     if (url.endsWith('/api/agent')) {
+      if (headers['x-openclaw-access-session'] === 'rejected-session') {
+        await route.fulfill({
+          status: 401,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'Unauthenticated', request_id: 'request-test' }),
+        });
+        return;
+      }
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -138,6 +168,8 @@ try {
     const url = host.querySelector('.claw-url');
     const toggle = host.querySelector('.claw-proxy-enabled');
     const relay = host.querySelector('.claw-proxy-base');
+    const provider = host.querySelector('.claw-access-provider');
+    const session = host.querySelector('.claw-access-session');
     const state = () => ({
       model: modelUrl.value,
       input: url.value,
@@ -145,11 +177,14 @@ try {
       effective: localStorage.getItem('nemoclaw_clawurl'),
       enabled: toggle.checked,
       relay: relay.value,
+      provider: provider.value,
+      sessionPlaceholder: session.placeholder,
     });
     const migrated = state();
     if (migrated.input !== 'https://nemoclaw-test123.brevlab.com') throw new Error('visible URL was not healed');
     if (migrated.raw !== migrated.input) throw new Error('raw saved URL was not healed');
     if (!migrated.enabled || migrated.relay !== approved) throw new Error('approved relay is not the visible default');
+    if (migrated.provider !== 'auto' || !/CF_Authorization/.test(migrated.sessionPlaceholder)) throw new Error('Cloudflare launchable was not inferred from the URL');
     if (migrated.effective !== approved + '/https/nemoclaw-test123.brevlab.com') throw new Error('effective URL did not migrate');
     if (migrated.effective.includes('workers.dev')) throw new Error('retired worker survived migration');
 
@@ -162,6 +197,10 @@ try {
     toggle.dispatchEvent(new Event('change'));
     const restored = state();
     if (restored.effective !== approved + '/https/nemoclaw-test123.brevlab.com' || relay.disabled) throw new Error('relay on did not restore approved route: ' + JSON.stringify(restored));
+    session.value = 'test-access-session';
+    session.dispatchEvent(new Event('input'));
+    host.querySelector('.claw-token').value = 'retained-gateway-token';
+    host.querySelector('.claw-token').dispatchEvent(new Event('input'));
     return { migrated, direct, restored };
   });
   await page.getByRole('button', { name: 'GET /healthz', exact: true }).click();
@@ -170,7 +209,8 @@ try {
   await page.waitForFunction(() => document.querySelector('#probe-claw .claw-token')?.value === 'probe-token_123.abc~xyz');
   result.probeActions = await page.evaluate(() => ({
     token: document.querySelector('#probe-claw .claw-token')?.value,
-    savedToken: localStorage.getItem('nemoclaw_clawtoken'),
+    savedToken: sessionStorage.getItem('nemoclaw_clawtoken'),
+    leakedToken: localStorage.getItem('nemoclaw_clawtoken'),
     output: document.querySelector('#probe-claw .claw-out')?.textContent || '',
     visibleHtmlFrame: !!document.querySelector('#probe-claw .claw-html-frame:not([hidden])'),
   }));
@@ -178,13 +218,65 @@ try {
     'https://openclaw-cors-proxy.experiments.courses.nvidia.com/https/nemoclaw-test123.brevlab.com/healthz',
     'https://openclaw-cors-proxy.experiments.courses.nvidia.com/https/nemoclaw-test123.brevlab.com/api/agent',
   ];
-  ok(JSON.stringify(probeRequests) === JSON.stringify(expectedProbeRequests),
+  ok(JSON.stringify(probeRequests.map(item => item.url)) === JSON.stringify(expectedProbeRequests),
     `probe dropped or changed its API path: ${JSON.stringify(probeRequests)}`);
+  ok(probeRequests.every(item => item.provider === 'cloudflare' && item.session === 'test-access-session'),
+    `Cloudflare probe did not use neutral access headers: ${JSON.stringify(probeRequests)}`);
+  ok(probeRequests[0].authorization && !probeRequests[1].authorization,
+    `token discovery forwarded a retained bearer token: ${JSON.stringify(probeRequests)}`);
   ok(result.probeActions.token === 'probe-token_123.abc~xyz' &&
-     result.probeActions.savedToken === result.probeActions.token,
+     result.probeActions.savedToken === result.probeActions.token && !result.probeActions.leakedToken,
     `GET /api/agent did not update the bearer token: ${JSON.stringify(result.probeActions)}`);
   ok(!result.probeActions.visibleHtmlFrame && /dashboardUrl/.test(result.probeActions.output),
     `API probe rendered HTML instead of JSON status: ${JSON.stringify(result.probeActions)}`);
+  result.pomerium = await page.evaluate(() => {
+    const host = document.querySelector('#probe-claw');
+    const url = host.querySelector('.claw-url');
+    const provider = host.querySelector('.claw-access-provider');
+    const session = host.querySelector('.claw-access-session');
+    url.value = 'https://nemoclaw-test123.apps.run.brev.nvidia.com/chat?session=main';
+    url.dispatchEvent(new Event('input'));
+    if (session.value || host.querySelector('.claw-token').value) throw new Error('credentials survived a launchable URL change');
+    if (localStorage.getItem('nemoclaw_openclaw_access_session_v1') || localStorage.getItem('nemoclaw_clawtoken')) throw new Error('rotated credentials survived in localStorage');
+    if (provider.value !== 'auto' || !/signed-in browser session/.test(session.placeholder)) throw new Error('Pomerium launchable was not inferred from the URL');
+    if (!session.disabled || session.value) throw new Error('Pomerium cookie input remained writable');
+    provider.value = 'cloudflare';
+    provider.dispatchEvent(new Event('change'));
+    if (!provider.validationMessage) throw new Error('provider mismatch was not rejected in the UI');
+    provider.value = 'pomerium';
+    provider.dispatchEvent(new Event('change'));
+    if (provider.validationMessage) throw new Error('matching Pomerium provider remained invalid');
+    return {
+      raw: localStorage.getItem('nemoclaw_clawrawurl'),
+      effective: localStorage.getItem('nemoclaw_clawurl'),
+      provider: localStorage.getItem('nemoclaw_openclaw_access_provider_v1'),
+      localSession: localStorage.getItem('nemoclaw_openclaw_access_session_v1'),
+      tabSession: sessionStorage.getItem('nemoclaw_openclaw_access_session_v1'),
+    };
+  });
+  ok(result.pomerium.raw === 'https://nemoclaw-test123.apps.run.brev.nvidia.com' &&
+     result.pomerium.effective === 'https://nemoclaw-test123.apps.run.brev.nvidia.com' &&
+     result.pomerium.provider === 'pomerium' && !result.pomerium.localSession && !result.pomerium.tabSession,
+    `Pomerium launchable did not persist through the visible controls: ${JSON.stringify(result.pomerium)}`);
+  await page.getByRole('button', { name: 'GET /healthz', exact: true }).click();
+  await page.waitForFunction(() => /"status":\s*"ok"/.test(document.querySelector('#probe-claw .claw-out')?.textContent || ''));
+  await page.getByRole('button', { name: 'GET /api/agent', exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('#probe-claw .claw-token')?.value === 'pomerium-probe-token_456');
+  result.pomeriumTransport = await page.evaluate(() => ({
+    urls: window.__terminalUrls.slice(),
+    token: document.querySelector('#probe-claw .claw-token')?.value,
+    savedToken: sessionStorage.getItem('nemoclaw_clawtoken'),
+    localToken: localStorage.getItem('nemoclaw_clawtoken'),
+    output: document.querySelector('#probe-claw .claw-out')?.textContent || '',
+  }));
+  ok(result.pomeriumTransport.urls.length === 2 &&
+     result.pomeriumTransport.urls.every(url => url.startsWith('wss://nemoclaw-test123.apps.run.brev.nvidia.com/ws/terminal?cmd=')) &&
+     result.pomeriumTransport.urls.every(url => !/openclaw-cors-proxy|access_session|cf_access_jwt/.test(url)) &&
+     result.pomeriumTransport.token === 'pomerium-probe-token_456' &&
+     result.pomeriumTransport.savedToken === result.pomeriumTransport.token &&
+     !result.pomeriumTransport.localToken &&
+     /direct browser session/.test(result.pomeriumTransport.output),
+    `Pomerium bootstrap did not stay on the direct terminal: ${JSON.stringify(result.pomeriumTransport)}`);
   result.chatContract = await page.evaluate(async () => {
     const mod = await import('/nemoclaw/scripts/_openclaw.js?chat-contract=' + Date.now());
     const connection = await import('/nemoclaw/scripts/_connection.js?chat-contract=' + Date.now());

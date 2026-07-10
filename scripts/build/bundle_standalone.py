@@ -713,14 +713,7 @@ def project_artifact_navigation(out: Path) -> int:
         index = skill.parent / "index.html"
         if index.exists():
             continue
-        title = escape(skill.parent.name or "Directory")
-        index.write_text(
-            '<!doctype html><html><head><meta charset="utf-8">'
-            '<meta http-equiv="refresh" content="0;url=SKILL.html">'
-            f'<title>{title}</title></head><body><p>'
-            f'<a href="SKILL.html">Open {title}</a></p></body></html>\n',
-            encoding="utf-8",
-        )
+        shutil.copy2(skill, index)
         changed += 1
     return changed
 
