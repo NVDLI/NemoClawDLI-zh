@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Audit the course studio interface contract.
 
 This is a static gate for the authoring studio. It checks that studio.html remains

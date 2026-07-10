@@ -365,6 +365,12 @@
           "source": "web/nemoclaw/scripts/SKILL.html",
           "line": 9
         }
+      ],
+      "distribution_form": "upstream-file-copy",
+      "modified_from_upstream": false,
+      "transformation": "Copied byte-for-byte from the pinned npm package; only the destination filename is selected here.",
+      "source_files": [
+        "scripts/browser-vendor/node_modules/codemirror/lib/codemirror.css"
       ]
     },
     {
@@ -528,6 +534,12 @@
           "source": "web/nemoclaw/scripts/SKILL.html",
           "line": 11
         }
+      ],
+      "distribution_form": "transformed-bundle",
+      "modified_from_upstream": true,
+      "transformation": "Selected modules are bundled and minified with esbuild for browser delivery.",
+      "source_files": [
+        "scripts/browser-vendor/codemirror-entry.js"
       ]
     },
     {
@@ -691,6 +703,12 @@
           "source": "web/nemoclaw/scripts/SKILL.html",
           "line": 10
         }
+      ],
+      "distribution_form": "upstream-file-copy",
+      "modified_from_upstream": false,
+      "transformation": "Copied byte-for-byte from the pinned npm package; only the destination filename is selected here.",
+      "source_files": [
+        "scripts/browser-vendor/node_modules/codemirror/theme/monokai.css"
       ]
     },
     {
@@ -800,7 +818,7 @@
         },
         {
           "source": "web/_skill_explorer.js",
-          "line": 67
+          "line": 70
         },
         {
           "source": "web/nemoclaw/01a-loop.html",
@@ -858,6 +876,12 @@
           "source": "web/nemoclaw/scripts/SKILL.html",
           "line": 8
         }
+      ],
+      "distribution_form": "transformed-bundle",
+      "modified_from_upstream": true,
+      "transformation": "Selected modules are bundled and minified with esbuild for browser delivery.",
+      "source_files": [
+        "scripts/browser-vendor/highlight-entry.js"
       ]
     },
     {
@@ -871,8 +895,14 @@
       "references": [
         {
           "source": "web/_skill_explorer.js",
-          "line": 66
+          "line": 69
         }
+      ],
+      "distribution_form": "upstream-file-copy",
+      "modified_from_upstream": false,
+      "transformation": "Copied byte-for-byte from the pinned npm package; only the destination filename is selected here.",
+      "source_files": [
+        "scripts/browser-vendor/node_modules/highlight.js/styles/github-dark.min.css"
       ]
     },
     {
@@ -886,8 +916,14 @@
       "references": [
         {
           "source": "web/nemoclaw/scripts/_openshell.js",
-          "line": 8
+          "line": 11
         }
+      ],
+      "distribution_form": "transformed-bundle",
+      "modified_from_upstream": true,
+      "transformation": "Selected modules are bundled and minified with esbuild for browser ESM delivery.",
+      "source_files": [
+        "scripts/browser-vendor/js-yaml-entry.js"
       ]
     },
     {
@@ -963,8 +999,14 @@
         },
         {
           "source": "web/nemoclaw/scripts/_chat.js",
-          "line": 6
+          "line": 9
         }
+      ],
+      "distribution_form": "transformed-bundle",
+      "modified_from_upstream": true,
+      "transformation": "Selected modules are bundled and minified with esbuild for browser ESM delivery.",
+      "source_files": [
+        "scripts/browser-vendor/langchain-entry.js"
       ]
     },
     {
@@ -978,12 +1020,18 @@
       "references": [
         {
           "source": "web/_skill_explorer.js",
-          "line": 310
+          "line": 313
         },
         {
           "source": "web/nemoclaw/scripts/_chat.js",
-          "line": 5
+          "line": 8
         }
+      ],
+      "distribution_form": "upstream-file-copy",
+      "modified_from_upstream": false,
+      "transformation": "Copied byte-for-byte from the pinned npm package; only the destination filename is selected here.",
+      "source_files": [
+        "scripts/browser-vendor/node_modules/marked/lib/marked.esm.js"
       ]
     }
   ],

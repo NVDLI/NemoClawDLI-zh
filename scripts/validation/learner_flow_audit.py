@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Required static contract for progressive disclosure and interactive lab state.
 
 The gate stays course-agnostic: it discovers course directories from course SKILL

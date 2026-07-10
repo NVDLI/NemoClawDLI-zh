@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Typed materials vendorer: pull each course material from its live web source into
 committed markdown under web/nemoclaw/mats/, with provenance and a drift check.
 

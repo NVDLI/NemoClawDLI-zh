@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Minimal bars for the runnable cells (every mountCanvasFlow/mountRunCell `code:`).
 
 A good cell is transparent (a model call surfaces its work via the house logger or a

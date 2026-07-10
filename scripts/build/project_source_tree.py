@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Project authoring sources into Pages so every SKILL explorer remains usable.
 
 Tracked generated delivery output is rebuilt elsewhere in the artifact and is not projected a

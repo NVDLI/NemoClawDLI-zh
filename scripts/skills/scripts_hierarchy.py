@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Guardrail for the scripts/ hierarchy.
 
 The scripts/ root is intentionally sparse so the repository browser shows the grouped

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Audit (and --fix) every SKILL.html so it is a TRUE beacon of its own directory.
 
 Per the SKILL contract each SKILL.html is a per-directory brain: human prose +

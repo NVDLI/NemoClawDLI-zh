@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // Shared launchable routing. Every OpenClaw HTTP/WebSocket consumer uses this module.
 
 export const DEFAULT_OPENCLAW_PROXY_BASE = "https://openclaw-cors-proxy.experiments.courses.nvidia.com";

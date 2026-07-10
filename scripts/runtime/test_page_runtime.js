@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // Browser runtime harness. Host entrypoint: scripts/runtime/lab_runtime_test.sh [--smoke] [url].
 // Set CLAW_URL + CLAW_TOKEN to exercise OpenClaw gateway nodes.
 // Full-page mode runs CanvasFlows sequentially and verifies gateway activity only

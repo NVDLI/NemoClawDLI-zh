@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Vendor NVIDIA glossary pages into web/nemoclaw/mats/glossary_raw/ as markdown + local images.
 
 For each glossary term it fetches the page, extracts the main article (the AEM

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Exercise the OpenClaw probe HTML-frame lifecycle in a real browser.
 
 The probe may render an HTML response in a sandboxed iframe. Every later non-HTML,

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Static legibility / formatting checks the prose suites miss.
 
 Figures are inline or fetched SVG with a fixed viewBox and max-width, so on-screen text size is

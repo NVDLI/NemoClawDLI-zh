@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 /** Build docs/repository-overview.pptx from the shared slide manifest.
  *
  * Run this module from an artifact-tool workspace initialized by the

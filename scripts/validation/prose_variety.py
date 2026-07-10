@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Prose-variety static analysis: does the authored course narrative read like a person wrote it?
 
 LLM prose has structural tells that have nothing to do with word choice: sentences cluster at one

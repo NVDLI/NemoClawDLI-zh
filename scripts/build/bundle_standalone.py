@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Bundle web/nemoclaw/*.html into iframe-ready single-file HTMLs.
 
 The lab view (web/*.html behind nginx) is the source of truth. This script

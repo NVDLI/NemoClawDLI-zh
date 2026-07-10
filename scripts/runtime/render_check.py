@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """render_check.py loads course pages in a real headless Chromium and reports what mounted.
 
 The lab image ships playwright + chromium (workspace/Dockerfile installs them, pinned in

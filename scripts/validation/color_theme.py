@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Static check that DOM colors are theme-dynamic.
 
 Theming flips a CSS-var palette under :root[data-theme="light"]; anything reaching

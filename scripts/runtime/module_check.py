@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """module_check.py verifies ES-module import/export integrity across the web course.
 
 The course pages and the _*.js modules import named bindings from ./_shared.js, and _shared.js

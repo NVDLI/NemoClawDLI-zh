@@ -13,6 +13,7 @@
   "summary": "Release-source and vendor-ingestion checks: Apache-2.0 posture, contribution terms, static third-party package/license inventory, private URL sweep, and provenance coverage for governed materials.",
   "related": [
     "scripts/compliance/source_gate.py",
+    "scripts/compliance/source_license_contract.py",
     "scripts/compliance/third_party_inventory_audit.py",
     "scripts/compliance/export_third_party_csv.py",
     "scripts/compliance/export_legal_scope_csv.py",
@@ -24,6 +25,7 @@
     "scripts/compliance/docs/sbom_evidence.json",
     "scripts/compliance/docs/ci_sbom_evidence.json",
     "scripts/compliance/docs/document_sources.json",
+    "../../THIRD-PARTY-NOTICES.md",
     "../../THIRD_PARTY_LICENSES.md",
     "scripts/compliance/docs/source_inventory.json",
     "scripts/compliance/docs/vendor_policy.md",
@@ -95,7 +97,7 @@
 <script type="application/json" id="explorer-config">
 {
   "title": "scripts/compliance - source gates",
-  "summary": "Run source_gate.py before adding new course material, assets, mats, datasets, or cached references. The gate blocks internal URLs and unmanifested governed material before legal review.",
+  "summary": "Run source_gate.py before changing release sources. It enforces the Apache/DCO/notices contract, authored-source headers, vendor transformation records, public links, and governed-material provenance before legal review.",
   "model": "nvidia/nemotron-3-nano-30b-a3b",
   "ties": [
     "build"
@@ -111,7 +113,12 @@
     {
       "path": "source_gate.py",
       "role": "release-source gate",
-      "desc": "Apache-2.0, contribution terms, internal URL, and provenance coverage checks."
+      "desc": "Apache-2.0, DCO, notices, source-header, vendor-transformation, public-link, and provenance checks."
+    },
+    {
+      "path": "source_license_contract.py",
+      "role": "source-license contract",
+      "desc": "Discovers authored Python and JavaScript, verifies legal artifacts and vendor classifications, and inserts exact headers with --fix."
     },
     {
       "path": "third_party_inventory_audit.py",
@@ -189,6 +196,7 @@
   <h2>Executable checks</h2>
   <div class="skill-cmds">
     <div class="skill-cmd"><b>Source gate</b><code>python3 scripts/compliance/source_gate.py</code></div>
+    <div class="skill-cmd"><b>Apply source headers</b><code>python3 scripts/compliance/source_license_contract.py --fix</code></div>
     <div class="skill-cmd"><b>JSON output</b><code>python3 scripts/compliance/source_gate.py --json</code></div>
     <div class="skill-cmd"><b>Third-party list</b><code>python3 scripts/compliance/third_party_inventory_audit.py --self-test &amp;&amp; python3 scripts/compliance/third_party_inventory_audit.py</code></div>
     <div class="skill-cmd"><b>Vendored SWIPAT CSV</b><code>python3 scripts/compliance/export_third_party_csv.py --output /tmp/nemoclaw-vendored.csv</code></div>
@@ -262,6 +270,7 @@
   <h2>Linkage map</h2>
   <div class="skill-grid">
     <a class="skill-card" href="source_gate.py"><b>source_gate.py</b><span>Release-source and vendor-ingestion gate.</span></a>
+    <a class="skill-card" href="source_license_contract.py"><b>source_license_contract.py</b><span>Exhaustive authored-source header and legal-artifact contract.</span></a>
     <a class="skill-card" href="third_party_inventory_audit.py"><b>third_party_inventory_audit.py</b><span>Static package, license, container-boundary, and material-provenance inventory gate.</span></a>
     <a class="skill-card" href="export_third_party_csv.py"><b>export_third_party_csv.py</b><span>Parameterized SWIPAT component-table export with explicit distribution categories.</span></a>
     <a class="skill-card" href="export_legal_scope_csv.py"><b>export_legal_scope_csv.py</b><span>Evidence-linked scope map for references, tooling, recreations, vendored materials, and browser code.</span></a>
@@ -288,6 +297,7 @@
     <li><a href="render_sbom_license_inventory.py">render_sbom_license_inventory.py</a></li>
     <li><a href="sbom_evidence.py">sbom_evidence.py</a></li>
     <li><a href="source_gate.py">source_gate.py</a></li>
+    <li><a href="source_license_contract.py">source_license_contract.py</a></li>
   </ul>
 </noscript>
 <script src="../../web/_skill_explorer.js"></script>

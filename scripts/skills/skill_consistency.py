@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Consistency guard: catch "changed a fact in one place, forgot the others".
 
 Enforcement layer behind the SKILL.html change_impact maps. The maps DECLARE which

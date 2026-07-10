@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Audit and refresh paper-license and NVIDIA document-author evidence.
 
 The normal audit is offline. ``--refresh`` is an explicit acquisition step that reads

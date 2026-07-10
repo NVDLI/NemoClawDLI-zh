@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Render every HTML file with Playwright and fail on theme or SKILL UI drift.
 
 HTML discovery is exhaustive under the selected artifact root, which must be inside the served

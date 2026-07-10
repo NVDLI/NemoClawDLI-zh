@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 /* _skill_explorer.js is a reusable, self-contained folder explorer for any SKILL.html.
  *
  * A folder's SKILL.html drops in a config and this script turns it into a live explorer:

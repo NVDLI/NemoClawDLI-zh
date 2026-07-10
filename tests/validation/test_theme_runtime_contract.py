@@ -1,3 +1,6 @@
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Standard-library contracts for browser-theme coverage and its CI triggers."""
 from __future__ import annotations
 

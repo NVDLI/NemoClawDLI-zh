@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Release-source and vendor-ingestion gate.
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+"""Release-source, legal-file, and vendor-ingestion gate.
 
 This is a deterministic pre-review check. It does not replace legal review; it blocks
-known bad states before review: missing Apache-2.0 root license, missing contribution
-terms, private/internal URLs, and governed material files that lack provenance.
+known bad states before review: incomplete Apache/DCO/notices contracts, missing authored-source
+headers, unclassified vendor transformations, private URLs, and missing provenance.
 """
 from __future__ import annotations
 
@@ -20,6 +23,11 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
         sys.path.insert(0, str(_p / "scripts"))
         break
 from _bootstrap import find_repo_root  # noqa: E402
+
+try:
+    from . import source_license_contract
+except ImportError:
+    import source_license_contract
 
 ROOT = find_repo_root(Path(__file__).resolve())
 INVENTORY = ROOT / "scripts" / "compliance" / "docs" / "source_inventory.json"
@@ -116,15 +124,6 @@ def covered(path: str, covered_paths: set[str]) -> bool:
     return False
 
 
-def check_root_license(fails: list[str], oks: list[str]) -> None:
-    path = ROOT / "LICENSE"
-    text = path.read_text(encoding="utf-8", errors="replace") if path.is_file() else ""
-    if "Apache License" in text and "Version 2.0" in text:
-        oks.append("root license: Apache-2.0")
-    else:
-        fails.append("root license: LICENSE must be Apache License 2.0")
-
-
 def check_contribution_terms(fails: list[str], oks: list[str]) -> None:
     path = ROOT / "CONTRIBUTING.md"
     text = path.read_text(encoding="utf-8", errors="replace") if path.is_file() else ""
@@ -188,7 +187,13 @@ def run() -> tuple[list[str], list[str]]:
     files = tracked_files()
     fails: list[str] = []
     oks: list[str] = []
-    check_root_license(fails, oks)
+    # Legal-source discovery deliberately ignores the content-ingestion skip set above. Every
+    # authored Python and JavaScript file in the governed roots enters this audit, including build
+    # and generated-artifact tooling.
+    legal_files = source_license_contract.repository_files(ROOT)
+    legal_fails, legal_oks = source_license_contract.audit(ROOT, legal_files)
+    fails.extend(legal_fails)
+    oks.extend(legal_oks)
     check_contribution_terms(fails, oks)
     check_inventory(inv, fails, oks)
     check_private_links(inv, files, fails, oks)

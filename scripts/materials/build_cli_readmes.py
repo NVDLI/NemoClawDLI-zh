@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Vendor the framework READMEs the Module 4b "weigh the harnesses" artifact grounds on.
 
 The Try-it should weigh the five CLI agents from their real docs, not from the model's

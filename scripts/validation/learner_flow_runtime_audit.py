@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Exercise prerequisite, run, stop, reset, error, and disclosure states in Chromium."""
 from __future__ import annotations
 

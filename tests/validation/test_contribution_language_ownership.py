@@ -1,3 +1,6 @@
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Standard-framework coverage for localization ownership classification."""
 from __future__ import annotations
 

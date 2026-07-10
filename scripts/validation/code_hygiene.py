@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Repo-wide code-hygiene validator (the code half of the cadence; prose lives in prose_variety.py).
 
 Holds every CODE check to a single, rigid bar drawn from modern style guides

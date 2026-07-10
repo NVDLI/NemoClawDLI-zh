@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // Text normalization shared by live OpenClaw chat, gateway cells, and launchable terminals.
 
 const OOM_SCORE_ADJ_NOISE = /^(?:\/bin\/)?(?:ba|da|z)?sh:\s*(?:line\s+)?\d+:\s*cannot create \/proc\/self\/oom_score_adj:\s*Permission denied\s*$/;

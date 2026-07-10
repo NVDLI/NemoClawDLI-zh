@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Map the file-reference web of the released course (web/nemoclaw/).
 
 For every text-ish file under web/nemoclaw/, extract anything that looks

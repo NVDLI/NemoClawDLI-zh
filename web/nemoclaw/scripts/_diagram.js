@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // _diagram.js holds the data-driven diagram grammar that used to live in _shared.js.
 // Cells call helpers.viz.diagram(spec) with nodes/edges instead of hand-rolled SVG.
 import { wireFigureZoom } from "./_figures.js";
