@@ -137,6 +137,23 @@ class ThemeRuntimeContractTests(unittest.TestCase):
         self.assertIn('artifact_link_audit.py" "$OUT"', source)
         self.assertNotIn("ARTIFACT_LINK_AUDIT", source)
 
+    def test_human_review_is_bound_to_the_live_branch_and_exact_commit(self) -> None:
+        source = (ROOT / ".gitlab/ci/core.yml").read_text(encoding="utf-8")
+        job = source[source.index("human_review:\n") :]
+        for token in (
+            "resource_group: pages-site",
+            "branch_preview_manifest_audit.py",
+            '--expect-preview "$preview_ref=$CI_COMMIT_REF_SLUG"',
+            '--expect-git-sha "$CI_COMMIT_SHORT_SHA"',
+            "Retry only the pages job",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, job)
+
+    def test_live_pages_smoke_is_bound_to_the_exact_commit(self) -> None:
+        job = core_job("pages_smoke", "theme_runtime")
+        self.assertIn('--expect-git-sha "$CI_COMMIT_SHORT_SHA"', job)
+
 class ScaTriggerContractTests(unittest.TestCase):
     def test_pages_does_not_wait_on_an_unplayed_manual_sca_job(self) -> None:
         pages = core_job("pages", "pages_smoke")

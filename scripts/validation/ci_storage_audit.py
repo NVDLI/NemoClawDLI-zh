@@ -38,6 +38,7 @@ def main() -> int:
     pages = _job_block(text, "pages")
     test = _job_block(text, "test")
     smoke = _job_block(text, "pages_smoke")
+    human = _job_block(text, "human_review")
 
     if not pages:
         findings.append("missing pages job")
@@ -70,8 +71,14 @@ def main() -> int:
         (smoke, r"branch_preview_manifest_audit\.py --base-url \"\$CI_PAGES_URL/\"", "post-deploy job must probe the live Pages root"),
         (smoke, r'preview_ref="\$\{CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-\$CI_COMMIT_REF_NAME\}"', "branch smoke must resolve branch and MR source refs"),
         (smoke, r"--expect-preview \"\$preview_ref=\$CI_COMMIT_REF_SLUG\"", "branch smoke must require the deployed preview"),
+        (smoke, r"--expect-git-sha \"\$CI_COMMIT_SHORT_SHA\"", "live Pages smoke must require the exact staged commit"),
         (smoke, r"--attempts 30 --delay 5", "live Pages smoke must tolerate deployment propagation"),
         (smoke, r"allow_failure:\s*false", "post-deploy Pages smoke must be blocking"),
+        (human, r"resource_group:\s*pages-site", "human review must serialize with the shared Pages publisher"),
+        (human, r"branch_preview_manifest_audit\.py", "human review must recheck the live preview at approval time"),
+        (human, r"--expect-preview \"\$preview_ref=\$CI_COMMIT_REF_SLUG\"", "human review must require its own branch preview"),
+        (human, r"--expect-git-sha \"\$CI_COMMIT_SHORT_SHA\"", "human review must require the exact staged commit"),
+        (human, r"Retry only the pages job", "stale human review must direct a targeted Pages restage"),
     ]
     for block, pattern, msg in checks:
         if block and not re.search(pattern, block):

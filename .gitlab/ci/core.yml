@@ -348,9 +348,9 @@ pages_smoke:
       set -eu
       if [ "${PAGES_PREVIEW:-0}" = "1" ]; then
         preview_ref="${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-$CI_COMMIT_REF_NAME}"
-        python3 scripts/validation/branch_preview_manifest_audit.py --base-url "$CI_PAGES_URL/" --expect-preview "$preview_ref=$CI_COMMIT_REF_SLUG" --attempts 30 --delay 5
+        python3 scripts/validation/branch_preview_manifest_audit.py --base-url "$CI_PAGES_URL/" --expect-preview "$preview_ref=$CI_COMMIT_REF_SLUG" --expect-git-sha "$CI_COMMIT_SHORT_SHA" --attempts 30 --delay 5
       else
-        python3 scripts/validation/branch_preview_manifest_audit.py --base-url "$CI_PAGES_URL/" --attempts 30 --delay 5
+        python3 scripts/validation/branch_preview_manifest_audit.py --base-url "$CI_PAGES_URL/" --expect-git-sha "$CI_COMMIT_SHORT_SHA" --attempts 30 --delay 5
       fi
   rules:
     - if: '$CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_BRANCH != "nemoclaw-only" && $CI_COMMIT_BRANCH !~ /^translate-/ && $CI_PIPELINE_SOURCE != "schedule"'
@@ -420,12 +420,27 @@ human_review:
   tags: [pages]
   stage: review
   needs: ["test", "pages_smoke", "theme_runtime"]
+  # Classic Pages has one project-wide live artifact. Serialize approval with every publish,
+  # then prove that the reviewer is accepting this branch and this exact commit.
+  resource_group: pages-site
   environment:
     name: human-review
   script:
-    - test -n "${CI_MERGE_REQUEST_IID:-}"
-    - test -n "${CI_COMMIT_SHA:-}"
-    - echo "Human operator accepted MR !$CI_MERGE_REQUEST_IID at $CI_COMMIT_SHA after required gates and live preview smoke."
+    - |
+      set -eu
+      test -n "${CI_MERGE_REQUEST_IID:-}"
+      test -n "${CI_COMMIT_SHA:-}"
+      preview_ref="${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-$CI_COMMIT_REF_NAME}"
+      if ! python3 scripts/validation/branch_preview_manifest_audit.py \
+        --base-url "$CI_PAGES_URL/" \
+        --expect-preview "$preview_ref=$CI_COMMIT_REF_SLUG" \
+        --expect-git-sha "$CI_COMMIT_SHORT_SHA" \
+        --attempts 1 --delay 0; then
+        echo "The shared Pages preview no longer represents this commit." >&2
+        echo "Retry only the pages job for this pipeline, review that URL, then retry human_review; do not rerun test or SCA." >&2
+        exit 1
+      fi
+      echo "Human operator accepted MR !$CI_MERGE_REQUEST_IID at $CI_COMMIT_SHA after exact-commit live preview verification."
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       when: manual
