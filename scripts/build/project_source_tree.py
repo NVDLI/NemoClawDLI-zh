@@ -29,8 +29,13 @@ def source_files(root: Path) -> list[Path]:
     raw = subprocess.check_output(
         ["git", "-C", str(root), "ls-files", "--cached", "--others", "--exclude-standard", "-z"]
     )
-    return sorted(path for item in raw.split(b"\0") if item
-                  for path in (Path(item.decode()),) if is_authoring_source(path))
+    return sorted(
+        path
+        for item in raw.split(b"\0")
+        if item
+        for path in (Path(item.decode()),)
+        if is_authoring_source(path) and (root / path).is_file()
+    )
 
 
 def digest(path: Path) -> str:
@@ -74,6 +79,12 @@ class ProjectionTests(unittest.TestCase):
             generated.write_text("generated", encoding="utf-8")
             subprocess.run(["git", "-C", str(root), "add", ".gitignore", "SKILL.html", "nested/tracked.txt"], check=True)
             subprocess.run(["git", "-C", str(root), "add", "web/nemoclaw/standalone/index.html"], check=True)
+            (root / "nested" / "deleted-after-indexing.txt").write_text("gone", encoding="utf-8")
+            subprocess.run(
+                ["git", "-C", str(root), "add", "nested/deleted-after-indexing.txt"],
+                check=True,
+            )
+            (root / "nested" / "deleted-after-indexing.txt").unlink()
             (root / "nested" / "proposed.txt").write_text("proposed", encoding="utf-8")
             (root / "ignored").mkdir()
             (root / "ignored" / "build.txt").write_text("ignored", encoding="utf-8")
@@ -82,6 +93,7 @@ class ProjectionTests(unittest.TestCase):
             self.assertEqual(count, 4)
             self.assertTrue((output / "nested" / "tracked.txt").is_file())
             self.assertTrue((output / "nested" / "proposed.txt").is_file())
+            self.assertFalse((output / "nested" / "deleted-after-indexing.txt").exists())
             self.assertFalse((output / "ignored" / "build.txt").exists())
             self.assertFalse((output / "web" / "nemoclaw" / "standalone" / "index.html").exists())
 

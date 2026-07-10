@@ -6,8 +6,12 @@ from __future__ import annotations
 
 import ast
 import re
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
+
+from scripts.skills import gen_directory_beacons, skill_audit
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -64,6 +68,20 @@ def literal_minus_failure_lines(text: str, filename: str = "fixture.py") -> list
 
 
 class TestHarnessContract(unittest.TestCase):
+    def test_deleted_tracked_files_do_not_reenter_skill_indexes(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="skill-source-set-") as directory:
+            root = Path(directory)
+            (root / "live.js").write_text("export {};\n", encoding="utf-8")
+            git_rows = b"live.js\0deleted.js\0"
+            with patch.object(gen_directory_beacons, "ROOT", root), patch(
+                "scripts.skills.gen_directory_beacons.subprocess.check_output", return_value=git_rows,
+            ):
+                self.assertEqual([Path("live.js")], gen_directory_beacons.source_files())
+            with patch.object(skill_audit, "TASK1", root), patch(
+                "scripts.skills.skill_audit.subprocess.check_output", return_value=git_rows,
+            ):
+                self.assertEqual([Path("live.js")], skill_audit.source_files())
+
     def test_no_literal_pass_denominators(self) -> None:
         findings = []
         for path in owned_files(".py", ".js", ".mjs", ".sh"):

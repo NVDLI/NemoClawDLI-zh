@@ -38,6 +38,7 @@ Source of truth: [`scripts/browser-vendor/package-lock.json`](scripts/browser-ve
 | Scope | Package | Version | SPDX license | Evidence |
 |---|---|---|---|---|
 | browser-runtime | @cfworker/json-schema | 4.1.1 | MIT | [`licenses/@cfworker__json-schema--4.1.1.txt`](web/nemoclaw/vendor/licenses/@cfworker__json-schema--4.1.1.txt) |
+| browser-runtime | @highlightjs/cdn-assets | 11.10.0 | BSD-3-Clause | [`licenses/@highlightjs__cdn-assets--11.10.0.txt`](web/nemoclaw/vendor/licenses/@highlightjs__cdn-assets--11.10.0.txt) |
 | browser-build-only | @esbuild/aix-ppc64 | 0.28.1 | MIT | [lock](scripts/browser-vendor/package-lock.json) |
 | browser-build-only | @esbuild/android-arm | 0.28.1 | MIT | [lock](scripts/browser-vendor/package-lock.json) |
 | browser-build-only | @esbuild/android-arm64 | 0.28.1 | MIT | [lock](scripts/browser-vendor/package-lock.json) |
@@ -80,7 +81,6 @@ Source of truth: [`scripts/browser-vendor/package-lock.json`](scripts/browser-ve
 | browser-runtime | codemirror | 5.65.21 | MIT | [`licenses/codemirror--5.65.21.txt`](web/nemoclaw/vendor/licenses/codemirror--5.65.21.txt) |
 | browser-build-only | esbuild | 0.28.1 | MIT | [lock](scripts/browser-vendor/package-lock.json) |
 | browser-runtime | eventemitter3 | 4.0.7 | MIT | [`licenses/eventemitter3--4.0.7.txt`](web/nemoclaw/vendor/licenses/eventemitter3--4.0.7.txt) |
-| browser-runtime | highlight.js | 11.10.0 | BSD-3-Clause | [`licenses/highlight.js--11.10.0.txt`](web/nemoclaw/vendor/licenses/highlight.js--11.10.0.txt) |
 | browser-bundle-input | is-network-error | 1.3.2 | MIT | [lock](scripts/browser-vendor/package-lock.json) |
 | browser-runtime | js-tiktoken | 1.0.21 | MIT | [`licenses/js-tiktoken--1.0.21.txt`](web/nemoclaw/vendor/licenses/js-tiktoken--1.0.21.txt) |
 | browser-runtime | js-yaml | 5.2.1 | MIT | [`licenses/js-yaml--5.2.1.txt`](web/nemoclaw/vendor/licenses/js-yaml--5.2.1.txt) |
@@ -93,6 +93,29 @@ Source of truth: [`scripts/browser-vendor/package-lock.json`](scripts/browser-ve
 | browser-bundle-input | p-retry | 7.1.1 | MIT | [lock](scripts/browser-vendor/package-lock.json) |
 | browser-runtime | p-timeout | 3.2.0 | MIT | [`licenses/p-timeout--3.2.0.txt`](web/nemoclaw/vendor/licenses/p-timeout--3.2.0.txt) |
 | browser-runtime | zod | 3.25.76 | MIT | [`licenses/zod--3.25.76.txt`](web/nemoclaw/vendor/licenses/zod--3.25.76.txt) |
+
+### Utility source embedded in `@langchain/core`
+
+These four rows are code that LangChain copied into its own package before this project downloaded
+`@langchain/core@1.1.48`. They are not additional npm installs, and this project does not patch
+them. The exact LangChain tag, commit, source files, source hashes, full license evidence, and
+esbuild-comment mappings are recorded in
+[`embedded-component-evidence.json`](scripts/browser-vendor/embedded-component-evidence.json).
+
+| Scope | Component | Version evidence | SPDX license | Evidence |
+|---|---|---|---|---|
+| browser-embedded-source | Fast JSON Patch | Snapshot in `@langchain/core@1.1.48`; upstream release number not stated | MIT | [`license`](web/nemoclaw/vendor/licenses/langchain-embedded-fast-json-patch.txt) · [`source record`](scripts/browser-vendor/embedded-component-evidence.json) |
+| browser-embedded-source | js-sha256 | 0.11.1 in copied source header | MIT | [`license`](web/nemoclaw/vendor/licenses/langchain-embedded-js-sha256.txt) · [`source record`](scripts/browser-vendor/embedded-component-evidence.json) |
+| browser-embedded-source | sax-js | Snapshot in `@langchain/core@1.1.48`; upstream release number not stated | ISC | [`combined upstream notice`](web/nemoclaw/vendor/licenses/langchain-embedded-sax-js-and-string-from-code-point.txt) · [`source record`](scripts/browser-vendor/embedded-component-evidence.json) |
+| browser-embedded-source | String.fromCodePoint polyfill | 0.1.0 in copied source comment | MIT | [`combined upstream notice`](web/nemoclaw/vendor/licenses/langchain-embedded-sax-js-and-string-from-code-point.txt) · [`source record`](scripts/browser-vendor/embedded-component-evidence.json) |
+
+The npm package graph and the generated `.LEGAL.txt` answer different questions. The package graph
+records everything esbuild included from npm and shows which package required which dependency. For
+example, `p-queue@6.6.2` requires `p-timeout@3.2.0`, which requires `p-finally@1.0.0`. The `.LEGAL.txt`
+file contains only source comments specially marked for preservation. A package can therefore be in
+the browser bundle without appearing in `.LEGAL.txt`; conversely, a copied utility inside LangChain
+can appear there without being its own npm package. Full licenses come from the manifest links, not
+from the preserved-comment file.
 
 ### Why a Python license appears in the browser table
 

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import subprocess
 from pathlib import Path
@@ -20,8 +21,38 @@ NOTICE_LINKS = (
     "THIRD_PARTY_LICENSES.md",
     "web/nemoclaw/vendor/browser-dependencies.json",
     "web/nemoclaw/vendor/licenses/",
+    "scripts/compliance/docs/browser_vendor_exceptions.json",
+    "scripts/browser-vendor/embedded-component-evidence.json",
     "scripts/compliance/docs/vendor_policy.md",
 )
+BROWSER_EXCEPTION_POLICY_PATH = "scripts/compliance/docs/browser_vendor_exceptions.json"
+BROWSER_EXCEPTION_POLICY_SCHEMA = "nemoclaw-browser-modification-exceptions/1"
+LANGCHAIN_BROWSER_EXCEPTION = {
+    "id": "langchain-browser-esm-commonjs-interop-v1",
+    "asset": "langchain-1.4.7.esm.js",
+    "entrypoint": "scripts/browser-vendor/langchain-entry.js",
+    "distribution_form": "transformed-bundle",
+    "publisher_provided_minified": False,
+    "transformation": (
+        "esbuild resolves the selected LangChain dependency graph into one browser ESM file "
+        "without minification; no manual source patch is permitted."
+    ),
+    "required_exports": ["ChatOpenAI", "tool", "createReactAgent", "MemorySaver", "z"],
+    "necessity": [
+        "The learner exercises import five APIs from separate LangChain and Zod packages through one same-origin browser module.",
+        "The locked graph contains Node-style bare package imports and CommonJS-only dependencies, including base64-js 1.5.1, eventemitter3 4.0.7, p-finally 1.0.0, p-queue 6.6.2, and p-timeout 3.2.0.",
+        "The pinned @langchain/core package also contains Fast JSON Patch, js-sha256, sax-js, and String.fromCodePoint utility source copied by LangChain; embedded-component-evidence.json records those non-npm constituents and their full licenses.",
+        "A static browser cannot resolve those bare package imports or execute CommonJS require/module.exports files directly from the vendored tree.",
+        "Bundling supplies module resolution and CommonJS-to-ESM interoperability. Minification is unnecessary and forbidden.",
+    ],
+    "constraints": [
+        "This is the only browser asset that may differ from publisher files.",
+        "The generated file must not be minified.",
+        "No manual edit to the generated file is permitted; CI regenerates it and requires a clean diff.",
+        "esbuild-preserved legal comment sections must map to a recorded npm package or embedded component; the .LEGAL.txt file is supplemental and never substitutes for the full inventory or licenses.",
+        "Every other browser asset must be a byte-for-byte upstream file copy with identical upstream and delivered SHA-256 values.",
+    ],
+}
 DCO_1_1 = """Developer Certificate of Origin
 Version 1.1
 
@@ -80,7 +111,7 @@ def authored_sources(root: Path, files: Iterable[Path]) -> list[Path]:
             continue
         if rel.split("/", 1)[0] not in AUTHORED_ROOTS:
             continue
-        if rel.startswith(NON_AUTHORED_PREFIXES):
+        if rel.startswith(NON_AUTHORED_PREFIXES) or "node_modules" in path.parts:
             continue
         sources.append(path)
     return sorted(sources)
@@ -118,7 +149,16 @@ def apply_headers(root: Path, files: Iterable[Path]) -> list[str]:
     return changed
 
 
-def audit(root: Path, files: Iterable[Path]) -> tuple[list[str], list[str]]:
+def sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def audit(
+    root: Path,
+    files: Iterable[Path],
+    *,
+    verify_browser_upstream: bool = False,
+) -> tuple[list[str], list[str]]:
     failures: list[str] = []
     successes: list[str] = []
 
@@ -158,31 +198,157 @@ def audit(root: Path, files: Iterable[Path]) -> tuple[list[str], list[str]]:
     except (OSError, json.JSONDecodeError) as error:
         failures.append(f"browser vendor: unreadable browser-dependencies.json: {error}")
         manifest = {}
+
+    # The exception document is a review boundary, not an extensible allowlist.
+    exception_path = root / BROWSER_EXCEPTION_POLICY_PATH
+    try:
+        exception_policy = json.loads(exception_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        failures.append(f"browser vendor: unreadable modification exception policy: {error}")
+        exception_policy = {}
+
+    # Duplicating the expected record here makes a policy change modify both evidence and detector.
+    expected_policy = {
+        "schema": BROWSER_EXCEPTION_POLICY_SCHEMA,
+        "exceptions": [LANGCHAIN_BROWSER_EXCEPTION],
+    }
+    if exception_policy != expected_policy:
+        failures.append(
+            "browser vendor: modification exception policy must contain the exact, sole "
+            f"LangChain exception {LANGCHAIN_BROWSER_EXCEPTION['id']}"
+        )
+    expected_policy_record = {
+        "file": BROWSER_EXCEPTION_POLICY_PATH,
+        "sha256": sha256(exception_path) if exception_path.is_file() else "",
+        "exception_ids": [LANGCHAIN_BROWSER_EXCEPTION["id"]],
+    }
+    if manifest.get("modification_exception_policy") != expected_policy_record:
+        failures.append("browser vendor: manifest is not digest-bound to the sole modification exception policy")
+
+    embedded_path = root / "scripts/browser-vendor/embedded-component-evidence.json"
+    try:
+        embedded_evidence = json.loads(embedded_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        failures.append(f"browser vendor: unreadable embedded component evidence: {error}")
+        embedded_evidence = {}
+    expected_embedded_record = {
+        "file": "scripts/browser-vendor/embedded-component-evidence.json",
+        "sha256": sha256(embedded_path) if embedded_path.is_file() else "",
+        "parent": embedded_evidence.get("parent"),
+        "explanation": embedded_evidence.get("explanation"),
+    }
+    if manifest.get("embedded_component_evidence") != expected_embedded_record:
+        failures.append("browser vendor: manifest is not digest-bound to embedded component evidence")
+    expected_embedded_ids = {
+        item.get("id") for item in embedded_evidence.get("components") or [] if item.get("id")
+    }
+    actual_embedded_ids = {
+        item.get("id") for item in manifest.get("embedded_components") or [] if item.get("id")
+    }
+    if not expected_embedded_ids or actual_embedded_ids != expected_embedded_ids:
+        failures.append("browser vendor: embedded component manifest differs from reviewed source evidence")
     assets = manifest.get("assets") or []
     valid_forms = {"transformed-bundle", "upstream-file-copy"}
     unclassified = []
+    modified_assets = []
+    upstream_verification_failed = False
+
+    # Classification is exhaustive: an asset is either a publisher copy or the one derived bundle.
     for asset in assets:
         distribution_form = asset.get("distribution_form")
         modified = asset.get("modified_from_upstream")
+        publisher_minified = asset.get("publisher_provided_minified")
+        filename = str(asset.get("file") or "")
+        if modified is True:
+            modified_assets.append(filename)
+        minified_filename = ".min." in filename
         modification_matches_form = (
             distribution_form == "transformed-bundle" and modified is True
         ) or (
             distribution_form == "upstream-file-copy" and modified is False
         )
+        upstream_hash_matches = (
+            modified is True and not asset.get("upstream_sha256")
+        ) or (
+            modified is False
+            and asset.get("upstream_sha256") == asset.get("sha256")
+        )
         if (
             distribution_form not in valid_forms
             or not isinstance(modified, bool)
+            or not isinstance(publisher_minified, bool)
             or not modification_matches_form
+            or not upstream_hash_matches
+            or (minified_filename and publisher_minified is not True)
+            or (publisher_minified is True and modified is not False)
             or not asset.get("transformation")
             or not asset.get("source_files")
         ):
-            unclassified.append(asset.get("file") or "<unnamed>")
+            unclassified.append(filename or "<unnamed>")
+
+        # No label alone grants an exception; every field must match the reviewed LangChain record.
+        if modified is True:
+            if (
+                filename != LANGCHAIN_BROWSER_EXCEPTION["asset"]
+                or distribution_form != LANGCHAIN_BROWSER_EXCEPTION["distribution_form"]
+                or publisher_minified is not LANGCHAIN_BROWSER_EXCEPTION["publisher_provided_minified"]
+                or asset.get("modification_exception_id") != LANGCHAIN_BROWSER_EXCEPTION["id"]
+                or asset.get("transformation") != LANGCHAIN_BROWSER_EXCEPTION["transformation"]
+                or asset.get("source_files") != [LANGCHAIN_BROWSER_EXCEPTION["entrypoint"]]
+            ):
+                failures.append(
+                    "browser vendor: transformed asset is not the exact documented LangChain "
+                    f"exception: {filename or '<unnamed>'}"
+                )
+        elif asset.get("modification_exception_id") is not None:
+            failures.append(f"browser vendor: upstream copy claims a modification exception: {filename}")
+
+        # The manifest must describe the bytes that learners actually receive.
+        delivered = root / "web/nemoclaw/vendor" / filename
+        if not delivered.is_file():
+            failures.append(f"browser vendor: delivered asset is missing: {filename or '<unnamed>'}")
+            upstream_verification_failed = upstream_verification_failed or verify_browser_upstream
+        elif asset.get("sha256") != sha256(delivered) or asset.get("bytes") != delivered.stat().st_size:
+            failures.append(f"browser vendor: delivered asset hash or size differs from manifest: {filename}")
+            upstream_verification_failed = upstream_verification_failed or verify_browser_upstream
+
+        # CI installs the pinned graph so publisher-copy claims can be proven from real inputs.
+        if verify_browser_upstream and modified is False:
+            source_files = asset.get("source_files") or []
+            if len(source_files) != 1:
+                failures.append(f"browser vendor: upstream copy must name exactly one publisher file: {filename}")
+                upstream_verification_failed = True
+                continue
+            source = root / str(source_files[0])
+            modules = (root / "scripts/browser-vendor/node_modules").resolve()
+            if not source.is_file() or not source.resolve().is_relative_to(modules):
+                failures.append(f"browser vendor: publisher file is unavailable after npm ci: {filename}")
+                upstream_verification_failed = True
+            elif not delivered.is_file() or source.read_bytes() != delivered.read_bytes():
+                failures.append(f"browser vendor: publisher byte identity failed: {filename}")
+                upstream_verification_failed = True
+            elif asset.get("upstream_sha256") != sha256(source):
+                failures.append(f"browser vendor: publisher source digest differs from manifest: {filename}")
+                upstream_verification_failed = True
     if not assets:
         failures.append("browser vendor: manifest must list delivered assets")
     elif unclassified:
         failures.extend(f"browser vendor: missing modification classification: {item}" for item in unclassified)
     else:
         successes.append(f"browser vendor: {len(assets)} delivered asset(s) classify upstream modification status")
+    expected_modified = [LANGCHAIN_BROWSER_EXCEPTION["asset"]]
+    if sorted(modified_assets) != expected_modified:
+        observed = ", ".join(sorted(modified_assets)) or "none"
+        failures.append(
+            "browser vendor: modified asset set must be exactly "
+            f"{LANGCHAIN_BROWSER_EXCEPTION['asset']}; observed {observed}"
+        )
+    else:
+        successes.append(
+            "browser vendor: LangChain browser interoperability bundle is the sole documented modification"
+        )
+    if verify_browser_upstream and not upstream_verification_failed:
+        successes.append("browser vendor: every non-exception asset matches its publisher file byte-for-byte")
 
     return failures, successes
 
@@ -190,12 +356,21 @@ def audit(root: Path, files: Iterable[Path]) -> tuple[list[str], list[str]]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--fix", action="store_true", help="insert missing headers in authored source files")
+    parser.add_argument(
+        "--verify-browser-upstream",
+        action="store_true",
+        help="require npm-installed publisher inputs and compare every non-exception asset byte-for-byte",
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
     files = repository_files(root)
     changed = apply_headers(root, files) if args.fix else []
-    failures, successes = audit(root, repository_files(root))
+    failures, successes = audit(
+        root,
+        repository_files(root),
+        verify_browser_upstream=args.verify_browser_upstream,
+    )
     if args.json:
         print(json.dumps({"changed": changed, "ok": successes, "fail": failures}, indent=2))
     else:

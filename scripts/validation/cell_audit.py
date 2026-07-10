@@ -46,17 +46,22 @@ INLINE_KEY = re.compile(r"nvapi-(?!…|123|FAKE|xxx|redacted|FILL|YOUR)[A-Za-z0-
 def highlighter_missing(text: str) -> list[str]:
     """Return the missing CodeMirror pieces for one HTML document.
 
-    The generated same-origin bundle contains core and the JavaScript mode. The
-    dependency-integrity gate owns its exact version, digest, and package lock.
+    The same-origin distribution contains unmodified CodeMirror core and mode
+    files. The dependency-integrity gate owns their exact version and digests.
     """
-    vendored_bundle = bool(re.search(
-        r"[\"'](?:\.\./|\./)?vendor/codemirror-\d+\.\d+\.\d+\.min\.js[\"']",
+    vendored_core = bool(re.search(
+        r"[\"'](?:\.\./|\./)?vendor/codemirror-\d+\.\d+\.\d+\.js[\"']",
+        text,
+        re.I,
+    ))
+    vendored_javascript = bool(re.search(
+        r"[\"'](?:\.\./|\./)?vendor/codemirror-mode-javascript-\d+\.\d+\.\d+\.js[\"']",
         text,
         re.I,
     ))
     return [n for n, ok in (
-        ("CodeMirror core js", vendored_bundle or bool(re.search(r"codemirror(?:\.min)?\.js", text, re.I))),
-        ("javascript mode", vendored_bundle or "mode/javascript" in text.lower()),
+        ("CodeMirror core js", vendored_core or bool(re.search(r"codemirror(?:\.min)?\.js", text, re.I))),
+        ("javascript mode", vendored_javascript or "mode/javascript" in text.lower()),
         ("editor css", bool(re.search(r"codemirror(?:-\d+\.\d+\.\d+)?(?:\.min)?\.css", text, re.I))),
     ) if not ok]
 
@@ -526,11 +531,11 @@ def run(verbose=True):
 if __name__ == "__main__":
     if "--self-test" in sys.argv:
         fixtures = (
-            ("same-origin bundle", '<script src="vendor/codemirror-5.65.21.min.js"></script><link href="vendor/codemirror-5.65.21.min.css">', []),
-            ("parent-path bundle", '<script src="../vendor/codemirror-5.65.21.min.js"></script><link href="../vendor/codemirror-5.65.21.min.css">', []),
+            ("same-origin copies", '<script src="vendor/codemirror-5.65.21.js"></script><script src="vendor/codemirror-mode-javascript-5.65.21.js"></script><link href="vendor/codemirror-5.65.21.css">', []),
+            ("parent-path copies", '<script src="../vendor/codemirror-5.65.21.js"></script><script src="../vendor/codemirror-mode-javascript-5.65.21.js"></script><link href="../vendor/codemirror-5.65.21.css">', []),
             ("split distribution", '<script src="codemirror.min.js"></script><script src="mode/javascript/javascript.min.js"></script><link href="codemirror.min.css">', []),
-            ("missing JavaScript", '<link href="vendor/codemirror-5.65.21.min.css">', ["CodeMirror core js", "javascript mode"]),
-            ("missing CSS", '<script src="vendor/codemirror-5.65.21.min.js"></script>', ["editor css"]),
+            ("missing JavaScript", '<link href="vendor/codemirror-5.65.21.css">', ["CodeMirror core js", "javascript mode"]),
+            ("missing CSS", '<script src="vendor/codemirror-5.65.21.js"></script><script src="vendor/codemirror-mode-javascript-5.65.21.js"></script>', ["editor css"]),
         )
         failures = [(name, highlighter_missing(source), expected) for name, source, expected in fixtures
                     if highlighter_missing(source) != expected]

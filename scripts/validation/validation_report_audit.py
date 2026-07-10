@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -16,9 +17,9 @@ SCHEMA = "bundle-validation/1"
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def current_short_sha() -> str:
+def current_sha() -> str:
     proc = subprocess.run(
-        ["git", "rev-parse", "--short", "HEAD"], cwd=ROOT,
+        ["git", "rev-parse", "HEAD"], cwd=ROOT,
         check=False, text=True, capture_output=True,
     )
     if proc.returncode:
@@ -99,6 +100,9 @@ def self_test() -> list[str]:
         ("required suite", lambda row: row["suites"][0].update(status="degraded")),
     )
     failures: list[str] = []
+    resolved = current_sha()
+    if not re.fullmatch(r"[0-9a-f]{40}", resolved):
+        failures.append("current commit identity is not a full 40-character Git object ID")
     if findings(valid, "abc1234"):
         failures.append("valid fixture was rejected")
     for label, mutate in mutations:
@@ -140,7 +144,7 @@ def main() -> int:
     try:
         if args.expect_head:
             require_clean_tree()
-        expected = current_short_sha() if args.expect_head else args.expect_sha
+        expected = current_sha() if args.expect_head else args.expect_sha
         if not expected:
             raise RuntimeError("provide --expect-head or --expect-sha")
         rows = findings(read_report(Path(args.report)), expected)

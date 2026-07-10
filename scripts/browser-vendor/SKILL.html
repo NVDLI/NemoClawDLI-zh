@@ -10,11 +10,12 @@
   "node_type": "directory-explorer",
   "title": "scripts/browser-vendor exact browser package inputs",
   "source_dir": "scripts/browser-vendor/",
-  "summary": "Exact npm lock, reviewed browser bundle entrypoints, regeneration guidance, and upstream license overrides for packages shipped to learners.",
+  "summary": "Exact npm lock, publisher distribution paths, one browser compatibility entrypoint, regeneration guidance, and upstream license overrides for packages shipped to learners.",
   "related": [
     "scripts/browser-vendor/package.json",
     "scripts/browser-vendor/package-lock.json",
     "scripts/browser-vendor/README.md",
+    "scripts/browser-vendor/embedded-component-evidence.json",
     "scripts/build/vendor_browser_dependencies.mjs",
     "scripts/validation/course_dependency_integrity.py",
     "web/nemoclaw/dependencies.html",
@@ -27,7 +28,7 @@
 <script type="application/json" id="explorer-config">
 {
   "title": "scripts/browser-vendor · exact browser package inputs",
-  "summary": "Review exact versions and bundle entrypoints here. Generated learner assets, license evidence, hashes, references, and CycloneDX components live under web/nemoclaw/vendor/.",
+  "summary": "Review exact versions, publisher file copies, and the one compatibility entrypoint here. Generated learner assets, license evidence, hashes, references, and CycloneDX components live under web/nemoclaw/vendor/.",
   "model": "nvidia/nemotron-3-nano-30b-a3b",
   "ties": ["build"],
   "nav": {"home": "../../web/index.html", "up": {"label": "scripts", "href": "../SKILL.html"}},
@@ -35,9 +36,8 @@
     {"path": "README.md", "role": "update procedure", "desc": "Install the exact lock, regenerate, review, and validate."},
     {"path": "package.json", "role": "direct package selection", "desc": "Exact student-browser inputs and pinned esbuild version."},
     {"path": "package-lock.json", "role": "transitive lock", "desc": "Registry integrity and exact transitive resolution."},
-    {"path": "highlight-entry.js", "role": "syntax bundle entry", "desc": "Publishes the common Highlight.js language set."},
-    {"path": "codemirror-entry.js", "role": "editor bundle entry", "desc": "Publishes only the five reviewed CodeMirror modes enforced by the dependency audit."},
-    {"path": "langchain-entry.js", "role": "agent bundle entry", "desc": "Exports only the browser APIs used by course exercises."}
+    {"path": "langchain-entry.js", "role": "browser compatibility entry", "desc": "Selects the browser APIs that require ESM/CommonJS interoperability; its output is not minified and remains classified as transformed."}
+    ,{"path": "embedded-component-evidence.json", "role": "embedded source evidence", "desc": "Pins utility source already copied into LangChain, full licenses, source hashes, and esbuild legal-comment mappings."}
   ]
 }
 </script>
@@ -51,15 +51,15 @@
 <nav class="skill-nav" aria-label="Skill navigation"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a><a href="../../web/nemoclaw/dependencies.html">public inventory</a> <span aria-hidden="true"> · </span> <a data-skill-nav="map" href="../../SKILL.html">Repository map</a></nav>
 </header>
   <h1 id="skill-title">Exact browser package inputs</h1>
-  <p>Package changes start here. Generated files remain committed so production builds never resolve packages from the network. The dependency audit enforces supported package floors, an explicit CodeMirror mode allowlist, and pinned standalone fallbacks.</p>
+  <p>Package changes start here. Generated files remain committed so production builds never resolve packages from the network. Highlight.js and js-yaml use publisher-provided minified files; CodeMirror uses publisher-provided unminified files. esbuild combines the reachable LangChain npm graph without minification. <a href="embedded-component-evidence.json">Embedded-source evidence</a> separately identifies utility code that LangChain already copied into its package; the generated <code>.LEGAL.txt</code> is only a list of preserved source comments.</p>
   <h2>Executable checks</h2>
   <code class="skill-cmd">python3 -m unittest discover -v -s tests/validation &amp;&amp; python3 scripts/validation/course_dependency_integrity.py</code>
   <code class="skill-cmd">security_browser_sca</code>
   <h2>Linkage map</h2>
-  <p><a href="README.md">Update procedure</a> → <a href="../build/vendor_browser_dependencies.mjs">generator</a> → <a href="../../web/nemoclaw/vendor/browser-dependencies.json">generated manifest</a> → <a href="../../web/nemoclaw/dependencies.html">public inventory</a>.</p>
+  <p><a href="README.md">Update procedure</a> → <a href="embedded-component-evidence.json">embedded-source evidence</a> → <a href="../build/vendor_browser_dependencies.mjs">generator</a> → <a href="../../web/nemoclaw/vendor/browser-dependencies.json">generated manifest</a> → <a href="../../web/nemoclaw/dependencies.html">public inventory</a>.</p>
   <p>Reviewed fallbacks live under <a href="license-overrides/SKILL.html">license-overrides</a>.</p>
   <h2>Interactive explorer</h2>
-  <p>The explorer exposes the lock, bundle entrypoints, and update procedure without requiring local repository tools.</p>
+  <p>The explorer exposes the lock, compatibility entrypoint, and update procedure without requiring local repository tools.</p>
 </section>
 <div id="explorer"></div>
 <noscript><ul><li><a href="README.md">README.md</a></li><li><a href="package.json">package.json</a></li><li><a href="package-lock.json">package-lock.json</a></li></ul></noscript>

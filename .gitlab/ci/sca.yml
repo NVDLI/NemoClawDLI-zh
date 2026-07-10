@@ -38,6 +38,10 @@ security_browser_sca:
   stage: test
   script:
     - mkdir -p scripts/security/reports
+    - npm ci --prefix scripts/browser-vendor --ignore-scripts
+    - python3 scripts/compliance/source_license_contract.py --verify-browser-upstream
+    - node scripts/build/vendor_browser_dependencies.mjs
+    - git diff --exit-code -- web/nemoclaw/vendor
     # npm retries transport failures internally; advisory findings still fail immediately.
     - npm audit --prefix scripts/browser-vendor --package-lock-only --audit-level=moderate --json --fetch-retries=3 --fetch-retry-mintimeout=2000 --fetch-retry-maxtimeout=10000 --fetch-timeout=30000 > scripts/security/reports/browser-npm-audit.json
     - python3 scripts/validation/course_dependency_integrity.py
@@ -55,12 +59,16 @@ security_browser_sca:
       changes:
         - scripts/browser-vendor/package.json
         - scripts/browser-vendor/package-lock.json
-        - scripts/browser-vendor/codemirror-entry.js
+        - scripts/browser-vendor/**/*
         - scripts/build/vendor_browser_dependencies.mjs
+        - scripts/compliance/source_license_contract.py
+        - scripts/compliance/docs/browser_vendor_exceptions.json
         - scripts/validation/course_dependency_integrity.py
+        - tests/validation/test_source_license_contract.py
+        - THIRD-PARTY-NOTICES.md
         - web/nemoclaw/vendor/browser-dependencies.json
         - web/nemoclaw/vendor/browser-sbom.cdx.json
-        - web/nemoclaw/vendor/codemirror-*
+        - web/nemoclaw/vendor/**/*
         - .gitlab/ci/sca.yml
       when: on_success
       allow_failure: false

@@ -6,7 +6,7 @@ import { browserChatFetch, CONTEXT_WINDOWS, contextWindow, coursePage, coursePag
 
 const RANDOM_ID_RADIX = 36;
 const MARKED_VENDOR_URL = new URL("../vendor/marked-14.1.4.esm.js", import.meta.url).href;
-const LANGCHAIN_VENDOR_URL = new URL("../vendor/langchain-1.4.7.esm.min.js", import.meta.url).href;
+const LANGCHAIN_VENDOR_URL = new URL("../vendor/langchain-1.4.7.esm.js", import.meta.url).href;
 
 export function resolveChatMarkdownUrl(raw, pageHref = globalThis.location?.href) {
   const value = String(raw || "").trim();

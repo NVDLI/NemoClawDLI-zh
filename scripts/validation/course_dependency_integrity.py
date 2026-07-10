@@ -27,14 +27,20 @@ VENDOR = COURSE / "vendor"
 MANIFEST = VENDOR / "browser-dependencies.json"
 LOCK = ROOT / "scripts" / "browser-vendor" / "package-lock.json"
 PACKAGE = ROOT / "scripts" / "browser-vendor" / "package.json"
-CODEMIRROR_ENTRY = ROOT / "scripts" / "browser-vendor" / "codemirror-entry.js"
+EMBEDDED_EVIDENCE = ROOT / "scripts" / "browser-vendor" / "embedded-component-evidence.json"
 CI_CONFIG = ROOT / ".gitlab" / "ci" / "sca.yml"
+GITHUB_PROVENANCE_WORKFLOWS = (
+    ROOT / ".github" / "workflows" / "pages.yml",
+    ROOT / ".github" / "workflows" / "release.yml",
+)
 DASHBOARD = COURSE / "dependencies.html"
 PACKAGE_HOSTS = {"cdn.jsdelivr.net", "cdnjs.cloudflare.com", "esm.sh", "unpkg.com"}
 SOURCE_SUFFIXES = {".css", ".html", ".js", ".mjs"}
 EXCLUDED_PARTS = {"vendor", "standalone", "mats"}
 VENDOR_REF_RE = re.compile(r"(?<![A-Za-z0-9_-])(?:\.\.?/)?vendor/([A-Za-z0-9_.-]+)")
-CODEMIRROR_MODE_RE = re.compile(r'import\s+["\']codemirror/mode/([^/]+)/[^"\']+["\']\s*;')
+CODEMIRROR_MODE_ASSET_RE = re.compile(
+    r"^codemirror-mode-([a-z0-9_-]+)-(\d+\.\d+\.\d+)\.js$", re.IGNORECASE,
+)
 CODEMIRROR_MARKDOWN_RE = re.compile(r"codemirror(?:/[^/\s\"']+)?/mode/markdown/", re.IGNORECASE)
 CODEMIRROR_VERSION_REF_RE = re.compile(
     r"codemirror(?:-monokai)?(?:/|@|-)(\d+\.\d+\.\d+)", re.IGNORECASE
@@ -100,7 +106,10 @@ def browser_projection_sources() -> list[Path]:
 
 def inventory_size() -> int:
     data = json.loads(MANIFEST.read_text())
-    return 1 + sum(len(data.get(key) or []) for key in ("packages", "assets", "legal_notices"))
+    return 1 + sum(
+        len(data.get(key) or [])
+        for key in ("packages", "embedded_components", "assets", "legal_notices")
+    )
 
 
 def source_references(files: list[Path], asset: str,
@@ -123,6 +132,7 @@ def audit(*, manifest_data: dict | None = None,
         manifest = manifest_data if manifest_data is not None else json.loads(MANIFEST.read_text())
         lock = json.loads(LOCK.read_text())
         package = json.loads(PACKAGE.read_text())
+        embedded_evidence = json.loads(EMBEDDED_EVIDENCE.read_text())
     except (OSError, json.JSONDecodeError) as exc:
         return [f"dependency inventory cannot be read: {exc}"]
 
@@ -132,32 +142,42 @@ def audit(*, manifest_data: dict | None = None,
         findings.append("browser dependency delivery must remain same-origin-vendored")
     if manifest.get("lock_sha256") != sha256(LOCK):
         findings.append("manifest lock_sha256 does not match package-lock.json")
+    evidence_record = manifest.get("embedded_component_evidence") or {}
+    if (embedded_evidence.get("schema") != "nemoclaw-embedded-browser-components/1"
+            or evidence_record.get("file") != EMBEDDED_EVIDENCE.relative_to(ROOT).as_posix()
+            or evidence_record.get("sha256") != sha256(EMBEDDED_EVIDENCE)
+            or evidence_record.get("parent") != embedded_evidence.get("parent")
+            or evidence_record.get("explanation") != embedded_evidence.get("explanation")):
+        findings.append("manifest is not digest-bound to the embedded-component evidence")
 
     direct = package.get("dependencies") or {}
     locked = lock.get("packages") or {}
-    entry_rel = CODEMIRROR_ENTRY.relative_to(ROOT).as_posix()
-    entry = overrides.get(
-        entry_rel,
-        CODEMIRROR_ENTRY.read_text(encoding="utf-8", errors="replace")
-        if CODEMIRROR_ENTRY.is_file() else "",
-    )
-    modes = set(CODEMIRROR_MODE_RE.findall(entry))
+    mode_rows = [
+        CODEMIRROR_MODE_ASSET_RE.fullmatch(str(row.get("file", "")))
+        for row in manifest.get("assets") or []
+    ]
+    modes = {match.group(1).lower() for match in mode_rows if match}
     unexpected_modes = sorted(modes - REVIEWED_CODEMIRROR_MODES)
     missing_modes = sorted(REVIEWED_CODEMIRROR_MODES - modes)
     if unexpected_modes:
         findings.append("unreviewed CodeMirror modes: " + ", ".join(unexpected_modes))
     if missing_modes:
-        findings.append("reviewed CodeMirror modes missing from bundle entry: " + ", ".join(missing_modes))
+        findings.append("reviewed CodeMirror modes missing from upstream copies: " + ", ".join(missing_modes))
     ci_rel = CI_CONFIG.relative_to(ROOT).as_posix()
     ci_text = overrides.get(ci_rel, CI_CONFIG.read_text(encoding="utf-8"))
     ci_job = re.search(r"(?ms)^security_browser_sca:\s*\n(.*?)(?=^\S[^\n]*:\s*(?:$|&)|\Z)", ci_text)
     ci_tokens = (
+        "npm ci --prefix scripts/browser-vendor --ignore-scripts",
+        "source_license_contract.py --verify-browser-upstream",
+        "node scripts/build/vendor_browser_dependencies.mjs",
+        "git diff --exit-code -- web/nemoclaw/vendor",
         "npm audit --prefix scripts/browser-vendor",
         "--package-lock-only",
         "--audit-level=moderate",
         "browser-npm-audit.json",
         'CI_PIPELINE_SOURCE == "merge_request_event"',
         "scripts/browser-vendor/package-lock.json",
+        "scripts/compliance/docs/browser_vendor_exceptions.json",
         "scripts/validation/course_dependency_integrity.py",
     )
     if not ci_job:
@@ -166,6 +186,18 @@ def audit(*, manifest_data: dict | None = None,
         missing_ci = [token for token in ci_tokens if token not in ci_job.group(1)]
         if missing_ci:
             findings.append("security_browser_sca is incomplete: " + ", ".join(missing_ci))
+    github_tokens = (
+        "npm ci --prefix scripts/browser-vendor --ignore-scripts",
+        "source_license_contract.py --verify-browser-upstream",
+        "node scripts/build/vendor_browser_dependencies.mjs",
+        "git diff --exit-code -- web/nemoclaw/vendor",
+    )
+    for workflow in GITHUB_PROVENANCE_WORKFLOWS:
+        rel = workflow.relative_to(ROOT).as_posix()
+        text = overrides.get(rel, workflow.read_text(encoding="utf-8"))
+        missing = [token for token in github_tokens if token not in text]
+        if missing:
+            findings.append(f"GitHub browser provenance is incomplete in {rel}: " + ", ".join(missing))
     for path in browser_projection_sources():
         rel = path.relative_to(ROOT).as_posix()
         text = overrides.get(rel, path.read_text(encoding="utf-8", errors="replace"))
@@ -188,12 +220,14 @@ def audit(*, manifest_data: dict | None = None,
             elif expected_sri not in evidence or not re.search(r"crossorigin|crossOrigin", evidence):
                 findings.append(f"standalone CodeMirror asset lacks pinned integrity: {rel}: {asset}")
     seen_packages: set[tuple[str, str]] = set()
+    package_rows: dict[str, dict] = {}
     for row in manifest.get("packages") or []:
         name, version = row.get("name"), row.get("version")
         key = (str(name), str(version))
         if key in seen_packages:
             findings.append(f"duplicate package row: {name}@{version}")
         seen_packages.add(key)
+        package_rows[f"{name}@{version}"] = row
         version_match = EXACT_VERSION_RE.fullmatch(str(version))
         if not version_match:
             findings.append(f"package version is not exact: {name}@{version}")
@@ -207,6 +241,13 @@ def audit(*, manifest_data: dict | None = None,
                      if path.endswith("node_modules/" + str(name)) and value.get("version") == version]
         if not lock_rows:
             findings.append(f"package missing from exact lock: {name}@{version}")
+        elif not any(
+            row.get("resolved") == lock_row.get("resolved")
+            and row.get("integrity") == lock_row.get("integrity")
+            and str(row.get("integrity", "")).startswith("sha512-")
+            for lock_row in lock_rows
+        ):
+            findings.append(f"package registry provenance differs from exact lock: {name}@{version}")
         if row.get("direct") and direct.get(name) != version:
             findings.append(f"direct package differs from package.json: {name}@{version}")
         if row.get("package_url") != f"https://www.npmjs.com/package/{name}":
@@ -214,6 +255,39 @@ def audit(*, manifest_data: dict | None = None,
         license_path = VENDOR / str(row.get("license_file", ""))
         if not row.get("license") or not license_path.is_file() or not license_path.read_text(errors="replace").strip():
             findings.append(f"package lacks vendored license evidence: {name}@{version}")
+        if not row.get("direct") and not row.get("required_by"):
+            findings.append(f"transitive package lacks a recorded parent: {name}@{version}")
+
+    for label, row in package_rows.items():
+        for child in row.get("depends_on") or []:
+            child_row = package_rows.get(child)
+            if not child_row:
+                findings.append(f"package dependency points outside the shipped graph: {label} -> {child}")
+            elif label not in (child_row.get("required_by") or []):
+                findings.append(f"package dependency graph is not bidirectional: {label} -> {child}")
+        for parent in row.get("required_by") or []:
+            parent_row = package_rows.get(parent)
+            if not parent_row or label not in (parent_row.get("depends_on") or []):
+                findings.append(f"package parent graph is not bidirectional: {parent} -> {label}")
+
+    embedded_rows = manifest.get("embedded_components") or []
+    expected_embedded = {row.get("id") for row in embedded_evidence.get("components") or []}
+    actual_embedded = {row.get("id") for row in embedded_rows}
+    if actual_embedded != expected_embedded or None in actual_embedded:
+        findings.append("embedded component set differs from the reviewed evidence")
+    if len(actual_embedded) != len(embedded_rows):
+        findings.append("embedded component IDs are not unique")
+    for row in embedded_rows:
+        label = str(row.get("id") or "<missing>")
+        if (row.get("relationship") != "embedded-source-copied-by-upstream"
+                or row.get("parent_package") != "@langchain/core@1.1.48"
+                or not row.get("version_note") or not row.get("source_commit")
+                or not row.get("source_hashes")):
+            findings.append(f"embedded component provenance is incomplete: {label}")
+        license_path = VENDOR / str(row.get("license_file", ""))
+        if (not row.get("license") or not license_path.is_file()
+                or sha256(license_path) != row.get("license_sha256")):
+            findings.append(f"embedded component license evidence is missing or stale: {label}")
 
     files = runtime_sources()
     asset_names = {row.get("file") for row in manifest.get("assets") or []}
@@ -225,17 +299,47 @@ def audit(*, manifest_data: dict | None = None,
             continue
         if row.get("sha256") != sha256(path) or row.get("bytes") != path.stat().st_size:
             findings.append(f"vendored browser asset hash or size drifted: {name}")
+        if row.get("modified_from_upstream") is False and row.get("upstream_sha256") != row.get("sha256"):
+            findings.append(f"upstream copy digest differs from delivered bytes: {name}")
         actual_refs = source_references(files, str(name), overrides)
         if row.get("references") != actual_refs:
             findings.append(f"source-reference inventory drifted: {name}")
         if not actual_refs:
             findings.append(f"vendored browser asset has no runtime reference: {name}")
 
+    observed_notice_sources: dict[str, dict] = {}
     for row in manifest.get("legal_notices") or []:
         name = row.get("file")
         path = VENDOR / str(name)
         if not path.is_file() or row.get("sha256") != sha256(path) or row.get("bytes") != path.stat().st_size:
             findings.append(f"bundle legal-notice hash or size drifted: {name}")
+        if "supplemental attribution evidence" not in str(row.get("explanation", "")):
+            findings.append(f"bundle legal notice is not distinguished from the dependency inventory: {name}")
+        for source in row.get("sources") or []:
+            source_name = source.get("source")
+            if not source_name or source_name in observed_notice_sources:
+                findings.append(f"bundle legal-notice source is missing or duplicated: {source_name}")
+            else:
+                observed_notice_sources[source_name] = source
+            if source.get("kind") == "embedded-component" and source.get("id") not in actual_embedded:
+                findings.append(f"bundle legal notice points to an unknown embedded component: {source_name}")
+            elif source.get("kind") == "npm-package":
+                if f"{source.get('name')}@{source.get('version')}" not in package_rows:
+                    findings.append(f"bundle legal notice points to an unknown npm package: {source_name}")
+            elif source.get("kind") not in {"embedded-component", "npm-package"}:
+                findings.append(f"bundle legal notice has an unknown mapping kind: {source_name}")
+
+    expected_notice_sources = {
+        source
+        for row in embedded_evidence.get("components") or []
+        for source in row.get("legal_notice_sources") or []
+    } | {
+        source
+        for row in embedded_evidence.get("package_notice_mappings") or []
+        for source in row.get("legal_notice_sources") or []
+    }
+    if set(observed_notice_sources) != expected_notice_sources:
+        findings.append("bundle legal-notice coverage differs from the reviewed component mapping")
 
     sbom_row = manifest.get("sbom") or {}
     sbom_path = VENDOR / str(sbom_row.get("file", ""))
@@ -246,9 +350,17 @@ def audit(*, manifest_data: dict | None = None,
         try:
             sbom = json.loads(sbom_path.read_text())
             components = {(row.get("name"), row.get("version")) for row in sbom.get("components") or []}
-            expected = {(row.get("name"), row.get("version")) for row in manifest.get("packages") or []}
-            if sbom.get("bomFormat") != "CycloneDX" or components != expected:
-                findings.append("browser CycloneDX SBOM differs from the shipped package inventory")
+            expected = {
+                (row.get("name"), row.get("version"))
+                for key in ("packages", "embedded_components")
+                for row in manifest.get(key) or []
+            }
+            dependency_refs = {row.get("ref") for row in sbom.get("dependencies") or []}
+            component_refs = {row.get("bom-ref") for row in sbom.get("components") or []}
+            if (sbom.get("bomFormat") != "CycloneDX" or components != expected
+                    or dependency_refs != component_refs | {"nemoclaw-student-browser-runtime"}
+                    or sbom_row.get("component_count") != len(expected)):
+                findings.append("browser CycloneDX SBOM differs from the shipped component inventory")
         except json.JSONDecodeError:
             findings.append("browser CycloneDX SBOM is not valid JSON")
 
@@ -270,7 +382,8 @@ def audit(*, manifest_data: dict | None = None,
     )
     for token in (
         "Browser dependency inventory", "vendor/browser-dependencies.json",
-        "package-table", "asset-table", "legal-list",
+        "How the browser file is assembled", "package-table", "embedded-table", "asset-table",
+        "Why <code>p-timeout</code> appears here", "Preserved comments are not a package list", "legal-list",
     ):
         if token not in dashboard:
             findings.append(f"dependency dashboard is missing required token: {token}")
@@ -288,6 +401,10 @@ def self_test() -> list[str]:
     changed["assets"][0]["sha256"] = "0" * 64
     tests.append(("asset hash", changed, {}, "hash or size drifted"))
     changed = copy.deepcopy(manifest)
+    copied = next(row for row in changed["assets"] if row.get("modified_from_upstream") is False)
+    copied["upstream_sha256"] = "0" * 64
+    tests.append(("upstream copy digest", changed, {}, "upstream copy digest differs"))
+    changed = copy.deepcopy(manifest)
     changed["packages"][0]["version"] = "1"
     tests.append(("inexact version", changed, {}, "version is not exact"))
     changed = copy.deepcopy(manifest)
@@ -300,6 +417,19 @@ def self_test() -> list[str]:
     changed = copy.deepcopy(manifest)
     changed["packages"][0]["package_url"] = "https://example.invalid/package"
     tests.append(("public package URL", changed, {}, "package URL is not the canonical public npm page"))
+    changed = copy.deepcopy(manifest)
+    changed["packages"][0]["integrity"] = "sha512-invalid"
+    tests.append(("registry integrity", changed, {}, "registry provenance differs from exact lock"))
+    changed = copy.deepcopy(manifest)
+    transitive = next(row for row in changed["packages"] if not row["direct"])
+    transitive["required_by"] = []
+    tests.append(("dependency parent", changed, {}, "transitive package lacks a recorded parent"))
+    changed = copy.deepcopy(manifest)
+    changed["embedded_components"].pop()
+    tests.append(("embedded component coverage", changed, {}, "embedded component set differs"))
+    changed = copy.deepcopy(manifest)
+    changed["legal_notices"][0]["sources"].pop()
+    tests.append(("legal notice mapping", changed, {}, "legal-notice coverage differs"))
     sample = "web/nemoclaw/scripts/_chat.js"
     source = (ROOT / sample).read_text(encoding="utf-8")
     tests.append(("runtime CDN", manifest, {sample: source + '\n"https://cdn.jsdelivr.net/npm/demo@1/+esm";'},
@@ -308,11 +438,10 @@ def self_test() -> list[str]:
     tests.append(("dashboard wiring", manifest,
                   {"web/nemoclaw/dependencies.html": dashboard.replace("vendor/browser-dependencies.json", "missing.json")},
                   "dashboard is missing required token"))
-    entry_rel = CODEMIRROR_ENTRY.relative_to(ROOT).as_posix()
-    entry = CODEMIRROR_ENTRY.read_text(encoding="utf-8")
-    tests.append(("editor mode allowlist", manifest,
-                  {entry_rel: entry.replace("mode/xml/xml.js", "mode/markdown/markdown.js")},
-                  "unreviewed CodeMirror modes"))
+    changed = copy.deepcopy(manifest)
+    mode_row = next(row for row in changed["assets"] if row["file"].startswith("codemirror-mode-xml-"))
+    mode_row["file"] = mode_row["file"].replace("mode-xml-", "mode-markdown-")
+    tests.append(("editor mode allowlist", changed, {}, "unreviewed CodeMirror modes"))
     sample = "web/nemoclaw/scripts/_chat.js"
     source = (ROOT / sample).read_text(encoding="utf-8")
     tests.append(("standalone editor boundary", manifest,
@@ -335,6 +464,27 @@ def self_test() -> list[str]:
     tests.append(("browser SCA CI wiring", manifest,
                   {".gitlab/ci/sca.yml": ci_source.replace("security_browser_sca:", "security_browser_scan:", 1)},
                   "GitLab CI is missing the security_browser_sca job"))
+    for label, token in (
+        ("publisher install", "npm ci --prefix scripts/browser-vendor --ignore-scripts"),
+        ("publisher byte comparison", "source_license_contract.py --verify-browser-upstream"),
+        ("deterministic vendor regeneration", "node scripts/build/vendor_browser_dependencies.mjs"),
+        ("generated-tree diff", "git diff --exit-code -- web/nemoclaw/vendor"),
+    ):
+        tests.append((
+            f"browser SCA {label}",
+            manifest,
+            {".gitlab/ci/sca.yml": ci_source.replace(token, f"removed-{label.replace(' ', '-')}", 1)},
+            "security_browser_sca is incomplete",
+        ))
+    for workflow in GITHUB_PROVENANCE_WORKFLOWS:
+        rel = workflow.relative_to(ROOT).as_posix()
+        source = workflow.read_text(encoding="utf-8")
+        tests.append((
+            f"GitHub browser provenance in {workflow.name}",
+            manifest,
+            {rel: source.replace("source_license_contract.py --verify-browser-upstream", "removed-provenance-gate", 1)},
+            f"GitHub browser provenance is incomplete in {rel}",
+        ))
 
     failures = []
     for name, fixture, overrides, expected in tests:

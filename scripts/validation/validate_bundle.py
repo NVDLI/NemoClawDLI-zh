@@ -146,7 +146,7 @@ from collections import defaultdict  # noqa: E402
 
 def _git_sha() -> str:
     try:
-        return subprocess.run(["git", "-C", str(TASK1), "rev-parse", "--short", "HEAD"],
+        return subprocess.run(["git", "-C", str(TASK1), "rev-parse", "HEAD"],
                               capture_output=True, text=True, timeout=10).stdout.strip() or "?"
     except Exception:
         return "?"

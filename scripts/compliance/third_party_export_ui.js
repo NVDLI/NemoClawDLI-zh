@@ -76,7 +76,7 @@
 
   function vendoredRows(manifest, config) {
     var assets = assetIndex(manifest);
-    return (manifest.packages || []).map(function (pkg) {
+    var packages = (manifest.packages || []).map(function (pkg) {
       var licensePath = "web/nemoclaw/vendor/" + pkg.license_file;
       var relationship = pkg.direct ? "direct" : "transitive";
       var source = pkg.direct ? "This project selected it directly." : "Another browser package requires it.";
@@ -99,6 +99,30 @@
         ]
       };
     });
+    var embedded = (manifest.embedded_components || []).map(function (component) {
+      var licensePath = "web/nemoclaw/vendor/" + component.license_file;
+      return {
+        category: "vendored",
+        relationship: "embedded-source",
+        cells: [
+          component.name,
+          String(component.version),
+          component.license,
+          repoFile(config, licensePath),
+          OTHER,
+          OTHER,
+          "Learners receive this code inside the LangChain browser bundle. LangChain copied the utility source into " +
+            component.parent_package + " before publishing that npm package; this project does not patch it. " +
+            "Relationship: embedded-source. Used for: " + component.purpose + " " + component.version_note + " " +
+            "The adjacent .LEGAL.txt contains only comments that esbuild was instructed to preserve; the complete " +
+            "license and pinned source evidence are linked here. Used with NVIDIA-authored Apache-2.0 course source; " +
+            "no proprietary-code claim.",
+          component.upstream_url,
+          repoFile(config, licensePath)
+        ]
+      };
+    });
+    return packages.concat(embedded);
   }
 
   function buildRows(markdown, config) {
@@ -461,6 +485,7 @@
     softwareRelationship: {
       "direct": "Chosen directly by this project",
       "transitive": "Required by another package",
+      "embedded-source": "Copied into a package by its publisher",
       "browser-bundle-input": "Built into the browser course",
       "browser-build-only": "Runs only while building browser files",
       "browser binary": "Browser used for automated checks",
@@ -498,6 +523,7 @@
       "document use roll-up": "External document and every related repository use",
       "direct": "Chosen directly by this project",
       "transitive": "Required by another package",
+      "embedded-source": "Copied into a package by its publisher",
       "browser-build-only": "Used only to build browser files",
       "validation or authoring dependency": "Used to check or author the course",
       "local-authoring declaration": "Optional local-authoring dependency"

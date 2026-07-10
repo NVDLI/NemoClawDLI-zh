@@ -158,7 +158,7 @@ async function open(browser, pageName, init) {
   {
     const { page, errors } = await open(browser, '01b-react.html');
     results.agentBundle = await page.evaluate(async () => {
-      const mod = await import('./vendor/langchain-1.4.7.esm.min.js?runtime-audit=' + Date.now());
+      const mod = await import('./vendor/langchain-1.4.7.esm.js?runtime-audit=' + Date.now());
       const chat = await import('./scripts/_chat.js?runtime-audit=' + Date.now());
       return {
         exports: ['ChatOpenAI', 'tool', 'createReactAgent', 'MemorySaver', 'z'].filter(name => typeof mod[name] !== 'undefined'),
@@ -178,7 +178,7 @@ async function open(browser, pageName, init) {
     for (let index = 0; index < await artifactCards.count(); index++) {
       const card = artifactCards.nth(index);
       const code = await card.locator('.rc-code').inputValue();
-      if (code.includes('import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href)')) {
+      if (code.includes('import(new URL("./vendor/langchain-1.4.7.esm.js", location.href).href)')) {
         artifactCard = card;
         break;
       }
@@ -345,7 +345,7 @@ async function open(browser, pageName, init) {
     for (let index = 0; index < await panels.count(); index++) {
       const panel = panels.nth(index);
       const code = await panel.locator('.cf-panel-code').inputValue();
-      if (!code.includes('import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href)')) continue;
+      if (!code.includes('import(new URL("./vendor/langchain-1.4.7.esm.js", location.href).href)')) continue;
       imports++;
       await panel.locator('.cf-panel-runone').click();
       await panel.locator('[data-results-meta].ok').waitFor({ state: 'attached', timeout: timeoutMs });
@@ -392,7 +392,7 @@ async function open(browser, pageName, init) {
         agent: { dashboardUrl: '/#token=AbCd_ef-0123456789.uvwxyz~token' },
       }), { status: 200, headers: { 'content-type': 'application/json' } });
       const probe = mod.mountClawProbe(host, {
-        defaultUrl: 'https://launchable.example.test',
+        defaultUrl: 'https://launchable.brevlab.com',
         defaultToken: '',
         syncCanvas: true,
         cfAccess: true,
@@ -401,9 +401,9 @@ async function open(browser, pageName, init) {
         autofillToken: mod.gatewayTokenFromAgentMetadata,
         actions: [],
       });
-      const jwt = host.querySelector('.claw-cfjwt');
-      jwt.value = 'synthetic-access-value';
-      jwt.dispatchEvent(new Event('input', { bubbles: true }));
+      const accessSession = host.querySelector('.claw-access-session');
+      accessSession.value = 'synthetic-access-value';
+      accessSession.dispatchEvent(new Event('input', { bubbles: true }));
       await probe.run({ path: '/api/agent', method: 'GET' });
       window.fetch = realFetch;
       return {
@@ -411,15 +411,15 @@ async function open(browser, pageName, init) {
         helpMarks,
         registered,
         url: localStorage.getItem('nemoclaw_clawrawurl'),
-        token: localStorage.getItem('nemoclaw_clawtoken'),
-        access: localStorage.getItem('nemoclaw_clawcfjwt'),
+        token: sessionStorage.getItem('nemoclaw_clawtoken'),
+        access: sessionStorage.getItem('nemoclaw_openclaw_access_session_v1'),
       };
     });
-    if (!results.probe.visibleHint || results.probe.helpMarks !== 5 ||
+    if (!results.probe.visibleHint || results.probe.helpMarks !== 6 ||
         results.probe.registered.model !== 'https://model-runtime-audit.brevlab.com/v1' ||
         results.probe.registered.launchable !== 'https://nemoclaw-runtime-audit.brevlab.com' ||
         !results.probe.registered.modelReadOnly || !results.probe.registered.modelSourceVisible ||
-        results.probe.url !== 'https://launchable.example.test' ||
+        results.probe.url !== 'https://launchable.brevlab.com' ||
         results.probe.token !== 'AbCd_ef-0123456789.uvwxyz~token' ||
         results.probe.access !== 'synthetic-access-value') {
       fail('probe handoff failed: ' + JSON.stringify(results.probe));
