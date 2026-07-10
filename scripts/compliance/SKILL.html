@@ -28,6 +28,7 @@
     "../../THIRD-PARTY-NOTICES.md",
     "../../THIRD_PARTY_LICENSES.md",
     "scripts/compliance/docs/source_inventory.json",
+    "scripts/compliance/docs/browser_vendor_exceptions.json",
     "scripts/compliance/docs/vendor_policy.md",
     "scripts/pyodide/SKILL.html"
   ],
@@ -118,7 +119,7 @@
     {
       "path": "source_license_contract.py",
       "role": "source-license contract",
-      "desc": "Discovers authored Python and JavaScript, verifies legal artifacts and vendor classifications, and inserts exact headers with --fix."
+      "desc": "Discovers authored Python and JavaScript, verifies legal artifacts, permits only the documented LangChain browser transformation, byte-compares publisher inputs with --verify-browser-upstream, and inserts exact headers with --fix."
     },
     {
       "path": "third_party_inventory_audit.py",

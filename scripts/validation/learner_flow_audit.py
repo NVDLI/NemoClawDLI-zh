@@ -451,7 +451,7 @@ def audit_runtime_integrations(
     }
     for token, message in terminal_contract.items():
         _need(findings, token in openshell, message)
-    _need(findings, 'new URL("../vendor/langchain-1.4.7.esm.min.js", import.meta.url)' in chat,
+    _need(findings, 'new URL("../vendor/langchain-1.4.7.esm.js", import.meta.url)' in chat,
           "shared agent chat must load LangChain from the committed same-origin bundle")
     _need(findings, 'return { status: "error", message:' in cli_runtime,
           "shared OpenClaw CLI failures must preserve an error state")
@@ -503,7 +503,7 @@ def audit_runtime_integrations(
               f"{locale} Module 4a must explain live-policy parser failure")
         _need(findings, cli.count('return { status: "error", message:') >= 2,
               f"{locale} Module 4b terminal failures must preserve an error state")
-        page_relative_vendor = 'import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href)'
+        page_relative_vendor = 'import(new URL("./vendor/langchain-1.4.7.esm.js", location.href).href)'
         _need(findings, page_relative_vendor in react and deep.count(page_relative_vendor) == 3,
               f"{locale} Modules 1b/2c must resolve the same-origin LangChain bundle from the lesson URL")
         _need(findings, 'import("./vendor/' not in react + deep,
@@ -1194,7 +1194,7 @@ def self_test() -> list[str]:
         ("hidden probe help", openclaw.replace('class="claw-help-mark"', 'class="hidden-help-mark"', 1), openshell, runtime_chat, runtime_pages, "question-mark cue"),
         ("remote policy parser", openclaw, openshell.replace('../vendor/js-yaml-5.2.1.esm.min.js', 'https://cdn.invalid/js-yaml.js', 1), runtime_chat, runtime_pages, "same-origin YAML"),
         ("swallowed policy parser error", openclaw, openshell.replace("parseError", "ignoredParserError"), runtime_chat, runtime_pages, "expose parser errors"),
-        ("remote shared LangChain", openclaw, openshell, runtime_chat.replace('../vendor/langchain-1.4.7.esm.min.js', 'https://cdn.invalid/langchain.js', 1), runtime_pages, "same-origin bundle"),
+        ("remote shared LangChain", openclaw, openshell, runtime_chat.replace('../vendor/langchain-1.4.7.esm.js', 'https://cdn.invalid/langchain.js', 1), runtime_pages, "same-origin bundle"),
         ("terminal timeout bypasses settlement", openclaw, openshell.replace('if (candidate >= wsUrls.length) return fail(terminalOpenError());', 'if (candidate >= wsUrls.length) return reject(terminalOpenError());', 1), runtime_chat, runtime_pages, "must fail once"),
         ("terminal direct fallback removed", openclaw, openshell.replace('[direct.url, routed.url]', '[routed.url]', 1), runtime_chat, runtime_pages, "authenticated direct PTY"),
         ("terminal relay budget reused", openclaw, openshell.replace('Math.min(8000, openMs) : openMs', 'Math.min(8000, openMs) : 1', 1), runtime_chat, runtime_pages, "own full open timeout"),
@@ -1212,8 +1212,8 @@ def self_test() -> list[str]:
         ("Module 3c missing setup guard", "en-03c", 'if (typeof state.call !== "function" || !state.demoCronId)', 'if (typeof state.call === "function")', "missing OpenClaw setup"),
         ("Module 4b stale Ready state", "pt-04b", 'return { status: "error", message:', 'return con.write(', "preserve an error state"),
         ("Module 4a hidden parse failure", "pt-04a", "p.parseError", "p.hiddenError", "explain live-policy parser failure"),
-        ("Module 1b module-relative import", "es-01b", 'import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href)', 'import("./vendor/langchain-1.4.7.esm.min.js")', "lesson URL"),
-        ("Module 2c module-relative import", "pt-02c", 'import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href)', 'import("./vendor/langchain-1.4.7.esm.min.js")', "lesson URL"),
+        ("Module 1b module-relative import", "es-01b", 'import(new URL("./vendor/langchain-1.4.7.esm.js", location.href).href)', 'import("./vendor/langchain-1.4.7.esm.js")', "lesson URL"),
+        ("Module 2c module-relative import", "pt-02c", 'import(new URL("./vendor/langchain-1.4.7.esm.js", location.href).href)', 'import("./vendor/langchain-1.4.7.esm.js")', "lesson URL"),
     ]
     for label, key, old, new, expected in page_cases:
         mutated_pages = dict(runtime_pages)

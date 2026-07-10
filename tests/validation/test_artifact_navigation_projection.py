@@ -185,7 +185,8 @@ class ArtifactNavigationProjectionTests(unittest.TestCase):
             self.assertTrue((root / "pyodide/candidate-components.json").is_file())
             source = page.read_text(encoding="utf-8")
             self.assertIn('href="../styles/_style.css"', source)
-            self.assertIn('src="../vendor/codemirror-5.65.21.min.js"', source)
+            self.assertIn('src="../vendor/codemirror-5.65.21.js"', source)
+            self.assertIn('src="../vendor/codemirror-mode-python-5.65.21.js"', source)
             self.assertNotIn("../../web/nemoclaw/", source)
 
     @staticmethod

@@ -6,9 +6,14 @@
 <title>Agente Profundo · Segurança do Agente</title>
 <link rel="stylesheet" href="styles/_style.css"/>
 <script src="vendor/highlight-11.10.0.min.js"></script>
-<link rel="stylesheet" href="vendor/codemirror-5.65.21.min.css"/>
-<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.min.css"/>
-<script src="vendor/codemirror-5.65.21.min.js"></script>
+<link rel="stylesheet" href="vendor/codemirror-5.65.21.css"/>
+<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.css"/>
+<script src="vendor/codemirror-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-xml-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-javascript-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-css-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-htmlmixed-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-python-5.65.21.js"></script>
 <style>
   .deep-stages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 1em 0 1.4em; }
   .deep-stage { min-width: 0; padding: 12px 14px; border: 1px solid var(--bd); border-radius: 6px; background: var(--e1); }
@@ -407,7 +412,7 @@ mountCanvasFlow("#cell-m3c-p1", {
       summary: "Ler o endpoint ativo de getConfig(); o código do gráfico posterior permanece independente do endpoint.",
       code: `// Load the same-origin vendor bundle used by this example.
 helpers.log("importando @langchain/openai ...");
-const { ChatOpenAI } = await import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href);
+const { ChatOpenAI } = await import(new URL("./vendor/langchain-1.4.7.esm.js", location.href).href);
 helpers.log("importar OK");
 
 const cfg = await helpers.getConfig();
@@ -461,7 +466,7 @@ mountCanvasFlow("#cell-m3c-p2", {
       code: `// Load the same-origin vendor bundle used by this example.
 helpers.log("Importando o ecossistema LangChain...");
 const { ChatOpenAI, tool, createReactAgent, z } =
-  await import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href);
+  await import(new URL("./vendor/langchain-1.4.7.esm.js", location.href).href);
 state.deps = { ChatOpenAI, tool, createReactAgent, z };
 helpers.log("Importações OK");
 
@@ -560,7 +565,7 @@ mountCanvasFlow("#cell-m3c-p3", {
       code: `// Load the same-origin vendor bundle used by this example.
 helpers.log("Importando pacotes LangChain...");
 const { ChatOpenAI, tool, createReactAgent, z } =
-  await import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href);
+  await import(new URL("./vendor/langchain-1.4.7.esm.js", location.href).href);
 state.deps = { ChatOpenAI, tool, createReactAgent, z };
 
 const cfg = await helpers.getConfig();

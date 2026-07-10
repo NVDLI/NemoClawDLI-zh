@@ -246,13 +246,13 @@
       "path": "scripts/browser-vendor",
       "kind": "browser-dependency-build-inputs",
       "license": "mixed-per-package-lock-and-license-files",
-      "disposition": "exact npm inputs, lock, bundle entrypoints, and upstream license overrides"
+      "disposition": "exact npm inputs, lock, publisher distribution paths, one browser-compatibility entrypoint, and upstream license overrides"
     },
     {
       "path": "web/nemoclaw/vendor",
       "kind": "vendored-browser-dependencies",
       "license": "mixed-per-browser-dependencies-manifest",
-      "disposition": "same-origin generated bundles, package inventory, artifact hashes, and per-package license evidence"
+      "disposition": "same-origin publisher file copies, one unminified browser-compatibility bundle, package inventory, artifact hashes, and per-package license evidence"
     }
   ],
   "forbidden_private_link_regexes": [

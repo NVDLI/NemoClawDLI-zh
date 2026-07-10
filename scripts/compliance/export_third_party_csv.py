@@ -95,6 +95,28 @@ def vendored_rows(base: str, ref: str) -> list[list[str]]:
             npm_page(name, version),
             repository_file(base, ref, license_path),
         ])
+    for component in document.get("embedded_components", []):
+        license_path = "web/nemoclaw/vendor/" + component["license_file"]
+        comments = (
+            "Learners receive this code inside the LangChain browser bundle. LangChain copied the "
+            f"utility source into {component['parent_package']} before publishing that npm package; "
+            "this project does not patch it. Relationship: embedded-source. "
+            f"Used for: {component['purpose']} {component['version_note']} "
+            "The adjacent .LEGAL.txt contains only comments that esbuild was instructed to preserve; "
+            "the complete license and pinned source evidence are linked here. "
+            "Used with NVIDIA-authored Apache-2.0 course source; no proprietary-code claim."
+        )
+        rows.append([
+            component["name"],
+            str(component["version"]),
+            component["license"],
+            repository_file(base, ref, license_path),
+            OTHER,
+            OTHER,
+            comments,
+            component["upstream_url"],
+            repository_file(base, ref, license_path),
+        ])
     return rows
 
 
@@ -278,7 +300,8 @@ def self_test() -> list[str]:
     vendored = component_rows(["vendored"], DEFAULT_REPOSITORY, "main")
     text = render_csv(vendored, "Not Applicable - static browser course")
     findings = validate_export(text, len(vendored), require_resolved=True)
-    expected = json.loads((ROOT / "web/nemoclaw/vendor/browser-dependencies.json").read_text(encoding="utf-8"))["packages"]
+    manifest = json.loads((ROOT / "web/nemoclaw/vendor/browser-dependencies.json").read_text(encoding="utf-8"))
+    expected = manifest["packages"] + manifest["embedded_components"]
     if {(row[0], row[1], row[2]) for row in vendored} != {
         (row["name"], str(row["version"]), row["license"]) for row in expected
     }:

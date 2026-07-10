@@ -23,6 +23,40 @@ COURSE_EVIDENCE = (
 )
 
 
+def browser_sbom_coverage_findings(manifest: dict, sbom: dict, label: str) -> list[str]:
+    """Compare the identities in both reviewer inventories, including embedded source."""
+    findings: list[str] = []
+    packages = manifest.get("packages") if isinstance(manifest.get("packages"), list) else []
+    embedded = manifest.get("embedded_components") if isinstance(manifest.get("embedded_components"), list) else []
+    components = sbom.get("components") if isinstance(sbom.get("components"), list) else []
+    expected_packages = {(row.get("name"), row.get("version")) for row in packages
+                         if isinstance(row, dict) and row.get("name") and row.get("version")}
+    expected_embedded = {row.get("id") for row in embedded
+                         if isinstance(row, dict) and row.get("id")}
+    actual_packages = {(row.get("name"), row.get("version")) for row in components
+                       if isinstance(row, dict) and str(row.get("bom-ref", "")).startswith("pkg:npm/")}
+    actual_embedded = {str(row.get("bom-ref"))[len("embedded:"):]
+                       for row in components
+                       if isinstance(row, dict) and str(row.get("bom-ref", "")).startswith("embedded:")}
+    if sbom.get("bomFormat") != "CycloneDX":
+        findings.append(f"{label} browser SBOM is not CycloneDX")
+    if (expected_packages != actual_packages or expected_embedded != actual_embedded or
+            len(expected_packages) != len(packages) or len(expected_embedded) != len(embedded) or
+            len(actual_packages) + len(actual_embedded) != len(components)):
+        missing_packages = sorted(f"{name}@{version}" for name, version in expected_packages - actual_packages)
+        extra_packages = sorted(f"{name}@{version}" for name, version in actual_packages - expected_packages)
+        missing_embedded = sorted(expected_embedded - actual_embedded)
+        extra_embedded = sorted(actual_embedded - expected_embedded)
+        detail = "; ".join(part for part in (
+            "missing packages: " + ", ".join(missing_packages) if missing_packages else "",
+            "extra packages: " + ", ".join(extra_packages) if extra_packages else "",
+            "missing embedded components: " + ", ".join(missing_embedded) if missing_embedded else "",
+            "extra embedded components: " + ", ".join(extra_embedded) if extra_embedded else "",
+        ) if part) or "duplicate or incomplete component identities"
+        findings.append(f"{label} browser SBOM does not cover the package and embedded-component inventory ({detail})")
+    return findings
+
+
 def audit_course_source_resolver(source: str, label: str) -> list[str]:
     findings: list[str] = []
     for token in (
@@ -57,11 +91,9 @@ def audit_course_evidence(course_root: Path, label: str) -> list[str]:
     except json.JSONDecodeError as exc:
         return findings + [f"{label} browser dependency evidence is invalid JSON: {exc}"]
     packages = manifest.get("packages") if isinstance(manifest.get("packages"), list) else []
-    components = sbom.get("components") if isinstance(sbom.get("components"), list) else []
     if manifest.get("delivery") != "same-origin-vendored" or not packages:
         findings.append(f"{label} browser dependency inventory is empty or not same-origin")
-    if sbom.get("bomFormat") != "CycloneDX" or len(components) != len(packages):
-        findings.append(f"{label} browser SBOM does not cover the package inventory")
+    findings.extend(browser_sbom_coverage_findings(manifest, sbom, label))
     return findings
 
 
@@ -184,10 +216,14 @@ def self_test() -> list[str]:
             resolver, encoding="utf-8"
         )
         (root / "ready" / "web" / "nemoclaw" / "vendor" / "browser-dependencies.json").write_text(
-            json.dumps({"delivery": "same-origin-vendored", "packages": [{"name": "fixture"}]}), encoding="utf-8"
+            json.dumps({"delivery": "same-origin-vendored", "packages": [{"name": "fixture", "version": "1.0.0"}],
+                        "embedded_components": [{"id": "embedded-fixture"}]}), encoding="utf-8"
         )
         (root / "ready" / "web" / "nemoclaw" / "vendor" / "browser-sbom.cdx.json").write_text(
-            json.dumps({"bomFormat": "CycloneDX", "components": [{"name": "fixture"}]}), encoding="utf-8"
+            json.dumps({"bomFormat": "CycloneDX", "components": [
+                {"name": "fixture", "version": "1.0.0", "bom-ref": "pkg:npm/fixture@1.0.0"},
+                {"name": "Embedded fixture", "bom-ref": "embedded:embedded-fixture"},
+            ]}), encoding="utf-8"
         )
         base = {
             "schema": "nemoclaw-branches/2",
@@ -235,8 +271,22 @@ def self_test() -> list[str]:
         if not any("missing course evidence" in finding for finding in audit(root, manifest, ["ready=ready"])):
             misses.append("detector missed absent browser dependency evidence")
         (root / "ready" / "web" / "nemoclaw" / "vendor" / "browser-sbom.cdx.json").write_text(
-            json.dumps({"bomFormat": "CycloneDX", "components": [{"name": "fixture"}]}), encoding="utf-8"
+            json.dumps({"bomFormat": "CycloneDX", "components": [
+                {"name": "fixture", "version": "1.0.0", "bom-ref": "pkg:npm/fixture@1.0.0"},
+                {"name": "Embedded fixture", "bom-ref": "embedded:embedded-fixture"},
+            ]}), encoding="utf-8"
         )
+        incomplete = root / "ready" / "web" / "nemoclaw" / "vendor" / "browser-sbom.cdx.json"
+        incomplete.write_text(json.dumps({"bomFormat": "CycloneDX", "components": [
+            {"name": "fixture", "version": "1.0.0", "bom-ref": "pkg:npm/fixture@1.0.0"},
+        ]}), encoding="utf-8")
+        if not any("missing embedded components: embedded-fixture" in finding
+                   for finding in audit(root, manifest, ["ready=ready"])):
+            misses.append("detector missed embedded browser component omission")
+        incomplete.write_text(json.dumps({"bomFormat": "CycloneDX", "components": [
+            {"name": "fixture", "version": "1.0.0", "bom-ref": "pkg:npm/fixture@1.0.0"},
+            {"name": "Embedded fixture", "bom-ref": "embedded:embedded-fixture"},
+        ]}), encoding="utf-8")
         bad_resolver = resolver.replace('"../index.html"', '"../../index.html"')
         (root / "ready" / "web" / "nemoclaw" / "scripts" / "_langchain.js").write_text(
             bad_resolver, encoding="utf-8"
@@ -265,13 +315,11 @@ def audit_live_course_evidence(course_url: str, label: str) -> list[str]:
     except (urllib.error.URLError, TimeoutError, RuntimeError, json.JSONDecodeError) as exc:
         return [f"{label} live browser dependency evidence unavailable: {exc}"]
     packages = manifest.get("packages") if isinstance(manifest.get("packages"), list) else []
-    components = sbom.get("components") if isinstance(sbom.get("components"), list) else []
     if "Browser dependency inventory" not in dashboard or "vendor/browser-dependencies.json" not in dashboard:
         findings.append(f"{label} live dependency dashboard is not wired to its inventory")
     if manifest.get("delivery") != "same-origin-vendored" or not packages:
         findings.append(f"{label} live browser dependency inventory is empty or not same-origin")
-    if sbom.get("bomFormat") != "CycloneDX" or len(components) != len(packages):
-        findings.append(f"{label} live browser SBOM does not cover the package inventory")
+    findings.extend(browser_sbom_coverage_findings(manifest, sbom, f"{label} live"))
     findings.extend(audit_course_source_resolver(source, label))
     return findings
 

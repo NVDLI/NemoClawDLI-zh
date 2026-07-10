@@ -442,6 +442,7 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     unit_test("course_dependency_integrity"): (
         "scripts/validation/course_dependency_integrity.py", "scripts/browser-vendor/*",
         "scripts/build/vendor_browser_dependencies.mjs", "web/nemoclaw/vendor/*", ".gitlab/ci/sca.yml",
+        ".github/workflows/pages.yml", ".github/workflows/release.yml",
     ),
     cli_unit_test("cell_audit"): (
         "scripts/validation/cell_audit.py", "web/nemoclaw/scripts/*", "web/nemoclaw/vendor/*",

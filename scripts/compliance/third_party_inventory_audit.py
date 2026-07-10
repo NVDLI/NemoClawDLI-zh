@@ -209,6 +209,8 @@ def export_contract_findings(overrides: dict[str, str]) -> list[str]:
         "evaluated-candidate", "evaluatedCandidateRows", "pyodide_candidates",
         "Evaluated option, not shipped", "candidate-components.json",
         "Future outbound HTTP and model-API support", "Component role:",
+        "manifest.embedded_components", "embedded-source",
+        "LangChain copied the utility source into", ".LEGAL.txt contains only comments",
     ):
         if token not in preview:
             findings.append(f"SWIPAT preview implementation is incomplete: {token}")

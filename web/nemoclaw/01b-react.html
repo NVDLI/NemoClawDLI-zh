@@ -6,9 +6,14 @@
 <title>The ReAct Loop · Securing Agents</title>
 <link rel="stylesheet" href="styles/_style.css"/>
 <script src="vendor/highlight-11.10.0.min.js"></script>
-<link rel="stylesheet" href="vendor/codemirror-5.65.21.min.css"/>
-<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.min.css"/>
-<script src="vendor/codemirror-5.65.21.min.js"></script>
+<link rel="stylesheet" href="vendor/codemirror-5.65.21.css"/>
+<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.css"/>
+<script src="vendor/codemirror-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-xml-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-javascript-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-css-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-htmlmixed-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-python-5.65.21.js"></script>
 <style>
   figure.lp-video { margin: 1.4em 0; }
   figure.lp-video .video-wrap { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 8px; border: 1px solid var(--bd); background: var(--e1); }
@@ -442,7 +447,7 @@ if (cfg.needsKey && !helpers.getKey()) {
 
 helpers.log("loading LangChain ...");
 const { ChatOpenAI, tool, createReactAgent, MemorySaver, z } =
-  await import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href);
+  await import(new URL("./vendor/langchain-1.4.7.esm.js", location.href).href);
 
 const PAGES   = helpers.coursePages();             // includes "overview" (the course home)
 const baseURL = cfg.url.startsWith("http") ? cfg.url : (window.location.origin + cfg.url);

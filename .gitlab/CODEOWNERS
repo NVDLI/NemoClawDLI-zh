@@ -8,3 +8,9 @@
 /scripts/validation/release_gate.py @vkudlay
 /scripts/git-hooks/ @vkudlay
 /.github/workflows/ @vkudlay
+/scripts/build/vendor_browser_dependencies.mjs @vkudlay
+/scripts/browser-vendor/ @vkudlay
+/scripts/compliance/source_license_contract.py @vkudlay
+/scripts/compliance/docs/browser_vendor_exceptions.json @vkudlay
+/tests/validation/test_source_license_contract.py @vkudlay
+/web/nemoclaw/vendor/ @vkudlay

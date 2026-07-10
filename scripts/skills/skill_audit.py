@@ -55,7 +55,8 @@ def source_files() -> list[Path]:
     raw = subprocess.check_output(
         ["git", "-C", str(TASK1), "ls-files", "--cached", "--others", "--exclude-standard", "-z"]
     )
-    return sorted(Path(item.decode()) for item in raw.split(b"\0") if item)
+    files = (Path(item.decode()) for item in raw.split(b"\0") if item)
+    return sorted(path for path in files if (TASK1 / path).is_file())
 
 
 def directories_for_files(files: list[Path]) -> list[Path]:

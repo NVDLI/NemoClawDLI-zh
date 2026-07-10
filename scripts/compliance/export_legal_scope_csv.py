@@ -175,9 +175,14 @@ def tooling_rows(base: str, ref: str) -> list[list[str]]:
 def browser_code_rows(base: str, ref: str) -> list[list[str]]:
     rows = []
     for item in software.vendored_rows(base, ref):
+        relationship = next(
+            (value for value in ("direct", "transitive", "embedded-source")
+             if f"Relationship: {value}." in item[6]),
+            "unclassified",
+        )
         rows.append([
             f"{item[0]}@{item[1]}", "vendored-browser-code",
-            "direct" if "Relationship: direct." in item[6] else "transitive",
+            relationship,
             "Yes", "Yes", item[7], item[2], "Not applicable to software package", item[3], item[8],
             "Copied into the same-origin static course; the linked repository license text and package source corroborate scope.",
         ])
