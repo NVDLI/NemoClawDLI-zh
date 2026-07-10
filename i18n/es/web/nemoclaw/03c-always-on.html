@@ -44,16 +44,16 @@
   <div class="hero">
     <div class="eyebrow">Módulo 3 · Parte C de 3</div>
     <h1>El agente <span>siempre activo</span></h1>
-    <p class="lead">En el Módulo 3b, el agente se ejecutó cuando enviaste un mensaje. OpenClaw también puede iniciar trabajo desde skills, heartbeats, tareas <a href="https://en.wikipedia.org/wiki/Cron" target="_blank" rel="noopener">cron</a> y subagentes. Todas las rutas entran en el mismo ciclo del agente y el mismo sandbox de OpenShell; la sesión, la directiva y el activador determinan qué se ejecuta. Instalarás una skill y observarás una escritura iniciada por cron.</p>
+    <p class="lead">En el Módulo 3b, el agente se ejecutó cuando enviaste un mensaje. OpenClaw también puede iniciar trabajo desde skills, heartbeats, tareas <a href="https://en.wikipedia.org/wiki/Cron" target="_blank" rel="noopener">cron</a> y subagentes. Todas las rutas entran en el mismo bucle del agente y en el mismo sandbox de OpenShell; la sesión, la directiva y el activador determinan qué se ejecuta. Instalarás una skill y observarás una escritura iniciada por cron.</p>
 
     <div class="fig-embed" data-svg-src="assets/figures/03c-always-on-1.svg" style="aspect-ratio:820 / 478"></div>
   </div>
 
   <h2>Cómo eligen el contexto y las instrucciones los activadores</h2>
-  <p>Los mismos tres parámetros describen cada mecanismo de esta página:</p>
+  <p>Cada mecanismo en esta página se describe mediante los mismos tres controles:</p>
   <ul>
     <li>La <strong>sesión</strong> define qué contexto hereda una ejecución.</li>
-    <li>La <strong>directiva</strong> es el archivo Markdown que indica al agente qué debe hacer.</li>
+    <li>La <strong>directiva</strong> contiene las instrucciones que indican al agente qué debe hacer.</li>
     <li>El <strong>activador</strong> decide cuándo comienza una ejecución.</li>
   </ul>
   <p>La tabla muestra la configuración del curso. Usa los mismos tres campos para clasificar otros tipos de activadores; OpenClaw también ofrece modos de sesión adicionales.</p>
@@ -61,23 +61,23 @@
   <table class="knobs-table">
     <thead><tr><th>Nombre</th><th>Sesión</th><th>La directiva reside en</th><th>Activador</th></tr></thead>
     <tbody>
-      <tr><td>Skill <span style="color:var(--gs);font-weight:400;font-style:italic">(se ejecuta debajo)</span></td>      <td>reutiliza la sesión del solicitante</td>          <td><code>workspace/skills/&lt;name&gt;.md</code></td> <td>el modelo la elige durante el turno cuando la directiva coincide con la solicitud</td></tr>
+      <tr><td>Skill <span style="color:var(--gs);font-weight:400;font-style:italic">(se ejecuta más abajo)</span></td>      <td>reutiliza la sesión del solicitante</td>          <td><code>workspace/skills/&lt;name&gt;.md</code></td> <td>el modelo la elige durante el turno cuando la directiva coincide con la solicitud</td></tr>
       <tr><td>Heartbeat <span style="color:var(--tf);font-weight:400;font-style:italic">(solo concepto)</span></td>  <td>sesión principal en este ejemplo</td>             <td><code>HEARTBEAT.md</code></td>                    <td>temporizador del gateway, unos 30 minutos de forma predeterminada</td></tr>
-      <tr><td>Cron <span style="color:var(--gs);font-weight:400;font-style:italic">(se ejecuta debajo)</span></td>       <td>aislada; una sesión nueva por activación</td><td>campo JSON <code>prompt</code></td>       <td>programación cron con precisión de un minuto</td></tr>
+      <tr><td>Cron <span style="color:var(--gs);font-weight:400;font-style:italic">(se ejecuta más abajo)</span></td>       <td>aislada; una sesión nueva por activación</td><td>campo JSON <code>prompt</code></td>       <td>programación cron con precisión de un minuto</td></tr>
       <tr><td>Subagente <span style="color:var(--tf);font-weight:400;font-style:italic">(solo concepto)</span></td>  <td>nueva; el padre conserva la referencia</td><td>cadena incluida al llamar a <code>delegate()</code></td><td>el agente padre decide durante el turno</td></tr>
     </tbody>
   </table>
 
-  <div class="callout">OpenClaw puede vincular una tarea cron a una <a href="https://docs.openclaw.ai/cron-vs-heartbeat" target="_blank" rel="noopener">sesión principal, aislada, actual o con nombre</a>. El curso utiliza ejecuciones cron aisladas para que cada demostración comience desde cero. En esta página ejecutarás la skill y la tarea cron. El heartbeat y la llamada <code>delegate()</code> del subagente aparecen únicamente en la tabla; ninguna celda los activa, así que no esperes que lo hagan.</div>
+  <div class="callout">OpenClaw puede vincular una tarea cron a una <a href="https://docs.openclaw.ai/cron-vs-heartbeat" target="_blank" rel="noopener">sesión principal, aislada, actual o con nombre</a>. El curso utiliza ejecuciones cron aisladas para que cada demostración comience desde cero. En esta página ejecutarás la skill y la tarea cron. El heartbeat y la llamada <code>delegate()</code> del subagente aparecen únicamente en la tabla; ninguna celda los activa, así que no se ejecutarán en esta página.</div>
 
   <h2>Paso 1 · Añade una skill</h2>
-  <p>Una skill comienza como un archivo Markdown dentro de <code>skills/</code>, normalmente con un bloque breve de front matter o un encabezado que permite al runtime decidir cuándo mostrarla. El agente no carga todas las instrucciones a la vez; revela progresivamente la skill coincidente cuando el turno siguiente la necesita. No necesitas reiniciarlo, volver a implementarlo ni modificar el prompt de sistema.</p>
+  <p>Una skill comienza como un archivo Markdown dentro de <code>skills/</code>, normalmente con un bloque breve de front matter o un encabezado que permite al runtime decidir cuándo mostrarla. El agente no carga todas las instrucciones a la vez; expone progresivamente la skill coincidente cuando el turno siguiente la necesita. No necesitas reiniciarlo, volver a implementarlo ni modificar el prompt de sistema.</p>
 
   <div class="file-tree skill-file"><span class="fname"># skills/triage-incident.md</span>
 
 Cuando el usuario pregunte por un incidente de producción o pegue una línea de log que sugiera uno, sigue este orden: 1. Confirma el servicio afectado y el intervalo de tiempo. 2. Abre el runbook de ese servicio desde /sandbox/runbooks/. 3. Sugiere la mitigación reversible más pequeña; no la ejecutes. 4. Pregunta al usuario antes de abrir un ticket en Jira.</div>
 
-  <p>El widget siguiente pide al agente que instale exactamente esa skill y después envía una solicitud diseñada para coincidir con ella. La selección es automática: el agente compara tu solicitud con la descripción de cada skill del workspace, por lo que el prompt no tiene que indicar cuál debe usar. Observa cómo el agente recurre a la skill nueva durante el segundo turno.</p>
+  <p>El widget siguiente pide al agente que instale exactamente esa skill y después envía una solicitud diseñada para que coincida con ella. La selección es automática: el agente compara tu solicitud con la descripción de cada skill del workspace, por lo que el prompt no tiene que indicar cuál debe usar. Observa cómo el agente recurre a la skill nueva durante el segundo turno.</p>
 
   <div id="fig-calls"></div>
 
@@ -93,22 +93,22 @@ Cuando el usuario pregunte por un incidente de producción o pegue una línea de
 
   <p>El widget siguiente recorre el ciclo de vida completo de una tarea cron:</p>
   <ol>
-    <li>Se conecta y enumera las tareas cron ya instaladas.</li>
+    <li>Se conecta al gateway y enumera las tareas cron ya instaladas.</li>
     <li>Instala una tarea de demostración que se activa cada minuto y añade una línea a <code>MEMORY.md</code>.</li>
     <li>Espera unos setenta segundos para que la tarea cruce el límite de un minuto y se ejecute por sí sola.</li>
     <li>La celda siguiente lee las últimas líneas de <code>MEMORY.md</code> desde el sandbox y muestra la línea que escribió el agente activado por cron sin recibir ninguna otra instrucción.</li>
-    <li>La última celda elimina la tarea para que no quede nada pendiente.</li>
+    <li>Elimina la tarea para que no quede nada pendiente.</li>
   </ol>
   <p>Ninguna persona inició esa escritura. La programación cron activó el trabajo por sí sola mientras no interactuabas con el agente.</p>
 
   <div id="probe-cron"></div>
 
-  <div class="callout warn"><strong>Las tareas cron se ejecutan sin supervisión.</strong> Una directiva programada que pida al agente «enviar el informe diario» se activará aunque nadie esté observando. El curso selecciona una sesión aislada para cada activación, de modo que un fallo en una ejecución no contamine la transcripción de la siguiente. Otras configuraciones de cron pueden conservar o vincular el contexto de sesión entre activaciones. El Módulo 4a añade una capa de contención a nivel del kernel. Cada acceso al sistema de archivos y conexión de red que intente el agente pasa por una lista explícita de permitidos antes de ejecutar la syscall. Una tarea programada con un comportamiento incorrecto solo podrá alcanzar lo que permita la política.</div>
+  <div class="callout warn"><strong>Las tareas cron se ejecutan sin supervisión.</strong> Una directiva programada que pida al agente «enviar el informe diario» se activará aunque nadie esté observando. El curso selecciona una sesión aislada para cada activación, de modo que un fallo en una ejecución no contamine la transcripción de la siguiente. Otras configuraciones de cron pueden conservar o vincular el contexto de sesión entre activaciones. El Módulo 4a añade una capa de contención a nivel del kernel. Cada acceso al sistema de archivos o conexión de red que intente el agente se compara con una lista explícita de permitidos antes de que se ejecute la syscall. Una tarea programada con un comportamiento incorrecto solo podrá alcanzar lo que permita la política.</div>
 
   <h2>Cómo continuar</h2>
-  <p>El repositorio público de <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes</a> ofrece las mismas categorías generales de capacidades: skills reutilizables, memoria persistente, trabajo programado y un gateway de mensajería. Su implementación y sus valores predeterminados difieren de los de OpenClaw. Compara el límite de seguridad y el comportamiento de las sesiones, en lugar de suponer que nombres de funciones similares implican controles de riesgo equivalentes.</p>
+  <p>El repositorio público de <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes</a> expone las mismas categorías generales de capacidades: skills reutilizables, memoria persistente, trabajo programado y un gateway de mensajería. Su implementación y sus valores predeterminados difieren de los de OpenClaw. Compara el límite de seguridad y el comportamiento de las sesiones, en lugar de suponer que nombres de funciones similares implican controles de riesgo equivalentes.</p>
 
-  <p>Cualquier entorno de ejecución capaz de escribir instrucciones reutilizables, programar trabajo y aceptar mensajes remotos puede conservar una directiva comprometida más allá de una conversación. El Módulo 4 separa esos controles de aplicación de los controles del sandbox que limitan el acceso a archivos, procesos y red.</p>
+  <p>Cualquier entorno de ejecución capaz de escribir instrucciones reutilizables, programar trabajo y aceptar mensajes remotos puede hacer que una directiva comprometida persista más allá de una sola conversación. El Módulo 4 separa esos controles de aplicación de los controles del sandbox que limitan el acceso a archivos, procesos y red.</p>
   <div class="callout warn"><strong>Hermes controla su superficie de mensajería.</strong> Su <a href="https://hermes-agent.nousresearch.com/docs/user-guide/security/" target="_blank" rel="noopener">guía de seguridad</a> documenta códigos de emparejamiento y listas de permitidos por plataforma o para usuarios globales. Cuando ninguna regla autoriza el acceso, se aplica <code>default: deny</code>. Esos controles de aplicación deciden quién puede comunicarse con el agente. Por separado, un sandbox del sistema operativo limita lo que pueden alcanzar sus herramientas.</div>
   <p>El mismo patrón de skills como trayectorias memorizadas aparece en el ecosistema bajo otros nombres y formatos:</p>
   <ul>
@@ -161,7 +161,7 @@ helpers.log("rendered below. Edit the config and Run.");
 
   <div class="foot-nav">
     <a href="03b-openclaw.html">← Módulo 3b: OpenClaw</a>
-    <a class="next" href="04a-safety.html">Módulo 4a: OpenShell en NemoClaw →</a>
+    <a class="next" href="04a-safety.html">Módulo 4a: OpenShell →</a>
   </div>
 </main>
 
@@ -177,7 +177,7 @@ hljs.highlightAll();
 // ── The always-on loop: the agent wakes on a schedule, acts, writes back ──────
 mountDiagram("#fig-calls", {
   kicker: "SIN INTERVENCIÓN HUMANA",
-  title: "El ciclo siempre activo",
+  title: "El bucle siempre activo",
   maxWidth: 980,
   boxW: 268,
   boxH: 116,
@@ -185,7 +185,7 @@ mountDiagram("#fig-calls", {
   top: 58,
   nodes: [
     { id: "cron", label: "programación", kind: "env", x: 0, y: 0, lines: ["cron o heartbeat", "se activa por temporizador"] },
-    { id: "gw",   label: "ciclo del gateway", kind: "agent", x: 1, y: 0,
+    { id: "gw",   label: "bucle del gateway", kind: "agent", x: 1, y: 0,
       lines: ["el modelo planifica y usa herramientas", "después repite"], socket: "sesión configurada" },
     { id: "logs", label: "workspace / logs", kind: "data", x: 2, y: 0, lines: ["MEMORY.md", "logs y artefactos"] },
   ],
@@ -322,7 +322,7 @@ state.out = _text;
 // Started-without-result means a hung tool or model loop; Health check can flag toolSearch.
 if (!_text.trim() && !_didResult && _toolStarts > 0) {
   helpers.log("⚠ DEGRADED: se iniciaron " + _toolStarts + " llamadas a herramientas, pero ninguna devolvió un resultado o una respuesta.");
-  helpers.log("Una herramienta dejó de responder o el modelo está en un ciclo. Las filas anteriores muestran la herramienta y los argumentos exactos donde se detuvo.");
+  helpers.log("Una herramienta dejó de responder o el modelo está atrapado en un bucle. Las filas anteriores muestran la herramienta y los argumentos exactos donde se detuvo.");
   helpers.log("Ejecuta la comprobación de estado, que detecta toolSearch, y después Recuperar. La celda de logs ofrece más detalles del runtime.");
 }
 `;
@@ -341,7 +341,7 @@ mountCanvasFlow("#cell-skill", {
   ],
   nodes: [
     {
-      id: "sk-conn", icon: "🔌", title: "Conectar", x: 0, y: 0,
+      id: "sk-conn", icon: "🔌", title: "Conecta", x: 0, y: 0,
       showCode: false,
       summary: "Abre un WebSocket en el gateway y autentícate. El flujo guarda la conexión en state.call para que los tres nodos siguientes puedan enviar turnos de chat sin volver a conectarse.",
       code: GW_CONNECT + `state._sk = "quick-3c-skill";`,
@@ -391,7 +391,7 @@ mountCanvasFlow("#probe-cron", {
   ],
   nodes: [
     {
-      id: "cr-conn", icon: "🔌", title: "Conectar", x: 0, y: 0,
+      id: "cr-conn", icon: "🔌", title: "Conecta", x: 0, y: 0,
       showCode: false,
       summary: "Abre el WebSocket del gateway y autentícate.",
       code: GW_CONNECT,

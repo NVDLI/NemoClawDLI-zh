@@ -110,12 +110,12 @@
     <div id="journey-map"></div>
 
     <div class="hero">
-      <div class="eyebrow">Módulo 3 · Parte A de 3 · Comienzan las llamadas en vivo</div>
+      <div class="eyebrow">Módulo 3 · Parte A de 3</div>
       <h1>Conecta el <span>stack de NemoClaw</span></h1>
       <p class="lead">En los Módulos 1 y 2, la orquestación permaneció en el navegador. Un flujo de trabajo terminaba cuando la página dejaba de transportar sus mensajes, resultados intermedios o el estado de sus ramas. El Módulo 3 lleva los mismos patrones de agentes a un <a href="https://brev.nvidia.com/launchable/deploy?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS&amp;ncid=ref-dli-759990" target="_blank" rel="noopener">launchable de NemoClaw en Brev</a>. OpenClaw conserva el historial de la sesión y un workspace respaldado por archivos, sin dejar de ofrecer herramientas; OpenShell limita lo que ese agente en ejecución puede alcanzar. Desde el navegador, compararás la API de modelos sin estado con el gateway persistente de OpenClaw.</p>
       <figure style="margin:1.4em 0">
         <div class="fig-embed" data-svg-src="assets/figures/03a-kickstart-1.svg" style="aspect-ratio:1300 / 400"></div>
-        <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">El acceso avanza desde HTTP de modelos sin estado, pasando por el estado de conversación en el servidor y los protocolos estándar de herramientas, hasta el WebSocket persistente que transmite una sesión activa de OpenClaw.</figcaption>
+        <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">El acceso avanza desde los endpoints HTTP de modelos sin estado, pasando por el estado de conversación en el servidor y los protocolos estándar de herramientas, hasta el WebSocket persistente que transmite una sesión activa de OpenClaw.</figcaption>
       </figure>
 
 
@@ -125,7 +125,7 @@
     <ul>
       <li><strong>Endpoints HTTP REST.</strong> El modelo responde a cada llamada de forma aislada: en <a href="https://platform.openai.com/docs/api-reference/chat" target="_blank" rel="noopener"><em>Chat Completions API</em></a>, el código cliente transporta el historial; en <em>Responses API</em>, el servidor puede conservarlo.</li>
       <li><strong><a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">Model Context Protocol (MCP)</a>.</strong> Un protocolo estándar permite al runtime acceder a herramientas sin escribir una integración específica para cada una.</li>
-      <li><strong>Gateway persistente.</strong> OpenClaw mantiene un <code>/cli/gateway</code> <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API" target="_blank" rel="noopener">WebSocket</a> abierto y transmite eventos mediante <a href="https://www.jsonrpc.org/specification" target="_blank" rel="noopener">JSON-RPC</a>, en lugar de responder a una solicitud por vez.</li>
+      <li><strong>Gateway persistente.</strong> OpenClaw mantiene abierto <code>/cli/gateway</code> como <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API" target="_blank" rel="noopener">WebSocket</a> y transmite eventos mediante <a href="https://www.jsonrpc.org/specification" target="_blank" rel="noopener">JSON-RPC</a>, en lugar de responder a una solicitud cada vez.</li>
     </ul>
 
     <!-- video removed: hour-long NemoClaw session, too long and distracting for an inline companion. Re-enable by uncommenting.
@@ -146,7 +146,7 @@
     -->
 
     <h2>Los dos endpoints que usarás a partir de ahora</h2>
-    <p>El endpoint del modelo responde mediante la misma API que utilizaste antes. El gateway del launchable llega a un proceso de OpenClaw que conserva sesiones y puede ejecutar herramientas. El código de soporte de ambos protocolos permanece disponible en las celdas; presta atención al endpoint, la credencial y el límite de estado de cada interfaz.</p>
+    <p>El endpoint del modelo responde mediante la misma API que utilizaste antes. El gateway del launchable conecta con un proceso de OpenClaw que conserva sesiones y puede ejecutar herramientas. El código de soporte de ambos protocolos permanece disponible en las celdas; presta atención al endpoint, la credencial y el límite de estado de cada interfaz.</p>
 
     <div class="url-pair">
       <a class="url-card" href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener"><h3>build.nvidia.com</h3> <p>Chat Completions API. Sin estado: un POST, una respuesta, sin herramientas ni sesión. Genera una clave en API Keys.</p> <p style="color:var(--tf);font-size:.8rem">Tu clave <code>nvapi-</code>. El proxy la reenvía sin cambios.</p></a>
@@ -170,7 +170,7 @@
     <div id="probe-llm"></div>
 
     <h3>Latencia y tiempo hasta el primer token por modelo</h3>
-    <p>Antes de elegir un modelo, mide su comportamiento. Las celdas siguientes obtienen del catálogo los modelos coincidentes, transmiten el mismo prompt breve a cada uno y registran el <em>tiempo hasta el primer token</em> (TTFT) y el tiempo total. La celda que consulta el catálogo comienza abierta para mostrar el filtro antes de ejecutar el benchmark.</p>
+    <p>Antes de elegir un modelo, mide su comportamiento. Las celdas siguientes obtienen del catálogo los modelos coincidentes, transmiten el mismo prompt breve a cada uno y registran el <em>tiempo hasta el primer token</em> (TTFT, del inglés <i>Time to First Token</i>) y el tiempo total de cada modelo. La celda que consulta el catálogo comienza abierta para mostrar el filtro antes de ejecutar el benchmark.</p>
 
     <div id="bench-llm"></div>
 
@@ -179,44 +179,45 @@
     <div class="callout warn"><strong>Si la sonda de OpenClaw agota el tiempo de espera o devuelve 502.</strong> Es probable que el runtime del agente aún esté arrancando: el launchable puede haberse iniciado antes de que OpenClaw terminara de cargar su política YAML. Espera 30 segundos y vuelve a ejecutar la sonda. Si sigue sin responder, usa la celda Recuperar en la sección del gateway antes de continuar.</div>
 
     <h3>La solicitud de la sonda como código editable</h3>
-    <p>Esta celda realiza la misma llamada que la sonda, con el código a la vista. Reutiliza la URL, el token, el proveedor y la sesión de acceso que guardó la sonda. Edita <code>PATH</code>, <code>METHOD</code> y <code>BODY</code> para enviar otras solicitudes. El estado, los encabezados y el cuerpo aparecen debajo.</p>
-    <p><code>TRANSPORT</code> controla cómo llega la credencial al launchable:</p>
+    <p>Esta celda realiza la misma llamada que la prueba, pero exponiendo el código. Reutiliza la URL, el token y el JWT de Cloudflare que guardó la prueba. Edita <code>PATH</code>, <code>METHOD</code> y <code>BODY</code> para enviar otras solicitudes. El estado, los encabezados y el cuerpo aparecen debajo.</p>
+    <p><code>TRANSPORT</code> controla cómo llegan las credenciales al launchable:</p>
     <ul>
-      <li><code>"configured"</code> sigue la opción de relay guardada arriba. Brev entre orígenes usa el relay de NVIDIA de forma predeterminada.</li>
-      <li><code>"direct"</code> llama al origen del launchable con <code>credentials:&nbsp;"include"</code>, usando la cookie correspondiente que ya posee el navegador.</li>
+      <li><code>"configured"</code> sigue la opción de gateway guardada arriba. Brev entre orígenes usa el relay de NVIDIA de forma predeterminada.</li>
+      <li><code>"direct"</code> llama al origen del launchable con <code>credentials:&nbsp;"include"</code> y sin JWT, apoyándose en la cookie de Cloudflare Access que ya posee el navegador.</li>
     </ul>
     <p>
-      En un curso alojado por separado en Pages, el modo directo depende de una cookie válida del
-      launchable y de su política de respuesta entre orígenes; la ruta con sesión de acceso explícita usa el relay.
+      Los launchables con Pomerium conservan su sesión firmada en el navegador. El curso usa sus WebSockets
+      directos y lee los dos endpoints de inicialización mediante una solicitud fija al loopback desde esa
+      terminal autenticada. Los launchables con Cloudflare Access usan el relay alojado y su campo de sesión explícito.
       Cuando el curso se incorpora al mismo launchable de NemoClaw que ejecuta el runtime,
-      el modo directo utiliza el mismo origen y no necesita el relay.
+      el modo direct utiliza el mismo origen y no necesita el relay.
     </p>
 
     <div id="claw-raw-cell"></div>
 
     <h2>Paso 2 · El gateway</h2>
 
-    <p>El endpoint del modelo utiliza Chat Completions API, donde un solo POST contiene todo lo que necesita la llamada.</p>
+    <p>El endpoint del modelo utiliza Chat Completions API, donde un solo POST contiene todo lo que la llamada necesita.</p>
     <ul>
       <li>La línea de solicitud es un único <code>POST</code> a la ruta de completions.</li>
       <li>El cuerpo JSON transporta <code>model</code> y <code>messages</code>.</li>
-      <li>Un encabezado <code>Authorization</code> identifica al solicitante.</li>
+      <li>Un encabezado <code>Authorization</code> identifica al emisor.</li>
     </ul>
     <p>OpenClaw también implementa esa ruta internamente, pero un curso alojado por separado la alcanza mediante la capa de acceso del launchable y el relay, no como una solicitud de navegador sin autenticación.</p>
     <p>El canal que <em>sí está disponible</em> utiliza otro protocolo: un WebSocket en <code>/cli/gateway</code> que habla JSON-RPC.</p>
 
     <div class="callout"><p>La interfaz de control de la pestaña del navegador no utiliza un canal privado especial. Se comunica con el agente mediante el mismo WebSocket en <code>/cli/gateway</code> que puedes usar, y la única credencial necesaria es el token del gateway. La sonda descubre ese token para que no tengas que pegarlo. Una solicitud <code>GET /api/agent</code>, autorizada por tu sesión del launchable, lo devuelve en <code>agent.dashboardUrl</code>. Deja el campo vacío para que la sonda lo complete.</p></div>
 
-    <p>Ese token posee el alcance <code>operator.admin</code>, la misma autoridad que la interfaz de control. Con él puedes:</p>
+    <p>Ese token tiene asignado el alcance <code>operator.admin</code>, la misma autoridad que la interfaz de control. Con él puedes hacer lo siguiente:</p>
     <ul>
       <li><code>models.list</code> enumera todos los modelos que ofrece el runtime.</li>
       <li><code>cron.add</code> programa trabajo que se ejecuta sin tu intervención.</li>
-      <li><code>chat.send</code> con una <code>sessionKey</code> envía un mensaje directamente al ciclo del agente.</li>
+      <li><code>chat.send</code> con una <code>sessionKey</code> envía un mensaje directamente al bucle del agente en ejecución.</li>
     </ul>
 
     <figure style="margin:1.4em 0">
       <div id="fig-calls"></div>
-      <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Un único POST activa un ciclo dentro del gateway, donde la clave de sesión conserva la memoria para la llamada siguiente.</figcaption>
+      <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Un único POST activa un bucle dentro del gateway, donde la clave de sesión conserva la memoria para la llamada siguiente.</figcaption>
     </figure>
 
     <h3>Comprueba antes de cambiar el runtime</h3>
@@ -234,25 +235,25 @@
 
     <div id="gw-recover"></div>
 
-    <p>Con el runtime preparado, puedes enviar un mensaje al ciclo del agente. Ejecuta las tres celdas siguientes en orden: las primeras conectan y enumeran modelos y tareas cron; una celda posterior envía un turno de chat; la última transmite la traza. Lee la traza fila por fila:</p>
+    <p>Una vez preparado el runtime, puedes enviar un mensaje al bucle del agente. Ejecuta los tres nodos siguientes en orden: el primero conecta con el gateway; el segundo enumera modelos y tareas cron; el tercero envía un turno de chat y transmite la traza. Lee la traza fila por fila:</p>
     <ul>
       <li>Cada fila <code>⚙️</code> es una llamada a herramienta con sus argumentos de entrada.</li>
       <li>Cada fila <code>✓</code>/<code>✗</code> es el resultado de esa herramienta.</li>
-      <li>El gateway no reenvía el razonamiento del modelo, por lo que esta traza de entrada y salida ofrece la vista por pasos más detallada. Cuando una ejecución se detenga sin resultado, usa la celda de logs anterior para seguir el runtime.</li>
+      <li>El razonamiento del modelo no se envía por el gateway, por lo que esta traza de entrada y salida ofrece la vista por pasos más detallada. Cuando una ejecución se detenga sin resultado, usa la celda de logs anterior para monitorizar el runtime.</li>
     </ul>
     <p>Cada ejecución de chat comprueba su estado. Si aparece <code>⚠ DEGRADED</code>, vuelve aquí, ejecuta Recuperar y repite el intento.</p>
 
     <div id="gw-demo"></div>
 
-    <div class="callout warn"><p>Quien pueda leer el entorno del launchable también puede leer ese token; quien posea el token es un operador con todas las capacidades anteriores. El Módulo 4 convierte esta comodidad en la pregunta central de seguridad.</p></div>
+    <div class="callout warn"><p>Cualquiera que pueda leer el entorno del launchable también puede leer ese token; quien posea el token es un operador con todas las capacidades anteriores. El Módulo 4 convierte esta comodidad en la pregunta central de seguridad.</p></div>
 
     <h2>Paso 3 · La memoria vive en la clave de la sesión</h2>
     <p>Cada <code>chat.send</code> recibe una <code>sessionKey</code>, que determina lo que el turno recuerda:</p>
     <ul>
-      <li><strong>La misma clave, dos veces:</strong> el gateway rehidrata el historial del primer turno antes de ejecutar el segundo, por lo que el agente responde a partir de una conversación que el cliente nunca volvió a enviar.</li>
+      <li><strong>La misma clave, dos veces:</strong> el gateway restaura el historial del primer turno antes de ejecutar el segundo, por lo que el agente responde a partir de una conversación que el cliente nunca volvió a enviar.</li>
       <li><strong>Una clave distinta:</strong> comienza desde cero, sin conservar nada.</li>
     </ul>
-    <p>La primera celda registra un dato y después lo solicita con la misma clave. El agente utiliza un turno que el cliente no volvió a enviar porque el gateway rehidrató el historial en el servidor. Las otras dos celdas permiten administrar ese estado almacenado.</p>
+    <p>La primera celda introduce un dato y después pide recuperarlo con la misma clave. El agente responde a partir de un turno que tu cliente nunca reenvió, porque el gateway reconstruyó ese historial en el servidor. Las otras dos celdas te permiten gestionar el estado almacenado:</p>
     <ul>
       <li><strong>Limpiar</strong> borra una sesión con una sola llamada; el turno siguiente comienza sin historial. Cada celda de chat también contiene una línea <code>sessions.reset</code> comentada para reiniciar allí mismo.</li>
       <li><strong>Limpiar sesiones</strong> elimina las sesiones desechables acumuladas durante las pruebas, incluidas las claves por ejecución del Paso 2, y conserva únicamente la sesión principal.</li>
@@ -263,7 +264,7 @@
     <div class="callout warn"><strong>La clave de sesión es la única identificación de la conversación enviada por el cliente.</strong> A partir de ella, el gateway recupera en el servidor toda la sesión antes de cada llamada; el cliente no necesita reenviar la transcripción. Dos claves diferentes siempre identifican sesiones separadas, aunque las conversaciones tengan contenido idéntico.</div>
 
     <h2>Qué sigue</h2>
-    <p>El Módulo 3b abre los archivos que configuran cada turno de OpenClaw. El Módulo 3c añade skills y activadores programados; después, el Módulo 4 comprueba cómo OpenShell limita las acciones que pueden iniciar esas instrucciones persistentes.</p>
+    <p>El Módulo 3b abre los archivos que configuran cada turno de OpenClaw. El Módulo 3c añade skills y activadores programados; después, el Módulo 4 comprueba cómo OpenShell limita las acciones que esas instrucciones persistentes pueden iniciar.</p>
 
     <div class="references">
       <h3>Referencias</h3>
@@ -277,8 +278,8 @@
       <p class="references-note">Lista completa en <a href="04c-going-further.html#refs">Para ir más lejos · Referencias</a>.</p>
     </div>
 
-    <h2>Pruébalo · conversa con tu launchable</h2>
-    <p>Cuando la sonda anterior esté en verde, este artefacto abrirá el mismo WebSocket en <code>/cli/gateway</code> y te permitirá conversar con el agente OpenClaw activo. Transmite la respuesta y muestra un indicador cada vez que el agente utiliza una herramienta. Todas las respuestas que aparecen aquí regresaron mediante esa conexión en vivo.</p>
+    <h2>Prueba · conversa con tu launchable</h2>
+    <p>Cuando la sonda anterior esté en verde, este artefacto abrirá el mismo WebSocket en <code>/cli/gateway</code> y te permitirá conversar con el agente OpenClaw activo. Transmitirá la respuesta y mostrará un indicador cada vez que el agente utilice una herramienta. Todas las respuestas que veas aquí se han recibido mediante esa conexión en vivo con el gateway.</p>
     <div id="kickstart-cell"></div>
     <div id="kickstart-artifact"></div>
     <script type="module">
@@ -310,7 +311,7 @@ helpers.log("rendered below. Edit the config and Run.");
     </script>
 
     <div class="foot-nav">
-      <a href="02c-deep.html">← Módulo 2c: Agentes profundos</a>
+      <a href="02c-deep.html">← Módulo 2c: Agentes de investigación profunda</a>
       <a class="next" href="03b-openclaw.html">Módulo 3b: OpenClaw →</a>
     </div>
   </main>
@@ -326,19 +327,19 @@ helpers.log("rendered below. Edit the config and Run.");
 
     // ── The call, expanded: one POST drives a loop inside the gateway ────────────
     mountDiagram("#fig-calls", {
-      kicker: "UN POST · UN CICLO DENTRO DEL GATEWAY",
-      title: "Una llamada agente, expandida",
+      kicker: "UN POST · UN BUCLE DENTRO DEL GATEWAY",
+      title: "Una llamada al agente, expandida",
       maxWidth: 760, boxW: 268, boxH: 116, gapX: 86, top: 58,
       nodes: [
         {
-          id: "you", label: "su código", kind: "data", x: 0, y: 0,
+          id: "you", label: "tu código", kind: "data", x: 0, y: 0,
           lines: ["cuaderno o navegador", "un POST por turno"]
         },
 
         {
           id: "gw", label: "Gateway OpenClaw", kind: "agent", x: 1, y: 0,
-          lines: ["planea, llama herramientas", "y repite hasta responder"],
-          socket: "el ciclo se ejecuta aquí"
+          lines: ["planea, llama a herramientas", "y repite hasta responder"],
+          socket: "el bucle se ejecuta aquí"
         },
       ],
       edges: [
@@ -394,7 +395,7 @@ sonda reutilizan el valor. El proxy para iframe solo está disponible con el end
 Las claves de la API de NVIDIA empiezan por <code>nvapi-</code>.</p>
 <p><strong>Cómo obtener una:</strong> inicie sesión en <a href="${NVIDIA_BUILD_URL}" target="_blank" rel="noopener">build.nvidia.com</a>
 y elige API Keys → Generate Key.</p>
-<p><strong>Ejecución local:</strong> la misma clave funciona en todos los entornos. Guárdela en la variable de entorno
+<p><strong>Ejecución local:</strong> la misma clave funciona en todos los entornos. Guárdala en la variable de entorno
 <code>NVIDIA_API_KEY</code>, en lugar de pegarla en el código.</p>`,
       },
       actions: [
@@ -425,7 +426,7 @@ y elige API Keys → Generate Key.</p>
     bench.innerHTML = `<div id="bench-fetch-models"></div><div id="bench-measure-models" style="margin-top:12px"></div>`;
 
     mountRunCell("#bench-fetch-models", {
-      label: "Obtenga los modelos coincidentes",
+      label: "Obtén los modelos coincidentes",
       openCode: true,
       intro: "Ejecuta primero esta breve solicitud de descubrimiento. Enumera los modelos que coinciden con el filtro editable; el código permanece visible porque modificar ese filtro forma parte del ejercicio.",
       code: `// Fetch the model catalog and keep only the IDs this benchmark compares.
@@ -806,7 +807,7 @@ state.out = _text;
 // The ⚙️ rows show which tools ran; the Health check flags toolSearch.
 if (!_text.trim() && !_didResult && _toolStarts > 0) {
   helpers.log("⚠ DEGRADED: se iniciaron " + _toolStarts + " llamadas a herramientas, pero ninguna devolvió un resultado o una respuesta.");
-  helpers.log("   Una herramienta dejó de responder o el modelo está en un ciclo. Las filas ⚙️ anteriores muestran la herramienta y los argumentos exactos donde se detuvo.");
+  helpers.log("   Una herramienta dejó de responder o el modelo está atrapado en un bucle. Las filas ⚙️ anteriores muestran la herramienta y los argumentos exactos donde se detuvo.");
   helpers.log("   Ejecuta la comprobación de estado, que detecta toolSearch, y después Recuperar. Para obtener más detalles, la celda de logs sigue el runtime.");
 }
 `;
@@ -917,9 +918,9 @@ helpers.log("Re-run the recall turn above and the planted code is gone.");
         },
 
         {
-          id: "sk-cleanup", icon: "🗑", title: "Limpie las sesiones antiguas", x: 2, y: 0,
+          id: "sk-cleanup", icon: "🗑", title: "Limpia las sesiones antiguas", x: 2, y: 0,
           showCode: false,
-          summary: "Cada sessionKey distinta deja una sesión que se acumula en la interfaz de control. Esta celda recorre la lista paginada y elimina las sesiones desechables, conservando únicamente la sesión principal. Edita KEEP para cambiar cuáles perduran; por ejemplo, /:(main|quick-3c-skill)$/ también conserva una sesión que le interese.",
+          summary: "Cada sessionKey distinta deja una sesión que se acumula en la interfaz de control. Esta celda recorre la lista paginada y elimina las sesiones desechables, conservando únicamente la sesión principal. Edita KEEP para cambiar cuáles perduran; por ejemplo, /:(main|quick-3c-skill)$/ también conserva una sesión que te interese.",
           code: GW_CONNECT + `
 // Keep these; delete the rest. The default keeps only the Main Session.
 const KEEP = /:main$/;

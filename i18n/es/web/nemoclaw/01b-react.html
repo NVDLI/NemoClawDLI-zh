@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>El ciclo ReAct · Seguridad de agentes</title>
+<title>El bucle ReAct · Seguridad de agentes</title>
 <link rel="stylesheet" href="styles/_style.css"/>
 <script src="vendor/highlight-11.10.0.min.js"></script>
 <link rel="stylesheet" href="vendor/codemirror-5.65.21.min.css"/>
@@ -19,7 +19,7 @@
 </head>
 <body>
 <div class="topbar">
-  <a class="logo" href="index.html">NVIDIA · Protección de agentes</a>
+  <a class="logo" href="index.html">NVIDIA · Seguridad de agentes</a>
   <nav id="nav"></nav>
   <div class="spacer"></div>
   <span class="key-pill" id="key-status" onclick="location.href=&#x27;01a-loop.html?openKeyPanel=1&#x27;">…</span>
@@ -30,50 +30,50 @@
 
   <div class="hero">
     <div class="eyebrow">Módulo 1 · Parte B de 3</div>
-    <h1>El ciclo <span>ReAct</span></h1>
-    <p class="lead">Un agente basado en un modelo de lenguaje ejecuta el mismo ciclo de percibir, razonar y actuar que cualquier otro agente, con un detalle que da nombre al patrón:
-el modelo razona con palabras entre las acciones que realiza.
-<a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al. (2022)</a>
-lo denominaron <strong>ReAct</strong>, por razonamiento y acción. Los autores observaron que intercalar pasos breves de razonamiento con el uso de herramientas resuelve muchas tareas con mayor fiabilidad que planificar todo de antemano o actuar sin razonar.</p>
-    <p>Una <strong>herramienta</strong> es código que el entorno de ejecución puede ejecutar para el modelo: una función con nombre, descripción, esquema de entrada y valor de retorno. Una <strong>llamada a herramienta</strong>
-es la solicitud estructurada que genera el modelo. El entorno de ejecución interpreta la solicitud,
-ejecuta la función, añade el resultado y vuelve a llamar al modelo.</p>
-    <p>Este ciclo sirve de base para la mayoría de los frameworks de agentes de propósito general,
+    <h1>El bucle <span>ReAct</span></h1>
+    <p class="lead">Un agente basado en un modelo de lenguaje ejecuta el mismo bucle de percibir, razonar y actuar que cualquier otro agente, con un detalle que da nombre al patrón:
+el modelo razona con palabras entre las acciones que aplica.
+Este patrón de comportamiento fue denominado por <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al. (2022)</a>
+como <strong>ReAct</strong>, por razonamiento y acción (del inglés <i>Reason and Action</i>). Dichos autores observaron que intercalar pasos breves de razonamiento con el uso de herramientas permite resolver muchas tareas con mayor fiabilidad que planificar todo de antemano o actuar sin razonar.</p>
+    <p>Una <strong>herramienta</strong> es código que un motor de ejecución puede ejecutar para el modelo: una función con nombre, descripción, esquema de entrada y un valor de retorno. Una <strong>llamada a herramienta</strong>
+es la solicitud estructurada que genera el modelo. El motor de ejecución interpreta la solicitud,
+ejecuta la función, y vuelve a llamar al modelo añadiendo el resultado devuelto por la función.</p>
+    <p>Este bucle sirve de base para la mayoría de los frameworks de agentes de propósito general,
 incluido <a href="https://docs.langchain.com/oss/javascript/langchain/agents" target="_blank" rel="noopener"><code>createReactAgent</code></a>
-de LangChain. El resto del módulo desarrolla sus componentes paso a paso.</p>
+de LangChain. El resto de este capítulo profundiza paso a paso en sus componentes.</p>
   </div>
 
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/01b-react-1.svg" style="aspect-ratio:1122 / 440"></div>
-    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">El ciclo no cambia. Al incorporar un modelo de lenguaje en la etapa de razonamiento, el agente interpreta los resultados y actúa mediante llamadas a herramientas.</figcaption>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">El bucle no cambia. Al incorporar un modelo de lenguaje en la etapa de razonamiento, el agente interpreta los resultados y actúa mediante llamadas a herramientas.</figcaption>
   </figure>
 
   <h2>El campo que decide el siguiente paso</h2>
 
   <p>Cada respuesta de Chat Completions incluye un campo <code>finish_reason</code> que indica por qué
-el modelo dejó de generar tokens. Dentro del ciclo del agente, esta señal basta para decidir el paso
-siguiente: ejecutar una herramienta, devolver la respuesta al usuario o gestionar un error. Realiza
-primero dos llamadas y observa cómo cambia el campo; después revisaremos el significado de cada valor.</p>
+el modelo dejó de generar tokens. Dentro del bucle del agente, esta señal basta para decidir el paso
+siguiente: ejecutar una herramienta, devolver la respuesta al usuario o gestionar un error. Antes de revisar
+el significado de cada valor, ejecuta dos llamadas y observa cómo cambia dicho campo.</p>
 
   <div id="cell-finish-reason"></div>
 
-  <p>La primera llamada pudo responder directamente y devolvió <code>"stop"</code>. En la segunda, el
+  <p>La primera llamada pudo generar una respuesta directamente y devolvió <code>"stop"</code>. En la segunda, el
 modelo recibió una herramienta y una pregunta cuya respuesta no está en los datos de entrenamiento.
 En vez de finalizar, devolvió <code>"tool_calls"</code> junto con el nombre de la función que debía
-ejecutarse. Estos dos valores cubren las ramas habituales. Los demás indican situaciones que el
-entorno de ejecución debe gestionar, por ejemplo, reintentar la llamada o transferir la conversación
+ejecutarse. Dichos valores cubren la mayoría de los casos habituales. Los demás valores indican situaciones que el
+motor de ejecución debe gestionar, por ejemplo, reintentar la llamada o transferir la conversación
 a una persona.</p>
   <ul>
-    <li><code>"stop"</code> indica que el modelo ya generó la respuesta final y el ciclo puede devolver <code>content</code> al usuario.</li>
+    <li><code>"stop"</code> indica que el modelo ya generó la respuesta final y el bucle puede devolver <code>content</code> al usuario.</li>
     <li><code>"tool_calls"</code> indica que el modelo solicita la ejecución de una función determinada; el código debe añadir el resultado antes de volver a invocar el modelo.</li>
     <li><code>"length"</code> significa que el presupuesto de tokens se agotó antes de completar la respuesta.</li>
-    <li><code>"content_filter"</code> significa que un clasificador de seguridad detuvo la salida.</li>
+    <li><code>"content_filter"</code> significa que un mecanismo de control de seguridad detuvo la salida.</li>
   </ul>
 
-  <p>En una implementación moderna de ReAct, un router pequeño lee este campo. Si el modelo solicita
+  <p>En una implementación moderna de ReAct, un enrutador sencillo o router lee este campo. Si el modelo solicita
 una herramienta, el router ejecuta la función, añade el resultado al historial y vuelve a llamar al
 modelo. Si el modelo finaliza, el router devuelve la respuesta.</p>
-  <p>Este diseño funciona porque el modelo no queda atado al plan inicial. Cuando una herramienta devuelve algo inesperado, el resultado entra en la siguiente ronda de razonamiento y el modelo puede reevaluar la situación.</p>
+  <p>Este diseño funciona porque el modelo no queda atado a un único plan inicial. Cuando una herramienta devuelve algo inesperado, el resultado entra en la siguiente ronda de razonamiento y el modelo puede reevaluar la situación.</p>
 
   
   
@@ -84,103 +84,103 @@ modelo. Si el modelo finaliza, el router devuelve la respuesta.</p>
 2023</a>. El modelo de lenguaje ocupa el centro; a su alrededor se organizan la <strong>memoria</strong>,
 la <strong>planificación</strong>, las <strong>herramientas</strong> y las <strong>acciones</strong> que
 interactúan con el entorno.</p>
-  <p>El agente mínimo del curso implementa cada componente con el mecanismo más sencillo que cumple su función:</p>
+  <p>El agente mínimo presentado en este curso implementa dichos componentes con el mecanismo más sencillo que cumpla su función:</p>
   <ul>
-    <li>La <strong>memoria</strong> es el array <code>messages[]</code>.</li>
+    <li>La <strong>memoria</strong> es un array <code>messages[]</code>.</li>
     <li>La <strong>planificación</strong> reside en el router que interpreta <code>finish_reason</code>.</li>
-    <li>Las <strong>herramientas</strong> son las funciones expuestas por el entorno de ejecución.</li>
-    <li>La <strong>acción</strong> es la llamada a herramienta que ejecuta dicho entorno.</li>
+    <li>Las <strong>herramientas</strong> son las funciones expuestas por el motor de ejecución.</li>
+    <li>La <strong>acción</strong> es la llamada a herramienta que ejecuta dicho motor.</li>
   </ul>
-  <p>Ninguno de estos componentes reside dentro del modelo. Todos pertenecen al entorno de ejecución
-construido alrededor de una única transformación de texto de entrada en texto de salida.</p>
+  <p>Ninguno de estos componentes reside dentro del modelo. Todos pertenecen al motor de ejecución
+construido alrededor de un único proceso que consiste en transformar texto de entrada en texto de salida.</p>
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/01b-react-2.svg" style="aspect-ratio:940 / 320"></div>
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Adaptado de <a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">Lilian Weng (2023)</a>: el modelo actúa como controlador central, conectado con la memoria, la planificación, las herramientas y las acciones.</figcaption>
   </figure>
-  <div class="callout"><strong>Los componentes son independientes.</strong> Puedes sustituir el modelo, las herramientas o el router por separado. Mientras cada componente respete el contrato esperado, el resto del ciclo seguirá funcionando.</div>
+  <div class="callout"><strong>Los componentes son independientes.</strong> Puedes sustituir el modelo, las herramientas o el router por separado. Mientras cada componente respete el contrato esperado, el resto del bucle seguirá funcionando.</div>
   <p>Esta independencia también facilita la lectura de código escrito por otra persona. Con independencia
 del framework utilizado, cualquier agente basado en un LLM debe contener estas cuatro piezas. Cuando
 algo falla, la causa suele encontrarse en una de ellas:</p>
   <ul>
     <li>el modelo devuelve un valor incorrecto de <code>finish_reason</code>;</li>
-    <li>falta un turno en el array de mensajes;</li>
-    <li>el ejecutor de herramientas devuelve un valor inesperado;</li>
+    <li>falta alguna parte de la conversación (que llamaremos <i>turno</i>) en el array de mensajes;</li>
+    <li>una herramienta devuelve un valor inesperado;</li>
     <li>el router interpreta la señal de forma incorrecta.</li>
   </ul>
   <p>Esta estructura proporciona una lista de comprobación aplicable con independencia de cómo esté organizado el código que la rodea.</p>
   
   
 
-  <h2>Construir el ciclo del agente desde cero con una herramienta</h2>
-  <p>Construyamos un ciclo sencillo desde cero. Solo necesitamos la herramienta <code>get_current_time</code>, un prompt de sistema y un ciclo <code>while</code>. Empieza con «¿Qué hora es en UTC?» y luego prueba otras preguntas:</p>
-  <p>El flujo es breve: el modelo solicita la herramienta, el ejecutor añade la marca de tiempo como un
-mensaje con el rol <code>tool</code>, el modelo lee el resultado y el ciclo termina cuando
+  <h2>Construir el bucle del agente desde cero con una herramienta</h2>
+  <p>Construyamos un ejemplo sencillo desde cero. Solo necesitamos la herramienta <code>get_current_time</code>, un prompt para el sistema y un bucle <code>while</code>. Empieza preguntando «¿Qué hora es en UTC?» y luego prueba otras preguntas:</p>
+  <p>El flujo de ejecución es breve: el modelo solicita llamar a la herramienta, el ejecutor añade la marca de tiempo como un
+mensaje con el rol <code>tool</code>, el modelo lee el resultado y el bucle termina cuando
 <code>finish_reason</code> contiene <code>"stop"</code>.</p>
 
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/01b-react-3.svg" style="aspect-ratio:820 / 234"></div>
-    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Razonar, actuar, observar y repetir. El ciclo termina cuando finish_reason vale "stop".</figcaption>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Razonar, actuar, observar y repetir. El bucle termina cuando finish_reason vale "stop".</figcaption>
   </figure>
 
   <div id="cell-m2c-p3"></div>
 
   <div class="callout"><strong>Lo que acaba de suceder dentro del array de mensajes.</strong> <br>
-El ciclo añadió cuatro elementos a <code>state.messages</code>: <ul> <li>el prompt del sistema (turno 0);</li> <li>la pregunta del usuario (turno 1);</li> <li>un mensaje del asistente con un
+Durante el bucle se añadieron cuatro elementos a <code>state.messages</code>: <ul> <li>el prompt del sistema (turno 0);</li> <li>la pregunta del usuario (turno 1);</li> <li>un mensaje del asistente con un
 campo <code>tool_calls</code> (turno 2, la solicitud);</li> <li>y un
 mensaje con el rol <code>tool</code> que contiene el valor devuelto por la función (turno
-3).</li> </ul> La segunda llamada al LLM leyó los cuatro elementos, incluido el resultado de la herramienta, y
-generó la respuesta final. Este array creciente es la única «memoria» del agente. Si se guarda en
-disco y se vuelve a cargar una semana después, el modelo retomará la conversación sin percibir la interrupción.</div>
+3).</li> </ul> Una segunda llamada al modelo de lenguaje leyó los cuatro elementos, incluido el resultado de la herramienta, y
+generó la respuesta final. Este array creciente es la única «memoria» del agente. Si guardamos este array en
+disco y lo volvemos a cargar una semana después, el modelo retomará la conversación sin percibir interrupción alguna.</div>
 
   
   
   
-  <h2>Degradación del contexto: por qué un ciclo más largo lee peor</h2>
-  <p>Este problema se vuelve más probable a medida que crece el contexto. La <strong>degradación del contexto</strong> ocurre cuando contradicciones, observaciones obsoletas y convenciones deficientes se acumulan en el historial hasta perjudicar la siguiente decisión. El efecto también tiene un componente posicional:
+  <h2>Degradación del contexto: por qué un bucle más largo puede experimentar problemas de comprensión</h2>
+  <p>Este problema se vuelve más probable a medida que crece el contexto (o cantidad de mensajes que guardamos en el array). La <strong>degradación del contexto</strong> ocurre cuando aparecen contradicciones, observaciones obsoletas y convenciones deficientes que se acumulan en el historial y que pueden perjudicar la siguiente decisión. El efecto también tiene un componente posicional:
 <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu et al. (2023)</a>
 mostraron que los modelos pueden desaprovechar información situada en la zona intermedia de un contexto largo.
-Cuanto más se aleja una señal importante del turno actual, mayor es la probabilidad de que el ciclo la ignore o la contradiga.</p>
+Cuanto más se aleja una señal importante del mensaje o turno actual, mayor es la probabilidad de que el bucle la ignore o la contradiga.</p>
 
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/01b-react-4.svg" style="aspect-ratio:760 / 305"></div>
-    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Redibujado a partir de <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu et al. (2023)</a>. A medida que el ciclo añade turnos, la información necesaria se desplaza hacia la zona intermedia, donde el modelo tiende a utilizarla peor.</figcaption>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Redibujado a partir de <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu et al. (2023)</a>. A medida que el bucle añade mensajes al historial, la información necesaria se desplaza hacia la zona intermedia, donde el modelo tiende a utilizarla peor.</figcaption>
   </figure>
-  <p>Las mitigaciones habituales mantienen cada decisión cerca de la evidencia que necesita:</p>
+  <p>Los mecanismos de contención habituales ante este problema consisten en mantener cada decisión lo más cercana a la evidencia que necesita:</p>
   <ul>
-    <li>planificar antes de que el ciclo acumule observaciones;</li>
+    <li>planificar antes de que el bucle acumule observaciones;</li>
     <li>delegar subtareas para que cada subagente trabaje con un contexto breve;</li>
-    <li>resumir los turnos anteriores antes de que empiecen a degradar las decisiones.</li>
+    <li>resumir las conversaciones anteriores antes de que empiecen a degradar las decisiones.</li>
   </ul>
-  <p>Cada mitigación añade costes de latencia, fidelidad o complejidad y debe evaluarse según la tarea.</p>
+  <p>Cada posible medida de contención añade costes de latencia, fidelidad o complejidad y debe evaluarse según la tarea.</p>
   
   
 
-  <h2>El mismo ciclo, preparado para trabajar con el curso</h2>
-  <p>El ciclo anterior tiene una única herramienta fijada directamente en el código. La función
+  <h2>El mismo bucle, preconfigurado para trabajar con el curso</h2>
+  <p>El bucle anterior tiene una única herramienta fijada directamente en el código. La función
 <a href="https://docs.langchain.com/oss/javascript/langchain/agents" target="_blank" rel="noopener"><code>createReactAgent</code></a>
-de LangChain generaliza esa estructura para admitir varias herramientas, interfaces estándar e
-integraciones de observabilidad. La instancia siguiente expone una sola herramienta,
-<code>read_course_page</code>, que entrega al agente cualquier página del curso como Markdown. El
+de LangChain generaliza esta estructura para admitir varias herramientas, interfaces estándar e
+integraciones de observabilidad o monitorización. El ejemplo siguiente expone una sola herramienta,
+<code>read_course_page</code>, que entrega al agente cualquier página de este curso como Markdown. El
 modelo decide qué páginas necesita consultar para responder.</p>
 
-  <div class="callout"><strong>La celda produce un artefacto.</strong> Al ejecutarla aparece un panel de chat funcional, renderizado por el propio código del agente. El término es anterior a los agentes: los pipelines de compilación y el entrenamiento de modelos llevan años generando artefactos. Los <a href="https://support.claude.com/en/articles/14729249-use-live-artifacts-in-claude-cowork" target="_blank" rel="noopener">artefactos interactivos</a> amplían la idea a una superficie HTML persistente que se sigue usando después de la respuesta que la creó. El panel siguiente construye una versión pequeña; el resto del curso retoma esta capacidad de entregar interfaces, no solo texto.</div>
+  <div class="callout"><strong>La celda produce un artefacto.</strong> Al ejecutarla aparece un panel de chat funcional, renderizado por código del agente. El término artefacto es anterior a los agentes: los pipelines de compilación y el entrenamiento de modelos llevan años generando artefactos. Los <a href="https://support.claude.com/en/articles/14729249-use-live-artifacts-in-claude-cowork" target="_blank" rel="noopener">artefactos interactivos</a> amplían la idea a una interfaz HTML persistente que se sigue usando después de la respuesta que la creó. El panel siguiente construye una versión sencilla usando esta idea; el resto del curso hace uso de esta capacidad de entregar interfaces, no solo texto.</div>
 
-  <p>Ejecuta la celda para construir el panel y conversa con el agente. Fija una o más páginas mediante los chips de <b>Páginas</b> para fundamentar cada respuesta, o no fijes ninguna y deja que el agente elija qué leer. La respuesta se presenta como Markdown y cada fuente consultada aparece en un chip; expándelo para ver el texto recuperado. El panel también muestra el seguimiento del razonamiento y el uso de tokens, y conserva la conversación. Edita la celda y ejecútala de nuevo para reconstruir el artefacto.</p>
+  <p>Ejecuta la celda para construir el panel y conversar con el agente. Fija una o más páginas mediante los marcadores del menú <b>Páginas</b> para basar cada respuesta en dichas páginas, o no fijes ninguna y deja que el agente elija qué leer. La respuesta se presenta como Markdown y cada fuente consultada aparece en un pequeño menú; expándelo para ver el texto recuperado. El panel también muestra las trazas de razonamiento y el uso de tokens, y conserva la conversación. Edita la celda y ejecútala de nuevo para reconstruir el artefacto.</p>
   <div id="cell-react-lab"></div>
   <div id="react-artifact" style="margin:1em 0"></div>
 
   <h2>Antes de continuar</h2>
-  <p>Responde a cada pregunta modificando las entradas del canvas anterior y volviendo a ejecutarlo.</p>
+  <p>Responde a cada pregunta modificando las entradas del ejercicio y volviendo a ejecutarlo.</p>
   <ol>
     <li><strong>Fuerza al modelo a llamar a la herramienta aunque no la necesite.</strong>
 Intenta una pregunta que la herramienta realmente no pueda responder («¿capital de Francia?»)
-y observa <code>finish_reason</code> en la etapa 1. ¿Fue
+y observa <code>finish_reason</code>. ¿Fue
 <code>"stop"</code> o <code>"tool_calls"</code>? Ahora edita el prompt del sistema
 para <em>exigir</em> una llamada antes de responder («Debes llamar siempre una vez a
 get_current_time y responder después»). ¿Cumple el modelo la instrucción? ¿Qué indica
 el resultado sobre la capacidad del prompt de sistema para dirigir un modelo que confía en sus
 datos de entrenamiento?</li>
-    <li><strong>Cuenta las etapas en una pregunta que realmente necesita una herramienta.</strong>
+    <li><strong>Cuenta los pasos en una pregunta que realmente necesita una herramienta.</strong>
 «¿Cuántos minutos faltan para las 17:00 UTC?» puede requerir más de una llamada a herramienta.
 Ejecuta el ejemplo varias veces. ¿El modelo llama a <code>get_current_time</code> una, dos o tres
 veces? ¿Por qué volvería a solicitar una herramienta cuyo resultado ya figura en el historial?
@@ -196,9 +196,9 @@ veces? ¿Por qué volvería a solicitar una herramienta cuyo resultado ya figura
       <li><a href="https://arxiv.org/abs/2201.11903" target="_blank" rel="noopener">Wei et al., <em>Chain-of-Thought Prompting</em> (2022)</a>. Fundamenta la parte de razonamiento de ReAct y ayuda a interpretar lo que ocurre en <code>reasoning_content</code> antes de actuar.</li>
       <li><a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">Lilian Weng, <em>LLM Powered Autonomous Agents</em> (2023)</a>. La figura anterior adapta su descomposición: un modelo de lenguaje como controlador central, rodeado por memoria, planificación y uso de herramientas.</li>
       <li><a href="https://arxiv.org/abs/2305.18323" target="_blank" rel="noopener">Xu et al., <em>ReWOO: Decoupling Reasoning from Observations</em> (2023)</a>. Un contraste con ReAct: el modelo escribe el plan de antemano y un ejecutor separado lo completa sin consultar de nuevo al modelo entre etapas.</li>
-      <li><a href="https://arxiv.org/abs/2302.04761" target="_blank" rel="noopener">Schick et al., <em>Toolformer</em> (2023)</a>. El módulo 1c retoma este trabajo para explicar el mecanismo de uso de herramientas que aprovecha el ciclo ReAct.</li>
+      <li><a href="https://arxiv.org/abs/2302.04761" target="_blank" rel="noopener">Schick et al., <em>Toolformer</em> (2023)</a>. El módulo 1c retoma este trabajo para explicar el mecanismo de uso de herramientas que aprovecha el bucle ReAct.</li>
     </ul>
-    <p class="references-note">Consulta la lista completa en <a href="04c-going-further.html#refs">Para continuar · Referencias</a>.</p>
+    <p class="references-note">Consulta la lista completa en <a href="04c-going-further.html#refs">Para ir más lejos · Referencias</a>.</p>
     
   </div>
 
@@ -220,7 +220,7 @@ hljs.highlightAll();
 mountRunCell("#cell-finish-reason", {
   openCode: true,
   label: "finish_reason · el campo que determina el siguiente paso",
-  intro: "Compara dos llamadas al mismo modelo. La primera responde directamente; la segunda solicita una herramienta que debe ejecutar el código. Observa cómo cambia finish_reason. Esa herramienta anticipa el ciclo completo que aparece más adelante.",
+  intro: "Compara dos llamadas al mismo modelo. La primera responde directamente; la segunda solicita una herramienta que debe ejecutar el código. Observa cómo cambia finish_reason. Esa herramienta anticipa el bucle completo que aparece más adelante.",
   code: `// MODEL is the swappable brain. Change it and rerun to see whether a stronger model
 // stops or asks for the tool on these same two questions.
 const MODEL = "nvidia/nemotron-3-nano-30b-a3b";   // or "nvidia/nemotron-3-super-120b-a12b" for a stronger brain
@@ -264,9 +264,9 @@ return { call1: r1.choices[0].finish_reason, call2: r2.choices[0].finish_reason 
 
 // ── The complete ReAct loop, built from scratch ──────────────────────────────
 mountCanvasFlow("#cell-m2c-p3", {
-  label: "El ciclo ReAct completo, construido desde cero",
+  label: "El bucle ReAct completo, construido desde cero",
   intro: "El nodo del usuario define el prompt y las instrucciones del sistema; el nodo de la herramienta registra la función. " +
-         "El ciclo llama al modelo, ejecuta las herramientas solicitadas, añade las observaciones y repite el proceso " +
+         "El bucle llama al modelo, ejecuta las herramientas solicitadas, añade las observaciones y repite el proceso " +
          "hasta que finish_reason vale 'stop'. El registro muestra la decisión tomada en cada paso.",
   edges: [
     { from: "user", to: "loop" },
@@ -309,8 +309,8 @@ return state.execTool("get_current_time");
 `,
     },
     {
-      id: "loop", icon: "🔄", title: "Ciclo ReAct", x: 1, y: 1,
-      summary: "Ejecuta el ciclo ReAct: llama al modelo, comprueba finish_reason, ejecuta las herramientas solicitadas y " +
+      id: "loop", icon: "🔄", title: "Bucle ReAct", x: 1, y: 1,
+      summary: "Ejecuta el bucle ReAct: llama al modelo, comprueba finish_reason, ejecuta las herramientas solicitadas y " +
                "añade los resultados como observaciones antes de repetir. Finaliza cuando finish_reason vale 'stop'. " +
                "Modifica MODEL al principio para cambiar el modelo de decisión.",
       code: `// MODEL is the swappable brain in the reasoning slot. Change it and rerun to drive the
@@ -359,7 +359,7 @@ return { model: MODEL, steps_taken: step, messages: state.messages };
 // ── Part 5: running this cell BUILDS a live chat artifact (createReactAgent) ──
 mountRunCell("#cell-react-lab", {
   label: "Construir el artefacto · createReactAgent → un panel de chat en vivo",
-  intro: "Esta celda genera un panel de chat funcional a partir del ciclo createReactAgent de LangChain, " +
+  intro: "Esta celda genera un panel de chat funcional a partir del bucle createReactAgent de LangChain, " +
          "en lugar de limitarse a imprimir un registro. Su única herramienta es read_course_page y su memoria es MemorySaver. " +
          "Modifica el agente, la herramienta o el prompt y vuelve a ejecutar la celda para reconstruir el panel.",
   code: `// Running this cell renders a live chat panel into #react-artifact below.

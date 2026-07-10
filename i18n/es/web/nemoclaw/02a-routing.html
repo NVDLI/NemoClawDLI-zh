@@ -33,23 +33,23 @@
     <div class="eyebrow">Módulo 2 · Parte A de 3</div>
     <h1>El agente de <span>flujo de trabajo</span></h1>
     <p class="lead">
- Un solo bucle ReAct resuelve la mayoría de las tareas puntuales. Los problemas más complejos, sin embargo,
+ Un solo agente ReAct resuelve la mayoría de tareas puntuales. Problemas más complejos, sin embargo,
  a veces necesitan una estructura que organice el trabajo antes de recibir el siguiente resultado de una herramienta.
- Un <strong>agente de workflow</strong> es un sistema en el que el entorno de ejecución controla un flujo compuesto por
- llamadas al modelo, etapas de código determinista, llamadas a herramientas y bucles especializados. Esta forma resulta
+ Un <strong>flujo de trabajo de agente</strong> es un sistema en el que el entorno de ejecución controla un flujo compuesto por
+ llamadas al modelo, etapas de código determinista, llamadas a herramientas y bucles especializados. Esta estructura resulta
  útil cuando varias subtareas pueden ejecutarse en paralelo y compartir resultados, cuando conviene escribir un plan
- antes de usar las herramientas o cuando el enrutamiento debe seguir una regla en vez de la observación más reciente.
+ antes de usar las herramientas o cuando el enrutamiento debe seguir una regla en vez de una observación reciente.
  </p>
     <p>
- El entorno de ejecución puede delimitar un workflow alrededor de una llamada al modelo, una etapa determinista,
- un bucle especializado o un conjunto de ramas paralelas. En cada límite decide qué cruza la frontera de contexto,
- qué trabajo puede ramificarse y qué resultados alimentan la siguiente etapa del pipeline. Esta sección usa una
- distribución en abanico y un enrutamiento fijo para mostrar que ese control complementa el bucle ReAct de la página anterior.
+ El motor de ejecución puede delimitar un flujo de trabajo alrededor de una llamada al modelo, una etapa determinista,
+ un bucle especializado o un conjunto de ramas paralelas. En cada caso decide qué contexto usar,
+ qué trabajo puede ramificarse y qué resultados alimentan la siguiente etapa del flujo de trabajo. Esta sección usa <i>fan-out</i> (de uno a muchos) y enrutamiento fijo
+ para demostrar el comportamiento sin cambiar el agente ReAct de la sección anterior.
  </p>
   </div>
 
   <!-- ── Part 1: ReAct vs ReWOO ───────────────────────────────────────────── -->
-  <h2>Dos patrones que difieren en cuándo decide el modelo</h2>
+  <h2>Dos patrones que difieren en cuándo el modelo decide</h2>
 
   <div class="pattern-grid">
     <div class="pattern-card">
@@ -98,29 +98,28 @@
  donde sus ventajas resulten útiles.
  </div>
 
-  <h2>Cuando un único ciclo supera la división en agentes</h2>
+  <h2>Cuando un único bucle supera la división en agentes</h2>
   <p>
- Un agente de workflow compensa cuando la tarea se divide en frentes independientes. Si no existe esa estructura,
+ Un flujo de trabajo de agente compensa cuando la tarea se divide en frentes independientes. Si no existe esa estructura,
  coordinar varios agentes añade sobrecarga sin aportar valor; un solo bucle será más rápido y fácil de depurar.
  </p>
 
   <div class="callout warn">
  <strong>El coste de coordinación, en términos concretos.</strong>
- Cada límite entre agentes añade latencia de modelo y lógica de enrutamiento. También introduce otra fuente de
- mensajes mal formados y sustituye una secuencia fácil de leer por un recorrido distribuido entre varios trabajadores.
+ Cada interacción entre agentes añade latencia a las llamadas al modelo y lógica de enrutamiento. También introduce otra fuente de mensajes mal formados,
+ además de sustituir una secuencia fácil de leer por un recorrido distribuido entre varios trabajadores.
  </div>
 
   <p>
- Ese coste existe para cualquier tarea. La pregunta es si la estructura del trabajo aporta suficiente beneficio para
-compensarlo. Una tarea lineal que ya cabe en un solo prompt no compensará el coste de las llamadas y rutas adicionales.
- La división empieza a resultar útil cuando la propia tarea contiene una estructura difícil de resolver en la secuencia
- de un solo bucle. Cualquiera de estas condiciones puede inclinar la balanza:
+ Ese coste existe para cualquier tarea. La pregunta es si dicha estructura aporta suficiente beneficio para
+compensarlo. Para una tarea lineal que se pueda resolver con un solo prompt no compensará el coste de las llamadas y rutas adicionales.
+ La división empieza a resultar útil cuando la propia tarea contiene una estructura difícil de resolver con un solo bucle. Cualquiera de estas condiciones puede inclinar la balanza:
  </p>
   <ul>
     <li><strong>La especialización importa.</strong> Distintos frentes necesitan prompts de sistema, herramientas o modelos diferentes. Obligar a un solo agente a cubrirlos puede perjudicar ambos.</li>
-    <li><strong>Existe paralelismo.</strong> Dos trabajadores pueden ejecutarse a la vez, mientras que un solo agente los ejecutaría en secuencia. Tres búsquedas independientes terminan en el tiempo de la más lenta.</li>
+    <li><strong>Existe paralelismo.</strong> Dos tareas pueden ejecutarse a la vez, mientras que un solo agente las ejecutaría en secuencia. Tres búsquedas independientes en paralelo terminan en el tiempo de la más lenta.</li>
     <li><strong>El contexto crece demasiado.</strong> Un agente que hace todo puede acumular un contexto de 10&nbsp;000 tokens. Los especialistas conservan solo la parte necesaria.</li>
-    <li><strong>Conviene aislar fallos.</strong> El fallo de un trabajador no tiene que detener toda la tarea. El orquestador puede reintentar, omitir la rama o elegir otra ruta.</li>
+    <li><strong>Conviene aislar fallos.</strong> El fallo de una subtarea no tiene que detener toda la tarea. El orquestador puede reintentar, omitir la rama o elegir otra ruta.</li>
   </ul>
 
   <!-- ── Part 3: A real ReWOO research pipeline ───────────────────────────── -->
@@ -131,11 +130,11 @@ compensarlo. Una tarea lineal que ya cabe en un solo prompt no compensará el co
 
   <p>
  La celda siguiente ejecuta un pipeline ReWOO sobre el glosario de NVIDIA. Para cada consulta del plan usa
- <code>helpers.webSearch</code>, la búsqueda ordenada por relevancia que conociste en el Módulo 1c. El
+ <code>helpers.webSearch</code>, la búsqueda ordenada por relevancia que usaste en el Módulo 1c. El
  <a href="glossary.html">explorador del glosario</a> muestra el índice completo y permite probar cualquier consulta que pueda emitir el planificador.
  </p>
   <p>
- <code>Promise.all</code> permite iniciar varias promesas en JavaScript y esperar a que todas terminen. Aquí solo
+ <code>Promise.all</code> permite iniciar varias tareas asíncronas en paralelo (promesas) de JavaScript y esperar a que todas terminen. Aquí solo
  aporta concurrencia: no llama al modelo ni decide qué búsquedas ejecutar.
  </p>
   <ol>
@@ -158,7 +157,7 @@ compensarlo. Una tarea lineal que ya cabe en un solo prompt no compensará el co
   <h2>Envía un ticket a un especialista con una enumeración fija</h2>
 
   <p>
- El enrutamiento es otra forma de componer agentes: un agente clasifica la entrada y la entrega a un especialista.
+ El enrutamiento es otra forma de componer agentes: un agente clasifica una entrada y la entrega a un especialista.
  Como el clasificador debe devolver una categoría de una enumeración fija, su salida necesita un contrato estricto.
  Una <strong>enumeración fija</strong> es una lista cerrada de etiquetas permitidas. Si el modelo devuelve otro valor,
  el router debe rechazarlo o reintentar con instrucciones más precisas, nunca adivinar. Cada especialista recibe un
@@ -189,12 +188,12 @@ compensarlo. Una tarea lineal que ya cabe en un solo prompt no compensará el co
   
   
   
-  <h2>Declara especialistas con una fábrica</h2>
+  <h2>Declara especialistas con una factoría</h2>
 
   <p>
- Los cuatro ejercicios anteriores construyeron pequeños agentes con las mismas piezas que el código de producción
+ Los cuatro ejercicios anteriores construyeron agentes sencillos con las mismas piezas que el código de producción
  no debería repetir para cada especialista: una etiqueta de rol, un prompt de sistema, una lista de herramientas y
- un contrato de invocación. Una fábrica parametriza esas cuatro partes para que puedas declarar especialistas en vez de reescribirlos:
+ un contrato de invocación. Una factoría parametriza esas cuatro partes para que puedas declarar agentes especialistas en vez de reescribirlos:
  </p>
   <ul>
     <li><strong>Rol.</strong> Una etiqueta breve para registros y enrutamiento.</li>
@@ -206,7 +205,7 @@ compensarlo. Una tarea lineal que ya cabe en un solo prompt no compensará el co
  <a href="https://www.crewai.com/" target="_blank" rel="noopener">CrewAI</a>,
  <a href="https://www.langchain.com/" target="_blank" rel="noopener">LangChain</a> y
  <a href="https://www.langchain.com/langgraph" target="_blank" rel="noopener">LangGraph</a>
- exponen fábricas semejantes con nombres que cambian según el framework: <code>Agent</code>, <code>create_agent</code>
+ exponen factorías similares con nombres que varían según el framework: <code>Agent</code>, <code>create_agent</code>
  o una clase de datos para el rol y el objetivo. La celda siguiente usa los mismos cuatro parámetros para construir
  un tutor de aritmética y un traductor. Ambos procesan la misma entrada y muestran sus respuestas en paralelo.
  </p>
@@ -217,12 +216,12 @@ compensarlo. Una tarea lineal que ya cabe en un solo prompt no compensará el co
   <ol>
     <li>El planificador ReWOO genera una lista JSON de consultas. ¿Qué falla si una consulta necesita un dato obtenido por otra consulta anterior? ¿A cuál de los dos patrones de esta página cambiarías?</li>
     <li>El router usa una enumeración fija. ¿Qué debe hacer si el modelo devuelve una categoría no permitida? ¿Basta el esquema JSON o también necesitas validación en la aplicación?</li>
-    <li>La fábrica parametriza rol, prompt de sistema, herramientas e invocación. ¿Qué quinto parámetro añadirías para impedir que un especialista invada el dominio de otro cuando la entrada sea ambigua?</li>
+    <li>La factoría parametriza rol, prompt de sistema, herramientas e invocación. ¿Qué quinto parámetro añadirías para impedir que un especialista invada el dominio de otro cuando la entrada sea ambigua?</li>
   </ol>
 
   <div class="callout info" style="margin-top:2em">
- <strong>Las dos partes siguientes amplían esta idea de composición.</strong> La Parte B (Índices) aplica el mismo
- principio a corpus de información: una capa de conocimiento envuelve los datos tras una interfaz de consulta.
+ <strong>Las dos partes siguientes amplían esta idea de composición.</strong> La Parte B (Indexación) aplica el mismo
+ principio a un <i>corpus</i> de información: una capa de conocimiento envuelve los datos tras una interfaz de consulta.
  La Parte C (Agentes profundos) presenta un agente planificador que delega trabajo en subagentes con contextos
  nuevos y conserva el estado en un sistema de archivos virtual.
  </div>
@@ -232,20 +231,20 @@ compensarlo. Una tarea lineal que ya cabe en un solo prompt no compensará el co
   <div class="references">
     <h3>Referencias</h3>
     <ul>
-      <li><a href="https://arxiv.org/abs/2305.18323" target="_blank" rel="noopener">Xu et al., <em>ReWOO: Decoupling Reasoning from Observations</em> (2023)</a>. Presenta la separación entre planificador, trabajador y solucionador que implementa el agente de workflow de este módulo.</li>
+      <li><a href="https://arxiv.org/abs/2305.18323" target="_blank" rel="noopener">Xu et al., <em>ReWOO: Decoupling Reasoning from Observations</em> (2023)</a>. Presenta la separación entre planificador, trabajador y solucionador que implementa el agente de flujo de trabajo de este módulo.</li>
       <li><a href="https://arxiv.org/abs/2305.04091" target="_blank" rel="noopener">Wang et al., <em>Plan-and-Solve Prompting</em> (2023)</a>. Antecedente más sencillo: una llamada escribe el plan y el mismo LLM lo ejecuta paso a paso. ReWOO separa planificación y ejecución.</li>
       <li><a href="https://arxiv.org/abs/2303.17651" target="_blank" rel="noopener">Madaan et al., <em>Self-Refine: Iterative Refinement with Self-Feedback</em> (2023)</a>. Explica el patrón de investigación iterativa en varias pasadas: el agente critica su salida y repite hasta alcanzar un umbral de calidad.</li>
-      <li><a href="https://www.langchain.com/langgraph" target="_blank" rel="noopener">LangGraph</a>. Framework de producción que formaliza el patrón de workflow o máquina de estados que este módulo construye de forma explícita.</li>
+      <li><a href="https://www.langchain.com/langgraph" target="_blank" rel="noopener">LangGraph</a>. Framework de producción que formaliza el patrón de flujo de trabajo o máquina de estados que este módulo construye de forma explícita.</li>
     </ul>
-    <p class="references-note">Lista completa en <a href="04c-going-further.html#refs">Para continuar · Referencias</a>.</p>
+    <p class="references-note">Lista completa en <a href="04c-going-further.html#refs">Para ir más lejos · Referencias</a>.</p>
   </div>
 
-  <h2>Pruébalo · router de selección en vivo</h2>
+  <h2>Prueba · router de selección en vivo</h2>
   <p>
- Escribe una pregunta de soporte. El artefacto la clasifica con una llamada al modelo, dirige el ticket al prompt
+ Escribe una pregunta que requiere una respuesta especializada. El artefacto la clasifica con una llamada al modelo, dirige el ticket al prompt
  de sistema del especialista correspondiente y transmite su respuesta. Ejecuta el mismo patrón de clasificación y
  enrutamiento mostrado antes. Aquí las categorías corresponden a atención al cliente —facturación, soporte técnico,
- cuenta y otros—, no a una mesa de ayuda de TI. Al cambiar de dominio solo cambia la lista de categorías; el mecanismo permanece igual.
+ cuenta y otros—, en lugar de especialistas con numeración fija. Al cambiar de dominio solo cambia la lista de categorías; el mecanismo permanece igual.
  </p>
   <div id="router-cell"></div>
   <div id="router-artifact"></div>
@@ -295,8 +294,8 @@ helpers.log("rendered below. Edit the config and Run.");
   </script>
 
   <div class="foot-nav">
-    <a href="01c-tools.html">← Módulo 1c: Herramientas de escala</a>
-    <a class="next" href="02b-rag.html">Módulo 2b: El agente de índice →</a>
+    <a href="01c-tools.html">← Módulo 1c: Herramientas a escala</a>
+    <a class="next" href="02b-rag.html">Módulo 2b: El agente de indexación →</a>
   </div>
 </main>
 
@@ -668,8 +667,8 @@ return {
 
 // ── Part 6: Agent factory ────────────────────────────────────────────────────
 mountCanvasFlow("#cell-m2a-factory", {
-  label: "Construir especialistas a partir de una fábrica",
-  intro: "La fábrica recibe un rol, un prompt de sistema y herramientas, y devuelve un especialista con nombre. Dos instancias construidas con ella procesan la misma entrada.",
+  label: "Construir especialistas a partir de una factoría",
+  intro: "La factoría recibe un rol, un prompt de sistema y herramientas, y devuelve un especialista con nombre. Dos instancias construidas con ella procesan la misma entrada.",
   edges: [
     { from: "factory",     to: "specialists" },
     { from: "specialists", to: "run" },
@@ -677,8 +676,8 @@ mountCanvasFlow("#cell-m2a-factory", {
 
   nodes: [
     {
-      id: "factory", icon: "🏭", title: "Definir fábrica", x: 0, y: 0,
-      summary: "Define una fábrica que encapsula el rol, el prompt de sistema y una lista opcional de herramientas. Devuelve un objeto con nombre y un método de ejecución. Todos los especialistas comparten el mismo bucle interno; los tres parámetros determinan su comportamiento.",
+      id: "factory", icon: "🏭", title: "Definir factoría", x: 0, y: 0,
+      summary: "Define una factoría que encapsula el rol, el prompt de sistema y una lista opcional de herramientas. Devuelve un objeto con nombre y un método de ejecución. Todos los especialistas comparten el mismo bucle interno; los tres parámetros determinan su comportamiento.",
       code: `// Build one reusable specialist wrapper around a prompt and tools.
 state.createSpecialist = function({ role, systemPrompt, tools = [] }) {
   return {
@@ -710,7 +709,7 @@ return { factory: "createSpecialist" };
 
     {
       id: "specialists", icon: "👥", title: "Construir dos especialistas", x: 0, y: 1,
-      summary: "Dos especialistas creados con la misma fábrica que solo difieren en el rol y el prompt de sistema. Este ejercicio no requiere herramientas; en producción, cada instancia recibiría las herramientas adecuadas para su dominio.",
+      summary: "Dos especialistas creados con la misma factoría que solo difieren en el rol y el prompt de sistema. Este ejercicio no requiere herramientas; en producción, cada instancia recibiría las herramientas adecuadas para su dominio.",
       code: `// Instantiate one specialist with its own role, prompt, and tools.
 state.arithmetician = state.createSpecialist({
   role: "arithmetician",
@@ -735,7 +734,7 @@ return { specialists: [state.arithmetician.role, state.translator.role] };
 
     {
       id: "run", icon: "🚀", title: "Ejecutar ambos en la misma entrada", x: 0, y: 2,
-      summary: "Envía la misma entrada a ambos especialistas de forma concurrente y presenta sus respuestas en paralelo. Como comparten el cuerpo de la fábrica, cualquier diferencia procede de sus prompts de sistema y resulta fácil de comparar.",
+      summary: "Envía la misma entrada a ambos especialistas de forma concurrente y presenta sus respuestas en paralelo. Como comparten el cuerpo de la factoría, cualquier diferencia procede de sus prompts de sistema y resulta fácil de comparar.",
       code: `// TODO: Propón otra tarea que combine traducción y aritmética.
 state.input = "Translate 'thirty-seven times eleven' and then evaluate the arithmetic.";
 // state.input = "Translate 'the square root of one hundred forty-four' and solve it.";

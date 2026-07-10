@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Herramientas a escala · Seguridad del agente</title>
+<title>Herramientas a escala · Seguridad de agentes</title>
 <link rel="stylesheet" href="styles/_style.css"/>
 <script src="vendor/highlight-11.10.0.min.js"></script>
 <link rel="stylesheet" href="vendor/codemirror-5.65.21.min.css"/>
@@ -14,7 +14,7 @@
 </head>
 <body>
 <div class="topbar">
-  <a class="logo" href="index.html">NVIDIA · Protección de agentes</a>
+  <a class="logo" href="index.html">NVIDIA · Seguridad de agentes</a>
   <nav id="nav"></nav>
   <div class="spacer"></div>
   <span class="key-pill" id="key-status" onclick="location.href=&#x27;01a-loop.html?openKeyPanel=1&#x27;">…</span>
@@ -26,19 +26,19 @@
   <div class="hero">
     <div class="eyebrow">Módulo 1 · Parte C de 3</div>
     <h1>Herramientas <span>a escala</span></h1>
-    <p class="lead">En el Módulo 1b, conectaste una sola herramienta al ciclo del agente: el modelo solicitó una función con nombre, el runtime la ejecutó y el resultado se incorporó a la llamada siguiente. Ese recorrido no cambia. Lo que crece es la superficie de herramientas: el modelo debe elegir entre más descripciones y cada herramienta puede ocultar una capacidad mayor.</p>
-    <p>La página sigue este contrato desde funciones locales hasta un backend de búsqueda, un subagente y, finalmente, un servidor de Model Context Protocol (MCP). Son distintas formas de proporcionar capacidades al mismo ciclo. Una lista de herramientas extensa también consume contexto y puede reducir la fiabilidad del enrutamiento, lo que motiva los flujos de trabajo acotados del Módulo 2.</p>
+    <p class="lead">En el Módulo 1b, conectaste una sola herramienta al bucle del agente: el modelo solicitó una función con nombre, el motor de ejecución la ejecutó y el resultado se incorporó a la siguiente llamada al modelo. Este proceso no cambia en esta sección. Únicamente aumenta la cantidad de herramientas disponibles: el modelo deberá elegir ahora entre más descripciones y cada herramienta puede ocultar un proceso más elaborado.</p>
+    <p>Esta sección sigue este mismo proceso usando desde funciones locales hasta un backend de búsqueda, un subagente y, finalmente, un servidor de Model Context Protocol (MCP). En realidad, se trata de distintas formas de proporcionar capacidades al mismo bucle. Como contrapunto, hay que tener en cuenta que una lista de herramientas extensa también consume contexto y puede reducir la fiabilidad del enrutamiento, lo que motiva los flujos de trabajo acotados del Módulo 2 de este curso.</p>
   </div>
 
   <h2>El contrato de llamada a herramientas permanece fijo</h2>
-  <p>La figura retoma el ciclo de 1b. Las secciones posteriores cambian el origen del esquema y el trabajo del ejecutor, mientras el modelo sigue solicitando una herramienta por nombre y leyendo su resultado.</p>
+  <p>La siguiente figura retoma el bucle de la sección 1b. Las siguientes secciones cambiarán el origen del esquema y el motor de ejecución, mientras el modelo seguirá solicitando una herramienta por nombre y leyendo su resultado.</p>
 
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/01c-tools-1.svg" style="aspect-ratio:860 / 414"></div>
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">El LLM solicita una llamada, el código responde y el LLM concluye. El modelo nunca ejecuta la función.</figcaption>
   </figure>
 
-  <div class="callout"><strong>El servidor aplica el esquema.</strong> Antes de las llamadas a funciones estructuradas, las aplicaciones solían extraer XML personalizado o JSON escrito a mano del texto del modelo. Una paráfrasis podía romper el analizador. El campo de herramientas transporta el contrato por separado; así, el servicio puede restringir los argumentos al esquema y devolver un campo <code>tool_calls</code> coherente. Tu código de enrutamiento puede contar entonces con que <code>tc.function.name</code> y <code>tc.function.arguments</code> estén presentes y se puedan analizar.</div>
+  <div class="callout"><strong>El servidor aplica el esquema.</strong> Antes de las llamadas a funciones estructuradas, las aplicaciones solían extraer XML personalizado o JSON escrito a mano del texto del modelo. Cualquier error en dichos XML o JSON hacía que parsearlos automáticamente fuera una tarea difícil. El campo de herramientas transporta el esquema por separado; así, el servicio puede restringir los argumentos al esquema y devolver un campo <code>tool_calls</code> coherente. El código de enrutamiento puede contar entonces con que <code>tc.function.name</code> y <code>tc.function.arguments</code> estén presentes y se puedan analizar.</div>
 
   <h2>Cómo el modelo elige entre varias herramientas</h2>
   <p>Los agentes rara vez disponen de una única herramienta. Cuando hay varias, el modelo decide a cuál llamar a partir del campo <code>description</code>.</p>
@@ -46,12 +46,12 @@
 
   <figure style="margin:1.4em 0">
     <div id="cell-m2b-p3"></div>
-    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Editar cualquier descripción cambia el enrutamiento del modelo, ya que el campo de descripción es una de las superficies de ingeniería de prompt con mayor impacto en un agente que usa herramientas.</figcaption>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Editar cualquier descripción cambia el enrutamiento del modelo, ya que el campo de descripción es una de las variables de ingeniería de prompt con mayor impacto en un agente que usa herramientas.</figcaption>
   </figure>
 
   <h2>Conecta <code>glossary_search</code> a una herramienta real</h2>
-  <p>La celda conecta <code>glossary_search</code> con un catálogo de términos de NVIDIA incluido en la página. La búsqueda clasificada se ejecuta en el navegador, sin clave, y devuelve definiciones breves con enlaces a las fuentes. La herramienta <code>web_search</code> compartida por el curso aplica la misma clasificación al catálogo completo. Abre el <a href="glossary.html">explorador del glosario</a> para inspeccionar cada término, consultar las fuentes de <code>webSearch</code> e <code>instantAnswer</code> o ejecutar una búsqueda.</p>
-  <p>La sección siguiente sustituye el ejecutor por una búsqueda exacta de términos, pero mantiene el <em>mismo</em> contrato de herramienta. El backend cambia; el contrato que utiliza el modelo permanece fijo.</p>
+  <p>La celda conecta <code>glossary_search</code> con un catálogo de términos de NVIDIA que se ejecuta en el navegador. Esta herramienta no necesita clave y permite buscar definiciones breves con enlaces a las fuentes. La herramienta <code>web_search</code> compartida en el curso aplica la misma idea al catálogo completo. Abre el <a href="glossary.html">explorador del glosario</a> para inspeccionar cada término, consultar las fuentes de <code>webSearch</code> e <code>instantAnswer</code> o ejecutar una búsqueda por ti mismo.</p>
+  <p>En la siguiente sección se sustituye el motor de ejecución por una búsqueda exacta de términos, pero se mantiene el <em>mismo</em> contrato de herramienta. El backend cambia; el contrato que utiliza el modelo permanece fijo.</p>
 
   <div class="callout"><strong>El nombre de una herramienta debe describir una capacidad.</strong>
 Una herramienta llamada <code>nvidia_glossary_api</code> es frágil: cambiar el backend
@@ -65,12 +65,11 @@ o un índice más completo pueden situarse detrás de ese contrato sin alterar e
   
   
   <h2>Cambiar el backend sin cambiar el contrato</h2>
-  <p>El mismo ciclo se ejecuta aquí como un script <code>mountRunCell</code> plano, con un cambio: el ejecutor.
-La búsqueda anterior devolvió un resumen breve para varios resultados. Este backend devuelve el artículo completo que mejor coincide, recuperado de la página de glosario almacenada en caché. El esquema y el ciclo no cambian; solo mejora la fuente que alimenta <code>glossary_search</code>.</p>
+  <p>El mismo bucle se ejecuta aquí como un script <code>mountRunCell</code>, con un cambio: el motor de ejecución.
+La búsqueda anterior devolvió un resumen breve para varios resultados. Este backend devuelve el artículo completo que mejor coincide, recuperado de la página de glosario almacenada en caché. El esquema y el bucle no cambian; solo mejora la fuente que alimenta <code>glossary_search</code>.</p>
 
-  <div class="callout"><strong>El modelo sólo ve el contrato.</strong> Invoca <code>glossary_search</code> con una
-consulta en lenguaje natural y lee el valor devuelto, sin saber qué backend respondió. Se puede comenzar con un índice de resúmenes y sustituirlo más adelante por artículos completos o una búsqueda en vivo sin modificar el ciclo. La precisión puede variar
-si cada backend resuelve las coincidencias de forma distinta, pero el contrato se mantiene.</div>
+  <div class="callout"><strong>El modelo solo ve el contrato.</strong> Invoca <code>glossary_search</code> con una
+consulta en lenguaje natural y lee el valor devuelto, sin saber qué motor de ejecución respondió. Se puede comenzar con un índice de resúmenes y sustituirlo más adelante por artículos completos o una búsqueda en vivo sin modificar el bucle. La precisión puede variar si cada motor de ejecución resuelve las coincidencias de forma distinta, pero el contrato se mantiene.</div>
 
   <div id="cell-m2b-p4b"></div>
   
@@ -80,36 +79,33 @@ si cada backend resuelve las coincidencias de forma distinta, pero el contrato s
   
   
   <h2>Un agente completo detrás de una sola herramienta</h2>
-  <p>Una herramienta no necesita ser una función pequeña. Un subagente completo puede estar detrás de una sola
+  <p>Una herramienta no tiene que ser una función simple. Un subagente completo puede estar detrás de una sola
 llamada a herramienta. El modelo que realiza la llamada sigue viendo un único contrato. El agente del otro lado puede consultar
 una base de datos, ejecutar código o buscar en un repositorio sin exponer esas herramientas internas al
-ciclo principal.</p>
-  <p>La celda siguiente expone como herramienta un subagente que conoce una pequeña tabla de clientes.
-El agente principal nunca ve las filas: sólo puede formular preguntas en lenguaje natural.</p>
+bucle principal.</p>
+  <p>La celda siguiente expone como herramienta un subagente que puede hacer consultas sobre una pequeña tabla de clientes.
+El agente principal nunca ve las filas: solo puede formular preguntas en lenguaje natural.</p>
 
   <div id="cell-m2b-p5"></div>
 
   <div class="callout"><strong>La carga cognitiva también se controla.</strong>
-Cada herramienta adicional, campo de esquema y frase de descripción consume
-contexto que el agente principal podría usar para su tarea. Una lista de herramientas plana y extensa suele rendir peor que un conjunto pequeño respaldado por
-subagentes, porque cada ciclo solo ve las herramientas pertinentes para su nivel.</div>
+Cada herramienta adicional, campo de esquema y frase de descripción consume contexto que el agente principal podría usar para su tarea. Una lista de herramientas plana y extensa suele rendir peor que un conjunto pequeño respaldado por subagentes, porque cada bucle solo ve las herramientas pertinentes para su nivel.</div>
   
   
 
   <h2>Descubrir herramientas en otro servidor con MCP</h2>
   
   
-  
-  <p>Model Context Protocol (MCP) define una interfaz estándar para publicar herramientas. El agente
+    <p>Model Context Protocol (MCP) define una interfaz estándar para publicar herramientas. Un agente
 obtiene mediante <code>tools/list</code> la lista que ofrece un servidor e invoca cada herramienta con
 <code>tools/call</code>. Estas herramientas pueden ejecutarse en otro proceso, al que el agente se
 conecta durante la inicialización. Como todos los servidores comparten el protocolo, el agente puede
 incorporar nuevas fuentes de herramientas sin implementar una interfaz distinta para cada una. MCP
-resulta útil cuando el descubrimiento y el transporte requieren un protocolo común. Si el runtime ya
+resulta útil cuando el descubrimiento y el transporte requieren un protocolo común. Si el motor de ejecución ya
 conoce la ubicación y la forma de invocar una capacidad, suele bastar una función local, una skill
 del repositorio o una llamada directa a una API.</p>
 
-  <div class="callout"><strong>El descubrimiento es una frontera de confianza.</strong>
+  <div class="callout"><strong>El descubrimiento es la frontera de confianza.</strong>
 Trata una respuesta <code>tools/list</code> como entrada no confiable. Antes de conectarte al servidor:
 <ul>
 <li>verifica su identidad;</li>
@@ -118,7 +114,7 @@ Trata una respuesta <code>tools/list</code> como entrada no confiable. Antes de 
 <li>vincula cada credencial con la audiencia de ese servidor.</li>
 </ul>
 Para conexión remota y
-descubrimiento OAuth, rechaza destinos privados y de enlace local, y valida todas las redirecciones. La
+descubrimiento para autenticación vía OAuth, rechaza destinos privados y de enlace local, y valida todas las redirecciones. La
 <a href="https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices" target="_blank" rel="noopener">orientación de seguridad de MCP</a>
 asigna al cliente la responsabilidad sobre el consentimiento, el manejo de tokens y los controles contra falsificación de solicitudes del lado del servidor (SSRF).</div>
 
@@ -126,20 +122,20 @@ asigna al cliente la responsabilidad sobre el consentimiento, el manejo de token
   <p>La celda siguiente simula un servidor MCP pequeño en JavaScript puro con el
 mismo formato <a href="https://www.jsonrpc.org/specification" target="_blank" rel="noopener">JSON-RPC</a> que MCP define (sin transporte). El agente recupera
 la lista de herramientas, entrega los esquemas al modelo y dirige cada elemento de
-<code>tool_calls</code> al controlador <code>tools/call</code> del servidor. El ciclo del agente es
-idéntico al de una llamada a herramienta normal; sólo cambia el origen de la lista.</p>
+<code>tool_calls</code> al controlador <code>tools/call</code> del servidor. El bucle del agente es
+idéntico al de una llamada a herramienta normal; solo cambia el origen de la lista.</p>
 
   <div id="cell-m2b-p6"></div>
 
-  <p>El módulo 2 conserva este contrato y modifica la estructura que lo rodea. Un workflow puede dirigir
+  <p>El módulo 2 conserva este contrato y modifica la estructura que lo rodea. Un flujo de trabajo puede dirigir
 las llamadas mediante un pipeline fijo, distribuir el trabajo entre varias ramas o delegar una tarea
-acotada a otro ciclo sin exponer todas sus herramientas internas al agente que realiza la llamada.</p>
+acotada a otro bucle sin exponer todas sus herramientas internas al agente que realiza la llamada.</p>
   
   
 
   <h2>Antes de continuar</h2>
   <ol>
-    <li>¿Qué sucede cuando el modelo llama a una herramienta con argumentos que no superan la validación? El ciclo actual falla. ¿Cómo gestionarías el error de forma controlada sin hacer creer al modelo que la llamada tuvo éxito?</li>
+    <li>¿Qué sucede cuando el modelo llama a una herramienta con argumentos que no superan la validación? El bucle actual falla. ¿Cómo gestionarías el error de forma controlada sin hacer creer al modelo que la llamada tuvo éxito?</li>
     <li>El subagente utilizado como herramienta es opaco para el agente principal. Además de la respuesta, ¿qué información debería devolver para que el agente principal decida si puede confiar en ella durante el turno siguiente?</li>
     <li>El parámetro <code>tool_choice</code> se puede definir como <code>"required"</code> o como un nombre de herramienta específico. ¿Cuándo conviene forzar una llamada a herramienta y qué riesgo introduce esa decisión?</li>
     <li>Antes de añadir un servidor MCP remoto, ¿qué identidad, alcance, audiencia del token y destinos de red verificarías? ¿Cuál de esos campos puede abrir una ruta SSRF si se acepta sin validación?</li>
@@ -156,14 +152,14 @@ acotada a otro ciclo sin exponer todas sus herramientas internas al agente que r
       <li><a href="https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices" target="_blank" rel="noopener">Mejores prácticas de seguridad de MCP</a>. Consentimiento, credenciales limitadas por audiencia, controles SSRF y riesgos de ejecución de servidor local para clientes y operadores del MCP.</li>
       <li><a href="https://docs.anthropic.com/en/docs/agents-and-tools/tool-use" target="_blank" rel="noopener">Referencia de uso de herramientas de Anthropic</a>. La implementación paralela para Claude, útil como comparación entre proveedores.</li>
     </ul>
-    <p class="references-note">Consulta la lista completa en <a href="04c-going-further.html#refs">Para continuar · Referencias</a>.</p>
+    <p class="references-note">Consulta la lista completa en <a href="04c-going-further.html#refs">Para ir más lejos · Referencias</a>.</p>
     
   </div>
 
-  <h2>Pruébalo · un agente con dos herramientas reales</h2>
+  <h2>Prueba · un agente con dos herramientas reales</h2>
   <p>Este artefacto ejecuta un agente <a href="https://python.langchain.com/" target="_blank" rel="noopener">LangChain</a> <code>createReactAgent</code> conectado a las dos funciones cuyos
 contratos acabas de leer: <code>calculate</code> para aritmética y <code>glossary_search</code>
-contra el glosario de NVIDIA incluido en la página, que funciona en el navegador sin una clave. Pide un número que no pueda calcular mentalmente o un término que quieras definir, y observa cómo aparece el indicador de la herramienta antes de que la respuesta empiece a transmitirse.</p>
+para búsquedas en el glosario de NVIDIA incluido en la página. Pide un número que no pueda calcular mentalmente o la definición de algún término que quieras conocer, y observa cómo aparece el indicador de la herramienta antes de que la respuesta empiece a transmitirse.</p>
   <div id="tools-cell"></div>
   <div id="tools-artifact"></div>
   <script type="module">
@@ -213,7 +209,7 @@ helpers.log("rendered below. Edit the config and Run.");
   </script>
 
   <div class="foot-nav">
-    <a href="01b-react.html">← Módulo 1b: El ciclo ReAct</a>
+    <a href="01b-react.html">← Módulo 1b: El bucle ReAct</a>
     <a class="next" href="02a-routing.html">Módulo 2a: Flujos de trabajo →</a>
   </div>
 </main>
@@ -507,7 +503,7 @@ return { name: state.SEARCH_SCHEMA[0].function.name };
     },
     {
       id: "llm1", icon: "🧠", title: "Llamada LLM #1", x: 1, y: 1,
-      summary: "Fuerza una búsqueda para mantener visible el ciclo completo de la herramienta. El modelo genera la consulta; la sección anterior y el artefacto final muestran el enrutamiento autónomo.",
+      summary: "Fuerza una búsqueda para mantener visible el bucle completo de la herramienta. El modelo genera la consulta; la sección anterior y el artefacto final muestran el enrutamiento autónomo.",
       code: `// Send the prepared messages and stream the model response.
 state.messages = [
   { role: "system", content: "You are a research assistant. Ground answers in glossary_search results; never answer factual questions from memory." },
@@ -755,7 +751,7 @@ return s2.content || s2.reasoning || "(empty)";
 // ── MCP-shaped tool server ─────────────────────────────────
 mountCanvasFlow("#cell-m2b-p6", {
   label: "Servidor de herramientas compatible con MCP · descubrimiento y enrutamiento",
-  intro: "Un servidor MCP simulado en la página expone dos herramientas mediante tools/list y tools/call, sin utilizar la red. El agente descubre la lista, entrega los esquemas al LLM y dirige las llamadas del modelo a tools/call. Sólo cambia el origen de las herramientas; el ciclo conserva la misma estructura.",
+  intro: "Un servidor MCP simulado en la página expone dos herramientas mediante tools/list y tools/call, sin utilizar la red. El agente descubre la lista, entrega los esquemas al LLM y dirige las llamadas del modelo a tools/call. Solo cambia el origen de las herramientas; el bucle conserva la misma estructura.",
   edges: [
     { from: "server",   to: "discover" },
     { from: "discover", to: "llm" },
@@ -798,7 +794,7 @@ return state.question;
     },
     {
       id: "llm", icon: "🧠", title: "LLM (ve las herramientas descubiertas)", x: 1, y: 2,
-      summary: "La llamada a chatStream no cambia: el ciclo no necesita saber si las herramientas proceden de un array fijado en el código o de un servidor MCP remoto. La etapa de descubrimiento permite sustituir la fuente sin modificar el ciclo.",
+      summary: "La llamada a chatStream no cambia: el bucle no necesita saber si las herramientas proceden de un array fijado en el código o de un servidor MCP remoto. La etapa de descubrimiento permite sustituir la fuente sin modificar el bucle.",
       code: `// Send the prepared messages and stream the model response.
 state.messages = [{ role: "user", content: state.question }];
 state.s1 = await helpers.chatStream({
@@ -819,7 +815,7 @@ return {
     },
     {
       id: "dispatch", icon: "📤", title: "Cliente → tools/call → LLM #2", x: 1, y: 3,
-      summary: "Cierra el ciclo: envía cada llamada solicitada por el modelo a tools/call, añade el resultado como mensaje de herramienta y vuelve a invocar el modelo para generar la respuesta final.",
+      summary: "Cierra el bucle: envía cada llamada solicitada por el modelo a tools/call, añade el resultado como mensaje de herramienta y vuelve a invocar el modelo para generar la respuesta final.",
       code: `// Handle the tool-call result from the previous model turn.
 if (!state.s1.tool_calls.length) return state.s1.content || "(model answered directly)";
 for (const tc of state.s1.tool_calls) {
