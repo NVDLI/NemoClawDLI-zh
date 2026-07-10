@@ -149,7 +149,7 @@ function audit(overrides = {}) {
       findings.push(`${key}: Module 4b bypasses the shared OpenClaw CLI runtime`);
     }
   }
-  if (!files.cliRuntime.includes('runtime.openclawGatewayWsUrl(connection.rawUrl, connection.accessJwt).url')) {
+  if (!files.cliRuntime.includes('runtime.openclawGatewayWsUrl(connection.rawUrl, connection.accessSession, null, null, connection.accessProvider).url')) {
     findings.push('OpenClaw CLI runtime bypasses shared OpenClaw routing');
   }
 
@@ -223,7 +223,7 @@ function selfTest() {
     ['shared relay controls', { en: base.en.replace('proxyControls: true', 'proxyControls: false') }],
     ['terminal relay', { openshell: base.openshell.replace('openclawWebSocketUrl(rawUrl, "/ws/terminal?cmd="', 'directTerminalUrl(rawUrl, "/ws/terminal?cmd="') }],
     ['terminal direct fallback', { openshell: base.openshell.replace('[direct.url, routed.url]', '[routed.url]') }],
-    ['downstream gateway', { cliRuntime: base.cliRuntime.replace('runtime.openclawGatewayWsUrl(connection.rawUrl, connection.accessJwt).url', 'connection.rawUrl + "/cli/gateway"') }],
+    ['downstream gateway', { cliRuntime: base.cliRuntime.replace('runtime.openclawGatewayWsUrl(connection.rawUrl, connection.accessSession, null, null, connection.accessProvider).url', 'connection.rawUrl + "/cli/gateway"') }],
     ['downstream page boundary', { en4b: base.en4b.replace('helpers.mountOpenClawCli("#agent-chat")', 'mountDirectCli("#agent-chat")') }],
     ['shared export', { shared: base.shared.replaceAll('gatewayTokenFromAgentMetadata', 'removedGatewayTokenParser') }],
     ['harness relay', { runtime: base.runtime.replaceAll('openclaw-cors-proxy.experiments.courses.nvidia.com', 'relay.invalid') }],

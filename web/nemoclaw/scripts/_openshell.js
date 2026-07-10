@@ -5,14 +5,19 @@
 // Holds the launchable PTY terminal, the sandbox-policy.rego port, the exec bridge, and the policy map.
 // Browser globals only; _shared.js re-exports these so a page can import from either module.
 
-import { getOpenClawConnection, openclawWebSocketUrl } from "./_connection.js";
+import { accessProviderForOpenClawUrl, getOpenClawConnection, openclawWebSocketUrl } from "./_connection.js";
 import { filterOpenClawRuntimeNoise } from "./_runtime_text.js";
 
 const POLICY_YAML_MODULE_URL = "../vendor/js-yaml-5.2.1.esm.min.js";
+const POMERIUM_LOOPBACK_PROBES = Object.freeze({
+  "/healthz": "http://127.0.0.1/healthz",
+  "/api/agent": "http://127.0.0.1/api/agent",
+});
 
 // PTY helper: `bash` opens the host; `openshell sandbox connect <agent>` enters the agent.
-// Cross-origin Brev prefers its authenticated direct PTY, then the configured relay.
-// The direct path uses the Access cookie established when the learner opens the launchable.
+// Pomerium uses its authenticated direct PTY only. Cloudflare tries the direct
+// PTY first and may fall back to the configured relay. The direct path uses the
+// Access cookie established when the learner opens the launchable.
 export async function terminal(cmd, { send = [], idleMs = 5000, totalMs = 25000, openMs = 12000, onChunk = null, baseUrl = null, signal = null } = {}) {
   /* @doc <code>helpers.terminal(cmd, {send, idleMs, totalMs, openMs, onChunk})</code> ::
        Open a PTY over your launchable's <code>/ws/terminal</code> WebSocket and run
@@ -27,9 +32,10 @@ export async function terminal(cmd, { send = [], idleMs = 5000, totalMs = 25000,
   const connection = getOpenClawConnection();
   const rawUrl = (baseUrl || connection.rawUrl).replace(/\/+$/, "");
   if (!rawUrl) throw new Error("No launchable URL set. Connect on the Kickstart page (Module 3a) first, or pass { baseUrl }.");
-  const cfJwt = connection.accessJwt;
+  const accessProvider = connection.accessProvider;
+  const accessSession = connection.accessSession;
   const terminalPath = "/ws/terminal?cmd=" + encodeURIComponent(cmd);
-  const routed = openclawWebSocketUrl(rawUrl, "/ws/terminal?cmd=" + encodeURIComponent(cmd), cfJwt);
+  const routed = openclawWebSocketUrl(rawUrl, "/ws/terminal?cmd=" + encodeURIComponent(cmd), accessSession, undefined, accessProvider);
   const direct = routed.viaProxy
     ? openclawWebSocketUrl(rawUrl, terminalPath, "", { enabled: false, base: "" })
     : routed;
@@ -43,9 +49,9 @@ export async function terminal(cmd, { send = [], idleMs = 5000, totalMs = 25000,
   const clean = s => filterOpenClawRuntimeNoise(strip(s));
   const terminalOpenError = () => {
     const accessHint = routed.viaProxy
-      ? (cfJwt
-          ? "Both the direct socket and hosted relay failed. Paste a fresh CF_Authorization value in Module 3a, then re-run."
-          : "The hosted relay has no CF_Authorization value. Paste one in Module 3a, then re-run.")
+      ? (accessSession
+          ? "Both the direct socket and hosted relay failed. Open the launchable, then paste a fresh matching access session in Module 3a."
+          : "The hosted relay has no Cloudflare Access session. Open the launchable, then paste a fresh CF_Authorization value in Module 3a.")
       : "Reopen the launchable and verify that its terminal route is running.";
     const error = new Error(
       `Terminal did not open for ${launchableOrigin}. ` + accessHint
@@ -132,6 +138,46 @@ export async function terminal(cmd, { send = [], idleMs = 5000, totalMs = 25000,
     }
     openNext();
   });
+}
+
+// Pomerium keeps its HttpOnly session between the browser and launchable. The
+// launchable's direct terminal is already authenticated by that cookie, so it
+// can read the two read-only bootstrap endpoints over loopback without sending
+// the cookie through a third-party relay. The command is selected from this
+// fixed map; no learner-controlled path or shell fragment is interpolated.
+export async function openclawLoopbackProbe(path, { baseUrl = null, signal = null } = {}) {
+  const connection = getOpenClawConnection();
+  const rawUrl = (baseUrl || connection.rawUrl || "").replace(/\/+$/, "");
+  if (!rawUrl) throw new Error("No launchable URL set. Connect on Module 3a first.");
+  if (accessProviderForOpenClawUrl(rawUrl, connection.accessProvider) !== "pomerium") {
+    throw new Error("The loopback bootstrap is only for Pomerium launchables.");
+  }
+  const endpoint = POMERIUM_LOOPBACK_PROBES[String(path || "")];
+  if (!endpoint) throw new Error("Unsupported loopback bootstrap path.");
+  const command = "curl -fsS --max-time 10 " + endpoint;
+  const result = await terminal(command, {
+    baseUrl: rawUrl,
+    idleMs: 1500,
+    totalMs: 18000,
+    openMs: 10000,
+    signal,
+  });
+  if (result.exitCode !== 0) {
+    throw new Error(`Launchable loopback probe failed with exit code ${result.exitCode ?? "unknown"}.`);
+  }
+  const body = String(result.output || "").trim();
+  if (!body) throw new Error("Launchable loopback probe returned an empty response.");
+  let json = null;
+  try { json = JSON.parse(body); } catch (_) { /* health responses may be plain text */ }
+  return {
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    body,
+    json,
+    frames: result.frames,
+    transport: "direct-terminal-loopback",
+  };
 }
 
 // ── OpenShell policy engine (JS port of sandbox-policy.rego) ─────────────────

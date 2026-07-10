@@ -461,7 +461,7 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
     on the launchable you connected in Kickstart
     through <code>openshell sandbox exec</code>, so each result you read back is
     a decision the kernel made on the wire.
-    Keep your launchable open in another tab so its Cloudflare Access session stays
+    Keep your launchable open in another tab so its access session stays
     fresh.
   </div>
 
@@ -774,7 +774,7 @@ return { probes: results.length, denied: results.filter(result => result.blocked
 // ── Read your live policy, draw the map from it ───────────────────────────────
 mountRunCell("#cell-live-policy", {
   label: "Read your launchable's live policy",
-  intro: "Fetch the live policy through the operator terminal and print its YAML, then compare it with the snapshot that drives the map. Keep the launchable open for its Cloudflare Access session; connect in Module 3a first if needed. The exact call remains in the code dropdown.",
+  intro: "Fetch the live policy through the operator terminal and print its YAML, then compare it with the snapshot that drives the map. Keep the launchable open for its access session; connect in Module 3a first if needed. The exact call remains in the code dropdown.",
   code: `// helpers.policyGet() returns the command, raw output, status, and parsed policy.
 const p = await helpers.policyGet();
 helpers.log("called:  " + p.command);          // the exact command that ran on your box

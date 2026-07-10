@@ -98,21 +98,25 @@ For OpenClaw gateway pages, pass the local gateway URL and token explicitly:
 NVIDIA_API_KEY=$NVIDIA_API_KEY CLAW_URL=http://openclaw:8995 CLAW_TOKEN=dli-openclaw-token scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/03a-kickstart.html
 ```
 
-For a remote launchable behind Cloudflare Access, also pass `CLAW_CF` and, when the
-gateway enforces an allowlisted origin, `CLAW_ORIGIN`.
+For a Cloudflare Access launchable, also pass `CLAW_CF`. For a Pomerium launchable,
+pass its cookie only to the isolated test harness as `CLAW_ACCESS_SESSION`; the harness
+seeds an ephemeral browser context, while production course code cannot read or store
+that HttpOnly value. When the gateway enforces an allowlisted origin, pass `CLAW_ORIGIN`.
 
 Use the focused check before a full agent run. It loads Module 3a, discovers the
-complete gateway token through the hosted HTTP relay, authenticates the hosted
-WebSocket relay, and calls one read-only gateway method.
+complete gateway token and calls one read-only gateway method. Cloudflare uses the
+hosted HTTP and WebSocket relay. Pomerium uses the authenticated direct terminal for
+the fixed `/api/agent` loopback read, then opens the gateway directly from the same
+browser context.
 
 ```bash
 CLAW_URL=$NEMOCLAW_URL CLAW_CF=$CF_AUTHORIZATION \
   scripts/runtime/lab_runtime_test.sh --gateway-only
 ```
 
-Add `--terminal-contract` to exercise the launchable's `/ws/terminal` route. It tries
-the authenticated direct PTY used by the browser, retains the configured relay as a
-fallback, runs `openshell sandbox list`, and requires a non-empty transcript. Add
+Add `--terminal-contract` to exercise the launchable's `/ws/terminal` route. Pomerium
+uses only the authenticated direct PTY; Cloudflare may retain the configured relay as
+a fallback. The check runs `openshell sandbox list` and requires a non-empty transcript. Add
 `--cron-contract` to create a temporary structured cron job, query its run history,
 and remove it; each opt-in check cleans up before exit.
 

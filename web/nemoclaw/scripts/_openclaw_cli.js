@@ -90,7 +90,7 @@ function createGatewayRpc(runtime) {
     if (activeSocket?.ready && activeSocket.ws.readyState === WebSocket.OPEN) return Promise.resolve(activeSocket);
 
     return new Promise((resolve, reject) => {
-      const endpoint = runtime.openclawGatewayWsUrl(connection.rawUrl, connection.accessJwt).url;
+      const endpoint = runtime.openclawGatewayWsUrl(connection.rawUrl, connection.accessSession, null, null, connection.accessProvider).url;
       const socket = { ws: new WebSocket(endpoint), pending: {}, ready: false };
       let settled = false;
       let connectTimer = null;

@@ -206,7 +206,9 @@ pages:
         grep -q 'href="web/nemoclaw/index.html"' "public/$CI_COMMIT_REF_SLUG/index.html"
         grep -q 'href="web/nemoclaw/assets/favicon.ico"' "public/$CI_COMMIT_REF_SLUG/index.html"
         grep -q 'web/nemoclaw/' "public/$CI_COMMIT_REF_SLUG/languages.json"
-        for locale in i18n/*; do if [ -d "$locale/web/nemoclaw" ]; then code="$(basename "$locale")"; test -f "public/$CI_COMMIT_REF_SLUG/$code/nemoclaw/index.html"; grep -q "$code/nemoclaw/" "public/$CI_COMMIT_REF_SLUG/languages.json"; fi; done
+        if [ "${BUILD_PAGES_LANGS:-1}" != "0" ]; then
+          for locale in i18n/*; do if [ -d "$locale/web/nemoclaw" ]; then code="$(basename "$locale")"; test -f "public/$CI_COMMIT_REF_SLUG/$code/nemoclaw/index.html"; grep -q "$code/nemoclaw/" "public/$CI_COMMIT_REF_SLUG/languages.json"; fi; done
+        fi
       }
       build_production_root_from_ref() {
         preview_ref="${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-$CI_COMMIT_REF_NAME}"

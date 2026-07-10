@@ -92,6 +92,20 @@ class ThemeRuntimeContractTests(unittest.TestCase):
         build = (ROOT / "scripts/build/build_pages.sh").read_text(encoding="utf-8")
         self.assertIn('project_artifact_manifests.py" "$OUT"', build)
 
+    def test_pages_locale_assertions_follow_the_supported_build_switch(self) -> None:
+        pages = core_job("pages", "pages_smoke")
+        guard = 'if [ "${BUILD_PAGES_LANGS:-1}" != "0" ]; then'
+        locale_assertion = 'for locale in i18n/*; do if [ -d "$locale/web/nemoclaw" ]'
+        self.assertIn(guard, pages)
+        self.assertIn(locale_assertion, pages)
+        self.assertLess(pages.index(guard), pages.index(locale_assertion))
+
+    def test_english_only_projection_makes_locale_studio_inert(self) -> None:
+        studio = (ROOT / "web/nemoclaw/scripts/localization_main.js").read_text(encoding="utf-8")
+        self.assertIn('if (lang && !localized.length)', studio)
+        self.assertIn('This build contains English only.', studio)
+        self.assertIn('localeSelect.hidden = true', studio)
+
     def test_runtime_keeps_universal_narrow_layout_coverage(self) -> None:
         source = theme_runtime.RUNTIME_JS
         for token in (

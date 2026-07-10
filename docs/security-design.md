@@ -69,7 +69,7 @@ accepted.
 
 | Course host | Model service | NemoClaw runtime |
 |---|---|---|
-| Public static host | Direct HTTPS to the selected model endpoint. The default is NVIDIA-hosted; a presenter may supply a compatible capacity fallback. | HTTPS and WebSocket through the configured cross-origin relay; live relay controls require operator evidence. |
+| Public static host | Direct HTTPS to the selected model endpoint. The default is NVIDIA-hosted; a presenter may supply a compatible capacity fallback. | Header-authenticated launchables use the configured cross-origin relay. Browser-session launchables keep their HttpOnly session browser-to-launchable: direct WebSockets plus fixed read-only loopback bootstrap through the authenticated terminal. Live external controls require operator evidence. |
 | Co-located launchable with a pinned course release | Direct HTTPS using the endpoint and credentials supplied through the launchable startup path and the course's existing browser credential mechanism. | Same-origin direct route to the launchable-created runtime; do not use the relay. |
 | Either host embedded in an iframe | Model relay when explicit iframe proxy mode is enabled. | Follow the host-specific NemoClaw route above. |
 

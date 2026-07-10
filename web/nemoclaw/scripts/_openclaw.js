@@ -7,29 +7,31 @@
 
 import { updateClawPill, escHtml, _escAttr, mountCanvasFlow } from "./_shared.js";
 import {
-  DEFAULT_OPENCLAW_PROXY_BASE, getOpenClawConnection, getOpenClawProxyConfig, migrateOpenClawConnectionStorage,
+  DEFAULT_OPENCLAW_PROXY_BASE, accessProviderForOpenClawUrl, getOpenClawConnection, getOpenClawProxyConfig, migrateOpenClawConnectionStorage,
   normalizeOpenClawLaunchableUrl, normalizeOpenClawProxyBase, openclawHttpUrl,
   openclawWebSocketUrl, setOpenClawConnection, setOpenClawProxyConfig,
 } from "./_connection.js";
+import { openclawLoopbackProbe } from "./_openshell.js";
 import { filterOpenClawRuntimeNoise, filterOpenClawRuntimeValue, openclawMessageText, openclawResultText } from "./_runtime_text.js";
 
 export {
-  DEFAULT_OPENCLAW_PROXY_BASE, getOpenClawConnection, getOpenClawProxyConfig, migrateOpenClawConnectionStorage,
+  DEFAULT_OPENCLAW_PROXY_BASE, accessProviderForOpenClawUrl, getOpenClawConnection, getOpenClawProxyConfig, migrateOpenClawConnectionStorage,
   normalizeOpenClawLaunchableUrl, normalizeOpenClawProxyBase, openclawHttpUrl,
   openclawWebSocketUrl, setOpenClawConnection, setOpenClawProxyConfig,
 };
 export { filterOpenClawRuntimeNoise, filterOpenClawRuntimeValue, openclawMessageText, openclawResultText };
 
 const RANDOM_ID_RADIX = 36;
+const accessCookieName = provider => provider === "pomerium" ? "_pomerium" : "CF_Authorization";
 function _uniqueId(prefix = "") {
   return prefix + Math.random().toString(RANDOM_ID_RADIX).slice(2) + Date.now().toString(RANDOM_ID_RADIX);
 }
 
-export function openclawGatewayWsUrl(rawUrl, cfJwt = "", proxyBase = null, proxyEnabled = null) {
+export function openclawGatewayWsUrl(rawUrl, accessSession = "", proxyBase = null, proxyEnabled = null, accessProvider = "auto") {
   const config = proxyBase === null
     ? getOpenClawProxyConfig()
     : { base: normalizeOpenClawProxyBase(proxyBase), enabled: proxyEnabled !== false };
-  return openclawWebSocketUrl(rawUrl, "/cli/gateway", cfJwt, config);
+  return openclawWebSocketUrl(rawUrl, "/cli/gateway", accessSession, config, accessProvider);
 }
 
 export function gatewayTokenFromAgentMetadata(payload) {
@@ -62,7 +64,8 @@ export function mountClawGateway(targetSel, opts = {}) {
     return {
       rawUrl: connection.rawUrl,
       token: connection.token,
-      cfJwt: connection.accessJwt,
+      accessProvider: connection.accessProvider,
+      accessSession: connection.accessSession,
     };
   }
 
@@ -209,12 +212,12 @@ export function mountClawGateway(targetSel, opts = {}) {
 
   // ── Connect ──────────────────────────────────────────────────────────────────
   connectBtn.addEventListener("click", async () => {
-    const { rawUrl, token, cfJwt } = _creds();
+    const { rawUrl, token, accessProvider, accessSession } = _creds();
     if (!rawUrl || !token) {
       _showOut(`<span class="gw-err-txt">No URL or token yet. Fill in the OpenClaw probe above and click an action first.</span>`);
       return;
     }
-    const gateway = openclawGatewayWsUrl(rawUrl, cfJwt);
+    const gateway = openclawGatewayWsUrl(rawUrl, accessSession, null, null, accessProvider);
     const wsUrl = gateway.url;
     _setStatus("connecting", gateway.viaProxy ? "via hosted relay" : "direct");
     connectBtn.disabled = true;
@@ -321,7 +324,7 @@ export function mountEndpointProbe(targetSel, opts = {}) {
   const isOpenClaw = connectionKind === "openclaw";
   const openClawConnection = isOpenClaw
     ? getOpenClawConnection()
-    : { rawUrl: "", effectiveUrl: "", token: "", accessJwt: "" };
+    : { rawUrl: "", effectiveUrl: "", token: "", accessProvider: "auto", accessSession: "" };
   const suppliedDefault = opts.defaultUrl !== undefined ? opts.defaultUrl : (isOpenClaw ? "/lab/openclaw" : "");
   const defaultUrl = _normalizeBaseUrl(openClawConnection.rawUrl || suppliedDefault);
   // Respect an explicit empty token from the no-bearer llm_client probe.
@@ -336,7 +339,7 @@ export function mountEndpointProbe(targetSel, opts = {}) {
     : (defaultToken || "(none needed in your launchable)");
   const actions      = opts.actions || [];
   const label        = opts.label || "Live OpenClaw probe";
-  const intro        = opts.intro !== undefined ? opts.intro : "Paste the base URL of a running OpenClaw service. If local OpenClaw fails, stops booting, or reports EPERM, stop local probing and use the backup Brev session URL plus CF_Authorization.";
+  const intro        = opts.intro !== undefined ? opts.intro : "Paste the base URL of a running OpenClaw service, choose its access provider, and provide the matching browser session when the course is hosted separately.";
   const helpHint     = opts.helpHint || "Need a value? Select the ? beside that field for its source and fallback.";
 
   function _normalizeBaseUrl(raw) {
@@ -351,8 +354,11 @@ export function mountEndpointProbe(targetSel, opts = {}) {
   const savedToken = isOpenClaw
     ? (openClawConnection.token || defaultToken)
     : defaultToken;
-  const savedCfJwt = isOpenClaw && opts.cfAccess
-    ? openClawConnection.accessJwt
+  const savedAccessProvider = isOpenClaw && opts.cfAccess
+    ? openClawConnection.accessProvider
+    : "auto";
+  const savedAccessSession = isOpenClaw && opts.cfAccess
+    ? openClawConnection.accessSession
     : "";
   const proxyControls = isOpenClaw && opts.cfAccess && opts.proxyControls !== false;
   const savedProxy = isOpenClaw ? getOpenClawProxyConfig() : { enabled: false, base: "" };
@@ -392,18 +398,26 @@ export function mountEndpointProbe(targetSel, opts = {}) {
       ${_hlp("token")}
       ${opts.cfAccess ? `
       <div class="claw-row">
-        ${_lbl("cfJwt", "CF Access JWT")}
-        <input class="claw-input claw-cfjwt" type="password" spellcheck="false" autocapitalize="off"
-               placeholder="paste CF_Authorization value from DevTools → Application → Cookies"
-               value="${_escAttr(savedCfJwt)}"/>
-        <button type="button" class="claw-btn alt claw-eye claw-eye-jwt" title="Show JWT" aria-label="Show or hide CF Access JWT">👁</button>
+        ${_lbl("accessProvider", "Access provider")}
+        <select class="claw-input claw-access-provider">
+          <option value="auto" ${savedAccessProvider === "auto" ? "selected" : ""}>Automatic from URL</option>
+          <option value="cloudflare" ${savedAccessProvider === "cloudflare" ? "selected" : ""}>Cloudflare Access</option>
+          <option value="pomerium" ${savedAccessProvider === "pomerium" ? "selected" : ""}>Pomerium</option>
+        </select>
       </div>
-      ${_hlp("cfJwt")}` : ""}
+      ${_hlp("accessProvider")}
+      <div class="claw-row claw-access-session-row">
+        ${_lbl("accessSession", "Access session")}
+        <input class="claw-input claw-access-session" type="password" spellcheck="false" autocapitalize="off"
+               value="${_escAttr(savedAccessSession)}"/>
+        <button type="button" class="claw-btn alt claw-eye claw-eye-session" title="Show session" aria-label="Show or hide access session">👁</button>
+      </div>
+      ${_hlp("accessSession")}` : ""}
       ${proxyControls ? `
       <div class="claw-row claw-proxy-row">
         ${_lbl("proxy", "Hosted relay")}
         <label class="claw-proxy-toggle"><input class="claw-proxy-enabled" type="checkbox" ${savedProxy.enabled ? "checked" : ""}/>
-          Use for cross-origin Brev connections</label>
+          Use for cross-origin Cloudflare connections</label>
       </div>
       ${_hlp("proxy")}
       <div class="claw-row claw-proxy-base-row">
@@ -481,20 +495,50 @@ export function mountEndpointProbe(targetSel, opts = {}) {
     });
   });
 
-  const cfJwtInp  = opts.cfAccess ? target.querySelector(".claw-cfjwt")    : null;
-  const eyeJwtBtn = opts.cfAccess ? target.querySelector(".claw-eye-jwt")   : null;
+  const accessProviderInp = opts.cfAccess ? target.querySelector(".claw-access-provider") : null;
+  const accessSessionInp = opts.cfAccess ? target.querySelector(".claw-access-session") : null;
+  const accessSessionRow = opts.cfAccess ? target.querySelector(".claw-access-session-row") : null;
+  const eyeSessionBtn = opts.cfAccess ? target.querySelector(".claw-eye-session") : null;
   const proxyEnabledInp = proxyControls ? target.querySelector(".claw-proxy-enabled") : null;
   const proxyBaseInp = proxyControls ? target.querySelector(".claw-proxy-base") : null;
-  if (eyeJwtBtn && cfJwtInp) {
-    eyeJwtBtn.addEventListener("click", () => {
-      const showing = cfJwtInp.type !== "password";
-      cfJwtInp.type  = showing ? "password" : "text";
-      eyeJwtBtn.title = showing ? "Show JWT" : "Hide JWT";
+  if (eyeSessionBtn && accessSessionInp) {
+    eyeSessionBtn.addEventListener("click", () => {
+      const showing = accessSessionInp.type !== "password";
+      accessSessionInp.type  = showing ? "password" : "text";
+      eyeSessionBtn.title = showing ? "Show session" : "Hide session";
     });
   }
-  if (cfJwtInp) {
-    cfJwtInp.addEventListener("input", () => {
-      _saveOpenClawConnection(urlInp.value.trim(), tokenInp.value.trim(), cfJwtInp.value.trim());
+  function _refreshAccessSessionPlaceholder() {
+    if (!accessSessionInp) return;
+    let provider = "auto";
+    try {
+      provider = accessProviderForOpenClawUrl(urlInp.value, accessProviderInp?.value || "auto");
+      accessProviderInp?.setCustomValidity("");
+    } catch (e) {
+      accessProviderInp?.setCustomValidity(e.message);
+      accessSessionInp.placeholder = "provider does not match this launchable URL";
+      return;
+    }
+    const pomerium = provider === "pomerium";
+    if (pomerium) accessSessionInp.value = "";
+    accessSessionInp.disabled = pomerium;
+    if (eyeSessionBtn) eyeSessionBtn.disabled = pomerium;
+    if (accessSessionRow) accessSessionRow.dataset.browserCookie = pomerium ? "1" : "0";
+    accessSessionInp.placeholder = pomerium
+      ? "uses the signed-in browser session; nothing to paste"
+      : provider === "cloudflare"
+        ? "paste the CF_Authorization cookie value"
+        : "choose a provider or enter a launchable URL";
+  }
+  if (accessSessionInp) {
+    accessSessionInp.addEventListener("input", () => {
+      _saveOpenClawConnection(urlInp.value.trim(), tokenInp.value.trim(), accessProviderInp?.value, accessSessionInp.value.trim());
+    });
+  }
+  if (accessProviderInp) {
+    accessProviderInp.addEventListener("change", () => {
+      _refreshAccessSessionPlaceholder();
+      _saveOpenClawConnection(urlInp.value.trim(), tokenInp.value.trim(), accessProviderInp.value, accessSessionInp?.value.trim());
     });
   }
   const outEl    = target.querySelector(".claw-out");
@@ -506,9 +550,20 @@ export function mountEndpointProbe(targetSel, opts = {}) {
     return { enabled: !!proxyEnabledInp?.checked, base };
   }
 
-  function _saveOpenClawConnection(rawUrl, rawToken, rawCfJwt) {
+  function _saveOpenClawConnection(rawUrl, rawToken, accessProvider, accessSession) {
     if (!isOpenClaw) return;
-    setOpenClawConnection({ rawUrl, token: rawToken, accessJwt: opts.cfAccess ? rawCfJwt : undefined });
+    try {
+      setOpenClawConnection({
+        rawUrl,
+        token: rawToken,
+        accessProvider: opts.cfAccess ? accessProvider : undefined,
+        accessSession: opts.cfAccess ? accessSession : undefined,
+      });
+      accessProviderInp?.setCustomValidity("");
+    } catch (e) {
+      accessProviderInp?.setCustomValidity(e.message);
+      return;
+    }
     if (!opts.syncCanvas) return;
     updateClawPill(document.getElementById("claw-status"));
     window.dispatchEvent(new Event("nemoclaw:prerequisites"));
@@ -517,11 +572,20 @@ export function mountEndpointProbe(targetSel, opts = {}) {
   urlInp.addEventListener("input", () => {
     const raw = _normalizeBaseUrl(urlInp.value);
     if (urlInp.value.trim() !== raw) urlInp.value = raw;
-    _saveOpenClawConnection(raw, tokenInp.value.trim(), cfJwtInp?.value.trim());
+    const previous = getOpenClawConnection().rawUrl;
+    if (previous && raw && raw !== previous) {
+      // Access and gateway credentials belong to one launchable. Never carry
+      // them silently to another origin when the learner replaces the URL.
+      tokenInp.value = "";
+      if (accessSessionInp) accessSessionInp.value = "";
+      if (accessProviderInp) accessProviderInp.value = "auto";
+    }
+    _refreshAccessSessionPlaceholder();
+    _saveOpenClawConnection(raw, tokenInp.value.trim(), accessProviderInp?.value, accessSessionInp?.value.trim());
   });
   tokenInp.addEventListener("input", () => {
     const tok = tokenInp.value.trim();
-    _saveOpenClawConnection(_normalizeBaseUrl(urlInp.value), tok, cfJwtInp?.value.trim());
+    _saveOpenClawConnection(_normalizeBaseUrl(urlInp.value), tok, accessProviderInp?.value, accessSessionInp?.value.trim());
   });
   if (proxyEnabledInp && proxyBaseInp) {
     const saveProxy = () => {
@@ -533,7 +597,7 @@ export function mountEndpointProbe(targetSel, opts = {}) {
         proxyBaseInp.value = config.base;
         proxyBaseInp.disabled = !config.enabled;
         proxyBaseInp.setCustomValidity("");
-        _saveOpenClawConnection(_normalizeBaseUrl(urlInp.value), tokenInp.value.trim(), cfJwtInp?.value.trim());
+        _saveOpenClawConnection(_normalizeBaseUrl(urlInp.value), tokenInp.value.trim(), accessProviderInp?.value, accessSessionInp?.value.trim());
       } catch (e) {
         proxyBaseInp.setCustomValidity(e.message);
         proxyBaseInp.reportValidity();
@@ -543,7 +607,8 @@ export function mountEndpointProbe(targetSel, opts = {}) {
     proxyBaseInp.addEventListener("change", saveProxy);
   }
   // Initialise canvas keys on page load with whatever is already stored.
-  _saveOpenClawConnection(savedUrl, savedToken, savedCfJwt);
+  _refreshAccessSessionPlaceholder();
+  _saveOpenClawConnection(savedUrl, savedToken, savedAccessProvider, savedAccessSession);
 
   function hideHtmlFrame(clear = false) {
     const fr = target.querySelector(".claw-html-frame");
@@ -602,10 +667,30 @@ export function mountEndpointProbe(targetSel, opts = {}) {
     } else if (action.body) {
       body = action.body;
     }
-    const cfJwt = cfJwtInp ? cfJwtInp.value.trim() : "";
+    let accessProvider;
+    try { accessProvider = accessProviderForOpenClawUrl(base, accessProviderInp?.value || "auto"); }
+    catch (e) { setOutput(e.message, "err"); return; }
+    const accessSession = accessSessionInp ? accessSessionInp.value.trim() : "";
     const headers = { "Accept": "application/json, text/html, */*" };
-    if (token) headers["Authorization"]          = "Bearer " + token;
-    if (route.viaProxy && cfJwt) headers["CF-Access-Jwt-Assertion"] = cfJwt;
+    // /api/agent discovers this token. Do not let a token retained from a
+    // different launchable prevent discovery of its replacement.
+    const discoversToken = !!opts.autofillToken && actionPath === "/api/agent";
+    if (token && !discoversToken) headers["Authorization"] = "Bearer " + token;
+    if (route.viaProxy && accessSession) {
+      if (accessProvider === "auto") {
+        setOutput("Choose Cloudflare Access or Pomerium for this launchable.", "err");
+        return;
+      }
+      if (accessProvider === "cloudflare") {
+        // Cloudflare's relay contract accepts this assertion header.
+        // Explicit relay deployments may use the provider-neutral pair below;
+        // the course keeps Pomerium direct and never enters this branch.
+        headers["CF-Access-Jwt-Assertion"] = accessSession;
+      } else {
+        headers["X-OpenClaw-Access-Provider"] = accessProvider;
+        headers["X-OpenClaw-Access-Session"] = accessSession;
+      }
+    }
     if (body)  headers["Content-Type"]            = "application/json";
 
     const showUrl = route.viaProxy ? displayUrl + "  (via hosted relay)" : displayUrl + "  (direct)";
@@ -614,26 +699,42 @@ export function mountEndpointProbe(targetSel, opts = {}) {
     hideHtmlFrame(true);
     const t0 = performance.now();
     try {
-      const r = await fetch(fetchTarget, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : null,
-        credentials: action.credentials || opts.credentials || "same-origin",
-      });
+      const useLoopback = isOpenClaw && accessProvider === "pomerium" && method === "GET" &&
+        !body && (actionPath === "/healthz" || actionPath === "/api/agent");
+      const loopback = useLoopback
+        ? await openclawLoopbackProbe(actionPath, { baseUrl: base })
+        : null;
+      const r = loopback
+        ? new Response(loopback.body, {
+            status: loopback.status,
+            statusText: loopback.statusText,
+            headers: { "Content-Type": loopback.json === null ? "text/plain" : "application/json" },
+          })
+        : await fetch(fetchTarget, {
+            method,
+            headers,
+            body: body ? JSON.stringify(body) : null,
+            // A direct cross-origin launchable request relies on the browser's
+            // HttpOnly access cookie. Relay requests carry the opaque session in
+            // headers instead and must not forward unrelated browser cookies.
+            credentials: action.credentials || opts.credentials || (route.viaProxy ? "same-origin" : "include"),
+          });
       const dt = Math.round(performance.now() - t0);
       const ct = r.headers.get("content-type") || "";
-      const head = `← ${r.status} ${r.statusText}   ${dt}ms`;
+      const head = `← ${r.status} ${r.statusText}   ${dt}ms` +
+        (loopback ? "   (direct browser session → launchable loopback)" : "");
 
       if (ct.includes("text/html")) {
         const html = await r.text();
-        // A Cloudflare Access "Sign in" page returns HTML 200 when the JWT is gone or stale.
-        // That login form in the iframe looks like a broken probe.
-        // Detect it and tell the student to refresh the CF Access JWT.
-        if (/cloudflareaccess\.com|Sign in ・ Cloudflare Access|Cloudflare Access/i.test(html)) {
-          setOutput(head + "\n\nCloudflare Access wants a fresh login because your CF Access JWT is missing or expired" +
-            " (it lasts about a day).\n\nFix: open your NemoClaw tab → DevTools → Application → Storage → Cookies →" +
-            " click the nemoclaw domain → copy the CF_Authorization value → paste it into the CF Access JWT field" +
-            " above and probe again.", "err");
+        // Access sign-in HTML looks like a successful API response. Detect both
+        // supported providers and point back to the selected session cookie.
+        if (/cloudflareaccess\.com|Sign in ・ Cloudflare Access|Cloudflare Access|auth\.apps\.run\.brev\.nvidia\.com|pomerium/i.test(html)) {
+          const cookieName = accessCookieName(accessProvider);
+          const recovery = accessProvider === "pomerium"
+            ? "Open the launchable in this browser and sign in, then probe again. The HttpOnly Pomerium session stays in the browser and is never pasted into the course."
+            : "Open the launchable, sign in, then use DevTools → Application → Storage → Cookies. " +
+              "Copy the full " + cookieName + " value into Access session above and probe again.";
+          setOutput(head + "\n\nThe launchable needs a fresh " + cookieName + " browser session.\n\n" + recovery, "err");
           hideHtmlFrame(true);
           return;
         }
@@ -670,19 +771,23 @@ export function mountEndpointProbe(targetSel, opts = {}) {
           printed = JSON.stringify(j, null, 2);
           // Auto-fill the bearer token when the probe knows how to find it.
           // OpenClaw's /api/agent exposes the gateway token in agent.dashboardUrl.
-          // So base URL + CF Access JWT discover it with no manual paste.
+          // Cloudflare uses its tab-scoped relay session. Pomerium discovers the
+          // token through the already-authenticated direct terminal socket.
           if (opts.autofillToken && r.ok && j) {
             try {
               const found = opts.autofillToken(j);
               if (found && found !== tokenInp.value.trim()) {
                 tokenInp.value = found;
-                _saveOpenClawConnection(_normalizeBaseUrl(urlInp.value), found, cfJwtInp ? cfJwtInp.value.trim() : "");
+                _saveOpenClawConnection(_normalizeBaseUrl(urlInp.value), found, accessProviderInp?.value, accessSessionInp?.value.trim());
                 printed += "\n\n↳ bearer token auto-filled from this response (" + found.slice(0, 8) + "…). Ready for the gateway steps below.";
               }
             } catch (_) { /* response shape didn't match; leave the field as-is */ }
           }
         } else {
           printed = await r.text();
+        }
+        if (!r.ok && r.status === 401 && accessProvider === "pomerium") {
+          printed += "\n\nPomerium did not accept the browser session. Open the current launchable in this browser, sign in, and try again. Do not copy the _pomerium cookie into the course.";
         }
         setOutput(head + "\n\n" + printed, r.ok ? "ok" : "err");
       }
@@ -694,16 +799,16 @@ export function mountEndpointProbe(targetSel, opts = {}) {
         return;
       }
       const fallback = /EPERM|Failed to fetch|NetworkError|Load failed|ECONN|ERR_CONNECTION|timed out|502|503/i.test(e?.message || "")
-        ? "\nBackup: if local OpenClaw failed to start or logs EPERM, stop local probing. Paste your NemoClaw Brev session URL (https://nemoclaw-<id>.brevlab.com), then paste CF_Authorization from DevTools into the CF Access JWT field.\n"
+        ? "\nBackup: if local OpenClaw failed to start or logs EPERM, enter a Brev launchable URL. For Pomerium, open that launchable and sign in in this browser. Cloudflare launchables still use the relay session field.\n"
         : "";
       const hint = "Possible causes:\n" +
-        "• OpenClaw did not start cleanly. Local EPERM means use the Brev backup URL plus CF_Authorization.\n" +
+        "• OpenClaw did not start cleanly. Local EPERM means use a Brev launchable.\n" +
         "• CORS blocked, because a header is not in the Access-Control-Allow-Headers preflight response.\n" +
         "• Wrong URL, so confirm no trailing /v1 on the base URL.\n" +
         "• Service offline. If the launchable just started, wait 30 s and try again.\n" +
         "• 502 on /v1/chat/completions, so the model backend isn't responding; check that\n" +
         "  NVIDIA_API_KEY resolved correctly in the launchable environment.\n\n" +
-        "Gateway token: once the URL and CF Access JWT check out, GET /api/agent above fills it in for you from agent.dashboardUrl.";
+        "Gateway token: once the URL and launchable sign-in check out, GET /api/agent above fills it in from agent.dashboardUrl.";
       setOutput(`✗ network error after ${dt}ms\n   ${String(e?.message || e)}\n\n${fallback}${hint}`, "err");
     }
   }
@@ -765,9 +870,10 @@ export async function openclawChat(message, { session = "main", onToken, onTool,
   const connection = getOpenClawConnection();
   const rawUrl = connection.rawUrl.replace(/\/+$/, "");
   const token = connection.token;
-  const cfJwt = connection.accessJwt;
+  const accessProvider = connection.accessProvider;
+  const accessSession = connection.accessSession;
   if (!rawUrl || !token) throw new Error("Connect first on the Kickstart page (3a): set your launchable URL + token in the probe.");
-  const gateway = openclawGatewayWsUrl(rawUrl, cfJwt);
+  const gateway = openclawGatewayWsUrl(rawUrl, accessSession, null, null, accessProvider);
   const wsUrl = gateway.url;
 
   async function connect() {
@@ -794,7 +900,7 @@ export async function openclawChat(message, { session = "main", onToken, onTool,
         call("connect", { minProtocol: 4, maxProtocol: 4, client: { id: "openclaw-control-ui", version: "0.1.0", platform: "browser", mode: "webchat" }, caps: ["tool-events"], role: "operator", scopes: ["operator.read", "operator.write", "operator.admin"], auth: { token } })
           .then(() => resolve(sock)).catch(reject);
       };
-      setTimeout(() => reject(new Error("no challenge arrived within 15s. If this is a Brev URL, paste a fresh CF_Authorization in the probe so the gateway can use the CF proxy; if you choose direct mode instead, open the Brev launchable URL in this browser to refresh its cookie.")), 15000);
+      setTimeout(() => reject(new Error("no challenge arrived within 15s. For a Brev URL, open the launchable, select its access provider, and paste a fresh matching browser session in Module 3a.")), 15000);
     });
   }
 
@@ -879,12 +985,13 @@ export const GW_CONNECT = `
 const connection = helpers.getOpenClawConnection();
 const rawUrl = connection.rawUrl;
 const token = connection.token;
-const cfJwt = connection.accessJwt;
+const accessProvider = connection.accessProvider;
+const accessSession = connection.accessSession;
 if (!rawUrl || !token) {
-  helpers.log("Fill in the OpenClaw probe above first. If local OpenClaw failed or showed EPERM, use the backup Brev session URL plus CF_Authorization.");
+  helpers.log("Fill in the OpenClaw probe above first. For a Brev launchable, select its access provider and paste the matching browser session.");
   return;
 }
-const gateway = helpers.openclawGatewayWsUrl(rawUrl, cfJwt);
+const gateway = helpers.openclawGatewayWsUrl(rawUrl, accessSession, null, null, accessProvider);
 const wsUrl = gateway.url;
 helpers.log("→ " + gateway.displayUrl + (gateway.viaProxy ? "  (via hosted relay)" : ""));
 
@@ -934,7 +1041,7 @@ await new Promise((resolve, reject) => {
       resolve(pl);
     }).catch(reject);
   };
-  setTimeout(() => reject(new Error("no challenge arrived within 15s. If this is a Brev URL, paste a fresh CF_Authorization in the probe so the gateway can use the CF proxy; if you choose direct mode instead, open the Brev launchable URL in this browser to refresh its cookie. If local OpenClaw logs EPERM, stop local probing and use the Brev backup path.")), 15000);
+  setTimeout(() => reject(new Error("no challenge arrived within 15s. For a Brev URL, open the launchable, select its access provider, and paste a fresh matching browser session in Module 3a.")), 15000);
 });
 `;
 
@@ -942,14 +1049,14 @@ await new Promise((resolve, reject) => {
 export function mountGwRecover(sel) {
   mountCanvasFlow(sel, {
   label: "Detect & recover · health check, then escalating reset",
-  intro: "Health check, recover, and logs for the shared OpenClaw harness. Health check tests whether the agent can run a command and whether toolSearch is on; Recover disables toolSearch and clears sessions (the restart that applies it is opt-in, so Run-all is safe); Runtime logs tails the log when a run stalls. Run these on a fresh launchable, or whenever a chat logs ⚠ DEGRADED.",
+  intro: "Health check, conditional repair, and logs for the shared OpenClaw harness. Health check runs a command and reads toolSearch. Recover changes toolSearch only when it is enabled; session clearing and restart are separate opt-ins. Runtime logs tails the log when a run stalls.",
   edges: [
     { from: "gw-health", to: "gw-fix" },
   ],
   nodes: [
     {
       id: "gw-health", icon: "🩺", title: "Health check", x: 0, y: 0,
-      summary: "Checks env status, toolSearch, stuck approvals, and runs one trivial command. HEALTHY = tools work; DEGRADED = run Recover.",
+      summary: "Checks env status, toolSearch, stuck approvals, and one trivial command. HEALTHY needs no repair; DEGRADED shows what to inspect next.",
       code: GW_CONNECT + `
 // ── tune these ──────────────────────────────────────────────────────────────
 const PROBE_TIMEOUT_S = 60;                // how long to wait for the test command (this model can be slow)
@@ -1023,35 +1130,45 @@ return { healthy: ok, outcome, pendingApprovals: pending, toolSearch };
     },
     {
       id: "gw-fix", icon: "🛠", title: "Recover", x: 1, y: 0,
-      summary: "Disables tools.toolSearch via config.patch (the cause of the tool_search_code loop) and clears sessions. The restart that applies the change is opt-in (set DO_RESTART = true and re-run this cell), so Run-all never knocks the runtime out mid-flow.",
+      summary: "Disables tools.toolSearch only when the live config has it enabled. Session clearing and restart default off, so running this cell against a healthy launchable is non-destructive.",
       code: GW_CONNECT + `
 helpers.log("Repairing the runtime");
 
-// 1. Disable toolSearch so the agent uses native exec instead of bridge code.
+// 1. Disable toolSearch only when the live config enables it.
 const cfg = await state.call("config.get", {});
+let configChanged = false;
 if (cfg.parsed && cfg.parsed.tools && cfg.parsed.tools.toolSearch) {
   await state.call("config.patch", { raw: JSON.stringify({ tools: { toolSearch: false } }), baseHash: cfg.hash });
+  configChanged = true;
   helpers.log("  ✓ disabled tools.toolSearch (the tool_search_code loop)");
 } else {
-  helpers.log("  tools.toolSearch already off");
+  helpers.log("  ✓ tools.toolSearch already off; no config change needed");
 }
 
-// 2. Clear session state: reset the Main Session, delete throwaway sessions.
-await state.call("sessions.reset", { key: "agent:main:main" }).catch(() => {});
-let offset = 0, all = [];
-for (;;) { const page = await state.call("sessions.list", { limit: 100, offset }); all = all.concat(page.sessions || []); if (!page.hasMore) break; offset = page.nextOffset; }
-let removed = 0;
-for (const s of all.filter(s => !/:main$/.test(s.key))) { try { await state.call("sessions.delete", { key: s.key }); removed++; } catch (e) {} }
-helpers.log("  ✓ reset agent:main:main and deleted " + removed + " throwaway session(s)");
+// 2. Session deletion is independent from toolSearch repair. Opt in only when
+// stale session state is part of the failure you are diagnosing.
+const RESET_SESSIONS = false;
+if (RESET_SESSIONS) {
+  await state.call("sessions.reset", { key: "agent:main:main" }).catch(() => {});
+  let offset = 0, all = [];
+  for (;;) { const page = await state.call("sessions.list", { limit: 100, offset }); all = all.concat(page.sessions || []); if (!page.hasMore) break; offset = page.nextOffset; }
+  let removed = 0;
+  for (const s of all.filter(s => !/:main$/.test(s.key))) { try { await state.call("sessions.delete", { key: s.key }); removed++; } catch (e) {} }
+  helpers.log("  ✓ reset agent:main:main and deleted " + removed + " throwaway session(s)");
+} else {
+  helpers.log("  · session cleanup skipped (set RESET_SESSIONS = true only when needed)");
+}
 
-// 3. Restart applies the config patch but drops the socket, so it stays opt-in.
+// 3. Restart only when a config patch was made and you want to apply it now.
 const DO_RESTART = false;
-if (DO_RESTART) {
+if (DO_RESTART && configChanged) {
   await state.call("gateway.restart.request", { reason: "course recovery: disable toolSearch" }).catch(e => helpers.log("  restart failed: " + e.message));
   helpers.log("  ⟳ restart requested. Wait ~40s, then re-run Connect and the 🩺 Health check.");
   helpers.log("  Still failing after that? The sandbox is wedged below the gateway, so relaunch the launchable from Brev.");
+} else if (configChanged) {
+  helpers.log("  config patched. To apply it now: set DO_RESTART = true above and re-run this cell (the runtime restarts in about 40s).");
 } else {
-  helpers.log("  config patched + sessions cleared. To apply it now: set DO_RESTART = true above and re-run THIS cell (it restarts the runtime, ~40s).");
+  helpers.log("  no restart needed because the live toolSearch setting was already healthy.");
 }
 `,
     },

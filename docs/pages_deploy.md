@@ -37,10 +37,11 @@ browser, with no server logic:
 The course pages inline their own CSS and JS and use relative links, so the course
 dir is browsable from a Pages subpath. Live model calls use the student's own NVIDIA
 key and call NVIDIA model services directly by default. An explicitly enabled iframe
-mode uses the NVIDIA API CORS relay. Pages-hosted NemoClaw traffic uses the OpenClaw
-relay because the browser cannot attach the required Access header to its WebSocket;
-a launchable-vendored course beside its NemoClaw runtime uses the same-origin direct
-route. The launchable supplies the startup NVIDIA API key through its approved bootstrap
+mode uses the NVIDIA API CORS relay. Pages-hosted Cloudflare Access launchables use the
+OpenClaw relay. Pomerium launchables keep their HttpOnly session in the signed-in browser:
+gateway and terminal WebSockets connect directly, and the two fixed metadata reads use
+that authenticated terminal to read launchable loopback. A launchable-vendored course
+beside its NemoClaw runtime uses the same-origin direct route. The launchable supplies the startup NVIDIA API key through its approved bootstrap
 path and populates the same browser `localStorage` entry used by the course key panel;
 it does not introduce another credential channel. Lab-only
 steps badge themselves and short-circuit off-lab.

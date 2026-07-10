@@ -547,11 +547,11 @@ export {
 // Used by 04a/04b only.
 // Re-exported here so the helper registry/menu resolve these names and pages keep importing them from _shared.js.
 import {
-  terminal, evalSandboxNetwork, evalSandboxFs, OPENSHELL_POLICY_HARDENED,
+  terminal, openclawLoopbackProbe, evalSandboxNetwork, evalSandboxFs, OPENSHELL_POLICY_HARDENED,
   sandboxExec, policyGet, policyToYaml, annotatePolicyYaml, mountPolicyMap,
 } from "./_openshell.js";
 export {
-  terminal, evalSandboxNetwork, evalSandboxFs, OPENSHELL_POLICY_HARDENED,
+  terminal, openclawLoopbackProbe, evalSandboxNetwork, evalSandboxFs, OPENSHELL_POLICY_HARDENED,
   sandboxExec, policyGet, policyToYaml, annotatePolicyYaml, mountPolicyMap,
 };
 
@@ -963,12 +963,12 @@ export async function updateKeyPill(pill) {
 }
 
 // Is the launchable's gateway reachable right now?
-// The connect.challenge frame arrives only when the browser's Cloudflare Access session is still valid, so this detects an expired session that mere url+token presence cannot.
+// The connect.challenge frame arrives only when the browser's launchable access session is valid, so this detects an expired session that mere URL and token presence cannot.
 // Best-effort, ~6s cap.
 function clawSessionOk(timeoutMs = 6000) {
   const connection = getOpenClawConnection();
   if (!connection.rawUrl) return Promise.resolve(false);
-  const wsUrl = openclawGatewayWsUrl(connection.rawUrl, connection.accessJwt).url;
+  const wsUrl = openclawGatewayWsUrl(connection.rawUrl, connection.accessSession, null, null, connection.accessProvider).url;
   return new Promise(res => {
     let done = false, ws;
     const finish = ok => { if (done) return; done = true; try { ws.close(); } catch (_) {} res(ok); };
@@ -981,7 +981,7 @@ function clawSessionOk(timeoutMs = 6000) {
 }
 
 // ── OpenClaw indicator. Re-validates the live session on every page load, because a
-// stored url+token says nothing about whether the Cloudflare Access session still works.
+// Stored URL and token say nothing about whether the launchable access session still works.
 export async function updateClawPill(pill) {
   if (!pill) return;
   const connection = getOpenClawConnection();

@@ -37,16 +37,16 @@ FILES = {
 }
 
 REQUIRED = {
-    "kickstart": ["EPERM", "Brev App URL", "CF_Authorization", "Fail-fast backup"],
-    "openclaw_js": ["EPERM", "CF_Authorization", "Brev session URL", "stop local probing", "${fallback}${hint}", "openclawGatewayWsUrl", "getOpenClawProxyConfig", "proxyControls", "hideHtmlFrame", ".claw-html-frame[hidden]"],
-    "connection_js": ["DEFAULT_OPENCLAW_PROXY_BASE", "OPENCLAW_PROXY_BASE_KEY", "OPENCLAW_PROXY_ENABLED_KEY", "openclaw_proxy_base", "openclaw_proxy", "migrateOpenClawConnectionStorage", "workers\\.dev", "openclawWebSocketUrl"],
-    "cors_worker": ["CF_Authorization", "CF-Access-Jwt-Assertion", "cf_access_jwt", "targetSearch.delete", "upstream.webSocket", "Origin", "http://localhost:8088"],
-    "runtime_js": ["OPENCLAW_BACKUP_HINT", "OPENCLAW_CORS_PROXY_BASE", "preflightOpenClaw", "resolveOpenClawToken", "OPENCLAW_TOKEN: discovered", "shared.setOpenClawConnection({ rawUrl: u, token: t, accessJwt: cf })", "RESULT: FAIL (OpenClaw gateway activity missing", "gatewayMissing) ? 1 : 0", "'/health'"],
-    "runtime_sh": ["CLAW_CF=<CF_Authorization>", "OPENCLAW_CORS_PROXY_BASE", "Use Brev URL if local OpenClaw fails or shows EPERM"],
-    "runtime_skill": ["OpenClaw fallback", "CF_Authorization", "EPERM", "CLAW_CF", "OPENCLAW_CORS_PROXY_BASE"],
+    "kickstart": ["Cloudflare Access", "Pomerium", "CF_Authorization", "HttpOnly"],
+    "openclaw_js": ["Cloudflare Access", "Pomerium", "X-OpenClaw-Access-Session", "${fallback}${hint}", "openclawGatewayWsUrl", "getOpenClawProxyConfig", "proxyControls", "hideHtmlFrame", ".claw-html-frame[hidden]"],
+    "connection_js": ["DEFAULT_OPENCLAW_PROXY_BASE", "OPENCLAW_PROXY_BASE_KEY", "OPENCLAW_PROXY_ENABLED_KEY", "OPENCLAW_ACCESS_PROVIDER_KEY", "OPENCLAW_ACCESS_SESSION_KEY", "openclaw_access_provider", "migrateOpenClawConnectionStorage", "workers\\.dev", "openclawWebSocketUrl"],
+    "cors_worker": ["CF_Authorization", "_pomerium", "X-OpenClaw-Access-Provider", "access_session", "targetSearch.delete", "upstream.webSocket", "Origin", "http://localhost:8088"],
+    "runtime_js": ["OPENCLAW_BACKUP_HINT", "OPENCLAW_CORS_PROXY_BASE", "preflightOpenClaw", "resolveOpenClawToken", "OPENCLAW_TOKEN: discovered", "shared.setOpenClawConnection({ rawUrl: u, token: t, accessProvider: provider, accessSession: session })", "RESULT: FAIL (OpenClaw gateway activity missing", "gatewayMissing) ? 1 : 0", "'/health'"],
+    "runtime_sh": ["CLAW_ACCESS_PROVIDER", "CLAW_ACCESS_SESSION", "OPENCLAW_CORS_PROXY_BASE"],
+    "runtime_skill": ["OpenClaw fallback", "Cloudflare Access", "Pomerium", "CLAW_ACCESS_SESSION", "OPENCLAW_CORS_PROXY_BASE"],
     "scripts_skill": ["validation/SKILL.html"],
     "validation_skill": ["openclaw_fallback_audit.py", "OpenClaw fallback"],
-    "worker_ws_audit": ["openclaw worker ws audit", "CF_Authorization", "http://localhost:8088", "upstream WebSocket response directly"],
+    "worker_ws_audit": ["openclaw worker ws audit", "CF_Authorization", "_pomerium", "http://localhost:8088", "upstream WebSocket response directly"],
     "gateway_token_audit": ["gateway token audit", "gatewayTokenFromAgentMetadata", "gatewayTokenFromDashboardUrl", "--self-test"],
     "gw_transport_audit": ["gw connect transport audit", "openclaw-cors-proxy.experiments.courses.nvidia.com", "via hosted relay"],
     "gw_recover_compile_audit": ["gw recover compile audit", "private _uniqueId"],
@@ -141,7 +141,7 @@ def audit() -> list[str]:
         decoded = m.group(1).replace(r"\/", "/")
         if "replace(//" in decoded:
             findings.append("GW_CONNECT template decodes to invalid regex/comment syntax; avoid slash regex literals inside stringified cells")
-        if "helpers.openclawGatewayWsUrl(rawUrl, cfJwt)" not in decoded:
+        if "helpers.openclawGatewayWsUrl(rawUrl, accessSession, null, null, accessProvider)" not in decoded:
             findings.append("GW_CONNECT must call the shared configurable gateway router")
         if "const openclawGatewayWsUrl" in decoded:
             findings.append("GW_CONNECT duplicates the shared gateway router")

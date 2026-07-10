@@ -142,7 +142,10 @@ class ArtifactNavigationProjectionTests(unittest.TestCase):
             project_artifact_navigation(root)
 
             self.assertEqual([], [str(item) for item in audit(root)])
-            self.assertTrue((nested.parent / "index.html").is_file())
+            nested_index = nested.parent / "index.html"
+            self.assertTrue(nested_index.is_file())
+            self.assertIn('id="explorer-config"', nested_index.read_text(encoding="utf-8"))
+            self.assertNotIn('http-equiv="refresh"', nested_index.read_text(encoding="utf-8"))
             for page in (root / "SKILL.html", nested, report, static_topbar):
                 source = page.read_text(encoding="utf-8")
                 if page == static_topbar:

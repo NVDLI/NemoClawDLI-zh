@@ -10,11 +10,22 @@ export const OPENCLAW_URL_KEY = "nemoclaw_clawurl";
 export const OPENCLAW_RAW_URL_KEY = "nemoclaw_clawrawurl";
 export const OPENCLAW_TOKEN_KEY = "nemoclaw_clawtoken";
 export const OPENCLAW_ACCESS_JWT_KEY = "nemoclaw_clawcfjwt";
+export const OPENCLAW_ACCESS_PROVIDER_KEY = "nemoclaw_openclaw_access_provider_v1";
+export const OPENCLAW_ACCESS_SESSION_KEY = "nemoclaw_openclaw_access_session_v1";
 let querySynced = false;
 
 function storage() {
   try { return globalThis.localStorage || null; }
   catch (_) { return null; }
+}
+
+// Gateway and access credentials last only for the current browser tab. The
+// launchable URL and non-secret routing preferences may persist across visits,
+// but another course page on the shared CDN must not inherit credentials from a
+// previous browser session.
+function secretStorage() {
+  try { return globalThis.sessionStorage || storage(); }
+  catch (_) { return storage(); }
 }
 
 function browserLocation() {
@@ -27,7 +38,27 @@ function isPersonalWorkerHost(hostname) {
 }
 
 function isBrevHost(hostname) {
-  return /(?:^|\.)brevlab\.com$/i.test(String(hostname || ""));
+  return /(?:^|\.)brevlab\.com$/i.test(String(hostname || "")) ||
+    /(?:^|\.)apps\.run\.brev\.nvidia\.com$/i.test(String(hostname || ""));
+}
+
+export function accessProviderForOpenClawUrl(rawUrl, selected = "auto") {
+  const choice = String(selected || "auto").trim().toLowerCase();
+  if (!["auto", "cloudflare", "pomerium"].includes(choice)) {
+    throw new Error("Access provider must be Automatic, Cloudflare Access, or Pomerium");
+  }
+  let host = "";
+  try { host = new URL(normalizeOpenClawLaunchableUrl(rawUrl), pageBase()).hostname; }
+  catch (_) { return choice; }
+  const inferred = /(?:^|\.)apps\.run\.brev\.nvidia\.com$/i.test(host)
+    ? "pomerium"
+    : /(?:^|\.)brevlab\.com$/i.test(host)
+      ? "cloudflare"
+      : "auto";
+  if (choice !== "auto" && inferred !== "auto" && choice !== inferred) {
+    throw new Error("Selected access provider does not match the launchable URL");
+  }
+  return choice === "auto" ? inferred : choice;
 }
 
 function pageBase() {
@@ -77,6 +108,7 @@ function syncConfigFromQuery() {
   if (!target || !loc) return;
   querySynced = true;
   try {
+    const secrets = secretStorage();
     const params = new URLSearchParams(loc.search || "");
     const enabled = params.get("openclaw_proxy");
     if (["1", "true", "on", "relay", "auto"].includes(String(enabled).toLowerCase())) {
@@ -89,7 +121,27 @@ function syncConfigFromQuery() {
     const launchable = params.get("openclaw_url");
     if (launchable) {
       const clean = normalizeOpenClawLaunchableUrl(launchable);
-      if (clean) target.setItem(OPENCLAW_RAW_URL_KEY, clean);
+      if (clean) {
+        const previous = normalizeOpenClawLaunchableUrl(
+          target.getItem(OPENCLAW_RAW_URL_KEY) || target.getItem(OPENCLAW_URL_KEY) || "",
+        );
+        if (clean !== previous) {
+          secrets?.removeItem(OPENCLAW_TOKEN_KEY);
+          secrets?.removeItem(OPENCLAW_ACCESS_SESSION_KEY);
+          secrets?.removeItem(OPENCLAW_ACCESS_JWT_KEY);
+          // Remove credentials written by course builds that predated the
+          // tab-scoped storage contract.
+          target.removeItem(OPENCLAW_TOKEN_KEY);
+          target.removeItem(OPENCLAW_ACCESS_SESSION_KEY);
+          target.removeItem(OPENCLAW_ACCESS_JWT_KEY);
+        }
+        target.setItem(OPENCLAW_RAW_URL_KEY, clean);
+      }
+    }
+    const provider = params.get("openclaw_access_provider");
+    if (provider) {
+      accessProviderForOpenClawUrl("", provider);
+      target.setItem(OPENCLAW_ACCESS_PROVIDER_KEY, provider.toLowerCase());
     }
   } catch (_) { /* invalid presenter hints must not corrupt saved connection state */ }
 }
@@ -131,6 +183,10 @@ export function shouldProxyOpenClaw(rawUrl, config = getOpenClawProxyConfig()) {
   try { upstream = new URL(clean, pageBase()); }
   catch (_) { return false; }
   if (!isBrevHost(upstream.hostname)) return false;
+  // Pomerium browser sessions are intentionally sender-bound. Keep the
+  // HttpOnly cookie between the learner's browser and the launchable instead
+  // of replaying it through the hosted relay.
+  if (accessProviderForOpenClawUrl(clean) === "pomerium") return false;
   const loc = browserLocation();
   return !loc || upstream.origin !== loc.origin;
 }
@@ -164,15 +220,28 @@ export function openclawHttpUrl(rawUrl, pathAndQuery = "", config = getOpenClawP
   };
 }
 
-export function openclawWebSocketUrl(rawUrl, pathAndQuery = "/cli/gateway", cfJwt = "", config = getOpenClawProxyConfig()) {
+export function openclawWebSocketUrl(rawUrl, pathAndQuery = "/cli/gateway", accessSession = "", config = getOpenClawProxyConfig(), accessProvider = "auto") {
+  // Validate an explicit provider even on direct routes. Routing must not make
+  // a mismatched provider/host pair silently acceptable.
+  const provider = accessProviderForOpenClawUrl(rawUrl, accessProvider);
   const routed = openclawHttpUrl(rawUrl, pathAndQuery, config);
   if (!routed.url) return routed;
   const url = new URL(routed.url, pageBase());
   url.protocol = url.protocol === "http:" ? "ws:" : "wss:";
-  if (routed.viaProxy && String(cfJwt || "").trim()) {
-    url.searchParams.set("cf_access_jwt", String(cfJwt).trim());
+  if (routed.viaProxy && String(accessSession || "").trim()) {
+    if (provider === "auto") throw new Error("Choose Cloudflare Access or Pomerium for this launchable");
+    if (provider === "cloudflare") {
+      // Cloudflare's relay contract uses this query name.
+      url.searchParams.set("cf_access_jwt", String(accessSession).trim());
+    } else {
+      // Retained for explicit relay deployments. The course's Pomerium path is
+      // direct, so its browser session never reaches this branch.
+      url.searchParams.set("access_provider", provider);
+      url.searchParams.set("access_session", String(accessSession).trim());
+    }
   }
   const display = new URL(url.href);
+  if (display.searchParams.has("access_session")) display.searchParams.set("access_session", "...");
   if (display.searchParams.has("cf_access_jwt")) display.searchParams.set("cf_access_jwt", "...");
   return { ...routed, url: url.href, displayUrl: display.href };
 }
@@ -197,15 +266,40 @@ export function migrateOpenClawConnectionStorage() {
   return { rawUrl: clean, migrated: clean !== beforeRaw || effective !== beforeEffective };
 }
 
-export function setOpenClawConnection({ rawUrl, token, accessJwt } = {}) {
+export function setOpenClawConnection({ rawUrl, token, accessProvider, accessSession, accessJwt } = {}) {
   const target = storage();
+  const secrets = secretStorage();
   const current = migrateOpenClawConnectionStorage();
   const clean = rawUrl === undefined
     ? current.rawUrl
     : normalizeOpenClawLaunchableUrl(rawUrl);
-  const nextToken = token === undefined ? (target?.getItem(OPENCLAW_TOKEN_KEY) || "") : String(token || "").trim();
-  const nextAccessJwt = accessJwt === undefined ? (target?.getItem(OPENCLAW_ACCESS_JWT_KEY) || "") : String(accessJwt || "").trim();
-  if (!target) return { rawUrl: clean, effectiveUrl: openclawHttpUrl(clean).url || clean, token: nextToken, accessJwt: nextAccessJwt };
+  const originChanged = rawUrl !== undefined && clean !== current.rawUrl;
+  const nextToken = token === undefined
+    ? (originChanged ? "" : (secrets?.getItem(OPENCLAW_TOKEN_KEY) || ""))
+    : String(token || "").trim();
+  const savedProvider = target?.getItem(OPENCLAW_ACCESS_PROVIDER_KEY) || "auto";
+  const nextAccessProvider = accessProvider === undefined
+    ? (rawUrl === undefined ? savedProvider : "auto")
+    : String(accessProvider || "auto").trim().toLowerCase();
+  accessProviderForOpenClawUrl(clean, nextAccessProvider);
+  const suppliedSession = accessSession === undefined ? accessJwt : accessSession;
+  const legacySession = secrets?.getItem(OPENCLAW_ACCESS_SESSION_KEY) || secrets?.getItem(OPENCLAW_ACCESS_JWT_KEY) || "";
+  let nextAccessSession = suppliedSession === undefined
+    ? (originChanged ? "" : legacySession)
+    : String(suppliedSession || "").trim();
+  const resolvedAccessProvider = accessProviderForOpenClawUrl(clean, nextAccessProvider);
+  // Pomerium authentication stays in its HttpOnly browser cookie. Never copy
+  // or retain that cookie value in course-accessible storage.
+  if (resolvedAccessProvider === "pomerium") nextAccessSession = "";
+  if (!target) return {
+    rawUrl: clean,
+    effectiveUrl: openclawHttpUrl(clean).url || clean,
+    token: nextToken,
+    accessProvider: nextAccessProvider,
+    resolvedAccessProvider,
+    accessSession: nextAccessSession,
+    accessJwt: nextAccessSession,
+  };
   if (clean) {
     target.setItem(OPENCLAW_RAW_URL_KEY, clean);
     target.setItem(OPENCLAW_URL_KEY, openclawHttpUrl(clean).url || clean);
@@ -213,26 +307,57 @@ export function setOpenClawConnection({ rawUrl, token, accessJwt } = {}) {
     target.removeItem(OPENCLAW_RAW_URL_KEY);
     target.removeItem(OPENCLAW_URL_KEY);
   }
-  if (nextToken) target.setItem(OPENCLAW_TOKEN_KEY, nextToken);
-  else target.removeItem(OPENCLAW_TOKEN_KEY);
-  if (nextAccessJwt) target.setItem(OPENCLAW_ACCESS_JWT_KEY, nextAccessJwt);
-  else target.removeItem(OPENCLAW_ACCESS_JWT_KEY);
+  if (nextToken) secrets?.setItem(OPENCLAW_TOKEN_KEY, nextToken);
+  else secrets?.removeItem(OPENCLAW_TOKEN_KEY);
+  target.removeItem(OPENCLAW_TOKEN_KEY);
+  target.setItem(OPENCLAW_ACCESS_PROVIDER_KEY, nextAccessProvider);
+  if (nextAccessSession) secrets?.setItem(OPENCLAW_ACCESS_SESSION_KEY, nextAccessSession);
+  else secrets?.removeItem(OPENCLAW_ACCESS_SESSION_KEY);
+  target.removeItem(OPENCLAW_ACCESS_SESSION_KEY);
+  secrets?.removeItem(OPENCLAW_ACCESS_JWT_KEY);
+  target.removeItem(OPENCLAW_ACCESS_JWT_KEY);
   return {
     rawUrl: clean,
     effectiveUrl: clean ? (target.getItem(OPENCLAW_URL_KEY) || clean) : "",
     token: nextToken,
-    accessJwt: nextAccessJwt,
+    accessProvider: nextAccessProvider,
+    resolvedAccessProvider,
+    accessSession: nextAccessSession,
+    accessJwt: nextAccessSession,
   };
 }
 
 export function getOpenClawConnection() {
   const target = storage();
+  const secrets = secretStorage();
   const migrated = migrateOpenClawConnectionStorage();
+  const accessProvider = target?.getItem(OPENCLAW_ACCESS_PROVIDER_KEY) || "auto";
+  const resolvedAccessProvider = accessProviderForOpenClawUrl(migrated.rawUrl, accessProvider);
+  // One-time migration from older builds that persisted credentials in localStorage.
+  const legacyToken = target?.getItem(OPENCLAW_TOKEN_KEY) || "";
+  const legacySession = target?.getItem(OPENCLAW_ACCESS_SESSION_KEY) || target?.getItem(OPENCLAW_ACCESS_JWT_KEY) || "";
+  if (legacyToken && !secrets?.getItem(OPENCLAW_TOKEN_KEY)) secrets?.setItem(OPENCLAW_TOKEN_KEY, legacyToken);
+  if (legacySession && resolvedAccessProvider !== "pomerium" && !secrets?.getItem(OPENCLAW_ACCESS_SESSION_KEY)) {
+    secrets?.setItem(OPENCLAW_ACCESS_SESSION_KEY, legacySession);
+  }
+  target?.removeItem(OPENCLAW_TOKEN_KEY);
+  target?.removeItem(OPENCLAW_ACCESS_SESSION_KEY);
+  target?.removeItem(OPENCLAW_ACCESS_JWT_KEY);
+  if (resolvedAccessProvider === "pomerium") {
+    secrets?.removeItem(OPENCLAW_ACCESS_SESSION_KEY);
+    secrets?.removeItem(OPENCLAW_ACCESS_JWT_KEY);
+  }
+  const accessSession = resolvedAccessProvider === "pomerium"
+    ? ""
+    : (secrets?.getItem(OPENCLAW_ACCESS_SESSION_KEY) || secrets?.getItem(OPENCLAW_ACCESS_JWT_KEY) || "");
   return {
     rawUrl: migrated.rawUrl,
     effectiveUrl: target?.getItem(OPENCLAW_URL_KEY) || "",
-    token: target?.getItem(OPENCLAW_TOKEN_KEY) || "",
-    accessJwt: target?.getItem(OPENCLAW_ACCESS_JWT_KEY) || "",
+    token: secrets?.getItem(OPENCLAW_TOKEN_KEY) || "",
+    accessProvider,
+    resolvedAccessProvider,
+    accessSession,
+    accessJwt: accessSession,
     proxy: getOpenClawProxyConfig(),
   };
 }

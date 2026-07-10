@@ -88,9 +88,25 @@ async function selectPage(path) {
 }
 
 async function boot() {
-  const requested = new URLSearchParams(location.search).get("locale") || localeSelect?.value || "pt";
+  const lang = await languageManifest();
+  const localized = (lang?.data.languages || []).filter(item => item.code !== (lang?.data.default || "en"));
+  if (lang && !localized.length) {
+    languages = lang;
+    if (localeSelect) {
+      localeSelect.innerHTML = '<option value="en">English only</option>';
+      localeSelect.hidden = true;
+      document.querySelector('label[for="loc-locale"]')?.setAttribute("hidden", "");
+    }
+    $("#loc-target-name").textContent = "No localized target";
+    $("#loc-summary").textContent = "This build contains English only.";
+    $("#loc-pages").innerHTML = '<div class="loc-empty">No localized course was published in this build.</div>';
+    $("#loc-findings").textContent = "Use a multilingual build to review translation drift.";
+    return;
+  }
+  const requestedValue = new URLSearchParams(location.search).get("locale") || localeSelect?.value || "pt";
+  const requested = localized.some(item => item.code === requestedValue) ? requestedValue : (localized[0]?.code || requestedValue);
   if (localeSelect) localeSelect.value = requested;
-  const [driftResponse, lang] = await Promise.all([fetch(`assets/localization-${requested}.json`, {cache:"no-store"}), languageManifest()]);
+  const driftResponse = await fetch(`assets/localization-${requested}.json`, {cache:"no-store"});
   if (!driftResponse.ok) throw new Error(`drift manifest unavailable (${driftResponse.status})`);
   drift = await driftResponse.json(); languages = lang;
   $("#loc-target-name").textContent = drift.native_label || drift.label || drift.locale;
