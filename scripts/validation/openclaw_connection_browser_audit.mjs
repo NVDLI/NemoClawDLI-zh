@@ -58,6 +58,7 @@ try {
       localStorage.removeItem('nemoclaw_clawrawurl');
       localStorage.setItem('nemoclaw_clawurl', retired);
       window.__terminalUrls = [];
+      window.__gatewayUrls = [];
       class FakeWebSocket {
         static OPEN = 1;
         constructor(url) {
@@ -76,6 +77,7 @@ try {
               setTimeout(() => this.close(), 3);
               return;
             }
+            window.__gatewayUrls.push(url);
             this.emit({ type: 'event', event: 'connect.challenge', payload: {} });
           }, 0);
         }
@@ -144,7 +146,7 @@ try {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ agent: { dashboardUrl: '/#token=probe-token_123.abc~xyz' } }),
+        body: JSON.stringify({ agent: { dashboardUrl: '/#token=probe-token_123' } }),
       });
       return;
     }
@@ -203,10 +205,29 @@ try {
     host.querySelector('.claw-token').dispatchEvent(new Event('input'));
     return { migrated, direct, restored };
   });
+  result.autoBootstrap = await page.evaluate(async () => {
+    const mod = await import('/nemoclaw/scripts/_openclaw.js?auto-bootstrap=' + Date.now());
+    const before = sessionStorage.getItem('nemoclaw_clawtoken');
+    const refreshed = await mod.refreshOpenClawGatewayToken({ maxAgeMs: 0 });
+    return {
+      before,
+      token: refreshed.token,
+      source: refreshed.source,
+      changed: refreshed.changed,
+      saved: sessionStorage.getItem('nemoclaw_clawtoken'),
+      local: localStorage.getItem('nemoclaw_clawtoken'),
+    };
+  });
+  ok(result.autoBootstrap.before === 'retained-gateway-token' &&
+     result.autoBootstrap.token === 'probe-token_123' &&
+     result.autoBootstrap.saved === result.autoBootstrap.token &&
+     result.autoBootstrap.source === 'metadata' && result.autoBootstrap.changed &&
+     !result.autoBootstrap.local,
+    `gateway bootstrap did not replace stale tab state from /api/agent: ${JSON.stringify(result.autoBootstrap)}`);
   await page.getByRole('button', { name: 'GET /healthz', exact: true }).click();
   await page.waitForFunction(() => /"status":\s*"ok"/.test(document.querySelector('#probe-claw .claw-out')?.textContent || ''));
   await page.getByRole('button', { name: 'GET /api/agent', exact: true }).click();
-  await page.waitForFunction(() => document.querySelector('#probe-claw .claw-token')?.value === 'probe-token_123.abc~xyz');
+  await page.waitForFunction(() => document.querySelector('#probe-claw .claw-token')?.value === 'probe-token_123');
   result.probeActions = await page.evaluate(() => ({
     token: document.querySelector('#probe-claw .claw-token')?.value,
     savedToken: sessionStorage.getItem('nemoclaw_clawtoken'),
@@ -215,6 +236,7 @@ try {
     visibleHtmlFrame: !!document.querySelector('#probe-claw .claw-html-frame:not([hidden])'),
   }));
   const expectedProbeRequests = [
+    'https://openclaw-cors-proxy.experiments.courses.nvidia.com/https/nemoclaw-test123.brevlab.com/api/agent',
     'https://openclaw-cors-proxy.experiments.courses.nvidia.com/https/nemoclaw-test123.brevlab.com/healthz',
     'https://openclaw-cors-proxy.experiments.courses.nvidia.com/https/nemoclaw-test123.brevlab.com/api/agent',
   ];
@@ -222,9 +244,9 @@ try {
     `probe dropped or changed its API path: ${JSON.stringify(probeRequests)}`);
   ok(probeRequests.every(item => item.provider === 'cloudflare' && item.session === 'test-access-session'),
     `Cloudflare probe did not use neutral access headers: ${JSON.stringify(probeRequests)}`);
-  ok(probeRequests[0].authorization && !probeRequests[1].authorization,
+  ok(!probeRequests[0].authorization && probeRequests[1].authorization && !probeRequests[2].authorization,
     `token discovery forwarded a retained bearer token: ${JSON.stringify(probeRequests)}`);
-  ok(result.probeActions.token === 'probe-token_123.abc~xyz' &&
+  ok(result.probeActions.token === 'probe-token_123' &&
      result.probeActions.savedToken === result.probeActions.token && !result.probeActions.leakedToken,
     `GET /api/agent did not update the bearer token: ${JSON.stringify(result.probeActions)}`);
   ok(!result.probeActions.visibleHtmlFrame && /dashboardUrl/.test(result.probeActions.output),
@@ -300,11 +322,13 @@ try {
         error: node.classList.contains('err'),
       })) };
     };
-    return {
+    const result = {
       afterTools: await run('final-after-end', 'chat-contract-tools'),
       finalOnly: await run('final-only', 'chat-contract-final'),
       empty: await run('empty-turn', 'chat-contract-empty'),
     };
+    result.gatewayUrls = window.__gatewayUrls.slice();
+    return result;
   });
   const toolResult = result.chatContract.afterTools.tools[0] || {};
   ok(result.chatContract.afterTools.text === 'final answer after tools' &&
@@ -318,6 +342,10 @@ try {
   ok(/without a displayable reply/.test(result.chatContract.empty.text) &&
      !/\(no answer\)/.test(result.chatContract.empty.tokens),
     `empty gateway turn retained the no-answer dead end: ${JSON.stringify(result.chatContract.empty)}`);
+  ok(result.chatContract.gatewayUrls.length > 0 &&
+     result.chatContract.gatewayUrls.every(url => /^wss:\/\/nemoclaw-test123(?:\.brevlab\.com|\.apps\.run\.brev\.nvidia\.com)\/cli\/gateway$/.test(url)) &&
+     result.chatContract.gatewayUrls.every(url => !/openclaw-cors-proxy|cf_access_jwt|access_session/.test(url)),
+    `gateway sockets did not stay direct and credential-free: ${JSON.stringify(result.chatContract.gatewayUrls)}`);
   ok(!errors.length, `page errors: ${JSON.stringify(errors)}`);
   if (screenshot) {
     await page.locator('#model-route-settings').scrollIntoViewIfNeeded();

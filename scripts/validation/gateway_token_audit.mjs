@@ -120,6 +120,11 @@ function audit(overrides = {}) {
       || !files.helper.includes('const resText = openclawResultText;')) {
     findings.push('OpenClaw chat can lose chat.final text or expose unfiltered tool output');
   }
+  if (!files.helper.includes('export async function refreshOpenClawGatewayToken(')
+      || !files.helper.includes('const refreshed = await refreshOpenClawGatewayToken({ signal });')
+      || !files.helper.includes('const refreshedGateway = await helpers.refreshOpenClawGatewayToken({ signal: helpers.signal });')) {
+    findings.push('gateway entry points do not bootstrap the current token from /api/agent before connecting');
+  }
   if (!files.openshell.includes('filterOpenClawRuntimeNoise')
       || !files.openshell.includes('output: clean(raw)')
       || !files.openshell.includes('raw: filterOpenClawRuntimeNoise(raw)')) {
@@ -153,8 +158,9 @@ function audit(overrides = {}) {
     findings.push('OpenClaw CLI runtime bypasses shared OpenClaw routing');
   }
 
-  if (!files.shared.includes('gatewayTokenFromAgentMetadata')) {
-    findings.push('shared runtime does not re-export gatewayTokenFromAgentMetadata');
+  if (!files.shared.includes('gatewayTokenFromAgentMetadata')
+      || !files.shared.includes('refreshOpenClawGatewayToken')) {
+    findings.push('shared runtime does not re-export the gateway token bootstrap helpers');
   }
   if (!files.runtime.includes('openClawHttpUrl')) {
     findings.push('browser harness does not route credentialed Brev HTTP probes through the hosted relay');
@@ -226,6 +232,7 @@ function selfTest() {
     ['downstream gateway', { cliRuntime: base.cliRuntime.replace('runtime.openclawGatewayWsUrl(connection.rawUrl, connection.accessSession, null, null, connection.accessProvider).url', 'connection.rawUrl + "/cli/gateway"') }],
     ['downstream page boundary', { en4b: base.en4b.replace('helpers.mountOpenClawCli("#agent-chat")', 'mountDirectCli("#agent-chat")') }],
     ['shared export', { shared: base.shared.replaceAll('gatewayTokenFromAgentMetadata', 'removedGatewayTokenParser') }],
+    ['automatic token bootstrap', { helper: base.helper.replaceAll('refreshOpenClawGatewayToken({ signal', 'removedGatewayTokenRefresh({ signal') }],
     ['harness relay', { runtime: base.runtime.replaceAll('openclaw-cors-proxy.experiments.courses.nvidia.com', 'relay.invalid') }],
     ['focused browser check', { runtime: base.runtime.replace("args.includes('--gateway-only')", 'false') }],
     ['cron cleanup', { runtime: base.runtime.replace("output.cleanupId = ''", "output.cleanupId = id") }],

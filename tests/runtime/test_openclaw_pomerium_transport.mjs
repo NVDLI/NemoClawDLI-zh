@@ -46,7 +46,12 @@ globalThis.WebSocket = FakeWebSocket;
 
 const connection = await import('../../web/nemoclaw/scripts/_connection.js');
 const openshell = await import('../../web/nemoclaw/scripts/_openshell.js');
+const shared = await import('../../web/nemoclaw/scripts/_shared.js');
 const launchable = 'https://nemoclaw-test.apps.run.brev.nvidia.com';
+
+test('Pomerium loopback probe is registered for learner cells', () => {
+  assert.equal(shared.HELPER_FNS.openclawLoopbackProbe, openshell.openclawLoopbackProbe);
+});
 
 test('Pomerium stays browser-direct and exposes only fixed loopback bootstrap reads', async () => {
   const saved = connection.setOpenClawConnection({

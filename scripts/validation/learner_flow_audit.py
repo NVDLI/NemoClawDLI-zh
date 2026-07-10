@@ -354,6 +354,24 @@ def audit_course_source_runtime(langchain: str) -> list[str]:
     return findings
 
 
+def audit_cell_helper_registry(shared: str, pages: dict[str, str]) -> list[str]:
+    """Every helpers.* name shown in a lesson must exist in the cell runtime registry."""
+    findings: list[str] = []
+    registry = re.search(r"export const HELPER_FNS = \{(.*?)\n\};", shared, re.S)
+    if registry is None:
+        return ["_shared.js: learner-cell helper registry is missing"]
+    registered = set(re.findall(r"\b[A-Za-z_$][\w$]*\b", registry.group(1)))
+    # These values and cell-local closures are injected beside HELPER_FNS by _canvas.js.
+    registered.update({"clear", "fetch", "log", "signal", "state", "trace", "viz"})
+    for page, text in sorted(pages.items()):
+        for helper in sorted(set(re.findall(r"\bhelpers\.([A-Za-z_$][\w$]*)", text))):
+            if helper not in registered:
+                findings.append(
+                    f"{page}: helpers.{helper} is referenced but absent from the learner-cell helper registry"
+                )
+    return findings
+
+
 def audit_model_routes(shared: str, keypanel: str, rag: str, chat: str, openclaw: str,
                        pages: dict[str, str]) -> list[str]:
     """Keep one persistent chat failover without coupling or weakening embeddings."""
@@ -950,6 +968,18 @@ def audit_tree(root: Path = ROOT) -> list[str]:
     ):
         for module in ("01a-loop", "01b-react", "01c-tools", "02c-deep", "03a-kickstart", "03b-openclaw", "03c-always-on", "04a-safety", "04b-modern-clis"):
             runtime_pages[f"{locale}-{module[:3]}"] = (prefix / f"{module}.html").read_text(encoding="utf-8")
+    helper_pages = {
+        str(page.relative_to(root)): page.read_text(encoding="utf-8")
+        for page in sorted((root / "web/nemoclaw").glob("0*.html"))
+    }
+    helper_pages.update({
+        str(page.relative_to(root)): page.read_text(encoding="utf-8")
+        for page in sorted((root / "i18n").glob("*/web/*/0*.html"))
+    })
+    findings.extend(audit_cell_helper_registry(
+        (root / "web/nemoclaw/scripts/_shared.js").read_text(encoding="utf-8"),
+        helper_pages,
+    ))
     findings.extend(audit_model_routes(
         (root / "web/nemoclaw/scripts/_shared.js").read_text(encoding="utf-8"),
         (root / "web/nemoclaw/scripts/_keypanel.js").read_text(encoding="utf-8"),
@@ -1173,6 +1203,23 @@ def self_test() -> list[str]:
     ):
         for module in ("01a-loop", "01b-react", "01c-tools", "02c-deep", "03a-kickstart", "03b-openclaw", "03c-always-on", "04a-safety", "04b-modern-clis"):
             runtime_pages[f"{locale}-{module[:3]}"] = (prefix / f"{module}.html").read_text(encoding="utf-8")
+    helper_registry_cases = [
+        (
+            "registered helper removed",
+            shared.replace(", terminal, openclawLoopbackProbe,", ", terminal,", 1),
+            runtime_pages,
+            "helpers.openclawLoopbackProbe",
+        ),
+        (
+            "unknown lesson helper added",
+            shared,
+            {**runtime_pages, "fixture": "await helpers.unregisteredCourseHelper();"},
+            "helpers.unregisteredCourseHelper",
+        ),
+    ]
+    for label, mutated_shared, mutated_pages, expected in helper_registry_cases:
+        if not any(expected in finding for finding in audit_cell_helper_registry(mutated_shared, mutated_pages)):
+            misses.append(f"detector missed {label}")
     keypanel = (ROOT / "web/nemoclaw/scripts/_keypanel.js").read_text(encoding="utf-8")
     rag = (ROOT / "web/nemoclaw/scripts/_rag.js").read_text(encoding="utf-8")
     route_cases = [

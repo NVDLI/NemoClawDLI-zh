@@ -48,7 +48,7 @@ REQUIRED = {
     "validation_skill": ["openclaw_fallback_audit.py", "OpenClaw fallback"],
     "worker_ws_audit": ["openclaw worker ws audit", "CF_Authorization", "_pomerium", "http://localhost:8088", "upstream WebSocket response directly"],
     "gateway_token_audit": ["gateway token audit", "gatewayTokenFromAgentMetadata", "gatewayTokenFromDashboardUrl", "--self-test"],
-    "gw_transport_audit": ["gw connect transport audit", "openclaw-cors-proxy.experiments.courses.nvidia.com", "via hosted relay"],
+    "gw_transport_audit": ["gw connect transport audit", "expected direct signed-in launchable", "cf_access_jwt"],
     "gw_recover_compile_audit": ["gw recover compile audit", "private _uniqueId"],
     "connection_audit": ["openclaw connection audit", "retired relay", "same-origin vendored course", "terminal helper", "04b-modern-clis.html"],
 }

@@ -634,8 +634,8 @@ export const VIZ_BUILDERS = makeViz(() => {});
 // `viz.*` source comes from the live viz object once a node has run; `state`, `fetch`, `trace`, and `log` are described by SPECIALS, since they are values and closures, not module functions.
 export const HELPER_FNS = {
   chat, chatStream, webSearch, instantAnswer, formatSearchResults,
-  embed, cosineSim, fetchRetry, delay, getConfig, getKey, getModelApiBaseUrl, setModelApiBaseUrl, isDefaultModelApiBaseUrl, terminal,
-  coursePage, coursePages, contextWindow, estimateTokens, browserChatFetch, diagramSVG, ganttBarsSVG, mountFigures, openFigureLightbox, wireFigureZoom, mountChatUI, mountAgentChat, mountConsole, mountOpenClawCli, mountKeyPanel, mountModelEndpointProbe, openclawChat, openclawGatewayWsUrl, getOpenClawConnection, setOpenClawConnection, getOpenClawProxyConfig, setOpenClawProxyConfig,
+  embed, cosineSim, fetchRetry, delay, getConfig, getKey, getModelApiBaseUrl, setModelApiBaseUrl, isDefaultModelApiBaseUrl, terminal, openclawLoopbackProbe,
+  coursePage, coursePages, contextWindow, estimateTokens, browserChatFetch, diagramSVG, ganttBarsSVG, mountFigures, openFigureLightbox, wireFigureZoom, mountChatUI, mountAgentChat, mountConsole, mountOpenClawCli, mountKeyPanel, mountModelEndpointProbe, openclawChat, openclawGatewayWsUrl, refreshOpenClawGatewayToken, getOpenClawConnection, setOpenClawConnection, getOpenClawProxyConfig, setOpenClawProxyConfig,
   filterOpenClawRuntimeNoise, filterOpenClawRuntimeValue, openclawMessageText, openclawResultText,
   evalSandboxNetwork, evalSandboxFs, sandboxExec, policyGet, mountPolicyMap,
 };
@@ -1010,13 +1010,13 @@ export { mountKeyPanel };
 // Re-exported here so the helper registry/menu and existing page imports are unchanged.
 import {
   gatewayTokenFromAgentMetadata, getOpenClawConnection, getOpenClawProxyConfig, mountClawGateway, mountClawProbe,
-  mountEndpointProbe, mountModelEndpointProbe, openclawChat, openclawGatewayWsUrl,
+  mountEndpointProbe, mountModelEndpointProbe, openclawChat, openclawGatewayWsUrl, refreshOpenClawGatewayToken,
   filterOpenClawRuntimeNoise, filterOpenClawRuntimeValue, openclawMessageText, openclawResultText,
   setOpenClawConnection, setOpenClawProxyConfig, GW_CONNECT, mountGwRecover,
 } from "./_openclaw.js";
 export {
   gatewayTokenFromAgentMetadata, getOpenClawConnection, getOpenClawProxyConfig, mountClawGateway, mountClawProbe,
-  mountEndpointProbe, mountModelEndpointProbe, openclawChat, openclawGatewayWsUrl,
+  mountEndpointProbe, mountModelEndpointProbe, openclawChat, openclawGatewayWsUrl, refreshOpenClawGatewayToken,
   filterOpenClawRuntimeNoise, filterOpenClawRuntimeValue, openclawMessageText, openclawResultText,
   setOpenClawConnection, setOpenClawProxyConfig, GW_CONNECT, mountGwRecover,
 };
