@@ -682,9 +682,9 @@ def audit_repo(
             "show external release follow-ups from the merge-request diff")
     require(gitlab, "audit_sbom_policy.py --sbom", ".gitlab-ci.yml", "gitlab-sbom-policy", out,
             "evaluate the generated runtime SBOM instead of only uploading it")
-    require(gitlab, "scripts/compliance/sbom_evidence.py --sbom scripts/security/reports/deep-workspace/python-env.cdx.json",
+    require(gitlab, "scripts/compliance/resolve_sbom_licenses.py --input scripts/security/reports/deep-workspace/python-env.raw.cdx.json",
             ".gitlab/ci/sca.yml", "gitlab-sbom-evidence", out,
-            "emit a commit-bound manifest and reconciled license appendix beside the Python SBOM")
+            "preserve the raw scan and resolve every package license before evidence emission")
     for token in ("security_image_sca:", "sha256sum --check --strict", '--artifact-id "$SBOM_IMAGE"'):
         require(gitlab_sca, token, ".gitlab/ci/sca.yml", "gitlab-image-sbom-boundary", out,
                 "keep image scanning opt-in, immutable, checksum-pinned, and evidence-producing")
@@ -1245,7 +1245,7 @@ def self_test() -> list[str]:
             ("submission-release-reminder", ".github/PULL_REQUEST_TEMPLATE.md", "## External release follow-up", "## Optional follow-up"),
             ("shared-lock-selftest", "scripts/validation/release_gate.py", 'py("scripts/security/audit_dependency_locks.py", "--self-test")', 'py("scripts/security/audit_dependency_locks.py", "--version")'),
             ("gitlab-sbom-policy", ".gitlab/ci/sca.yml", "audit_sbom_policy.py --sbom", "audit_sbom_policy.py --help"),
-            ("gitlab-sbom-evidence", ".gitlab/ci/sca.yml", "scripts/compliance/sbom_evidence.py --sbom scripts/security/reports/deep-workspace/python-env.cdx.json", "scripts/compliance/sbom_evidence.py --help"),
+            ("gitlab-sbom-evidence", ".gitlab/ci/sca.yml", "scripts/compliance/resolve_sbom_licenses.py --input scripts/security/reports/deep-workspace/python-env.raw.cdx.json", "scripts/compliance/resolve_sbom_licenses.py --help"),
             ("gitlab-image-sbom-boundary", ".gitlab/ci/sca.yml", "sha256sum --check --strict", "sha256sum --version"),
             ("gitlab-runtime-lock", ".gitlab/ci/sca.yml", ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock", ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.txt"),
             ("gitlab-sca-lock", ".gitlab/ci/sca.yml", ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock", ".sca-tools-venv/bin/python -m pip install -q pip-audit cyclonedx-bom"),

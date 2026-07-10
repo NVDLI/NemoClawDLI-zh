@@ -19,11 +19,13 @@
     "scripts/compliance/export_legal_scope_csv.py",
     "scripts/compliance/third_party_export_ui.js",
     "scripts/compliance/render_sbom_license_inventory.py",
+    "scripts/compliance/resolve_sbom_licenses.py",
     "scripts/compliance/sbom_evidence.py",
     "scripts/compliance/source_document_audit.py",
     "scripts/compliance/docs/sbom_generation.md",
     "scripts/compliance/docs/sbom_evidence.json",
     "scripts/compliance/docs/ci_sbom_evidence.json",
+    "scripts/compliance/docs/image_license_resolutions.md",
     "scripts/compliance/docs/document_sources.json",
     "../../THIRD-PARTY-NOTICES.md",
     "../../THIRD_PARTY_LICENSES.md",
@@ -142,9 +144,14 @@
       "desc": "Renders, filters, and downloads the same component classifications directly in this SKILL page."
     },
     {
+      "path": "resolve_sbom_licenses.py",
+      "role": "exact-version SBOM resolver",
+      "desc": "Preserves the scanner-original SBOM and emits a review SBOM only after every package/version has corroborated SPDX evidence."
+    },
+    {
       "path": "render_sbom_license_inventory.py",
       "role": "post-scan license renderer",
-      "desc": "Turns a digest-bound CycloneDX SBOM into a static component-license appendix without converting unresolved rows into guessed licenses."
+      "desc": "Turns a fully resolved, digest-bound CycloneDX SBOM into a static component-license appendix and fails on missing evidence."
     },
     {
       "path": "sbom_evidence.py",
@@ -204,6 +211,7 @@
     <div class="skill-cmd"><b>All software relationships</b><code>python3 scripts/compliance/export_third_party_csv.py --category all --project-ref &lt;reviewed-ref&gt; --output /tmp/nemoclaw-all-software.csv</code></div>
     <div class="skill-cmd"><b>Legal-scope map</b><code>python3 scripts/compliance/export_legal_scope_csv.py --category all --project-ref &lt;reviewed-ref&gt; --output /tmp/nemoclaw-legal-scope.csv</code></div>
     <div class="skill-cmd"><b>Document sources</b><code>python3 scripts/compliance/source_document_audit.py</code></div>
+    <div class="skill-cmd"><b>Resolve SBOM licenses</b><code>python3 scripts/compliance/resolve_sbom_licenses.py --input &lt;scanner-original.cdx.json&gt; --output &lt;resolved.cdx.json&gt;</code></div>
     <div class="skill-cmd"><b>Post-scan licenses</b><code>python3 scripts/compliance/render_sbom_license_inventory.py --sbom &lt;cyclonedx.json&gt; --artifact-id &lt;digest-bound-artifact&gt; --out &lt;inventory.md&gt;</code></div>
     <div class="skill-cmd"><b>Evidence links</b><code>python3 scripts/compliance/sbom_evidence.py --check-external-links</code></div>
   </div>
@@ -276,6 +284,7 @@
     <a class="skill-card" href="export_third_party_csv.py"><b>export_third_party_csv.py</b><span>Parameterized SWIPAT component-table export with explicit distribution categories.</span></a>
     <a class="skill-card" href="export_legal_scope_csv.py"><b>export_legal_scope_csv.py</b><span>Evidence-linked scope map for references, tooling, recreations, vendored materials, and browser code.</span></a>
     <a class="skill-card" href="third_party_export_ui.js"><b>third_party_export_ui.js</b><span>In-page preview, filters, and filtered CSV download.</span></a>
+    <a class="skill-card" href="resolve_sbom_licenses.py"><b>resolve_sbom_licenses.py</b><span>Exact package/version SPDX resolution with raw-SBOM and inventory hash binding.</span></a>
     <a class="skill-card" href="render_sbom_license_inventory.py"><b>render_sbom_license_inventory.py</b><span>Digest-bound CycloneDX to static Markdown license reconciliation.</span></a>
     <a class="skill-card" href="sbom_evidence.py"><b>sbom_evidence.py</b><span>Verifies linked SBOMs and emits commit-bound CI manifests plus license appendices.</span></a>
     <a class="skill-card" href="docs/sbom_evidence.json"><b>sbom_evidence.json</b><span>Machine-readable map from distribution scope to committed, CI-generated, or conditional SBOM evidence.</span></a>
@@ -296,6 +305,7 @@
     <li><a href="export_legal_scope_csv.py">export_legal_scope_csv.py</a></li>
     <li><a href="third_party_export_ui.js">third_party_export_ui.js</a></li>
     <li><a href="render_sbom_license_inventory.py">render_sbom_license_inventory.py</a></li>
+    <li><a href="resolve_sbom_licenses.py">resolve_sbom_licenses.py</a></li>
     <li><a href="sbom_evidence.py">sbom_evidence.py</a></li>
     <li><a href="source_gate.py">source_gate.py</a></li>
     <li><a href="source_license_contract.py">source_license_contract.py</a></li>

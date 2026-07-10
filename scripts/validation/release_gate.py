@@ -110,6 +110,7 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     unit_test("export_third_party_csv"),
     unit_test("export_legal_scope_csv"),
     unit_test("render_sbom_license_inventory"),
+    unit_test("resolve_sbom_licenses"),
     unit_test("sbom_evidence"),
     py("scripts/compliance/sbom_evidence.py", "--check"),
     py("scripts/validation/tenets.py", "--check"),
@@ -193,6 +194,7 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     unit_test("export_third_party_csv"),
     unit_test("export_legal_scope_csv"),
     unit_test("render_sbom_license_inventory"),
+    unit_test("resolve_sbom_licenses"),
     unit_test("course_dependency_integrity"),
     cli_unit_test("cell_audit"),
     py("scripts/security/audit_python_dependencies.py"),
@@ -274,6 +276,10 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     unit_test("render_sbom_license_inventory"): (
         "THIRD_PARTY_LICENSES.md", "scripts/compliance/render_sbom_license_inventory.py",
         "scripts/compliance/third_party_inventory_audit.py",
+    ),
+    unit_test("resolve_sbom_licenses"): (
+        "THIRD_PARTY_LICENSES.md", "scripts/compliance/resolve_sbom_licenses.py",
+        "scripts/compliance/render_sbom_license_inventory.py", ".gitlab/ci/sca.yml",
     ),
     unit_test("sbom_evidence"): (
         "THIRD_PARTY_LICENSES.md", "scripts/compliance/sbom_evidence.py",

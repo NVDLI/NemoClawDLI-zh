@@ -154,6 +154,15 @@ class ThemeRuntimeContractTests(unittest.TestCase):
         job = core_job("pages_smoke", "theme_runtime")
         self.assertIn('--expect-git-sha "$CI_COMMIT_SHORT_SHA"', job)
 
+    def test_sbom_runtime_accepts_zero_only_when_the_rendered_count_agrees(self) -> None:
+        renderer = (ROOT / "scripts/compliance/third_party_export_ui.js").read_text(encoding="utf-8")
+        runtime = theme_runtime.RUNTIME_JS
+        self.assertIn('key:"unresolved"', renderer)
+        self.assertIn('item.dataset.sbomFact = fact.key', renderer)
+        self.assertIn("clarificationRows !== state.sbomEvidence.clarificationCount", runtime)
+        self.assertIn("!Number.isInteger(state.sbomEvidence.clarificationCount)", runtime)
+        self.assertNotIn("!state.sbomEvidence.clarificationRows", runtime)
+
 class ScaTriggerContractTests(unittest.TestCase):
     def test_pages_does_not_wait_on_an_unplayed_manual_sca_job(self) -> None:
         pages = core_job("pages", "pages_smoke")

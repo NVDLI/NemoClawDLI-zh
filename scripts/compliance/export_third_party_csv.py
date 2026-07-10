@@ -188,11 +188,7 @@ def local_authoring_rows(base: str, ref: str) -> list[list[str]]:
         paths = re.findall(r"`([^`]+(?:Dockerfile|requirements\.txt))`", evidence)
         internal = repository_file(base, ref, paths[0]) if paths else repository_file(base, ref, inventory.INVENTORY)
         evidence_catalog = repository_file(base, ref, "scripts/compliance/docs/sbom_evidence.json")
-        license_note = (
-            " NOASSERTION is the aggregate label for a mixed artifact, not a license grant. "
-            f"Current distribution and required scan evidence: {evidence_catalog}."
-            if license_id == "NOASSERTION" else ""
-        )
+        license_note = f" Current distribution and required scan evidence: {evidence_catalog}."
         rows.append([
             name,
             version,
@@ -291,7 +287,7 @@ def validate_export(text: str, expected_rows: int, require_resolved: bool) -> li
             continue
         if not all(row[index].strip() for index in (0, 1, 2, 6, 8)):
             findings.append(f"row {number} is missing component, version, license, comments, or internal repository link")
-        if require_resolved and row[2] == "NOASSERTION":
+        if require_resolved and row[2] in {"NOASSERTION", "Missing license evidence"}:
             findings.append(f"row {number} leaves a vendored component license unresolved")
     return findings
 

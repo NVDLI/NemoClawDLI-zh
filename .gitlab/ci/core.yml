@@ -296,10 +296,12 @@ pages:
         - scripts/security/run_full_sca.py
         - scripts/security/vulnerability-waivers.json
         - scripts/compliance/render_sbom_license_inventory.py
+        - scripts/compliance/resolve_sbom_licenses.py
         - scripts/compliance/sbom_evidence.py
         - scripts/compliance/third_party_export_ui.js
         - scripts/compliance/docs/sbom_evidence.json
         - scripts/compliance/docs/ci_sbom_evidence.json
+        - scripts/compliance/docs/image_license_resolutions.md
         - .gitlab/ci/sca.yml
       needs:
         - job: test

@@ -59,8 +59,13 @@ into an evidence link. The verified files are also copied beside the staged evid
 same-origin CycloneDX copy is SHA-256 checked in the browser before the license view renders its
 resolved Python component rows; the GitLab links remain the provenance and retention authority.
 
-Evidence emission calls `scripts/compliance/render_sbom_license_inventory.py` to create the
-component-level Markdown appendix from the same digest-bound CycloneDX input.
+The scanner-original CycloneDX file is retained unchanged.
+`scripts/compliance/resolve_sbom_licenses.py` then creates
+the review SBOM consumed by the license UI. Every component must match an exact package/version row
+in `THIRD_PARTY_LICENSES.md`; the result records the raw-SBOM and inventory SHA-256 values and keeps
+the scanner's original license value on each component. Evidence emission creates the Markdown
+appendix from that resolved SBOM through
+`scripts/compliance/render_sbom_license_inventory.py`. A missing mapping fails the job.
 
 ## Browser runtime CycloneDX
 
@@ -96,12 +101,18 @@ PATH="/tmp/nemoclaw-release-scanner/bin:$PATH" /tmp/nemoclaw-release-scanner/bin
   scripts/security/run_full_sca.py --execute --require-tools --python-local --cyclonedx-env \
   --python-executable /tmp/nemoclaw-release-runtime/bin/python --python-path "$RUNTIME_SITE" \
   --out-dir "$OUT/python-scan"
+mv "$OUT/python-scan/python-env.cdx.json" "$OUT/python-scan/python-env.raw.cdx.json"
+/tmp/nemoclaw-release-scanner/bin/python scripts/compliance/resolve_sbom_licenses.py \
+  --input "$OUT/python-scan/python-env.raw.cdx.json" \
+  --output "$OUT/python-scan/python-env.cdx.json"
 /tmp/nemoclaw-release-scanner/bin/python scripts/security/audit_sbom_policy.py \
   --sbom "$OUT/python-scan/python-env.cdx.json" \
   --report "$OUT/python-scan/sbom-policy.json"
 cp "$OUT/python-scan/python-env.cdx.json" "$OUT/python-env.cdx.json"
+cp "$OUT/python-scan/python-env.raw.cdx.json" "$OUT/python-env.raw.cdx.json"
 cp "$OUT/python-scan/sbom-policy.json" "$OUT/sbom-policy.json"
 python3 scripts/compliance/sbom_evidence.py \
+  --raw-sbom "$OUT/python-env.raw.cdx.json" \
   --sbom "$OUT/python-env.cdx.json" \
   --artifact-name "python-validation-$COMMIT" \
   --record-id python-validation-environment \
@@ -154,11 +165,23 @@ container run --rm \
   --mount type=bind,source="$OUT",target=/out \
   anchore/syft:v1.44.0@sha256:86fde6445b483d902fe011dd9f68c4987dd94e07da1e9edc004e3c2422650de6 scan "registry:$IMAGE" \
   --platform "$PLATFORM" \
+  --override-default-catalogers os \
+  --select-catalogers=-file \
+  --select-catalogers=+python-installed-package-cataloger \
+  --select-catalogers=+javascript-package-cataloger \
   -q \
-  -o cyclonedx-json=/out/image.cdx.json \
-  -o spdx-json=/out/image.spdx.json
+  -o cyclonedx-json=/out/image.raw.cdx.json \
+  -o spdx-json=/out/image.raw.spdx.json
+python3 scripts/compliance/resolve_sbom_licenses.py \
+  --accept-scanner-spdx \
+  --package-components-only \
+  --input "$OUT/image.raw.cdx.json" \
+  --output "$OUT/image.cdx.json" \
+  --inventory scripts/compliance/docs/image_license_resolutions.md
 python3 scripts/compliance/sbom_evidence.py \
+  --raw-sbom "$OUT/image.raw.cdx.json" \
   --sbom "$OUT/image.cdx.json" \
+  --inventory scripts/compliance/docs/image_license_resolutions.md \
   --artifact-name "$IMAGE" \
   --artifact-id "$IMAGE" \
   --record-id scanned-container-image \
@@ -168,21 +191,23 @@ python3 scripts/compliance/sbom_evidence.py \
   --source-commit "$COMMIT" \
   --ci-job manual-review \
   --appendix-out "$OUT/image-license-appendix.md" \
-  --manifest-out "$OUT/image-sbom-evidence.json" \
-  --allow-unresolved
+  --manifest-out "$OUT/image-sbom-evidence.json"
 ```
 
-A mixed image still has no honest single SPDX license. The generated component appendix resolves
-individual packages; it does not replace the image-level `NOASSERTION` with a guessed aggregate.
+A container's publisher terms and each bundled component license all apply. Record the publisher
+terms in `THIRD_PARTY_LICENSES.md`. The resolver retains scanner-provided SPDX identifiers and
+expressions, including packages with several applicable licenses. Named-only or missing values
+require an exact package/version row and evidence in `image_license_resolutions.md`. Non-package
+OS metadata stays in the raw scan rather than becoming a dependency row. The job fails until the
+digest-bound package SBOM is complete.
 
 ## License metadata precedence
 
-1. Retain scanner-provided SPDX identifiers and expressions.
-2. Use `THIRD_PARTY_LICENSES.md` only as an exact normalized-name and exact-version fallback when
-   the scanner provides a name or omits license metadata.
-3. Leave an unreviewed named license unresolved.
-4. Leave missing metadata as `NOASSERTION`.
-5. Keep descriptive external-content terms descriptive when they are not an OSS SPDX license.
+1. Preserve the scanner-original SBOM as evidence.
+2. Resolve the review SBOM from exact normalized-name and exact-version rows in the applicable
+   checked inventory (`THIRD_PARTY_LICENSES.md` for Python or `image_license_resolutions.md` for an image).
+3. Stop if any package/version lacks a corroborated SPDX mapping; do not publish a placeholder.
+4. Keep descriptive external-content terms descriptive when they are not an OSS SPDX license.
 
 For Python metadata review, use the exact-version endpoint
 `https://pypi.org/pypi/<normalized-name>/<version>/json`. If it supplies only a legacy label or no
@@ -243,7 +268,8 @@ distribution license is recorded as a limited arXiv distribution grant, not an o
 The normal attachment bundle contains:
 
 - `browser-runtime.cdx.json`
-- `python-env.cdx.json`
+- `python-env.raw.cdx.json` (scanner-original)
+- `python-env.cdx.json` (exact-version SPDX-resolved)
 - `sbom-policy.json`
 - `python-license-appendix.md`
 - `python-sbom-evidence.json`
@@ -256,6 +282,7 @@ Generate checksums only after the files have passed their format and policy chec
 ```bash
 shasum -a 256 \
   "$OUT/browser-runtime.cdx.json" \
+  "$OUT/python-env.raw.cdx.json" \
   "$OUT/python-env.cdx.json" \
   "$OUT/sbom-policy.json" \
   "$OUT/python-license-appendix.md" \
