@@ -140,7 +140,8 @@ def audit(root: Path = ROOT) -> list[dict[str, str]]:
         ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock",
         ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock",
         "audit_sbom_policy.py --sbom",
-        "scripts/compliance/sbom_evidence.py --sbom scripts/security/reports/deep-workspace/python-env.cdx.json",
+        "scripts/compliance/resolve_sbom_licenses.py --input scripts/security/reports/deep-workspace/python-env.raw.cdx.json",
+        "--sbom scripts/security/reports/deep-workspace/python-env.cdx.json",
     ):
         require(sca, token, "sca-required-command", ".gitlab/ci/sca.yml", out,
                 "restore the locked dependency scan and SBOM policy command")
@@ -157,7 +158,8 @@ def audit(root: Path = ROOT) -> list[dict[str, str]]:
             "sha256sum --check --strict",
             'registry:$SBOM_IMAGE',
             '--artifact-id "$SBOM_IMAGE"',
-            "--allow-unresolved",
+            "scripts/compliance/resolve_sbom_licenses.py",
+            "image.raw.cdx.json",
             "expire_in: 30 days",
             "when: manual",
             "allow_failure: false",

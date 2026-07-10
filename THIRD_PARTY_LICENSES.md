@@ -1,6 +1,6 @@
 # Third-party software and material inventory
 
-This checked-in inventory is the static, human-readable list for the proposed Apache-2.0 source release. It records exact package versions and SPDX license expressions where package metadata or upstream license text supports one. `NOASSERTION` means the source tree alone cannot determine a single license for a mixed container or operating-system component; it is not an approval.
+This checked-in inventory is the static, human-readable list for the proposed Apache-2.0 source release. It records exact package versions and SPDX license expressions for package rows. Container rows separately name the publisher terms that govern the image and the component-license families that also apply; they are not reduced to one invented SPDX expression.
 
 The root [Apache-2.0 license](LICENSE) covers NVIDIA-authored project code. Per-package browser license texts are distributed under [`web/nemoclaw/vendor/licenses/`](web/nemoclaw/vendor/licenses/). Python wheels and container layers retain their upstream license metadata and files. A built-image SBOM remains required for exact operating-system packages and image-layer licenses.
 
@@ -23,7 +23,7 @@ the human-readable static package, license, container-boundary, and material inv
 2. A static mapping may fill scanner named/missing metadata only for the exact normalized package
    name and exact version, and is labeled `exact package/version static fallback`.
 3. A named license without a reviewed exact-version mapping remains unresolved.
-4. Missing metadata remains `NOASSERTION`; it is never changed by guessing from a project name.
+4. Missing scanner metadata must be resolved from exact package/version evidence before an SBOM is rendered or exported.
 5. External-source terms remain descriptive when they are not an OSS SPDX license.
 
 The deterministic CI gate reads committed evidence without network access. Live PyPI, registry,
@@ -473,26 +473,26 @@ distribution boundary and the CI artifact paths used when a component inventory 
 Mixed images and operating-system packages require the exact built-image SBOM before distribution;
 a tag or source declaration cannot supply their complete transitive license set.
 
-| Scope | Component | Declared version | SPDX license | Evidence / disposition |
+| Scope | Component | Declared version | Governing license(s) / terms | Evidence / disposition |
 |---|---|---|---|---|
-| workspace base image | nvcr.io/nvidia/cuda | 12.8.1-cudnn-devel-ubuntu22.04 | NOASSERTION | not distributed with the static course; mixed NVIDIA and Ubuntu image; `workspace/Dockerfile`; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
-| service base image | docker | 20.10 | NOASSERTION | not distributed with the static course; mixed image; `cpu/services/docker_router/Dockerfile`; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
-| service base image | python | 3.11-slim | NOASSERTION | not distributed with the static course; Python-2.0 plus mixed Debian image; `cpu/services/llm_client/llm_client.Dockerfile`; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
-| service base image | python | 3.12-slim | NOASSERTION | not distributed with the static course; Python-2.0 plus mixed Debian image; `cpu/services/sandbox_admin/Dockerfile`; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
-| OpenShell build image | ghcr.io/nvidia/openshell/cluster | 0.0.8 | NOASSERTION | not distributed with the static course; image SBOM required before distribution; `cpu/services/openclaw/openclaw_shell.Dockerfile`; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
-| OpenShell runtime image | ghcr.io/nvidia/openshell-community/sandboxes/base | latest | NOASSERTION | not distributed with the static course; mutable tag; exact image digest and SBOM required before distribution; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
+| workspace base image | nvcr.io/nvidia/cuda | 12.8.1-cudnn-devel-ubuntu22.04 | NVIDIA Deep Learning Container License; bundled open-source component licenses | not distributed with the static course; [NGC CUDA license notice](https://catalog.ngc.nvidia.com/orgs/nvidia/-/containers/cuda/-); [container license](https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license); [open-source image archive](https://developer.download.nvidia.com/compute/cuda/opensource/image); `workspace/Dockerfile`; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
+| service base image | docker | 20.10 | Apache-2.0 for Docker/Moby and official-image packaging; bundled Alpine component licenses | not distributed with the static course; [Docker Official Image](https://hub.docker.com/_/docker); [Moby license](https://github.com/moby/moby/blob/v20.10.0/LICENSE); [image packaging license](https://github.com/docker-library/docker/blob/master/LICENSE); `cpu/services/docker_router/Dockerfile`; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
+| service base image | python | 3.11-slim | MIT for official-image packaging; PSF-2.0 for CPython; bundled Debian component licenses | not distributed with the static course; [Python Official Image license notice](https://hub.docker.com/_/python); [image packaging license](https://github.com/docker-library/python/blob/master/LICENSE); [Python 3.11 license](https://docs.python.org/3.11/license.html); `cpu/services/llm_client/llm_client.Dockerfile`; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
+| service base image | python | 3.12-slim | MIT for official-image packaging; PSF-2.0 for CPython; bundled Debian component licenses | not distributed with the static course; [Python Official Image license notice](https://hub.docker.com/_/python); [image packaging license](https://github.com/docker-library/python/blob/master/LICENSE); [Python 3.12 license](https://docs.python.org/3.12/license.html); `cpu/services/sandbox_admin/Dockerfile`; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
+| OpenShell build image | ghcr.io/nvidia/openshell/cluster | 0.0.8 | Apache-2.0 for OpenShell; bundled image-component licenses | not distributed with the static course; [OpenShell license](https://github.com/NVIDIA/OpenShell/blob/main/LICENSE); image SBOM required before distribution; `cpu/services/openclaw/openclaw_shell.Dockerfile`; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
+| OpenShell runtime image | ghcr.io/nvidia/openshell-community/sandboxes/base | latest | Apache-2.0 for OpenShell Community; bundled image-component licenses | not distributed with the static course; [OpenShell Community license](https://github.com/NVIDIA/OpenShell-Community/blob/main/LICENSE); mutable tag requires an exact image digest and SBOM before distribution; `cpu/services/openclaw/openclaw_shell.Dockerfile`; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
 | OpenClaw runtime | openclaw | 2026.5.28 | MIT | [npm](https://www.npmjs.com/package/openclaw/v/2026.5.28) |
 | policy engine | Open Policy Agent | 1.4.2 | Apache-2.0 | [upstream](https://github.com/open-policy-agent/opa/releases/tag/v1.4.2) |
-| browser binary | Chromium installed by Playwright | Playwright 1.61.0 channel | NOASSERTION | not distributed with the static course; multi-license browser distribution; exact component evidence required before separate distribution; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
-| workspace OS packages | python3.11, python3.11-dev, python3-pip, build-essential, bash, curl, unzip, wget, git, libgl1, tree, jq, nodejs, npm, poppler-utils | base-image-resolved | NOASSERTION | not distributed with the static course; `workspace/Dockerfile`; exact versions and licenses come from a digest-bound image SBOM; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
-| OpenClaw OS packages | jq, socat, tree, curl, git, gettext-base | base-image-resolved | NOASSERTION | not distributed with the static course; `cpu/services/openclaw/openclaw_shell.Dockerfile`; exact versions and licenses come from a digest-bound image SBOM; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
-| router OS packages | python3, py3-pip | base-image-resolved | NOASSERTION | not distributed with the static course; `cpu/services/docker_router/Dockerfile`; exact versions and licenses come from a digest-bound image SBOM; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
+| browser binary | Chromium installed by Playwright | Playwright 1.61.0 channel | BSD-3-Clause for Chromium; bundled third-party licenses | not distributed with the static course; [Chromium license](https://chromium.googlesource.com/chromium/src/+/main/LICENSE); Chromium's generated credits retain its bundled notices; exact component evidence required before separate distribution; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
+| workspace OS packages | python3.11, python3.11-dev, python3-pip, build-essential, bash, curl, unzip, wget, git, libgl1, tree, jq, nodejs, npm, poppler-utils | base-image-resolved | package-specific Ubuntu licenses | not distributed with the static course; `workspace/Dockerfile`; exact versions and license expressions come from the digest-bound image SBOM; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
+| OpenClaw OS packages | jq, socat, tree, curl, git, gettext-base | base-image-resolved | package-specific Debian licenses | not distributed with the static course; `cpu/services/openclaw/openclaw_shell.Dockerfile`; exact versions and license expressions come from the digest-bound image SBOM; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
+| router OS packages | python3, py3-pip | base-image-resolved | package-specific Alpine licenses | not distributed with the static course; `cpu/services/docker_router/Dockerfile`; exact versions and license expressions come from the digest-bound image SBOM; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
 
-### Resolving `NOASSERTION` after an image scan
+### Resolving image-component licenses
 
-A mixed container image or operating-system layer does not have one honest aggregate SPDX license.
-Do not replace an image-level `NOASSERTION` with the license of its best-known component. When an
-image is itself proposed for distribution, follow the digest-bound image procedure in the
+A container can have publisher terms while its bundled components remain under separate licenses.
+Record both; do not replace either with the other. When an image is itself proposed for distribution,
+follow the digest-bound image procedure in the
 [`SBOM generation and attachment runbook`](scripts/compliance/docs/sbom_generation.md). The
 generated appendix enumerates component licenses but does not convert the aggregate mixed-image row
 into a single-license claim. The catalog distinguishes three states: a linked SBOM available in the

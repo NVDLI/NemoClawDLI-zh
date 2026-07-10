@@ -43,7 +43,10 @@ def license_summary(components: list[dict]) -> dict[str, int]:
         licenses = component.get("licenses") or []
         if not licenses:
             summary["missing"] += 1
-        elif any((item.get("license") or {}).get("id") or item.get("expression") for item in licenses):
+        elif any(
+            ((item.get("license") or {}).get("id") or item.get("expression")) not in {None, "", "NOASSERTION"}
+            for item in licenses
+        ):
             summary["spdx"] += 1
         else:
             summary["named"] += 1
@@ -57,7 +60,7 @@ def load_sbom(path: Path) -> dict:
     return document
 
 
-def inventory_noassertion() -> set[tuple[str, str]]:
+def inventory_conditional_subjects() -> set[tuple[str, str]]:
     text = INVENTORY.read_text(encoding="utf-8")
     marker = "## Direct container, runtime, and operating-system declarations"
     if marker not in text:
@@ -65,10 +68,10 @@ def inventory_noassertion() -> set[tuple[str, str]]:
     body = text.split(marker, 1)[1].split("\n## ", 1)[0]
     rows: set[tuple[str, str]] = set()
     for line in body.splitlines():
-        if not line.startswith("|") or "NOASSERTION" not in line:
+        if not line.startswith("|") or "scripts/compliance/docs/sbom_evidence.json" not in line:
             continue
         columns = [value.strip() for value in line.strip("|").split("|")]
-        if len(columns) >= 4 and columns[0] != "Scope" and columns[3] == "NOASSERTION":
+        if len(columns) >= 5 and columns[0] != "Scope":
             rows.add((columns[1], columns[2]))
     return rows
 
@@ -201,7 +204,7 @@ def audit_catalog(document: dict | None = None) -> list[str]:
                     findings.append(f"{label}: linked SBOM {key} is stale")
         elif record.get("state") == "ci-generated":
             ci = record.get("ci") or {}
-            for key in ("job", "sbom_artifact_path", "manifest_artifact_path", "appendix_artifact_path", "retention_days"):
+            for key in ("job", "raw_sbom_artifact_path", "sbom_artifact_path", "manifest_artifact_path", "appendix_artifact_path", "retention_days"):
                 if not ci.get(key):
                     findings.append(f"{label}: CI evidence location lacks {key}")
             for index, link in enumerate(record.get("evidence_links", []), start=1):
@@ -246,8 +249,8 @@ def audit_catalog(document: dict | None = None) -> list[str]:
         for item in conditional.get("subjects", [])
         if isinstance(item, dict)
     }
-    if declared != inventory_noassertion():
-        findings.append("local-authoring NOASSERTION subjects do not match the checked inventory")
+    if declared != inventory_conditional_subjects():
+        findings.append("conditional image/license subjects do not match the checked inventory")
     return findings
 
 
@@ -291,6 +294,7 @@ def ci_link_catalog(args: argparse.Namespace) -> tuple[dict, int]:
     artifact_source_root = args.ci_artifact_root.resolve()
     args.ci_preview_root.mkdir(parents=True, exist_ok=True)
     for kind, path in (
+        ("Scanner-original CycloneDX SBOM", args.ci_raw_sbom_artifact_path),
         ("CycloneDX SBOM", args.ci_sbom_artifact_path),
         ("Evidence manifest", args.ci_manifest_artifact_path),
         ("License appendix", args.ci_appendix_artifact_path),
@@ -325,6 +329,8 @@ def ci_link_catalog(args: argparse.Namespace) -> tuple[dict, int]:
                 sbom = load_sbom(source)
                 entry["component_count"] = len(sbom["components"])
                 entry["license_metadata"] = license_summary(sbom["components"])
+                if entry["license_metadata"]["named"] or entry["license_metadata"]["missing"]:
+                    raise ValueError("resolved SBOM still contains non-SPDX or missing license rows")
         except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError, OSError) as error:
             missing += 1
             entry["reason"] = f"Artifact read failed: {getattr(error, 'reason', error)}"
@@ -377,6 +383,21 @@ def emit(args: argparse.Namespace) -> tuple[dict, int]:
             "retention_days": args.retention_days,
         },
     }
+    if args.raw_sbom:
+        raw_sha = digest(args.raw_sbom)
+        properties = {
+            item.get("name"): item.get("value")
+            for item in (document.get("metadata") or {}).get("properties", [])
+            if isinstance(item, dict)
+        }
+        if properties.get("nemoclaw:license-resolution:raw-sbom-sha256") != raw_sha:
+            raise ValueError("resolved SBOM is not bound to the supplied scanner-original SBOM")
+        record["raw_sbom"] = {
+            "href": args.raw_sbom_href or args.raw_sbom.name,
+            "sha256": raw_sha,
+            "bytes": args.raw_sbom.stat().st_size,
+            "purpose": "Scanner-original evidence retained before package/version SPDX resolution",
+        }
     output = {"schema": "nemoclaw-sbom-evidence/1", "records": [record]}
     args.manifest_out.parent.mkdir(parents=True, exist_ok=True)
     args.manifest_out.write_text(json.dumps(output, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -419,7 +440,7 @@ def self_test() -> list[str]:
     mutations.append(("linked SBOM digest", stale, "sha256 is stale"))
     incomplete = copy.deepcopy(clean)
     incomplete["records"][-1]["subjects"] = incomplete["records"][-1]["subjects"][:-1]
-    mutations.append(("NOASSERTION coverage", incomplete, "subjects do not match"))
+    mutations.append(("conditional subject coverage", incomplete, "subjects do not match"))
     no_hint = copy.deepcopy(clean)
     no_hint["records"][-1]["subjects"][0].pop("license_hint")
     mutations.append(("license hint", no_hint, "license hint is missing"))
@@ -439,7 +460,8 @@ def self_test() -> list[str]:
         appendix = root / "licenses.md"
         manifest = root / "evidence.json"
         args = argparse.Namespace(
-            source_commit="a" * 40, sbom=sbom, artifact_id=None, artifact_name="fixture",
+            source_commit="a" * 40, sbom=sbom, raw_sbom=None, raw_sbom_href=None,
+            artifact_id=None, artifact_name="fixture",
             inventory=INVENTORY, appendix_out=appendix, manifest_out=manifest,
             record_id="python-validation-environment", distribution="not-distributed", description="fixture",
             category=["validation"], sbom_href=None, appendix_href=None, ci_job="fixture",
@@ -470,6 +492,8 @@ def main() -> int:
     parser.add_argument("--browser-href")
     parser.add_argument("--release-catalog-out", type=Path)
     parser.add_argument("--sbom", type=Path)
+    parser.add_argument("--raw-sbom", type=Path)
+    parser.add_argument("--raw-sbom-href")
     parser.add_argument("--artifact-name")
     parser.add_argument("--artifact-id")
     parser.add_argument("--record-id")
@@ -486,7 +510,6 @@ def main() -> int:
     parser.add_argument("--appendix-out", type=Path)
     parser.add_argument("--manifest-out", type=Path)
     parser.add_argument("--inventory", type=Path, default=INVENTORY)
-    parser.add_argument("--allow-unresolved", action="store_true")
     parser.add_argument("--ci-links-out", type=Path)
     parser.add_argument("--ci-api-url")
     parser.add_argument("--ci-project-id")
@@ -498,6 +521,7 @@ def main() -> int:
     parser.add_argument("--ci-preview-root", type=Path)
     parser.add_argument("--ci-job-token-env", default="CI_JOB_TOKEN")
     parser.add_argument("--ci-sbom-artifact-path", default="scripts/security/reports/deep-workspace/python-env.cdx.json")
+    parser.add_argument("--ci-raw-sbom-artifact-path", default="scripts/security/reports/deep-workspace/python-env.raw.cdx.json")
     parser.add_argument("--ci-manifest-artifact-path", default="scripts/security/reports/deep-workspace/sbom-evidence.json")
     parser.add_argument("--ci-appendix-artifact-path", default="scripts/security/reports/deep-workspace/python-license-appendix.md")
     args = parser.parse_args()
@@ -555,12 +579,14 @@ def main() -> int:
     missing = [flag for flag, value in required.items() if not value]
     if missing:
         parser.error("evidence emission requires " + ", ".join(missing))
+    if args.record_id == "python-validation-environment" and not args.raw_sbom:
+        parser.error("Python validation evidence requires --raw-sbom")
     try:
         _output, unresolved = emit(args)
     except (ValueError, json.JSONDecodeError) as error:
         parser.error(str(error))
     print(f"wrote {args.manifest_out} and {args.appendix_out}: unresolved={unresolved}")
-    return 0 if args.allow_unresolved or unresolved == 0 else 1
+    return 0 if unresolved == 0 else 1
 
 
 if __name__ == "__main__":

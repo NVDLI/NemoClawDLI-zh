@@ -39,6 +39,7 @@
       ],
       "ci": {
         "job": "security_deep_sca",
+        "raw_sbom_artifact_path": "scripts/security/reports/deep-workspace/python-env.raw.cdx.json",
         "sbom_artifact_path": "scripts/security/reports/deep-workspace/python-env.cdx.json",
         "manifest_artifact_path": "scripts/security/reports/deep-workspace/sbom-evidence.json",
         "appendix_artifact_path": "scripts/security/reports/deep-workspace/python-license-appendix.md",
@@ -59,6 +60,7 @@
         }
       ],
       "release_asset_patterns": [
+        "nemoclaw-vX.Y.Z.python-env.raw.cdx.json",
         "nemoclaw-vX.Y.Z.python-env.cdx.json",
         "nemoclaw-vX.Y.Z.python-sbom-evidence.json",
         "nemoclaw-vX.Y.Z.python-license-appendix.md"
@@ -74,7 +76,7 @@
           "category": "local-authoring"
         }
       ],
-      "noassertion_meaning": "A mixed image or operating-system layer has no honest single aggregate SPDX license. This is not permission and does not mean every component license is unknown.",
+      "license_scope": "Each row names the publisher terms governing the image or primary software. Bundled operating-system and third-party components retain their own licenses, which a digest-bound SBOM must enumerate before distribution.",
       "required_before_distribution": "digest-bound-component-sbom",
       "ci": {
         "job": "security_image_sca",
@@ -89,9 +91,9 @@
           "component": "nvcr.io/nvidia/cuda",
           "version": "12.8.1-cudnn-devel-ubuntu22.04",
           "declaration_href": "../../../workspace/Dockerfile",
-          "upstream_href": "https://catalog.ngc.nvidia.com/orgs/nvidia/containers/cuda",
-          "license_hint": "Mixed NVIDIA CUDA and Ubuntu image. The image has no honest package-level SPDX answer; use the digest-bound component SBOM before distribution.",
-          "license_hint_href": "https://catalog.ngc.nvidia.com/orgs/nvidia/containers/cuda",
+          "upstream_href": "https://catalog.ngc.nvidia.com/orgs/nvidia/-/containers/cuda/-",
+          "license_hint": "The NVIDIA Deep Learning Container License governs the CUDA image. Bundled open-source component licenses also apply and NVIDIA publishes their archived sources.",
+          "license_hint_href": "https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license",
           "verified_on": "2026-07-08"
         },
         {
@@ -99,8 +101,8 @@
           "version": "20.10",
           "declaration_href": "../../../cpu/services/docker_router/Dockerfile",
           "upstream_href": "https://hub.docker.com/_/docker",
-          "license_hint": "The image combines Docker software and Alpine packages. Component licenses, not one image-level identifier, control.",
-          "license_hint_href": "https://hub.docker.com/_/docker",
+          "license_hint": "Docker/Moby and the official-image packaging are Apache-2.0. Bundled Alpine packages retain their package-specific licenses.",
+          "license_hint_href": "https://github.com/docker-library/docker/blob/master/LICENSE",
           "verified_on": "2026-07-08"
         },
         {
@@ -108,7 +110,7 @@
           "version": "3.11-slim",
           "declaration_href": "../../../cpu/services/llm_client/llm_client.Dockerfile",
           "upstream_href": "https://hub.docker.com/_/python",
-          "license_hint": "Python-2.0 describes CPython, not the complete Debian-based image. Debian packages retain separate licenses.",
+          "license_hint": "The official-image packaging is MIT and CPython is PSF-2.0. Bundled Debian packages retain separate licenses.",
           "license_hint_href": "https://docs.python.org/3/license.html",
           "verified_on": "2026-07-08"
         },
@@ -117,7 +119,7 @@
           "version": "3.12-slim",
           "declaration_href": "../../../cpu/services/sandbox_admin/Dockerfile",
           "upstream_href": "https://hub.docker.com/_/python",
-          "license_hint": "Python-2.0 describes CPython, not the complete Debian-based image. Debian packages retain separate licenses.",
+          "license_hint": "The official-image packaging is MIT and CPython is PSF-2.0. Bundled Debian packages retain separate licenses.",
           "license_hint_href": "https://docs.python.org/3/license.html",
           "verified_on": "2026-07-08"
         },
@@ -126,7 +128,7 @@
           "version": "0.0.8",
           "declaration_href": "../../../cpu/services/openclaw/openclaw_shell.Dockerfile",
           "upstream_href": "https://github.com/NVIDIA/OpenShell",
-          "license_hint": "The OpenShell repository is Apache-2.0. That is a source-family hint, not a conclusion for every package in this image.",
+          "license_hint": "OpenShell is Apache-2.0. Bundled image components retain their own licenses.",
           "license_hint_href": "https://github.com/NVIDIA/OpenShell/blob/main/LICENSE",
           "verified_on": "2026-07-08"
         },
@@ -135,8 +137,8 @@
           "version": "latest",
           "declaration_href": "../../../cpu/services/openclaw/openclaw_shell.Dockerfile",
           "upstream_href": "https://github.com/NVIDIA/OpenShell",
-          "license_hint": "The related OpenShell source is Apache-2.0. The mutable image tag still needs an immutable digest and component SBOM before distribution.",
-          "license_hint_href": "https://github.com/NVIDIA/OpenShell/blob/main/LICENSE",
+          "license_hint": "OpenShell Community is Apache-2.0. Bundled image components retain their own licenses; the mutable tag still needs an immutable digest before distribution.",
+          "license_hint_href": "https://github.com/NVIDIA/OpenShell-Community/blob/main/LICENSE",
           "verified_on": "2026-07-08"
         },
         {
@@ -144,7 +146,7 @@
           "version": "Playwright 1.61.0 channel",
           "declaration_href": "../../../workspace/Dockerfile",
           "upstream_href": "https://playwright.dev/docs/browsers",
-          "license_hint": "Chromium is a multi-license browser distribution. Its top-level BSD-3-Clause file does not replace the bundled third-party notices.",
+          "license_hint": "Chromium is BSD-3-Clause and its bundled third-party notices also apply.",
           "license_hint_href": "https://chromium.googlesource.com/chromium/src/+/main/LICENSE",
           "verified_on": "2026-07-08"
         },

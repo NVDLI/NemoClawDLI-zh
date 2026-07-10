@@ -172,8 +172,8 @@
       var upstream = (links.find(function (link) { return /^https?:/.test(link.url); }) || {}).url || "";
       var pathMatch = row[4].match(/`([^`]+(?:Dockerfile|requirements\.txt))`/);
       var cleanEvidence = row[4].replace(/\[([^\]]+)]\(([^)]+)\)/g, "$1");
-      var licenseNote = row[3] === "NOASSERTION" ?
-        " NOASSERTION is the aggregate label for a mixed artifact, not a license grant." : "";
+      var licenseNote = row[3] === "Missing license evidence" ?
+        " This entry must be resolved before export." : "";
       return {
         category: "local-authoring",
         relationship: row[0],
@@ -329,11 +329,11 @@
       var value = item.expression || data.id || data.name;
       if (value && values.indexOf(value) < 0) values.push(value);
     });
-    return values.join("; ") || "NOASSERTION";
+    return values.join("; ") || "Missing license evidence";
   }
 
   function spdxHref(value) {
-    return /^[A-Za-z0-9.+-]+$/.test(value) && value !== "NOASSERTION" ?
+    return /^[A-Za-z0-9.+-]+$/.test(value) ?
       "https://spdx.org/licenses/" + encodeURIComponent(value) + ".html" : "";
   }
 
@@ -529,7 +529,7 @@
       "local-authoring declaration": "Optional local-authoring dependency"
     },
     license: {
-      "NOASSERTION": "No single aggregate license"
+      "Missing license evidence": "License evidence missing"
     }
   };
 
@@ -812,7 +812,7 @@
           var metadata = sbomArtifact.license_metadata || {};
           var recorded = (metadata.spdx || 0) + (metadata.named || 0);
           var unresolved = runtime._components.filter(function (component) {
-            return componentLicense(component) === "NOASSERTION";
+            return componentLicense(component) === "Missing license evidence";
           });
           appendFacts(card, [
             {value:runtime._components.length, label:"packages checked"},

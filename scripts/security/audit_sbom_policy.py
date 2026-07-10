@@ -43,10 +43,14 @@ def audit_document(document: dict, expected: set[str], forbidden: set[str]) -> d
         if not licenses:
             license_counts["missing"] += 1
             missing_license.append(norm(str(component.get("name", ""))))
-        elif any((item.get("license") or {}).get("id") or item.get("expression") for item in licenses):
+        elif any(
+            ((item.get("license") or {}).get("id") or item.get("expression")) not in {None, "", "NOASSERTION"}
+            for item in licenses
+        ):
             license_counts["spdx"] += 1
         else:
             license_counts["named"] += 1
+            missing_license.append(norm(str(component.get("name", ""))))
     findings = []
     if prohibited:
         findings.append({"code": "retired-component", "packages": prohibited,
@@ -54,6 +58,12 @@ def audit_document(document: dict, expected: set[str], forbidden: set[str]) -> d
     if missing:
         findings.append({"code": "incomplete-sbom", "packages": missing,
                          "fix": "generate the SBOM from the installed workspace/requirements.lock environment"})
+    if missing_license:
+        findings.append({
+            "code": "unresolved-license",
+            "packages": sorted(set(missing_license)),
+            "fix": "resolve every exact package/version to SPDX before publishing or rendering the SBOM",
+        })
     return {
         "schema": "nemoclaw-sbom-policy/1",
         "ok": not findings,
@@ -76,6 +86,11 @@ def self_test() -> list[str]:
     codes = {item["code"] for item in audit_document({"components": []}, {"requests"}, set())["findings"]}
     if "incomplete-sbom" not in codes:
         failures.append("incomplete SBOM mutation escaped")
+    codes = {item["code"] for item in audit_document(
+        {"components": [{"name": "requests", "licenses": []}]}, {"requests"}, set()
+    )["findings"]}
+    if "unresolved-license" not in codes:
+        failures.append("unresolved license mutation escaped")
     return failures
 
 

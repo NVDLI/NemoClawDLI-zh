@@ -90,8 +90,8 @@ def render(sbom_path: Path, artifact_id: str, inventory_path: Path) -> tuple[str
             source = "CycloneDX named license; SPDX mapping required"
             unresolved += 1
         else:
-            license_value = "NOASSERTION"
-            source = "unresolved"
+            license_value = "MISSING SPDX EVIDENCE"
+            source = "resolution required before export"
             unresolved += 1
         rows.append((name, version, license_value, source, purl))
     rows.sort(key=lambda row: (row[0].casefold(), row[1], row[4]))
@@ -104,8 +104,8 @@ def render(sbom_path: Path, artifact_id: str, inventory_path: Path) -> tuple[str
         f"- Unresolved license rows: {unresolved}",
         "",
         "Scanner-provided SPDX identifiers and expressions take precedence. When the SBOM has only "
-        "a license name or omits license metadata, an exact package/version SPDX fallback may come "
-        "from `THIRD_PARTY_LICENSES.md`. `NOASSERTION` remains open for human disposition.",
+        "a license name or omits license metadata, an exact package/version SPDX fallback comes "
+        "from `THIRD_PARTY_LICENSES.md`. The export fails if any package/version lacks reviewed SPDX evidence.",
         "",
         "| Component | Version | License identifier or expression | Evidence | PURL / BOM reference |",
         "|---|---|---|---|---|",
@@ -141,7 +141,7 @@ def self_test() -> list[str]:
         tests.extend((
             ("scanner license retained", "| scanner | 1.0 | MIT | CycloneDX SPDX identifier/expression |" in rendered),
             ("named metadata gets static SPDX fallback", "| fallback-pkg | 2.0 | BSD-3-Clause | exact package/version static SPDX fallback; SBOM named: BSD License |" in rendered),
-            ("unresolved remains open", "| unknown | 3.0 | NOASSERTION | unresolved |" in rendered and unresolved == 1),
+            ("unresolved is explicit", "| unknown | 3.0 | MISSING SPDX EVIDENCE | resolution required before export |" in rendered and unresolved == 1),
         ))
         try:
             render(sbom, "mutable:latest", inventory)
@@ -158,7 +158,6 @@ def main() -> int:
     parser.add_argument("--artifact-id")
     parser.add_argument("--out", type=Path)
     parser.add_argument("--inventory", type=Path, default=STATIC_INVENTORY)
-    parser.add_argument("--allow-unresolved", action="store_true")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
@@ -173,7 +172,7 @@ def main() -> int:
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(rendered, encoding="utf-8")
     print(f"wrote {args.out}: unresolved={unresolved}")
-    return 0 if args.allow_unresolved or unresolved == 0 else 1
+    return 0 if unresolved == 0 else 1
 
 
 if __name__ == "__main__":

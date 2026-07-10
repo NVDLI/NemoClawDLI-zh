@@ -30,9 +30,9 @@ PROVENANCE = (
     ("web/nemoclaw/mats", "web/nemoclaw/mats/SKILL.html", ("mats", "figures", "assets")),
 )
 REQUIRED_CONTAINER_FACTS = (
-    "nvcr.io/nvidia/cuda | 12.8.1-cudnn-devel-ubuntu22.04 | NOASSERTION",
-    "ghcr.io/nvidia/openshell/cluster | 0.0.8 | NOASSERTION",
-    "ghcr.io/nvidia/openshell-community/sandboxes/base | latest | NOASSERTION",
+    "nvcr.io/nvidia/cuda | 12.8.1-cudnn-devel-ubuntu22.04 | NVIDIA Deep Learning Container License; bundled open-source component licenses",
+    "ghcr.io/nvidia/openshell/cluster | 0.0.8 | Apache-2.0 for OpenShell; bundled image-component licenses",
+    "ghcr.io/nvidia/openshell-community/sandboxes/base | latest | Apache-2.0 for OpenShell Community; bundled image-component licenses",
     "openclaw | 2026.5.28 | MIT",
     "Open Policy Agent | 1.4.2 | Apache-2.0",
     "Exact transitive operating-system and container-layer packages are build outputs",
@@ -61,7 +61,7 @@ REQUIRED_EXPLANATIONS = (
     "`argparse@2.0.1` is a JavaScript npm package used transitively by `js-yaml@5.2.1`.",
     "No package row in this inventory declares GPL.",
     "`LGPL-2.0-or-later` tooling entry",
-    "A mixed container image or operating-system layer does not have one honest aggregate SPDX license.",
+    "A container can have publisher terms while its bundled components remain under separate licenses.",
     "exact package/version static fallback",
 )
 REQUIRED_RUNBOOK_TEXT = (
@@ -73,10 +73,12 @@ REQUIRED_RUNBOOK_TEXT = (
     "IMAGE=<registry>/<repository>@sha256:<64-hex-digest>",
     "Those extractors acquire content",
     "scripts/compliance/render_sbom_license_inventory.py",
+    "scripts/compliance/resolve_sbom_licenses.py",
     "scripts/compliance/sbom_evidence.py",
     "scripts/compliance/docs/sbom_evidence.json",
     "browser-runtime.cdx.json",
     "python-env.cdx.json",
+    "python-env.raw.cdx.json",
     "source-tree.cdx.json",
     "source-tree.spdx.json",
 )
@@ -200,7 +202,7 @@ def export_contract_findings(overrides: dict[str, str]) -> list[str]:
         "vendored-browser-code", "Corroborating Repository Evidence",
         "selectedValues", "choiceGroup", "sortedRows", "sortableHeaders", "dataset.sortIndex",
         "FILTER_LABELS", "Included in the course", "External document citation record",
-        "No single aggregate license", "friendlyChoice",
+        "License evidence missing", "friendlyChoice",
         "documentScopeRows", "document use roll-up", "document_sources", "Source Author(s)", "renderScopeRow", "dataset.label",
         "sbom_evidence", "ci_sbom_evidence", "renderSbomEvidence", "linkedSbomComponents",
         "dataset.sbomSubject", "license_hint", 'Learners receive these " + record.sbom.component_count + " packages',

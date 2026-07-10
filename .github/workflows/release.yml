@@ -69,10 +69,16 @@ jobs:
             scripts/security/run_full_sca.py --execute --require-tools --python-local \
             --cyclonedx-env --python-executable "$PWD/.release-runtime-venv/bin/python" \
             --python-path "$RUNTIME_SITE" --out-dir release-security
+          mv release-security/python-env.cdx.json release-security/python-env.raw.cdx.json
+          .release-scan-venv/bin/python scripts/compliance/resolve_sbom_licenses.py \
+            --input release-security/python-env.raw.cdx.json \
+            --output release-security/python-env.cdx.json
           .release-scan-venv/bin/python scripts/security/audit_sbom_policy.py \
             --sbom release-security/python-env.cdx.json \
             --report release-security/sbom-policy.json
           .release-scan-venv/bin/python scripts/compliance/sbom_evidence.py \
+            --raw-sbom release-security/python-env.raw.cdx.json \
+            --raw-sbom-href "nemoclaw-${{ inputs.tag }}.python-env.raw.cdx.json" \
             --sbom release-security/python-env.cdx.json \
             --artifact-name "python-validation-$(git rev-parse HEAD)" \
             --record-id python-validation-environment \
@@ -98,6 +104,7 @@ jobs:
           BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh public
           mkdir -p release-assets release-evidence
           cp release-security/python-env.cdx.json "release-security/nemoclaw-$RELEASE_TAG.python-env.cdx.json"
+          cp release-security/python-env.raw.cdx.json "release-security/nemoclaw-$RELEASE_TAG.python-env.raw.cdx.json"
           cp web/nemoclaw/vendor/browser-sbom.cdx.json "release-security/nemoclaw-$RELEASE_TAG.browser.cdx.json"
           cp release-security/python-license-appendix.md "release-security/nemoclaw-$RELEASE_TAG.python-license-appendix.md"
           cp release-security/python-sbom-evidence.json "release-security/nemoclaw-$RELEASE_TAG.python-sbom-evidence.json"
@@ -119,6 +126,7 @@ jobs:
             --tag-object "$(git rev-parse "refs/tags/$RELEASE_TAG")" \
             --source-date-epoch "$SOURCE_DATE_EPOCH" \
             --asset "release-security/nemoclaw-$RELEASE_TAG.python-env.cdx.json" \
+            --asset "release-security/nemoclaw-$RELEASE_TAG.python-env.raw.cdx.json" \
             --asset "release-security/nemoclaw-$RELEASE_TAG.browser.cdx.json" \
             --asset "release-security/nemoclaw-$RELEASE_TAG.python-license-appendix.md" \
             --asset "release-security/nemoclaw-$RELEASE_TAG.python-sbom-evidence.json" \

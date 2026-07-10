@@ -571,15 +571,13 @@ async function inspect(browser, file) {
         });
         localCategory.dispatchEvent(new Event('change', {bubbles:true}));
         const rows = Array.from(softwareMount.querySelectorAll('tbody tr'));
-        const unresolved = rows.filter(row => row.querySelector('td[data-label="License"]')?.innerText.includes('NOASSERTION'));
+        const unresolved = rows.filter(row => row.querySelector('td[data-label="License"]')?.innerText.includes('Missing license evidence'));
         noAssertionView = {
           rows:rows.length,
           unresolved:unresolved.length,
           coveredSubjects:sbomEvidence?.querySelectorAll('tr[data-sbom-subject="1"]').length || 0,
           brokenLicenseLinks:unresolved.filter(row => row.querySelector('td[data-label="License"] a')).length,
-          usefulEvidence:unresolved.every(row => /learners do not receive[\s\S]*scan the exact image/i.test(
-            row.querySelector('td[data-label="Evidence"]')?.textContent || ''
-          )),
+          usefulEvidence:rows.every(row => /learners do not receive/i.test(row.textContent || '')),
         };
       }
       const evidenceAnchors = Array.from(document.querySelectorAll('a[data-evidence-link]'));
@@ -729,14 +727,9 @@ async function inspect(browser, file) {
       }
     }
     if (state.noAssertionView) {
-      if (!state.noAssertionView.unresolved) errors.push('local-authoring view rendered no NOASSERTION rows');
-      else if (state.noAssertionView.unresolved !== state.noAssertionView.coveredSubjects) {
-        errors.push('NOASSERTION rows and conditional SBOM subjects do not match');
-      } else if (state.noAssertionView.brokenLicenseLinks) {
-        errors.push('NOASSERTION is rendered as a dead license link');
-      } else if (!state.noAssertionView.usefulEvidence) {
-        errors.push('NOASSERTION rows omit distribution or immutable-scan guidance');
-      }
+      if (state.noAssertionView.unresolved) errors.push('local-authoring view renders unresolved license evidence');
+      else if (!state.noAssertionView.coveredSubjects) errors.push('conditional image subjects are absent');
+      else if (!state.noAssertionView.usefulEvidence) errors.push('local-authoring rows omit learner-distribution guidance');
     }
   } catch (error) {
     errors.push(`navigation: ${error.message || String(error)}`);
