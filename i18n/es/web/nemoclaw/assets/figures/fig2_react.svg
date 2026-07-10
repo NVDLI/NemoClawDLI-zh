@@ -1,4 +1,6 @@
-<!-- @misc{yao2023reactsynergizingreasoningacting,
+<!-- Image source: Figure 2(a), "Reasoning with Observation," in Xu et al., ReWOO,
+     arXiv:2305.18323, CC-BY-4.0. The panel illustrates ReAct's observation-dependent pattern.
+     Concept citation follows: @misc{yao2023reactsynergizingreasoningacting,
       title={ReAct: Synergizing Reasoning and Acting in Language Models}, 
       author={Shunyu Yao and Jeffrey Zhao and Dian Yu and Nan Du and Izhak Shafran and Karthik Narasimhan and Yuan Cao},
       year={2023},

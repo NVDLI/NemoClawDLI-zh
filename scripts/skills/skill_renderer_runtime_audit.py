@@ -178,6 +178,8 @@ async function inspect(browser, file) {
       })();
     }, null, { timeout:10000 }).catch(() => {});
     if (!response || !response.ok()) errors.push(`document HTTP ${response && response.status()}`);
+    await page.waitForFunction(() => Array.from(document.querySelectorAll('[data-svg-src]'))
+      .every(host => host.querySelector('svg')), null, { timeout:10000 }).catch(() => {});
     if (file.endsWith('scripts/pyodide/SKILL.html')) {
       try {
         await page.waitForFunction(() => document.querySelector('#pyodide-playground')?.dataset.runtimeMounted === 'true');
@@ -523,6 +525,22 @@ async function inspect(browser, file) {
           }
           return [`${label(node)} (left ${Math.round(box.left)}px; right ${Math.round(box.right)}px; width ${Math.round(box.width)}px)`];
         }).slice(0,5);
+        const figures = Array.from(document.querySelectorAll('[data-svg-src],img[data-figure-mode="fixed-white"][src$=".svg"]'))
+          .filter(node => visible(node))
+          .map((host, index) => {
+            const svg = host.matches('svg') ? host : host.querySelector('svg');
+            const painted = svg ? [svg, ...svg.querySelectorAll('*')].slice(0,120).map(node => {
+              const style = getComputedStyle(node);
+              return [style.fill, style.stroke, style.color, style.backgroundColor, style.filter].join('|');
+            }).join(';') : '';
+            const surfaceNode = host.closest('.paper-preview') || host;
+            return {
+              key:`${host.getAttribute('data-svg-src') || host.getAttribute('src') || 'inline'}#${index}`,
+              fixedWhite:host.getAttribute('data-figure-mode') === 'fixed-white',
+              surface:getComputedStyle(surfaceNode).backgroundColor,
+              painted,
+            };
+          });
         return {
           mode,
           viewportWidth,
@@ -531,14 +549,29 @@ async function inspect(browser, file) {
           bodyBackground:getComputedStyle(document.body).backgroundColor,
           surfaceBackground:getComputedStyle(document.querySelector('.skill-static,main,body')).backgroundColor,
           contrast,
+          figures,
         };
       };
       const contrastFailures = snapshot => snapshot.contrast
         .filter(item => item.ratio + .01 < item.threshold)
         .map(item => `${item.label} (${snapshot.mode} ${item.ratio.toFixed(2)}:1; requires ${item.threshold.toFixed(1)}:1)`)
         .slice(0,20);
+      const figureThemeFailures = (dark, light) => dark.figures.flatMap((figure, index) => {
+        const peer = light.figures[index];
+        if (!peer || peer.key !== figure.key) return [`${figure.key} changed identity across themes`];
+        if (figure.fixedWhite) {
+          const darkSurface = parseColor(figure.surface), lightSurface = parseColor(peer.surface);
+          if (!darkSurface || !lightSurface || luminance(darkSurface) < .85 || luminance(lightSurface) < .85) {
+            return [`${figure.key} is classified fixed-white but lacks a white paper surface`];
+          }
+          return [];
+        }
+        return figure.painted && figure.painted !== peer.painted
+          ? [] : [`${figure.key} has the same rendered SVG palette in dark and light mode`];
+      });
       window.__nemoclawThemeSnapshot = themeSnapshot;
       window.__nemoclawContrastFailures = contrastFailures;
+      window.__nemoclawFigureThemeFailures = figureThemeFailures;
       const originalTheme = document.documentElement.getAttribute('data-theme');
       const dark = themeSnapshot('dark');
       const light = themeSnapshot('light');
@@ -619,6 +652,7 @@ async function inspect(browser, file) {
         themes:{dark,light},
         themeChanged:dark.bodyBackground !== light.bodyBackground || dark.surfaceBackground !== light.surfaceBackground,
         contrastFailures:[...contrastFailures(dark),...contrastFailures(light)],
+        figureThemeFailures:figureThemeFailures(dark,light),
         visibleText: (document.body?.innerText || '').trim().length,
         explorer: !!config,
         mounted: !!document.querySelector('.sx-topbar') && !!document.querySelector('.sx-main'),
@@ -659,6 +693,7 @@ async function inspect(browser, file) {
         themes:{dark,light},
         themeChanged:dark.bodyBackground !== light.bodyBackground || dark.surfaceBackground !== light.surfaceBackground,
         contrastFailures:[...window.__nemoclawContrastFailures(dark),...window.__nemoclawContrastFailures(light)],
+        figureThemeFailures:window.__nemoclawFigureThemeFailures(dark,light),
         themeButtonVisible:Array.from(document.querySelectorAll('button[aria-label="Toggle dark or light theme"]')).some(node => {
           const style=getComputedStyle(node), box=node.getBoundingClientRect();
           return style.display !== 'none' && style.visibility !== 'hidden' && box.width > 0 && box.height > 0;
@@ -678,6 +713,8 @@ async function inspect(browser, file) {
     if (!state.themeChanged || !narrow.themeChanged) errors.push('dark/light palettes do not change the page at every viewport');
     if (state.contrastFailures.length) errors.push(`desktop contrast: ${state.contrastFailures.join('; ')}`);
     if (narrow.contrastFailures.length) errors.push(`narrow contrast: ${narrow.contrastFailures.join('; ')}`);
+    if (state.figureThemeFailures.length) errors.push(`desktop figure theme: ${state.figureThemeFailures.join('; ')}`);
+    if (narrow.figureThemeFailures.length) errors.push(`narrow figure theme: ${narrow.figureThemeFailures.join('; ')}`);
     if (narrow.overflows) {
       const offenders = narrow.themes.dark.overflowElements.length ? narrow.themes.dark.overflowElements : narrow.themes.light.overflowElements;
       errors.push(`narrow layout overflows 390px viewport (dark ${narrow.themes.dark.documentWidth}px; light ${narrow.themes.light.documentWidth}px): ${offenders.join('; ') || 'unattributed root overflow'}`);

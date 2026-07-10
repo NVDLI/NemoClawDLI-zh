@@ -47,8 +47,12 @@
     --gfx-blue:#0969da; --gfx-green:#4a7a00; --gfx-purple:#6f42c1; --gfx-amber:#9a6700; --gfx-teal:#0d9488; --gfx-red:#d1242f;
     --gfx-tint-blue:#dfeaf5; --gfx-tint-green:#e6f3d4; --gfx-tint-purple:#eadfff;
     --gfx-tint-amber:#f7e9cf; --gfx-tint-teal:#d6f1ee; --gfx-tint-red:#fadcdc; --gfx-tint-sub:#eef1f4;
+    --gfx-raster-filter:none;
   }
-  :root[data-theme="dark"] .pv-prev svg.gfx-dark { background:var(--gfx-bg,#0d0d0d); }
+  :root[data-theme="dark"] .pv-prev svg.gfx-dark {
+    --gfx-raster-filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(1.08);
+    background:var(--gfx-bg,#0d0d0d);
+  }
 </style>
 <script type="application/json" id="skill-meta">{
   "node_type": "leaf",
@@ -199,13 +203,13 @@
     {
       "file": "figures/02b-rag-1.svg",
       "depicts": "RAG split timeline",
-      "source": "NVIDIA developer blogs",
+      "source": "course recreation of NVIDIA RAG pipeline diagrams",
       "source_url": "https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/",
-      "source_authors": ["Hayden Wolff"],
+      "source_authors": ["Hayden Wolff", "Amit Bleiweiss"],
       "source_author_url": "https://developer.nvidia.com/blog/author/hwolff/",
       "license": "(c) NVIDIA; no reuse license stated on source page",
       "license_url": "https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/",
-      "connection": "inspiration",
+      "connection": "recreation",
       "used_by": "02b-rag.html"
     },
     {
@@ -310,9 +314,9 @@
     },
     {
       "file": "figures/fig2_react.svg",
-      "depicts": "ReAct loop",
-      "source": "Yao et al. 2022; figure conversion",
-      "source_url": "https://arxiv.org/abs/2210.03629",
+      "depicts": "observation-dependent reasoning panel used to explain ReAct",
+      "source": "Xu et al. 2023, ReWOO Figure 2(a); figure conversion; ReAct concept from Yao et al. 2022",
+      "source_url": "https://arxiv.org/abs/2305.18323",
       "license": "CC-BY-4.0",
       "license_url": "https://creativecommons.org/licenses/by/4.0/",
       "connection": "conversion",
@@ -578,11 +582,11 @@
 <article class="pv-card" data-asset="figures/02b-rag-1.svg" data-course-use="02b-rag.html">
   <div class="pv-prev"><div data-svg-src="figures/02b-rag-1.svg"></div></div>
   <div class="pv-file"><a href="figures/02b-rag-1.svg">figures/02b-rag-1.svg</a></div>
-  <div class="pv-dep">RAG split timeline</div>
+  <div class="pv-dep">Course recreation of the NVIDIA RAG indexing and serving timelines</div>
   <div class="pv-use"><span>Used in</span> <a href="../02b-rag.html">02b-rag.html</a></div>
-  <div class="pv-meta"><span>Connection</span>inspiration</div>
-  <div class="pv-meta"><span>Source</span><a href="https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/" target="_blank" rel="noopener">NVIDIA developer blogs</a></div>
-  <div class="pv-meta"><span>Author</span><a href="https://developer.nvidia.com/blog/author/hwolff/" target="_blank" rel="noopener">Hayden Wolff</a></div>
+  <div class="pv-meta"><span>Connection</span>recreation</div>
+  <div class="pv-meta"><span>Sources</span><a href="https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/" target="_blank" rel="noopener">RAG 101</a>; <a href="https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-with-nvidia-ai-langchain-ai-endpoints/" target="_blank" rel="noopener">RAG pipeline tips</a></div>
+  <div class="pv-meta"><span>Authors</span><a href="https://developer.nvidia.com/blog/author/hwolff/" target="_blank" rel="noopener">Hayden Wolff</a>; Amit Bleiweiss</div>
   <div class="pv-meta"><span>Terms</span>(c) NVIDIA; no reuse license stated on source page</div>
 </article>
 <article class="pv-card" data-asset="figures/02b-rag-2.svg" data-course-use="02b-rag.html">
@@ -667,16 +671,17 @@
   <div class="pv-meta"><span>License</span>Apache-2.0</div>
 </article>
 <article class="pv-card" data-asset="figures/fig2_react.svg" data-course-use="02a-routing.html">
-  <div class="pv-prev paper-preview"><img src="figures/fig2_react.svg" alt="ReAct loop"/></div>
+  <div class="pv-prev paper-preview"><img data-figure-mode="fixed-white" src="figures/fig2_react.svg" alt="ReAct loop"/></div>
   <div class="pv-file"><a href="figures/fig2_react.svg">figures/fig2_react.svg</a></div>
-  <div class="pv-dep">ReAct loop</div>
+  <div class="pv-dep">Observation-dependent reasoning panel used to explain ReAct</div>
   <div class="pv-use"><span>Used in</span> <a href="../02a-routing.html">02a-routing.html</a></div>
   <div class="pv-meta"><span>Connection</span>conversion</div>
-  <div class="pv-meta"><span>Source</span><a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al. 2022; figure conversion</a></div>
+  <div class="pv-meta"><span>Image source</span><a href="https://arxiv.org/abs/2305.18323" target="_blank" rel="noopener">Xu et al. 2023, ReWOO Figure 2(a); figure conversion</a></div>
+  <div class="pv-meta"><span>Concept</span><a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">ReAct, Yao et al. 2022</a></div>
   <div class="pv-meta"><span>Source license</span><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC-BY-4.0</a></div>
 </article>
 <article class="pv-card" data-asset="figures/fig2_rewoo.svg" data-course-use="02a-routing.html">
-  <div class="pv-prev paper-preview"><img src="figures/fig2_rewoo.svg" alt="ReWOO plan-then-execute"/></div>
+  <div class="pv-prev paper-preview"><img data-figure-mode="fixed-white" src="figures/fig2_rewoo.svg" alt="ReWOO plan-then-execute"/></div>
   <div class="pv-file"><a href="figures/fig2_rewoo.svg">figures/fig2_rewoo.svg</a></div>
   <div class="pv-dep">ReWOO plan-then-execute</div>
   <div class="pv-use"><span>Used in</span> <a href="../02a-routing.html">02a-routing.html</a></div>
@@ -685,7 +690,7 @@
   <div class="pv-meta"><span>Source license</span><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC-BY-4.0</a></div>
 </article>
 <article class="pv-card" data-asset="figures/rag_arch_2021.svg" data-course-use="02b-rag.html">
-  <div class="pv-prev paper-preview"><img src="figures/rag_arch_2021.svg" alt="original end-to-end RAG architecture"/></div>
+  <div class="pv-prev paper-preview"><img data-figure-mode="fixed-white" src="figures/rag_arch_2021.svg" alt="original end-to-end RAG architecture"/></div>
   <div class="pv-file"><a href="figures/rag_arch_2021.svg">figures/rag_arch_2021.svg</a></div>
   <div class="pv-dep">original end-to-end RAG architecture</div>
   <div class="pv-use"><span>Used in</span> <a href="../02b-rag.html">02b-rag.html</a></div>

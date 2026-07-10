@@ -559,7 +559,8 @@ A missing byline is reported as such and is not replaced with a guessed team or 
 
 | Document | Published author(s) | Source terms | Relationship | Repository items | Evidence checked |
 |---|---|---|---|---|---|
-| [RAG 101: Demystifying Retrieval-Augmented Generation Pipelines](https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/) | [Hayden Wolff](https://developer.nvidia.com/blog/author/hwolff/) | (c) NVIDIA; no reuse license stated on source page | inspiration | `web/nemoclaw/assets/figures/02b-rag-1.svg` | 2026-07-08 |
+| [RAG 101: Demystifying Retrieval-Augmented Generation Pipelines](https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/) | [Hayden Wolff](https://developer.nvidia.com/blog/author/hwolff/) | (c) NVIDIA; no reuse license stated on source page | recreation | `web/nemoclaw/assets/figures/02b-rag-1.svg` | 2026-07-10 |
+| [Tips for Building a RAG Pipeline with NVIDIA AI LangChain AI Endpoints](https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-with-nvidia-ai-langchain-ai-endpoints/) | Amit Bleiweiss | (c) NVIDIA; no reuse license stated on source page | recreation | `web/nemoclaw/assets/figures/02b-rag-1.svg` | 2026-07-10 |
 | [Agentic AI Learning Path](https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/) | No author listed on the official source page | (c) NVIDIA; no reuse license stated on source page | compilation | `web/nemoclaw/mats/agentic_ai_learning_path_links.md` | 2026-07-08 |
 | [Run Hermes Agent with Local Models](https://build.nvidia.com/spark/hermes-agent/overview) | No author listed on the official source page | (c) NVIDIA; no reuse license stated on source page | conversion | `web/nemoclaw/mats/build-nvidia-com-spark-hermes-agent-overview.md` | 2026-07-08 |
 | [Set Up Example NemoClaw Agents](https://build.nvidia.com/spark/nemoclaw-applications) | No author listed on the official source page | (c) NVIDIA; no reuse license stated on source page | conversion | `web/nemoclaw/mats/build-nvidia-com-spark-nemoclaw-applications.md` | 2026-07-08 |
@@ -588,9 +589,9 @@ This is not a dependency table. It records every provenance row with an external
 | web/nemoclaw/assets/figures/01b-react-3.svg | inspiration | original course diagram; ReAct (Yao et al. 2022) | CC-BY-4.0 | [source](https://arxiv.org/abs/2210.03629) |
 | web/nemoclaw/assets/figures/01b-react-4.svg | inspiration | original course diagram; inspired by Liu et al. 2023 | arXiv perpetual, non-exclusive distribution license 1.0 | [source](https://arxiv.org/abs/2307.03172) |
 | web/nemoclaw/assets/figures/01c-tools-2.svg | original | original course diagram; MCP | Apache-2.0 | [source](https://modelcontextprotocol.io) |
-| web/nemoclaw/assets/figures/02b-rag-1.svg | inspiration | NVIDIA developer blogs | (c) NVIDIA; no reuse license stated on source page | [source](https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/) |
+| web/nemoclaw/assets/figures/02b-rag-1.svg | recreation | NVIDIA developer blog diagrams by Hayden Wolff and Amit Bleiweiss | (c) NVIDIA; no reuse license stated on source page | [source](https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/) |
 | web/nemoclaw/assets/figures/02b-rag-3.svg | recreation | Edge et al. 2024 | CC-BY-4.0 | [source](https://arxiv.org/abs/2404.16130) |
-| web/nemoclaw/assets/figures/fig2_react.svg | conversion | Yao et al. 2022; figure conversion | CC-BY-4.0 | [source](https://arxiv.org/abs/2210.03629) |
+| web/nemoclaw/assets/figures/fig2_react.svg | conversion | Xu et al. 2023, ReWOO Figure 2(a); ReAct concept from Yao et al. 2022 | CC-BY-4.0 | [source](https://arxiv.org/abs/2305.18323) |
 | web/nemoclaw/assets/figures/fig2_rewoo.svg | conversion | Xu et al. 2023; figure conversion | CC-BY-4.0 | [source](https://arxiv.org/abs/2305.18323) |
 | web/nemoclaw/assets/figures/lethal-trifecta.svg | original course graphic | course-provided graphic; Simon Willison lethal trifecta definition | Apache-2.0 | [source](https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/) |
 | web/nemoclaw/assets/figures/rag_arch_2021.svg | conversion | Lewis et al. 2020; figure conversion | arXiv perpetual, non-exclusive distribution license 1.0 | [source](https://arxiv.org/abs/2005.11401) |

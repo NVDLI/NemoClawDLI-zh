@@ -17,13 +17,17 @@ dark-mode, injected-style-scope, canvas, crowded, mobile-zoom.
 Run:  python3 scripts/validation/figure_audit.py
 """
 from __future__ import annotations
-import json, re, sys
+import re, sys
 from pathlib import Path
 
 for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
     if (_p / "scripts" / "_bootstrap.py").exists():
         sys.path.insert(0, str(_p / "scripts")); break
 from _bootstrap import add_script_paths, find_repo_root
+try:
+    from .figure_provenance import fixed_white_figures, svg_modes
+except ImportError:
+    from figure_provenance import fixed_white_figures, svg_modes
 
 HERE = Path(__file__).resolve()
 TASK1 = find_repo_root(HERE)
@@ -72,24 +76,7 @@ def _attrs(tag: str) -> dict[str, str]:
     return {m.group(1).lower(): m.group(2) for m in re.finditer(r'([\w:-]+)\s*=\s*"([^"]*)"', tag)}
 
 
-def _fixed_white_assets() -> set[str]:
-    """Paper conversions are intentionally fixed-white; course-authored/provided diagrams are not."""
-    page = WEB / "nemoclaw" / "assets" / "SKILL.html"
-    try:
-        raw = page.read_text(errors="ignore")
-    except OSError:
-        return set()
-    m = re.search(r'<script type="application/json" id="provenance">(.*?)</script>', raw, re.S)
-    if not m:
-        return set()
-    try:
-        data = json.loads(m.group(1))
-    except json.JSONDecodeError:
-        return set()
-    return {row.get("file", "") for row in data.get("figures", []) if row.get("connection") == "conversion"}
-
-
-FIXED_WHITE_ASSETS = _fixed_white_assets()
+FIXED_WHITE_ASSETS = fixed_white_figures()
 
 
 def _asset_key(src: str) -> str:
@@ -327,6 +314,91 @@ def _injected_style_scope_contract():
     return findings
 
 
+def _provenance_theme_findings(
+    modes: dict[str, str],
+    figure_sources: dict[str, str],
+    html_sources: dict[str, str],
+) -> list[tuple[str, str]]:
+    """Require one explicit render contract for every attributed SVG and every use.
+
+    A paper conversion is not skipped: it must be marked fixed-white and presented on a paper
+    surface. Every other attributed SVG must use the shared ``gfx-dark`` palette and must follow the
+    page's selected theme rather than the operating-system preference.
+    """
+    findings: list[tuple[str, str]] = []
+    actual = set(figure_sources)
+    declared = set(modes)
+    for name in sorted(actual - declared):
+        findings.append((name, "SVG has no image-provenance rendering classification"))
+    for name in sorted(declared - actual):
+        findings.append((name, "image-provenance row points to a missing SVG"))
+    for name in sorted(actual & declared):
+        source = figure_sources[name]
+        root = re.search(r"<svg\b([^>]*)>", source, re.I | re.S)
+        classes = set(re.findall(r"[^\s]+", _attrs(root.group(0)).get("class", ""))) if root else set()
+        if modes[name] == "theme-aware":
+            if "gfx-dark" not in classes:
+                findings.append((name, "theme-aware SVG must use the shared gfx-dark palette contract"))
+            if "prefers-color-scheme" in source:
+                findings.append((name, "theme-aware SVG must follow data-theme; prefers-color-scheme ignores the course toggle"))
+        elif "prefers-color-scheme" in source:
+            findings.append((name, "fixed-white conversion must not select a palette from prefers-color-scheme"))
+
+    referenced: set[str] = set()
+    tag_pattern = re.compile(r'<[^>]+(?:data-svg-src|src)="([^"]+\.svg)"[^>]*>', re.I)
+    for page, body in html_sources.items():
+        for match in tag_pattern.finditer(body):
+            tag, src = match.group(0), match.group(1)
+            key = _asset_key(src)
+            if key not in modes:
+                continue
+            referenced.add(key)
+            fixed_marker = 'data-figure-mode="fixed-white"' in tag
+            if modes[key] == "fixed-white":
+                if not fixed_marker:
+                    findings.append((f"{page} -> {src}", "paper conversion must declare data-figure-mode=fixed-white"))
+                if "<img" not in tag.lower() and "--gfx-paper-surface" not in tag:
+                    findings.append((f"{page} -> {src}", "paper conversion must render on --gfx-paper-surface"))
+            elif fixed_marker:
+                findings.append((f"{page} -> {src}", "theme-aware SVG cannot be relabeled as fixed-white"))
+    for name in sorted(declared - referenced):
+        findings.append((name, "attributed SVG has no rendered HTML use"))
+    return findings
+
+
+def _provenance_theme_contract() -> list[tuple[str, str]]:
+    """Audit the complete provenance-derived set and mutation-test its non-bypassable rules."""
+    figure_root = WEB / "nemoclaw" / "assets" / "figures"
+    figures = {
+        f"figures/{path.name}": path.read_text(errors="ignore")
+        for path in sorted(figure_root.glob("*.svg"))
+    }
+    html_paths = [*sorted((WEB / "nemoclaw").glob("*.html"))]
+    for locale in sorted((TASK1 / "i18n").glob("*/web/nemoclaw")):
+        html_paths.extend(sorted(locale.glob("*.html")))
+    html = {
+        str(path.relative_to(TASK1)): SCRIPT.sub("", path.read_text(errors="ignore"))
+        for path in html_paths
+    }
+    modes = svg_modes()
+    findings = _provenance_theme_findings(modes, figures, html)
+
+    safe_svg = '<svg class="gfx-dark" role="img" aria-label="safe"><rect fill="var(--gfx-bg)"/></svg>'
+    safe_html = '<div data-svg-src="assets/figures/probe.svg"></div>'
+    mutations = (
+        ("unclassified SVG", {}, {**figures, "figures/unlisted.svg": safe_svg}, html, "no image-provenance"),
+        ("missing shared palette", {"figures/probe.svg": "theme-aware"}, {"figures/probe.svg": '<svg class="other"></svg>'}, {"probe.html": safe_html}, "gfx-dark"),
+        ("operating-system theme", {"figures/probe.svg": "theme-aware"}, {"figures/probe.svg": safe_svg.replace("</svg>", "<style>@media (prefers-color-scheme:dark){.gfx-dark{background:#000}}</style></svg>")}, {"probe.html": safe_html}, "prefers-color-scheme"),
+        ("unmarked paper", {"figures/probe.svg": "fixed-white"}, {"figures/probe.svg": '<svg></svg>'}, {"probe.html": safe_html}, "data-figure-mode"),
+        ("false paper label", {"figures/probe.svg": "theme-aware"}, {"figures/probe.svg": safe_svg}, {"probe.html": safe_html.replace('></div>', ' data-figure-mode="fixed-white"></div>')}, "cannot be relabeled"),
+    )
+    for label, mutated_modes, mutated_figures, mutated_html, expected in mutations:
+        result = _provenance_theme_findings(mutated_modes, mutated_figures, mutated_html)
+        if not any(expected in message for _path, message in result):
+            findings.append(("scripts/validation/figure_audit.py", f"provenance theme detector missed {label}"))
+    return findings
+
+
 def audit_file(path: Path):
     """Run render-size, legibility, and a11y checks on one page. This catches both inline
     SVG and fetched <div data-svg-src=...> course figures before they ship."""
@@ -403,6 +475,7 @@ def run(verbose=True):
         tiny += t; small += s; flex_parent += fp; noaria += n; over += o; imgs += i; blanks += b
         dark += d; style_scope += ss; canvas += c; crowded += cr; embedded_caption += ec
     mobile_zoom = _mobile_zoom_contract()
+    theme_contract = _provenance_theme_contract()
     style_scope += _injected_style_scope_contract()
     if verbose:
         if tiny:
@@ -453,18 +526,23 @@ def run(verbose=True):
             print(f"[mobile figure zoom contract] {len(mobile_zoom)}")
             for rel, message in mobile_zoom:
                 print(f"        {rel}  {message}")
+        if theme_contract:
+            print(f"[figure provenance/theme contract] {len(theme_contract)}")
+            for rel, message in theme_contract:
+                print(f"        {rel}  {message}")
         total = (len(tiny) + len(small) + len(flex_parent) + len(noaria) + len(over) + len(imgs)
                  + len(blanks) + len(dark) + len(style_scope) + len(canvas) + len(crowded) + len(embedded_caption)
-                 + len(mobile_zoom))
+                 + len(mobile_zoom) + len(theme_contract))
         print(f"\nfigure_audit: {total} finding(s) "
               f"(tiny {len(tiny)}, small {len(small)}, flex-parent {len(flex_parent)}, "
               f"overflow {len(over)}, no-aria {len(noaria)}, img-alt {len(imgs)}, blank-link {len(blanks)}, "
               f"dark-mode {len(dark)}, style-scope {len(style_scope)}, canvas {len(canvas)}, crowded {len(crowded)}, "
-              f"embedded-caption {len(embedded_caption)}, mobile-zoom {len(mobile_zoom)})")
+              f"embedded-caption {len(embedded_caption)}, mobile-zoom {len(mobile_zoom)}, "
+              f"theme-contract {len(theme_contract)})")
     return {"tiny": tiny, "small_render": small, "flex_parent": flex_parent, "overflow": over,
             "no_aria": noaria, "img_no_alt": imgs, "blank_link": blanks, "dark_mode": dark,
             "style_scope": style_scope, "canvas": canvas, "crowded": crowded, "embedded_caption": embedded_caption,
-            "mobile_zoom": mobile_zoom}
+            "mobile_zoom": mobile_zoom, "theme_contract": theme_contract}
 
 
 if __name__ == "__main__":

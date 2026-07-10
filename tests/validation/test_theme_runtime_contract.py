@@ -68,6 +68,9 @@ class ThemeRuntimeContractTests(unittest.TestCase):
             "contrastFailures",
             "themeControl",
             "SKILL theme control is missing or ineffective",
+            "figureThemeFailures",
+            "same rendered SVG palette in dark and light mode",
+            "data-figure-mode=\"fixed-white\"",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, source)

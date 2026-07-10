@@ -22,6 +22,10 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
         sys.path.insert(0, str(_p / "scripts")); break
 from _bootstrap import add_script_paths, find_repo_root
 from collections import Counter
+try:
+    from .figure_provenance import fixed_white_figures
+except ImportError:
+    from figure_provenance import fixed_white_figures
 
 HERE = Path(__file__).resolve()
 TASK1 = find_repo_root(HERE)
@@ -261,17 +265,13 @@ def svg_sub_sources():
 
 SVG_ATTR = re.compile(
     r'\b(fill|stroke|stop-color|flood-color|lighting-color)\s*=\s*"(#[0-9a-fA-F]{3,8}|rgba?\([^)]*\))"', re.I)
-PAPER_ONLY_FIGURES = {"fig2_react.svg", "fig2_rewoo.svg"}
+FIXED_WHITE_FIGURES = fixed_white_figures()
 
 
 def scan_paper_palette(name: str, text: str):
     """Reject dark-surface variables inside figures that retain white paper and black source ink."""
     bad = []
-    if name in PAPER_ONLY_FIGURES:
-        for var_name in sorted(set(re.findall(r"var\((--gfx-[A-Za-z0-9-]+)", text))):
-            if not var_name.startswith("--gfx-paper-"):
-                bad.append((var_name, "paper figure uses a dark-surface palette"))
-    elif name == "rag_arch_2021.svg":
+    if name in FIXED_WHITE_FIGURES:
         for var_name in sorted(set(re.findall(r"var\((--gfx-tint-[A-Za-z0-9-]+)", text))):
             bad.append((var_name, "paper cell behind black ink uses a dark-surface tint"))
     return bad
@@ -371,15 +371,13 @@ def run(verbose=True):
         figure_text = f.read_text(errors="ignore")
         for tok, prop in scan_svg_attrs(figure_text) + scan_paper_palette(f.name, figure_text):
             inline.append((rel, tok, prop))
-    routing = NEMO / "02a-routing.html"
-    if routing.exists():
-        routing_text = routing.read_text(errors="ignore")
-        for name in PAPER_ONLY_FIGURES:
-            pattern = (r'data-svg-src="assets/figures/' + re.escape(name)
-                       + r'"[^>]*style="[^"]*background:var\(--gfx-paper-surface,')
-            if not re.search(pattern, routing_text, re.I | re.S):
-                inline.append((str(routing.relative_to(WEB.parent)), name,
-                               "paper figure wrapper lacks --gfx-paper-surface"))
+    for page in page_html():
+        page_text = page.read_text(errors="ignore")
+        for name in FIXED_WHITE_FIGURES:
+            for tag in re.findall(r'<[^>]+(?:data-svg-src|src)="[^"]*' + re.escape(name) + r'"[^>]*>', page_text, re.I):
+                if 'data-figure-mode="fixed-white"' not in tag:
+                    inline.append((str(page.relative_to(WEB.parent)), name,
+                                   "paper figure is not explicitly classified as fixed-white"))
     # Second pass: every var() REFERENCE whose name is never defined anywhere (its lone fallback
     # never flips), scanned across the stylesheets, the chrome, and the pages.
     for f in style_files() + chrome_js() + page_html():
