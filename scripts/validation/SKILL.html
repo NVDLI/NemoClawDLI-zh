@@ -163,8 +163,8 @@
     },
     {
       "path": "figure_audit.py",
-      "role": "figure audit",
-      "desc": "Checks static figure legibility, accessibility, injected-SVG style scoping, and the shared mobile lightbox readability contract."
+      "role": "required figure rendering gate",
+      "desc": "Classifies every attributed SVG from provenance, rejects filename exemptions and course-toggle drift, and checks legibility, accessibility, injected-SVG style scoping, and mobile zoom."
     },
     {
       "path": "security_architecture_audit.py",
@@ -427,7 +427,7 @@
     <a class="skill-card" href="prose_variety.py"><b>prose_variety.py</b><span>prose cadence. Finds rhythm, buzz, grammar, and structural prose issues.</span></a>
     <a class="skill-card" href="code_hygiene.py"><b>code_hygiene.py</b><span>code bloat and style. Scans code comments, walls, duplication, size, constants, and prose tells in code.</span></a>
     <a class="skill-card" href="color_theme.py"><b>color_theme.py</b><span>Required theme gate. Includes Studio and every canonical page by default; flags inline literals, undefined variables, and render-time color bakes.</span></a>
-    <a class="skill-card" href="figure_audit.py"><b>figure_audit.py</b><span>figure audit. Checks static figure legibility, accessibility, injected-SVG style scoping, and the shared mobile lightbox readability contract.</span></a>
+    <a class="skill-card" href="figure_audit.py"><b>figure_audit.py</b><span>Required figure rendering gate. Classifies every attributed SVG from provenance, rejects filename exemptions and course-toggle drift, and checks legibility, accessibility, injected-SVG style scoping, and mobile zoom.</span></a>
     <a class="skill-card" href="security_architecture_audit.py"><b>security_architecture_audit.py</b><span>Required security architecture gate. Derives CI jobs, runtime hosts, remote suffixes, and worker inventory from source; also checks public metadata boundaries, local-only classification, evidence, geometry, and SVG freshness.</span></a>
     <a class="skill-card" href="threat_control_audit.py"><b>threat_control_audit.py</b><span>Required threat-control gate. Validates Target of Evaluation ownership, aggregate anticipated mitigations, evidence paths, external boundaries, and security overclaims.</span></a>
     <a class="skill-card" href="repository_sync_audit.py"><b>repository_sync_audit.py</b><span>Read-only public-to-internal source drift classifier. External changes stop for a reviewed integration MR.</span></a>

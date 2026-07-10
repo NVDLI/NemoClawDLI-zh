@@ -1113,7 +1113,7 @@
     {
       "title": "RAG 101: Demystifying Retrieval-Augmented Generation Pipelines",
       "source_url": "https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/",
-      "relationship": "inspiration",
+      "relationship": "recreation",
       "terms": "(c) NVIDIA; no reuse license stated on source page",
       "repository_items": [
         "web/nemoclaw/assets/figures/02b-rag-1.svg"
@@ -1126,7 +1126,23 @@
       ],
       "author_status": "published-byline",
       "author_evidence_url": "https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/",
-      "verified_on": "2026-07-08"
+      "verified_on": "2026-07-10"
+    },
+    {
+      "title": "Tips for Building a RAG Pipeline with NVIDIA AI LangChain AI Endpoints",
+      "source_url": "https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-with-nvidia-ai-langchain-ai-endpoints/",
+      "relationship": "recreation",
+      "terms": "(c) NVIDIA; no reuse license stated on source page",
+      "repository_items": [
+        "web/nemoclaw/assets/figures/02b-rag-1.svg"
+      ],
+      "authors": [
+        "Amit Bleiweiss"
+      ],
+      "author_profiles": [],
+      "author_status": "published-byline",
+      "author_evidence_url": "https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-with-nvidia-ai-langchain-ai-endpoints/",
+      "verified_on": "2026-07-10"
     },
     {
       "title": "Agentic AI Learning Path",

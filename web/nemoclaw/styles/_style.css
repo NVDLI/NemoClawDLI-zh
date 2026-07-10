@@ -1802,6 +1802,7 @@ body.python-mode .py-mode-jlab-link { display: inline-block; }
   --gfx-card:#141414; --gfx-e1:#1a1a1a; --gfx-dim:#555555; --gfx-muted:#777777; --gfx-shadow:#000000;
   --gfx-nvgreen:#76b900; --gfx-cyan:#0ea5e9; --gfx-blue2:#38bdf8; --gfx-blue3:#7eb8ff;
   --gfx-green2:#34d399; --gfx-green-bg:#064e3b; --gfx-amber2:#fbbf24; --gfx-amber-bg:#451a03;
+  --gfx-raster-filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(1.08);
 }
 
 /* Diagram (mountDiagram / viz.diagram) arrow + kind hues. diagramSVG emits var(--dg-*) instead of
@@ -1860,6 +1861,7 @@ body.python-mode .py-mode-jlab-link { display: inline-block; }
   --gfx-card:#ffffff; --gfx-e1:#eef1f4; --gfx-dim:#57606a; --gfx-muted:#57606a; --gfx-shadow:#6e7781;
   --gfx-nvgreen:#4a7a00; --gfx-cyan:#0969da; --gfx-blue2:#0969da; --gfx-blue3:#0969da;
   --gfx-green2:#4a7a00; --gfx-green-bg:#e6f3d4; --gfx-amber2:#9a6700; --gfx-amber-bg:#f7e9cf;
+  --gfx-raster-filter:none;
 }
 :root[data-theme="light"] svg.gfx-dark {
   background: var(--gfx-bg) !important;

@@ -416,11 +416,25 @@ def self_test() -> list[str]:
         return ["baseline is not clean: " + finding for finding in baseline]
     data = json.loads(INVENTORY.read_text(encoding="utf-8"))
     failures = []
+
+    def remove_nvidia_material_coverage(value: dict) -> None:
+        """Remove one repository item from every source that corroborates it."""
+        documents = value.get("nvidia_documents", [])
+        target = next(
+            (path for item in documents for path in item.get("repository_items", [])),
+            None,
+        )
+        if not target:
+            return
+        for item in documents:
+            item["repository_items"] = [
+                path for path in item.get("repository_items", []) if path != target
+            ]
     mutations = [
         ("paper license", lambda value: value["arxiv_papers"][0].update(license="Apache-2.0"), "license label"),
         ("paper coverage", lambda value: value["arxiv_papers"].pop(), "missing arXiv source record"),
         ("NVIDIA author state", lambda value: value["nvidia_documents"][0].update(author_status="unknown"), "author status"),
-        ("NVIDIA material coverage", lambda value: value["nvidia_documents"][0].update(repository_items=[]), "lacks author/source record"),
+        ("NVIDIA material coverage", remove_nvidia_material_coverage, "lacks author/source record"),
     ]
     for label, mutate, expected in mutations:
         candidate = json.loads(json.dumps(data))

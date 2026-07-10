@@ -276,8 +276,8 @@ SUITE_META = [
     ("color_theme", "Color theme", "required",
      "Every DOM color must be theme-dynamic: no hard-coded literal in an inline style, no undefined CSS variable. An inline literal outranks the light-theme rules and stays dark in light mode. Each entry names the literal and the page; replace it with a theme var.",
      "scripts/validation/color_theme.py", "run"),
-    ("figure_audit", "Figure audit", "recommended",
-     "SVG text must be legible at its render size, no label may overflow its figure, and figures/images must carry aria-label / alt / rel=noopener. A figure too small to read or clipped at the frame is a silent defect no prose check sees.",
+    ("figure_audit", "Figure audit", "required",
+     "Every attributed SVG must have a provenance-derived rendering mode. Theme-aware figures must follow the course toggle; fixed-white conversions must remain on an explicit paper surface. The same audit checks legibility, bounds, accessibility, and mobile zoom without filename exemptions.",
      "scripts/validation/figure_audit.py", "run"),
     ("security_architecture", "Security architecture graph", "required",
      "The release threat-model graph must match source-derived CI and browser topology, explicitly classify local-only Compose services and volumes, source every production node and flow from repository evidence, label trust-boundary authentication and sensitive data, exclude internal workflow metadata, avoid node and connector collisions, and keep its generated SVG projection current.",
@@ -953,6 +953,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                     "enough explanatory context so consecutive graphics do not read as a wall."),
         "mobile_zoom": (REQUIRED, "Restore the shared mobile figure contract: visible zoom and pan cues, a 720px "
                         "readable enlarged width, horizontal panning, and reachable close/Escape behavior."),
+        "theme_contract": (REQUIRED, "Restore the provenance-derived rendering contract. Every attributed SVG "
+                           "must be checked as theme-aware or fixed-white; do not add a filename exemption."),
     }
 
     def _fig(k, t):
@@ -1465,7 +1467,7 @@ def _render_md(summary: dict) -> str:
          f"| prose variety (narrative pages flagged) | {summary.get('prose_variety',{}).get('flagged','?')} / {summary.get('prose_variety',{}).get('pages','?')} | advisory |",
          f"| · buzz cadence (antithesis/numeric) | {len(summary.get('prose_variety',{}).get('antithesis',[]))} | advisory |",
          f"| color theme (non-theme-dynamic colors) | {summary.get('color_theme',{}).get('inline',0) + summary.get('color_theme',{}).get('undefined_var',0) + summary.get('color_theme',{}).get('bake',0)} | blocking |",
-         f"| figure audit (legibility / formatting) | {sum(summary.get('figure_audit',{}).values())} | advisory |",
+         f"| figure audit (rendering contract / legibility) | {sum(summary.get('figure_audit',{}).values())} | theme-contract and mobile findings block |",
          f"| cell audit (runnable-cell contract) | {sum(summary.get('cell_audit',{}).values())} | advisory |",
          f"| learner interaction flow | {summary.get('learner_flow',{}).get('findings',0)} | blocking |",
          f"| contribution safety | {summary.get('contribution_safety',{}).get('findings',0)} | blocking |",

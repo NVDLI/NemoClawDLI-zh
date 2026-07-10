@@ -7,6 +7,7 @@ are defined in [`docs/release_artifacts.md`](docs/release_artifacts.md).
 
 - Initial public release candidate.
 - No public version has been published.
+- Thanks to Vadim Kudlay for correcting and reviewing the multilingual image attributions.
 - Thanks to Vadim Kudlay for reviewing the Portuguese and Spanish course updates.
 - Thanks to Juan Jose Durillo Barrionuevo for the expert Spanish course translation and developer-language review.
 
