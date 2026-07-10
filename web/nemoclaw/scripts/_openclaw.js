@@ -31,6 +31,17 @@ export function openclawGatewayWsUrl(rawUrl, accessSession = "", proxyBase = nul
   const config = proxyBase === null
     ? getOpenClawProxyConfig()
     : { base: normalizeOpenClawProxyBase(proxyBase), enabled: proxyEnabled !== false };
+  // Brev establishes its access cookie when the learner opens the launchable.
+  // WebSocket handshakes are not subject to fetch CORS, so connect directly and
+  // let that signed-in browser session authenticate the socket. Keep the relay
+  // configuration for HTTP bootstrap reads such as /api/agent; putting the
+  // access session in a WebSocket query is unnecessary and less resilient.
+  let provider = "auto";
+  try { provider = accessProviderForOpenClawUrl(rawUrl, accessProvider); }
+  catch (_) { /* openclawWebSocketUrl below returns the authoritative error */ }
+  if (provider === "cloudflare" || provider === "pomerium") {
+    return openclawWebSocketUrl(rawUrl, "/cli/gateway", "", { enabled: false, base: "" }, accessProvider);
+  }
   return openclawWebSocketUrl(rawUrl, "/cli/gateway", accessSession, config, accessProvider);
 }
 
@@ -44,6 +55,65 @@ export function gatewayTokenFromAgentMetadata(payload) {
   } catch (_) {
     return null;
   }
+}
+
+let _verifiedGatewayToken = { rawUrl: "", token: "", verifiedAt: 0, metadataMatches: null };
+
+// The launchable access session and the OpenClaw gateway token are separate
+// credentials. The probe used to fill the token only when a learner explicitly
+// selected GET /api/agent, so a gateway cell could race ahead with an empty or
+// stale saved value. Bootstrap from that endpoint before the first gateway
+// connection and keep the result only in the existing tab-scoped store.
+export async function refreshOpenClawGatewayToken({ signal = null, maxAgeMs = 30000 } = {}) {
+  const connection = getOpenClawConnection();
+  const rawUrl = String(connection.rawUrl || "").replace(/\/+$/, "");
+  if (!rawUrl) throw new Error("Set the launchable URL in the Module 3a probe first.");
+
+  const now = Date.now();
+  if (_verifiedGatewayToken.rawUrl === rawUrl && _verifiedGatewayToken.token &&
+      now - _verifiedGatewayToken.verifiedAt < Math.max(0, Number(maxAgeMs) || 0)) {
+    return { ..._verifiedGatewayToken, source: "verified-cache", changed: connection.token !== _verifiedGatewayToken.token };
+  }
+
+  let metadataToken = "";
+  try {
+    if (connection.resolvedAccessProvider === "pomerium") {
+      const probe = await openclawLoopbackProbe("/api/agent", { baseUrl: rawUrl, signal });
+      metadataToken = gatewayTokenFromAgentMetadata(probe.json) || "";
+    } else {
+      const route = openclawHttpUrl(rawUrl, "/api/agent");
+      const headers = { Accept: "application/json" };
+      if (route.viaProxy && connection.accessSession) {
+        headers["CF-Access-Jwt-Assertion"] = connection.accessSession;
+      }
+      const response = await fetch(route.url, {
+        headers,
+        credentials: route.viaProxy ? "same-origin" : "include",
+        signal,
+      });
+      if (response.ok) metadataToken = gatewayTokenFromAgentMetadata(await response.json()) || "";
+    }
+  } catch (_) { /* fall back to the tab's last discovered token below */ }
+
+  const token = metadataToken || connection.token;
+  if (!token) throw new Error("GET /api/agent did not provide a gateway token. Reopen the launchable, then try again.");
+  setOpenClawConnection({
+    rawUrl,
+    token,
+    accessProvider: connection.accessProvider,
+    accessSession: connection.accessSession,
+  });
+  _verifiedGatewayToken = {
+    rawUrl,
+    token,
+    verifiedAt: now,
+    metadataMatches: metadataToken ? true : null,
+  };
+  return {
+    ..._verifiedGatewayToken,
+    source: metadataToken ? "metadata" : "saved",
+    changed: connection.token !== token,
+  };
 }
 
 // Local launches connect directly to /cli/gateway; same-origin Brev course pages do too.
@@ -212,17 +282,20 @@ export function mountClawGateway(targetSel, opts = {}) {
 
   // ── Connect ──────────────────────────────────────────────────────────────────
   connectBtn.addEventListener("click", async () => {
-    const { rawUrl, token, accessProvider, accessSession } = _creds();
-    if (!rawUrl || !token) {
-      _showOut(`<span class="gw-err-txt">No URL or token yet. Fill in the OpenClaw probe above and click an action first.</span>`);
+    let { rawUrl, token, accessProvider, accessSession } = _creds();
+    if (!rawUrl) {
+      _showOut(`<span class="gw-err-txt">No launchable URL yet. Fill in the OpenClaw probe above first.</span>`);
       return;
     }
-    const gateway = openclawGatewayWsUrl(rawUrl, accessSession, null, null, accessProvider);
-    const wsUrl = gateway.url;
-    _setStatus("connecting", gateway.viaProxy ? "via hosted relay" : "direct");
     connectBtn.disabled = true;
     outEl.hidden = true;
     try {
+      const refreshed = await refreshOpenClawGatewayToken();
+      ({ rawUrl, accessProvider, accessSession } = _creds());
+      token = refreshed.token;
+      const gateway = openclawGatewayWsUrl(rawUrl, accessSession, null, null, accessProvider);
+      const wsUrl = gateway.url;
+      _setStatus("connecting", gateway.viaProxy ? "via hosted relay" : "direct");
       const { scopes, version } = await _connectWs(wsUrl, token);
       _setStatus("connected", `v${version} · ${scopes.length} scopes`);
       _setActions(true);
@@ -867,9 +940,10 @@ export async function openclawChat(message, { session = "main", onToken, onTool,
        yourself.) The gateway streams no reasoning channel, so none is shown. Reuse the same
        <code>session</code> for multi-turn. The gateway companion to chat()/createReactAgent.
   */
+  const refreshed = await refreshOpenClawGatewayToken({ signal });
   const connection = getOpenClawConnection();
   const rawUrl = connection.rawUrl.replace(/\/+$/, "");
-  const token = connection.token;
+  const token = refreshed.token;
   const accessProvider = connection.accessProvider;
   const accessSession = connection.accessSession;
   if (!rawUrl || !token) throw new Error("Connect first on the Kickstart page (3a): set your launchable URL + token in the probe.");
@@ -982,9 +1056,10 @@ export async function openclawChat(message, { session = "main", onToken, onTool,
 }
 
 export const GW_CONNECT = `
+const refreshedGateway = await helpers.refreshOpenClawGatewayToken({ signal: helpers.signal });
 const connection = helpers.getOpenClawConnection();
 const rawUrl = connection.rawUrl;
-const token = connection.token;
+const token = refreshedGateway.token;
 const accessProvider = connection.accessProvider;
 const accessSession = connection.accessSession;
 if (!rawUrl || !token) {
@@ -1025,10 +1100,27 @@ state.call = (method, params) => new Promise((resolve, reject) => {
   _ws.send(JSON.stringify({ type: "req", id, method, params: params || {} }));
 });
 await new Promise((resolve, reject) => {
+  let challenged = false;
+  let challengeTimer = null;
   const base = _ws.onmessage;
+  const priorClose = _ws.onclose;
+  _ws.onclose = event => {
+    priorClose?.(event);
+    if (!challenged) {
+      clearTimeout(challengeTimer);
+      reject(new Error("gateway socket closed before the challenge" + (event?.code ? " (code " + event.code + ")" : "")));
+    }
+  };
+  _ws.onerror = () => {
+    if (!challenged) {
+      clearTimeout(challengeTimer);
+      reject(new Error("gateway WebSocket failed before the challenge; verify the launchable access session and transport"));
+    }
+  };
   _ws.onmessage = ev => {
     let d; try { d = JSON.parse(ev.data); } catch (_) { return; }
     if (d.event !== "connect.challenge") { base(ev); return; }
+    challenged = true;
     _ws.onmessage = base;
     state.call("connect", {
       minProtocol: 4, maxProtocol: 4,
@@ -1037,11 +1129,12 @@ await new Promise((resolve, reject) => {
       scopes: ["operator.read", "operator.write", "operator.admin"],
       auth: { token },
     }).then(pl => {
+      clearTimeout(challengeTimer);
       helpers.log("● connected  v" + (pl?.server?.version || "?") + "  scopes: " + (pl?.auth?.scopes || []).join(", "));
       resolve(pl);
-    }).catch(reject);
+    }).catch(error => { clearTimeout(challengeTimer); reject(error); });
   };
-  setTimeout(() => reject(new Error("no challenge arrived within 15s. For a Brev URL, open the launchable, select its access provider, and paste a fresh matching browser session in Module 3a.")), 15000);
+  challengeTimer = setTimeout(() => reject(new Error("no challenge arrived within 30s. For a Brev URL, open the launchable, select its access provider, and refresh its session in Module 3a.")), 30000);
 });
 `;
 

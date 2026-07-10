@@ -29,6 +29,7 @@ globalThis.location = new URL('https://course.example.test/nemoclaw/03a-kickstar
 const connectionSource = fs.readFileSync('web/nemoclaw/scripts/_connection.js', 'utf8');
 const connection = await import('data:text/javascript;base64,' + Buffer.from(connectionSource).toString('base64'));
 const opened = [];
+let tokenRefreshes = 0;
 class FakeWebSocket {
   constructor(url) {
     this.url = url;
@@ -52,9 +53,10 @@ globalThis.WebSocket = FakeWebSocket;
 const helpers = {
   log: msg => logs.push(String(msg)),
   fetch: async () => { throw new Error('GW_CONNECT must not probe a retired metadata route'); },
+  refreshOpenClawGatewayToken: async () => { tokenRefreshes++; return { token: 'test-token', source: 'metadata' }; },
   getOpenClawConnection: () => connection.getOpenClawConnection(),
   openclawGatewayWsUrl: (raw, session, proxyBase, proxyEnabled, provider) =>
-    connection.openclawWebSocketUrl(raw, '/cli/gateway', session, undefined, provider),
+    connection.openclawWebSocketUrl(raw, '/cli/gateway', '', { enabled: false, base: '' }, provider),
   signal: null,
 };
 const state = {};
@@ -62,7 +64,10 @@ const fn = new Function('state', 'helpers', 'h', 'console', '"use strict"; retur
 await fn(state, helpers, helpers, console);
 
 if (opened.length !== 1) throw new Error(`expected one WebSocket, saw ${opened.length}`);
-const expected = 'wss://openclaw-cors-proxy.experiments.courses.nvidia.com/https/nemoclaw-v6paslvp5.brevlab.com/cli/gateway?cf_access_jwt=test.jwt';
-if (opened[0] !== expected) throw new Error(`expected hosted relay ${expected}, got ${opened[0]}`);
-if (!logs.some(x => x.includes('via hosted relay'))) throw new Error('missing hosted-relay transport log');
+if (tokenRefreshes !== 1) throw new Error(`expected one gateway-token bootstrap, saw ${tokenRefreshes}`);
+const expected = 'wss://nemoclaw-v6paslvp5.brevlab.com/cli/gateway';
+if (opened[0] !== expected) throw new Error(`expected direct signed-in launchable ${expected}, got ${opened[0]}`);
+if (opened[0].includes('cf_access_jwt') || logs.some(x => x.includes('via hosted relay'))) {
+  throw new Error('gateway connection exposed the access session through the hosted relay');
+}
 console.log('gw connect transport audit: ok');

@@ -97,6 +97,10 @@ defines `test`, `deploy`, `verify`, and `review` stages. The manual
 GitLab Pages serves the private pre-release review surface under repository access
 controls. `pages_smoke` checks the live result and `theme_runtime` checks every generated
 HTML file at desktop and narrow widths in dark and light mode before `human_review` can be played.
+The protected review job shares the `pages-site` resource lock with publication and rechecks the
+live branch manifest plus `gate.json` commit before recording approval. If another branch replaced
+the classic-Pages artifact, retry only this pipeline's `pages` job, review the restored URL, and
+retry `human_review`; the static gate, SCA, and artifact theme render do not need to run again.
 
 #### Branch-preview behavior
 

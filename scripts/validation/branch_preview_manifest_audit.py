@@ -194,6 +194,16 @@ def audit(artifact_root: Path, manifest: Path, expected: list[str] | None = None
 
 def self_test() -> list[str]:
     misses: list[str] = []
+    valid_gate = {"git_sha": "01234567", "ok": True}
+    if audit_gate_sha(valid_gate, "0123456789abcdef", "fixture"):
+        misses.append("valid short gate SHA rejected")
+    for label, mutated, expected in (
+        ("wrong gate SHA", {"git_sha": "89abcdef", "ok": True}, "gate report is for"),
+        ("failed gate", {"git_sha": "01234567", "ok": False}, "not passing"),
+        ("missing gate SHA", {"ok": True}, "no usable git_sha"),
+    ):
+        if not any(expected in finding for finding in audit_gate_sha(mutated, "0123456789abcdef", "fixture")):
+            misses.append(f"detector missed {label}")
     with tempfile.TemporaryDirectory() as raw:
         root = Path(raw)
         (root / "nemoclaw").mkdir()
@@ -324,7 +334,23 @@ def audit_live_course_evidence(course_url: str, label: str) -> list[str]:
     return findings
 
 
-def audit_live_once(base_url: str, expected: list[str]) -> list[str]:
+def audit_gate_sha(payload: object, expected_git_sha: str, label: str) -> list[str]:
+    if not isinstance(payload, dict):
+        return [f"{label} gate report must be a JSON object"]
+    actual = str(payload.get("git_sha") or "").strip().lower()
+    expected = expected_git_sha.strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{8,40}", expected):
+        return [f"invalid expected Git SHA: {expected_git_sha!r}"]
+    if not re.fullmatch(r"[0-9a-f]{8,40}", actual):
+        return [f"{label} gate report has no usable git_sha: {actual!r}"]
+    if not (actual == expected or actual.startswith(expected) or expected.startswith(actual)):
+        return [f"{label} gate report is for {actual}, expected {expected}"]
+    if payload.get("ok") is not True:
+        return [f"{label} gate report is not passing"]
+    return []
+
+
+def audit_live_once(base_url: str, expected: list[str], expected_git_sha: str = "") -> list[str]:
     base = base_url.rstrip("/") + "/"
     findings: list[str] = []
     expected_map = dict(parse_ref(spec) for spec in expected)
@@ -378,6 +404,20 @@ def audit_live_once(base_url: str, expected: list[str]) -> list[str]:
         }
         if branch_previews != expected_map:
             findings.append(f"branch foyer preview set mismatch for {name}: {branch_previews}")
+        if expected_git_sha:
+            try:
+                gate = json.loads(fetch(urllib.parse.urljoin(branch_base, "gate.json")))
+            except (urllib.error.URLError, TimeoutError, RuntimeError, json.JSONDecodeError) as exc:
+                findings.append(f"live gate report unavailable for {name}: {exc}")
+            else:
+                findings.extend(audit_gate_sha(gate, expected_git_sha, name))
+    if expected_git_sha and not expected_map:
+        try:
+            gate = json.loads(fetch(urllib.parse.urljoin(base, "gate.json")))
+        except (urllib.error.URLError, TimeoutError, RuntimeError, json.JSONDecodeError) as exc:
+            findings.append(f"live production gate report unavailable: {exc}")
+        else:
+            findings.extend(audit_gate_sha(gate, expected_git_sha, "production"))
     return findings
 
 
@@ -388,13 +428,14 @@ def main() -> int:
     ap.add_argument("--expect-preview", action="append", default=[])
     ap.add_argument("--self-test", action="store_true")
     ap.add_argument("--base-url", help="live Pages project root")
+    ap.add_argument("--expect-git-sha", default="", help="exact commit represented by the live gate report")
     ap.add_argument("--attempts", type=int, default=12)
     ap.add_argument("--delay", type=float, default=5.0)
     ns = ap.parse_args()
     findings = self_test() if ns.self_test else []
     if ns.base_url:
         for attempt in range(1, max(1, ns.attempts) + 1):
-            findings = audit_live_once(ns.base_url, ns.expect_preview)
+            findings = audit_live_once(ns.base_url, ns.expect_preview, ns.expect_git_sha)
             if not findings:
                 break
             if attempt < ns.attempts:
