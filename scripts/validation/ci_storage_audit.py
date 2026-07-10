@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Guard the GitLab Pages storage contract.
 
 This GitLab instance still uses classic Pages: only the job literally named
@@ -27,7 +30,7 @@ def _job_block(text: str, job: str) -> str:
 
 def main() -> int:
     root = _root()
-    ci = root / ".gitlab-ci.yml"
+    ci = root / ".gitlab" / "ci" / "core.yml"
     text = ci.read_text(encoding="utf-8")
     gate = (root / "scripts/validation/release_gate.py").read_text(encoding="utf-8")
     findings: list[str] = []
@@ -44,14 +47,19 @@ def main() -> int:
         (pages, r"build_production_root_from_ref\(\)", "preview path must rebuild production root from a protected ref"),
         (pages, r"artifacts:\n(?:[ ]{2,}.*\n)*?[ ]{4}expire_in:\s*3 days", "pages artifacts must expire"),
         (pages, r"environment:\n(?:[ ]{2,}.*\n)*?[ ]{4}name:\s*[\"']?\$PAGES_ENVIRONMENT_NAME", "pages environment must be rule-scoped"),
+        (pages, r"environment:\n(?:[ ]{2,}.*\n)*?[ ]{4}url:\s*[\"']?\$PAGES_DEPLOYED_URL", "pages environment must use the canonical deployed URL"),
         (pages, r"environment:\n(?:[ ]{2,}.*\n)*?[ ]{4}auto_stop_in:\s*[\"']?\$PAGES_AUTO_STOP_IN", "pages environment must use rule-scoped auto_stop_in"),
+        (pages, r'pages_environment_url="\$\{PAGES_ENVIRONMENT_URL/http:/https:\}"', "pages environment must normalize the GitLab-provided HTTP URL to HTTPS"),
+        (pages, r"dotenv:\s*pages-environment\.env", "pages environment must publish its canonical URL through dotenv"),
         (pages, r"PAGES_ENVIRONMENT_NAME:\s*[\"']?review/\$CI_COMMIT_REF_SLUG", "branch previews must use review environments"),
         (pages, r"PAGES_ENVIRONMENT_URL:\s*[\"']?\$CI_PAGES_URL/\$CI_COMMIT_REF_SLUG/web/nemoclaw/", "branch previews must keep their review URL"),
         (pages, r"PAGES_AUTO_STOP_IN:\s*[\"']?3 days", "branch previews must auto-stop"),
         (pages, r"PAGES_ENVIRONMENT_NAME:\s*[\"']?production", "production must use production environment"),
         (pages, r"PAGES_AUTO_STOP_IN:\s*[\"']?never", "production environment must not auto-stop"),
         (pages, r'preview_ref="\$\{CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-\$CI_COMMIT_REF_NAME\}"', "preview deploy must resolve branch and MR source refs"),
-        (pages, r"remote_sha=.*refs/remotes/origin/\$preview_ref", "preview deploy must reject stale pipeline commits"),
+        (pages, r'CI_MERGE_REQUEST_SOURCE_PROJECT_URL', "fork previews must fetch from the MR source project"),
+        (pages, r'preview_remote_ref=.*refresh_branch_ref', "preview deploy must resolve the refreshed source-project ref"),
+        (pages, r'remote_sha=.*\$preview_remote_ref', "preview deploy must reject stale pipeline commits"),
         (pages, r"branch_preview_manifest_audit\.py --artifact-root public --manifest public/branches\.json", "pages job must validate root manifest paths"),
         (pages, r"branch_preview_manifest_audit\.py --artifact-root public --manifest \"public/\$CI_COMMIT_REF_SLUG/branches\.json\"", "pages job must validate branch foyer manifest paths"),
         (pages, r"--published-ref \"\$preview_ref=\$CI_COMMIT_REF_SLUG\"", "root manifest must list only the preview published in this artifact"),

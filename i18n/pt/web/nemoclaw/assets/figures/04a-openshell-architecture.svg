@@ -1,7 +1,7 @@
 <svg data-locale="pt-BR" class="os-architecture" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="710" height="410" viewBox="35 108 710 410" role="img" aria-label="Arquitetura do OpenShell: comandos entram pelo gateway e supervisor do sandbox; validação e aplicação de políticas protegem o harness, a rede, a privacidade, o roteamento de modelos e ferramentas.">
   <style>
-    svg{--os-surface:#ffffff;--os-panel:#ffffff;--os-text:#1f2328;--os-line:#68717d;--os-raster-filter:none;background:var(--os-surface)}
-    @media (prefers-color-scheme: dark){svg{--os-surface:#000000;--os-panel:#000000;--os-text:#f2f4f8;--os-line:#a3aab7;--os-raster-filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(1.08)}}
+    .os-architecture{--os-surface:#ffffff;--os-panel:#ffffff;--os-text:#1f2328;--os-line:#68717d;--os-raster-filter:none;background:var(--os-surface)}
+    @media (prefers-color-scheme: dark){.os-architecture{--os-surface:#000000;--os-panel:#000000;--os-text:#f2f4f8;--os-line:#a3aab7;--os-raster-filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(1.08)}}
     .os-panel{fill:var(--os-panel)}.os-text{fill:var(--os-text)}.os-line-fill{fill:var(--os-line)}.os-line-stroke{stroke:var(--os-line)}.os-raster{filter:var(--os-raster-filter)}
   </style>
   <defs>

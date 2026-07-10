@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Write a build-time language manifest for the Pages foyer."""
 from __future__ import annotations
 
@@ -12,7 +15,7 @@ LABELS = {
     "pt": "Portuguese",
     "es": "Spanish",
 }
-SKIP_DIRS = {"cors-proxy", "docs", "scripts", "workspace", "validated-source", "web", "nemoclaw"}
+SKIP_DIRS = {"docs", "scripts", "workspace", "validated-source", "web", "nemoclaw"}
 
 
 def clean_prefix(prefix: str) -> str:

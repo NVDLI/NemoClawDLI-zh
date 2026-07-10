@@ -8,7 +8,7 @@
 <style>
   :root[data-theme="light"] {
     --bg:#ffffff; --e1:#f6f8fa; --e2:#eef1f4; --e3:#e5e8ec; --bd:#d0d7de;
-    --tx:#1a1f24; --td:#4b5563; --tf:#6b7280; --g:#4a7a00; --gd:#3f6900; --gs:#4a7a00;
+    --tx:#1a1f24; --td:#4b5563; --tf:#4b5563; --g:#3f6900; --gd:#2f5500; --gs:#3f6900;
     color-scheme: light;
   }
   :root[data-theme="dark"] { color-scheme: dark; }
@@ -20,6 +20,7 @@
   .theme-toggle { display:inline-flex; gap:4px; padding:4px; border:1px solid var(--bd); border-radius:8px; background:var(--e1); }
   .theme-toggle button { border:0; border-radius:6px; padding:7px 10px; cursor:pointer; font:700 .76rem var(--mono); color:var(--td); background:transparent; }
   .theme-toggle button[aria-pressed="true"] { background:var(--g); color:#0a0a0a; }
+  :root[data-theme="light"] .theme-toggle button[aria-pressed="true"] { color:#fff; }
   .note { border:1px solid var(--bd); border-radius:8px; padding:10px 12px; background:var(--e1); color:var(--td); }
   .pv-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:14px; margin:1em 0; }
   .pv-card { border:1px solid var(--bd); border-radius:8px; padding:11px 12px; background:var(--e1); font-size:.8rem; }
@@ -74,12 +75,12 @@
   "figures": [
     {
       "file": "favicon.ico",
-      "depicts": "course favicon",
-      "source": "original course asset",
-      "source_url": "",
-      "license": "Apache-2.0",
-      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
-      "connection": "original",
+      "depicts": "NVIDIA eyemark favicon",
+      "source": "NVIDIA corporate favicon",
+      "source_url": "https://www.nvidia.com/favicon.ico",
+      "license": "NVIDIA Logo and Brand Guidelines; trademark rights reserved",
+      "license_url": "https://www.nvidia.com/en-us/about-nvidia/legal-info/logo-brand-usage/",
+      "connection": "provided course asset",
       "used_by": "index.html"
     },
     {
@@ -127,8 +128,9 @@
       "depicts": "general loop becomes the ReAct loop",
       "source": "original course diagram; ReAct (Yao et al. 2022)",
       "source_url": "https://arxiv.org/abs/2210.03629",
-      "license": "Apache-2.0",
-      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "artifact_license": "Apache-2.0",
       "connection": "original",
       "used_by": "01b-react.html"
     },
@@ -147,8 +149,9 @@
       "depicts": "one turn of the ReAct loop",
       "source": "original course diagram; ReAct (Yao et al. 2022)",
       "source_url": "https://arxiv.org/abs/2210.03629",
-      "license": "Apache-2.0",
-      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "artifact_license": "Apache-2.0",
       "connection": "inspiration",
       "used_by": "01b-react.html"
     },
@@ -157,8 +160,9 @@
       "depicts": "Lost-in-the-Middle U-curve",
       "source": "original course diagram; inspired by Liu et al. 2023",
       "source_url": "https://arxiv.org/abs/2307.03172",
-      "license": "Apache-2.0",
-      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+      "license": "arXiv perpetual, non-exclusive distribution license 1.0",
+      "license_url": "https://arxiv.org/licenses/nonexclusive-distrib/1.0/",
+      "artifact_license": "Apache-2.0",
       "connection": "inspiration",
       "used_by": "01b-react.html"
     },
@@ -197,7 +201,9 @@
       "depicts": "RAG split timeline",
       "source": "NVIDIA developer blogs",
       "source_url": "https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/",
-      "license": "(c) NVIDIA",
+      "source_authors": ["Hayden Wolff"],
+      "source_author_url": "https://developer.nvidia.com/blog/author/hwolff/",
+      "license": "(c) NVIDIA; no reuse license stated on source page",
       "license_url": "https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/",
       "connection": "inspiration",
       "used_by": "02b-rag.html"
@@ -217,8 +223,8 @@
       "depicts": "GraphRAG pipeline",
       "source": "Edge et al. 2024",
       "source_url": "https://arxiv.org/abs/2404.16130",
-      "license": "see arXiv listing",
-      "license_url": "https://arxiv.org/abs/2404.16130",
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
       "connection": "recreation",
       "used_by": "02b-rag.html"
     },
@@ -307,8 +313,8 @@
       "depicts": "ReAct loop",
       "source": "Yao et al. 2022; figure conversion",
       "source_url": "https://arxiv.org/abs/2210.03629",
-      "license": "see arXiv listing",
-      "license_url": "https://arxiv.org/abs/2210.03629",
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
       "connection": "conversion",
       "used_by": "02a-routing.html"
     },
@@ -317,8 +323,8 @@
       "depicts": "ReWOO plan-then-execute",
       "source": "Xu et al. 2023; figure conversion",
       "source_url": "https://arxiv.org/abs/2305.18323",
-      "license": "see arXiv listing",
-      "license_url": "https://arxiv.org/abs/2305.18323",
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
       "connection": "conversion",
       "used_by": "02a-routing.html"
     },
@@ -327,8 +333,8 @@
       "depicts": "original end-to-end RAG architecture",
       "source": "Lewis et al. 2020; figure conversion",
       "source_url": "https://arxiv.org/abs/2005.11401",
-      "license": "see arXiv listing",
-      "license_url": "https://arxiv.org/abs/2005.11401",
+      "license": "arXiv perpetual, non-exclusive distribution license 1.0",
+      "license_url": "https://arxiv.org/licenses/nonexclusive-distrib/1.0/",
       "connection": "conversion",
       "used_by": "02b-rag.html"
     }
@@ -401,6 +407,10 @@
 }</script>
 </head>
 <body>
+<header data-skill-header="1" style="padding:.65rem 1rem;border-bottom:1px solid ButtonBorder;background:Canvas;color:CanvasText">
+  <nav aria-label="Skill navigation" style="display:flex;gap:.6rem;flex-wrap:wrap"><a data-skill-nav="home" href="../../index.html">Home</a> <span aria-hidden="true"> · </span> <a data-skill-nav="up" href="../SKILL.html">Up</a> <span aria-hidden="true"> · </span> <a data-skill-nav="map" href="../../../SKILL.html">Repository map</a></nav>
+</header>
+
 <main>
 <div class="skill-head">
   <div><h1>Image provenance</h1><p>Theme-aware course diagrams follow the toggle. Paper conversions render on white because the lessons display them that way.</p></div>
@@ -409,6 +419,7 @@
     <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
   </div>
 </div><section class="note"><strong>Directory policy.</strong> Image assets live in <code>assets/figures/</code>. Root <code>assets/</code> is reserved for indexes, CLI readme snapshots, and favicon/support files. Asset provenance belongs in this page and in source comments; course pages should describe the concept, not implementation history or review shorthand. Keep meaningful labels inside diagrams, but move captions and provenance out of SVG-rendered text. Any agent that touches an image or its page placement must preview the rendered result through its host harness, inspect light and dark mode when relevant, activate the narrow-width lightbox and verify readable panning/close behavior, show the requester the evidence, and report any exact blocker.</section>
+<p><a href="figures/SKILL.html">Open the figure-directory contract.</a></p>
 <h2>Files</h2><ul class="file-index"><li><a href="cli_readme_claude-code.txt">cli_readme_claude-code.txt</a><span class="kind">txt</span></li>
 <li><a href="cli_readme_codex.txt">cli_readme_codex.txt</a><span class="kind">txt</span></li>
 <li><a href="cli_readme_cursor.txt">cli_readme_cursor.txt</a><span class="kind">txt</span></li>
@@ -445,13 +456,13 @@
 <li><a href="materials_index.json">materials_index.json</a><span class="kind">json</span></li>
 <li><a href="rag_index.json">rag_index.json</a><span class="kind">json</span></li></ul>
 <h2>Image cards</h2><div class="pv-grid"><article class="pv-card" data-asset="favicon.ico" data-course-use="index.html">
-  <div class="pv-prev"><img src="favicon.ico" alt="course favicon"/></div>
+  <div class="pv-prev"><img src="favicon.ico" alt="NVIDIA eyemark favicon"/></div>
   <div class="pv-file"><a href="favicon.ico">favicon.ico</a></div>
-  <div class="pv-dep">course favicon</div>
+  <div class="pv-dep">NVIDIA eyemark favicon</div>
   <div class="pv-use"><span>Used in</span> <a href="../index.html">index.html</a></div>
-  <div class="pv-meta"><span>Connection</span>original</div>
-  <div class="pv-meta"><span>Source</span>original course asset</div>
-  <div class="pv-meta"><span>License</span>Apache-2.0</div>
+  <div class="pv-meta"><span>Connection</span>provided course asset</div>
+  <div class="pv-meta"><span>Source</span><a href="https://www.nvidia.com/favicon.ico" target="_blank" rel="noopener">NVIDIA corporate favicon</a></div>
+  <div class="pv-meta"><span>Terms</span><a href="https://www.nvidia.com/en-us/about-nvidia/legal-info/logo-brand-usage/" target="_blank" rel="noopener">NVIDIA Logo and Brand Guidelines; trademark rights reserved</a></div>
 </article>
 <article class="pv-card" data-asset="figures/01a-agent-environment.svg" data-course-use="01a-loop.html">
   <div class="pv-prev"><div data-svg-src="figures/01a-agent-environment.svg"></div></div>
@@ -496,7 +507,8 @@
   <div class="pv-use"><span>Used in</span> <a href="../01b-react.html">01b-react.html</a></div>
   <div class="pv-meta"><span>Connection</span>original</div>
   <div class="pv-meta"><span>Source</span><a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">original course diagram; ReAct (Yao et al. 2022)</a></div>
-  <div class="pv-meta"><span>License</span>Apache-2.0</div>
+  <div class="pv-meta"><span>Source license</span><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC-BY-4.0</a></div>
+  <div class="pv-meta"><span>Artwork license</span>Apache-2.0</div>
 </article>
 <article class="pv-card" data-asset="figures/01b-react-2.svg" data-course-use="01b-react.html">
   <div class="pv-prev"><div data-svg-src="figures/01b-react-2.svg"></div></div>
@@ -514,7 +526,8 @@
   <div class="pv-use"><span>Used in</span> <a href="../01b-react.html">01b-react.html</a></div>
   <div class="pv-meta"><span>Connection</span>inspiration</div>
   <div class="pv-meta"><span>Source</span><a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">original course diagram; ReAct (Yao et al. 2022)</a></div>
-  <div class="pv-meta"><span>License</span>Apache-2.0</div>
+  <div class="pv-meta"><span>Source license</span><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC-BY-4.0</a></div>
+  <div class="pv-meta"><span>Artwork license</span>Apache-2.0</div>
 </article>
 <article class="pv-card" data-asset="figures/01b-react-4.svg" data-course-use="01b-react.html">
   <div class="pv-prev"><div data-svg-src="figures/01b-react-4.svg"></div></div>
@@ -523,7 +536,8 @@
   <div class="pv-use"><span>Used in</span> <a href="../01b-react.html">01b-react.html</a></div>
   <div class="pv-meta"><span>Connection</span>inspiration</div>
   <div class="pv-meta"><span>Source</span><a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">original course diagram; inspired by Liu et al. 2023</a></div>
-  <div class="pv-meta"><span>License</span>Apache-2.0</div>
+  <div class="pv-meta"><span>Source license</span><a href="https://arxiv.org/licenses/nonexclusive-distrib/1.0/" target="_blank" rel="noopener">arXiv perpetual, non-exclusive distribution license 1.0</a></div>
+  <div class="pv-meta"><span>Artwork license</span>Apache-2.0</div>
 </article>
 <article class="pv-card" data-asset="figures/01c-tools-1.svg" data-course-use="01c-tools.html">
   <div class="pv-prev"><div data-svg-src="figures/01c-tools-1.svg"></div></div>
@@ -568,7 +582,8 @@
   <div class="pv-use"><span>Used in</span> <a href="../02b-rag.html">02b-rag.html</a></div>
   <div class="pv-meta"><span>Connection</span>inspiration</div>
   <div class="pv-meta"><span>Source</span><a href="https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/" target="_blank" rel="noopener">NVIDIA developer blogs</a></div>
-  <div class="pv-meta"><span>License</span>(c) NVIDIA</div>
+  <div class="pv-meta"><span>Author</span><a href="https://developer.nvidia.com/blog/author/hwolff/" target="_blank" rel="noopener">Hayden Wolff</a></div>
+  <div class="pv-meta"><span>Terms</span>(c) NVIDIA; no reuse license stated on source page</div>
 </article>
 <article class="pv-card" data-asset="figures/02b-rag-2.svg" data-course-use="02b-rag.html">
   <div class="pv-prev"><div data-svg-src="figures/02b-rag-2.svg"></div></div>
@@ -586,7 +601,7 @@
   <div class="pv-use"><span>Used in</span> <a href="../02b-rag.html">02b-rag.html</a></div>
   <div class="pv-meta"><span>Connection</span>recreation</div>
   <div class="pv-meta"><span>Source</span><a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">Edge et al. 2024</a></div>
-  <div class="pv-meta"><span>License</span>see arXiv listing</div>
+  <div class="pv-meta"><span>Source license</span><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC-BY-4.0</a></div>
 </article>
 <article class="pv-card" data-asset="figures/02c-deep-1.svg" data-course-use="02c-deep.html">
   <div class="pv-prev"><div data-svg-src="figures/02c-deep-1.svg"></div></div>
@@ -658,7 +673,7 @@
   <div class="pv-use"><span>Used in</span> <a href="../02a-routing.html">02a-routing.html</a></div>
   <div class="pv-meta"><span>Connection</span>conversion</div>
   <div class="pv-meta"><span>Source</span><a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al. 2022; figure conversion</a></div>
-  <div class="pv-meta"><span>License</span>see arXiv listing</div>
+  <div class="pv-meta"><span>Source license</span><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC-BY-4.0</a></div>
 </article>
 <article class="pv-card" data-asset="figures/fig2_rewoo.svg" data-course-use="02a-routing.html">
   <div class="pv-prev paper-preview"><img src="figures/fig2_rewoo.svg" alt="ReWOO plan-then-execute"/></div>
@@ -667,7 +682,7 @@
   <div class="pv-use"><span>Used in</span> <a href="../02a-routing.html">02a-routing.html</a></div>
   <div class="pv-meta"><span>Connection</span>conversion</div>
   <div class="pv-meta"><span>Source</span><a href="https://arxiv.org/abs/2305.18323" target="_blank" rel="noopener">Xu et al. 2023; figure conversion</a></div>
-  <div class="pv-meta"><span>License</span>see arXiv listing</div>
+  <div class="pv-meta"><span>Source license</span><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC-BY-4.0</a></div>
 </article>
 <article class="pv-card" data-asset="figures/rag_arch_2021.svg" data-course-use="02b-rag.html">
   <div class="pv-prev paper-preview"><img src="figures/rag_arch_2021.svg" alt="original end-to-end RAG architecture"/></div>
@@ -676,7 +691,7 @@
   <div class="pv-use"><span>Used in</span> <a href="../02b-rag.html">02b-rag.html</a></div>
   <div class="pv-meta"><span>Connection</span>conversion</div>
   <div class="pv-meta"><span>Source</span><a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al. 2020; figure conversion</a></div>
-  <div class="pv-meta"><span>License</span>see arXiv listing</div>
+  <div class="pv-meta"><span>Source license</span><a href="https://arxiv.org/licenses/nonexclusive-distrib/1.0/" target="_blank" rel="noopener">arXiv perpetual, non-exclusive distribution license 1.0</a></div>
 </article></div>
 
 <script>
@@ -716,5 +731,6 @@
 })();
 </script>
 </main>
+<script src="../../_skill_explorer.js"></script>
 </body>
 </html>

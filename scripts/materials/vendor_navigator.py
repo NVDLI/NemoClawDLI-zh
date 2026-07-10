@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Wrap scripts/edx/edx_navigator_quick.html in a full HTML5 document and publish
 to S3 as a standalone, shareable entry point to the nemoclaw course.
 

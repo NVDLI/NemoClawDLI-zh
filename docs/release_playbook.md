@@ -1,22 +1,57 @@
 # Release playbook
 
-This playbook defines how this course bundle moves from internal GitLab development to an external NVIDIA mirror that can accept student reports and later direct student contributions. The repository stays a course packaging and release workspace: authored content, shared services, deployment, validation, and governance move together.
+This playbook defines how this course bundle moves from internal prepublication staging to the
+reserved [`NVDLI/NemoClawDLI`](https://github.com/NVDLI/NemoClawDLI) repository, which becomes the
+canonical Full-OSS DLI course repository after approved cutover. The repository keeps authored content,
+deployment, validation, public planning, and governance together.
 
-Current state: internal release candidate, with external publication pending OSRB approval. See
-[`RELEASE_STATUS.json`](../RELEASE_STATUS.json). Terms such as `released course` elsewhere in the
-repository identify courses selected for the learner foyer; they do not assert public publication.
+Current state: internal release candidate. The public repository name is reserved but not populated,
+and external publication remains pending OSRB approval. See [`RELEASE_STATUS.json`](../RELEASE_STATUS.json).
+Terms such as `released course` elsewhere in the repository identify courses selected for the
+learner foyer; they do not assert public publication.
 The GitHub Pages and release workflows must run
 `contribution_safety_audit.py --require-publication-approved` before external writes.
 
+## Public GitHub write hold
+
+Public GitHub writes are on hold while `RELEASE_STATUS.json` records
+`publication_state` as `pending-osrb-approval` or `external_mirror` as
+`reserved-not-populated`. During the hold, maintainers and automation must not push branches or
+tags, populate the reserved repository, enable Pages, create releases, or approve a GitHub
+deployment environment. The checked-in GitHub workflows are reviewable release-candidate
+configuration, but they remain inert because `contribution_safety_audit.py
+--require-publication-approved` blocks their external write steps.
+
+The weekly external integration schedule also stays disabled until the public repository is
+populated. Internal GitLab issues, merge requests, CI, and branch previews may continue because
+they do not publish the candidate to GitHub. A host-authorized release owner may lift the hold only
+after the governing record permits publication, `RELEASE_STATUS.json` is updated through review,
+and the live GitHub controls in this playbook have been verified. Removing prose from this section
+does not lift the hold; the machine-readable status and fail-closed workflow guard are authoritative.
+
 ## Scalable recommendation
 
-Use a staged externalization model:
+Use a cutover and integration model:
 
-1. **Internal canonical**: NVIDIA internal GitLab is source of truth. External mirror is off.
-2. **External read mirror**: publish a sanitized read mirror. Students can read, fork, and cite. Issues and pull requests stay closed or point to a discussion channel.
-3. **External intake**: enable Issues and Discussions. Accept evidence, repros, corrections, and source reports. Merge rights stay internal.
-4. **External contribution**: accept pull requests from forks with required checks, owner review, source governance, and release-manager merge.
-5. **Release train**: tag public releases, publish Pages from protected refs only, and keep DLI platform deploys internal and manual.
+1. **Internal release candidate**: NVIDIA internal GitLab is the prepublication source of truth. The
+   reserved GitHub repository contains no release artifact.
+2. **Approved public cutover**: populate GitHub from the reviewed release tree, activate the required
+   host controls, and record GitHub as the canonical course repository.
+3. **Full public operation**: manage planning, Issues, Discussions, pull requests, public CI, tags,
+   and releases on GitHub. NVIDIA retains merge and release authority through protected review.
+4. **Governed internal integration**: audit public `main` from trusted internal CI every week. Public changes
+   enter GitLab only through `integration/github-main` and a normal reviewed MR; automation never
+   writes a protected ref.
+5. **Release train**: tag public releases and publish Pages from protected GitHub refs. Internal DLI
+   deployment remains a separate manual promotion of the same reviewed public commit.
+
+The selected public course repository, `NVDLI/NemoClawDLI`, is an NVIDIA-owned Full-OSS-Project
+intended as **OSS Type I**. Prepublication staging in GitLab does not make the course repository
+partially open source.
+This classification is limited to `NVDLI/NemoClawDLI` and its static course artifacts. It does not
+classify or release the NemoClaw product, launchable, runtime, or service deployments. The
+governing system must still record and approve the course classification, source relationship,
+and cutover. Repository text and green CI cannot make that approval.
 
 Default rule: **issue-first, patch-second**. Students with domain evidence file structured Issues. Students who can carry a fix through validation open PRs using the structured release process.
 
@@ -34,7 +69,7 @@ prevent self-review, and restrict bypass. The operator must verify both halves: 
 with `contribution_safety_audit.py`, then live host settings and Rule Insights before public intake
 or release.
 
-For the canonical GitLab project, run the read-only live audit before merging governance work and
+For the internal GitLab project, run the read-only live audit before merging governance work and
 before each release train:
 
 ```bash
@@ -49,35 +84,84 @@ substitute for the host audit log or a human review of who holds the named roles
 Surface ownership and task-specific gates live in the root `SKILL.html`, `docs/SKILL.html`,
 and nearest directory beacon.
 
-## External mirror settings
+## Maintainer operating plan
 
-When mirroring to `nvidia-external`, use internal GitLab as canonical and push mirror protected release refs outward.
+This playbook is the maintainer entry point. Detailed procedures remain with their executable or
+reviewable owners:
+
+| Responsibility | Canonical owner |
+|---|---|
+| Dependency management and software composition analysis | [`dependency_security.md`](dependency_security.md) |
+| Issue triage and tracker state | [`issue_standards.md`](issue_standards.md) |
+| CI/CD and protected publication | This playbook and [`pages_deploy.md`](pages_deploy.md) |
+| Testing and evidence ownership | [`release-test-plan.md`](release-test-plan.md) |
+| Release packaging, promotion, rollback, and recovery | [`release_artifacts.md`](release_artifacts.md) |
+| Version history | [`../CHANGELOG.md`](../CHANGELOG.md) |
+
+Maintainers review these owners when their related surface changes. Host assignments live in teams,
+rulesets, protected environments, and `CODEOWNERS` after stable public handles exist.
+
+## External repository population
+
+Populate `NVDLI/NemoClawDLI` only from a reviewed release tree. Internal GitLab remains the
+prepublication source until the approved cutover. At cutover, GitHub becomes canonical for project
+activity and GitLab becomes an integration, validation, and internal deployment consumer.
 
 Required constraints:
 
-- Mirror only protected branches and release tags until external contribution intake is ready.
-- Keep divergent refs protected so mirror failures stop instead of overwriting unexpected external state.
+- Populate only reviewed protected branches and release tags at cutover. Enable public planning,
+  Issues, Discussions, and pull requests as part of the same Type I launch instead of maintaining
+  a read-only mirror phase.
+- Keep divergent refs protected so integration failures stop instead of overwriting unexpected state.
 - Use SSH or a scoped release-bot token, not a personal account.
 - Protect `main`, `release/*`, and tags on the external host.
 - Run `source_gate.py` and `local_path_leak_audit.py` before mirror publication.
-- Approve the ancestry strategy before enabling a history-preserving mirror. If internal ancestry is
-  not approved for publication, initialize the external repository from the validated release tree
-  instead of copying internal commit history.
+- Approve the ancestry strategy before copying history. If internal ancestry is not approved for
+  publication, initialize the external repository from the validated release tree instead of
+  copying internal commit history.
 - Do not mirror CI secrets, DLI deploy credentials, model keys, Cloudflare headers, or private launch URLs.
+
+## Dual-repository integration cadence
+
+After external contribution opens, configure one GitLab schedule named `github-main-integration`
+for **Monday at 09:00 UTC** on protected `main`, with `EXTERNAL_INTEGRATION_AUDIT=1`. This is the
+weekly external integration audit. The job fetches public GitHub with a bounded, blob-filtered
+history and runs `repository_sync_audit.py` from the trusted internal checkout. It never executes
+code from the fetched ref.
+
+The schedule detects work; it does not merge it:
+
+1. Equivalent trees need no inbound MR.
+2. An external-ahead state creates a maintainer task to update `integration/github-main` from the
+   reviewed public commits and open an MR into internal `main`.
+3. An internal-ahead state is policy drift after cutover. Do not publish GitLab-only history.
+   Propose the source change through the public GitHub review flow, then import the reviewed commit.
+4. A diverged state blocks integration until a maintainer reconciles from canonical GitHub and
+   records the GitHub commit, GitLab commit, and resulting tree digest in the MR.
+5. The integration MR runs the full internal contribution, secret, dependency, localization,
+   browser, and release gates without privileged deployment credentials.
+6. After cutover, internal GitLab does not publish source back to GitHub. Automation must
+   **never force-push** GitHub or GitLab to hide divergence.
+
+Repository schedules are host settings. The checked-in job and self-test prove the implementation,
+while the release owner must verify the live cadence, protected schedule owner, notifications, and
+last successful run before each release train.
 
 Branch policy:
 
 | Ref | Source | External writes | Purpose |
 |---|---|---|---|
-| `main` | internal protected branch | no direct pushes | accepted source |
+| `main` | protected GitHub review, then reviewed GitLab import | no direct pushes | canonical public source and internally validated integration copy |
 | `release/*` | release manager | no direct pushes | frozen public release train |
+| `integration/github-main` | reviewed public commits | internal maintainer branch only | external-to-internal reconciliation MR |
 | `student/*` | forks | contributors write in forks | student work in progress |
 | `localize/*` | contributor-owned | no protected-ref access | sparse same-branch locale work reviewed with Localization Studio |
 | `v*` tags | release manager | no direct pushes | immutable public releases |
 
 ## External GitHub settings
 
-Use these when the mirror lands on GitHub:
+Configure these controls on `NVDLI/NemoClawDLI` before the repository accepts public content or
+community intake:
 
 - Enable Issues at External intake.
 - Enable Discussions for questions, learning friction, and broad ideas that are not actionable defects.
@@ -111,10 +195,14 @@ The complete release acceptance matrix lives in
 
 ## Internal GitLab settings
 
-Use these while GitLab remains canonical:
+Use these for prepublication staging and the internal integration copy after cutover:
 
 - Protect `main`, `nemoclaw-only`, `release/*`, and tags.
 - Set `main` push access to No one, disable force push, and allow maintainers to merge only through MRs.
+- Require Code Owner approval on `main`. `.gitlab/CODEOWNERS` assigns the inert root manifest,
+  core and SCA modules, release gate, governance validators, hooks, and GitHub workflows to named
+  owners. Keep this host setting enabled; a repository cannot protect a validator from an author
+  who is allowed to replace both the validator and its workflow without owner approval.
 - Require a successful pipeline and resolved discussions. In a one-operator project, require the
   protected manual `human_review` job after the exact commit's live preview smoke; restrict its
   environment to named human operators. With two active maintainers, prefer an independent MR
@@ -142,6 +230,23 @@ Issue and patch flow live in [`issue_standards.md`](issue_standards.md) and
 [`release_artifacts.md`](release_artifacts.md). The acceptance sequence and evidence owners live
 in [`release-test-plan.md`](release-test-plan.md). Use those contracts rather than maintaining a
 second checklist here.
+
+## Hotfix workflow
+
+Use a hotfix only for an urgent defect in a supported tagged release. Security reports stay in the
+private reporting route; public issues must not contain vulnerability detail.
+
+1. Start from the affected protected tag and link the accepted issue or private incident record.
+2. Limit the patch to the defect, its regression test, affected locale projections, and required
+   release evidence.
+3. Run the complete ship gate without change-aware skips, then require independent review and the
+   protected release action.
+4. Publish a new patch tag. Never move or replace the affected tag.
+5. Add the fix to `CHANGELOG.md`, publish the deterministic artifacts, and verify the supported
+   delivery paths before closing the issue.
+
+If the fix changes architecture, dependencies, collected data, distribution, or security controls,
+run the corresponding external review and scan steps again before publication.
 
 ## CI/CD policy
 
@@ -187,6 +292,8 @@ Before public mirror:
 - [ ] This playbook is linked from docs SKILL and root SKILL.
 - [ ] GitLab issue/MR templates exist.
 - [ ] GitHub issue/PR templates exist.
+- [ ] GitHub Feature and Bug issue forms exist and route sensitive reports privately.
+- [ ] `CHANGELOG.md` records the pending release and is updated by the release-note owner.
 - [x] Code of Conduct and a public-safe private platform reporting route are repository-defined; verify host moderation before intake.
 - [ ] External repository protects `main` and `release/*`.
 - [ ] Active `v*` tag rules restrict create, update, and deletion.
@@ -202,8 +309,12 @@ Before public mirror:
 - [ ] CODEOWNERS is added after org/team handles are real.
 - [ ] Mirror is protected-branch/tag-only until public contribution intake is ready.
 - [ ] `source_gate.py` and `local_path_leak_audit.py` pass on the mirrored ref; ancestry strategy is approved.
+- [x] The repository contains a read-only, fail-closed external integration audit that never writes protected refs.
+- [ ] The Monday 09:00 UTC GitLab schedule is enabled with a named reconciliation owner and notifications.
 - [ ] Public Pages deploy uses environment protection and concurrency.
 - [ ] `github-pages` and `github-release` require a reviewer, prevent self-review, and disallow admin bypass.
+- [ ] The Pages reviewer inspects the completed generated-tree browser job and immutable artifact SHA-256 inventory before approving `github-pages`; the deploy job's manifest recheck passes.
+- [ ] The read-only post-deployment job confirms every published object matches the reviewed manifest.
 - [ ] A test release produced a Draft release, checksum, validation report, and Rule Insights record.
 
 Before student PR intake:

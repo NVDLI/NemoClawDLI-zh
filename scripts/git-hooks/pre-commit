@@ -59,11 +59,27 @@ if [ -f "$SAFETY" ] && ! python3 "$SAFETY"; then
     exit 1
 fi
 
+WORK_PRODUCTS="$T1/scripts/validation/repository_work_products_audit.py"
+if [ -f "$WORK_PRODUCTS" ] && ! python3 "$WORK_PRODUCTS"; then
+    echo ""
+    echo "[pre-commit] REFUSING COMMIT: public repository work-product contract failed."
+    echo "Repair the named requirement, applicability, evidence path, or validator wiring."
+    exit 1
+fi
+
 RELEASE_EVIDENCE="$T1/scripts/validation/release_evidence_audit.py"
 if [ -f "$RELEASE_EVIDENCE" ] && ! python3 "$RELEASE_EVIDENCE"; then
     echo ""
     echo "[pre-commit] REFUSING COMMIT: product design or release test evidence is incomplete."
     echo "Repair the named public document, ownership map, beacon, or validator wiring."
+    exit 1
+fi
+
+THREAT_CONTROLS="$T1/scripts/validation/threat_control_audit.py"
+if [ -f "$THREAT_CONTROLS" ] && ! python3 "$THREAT_CONTROLS"; then
+    echo ""
+    echo "[pre-commit] REFUSING COMMIT: security control disposition or enforcement drifted."
+    echo "Restore the bounded artifact, deployment verification, repository integration, or external-control boundary."
     exit 1
 fi
 

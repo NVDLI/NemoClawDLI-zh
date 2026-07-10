@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Grounded self-validation for the bundle: deterministic material references, cached.
 
 For each content page it builds a compact, reproducible "material reference" (title,

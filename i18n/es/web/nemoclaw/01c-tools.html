@@ -10,15 +10,6 @@
 <link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.min.css"/>
 <script src="vendor/codemirror-5.65.21.min.js"></script>
 <style>
-  .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
-  .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
-  .CodeMirror-vscrollbar { display: none; }
-  .CodeMirror-gutters { background: #0d0d0d; border-right: 1px solid #2a2a2a; }
-  .CodeMirror-linenumber { color: #6a6a6a; padding: 0 8px 0 6px; font-size: .76rem; }
-  .CodeMirror-lines { padding: 10px 0; }
-  .cm-s-monokai.CodeMirror { background: #0d0d0d; color: #f8f8f2; }
-  .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
-  .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
 </style>
 </head>
 <body>
@@ -405,7 +396,7 @@ mountCanvasFlow("#cell-m2b-p3", {
     {
       id: "question", icon: "👤", title: "Pregunta del usuario", x: 1, y: 0,
       summary: "Prueba una operación aritmética, una definición o una consulta que pueda resolver una de las dos herramientas.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Elige un ejemplo o escribe una pregunta que haga interesante la elección de herramienta.
 
 const EXAMPLES = {
   default: "What is 2 to the power of 10?",
@@ -484,8 +475,10 @@ mountCanvasFlow("#cell-m2b-p4", {
     {
       id: "input", icon: "👤", title: "Entrada del usuario", x: 0, y: 0,
       summary: "Almacena la pregunta que hace el alumno, que puede editar antes de volver a ejecutar.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Prueba otra pregunta sobre modelos o escribe la tuya.
 state.question = "What is the NVIDIA Nemotron model family and what is it good at?";
+// state.question = "Which NVIDIA model family is designed for reasoning?";
+// state.question = "How does NVIDIA NIM differ from a model checkpoint?";
 return state.question;
 `,
     },
@@ -697,8 +690,10 @@ return { tool_name: state.TOOLS[0].function.name };
     {
       id: "user", icon: "👤", title: "Pregunta del usuario (para el agente principal)", x: 2, y: 1,
       summary: "Edita esta pregunta. Prueba, por ejemplo, cuántos clientes usan el plan profesional o quién abrió más tickets durante los últimos 30 días.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Pregunta por otro segmento de clientes o señal de actividad.
 state.userQuestion = "Which EU customers are on the pro plan, and how active are they?";
+// state.userQuestion = "How many pro-plan customers signed up this quarter?";
+// state.userQuestion = "Who opened the most tickets in the last 30 days?";
 return state.userQuestion;
 `,
     },
@@ -790,8 +785,10 @@ return state.tools.map(t => t.function.name);
     {
       id: "user", icon: "👤", title: "Pregunta del usuario", x: 2, y: 1,
       summary: "Es la pregunta que el modelo resolverá mediante las herramientas descubiertas. glossary_search atiende definiciones generales; glossary_lookup recupera un término específico a partir de su slug.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Prueba una definición amplia o solicita un término concreto del glosario.
 state.question = "What is retrieval-augmented generation, and what does a vector database have to do with it?";
+// state.question = "What is an AI agent?";
+// state.question = "Look up the glossary term with the slug vector-database.";
 return state.question;
 `,
     },

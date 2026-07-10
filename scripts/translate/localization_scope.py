@@ -1,3 +1,6 @@
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Normalize English-only presentation shells around translatable course prose."""
 from __future__ import annotations
 
@@ -91,3 +94,30 @@ def translation_canonical(raw: str) -> str:
 
 def translation_sha(raw: str) -> str:
     return hashlib.sha256(translation_canonical(raw).encode("utf-8")).hexdigest()
+
+
+class EditorialText(HTMLParser):
+    """Hash learner-visible wording while excluding executable runtime implementation."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.skip_depth = 0
+        self.parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in {"script", "style"}:
+            self.skip_depth += 1
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in {"script", "style"} and self.skip_depth:
+            self.skip_depth -= 1
+
+    def handle_data(self, data: str) -> None:
+        if not self.skip_depth and data.strip():
+            self.parts.append(" ".join(data.split()))
+
+
+def editorial_sha(raw: str) -> str:
+    parser = EditorialText()
+    parser.feed(raw.replace("\r\n", "\n"))
+    return hashlib.sha256("\n".join(parser.parts).encode("utf-8")).hexdigest()

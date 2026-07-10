@@ -1,3 +1,6 @@
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Shared path helpers for scripts moved into subdirectories."""
 from __future__ import annotations
 from pathlib import Path

@@ -1,23 +1,35 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // RAG retrieval helpers: remote embeddings plus cosine scoring.
 
-import { fetchRetry, getConfig, _apiHeaders } from "./_shared.js";
+import {
+  DEFAULT_EMBEDDING_MODEL, fetchRetry, getEmbeddingConfig, getEmbeddingKey,
+  isDefaultModelApiBaseUrl, modelRequestCredentials, _apiHeaders,
+} from "./_shared.js";
 
 // Embed one or more strings and always return a list of vectors.
-export async function embed(input, { model = "nvidia/llama-nemotron-embed-1b-v2", inputType = "query" } = {}) {
+export async function embed(input, { model = null, inputType = "query" } = {}) {
   /* @doc <code>helpers.embed(text, {model, inputType})</code> ::
-       POST to the remote build endpoint <code>{cfg.url}/embeddings</code> (the CORS worker).
+       POST to the persistent embedding route <code>{cfg.url}/embeddings</code>.
        Returns an array of vectors (numbers[]). NVIDIA embed models require <code>inputType:
        "query"</code> or <code>"passage"</code>.
   */
-  const cfg = await getConfig();
-  const headers = _apiHeaders(cfg);
+  const cfg = await getEmbeddingConfig();
+  const key = getEmbeddingKey();
+  if (cfg.needsKey && !key) {
+    throw new Error("Embedding key missing. Open the course setup and configure the persistent embedding route.");
+  }
+  const headers = _apiHeaders(cfg, key);
+  const useModel = isDefaultModelApiBaseUrl(cfg.url) && cfg.model === DEFAULT_EMBEDDING_MODEL
+    ? (model || cfg.model) : cfg.model;
   const body = {
     input: Array.isArray(input) ? input : [input],
-    model,
+    model: useModel,
     input_type: inputType,
   };
   const r = await fetchRetry(`${cfg.url}/embeddings`, {
-    method: "POST", headers, body: JSON.stringify(body), credentials: "same-origin",
+    method: "POST", headers, body: JSON.stringify(body), credentials: modelRequestCredentials(cfg.url),
   });
   if (!r.ok) throw new Error(`embeddings ${r.status}: ${(await r.text()).slice(0, 300)}`);
   const data = await r.json();

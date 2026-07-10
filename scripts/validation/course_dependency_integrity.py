@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Validate exact, same-origin student-browser packages and their public inventory."""
 from __future__ import annotations
 
@@ -25,7 +28,7 @@ MANIFEST = VENDOR / "browser-dependencies.json"
 LOCK = ROOT / "scripts" / "browser-vendor" / "package-lock.json"
 PACKAGE = ROOT / "scripts" / "browser-vendor" / "package.json"
 CODEMIRROR_ENTRY = ROOT / "scripts" / "browser-vendor" / "codemirror-entry.js"
-CI_CONFIG = ROOT / ".gitlab-ci.yml"
+CI_CONFIG = ROOT / ".gitlab" / "ci" / "sca.yml"
 DASHBOARD = COURSE / "dependencies.html"
 PACKAGE_HOSTS = {"cdn.jsdelivr.net", "cdnjs.cloudflare.com", "esm.sh", "unpkg.com"}
 SOURCE_SUFFIXES = {".css", ".html", ".js", ".mjs"}
@@ -55,6 +58,13 @@ CODEMIRROR_CDN_SRI = {
 }
 
 
+def is_transient_generated_source(path: Path) -> bool:
+    """Exclude the short-lived ESM shim created by concurrent figure checks."""
+    return path.name == ".figcheck_shared.mjs" or (
+        path.name.startswith(".figcheck_shared-") and path.suffix == ".mjs"
+    )
+
+
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -69,6 +79,7 @@ def runtime_sources() -> list[Path]:
         for path in base.rglob("*")
         if path.is_file()
         and path.suffix.lower() in SOURCE_SUFFIXES
+        and not is_transient_generated_source(path)
         and not EXCLUDED_PARTS.intersection(path.parts)
     )
 
@@ -82,6 +93,7 @@ def browser_projection_sources() -> list[Path]:
         for path in base.rglob("*")
         if path.is_file()
         and path.suffix.lower() in SOURCE_SUFFIXES
+        and not is_transient_generated_source(path)
         and not {"vendor", "mats"}.intersection(path.parts)
     )
 
@@ -136,7 +148,8 @@ def audit(*, manifest_data: dict | None = None,
         findings.append("unreviewed CodeMirror modes: " + ", ".join(unexpected_modes))
     if missing_modes:
         findings.append("reviewed CodeMirror modes missing from bundle entry: " + ", ".join(missing_modes))
-    ci_text = overrides.get(".gitlab-ci.yml", CI_CONFIG.read_text(encoding="utf-8"))
+    ci_rel = CI_CONFIG.relative_to(ROOT).as_posix()
+    ci_text = overrides.get(ci_rel, CI_CONFIG.read_text(encoding="utf-8"))
     ci_job = re.search(r"(?ms)^security_browser_sca:\s*\n(.*?)(?=^\S[^\n]*:\s*(?:$|&)|\Z)", ci_text)
     ci_tokens = (
         "npm audit --prefix scripts/browser-vendor",
@@ -246,7 +259,9 @@ def audit(*, manifest_data: dict | None = None,
             if urlsplit(url.rstrip(".,;:]}")).hostname in PACKAGE_HOSTS:
                 findings.append(f"runtime still pulls a package CDN: {rel}: {url}")
         for target in VENDOR_REF_RE.findall(text):
-            if target not in asset_names and target not in {"browser-dependencies.json", "browser-sbom.cdx.json"}:
+            if target not in asset_names and target not in {
+                "SKILL.html", "browser-dependencies.json", "browser-sbom.cdx.json"
+            }:
                 findings.append(f"runtime references unmanifested vendor asset: {rel}: {target}")
 
     dashboard = overrides.get(
@@ -262,10 +277,10 @@ def audit(*, manifest_data: dict | None = None,
     return findings
 
 
-def self_test() -> tuple[int, int, list[str]]:
+def self_test() -> list[str]:
     baseline = audit()
     if baseline:
-        return 0, 15, ["baseline is not clean: " + item for item in baseline]
+        return ["baseline is not clean: " + item for item in baseline]
     manifest = json.loads(MANIFEST.read_text())
     tests: list[tuple[str, dict, dict[str, str], str]] = []
 
@@ -318,7 +333,7 @@ def self_test() -> tuple[int, int, list[str]]:
                   "standalone projection uses an unreviewed CodeMirror CDN URL"))
     ci_source = CI_CONFIG.read_text(encoding="utf-8")
     tests.append(("browser SCA CI wiring", manifest,
-                  {".gitlab-ci.yml": ci_source.replace("security_browser_sca:", "security_browser_scan:", 1)},
+                  {".gitlab/ci/sca.yml": ci_source.replace("security_browser_sca:", "security_browser_scan:", 1)},
                   "GitLab CI is missing the security_browser_sca job"))
 
     failures = []
@@ -335,8 +350,13 @@ def self_test() -> tuple[int, int, list[str]]:
         probe_path = Path(probe.name)
         if probe_path not in runtime_sources():
             failures.append("working-tree discovery: untracked runtime source was not examined")
-    total = len(tests) + 2
-    return total - len(failures), total, failures
+    with tempfile.NamedTemporaryFile(
+        dir=COURSE / "scripts", prefix=".figcheck_shared-", suffix=".mjs"
+    ) as probe:
+        probe_path = Path(probe.name)
+        if probe_path in browser_projection_sources():
+            failures.append("working-tree discovery: transient figure shim was examined")
+    return failures
 
 
 def main() -> int:
@@ -344,8 +364,8 @@ def main() -> int:
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
-        passed, total, failures = self_test()
-        print(f"course_dependency_integrity self-test: {passed}/{total} passed")
+        failures = self_test()
+        print("course_dependency_integrity self-test: " + ("FAIL" if failures else "PASS"))
         for row in failures:
             print("  FAIL " + row)
         return 1 if failures else 0

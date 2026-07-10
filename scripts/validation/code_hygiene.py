@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Repo-wide code-hygiene validator (the code half of the cadence; prose lives in prose_variety.py).
 
 Holds every CODE check to a single, rigid bar drawn from modern style guides
@@ -98,7 +101,7 @@ def _iter_files(scope: str):
     """(path, rel, suffix) for every code file we own. ship scope is the released course plus
     its shared infra; all scope adds workspace and service code. Vendored and generated trees
     are always skipped."""
-    ship = ("web/nemoclaw/", "scripts/", "cpu/services/", "cors-proxy/", "web/_shared",
+    ship = ("web/nemoclaw/", "scripts/", "cpu/services/", "web/_shared",
             "web/index", "web/courses")
     for f in sorted(TASK1.rglob("*")):
         if not f.is_file() or f.suffix not in (".py", ".js", ".mjs", ".html", ".htm"):

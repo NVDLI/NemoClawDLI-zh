@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 /* Shared SKILL.html self-test harness.
  *
  * Served at /lab/static/_skill_selftest.js (workspace root is a jupyter static
@@ -16,9 +19,9 @@
  *   - return {skip: "reason"}      -> skipped (use for on-demand services)
  *   - throw                        -> fail (the message is shown)
  *
- * The tester only works inside the lab (it needs live services + the session
- * cookie); prose and skill-meta stay inline in each SKILL.html so the file is
- * still a standalone dual-reader contract on its own.
+ * The tester runs network checks only inside /lab/static/. Outside the lab it
+ * renders a stable lab-only state and performs no requests. Prose and skill-meta
+ * stay inline in each SKILL.html, so the file remains a portable dual-reader contract.
  */
 (function () {
   if (!document.getElementById("skill-selftest-css")) {
@@ -31,7 +34,7 @@
       ".st-badge.st-b-ok{color:var(--gs,#aee23a);border-color:var(--gd,#4a7a00);background:rgba(118,185,0,.12)}",
       ".st-badge.st-b-fail{color:#ff9a9a;border-color:#a33;background:rgba(200,40,40,.12)}",
       ".st-run{margin-left:auto;background:var(--e2,#1e1e1e);border:1px solid var(--bd,#2a2a2a);color:var(--td,#b0b0b0);border-radius:6px;padding:4px 12px;font-size:.8rem;font-family:ui-monospace,monospace;cursor:pointer}",
-      ".st-run:hover{border-color:var(--g,#76b900);color:var(--gs,#aee23a)}",
+      ".st-run:hover{border-color:var(--g,#76b900);color:var(--gs,#aee23a)}.st-run:disabled{opacity:.55;cursor:not-allowed}",
       ".st-note{font-size:.85rem;color:var(--td,#b0b0b0);margin:.5em 0 .8em}",
       ".st-list{list-style:none;margin:0;padding:0;font-size:.86rem}",
       ".st-item{display:flex;align-items:baseline;gap:10px;padding:5px 0;border-bottom:1px solid var(--e2,#1e1e1e)}",
@@ -57,12 +60,14 @@
     var mount = typeof mountSel === "string" ? document.querySelector(mountSel) : mountSel;
     if (!mount) return;
     mount.classList.add("selftest");
+    var inLab = /^\/lab\/static(?:\/|$)/.test(location.pathname);
     mount.innerHTML =
-      '<h2>Self-tests <span class="st-badge">running…</span>' +
+      '<h2>Self-tests <span class="st-badge">' + (inLab ? 'running…' : 'lab only') + '</span>' +
       '<button class="st-run" type="button">Re-run</button></h2>' +
       '<p class="st-note">Min-code checks that this directory\'s declared interfaces actually work. ' +
-      'They run automatically against the live lab services; open this page inside the lab so the ' +
-      'session authorizes the calls.</p><ol class="st-list"></ol>';
+      (inLab ? 'They are running against the live lab services with the current session.' :
+      'Open this page through /lab/static/ to authorize and run the service calls.') +
+      '</p><ol class="st-list"></ol>';
     var list = mount.querySelector(".st-list");
     var badge = mount.querySelector(".st-badge");
     var btn = mount.querySelector(".st-run");
@@ -84,8 +89,11 @@
       badge.textContent = pass + " passed · " + fail + " failed · " + skip + " skipped";
       badge.className = "st-badge " + (fail ? "st-b-fail" : "st-b-ok");
     }
-    btn.addEventListener("click", go);
-    go();
+    btn.disabled = !inLab;
+    if (inLab) {
+      btn.addEventListener("click", go);
+      go();
+    }
   }
 
   window.SkillSelfTest = { run: run, helpers: helpers };

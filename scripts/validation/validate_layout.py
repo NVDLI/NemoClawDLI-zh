@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Deterministic layout/glue validator for the task1 course stack.
 
 Runs a FIXED battery of static checks and exits nonzero naming the exact failing
@@ -295,11 +298,16 @@ def check_release_scaffold(res: Result):
     Keep them present so public mirroring does not lose intake and review guardrails."""
     required = [
         TASK1 / "docs" / "release_playbook.md",
+        TASK1 / "CHANGELOG.md",
+        TASK1 / ".gitlab" / "issue_templates" / "Bug report.md",
+        TASK1 / ".gitlab" / "issue_templates" / "Feature request.md",
         TASK1 / ".gitlab" / "issue_templates" / "Course content.md",
         TASK1 / ".gitlab" / "issue_templates" / "Runtime or deployment.md",
         TASK1 / ".gitlab" / "issue_templates" / "Source or licensing.md",
         TASK1 / ".gitlab" / "merge_request_templates" / "Default.md",
         TASK1 / ".github" / "ISSUE_TEMPLATE" / "config.yml",
+        TASK1 / ".github" / "ISSUE_TEMPLATE" / "bug.yml",
+        TASK1 / ".github" / "ISSUE_TEMPLATE" / "feature.yml",
         TASK1 / ".github" / "ISSUE_TEMPLATE" / "course-content.yml",
         TASK1 / ".github" / "ISSUE_TEMPLATE" / "runtime-deploy.yml",
         TASK1 / ".github" / "ISSUE_TEMPLATE" / "source-licensing.yml",

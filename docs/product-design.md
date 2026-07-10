@@ -9,6 +9,18 @@ This design does not grant publication authority or record private review eviden
 Detailed trust boundaries and graph instructions live in [`security-design.md`](security-design.md); versioned
 artifact behavior lives in [`release_artifacts.md`](release_artifacts.md).
 
+The selected operating model for the NemoClaw DLI course repository is an NVIDIA-owned
+Full-OSS-Project intended as OSS Type I. Once the approved cutover populates the reserved
+repository, public GitHub is canonical for course source, planning, issues, contributions, CI, and
+releases. Internal GitLab receives reviewed public course changes on the defined integration
+cadence and adds internal validation or deployment without becoming a private development source.
+
+The Type I subject is only the DLI course repository and its static course artifacts. The NemoClaw
+product, launchable, runtime, relays, and operational configuration are outside this classification
+and release scope. Those systems remain external integration dependencies with separate owners and
+lifecycle records. The authoritative lifecycle record must still confirm the course repository
+classification and publication decision.
+
 ## Purpose and users
 
 The product teaches learners how agent loops, tools, retrieval, persistent runtimes, and sandbox
@@ -53,6 +65,11 @@ transport boundary while preserving those service roles. See the
 [`security design and architecture`](security-design.md) for detailed routes, trust zones, and evidence
 anchors.
 
+The default model route is NVIDIA's hosted API. The setup panel can persist one presenter-supplied,
+OpenAI-compatible HTTPS base URL for capacity fallback. A URL parameter may prefill that field but
+cannot activate it; the learner must review the destination and choose Save and verify. Iframe relay
+mode applies only to the default endpoint.
+
 ## Component design
 
 | Component | Responsibility | Release relationship |
@@ -76,7 +93,7 @@ a credential broker.
 
 | Data class | Storage or transfer | Retention owner | Design control |
 |---|---|---|---|
-| Model API credential | Browser `localStorage`; HTTPS to the selected model route | Learner browser and model-service operator | Password input, explicit clear action, never included in static files or repository CI |
+| Model API credential | Browser `localStorage`; HTTPS to the selected model route | Learner browser and model-service operator | Password input, visible destination, explicit save and clear actions, never included in static files or repository CI |
 | NemoClaw URL and gateway credential | Browser `localStorage`; HTTPS/WebSocket to the selected runtime route | Learner browser and runtime operator | Host validation, password input, route-specific authentication, replacement in the probe, browser site-data clearing |
 | Prompt and model response | Transmitted to the selected model service; displayed in the current page | Model-service operator and learner browser | Visible action, declared endpoint, no repository-operated copy |
 | Agent command, event, and workspace result | Transmitted to the selected NemoClaw runtime | Runtime operator | Authenticated gateway, runtime policy, learner-visible result |
@@ -157,6 +174,7 @@ public release starts from an existing protected annotated semantic tag containe
 The release workflow validates the tag, runs a strict retried live material-provenance check, then
 rebuilds with live material refresh disabled. It resolves the locked Python environment, emits
 Python-environment and browser-runtime CycloneDX SBOMs, packages the Pages tree,
+generates a commit-bound evidence manifest and component license appendix, packages the Pages tree,
 and writes checksums. A protected write
 step creates a draft release. A human release owner reviews the evidence and publishes it only after
 the external approval state allows publication.

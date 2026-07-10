@@ -8,7 +8,7 @@
 <style>
   :root[data-theme="light"] {
     --bg:#ffffff; --e1:#f6f8fa; --e2:#eef1f4; --e3:#e5e8ec; --bd:#d0d7de;
-    --tx:#1a1f24; --td:#4b5563; --tf:#6b7280; --g:#4a7a00; --gd:#3f6900; --gs:#4a7a00;
+    --tx:#1a1f24; --td:#4b5563; --tf:#4b5563; --g:#3f6900; --gd:#2f5500; --gs:#3f6900;
     color-scheme: light;
   }
   :root[data-theme="dark"] { color-scheme: dark; }
@@ -20,6 +20,7 @@
   .theme-toggle { display:inline-flex; gap:4px; padding:4px; border:1px solid var(--bd); border-radius:8px; background:var(--e1); }
   .theme-toggle button { border:0; border-radius:6px; padding:7px 10px; cursor:pointer; font:700 .76rem var(--mono); color:var(--td); background:transparent; }
   .theme-toggle button[aria-pressed="true"] { background:var(--g); color:#0a0a0a; }
+  :root[data-theme="light"] .theme-toggle button[aria-pressed="true"] { color:#fff; }
   .note { border:1px solid var(--bd); border-radius:8px; padding:10px 12px; background:var(--e1); color:var(--td); }
   .pv-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:14px; margin:1em 0; }
   .pv-card { border:1px solid var(--bd); border-radius:8px; padding:11px 12px; background:var(--e1); font-size:.8rem; }
@@ -125,8 +126,9 @@
       "type": "paper summary card",
       "source": "Lewis et al. 2020 (RAG)",
       "source_url": "https://arxiv.org/abs/2005.11401",
-      "license": "card Apache-2.0; paper: see arXiv listing",
-      "license_url": "https://arxiv.org/abs/2005.11401",
+      "license": "arXiv perpetual, non-exclusive distribution license 1.0",
+      "license_url": "https://arxiv.org/licenses/nonexclusive-distrib/1.0/",
+      "artifact_license": "Apache-2.0 course summary",
       "connection": "summary",
       "kind": "md"
     },
@@ -135,8 +137,9 @@
       "type": "paper summary card",
       "source": "Yao et al. 2022 (ReAct)",
       "source_url": "https://arxiv.org/abs/2210.03629",
-      "license": "card Apache-2.0; paper: see arXiv listing",
-      "license_url": "https://arxiv.org/abs/2210.03629",
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "artifact_license": "Apache-2.0 course summary",
       "connection": "summary",
       "kind": "md"
     },
@@ -145,8 +148,9 @@
       "type": "paper summary card",
       "source": "Xu et al. 2023 (ReWOO)",
       "source_url": "https://arxiv.org/abs/2305.18323",
-      "license": "card Apache-2.0; paper: see arXiv listing",
-      "license_url": "https://arxiv.org/abs/2305.18323",
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "artifact_license": "Apache-2.0 course summary",
       "connection": "summary",
       "kind": "md"
     },
@@ -155,38 +159,42 @@
       "type": "paper summary card",
       "source": "Edge et al. 2024 (GraphRAG)",
       "source_url": "https://arxiv.org/abs/2404.16130",
-      "license": "card Apache-2.0; paper: see arXiv listing",
-      "license_url": "https://arxiv.org/abs/2404.16130",
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "artifact_license": "Apache-2.0 course summary",
       "connection": "summary",
       "kind": "md"
     },
     {
       "file": "build-nvidia-com-spark-hermes-agent-overview.md",
       "type": "cached public reference",
-      "source": "NVIDIA public page",
-      "source_url": "https://developer.nvidia.com/",
-      "license": "(c) NVIDIA; external terms",
-      "license_url": "https://developer.nvidia.com/",
+      "source": "NVIDIA DGX Spark playbook",
+      "source_url": "https://build.nvidia.com/spark/hermes-agent/overview",
+      "source_author_status": "not listed on source page",
+      "license": "(c) NVIDIA; no reuse license stated on source page",
+      "license_url": "https://build.nvidia.com/spark/hermes-agent/overview",
       "connection": "conversion",
       "kind": "md"
     },
     {
       "file": "build-nvidia-com-spark-nemoclaw-applications.md",
       "type": "cached public reference",
-      "source": "NVIDIA public page",
-      "source_url": "https://developer.nvidia.com/",
-      "license": "(c) NVIDIA; external terms",
-      "license_url": "https://developer.nvidia.com/",
+      "source": "NVIDIA DGX Spark playbook",
+      "source_url": "https://build.nvidia.com/spark/nemoclaw-applications",
+      "source_author_status": "not listed on source page",
+      "license": "(c) NVIDIA; no reuse license stated on source page",
+      "license_url": "https://build.nvidia.com/spark/nemoclaw-applications",
       "connection": "conversion",
       "kind": "md"
     },
     {
       "file": "build-nvidia-com-spark-nemoclaw-instructions.md",
       "type": "cached public reference",
-      "source": "NVIDIA public page",
-      "source_url": "https://developer.nvidia.com/",
-      "license": "(c) NVIDIA; external terms",
-      "license_url": "https://developer.nvidia.com/",
+      "source": "NVIDIA DGX Spark playbook",
+      "source_url": "https://build.nvidia.com/spark/nemoclaw/instructions",
+      "source_author_status": "not listed on source page",
+      "license": "(c) NVIDIA; no reuse license stated on source page",
+      "license_url": "https://build.nvidia.com/spark/nemoclaw/instructions",
       "connection": "conversion",
       "kind": "md"
     },
@@ -203,10 +211,12 @@
     {
       "file": "developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md",
       "type": "cached public reference",
-      "source": "NVIDIA public page",
-      "source_url": "https://developer.nvidia.com/",
-      "license": "(c) NVIDIA; external terms",
-      "license_url": "https://developer.nvidia.com/",
+      "source": "NVIDIA Technical Blog",
+      "source_url": "https://developer.nvidia.com/blog/deploy-self-evolving-agents-for-faster-more-secure-research-with-a-hermes-agent-and-nvidia-nemoclaw/",
+      "source_authors": ["Sam Pastoriza"],
+      "source_author_url": "https://developer.nvidia.com/blog/author/spastoriza/",
+      "license": "(c) NVIDIA; no reuse license stated on source page",
+      "license_url": "https://developer.nvidia.com/blog/deploy-self-evolving-agents-for-faster-more-secure-research-with-a-hermes-agent-and-nvidia-nemoclaw/",
       "connection": "conversion",
       "kind": "md"
     },
@@ -584,6 +594,10 @@
 }</script>
 </head>
 <body>
+<header data-skill-header="1" style="padding:.65rem 1rem;border-bottom:1px solid ButtonBorder;background:Canvas;color:CanvasText">
+  <nav aria-label="Skill navigation" style="display:flex;gap:.6rem;flex-wrap:wrap"><a data-skill-nav="home" href="../../index.html">Home</a> <span aria-hidden="true"> · </span> <a data-skill-nav="up" href="../SKILL.html">Up</a> <span aria-hidden="true"> · </span> <a data-skill-nav="map" href="../../../SKILL.html">Repository map</a></nav>
+</header>
+
 <main>
 <div class="skill-head">
   <div><h1>Companion-material provenance</h1><p>Use this page as the review surface for companion essays, source cards, generated indexes, and cached public references.</p></div>
@@ -592,6 +606,7 @@
     <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
   </div>
 </div><section class="note"><strong>Vendoring rule.</strong> New net-imported course material needs source, license, connection level, and a direct file link here before it ships.</section>
+<p><a href="glossary_raw/SKILL.html">Open the raw-glossary source contract.</a></p>
 <h2>Files</h2><ul class="file-index"><li><a href="_materials.json">_materials.json</a><span class="kind">json</span></li>
 <li><a href="agent_field_guide.md">agent_field_guide.md</a><span class="kind">md</span></li>
 <li><a href="agentic_ai_learning_path_links.md">agentic_ai_learning_path_links.md</a><span class="kind">md</span></li>
@@ -694,7 +709,8 @@
 
   <div class="pv-meta"><span>Connection</span>summary</div>
   <div class="pv-meta"><span>Source</span><a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al. 2020 (RAG)</a></div>
-  <div class="pv-meta"><span>License</span>card Apache-2.0; paper: see arXiv listing</div>
+  <div class="pv-meta"><span>Paper license</span><a href="https://arxiv.org/licenses/nonexclusive-distrib/1.0/" target="_blank" rel="noopener">arXiv perpetual, non-exclusive distribution license 1.0</a></div>
+  <div class="pv-meta"><span>Summary license</span>Apache-2.0</div>
   <details class="md-wrap" data-md-src="arxiv-2005.11401-rag.md"><summary>preview</summary><pre class="md-body"></pre></details>
 </article>
 <article class="pv-card" data-mat="arxiv-2210.03629-react.md">
@@ -703,7 +719,8 @@
 
   <div class="pv-meta"><span>Connection</span>summary</div>
   <div class="pv-meta"><span>Source</span><a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al. 2022 (ReAct)</a></div>
-  <div class="pv-meta"><span>License</span>card Apache-2.0; paper: see arXiv listing</div>
+  <div class="pv-meta"><span>Paper license</span><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC-BY-4.0</a></div>
+  <div class="pv-meta"><span>Summary license</span>Apache-2.0</div>
   <details class="md-wrap" data-md-src="arxiv-2210.03629-react.md"><summary>preview</summary><pre class="md-body"></pre></details>
 </article>
 <article class="pv-card" data-mat="arxiv-2305.18323-rewoo.md">
@@ -712,7 +729,8 @@
 
   <div class="pv-meta"><span>Connection</span>summary</div>
   <div class="pv-meta"><span>Source</span><a href="https://arxiv.org/abs/2305.18323" target="_blank" rel="noopener">Xu et al. 2023 (ReWOO)</a></div>
-  <div class="pv-meta"><span>License</span>card Apache-2.0; paper: see arXiv listing</div>
+  <div class="pv-meta"><span>Paper license</span><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC-BY-4.0</a></div>
+  <div class="pv-meta"><span>Summary license</span>Apache-2.0</div>
   <details class="md-wrap" data-md-src="arxiv-2305.18323-rewoo.md"><summary>preview</summary><pre class="md-body"></pre></details>
 </article>
 <article class="pv-card" data-mat="arxiv-2404.16130-graphrag.md">
@@ -721,7 +739,8 @@
 
   <div class="pv-meta"><span>Connection</span>summary</div>
   <div class="pv-meta"><span>Source</span><a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">Edge et al. 2024 (GraphRAG)</a></div>
-  <div class="pv-meta"><span>License</span>card Apache-2.0; paper: see arXiv listing</div>
+  <div class="pv-meta"><span>Paper license</span><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC-BY-4.0</a></div>
+  <div class="pv-meta"><span>Summary license</span>Apache-2.0</div>
   <details class="md-wrap" data-md-src="arxiv-2404.16130-graphrag.md"><summary>preview</summary><pre class="md-body"></pre></details>
 </article>
 <article class="pv-card" data-mat="build-nvidia-com-spark-hermes-agent-overview.md">
@@ -729,8 +748,9 @@
   <div class="pv-dep">cached public reference</div>
 
   <div class="pv-meta"><span>Connection</span>conversion</div>
-  <div class="pv-meta"><span>Source</span><a href="https://developer.nvidia.com/" target="_blank" rel="noopener">NVIDIA public page</a></div>
-  <div class="pv-meta"><span>License</span>(c) NVIDIA; external terms</div>
+  <div class="pv-meta"><span>Source</span><a href="https://build.nvidia.com/spark/hermes-agent/overview" target="_blank" rel="noopener">NVIDIA DGX Spark playbook</a></div>
+  <div class="pv-meta"><span>Author</span>Not listed on source page</div>
+  <div class="pv-meta"><span>Terms</span>(c) NVIDIA; no reuse license stated on source page</div>
   <details class="md-wrap" data-md-src="build-nvidia-com-spark-hermes-agent-overview.md"><summary>preview</summary><pre class="md-body"></pre></details>
 </article>
 <article class="pv-card" data-mat="build-nvidia-com-spark-nemoclaw-applications.md">
@@ -738,8 +758,9 @@
   <div class="pv-dep">cached public reference</div>
 
   <div class="pv-meta"><span>Connection</span>conversion</div>
-  <div class="pv-meta"><span>Source</span><a href="https://developer.nvidia.com/" target="_blank" rel="noopener">NVIDIA public page</a></div>
-  <div class="pv-meta"><span>License</span>(c) NVIDIA; external terms</div>
+  <div class="pv-meta"><span>Source</span><a href="https://build.nvidia.com/spark/nemoclaw-applications" target="_blank" rel="noopener">NVIDIA DGX Spark playbook</a></div>
+  <div class="pv-meta"><span>Author</span>Not listed on source page</div>
+  <div class="pv-meta"><span>Terms</span>(c) NVIDIA; no reuse license stated on source page</div>
   <details class="md-wrap" data-md-src="build-nvidia-com-spark-nemoclaw-applications.md"><summary>preview</summary><pre class="md-body"></pre></details>
 </article>
 <article class="pv-card" data-mat="build-nvidia-com-spark-nemoclaw-instructions.md">
@@ -747,8 +768,9 @@
   <div class="pv-dep">cached public reference</div>
 
   <div class="pv-meta"><span>Connection</span>conversion</div>
-  <div class="pv-meta"><span>Source</span><a href="https://developer.nvidia.com/" target="_blank" rel="noopener">NVIDIA public page</a></div>
-  <div class="pv-meta"><span>License</span>(c) NVIDIA; external terms</div>
+  <div class="pv-meta"><span>Source</span><a href="https://build.nvidia.com/spark/nemoclaw/instructions" target="_blank" rel="noopener">NVIDIA DGX Spark playbook</a></div>
+  <div class="pv-meta"><span>Author</span>Not listed on source page</div>
+  <div class="pv-meta"><span>Terms</span>(c) NVIDIA; no reuse license stated on source page</div>
   <details class="md-wrap" data-md-src="build-nvidia-com-spark-nemoclaw-instructions.md"><summary>preview</summary><pre class="md-body"></pre></details>
 </article>
 <article class="pv-card" data-mat="deep_research_refs.md">
@@ -765,8 +787,9 @@
   <div class="pv-dep">cached public reference</div>
 
   <div class="pv-meta"><span>Connection</span>conversion</div>
-  <div class="pv-meta"><span>Source</span><a href="https://developer.nvidia.com/" target="_blank" rel="noopener">NVIDIA public page</a></div>
-  <div class="pv-meta"><span>License</span>(c) NVIDIA; external terms</div>
+  <div class="pv-meta"><span>Source</span><a href="https://developer.nvidia.com/blog/deploy-self-evolving-agents-for-faster-more-secure-research-with-a-hermes-agent-and-nvidia-nemoclaw/" target="_blank" rel="noopener">NVIDIA Technical Blog</a></div>
+  <div class="pv-meta"><span>Author</span><a href="https://developer.nvidia.com/blog/author/spastoriza/" target="_blank" rel="noopener">Sam Pastoriza</a></div>
+  <div class="pv-meta"><span>Terms</span>(c) NVIDIA; no reuse license stated on source page</div>
   <details class="md-wrap" data-md-src="developer-nvidia-com-blog-deploy-self-evolving-agents-for-fa.md"><summary>preview</summary><pre class="md-body"></pre></details>
 </article>
 <article class="pv-card" data-mat="glossary_index.json">
@@ -1140,5 +1163,6 @@
 })();
 </script>
 </main>
+<script src="../../_skill_explorer.js"></script>
 </body>
 </html>

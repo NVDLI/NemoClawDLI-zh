@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Write a manifest containing only branch previews present in the Pages artifact."""
 from __future__ import annotations
 
@@ -46,6 +49,7 @@ def main() -> int:
     ap.add_argument("--current-ref")
     ap.add_argument("--current-slug")
     ap.add_argument("--published-ref", action="append", default=[], metavar="NAME[=SLUG]")
+    ap.add_argument("--site-root-prefix", default="")
     ap.add_argument("--max", type=int, default=80)
     ns = ap.parse_args()
 
@@ -53,6 +57,9 @@ def main() -> int:
     production_refs = {default_branch, "nemoclaw-only"}
     current = ns.current_ref or default_branch
     current_slug = ns.current_slug or slug_ref(current)
+    site_root_prefix = ns.site_root_prefix
+    if site_root_prefix and not re.fullmatch(r"(?:\.\./)+", site_root_prefix):
+        raise SystemExit("--site-root-prefix must be empty or one or more ../ segments")
     production_name = current if current in production_refs else default_branch
 
     refs: list[tuple[str, str, str]] = [(production_name, slug_ref(production_name), "production")]
@@ -69,11 +76,17 @@ def main() -> int:
         if slug in seen_slugs:
             continue
         seen_slugs.add(slug)
+        if kind == "production":
+            url = f"{site_root_prefix}nemoclaw/"
+        elif site_root_prefix and name == current:
+            url = "web/nemoclaw/"
+        else:
+            url = f"{site_root_prefix}{slug}/web/nemoclaw/"
         items.append({
             "name": name,
             "slug": slug,
             "kind": kind,
-            "url": "nemoclaw/" if kind == "production" else f"{slug}/web/nemoclaw/",
+            "url": url,
             "preview_ready": True,
             "current": bool(current and name == current),
         })
@@ -85,7 +98,7 @@ def main() -> int:
         "generated_at": generated_at(),
         "default_branch": default_branch,
         "current": {"name": current, "slug": current_slug} if current else None,
-        "production_url": "nemoclaw/",
+        "production_url": f"{site_root_prefix}nemoclaw/",
         "note": "Every listed preview path is present in this Pages artifact.",
         "branches": items,
     }

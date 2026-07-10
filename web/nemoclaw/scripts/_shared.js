@@ -1,17 +1,26 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // ─── Shared runtime for the nemoclaw web course (frontend track) ─────────────
 
 // Remote-service-only. Direct calls use the learner key; LMS iframe proxy is opt-in.
 // No lab proxy, no llm_client:9000, no Python kernel.
 
-const API_URL = "https://integrate.api.nvidia.com/v1";
-const IFRAME_PROXY_URL = "https://nvidia-api-cors-proxy.vkudlay.workers.dev/v1";
+export const DEFAULT_MODEL_API_BASE_URL = "https://integrate.api.nvidia.com/v1";
+const IFRAME_PROXY_URL = "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1";
 const IFRAME_PROXY_OPT_IN_KEY = "nemoclaw_iframe_proxy_opt_in";
+const MODEL_API_BASE_URL_KEY = "nemoclaw_model_api_base_url_v1";
+const MODEL_ID_KEY = "nemoclaw_model_id_v1";
+const EMBEDDING_API_BASE_URL_KEY = "nemoclaw_embedding_api_base_url_v1";
+const EMBEDDING_MODEL_ID_KEY = "nemoclaw_embedding_model_id_v1";
+const EMBEDDING_API_KEY = "nemoclaw_embedding_api_key_v1";
 // Billing attribution is sent on direct and iframe-proxy calls.
 const BILLING_SOURCE = "dli-nemoclaw-web";
 // Web-cell model contract. DEFAULT_MODEL is chat() fallback; REASONING_MODEL is explicit.
 
 // Keep DEFAULT_MODEL / REASONING_MODEL in sync with the skill-meta models in SKILL.html.
-const DEFAULT_MODEL   = "nvidia/nemotron-3-nano-30b-a3b";
+export const DEFAULT_MODEL = "nvidia/nemotron-3-nano-30b-a3b";
+export const DEFAULT_EMBEDDING_MODEL = "nvidia/llama-nemotron-embed-1b-v2";
 export const REASONING_MODEL = "nvidia/nemotron-3-nano-30b-a3b";
 
 // ── Lab-only step detection ─────────────────────────────────────────────────
@@ -61,6 +70,129 @@ function _syncIframeProxyOptInFromUrl() {
   } catch (_) {}
 }
 
+export function normalizeModelApiBaseUrl(raw) {
+  const text = String(raw || "").trim();
+  if (!text) return DEFAULT_MODEL_API_BASE_URL;
+  const url = new URL(text);
+  const localHttp = url.protocol === "http:" && ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
+  if (url.protocol !== "https:" && !localHttp) throw new Error("Model API base URL must use HTTPS");
+  const pageLocation = globalThis.location;
+  if (localHttp && pageLocation?.protocol === "https:" && !["localhost", "127.0.0.1"].includes(pageLocation.hostname)) {
+    throw new Error("localhost points to this browser, not the Brev VM. Expose port 5000 with Brev Using Tunnels and paste its HTTPS URL ending in /v1");
+  }
+  if (/\.brevlab\.com$/i.test(url.hostname) && /^\/lab(?:\/|$)/.test(url.pathname)) {
+    throw new Error("A Brev Jupyter /lab URL is not a model API. Expose port 5000 with Brev Using Tunnels and paste its HTTPS URL ending in /v1");
+  }
+  if (url.username || url.password || url.search || url.hash) {
+    throw new Error("Model API base URL cannot include credentials, query parameters, or a fragment");
+  }
+  return url.href.replace(/\/+$/, "");
+}
+
+export function normalizeModelId(raw, fallback = DEFAULT_MODEL) {
+  const model = String(raw || "").trim();
+  if (!model) return fallback;
+  if (/\s/.test(model) || model.length > 240) throw new Error("Model ID must be one non-empty value without spaces");
+  return model;
+}
+
+export function suggestedModelApiBaseUrl() {
+  try {
+    const params = new URLSearchParams(location.search || "");
+    const raw = params.get("model_base_url") || params.get("base_url");
+    return raw ? normalizeModelApiBaseUrl(raw) : getModelApiBaseUrl();
+  } catch (_) { return getModelApiBaseUrl(); }
+}
+
+export function suggestedModelId() {
+  try {
+    const raw = new URLSearchParams(location.search || "").get("model");
+    return raw ? normalizeModelId(raw) : getModelId();
+  } catch (_) { return getModelId(); }
+}
+
+export function suggestedEmbeddingApiBaseUrl() {
+  try {
+    const raw = new URLSearchParams(location.search || "").get("embedding_base_url");
+    return raw ? normalizeModelApiBaseUrl(raw) : getEmbeddingApiBaseUrl();
+  } catch (_) { return getEmbeddingApiBaseUrl(); }
+}
+
+export function suggestedEmbeddingModelId() {
+  try {
+    const raw = new URLSearchParams(location.search || "").get("embedding_model");
+    return raw ? normalizeModelId(raw, DEFAULT_EMBEDDING_MODEL) : getEmbeddingModelId();
+  } catch (_) { return getEmbeddingModelId(); }
+}
+
+export function getModelApiBaseUrl() {
+  try { return normalizeModelApiBaseUrl(localStorage.getItem(MODEL_API_BASE_URL_KEY)); }
+  catch (_) { return DEFAULT_MODEL_API_BASE_URL; }
+}
+
+export function setModelApiBaseUrl(raw) {
+  const normalized = normalizeModelApiBaseUrl(raw);
+  try {
+    if (normalized === DEFAULT_MODEL_API_BASE_URL) localStorage.removeItem(MODEL_API_BASE_URL_KEY);
+    else localStorage.setItem(MODEL_API_BASE_URL_KEY, normalized);
+    sessionStorage.removeItem(CONFIG_KEY);
+    sessionStorage.removeItem("nvapi_ok");
+  } catch (_) {}
+  _cfgPromise = null;
+  return normalized;
+}
+
+export function getModelId() {
+  try { return normalizeModelId(localStorage.getItem(MODEL_ID_KEY)); }
+  catch (_) { return DEFAULT_MODEL; }
+}
+
+export function setModelId(raw) {
+  const model = normalizeModelId(raw);
+  try {
+    if (model === DEFAULT_MODEL) localStorage.removeItem(MODEL_ID_KEY);
+    else localStorage.setItem(MODEL_ID_KEY, model);
+    sessionStorage.removeItem(CONFIG_KEY);
+  } catch (_) {}
+  _cfgPromise = null;
+  return model;
+}
+
+export function getEmbeddingApiBaseUrl() {
+  try { return normalizeModelApiBaseUrl(localStorage.getItem(EMBEDDING_API_BASE_URL_KEY)); }
+  catch (_) { return DEFAULT_MODEL_API_BASE_URL; }
+}
+
+export function setEmbeddingApiBaseUrl(raw) {
+  const endpoint = normalizeModelApiBaseUrl(raw);
+  try {
+    if (endpoint === DEFAULT_MODEL_API_BASE_URL) localStorage.removeItem(EMBEDDING_API_BASE_URL_KEY);
+    else localStorage.setItem(EMBEDDING_API_BASE_URL_KEY, endpoint);
+  } catch (_) {}
+  return endpoint;
+}
+
+export function getEmbeddingModelId() {
+  try { return normalizeModelId(localStorage.getItem(EMBEDDING_MODEL_ID_KEY), DEFAULT_EMBEDDING_MODEL); }
+  catch (_) { return DEFAULT_EMBEDDING_MODEL; }
+}
+
+export function setEmbeddingModelId(raw) {
+  const model = normalizeModelId(raw, DEFAULT_EMBEDDING_MODEL);
+  try {
+    if (model === DEFAULT_EMBEDDING_MODEL) localStorage.removeItem(EMBEDDING_MODEL_ID_KEY);
+    else localStorage.setItem(EMBEDDING_MODEL_ID_KEY, model);
+  } catch (_) {}
+  return model;
+}
+
+function billingAttributionEnabled(url) {
+  try {
+    const host = new URL(url, location.href).hostname;
+    return host === "integrate.api.nvidia.com" || host === "nvidia-api-cors-proxy.experiments.courses.nvidia.com";
+  } catch (_) { return false; }
+}
+
 export function iframeProxyModeEnabled() {
   _syncIframeProxyOptInFromUrl();
   try { return localStorage.getItem(IFRAME_PROXY_OPT_IN_KEY) === "1"; }
@@ -78,23 +210,26 @@ export function setIframeProxyMode(enabled) {
 
 export async function getConfig() {
   /* @doc <code>helpers.getConfig()</code> ::
-       Returns the active endpoint config <code>{ mode, url, model, needsKey, iframeProxy }</code>.
-       By default the course calls build.nvidia.com directly. If a host page or learner enables
-       LMS/static iframe mode, calls route through the hosted CORS worker instead. */
+       Returns the active chat config <code>{ mode, url, model, needsKey, iframeProxy }</code>.
+       A presenter can save one compatible chat endpoint and model on the course home page.
+       Embeddings retain their own route. LMS/static iframe mode is available only on the default chat route. */
   if (_cfgPromise) return _cfgPromise;
   _cfgPromise = (async () => {
-    const useIframeProxy = iframeProxyModeEnabled();
+    const modelApiBaseUrl = getModelApiBaseUrl();
+    const model = getModelId();
+    const useIframeProxy = iframeProxyModeEnabled() && modelApiBaseUrl === DEFAULT_MODEL_API_BASE_URL;
     try {
       const c = sessionStorage.getItem(CONFIG_KEY);
       if (c) {
         const cached = JSON.parse(c);
-        if (!!cached.iframeProxy === useIframeProxy) return cached;
+        if (!!cached.iframeProxy === useIframeProxy && cached.model === model &&
+            cached.url === (useIframeProxy ? IFRAME_PROXY_URL : modelApiBaseUrl)) return cached;
       }
     } catch (_) {}
 
     const cfg = useIframeProxy
-      ? { mode: "direct", url: IFRAME_PROXY_URL, model: DEFAULT_MODEL, needsKey: true, iframeProxy: true }
-      : { mode: "direct", url: API_URL,          model: DEFAULT_MODEL, needsKey: true, iframeProxy: false };
+      ? { mode: "direct", url: IFRAME_PROXY_URL, model, needsKey: true, iframeProxy: true }
+      : { mode: "direct", url: modelApiBaseUrl, model, needsKey: true, iframeProxy: false };
 
     try { sessionStorage.setItem(CONFIG_KEY, JSON.stringify(cfg)); } catch (_) {}
     return cfg;
@@ -102,29 +237,76 @@ export async function getConfig() {
   return _cfgPromise;
 }
 
+export async function getEmbeddingConfig() {
+  /* @doc <code>helpers.getEmbeddingConfig()</code> ::
+       Returns the persistent embedding <code>{ url, model }</code> route. It defaults to NVIDIA's
+       hosted API and does not change when a presenter selects a Brev chat endpoint. */
+  return {
+    mode: "direct",
+    url: getEmbeddingApiBaseUrl(),
+    model: getEmbeddingModelId(),
+    needsKey: true,
+    iframeProxy: false,
+  };
+}
+
 // Key management
 export function getKey() {
   /* @doc <code>helpers.getKey()</code> ::
-       Returns the <code>nvapi-</code> key saved in this browser (<code>localStorage</code>),
-       or <code>null</code>. Model calls use it automatically; read it only if you call an
-       endpoint by hand. */
+       Returns the model bearer key saved in this browser (<code>localStorage</code>), or
+       <code>null</code>. NVIDIA keys start with <code>nvapi-</code>. Model calls use the saved
+       value automatically. */
   return localStorage.getItem("nvapi");
 }
-export function setKey(k) { localStorage.setItem("nvapi", k.trim()); }
+export function setKey(k) {
+  localStorage.setItem("nvapi", k.trim());
+  sessionStorage.removeItem("nvapi_ok");
+}
 export function hasKey() { return !!getKey(); }
+
+export function getEmbeddingKey() {
+  try {
+    const stored = localStorage.getItem(EMBEDDING_API_KEY);
+    if (stored) return stored;
+    const active = getKey();
+    return active?.startsWith("nvapi-") ? active : null;
+  } catch (_) { return null; }
+}
+
+export function setEmbeddingKey(k) {
+  const key = String(k || "").trim();
+  try {
+    if (key) localStorage.setItem(EMBEDDING_API_KEY, key);
+    else localStorage.removeItem(EMBEDDING_API_KEY);
+  } catch (_) {}
+}
+
+export function isDefaultModelApiBaseUrl(url) {
+  try {
+    const host = new URL(url, location.href).hostname;
+    return host === "integrate.api.nvidia.com" || host === "nvidia-api-cors-proxy.experiments.courses.nvidia.com";
+  } catch (_) { return false; }
+}
+
+export function modelRequestCredentials(url) {
+  return isDefaultModelApiBaseUrl(url) ? "same-origin" : "include";
+}
 
 // The OpenAI JS SDK (what ChatOpenAI uses) attaches x-stainless-* headers.
 // Strip x-stainless-* headers for browser hosts that reject them during preflight.
 export function browserChatFetch() {
   /* @doc <code>helpers.browserChatFetch()</code> ::
        Returns a <code>fetch</code> that strips the OpenAI SDK's <code>x-stainless-*</code>
-       headers and attaches the <code>X-BILLING-SOURCE</code> tracking tag. Pass it as
+       headers. NVIDIA model routes also receive the <code>X-BILLING-SOURCE</code> tracking tag.
+       Custom routes include their browser session credentials. Pass it as
        <code>configuration.fetch</code> when constructing a browser <code>ChatOpenAI</code>. */
   return async (url, init = {}) => {
     const h = init.headers instanceof Headers ? init.headers : new Headers(init.headers || {});
     for (const k of [...h.keys()]) { if (k.startsWith("x-stainless")) h.delete(k); }
-    h.set("X-BILLING-SOURCE", BILLING_SOURCE);
-    const r = await fetch(url, { ...init, headers: h });
+    if (billingAttributionEnabled(url)) h.set("X-BILLING-SOURCE", BILLING_SOURCE);
+    else h.delete("X-BILLING-SOURCE");
+    const r = await fetchRetry(url, { ...init, headers: h, credentials: modelRequestCredentials(url) },
+      { retries: 2, backoffMs: 250, timeoutMs: 60000 });
     // Wrap non-JSON HTTP errors so the SDK surfaces the real status and body.
     if (!r.ok && !(r.headers.get("content-type") || "").toLowerCase().includes("application/json")) {
       const txt = await r.text().catch(() => "");
@@ -187,11 +369,12 @@ async function fetchRetry(url, opts = {}, { retries = 2, backoffMs = 250, timeou
 }
 export { fetchRetry };
 
-// Headers shared by every model request: JSON content type, billing tag, and the student's key.
-// Built in one place so chat / chatStream / embed stay consistent.
-export function _apiHeaders(cfg) {
-  const h = { "Content-Type": "application/json", "X-BILLING-SOURCE": BILLING_SOURCE };
-  if (cfg.needsKey) h["Authorization"] = `Bearer ${getKey()}`;
+// Headers shared by model requests. NVIDIA routes receive course attribution; a presenter-selected
+// compatible endpoint receives only standard content and authorization headers.
+export function _apiHeaders(cfg, keyOverride = null) {
+  const h = { "Content-Type": "application/json" };
+  if (billingAttributionEnabled(cfg.url)) h["X-BILLING-SOURCE"] = BILLING_SOURCE;
+  if (cfg.needsKey) h["Authorization"] = `Bearer ${keyOverride || getKey()}`;
   return h;
 }
 
@@ -203,7 +386,7 @@ export async function chat({ messages, tools = null, model = null, temperature =
        One-shot, non-streaming chat completion. Returns the raw OpenAI-shape response. Use
        when you just want the final message. */
   const cfg = await getConfig();
-  const useModel = model || cfg.model;
+  const useModel = isDefaultModelApiBaseUrl(cfg.url) ? (model || cfg.model) : cfg.model;
   const body = { model: useModel, messages, temperature, max_tokens };
   if (tools?.length)   body.tools           = tools;
   if (response_format) body.response_format = response_format;
@@ -215,7 +398,7 @@ export async function chat({ messages, tools = null, model = null, temperature =
     method: "POST",
     headers,
     body: JSON.stringify(body),
-    credentials: "same-origin",
+    credentials: modelRequestCredentials(cfg.url),
     signal,
   });
   if (!resp.ok) {
@@ -249,7 +432,7 @@ export async function chatStream(opts, onChunk, extra = {}) {
   const onReasoning = extra.onReasoning || null;
   const onMeta = extra.onMeta || null;
   const cfg = await getConfig();
-  const useModel = model || cfg.model;
+  const useModel = isDefaultModelApiBaseUrl(cfg.url) ? (model || cfg.model) : cfg.model;
 
   const headers = _apiHeaders(cfg);
 
@@ -260,7 +443,7 @@ export async function chatStream(opts, onChunk, extra = {}) {
   if (opts.extra_body)  Object.assign(body, opts.extra_body);
 
   const resp = await fetchRetry(`${cfg.url}/chat/completions`, {
-    method: "POST", headers, body: JSON.stringify(body), credentials: "same-origin", signal,
+    method: "POST", headers, body: JSON.stringify(body), credentials: modelRequestCredentials(cfg.url), signal,
   });
   if (!resp.ok) {
     const txt = await resp.text();
@@ -364,11 +547,11 @@ export {
 // Used by 04a/04b only.
 // Re-exported here so the helper registry/menu resolve these names and pages keep importing them from _shared.js.
 import {
-  terminal, evalSandboxNetwork, evalSandboxFs, OPENSHELL_POLICY_HARDENED,
+  terminal, openclawLoopbackProbe, evalSandboxNetwork, evalSandboxFs, OPENSHELL_POLICY_HARDENED,
   sandboxExec, policyGet, policyToYaml, annotatePolicyYaml, mountPolicyMap,
 } from "./_openshell.js";
 export {
-  terminal, evalSandboxNetwork, evalSandboxFs, OPENSHELL_POLICY_HARDENED,
+  terminal, openclawLoopbackProbe, evalSandboxNetwork, evalSandboxFs, OPENSHELL_POLICY_HARDENED,
   sandboxExec, policyGet, policyToYaml, annotatePolicyYaml, mountPolicyMap,
 };
 
@@ -387,6 +570,19 @@ export {
 // The _chat.js -> _shared.js import cycle is load-safe because the refs sit inside function bodies, which run only after both modules finish loading.
 import { ensureChatStyles, markLiveArtifacts, mountChatUI, mountAgentChat, mountConsole } from "./_chat.js";
 export { ensureChatStyles, markLiveArtifacts, mountChatUI, mountAgentChat, mountConsole };
+import { mountOpenClawCliRuntime } from "./_openclaw_cli.js";
+
+export function mountOpenClawCli(target) {
+  /* @doc <code>helpers.mountOpenClawCli(target)</code> ::
+       Mount the live OpenClaw command/chat artifact without copying gateway RPC,
+       session-tab, autocomplete, and rendering plumbing into a learner cell. */
+  return mountOpenClawCliRuntime(target, {
+    mountConsole,
+    getOpenClawConnection,
+    openclawGatewayWsUrl,
+    openclawChat,
+  });
+}
 
 // Render search results into one text blob (numbered snippets with title + body + url) that the LLM can read as a tool result.
 export function formatSearchResults(searchOut) {
@@ -408,6 +604,23 @@ export function formatSearchResults(searchOut) {
   }).join("\n\n");
 }
 
+export function delay(ms, signal = null) {
+  /* @doc <code>helpers.delay(ms)</code> ::
+       Wait without trapping the learner in a running cell. CanvasFlow and RunCell
+       automatically connect this helper to their Stop button; pass another
+       <code>AbortSignal</code> only when the wait belongs to a different lifecycle. */
+  const waitMs = Number(ms);
+  if (!Number.isFinite(waitMs) || waitMs < 0) throw new TypeError("helpers.delay expects a non-negative number of milliseconds");
+  if (signal?.aborted) return Promise.reject(new DOMException("stopped", "AbortError"));
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(done, waitMs);
+    function cleanup() { signal?.removeEventListener("abort", stop); }
+    function done() { cleanup(); resolve(); }
+    function stop() { clearTimeout(timer); cleanup(); reject(new DOMException("stopped", "AbortError")); }
+    signal?.addEventListener("abort", stop, { once: true });
+  });
+}
+
 // ── viz.* builders → _viz.js ─────────────────────────────────────────────────
 
 // The canvas visualization builders (makeViz) live in _viz.js, imported here because both mountCanvasFlow and the VIZ_BUILDERS registry below use it.
@@ -421,8 +634,9 @@ export const VIZ_BUILDERS = makeViz(() => {});
 // `viz.*` source comes from the live viz object once a node has run; `state`, `fetch`, `trace`, and `log` are described by SPECIALS, since they are values and closures, not module functions.
 export const HELPER_FNS = {
   chat, chatStream, webSearch, instantAnswer, formatSearchResults,
-  embed, cosineSim, fetchRetry, getConfig, getKey, terminal,
-  coursePage, coursePages, contextWindow, estimateTokens, browserChatFetch, diagramSVG, ganttBarsSVG, mountFigures, openFigureLightbox, wireFigureZoom, mountChatUI, mountAgentChat, mountConsole, mountKeyPanel, openclawChat, openclawGatewayWsUrl,
+  embed, cosineSim, fetchRetry, delay, getConfig, getKey, getModelApiBaseUrl, setModelApiBaseUrl, isDefaultModelApiBaseUrl, terminal,
+  coursePage, coursePages, contextWindow, estimateTokens, browserChatFetch, diagramSVG, ganttBarsSVG, mountFigures, openFigureLightbox, wireFigureZoom, mountChatUI, mountAgentChat, mountConsole, mountOpenClawCli, mountKeyPanel, mountModelEndpointProbe, openclawChat, openclawGatewayWsUrl, getOpenClawConnection, setOpenClawConnection, getOpenClawProxyConfig, setOpenClawProxyConfig,
+  filterOpenClawRuntimeNoise, filterOpenClawRuntimeValue, openclawMessageText, openclawResultText,
   evalSandboxNetwork, evalSandboxFs, sandboxExec, policyGet, mountPolicyMap,
 };
 // Menu entries that are values or closures rather than plain exported functions.
@@ -473,7 +687,7 @@ helpers.log.clear();                                 // clear this cell's log/ou
   },
   signal: {
     sig: "<code>helpers.signal</code>",
-    desc: `The <code>AbortSignal</code> for this run, wired to the Stop button. Pass it to <code>helpers.chat</code>/<code>chatStream</code> (they accept it automatically), to <code>helpers.fetch</code>, or to your own <code>WebSocket</code> cleanup so a long run actually cancels when the student hits Stop.`,
+    desc: `The <code>AbortSignal</code> for this run, wired to the Stop button. <code>helpers.delay</code>, <code>helpers.chat</code>, and <code>chatStream</code> use it automatically. Pass it to <code>helpers.fetch</code> or to your own <code>WebSocket</code> cleanup so a long run actually cancels when the student hits Stop.`,
     src: `// AbortSignal for this run.
 const r = await helpers.fetch(url, { signal: helpers.signal });
 helpers.signal.addEventListener("abort", () => ws.close(), { once: true });`,
@@ -720,14 +934,16 @@ export function mountJourneyMap(targetSel, current) {
 
 // ── Mode indicator. Call on page load to update key-pill ────────────────────
 
-// Verify the saved nvapi key is actually accepted (GET /models, the cheapest authenticated call), not merely present. Cached per tab session so navigation does not re-hit the API.
+// Verify the saved bearer key is accepted (GET /models, the cheapest authenticated call), not merely present. Cached per tab session so navigation does not re-hit the API.
 // Only a hard 401/403 marks the key bad, so a network blip never downgrades a working key.
 async function keyAccepted() {
   const cached = sessionStorage.getItem("nvapi_ok");
   if (cached) return cached === "1";
   const cfg = await getConfig();
   try {
-    const r = await fetchRetry(`${cfg.url}/models`, { headers: _apiHeaders(cfg) }, { retries: 0, timeoutMs: 7000 });
+    const r = await fetchRetry(`${cfg.url}/models`, {
+      headers: _apiHeaders(cfg), credentials: modelRequestCredentials(cfg.url),
+    }, { retries: 0, timeoutMs: 7000 });
     if (r.status === 401 || r.status === 403) { sessionStorage.setItem("nvapi_ok", "0"); return false; }
     if (r.ok) sessionStorage.setItem("nvapi_ok", "1");
     return r.ok;
@@ -742,17 +958,17 @@ export async function updateKeyPill(pill) {
   }
   pill.textContent = "Key …"; pill.classList.add("set");
   const ok = await keyAccepted();
-  if (ok) { pill.textContent = "Key set ✓"; pill.classList.add("set"); pill.title = "nvapi key verified this session"; }
+  if (ok) { pill.textContent = "Key set ✓"; pill.classList.add("set"); pill.title = "model key verified this session"; }
   else { pill.textContent = "Key rejected ✗"; pill.classList.remove("set"); pill.title = "the saved nvapi key was refused (401/403). Re-enter it on Module 1a."; }
 }
 
 // Is the launchable's gateway reachable right now?
-// The connect.challenge frame arrives only when the browser's Cloudflare Access session is still valid, so this detects an expired session that mere url+token presence cannot.
+// The connect.challenge frame arrives only when the browser's launchable access session is valid, so this detects an expired session that mere URL and token presence cannot.
 // Best-effort, ~6s cap.
 function clawSessionOk(timeoutMs = 6000) {
-  const rawUrl = localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl") || "";
-  if (!rawUrl) return Promise.resolve(false);
-  const wsUrl = rawUrl.replace(/\/+$/, "").replace(/^https/, "wss").replace(/^http(?!s)/, "ws") + "/cli/gateway";
+  const connection = getOpenClawConnection();
+  if (!connection.rawUrl) return Promise.resolve(false);
+  const wsUrl = openclawGatewayWsUrl(connection.rawUrl, connection.accessSession, null, null, connection.accessProvider).url;
   return new Promise(res => {
     let done = false, ws;
     const finish = ok => { if (done) return; done = true; try { ws.close(); } catch (_) {} res(ok); };
@@ -765,11 +981,12 @@ function clawSessionOk(timeoutMs = 6000) {
 }
 
 // ── OpenClaw indicator. Re-validates the live session on every page load, because a
-// stored url+token says nothing about whether the Cloudflare Access session still works.
+// Stored URL and token say nothing about whether the launchable access session still works.
 export async function updateClawPill(pill) {
   if (!pill) return;
-  const url   = localStorage.getItem("nemoclaw_clawurl")   || "";
-  const token = localStorage.getItem("nemoclaw_clawtoken") || "";
+  const connection = getOpenClawConnection();
+  const url = connection.rawUrl;
+  const token = connection.token;
   if (!(url && token)) { pill.textContent = "No OpenClaw"; pill.classList.remove("set"); pill.title = ""; return; }
   const host = url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
   pill.textContent = "OpenClaw …"; pill.classList.add("set"); pill.title = host + " · checking session";
@@ -792,10 +1009,16 @@ export { mountKeyPanel };
 // ── openclaw → _openclaw.js ─────────────────────────────────────────
 // Re-exported here so the helper registry/menu and existing page imports are unchanged.
 import {
-  mountClawGateway, mountClawProbe, openclawChat, openclawGatewayWsUrl, GW_CONNECT, mountGwRecover,
+  gatewayTokenFromAgentMetadata, getOpenClawConnection, getOpenClawProxyConfig, mountClawGateway, mountClawProbe,
+  mountEndpointProbe, mountModelEndpointProbe, openclawChat, openclawGatewayWsUrl,
+  filterOpenClawRuntimeNoise, filterOpenClawRuntimeValue, openclawMessageText, openclawResultText,
+  setOpenClawConnection, setOpenClawProxyConfig, GW_CONNECT, mountGwRecover,
 } from "./_openclaw.js";
 export {
-  mountClawGateway, mountClawProbe, openclawChat, openclawGatewayWsUrl, GW_CONNECT, mountGwRecover,
+  gatewayTokenFromAgentMetadata, getOpenClawConnection, getOpenClawProxyConfig, mountClawGateway, mountClawProbe,
+  mountEndpointProbe, mountModelEndpointProbe, openclawChat, openclawGatewayWsUrl,
+  filterOpenClawRuntimeNoise, filterOpenClawRuntimeValue, openclawMessageText, openclawResultText,
+  setOpenClawConnection, setOpenClawProxyConfig, GW_CONNECT, mountGwRecover,
 };
 
 
@@ -840,9 +1063,316 @@ export function mountThemeToggle() {
   else bar.appendChild(btn);
 }
 
+function headingId(text, occupied) {
+  const base = String(text || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "section";
+  let candidate = base;
+  let suffix = 2;
+  while (occupied.has(candidate)) candidate = `${base}-${suffix++}`;
+  occupied.add(candidate);
+  return candidate;
+}
+
+function headingLinkIcon() {
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.setAttribute("viewBox", "0 0 24 24");
+  icon.setAttribute("aria-hidden", "true");
+  icon.setAttribute("focusable", "false");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", "M10.6 13.4a4.5 4.5 0 0 0 6.36.01l2.12-2.12a4.5 4.5 0 0 0-6.36-6.36l-1.21 1.2m1.9 4.47a4.5 4.5 0 0 0-6.37-.01l-2.12 2.12a4.5 4.5 0 1 0 6.37 6.36l1.2-1.2");
+  path.setAttribute("fill", "none");
+  path.setAttribute("stroke", "currentColor");
+  path.setAttribute("stroke-width", "2");
+  path.setAttribute("stroke-linecap", "round");
+  path.setAttribute("stroke-linejoin", "round");
+  icon.append(path);
+  return icon;
+}
+
+const LEARNING_PATH_IMAGES = Object.freeze({
+  "how-to-build-an-ai-agent": "how-to-build-ai-agent-ari.jpg",
+  "how-to-build-agentic-ai-rag": "agentic-rag-application-ari.jpg",
+  "how-to-evaluate-ai-agents": "how-to-evaluate-ai-agents.jpg",
+  "how-to-customize-ai-agents": "how-to-customize-ai-agents.jpg",
+  "how-to-build-deep-ai-agents": "how-to-build-deep-ai-agents.jpg",
+  "how-to-build-safer-autonomous-agent-using-openclaw": "how-to-build-a-safer-autonomous-agent-using-nemo-claw.jpg",
+});
+const LEARNING_PATH_IMAGE_ROOT = "https://developer.download.nvidia.com/images/learning-pathways/";
+
+const RESOURCE_FIGURES = Object.freeze({
+  "https://build.nvidia.com/spark/nemoclaw-applications?ncid=ref-dli-146986": {
+    image: "https://build.nvidia.com/opengraph-image.jpg?6ec102a0470b935b&ncid=ref-dli-146986",
+    fit: "cover",
+  },
+  "https://developer.nvidia.com/nemo-retriever": {
+    image: "https://developer.download.nvidia.com/images/nemo-retriever/nemo-retriever-diagram-1920x1080.jpg",
+    fit: "contain",
+  },
+});
+
+const FIGURE_SOURCE_LABELS = Object.freeze({
+  en: "Image source",
+  es: "Fuente de la imagen",
+  pt: "Fonte da imagem",
+});
+
+const GOING_FURTHER_TEXT = Object.freeze({
+  en: {
+    assistantPrompt: "Want to inspect this page or trace a concept across modules?",
+    assistantButton: "Ask about this course",
+    knowledgeIntro: "The Index Agent in Module 2b used a small in-page corpus. These resources show how to prepare, retrieve, and guard production data.",
+    interfaceHeading: "Carry the browser interface forward",
+  },
+  es: {
+    assistantPrompt: "¿Quieres consultar esta página o seguir un concepto entre módulos?",
+    assistantButton: "Pregunta sobre el curso",
+    knowledgeIntro: "El agente de índice del Módulo 2b utilizó un corpus pequeño dentro de la página. Estos recursos muestran cómo preparar, recuperar y proteger datos de producción.",
+    interfaceHeading: "Lleva la interfaz del navegador a otros entornos",
+  },
+  pt: {
+    assistantPrompt: "Quer consultar esta página ou acompanhar um conceito entre módulos?",
+    assistantButton: "Pergunte sobre o curso",
+    knowledgeIntro: "O agente de índice do Módulo 2b usou um pequeno corpus na própria página. Estes recursos mostram como preparar, recuperar e proteger dados de produção.",
+    interfaceHeading: "Leve a interface do navegador para outros ambientes",
+  },
+});
+
+function canonicalResourceUrl(href) {
+  try {
+    const url = new URL(href, globalThis.location?.href);
+    const base = `${url.origin}${url.pathname.replace(/\/$/, "")}`;
+    const ncid = url.searchParams.get("ncid");
+    return ncid ? `${base}?ncid=${encodeURIComponent(ncid)}` : base;
+  } catch (_) {
+    return "";
+  }
+}
+
+export function learningPathImageUrl(href) {
+  try {
+    const slug = new URL(href, globalThis.location?.href).pathname.split("/").filter(Boolean).pop();
+    const file = LEARNING_PATH_IMAGES[slug];
+    return file ? `${LEARNING_PATH_IMAGE_ROOT}${file}` : "";
+  } catch (_) {
+    return "";
+  }
+}
+
+export function mountLearningPathCards(root = document) {
+  root.querySelectorAll("#learning-path .step-card").forEach((card) => {
+    if (card.querySelector(":scope > .step-card-media")) return;
+    const heading = card.querySelector("h3");
+    const button = card.querySelector("a.btn[href]");
+    const imageUrl = learningPathImageUrl(button?.href);
+    if (!heading || !button || !imageUrl) return;
+
+    const title = heading.textContent.split("·").slice(1).join("·").trim() || heading.textContent.trim();
+    const media = document.createElement("a");
+    media.className = "step-card-media";
+    media.href = button.href;
+    media.target = button.target;
+    media.rel = button.rel;
+    media.setAttribute("aria-label", `${button.textContent.replace("→", "").trim()}: ${title}`);
+    const image = document.createElement("img");
+    image.src = imageUrl;
+    image.alt = title;
+    image.loading = "lazy";
+    image.decoding = "async";
+    image.referrerPolicy = "no-referrer";
+    media.append(image);
+
+    const body = document.createElement("div");
+    body.className = "step-card-body";
+    while (card.firstChild) body.append(card.firstChild);
+    card.append(media, body);
+  });
+}
+
+export function mountResourceFigures(root = document) {
+  root.querySelectorAll('a[href^="https://"]').forEach((sourceLink) => {
+    const resource = RESOURCE_FIGURES[canonicalResourceUrl(sourceLink.href)];
+    const section = sourceLink.closest(".section");
+    if (!resource || !section || section.querySelector(":scope > .resource-aside-figure")) return;
+
+    const title = sourceLink.textContent.trim();
+    if (!title) return;
+
+    const media = document.createElement("a");
+    media.className = `resource-aside-media resource-aside-media--${resource.fit}`;
+    media.href = sourceLink.href;
+    media.target = sourceLink.target;
+    media.rel = sourceLink.rel;
+    media.setAttribute("aria-label", title);
+
+    const image = document.createElement("img");
+    image.src = resource.image;
+    image.alt = title;
+    image.loading = "lazy";
+    image.decoding = "async";
+    image.referrerPolicy = "no-referrer";
+    media.append(image);
+
+    const locale = root.documentElement?.lang?.split("-")[0] || "en";
+    const caption = document.createElement("figcaption");
+    caption.append(`${FIGURE_SOURCE_LABELS[locale] || FIGURE_SOURCE_LABELS.en}: `);
+    const captionLink = sourceLink.cloneNode(true);
+    captionLink.textContent = title;
+    caption.append(captionLink);
+
+    const figure = document.createElement("figure");
+    figure.className = "resource-aside-figure";
+    figure.append(media, caption);
+    section.classList.add("resource-aside-section");
+    section.querySelector(":scope > h2")?.insertAdjacentElement("afterend", figure);
+  });
+}
+
+function trimAfterFirstSentence(element) {
+  if (!element) return;
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+  const trailing = [];
+  let foundEnd = false;
+  while (walker.nextNode()) {
+    const text = walker.currentNode;
+    if (foundEnd) {
+      trailing.push(text);
+      continue;
+    }
+    const sentenceEnd = text.data.indexOf(".");
+    if (sentenceEnd < 0) continue;
+    text.data = text.data.slice(0, sentenceEnd + 1);
+    foundEnd = true;
+  }
+  trailing.forEach(text => text.remove());
+}
+
+export function mountGoingFurtherLayout(root = document) {
+  const main = root.querySelector("main");
+  const learningPath = root.querySelector("#learning-path");
+  const whereNext = root.querySelector('details[data-learning-id="production-divergence"]');
+  const readingList = root.querySelector('details[data-learning-id="course-reading-list"]');
+  const deploy = root.querySelector('a[href*="/spark/nemoclaw-applications"]')?.closest(".section");
+  const addKnowledge = root.querySelector('a[href="https://developer.nvidia.com/nemo-retriever"]')?.closest(".section");
+  const carryInterface = root.querySelector('a[href*="use-live-artifacts-in-claude-cowork"]')?.closest(".section");
+  const built = root.querySelector('a[href*="building-effective-agents"]')?.closest(".section");
+  const deploymentLessons = root.querySelector(".pattern-list")?.closest(".section");
+  const helperList = root.querySelector(".lp-helpers");
+  const assistantButton = root.querySelector("#open-course-assistant");
+  const whereSection = whereNext?.querySelector(".section");
+  if (!main || !learningPath || !whereNext || !readingList || !deploy || !addKnowledge
+      || !carryInterface || !built || !deploymentLessons || !helperList || !assistantButton || !whereSection) return;
+  if (main.dataset.goingFurtherLayout === "ready") return;
+
+  const helperHeading = helperList.previousElementSibling;
+  if (helperHeading?.matches("h2, h3, h4")) whereSection.append(helperHeading, helperList);
+
+  const lessonEyebrow = deploymentLessons.querySelector(":scope > .section-eyebrow");
+  const lessonHeading = deploymentLessons.querySelector(":scope > h2");
+  const lessonDisclosure = root.createElement("details");
+  lessonDisclosure.className = "learning-block deployment-lessons";
+  const lessonSummary = root.createElement("summary");
+  const lessonScope = root.createElement("span");
+  lessonScope.className = "learning-scope";
+  lessonScope.textContent = lessonEyebrow?.textContent.trim() || "Lessons";
+  const lessonQuestion = root.createElement("span");
+  lessonQuestion.className = "learning-question";
+  lessonQuestion.textContent = lessonHeading?.textContent.trim() || "Review before deployment";
+  lessonSummary.append(lessonScope, lessonQuestion);
+  lessonEyebrow?.remove();
+  lessonHeading?.remove();
+  lessonDisclosure.append(lessonSummary, deploymentLessons);
+  whereSection.append(lessonDisclosure);
+
+  const assistantButtonRow = assistantButton.closest("p");
+  const assistantCallout = assistantButtonRow?.previousElementSibling;
+  const assistantParagraph = assistantCallout?.previousElementSibling;
+  const assistantHeading = assistantParagraph?.previousElementSibling;
+  const builtParagraphs = [...built.querySelectorAll(":scope > p")];
+  trimAfterFirstSentence(builtParagraphs.at(-1));
+  const locale = root.documentElement?.lang?.split("-")[0] || "en";
+  const pageText = GOING_FURTHER_TEXT[locale] || GOING_FURTHER_TEXT.en;
+  const knowledgeIntro = addKnowledge.querySelector(":scope > p");
+  const interfaceHeading = carryInterface.querySelector(":scope > h2");
+  if (knowledgeIntro) knowledgeIntro.textContent = pageText.knowledgeIntro;
+  if (interfaceHeading) interfaceHeading.textContent = pageText.interfaceHeading;
+  if (assistantParagraph && assistantCallout && assistantButtonRow) {
+    assistantParagraph.textContent = pageText.assistantPrompt;
+    assistantButton.textContent = pageText.assistantButton;
+    const handoff = root.createElement("div");
+    handoff.className = "going-further-assistant";
+    handoff.append(assistantParagraph, assistantButtonRow);
+    built.append(assistantCallout, handoff);
+  }
+  if (assistantHeading?.matches("h2")) assistantHeading.remove();
+
+  built.dataset.goingFurtherSection = "built";
+  deploy.dataset.goingFurtherSection = "deploy";
+  addKnowledge.dataset.goingFurtherSection = "knowledge";
+  carryInterface.dataset.goingFurtherSection = "interface";
+  whereSection.dataset.goingFurtherSection = "next";
+  learningPath.dataset.goingFurtherSection = "learning-path";
+  readingList.dataset.goingFurtherSection = "sources";
+  readingList.removeAttribute("data-learning-always-open");
+  readingList.open = false;
+
+  whereNext.replaceWith(whereSection);
+
+  main.insertBefore(built, deploy);
+  deploy.insertAdjacentElement("afterend", addKnowledge);
+  addKnowledge.insertAdjacentElement("afterend", carryInterface);
+  carryInterface.insertAdjacentElement("afterend", whereSection);
+  whereSection.insertAdjacentElement("afterend", learningPath);
+  learningPath.insertAdjacentElement("afterend", readingList);
+  main.dataset.goingFurtherLayout = "ready";
+}
+
+export function mountCourseFavicon(root = document) {
+  if (root.head?.querySelector('link[rel~="icon"]')) return;
+  const link = root.createElement("link");
+  link.rel = "icon";
+  link.type = "image/x-icon";
+  link.href = new URL("../assets/favicon.ico", import.meta.url).href;
+  root.head?.append(link);
+}
+
+export function mountHeadingLinks() {
+  const main = document.querySelector("main");
+  if (!main) return;
+  const occupied = new Set([...document.querySelectorAll("[id]")].map((node) => node.id));
+  main.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((heading) => {
+    if (heading.classList.contains("heading-link-target")) return;
+    if (!heading.id) heading.id = headingId(heading.textContent, occupied);
+    else occupied.add(heading.id);
+
+    heading.classList.add("heading-link-target");
+    const label = heading.textContent.trim();
+    heading.setAttribute("aria-label", label);
+    const icon = document.createElement("a");
+    icon.className = "heading-anchor";
+    icon.href = `#${heading.id}`;
+    icon.setAttribute("aria-label", `Link to ${label}`);
+    icon.title = "Copy link to this section";
+    icon.append(headingLinkIcon());
+    heading.prepend(icon);
+
+    if (!heading.querySelector("a:not(.heading-anchor)")) {
+      const title = document.createElement("a");
+      title.className = "heading-permalink";
+      title.href = `#${heading.id}`;
+      while (heading.lastChild && heading.lastChild !== icon) title.prepend(heading.lastChild);
+      heading.append(title);
+    }
+  });
+}
+
 // Auto-mount on any page that ships a topbar (the lab and the full standalone).
 if (typeof document !== "undefined") {
-  const _boot = () => { mountLearningView(); mountThemeToggle(); mountLanguageMenu(); mountFigures(); markLiveArtifacts(); mountCourseLicenseNote(); mountCourseAssistant({ embed }); };
+  mountCourseFavicon();
+  const _boot = () => { mountLearningView(); mountThemeToggle(); mountLanguageMenu(); mountLearningPathCards(); mountResourceFigures(); mountGoingFurtherLayout(); mountHeadingLinks(); mountFigures(); markLiveArtifacts(); mountCourseLicenseNote(); mountCourseAssistant({ embed }); };
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", _boot);
   } else {

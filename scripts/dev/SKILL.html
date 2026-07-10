@@ -63,7 +63,9 @@
 </head>
 <body>
 <section class="skill-static" aria-labelledby="skill-title">
-  <nav class="skill-nav"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a></nav>
+  <header data-skill-header="1">
+<nav class="skill-nav" aria-label="Skill navigation"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a> <span aria-hidden="true"> · </span> <a data-skill-nav="map" href="../../SKILL.html">Repository map</a></nav>
+</header>
   <h1 id="skill-title">scripts/dev local operator helpers</h1>
   <p>Local contributor helpers that are useful at the command line but are not part of the course runtime or release gate.</p>
   <div class="skill-note">These helpers are operator conveniences. They should stay small and should not become release gates. If Codex tool calls fail before the repo command starts with <code>bubblewrap is unavailable</code>, run the sandbox probe here; installing packages inside NemoClaw service containers will not fix the host Codex launcher.</div>

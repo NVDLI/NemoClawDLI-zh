@@ -11,7 +11,7 @@
   "node_type": "directory-explorer",
   "title": "scripts/ bundle toolchain",
   "source_dir": "scripts/",
-  "summary": "The script tree is hierarchical. Implementations live in named subdirectories; the root holds only the directory beacon, bootstrap helper, and placeholder. Use runtime for the link engine, validation for gates and sensitive-content boundaries, skills for SKILL contracts, build for packaging, compliance for source governance, materials for vendored references, figures for runtime diagram checks, edx for export helper pages, dev for local operator helpers, security for iframe relay, dependency, exception, and SCA/SBOM audits, git-hooks for local hooks, and translate for same-branch localization.",
+  "summary": "The script tree is hierarchical. Implementations live in named subdirectories; the root holds only the directory beacon, bootstrap helper, and placeholder. Use runtime for the link engine, validation for gates and sensitive-content boundaries, skills for SKILL contracts, build for packaging, compliance for source governance, pyodide for the planned browser-Python integration, cors-proxy for relay reference contracts, materials for vendored references, figures for runtime diagram checks, edx for export helper pages, dev for local operator helpers, security for dependency, exception, and SCA/SBOM audits, git-hooks for local hooks, and translate for same-branch localization.",
   "related": [
     "scripts/runtime/SKILL.html",
     "scripts/browser-vendor/SKILL.html",
@@ -19,6 +19,8 @@
     "scripts/skills/SKILL.html",
     "scripts/build/SKILL.html",
     "scripts/compliance/SKILL.html",
+    "scripts/pyodide/SKILL.html",
+    "scripts/cors-proxy/SKILL.html",
     "scripts/git-hooks/SKILL.html",
     "scripts/materials/SKILL.html",
     "scripts/figures/SKILL.html",
@@ -35,7 +37,7 @@
 <script type="application/json" id="explorer-config">
 {
   "title": "scripts/ bundle toolchain",
-  "summary": "The script tree is hierarchical. Implementations live in named subdirectories; the root holds only the directory beacon, bootstrap helper, and placeholder. Use runtime for the link engine, validation for gates and sensitive-content boundaries, skills for SKILL contracts, build for packaging, compliance for source governance, materials for vendored references, figures for runtime diagram checks, edx for export helper pages, dev for local operator helpers, security for iframe relay, dependency, exception, and SCA/SBOM audits, git-hooks for local hooks, and translate for same-branch localization.",
+  "summary": "The script tree is hierarchical. Implementations live in named subdirectories; the root holds only the directory beacon, bootstrap helper, and placeholder. Use runtime for the link engine, validation for gates and sensitive-content boundaries, skills for SKILL contracts, build for packaging, compliance for source governance, pyodide for the planned browser-Python integration, cors-proxy for relay reference contracts, materials for vendored references, figures for runtime diagram checks, edx for export helper pages, dev for local operator helpers, security for dependency, exception, and SCA/SBOM audits, git-hooks for local hooks, and translate for same-branch localization.",
   "model": "nvidia/nemotron-3-nano-30b-a3b",
   "ties": [
     "build"
@@ -80,6 +82,16 @@
           "path": "compliance/SKILL.html",
           "role": "Compliance gates",
           "desc": "Source licensing, private-link, and vendor-ingestion checks."
+        },
+        {
+          "path": "pyodide/SKILL.html",
+          "role": "Planned browser Python",
+          "desc": "Worker design, exact candidate components, license evidence, and the gate that prevents undeclared distribution."
+        },
+        {
+          "path": "cors-proxy/SKILL.html",
+          "role": "Relay contracts",
+          "desc": "Reference contracts for the hosted iframe and launchable relays."
         },
         {
           "path": "git-hooks/SKILL.html",
@@ -149,9 +161,11 @@
 </head>
 <body>
 <section class="skill-static" aria-labelledby="skill-title">
-  <nav class="skill-nav"><a href="../web/index.html">Home</a><a href="../SKILL.html">repo root</a></nav>
+  <header data-skill-header="1">
+<nav class="skill-nav" aria-label="Skill navigation"><a href="../web/index.html">Home</a><a href="../SKILL.html">repo root</a></nav>
+</header>
   <h1 id="skill-title">scripts/ bundle toolchain</h1>
-  <p>The script tree is hierarchical. Implementations live in named subdirectories; the root holds only the directory beacon, bootstrap helper, and placeholder. Use runtime for the link engine, validation for gates, skills for SKILL contracts, build for packaging, compliance for source governance, materials for vendored references, figures for runtime diagram checks, edx for export helper pages, dev for local operator helpers, security for iframe proxy, dependency vulnerability, waiver, and SCA/SBOM audits, git-hooks for local hooks, and translate for same-branch localization.</p>
+  <p>The script tree is hierarchical. Implementations live in named subdirectories; the root holds only the directory beacon, bootstrap helper, and placeholder. Use runtime for the link engine, validation for gates, skills for SKILL contracts, build for packaging, compliance for source governance, pyodide for the planned browser-Python integration, cors-proxy for relay reference contracts, materials for vendored references, figures for runtime diagram checks, edx for export helper pages, dev for local operator helpers, security for dependency vulnerability, exception, and SCA/SBOM audits, git-hooks for local hooks, and translate for same-branch localization.</p>
   <p>For course-cell helper examples, open <a href="../web/nemoclaw/scripts/SKILL.html">web/nemoclaw/scripts/SKILL.html</a>. It now reads like a runnable notebook: local examples run without services, while model and OpenClaw examples explain the key or podman deployment needed before they call live helpers.</p>
   <div class="skill-note">Run commands from the repository root. Use the shared gate once for branch or release evidence. Open a grouped SKILL node and run a standalone validator only for focused iteration or diagnosis; do not replay the gate's constituents. For browser work, run <code>scripts/runtime/browser_env_probe.sh</code> before deciding smoke is unavailable.</div>
   <h2>Executable checks</h2>
@@ -171,6 +185,8 @@
     <a class="skill-card" href="skills/SKILL.html"><b>skills/SKILL.html</b><span>SKILL tooling. Beacon schema, consistency, hierarchy generation, and script-layout guardrails.</span></a>
     <a class="skill-card" href="build/SKILL.html"><b>build/SKILL.html</b><span>Build and deploy. Static bundle, edX export, manifests, and hooks.</span></a>
     <a class="skill-card" href="compliance/SKILL.html"><b>compliance/SKILL.html</b><span>Compliance gates. Source licensing, private-link, and vendor-ingestion checks.</span></a>
+    <a class="skill-card" href="pyodide/SKILL.html"><b>pyodide/SKILL.html</b><span>Planned browser Python. Worker design, exact candidate components, license evidence, and a gate against undeclared distribution.</span></a>
+    <a class="skill-card" href="cors-proxy/SKILL.html"><b>cors-proxy/SKILL.html</b><span>Relay contracts. Reference behavior for the hosted iframe and launchable relays.</span></a>
     <a class="skill-card" href="materials/SKILL.html"><b>materials/SKILL.html</b><span>Vendored reference sources and indexing helpers.</span></a>
     <a class="skill-card" href="figures/SKILL.html"><b>figures/SKILL.html</b><span>Figure checks. Runtime diagram geometry checks.</span></a>
     <a class="skill-card" href="edx/SKILL.html"><b>edx/SKILL.html</b><span>edX helper pages. Small exported helper pages for LMS surfaces.</span></a>

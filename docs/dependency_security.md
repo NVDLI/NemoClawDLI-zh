@@ -76,8 +76,11 @@ JavaScript, Python, and XML modes named in `scripts/browser-vendor/codemirror-en
 does not ship the package's Markdown mode. `course_dependency_integrity.py` compares that entrypoint
 to the reviewed allowlist, enforces supported package floors, and mutation-tests both boundaries.
 Changing the version or mode set requires a bundle regeneration, dependency review, and browser validation.
-Relevant merge requests also run the required `security_browser_sca` npm advisory job and retain its
-machine-readable report as CI evidence.
+Merge requests that change the browser package graph, bundle entrypoint, generated vendor evidence,
+or its integrity gate run the required `security_browser_sca` npm advisory job and retain its
+machine-readable report as CI evidence. Other merge requests expose the same job as a non-blocking
+manual action. Changes to `.gitlab/ci/sca.yml` remain automatic and blocking because they alter the
+scanner's execution environment or enforcement rules. Unrelated core delivery changes do not.
 
 ## Waiver registry
 
@@ -170,17 +173,26 @@ requests. Use that as the server-side project policy layer when the instance has
 it enabled; keep this repo-local audit as the fast developer and agent-visible
 floor guard.
 
-CI includes two SCA jobs:
+GitLab includes three SCA jobs from the self-contained `.gitlab/ci/sca.yml` module. The module
+does not inherit root defaults or variables, so an unrelated delivery-workflow edit cannot change
+the scanner environment or force a scan:
 
 - `security_sca`: manual on branches/default branch and automatic on schedules. It
-  scans the CI Python environment after installing scanner tooling and emits SBOM
-  artifacts under `scripts/security/reports/`.
-- `security_deep_sca`: automatic on merge requests that change a Python dependency
-  manifest, relevant Dockerfile, waiver, or SCA gate; manual on other
-  branches/default branch; and automatic on schedules. It creates an isolated `.sca-venv`, installs
-  `workspace/requirements.txt`, audits the resolved workspace environment, and
+  creates a scanner environment from `scripts/security/requirements-sca.lock`, audits that
+  environment, and emits SBOM artifacts under `scripts/security/reports/`.
+- `security_deep_sca`: automatic and blocking on merge requests that change a Python dependency
+  manifest or lock, relevant Dockerfile, waiver, or SCA gate; non-blocking manual on unrelated
+  merge requests; manual on other branches/default branch; and automatic on schedules. Changes to
+  the SCA module itself also trigger it. It creates isolated runtime and scanner environments, installs
+  `workspace/requirements.lock`, audits the resolved workspace environment, and
   emits a CycloneDX SBOM under `scripts/security/reports/deep-workspace/`. This
   job has a 2 hour timeout because full dependency resolution can be slow.
+
+The inert `.gitlab-ci.yml` includes only `.gitlab/ci/core.yml` and `.gitlab/ci/sca.yml`.
+`gitlab_ci_policy.py` rejects root jobs, nested includes, inherited SCA configuration, broad
+SCA triggers, missing locked commands, or missing ownership entries. GitLab must separately
+require Code Owner approval on protected `main`; repository checks cannot enforce their own
+survival against an author who can modify both a workflow and its validator.
 
 Use the GitLab SBOM Dependency Scanning policy layer for continuous
 advisory-database rescans of default-branch SBOM components.
@@ -196,9 +208,10 @@ when taking them on:
    Grype, or OSV-Scanner for public images; keep NVIDIA/private base image scans
    in internal CI or registry tooling when image names/layers are not public-safe.
 3. Enable and smoke-test the host dependency graph, Dependabot alerts, CodeQL upload,
-   secret scanning, and push protection when mirrored externally. Repo-owned update,
-   dependency-review, and CodeQL workflow definitions are already versioned. Keep
-   GitLab/internal jobs authoritative while GitLab remains canonical.
+   secret scanning, and push protection at public cutover. Repo-owned update,
+   dependency-review, and CodeQL workflow definitions are already versioned. Before cutover,
+   GitLab jobs protect the prepublication candidate. After cutover, GitHub checks protect canonical
+   public source and internal GitLab repeats the required scans on each imported commit.
 4. Add `CODEOWNERS` and protected-branch rules for dependency manifests, Dockerfiles,
    `scripts/security/*`, CI files, deploy files, and waiver registry changes.
 5. Consider VEX only if downstream consumers need machine-readable non-affected

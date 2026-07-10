@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Audit (and --fix) every SKILL.html so it is a TRUE beacon of its own directory.
 
 Per the SKILL contract each SKILL.html is a per-directory brain: human prose +
@@ -9,6 +12,8 @@ scope from where the file actually lives and reconciles the notebook list with
 the directory contents, so the beacon is self-updating and accurate.
 
 Checks per SKILL.html:
+  coverage   every tracked or proposed source directory and ancestor has SKILL.html;
+             there is no directory exemption mechanism
   scope      skill-meta.source_dir == its real dir; human_landing == its real path
   notebooks  every *.md in the course dir is listed (full-directory observability);
              no listed file is missing; notebook_count matches
@@ -19,7 +24,7 @@ Usage:
   python3 skill_audit.py --fix      # rewrite skill-meta to match reality, then report
 """
 from __future__ import annotations
-import argparse, json, re, sys
+import argparse, json, re, subprocess, sys
 from pathlib import Path
 
 for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
@@ -34,19 +39,56 @@ TASK1 = find_repo_root(HERE)
 # Same detection the hooks use.
 PREFIX = "task1/" if (TASK1.name == "task1" and (TASK1.parent / ".git").exists()) else ""
 META_RE = re.compile(r'(<script type="application/json" id="skill-meta">)(.*?)(</script>)', re.S)
-# public/, standalone/, export/ are GENERATED build output (gitignored), never source.
-# Auditing a bundled copy's source_dir against its build path is a false drift, so skip them.
-SKIP = ("__pycache__", ".ipynb_checkpoints", "public", "standalone", "export", "i18n")
 # top-level course-content notebooks: *.md not under an asset subdir
 ASSET_SUB = {"code", "data", "images", "imgs", "exercises", "demo", "skills", "ocstart",
              "_paper_cache", "repos_index", "docstore_index", "composer", "chat_helpers",
              "extra_utils", "skills-seed", "chats", "bin", "hooks", "tests", "routers", "store"}
 
 
+def source_files() -> list[Path]:
+    """Return every tracked or proposed source file known to Git.
+
+    Git's source set is the exhaustive boundary. Ignored build output is absent by
+    construction; tracked locale, vendor, workflow, data, and hidden directories are not.
+    There is no directory exemption mechanism.
+    """
+    raw = subprocess.check_output(
+        ["git", "-C", str(TASK1), "ls-files", "--cached", "--others", "--exclude-standard", "-z"]
+    )
+    return sorted(Path(item.decode()) for item in raw.split(b"\0") if item)
+
+
+def directories_for_files(files: list[Path]) -> list[Path]:
+    directories = {Path(".")}
+    for path in files:
+        parent = path.parent
+        while parent != Path("."):
+            directories.add(parent)
+            parent = parent.parent
+    return sorted(directories, key=lambda path: (len(path.parts), str(path)))
+
+
+def source_directories() -> list[Path]:
+    return directories_for_files(source_files())
+
+
 def skills():
-    for p in sorted(TASK1.rglob("SKILL.html")):
-        if not any(s in p.parts for s in SKIP):
-            yield p
+    for rel in source_directories():
+        directory = TASK1 if rel == Path(".") else TASK1 / rel
+        skill = directory / "SKILL.html"
+        if skill.is_file():
+            yield skill
+
+
+def coverage_findings() -> list[tuple[str, str]]:
+    findings = []
+    for rel in source_directories():
+        directory = TASK1 if rel == Path(".") else TASK1 / rel
+        skill = directory / "SKILL.html"
+        if not skill.is_file():
+            label = "." if rel == Path(".") else str(rel)
+            findings.append((label, "directory has source files or source descendants but no SKILL.html"))
+    return findings
 
 
 def parse_meta(text):
@@ -73,7 +115,7 @@ def course_notebooks(d: Path):
 
 
 def audit(fix: bool):
-    problems = []
+    problems = coverage_findings()
     for sk in skills():
         rel = sk.relative_to(TASK1)
         d = sk.parent

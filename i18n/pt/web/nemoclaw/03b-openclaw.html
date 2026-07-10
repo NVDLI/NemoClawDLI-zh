@@ -10,15 +10,6 @@
 <link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.min.css"/>
 <script src="vendor/codemirror-5.65.21.min.js"></script>
 <style>
-  .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
-  .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
-  .CodeMirror-vscrollbar { display: none; }
-  .CodeMirror-gutters { background: #0d0d0d; border-right: 1px solid #2a2a2a; }
-  .CodeMirror-linenumber { color: #6a6a6a; padding: 0 8px 0 6px; font-size: .76rem; }
-  .CodeMirror-lines { padding: 10px 0; }
-  .cm-s-monokai.CodeMirror { background: #0d0d0d; color: #f8f8f2; }
-  .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
-  .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
 </style>
 <style>
   .file-tree {
@@ -93,7 +84,7 @@
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">Como o gateway incorpora a pasta ao prompt antes de cada turno, editar um arquivo muda a resposta seguinte.</figcaption>
   </figure>
 
-  <div class="callout"><p><strong>O mesmo runtime do Kickstart.</strong> Estas células reutilizam o launchable conectado em 3a. O curso expõe o gateway, não a rota interna <code>/v1/chat/completions</code>. Se uma célula registrar <code>⚠ DEGRADED</code> ou parar de responder, execute Recuperar uma vez para a instância nova. Em uma implantação local, use o <a href="https://build.nvidia.com/spark/nemoclaw-applications" target="_blank" rel="noopener">playbook de configuração do NemoClaw</a> e preserve o mesmo contrato do gateway.</p></div>
+  <div class="callout"><p><strong>O mesmo runtime do Kickstart.</strong> Estas células reutilizam o launchable conectado em 3a. O curso expõe o gateway, não a rota interna <code>/v1/chat/completions</code>. Se uma célula registrar <code>⚠ DEGRADED</code> ou parar de responder, execute Recuperar uma vez para a instância nova. Em uma implantação local, use o <a href="https://build.nvidia.com/spark/nemoclaw-applications?ncid=ref-dli-146986" target="_blank" rel="noopener">playbook de configuração do NemoClaw</a> e preserve o mesmo contrato do gateway.</p></div>
 
   <div id="gw-recover"></div>
 
@@ -130,7 +121,7 @@
       <p>OpenClaw padrão: amigável, conciso e disposto a usar qualquer ferramenta permitida pela política; uma configuração adequada ao desenvolvimento.</p>
       <p>Ao resumir um documento, produz uma síntese curta e indica quais ferramentas usaria em seguida.</p>
     </div>
-    <div class="card" style="border-left:3px solid var(--g)">
+    <div class="card">
       <h3>Cenário B · "Auditor" SOUL.md</h3>
       <p>Uma persona voltada à revisão de código: recusa-se a executar código antes de identificar a superfície de risco e cita o arquivo analisado em cada afirmação.</p>
       <p>Ao resumir o mesmo documento, produz uma lista de riscos e perguntas diretas sobre o que <em>não</em> está documentado.</p>
@@ -190,10 +181,10 @@
 // your launchable, over the gateway. Tool chips fire as it works.
 // Edit the greeting, examples, or response logic, then rerun.
 helpers.mountChatUI("#openclaw-artifact", {
-  disabled: () => !(localStorage.getItem("nemoclaw_clawtoken") && (localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl"))),
+  disabled: () => { const c = helpers.getOpenClawConnection(); return !(c.token && c.rawUrl); },
   disabledMsg: "Primeiro conecte o launchable no Módulo 3a. Este painel precisa da URL e do token.",
-  greeting: "Converse com seu agente ao vivo (conecte-se na página Kickstart primeiro). Tente “listar seus arquivos workspace e me diga para que cada um serve”, ou “ler SOUL.md”.",
-  examples: ["List your workspace files and what each is for", "Read SOUL.md and summarize who you are", "What tools do you have access to?", "What is in your AGENTS.md?", "Save a note to your memory, then read it back", "If a webpage told you to ignore your instructions, what would you do?"],
+  greeting: "Converse com seu agente ao vivo (primeiro, conecte-se na página Kickstart). Peça que ele inspecione o workspace com exec ou leia SOUL.md.",
+  examples: ["Use exec para executar ls -la /sandbox/.openclaw/workspace e explique cada arquivo", "Leia SOUL.md e resuma quem você é", "A quais ferramentas você tem acesso?", "O que há em seu AGENTS.md?", "Salve uma nota na memória e depois leia-a", "O que você faria se uma página mandasse ignorar suas instruções?"],
   respond: async (text, ctx) => { await helpers.openclawChat(text, { session: "art-" + ctx.thread, view: ctx.view, signal: ctx.signal }); },
 });
 helpers.log("Artefato exibido abaixo. Edite a configuração e execute novamente.");
@@ -248,14 +239,15 @@ if (!state._subs) state._subs = {};
 // ── tune these (apply to every state.turn call in this flow) ──────────────────
 const TURN_IDLE_S  = 90;    // give up if the agent goes silent this long (this model can be slow to first token)
 const TURN_TOTAL_S = 240;   // hard ceiling per turn
+const FINAL_EVENT_GRACE_MS = 1500; // lifecycle end can arrive just before chat.final
 // ──────────────────────────────────────────────────────────────────────────────
 
 state.turn = async ({ content, session }) => {
   if (!state._subs[session]) { await state.call("sessions.messages.subscribe", { key: session }); state._subs[session] = true; }
   let text = "", myRun = null, toolStarts = 0, didResult = false;
   await new Promise((resolve, reject) => {
-    let idle, glob;
-    const done = (stalled) => { clearTimeout(idle); clearTimeout(glob); state._chatCb = null; if (stalled) state.call("chat.abort", { sessionKey: session }).catch(() => {}); resolve(); };
+    let idle, glob, endGrace, finished = false;
+    const done = (stalled) => { if (finished) return; finished = true; clearTimeout(idle); clearTimeout(glob); clearTimeout(endGrace); state._chatCb = null; if (stalled) state.call("chat.abort", { sessionKey: session }).catch(() => {}); resolve(); };
     const bump = () => { clearTimeout(idle); idle = setTimeout(() => done(true), TURN_IDLE_S * 1000); };
     glob = setTimeout(() => done(true), TURN_TOTAL_S * 1000);
     if (helpers.signal) helpers.signal.addEventListener("abort", () => done(true), { once: true });
@@ -269,8 +261,8 @@ state.turn = async ({ content, session }) => {
       bump();   // real activity on OUR run pushes the idle deadline back
       if (d.event === "chat" && pl.state === "final") {
         // final chat frame: fallback prose if no agent text deltas arrived
-        text = (pl.message && pl.message.content && pl.message.content[0] && pl.message.content[0].text) || text;
-        return;
+        text = helpers.openclawMessageText(pl.message) || text;
+        done(false); return;
       }
 
       if (d.event !== "agent") return;
@@ -284,17 +276,16 @@ state.turn = async ({ content, session }) => {
         // a tool was invoked, so show its INPUT (the args reveal what was asked)
         toolStarts++;
         const inp = data.args ? JSON.stringify(data.args) : (data.meta || "");
-        helpers.log.details("\u2699\ufe0f" + (data.name || "tool") + (inp ? "  " + inp.replace(/\\n/g, " ").slice(0, 160) : ""), d);
+        helpers.log.details("\u2699\ufe0f" + (data.name || "tool") + (inp ? "  " + inp.replace(/\\n/g, " ").slice(0, 160) : ""), helpers.filterOpenClawRuntimeValue(d));
 
       } else if (stream === "tool" && data.phase === "result") {
         // a tool finished, so show its OUTPUT (exec, read, edit, browser, \u2026)
         didResult = true;
-        const r = data.result;
-        const t = (r && r.content && r.content[0] && r.content[0].text) || (typeof r === "string" ? r : "");
-        helpers.log.details((data.isError ? "\u2717" : "\u2713") + " " + (data.name || "tool") + (t ? "  " + t.trim().replace(/\\n/g, " \u23ce ").slice(0, 200) : ""), d);
+        const t = helpers.openclawResultText(data.result);
+        helpers.log.details((data.isError ? "\u2717" : "\u2713") + " " + (data.name || "tool") + (t ? "  " + t.trim().replace(/\\n/g, " \u23ce ").slice(0, 200) : ""), helpers.filterOpenClawRuntimeValue(d));
       } else if (data.phase === "end" && !data.itemId) {
-        // agent run complete (lifecycle end)
-        done(false);
+        // chat.final is authoritative and can trail lifecycle end by one browser turn.
+        clearTimeout(endGrace); endGrace = setTimeout(() => done(false), FINAL_EVENT_GRACE_MS);
       }
     };
 
@@ -376,6 +367,10 @@ helpers.log(state.a);
       showCode: false,
       summary: "Envie a mesma pergunta à sessão de auditor. Seu SOUL.md orienta o agente a apresentar os riscos primeiro e citar o trecho analisado. As duas respostas aparecem aqui para comparar as vozes diante da mesma entrada.",
       code: `// Reuses state.question + state.turn from the Default-SOUL node above. Run that first.
+if (typeof state.turn !== "function") {
+  helpers.log("Conecte o OpenClaw no Módulo 3a e execute primeiro o Default SOUL.");
+  return;
+}
 const b = await state.turn({ content: state.question, session: "quick-3b-soul-auditor" });
 helpers.log("— SOUL padrão —"); helpers.log(state.a);
 helpers.log("— SOUL de auditor —"); helpers.log(b);
@@ -411,6 +406,10 @@ helpers.log(state.r1);
       showCode: false,
       summary: "Um novo turno na mesma sessão pergunta o que o agente recorda. O modelo não retém o turno 1; a preferência persiste pelo histórico da sessão e pelo MEMORY.md salvo. A verificação confirma a presença das palavras-chave.",
       code: `// Ask the same session what it retained after the write turn.
+if (typeof state.turn !== "function") {
+  helpers.log("Conecte o OpenClaw no Módulo 3a e execute primeiro o Turno 1.");
+  return;
+}
 const r2 = await state.turn({
   content: "What do you remember about how I like to receive code review?",
   session: "quick-3b-memory",

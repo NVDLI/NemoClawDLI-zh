@@ -4,12 +4,12 @@ This document owns issue anatomy, labels, tracker state, and public discussion r
 Agent execution guardrails live in [`agent_process.md`](agent_process.md); protected release
 authority lives in [`release_playbook.md`](release_playbook.md).
 
-This repo is a multi-course bundle in spirit, but the current release target is
-NemoClaw on the CPU service stack:
+This repo is a multi-course bundle in spirit, but the current release target is a static browser
+course:
 
 - Current course: `web/nemoclaw/`
-- Current runtime: CPU bundle services under `cpu/`, `workspace/`, and `deploy/`
-- Current deploy surface: GitLab Pages previews plus DLI/local CPU compose paths
+- Production delivery: GitHub Pages or another static host, plus a co-located NemoClaw launchable
+- Local-only support: services and Compose paths under `cpu/`, `workspace/`, and `deploy/`
 
 Write issues so a future course can reuse the same structure without hiding the
 current scope. Name the current course/runtime explicitly, then state whether the
@@ -26,9 +26,15 @@ questions before editing:
 3. What evidence proves this is real?
 4. What validation would make the fix reviewable?
 
-Use `Addresses #N` from an MR unless the MR fully resolves the issue. Do not use
-`Closes #N` for exploratory cleanup, partial hygiene, or a broad pass that only
-improves one slice of a composite issue.
+Use `Closes #N` from an MR that satisfies every acceptance criterion so the host closes the issue
+on merge. A partial MR uses `Addresses #N` and includes a `Remaining issue work` section naming
+the unmet criteria. Do not use `Closes #N` for exploratory cleanup, partial hygiene, or a broad pass
+that only improves one slice of a composite issue. Recheck the relationship at handoff after the
+final diff and validation evidence are known.
+
+Use the general Bug form for reproducible defects and the Feature form for concrete improvements.
+The course-content, runtime/deployment, and source/licensing forms collect deeper evidence for those
+specialized surfaces. Questions and unbounded ideas belong in Discussions after public intake opens.
 
 ## Required issue shape
 
@@ -40,7 +46,8 @@ One paragraph naming the defect or improvement.
 
 ## Current release target
 - Course: `web/nemoclaw/`
-- Runtime: CPU service stack (`cpu/`, `workspace/`, `deploy/`)
+- Production: static browser course, optionally co-located with a NemoClaw launchable
+- Local-only support: `cpu/`, `workspace/`, and `deploy/`
 - Bundle scope: course-specific or bundle-wide
 
 ## Evidence

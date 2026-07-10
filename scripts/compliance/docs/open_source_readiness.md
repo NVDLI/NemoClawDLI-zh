@@ -29,6 +29,44 @@ contract lives in `docs/release-test-plan.md`, with its machine-readable ownersh
 `scripts/compliance/docs/source_inventory.json`. The policy that explains what may be vendored
 lives at `scripts/compliance/docs/vendor_policy.md`.
 
+## Public Repository Baseline
+
+The public work products have different requirement levels. Keep those levels explicit so an
+optional file cannot hide a missing release blocker.
+
+Run `python3 scripts/validation/repository_work_products_audit.py` after changing this baseline or
+its applicability matrix. Run its `--self-test` mode after changing the contract or detector.
+
+Show-stoppers:
+
+- `README.md`: purpose, requirements, quickstart, contribution, governance, support, security, and license links
+- `LICENSE`: Apache License 2.0 text
+- `SECURITY.md`: the official NVIDIA repository template, retained verbatim
+
+Required work products:
+
+- Maintainer plan: `README.md` plus `docs/release_playbook.md` and its linked dependency, issue,
+  testing, release, rollback, and hotfix owners
+- `CONTRIBUTING.md` and `DCO.md`: contribution terms, signoff, validation, coding guidance, and review requirements
+- `CHANGELOG.md`: version history updated with each release
+- `CODE_OF_CONDUCT.md`: behavior, private conduct reporting, enforcement, and recusal
+- `.github/ISSUE_TEMPLATE/bug.yml` and `.github/ISSUE_TEMPLATE/feature.yml`: explicit Bug and Feature intake
+- `.github/PULL_REQUEST_TEMPLATE.md`: proposed-change evidence and review contract
+
+Contextual and optional work products:
+
+- A separate CLA is not applicable because this release uses Apache-2.0. DCO signoff remains required.
+- Coding guidance is applicable and consolidated in `CONTRIBUTING.md`, `AGENTS.md`, the nearest
+  `SKILL.html`, and their validators.
+- A citation file and multi-release roadmap remain optional.
+- The product design, test plan, course, and release documentation already provide the optional
+  technical and user guides.
+
+`SUPPORT.md` remains a useful community-health policy even though it is not one of the release work
+products above. Governance and maintainer authority remain consolidated in `README.md`; live
+assignments belong to host teams, protected settings, and `CODEOWNERS` after stable public team
+handles exist. Add another policy file only when it owns information that is not already canonical.
+
 ## Roles
 
 - Content owner: defines scope, owns source material, and coordinates review.

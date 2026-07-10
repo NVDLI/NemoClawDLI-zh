@@ -10,15 +10,6 @@
 <link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.min.css"/>
 <script src="vendor/codemirror-5.65.21.min.js"></script>
 <style>
-  .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
-  .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
-  .CodeMirror-vscrollbar { display: none; }
-  .CodeMirror-gutters { background: #0d0d0d; border-right: 1px solid #2a2a2a; }
-  .CodeMirror-linenumber { color: #6a6a6a; padding: 0 8px 0 6px; font-size: .76rem; }
-  .CodeMirror-lines { padding: 10px 0; }
-  .cm-s-monokai.CodeMirror { background: #0d0d0d; color: #f8f8f2; }
-  .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
-  .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
   figure.lp-video { margin: 1.4em 0; }
   figure.lp-video .video-wrap { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;
      border-radius: 8px; border: 1px solid var(--bd); background: var(--e1); }
@@ -182,11 +173,10 @@
     an application.
   </p>
   <p>
-    The figure below separates those boundaries. Read it left to right for
-    context ingress through MCP and task delivery through A2A; read it bottom
-    to top for capability brokerage through skills, runtime execution, and
-    generated UX. Choose the boundary that matches the bundle and the system
-    state it must carry.
+    The figure below separates those boundaries. Read it left to right to follow
+    MCP context ingress and A2A task delivery. Then read it bottom to top to follow
+    skill brokerage, runtime execution, and generated UX. Choose the boundary that
+    matches the bundle and the system state it must carry.
   </p>
   <figure style="margin:1.4em 0 1.8em">
     <div class="fig-embed" data-svg-src="assets/figures/02b-retrieval-boundaries.svg" style="aspect-ratio:1100 / 460"></div>
@@ -219,8 +209,8 @@
   </table>
 
   <p>
-    This module follows the <strong>unstructured-prose</strong> shape from corpus to answer, and runs the
-    basic retrieve-then-generate flow for our example purposes.
+    The <strong>unstructured-prose</strong> example carries a corpus through retrieval and generation
+    to a grounded answer.
   </p>
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/02b-rag-2.svg" style="aspect-ratio:900 / 420"></div>
@@ -753,9 +743,8 @@ return { indexed: state.index.length, dim: vecs[0].length };
     {
       id: "query", icon: "❓", title: "User query", x: 1, y: 0,
       summary: "The question to retrieve against. Changing it changes which passages rank highest, because the query is embedded using the 'query' input type, which produces a vector that the model has trained to point toward relevant passages rather than toward identical text.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Try another query and rerun to watch the ranking shift.
 state.query = "what is the difference between react and rewoo?";
-// Try another query and rerun to watch the ranking shift:
 // state.query = "what does the openshell sandbox do?";           // single-fact lookup
 // state.query = "how do RAG and a deep-research agent compare?"; // spans several passages
 return state.query;
@@ -837,9 +826,8 @@ return { indexed: state.chunkIndex.length };
     {
       id: "query", icon: "❓", title: "User query", x: 1, y: 0,
       summary: "The question being asked, structured the same way as in the previous canvas. Edit it and re-run to see which parent document rises to the top.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Try another query and watch which parent document ranks first.
 state.query = "When does each retrieval pattern beat the other?";
-// Other queries to try; each returns the full parent document:
 // state.query = "how does chunking change what the model sees?";
 // state.query = "what is a reranker, and when is it worth the step?";
 return state.query;
@@ -879,7 +867,7 @@ const cards = state.docs.map((d) => {
   const isWinnerParent = d.id === parent.id;
   const rows = docChunks.map((c) => {
     const isTop = c === top;
-    return '<div style="margin:3px 0;padding:5px 8px;border-radius:5px;border-left:3px solid ' +
+    return '<div style="margin:3px 0;padding:5px 8px;border-radius:5px;border:1px solid ' +
       (isTop ? "var(--g,#76b900)" : "var(--bd,#2a2a2a)") + (isTop ? ";background:rgba(118,185,0,.12)" : "") + '">' +
       '<div style="font-family:var(--mono,monospace);font-size:11px;color:' + (isTop ? "var(--gs,#aee23a)" : "var(--tf,#8a8a8a)") + '">chunk ' + c.idx + " · score " + c.score.toFixed(3) + (isTop ? " ★ returned" : "") + '</div>' +
       '<div style="font-size:12px;color:var(--td,#b0b0b0)">' + esc(c.text) + '</div></div>';
@@ -959,7 +947,7 @@ return { tool: state.RETRIEVE_SCHEMA[0].function.name };
     {
       id: "query", icon: "❓", title: "User query", x: 1, y: 0,
       summary: "The user's question, plus a system prompt that instructs the model to use the retrieve tool only when it needs specific facts it cannot answer confidently from training knowledge. With that instruction in place, the model weighs each turn and chooses whether to retrieve, instead of retrieving on every call.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Choose a prompt that should retrieve, skip retrieval, or be ambiguous.
 
 const EXAMPLES = {
   default: "What model does this course use, and does it need an API key?",

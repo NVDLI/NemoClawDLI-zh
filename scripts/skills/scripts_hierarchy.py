@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Guardrail for the scripts/ hierarchy.
 
 The scripts/ root is intentionally sparse so the repository browser shows the grouped
@@ -15,8 +18,8 @@ ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
 
 GROUP_SKILLS = (
-    "browser-vendor", "build", "compliance", "dev", "edx", "figures",
-    "git-hooks", "materials", "runtime", "security", "skills", "translate",
+    "browser-vendor", "build", "compliance", "cors-proxy", "dev", "edx", "figures",
+    "git-hooks", "materials", "pyodide", "runtime", "security", "skills", "translate",
     "validation",
 )
 ROOT_ALLOW = {".gitkeep", "SKILL.html", "_bootstrap.py"}

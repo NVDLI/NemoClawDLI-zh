@@ -48,6 +48,12 @@ Each public draft receives:
   attached-asset digests, and the archives requiring external malware evidence
 - `nemoclaw-vX.Y.Z.python-env.cdx.json`: CycloneDX SBOM for the resolved release environment
 - `nemoclaw-vX.Y.Z.browser.cdx.json`: CycloneDX SBOM for JavaScript packages shipped to learners
+- `nemoclaw-vX.Y.Z.python-sbom-evidence.json`: source commit, SBOM hash, component count,
+  license summary, workflow URL, and retention for the resolved Python environment
+- `nemoclaw-vX.Y.Z.python-license-appendix.md`: component licenses reconciled from the same
+  Python SBOM without guessing unresolved metadata
+- `nemoclaw-vX.Y.Z.sbom-evidence-catalog.json`: distribution-aware index for committed,
+  CI-generated, and conditional component evidence
 - `SHA256SUMS`: digest list for every published asset
 
 Validation reports and the full `pip-audit` result remain workflow evidence. They are retained with
@@ -62,6 +68,9 @@ private scanner, reviewer, and approval records in the authorized release system
 The workflow installs scanner tools in a separate environment, so scanner dependencies do not
 pollute the runtime SBOM. Scanner versions are pinned in the workflow so the same environment is
 serialized consistently until an explicit dependency update changes the tooling.
+The static release does not include local-authoring images. If a later release adds one, the draft
+must also carry that image's immutable registry digest, component SBOM, evidence manifest, and
+license appendix.
 
 ## External artifact evidence
 
@@ -91,8 +100,9 @@ python3 scripts/build/package_release.py --self-test
 ```
 
 The generated manifest binds the archive to both the tag object and peeled commit. `SHA256SUMS`
-supports offline verification. When the external GitHub repository is created, enable immutable
-releases. GitHub then locks the published tag and assets and emits a release attestation.
+supports offline verification. Before the reserved external GitHub repository publishes its first
+release, enable immutable releases. GitHub then locks the published tag and assets and emits a
+release attestation.
 
 ## Promotion and recovery
 

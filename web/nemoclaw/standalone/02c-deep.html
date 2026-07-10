@@ -1680,8 +1680,7 @@ svg[style*="background: #0d0d0d"] {
   color: #1f2328 !important;
 }
 
-/* Pages that style their SVGs via a page-local <style> block (e.g. cert.html's
-   `.topo-svg svg { background:#0d0d0d }`) don't get the substitution above,
+/* Pages that style their SVGs via a page-local <style> block don't get the substitution above,
    because those rules win on specificity. Patch with !important per-page selector. */
 .topo-svg svg {
   background: #f6f8fa !important;
@@ -2130,7 +2129,7 @@ pre .hljs                { color: #1f2328 !important; background: transparent !i
     reads those files and writes one combined report. Topology comes from LangChain's
     <a href="https://blog.langchain.com/deep-agents/" target="_blank" rel="noopener">"Deep
     Agents"</a> framing (Bryk, Hwchase17 et al., 2025) and the
-    <a href="https://build.nvidia.com/nvidia/aiq" target="_blank" rel="noopener">NVIDIA AI-Q
+    <a href="https://build.nvidia.com/nvidia/aiq?ncid=ref-dli-146986" target="_blank" rel="noopener">NVIDIA AI-Q
     Blueprint</a>; the four-pillar decomposition below maps directly to the
     <code>deepagents</code> npm package's public API.
   </p>
@@ -2157,7 +2156,7 @@ pre .hljs                { color: #1f2328 !important; background: transparent !i
   <ul>
     <li>Planning and Memory work together as a pair: the plan is written to the virtual filesystem once, and every sub-agent can read it from there without the orchestrator having to pass it explicitly.</li>
     <li>Delegation and Sandbox work together as a pair: each spawned worker runs in an isolated execution surface, so a failure or runaway in one task cannot corrupt the context of another.</li>
-    <li>The <a href="https://build.nvidia.com/nvidia/aiq" target="_blank" rel="noopener">NVIDIA AI-Q Blueprint</a> is the production reference: same four pillars, typed task graph, durable state, human-in-the-loop approval as first-class graph state.</li>
+    <li>The <a href="https://build.nvidia.com/nvidia/aiq?ncid=ref-dli-146986" target="_blank" rel="noopener">NVIDIA AI-Q Blueprint</a> is the production reference: same four pillars, typed task graph, durable state, human-in-the-loop approval as first-class graph state.</li>
   </ul>
 
   <!-- ── Part 3: ChatOpenAI ─────────────────────────────────────────────────── -->
@@ -2299,7 +2298,7 @@ pre .hljs                { color: #1f2328 !important; background: transparent !i
 // same page HTML works in the lab static host, an external iframe, or opened as a
 // local file, all identically, because it only ever talks to remotes.
 
-const DIRECT_URL = "https://nvidia-api-cors-proxy.vkudlay.workers.dev/v1";
+const DIRECT_URL = "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1";
 // Web-cell model contract. The short course standardises on the fast Nemotron
 // nano model: it carries the reasoning channel and is quick enough for live
 // browser cells. DEFAULT_MODEL is what chat() uses when a cell passes no model;
@@ -6085,7 +6084,7 @@ export function mountKeyPanel(container, opts = {}) {
         <button class="btn">Save &amp; verify</button>
         <div class="status"></div>
         <p style="margin:.8em 0 0;font-size:.8rem;color:var(--tf,#8a8a8a)">
-          No key yet? <a href="https://build.nvidia.com" target="_blank" rel="noopener">Sign up at build.nvidia.com &rarr;</a>
+          No key yet? <a href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener">Sign up at build.nvidia.com &rarr;</a>
           Free-tier models cover every exercise.
         </p>
       </div>`;
@@ -7109,7 +7108,7 @@ return { lines: lines.length };
         '<label for="_lite_key_in">NVIDIA API key (nvapi-…)</label>' +
         '<input id="_lite_key_in" type="password" placeholder="nvapi-…" autocomplete="off"/>' +
         '<button id="_lite_key_btn">Save & verify</button>' +
-        '<div class="key-hint">Free key at <a href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com</a>. Stored in sessionStorage; cleared when this tab closes.</div>' +
+        '<div class="key-hint">Free key at <a href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener">build.nvidia.com</a>. Stored in sessionStorage; cleared when this tab closes.</div>' +
         (message ? '<div class="key-err">' + message + '</div>' : '') +
       '</div>';
     var inp = panel.querySelector("#_lite_key_in");

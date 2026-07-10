@@ -10,15 +10,6 @@
 <link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.min.css"/>
 <script src="vendor/codemirror-5.65.21.min.js"></script>
 <style>
-  .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
-  .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
-  .CodeMirror-vscrollbar { display: none; }
-  .CodeMirror-gutters { background: #0d0d0d; border-right: 1px solid #2a2a2a; }
-  .CodeMirror-linenumber { color: #6a6a6a; padding: 0 8px 0 6px; font-size: .76rem; }
-  .CodeMirror-lines { padding: 10px 0; }
-  .cm-s-monokai.CodeMirror { background: #0d0d0d; color: #f8f8f2; }
-  .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
-  .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
 </style>
 <style>
   .layers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 1em 0; }
@@ -365,7 +356,7 @@
       code: `// Describe a goal in plain words; the agent plans the shell commands it would run.
 // The cell runs each in YOUR sandbox and shows the command, its output, and its exit code.
 helpers.mountChatUI("#trajectory-artifact", {
-  disabled: () => !(localStorage.getItem("nemoclaw_clawtoken") && (localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl"))),
+  disabled: () => { const c = helpers.getOpenClawConnection(); return !(c.token && c.rawUrl); },
   disabledMsg: "Connect your launchable in Module 3a first. This exercise runs commands in your sandbox.",
   greeting: "Describe a goal and I plan the shell commands an agent would run for it, then we run each one in your sandbox and read the result, in order. Watch what each command returns. A secret that prints to the screen has already left the box, whatever the network blocks afterward.",
   models: [
@@ -458,10 +449,10 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
      decision on every connection. You compute that same decision in the browser
      from your launchable's real policy, then run the action in the live sandbox and
      confirm the kernel's verdict matches your prediction.</p>
-  <p>This cell exercises <em>binary identity</em>. The policy grants egress per program rather than per
+  <p>The policy test below exercises <em>binary identity</em>. The policy grants egress per program rather than per
      host so the proxy always checks which binary opened a connection before it ever looks at the
      destination it is bound for. An allowed program like <code>openclaw</code> therefore reaches the
-     inference endpoint while a stray <code>curl</code> to that identical endpoint is refused outright.
+     inference endpoint while a stray <code>curl</code> to that identical endpoint is refused.
      Pick any action from the buttons below to watch its static verdict appear at once, and the
      inference-endpoint action shows this same-host flip most clearly.</p>
 
@@ -470,7 +461,7 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
     on the launchable you connected in Kickstart
     through <code>openshell sandbox exec</code>, so each result you read back is
     a decision the kernel made on the wire.
-    Keep your launchable open in another tab so its Cloudflare Access session stays
+    Keep your launchable open in another tab so its access session stays
     fresh.
   </div>
 
@@ -525,8 +516,8 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
   <div id="cell-predict-confirm"></div>
 
   <div class="callout">
-    When the predicted verdict and the live result agree, the policy is doing exactly what
-    the static analysis says it should. A disagreement instead means the box is behaving in a way
+    When the predicted verdict and the live result agree, the box enforces the policy that
+    the static analysis predicted. A disagreement instead means the box is behaving in a way
     your prediction never captured, whether that is a preset someone added without your knowing or a
     real gap the box managed to hide from the static view. Either way, you learn something important
     before you start trusting the box in earnest.
@@ -556,7 +547,7 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
 
   <div class="callout warn">
     The protection here is deliberately one-sided, since the sandbox stays strong against the
-    agent's own mistakes and even against an outright compromise of the agent while having no
+    agent's own mistakes and even against a compromise of the agent while having no
     visibility at all into whoever holds the control plane sitting above it. You should guard access
     to that plane as carefully as you would guard root, because on this box it can reconfigure the
     agent's identity and schedule entirely outside the reach of anything the sandbox checks.
@@ -720,11 +711,12 @@ async function probe(command, mechanism) {
   return { command, blocked, mechanism: mech };
 }
 const question = (q) => { helpers.log(""); helpers.log.html("<span style='color:var(--gs);font-weight:700'>" + _esc(q) + "</span>"); };
+const results = [];
 
 question("Can I reach the open internet?");
-await probe("curl -sS -m 8 -o /dev/null -w 'code=%{http_code}' https://example.com", "network");
-await probe("curl -sS -m 8 -o /dev/null -w 'code=%{http_code}' https://en.wikipedia.org", "network");
-await probe("curl -sS -m 6 -o /dev/null -w 'code=%{http_code}' http://169.254.169.254/latest/meta-data/", "network");
+results.push(await probe("curl -sS -m 8 -o /dev/null -w 'code=%{http_code}' https://example.com", "network"));
+results.push(await probe("curl -sS -m 8 -o /dev/null -w 'code=%{http_code}' https://en.wikipedia.org", "network"));
+results.push(await probe("curl -sS -m 6 -o /dev/null -w 'code=%{http_code}' http://169.254.169.254/latest/meta-data/", "network"));
 helpers.log([
   "→ The network namespace plus the OPA egress proxy refuse every curl.",
   "The allowlist is bound to the openclaw binary, so a plain curl reaches nothing.",
@@ -732,9 +724,9 @@ helpers.log([
 ].join(" "));
 
 question("Can I install software, to pull in new code?");
-await probe("apt-get install -y cowsay", "non-root");
-await probe("pip install --break-system-packages --retries 0 --timeout 5 --no-input cowsay", "network");
-await probe("npm install --no-audit --no-fund left-pad", "network");
+results.push(await probe("apt-get install -y cowsay", "non-root"));
+results.push(await probe("pip install --break-system-packages --retries 0 --timeout 5 --no-input cowsay", "network"));
+results.push(await probe("npm install --no-audit --no-fund left-pad", "network"));
 helpers.log([
   "→ No. apt needs root it does not have.",
   "pip and npm run, but the egress proxy refuses their downloads.",
@@ -742,10 +734,10 @@ helpers.log([
 ].join(" "));
 
 question("Can I become root, or escape the container?");
-await probe("sudo id", "not installed");
-await probe("nsenter -t 1 -m -- id", "seccomp / non-root");
-await probe("docker ps", "not installed");
-await probe("cat /proc/1/environ", "non-root");
+results.push(await probe("sudo id", "not installed"));
+results.push(await probe("nsenter -t 1 -m -- id", "seccomp / non-root"));
+results.push(await probe("docker ps", "not installed"));
+results.push(await probe("cat /proc/1/environ", "non-root"));
 helpers.log([
   "→ No path up or out.",
   "sudo and docker are absent, entering the host namespace is denied,",
@@ -753,10 +745,10 @@ helpers.log([
 ].join(" "));
 
 question("Can I rewrite my own persona, and is locking it real?");
-await probe("ls -la /sandbox/.openclaw/workspace/SOUL.md", "Landlock");
-await probe("chmod 0444 /sandbox/.openclaw/workspace/SOUL.md", "Landlock");
-await probe("chmod 0644 /sandbox/.openclaw/workspace/SOUL.md", "Landlock");
-await probe("chattr +i /sandbox/.openclaw/workspace/SOUL.md", "non-root");
+results.push(await probe("ls -la /sandbox/.openclaw/workspace/SOUL.md", "Landlock"));
+results.push(await probe("chmod 0444 /sandbox/.openclaw/workspace/SOUL.md", "Landlock"));
+results.push(await probe("chmod 0644 /sandbox/.openclaw/workspace/SOUL.md", "Landlock"));
+results.push(await probe("chattr +i /sandbox/.openclaw/workspace/SOUL.md", "non-root"));
 helpers.log([
   "→ SOUL.md sits in a writable tree and the agent owns it, so it can undo chmod.",
   "The lock it cannot pick is chattr +i, which needs root.",
@@ -765,6 +757,9 @@ helpers.log([
 
 helpers.log("");
 helpers.log("Edit any command, add a probe('your command') line, or ask a new question. One program per line: no shell, so no pipes or &&.");
+// Optional visibility: uncomment to inspect every raw probe result before the summary return.
+// helpers.log.json("all probe results", results);
+return { probes: results.length, denied: results.filter(result => result.blocked).length, results };
 `,
 });
 
@@ -779,7 +774,7 @@ helpers.log("Edit any command, add a probe('your command') line, or ask a new qu
 // ── Read your live policy, draw the map from it ───────────────────────────────
 mountRunCell("#cell-live-policy", {
   label: "Read your launchable's live policy",
-  intro: "Fetch the live policy through the operator terminal and print its YAML, then compare it with the snapshot that drives the map. Keep the launchable open for its Cloudflare Access session; connect in Module 3a first if needed. The exact call remains in the code dropdown.",
+  intro: "Fetch the live policy through the operator terminal and print its YAML, then compare it with the snapshot that drives the map. Keep the launchable open for its access session; connect in Module 3a first if needed. The exact call remains in the code dropdown.",
   code: `// helpers.policyGet() returns the command, raw output, status, and parsed policy.
 const p = await helpers.policyGet();
 helpers.log("called:  " + p.command);          // the exact command that ran on your box
@@ -787,12 +782,15 @@ helpers.log("");
 helpers.log(p.status || "(no status header returned)");
 
 if (!p.policy) {
-  helpers.log("\\n(could not parse a policy body. Keep your launchable open in another tab so its Cloudflare Access session is valid, then re-run. Check the sandbox name with: openshell sandbox list)");
+  helpers.log("\\nCould not parse the live policy: " + (p.parseError || "unknown parser error"));
+  helpers.log("Keep your launchable open in another tab, then re-run. Check the sandbox name with: openshell sandbox list");
   helpers.log.details("raw output", p.raw);
   return;
 }
 
 const nets = Object.keys(p.policy.network_policies || {});
+// Optional visibility: uncomment to inspect the destination names as JSON.
+// helpers.log.json("network policy names", nets);
 helpers.log("\\nyour live policy: egress is deny-by-default, with " + nets.length + " allowed destinations (" + nets.join(", ") + ").");
 helpers.log("the predict cell below computes from this exact policy.");
 helpers.log.details("raw policy returned (the YAML openshell printed)", p.raw);

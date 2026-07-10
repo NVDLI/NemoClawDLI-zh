@@ -1912,8 +1912,7 @@ svg[style*="background: #0d0d0d"] {
   color: #1f2328 !important;
 }
 
-/* Pages that style their SVGs via a page-local <style> block (e.g. cert.html's
-   `.topo-svg svg { background:#0d0d0d }`) don't get the substitution above,
+/* Pages that style their SVGs via a page-local <style> block don't get the substitution above,
    because those rules win on specificity. Patch with !important per-page selector. */
 .topo-svg svg {
   background: #f6f8fa !important;

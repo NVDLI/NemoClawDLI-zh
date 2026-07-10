@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Report external release evidence that a proposed diff requires an operator to refresh."""
 from __future__ import annotations
 
@@ -34,7 +37,7 @@ RULES = (
         "Threat and architecture assessment",
         "Refresh the authorized assessment when topology, trust boundaries, authentication, data flow, or deployment changed.",
         (
-            ".github/workflows/*", ".gitlab-ci.yml", "cors-proxy/*", "deploy/*",
+            ".github/workflows/*", ".gitlab-ci.yml", ".gitlab/ci/*", "scripts/cors-proxy/*", "deploy/*",
             "docs/security-architecture.*", "docs/security-design.md",
             "web/nemoclaw/scripts/_openclaw.js", "web/nemoclaw/scripts/_shared.js",
         ),
@@ -50,12 +53,22 @@ RULES = (
         ),
     ),
     FollowUp(
+        "privacy-data-review",
+        "Privacy and data-use review",
+        "Recheck the authorized privacy assessment when a destination, credential flow, browser storage, telemetry, or retention boundary changed.",
+        (
+            "docs/product-design.md", "docs/security-design.md", "web/nemoclaw/index.html",
+            "web/nemoclaw/scripts/_keypanel.js", "web/nemoclaw/scripts/_openclaw.js",
+            "web/nemoclaw/scripts/_shared.js",
+        ),
+    ),
+    FollowUp(
         "open-source-license-review",
         "Open-source and license review",
         "Refresh component inventory, distribution method, license disposition, and authorized open-source review for changed third-party inputs.",
         (
             "**/Dockerfile", "**/*.Dockerfile", "**/requirements*.txt", "**/requirements*.lock",
-            "scripts/browser-vendor/*", "scripts/materials/*", "web/nemoclaw/mats/*",
+            "scripts/browser-vendor/*", "scripts/materials/*", "scripts/pyodide/*", "web/nemoclaw/mats/*",
             "web/nemoclaw/vendor/*",
         ),
     ),
@@ -64,7 +77,7 @@ RULES = (
         "Verified secret scan",
         "Run the authoritative secret scan on the final source ref after credential, workflow, proxy, or deployment handling changes.",
         (
-            ".github/workflows/*", ".gitlab-ci.yml", "cors-proxy/*", "deploy/*",
+            ".github/workflows/*", ".gitlab-ci.yml", ".gitlab/ci/*", "scripts/cors-proxy/*", "deploy/*",
             "scripts/security/*", "web/nemoclaw/scripts/_openclaw.js", "web/nemoclaw/scripts/_shared.js",
         ),
     ),
@@ -75,6 +88,17 @@ RULES = (
         (
             "i18n/*", "web/*", "**/Dockerfile", "**/*.Dockerfile", "**/requirements*.txt",
             "**/requirements*.lock", "scripts/build/*", "scripts/browser-vendor/*",
+        ),
+    ),
+    FollowUp(
+        "public-repository-work-products",
+        "Public repository work-product review",
+        "Re-review required, contextual, and optional public repository work products and record the designated approver's decision.",
+        (
+            "README.md", "LICENSE", "SECURITY.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md",
+            "CHANGELOG.md", ".github/ISSUE_TEMPLATE/*", ".github/PULL_REQUEST_TEMPLATE.md",
+            "docs/release_playbook.md", "docs/release-evidence.json",
+            "scripts/validation/repository_work_products_audit.py",
         ),
     ),
 )
@@ -121,17 +145,20 @@ def changed_paths(commit_range: str, root: Path = ROOT) -> list[str]:
 def self_test() -> list[str]:
     cases = (
         ("dependency", ["workspace/requirements.lock"], {"authoritative-vulnerability-scan", "open-source-license-review", "final-artifact-evidence"}),
-        ("topology", ["cors-proxy/reference.js"], {"threat-architecture-review", "verified-secret-scan"}),
+        ("topology", ["scripts/cors-proxy/reference.js"], {"threat-architecture-review", "verified-secret-scan"}),
         ("workflow", [".github/workflows/pages.yml"], {"threat-architecture-review", "verified-secret-scan"}),
+        ("data route", ["web/nemoclaw/scripts/_shared.js"], {"threat-architecture-review", "privacy-data-review", "verified-secret-scan", "final-artifact-evidence"}),
         ("course", ["web/nemoclaw/01a-loop.html"], {"final-artifact-evidence"}),
-        ("ordinary docs", ["README.md"], set()),
+        ("planned Pyodide", ["scripts/pyodide/candidate-components.json"], {"open-source-license-review"}),
+        ("work products", ["CHANGELOG.md"], {"public-repository-work-products"}),
+        ("ordinary docs", ["docs/issue_standards.md"], set()),
     )
     failures: list[str] = []
     for label, paths, expected in cases:
         actual = {row["id"] for row in classify(paths)}
         if actual != expected:
             failures.append(f"{label}: expected {sorted(expected)}, got {sorted(actual)}")
-    combined = classify(["workspace/requirements.lock", "cors-proxy/reference.js"])
+    combined = classify(["workspace/requirements.lock", "scripts/cors-proxy/reference.js"])
     ids = [row["id"] for row in combined]
     if len(ids) != len(set(ids)):
         failures.append("combined paths emitted duplicate follow-up categories")
@@ -170,7 +197,7 @@ def main() -> int:
     args = parser.parse_args()
     if args.self_test:
         failures = self_test()
-        print(f"release change reminder self-test: {6 - len(failures)}/6 passed")
+        print("release change reminder self-test: " + ("FAIL" if failures else "PASS"))
         for failure in failures:
             print("  FAIL " + failure)
         return 1 if failures else 0

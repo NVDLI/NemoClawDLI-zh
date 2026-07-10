@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // Build the same-origin browser bundles and their source-derived inventory.
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -21,8 +24,16 @@ const lock = JSON.parse(fs.readFileSync(lockPath, "utf8"));
 const direct = JSON.parse(fs.readFileSync(packagePath, "utf8")).dependencies;
 const codemirrorVersion = direct.codemirror;
 const codemirrorBase = `codemirror-${codemirrorVersion}`;
-fs.rmSync(vendor, { recursive: true, force: true });
+fs.mkdirSync(vendor, { recursive: true });
+for (const item of fs.readdirSync(vendor, { withFileTypes: true })) {
+  if (item.name === "SKILL.html" || item.name === "licenses") continue;
+  fs.rmSync(path.join(vendor, item.name), { recursive: true, force: true });
+}
 fs.mkdirSync(path.join(vendor, "licenses"), { recursive: true });
+for (const item of fs.readdirSync(path.join(vendor, "licenses"), { withFileTypes: true })) {
+  if (item.name === "SKILL.html") continue;
+  fs.rmSync(path.join(vendor, "licenses", item.name), { recursive: true, force: true });
+}
 
 const output = name => path.join(vendor, name);
 const buildResult = async (entry, outfile, options = {}) => build({
@@ -40,6 +51,7 @@ const buildResult = async (entry, outfile, options = {}) => build({
 const highlight = await buildResult("highlight-entry.js", "highlight-11.10.0.min.js", { format: "iife" });
 const codemirror = await buildResult("codemirror-entry.js", `${codemirrorBase}.min.js`, { format: "iife" });
 const langchain = await buildResult("langchain-entry.js", "langchain-1.4.7.esm.min.js", { format: "esm" });
+const yaml = await buildResult("js-yaml-entry.js", "js-yaml-5.2.1.esm.min.js", { format: "esm" });
 
 const copies = [
   ["highlight.js/styles/github-dark.min.css", "highlight-github-dark-11.10.0.min.css"],
@@ -72,12 +84,14 @@ const packageRoots = new Set([
   ...packagesFromMeta(highlight.metafile),
   ...packagesFromMeta(codemirror.metafile),
   ...packagesFromMeta(langchain.metafile),
+  ...packagesFromMeta(yaml.metafile),
 ]);
 
 const purposes = {
   "highlight.js": "Syntax highlighting in course pages and source explorers.",
   "codemirror": "Editable and read-only code cells.",
   "marked": "Markdown rendering for chat output and repository documents.",
+  "js-yaml": "Parsing the live OpenShell policy returned to sandbox exercises.",
   "@langchain/openai": "OpenAI-compatible browser model client used by agent exercises.",
   "@langchain/core": "Tool and message primitives used by agent exercises.",
   "@langchain/langgraph": "Agent construction and checkpoint memory used by agent exercises.",
@@ -125,7 +139,59 @@ const assetPackages = {
   [`${codemirrorBase}.min.css`]: ["codemirror"],
   [`codemirror-monokai-${codemirrorVersion}.min.css`]: ["codemirror"],
   "marked-14.1.4.esm.js": ["marked"],
+  "js-yaml-5.2.1.esm.min.js": [...packagesFromMeta(yaml.metafile)].map(packageName).sort(),
   "langchain-1.4.7.esm.min.js": [...packagesFromMeta(langchain.metafile)].map(packageName).sort(),
+};
+
+const assetProvenance = {
+  "highlight-11.10.0.min.js": {
+    distribution_form: "transformed-bundle",
+    modified_from_upstream: true,
+    transformation: "Selected modules are bundled and minified with esbuild for browser delivery.",
+    source_files: ["scripts/browser-vendor/highlight-entry.js"],
+  },
+  [`${codemirrorBase}.min.js`]: {
+    distribution_form: "transformed-bundle",
+    modified_from_upstream: true,
+    transformation: "Selected modules are bundled and minified with esbuild for browser delivery.",
+    source_files: ["scripts/browser-vendor/codemirror-entry.js"],
+  },
+  "langchain-1.4.7.esm.min.js": {
+    distribution_form: "transformed-bundle",
+    modified_from_upstream: true,
+    transformation: "Selected modules are bundled and minified with esbuild for browser ESM delivery.",
+    source_files: ["scripts/browser-vendor/langchain-entry.js"],
+  },
+  "js-yaml-5.2.1.esm.min.js": {
+    distribution_form: "transformed-bundle",
+    modified_from_upstream: true,
+    transformation: "Selected modules are bundled and minified with esbuild for browser ESM delivery.",
+    source_files: ["scripts/browser-vendor/js-yaml-entry.js"],
+  },
+  "highlight-github-dark-11.10.0.min.css": {
+    distribution_form: "upstream-file-copy",
+    modified_from_upstream: false,
+    transformation: "Copied byte-for-byte from the pinned npm package; only the destination filename is selected here.",
+    source_files: ["scripts/browser-vendor/node_modules/highlight.js/styles/github-dark.min.css"],
+  },
+  [`${codemirrorBase}.min.css`]: {
+    distribution_form: "upstream-file-copy",
+    modified_from_upstream: false,
+    transformation: "Copied byte-for-byte from the pinned npm package; only the destination filename is selected here.",
+    source_files: ["scripts/browser-vendor/node_modules/codemirror/lib/codemirror.css"],
+  },
+  [`codemirror-monokai-${codemirrorVersion}.min.css`]: {
+    distribution_form: "upstream-file-copy",
+    modified_from_upstream: false,
+    transformation: "Copied byte-for-byte from the pinned npm package; only the destination filename is selected here.",
+    source_files: ["scripts/browser-vendor/node_modules/codemirror/theme/monokai.css"],
+  },
+  "marked-14.1.4.esm.js": {
+    distribution_form: "upstream-file-copy",
+    modified_from_upstream: false,
+    transformation: "Copied byte-for-byte from the pinned npm package; only the destination filename is selected here.",
+    source_files: ["scripts/browser-vendor/node_modules/marked/lib/marked.esm.js"],
+  },
 };
 
 const sourceRoots = [path.join(root, "web"), path.join(root, "i18n")];
@@ -155,6 +221,7 @@ const assets = Object.keys(assetPackages).sort().map(file => {
   references.sort((a, b) => a.source.localeCompare(b.source) || a.line - b.line);
   return {
     file,
+    ...assetProvenance[file],
     media_type: file.endsWith(".css") ? "text/css" : "text/javascript",
     bytes: bytes.length,
     sha256: crypto.createHash("sha256").update(bytes).digest("hex"),
@@ -214,6 +281,7 @@ const manifest = {
     "scripts/browser-vendor/package-lock.json",
     "scripts/browser-vendor/highlight-entry.js",
     "scripts/browser-vendor/codemirror-entry.js",
+    "scripts/browser-vendor/js-yaml-entry.js",
     "scripts/browser-vendor/langchain-entry.js",
     "web/ and i18n/ runtime references",
   ],

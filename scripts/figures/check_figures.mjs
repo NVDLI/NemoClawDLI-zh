@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // Browser-rendered figure gate. Detects overlap, bounds, connector, and no-edge diagram issues.
 // Self-tests each detector before reporting clean.
 import fs from "fs"; import path from "path"; import { fileURLToPath } from "url";
@@ -9,7 +12,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const NEMO = process.env.FIG_NEMO || path.resolve(HERE, "..", "..", "web", "nemoclaw");
 const COURSE_SCRIPTS = path.join(NEMO, "scripts");
 // Stage an ESM shim beside course modules so relative imports resolve under Node.
-const tmp = path.join(COURSE_SCRIPTS, ".figcheck_shared.mjs");
+const tmp = path.join(COURSE_SCRIPTS, `.figcheck_shared-${process.pid}.mjs`);
 fs.writeFileSync(tmp, fs.readFileSync(path.join(COURSE_SCRIPTS, "_shared.js")));
 let shared;
 try { shared = await import("file://" + tmp); }

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Enforce low-friction idea intake and high-friction code/release boundaries."""
 from __future__ import annotations
 
@@ -10,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from html.parser import HTMLParser
 from pathlib import Path
 
 for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
@@ -19,20 +23,27 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
 from _bootstrap import find_repo_root
 
 ROOT = find_repo_root(Path(__file__).resolve())
+NVIDIA_APACHE_COPYRIGHT = "Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
 
 CONTRACT_FILES = (
     "RELEASE_STATUS.json",
+    "CHANGELOG.md",
     "README.md",
+    "LICENSE",
     "CONTRIBUTING.md",
     "CODE_OF_CONDUCT.md",
     "DCO.md",
     "SUPPORT.md",
     "AGENTS.md",
-    "SECURITY.md",
     "docs/release_playbook.md",
     "docs/release_artifacts.md",
+    "docs/agent_process.md",
+    "docs/course-prose-style.md",
     "scripts/compliance/docs/open_source_readiness.md",
     ".github/ISSUE_TEMPLATE/config.yml",
+    ".github/ISSUE_TEMPLATE/course-content.yml",
+    ".github/ISSUE_TEMPLATE/runtime-deploy.yml",
+    ".github/ISSUE_TEMPLATE/source-licensing.yml",
     ".github/PULL_REQUEST_TEMPLATE.md",
     ".github/dependabot.yml",
     ".github/workflows/codeql.yml",
@@ -41,6 +52,9 @@ CONTRACT_FILES = (
     ".github/workflows/pages.yml",
     ".github/workflows/release.yml",
     ".gitlab-ci.yml",
+    ".gitlab/CODEOWNERS",
+    ".gitlab/ci/core.yml",
+    ".gitlab/ci/sca.yml",
     "scripts/build/build_pages.sh",
     "scripts/build/install-hooks.sh",
     "scripts/build/build_branch_manifest.py",
@@ -49,6 +63,8 @@ CONTRACT_FILES = (
     "scripts/materials/requirements.lock",
     "scripts/security/audit_dependency_locks.py",
     "scripts/security/audit_sbom_policy.py",
+    "scripts/compliance/sbom_evidence.py",
+    "scripts/compliance/docs/sbom_evidence.json",
     "scripts/security/requirements-sca.lock",
     "scripts/git-hooks/pre-commit",
     "scripts/git-hooks/pre-push",
@@ -60,8 +76,10 @@ CONTRACT_FILES = (
     "scripts/validation/release_change_reminder.py",
     "scripts/validation/release_gate.py",
     "scripts/validation/validation_report_audit.py",
+    "scripts/validation/pages_artifact_integrity.py",
     "scripts/validation/validate_bundle.py",
     "scripts/validation/gitlab_governance_audit.py",
+    "scripts/validation/gitlab_ci_policy.py",
     "workspace/requirements.lock",
     "workspace/Dockerfile",
     "web/nemoclaw/mats/_materials.json",
@@ -166,7 +184,8 @@ def audit_repo(
         "schema": "nemoclaw-release-status/1",
         "publication_state": "pending-osrb-approval",
         "canonical_repository": "internal-gitlab",
-        "external_mirror": "not-published",
+        "external_mirror": "reserved-not-populated",
+        "external_repository": "https://github.com/NVDLI/NemoClawDLI",
         "maintenance_status": "release-candidate",
         "community_intake": "disabled-pending-publication-approval",
         "target_license": "Apache-2.0",
@@ -191,20 +210,35 @@ def audit_repo(
         require(re.sub(r"\s+", " ", docs[rel]), "pending OSRB approval", rel,
                 "release-status-language", out,
                 "state that external publication remains pending OSRB approval")
-    require(docs["SECURITY.md"], "https://www.nvidia.com/en-us/security/report-vulnerability/",
-            "SECURITY.md", "security-report-route", out,
-            "make NVIDIA Product Security the stable private reporting route")
-    if "github.com/NVIDIA/NemoClawDLIOS/security/advisories/new" in docs["SECURITY.md"]:
-        out.append(finding("security-future-route", "SECURITY.md",
-                           "policy assumes a repository-specific advisory endpoint exists",
-                           "mention private vulnerability reporting only as conditional on enablement"))
-
+    for heading in ("# Securing Agents with OpenShell and NemoClaw", "## Requirements",
+                    "## Getting Started", "## Governance and Maintainers", "## Security",
+                    "## Support", "## Contributing", "## License"):
+        require(docs["README.md"], heading, "README.md", "readme-public-entrypoint", out,
+                f"add the project-specific {heading} section")
+    require(docs["README.md"], "https://github.com/NVDLI/NemoClawDLI", "README.md",
+            "external-repository", out, "link the reserved public repository by its exact owner and name")
+    for rel in ("LICENSE", "SECURITY.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md", "SUPPORT.md"):
+        require(docs["README.md"], f"]({rel})", "README.md", "readme-policy-link", out,
+                f"link {rel} from the public project entrypoint")
+    license_header = re.sub(r"\s+", " ", docs["LICENSE"]).strip()
+    expected_license_header = (
+        NVIDIA_APACHE_COPYRIGHT + " Apache License Version 2.0, January 2004"
+    )
+    if not license_header.startswith(expected_license_header):
+        out.append(finding(
+            "root-license", "LICENSE",
+            "root LICENSE lacks the NVIDIA copyright followed by the canonical Apache License 2.0 header",
+            "restore the reviewed NVIDIA copyright and Apache License 2.0 text at the root LICENSE path",
+        ))
     require(docs["CODE_OF_CONDUCT.md"], "private content-reporting flow", "CODE_OF_CONDUCT.md",
             "conduct-report-route", out, "retain a public-safe, non-Issue conduct reporting route")
     require(docs["CODE_OF_CONDUCT.md"], "must not decide its outcome", "CODE_OF_CONDUCT.md",
             "conduct-recusal", out, "require recusal when a maintainer is named in a report")
     require(docs["SUPPORT.md"], "Triage is best-effort", "SUPPORT.md", "support-boundary", out,
             "state the support level without promising an unstaffed SLA")
+    require(docs["SUPPORT.md"], "[#ask-security](https://nvidia.slack.com/archives/CAHCG5005)",
+            "SUPPORT.md", "product-security-question-route", out,
+            "route general employee product-security questions to #ask-security without replacing private vulnerability intake")
     require(docs["SUPPORT.md"], "Breaking changes and retirement decisions", "SUPPORT.md",
             "lifecycle-boundary", out, "document change, retirement, and archival expectations")
     require(docs["README.md"], "Nobody approves their own", "README.md",
@@ -219,13 +253,34 @@ def audit_repo(
     require(docs["CONTRIBUTING.md"], "stacked merge request", "CONTRIBUTING.md",
             "contributor-stacked-merge", out,
             "put the signed-commit preservation rule in contributor first-touch guidance")
+    require(docs["CONTRIBUTING.md"], "does not require a separate contributor license agreement",
+            "CONTRIBUTING.md", "cla-applicability", out,
+            "state why Apache-2.0 plus DCO does not require a separate CLA")
 
     require(docs["README.md"], "Ideas are easy; code is gated", "README.md", "readme-boundary", out,
             "state the intake/code asymmetry in the README")
     require(docs["README.md"], "Discussions", "README.md", "readme-intake", out,
             "link question and broad-idea intake from the README")
-    require(docs["CONTRIBUTING.md"], "A local hook is feedback, not authority", "CONTRIBUTING.md",
+    require(docs["CONTRIBUTING.md"], "Required CI and protected refs remain authoritative", "CONTRIBUTING.md",
             "hook-authority", out, "explain that required CI and protected refs remain authoritative")
+    require(docs["CONTRIBUTING.md"], "Contributor credit and localization ownership",
+            "CONTRIBUTING.md", "contributor-credit-policy", out,
+            "document public Changelog credit and locale prose ownership")
+    require(docs["CONTRIBUTING.md"], "Localization-Review:", "CONTRIBUTING.md",
+            "localization-review-policy", out,
+            "document the reviewer trailer for coordinated canonical and locale prose changes")
+    require(docs["docs/agent_process.md"], "Preserve contributor and locale ownership",
+            "docs/agent_process.md", "agent-localization-ownership", out,
+            "keep contributor credit and locale ownership in the agent handoff checklist")
+    require(docs["docs/course-prose-style.md"], "Course prose writing contract",
+            "docs/course-prose-style.md", "course-prose-contract", out,
+            "keep durable learner-facing prose rules in one neutral contract")
+    require(docs["docs/course-prose-style.md"], "Automated signals identify passages",
+            "docs/course-prose-style.md", "prose-review-judgment", out,
+            "state that automated prose signals require contextual human disposition")
+    require(docs["docs/course-prose-style.md"], "Locale ownership",
+            "docs/course-prose-style.md", "prose-locale-ownership", out,
+            "preserve language-review ownership in the prose contract")
     require(docs["AGENTS.md"], "Treat code contribution as an untrusted proposal", "AGENTS.md",
             "agent-boundary", out, "put the trust boundary in the first agent beacon")
     require(docs["AGENTS.md"], "Every proposed commit", "AGENTS.md", "agent-dco", out,
@@ -236,7 +291,14 @@ def audit_repo(
             "issue-structured", out, "keep structured issue intake enabled")
     require(issue_cfg, "/discussions", ".github/ISSUE_TEMPLATE/config.yml", "discussion-route", out,
             "route broad ideas and questions to Discussions")
-
+    require(issue_cfg, "https://github.com/NVDLI/NemoClawDLI/discussions",
+            ".github/ISSUE_TEMPLATE/config.yml", "external-repository", out,
+            "route Discussions to the reserved NVDLI/NemoClawDLI repository")
+    for rel in (".github/ISSUE_TEMPLATE/course-content.yml",
+                ".github/ISSUE_TEMPLATE/runtime-deploy.yml",
+                ".github/ISSUE_TEMPLATE/source-licensing.yml"):
+        require(docs[rel], "static `web/nemoclaw/` course", rel, "issue-production-scope", out,
+                "describe the static browser course without local CPU-service assumptions")
     required_sections = (
         "## Issue link", "## Surfaces touched", "## Blast radius checked",
         "## Validation evidence", "## Human ownership", "## Risk and rollback", "## Out of scope",
@@ -247,6 +309,9 @@ def audit_repo(
                     f"add the required {section} section")
         require(docs[rel], "host-generated squash", rel, "stacked-submission-template", out,
                 "require a signed-commit preservation plan for stacked proposals")
+        require(docs[rel], "localized learner prose changed", rel,
+                "localization-ownership-template", out,
+                "ask who reviewed localized prose and where the contributor is credited")
     gitlab_template = docs[".gitlab/merge_request_templates/Default.md"]
     missing_in_window = [section for section in ("## Summary", *required_sections)
                          if section not in gitlab_template[:2700]]
@@ -264,6 +329,13 @@ def audit_repo(
     require(build_pages, 'validation_report_audit.py"',
             "scripts/build/build_pages.sh", "pages-report-reuse-audit", out,
             "validate schema, commit, scope, and required results before report reuse")
+    require(build_pages,
+            'if [ "$REUSE_VALIDATION" = "1" ] && [ "$PULL_MATERIALS" != "0" ]; then',
+            "scripts/build/build_pages.sh", "pages-report-reuse-immutable", out,
+            "prevent live material writes before auditing a same-commit report")
+    require(build_pages, "-path 'web/nemoclaw/standalone' -prune",
+            "scripts/build/build_pages.sh", "pages-source-mirror-prunes-generated", out,
+            "exclude ignored standalone build output from the validated-source mirror")
     if re.search(r"validate_bundle\.py[^\n]*\|\|\s*true", build_pages):
         out.append(finding("pages-validation-fail-open", "scripts/build/build_pages.sh",
                            "Pages can retain and publish a stale validation report after refresh failure",
@@ -282,21 +354,21 @@ def audit_repo(
                            "fast gate lacks network-free committed material verification",
                            "verify committed material snapshots without network access from every shared gate"))
     if ('py("scripts/materials/pull_materials.py", "--verify-committed")' not in ship_gate_text
-            or 'py("scripts/materials/pull_materials.py", "--self-test")' not in ship_gate_text):
+            or 'unit_test("materials")' not in ship_gate_text):
         out.append(finding("shared-material-selftest", "scripts/validation/release_gate.py",
                            "ship gate lacks material verification or its mutation fixtures",
                            "prove retry classification and provenance tamper detection from the ship gate"))
-    local_path_selftest = 'py("scripts/validation/local_path_leak_audit.py", "--self-test")'
+    local_path_selftest = 'unit_test("local_path_leak_audit")'
     if local_path_selftest not in fast_gate_text or local_path_selftest not in ship_gate_text:
         out.append(finding("shared-local-path-selftest", "scripts/validation/release_gate.py",
                            "fast or ship gate lacks workstation-path mutation coverage",
                            "run workstation-path mutations from both shared gate tiers"))
-    sensitive_selftest = 'py("scripts/validation/sensitive_content_audit.py", "--self-test")'
+    sensitive_selftest = 'unit_test("sensitive_content_audit")'
     if sensitive_selftest not in fast_gate_text or sensitive_selftest not in ship_gate_text:
         out.append(finding("shared-sensitive-content", "scripts/validation/release_gate.py",
                            "fast or ship gate lacks sensitive-content mutation coverage",
                            "run sensitive-content mutations from both shared tiers; validate_bundle owns the tree scan"))
-    reminder_selftest = 'py("scripts/validation/release_change_reminder.py", "--self-test")'
+    reminder_selftest = 'unit_test("release_change_reminder")'
     if reminder_selftest not in fast_gate_text or reminder_selftest not in ship_gate_text:
         out.append(finding("shared-release-reminder", "scripts/validation/release_gate.py",
                            "fast or ship gate lacks release follow-up classifier mutations",
@@ -305,6 +377,9 @@ def audit_repo(
         ('py("scripts/validation/contribution_safety_audit.py", "--self-test")',
          "shared-safety-gate",
          "run contribution-boundary mutations and emit its report from the shared gate"),
+        ("CONTRIBUTION_LANGUAGE_OWNERSHIP_TESTS,",
+         "shared-language-ownership-test",
+         "run the standard visible-prose ownership tests from the shared gate"),
         ("docs/validation/contribution-safety.json", "shared-safety-report",
          "retain machine-readable contribution-boundary evidence in the shared gate"),
         ('py("scripts/build/package_release.py", "--self-test")', "shared-package-selftest",
@@ -317,11 +392,22 @@ def audit_repo(
          "prove dependency-lock mutations from the shared gate"),
     ):
         require(ship_gate_text, token, "scripts/validation/release_gate.py", code, out, fix)
-    report_selftest = 'py("scripts/validation/validation_report_audit.py", "--self-test")'
+    report_selftest = 'unit_test("validation_report_audit")'
     if report_selftest not in fast_gate_text or report_selftest not in ship_gate_text:
         out.append(finding("shared-report-reuse-selftest", "scripts/validation/release_gate.py",
                            "fast or ship gate lacks report-reuse mutation coverage",
                            "prove stale, failed, and mismatched reports from both shared tiers"))
+    artifact_selftest = 'unit_test("pages_artifact_integrity")'
+    if artifact_selftest not in fast_gate_text or artifact_selftest not in ship_gate_text:
+        out.append(finding("shared-pages-artifact-selftest", "scripts/validation/release_gate.py",
+                           "fast or ship gate lacks Pages artifact-integrity mutation coverage",
+                           "prove artifact substitution, remote execution, and manifest mutations from both shared tiers"))
+    if "HARNESS_CONTRACT" not in fast_gate_text or "HARNESS_CONTRACT" not in ship_gate_text:
+        out.append(finding(
+            "shared-standard-test-contract", "scripts/validation/release_gate.py",
+            "fast or ship gate lacks standard-framework test-harness enforcement",
+            "run the unittest harness contract from both shared tiers",
+        ))
     for token, code, fix in (
         ('"--changed-since"', "shared-change-aware-gate", "retain fail-closed change-aware mutation selection"),
         ('"--timing-report"', "shared-gate-timing", "retain per-command latency evidence for CI optimization"),
@@ -339,10 +425,14 @@ def audit_repo(
         out.append(finding("github-global-permissions", ".github/workflows/pages.yml",
                            "workflow-level permissions are not read-only",
                            "keep contents: read globally and grant Pages writes only to the deploy job"))
-    require(pages, "if: github.event_name != 'pull_request'", ".github/workflows/pages.yml",
-            "pr-deploy-boundary", out, "prevent pull-request runs from reaching deployment")
-    require(pages, "github.ref == 'refs/heads/main'", ".github/workflows/pages.yml",
-            "pages-main-only", out, "prevent workflow_dispatch or non-main refs from deploying Pages")
+    if pages.count("if: github.event_name != 'pull_request'") < 2:
+        out.append(finding("pr-deploy-boundary", ".github/workflows/pages.yml",
+                           "both artifact creation and deployment must exclude pull-request runs",
+                           "prevent pull-request runs from building or deploying the production Pages artifact"))
+    if pages.count("github.ref == 'refs/heads/main'") < 2:
+        out.append(finding("pages-main-only", ".github/workflows/pages.yml",
+                           "both artifact creation and deployment must require refs/heads/main",
+                           "prevent workflow_dispatch or non-main refs from building or deploying Pages"))
     require(pages, "release_gate.py --tier ship", ".github/workflows/pages.yml",
             "github-safety-selftest", out, "run detector mutations in GitHub CI")
     require(pages, '--changed-since "$GATE_BASE"', ".github/workflows/pages.yml",
@@ -353,9 +443,30 @@ def audit_repo(
     require(pages, "BUILD_PAGES_REUSE_VALIDATION=1", ".github/workflows/pages.yml",
             "github-report-reuse", out,
             "reuse the required same-commit gate report instead of rescanning during build")
+    require(pages, "BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1",
+            ".github/workflows/pages.yml", "github-immutable-report-reuse", out,
+            "build committed material snapshots before reusing the same-commit report")
     require(pages, "contribution_safety_audit.py --require-publication-approved",
             ".github/workflows/pages.yml", "publication-deploy-guard", out,
             "refuse external Pages deployment until publication is approved")
+    require(pages, "needs: build-and-verify", ".github/workflows/pages.yml",
+            "github-reviewed-artifact-handoff", out,
+            "make the protected deployment consume only the completed artifact-verification job")
+    require(pages, "name: github-pages", ".github/workflows/pages.yml",
+            "github-pages-review-environment", out,
+            "gate the deploy job behind the protected github-pages environment")
+    require(pages, "runtime_integration_browser_audit.py --site-root public --engine docker",
+            ".github/workflows/pages.yml", "github-pages-browser-review", out,
+            "exercise the generated course artifact in Chromium before requesting deployment approval")
+    require(pages, "--write-manifest public/pages-sha256.txt",
+            ".github/workflows/pages.yml", "github-pages-artifact-integrity", out,
+            "hash and inspect the generated Pages tree before uploading it")
+    if pages.count("--check-manifest reviewed-public/pages-sha256.txt") < 3:
+        out.append(finding(
+            "github-pages-artifact-reverification", ".github/workflows/pages.yml",
+            "deployment, post-deployment extraction, and live-site checks do not all verify the reviewed Pages manifest",
+            "reverify the immutable artifact before deployment, after bounded extraction, and against the live site",
+        ))
     require(pages, "--submission-env CONTRIBUTION_BODY", ".github/workflows/pages.yml",
             "github-submission-contract", out, "validate the live pull-request body")
     require(pages, "--commit-range \"$DCO_RANGE\"", ".github/workflows/pages.yml",
@@ -372,10 +483,10 @@ def audit_repo(
     require(pages, 'release_change_reminder.py --commit-range "$RELEASE_CHANGE_RANGE"',
             ".github/workflows/pages.yml", "github-release-reminder", out,
             "show external release follow-ups from the pull-request diff")
-    if pages.count("scripts/materials/requirements.lock") != 2:
+    if pages.count("scripts/materials/requirements.lock") != 1:
         out.append(finding("github-material-lock", ".github/workflows/pages.yml",
-                           "test and deploy jobs must install material tooling from the reviewed lock",
-                           "use scripts/materials/requirements.lock in both Python setup paths"))
+                           "the live material check must install tooling once from the reviewed lock",
+                           "install scripts/materials/requirements.lock in the test job only"))
     for rel in (".github/workflows/pages.yml", ".github/workflows/release.yml",
                 ".github/workflows/codeql.yml", ".github/workflows/dependency-review.yml"):
         checkout_count = docs[rel].count("uses: actions/checkout@")
@@ -426,8 +537,14 @@ def audit_repo(
             "release-runtime-lock", out, "build the release environment from the Python 3.11 runtime lock")
     require(release, "scripts/security/requirements-sca.lock", ".github/workflows/release.yml",
             "release-sca-lock", out, "install scanners from their isolated reviewed lock")
-    require(release, "--sbom release-security/python-env.cdx.json", ".github/workflows/release.yml",
+    require(release, "--report release-security/sbom-policy.json", ".github/workflows/release.yml",
             "release-sbom-policy", out, "evaluate and retain SBOM policy evidence before release")
+    for token in ("python-sbom-evidence.json", "python-license-appendix.md", "sbom-evidence-catalog.json"):
+        require(release, token, ".github/workflows/release.yml", "release-sbom-evidence", out,
+                f"retain versioned SBOM evidence asset: {token}")
+    require(release, "--manifest-out release-security/python-sbom-evidence.json",
+            ".github/workflows/release.yml", "release-sbom-evidence-generation", out,
+            "generate the evidence manifest from the same Python SBOM packaged for release")
 
     dependency_review = docs[".github/workflows/dependency-review.yml"]
     require(dependency_review, "  pull_request:\n", ".github/workflows/dependency-review.yml",
@@ -466,9 +583,17 @@ def audit_repo(
     require(docs["scripts/security/audit_sbom_policy.py"], "retired-component",
             "scripts/security/audit_sbom_policy.py", "sbom-policy-detector", out,
             "retain runtime SBOM completeness and retired-component enforcement")
+    require(docs["scripts/compliance/sbom_evidence.py"], "digest-bound-component-sbom",
+            "scripts/compliance/sbom_evidence.py", "sbom-evidence-detector", out,
+            "retain distribution-aware SBOM evidence and immutable-link checks")
+    require(docs["scripts/compliance/docs/sbom_evidence.json"], '"state": "conditional"',
+            "scripts/compliance/docs/sbom_evidence.json", "sbom-evidence-catalog", out,
+            "retain the explicit conditional image-SBOM boundary")
 
-    gitlab = docs[".gitlab-ci.yml"]
-    image = re.search(r"(?m)^  image: node:20-bookworm-slim@sha256:([0-9a-f]+)$", gitlab)
+    gitlab_core = docs[".gitlab/ci/core.yml"]
+    gitlab_sca = docs[".gitlab/ci/sca.yml"]
+    gitlab = gitlab_core + "\n" + gitlab_sca
+    image = re.search(r"(?m)^  image: node:20-bookworm-slim@sha256:([0-9a-f]+)$", gitlab_core)
     if not image or len(image.group(1)) != 64:
         out.append(finding("gitlab-image-pin", ".gitlab-ci.yml",
                            "shared CI image is not pinned to a full immutable digest",
@@ -494,6 +619,15 @@ def audit_repo(
         out.append(finding("gitlab-pages-material-install", ".gitlab-ci.yml",
                            "Pages lacks material tooling needed by protected-root bundle validation",
                            "enable the locked material environment for every Pages build, including previews"))
+    preview_fetch = 'git fetch "$preview_remote" "+refs/heads/$branch:refs/remotes/$preview_namespace/$branch" --quiet'
+    if (gitlab.count(preview_fetch) != 1
+            or gitlab.count('refresh_branch_ref "$preview_ref"') != 2
+            or 'preview_remote="$CI_MERGE_REQUEST_SOURCE_PROJECT_URL"' not in gitlab
+            or 'preview_namespace="preview-source"' not in gitlab
+            or re.search(rf"{re.escape(preview_fetch)}[^\n]*\|\|\s*true", gitlab)):
+        out.append(finding("gitlab-preview-ref-fetch", ".gitlab-ci.yml",
+                           "Pages preview source-ref refresh is missing, fork-unaware, ambiguous, or fail-open",
+                           "fetch the exact branch from the MR source project (or origin for branch pipelines) before comparing and publishing its SHA"))
     require(gitlab, "release_gate.py --tier ship", ".gitlab-ci.yml",
             "gitlab-safety-selftest", out, "run detector mutations in GitLab CI")
     require(gitlab, 'GATE_ARGS+=(--changed-since "$GATE_BASE")', ".gitlab-ci.yml",
@@ -502,11 +636,11 @@ def audit_repo(
             ".gitlab-ci.yml", "gitlab-gate-timing", out,
             "retain per-command gate timing evidence")
     for token in (
-        'BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"',
-        "BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh public",
+        'BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"',
+        "BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh public",
     ):
-        require(gitlab, token, ".gitlab-ci.yml", "gitlab-report-reuse", out,
-                "reuse the required same-commit gate report instead of rescanning current-ref Pages builds")
+        require(gitlab, token, ".gitlab-ci.yml", "gitlab-immutable-report-reuse", out,
+                "build committed snapshots before reusing the required same-commit report")
     require(gitlab, 'git worktree add --quiet --detach /tmp/nemoclaw-prod-root "origin/$prod_ref"',
             ".gitlab-ci.yml", "gitlab-protected-root-worktree", out,
             "build protected-root previews from a real detached worktree so Git-backed audits remain available")
@@ -514,11 +648,13 @@ def audit_repo(
             ".gitlab-ci.yml", "gitlab-transient-material-policy", out,
             "allow only classified transient source reachability on production-ref pushes")
     scheduled_material = re.search(
-        r'if \[ "\$\{CI_PIPELINE_SOURCE:-\}" = "schedule" \]; then\n\s+([^\n]+)', gitlab
+        r'if \[ "\$\{CI_PIPELINE_SOURCE:-\}" = "schedule" \]; then\n(?P<body>.*?)(?=\n\s+elif )',
+        gitlab,
+        re.S,
     )
     if (not scheduled_material
-            or "pull_materials.py --check --fetch-attempts" not in scheduled_material.group(1)
-            or "--allow-transient-unreachable" in scheduled_material.group(1)):
+            or "pull_materials.py --check --fetch-attempts" not in scheduled_material.group("body")
+            or "--allow-transient-unreachable" in scheduled_material.group("body")):
         out.append(finding("gitlab-scheduled-material-policy", ".gitlab-ci.yml",
                            "scheduled material check is absent or not strict",
                            "keep scheduled live checks strict and omit transient degradation"))
@@ -546,12 +682,36 @@ def audit_repo(
             "show external release follow-ups from the merge-request diff")
     require(gitlab, "audit_sbom_policy.py --sbom", ".gitlab-ci.yml", "gitlab-sbom-policy", out,
             "evaluate the generated runtime SBOM instead of only uploading it")
+    require(gitlab, "scripts/compliance/sbom_evidence.py --sbom scripts/security/reports/deep-workspace/python-env.cdx.json",
+            ".gitlab/ci/sca.yml", "gitlab-sbom-evidence", out,
+            "emit a commit-bound manifest and reconciled license appendix beside the Python SBOM")
+    for token in ("security_image_sca:", "sha256sum --check --strict", '--artifact-id "$SBOM_IMAGE"'):
+        require(gitlab_sca, token, ".gitlab/ci/sca.yml", "gitlab-image-sbom-boundary", out,
+                "keep image scanning opt-in, immutable, checksum-pinned, and evidence-producing")
     require(gitlab, ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock",
             ".gitlab-ci.yml", "gitlab-runtime-lock", out,
             "scan the exact runtime closure rather than resolving direct requirements again")
-    require(gitlab, ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock",
-            ".gitlab-ci.yml", "gitlab-sca-lock", out,
-            "keep scanner tooling isolated in its exact lock")
+    scanner_install = ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock"
+    for job_name in ("security_sca", "security_deep_sca"):
+        match = re.search(rf"(?ms)^{job_name}:\n(.*?)(?=^[A-Za-z0-9_.-]+:\n|\Z)", gitlab_sca)
+        require(match.group(1) if match else "", scanner_install,
+                ".gitlab/ci/sca.yml", "gitlab-sca-lock", out,
+                f"install scanner tooling from its exact lock in {job_name}")
+    optional_mr_scan = """    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: manual
+      allow_failure: true"""
+    for job_name, automatic_path, code in (
+        ("security_browser_sca", "scripts/browser-vendor/package-lock.json", "gitlab-browser-sca-rules"),
+        ("security_deep_sca", "workspace/requirements.lock", "gitlab-deep-sca-rules"),
+    ):
+        match = re.search(rf"(?ms)^{job_name}:\n(.*?)(?=^[A-Za-z0-9_.-]+:\n|\Z)", gitlab)
+        body = match.group(1) if match else ""
+        require(body, automatic_path, ".gitlab-ci.yml", code, out,
+                f"run {job_name} automatically when its dependency surface changes")
+        require(body, optional_mr_scan, ".gitlab-ci.yml", f"{code}-manual", out,
+                f"leave {job_name} available as a non-blocking MR opt-in")
+        require(body, "- .gitlab/ci/sca.yml", ".gitlab/ci/sca.yml", f"{code}-ci-sensitive", out,
+                f"rerun {job_name} when its self-contained scanner policy changes")
 
     material_puller = docs["scripts/materials/pull_materials.py"]
     for token, code, fix in (
@@ -587,12 +747,48 @@ def audit_repo(
             "gitlab-pipeline-dedup", out, "suppress duplicate branch pipelines after an MR opens")
     require(gitlab, "CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-$CI_COMMIT_REF_NAME", ".gitlab-ci.yml",
             "gitlab-preview-ref", out, "resolve branch-preview refs in branch and MR pipelines")
-    require(gitlab, 'needs: ["test"]', ".gitlab-ci.yml", "gitlab-deploy-gate", out,
-            "keep Pages blocked on the required test job")
+    pages_body = pages_materials.group(1) if pages_materials else ""
+    pages_header = pages_body.split("\n  script:\n", 1)[0]
+    if not (re.search(r"(?m)^\s+- job:\s*test\s*$", pages_header) or 'needs: ["test"]' in pages_header):
+        out.append(finding("gitlab-deploy-gate", ".gitlab-ci.yml",
+                           "Pages does not declare the required test job as a dependency",
+                           "keep Pages blocked on the required test job"))
     require(gitlab, "human_review:", ".gitlab-ci.yml", "gitlab-human-review", out,
             "keep an explicit human acceptance job after preview validation")
-    require(gitlab, 'needs: ["test", "pages_smoke"]', ".gitlab-ci.yml", "gitlab-human-review-needs", out,
-            "make human acceptance wait for static gates and live preview smoke")
+    require(gitlab, "theme_runtime:", ".gitlab-ci.yml", "gitlab-theme-runtime", out,
+            "render every generated HTML file in the required dark/light browser matrix")
+    require(gitlab, '--site-root "$THEME_SITE_ROOT" --scan-root "$THEME_SCAN_ROOT"', ".gitlab-ci.yml",
+            "gitlab-theme-runtime-command", out,
+            "serve the complete deployment while exhaustively scanning the owned artifact root")
+    require(gitlab, "THEME_SITE_ROOT=public", ".gitlab-ci.yml",
+            "gitlab-theme-runtime-deployed-root", out,
+            "audit the complete deployed Pages tree, including protected production and previews")
+    if 'THEME_SITE_ROOT="public/$CI_COMMIT_REF_SLUG"' in gitlab:
+        out.append(finding(
+            "gitlab-theme-runtime-narrowed-root", ".gitlab-ci.yml",
+            "theme runtime narrows a combined Pages deployment to one preview subdirectory",
+            "audit public so every deployed HTML file enters the browser matrix",
+        ))
+    require(
+        gitlab,
+        'project_artifact_manifests.py public --manifest-root "public/$CI_COMMIT_REF_SLUG"',
+        ".gitlab-ci.yml", "gitlab-preview-manifest-projection", out,
+        "reproject every branch mirror after CI rewrites the preview manifest",
+    )
+    if not re.search(r"(?m)^\s*python3 scripts/build/project_artifact_manifests\.py public\s*$", gitlab):
+        out.append(finding(
+            "gitlab-production-manifest-projection", ".gitlab-ci.yml",
+            "production manifest rewrites are not projected into every discovered mirror",
+            "run project_artifact_manifests.py public after rewriting public/branches.json",
+        ))
+    require(
+        gitlab, 'artifact_link_audit.py "public/$CI_COMMIT_REF_SLUG"', ".gitlab-ci.yml",
+        "gitlab-combined-artifact-link-audit", out,
+        "reaudit the complete branch artifact after every CI manifest rewrite",
+    )
+    require(gitlab, 'needs: ["test", "pages_smoke", "theme_runtime"]', ".gitlab-ci.yml",
+            "gitlab-human-review-needs", out,
+            "make human acceptance wait for static gates, live preview smoke, and all-HTML theme rendering")
     require(gitlab, "name: human-review", ".gitlab-ci.yml", "gitlab-human-review-environment", out,
             "bind human acceptance to the protected human-review environment")
     human_review = re.search(r"(?ms)^human_review:\n(.*?)(?=^[A-Za-z0-9_.-]+:\n|\Z)", gitlab)
@@ -736,9 +932,19 @@ def audit_submission(body: str) -> list[dict[str, str]]:
         if not match or not match.group(1).strip():
             out.append(finding("submission-section", "submission", f"missing or empty section: {section}",
                                f"fill ## {section} with concrete evidence"))
-    if not re.search(r"(?im)\b(?:Addresses|Closes|Fixes)\s+#[0-9]+\b", body or ""):
+    relationship = re.search(r"(?im)\b(?:Addresses|Closes|Fixes)\s+#[0-9]+\b", body or "")
+    if not relationship:
         out.append(finding("submission-issue", "submission", "no explicit issue relationship",
                            "add Addresses #N, or Closes #N only when acceptance is fully met"))
+    elif relationship.group(0).lower().startswith("addresses"):
+        remaining = re.search(r"(?ms)^## Remaining issue work\s*\n(.*?)(?=^## |\Z)", body or "")
+        if not remaining or not remaining.group(1).strip():
+            out.append(finding(
+                "submission-issue-remains", "submission",
+                "Addresses #N does not say which acceptance criteria remain unmet",
+                "use Closes #N when the issue is fully satisfied, or add a substantive "
+                "## Remaining issue work section",
+            ))
     if not re.search(r"(?im)^- \[[xX]\] `?(?:web/|i18n/|cpu/|workspace/|deploy/|scripts/|docs/|materials)", body or ""):
         out.append(finding("submission-surface", "submission", "no changed surface is checked",
                            "check every touched surface in ## Surfaces touched"))
@@ -761,6 +967,116 @@ def audit_commit_records(records: list[tuple[str, str, str, str]]) -> list[dict[
                                f"commit by {author_name} <{author_email}> lacks a matching Signed-off-by trailer",
                                "amend the commit with git commit --amend --signoff; repair every commit in the proposed range"))
     return out
+
+
+def audit_language_ownership(
+    changed_paths: list[str], changelog: str, commit_messages: list[str],
+    learner_prose_paths: set[str] | None = None,
+) -> list[dict[str, str]]:
+    """Require public credit and explicit review for learner-prose localization changes."""
+    out: list[dict[str, str]] = []
+    prose_candidates = learner_prose_paths if learner_prose_paths is not None else set(changed_paths)
+    locale_pages = [path for path in prose_candidates if re.fullmatch(
+        r"i18n/[^/]+/web/nemoclaw/[0-9]{2}[a-z]-[^/]+\.html", path)]
+    canonical_pages = [path for path in prose_candidates if re.fullmatch(
+        r"web/nemoclaw/[0-9]{2}[a-z]-[^/]+\.html", path)]
+    if not locale_pages:
+        return out
+
+    unreleased = re.search(r"(?ms)^## Unreleased\s*$\n(.*?)(?=^## |\Z)", changelog)
+    has_public_credit = bool(unreleased and re.search(r"(?i)\bThanks to\b", unreleased.group(1)))
+    if "CHANGELOG.md" not in changed_paths or not has_public_credit:
+        out.append(finding(
+            "contributor-credit", "CHANGELOG.md",
+            "localized learner prose changed without an Unreleased public contributor credit",
+            "add a concise 'Thanks to <public name>' entry; do not publish private contact details",
+        ))
+    if canonical_pages and not any(re.search(
+            r"(?im)^Localization-Review:\s*[^=\s]+\s*=\s*\S.+$", message)
+            for message in commit_messages):
+        out.append(finding(
+            "mixed-language-ownership", "git",
+            "canonical and localized learner prose changed without a Localization-Review trailer",
+            "split ownership by proposal or add Localization-Review: <locale>=<public reviewer name>",
+        ))
+    return out
+
+
+class _LearnerText(HTMLParser):
+    """Extract text a learner can perceive without treating URLs as prose."""
+
+    LEARNER_ATTRIBUTES = {"alt", "aria-label", "placeholder", "title"}
+    HIDDEN_ELEMENTS = {"script", "style", "template"}
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.hidden_depth = 0
+        self.parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.casefold() in self.HIDDEN_ELEMENTS:
+            self.hidden_depth += 1
+            return
+        if self.hidden_depth:
+            return
+        for name, value in attrs:
+            if name.casefold() in self.LEARNER_ATTRIBUTES and value:
+                self.parts.append(value)
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if self.hidden_depth or tag.casefold() in self.HIDDEN_ELEMENTS:
+            return
+        for name, value in attrs:
+            if name.casefold() in self.LEARNER_ATTRIBUTES and value:
+                self.parts.append(value)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.casefold() in self.HIDDEN_ELEMENTS and self.hidden_depth:
+            self.hidden_depth -= 1
+
+    def handle_data(self, data: str) -> None:
+        if not self.hidden_depth:
+            self.parts.append(data)
+
+
+def learner_text(raw: str) -> str:
+    parser = _LearnerText()
+    parser.feed(raw)
+    parser.close()
+    return " ".join(" ".join(parser.parts).split())
+
+
+def changed_learner_prose_paths(
+    rev_range: str, changed_paths: list[str], root: Path = ROOT,
+) -> set[str]:
+    """Return course pages whose rendered prose changed across a Git range.
+
+    Ownership follows what a learner reads, including accessibility labels. A
+    local URL, class, hash, or other transport-only edit is still reviewed by
+    its functional gates but is not misreported as a translation rewrite.
+    Missing or unreadable blobs fail closed as prose changes.
+    """
+    endpoints = re.fullmatch(r"(.+?)\.{2,3}(.+)", rev_range)
+    candidates = [path for path in changed_paths if re.fullmatch(
+        r"(?:i18n/[^/]+/)?web/nemoclaw/[0-9]{2}[a-z]-[^/]+\.html", path)]
+    if not endpoints:
+        return set(candidates)
+    base, head = endpoints.groups()
+    changed: set[str] = set()
+    for path in candidates:
+        blobs: list[str] = []
+        for revision in (base, head):
+            result = subprocess.run(
+                ["git", "show", f"{revision}:{path}"], cwd=root,
+                capture_output=True, text=True,
+            )
+            if result.returncode:
+                changed.add(path)
+                break
+            blobs.append(result.stdout)
+        if len(blobs) == 2 and learner_text(blobs[0]) != learner_text(blobs[1]):
+            changed.add(path)
+    return changed
 
 
 def audit_commit_range(rev_range: str, root: Path = ROOT) -> list[dict[str, str]]:
@@ -786,7 +1102,18 @@ def audit_commit_range(rev_range: str, root: Path = ROOT) -> list[dict[str, str]
     if not records:
         return [finding("commit-range", "git", f"range {rev_range} contains no commits",
                         "pass the proposed commit range as BASE..HEAD")]
-    return audit_commit_records(records)
+    try:
+        changed = subprocess.run(
+            ["git", "diff", "--name-only", rev_range], cwd=root, check=True,
+            capture_output=True, text=True,
+        ).stdout.splitlines()
+        changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
+    except (subprocess.CalledProcessError, OSError) as exc:
+        return [finding("commit-range", "git", f"cannot inspect changed paths: {exc}",
+                        "fetch the base ref and restore CHANGELOG.md")]
+    prose_paths = changed_learner_prose_paths(rev_range, changed, root)
+    return audit_commit_records(records) + audit_language_ownership(
+        changed, changelog, [record[3] for record in records], prose_paths)
 
 
 def self_test() -> list[str]:
@@ -803,28 +1130,43 @@ def self_test() -> list[str]:
         cases = (
             ("conduct-report-route", "CODE_OF_CONDUCT.md", "private content-reporting flow", "public Issue"),
             ("support-boundary", "SUPPORT.md", "Triage is best-effort", "Triage is guaranteed"),
+            ("product-security-question-route", "SUPPORT.md", "[#ask-security](https://nvidia.slack.com/archives/CAHCG5005)", "#security-help"),
             ("independent-review", "README.md", "Nobody approves their own", "Self-approval allowed"),
             ("dco-policy", "DCO.md", "Developer Certificate of Origin 1.1", "unversioned signoff"),
             ("dco-stacked-merge", "DCO.md", "host-generated squash or merge commit", "generated integration commit"),
             ("contributor-stacked-merge", "CONTRIBUTING.md", "stacked merge request", "nested proposal"),
+            ("hook-authority", "CONTRIBUTING.md", "Required CI and protected refs remain authoritative", "Local hooks are authoritative"),
+            ("contributor-credit-policy", "CONTRIBUTING.md", "Contributor credit and localization ownership", "Anonymous integration"),
+            ("localization-review-policy", "CONTRIBUTING.md", "Localization-Review:", "Translation-Note:"),
+            ("agent-localization-ownership", "docs/agent_process.md", "Preserve contributor and locale ownership", "Rewrite translations automatically"),
+            ("course-prose-contract", "docs/course-prose-style.md", "Course prose writing contract", "English review snapshot"),
+            ("prose-review-judgment", "docs/course-prose-style.md", "Automated signals identify passages", "Scores decide every rewrite"),
+            ("prose-locale-ownership", "docs/course-prose-style.md", "Locale ownership", "Translation rewrite"),
             ("github-pr-trigger", ".github/workflows/pages.yml", "  pull_request:\n", "  # pull_request removed\n"),
             ("pages-fresh-validation-report", "scripts/build/build_pages.sh", 'python3 "$T1/scripts/validation/validate_bundle.py" --scope ship', 'python3 "$T1/scripts/validation/missing_bundle_gate.py" --scope ship'),
             ("pages-report-reuse-audit", "scripts/build/build_pages.sh", 'validation_report_audit.py"', 'missing_report_audit.py"'),
+            ("pages-report-reuse-immutable", "scripts/build/build_pages.sh", 'if [ "$REUSE_VALIDATION" = "1" ] && [ "$PULL_MATERIALS" != "0" ]; then', 'if [ "$REUSE_VALIDATION" = "2" ] && [ "$PULL_MATERIALS" != "0" ]; then'),
+            ("pages-source-mirror-prunes-generated", "scripts/build/build_pages.sh", "-path 'web/nemoclaw/standalone' -prune", "-path 'web/nemoclaw/standalone' -print"),
             ("pages-validation-fail-open", "scripts/build/build_pages.sh", 'python3 "$T1/scripts/validation/validate_bundle.py" --scope ship', 'python3 "$T1/scripts/validation/validate_bundle.py" --scope ship || true'),
             ("pages-report-reuse-fail-open", "scripts/build/build_pages.sh", 'validation_report_audit.py" \\', 'validation_report_audit.py" || true #'),
             ("mutable-action-ref", ".github/workflows/pages.yml", "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683", "actions/checkout@v4"),
             ("unpinned-workflow-install", ".github/workflows/pages.yml", "--requirement scripts/materials/requirements.lock", "requests beautifulsoup4 markdownify lxml"),
             ("github-material-lock", ".github/workflows/pages.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),
             ("shared-material-provenance", "scripts/validation/release_gate.py", 'py("scripts/materials/pull_materials.py", "--verify-committed")', 'py("scripts/materials/pull_materials.py", "--list")'),
-            ("shared-material-selftest", "scripts/validation/release_gate.py", 'py("scripts/materials/pull_materials.py", "--self-test")', 'py("scripts/materials/pull_materials.py", "--help")'),
-            ("shared-local-path-selftest", "scripts/validation/release_gate.py", 'py("scripts/validation/local_path_leak_audit.py", "--self-test")', 'py("scripts/validation/local_path_leak_audit.py", "--help")'),
-            ("shared-sensitive-content", "scripts/validation/release_gate.py", 'py("scripts/validation/sensitive_content_audit.py", "--self-test")', 'py("scripts/validation/sensitive_content_audit.py", "--help")'),
-            ("shared-release-reminder", "scripts/validation/release_gate.py", 'py("scripts/validation/release_change_reminder.py", "--self-test")', 'py("scripts/validation/release_change_reminder.py", "--help")'),
-            ("shared-report-reuse-selftest", "scripts/validation/release_gate.py", 'py("scripts/validation/validation_report_audit.py", "--self-test")', 'py("scripts/validation/validation_report_audit.py", "--help")'),
+            ("shared-material-selftest", "scripts/validation/release_gate.py", 'unit_test("materials")', 'py("scripts/materials/pull_materials.py", "--help")'),
+            ("shared-local-path-selftest", "scripts/validation/release_gate.py", 'unit_test("local_path_leak_audit")', 'py("scripts/validation/local_path_leak_audit.py", "--help")'),
+            ("shared-sensitive-content", "scripts/validation/release_gate.py", 'unit_test("sensitive_content_audit")', 'py("scripts/validation/sensitive_content_audit.py", "--help")'),
+            ("shared-release-reminder", "scripts/validation/release_gate.py", 'unit_test("release_change_reminder")', 'py("scripts/validation/release_change_reminder.py", "--help")'),
+            ("shared-language-ownership-test", "scripts/validation/release_gate.py", "    CONTRIBUTION_LANGUAGE_OWNERSHIP_TESTS,", '    py("scripts/validation/contribution_safety_audit.py", "--help"),'),
+            ("shared-report-reuse-selftest", "scripts/validation/release_gate.py", 'unit_test("validation_report_audit")', 'py("scripts/validation/validation_report_audit.py", "--help")'),
+            ("shared-pages-artifact-selftest", "scripts/validation/release_gate.py", 'unit_test("pages_artifact_integrity")', 'py("scripts/validation/pages_artifact_integrity.py", "--help")'),
+            ("shared-standard-test-contract", "scripts/validation/release_gate.py", "    HARNESS_CONTRACT,\n", "    # standard contract removed\n"),
             ("shared-change-aware-gate", "scripts/validation/release_gate.py", '"--changed-since"', '"--changed-around"'),
             ("shared-gate-timing", "scripts/validation/release_gate.py", '"--timing-report"', '"--no-timing-report"'),
             ("shared-local-reuse", "scripts/validation/release_gate.py", '"--reuse-success"', '"--ignore-success"'),
             ("shared-sbom-policy-selftest", "scripts/validation/release_gate.py", 'py("scripts/security/audit_sbom_policy.py", "--self-test")', 'py("scripts/security/audit_sbom_policy.py", "--help")'),
+            ("sbom-evidence-detector", "scripts/compliance/sbom_evidence.py", "digest-bound-component-sbom", "tag-only-sbom"),
+            ("sbom-evidence-catalog", "scripts/compliance/docs/sbom_evidence.json", '"state": "conditional"', '"state": "available-later"'),
             ("pr-deploy-boundary", ".github/workflows/pages.yml", "if: github.event_name != 'pull_request'", "if: always()"),
             ("pages-main-only", ".github/workflows/pages.yml", "github.ref == 'refs/heads/main'", "github.ref != ''"),
             ("checkout-credential", ".github/workflows/pages.yml", "persist-credentials: false", "persist-credentials: true"),
@@ -840,13 +1182,21 @@ def self_test() -> list[str]:
             ("release-build-epoch", "scripts/build/build_branch_manifest.py", 'os.environ.get("SOURCE_DATE_EPOCH")', 'os.environ.get("BUILD_TIME")'),
             ("publication-release-guard", ".github/workflows/release.yml", "contribution_safety_audit.py --require-publication-approved", "contribution_safety_audit.py"),
             ("publication-deploy-guard", ".github/workflows/pages.yml", "contribution_safety_audit.py --require-publication-approved", "contribution_safety_audit.py"),
+            ("github-reviewed-artifact-handoff", ".github/workflows/pages.yml", "needs: build-and-verify", "needs: test"),
+            ("github-pages-browser-review", ".github/workflows/pages.yml", "runtime_integration_browser_audit.py --site-root public --engine docker", "runtime_integration_browser_audit.py --site-root web --engine docker"),
+            ("github-pages-artifact-integrity", ".github/workflows/pages.yml", "--write-manifest public/pages-sha256.txt", "--write-manifest web/pages-sha256.txt"),
+            ("github-pages-artifact-reverification", ".github/workflows/pages.yml", "--check-manifest reviewed-public/pages-sha256.txt", "--write-manifest reviewed-public/pages-sha256.txt"),
             ("release-runtime-lock", ".github/workflows/release.yml", "workspace/requirements.lock", "workspace/requirements.txt"),
             ("release-live-material-check", ".github/workflows/release.yml", "pull_materials.py --check --fetch-attempts", "pull_materials.py --list --fetch-attempts"),
             ("release-sca-lock", ".github/workflows/release.yml", "scripts/security/requirements-sca.lock", "pip-audit cyclonedx-bom"),
-            ("release-sbom-policy", ".github/workflows/release.yml", "--sbom release-security/python-env.cdx.json", "--sbom release-security/unchecked.json"),
+            ("release-sbom-policy", ".github/workflows/release.yml", "--report release-security/sbom-policy.json", "--report release-security/unchecked-policy.json"),
+            ("release-sbom-evidence-generation", ".github/workflows/release.yml", "--manifest-out release-security/python-sbom-evidence.json", "--manifest-out release-security/unchecked-evidence.json"),
             ("discussion-route", ".github/ISSUE_TEMPLATE/config.yml", "/discussions", "/issues"),
+            ("external-repository", ".github/ISSUE_TEMPLATE/config.yml", "https://github.com/NVDLI/NemoClawDLI/discussions", "https://github.com/example/incorrect/discussions"),
+            ("issue-production-scope", ".github/ISSUE_TEMPLATE/runtime-deploy.yml", "static `web/nemoclaw/` course", "CPU service stack"),
             ("submission-template", ".github/PULL_REQUEST_TEMPLATE.md", "## Blast radius checked", "## Scope notes"),
             ("stacked-submission-template", ".gitlab/merge_request_templates/Default.md", "host-generated squash", "automatic integration"),
+            ("localization-ownership-template", ".github/PULL_REQUEST_TEMPLATE.md", "localized learner prose changed", "translation files changed"),
             ("gitlab-description-window", ".gitlab/merge_request_templates/Default.md", "## Validation evidence", "x" * 2700 + "\n## Validation evidence"),
             ("mutating-prepush", "scripts/git-hooks/pre-push", "REFUSING PUSH - origin/main is", "git pull --rebase origin main # REFUSING PUSH - origin/main is"),
             ("fetch-fail-open", "scripts/git-hooks/pre-push", "if ! git fetch origin main --quiet; then", "git fetch origin main --quiet || exit 0\n    if false; then"),
@@ -863,39 +1213,51 @@ def self_test() -> list[str]:
             ("prepush-release-reminder", "scripts/git-hooks/pre-push", 'python3 "$RELEASE_REMINDER" --commit-range "$RANGE"', 'python3 "$RELEASE_REMINDER" --help'),
             ("prepush-canonical-gate", "scripts/git-hooks/pre-push", '--tier ship --no-write --changed-since origin/main --reuse-success', '--tier fast'),
             ("worktree-hook-dispatch", "scripts/build/install-hooks.sh", 'hook="$content_root/scripts/git-hooks/$name"', 'hook="$HERE/git-hooks/$name"'),
-            ("gitlab-safety-selftest", ".gitlab-ci.yml", "release_gate.py --tier ship", "release_gate.py --tier fast"),
-            ("gitlab-change-aware-gate", ".gitlab-ci.yml", 'GATE_ARGS+=(--changed-since "$GATE_BASE")', 'GATE_ARGS=() # no change selection'),
-            ("gitlab-gate-timing", ".gitlab-ci.yml", "--timing-report docs/validation/release-gate-timings.json", "--no-timing-report"),
-            ("gitlab-report-reuse", ".gitlab-ci.yml", 'BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"', 'BUILD_PAGES_REUSE_VALIDATION=0 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"'),
-            ("gitlab-protected-root-worktree", ".gitlab-ci.yml", 'git worktree add --quiet --detach /tmp/nemoclaw-prod-root "origin/$prod_ref"', 'git archive "origin/$prod_ref" | tar -x -C /tmp/nemoclaw-prod-root'),
-            ("gitlab-image-pin", ".gitlab-ci.yml", "node:20-bookworm-slim@sha256:25070a03f077f5860e4f2db8d147380678ed40ead415a21eaffd5a6208f61948", "node:20-bookworm-slim"),
-            ("gitlab-infrastructure-retry", ".gitlab-ci.yml", "runner_system_failure", "runner_unsupported"),
-            ("gitlab-script-retry", ".gitlab-ci.yml", "runner_system_failure", "script_failure"),
-            ("gitlab-material-install", ".gitlab-ci.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),
-            ("gitlab-pages-material-install", ".gitlab-ci.yml", '  variables:\n    MATERIAL_TOOLS_REQUIRED: "1"\n  needs: ["test"]', '  variables:\n    MATERIAL_TOOLS_REQUIRED: "0"\n  needs: ["test"]'),
-            ("gitlab-transient-material-policy", ".gitlab-ci.yml", "pull_materials.py --check --allow-transient-unreachable", "pull_materials.py --check --strict-unreachable"),
-            ("gitlab-scheduled-material-policy", ".gitlab-ci.yml", "pull_materials.py --check --fetch-attempts", "pull_materials.py --check --allow-transient-unreachable --fetch-attempts"),
-            ("gitlab-complete-history", ".gitlab-ci.yml", 'GIT_DEPTH: "0"', 'GIT_DEPTH: "20"'),
-            ("gitlab-dco-check", ".gitlab-ci.yml", 'contribution_safety_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', 'contribution_safety_audit.py --commit-range "${CI_COMMIT_SHA}"'),
-            ("gitlab-local-path-range", ".gitlab-ci.yml", 'local_path_leak_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', 'local_path_leak_audit.py --help'),
+            ("gitlab-safety-selftest", ".gitlab/ci/core.yml", "release_gate.py --tier ship", "release_gate.py --tier fast"),
+            ("gitlab-change-aware-gate", ".gitlab/ci/core.yml", 'GATE_ARGS+=(--changed-since "$GATE_BASE")', 'GATE_ARGS=() # no change selection'),
+            ("gitlab-gate-timing", ".gitlab/ci/core.yml", "--timing-report docs/validation/release-gate-timings.json", "--no-timing-report"),
+            ("gitlab-immutable-report-reuse", ".gitlab/ci/core.yml", 'BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"', 'BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"'),
+            ("gitlab-protected-root-worktree", ".gitlab/ci/core.yml", 'git worktree add --quiet --detach /tmp/nemoclaw-prod-root "origin/$prod_ref"', 'git archive "origin/$prod_ref" | tar -x -C /tmp/nemoclaw-prod-root'),
+            ("gitlab-image-pin", ".gitlab/ci/core.yml", "node:20-bookworm-slim@sha256:25070a03f077f5860e4f2db8d147380678ed40ead415a21eaffd5a6208f61948", "node:20-bookworm-slim"),
+            ("gitlab-infrastructure-retry", ".gitlab/ci/core.yml", "runner_system_failure", "runner_unsupported"),
+            ("gitlab-script-retry", ".gitlab/ci/core.yml", "runner_system_failure", "script_failure"),
+            ("gitlab-material-install", ".gitlab/ci/core.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),
+            ("gitlab-pages-material-install", ".gitlab/ci/core.yml", '  # localization/material tooling even when live pulls are disabled.\n  variables:\n    MATERIAL_TOOLS_REQUIRED: "1"', '  # localization/material tooling even when live pulls are disabled.\n  variables:\n    MATERIAL_TOOLS_REQUIRED: "0"'),
+            ("gitlab-deploy-gate", ".gitlab/ci/core.yml", '  needs: ["test"]', '  needs: ["skipped_test"]'),
+            ("gitlab-preview-ref-fetch", ".gitlab/ci/core.yml", 'git fetch "$preview_remote" "+refs/heads/$branch:refs/remotes/$preview_namespace/$branch" --quiet', 'git fetch "$preview_remote" "+refs/heads/$branch:refs/remotes/$preview_namespace/$branch" --quiet || true'),
+            ("gitlab-preview-ref-fetch", ".gitlab/ci/core.yml", 'preview_remote="$CI_MERGE_REQUEST_SOURCE_PROJECT_URL"', 'preview_remote="origin"'),
+            ("gitlab-transient-material-policy", ".gitlab/ci/core.yml", "pull_materials.py --check --allow-transient-unreachable", "pull_materials.py --check --strict-unreachable"),
+            ("gitlab-scheduled-material-policy", ".gitlab/ci/core.yml", "pull_materials.py --check --fetch-attempts", "pull_materials.py --check --allow-transient-unreachable --fetch-attempts"),
+            ("gitlab-complete-history", ".gitlab/ci/core.yml", 'GIT_DEPTH: "0"', 'GIT_DEPTH: "20"'),
+            ("gitlab-dco-check", ".gitlab/ci/core.yml", 'contribution_safety_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', 'contribution_safety_audit.py --commit-range "${CI_COMMIT_SHA}"'),
+            ("gitlab-local-path-range", ".gitlab/ci/core.yml", 'local_path_leak_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', 'local_path_leak_audit.py --help'),
             ("github-local-path-range", ".github/workflows/pages.yml", 'local_path_leak_audit.py --commit-range "$PATH_RANGE"', 'local_path_leak_audit.py --help'),
-            ("gitlab-sensitive-submission", ".gitlab-ci.yml", "sensitive_content_audit.py --submission-env CI_MERGE_REQUEST_TITLE", "sensitive_content_audit.py --help"),
-            ("gitlab-sensitive-range", ".gitlab-ci.yml", 'sensitive_content_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', 'sensitive_content_audit.py --help'),
+            ("gitlab-sensitive-submission", ".gitlab/ci/core.yml", "sensitive_content_audit.py --submission-env CI_MERGE_REQUEST_TITLE", "sensitive_content_audit.py --help"),
+            ("gitlab-sensitive-range", ".gitlab/ci/core.yml", 'sensitive_content_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', 'sensitive_content_audit.py --help'),
             ("github-sensitive-submission", ".github/workflows/pages.yml", "sensitive_content_audit.py --submission-env SENSITIVE_TITLE", "sensitive_content_audit.py --help"),
             ("github-sensitive-range", ".github/workflows/pages.yml", 'sensitive_content_audit.py --commit-range "$SENSITIVE_RANGE"', 'sensitive_content_audit.py --help'),
             ("github-release-reminder", ".github/workflows/pages.yml", 'release_change_reminder.py --commit-range "$RELEASE_CHANGE_RANGE"', 'release_change_reminder.py --help'),
             ("github-change-aware-gate", ".github/workflows/pages.yml", '--changed-since "$GATE_BASE"', '--changed-around "$GATE_BASE"'),
             ("github-gate-timing", ".github/workflows/pages.yml", "--timing-report docs/validation/release-gate-timings.json", "--no-timing-report"),
             ("github-report-reuse", ".github/workflows/pages.yml", "BUILD_PAGES_REUSE_VALIDATION=1", "BUILD_PAGES_REUSE_VALIDATION=0"),
-            ("gitlab-release-reminder", ".gitlab-ci.yml", 'release_change_reminder.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', 'release_change_reminder.py --help'),
+            ("github-immutable-report-reuse", ".github/workflows/pages.yml", "BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1", "BUILD_PAGES_REUSE_VALIDATION=1"),
+            ("gitlab-release-reminder", ".gitlab/ci/core.yml", 'release_change_reminder.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"', 'release_change_reminder.py --help'),
             ("submission-release-reminder", ".github/PULL_REQUEST_TEMPLATE.md", "## External release follow-up", "## Optional follow-up"),
             ("shared-lock-selftest", "scripts/validation/release_gate.py", 'py("scripts/security/audit_dependency_locks.py", "--self-test")', 'py("scripts/security/audit_dependency_locks.py", "--version")'),
-            ("gitlab-sbom-policy", ".gitlab-ci.yml", "audit_sbom_policy.py --sbom", "audit_sbom_policy.py --help"),
-            ("gitlab-runtime-lock", ".gitlab-ci.yml", ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock", ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.txt"),
-            ("gitlab-sca-lock", ".gitlab-ci.yml", ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock", ".sca-tools-venv/bin/python -m pip install -q pip-audit cyclonedx-bom"),
-            ("gitlab-human-review", ".gitlab-ci.yml", "human_review:", "operator_review:"),
-            ("gitlab-human-review-needs", ".gitlab-ci.yml", 'needs: ["test", "pages_smoke"]', 'needs: ["test"]'),
-            ("gitlab-human-review-blocking", ".gitlab-ci.yml", '    - if: \'$CI_PIPELINE_SOURCE == "merge_request_event"\'\n      when: manual\n      allow_failure: false\n', '    - if: \'$CI_PIPELINE_SOURCE == "merge_request_event"\'\n      when: on_success\n      allow_failure: true\n'),
+            ("gitlab-sbom-policy", ".gitlab/ci/sca.yml", "audit_sbom_policy.py --sbom", "audit_sbom_policy.py --help"),
+            ("gitlab-sbom-evidence", ".gitlab/ci/sca.yml", "scripts/compliance/sbom_evidence.py --sbom scripts/security/reports/deep-workspace/python-env.cdx.json", "scripts/compliance/sbom_evidence.py --help"),
+            ("gitlab-image-sbom-boundary", ".gitlab/ci/sca.yml", "sha256sum --check --strict", "sha256sum --version"),
+            ("gitlab-runtime-lock", ".gitlab/ci/sca.yml", ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock", ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.txt"),
+            ("gitlab-sca-lock", ".gitlab/ci/sca.yml", ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock", ".sca-tools-venv/bin/python -m pip install -q pip-audit cyclonedx-bom"),
+            ("gitlab-human-review", ".gitlab/ci/core.yml", "human_review:", "operator_review:"),
+            ("gitlab-theme-runtime", ".gitlab/ci/core.yml", "theme_runtime:", "theme_runtime_removed:"),
+            ("gitlab-theme-runtime-command", ".gitlab/ci/core.yml", '--site-root "$THEME_SITE_ROOT" --scan-root "$THEME_SCAN_ROOT"', "--site-root selected"),
+            ("gitlab-theme-runtime-deployed-root", ".gitlab/ci/core.yml", "THEME_SITE_ROOT=public", 'THEME_SITE_ROOT="public/$CI_COMMIT_REF_SLUG"'),
+            ("gitlab-preview-manifest-projection", ".gitlab/ci/core.yml", 'project_artifact_manifests.py public --manifest-root "public/$CI_COMMIT_REF_SLUG"', "project_artifact_manifests.py public/preview"),
+            ("gitlab-production-manifest-projection", ".gitlab/ci/core.yml", "        python3 scripts/build/project_artifact_manifests.py public\n", "        python3 scripts/build/project_artifact_manifests.py public-root\n"),
+            ("gitlab-combined-artifact-link-audit", ".gitlab/ci/core.yml", 'artifact_link_audit.py "public/$CI_COMMIT_REF_SLUG"', "artifact_link_audit.py selected-preview"),
+            ("gitlab-human-review-needs", ".gitlab/ci/core.yml", 'needs: ["test", "pages_smoke", "theme_runtime"]', 'needs: ["test", "pages_smoke"]'),
+            ("gitlab-human-review-blocking", ".gitlab/ci/core.yml", '    - if: \'$CI_PIPELINE_SOURCE == "merge_request_event"\'\n      when: manual\n      allow_failure: false\n', '    - if: \'$CI_PIPELINE_SOURCE == "merge_request_event"\'\n      when: on_success\n      allow_failure: true\n'),
             ("material-transient-classification", "scripts/materials/pull_materials.py", "TRANSIENT_HTTP_STATUS = {", "RETRYABLE_STATUS_REMOVED = {"),
             ("material-redirect-boundary", "scripts/materials/pull_materials.py", "refusing source redirect", "following source redirect"),
             ("material-full-sha", "scripts/materials/pull_materials.py", 're.fullmatch(r"[0-9a-f]{64}"', 're.fullmatch(r"[0-9a-f]{16}"'),
@@ -904,11 +1266,16 @@ def self_test() -> list[str]:
             ("material-explicit-degradation", "scripts/materials/pull_materials.py", '"--allow-transient-unreachable"', '"--allow-all-unreachable"'),
             ("material-provenance-sha", "web/nemoclaw/mats/_materials.json", "7a583caa8f1db1e66220cfa8963b7b37dcaf5655df0e1314f8794ea1ba5c8c94", "7a583caa8f1db1e6"),
             ("readme-boundary", "README.md", "Ideas are easy; code is gated", "Contribution overview"),
+            ("readme-public-entrypoint", "README.md", "## Requirements", "## Prerequisites"),
+            ("readme-policy-link", "README.md", "](CODE_OF_CONDUCT.md)", "](conduct-policy.md)"),
+            ("root-license", "LICENSE", NVIDIA_APACHE_COPYRIGHT, "Copyright removed"),
+            ("root-license", "LICENSE", "Apache License", "Example License"),
+            ("cla-applicability", "CONTRIBUTING.md", "does not require a separate contributor license agreement", "may require another agreement"),
             ("agent-dco", "AGENTS.md", "Every proposed commit", "Every release"),
             ("release-status", "RELEASE_STATUS.json", '"pending-osrb-approval"', '"published"'),
+            ("release-status", "RELEASE_STATUS.json", '"reserved-not-populated"', '"not-published"'),
             ("release-status", "RELEASE_STATUS.json", '"maintenance_status": "release-candidate"', '"maintenance_status": "archived"'),
             ("notice-state", "RELEASE_STATUS.json", '"notice_required": false', '"notice_required": true'),
-            ("security-report-route", "SECURITY.md", "https://www.nvidia.com/en-us/security/report-vulnerability/", "https://example.invalid/report"),
             ("release-playbook", "docs/release_playbook.md", "Host settings are not versioned by this repository", "Host settings checklist"),
             ("workspace-lock-install", "workspace/Dockerfile", "pip3 install -r requirements.lock", "pip3 install -r requirements.txt"),
         )
@@ -940,7 +1307,7 @@ def self_test() -> list[str]:
         if audit_publication_approval(fixture):
             failures.append("approved release rejected by the external publication guard")
 
-    good = """## Summary\nBound the release path.\n## Issue link\nAddresses #12\n## Surfaces touched\n- [x] `workspace/`\n## Blast radius checked\nHooks and CI.\n## Validation evidence\nPASS: audit.\n## Human ownership\nRelease manager reviews.\n## Risk and rollback\nRevert commit.\n## Out of scope\nHost settings.\n"""
+    good = """## Summary\nBound the release path.\n## Issue link\nCloses #12\n## Surfaces touched\n- [x] `workspace/`\n## Blast radius checked\nHooks and CI.\n## Validation evidence\nPASS: audit.\n## Human ownership\nRelease manager reviews.\n## Risk and rollback\nRevert commit.\n## Out of scope\nHost settings.\n"""
     if audit_submission(good):
         failures.append("valid submission fixture rejected")
     localized = good.replace("- [x] `workspace/`", "- [x] `i18n/`")
@@ -948,8 +1315,16 @@ def self_test() -> list[str]:
         failures.append("valid localization submission fixture rejected")
     if not audit_publication_approval(ROOT):
         failures.append("pending release unexpectedly passed the external publication guard")
+    partial = good.replace("Closes #12", "Addresses #12").replace(
+        "## Out of scope", "## Remaining issue work\nHost approval remains.\n## Out of scope", 1)
+    if audit_submission(partial):
+        failures.append("valid partial submission fixture rejected")
+    if "submission-issue-remains" not in {
+        item["code"] for item in audit_submission(good.replace("Closes #12", "Addresses #12"))
+    }:
+        failures.append("partial issue relationship without remaining work escaped detector")
     for needle, expected in (("## Human ownership\nRelease manager reviews.\n", "submission-section"),
-                             ("Addresses #12", "submission-issue"), ("PASS: audit.", "submission-evidence")):
+                             ("Closes #12", "submission-issue"), ("PASS: audit.", "submission-evidence")):
         codes = {item["code"] for item in audit_submission(good.replace(needle, "", 1))}
         if expected not in codes:
             failures.append(f"submission mutation escaped detector: {expected}")
@@ -967,6 +1342,34 @@ def self_test() -> list[str]:
     ):
         if "commit-signoff" not in {item["code"] for item in audit_commit_records(record)}:
             failures.append("commit signoff mutation escaped detector")
+    locale_path = "i18n/es/web/nemoclaw/01a-loop.html"
+    canonical_path = "web/nemoclaw/01a-loop.html"
+    credited = "## Unreleased\n\n- Thanks to Example Contributor for the Spanish translation.\n"
+    href_before = '<a href="../index.html" aria-label="Inicio">Volver</a>'
+    href_after = '<a href="index.html" aria-label="Inicio">Volver</a>'
+    if learner_text(href_before) != learner_text(href_after):
+        failures.append("transport-only href change was misclassified as learner prose")
+    if learner_text(href_after) == learner_text(
+            '<a href="index.html" aria-label="Inicio del curso">Volver</a>'):
+        failures.append("learner-facing accessibility prose change escaped classification")
+    if audit_language_ownership(
+            [locale_path, canonical_path], "", ["Navigation update"], set()):
+        failures.append("transport-only localized HTML change required prose ownership")
+    if audit_language_ownership([locale_path, "CHANGELOG.md"], credited, ["Locale update"]):
+        failures.append("credited locale-only change rejected")
+    ownership_cases = (
+        ([locale_path], credited, ["Locale update"], "contributor-credit"),
+        ([locale_path, "CHANGELOG.md"], "## Unreleased\n\n- Locale update.\n", ["Locale update"], "contributor-credit"),
+        ([locale_path, canonical_path, "CHANGELOG.md"], credited, ["Mixed update"], "mixed-language-ownership"),
+    )
+    for paths, changelog, messages, expected in ownership_cases:
+        codes = {item["code"] for item in audit_language_ownership(paths, changelog, messages)}
+        if expected not in codes:
+            failures.append(f"language ownership mutation escaped detector: {expected}")
+    reviewed = "Mixed update\n\nLocalization-Review: es=Example Reviewer\n"
+    if audit_language_ownership(
+            [locale_path, canonical_path, "CHANGELOG.md"], credited, [reviewed]):
+        failures.append("reviewed mixed-language change rejected")
     return failures
 
 

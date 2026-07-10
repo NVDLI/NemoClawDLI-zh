@@ -1680,8 +1680,7 @@ svg[style*="background: #0d0d0d"] {
   color: #1f2328 !important;
 }
 
-/* Pages that style their SVGs via a page-local <style> block (e.g. cert.html's
-   `.topo-svg svg { background:#0d0d0d }`) don't get the substitution above,
+/* Pages that style their SVGs via a page-local <style> block don't get the substitution above,
    because those rules win on specificity. Patch with !important per-page selector. */
 .topo-svg svg {
   background: #f6f8fa !important;
@@ -2185,7 +2184,7 @@ pre .hljs                { color: #1f2328 !important; background: transparent !i
   <div class="callout">
     <p><strong>Same runtime as Kickstart.</strong> Every cell here drives the same
        OpenClaw agent on your
-       <a href="https://brev.nvidia.com" target="_blank" rel="noopener">Brev launchable</a>.
+       <a href="https://brev.nvidia.com/launchable/deploy?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS&amp;ncid=ref-dli-759990" target="_blank" rel="noopener">Brev launchable</a>.
        If one logs <code>⚠ DEGRADED</code> (the agent loops on
        <code>tool_search_code</code> instead of acting), shape the runtime with the
        health-check and recover cells below, then re-run. On a freshly launched
@@ -2370,7 +2369,7 @@ pre .hljs                { color: #1f2328 !important; background: transparent !i
 // same page HTML works in the lab static host, an external iframe, or opened as a
 // local file, all identically, because it only ever talks to remotes.
 
-const DIRECT_URL = "https://nvidia-api-cors-proxy.vkudlay.workers.dev/v1";
+const DIRECT_URL = "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1";
 // Web-cell model contract. The short course standardises on the fast Nemotron
 // nano model: it carries the reasoning channel and is quick enough for live
 // browser cells. DEFAULT_MODEL is what chat() uses when a cell passes no model;
@@ -6156,7 +6155,7 @@ export function mountKeyPanel(container, opts = {}) {
         <button class="btn">Save &amp; verify</button>
         <div class="status"></div>
         <p style="margin:.8em 0 0;font-size:.8rem;color:var(--tf,#8a8a8a)">
-          No key yet? <a href="https://build.nvidia.com" target="_blank" rel="noopener">Sign up at build.nvidia.com &rarr;</a>
+          No key yet? <a href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener">Sign up at build.nvidia.com &rarr;</a>
           Free-tier models cover every exercise.
         </p>
       </div>`;
@@ -7180,7 +7179,7 @@ return { lines: lines.length };
         '<label for="_lite_key_in">NVIDIA API key (nvapi-…)</label>' +
         '<input id="_lite_key_in" type="password" placeholder="nvapi-…" autocomplete="off"/>' +
         '<button id="_lite_key_btn">Save & verify</button>' +
-        '<div class="key-hint">Free key at <a href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com</a>. Stored in sessionStorage; cleared when this tab closes.</div>' +
+        '<div class="key-hint">Free key at <a href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener">build.nvidia.com</a>. Stored in sessionStorage; cleared when this tab closes.</div>' +
         (message ? '<div class="key-err">' + message + '</div>' : '') +
       '</div>';
     var inp = panel.querySelector("#_lite_key_in");

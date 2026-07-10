@@ -30,8 +30,8 @@
     "scripts/validation/course_dependency_integrity.py",
     "docs/dependency_security.md",
     "web/nemoclaw/scripts/_shared.js",
-    "cors-proxy/cors-proxy-worker-build.js",
-    "cors-proxy/cors-proxy-worker-openclaw.js"
+    "scripts/cors-proxy/cors-proxy-worker-build.js",
+    "scripts/cors-proxy/cors-proxy-worker-openclaw.js"
   ],
   "explorer": "../../web/_skill_explorer.js"
 }
@@ -51,7 +51,7 @@
     {
       "path": "audit_iframe_proxy_opt_in.py",
       "role": "iframe relay contract audit",
-      "desc": "Checks that direct API use is default, iframe proxy mode is explicit, billing headers are always present for tracking, and hosted relay endpoints match the reviewed contract."
+      "desc": "Checks one-time model endpoint selection, explicit iframe mode, safe credential routing, billing headers, and hosted relay contracts."
     },
     {
       "path": "iframe_proxy_worker_findings.md",
@@ -118,33 +118,38 @@
 </head>
 <body>
 <section class="skill-static" aria-labelledby="skill-title">
-  <nav class="skill-nav"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a></nav>
+  <header data-skill-header="1">
+<nav class="skill-nav" aria-label="Skill navigation"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a> <span aria-hidden="true"> · </span> <a data-skill-nav="map" href="../../SKILL.html">Repository map</a></nav>
+</header>
   <h1 id="skill-title">scripts/security audits</h1>
   <p>Security checks live here. Browser iframe relay use stays explicit, Python dependency floors and pins are scanned, accepted exceptions are fingerprinted and time-boxed, and private finding details stay outside the repository.</p>
   <div class="skill-note">Run commands from the repository root. Root-level script paths remain compatibility entrypoints; implementation files live in this directory tree.</div>
   <h2>Executable checks</h2>
   <div class="skill-cmds">
-    <div class="skill-cmd"><b>Hosted relay contract</b><code>python3 scripts/security/audit_iframe_proxy_opt_in.py &amp;&amp; python3 scripts/security/audit_iframe_proxy_opt_in.py --live</code></div>
-    <div class="skill-cmd"><b>Iframe proxy audit</b><code>python3 scripts/security/audit_iframe_proxy_opt_in.py</code></div>
+    <div class="skill-cmd"><b>Endpoint + hosted relay contract</b><code>python3 scripts/security/audit_iframe_proxy_opt_in.py --self-test &amp;&amp; python3 scripts/security/audit_iframe_proxy_opt_in.py</code></div>
+    <div class="skill-cmd"><b>Live hosted relays</b><code>python3 scripts/security/audit_iframe_proxy_opt_in.py --live</code></div>
     <div class="skill-cmd"><b>Dependency vulnerability audit</b><code>python3 scripts/security/audit_python_dependencies.py</code></div>
     <div class="skill-cmd"><b>Security exception audit</b><code>python3 scripts/security/audit_vulnerability_waivers.py</code></div>
-    <div class="skill-cmd"><b>Sensitive contribution boundary</b><code>python3 scripts/validation/sensitive_content_audit.py --self-test &amp;&amp; python3 scripts/validation/sensitive_content_audit.py</code></div>
+    <div class="skill-cmd"><b>Sensitive contribution boundary</b><code>python3 -m unittest discover -v -s tests/validation &amp;&amp; python3 scripts/validation/sensitive_content_audit.py</code></div>
     <div class="skill-cmd"><b>Dependency locks</b><code>python3 scripts/security/audit_dependency_locks.py --self-test &amp;&amp; python3 scripts/security/audit_dependency_locks.py</code></div>
     <div class="skill-cmd"><b>SBOM policy detector</b><code>python3 scripts/security/audit_sbom_policy.py --self-test</code></div>
+    <div class="skill-cmd"><b>SBOM evidence links</b><code>python3 scripts/compliance/sbom_evidence.py --self-test &amp;&amp; python3 scripts/compliance/sbom_evidence.py --check</code></div>
     <div class="skill-cmd"><b>Browser SCA</b><code>security_browser_sca</code></div>
     <div class="skill-cmd"><b>Full SCA plan</b><code>python3 scripts/security/run_full_sca.py</code></div>
     <div class="skill-cmd"><b>Full SCA execute</b><code>python3 scripts/security/run_full_sca.py --execute --python-local --cyclonedx-env</code></div>
     <div class="skill-cmd"><b>Deep CI SCA</b><code>security_deep_sca</code></div>
+    <div class="skill-cmd"><b>Digest-bound image SCA</b><code>SBOM_IMAGE=&lt;immutable-image-reference&gt; security_image_sca</code></div>
     <div class="skill-cmd"><b>Ship gate</b><code>python3 scripts/validation/validate_bundle.py --no-write --scope ship</code></div>
   </div>
   <h2>Linkage map</h2>
   <div class="skill-grid">
-    <a class="skill-card" href="audit_iframe_proxy_opt_in.py"><b>audit_iframe_proxy_opt_in.py</b><span>iframe relay audit. Checks that direct API use is default, iframe relay mode is explicit, billing headers remain present, and hosted endpoint contracts match.</span></a>
+    <a class="skill-card" href="audit_iframe_proxy_opt_in.py"><b>audit_iframe_proxy_opt_in.py</b><span>Model endpoint and iframe relay audit. Checks explicit persistence, credential destination warnings, default-only iframe proxying, billing headers, and hosted endpoint contracts.</span></a>
     <a class="skill-card" href="iframe_proxy_worker_findings.md"><b>iframe_proxy_worker_findings.md</b><span>hosted relay reference findings. Separates repository client-contract fixtures from the externally maintained deployment.</span></a>
     <a class="skill-card" href="audit_python_dependencies.py"><b>audit_python_dependencies.py</b><span>dependency vulnerability floor audit. Checks tracked Python declarations against PyPI/OSV metadata, exact workspace pins, and retired direct dependencies.</span></a>
     <a class="skill-card" href="audit_vulnerability_waivers.py"><b>audit_vulnerability_waivers.py</b><span>security exception audit. Validates opaque fingerprints, ownership, executable controls, scope, and expiry.</span></a>
     <a class="skill-card" href="audit_dependency_locks.py"><b>audit_dependency_locks.py</b><span>dependency lock audit. Enforces exact Python 3.11 closures, direct-manifest parity, and absence of retired runtime components.</span></a>
     <a class="skill-card" href="audit_sbom_policy.py"><b>audit_sbom_policy.py</b><span>runtime SBOM policy audit. Proves lock coverage, rejects retired components, and reports whether license metadata is SPDX, named, or absent.</span></a>
+    <a class="skill-card" href="../compliance/sbom_evidence.py"><b>sbom_evidence.py</b><span>Verifies the committed catalog and emits commit-bound manifests plus reconciled license appendices from CI SBOMs.</span></a>
     <a class="skill-card" href="run_full_sca.py"><b>run_full_sca.py</b><span>full SCA and SBOM runner. Supports scanner-separated runtime targeting for clean release SBOMs.</span></a>
     <a class="skill-card" href="vulnerability-waivers.json"><b>vulnerability-waivers.json</b><span>fingerprinted exception registry. Public metadata never republishes private finding details.</span></a>
     <a class="skill-card" href="../../docs/dependency_security.md"><b>dependency_security.md</b><span>standard integration path for fast source checks, waiver policy, SBOM output, full SCA scans, and GitLab Dependency Scanning.</span></a>

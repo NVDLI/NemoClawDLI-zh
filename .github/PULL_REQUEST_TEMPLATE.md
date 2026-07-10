@@ -4,12 +4,13 @@ What changed and why?
 
 ## Issue link
 
-Addresses #
+Closes #
 
 ## Current release target
 
-- Course: `web/nemoclaw/` unless this is bundle-wide
-- Runtime: CPU service stack (`cpu/`, `workspace/`, `deploy/`) unless stated otherwise
+- Course: static browser course under `web/nemoclaw/` unless this is bundle-wide
+- Production: public static host or co-located NemoClaw launchable
+- Local-only support: `cpu/`, `workspace/`, and `deploy/` unless specifically changed
 - Bundle scope: course-specific or bundle-wide
 
 ## Surfaces touched
@@ -80,3 +81,9 @@ What could regress? What exact commit, flag, workflow, or artifact restores the 
 ## Out of scope
 
 Name adjacent work deliberately excluded from this change.
+
+If localized learner prose changed, name its language reviewer and Changelog credit. If only canonical
+English changed, confirm localized prose stayed byte-identical or explain the coordinated ownership.
+
+Relationship rule: keep `Closes #N` when this PR satisfies every acceptance criterion. A partial
+PR uses `Addresses #N` and adds `## Remaining issue work` with the unmet criteria.

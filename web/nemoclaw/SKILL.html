@@ -64,10 +64,6 @@
       "path": "web/nemoclaw/SKILL.html"
     },
     {
-      "name": "cert",
-      "path": "web/nemoclaw/cert.html"
-    },
-    {
       "name": "courses",
       "path": "web/nemoclaw/courses.html"
     },
@@ -106,6 +102,14 @@
     {
       "name": "mats",
       "path": "web/nemoclaw/mats/SKILL.html"
+    },
+    {
+      "name": "standalone",
+      "path": "web/nemoclaw/standalone/SKILL.html"
+    },
+    {
+      "name": "vendor",
+      "path": "web/nemoclaw/vendor/SKILL.html"
     }
   ]
 }
@@ -189,11 +193,6 @@
           "desc": ""
         },
         {
-          "label": "cert",
-          "href": "cert.html",
-          "desc": "Course completion certificate."
-        },
-        {
           "label": "courses",
           "href": "courses.html",
           "desc": "Catalog redirect stub."
@@ -259,6 +258,21 @@
           "desc": "Source and connection level for every companion essay."
         }
       ]
+    },
+    {
+      "title": "Distribution",
+      "items": [
+        {
+          "label": "standalone export",
+          "href": "standalone/SKILL.html",
+          "desc": "Standalone-export source and fixed assets generated from the canonical course."
+        },
+        {
+          "label": "browser vendor",
+          "href": "vendor/SKILL.html",
+          "desc": "Pinned same-origin browser packages, metadata, SBOM, and license texts."
+        }
+      ]
     }
   ],
   "nav": {
@@ -272,6 +286,9 @@
 </script>
 </head>
 <body>
+<header data-skill-header="1" style="padding:.65rem 1rem;border-bottom:1px solid ButtonBorder;background:Canvas;color:CanvasText">
+  <nav aria-label="Skill navigation" style="display:flex;gap:.6rem;flex-wrap:wrap"><a data-skill-nav="home" href="../index.html">Home</a> <span aria-hidden="true"> · </span> <a data-skill-nav="up" href="../SKILL.html">Up</a> <span aria-hidden="true"> · </span> <a data-skill-nav="map" href="../../SKILL.html">Repository map</a></nav>
+</header>
 <div id="explorer"></div>
 <noscript>
   <h1>web/nemoclaw · course hub</h1>
@@ -290,7 +307,6 @@
     <li><a href="04b-modern-clis.html">04b-modern-clis</a></li>
     <li><a href="04c-going-further.html">04c-going-further</a></li>
     <li><a href="SKILL.html">SKILL</a></li>
-    <li><a href="cert.html">cert</a></li>
     <li><a href="courses.html">courses</a></li>
     <li><a href="glossary.html">glossary</a></li>
     <li><a href="index.html">index</a></li>
@@ -310,6 +326,11 @@
   <ul>
     <li><a href="assets/SKILL.html">image provenance</a></li>
     <li><a href="mats/SKILL.html">material provenance</a></li>
+  </ul>
+  <h2>Distribution</h2>
+  <ul>
+    <li><a href="standalone/SKILL.html">standalone export</a></li>
+    <li><a href="vendor/SKILL.html">browser vendor</a></li>
   </ul>
 </noscript>
 <script src="../_skill_explorer.js"></script>

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 import CodeMirror from "codemirror";
 import "codemirror/mode/css/css.js";
 import "codemirror/mode/htmlmixed/htmlmixed.js";

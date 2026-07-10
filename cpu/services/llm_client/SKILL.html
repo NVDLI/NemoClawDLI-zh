@@ -71,16 +71,18 @@ td:first-child{font-family:var(--mono);font-size:.85em;color:var(--gs);white-spa
 .callout{border-left:3px solid var(--g);background:rgba(118,185,0,.07);padding:11px 16px;border-radius:0 var(--r) var(--r) 0;margin:1em 0;font-size:.92rem}
 .agent-note{border:1px solid var(--bd);border-radius:var(--r);background:var(--e1);padding:14px 18px;font-size:.88rem;margin-top:2em}
 .agent-note h3{color:var(--td);font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;margin:0 0 .4em}
+@media(max-width:720px){nav{flex-wrap:wrap;padding:12px 16px}.spacer{display:none}table{display:block;max-width:100%;overflow-x:auto}}
 </style>
 </head>
 <body>
-<nav>
+<header data-skill-header="1">
+<nav aria-label="Skill navigation">
   <span class="logo">NVIDIA DLI</span>
   <span class="crumb">/ <a href="/lab/static/SKILL.html">workspace</a> / services / llm_client</span>
   <span class="spacer"></span>
   <span class="badge">service-skill</span>
-  <span class="badge">llm_client:9000</span>
-</nav>
+  <span class="badge">llm_client:9000</span> <span aria-hidden="true"> · </span> <a data-skill-nav="map" href="../../../SKILL.html">Repository map</a></nav>
+</header>
 
 <main>
   <h1>llm_client</h1>
@@ -127,10 +129,11 @@ td:first-child{font-family:var(--mono);font-size:.85em;color:var(--gs);white-spa
     <p>Full prose lives in <code>00_llm_client.md</code>. When the default
       models change, also update the model constants in
       <code>web/nemoclaw/scripts/_shared.js</code>.</p>
+    <p>Child contract: <a href="tests/SKILL.html">llm_client tests</a>.</p>
   </div>
 </main>
 
-<script src="/lab/static/workspace/_skill_selftest.js"></script>
+<script src="../../../workspace/_skill_selftest.js"></script>
 <script>
 SkillSelfTest.run("#selftest", [
   { name: "skill-meta is valid JSON", run: async () => {
@@ -156,5 +159,6 @@ SkillSelfTest.run("#selftest", [
       return { detail: "dim " + json.data[0].embedding.length }; } },
 ]);
 </script>
+<script src="../../../web/_skill_explorer.js"></script>
 </body>
 </html>

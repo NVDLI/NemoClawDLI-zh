@@ -10,20 +10,8 @@
 <link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.min.css"/>
 <script src="vendor/codemirror-5.65.21.min.js"></script>
 <style>
-  .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
-  .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
-  .CodeMirror-vscrollbar { display: none; }
-  .CodeMirror-gutters { background: #0d0d0d; border-right: 1px solid #2a2a2a; }
-  .CodeMirror-linenumber { color: #6a6a6a; padding: 0 8px 0 6px; font-size: .76rem; }
-  .CodeMirror-lines { padding: 10px 0; }
-  .cm-s-monokai.CodeMirror { background: #0d0d0d; color: #f8f8f2; }
-  .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
-  .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
   .deep-stages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 1em 0 1.4em; }
-  .deep-stage { min-width: 0; padding: 12px 14px; border: 1px solid var(--bd); border-left: 3px solid var(--g); border-radius: 6px; background: var(--e1); }
-  .deep-stage:nth-child(2) { border-left-color: var(--gs); }
-  .deep-stage:nth-child(3) { border-left-color: var(--acc); }
-  .deep-stage:nth-child(4) { border-left-color: var(--warn); }
+  .deep-stage { min-width: 0; padding: 12px 14px; border: 1px solid var(--bd); border-radius: 6px; background: var(--e1); }
   .deep-stage-label { margin-bottom: 4px; color: var(--gs); font: .7rem var(--mono); letter-spacing: .08em; text-transform: uppercase; }
   .deep-stage p { margin: 0; color: var(--td); font-size: .84rem; line-height: 1.5; }
   .research-board { min-width: 0; border: 1px solid var(--bd); border-radius: 7px; background: var(--bg); overflow: hidden; }
@@ -31,12 +19,12 @@
   .research-board > header strong { color: var(--gs); font: 800 .7rem/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
   .research-board-status { color: var(--tf); font: .72rem/1.35 var(--mono); }
   .research-thread-rail { display: flex; justify-content: flex-start; align-items: stretch; gap: 9px; padding: 10px; overflow-x: auto; overscroll-behavior-inline: contain; scroll-snap-type: x proximity; }
-  .research-thread { flex: 0 0 min(19rem, calc(100vw - 74px)); min-width: 0; height: 18rem; display: flex; flex-direction: column; text-align: left; scroll-snap-align: start; border: 1px solid var(--bd); border-left: 3px solid var(--tf); border-radius: 6px; background: var(--e1); outline: none; }
-  .research-thread:focus, .research-thread:hover { border-color: var(--artifact); border-left-color: var(--artifact); box-shadow: 0 0 0 1px color-mix(in srgb, var(--artifact) 34%, transparent); }
-  .research-thread.running { border-left-color: var(--warn); }
-  .research-thread.done { border-left-color: var(--g); }
-  .research-thread.gap { border-left-color: var(--acc); }
-  .research-thread.failed { border-left-color: var(--err); }
+  .research-thread { flex: 0 0 min(19rem, calc(100vw - 74px)); min-width: 0; height: 18rem; display: flex; flex-direction: column; text-align: left; scroll-snap-align: start; border: 1px solid var(--bd); border-radius: 6px; background: var(--e1); outline: none; }
+  .research-thread:focus, .research-thread:hover { border-color: var(--artifact); box-shadow: 0 0 0 1px color-mix(in srgb, var(--artifact) 34%, transparent); }
+  .research-thread.running { border-color: var(--warn); }
+  .research-thread.done { border-color: var(--g); }
+  .research-thread.gap { border-color: var(--acc); }
+  .research-thread.failed { border-color: var(--err); }
   .research-thread > header { padding: 9px 10px 7px; border-bottom: 1px solid var(--bd); }
   .research-thread-kind { color: var(--artifact-text); font: 800 .63rem/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
   .research-thread h3 { margin: 5px 0 0; color: var(--td); font-size: .82rem; line-height: 1.3; }
@@ -190,8 +178,8 @@
   <!-- ── Part 5: Deep agent (planner + sub-agents + VFS) ──────────────────── -->
   <h2>3 · Assemble the research agent</h2>
   <p>
-    This cell exposes each stage as its own node, with shared files visible
-    between delegation and synthesis. The <a href="https://github.com/langchain-ai/deepagentsjs" target="_blank" rel="noopener"><code>deepagents</code></a>
+    Each stage runs as its own node, and shared files remain visible between
+    delegation and synthesis. The <a href="https://github.com/langchain-ai/deepagentsjs" target="_blank" rel="noopener"><code>deepagents</code></a>
     package wraps a similar pattern for Node.js applications.
   </p>
 
@@ -299,8 +287,8 @@ helpers.mountChatUI("#deep-artifact", {
     // Show the parsed plan so each branch's source, target, and goal are visible.
     ctx.view.tool("plan", { branches });
 
-    // Build a live HTML operation board. Each branch owns one left-aligned,
-    // independently scrollable panel and begins updating before its siblings finish.
+    // Build a live HTML operation board with one independently scrollable, left-aligned panel per branch.
+    // Each panel begins updating before its siblings finish.
     const board = ctx.view.html(
       '<section class="research-board" aria-label="Live research operations">' +
       '<header><strong>Parallel research</strong><span class="research-board-status" role="status" aria-live="polite">Starting workers…</span></header>' +
@@ -443,7 +431,7 @@ mountCanvasFlow("#cell-m3c-p1", {
       summary: "Read the active endpoint from getConfig(); later graph code stays endpoint-independent.",
       code: `// Load the same-origin vendor bundle used by this example.
 helpers.log("importing @langchain/openai ...");
-const { ChatOpenAI } = await import("./vendor/langchain-1.4.7.esm.min.js");
+const { ChatOpenAI } = await import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href);
 helpers.log("import OK");
 
 const cfg = await helpers.getConfig();
@@ -497,7 +485,7 @@ mountCanvasFlow("#cell-m3c-p2", {
       code: `// Load the same-origin vendor bundle used by this example.
 helpers.log("importing langchain ecosystem...");
 const { ChatOpenAI, tool, createReactAgent, z } =
-  await import("./vendor/langchain-1.4.7.esm.min.js");
+  await import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href);
 state.deps = { ChatOpenAI, tool, createReactAgent, z };
 helpers.log("imports OK");
 
@@ -596,7 +584,7 @@ mountCanvasFlow("#cell-m3c-p3", {
       code: `// Load the same-origin vendor bundle used by this example.
 helpers.log("importing LangChain bundles...");
 const { ChatOpenAI, tool, createReactAgent, z } =
-  await import("./vendor/langchain-1.4.7.esm.min.js");
+  await import(new URL("./vendor/langchain-1.4.7.esm.min.js", location.href).href);
 state.deps = { ChatOpenAI, tool, createReactAgent, z };
 
 const cfg = await helpers.getConfig();
@@ -643,7 +631,7 @@ return { tools: ["write_file", "read_file", "list_files"], vfs_state: Object.key
     {
       id: "planner", icon: "🧠", title: "Plan typed subtasks", x: 1, y: 1,
       summary: "Structured output avoids parsing a free-text plan.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Change the deliverable and watch the planner create new typed subtasks.
 state.goal = [
   "Research NVIDIA NIM (NVIDIA Inference Microservices) and produce three files: ",
   "nim_overview.md, a technical overview of what NIM is and how it works; ",
@@ -651,8 +639,8 @@ state.goal = [
   "nim_vs_hosting.md, a short comparison of using a managed NIM endpoint versus self-hosting a model directly, ",
   "covering latency, operational overhead, and when each makes sense.",
 ].join("");
-// Edit this string to try a different multi-file research goal.
-
+// state.goal = "Compare RAG evaluation methods and produce metrics.md, risks.md, and test_plan.md.";
+// state.goal = "Research agent memory and produce short_term.md, long_term.md, and tradeoffs.md.";
 
 // withStructuredOutput binds the output to this schema and returns a parsed object.
 

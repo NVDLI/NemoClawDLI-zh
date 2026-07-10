@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Reject contributor-local paths from repository source."""
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+"""Reject contributor-local paths and identifiers from repository source."""
 from __future__ import annotations
 
 import argparse
@@ -59,12 +62,19 @@ PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
         "Codex runtime cache",
         re.compile(r"\.cache[\\/]+codex-runtimes[\\/]+", re.I),
     ),
+    (
+        "contributor-local identifier",
+        re.compile(r"\bv[k]udlay\b", re.I),
+    ),
 )
 
 # These are product/runtime identities, not contributor workstations. Keep each allowance
 # bound to one source file; new paths or new consumers require deliberate review.
 RUNTIME_ALLOWANCES = {
     "cpu/services/openclaw/hooks/env-discover.sh": ("/" + "home/ocuser/",),
+    # A maintainer identity is necessary and enforceable in the host's ownership file.
+    # The same identifier remains prohibited in every other repository path.
+    ".gitlab/CODEOWNERS": ("v" + "kudlay",),
 }
 
 
@@ -203,7 +213,7 @@ def audit_commit_range(commit_range: str, root: Path = ROOT) -> tuple[list[Findi
     return sorted(findings, key=lambda item: (item.path, item.line, item.kind)), len(commits)
 
 
-def self_test() -> tuple[int, int, list[str]]:
+def self_test() -> list[str]:
     slash = "/"
     backslash = "\\"
     cases = (
@@ -235,6 +245,8 @@ def self_test() -> tuple[int, int, list[str]]:
         ("host mount", slash + "media/disk/alice/project", True),
         ("local file URI", "file:" + slash * 3 + "tmp/report.html", True),
         ("runtime cache", ".cache" + slash + "codex-runtimes" + slash + "node", True),
+        ("contributor-local identifier", "v" + "kudlay", True),
+        ("declared code owner", "@" + "v" + "kudlay", False),
         ("portable variables", "$HOME/.cache and ${TMPDIR:-/tmp} and file://", False),
         ("declared runtime identity", slash + "home/ocuser/.openclaw/workspace", False),
     )
@@ -243,7 +255,7 @@ def self_test() -> tuple[int, int, list[str]]:
         path = (
             "cpu/services/openclaw/hooks/env-discover.sh"
             if label == "declared runtime identity"
-            else "fixture.txt"
+            else ".gitlab/CODEOWNERS" if label == "declared code owner" else "fixture.txt"
         )
         rejected = bool(scan_text(path, sample))
         if rejected != should_fail:
@@ -307,8 +319,7 @@ def self_test() -> tuple[int, int, list[str]]:
         rows, _ = audit_commit_range(f"{base}..HEAD", root)
         if not any(row.path.endswith(":tracked.txt") for row in rows):
             failures.append("commit-range discovery: removed intermediate leak was not rejected")
-    total = len(cases) + 4
-    return total - len(failures), total, failures
+    return failures
 
 
 def main() -> int:
@@ -318,8 +329,8 @@ def main() -> int:
     parser.add_argument("--commit-range", help="also reject path additions in every commit in RANGE")
     args = parser.parse_args()
     if args.self_test:
-        passed, total, failures = self_test()
-        print(f"local path leak self-test: {passed}/{total} passed")
+        failures = self_test()
+        print("local path leak self-test: " + ("FAIL" if failures else "PASS"))
         for finding in failures:
             print("  FAIL " + finding)
         return 1 if failures else 0

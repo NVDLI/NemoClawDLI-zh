@@ -10,15 +10,6 @@
 <link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.min.css"/>
 <script src="vendor/codemirror-5.65.21.min.js"></script>
 <style>
-  .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
-  .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
-  .CodeMirror-vscrollbar { display: none; }
-  .CodeMirror-gutters { background: #0d0d0d; border-right: 1px solid #2a2a2a; }
-  .CodeMirror-linenumber { color: #6a6a6a; padding: 0 8px 0 6px; font-size: .76rem; }
-  .CodeMirror-lines { padding: 10px 0; }
-  .cm-s-monokai.CodeMirror { background: #0d0d0d; color: #f8f8f2; }
-  .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
-  .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
 </style>
 <style>
   .knobs-table { width: 100%; border-collapse: collapse; font-size: .88rem; margin: .8em 0; }
@@ -233,7 +224,7 @@ suggesting one, do these things in order:
 // matching skill mid-turn, the same machinery a heartbeat or cron fire uses.
 // Edit the greeting, examples, or respond logic, then Run to re-render.
 helpers.mountChatUI("#alwayson-artifact", {
-  disabled: () => !(localStorage.getItem("nemoclaw_clawtoken") && (localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl"))),
+  disabled: () => { const c = helpers.getOpenClawConnection(); return !(c.token && c.rawUrl); },
   disabledMsg: "Connect your launchable in Module 3a first. This panel needs its URL and token.",
   greeting: "Connect on the Kickstart page, then send something that matches a skill, such as “checkout-service is throwing 502s in us-east-1, what do I do?”",
   examples: ["checkout-service is throwing 502s in us-east-1", "What skills are you configured with?", "Walk me through your incident runbook", "What cron jobs do you have scheduled?", "How would you triage a sudden latency spike?", "Summarize what you would do if paged at 3am"],
@@ -302,6 +293,7 @@ ${msgBlock}
 const sessionKey      = ${skExpr};   // which agent session to talk to
 const IDLE_TIMEOUT_S  = 90;          // give up if the agent goes silent this long (this model can be slow to first token)
 const TOTAL_TIMEOUT_S = 240;         // hard ceiling for the whole turn
+const FINAL_EVENT_GRACE_MS = 1500;   // lifecycle end can arrive just before chat.final
 // ──────────────────────────────────────────────────────────────────────────────
 helpers.log("→ " + message);
 
@@ -327,9 +319,10 @@ let _text = "", _finalEv, _t0 = performance.now(), _ttft = 0, _myRun = null;
 let _toolStarts = 0, _didResult = false;            // for the degradation check below
 const IDLE_MS = IDLE_TIMEOUT_S * 1000, GLOBAL_MS = TOTAL_TIMEOUT_S * 1000;
 await new Promise((resolve, reject) => {
-  let _idle, _global;
+  let _idle, _global, _endGrace, _finished = false;
   function finish(why, stalled) {
-    clearTimeout(_idle); clearTimeout(_global); state._chatCb = null;
+    if (_finished) return; _finished = true;
+    clearTimeout(_idle); clearTimeout(_global); clearTimeout(_endGrace); state._chatCb = null;
     if (why) helpers.log(why);
     // Abort timed-out runs server-side so they stop consuming work and leaking frames.
     if (stalled) {
@@ -354,8 +347,8 @@ await new Promise((resolve, reject) => {
     if (d.event === "chat" && pl.state === "final") {
       // final chat frame: fallback prose if no agent text deltas arrived
       _finalEv = d;
-      _text = pl.message?.content?.[0]?.text || _text;
-      return;
+      _text = helpers.openclawMessageText(pl.message) || _text;
+      finish(); return;
     }
     if (d.event !== "agent") return;
     const sk = pl.sessionKey || "";
@@ -370,17 +363,16 @@ await new Promise((resolve, reject) => {
       // Show tool input; bad args often explain hangs.
       _toolStarts++;
       const inp = data.args ? JSON.stringify(data.args) : (data.meta || "");
-      helpers.log.details("⚙️ " + (data.name || "tool") + (inp ? "  " + inp.replace(/\\n/g, " ").slice(0, 160) : ""), d);
+      helpers.log.details("⚙️ " + (data.name || "tool") + (inp ? "  " + inp.replace(/\\n/g, " ").slice(0, 160) : ""), helpers.filterOpenClawRuntimeValue(d));
     } else if (stream === "tool" && data.phase === "result") {
       // a tool finished, so show its OUTPUT (works for exec, read, edit, browser, …)
       _didResult = true;
-      const r = data.result;
-      const txt = (r && r.content && r.content[0] && r.content[0].text) || (typeof r === "string" ? r : "");
+      const txt = helpers.openclawResultText(data.result);
       const mark = data.isError ? "✗" : "✓";
-      helpers.log.details(mark + " " + (data.name || "tool") + (txt ? "  " + txt.trim().replace(/\\n/g, " ⏎ ").slice(0, 200) : ""), d);
+      helpers.log.details(mark + " " + (data.name || "tool") + (txt ? "  " + txt.trim().replace(/\\n/g, " ⏎ ").slice(0, 200) : ""), helpers.filterOpenClawRuntimeValue(d));
     } else if (data.phase === "end" && !data.itemId) {
-      // agent run complete (lifecycle end)
-      finish();
+      // chat.final is authoritative and can trail lifecycle end by one browser turn.
+      clearTimeout(_endGrace); _endGrace = setTimeout(() => finish(), FINAL_EVENT_GRACE_MS);
     }
    } catch (e) {
     // Surface WS handler errors; swallowed exceptions look like hangs.
@@ -468,7 +460,7 @@ return { matched_steps: hits };
 
 mountCanvasFlow("#probe-cron", {
   label: "Gateway · cron management",
-  intro: "Manage scheduled jobs over the gateway WebSocket: list, add, wait, inspect MEMORY.md, and remove. The completed flow leaves visible evidence of an unattended write.",
+  intro: "Manage scheduled jobs over the gateway WebSocket: list, add, poll run history, compare MEMORY.md, and remove. The completed flow leaves visible evidence of an unattended write.",
   edges: [
     { from: "cr-conn",  to: "cr-list"  },
     { from: "cr-list",  to: "cr-add"   },
@@ -485,7 +477,7 @@ mountCanvasFlow("#probe-cron", {
     {
       id: "cr-list", icon: "📋", title: "List current crons", x: 0, y: 1,
       showCode: false,
-      summary: "Call cron.list to see what is already scheduled. The payload.jobs array holds each job's id, schedule, and prompt.",
+      summary: "Call cron.list to see what is already scheduled. Each job carries a server-assigned id, a structured schedule, and a structured payload.",
       code: `// Use the gateway socket to list scheduled jobs without changing anything.
 if (!state.call) { helpers.log("Run Connect first."); return; }
 const pl = await state.call("cron.list");
@@ -493,7 +485,11 @@ const jobs = pl?.jobs || [];
 if (!jobs.length) {
   helpers.log("(no cron jobs installed)");
 } else {
-  jobs.forEach(j => helpers.log(j.id + "  " + j.schedule + "  " + (j.prompt || "").slice(0, 60)));
+  jobs.forEach(j => {
+    const schedule = j.schedule?.kind === "cron" ? j.schedule.expr : JSON.stringify(j.schedule || {});
+    const message = j.payload?.message || j.payload?.text || "";
+    helpers.log(j.id + "  " + schedule + "  " + message.slice(0, 60));
+  });
 }
 helpers.log.details("raw cron.list", pl);
 return { count: jobs.length };
@@ -502,51 +498,134 @@ return { count: jobs.length };
     {
       id: "cr-add", icon: "➕", title: "Install a demo cron", x: 0, y: 2,
       showCode: false,
-      summary: "Call cron.add with an id, a cron schedule (every minute here), and the prompt the agent will run on each tick. The job fires inside the same sandbox as the normal agent loop.",
+      summary: "Call cron.add with a name, structured schedule, isolated-session target, and agent-turn payload. The gateway assigns the id used for later removal.",
       code: `// Install one short-lived demo cron job so the unattended path is visible.
 if (!state.call) { helpers.log("Run Connect first."); return; }
-const added = await state.call("cron.add", {
-  id:       "quick-3c-demo",
-  schedule: "* * * * *",
-  prompt:   "Append one short line to MEMORY.md noting the current UTC minute, then exit.",
-});
-helpers.log("installed quick-3c-demo (fires every minute)");
+const name = "quick-3c-demo";
+const before = await state.call("cron.list");
+let added = (before?.jobs || []).find(job => job.name === name);
+if (!added) {
+  added = await state.call("cron.add", {
+    name,
+    schedule: { kind: "cron", expr: "* * * * *", tz: "UTC" },
+    sessionTarget: "isolated",
+    wakeMode: "now",
+    payload: {
+      kind: "agentTurn",
+      message: "Append one short line to MEMORY.md noting the current UTC minute, then exit.",
+    },
+  });
+}
+if (!added?.id) throw new Error("cron.add returned no job id");
+state.demoCronId = added.id;
+state.demoCronInstalledAt = Date.now();
+let historyEntries = [];
+try {
+  const history = await state.call("cron.runs", { id: added.id, limit: 20 });
+  historyEntries = history?.entries || history?.runs || [];
+  state.demoCronHistoryAvailable = true;
+} catch (_) {
+  state.demoCronHistoryAvailable = false;
+}
+state.demoCronBaselineRunAt = Math.max(
+  Number(added.state?.lastRunAtMs || 0),
+  ...historyEntries.map(entry => Math.max(Number(entry.ts || 0), Number(entry.runAtMs || 0)))
+);
+helpers.log("installed " + name + " as " + added.id + " (fires every minute)");
 helpers.log.details("raw cron.add", added);
 const pl = await state.call("cron.list");
-helpers.log("cron jobs now: " + (pl?.jobs || []).map(j => j.id).join(", "));
+helpers.log("cron jobs now: " + (pl?.jobs || []).map(j => j.name + " (" + j.id + ")").join(", "));
 helpers.log.details("raw cron.list", pl);
-return { installed: "quick-3c-demo" };
+return { installed: added.id, name };
 `,
     },
     {
-      id: "cr-watch", icon: "⏳", title: "Wait, then read MEMORY.md", x: 0, y: 3,
+      id: "cr-watch", icon: "⏳", title: "Check run status, then read MEMORY.md", x: 0, y: 3,
       showCode: false,
-      summary: "Wait across a minute boundary, then read MEMORY.md through the operator terminal. The new line proves the cron-fired agent wrote without a chat turn. Keep the launchable open in another tab for the Cloudflare Access session.",
-      code: `// The cron job is live and you are not driving it. Give it time to cross a
-// minute boundary so at least one tick fires, then read what it appended.
+      summary: "Check cron once and return immediately. Re-run after the scheduled minute, or opt into the commented watch mode when you specifically want automatic polling.",
+      code: `// Check once by default so the lesson never traps you in a 90-second wait.
+// cron.list state is the compatibility fallback for older runtimes.
+if (typeof state.call !== "function" || !state.demoCronId) {
+  helpers.log("Connect OpenClaw in Module 3a, then run the cron setup nodes first.");
+  return;
+}
 const AGENT = "my-assistant";   // your agent's name, from GET /api/agent on the Kickstart page
-const WAIT_S = 70;
-helpers.log("waiting " + WAIT_S + "s for the cron to fire at least once (nobody is driving it) …");
-await new Promise(r => setTimeout(r, WAIT_S * 1000));
+const POLL_MS = 5000;
+const AUTO_WATCH = false;
+// Alternate mode: change AUTO_WATCH to true to poll for up to 90 seconds.
+const MEMORY_CMD = "echo '=== MEMORY.md (tail) ==='; tail -n 8 .openclaw/workspace/MEMORY.md 2>/dev/null || echo '(no MEMORY.md yet)'";
+const runStamp = entry => Math.max(Number(entry?.ts || 0), Number(entry?.runAtMs || 0));
+
+const baseline = Number(state.demoCronBaselineRunAt || 0);
+const startedAt = Date.now();
+let observed = null;
+let polls = 0;
+let historyWarningShown = false;
+const maxPolls = AUTO_WATCH ? 18 : 1;
+const progress = helpers.log(AUTO_WATCH
+  ? "watching for a completed cron run · polling every 5s"
+  : "checking cron run status once");
+progress.setAttribute("role", "status");
+progress.setAttribute("aria-live", "polite");
+
+while (polls < maxPolls) {
+  polls++;
+  let entries = [];
+  try {
+    const history = await state.call("cron.runs", { id: state.demoCronId, limit: 20 });
+    entries = history?.entries || history?.runs || [];
+  } catch (_) {
+    if (!historyWarningShown) {
+      helpers.log("cron.runs is unavailable; polling cron.list runtime state instead.");
+      historyWarningShown = true;
+    }
+  }
+  const listing = await state.call("cron.list");
+  const job = (listing?.jobs || []).find(item => item.id === state.demoCronId || item.name === "quick-3c-demo");
+  const latestEntry = entries.reduce((latest, entry) => runStamp(entry) > runStamp(latest) ? entry : latest, null);
+  const latestStamp = Math.max(runStamp(latestEntry), Number(job?.state?.lastRunAtMs || 0));
+  const status = latestEntry?.status || job?.state?.lastRunStatus || job?.state?.lastStatus || "not completed yet";
+  if (latestStamp > baseline) {
+    observed = { stamp: latestStamp, status };
+    progress.textContent = "✓ cron run reported · " + status + " · " + polls + " check" + (polls === 1 ? "" : "s");
+    break;
+  }
+  progress.textContent = status + " · check " + polls + " of " + maxPolls;
+  if (polls < maxPolls) await helpers.delay(POLL_MS);
+}
+
+if (!observed) helpers.log(AUTO_WATCH
+  ? "No completed run was reported within 90s."
+  : "No new run yet. Re-run this node after the scheduled minute, or enable AUTO_WATCH.");
 
 helpers.log("reading MEMORY.md from sandbox '" + AGENT + "' over the operator terminal …");
 const { output, raw, frames } = await helpers.terminal(
   "openshell sandbox connect " + AGENT,
-  { send: ["echo '=== MEMORY.md (tail) ==='; tail -n 8 .openclaw/workspace/MEMORY.md 2>/dev/null || echo '(no MEMORY.md yet)'"] }
+  { send: [MEMORY_CMD] }
 );
 helpers.log(output);
 helpers.log.details("raw transcript (" + frames + " WebSocket frames)", raw);
-helpers.log("the line(s) above were appended by the cron-fired agent, not by you.");
+// Optional visibility: uncomment to inspect the raw cron observation.
+// helpers.log.json("cron observation", observed);
+return {
+  elapsed_s: Math.floor((Date.now() - startedAt) / 1000),
+  polls,
+  run_status: observed?.status || "not observed",
+  auto_watch: AUTO_WATCH,
+};
 `,
     },
     {
       id: "cr-rm", icon: "🗑", title: "Remove the demo cron", x: 0, y: 4,
       showCode: false,
-      summary: "Call cron.remove to unschedule the job you just added. Verify with cron.list that the id is gone.",
+      summary: "Call cron.remove with the server-assigned id from cron.add. If the page reloaded, recover that id by name before removing the job.",
       code: `// Remove the demo cron so the launchable does not keep running it.
 if (!state.call) { helpers.log("Run Connect first."); return; }
-const removed = await state.call("cron.remove", { id: "quick-3c-demo" });
-helpers.log("removed quick-3c-demo");
+const before = await state.call("cron.list");
+const job = (before?.jobs || []).find(j => j.id === state.demoCronId || j.name === "quick-3c-demo");
+if (!job) { helpers.log("quick-3c-demo is already absent"); return { remaining: (before?.jobs || []).map(j => j.id) }; }
+const removed = await state.call("cron.remove", { id: job.id });
+helpers.log("removed quick-3c-demo (" + job.id + ")");
 helpers.log.details("raw cron.remove", removed);
 const pl = await state.call("cron.list");
 const remaining = (pl?.jobs || []).map(j => j.id);

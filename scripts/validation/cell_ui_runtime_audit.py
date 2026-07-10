@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Browser-check the shared runnable-cell UI contract.
 
 This is intentionally stricter than a page render smoke. It verifies the
@@ -24,13 +27,8 @@ from _bootstrap import find_repo_root
 
 ROOT = find_repo_root(Path(__file__).resolve())
 DEFAULT_IMAGE = "nemoclaw/lab-runtime-test:local"
-DEFAULT_PAGES = (
-    "/nemoclaw/scripts/SKILL.html",
-    "/nemoclaw/01a-loop.html",
-    "/nemoclaw/02b-rag.html",
-    "/nemoclaw/04a-safety.html",
-    "/nemoclaw/04b-modern-clis.html",
-)
+DEFAULT_EXTRA_PAGES = ("/nemoclaw/scripts/SKILL.html",)
+INTERACTIVE_MARKERS = ("mountCanvasFlow(", "mountRunCell(", "mountDiagram(")
 
 RUNTIME_JS = r"""
 const http = require('http');
@@ -94,8 +92,8 @@ async function inspectPage(page, pagePath, vp, theme) {
     runCellOpenDefault: document.querySelectorAll('.rc-code-det[open]').length,
   }));
   const initial = await page.evaluate((visibility) => {
-    const darkSurfaces = () => Array.from(document.querySelectorAll(
-      '.cell-btn-reset,.cf-btn-reset,.cf-panel-reset,.cf-node,.cf-panel,.cf-panel-det,.rc-code-det,.CodeMirror,.CodeMirror-gutters,.cell-code-body,.rc-code-body,.cf-panel-code-body,.cell-output-panel,.rc-out,.cf-panel-stream,.cf-panel-log,.cf-panel-output-pre,svg.gfx-dark,svg.gfx-dark rect,svg.gfx-dark circle,svg.gfx-dark ellipse,svg.gfx-dark polygon,svg.os-architecture,svg.os-architecture rect,svg.os-architecture .os-panel'
+    const wrongToneSurfaces = () => Array.from(document.querySelectorAll(
+      '.cell-btn-reset,.cf-btn-reset,.cf-panel-reset,.cf-wrap,.cf-stage,.cf-node,.cf-panel,.cf-panel-det,.rc-code-det,.CodeMirror,.CodeMirror-gutters,.cell-code-body,.rc-code-body,.cf-panel-code-body,.cell-output-panel,.rc-out,.cf-panel-stream,.cf-panel-log,.cf-panel-output-pre,svg.dg-svg,svg.dg-svg rect,svg.gfx-dark,svg.gfx-dark rect,svg.gfx-dark circle,svg.gfx-dark ellipse,svg.gfx-dark polygon,svg.os-architecture,svg.os-architecture rect,svg.os-architecture .os-panel'
     )).filter(el => {
       const r = el.getBoundingClientRect();
       if (!r.width || !r.height) return false;
@@ -120,7 +118,8 @@ async function inspectPage(page, pagePath, vp, theme) {
       const [rr, gg, bb] = rgb.map(v => v / 255);
       const lin = [rr, gg, bb].map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
       const lum = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
-      return lum < 0.45;
+      const lightTheme = document.documentElement.getAttribute('data-theme') === 'light';
+      return lightTheme ? lum < 0.45 : lum > 0.82;
     }).slice(0, 12).map(el => ({ tag: el.tagName, cls: String(el.className || '').slice(0, 80), bg: getComputedStyle(el).backgroundColor, fill: getComputedStyle(el).fill }));
     const codeDetails = Array.from(document.querySelectorAll('.cf-panel-code-det,.rc-code-det'));
     const codeSummaries = codeDetails.map(det => (det.querySelector('summary')?.textContent || '').trim());
@@ -163,9 +162,14 @@ async function inspectPage(page, pagePath, vp, theme) {
         if (r.right <= document.documentElement.clientWidth + 2) return false;
         if (el.tagName === 'CODE') return false;
         if (el.closest('.topbar nav,.cf-stage,.CodeMirror,.CodeMirror-scroll,.cf-helpers-scroll,.cell-log-json,.cf-panel-log-json,.cf-log-json,.cell-code-body,.rc-code-body,.cf-panel-code-body,pre')) return false;
+        // Wide tables and similar content are valid when a parent deliberately owns horizontal
+        // scrolling. Judge page overflow, not the width of descendants inside a contained scroller.
+        for (let parent = el.parentElement; parent && parent !== document.body; parent = parent.parentElement) {
+          if (/auto|scroll/.test(getComputedStyle(parent).overflowX)) return false;
+        }
         return true;
       }).slice(0, 8).map(el => ({ tag: el.tagName, cls: String(el.className || '').slice(0, 80), text: (el.textContent || '').trim().slice(0, 80) })),
-      lightDarkSurfaces: document.documentElement.getAttribute('data-theme') !== 'light' ? [] : darkSurfaces(),
+      themeMismatchSurfaces: wrongToneSurfaces(),
       minCellButton: Math.min(...Array.from(document.querySelectorAll('.cell-btn')).map(b => Math.min(b.getBoundingClientRect().width, b.getBoundingClientRect().height)).filter(Number.isFinite), 999),
       artifacts,
     };
@@ -215,8 +219,8 @@ async function inspectPage(page, pagePath, vp, theme) {
     jsonBlocks: document.querySelectorAll('.cell-log-json,.cf-panel-output-pre code.language-json').length,
     detailsBlocks: document.querySelectorAll('.cell-log-details, .cf-panel-log-details').length,
     htmlBlocks: document.querySelectorAll('.cell-log-html,.cf-panel-log-html').length,
-    lightDarkSurfaces: document.documentElement.getAttribute('data-theme') !== 'light' ? [] : Array.from(document.querySelectorAll(
-      '.cell-btn-reset,.cf-btn-reset,.cf-panel-reset,.cf-node,.cf-panel,.cf-panel-det,.rc-code-det,.CodeMirror,.CodeMirror-gutters,.cell-code-body,.rc-code-body,.cf-panel-code-body,.cell-output-panel,.rc-out,.cf-panel-stream,.cf-panel-log,.cf-panel-output-pre,svg.gfx-dark,svg.gfx-dark rect,svg.gfx-dark circle,svg.gfx-dark ellipse,svg.gfx-dark polygon,svg.os-architecture,svg.os-architecture rect,svg.os-architecture .os-panel'
+    themeMismatchSurfaces: Array.from(document.querySelectorAll(
+      '.cell-btn-reset,.cf-btn-reset,.cf-panel-reset,.cf-wrap,.cf-stage,.cf-node,.cf-panel,.cf-panel-det,.rc-code-det,.CodeMirror,.CodeMirror-gutters,.cell-code-body,.rc-code-body,.cf-panel-code-body,.cell-output-panel,.rc-out,.cf-panel-stream,.cf-panel-log,.cf-panel-output-pre,svg.dg-svg,svg.dg-svg rect,svg.gfx-dark,svg.gfx-dark rect,svg.gfx-dark circle,svg.gfx-dark ellipse,svg.gfx-dark polygon,svg.os-architecture,svg.os-architecture rect,svg.os-architecture .os-panel'
     )).filter(el => {
       const r = el.getBoundingClientRect();
       if (!r.width || !r.height) return false;
@@ -241,12 +245,15 @@ async function inspectPage(page, pagePath, vp, theme) {
       const [rr, gg, bb] = rgb.map(v => v / 255);
       const lin = [rr, gg, bb].map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
       const lum = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
-      return lum < 0.45;
+      const lightTheme = document.documentElement.getAttribute('data-theme') === 'light';
+      return lightTheme ? lum < 0.45 : lum > 0.82;
     }).slice(0, 12).map(el => ({ tag: el.tagName, cls: String(el.className || '').slice(0, 80), bg: getComputedStyle(el).backgroundColor, fill: getComputedStyle(el).fill })),
   }));
 
   let figureZoom = null;
-  const firstFigure = page.locator('.fig-embed').first();
+  // Learner-depth settings can intentionally hide an early reference figure. Exercise the first
+  // rendered figure rather than timing out on a valid hidden disclosure.
+  const firstFigure = page.locator('.fig-embed:visible').first();
   if (await firstFigure.count()) {
     await firstFigure.scrollIntoViewIfNeeded();
     const badge = await firstFigure.evaluate(el => ({
@@ -286,8 +293,8 @@ async function inspectPage(page, pagePath, vp, theme) {
   if (initial.flows + initial.runCells > 0 && finalInfo.codeMirrorCount < initial.panels + initial.runCells) failures.push('CodeMirror did not mount for every opened editor');
   if (initial.flows + initial.runCells > 0 && finalInfo.cmTokenCount < finalInfo.codeMirrorCount) failures.push('CodeMirror syntax tokens missing');
   if (initial.badOverflow.length) failures.push(`uncontained horizontal overflow ${JSON.stringify(initial.badOverflow)}`);
-  if (initial.lightDarkSurfaces.length) failures.push(`light theme dark cell surfaces ${JSON.stringify(initial.lightDarkSurfaces)}`);
-  if (finalInfo.lightDarkSurfaces.length) failures.push(`light theme dark expanded surfaces ${JSON.stringify(finalInfo.lightDarkSurfaces)}`);
+  if (initial.themeMismatchSurfaces.length) failures.push(`${theme} theme wrong-tone cell/graph surfaces ${JSON.stringify(initial.themeMismatchSurfaces)}`);
+  if (finalInfo.themeMismatchSurfaces.length) failures.push(`${theme} theme wrong-tone expanded surfaces ${JSON.stringify(finalInfo.themeMismatchSurfaces)}`);
   if (initial.minCellButton < 28) failures.push(`tiny cell button dimension ${initial.minCellButton}`);
   const badArtifacts = initial.artifacts.filter(a => !a.marked || !a.label || !a.cue.includes(a.label) || a.railWidth < 2 || /rgba?\(0,\s*0,\s*0,\s*0\)/.test(a.rail) || (a.surface && (a.maxHeight === 'none' || !/auto|scroll/.test(a.overflowY))));
   if (badArtifacts.length) failures.push(`live artifact cue missing ${JSON.stringify(badArtifacts)}`);
@@ -305,7 +312,11 @@ async function inspectPage(page, pagePath, vp, theme) {
 
 (async () => {
   await listen();
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    executablePath: process.env.CHROME_BIN || undefined,
+    args: process.env.CHROME_BIN ? ['--no-sandbox'] : [],
+  });
   const results = [];
   for (const pagePath of pages) {
     for (const vp of viewports) {
@@ -319,7 +330,15 @@ async function inspectPage(page, pagePath, vp, theme) {
   await browser.close();
   server.close();
   const failed = results.filter(r => r.failures.length);
-  console.log(JSON.stringify({ ok: failed.length === 0, root, screenshots: screenshots || null, results }, null, 2));
+  const verbose = process.env.AUDIT_VERBOSE === '1';
+  console.log(JSON.stringify({
+    ok: failed.length === 0,
+    root,
+    screenshots: screenshots || null,
+    checked: results.length,
+    failures: failed,
+    ...(verbose ? { results } : {}),
+  }, null, 2));
   process.exit(failed.length ? 1 : 0);
 })().catch(err => {
   try { server.close(); } catch (_) {}
@@ -340,13 +359,29 @@ def parse_args() -> argparse.Namespace:
     return ap.parse_args()
 
 
+def discover_default_pages(site_root: Path) -> list[str]:
+    """Cover every shipped page that authors a runnable cell or generated graph.
+
+    The old hand-picked list exercised shared CSS but missed page-local interactions between injected
+    figures and later diagrams. Discovering from the built/source HTML is what makes a future graph
+    page enter the dark/light matrix without a validator edit.
+    """
+    course = site_root / "nemoclaw"
+    pages = list(DEFAULT_EXTRA_PAGES)
+    for html in sorted(course.glob("*.html")):
+        text = html.read_text(errors="ignore")
+        if any(marker in text for marker in INTERACTIVE_MARKERS):
+            pages.append(f"/nemoclaw/{html.name}")
+    return list(dict.fromkeys(pages))
+
+
 def main() -> int:
     args = parse_args()
     site_root = (ROOT / args.site_root).resolve() if not Path(args.site_root).is_absolute() else Path(args.site_root).resolve()
     if not site_root.exists():
         print(f"cell_ui_runtime_audit: FAIL\n  - site root missing: {site_root}")
         return 1
-    pages = args.pages or list(DEFAULT_PAGES)
+    pages = args.pages or discover_default_pages(site_root)
     screenshot_dir = ""
     if args.screenshots:
         out = Path(args.screenshots)

@@ -26,7 +26,20 @@ OUT="${1:-$T1/public}"
 # Build the source language at $OUT root, then each sparse same-branch overlay under i18n/<lang>/
 # over canonical web/ and into $OUT/<lang>/. BUILD_PAGES_LANGS=0 disables that loop.
 LANGS="${BUILD_PAGES_LANGS:-1}"
-PULL_MATERIALS="${BUILD_PAGES_PULL_MATERIALS:-1}"
+REUSE_VALIDATION="${BUILD_PAGES_REUSE_VALIDATION:-0}"
+# Reusing a same-commit report requires the source tree to remain byte-for-byte at HEAD.
+# Fresh local builds may still refresh material snapshots before regenerating validation.
+if [ -n "${BUILD_PAGES_PULL_MATERIALS+x}" ]; then
+    PULL_MATERIALS="$BUILD_PAGES_PULL_MATERIALS"
+elif [ "$REUSE_VALIDATION" = "1" ]; then
+    PULL_MATERIALS="0"
+else
+    PULL_MATERIALS="1"
+fi
+if [ "$REUSE_VALIDATION" = "1" ] && [ "$PULL_MATERIALS" != "0" ]; then
+    echo "[build_pages]   ERROR: report reuse requires BUILD_PAGES_PULL_MATERIALS=0" >&2
+    exit 1
+fi
 COURSE_PREFIX="${BUILD_PAGES_COURSE_PREFIX:-}"
 COURSE_PREFIX="${COURSE_PREFIX#/}"; COURSE_PREFIX="${COURSE_PREFIX%/}"
 SOURCE_MIRROR_PREFIX="${BUILD_PAGES_SOURCE_MIRROR_PREFIX:-}"
@@ -72,7 +85,7 @@ fi
 # The published report must describe this exact tree. A prior required job may supply its
 # same-commit report; reuse is fail-closed on schema, SHA, scope, required findings, and suite
 # status. Direct/local builds regenerate by default.
-if [ "${BUILD_PAGES_REUSE_VALIDATION:-0}" = "1" ]; then
+if [ "$REUSE_VALIDATION" = "1" ]; then
     python3 "$T1/scripts/validation/validation_report_audit.py" \
         --report "$T1/docs/validation/latest.json" --expect-head
     echo "[build_pages] reusing same-commit validation report"
@@ -113,31 +126,41 @@ cp "$T1/scripts/runtime/link_graph.html" "$OUT/link-graph.html"
 # Favicon at the site root for the foyer + aux pages (the course carries its own under assets/).
 cp "$T1/web/nemoclaw/assets/favicon.ico" "$OUT/favicon.ico"
 
-# ── 2b. SKILL explorers: the reusable framer + each explorer folder, source shipped
-# as read-only assets so a student with a key can read AND ask about the real code on
-# the live site without leaving the HTML space. Each folder's SKILL.html references the
-# framer as ../web/_skill_explorer.js and its files as ./<file>, which resolve here too
-# because the deploy mirrors that relative shape (public/web/_skill_explorer.js + public/<dir>/).
-mkdir -p "$OUT/web"
-cp "$T1/web/_skill_explorer.js" "$OUT/web/_skill_explorer.js"
-for d in cors-proxy deploy scripts docs workspace; do
-    if [ -d "$T1/$d" ]; then
-        mkdir -p "$OUT/$d"
-        # the explorer + the documented source it shows (read-only); skip caches + subdirs
-        for f in "$T1/$d"/*.html "$T1/$d"/*.js "$T1/$d"/*.mjs "$T1/$d"/*.py \
-                 "$T1/$d"/*.sh "$T1/$d"/*.md "$T1/$d"/*.txt "$T1/$d"/*.yml "$T1/$d"/*.yaml "$T1/$d"/*.conf "$T1/$d"/*.json "$T1/$d"/*.svg "$T1/$d"/Dockerfile; do
-            [ -f "$f" ] && cp "$f" "$OUT/$d"/
-        done
-        if [ "$d" = "docs" ] && [ -d "$T1/docs/assets/repository-overview" ]; then
-            mkdir -p "$OUT/docs/assets/repository-overview"
-            cp "$T1"/docs/assets/repository-overview/* "$OUT/docs/assets/repository-overview"/
+# Ship the project license and the static third-party inventory at the artifact root. Course UI
+# links resolve here, and downstream static-host distributions must carry both files. Preserve the
+# runbook path referenced by the inventory without shipping generated SBOM bodies.
+cp "$T1/LICENSE" "$OUT/LICENSE"
+cp "$T1/THIRD_PARTY_LICENSES.md" "$OUT/THIRD_PARTY_LICENSES.md"
+mkdir -p "$OUT/scripts/compliance/docs"
+cp "$T1/scripts/compliance/docs/sbom_generation.md" "$OUT/scripts/compliance/docs/sbom_generation.md"
+cp "$T1/scripts/compliance/docs/sbom_evidence.json" "$OUT/scripts/compliance/docs/sbom_evidence.json"
+
+# ── 2b. SKILL explorers: project authoring sources, including proposed files.
+# Every source directory owns a SKILL.html and every explorer must retain the files it documents.
+# A shallow top-level copy leaves nested renderers present but unusable, so the projection is
+# exhaustive and byte-verified while generated standalone delivery output is rebuilt only at its
+# canonical route above.
+python3 "$T1/scripts/build/project_source_tree.py" \
+    --source-root "$T1" \
+    --artifact-root "$OUT"
+# Locale HTML is authored as overlays and receives canonical styles during assembly. Copy those
+# styles beside the read-only source projection too, so every emitted HTML file remains directly
+# renderable by the exhaustive browser matrix.
+for locale_source in "$OUT"/i18n/*/web/nemoclaw; do
+    [ -d "$locale_source" ] || continue
+    # Sparse locale sources are useful for authors, but emitted HTML must still be runnable. Fill
+    # every absent canonical support file without overwriting a localized overlay.
+    while IFS= read -r -d '' canonical; do
+        relative="${canonical#$T1/web/nemoclaw/}"
+        target="$locale_source/$relative"
+        if [ ! -e "$target" ]; then
+            mkdir -p "$(dirname "$target")"
+            cp "$canonical" "$target"
         fi
-        if [ "$d" = "docs" ]; then
-            for f in "$T1/docs"/*.pptx; do [ -f "$f" ] && cp "$f" "$OUT/docs"/; done
-        fi
-        echo "[build_pages] explorer $d -> public/$d/ ($(find "$OUT/$d" -maxdepth 1 -type f | wc -l) files, source shipped read-only)"
-    fi
+    done < <(find "$T1/web/nemoclaw" -path "$T1/web/nemoclaw/standalone" -prune -o -type f -print0)
+    cp "$T1/web/_skill_explorer.js" "$(dirname "$locale_source")/_skill_explorer.js"
 done
+echo "[build_pages] source explorers -> public/ ($(find "$OUT" -name SKILL.html -type f | wc -l) SKILL contracts)"
 
 # Project every docs explorer declaration from source. Then inspect every declared Markdown
 # document and project its local link/image targets. This checks the final Pages tree rather than
@@ -154,23 +177,17 @@ if [ -f "$T1/docs/repository-overview.slides.json" ]; then
     if [ -f "$T1/docs/repository-overview.pptx" ]; then test -f "$OUT/docs/repository-overview.pptx"; fi
 fi
 
-# Project each shipped explorer's topbar nav to the Pages layout. In the lab/source tree the
-# logo home is ../web/index.html and the up-breadcrumb is the root SKILL.html hub; neither path
-# exists on Pages (the foyer is the site-root index.html and the root hub is a source-layout dev
-# artifact that is not deployed). Point the logo at the foyer and drop the redundant up-link so
-# the topbar has no dead targets on the live site.
-for d in cors-proxy deploy scripts docs workspace; do
-    f="$OUT/$d/SKILL.html"
-    [ -f "$f" ] || continue
-    python3 - "$f" <<'PROJ'
-import sys, re, json
-p = sys.argv[1]; s = open(p).read()
+# Project every shipped explorer's home link to the Pages foyer. Parent SKILL contracts are now
+# present at their source-relative paths, so up-links remain useful and are retained.
+find "$OUT" -name SKILL.html -type f -print0 | while IFS= read -r -d '' f; do
+    python3 - "$f" "$OUT" <<'PROJ'
+import sys, re, json, os
+p, root = sys.argv[1:]; s = open(p).read()
 m = re.search(r'(<script[^>]*id="explorer-config"[^>]*>)(.*?)(</script>)', s, re.S)
 if m:
     cfg = json.loads(m.group(2))
     nav = cfg.get("nav", {})
-    nav["home"] = "../index.html"   # the foyer is the bundle front door on Pages
-    nav.pop("up", None)             # no source-layout root hub on the live site
+    nav["home"] = os.path.relpath(os.path.join(root, "index.html"), os.path.dirname(p))
     cfg["nav"] = nav
     s = s[:m.start(2)] + json.dumps(cfg, indent=2) + s[m.end(2):]
     open(p, "w").write(s)
@@ -181,14 +198,18 @@ done
 # The validation report names offenders by repo-relative path (e.g. web/nemoclaw/01a-loop.html)
 # and previews the exact source the validator checked. The course itself deploys as the bundled
 # standalone under public/nemoclaw/, which is TRANSFORMED, so the report would otherwise have no
-# way to show what the validator actually saw. Mirror the source text files (no binary assets) to
-# public/web/nemoclaw/ so those paths resolve. These are fetched as text by the report, never
-# navigated to as pages, so the /lab/static and _shared.js references inside them do not matter.
+# way to show what the validator actually saw. Mirror the complete source files to
+# public/web/nemoclaw/ so those paths resolve. SKILL pages in this mirror remain directly
+# reachable, so carry their shared explorer and referenced image evidence as well. A review
+# mirror must not create a second class of visibly broken directory contracts.
 if [ -d "$T1/web/nemoclaw" ]; then
     mirror_out="$OUT/${SOURCE_MIRROR_PREFIX:+$SOURCE_MIRROR_PREFIX/}"
-    mkdir -p "$mirror_out"
-    ( cd "$T1" && find web/nemoclaw -type f         \( -name '*.html' -o -name '*.md' -o -name '*.css' -o -name '*.js' -o -name '*.svg' -o -name '*.json' \) -print0       | tar --null -cf - -T - ) | ( cd "$mirror_out" && tar -xf - )
-    echo "[build_pages] validated source -> ${mirror_out%/}/web/nemoclaw/ ($(find "$mirror_out/web/nemoclaw" -type f | wc -l) text files, read-only for the report preview)"
+    mkdir -p "$mirror_out/web"
+    cp "$T1/web/_skill_explorer.js" "$mirror_out/web/_skill_explorer.js"
+    ( cd "$T1" && find web/nemoclaw -path 'web/nemoclaw/standalone' -prune -o -type f \
+        -print0 | tar --null -cf - -T - ) | ( cd "$mirror_out" && tar -xf - )
+    test -f "$mirror_out/web/_skill_explorer.js"
+    echo "[build_pages] validated source -> ${mirror_out%/}/web/nemoclaw/ ($(find "$mirror_out/web/nemoclaw" -type f | wc -l) files, read-only for the report preview)"
 fi
 
 # ── 3. CI gate artifacts: the authoritative test results, surfaced statically ──
@@ -207,6 +228,7 @@ cat > "$OUT/validation.html" <<'HTML'
 <script src="web/_skill_explorer.js"></script>
 </body></html>
 HTML
+printf '{"critiques":[]}\n' > "$OUT/critique.json"
 echo "[build_pages] validation.html (framer report mode) written"
 
 # ── 4. Landing page: the authoritative foyer (web/index.html), PROJECTED to Pages ──
@@ -278,7 +300,9 @@ if [ "$LANGS" = 1 ] && [ -d "$T1/i18n" ]; then
             python3 - "$locale_tmp/web/index.html" "$OUT/$lang/index.html" <<'PROJ'
 import sys, re
 src, out = sys.argv[1], sys.argv[2]
-s = open(src).read().replace("/lab/static/", "")
+s = open(src).read()
+s = s.replace("/lab/static/nemoclaw/", "nemoclaw/")
+s = s.replace("/lab/static/", "../")
 s = re.sub(r'<!-- build:deploy-tools[^>]*-->', '', s)   # the Pages-only tool links are root-only
 open(out, "w").write(s)
 PROJ
@@ -296,6 +320,30 @@ fi
 if [ -f "$T1/scripts/build/build_language_manifest.py" ]; then
     python3 "$T1/scripts/build/build_language_manifest.py" --out "$OUT/languages.json" --site-root "$OUT" --course-prefix "$COURSE_PREFIX" || echo "[build_pages] language manifest skipped"
 fi
+
+# Source mirrors execute the same foyer and locale runtime as their production projections.
+# Give every discovered mirror manifests and license paths derived from this artifact root.
+python3 "$T1/scripts/build/project_artifact_manifests.py" "$OUT"
+
+# Fail closed on the generated destinations too. Source checks alone cannot prove that
+# standalone bundling and locale projection preserved the requested course attribution.
+attribution_args=(--artifact-root "$OUT/${COURSE_PREFIX:+$COURSE_PREFIX/}nemoclaw")
+if [ "$LANGS" = 1 ]; then
+    for d in "$OUT"/*/nemoclaw; do
+        [ -d "$d" ] && attribution_args+=(--artifact-root "$d")
+    done
+fi
+python3 "$T1/scripts/validation/external_link_attribution_audit.py" "${attribution_args[@]}"
+
+# Rebase every generated local URL, explorer, and semantic header after all root and locale
+# projections exist. Lab-static repository paths stay at artifact root; relocated course paths
+# resolve through COURSE_PREFIX only when no root target exists.
+python3 "$T1/scripts/build/project_artifact_navigation.py" "$OUT" \
+    --lab-static-prefix "$COURSE_PREFIX"
+
+# Treat the output directory as the exact static-host boundary. Every HTML file and every local
+# navigation/resource URL must remain inside it and resolve; there are no per-page exemptions.
+python3 "$T1/scripts/validation/artifact_link_audit.py" "$OUT"
 
 echo "[build_pages] done -> $OUT"
 echo "[build_pages] preview locally: python3 -m http.server -d $OUT 8000"

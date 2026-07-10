@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Bundle web/nemoclaw/*.html into iframe-ready single-file HTMLs.
 
 The lab view (web/*.html behind nginx) is the source of truth. This script
@@ -27,10 +30,16 @@ Usage:
 """
 from __future__ import annotations
 import argparse
+import hashlib
+import json
+import os
 import re
 import shutil
 import sys
+import tempfile
+from html import escape
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
     if (_p / "scripts" / "_bootstrap.py").exists():
@@ -38,6 +47,9 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
 from _bootstrap import add_script_paths, find_repo_root
 
 TASK1 = find_repo_root(Path(__file__).resolve())
+add_script_paths(TASK1 / "scripts")
+import artifact_link_audit
+
 WEB_DIR = TASK1 / "web"
 DEFAULT_OUT = TASK1 / "web_standalone"
 # The released course is web/nemoclaw/.
@@ -80,6 +92,10 @@ UPDATE_PILL_RE = re.compile(rf'^\s*updateKeyPill\({_NESTED_ARGS}\);\s*$', re.MUL
 BUILD_NAV_RE = re.compile(
     rf'^\s*document\.getElementById\("nav"\)\.innerHTML\s*=\s*buildNav\({_NESTED_ARGS}\);\s*$',
     re.MULTILINE,
+)
+FIGURE_SOURCE_RE = re.compile(
+    r'(?P<prefix>\bdata-svg-src\s*=\s*)(?P<quote>["\'])(?P<url>[^"\']+)(?P=quote)',
+    re.IGNORECASE,
 )
 
 
@@ -192,7 +208,7 @@ LITE_KEY_PANEL_JS = r"""
         '<label for="_lite_key_in">NVIDIA API key (nvapi-…)</label>' +
         '<input id="_lite_key_in" type="password" placeholder="nvapi-…" autocomplete="off"/>' +
         '<button id="_lite_key_btn">Save & verify</button>' +
-        '<div class="key-hint">Free key at <a href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com</a>. Stored in sessionStorage; cleared when this tab closes.</div>' +
+        '<div class="key-hint">Free key at <a href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener">build.nvidia.com</a>. Stored in sessionStorage; cleared when this tab closes.</div>' +
         (message ? '<div class="key-err">' + message + '</div>' : '') +
       '</div>';
     var inp = panel.querySelector("#_lite_key_in");
@@ -481,6 +497,377 @@ def _strip_lab_anchors(html: str) -> str:
     return LAB_ANCHOR_RE.sub(lambda m: m.group(3), html)
 
 
+def _version_figure_sources(html: str, page_dir: Path) -> str:
+    """Give local SVG figure requests a deterministic content cache key.
+
+    CloudFront can retain an older object at an unchanged asset URL even after
+    the referring HTML has refreshed. Because mountFigures fetches these SVGs
+    and injects their markup into the page, stale SVG styles can affect the
+    whole course. A content-derived query makes every changed figure a new
+    request while preserving relative URLs and external references.
+    """
+    root = page_dir.resolve()
+
+    def replace(match: re.Match[str]) -> str:
+        raw_url = match.group("url")
+        parsed = urlsplit(raw_url)
+        if parsed.scheme or parsed.netloc or parsed.path.startswith("/"):
+            return match.group(0)
+        if not parsed.path.lower().endswith(".svg"):
+            return match.group(0)
+
+        asset = (page_dir / parsed.path).resolve()
+        try:
+            asset.relative_to(root)
+        except ValueError:
+            return match.group(0)
+        if not asset.is_file():
+            return match.group(0)
+
+        digest = hashlib.sha256(asset.read_bytes()).hexdigest()[:12]
+        query = [(key, value) for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+                 if key != "v"]
+        query.append(("v", digest))
+        versioned = urlunsplit(("", "", parsed.path, urlencode(query), parsed.fragment))
+        return f'{match.group("prefix")}{match.group("quote")}{versioned}{match.group("quote")}'
+
+    return FIGURE_SOURCE_RE.sub(replace, html)
+
+
+SKILL_EXPLORER_REF_RE = re.compile(
+    r'(?P<quote>["\'])(?:\.\.?/)+(?:web/)?_skill_explorer\.js(?P=quote)'
+)
+SKILL_HEADER_RE = re.compile(
+    r'(?P<open><header\b[^>]*\bdata-skill-header=["\']1["\'][^>]*>).*?</header>',
+    re.IGNORECASE | re.DOTALL,
+)
+STATIC_TOPBAR_RE = re.compile(
+    r'<div\b[^>]*\bclass=["\'][^"\']*\bsx-topbar\b[^"\']*["\'][^>]*>.*?</div>',
+    re.IGNORECASE | re.DOTALL,
+)
+def _rewrite_skill_explorer_paths(out: Path) -> int:
+    """Keep every copied nested SKILL renderer inside the standalone bundle.
+
+    Generated directory contracts carry paths relative to the source repository's
+    ``web/`` root. A standalone course has a different root, so copied assets,
+    materials, and vendor contracts must point to the explorer shipped at ``out``.
+    """
+    explorer = out / "_skill_explorer.js"
+    if not explorer.is_file():
+        return 0
+    changed = 0
+    for skill in out.rglob("SKILL.html"):
+        relative = Path(os.path.relpath(explorer, skill.parent)).as_posix()
+        source = skill.read_text(encoding="utf-8")
+        updated = SKILL_EXPLORER_REF_RE.sub(
+            lambda match: f'{match.group("quote")}{relative}{match.group("quote")}', source
+        )
+        if updated != source:
+            skill.write_text(updated, encoding="utf-8")
+            changed += 1
+    return changed
+
+
+def _json_script(source: str, element_id: str, update) -> str:
+    pattern = re.compile(
+        rf'(?P<open><script\b(?=[^>]*\bid=["\']{re.escape(element_id)}["\'])[^>]*>)'
+        r'(?P<body>.*?)(?P<close></script>)',
+        re.IGNORECASE | re.DOTALL,
+    )
+    match = pattern.search(source)
+    if not match:
+        return source
+    try:
+        value = json.loads(match.group("body"))
+    except json.JSONDecodeError:
+        return source
+    updated = update(value)
+    body = json.dumps(updated, indent=2, ensure_ascii=False)
+    return source[:match.start()] + match.group("open") + "\n" + body + "\n" + match.group("close") + source[match.end():]
+
+
+def _relative_url(target: Path, page: Path) -> str:
+    return Path(os.path.relpath(target, page.parent)).as_posix()
+
+
+def _local_target(out: Path, page: Path, raw: str) -> Path | None:
+    parsed = urlsplit(raw)
+    if parsed.scheme or parsed.netloc:
+        return None
+    if not parsed.path or parsed.path.startswith("/"):
+        return page if not parsed.path else None
+    target = (page.parent / parsed.path).resolve()
+    try:
+        target.relative_to(out.resolve())
+    except ValueError:
+        return None
+    if target.is_dir():
+        target = target / "index.html"
+    return target
+
+
+def _project_skill_config(config: dict, out: Path, skill: Path) -> dict:
+    root_index = out / "index.html"
+    root_skill = out / "SKILL.html"
+    nav: dict[str, object] = {
+        "home": _relative_url(root_index, skill),
+        "map": {"label": "Course map", "href": _relative_url(root_skill, skill)},
+    }
+    if skill != root_skill:
+        parent = skill.parent.parent
+        while parent == out or out in parent.parents:
+            candidate = parent / "SKILL.html"
+            if candidate.is_file():
+                nav["up"] = {"label": candidate.parent.name or "Course map", "href": _relative_url(candidate, skill)}
+                break
+            if parent == out:
+                break
+            parent = parent.parent
+    config["nav"] = nav
+
+    def usable(item: dict) -> bool:
+        raw = item.get("href") or item.get("path")
+        if not isinstance(raw, str):
+            return True
+        parsed = urlsplit(raw)
+        if parsed.scheme or parsed.netloc:
+            return True
+        target = _local_target(out, skill, raw)
+        return bool(target and target.is_file())
+
+    if isinstance(config.get("files"), list):
+        config["files"] = [item for item in config["files"] if not isinstance(item, dict) or usable(item)]
+    if isinstance(config.get("related"), list):
+        config["related"] = [item for item in config["related"] if not isinstance(item, dict) or usable(item)]
+    if isinstance(config.get("links"), list):
+        for group in config["links"]:
+            if isinstance(group, dict) and isinstance(group.get("items"), list):
+                group["items"] = [item for item in group["items"] if not isinstance(item, dict) or usable(item)]
+    return config
+
+
+def _project_static_topbar(source: str, out: Path, page: Path) -> str:
+    home = _relative_url(out / "index.html", page)
+    up = _relative_url(out / "SKILL.html", page)
+
+    def replace(block: re.Match[str]) -> str:
+        value = block.group(0)
+        for class_name, href in (("sx-logo", home), ("sx-up", up)):
+            pattern = re.compile(
+                rf'(?P<prefix><a\b(?=[^>]*\bclass=["\'][^"\']*\b{class_name}\b[^"\']*["\'])'
+                r'[^>]*\bhref=)(?P<quote>["\'])[^"\']*(?P=quote)',
+                re.IGNORECASE,
+            )
+            value = pattern.sub(
+                lambda match: match.group("prefix") + match.group("quote") + escape(href, quote=True) + match.group("quote"),
+                value,
+                count=1,
+            )
+        return value
+
+    return STATIC_TOPBAR_RE.sub(replace, source, count=1)
+
+
+def project_artifact_navigation(out: Path) -> int:
+    """Make every generated explorer/navigation surface truthful for this artifact root."""
+    changed = 0
+    root_skill = out / "SKILL.html"
+    for skill in sorted(out.rglob("*.html")):
+        source = skill.read_text(encoding="utf-8")
+        if 'id="explorer-config"' not in source and "data-skill-header" not in source and "sx-topbar" not in source:
+            continue
+        updated = _json_script(
+            source,
+            "explorer-config",
+            lambda config, current=skill: _project_skill_config(config, out, current),
+        )
+        links = [
+            ("home", "Home", _relative_url(out / "index.html", skill)),
+        ]
+        if skill != root_skill:
+            parent = skill.parent.parent
+            while parent == out or out in parent.parents:
+                candidate = parent / "SKILL.html"
+                if candidate.is_file():
+                    links.append(("up", "Up", _relative_url(candidate, skill)))
+                    break
+                if parent == out:
+                    break
+                parent = parent.parent
+        links.append(("map", "Course map", _relative_url(root_skill, skill)))
+        nav = " <span aria-hidden=\"true\">·</span> ".join(
+            f'<a data-skill-nav="{kind}" href="{escape(href, quote=True)}">{label}</a>'
+            for kind, label, href in links
+        )
+        header = f'<header data-skill-header="1"><nav class="skill-nav" aria-label="Skill navigation">{nav}</nav></header>'
+        if SKILL_HEADER_RE.search(updated):
+            updated = SKILL_HEADER_RE.sub(header, updated, count=1)
+        elif STATIC_TOPBAR_RE.search(updated):
+            updated = _project_static_topbar(updated, out, skill)
+        else:
+            updated = re.sub(r"<body([^>]*)>", rf"<body\1>\n{header}", updated, count=1, flags=re.IGNORECASE)
+        if updated != source:
+            skill.write_text(updated, encoding="utf-8")
+            changed += 1
+    for skill in sorted(out.rglob("SKILL.html")):
+        index = skill.parent / "index.html"
+        if index.exists():
+            continue
+        shutil.copy2(skill, index)
+        changed += 1
+    return changed
+
+
+def _copy_compliance_review(out: Path) -> None:
+    """Project the repository's evidence-backed license view into the course artifact."""
+    destination = out / "compliance"
+    shutil.copytree(TASK1 / "scripts" / "compliance", destination, dirs_exist_ok=True)
+    shutil.copy2(TASK1 / "THIRD_PARTY_LICENSES.md", destination / "THIRD_PARTY_LICENSES.md")
+    page = destination / "SKILL.html"
+    source = page.read_text(encoding="utf-8")
+
+    def configure(value: dict) -> dict:
+        value["vendor_manifest"] = "../vendor/browser-dependencies.json"
+        value["inventory"] = "THIRD_PARTY_LICENSES.md"
+        return value
+
+    page.write_text(_json_script(source, "third-party-export-config", configure), encoding="utf-8")
+
+    evidence_path = destination / "docs" / "sbom_evidence.json"
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    repository = "https://github.com/NVDLI/NemoClawDLI/blob/main/"
+    for record in evidence.get("records", []):
+        if record.get("id") == "browser-runtime" and record.get("sbom"):
+            record["sbom"]["href"] = "../../vendor/browser-sbom.cdx.json"
+        for link in record.get("evidence_links", []):
+            raw = link.get("href", "")
+            if raw.endswith("THIRD_PARTY_LICENSES.md"):
+                link["href"] = "../THIRD_PARTY_LICENSES.md"
+            elif raw.startswith("../"):
+                link["href"] = repository + raw.split("../../../", 1)[-1]
+        for subject in record.get("subjects", []):
+            raw = subject.get("declaration_href", "")
+            if raw.startswith("../"):
+                subject["declaration_href"] = repository + raw.split("../../../", 1)[-1]
+    evidence_path.write_text(json.dumps(evidence, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    root_skill = out / "SKILL.html"
+    root_source = root_skill.read_text(encoding="utf-8")
+
+    def add_entry(config: dict) -> dict:
+        groups = config.setdefault("links", [])
+        group = next((item for item in groups if item.get("title") == "Tools"), None)
+        if group is None:
+            group = {"title": "Tools", "items": []}
+            groups.append(group)
+        items = group.setdefault("items", [])
+        required = (
+            {
+                "label": "License and distribution review",
+                "href": "compliance/SKILL.html",
+                "desc": "Evidence-backed software, source, license, and distribution inventory.",
+            },
+            {
+                "label": "Pyodide candidate review",
+                "href": "pyodide/SKILL.html",
+                "desc": "Runnable repository demonstration plus the exact candidate component and license boundary.",
+            },
+        )
+        for entry in required:
+            if not any(item.get("href") == entry["href"] for item in items):
+                items.append(entry)
+        return config
+
+    root_source = _json_script(root_source, "explorer-config", add_entry)
+    for required_href in ("compliance/SKILL.html", "pyodide/SKILL.html"):
+        if required_href not in root_source:
+            raise RuntimeError(f"failed to project {required_href} into the course map")
+    root_skill.write_text(root_source, encoding="utf-8")
+
+
+def _copy_pyodide_review(out: Path) -> None:
+    """Ship the complete declared Pyodide review surface and keep its local assets in-bounds."""
+    destination = out / "pyodide"
+    shutil.copytree(TASK1 / "scripts" / "pyodide", destination, dirs_exist_ok=True)
+    page = destination / "SKILL.html"
+    source = page.read_text(encoding="utf-8")
+    source = source.replace("../../web/nemoclaw/", "../")
+    page.write_text(source, encoding="utf-8")
+
+
+def _project_current_artifact_alias(out: Path) -> None:
+    """Keep the source tree's standalone route truthful without nesting an older build."""
+    destination = out / "standalone"
+    destination.mkdir(parents=True, exist_ok=True)
+    (destination / "SKILL.html").write_text(
+        '<!doctype html><html><head><meta charset="utf-8">'
+        '<meta http-equiv="refresh" content="0;url=../SKILL.html">'
+        '<title>Current standalone artifact</title></head><body><p>'
+        '<a href="../SKILL.html">Open the current standalone artifact map</a>'
+        '</p></body></html>\n',
+        encoding="utf-8",
+    )
+
+
+def _self_test() -> int:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        asset = root / "assets" / "figure.svg"
+        asset.parent.mkdir(parents=True)
+        asset.write_text("<svg>first</svg>", encoding="utf-8")
+        first_digest = hashlib.sha256(asset.read_bytes()).hexdigest()[:12]
+        source = (
+            '<div data-svg-src="assets/figure.svg"></div>'
+            '<div data-svg-src="assets/figure.svg?mode=full#detail"></div>'
+            '<div data-svg-src="https://example.com/figure.svg"></div>'
+            '<div data-svg-src="assets/missing.svg"></div>'
+        )
+        first = _version_figure_sources(source, root)
+        assert f'assets/figure.svg?v={first_digest}' in first
+        assert f'assets/figure.svg?mode=full&amp;' not in first
+        assert f'assets/figure.svg?mode=full&v={first_digest}#detail' in first
+        assert 'https://example.com/figure.svg' in first
+        assert 'assets/missing.svg' in first
+        assert _version_figure_sources(source, root) == first
+
+        asset.write_text("<svg>second</svg>", encoding="utf-8")
+        second_digest = hashlib.sha256(asset.read_bytes()).hexdigest()[:12]
+        second = _version_figure_sources(source, root)
+        assert second_digest != first_digest
+        assert f'assets/figure.svg?v={second_digest}' in second
+        assert first_digest not in second
+
+        bundle = root / "public" / "nemoclaw"
+        nested = bundle / "assets" / "figures" / "SKILL.html"
+        nested.parent.mkdir(parents=True)
+        (bundle / "_skill_explorer.js").write_text("fixture", encoding="utf-8")
+        nested.write_text(
+            '<script type="application/json" id="skill-meta">'
+            '{"explorer":"../../../_skill_explorer.js"}</script>'
+            '<script src="../../../_skill_explorer.js"></script>',
+            encoding="utf-8",
+        )
+        assert _rewrite_skill_explorer_paths(bundle) == 1
+        rewritten = nested.read_text(encoding="utf-8")
+        assert rewritten.count('"../../_skill_explorer.js"') == 2
+
+        (bundle / "index.html").write_text('<a href="SKILL.html">map</a>', encoding="utf-8")
+        (bundle / "SKILL.html").write_text(
+            '<body><header data-skill-header="1"><nav><a href="../SKILL.html">bad</a></nav></header>'
+            '<script type="application/json" id="explorer-config">'
+            '{"title":"fixture","nav":{"home":"../index.html"},"files":[]}'
+            '</script></body>',
+            encoding="utf-8",
+        )
+        project_artifact_navigation(bundle)
+        assert not artifact_link_audit.audit(bundle)
+        broken = (bundle / "SKILL.html").read_text(encoding="utf-8").replace('href="index.html"', 'href="../index.html"', 1)
+        (bundle / "SKILL.html").write_text(broken, encoding="utf-8")
+        assert any("escapes the deployment root" in str(item) for item in artifact_link_audit.audit(bundle))
+    print("bundle_standalone self-test: PASS")
+    return 0
+
+
 def _apply_svg_subs(html: str) -> str:
     """Replace dark-theme inline colors inside SVG element bodies. The match
     is scoped to real SVG element spans so prose, code, and inline color
@@ -544,7 +931,11 @@ def bundle_one(html_path: Path, css_text: str, lite_css: str, shared_js: str,
     """
     html = html_path.read_text(encoding="utf-8")
 
-    # 0) A generated SKILL hub loads ../_skill_explorer.js (the renderer lives one dir up so it serves
+    # 0) Version local fetched SVGs by content. This applies to full and lite
+    #    exports and to every locale assembled through the same bundler.
+    html = _version_figure_sources(html, html_path.parent)
+
+    # 0b) A generated SKILL hub loads ../_skill_explorer.js (the renderer lives one dir up so it serves
     #    every surface). The bundle is flat, so point it at the sibling copy shipped alongside the pages.
     html = html.replace('src="../_skill_explorer.js"', 'src="_skill_explorer.js"')
 
@@ -611,6 +1002,11 @@ def bundle_one(html_path: Path, css_text: str, lite_css: str, shared_js: str,
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
+        "--self-test",
+        action="store_true",
+        help="Exercise deterministic SVG content versioning and exit.",
+    )
+    ap.add_argument(
         "--src",
         type=Path,
         default=WEB_DIR,
@@ -638,6 +1034,9 @@ def main() -> int:
              "light, chrome-free iframe export for the edX navigator.",
     )
     args = ap.parse_args()
+
+    if args.self_test:
+        return _self_test()
 
     # Resolve --src: accept either an absolute path or a name relative to the task1/ root.
     web = args.src
@@ -772,6 +1171,30 @@ def main() -> int:
         shutil.copytree(matsdir, out / "mats", dirs_exist_ok=True)
         n_mats = sum(1 for p in (out / "mats").rglob("*") if p.is_file())
         print(f"  copied mats/        ({n_mats} files)")
+
+    _project_current_artifact_alias(out)
+    print("  projected current-artifact alias")
+
+    _copy_pyodide_review(out)
+    print("  projected Pyodide review")
+
+    _copy_compliance_review(out)
+    print("  projected compliance review")
+
+    rewritten_skills = _rewrite_skill_explorer_paths(out)
+    if rewritten_skills:
+        print(f"  rebased SKILL renderers ({rewritten_skills} files)")
+
+    projected_skills = project_artifact_navigation(out)
+    print(f"  projected artifact-local navigation ({projected_skills} files)")
+
+    link_findings = artifact_link_audit.audit(out)
+    if link_findings:
+        print("artifact link audit: FAIL", file=sys.stderr)
+        for finding in link_findings:
+            print(f"  - {finding}", file=sys.stderr)
+        return 1
+    print("  artifact link audit: PASS")
 
     print(f"\n{len(pages)} pages → {out}/")
     return 0

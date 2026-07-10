@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Validate the public product design, release test plan, and evidence ownership map."""
 from __future__ import annotations
 
@@ -24,12 +27,8 @@ CONTRACT = ROOT / "docs" / "release-evidence.json"
 SOURCE_INVENTORY = ROOT / "scripts" / "compliance" / "docs" / "source_inventory.json"
 
 REQUIRED_DOCUMENTS = {
-    "design", "test_plan", "security_design", "security_architecture",
-    "release_artifacts", "publication_state",
-}
-REQUIRED_REPOSITORY_FILES = {
-    "README.md", "LICENSE.md", "SECURITY.md", "CONTRIBUTING.md", "DCO.md",
-    "CODE_OF_CONDUCT.md", "SUPPORT.md",
+    "design", "test_plan", "security_design", "security_control_disposition",
+    "security_control_themes", "security_architecture", "release_artifacts", "publication_state",
 }
 REQUIRED_RELEASE_ARTIFACTS = {
     "versioned-static-archive", "release-manifest", "cyclonedx-sbom", "sha256-checksums",
@@ -38,11 +37,12 @@ REQUIRED_AREAS = {
     "registration-context", "repository-baseline", "source-and-licenses", "privacy-and-data",
     "cryptography-and-export", "secret-scanning", "vulnerability-scanning", "malware-scanning",
     "architecture-and-deployment", "release-artifacts", "release-approval",
+    "threat-control-disposition",
 }
 REQUIRED_EXTERNAL_CATEGORIES = {
     "registration", "public-repository-hosting", "legal-and-license", "export", "privacy",
     "verified-secret-scan", "final-artifact-vulnerability-scan", "malware-scan", "host-controls",
-    "release-decision",
+    "source-integration", "external-service-controls", "release-decision",
 }
 REQUIRED_HEADINGS = {
     "design": {
@@ -56,16 +56,22 @@ REQUIRED_HEADINGS = {
         "Automated test matrix", "Manual and external evidence matrix", "Execution order",
         "Pass, failure, and exception rules", "Exit criteria", "Evidence record",
     },
+    "security_control_disposition": {
+        "Status vocabulary", "Review synthesis", "Source and contribution controls", "Build and artifact controls",
+        "Static hosting and browser controls", "Relay, model, launchable, and runtime controls",
+        "Publication blockers and retained risks",
+    },
 }
 REQUIRED_DESIGN_ANCHORS = {
     "static browser application", "localStorage", "personal or sensitive", "Embedded media",
     "access cookies", "no repository-operated database", "HTTPS and WSS", "browser dependency inventory",
-    "SHA-256", "new patch tag",
+    "SHA-256", "new patch tag", "The Type I subject is only the DLI course repository",
+    "product, launchable, runtime, relays", "outside this classification",
 }
 REQUIRED_AUTOMATED_IDS = {f"A{index:02d}" for index in range(1, 14)}
 REQUIRED_MANUAL_IDS = {f"M{index:02d}" for index in range(1, 12)}
 REQUIRED_WIRING = {
-    ".gitlab-ci.yml": ("release_gate.py --tier ship",),
+    ".gitlab/ci/core.yml": ("release_gate.py --tier ship",),
     ".github/workflows/pages.yml": ("release_gate.py --tier ship",),
     ".github/workflows/release.yml": ("release_gate.py --tier ship",),
     "scripts/git-hooks/pre-commit": ("release_evidence_audit.py",),
@@ -77,7 +83,9 @@ REQUIRED_WIRING = {
         "scripts/build/project_docs_explorer.py", '"--audit"',
         "scripts/validation/course_dependency_integrity.py",
         "scripts/validation/cell_audit.py",
-        "scripts/validation/release_evidence_audit.py", '"--self-test"',
+        'unit_test("release_evidence_audit")',
+        'unit_test("threat_control_audit")',
+        "HARNESS_CONTRACT", "test_test_harness_contract",
     ),
     "AGENTS.md": (
         "CONTRIBUTING.md", "docs/release-test-plan.md",
@@ -85,10 +93,11 @@ REQUIRED_WIRING = {
     "CONTRIBUTING.md": (
         "release_gate.py --tier fast --no-write", "release_gate.py --tier ship",
     ),
-    "docs/agent_process.md": ("release_evidence_audit.py", "--self-test"),
+    "docs/agent_process.md": ("release_evidence_audit.py", "unittest discover -v -s tests/validation"),
     "docs/SKILL.html": (
         "product-design.md", "release-test-plan.md", "release-evidence.json",
-        '"../RELEASE_STATUS.json"', '"render_markdown": true',
+        "security-control-disposition.md", "security-control-themes.json",
+        '"../RELEASE_STATUS.json"', '"../CHANGELOG.md"', '"render_markdown": true',
     ),
     "web/_skill_explorer.js": (
         "safeMarkdownHtml", "new URLSearchParams(location.search", 'params.get("file")',
@@ -96,8 +105,10 @@ REQUIRED_WIRING = {
         "sx-heading-link",
     ),
     "scripts/build/build_pages.sh": (
-        '"$T1/$d"/*.svg',
+        "project_source_tree.py",
+        "--artifact-root",
         "project_docs_explorer.py",
+        "-path 'web/nemoclaw/standalone' -prune",
     ),
     "scripts/build/project_docs_explorer.py": (
         "local_markdown_targets", "missing or unsafe", "--self-test",
@@ -110,6 +121,9 @@ REQUIRED_WIRING = {
         "same-origin-vendored", "source-reference inventory drifted", "--self-test",
     ),
     "scripts/validation/SKILL.html": ("release_evidence_audit.py",),
+    "scripts/validation/threat_control_audit.py": (
+        "pages_artifact_integrity.py", "repository_sync_audit.py", "Not verified",
+    ),
 }
 ALLOWED_OWNERS = {"repository", "operator", "shared"}
 ALLOWED_EXTERNAL_STATUS = "operator-required"
@@ -152,7 +166,7 @@ def command_path(command: str) -> str | None:
         return None
     for token in tokens:
         token = token.rstrip(";")
-        if token.startswith(("scripts/", "workspace/")):
+        if token.startswith(("scripts/", "workspace/", "tests/")):
             return token
     return None
 
@@ -182,15 +196,6 @@ def audit_contract(data: dict, *, root: Path = ROOT,
         if not isinstance(rel, str) or not rel or not (root / rel).is_file():
             out.append(finding("path-missing", "docs/release-evidence.json",
                                f"{key} path does not resolve: {rel}", "restore the referenced file"))
-
-    declared_files = set(data.get("required_repository_files") or [])
-    for rel in sorted(REQUIRED_REPOSITORY_FILES - declared_files):
-        out.append(finding("required-repo-file", "docs/release-evidence.json",
-                           f"required repository file omitted: {rel}", "restore it to the contract"))
-    for rel in sorted(declared_files):
-        if not (root / rel).is_file():
-            out.append(finding("required-repo-file-missing", rel, "required repository file is absent",
-                               "restore the public repository file"))
 
     artifacts = set(data.get("release_artifacts") or [])
     for name in sorted(REQUIRED_RELEASE_ARTIFACTS - artifacts):
@@ -258,7 +263,10 @@ def audit_contract(data: dict, *, root: Path = ROOT,
                            "external evidence retention or repository approval boundary changed",
                            "keep private evidence external and prevent self-approval claims"))
 
-    public_paths = [documents.get("design"), documents.get("test_plan"), "docs/release-evidence.json"]
+    public_paths = [
+        documents.get("design"), documents.get("test_plan"),
+        documents.get("security_control_disposition"), "docs/release-evidence.json",
+    ]
     for rel in filter(None, public_paths):
         if rel != "docs/release-evidence.json" and not (root / rel).is_file() and rel not in overrides:
             continue
@@ -308,6 +316,17 @@ def audit_contract(data: dict, *, root: Path = ROOT,
         for test_id in sorted((REQUIRED_AUTOMATED_IDS | REQUIRED_MANUAL_IDS) - test_ids):
             out.append(finding("test-id", test_path, f"missing release test {test_id}",
                                "restore the test, pass condition, evidence, and owner"))
+        for anchor in (
+            "| M10a | Generated threat-analysis reconciliation |",
+            "public repository contains no private row-by-row assessment",
+        ):
+            if anchor not in plan:
+                out.append(finding(
+                    "threat-reconciliation",
+                    test_path,
+                    f"missing generated-review evidence boundary: {anchor}",
+                    "restore aggregate public reconciliation and private row-level ownership",
+                ))
     for rel, tokens in REQUIRED_WIRING.items():
         if not (root / rel).is_file():
             out.append(finding("wiring-path", rel, "required release-evidence surface is missing",
@@ -321,11 +340,11 @@ def audit_contract(data: dict, *, root: Path = ROOT,
     return out
 
 
-def self_test() -> tuple[int, int, list[str]]:
+def self_test() -> list[str]:
     base = load_contract()
     baseline = audit_contract(base)
     if baseline:
-        return 0, 18, [f"baseline is not clean: {item['code']} {item['detail']}" for item in baseline]
+        return [f"baseline is not clean: {item['code']} {item['detail']}" for item in baseline]
     tests: list[tuple[str, dict, dict[str, str], str]] = []
 
     def mutated() -> dict:
@@ -335,8 +354,6 @@ def self_test() -> tuple[int, int, list[str]]:
     tests.append(("missing area", value, {}, "area-missing"))
     value = mutated(); value["evidence_areas"][0]["external_evidence"] = "complete"
     tests.append(("false approval", value, {}, "external-status"))
-    value = mutated(); value["required_repository_files"].remove("SECURITY.md")
-    tests.append(("required file", value, {}, "required-repo-file"))
     value = mutated(); value["evidence_areas"][0]["automated_commands"] = ["python3 scripts/validation/missing.py"]
     tests.append(("bad command", value, {}, "command-path"))
     value = mutated(); value["documents"]["design"] = "docs/missing.md"
@@ -355,13 +372,17 @@ def self_test() -> tuple[int, int, list[str]]:
     test_path = base["documents"]["test_plan"]
     test_text = (ROOT / test_path).read_text(encoding="utf-8")
     tests.append(("broken crosslink", mutated(), {test_path: test_text.replace("product-design.md", "design.md")}, "test-links"))
-    ci_path = ".gitlab-ci.yml"
+    ci_path = ".gitlab/ci/core.yml"
     ci_text = (ROOT / ci_path).read_text(encoding="utf-8")
     tests.append(("missing CI wiring", mutated(),
                   {ci_path: ci_text.replace("release_gate.py --tier ship", "release gate removed")},
                   "wiring"))
     tests.append(("missing test case", mutated(), {test_path: test_text.replace("| M09 |", "| MXX |")},
                   "test-id"))
+    tests.append(("missing threat reconciliation", mutated(),
+                  {test_path: test_text.replace("| M10a | Generated threat-analysis reconciliation |",
+                                               "| M10a | Generated review removed |")},
+                  "threat-reconciliation"))
     explorer_path = "web/_skill_explorer.js"
     explorer_text = (ROOT / explorer_path).read_text(encoding="utf-8")
     tests.append(("missing document URL state", mutated(),
@@ -372,6 +393,10 @@ def self_test() -> tuple[int, int, list[str]]:
     tests.append(("missing explorer artifact check", mutated(),
                   {build_path: build_text.replace("project_docs_explorer.py",
                                                  "explorer projection check removed")},
+                  "wiring"))
+    tests.append(("missing exhaustive source projection", mutated(),
+                  {build_path: build_text.replace("project_source_tree.py",
+                                                 "source projection removed")},
                   "wiring"))
     skill_path = "docs/SKILL.html"
     skill_text = (ROOT / skill_path).read_text(encoding="utf-8")
@@ -389,15 +414,12 @@ def self_test() -> tuple[int, int, list[str]]:
                   {gate_path: gate_text.replace("course_dependency_integrity.py", "browser dependency gate removed")},
                   "wiring"))
 
-    passed = 0
     failures: list[str] = []
     for name, fixture, overrides, expected in tests:
         codes = {item["code"] for item in audit_contract(fixture, text_overrides=overrides)}
-        if expected in codes:
-            passed += 1
-        else:
+        if expected not in codes:
             failures.append(f"{name}: expected {expected}, got {sorted(codes)}")
-    return passed, len(tests), failures
+    return failures
 
 
 def main() -> int:
@@ -406,13 +428,13 @@ def main() -> int:
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
     if args.self_test:
-        passed, total, failures = self_test()
+        failures = self_test()
         if failures:
-            print(f"release_evidence_audit self-test: {passed}/{total} passed")
+            print("release_evidence_audit self-test: FAIL")
             for item in failures:
                 print(f"  FAIL {item}")
             return 1
-        print(f"release_evidence_audit self-test: {passed}/{total} mutation detectors passed")
+        print("release_evidence_audit self-test: PASS")
         return 0
     try:
         rows = audit_contract(load_contract())

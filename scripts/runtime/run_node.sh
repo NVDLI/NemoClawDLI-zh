@@ -47,9 +47,13 @@ if [ -n "$ENGINE" ] && command -v "$ENGINE" >/dev/null 2>&1; then
   for c in node:20-slim node:20-bookworm-slim node:20 node:lts-slim node:lts node:20-alpine; do
     if "$ENGINE" image inspect "$c" >/dev/null 2>&1; then IMG="$c"; break; fi
   done
-  [ -z "$IMG" ] && IMG="node:20-slim"   # none local: pull it (small) -- correctness over speed
   run_user=()
   if [ "$ENGINE" = "podman" ]; then run_user+=(--userns=keep-id); else run_user+=(-u "$(id -u):$(id -g)"); fi
+  LAB_IMG="nemoclaw/lab-runtime-test:local"
+  if [ -z "$IMG" ] && "$ENGINE" image inspect "$LAB_IMG" >/dev/null 2>&1; then
+    exec "$ENGINE" run --rm "${run_user[@]}" -v "$REPO":/work -w /work --entrypoint node "$LAB_IMG" "/work/$REL" "$@"
+  fi
+  [ -z "$IMG" ] && IMG="node:20-slim"   # no local runtime image: pull the small generic fallback
   exec "$ENGINE" run --rm "${run_user[@]}" -v "$REPO":/work -w /work "$IMG" node "/work/$REL" "$@"
 fi
 

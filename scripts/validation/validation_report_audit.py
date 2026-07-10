@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Fail closed before reusing a same-commit bundle validation report."""
 from __future__ import annotations
 
@@ -72,7 +75,7 @@ def read_report(path: Path) -> dict:
     return data
 
 
-def self_test() -> tuple[int, int, list[str]]:
+def self_test() -> list[str]:
     valid = {
         "schema": SCHEMA,
         "git_sha": "abc1234",
@@ -103,8 +106,22 @@ def self_test() -> tuple[int, int, list[str]]:
         mutate(row)
         if not findings(row, "abc1234"):
             failures.append(f"missed {label} mutation")
-    total = len(mutations) + 1
-    return total - len(failures), total, failures
+    from validate_bundle import _span
+    multiline = [
+        "def audit_contract(",
+        "    data: dict,",
+        "    *,",
+        "    root=None,",
+        ") -> list:",
+        "    value = data.get('value')",
+        "    return [value]",
+        "",
+        "def later():",
+        "    return None",
+    ]
+    if _span(multiline, "audit_contract", "py") != [1, 7]:
+        failures.append("multiline Python implementation span excludes the function body")
+    return failures
 
 
 def main() -> int:
@@ -115,8 +132,8 @@ def main() -> int:
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
-        passed, total, failures = self_test()
-        print(f"validation report self-test: {passed}/{total} passed")
+        failures = self_test()
+        print("validation report self-test: " + ("FAIL" if failures else "PASS"))
         for item in failures:
             print("  FAIL " + item)
         return 1 if failures else 0

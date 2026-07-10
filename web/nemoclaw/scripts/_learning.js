@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // Low-fingerprint course depth control.
 // Native <details> keeps optional sections independent.
 // The complete course remains usable without JavaScript.

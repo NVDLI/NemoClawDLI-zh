@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Audit the course studio interface contract.
 
 This is a static gate for the authoring studio. It checks that studio.html remains
@@ -43,6 +46,8 @@ REQUIRED_IDS = {
 REQUIRED_JS = {
     "lab contents api candidate": "/lab/api/contents/web/nemoclaw/",
     "legacy contents api candidate": "/lab/api/contents/nemoclaw/",
+    "lab-only authoring API": "const LAB_AUTHORING = location.pathname.startsWith('/lab/static/')",
+    "static ready state": "let contentApiReady = !LAB_AUTHORING",
     "static page URL resolver": "function directPageUrl",
     "static read-only fallback": "Read-only preview: Jupyter contents API not available",
     "local comment fallback": "localStorage.setItem(commentStorageKey()",
@@ -51,6 +56,8 @@ REQUIRED_JS = {
     "run-all selector": ".cf-btn-run,.rc-run,.cell-run",
     "ordered run queue": "async function triggerRunAll",
     "run completion waiter": "function waitForRunComplete",
+    "run failure collector": "const failures = []",
+    "run failure summary": "runnable block(s) · ${failures.length} failed",
     "default page load": "loadPage(p || MODULES[0].file)",
     "block editor locator": "function _locateBlockInFile",
     "no stale lite CSS path": "styles/styles/_lite_overlay.css",

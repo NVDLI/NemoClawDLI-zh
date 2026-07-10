@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Audit Python dependency declarations against PyPI vulnerability metadata.
 
 This is a fast source-level guard for dependency manifests. It checks the version a

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Exercise prerequisite, run, stop, reset, error, and disclosure states in Chromium."""
 from __future__ import annotations
 
@@ -24,7 +27,7 @@ const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright-core');
 
-const root = '/site';
+const root = process.env.SITE_ROOT || '/site';
 const port = 4203;
 const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json' };
 const fixture = `<!doctype html><html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="/nemoclaw/styles/_style.css"></head><body data-learning-view>
@@ -41,7 +44,7 @@ window.runApi = mountRunCell("#run-cell", {
   openCode: true,
   label: "fixture run cell",
   intro: "Read the outcome first. Open code only to change the wait.",
-  code: \`await new Promise((resolve, reject) => {\n  const timer = setTimeout(resolve, 5000);\n  AbortSignal.addEventListener("abort", () => { clearTimeout(timer); reject(new DOMException("stopped", "AbortError")); }, { once: true });\n});\nlog("finished");\`,
+  code: \`helpers.log("process started");\nawait helpers.delay(5000);\nreturn { finished: true };\`,
 });
 window.canvasApi = mountCanvasFlow("#canvas", {
   label: "fixture flow", intro: "A cancellable wait followed by a visible result.", edges:[{from:"wait",to:"finish"}], nodes: [{ id:"wait", title:"Wait", x:0, y:0,
@@ -108,7 +111,10 @@ async function waitText(locator, pattern) {
 
 (async () => {
   await new Promise(resolve => server.listen(port, '127.0.0.1', resolve));
-  const browser = await chromium.launch({ headless:true });
+  const browser = await chromium.launch({
+    headless:true,
+    executablePath:process.env.CHROME_BIN || undefined,
+  });
   const page = await browser.newPage({ viewport:{ width:1100, height:900 } });
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message || String(error)));
@@ -216,6 +222,14 @@ async function waitText(locator, pattern) {
   await runButton.click();
   await waitText(page.locator('#run-cell .rc-out'), /stopped/);
   await waitText(runButton, /Run$/);
+  await page.locator('#run-cell .rc-code').evaluate(el => {
+    el.value = 'helpers.log("process detail"); return { useful: 42, status: "complete" };';
+  });
+  await runButton.click();
+  await waitText(page.locator('#run-cell .rc-out'), /process detail/);
+  await waitText(page.locator('#run-cell .rc-out'), /returned value/);
+  const returnText = await page.locator('#run-cell .rc-out').innerText();
+  if (!/useful/.test(returnText) || !/42/.test(returnText)) throw new Error('RunCell log suppressed its structured returned value');
   await page.locator('#run-cell .rc-code').evaluate(el => { el.value = 'throw new Error("fixture boom")'; });
   await runButton.click();
   await waitText(page.locator('#run-cell .rc-out'), /fixture boom/);
@@ -266,8 +280,11 @@ async function waitText(locator, pattern) {
   const localizedPage = await browser.newPage({ viewport:{ width:390, height:700 } });
   await localizedPage.goto(`http://127.0.0.1:${port}/localized.html`, { waitUntil:'networkidle' });
   await localizedPage.waitForFunction(() => window.localizedMounted === true);
-  if (await localizedPage.locator('.learning-depth-control').count()) throw new Error('English pilot controls mounted on a localized course page');
-  if (!await localizedPage.locator('#localized-detail p').isVisible()) throw new Error('English pilot changed localized content visibility');
+  const localizedControl = localizedPage.locator('.learning-depth-control');
+  if (await localizedControl.count() !== 1 || !/^Detalhe/.test(await localizedControl.innerText())) throw new Error('localized course page lost its Portuguese depth control');
+  const localizedOptions = await localizedControl.locator('option').allInnerTexts();
+  if (localizedOptions.join('|') !== 'Guiado|Aplicado|Completo') throw new Error(`localized depth options are not Portuguese: ${JSON.stringify(localizedOptions)}`);
+  if (!await localizedPage.locator('#localized-detail p').isVisible()) throw new Error('localized depth control changed authored content visibility');
   await localizedPage.close();
 
   const historyContext = await browser.newContext({ viewport:{ width:800, height:700 } });
@@ -310,14 +327,15 @@ async function waitText(locator, pattern) {
   });
   if (!courseSearch.length || courseSearch.length > 4 || courseSearch.some(result => !result.id || !result.excerpt || result.excerpt.length > 900)) throw new Error(`page assistant course search is not bounded/useful: ${JSON.stringify(courseSearch)}`);
   const sourceAccess = await coursePage.evaluate(async () => {
-    const { courseCode, courseCodeArtifacts, courseRuntimeFiles, courseRuntimeSource } = await import('./scripts/_langchain.js');
-    const { artifactFromMarkdown, artifactJavaScriptIssue, parseInlineCourseSourceIntent, resolveCourseSourceUri } = await import('./scripts/_course_assistant.js');
+    const { courseCode, courseCodeArtifacts, courseRuntimeFiles, courseRuntimeSource, resolveCoursePageUrl } = await import('./scripts/_langchain.js');
+    const { artifactFromMarkdown, artifactCodeIssue, artifactJavaScriptIssue, parseInlineCourseSourceIntent, resolveCourseSourceUri } = await import('./scripts/_course_assistant.js');
     const artifacts = await courseCodeArtifacts('02c-deep');
     const deep = await courseCode('02c-deep', 'deep-src');
     const runtimeFiles = courseRuntimeFiles();
     const shared = await courseRuntimeSource('_shared.js');
     const rejected = await courseRuntimeSource('../index.html');
     const captured = artifactFromMarkdown('```html\n<button id="captured">Captured</button>\n```\n```javascript\ndocument.querySelector("#captured").dataset.ready = "yes";\n```', 'Captured artifact');
+    const rawCaptured = artifactFromMarkdown('Here is the artifact.\n<!doctype html><html><body><button id="raw">Raw</button><script>document.querySelector("#raw").dataset.ready="yes";</script></body></html>\nReady.', 'Raw artifact');
     const recoveredIntent = parseInlineCourseSourceIntent('{"uri":"deep-src"}');
     const recoveredSource = await resolveCourseSourceUri(recoveredIntent?.uri, '02c-deep');
     return {
@@ -328,6 +346,10 @@ async function waitText(locator, pattern) {
       sharedIsExact:/The web course runs JavaScript only\./.test(shared) && /mountCourseAssistant/.test(shared),
       traversalRejected:/unknown runtime file/.test(rejected),
       fencedArtifactCaptured:captured?.title === 'Captured artifact' && /captured/.test(captured.html) && /dataset\.ready/.test(captured.javascript),
+      rawArtifactCaptured:rawCaptured?.title === 'Raw artifact' && /^<!doctype html>/i.test(rawCaptured.html) && !/Here is the artifact/.test(rawCaptured.html) && !/Ready\.$/.test(rawCaptured.html),
+      inlineScriptGuard:/browser storage APIs/.test(artifactCodeIssue({ html:'<script>localStorage.setItem("x", "y")</script>', javascript:'' })),
+      externalScriptGuard:/External scripts/.test(artifactCodeIssue({ html:'<script src="https://example.com/demo.js"></script>', javascript:'' })),
+      inlineHelperGuard:/helpers\.mountChatUI/.test(artifactCodeIssue({ html:'<script>helpers.mountChatUI("#app")</script>', javascript:'' })),
       inlineSourceRecovered:recoveredIntent?.uri === 'deep-src' && /Course source: 02c-deep · deep-src/.test(recoveredSource?.content || ''),
       artifactAsyncGuard:/asynchronous/.test(artifactJavaScriptIssue('const embeddings = course.embed(["hello"], { inputType: "query" });')),
       artifactInputGuard:/inputType/.test(artifactJavaScriptIssue('const embeddings = await course.embed(["hello"], { inputType: "text" });')),
@@ -336,9 +358,11 @@ async function waitText(locator, pattern) {
       helperAliasAllowed:artifactJavaScriptIssue('const embeddings = await helpers.embed(["hello"], { inputType: "query" }); const score = helpers.cosineSim(embeddings[0], embeddings[0]);') === '',
       helperAsyncGuard:/asynchronous/.test(artifactJavaScriptIssue('const embeddings = helpers.embed(["hello"], { inputType: "query" });')),
       helperAllowlistGuard:/helpers\.mountChatUI/.test(artifactJavaScriptIssue('helpers.mountChatUI("#app");')),
+      deployedOverviewUrl:resolveCoursePageUrl('overview', 'https://pages.example/NemoClawDLIOS/nemoclaw/01a-loop.html'),
+      deployedLessonUrl:resolveCoursePageUrl('02b-rag', 'https://pages.example/NemoClawDLIOS/nemoclaw/01a-loop.html'),
     };
   });
-  if (!sourceAccess.artifactIds.includes('deep-src') || !sourceAccess.artifactIds.some(id => /^module-/.test(id)) || sourceAccess.indexHasBodies || !sourceAccess.deepIsJavaScript || !sourceAccess.runtimeFiles.includes('_shared.js') || !sourceAccess.sharedIsExact || !sourceAccess.traversalRejected || !sourceAccess.fencedArtifactCaptured || !sourceAccess.inlineSourceRecovered || !sourceAccess.artifactAsyncGuard || !sourceAccess.artifactInputGuard || !sourceAccess.artifactTopLevelAwait || !sourceAccess.artifactCombinedGuard || !sourceAccess.helperAliasAllowed || !sourceAccess.helperAsyncGuard || !sourceAccess.helperAllowlistGuard) throw new Error(`Course Assistant source/artifact access is incomplete or unsafe: ${JSON.stringify(sourceAccess)}`);
+  if (!sourceAccess.artifactIds.includes('deep-src') || !sourceAccess.artifactIds.some(id => /^module-/.test(id)) || sourceAccess.indexHasBodies || !sourceAccess.deepIsJavaScript || !sourceAccess.runtimeFiles.includes('_shared.js') || !sourceAccess.runtimeFiles.includes('_openclaw_cli.js') || !sourceAccess.sharedIsExact || !sourceAccess.traversalRejected || !sourceAccess.fencedArtifactCaptured || !sourceAccess.rawArtifactCaptured || !sourceAccess.inlineScriptGuard || !sourceAccess.externalScriptGuard || !sourceAccess.inlineHelperGuard || !sourceAccess.inlineSourceRecovered || !sourceAccess.artifactAsyncGuard || !sourceAccess.artifactInputGuard || !sourceAccess.artifactTopLevelAwait || !sourceAccess.artifactCombinedGuard || !sourceAccess.helperAliasAllowed || !sourceAccess.helperAsyncGuard || !sourceAccess.helperAllowlistGuard || sourceAccess.deployedOverviewUrl !== 'https://pages.example/NemoClawDLIOS/index.html' || sourceAccess.deployedLessonUrl !== 'https://pages.example/NemoClawDLIOS/nemoclaw/02b-rag.html') throw new Error(`Course Assistant source/artifact access is incomplete or unsafe: ${JSON.stringify(sourceAccess)}`);
   const sessionCap = await coursePage.evaluate(async () => {
     const { saveCourseAssistantStore, loadCourseAssistantStore } = await import('./scripts/_course_assistant.js');
     const values = new Map();
@@ -447,6 +471,36 @@ async function waitText(locator, pattern) {
   artifactFrame = crossPanel.frameLocator('.course-assistant-artifact iframe');
   await artifactFrame.locator('#bridge-result').waitFor({ state:'visible' });
   if (!/^1\.0\|.*accepts 1-16 non-empty strings/.test(await artifactFrame.locator('#bridge-result').innerText())) throw new Error('Course Assistant artifact helper facade did not expose cosineSim/embed or enforce its request bound');
+  await crossPanel.evaluate(panel => {
+    panel.querySelector('[data-course-artifact-html]').__courseAssistantEditor.setValue('<script>localStorage.setItem("blocked", "yes")</script>');
+    panel.querySelector('[data-course-artifact-js]').__courseAssistantEditor.setValue('');
+  });
+  await crossPanel.locator('[data-course-artifact-run]').click();
+  if (!/browser storage APIs/.test(await crossPanel.locator('.course-artifact-actions [role="status"]').innerText())) throw new Error('Course Assistant artifact validation ignored blocked APIs inside inline HTML scripts');
+  await crossPage.evaluate(() => {
+    window.__courseArtifactReadyChannels = [];
+    window.addEventListener('message', event => {
+      if (event.data?.type === 'artifact-ready' && event.data?.channel) window.__courseArtifactReadyChannels.push(event.data.channel);
+    });
+  });
+  await crossPanel.evaluate(panel => {
+    panel.querySelector('[data-course-artifact-html]').__courseAssistantEditor.setValue('<button id="broken-control" onclick="missingArtifactMethod()">Broken control</button>');
+    panel.querySelector('[data-course-artifact-js]').__courseAssistantEditor.setValue('');
+  });
+  await crossPanel.locator('[data-course-artifact-run]').click();
+  await crossPage.waitForFunction(() => window.__courseArtifactReadyChannels?.length > 0);
+  await crossPage.evaluate(() => {
+    const frame = document.querySelector('.course-assistant-artifact iframe');
+    const channel = window.__courseArtifactReadyChannels.at(-1);
+    frame.contentWindow.postMessage({ channel, type:'artifact-probe' }, '*');
+  });
+  await crossPage.waitForFunction(() => /missingArtifactMethod/.test(document.querySelector('.course-artifact-actions [role="status"]')?.textContent || ''));
+  await crossPanel.evaluate(panel => {
+    panel.querySelector('[data-course-artifact-html]').__courseAssistantEditor.setValue('<div>Broken initialization</div><script>document.querySelector("#missing-target").style.width="1px";</script>');
+    panel.querySelector('[data-course-artifact-js]').__courseAssistantEditor.setValue('');
+  });
+  await crossPanel.locator('[data-course-artifact-run]').click();
+  await crossPage.waitForFunction(() => /Cannot read properties of null/.test(document.querySelector('.course-artifact-actions [role="status"]')?.textContent || ''));
   await crossPanel.evaluate(panel => panel.querySelector('[data-course-artifact-js]').__courseAssistantEditor.setValue('const { broken } from "./_shared.js";'));
   await crossPanel.locator('[data-course-artifact-run]').click();
   if (!/Syntax error|Imports are unavailable/.test(await crossPanel.locator('.course-artifact-actions [role="status"]').innerText())) throw new Error('Course Assistant artifact did not surface generated JavaScript failure before execution');
@@ -488,7 +542,9 @@ async function waitText(locator, pattern) {
   await coursePage.locator('#cell-m3b-p1 .rc-card').waitFor({ state:'visible' });
   const courseBlocks = coursePage.locator('details.learning-block[data-learning-tier]');
   if (await courseBlocks.count() !== 8) throw new Error('02b learning depth lost one of its eight local disclosures');
-  if (await coursePage.locator('details.learning-block .learning-block-body:visible').count()) throw new Error('02b Guided left optional narrative visible');
+  const guidedBodies = coursePage.locator('details.learning-block .learning-block-body:visible');
+  const guidedReferences = coursePage.locator('details.learning-block[data-learning-always-open] .learning-block-body:visible');
+  if (await guidedBodies.count() !== await guidedReferences.count()) throw new Error('02b Guided left optional narrative visible outside the always-open references');
   if (await coursePage.locator('#cell-m3b-p1 .cf-canvas').count() || !await coursePage.locator('#cell-m3b-p1 .rc-card').count()) throw new Error('02b single embedding regressed from RunCell to CanvasFlow');
   if (await coursePage.locator('[data-learning-id="graphrag-global-questions"] .learning-block-body').isVisible()) throw new Error('02b Guided left GraphRAG visible');
   const guidedHeight = await coursePage.evaluate(() => document.documentElement.scrollHeight);
@@ -541,6 +597,69 @@ async function waitText(locator, pattern) {
   const furtherPage = await courseContext.newPage();
   await furtherPage.goto(`http://127.0.0.1:${port}/nemoclaw/04c-going-further.html`, { waitUntil:'domcontentloaded' });
   if (await furtherPage.locator('#capstone-artifact, #capstone-cell').count()) throw new Error('04c still duplicates the always-available Course Assistant');
+  const faviconUrl = await furtherPage.locator('head link[rel~="icon"]').getAttribute('href');
+  if (!faviconUrl?.endsWith('/nemoclaw/assets/favicon.ico')) throw new Error(`04c did not pin the course favicon inside its deployed subpath: ${faviconUrl}`);
+  const learningPathCards = await furtherPage.locator('#learning-path .step-card').evaluateAll(cards => cards.map(card => {
+    const media = card.querySelector(':scope > .step-card-media');
+    const image = media?.querySelector('img');
+    const button = card.querySelector('a.btn[href]');
+    return {
+      hasMedia:!!media,
+      hrefMatches:media?.href === button?.href,
+      imageUrl:image?.src || '',
+      alt:image?.alt || '',
+      lazy:image?.loading === 'lazy',
+      privateReferrer:image?.referrerPolicy === 'no-referrer',
+    };
+  }));
+  if (!learningPathCards.length || learningPathCards.some(card => !card.hasMedia || !card.hrefMatches || !card.imageUrl.startsWith('https://developer.download.nvidia.com/images/learning-pathways/') || !card.alt || !card.lazy || !card.privateReferrer)) throw new Error(`04c learning-path cards lost their linked NVIDIA course art: ${JSON.stringify(learningPathCards)}`);
+  const resourceFigures = await furtherPage.locator('figure.resource-aside-figure').evaluateAll(figures => figures.map(figure => {
+    const source = figure.querySelector('figcaption a[href]');
+    const media = figure.querySelector(':scope > a.resource-aside-media');
+    const image = media?.querySelector('img');
+    return {
+      hrefMatches:Boolean(source && media && source.href === media.href),
+      imageUrl:image?.src || '',
+      alt:image?.alt || '',
+      lazy:image?.loading === 'lazy',
+      privateReferrer:image?.referrerPolicy === 'no-referrer',
+      hasCaption:Boolean(figure.querySelector('figcaption')?.textContent.trim()),
+    };
+  }));
+  const officialImageHosts = new Set(['build.nvidia.com', 'developer.download.nvidia.com']);
+  if (!resourceFigures.length || resourceFigures.some(item => !item.hrefMatches || !officialImageHosts.has(new URL(item.imageUrl).hostname) || !item.alt || !item.lazy || !item.privateReferrer || !item.hasCaption)) throw new Error(`04c resource figures lost their source-linked NVIDIA art: ${JSON.stringify(resourceFigures)}`);
+  const helperGrid = await furtherPage.locator('.lp-helpers').evaluate(list => ({
+    display:getComputedStyle(list).display,
+    items:[...list.children].map(item => ({ hasLink:Boolean(item.querySelector('a[href]')), borderRadius:getComputedStyle(item).borderRadius })),
+    promotedRows:list.querySelectorAll('.resource-spotlight, .resource-aside-figure').length,
+  }));
+  if (helperGrid.display !== 'grid' || !helperGrid.items.length || helperGrid.items.some(item => !item.hasLink || item.borderRadius === '0px') || helperGrid.promotedRows) throw new Error(`04c helper articles are not a uniform card grid: ${JSON.stringify(helperGrid)}`);
+  const furtherLayout = await furtherPage.locator('main').evaluate(main => {
+    const sections = [...main.children]
+      .map(node => node.dataset?.goingFurtherSection)
+      .filter(Boolean);
+    const built = main.querySelector('[data-going-further-section="built"]');
+    const next = main.querySelector('[data-going-further-section="next"]');
+    const lessons = next?.querySelector('details.deployment-lessons');
+    return {
+      sections,
+      assistantIntegrated:Boolean(built?.querySelector('#open-course-assistant')),
+      retiredArtifactCopy:Boolean(built?.textContent.includes('no longer mounts a second capstone chat')),
+      helperInsideNext:Boolean(next?.querySelector('.lp-helpers')),
+      lessonsInsideNext:Boolean(lessons),
+      lessonsHidden:Boolean(lessons && !lessons.open),
+      nextVisible:Boolean(next && (!next.matches('details') || next.open)),
+      sourcesHidden:Boolean(!main.querySelector('[data-going-further-section="sources"]')?.open),
+      malformedAssistantCopy:Boolean(built?.textContent.includes('lesson, It')),
+      namedAssistantCopy:Boolean(built?.textContent.includes('Course Assistant')),
+      compactAssistantHandoff:Boolean(built?.querySelector('.going-further-assistant #open-course-assistant')),
+      artifactHeading:Boolean(main.querySelector('[data-going-further-section="interface"] > h2')?.textContent.toLowerCase().includes('artifact')),
+      redundantNextSummary:Boolean(next?.matches('details')),
+      detachedAssistantHeading:[...main.querySelectorAll(':scope > h2')].some(heading => /course assistant/i.test(heading.textContent)),
+    };
+  });
+  const expectedFurtherOrder = ['built', 'deploy', 'knowledge', 'interface', 'next', 'learning-path', 'sources'];
+  if (furtherLayout.sections.join('|') !== expectedFurtherOrder.join('|') || !furtherLayout.assistantIntegrated || furtherLayout.retiredArtifactCopy || !furtherLayout.helperInsideNext || !furtherLayout.lessonsInsideNext || !furtherLayout.lessonsHidden || !furtherLayout.nextVisible || !furtherLayout.sourcesHidden || furtherLayout.malformedAssistantCopy || furtherLayout.namedAssistantCopy || !furtherLayout.compactAssistantHandoff || furtherLayout.artifactHeading || furtherLayout.redundantNextSummary || furtherLayout.detachedAssistantHeading) throw new Error(`04c content hierarchy drifted: ${JSON.stringify(furtherLayout)}`);
   await furtherPage.locator('#open-course-assistant').click();
   if (!await furtherPage.locator('.course-assistant-panel').isVisible()) throw new Error('04c Course Assistant handoff does not open the shared panel');
 
@@ -585,6 +704,8 @@ def main() -> int:
     parser.add_argument("--site-root", default="web")
     parser.add_argument("--image", default=DEFAULT_IMAGE)
     parser.add_argument("--engine", default=os.environ.get("CONTAINER_ENGINE") or "podman")
+    parser.add_argument("--direct-node", action="store_true",
+                        help="run Node directly in a prepared browser environment")
     args = parser.parse_args()
     site_arg = Path(args.site_root)
     site_root = site_arg.resolve() if site_arg.is_absolute() else (ROOT / site_arg).resolve()
@@ -594,18 +715,25 @@ def main() -> int:
     with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as handle:
         handle.write(RUNTIME_JS)
         script = Path(handle.name)
-    cmd = [args.engine, "run", "--rm", "--entrypoint", "node"]
-    if args.engine.endswith("podman"):
-        cmd.append("--userns=keep-id")
-    cmd += [
-        "-e", "NODE_PATH=/opt/nemoclaw-runtime/node_modules",
-        "-v", f"{site_root}:/site:ro",
-        "-v", f"{script}:/tmp/learner_flow_runtime_audit.js:ro",
-        args.image,
-        "/tmp/learner_flow_runtime_audit.js",
-    ]
+    if args.direct_node:
+        cmd = ["node", str(script)]
+        run_env = os.environ.copy()
+        run_env["SITE_ROOT"] = str(site_root)
+    else:
+        cmd = [args.engine, "run", "--rm", "--entrypoint", "node"]
+        if args.engine.endswith("podman"):
+            cmd.append("--userns=keep-id")
+        cmd += [
+            "-e", "NODE_PATH=/opt/nemoclaw-runtime/node_modules",
+            "-v", f"{site_root}:/site:ro",
+            "-v", f"{script}:/tmp/learner_flow_runtime_audit.js:ro",
+            args.image,
+            "/tmp/learner_flow_runtime_audit.js",
+        ]
+        run_env = None
     try:
-        proc = subprocess.run(cmd, cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=180)
+        proc = subprocess.run(cmd, cwd=ROOT, text=True, stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT, timeout=180, env=run_env)
     except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
         print(f"learner_flow_runtime_audit: FAIL\n  - {exc}")
         return 1

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Auto-runnable validation cadence for the task1 bundle. This is the single CI entrypoint.
 
 Composes the deterministic validators into one gate and writes a DURABLE static log
@@ -135,7 +138,9 @@ import course_dependency_integrity as cdi  # noqa: E402
 import html_structure_audit as hsa  # noqa: E402
 import slides_audit as sla  # noqa: E402
 import security_architecture_audit as saa  # noqa: E402
+import threat_control_audit as tca  # noqa: E402
 import release_evidence_audit as rea  # noqa: E402
+import repository_work_products_audit as rwpa  # noqa: E402
 from collections import defaultdict  # noqa: E402
 
 
@@ -184,6 +189,9 @@ SUITE_META = [
     ("release_evidence", "Product design and release test plan", "required",
      "The public product design, executable test plan, and machine-readable evidence map must cover the shipped static system, data and cryptography inventories, source and dependency controls, external-review ownership, release artifacts, and rollback without embedding private workflow metadata or claiming approval.",
      "scripts/validation/release_evidence_audit.py", "audit_contract"),
+    ("repository_work_products", "Repository work products", "required",
+     "Public repository work products must match their reviewed requirement and applicability levels. Required files, resolved evidence paths, policy content, issue intake, maintainer procedures, and validator wiring must remain complete.",
+     "scripts/validation/repository_work_products_audit.py", "audit_contract"),
     ("course_content", "Course content contract", "required",
      "Course promises that generic validators cannot infer: retrieval and safety figures keep their teaching contracts, product comparisons cite public sources, automation semantics stay scoped to the demonstrated configuration, and alpha platform claims retain availability and hardware qualifiers. Each finding names the missing contract piece.",
      "scripts/validation/course_content_contract.py", "run"),
@@ -265,7 +273,7 @@ SUITE_META = [
     ("staccato_cadence", "Staccato cadence", "consider",
      "Prose that reads choppy even when sentence lengths vary: a copular 'X is the Y, a Z' appositive, two-plus setup/payoff reveals (mid-sentence colons or comma-appositives), short clauses welded dense, or breaks spaced so evenly the cadence turns mechanical. The sentence-length rhythm score is blind to it. Resolution per kind: a paragraph under 5 clauses cannot trip uniform-breaks (split it), lists are removed from the scan (lift a real enumeration into a substantive <ul>), combine choppy clauses for break-dense, and dismiss break-dense that is only code/URL tokens. Each finding carries its specific recipe.",
      "scripts/validation/prose_variety.py", "staccato_cadence"),
-    ("color_theme", "Color theme", "recommended",
+    ("color_theme", "Color theme", "required",
      "Every DOM color must be theme-dynamic: no hard-coded literal in an inline style, no undefined CSS variable. An inline literal outranks the light-theme rules and stays dark in light mode. Each entry names the literal and the page; replace it with a theme var.",
      "scripts/validation/color_theme.py", "run"),
     ("figure_audit", "Figure audit", "recommended",
@@ -274,6 +282,9 @@ SUITE_META = [
     ("security_architecture", "Security architecture graph", "required",
      "The release threat-model graph must match source-derived CI and browser topology, explicitly classify local-only Compose services and volumes, source every production node and flow from repository evidence, label trust-boundary authentication and sensitive data, exclude internal workflow metadata, avoid node and connector collisions, and keep its generated SVG projection current.",
      "scripts/validation/security_architecture_audit.py", "audit"),
+    ("threat_controls", "Threat control disposition", "required",
+     "Repository-owned mitigations must remain automated while host, provider, residual, and non-applicable requirements stay explicit. Pages artifacts are bounded, safely extracted, deployed without rebuilding, verified byte-for-byte after publication, and reconciled across public GitHub and internal GitLab without force updates.",
+     "scripts/validation/threat_control_audit.py", "audit"),
     ("cell_audit", "Cell & artifact contract", "recommended",
 
      "Every runnable cell shows its work in the panel, writes via helpers.log not console, awaits its model calls, inlines no key, keeps cell-only code in an editable cell, is syntax-highlighted by default, and keeps default-visible code and canvas copy readable. A hard-coded key is required-tier (it ships to every student); the rest are recommended.",
@@ -306,12 +317,15 @@ SUITE_META = [
     ("concept_order", "Concept order contract", "required",
      "Core vocabulary in the early agent curriculum must be defined before learner-facing prose or code relies on it. This prevents glossary-hover patches and keeps prerequisite fixes structural.",
      "scripts/validation/concept_order_audit.py", "audit"),
-    ("skill_schema", "SKILL contract", "recommended",
+    ("skill_schema", "SKILL contract", "required",
      "Every SKILL.html skill-meta must be a well-formed contract of its kind: it classifies into one known kind (service-skill, service-index, dir-skill, hub, leaf), carries that kind's required keys, uses a known schema/node_type value and a semver version where the kind has one, and only valid notebook status values. An agent samples this block to work in a directory, so a malformed beacon is a contract an agent cannot trust. Each entry names the SKILL and the missing or invalid field.",
      "scripts/skills/skill_contract.py", "schema_findings"),
-    ("skill_drift", "SKILL drift", "recommended",
-     "Every SKILL.html beacon must match its directory: source_dir / human_landing point at the real location, the notebook list is complete, and hub children exist on disk. Drift means the brain describes a directory it no longer reflects. python3 scripts/skills/skill_contract.py --fix repairs the mechanical cases.",
+    ("skill_drift", "SKILL coverage and drift", "required",
+     "Every tracked or proposed source directory and ancestor must contain SKILL.html, with no exemption mechanism. Each beacon must match its directory: source_dir / human_landing point at the real location, the notebook list is complete, and hub children exist on disk. Drift means the brain describes a directory it no longer reflects. python3 scripts/skills/gen_directory_beacons.py creates missing mechanical contracts and skill_contract.py --fix repairs metadata drift.",
      "scripts/skills/skill_contract.py", "run"),
+    ("skill_renderer", "SKILL renderer", "required",
+     "Every SKILL.html must provide meaningful human-readable content, resolve its local renderer assets, load the shared explorer it declares, and expose only configured source files that exist. Browser runtime validation then loads every beacon and rejects page errors, missing renderer resources, unmounted explorers, and unreadable file entries.",
+     "scripts/skills/skill_contract.py", "renderer_findings"),
     ("diagram_geom", "Figure geometry", "recommended",
      "mountDiagram and the policy map are drawn by JavaScript at runtime, so the static figure audit never sees them. This renders each and flags overlapping text, text past the bounds, a connector crossing a box it does not link, and a relational diagram that draws no edges.",
      "scripts/figures/check_figures.mjs", "svgProblems"),
@@ -328,18 +342,18 @@ def _span(lines: list[str], symbol: str, lang: str):
     if not symbol:
         return None
     if lang == "py":
-        pat = re.compile(r"^(\s*)(?:async\s+)?def\s+" + re.escape(symbol) + r"\b")
-        for i, ln in enumerate(lines):
-            m = pat.match(ln)
-            if not m:
-                continue
-            indent, end = len(m.group(1)), len(lines)
-            for j in range(i + 1, len(lines)):
-                s = lines[j]
-                if s.strip() and (len(s) - len(s.lstrip())) <= indent:
-                    end = j
-                    break
-            return [i + 1, end]
+        import ast
+        try:
+            tree = ast.parse("\n".join(lines))
+        except SyntaxError:
+            return None
+        matches = [
+            node for node in ast.walk(tree)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == symbol
+        ]
+        if matches:
+            node = min(matches, key=lambda item: item.lineno)
+            return [node.lineno, getattr(node, "end_lineno", node.lineno)]
         return None
     if lang in ("js", "mjs"):
         pat = re.compile(r"\bfunction\s+" + re.escape(symbol) + r"\b|\b"
@@ -532,6 +546,23 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         vl_fail.extend(f"security architecture: {item['path']}: {item['detail']}" for item in security_find)
 
     try:
+        threat_control_find = tca.audit()
+        threat_control_scanned = sum(len(tokens) for tokens in tca.REQUIRED_TOKENS.values())
+    except Exception as e:
+        threat_control_find, threat_control_scanned = [], 0
+        suite_errors["threat_controls"] = str(e)
+        vl_ok = False
+        ok = False
+        vl_fail.append(f"threat control audit error: {e}")
+    if threat_control_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(
+            f"threat control: {item['path']}: [{item['code']}] {item['detail']}"
+            for item in threat_control_find
+        )
+
+    try:
         release_contract = rea.load_contract()
         release_evidence_find = rea.audit_contract(release_contract)
         release_evidence_scanned = (len(release_contract.get("documents", {}))
@@ -548,6 +579,24 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         vl_fail.extend(
             f"release evidence: {item['path']}: [{item['code']}] {item['detail']}"
             for item in release_evidence_find
+        )
+
+    try:
+        work_product_contract = rwpa.load_contract()
+        repository_work_products_find = rwpa.audit_contract(work_product_contract)
+        repository_work_products_scanned = len(work_product_contract.get("repository_work_products", []))
+    except Exception as e:
+        repository_work_products_find, repository_work_products_scanned = [], 0
+        suite_errors["repository_work_products"] = str(e)
+        vl_ok = False
+        ok = False
+        vl_fail.append(f"repository work-product audit error: {e}")
+    if repository_work_products_find:
+        vl_ok = False
+        ok = False
+        vl_fail.extend(
+            f"repository work products: {item['path']}: [{item['code']}] {item['detail']}"
+            for item in repository_work_products_find
         )
 
     # grounding reference sweep (fast, no-llm). Folds the em-dash / ungrounded / cross
@@ -620,10 +669,14 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     for r in ch_rows:
         ch_fam[r.get("family")].append(r)
 
-    # color theme (advisory): inline color literals + undefined var() refs that can't flip light/dark.
+    # Color theme (required): inline literals, undefined vars, and render-time color bakes block.
     try:
         ct_find = ct.run(verbose=False)
         ct_inline, ct_undef, ct_bake = len(ct_find["inline"]), len(ct_find["undefined_var"]), len(ct_find.get("bake", []))
+        if ct_inline + ct_undef + ct_bake:
+            vl_ok = False
+            ok = False
+            vl_fail.append(f"color theme: {ct_inline + ct_undef + ct_bake} non-theme-dynamic color use(s)")
     except Exception as e:
         ct_find, ct_inline, ct_undef, ct_bake = {"inline": [], "undefined_var": [], "bake": []}, 0, 0, 0
         suite_errors["color_theme"] = str(e); vl_fail.append(f"color theme error: {e}")
@@ -774,15 +827,14 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         ok = False
         vl_fail.extend(f"concept order: {x}" for x in concept_order_find)
 
-    # SKILL contract (advisory): every skill-meta is a well-formed beacon of its kind (schema leg)
-    # and matches its directory (drift leg, reused from skill_audit). The agent-facing half of the
-    # contract: a malformed or stale beacon is what an agent samples and is misled by.
+    # SKILL contract (required): exhaustive directory coverage, valid metadata, accurate scope,
+    # and a renderer that works for the human reader are one fail-closed contract.
     try:
         skc_find = skc.run(verbose=False)
         skc_scanned = sum(1 for _ in skc.sa.skills())   # skills() is a generator, not a list
     except Exception as e:
-        skc_find, skc_scanned = {"schema": [], "drift": []}, 0
-        suite_errors["skill_schema"] = suite_errors["skill_drift"] = str(e)
+        skc_find, skc_scanned = {"schema": [], "drift": [], "renderer": []}, 0
+        suite_errors["skill_schema"] = suite_errors["skill_drift"] = suite_errors["skill_renderer"] = str(e)
         vl_fail.append(f"skill contract error: {e}")
 
     # figure geometry (advisory): render the runtime figures (mountDiagram + mountPolicyMap) and flag overlapping text, out-of-bounds text, stray connectors, and edgeless diagrams.
@@ -872,6 +924,11 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "copy_surface": (RECOMMENDED, "Shorten learner-facing canvas chrome. Let the page heading carry module "
                          "coordinates, keep labels and titles task-focused, and move implementation inventories "
                          "into the expandable code rather than a second prose layer."),
+        "run_cell_style": (RECOMMENDED, "Keep the editable RunCell small and legible, return its structured "
+                           "outcome, use Stop-aware waits, and provide a commented diagnostic or alternate input "
+                           "where it helps a learner inspect the result."),
+        "prompt_experiment": (RECOMMENDED, "Address the learner directly in prompt-input cells and provide "
+                              "two commented alternative assignments or an EXAMPLES selector."),
     }
     _FIG_FIX = {
         "tiny": (RECOMMENDED, "Raise the text to a rendered font-size of at least 11px; below that it is "
@@ -933,9 +990,15 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "security_architecture": [D(item["path"], f"[{item['code']}] {item['detail']}", REQUIRED,
                      "Review the source-derived production contract, update docs/security-architecture.json from repository evidence, regenerate the SVG, and run security_architecture_audit.py plus its mutation self-test. Keep browser paths visible and local lab services classified without drawing them as production.")
                     for item in security_find],
+        "threat_controls": [D(item["path"], f"[{item['code']}] {item['detail']}", REQUIRED,
+                     "Restore the bounded artifact, safe extraction, post-deploy verification, repository synchronization, or explicit external-control disposition, then run threat_control_audit.py and its mutation self-test.")
+                    for item in threat_control_find],
         "release_evidence": [D(item["path"], f"[{item['code']}] {item['detail']}", REQUIRED,
                      item["fix"])
                     for item in release_evidence_find],
+        "repository_work_products": [D(item["path"], f"[{item['code']}] {item['detail']}", REQUIRED,
+                     item["fix"])
+                    for item in repository_work_products_find],
         "course_content": [D(path, detail, REQUIRED,
                              "Restore the source-backed teaching contract. Keep retrieval/safety explanations complete, product comparisons grounded in public sources, automation behavior scoped to the demonstrated configuration, and alpha platform claims qualified.")
                            for path, detail in cc_find],
@@ -1055,15 +1118,15 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                       for s in pv_structure],
         "grounding": [D(fo.get("path"), "; ".join(fo.get("issues", [])), RECOMMENDED, _ground_fix(fo.get("issues", [])))
                       for fo in gfind],
-        "color_theme": ([D(f, f"{tok} on {prop}", RECOMMENDED,
+        "color_theme": ([D(f, f"{tok} on {prop}", REQUIRED,
                            f"Replace {tok} with a theme variable (var(--g), var(--e1), var(--tx), …). A literal in an "
                            f"inline style outranks the light-theme rules and stays dark in light mode.")
                          for f, tok, prop in ct_find.get("inline", [])]
-                        + [D(f, f"undefined var {n}", RECOMMENDED,
+                        + [D(f, f"undefined var {n}", REQUIRED,
                              f"Define {n} in :root or switch to an existing theme var. An undefined var() resolves to "
                              f"nothing, so the color silently drops out.")
                            for f, n in ct_find.get("undefined_var", [])]
-                        + [D(f, "render-time color bake", RECOMMENDED,
+                        + [D(f, "render-time color bake", REQUIRED,
                              f"{reason}. {snippet} — this output ignores the theme toggle and freezes on the "
                              f"theme that was active when it rendered.")
                            for f, snippet, reason in ct_find.get("bake", [])]),
@@ -1086,15 +1149,18 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                             REQUIRED,
                             "Open web/nemoclaw/localization.html, repair the named locale prose/structure/drift issue, then accept the reviewed source hash with localization_audit.py.")
                          for x in localization_find],
-        "skill_schema": [D(p, d, RECOMMENDED,
+        "skill_schema": [D(p, d, REQUIRED,
                            "Make the skill-meta a valid contract of its kind: add the missing required key, "
                            "correct the schema/node_type value, give version a semver MAJOR.MINOR.PATCH, or set a "
                            "valid notebook status (ready/setup/wip/ref). See SKILL_CONTRACT.md.")
                          for p, d in skc_find.get("schema", [])],
-        "skill_drift": [D(p, d, RECOMMENDED,
-                          "The beacon no longer matches its directory. Run python3 scripts/skills/skill_contract.py --fix "
-                          "to repair source_dir / human_landing / the notebook list, or fix the hub child path by hand.")
+        "skill_drift": [D(p, d, REQUIRED,
+                          "The source directory lacks a beacon or its beacon no longer matches. Run python3 scripts/skills/gen_directory_beacons.py "
+                          "to create missing contracts, then use skill_contract.py --fix for metadata drift or repair the hub child path by hand.")
                         for p, d in skc_find.get("drift", [])],
+        "skill_renderer": [D(p, d, REQUIRED,
+                             "Repair the human renderer, use directory-relative assets, load the declared shared explorer exactly once, and keep every configured file resolvable.")
+                           for p, d in skc_find.get("renderer", [])],
         "diagram_geom": [D(d.get("page"), f"{d.get('sel','')}: {d.get('detail','')}", RECOMMENDED,
                            "Adjust the runtime figure: keep labels from overlapping, text inside the bounds, connectors "
                            "only crossing boxes they link, and a relational diagram actually drawing its edges.")
@@ -1141,7 +1207,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "html_structure": len(hsa.source_pages(TASK1)),
         "slides": slides_scanned,
         "security_architecture": security_scanned,
+        "threat_controls": threat_control_scanned,
         "release_evidence": release_evidence_scanned,
+        "repository_work_products": repository_work_products_scanned,
         "sensitive_content": sensitive_scanned,
         "course_dependency_integrity": cdi_scanned,
         "grounding": len(grecs), "prose_variety": len(pv_rows), "prose_buzz": len(pv_rows), "redundancy": len(pv_rows), "grammar": len(pv_rows), "structure": len(pv_rows), "headings": len(pv_rows), "assertions": len(pv_rows), "word_echo": len(pv_rows), "comma_weight": len(pv_rows), "branding": len(pv_rows),
@@ -1155,7 +1223,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "course_contract": 1,
         "concept_order": 1,
         "materials": materials.get("count", 0),
-        "skill_schema": skc_scanned, "skill_drift": skc_scanned,
+        "skill_schema": skc_scanned, "skill_drift": skc_scanned, "skill_renderer": skc_scanned,
         "localization": sum(
             len(item.get("pages", []))
             for item in localization_manifest.values()
@@ -1212,8 +1280,11 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
         "html_structure": {"pages": len(hsa.source_pages(TASK1)), "findings": len(html_structure_find)},
         "slides": {"slides": slides_scanned, "findings": len(slides_find)},
         "security_architecture": {"findings": len(security_find), "graph_items": security_scanned},
+        "threat_controls": {"findings": len(threat_control_find), "controls": threat_control_scanned},
         "release_evidence": {"findings": len(release_evidence_find),
                              "evidence_items": release_evidence_scanned},
+        "repository_work_products": {"findings": len(repository_work_products_find),
+                                     "work_products": repository_work_products_scanned},
         "course_content": {"findings": len(cc_find)},
         "course_dependency_integrity": {"findings": len(cdi_find)},
         "prose_variety": {"pages": len(pv_rows), "flagged": len(pv_flagged), "flag_at": pv.FLAG_AT,
@@ -1267,6 +1338,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     print(f"  course content  : {len(cc_find)} required content contract finding(s) (teaching, product, platform)")
     print(f"  overview slides : {len(slides_find)} required finding(s) over {slides_scanned} slides")
     print(f"  security arch.   : {len(security_find)} required finding(s) over {security_scanned} nodes and flows")
+    print(f"  threat controls  : {len(threat_control_find)} required finding(s) over "
+          f"{threat_control_scanned} repository control assertions")
     if not lang_en:
         print(f"  prose / buzz / branding : n/a for '{lang}' (English-prose style suites do not gate a translation)")
     if pv_rows and lang_en:
@@ -1294,7 +1367,9 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
           f"ui-contract {len(ca_find.get('ui_contract', []))}, "
           f"code-surface {len(ca_find.get('code_surface', []))}, "
           f"readability {len(ca_find.get('readability', []))}, "
-          f"copy {len(ca_find.get('copy_surface', []))})")
+          f"copy {len(ca_find.get('copy_surface', []))}, "
+          f"run-cell-style {len(ca_find.get('run_cell_style', []))}, "
+          f"prompt-experiment {len(ca_find.get('prompt_experiment', []))})")
     print(f"  learner flow    : {len(learner_flow_find)} required finding(s) "
           f"(progressive disclosure / prerequisites / lifecycle / CPU baseline)")
     print(f"  contribution    : {len(contribution_safety_find)} required finding(s) "
@@ -1302,6 +1377,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     print(f"  sensitive data  : {len(sensitive_find)} required finding(s) over {sensitive_scanned} text inputs")
     print(f"  release evidence: {len(release_evidence_find)} required finding(s) "
           f"over {release_evidence_scanned} design, test, and ownership items")
+    print(f"  repository files: {len(repository_work_products_find)} required finding(s) "
+          f"over {repository_work_products_scanned} reviewed work products")
     print(f"  localization    : {len(localization_find)} required finding(s) "
           f"({localization_manifest.get('counts', {})})")
     print(f"  figure geometry : {len(dg_find)} runtime-figure finding(s) (text overlap / past bounds / connector-crosses-box / useless)")
@@ -1387,13 +1464,15 @@ def _render_md(summary: dict) -> str:
          f"| · em-dash pages | {g.get('em_dash_pages','?')} | advisory |",
          f"| prose variety (narrative pages flagged) | {summary.get('prose_variety',{}).get('flagged','?')} / {summary.get('prose_variety',{}).get('pages','?')} | advisory |",
          f"| · buzz cadence (antithesis/numeric) | {len(summary.get('prose_variety',{}).get('antithesis',[]))} | advisory |",
-         f"| color theme (non-theme-dynamic colors) | {summary.get('color_theme',{}).get('inline',0) + summary.get('color_theme',{}).get('undefined_var',0) + summary.get('color_theme',{}).get('bake',0)} | advisory |",
+         f"| color theme (non-theme-dynamic colors) | {summary.get('color_theme',{}).get('inline',0) + summary.get('color_theme',{}).get('undefined_var',0) + summary.get('color_theme',{}).get('bake',0)} | blocking |",
          f"| figure audit (legibility / formatting) | {sum(summary.get('figure_audit',{}).values())} | advisory |",
          f"| cell audit (runnable-cell contract) | {sum(summary.get('cell_audit',{}).values())} | advisory |",
          f"| learner interaction flow | {summary.get('learner_flow',{}).get('findings',0)} | blocking |",
          f"| contribution safety | {summary.get('contribution_safety',{}).get('findings',0)} | blocking |",
+         f"| repository work products | {summary.get('repository_work_products',{}).get('findings',0)} | blocking |",
          f"| sensitive content boundary | {summary.get('sensitive_content',{}).get('findings',0)} | blocking |",
          f"| Security architecture graph | {summary.get('security_architecture',{}).get('findings',0)} | blocking |",
+         f"| Threat control disposition | {summary.get('threat_controls',{}).get('findings',0)} | blocking |",
          f"| figure geometry (runtime figures) | {summary.get('diagram_geom',{}).get('findings',0)} | advisory |",
          f"| strays (unreachable from a SKILL hub) | {len(rc.get('strays',[]))} | {rc.get('real_strays','?')} real |",
          f"| release foyer (surfaces only RELEASED) | {'OK' if fy.get('ok') else 'FAIL'} | {len(fy.get('violations',[]))} blocking |",
@@ -1411,6 +1490,8 @@ def _render_md(summary: dict) -> str:
                    "materials": "Materials", "reachability": "Reachability", "contribution_safety": "Contribution safety",
                    "sensitive_content": "Sensitive content boundary",
                    "security_architecture": "Security architecture graph",
+                   "threat_controls": "Threat control disposition",
+                   "repository_work_products": "Repository work products",
                    "word_echo": "Word echo", "comma_weight": "Comma weight", "assertions": "Bare assertions",
                    "headings": "Headings", "structure": "Structural rhythm", "branding": "Brand naming",
                    "defer_copula": "Deferred copula", "dense_repeats": "Dense repetition", "over_verbage": "Over-verbage",

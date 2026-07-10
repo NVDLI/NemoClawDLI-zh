@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Use this for actionable learner-facing work. Current release target is `web/nemoclaw/` on the CPU service stack, while the repo remains a multi-course bundle. Do not paste API keys, DLI private URLs, Cloudflare headers, or tokens.
+        Use this for actionable learner-facing work in the static `web/nemoclaw/` course. Local authoring services are outside the production course boundary. Do not paste API keys, private URLs, access headers, or tokens.
   - type: input
     id: location
     attributes:

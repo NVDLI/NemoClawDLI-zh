@@ -10,15 +10,6 @@
 <link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.min.css"/>
 <script src="vendor/codemirror-5.65.21.min.js"></script>
 <style>
-  .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
-  .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
-  .CodeMirror-vscrollbar { display: none; }
-  .CodeMirror-gutters { background: #0d0d0d; border-right: 1px solid #2a2a2a; }
-  .CodeMirror-linenumber { color: #6a6a6a; padding: 0 8px 0 6px; font-size: .76rem; }
-  .CodeMirror-lines { padding: 10px 0; }
-  .cm-s-monokai.CodeMirror { background: #0d0d0d; color: #f8f8f2; }
-  .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
-  .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
   .pattern-card { background:var(--e2); border:1px solid var(--bd); border-radius:8px; padding:14px 18px; }
   .pattern-card h3 { margin:0 0 6px; color:var(--gs); font-size:1.0rem; }
   .pattern-card .when { color:var(--g); font-weight:600; font-size:.8rem; margin-bottom:6px; }
@@ -53,8 +44,8 @@
       The harness can scope a workflow around a model call, a deterministic step,
       a specialist loop, or a group of parallel branches. At each boundary, it decides
       what context crosses, what can branch, and which results feed the next pipeline
-      stage. This section uses fan-out and fixed routing to show that control without
-      replacing the ReAct loop from the previous page.
+      stage. Fan-out and fixed routing make that control visible without replacing the
+      ReAct loop from the previous page.
     </p>
   </div>
 
@@ -110,14 +101,13 @@
     Many real systems borrow from each approach at once. The tools a ReAct loop calls
     might internally run a planned, ReWOO-style pipeline, and a planner that lays its
     work out in advance still needs sub-agents to execute each step, which are usually
-    ReAct loops in their own right. They are all just software components, free to
-    compose wherever their strengths fit.
+    ReAct loops in their own right. Compose these software components wherever their
+    strengths fit, reserving a Workflow Agent for tasks that split into independent workstreams.
   </div>
 
   <h2>When a single loop beats splitting into agents</h2>
   <p>
-    A Workflow Agent pays off only when the task splits into independent
-    workstreams. Without them, the coordination overhead of multi-agent
+    Without independent workstreams, the coordination overhead of multi-agent
     composition buys nothing, and one plain loop stays faster and easier
     to debug.
   </p>
@@ -389,8 +379,10 @@ mountCanvasFlow("#cell-m2a-rewoo", {
     {
       id: "goal", icon: "🎯", title: "Research goal", x: 0, y: 0,
       summary: "The research goal that drives the entire pipeline. Edit it and rerun to see how the planner generates a different set of queries and the synthesizer produces a different brief.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Change the research goal and watch the planner rewrite its queries.
 state.goal = "How do retrieval-augmented generation, vector databases, and AI agents fit together?";
+// state.goal = "How do evaluation methods differ for retrieval and generation?";
+// state.goal = "When should an agent use a tool instead of answer directly?";
 return state.goal;
 `,
     },
@@ -530,8 +522,10 @@ mountCanvasFlow("#cell-m2a-triage", {
     {
       id: "ticket", icon: "👤", title: "User ticket", x: 0, y: 0,
       summary: "The support ticket the triage agent will classify. Edit it to try different problem types and watch the router pick a different specialist each time.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Try a billing or account-access ticket and watch the route change.
 state.ticket = "My laptop won't connect to the VPN. I've tried restarting and re-installing the client.";
+// state.ticket = "I was charged twice for the same subscription this month.";
+// state.ticket = "My account is locked after I changed phones.";
 return state.ticket;
 `,
     },
@@ -629,8 +623,10 @@ mountCanvasFlow("#cell-m2a-parallel", {
     {
       id: "topic", icon: "👤", title: "Topic", x: 0, y: 0,
       summary: "The question that all three specialists will receive. Because every specialist reads the same input, you can compare their outputs directly and see how the system prompt alone shapes the response.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Ask a new topic and compare how each specialist frames it.
 state.topic = "Why does the transformer architecture need positional encoding?";
+// state.topic = "When is retrieval more useful than fine-tuning?";
+// state.topic = "How should an agent decide whether to call a tool?";
 return state.topic;
 `,
     },
@@ -769,8 +765,10 @@ return { specialists: [state.arithmetician.role, state.translator.role] };
     {
       id: "run", icon: "🚀", title: "Run both on the same input", x: 0, y: 2,
       summary: "Sends the same input to both specialists concurrently and renders their replies side by side. The factory body is identical for both, so any divergence in the two responses traces back to their system prompts, and the side-by-side view lets you spot that divergence at a glance.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Give both specialists a new translation-and-arithmetic request.
 state.input = "Translate 'thirty-seven times eleven' and then evaluate the arithmetic.";
+// state.input = "Translate 'the square root of one hundred forty-four' and solve it.";
+// state.input = "Evaluate twenty-five times sixteen, then translate the result into French.";
 helpers.log("input:", state.input);
 
 const [arithRes, transRes] = await Promise.all([

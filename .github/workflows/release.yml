@@ -16,6 +16,7 @@ permissions:
 jobs:
   validate-and-package:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -47,7 +48,9 @@ jobs:
       - name: Required live material provenance check
         run: python3 scripts/materials/pull_materials.py --check --fetch-attempts 4 --retry-backoff 2 --host-delay 3
       - name: Required release gate
-        run: python3 scripts/validation/release_gate.py --tier ship --timing-report docs/validation/release-gate-timings.json
+        run: |
+          python3 scripts/validation/release_gate.py --tier ship --timing-report docs/validation/release-gate-timings.json
+          python3 scripts/compliance/sbom_evidence.py --check-external-links
       - name: Resolve release environment and emit SBOM
         run: |
           set -euo pipefail
@@ -63,6 +66,22 @@ jobs:
           .release-scan-venv/bin/python scripts/security/audit_sbom_policy.py \
             --sbom release-security/python-env.cdx.json \
             --report release-security/sbom-policy.json
+          .release-scan-venv/bin/python scripts/compliance/sbom_evidence.py \
+            --sbom release-security/python-env.cdx.json \
+            --artifact-name "python-validation-$(git rev-parse HEAD)" \
+            --record-id python-validation-environment \
+            --description "Resolved Python validation environment; not distributed to learners" \
+            --distribution not-distributed \
+            --category validation \
+            --source-commit "$(git rev-parse HEAD)" \
+            --ci-job validate-and-package \
+            --pipeline-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --job-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --retention-days 30 \
+            --sbom-href "nemoclaw-${{ inputs.tag }}.python-env.cdx.json" \
+            --appendix-href "nemoclaw-${{ inputs.tag }}.python-license-appendix.md" \
+            --appendix-out release-security/python-license-appendix.md \
+            --manifest-out release-security/python-sbom-evidence.json
       - name: Build reproducible release archive
         env:
           RELEASE_TAG: ${{ inputs.tag }}
@@ -74,6 +93,13 @@ jobs:
           mkdir -p release-assets release-evidence
           cp release-security/python-env.cdx.json "release-security/nemoclaw-$RELEASE_TAG.python-env.cdx.json"
           cp web/nemoclaw/vendor/browser-sbom.cdx.json "release-security/nemoclaw-$RELEASE_TAG.browser.cdx.json"
+          cp release-security/python-license-appendix.md "release-security/nemoclaw-$RELEASE_TAG.python-license-appendix.md"
+          cp release-security/python-sbom-evidence.json "release-security/nemoclaw-$RELEASE_TAG.python-sbom-evidence.json"
+          python3 scripts/compliance/sbom_evidence.py \
+            --compose-release-catalog \
+            --generated-manifest release-security/python-sbom-evidence.json \
+            --browser-href "nemoclaw-$RELEASE_TAG.browser.cdx.json" \
+            --release-catalog-out "release-security/nemoclaw-$RELEASE_TAG.sbom-evidence-catalog.json"
           cp docs/validation/latest.json release-evidence/validation.json
           cp docs/validation/latest.md release-evidence/validation.md
           cp docs/validation/contribution-safety.json release-evidence/contribution-safety.json
@@ -87,7 +113,10 @@ jobs:
             --tag-object "$(git rev-parse "refs/tags/$RELEASE_TAG")" \
             --source-date-epoch "$SOURCE_DATE_EPOCH" \
             --asset "release-security/nemoclaw-$RELEASE_TAG.python-env.cdx.json" \
-            --asset "release-security/nemoclaw-$RELEASE_TAG.browser.cdx.json"
+            --asset "release-security/nemoclaw-$RELEASE_TAG.browser.cdx.json" \
+            --asset "release-security/nemoclaw-$RELEASE_TAG.python-license-appendix.md" \
+            --asset "release-security/nemoclaw-$RELEASE_TAG.python-sbom-evidence.json" \
+            --asset "release-security/nemoclaw-$RELEASE_TAG.sbom-evidence-catalog.json"
           test -f release-assets/release-manifest.json
           test -f release-assets/SHA256SUMS
           (cd release-assets && sha256sum --check SHA256SUMS)
@@ -103,6 +132,7 @@ jobs:
   draft-release:
     needs: validate-and-package
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     environment:
       name: github-release
     permissions:
@@ -114,6 +144,8 @@ jobs:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: release-${{ inputs.tag }}
+      - name: Reverify downloaded release assets
+        run: cd release-assets && sha256sum --check SHA256SUMS
       - name: Create or refresh draft release
         env:
           GH_TOKEN: ${{ github.token }}

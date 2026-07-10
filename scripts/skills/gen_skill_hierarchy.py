@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Generate the nested SKILL.html hub hierarchy:
 
     SKILL.html  (repository hub == bundle index, served at /lab/static/SKILL.html)
@@ -28,6 +31,7 @@ from _bootstrap import add_script_paths, find_repo_root
 HERE = Path(__file__).resolve()
 TASK1 = find_repo_root(HERE)
 add_script_paths(TASK1 / "scripts")
+import normalize_skill_headers
 SURFACES = ("web", "cpu")
 MARKER = "gen_skill_hierarchy.py"   # presence in a SKILL.html => safe to regenerate
 RELEASE_STATUS = json.loads((TASK1 / "RELEASE_STATUS.json").read_text(encoding="utf-8"))
@@ -64,7 +68,6 @@ WEB_PAGE_DESC = {
         "glossary":          "Searchable glossary of the course's agent terms.",
         "dependencies":      "Source-derived inventory of exact browser packages, licenses, hashes, and runtime references.",
         "studio":            "Authoring and inspection studio for the course pages.",
-        "cert":              "Course completion certificate.",
         "courses":           "Catalog redirect stub.",
     },
 }
@@ -74,6 +77,8 @@ WEB_SUPPORT = {
     "styles":  ("course styles", "Shared course CSS plus the light iframe/export overlay."),
     "assets":  ("image provenance", "Source, license, connection level, theme mode, mount style, and visual-preview duty for every image."),
     "mats":    ("material provenance", "Source and connection level for every companion essay."),
+    "standalone": ("standalone export", "Standalone-export source and fixed assets generated from the canonical course."),
+    "vendor": ("browser vendor", "Pinned same-origin browser packages, metadata, SBOM, and license texts."),
 }
 SURFACE_LEAD = {
     "cpu": "Local development and compatibility services. The production course is static and "
@@ -93,8 +98,10 @@ TENETS = {
         "Order is a default, not a gate: keep pages usable out of sequence, with no enforced "
         "prerequisites or knowledge checks, so a reader can act on partial understanding and "
         "return for the next layer.",
-        "Target an open external release after approval: Apache 2.0, no gate or paywall, the "
-        "foyer surfacing only the selected courses, and mats cited by public URL.",
+        "Target the NVIDIA-owned DLI course repository as a Full-OSS-Project after approval: OSS "
+        "Type I, Apache 2.0, no gate or paywall, public course planning and contribution, the "
+        "foyer surfacing only the selected courses, and mats cited by public URL. This does not "
+        "classify or release the NemoClaw product or runtime.",
         "Keep surface assumptions explicit: web/ is browser-only and cannot assume student-provisioned "
         "microservices; cpu/ owns shared service stacks; spark/ or gpu surfaces must declare their "
         "compute contract before content depends on them.",
@@ -112,8 +119,9 @@ TENETS = {
         "Content is organized by execution surface: web/ holds browser-only courses and course-scoped "
         "reference packets; cpu/ holds shared microservices; deploy/ holds compose and nginx; "
         "future spark/ or gpu surfaces must state their compute contract before use.",
-        "The brain is each directory's SKILL.html skill-meta JSON, not a SKILL.md. Parse it "
-        "first, then walk children: task to surface to course to content. Visual work must also "
+        "The brain is each source directory's SKILL.html skill-meta JSON, not a SKILL.md. Git-tracked "
+        "and proposed files define the exhaustive directory set, with no opt-outs. Parse the current "
+        "directory first, then walk children: task to surface to course to content. Visual work must also "
         "read the asset provenance beacon and validation beacon before edits.",
         "One link engine (scripts/runtime/engine.js) is the single source for resolution, crawl, "
         "reachability, and the release contract; it runs headless and in-browser, with no "
@@ -246,6 +254,8 @@ def framer_page(meta, title, sections, actions=None, readme=None, summary=None, 
 
 
 def write(path: Path, content: str):
+    if path.name == "SKILL.html":
+        content = normalize_skill_headers.normalize(path, content)
     path.write_text(content); print("wrote", path.relative_to(TASK1))
 
 
@@ -282,7 +292,7 @@ def gen_task():
     # Source explorers and topology tools are discovered from disk.
     import re as _re
     explorers = []
-    for d in sorted(p for p in TASK1.iterdir() if p.is_dir() and not p.name.startswith(".")):
+    for d in sorted(p for p in TASK1.iterdir() if p.is_dir()):
         sk = d / "SKILL.html"
         if d.name in SURFACES or not sk.is_file():
             continue
@@ -294,13 +304,23 @@ def gen_task():
         if em.get("node_type") == "directory-explorer":
             explorers.append((f"{d.name}/", f"{d.name}/SKILL.html",
                               (em.get("summary", "") or "").split(". ")[0][:140]))
-    src_items = list(explorers)
+    priority_nodes = []
+    if (TASK1 / "scripts" / "compliance" / "SKILL.html").is_file():
+        priority_nodes.append((
+            "License and distribution evidence",
+            "scripts/compliance/SKILL.html",
+            "Review shipped software, source terms, SBOM evidence, and downloadable inventories.",
+        ))
+    src_items = priority_nodes + list(explorers)
     if (TASK1 / "scripts" / "link_graph.html").is_file():
         src_items.append(("scripts/runtime/link_graph.html", "scripts/runtime/link_graph.html",
                           "Link + topology viewer: how every page resolves and what reaches a SKILL hub."))
 
     docs = [("README.md", "README.md", "What the release candidate is and how to run it (start here)."),
             ("RELEASE_STATUS.json", "RELEASE_STATUS.json", "Machine-readable publication and licensing state."),
+            ("CHANGELOG.md", "CHANGELOG.md", "Version history for public releases and pending changes."),
+            ("LICENSE", "LICENSE", "Apache License 2.0 for the proposed public release."),
+            ("SECURITY.md", "SECURITY.md", "Official NVIDIA private vulnerability-reporting policy."),
             ("AGENTS.md", "AGENTS.md", "Cross-harness agent contract and task routing."),
             ("CONTRIBUTING.md", "CONTRIBUTING.md", "How to contribute: hooks, the validation gate, conventions."),
             ("DCO.md", "DCO.md", "Required per-commit origin signoff and repair guidance."),
@@ -335,13 +355,17 @@ def gen_task():
             "release": {"surface": "web/index.html", "courses": rel_courses,
                         "publication_state": RELEASE_STATUS["publication_state"],
                         "external_mirror": RELEASE_STATUS["external_mirror"],
+                        "external_repository": RELEASE_STATUS["external_repository"],
+                        "intended_oss_type": RELEASE_STATUS["intended_oss_type"],
+                        "oss_scope": RELEASE_STATUS["oss_scope"],
+                        "excluded_product_scope": RELEASE_STATUS["excluded_product_scope"],
                         "target_license": RELEASE_STATUS["target_license"],
                         "notice_required": RELEASE_STATUS["notice_required"],
                         "status_path": "RELEASE_STATUS.json",
                         "note": "the foyer selection does not imply external publication approval"},
             "tenets": TENETS,
             "children": ([{"name": s, "path": f"{s}/SKILL.html"} for s, _ in surfaces]
-                         + [{"name": n.rstrip("/"), "path": h} for (n, h, _d) in explorers])}
+                         + [{"name": n.rstrip("/"), "path": h} for (n, h, _d) in priority_nodes + explorers])}
 
     write(TASK1 / "SKILL.html",
           framer_page(meta, "Building Agents · NVIDIA DLI bundle",
@@ -427,6 +451,7 @@ def gen_web_course_hubs():
         support_files = [p for p in support_files if p.is_file()]
         implementation = [p for p in support_files if p.parent.name in {"scripts", "styles"}]
         provenance = [p for p in support_files if p.parent.name in {"assets", "mats"}]
+        distribution = [p for p in support_files if p.parent.name in {"standalone", "vendor"}]
         sections = [("Pages", None, [(p.stem, p.relative_to(d).as_posix(), pd.get(p.stem, "")) for p in primary])]
         if subindex:
             sections.append(("Collections", "Sub-collections with their own launcher; open one to "
@@ -449,6 +474,10 @@ def gen_web_course_hubs():
                              "and companion materials.",
                              [(WEB_SUPPORT[p.parent.name][0], p.relative_to(d).as_posix(), WEB_SUPPORT[p.parent.name][1])
                               for p in provenance]))
+        if distribution:
+            sections.append(("Distribution", "Standalone and same-origin dependency surfaces shipped with the course.",
+                             [(WEB_SUPPORT[p.parent.name][0], p.relative_to(d).as_posix(), WEB_SUPPORT[p.parent.name][1])
+                              for p in distribution]))
         meta = {"node_type": "hub", "level": "course", "surface": "web", "course": d.name,
                 "self_path": f"web/{d.name}/SKILL.html",
                 "children": [{"name": _label(p), "path": p.relative_to(TASK1).as_posix()} for p in pages]

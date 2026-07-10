@@ -32,17 +32,25 @@ browser, with no server logic:
 | `public/link-graph.html` + `engine.js` | the link-graph viewer (engine runs in-browser; offline uses the embedded snapshot) |
 | `public/tests.html` | the client-side test runner (below) |
 | `public/validation.html` + `gate.json` | the CI gate report, rendered from `docs/validation/latest.json` |
+| `public/LICENSE` + `THIRD_PARTY_LICENSES.md` | Apache-2.0 terms and the static third-party package/license/material inventory |
 
 The course pages inline their own CSS and JS and use relative links, so the course
 dir is browsable from a Pages subpath. Live model calls use the student's own NVIDIA
 key and call NVIDIA model services directly by default. An explicitly enabled iframe
-mode uses the NVIDIA API CORS relay. Pages-hosted NemoClaw traffic uses the OpenClaw
-relay because the browser cannot attach the required Access header to its WebSocket;
-a launchable-vendored course beside its NemoClaw runtime uses the same-origin direct
-route. The launchable supplies the startup NVIDIA API key through its approved bootstrap
+mode uses the NVIDIA API CORS relay. Pages-hosted Cloudflare Access launchables use the
+OpenClaw relay. Pomerium launchables keep their HttpOnly session in the signed-in browser:
+gateway and terminal WebSockets connect directly, and the two fixed metadata reads use
+that authenticated terminal to read launchable loopback. A launchable-vendored course
+beside its NemoClaw runtime uses the same-origin direct route. The launchable supplies the startup NVIDIA API key through its approved bootstrap
 path and populates the same browser `localStorage` entry used by the course key panel;
 it does not introduce another credential channel. Lab-only
 steps badge themselves and short-circuit off-lab.
+
+Each course directory is also validated as an independent deployment root. The build
+discovers every HTML file and every local navigation or resource URL, then rejects
+missing targets, missing fragments, root-absolute paths, and paths that leave that
+directory. The same browser run checks every same-origin request and link response.
+There is no page, path, or file exemption list.
 
 ## What gets tested, and where
 
@@ -76,16 +84,19 @@ stage when their rules select them.
 2. **Pages build** is manual. Production refs publish the root site; ordinary branches
    publish an isolated preview path beside a root rebuilt from an approved production ref.
    The job calls `scripts/build/build_pages.sh public` and publishes the `public/` artifact.
-3. **Pages smoke** verifies the deployed manifest and every advertised course URL.
-4. **Human review** becomes available only after the exact commit passes the static gate
-   and live deployment smoke test.
+3. **Pages verification** checks the deployed manifest and every advertised course URL,
+   then renders every generated HTML file at desktop and narrow widths in dark and light mode without an allowlist.
+4. **Human review** becomes available only after the exact commit passes the static gate,
+   live deployment smoke, and exhaustive theme rendering.
 
 ### GitLab Pages (private pre-release)
 
-`.gitlab-ci.yml` defines `test`, `deploy`, `verify`, and `review` stages. The manual
+The inert `.gitlab-ci.yml` includes owner-gated core and SCA modules. `.gitlab/ci/core.yml`
+defines `test`, `deploy`, `verify`, and `review` stages. The manual
 `pages` job builds `public/` and publishes either a production ref or a branch preview.
 GitLab Pages serves the private pre-release review surface under repository access
-controls. `pages_smoke` checks the live result before `human_review` can be played.
+controls. `pages_smoke` checks the live result and `theme_runtime` checks every generated
+HTML file at desktop and narrow widths in dark and light mode before `human_review` can be played.
 
 #### Branch-preview behavior
 
@@ -127,6 +138,11 @@ The preview job keeps both cleanup controls:
   stale schemas, missing readiness flags, and absent dependency evidence.
 - `pages_smoke` verifies the live root foyer, branch foyer, manifests, course URLs,
   dependency dashboard, package inventory, and browser SBOM.
+- `theme_runtime` discovers every generated `.html` file recursively and renders both
+  themes. In branch pipelines it audits the complete branch-owned preview subtree; production
+  pipelines audit the complete production artifact. The protected production-root copy bundled
+  beside a branch preview belongs to the already-published production ref and is not silently
+  reclassified as branch output. There is no per-file opt-in, exclusion list, or non-blocking result.
 - `resource_group: pages-site` serializes preview and production deployments.
 - `build_pages.sh` rejects unsafe output, course, source-mirror, and branch-prefix paths.
 
@@ -136,9 +152,26 @@ separate staging project or true parallel Pages deployments when the host suppor
 
 ### GitHub Pages (external release)
 
-`.github/workflows/pages.yml` runs the identical gate, then builds `public/` and
-deploys via the official GitHub Pages actions on pushes to the default branch. This
-is the first-class public course. A future `docs.nvidia.com/learning/nemoclaw` entry
+`.github/workflows/pages.yml` runs the identical gate, then separates artifact creation
+from deployment on pushes to the default branch. The read-only `build-and-verify` job
+builds `public/`, verifies that `gate.json` names the same commit, rejects symlinks and
+remote executable references, writes a SHA-256 inventory, and exercises the generated
+tree in Chromium. The artifact gate also caps file count, individual and total size,
+directory depth, archive size, and expansion ratio. Only that immutable `github-pages`
+artifact can reach the `deploy` job.
+
+Protect the `github-pages` environment with required reviewers and prevent self-review.
+The reviewer inspects the completed build, browser logs, and downloadable artifact before
+approving deployment. After approval, the deploy job downloads the same Actions artifact,
+rejects traversal, links, devices, duplicate members, unsupported types, and resource-bound
+violations before extraction, then verifies its embedded SHA-256 inventory again before `deploy-pages` receives
+write and OIDC permissions. A source checkout or a newly rebuilt tree is never substituted at
+that boundary. A separate read-only job waits for the HTTPS deployment, requires the live
+manifest to equal the reviewed manifest, and downloads every listed object to compare its digest.
+Artifact checks reduce accidental or unauthorized execution paths; the required human review
+remains responsible for judging the intended HTML and JavaScript behavior.
+
+This is the first-class public course. A future `docs.nvidia.com/learning/nemoclaw` entry
 will route learners into this low-friction static experience.
 
 ### NemoClaw launchable (same-origin alternative)
@@ -156,3 +189,8 @@ the NemoClaw repository owns the production launchable integration and deploymen
 Both providers call the same `scripts/build/build_pages.sh`, so the GitLab pre-release and
 the GitHub external site are byte-identical builds. Only one course ships: the
 `web/nemoclaw/` browser course, bundled into `public/nemoclaw/`.
+
+Deploy jobs build only committed material snapshots. The preceding gate verifies their complete
+digests and performs the policy-appropriate live drift check; the assembler then reuses that
+same-commit report without changing tracked source bytes. A fresh local build may refresh materials
+only when it also regenerates validation.

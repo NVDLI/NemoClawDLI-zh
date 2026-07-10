@@ -27,10 +27,28 @@
   ],
   "inventory_entries": [
     {
-      "path": "LICENSE.md",
+      "path": "LICENSE",
       "kind": "license",
       "license": "Apache-2.0",
       "disposition": "required root license"
+    },
+    {
+      "path": "DCO.md",
+      "kind": "contribution_certificate",
+      "license": "DCO-1.1",
+      "disposition": "complete verbatim Developer Certificate of Origin 1.1 and signoff guidance"
+    },
+    {
+      "path": "THIRD-PARTY-NOTICES.md",
+      "kind": "third-party-notice-index",
+      "license": "mixed-per-linked-record",
+      "disposition": "top-level pointer to software, material, license, attribution, and vendor-modification evidence"
+    },
+    {
+      "path": "THIRD_PARTY_LICENSES.md",
+      "kind": "third-party-inventory",
+      "license": "mixed-per-entry",
+      "disposition": "static dependency, license-identifier, container-boundary, and material-provenance list"
     },
     {
       "path": "CONTRIBUTING.md",
@@ -131,8 +149,8 @@
     {
       "path": "web/nemoclaw/assets/favicon.ico",
       "kind": "course-asset",
-      "license": "Apache-2.0",
-      "disposition": "course favicon"
+      "license": "external-terms",
+      "disposition": "NVIDIA corporate favicon; NVIDIA Logo and Brand Guidelines and trademark rights apply"
     },
     {
       "path": "web/nemoclaw/assets/cli_readme_claude-code.txt",

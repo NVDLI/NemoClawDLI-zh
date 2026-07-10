@@ -10,15 +10,6 @@
 <link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.min.css"/>
 <script src="vendor/codemirror-5.65.21.min.js"></script>
 <style>
-  .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
-  .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
-  .CodeMirror-vscrollbar { display: none; }
-  .CodeMirror-gutters { background: #0d0d0d; border-right: 1px solid #2a2a2a; }
-  .CodeMirror-linenumber { color: #6a6a6a; padding: 0 8px 0 6px; font-size: .76rem; }
-  .CodeMirror-lines { padding: 10px 0; }
-  .cm-s-monokai.CodeMirror { background: #0d0d0d; color: #f8f8f2; }
-  .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
-  .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
 </style>
 <style>
   .video-wrap {
@@ -34,7 +25,7 @@
 
   .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 1em 0; }
   @media (max-width: 720px) { .card-grid { grid-template-columns: 1fr; } }
-  .step-card { background: var(--e1); border: 1px solid var(--bd); border-left: 3px solid var(--g); border-radius: 6px; padding: 14px 16px; }
+  .step-card { background: var(--e1); border: 1px solid var(--bd); border-radius: 6px; padding: 14px 16px; }
   .step-card h3 { margin: 0 0 .35em; font-size: .98rem; color: var(--gs); }
   .step-card p { margin: .25em 0; font-size: .86rem; color: var(--td); line-height: 1.55; }
   .step-card a.btn { display: inline-block; margin-top: .6em; padding: 6px 12px; font-size: .8rem;
@@ -47,6 +38,7 @@
     background: var(--g); color: #000; margin: .4em 0 1em;
   }
   .action-btn:hover { background: var(--gs); text-decoration: none; }
+  :root[data-theme="light"] .action-btn { color: #fff; }
   .action-btn.secondary {
     background: var(--e2); color: var(--td);
     border: 1px solid var(--bd); margin-left: 8px;
@@ -56,7 +48,7 @@
   .small-links a { color: var(--td); margin-right: 14px; }
   .small-links a:hover { color: var(--g); }
 
-  .pattern { margin: 1.2em 0; padding: 14px 18px; background: rgba(118,185,0,.06); border-left: 3px solid var(--g); border-radius: var(--r); }
+  .pattern { margin: 1.2em 0; padding: 14px 18px; background: rgba(118,185,0,.06); border: 1px solid var(--bd); border-radius: var(--r); }
   .pattern-list { list-style: none; padding-left: 0; margin: 1.2em 0; }
   .pattern h3 { margin: 0 0 .4em; font-size: 1rem; color: var(--gs); }
   .pattern p { margin: .4em 0; font-size: .92rem; color: var(--td); line-height: 1.6; }
@@ -95,8 +87,8 @@
       kernel-level sandbox, and measured the blast radius the policy leaves.
     </p>
     <p class="lead">
-      A real deployment adds its own data and users. The remaining choices are
-      where to deploy it, how to bring in your own knowledge, and which open
+      A real deployment adds its own data and users. You now need to choose where
+      to deploy it, how to bring in your own knowledge, and which open
       problems matter once the basics hold.
     </p>
   </div>
@@ -121,7 +113,7 @@
         documentation as requirements and interfaces evolve.
       </li>
       <li>
-        <a href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com</a>
+        <a href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener">build.nvidia.com</a>
         hosts OpenAI-compatible endpoints for every NVIDIA-hosted model.
         The Python and JS examples in this course paste in here
         unchanged; swap the <code>baseURL</code> from your launchable's
@@ -130,7 +122,7 @@
         current service terms.
       </li>
       <li>
-        <a href="https://build.nvidia.com/spark/nemoclaw-applications" target="_blank" rel="noopener">NemoClaw applications</a>
+        <a href="https://build.nvidia.com/spark/nemoclaw-applications?ncid=ref-dli-146986" target="_blank" rel="noopener">NemoClaw applications</a>
         is the companion gallery for the launchable you ran. NVIDIA's
         DGX Spark playbooks walk complete NemoClaw agents end to end,
         including a daily news digest, a software-development agent, a
@@ -211,7 +203,7 @@
         on-prem retrieval stack that keeps data inside your VPC.
       </li>
       <li>
-        <a href="https://build.nvidia.com/blueprints" target="_blank" rel="noopener">NVIDIA AI Blueprints</a>
+        <a href="https://build.nvidia.com/blueprints?ncid=ref-dli-146986" target="_blank" rel="noopener">NVIDIA AI Blueprints</a>
         give reference implementations for common agent shapes: a RAG
         chatbot, a multimodal PDF extractor, a research
         assistant. Each blueprint is the Research Agent (2c)
@@ -354,7 +346,7 @@
       <li>Christiano et al. (2017). <a href="https://arxiv.org/abs/1706.03741" target="_blank" rel="noopener">Deep RL from Human Preferences (RLHF).</a> <code>arXiv:1706.03741</code>.</li>
       <li>Rafailov et al. (2023). <a href="https://arxiv.org/abs/2305.18290" target="_blank" rel="noopener">Direct Preference Optimization (DPO).</a> <code>arXiv:2305.18290</code>.</li>
       <li>Bai et al. (2022). <a href="https://arxiv.org/abs/2212.08073" target="_blank" rel="noopener">Constitutional AI.</a> <code>arXiv:2212.08073</code>.</li>
-      <li><a href="https://build.nvidia.com/nvidia/aiq" target="_blank" rel="noopener">NVIDIA AI-Q Blueprint</a> · <a href="https://github.com/langchain-ai/deepagents" target="_blank" rel="noopener">deepagents</a>.</li>
+      <li><a href="https://build.nvidia.com/nvidia/aiq?ncid=ref-dli-146986" target="_blank" rel="noopener">NVIDIA AI-Q Blueprint</a> · <a href="https://github.com/langchain-ai/deepagents" target="_blank" rel="noopener">deepagents</a>.</li>
     </ul>
   </div>
   </div>
@@ -400,7 +392,7 @@
         <p>The planner, sub-agent delegation, and virtual-filesystem memory you hand-rolled in Module 2c, built here with LangChain's deepagents library and the NVIDIA AI-Q Blueprint.</p>
         <a class="btn" href="https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/how-to-build-deep-ai-agents" target="_blank" rel="noopener">Start →</a>
       </div>
-      <div class="step-card" style="border-left-color:var(--gs)">
+      <div class="step-card">
         <h3>Lesson 6 · How to Build a Safer Autonomous Agent using OpenClaw</h3>
         <p>This course. The containment work from Modules 3 and 4: deny-by-default network, Landlock filesystem, seccomp hardening, credential isolation, and continuous safety evaluation on a long-running claw.</p>
         <a class="btn" href="https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/how-to-build-safer-autonomous-agent-using-openclaw" target="_blank" rel="noopener">Start →</a>
@@ -556,7 +548,7 @@
 
   <div class="foot-nav">
     <a href="04b-modern-clis.html">← Module 4b: Modern CLIs</a>
-    <a class="next" href="../index.html">↩ Back to course home</a>
+    <a class="next" href="index.html">↩ Back to course home</a>
   </div>
 </main>
 

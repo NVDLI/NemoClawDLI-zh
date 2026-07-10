@@ -213,6 +213,26 @@
     },
     {
       "type": "library",
+      "name": "js-yaml",
+      "version": "5.2.1",
+      "purl": "pkg:npm/js-yaml@5.2.1",
+      "bom-ref": "pkg:npm/js-yaml@5.2.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "nemoclaw:relationship",
+          "value": "direct"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "langsmith",
       "version": "0.7.14",
       "purl": "pkg:npm/langsmith@0.7.14",

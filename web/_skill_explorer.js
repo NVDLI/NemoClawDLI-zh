@@ -1,20 +1,22 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 /* _skill_explorer.js is a reusable, self-contained folder explorer for any SKILL.html.
  *
  * A folder's SKILL.html drops in a config and this script turns it into a live explorer:
  * an index that documents and points at every file in the folder (flat or grouped into
  * sections), an in-context source viewer (real file text, syntax-highlighted), guided
- * source tours, an LLM-assisted code explainer (build.nvidia.com through the course CORS
- * proxy), and a self-assess pass that fetches every documented file and reports drift
+ * source tours, an LLM-assisted code explainer (through the active course model route),
+ * and a self-assess pass that fetches every documented file and reports drift
  * against a recorded byte fingerprint. Read-only: it opens, tours, copies, and downloads
  * source; it never writes.
  *
  * One framer, parameterized. The validator UI, the course pages, and every folder explorer
- * share ONE definition of the session latches through the SESSIONS registry below, so a
- * build.nvidia.com key (nvapi) or an OpenClaw launchable (nemoclaw_clawrawurl / token) set
- * anywhere is seen everywhere. A config picks which ties it needs.
+ * share the course model registry. The explorer stores only the canonical build.nvidia.com
+ * key (`nvapi`); model URL, model ID, routing, and attribution come from the course runtime.
  *
- * No dependency on the course _shared.js, so a folder at any depth can use it via a relative
- * path. The config lives inline as <script type="application/json" id="explorer-config">.
+ * The renderer resolves the canonical course runtime from either deployed location. The config
+ * lives inline as <script type="application/json" id="explorer-config">.
  * File paths are relative to the SKILL.html, so the same page works in the lab and on deploy.
  *
  * Config shape:
@@ -40,19 +42,23 @@
     return new URL(directory + file, EXPLORER_URL).href;
   }
 
-  // The single source of truth for the session latches. Every explorer, the course pages,
-  // and the validator read and write THESE localStorage keys, never their own, so a
-  // credential entered in one surface is live in all of them.
+  var COURSE_RUNTIME_PROMISE = null;
+  function courseRuntime() {
+    if (COURSE_RUNTIME_PROMISE) return COURSE_RUNTIME_PROMISE;
+    var path = new URL(EXPLORER_URL).pathname;
+    var relative = /\/nemoclaw\/_skill_explorer\.js$/.test(path)
+      ? "scripts/_shared.js"
+      : "nemoclaw/scripts/_shared.js";
+    COURSE_RUNTIME_PROMISE = import(new URL(relative, EXPLORER_URL).href);
+    return COURSE_RUNTIME_PROMISE;
+  }
+
+  // Explorer-only presentation for shared course credentials. Endpoint and model ownership
+  // stays in web/nemoclaw/scripts/_shared.js; ask() calls that runtime instead of rebuilding it.
   var SESSIONS = {
     build: {
       kind: "key", keyVar: "nvapi", label: "build.nvidia.com key", placeholder: "nvapi-...",
-      endpoint: "https://nvidia-api-cors-proxy.vkudlay.workers.dev/v1", billing: "dli-nemoclaw-web",
-      note: "Model calls. Stored as localStorage.nvapi, the same key the course uses."
-    },
-    openclaw: {
-      kind: "gateway", urlVar: "nemoclaw_clawrawurl", tokenVar: "nemoclaw_clawtoken",
-      label: "OpenClaw launchable", placeholder: "https://nemoclaw-<id>.brevlab.com",
-      note: "The live agent gateway. URL + token in localStorage.nemoclaw_clawrawurl / .nemoclaw_clawtoken, shared with the course."
+      note: "Model calls use the chat route and model saved on the course home page or in Module 1a."
     },
     service: {
       kind: "proxy", label: "in-network services",
@@ -78,7 +84,7 @@
     var ext = (path.split(".").pop() || "").toLowerCase();
     return { js: "javascript", mjs: "javascript", ts: "typescript", py: "python", sh: "bash",
              json: "json", html: "xml", htm: "xml", css: "css", md: "markdown", tf: "hcl",
-             yml: "yaml", yaml: "yaml", toml: "ini", txt: "plaintext", dockerfile: "dockerfile" }[ext] || "plaintext";
+             yml: "yaml", yaml: "yaml", toml: "ini", txt: "plaintext", dockerfile: "plaintext" }[ext] || "plaintext";
   }
   function isMarkdown(path) { return /\.(?:md|markdown)$/i.test(path || ""); }
   function safeMarkdownHtml(html) {
@@ -105,26 +111,33 @@
     return slug;
   }
 
-  function injectChrome() {
+  function injectChrome(loadSourceHighlighter) {
     // Apply a saved manual theme choice before any content is built (the framer renders its body in JS, so this is flash-free).
     // With no saved choice the palette below follows the OS.
     try { var _t = localStorage.getItem("theme"); if (_t) document.documentElement.setAttribute("data-theme", _t); } catch (e) {}
-    if (document.head.querySelector('link[data-hljs]')) return;
-    var css = el("link"); css.rel = "stylesheet"; css.href = HLJS_CSS; css.dataset.hljs = "1";
-    document.head.appendChild(css);
-    if (!window.hljs) { var js = el("script"); js.src = HLJS_JS; js.defer = true; document.head.appendChild(js); }
+    if (loadSourceHighlighter && !document.head.querySelector('link[data-hljs]')) {
+      var css = el("link"); css.rel = "stylesheet"; css.href = HLJS_CSS; css.dataset.hljs = "1";
+      document.head.appendChild(css);
+    }
+    if (loadSourceHighlighter && !window.hljs) { var js = el("script"); js.src = HLJS_JS; js.defer = true; document.head.appendChild(js); }
+    if (document.head.querySelector('style[data-skill-chrome]')) return;
     var s = el("style");
-    var LIGHT = "--g:#76b900;--gs:#4a7a00;--bg:#ffffff;--e1:#f6f8fa;--e2:#eef1f4;--e3:#e1e6eb;--tx:#1a1a1a;--td:#3b3b3b;--tf:#57606a;--err:#d1242f;--warn:#9a6700;color-scheme:light";
+    s.dataset.skillChrome = "1";
+    var LIGHT = "--g:#3f6900;--gs:#3f6900;--bg:#ffffff;--e1:#f6f8fa;--e2:#eef1f4;--e3:#e1e6eb;--tx:#1a1a1a;--td:#3b3b3b;--tf:#4b5563;--acc:#0969da;--reason:#8250df;--artifact-text:#0969da;--err:#a31520;--warn:#9a6700;color-scheme:light";
     s.textContent = [
       ":root{--g:#76b900;--gs:#aee23a;--bg:#0d0d0d;--e1:#161616;--e2:#1e1e1e;--e3:#2a2a2a;",
-      "--tx:#f2f2f2;--td:#b0b0b0;--tf:#8a8a8a;--err:#ff7b72;--warn:#e3b341;--mono:ui-monospace,Consolas,monospace}",
+      "--tx:#f2f2f2;--td:#b0b0b0;--tf:#8a8a8a;--acc:#3b82f6;--reason:#c4b5fd;--artifact-text:#9bdcff;--err:#ff7b72;--warn:#e3b341;--mono:ui-monospace,Consolas,monospace}",
       // Light palette: the same shared tokens flipped. Forced by the topbar toggle (data-theme), and
       // applied automatically when the OS prefers light and the reader has made no manual choice.
       // Same contract and token values as the course pages, so the whole stack themes as one.
       ":root[data-theme=\"light\"]{" + LIGHT + "}",
       "@media(prefers-color-scheme:light){:root:not([data-theme=\"dark\"]):not([data-theme=\"light\"]){" + LIGHT + "}}",
       "*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.55 system-ui,sans-serif}",
-      "a{color:var(--g)}code{font-family:var(--mono)}",
+      "a{color:var(--g)}code{font-family:var(--mono);max-width:100%;overflow-wrap:anywhere;word-break:break-word}",
+      "body>main{width:100%;max-width:88rem;margin:0 auto;padding:1rem clamp(1rem,4vw,2rem);min-width:0}body>main pre{max-width:100%;overflow:auto}body>main pre code{white-space:pre-wrap;word-break:break-word}",
+      ":root[data-theme=\"light\"] body h2,:root[data-theme=\"light\"] body h3{color:var(--tx)!important}",
+      ":root[data-theme=\"light\"] body th{color:var(--tx)!important}",
+      ":root[data-theme=\"light\"] .console button:not(.danger){color:#fff!important}",
       // shared sticky topbar (the equivalent of the course nav, for every framer page):
       // always a way back (home + up); links are real <a href> so the link graph sees them.
       ".sx-topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;flex-wrap:wrap;",
@@ -135,17 +148,42 @@
       ".sx-topbar .sx-theme{margin-left:auto;flex:0 0 auto;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1;cursor:pointer;background:transparent;color:var(--td);border:1px solid var(--e3);border-radius:7px}",
       ":root[data-theme=\"light\"] .sx-topbar{background:var(--bg)}",
       "@media(prefers-color-scheme:light){:root:not([data-theme=\"dark\"]) .sx-topbar{background:var(--bg)}}",
+      ".sx-page-topbar{background:var(--bg)!important;color:var(--tx)!important;border-color:var(--e3)!important}",
+      ".sx-page-topbar .sx-page-nav{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0}",
+      ".sx-page-topbar .sx-page-nav a{color:var(--td)!important;border:0!important;padding:0!important;text-decoration:none}",
+      ".sx-page-topbar .sx-page-nav a:first-child{color:var(--gs)!important;font-weight:700;letter-spacing:.04em}",
+      ".sx-page-topbar .sx-page-nav a:hover{color:var(--gs)!important}",
+      // Hand-authored and generated static SKILL bodies remain useful without JS. Once the
+      // shared renderer loads, bind them to its palette so one theme choice colors whole page.
+      ".skill-static{background:var(--bg)!important;color:var(--tx)!important;border-color:var(--e3)!important}",
+      ".skill-static p,.skill-static .skill-card span,.skill-static .export-status,.skill-static .filter-field legend,.skill-static .export-controls>label{color:var(--td)!important}",
+      ".skill-static h1,.skill-static a,.skill-static .skill-card b,.skill-static .skill-cmd b{color:var(--gs)!important}",
+      ".skill-static h2,.skill-static h3,.skill-static .skill-cmd code,.skill-static code.skill-cmd{color:var(--tx)!important}",
+      ".skill-static .skill-card,.skill-static .skill-cmd,.skill-static .filter-field,.skill-static .export-table-wrap{background:var(--e1)!important;border-color:var(--e3)!important}",
+      ".skill-static .skill-note{background:rgba(118,185,0,.08)!important;color:var(--tx)!important}",
+      ".skill-static input,.skill-static select,.skill-static button{background:var(--bg)!important;color:var(--tx)!important;border-color:var(--e3)!important}",
+      ".skill-static .filter-chip{background:var(--e1)!important;color:var(--td)!important;border-color:var(--e3)!important}",
+      ".skill-static .filter-chip:has(input:checked){background:rgba(118,185,0,.14)!important;color:var(--tx)!important;border-color:var(--g)!important}",
+      ".skill-static .export-table th{background:var(--e2)!important;color:var(--gs)!important;border-color:var(--e3)!important}",
+      ".skill-static .export-table td{color:var(--td)!important;border-color:var(--e3)!important}",
+      ".skill-static .filter-guide,.skill-static .filter-guide li{color:var(--td)!important}",
+      ".skill-static .filter-guide strong,.skill-static .filter-guide code{color:var(--tx)!important}",
+      ".skill-static pre,.skill-static code{max-width:100%;overflow-wrap:anywhere}.skill-static pre{overflow:auto}.skill-static pre code{white-space:pre-wrap;word-break:break-word}",
+      ".skill-static .skill-cmds,.skill-static .skill-grid,.skill-static .skill-cmd,.skill-static .skill-card{min-width:0;max-width:100%}",
+      // Shared wide-screen frame. Existing tables/source panels keep their own overflow behavior.
+      ".skill-static,.sx-head,.sx-wrap,.rp-head,.rp-wrap{width:100%;max-width:88rem;margin-left:auto;margin-right:auto}",
       ".sx-head{padding:1.1rem clamp(1rem,4vw,2rem) .6rem;border-bottom:1px solid var(--e3)}",
       ".sx-head h1{margin:.1em 0;font-size:1.45rem;color:var(--g)}",
       ".sx-lead{color:var(--td);max-width:64rem;font-size:.95rem}",
       ".sx-wrap{display:grid;grid-template-columns:320px 1fr;min-height:70vh}",
-      "@media(max-width:820px){.sx-wrap{grid-template-columns:1fr}}",
+      "@media(max-width:820px){.sx-wrap{grid-template-columns:1fr}.skill-static nav,.skill-static .skill-nav{display:flex;flex-wrap:wrap;gap:8px;min-width:0}.skill-static h1,.skill-static h2,.skill-static p,.skill-static a,.skill-static code,.skill-static span,.sx-card .nm,.sx-card .ds{overflow-wrap:anywhere;word-break:break-word}.skill-static table,.sx-readme table{display:block;width:100%;max-width:100%;overflow-x:auto}}",
       ".sx-rail{border-right:1px solid var(--e3);padding:1rem .7rem 4rem;min-width:0}",
       ".sx-rail h3{font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--tf);margin:1.2em 0 .5em}",
       ".sx-file{display:block;width:100%;text-align:left;background:none;border:0;border-radius:7px;color:var(--td);",
       "padding:8px 10px;cursor:pointer;font:inherit}",
       ".sx-file:hover{background:var(--e1);color:var(--tx)}.sx-file.sel{background:var(--e1);color:var(--gs)}",
       ".sx-file .nm{font-family:var(--mono);font-size:.85rem;display:flex;justify-content:space-between;gap:8px}",
+      ".sx-file .nm>*{min-width:0;overflow-wrap:anywhere;word-break:break-word}",
       ".sx-file .rl{font-size:.76rem;color:var(--tf)}",
       ".sx-dot{width:8px;height:8px;border-radius:999px;flex:none;align-self:center}",
       ".sx-dot.ok{background:var(--g)}.sx-dot.drift{background:var(--warn)}.sx-dot.gone{background:var(--err)}",
@@ -175,6 +213,7 @@
       ".sx-answer{background:var(--e1);border:1px solid var(--e3);border-radius:8px;padding:11px 14px;margin-top:.7em;white-space:pre-wrap;font-size:.92rem;line-height:1.6}",
       ".sx-answer.err{border-color:var(--err);color:var(--err)}",
       ".sx-send{background:var(--g);color:#0a0a0a;border:0;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;margin-top:.5em}",
+      ":root[data-theme=\"light\"] .sx-send{color:#fff}",
       ".sx-send:disabled{opacity:.5;cursor:wait}",
       ".sx-related a{display:inline-block;margin:0 12px 6px 0;font-size:.84rem}",
       "a.sx-file{text-decoration:none}a.sx-file:hover{text-decoration:none}",
@@ -183,16 +222,25 @@
       ".sx-readme h2{font-size:1.2rem;border-bottom:1px solid var(--e3);padding-bottom:.2em;margin:1.4em 0 .5em}",
       ".sx-readme h3{font-size:1.02rem;margin:1em 0 .3em}",
       ".sx-readme p,.sx-readme li{color:var(--td)}.sx-readme strong{color:var(--tx)}",
+      ".sx-readme a,.sx-readme code{overflow-wrap:anywhere;word-break:break-word}",
       ".sx-readme code{background:var(--e1);border:1px solid var(--e3);border-radius:4px;padding:1px 5px;font-size:.86em;font-family:var(--mono)}",
       ".sx-readme pre{background:var(--bg);border:1px solid var(--e3);border-radius:8px;padding:12px;overflow:auto}.sx-readme pre code{border:0;background:none;padding:0}",
       ".sx-readme table{border-collapse:collapse;font-size:.88rem;margin:.6em 0}.sx-readme td,.sx-readme th{border:1px solid var(--e3);padding:4px 10px;text-align:left}",
       ".sx-readme a{color:var(--g)}.sx-readme blockquote{border-left:3px solid var(--e3);margin:.6em 0;padding-left:1em;color:var(--tf)}",
       ".sx-readme img{max-width:100%;height:auto}.sx-readme hr{border:0;border-top:1px solid var(--e3);margin:1.4em 0}",
       ".sx-readme h1,.sx-readme h2,.sx-readme h3,.sx-readme h4,.sx-readme h5,.sx-readme h6{scroll-margin-top:4.5rem}",
+      ":root[data-theme=\"light\"] .hljs{color:var(--tx)!important}:root[data-theme=\"light\"] .hljs-comment,:root[data-theme=\"light\"] .hljs-quote,:root[data-theme=\"light\"] .hljs-meta{color:var(--tf)!important}",
+      ":root[data-theme=\"light\"] .hljs-string,:root[data-theme=\"light\"] .hljs-attr,:root[data-theme=\"light\"] .hljs-addition,:root[data-theme=\"light\"] .hljs-emphasis,:root[data-theme=\"light\"] .hljs-name,:root[data-theme=\"light\"] .hljs-bullet,:root[data-theme=\"light\"] .hljs-strong{color:var(--g)!important}",
+      ".hljs-section{color:var(--artifact-text)!important}",
+      ":root[data-theme=\"light\"] .hljs-keyword,:root[data-theme=\"light\"] .hljs-type,:root[data-theme=\"light\"] .hljs-doctag{color:var(--reason)!important}",
+      ":root[data-theme=\"light\"] .hljs-number,:root[data-theme=\"light\"] .hljs-literal,:root[data-theme=\"light\"] .hljs-attr,:root[data-theme=\"light\"] .hljs-variable{color:var(--acc)!important}",
+      ":root[data-theme=\"light\"] .hljs-built_in,:root[data-theme=\"light\"] .hljs-operator,:root[data-theme=\"light\"] .hljs-attribute,:root[data-theme=\"light\"] .hljs-template-variable,:root[data-theme=\"light\"] .hljs-symbol,:root[data-theme=\"light\"] .hljs-bullet,:root[data-theme=\"light\"] .hljs-selector-attr{color:var(--acc)!important}",
+      ":root[data-theme=\"light\"] .hljs-regexp,:root[data-theme=\"light\"] .hljs-subst,:root[data-theme=\"light\"] .hljs-selector-tag,:root[data-theme=\"light\"] .hljs-selector-pseudo{color:var(--reason)!important}",
+      ":root[data-theme=\"light\"] .hljs-title,:root[data-theme=\"light\"] .hljs-section,:root[data-theme=\"light\"] .hljs-selector-class,:root[data-theme=\"light\"] .hljs-selector-id{color:var(--acc)!important}:root[data-theme=\"light\"] .hljs-code{color:var(--tf)!important}",
       ".sx-heading-link{margin-left:.45em;color:var(--tf)!important;text-decoration:none;font-size:.72em;opacity:0}.sx-readme h1:hover .sx-heading-link,.sx-readme h2:hover .sx-heading-link,.sx-readme h3:hover .sx-heading-link,.sx-readme h4:hover .sx-heading-link,.sx-heading-link:focus{opacity:1}",
       ".sx-hubsec{margin:0 0 1.4em}.sx-hubsec h2{font-size:1.05rem;color:var(--tx);border-bottom:1px solid var(--e3);padding-bottom:.3em;margin:0 0 .6em}",
-      ".sx-hubgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(15rem,100%),1fr));gap:10px}",
-      ".sx-card{display:block;background:var(--e1);border:1px solid var(--e3);border-radius:8px;padding:11px 13px;text-decoration:none}",
+      ".sx-hubgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(15rem,100%),1fr));gap:10px;min-width:0;max-width:100%}",
+      ".sx-card{display:block;min-width:0;max-width:100%;background:var(--e1);border:1px solid var(--e3);border-radius:8px;padding:11px 13px;text-decoration:none}",
       ".sx-card:hover{border-color:var(--g);text-decoration:none}",
       ".sx-card .nm{font-family:var(--mono);font-size:.9rem;color:var(--gs);display:block;margin-bottom:.2em;word-break:break-word}",
       ".sx-card .ds{font-size:.82rem;color:var(--td);line-height:1.5}",
@@ -245,6 +293,7 @@
       ".rp-bar button{background:var(--e2);border:1px solid var(--e3);color:var(--tx);border-radius:7px;padding:7px 14px;font:inherit;font-weight:600;cursor:pointer}.rp-bar button.prim{background:var(--g);color:#0a0a0a;border-color:var(--g)}",
       ".ts-row{display:flex;align-items:center;gap:10px;margin:.5em 0}.ts-badge{font-family:var(--mono);font-size:.76rem;padding:2px 9px;border-radius:999px;border:1px solid var(--e3);color:var(--td)}",
       ".ts-badge.ok{background:var(--g);color:#000;border-color:var(--g)}.ts-badge.err{background:var(--err);color:#fff;border-color:var(--err)}.ts-badge.run{color:var(--gs)}",
+      ":root[data-theme=\"light\"] .rp-bar button.prim,:root[data-theme=\"light\"] .ts-badge.ok{color:#fff}",
       ".ts-pre{background:var(--e1);border:1px solid var(--e3);border-radius:8px;padding:12px;font:12px/1.5 var(--mono);overflow:auto;white-space:pre-wrap;margin:.4em 0}",
       ".ts-grid{display:grid;grid-template-columns:auto 1fr;gap:0;border:1px solid var(--e3);border-radius:8px;overflow:hidden;margin:.5em 0;font-size:.86rem}",
       ".ts-grid div{padding:6px 12px;border-bottom:1px solid var(--e3)}.ts-grid .k{font-family:var(--mono);color:var(--gs);font-size:.8rem;background:var(--e1)}"
@@ -280,12 +329,11 @@
     this.answerEl = null;
   }
 
-  // The first key-bearing tie drives the LLM explainer (which credential + endpoint it uses).
+  // The first key-bearing tie drives the LLM explainer credential.
   App.prototype.keyTie = function () {
     for (var i = 0; i < this.ties.length; i++) { var s = SESSIONS[this.ties[i]]; if (s.kind === "key") return s; }
     return SESSIONS.build;
   };
-  App.prototype.proxy = function () { return (this.cfg.proxy || this.keyTie().endpoint).replace(/\/+$/, ""); };
   App.prototype.key = function () { return localStorage.getItem(this.keyTie().keyVar) || ""; };
 
   App.prototype.files = function () {
@@ -477,17 +525,14 @@
           "Be concrete and brief. Reference line numbers and identifiers from the file. If the question is not " +
           "answerable from this file, say so.";
       var user = (hub ? "REPOSITORY README (" : "FILE: ") + self.current + (hub ? ")" : "") + "\n\n" + code + "\n\nQUESTION: " + question;
-      var headers = { "Content-Type": "application/json", "Authorization": "Bearer " + k };
-      if (tie.billing) headers["X-BILLING-SOURCE"] = tie.billing;
-      return fetch(self.proxy() + "/chat/completions", {
-        method: "POST", headers: headers,
-        body: JSON.stringify({ model: self.cfg.model || "nvidia/nemotron-3-nano-30b-a3b",
-                               messages: [{ role: "system", content: sys }, { role: "user", content: user }],
-                               max_tokens: 1024, temperature: 0.2 })
+      return courseRuntime().then(function (shared) {
+        return shared.chat({
+          model: self.cfg.model || null,
+          messages: [{ role: "system", content: sys }, { role: "user", content: user }],
+          max_tokens: 1024,
+          temperature: 0.2
+        });
       });
-    }).then(function (r) {
-      if (!r.ok) return r.text().then(function (t) { throw new Error("HTTP " + r.status + " " + t.slice(0, 200)); });
-      return r.json();
     }).then(function (j) {
       var msg = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
       ans.className = "sx-answer"; ans.textContent = msg || "(no answer)";
@@ -598,12 +643,6 @@
         var inp = el("input"); inp.type = "password"; inp.placeholder = s.placeholder; inp.value = localStorage.getItem(s.keyVar) || "";
         inp.oninput = function () { localStorage.setItem(s.keyVar, inp.value.trim()); };
         row.appendChild(inp);
-      } else if (s.kind === "gateway") {
-        var url = el("input"); url.placeholder = s.placeholder; url.value = localStorage.getItem(s.urlVar) || "";
-        url.oninput = function () { localStorage.setItem(s.urlVar, url.value.trim()); };
-        var tok = el("input"); tok.type = "password"; tok.placeholder = "token"; tok.value = localStorage.getItem(s.tokenVar) || "";
-        tok.oninput = function () { localStorage.setItem(s.tokenVar, tok.value.trim()); };
-        row.appendChild(url); row.appendChild(tok);
       }
       parent.appendChild(row);
       parent.appendChild(el("div", "sx-tie", "<span class=svc style='font-size:.78rem'>" + esc(s.note) + "</span>"));
@@ -636,8 +675,24 @@
   // so it survives the modes that set mount.innerHTML. nav = { home, up:{label,href} } from config.
   App.prototype.mountTopbar = function () {
     var nav = this.cfg.nav || {}, home = nav.home || "index.html";
+    var existing = document.querySelector('header[data-skill-header="1"]');
+    if (existing) {
+      existing.classList.add("sx-topbar", "sx-page-topbar");
+      var existingNav = existing.querySelector("nav");
+      if (existingNav) existingNav.classList.add("sx-page-nav");
+      if (!existing.querySelector(".sx-theme")) {
+        var theme = el("button", "sx-theme");
+        theme.type = "button";
+        theme.setAttribute("aria-label", "Toggle dark or light theme");
+        existing.appendChild(theme);
+      }
+      if (existing !== document.body.firstElementChild) document.body.insertBefore(existing, document.body.firstChild);
+      wireThemeToggle(existing.querySelector(".sx-theme"));
+      return existing;
+    }
     var h = '<div class="sx-topbar"><a class="sx-logo" href="' + home + '">NVIDIA DLI</a>';
     if (nav.up) h += '<a class="sx-up" href="' + nav.up.href + '">&uarr; ' + esc(nav.up.label) + '</a>';
+    if (nav.map) h += '<a class="sx-map" href="' + nav.map.href + '">' + esc(nav.map.label || "Map") + '</a>';
     h += '<span class="sx-crumb">' + esc(this.cfg.title || "") + '</span>';
     h += '<button type="button" class="sx-theme" aria-label="Toggle dark or light theme"></button></div>';
     this.mount.insertAdjacentHTML("afterbegin", h);
@@ -649,11 +704,13 @@
     if (cfg.mode === "report") return this.mountReport();
     if (cfg.mode === "tests") return this.mountTests();
     this.mountTopbar();
-    var head = el("header", "sx-head");
-    head.appendChild(el("p", null, "<a href='#' onclick='history.length>1?history.back():null;return false'>&larr; back</a>"));
-    head.appendChild(el("h1", null, esc(cfg.title || "Folder explorer")));
-    if (cfg.summary) head.appendChild(el("p", "sx-lead", esc(cfg.summary)));
-    this.mount.appendChild(head);
+    if (!document.querySelector(".skill-static")) {
+      var head = el("header", "sx-head");
+      head.appendChild(el("p", null, "<a href='#' onclick='history.length>1?history.back():null;return false'>&larr; back</a>"));
+      head.appendChild(el("h1", null, esc(cfg.title || "Folder explorer")));
+      if (cfg.summary) head.appendChild(el("p", "sx-lead", esc(cfg.summary)));
+      this.mount.appendChild(head);
+    }
 
     var wrap = el("div", "sx-wrap");
     this.railEl = el("nav", "sx-rail");
@@ -676,12 +733,12 @@
     ta.addEventListener("keydown", function (e) { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send.click(); } });
     ask.appendChild(send);
     this.answerEl = el("div", "sx-answer");
-    this.answerEl.textContent = "Open a file, then ask. Answers come from build.nvidia.com through the course proxy, keyed in your browser only.";
+    this.answerEl.textContent = "Open a file, then ask. Answers use the course model route and browser-stored key.";
     ask.appendChild(this.answerEl);
     main.appendChild(ask);
 
     this.answerEl.textContent = hub
-      ? "Ask about the repo, or follow a link to explore a folder. Answers come from build.nvidia.com through the course proxy, keyed in your browser only."
+      ? "Ask about the repo, or follow a link to explore a folder. Answers use the course model route and browser-stored key."
       : this.answerEl.textContent;
 
     this.paintRail();
@@ -999,13 +1056,20 @@
 
   function boot() {
     var cfgEl = document.getElementById("explorer-config");
-    if (!cfgEl) return;
+    var metaEl = document.getElementById("skill-meta");
+    if (!cfgEl && !metaEl) return;
+    injectChrome(!!cfgEl);
+    if (!cfgEl) {
+      var meta = {};
+      try { meta = JSON.parse(metaEl.textContent); } catch (e) {}
+      new App({ title: meta.title || meta.course || meta.service || "Directory" }, document.body).mountTopbar();
+      return;
+    }
     var cfg;
     try { cfg = JSON.parse(cfgEl.textContent); } catch (e) {
       document.body.appendChild(el("pre", null, "explorer-config JSON did not parse: " + esc(e.message)));
       return;
     }
-    injectChrome();
     var mount = document.getElementById("explorer") || document.body;
     new App(cfg, mount).mountUI();
   }

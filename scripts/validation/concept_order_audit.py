@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Required first-use concept order checks for the agent curriculum.
 
 This gate is intentionally narrow. It does not grade style and it does not create hover glossaries.

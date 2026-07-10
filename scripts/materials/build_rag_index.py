@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Build the prebuilt vector index for the Module 2b Index Agent (web/nemoclaw/02b-rag.html).
 
 This is the "index built offline, once" step the page teaches, made real. It embeds the

@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Static check that DOM colors are theme-dynamic.
 
 Theming flips a CSS-var palette under :root[data-theme="light"]; anything reaching
 the DOM via var(--x) flips for free. Flags what cannot: hard-coded color literals in
 inline styles (they outrank the light rules, so never flip) and var(--name) refs whose
 name is never defined (the lone fallback never flips). Scope: every course-shipped chrome
-script (discovered by glob, so a split of _shared.js into several modules stays covered) plus
-each page body and inline SVG; inline <script> in a page is excluded for the CSS scan
-(lesson/canvas content with its own palette), but SVG attribute literals are scanned everywhere.
-Advisory.  Run:  python3 scripts/validation/color_theme.py
+script, including Studio, plus every canonical page body and inline SVG. File discovery is by
+glob and has no page-level opt-out. The all-HTML browser audit in
+``scripts/skills/skill_renderer_runtime_audit.py`` covers every other repository and generated
+HTML file. Both checks are release blockers. Run: ``python3 scripts/validation/color_theme.py``.
 """
 from __future__ import annotations
 import re, sys, functools
@@ -62,13 +65,13 @@ def chrome_js() -> list:
     _shared.js is split into several modules (or a notebook-binding file is added), each new file is
     scanned the same way with nothing to update here, and the theme audit cannot silently go dark on
     code that just moved. Recurses, so a split into a subdir is covered too. Excludes node_modules,
-    the studio tool (its own palette, out of theme scope), and minified vendor bundles."""
+    and minified vendor bundles."""
     # Includes the framer (web/_skill_explorer.js) so the SKILL / tooling pages it renders are in
     # scope; its hard-coded code-well background (#0a0a0a) stayed invisible while only web/nemoclaw
     # was scanned.
     files = sorted(NEMO.rglob("*.js")) + [WEB / "_skill_explorer.js"]
     return [f for f in files
-            if f.exists() and _usable(f) and not f.name.startswith("studio") and not f.name.endswith(".min.js")]
+            if f.exists() and _usable(f) and not f.name.endswith(".min.js")]
 
 
 def style_files() -> list:
@@ -77,12 +80,17 @@ def style_files() -> list:
     return [f for f in sorted(NEMO.rglob("*.css")) if _usable(f)]
 
 
+def page_html() -> list[Path]:
+    """Every canonical browser page; names never opt out of the theme check."""
+    return sorted({*NEMO.glob("*.html"), *WEB.glob("*.html")})
+
+
 def defined_vars() -> set[str]:
     """Every CSS custom property the bundle DEFINES (a `--name:` declaration), gathered across the
     stylesheets and pages. A var() reference to a name not in this set has no value to flip, so the
     light theme never reaches it; collecting the definitions here is what makes that detectable."""
     names: set[str] = set()
-    for f in style_files() + sorted(NEMO.glob("*.html")) + sorted(WEB.glob("*.html")):
+    for f in style_files() + page_html():
         if f.exists():
             names |= set(re.findall(r"(--[A-Za-z0-9-]+)\s*:", f.read_text(errors="ignore")))  # `--name:` definitions
     return names
@@ -122,11 +130,6 @@ STYLE_BLOCK = re.compile(r"<style\b[^>]*>(.*?)</style>", re.S | re.I)
 # A stylesheet injected from JS: `styleEl.textContent = `...css...``.
 # The OpenClaw probe does exactly this, so its rules were invisible to both scan_inline and the <style> scan.
 STYLE_TEXTCONTENT = re.compile(r"\.textContent\s*=\s*`((?:[^`\\]|\\.)*)`", re.S)
-# The CodeMirror editor and the deepagents-cli terminal (.da-term) are intentionally dark in both
-# themes, so their rules are out of scope: a terminal pane stays dark on a light page by convention.
-_CM_SEL = re.compile(r"CodeMirror|\.cm-|\.da-term", re.I)
-
-
 def scan_style_blocks(text: str):
     """Hard-coded colors in CSS rulesets, whether in a <style> tag or injected from JS via
     `el.textContent = `...``. scan_inline only sees style= attributes and .style/.cssText, so a
@@ -144,8 +147,6 @@ def scan_style_blocks(text: str):
     bad = []
     for blk in blocks:
         for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", blk):
-            if _CM_SEL.search(m.group(1)):
-                continue
             bad += bad_in_style_body(m.group(2))
     return bad
 
@@ -353,12 +354,7 @@ def run(verbose=True):
             inline.append((rel, tok, prop))
         for snippet, reason in scan_js_theme_bake(t):  # render-time color bakes (output frozen vs the toggle)
             bake.append((rel, snippet, reason))
-    # Not theme-flipped student pages: the LMS studio export, the agent beacon, the course
-    # picker, and the cert page carry their own palettes and are out of the light/dark scope.
-    OUT_OF_SCOPE = {"studio.html", "SKILL.html", "courses.html", "cert.html"}
-    for f in sorted(NEMO.glob("*.html")) + sorted(WEB.glob("*.html")):
-        if f.name in OUT_OF_SCOPE:
-            continue
+    for f in page_html():
         raw = f.read_text(errors="ignore")
         body = SCRIPT.sub("", raw)                    # body only; <script> is lesson code
         rel = str(f.relative_to(WEB.parent))
@@ -386,7 +382,7 @@ def run(verbose=True):
                                "paper figure wrapper lacks --gfx-paper-surface"))
     # Second pass: every var() REFERENCE whose name is never defined anywhere (its lone fallback
     # never flips), scanned across the stylesheets, the chrome, and the pages.
-    for f in style_files() + chrome_js() + sorted(NEMO.glob("*.html")) + sorted(WEB.glob("*.html")):
+    for f in style_files() + chrome_js() + page_html():
         if not f.exists():
             continue
         rel = str(f.relative_to(WEB.parent))

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Static legibility / formatting checks the prose suites miss.
 
 Figures are inline or fetched SVG with a fixed viewBox and max-width, so on-screen text size is
@@ -10,7 +13,7 @@ the shared mobile lightbox contract that keeps detailed figures readable and pan
 bundle treats mobile-lightbox drift as required-tier; the other figure findings remain recommended.
 
 Checks: tiny-text, small-render, flex-parent, text-overflow, no-aria, img-no-alt, blank-link,
-dark-mode, canvas, crowded, mobile-zoom.
+dark-mode, injected-style-scope, canvas, crowded, mobile-zoom.
 Run:  python3 scripts/validation/figure_audit.py
 """
 from __future__ import annotations
@@ -168,6 +171,26 @@ def _dark_mode_problems(svg: str, where: str, meta: dict[str, object]):
     return out
 
 
+def _injected_style_scope_problems(svg: str, where: str, meta: dict[str, object]):
+    """Reject SVG-local styles that become document-global after ``mountFigures`` injects them.
+
+    A bare ``svg { ... }`` selector inside an external asset looks encapsulated when the file is
+    opened on its own. Once injected inline, it matches every later CanvasFlow/generated diagram on
+    the page. That is how the OpenShell figure's white standalone background recolored a separate
+    dark-mode graph canvas. Root rules must instead name the asset's own class.
+    """
+    if not meta.get("src"):
+        return []
+    out = []
+    for block in re.findall(r"<style\b[^>]*>(.*?)</style>", svg, re.S | re.I):
+        # This deliberately targets the dangerous document-wide root selector, including copies
+        # nested in @media blocks. Scoped forms such as svg.gfx-dark or .os-architecture are safe.
+        if re.search(r"(?:^|[},])\s*svg\s*\{", block, re.I):
+            out.append((where, "injected SVG style uses bare `svg` selector; scope it to the asset class so it cannot recolor other graphs"))
+            break
+    return out
+
+
 def _canvas_problems(svg: str, where: str, render_w: float):
     out = []
     vb = _viewbox(svg)
@@ -290,13 +313,27 @@ def _mobile_zoom_contract():
     return findings
 
 
+def _injected_style_scope_contract():
+    """Mutation proof for the cross-figure CSS leakage detector."""
+    where = "mutation.svg"
+    unsafe = '<svg class="probe"><style>svg{background:#fff}@media (prefers-color-scheme:dark){svg{background:#000}}</style></svg>'
+    safe = '<svg class="probe"><style>.probe{background:#fff}@media (prefers-color-scheme:dark){.probe{background:#000}}</style></svg>'
+    meta = {"src": "assets/figures/mutation.svg"}
+    findings = []
+    if not _injected_style_scope_problems(unsafe, where, meta):
+        findings.append(("scripts/validation/figure_audit.py", "injected-style-scope detector missed a bare svg selector"))
+    if _injected_style_scope_problems(safe, where, meta):
+        findings.append(("scripts/validation/figure_audit.py", "injected-style-scope detector rejected an asset-scoped selector"))
+    return findings
+
+
 def audit_file(path: Path):
     """Run render-size, legibility, and a11y checks on one page. This catches both inline
     SVG and fetched <div data-svg-src=...> course figures before they ship."""
     body = SCRIPT.sub("", path.read_text(errors="ignore"))  # skip lesson/canvas code
     col = column_for(path)
     rel = str(path.relative_to(WEB.parent))
-    tiny, small, noaria, over, dark, canvas, embedded_caption = [], [], [], [], [], [], []
+    tiny, small, noaria, over, dark, style_scope, canvas, embedded_caption = [], [], [], [], [], [], [], []
     for svg, where, fetched, meta in _svg_cases(path, body):
         # viewBox="minx miny width height" -> width is 3rd token
         vb = _viewbox(svg)
@@ -306,6 +343,7 @@ def audit_file(path: Path):
         label = (re.search(r'aria-label\s*=\s*"([^"]{0,42})', svg) or [None, "(no aria-label)"])[1]
         has_text = "<text" in svg
         dark += _dark_mode_problems(svg, where, meta)
+        style_scope += _injected_style_scope_problems(svg, where, meta)
         if fetched and has_text and not meta.get("fixed_white"):
             embedded_caption += _embedded_caption_problems(svg, where)
         if fetched and has_text and not meta.get("fixed_white") and meta.get("kind") == "img":
@@ -351,20 +389,21 @@ def audit_file(path: Path):
     blanks = [rel for m in re.finditer(r"<a\b[^>]*target\s*=\s*\"_blank\"[^>]*>", body)
               if "noopener" not in m.group(0)]
     crowded = _crowded_figures(rel, body)
-    return tiny, small, flex_parent, noaria, over, imgs, blanks, dark, canvas, crowded, embedded_caption
+    return tiny, small, flex_parent, noaria, over, imgs, blanks, dark, style_scope, canvas, crowded, embedded_caption
 
 
 def run(verbose=True):
     """Driver: audit every nemoclaw page plus the top-level web pages and aggregate the findings. It
     exists so the gate and a reviewer get one accounting of unreadable figure text, overflow, and
-    missing a11y across the bundle. Returns the five finding lists; the report and exit code use them."""
+    missing a11y across the bundle. Returns the category finding lists; the report and exit code use them."""
     files = sorted((WEB / "nemoclaw").glob("*.html")) + sorted(WEB.glob("*.html"))
-    tiny, small, flex_parent, noaria, over, imgs, blanks, dark, canvas, crowded, embedded_caption = [], [], [], [], [], [], [], [], [], [], []
+    tiny, small, flex_parent, noaria, over, imgs, blanks, dark, style_scope, canvas, crowded, embedded_caption = [], [], [], [], [], [], [], [], [], [], [], []
     for f in files:
-        t, s, fp, n, o, i, b, d, c, cr, ec = audit_file(f)      # per-page findings, by category
+        t, s, fp, n, o, i, b, d, ss, c, cr, ec = audit_file(f)      # per-page findings, by category
         tiny += t; small += s; flex_parent += fp; noaria += n; over += o; imgs += i; blanks += b
-        dark += d; canvas += c; crowded += cr; embedded_caption += ec
+        dark += d; style_scope += ss; canvas += c; crowded += cr; embedded_caption += ec
     mobile_zoom = _mobile_zoom_contract()
+    style_scope += _injected_style_scope_contract()
     if verbose:
         if tiny:
             print(f"[tiny text · rendered < {FLOOR}px] {len(tiny)}")
@@ -394,6 +433,10 @@ def run(verbose=True):
             print(f"[dark-mode-unfriendly SVG image] {len(dark)}")
             for rel, msg in dark:
                 print(f"        {rel}  {msg}")
+        if style_scope:
+            print(f"[injected SVG style escapes its asset] {len(style_scope)}")
+            for rel, msg in style_scope:
+                print(f"        {rel}  {msg}")
         if canvas:
             print(f"[oversized / uncropped SVG image] {len(canvas)}")
             for item in canvas:
@@ -411,16 +454,16 @@ def run(verbose=True):
             for rel, message in mobile_zoom:
                 print(f"        {rel}  {message}")
         total = (len(tiny) + len(small) + len(flex_parent) + len(noaria) + len(over) + len(imgs)
-                 + len(blanks) + len(dark) + len(canvas) + len(crowded) + len(embedded_caption)
+                 + len(blanks) + len(dark) + len(style_scope) + len(canvas) + len(crowded) + len(embedded_caption)
                  + len(mobile_zoom))
         print(f"\nfigure_audit: {total} finding(s) "
               f"(tiny {len(tiny)}, small {len(small)}, flex-parent {len(flex_parent)}, "
               f"overflow {len(over)}, no-aria {len(noaria)}, img-alt {len(imgs)}, blank-link {len(blanks)}, "
-              f"dark-mode {len(dark)}, canvas {len(canvas)}, crowded {len(crowded)}, "
+              f"dark-mode {len(dark)}, style-scope {len(style_scope)}, canvas {len(canvas)}, crowded {len(crowded)}, "
               f"embedded-caption {len(embedded_caption)}, mobile-zoom {len(mobile_zoom)})")
     return {"tiny": tiny, "small_render": small, "flex_parent": flex_parent, "overflow": over,
             "no_aria": noaria, "img_no_alt": imgs, "blank_link": blanks, "dark_mode": dark,
-            "canvas": canvas, "crowded": crowded, "embedded_caption": embedded_caption,
+            "style_scope": style_scope, "canvas": canvas, "crowded": crowded, "embedded_caption": embedded_caption,
             "mobile_zoom": mobile_zoom}
 
 

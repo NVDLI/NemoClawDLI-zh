@@ -1,8 +1,12 @@
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Project a reviewed sparse translation onto the current canonical page structure."""
 from __future__ import annotations
 
 import re
 
+from translate.code_localization import project_localized_code_templates
 from translate.localization_scope import translation_canonical
 from translate.translate_html_segments import extract_segments
 
@@ -42,6 +46,7 @@ def project_locale_html(source_raw: str, target_raw: str, shell_translations: di
     projected = source_raw
     for start, end, replacement in reversed(replacements):
         projected = projected[:start] + replacement + projected[end:]
+    projected = project_localized_code_templates(source_raw, target_raw, projected)
     target_lang = re.search(r'<html\b[^>]*\blang=["\']([^"\']+)', target_raw, re.I)
     if target_lang:
         projected = re.sub(r'(<html\b[^>]*\blang=["\'])[^"\']+(["\'])',

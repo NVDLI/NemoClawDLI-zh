@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Audit repo-level agent process guardrails."""
 from __future__ import annotations
 
@@ -27,6 +30,7 @@ REQUIRED = {
     "process_doc": [
         "Addresses #N",
         "Closes #N",
+        "Remaining issue work",
         "NemoClaw is the reference stack",
         "OpenClaw is the agent harness",
         "OpenShell is the sandbox boundary",

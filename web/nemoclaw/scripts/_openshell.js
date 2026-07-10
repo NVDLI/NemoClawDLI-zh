@@ -1,75 +1,183 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // OpenShell teaching surface for 04a (policy lab) and 04b (modern CLIs).
 // Holds the launchable PTY terminal, the sandbox-policy.rego port, the exec bridge, and the policy map.
 // Browser globals only; _shared.js re-exports these so a page can import from either module.
 
-// Open a PTY over the launchable's /ws/terminal WebSocket and run a command.
-// `cmd=bash` is the VM shell; `cmd=openshell sandbox connect <agent>` enters the agent's sandbox.
-// Auth rides the browser's Cloudflare Access cookie, so JS sets nothing on the socket.
-export async function terminal(cmd, { send = [], idleMs = 5000, totalMs = 25000, onChunk = null, baseUrl = null, signal = null } = {}) {
-  /* @doc <code>helpers.terminal(cmd, {send, idleMs, totalMs, onChunk})</code> ::
+import { accessProviderForOpenClawUrl, getOpenClawConnection, openclawWebSocketUrl } from "./_connection.js";
+import { filterOpenClawRuntimeNoise } from "./_runtime_text.js";
+
+const POLICY_YAML_MODULE_URL = "../vendor/js-yaml-5.2.1.esm.min.js";
+const POMERIUM_LOOPBACK_PROBES = Object.freeze({
+  "/healthz": "http://127.0.0.1/healthz",
+  "/api/agent": "http://127.0.0.1/api/agent",
+});
+
+// PTY helper: `bash` opens the host; `openshell sandbox connect <agent>` enters the agent.
+// Pomerium uses its authenticated direct PTY only. Cloudflare tries the direct
+// PTY first and may fall back to the configured relay. The direct path uses the
+// Access cookie established when the learner opens the launchable.
+export async function terminal(cmd, { send = [], idleMs = 5000, totalMs = 25000, openMs = 12000, onChunk = null, baseUrl = null, signal = null } = {}) {
+  /* @doc <code>helpers.terminal(cmd, {send, idleMs, totalMs, openMs, onChunk})</code> ::
        Open a PTY over your launchable's <code>/ws/terminal</code> WebSocket and run
        <code>cmd</code>. Use <code>"bash"</code> for the VM shell, or <code>"openshell sandbox
        connect &lt;agent&gt;"</code> to drop inside the kernel-sandboxed agent.
        <code>send</code> is an array of shell lines typed into the PTY in order (each gets
-       Enter). Auth rides your browser's Cloudflare Access cookie, so keep your launchable open
-       in another tab. Returns <code>{ output, raw, frames, exitCode }</code> (<code>output</code>
+       Enter). Cross-origin Brev terminals try the launchable's authenticated direct PTY, then the
+       configured relay; same-origin/local sessions connect directly. Returns <code>{ output, raw, frames, exitCode }</code> (<code>output</code>
        is ANSI-stripped; <code>exitCode</code> is the command's PTY exit status, or null if none
        arrived). Reads the launchable URL from the OpenClaw probe. Launchable only.
   */
-  const rawUrl = (baseUrl
-    || localStorage.getItem("nemoclaw_clawrawurl")
-    || localStorage.getItem("nemoclaw_clawurl") || "").replace(/\/+$/, "");
+  const connection = getOpenClawConnection();
+  const rawUrl = (baseUrl || connection.rawUrl).replace(/\/+$/, "");
   if (!rawUrl) throw new Error("No launchable URL set. Connect on the Kickstart page (Module 3a) first, or pass { baseUrl }.");
-  const wsUrl = rawUrl.replace(/^https/, "wss").replace(/^http(?!s)/, "ws")
-    + "/ws/terminal?cmd=" + encodeURIComponent(cmd);
+  const accessProvider = connection.accessProvider;
+  const accessSession = connection.accessSession;
+  const terminalPath = "/ws/terminal?cmd=" + encodeURIComponent(cmd);
+  const routed = openclawWebSocketUrl(rawUrl, "/ws/terminal?cmd=" + encodeURIComponent(cmd), accessSession, undefined, accessProvider);
+  const direct = routed.viaProxy
+    ? openclawWebSocketUrl(rawUrl, terminalPath, "", { enabled: false, base: "" })
+    : routed;
+  const wsUrls = direct.url && direct.url !== routed.url ? [direct.url, routed.url] : [routed.url];
+  let launchableOrigin = rawUrl;
+  try { launchableOrigin = new URL(rawUrl).origin; } catch (_) {}
   // Drop xterm control sequences so the returned text reads like a transcript.
   const strip = s => String(s)
     .replace(/\x1b\[[0-9;?]*[A-Za-z]/g, "").replace(/\x1b\][^\x07]*\x07/g, "")
     .replace(/\x1b[()][AB0]/g, "").replace(/[\r\x07]/g, "");
+  const clean = s => filterOpenClawRuntimeNoise(strip(s));
+  const terminalOpenError = () => {
+    const accessHint = routed.viaProxy
+      ? (accessSession
+          ? "Both the direct socket and hosted relay failed. Open the launchable, then paste a fresh matching access session in Module 3a."
+          : "The hosted relay has no Cloudflare Access session. Open the launchable, then paste a fresh CF_Authorization value in Module 3a.")
+      : "Reopen the launchable and verify that its terminal route is running.";
+    const error = new Error(
+      `Terminal did not open for ${launchableOrigin}. ` + accessHint
+    );
+    error.name = "TerminalConnectionError";
+    error.code = "TERMINAL_OPEN_TIMEOUT";
+    return error;
+  };
   return await new Promise((resolve, reject) => {
     let raw = "", frames = 0, opened = false, idleT = null, exitCode = null;
-    let ws; try { ws = new WebSocket(wsUrl); } catch (e) { return reject(e); }
-    const totalT = setTimeout(() => finish(), totalMs);
-    const openT  = setTimeout(() => {
-      if (!opened) { try { ws.close(); } catch (_) {} reject(new Error(
-        "Terminal did not open in 12s. Your Cloudflare Access session likely expired. " +
-        "Open your launchable URL (https://nemoclaw-<id>.brevlab.com) in a new tab to re-authenticate, then re-run.")); }
-    }, 12000);
-    let finished = false;
-    function finish() {
-      if (finished) return; finished = true;
+    let ws = null, candidate = 0, openT = null;
+    let finished = false, abortHandler = null;
+    const totalT = setTimeout(() => opened ? finish() : fail(terminalOpenError()), totalMs);
+    function settle() {
+      if (finished) return false;
+      finished = true;
       clearTimeout(idleT); clearTimeout(totalT); clearTimeout(openT);
+      if (signal && abortHandler) signal.removeEventListener("abort", abortHandler);
       try { ws.close(); } catch (_) {}
-      resolve({ output: strip(raw), raw, frames, exitCode });
+      return true;
     }
-    const bump = () => { clearTimeout(idleT); idleT = setTimeout(finish, idleMs); };
+    function finish() {
+      if (!settle()) return;
+      resolve({ output: clean(raw), raw: filterOpenClawRuntimeNoise(raw), frames, exitCode });
+    }
+    function fail(error) {
+      if (!settle()) return;
+      reject(error);
+    }
+    const bump = () => { if (!finished) { clearTimeout(idleT); idleT = setTimeout(finish, idleMs); } };
+
+    function openNext() {
+      if (finished) return;
+      clearTimeout(openT);
+      if (candidate >= wsUrls.length) return fail(terminalOpenError());
+      const routeIndex = candidate++;
+      let socket;
+      try { socket = new WebSocket(wsUrls[routeIndex]); }
+      catch (_) { return openNext(); }
+      ws = socket;
+      // Direct and relay are independent handshakes. Do not let a slow direct failure consume
+      // the relay's open window; totalMs remains the overall bound for the complete terminal call.
+      const budget = wsUrls.length > 1 && routeIndex === 0 ? Math.min(8000, openMs) : openMs;
+      openT = setTimeout(() => {
+        if (finished || opened || socket !== ws) return;
+        try { socket.close(); } catch (_) {}
+        ws = null;
+        openNext();
+      }, budget);
+      socket.onopen = () => {
+        if (finished || socket !== ws) return;
+        opened = true; clearTimeout(openT); bump();
+        let i = 0;
+        (function pump() {
+          if (finished || i >= send.length) return;
+          setTimeout(() => { if (finished) return; try { socket.send(send[i] + "\n"); } catch (_) {} i++; pump(); }, 1500);
+        })();
+      };
+      socket.onmessage = ev => {
+        if (finished || socket !== ws) return;
+        frames++;
+        let t = "";
+        try {
+          const j = JSON.parse(ev.data);
+          if (j.type === "exit" && typeof j.code === "number") exitCode = j.code;
+          t = (j.data != null ? j.data : "");
+        } catch (_) { t = String(ev.data || ""); }
+        raw += t; if (onChunk) { const chunk = clean(t); if (chunk) try { onChunk(chunk); } catch (_) {} }
+        bump();
+      };
+      socket.onerror = () => {};
+      socket.onclose = () => {
+        if (finished || socket !== ws) return;
+        if (opened) finish();
+        else { ws = null; openNext(); }
+      };
+    }
+
     // External cancellation (the cell's Stop button) closes the socket and resolves with whatever arrived so far.
     if (signal) {
-      if (signal.aborted) { try { ws.close(); } catch (_) {} return finish(); }
-      signal.addEventListener("abort", () => { try { ws.close(); } catch (_) {} finish(); }, { once: true });
+      if (signal.aborted) return finish();
+      abortHandler = () => finish();
+      signal.addEventListener("abort", abortHandler, { once: true });
     }
-    ws.onopen = () => {
-      opened = true; clearTimeout(openT); bump();
-      let i = 0;
-      (function pump() {
-        if (i >= send.length) return;
-        setTimeout(() => { try { ws.send(send[i] + "\n"); } catch (_) {} i++; pump(); }, 1500);
-      })();
-    };
-    ws.onmessage = ev => {
-      frames++;
-      let t = "";
-      try {
-        const j = JSON.parse(ev.data);
-        if (j.type === "exit" && typeof j.code === "number") exitCode = j.code;   // the PTY command's exit status
-        t = (j.data != null ? j.data : "");
-      } catch (_) { t = String(ev.data || ""); }
-      raw += t; if (onChunk) { try { onChunk(strip(t)); } catch (_) {} }
-      bump();
-    };
-    ws.onerror = () => {};
-    ws.onclose = () => { if (opened) finish(); };
+    openNext();
   });
+}
+
+// Pomerium keeps its HttpOnly session between the browser and launchable. The
+// launchable's direct terminal is already authenticated by that cookie, so it
+// can read the two read-only bootstrap endpoints over loopback without sending
+// the cookie through a third-party relay. The command is selected from this
+// fixed map; no learner-controlled path or shell fragment is interpolated.
+export async function openclawLoopbackProbe(path, { baseUrl = null, signal = null } = {}) {
+  const connection = getOpenClawConnection();
+  const rawUrl = (baseUrl || connection.rawUrl || "").replace(/\/+$/, "");
+  if (!rawUrl) throw new Error("No launchable URL set. Connect on Module 3a first.");
+  if (accessProviderForOpenClawUrl(rawUrl, connection.accessProvider) !== "pomerium") {
+    throw new Error("The loopback bootstrap is only for Pomerium launchables.");
+  }
+  const endpoint = POMERIUM_LOOPBACK_PROBES[String(path || "")];
+  if (!endpoint) throw new Error("Unsupported loopback bootstrap path.");
+  const command = "curl -fsS --max-time 10 " + endpoint;
+  const result = await terminal(command, {
+    baseUrl: rawUrl,
+    idleMs: 1500,
+    totalMs: 18000,
+    openMs: 10000,
+    signal,
+  });
+  if (result.exitCode !== 0) {
+    throw new Error(`Launchable loopback probe failed with exit code ${result.exitCode ?? "unknown"}.`);
+  }
+  const body = String(result.output || "").trim();
+  if (!body) throw new Error("Launchable loopback probe returned an empty response.");
+  let json = null;
+  try { json = JSON.parse(body); } catch (_) { /* health responses may be plain text */ }
+  return {
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    body,
+    json,
+    frames: result.frames,
+    transport: "direct-terminal-loopback",
+  };
 }
 
 // ── OpenShell policy engine (JS port of sandbox-policy.rego) ─────────────────
@@ -234,8 +342,9 @@ export async function policyGet(agent = null, { idleMs = 8000, totalMs = 30000, 
   /* @doc <code>helpers.policyGet(agent?)</code> ::
        Read your launchable's live OpenShell policy. Runs <code>openshell policy get &lt;agent&gt;
        --full</code> over the operator terminal and parses the YAML body. Returns
-       <code>{ agent, command, raw, status, policy }</code>: the exact command run, the raw text it
-       returned, the status header, and the parsed policy object (the shape
+       <code>{ agent, command, raw, status, policy, parseError }</code>: the exact command run, the raw
+       text it returned, the status header, the parsed policy object, and an explicit parser error
+       when no policy is available (the shape
        <code>evalSandboxNetwork</code> / <code>evalSandboxFs</code> read). Launchable only.
   */
   const name = agent || localStorage.getItem("nemoclaw_sandbox_name") || "my-assistant";
@@ -246,13 +355,22 @@ export async function policyGet(agent = null, { idleMs = 8000, totalMs = 30000, 
   const status = sep >= 0 ? raw.slice(0, sep).trim() : raw;
   const body = sep >= 0 ? raw.slice(sep + 3) : "";
   let policy = null;
+  let parseError = "";
   if (body.trim()) {
     try {
-      const yaml = await import(JS_YAML_CDN_URL);
-      policy = (yaml.load || (yaml.default && yaml.default.load))(body);
-    } catch (_) { /* parser or CDN unavailable: the caller still gets raw + status */ }
+      const yaml = await import(POLICY_YAML_MODULE_URL);
+      if (typeof yaml.load !== "function") throw new Error("vendored YAML parser does not export load()");
+      policy = yaml.load(body);
+      if (!policy || typeof policy !== "object" || Array.isArray(policy)) {
+        throw new Error("policy YAML did not produce an object");
+      }
+    } catch (error) {
+      parseError = error instanceof Error ? error.message : String(error);
+      policy = null;
+    }
   }
-  return { agent: name, command, raw, status, policy };
+  else parseError = "openshell policy get returned no YAML body after the status header";
+  return { agent: name, command, raw, status, policy, parseError };
 }
 
 // Render a policy object back to the OpenShell YAML it mirrors, so the map can show the exact source every edge is computed from.

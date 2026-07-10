@@ -28,7 +28,7 @@ Allowed with provenance:
 - authored course prose and code under Apache-2.0
 - authored diagrams under Apache-2.0
 - generated indexes that can be reproduced from committed sources
-- exact third-party browser bundles whose lock, package versions, license texts, artifact hashes, and runtime references are committed and validated
+- third-party browser outputs whose lock, package versions, license texts, artifact hashes, runtime references, and per-artifact transformation status are committed and validated
 - source cards or summaries that cite public URLs without copying protected text
 - cached public material only when the source, owner, license, and redistribution disposition are recorded
 - datasets or model references only when approval and intended use are recorded
@@ -68,7 +68,11 @@ Use clear labels. Do not invent permission.
 
 `python3 scripts/compliance/source_gate.py` blocks on these classes:
 
-- missing or non-Apache root license
+- missing NVIDIA copyright before the Apache-2.0 root license
+- incomplete or changed DCO 1.1 text
+- absent top-level third-party notices or required evidence links
+- missing Apache-2.0 headers in non-empty NVIDIA-authored Python or JavaScript files
+- browser vendor outputs that do not say whether they are transformed or copied byte-for-byte
 - contribution terms missing Apache-2.0 inbound language
 - tracked internal URLs or private process links
 - new files under governed material roots that are not represented by a provenance beacon or source inventory entry

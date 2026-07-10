@@ -10,15 +10,6 @@
 <link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.min.css"/>
 <script src="vendor/codemirror-5.65.21.min.js"></script>
 <style>
-  .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
-  .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
-  .CodeMirror-vscrollbar { display: none; }
-  .CodeMirror-gutters { background: #0d0d0d; border-right: 1px solid #2a2a2a; }
-  .CodeMirror-linenumber { color: #6a6a6a; padding: 0 8px 0 6px; font-size: .76rem; }
-  .CodeMirror-lines { padding: 10px 0; }
-  .cm-s-monokai.CodeMirror { background: #0d0d0d; color: #f8f8f2; }
-  .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
-  .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
 </style>
 </head>
 <body>
@@ -136,13 +127,13 @@
   <h2>Hiding a whole agent behind a single tool</h2>
   <p>
     A tool need not be a small function. An entire sub-agent can sit behind a single
-    tool call. The calling model still sees one contract. The agent behind it may query a
+    tool call. To the calling model, the sub-agent remains one contract. Behind that contract, it may query a
     database, run code, or search a repository without exposing those internal tools to the
     main loop.
   </p>
   <p>
     The cell below exposes a sub-agent that knows a small customer table
-    as one natural-language tool. The main agent never sees the rows
+    as one natural-language tool. Its caller never sees the rows
     and can only ask questions.
   </p>
 
@@ -163,8 +154,8 @@
   <summary data-localization-scope="en"><span class="learning-scope">Applied · Build</span><span class="learning-question">Need the MCP discovery and invocation flow?</span></summary>
   <div class="learning-block-body">
   <p>
-    Model Context Protocol (MCP) gives tool serving a standard shape. The agent retrieves the list of tools a
-    server offers with a <code>tools/list</code> call, then invokes any one of them with
+    Model Context Protocol (MCP) gives tool serving a standard shape. The agent retrieves a server's
+    catalog with <code>tools/list</code> and invokes a selected entry with
     <code>tools/call</code>. Those tools live in a separate process that the agent
     connects to and queries when it starts up. Because the protocol is the same
     everywhere, the agent can connect to additional servers without learning a new
@@ -475,7 +466,7 @@ mountCanvasFlow("#cell-m2b-p3", {
     {
       id: "question", icon: "👤", title: "User question", x: 1, y: 0,
       summary: "Try an arithmetic, a definition, or something either tool could handle.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Choose an example or write a question that makes the tool choice interesting.
 
 const EXAMPLES = {
   default: "What is 2 to the power of 10?",
@@ -554,8 +545,10 @@ mountCanvasFlow("#cell-m2b-p4", {
     {
       id: "input", icon: "👤", title: "User input", x: 0, y: 0,
       summary: "Holds the question the student asks, which you can edit before rerunning.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Try another model-family question, or write your own.
 state.question = "What is the NVIDIA Nemotron model family and what is it good at?";
+// state.question = "Which NVIDIA model family is designed for reasoning?";
+// state.question = "How does NVIDIA NIM differ from a model checkpoint?";
 return state.question;
 `,
     },
@@ -767,8 +760,10 @@ return { tool_name: state.TOOLS[0].function.name };
     {
       id: "user", icon: "👤", title: "User question (to the main agent)", x: 2, y: 1,
       summary: "Edit this to try a question like 'How many pro-plan customers do we have?' or 'Who has the most tickets in the last 30 days?'",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Ask about a different customer segment or activity signal.
 state.userQuestion = "Which EU customers are on the pro plan, and how active are they?";
+// state.userQuestion = "How many pro-plan customers signed up this quarter?";
+// state.userQuestion = "Who opened the most tickets in the last 30 days?";
 return state.userQuestion;
 `,
     },
@@ -860,8 +855,10 @@ return state.tools.map(t => t.function.name);
     {
       id: "user", icon: "👤", title: "User question", x: 2, y: 1,
       summary: "The question the model answers using the discovered glossary tools. A definitional ask is served by glossary_search, while a request for a specific term by slug goes to glossary_lookup.",
-      code: `// Set the student-editable prompt/input for the next step.
+      code: `// TODO: Try a broad definition or request a specific glossary term.
 state.question = "What is retrieval-augmented generation, and what does a vector database have to do with it?";
+// state.question = "What is an AI agent?";
+// state.question = "Look up the glossary term with the slug vector-database.";
 return state.question;
 `,
     },

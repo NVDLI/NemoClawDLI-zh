@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Deterministic auto-fixer for the comment-formatting findings code_hygiene.py reports.
 
 Clears the mechanically-safe majority of the comment backlog without touching logic:

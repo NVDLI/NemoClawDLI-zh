@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Validate the hosted repository-overview deck and its source manifest.
 
 The audit deliberately reuses prose_variety.py for writing quality, then adds
@@ -477,7 +480,7 @@ def main() -> int:
             for item in failures:
                 print(f"slides_audit self-test: FAIL: {item}", file=sys.stderr)
             return 1
-        print("slides_audit self-test: PASS (13 mutations rejected)")
+        print("slides_audit self-test: PASS")
         return 0
     findings = audit_manifest(json.loads(args.manifest.read_text(encoding="utf-8")))
     if args.report:

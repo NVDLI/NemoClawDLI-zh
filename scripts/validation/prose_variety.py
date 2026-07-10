@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Prose-variety static analysis: does the authored course narrative read like a person wrote it?
 
 LLM prose has structural tells that have nothing to do with word choice: sentences cluster at one
 length, ideas get forced into triads, and clauses get welded with colons and semicolons to sound
 punchy. This check measures those signals per page over the narrative flow only and ranks the pages,
 surfacing the ones that read machine-uniform so a human can go vary the rhythm. Narrative is the <p>
-paragraph text; enumerative-by-structure content is excluded because it is parallel by its nature and
-would read as a false tell (list items, catalog cards), along with code, SVG, headings, and nav
-chrome. A paragraph break counts as a sentence boundary, so a list-/cell-lead-in colon at a
-paragraph's end is not mistaken for a welded mid-sentence clause. It is deterministic and advisory:
+paragraph text. SKILL.html guidance also includes list items because those lists explain the project
+to a reader; they are not course-data enumerations. Other list items, catalog cards, code, SVG,
+headings, and nav chrome stay excluded. A paragraph break counts as a sentence boundary, so a
+list-/cell-lead-in colon at a paragraph's end is not mistaken for a welded mid-sentence clause. It is
+deterministic and advisory:
 it points at pages and shows its work, it does not pass verdicts and never blocks the gate.
 
 Per page it reports:
@@ -81,6 +85,11 @@ _CARDS = (
     re.compile(r'<div\b[^>]*\bclass="[^"]*\bstep-card\b[^"]*"[^>]*>.*?</div>', re.I | re.S),
 )
 _PARA = re.compile(r"<p\b[^>]*>(.*?)</p>", re.I | re.S)   # narrative flow only; list items are enumerative by nature
+_SKILL_ITEM = re.compile(r"<li\b[^>]*>(.*?)</li>", re.I | re.S)
+_SKILL_CATALOG = re.compile(
+    r'<(?P<tag>ul|ol)\b[^>]*\bclass="[^"]*\bfile-index\b[^"]*"[^>]*>.*?</(?P=tag)>',
+    re.I | re.S,
+)
 # The course contract owns this verbatim canonical copy. Exclude it from style advice: a validator
 # must not flag prose that authors are forbidden to rewrite. Content and presence remain release-gated
 # by course_content_contract.py.
@@ -298,6 +307,21 @@ def antithesis_hits(prose) -> list:
     return out
 
 
+def _skill_list_chunks(body: str) -> list[str]:
+    """Extract reader guidance from SKILL lists without treating code samples as prose."""
+    body = _SKILL_CATALOG.sub(" ", body)
+    chunks = []
+    for match in _SKILL_ITEM.finditer(body):
+        item = re.sub(r"<(?:code|pre)\b.*?</(?:code|pre)>", " ", match.group(1), flags=re.I | re.S)
+        text = html.unescape(re.sub(r"\s+", " ", _TAG.sub(" ", item))).strip()
+        # File catalogs and nav labels are list-shaped interface chrome, not sentences. Keep list
+        # guidance only when it is punctuated as prose.
+        if (text and " " in text and re.search(r"[.!?]", text)
+                and len(re.findall(r"\b[A-Za-z]{2,}\b", text)) >= 4):
+            chunks.append(text)
+    return chunks
+
+
 def pattern_contract() -> list[str]:
     """Return detector misses that would reopen known numeric-cadence gaps."""
     cases = {
@@ -323,6 +347,37 @@ def pattern_contract() -> list[str]:
     canonical_clean = _IMMUTABLE_CANON.sub(" ", canonical)
     if "locked copy" in canonical_clean or "editable copy" not in canonical_clean:
         misses.append("immutable course abstract exclusion")
+    skill_sample = "<ol><li>Check the learner-facing result. Open its evidence link.</li></ol>"
+    if _skill_list_chunks(skill_sample) != ["Check the learner-facing result. Open its evidence link."]:
+        misses.append("SKILL.html list-prose extraction")
+    if (TASK1 / "scripts/compliance/SKILL.html").is_file() and not any(
+            rel == "scripts/compliance/SKILL.html" for _, rel in _pages("ship")):
+        misses.append("SKILL.html default prose scope")
+    course_paths = {rel for _, rel in _pages("course")}
+    expected_course_paths = {
+        path.relative_to(TASK1).as_posix()
+        for path in (TASK1 / "web/nemoclaw").glob("[0-9][0-9][a-z]-*.html")
+    }
+    expected_course_paths.add("web/nemoclaw/index.html")
+    if course_paths != expected_course_paths or any(path.endswith("SKILL.html") for path in course_paths):
+        misses.append("canonical learner-course prose scope")
+    mechanical_slot = (
+        "Start with How this project uses it. Included in the course means learners receive the code. "
+        "Used only to build the course, Used only to check the course, and Optional authoring tool "
+        "mean learners do not receive that package. Use Where it comes from only when you need more "
+        "detail. It tells you whether this project chose the package directly, another package brought "
+        "it in, or it belongs to a particular build, check, or authoring task. License or terms shows "
+        "the exact recorded result. Combine choices naturally. The table and download always match."
+    )
+    mechanical_metrics = metrics(mechanical_slot)
+    if not mechanical_metrics or _score(mechanical_metrics) < FLAG_AT:
+        misses.append("mechanical instructional-slot detection")
+    answer_echoes = _vacuous_meta_text(
+        "What happened to the source gives the answer. How it was used names the recorded action."
+    )
+    echo_phrases = {phrase.lower() for phrase, _ in answer_echoes}
+    if not {"gives the answer", "names the recorded action"} <= echo_phrases:
+        misses.append("answer-announcing redundancy detection")
     return misses
 
 
@@ -384,11 +439,56 @@ def grammar_hits(prose) -> list:
     return out
 
 
+_MD_LIST_START = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+(.*)$")
+_MD_SKIP = re.compile(r"^\s*(?:#{1,6}\s|[>|])")
+_MD_LINK = re.compile(r"\[([^\]]*)\]\([^)]+\)")
+
+
+def _markdown_chunks(body: str) -> list[str]:
+    """Return complete Markdown paragraphs and list items without orphaning wrapped lines."""
+    chunks: list[str] = []
+    paragraph: list[str] = []
+    lines = body.splitlines()
+
+    def flush() -> None:
+        if paragraph:
+            chunks.append(_MD_LINK.sub(r"\1", " ".join(paragraph)))
+            paragraph.clear()
+
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        item = _MD_LIST_START.match(line)
+        if item:
+            flush()
+            parts = [item.group(1).strip()]
+            index += 1
+            while index < len(lines):
+                continuation = lines[index]
+                if not continuation.strip() or _MD_LIST_START.match(continuation):
+                    break
+                if re.match(r"^\s{2,}\S", continuation):
+                    parts.append(continuation.strip())
+                    index += 1
+                    continue
+                break
+            chunks.append(_MD_LINK.sub(r"\1", " ".join(parts)))
+            continue
+        if not line.strip() or _MD_SKIP.match(line):
+            flush()
+        else:
+            paragraph.append(line.strip())
+        index += 1
+    flush()
+    return chunks
+
+
 def narrative(f: Path) -> list:
     """The authored narrative of a page as a list of paragraph chunks (each <p>, or each markdown
     paragraph). Kept as separate chunks so a paragraph break counts as a sentence boundary and a
     list-/cell-lead-in colon at a paragraph's end is not mistaken for a welded mid-sentence clause.
-    Lists, code, SVG, and markup are removed."""
+    Lists, code, SVG, and markup are removed from course pages. Reader guidance in SKILL.html list
+    items is retained, while code samples inside those items are removed."""
     raw, suf = lp._read_for_links(f)
     body = lp._strip_noncontent(raw, suf)
     if suf in (".html", ".htm"):
@@ -396,15 +496,20 @@ def narrative(f: Path) -> list:
         body = _IMMUTABLE_CANON.sub(" ", body)
         for _c in _CARDS:             # drop reference/navigation tile captions (not narrative flow)
             body = _c.sub(" ", body)
-        raw_chunks = [_TAG.sub(" ", m.group(1)) for m in _PARA.finditer(body)]
+        if f.name == "SKILL.html":
+            body = _SKILL_CATALOG.sub(" ", body)
+        ordered_chunks = [(m.start(), _TAG.sub(" ", m.group(1))) for m in _PARA.finditer(body)]
+        if f.name == "SKILL.html":
+            for m in _SKILL_ITEM.finditer(body):
+                for item in _skill_list_chunks(f"<li>{m.group(1)}</li>"):
+                    ordered_chunks.append((m.start(), item))
         for m in _CALLOUT.finditer(body):                 # prose callouts (not <p>): scan their running text too
             inner = re.sub(r"<p\b[^>]*>.*?</p>", " ", m.group(1), flags=re.I | re.S)   # inner <p> counted by the pass above
             inner = re.sub(r"<(?:ul|ol|table)\b.*?</(?:ul|ol|table)>", " ", inner, flags=re.I | re.S)  # lists are enumerative
-            raw_chunks.append(_TAG.sub(" ", inner))
+            ordered_chunks.append((m.start(), _TAG.sub(" ", inner)))
+        raw_chunks = [text for _, text in sorted(ordered_chunks)]
     else:
-        body = re.sub(r"^\s*#{1,6}\s.*$", " ", body, flags=re.M)   # drop md headings
-        body = re.sub(r"^\s*[-*|>].*$", " ", body, flags=re.M)      # drop md lists / tables / quotes
-        raw_chunks = re.split(r"\n\s*\n", body)                     # a blank line separates paragraphs
+        raw_chunks = _markdown_chunks(body)
     chunks = []
     for c in raw_chunks:
         c = html.unescape(re.sub(r"\s+", " ", c)).strip()
@@ -590,6 +695,8 @@ def _blocks(f: Path):
     body = _SVG.sub(" ", body)
     body = re.sub(r"<pre\b.*?</pre>", " ", body, flags=re.S | re.I)
     body = re.sub(r"<script\b.*?</script>", " ", body, flags=re.S | re.I)
+    if f.name == "SKILL.html":
+        body = _SKILL_CATALOG.sub(" ", body)
     # List bodies are enumerative by structure. Preserve the list block, but keep
     # nested headings and paragraphs from being counted as narrative flow.
     body = re.sub(r"<li\b[^>]*>.*?</li>", "<li></li>", body, flags=re.S | re.I)
@@ -908,6 +1015,8 @@ def nonprose_buzz(f: Path) -> list:
         scan(m.group(2), "heading")
     # list items and reference cards: scan the ones that are NOT inside a heading (already covered)
     for m in _LI.finditer(body):
+        if f.name == "SKILL.html" and not _skill_list_chunks(f"<li>{m.group(1)}</li>"):
+            continue
         scan(m.group(1), "list")
     for m in re.finditer(r'<div\b[^>]*class="[\w-]*card[\w-]*"[^>]*>(.*?)</div>', body, re.S | re.I):
         scan(m.group(1), "card")
@@ -1076,6 +1185,8 @@ _FILLER = re.compile(
     r"|(?:closest|clearest|natural)\s+(?:public\s+)?(?:sibling|example)\b"
     r"|first[- ]class\s+(?:part|parts|citizen|feature|features)\b"
     r"|peer\s+runtime\b|makes?\s+[^.;!?]{1,80}?\s+explicit\b"
+    r"|(?:gives?|provides?)\s+(?:you\s+)?the answer\b"
+    r"|names?\s+the\s+(?:precise|recorded|exact)\s+(?:action|result|role)\b"
     r"|shipping\s+product\s+categor(?:y|ies)\b)", re.I)
 
 
@@ -1319,20 +1430,32 @@ def tells(m: dict) -> list[str]:
 
 
 def _pages(scope: str):
-    """Authored narrative pages: the student-facing course HTML under web/. With --scope all, the
-    repo's prose .md docs are added too. Generated hubs, tooling, vendored mats, and the license
-    (a different genre where terseness and lists are expected) are skipped."""
-    for f in sorted(lp._iter_pages(TASK1)):
+    """Select the requested authored prose surface.
+
+    ``course`` is the canonical learner journey: its landing page and numbered modules only.
+    ``ship`` adds other authored browser pages and every repository SKILL contract. ``all`` also
+    considers eligible Markdown outside scripts/ and docs/. Generated app hubs, vendored mats, and
+    the license (a different genre where terseness and lists are expected) are skipped.
+    """
+    if scope == "course":
+        course_root = TASK1 / "web" / "nemoclaw"
+        candidates = {course_root / "index.html", *course_root.glob("[0-9][0-9][a-z]-*.html")}
+    else:
+        candidates = set(lp._iter_pages(TASK1))
+        candidates.update(TASK1.rglob("SKILL.html"))
+    for f in sorted(candidates):
         rel = f.relative_to(TASK1).as_posix()
+        if set(f.relative_to(TASK1).parts) & {".git", "i18n", "node_modules", ".venv", "venv", "artifacts"}:
+            continue
         suf = f.suffix.lower()
-        if f.name in ("SKILL.html", "studio.html", "courses.html", "cert.html", "LICENSE.md"):
+        if f.name in ("studio.html", "courses.html", "LICENSE"):
             continue
         # vendored mats (now course-scoped under web/nemoclaw/mats/, both .md and .html snapshots)
         # are external reference packets, never authored narrative, so they are excluded by segment.
-        if lp.is_mat_path(rel):
+        if lp.is_mat_path(rel) and f.name != "SKILL.html":
             continue
         if suf in (".html", ".htm"):
-            if not rel.startswith("web/"):
+            if f.name != "SKILL.html" and not rel.startswith("web/"):
                 continue
         elif suf == ".md":
             if scope != "all" or rel.startswith(("scripts/", "docs/")):
@@ -1396,8 +1519,9 @@ def main() -> int:
     ap = argparse.ArgumentParser(
         description="Measure human-like prose variety (sentence-length spread, enumeration, clause welding).",
         formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
-    ap.add_argument("--scope", choices=["ship", "all"], default="ship",
-                    help="ship = course narrative under web/ (default); all = also the repo's prose .md docs")
+    ap.add_argument("--scope", choices=["course", "ship", "all"], default="ship",
+                    help=("course = the landing page and numbered learner modules; ship = all authored "
+                          "browser/SKILL prose (default); all = also eligible repository Markdown"))
     ap.add_argument("--page", help="analyze one page (relative path) and print its sentences with word counts")
     ap.add_argument("--text", help="score a snippet of prose directly (handy while rewriting)")
     ap.add_argument("--json", action="store_true", help="machine-readable output (the gate reads this)")

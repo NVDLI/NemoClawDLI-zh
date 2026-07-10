@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // Page-aware ReAct assistant. Shared chrome mounts it lazily in the page language.
 import { mountAgentChat } from "./_chat.js";
 import {
@@ -6,8 +9,8 @@ import {
 } from "./_langchain.js";
 
 const MODELS = [
+  { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · recommended" },
   { id: "nvidia/nemotron-3-nano-30b-a3b", label: "Nemotron Nano 30B · fast" },
-  { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
 ];
 const ASSISTANT_WIDTH_KEY = "nemoclaw_course_assistant_width_v1";
 const ASSISTANT_SESSIONS_KEY = "nemoclaw_course_assistant_sessions_v1";
@@ -106,13 +109,21 @@ export async function searchCoursePages(query, readPage = coursePage, catalog = 
 }
 
 export function artifactFromMarkdown(markdown, title = "Generated browser artifact") {
+  const raw = String(markdown || "");
   let html = "", javascript = "", css = "";
-  const fences = String(markdown || "").matchAll(/```([^\n`]*)\n([\s\S]*?)```/g);
+  const fences = raw.matchAll(/```([^\n`]*)\n([\s\S]*?)```/g);
   for (const match of fences) {
     const language = match[1].trim().toLowerCase();
     if (["html", "htm"].includes(language)) html += (html ? "\n" : "") + match[2].trim();
     else if (["javascript", "js"].includes(language)) javascript += (javascript ? "\n" : "") + match[2].trim();
     else if (language === "css") css += (css ? "\n" : "") + match[2].trim();
+  }
+  if (!html && !javascript) {
+    const documentStart = raw.search(/(?:<!doctype\s+html[^>]*>\s*)?<html[\s>]/i);
+    if (documentStart >= 0) {
+      const documentEnd = raw.toLowerCase().lastIndexOf("</html>");
+      html = raw.slice(documentStart, documentEnd >= documentStart ? documentEnd + 7 : raw.length).trim();
+    }
   }
   if (css) html = `<style>\n${css}\n</style>\n` + html;
   return html || javascript ? cleanArtifact({ title, html, javascript, updatedAt: Date.now() }) : null;
@@ -138,6 +149,30 @@ export function artifactJavaScriptIssue(source) {
   }
   try { Function(`return (async () => {\n${javascript}\n});`); }
   catch (error) { issues.push(`JavaScript syntax error: ${error.message}`); }
+  return issues.join(" ");
+}
+
+export function artifactCodeIssue(artifact) {
+  const html = String(artifact?.html || "");
+  const parsed = new DOMParser().parseFromString(html, "text/html");
+  const scripts = [...parsed.querySelectorAll("script")];
+  const external = scripts.filter(script => script.hasAttribute("src"));
+  const inline = scripts.filter(script => !script.hasAttribute("src")).map(script => script.textContent || "").join("\n");
+  const javascript = [inline, String(artifact?.javascript || "")].filter(Boolean).join("\n");
+  const issues = [];
+  if (external.length) issues.push("External scripts are unavailable in the artifact sandbox. Use self-contained browser JavaScript.");
+  if (/(?:\bfetch\s*\(|\bXMLHttpRequest\b|\bWebSocket\s*\(|\blocalStorage\b|\bsessionStorage\b|\bindexedDB\b)/.test(javascript)) {
+    issues.push("Network and browser storage APIs are unavailable in the artifact sandbox. Keep the artifact self-contained; use course.embed for embeddings.");
+  }
+  for (const element of parsed.querySelectorAll("*")) {
+    for (const attribute of element.attributes) {
+      if (!/^on/i.test(attribute.name)) continue;
+      try { Function("event", attribute.value); }
+      catch (error) { issues.push(`Inline ${attribute.name} syntax error: ${error.message}`); }
+    }
+  }
+  const javascriptIssue = artifactJavaScriptIssue(javascript);
+  if (javascriptIssue) issues.push(javascriptIssue);
   return issues.join(" ");
 }
 
@@ -188,7 +223,7 @@ export function mountCourseAssistant(runtime = {}) {
     tools: "mapa, prosa, código e fontes do runtime disponíveis",
     chatView: "Conversa", artifactView: "Artefato", historyView: "Histórico", historyTitle: "Atividade salva da sessão", copyHistory: "Copiar histórico", noHistory: "Ainda não há atividade salva nesta sessão.", artifactTitle: "Título do artefato", htmlLabel: "HTML", javascriptLabel: "JavaScript",
     runArtifact: "▶ Executar", clearArtifact: "Limpar prévia", deleteArtifact: "Excluir artefato", artifactPreview: "Prévia do artefato do curso", generatedReady: "Código gerado pronto",
-    previewCleared: "Prévia limpa; código preservado", artifactDeleted: "Artefato excluído", syntaxError: "Erro de sintaxe", runtimeError: "Erro de execução",
+    previewCleared: "Prévia limpa; código preservado", artifactDeleted: "Artefato excluído", syntaxError: "Erro de sintaxe", runtimeError: "Erro de execução", runtimeReady: "Prévia pronta",
     artifactApi: 'API: await course.embed(...) ou await helpers.embed(...); helpers.cosineSim(a, b).',
     saved: "Salvo localmente", saving: "Salvando resposta", full: "Não salvo: armazenamento local cheio", selected: "Sessão selecionada",
     created: "Nova sessão criada", deleted: "Sessão excluída", renamed: "Sessão renomeada", attachedNow: "Página vinculada à sessão", compacted: "Contexto condensado e salvo localmente",
@@ -206,7 +241,7 @@ export function mountCourseAssistant(runtime = {}) {
     tools: "mapa, prosa, código y fuentes del runtime disponibles",
     chatView: "Conversación", artifactView: "Artefacto", historyView: "Historial", historyTitle: "Actividad guardada de la sesión", copyHistory: "Copiar historial", noHistory: "Esta sesión aún no tiene actividad guardada.", artifactTitle: "Título del artefacto", htmlLabel: "HTML", javascriptLabel: "JavaScript",
     runArtifact: "▶ Ejecutar", clearArtifact: "Borrar vista previa", deleteArtifact: "Eliminar artefacto", artifactPreview: "Vista previa del artefacto del curso", generatedReady: "Código generado listo",
-    previewCleared: "Vista previa borrada; se conservó el código", artifactDeleted: "Artefacto eliminado", syntaxError: "Error de sintaxis", runtimeError: "Error de ejecución",
+    previewCleared: "Vista previa borrada; se conservó el código", artifactDeleted: "Artefacto eliminado", syntaxError: "Error de sintaxis", runtimeError: "Error de ejecución", runtimeReady: "Vista previa lista",
     artifactApi: 'API: await course.embed(...) o await helpers.embed(...); helpers.cosineSim(a, b).',
     saved: "Guardado localmente", saving: "Guardando respuesta", full: "No se guardó: el almacenamiento del navegador está lleno", selected: "Sesión seleccionada",
     created: "Nueva sesión creada", deleted: "Sesión eliminada", renamed: "Sesión renombrada", attachedNow: "Página vinculada a la sesión", compacted: "Contexto condensado y guardado localmente",
@@ -224,7 +259,7 @@ export function mountCourseAssistant(runtime = {}) {
     tools: "course map, prose, code, and runtime-source tools available",
     chatView: "Chat", artifactView: "Artifact", historyView: "History", historyTitle: "Saved session activity", copyHistory: "Copy history", noHistory: "No saved activity in this session yet.", artifactTitle: "Artifact title", htmlLabel: "HTML", javascriptLabel: "JavaScript",
     runArtifact: "▶ Run", clearArtifact: "Clear preview", deleteArtifact: "Delete artifact", artifactPreview: "Course artifact preview", generatedReady: "Generated code ready",
-    previewCleared: "Preview cleared; code preserved", artifactDeleted: "Artifact deleted", syntaxError: "Syntax error", runtimeError: "Runtime error",
+    previewCleared: "Preview cleared; code preserved", artifactDeleted: "Artifact deleted", syntaxError: "Syntax error", runtimeError: "Runtime error", runtimeReady: "Preview ready",
     artifactApi: 'API: await course.embed(...) or await helpers.embed(...); helpers.cosineSim(a, b).',
     saved: "Saved locally", saving: "Saving response", full: "Not saved: browser storage is full", selected: "Session selected",
     created: "New session created", deleted: "Session deleted", renamed: "Session renamed", attachedNow: "Page attached to session", compacted: "Compacted and saved locally",
@@ -318,24 +353,61 @@ export function mountCourseAssistant(runtime = {}) {
     viewButtons.forEach(button => button.setAttribute("aria-selected", String(button.dataset.courseAssistantView === activeView)));
     if (activeView === "artifact") setTimeout(() => Object.values(artifactEditors).forEach(editor => editor?.refresh()), 0);
   };
-  const artifactDocument = artifact => {
-    const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob:; font-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'">`;
+  const artifactDocument = (artifact, channel = artifactBridgeId) => {
+    const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob:; font-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">`;
     const javascript = String(artifact?.javascript || "").replace(/<\/script/gi, "<\\/script");
-    const bridge = `<script>(function(){const channel=${JSON.stringify(artifactBridgeId)},pending=new Map();let seq=0;const embed=(input,options={})=>new Promise((resolve,reject)=>{const id=++seq;pending.set(id,{resolve,reject});parent.postMessage({channel,type:"request",id,method:"embed",args:[input,options]},"*");setTimeout(()=>{if(pending.delete(id))reject(new Error("course.embed timed out"));},65000);});const cosineSim=(a,b)=>{if(!Array.isArray(a)||!Array.isArray(b)||!a.length||a.length!==b.length)throw new Error("helpers.cosineSim expects two non-empty vectors of equal length");let dot=0,aa=0,bb=0;for(let i=0;i<a.length;i++){const x=Number(a[i]),y=Number(b[i]);if(!Number.isFinite(x)||!Number.isFinite(y))throw new Error("helpers.cosineSim expects finite numbers");dot+=x*y;aa+=x*x;bb+=y*y;}return aa&&bb?dot/Math.sqrt(aa*bb):0;};const api=Object.freeze({embed,cosineSim});window.course=api;window.helpers=new Proxy(api,{get(target,key){if(key in target)return target[key];throw new Error("Artifact helper helpers."+String(key)+" is unavailable. Supported: helpers.embed, helpers.cosineSim.");}});addEventListener("message",event=>{const data=event.data||{};if(data.channel!==channel||data.type!=="response"||!pending.has(data.id))return;const item=pending.get(data.id);pending.delete(data.id);data.error?item.reject(new Error(data.error)):item.resolve(data.result);});const report=value=>parent.postMessage({channel,type:"artifact-error",message:String(value?.message||value),line:value?.lineno||0,column:value?.colno||0},"*");addEventListener("error",event=>report(event));addEventListener("unhandledrejection",event=>report(event.reason));})();<\/script>`;
-    const script = `${bridge}<script>\n(async () => {\n${javascript}\n})();\n<\/script>`;
+    const bridge = `<script>(function(){const channel=${JSON.stringify(channel)},pending=new Map();let seq=0;const emit=(type,payload={})=>parent.postMessage({channel,type,...payload},"*");const report=value=>emit("artifact-error",{message:String(value?.message||value),line:value?.lineno||0,column:value?.colno||0});const embed=(input,options={})=>new Promise((resolve,reject)=>{const id=++seq;pending.set(id,{resolve,reject});emit("request",{id,method:"embed",args:[input,options]});setTimeout(()=>{if(pending.delete(id))reject(new Error("course.embed timed out"));},65000);});const cosineSim=(a,b)=>{if(!Array.isArray(a)||!Array.isArray(b)||!a.length||a.length!==b.length)throw new Error("helpers.cosineSim expects two non-empty vectors of equal length");let dot=0,aa=0,bb=0;for(let i=0;i<a.length;i++){const x=Number(a[i]),y=Number(b[i]);if(!Number.isFinite(x)||!Number.isFinite(y))throw new Error("helpers.cosineSim expects finite numbers");dot+=x*y;aa+=x*x;bb+=y*y;}return aa&&bb?dot/Math.sqrt(aa*bb):0;};const api=Object.freeze({embed,cosineSim});window.course=api;window.helpers=new Proxy(api,{get(target,key){if(key in target)return target[key];throw new Error("Artifact helper helpers."+String(key)+" is unavailable. Supported: helpers.embed, helpers.cosineSim.");}});window.__courseArtifact=Object.freeze({ready:()=>emit("artifact-ready"),report});const probe=async()=>{const original={alert:window.alert,confirm:window.confirm,prompt:window.prompt};window.alert=()=>{};window.confirm=()=>true;window.prompt=()=>"";try{for(const input of [...document.querySelectorAll("input,select,textarea")].slice(0,12)){if(input.disabled)continue;if(input.type==="radio"||input.type==="checkbox")input.checked=true;else if(input.tagName==="SELECT"&&input.options.length)input.selectedIndex=0;else if(!input.value)input.value="probe";input.dispatchEvent(new Event("input",{bubbles:true}));input.dispatchEvent(new Event("change",{bubbles:true}));}for(const button of [...document.querySelectorAll("button,input[type=button],input[type=submit]")].slice(0,12)){if(button.disabled)continue;try{button.click();}catch(error){report(error);}await Promise.resolve();}await new Promise(resolve=>setTimeout(resolve,120));}finally{window.alert=original.alert;window.confirm=original.confirm;window.prompt=original.prompt;}emit("artifact-probe-complete");};addEventListener("message",event=>{const data=event.data||{};if(data.channel!==channel)return;if(data.type==="response"&&pending.has(data.id)){const item=pending.get(data.id);pending.delete(data.id);data.error?item.reject(new Error(data.error)):item.resolve(data.result);}else if(data.type==="artifact-probe")probe().catch(error=>{report(error);emit("artifact-probe-complete");});});addEventListener("error",event=>report(event));addEventListener("unhandledrejection",event=>report(event.reason));})();<\/script>`;
+    const runner = `<script>\n(async () => {\n${javascript}\n})().then(()=>window.__courseArtifact.ready()).catch(error=>{window.__courseArtifact.report(error);window.__courseArtifact.ready();});\n<\/script>`;
     const html = String(artifact?.html || "").trim();
     if (/<html[\s>]/i.test(html)) {
-      let documentText = /<head[\s>]/i.test(html) ? html.replace(/<head([^>]*)>/i, `<head$1>${csp}`) : csp + html;
-      return /<\/body>/i.test(documentText) ? documentText.replace(/<\/body>/i, script + "</body>") : documentText + script;
+      let documentText = /<head[\s>]/i.test(html)
+        ? html.replace(/<head([^>]*)>/i, `<head$1>${csp}${bridge}`)
+        : html.replace(/<html([^>]*)>/i, `<html$1><head>${csp}${bridge}</head>`);
+      return /<\/body>/i.test(documentText) ? documentText.replace(/<\/body>/i, runner + "</body>") : documentText + runner;
     }
-    return `<!doctype html><html><head><meta charset="utf-8">${csp}<style>:root{color-scheme:light}body{font:16px/1.5 system-ui;margin:1rem;color:var(--tx,#161616)}*{box-sizing:border-box}</style></head><body>${html}${script}</body></html>`;
+    return `<!doctype html><html><head><meta charset="utf-8">${csp}${bridge}<style>:root{color-scheme:light}body{font:16px/1.5 system-ui;margin:1rem;color:var(--tx,#161616)}*{box-sizing:border-box}</style></head><body>${html}${runner}</body></html>`;
   };
+  const validateArtifactRuntime = artifact => new Promise(resolve => {
+    const channel = crypto.randomUUID?.() || "artifact-check-" + Math.random().toString(36).slice(2);
+    const frame = document.createElement("iframe");
+    frame.setAttribute("sandbox", "allow-scripts"); frame.referrerPolicy = "no-referrer"; frame.hidden = true;
+    const blobUrl = URL.createObjectURL(new Blob([artifactDocument(artifact, channel)], { type: "text/html" }));
+    const errors = [];
+    let settled = false;
+    const finish = issue => {
+      if (settled) return;
+      settled = true; clearTimeout(timer); window.removeEventListener("message", onMessage);
+      frame.remove(); URL.revokeObjectURL(blobUrl); resolve(issue || errors[0] || "");
+    };
+    const onMessage = event => {
+      const data = event.data || {};
+      if (event.source !== frame.contentWindow || data.channel !== channel) return;
+      if (data.type === "artifact-error") {
+        const locationText = data.line ? ` at line ${data.line}${data.column ? ":" + data.column : ""}` : "";
+        errors.push(String(data.message || "unknown error").slice(0, 500) + locationText); return;
+      }
+      if (data.type === "request" && data.method === "embed") {
+        const raw = data.args?.[0], input = (Array.isArray(raw) ? raw : [raw]).map(value => String(value || ""));
+        const requestedType = data.args?.[1]?.inputType;
+        let error = "", result = null;
+        if (!input.length || input.length > 16 || input.some(value => !value || value.length > 2000) || input.join("").length > 12000) error = "course.embed accepts 1-16 non-empty strings, up to 12,000 characters total";
+        else if (requestedType != null && !["query", "passage"].includes(requestedType)) error = 'course.embed inputType must be "query" or "passage"';
+        else result = input.map((value, index) => [1, (value.length % 17) / 17, index / 16]);
+        frame.contentWindow?.postMessage({ channel, type: "response", id: data.id, ...(error ? { error } : { result }) }, "*");
+      } else if (data.type === "artifact-ready") frame.contentWindow?.postMessage({ channel, type: "artifact-probe" }, "*");
+      else if (data.type === "artifact-probe-complete") setTimeout(() => finish(), 80);
+    };
+    window.addEventListener("message", onMessage);
+    const timer = setTimeout(() => finish("Artifact runtime validation timed out before its controls became ready."), 5000);
+    document.body.appendChild(frame); frame.src = blobUrl;
+  });
   const renderArtifact = (run = false) => {
     const artifact = activeSession()?.artifact;
     artifactTitle.value = artifact?.title || "Browser artifact";
     setEditorValue("html", artifactHtml, artifact?.html || "");
     setEditorValue("javascript", artifactJs, artifact?.javascript || "");
     artifactViewButton.textContent = copy.artifactView + (artifact ? " •" : "");
+    artifactStatus.classList.remove("error");
     artifactStatus.textContent = artifact ? new Date(artifact.updatedAt).toLocaleString() : "";
     if (run && artifact) {
       clearArtifactPreview();
@@ -448,8 +520,10 @@ export function mountCourseAssistant(runtime = {}) {
   artifactEditors.javascript = attachArtifactEditor(artifactJs, "javascript", "javascript");
   runArtifact = () => {
     saveArtifact(copy.saved, false);
-    const javascript = editorValue("javascript", artifactJs);
-    const issue = artifactJavaScriptIssue(javascript);
+    const issue = artifactCodeIssue({
+      html: editorValue("html", artifactHtml),
+      javascript: editorValue("javascript", artifactJs),
+    });
     if (issue) { artifactStatus.textContent = issue; artifactStatus.classList.add("error"); return; }
     artifactStatus.classList.remove("error"); renderArtifact(true);
   };
@@ -471,6 +545,10 @@ export function mountCourseAssistant(runtime = {}) {
       const locationText = data.line ? ` · line ${data.line}${data.column ? ":" + data.column : ""}` : "";
       artifactStatus.textContent = `${copy.runtimeError}: ${String(data.message || "unknown error").slice(0, 500)}${locationText}`;
       artifactStatus.classList.add("error"); return;
+    }
+    if (data.type === "artifact-ready") {
+      if (!artifactStatus.classList.contains("error")) artifactStatus.textContent = copy.runtimeReady;
+      return;
     }
     if (data.type !== "request" || data.method !== "embed") return;
     const respond = payload => artifactFrame.contentWindow?.postMessage({ channel: artifactBridgeId, type: "response", id: data.id, ...payload }, "*");
@@ -586,24 +664,27 @@ export function mountCourseAssistant(runtime = {}) {
         current.updatedAt = Date.now();
         persistStore(current.history.some(item => item.role === "system") ? copy.compacted : copy.saved);
       },
-      onAssistantMessage: answer => {
-        const current = store.sessions.find(item => item.id === mountedSessionId);
+      onAssistantMessage: async answer => {
+        const sessionId = mountedSessionId;
+        const current = store.sessions.find(item => item.id === sessionId);
         if (!current) return;
         const artifact = artifactFromMarkdown(answer, `${current.title || "Course Assistant"} artifact`);
         if (!artifact) return;
-        const issue = artifactJavaScriptIssue(artifact.javascript);
-        if (issue) { artifactStatus.textContent = `Generated artifact rejected: ${issue}`; artifactStatus.classList.add("error"); return; }
+        const issue = artifactCodeIssue(artifact) || await validateArtifactRuntime(artifact);
+        if (mountedSessionId !== sessionId) return;
         current.artifact = artifact; current.updatedAt = Date.now();
-        persistStore(copy.saved); renderArtifact(false); artifactStatus.textContent = copy.generatedReady;
+        persistStore(copy.saved); renderArtifact(!issue); activateView("artifact");
+        artifactStatus.textContent = issue ? `Generated artifact rejected: ${issue}` : copy.generatedReady;
+        artifactStatus.classList.toggle("error", !!issue);
       },
       intro: copy.intro,
       greeting: copy.greeting(attachedPage?.id || ""),
       examples: copy.examples,
       system: pt
-        ? `Você é o Assistente do Curso Securing Agents. ${attachedPage ? `Esta sessão está vinculada à página ${attachedPage.id}, “${attachedTitle}”, fornecida como contexto inicial. Comece por ela.` : "Esta sessão não tem uma página vinculada."} Para perguntas sobre o curso, use list_course_pages, search_course_pages e read_course_page. Para código, use list_course_code e depois read_course_source com o URI retornado; para módulos compartilhados, use list_course_runtime_files e read_course_runtime_source. Invoque as ferramentas pela API: nunca imprima os argumentos JSON como resposta. O runtime do curso é JavaScript no navegador: use HTML/JavaScript por padrão. O sandbox fornece a API assíncrona course.embed e os aliases helpers.embed e helpers.cosineSim; sempre use await course.embed(textos, { inputType: "query" ou "passage" }) ou await helpers.embed(...). Nenhum outro helpers.* está disponível. O executor aceita await no nível superior. Não use import, fetch, localStorage nem pacotes externos. O curso não oferece uma célula genérica para colar código. Use queue_course_artifact para criar uma área editável e executável. Leia o código antes de explicar e nunca invente uma implementação nem alegue que o código é privado ou inacessível. Cite os IDs das páginas e os arquivos usados.`
+        ? `Você é o Assistente do Curso Securing Agents. ${attachedPage ? `Esta sessão está vinculada à página ${attachedPage.id}, “${attachedTitle}”, fornecida como contexto inicial. Comece por ela.` : "Esta sessão não tem uma página vinculada."} Para perguntas sobre o curso, use list_course_pages, search_course_pages e read_course_page. Para código, use list_course_code e depois read_course_source com o URI retornado; para módulos compartilhados, use list_course_runtime_files e read_course_runtime_source. Invoque as ferramentas pela API: nunca imprima os argumentos JSON como resposta. O runtime do curso é JavaScript no navegador: use HTML/JavaScript por padrão. O sandbox fornece a API assíncrona course.embed e os aliases helpers.embed e helpers.cosineSim; sempre use await course.embed(textos, { inputType: "query" ou "passage" }) ou await helpers.embed(...). Nenhum outro helpers.* está disponível. O executor aceita await no nível superior. Não use import, fetch, localStorage nem pacotes externos. O curso não oferece uma célula genérica para colar código. Para qualquer artefato, diagrama, painel, questionário ou simulação solicitada, chame queue_course_artifact; coloque marcação e CSS em html e código executável em javascript. Não responda com HTML bruto nem blocos de código. Defina cada função e alvo DOM usado. Se a ferramenta rejeitar o artefato, corrija o erro e chame-a novamente. Só diga que está pronto após a aceitação da ferramenta. Leia o código antes de explicar e nunca invente uma implementação nem alegue que o código é privado ou inacessível. Cite os IDs das páginas e os arquivos usados.`
         : es
-          ? `Es el Asistente del curso Securing Agents. ${attachedPage ? `Esta sesión está vinculada a la página ${attachedPage.id}, «${attachedTitle}», proporcionada como contexto inicial. Comience por ella.` : "Esta sesión no tiene ninguna página vinculada."} Para preguntas sobre el curso, use list_course_pages, search_course_pages y read_course_page. Para código, use list_course_code y luego read_course_source con el URI devuelto; para módulos compartidos, use list_course_runtime_files y read_course_runtime_source. Invoque las herramientas mediante la API: nunca imprima los argumentos JSON como respuesta. El runtime del curso es JavaScript en el navegador; use HTML/JavaScript de forma predeterminada. El sandbox proporciona la API asíncrona course.embed y los alias helpers.embed y helpers.cosineSim; use siempre await course.embed(textos, { inputType: "query" o "passage" }) o await helpers.embed(...). Ningún otro helpers.* está disponible. El ejecutor admite await en el nivel superior. No use import, fetch, localStorage ni paquetes externos. El curso no ofrece una celda genérica para pegar código. Use queue_course_artifact para crear una vista editable y ejecutable. Lea el código antes de explicarlo; nunca invente una implementación ni afirme que el código es privado o inaccesible. Cite los ID de página y los archivos utilizados.`
-          : `You are the Course Assistant for Securing Agents. ${attachedPage ? `This session is attached to ${attachedPage.id}, “${attachedTitle}”, supplied as initial context. Begin there.` : "This session has no attached page."} For course questions, use list_course_pages, search_course_pages, and read_course_page. For code, use list_course_code then read_course_source with the returned URI; for shared modules use list_course_runtime_files and read_course_runtime_source. Invoke tools through the API: never print tool arguments as JSON. The course runtime is browser JavaScript: default to HTML/JavaScript. The sandbox provides the asynchronous course.embed API plus helpers.embed and helpers.cosineSim compatibility aliases; always use await course.embed(texts, { inputType: "query" or "passage" }) or await helpers.embed(...). No other helpers.* API is available. Top-level await is supported by the artifact runner. Do not use import, fetch, localStorage, or external packages. The course has no generic pasteable code cell. Use queue_course_artifact to create an editable, runnable view. Inspect source before explaining code, and never invent an implementation or claim source is private or inaccessible. Cite course page ids and source files used.`,
+          ? `Es el Asistente del curso Securing Agents. ${attachedPage ? `Esta sesión está vinculada a la página ${attachedPage.id}, «${attachedTitle}», proporcionada como contexto inicial. Comience por ella.` : "Esta sesión no tiene ninguna página vinculada."} Para preguntas sobre el curso, use list_course_pages, search_course_pages y read_course_page. Para código, use list_course_code y luego read_course_source con el URI devuelto; para módulos compartidos, use list_course_runtime_files y read_course_runtime_source. Invoque las herramientas mediante la API: nunca imprima los argumentos JSON como respuesta. El runtime del curso es JavaScript en el navegador; use HTML/JavaScript de forma predeterminada. El sandbox proporciona la API asíncrona course.embed y los alias helpers.embed y helpers.cosineSim; use siempre await course.embed(textos, { inputType: "query" o "passage" }) o await helpers.embed(...). Ningún otro helpers.* está disponible. El ejecutor admite await en el nivel superior. No use import, fetch, localStorage ni paquetes externos. El curso no ofrece una celda genérica para pegar código. Para cualquier artefacto, diagrama, panel, cuestionario o simulación solicitada, llame a queue_course_artifact; coloque el marcado y CSS en html y el código ejecutable en javascript. No responda con HTML sin procesar ni bloques de código. Defina cada función y destino DOM utilizado. Si la herramienta rechaza el artefacto, corrija el error y vuelva a llamarla. Diga que está listo solo después de que la herramienta lo acepte. Lea el código antes de explicarlo; nunca invente una implementación ni afirme que el código es privado o inaccesible. Cite los ID de página y los archivos utilizados.`
+          : `You are the Course Assistant for Securing Agents. ${attachedPage ? `This session is attached to ${attachedPage.id}, “${attachedTitle}”, supplied as initial context. Begin there.` : "This session has no attached page."} For course questions, use list_course_pages, search_course_pages, and read_course_page. For code, use list_course_code then read_course_source with the returned URI; for shared modules use list_course_runtime_files and read_course_runtime_source. Invoke tools through the API: never print tool arguments as JSON. The course runtime is browser JavaScript: default to HTML/JavaScript. The sandbox provides the asynchronous course.embed API plus helpers.embed and helpers.cosineSim compatibility aliases; always use await course.embed(texts, { inputType: "query" or "passage" }) or await helpers.embed(...). No other helpers.* API is available. Top-level await is supported by the artifact runner. Do not use import, fetch, localStorage, or external packages. The course has no generic pasteable code cell. For every requested artifact, diagram, dashboard, quiz, or simulation, call queue_course_artifact; put markup and CSS in html and executable code in javascript. Do not answer with raw HTML or code fences. Define every function and DOM target you use. If the tool rejects the artifact, correct the reported error and call it again. Claim it is ready only after the tool accepts it. Inspect source before explaining code, and never invent an implementation or claim source is private or inaccessible. Cite course page ids and source files used.`,
       recoverInlineToolIntent: async answer => {
         const intent = parseInlineCourseSourceIntent(answer);
         return intent ? resolveCourseSourceUri(intent.uri, attachedPage?.id || "") : null;
@@ -655,14 +736,17 @@ export function mountCourseAssistant(runtime = {}) {
           tool(async ({ title: artifactName, html, javascript }) => {
             const current = store.sessions.find(item => item.id === mountedSessionId);
             if (!current) return "No active Course Assistant session.";
-            const issue = artifactJavaScriptIssue(javascript);
-            if (issue) return `Artifact rejected: ${issue} Correct the JavaScript, then call queue_course_artifact again.`;
-            current.artifact = cleanArtifact({ title: artifactName, html, javascript, updatedAt: Date.now() });
+            const candidate = cleanArtifact({ title: artifactName, html, javascript, updatedAt: Date.now() });
+            const issue = artifactCodeIssue(candidate);
+            if (issue) return `Artifact rejected before execution: ${issue} Correct the artifact, then call queue_course_artifact again.`;
+            const runtimeIssue = await validateArtifactRuntime(candidate);
+            if (runtimeIssue) return `Artifact rejected at runtime: ${runtimeIssue} Correct the artifact, then call queue_course_artifact again.`;
+            current.artifact = candidate;
             current.updatedAt = Date.now(); persistStore(copy.saved); renderArtifact(true); activateView("artifact");
-            return `Queued browser artifact “${current.artifact.title}” with ${current.artifact.html.length} HTML chars and ${current.artifact.javascript.length} JavaScript chars.`;
+            return `Validated and queued browser artifact “${current.artifact.title}” with ${current.artifact.html.length} HTML chars and ${current.artifact.javascript.length} JavaScript chars.`;
           }, {
             name: "queue_course_artifact",
-            description: localized("Crie uma área editável e executável. Para embeddings, use await course.embed ou await helpers.embed com inputType query ou passage; somente helpers.cosineSim também está disponível. Não use import, fetch, localStorage ou pacotes externos.", "Cree un área HTML/JavaScript editable y ejecutable. Para embeddings, use await course.embed o await helpers.embed con inputType query o passage; también está disponible helpers.cosineSim. No use import, fetch, localStorage ni paquetes externos.", "Queue editable HTML/JavaScript. For embeddings use await course.embed or await helpers.embed with inputType query or passage; only helpers.cosineSim is also available. Top-level await works. Do not use import, fetch, localStorage, external packages, or a nonexistent course cell."),
+            description: localized("Valide e crie HTML/JavaScript editável e executável. Coloque marcação e CSS em html e código executável em javascript. Defina cada função e alvo DOM. Corrija qualquer rejeição e chame novamente. Para embeddings, use await course.embed ou await helpers.embed com inputType query ou passage; somente helpers.cosineSim também está disponível. Não use import, fetch, localStorage ou pacotes externos.", "Valide y cree HTML/JavaScript editable y ejecutable. Coloque el marcado y CSS en html y el código ejecutable en javascript. Defina cada función y destino DOM. Corrija cualquier rechazo y vuelva a llamar. Para embeddings, use await course.embed o await helpers.embed con inputType query o passage; también está disponible helpers.cosineSim. No use import, fetch, localStorage ni paquetes externos.", "Validate and queue editable HTML/JavaScript. Put markup and CSS in html and executable code in javascript. Define every function and DOM target. Correct any rejection and call again. For embeddings use await course.embed or await helpers.embed with inputType query or passage; only helpers.cosineSim is also available. Top-level await works. Do not use import, fetch, localStorage, external packages, or a nonexistent course cell."),
             schema: z.object({
               title: z.string().min(1).describe("short artifact title"),
               html: z.string().describe("HTML body or complete document; use an empty string when not needed"),

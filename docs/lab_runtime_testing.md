@@ -46,6 +46,29 @@ container, opens `web/nemoclaw/01a-loop.html`, counts canvas controls, and repor
 page errors. It is the fastest guard for agents that changed static assets or page
 glue but do not need model calls yet.
 
+## Exercise Course Assistant artifacts
+
+Use the live artifact mode after changing the page assistant, its prompt, tool
+schemas, or sandbox. It submits three representative requests, requires accepted
+artifact-tool results, opens each preview, and verifies that a control changes the
+rendered state. The local static origin uses the repository's configured model
+relay because the direct service admits deployed course origins, not localhost.
+
+```bash
+NVIDIA_API_KEY=$NVIDIA_API_KEY \
+  scripts/runtime/lab_runtime_test.sh --assistant-artifacts
+```
+
+Pass a deployed course page URL to validate its real origin and exact branch
+artifact. The harness reports statuses and counts, not credentials or generated
+source.
+
+```bash
+NVIDIA_API_KEY=$NVIDIA_API_KEY \
+  scripts/runtime/lab_runtime_test.sh --no-build --assistant-artifacts \
+  https://pages.example/course-branch/web/nemoclaw/02b-rag.html
+```
+
 ## Run against the lab stack
 
 Start the dev stack with the compose frontend reported by `scripts/runtime/browser_env_probe.sh`.
@@ -75,8 +98,27 @@ For OpenClaw gateway pages, pass the local gateway URL and token explicitly:
 NVIDIA_API_KEY=$NVIDIA_API_KEY CLAW_URL=http://openclaw:8995 CLAW_TOKEN=dli-openclaw-token scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/03a-kickstart.html
 ```
 
-For a remote launchable behind Cloudflare Access, also pass `CLAW_CF` and, when the
-gateway enforces an allowlisted origin, `CLAW_ORIGIN`.
+For a Cloudflare Access launchable, also pass `CLAW_CF`. For a Pomerium launchable,
+pass its cookie only to the isolated test harness as `CLAW_ACCESS_SESSION`; the harness
+seeds an ephemeral browser context, while production course code cannot read or store
+that HttpOnly value. When the gateway enforces an allowlisted origin, pass `CLAW_ORIGIN`.
+
+Use the focused check before a full agent run. It loads Module 3a, discovers the
+complete gateway token and calls one read-only gateway method. Cloudflare uses the
+hosted HTTP and WebSocket relay. Pomerium uses the authenticated direct terminal for
+the fixed `/api/agent` loopback read, then opens the gateway directly from the same
+browser context.
+
+```bash
+CLAW_URL=$NEMOCLAW_URL CLAW_CF=$CF_AUTHORIZATION \
+  scripts/runtime/lab_runtime_test.sh --gateway-only
+```
+
+Add `--terminal-contract` to exercise the launchable's `/ws/terminal` route. Pomerium
+uses only the authenticated direct PTY; Cloudflare may retain the configured relay as
+a fallback. The check runs `openshell sandbox list` and requires a non-empty transcript. Add
+`--cron-contract` to create a temporary structured cron job, query its run history,
+and remove it; each opt-in check cleans up before exit.
 
 ## Useful knobs
 
@@ -91,6 +133,13 @@ gateway enforces an allowlisted origin, `CLAW_ORIGIN`.
 
 `scripts/runtime/test_page_runtime.js` opens the page, records JavaScript console/page
 errors, and in `--render-only` mode stops after static page inspection. In full mode
-it clicks every canvas `Run all` button, watches `/cli/gateway` WebSocket frames,
-and reports whether tool/command frames were observed when gateway credentials were
-provided.
+it runs each canvas `Run all` flow sequentially, waits for the flow's real running state
+to settle, and requires authenticated `/cli/gateway` response activity from flows whose
+visible source uses the gateway. Tool calls are required by the focused `--chat-contract`
+instead of every gateway flow because valid course flows may be chat-only or RPC-only.
+`--gateway-only` isolates HTTP discovery, course token parsing, WebSocket
+authentication, and a read-only gateway call without starting an agent turn.
+`--gateway-only --terminal-contract` also exercises the operator PTY used by Modules
+3c and 4b, so a healthy gateway cannot mask a broken direct or fallback terminal route.
+`--assistant-artifacts` uses the live Course Assistant to generate and interact
+with representative browser artifacts; it is credentialed and therefore opt-in.

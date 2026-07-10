@@ -44,9 +44,18 @@
       "nemoclaw"
     ],
     "publication_state": "pending-osrb-approval",
-    "external_mirror": "not-published",
+    "external_mirror": "reserved-not-populated",
+    "external_repository": "https://github.com/NVDLI/NemoClawDLI",
+    "intended_oss_type": "Type-I",
+    "oss_scope": "nemoclaw-dli-course-repository",
+    "excluded_product_scope": [
+      "NemoClaw product",
+      "NemoClaw launchable",
+      "NemoClaw runtime"
+    ],
     "target_license": "Apache-2.0",
     "notice_required": false,
+    "third_party_notice_path": "THIRD-PARTY-NOTICES.md",
     "status_path": "RELEASE_STATUS.json",
     "note": "the foyer selection does not imply external publication approval"
   },
@@ -55,7 +64,7 @@
       "Content is curated once and projected: pages live under execution surfaces, and bundle_standalone.py, build_pages.sh, and engine.js generate the standalone bundle, the Pages site, and the link graph from them. Add a delivery format by writing a generator, so a fix to the source reaches every format.",
       "Anchor each page in a task that runs: build a working artifact a reader executes against the lab, and cut a page that only fills an outline. The aim is a change in what a reader can do.",
       "Order is a default, not a gate: keep pages usable out of sequence, with no enforced prerequisites or knowledge checks, so a reader can act on partial understanding and return for the next layer.",
-      "Target an open external release after approval: Apache 2.0, no gate or paywall, the foyer surfacing only the selected courses, and mats cited by public URL.",
+      "Target the NVIDIA-owned DLI course repository as a Full-OSS-Project after approval: OSS Type I, Apache 2.0, no gate or paywall, public course planning and contribution, the foyer surfacing only the selected courses, and mats cited by public URL. This does not classify or release the NemoClaw product or runtime.",
       "Keep surface assumptions explicit: web/ is browser-only and cannot assume student-provisioned microservices; cpu/ owns shared service stacks; spark/ or gpu surfaces must declare their compute contract before content depends on them.",
       "Keep production browser delivery static. Hosted model and NemoClaw endpoints supply live capabilities; cpu/ services exist for local development and compatibility testing.",
       "Ideas stay easy to contribute through structured Issues and, after external intake is enabled, Discussions. Code stays difficult to accept: treat every patch as untrusted, require issue linkage, blast-radius evidence, deterministic gates, human ownership, protected refs, and gated releases."
@@ -63,7 +72,7 @@
     "assumptions": [
       "The repository root is canonical for this internal release candidate. External publication remains pending OSRB approval. Everything worth keeping lives here and is versioned; scratch goes to /tmp and is never committed.",
       "Content is organized by execution surface: web/ holds browser-only courses and course-scoped reference packets; cpu/ holds shared microservices; deploy/ holds compose and nginx; future spark/ or gpu surfaces must state their compute contract before use.",
-      "The brain is each directory's SKILL.html skill-meta JSON, not a SKILL.md. Parse it first, then walk children: task to surface to course to content. Visual work must also read the asset provenance beacon and validation beacon before edits.",
+      "The brain is each source directory's SKILL.html skill-meta JSON, not a SKILL.md. Git-tracked and proposed files define the exhaustive directory set, with no opt-outs. Parse the current directory first, then walk children: task to surface to course to content. Visual work must also read the asset provenance beacon and validation beacon before edits.",
       "One link engine (scripts/runtime/engine.js) is the single source for resolution, crawl, reachability, and the release contract; it runs headless and in-browser, with no second implementation to drift.",
       "The released course is nemoclaw (Securing Agents); the foyer (web/index.html) surfaces only it."
     ],
@@ -104,8 +113,16 @@
       "path": "cpu/SKILL.html"
     },
     {
-      "name": "cors-proxy",
-      "path": "cors-proxy/SKILL.html"
+      "name": "License and distribution evidence",
+      "path": "scripts/compliance/SKILL.html"
+    },
+    {
+      "name": ".github",
+      "path": ".github/SKILL.html"
+    },
+    {
+      "name": ".gitlab",
+      "path": ".gitlab/SKILL.html"
     },
     {
       "name": "deploy",
@@ -116,8 +133,16 @@
       "path": "docs/SKILL.html"
     },
     {
+      "name": "i18n",
+      "path": "i18n/SKILL.html"
+    },
+    {
       "name": "scripts",
       "path": "scripts/SKILL.html"
+    },
+    {
+      "name": "tests",
+      "path": "tests/SKILL.html"
     },
     {
       "name": "workspace",
@@ -170,9 +195,19 @@
       "title": "Source & tooling",
       "items": [
         {
-          "label": "cors-proxy/",
-          "href": "cors-proxy/SKILL.html",
-          "desc": "Cloudflare Workers used by the LMS/static iframe path"
+          "label": "License and distribution evidence",
+          "href": "scripts/compliance/SKILL.html",
+          "desc": "Review shipped software, source terms, SBOM evidence, and downloadable inventories."
+        },
+        {
+          "label": ".github/",
+          "href": ".github/SKILL.html",
+          "desc": "GitHub contribution intake, dependency automation, and protected workflow definitions."
+        },
+        {
+          "label": ".gitlab/",
+          "href": ".gitlab/SKILL.html",
+          "desc": "Internal GitLab contribution templates used by the integration and validation repository."
         },
         {
           "label": "deploy/",
@@ -185,9 +220,19 @@
           "desc": "Task-routed operating notes with one owner per concern"
         },
         {
+          "label": "i18n/",
+          "href": "i18n/SKILL.html",
+          "desc": "Sparse same-branch locale overlays; runtime modules remain shared with canonical English source."
+        },
+        {
           "label": "scripts/",
           "href": "scripts/SKILL.html",
           "desc": "The script tree is hierarchical"
+        },
+        {
+          "label": "tests/",
+          "href": "tests/SKILL.html",
+          "desc": "Source contract for tests/ and its directly governed files."
         },
         {
           "label": "workspace/",
@@ -210,6 +255,21 @@
           "desc": "Machine-readable publication and licensing state."
         },
         {
+          "label": "CHANGELOG.md",
+          "href": "CHANGELOG.md",
+          "desc": "Version history for public releases and pending changes."
+        },
+        {
+          "label": "LICENSE",
+          "href": "LICENSE",
+          "desc": "Apache License 2.0 for the proposed public release."
+        },
+        {
+          "label": "SECURITY.md",
+          "href": "SECURITY.md",
+          "desc": "Official NVIDIA private vulnerability-reporting policy."
+        },
+        {
           "label": "AGENTS.md",
           "href": "AGENTS.md",
           "desc": "Cross-harness agent contract and task routing."
@@ -222,7 +282,12 @@
         {
           "label": "DCO.md",
           "href": "DCO.md",
-          "desc": "Required per-commit origin signoff and repair guidance."
+          "desc": "Verbatim DCO 1.1, required per-commit origin signoff, and repair guidance."
+        },
+        {
+          "label": "THIRD-PARTY-NOTICES.md",
+          "href": "THIRD-PARTY-NOTICES.md",
+          "desc": "Top-level index of third-party license, attribution, distribution, and vendor-modification evidence."
         },
         {
           "label": "CODE_OF_CONDUCT.md",
@@ -295,6 +360,11 @@
           "desc": ""
         },
         {
+          "label": "docs/security-control-disposition.md",
+          "href": "docs/security-control-disposition.md",
+          "desc": ""
+        },
+        {
           "label": "docs/security-design.md",
           "href": "docs/security-design.md",
           "desc": ""
@@ -310,6 +380,9 @@
 </script>
 </head>
 <body>
+<header data-skill-header="1" style="padding:.65rem 1rem;border-bottom:1px solid ButtonBorder;background:Canvas;color:CanvasText">
+  <nav aria-label="Skill navigation" style="display:flex;gap:.6rem;flex-wrap:wrap"><a data-skill-nav="home" href="web/index.html">Home</a> <span aria-hidden="true"> · </span> <a data-skill-nav="up" href="web/SKILL.html">Up</a> <span aria-hidden="true"> · </span> <a data-skill-nav="map" href="web/SKILL.html">Repository map</a></nav>
+</header>
 <div id="explorer"></div>
 <noscript>
   <h1>Building Agents · NVIDIA DLI bundle</h1>
@@ -325,19 +398,27 @@
   </ul>
   <h2>Source &amp; tooling</h2>
   <ul>
-    <li><a href="cors-proxy/SKILL.html">cors-proxy/</a></li>
+    <li><a href="scripts/compliance/SKILL.html">License and distribution evidence</a></li>
+    <li><a href=".github/SKILL.html">.github/</a></li>
+    <li><a href=".gitlab/SKILL.html">.gitlab/</a></li>
     <li><a href="deploy/SKILL.html">deploy/</a></li>
     <li><a href="docs/SKILL.html">docs/</a></li>
+    <li><a href="i18n/SKILL.html">i18n/</a></li>
     <li><a href="scripts/SKILL.html">scripts/</a></li>
+    <li><a href="tests/SKILL.html">tests/</a></li>
     <li><a href="workspace/SKILL.html">workspace/</a></li>
   </ul>
   <h2>Agent docs</h2>
   <ul>
     <li><a href="README.md">README.md</a></li>
     <li><a href="RELEASE_STATUS.json">RELEASE_STATUS.json</a></li>
+    <li><a href="CHANGELOG.md">CHANGELOG.md</a></li>
+    <li><a href="LICENSE">LICENSE</a></li>
+    <li><a href="SECURITY.md">SECURITY.md</a></li>
     <li><a href="AGENTS.md">AGENTS.md</a></li>
     <li><a href="CONTRIBUTING.md">CONTRIBUTING.md</a></li>
     <li><a href="DCO.md">DCO.md</a></li>
+    <li><a href="THIRD-PARTY-NOTICES.md">THIRD-PARTY-NOTICES.md</a></li>
     <li><a href="CODE_OF_CONDUCT.md">CODE_OF_CONDUCT.md</a></li>
     <li><a href="SUPPORT.md">SUPPORT.md</a></li>
     <li><a href="scripts/compliance/docs/open_source_readiness.md">scripts/compliance/docs/open_source_readiness.md</a></li>
@@ -352,6 +433,7 @@
     <li><a href="docs/release-test-plan.md">docs/release-test-plan.md</a></li>
     <li><a href="docs/release_artifacts.md">docs/release_artifacts.md</a></li>
     <li><a href="docs/release_playbook.md">docs/release_playbook.md</a></li>
+    <li><a href="docs/security-control-disposition.md">docs/security-control-disposition.md</a></li>
     <li><a href="docs/security-design.md">docs/security-design.md</a></li>
   </ul>
 </noscript>

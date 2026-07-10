@@ -10,15 +10,6 @@
 <link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.min.css"/>
 <script src="vendor/codemirror-5.65.21.min.js"></script>
 <style>
-  .CodeMirror { height: auto !important; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.55; border-radius: 0; }
-  .CodeMirror-scroll { min-height: 0; overflow-y: hidden !important; }
-  .CodeMirror-vscrollbar { display: none; }
-  .CodeMirror-gutters { background: #0d0d0d; border-right: 1px solid #2a2a2a; }
-  .CodeMirror-linenumber { color: #6a6a6a; padding: 0 8px 0 6px; font-size: .76rem; }
-  .CodeMirror-lines { padding: 10px 0; }
-  .cm-s-monokai.CodeMirror { background: #0d0d0d; color: #f8f8f2; }
-  .cm-s-monokai .CodeMirror-cursor { border-left: 2px solid #aee23a; }
-  .cm-s-monokai .CodeMirror-selected { background: rgba(174,226,58,.18); }
 </style>
 <style>
   .layers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 1em 0; }
@@ -274,7 +265,7 @@
       code: `// Describe a goal in plain words; the agent plans the shell commands it would run.
 // The cell runs each in YOUR sandbox and shows the command, its output, and its exit code.
 helpers.mountChatUI("#trajectory-artifact", {
-  disabled: () => !(localStorage.getItem("nemoclaw_clawtoken") && (localStorage.getItem("nemoclaw_clawrawurl") || localStorage.getItem("nemoclaw_clawurl"))),
+  disabled: () => { const c = helpers.getOpenClawConnection(); return !(c.token && c.rawUrl); },
   disabledMsg: "Connect your launchable in Module 3a first. This exercise runs commands in your sandbox.",
   greeting: "Describe a goal and I plan the shell commands an agent would run for it, then we run each one in your sandbox and read the result, in order. Watch what each command returns. A secret that prints to the screen has already left the box, whatever the network blocks afterward.",
   models: [
@@ -351,7 +342,7 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
   <p>No tienes que aceptar una garantía de robustez sin pruebas. <code>openshell policy prove</code> comprueba una propiedad de la política o devuelve un contraejemplo, mientras el proxy toma una decisión determinista de permitir o denegar en cada conexión. La celda calcula esa misma decisión en el navegador desde la política real del launchable, luego ejecuta la acción en el sandbox activo y comprueba que el veredicto del kernel coincide con la predicción.</p>
   <p>Este ejercicio pone a prueba la identidad de un <em>binario</em>. La política concede egress por programa, no por host, así que el proxy comprueba qué binario abrió la conexión antes de evaluar el destino. Por ello, <code>openclaw</code> puede alcanzar el endpoint de inferencia mientras se deniega un <code>curl</code> al mismo destino. Elige una acción para ver de inmediato el veredicto estático y su confirmación activa; la acción del endpoint de inferencia muestra con mayor claridad este cambio de resultado para un mismo host.</p>
 
-  <div class="callout"><strong>La confirmación utiliza la instancia real.</strong> Cada acción se ejecuta en el launchable conectado en Kickstart mediante <code>openshell sandbox exec</code>. Mantén el launchable abierto en otra pestaña para conservar la sesión de Cloudflare Access.</div>
+  <div class="callout"><strong>La confirmación utiliza la instancia real.</strong> Cada acción se ejecuta en el launchable conectado en Kickstart mediante <code>openshell sandbox exec</code>. Mantén el launchable abierto en otra pestaña para conservar la sesión de acceso.</div>
 
   <div id="sbx-pick"></div>
   <script type="module">
@@ -547,11 +538,12 @@ async function probe(command, mechanism) {
   return { command, blocked, mechanism: mech };
 }
 const question = (q) => { helpers.log(""); helpers.log.html("<span style='color:var(--gs);font-weight:700'>" + _esc(q) + "</span>"); };
+const results = [];
 
 question("Can I reach the open internet?");
-await probe("curl -sS -m 8 -o /dev/null -w 'code=%{http_code}' https://example.com", "network");
-await probe("curl -sS -m 8 -o /dev/null -w 'code=%{http_code}' https://en.wikipedia.org", "network");
-await probe("curl -sS -m 6 -o /dev/null -w 'code=%{http_code}' http://169.254.169.254/latest/meta-data/", "network");
+results.push(await probe("curl -sS -m 8 -o /dev/null -w 'code=%{http_code}' https://example.com", "network"));
+results.push(await probe("curl -sS -m 8 -o /dev/null -w 'code=%{http_code}' https://en.wikipedia.org", "network"));
+results.push(await probe("curl -sS -m 6 -o /dev/null -w 'code=%{http_code}' http://169.254.169.254/latest/meta-data/", "network"));
 helpers.log([
   "→ The network namespace plus the OPA egress proxy refuse every curl.",
   "The allowlist is bound to the openclaw binary, so a plain curl reaches nothing.",
@@ -559,9 +551,9 @@ helpers.log([
 ].join(" "));
 
 question("Can I install software, to pull in new code?");
-await probe("apt-get install -y cowsay", "non-root");
-await probe("pip install --break-system-packages --retries 0 --timeout 5 --no-input cowsay", "network");
-await probe("npm install --no-audit --no-fund left-pad", "network");
+results.push(await probe("apt-get install -y cowsay", "non-root"));
+results.push(await probe("pip install --break-system-packages --retries 0 --timeout 5 --no-input cowsay", "network"));
+results.push(await probe("npm install --no-audit --no-fund left-pad", "network"));
 helpers.log([
   "→ No. apt needs root it does not have.",
   "pip and npm run, but the egress proxy refuses their downloads.",
@@ -569,21 +561,21 @@ helpers.log([
 ].join(" "));
 
 question("Can I become root, or escape the container?");
-await probe("sudo id", "not installed");
-await probe("nsenter -t 1 -m -- id", "seccomp / non-root");
-await probe("docker ps", "not installed");
-await probe("cat /proc/1/environ", "non-root");
+results.push(await probe("sudo id", "not installed"));
+results.push(await probe("nsenter -t 1 -m -- id", "seccomp / non-root"));
+results.push(await probe("docker ps", "not installed"));
+results.push(await probe("cat /proc/1/environ", "non-root"));
 helpers.log([
   "→ No path up or out.",
   "sudo and docker are absent, entering the host namespace is denied,",
   "and the host init environment is unreadable.",
 ].join(" "));
 
-question("Can I rewrite my own personality, and is locking it real?");
-await probe("ls -la /sandbox/.openclaw/workspace/SOUL.md", "Landlock");
-await probe("chmod 0444 /sandbox/.openclaw/workspace/SOUL.md", "Landlock");
-await probe("chmod 0644 /sandbox/.openclaw/workspace/SOUL.md", "Landlock");
-await probe("chattr +i /sandbox/.openclaw/workspace/SOUL.md", "non-root");
+question("Can I rewrite my own persona, and is locking it real?");
+results.push(await probe("ls -la /sandbox/.openclaw/workspace/SOUL.md", "Landlock"));
+results.push(await probe("chmod 0444 /sandbox/.openclaw/workspace/SOUL.md", "Landlock"));
+results.push(await probe("chmod 0644 /sandbox/.openclaw/workspace/SOUL.md", "Landlock"));
+results.push(await probe("chattr +i /sandbox/.openclaw/workspace/SOUL.md", "non-root"));
 helpers.log([
   "→ SOUL.md sits in a writable tree and the agent owns it, so it can undo chmod.",
   "The lock it cannot pick is chattr +i, which needs root.",
@@ -592,6 +584,9 @@ helpers.log([
 
 helpers.log("");
 helpers.log("Edit any command, add a probe('your command') line, or ask a new question. One program per line: no shell, so no pipes or &&.");
+// Visibilidad opcional: descomenta para revisar cada resultado antes del resumen.
+// helpers.log.json("todos los resultados", results);
+return { probes: results.length, denied: results.filter(result => result.blocked).length, results };
 `,
 });
 
@@ -606,7 +601,7 @@ helpers.log("Edit any command, add a probe('your command') line, or ask a new qu
 // ── Read your live policy, draw the map from it ───────────────────────────────
 mountRunCell("#cell-live-policy", {
   label: "Lee la política activa del launchable",
-  intro: "Obtén la política activa mediante la terminal del operador y muestra su YAML; después, compárala con la instantánea que utiliza el mapa. Mantén el launchable abierto para conservar la sesión de Cloudflare Access y conéctalo primero en el Módulo 3a si fuera necesario. La llamada exacta permanece en el desplegable de código.",
+  intro: "Obtén la política activa mediante la terminal del operador y muestra su YAML; después, compárala con la instantánea que utiliza el mapa. Mantén el launchable abierto para conservar la sesión de acceso y conéctalo primero en el Módulo 3a si fuera necesario. La llamada exacta permanece en el desplegable de código.",
   code: `// helpers.policyGet() returns the command, raw output, status, and parsed policy.
 const p = await helpers.policyGet();
 helpers.log("called:  " + p.command);          // the exact command that ran on your box
@@ -614,12 +609,15 @@ helpers.log("");
 helpers.log(p.status || "(no status header returned)");
 
 if (!p.policy) {
-  helpers.log("\\n(could not parse a policy body. Keep your launchable open in another tab so its Cloudflare Access session is valid, then re-run. Check the sandbox name with: openshell sandbox list)");
+  helpers.log("\\nNo se pudo interpretar la política activa: " + (p.parseError || "error desconocido del analizador"));
+  helpers.log("Mantén el launchable abierto en otra pestaña, vuelve a ejecutar y comprueba el nombre con: openshell sandbox list");
   helpers.log.details("raw output", p.raw);
   return;
 }
 
 const nets = Object.keys(p.policy.network_policies || {});
+// Visibilidad opcional: descomenta para revisar los destinos como JSON.
+// helpers.log.json("nombres de políticas de red", nets);
 helpers.log("\\nyour live policy: egress is deny-by-default, with " + nets.length + " allowed destinations (" + nets.join(", ") + ").");
 helpers.log("the predict cell below computes from this exact policy.");
 helpers.log.details("raw policy returned (the YAML openshell printed)", p.raw);

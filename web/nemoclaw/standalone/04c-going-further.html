@@ -1680,8 +1680,7 @@ svg[style*="background: #0d0d0d"] {
   color: #1f2328 !important;
 }
 
-/* Pages that style their SVGs via a page-local <style> block (e.g. cert.html's
-   `.topo-svg svg { background:#0d0d0d }`) don't get the substitution above,
+/* Pages that style their SVGs via a page-local <style> block don't get the substitution above,
    because those rules win on specificity. Patch with !important per-page selector. */
 .topo-svg svg {
   background: #f6f8fa !important;
@@ -2159,7 +2158,7 @@ pre .hljs                { color: #1f2328 !important; background: transparent !i
           model server, and a Jupyter front end; you bring the
           repo.
         </p>
-        <a class="btn" href="https://brev.nvidia.com" target="_blank" rel="noopener">brev.nvidia.com →</a>
+        <a class="btn" href="https://brev.nvidia.com/launchable/deploy?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS&amp;ncid=ref-dli-759990" target="_blank" rel="noopener">brev.nvidia.com →</a>
       </div>
       <div class="step-card">
         <h3>build.nvidia.com</h3>
@@ -2171,7 +2170,7 @@ pre .hljs                { color: #1f2328 !important; background: transparent !i
           and supply an NVIDIA API key. Free credits cover the
           experimentation phase.
         </p>
-        <a class="btn" href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com →</a>
+        <a class="btn" href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener">build.nvidia.com →</a>
       </div>
       <div class="step-card">
         <h3>Self-host with NIM</h3>
@@ -2237,7 +2236,7 @@ pre .hljs                { color: #1f2328 !important; background: transparent !i
           both as starting templates and as a sanity check on
           your own architecture.
         </p>
-        <a class="btn" href="https://build.nvidia.com/blueprints" target="_blank" rel="noopener">AI Blueprints →</a>
+        <a class="btn" href="https://build.nvidia.com/blueprints?ncid=ref-dli-146986" target="_blank" rel="noopener">AI Blueprints →</a>
       </div>
       <div class="step-card">
         <h3>NeMo Data Curator</h3>
@@ -2367,12 +2366,12 @@ pre .hljs                { color: #1f2328 !important; background: transparent !i
       <li>Cemri et al. (2025). <a href="https://arxiv.org/abs/2503.13657" target="_blank" rel="noopener">Why Do Multi-Agent LLM Systems Fail? (MAST).</a> <code>arXiv:2503.13657</code>.</li>
       <li>Wu et al. (2023). <a href="https://arxiv.org/abs/2308.08155" target="_blank" rel="noopener">AutoGen.</a> <code>arXiv:2308.08155</code>.</li>
       <li>Hong et al. (2023). <a href="https://arxiv.org/abs/2308.00352" target="_blank" rel="noopener">MetaGPT.</a> <code>arXiv:2308.00352</code>.</li>
-      <li>Chen et al. (2024). <a href="https://arxiv.org/abs/2312.06569" target="_blank" rel="noopener">Are More LLM Calls All You Need?</a> <code>arXiv:2312.06569</code>.</li>
+      <li>Chen et al. (2024). <a href="https://arxiv.org/abs/2403.02419" target="_blank" rel="noopener">Are More LLM Calls All You Need? Towards Scaling Laws of Compound Inference Systems</a> <code>arXiv:2403.02419</code>.</li>
       <li>Xu et al. (2025). <a href="https://arxiv.org/abs/2502.12110" target="_blank" rel="noopener">A-MEM: Atomic Notes for Agent Memory.</a> <code>arXiv:2502.12110</code>.</li>
       <li>Christiano et al. (2017). <a href="https://arxiv.org/abs/1706.03741" target="_blank" rel="noopener">Deep RL from Human Preferences (RLHF).</a> <code>arXiv:1706.03741</code>.</li>
       <li>Rafailov et al. (2023). <a href="https://arxiv.org/abs/2305.18290" target="_blank" rel="noopener">Direct Preference Optimization (DPO).</a> <code>arXiv:2305.18290</code>.</li>
       <li>Bai et al. (2022). <a href="https://arxiv.org/abs/2212.08073" target="_blank" rel="noopener">Constitutional AI.</a> <code>arXiv:2212.08073</code>.</li>
-      <li><a href="https://build.nvidia.com/nvidia/aiq" target="_blank" rel="noopener">NVIDIA AI-Q Blueprint</a> · <a href="https://github.com/langchain-ai/deepagents" target="_blank" rel="noopener">deepagents</a>.</li>
+      <li><a href="https://build.nvidia.com/nvidia/aiq?ncid=ref-dli-146986" target="_blank" rel="noopener">NVIDIA AI-Q Blueprint</a> · <a href="https://github.com/langchain-ai/deepagents" target="_blank" rel="noopener">deepagents</a>.</li>
     </ul>
   </div>
 
@@ -2499,7 +2498,7 @@ pre .hljs                { color: #1f2328 !important; background: transparent !i
 // same page HTML works in the lab static host, an external iframe, or opened as a
 // local file, all identically, because it only ever talks to remotes.
 
-const DIRECT_URL = "https://nvidia-api-cors-proxy.vkudlay.workers.dev/v1";
+const DIRECT_URL = "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1";
 // Web-cell model contract. The short course standardises on the fast Nemotron
 // nano model: it carries the reasoning channel and is quick enough for live
 // browser cells. DEFAULT_MODEL is what chat() uses when a cell passes no model;
@@ -6285,7 +6284,7 @@ export function mountKeyPanel(container, opts = {}) {
         <button class="btn">Save &amp; verify</button>
         <div class="status"></div>
         <p style="margin:.8em 0 0;font-size:.8rem;color:var(--tf,#8a8a8a)">
-          No key yet? <a href="https://build.nvidia.com" target="_blank" rel="noopener">Sign up at build.nvidia.com &rarr;</a>
+          No key yet? <a href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener">Sign up at build.nvidia.com &rarr;</a>
           Free-tier models cover every exercise.
         </p>
       </div>`;
@@ -7309,7 +7308,7 @@ return { lines: lines.length };
         '<label for="_lite_key_in">NVIDIA API key (nvapi-…)</label>' +
         '<input id="_lite_key_in" type="password" placeholder="nvapi-…" autocomplete="off"/>' +
         '<button id="_lite_key_btn">Save & verify</button>' +
-        '<div class="key-hint">Free key at <a href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com</a>. Stored in sessionStorage; cleared when this tab closes.</div>' +
+        '<div class="key-hint">Free key at <a href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener">build.nvidia.com</a>. Stored in sessionStorage; cleared when this tab closes.</div>' +
         (message ? '<div class="key-err">' + message + '</div>' : '') +
       '</div>';
     var inp = panel.querySelector("#_lite_key_in");

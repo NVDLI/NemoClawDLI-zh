@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Reject security-finding details and private operational data from contributions."""
 from __future__ import annotations
 
@@ -46,6 +49,12 @@ DIRECT_PATTERNS = (
     ("cloud account locator", re.compile(r"\barn:aws(?:-us-gov|-cn)?:[^:\s]*:[^:\s]*:\d{12}:", re.I)),
     ("corporate personal email", re.compile(r"\b[A-Za-z0-9._%+-]+@nvidia\.com\b", re.I)),
 )
+PUBLIC_ROLE_EMAILS = frozenset({"psirt@nvidia.com"})
+PATH_PHRASE_ALLOWANCES = {
+    # Ownership files must name a real host principal. Keep this single-token allowance
+    # scoped to CODEOWNERS; the same identity stays blocked in prose, code, and metadata.
+    ".gitlab/CODEOWNERS": frozenset({"v" + "kudlay"}),
+}
 
 
 @dataclass(frozen=True)
@@ -212,6 +221,8 @@ def scan_text(path: str, text: str, policy: Policy) -> list[Finding]:
             add(match.start(), "private service hostname")
     for kind, pattern in DIRECT_PATTERNS:
         for match in pattern.finditer(text):
+            if kind == "corporate personal email" and match.group(0).casefold() in PUBLIC_ROLE_EMAILS:
+                continue
             add(match.start(), kind)
     offset = 0
     for line in text.splitlines(keepends=True):
@@ -219,7 +230,8 @@ def scan_text(path: str, text: str, policy: Policy) -> list[Finding]:
         for start in range(len(tokens)):
             for size in range(1, min(policy.max_phrase_tokens, len(tokens) - start) + 1):
                 phrase = " ".join(token for token, _ in tokens[start:start + size])
-                if digest(phrase) in policy.phrases:
+                if (phrase not in PATH_PHRASE_ALLOWANCES.get(path, frozenset())
+                        and digest(phrase) in policy.phrases):
                     add(offset + tokens[start][1], "restricted active-finding detail")
         offset += len(line)
     return findings
@@ -309,7 +321,7 @@ def audit_commit_range(commit_range: str, root: Path = ROOT, policy: Policy | No
     return sorted(findings, key=lambda item: (item.path, item.line, item.kind)), len(commits)
 
 
-def self_test() -> tuple[int, int, list[str]]:
+def self_test() -> list[str]:
     policy = load_policy()
     examples = (
         ("year and serial", "C" + "VE-2026-12345", True),
@@ -326,8 +338,11 @@ def self_test() -> tuple[int, int, list[str]]:
         ("private hostname", "https://" + "nspect" + ".nvidia.com/report", True),
         ("private hostname suffix", "https://branch." + "gitlab-master-pages" + ".nvidia.com", True),
         ("private project locator", "364" + "401", True),
+        ("contributor-local identifier", "v" + "kudlay", True),
+        ("declared code owner", "@" + "v" + "kudlay", False),
         ("active detail", "Parse" + "Dict", True),
         ("corporate email", "person@" + "nvidia.com", True),
+        ("public security role email", "psirt@" + "nvidia.com", False),
         ("source token", "glpat-" + "a" * 24, True),
         ("signed credential", "eyJ" + "a" * 24 + "." + "b" * 12 + "." + "c" * 12, True),
         ("public standard", "RFC-6902", False),
@@ -337,7 +352,8 @@ def self_test() -> tuple[int, int, list[str]]:
     )
     failures: list[str] = []
     for label, sample, should_fail in examples:
-        rejected = bool(scan_text("fixture.txt", sample, policy))
+        path = ".gitlab/CODEOWNERS" if label == "declared code owner" else "fixture.txt"
+        rejected = bool(scan_text(path, sample, policy))
         if rejected != should_fail:
             failures.append(f"{label}: expected rejected={should_fail}, got {rejected}")
 
@@ -389,8 +405,7 @@ def self_test() -> tuple[int, int, list[str]]:
         rows, scanned = audit(archive, policy, workers=1)
         if scanned != 1 or not any(item.path == "source.txt" for item in rows):
             failures.append("source-archive discovery: source content was not scanned exactly once")
-    total = len(examples) + 3
-    return total - len(failures), total, failures
+    return failures
 
 
 def emit(findings: list[Finding], label: str, scanned: int, report: str | None) -> int:
@@ -426,8 +441,8 @@ def main() -> int:
     try:
         policy = load_policy()
         if args.self_test:
-            passed, total, failures = self_test()
-            print(f"sensitive content self-test: {passed}/{total} passed")
+            failures = self_test()
+            print("sensitive content self-test: " + ("FAIL" if failures else "PASS"))
             for failure in failures:
                 print("  FAIL " + failure)
             return 1 if failures else 0
