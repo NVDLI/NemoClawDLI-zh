@@ -671,6 +671,7 @@
     var list = document.createElement("ul"); list.className = "sbom-facts";
     facts.forEach(function (fact) {
       var item = document.createElement("li");
+      if (fact.key) item.dataset.sbomFact = fact.key;
       if (fact.attention) item.className = "needs-review";
       var value = document.createElement("strong"); text(value, fact.value); item.appendChild(value);
       var label = document.createElement("span"); text(label, fact.label); item.appendChild(label);
@@ -815,9 +816,9 @@
             return componentLicense(component) === "Missing license evidence";
           });
           appendFacts(card, [
-            {value:runtime._components.length, label:"packages checked"},
-            {value:recorded, label:"have recorded license information"},
-            {value:unresolved.length, label:"need package-by-package review", attention:unresolved.length > 0}
+            {key:"checked", value:runtime._components.length, label:"packages checked"},
+            {key:"recorded", value:recorded, label:"have recorded license information"},
+            {key:"unresolved", value:unresolved.length, label:"need package-by-package review", attention:unresolved.length > 0}
           ]);
           if (unresolved.length) {
             var unresolvedPreview = appendComponentPreview(card, unresolved,

@@ -637,6 +637,7 @@ async function inspect(browser, file) {
           ciArtifactLinks:sbomEvidence.querySelectorAll('a[data-evidence-link="ci-artifact"]').length,
           ciComponentRows:sbomEvidence.querySelectorAll('[data-ci-component-preview="1"] tbody tr').length,
           clarificationRows:sbomEvidence.querySelectorAll('[data-license-clarification="1"] tbody tr').length,
+          clarificationCount:Number(sbomEvidence.querySelector('[data-sbom-fact="unresolved"] strong')?.textContent ?? NaN),
           invalidEvidenceLinks,
           text:sbomEvidence.innerText || '',
           visibleTechnicalTerms:['security_deep_sca','security_image_sca','CycloneDX','SHA-256','artifact path'].filter(term =>
@@ -709,8 +710,12 @@ async function inspect(browser, file) {
         errors.push('available CI evidence does not link all three generated artifacts');
       } else if (state.sbomEvidence.ciLinksState === 'available' && !state.sbomEvidence.ciComponentRows) {
         errors.push('available CI evidence does not render the linked SBOM component licenses');
-      } else if (state.sbomEvidence.ciLinksState === 'available' && !state.sbomEvidence.clarificationRows) {
-        errors.push('available CI evidence does not foreground packages needing license clarification');
+      } else if (state.sbomEvidence.ciLinksState === 'available'
+          && !Number.isInteger(state.sbomEvidence.clarificationCount)) {
+        errors.push('available CI evidence does not state how many packages need license clarification');
+      } else if (state.sbomEvidence.ciLinksState === 'available'
+          && state.sbomEvidence.clarificationRows !== state.sbomEvidence.clarificationCount) {
+        errors.push(`available CI evidence reports ${state.sbomEvidence.clarificationCount} package(s) needing license clarification but renders ${state.sbomEvidence.clarificationRows}`);
       } else if (!['available', 'incomplete', 'unavailable'].includes(state.sbomEvidence.ciLinksState)) {
         errors.push('CI artifact evidence lacks an explicit availability state');
       } else if (!/Learners receive these \d+ packages/.test(state.sbomEvidence.text)
