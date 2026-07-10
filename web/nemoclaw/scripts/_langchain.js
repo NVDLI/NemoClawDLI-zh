@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // LangChain.js loader and helpers for 01b/02c.
 // Holds the COURSE_PAGES registry, coursePage/coursePages, and the context + token estimators.
 

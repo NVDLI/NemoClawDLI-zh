@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // Interactive-cell runtime: mountCanvasFlow, mountRunCell, the helper-menu builders, error/log.
 // Leaf module: it imports the registries and primitives from _shared.js but references them only inside function bodies, so the import cycle stays load-safe.
 import { HELPER_FNS, REASONING_MODEL, SPECIALS, VIZ_BUILDERS, _labOnlyService, _stepLabOnly, browserChatFetch, chat, chatStream, contextWindow, cosineSim, coursePage, coursePages, diagramSVG, embed, estimateTokens, evalSandboxFs, evalSandboxNetwork, fetchRetry, formatSearchResults, ganttBarsSVG, getConfig, getKey, instantAnswer, mountAgentChat, mountChatUI, mountKeyPanel, openclawChat, sandboxExec, terminal, webSearch, wireFigureZoom } from "./_shared.js";

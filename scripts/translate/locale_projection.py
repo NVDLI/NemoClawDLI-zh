@@ -1,3 +1,6 @@
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Project a reviewed sparse translation onto the current canonical page structure."""
 from __future__ import annotations
 

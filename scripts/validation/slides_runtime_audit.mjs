@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 /** Render every hosted repository-overview slide and reject visible overflow.
  *
  * This is the browser half of slides_audit.py. It checks the actual HTML deck:

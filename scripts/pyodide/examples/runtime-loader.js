@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 const RUNTIME = Object.freeze({
   pyodide: "0.27.7",
   python: "3.12.7",

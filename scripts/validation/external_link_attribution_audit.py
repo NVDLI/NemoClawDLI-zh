@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Require course attribution on learner-facing NVIDIA Build and Brev links.
 
 Captured reference packets under ``mats/`` are deliberately outside this audit: they

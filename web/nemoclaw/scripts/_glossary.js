@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // Glossary helpers: ranked local webSearch plus single-term instantAnswer.
 
 // Ranked local search over the vendored NVIDIA materials index.

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Validate the hosted repository-overview deck and its source manifest.
 
 The audit deliberately reuses prose_variety.py for writing quality, then adds

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Browser-check the shared runnable-cell UI contract.
 
 This is intentionally stricter than a page render smoke. It verifies the

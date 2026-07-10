@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Assemble one sparse language overlay over the canonical web tree.
 
 Localized prose, reviewed runnable-code language, and reviewed SVG text may diverge. Executable

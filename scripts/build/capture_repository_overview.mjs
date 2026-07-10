@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 /** Capture repository-owned browser surfaces used by the stakeholder deck.
  *
  * The captures are evidence, not decorative stock images. Each entry names the

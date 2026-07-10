@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // Accessible course-language switcher backed by the build-time language manifest.
 // The manifest lists only built locales; each locale lists pages that passed localization review.
 

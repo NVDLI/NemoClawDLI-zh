@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 /* Shared SKILL.html self-test harness.
  *
  * Served at /lab/static/_skill_selftest.js (workspace root is a jupyter static

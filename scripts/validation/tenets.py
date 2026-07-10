@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Report the bundle's core tenets and the gate that enforces each.
 
 This bundle ships no agent-tool config file (no CLAUDE.md or equivalent). The operating

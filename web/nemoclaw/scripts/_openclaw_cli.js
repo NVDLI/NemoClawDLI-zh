@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // OpenClaw CLI artifact runtime.
 // This module keeps gateway transport and session tabs out of the student editing surface.
 // The exported mount function remains an inspectable boundary for lessons and tests.

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Reject broken or deployment-root-dependent links in a static artifact.
 
 The root passed on the command line is the exact unit that may be uploaded to a

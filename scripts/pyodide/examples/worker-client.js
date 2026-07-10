@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 const DEFAULT_TIMEOUT_MS = 15_000;
 
 export class PythonRunner {

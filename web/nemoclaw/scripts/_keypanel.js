@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // _keypanel.js holds the inline API-key setup panel (mountKeyPanel) that used to live in _shared.js.
 import {
   DEFAULT_MODEL, DEFAULT_MODEL_API_BASE_URL, browserChatFetch, chat,

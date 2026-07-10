@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // Browser proxy for NemoClaw launchables protected by Cloudflare Access.
 const WORKER_VERSION = "openclaw-cors-proxy/2026-06-26-ws-gateway";
 

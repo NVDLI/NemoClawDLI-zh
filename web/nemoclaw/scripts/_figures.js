@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // Course-specific inline figure builders kept out of the shared diagram engine.
 
 export function ganttBarsSVG(workers, wallSeconds, title = "Concurrency vs serial time") {

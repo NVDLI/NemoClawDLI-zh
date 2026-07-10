@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """What changed on the source branch since a translation was last synced (the drift report).
 
 A translation branch (`translate-<lang>`) is a full overlay of the source branch: the same

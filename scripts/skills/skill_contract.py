@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """SKILL-contract conformance: is every skill-meta a VALID beacon, not just an accurate one?
 
 The link engine proves SKILL paths resolve; skill_audit proves a beacon matches its

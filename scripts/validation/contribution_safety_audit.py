@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Enforce low-friction idea intake and high-friction code/release boundaries."""
 from __future__ import annotations
 
@@ -20,6 +23,7 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
 from _bootstrap import find_repo_root
 
 ROOT = find_repo_root(Path(__file__).resolve())
+NVIDIA_APACHE_COPYRIGHT = "Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
 
 CONTRACT_FILES = (
     "RELEASE_STATUS.json",
@@ -217,10 +221,15 @@ def audit_repo(
         require(docs["README.md"], f"]({rel})", "README.md", "readme-policy-link", out,
                 f"link {rel} from the public project entrypoint")
     license_header = re.sub(r"\s+", " ", docs["LICENSE"]).strip()
-    if not license_header.startswith("Apache License Version 2.0, January 2004"):
-        out.append(finding("root-license", "LICENSE",
-                           "root LICENSE lacks the canonical Apache License 2.0 header",
-                           "restore the reviewed Apache License 2.0 text at the root LICENSE path"))
+    expected_license_header = (
+        NVIDIA_APACHE_COPYRIGHT + " Apache License Version 2.0, January 2004"
+    )
+    if not license_header.startswith(expected_license_header):
+        out.append(finding(
+            "root-license", "LICENSE",
+            "root LICENSE lacks the NVIDIA copyright followed by the canonical Apache License 2.0 header",
+            "restore the reviewed NVIDIA copyright and Apache License 2.0 text at the root LICENSE path",
+        ))
     require(docs["CODE_OF_CONDUCT.md"], "private content-reporting flow", "CODE_OF_CONDUCT.md",
             "conduct-report-route", out, "retain a public-safe, non-Issue conduct reporting route")
     require(docs["CODE_OF_CONDUCT.md"], "must not decide its outcome", "CODE_OF_CONDUCT.md",
@@ -1259,6 +1268,7 @@ def self_test() -> list[str]:
             ("readme-boundary", "README.md", "Ideas are easy; code is gated", "Contribution overview"),
             ("readme-public-entrypoint", "README.md", "## Requirements", "## Prerequisites"),
             ("readme-policy-link", "README.md", "](CODE_OF_CONDUCT.md)", "](conduct-policy.md)"),
+            ("root-license", "LICENSE", NVIDIA_APACHE_COPYRIGHT, "Copyright removed"),
             ("root-license", "LICENSE", "Apache License", "Example License"),
             ("cla-applicability", "CONTRIBUTING.md", "does not require a separate contributor license agreement", "may require another agreement"),
             ("agent-dco", "AGENTS.md", "Every proposed commit", "Every release"),

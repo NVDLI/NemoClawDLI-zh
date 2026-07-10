@@ -1,3 +1,6 @@
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 sandbox-admin is the minimal control plane for the OpenShell-sandboxed OpenClaw
 deployment in the course lab.

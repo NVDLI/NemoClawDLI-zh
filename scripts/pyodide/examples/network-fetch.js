@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 const BLOCKED_HEADERS = new Set([
   "connection", "content-length", "cookie", "host", "origin", "referer",
 ]);

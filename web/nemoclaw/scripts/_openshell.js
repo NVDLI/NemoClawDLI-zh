@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // OpenShell teaching surface for 04a (policy lab) and 04b (modern CLIs).
 // Holds the launchable PTY terminal, the sandbox-policy.rego port, the exec bridge, and the policy map.
 // Browser globals only; _shared.js re-exports these so a page can import from either module.

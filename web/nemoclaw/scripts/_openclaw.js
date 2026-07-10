@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // OpenClaw gateway + claw widgets for 03a/03b/03c/04a.
 // Holds the live WebSocket gateway client and the connect/probe widgets.
 // Also openclawChat, GW_CONNECT, and the recover flow.

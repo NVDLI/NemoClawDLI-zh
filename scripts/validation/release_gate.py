@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Run the canonical deterministic repository validation ladder.
 
 Host-specific submission, commit-range, live-source, and deployment checks remain in
@@ -58,6 +61,9 @@ CONTRIBUTION_LANGUAGE_OWNERSHIP_TESTS = py(
     "-m", "unittest", "-v", "tests.validation.test_contribution_language_ownership",
 )
 FOYER_BRANCH_PATH_TESTS = py("-m", "unittest", "-v", "tests.validation.test_foyer_branch_paths")
+SOURCE_LICENSE_CONTRACT_TESTS = py(
+    "-m", "unittest", "-v", "tests.validation.test_source_license_contract",
+)
 PYODIDE_RUNTIME_SMOKE = ("bash", "scripts/runtime/run_node.sh", "scripts/pyodide/runtime_smoke.mjs", "--cdn")
 
 
@@ -93,6 +99,7 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/validation/endpoint_registration_audit.py"),
     ("bash", "scripts/runtime/run_node.sh", "scripts/validation/openclaw_connection_audit.mjs"),
     py("scripts/compliance/source_gate.py"),
+    SOURCE_LICENSE_CONTRACT_TESTS,
     py("scripts/compliance/source_document_audit.py"),
     unit_test("source_document_audit"),
     py("scripts/pyodide/integration_audit.py"),
@@ -175,6 +182,7 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/validation/endpoint_registration_audit.py"),
     ("bash", "scripts/runtime/run_node.sh", "scripts/validation/openclaw_connection_audit.mjs"),
     py("scripts/compliance/source_gate.py"),
+    SOURCE_LICENSE_CONTRACT_TESTS,
     py("scripts/compliance/source_document_audit.py"),
     unit_test("source_document_audit"),
     py("scripts/pyodide/integration_audit.py"),
@@ -225,6 +233,18 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     THEME_RUNTIME_CONTRACT_TESTS: (
         "scripts/skills/skill_renderer_runtime_audit.py",
         "tests/validation/test_theme_runtime_contract.py", ".gitlab/ci/core.yml", "**/*.html",
+    ),
+    SOURCE_LICENSE_CONTRACT_TESTS: (
+        "LICENSE", "DCO.md", "THIRD-PARTY-NOTICES.md", "CONTRIBUTING.md",
+        "scripts/compliance/source_gate.py", "scripts/compliance/source_license_contract.py",
+        "tests/validation/test_source_license_contract.py",
+        "scripts/build/vendor_browser_dependencies.mjs",
+        "web/nemoclaw/vendor/browser-dependencies.json",
+        "scripts/**/*.py", "scripts/**/*.js", "scripts/**/*.mjs",
+        "web/**/*.py", "web/**/*.js", "web/**/*.mjs",
+        "tests/**/*.py", "tests/**/*.js", "tests/**/*.mjs",
+        "cpu/**/*.py", "cpu/**/*.js", "cpu/**/*.mjs",
+        "workspace/**/*.py", "workspace/**/*.js", "workspace/**/*.mjs",
     ),
     unit_test("source_document_audit"): (
         "scripts/compliance/source_document_audit.py", "scripts/compliance/docs/document_sources.json",

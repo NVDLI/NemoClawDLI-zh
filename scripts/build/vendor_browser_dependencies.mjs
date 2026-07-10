@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // Build the same-origin browser bundles and their source-derived inventory.
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -140,6 +143,57 @@ const assetPackages = {
   "langchain-1.4.7.esm.min.js": [...packagesFromMeta(langchain.metafile)].map(packageName).sort(),
 };
 
+const assetProvenance = {
+  "highlight-11.10.0.min.js": {
+    distribution_form: "transformed-bundle",
+    modified_from_upstream: true,
+    transformation: "Selected modules are bundled and minified with esbuild for browser delivery.",
+    source_files: ["scripts/browser-vendor/highlight-entry.js"],
+  },
+  [`${codemirrorBase}.min.js`]: {
+    distribution_form: "transformed-bundle",
+    modified_from_upstream: true,
+    transformation: "Selected modules are bundled and minified with esbuild for browser delivery.",
+    source_files: ["scripts/browser-vendor/codemirror-entry.js"],
+  },
+  "langchain-1.4.7.esm.min.js": {
+    distribution_form: "transformed-bundle",
+    modified_from_upstream: true,
+    transformation: "Selected modules are bundled and minified with esbuild for browser ESM delivery.",
+    source_files: ["scripts/browser-vendor/langchain-entry.js"],
+  },
+  "js-yaml-5.2.1.esm.min.js": {
+    distribution_form: "transformed-bundle",
+    modified_from_upstream: true,
+    transformation: "Selected modules are bundled and minified with esbuild for browser ESM delivery.",
+    source_files: ["scripts/browser-vendor/js-yaml-entry.js"],
+  },
+  "highlight-github-dark-11.10.0.min.css": {
+    distribution_form: "upstream-file-copy",
+    modified_from_upstream: false,
+    transformation: "Copied byte-for-byte from the pinned npm package; only the destination filename is selected here.",
+    source_files: ["scripts/browser-vendor/node_modules/highlight.js/styles/github-dark.min.css"],
+  },
+  [`${codemirrorBase}.min.css`]: {
+    distribution_form: "upstream-file-copy",
+    modified_from_upstream: false,
+    transformation: "Copied byte-for-byte from the pinned npm package; only the destination filename is selected here.",
+    source_files: ["scripts/browser-vendor/node_modules/codemirror/lib/codemirror.css"],
+  },
+  [`codemirror-monokai-${codemirrorVersion}.min.css`]: {
+    distribution_form: "upstream-file-copy",
+    modified_from_upstream: false,
+    transformation: "Copied byte-for-byte from the pinned npm package; only the destination filename is selected here.",
+    source_files: ["scripts/browser-vendor/node_modules/codemirror/theme/monokai.css"],
+  },
+  "marked-14.1.4.esm.js": {
+    distribution_form: "upstream-file-copy",
+    modified_from_upstream: false,
+    transformation: "Copied byte-for-byte from the pinned npm package; only the destination filename is selected here.",
+    source_files: ["scripts/browser-vendor/node_modules/marked/lib/marked.esm.js"],
+  },
+};
+
 const sourceRoots = [path.join(root, "web"), path.join(root, "i18n")];
 const sourceFiles = [];
 function walk(directory) {
@@ -167,6 +221,7 @@ const assets = Object.keys(assetPackages).sort().map(file => {
   references.sort((a, b) => a.source.localeCompare(b.source) || a.line - b.line);
   return {
     file,
+    ...assetProvenance[file],
     media_type: file.endsWith(".css") ? "text/css" : "text/javascript",
     bytes: bytes.length,
     sha256: crypto.createHash("sha256").update(bytes).digest("hex"),

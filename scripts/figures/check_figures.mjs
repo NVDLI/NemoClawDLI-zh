@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // Browser-rendered figure gate. Detects overlap, bounds, connector, and no-edge diagram issues.
 // Self-tests each detector before reporting clean.
 import fs from "fs"; import path from "path"; import { fileURLToPath } from "url";

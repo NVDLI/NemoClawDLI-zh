@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Auto-runnable validation cadence for the task1 bundle. This is the single CI entrypoint.
 
 Composes the deterministic validators into one gate and writes a DURABLE static log

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Shared pytest fixtures for llm_client unit tests.
 
 Importing the llm_client module needs the service dir on sys.path. We do

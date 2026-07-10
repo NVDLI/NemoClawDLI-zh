@@ -1,3 +1,6 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // Page-aware ReAct assistant. Shared chrome mounts it lazily in the page language.
 import { mountAgentChat } from "./_chat.js";
 import {

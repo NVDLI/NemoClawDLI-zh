@@ -1,3 +1,6 @@
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Tests for ConverseStreamAccumulator, covering Bedrock event to OpenAI SSE.
 
 Each test drives a synthetic Bedrock event sequence through the accumulator

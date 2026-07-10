@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Deterministic layout/glue validator for the task1 course stack.
 
 Runs a FIXED battery of static checks and exits nonzero naming the exact failing

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Refresh GitLab issues with the repo issue-standard anatomy.
 
 This helper is intentionally under scripts/dev: it is an operator handoff for

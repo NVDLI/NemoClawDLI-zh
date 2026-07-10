@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Audit OpenClaw fail-fast, Brev backup, and probe-frame cleanup contracts."""
 from __future__ import annotations
 
