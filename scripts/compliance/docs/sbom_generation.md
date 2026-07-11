@@ -91,9 +91,9 @@ the separate scanner lock. This is the same sequence used by `security_python_sc
 
 ```bash
 python3 -m venv /tmp/nemoclaw-release-scanner
-/tmp/nemoclaw-release-scanner/bin/python -m pip install -r scripts/security/requirements-sca.lock
+/tmp/nemoclaw-release-scanner/bin/python -m pip install --require-hashes --no-deps --only-binary=:all: -r scripts/security/requirements-sca.lock
 mkdir -p "$OUT/python-scan"
-/tmp/nemoclaw-release-scanner/bin/pip-audit -r scripts/materials/requirements.lock --strict \
+/tmp/nemoclaw-release-scanner/bin/pip-audit -r scripts/materials/requirements.lock --strict --no-deps --disable-pip \
   --format cyclonedx-json --output "$OUT/python-scan/python-env.raw.cdx.json"
 /tmp/nemoclaw-release-scanner/bin/python scripts/compliance/resolve_sbom_licenses.py \
   --input "$OUT/python-scan/python-env.raw.cdx.json" \

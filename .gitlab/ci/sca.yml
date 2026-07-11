@@ -44,6 +44,9 @@ security_browser_sca:
     - git diff --exit-code -- web/nemoclaw/vendor
     # npm retries transport failures internally; advisory findings still fail immediately.
     - npm audit --prefix scripts/browser-vendor --package-lock-only --audit-level=moderate --json --fetch-retries=3 --fetch-retry-mintimeout=2000 --fetch-retry-maxtimeout=10000 --fetch-timeout=30000 > scripts/security/reports/browser-npm-audit.json
+    - corepack enable
+    - '(cd scripts/runtime && pnpm install --frozen-lockfile --ignore-scripts)'
+    - '(cd scripts/runtime && pnpm audit --audit-level=moderate --json > ../security/reports/runtime-pnpm-audit.json)'
     - python3 scripts/validation/course_dependency_integrity.py
   artifacts:
     when: always
@@ -59,6 +62,8 @@ security_browser_sca:
       changes:
         - scripts/browser-vendor/package.json
         - scripts/browser-vendor/package-lock.json
+        - scripts/runtime/package.json
+        - scripts/runtime/pnpm-lock.yaml
         - scripts/browser-vendor/**/*
         - scripts/build/vendor_browser_dependencies.mjs
         - scripts/compliance/source_license_contract.py
@@ -86,7 +91,7 @@ security_sca:
   script:
     - mkdir -p scripts/security/reports
     - python3 -m venv .sca-tools-venv
-    - .sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock
+    - '.sca-tools-venv/bin/python -m pip install --require-hashes --no-deps --only-binary=:all: -q -r scripts/security/requirements-sca.lock'
     - PATH="$CI_PROJECT_DIR/.sca-tools-venv/bin:$PATH" .sca-tools-venv/bin/python scripts/security/run_full_sca.py --execute --python-local --cyclonedx-env --out-dir scripts/security/reports
   artifacts:
     when: always
@@ -113,9 +118,9 @@ security_python_sca:
   script:
     - rm -rf .sca-tools-venv
     - python3 -m venv .sca-tools-venv
-    - .sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock
+    - '.sca-tools-venv/bin/python -m pip install --require-hashes --no-deps --only-binary=:all: -q -r scripts/security/requirements-sca.lock'
     - mkdir -p scripts/security/reports/python-materials
-    - .sca-tools-venv/bin/pip-audit -r scripts/materials/requirements.lock --strict --format cyclonedx-json --output scripts/security/reports/python-materials/python-env.raw.cdx.json
+    - .sca-tools-venv/bin/pip-audit -r scripts/materials/requirements.lock --strict --no-deps --disable-pip --format cyclonedx-json --output scripts/security/reports/python-materials/python-env.raw.cdx.json
     - .sca-tools-venv/bin/python scripts/compliance/resolve_sbom_licenses.py --input scripts/security/reports/python-materials/python-env.raw.cdx.json --output scripts/security/reports/python-materials/python-env.cdx.json
     - .sca-tools-venv/bin/python scripts/security/audit_sbom_policy.py --sbom scripts/security/reports/python-materials/python-env.cdx.json --report scripts/security/reports/python-materials/sbom-policy.json
     - .sca-tools-venv/bin/python scripts/compliance/sbom_evidence.py --raw-sbom scripts/security/reports/python-materials/python-env.raw.cdx.json --raw-sbom-href python-env.raw.cdx.json --sbom scripts/security/reports/python-materials/python-env.cdx.json --artifact-name "python-material-tools-$CI_COMMIT_SHA" --record-id python-material-tooling --description "Pinned Python tools used to verify course materials; not distributed to learners" --distribution not-distributed --category validation --source-commit "$CI_COMMIT_SHA" --ci-job "$CI_JOB_NAME" --pipeline-url "$CI_PIPELINE_URL" --job-url "$CI_JOB_URL" --retention-days 30 --sbom-href python-env.cdx.json --appendix-href python-license-appendix.md --appendix-out scripts/security/reports/python-materials/python-license-appendix.md --manifest-out scripts/security/reports/python-materials/sbom-evidence.json

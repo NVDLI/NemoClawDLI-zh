@@ -39,7 +39,7 @@ jobs:
           node scripts/build/vendor_browser_dependencies.mjs
           git diff --exit-code -- web/nemoclaw/vendor
       - name: Materials vendoring deps (for the live drift check)
-        run: python3 -m pip install --retries 5 --timeout 30 --requirement scripts/materials/requirements.lock
+        run: python3 -m pip install --require-hashes --no-deps --only-binary=:all: --retries 5 --timeout 30 --requirement scripts/materials/requirements.lock
       - name: Static gate (layout, skill-meta, link-engine self-test, grounding)
         env:
           EVENT_NAME: ${{ github.event_name }}
