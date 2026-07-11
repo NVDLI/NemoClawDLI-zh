@@ -70,9 +70,8 @@ The **client-side test runner** (`tests.html`) covers three layers in the browse
 2. the course **SKILL self-tests**, which auto-run on load and badge their own pass/fail,
 3. the CI gate summary, surfaced from `gate.json`.
 
-**Notebook execution tests** (`workspace/run_tests.py`) exercise the service stack and
-need the lab services running (no GPU required). They are not part of the static gate;
-they run on the lab.
+Host-native browser audits exercise the built static artifact with the same Chromium contract used
+for source pages. No service stack is part of this repository gate.
 
 ## Deployment
 

@@ -2,11 +2,9 @@
 // Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-// Browser runtime harness. Host entrypoint: scripts/runtime/lab_runtime_test.sh [--smoke] [url].
-// Set CLAW_URL + CLAW_TOKEN to exercise OpenClaw gateway nodes.
-// Full-page mode runs CanvasFlows sequentially and verifies gateway activity only
-// for flows whose visible source uses the OpenClaw gateway. Tool-specific evidence
-// belongs to --chat-contract because many valid gateway flows are chat- or RPC-only.
+// Browser runtime harness. Run through scripts/runtime/browser_runtime_test.sh.
+// Set CLAW_URL and CLAW_TOKEN for gateway nodes. Full-page mode verifies only flows that use them;
+// tool-specific evidence stays in --chat-contract.
 
 const fs = require('fs');
 const http = require('http');
@@ -27,7 +25,7 @@ const terminalContract = args.includes('--terminal-contract');
 const chatContract = args.includes('--chat-contract');
 const assistantArtifacts = args.includes('--assistant-artifacts');
 const serveStatic = args.includes('--serve-static');
-const DEFAULT_LAB_URL = 'http://nginx/lab/static/nemoclaw/01a-loop.html';
+const DEFAULT_LAB_URL = 'http://127.0.0.1:4173/nemoclaw/01a-loop.html';
 const STATIC_SERVER_URL = 'http://127.0.0.1:4173';
 const LOOPBACK_ORIGIN = 'http:' + '//127.0.0.1';
 const url = args.find(a => !['--smoke', '--render-only', '--gateway-only', '--cron-contract', '--terminal-contract', '--chat-contract', '--assistant-artifacts', '--serve-static'].includes(a)) || DEFAULT_LAB_URL;
@@ -58,7 +56,8 @@ function contentType(file) {
 }
 
 function startStaticServer() {
-  const roots = ['/workspace/web', '/workspace'];
+  const courseRoot = path.resolve(process.env.COURSE_ROOT || path.join(__dirname, '..', '..'));
+  const roots = [path.join(courseRoot, 'web'), courseRoot];
   const server = http.createServer((req, res) => {
     try {
       const parsed = new URL(req.url, LOOPBACK_ORIGIN);
@@ -207,6 +206,11 @@ function findChrome() {
   for (const bin of ['/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome']) {
     if (fs.existsSync(bin)) return bin;
   }
+  for (const bin of [
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+  ]) if (fs.existsSync(bin)) return bin;
   return null;
 }
 
@@ -219,8 +223,7 @@ function findChrome() {
 
   const executablePath = findChrome();
   if (!executablePath) {
-    console.error('FATAL: chrome-headless-shell not found. Install with:');
-    console.error('  PLAYWRIGHT_BROWSERS_PATH=/tmp/pw-browsers npx playwright install chromium-headless-shell');
+    console.error('FATAL: Chromium/Chrome not found. Install it for your OS or set CHROME_BIN.');
     process.exit(1);
   }
   console.log('CHROME:', executablePath || 'playwright default');

@@ -14,7 +14,7 @@ Use these locations unless a more specific `SKILL.html` says otherwise.
 | Browser runtime code | `web/<course>/scripts/` | course scripts `SKILL.html` |
 | Vendored browser packages | `web/<course>/vendor/` | exact lock, generated package/asset inventory, license files, and integrity audit |
 | Course styles | `web/<course>/styles/` | course styles `SKILL.html` |
-| Shared service code or notebooks | `cpu/services/<service>/` | service `SKILL.html` |
+| Repository validation tool | `scripts/<concern>/` | directory `SKILL.html` and exact dependency lock when needed |
 | Build, validation, or import tooling | `scripts/<group>/` | scripts group `SKILL.html` |
 | General compliance evidence | `scripts/compliance/docs/` | this directory and source inventory |
 | Datasets or model artifacts | `datasets/`, `web/<course>/datasets/`, or documented external URL | explicit inventory entry and approval disposition |

@@ -24,18 +24,17 @@
   var MAT_REL = "web/nemoclaw/mats";
   function isMatPath(r) { return r.split("/").indexOf("mats") >= 0; }
 
-  var SHIP_PREFIXES = ["web/nemoclaw/", "web/index", "web/courses",
-    "cpu/services/", "deploy/", "docs/", "scripts/"];
-  var SHIP_HUBS = setOf(["SKILL.html", "web/SKILL.html", "cpu/SKILL.html"]);
+  var SHIP_PREFIXES = ["web/nemoclaw/", "web/index", "web/courses", "docs/", "scripts/"];
+  var SHIP_HUBS = setOf(["SKILL.html", "web/SKILL.html"]);
 
-  // Release contract: the courses the release foyer (web/index.html) may surface.
+  // Release contract: the courses the release foyer (web/index.html) can surface.
   var RELEASED = ["nemoclaw"];
 
   // mats now live UNDER web/ (already a crawl root that recurses), so "mats" is no longer a separate top-level crawl root or shared TOPDIR.
   // It is still shared infra, detected by segment.
-  var SHARED_SUBDIRS = setOf(["mats", "repos", "services"]);
-  var SHARED_TOPDIRS = setOf(["repos", "scripts", "docs", "deploy"]);
-  var CRAWL_TOP = ["web", "cpu", "deploy", "docs", "scripts"];
+  var SHARED_SUBDIRS = setOf(["mats", "repos"]);
+  var SHARED_TOPDIRS = setOf(["repos", "scripts", "docs"]);
+  var CRAWL_TOP = ["web", "docs", "scripts"];
 
   var TEMPLATE_MARK = ["{{", "}}", "<?", "?>", "<%", "%>", "${", "&lt;", "&gt;", "&#"];
 
@@ -66,14 +65,13 @@
     if (parts[0] === "docs") return "_shared";
     // mats classify as shared reference packets, not as the enclosing course.
     if (isMatPath(p)) return "_shared";
-    if (parts[0] === "web" || parts[0] === "cpu") {
+    if (parts[0] === "web") {
       if (has(SHARED_SUBDIRS, parts[1])) return "_shared";
       if (parts.length === 2 && parts[1].indexOf(".") >= 0) {
         return "_shared";   // a file directly under web/ (index.html picker, courses.html, SKILL.html)
       }
       return parts[1];
     }
-    if (parts[0] === "workspace") return "_shared";
     if (has(SHARED_TOPDIRS, parts[0])) return "_shared";
     return parts[0];
   }
@@ -191,98 +189,18 @@
 
   // ── config parsing ───────────────────────────────────────────────────────────
   function parseEntrypoint(io) {
-    var out = { static_roots: [], root_dir: DLI, base_url: "/lab", default_url: "/lab/static/index.html" };
-    var txt = io.read("workspace/entrypoint.sh");
-    if (txt == null) return out;
-    var m = /extra_static_paths\s*=\s*'(\[[^']*\])'/.exec(txt);
-    if (m) { try { out.static_roots = JSON.parse(m[1]); } catch (e) { } }
-    var b = /base_url\s*=\s*"([^"]+)"/.exec(txt); if (b) out.base_url = b[1];
-    var d = /default_url\s*=\s*'([^']+)'/.exec(txt); if (d) out.default_url = d[1];
-    return out;
-  }
-
-  function parseCompose(io) {
-    var files = ["deploy/docker-compose.yml", "deploy/docker-compose.override.yml"];
-    var services = {}, aliases = {}, dliDevice = null;
-    function mergeService(name, ondemand, al) {
-      if (!has(services, name)) services[name] = { ondemand: false, aliases: [] };
-      if (ondemand) services[name].ondemand = true;
-      if (al) for (var i = 0; i < al.length; i++) if (services[name].aliases.indexOf(al[i]) < 0) services[name].aliases.push(al[i]);
-    }
-    for (var fi = 0; fi < files.length; fi++) {
-      var txt = io.read(files[fi]); if (txt == null) continue;
-      var lines = txt.split("\n"), inServices = false, cur = null;
-      for (var li = 0; li < lines.length; li++) {
-        var ln = lines[li];
-        if (/^services:\s*$/.test(ln)) { inServices = true; continue; }
-        if (inServices && /^\S/.test(ln)) inServices = false;
-        if (!inServices) { if (ln.indexOf("device:") >= 0 && ln.indexOf("${PWD}") >= 0) dliDevice = "${PWD}"; continue; }
-        var m = /^  ([a-zA-Z0-9_-]+):\s*$/.exec(ln);
-        if (m) { cur = m[1]; mergeService(cur, false, null); }
-        else if (cur && /^\s+profiles:/.test(ln)) mergeService(cur, true, null);
-        else if (cur && /^\s+-\s*openshell\s*$/.test(ln)) { mergeService(cur, false, ["openshell"]); aliases["openshell"] = cur; }
-      }
-    }
-    if (dliDevice === "${PWD}" || dliDevice == null) dliDevice = "";   // repo root
-    return { services: services, aliases: aliases, dli_device: dliDevice };
-  }
-
-  function parseUpstreams(txt) {
-    var out = {}, m, re = /upstream\s+([\w-]+)\s*\{([^}]*)\}/g;
-    while ((m = re.exec(txt))) { var sv = /server\s+([\w.\-]+):(\d+)/.exec(m[2]); if (sv) out[m[1]] = [sv[1], parseInt(sv[2], 10)]; }
-    return out;
-  }
-  function splitLocationBlocks(txt) {
-    var out = [], i = 0, n = txt.length;
-    while (true) {
-      var re = /location\s+([^\{]+?)\s*\{/g; re.lastIndex = i;
-      var m = re.exec(txt); if (!m) return out;
-      var header = m[1].replace(/^\s+|\s+$/g, ""); var start = m.index + m[0].length;
-      var depth = 1, j = start;
-      while (j < n && depth) { var c = txt[j]; if (c === "{") depth++; else if (c === "}") depth--; j++; }
-      out.push([header, txt.slice(start, j - 1)]); i = j;
-    }
-  }
-  function NginxRule(header, body, upstreams) {
-    if (header.indexOf("= ") === 0) { this.match = "exact"; this.pattern = header.slice(2).replace(/^\s+|\s+$/g, ""); }
-    else if (header.indexOf("~* ") === 0 || header.indexOf("~ ") === 0) { this.match = "regex"; this.pattern = header.split(" ").slice(1).join(" ").replace(/^\s+|\s+$/g, ""); }
-    else if (header.indexOf("@") === 0) { this.match = "named"; this.pattern = header; }
-    else { this.match = "prefix"; this.pattern = header.replace(/^\s+|\s+$/g, ""); }
-    this.kind = "static"; this.redirect = null; this.rewrite = null; this.upstream = null;
-    var rt = /return\s+30[12]\s+(\S+?);/.exec(body);
-    if (rt) { this.kind = "redirect"; this.redirect = rt[1]; }
-    var rw = /rewrite\s+(\S+)\s+(\S+)\s+break;/.exec(body);
-    if (rw) this.rewrite = [rw[1], rw[2]];
-    var pp = /proxy_pass\s+(\S+?);/.exec(body);
-    if (pp) {
-      var target = pp[1], host = null, port = null;
-      var vm = /^\$(\w+)/.exec(target);
-      if (vm) { var sm = new RegExp("set\\s+\\$" + vm[1] + "\\s+https?://([\\w.\\-]+):(\\d+)").exec(body); if (sm) { host = sm[1]; port = parseInt(sm[2], 10); } }
-      else { var lm = /^https?:\/\/([\w.\-]+):?(\d+)?/.exec(target); if (lm) { host = lm[1]; port = lm[2] ? parseInt(lm[2], 10) : null; } }
-      if (host && has(upstreams, host)) { var up = upstreams[host]; host = up[0]; port = up[1]; }
-      if (host) { this.kind = "proxy"; this.upstream = [host, port]; }
-    }
-    if (/return\s+404/.test(body) && this.match === "regex") this.kind = "guard404";
-  }
-  function parseNginx(io) {
-    var txt = io.read("deploy/nginx.conf"); if (txt == null) return { rules: [], upstreams: {} };
-    var ups = parseUpstreams(txt), blocks = splitLocationBlocks(txt), rules = [];
-    for (var i = 0; i < blocks.length; i++) rules.push(new NginxRule(blocks[i][0], blocks[i][1], ups));
-    return { rules: rules, upstreams: ups };
+    return { static_roots: [DLI, DLI + "/web"], root_dir: DLI, base_url: "/lab", default_url: "/lab/static/index.html" };
   }
 
   // ── resolution ───────────────────────────────────────────────────────────────
   function Resolution(o) {
     this.kind = o.kind; this.physical = o.physical != null ? o.physical : null; this.exists = !!o.exists;
-    this.service = o.service != null ? o.service : null; this.ondemand = o.ondemand != null ? o.ondemand : null;
     this.course = o.course != null ? o.course : null; this.reason = o.reason || ""; this.chain = o.chain || [];
   }
 
   function Projection(io) {
     this.io = io;
     this.ep = parseEntrypoint(io);
-    this.compose = parseCompose(io);
-    this.nginx = parseNginx(io);
     var roots = [];
     for (var i = 0; i < this.ep.static_roots.length; i++) { var c = this.c2h(this.ep.static_roots[i]); if (c != null) roots.push(c); }
     this.staticRoots = roots.length ? roots : [""];
@@ -298,13 +216,6 @@
     if (rel.length >= 3 && rel.slice(-3) === ".md" && this.io.exists(rel.slice(0, -3) + ".ipynb")) return true;
     return false;
   };
-  Projection.prototype.serviceFor = function (host) {
-    var svcs = this.compose.services;
-    if (has(svcs, host)) return [host, svcs[host].ondemand];
-    var real = this.compose.aliases[host];
-    if (real && has(svcs, real)) return [real, svcs[real].ondemand];
-    return [host, null];
-  };
   Projection.prototype.staticRest = function (rest) {
     rest = rest.replace(/^\/+/, "");
     var cand = [];
@@ -319,14 +230,6 @@
   Projection.prototype.treeRest = function (rest) {
     rest = rest.replace(/^\/+/, "").replace(/\/+$/, "");
     return new Resolution({ kind: "lab_tree", physical: rest, exists: this.io.exists(rest), course: courseOf(rest), reason: "JupyterLab file tree", chain: ["/lab/tree"] });
-  };
-  Projection.prototype.matchNginx = function (path) {
-    var rules = this.nginx.rules, i;
-    for (i = 0; i < rules.length; i++) if (rules[i].match === "exact" && rules[i].pattern === path) return rules[i];
-    for (i = 0; i < rules.length; i++) if (rules[i].match === "regex") { try { if (new RegExp(rules[i].pattern, "i").test(path)) return rules[i]; } catch (e) { } }
-    var best = null;
-    for (i = 0; i < rules.length; i++) { var r = rules[i]; if (r.match === "prefix" && path.indexOf(r.pattern) === 0) { if (best === null || r.pattern.length > best.pattern.length) best = r; } }
-    return best;
   };
   Projection.prototype.dispatchLab = function (path, chain) {
     var m = /^\/lab\/static\/(.+)$/.exec(path);
@@ -346,23 +249,7 @@
       var rel = clamp(baseDir, t);
       return new Resolution({ kind: "static_file", physical: rel, exists: this.exists(rel), course: courseOf(rel), reason: "relative", chain: [fromRepo] });
     }
-    var rule = this.matchNginx(t);
-    if (rule === null) return this.dispatchLab(t, ["(no nginx match)"]);
-    if (rule.kind === "guard404") return new Resolution({ kind: "guarded", physical: null, exists: false, reason: "nginx secret-guard 404", chain: [rule.pattern] });
-    if (rule.kind === "redirect") {
-      var tgt = rule.redirect.split("$is_args$args").join("").split("$args").join("");
-      var r = this.resolve(tgt, fromRepo, depth + 1);
-      r.chain = ["302 " + rule.pattern + " -> " + tgt].concat(r.chain || []);
-      if ((r.kind === "static_file" || r.kind === "lab_tree") && !r.exists) r.reason = "dead redirect: " + tgt + " -> " + r.reason;
-      return r;
-    }
-    if (rule.kind === "proxy") {
-      var host = rule.upstream[0], port = rule.upstream[1];
-      if (host === "lab") return this.dispatchLab(t, ["proxy " + rule.pattern + " -> lab:" + port]);
-      var sf = this.serviceFor(host);
-      return new Resolution({ kind: "service", physical: host + ":" + port, exists: has(this.compose.services, sf[0]), service: sf[0], ondemand: sf[1], course: "_shared", reason: sf[1] ? "on-demand service (profile)" : "service", chain: ["proxy " + rule.pattern + " -> " + host + ":" + port] });
-    }
-    return this.dispatchLab(t, [rule.match + " " + rule.pattern]);
+    return this.dispatchLab(t, ["static repository route"]);
   };
 
   // ── graph snapshot (viewer DATA + offline embed) ──────────────────────────────
@@ -513,8 +400,6 @@
         var asset = isAsset(t);
         if ((r.kind === "static_file" || r.kind === "lab_tree") && !r.exists)
           report.failures.push({ page: rel, link: rawk, resolved: r.physical, ship: ship, reason: r.reason, chain: r.chain, kind: r.kind });
-        if (r.kind === "service" && r.exists === false)
-          report.failures.push({ page: rel, link: rawk, service: r.service, ship: ship, reason: "service not declared in compose", chain: r.chain });
         if (r.kind === "static_file" && r.physical && /\/mats\/[^?]*\.(md|html?)$/.test(r.physical) && !navSource(rel) && ("/" + rel).indexOf("/mats/") < 0)
           report.mat_links.push({ page: rel, link: rawk, resolved: r.physical, ship: ship });
         var tgt = r.course;
@@ -671,11 +556,9 @@
     r = proj.resolve("/lab/static/index.html");
     expect("/lab/static/index.html -> web/index.html (exists)", r.exists && r.physical === "web/index.html", r.physical);
     r = proj.resolve("/lab/svc/llm/v1/models");
-    expect("/lab/svc/llm/* -> service llm_client (always-on)", r.kind === "service" && r.service === "llm_client" && r.ondemand === false, JSON.stringify(r));
+    expect("legacy service route remains outside the static repository", r.kind === "runtime" && r.physical === null, JSON.stringify(r));
     r = proj.resolve("/securing-agents");
-    expect("/securing-agents -> released course nemoclaw/index.html (exists)", r.kind === "static_file" && r.exists && r.course === "nemoclaw", r.reason + " " + r.physical);
-    r = proj.resolve("/");
-    expect("/ -> 302 foyer (exists)", r.exists && r.physical === "web/index.html", r.physical);
+    expect("host vanity routes are not invented by the static repository", r.kind === "runtime" && r.physical === null, JSON.stringify(r));
     r = proj.resolve("01b-loop.html", "web/nemoclaw/01a-loop.html");
     expect("relative link resolves within course", r.course === "nemoclaw", r.course);
     var fr = foyerReleaseCheck(proj);
@@ -795,7 +678,7 @@
     DLI: DLI, RELEASED: RELEASED, Projection: Projection, Resolution: Resolution,
     courseOf: courseOf, shipRelevant: shipRelevant, navSource: navSource,
     graphNavigable: graphNavigable, normUrl: normUrl, isCitation: isCitation,
-    parseEntrypoint: parseEntrypoint, parseCompose: parseCompose, parseNginx: parseNginx,
+    parseEntrypoint: parseEntrypoint,
     graphJson: graphJson, reachability: reachability, check: check, foyerReleaseCheck: foyerReleaseCheck,
     bundleSnapshot: bundleSnapshot,
     pageAudit: pageAudit, selfTest: selfTest, replaceEmbeddedSnapshot: replaceEmbeddedSnapshot,

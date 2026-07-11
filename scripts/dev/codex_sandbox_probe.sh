@@ -39,7 +39,7 @@ fi
 
 say "codex_sandbox_probe: FAIL"
 say "  bwrap: not found on PATH"
-say "  scope: host Codex execution environment, not NemoClaw microservice containers"
+say "  scope: host Codex execution environment, not the released NemoClaw course"
 
 if [ "$mode" != "repair" ]; then
   say ""

@@ -9,8 +9,6 @@ _build
 **/charts/*.tgz
 
 # project temp files
-deploy/*.log
-deploy/*.txt
 **/my.*
 **/my-*
 .env-dev
@@ -20,10 +18,6 @@ deploy/*.txt
 frontend/frontend_js/out
 frontend-sdxl/frontend_js/out
 **/node_modules
-
-# Docker Compose exclusions
-volumes/
-uploaded_files/
 
 **/data
 **/.ipynb_checkpoints
@@ -55,12 +49,8 @@ web/*/standalone/*
 web/*/standalone/assets/*
 !web/*/standalone/assets/SKILL.html
 
-# ── Lab-generated runtime artifacts (never commit) ──────────────────────────
-# Produced by running notebooks/services in the lab (root-owned in dev), not course
-# content. The link engine already treats these as non-content dirs; ignoring them
-# here keeps them out of the repo when task1/ is the root.
+# Generated authoring artifacts (never commit)
 **/artifacts/
-workspace/export/
 **/grounding_cache/
 **/_paper_cache/
 **/.exec_stage/

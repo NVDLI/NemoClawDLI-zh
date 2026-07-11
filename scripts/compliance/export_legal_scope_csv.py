@@ -161,12 +161,7 @@ def tooling_rows(base: str, ref: str) -> list[list[str]]:
         ])
     for item in software.python_rows(base, ref):
         rows.append([
-            f"{item[0]}@{item[1]}", "tooling-not-distributed", "validation or authoring dependency",
-            "No", "No", item[7], item[2], "Not applicable to software package", item[3] or item[7], item[8], item[6],
-        ])
-    for item in software.local_authoring_rows(base, ref):
-        rows.append([
-            f"{item[0]}@{item[1]}", "tooling-not-distributed", "local-authoring declaration",
+            f"{item[0]}@{item[1]}", "tooling-not-distributed", "validation dependency",
             "No", "No", item[7], item[2], "Not applicable to software package", item[3] or item[7], item[8], item[6],
         ])
     return rows

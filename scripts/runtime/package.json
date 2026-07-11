@@ -1,0 +1,10 @@
+{
+  "name": "nemoclaw-browser-validation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Host-native Playwright API used by repository browser checks",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "playwright-core": "1.55.0"
+  }
+}

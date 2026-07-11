@@ -410,9 +410,10 @@ export function mountCourseAssistant(runtime = {}) {
     artifactStatus.classList.remove("error");
     artifactStatus.textContent = artifact ? new Date(artifact.updatedAt).toLocaleString() : "";
     if (run && artifact) {
-      clearArtifactPreview();
+      const previousBlobUrl = artifactBlobUrl;
       artifactBlobUrl = URL.createObjectURL(new Blob([artifactDocument(artifact)], { type: "text/html" }));
       artifactFrame.src = artifactBlobUrl;
+      if (previousBlobUrl) URL.revokeObjectURL(previousBlobUrl);
     } else if (!artifact) clearArtifactPreview();
   };
   const renderSessions = () => {

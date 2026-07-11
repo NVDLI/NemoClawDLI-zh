@@ -1,4 +1,0 @@
-{
-    "defaults": { "ask": "off", "security": "full" },
-    "agents": { "*": { "ask": "off", "security": "full" } }
-  }

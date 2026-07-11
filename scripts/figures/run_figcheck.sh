@@ -1,51 +1,11 @@
 #!/usr/bin/env bash
-# Run scripts/figures/check_figures.mjs with jsdom available (mountPolicyMap needs a DOM).
-# Resolves node like run_node.sh (host / docker node:20 / guarded lab) and installs jsdom
-# once into scripts/.figtools/ (gitignored, persists across runs via the host mount).
-# All args forward to check_figures.mjs (e.g. --json).
+# Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# Run the DOM-backed figure audit with the same pinned host Node dependencies as
+# the browser validators. No image or lab fallback is owned by this repository.
 set -euo pipefail
-HERE="$(cd "$(dirname "$0")" && pwd)"
-SCRIPTS="$(cd "$HERE/.." && pwd)"
-REPO="$(cd "$SCRIPTS/.." && pwd)"
-TOOLS="$SCRIPTS/.figtools"
-
-if command -v node >/dev/null 2>&1; then
-  if [ ! -d "$TOOLS/node_modules/jsdom" ]; then
-    mkdir -p "$TOOLS"; ( cd "$TOOLS" && npm i jsdom@24.1.3 >/dev/null 2>&1 ) || true
-  fi
-  exec env FIG_JSDOM="$TOOLS/node_modules/jsdom" node "$HERE/check_figures.mjs" "$@"
-fi
-
-ENGINE="${CONTAINER_ENGINE:-}"
-if [ -z "$ENGINE" ]; then
-  for c in podman docker; do
-    if command -v "$c" >/dev/null 2>&1 && "$c" info >/dev/null 2>&1; then ENGINE="$c"; break; fi
-  done
-fi
-if [ -n "$ENGINE" ] && command -v "$ENGINE" >/dev/null 2>&1; then
-  IMG=""
-  for c in localhost/nemoclaw/lab-runtime-test:local nemoclaw/lab-runtime-test:local mcr.microsoft.com/playwright:v1.55.0-noble node:20-slim node:20-bookworm-slim node:20 node:lts-slim node:lts; do
-    if "$ENGINE" image inspect "$c" >/dev/null 2>&1; then IMG="$c"; break; fi
-  done
-  [ -z "$IMG" ] && IMG="node:20-slim"
-  run_user=()
-  if [ "$ENGINE" = "podman" ]; then run_user+=(--userns=keep-id); else run_user+=(-u "$(id -u):$(id -g)"); fi
-  exec "$ENGINE" run --rm --entrypoint sh "${run_user[@]}" -e HOME=/tmp -e npm_config_cache=/tmp/.npm \
-    -v "$REPO":/work -w /work "$IMG" -c '
-      T=/work/scripts/.figtools
-      if [ ! -d "$T/node_modules/jsdom" ]; then mkdir -p "$T"; ( cd "$T" && npm i jsdom@24.1.3 >/dev/null 2>&1 ) || true; fi
-      FIG_JSDOM="$T/node_modules/jsdom" node /work/scripts/figures/check_figures.mjs "$@"
-    ' _ "$@"
-fi
-
-LAB="$(docker ps --format '{{.Names}}' 2>/dev/null | grep -iE '(^|[-_])lab([-_]|$)|jupyter' | head -1 || true)"
-if [ -n "${LAB:-}" ]; then
-  host_n="$(find "$REPO/web" -name '*.html' 2>/dev/null | wc -l | tr -d ' ')"
-  lab_n="$(docker exec "$LAB" sh -c 'find /sandbox/dli/web -name "*.html" 2>/dev/null | wc -l' 2>/dev/null | tr -d ' ' || echo 0)"
-  if [ "$host_n" = "$lab_n" ] && [ "$host_n" != "0" ]; then
-    exec docker exec "$LAB" sh -c 'NODE_PATH=$(npm root -g 2>/dev/null) node /sandbox/dli/scripts/figures/check_figures.mjs '"$*"
-  fi
-fi
-
-echo "run_figcheck: no node found (host PATH, a node docker image, or a matching lab container)." >&2
-exit 2
+ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+NODE_PATH=${NODE_PATH:-$ROOT/scripts/runtime/node_modules}
+export NODE_PATH
+exec "$ROOT/scripts/runtime/run_node.sh" "$ROOT/scripts/figures/check_figures.mjs" "$@"

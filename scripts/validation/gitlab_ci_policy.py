@@ -19,8 +19,7 @@ include:
   - local: "/.gitlab/ci/core.yml"
   - local: "/.gitlab/ci/sca.yml"
 """
-SCA_JOBS = ("security_browser_sca", "security_sca", "security_deep_sca")
-IMAGE_SCA_JOB = "security_image_sca"
+SCA_JOBS = ("security_browser_sca", "security_sca", "security_python_sca")
 OWNER_PATHS = (
     "/.gitlab-ci.yml",
     "/.gitlab/ci/",
@@ -122,7 +121,7 @@ def audit(root: Path = ROOT) -> list[dict[str, str]]:
 
     for name, changed_input in (
         ("security_browser_sca", "scripts/browser-vendor/package-lock.json"),
-        ("security_deep_sca", "workspace/requirements.lock"),
+        ("security_python_sca", "scripts/materials/requirements.lock"),
     ):
         body = job_block(sca, name)
         require(body, changed_input, "sca-change-trigger", ".gitlab/ci/sca.yml", out,
@@ -137,40 +136,18 @@ def audit(root: Path = ROOT) -> list[dict[str, str]]:
 
     for token in (
         "npm audit --prefix scripts/browser-vendor --package-lock-only",
-        ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock",
         ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock",
+        ".sca-tools-venv/bin/pip-audit -r scripts/materials/requirements.lock",
         "audit_sbom_policy.py --sbom",
-        "scripts/compliance/resolve_sbom_licenses.py --input scripts/security/reports/deep-workspace/python-env.raw.cdx.json",
-        "--sbom scripts/security/reports/deep-workspace/python-env.cdx.json",
+        "scripts/compliance/resolve_sbom_licenses.py --input scripts/security/reports/python-materials/python-env.raw.cdx.json",
+        "--sbom scripts/security/reports/python-materials/python-env.cdx.json",
     ):
         require(sca, token, "sca-required-command", ".gitlab/ci/sca.yml", out,
                 "restore the locked dependency scan and SBOM policy command")
 
-    image = job_block(sca, IMAGE_SCA_JOB)
-    if not image:
-        out.append(finding("missing-image-sca-job", ".gitlab/ci/sca.yml", "conditional image scanner is missing",
-                           "restore the digest-gated image SBOM job"))
-    else:
-        for token in (
-            "<<: *sca_base",
-            'SYFT_VERSION: "1.44.0"',
-            'SYFT_LINUX_AMD64_SHA256: "0e91737aee2b5baf1d255b959630194a302335d848ff97bb07921eb6205b5f5a"',
-            "sha256sum --check --strict",
-            'registry:$SBOM_IMAGE',
-            '--artifact-id "$SBOM_IMAGE"',
-            "scripts/compliance/resolve_sbom_licenses.py",
-            "image.raw.cdx.json",
-            "expire_in: 30 days",
-            "when: manual",
-            "allow_failure: false",
-            "- when: never",
-        ):
-            require(image, token, "image-sca-boundary", ".gitlab/ci/sca.yml", out,
-                    "keep image scanning digest-bound, opt-in, checksum-pinned, and evidence-producing")
-        if "schedule" in image or "when: on_success" in image:
-            out.append(finding("image-sca-default-run", ".gitlab/ci/sca.yml",
-                               "image scanning can run without an explicit digest opt-in",
-                               "keep the image job absent until SBOM_IMAGE supplies an immutable digest"))
+    if "security_image_sca:" in sca or "security_deep_sca:" in sca:
+        out.append(finding("retired-sca-job", ".gitlab/ci/sca.yml", "obsolete image or workspace scan returned",
+                           "scan only the distributed browser graph and pinned material tools"))
 
     for path in OWNER_PATHS:
         if not re.search(rf"(?m)^{re.escape(path)}\s+@\S+", owners):
@@ -210,8 +187,8 @@ def self_test() -> list[str]:
          "        - .gitlab-ci.yml"),
         ("sca-required-command", ".gitlab/ci/sca.yml", "audit_sbom_policy.py --sbom",
          "audit_sbom_policy.py --help"),
-        ("image-sca-boundary", ".gitlab/ci/sca.yml", "sha256sum --check --strict",
-         "sha256sum --version"),
+        ("retired-sca-job", ".gitlab/ci/sca.yml", "security_python_sca:",
+         "security_deep_sca:"),
         ("missing-code-owner", ".gitlab/CODEOWNERS", root_owner_line,
          "/.gitlab-ci.yml"),
         ("ci-policy-not-gated", "scripts/validation/release_gate.py", 'unit_test("gitlab_ci_policy")',

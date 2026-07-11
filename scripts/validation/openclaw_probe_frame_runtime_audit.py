@@ -11,7 +11,6 @@ the learner's visible state. Run against both source ``web`` and a built Pages r
 from __future__ import annotations
 
 import argparse
-import os
 import subprocess
 import sys
 import tempfile
@@ -24,7 +23,8 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
 from _bootstrap import find_repo_root
 
 ROOT = find_repo_root(Path(__file__).resolve())
-DEFAULT_IMAGE = "nemoclaw/lab-runtime-test:local"
+sys.path.insert(0, str(ROOT))
+from scripts.runtime.host_browser import BrowserRuntimeError, environment, run_node
 
 RUNTIME_JS = r"""
 const http = require('http');
@@ -69,7 +69,7 @@ function fail(message) { throw new Error(message); }
 
 (async () => {
   await listen();
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_BIN });
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   const pageErrors = [];
   const consoleErrors = [];
@@ -236,8 +236,6 @@ def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser(description="Validate OpenClaw probe HTML-frame cleanup in Chromium")
     ap.add_argument("--site-root", default="web", help="source or built site root")
     ap.add_argument("--page", default="/nemoclaw/03a-kickstart.html", help="page under site root")
-    ap.add_argument("--image", default=DEFAULT_IMAGE, help="browser runtime image")
-    ap.add_argument("--engine", default=os.environ.get("CONTAINER_ENGINE") or "podman", help="container engine")
     ap.add_argument("--timeout-ms", type=int, default=120000, help="browser timeout")
     ap.add_argument("--screenshot", default="", help="optional screenshot output")
     return ap.parse_args()
@@ -258,32 +256,18 @@ def main() -> int:
             screenshot = ROOT / screenshot
         screenshot.parent.mkdir(parents=True, exist_ok=True)
         screenshot_dir = screenshot.parent.resolve()
-        screenshot_path = "/screenshots/" + screenshot.name
+        screenshot_path = str(screenshot.resolve())
     with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as fh:
         fh.write(RUNTIME_JS)
         script = Path(fh.name)
-    cmd = [args.engine, "run", "--rm", "--entrypoint", "node"]
-    if args.engine.endswith("podman"):
-        cmd.append("--userns=keep-id")
-    cmd += [
-        "-e", "NODE_PATH=/opt/nemoclaw-runtime/node_modules",
-        "-e", "SITE_ROOT=/site",
-        "-e", f"SOURCE_MODE={int(site_root == (ROOT / 'web').resolve())}",
-        "-e", f"PAGE_PATH={args.page}",
-        "-e", f"AUDIT_TIMEOUT_MS={args.timeout_ms}",
-        "-v", f"{site_root}:/site:ro",
-        "-v", f"{script}:/tmp/openclaw_probe_frame_runtime_audit.js:ro",
-    ]
-    if screenshot_dir:
-        cmd += ["-e", f"SCREENSHOT_PATH={screenshot_path}", "-v", f"{screenshot_dir}:/screenshots"]
-    cmd += [args.image, "/tmp/openclaw_probe_frame_runtime_audit.js"]
     try:
-        proc = subprocess.run(
-            cmd, cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        proc = run_node(
+            script,
+            env=environment(SITE_ROOT=site_root, SOURCE_MODE=str(int(site_root == (ROOT / 'web').resolve())), PAGE_PATH=args.page, AUDIT_TIMEOUT_MS=str(args.timeout_ms), SCREENSHOT_PATH=screenshot_path or None),
             timeout=args.timeout_ms / 1000 + 60,
         )
-    except FileNotFoundError:
-        print(f"openclaw_probe_frame_runtime_audit: FAIL\n  - container engine not found: {args.engine}")
+    except BrowserRuntimeError as exc:
+        print(f"openclaw_probe_frame_runtime_audit: FAIL\n  - {exc}")
         return 1
     except subprocess.TimeoutExpired as exc:
         print(f"openclaw_probe_frame_runtime_audit: FAIL\n  - timed out after {exc.timeout}s")

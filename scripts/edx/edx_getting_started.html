@@ -104,22 +104,22 @@ li { margin: .25em 0; }
         forwards its click to the xblock's real launch control. -->
 <div class="launch-box" id="_launchBox">
   <div class="lb-text">
-    <h2>▶ Start your lab environment</h2>
-    <p>The full workshop runs in a JupyterLab sandbox. Start it now so it is ready by the time you finish the browser modules.</p>
-    <p>Provisioning takes a few minutes. The status card in the top-right will track progress and surface deep links once it is up.</p>
+    <h2>▶ Start the course</h2>
+    <p>The course runs in your browser. Modules 3 and 4 prompt you to open a NemoClaw launchable when they need the external agent runtime.</p>
+    <p>The status card in the top-right tracks the DLI course session and links back to the course.</p>
   </div>
   <div class="lb-cta">
     <button type="button" id="_lbBtn" aria-label="Start lab environment">
       <span id="_lbBtnIcon">▶</span>
-      <span id="_lbBtnLabel">Start Lab</span>
+      <span id="_lbBtnLabel">Start Course</span>
     </button>
-    <div class="lb-hint" id="_lbHint">Or hit the ▶ button at the bottom</div>
+    <div class="lb-hint" id="_lbHint">Or use the ▶ button at the bottom</div>
     <div class="lb-status" id="_lbStatus"></div>
   </div>
 </div>
 
 <div class="callout info">
-  <strong>API key note.</strong> The browser modules above call NVIDIA APIs with your key (stored in <code>localStorage</code>). The lab environment runs independently with its own credentials.
+  <strong>API key note.</strong> Browser exercises call NVIDIA APIs with the key stored in this browser. The external NemoClaw launchable manages its own session separately.
 </div>
 
 <script>

@@ -171,334 +171,76 @@ OpenSSL 1.1.1w tag instead carries the legacy OpenSSL and SSLeay terms, represen
 `OpenSSL` SPDX identifier. The authorized reviewer must resolve that metadata conflict before the
 future HTTP/API support set is distributed.
 
-## Python runtime and repository-tool packages
+## Python and Node repository-tool packages
 
 Sources of truth are the exact lock files named in the Scope column. The same package/version is shown once with every applicable scope. License expressions were resolved from the exact-version PyPI metadata; legacy ambiguous `BSD` metadata was checked against the package license text.
 
 | Scope | Package | Version | SPDX license expression | Evidence |
 |---|---|---|---|---|
-| workspace-runtime | aiohappyeyeballs | 2.6.2 | PSF-2.0 | [PyPI](https://pypi.org/pypi/aiohappyeyeballs/2.6.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | aiohttp | 3.14.1 | Apache-2.0 AND MIT | [PyPI](https://pypi.org/pypi/aiohttp/3.14.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | aiosignal | 1.4.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/aiosignal/1.4.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | altair | 6.2.2 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/altair/6.2.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | annotated-doc | 0.0.4 | MIT | [PyPI](https://pypi.org/pypi/annotated-doc/0.0.4/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | annotated-types | 0.7.0 | MIT | [PyPI](https://pypi.org/pypi/annotated-types/0.7.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | anyio | 4.14.1 | MIT | [PyPI](https://pypi.org/pypi/anyio/4.14.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | argon2-cffi | 25.1.0 | MIT | [PyPI](https://pypi.org/pypi/argon2-cffi/25.1.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | argon2-cffi-bindings | 25.1.0 | MIT | [PyPI](https://pypi.org/pypi/argon2-cffi-bindings/25.1.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, security-tooling | arrow | 1.4.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/arrow/1.4.0/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | arxiv | 3.0.0 | MIT | [PyPI](https://pypi.org/pypi/arxiv/3.0.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | asgiref | 3.11.1 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/asgiref/3.11.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | asttokens | 3.0.1 | Apache-2.0 | [PyPI](https://pypi.org/pypi/asttokens/3.0.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | async-lru | 2.3.0 | MIT | [PyPI](https://pypi.org/pypi/async-lru/2.3.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, security-tooling | attrs | 26.1.0 | MIT | [PyPI](https://pypi.org/pypi/attrs/26.1.0/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | babel | 2.18.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/babel/2.18.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, material-tooling | beautifulsoup4 | 4.15.0 | MIT | [PyPI](https://pypi.org/pypi/beautifulsoup4/4.15.0/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/materials/requirements.lock`](scripts/materials/requirements.lock) |
-| workspace-runtime | bleach | 6.4.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/bleach/6.4.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | blinker | 1.9.0 | MIT | [PyPI](https://pypi.org/pypi/blinker/1.9.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
+| security-tooling | arrow | 1.4.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/arrow/1.4.0/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | attrs | 26.1.0 | MIT | [PyPI](https://pypi.org/pypi/attrs/26.1.0/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| material-tooling | beautifulsoup4 | 4.15.0 | MIT | [PyPI](https://pypi.org/pypi/beautifulsoup4/4.15.0/json); [`scripts/materials/requirements.lock`](scripts/materials/requirements.lock) |
 | security-tooling | boolean-py | 5.0 | BSD-2-Clause | [PyPI](https://pypi.org/pypi/boolean-py/5.0/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | brotli | 1.2.0 | MIT | [PyPI](https://pypi.org/pypi/brotli/1.2.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
 | security-tooling | cachecontrol | 0.14.4 | Apache-2.0 | [PyPI](https://pypi.org/pypi/cachecontrol/0.14.4/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | cachetools | 7.1.4 | MIT | [PyPI](https://pypi.org/pypi/cachetools/7.1.4/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, material-tooling, security-tooling | certifi | 2026.6.17 | MPL-2.0 | [PyPI](https://pypi.org/pypi/certifi/2026.6.17/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/materials/requirements.lock`](scripts/materials/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | cffi | 2.0.0 | MIT | [PyPI](https://pypi.org/pypi/cffi/2.0.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
+| material-tooling, security-tooling | certifi | 2026.6.17 | MPL-2.0 | [PyPI](https://pypi.org/pypi/certifi/2026.6.17/json); [`scripts/materials/requirements.lock`](scripts/materials/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
 | security-tooling | chardet | 5.2.0 | LGPL-2.0-or-later | [PyPI](https://pypi.org/pypi/chardet/5.2.0/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime, material-tooling, security-tooling | charset-normalizer | 3.4.7 | MIT | [PyPI](https://pypi.org/pypi/charset-normalizer/3.4.7/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/materials/requirements.lock`](scripts/materials/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | click | 8.4.2 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/click/8.4.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | colorama | 0.4.6 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/colorama/0.4.6/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | comm | 0.2.3 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/comm/0.2.3/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | contourpy | 1.3.3 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/contourpy/1.3.3/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | cryptography | 49.0.0 | Apache-2.0 OR BSD-3-Clause | [PyPI](https://pypi.org/pypi/cryptography/49.0.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | cycler | 0.12.1 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/cycler/0.12.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
+| material-tooling, security-tooling | charset-normalizer | 3.4.7 | MIT | [PyPI](https://pypi.org/pypi/charset-normalizer/3.4.7/json); [`scripts/materials/requirements.lock`](scripts/materials/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
 | security-tooling | cyclonedx-bom | 7.3.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/cyclonedx-bom/7.3.0/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
 | security-tooling | cyclonedx-python-lib | 11.11.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/cyclonedx-python-lib/11.11.0/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | debugpy | 1.8.21 | MIT | [PyPI](https://pypi.org/pypi/debugpy/1.8.21/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | decorator | 5.3.1 | BSD-2-Clause | [PyPI](https://pypi.org/pypi/decorator/5.3.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, security-tooling | defusedxml | 0.7.1 | PSF-2.0 | [PyPI](https://pypi.org/pypi/defusedxml/0.7.1/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | distro | 1.9.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/distro/1.9.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, sandbox-admin-runtime | docker | 7.1.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/docker/7.1.0/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`cpu/services/sandbox_admin/requirements.txt`](cpu/services/sandbox_admin/requirements.txt) |
-| workspace-runtime | duckdb | 1.5.4 | MIT | [PyPI](https://pypi.org/pypi/duckdb/1.5.4/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | executing | 2.2.1 | MIT | [PyPI](https://pypi.org/pypi/executing/2.2.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | faiss-cpu | 1.14.3 | MIT | [PyPI](https://pypi.org/pypi/faiss-cpu/1.14.3/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, sandbox-admin-runtime | fastapi | 0.138.2 | MIT | [PyPI](https://pypi.org/pypi/fastapi/0.138.2/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`cpu/services/sandbox_admin/requirements.txt`](cpu/services/sandbox_admin/requirements.txt) |
-| workspace-runtime | fastjsonschema | 2.21.2 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/fastjsonschema/2.21.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | feedparser | 6.0.12 | BSD-2-Clause | [PyPI](https://pypi.org/pypi/feedparser/6.0.12/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, security-tooling | filelock | 3.29.4 | MIT | [PyPI](https://pypi.org/pypi/filelock/3.29.4/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | filetype | 1.2.0 | MIT | [PyPI](https://pypi.org/pypi/filetype/1.2.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | fonttools | 4.63.0 | MIT | [PyPI](https://pypi.org/pypi/fonttools/4.63.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, security-tooling | fqdn | 1.5.1 | MPL-2.0 | [PyPI](https://pypi.org/pypi/fqdn/1.5.1/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | frozenlist | 1.8.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/frozenlist/1.8.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | fsspec | 2026.6.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/fsspec/2026.6.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | gitdb | 4.0.12 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/gitdb/4.0.12/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | gitpython | 3.1.50 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/gitpython/3.1.50/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | googleapis-common-protos | 1.75.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/googleapis-common-protos/1.75.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | gradio | 6.19.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/gradio/6.19.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | gradio-client | 2.5.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/gradio-client/2.5.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | greenlet | 3.5.3 | MIT AND PSF-2.0 | [PyPI](https://pypi.org/pypi/greenlet/3.5.3/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | groovy | 0.1.2 | MIT | [PyPI](https://pypi.org/pypi/groovy/0.1.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | grpcio | 1.81.1 | Apache-2.0 | [PyPI](https://pypi.org/pypi/grpcio/1.81.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | h11 | 0.16.0 | MIT | [PyPI](https://pypi.org/pypi/h11/0.16.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | hf-gradio | 0.4.1 | MIT | [PyPI](https://pypi.org/pypi/hf-gradio/0.4.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | hf-xet | 1.5.1 | Apache-2.0 | [PyPI](https://pypi.org/pypi/hf-xet/1.5.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | httpcore | 1.0.9 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/httpcore/1.0.9/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | httptools | 0.8.0 | MIT | [PyPI](https://pypi.org/pypi/httptools/0.8.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | httpx | 0.28.1 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/httpx/0.28.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | httpx-sse | 0.4.3 | MIT | [PyPI](https://pypi.org/pypi/httpx-sse/0.4.3/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | huggingface-hub | 1.21.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/huggingface-hub/1.21.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, material-tooling, security-tooling | idna | 3.18 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/idna/3.18/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/materials/requirements.lock`](scripts/materials/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | importlib-metadata | 8.7.1 | Apache-2.0 | [PyPI](https://pypi.org/pypi/importlib-metadata/8.7.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | ipykernel | 7.3.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/ipykernel/7.3.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | ipython | 9.15.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/ipython/9.15.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | ipython-pygments-lexers | 1.1.1 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/ipython-pygments-lexers/1.1.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | ipywidgets | 8.1.8 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/ipywidgets/8.1.8/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, security-tooling | isoduration | 20.11.0 | ISC | [PyPI](https://pypi.org/pypi/isoduration/20.11.0/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | itsdangerous | 2.2.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/itsdangerous/2.2.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | jedi | 0.20.0 | MIT | [PyPI](https://pypi.org/pypi/jedi/0.20.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | jinja2 | 3.1.6 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/jinja2/3.1.6/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | jiter | 0.16.0 | MIT | [PyPI](https://pypi.org/pypi/jiter/0.16.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | joblib | 1.5.3 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/joblib/1.5.3/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | json5 | 0.15.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/json5/0.15.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | jsonpatch | 1.33 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/jsonpatch/1.33/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, security-tooling | jsonpointer | 3.1.1 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/jsonpointer/3.1.1/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime, security-tooling | jsonschema | 4.26.0 | MIT | [PyPI](https://pypi.org/pypi/jsonschema/4.26.0/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime, security-tooling | jsonschema-specifications | 2025.9.1 | MIT | [PyPI](https://pypi.org/pypi/jsonschema-specifications/2025.9.1/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | jupyter-app-launcher | 0.3.2 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/jupyter-app-launcher/0.3.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | jupyter-client | 8.9.1 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/jupyter-client/8.9.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | jupyter-core | 5.9.1 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/jupyter-core/5.9.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | jupyter-events | 0.12.1 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/jupyter-events/0.12.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | jupyter-lsp | 2.3.1 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/jupyter-lsp/2.3.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | jupyter-server | 2.20.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/jupyter-server/2.20.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | jupyter-server-proxy | 4.5.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/jupyter-server-proxy/4.5.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | jupyter-server-terminals | 0.5.4 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/jupyter-server-terminals/0.5.4/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | jupyterlab | 4.5.9 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/jupyterlab/4.5.9/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | jupyterlab-git | 0.54.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/jupyterlab-git/0.54.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | jupyterlab-git-core | 0.54.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/jupyterlab-git-core/0.54.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | jupyterlab-pygments | 0.3.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/jupyterlab-pygments/0.3.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | jupyterlab-server | 2.28.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/jupyterlab-server/2.28.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | jupyterlab-widgets | 3.0.16 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/jupyterlab-widgets/3.0.16/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | jupytext | 1.19.4 | MIT | [PyPI](https://pypi.org/pypi/jupytext/1.19.4/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | kiwisolver | 1.5.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/kiwisolver/1.5.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | langchain | 1.3.11 | MIT | [PyPI](https://pypi.org/pypi/langchain/1.3.11/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | langchain-classic | 1.0.8 | MIT | [PyPI](https://pypi.org/pypi/langchain-classic/1.0.8/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | langchain-community | 0.4.2 | MIT | [PyPI](https://pypi.org/pypi/langchain-community/0.4.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | langchain-core | 1.4.8 | MIT | [PyPI](https://pypi.org/pypi/langchain-core/1.4.8/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | langchain-mcp-adapters | 0.3.0 | MIT | [PyPI](https://pypi.org/pypi/langchain-mcp-adapters/0.3.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | langchain-nvidia-ai-endpoints | 1.4.1 | MIT | [PyPI](https://pypi.org/pypi/langchain-nvidia-ai-endpoints/1.4.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | langchain-openai | 1.3.3 | MIT | [PyPI](https://pypi.org/pypi/langchain-openai/1.3.3/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | langchain-protocol | 0.0.18 | MIT | [PyPI](https://pypi.org/pypi/langchain-protocol/0.0.18/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | langchain-text-splitters | 1.1.2 | MIT | [PyPI](https://pypi.org/pypi/langchain-text-splitters/1.1.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | langgraph | 1.2.6 | MIT | [PyPI](https://pypi.org/pypi/langgraph/1.2.6/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | langgraph-checkpoint | 4.1.1 | MIT | [PyPI](https://pypi.org/pypi/langgraph-checkpoint/4.1.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | langgraph-prebuilt | 1.1.0 | MIT | [PyPI](https://pypi.org/pypi/langgraph-prebuilt/1.1.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | langgraph-sdk | 0.4.2 | MIT | [PyPI](https://pypi.org/pypi/langgraph-sdk/0.4.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | langsmith | 0.9.3 | MIT | [PyPI](https://pypi.org/pypi/langsmith/0.9.3/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, security-tooling | lark | 1.3.1 | MIT | [PyPI](https://pypi.org/pypi/lark/1.3.1/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | defusedxml | 0.7.1 | PSF-2.0 | [PyPI](https://pypi.org/pypi/defusedxml/0.7.1/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | filelock | 3.29.4 | MIT | [PyPI](https://pypi.org/pypi/filelock/3.29.4/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | fqdn | 1.5.1 | MPL-2.0 | [PyPI](https://pypi.org/pypi/fqdn/1.5.1/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| material-tooling, security-tooling | idna | 3.18 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/idna/3.18/json); [`scripts/materials/requirements.lock`](scripts/materials/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | isoduration | 20.11.0 | ISC | [PyPI](https://pypi.org/pypi/isoduration/20.11.0/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | jsonpointer | 3.1.1 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/jsonpointer/3.1.1/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | jsonschema | 4.26.0 | MIT | [PyPI](https://pypi.org/pypi/jsonschema/4.26.0/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | jsonschema-specifications | 2025.9.1 | MIT | [PyPI](https://pypi.org/pypi/jsonschema-specifications/2025.9.1/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | lark | 1.3.1 | MIT | [PyPI](https://pypi.org/pypi/lark/1.3.1/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
 | security-tooling | license-expression | 30.4.4 | Apache-2.0 | [PyPI](https://pypi.org/pypi/license-expression/30.4.4/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
 | material-tooling, security-tooling | lxml | 6.1.1 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/lxml/6.1.1/json); [`scripts/materials/requirements.lock`](scripts/materials/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime, security-tooling | markdown-it-py | 4.2.0 | MIT | [PyPI](https://pypi.org/pypi/markdown-it-py/4.2.0/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | markdown-it-py | 4.2.0 | MIT | [PyPI](https://pypi.org/pypi/markdown-it-py/4.2.0/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
 | material-tooling | markdownify | 1.2.2 | MIT | [PyPI](https://pypi.org/pypi/markdownify/1.2.2/json); [`scripts/materials/requirements.lock`](scripts/materials/requirements.lock) |
-| workspace-runtime | markupsafe | 3.0.3 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/markupsafe/3.0.3/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | matplotlib | 3.10.9 | PSF-2.0 | [PyPI](https://pypi.org/pypi/matplotlib/3.10.9/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | matplotlib-inline | 0.2.2 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/matplotlib-inline/0.2.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | mcp | 1.28.1 | MIT | [PyPI](https://pypi.org/pypi/mcp/1.28.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | mdit-py-plugins | 0.6.1 | MIT | [PyPI](https://pypi.org/pypi/mdit-py-plugins/0.6.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, security-tooling | mdurl | 0.1.2 | MIT | [PyPI](https://pypi.org/pypi/mdurl/0.1.2/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | mistune | 3.3.2 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/mistune/3.3.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
+| security-tooling | mdurl | 0.1.2 | MIT | [PyPI](https://pypi.org/pypi/mdurl/0.1.2/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
 | security-tooling | msgpack | 1.2.1 | Apache-2.0 | [PyPI](https://pypi.org/pypi/msgpack/1.2.1/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | multidict | 6.7.1 | Apache-2.0 | [PyPI](https://pypi.org/pypi/multidict/6.7.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | narwhals | 2.22.1 | MIT | [PyPI](https://pypi.org/pypi/narwhals/2.22.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | nbclient | 0.11.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/nbclient/0.11.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | nbconvert | 7.17.1 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/nbconvert/7.17.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | nbdime | 4.0.4 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/nbdime/4.0.4/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | nbformat | 5.10.4 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/nbformat/5.10.4/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | nemo-microservices | 1.5.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/nemo-microservices/1.5.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | nest-asyncio | 1.6.0 | BSD-2-Clause | [PyPI](https://pypi.org/pypi/nest-asyncio/1.6.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | nest-asyncio2 | 1.7.2 | BSD-2-Clause | [PyPI](https://pypi.org/pypi/nest-asyncio2/1.7.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | networkx | 3.4.2 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/networkx/3.4.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | notebook-shim | 0.2.4 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/notebook-shim/0.2.4/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | numpy | 2.4.6 | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 | [PyPI](https://pypi.org/pypi/numpy/2.4.6/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | openai | 2.44.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/openai/2.44.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | opentelemetry-api | 1.34.1 | Apache-2.0 | [PyPI](https://pypi.org/pypi/opentelemetry-api/1.34.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | opentelemetry-exporter-otlp-proto-common | 1.34.1 | Apache-2.0 | [PyPI](https://pypi.org/pypi/opentelemetry-exporter-otlp-proto-common/1.34.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | opentelemetry-exporter-otlp-proto-grpc | 1.34.1 | Apache-2.0 | [PyPI](https://pypi.org/pypi/opentelemetry-exporter-otlp-proto-grpc/1.34.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | opentelemetry-instrumentation | 0.55b1 | Apache-2.0 | [PyPI](https://pypi.org/pypi/opentelemetry-instrumentation/0.55b1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | opentelemetry-instrumentation-asgi | 0.55b1 | Apache-2.0 | [PyPI](https://pypi.org/pypi/opentelemetry-instrumentation-asgi/0.55b1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | opentelemetry-instrumentation-fastapi | 0.55b1 | Apache-2.0 | [PyPI](https://pypi.org/pypi/opentelemetry-instrumentation-fastapi/0.55b1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | opentelemetry-instrumentation-requests | 0.55b1 | Apache-2.0 | [PyPI](https://pypi.org/pypi/opentelemetry-instrumentation-requests/0.55b1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | opentelemetry-proto | 1.34.1 | Apache-2.0 | [PyPI](https://pypi.org/pypi/opentelemetry-proto/1.34.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | opentelemetry-sdk | 1.34.1 | Apache-2.0 | [PyPI](https://pypi.org/pypi/opentelemetry-sdk/1.34.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | opentelemetry-semantic-conventions | 0.55b1 | Apache-2.0 | [PyPI](https://pypi.org/pypi/opentelemetry-semantic-conventions/0.55b1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | opentelemetry-util-http | 0.55b1 | Apache-2.0 | [PyPI](https://pypi.org/pypi/opentelemetry-util-http/0.55b1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | orjson | 3.11.9 | MPL-2.0 AND (Apache-2.0 OR MIT) | [PyPI](https://pypi.org/pypi/orjson/3.11.9/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | ormsgpack | 1.12.2 | Apache-2.0 OR MIT | [PyPI](https://pypi.org/pypi/ormsgpack/1.12.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | overrides | 7.7.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/overrides/7.7.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
 | security-tooling | packageurl-python | 0.17.6 | MIT | [PyPI](https://pypi.org/pypi/packageurl-python/0.17.6/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime, security-tooling | packaging | 26.2 | Apache-2.0 OR BSD-2-Clause | [PyPI](https://pypi.org/pypi/packaging/26.2/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | pandas | 2.3.3 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/pandas/2.3.3/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | pandocfilters | 1.5.1 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/pandocfilters/1.5.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | parso | 0.8.7 | MIT | [PyPI](https://pypi.org/pypi/parso/0.8.7/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | pdf2image | 1.17.0 | MIT | [PyPI](https://pypi.org/pypi/pdf2image/1.17.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | pexpect | 4.9.0 | ISC | [PyPI](https://pypi.org/pypi/pexpect/4.9.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | pillow | 12.2.0 | MIT-CMU | [PyPI](https://pypi.org/pypi/pillow/12.2.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, security-tooling | pip | 26.1.2 | MIT | [PyPI](https://pypi.org/pypi/pip/26.1.2/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | packaging | 26.2 | Apache-2.0 OR BSD-2-Clause | [PyPI](https://pypi.org/pypi/packaging/26.2/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| host-bootstrap, security-tooling | pip | 26.1.2 | MIT | [PyPI](https://pypi.org/pypi/pip/26.1.2/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock); [`docs/lab_runtime_testing.md`](docs/lab_runtime_testing.md) |
 | security-tooling | pip-api | 0.0.34 | Apache-2.0 | [PyPI](https://pypi.org/pypi/pip-api/0.0.34/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
 | security-tooling | pip-audit | 2.10.1 | Apache-2.0 | [PyPI](https://pypi.org/pypi/pip-audit/2.10.1/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
 | security-tooling | pip-requirements-parser | 32.0.1 | MIT | [PyPI](https://pypi.org/pypi/pip-requirements-parser/32.0.1/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime, security-tooling | platformdirs | 4.10.0 | MIT | [PyPI](https://pypi.org/pypi/platformdirs/4.10.0/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | playwright | 1.61.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/playwright/1.61.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | plotly | 6.8.0 | MIT | [PyPI](https://pypi.org/pypi/plotly/6.8.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | prometheus-client | 0.25.0 | Apache-2.0 AND BSD-2-Clause | [PyPI](https://pypi.org/pypi/prometheus-client/0.25.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | prompt-toolkit | 3.0.52 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/prompt-toolkit/3.0.52/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | propcache | 0.5.2 | Apache-2.0 | [PyPI](https://pypi.org/pypi/propcache/0.5.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | protobuf | 5.29.6 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/protobuf/5.29.6/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | psutil | 7.2.2 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/psutil/7.2.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | ptyprocess | 0.7.0 | ISC | [PyPI](https://pypi.org/pypi/ptyprocess/0.7.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | pure-eval | 0.2.3 | MIT | [PyPI](https://pypi.org/pypi/pure-eval/0.2.3/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
+| security-tooling | platformdirs | 4.10.0 | MIT | [PyPI](https://pypi.org/pypi/platformdirs/4.10.0/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
 | security-tooling | py-serializable | 2.1.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/py-serializable/2.1.0/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | pyarrow | 24.0.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/pyarrow/24.0.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | pycparser | 3.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/pycparser/3.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | pydantic | 2.13.4 | MIT | [PyPI](https://pypi.org/pypi/pydantic/2.13.4/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | pydantic-core | 2.46.4 | MIT | [PyPI](https://pypi.org/pypi/pydantic-core/2.46.4/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | pydantic-settings | 2.14.2 | MIT | [PyPI](https://pypi.org/pypi/pydantic-settings/2.14.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | pydeck | 0.9.2 | Apache-2.0 | [PyPI](https://pypi.org/pypi/pydeck/0.9.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | pydub | 0.25.1 | MIT | [PyPI](https://pypi.org/pypi/pydub/0.25.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | pyee | 13.0.1 | MIT | [PyPI](https://pypi.org/pypi/pyee/13.0.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, security-tooling | pygments | 2.20.0 | BSD-2-Clause | [PyPI](https://pypi.org/pypi/pygments/2.20.0/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | pyjwt | 2.13.0 | MIT | [PyPI](https://pypi.org/pypi/pyjwt/2.13.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, security-tooling | pyparsing | 3.3.2 | MIT | [PyPI](https://pypi.org/pypi/pyparsing/3.3.2/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime, security-tooling | python-dateutil | 2.9.0.post0 | Apache-2.0 OR BSD-3-Clause | [PyPI](https://pypi.org/pypi/python-dateutil/2.9.0.post0/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | python-dotenv | 1.2.2 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/python-dotenv/1.2.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | python-json-logger | 4.1.0 | BSD-2-Clause | [PyPI](https://pypi.org/pypi/python-json-logger/4.1.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | python-multipart | 0.0.32 | Apache-2.0 | [PyPI](https://pypi.org/pypi/python-multipart/0.0.32/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | pytz | 2026.2 | MIT | [PyPI](https://pypi.org/pypi/pytz/2026.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, sandbox-admin-runtime | pyyaml | 6.0.3 | MIT | [PyPI](https://pypi.org/pypi/pyyaml/6.0.3/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`cpu/services/sandbox_admin/requirements.txt`](cpu/services/sandbox_admin/requirements.txt) |
-| workspace-runtime | pyzmq | 27.1.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/pyzmq/27.1.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | rank-bm25 | 0.2.2 | Apache-2.0 | [PyPI](https://pypi.org/pypi/rank-bm25/0.2.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, security-tooling | referencing | 0.37.0 | MIT | [PyPI](https://pypi.org/pypi/referencing/0.37.0/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | regex | 2026.6.28 | Apache-2.0 AND CNRI-Python | [PyPI](https://pypi.org/pypi/regex/2026.6.28/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | requests | 2.33.1 | Apache-2.0 | [PyPI](https://pypi.org/pypi/requests/2.33.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| material-tooling, security-tooling | requests | 2.34.2 | Apache-2.0 | [PyPI](https://pypi.org/pypi/requests/2.34.2/json); [`scripts/materials/requirements.lock`](scripts/materials/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | requests-toolbelt | 1.0.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/requests-toolbelt/1.0.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, security-tooling | rfc3339-validator | 0.1.4 | MIT | [PyPI](https://pypi.org/pypi/rfc3339-validator/0.1.4/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime, security-tooling | rfc3986-validator | 0.1.1 | MIT | [PyPI](https://pypi.org/pypi/rfc3986-validator/0.1.1/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime, security-tooling | rfc3987-syntax | 1.1.0 | MIT | [PyPI](https://pypi.org/pypi/rfc3987-syntax/1.1.0/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime, security-tooling | rich | 15.0.0 | MIT | [PyPI](https://pypi.org/pypi/rich/15.0.0/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime, security-tooling | rpds-py | 2026.5.1 | MIT | [PyPI](https://pypi.org/pypi/rpds-py/2026.5.1/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | safehttpx | 0.1.7 | MIT | [PyPI](https://pypi.org/pypi/safehttpx/0.1.7/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | safetensors | 0.8.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/safetensors/0.8.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | scikit-learn | 1.7.2 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/scikit-learn/1.7.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | scipy | 1.17.1 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/scipy/1.17.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | semantic-version | 2.10.0 | BSD-2-Clause | [PyPI](https://pypi.org/pypi/semantic-version/2.10.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | send2trash | 2.1.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/send2trash/2.1.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, security-tooling | setuptools | 82.0.1 | MIT | [PyPI](https://pypi.org/pypi/setuptools/82.0.1/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | sgmllib3k | 1.0.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/sgmllib3k/1.0.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | shellingham | 1.5.4 | ISC | [PyPI](https://pypi.org/pypi/shellingham/1.5.4/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | simpervisor | 1.0.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/simpervisor/1.0.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, material-tooling, security-tooling | six | 1.17.0 | MIT | [PyPI](https://pypi.org/pypi/six/1.17.0/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/materials/requirements.lock`](scripts/materials/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | smmap | 5.0.3 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/smmap/5.0.3/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | sniffio | 1.3.1 | MIT OR Apache-2.0 | [PyPI](https://pypi.org/pypi/sniffio/1.3.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
+| security-tooling | pygments | 2.20.0 | BSD-2-Clause | [PyPI](https://pypi.org/pypi/pygments/2.20.0/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | pyparsing | 3.3.2 | MIT | [PyPI](https://pypi.org/pypi/pyparsing/3.3.2/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | python-dateutil | 2.9.0.post0 | Apache-2.0 OR BSD-3-Clause | [PyPI](https://pypi.org/pypi/python-dateutil/2.9.0.post0/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | referencing | 0.37.0 | MIT | [PyPI](https://pypi.org/pypi/referencing/0.37.0/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| material-tooling, security-tooling | requests | 2.33.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/requests/2.33.0/json); [`scripts/materials/requirements.lock`](scripts/materials/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | rfc3339-validator | 0.1.4 | MIT | [PyPI](https://pypi.org/pypi/rfc3339-validator/0.1.4/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | rfc3986-validator | 0.1.1 | MIT | [PyPI](https://pypi.org/pypi/rfc3986-validator/0.1.1/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | rfc3987-syntax | 1.1.0 | MIT | [PyPI](https://pypi.org/pypi/rfc3987-syntax/1.1.0/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | rich | 15.0.0 | MIT | [PyPI](https://pypi.org/pypi/rich/15.0.0/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | rpds-py | 2026.5.1 | MIT | [PyPI](https://pypi.org/pypi/rpds-py/2026.5.1/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | setuptools | 82.0.1 | MIT | [PyPI](https://pypi.org/pypi/setuptools/82.0.1/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| material-tooling, security-tooling | six | 1.17.0 | MIT | [PyPI](https://pypi.org/pypi/six/1.17.0/json); [`scripts/materials/requirements.lock`](scripts/materials/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
 | security-tooling | sortedcontainers | 2.4.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/sortedcontainers/2.4.0/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime, material-tooling | soupsieve | 2.8.4 | MIT | [PyPI](https://pypi.org/pypi/soupsieve/2.8.4/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/materials/requirements.lock`](scripts/materials/requirements.lock) |
-| workspace-runtime | sqlalchemy | 2.0.51 | MIT | [PyPI](https://pypi.org/pypi/sqlalchemy/2.0.51/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | sse-starlette | 3.4.5 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/sse-starlette/3.4.5/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | stack-data | 0.6.3 | MIT | [PyPI](https://pypi.org/pypi/stack-data/0.6.3/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, sandbox-admin-runtime | starlette | 1.3.1 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/starlette/1.3.1/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`cpu/services/sandbox_admin/requirements.txt`](cpu/services/sandbox_admin/requirements.txt) |
-| workspace-runtime | streamlit | 1.58.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/streamlit/1.58.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | tavily-python | 0.7.26 | MIT | [PyPI](https://pypi.org/pypi/tavily-python/0.7.26/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | tenacity | 9.1.4 | Apache-2.0 | [PyPI](https://pypi.org/pypi/tenacity/9.1.4/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | terminado | 0.18.1 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/terminado/0.18.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | threadpoolctl | 3.6.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/threadpoolctl/3.6.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | tiktoken | 0.13.0 | MIT | [PyPI](https://pypi.org/pypi/tiktoken/0.13.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | tinycss2 | 1.5.1 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/tinycss2/1.5.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | tokenizers | 0.22.2 | Apache-2.0 | [PyPI](https://pypi.org/pypi/tokenizers/0.22.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | toml | 0.10.2 | MIT | [PyPI](https://pypi.org/pypi/toml/0.10.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
+| material-tooling | soupsieve | 2.8.4 | MIT | [PyPI](https://pypi.org/pypi/soupsieve/2.8.4/json); [`scripts/materials/requirements.lock`](scripts/materials/requirements.lock) |
 | security-tooling | tomli | 2.4.1 | MIT | [PyPI](https://pypi.org/pypi/tomli/2.4.1/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
 | security-tooling | tomli-w | 1.2.0 | MIT | [PyPI](https://pypi.org/pypi/tomli-w/1.2.0/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | tomlkit | 0.14.0 | MIT | [PyPI](https://pypi.org/pypi/tomlkit/0.14.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | torch | 2.11.0+cu128 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/torch/2.11.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | torchaudio | 2.11.0+cu128 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/torchaudio/2.11.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | torchvision | 0.26.0+cu128 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/torchvision/0.26.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | tornado | 6.5.7 | Apache-2.0 | [PyPI](https://pypi.org/pypi/tornado/6.5.7/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | tqdm | 4.68.3 | MPL-2.0 AND MIT | [PyPI](https://pypi.org/pypi/tqdm/4.68.3/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | traitlets | 5.15.1 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/traitlets/5.15.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | transformers | 5.12.1 | Apache-2.0 | [PyPI](https://pypi.org/pypi/transformers/5.12.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | typer | 0.25.1 | MIT | [PyPI](https://pypi.org/pypi/typer/0.25.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, material-tooling, security-tooling | typing-extensions | 4.15.0 | PSF-2.0 | [PyPI](https://pypi.org/pypi/typing-extensions/4.15.0/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/materials/requirements.lock`](scripts/materials/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | typing-inspection | 0.4.2 | MIT | [PyPI](https://pypi.org/pypi/typing-inspection/0.4.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, security-tooling | tzdata | 2026.2 | Apache-2.0 | [PyPI](https://pypi.org/pypi/tzdata/2026.2/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime, security-tooling | uri-template | 1.3.0 | MIT | [PyPI](https://pypi.org/pypi/uri-template/1.3.0/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime, material-tooling, security-tooling | urllib3 | 2.7.0 | MIT | [PyPI](https://pypi.org/pypi/urllib3/2.7.0/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/materials/requirements.lock`](scripts/materials/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | uuid-utils | 0.16.2 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/uuid-utils/0.16.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | uv | 0.11.25 | MIT OR Apache-2.0 | [PyPI](https://pypi.org/pypi/uv/0.11.25/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, sandbox-admin-runtime | uvicorn | 0.49.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/uvicorn/0.49.0/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`cpu/services/sandbox_admin/requirements.txt`](cpu/services/sandbox_admin/requirements.txt) |
-| workspace-runtime | uvloop | 0.22.1 | MIT | [PyPI](https://pypi.org/pypi/uvloop/0.22.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | voila | 0.5.12 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/voila/0.5.12/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | watchdog | 6.0.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/watchdog/6.0.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | watchfiles | 1.2.0 | MIT | [PyPI](https://pypi.org/pypi/watchfiles/1.2.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | wcwidth | 0.8.2 | MIT | [PyPI](https://pypi.org/pypi/wcwidth/0.8.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime, security-tooling | webcolors | 25.10.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/webcolors/25.10.0/json); [`workspace/requirements.lock`](workspace/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | webencodings | 0.5.1 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/webencodings/0.5.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | websocket-client | 1.9.0 | Apache-2.0 | [PyPI](https://pypi.org/pypi/websocket-client/1.9.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | websockets | 15.0.1 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/websockets/15.0.1/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
+| material-tooling, security-tooling | typing-extensions | 4.15.0 | PSF-2.0 | [PyPI](https://pypi.org/pypi/typing-extensions/4.15.0/json); [`scripts/materials/requirements.lock`](scripts/materials/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | tzdata | 2026.2 | Apache-2.0 | [PyPI](https://pypi.org/pypi/tzdata/2026.2/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | uri-template | 1.3.0 | MIT | [PyPI](https://pypi.org/pypi/uri-template/1.3.0/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| material-tooling, security-tooling | urllib3 | 2.7.0 | MIT | [PyPI](https://pypi.org/pypi/urllib3/2.7.0/json); [`scripts/materials/requirements.lock`](scripts/materials/requirements.lock); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
+| security-tooling | webcolors | 25.10.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/webcolors/25.10.0/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
 | security-tooling | wheel | 0.47.0 | MIT | [PyPI](https://pypi.org/pypi/wheel/0.47.0/json); [`scripts/security/requirements-sca.lock`](scripts/security/requirements-sca.lock) |
-| workspace-runtime | widgetsnbextension | 4.0.15 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/widgetsnbextension/4.0.15/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | wrapt | 1.17.3 | BSD-2-Clause | [PyPI](https://pypi.org/pypi/wrapt/1.17.3/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | xxhash | 3.8.0 | BSD-2-Clause | [PyPI](https://pypi.org/pypi/xxhash/3.8.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | yarl | 1.24.2 | Apache-2.0 | [PyPI](https://pypi.org/pypi/yarl/1.24.2/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | zipp | 4.1.0 | MIT | [PyPI](https://pypi.org/pypi/zipp/4.1.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
-| workspace-runtime | zstandard | 0.25.0 | BSD-3-Clause | [PyPI](https://pypi.org/pypi/zstandard/0.25.0/json); [`workspace/requirements.lock`](workspace/requirements.lock) |
+| browser-validation | playwright-core | 1.55.0 | Apache-2.0 | [npm](https://www.npmjs.com/package/playwright-core/v/1.55.0); [`scripts/runtime/pnpm-lock.yaml`](scripts/runtime/pnpm-lock.yaml) |
 
 ### Less common license families and their scope
 
-These identifiers are not themselves a failed review. Distribution form, modification, linking,
-notices, and source-availability obligations still require the accountable open-source review.
+The active tool locks include MPL-2.0 (`certifi`, `fqdn`), LGPL-2.0-or-later (`chardet`), PSF-2.0 (`defusedxml`, `typing-extensions`), and ISC (`isoduration`). These tools are not shipped to learners. Preserve their upstream terms in scanner evidence; their presence is not an Apache-2.0 relicensing claim. No active package row declares GPL.
 
-| Identifier | Packages in this inventory | Scope note |
-|---|---|---|
-| MPL-2.0 | `certifi`, `fqdn`; compound expressions for `orjson` and `tqdm` | Runtime dependencies; MPL is file-level copyleft, so retain upstream terms and review the exact distributed form. |
-| LGPL-2.0-or-later | `chardet` | Security-tooling environment only; it is not in the learner browser artifact or workspace runtime lock. |
-| PSF-2.0 | `aiohappyeyeballs`, `defusedxml`, `matplotlib`, `typing-extensions`; compound expression for `greenlet` | Permissive Python ecosystem dependencies. |
-| 0BSD, Zlib, CC0-1.0 | Compound expression for `numpy` | NumPy's exact-version metadata accounts for bundled or incorporated subcomponents; these are not separate direct requirements. |
-| ISC | `isoduration`, `pexpect`, `ptyprocess`, `shellingham` | Permissive runtime dependencies. |
+## Host tools not distributed by this repository
 
-No package row in this inventory declares GPL. The only GNU-family expression is the
-`LGPL-2.0-or-later` tooling entry above.
-
-## Direct container, runtime, and operating-system declarations
-
-These are direct Dockerfile declarations not represented as Python or browser-lock rows above. They
-belong to optional authoring and compatibility environments, not the static course delivered to
-learners. The [SBOM evidence catalog](scripts/compliance/docs/sbom_evidence.json) records that
-distribution boundary and the CI artifact paths used when a component inventory is generated.
-Mixed images and operating-system packages require the exact built-image SBOM before distribution;
-a tag or source declaration cannot supply their complete transitive license set.
-
-| Scope | Component | Declared version | Governing license(s) / terms | Evidence / disposition |
-|---|---|---|---|---|
-| workspace base image | nvcr.io/nvidia/cuda | 12.8.1-cudnn-devel-ubuntu22.04 | NVIDIA Deep Learning Container License; bundled open-source component licenses | not distributed with the static course; [NGC CUDA license notice](https://catalog.ngc.nvidia.com/orgs/nvidia/-/containers/cuda/-); [container license](https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license); [open-source image archive](https://developer.download.nvidia.com/compute/cuda/opensource/image); `workspace/Dockerfile`; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
-| service base image | docker | 20.10 | Apache-2.0 for Docker/Moby and official-image packaging; bundled Alpine component licenses | not distributed with the static course; [Docker Official Image](https://hub.docker.com/_/docker); [Moby license](https://github.com/moby/moby/blob/v20.10.0/LICENSE); [image packaging license](https://github.com/docker-library/docker/blob/master/LICENSE); `cpu/services/docker_router/Dockerfile`; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
-| service base image | python | 3.11-slim | MIT for official-image packaging; PSF-2.0 for CPython; bundled Debian component licenses | not distributed with the static course; [Python Official Image license notice](https://hub.docker.com/_/python); [image packaging license](https://github.com/docker-library/python/blob/master/LICENSE); [Python 3.11 license](https://docs.python.org/3.11/license.html); `cpu/services/llm_client/llm_client.Dockerfile`; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
-| service base image | python | 3.12-slim | MIT for official-image packaging; PSF-2.0 for CPython; bundled Debian component licenses | not distributed with the static course; [Python Official Image license notice](https://hub.docker.com/_/python); [image packaging license](https://github.com/docker-library/python/blob/master/LICENSE); [Python 3.12 license](https://docs.python.org/3.12/license.html); `cpu/services/sandbox_admin/Dockerfile`; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
-| OpenShell build image | ghcr.io/nvidia/openshell/cluster | 0.0.8 | Apache-2.0 for OpenShell; bundled image-component licenses | not distributed with the static course; [OpenShell license](https://github.com/NVIDIA/OpenShell/blob/main/LICENSE); image SBOM required before distribution; `cpu/services/openclaw/openclaw_shell.Dockerfile`; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
-| OpenShell runtime image | ghcr.io/nvidia/openshell-community/sandboxes/base | latest | Apache-2.0 for OpenShell Community; bundled image-component licenses | not distributed with the static course; [OpenShell Community license](https://github.com/NVIDIA/OpenShell-Community/blob/main/LICENSE); mutable tag requires an exact image digest and SBOM before distribution; `cpu/services/openclaw/openclaw_shell.Dockerfile`; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
-| OpenClaw runtime | openclaw | 2026.5.28 | MIT | [npm](https://www.npmjs.com/package/openclaw/v/2026.5.28) |
-| policy engine | Open Policy Agent | 1.4.2 | Apache-2.0 | [upstream](https://github.com/open-policy-agent/opa/releases/tag/v1.4.2) |
-| browser binary | Chromium installed by Playwright | Playwright 1.61.0 channel | BSD-3-Clause for Chromium; bundled third-party licenses | not distributed with the static course; [Chromium license](https://chromium.googlesource.com/chromium/src/+/main/LICENSE); Chromium's generated credits retain its bundled notices; exact component evidence required before separate distribution; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
-| workspace OS packages | python3.11, python3.11-dev, python3-pip, build-essential, bash, curl, unzip, wget, git, libgl1, tree, jq, nodejs, npm, poppler-utils | base-image-resolved | package-specific Ubuntu licenses | not distributed with the static course; `workspace/Dockerfile`; exact versions and license expressions come from the digest-bound image SBOM; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
-| OpenClaw OS packages | jq, socat, tree, curl, git, gettext-base | base-image-resolved | package-specific Debian licenses | not distributed with the static course; `cpu/services/openclaw/openclaw_shell.Dockerfile`; exact versions and license expressions come from the digest-bound image SBOM; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
-| router OS packages | python3, py3-pip | base-image-resolved | package-specific Alpine licenses | not distributed with the static course; `cpu/services/docker_router/Dockerfile`; exact versions and license expressions come from the digest-bound image SBOM; [evidence status](scripts/compliance/docs/sbom_evidence.json) |
-
-### Resolving image-component licenses
-
-A container can have publisher terms while its bundled components remain under separate licenses.
-Record both; do not replace either with the other. When an image is itself proposed for distribution,
-follow the digest-bound image procedure in the
-[`SBOM generation and attachment runbook`](scripts/compliance/docs/sbom_generation.md). The
-generated appendix enumerates component licenses but does not convert the aggregate mixed-image row
-into a single-license claim. The catalog distinguishes three states: a linked SBOM available in the
-repository, a commit-bound SBOM generated by CI, and a conditional scan that does not exist because
-the corresponding artifact is not distributed. CI manifests record the source commit, artifact
-identity, SBOM hash, component count, license summary, job URL, and retention period.
+Contributors need Python 3.11+, Node.js 20+, and Chromium or compatible Chrome. These are host prerequisites, not repository dependencies or learner artifacts. Organizations may place the same pinned tools in an externally maintained container, but this repository does not define, build, scan, or distribute that container.
 
 ## Document source evidence
 

@@ -51,9 +51,9 @@ from _bootstrap import add_script_paths, find_repo_root
 
 BUCKET           = "dli-lms"
 # The course code comes from the environment; never hardcode one here.
-COURSE_CODE      = os.environ.get("DLI_COURSE_CODE") or os.environ.get("COMPOSE_PROJECT_NAME", "").split("-task1")[0]
+COURSE_CODE      = os.environ.get("DLI_COURSE_CODE")
 if not COURSE_CODE:
-    sys.exit("set DLI_COURSE_CODE (or COMPOSE_PROJECT_NAME=<course>-task1) before publishing")
+    sys.exit("set DLI_COURSE_CODE before publishing")
 KEY_PREFIX_ROOT  = f"assets/{COURSE_CODE}/"
 PUBLIC_URL       = f"https://{BUCKET}.s3.us-east-1.amazonaws.com/"
 

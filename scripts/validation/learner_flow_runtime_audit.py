@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import argparse
-import os
 import subprocess
 import sys
 import tempfile
@@ -19,7 +18,8 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
 from _bootstrap import find_repo_root
 
 ROOT = find_repo_root(Path(__file__).resolve())
-DEFAULT_IMAGE = "nemoclaw/lab-runtime-test:local"
+sys.path.insert(0, str(ROOT))
+from scripts.runtime.host_browser import BrowserRuntimeError, environment, run_node
 
 RUNTIME_JS = r"""
 const http = require('http');
@@ -597,7 +597,7 @@ async function waitText(locator, pattern) {
   const furtherPage = await courseContext.newPage();
   await furtherPage.goto(`http://127.0.0.1:${port}/nemoclaw/04c-going-further.html`, { waitUntil:'domcontentloaded' });
   if (await furtherPage.locator('#capstone-artifact, #capstone-cell').count()) throw new Error('04c still duplicates the always-available Course Assistant');
-  const faviconUrl = await furtherPage.locator('head link[rel~="icon"]').getAttribute('href');
+  const faviconUrl = await furtherPage.locator('head link[rel~="icon"]').evaluate(link => link.href);
   if (!faviconUrl?.endsWith('/nemoclaw/assets/favicon.ico')) throw new Error(`04c did not pin the course favicon inside its deployed subpath: ${faviconUrl}`);
   const learningPathCards = await furtherPage.locator('#learning-path .step-card').evaluateAll(cards => cards.map(card => {
     const media = card.querySelector(':scope > .step-card-media');
@@ -702,10 +702,6 @@ async function waitText(locator, pattern) {
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--site-root", default="web")
-    parser.add_argument("--image", default=DEFAULT_IMAGE)
-    parser.add_argument("--engine", default=os.environ.get("CONTAINER_ENGINE") or "podman")
-    parser.add_argument("--direct-node", action="store_true",
-                        help="run Node directly in a prepared browser environment")
     args = parser.parse_args()
     site_arg = Path(args.site_root)
     site_root = site_arg.resolve() if site_arg.is_absolute() else (ROOT / site_arg).resolve()
@@ -715,26 +711,9 @@ def main() -> int:
     with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as handle:
         handle.write(RUNTIME_JS)
         script = Path(handle.name)
-    if args.direct_node:
-        cmd = ["node", str(script)]
-        run_env = os.environ.copy()
-        run_env["SITE_ROOT"] = str(site_root)
-    else:
-        cmd = [args.engine, "run", "--rm", "--entrypoint", "node"]
-        if args.engine.endswith("podman"):
-            cmd.append("--userns=keep-id")
-        cmd += [
-            "-e", "NODE_PATH=/opt/nemoclaw-runtime/node_modules",
-            "-v", f"{site_root}:/site:ro",
-            "-v", f"{script}:/tmp/learner_flow_runtime_audit.js:ro",
-            args.image,
-            "/tmp/learner_flow_runtime_audit.js",
-        ]
-        run_env = None
     try:
-        proc = subprocess.run(cmd, cwd=ROOT, text=True, stdout=subprocess.PIPE,
-                              stderr=subprocess.STDOUT, timeout=180, env=run_env)
-    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        proc = run_node(script, env=environment(SITE_ROOT=site_root), timeout=180)
+    except (BrowserRuntimeError, subprocess.TimeoutExpired) as exc:
         print(f"learner_flow_runtime_audit: FAIL\n  - {exc}")
         return 1
     finally:

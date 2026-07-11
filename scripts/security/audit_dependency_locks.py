@@ -2,7 +2,7 @@
 # Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Reject unpinned or stale runtime, material-tool, and SCA dependency locks."""
+"""Reject unpinned or stale material-tool and SCA dependency locks."""
 from __future__ import annotations
 
 import argparse
@@ -13,8 +13,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 PAIRS = (
-    ("workspace/requirements.txt", "workspace/requirements.lock"),
-    ("cpu/services/sandbox_admin/requirements.txt", "workspace/requirements.lock"),
     ("scripts/materials/requirements.lock.in", "scripts/materials/requirements.lock"),
     ("scripts/security/requirements-sca.lock.in", "scripts/security/requirements-sca.lock"),
 )
@@ -47,9 +45,6 @@ def pins(path: Path) -> tuple[dict[str, str], list[str]]:
 
 def audit(root: Path = ROOT) -> list[str]:
     errors: list[str] = []
-    workspace = root / "workspace/requirements.txt"
-    if "resolved 2026-06-29 for Python 3.11" not in workspace.read_text(encoding="utf-8"):
-        errors.append("workspace/requirements.txt: lock target must remain Python 3.11, matching workspace/Dockerfile")
     for source_rel, lock_rel in PAIRS:
         source, source_errors = pins(root / source_rel)
         lock, lock_errors = pins(root / lock_rel)
@@ -58,13 +53,6 @@ def audit(root: Path = ROOT) -> list[str]:
         for name, version in source.items():
             if lock.get(name) != version:
                 errors.append(f"{lock_rel}: stale direct pin {name}; expected {version}, found {lock.get(name, 'missing')}")
-    from audit_python_dependencies import FORBIDDEN_DIRECT_REQUIREMENTS
-    workspace_lock, _ = pins(root / "workspace/requirements.lock")
-    for name in sorted(set(workspace_lock) & set(FORBIDDEN_DIRECT_REQUIREMENTS)):
-        errors.append(
-            f"workspace/requirements.lock: retired runtime component present: {name}; "
-            "remove its direct or transitive dependency before release"
-        )
     return errors
 
 
@@ -79,16 +67,8 @@ def self_test() -> list[str]:
                 dst = fixture / rel
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(ROOT / rel, dst)
-        docker = fixture / "workspace/Dockerfile"
-        docker.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(ROOT / "workspace/Dockerfile", docker)
-
         mutations = (
-            ("workspace/requirements.lock", "fastapi==0.138.2", "fastapi>=0.138.2"),
-            ("workspace/requirements.lock", "fastapi==0.138.2", "fastapi==0.138.2\nlitellm==0"),
-            ("cpu/services/sandbox_admin/requirements.txt", "docker==7.1.0", "docker"),
-            ("cpu/services/sandbox_admin/requirements.txt", "uvicorn[standard]==0.49.0", "uvicorn[standard]"),
-            ("scripts/materials/requirements.lock", "requests==2.34.2", "requests==0.0.1"),
+            ("scripts/materials/requirements.lock", "requests==2.33.0", "requests==0.0.1"),
             ("scripts/security/requirements-sca.lock", "pip-audit==2.10.1", "# removed pip-audit"),
         )
         for rel, old, new in mutations:

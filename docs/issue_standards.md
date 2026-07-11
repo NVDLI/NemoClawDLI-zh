@@ -9,7 +9,7 @@ course:
 
 - Current course: `web/nemoclaw/`
 - Production delivery: GitHub Pages or another static host, plus a co-located NemoClaw launchable
-- Local-only support: services and Compose paths under `cpu/`, `workspace/`, and `deploy/`
+- Local tooling: host-native build, browser, security, and compliance checks under `scripts/`
 
 Write issues so a future course can reuse the same structure without hiding the
 current scope. Name the current course/runtime explicitly, then state whether the
@@ -47,7 +47,7 @@ One paragraph naming the defect or improvement.
 ## Current release target
 - Course: `web/nemoclaw/`
 - Production: static browser course, optionally co-located with a NemoClaw launchable
-- Local-only support: `cpu/`, `workspace/`, and `deploy/`
+- Local tooling: `scripts/`
 - Bundle scope: course-specific or bundle-wide
 
 ## Evidence
@@ -140,9 +140,9 @@ release, Released, Closed no action.
 |---|---|
 | Course content/prose | `validate_layout.py --quiet`, `skill_consistency.py`, `validate_bundle.py --no-write --scope ship`; prose validator when changing broad copy. |
 | Visual/runtime page | Static gate plus browser/runtime harness or local Pages smoke. For scaffolding/lab-flow work, include `learner_flow_audit.py --self-test` and `learner_flow_runtime_audit.py` so the detector and lifecycle are both exercised. |
-| CPU service/runtime | Targeted service test, compose config where relevant, runtime self-test. |
-| Deploy/ops | Compose/nginx validation, deployed preview or explicit platform blocker. |
-| Security/dependency | Dependency floor audit, waiver audit, deep SCA when dependency graph changes, source gate if public surface changes. |
+| External runtime integration | Targeted browser contract test plus public-safe endpoint evidence or an explicit platform blocker. |
+| Static deployment | Built-artifact validation, deployed preview, and integrity comparison. |
+| Security/dependency | Dependency floor audit, waiver audit, resolved-environment SCA when a lock changes, and source gate when the public surface changes. |
 | Source/licensing | `source_gate.py`, provenance/materials check, short source excerpts only. |
 
 ## Closing and splitting

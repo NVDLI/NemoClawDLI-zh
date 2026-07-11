@@ -26,7 +26,8 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
 from _bootstrap import find_repo_root
 
 ROOT = find_repo_root(Path(__file__).resolve())
-DEFAULT_IMAGE = "nemoclaw/lab-runtime-test:local"
+sys.path.insert(0, str(ROOT))
+from scripts.runtime.host_browser import BrowserRuntimeError, environment, run_node
 DEFAULT_EXTRA_PAGES = ("/nemoclaw/scripts/SKILL.html",)
 INTERACTIVE_MARKERS = ("mountCanvasFlow(", "mountRunCell(", "mountDiagram(")
 
@@ -349,12 +350,10 @@ async function inspectPage(page, pagePath, vp, theme) {
 
 
 def parse_args() -> argparse.Namespace:
-    ap = argparse.ArgumentParser(description="Validate shared CanvasFlow/RunCell UI in a browser container")
+    ap = argparse.ArgumentParser(description="Validate shared CanvasFlow/RunCell UI in host-native Chromium")
     ap.add_argument("--site-root", default="web", help="site root to serve, usually web or public")
     ap.add_argument("--page", action="append", dest="pages", help="page path under site root; repeatable")
     ap.add_argument("--screenshots", default="", help="directory for full-page PNG screenshots")
-    ap.add_argument("--image", default=DEFAULT_IMAGE, help="browser runtime image")
-    ap.add_argument("--engine", default=os.environ.get("CONTAINER_ENGINE") or "podman", help="container engine")
     ap.add_argument("--timeout-ms", type=int, default=120000, help="browser timeout")
     return ap.parse_args()
 
@@ -388,29 +387,23 @@ def main() -> int:
         if not out.is_absolute():
             out = ROOT / out
         out.mkdir(parents=True, exist_ok=True)
-        screenshot_dir = "/screenshots"
+        screenshot_dir = str(out.resolve())
     with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as fh:
         fh.write(RUNTIME_JS)
         script = Path(fh.name)
-    cmd = [args.engine, "run", "--rm", "--entrypoint", "node"]
-    if args.engine.endswith("podman"):
-        cmd.append("--userns=keep-id")
-    cmd += [
-        "-e", "NODE_PATH=/opt/nemoclaw-runtime/node_modules",
-        "-e", "SITE_ROOT=/site",
-        "-e", f"CELL_UI_PAGES={__import__('json').dumps(pages)}",
-        "-e", f"AUDIT_TIMEOUT_MS={args.timeout_ms}",
-        "-v", f"{site_root}:/site:ro",
-        "-v", f"{script}:/tmp/cell_ui_runtime_audit.js:ro",
-    ]
-    if args.screenshots:
-        host_out = (ROOT / args.screenshots).resolve() if not Path(args.screenshots).is_absolute() else Path(args.screenshots).resolve()
-        cmd += ["-e", f"SCREENSHOT_DIR={screenshot_dir}", "-v", f"{host_out}:{screenshot_dir}"]
-    cmd += [args.image, "/tmp/cell_ui_runtime_audit.js"]
     try:
-        proc = subprocess.run(cmd, cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=(args.timeout_ms / 1000) * max(1, len(pages)) * 4 + 60)
-    except FileNotFoundError:
-        print(f"cell_ui_runtime_audit: FAIL\n  - container engine not found: {args.engine}")
+        proc = run_node(
+            script,
+            env=environment(
+                SITE_ROOT=site_root,
+                CELL_UI_PAGES=__import__('json').dumps(pages),
+                AUDIT_TIMEOUT_MS=str(args.timeout_ms),
+                SCREENSHOT_DIR=screenshot_dir or None,
+            ),
+            timeout=(args.timeout_ms / 1000) * max(1, len(pages)) * 4 + 60,
+        )
+    except BrowserRuntimeError as exc:
+        print(f"cell_ui_runtime_audit: FAIL\n  - {exc}")
         return 1
     except subprocess.TimeoutExpired as exc:
         print("cell_ui_runtime_audit: FAIL")

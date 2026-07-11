@@ -37,10 +37,8 @@ mechanical drift. The kinds below are the de-facto contract, read off the shippe
 
 | Kind | Selector | Required keys | Used by |
 |---|---|---|---|
-| `service-skill/1.0` | `schema` | schema, service, address, source_dir, summary, interfaces, tests, title, version | `cpu/services/<svc>/` |
-| `service-index/1.0` | `schema` | schema, id, source_dir, summary, services, tests, title, version | `cpu/services/` |
-| `dir-skill/1.0` | `schema` (node_type `directory-explorer`) | schema, node_type, source_dir, summary, title, explorer | `scripts/`, `docs/`, `workspace/` |
-| hub | `node_type: hub` | node_type, children, and a label (`title` or `course`) | root, `web/`, `cpu/`, `web/nemoclaw/` |
+| `dir-skill/1.0` | `schema` (node_type `directory-explorer`) | schema, node_type, source_dir, summary, title, explorer | `scripts/`, `docs/` |
+| hub | `node_type: hub` | node_type, children, and a label (`title` or `course`) | root, `web/`, `web/nemoclaw/` |
 | leaf | `node_type: leaf` | node_type, source_dir, summary, self_path, label | `web/nemoclaw/assets/`, `web/nemoclaw/mats/` |
 
 Only schemas present in the repository are valid. Add a new kind to the implementation,
@@ -49,7 +47,7 @@ Do not reserve speculative schema names.
 
 Hub beacons index immediate children. Per-directory detail stays in the child beacon.
 The root `SKILL.html` is the ontology beacon for the whole repository; `web/SKILL.html`
-and `cpu/SKILL.html` are surface hubs.
+is the released browser-surface hub.
 
 ## Exhaustive discovery
 
@@ -111,7 +109,7 @@ When a directory contract offers a generated review document, declare it in `ski
 Each export names its format, command, parameters, default category, and an in-page preview mount.
 The page must render the current rows before offering a download. Filtering and downloading operate
 on the visible classification so a reviewer can distinguish distributed code from build inputs,
-validation installs, and local-authoring references without reconstructing that distinction from prose.
+validation installs, and evaluated candidates without reconstructing that distinction from prose.
 Use checkbox groups for independent multi-selection. Radio buttons represent one mutually exclusive
 choice and are therefore unsuitable when a reviewer needs several categories or licenses at once.
 Tabular previews expose ascending and descending sorting on every column, and the filtered download

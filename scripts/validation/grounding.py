@@ -78,6 +78,24 @@ def _is_citation(u: str) -> bool:
 
 
 _MAT_INDEX = None
+_MAT_HASH = None
+
+
+def mat_source_hash() -> str:
+    """Fingerprint the curated material set that supplies URL associations."""
+    global _MAT_HASH
+    if _MAT_HASH is not None:
+        return _MAT_HASH
+    digest = hashlib.sha256()
+    root = TASK1 / lp.MAT_REL
+    if root.is_dir():
+        for path in sorted(root.rglob("*")):
+            if path.suffix.lower() not in (".md", ".html", ".htm"):
+                continue
+            digest.update(str(path.relative_to(root)).encode())
+            digest.update(path.read_bytes())
+    _MAT_HASH = digest.hexdigest()[:16]
+    return _MAT_HASH
 
 
 def mat_url_index() -> dict:
@@ -177,16 +195,19 @@ def ground_page(rel: str, force: bool = False) -> dict:
     f = TASK1 / rel
     course = lp.course_of(rel)
     h = _hash(f)
+    material_hash = mat_source_hash()
     cf = _cache_file(course, rel)
     if cf.exists() and not force:
         try:
             old = json.loads(cf.read_text())
-            if old.get("hash") == h and old.get("ref_version") == REF_VERSION:
+            if (old.get("hash") == h and old.get("mat_hash") == material_hash
+                    and old.get("ref_version") == REF_VERSION):
                 old["cached"] = True
                 return old
         except Exception:
             pass
-    rec = {"path": rel, "course": course, "hash": h, "ref_version": REF_VERSION,
+    rec = {"path": rel, "course": course, "hash": h, "mat_hash": material_hash,
+           "ref_version": REF_VERSION,
            "generated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
            "reference": build_reference(f, rel), "cached": False}
     # The cache is an optimization, never a dependency: if the entry cannot be written (a stale

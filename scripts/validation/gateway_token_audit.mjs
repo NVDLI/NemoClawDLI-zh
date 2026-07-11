@@ -13,7 +13,7 @@ const PATHS = {
   shared: 'web/nemoclaw/scripts/_shared.js',
   cliRuntime: 'web/nemoclaw/scripts/_openclaw_cli.js',
   runtime: 'scripts/runtime/test_page_runtime.js',
-  lab: 'scripts/runtime/lab_runtime_test.sh',
+  lab: 'scripts/runtime/browser_runtime_test.sh',
   en: 'web/nemoclaw/03a-kickstart.html',
   pt: 'i18n/pt/web/nemoclaw/03a-kickstart.html',
   es: 'i18n/es/web/nemoclaw/03a-kickstart.html',
@@ -203,11 +203,11 @@ function audit(overrides = {}) {
     findings.push('full-canvas harness must use flow-specific gateway evidence instead of a blanket tool requirement');
   }
   if (!files.lab.includes('--cron-contract requires --gateway-only')
-      || !files.lab.includes('node_args+=(--cron-contract)')) {
+      || !files.lab.includes('--cron-contract) cron_contract=1')) {
     findings.push('lab runtime wrapper does not expose the opt-in cron contract check');
   }
   if (!files.lab.includes('--chat-contract requires --gateway-only')
-      || !files.lab.includes('node_args+=(--chat-contract)')) {
+      || !files.lab.includes('--chat-contract) chat_contract=1')) {
     findings.push('lab runtime wrapper does not expose the opt-in live chat contract check');
   }
   if (!files.runtime.includes("id: 'browser-cron-runs', method: 'cron.runs'")
@@ -237,9 +237,9 @@ function selfTest() {
     ['focused browser check', { runtime: base.runtime.replace("args.includes('--gateway-only')", 'false') }],
     ['cron cleanup', { runtime: base.runtime.replace("output.cleanupId = ''", "output.cleanupId = id") }],
     ['cron run history', { runtime: base.runtime.replace("id: 'browser-cron-runs', method: 'cron.runs'", "id: 'browser-cron-remove', method: 'cron.remove'") }],
-    ['cron wrapper', { lab: base.lab.replace('node_args+=(--cron-contract)', 'node_args+=(--missing-contract)') }],
+    ['cron wrapper', { lab: base.lab.replace('--cron-contract) cron_contract=1', '--cron-contract) cron_contract=0') }],
     ['live chat harness', { runtime: base.runtime.replace("args.includes('--chat-contract')", 'false') }],
-    ['live chat wrapper', { lab: base.lab.replace('node_args+=(--chat-contract)', 'node_args+=(--missing-chat-contract)') }],
+    ['live chat wrapper', { lab: base.lab.replace('--chat-contract) chat_contract=1', '--chat-contract) chat_contract=0') }],
     ['parallel full-canvas flows', { runtime: base.runtime.replace('for (let index = 0; index < flowCount; index++)', 'for (const index of [0])') }],
     ['hidden full-canvas flow click', { runtime: base.runtime.replace("document.querySelectorAll('.cf-btn-run')[i]?.click()", "document.querySelectorAll('.cf-btn-run')[0]?.click()") }],
     ['wrong full-canvas running selector', { runtime: base.runtime.replace("flow?.querySelector('.cf-panel.running')", "flow?.querySelector('.cf-panel.cf-running')") }],

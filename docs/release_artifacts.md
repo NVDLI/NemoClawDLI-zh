@@ -68,10 +68,6 @@ private scanner, reviewer, and approval records in the authorized release system
 The workflow installs scanner tools in a separate environment, so scanner dependencies do not
 pollute the runtime SBOM. Scanner versions are pinned in the workflow so the same environment is
 serialized consistently until an explicit dependency update changes the tooling.
-The static release does not include local-authoring images. If a later release adds one, the draft
-must also carry that image's immutable registry digest, component SBOM, evidence manifest, and
-license appendix.
-
 ## External artifact evidence
 
 Packaging writes `external_evidence.policy` as `required-before-publication` and lists the course

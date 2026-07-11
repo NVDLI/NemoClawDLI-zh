@@ -29,11 +29,6 @@ MODEL = ROOT / "docs" / "security-architecture.json"
 SVG = ROOT / "docs" / "security-architecture.svg"
 DOC = ROOT / "docs" / "security-design.md"
 CONTROL_REGISTER = ROOT / "docs" / "security-control-themes.json"
-COMPOSE_FILES = (
-    ROOT / "deploy" / "docker-compose.yml",
-    ROOT / "deploy" / "docker-compose.override.yml",
-    ROOT / "deploy" / "docker-compose.deployment.yml",
-)
 RELEASE_STAGES = {"deploy", "verify", "review"}
 EXPECTED_SVG_TITLE = "Security architecture for the DLI course Securing Agents with OpenShell and NemoClaw"
 TOE_NODE_IDS = {"source", "artifact", "browser"}
@@ -479,16 +474,12 @@ def audit_model(model: dict, *, root: Path = ROOT, svg_text: str | None = None) 
             if token not in text:
                 out.append(finding("evidence-token", rel, f"{owner_id} evidence token not found: {token}"))
 
-    compose_texts = [(root / path.relative_to(ROOT)).read_text(encoding="utf-8") for path in COMPOSE_FILES]
-    actual_services = set().union(*(yaml_top_level_children(text, "services") for text in compose_texts))
-    actual_volumes = set().union(*(yaml_top_level_children(text, "volumes") for text in compose_texts))
     coverage = model.get("coverage", {})
-    local_services = coverage.get("local_only_compose_services", {})
-    local_volumes = coverage.get("local_only_volumes", {})
-    if set(local_services) != actual_services:
-        out.append(finding("compose-coverage", "docs/security-architecture.json", f"local-only Compose classification mismatch: expected {sorted(actual_services)}, classified {sorted(local_services)}"))
-    if set(local_volumes) != actual_volumes:
-        out.append(finding("volume-coverage", "docs/security-architecture.json", f"local-only volume classification mismatch: expected {sorted(actual_volumes)}, classified {sorted(local_volumes)}"))
+    if coverage.get("local_only_compose_services") or coverage.get("local_only_volumes"):
+        out.append(finding("retired-runtime-coverage", "docs/security-architecture.json", "removed local runtime surfaces remain in the reviewed model"))
+    for retired in ("cpu", "deploy", "workspace"):
+        if (root / retired).exists():
+            out.append(finding("retired-runtime-surface", retired, "repository-owned runtime surface returned"))
     if set(coverage.get("toe_nodes", [])) != TOE_NODE_IDS:
         out.append(finding("toe-node-coverage", "docs/security-architecture.json", "TOE node inventory changed"))
     if set(coverage.get("external_context_nodes", [])) != EXTERNAL_NODE_IDS:
@@ -498,8 +489,8 @@ def audit_model(model: dict, *, root: Path = ROOT, svg_text: str | None = None) 
     if actual_toe != TOE_NODE_IDS or actual_external != EXTERNAL_NODE_IDS:
         out.append(finding("node-ownership-coverage", "docs/security-architecture.json", "node ownership does not match the reviewed boundary"))
     for node in nodes_list:
-        if node.get("compose_service") or node.get("id") in actual_services:
-            out.append(finding("local-only-node", "docs/security-architecture.json", f"{node.get('id')} represents a local-only Compose service in the architecture graph"))
+        if node.get("compose_service"):
+            out.append(finding("local-only-node", "docs/security-architecture.json", f"{node.get('id')} represents a retired local runtime service in the architecture graph"))
     for surface, node_id in coverage.get("repository_surfaces", {}).items():
         if not (root / surface).exists():
             out.append(finding("surface-path", "docs/security-architecture.json", f"repository surface {surface} does not exist"))
@@ -574,8 +565,8 @@ def self_test() -> list[str]:
     cases = []
 
     mutation = copy.deepcopy(base)
-    mutation["coverage"]["local_only_compose_services"].pop("nginx")
-    cases.append(("compose coverage", mutation, expected_svg, "compose-coverage"))
+    mutation["coverage"]["local_only_compose_services"] = {"nginx": "retired"}
+    cases.append(("retired runtime coverage", mutation, expected_svg, "retired-runtime-coverage"))
 
     mutation = copy.deepcopy(base)
     mutation["coverage"]["toe_nodes"].remove("artifact")

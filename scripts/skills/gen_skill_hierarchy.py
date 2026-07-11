@@ -6,7 +6,6 @@
 
     SKILL.html  (repository hub == bundle index, served at /lab/static/SKILL.html)
       ├─ web/SKILL.html  (surface hub)  ─→ each web/<course>/SKILL.html
-      └─ cpu/SKILL.html  (surface hub)  ─→ each cpu/<course>/SKILL.html
             └─ <course>/SKILL.html  (course hub) ─→ its content
 
 The root hub is the ONTOLOGY BEACON for the whole bundle: a semantically- and
@@ -32,7 +31,7 @@ HERE = Path(__file__).resolve()
 TASK1 = find_repo_root(HERE)
 add_script_paths(TASK1 / "scripts")
 import normalize_skill_headers
-SURFACES = ("web", "cpu")
+SURFACES = ("web",)
 MARKER = "gen_skill_hierarchy.py"   # presence in a SKILL.html => safe to regenerate
 RELEASE_STATUS = json.loads((TASK1 / "RELEASE_STATUS.json").read_text(encoding="utf-8"))
 
@@ -80,10 +79,6 @@ WEB_SUPPORT = {
     "standalone": ("standalone export", "Standalone-export source and fixed assets generated from the canonical course."),
     "vendor": ("browser vendor", "Pinned same-origin browser packages, metadata, SBOM, and license texts."),
 }
-SURFACE_LEAD = {
-    "cpu": "Local development and compatibility services. The production course is static and "
-           "connects to hosted model and NemoClaw endpoints. Open the service hub below.",
-}
 
 # Core tenets projected into root skill-meta; scripts/validation/tenets.py reports enforceable ones.
 TENETS = {
@@ -102,11 +97,8 @@ TENETS = {
         "Type I, Apache 2.0, no gate or paywall, public course planning and contribution, the "
         "foyer surfacing only the selected courses, and mats cited by public URL. This does not "
         "classify or release the NemoClaw product or runtime.",
-        "Keep surface assumptions explicit: web/ is browser-only and cannot assume student-provisioned "
-        "microservices; cpu/ owns shared service stacks; spark/ or gpu surfaces must declare their "
-        "compute contract before content depends on them.",
-        "Keep production browser delivery static. Hosted model and NemoClaw endpoints supply live "
-        "capabilities; cpu/ services exist for local development and compatibility testing.",
+        "Keep the web surface browser-only and independent of student-provisioned local services.",
+        "Keep production browser delivery static. Hosted model and NemoClaw endpoints supply live capabilities.",
         "Ideas stay easy to contribute through structured Issues and, after external intake is enabled, "
         "Discussions. Code stays "
         "difficult to accept: treat every patch as untrusted, require issue linkage, blast-radius "
@@ -116,9 +108,7 @@ TENETS = {
         "The repository root is canonical for this internal release candidate. External publication "
         "remains pending OSRB approval. Everything worth keeping lives here and is versioned; scratch "
         "goes to /tmp and is never committed.",
-        "Content is organized by execution surface: web/ holds browser-only courses and course-scoped "
-        "reference packets; cpu/ holds shared microservices; deploy/ holds compose and nginx; "
-        "future spark/ or gpu surfaces must state their compute contract before use.",
+        "The web surface holds the browser-only course and its course-scoped reference packets.",
         "The brain is each source directory's SKILL.html skill-meta JSON, not a SKILL.md. Git-tracked "
         "and proposed files define the exhaustive directory set, with no opt-outs. Parse the current "
         "directory first, then walk children: task to surface to course to content. Visual work must also "
@@ -138,7 +128,7 @@ TENETS = {
         "Code-first: fixing a real code cell beats improving prose beats adding navigation. A "
         "change that teaches nothing new and prevents no bug is not worth making.",
         "Browser courses stay remote-services-only; never put keys in static files or depend on undeclared local services.",
-        "Deployment config stays under deploy/ so orchestration does not blur into course content.",
+        "Keep repository validation host-native; external isolation is an operator choice, not a shipped dependency.",
         "The course mats/ (web/nemoclaw/mats/) and repos/ are cited-by-URL reference packets: "
         "cite the external URL, never link the packet file.",
         "Run source_gate before adding assets, mats, datasets, cached references, or copied examples; "
@@ -267,8 +257,7 @@ def gen_task():
     points humans at the curated release foyer."""
     surfaces = [(s, f"{s}/SKILL.html") for s in SURFACES if (TASK1 / s).is_dir()]
     sdesc = {"web": "Browser frontends: the course as styled web pages, remote services only "
-                    "(no local microservices). Assumes only a browser and declared hosted endpoints.",
-             "cpu": "Local development and compatibility services. Not part of the static production deployment."}
+                    "(no local microservices). Assumes only a browser and declared hosted endpoints."}
     items = [(f"{s}/", h, sdesc.get(s, "")) for s, h in surfaces]
 
     # Non-course root layers: describe references, card tooling.
@@ -280,8 +269,6 @@ def gen_task():
     if (TASK1 / "repos").is_dir():
         ref_layers.append({"name": "repos", "role": "vendored external repositories kept for "
                            "context-sharing and retrieval; not student content"})
-    if (TASK1 / "deploy").is_dir():
-        ref_layers.append({"name": "deploy", "role": "operator-facing compose and nginx deployment surface for DLI platform and local compute"})
     if (TASK1 / "scripts").is_dir():
         ref_layers.append({"name": "scripts", "role": "bundle tooling: the projection engine, the "
                            "link-graph viewer, the validation cadence, this SKILL generator"})
@@ -344,10 +331,9 @@ def gen_task():
             "role": "bundle_index", "served_at": "/lab/static/SKILL.html", "self_path": "SKILL.html",
             "thesis": ("NVIDIA DLI's internal release candidate for a proposed open-source publication: "
                        "the narrative, "
-                       "the assets, the deployment visor that runs it, and the automatic "
+                       "the assets and the automatic "
                        "verification that keeps it honest, packaged so a person or an agent can stand it "
-                       "up, navigate it, and check it end to end. Content is organized by EXECUTION SURFACE "
-                       "(web / cpu today, with spark or gpu surfaces only when they declare their compute contract) "
+                       "up, navigate it, and check it end to end. Content is organized around the static web surface "
                        "so each piece declares what it needs to run; every page buds from "
                        "a SKILL hub, so the whole bundle is statically and semantically verifiable."),
             "surfaces": [{"name": s, "path": f"{s}/SKILL.html", "assumes": sdesc.get(s, "")} for s, _ in surfaces],

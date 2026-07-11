@@ -6,7 +6,7 @@
 
 The default export contains only software copied into and distributed with the static course.
 Additional categories are opt-in so reviewers never have to infer whether a row is vendored,
-downloaded for a build, installed for validation, or referenced by the local-authoring stack.
+downloaded for a build, installed for validation, or only evaluated for future use.
 """
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ import third_party_inventory_audit as inventory
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_REPOSITORY = "https://github.com/NVDLI/NemoClawDLI"
-CATEGORIES = ("vendored", "build-input", "validation", "local-authoring", "evaluated-candidate")
+CATEGORIES = ("vendored", "build-input", "validation", "evaluated-candidate")
 PYODIDE_CANDIDATES = ROOT / "scripts/pyodide/candidate-components.json"
 HEADER = (
     "Package / Component Name",
@@ -53,10 +53,6 @@ def npm_page(name: str, version: str) -> str:
 
 def markdown_links(text: str) -> list[tuple[str, str]]:
     return re.findall(r"\[([^]]+)]\(([^)]+)\)", text)
-
-
-def markdown_link_labels(text: str) -> str:
-    return re.sub(r"\[([^]]+)]\(([^)]+)\)", r"\1", text)
 
 
 def package_assets(document: dict) -> dict[str, list[str]]:
@@ -150,14 +146,14 @@ def browser_build_rows(base: str, ref: str) -> list[list[str]]:
 
 def python_rows(base: str, ref: str) -> list[list[str]]:
     document = (ROOT / inventory.INVENTORY).read_text(encoding="utf-8")
-    parsed = inventory.rows(inventory.section(document, "Python runtime and repository-tool packages"))
+    parsed = inventory.rows(inventory.section(document, "Python and Node repository-tool packages"))
     rows = []
     for row in parsed:
         if len(row) < 5 or row[0] == "Identifier":
             continue
         scope, name, version, license_id, evidence, *_ = row
         links = markdown_links(evidence)
-        upstream = next((url for label, url in links if label == "PyPI"), "")
+        upstream = next((url for label, url in links if label in {"PyPI", "npm"}), "")
         lock_path = next((url for _label, url in links if not url.startswith(("http://", "https://"))), "")
         internal = repository_file(base, ref, lock_path) if lock_path else repository_file(base, ref, inventory.INVENTORY)
         rows.append([
@@ -170,35 +166,6 @@ def python_rows(base: str, ref: str) -> list[list[str]]:
             f"Course authors or CI use this package to prepare or check the course ({scope}). "
             "Learners do not receive it from the static course. No proprietary-code claim.",
             upstream,
-            internal,
-        ])
-    return rows
-
-
-def local_authoring_rows(base: str, ref: str) -> list[list[str]]:
-    document = (ROOT / inventory.INVENTORY).read_text(encoding="utf-8")
-    parsed = inventory.rows(inventory.section(document, "Direct container, runtime, and operating-system declarations"))
-    rows = []
-    for row in parsed:
-        if len(row) < 5:
-            continue
-        scope, name, version, license_id, evidence, *_ = row
-        links = markdown_links(evidence)
-        upstream = next((url for _label, url in links if url.startswith(("http://", "https://"))), "")
-        paths = re.findall(r"`([^`]+(?:Dockerfile|requirements\.txt))`", evidence)
-        internal = repository_file(base, ref, paths[0]) if paths else repository_file(base, ref, inventory.INVENTORY)
-        evidence_catalog = repository_file(base, ref, "scripts/compliance/docs/sbom_evidence.json")
-        license_note = f" Current distribution and required scan evidence: {evidence_catalog}."
-        rows.append([
-            name,
-            version,
-            license_id,
-            upstream,
-            INTERNAL,
-            OTHER,
-            f"Category: {scope}. This is an optional local-authoring or compatibility dependency. "
-            f"Learners do not receive it from the static course.{license_note} {markdown_link_labels(evidence)}",
-            upstream or name,
             internal,
         ])
     return rows
@@ -254,7 +221,6 @@ def component_rows(categories: list[str], base: str, ref: str) -> list[list[str]
         "vendored": vendored_rows,
         "build-input": browser_build_rows,
         "validation": python_rows,
-        "local-authoring": local_authoring_rows,
         "evaluated-candidate": evaluated_candidate_rows,
     }
     rows = []

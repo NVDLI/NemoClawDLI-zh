@@ -22,6 +22,7 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 T1="$(cd "$HERE/../.." && pwd)"  # repo root (implementation lives under scripts/build)
+python3 "$T1/scripts/runtime/python_env_probe.py" --require-material-tools
 OUT="${1:-$T1/public}"
 # Build the source language at $OUT root, then each sparse same-branch overlay under i18n/<lang>/
 # over canonical web/ and into $OUT/<lang>/. BUILD_PAGES_LANGS=0 disables that loop.

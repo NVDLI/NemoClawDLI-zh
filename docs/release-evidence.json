@@ -17,11 +17,6 @@
       "i18n/pt",
       "i18n/es"
     ],
-    "local_only_sources": [
-      "cpu/services",
-      "deploy",
-      "workspace"
-    ],
     "hosting_paths": [
       "public-static-host",
       "co-located-launchable"
@@ -188,6 +183,7 @@
         "python3 -m unittest -v tests/validation/test_embedded_validator_suites.py tests/validation/test_test_harness_contract.py",
         "python3 scripts/compliance/third_party_inventory_audit.py",
         "python3 scripts/validation/local_path_leak_audit.py",
+        "python3 scripts/validation/container_boundary_audit.py",
         "python3 scripts/security/audit_dependency_locks.py",
         "python3 scripts/security/audit_sbom_policy.py --self-test"
       ],

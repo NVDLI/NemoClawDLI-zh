@@ -49,6 +49,9 @@ CONTRACT_FILES = (
     ".github/workflows/codeql.yml",
     ".github/workflows/dependency-review.yml",
     ".gitlab/merge_request_templates/Default.md",
+    ".gitlab/issue_templates/Course content.md",
+    ".gitlab/issue_templates/Runtime or deployment.md",
+    ".gitlab/issue_templates/Source or licensing.md",
     ".github/workflows/pages.yml",
     ".github/workflows/release.yml",
     ".gitlab-ci.yml",
@@ -80,8 +83,7 @@ CONTRACT_FILES = (
     "scripts/validation/validate_bundle.py",
     "scripts/validation/gitlab_governance_audit.py",
     "scripts/validation/gitlab_ci_policy.py",
-    "workspace/requirements.lock",
-    "workspace/Dockerfile",
+    "scripts/validation/container_boundary_audit.py",
     "web/nemoclaw/mats/_materials.json",
 )
 
@@ -312,6 +314,28 @@ def audit_repo(
         require(docs[rel], "localized learner prose changed", rel,
                 "localization-ownership-template", out,
                 "ask who reviewed localized prose and where the contributor is credited")
+    retired_scope_tokens = (
+        "`cpu/`", "`workspace/`", "`deploy/`", "Shared service stack",
+        "Compose or nginx deployment", "Local authoring services",
+    )
+    scope_templates = (
+        ".github/PULL_REQUEST_TEMPLATE.md",
+        ".github/ISSUE_TEMPLATE/course-content.yml",
+        ".github/ISSUE_TEMPLATE/runtime-deploy.yml",
+        ".github/ISSUE_TEMPLATE/source-licensing.yml",
+        ".gitlab/merge_request_templates/Default.md",
+        ".gitlab/issue_templates/Course content.md",
+        ".gitlab/issue_templates/Runtime or deployment.md",
+        ".gitlab/issue_templates/Source or licensing.md",
+    )
+    for rel in scope_templates:
+        stale = [token for token in retired_scope_tokens if token in docs[rel]]
+        if stale:
+            out.append(finding(
+                "retired-runtime-scope", rel,
+                "retired repository runtime appears in contribution intake: " + ", ".join(stale),
+                "describe host tooling, static delivery, and external runtime integration only",
+            ))
     gitlab_template = docs[".gitlab/merge_request_templates/Default.md"]
     missing_in_window = [section for section in ("## Summary", *required_sections)
                          if section not in gitlab_template[:2700]]
@@ -455,7 +479,7 @@ def audit_repo(
     require(pages, "name: github-pages", ".github/workflows/pages.yml",
             "github-pages-review-environment", out,
             "gate the deploy job behind the protected github-pages environment")
-    require(pages, "runtime_integration_browser_audit.py --site-root public --engine docker",
+    require(pages, "runtime_integration_browser_audit.py --site-root public --timeout-ms 180000",
             ".github/workflows/pages.yml", "github-pages-browser-review", out,
             "exercise the generated course artifact in Chromium before requesting deployment approval")
     require(pages, "--write-manifest public/pages-sha256.txt",
@@ -533,8 +557,8 @@ def audit_repo(
         out.append(finding("release-pr-trigger", ".github/workflows/release.yml",
                            "release workflow can be started by an untrusted pull request",
                            "keep release workflow_dispatch-only"))
-    require(release, "workspace/requirements.lock", ".github/workflows/release.yml",
-            "release-runtime-lock", out, "build the release environment from the Python 3.11 runtime lock")
+    require(release, "pip-audit -r scripts/materials/requirements.lock", ".github/workflows/release.yml",
+            "release-material-sbom", out, "scan the pinned material-tool closure")
     require(release, "scripts/security/requirements-sca.lock", ".github/workflows/release.yml",
             "release-sca-lock", out, "install scanners from their isolated reviewed lock")
     require(release, "--report release-security/sbom-policy.json", ".github/workflows/release.yml",
@@ -566,29 +590,29 @@ def audit_repo(
                            "use pull_request with scoped security-events upload and no secrets"))
 
     dependabot = docs[".github/dependabot.yml"]
-    for ecosystem in ("github-actions", "pip", "docker"):
+    for ecosystem in ("github-actions", "pip", "npm"):
         require(dependabot, f"package-ecosystem: {ecosystem}", ".github/dependabot.yml",
                 "dependency-update-coverage", out, f"retain controlled {ecosystem} update coverage")
 
-    for rel in ("workspace/requirements.lock", "scripts/materials/requirements.lock",
-                "scripts/security/requirements-sca.lock"):
+    for rel in ("scripts/materials/requirements.lock", "scripts/security/requirements-sca.lock"):
         if not docs[rel].strip():
             out.append(finding("dependency-lock", rel, "dependency lock is empty",
                                "regenerate the exact transitive Python 3.11 lock"))
     require(docs["scripts/security/audit_dependency_locks.py"], "--self-test",
             "scripts/security/audit_dependency_locks.py", "dependency-lock-detector", out,
             "retain mutation tests for stale and unpinned dependency locks")
-    require(docs["workspace/Dockerfile"], "pip3 install -r requirements.lock", "workspace/Dockerfile",
-            "workspace-lock-install", out, "build the lab image from the exact runtime closure")
+    require(docs["scripts/validation/container_boundary_audit.py"], 'FORBIDDEN_NAMES = {".dockerignore", "Dockerfile", "Containerfile"',
+            "scripts/validation/container_boundary_audit.py", "container-boundary-detector", out,
+            "reject repository-owned container definitions and build commands")
     require(docs["scripts/security/audit_sbom_policy.py"], "retired-component",
             "scripts/security/audit_sbom_policy.py", "sbom-policy-detector", out,
             "retain runtime SBOM completeness and retired-component enforcement")
-    require(docs["scripts/compliance/sbom_evidence.py"], "digest-bound-component-sbom",
+    require(docs["scripts/compliance/sbom_evidence.py"], "nemoclaw:license-resolution:raw-sbom-sha256",
             "scripts/compliance/sbom_evidence.py", "sbom-evidence-detector", out,
             "retain distribution-aware SBOM evidence and immutable-link checks")
-    require(docs["scripts/compliance/docs/sbom_evidence.json"], '"state": "conditional"',
+    require(docs["scripts/compliance/docs/sbom_evidence.json"], '"id": "python-material-tooling"',
             "scripts/compliance/docs/sbom_evidence.json", "sbom-evidence-catalog", out,
-            "retain the explicit conditional image-SBOM boundary")
+            "retain the CI-generated material-tool SBOM boundary")
 
     gitlab_core = docs[".gitlab/ci/core.yml"]
     gitlab_sca = docs[".gitlab/ci/sca.yml"]
@@ -630,6 +654,17 @@ def audit_repo(
                            "fetch the exact branch from the MR source project (or origin for branch pipelines) before comparing and publishing its SHA"))
     require(gitlab, "release_gate.py --tier ship", ".gitlab-ci.yml",
             "gitlab-safety-selftest", out, "run detector mutations in GitLab CI")
+    test_job = re.search(r"(?ms)^test:\n(.*?)(?=^external_integration_audit:\n)", gitlab)
+    pinned_browser_image = (
+        "mcr.microsoft.com/playwright:v1.55.0-noble@sha256:"
+        "b27e719ecbfef153e13fd24e8341736733bf2658b229677eb21ff57ff5d7fb29"
+    )
+    if (not test_job or pinned_browser_image not in test_job.group(1)
+            or 'BROWSER_TOOLS_REQUIRED: "1"' not in test_job.group(1)
+            or "pnpm install --dir scripts/runtime --frozen-lockfile --ignore-scripts" not in gitlab):
+        out.append(finding("gitlab-report-browser-runtime", ".gitlab-ci.yml",
+                           "the validation-report producer lacks the pinned browser runtime",
+                           "run the ship gate with the locked Playwright API and digest-pinned browser image"))
     require(gitlab, 'GATE_ARGS+=(--changed-since "$GATE_BASE")', ".gitlab-ci.yml",
             "gitlab-change-aware-gate", out, "skip only unaffected mutation fixtures on proposal commits")
     require(gitlab, "--timing-report docs/validation/release-gate-timings.json",
@@ -682,17 +717,15 @@ def audit_repo(
             "show external release follow-ups from the merge-request diff")
     require(gitlab, "audit_sbom_policy.py --sbom", ".gitlab-ci.yml", "gitlab-sbom-policy", out,
             "evaluate the generated runtime SBOM instead of only uploading it")
-    require(gitlab, "scripts/compliance/resolve_sbom_licenses.py --input scripts/security/reports/deep-workspace/python-env.raw.cdx.json",
+    require(gitlab, "scripts/compliance/resolve_sbom_licenses.py --input scripts/security/reports/python-materials/python-env.raw.cdx.json",
             ".gitlab/ci/sca.yml", "gitlab-sbom-evidence", out,
             "preserve the raw scan and resolve every package license before evidence emission")
-    for token in ("security_image_sca:", "sha256sum --check --strict", '--artifact-id "$SBOM_IMAGE"'):
-        require(gitlab_sca, token, ".gitlab/ci/sca.yml", "gitlab-image-sbom-boundary", out,
-                "keep image scanning opt-in, immutable, checksum-pinned, and evidence-producing")
-    require(gitlab, ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock",
-            ".gitlab-ci.yml", "gitlab-runtime-lock", out,
-            "scan the exact runtime closure rather than resolving direct requirements again")
+    if "security_image_sca:" in gitlab_sca or "security_deep_sca:" in gitlab_sca:
+        out.append(finding("retired-sca-job", ".gitlab/ci/sca.yml",
+                           "obsolete image or workspace scanner returned",
+                           "scan only the browser graph and pinned material tools"))
     scanner_install = ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock"
-    for job_name in ("security_sca", "security_deep_sca"):
+    for job_name in ("security_sca", "security_python_sca"):
         match = re.search(rf"(?ms)^{job_name}:\n(.*?)(?=^[A-Za-z0-9_.-]+:\n|\Z)", gitlab_sca)
         require(match.group(1) if match else "", scanner_install,
                 ".gitlab/ci/sca.yml", "gitlab-sca-lock", out,
@@ -702,7 +735,7 @@ def audit_repo(
       allow_failure: true"""
     for job_name, automatic_path, code in (
         ("security_browser_sca", "scripts/browser-vendor/package-lock.json", "gitlab-browser-sca-rules"),
-        ("security_deep_sca", "workspace/requirements.lock", "gitlab-deep-sca-rules"),
+        ("security_python_sca", "scripts/materials/requirements.lock", "gitlab-python-sca-rules"),
     ):
         match = re.search(rf"(?ms)^{job_name}:\n(.*?)(?=^[A-Za-z0-9_.-]+:\n|\Z)", gitlab)
         body = match.group(1) if match else ""
@@ -945,7 +978,7 @@ def audit_submission(body: str) -> list[dict[str, str]]:
                 "use Closes #N when the issue is fully satisfied, or add a substantive "
                 "## Remaining issue work section",
             ))
-    if not re.search(r"(?im)^- \[[xX]\] `?(?:web/|i18n/|cpu/|workspace/|deploy/|scripts/|docs/|materials)", body or ""):
+    if not re.search(r"(?im)^- \[[xX]\] `?(?:web/|i18n/|scripts/|docs/|materials)", body or ""):
         out.append(finding("submission-surface", "submission", "no changed surface is checked",
                            "check every touched surface in ## Surfaces touched"))
     if not re.search(r"(?im)\b(?:PASS|FAIL|BLOCKED)\b", body or ""):
@@ -1165,14 +1198,14 @@ def self_test() -> list[str]:
             ("shared-gate-timing", "scripts/validation/release_gate.py", '"--timing-report"', '"--no-timing-report"'),
             ("shared-local-reuse", "scripts/validation/release_gate.py", '"--reuse-success"', '"--ignore-success"'),
             ("shared-sbom-policy-selftest", "scripts/validation/release_gate.py", 'py("scripts/security/audit_sbom_policy.py", "--self-test")', 'py("scripts/security/audit_sbom_policy.py", "--help")'),
-            ("sbom-evidence-detector", "scripts/compliance/sbom_evidence.py", "digest-bound-component-sbom", "tag-only-sbom"),
-            ("sbom-evidence-catalog", "scripts/compliance/docs/sbom_evidence.json", '"state": "conditional"', '"state": "available-later"'),
+            ("sbom-evidence-detector", "scripts/compliance/sbom_evidence.py", "nemoclaw:license-resolution:raw-sbom-sha256", "removed-raw-sbom-binding"),
+            ("sbom-evidence-catalog", "scripts/compliance/docs/sbom_evidence.json", '"id": "python-material-tooling"', '"id": "removed-tooling"'),
             ("pr-deploy-boundary", ".github/workflows/pages.yml", "if: github.event_name != 'pull_request'", "if: always()"),
             ("pages-main-only", ".github/workflows/pages.yml", "github.ref == 'refs/heads/main'", "github.ref != ''"),
             ("checkout-credential", ".github/workflows/pages.yml", "persist-credentials: false", "persist-credentials: true"),
             ("dependency-review-floor", ".github/workflows/dependency-review.yml", "fail-on-severity: moderate", "fail-on-severity: critical"),
             ("codeql-baseline", ".github/workflows/codeql.yml", "javascript-typescript", "javascript-disabled"),
-            ("dependency-update-coverage", ".github/dependabot.yml", "package-ecosystem: docker", "package-ecosystem: unsupported"),
+            ("dependency-update-coverage", ".github/dependabot.yml", "package-ecosystem: npm", "package-ecosystem: unsupported"),
             ("release-draft", ".github/workflows/release.yml", "--draft --verify-tag", "--verify-tag"),
             ("release-annotated-tag", ".github/workflows/release.yml", 'git cat-file -t "refs/tags/$RELEASE_TAG"', 'git cat-file -t "$RELEASE_TAG^{commit}"'),
             ("release-artifact-set", ".github/workflows/release.yml", "release-assets/release-manifest.json", "release-assets/manifest.json"),
@@ -1183,10 +1216,10 @@ def self_test() -> list[str]:
             ("publication-release-guard", ".github/workflows/release.yml", "contribution_safety_audit.py --require-publication-approved", "contribution_safety_audit.py"),
             ("publication-deploy-guard", ".github/workflows/pages.yml", "contribution_safety_audit.py --require-publication-approved", "contribution_safety_audit.py"),
             ("github-reviewed-artifact-handoff", ".github/workflows/pages.yml", "needs: build-and-verify", "needs: test"),
-            ("github-pages-browser-review", ".github/workflows/pages.yml", "runtime_integration_browser_audit.py --site-root public --engine docker", "runtime_integration_browser_audit.py --site-root web --engine docker"),
+            ("github-pages-browser-review", ".github/workflows/pages.yml", "runtime_integration_browser_audit.py --site-root public --timeout-ms 180000", "runtime_integration_browser_audit.py --site-root web --timeout-ms 180000"),
             ("github-pages-artifact-integrity", ".github/workflows/pages.yml", "--write-manifest public/pages-sha256.txt", "--write-manifest web/pages-sha256.txt"),
             ("github-pages-artifact-reverification", ".github/workflows/pages.yml", "--check-manifest reviewed-public/pages-sha256.txt", "--write-manifest reviewed-public/pages-sha256.txt"),
-            ("release-runtime-lock", ".github/workflows/release.yml", "workspace/requirements.lock", "workspace/requirements.txt"),
+            ("release-material-sbom", ".github/workflows/release.yml", "pip-audit -r scripts/materials/requirements.lock", "pip-audit -r scripts/materials/requirements.txt"),
             ("release-live-material-check", ".github/workflows/release.yml", "pull_materials.py --check --fetch-attempts", "pull_materials.py --list --fetch-attempts"),
             ("release-sca-lock", ".github/workflows/release.yml", "scripts/security/requirements-sca.lock", "pip-audit cyclonedx-bom"),
             ("release-sbom-policy", ".github/workflows/release.yml", "--report release-security/sbom-policy.json", "--report release-security/unchecked-policy.json"),
@@ -1194,6 +1227,7 @@ def self_test() -> list[str]:
             ("discussion-route", ".github/ISSUE_TEMPLATE/config.yml", "/discussions", "/issues"),
             ("external-repository", ".github/ISSUE_TEMPLATE/config.yml", "https://github.com/NVDLI/NemoClawDLI/discussions", "https://github.com/example/incorrect/discussions"),
             ("issue-production-scope", ".github/ISSUE_TEMPLATE/runtime-deploy.yml", "static `web/nemoclaw/` course", "CPU service stack"),
+            ("retired-runtime-scope", ".github/ISSUE_TEMPLATE/runtime-deploy.yml", "External runtime integration", "Shared service stack"),
             ("submission-template", ".github/PULL_REQUEST_TEMPLATE.md", "## Blast radius checked", "## Scope notes"),
             ("stacked-submission-template", ".gitlab/merge_request_templates/Default.md", "host-generated squash", "automatic integration"),
             ("localization-ownership-template", ".github/PULL_REQUEST_TEMPLATE.md", "localized learner prose changed", "translation files changed"),
@@ -1216,6 +1250,7 @@ def self_test() -> list[str]:
             ("gitlab-safety-selftest", ".gitlab/ci/core.yml", "release_gate.py --tier ship", "release_gate.py --tier fast"),
             ("gitlab-change-aware-gate", ".gitlab/ci/core.yml", 'GATE_ARGS+=(--changed-since "$GATE_BASE")', 'GATE_ARGS=() # no change selection'),
             ("gitlab-gate-timing", ".gitlab/ci/core.yml", "--timing-report docs/validation/release-gate-timings.json", "--no-timing-report"),
+            ("gitlab-report-browser-runtime", ".gitlab/ci/core.yml", 'BROWSER_TOOLS_REQUIRED: "1"', 'BROWSER_TOOLS_REQUIRED: "0"'),
             ("gitlab-immutable-report-reuse", ".gitlab/ci/core.yml", 'BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"', 'BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"'),
             ("gitlab-protected-root-worktree", ".gitlab/ci/core.yml", 'git worktree add --quiet --detach /tmp/nemoclaw-prod-root "origin/$prod_ref"', 'git archive "origin/$prod_ref" | tar -x -C /tmp/nemoclaw-prod-root'),
             ("gitlab-image-pin", ".gitlab/ci/core.yml", "node:20-bookworm-slim@sha256:25070a03f077f5860e4f2db8d147380678ed40ead415a21eaffd5a6208f61948", "node:20-bookworm-slim"),
@@ -1245,9 +1280,7 @@ def self_test() -> list[str]:
             ("submission-release-reminder", ".github/PULL_REQUEST_TEMPLATE.md", "## External release follow-up", "## Optional follow-up"),
             ("shared-lock-selftest", "scripts/validation/release_gate.py", 'py("scripts/security/audit_dependency_locks.py", "--self-test")', 'py("scripts/security/audit_dependency_locks.py", "--version")'),
             ("gitlab-sbom-policy", ".gitlab/ci/sca.yml", "audit_sbom_policy.py --sbom", "audit_sbom_policy.py --help"),
-            ("gitlab-sbom-evidence", ".gitlab/ci/sca.yml", "scripts/compliance/resolve_sbom_licenses.py --input scripts/security/reports/deep-workspace/python-env.raw.cdx.json", "scripts/compliance/resolve_sbom_licenses.py --help"),
-            ("gitlab-image-sbom-boundary", ".gitlab/ci/sca.yml", "sha256sum --check --strict", "sha256sum --version"),
-            ("gitlab-runtime-lock", ".gitlab/ci/sca.yml", ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock", ".sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.txt"),
+            ("gitlab-sbom-evidence", ".gitlab/ci/sca.yml", "scripts/compliance/resolve_sbom_licenses.py --input scripts/security/reports/python-materials/python-env.raw.cdx.json", "scripts/compliance/resolve_sbom_licenses.py --help"),
             ("gitlab-sca-lock", ".gitlab/ci/sca.yml", ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock", ".sca-tools-venv/bin/python -m pip install -q pip-audit cyclonedx-bom"),
             ("gitlab-human-review", ".gitlab/ci/core.yml", "human_review:", "operator_review:"),
             ("gitlab-theme-runtime", ".gitlab/ci/core.yml", "theme_runtime:", "theme_runtime_removed:"),
@@ -1277,7 +1310,7 @@ def self_test() -> list[str]:
             ("release-status", "RELEASE_STATUS.json", '"maintenance_status": "release-candidate"', '"maintenance_status": "archived"'),
             ("notice-state", "RELEASE_STATUS.json", '"notice_required": false', '"notice_required": true'),
             ("release-playbook", "docs/release_playbook.md", "Host settings are not versioned by this repository", "Host settings checklist"),
-            ("workspace-lock-install", "workspace/Dockerfile", "pip3 install -r requirements.lock", "pip3 install -r requirements.txt"),
+            ("container-boundary-detector", "scripts/validation/container_boundary_audit.py", 'FORBIDDEN_NAMES = {".dockerignore", "Dockerfile", "Containerfile"', "FORBIDDEN_NAMES = set() #"),
         )
         originals = {
             rel: (fixture / rel).read_text(encoding="utf-8")
@@ -1307,10 +1340,10 @@ def self_test() -> list[str]:
         if audit_publication_approval(fixture):
             failures.append("approved release rejected by the external publication guard")
 
-    good = """## Summary\nBound the release path.\n## Issue link\nCloses #12\n## Surfaces touched\n- [x] `workspace/`\n## Blast radius checked\nHooks and CI.\n## Validation evidence\nPASS: audit.\n## Human ownership\nRelease manager reviews.\n## Risk and rollback\nRevert commit.\n## Out of scope\nHost settings.\n"""
+    good = """## Summary\nBound the release path.\n## Issue link\nCloses #12\n## Surfaces touched\n- [x] `scripts/`\n## Blast radius checked\nHooks and CI.\n## Validation evidence\nPASS: audit.\n## Human ownership\nRelease manager reviews.\n## Risk and rollback\nRevert commit.\n## Out of scope\nHost settings.\n"""
     if audit_submission(good):
         failures.append("valid submission fixture rejected")
-    localized = good.replace("- [x] `workspace/`", "- [x] `i18n/`")
+    localized = good.replace("- [x] `scripts/`", "- [x] `i18n/`")
     if audit_submission(localized):
         failures.append("valid localization submission fixture rejected")
     if not audit_publication_approval(ROOT):

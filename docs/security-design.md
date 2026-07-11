@@ -24,9 +24,9 @@ untrusted browser and connects to external model and NemoClaw services.
 The co-located launchable may select a reviewed course release for vendoring, but its intake and
 deployment remain external and unattested by this repository.
 
-Docker Compose files under `deploy/` and services under `cpu/services/` support local authoring and
-tests. They are absent from the production static-site pipeline unless a future deployment adds
-them. The architecture validator rejects unreviewed production dependencies.
+Contributors run the static checks with host Python, Node.js, and Chromium. External isolation is
+operator-owned; the repository owns no container topology or image. The
+architecture validator rejects unreviewed production dependencies.
 
 ## Threat-analysis invariants
 
@@ -110,6 +110,8 @@ replace, and clear actions.
 
 - Static validation covers page structure, learner flow, provenance, localization, dependency
   pins, architecture drift, contribution boundaries, and release artifacts.
+- The repository contains no Dockerfile, Containerfile, Compose topology, or image-build command.
+  A fail-closed boundary audit rejects their reintroduction because it would expand the reviewed scope.
 - GitHub Pages builds in a read-only job, rejects unexpected executable references and artifact
   substitution, records every generated file by SHA-256, and exercises the exact tree in Chromium.
 - Browser dependencies require exact versions, a generated integrity inventory, and same-origin delivery.
@@ -129,7 +131,8 @@ and record human ownership. They request isolated branch previews and manifest-p
 deployment; live source-host enforcement remains operator evidence. A separate tag workflow produces
 deterministic archives, a release manifest, an SBOM, and checksums.
 
-Python dependencies support local authoring and tests, not the production browser runtime. Direct
+Host Python, Node.js, and Chromium support local authoring and tests; they are not production nodes.
+Direct Python dependencies support material and validation tools, not the production browser runtime. Direct
 manifests and transitive locks are checked for parity. Scanner tooling uses a separate locked
 environment. Time-limited exceptions remain in the waiver register and are guarded by reachability
 checks.

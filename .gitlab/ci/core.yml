@@ -23,6 +23,7 @@ variables:
   GIT_DEPTH: "0"
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   MATERIAL_TOOLS_REQUIRED: "0"
+  BROWSER_TOOLS_REQUIRED: "0"
 
 # Open merge requests run one MR-context pipeline so the submission contract sees
 # the actual MR body. Branch pipelines remain available before an MR exists.
@@ -70,12 +71,20 @@ workflow:
       if [ "${MATERIAL_TOOLS_REQUIRED:-0}" = "1" ]; then
         python3 -m pip install --break-system-packages -q --retries 5 --timeout 30 --requirement scripts/materials/requirements.lock >/dev/null
       fi
+      if [ "${BROWSER_TOOLS_REQUIRED:-0}" = "1" ]; then
+        corepack enable
+        pnpm install --dir scripts/runtime --frozen-lockfile --ignore-scripts
+      fi
 
 test:
   <<: *with_python_node
+  # validate_bundle includes DOM-backed figure geometry, so the producing job must
+  # have the same pinned browser runtime later used to verify the staged artifact.
+  image: mcr.microsoft.com/playwright:v1.55.0-noble@sha256:b27e719ecbfef153e13fd24e8341736733bf2658b229677eb21ff57ff5d7fb29
   stage: test
   variables:
     MATERIAL_TOOLS_REQUIRED: "1"
+    BROWSER_TOOLS_REQUIRED: "1"
   # Required gate: Pages may publish only after every required-tier release check passes.
   allow_failure: false
   script:
@@ -167,8 +176,8 @@ pages:
       }
       write_ci_sbom_links() {
         output_root="$1"
-        if [ -z "${DEEP_SCA_JOB_ID:-}" ]; then
-          echo "No deep-SCA artifact belongs to this pipeline; retaining unavailable CI evidence state."
+        if [ -z "${PYTHON_SCA_JOB_ID:-}" ]; then
+          echo "No Python material-tool SBOM belongs to this pipeline; retaining unavailable CI evidence state."
           return 0
         fi
         python3 scripts/compliance/sbom_evidence.py \
@@ -177,7 +186,7 @@ pages:
           --ci-api-url "$CI_API_V4_URL" \
           --ci-project-id "$CI_PROJECT_ID" \
           --ci-project-url "$CI_PROJECT_URL" \
-          --ci-artifact-job-id "${DEEP_SCA_JOB_ID:-}" \
+          --ci-artifact-job-id "${PYTHON_SCA_JOB_ID:-}" \
           --ci-preview-root "$output_root/scripts/compliance/docs/ci" \
           --ci-pipeline-url "$CI_PIPELINE_URL" \
           --ci-commit "$CI_COMMIT_SHA"
@@ -276,17 +285,13 @@ pages:
         PAGES_AUTO_STOP_IN: "3 days"
       when: manual
       allow_failure: false
-    # The deep scanner is automatic only for these dependency/evidence inputs. In that
+    # The small Python scanner is automatic only for these dependency/evidence inputs. In that
     # case Pages waits for it and receives its dotenv plus report tree. Keep this path
-    # list aligned with security_deep_sca.rules in .gitlab/ci/sca.yml.
+    # list aligned with security_python_sca.rules in .gitlab/ci/sca.yml.
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME !~ /^translate-/ && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != "nemoclaw-only"'
       changes:
-        - workspace/requirements.txt
-        - workspace/requirements.lock
-        - workspace/Dockerfile
-        - cpu/services/sandbox_admin/requirements.txt
-        - cpu/services/docker_router/Dockerfile
-        - cpu/services/llm_client/llm_client.Dockerfile
+        - scripts/materials/requirements.txt
+        - scripts/materials/requirements.lock
         - scripts/security/audit_python_dependencies.py
         - scripts/security/audit_vulnerability_waivers.py
         - scripts/security/audit_dependency_locks.py
@@ -305,7 +310,7 @@ pages:
         - .gitlab/ci/sca.yml
       needs:
         - job: test
-        - job: security_deep_sca
+        - job: security_python_sca
           artifacts: true
       variables:
         PAGES_PREVIEW: "1"
@@ -385,7 +390,8 @@ theme_runtime:
       - api_failure
       - scheduler_failure
   before_script:
-    - npm install --no-save --ignore-scripts --package-lock=false playwright-core@1.55.0
+    - corepack enable
+    - pnpm install --dir scripts/runtime --frozen-lockfile --ignore-scripts
   script:
     - |
       set -eu
@@ -396,7 +402,7 @@ theme_runtime:
       fi
       test -d "$THEME_SITE_ROOT"
       test -d "$THEME_SCAN_ROOT"
-      python3 scripts/skills/skill_renderer_runtime_audit.py --site-root "$THEME_SITE_ROOT" --scan-root "$THEME_SCAN_ROOT" --engine current --node-path "$CI_PROJECT_DIR/node_modules" --chrome-bin auto --timeout-seconds 600
+      python3 scripts/skills/skill_renderer_runtime_audit.py --site-root "$THEME_SITE_ROOT" --scan-root "$THEME_SCAN_ROOT" --node-path "$CI_PROJECT_DIR/scripts/runtime/node_modules" --chrome-bin auto --timeout-seconds 600
   rules:
     - if: '$CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_BRANCH != "nemoclaw-only" && $CI_COMMIT_BRANCH !~ /^translate-/ && $CI_PIPELINE_SOURCE != "schedule"'
       variables:

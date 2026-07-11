@@ -22,7 +22,7 @@ built from one branch and checked for translation drift.
 
 - Learners: a modern browser and a user-supplied NVIDIA API key for interactive model exercises.
 - Modules 3 and 4: a NemoClaw launchable created when the course requests it.
-- Local builds: Python 3, Bash, and Node.js.
+- Local builds: Python 3.11+, Bash, Node.js 20+, pnpm through Corepack, and Chromium or compatible Chrome.
 - Hardware: no learner-managed GPU is required.
 
 The learner release is a static website. It does not require a repository-operated application
@@ -47,34 +47,19 @@ For repository work, install the local checks with `bash scripts/build/install-h
 
 ## Repository Design
 
-The core release tenet is **surface separation**: content is organized by the environment it can
-assume, and no surface may borrow runtime assumptions from another surface without declaring that
-dependency.
+The core release tenet is a small static boundary: the repository ships the browser course and its
+validation tools, not a lab operating system, service stack, or container topology.
 
-## Surface Separation
+## Repository Boundary
 
-Each top-level surface states its execution contract before any learner or operator runs
-it. This keeps browser-only content portable, lets shared services support a bundle of
-courses, and makes higher-compute variants explicit rather than accidental.
-
-| Surface | Contract | Current role |
-|---|---|---|
-| [`web/`](web/) | Browser plus a lab or hosted proxy. Static pages cannot assume student-provisioned microservices or local keys. | Released browser course, foyer, course scripts, and course-scoped reference packets under [`web/nemoclaw/mats/`](web/nemoclaw/mats/). |
-| [`cpu/`](cpu/) | CPU lab box that can run shared microservices for one or more courses. | `llm_client`, OpenClaw/OpenShell, sandbox policy control, Docker lifecycle bridge, and service notebooks. |
-| `spark/` | Spark-level compute budget and data-plane assumptions. | Reserved for future courses or labs that need Spark rather than a CPU service stack. |
-| `l40s/` or other GPU surfaces | GPU-backed lab capacity with explicit image, driver, and scheduling assumptions. | Reserved for future releases that need GPU runtime rather than a browser or CPU contract. |
-| [`deploy/`](deploy/) | Operator surface for standing up the course bundle. | Compose overlays and nginx route config for DLI platform and local compute. |
-
-A page under `web/` should use browser APIs, static assets, and declared proxy routes. It
-should not assume that a learner has created a service container. A service under `cpu/`
-can assume the compose network and shared volumes. A future `spark/` or GPU surface must
-state its own compute contract instead of hiding it in page code.
+`web/` contains the released static course. `scripts/` contains build, validation, compliance, and
+translation tooling. Contributors install Python, Node.js, and Chromium on the host. External
+isolation is operator-owned; this repository does not define, build, scan, or distribute it.
 
 ## Release Flow
 
 The repository keeps curated source and projects it into release formats:
 
-- browser course served through Jupyter static paths and nginx
 - standalone bundle generated from the same source
 - client-side Pages site for preview or external release
 - validation reports that use the same link engine as the browser viewer
@@ -112,9 +97,8 @@ Production ships a static browser artifact. It is published to a public static h
 vendored by a co-located NemoClaw launchable. [`docs/pages_deploy.md`](docs/pages_deploy.md) owns
 those delivery paths and preview behavior.
 
-The Compose files under [`deploy/`](deploy/) support local authoring and compatibility testing; they
-are not the production course topology. Bring-up and browser-test commands live in
-[`docs/lab_runtime_testing.md`](docs/lab_runtime_testing.md). Artifact and tag rules live in
+Host-native browser-test commands live in [`docs/lab_runtime_testing.md`](docs/lab_runtime_testing.md).
+The repository owns no service stack or container topology. Artifact and tag rules live in
 [`docs/release_artifacts.md`](docs/release_artifacts.md).
 
 ## Agent Visor
@@ -191,15 +175,19 @@ Repository-owned mitigations, unresolved host or provider requirements, residual
 non-applicable recommendations are separated in
 [`docs/security-control-disposition.md`](docs/security-control-disposition.md).
 
-For browser or Studio changes, also use the containerized browser harness:
+For browser or Studio changes, also use the host-native browser harness:
 
 ```bash
 scripts/runtime/browser_env_probe.sh
-CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only
+scripts/runtime/browser_runtime_test.sh --render-only
 ```
 
-For full lab-network checks, start the deploy stack first, then run the page harness
-against `http://nginx/lab/static/...`.
+Repository tooling requires Python 3.11 or newer; Python 3.12 is the tested default. Run
+`python3 scripts/runtime/python_env_probe.py` before installing the applicable pinned lock in a
+virtual environment. Avoid global or unpinned installs.
+
+See [`docs/lab_runtime_testing.md`](docs/lab_runtime_testing.md) for prerequisites and the optional
+external-isolation boundary.
 
 ## Contributing
 
@@ -225,11 +213,8 @@ and [`scripts/compliance/docs/open_source_readiness.md`](scripts/compliance/docs
 ```text
 .
 ├── web/                    browser courses and browser-owned runtime assets
-├── cpu/                    CPU service stack and service notebooks
-├── deploy/                 compose overlays and nginx route config
 ├── docs/                   operating docs
 ├── scripts/                build, validation, runtime, compliance, and material tooling
-├── workspace/              lab image, entrypoint, requirements, and test runner
 ├── SKILL.html              root ontology beacon served at /lab/static/SKILL.html
 └── AGENTS.md               cross-harness agent contract
 ```

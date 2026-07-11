@@ -29,6 +29,11 @@ class ColorThemeTests(unittest.TestCase):
         source = "const c=getComputedStyle(node).color; return `<path fill=\"${c}\"/>`;"
         self.assertTrue(color_theme.scan_js_theme_bake(source))
 
+    def test_skill_row_theme_projection_covers_text_and_layout(self) -> None:
+        explorer = (color_theme.WEB / "_skill_explorer.js").read_text()
+        for selector in (".skill-link span", ".skill-link b", ".skill-list", ".skill-link{"):
+            self.assertIn(selector, explorer)
+
 
 if __name__ == "__main__":
     unittest.main()

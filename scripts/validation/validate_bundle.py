@@ -9,7 +9,7 @@ Composes the deterministic validators into one gate and writes a DURABLE static 
 current health without a live lab:
 
   1. link_projection --check (ship scope)  → virtual-link failures-to-get + asset leaks
-  2. validate_layout.py                     → static mount paths, notebooks, SKILL beacons
+  2. validate_layout.py                     → static links, runtime boundary, SKILL beacons
   3. grounding.py                           → em-dash / ungrounded / mat-association sweep
   4. prose_variety.py                       → sentence-variety + buzz signals over the narrative
   5. reachability, foyer-release, page-audit (via link_projection)
@@ -280,7 +280,7 @@ SUITE_META = [
      "Every attributed SVG must have a provenance-derived rendering mode. Theme-aware figures must follow the course toggle; fixed-white conversions must remain on an explicit paper surface. The same audit checks legibility, bounds, accessibility, and mobile zoom without filename exemptions.",
      "scripts/validation/figure_audit.py", "run"),
     ("security_architecture", "Security architecture graph", "required",
-     "The release threat-model graph must match source-derived CI and browser topology, explicitly classify local-only Compose services and volumes, source every production node and flow from repository evidence, label trust-boundary authentication and sensitive data, exclude internal workflow metadata, avoid node and connector collisions, and keep its generated SVG projection current.",
+     "The release threat-model graph must match source-derived CI and browser topology, reject repository-owned runtime services, source every production node and flow from repository evidence, label trust-boundary authentication and sensitive data, exclude internal workflow metadata, avoid node and connector collisions, and keep its generated SVG projection current.",
      "scripts/validation/security_architecture_audit.py", "audit"),
     ("threat_controls", "Threat control disposition", "required",
      "Repository-owned mitigations must remain automated while host, provider, residual, and non-applicable requirements stay explicit. Pages artifacts are bounded, safely extracted, deployed without rebuilding, verified byte-for-byte after publication, and reconciled across public GitHub and internal GitLab without force updates.",
@@ -433,7 +433,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     rep = engine_bundle["check"]
     s = rep["stats"]
 
-    # validate_layout (static mount paths + notebooks + SKILL beacons; live-links skip if lab down)
+    # validate_layout (static links + retired-runtime boundary + SKILL beacons)
     vl = subprocess.run([sys.executable, str(SCRIPTS / "validation" / "validate_layout.py"), "--quiet"],
                         capture_output=True, text=True)
     vl_ok = vl.returncode == 0
@@ -839,7 +839,7 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
 
     # figure geometry (advisory): render the runtime figures (mountDiagram + mountPolicyMap) and flag overlapping text, out-of-bounds text, stray connectors, and edgeless diagrams.
     # figure_audit handles static inline/fetched SVGs; this suite covers JS-built runtime diagrams.
-    # Self-tests each detector; node + jsdom via scripts/figures/run_figcheck.sh.
+    # Self-tests each detector; host Chromium via scripts/figures/run_figcheck.sh.
     dg_find = []
     try:
         dg = subprocess.run(["bash", str(SCRIPTS / "figures" / "run_figcheck.sh"), "--json"],

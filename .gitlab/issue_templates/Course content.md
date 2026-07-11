@@ -6,7 +6,7 @@ What course page, term, graphic, exercise, or learner-facing flow needs attentio
 
 - Course: static browser course under `web/nemoclaw/` unless this is bundle-wide
 - Production: public static host or co-located NemoClaw launchable
-- Local-only support: `cpu/`, `workspace/`, and `deploy/`
+- Tooling: host authoring and validation commands under `scripts/`
 - Bundle scope: course-specific or bundle-wide
 
 ## Location
@@ -33,7 +33,7 @@ Optional. Describe the smallest safe correction.
 
 ## Scope check
 
-- Surface: `web/`, `cpu/`, `deploy/`, `scripts/`, `docs/`, or `materials`
+- Surface: `web/`, `i18n/`, `scripts/`, `docs/`, or materials/source governance
 - Related issues or MRs:
 - Does this touch source/vendor/licensing material?
 

@@ -6,7 +6,7 @@ What source, provenance, licensing, attribution, or vendored material needs revi
 
 - Course: static browser course under `web/nemoclaw/` unless this is bundle-wide
 - Production: public static host or co-located NemoClaw launchable
-- Local-only support: `cpu/`, `workspace/`, and `deploy/`
+- Tooling: host authoring and validation commands under `scripts/`
 - Bundle scope: course-specific or bundle-wide
 
 ## Material

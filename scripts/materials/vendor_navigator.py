@@ -36,9 +36,9 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
 from _bootstrap import add_script_paths, find_repo_root
 
 BUCKET = "dli-lms"
-COURSE_CODE = os.environ.get("DLI_COURSE_CODE") or os.environ.get("COMPOSE_PROJECT_NAME", "").split("-task1")[0]
+COURSE_CODE = os.environ.get("DLI_COURSE_CODE")
 if not COURSE_CODE:
-    sys.exit("set DLI_COURSE_CODE (or COMPOSE_PROJECT_NAME=<course>-task1) before vendoring")
+    sys.exit("set DLI_COURSE_CODE before vendoring")
 PREFIX = f"assets/{COURSE_CODE}/"   # course code is wrapper-injected, never hardcoded
 
 HERE = Path(__file__).resolve()

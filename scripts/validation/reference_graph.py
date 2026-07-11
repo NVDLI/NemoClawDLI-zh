@@ -10,7 +10,7 @@ and classify the destination:
 
   internal       - resolves to a file inside web/nemoclaw/ (this includes the
                    course-scoped reference layer web/nemoclaw/mats/)
-  shared         - resolves to a shared-infra dir (cpu/services/, …)
+  shared         - resolves to shared repository tooling or documentation
   cross_course   - resolves to another course (none ship in this release)
   external_url   - http(s) URL
   missing        - looks like a path but does not resolve
@@ -391,8 +391,8 @@ def render_text(rep: Report, *, only: str | None = None) -> str:
         by_top: dict[str, int] = defaultdict(int)
         for r in by.get("shared", []):
             if r.resolved:
-                # Surface-first layout: shared infra resolves under task1/cpu/<dir>
-                # (e.g. cpu/services) or a top-level task1 peer (docs/); the mats
+                # Surface-first layout: shared repository infrastructure resolves from the root.
+                # (for example scripts/) or a top-level task1 peer (docs/); the mats
                 # reference layer is now course-scoped under web/nemoclaw/mats/.
                 # Bucket by the meaningful shared-dir segment relative to task1/.
                 try:

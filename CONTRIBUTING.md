@@ -8,10 +8,9 @@ GitHub owns the canonical course workflow from planning through release. Interna
 reviewed public changes for additional validation and internal deployment. This scope excludes the
 NemoClaw product, its launchable, and the product runtime.
 
-The release tree packages authored content alongside shared services. Deployment and validation
-tools live there too. Each execution surface has a distinct role. Browser-only work belongs in
-`web/`; shared microservices belong in `cpu/`. The `deploy/` surface contains operator tooling for
-DLI infrastructure and local compute.
+The release tree packages authored browser content with build and validation tools. Browser work
+belongs in `web/`; repository tooling belongs in `scripts/`. The repository does not own a service
+stack, lab image, or container topology.
 
 ## Two Contribution Paths
 
@@ -141,12 +140,6 @@ Node's built-in `node:test`. Add framework-visible tests under `tests/`, where t
 can discover them. Do not maintain numeric totals in CLI output; the harness rejects fixed
 denominators in shared fast and ship gates.
 
-Service-stack notebook tests need the lab services running:
-
-```bash
-python3 workspace/run_tests.py services --notebook <notebook>
-```
-
 For browser or Studio changes, also run the browser harness described in
 [`docs/lab_runtime_testing.md`](docs/lab_runtime_testing.md).
 
@@ -158,8 +151,7 @@ The full operating creed is projected into the root `SKILL.html` skill-meta. Run
 - Edit content in place. Scratch work goes to `/tmp` and is never committed.
 - Authored prose avoids em-dashes. Rewrite the sentence rather than swap punctuation.
 - `web/` stays browser-only and cannot assume student-provisioned microservices.
-- `cpu/` owns the shared service stack a course may call through declared routes.
-- `deploy/` owns compose and nginx configuration.
+- Host Python, Node.js, and Chromium run repository checks; external isolation is operator-owned.
 - Do not commit lab-generated runtime output, caches, or the `public/` Pages build.
 
 ### Student-visible code

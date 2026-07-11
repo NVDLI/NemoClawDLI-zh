@@ -37,7 +37,7 @@ RULES = (
         "Threat and architecture assessment",
         "Refresh the authorized assessment when topology, trust boundaries, authentication, data flow, or deployment changed.",
         (
-            ".github/workflows/*", ".gitlab-ci.yml", ".gitlab/ci/*", "scripts/cors-proxy/*", "deploy/*",
+            ".github/workflows/*", ".gitlab-ci.yml", ".gitlab/ci/*", "scripts/cors-proxy/*",
             "docs/security-architecture.*", "docs/security-design.md",
             "web/nemoclaw/scripts/_openclaw.js", "web/nemoclaw/scripts/_shared.js",
         ),
@@ -47,7 +47,7 @@ RULES = (
         "Authoritative vulnerability scan",
         "Rescan the final source and resolved release artifacts; bind dispositions to their immutable identities.",
         (
-            "**/Dockerfile", "**/*.Dockerfile", "**/requirements*.txt", "**/requirements*.lock",
+            "**/requirements*.txt", "**/requirements*.lock", "scripts/runtime/pnpm-lock.yaml",
             "scripts/browser-vendor/package.json", "scripts/browser-vendor/package-lock.json",
             "scripts/security/*", "web/nemoclaw/vendor/*",
         ),
@@ -67,7 +67,7 @@ RULES = (
         "Open-source and license review",
         "Refresh component inventory, distribution method, license disposition, and authorized open-source review for changed third-party inputs.",
         (
-            "**/Dockerfile", "**/*.Dockerfile", "**/requirements*.txt", "**/requirements*.lock",
+            "**/requirements*.txt", "**/requirements*.lock", "scripts/runtime/pnpm-lock.yaml",
             "scripts/browser-vendor/*", "scripts/materials/*", "scripts/pyodide/*", "web/nemoclaw/mats/*",
             "web/nemoclaw/vendor/*",
         ),
@@ -77,7 +77,7 @@ RULES = (
         "Verified secret scan",
         "Run the authoritative secret scan on the final source ref after credential, workflow, proxy, or deployment handling changes.",
         (
-            ".github/workflows/*", ".gitlab-ci.yml", ".gitlab/ci/*", "scripts/cors-proxy/*", "deploy/*",
+            ".github/workflows/*", ".gitlab-ci.yml", ".gitlab/ci/*", "scripts/cors-proxy/*",
             "scripts/security/*", "web/nemoclaw/scripts/_openclaw.js", "web/nemoclaw/scripts/_shared.js",
         ),
     ),
@@ -86,7 +86,7 @@ RULES = (
         "Final artifact security evidence",
         "Rebuild the immutable release artifact and refresh its SBOM, checksums, vulnerability result, malware result, and release decision.",
         (
-            "i18n/*", "web/*", "**/Dockerfile", "**/*.Dockerfile", "**/requirements*.txt",
+            "i18n/*", "web/*", "**/requirements*.txt",
             "**/requirements*.lock", "scripts/build/*", "scripts/browser-vendor/*",
         ),
     ),
@@ -144,7 +144,7 @@ def changed_paths(commit_range: str, root: Path = ROOT) -> list[str]:
 
 def self_test() -> list[str]:
     cases = (
-        ("dependency", ["workspace/requirements.lock"], {"authoritative-vulnerability-scan", "open-source-license-review", "final-artifact-evidence"}),
+        ("dependency", ["scripts/materials/requirements.lock"], {"authoritative-vulnerability-scan", "open-source-license-review", "final-artifact-evidence"}),
         ("topology", ["scripts/cors-proxy/reference.js"], {"threat-architecture-review", "verified-secret-scan"}),
         ("workflow", [".github/workflows/pages.yml"], {"threat-architecture-review", "verified-secret-scan"}),
         ("data route", ["web/nemoclaw/scripts/_shared.js"], {"threat-architecture-review", "privacy-data-review", "verified-secret-scan", "final-artifact-evidence"}),
@@ -158,7 +158,7 @@ def self_test() -> list[str]:
         actual = {row["id"] for row in classify(paths)}
         if actual != expected:
             failures.append(f"{label}: expected {sorted(expected)}, got {sorted(actual)}")
-    combined = classify(["workspace/requirements.lock", "scripts/cors-proxy/reference.js"])
+    combined = classify(["scripts/materials/requirements.lock", "scripts/cors-proxy/reference.js"])
     ids = [row["id"] for row in combined]
     if len(ids) != len(set(ids)):
         failures.append("combined paths emitted duplicate follow-up categories")

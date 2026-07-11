@@ -3,9 +3,7 @@
 # Resolution, each running the script against THIS repo's files:
 #   1. explicit NODE_BIN, including a Windows node.exe reached from WSL.
 #   2. host `node` on PATH.
-#   3. `node` in a throwaway container with the host repo mounted (correct by construction).
-#   4. a running lab container's node -- ONLY if /sandbox/dli matches this tree (guarded; that
-#      mount can be a named volume diverged from the host, which would run against a stale tree).
+#   3. fail with an explicit host installation recommendation.
 # Fails LOUD if none reachable. Usage: run_node.sh <script> [args...]  (script abs or repo-relative)
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -35,38 +33,5 @@ if command -v node >/dev/null 2>&1; then
   exec node "$ABS" "$@"
 fi
 
-ENGINE="${CONTAINER_ENGINE:-}"
-if [ -z "$ENGINE" ]; then
-  for c in podman docker; do
-    if command -v "$c" >/dev/null 2>&1 && "$c" info >/dev/null 2>&1; then ENGINE="$c"; break; fi
-  done
-fi
-
-if [ -n "$ENGINE" ] && command -v "$ENGINE" >/dev/null 2>&1; then
-  IMG=""
-  for c in node:20-slim node:20-bookworm-slim node:20 node:lts-slim node:lts node:20-alpine; do
-    if "$ENGINE" image inspect "$c" >/dev/null 2>&1; then IMG="$c"; break; fi
-  done
-  run_user=()
-  if [ "$ENGINE" = "podman" ]; then run_user+=(--userns=keep-id); else run_user+=(-u "$(id -u):$(id -g)"); fi
-  LAB_IMG="nemoclaw/lab-runtime-test:local"
-  if [ -z "$IMG" ] && "$ENGINE" image inspect "$LAB_IMG" >/dev/null 2>&1; then
-    exec "$ENGINE" run --rm "${run_user[@]}" -v "$REPO":/work -w /work --entrypoint node "$LAB_IMG" "/work/$REL" "$@"
-  fi
-  [ -z "$IMG" ] && IMG="node:20-slim"   # no local runtime image: pull the small generic fallback
-  exec "$ENGINE" run --rm "${run_user[@]}" -v "$REPO":/work -w /work "$IMG" node "/work/$REL" "$@"
-fi
-
-LAB="$(docker ps --format '{{.Names}}' 2>/dev/null | grep -iE '(^|[-_])lab([-_]|$)|jupyter' | head -1 || true)"
-if [ -n "${LAB:-}" ]; then
-  host_n="$(find "$REPO/web" -name '*.html' 2>/dev/null | wc -l | tr -d ' ')"
-  lab_n="$(docker exec "$LAB" sh -c 'find /sandbox/dli/web -name "*.html" 2>/dev/null | wc -l' 2>/dev/null | tr -d ' ' || echo 0)"
-  if [ "$host_n" = "$lab_n" ] && [ "$host_n" != "0" ]; then
-    exec docker exec "$LAB" node "/sandbox/dli/$REL" "$@"
-  fi
-  echo "run_node: lab /sandbox/dli ($lab_n html pages) != host ($host_n) -- diverged volume; refusing." >&2
-  exit 3
-fi
-
-echo "run_node: no node found (host PATH, a node docker image, or a matching lab container)." >&2
+echo "run_node: no host Node.js found. Install Node.js 20+ or set NODE_BIN." >&2
 exit 2

@@ -2,19 +2,20 @@
 # Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Exercise high-risk course runtime handoffs in containerized Chromium."""
+"""Exercise high-risk course runtime handoffs in host-native Chromium."""
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_IMAGE = "nemoclaw/lab-runtime-test:local"
+sys.path.insert(0, str(ROOT))
+from scripts.runtime.host_browser import BrowserRuntimeError, environment, run_node
 
 RUNTIME_JS = r"""
 const http = require('http');
@@ -627,12 +628,6 @@ async function open(browser, pageName, init) {
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Validate course runtime integration handoffs in Chromium")
     parser.add_argument("--site-root", default="web", help="source or built site root")
-    parser.add_argument("--image", default=DEFAULT_IMAGE, help="browser runtime image")
-    parser.add_argument("--engine", default=os.environ.get("CONTAINER_ENGINE") or "podman")
-    parser.add_argument(
-        "--direct", action="store_true",
-        help="run Node/Chromium directly in an already-isolated Linux test host",
-    )
     parser.add_argument("--timeout-ms", type=int, default=120000)
     return parser.parse_args()
 
@@ -647,33 +642,14 @@ def main() -> int:
     with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as handle:
         handle.write(RUNTIME_JS)
         script = Path(handle.name)
-    env = None
-    if args.direct:
-        command = ["node", str(script)]
-        env = os.environ.copy()
-        env.update({
-            "SITE_ROOT": str(site_root),
-            "AUDIT_TIMEOUT_MS": str(args.timeout_ms),
-        })
-    else:
-        command = [args.engine, "run", "--rm", "--entrypoint", "node"]
-        if args.engine.endswith("podman"):
-            command.append("--userns=keep-id")
-        command += [
-            "-e", "NODE_PATH=/opt/nemoclaw-runtime/node_modules",
-            "-e", "SITE_ROOT=/site",
-            "-e", f"AUDIT_TIMEOUT_MS={args.timeout_ms}",
-            "-v", f"{site_root}:/site:ro",
-            "-v", f"{script}:/tmp/runtime_integration_browser_audit.js:ro",
-            args.image, "/tmp/runtime_integration_browser_audit.js",
-        ]
     try:
-        proc = subprocess.run(
-            command, cwd=ROOT, env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        proc = run_node(
+            script,
+            env=environment(SITE_ROOT=site_root, AUDIT_TIMEOUT_MS=str(args.timeout_ms)),
             timeout=args.timeout_ms / 1000 + 60,
         )
-    except FileNotFoundError:
-        print(f"runtime_integration_browser_audit: FAIL\n  - container engine not found: {args.engine}")
+    except BrowserRuntimeError as error:
+        print(f"runtime_integration_browser_audit: FAIL\n  - {error}")
         return 1
     except subprocess.TimeoutExpired as error:
         print(f"runtime_integration_browser_audit: FAIL\n  - timed out after {error.timeout}s")
