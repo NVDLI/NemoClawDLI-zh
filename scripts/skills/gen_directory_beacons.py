@@ -22,14 +22,6 @@ SUMMARIES = {
     ".gitlab": "Internal GitLab contribution templates used by the integration and validation repository.",
     ".gitlab/issue_templates": "Internal issue templates aligned with the public contribution categories.",
     ".gitlab/merge_request_templates": "Internal merge-request submission contract and review checklist.",
-    "cpu/services/llm_client/tests": "Pytest coverage for Bedrock-to-OpenAI translation and streaming behavior in the local compatibility gateway.",
-    "cpu/services/openclaw/bin": "Operator command wrappers installed into the local OpenClaw compatibility image.",
-    "cpu/services/openclaw/hooks": "Startup hooks that discover the local sandbox environment without embedding credentials.",
-    "cpu/services/openclaw/skills-seed": "OpenClaw skill packages seeded into the local compatibility workspace.",
-    "cpu/services/openclaw/skills-seed/caveman": "Seeded OpenClaw communication-style skill package.",
-    "cpu/services/openclaw/skills-seed/docker-bridge": "Seeded OpenClaw skill for the bounded local Docker bridge.",
-    "cpu/services/openclaw/skills-seed/sandbox-self-management": "Seeded OpenClaw skill for bounded sandbox lifecycle actions.",
-    "cpu/services/openclaw/skills-seed/skills-manager": "Seeded OpenClaw skill for inspecting and managing installed skills.",
     "docs/assets": "Reviewed visual evidence and presentation assets referenced by repository documentation.",
     "docs/assets/repository-overview": "Captured repository-overview slides, browser states, and their source manifest.",
     "i18n": "Sparse same-branch locale overlays; runtime modules remain shared with canonical English source.",
@@ -44,7 +36,6 @@ SUMMARIES = {
     "i18n/pt/web/nemoclaw/assets": "Brazilian Portuguese localized course assets.",
     "i18n/pt/web/nemoclaw/assets/figures": "Brazilian Portuguese figure variants checked against the canonical figure contract.",
     "scripts/browser-vendor/license-overrides": "Reviewed license texts for browser packages whose installed metadata is incomplete.",
-    "scripts/runtime/lab-runtime": "Container definition for the standard Playwright and Chromium course-test runtime.",
     "scripts/translate/locales": "Locale-specific translation profiles used by the sparse-overlay workflow.",
     "web/nemoclaw/assets/figures": "Canonical course figures governed by the parent image-provenance contract.",
     "web/nemoclaw/mats/glossary_raw": "Versioned source material used to build the searchable course glossary.",
@@ -176,7 +167,7 @@ def page(rel: Path, files: list[Path], directories: list[Path]) -> str:
     file_links = "\n".join(
         f'      <li><a href="{html.escape(name)}"><code>{html.escape(name)}</code></a></li>'
         for name in direct_files
-    ) or "      <li>No direct files; use the child directory contracts below.</li>"
+    ) or "      <li>This directory has no direct files. Open a child contract below.</li>"
     child_links = "\n".join(
         f'      <li><a href="{html.escape(child.name)}/SKILL.html"><code>{html.escape(child.name)}/</code></a></li>'
         for child in child_dirs

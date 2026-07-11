@@ -8,8 +8,7 @@ Runtime checks live in [`lab_runtime_testing.md`](lab_runtime_testing.md).
 ## Start from the tracker
 
 - Use `docs/issue_standards.md` as the issue anatomy and label cadence. The production target is
-  the static `web/nemoclaw/` course; `cpu/`, `workspace/`, and `deploy/` support local authoring
-  and compatibility tests rather than the production course.
+  the static `web/nemoclaw/` course. Host-native tools under `scripts/` build and verify it.
 - Read the issue or MR before editing. If network or auth blocks the read, say that and work from local evidence only.
 - Tie a fully satisfying MR to the tracker with `Closes #N` so merge closes the justification
   issue automatically. A partial MR uses `Addresses #N` and includes `## Remaining issue work`
@@ -54,7 +53,7 @@ Runtime checks live in [`lab_runtime_testing.md`](lab_runtime_testing.md).
   `docs/security-architecture.json` and regenerate its SVG. Apply the same rule to privilege,
   authentication, secret flow, and release pipelines. Run
   `python3 -m unittest -v tests/validation/test_embedded_validator_suites.py` plus the audit.
-  Production nodes remain source-backed. Local-only Compose services and volumes remain explicit.
+  Production nodes remain source-backed. Repository-owned container surfaces remain absent.
 - Changes to product scope or data handling update `docs/product-design.md`. Changes to the
   cryptography inventory, release evidence, or lifecycle test plan do too. Update
   `docs/release-test-plan.md` and `docs/release-evidence.json` in the same patch. Run

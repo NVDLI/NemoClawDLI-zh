@@ -42,7 +42,7 @@ main{max-width:92rem;margin:0 auto;padding:clamp(1.4rem,4vw,3.5rem)}
       <article class="dep-step"><h3>The inventory records the result</h3><p>The tables below record the npm packages, copied utilities already inside LangChain, full licenses, output hashes, and dependency links.</p></article>
     </div>
     <div class="dep-plain">
-      <article><h3>Why <code>p-timeout</code> appears here</h3><p><code>@langchain/core</code> and <code>langsmith</code> require <code>p-queue</code>; <code>p-queue</code> requires <code>p-timeout</code>; and <code>p-timeout</code> requires <code>p-finally</code>. The package table records that chain even though those files contain no special legal comment.</p></article>
+      <article><h3>Why <code>p-timeout</code> appears here</h3><p><code>@langchain/core</code> and <code>langsmith</code> require <code>p-queue</code>. That package requires <code>p-timeout</code>, which requires <code>p-finally</code>. The table records the full dependency chain even when a file has no special legal comment.</p></article>
       <article><h3>Preserved comments are not a package list</h3><p>Some source authors mark comments with forms such as <code>/*!</code> or <code>@license</code>. Because the build uses esbuild's <code>legalComments: "external"</code> setting, esbuild moves those marked comments into <code>.LEGAL.txt</code>. Ordinary dependencies can have no such comment, and embedded copied code can have a comment without being a separate npm package.</p></article>
     </div>
   </section>
@@ -55,7 +55,7 @@ main{max-width:92rem;margin:0 auto;padding:clamp(1.4rem,4vw,3.5rem)}
 
   <section class="dep-section">
     <h2>Utility code already copied into LangChain</h2>
-    <p>These are not additional npm installs. LangChain copied their source into <code>@langchain/core</code> before publishing version 1.1.48. The course receives those copies through the pinned LangChain package, and esbuild includes the portions reached by the course imports. When LangChain does not state the original upstream release number, this inventory says so instead of guessing.</p>
+    <p>The rows below describe utility sources already present in <code>@langchain/core</code> 1.1.48. The course receives them through that pinned package, and esbuild includes only the portions reached by course imports. No separate npm install occurs. When LangChain omits an original upstream release number, this inventory records that uncertainty instead of guessing.</p>
     <div class="dep-table-wrap"><table class="dep-table" id="embedded-table"><thead><tr><th>Embedded component</th><th>Recorded version</th><th>License</th><th>Used for</th><th>Exact source evidence</th></tr></thead><tbody></tbody></table></div>
   </section>
 

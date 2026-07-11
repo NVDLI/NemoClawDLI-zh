@@ -28,7 +28,8 @@ working contract. Every source directory has one; parent coverage is never a sub
 
 Route operational detail to its owner instead of copying it here:
 
-- browser and container checks: [`docs/lab_runtime_testing.md`](docs/lab_runtime_testing.md)
+- host-native browser checks: [`docs/lab_runtime_testing.md`](docs/lab_runtime_testing.md)
+- Python tooling: run `python3 scripts/runtime/python_env_probe.py`; use Python 3.12 in a virtual environment and install pinned locks
 - Pages and previews: [`docs/pages_deploy.md`](docs/pages_deploy.md)
 - release evidence: [`docs/release-test-plan.md`](docs/release-test-plan.md)
 - beacon schema: [`SKILL_CONTRACT.md`](SKILL_CONTRACT.md)

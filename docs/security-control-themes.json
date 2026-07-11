@@ -15,11 +15,7 @@
       "NemoClaw runtime",
       "cross-origin relays"
     ],
-    "local_only": [
-      "cpu/services",
-      "deploy",
-      "workspace"
-    ],
+    "local_only": [],
     "ownership_rule": "A data-flow participant is not a repository-owned component. External controls remain unknown until the responsible operator supplies live evidence.",
     "classification_rule": "The intended OSS Type I classification applies only to the NemoClaw DLI course repository and its static course artifacts.",
     "explicit_facts": [
@@ -30,7 +26,8 @@
       "A protected-environment reviewer is a human actor, not a system component.",
       "The static host serves bytes; repository workflows, not the host, enforce build and deployment gates.",
       "Branch and merge-request validation is normal; protected annotated tags identify release candidates only.",
-      "Model, relay, launchable, runtime, and live-host controls remain unknown without current operator evidence."
+      "Model, relay, launchable, runtime, and live-host controls remain unknown without current operator evidence.",
+      "Host Python, Node.js, and Chromium are authoring and validation dependencies, not production components. Repository-owned container definitions are prohibited and would expand the reviewed scope."
     ]
   },
   "assessment_status_rules": [
@@ -65,6 +62,7 @@
       "evidence": [
         "scripts/browser-vendor/package-lock.json",
         "scripts/validation/course_dependency_integrity.py",
+        "scripts/validation/container_boundary_audit.py",
         "scripts/security/run_full_sca.py"
       ],
       "future_candidate": "NOT IMPLEMENTED. If release policy requires stronger dependency-origin guarantees, the release owner would need to adopt an approved package mirror or offline cache and a hermetic, reproducible builder.",

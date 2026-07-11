@@ -93,21 +93,6 @@
   "coverage": {
     "toe_nodes": ["source", "artifact", "browser"],
     "external_context_nodes": ["ci", "pages_host", "launchable_host", "model_api", "nemoclaw"],
-    "local_only_compose_services": {
-      "lab": "local lab and authoring runtime; not deployed by the static course artifact",
-      "llm_client": "local model gateway; production browser calls the external model service",
-      "openclaw": "local test runtime; deployed courses use the required NemoClaw launchable runtime",
-      "sandbox-admin": "local policy control sidecar; absent from the static course artifact",
-      "docker_router": "local container control sidecar; absent from the static course artifact",
-      "nginx": "local lab ingress; GitHub Pages or the NemoClaw repository hosts the production static course"
-    },
-    "local_only_volumes": {
-      "dli": "local lab workspace",
-      "ocspace": "local OpenClaw workspace",
-      "openclaw_user": "local OpenClaw state",
-      "openclaw_logs": "local OpenClaw logs",
-      "repo": "local lab reference mount"
-    },
     "repository_surfaces": {
       "web": "browser",
       "scripts/build/build_pages.sh": "artifact",

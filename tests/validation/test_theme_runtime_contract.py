@@ -4,6 +4,7 @@
 """Standard-library contracts for browser-theme coverage and its CI triggers."""
 from __future__ import annotations
 
+import shlex
 import tempfile
 import unittest
 from pathlib import Path
@@ -83,6 +84,24 @@ class ThemeRuntimeContractTests(unittest.TestCase):
         self.assertIn('THEME_SCAN_ROOT="public/$CI_COMMIT_REF_SLUG"', job)
         self.assertIn('--site-root "$THEME_SITE_ROOT" --scan-root "$THEME_SCAN_ROOT"', job)
         self.assertNotIn('THEME_SITE_ROOT="public/$CI_COMMIT_REF_SLUG"', job)
+
+    def test_theme_job_arguments_match_the_runtime_cli(self) -> None:
+        job = core_job("theme_runtime", "human_review")
+        command = next(line.strip() for line in job.splitlines() if "skill_renderer_runtime_audit.py" in line)
+        tokens = shlex.split(command)
+        script = tokens.index("scripts/skills/skill_renderer_runtime_audit.py")
+        theme_runtime.build_parser().parse_args(tokens[script + 1 :])
+
+    def test_report_producer_has_the_pinned_browser_runtime(self) -> None:
+        core = (ROOT / ".gitlab/ci/core.yml").read_text(encoding="utf-8")
+        test_job = core_job("test", "external_integration_audit")
+        image = (
+            "mcr.microsoft.com/playwright:v1.55.0-noble@sha256:"
+            "b27e719ecbfef153e13fd24e8341736733bf2658b229677eb21ff57ff5d7fb29"
+        )
+        self.assertIn(f"image: {image}", test_job)
+        self.assertIn('BROWSER_TOOLS_REQUIRED: "1"', test_job)
+        self.assertIn('pnpm install --dir scripts/runtime --frozen-lockfile --ignore-scripts', core)
 
     def test_manifest_rewrites_reproject_every_discovered_mirror(self) -> None:
         pages = core_job("pages", "pages_smoke")
@@ -172,14 +191,14 @@ class ScaTriggerContractTests(unittest.TestCase):
         header = pages.split("  script:\n", 1)[0]
         self.assertIn('needs: ["test"]', header)
         self.assertNotIn("optional: true", header)
-        self.assertIn('if [ -z "${DEEP_SCA_JOB_ID:-}" ]', pages)
-        self.assertIn("- job: security_deep_sca\n          artifacts: true", pages)
+        self.assertIn('if [ -z "${PYTHON_SCA_JOB_ID:-}" ]', pages)
+        self.assertIn("- job: security_python_sca\n          artifacts: true", pages)
 
-    def test_pages_deep_sca_override_tracks_scanner_inputs(self) -> None:
+    def test_pages_python_sca_override_tracks_scanner_inputs(self) -> None:
         pages = core_job("pages", "pages_smoke")
-        scanner = ci_job("security_deep_sca")
+        scanner = ci_job("security_python_sca")
         for path in (
-            "workspace/requirements.lock",
+            "scripts/materials/requirements.lock",
             "scripts/security/requirements-sca.lock",
             "scripts/compliance/sbom_evidence.py",
             ".gitlab/ci/sca.yml",
@@ -191,7 +210,7 @@ class ScaTriggerContractTests(unittest.TestCase):
     def test_expensive_scans_are_automatic_only_for_relevant_inputs(self) -> None:
         cases = {
             "security_browser_sca": "scripts/browser-vendor/package-lock.json",
-            "security_deep_sca": "workspace/requirements.lock",
+            "security_python_sca": "scripts/materials/requirements.lock",
         }
         for job_name, relevant_input in cases.items():
             with self.subTest(job=job_name):
@@ -205,18 +224,33 @@ class ScaTriggerContractTests(unittest.TestCase):
         optional_rule = """- if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       when: manual
       allow_failure: true"""
-        for job_name in ("security_browser_sca", "security_deep_sca"):
+        for job_name in ("security_browser_sca", "security_python_sca"):
             with self.subTest(job=job_name):
                 self.assertIn(optional_rule, ci_job(job_name))
 
-    def test_image_scan_requires_an_explicit_immutable_digest(self) -> None:
-        job = ci_job("security_image_sca")
-        self.assertIn("$SBOM_IMAGE =~", job)
-        self.assertIn("@sha256:[0-9a-f]{64}", job)
-        self.assertIn("when: manual", job)
-        self.assertIn("- when: never", job)
-        self.assertNotIn("schedule", job)
-        self.assertNotIn("when: on_success", job)
+    def test_retired_workspace_and_image_scans_do_not_return(self) -> None:
+        source = (ROOT / ".gitlab/ci/sca.yml").read_text(encoding="utf-8")
+        self.assertNotIn("security_deep_sca:", source)
+        self.assertNotIn("security_image_sca:", source)
+        self.assertNotIn("workspace/requirements.lock", source)
+
+
+class PythonEnvironmentContractTests(unittest.TestCase):
+    def test_pages_build_fails_early_through_the_shared_python_probe(self) -> None:
+        source = (ROOT / "scripts/build/build_pages.sh").read_text(encoding="utf-8")
+        probe = 'python3 "$T1/scripts/runtime/python_env_probe.py" --require-material-tools'
+        self.assertIn(probe, source)
+        self.assertLess(source.index(probe), source.index('rm -rf "$OUT"'))
+
+    def test_agent_guidance_uses_a_compatible_isolated_pinned_environment(self) -> None:
+        agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        guide = (ROOT / "docs/lab_runtime_testing.md").read_text(encoding="utf-8")
+        probe = (ROOT / "scripts/runtime/python_env_probe.py").read_text(encoding="utf-8")
+        self.assertIn("Python 3.12", agents)
+        self.assertIn("virtual environment", guide)
+        self.assertIn("scripts/materials/requirements.lock", guide)
+        self.assertIn("MINIMUM = (3, 11)", probe)
+        self.assertIn("TESTED = (3, 12)", probe)
 
 if __name__ == "__main__":
     unittest.main()

@@ -20,7 +20,7 @@
 <header data-skill-header="1"><nav aria-label="Skill navigation"><a href="../../web/index.html">Home</a> <a href="../SKILL.html">Up</a> <a href="../../SKILL.html">Repository map</a></nav></header>
 <main>
 <h1>GitLab CI trust-boundary modules</h1>
-<p>The root CI file is an exact include manifest. Add Python tests under <code>tests/</code> and register them in the release gate without editing the GitLab workflow.</p>
+<p>The root CI file contains only approved module includes. Add Python tests under <code>tests/</code> and register them in the release gate without editing the GitLab workflow.</p>
 <ul>
   <li><a href="core.yml"><code>core.yml</code></a> owns the required gate, Pages preview, rendered theme matrix, and human-review sequence.</li>
   <li><a href="sca.yml"><code>sca.yml</code></a> rejects inherited defaults and variables, pins its image, and owns all scanner jobs.</li>

@@ -2,7 +2,7 @@
 # Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Check runtime SBOM completeness and prevent retired components from returning."""
+"""Check Python material-tool SBOM completeness and reject runtime components."""
 from __future__ import annotations
 
 import argparse
@@ -57,7 +57,7 @@ def audit_document(document: dict, expected: set[str], forbidden: set[str]) -> d
                          "fix": "remove the component or document new runtime need and source/license approval"})
     if missing:
         findings.append({"code": "incomplete-sbom", "packages": missing,
-                         "fix": "generate the SBOM from the installed workspace/requirements.lock environment"})
+                         "fix": "generate the SBOM from scripts/materials/requirements.lock"})
     if missing_license:
         findings.append({
             "code": "unresolved-license",
@@ -113,7 +113,7 @@ def main() -> int:
         parser.error("--sbom is required unless --self-test is used")
     result = audit_document(
         json.loads(args.sbom.read_text(encoding="utf-8")),
-        locked_names(ROOT / "workspace/requirements.lock"),
+        locked_names(ROOT / "scripts/materials/requirements.lock"),
         forbidden_names(),
     )
     if args.report:

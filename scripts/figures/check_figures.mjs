@@ -4,7 +4,7 @@
 
 // Browser-rendered figure gate. Detects overlap, bounds, connector, and no-edge diagram issues.
 // Self-tests each detector before reporting clean.
-import fs from "fs"; import path from "path"; import { fileURLToPath } from "url";
+import fs from "fs"; import http from "http"; import path from "path"; import { fileURLToPath } from "url";
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
@@ -19,10 +19,30 @@ try { shared = await import("file://" + tmp); }
 finally { try { fs.unlinkSync(tmp); } catch { /* best-effort cleanup */ } }
 const { diagramSVG } = shared;
 
-// jsdom is CJS and ESM import() ignores NODE_PATH, so resolve it via require (FIG_JSDOM = its
-// absolute path when installed into a side dir by run_figcheck.sh).
-let JSDOM = null;
-try { ({ JSDOM } = require(process.env.FIG_JSDOM || "jsdom")); } catch (e) { /* surfaced as a finding below */ }
+const { chromium } = require("playwright-core");
+
+async function renderedPolicyMap() {
+  const server = http.createServer((req, res) => {
+    const rel = decodeURIComponent(new URL(req.url, "http://127.0.0.1").pathname).replace(/^\/+/, "") || "index.html";
+    if (rel === "index.html") { res.writeHead(200, { "content-type": "text/html" }); res.end('<div id="pm"></div>'); return; }
+    const file = path.resolve(NEMO, rel);
+    if ((!file.startsWith(NEMO + path.sep) && file !== NEMO) || !fs.existsSync(file)) { res.writeHead(404); res.end(); return; }
+    res.writeHead(200, { "content-type": file.endsWith(".js") ? "text/javascript" : "application/octet-stream" });
+    fs.createReadStream(file).pipe(res);
+  });
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  const port = server.address().port;
+  const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_BIN });
+  try {
+    const page = await browser.newPage();
+    await page.goto(`http://127.0.0.1:${port}/index.html`);
+    return await page.evaluate(async () => {
+      const shared = await import("/scripts/_shared.js");
+      shared.mountPolicyMap("#pm");
+      return document.querySelector("#pm .pmap-svg")?.innerHTML || "";
+    });
+  } finally { await browser.close(); server.close(); }
+}
 
 const MONO = 0.6, SANS = 0.52;       // em-width per char; monospace is wider
 function attrs(s) {
@@ -311,23 +331,13 @@ for (const f of fs.readdirSync(path.join(NEMO, "assets", "figures")).filter((f) 
   for (const p of compositionProblems(svg, { includeStaticCards: true, checkInterBox: false, checkDensity: false, checkCenter: false })) findings.push({ page: "web/nemoclaw/assets/figures/" + f, sel: "svg", detail: p });
 }
 
-// mountPolicyMap is built from the DOM, so it needs jsdom; failing to check it is loud, not silent.
+// mountPolicyMap is built from the DOM, so render it in the same host Chromium used by other checks.
 const PM = { page: "web/nemoclaw/scripts/_shared.js", sel: "mountPolicyMap" };
-if (!JSDOM) {
-  findings.push({ ...PM, detail: "could not check: jsdom unavailable (install it so the policy map is rendered and verified)" });
-} else {
-  try {
-    const dom = new JSDOM('<!doctype html><div id="pm"></div>', { pretendToBeVisual: true });
-    globalThis.window = dom.window;
-    globalThis.document = dom.window.document;
-    Object.defineProperty(globalThis, "navigator", { value: dom.window.navigator, configurable: true });
-    shared.mountPolicyMap("#pm");
-    const wrap = dom.window.document.querySelector("#pm .pmap-svg");
-    const svg = wrap ? wrap.innerHTML : "";
-    if (!svg) findings.push({ ...PM, detail: "produced no SVG" });
-    else { checked++; for (const p of svgProblems(svg)) findings.push({ ...PM, detail: p }); }
-  } catch (e) { findings.push({ ...PM, detail: "render error: " + String(e.message || e).slice(0, 80) }); }
-}
+try {
+  const svg = await renderedPolicyMap();
+  if (!svg) findings.push({ ...PM, detail: "produced no SVG" });
+  else { checked++; for (const p of svgProblems(svg)) findings.push({ ...PM, detail: p }); }
+} catch (e) { findings.push({ ...PM, detail: "render error: " + String(e.message || e).slice(0, 120) }); }
 
 if (process.argv.includes("--json")) process.stdout.write(JSON.stringify({ checked, findings }) + "\n");
 else { for (const x of findings) console.log(`  ${x.page} ${x.sel}: ${x.detail}`); console.log(`\ncheck_figures: ${checked} figure(s), ${findings.length} problem(s)`); }

@@ -28,8 +28,7 @@ Test these release surfaces:
 - security architecture, contribution, deployment, and release controls; and
 - deterministic tagged release assets.
 
-Local authoring services require integration tests when their source changes. They are not production
-components of the static course.
+Host authoring and validation tools are tested through their pinned locks and deterministic commands.
 
 ## Roles and evidence ownership
 
@@ -61,9 +60,9 @@ boundary.
 |---|---|
 | Source checkout | Fast structure, contract, source, and policy validation |
 | Node-enabled validation runtime | Link projection and full static bundle checks |
-| Resolved Python 3.11 environment | Exact dependency, vulnerability, and CycloneDX inventory checks |
+| Python 3.12 virtual environment (3.11 minimum) | Exact dependency, vulnerability, and CycloneDX inventory checks for validation tooling |
 | Built Pages tree | Generated English, Portuguese, and Spanish route and asset verification |
-| Containerized browser | Rendered layout and interaction-state checks when browser behavior changes |
+| Host-installed Chromium with pinned `playwright-core` | Rendered layout and interaction-state checks when browser behavior changes |
 | Protected release workflow | Tag containment, deterministic packaging, evidence retention, and draft creation |
 | External review systems | Registration, legal, license, export, privacy, secrets, vulnerability, malware, and final release decisions |
 
@@ -88,36 +87,33 @@ host, and external-review work. Any applicable nonzero exit blocks the candidate
 | A04 | Required public files, licenses, sources, material provenance, and contributor-local hygiene are intact | `python3 -m unittest discover -v -s tests/validation`; `python3 scripts/compliance/source_gate.py`; `python3 scripts/compliance/source_license_contract.py --verify-browser-upstream` after `npm ci --prefix scripts/browser-vendor --ignore-scripts`; `python3 scripts/validation/local_path_leak_audit.py`; `python3 scripts/validation/local_path_leak_audit.py --commit-range origin/main..HEAD`; `python3 scripts/materials/pull_materials.py --verify-committed` | The NVIDIA copyright precedes Apache-2.0; DCO 1.1 is complete; top-level third-party notices resolve; every authored Python and JavaScript file has the exact header; the unminified LangChain interoperability bundle is the sole transformed browser asset; every other browser asset is byte-identical to its pinned publisher input; CI regeneration leaves no diff; inventory resolves; framework path/retry/tamper tests pass; no forbidden private links or contributor workstation paths exist in the tree or any proposed commit; every committed material matches its manifest metadata, character count, and full SHA-256 without network access | CI log |
 | A04a | Sensitive contribution content stays in approved private systems | `python3 -m unittest discover -v -s tests/validation`; `python3 scripts/validation/sensitive_content_audit.py`; `python3 scripts/validation/sensitive_content_audit.py --commit-range origin/main..HEAD` | Framework mutation tests pass; tree and complete proposed history contain no restricted finding details, private service locations, personal corporate addresses, or concrete credentials | CI log |
 | A04b | Security-relevant diffs notify the release operator | `python3 -m unittest discover -v -s tests/validation`; `python3 scripts/validation/release_change_reminder.py --commit-range origin/main..HEAD` | Framework mutation tests pass; applicable external assessment, scan, open-source/license, and final-artifact actions are listed without claiming completion | CI log and authorized release record |
-| A04c | The static third-party list matches exact package locks, material provenance, and scanned component evidence | `python3 -m unittest discover -v -s tests/validation`; `python3 scripts/compliance/third_party_inventory_audit.py`; `python3 scripts/compliance/sbom_evidence.py --check` | Framework mutation tests pass; every npm and Python package/version is listed with a license identifier; direct container declarations and external-source material rows remain visible; the license view separates distributed, CI-generated, and conditional evidence; linked SBOM hashes and component counts match; a scan can produce a digest-bound component appendix without guessing unresolved licenses | `THIRD_PARTY_LICENSES.md`, filtered reviewer exports, SBOM catalog and runbook, attached scan set and manifest, retained SBOM hashes, browser-render log, and CI log |
+| A04c | The static third-party list matches exact package locks, material provenance, and scanned component evidence | `python3 -m unittest discover -v -s tests/validation`; `python3 scripts/compliance/third_party_inventory_audit.py`; `python3 scripts/compliance/sbom_evidence.py --check` | Framework mutation tests pass; every shipped browser package and Python tool package is listed with a license identifier; external-source material rows remain visible; linked SBOM hashes and component counts match | `THIRD_PARTY_LICENSES.md`, filtered reviewer exports, SBOM catalog and runbook, attached scan set and CI log |
 | A05 | Dependency manifests and locks agree | `python3 scripts/security/audit_dependency_locks.py --self-test`; `python3 scripts/security/audit_dependency_locks.py` | Mutation suite passes and no lock drift exists | CI log |
 | A06 | Direct dependencies and accepted exceptions meet repository policy | `python3 scripts/security/audit_python_dependencies.py`; `python3 scripts/security/audit_vulnerability_waivers.py` | No unhandled vulnerable floor/pin; every exception is fingerprinted, owned, controlled, scoped, and unexpired | CI log |
-| A07 | Resolved environment is scanned and inventoried | Run the isolated A07 procedure below, or the required `security_deep_sca` CI job | Scanner succeeds; SBOM covers expected locked components; retired components remain absent; the same SBOM produces a commit-bound evidence manifest and reconciled license appendix | Retained scanner, SBOM, evidence-manifest, and license-appendix artifacts |
+| A07 | Python material tools are scanned and inventoried | Run the isolated A07 procedure below, or the required `security_python_sca` CI job | pip-audit succeeds; the SBOM covers the pinned material-tool closure; runtime components remain absent; the same SBOM produces a commit-bound evidence manifest and reconciled license appendix | Retained scanner, SBOM, evidence-manifest, and license-appendix artifacts |
 | A08 | Course structure, prose contracts, browser dependencies, localization, links, and directory contracts ship cleanly | `python3 -m unittest discover -v -s tests/validation`; `python3 scripts/validation/artifact_link_audit.py <standalone-root>`; `python3 scripts/validation/color_theme.py`; `python3 scripts/validation/course_dependency_integrity.py`; `python3 scripts/validation/cell_audit.py`; `python3 scripts/validation/validate_layout.py --quiet`; `python3 scripts/skills/skill_consistency.py`; `python3 scripts/skills/gen_directory_beacons.py --check`; `python3 scripts/skills/normalize_skill_headers.py --self-test`; `python3 scripts/skills/normalize_skill_headers.py --check`; `python3 scripts/skills/test_skill_contract.py`; `python3 scripts/skills/skill_contract.py`; run `skill_renderer_runtime_audit.py` in the standard browser runtime; `python3 scripts/validation/validate_bundle.py --scope ship --no-write` | Framework dependency, color-theme, editor-asset, missing-link, fragment, root-absolute, and root-escape mutations are rejected; every source directory has a valid beacon with no exemptions and one semantic navigation header; every generated HTML file and every local URL are discovered without an allowlist; all targets remain inside the exact standalone root and return successfully in the browser; narrow pages do not overflow; parameterized exports support multi-selection and two-way column sorting; the SBOM view verifies and renders linked component licenses; every package, license, asset hash, source reference, and browser CycloneDX component resolves; required and recommended findings are zero | Validation report, artifact-link report, all-HTML renderer log, public dependency inventory, and browser SBOM |
 | A09 | Locale overlays cannot ship stale or structurally divergent | `python3 scripts/build/assemble_locale_overlay.py --self-test`; `python3 scripts/validation/localization_audit.py --self-test`; run `localization_audit.py --locale` for every locale profile | Mutation suites and every locale audit pass | CI log and localization manifest |
 | A10 | Release packaging is deterministic | `python3 scripts/build/package_release.py --self-test` | Repeated fixture builds have identical archive, manifest, and checksums | CI log |
 | A11 | Generated Pages output matches the source contract and reviewed commit | `python3 -m unittest discover -v -s tests/validation`; `python3 scripts/build/project_source_tree.py --self-test`; `BUILD_PAGES_PULL_MATERIALS=0 bash scripts/build/build_pages.sh /tmp/nemoclaw-pages-test`; run `python3 scripts/validation/artifact_link_audit.py` against the Pages root and each independently deployable course root; run `skill_renderer_runtime_audit.py --site-root /tmp/nemoclaw-pages-test`; run `pages_artifact_integrity.py` with the candidate SHA before upload, during bounded extraction, and against the deployed HTTPS URL | Framework projection, resource-bound, traversal, exhaustive local-link, all-HTML desktop/narrow and dark/light rendering, multi-select export, column-sort, tamper, and deployed-byte fixtures pass; the build fails on any missing, mount-dependent, or root-escaping URL; every generated HTML file was discovered automatically; the same-commit gate report, language routes, dependency evidence, executable-reference policy, file inventory, extracted tree, and live site agree | Pages artifact, SHA-256 inventory, artifact-link report, all-HTML renderer log, browser result, and post-deployment integrity job |
-| A12 | Browser state transitions remain usable | Run the applicable containerized browser audits named in `docs/lab_runtime_testing.md` against source and built output | Entry, success, error, reset/remount, reload, keyboard, and narrow-layout cases pass | Browser logs and screenshots |
-| A13 | Service-stack changes preserve local authoring behavior | `python3 workspace/run_tests.py services --notebook <notebook>` for each affected service notebook | Affected service tests pass in the declared lab environment | Test log |
+| A12 | Browser state transitions remain usable | Run the applicable host-native browser audits named in `docs/lab_runtime_testing.md` against source and built output | Entry, success, error, reset/remount, reload, keyboard, and narrow-layout cases pass | Browser logs and screenshots |
 
-For A07, keep runtime and scanner packages separate:
+For A07, scan the pinned material-tool requirements without installing the removed application runtime:
 
 ```bash
-python3 -m venv /tmp/nemoclaw-release-runtime
 python3 -m venv /tmp/nemoclaw-release-scanner
-/tmp/nemoclaw-release-runtime/bin/python -m pip install -r workspace/requirements.lock
 /tmp/nemoclaw-release-scanner/bin/python -m pip install -r scripts/security/requirements-sca.lock
-RUNTIME_SITE=$(/tmp/nemoclaw-release-runtime/bin/python -c 'import sysconfig; print(sysconfig.get_path("purelib"))')
-PATH="/tmp/nemoclaw-release-scanner/bin:$PATH" /tmp/nemoclaw-release-scanner/bin/python \
-  scripts/security/run_full_sca.py --execute --require-tools --python-local --cyclonedx-env \
-  --python-executable /tmp/nemoclaw-release-runtime/bin/python --python-path "$RUNTIME_SITE" \
-  --out-dir /tmp/nemoclaw-release-sca
+/tmp/nemoclaw-release-scanner/bin/pip-audit -r scripts/materials/requirements.lock --strict \
+  --format cyclonedx-json --output /tmp/nemoclaw-release-sca/python-env.raw.cdx.json
+/tmp/nemoclaw-release-scanner/bin/python scripts/compliance/resolve_sbom_licenses.py \
+  --input /tmp/nemoclaw-release-sca/python-env.raw.cdx.json \
+  --output /tmp/nemoclaw-release-sca/python-env.cdx.json
 /tmp/nemoclaw-release-scanner/bin/python scripts/security/audit_sbom_policy.py \
   --sbom /tmp/nemoclaw-release-sca/python-env.cdx.json \
   --report /tmp/nemoclaw-release-sca/sbom-policy.json
 python3 scripts/compliance/sbom_evidence.py \
   --sbom /tmp/nemoclaw-release-sca/python-env.cdx.json \
-  --artifact-name "python-validation-$(git rev-parse HEAD)" \
-  --record-id python-validation-environment \
+  --artifact-name "python-material-tools-$(git rev-parse HEAD)" \
+  --record-id python-material-tooling \
   --distribution not-distributed \
   --category validation \
   --source-commit "$(git rev-parse HEAD)" \
@@ -160,7 +156,7 @@ Store links, identifiers, named reviewers, and detailed reports outside the publ
    A10 map claims inside that gate; they are not a second command checklist.
 3. Build the complete multilingual Pages tree and run A11. Reuse a prior report only when the
    fail-closed report audit proves the same commit, ship scope, clean source tree, and required pass.
-4. Run A12 and A13 when the diff touches their runtime surfaces.
+4. Run A12 when the diff touches browser behavior.
 5. Push the issue-linked branch and require CI on the submitted commit.
 6. Preview the tested commit and complete M01 through M06 far enough to expose review gaps.
 7. Freeze the release candidate under a protected annotated tag only after repository review.
@@ -176,7 +172,7 @@ copied into a second abbreviated gate.
 ## Pass, failure, and exception rules
 
 - Every applicable automated test must pass on the exact candidate commit.
-- A skipped browser or service test requires a written applicability reason tied to the diff.
+- A skipped browser test requires a written applicability reason tied to the diff.
 - A test crash, zero-input run, stale report, missing artifact, or mismatched SHA is a failure.
 - Repository tests cannot convert missing external evidence into a pass.
 - Where an authorized vulnerability exception is allowed, it must name the final artifact, owner,
@@ -188,7 +184,7 @@ copied into a second abbreviated gate.
 ## Exit criteria
 
 - Required CI is green for the final commit.
-- Required browser and service tests passed or have an accepted applicability record.
+- Required browser tests passed or have an accepted applicability record.
 - The Pages preview and smoke result match the final commit.
 - The deployed HTTPS tree matches the reviewed Pages manifest byte-for-byte.
 - The external integration audit has run on its declared cadence and any external-ahead or diverged state has a reviewed reconciliation record.
@@ -212,7 +208,7 @@ Record this information in the authorized release system:
 | Pipeline | Required CI URL and commit SHA |
 | Preview | Pages URL and smoke job |
 | Release assets | Archive, manifest, SBOM, checksums, and their digests |
-| Automated results | Validation report, dependency scan, waiver audit, and browser/service evidence |
+| Automated results | Validation report, dependency scan, waiver audit, and browser evidence |
 | External results | Registration, legal/license, export, privacy, secret, vulnerability, malware, and host-control evidence |
 | Decision | Reviewer identity, date, outcome, remaining conditions, and rollback owner |
 

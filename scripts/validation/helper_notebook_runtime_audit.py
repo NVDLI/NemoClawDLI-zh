@@ -6,15 +6,14 @@
 
 Default mode runs two checks:
 - static API-surface audit for the notebook source
-- containerized Playwright smoke that clicks every notebook Run control
+- host-native Playwright smoke that clicks every notebook Run control
 
-Use --no-container when only the deterministic source audit is available.
+Use --static-only to run the deterministic source audit without a browser.
 """
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import subprocess
 import sys
@@ -28,8 +27,9 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
 from _bootstrap import find_repo_root
 
 ROOT = find_repo_root(Path(__file__).resolve())
+sys.path.insert(0, str(ROOT))
+from scripts.runtime.host_browser import BrowserRuntimeError, environment, run_node
 SKILL = ROOT / "web" / "nemoclaw" / "scripts" / "SKILL.html"
-DEFAULT_IMAGE = "nemoclaw/lab-runtime-test:local"
 DEFAULT_PATH = "/nemoclaw/scripts/SKILL.html"
 
 CANVAS_UNSUPPORTED = ()
@@ -84,7 +84,7 @@ function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 (async () => {
   await waitForListen(server);
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_BIN });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const pageErrors = [];
   const consoleErrors = [];
@@ -262,12 +262,12 @@ def static_audit(skill_path: Path = SKILL) -> list[str]:
     if len(_mount_targets(raw, "mountRunCell")) < 1:
         findings.append("helper notebook should keep at least one RunCell example")
     for required in (
-        "python3 scripts/validation/helper_notebook_runtime_audit.py --no-container",
-        "CONTAINER_ENGINE=podman python3 scripts/validation/helper_notebook_runtime_audit.py",
-        "CONTAINER_ENGINE=podman python3 scripts/validation/cell_ui_runtime_audit.py --screenshots tmp/cell-ui-audit-source",
-        "CONTAINER_ENGINE=podman python3 scripts/validation/cell_ui_runtime_audit.py --site-root public --screenshots tmp/cell-ui-audit-public",
+        "python3 scripts/validation/helper_notebook_runtime_audit.py --static-only",
+        "python3 scripts/validation/helper_notebook_runtime_audit.py",
+        "python3 scripts/validation/cell_ui_runtime_audit.py --screenshots tmp/cell-ui-audit-source",
+        "python3 scripts/validation/cell_ui_runtime_audit.py --site-root public --screenshots tmp/cell-ui-audit-public",
         "scripts/runtime/browser_env_probe.sh",
-        "podman-compose-via-python",
+        "scripts/runtime/browser_runtime_test.sh --smoke",
         "../vendor/highlight-11.10.0.min.js",
         "../vendor/codemirror-5.65.21.js",
         "../vendor/codemirror-mode-javascript-5.65.21.js",
@@ -318,36 +318,22 @@ def static_audit(skill_path: Path = SKILL) -> list[str]:
     return findings
 
 
-def run_container(args: argparse.Namespace) -> int:
+def run_browser(args: argparse.Namespace) -> int:
     site_root = (ROOT / args.site_root).resolve() if not Path(args.site_root).is_absolute() else Path(args.site_root).resolve()
     if not site_root.exists():
         print(f"helper_notebook_runtime_audit: FAIL\n  - site root missing: {site_root}", file=sys.stderr)
         return 1
-    engine = args.engine or os.environ.get("CONTAINER_ENGINE") or "podman"
     with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as fh:
         fh.write(RUNTIME_JS)
         script = Path(fh.name)
-    cmd = [engine, "run", "--rm", "--entrypoint", "node"]
-    if engine.endswith("podman"):
-        cmd.append("--userns=keep-id")
-    cmd += [
-        "-e", "NODE_PATH=/opt/nemoclaw-runtime/node_modules",
-        "-e", "SITE_ROOT=/site",
-        "-e", f"PAGE_PATH={args.page_path}",
-        "-e", f"AUDIT_TIMEOUT_MS={args.timeout_ms}",
-        "-v", f"{site_root}:/site:ro",
-        "-v", f"{script}:/tmp/helper_notebook_runtime_audit.js:ro",
-        args.image,
-        "/tmp/helper_notebook_runtime_audit.js",
-    ]
     try:
-        proc = subprocess.run(cmd, cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=(args.timeout_ms / 1000) + 30)
-    except FileNotFoundError:
-        print(f"helper_notebook_runtime_audit: FAIL\n  - container engine not found: {engine}")
+        proc = run_node(script, env=environment(SITE_ROOT=site_root, PAGE_PATH=args.page_path, AUDIT_TIMEOUT_MS=str(args.timeout_ms)), timeout=(args.timeout_ms / 1000) + 30)
+    except BrowserRuntimeError as exc:
+        print(f"helper_notebook_runtime_audit: FAIL\n  - {exc}")
         return 1
     except subprocess.TimeoutExpired as exc:
         print("helper_notebook_runtime_audit: FAIL")
-        print(f"  - container audit timed out after {exc.timeout}s")
+        print(f"  - browser audit timed out after {exc.timeout}s")
         if exc.stdout:
             print(exc.stdout)
         return 1
@@ -362,11 +348,9 @@ def run_container(args: argparse.Namespace) -> int:
 
 def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser(description="Validate web/nemoclaw/scripts/SKILL.html helper notebook")
-    ap.add_argument("--no-container", action="store_true", help="run deterministic static audit only")
-    ap.add_argument("--site-root", default="web", help="site root to serve inside Playwright container")
+    ap.add_argument("--static-only", action="store_true", help="run deterministic source audit without Chromium")
+    ap.add_argument("--site-root", default="web", help="site root to serve in host Chromium")
     ap.add_argument("--page-path", default=DEFAULT_PATH, help="page path under served site root")
-    ap.add_argument("--image", default=DEFAULT_IMAGE, help="browser runtime image")
-    ap.add_argument("--engine", default=os.environ.get("CONTAINER_ENGINE"), help="container engine, default CONTAINER_ENGINE or podman")
     ap.add_argument("--timeout-ms", type=int, default=120000, help="per-run browser timeout")
     return ap.parse_args()
 
@@ -379,10 +363,10 @@ def main() -> int:
         for row in findings:
             print(f"  - {row}")
         return 1
-    if args.no_container:
+    if args.static_only:
         print("helper_notebook_runtime_audit: OK (static)")
         return 0
-    rc = run_container(args)
+    rc = run_browser(args)
     if rc == 0:
         print("helper_notebook_runtime_audit: OK (runtime)")
     else:

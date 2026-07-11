@@ -2,12 +2,11 @@
 # Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Exercise root and branch foyer preview filtering in containerized Chromium."""
+"""Exercise root and branch foyer preview filtering in host-native Chromium."""
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import subprocess
 import sys
 import tempfile
@@ -20,7 +19,8 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
 from _bootstrap import find_repo_root
 
 ROOT = find_repo_root(Path(__file__).resolve())
-DEFAULT_IMAGE = "nemoclaw/lab-runtime-test:local"
+sys.path.insert(0, str(ROOT))
+from scripts.runtime.host_browser import BrowserRuntimeError, environment, run_node
 
 RUNTIME_JS = r"""
 const http = require('http');
@@ -28,7 +28,7 @@ const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright-core');
 
-const root = '/site';
+const root = process.env.SITE_ROOT;
 const port = 4201;
 const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json; charset=utf-8', '.svg':'image/svg+xml', '.png':'image/png' };
 const ghost = { name:'never-published', slug:'never-published', kind:'preview', url:'never-published/web/nemoclaw/', preview_ready:true, current:false };
@@ -79,7 +79,7 @@ async function inspect(browser, pagePath, expected) {
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'branches.json'), 'utf8'));
   const expected = manifest.branches.map(branch => branch.name);
   const previews = manifest.branches.filter(branch => branch.kind === 'preview');
-  const browser = await chromium.launch({ headless:true });
+  const browser = await chromium.launch({ headless:true, executablePath:process.env.CHROME_BIN });
   const results = [await inspect(browser, '/index.html', expected)];
   for (const preview of previews) results.push(await inspect(browser, `/${preview.slug}/index.html`, expected));
   await browser.close();
@@ -96,8 +96,6 @@ async function inspect(browser, pagePath, expected) {
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--site-root", default="public")
-    ap.add_argument("--image", default=DEFAULT_IMAGE)
-    ap.add_argument("--engine", default=os.environ.get("CONTAINER_ENGINE") or "podman")
     args = ap.parse_args()
     site_arg = Path(args.site_root)
     site_root = site_arg.resolve() if site_arg.is_absolute() else (ROOT / site_arg).resolve()
@@ -107,19 +105,9 @@ def main() -> int:
     with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as handle:
         handle.write(RUNTIME_JS)
         script = Path(handle.name)
-    cmd = [args.engine, "run", "--rm", "--entrypoint", "node"]
-    if args.engine.endswith("podman"):
-        cmd.append("--userns=keep-id")
-    cmd += [
-        "-e", "NODE_PATH=/opt/nemoclaw-runtime/node_modules",
-        "-v", f"{site_root}:/site:ro",
-        "-v", f"{script}:/tmp/branch_preview_runtime_audit.js:ro",
-        args.image,
-        "/tmp/branch_preview_runtime_audit.js",
-    ]
     try:
-        proc = subprocess.run(cmd, cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=180)
-    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        proc = run_node(script, env=environment(SITE_ROOT=site_root), timeout=180)
+    except (BrowserRuntimeError, subprocess.TimeoutExpired) as exc:
         print(f"branch_preview_runtime_audit: FAIL\n  - {exc}")
         return 1
     finally:

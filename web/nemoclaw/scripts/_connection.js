@@ -19,10 +19,8 @@ function storage() {
   catch (_) { return null; }
 }
 
-// Gateway and access credentials last only for the current browser tab. The
-// launchable URL and non-secret routing preferences may persist across visits,
-// but another course page on the shared CDN must not inherit credentials from a
-// previous browser session.
+// Gateway and access credentials are tab-scoped. The launchable URL and routing may persist,
+// but another course page on the shared CDN must not inherit credentials from a prior session.
 function secretStorage() {
   try { return globalThis.sessionStorage || storage(); }
   catch (_) { return storage(); }

@@ -68,6 +68,7 @@ REQUIRED_EXPLICIT_FACTS = {
     "The static host serves bytes; repository workflows, not the host, enforce build and deployment gates.",
     "Branch and merge-request validation is normal; protected annotated tags identify release candidates only.",
     "Model, relay, launchable, runtime, and live-host controls remain unknown without current operator evidence.",
+    "Host Python, Node.js, and Chromium are authoring and validation dependencies, not production components. Repository-owned container definitions are prohibited and would expand the reviewed scope.",
 }
 
 REQUIRED_TOKENS = {
@@ -103,6 +104,7 @@ REQUIRED_TOKENS = {
         "values retained in `localStorage`",
         "hold no signing key, model API credential, runtime credential",
         "CI does not write Git refs or repository content",
+        "fail-closed boundary audit rejects their reintroduction",
         "reviewer is a human actor, not a component",
         "static host serves bytes",
         "protected annotated tags only",

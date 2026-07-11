@@ -68,6 +68,8 @@ PYODIDE_RUNTIME_SMOKE = ("bash", "scripts/runtime/run_node.sh", "scripts/pyodide
 
 
 FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
+    py("scripts/validation/container_boundary_audit.py", "--self-test"),
+    py("scripts/validation/container_boundary_audit.py"),
     py("scripts/build/bundle_standalone.py", "--self-test"),
     unit_test("artifact_link_audit"),
     ARTIFACT_NAVIGATION_TESTS,
@@ -124,6 +126,8 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
 
 
 SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
+    py("scripts/validation/container_boundary_audit.py", "--self-test"),
+    py("scripts/validation/container_boundary_audit.py"),
     py("scripts/build/bundle_standalone.py", "--self-test"),
     unit_test("artifact_link_audit"),
     ARTIFACT_NAVIGATION_TESTS,
@@ -217,6 +221,10 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
 # Proposal runs may skip a mutation suite only when none of its implementation or contract
 # inputs changed. Full release runs omit --changed-since and execute every suite.
 MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
+    py("scripts/validation/container_boundary_audit.py", "--self-test"): (
+        "scripts/validation/container_boundary_audit.py", "scripts/validation/release_gate.py",
+        "**/Dockerfile", "**/Containerfile", "**/docker-compose*.yml",
+    ),
     unit_test("artifact_link_audit"): (
         "scripts/validation/artifact_link_audit.py", "scripts/build/bundle_standalone.py",
         "scripts/build/build_pages.sh", "tests/validation/test_embedded_validator_suites.py",
@@ -245,8 +253,6 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
         "scripts/**/*.py", "scripts/**/*.js", "scripts/**/*.mjs",
         "web/**/*.py", "web/**/*.js", "web/**/*.mjs",
         "tests/**/*.py", "tests/**/*.js", "tests/**/*.mjs",
-        "cpu/**/*.py", "cpu/**/*.js", "cpu/**/*.mjs",
-        "workspace/**/*.py", "workspace/**/*.js", "workspace/**/*.mjs",
     ),
     unit_test("source_document_audit"): (
         "scripts/compliance/source_document_audit.py", "scripts/compliance/docs/document_sources.json",
@@ -269,8 +275,8 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     unit_test("third_party_inventory_audit"): (
         "THIRD_PARTY_LICENSES.md", "scripts/compliance/third_party_inventory_audit.py",
         "scripts/browser-vendor/package-lock.json", "web/nemoclaw/vendor/*",
-        "workspace/requirements*", "scripts/materials/requirements*",
-        "scripts/security/requirements*", "cpu/services/*", "web/nemoclaw/assets/SKILL.html",
+        "scripts/materials/requirements*", "scripts/security/requirements*",
+        "scripts/runtime/package.json", "scripts/runtime/pnpm-lock.yaml", "web/nemoclaw/assets/SKILL.html",
         "web/nemoclaw/mats/SKILL.html", "scripts/build/build_pages.sh",
     ),
     unit_test("render_sbom_license_inventory"): (
@@ -395,13 +401,13 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     NODE_VALIDATOR_TESTS: (
         "scripts/validation/gateway_token_audit.mjs", "scripts/validation/openclaw_fallback_audit.py",
         "scripts/validation/openclaw_connection_audit.mjs", "scripts/runtime/test_page_runtime.js",
-        "scripts/runtime/lab_runtime_test.sh", "web/nemoclaw/scripts/_connection.js",
+        "scripts/runtime/browser_runtime_test.sh", "scripts/runtime/host_browser.py", "web/nemoclaw/scripts/_connection.js",
         "web/nemoclaw/scripts/_openclaw.js", "web/nemoclaw/scripts/_openshell.js",
         "web/nemoclaw/scripts/_shared.js", "web/nemoclaw/03a-kickstart.html", "web/nemoclaw/04b-modern-clis.html",
         "i18n/pt/web/nemoclaw/03a-kickstart.html", "i18n/es/web/nemoclaw/03a-kickstart.html",
         "i18n/pt/web/nemoclaw/04b-modern-clis.html", "i18n/es/web/nemoclaw/04b-modern-clis.html",
         "scripts/runtime/engine.js", "scripts/runtime/link_projection.py", "scripts/runtime/run_engine.sh",
-        "scripts/runtime/run_node.sh", "deploy/*", "workspace/entrypoint.sh",
+        "scripts/runtime/run_node.sh",
     ),
     py("scripts/build/assemble_locale_overlay.py", "--self-test"): (
         "scripts/build/assemble_locale_overlay.py", "scripts/translate/code_localization.py",
@@ -454,8 +460,8 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
         "scripts/validation/cell_audit.py", "web/nemoclaw/scripts/*", "web/nemoclaw/vendor/*",
     ),
     py("scripts/security/audit_dependency_locks.py", "--self-test"): (
-        "scripts/security/audit_dependency_locks.py", "workspace/requirements*",
-        "scripts/materials/requirements*", "scripts/security/requirements-sca*",
+        "scripts/security/audit_dependency_locks.py", "scripts/materials/requirements*",
+        "scripts/security/requirements-sca*", "scripts/runtime/pnpm-lock.yaml",
     ),
     py("scripts/security/audit_sbom_policy.py", "--self-test"): (
         "scripts/security/audit_sbom_policy.py",
@@ -466,7 +472,6 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     HARNESS_CONTRACT: (
         "tests/validation/test_test_harness_contract.py", "scripts/**/*.py",
         "scripts/**/*.js", "scripts/**/*.mjs", "scripts/**/*.sh",
-        "workspace/**/*.py", "cpu/**/*.py", "deploy/**/*.py",
     ),
 }
 

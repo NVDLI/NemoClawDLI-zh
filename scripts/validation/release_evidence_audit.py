@@ -68,7 +68,7 @@ REQUIRED_DESIGN_ANCHORS = {
     "SHA-256", "new patch tag", "The Type I subject is only the DLI course repository",
     "product, launchable, runtime, relays", "outside this classification",
 }
-REQUIRED_AUTOMATED_IDS = {f"A{index:02d}" for index in range(1, 14)}
+REQUIRED_AUTOMATED_IDS = {f"A{index:02d}" for index in range(1, 13)}
 REQUIRED_MANUAL_IDS = {f"M{index:02d}" for index in range(1, 12)}
 REQUIRED_WIRING = {
     ".gitlab/ci/core.yml": ("release_gate.py --tier ship",),
@@ -166,7 +166,7 @@ def command_path(command: str) -> str | None:
         return None
     for token in tokens:
         token = token.rstrip(";")
-        if token.startswith(("scripts/", "workspace/", "tests/")):
+        if token.startswith(("scripts/", "tests/")):
             return token
     return None
 
@@ -206,8 +206,8 @@ def audit_contract(data: dict, *, root: Path = ROOT,
     if scope.get("production_runtime") != "static-browser-course":
         out.append(finding("product-runtime", "docs/release-evidence.json",
                            "production runtime must remain static-browser-course",
-                           "separate local authoring services from production scope"))
-    for key in ("canonical_source", "locale_overlays", "local_only_sources"):
+                           "restore the static browser course production scope"))
+    for key in ("canonical_source", "locale_overlays"):
         values = scope.get(key)
         values = [values] if isinstance(values, str) else values or []
         for rel in values:

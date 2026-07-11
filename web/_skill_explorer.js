@@ -156,10 +156,10 @@
       // Hand-authored and generated static SKILL bodies remain useful without JS. Once the
       // shared renderer loads, bind them to its palette so one theme choice colors whole page.
       ".skill-static{background:var(--bg)!important;color:var(--tx)!important;border-color:var(--e3)!important}",
-      ".skill-static p,.skill-static .skill-card span,.skill-static .export-status,.skill-static .filter-field legend,.skill-static .export-controls>label{color:var(--td)!important}",
-      ".skill-static h1,.skill-static a,.skill-static .skill-card b,.skill-static .skill-cmd b{color:var(--gs)!important}",
+      ".skill-static p,.skill-static .skill-card span,.skill-static .skill-link span,.skill-static .export-status,.skill-static .filter-field legend,.skill-static .export-controls>label{color:var(--td)!important}",
+      ".skill-static h1,.skill-static a,.skill-static .skill-card b,.skill-static .skill-link b,.skill-static .skill-cmd b{color:var(--gs)!important}",
       ".skill-static h2,.skill-static h3,.skill-static .skill-cmd code,.skill-static code.skill-cmd{color:var(--tx)!important}",
-      ".skill-static .skill-card,.skill-static .skill-cmd,.skill-static .filter-field,.skill-static .export-table-wrap{background:var(--e1)!important;border-color:var(--e3)!important}",
+      ".skill-static .skill-card,.skill-static .skill-link,.skill-static .skill-cmd,.skill-static .filter-field,.skill-static .export-table-wrap{background:var(--e1)!important;border-color:var(--e3)!important}",
       ".skill-static .skill-note{background:rgba(118,185,0,.08)!important;color:var(--tx)!important}",
       ".skill-static input,.skill-static select,.skill-static button{background:var(--bg)!important;color:var(--tx)!important;border-color:var(--e3)!important}",
       ".skill-static .filter-chip{background:var(--e1)!important;color:var(--td)!important;border-color:var(--e3)!important}",
@@ -169,7 +169,7 @@
       ".skill-static .filter-guide,.skill-static .filter-guide li{color:var(--td)!important}",
       ".skill-static .filter-guide strong,.skill-static .filter-guide code{color:var(--tx)!important}",
       ".skill-static pre,.skill-static code{max-width:100%;overflow-wrap:anywhere}.skill-static pre{overflow:auto}.skill-static pre code{white-space:pre-wrap;word-break:break-word}",
-      ".skill-static .skill-cmds,.skill-static .skill-grid,.skill-static .skill-cmd,.skill-static .skill-card{min-width:0;max-width:100%}",
+      ".skill-static .skill-cmds,.skill-static .skill-grid,.skill-static .skill-list,.skill-static .skill-cmd,.skill-static .skill-card,.skill-static .skill-link{min-width:0;max-width:100%}",
       // Shared wide-screen frame. Existing tables/source panels keep their own overflow behavior.
       ".skill-static,.sx-head,.sx-wrap,.rp-head,.rp-wrap{width:100%;max-width:88rem;margin-left:auto;margin-right:auto}",
       ".sx-head{padding:1.1rem clamp(1rem,4vw,2rem) .6rem;border-bottom:1px solid var(--e3)}",

@@ -1,6 +1,6 @@
 # GitHub Pages for Securing Agents with OpenShell and NemoClaw: validate, then build ./public
-# and deploy to Pages. The link engine runs headless under node; no lab, GPU, or browser
-# is needed in CI.
+# and deploy to Pages. Browser checks use the runner's host Chromium; the repository owns
+# no image, Compose stack, or container build.
 name: pages
 
 on:
@@ -118,16 +118,18 @@ jobs:
           python-version: "3.11"
       - name: Build the client-side static site
         run: BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh public
-      - name: Build the isolated Chromium audit runtime
-        run: docker build --build-arg PLAYWRIGHT_VERSION=1.55.0 -f scripts/runtime/lab-runtime/Containerfile -t nemoclaw/lab-runtime-test:local .
+      - name: Install the pinned host-browser API
+        run: |
+          corepack enable
+          pnpm install --dir scripts/runtime --frozen-lockfile --ignore-scripts
       - name: Verify and exercise the exact Pages artifact
         run: |
-          python3 scripts/skills/skill_renderer_runtime_audit.py --site-root public --engine docker
+          python3 scripts/skills/skill_renderer_runtime_audit.py --site-root public --engine current
           python3 scripts/validation/validation_report_audit.py --report public/gate.json --expect-sha "${GITHUB_SHA::7}"
           python3 scripts/validation/branch_preview_manifest_audit.py --artifact-root public --manifest public/branches.json
           python3 scripts/validation/pages_artifact_integrity.py --root public --expect-sha "${GITHUB_SHA::7}" --write-manifest public/pages-sha256.txt
-          python3 scripts/validation/runtime_integration_browser_audit.py --site-root public --engine docker --timeout-ms 180000
-          python3 scripts/validation/branch_preview_runtime_audit.py --site-root public --engine docker
+          python3 scripts/validation/runtime_integration_browser_audit.py --site-root public --timeout-ms 180000
+          python3 scripts/validation/branch_preview_runtime_audit.py --site-root public
           python3 scripts/validation/pages_artifact_integrity.py --root public --expect-sha "${GITHUB_SHA::7}" --check-manifest public/pages-sha256.txt
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1

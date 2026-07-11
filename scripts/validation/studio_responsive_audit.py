@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import argparse
-import os
 import subprocess
 import sys
 import tempfile
@@ -19,7 +18,8 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
 from _bootstrap import find_repo_root
 
 ROOT = find_repo_root(Path(__file__).resolve())
-DEFAULT_IMAGE = "nemoclaw/lab-runtime-test:local"
+sys.path.insert(0, str(ROOT))
+from scripts.runtime.host_browser import BrowserRuntimeError, environment, run_node
 DEFAULT_PATH = "/nemoclaw/studio.html?page=01a-loop.html"
 
 RUNTIME_JS = r"""
@@ -100,7 +100,7 @@ async function checkViewport(page, width, height) {
 
 (async () => {
   await listen();
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_BIN });
   const page = await browser.newPage();
   const sizes = [[360, 360], [520, 420], [900, 360]];
   const results = [];
@@ -116,36 +116,22 @@ async function checkViewport(page, width, height) {
 """
 
 
-def run_container(args: argparse.Namespace) -> int:
+def run_browser(args: argparse.Namespace) -> int:
     site_root = (ROOT / args.site_root).resolve() if not Path(args.site_root).is_absolute() else Path(args.site_root).resolve()
     if not site_root.exists():
         print(f"studio_responsive_audit: FAIL\n  - site root missing: {site_root}", file=sys.stderr)
         return 1
-    engine = args.engine or os.environ.get("CONTAINER_ENGINE") or "podman"
     with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as fh:
         fh.write(RUNTIME_JS)
         script = Path(fh.name)
-    cmd = [engine, "run", "--rm", "--entrypoint", "node"]
-    if engine.endswith("podman"):
-        cmd.append("--userns=keep-id")
-    cmd += [
-        "-e", "NODE_PATH=/opt/nemoclaw-runtime/node_modules",
-        "-e", "SITE_ROOT=/site",
-        "-e", f"PAGE_PATH={args.page_path}",
-        "-e", f"AUDIT_TIMEOUT_MS={args.timeout_ms}",
-        "-v", f"{site_root}:/site:ro",
-        "-v", f"{script}:/tmp/studio_responsive_audit.js:ro",
-        args.image,
-        "/tmp/studio_responsive_audit.js",
-    ]
     try:
-        proc = subprocess.run(cmd, cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=(args.timeout_ms / 1000) + 30)
-    except FileNotFoundError:
-        print(f"studio_responsive_audit: FAIL\n  - container engine not found: {engine}")
+        proc = run_node(script, env=environment(SITE_ROOT=site_root, PAGE_PATH=args.page_path, AUDIT_TIMEOUT_MS=str(args.timeout_ms)), timeout=(args.timeout_ms / 1000) + 30)
+    except BrowserRuntimeError as exc:
+        print(f"studio_responsive_audit: FAIL\n  - {exc}")
         return 1
     except subprocess.TimeoutExpired as exc:
         print("studio_responsive_audit: FAIL")
-        print(f"  - container audit timed out after {exc.timeout}s")
+        print(f"  - browser audit timed out after {exc.timeout}s")
         if exc.stdout:
             print(exc.stdout)
         return 1
@@ -164,16 +150,14 @@ def run_container(args: argparse.Namespace) -> int:
 
 def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser(description="Browser-check Studio responsive floors")
-    ap.add_argument("--site-root", default="web", help="site root to serve inside Playwright container")
+    ap.add_argument("--site-root", default="web", help="site root to serve in host Chromium")
     ap.add_argument("--page-path", default=DEFAULT_PATH, help="studio URL path under served site root")
-    ap.add_argument("--image", default=DEFAULT_IMAGE, help="browser runtime image")
-    ap.add_argument("--engine", default=os.environ.get("CONTAINER_ENGINE"), help="container engine, default CONTAINER_ENGINE or podman")
     ap.add_argument("--timeout-ms", type=int, default=120000, help="browser timeout")
     return ap.parse_args()
 
 
 def main() -> int:
-    return run_container(parse_args())
+    return run_browser(parse_args())
 
 
 if __name__ == "__main__":

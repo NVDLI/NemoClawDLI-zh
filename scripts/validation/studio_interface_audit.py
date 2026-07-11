@@ -65,18 +65,16 @@ REQUIRED_JS = {
 
 REQUIRED_SKILL = {
     "audit command": "python3 scripts/validation/studio_interface_audit.py",
-    "helper notebook static audit": "python3 scripts/validation/helper_notebook_runtime_audit.py --no-container",
-    "helper notebook runtime audit": "CONTAINER_ENGINE=podman python3 scripts/validation/helper_notebook_runtime_audit.py",
+    "helper notebook static audit": "python3 scripts/validation/helper_notebook_runtime_audit.py --static-only",
+    "helper notebook runtime audit": "python3 scripts/validation/helper_notebook_runtime_audit.py",
     "lab authoring mode": "Lab authoring",
     "static review mode": "Read-only static preview",
     "light export mode": "Light export review",
     "openclaw mode": "OpenClaw controls",
     "studio testing split": "operator console for running or copying checks",
     "browser env probe": "scripts/runtime/browser_env_probe.sh",
-    "browser smoke harness": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --smoke",
-    "render-only harness": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only",
-    "python podman compose": "python3 -m podman_compose",
-    "full lab harness": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html",
+    "browser smoke harness": "scripts/runtime/browser_runtime_test.sh --smoke",
+    "render-only harness": "scripts/runtime/browser_runtime_test.sh --render-only",
     "helper notebook heading": "Helper notebook",
     "helper map cell": "helper-map-cell",
     "helper retrieval cell": "helper-retrieval-cell",
@@ -158,14 +156,12 @@ def audit() -> list[str]:
         "test command model": "const TEST_COMMANDS",
         "test command renderer": "function renderTestCommands",
         "static audit command": "python3 scripts/validation/studio_interface_audit.py",
-        "helper notebook static command": "python3 scripts/validation/helper_notebook_runtime_audit.py --no-container",
-        "helper notebook browser command": "CONTAINER_ENGINE=podman python3 scripts/validation/helper_notebook_runtime_audit.py",
-        "studio responsive browser command": "CONTAINER_ENGINE=podman python3 scripts/validation/studio_responsive_audit.py",
+        "helper notebook static command": "python3 scripts/validation/helper_notebook_runtime_audit.py --static-only",
+        "helper notebook browser command": "python3 scripts/validation/helper_notebook_runtime_audit.py",
+        "studio responsive browser command": "python3 scripts/validation/studio_responsive_audit.py",
         "browser env probe command": "scripts/runtime/browser_env_probe.sh",
-        "browser smoke command": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --smoke",
-        "render-only test command": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only",
-        "python podman compose command": "python3 -m podman_compose",
-        "full lab test command": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html",
+        "browser smoke command": "scripts/runtime/browser_runtime_test.sh --smoke",
+        "render-only test command": "scripts/runtime/browser_runtime_test.sh --render-only",
     }
     for label, token in required_studio_tokens.items():
         if token not in js:
@@ -178,12 +174,9 @@ def audit() -> list[str]:
     runtime_tokens = {
         "probe file": "browser_env_probe.sh",
         "probe command": "scripts/runtime/browser_env_probe.sh",
-        "browser smoke": "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --smoke",
-        "host deps optional": "host Node, Chromium, and Playwright are optional",
-        "python compose": "python3 -m podman_compose",
-        "native docker compose caveat": "Docker may exist without <code>docker compose</code>",
-        "native podman compose caveat": "Podman may exist without <code>podman compose</code>",
-        "python compose escalation": "podman-compose-via-python: yes",
+        "browser smoke": "scripts/runtime/browser_runtime_test.sh --smoke",
+        "host prerequisites": "host Node.js, the pinned playwright-core API, and Chromium",
+        "host browser entrypoint": "scripts/runtime/browser_runtime_test.sh --smoke",
     }
     for label, token in runtime_tokens.items():
         if token not in runtime_skill:
@@ -199,11 +192,9 @@ def audit() -> list[str]:
 
     for label, token in {
         "lab doc probe": "scripts/runtime/browser_env_probe.sh",
-        "lab doc optional host deps": "Host Node.js, Playwright, and Chromium are not",
-        "lab doc python compose": "python3 -m podman_compose",
-        "lab doc docker compose caveat": "Compose v2 plugin",
-        "lab doc podman compose caveat": "Podman may work while",
-        "lab doc do not stop": "Do not stop after a missing native Compose subcommand",
+        "lab doc host prerequisites": "Python 3.11 or newer",
+        "lab doc pinned browser API": "pnpm install --dir scripts/runtime --frozen-lockfile --ignore-scripts",
+        "lab doc external isolation boundary": "does not build, scan, support, or distribute that environment",
     }.items():
         if token not in lab_doc:
             findings.append(f"docs/lab_runtime_testing.md missing {label}: {token}")
@@ -215,11 +206,9 @@ def audit() -> list[str]:
             findings.append(f"docs/release_playbook.md missing {label}: {token}")
 
     for label, token in {
-        "probe native docker compose status": "native docker compose",
-        "probe native podman compose status": "native podman compose",
-        "probe python compose status": "podman-compose-via-python",
-        "probe native compose escalation": "native Compose missing; use python3 -m podman_compose",
-        "probe do not stop": "do not stop at docker compose or podman compose failure",
+        "probe host node status": "node:",
+        "probe browser API status": "playwright-core:",
+        "probe chromium status": "chromium/chrome:",
     }.items():
         if token not in browser_probe:
             findings.append(f"scripts/runtime/browser_env_probe.sh missing {label}: {token}")

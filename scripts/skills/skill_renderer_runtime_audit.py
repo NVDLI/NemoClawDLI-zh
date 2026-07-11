@@ -25,9 +25,6 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts" / "skills"))
 import skill_audit
 
-DEFAULT_IMAGE = "nemoclaw/lab-runtime-test:local"
-
-
 def discover_html(site: Path, scan_root: Optional[Path] = None) -> list[str]:
     """Return every HTML path below one artifact root, relative to its served deployment."""
     site = site.resolve()
@@ -595,24 +592,6 @@ async function inspect(browser, file) {
         if (storedTheme === null) localStorage.removeItem('theme');
         else localStorage.setItem('theme', storedTheme);
       } catch (_) {}
-      const softwareMount = document.getElementById('third-party-export-preview');
-      const localCategory = softwareMount?.querySelector('[data-export-category-group] input[value="local-authoring"]');
-      let noAssertionView = null;
-      if (localCategory) {
-        softwareMount.querySelectorAll('[data-export-category-group] input[type="checkbox"]').forEach(input => {
-          input.checked = input === localCategory;
-        });
-        localCategory.dispatchEvent(new Event('change', {bubbles:true}));
-        const rows = Array.from(softwareMount.querySelectorAll('tbody tr'));
-        const unresolved = rows.filter(row => row.querySelector('td[data-label="License"]')?.innerText.includes('Missing license evidence'));
-        noAssertionView = {
-          rows:rows.length,
-          unresolved:unresolved.length,
-          coveredSubjects:sbomEvidence?.querySelectorAll('tr[data-sbom-subject="1"]').length || 0,
-          brokenLicenseLinks:unresolved.filter(row => row.querySelector('td[data-label="License"] a')).length,
-          usefulEvidence:rows.every(row => /learners do not receive/i.test(row.textContent || '')),
-        };
-      }
       const evidenceAnchors = Array.from(document.querySelectorAll('a[data-evidence-link]'));
       const invalidEvidenceLinks = evidenceAnchors.filter(anchor => {
         const raw = anchor.getAttribute('href') || '';
@@ -663,8 +642,12 @@ async function inspect(browser, file) {
           ready:sbomEvidence.dataset.sbomEvidenceReady === '1',
           error:sbomEvidence.dataset.sbomEvidenceError || '',
           cards:sbomEvidence.querySelectorAll('.sbom-card').length,
+          expectedCards:Number(sbomEvidence.dataset.sbomExpectedCards ?? NaN),
+          deliveryStates:sbomEvidence.querySelectorAll('.sbom-card .sbom-state[data-distribution]').length,
+          evidenceCards:Array.from(sbomEvidence.querySelectorAll('.sbom-card')).filter(card => card.querySelector('details')).length,
           componentRows:sbomEvidence.querySelectorAll('.sbom-components tbody tr').length,
           subjectRows:sbomEvidence.querySelectorAll('tr[data-sbom-subject="1"]').length,
+          expectedSubjectRows:Number(sbomEvidence.dataset.sbomExpectedSubjects ?? NaN),
           subjectHints:sbomEvidence.querySelectorAll('tr[data-sbom-subject="1"] [data-license-hint="1"]').length,
           subjectLinks:Array.from(sbomEvidence.querySelectorAll('tr[data-sbom-subject="1"]')).map(row => row.querySelectorAll('a[data-evidence-link]').length),
           ciLinksState:sbomEvidence.querySelector('[data-ci-links-state]')?.dataset.ciLinksState || '',
@@ -674,11 +657,10 @@ async function inspect(browser, file) {
           clarificationCount:Number(sbomEvidence.querySelector('[data-sbom-fact="unresolved"] strong')?.textContent ?? NaN),
           invalidEvidenceLinks,
           text:sbomEvidence.innerText || '',
-          visibleTechnicalTerms:['security_deep_sca','security_image_sca','CycloneDX','SHA-256','artifact path'].filter(term =>
+          visibleTechnicalTerms:['CycloneDX','SHA-256','artifact path'].filter(term =>
             (sbomEvidence.innerText || '').includes(term)
           ),
         } : null,
-        noAssertionView,
       };
     }, { isSkill });
     await page.setViewportSize({ width:390, height:844 });
@@ -735,10 +717,13 @@ async function inspect(browser, file) {
     if (state.sbomEvidence) {
       if (state.sbomEvidence.error) errors.push(`SBOM evidence preview failed: ${state.sbomEvidence.error}`);
       else if (!state.sbomEvidence.ready) errors.push('SBOM evidence preview did not become ready');
-      else if (state.sbomEvidence.cards < 3) errors.push('SBOM evidence preview does not distinguish all evidence states');
+      else if (!Number.isInteger(state.sbomEvidence.expectedCards)
+          || state.sbomEvidence.cards !== state.sbomEvidence.expectedCards) {
+        errors.push(`SBOM evidence rendered ${state.sbomEvidence.cards} of ${state.sbomEvidence.expectedCards} declared records`);
+      }
       else if (!state.sbomEvidence.componentRows) errors.push('linked SBOM rendered no component licenses');
-      else if (!state.sbomEvidence.subjectRows
-          || state.sbomEvidence.subjectHints !== state.sbomEvidence.subjectRows
+      else if (state.sbomEvidence.subjectRows !== state.sbomEvidence.expectedSubjectRows
+          || state.sbomEvidence.subjectHints !== state.sbomEvidence.expectedSubjectRows
           || state.sbomEvidence.subjectLinks.some(count => count < 3)) {
         errors.push('conditional SBOM rows lack declaration, upstream, or license-hint evidence');
       } else if (state.sbomEvidence.invalidEvidenceLinks.length) {
@@ -755,10 +740,8 @@ async function inspect(browser, file) {
         errors.push(`available CI evidence reports ${state.sbomEvidence.clarificationCount} package(s) needing license clarification but renders ${state.sbomEvidence.clarificationRows}`);
       } else if (!['available', 'incomplete', 'unavailable'].includes(state.sbomEvidence.ciLinksState)) {
         errors.push('CI artifact evidence lacks an explicit availability state');
-      } else if (!/Learners receive these \d+ packages/.test(state.sbomEvidence.text)
-          || !state.sbomEvidence.text.includes('Learners do not receive these packages')
-          || !state.sbomEvidence.text.includes('Learners do not receive these tools')
-          || !state.sbomEvidence.text.includes('Files for auditors and automation')) {
+      } else if (state.sbomEvidence.deliveryStates !== state.sbomEvidence.expectedCards
+          || state.sbomEvidence.evidenceCards !== state.sbomEvidence.expectedCards) {
         errors.push('software review does not answer learner delivery before exposing audit detail');
       } else if (state.sbomEvidence.ciLinksState === 'available'
           && (!state.sbomEvidence.text.includes('packages checked')
@@ -767,11 +750,6 @@ async function inspect(browser, file) {
       } else if (state.sbomEvidence.visibleTechnicalTerms.length) {
         errors.push(`software review exposes implementation jargon before disclosure: ${state.sbomEvidence.visibleTechnicalTerms.join(', ')}`);
       }
-    }
-    if (state.noAssertionView) {
-      if (state.noAssertionView.unresolved) errors.push('local-authoring view renders unresolved license evidence');
-      else if (!state.noAssertionView.coveredSubjects) errors.push('conditional image subjects are absent');
-      else if (!state.noAssertionView.usefulEvidence) errors.push('local-authoring rows omit learner-distribution guidance');
     }
   } catch (error) {
     errors.push(`navigation: ${error.message || String(error)}`);
@@ -829,48 +807,21 @@ def run(args: argparse.Namespace) -> int:
     if not files:
         print(f"skill_renderer_runtime_audit: FAIL\n  - no HTML files under {site}")
         return 1
-    temp_parent = site.parent if args.engine == "apple" else None
-    with tempfile.TemporaryDirectory(prefix="skill-renderer-audit-", dir=temp_parent) as temp:
+    with tempfile.TemporaryDirectory(prefix="skill-renderer-audit-") as temp:
         temp_path = Path(temp)
         script = temp_path / "audit.js"
         manifest = temp_path / "html-files.json"
         script.write_text(RUNTIME_JS, encoding="utf-8")
         manifest.write_text(json.dumps(files), encoding="utf-8")
-        if args.engine == "apple":
-            command = [
-                "container", "machine", "run", "--root", "--name", args.machine,
-                "--workdir", str(site),
-                "--env", f"NODE_PATH={args.node_path}",
-                "--env", f"CHROME_BIN={'' if args.chrome_bin == 'auto' else args.chrome_bin}",
-                "--env", f"SITE_ROOT={site}",
-                "--env", f"HTML_FILES={manifest}",
-                "--", "node", str(script),
-            ]
-        elif args.engine == "current":
-            command = ["node", str(script)]
-        else:
-            command = [args.engine, "run", "--rm", "--entrypoint", "node"]
-            if args.engine.endswith("podman"):
-                command.append("--userns=keep-id")
-            command += [
-                "-e", "NODE_PATH=/opt/nemoclaw-runtime/node_modules",
-                "-e", "SITE_ROOT=/site",
-                "-e", "HTML_FILES=/tmp/html-files.json",
-                "-v", f"{site}:/site:ro",
-                "-v", f"{script}:/tmp/skill-renderer-audit.js:ro",
-                "-v", f"{manifest}:/tmp/html-files.json:ro",
-                args.image,
-                "/tmp/skill-renderer-audit.js",
-            ]
+        command = [os.environ.get("NODE_BIN") or "node", str(script)]
         try:
             environment = os.environ.copy()
-            if args.engine == "current":
-                environment.update({
-                    "NODE_PATH": args.node_path,
-                    "CHROME_BIN": "" if args.chrome_bin == "auto" else args.chrome_bin,
-                    "SITE_ROOT": str(site),
-                    "HTML_FILES": str(manifest),
-                })
+            environment.update({
+                "NODE_PATH": args.node_path,
+                "CHROME_BIN": "" if args.chrome_bin == "auto" else args.chrome_bin,
+                "SITE_ROOT": str(site),
+                "HTML_FILES": str(manifest),
+            })
             result = subprocess.run(
                 command,
                 cwd=ROOT,
@@ -888,18 +839,18 @@ def run(args: argparse.Namespace) -> int:
     return result.returncode
 
 
-def main() -> int:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--site-root", default=str(ROOT))
     parser.add_argument("--scan-root", help="artifact subtree to discover exhaustively; must be inside --site-root")
-    default_engine = os.environ.get("CONTAINER_ENGINE") or ("apple" if shutil.which("container") else "docker")
-    parser.add_argument("--engine", default=default_engine, help="apple, current, docker, or podman")
-    parser.add_argument("--image", default=DEFAULT_IMAGE)
-    parser.add_argument("--machine", default=os.environ.get("APPLE_CONTAINER_MACHINE") or "nemoclaw-test")
-    parser.add_argument("--node-path", default=os.environ.get("APPLE_CONTAINER_NODE_PATH") or "/opt/nemoclaw-runtime/node_modules")
-    parser.add_argument("--chrome-bin", default=os.environ.get("APPLE_CONTAINER_CHROME_BIN") or "/opt/nemoclaw-runtime/chromium-1187/chrome-linux/headless_shell")
+    parser.add_argument("--node-path", default=os.environ.get("NODE_PATH") or str(ROOT / "scripts/runtime/node_modules"))
+    parser.add_argument("--chrome-bin", default=os.environ.get("CHROME_BIN") or "auto")
     parser.add_argument("--timeout-seconds", type=int, default=240)
-    return run(parser.parse_args())
+    return parser
+
+
+def main() -> int:
+    return run(build_parser().parse_args())
 
 
 if __name__ == "__main__":

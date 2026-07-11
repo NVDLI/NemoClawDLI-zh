@@ -4,13 +4,13 @@
 
 """Bundle web/nemoclaw/*.html into iframe-ready single-file HTMLs.
 
-The lab view (web/*.html behind nginx) is the source of truth. This script
+The canonical web source is the source of truth. This script
 transforms each source page so that it works as a *standalone* file: no
-sibling pages, no microservices (other than the Cloudflare LLM proxy), no
+sibling pages, no repository-operated services, no
 topbar, no journey map, no foot-nav. Light theme so it reads inside an edX
 iframe.
 
-Every transform happens here. The lab view source files stay untouched.
+Every transform happens here. The canonical source files stay untouched.
 
 What gets transformed:
 
@@ -483,8 +483,7 @@ LITE_OPEN_PANELS_JS = r"""
 """
 
 
-# /lab/lab/... is the JupyterLab tree URL only resolvable inside the lab container. /lab/static/ ditto.
-# In an external iframe these 404.
+# Legacy /lab/lab/... and /lab/static/... authoring URLs do not resolve in an external iframe.
 # Convert any anchor with such an href into plain text so the prose still reads.
 LAB_ANCHOR_RE = re.compile(
     r'<a([^>]*?)href="/lab/(?:lab|static)/[^"]*"([^>]*)>(.*?)</a>',
@@ -1052,9 +1051,7 @@ def main() -> int:
         return 1
 
     if args.clean and out.exists():
-        # Walk and unlink only the files we own. JupyterLab may have created
-        # an .ipynb_checkpoints subdirectory owned by a different uid; skip
-        # anything we can't remove rather than failing the whole bundle.
+        # Walk and unlink only generated files; skip paths the current user cannot remove.
         for p in sorted(out.rglob("*"), key=lambda x: len(x.parts), reverse=True):
             try:
                 if p.is_file() or p.is_symlink():

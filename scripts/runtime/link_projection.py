@@ -6,8 +6,7 @@
 
 The graph engine (link resolution, crawl, nodes/edges, reachability, the foyer contract)
 lives in scripts/runtime/engine.js and runs in BOTH the browser viewer and headless via node
-(scripts/runtime/run_engine.sh prefers a host node, else the lab container where `dli` is bind-mounted
-to the host tree). There is no second python graph engine to drift from.
+(scripts/runtime/run_engine.sh uses host Node). There is no second Python graph engine to drift from.
 
 This module keeps only:
   * the pure CRAWL / CLASSIFICATION helpers that grounding.py reuses (course_of, _iter_pages,
@@ -32,7 +31,7 @@ HERE = Path(__file__).resolve()
 
 def _find_task1(start: Path) -> Path:
     for p in [start, *start.parents]:
-        if (p / "deploy" / "docker-compose.yml").is_file() or (p / "AGENTS.md").is_file():
+        if (p / "AGENTS.md").is_file():
             return p
     return start.parents[1]
 
@@ -60,14 +59,14 @@ def is_mat_path(rel: str) -> bool:
 
 
 SHIP_PREFIXES = ("web/nemoclaw/", "web/index", "web/courses",
-                 "cpu/services/", "deploy/", "docs/", "scripts/")
-SHIP_HUBS = {"SKILL.html", "web/SKILL.html", "cpu/SKILL.html"}
+                 "docs/", "scripts/")
+SHIP_HUBS = {"SKILL.html", "web/SKILL.html"}
 
 # mats now live UNDER web/ (already a crawl root that recurses), so "mats" is no longer a separate top-level crawl root or shared TOPDIR.
 # It is still shared infra, detected by path segment.
-SHARED_SUBDIRS = {"mats", "repos", "services"}
-SHARED_TOPDIRS = {"repos", "scripts", "docs", "deploy"}
-CRAWL_TOP = ("web", "cpu", "deploy", "docs", "scripts")
+SHARED_SUBDIRS = {"mats", "repos"}
+SHARED_TOPDIRS = {"repos", "scripts", "docs"}
+CRAWL_TOP = ("web", "docs", "scripts")
 
 _TEMPLATE_MARK = ("{{", "}}", "<?", "?>", "<%", "%>", "${", "&lt;", "&gt;", "&#")
 
@@ -104,14 +103,12 @@ def course_of(p: str) -> str:
     # Mats are shared references, even when stored under a course path.
     if is_mat_path(p):
         return "_shared"
-    if parts[0] in ("web", "cpu"):
+    if parts[0] == "web":
         if parts[1] in SHARED_SUBDIRS:
             return "_shared"
         if len(parts) == 2 and "." in parts[1]:
             return "_shared"
         return parts[1]
-    if parts[0] == "workspace":
-        return "_shared"
     if parts[0] in SHARED_TOPDIRS:
         return "_shared"
     return parts[0]
@@ -210,7 +207,7 @@ def _engine(*args: str) -> str:
                        capture_output=True, text=True)
     if p.returncode not in (0, 1) or (p.returncode == 1 and not p.stdout.strip()):
         # 0 ok, 1 = blocking issues only when the engine still emitted its JSON report.
-        # Empty stdout with return code 1 is usually container/socket failure from run_node.sh.
+        # Empty stdout with return code 1 means the host engine failed before producing a report.
         raise RuntimeError(f"engine.js failed ({p.returncode}): {p.stderr.strip() or p.stdout.strip()}")
     return p.stdout
 
@@ -275,7 +272,7 @@ def embed_snapshot(proj: Projection | None = None) -> bool:
 
 
 def main():
-    # forward everything to the JS engine (run_engine.sh resolves node: host, else lab container)
+    # Forward everything to the JS engine through the host Node runner.
     args = sys.argv[1:] or ["--self-test"]
     return subprocess.run(["bash", str(_RUN_ENGINE), *args]).returncode
 

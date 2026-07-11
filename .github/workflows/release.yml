@@ -57,19 +57,14 @@ jobs:
         run: |
           python3 scripts/validation/release_gate.py --tier ship --timing-report docs/validation/release-gate-timings.json
           python3 scripts/compliance/sbom_evidence.py --check-external-links
-      - name: Resolve release environment and emit SBOM
+      - name: Scan pinned Python material tools and emit SBOM
         run: |
           set -euo pipefail
-          python3 -m venv .release-runtime-venv
           python3 -m venv .release-scan-venv
-          .release-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock
           .release-scan-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock
-          RUNTIME_SITE="$(.release-runtime-venv/bin/python -c 'import sysconfig; print(sysconfig.get_path("purelib"))')"
-          PATH="$PWD/.release-scan-venv/bin:$PATH" .release-scan-venv/bin/python \
-            scripts/security/run_full_sca.py --execute --require-tools --python-local \
-            --cyclonedx-env --python-executable "$PWD/.release-runtime-venv/bin/python" \
-            --python-path "$RUNTIME_SITE" --out-dir release-security
-          mv release-security/python-env.cdx.json release-security/python-env.raw.cdx.json
+          mkdir -p release-security
+          .release-scan-venv/bin/pip-audit -r scripts/materials/requirements.lock --strict \
+            --format cyclonedx-json --output release-security/python-env.raw.cdx.json
           .release-scan-venv/bin/python scripts/compliance/resolve_sbom_licenses.py \
             --input release-security/python-env.raw.cdx.json \
             --output release-security/python-env.cdx.json
@@ -80,9 +75,9 @@ jobs:
             --raw-sbom release-security/python-env.raw.cdx.json \
             --raw-sbom-href "nemoclaw-${{ inputs.tag }}.python-env.raw.cdx.json" \
             --sbom release-security/python-env.cdx.json \
-            --artifact-name "python-validation-$(git rev-parse HEAD)" \
-            --record-id python-validation-environment \
-            --description "Resolved Python validation environment; not distributed to learners" \
+            --artifact-name "python-material-tools-$(git rev-parse HEAD)" \
+            --record-id python-material-tooling \
+            --description "Pinned Python tools used to verify course materials; not distributed to learners" \
             --distribution not-distributed \
             --category validation \
             --source-commit "$(git rev-parse HEAD)" \

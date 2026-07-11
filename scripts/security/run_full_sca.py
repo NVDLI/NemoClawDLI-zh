@@ -90,22 +90,6 @@ def planned_steps(args: argparse.Namespace, out: Path) -> list[tuple[str, list[s
             "OSV-Scanner source scan",
             ["osv-scanner", "scan", "source", "--format", "json", "--output-file", str(out / "osv-source.json"), "."],
         ))
-    if args.image:
-        image_slug = args.image.replace("/", "_").replace(":", "_")
-        steps.extend([
-            (
-                "OSV-Scanner image scan",
-                ["osv-scanner", "scan", "image", "--format", "json", "--output-file", str(out / f"osv-image-{image_slug}.json"), args.image],
-            ),
-            (
-                "Grype image scan",
-                ["grype", args.image, "-o", "json", "--file", str(out / f"grype-image-{image_slug}.json")],
-            ),
-            (
-                "Trivy image scan",
-                ["trivy", "image", "--format", "json", "--output", str(out / f"trivy-image-{image_slug}.json"), args.image],
-            ),
-        ])
     return steps
 
 
@@ -120,11 +104,10 @@ def main() -> int:
     parser.add_argument("--python-executable", help="Python interpreter whose environment CycloneDX should inventory")
     parser.add_argument("--python-path", help="site-packages path pip-audit should inspect instead of the scanner environment")
     parser.add_argument("--osv-source", action="store_true", help="run OSV-Scanner source scan")
-    parser.add_argument("--image", help="also scan a built image with OSV-Scanner, Grype, and Trivy when available")
     parser.add_argument("--json", action="store_true", help="emit machine-readable report")
     args = parser.parse_args()
 
-    selected = any((args.all_available, args.python_local, args.cyclonedx_env, args.osv_source, args.image))
+    selected = any((args.all_available, args.python_local, args.cyclonedx_env, args.osv_source))
     if not selected:
         args.all_available = True
         args.execute = False

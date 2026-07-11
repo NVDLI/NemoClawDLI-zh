@@ -15,7 +15,7 @@ Surfaces scanned:
   - The student-facing cell code inside every <script> body of a web page.
 
 Detector families (each is a validate_bundle suite, auditable from the report):
-  - comments:    block length, mid-sentence wraps, colon-leads-to-list, inline length, marker spacing.
+  - comments:    block length, colon-leads-to-list, inline length, marker spacing.
   - walls:       runs of code with no blank line to breathe, and runs of same-prefix statements.
   - duplication: near-identical code blocks, the same interface defined twice, trivial wrappers.
   - size:        files past a line budget, and comment-density outside a healthy band.
@@ -23,7 +23,7 @@ Detector families (each is a validate_bundle suite, auditable from the report):
 
 Usage:
   python3 scripts/validation/code_hygiene.py                 # scan our code, grouped summary
-  python3 scripts/validation/code_hygiene.py --scope all     # include workspace + service code
+  python3 scripts/validation/code_hygiene.py --scope all     # include every authored source surface
   python3 scripts/validation/code_hygiene.py --file scripts/runtime/engine.js   # one file, every finding
   python3 scripts/validation/code_hygiene.py --kind comments # one family only
   python3 scripts/validation/code_hygiene.py --json          # machine-readable (the gate reads this)
@@ -69,8 +69,6 @@ _SCRIPT_BODY = re.compile(r"<script\b([^>]*)>(.*?)</script>", re.I | re.S)
 _NONJS_SCRIPT = re.compile(r'type\s*=\s*["\']?(?:application|text)/(?:json|ld\+json|css)', re.I)
 _LIST_ITEM = re.compile(r"^\s*(?:[-*•·]\s+\S|\d+[.)]\s+\S|[a-zA-Z][.)]\s+\S|\S[^:]*\s[:=-]\s+\S)")
 _BANNER = re.compile(r"^[\W_]+$")                       # a separator rule: only punctuation / box-drawing.
-_HEADER = re.compile(r"^(?:[─=*~_·.-]{2,}|[A-Z][A-Z0-9 ./_-]{3,})")   # a section header, not a wrapped clause.
-_END_OK = re.compile(r"[.:!?]['\")\]]?$")               # a prose comment line may break only after these.
 _URL = re.compile(r"https?://[^\s'\"`)]+", re.I)
 _NAMED_CONSTANT_ASSIGN = re.compile(r"^\s*(?:(?:const|let|var)\s+)?[A-Z][A-Z0-9_]*\s*(?::[^=]+)?=")
 _CONFIG_KEY_ASSIGN = re.compile(r"^\s*[\"']?[A-Z][A-Z0-9_]*[\"']?\s*:")
@@ -99,9 +97,9 @@ def _is_ours(rel: str) -> bool:
 
 def _iter_files(scope: str):
     """(path, rel, suffix) for every code file we own. ship scope is the released course plus
-    its shared infra; all scope adds workspace and service code. Vendored and generated trees
-    are always skipped."""
-    ship = ("web/nemoclaw/", "scripts/", "cpu/services/", "web/_shared",
+    its shared infra; all scope adds other authored source. Vendored and generated trees are
+    always skipped."""
+    ship = ("web/nemoclaw/", "scripts/", "web/_shared",
             "web/index", "web/courses")
     for f in sorted(TASK1.rglob("*")):
         if not f.is_file() or f.suffix not in (".py", ".js", ".mjs", ".html", ".htm"):
@@ -179,11 +177,14 @@ def _python_lines(text: str):
         n = t.start[0]
         if n - 1 >= len(lines):
             continue
+        raw_line = text.split("\n")[n - 1]
+        if n == 1 and raw_line.startswith("#!"):
+            continue
         L = lines[n - 1]
         L.marker = "#"
         L.ctext = t.string[1:].strip()
-        L.inline = bool(text.split("\n")[n - 1][:t.start[1]].strip())
-        L.spaces = _spaces_after(text.split("\n")[n - 1][t.start[1]:], "#")
+        L.inline = bool(raw_line[:t.start[1]].strip())
+        L.spaces = _spaces_after(raw_line[t.start[1]:], "#")
         if not L.inline:
             L.kind = "comment"
         else:
@@ -292,8 +293,8 @@ def _emit(out, rel, line, kind, snippet, detail):
 
 def comment_findings(scope: str):
     """Block comments stay short and well-shaped; inline comments stay short and well-spaced.
-    Block over three lines, a sentence wrapped mid-clause, a colon that opens no list, an inline
-    essay, or extra spaces after an inline marker each surface here."""
+    Blocks over three lines, a colon that opens no list, an inline essay, or extra spaces after
+    an inline marker each surface here. Normal line wrapping inside a short block is allowed."""
     out = []
     for rel, lang, text, off in units(scope):
         lines, _ = analyze(lang, text)
@@ -307,14 +308,6 @@ def comment_findings(scope: str):
                       "long enumeration into a named data structure the code reads.")
             for i, L in enumerate(blk):
                 ct = (L.ctext or "").rstrip()
-                is_list = bool(_LIST_ITEM.match(L.ctext or ""))
-                header = bool(_BANNER.match(L.ctext or "x")) or bool(_HEADER.match(L.ctext or ""))
-                if (len(blk) <= MAX_BLOCK_COMMENT_LINES and i < len(blk) - 1
-                        and not is_list and not header and ct and not _END_OK.search(ct)):
-                    _emit(out, rel, L.n + off, "comment-midsentence-wrap",
-                          f"breaks mid-clause: {ct}",
-                          "Use semantic line breaks: a comment line may end only on a period or a colon. "
-                          "Finish the thought on this line, or fold the comment into one sentence.")
                 if ct.endswith(":"):
                     nxt = blk[i + 1] if i + 1 < len(blk) else None
                     intro_list = nxt is not None and bool(_LIST_ITEM.match(nxt.ctext or ""))
@@ -782,7 +775,7 @@ def cell_hygiene(f: Path):
 
 
 def self_test() -> list[str]:
-    """Reject generated dependency source while retaining authored browser code."""
+    """Check source ownership and executable-header parsing."""
     failures = []
     cases = {
         "web/nemoclaw/vendor/marked.esm.js": False,
@@ -794,6 +787,11 @@ def self_test() -> list[str]:
     for rel, expected in cases.items():
         if _is_ours(rel) != expected:
             failures.append(f"source ownership misclassified: {rel}")
+    parsed, _ = _python_lines("#!/usr/bin/env python3\n# explanatory comment.\nprint('ok')\n")
+    if parsed[0].kind != "code" or parsed[0].marker:
+        failures.append("Python shebang was classified as prose commentary")
+    if parsed[1].kind != "comment":
+        failures.append("ordinary Python comment disappeared with the shebang carve-out")
     return failures
 
 

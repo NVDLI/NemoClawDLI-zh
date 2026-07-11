@@ -145,11 +145,11 @@
   }
 
   function validationRows(markdown, config) {
-    return tableRows(markdown, "Python runtime and repository-tool packages").filter(function (row) {
+    return tableRows(markdown, "Python and Node repository-tool packages").filter(function (row) {
       return row.length >= 5;
     }).map(function (row) {
       var links = parseLinks(row[4]);
-      var upstream = (links.find(function (link) { return link.label === "PyPI"; }) || {}).url || "";
+      var upstream = (links.find(function (link) { return link.label === "PyPI" || link.label === "npm"; }) || {}).url || "";
       var lock = (links.find(function (link) { return !/^https?:/.test(link.url); }) || {}).url || "THIRD_PARTY_LICENSES.md";
       return {
         category: "validation",
@@ -159,29 +159,6 @@
           "Course authors or CI use this package to prepare or check the course (" + row[0] + "). " +
             "Learners do not receive it from the static course. No proprietary-code claim.",
           upstream, repoFile(config, lock)
-        ]
-      };
-    });
-  }
-
-  function localRows(markdown, config) {
-    return tableRows(markdown, "Direct container, runtime, and operating-system declarations").filter(function (row) {
-      return row.length >= 5;
-    }).map(function (row) {
-      var links = parseLinks(row[4]);
-      var upstream = (links.find(function (link) { return /^https?:/.test(link.url); }) || {}).url || "";
-      var pathMatch = row[4].match(/`([^`]+(?:Dockerfile|requirements\.txt))`/);
-      var cleanEvidence = row[4].replace(/\[([^\]]+)]\(([^)]+)\)/g, "$1");
-      var licenseNote = row[3] === "Missing license evidence" ?
-        " This entry must be resolved before export." : "";
-      return {
-        category: "local-authoring",
-        relationship: row[0],
-        cells: [
-          row[1], row[2], row[3], upstream, INTERNAL, OTHER,
-          "Category: " + row[0] + ". This is an optional local-authoring or compatibility dependency. " +
-            "Learners do not receive it from the static course." + licenseNote + " " + cleanEvidence,
-          upstream || row[1], repoFile(config, pathMatch ? pathMatch[1] : "THIRD_PARTY_LICENSES.md")
         ]
       };
     });
@@ -452,7 +429,7 @@
     });
     buildRows(markdown, config).filter(function (row) {
       return row.relationship === "browser-build-only";
-    }).concat(validationRows(markdown, config), localRows(markdown, config), evaluatedCandidateRows(candidates, config)).forEach(function (row) {
+    }).concat(validationRows(markdown, config), evaluatedCandidateRows(candidates, config)).forEach(function (row) {
       var browserExecution = row.category === "evaluated-candidate" && row.relationship.indexOf("candidate-core-") === 0 ?
         "Only if a repository-documentation reader selects Run; not in the learner course" : "No";
       rows.push({category:"tooling-not-distributed", relationship:row.relationship, terms:row.cells[2], cells:[
@@ -479,7 +456,6 @@
       "vendored": "Included in the course",
       "build-input": "Used only to build the course",
       "validation": "Used only to check the course",
-      "local-authoring": "Optional authoring tool",
       "evaluated-candidate": "Evaluated option, not shipped"
     },
     softwareRelationship: {
@@ -489,19 +465,9 @@
       "browser-bundle-input": "Built into the browser course",
       "browser-build-only": "Runs only while building browser files",
       "browser binary": "Browser used for automated checks",
-      "workspace-runtime": "Runs in the optional author workspace",
+      "host-bootstrap": "Prepares the checked Python environment",
       "material-tooling": "Processes course materials",
-      "security-tooling": "Checks dependencies and security",
-      "sandbox-admin-runtime": "Runs the sandbox administration service",
-      "service base image": "Starting image for a local service",
-      "workspace base image": "Starting image for the author workspace",
-      "workspace OS packages": "Operating-system packages in the author workspace",
-      "router OS packages": "Operating-system packages in the local router",
-      "OpenClaw runtime": "Runs OpenClaw in the optional local stack",
-      "OpenClaw OS packages": "Operating-system packages in the OpenClaw image",
-      "OpenShell build image": "Image used to build OpenShell locally",
-      "OpenShell runtime image": "Image used to run OpenShell locally",
-      "policy engine": "Evaluates local sandbox policy"
+      "security-tooling": "Checks dependencies and security"
     },
     scopeCategory: {
       "external-source-record": "External document citation record",
@@ -525,8 +491,7 @@
       "transitive": "Required by another package",
       "embedded-source": "Copied into a package by its publisher",
       "browser-build-only": "Used only to build browser files",
-      "validation or authoring dependency": "Used to check or author the course",
-      "local-authoring declaration": "Optional local-authoring dependency"
+      "validation dependency": "Used to check the course"
     },
     license: {
       "Missing license evidence": "License evidence missing"
@@ -541,8 +506,8 @@
       var profile = candidateParts[1] || "unknown";
       var role = candidateParts.slice(2).join("-");
       main = profile === "core" ? "Separate browser-Python demo runtime" :
-        profile === "network" && role === "direct" ? "Future HTTP/API support — selected package" :
-        profile === "network" ? "Future HTTP/API support — package dependency" :
+        profile === "network" && role === "direct" ? "Selected package for future HTTP/API support" :
+        profile === "network" ? "Dependency for future HTTP/API support" :
         "Future asset-preparation helper";
     }
     if (!main && kind === "scopeRelationship" && value.indexOf("candidate-") === 0) {
@@ -769,6 +734,10 @@
 
   function renderSbomEvidence(catalog, target) {
     target.replaceChildren();
+    target.dataset.sbomExpectedCards = String((catalog.records || []).length);
+    target.dataset.sbomExpectedSubjects = String((catalog.records || []).reduce(function (count, record) {
+      return count + (record.subjects || []).length;
+    }, 0));
     (catalog.records || []).forEach(function (record) {
       var card = document.createElement("article"); card.className = "sbom-card";
       var title = document.createElement("h3"); text(title, record.description); card.appendChild(title);
@@ -909,7 +878,6 @@
       var rows = vendoredRows(sources[0], config)
         .concat(buildRows(sources[1], config))
         .concat(validationRows(sources[1], config))
-        .concat(localRows(sources[1], config))
         .concat(evaluatedCandidateRows(sources[2], config));
       var category = target.querySelector("[data-export-category-group]");
       var relationship = target.querySelector("[data-export-relationship-group]");
@@ -920,7 +888,7 @@
       var count = target.querySelector("[data-export-count]");
       var sortState = {index:null, direction:"asc"};
       var categories = preferredOrder(Array.from(new Set(rows.map(function (row) { return row.category; }))), [
-        "vendored", "build-input", "validation", "local-authoring", "evaluated-candidate"
+        "vendored", "build-input", "validation", "evaluated-candidate"
       ]);
 
       function visibleRows() {

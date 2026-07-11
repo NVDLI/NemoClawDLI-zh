@@ -24,7 +24,10 @@ GROUP_SKILLS = (
 )
 ROOT_ALLOW = {".gitkeep", "SKILL.html", "_bootstrap.py"}
 SKIP_DIRS = {"__pycache__", ".figtools", "grounding_cache"}
-REQUIRED_RUNTIME_ASSETS = ("runtime/lab-runtime/Containerfile",)
+REQUIRED_RUNTIME_ASSETS = (
+    "runtime/browser_runtime_test.sh", "runtime/host_browser.py",
+    "runtime/package.json", "runtime/pnpm-lock.yaml",
+)
 
 
 def findings() -> list[str]:

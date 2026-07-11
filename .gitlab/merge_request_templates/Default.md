@@ -10,16 +10,13 @@ Closes #
 
 - Course: static browser course under `web/nemoclaw/` unless this is bundle-wide
 - Production: public static host or co-located NemoClaw launchable
-- Local-only support: `cpu/`, `workspace/`, and `deploy/` unless specifically changed
+- Tooling: host Python, Node.js, and Chromium; any isolation wrapper is operator-owned
 - Bundle scope: course-specific or bundle-wide
 
 ## Surfaces touched
 
 - [ ] `web/`
 - [ ] `i18n/`
-- [ ] `cpu/`
-- [ ] `workspace/`
-- [ ] `deploy/`
 - [ ] `scripts/`
 - [ ] `docs/`
 - [ ] `materials/source governance`
@@ -70,7 +67,7 @@ or merge commit for a stacked merge request.
 
 Learner-facing:
 
-Runtime/deploy:
+Browser/runtime integration:
 
 Governance/process:
 

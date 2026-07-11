@@ -915,19 +915,17 @@ def audit_assistant_artifact_harness(runtime: str, wrapper: str, docs: str, skil
         _need(findings, token in runtime, f"scripts/runtime/test_page_runtime.js: {message}")
     _need(findings, runtime.count("Build a runnable") >= 3,
           "scripts/runtime/test_page_runtime.js: live artifact mode must cover a diagram, dashboard, and quiz")
-    _need(findings, '--assistant-artifacts) ASSISTANT_ARTIFACTS=1' in wrapper and
-          'node_args+=(--assistant-artifacts --serve-static)' in wrapper and
-          'NVIDIA_API_KEY NVIDIA_API_URL' in wrapper and
-          '|| "$ASSISTANT_ARTIFACTS" == "1"' in wrapper,
-          "scripts/runtime/lab_runtime_test.sh: wrapper must expose the live artifact mode and pass only explicit model settings")
-    _need(findings, "lab_runtime_test.sh --assistant-artifacts" in docs,
+    _need(findings, '--assistant-artifacts) assistant_artifacts=1' in wrapper and
+          '--assistant-artifacts requires NVIDIA_API_KEY' in wrapper and
+          'exec "$NODE_BIN" "$ROOT/scripts/runtime/test_page_runtime.js" "${args[@]}"' in wrapper,
+          "scripts/runtime/browser_runtime_test.sh: wrapper must expose the live artifact mode")
+    _need(findings, "browser_runtime_test.sh --assistant-artifacts" in docs,
           "docs/lab_runtime_testing.md: live artifact reproduction command must remain documented")
     _need(findings, "Live Course Assistant artifacts" in skill and "--assistant-artifacts" in skill,
           "scripts/runtime/SKILL.html: nearby skill beacon must expose live artifact validation")
-    _need(findings, '--terminal-contract) TERMINAL_CONTRACT=1' in wrapper and
-          'node_args+=(--terminal-contract)' in wrapper and
+    _need(findings, '--terminal-contract) terminal_contract=1' in wrapper and
           '--terminal-contract requires --gateway-only' in wrapper,
-          "scripts/runtime/lab_runtime_test.sh: wrapper must expose the opt-in hosted terminal contract")
+          "scripts/runtime/browser_runtime_test.sh: wrapper must expose the opt-in hosted terminal contract")
     _need(findings, "--gateway-only --terminal-contract" in docs,
           "docs/lab_runtime_testing.md: hosted operator-terminal reproduction must remain documented")
     _need(findings, "Hosted operator terminal" in skill and "--terminal-contract" in skill,
@@ -956,7 +954,7 @@ def audit_tree(root: Path = ROOT) -> list[str]:
     ))
     findings.extend(audit_assistant_artifact_harness(
         (root / "scripts/runtime/test_page_runtime.js").read_text(encoding="utf-8"),
-        (root / "scripts/runtime/lab_runtime_test.sh").read_text(encoding="utf-8"),
+        (root / "scripts/runtime/browser_runtime_test.sh").read_text(encoding="utf-8"),
         (root / "docs/lab_runtime_testing.md").read_text(encoding="utf-8"),
         (root / "scripts/runtime/SKILL.html").read_text(encoding="utf-8"),
     ))
@@ -1157,18 +1155,17 @@ def self_test() -> list[str]:
             misses.append(f"detector missed {label}")
 
     assistant_runtime = (ROOT / "scripts/runtime/test_page_runtime.js").read_text(encoding="utf-8")
-    runtime_wrapper = (ROOT / "scripts/runtime/lab_runtime_test.sh").read_text(encoding="utf-8")
+    runtime_wrapper = (ROOT / "scripts/runtime/browser_runtime_test.sh").read_text(encoding="utf-8")
     runtime_docs = (ROOT / "docs/lab_runtime_testing.md").read_text(encoding="utf-8")
     runtime_skill = (ROOT / "scripts/runtime/SKILL.html").read_text(encoding="utf-8")
     assistant_harness_cases = [
         ("live artifact mode removed", assistant_runtime.replace("const assistantArtifacts = args.includes('--assistant-artifacts')", "const assistantArtifacts = false", 1), runtime_wrapper, runtime_docs, runtime_skill, "explicit live runtime mode"),
         ("live artifact accepts unvalidated tool", assistant_runtime.replace("toolBodies.some(text => /Validated and queued browser artifact/", "toolBodies.some(text => /Queued/", 1), runtime_wrapper, runtime_docs, runtime_skill, "accepted tool result"),
         ("live artifact skips interactions", assistant_runtime.replace("!validated || !sourceChars || !controlCount || !changed", "!validated || !sourceChars", 1), runtime_wrapper, runtime_docs, runtime_skill, "source, controls, and a state transition"),
-        ("live artifact wrapper removed", assistant_runtime, runtime_wrapper.replace('--assistant-artifacts) ASSISTANT_ARTIFACTS=1', '--removed) ASSISTANT_ARTIFACTS=1', 1), runtime_docs, runtime_skill, "wrapper must expose"),
-        ("remote artifact test forced onto lab network", assistant_runtime, runtime_wrapper.replace(' || "$ASSISTANT_ARTIFACTS" == "1"', '', 1), runtime_docs, runtime_skill, "wrapper must expose"),
+        ("live artifact wrapper removed", assistant_runtime, runtime_wrapper.replace('--assistant-artifacts) assistant_artifacts=1', '--removed) assistant_artifacts=1', 1), runtime_docs, runtime_skill, "wrapper must expose"),
         ("localhost embedding relay removed", assistant_runtime.replace('localStorage.setItem("nemoclaw_embedding_api_base_url_v1", apiUrl);', '', 1), runtime_wrapper, runtime_docs, runtime_skill, "independent embedding endpoint"),
         ("hosted terminal mode removed", assistant_runtime.replace("const terminalContract = args.includes('--terminal-contract')", "const terminalContract = false", 1), runtime_wrapper, runtime_docs, runtime_skill, "explicit live relay contract"),
-        ("hosted terminal wrapper removed", assistant_runtime, runtime_wrapper.replace('--terminal-contract) TERMINAL_CONTRACT=1', '--removed) TERMINAL_CONTRACT=1', 1), runtime_docs, runtime_skill, "opt-in hosted terminal"),
+        ("hosted terminal wrapper removed", assistant_runtime, runtime_wrapper.replace('--terminal-contract) terminal_contract=1', '--removed) terminal_contract=1', 1), runtime_docs, runtime_skill, "opt-in hosted terminal"),
         ("hosted terminal docs removed", assistant_runtime, runtime_wrapper, runtime_docs.replace('--gateway-only --terminal-contract', '--gateway-only', 1), runtime_skill, "operator-terminal reproduction"),
         ("hosted terminal skill removed", assistant_runtime, runtime_wrapper, runtime_docs, runtime_skill.replace('Hosted operator terminal', 'Hosted shell', 1), "hosted terminal validation"),
         ("cron run-history check removed", assistant_runtime.replace("id: 'browser-cron-runs', method: 'cron.runs'", "id: 'browser-cron-remove', method: 'cron.remove'", 1), runtime_wrapper, runtime_docs, runtime_skill, "run-history RPC"),

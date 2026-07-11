@@ -20,33 +20,12 @@ CSV_EXPORTER = "scripts/compliance/export_third_party_csv.py"
 SCOPE_EXPORTER = "scripts/compliance/export_legal_scope_csv.py"
 CSV_PREVIEW = "scripts/compliance/third_party_export_ui.js"
 PYTHON_LOCKS = (
-    "workspace/requirements.lock",
     "scripts/materials/requirements.lock",
     "scripts/security/requirements-sca.lock",
-    "cpu/services/sandbox_admin/requirements.txt",
 )
 PROVENANCE = (
     ("web/nemoclaw/assets", "web/nemoclaw/assets/SKILL.html", ("figures", "assets")),
     ("web/nemoclaw/mats", "web/nemoclaw/mats/SKILL.html", ("mats", "figures", "assets")),
-)
-REQUIRED_CONTAINER_FACTS = (
-    "nvcr.io/nvidia/cuda | 12.8.1-cudnn-devel-ubuntu22.04 | NVIDIA Deep Learning Container License; bundled open-source component licenses",
-    "ghcr.io/nvidia/openshell/cluster | 0.0.8 | Apache-2.0 for OpenShell; bundled image-component licenses",
-    "ghcr.io/nvidia/openshell-community/sandboxes/base | latest | Apache-2.0 for OpenShell Community; bundled image-component licenses",
-    "openclaw | 2026.5.28 | MIT",
-    "Open Policy Agent | 1.4.2 | Apache-2.0",
-    "Exact transitive operating-system and container-layer packages are build outputs",
-)
-REQUIRED_LLM_PINS = (
-    "fastapi==0.138.2",
-    "starlette==1.3.1",
-    "uvicorn[standard]==0.49.0",
-    "httpx==0.28.1",
-    "pydantic==2.13.4",
-    "protobuf==5.29.6",
-    "opentelemetry-api==1.34.1",
-    "opentelemetry-sdk==1.34.1",
-    "opentelemetry-exporter-otlp-proto-grpc==1.34.1",
 )
 REQUIRED_DISTRIBUTION_LINES = (
     'cp "$T1/LICENSE" "$OUT/LICENSE"',
@@ -59,18 +38,18 @@ REQUIRED_EXPLANATIONS = (
     "scripts/compliance/docs/sbom_generation.md",
     "Generated SBOM bodies are attached to the review record rather than committed here.",
     "`argparse@2.0.1` is a JavaScript npm package used transitively by `js-yaml@5.2.1`.",
-    "No package row in this inventory declares GPL.",
-    "`LGPL-2.0-or-later` tooling entry",
-    "A container can have publisher terms while its bundled components remain under separate licenses.",
+    "No active package row declares GPL.",
+    "LGPL-2.0-or-later (`chardet`)",
+    "this repository does not define, build, scan, or distribute that container",
     "exact package/version static fallback",
 )
 REQUIRED_RUNBOOK_TEXT = (
     "# SBOM generation and attachment runbook",
-    "The static course release does not distribute the local-authoring container images.",
+    "The repository does not define or distribute a container image.",
     "npm view <name>@<version> license dist.integrity repository --json",
     "https://pypi.org/pypi/<normalized-name>/<version>/json",
-    "anchore/syft:v1.44.0@sha256:86fde6445b483d902fe011dd9f68c4987dd94e07da1e9edc004e3c2422650de6 scan dir:/src",
-    "IMAGE=<registry>/<repository>@sha256:<64-hex-digest>",
+    'syft scan dir:"$PWD"',
+    "https://github.com/anchore/syft/releases/tag/v1.44.0",
     "Those extractors acquire content",
     "scripts/compliance/render_sbom_license_inventory.py",
     "scripts/compliance/resolve_sbom_licenses.py",
@@ -83,7 +62,7 @@ REQUIRED_RUNBOOK_TEXT = (
     "source-tree.spdx.json",
 )
 REQUIRED_EXPORT_CATEGORIES = {
-    "vendored", "build-input", "validation", "local-authoring", "evaluated-candidate", "all",
+    "vendored", "build-input", "validation", "evaluated-candidate", "all",
 }
 REQUIRED_SCOPE_CATEGORIES = {
     "external-source-record", "referenced-source", "tooling-not-distributed", "recreated-asset",
@@ -197,7 +176,7 @@ def export_contract_findings(overrides: dict[str, str]) -> list[str]:
             findings.append(f"SWIPAT in-page preview control is missing: {token}")
     preview = read(CSV_PREVIEW, overrides)
     for token in (
-        "vendored", "build-input", "validation", "local-authoring", "dataset.exportReady",
+        "vendored", "build-input", "validation", "dataset.exportReady",
         "external-source-record", "referenced-source", "tooling-not-distributed", "recreated-asset", "vendored-material",
         "vendored-browser-code", "Corroborating Repository Evidence",
         "selectedValues", "choiceGroup", "sortedRows", "sortableHeaders", "dataset.sortIndex",
@@ -270,22 +249,20 @@ def audit(overrides: dict[str, str] | None = None) -> list[str]:
         elif row[3] != (item.get("license") or "NOASSERTION"):
             findings.append(f"browser license drift: {name}=={key[1]}")
 
-    python_rows = rows(section(document, "Python runtime and repository-tool packages"))
+    python_rows = rows(section(document, "Python and Node repository-tool packages"))
     python_index = {(row[1], row[2]): row for row in python_rows if len(row) >= 4}
     expected_python = set()
     for path in PYTHON_LOCKS:
         expected_python |= python_pins(read(path, overrides))
-    expected_python |= {
-        ("torch", "2.11.0+cu128"),
-        ("torchvision", "0.26.0+cu128"),
-        ("torchaudio", "2.11.0+cu128"),
-    }
     for name, version in sorted(expected_python):
         row = python_index.get((name, version))
         if not row:
             findings.append(f"missing Python package row: {name}=={version}")
         elif row[3] in {"", "BSD", "Apache2.0", "NOASSERTION"}:
             findings.append(f"non-specific Python license identifier: {name}=={version}: {row[3]}")
+    playwright = python_index.get(("playwright-core", "1.55.0"))
+    if not playwright or playwright[0] != "browser-validation" or playwright[3] != "Apache-2.0":
+        findings.append("missing pinned host browser-validation package: playwright-core==1.55.0")
 
     material_rows = rows(section(document, "Third-party course-material relationships"))
     material_paths = {row[0] for row in material_rows if row}
@@ -298,9 +275,6 @@ def audit(overrides: dict[str, str] | None = None) -> list[str]:
                     if local not in material_paths:
                         findings.append(f"missing external-material row: {local}")
 
-    for fact in REQUIRED_CONTAINER_FACTS:
-        if fact not in document:
-            findings.append(f"missing container boundary fact: {fact}")
     for explanation in REQUIRED_EXPLANATIONS:
         if explanation not in document:
             findings.append(f"missing license-scope explanation: {explanation}")
@@ -310,13 +284,9 @@ def audit(overrides: dict[str, str] | None = None) -> list[str]:
     if evidence_catalog.get("schema") != "nemoclaw-sbom-evidence/1":
         findings.append("missing machine-readable SBOM evidence catalog")
     states = {record.get("state") for record in evidence_catalog.get("records", []) if isinstance(record, dict)}
-    if states != {"available", "ci-generated", "conditional"}:
-        findings.append("SBOM evidence catalog does not distinguish available, CI-generated, and conditional evidence")
+    if states != {"available", "ci-generated"}:
+        findings.append("SBOM evidence catalog must distinguish repository and CI-generated evidence")
     findings.extend(export_contract_findings(overrides))
-    dockerfile = read("cpu/services/llm_client/llm_client.Dockerfile", overrides)
-    for pin in REQUIRED_LLM_PINS:
-        if pin not in dockerfile:
-            findings.append(f"llm-client dependency is not exact: {pin}")
     pages_build = read("scripts/build/build_pages.sh", overrides)
     for line in REQUIRED_DISTRIBUTION_LINES:
         if line not in pages_build:
@@ -331,15 +301,13 @@ def self_test() -> list[str]:
         return ["baseline is not clean: " + finding for finding in baseline]
     document = read(INVENTORY, {})
     runbook = read(RUNBOOK, {})
-    dockerfile = read("cpu/services/llm_client/llm_client.Dockerfile", {})
     pages_build = read("scripts/build/build_pages.sh", {})
     compliance_skill = read(COMPLIANCE_SKILL, {})
     mutations = (
         ("browser row", {INVENTORY: document.replace("| browser-runtime | codemirror | 5.65.21 |", "| removed | codemirror | 0 |", 1)}, "missing browser package row"),
-        ("Python row", {INVENTORY: re.sub(r"(?m)^\| [^\n|]+ \| fastapi \| 0\.138\.2 \|.*$", "| removed | fastapi | 0 |", document, count=1)}, "missing Python package row"),
-        ("Python identifier", {INVENTORY: re.sub(r"(?m)^(\| [^\n|]+ \| docker \| 7\.1\.0 \|) Apache-2\.0 (\|.*)$", r"\1 NOASSERTION \2", document, count=1)}, "non-specific Python license identifier"),
+        ("Python row", {INVENTORY: re.sub(r"(?m)^\| [^|\n]*tooling[^|\n]* \| requests \| [^|]+ \|.*$", "| removed | requests | 0 |", document, count=1)}, "missing Python package row"),
+        ("Python identifier", {INVENTORY: re.sub(r"(?m)^(\| [^\n|]+ \| pip-audit \| [^|]+ \|) Apache-2\.0 (\|.*)$", r"\1 NOASSERTION \2", document, count=1)}, "non-specific Python license identifier"),
         ("material row", {INVENTORY: document.replace("| web/nemoclaw/assets/figures/fig2_react.svg |", "| removed/fig2_react.svg |", 1)}, "missing external-material row"),
-        ("service pin", {"cpu/services/llm_client/llm_client.Dockerfile": dockerfile.replace("uvicorn[standard]==0.49.0", "uvicorn[standard]", 1)}, "llm-client dependency is not exact"),
         ("artifact distribution", {"scripts/build/build_pages.sh": pages_build.replace('cp "$T1/THIRD_PARTY_LICENSES.md" "$OUT/THIRD_PARTY_LICENSES.md"', "# removed third-party inventory", 1)}, "Pages artifact does not distribute required license file"),
         ("runbook distribution", {"scripts/build/build_pages.sh": pages_build.replace('cp "$T1/scripts/compliance/docs/sbom_generation.md" "$OUT/scripts/compliance/docs/sbom_generation.md"', "# removed SBOM runbook", 1)}, "Pages artifact does not distribute required license file"),
         ("argparse explanation", {INVENTORY: document.replace("`argparse@2.0.1` is a JavaScript npm package used transitively by `js-yaml@5.2.1`.", "argparse is unexplained.", 1)}, "missing license-scope explanation"),

@@ -97,9 +97,9 @@ def render() -> str:
         "",
         *bullets(target["explicit_facts"]),
         "",
-        "Local authoring and test paths are not production services: "
-        + evidence_list(target["local_only"])
-        + ".",
+        ("Local authoring and test paths are not production services: " + evidence_list(target["local_only"]) + ".")
+        if target["local_only"] else
+        "Repository-owned local production services: none. Host Python, Node.js, and Chromium are authoring and validation dependencies only.",
         "",
         "## Threat-analysis invariants",
         "",
@@ -219,6 +219,7 @@ def self_test() -> int:
     assert "reviewer is a human actor, not a system component" in document
     assert "static host serves bytes" in document
     assert "protected annotated tags identify release candidates only" in document
+    assert "Repository-owned local production services: none" in document
     assert "solid green nodes are Target of Evaluation components" in document
     assert "external-to-external internals are excluded" in document
     assert "Cryptographic signing or provenance attestation is Not verified" in document

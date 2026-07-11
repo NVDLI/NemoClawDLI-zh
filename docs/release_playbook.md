@@ -166,7 +166,7 @@ community intake:
 - Enable Issues at External intake.
 - Enable Discussions for questions, learning friction, and broad ideas that are not actionable defects.
 - Enable Projects for the triage/release board.
-- Add `.github/CODEOWNERS` only after real NVIDIA org/team handles exist. Owners should cover `web/`, `cpu/`, `deploy/`, `scripts/`, `docs/`, and source governance paths.
+- Add `.github/CODEOWNERS` only after real NVIDIA org/team handles exist. Owners should cover `web/`, `scripts/`, `docs/`, and source-governance paths.
 - Create an active branch ruleset for `main` and `release/*`. Require a pull request, one approval,
   dismissal of stale approvals, approval of the most recent push by someone else, resolved review
   threads, and the strict `test` status from the `pages` workflow. Block deletion and force pushes.
@@ -279,8 +279,8 @@ approval, and post-deploy smoke because those checks require host context. The f
 browser, service, and external-evidence matrix lives in
 [`release-test-plan.md`](release-test-plan.md). Dependency resolution and SCA procedures live
 in [`dependency_security.md`](dependency_security.md). Pages staging and deployment mechanics
-live in [`pages_deploy.md`](pages_deploy.md). Containerized browser and Compose execution live
-in [`lab_runtime_testing.md`](lab_runtime_testing.md). Tracker labels and discussion routing
+live in [`pages_deploy.md`](pages_deploy.md). Host-native browser execution lives in
+[`lab_runtime_testing.md`](lab_runtime_testing.md). Tracker labels and discussion routing
 live in [`issue_standards.md`](issue_standards.md).
 
 ## Kickstart settings checklist
@@ -304,7 +304,6 @@ Before public mirror:
 - [x] Repo-owned Dependabot, dependency-review, and CodeQL workflows exist with immutable action pins and fork-safe permissions.
 - [ ] Host dependency graph, alerts, code-scanning upload, secret scanning, and push protection are enabled and smoke-tested.
 - [ ] Release draft contains the deterministic archive, manifest, resolved-environment SBOM, and `SHA256SUMS`.
-- [ ] Image SCA strategy is defined for public-safe images and NVIDIA/internal images separately.
 - [ ] External repository has Discussions enabled, with pinned welcome guidance.
 - [ ] CODEOWNERS is added after org/team handles are real.
 - [ ] Mirror is protected-branch/tag-only until public contribution intake is ready.

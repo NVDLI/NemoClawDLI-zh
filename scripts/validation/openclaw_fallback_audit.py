@@ -25,7 +25,7 @@ FILES = {
     "connection_js": ROOT / "web" / "nemoclaw" / "scripts" / "_connection.js",
     "cors_worker": ROOT / "scripts" / "cors-proxy" / "cors-proxy-worker-openclaw.js",
     "runtime_js": ROOT / "scripts" / "runtime" / "test_page_runtime.js",
-    "runtime_sh": ROOT / "scripts" / "runtime" / "lab_runtime_test.sh",
+    "runtime_sh": ROOT / "scripts" / "runtime" / "browser_runtime_test.sh",
     "runtime_skill": ROOT / "scripts" / "runtime" / "SKILL.html",
     "scripts_skill": ROOT / "scripts" / "SKILL.html",
     "validation_skill": ROOT / "scripts" / "validation" / "SKILL.html",

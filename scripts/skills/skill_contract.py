@@ -29,7 +29,7 @@ Two readers, one file, so three checks:
           minified into one-line walls, and beacons do not expose numbered issue/MR/PR threads
           or user handles as course-facing provenance.
 
-  RENDER  The human half has meaningful visible content, local renderer resources resolve,
+  RENDER  The human half has meaningful visible content, local links and renderer resources resolve,
           explorer-config mounts the declared shared renderer exactly once, and every configured
           source file exists. Playwright supplies the separate runtime rendering proof.
 
@@ -320,6 +320,18 @@ def renderer_findings_for(skill: Path, root: Path) -> list[str]:
                 continue
             if not target.is_file():
                 findings.append(f"{kind} resource is missing: {reference!r}")
+
+    for reference in parser.links:
+        target = _local_target(skill, reference, root)
+        if target is None:
+            continue
+        try:
+            target.relative_to(root.resolve())
+        except ValueError:
+            findings.append(f"link escapes the repository: {reference!r}")
+            continue
+        if not target.exists():
+            findings.append(f"local link target is missing: {reference!r}")
 
     visible = " ".join(parser.text).strip()
     if len(visible) < 20:

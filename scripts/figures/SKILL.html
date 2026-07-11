@@ -45,7 +45,7 @@
     {
       "path": "run_figcheck.sh",
       "role": "figure check runner",
-      "desc": "Resolves Node and jsdom, then runs check_figures.mjs."
+      "desc": "Uses the pinned Playwright API and host Chromium, then runs check_figures.mjs."
     },
     {
       "path": "render_security_architecture.py",
@@ -58,7 +58,7 @@
 
 <style data-skill-static="1">
 .skill-static{padding:24px clamp(18px,4vw,44px);border-bottom:1px solid #2a2a2a;background:#0d0d0d;color:#f2f2f2;font:15px/1.55 system-ui,sans-serif}
-.skill-static a{color:#76b900}.skill-static h1{margin:.1em 0 .25em;color:#76b900;font-size:1.65rem}.skill-static h2{font-size:1.02rem;margin:1.2rem 0 .45rem}.skill-static p{max-width:76rem;color:#b0b0b0}.skill-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:.7rem 0}.skill-card{border:1px solid #2a2a2a;background:#161616;border-radius:8px;padding:12px 14px}.skill-card b{display:block;color:#aee23a;margin-bottom:4px}.skill-card code,.skill-cmd code{font-family:ui-monospace,Consolas,monospace}.skill-card span{color:#b0b0b0;font-size:.9rem}.skill-cmds{display:grid;gap:8px;margin:.7rem 0}.skill-cmd{display:grid;grid-template-columns:minmax(140px,220px) 1fr;gap:8px;align-items:center;border:1px solid #2a2a2a;border-radius:8px;background:#111;padding:9px 11px}.skill-cmd b{color:#aee23a}.skill-cmd code{display:block;overflow:auto;white-space:nowrap;color:#f2f2f2}.skill-note{border-left:3px solid #76b900;background:rgba(118,185,0,.08);padding:10px 13px;margin:.8rem 0;color:#ddd}.skill-nav{display:flex;gap:12px;flex-wrap:wrap;margin:.8rem 0}.skill-nav a{border:1px solid #2a2a2a;border-radius:999px;padding:5px 10px;text-decoration:none}.skill-nav a:hover{border-color:#76b900}@media(max-width:700px){.skill-cmd{grid-template-columns:1fr}.skill-static{padding:18px}}
+.skill-static a{color:#76b900}.skill-static h1{margin:.1em 0 .25em;color:#76b900;font-size:1.65rem}.skill-static h2{font-size:1.02rem;margin:1.2rem 0 .45rem}.skill-static p{max-width:76rem;color:#b0b0b0}.skill-list{display:grid;grid-template-columns:1fr;max-width:76rem;margin:.7rem 0}.skill-link{display:grid;grid-template-columns:minmax(180px,280px) 1fr;gap:12px;border-top:1px solid #2a2a2a;padding:9px 4px;text-decoration:none}.skill-link:last-child{border-bottom:1px solid #2a2a2a}.skill-link b{display:block;color:#aee23a;margin-bottom:4px}.skill-link code,.skill-cmd code{font-family:ui-monospace,Consolas,monospace}.skill-link span{color:#b0b0b0;font-size:.9rem}.skill-cmds{display:grid;gap:8px;margin:.7rem 0}.skill-cmd{display:grid;grid-template-columns:minmax(140px,220px) 1fr;gap:8px;align-items:center;border:1px solid #2a2a2a;border-radius:8px;background:#111;padding:9px 11px}.skill-cmd b{color:#aee23a}.skill-cmd code{display:block;overflow:auto;white-space:nowrap;color:#f2f2f2}.skill-note{border-left:3px solid #76b900;background:rgba(118,185,0,.08);padding:10px 13px;margin:.8rem 0;color:#ddd}.skill-nav{display:flex;gap:12px;flex-wrap:wrap;margin:.8rem 0}.skill-nav a{border:1px solid #2a2a2a;border-radius:999px;padding:5px 10px;text-decoration:none}.skill-nav a:hover{border-color:#76b900}@media(max-width:700px){.skill-cmd{grid-template-columns:1fr}.skill-static{padding:18px}.skill-link{grid-template-columns:1fr;gap:2px}}
 </style>
 </head>
 <body>
@@ -77,10 +77,10 @@
     <div class="skill-cmd"><b>security architecture SVG freshness</b><code>python3 scripts/figures/render_security_architecture.py --check</code></div>
   </div>
   <h2>Linkage map</h2>
-  <div class="skill-grid">
-    <a class="skill-card" href="check_figures.mjs"><b>check_figures.mjs</b><span>runtime geometry check. Renders diagrams and flags text overlap, overflow, bad connectors, and edgeless diagrams.</span></a>
-    <a class="skill-card" href="run_figcheck.sh"><b>run_figcheck.sh</b><span>figure check runner. Resolves Node and jsdom, then runs check_figures.mjs.</span></a>
-    <a class="skill-card" href="render_security_architecture.py"><b>render_security_architecture.py</b><span>Security architecture renderer. Projects the canonical release graph into a deterministic, accessible SVG.</span></a>
+  <div class="skill-list">
+    <a class="skill-link" href="check_figures.mjs"><b>check_figures.mjs</b><span>runtime geometry check. Renders diagrams and flags text overlap, overflow, bad connectors, and edgeless diagrams.</span></a>
+    <a class="skill-link" href="run_figcheck.sh"><b>run_figcheck.sh</b><span>figure check runner. Uses the pinned Playwright API and host Chromium, then runs check_figures.mjs.</span></a>
+    <a class="skill-link" href="render_security_architecture.py"><b>render_security_architecture.py</b><span>Security architecture renderer. Projects the canonical release graph into a deterministic, accessible SVG.</span></a>
   </div>
   <h2>Interactive explorer</h2>
   <p>The explorer below opens source files, tours important sections, and checks documented paths against the repository tree.</p>

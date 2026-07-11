@@ -81,6 +81,8 @@ class RendererContractTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
+        (self.root / "SKILL.html").write_text("fixture root", encoding="utf-8")
+        (self.root / "index.html").write_text("fixture home", encoding="utf-8")
         (self.root / "web").mkdir()
         (self.root / "web" / "_skill_explorer.js").write_text("/* fixture */", encoding="utf-8")
         (self.root / "fixture").mkdir()
@@ -110,6 +112,10 @@ class RendererContractTests(unittest.TestCase):
 
     def test_missing_configured_file_fails(self) -> None:
         self.assertTrue(any("explorer-config file is missing" in finding for finding in self.findings(page(file_name="gone.txt"))))
+
+    def test_missing_visible_link_fails(self) -> None:
+        text = page().replace("</main>", '<a href="gone.py">Missing source</a></main>')
+        self.assertTrue(any("local link target is missing" in finding for finding in self.findings(text)))
 
     def test_missing_navigation_header_fails(self) -> None:
         text = page().replace('<header data-skill-header="1"><nav aria-label="Skill navigation"><a href="../SKILL.html">Up</a><a href="../index.html">Home</a></nav></header>', "")

@@ -11,27 +11,18 @@
   "role": "bundle_index",
   "served_at": "/lab/static/SKILL.html",
   "self_path": "SKILL.html",
-  "thesis": "NVIDIA DLI's internal release candidate for a proposed open-source publication: the narrative, the assets, the deployment visor that runs it, and the automatic verification that keeps it honest, packaged so a person or an agent can stand it up, navigate it, and check it end to end. Content is organized by EXECUTION SURFACE (web / cpu today, with spark or gpu surfaces only when they declare their compute contract) so each piece declares what it needs to run; every page buds from a SKILL hub, so the whole bundle is statically and semantically verifiable.",
+  "thesis": "NVIDIA DLI's internal release candidate for a proposed open-source publication: the narrative, the assets and the automatic verification that keeps it honest, packaged so a person or an agent can stand it up, navigate it, and check it end to end. Content is organized around the static web surface so each piece declares what it needs to run; every page buds from a SKILL hub, so the whole bundle is statically and semantically verifiable.",
   "surfaces": [
     {
       "name": "web",
       "path": "web/SKILL.html",
       "assumes": "Browser frontends: the course as styled web pages, remote services only (no local microservices). Assumes only a browser and declared hosted endpoints."
-    },
-    {
-      "name": "cpu",
-      "path": "cpu/SKILL.html",
-      "assumes": "Local development and compatibility services. Not part of the static production deployment."
     }
   ],
   "reference_layers": [
     {
       "name": "web/nemoclaw/mats",
       "role": "course-scoped curated reference packets; joined to pages by the external URLs they cite and associated through the link graph, never linked as files"
-    },
-    {
-      "name": "deploy",
-      "role": "operator-facing compose and nginx deployment surface for DLI platform and local compute"
     },
     {
       "name": "scripts",
@@ -55,7 +46,6 @@
     ],
     "target_license": "Apache-2.0",
     "notice_required": false,
-    "third_party_notice_path": "THIRD-PARTY-NOTICES.md",
     "status_path": "RELEASE_STATUS.json",
     "note": "the foyer selection does not imply external publication approval"
   },
@@ -65,13 +55,13 @@
       "Anchor each page in a task that runs: build a working artifact a reader executes against the lab, and cut a page that only fills an outline. The aim is a change in what a reader can do.",
       "Order is a default, not a gate: keep pages usable out of sequence, with no enforced prerequisites or knowledge checks, so a reader can act on partial understanding and return for the next layer.",
       "Target the NVIDIA-owned DLI course repository as a Full-OSS-Project after approval: OSS Type I, Apache 2.0, no gate or paywall, public course planning and contribution, the foyer surfacing only the selected courses, and mats cited by public URL. This does not classify or release the NemoClaw product or runtime.",
-      "Keep surface assumptions explicit: web/ is browser-only and cannot assume student-provisioned microservices; cpu/ owns shared service stacks; spark/ or gpu surfaces must declare their compute contract before content depends on them.",
-      "Keep production browser delivery static. Hosted model and NemoClaw endpoints supply live capabilities; cpu/ services exist for local development and compatibility testing.",
+      "Keep the web surface browser-only and independent of student-provisioned local services.",
+      "Keep production browser delivery static. Hosted model and NemoClaw endpoints supply live capabilities.",
       "Ideas stay easy to contribute through structured Issues and, after external intake is enabled, Discussions. Code stays difficult to accept: treat every patch as untrusted, require issue linkage, blast-radius evidence, deterministic gates, human ownership, protected refs, and gated releases."
     ],
     "assumptions": [
       "The repository root is canonical for this internal release candidate. External publication remains pending OSRB approval. Everything worth keeping lives here and is versioned; scratch goes to /tmp and is never committed.",
-      "Content is organized by execution surface: web/ holds browser-only courses and course-scoped reference packets; cpu/ holds shared microservices; deploy/ holds compose and nginx; future spark/ or gpu surfaces must state their compute contract before use.",
+      "The web surface holds the browser-only course and its course-scoped reference packets.",
       "The brain is each source directory's SKILL.html skill-meta JSON, not a SKILL.md. Git-tracked and proposed files define the exhaustive directory set, with no opt-outs. Parse the current directory first, then walk children: task to surface to course to content. Visual work must also read the asset provenance beacon and validation beacon before edits.",
       "One link engine (scripts/runtime/engine.js) is the single source for resolution, crawl, reachability, and the release contract; it runs headless and in-browser, with no second implementation to drift.",
       "The released course is nemoclaw (Securing Agents); the foyer (web/index.html) surfaces only it."
@@ -82,7 +72,7 @@
       "No buzzy marketing cadence: avoid serial antithesis ('not X but Y', 'N X, one Y') and rule-of-three flourishes.",
       "Code-first: fixing a real code cell beats improving prose beats adding navigation. A change that teaches nothing new and prevents no bug is not worth making.",
       "Browser courses stay remote-services-only; never put keys in static files or depend on undeclared local services.",
-      "Deployment config stays under deploy/ so orchestration does not blur into course content.",
+      "Keep repository validation host-native; external isolation is an operator choice, not a shipped dependency.",
       "The course mats/ (web/nemoclaw/mats/) and repos/ are cited-by-URL reference packets: cite the external URL, never link the packet file.",
       "Run source_gate before adding assets, mats, datasets, cached references, or copied examples; every new source needs provenance and license disposition.",
       "When a change touches an image, SVG, diagram, canvas figure, or page placement, preview the rendered result through the active agent harness (Codex, Claude, Cursor, Playwright, or local browser smoke), inspect light and dark theme output when the asset can theme-switch, show the preview to the requester, and report that evidence or the exact blocker.",
@@ -109,10 +99,6 @@
       "path": "web/SKILL.html"
     },
     {
-      "name": "cpu",
-      "path": "cpu/SKILL.html"
-    },
-    {
       "name": "License and distribution evidence",
       "path": "scripts/compliance/SKILL.html"
     },
@@ -123,10 +109,6 @@
     {
       "name": ".gitlab",
       "path": ".gitlab/SKILL.html"
-    },
-    {
-      "name": "deploy",
-      "path": "deploy/SKILL.html"
     },
     {
       "name": "docs",
@@ -143,10 +125,6 @@
     {
       "name": "tests",
       "path": "tests/SKILL.html"
-    },
-    {
-      "name": "workspace",
-      "path": "workspace/SKILL.html"
     }
   ]
 }
@@ -155,7 +133,7 @@
 {
   "mode": "hub",
   "title": "Building Agents \u00b7 NVIDIA DLI bundle",
-  "summary": "NVIDIA DLI's internal release candidate for a proposed open-source publication: the narrative, the assets, the deployment visor that runs it, and the automatic verification that keeps it honest, packaged so a person or an agent can stand it up, navigate it, and check it end to end. Content is organized by EXECUTION SURFACE (web / cpu today, with spark or gpu surfaces only when they declare their compute contract) so each piece declares what it needs to run; every page buds from a SKILL hub, so the whole bundle is statically and semantically verifiable.",
+  "summary": "NVIDIA DLI's internal release candidate for a proposed open-source publication: the narrative, the assets and the automatic verification that keeps it honest, packaged so a person or an agent can stand it up, navigate it, and check it end to end. Content is organized around the static web surface so each piece declares what it needs to run; every page buds from a SKILL hub, so the whole bundle is statically and semantically verifiable.",
   "ties": [
     "build"
   ],
@@ -183,11 +161,6 @@
           "label": "web/",
           "href": "web/SKILL.html",
           "desc": "Browser frontends: the course as styled web pages, remote services only (no local microservices). Assumes only a browser and declared hosted endpoints."
-        },
-        {
-          "label": "cpu/",
-          "href": "cpu/SKILL.html",
-          "desc": "Local development and compatibility services. Not part of the static production deployment."
         }
       ]
     },
@@ -210,11 +183,6 @@
           "desc": "Internal GitLab contribution templates used by the integration and validation repository."
         },
         {
-          "label": "deploy/",
-          "href": "deploy/SKILL.html",
-          "desc": "Operator-facing deployment contract for the bundle: compose topology, local dev overlay, DLI production overlay, and nginx routing"
-        },
-        {
           "label": "docs/",
           "href": "docs/SKILL.html",
           "desc": "Task-routed operating notes with one owner per concern"
@@ -233,11 +201,6 @@
           "label": "tests/",
           "href": "tests/SKILL.html",
           "desc": "Source contract for tests/ and its directly governed files."
-        },
-        {
-          "label": "workspace/",
-          "href": "workspace/SKILL.html",
-          "desc": "What the lab runs inside: the image build, its entrypoint and python deps, the surface-aware notebook test runner, and the SKILL self-test h"
         }
       ]
     },
@@ -282,12 +245,7 @@
         {
           "label": "DCO.md",
           "href": "DCO.md",
-          "desc": "Verbatim DCO 1.1, required per-commit origin signoff, and repair guidance."
-        },
-        {
-          "label": "THIRD-PARTY-NOTICES.md",
-          "href": "THIRD-PARTY-NOTICES.md",
-          "desc": "Top-level index of third-party license, attribution, distribution, and vendor-modification evidence."
+          "desc": "Required per-commit origin signoff and repair guidance."
         },
         {
           "label": "CODE_OF_CONDUCT.md",
@@ -317,6 +275,11 @@
         {
           "label": "docs/agent_process.md",
           "href": "docs/agent_process.md",
+          "desc": ""
+        },
+        {
+          "label": "docs/course-prose-style.md",
+          "href": "docs/course-prose-style.md",
           "desc": ""
         },
         {
@@ -394,19 +357,16 @@
   <h2>Execution surfaces</h2>
   <ul>
     <li><a href="web/SKILL.html">web/</a></li>
-    <li><a href="cpu/SKILL.html">cpu/</a></li>
   </ul>
   <h2>Source &amp; tooling</h2>
   <ul>
     <li><a href="scripts/compliance/SKILL.html">License and distribution evidence</a></li>
     <li><a href=".github/SKILL.html">.github/</a></li>
     <li><a href=".gitlab/SKILL.html">.gitlab/</a></li>
-    <li><a href="deploy/SKILL.html">deploy/</a></li>
     <li><a href="docs/SKILL.html">docs/</a></li>
     <li><a href="i18n/SKILL.html">i18n/</a></li>
     <li><a href="scripts/SKILL.html">scripts/</a></li>
     <li><a href="tests/SKILL.html">tests/</a></li>
-    <li><a href="workspace/SKILL.html">workspace/</a></li>
   </ul>
   <h2>Agent docs</h2>
   <ul>
@@ -418,13 +378,13 @@
     <li><a href="AGENTS.md">AGENTS.md</a></li>
     <li><a href="CONTRIBUTING.md">CONTRIBUTING.md</a></li>
     <li><a href="DCO.md">DCO.md</a></li>
-    <li><a href="THIRD-PARTY-NOTICES.md">THIRD-PARTY-NOTICES.md</a></li>
     <li><a href="CODE_OF_CONDUCT.md">CODE_OF_CONDUCT.md</a></li>
     <li><a href="SUPPORT.md">SUPPORT.md</a></li>
     <li><a href="scripts/compliance/docs/open_source_readiness.md">scripts/compliance/docs/open_source_readiness.md</a></li>
     <li><a href="scripts/compliance/docs/vendor_policy.md">scripts/compliance/docs/vendor_policy.md</a></li>
     <li><a href="SKILL_CONTRACT.md">SKILL_CONTRACT.md</a></li>
     <li><a href="docs/agent_process.md">docs/agent_process.md</a></li>
+    <li><a href="docs/course-prose-style.md">docs/course-prose-style.md</a></li>
     <li><a href="docs/dependency_security.md">docs/dependency_security.md</a></li>
     <li><a href="docs/issue_standards.md">docs/issue_standards.md</a></li>
     <li><a href="docs/lab_runtime_testing.md">docs/lab_runtime_testing.md</a></li>

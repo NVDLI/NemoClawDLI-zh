@@ -777,10 +777,12 @@ def structure_findings(f: Path) -> list:
     return out
 
 
-def _grid_cols(css: str, cls: str) -> int:
+def _grid_cols(css: str, cls: str) -> int | None:
     m = re.search(r"\." + re.escape(cls) + r"\s*\{[^}]*grid-template-columns:\s*([^;}]+)", css)
     if not m:
         return 2
+    if re.search(r"\brepeat\(\s*auto-(?:fill|fit)\b", m.group(1)):
+        return None
     rep = re.search(r"repeat\(\s*(\d+)", m.group(1))
     return int(rep.group(1)) if rep else max(2, len(m.group(1).split()))
 
@@ -809,12 +811,21 @@ def _grid_findings(f: Path) -> list:
             continue
         nlinks = len(re.findall(r"<a\b[^>]*\bhref", seg))   # any anchor with href, regardless of attr order
         cols = _grid_cols(css, cls)
-        if ncards > cols and ncards % cols != 0:
+        if cols is not None and ncards > cols and ncards % cols != 0:
             out.append(("orphan-grid", f"a {cls} of {ncards} cards in {cols} columns leaves a floating incomplete row; fill the grid or make it a list"))
         if nlinks == 0:
             out.append(("linkless-cards", f"a {cls} of {ncards} titled cards with no link in any of them; make it a list, or give each its documentation URL"))
     nbtn = len(re.findall(r'class="(?:btn|action-btn)\b', body))
-    ncard = len(re.findall(r'class="[\w-]*card\b', body))
+    evidence_cards = re.findall(
+        r'<article\b[^>]*class="[^"]*\bpv-card\b[^"]*"[^>]*>(.*?)</article>',
+        body, re.S | re.I,
+    )
+    evidence_count = sum(
+        1 for card in evidence_cards
+        if ("pv-prev" in card or "md-wrap" in card) and "pv-meta" in card
+        and re.search(r"<a\b[^>]*\bhref", card)
+    )
+    ncard = len(re.findall(r'class="[\w-]*card\b', body)) - evidence_count
     if nbtn >= 10 or ncard >= 10:
         out.append(("flashy-page", f"{ncard} cards and {nbtn} button-styled links on one page reads as a buzz pile; convert the reference grids to plain lists with inline links"))
     return out

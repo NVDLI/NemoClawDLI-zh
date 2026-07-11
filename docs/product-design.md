@@ -40,16 +40,16 @@ The supported release contains:
 - one browser course assembled from `web/nemoclaw/` and sparse locale overlays under `i18n/`.
 - a static Pages tree containing HTML, JavaScript, CSS, images, and course data.
 - a deterministic tagged archive with a release manifest and checksums.
-- Python-environment and browser-runtime SBOMs.
+- material-tool Python and learner-delivered browser-package SBOMs.
 - versioned design, architecture, source-governance, and test evidence.
 
 The production course is a static browser application. It does not deploy a repository-operated API,
 database, identity service, or learner-data store.
 
-The Compose files under `deploy/`, Python services under `cpu/services/`, and the workspace image
-support local authoring and integration tests. They are distributed as source but do not run in the
-production static-site path. The source-backed graph in
-[`security-architecture.json`](security-architecture.json) classifies them as local-only.
+Contributors run integration checks with host Python, Node.js, and Chromium. The repository does
+not distribute a service stack, workspace image, or container topology. The source-backed graph in
+[`security-architecture.json`](security-architecture.json) covers only the static course and its
+release supply chain.
 
 ## Deployment model
 
@@ -172,9 +172,9 @@ Protected `main` is the reviewed source line, while branch previews are temporar
 public release starts from an existing protected annotated semantic tag contained in `main`.
 
 The release workflow validates the tag, runs a strict retried live material-provenance check, then
-rebuilds with live material refresh disabled. It resolves the locked Python environment, emits
-Python-environment and browser-runtime CycloneDX SBOMs, packages the Pages tree,
-generates a commit-bound evidence manifest and component license appendix, packages the Pages tree,
+rebuilds with live material refresh disabled. It resolves the locked material-tool Python environment,
+emits Python-tooling and learner-delivered browser-package CycloneDX SBOMs, generates a commit-bound
+evidence manifest and component license appendix, packages the Pages tree,
 and writes checksums. A protected write
 step creates a draft release. A human release owner reviews the evidence and publishes it only after
 the external approval state allows publication.

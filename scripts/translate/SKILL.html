@@ -63,7 +63,8 @@
   ]
 }
 </script>
-<style>html,body{margin:0;background:#0d0d0d;color:#f2f2f2;font:15px/1.55 system-ui,sans-serif}.skill-static{padding:24px clamp(18px,4vw,44px);border-bottom:1px solid #2a2a2a}.skill-static a{color:#76b900}.skill-static h1{color:#76b900}.skill-grid,.skill-cmds{display:grid;gap:10px;margin:.7rem 0}.skill-grid{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}.skill-card,.skill-cmd{border:1px solid #2a2a2a;background:#161616;border-radius:8px;padding:10px 12px}.skill-card{color:#f2f2f2!important;text-decoration:none}.skill-card b,.skill-cmd b{display:block;color:#aee23a}.skill-cmd code{display:block;overflow:auto;white-space:nowrap}#explorer{height:100vh}</style>
+<style>html,body{margin:0;background:#0d0d0d;color:#f2f2f2;font:15px/1.55 system-ui,sans-serif}.skill-static{padding:24px clamp(18px,4vw,44px);border-bottom:1px solid #2a2a2a}.skill-static a{color:#76b900}.skill-static h1{color:#76b900}.skill-list,.skill-cmds{display:grid;gap:10px;margin:.7rem 0}.skill-list{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}.skill-cmd{border:1px solid #2a2a2a;background:#161616;border-radius:8px;padding:10px 12px}.skill-link{display:grid;grid-template-columns:minmax(180px,280px) 1fr;gap:12px;border-top:1px solid #2a2a2a;padding:9px 4px;text-decoration:none}.skill-link:last-child{border-bottom:1px solid #2a2a2a}.skill-link{color:#f2f2f2!important}.skill-link b,.skill-cmd b{display:block;color:#aee23a}.skill-cmd code{display:block;overflow:auto;white-space:nowrap}#explorer{height:100vh}@media(max-width:700px){.skill-link{grid-template-columns:1fr;gap:2px}}
+</style>
 </head>
 <body>
 <header data-skill-header="1" style="padding:.65rem 1rem;border-bottom:1px solid ButtonBorder;background:Canvas;color:CanvasText">
@@ -82,16 +83,16 @@
     <div class="skill-cmd"><b>Generate a measured draft</b><code>python3 scripts/translate/translate_html_segments.py web/nemoclaw/PAGE.html --usage-report /tmp/pt-usage.json</code></div>
   </div>
   <h2>Linkage map</h2>
-  <div class="skill-grid">
-    <a class="skill-card" href="README.md"><b>Same-branch process</b>Sparse overlay boundary, page and SVG review states, build assembly, and acceptance workflow.</a>
-    <a class="skill-card" href="locales/pt-BR/SKILL.html"><b>pt-BR language contract</b>Natural Brazilian Portuguese, NVIDIA terminology sources, and literal-translation traps.</a>
-    <a class="skill-card" href="locales/es-ES/SKILL.html"><b>es-ES language contract</b>Neutral technical Spanish, NVIDIA terminology sources, rhythm checks, and literal-translation traps.</a>
-    <a class="skill-card" href="locales/SKILL.html"><b>Locale contracts</b>Directory map for every language-specific translation profile.</a>
-    <a class="skill-card" href="../../web/nemoclaw/localization.html"><b>Localization Studio</b>Same-branch source and locale comparison with drift state.</a>
-    <a class="skill-card" href="../validation/localization_audit.py"><b>Required validator</b>Overlay boundary, accepted source hash, structure, and locale-native checks.</a>
-    <a class="skill-card" href="localization_scope.py"><b>Translation-body boundary</b>Hashes stable lesson prose separately from presentation-shell wording.</a>
-    <a class="skill-card" href="code_localization.py"><b>Runnable-code language</b>Preserves localized learner output while blocking protocol and executable drift.</a>
-    <a class="skill-card" href="locale_projection.py"><b>Structure projection</b>Restores every current learning block and inserts reviewed locale prose plus localized prompts.</a>
+  <div class="skill-list">
+    <a class="skill-link" href="README.md"><b>Same-branch process</b>Sparse overlay boundary, page and SVG review states, build assembly, and acceptance workflow.</a>
+    <a class="skill-link" href="locales/pt-BR/SKILL.html"><b>pt-BR language contract</b>Natural Brazilian Portuguese, NVIDIA terminology sources, and literal-translation traps.</a>
+    <a class="skill-link" href="locales/es-ES/SKILL.html"><b>es-ES language contract</b>Neutral technical Spanish, NVIDIA terminology sources, rhythm checks, and literal-translation traps.</a>
+    <a class="skill-link" href="locales/SKILL.html"><b>Locale contracts</b>Directory map for every language-specific translation profile.</a>
+    <a class="skill-link" href="../../web/nemoclaw/localization.html"><b>Localization Studio</b>Same-branch source and locale comparison with drift state.</a>
+    <a class="skill-link" href="../validation/localization_audit.py"><b>Required validator</b>Overlay boundary, accepted source hash, structure, and locale-native checks.</a>
+    <a class="skill-link" href="localization_scope.py"><b>Translation-body boundary</b>Hashes stable lesson prose separately from presentation-shell wording.</a>
+    <a class="skill-link" href="code_localization.py"><b>Runnable-code language</b>Preserves localized learner output while blocking protocol and executable drift.</a>
+    <a class="skill-link" href="locale_projection.py"><b>Structure projection</b>Restores every current learning block and inserts reviewed locale prose plus localized prompts.</a>
   </div>
 </section>
 <div id="explorer"></div><script src="../../web/_skill_explorer.js"></script></body>

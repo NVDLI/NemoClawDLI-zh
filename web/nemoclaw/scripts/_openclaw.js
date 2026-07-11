@@ -32,10 +32,8 @@ export function openclawGatewayWsUrl(rawUrl, accessSession = "", proxyBase = nul
     ? getOpenClawProxyConfig()
     : { base: normalizeOpenClawProxyBase(proxyBase), enabled: proxyEnabled !== false };
   // Brev establishes its access cookie when the learner opens the launchable.
-  // WebSocket handshakes are not subject to fetch CORS, so connect directly and
-  // let that signed-in browser session authenticate the socket. Keep the relay
-  // configuration for HTTP bootstrap reads such as /api/agent; putting the
-  // access session in a WebSocket query is unnecessary and less resilient.
+  // Connect WebSockets directly so that signed-in session authenticates the socket.
+  // Keep the relay for HTTP bootstrap reads such as /api/agent.
   let provider = "auto";
   try { provider = accessProviderForOpenClawUrl(rawUrl, accessProvider); }
   catch (_) { /* openclawWebSocketUrl below returns the authoritative error */ }
@@ -59,11 +57,9 @@ export function gatewayTokenFromAgentMetadata(payload) {
 
 let _verifiedGatewayToken = { rawUrl: "", token: "", verifiedAt: 0, metadataMatches: null };
 
-// The launchable access session and the OpenClaw gateway token are separate
-// credentials. The probe used to fill the token only when a learner explicitly
-// selected GET /api/agent, so a gateway cell could race ahead with an empty or
-// stale saved value. Bootstrap from that endpoint before the first gateway
-// connection and keep the result only in the existing tab-scoped store.
+// The launchable access session and OpenClaw gateway token are separate credentials.
+// Fetch the token from GET /api/agent before the first gateway connection.
+// Keep it only in the tab-scoped store.
 export async function refreshOpenClawGatewayToken({ signal = null, maxAgeMs = 30000 } = {}) {
   const connection = getOpenClawConnection();
   const rawUrl = String(connection.rawUrl || "").replace(/\/+$/, "");
@@ -842,10 +838,9 @@ export function mountEndpointProbe(targetSel, opts = {}) {
             j._filtered = `showing ${j.data.length} of ${before}`;
           }
           printed = JSON.stringify(j, null, 2);
-          // Auto-fill the bearer token when the probe knows how to find it.
-          // OpenClaw's /api/agent exposes the gateway token in agent.dashboardUrl.
-          // Cloudflare uses its tab-scoped relay session. Pomerium discovers the
-          // token through the already-authenticated direct terminal socket.
+          // Auto-fill the bearer token from agent.dashboardUrl in the /api/agent response.
+          // Cloudflare uses its tab-scoped relay session; Pomerium uses the authenticated
+          // direct terminal socket.
           if (opts.autofillToken && r.ok && j) {
             try {
               const found = opts.autofillToken(j);

@@ -6,13 +6,14 @@
 from __future__ import annotations
 
 import argparse
-import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_IMAGE = "nemoclaw/lab-runtime-test:local"
+sys.path.insert(0, str(ROOT))
+from scripts.runtime.host_browser import BrowserRuntimeError, environment, run_node
 
 RUNTIME = r"""
 const http=require('http'),fs=require('fs'),path=require('path');
@@ -24,7 +25,7 @@ function ok(value,message){if(!value)throw new Error(message)}
 async function open(page,url){const errors=[];page.removeAllListeners('console');page.removeAllListeners('pageerror');page.removeAllListeners('response');page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));page.on('response',r=>{if(r.status()>=400)errors.push(`HTTP ${r.status()}: ${r.url()}`)});await page.goto(`http://127.0.0.1:${port}${url}`,{waitUntil:'domcontentloaded'});await page.waitForTimeout(500);ok(!errors.length,`${url} browser errors: ${errors.join('; ')}`)}
 async function textOverlaps(locator){await locator.evaluate(root=>{const disclosure=root.closest('details');if(disclosure)disclosure.open=true});return locator.evaluate(root=>{const labels=[...root.querySelectorAll('svg text')].map(el=>({text:el.textContent.trim(),rect:el.getBoundingClientRect()})).filter(x=>x.text&&x.rect.width>0&&x.rect.height>0);const out=[];for(let i=0;i<labels.length;i++)for(let j=i+1;j<labels.length;j++){const a=labels[i],b=labels[j],w=Math.min(a.rect.right,b.rect.right)-Math.max(a.rect.left,b.rect.left),h=Math.min(a.rect.bottom,b.rect.bottom)-Math.max(a.rect.top,b.rect.top);if(w>1&&h>1)out.push(`${a.text} <> ${b.text}`)}return out})}
 async function textEscapesCard(locator){return locator.evaluate(root=>{const svg=root.querySelector('svg'),rects=[...svg.querySelectorAll('rect')].map(el=>({el,box:el.getBBox()}));return[...svg.querySelectorAll('text')].flatMap(el=>{const b=el.getBBox(),cx=b.x+b.width/2,cy=b.y+b.height/2;const containers=rects.filter(x=>x.box.x<=cx&&cx<=x.box.x+x.box.width&&x.box.y<=cy&&cy<=x.box.y+x.box.height).sort((a,b)=>(a.box.width*a.box.height)-(b.box.width*b.box.height));if(!containers.length)return[];const box=containers[0].box;return b.x<box.x-2||b.x+b.width>box.x+box.width+2||b.y<box.y-2||b.y+b.height>box.y+box.height+2?[el.textContent.trim()]:[]})})}
-(async()=>{await new Promise(r=>server.listen(port,'127.0.0.1',r));const browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:1280,height:900}});await page.route('https://integrate.api.nvidia.com/**',route=>route.fulfill({status:200,contentType:'application/json',body:'{"data":[{"embedding":[0.1,0.2,0.3]}],"usage":{"prompt_tokens":1,"total_tokens":1}}'}));
+(async()=>{await new Promise(r=>server.listen(port,'127.0.0.1',r));const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_BIN});const page=await browser.newPage({viewport:{width:1280,height:900}});await page.route('https://integrate.api.nvidia.com/**',route=>route.fulfill({status:200,contentType:'application/json',body:'{"data":[{"embedding":[0.1,0.2,0.3]}],"usage":{"prompt_tokens":1,"total_tokens":1}}'}));
 await open(page,'/nemoclaw/01a-loop.html');await page.waitForSelector('.language-menu-button');await page.click('.language-menu-button');let links=await page.$$eval('.language-menu-popover a',xs=>xs.map(x=>({text:x.textContent.trim(),href:x.href,current:x.getAttribute('aria-current')})));ok(links.some(x=>x.text.includes('Português')&&x.href.endsWith('/pt/nemoclaw/01a-loop.html')),'English 01a lacks same-page Portuguese target');ok(await page.$$eval('.language-menu-popover a',xs=>xs.every(x=>{const r=x.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight&&r.left>=0&&r.right<=innerWidth})),'English language-menu entries are clipped');
 await page.screenshot({path:path.join(shots,'english-01a-language-menu.png'),fullPage:false});
 await open(page,'/nemoclaw/01b-react.html');await page.waitForSelector('.language-menu-button');await page.click('.language-menu-button');links=await page.$$eval('.language-menu-popover a',xs=>xs.map(x=>({text:x.textContent.trim(),href:x.href})));ok(links.some(x=>x.text.includes('Português')&&x.href.endsWith('/pt/nemoclaw/01b-react.html')),'English 01b lacks same-page Portuguese target');
@@ -57,8 +58,6 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--site-root", default="/tmp/pt-localization-pages")
     parser.add_argument("--screenshots", default="/tmp/pt-localization-screenshots")
-    parser.add_argument("--engine", default=os.environ.get("CONTAINER_ENGINE", "podman"))
-    parser.add_argument("--image", default=DEFAULT_IMAGE)
     args = parser.parse_args()
     site = Path(args.site_root).resolve()
     shots = Path(args.screenshots).resolve()
@@ -66,14 +65,11 @@ def main() -> int:
     with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False) as handle:
         handle.write(RUNTIME)
         script = Path(handle.name)
-    cmd = [args.engine, "run", "--rm", "--entrypoint", "node"]
-    if args.engine.endswith("podman"):
-        cmd.append("--userns=keep-id")
-    cmd += ["-e", "NODE_PATH=/opt/nemoclaw-runtime/node_modules", "-e", "SITE_ROOT=/site",
-            "-e", "SHOTS=/shots", "-v", f"{site}:/site:ro", "-v", f"{shots}:/shots",
-            "-v", f"{script}:/tmp/localization-runtime.js:ro", args.image, "/tmp/localization-runtime.js"]
     try:
-        run = subprocess.run(cmd, cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=180)
+        run = run_node(script, env=environment(SITE_ROOT=site, SHOTS=shots), timeout=180)
+    except BrowserRuntimeError as exc:
+        print(f"localization runtime audit: FAIL\n  - {exc}")
+        return 1
     finally:
         script.unlink(missing_ok=True)
     print(run.stdout.rstrip())

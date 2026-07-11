@@ -9,17 +9,15 @@ files move together; this script CHECKS that duplicated facts agree and that eve
 path a SKILL points at exists.
 
 The proof-surface follows the content across the whole tree, and absence where a fact
-is expected is a FAIL, not a pass. A service brain that does not describe itself, a
-canonical source whose shape changed out from under the parser, or a config value
-present nowhere are all real regressions, surfaced rather than hidden.
+is expected is a FAIL, not a pass. A canonical source whose shape changed out from
+under the parser, or a config value present nowhere, is a real regression.
 
 Checks
 ------
 INVARIANTS  A fact duplicated across files must agree everywhere; a canonical source
             that exists but no longer parses, or a value expected but absent, FAILs.
 DANGLING    Every concrete repo path a SKILL skill-meta points at must exist. FAIL.
-HARNESS     A SKILL self-test must be fully wired; a SERVICE SKILL with no tester at
-            all is a FAIL (the tests are the agent-facing contract).
+HARNESS     A SKILL self-test must be fully wired; the tests are the agent-facing contract.
 PROPAGATION (advisory, --since REF) change_impact when_files moved without then_review.
 
 Usage
@@ -52,7 +50,7 @@ SKIP_PARTS = {"__pycache__", ".ipynb_checkpoints", "node_modules", ".git", ".cac
               # Never source, and a build mid-flight makes subdirs appear and vanish under us, so walking into them crashes the scan.
               # Prune them.
               "public", "export", "standalone", "dist", "build", "i18n",
-              # Skip gitignored lab-runtime cruft explicitly.
+              # Skip gitignored local runtime output explicitly.
               ".Trash-0", "artifacts", "grounding_cache", "_paper_cache",
               ".exec_stage", ".solution"}
 # config/source suffixes worth scanning for duplicated facts
@@ -82,21 +80,6 @@ def read(p: Path) -> str:
 def skill_files() -> list[Path]:
     return sorted(p for p in TASK1.rglob("SKILL.html")
                   if not any(s in p.parts for s in SKIP_PARTS))
-
-
-def service_skills() -> list[Path]:
-    return sorted(p for p in TASK1.rglob("SKILL.html")
-                  if (skill_meta(p) or {}).get("schema") == "service-skill/1.0"
-                  and not any(s in p.parts for s in SKIP_PARTS))
-
-
-def svc_file(name: str, *rest: str) -> Path | None:
-    """Locate a per-service source file post-migration (cpu/services first, then legacy)."""
-    for base in (TASK1 / "cpu" / "services", TASK1 / "workspace" / "services"):
-        cand = base.joinpath(name, *rest)
-        if cand.exists():
-            return cand
-    return None
 
 
 def skill_meta(p: Path) -> dict | None:
@@ -138,116 +121,9 @@ def inv_openclaw_token():
             fail(f"openclaw token DIVERGENCE: '{t}' in {found[t][:4]} (expected dli-openclaw-token)")
 
 
-def inv_service_addresses():
-    """Per-service SKILLs are the canonical address source: each MUST declare service +
-    address, and the same service name must not get two different addresses anywhere."""
-    skills = service_skills()
-    if not skills:
-        fail("service addresses: NO per-service SKILLs found under cpu/services/*/SKILL.html, so the scope is wrong")
-        return
-    canon: dict[str, str] = {}
-    for p in skills:
-        meta = skill_meta(p) or {}
-        rel = str(p.relative_to(REPO))
-        name, addr = meta.get("service"), meta.get("address")
-        if not name:
-            fail(f"service address: {rel} declares no 'service' name"); continue
-        if not addr:
-            fail(f"service address: {rel} (service '{name}') declares no 'address'"); continue
-        if name in canon and canon[name] != addr:
-            fail(f"service address DIVERGENCE for '{name}': {addr} ({rel}) vs {canon[name]}")
-        else:
-            canon[name] = addr
-            ok(f"service address: '{name}' -> {addr}")
-
-
-def _py_frozenset(text: str, name: str) -> set[str] | None:
-    m = re.search(name + r'\s*=\s*frozenset\(\{(.*?)\}\)', text, re.S)
-    return set(re.findall(r'"([^"]+)"', m.group(1))) if m else None
-
-
-def _generic_allowlist(meta: dict) -> set[str] | None:
-    m = re.search(r'"generic"\s*:\s*\[([^\]]*)\]', json.dumps(meta.get("interfaces", {})))
-    return set(re.findall(r'"([^"]+)"', m.group(1))) if m else None
-
-
-def inv_exec_allowlist():
-    """sandbox-admin's generic exec allow-list (app.py) must equal what the openclaw +
-    sandbox_admin SKILLs declare. A canonical source that exists-but-won't-parse, or a
-    service SKILL that omits the declaration, is a FAIL (drift hides exactly here)."""
-    app = svc_file("sandbox_admin", "app.py")
-    if app is None:
-        fail("exec allow-list: sandbox_admin/app.py NOT FOUND (canonical source missing)")
-        return
-    canon = _py_frozenset(read(app), "_ALLOWED_ARGV0")
-    if not canon:
-        fail(f"exec allow-list: _ALLOWED_ARGV0 no longer parses from {app.relative_to(REPO)} (shape changed)")
-        return
-    for svc in ("openclaw", "sandbox_admin"):
-        sk = svc_file(svc, "SKILL.html")
-        if sk is None:
-            fail(f"exec allow-list: {svc} SKILL.html NOT FOUND"); continue
-        declared = _generic_allowlist(skill_meta(sk) or {})
-        if declared is None:
-            fail(f"exec allow-list: {svc} SKILL declares no generic allow-list (must mirror app.py)")
-        elif declared == canon:
-            ok(f"exec allow-list: {svc} SKILL matches app.py ({len(canon)} verbs)")
-        else:
-            missing, extra = canon - declared, declared - canon
-            fail(f"exec allow-list DIVERGENCE in {svc} SKILL: missing {sorted(missing)} extra {sorted(extra)}")
-
-
-def inv_control_ui_basepath():
-    """openclaw control-UI base path must agree across deploy/nginx.conf + openclaw.json, and
-    must be declared in at least one of them (it is load-bearing for the WS gateway)."""
-    vals: dict[str, str] = {}
-    m = re.search(r'__OPENCLAW_CONTROL_UI_BASE_PATH__\s*=\s*"([^"]+)"', read(TASK1 / "deploy" / "nginx.conf"))
-    if m:
-        vals["deploy/nginx.conf"] = m.group(1)
-    ocjson = svc_file("openclaw", "openclaw.json")
-    if ocjson:
-        mm = re.search(r'"basePath"\s*:\s*"([^"]+)"', read(ocjson))
-        if mm:
-            vals["openclaw.json"] = mm.group(1)
-    if not vals:
-        fail("control-UI basePath: declared in NEITHER deploy/nginx.conf NOR openclaw.json (expected in both)")
-    elif len(set(vals.values())) > 1:
-        fail(f"control-UI basePath DIVERGENCE: {vals}")
-    elif len(vals) == 1:
-        fail(f"control-UI basePath: declared only in {list(vals)[0]} ({vals}); must agree across both")
-    else:
-        ok(f"control-UI basePath: agrees across both ({list(vals.values())[0]})")
-
-
-def inv_lifecycle_allowlist():
-    """docker_router LIFECYCLE_SERVICES (docker_router.py) must equal the docker_router
-    SKILL's allowed_services. Unparseable canonical or missing declaration is a FAIL."""
-    app = svc_file("docker_router", "docker_router.py")
-    if app is None:
-        fail("lifecycle allow-list: docker_router.py NOT FOUND (canonical source missing)")
-        return
-    m = re.search(r'LIFECYCLE_SERVICES\s*=\s*\{([^}]*)\}', read(app))
-    if not m:
-        fail(f"lifecycle allow-list: LIFECYCLE_SERVICES no longer parses from {app.relative_to(REPO)}")
-        return
-    canon = set(re.findall(r'"([^"]+)"', m.group(1)))
-    sk = svc_file("docker_router", "SKILL.html")
-    meta = skill_meta(sk) if sk else None
-    am = re.search(r'"allowed_services"\s*:\s*\[([^\]]*)\]', json.dumps((meta or {}).get("interfaces", {})))
-    if not am:
-        fail("lifecycle allow-list: docker_router SKILL declares no allowed_services (must mirror code)")
-        return
-    declared = set(re.findall(r'"([^"]+)"', am.group(1)))
-    if declared == canon:
-        ok(f"lifecycle allow-list: docker_router SKILL matches code ({len(canon)} services)")
-    else:
-        missing, extra = canon - declared, declared - canon
-        fail(f"lifecycle allow-list DIVERGENCE: missing {sorted(missing)} extra {sorted(extra)}")
-
-
-# Dangling refs: dgx/ and mats paths stay recognized so stale SKILL links fail loudly.
-_PREFIXES = ("task1/", "cpu/", "web/", "dgx/", "repos/", ".github/", ".gitlab/", "i18n/",
-             "deploy/", "docs/", "scripts/", "tests/", "workspace/")
+# Dangling refs: mats paths stay recognized so stale SKILL links fail loudly.
+_PREFIXES = ("task1/", "web/", "repos/", ".github/", ".gitlab/", "i18n/",
+             "docs/", "scripts/", "tests/")
 
 
 def _resolve(ref: str, base: Path | None = None) -> Path | None:
@@ -398,10 +274,6 @@ def main():
     args = ap.parse_args()
 
     inv_openclaw_token()
-    inv_service_addresses()
-    inv_exec_allowlist()
-    inv_control_ui_basepath()
-    inv_lifecycle_allowlist()
     check_dangling()
     check_harness_wiring()
     check_scripts_hierarchy()

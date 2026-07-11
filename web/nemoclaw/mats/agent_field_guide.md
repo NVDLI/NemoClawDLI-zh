@@ -8,6 +8,17 @@ The course arc moves from a single reasoning loop, to tools, to retrieval, to me
 
 ---
 
+## Loop foundations
+
+Module 1 starts with conventional search before replacing its decision rule with a model. These references define the algorithms and browser/API boundaries used in that comparison.
+
+- [Artificial Intelligence: A Modern Approach resources](https://aima.cs.berkeley.edu) provide the agent taxonomy behind the introductory loop.
+- [Breadth-first search](https://en.wikipedia.org/wiki/Breadth-first_search), [depth-first search](https://en.wikipedia.org/wiki/Depth-first_search), and [A* search](https://en.wikipedia.org/wiki/A*_search_algorithm) define the deterministic strategies used in the maze examples.
+- The [Chat Completions](https://platform.openai.com/docs/api-reference/chat) and [Responses](https://platform.openai.com/docs/api-reference/responses) references document the two model request shapes compared in the course.
+- The [MDN CORS guide](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS) explains the browser boundary that motivates the course relay.
+
+---
+
 ## Reasoning and acting
 
 The first modules build the agent loop itself: a model that reasons about what to do, takes an action, looks at the result, and decides again. These five papers are the moves inside that loop. They are short and worth reading in order.

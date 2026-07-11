@@ -84,31 +84,29 @@
     {
       "name": "Studio",
       "entry": "scripts/studio_main.js",
-      "style": "Use as the operator console for authoring plus automated test kickoff. Static mode is read-only and exposes no-lab checks; lab mode may write through Jupyter contents API and points to podman-backed browser tests."
+      "style": "Use as the operator console for running or copying checks. Static mode is read-only; lab-served mode may write through the Jupyter contents API. Browser tests run with host Chromium."
     }
   ],
   "tests": [
     "python3 scripts/validation/studio_interface_audit.py",
-    "python3 scripts/validation/helper_notebook_runtime_audit.py --no-container",
+    "python3 scripts/validation/helper_notebook_runtime_audit.py --static-only",
     "python3 scripts/validation/openclaw_fallback_audit.py",
     "python3 scripts/validation/endpoint_registration_audit.py --self-test",
     "python3 scripts/validation/endpoint_registration_audit.py",
     "bash scripts/runtime/run_node.sh scripts/validation/openclaw_connection_audit.mjs",
-    "CONTAINER_ENGINE=podman podman run --rm -v $PWD:/workspace:ro -w /workspace -e NODE_PATH=/opt/nemoclaw-runtime/node_modules --entrypoint node nemoclaw/lab-runtime-test:local scripts/validation/openclaw_connection_browser_audit.mjs",
+    "bash scripts/runtime/run_node.sh scripts/validation/openclaw_connection_browser_audit.mjs",
     "python3 scripts/validation/learner_flow_audit.py --self-test",
     "python3 scripts/validation/learner_flow_audit.py",
-    "CONTAINER_ENGINE=podman python3 scripts/validation/learner_flow_runtime_audit.py --site-root web",
-    "CONTAINER_ENGINE=podman python3 scripts/validation/openclaw_probe_frame_runtime_audit.py --site-root web",
-    "CONTAINER_ENGINE=podman python3 scripts/validation/openclaw_probe_frame_runtime_audit.py --site-root public",
-    "CONTAINER_ENGINE=podman python3 scripts/validation/helper_notebook_runtime_audit.py",
-    "CONTAINER_ENGINE=podman python3 scripts/validation/cell_ui_runtime_audit.py --screenshots tmp/cell-ui-audit-source",
-    "CONTAINER_ENGINE=podman python3 scripts/validation/cell_ui_runtime_audit.py --site-root public --screenshots tmp/cell-ui-audit-public",
-    "CONTAINER_ENGINE=podman python3 scripts/validation/studio_responsive_audit.py",
+    "python3 scripts/validation/learner_flow_runtime_audit.py --site-root web",
+    "python3 scripts/validation/openclaw_probe_frame_runtime_audit.py --site-root web",
+    "python3 scripts/validation/openclaw_probe_frame_runtime_audit.py --site-root public",
+    "python3 scripts/validation/helper_notebook_runtime_audit.py",
+    "python3 scripts/validation/cell_ui_runtime_audit.py --screenshots tmp/cell-ui-audit-source",
+    "python3 scripts/validation/cell_ui_runtime_audit.py --site-root public --screenshots tmp/cell-ui-audit-public",
+    "python3 scripts/validation/studio_responsive_audit.py",
     "scripts/runtime/browser_env_probe.sh",
-    "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --smoke",
-    "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only",
-    "COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD python3 -m podman_compose -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml up -d --build",
-    "CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html",
+    "scripts/runtime/browser_runtime_test.sh --smoke",
+    "scripts/runtime/browser_runtime_test.sh --render-only",
     "python3 scripts/validation/validate_layout.py --quiet",
     "python3 scripts/skills/skill_contract.py",
     "python3 scripts/skills/skill_consistency.py",
@@ -125,7 +123,7 @@
 <main>
   <p><a href="../SKILL.html">Back to course hub</a></p>
   <h1>Course runtime scripts</h1>
-  <p>These modules support the browser course pages. Page HTML imports <code>scripts/_shared.js</code>; that shared module re-exports page-facing APIs and delegates larger subsystems to smaller siblings. The studio and this SKILL page split the testing job: <code>studio.html</code> is the operator console for running or copying checks, while this beacon is the machine-readable test map agents should parse before changing runtime interfaces. Before claiming browser smoke is unavailable, run <code>scripts/runtime/browser_env_probe.sh</code>; host Node, Chromium, and Playwright are not prerequisites. Docker may exist without <code>docker compose</code>, and Podman may exist without <code>podman compose</code>. If the probe reports <code>podman-compose-via-python: yes</code>, use <code>python3 -m podman_compose</code> instead of stopping.</p>
+  <p>These modules support the browser course pages. Page HTML imports <code>scripts/_shared.js</code>; that module re-exports page-facing APIs and delegates larger subsystems to smaller siblings. <code>studio.html</code> lists checks operators can run or copy. Before browser validation, run <code>scripts/runtime/browser_env_probe.sh</code> to verify host Node.js, the pinned Playwright API, and Chromium.</p>
 
   <h2>Use style</h2>
   <table>
@@ -136,7 +134,7 @@
       <tr><td>Learning views</td><td>Use open <code>details.learning-block</code> only for optional narrative. Supply a stable id, subtle text-backed scope cue, local inline question, and body wrapper. Guided is the first-visit default and collapses interactive code while retaining each cell's local disclosure. Keep prerequisites, exercises, warnings, and safety limits outside every tier.</td><td>Learner-flow static mutation suite plus source and built browser lifecycle.</td></tr>
       <tr><td>OpenClaw controls</td><td>Use <code>_connection.js</code> for every launchable HTTP or WebSocket route and <code>_openclaw.js</code> for probes, chat, logs, and recovery. Cloudflare uses its tab-scoped relay session. Pomerium never exposes its HttpOnly cookie to course code: use direct WebSockets and <code>openclawLoopbackProbe</code> for the two fixed metadata reads. Do not rebuild routes in lesson cells.</td><td>Connection routing contract plus browser runtime harness.</td></tr>
       <tr><td>Chat and retrieval</td><td>Use explicit model/key/proxy state through shared helpers. Static pages must not add hidden key paths or private service assumptions.</td><td>Security audit plus ship gate.</td></tr>
-      <tr><td>Studio</td><td>Use <code>studio.html</code> as the authoring and test console. Read-only static preview supports inspection, comments, references, Light export review, and no-lab test commands. Lab authoring adds Jupyter contents writes and podman-backed browser checks.</td><td><code>python3 scripts/validation/studio_interface_audit.py</code>; browser harness commands below.</td></tr>
+      <tr><td>Studio</td><td>Use <code>studio.html</code> as the authoring and test console. Read-only static preview supports inspection, comments, references, Light export review, and host-native test commands. Lab authoring enables Jupyter contents writes only when the host supplies that API.</td><td><code>python3 scripts/validation/studio_interface_audit.py</code>; browser harness commands below.</td></tr>
     </tbody>
   </table>
 
@@ -175,26 +173,24 @@
     <thead><tr><th>Command</th><th>What it catches</th></tr></thead>
     <tbody>
       <tr><td><code>python3 scripts/validation/studio_interface_audit.py</code></td><td>Studio controls, local assets, lesson coverage, lab-write versus static-read-only behavior, references panel, testing sidebar commands, this SKILL documentation, and helper-notebook API surface checks.</td></tr>
-      <tr><td><code>python3 scripts/validation/helper_notebook_runtime_audit.py --no-container</code></td><td>Static helper-notebook contract. Verifies the runnable notebook does not mix <code>mountCanvasFlow</code> and <code>mountRunCell</code> helper APIs.</td></tr>
-      <tr><td><code>CONTAINER_ENGINE=podman python3 scripts/validation/helper_notebook_runtime_audit.py</code></td><td>Containerized Playwright check. Serves the source page, clicks every helper notebook run button, and fails on runtime errors.</td></tr>
-      <tr><td><code>CONTAINER_ENGINE=podman python3 scripts/validation/cell_ui_runtime_audit.py --screenshots tmp/cell-ui-audit-source</code></td><td>Source-page cell UI suite. Checks CanvasFlow and RunCell across desktop/mobile and dark/light themes, verifies CodeMirror tokens, hidden-code heuristics, shared JS chips, unified buttons, and helper-notebook output. Writes screenshots for review.</td></tr>
-      <tr><td><code>CONTAINER_ENGINE=podman python3 scripts/validation/cell_ui_runtime_audit.py --site-root public --screenshots tmp/cell-ui-audit-public</code></td><td>Built-page cell UI suite. Run after <code>BUILD_PAGES_LANGS=0 scripts/build/build_pages.sh</code> to prove the production bundle preserves the same cell contract and screenshot evidence.</td></tr>
-      <tr><td><code>CONTAINER_ENGINE=podman python3 scripts/validation/studio_responsive_audit.py</code></td><td>Containerized Playwright check for Studio layout extremes: topbar scrolling, minimum control sizes, sidebar list floors, and internal list scrolling.</td></tr>
+      <tr><td><code>python3 scripts/validation/helper_notebook_runtime_audit.py --static-only</code></td><td>Static helper-notebook contract. Verifies the runnable notebook does not mix <code>mountCanvasFlow</code> and <code>mountRunCell</code> helper APIs.</td></tr>
+      <tr><td><code>python3 scripts/validation/helper_notebook_runtime_audit.py</code></td><td>Host Playwright check. Serves the source page, clicks every helper notebook run button, and fails on runtime errors.</td></tr>
+      <tr><td><code>python3 scripts/validation/cell_ui_runtime_audit.py --screenshots tmp/cell-ui-audit-source</code></td><td>Source-page cell UI suite. Checks CanvasFlow and RunCell across desktop/mobile and dark/light themes, verifies CodeMirror tokens, hidden-code heuristics, shared JS chips, unified buttons, and helper-notebook output. Writes screenshots for review.</td></tr>
+      <tr><td><code>python3 scripts/validation/cell_ui_runtime_audit.py --site-root public --screenshots tmp/cell-ui-audit-public</code></td><td>Built-page cell UI suite. Run after <code>BUILD_PAGES_LANGS=0 scripts/build/build_pages.sh</code> to prove the production bundle preserves the same cell contract and screenshot evidence.</td></tr>
+      <tr><td><code>python3 scripts/validation/studio_responsive_audit.py</code></td><td>Host Playwright check for Studio layout extremes: topbar scrolling, minimum control sizes, sidebar list floors, and internal list scrolling.</td></tr>
       <tr><td><code>python3 scripts/validation/openclaw_fallback_audit.py</code></td><td>Required static OpenClaw fallback and probe lifecycle contract, including explicit hidden-frame CSS and <code>srcdoc</code> cleanup.</td></tr>
       <tr><td><code>python3 scripts/validation/endpoint_registration_audit.py --self-test</code></td><td>Mutation tests for endpoint ownership, typed probes, the SKILL explorer model handoff, and EN/PT/ES registration surfaces.</td></tr>
       <tr><td><code>python3 scripts/validation/endpoint_registration_audit.py</code></td><td>Current-tree endpoint ownership contract. Keeps chat, embedding, and OpenClaw registration paths distinct and visible.</td></tr>
       <tr><td><code>bash scripts/runtime/run_node.sh scripts/validation/openclaw_connection_audit.mjs</code></td><td>Relay default and toggle, same-origin bypass, retired saved-route migration, terminal routing, and EN/PT/ES Module 4b reuse.</td></tr>
-      <tr><td><code>CONTAINER_ENGINE=podman podman run --rm -v $PWD:/workspace:ro -w /workspace -e NODE_PATH=/opt/nemoclaw-runtime/node_modules --entrypoint node nemoclaw/lab-runtime-test:local scripts/validation/openclaw_connection_browser_audit.mjs</code></td><td>Chromium proof that the visible Module 3a controls heal retired browser state and persist relay off/on routing.</td></tr>
+      <tr><td><code>bash scripts/runtime/run_node.sh scripts/validation/openclaw_connection_browser_audit.mjs</code></td><td>Chromium proof that the visible Module 3a controls heal retired browser state and persist relay off/on routing.</td></tr>
       <tr><td><code>python3 scripts/validation/learner_flow_audit.py --self-test</code></td><td>Mutation tests for learning-view, progressive-disclosure, prerequisite, exercise, and interaction-state regressions.</td></tr>
       <tr><td><code>python3 scripts/validation/learner_flow_audit.py</code></td><td>Required static learning-view, progressive-disclosure, prerequisite, exercise, and interaction-state contract.</td></tr>
-      <tr><td><code>CONTAINER_ENGINE=podman python3 scripts/validation/learner_flow_runtime_audit.py --site-root web</code></td><td>Browser lifecycle for Guided first visit, code collapse and local reveal, saved depth, inline section overrides, and shared Run, Stop, Reset, error, disclosure, and prerequisite behavior.</td></tr>
-      <tr><td><code>CONTAINER_ENGINE=podman python3 scripts/validation/openclaw_probe_frame_runtime_audit.py --site-root web</code></td><td>Source-page Chromium regression for HTML probe cleanup after JSON, network error, Cloudflare warning, remount, and reload transitions.</td></tr>
-      <tr><td><code>CONTAINER_ENGINE=podman python3 scripts/validation/openclaw_probe_frame_runtime_audit.py --site-root public</code></td><td>Runs the same state-transition matrix against built Pages output after <code>BUILD_PAGES_LANGS=0 scripts/build/build_pages.sh public</code>.</td></tr>
-      <tr><td><code>scripts/runtime/browser_env_probe.sh</code></td><td>First browser-runtime discovery command. Finds Podman or Docker, reports native Compose plus podman-compose-via-python availability, and proves container Node.js, Playwright, and Chromium through smoke.</td></tr>
-      <tr><td><code>CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --smoke</code></td><td>Direct browser runtime smoke. No lab stack, no host Node, no host Chromium, no host Playwright.</td></tr>
-      <tr><td><code>CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh --render-only</code></td><td>No-lab browser-container check. Uses the runtime image to render a static page without the podman deployment network.</td></tr>
-      <tr><td><code>COMPOSE_PROJECT_NAME=task1 HOST_PROJECT_DIR=$PWD python3 -m podman_compose -f deploy/docker-compose.yml -f deploy/docker-compose.override.yml up -d --build</code></td><td>Podman deployment startup through the Python podman-compose module. Same compose files as native Compose; required when Docker lacks Compose v2 or Podman lacks <code>podman compose</code>.</td></tr>
-      <tr><td><code>CONTAINER_ENGINE=podman scripts/runtime/lab_runtime_test.sh http://nginx/lab/static/nemoclaw/01a-loop.html</code></td><td>Full lab-network browser check after the podman stack is running.</td></tr>
+      <tr><td><code>python3 scripts/validation/learner_flow_runtime_audit.py --site-root web</code></td><td>Browser lifecycle for Guided first visit, code collapse and local reveal, saved depth, inline section overrides, and shared Run, Stop, Reset, error, disclosure, and prerequisite behavior.</td></tr>
+      <tr><td><code>python3 scripts/validation/openclaw_probe_frame_runtime_audit.py --site-root web</code></td><td>Source-page Chromium regression for HTML probe cleanup after JSON, network error, Cloudflare warning, remount, and reload transitions.</td></tr>
+      <tr><td><code>python3 scripts/validation/openclaw_probe_frame_runtime_audit.py --site-root public</code></td><td>Runs the same state-transition matrix against built Pages output after <code>BUILD_PAGES_LANGS=0 scripts/build/build_pages.sh public</code>.</td></tr>
+      <tr><td><code>scripts/runtime/browser_env_probe.sh</code></td><td>Verifies host Node.js, the pinned Playwright API, and Chromium before browser checks run.</td></tr>
+      <tr><td><code>scripts/runtime/browser_runtime_test.sh --smoke</code></td><td>Direct host Node.js, Playwright, and Chromium smoke.</td></tr>
+      <tr><td><code>scripts/runtime/browser_runtime_test.sh --render-only</code></td><td>Renders a static course page in host Chromium.</td></tr>
       <tr><td><code>python3 scripts/validation/validate_layout.py --quiet</code></td><td>Page wiring, links, and misplaced runtime files.</td></tr>
       <tr><td><code>python3 scripts/skills/skill_contract.py</code></td><td>Well-formed <code>skill-meta</code> JSON and directory drift.</td></tr>
       <tr><td><code>python3 scripts/skills/skill_consistency.py</code></td><td>Cross-file SKILL and runtime invariants.</td></tr>

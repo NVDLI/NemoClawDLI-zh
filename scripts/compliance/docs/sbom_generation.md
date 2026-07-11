@@ -1,13 +1,14 @@
 # SBOM generation and attachment runbook
 
+The repository does not define or distribute a container image. Its generated SBOMs cover the browser code shipped to learners and the small Python tool set used to verify course materials.
+
 This runbook generates the SBOM evidence used for source and open-source review without adding
 generated SBOM bodies to the repository. Run every command from the repository root at the exact
 reviewed commit. Retain the command, tool version, commit SHA, component count, file size, and
 SHA-256 alongside each output.
 
-The static course release does not distribute the local-authoring container images. Its normal
-attachment set is therefore the browser runtime, resolved workspace Python environment, and exact
-source tree. Scan a container image only when that exact digest is itself proposed for distribution.
+Its normal attachment set is the browser runtime, resolved Python validation environment, and exact
+source tree. A separately managed container requires its own review; it is not part of this repository.
 
 ## Output directory
 
@@ -23,17 +24,14 @@ files in the authorized release evidence record.
 ## Evidence catalog and retention
 
 [`scripts/compliance/docs/sbom_evidence.json`](sbom_evidence.json) is the compact index used by the license view. It records
-three different states instead of presenting every missing aggregate license as the same problem:
+two evidence states instead of presenting every missing aggregate license as the same problem:
 
 - `available`: the linked SBOM is in the repository and the catalog pins its SHA-256 and component count;
 - `ci-generated`: the SBOM, evidence manifest, and license appendix are produced for an exact commit;
-- `conditional`: the software is not distributed by the static course, so its digest-bound scan is
-  required only if that artifact is later proposed for distribution.
-
 GitLab SCA artifacts expire after 30 days. They support merge review but are not permanent release
 evidence. A versioned public release copies its Python SBOM, evidence manifest, and license appendix
 into release assets. It also composes a release catalog whose relative links resolve to the
-versioned Python and browser SBOM filenames. Any distributed image must receive the same treatment.
+versioned Python and browser SBOM filenames.
 Verify the committed catalog and its linked browser SBOM with:
 
 ```bash
@@ -86,22 +84,17 @@ The exact npm lock remains the authority for the wider build graph. An optional
 `npm view <name>@<version> license dist.integrity repository --json` query may corroborate a row,
 but it does not override the reviewed lock and installed license text.
 
-## Resolved Python environment CycloneDX
+## Python material-tool CycloneDX
 
-Keep runtime packages separate from scanner packages. This is the same command sequence used by
-the required `security_deep_sca` CI job.
+The repository has no Python application runtime. Scan the small pinned material-tool closure with
+the separate scanner lock. This is the same sequence used by `security_python_sca`.
 
 ```bash
-python3 -m venv /tmp/nemoclaw-release-runtime
 python3 -m venv /tmp/nemoclaw-release-scanner
-/tmp/nemoclaw-release-runtime/bin/python -m pip install -r workspace/requirements.lock
 /tmp/nemoclaw-release-scanner/bin/python -m pip install -r scripts/security/requirements-sca.lock
-RUNTIME_SITE=$(/tmp/nemoclaw-release-runtime/bin/python -c 'import sysconfig; print(sysconfig.get_path("purelib"))')
-PATH="/tmp/nemoclaw-release-scanner/bin:$PATH" /tmp/nemoclaw-release-scanner/bin/python \
-  scripts/security/run_full_sca.py --execute --require-tools --python-local --cyclonedx-env \
-  --python-executable /tmp/nemoclaw-release-runtime/bin/python --python-path "$RUNTIME_SITE" \
-  --out-dir "$OUT/python-scan"
-mv "$OUT/python-scan/python-env.cdx.json" "$OUT/python-scan/python-env.raw.cdx.json"
+mkdir -p "$OUT/python-scan"
+/tmp/nemoclaw-release-scanner/bin/pip-audit -r scripts/materials/requirements.lock --strict \
+  --format cyclonedx-json --output "$OUT/python-scan/python-env.raw.cdx.json"
 /tmp/nemoclaw-release-scanner/bin/python scripts/compliance/resolve_sbom_licenses.py \
   --input "$OUT/python-scan/python-env.raw.cdx.json" \
   --output "$OUT/python-scan/python-env.cdx.json"
@@ -114,9 +107,9 @@ cp "$OUT/python-scan/sbom-policy.json" "$OUT/sbom-policy.json"
 python3 scripts/compliance/sbom_evidence.py \
   --raw-sbom "$OUT/python-env.raw.cdx.json" \
   --sbom "$OUT/python-env.cdx.json" \
-  --artifact-name "python-validation-$COMMIT" \
-  --record-id python-validation-environment \
-  --description "Resolved Python validation environment; not distributed to learners" \
+  --artifact-name "python-material-tools-$COMMIT" \
+  --record-id python-material-tooling \
+  --description "Pinned Python tools used to verify course materials; not distributed to learners" \
   --distribution not-distributed \
   --category validation \
   --source-commit "$COMMIT" \
@@ -131,81 +124,31 @@ SHA-256. Do not reuse an SBOM from an earlier green commit.
 
 ## Exact source-tree CycloneDX and SPDX
 
-The command used for the review attachment runs the official pinned Syft image against a read-only
-checkout. The explicit source name and full commit make the output identity reviewable.
+Install Syft 1.44.0 from the
+[official release](https://github.com/anchore/syft/releases/tag/v1.44.0), verify the downloaded archive
+against the publisher's checksum file, and put the executable on `PATH`. Retain the archive name,
+checksum file, checksum result, and version output with the review evidence. The explicit source name
+and full commit make the output identity reviewable.
 
 ```bash
-container run --rm \
-  --mount type=bind,source="$PWD",target=/src,readonly \
-  --mount type=bind,source="$OUT",target=/out \
-  anchore/syft:v1.44.0@sha256:86fde6445b483d902fe011dd9f68c4987dd94e07da1e9edc004e3c2422650de6 scan dir:/src \
+syft scan dir:"$PWD" \
   --source-name NemoClawDLIOS \
   --source-version "$COMMIT" \
   -q \
-  -o cyclonedx-json=/out/source-tree.cdx.json \
-  -o spdx-json=/out/source-tree.spdx.json
+  -o cyclonedx-json="$OUT/source-tree.cdx.json" \
+  -o spdx-json="$OUT/source-tree.spdx.json"
 ```
 
 Record the scanner identity:
 
 ```bash
-container run --rm anchore/syft:v1.44.0@sha256:86fde6445b483d902fe011dd9f68c4987dd94e07da1e9edc004e3c2422650de6 version
+syft version
 ```
-
-## Digest-bound container image SBOM
-
-This is conditional. It applies only when the image itself is a release artifact. Resolve the tag
-to the deployment platform's immutable registry digest before scanning; do not attach a tag-only
-scan as final evidence.
-
-```bash
-IMAGE=<registry>/<repository>@sha256:<64-hex-digest>
-PLATFORM=linux/amd64
-container run --rm \
-  --mount type=bind,source="$OUT",target=/out \
-  anchore/syft:v1.44.0@sha256:86fde6445b483d902fe011dd9f68c4987dd94e07da1e9edc004e3c2422650de6 scan "registry:$IMAGE" \
-  --platform "$PLATFORM" \
-  --override-default-catalogers os \
-  --select-catalogers=-file \
-  --select-catalogers=+python-installed-package-cataloger \
-  --select-catalogers=+javascript-package-cataloger \
-  -q \
-  -o cyclonedx-json=/out/image.raw.cdx.json \
-  -o spdx-json=/out/image.raw.spdx.json
-python3 scripts/compliance/resolve_sbom_licenses.py \
-  --accept-scanner-spdx \
-  --package-components-only \
-  --input "$OUT/image.raw.cdx.json" \
-  --output "$OUT/image.cdx.json" \
-  --inventory scripts/compliance/docs/image_license_resolutions.md
-python3 scripts/compliance/sbom_evidence.py \
-  --raw-sbom "$OUT/image.raw.cdx.json" \
-  --sbom "$OUT/image.cdx.json" \
-  --inventory scripts/compliance/docs/image_license_resolutions.md \
-  --artifact-name "$IMAGE" \
-  --artifact-id "$IMAGE" \
-  --record-id scanned-container-image \
-  --description "Digest-bound component inventory for an image proposed for distribution" \
-  --distribution conditional-release \
-  --category local-authoring \
-  --source-commit "$COMMIT" \
-  --ci-job manual-review \
-  --appendix-out "$OUT/image-license-appendix.md" \
-  --manifest-out "$OUT/image-sbom-evidence.json"
-```
-
-A container's publisher terms and each bundled component license all apply. Record the publisher
-terms in `THIRD_PARTY_LICENSES.md`. The resolver retains scanner-provided SPDX identifiers and
-expressions, including packages with several applicable licenses. Named-only or missing values
-require an exact package/version row and evidence in `image_license_resolutions.md`. Non-package
-OS metadata stays in the raw scan rather than becoming a dependency row. The job fails until the
-digest-bound package SBOM is complete.
 
 ## License metadata precedence
 
 1. Preserve the scanner-original SBOM as evidence.
-2. Resolve the review SBOM from exact normalized-name and exact-version rows in the applicable
-   checked inventory (`THIRD_PARTY_LICENSES.md` for Python or `image_license_resolutions.md` for an image).
+2. Resolve the review SBOM from exact normalized-name and exact-version rows in `THIRD_PARTY_LICENSES.md`.
 3. Stop if any package/version lacks a corroborated SPDX mapping; do not publish a placeholder.
 4. Keep descriptive external-content terms descriptive when they are not an OSS SPDX license.
 

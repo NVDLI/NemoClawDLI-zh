@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import argparse
 import copy
-import datetime as dt
 import hashlib
 import json
 import os
@@ -27,10 +26,9 @@ ROOT = Path(__file__).resolve().parents[2]
 CATALOG = ROOT / "scripts/compliance/docs/sbom_evidence.json"
 INVENTORY = ROOT / "THIRD_PARTY_LICENSES.md"
 COMMIT = re.compile(r"^[0-9a-f]{40}(?:[0-9a-f]{24})?$")
-ALLOWED_STATES = {"available", "ci-generated", "conditional"}
-ALLOWED_DISTRIBUTION = {"distributed", "not-distributed", "conditional-release"}
+ALLOWED_STATES = {"available", "ci-generated"}
+ALLOWED_DISTRIBUTION = {"distributed", "not-distributed"}
 CI_LINK_SCHEMA = "nemoclaw-ci-evidence-links/1"
-SUBJECT_LINK_FIELDS = ("declaration_href", "upstream_href", "license_hint_href")
 
 
 def digest(path: Path) -> str:
@@ -58,22 +56,6 @@ def load_sbom(path: Path) -> dict:
     if document.get("bomFormat") != "CycloneDX" or not isinstance(document.get("components"), list):
         raise ValueError("SBOM must be CycloneDX JSON with a components array")
     return document
-
-
-def inventory_conditional_subjects() -> set[tuple[str, str]]:
-    text = INVENTORY.read_text(encoding="utf-8")
-    marker = "## Direct container, runtime, and operating-system declarations"
-    if marker not in text:
-        return set()
-    body = text.split(marker, 1)[1].split("\n## ", 1)[0]
-    rows: set[tuple[str, str]] = set()
-    for line in body.splitlines():
-        if not line.startswith("|") or "scripts/compliance/docs/sbom_evidence.json" not in line:
-            continue
-        columns = [value.strip() for value in line.strip("|").split("|")]
-        if len(columns) >= 5 and columns[0] != "Scope":
-            rows.add((columns[1], columns[2]))
-    return rows
 
 
 def resolve_catalog_path(href: str) -> Path:
@@ -214,43 +196,6 @@ def audit_catalog(document: dict | None = None) -> list[str]:
                 finding = href_finding(label, f"evidence link {index}", link.get("href"), require_local_file=True)
                 if finding:
                     findings.append(finding)
-        elif record.get("state") == "conditional":
-            if record.get("distribution") != "not-distributed":
-                findings.append(f"{label}: conditional inventory is currently distributed")
-            if record.get("required_before_distribution") != "digest-bound-component-sbom":
-                findings.append(f"{label}: distribution does not require a digest-bound component SBOM")
-            subjects = record.get("subjects") or []
-            for index, subject in enumerate(subjects, start=1):
-                subject_label = f"{label} subject {index}"
-                if not isinstance(subject, dict):
-                    findings.append(f"{subject_label}: entry is not an object")
-                    continue
-                if not subject.get("license_hint"):
-                    findings.append(f"{subject_label}: license hint is missing")
-                try:
-                    verified = dt.date.fromisoformat(str(subject.get("verified_on", "")))
-                    if verified > dt.date.today() or (dt.date.today() - verified).days > 90:
-                        findings.append(f"{subject_label}: evidence-link verification date is stale or in the future")
-                except ValueError:
-                    findings.append(f"{subject_label}: verified_on is missing or malformed")
-                for field in SUBJECT_LINK_FIELDS:
-                    finding = href_finding(
-                        subject_label,
-                        field,
-                        subject.get(field),
-                        require_local_file=field == "declaration_href",
-                    )
-                    if finding:
-                        findings.append(finding)
-
-    conditional = next((record for record in records if record.get("id") == "local-authoring-image-boundary"), {})
-    declared = {
-        (str(item.get("component")), str(item.get("version")))
-        for item in conditional.get("subjects", [])
-        if isinstance(item, dict)
-    }
-    if declared != inventory_conditional_subjects():
-        findings.append("conditional image/license subjects do not match the checked inventory")
     return findings
 
 
@@ -258,7 +203,7 @@ def ci_link_catalog(args: argparse.Namespace) -> tuple[dict, int]:
     """Resolve one pipeline job and verify each named artifact before exposing browser links."""
     output = {
         "schema": CI_LINK_SCHEMA,
-        "record_id": "python-validation-environment",
+        "record_id": "python-material-tooling",
         "state": "unavailable",
         "source_commit": args.ci_commit,
         "pipeline_url": args.ci_pipeline_url,
@@ -411,8 +356,8 @@ def compose_release_catalog(base_path: Path, generated_path: Path, browser_href:
     if base.get("schema") != "nemoclaw-sbom-evidence/1" or generated.get("schema") != base.get("schema"):
         raise ValueError("release catalog inputs must use nemoclaw-sbom-evidence/1")
     generated_records = generated.get("records") or []
-    if len(generated_records) != 1 or generated_records[0].get("id") != "python-validation-environment":
-        raise ValueError("generated release evidence must contain the Python validation record")
+    if len(generated_records) != 1 or generated_records[0].get("id") != "python-material-tooling":
+        raise ValueError("generated release evidence must contain the Python material-tool record")
     output = copy.deepcopy(base)
     records = output.get("records") or []
     browser = next((record for record in records if record.get("id") == "browser-runtime"), None)
@@ -420,7 +365,7 @@ def compose_release_catalog(base_path: Path, generated_path: Path, browser_href:
         raise ValueError("base catalog lacks browser runtime evidence")
     browser["sbom"]["href"] = browser_href
     python_index = next((index for index, record in enumerate(records)
-                         if record.get("id") == "python-validation-environment"), None)
+                         if record.get("id") == "python-material-tooling"), None)
     if python_index is None:
         raise ValueError("base catalog lacks the Python evidence declaration")
     records[python_index] = generated_records[0]
@@ -438,15 +383,9 @@ def self_test() -> list[str]:
     stale = copy.deepcopy(clean)
     stale["records"][0]["sbom"]["sha256"] = "0" * 64
     mutations.append(("linked SBOM digest", stale, "sha256 is stale"))
-    incomplete = copy.deepcopy(clean)
-    incomplete["records"][-1]["subjects"] = incomplete["records"][-1]["subjects"][:-1]
-    mutations.append(("conditional subject coverage", incomplete, "subjects do not match"))
-    no_hint = copy.deepcopy(clean)
-    no_hint["records"][-1]["subjects"][0].pop("license_hint")
-    mutations.append(("license hint", no_hint, "license hint is missing"))
-    dead_local = copy.deepcopy(clean)
-    dead_local["records"][-1]["subjects"][0]["declaration_href"] = "../../../missing.Dockerfile"
-    mutations.append(("local evidence link", dead_local, "missing repository file"))
+    dead_link = copy.deepcopy(clean)
+    dead_link["records"][-1]["evidence_links"][0]["href"] = "../../../missing-evidence.md"
+    mutations.append(("local evidence link", dead_link, "missing repository file"))
     for label, mutation, expected in mutations:
         if not any(expected in finding for finding in audit_catalog(mutation)):
             failures.append(f"mutation escaped: {label}")
@@ -463,7 +402,7 @@ def self_test() -> list[str]:
             source_commit="a" * 40, sbom=sbom, raw_sbom=None, raw_sbom_href=None,
             artifact_id=None, artifact_name="fixture",
             inventory=INVENTORY, appendix_out=appendix, manifest_out=manifest,
-            record_id="python-validation-environment", distribution="not-distributed", description="fixture",
+            record_id="python-material-tooling", distribution="not-distributed", description="fixture",
             category=["validation"], sbom_href=None, appendix_href=None, ci_job="fixture",
             pipeline_url="", job_url="",
             retention_days=30,
@@ -475,7 +414,7 @@ def self_test() -> list[str]:
         release_records = {record["id"]: record for record in release["records"]}
         if release_records["browser-runtime"]["sbom"]["href"] != "nemoclaw-v1.0.0.browser.cdx.json":
             failures.append("release catalog does not link the versioned browser SBOM")
-        if release_records["python-validation-environment"]["state"] != "available":
+        if release_records["python-material-tooling"]["state"] != "available":
             failures.append("release catalog does not replace the transient Python declaration")
     return failures
 
@@ -499,7 +438,7 @@ def main() -> int:
     parser.add_argument("--record-id")
     parser.add_argument("--description", default="CI-generated SBOM evidence")
     parser.add_argument("--distribution", choices=sorted(ALLOWED_DISTRIBUTION))
-    parser.add_argument("--category", action="append", choices=("vendored", "build-input", "validation", "local-authoring"))
+    parser.add_argument("--category", action="append", choices=("vendored", "build-input", "validation"))
     parser.add_argument("--source-commit")
     parser.add_argument("--ci-job")
     parser.add_argument("--pipeline-url", default="")
@@ -520,10 +459,10 @@ def main() -> int:
     parser.add_argument("--ci-artifact-root", type=Path, default=ROOT)
     parser.add_argument("--ci-preview-root", type=Path)
     parser.add_argument("--ci-job-token-env", default="CI_JOB_TOKEN")
-    parser.add_argument("--ci-sbom-artifact-path", default="scripts/security/reports/deep-workspace/python-env.cdx.json")
-    parser.add_argument("--ci-raw-sbom-artifact-path", default="scripts/security/reports/deep-workspace/python-env.raw.cdx.json")
-    parser.add_argument("--ci-manifest-artifact-path", default="scripts/security/reports/deep-workspace/sbom-evidence.json")
-    parser.add_argument("--ci-appendix-artifact-path", default="scripts/security/reports/deep-workspace/python-license-appendix.md")
+    parser.add_argument("--ci-sbom-artifact-path", default="scripts/security/reports/python-materials/python-env.cdx.json")
+    parser.add_argument("--ci-raw-sbom-artifact-path", default="scripts/security/reports/python-materials/python-env.raw.cdx.json")
+    parser.add_argument("--ci-manifest-artifact-path", default="scripts/security/reports/python-materials/sbom-evidence.json")
+    parser.add_argument("--ci-appendix-artifact-path", default="scripts/security/reports/python-materials/python-license-appendix.md")
     args = parser.parse_args()
 
     if args.self_test:
@@ -579,8 +518,8 @@ def main() -> int:
     missing = [flag for flag, value in required.items() if not value]
     if missing:
         parser.error("evidence emission requires " + ", ".join(missing))
-    if args.record_id == "python-validation-environment" and not args.raw_sbom:
-        parser.error("Python validation evidence requires --raw-sbom")
+    if args.record_id == "python-material-tooling" and not args.raw_sbom:
+        parser.error("Python material-tool evidence requires --raw-sbom")
     try:
         _output, unresolved = emit(args)
     except (ValueError, json.JSONDecodeError) as error:

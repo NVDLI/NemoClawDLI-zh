@@ -106,30 +106,27 @@ security_sca:
       allow_failure: true
     - when: never
 
-security_deep_sca:
+security_python_sca:
   <<: *sca_base
   stage: test
-  timeout: 2h
+  timeout: 30m
   script:
-    - rm -rf .sca-runtime-venv .sca-tools-venv
-    - python3 -m venv .sca-runtime-venv
+    - rm -rf .sca-tools-venv
     - python3 -m venv .sca-tools-venv
-    - .sca-runtime-venv/bin/python -m pip install -q -r workspace/requirements.lock
     - .sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock
-    - RUNTIME_SITE="$(.sca-runtime-venv/bin/python -c 'import sysconfig; print(sysconfig.get_path("purelib"))')"
-    - PATH="$CI_PROJECT_DIR/.sca-tools-venv/bin:$PATH" .sca-tools-venv/bin/python scripts/security/run_full_sca.py --execute --require-tools --python-local --cyclonedx-env --python-executable "$CI_PROJECT_DIR/.sca-runtime-venv/bin/python" --python-path "$RUNTIME_SITE" --out-dir scripts/security/reports/deep-workspace
-    - mv scripts/security/reports/deep-workspace/python-env.cdx.json scripts/security/reports/deep-workspace/python-env.raw.cdx.json
-    - .sca-tools-venv/bin/python scripts/compliance/resolve_sbom_licenses.py --input scripts/security/reports/deep-workspace/python-env.raw.cdx.json --output scripts/security/reports/deep-workspace/python-env.cdx.json
-    - .sca-tools-venv/bin/python scripts/security/audit_sbom_policy.py --sbom scripts/security/reports/deep-workspace/python-env.cdx.json --report scripts/security/reports/deep-workspace/sbom-policy.json
-    - .sca-tools-venv/bin/python scripts/compliance/sbom_evidence.py --raw-sbom scripts/security/reports/deep-workspace/python-env.raw.cdx.json --raw-sbom-href python-env.raw.cdx.json --sbom scripts/security/reports/deep-workspace/python-env.cdx.json --artifact-name "python-validation-$CI_COMMIT_SHA" --record-id python-validation-environment --description "Resolved Python validation environment; not distributed to learners" --distribution not-distributed --category validation --source-commit "$CI_COMMIT_SHA" --ci-job "$CI_JOB_NAME" --pipeline-url "$CI_PIPELINE_URL" --job-url "$CI_JOB_URL" --retention-days 30 --sbom-href python-env.cdx.json --appendix-href python-license-appendix.md --appendix-out scripts/security/reports/deep-workspace/python-license-appendix.md --manifest-out scripts/security/reports/deep-workspace/sbom-evidence.json
-    - printf 'DEEP_SCA_JOB_ID=%s\n' "$CI_JOB_ID" > scripts/security/reports/deep-workspace/job.env
+    - mkdir -p scripts/security/reports/python-materials
+    - .sca-tools-venv/bin/pip-audit -r scripts/materials/requirements.lock --strict --format cyclonedx-json --output scripts/security/reports/python-materials/python-env.raw.cdx.json
+    - .sca-tools-venv/bin/python scripts/compliance/resolve_sbom_licenses.py --input scripts/security/reports/python-materials/python-env.raw.cdx.json --output scripts/security/reports/python-materials/python-env.cdx.json
+    - .sca-tools-venv/bin/python scripts/security/audit_sbom_policy.py --sbom scripts/security/reports/python-materials/python-env.cdx.json --report scripts/security/reports/python-materials/sbom-policy.json
+    - .sca-tools-venv/bin/python scripts/compliance/sbom_evidence.py --raw-sbom scripts/security/reports/python-materials/python-env.raw.cdx.json --raw-sbom-href python-env.raw.cdx.json --sbom scripts/security/reports/python-materials/python-env.cdx.json --artifact-name "python-material-tools-$CI_COMMIT_SHA" --record-id python-material-tooling --description "Pinned Python tools used to verify course materials; not distributed to learners" --distribution not-distributed --category validation --source-commit "$CI_COMMIT_SHA" --ci-job "$CI_JOB_NAME" --pipeline-url "$CI_PIPELINE_URL" --job-url "$CI_JOB_URL" --retention-days 30 --sbom-href python-env.cdx.json --appendix-href python-license-appendix.md --appendix-out scripts/security/reports/python-materials/python-license-appendix.md --manifest-out scripts/security/reports/python-materials/sbom-evidence.json
+    - printf 'PYTHON_SCA_JOB_ID=%s\n' "$CI_JOB_ID" > scripts/security/reports/python-materials/job.env
   artifacts:
     when: always
-    name: "security-deep-sca-$CI_COMMIT_SHORT_SHA"
+    name: "security-python-sca-$CI_COMMIT_SHORT_SHA"
     paths:
-      - scripts/security/reports/deep-workspace/
+      - scripts/security/reports/python-materials/
     reports:
-      dotenv: scripts/security/reports/deep-workspace/job.env
+      dotenv: scripts/security/reports/python-materials/job.env
     expire_in: 30 days
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
@@ -137,12 +134,8 @@ security_deep_sca:
       allow_failure: false
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       changes:
-        - workspace/requirements.txt
-        - workspace/requirements.lock
-        - workspace/Dockerfile
-        - cpu/services/sandbox_admin/requirements.txt
-        - cpu/services/docker_router/Dockerfile
-        - cpu/services/llm_client/llm_client.Dockerfile
+        - scripts/materials/requirements.txt
+        - scripts/materials/requirements.lock
         - scripts/security/audit_python_dependencies.py
         - scripts/security/audit_vulnerability_waivers.py
         - scripts/security/audit_dependency_locks.py
@@ -157,7 +150,6 @@ security_deep_sca:
         - scripts/compliance/third_party_export_ui.js
         - scripts/compliance/docs/sbom_evidence.json
         - scripts/compliance/docs/ci_sbom_evidence.json
-        - scripts/compliance/docs/image_license_resolutions.md
         - .gitlab/ci/sca.yml
       when: on_success
       allow_failure: false
@@ -167,37 +159,4 @@ security_deep_sca:
     - if: '$CI_COMMIT_BRANCH'
       when: manual
       allow_failure: true
-    - when: never
-
-# An image scan is absent by default. It appears only when an operator supplies an immutable
-# registry digest. Local-authoring images are not part of the static learner release.
-security_image_sca:
-  <<: *sca_base
-  stage: test
-  timeout: 2h
-  variables:
-    SBOM_IMAGE_PLATFORM: "linux/amd64"
-    SYFT_VERSION: "1.44.0"
-    SYFT_LINUX_AMD64_SHA256: "0e91737aee2b5baf1d255b959630194a302335d848ff97bb07921eb6205b5f5a"
-  script:
-    - test -n "${SBOM_IMAGE:-}"
-    - echo "$SBOM_IMAGE" | grep -Eq '^([A-Za-z0-9._-]+([.:][A-Za-z0-9._-]+)?/)+[A-Za-z0-9._-]+@sha256:[0-9a-f]{64}$'
-    - echo "$SBOM_IMAGE_PLATFORM" | grep -Eq '^linux/(amd64|arm64)$'
-    - mkdir -p .cache/syft scripts/security/reports/image
-    - curl --fail --silent --show-error --location --retry 3 --retry-all-errors --output .cache/syft/syft.tar.gz "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz"
-    - echo "$SYFT_LINUX_AMD64_SHA256  .cache/syft/syft.tar.gz" | sha256sum --check --strict
-    - tar -xzf .cache/syft/syft.tar.gz -C .cache/syft syft
-    - .cache/syft/syft scan "registry:$SBOM_IMAGE" --platform "$SBOM_IMAGE_PLATFORM" --override-default-catalogers os --select-catalogers=-file --select-catalogers=+python-installed-package-cataloger --select-catalogers=+javascript-package-cataloger -q -o cyclonedx-json=scripts/security/reports/image/image.raw.cdx.json -o spdx-json=scripts/security/reports/image/image.raw.spdx.json
-    - python3 scripts/compliance/resolve_sbom_licenses.py --accept-scanner-spdx --package-components-only --input scripts/security/reports/image/image.raw.cdx.json --output scripts/security/reports/image/image.cdx.json --inventory scripts/compliance/docs/image_license_resolutions.md
-    - python3 scripts/compliance/sbom_evidence.py --raw-sbom scripts/security/reports/image/image.raw.cdx.json --raw-sbom-href image.raw.cdx.json --sbom scripts/security/reports/image/image.cdx.json --inventory scripts/compliance/docs/image_license_resolutions.md --artifact-name "$SBOM_IMAGE" --artifact-id "$SBOM_IMAGE" --record-id scanned-container-image --description "Digest-bound component inventory for an image proposed for distribution" --distribution conditional-release --category local-authoring --source-commit "$CI_COMMIT_SHA" --ci-job "$CI_JOB_NAME" --pipeline-url "$CI_PIPELINE_URL" --job-url "$CI_JOB_URL" --retention-days 30 --sbom-href image.cdx.json --appendix-href image-license-appendix.md --appendix-out scripts/security/reports/image/image-license-appendix.md --manifest-out scripts/security/reports/image/sbom-evidence.json
-  artifacts:
-    when: always
-    name: "security-image-sca-$CI_COMMIT_SHORT_SHA"
-    paths:
-      - scripts/security/reports/image/
-    expire_in: 30 days
-  rules:
-    - if: '$SBOM_IMAGE =~ /^([A-Za-z0-9._-]+([.:][A-Za-z0-9._-]+)?\/)+[A-Za-z0-9._-]+@sha256:[0-9a-f]{64}$/'
-      when: manual
-      allow_failure: false
     - when: never

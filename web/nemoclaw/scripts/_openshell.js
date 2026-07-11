@@ -15,9 +15,8 @@ const POMERIUM_LOOPBACK_PROBES = Object.freeze({
 });
 
 // PTY helper: `bash` opens the host; `openshell sandbox connect <agent>` enters the agent.
-// Pomerium uses its authenticated direct PTY only. Cloudflare tries the direct
-// PTY first and may fall back to the configured relay. The direct path uses the
-// Access cookie established when the learner opens the launchable.
+// Pomerium uses its direct PTY. Cloudflare tries direct first, then the configured relay.
+// Direct access uses the cookie established when the learner opens the launchable.
 export async function terminal(cmd, { send = [], idleMs = 5000, totalMs = 25000, openMs = 12000, onChunk = null, baseUrl = null, signal = null } = {}) {
   /* @doc <code>helpers.terminal(cmd, {send, idleMs, totalMs, openMs, onChunk})</code> ::
        Open a PTY over your launchable's <code>/ws/terminal</code> WebSocket and run
@@ -140,11 +139,9 @@ export async function terminal(cmd, { send = [], idleMs = 5000, totalMs = 25000,
   });
 }
 
-// Pomerium keeps its HttpOnly session between the browser and launchable. The
-// launchable's direct terminal is already authenticated by that cookie, so it
-// can read the two read-only bootstrap endpoints over loopback without sending
-// the cookie through a third-party relay. The command is selected from this
-// fixed map; no learner-controlled path or shell fragment is interpolated.
+// Pomerium keeps its HttpOnly session between the browser and launchable.
+// The direct terminal reads two loopback bootstrap endpoints without exposing the cookie.
+// A fixed map selects the command; no learner-controlled shell fragment is interpolated.
 export async function openclawLoopbackProbe(path, { baseUrl = null, signal = null } = {}) {
   const connection = getOpenClawConnection();
   const rawUrl = (baseUrl || connection.rawUrl || "").replace(/\/+$/, "");

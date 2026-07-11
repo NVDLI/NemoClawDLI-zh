@@ -113,7 +113,7 @@ ISSUES = [
             "Part 2 flags send-button availability before required code has run.",
             "Part 4 says NemoClaw is not perceived as launchable/sandboxed enough.",
         ),
-        ("`web/nemoclaw/` runnable pages", "`cpu/` service assumptions", "`workspace/` and `deploy/` CPU launch affordances"),
+        ("`web/nemoclaw/` runnable pages", "host-native browser validation", "external launchable and runtime integration assumptions"),
         (
             "Prerequisite state is visible before interactive steps.",
             "Run, reset, stop, and error states are consistent across affected pages.",
@@ -232,7 +232,7 @@ ISSUES = [
             "Part 3 flags API key showing, Access/Bearer token auto-fill, and unsafe WebSocket/runtime cues.",
             "Part 4 frames NemoClaw as a secure runtime blueprint.",
         ),
-        ("`web/nemoclaw/` rendered pages and code blocks", "`deploy/`, `cpu/`, and `workspace/` docs", "Security/source gates"),
+        ("`web/nemoclaw/` rendered pages and code blocks", "host-native validation docs", "Security/source gates"),
         (
             "No public surface exposes secrets, private URLs, internal hostnames, Cloudflare headers, or bearer-token material.",
             "Examples use placeholders and explain safe credential handling.",
@@ -297,13 +297,13 @@ ISSUES = [
     ),
     IssueRefresh(
         14,
-        "Deploy the OpenClaw CORS worker WebSocket gateway fix and capture public-safe evidence that the CPU service stack is ready.",
-        "CPU deploy/runtime gateway issue with OpenClaw-specific surface",
+        "Deploy the OpenClaw CORS worker WebSocket gateway fix and capture public-safe evidence that the external runtime integration is ready.",
+        "external runtime gateway issue with an OpenClaw-specific course surface",
         (
             "Existing issue tracks an OpenClaw CORS worker WebSocket gateway deployment fix.",
             "Reviewer feedback reinforces that OpenClaw/NemoClaw runtime boundaries must be clear and launchable on CPU.",
         ),
-        ("`deploy/` gateway and proxy configuration", "`cpu/` runtime assumptions", "`workspace/` launch/runtime docs"),
+        ("`scripts/cors-proxy/` reference workers", "course runtime assumptions", "launchable/runtime documentation"),
         (
             "Gateway fix is deployed or a precise platform blocker is recorded.",
             "CPU path works without implying GPU availability.",
@@ -311,7 +311,7 @@ ISSUES = [
         ),
         (
             "`bash scripts/runtime/run_engine.sh --self-test`",
-            "Compose/nginx/gateway config validation where available",
+            "Browser gateway contract validation",
             "WebSocket smoke against the appropriate non-secret endpoint",
             "`python3 scripts/validation/validate_bundle.py --no-write --scope ship` if web/docs change",
         ),
@@ -330,12 +330,12 @@ ISSUES = [
         (
             "Vulnerable direct floors are no longer accepted by repo audit.",
             "Waiver audit passes with no expired/unowned exceptions.",
-            "Deep SCA/SBOM job is available for resolved-environment validation.",
+            "Resolved-environment SCA/SBOM job is available for validation tooling.",
         ),
         (
             "`python3 scripts/security/audit_python_dependencies.py`",
             "`python3 scripts/security/audit_vulnerability_waivers.py`",
-            "`security_deep_sca` CI job or equivalent",
+            "`security_python_sca` CI job or equivalent",
             "`python3 scripts/validation/validate_bundle.py --no-write --scope ship`",
         ),
         ("Do not paste scanner internals or exploit detail into public issues.",),
@@ -359,10 +359,10 @@ ISSUES = [
         (
             "`python3 scripts/security/audit_python_dependencies.py`",
             "`python3 scripts/security/audit_vulnerability_waivers.py`",
-            "`security_deep_sca` CI job or equivalent",
+            "`security_python_sca` CI job or equivalent",
             "`python3 scripts/validation/validate_bundle.py --no-write --scope ship`",
         ),
-        ("Image SCA, CodeQL/SARIF upload, Dependabot rollout, CODEOWNERS, and public mirror enforcement remain roadmap items.",),
+        ("CodeQL/SARIF upload, Dependabot rollout, CODEOWNERS, and public mirror enforcement remain roadmap items.",),
         ("ops", "area:security", "kind:validation", "state:released", "severity:major", "risk:security-privacy"),
         close=True,
     ),
@@ -379,7 +379,7 @@ def issue_body(issue: IssueRefresh) -> str:
         "",
         "- Course: static browser course under `web/nemoclaw/`",
         "- Production: public static host or co-located NemoClaw launchable",
-        "- Local-only support: `cpu/`, `workspace/`, and `deploy/`",
+        "- Contributor validation: host Python, Node.js, and Chromium through `scripts/`",
         f"- Bundle scope: {issue.scope}",
         "",
         "## Evidence",
@@ -416,7 +416,7 @@ Standardize issue cadence, labels, and tracker/MR expectations for the current s
 
 - Course: static browser course under `web/nemoclaw/`
 - Production: public static host or co-located NemoClaw launchable
-- Local-only support: `cpu/`, `workspace/`, and `deploy/`
+- Contributor validation: host Python, Node.js, and Chromium through `scripts/`
 - Bundle scope: bundle-wide process standard with current-course examples
 
 ## Evidence

@@ -51,7 +51,7 @@
 <nav class="skill-nav" aria-label="Skill navigation"><a href="../../web/index.html">Home</a><a href="../SKILL.html">scripts</a><a href="../../web/nemoclaw/dependencies.html">public inventory</a> <span aria-hidden="true"> · </span> <a data-skill-nav="map" href="../../SKILL.html">Repository map</a></nav>
 </header>
   <h1 id="skill-title">Exact browser package inputs</h1>
-  <p>Package changes start here. Generated files remain committed so production builds never resolve packages from the network. Highlight.js and js-yaml use publisher-provided minified files; CodeMirror uses publisher-provided unminified files. esbuild combines the reachable LangChain npm graph without minification. <a href="embedded-component-evidence.json">Embedded-source evidence</a> separately identifies utility code that LangChain already copied into its package; the generated <code>.LEGAL.txt</code> is only a list of preserved source comments.</p>
+  <p>Package changes start here. Generated files remain committed, so production builds never resolve packages from the network. Highlight.js and js-yaml use minified files supplied by their publishers. CodeMirror uses an unminified publisher file. esbuild combines the reachable LangChain npm graph without minifying it. <a href="embedded-component-evidence.json">Embedded-source evidence</a> identifies utility code already copied into LangChain; the generated <code>.LEGAL.txt</code> lists preserved source comments.</p>
   <h2>Executable checks</h2>
   <code class="skill-cmd">python3 -m unittest discover -v -s tests/validation &amp;&amp; python3 scripts/validation/course_dependency_integrity.py</code>
   <code class="skill-cmd">security_browser_sca</code>
