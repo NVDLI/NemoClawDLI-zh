@@ -91,7 +91,7 @@ security_sca:
   script:
     - mkdir -p scripts/security/reports
     - python3 -m venv .sca-tools-venv
-    - .sca-tools-venv/bin/python -m pip install --require-hashes --no-deps --only-binary=:all: -q -r scripts/security/requirements-sca.lock
+    - '.sca-tools-venv/bin/python -m pip install --require-hashes --no-deps --only-binary=:all: -q -r scripts/security/requirements-sca.lock'
     - PATH="$CI_PROJECT_DIR/.sca-tools-venv/bin:$PATH" .sca-tools-venv/bin/python scripts/security/run_full_sca.py --execute --python-local --cyclonedx-env --out-dir scripts/security/reports
   artifacts:
     when: always
@@ -118,7 +118,7 @@ security_python_sca:
   script:
     - rm -rf .sca-tools-venv
     - python3 -m venv .sca-tools-venv
-    - .sca-tools-venv/bin/python -m pip install --require-hashes --no-deps --only-binary=:all: -q -r scripts/security/requirements-sca.lock
+    - '.sca-tools-venv/bin/python -m pip install --require-hashes --no-deps --only-binary=:all: -q -r scripts/security/requirements-sca.lock'
     - mkdir -p scripts/security/reports/python-materials
     - .sca-tools-venv/bin/pip-audit -r scripts/materials/requirements.lock --strict --no-deps --disable-pip --format cyclonedx-json --output scripts/security/reports/python-materials/python-env.raw.cdx.json
     - .sca-tools-venv/bin/python scripts/compliance/resolve_sbom_licenses.py --input scripts/security/reports/python-materials/python-env.raw.cdx.json --output scripts/security/reports/python-materials/python-env.cdx.json

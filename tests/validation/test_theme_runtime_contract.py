@@ -186,6 +186,11 @@ class ThemeRuntimeContractTests(unittest.TestCase):
         self.assertNotIn("!state.sbomEvidence.clarificationRows", runtime)
 
 class ScaTriggerContractTests(unittest.TestCase):
+    def test_wheel_only_gitlab_commands_are_quoted_yaml_scalars(self) -> None:
+        sca = (ROOT / ".gitlab/ci/sca.yml").read_text(encoding="utf-8")
+        token = "--only-binary=:all:"
+        self.assertEqual(2, sum(token in line and line.strip().startswith("- '") for line in sca.splitlines()))
+
     def test_pages_does_not_wait_on_an_unplayed_manual_sca_job(self) -> None:
         pages = core_job("pages", "pages_smoke")
         header = pages.split("  script:\n", 1)[0]
