@@ -96,8 +96,8 @@ class ThemeRuntimeContractTests(unittest.TestCase):
         core = (ROOT / ".gitlab/ci/core.yml").read_text(encoding="utf-8")
         test_job = core_job("test", "external_integration_audit")
         image = (
-            "mcr.microsoft.com/playwright:v1.55.0-noble@sha256:"
-            "b27e719ecbfef153e13fd24e8341736733bf2658b229677eb21ff57ff5d7fb29"
+            "mcr.microsoft.com/playwright:v1.61.1-noble@sha256:"
+            "5b8f294aff9041b7191c34a4bab3ac270157a28774d4b0660e9743297b697e48"
         )
         self.assertIn(f"image: {image}", test_job)
         self.assertIn('BROWSER_TOOLS_REQUIRED: "1"', test_job)
@@ -219,6 +219,24 @@ class ScaTriggerContractTests(unittest.TestCase):
                 self.assertIn("- .gitlab/ci/sca.yml", job)
                 self.assertNotIn("- .gitlab-ci.yml", job)
                 self.assertNotIn("- .gitlab/ci/core.yml", job)
+
+    def test_browser_sca_audits_the_frozen_host_runtime(self) -> None:
+        job = ci_job("security_browser_sca")
+        for path in (
+            "scripts/runtime/package.json",
+            "scripts/runtime/pnpm-lock.yaml",
+        ):
+            with self.subTest(path=path):
+                self.assertIn(f"- {path}", job)
+        self.assertIn(
+            "pnpm install --dir scripts/runtime --frozen-lockfile --ignore-scripts",
+            job,
+        )
+        self.assertIn(
+            "pnpm audit --dir scripts/runtime --audit-level=moderate",
+            job,
+        )
+        self.assertIn("runtime-pnpm-audit.json", job)
 
     def test_expensive_scans_remain_optional_in_unrelated_merge_requests(self) -> None:
         optional_rule = """- if: '$CI_PIPELINE_SOURCE == "merge_request_event"'

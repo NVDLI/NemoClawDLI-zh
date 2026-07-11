@@ -598,6 +598,16 @@ def audit_repo(
         if not docs[rel].strip():
             out.append(finding("dependency-lock", rel, "dependency lock is empty",
                                "regenerate the exact transitive Python 3.11 lock"))
+        if "--hash=sha256:" not in docs[rel]:
+            out.append(finding("dependency-hash-lock", rel, "dependency lock lacks artifact hashes",
+                               "regenerate the exact lock with SHA-256 hashes"))
+    for rel, workflow in (
+        (".github/workflows/pages.yml", pages),
+        (".github/workflows/release.yml", release),
+    ):
+        require(workflow, "--require-hashes --no-deps --only-binary=:all:", rel,
+                "github-hash-lock-install", out,
+                "install Python locks with hashes, no dependency resolution, and wheels only")
     require(docs["scripts/security/audit_dependency_locks.py"], "--self-test",
             "scripts/security/audit_dependency_locks.py", "dependency-lock-detector", out,
             "retain mutation tests for stale and unpinned dependency locks")
@@ -656,8 +666,8 @@ def audit_repo(
             "gitlab-safety-selftest", out, "run detector mutations in GitLab CI")
     test_job = re.search(r"(?ms)^test:\n(.*?)(?=^external_integration_audit:\n)", gitlab)
     pinned_browser_image = (
-        "mcr.microsoft.com/playwright:v1.55.0-noble@sha256:"
-        "b27e719ecbfef153e13fd24e8341736733bf2658b229677eb21ff57ff5d7fb29"
+        "mcr.microsoft.com/playwright:v1.61.1-noble@sha256:"
+        "5b8f294aff9041b7191c34a4bab3ac270157a28774d4b0660e9743297b697e48"
     )
     if (not test_job or pinned_browser_image not in test_job.group(1)
             or 'BROWSER_TOOLS_REQUIRED: "1"' not in test_job.group(1)
@@ -724,7 +734,7 @@ def audit_repo(
         out.append(finding("retired-sca-job", ".gitlab/ci/sca.yml",
                            "obsolete image or workspace scanner returned",
                            "scan only the browser graph and pinned material tools"))
-    scanner_install = ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock"
+    scanner_install = ".sca-tools-venv/bin/python -m pip install --require-hashes --no-deps --only-binary=:all: -q -r scripts/security/requirements-sca.lock"
     for job_name in ("security_sca", "security_python_sca"):
         match = re.search(rf"(?ms)^{job_name}:\n(.*?)(?=^[A-Za-z0-9_.-]+:\n|\Z)", gitlab_sca)
         require(match.group(1) if match else "", scanner_install,
@@ -745,6 +755,11 @@ def audit_repo(
                 f"leave {job_name} available as a non-blocking MR opt-in")
         require(body, "- .gitlab/ci/sca.yml", ".gitlab/ci/sca.yml", f"{code}-ci-sensitive", out,
                 f"rerun {job_name} when its self-contained scanner policy changes")
+    browser_scan = re.search(r"(?ms)^security_browser_sca:\n(.*?)(?=^[A-Za-z0-9_.-]+:\n|\Z)", gitlab_sca)
+    browser_body = browser_scan.group(1) if browser_scan else ""
+    for token in ("scripts/runtime/pnpm-lock.yaml", "pnpm audit --dir scripts/runtime --audit-level=moderate"):
+        require(browser_body, token, ".gitlab/ci/sca.yml", "gitlab-runtime-sca", out,
+                "scan the locked host-browser validation dependency when it changes")
 
     material_puller = docs["scripts/materials/pull_materials.py"]
     for token, code, fix in (
@@ -1254,6 +1269,8 @@ def self_test() -> list[str]:
             ("gitlab-immutable-report-reuse", ".gitlab/ci/core.yml", 'BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"', 'BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"'),
             ("gitlab-protected-root-worktree", ".gitlab/ci/core.yml", 'git worktree add --quiet --detach /tmp/nemoclaw-prod-root "origin/$prod_ref"', 'git archive "origin/$prod_ref" | tar -x -C /tmp/nemoclaw-prod-root'),
             ("gitlab-image-pin", ".gitlab/ci/core.yml", "node:20-bookworm-slim@sha256:25070a03f077f5860e4f2db8d147380678ed40ead415a21eaffd5a6208f61948", "node:20-bookworm-slim"),
+            ("gitlab-report-browser-runtime", ".gitlab/ci/core.yml", "mcr.microsoft.com/playwright:v1.61.1-noble@sha256:5b8f294aff9041b7191c34a4bab3ac270157a28774d4b0660e9743297b697e48", "mcr.microsoft.com/playwright:v1.61.1-noble"),
+            ("gitlab-runtime-sca", ".gitlab/ci/sca.yml", "pnpm audit --dir scripts/runtime --audit-level=moderate", "echo runtime-audit-skipped"),
             ("gitlab-infrastructure-retry", ".gitlab/ci/core.yml", "runner_system_failure", "runner_unsupported"),
             ("gitlab-script-retry", ".gitlab/ci/core.yml", "runner_system_failure", "script_failure"),
             ("gitlab-material-install", ".gitlab/ci/core.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),
@@ -1281,7 +1298,8 @@ def self_test() -> list[str]:
             ("shared-lock-selftest", "scripts/validation/release_gate.py", 'py("scripts/security/audit_dependency_locks.py", "--self-test")', 'py("scripts/security/audit_dependency_locks.py", "--version")'),
             ("gitlab-sbom-policy", ".gitlab/ci/sca.yml", "audit_sbom_policy.py --sbom", "audit_sbom_policy.py --help"),
             ("gitlab-sbom-evidence", ".gitlab/ci/sca.yml", "scripts/compliance/resolve_sbom_licenses.py --input scripts/security/reports/python-materials/python-env.raw.cdx.json", "scripts/compliance/resolve_sbom_licenses.py --help"),
-            ("gitlab-sca-lock", ".gitlab/ci/sca.yml", ".sca-tools-venv/bin/python -m pip install -q -r scripts/security/requirements-sca.lock", ".sca-tools-venv/bin/python -m pip install -q pip-audit cyclonedx-bom"),
+            ("gitlab-sca-lock", ".gitlab/ci/sca.yml", ".sca-tools-venv/bin/python -m pip install --require-hashes --no-deps --only-binary=:all: -q -r scripts/security/requirements-sca.lock", ".sca-tools-venv/bin/python -m pip install -q pip-audit cyclonedx-bom"),
+            ("github-hash-lock-install", ".github/workflows/pages.yml", "--require-hashes --no-deps --only-binary=:all:", "--no-deps --only-binary=:all:"),
             ("gitlab-human-review", ".gitlab/ci/core.yml", "human_review:", "operator_review:"),
             ("gitlab-theme-runtime", ".gitlab/ci/core.yml", "theme_runtime:", "theme_runtime_removed:"),
             ("gitlab-theme-runtime-command", ".gitlab/ci/core.yml", '--site-root "$THEME_SITE_ROOT" --scan-root "$THEME_SCAN_ROOT"', "--site-root selected"),

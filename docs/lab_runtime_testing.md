@@ -25,7 +25,7 @@ python3.12 -m venv .venv
 . .venv/bin/activate
 python scripts/runtime/python_env_probe.py
 python -m pip install pip==26.1.2
-python -m pip install --requirement scripts/materials/requirements.lock
+python -m pip install --require-hashes --no-deps --only-binary=:all: --requirement scripts/materials/requirements.lock
 python scripts/runtime/python_env_probe.py --require-material-tools
 ```
 
