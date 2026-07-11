@@ -97,6 +97,7 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     HARNESS_CONTRACT,
     py("scripts/build/project_docs_explorer.py", "--audit"),
     py("scripts/build/project_source_tree.py", "--self-test"),
+    py("scripts/build/project_source_tree.py", "--check-generated"),
     py("scripts/security/audit_iframe_proxy_opt_in.py"),
     py("scripts/validation/endpoint_registration_audit.py"),
     ("bash", "scripts/runtime/run_node.sh", "scripts/validation/openclaw_connection_audit.mjs"),
@@ -168,6 +169,7 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     HARNESS_CONTRACT,
     py("scripts/build/project_docs_explorer.py", "--audit"),
     py("scripts/build/project_source_tree.py", "--self-test"),
+    py("scripts/build/project_source_tree.py", "--check-generated"),
     unit_test("release_evidence_audit"),
     unit_test("repository_work_products_audit"),
     NODE_VALIDATOR_TESTS,
@@ -311,6 +313,9 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     py("scripts/build/project_source_tree.py", "--self-test"): (
         "scripts/build/project_source_tree.py", "scripts/build/build_pages.sh",
         "scripts/build/SKILL.html", "scripts/skills/skill_audit.py",
+    ),
+    py("scripts/build/project_source_tree.py", "--check-generated"): (
+        "scripts/build/project_source_tree.py", "web/nemoclaw/standalone/*",
     ),
     py("scripts/build/bundle_standalone.py", "--self-test"): (
         "scripts/build/bundle_standalone.py", "scripts/build/build_pages.sh",

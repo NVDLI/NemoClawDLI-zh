@@ -18,6 +18,7 @@ import unittest
 from pathlib import Path
 
 GENERATED_OUTPUT_PREFIXES = (("web", "nemoclaw", "standalone"),)
+GENERATED_ALIAS = Path("web/nemoclaw/standalone/SKILL.html")
 
 
 def is_authoring_source(path: Path) -> bool:
@@ -38,12 +39,27 @@ def source_files(root: Path) -> list[Path]:
     )
 
 
+def tracked_generated_files(root: Path) -> list[Path]:
+    """Find checked-in delivery output while allowing the source-tree navigation alias."""
+    raw = subprocess.check_output(["git", "-C", str(root), "ls-files", "-z"])
+    return sorted(
+        path
+        for item in raw.split(b"\0")
+        if item
+        for path in (Path(item.decode()),)
+        if not is_authoring_source(path) and path != GENERATED_ALIAS and (root / path).is_file()
+    )
+
+
 def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def project(root: Path, output: Path) -> tuple[int, list[str]]:
-    findings = []
+    findings = [
+        f"tracked generated output must be rebuilt, not versioned: {path}"
+        for path in tracked_generated_files(root)
+    ]
     files = source_files(root)
     for relative in files:
         source = root / relative
@@ -79,6 +95,9 @@ class ProjectionTests(unittest.TestCase):
             generated.write_text("generated", encoding="utf-8")
             subprocess.run(["git", "-C", str(root), "add", ".gitignore", "SKILL.html", "nested/tracked.txt"], check=True)
             subprocess.run(["git", "-C", str(root), "add", "web/nemoclaw/standalone/index.html"], check=True)
+            alias = root / GENERATED_ALIAS
+            alias.write_text("navigation alias", encoding="utf-8")
+            subprocess.run(["git", "-C", str(root), "add", str(GENERATED_ALIAS)], check=True)
             (root / "nested" / "deleted-after-indexing.txt").write_text("gone", encoding="utf-8")
             subprocess.run(
                 ["git", "-C", str(root), "add", "nested/deleted-after-indexing.txt"],
@@ -89,7 +108,11 @@ class ProjectionTests(unittest.TestCase):
             (root / "ignored").mkdir()
             (root / "ignored" / "build.txt").write_text("ignored", encoding="utf-8")
             count, findings = project(root, output)
-            self.assertEqual(findings, [])
+            self.assertEqual(
+                findings,
+                ["tracked generated output must be rebuilt, not versioned: "
+                 "web/nemoclaw/standalone/index.html"],
+            )
             self.assertEqual(count, 4)
             self.assertTrue((output / "nested" / "tracked.txt").is_file())
             self.assertTrue((output / "nested" / "proposed.txt").is_file())
@@ -103,12 +126,22 @@ def main() -> int:
     parser.add_argument("--source-root", type=Path)
     parser.add_argument("--artifact-root", type=Path)
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--check-generated", action="store_true")
     args = parser.parse_args()
     if args.self_test:
         suite = unittest.defaultTestLoader.loadTestsFromTestCase(ProjectionTests)
         return 0 if unittest.TextTestRunner(verbosity=2).run(suite).wasSuccessful() else 1
+    if args.check_generated:
+        root = (args.source_root or Path(__file__).resolve().parents[2]).resolve()
+        findings = tracked_generated_files(root)
+        if findings:
+            for path in findings:
+                print(f"tracked generated output must be rebuilt, not versioned: {path}")
+            return 1
+        print("tracked generated output: PASS")
+        return 0
     if not args.source_root or not args.artifact_root:
-        parser.error("--source-root and --artifact-root are required unless --self-test is used")
+        parser.error("--source-root and --artifact-root are required unless a check mode is used")
     count, findings = project(args.source_root.resolve(), args.artifact_root.resolve())
     if findings:
         print(f"source explorer projection: FAIL ({len(findings)})")

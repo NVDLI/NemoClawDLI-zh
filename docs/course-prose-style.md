@@ -49,6 +49,19 @@ Review each proposed rewrite against these checks:
 
 A lower score alone never justifies a less precise sentence.
 
+## Repository prose
+
+README and operating documents use the same direct style with a stricter ownership rule: keep a
+procedure in one canonical document and link to it elsewhere. The repository work-product audit
+rejects an oversized README, missing newcomer routes, repeated cross-document paragraphs, repeated
+headings, filler phrases, and paragraphs that exceed 140 words. These are structural limits, not a
+word-substitution score. They protect a short entrypoint and make redundant guidance visible.
+
+Run `python3 scripts/validation/repository_work_products_audit.py` after changing root policies or
+direct `docs/` Markdown. Use `python3 scripts/validation/prose_variety.py --scope all` for the wider
+advisory rhythm report. A reviewer still decides whether a flagged rewrite improves accuracy and
+usefulness.
+
 ## Locale ownership
 
 Canonical English prose does not control a translation's wording. When the meaning remains stable,

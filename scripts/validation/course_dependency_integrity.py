@@ -452,8 +452,11 @@ def self_test() -> list[str]:
     tests.append(("browser projection security floor", manifest,
                   {sample: source.replace("5.65.21", "5.65.16")},
                   "browser projection uses CodeMirror below supported floor"))
-    sample = "web/nemoclaw/standalone/studio.html"
-    source = (ROOT / sample).read_text(encoding="utf-8")
+    sample = "web/nemoclaw/studio.html"
+    source = (ROOT / sample).read_text(encoding="utf-8") + (
+        '<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.21/lib/codemirror.min.js" '
+        f'integrity="{CODEMIRROR_CDN_SRI["lib/codemirror.min.js"]}"></script>'
+    )
     tests.append(("standalone CodeMirror integrity", manifest,
                   {sample: source.replace(CODEMIRROR_CDN_SRI["lib/codemirror.min.js"], "sha384-invalid")},
                   "standalone CodeMirror asset lacks pinned integrity"))

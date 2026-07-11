@@ -34,17 +34,18 @@ browser, with no server logic:
 | `public/validation.html` + `gate.json` | the CI gate report, rendered from `docs/validation/latest.json` |
 | `public/LICENSE` + `THIRD_PARTY_LICENSES.md` | Apache-2.0 terms and the static third-party package/license/material inventory |
 
-The course pages inline their own CSS and JS and use relative links, so the course
-dir is browsable from a Pages subpath. Live model calls use the student's own NVIDIA
-key and call NVIDIA model services directly by default. An explicitly enabled iframe
-mode uses the NVIDIA API CORS relay. Pages-hosted Cloudflare Access launchables use the
-OpenClaw relay. Pomerium launchables keep their HttpOnly session in the signed-in browser:
-gateway and terminal WebSockets connect directly, and the two fixed metadata reads use
-that authenticated terminal to read launchable loopback. A launchable-vendored course
-beside its NemoClaw runtime uses the same-origin direct route. The launchable supplies the startup NVIDIA API key through its approved bootstrap
-path and populates the same browser `localStorage` entry used by the course key panel;
-it does not introduce another credential channel. Lab-only
-steps badge themselves and short-circuit off-lab.
+The course pages inline their own CSS and JS and use relative links, so the course directory works
+from a Pages subpath. Live model calls use the student's own NVIDIA key and call NVIDIA model
+services directly by default. An explicitly enabled iframe mode uses the NVIDIA API CORS relay.
+
+Pages-hosted Cloudflare Access launchables use the OpenClaw relay. Pomerium launchables keep their
+HttpOnly session in the signed-in browser: gateway and terminal WebSockets connect directly, and
+the two fixed metadata reads use that authenticated terminal to read launchable loopback. A course
+vendored beside its NemoClaw runtime uses the same-origin route.
+
+The launchable supplies the startup NVIDIA API key through its approved bootstrap path and
+populates the same browser `localStorage` entry used by the course key panel. It does not introduce
+another credential channel. Lab-only steps badge themselves and short-circuit off-lab.
 
 Each course directory is also validated as an independent deployment root. The build
 discovers every HTML file and every local navigation or resource URL, then rejects

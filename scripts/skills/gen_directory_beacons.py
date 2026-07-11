@@ -40,7 +40,6 @@ SUMMARIES = {
     "web/nemoclaw/assets/figures": "Canonical course figures governed by the parent image-provenance contract.",
     "web/nemoclaw/mats/glossary_raw": "Versioned source material used to build the searchable course glossary.",
     "web/nemoclaw/mats/glossary_raw/images": "Images retained with the versioned glossary source material.",
-    "web/nemoclaw/standalone/assets": "Fixed standalone-export assets emitted beside the generated course bundle.",
     "web/nemoclaw/vendor": "Pinned same-origin browser dependencies, generated metadata, and license evidence.",
     "web/nemoclaw/vendor/licenses": "Exact license texts shipped for pinned browser dependencies.",
 }

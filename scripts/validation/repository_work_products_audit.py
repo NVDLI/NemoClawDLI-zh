@@ -9,7 +9,9 @@ import argparse
 import copy
 import hashlib
 import json
+import re
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 for _path in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
@@ -51,11 +53,44 @@ REQUIRED_REPOSITORY_FILES = {
     "CODE_OF_CONDUCT.md",
     "SUPPORT.md",
     "CHANGELOG.md",
+    "docs/agentic-compliance-suite.md",
     "docs/release_playbook.md",
     ".github/ISSUE_TEMPLATE/bug.yml",
     ".github/ISSUE_TEMPLATE/feature.yml",
     ".github/PULL_REQUEST_TEMPLATE.md",
 }
+
+README_SECTION_PATTERNS = {
+    "project title": r"(?m)^#\s+Securing Agents with OpenShell and NemoClaw\s*$",
+    "learner start": r"(?im)^##\s+.*\b(course|learn|start)\b.*$",
+    "local setup": r"(?im)^##\s+.*\b(run|build|setup|local)\b.*$",
+    "contribution": r"(?im)^##\s+.*\bcontribut\w*\b.*$",
+    "verification": r"(?im)^##\s+.*\b(verify|test|check)\w*\b.*$",
+    "agent guidance": r"(?im)^##\s+.*\bagent\w*\b.*$",
+    "repository map": r"(?im)^##\s+.*\b(map|layout|structure)\b.*$",
+    "governance and license": r"(?im)^##\s+.*\b(governance|license)\b.*$",
+}
+README_LINKS = (
+    "RELEASE_STATUS.json",
+    "web/nemoclaw/index.html",
+    "SECURITY.md",
+    "CONTRIBUTING.md",
+    "CODE_OF_CONDUCT.md",
+    "SUPPORT.md",
+    "DCO.md",
+    "docs/agentic-compliance-suite.md",
+    "docs/release_playbook.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "THIRD-PARTY-NOTICES.md",
+)
+PROSE_FILES = ("README.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md", "SUPPORT.md")
+PROSE_FILLER = (
+    "it is important to note",
+    "it should be noted",
+    "this section will explain",
+    "in order to",
+)
 
 CONVENTIONAL_OPTIONAL_PATHS = {
     "contributor-license-agreement": ("CLA.md",),
@@ -97,6 +132,152 @@ def load_contract(path: Path = CONTRACT) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _paragraphs(raw: str) -> list[str]:
+    """Return narrative paragraphs without code, tables, headings, or list scaffolding."""
+    blocks: list[str] = []
+    fence_char = ""
+    current: list[str] = []
+    for line in raw.splitlines() + [""]:
+        marker = re.match(r"^\s{0,3}(`{3,}|~{3,})", line)
+        if marker:
+            current_char = marker.group(1)[0]
+            if not fence_char:
+                fence_char = current_char
+            elif current_char == fence_char:
+                fence_char = ""
+            continue
+        if fence_char:
+            continue
+        if not line.strip():
+            if current:
+                blocks.append(" ".join(part.strip() for part in current))
+                current = []
+            continue
+        if line.startswith(("#", "|", "- ", "* ")) or re.match(r"^\d+\.\s", line):
+            if current:
+                blocks.append(" ".join(part.strip() for part in current))
+                current = []
+            continue
+        current.append(line)
+    return blocks
+
+
+def audit_entrypoint_and_prose(
+    read: Callable[[str], str], paths: list[str]
+) -> list[dict[str, str]]:
+    """Protect a useful public entrypoint and compact authored repository prose."""
+    out: list[dict[str, str]] = []
+    readme = read("README.md")
+    readme_compact = re.sub(r"\s+", " ", readme)
+    if len(readme.splitlines()) > 150 or len(re.findall(r"\b\w+\b", readme)) > 1_100:
+        out.append(finding(
+            "readme-size", "README.md", "public entrypoint exceeds 150 lines or 1,100 words",
+            "move detailed procedures to their owning document and keep the README task-oriented",
+        ))
+    for role, pattern in README_SECTION_PATTERNS.items():
+        if not re.search(pattern, readme):
+            out.append(finding(
+                "readme-section", "README.md", f"missing entrypoint role: {role}",
+                "restore the learner, contributor, verification, repository, or governance route",
+            ))
+    for target in README_LINKS:
+        if f"]({target})" not in readme:
+            out.append(finding(
+                "readme-link", "README.md", f"missing canonical entrypoint link: {target}",
+                "link the owning public file instead of duplicating its procedure",
+            ))
+    for phrase in (
+        "pending OSRB approval",
+        "static browser site",
+        "untrusted proposal",
+        "may approve its own protected merge or release",
+        "does not replace NVIDIA legal, security, or release approval",
+    ):
+        if phrase not in readme_compact:
+            out.append(finding(
+                "readme-boundary", "README.md", f"missing public boundary: {phrase}",
+                "state publication, runtime, proposal, independent-review, and approval limits plainly",
+            ))
+
+    concept = read("docs/agentic-compliance-suite.md")
+    concept_compact = re.sub(r"\s+", " ", concept)
+    for token in (
+        "# Rapidly-Evolving Agentic Compliance Suite",
+        "## The problem it addresses",
+        "## The workflow",
+        "## Design rules",
+        "## Implementation in this repository",
+        "not a product, certification, compliance claim",
+        "cannot provide independent approval",
+    ):
+        if token not in concept_compact:
+            out.append(finding(
+                "agentic-compliance-contract", "docs/agentic-compliance-suite.md",
+                f"missing concept boundary: {token}",
+                "keep the workflow concrete and separate repository evidence from approval",
+            ))
+
+    playbook = read("docs/release_playbook.md")
+    playbook_compact = re.sub(r"\s+", " ", playbook)
+    for token in (
+        "### Welcoming public entrypoint",
+        "take the course, run it locally, or contribute",
+        "signed-out browser",
+        "does not verify unversioned host settings",
+    ):
+        if token not in playbook_compact:
+            out.append(finding(
+                "github-entrypoint-setup", "docs/release_playbook.md",
+                f"missing public setup check: {token}",
+                "restore the welcoming entrypoint and anonymous host verification steps",
+            ))
+
+    paragraphs: dict[str, list[tuple[str, int]]] = {}
+    for rel in paths:
+        raw = read(rel)
+        headings = [line.strip() for line in raw.splitlines() if line.startswith("#")]
+        if len(headings) != len(set(headings)):
+            out.append(finding(
+                "prose-heading-repeat", rel, "a heading repeats within the same document",
+                "merge the sections or give each section one distinct purpose",
+            ))
+        blocks = _paragraphs(raw)
+        for index, block in enumerate(blocks, 1):
+            words = re.findall(r"\b[\w'-]+\b", block)
+            if len(words) > 140:
+                out.append(finding(
+                    "prose-paragraph-size", rel, f"paragraph {index} has {len(words)} words",
+                    "split at a conceptual seam or remove setup already owned elsewhere",
+                ))
+            lowered = block.lower()
+            for phrase in PROSE_FILLER:
+                if phrase in lowered:
+                    out.append(finding(
+                        "prose-filler", rel, f"paragraph {index} uses filler: {phrase}",
+                        "lead with the useful fact or action",
+                    ))
+            normalized = re.sub(r"[^a-z0-9]+", " ", lowered).strip()
+            if len(words) >= 18:
+                paragraphs.setdefault(normalized, []).append((rel, index))
+        openings = [tuple(re.findall(r"[a-z0-9]+", block.lower())[:4]) for block in blocks]
+        for first, second, third in zip(openings, openings[1:], openings[2:]):
+            if len(first) == 4 and first == second == third:
+                out.append(finding(
+                    "prose-opening-repeat", rel,
+                    f"three adjacent paragraphs repeat the opening: {' '.join(first)}",
+                    "combine the paragraphs or vary their logical entry points",
+                ))
+                break
+    for locations in paragraphs.values():
+        if len({rel for rel, _ in locations}) > 1:
+            shown = ", ".join(f"{rel} paragraph {index}" for rel, index in locations[:3])
+            out.append(finding(
+                "prose-cross-document-repeat", shown, "the same paragraph appears in multiple documents",
+                "keep the detail in one owner and replace other copies with a useful link",
+            ))
+    return out
+
+
 def audit_contract(
     data: dict,
     *,
@@ -120,6 +301,13 @@ def audit_contract(
             return (root / rel).read_text(encoding="utf-8")
         except OSError:
             return ""
+
+    prose_paths = list(PROSE_FILES)
+    prose_paths.extend(
+        path.relative_to(root).as_posix()
+        for path in sorted((root / "docs").glob("*.md"))
+    )
+    out.extend(audit_entrypoint_and_prose(text, prose_paths))
 
     declared_files = set(data.get("required_repository_files") or [])
     for rel in sorted(REQUIRED_REPOSITORY_FILES - declared_files):
@@ -400,6 +588,22 @@ def self_test() -> list[str]:
     replace(".gitattributes", "SECURITY.md text eol=lf whitespace=-space-before-tab", "SECURITY.md text eol=lf", "security-template-whitespace", "security whitespace")
     replace("CHANGELOG.md", "## Unreleased", "## Pending", "changelog-contract", "changelog heading")
     replace("README.md", "](CHANGELOG.md)", "](history.md)", "readme-work-product-link", "readme link")
+    replace("README.md", "## Take the course", "## Overview route", "readme-section", "README route")
+    replace("README.md", "untrusted proposal", "draft submission", "readme-boundary", "README trust boundary")
+    replace("docs/agentic-compliance-suite.md", "## The workflow", "## Sequence", "agentic-compliance-contract", "agent workflow")
+    replace("docs/release_playbook.md", "signed-out browser", "ordinary browser", "github-entrypoint-setup", "anonymous entrypoint")
+    raw = (ROOT / "README.md").read_text(encoding="utf-8")
+    add("README size", mutated(), "readme-size", overrides={
+        "README.md": raw + ("\nExtra repository detail that belongs in its owning document.\n" * 80),
+    })
+    paragraph = _paragraphs(raw)[0]
+    concept_raw = (ROOT / "docs/agentic-compliance-suite.md").read_text(encoding="utf-8")
+    add("cross-document paragraph", mutated(), "prose-cross-document-repeat", overrides={
+        "docs/agentic-compliance-suite.md": concept_raw + "\n\n" + paragraph + "\n",
+    })
+    add("prose filler", mutated(), "prose-filler", overrides={
+        "docs/agentic-compliance-suite.md": concept_raw + "\n\nIt is important to note that this is filler.\n",
+    })
     replace("docs/release_playbook.md", "Dependency management", "Package handling", "maintainer-plan", "maintainer dependency")
     replace("docs/release_playbook.md", "## Hotfix workflow", "## Urgent changes", "maintainer-plan", "hotfix process")
     replace("CONTRIBUTING.md", "## Conventions", "## Style notes", "coding-guideline", "coding guidance")

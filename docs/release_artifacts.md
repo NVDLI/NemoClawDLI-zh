@@ -56,18 +56,18 @@ Each public draft receives:
   CI-generated, and conditional component evidence
 - `SHA256SUMS`: digest list for every published asset
 
-Validation reports and the full `pip-audit` result remain workflow evidence. They are retained with
-the transfer artifact for 30 days but are not public release assets. This keeps operator evidence
-available without publishing noisy scanner detail as a supported product interface.
-The source-backed security architecture and generated SVG remain versioned under `docs/` so a reviewer
-can trace system boundaries to the exact source tag. They are engineering evidence rather than
-supported runtime interfaces and do not encode internal submissions or approval records.
-The tagged source also versions `docs/product-design.md`, `docs/release-test-plan.md`, and
-`docs/release-evidence.json`. Reviewers link those files at the exact release commit, then retain
-private scanner, reviewer, and approval records in the authorized release system.
-The workflow installs scanner tools in a separate environment, so scanner dependencies do not
-pollute the runtime SBOM. Scanner versions are pinned in the workflow so the same environment is
-serialized consistently until an explicit dependency update changes the tooling.
+Validation reports and the full `pip-audit` result remain workflow evidence. They stay with the
+transfer artifact for 30 days but are not public release assets. This retains operator evidence
+without presenting scanner detail as a supported product interface.
+
+The source-backed security architecture and generated SVG remain versioned under `docs/` so a
+reviewer can trace system boundaries to the exact source tag. They are engineering evidence, not
+runtime interfaces, internal submissions, or approval records. The tagged source also versions
+`docs/product-design.md`, `docs/release-test-plan.md`, and `docs/release-evidence.json`.
+
+Reviewers link those files at the exact release commit and retain private scanner, reviewer, and
+approval records in the authorized release system. The workflow installs pinned scanner tools in a
+separate environment, so scanner dependencies do not enter the runtime SBOM.
 ## External artifact evidence
 
 Packaging writes `external_evidence.policy` as `required-before-publication` and lists the course

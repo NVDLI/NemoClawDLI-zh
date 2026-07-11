@@ -1,36 +1,31 @@
 # Securing Agents with OpenShell and NemoClaw
 
-This repository contains the source, browser runtime, and release tooling for an NVIDIA Deep
-Learning Institute course on building and securing agent systems. The planned public home is
-[`NVDLI/NemoClawDLI`](https://github.com/NVDLI/NemoClawDLI). That repository is reserved but not
-yet populated. External publication remains pending OSRB approval; see
-[`RELEASE_STATUS.json`](RELEASE_STATUS.json) for the canonical state.
+This repository contains an NVIDIA Deep Learning Institute course about building agent systems and
+applying practical security boundaries with NemoClaw and OpenShell. The course progresses from a
+model call to tools, workflows, retrieval, deep research, sandbox policy, and deployment choices.
+It is available in English, Brazilian Portuguese, and Spanish.
 
-The selected operating model for this DLI course repository, `NVDLI/NemoClawDLI`, is an
-NVIDIA-owned Full-OSS-Project intended as OSS Type I. After approved cutover, that course
-repository becomes the canonical source and the primary home for course planning, issues,
-contributions, CI, and releases. Internal GitLab remains an integration and validation consumer.
-This classification does not apply to the NemoClaw product, launchable, runtime, or their release
-processes. They are external dependencies used by some lessons. The governing system must still
-record and approve the course repository classification.
+The planned public home is
+[`NVDLI/NemoClawDLI`](https://github.com/NVDLI/NemoClawDLI). Publication remains pending OSRB
+approval. [`RELEASE_STATUS.json`](RELEASE_STATUS.json) is the machine-readable source for current
+publication state. Passing repository checks does not replace NVIDIA legal, security, or release
+approval.
 
-The course starts with a model call and builds toward tool use, workflows, retrieval, deep
-research, OpenClaw, and OpenShell sandbox policy. English, Brazilian Portuguese, and Spanish are
-built from one branch and checked for translation drift.
+## Take the course
 
-## Requirements
+Start at [`web/index.html`](web/index.html), then open the
+[`NemoClaw course`](web/nemoclaw/index.html). Interactive model exercises require a user-supplied
+NVIDIA API key. Modules 3 and 4 request a NemoClaw launchable when they need one. No
+learner-managed GPU or repository-operated application server is required.
 
-- Learners: a modern browser and a user-supplied NVIDIA API key for interactive model exercises.
-- Modules 3 and 4: a NemoClaw launchable created when the course requests it.
-- Local builds: Python 3.11+, Bash, Node.js 20+, pnpm through Corepack, and Chromium or compatible Chrome.
-- Hardware: no learner-managed GPU is required.
+The learner release is a static browser site. It does not vendor learner credentials. The
+NemoClaw product, launchable, and runtime are external dependencies, not releases of this course
+repository.
 
-The learner release is a static website. It does not require a repository-operated application
-server and never vendors a learner credential.
+## Run it locally
 
-## Getting Started
-
-After the public repository is populated, build and serve the same site used by Pages:
+Install Python 3.11 or newer, Bash, Node.js 20 or newer, pnpm through Corepack, and Chromium or a
+compatible Chrome browser. Python 3.12 is the tested default.
 
 ```bash
 git clone https://github.com/NVDLI/NemoClawDLI.git
@@ -39,193 +34,77 @@ bash scripts/build/build_pages.sh public
 python3 -m http.server -d public 8000
 ```
 
-Open `http://localhost:8000/nemoclaw/`. The course runs entirely in the browser and introduces
-external services only when an exercise needs them.
+Open `http://localhost:8000/nemoclaw/`. Before installing Python packages, run
+`python3 scripts/runtime/python_env_probe.py`, use a virtual environment, and install the applicable
+pinned lock. The repository does not prescribe a container topology.
 
-For repository work, install the local checks with `bash scripts/build/install-hooks.sh`, then run
-`python3 scripts/validation/release_gate.py --tier fast --no-write` before proposing a change.
+## Contribute
 
-## Repository Design
+Questions, corrections, teaching ideas, runtime observations, and source leads belong in structured
+Issues. Discussions will accept broader questions after public community intake is approved and
+enabled. Security reports must use the private route in [`SECURITY.md`](SECURITY.md), never a public
+Issue or Discussion.
 
-The core release tenet is a small static boundary: the repository ships the browser course and its
-validation tools, not a lab operating system, service stack, or container topology.
+Code remains an untrusted proposal until required checks and an authorized human review accept it.
+Every patch needs an Issue, a declared blast radius, validation evidence, and DCO signoff. No
+contributor, maintainer, or agent may approve its own protected merge or release.
 
-## Repository Boundary
+Start with [`CONTRIBUTING.md`](CONTRIBUTING.md). It owns setup, issue and patch paths, signoff,
+validation, localization ownership, and contributor credit. The
+[`Code of Conduct`](CODE_OF_CONDUCT.md), [`support policy`](SUPPORT.md), and
+[`DCO`](DCO.md) define the remaining contributor-facing terms.
 
-`web/` contains the released static course. `scripts/` contains build, validation, compliance, and
-translation tooling. Contributors install Python, Node.js, and Chromium on the host. External
-isolation is operator-owned; this repository does not define, build, scan, or distribute it.
+## Verify a change
 
-## Release Flow
-
-The repository keeps curated source and projects it into release formats:
-
-- standalone bundle generated from the same source
-- client-side Pages site for preview or external release
-- validation reports that use the same link engine as the browser viewer
-
-Versioned public releases use protected annotated SemVer tags and deterministic archives with a
-manifest, resolved-environment SBOM, and checksums. See
-[`CHANGELOG.md`](CHANGELOG.md) for version history and
-[`docs/release_artifacts.md`](docs/release_artifacts.md) for packaging and integrity rules.
-The released system boundary and its executable verification plan live in
-[`docs/product-design.md`](docs/product-design.md) and
-[`docs/release-test-plan.md`](docs/release-test-plan.md). Their machine-readable coverage map is
-[`docs/release-evidence.json`](docs/release-evidence.json).
-The public [`browser dependency inventory`](web/nemoclaw/dependencies.html) lists every direct and
-bundled transitive JavaScript package, exact version, license, same-origin asset, hash, and runtime
-reference used by learners.
-
-Students enter through the release foyer, [`web/index.html`](web/index.html). It surfaces
-only released courses. Today that is [`web/nemoclaw/`](web/nemoclaw/).
-
-For a presentation-led review, open the hosted
-[`repository overview`](docs/repository-overview.html). It connects the learner route,
-browser artifacts, runtime boundaries, contribution controls, localization workflow, and
-release evidence. The downloadable PowerPoint version lives beside it at
-[`docs/repository-overview.pptx`](docs/repository-overview.pptx).
-
-Localized course prose lives as a sparse same-branch overlay under [`i18n/`](i18n/).
-Canonical `web/` runtime modules, assets, machine-contract pages, and untranslated pages remain shared.
-Open [`web/nemoclaw/localization.html`](web/nemoclaw/localization.html) to compare English
-with Brazilian Portuguese or Spanish page state, then read [`scripts/translate/SKILL.html`](scripts/translate/SKILL.html)
-for the review workflow and locale-specific language guidance.
-
-## Deployment
-
-Production ships a static browser artifact. It is published to a public static host or pinned and
-vendored by a co-located NemoClaw launchable. [`docs/pages_deploy.md`](docs/pages_deploy.md) owns
-those delivery paths and preview behavior.
-
-Host-native browser-test commands live in [`docs/lab_runtime_testing.md`](docs/lab_runtime_testing.md).
-The repository owns no service stack or container topology. Artifact and tag rules live in
-[`docs/release_artifacts.md`](docs/release_artifacts.md).
-
-## Agent Visor
-
-The repo is intentionally agent-readable. Every source directory carries a
-`SKILL.html` with a `skill-meta` JSON block. The root [`SKILL.html`](SKILL.html) is the
-ontology beacon for the bundle. It points to execution surfaces, deployment, tooling,
-and process docs. Agents should read [`AGENTS.md`](AGENTS.md), then the relevant
-`SKILL.html` before changing files. The source-directory set is discovered exhaustively from
-tracked and proposed files; there is no beacon opt-out for locale, vendor, data, workflow, or
-runtime-seed directories.
-
-## Ideas are easy; code is gated
-
-The contribution boundary is intentionally asymmetric. Questions, corrections, teaching
-ideas, runtime observations, and source leads should be cheap to submit through structured
-Issues. Discussions become available when the external mirror and its intake features are
-approved and enabled. No local checkout or patch is required. Security reports use the private path
-described in [`SECURITY.md`](SECURITY.md), never a public Issue.
-
-Code is an untrusted proposal until the repository and a human owner accept it. A direct
-patch must name an Issue, declare every touched surface and blast radius, produce validation
-evidence, and survive local hooks, required CI, protected-ref rules, owner review, and gated
-release environments. Local hooks provide early feedback; protected refs and required checks
-are the authority because hooks can be skipped. The contract and operator controls live in
-[`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/release_playbook.md`](docs/release_playbook.md).
-
-## Governance and Maintainers
-
-Public governance is explicit: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) sets behavior and
-enforcement, [`SUPPORT.md`](SUPPORT.md) defines support and lifecycle boundaries, and
-[`DCO.md`](DCO.md) defines per-commit origin signoff.
-The consolidated maintainer plan begins in
-[`docs/release_playbook.md`](docs/release_playbook.md) and links dependency management, issue
-triage, hotfixes, CI/CD, testing, release operations, and rollback without duplicating those owners.
-
-### Maintainer authority
-
-Repository maintainers route reviews and moderate intake. Surface owners review technical and
-learner impact. Release managers own protected tags, publication, and rollback. Security
-responders own private intake and coordinated remediation. Assignments live in host teams,
-rulesets, protected environments, and `CODEOWNERS` once stable public handles exist.
-Nobody approves their own final push or protected release. Agents may prepare patches and
-evidence; they cannot supply independent review, merge authority, or release approval.
-
-## Security
-
-Report vulnerabilities through the private NVIDIA Product Security routes in
-[`SECURITY.md`](SECURITY.md). Never place vulnerability details, credentials, private URLs, or
-exploit paths in a public Issue or Discussion.
-
-## Support
-
-The latest tagged release receives best-effort maintenance without a response-time guarantee.
-Use structured Issues for actionable defects and Discussions for questions after community intake
-is enabled. [`SUPPORT.md`](SUPPORT.md) defines the full lifecycle and triage boundary.
-
-## Verification
-
-Run the static release gate before pushing:
+Install the local hooks, then run the fast gate:
 
 ```bash
+bash scripts/build/install-hooks.sh
 python3 scripts/validation/release_gate.py --tier fast --no-write
 ```
 
-Before release or when changing a cross-cutting contract, run `--tier ship`. The complete
-command and evidence matrix lives in
-[`docs/release-test-plan.md`](docs/release-test-plan.md).
+Use `--tier ship` before release or after a cross-cutting contract change. The
+[`release test plan`](docs/release-test-plan.md) maps claims to evidence. Browser prerequisites and
+render checks live in [`docs/lab_runtime_testing.md`](docs/lab_runtime_testing.md).
 
-Release threat-model evidence lives in [`docs/security-design.md`](docs/security-design.md).
-Its source-backed graph covers the learner runtime and release supply chain. CI rejects missing
-services, unlabeled trust-boundary flows, broken evidence, connector collisions, and stale output.
-Repository-owned mitigations, unresolved host or provider requirements, residual risks, and
-non-applicable recommendations are separated in
-[`docs/security-control-disposition.md`](docs/security-control-disposition.md).
+## How the repository guides agents
 
-For browser or Studio changes, also use the host-native browser harness:
+[`AGENTS.md`](AGENTS.md) is the cross-harness contract. Each source directory has a `SKILL.html`
+that routes work to the relevant files and checks. Deterministic validators, protected host rules,
+and human review remain authoritative when agent context, model behavior, or contributor experience
+varies.
 
-```bash
-scripts/runtime/browser_env_probe.sh
-scripts/runtime/browser_runtime_test.sh --render-only
-```
+The compact design note
+[`Rapidly-Evolving Agentic Compliance Suite`](docs/agentic-compliance-suite.md) explains this
+workflow pattern, its limits, and how the repository implements it. The name describes an
+engineering approach, not a certification, product, or substitute for approval.
 
-Repository tooling requires Python 3.11 or newer; Python 3.12 is the tested default. Run
-`python3 scripts/runtime/python_env_probe.py` before installing the applicable pinned lock in a
-virtual environment. Avoid global or unpinned installs.
+## Project map
 
-See [`docs/lab_runtime_testing.md`](docs/lab_runtime_testing.md) for prerequisites and the optional
-external-isolation boundary.
+| Path | Purpose |
+| --- | --- |
+| [`web/`](web/SKILL.html) | Browser course, shared runtime, figures, materials, and dependency evidence |
+| [`i18n/`](i18n/SKILL.html) | Reviewed locale overlays built with the canonical course |
+| [`scripts/`](scripts/SKILL.html) | Build, validation, runtime, compliance, and material tooling |
+| [`docs/`](docs/SKILL.html) | Design, test, deployment, security, and release contracts |
+| [`SKILL.html`](SKILL.html) | Repository map for people and agents |
 
-## Contributing
+The repository ships the static course and its validation tools. It does not ship a lab operating
+system, service stack, or base container. The
+[`browser dependency inventory`](web/nemoclaw/dependencies.html) identifies code learners receive.
+[`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md) and
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) cover software and material relationships.
 
-If you have domain expertise, contribute first by lodging focused Issues with evidence:
-what is wrong, where it appears, what the learner or operator impact is, and what source
-or runtime behavior supports the claim. Issue-first contribution helps preserve the course
-release process when the right fix crosses content, deployment, validation, or licensing.
-Issue shape and label cadence are defined in [`docs/issue_standards.md`](docs/issue_standards.md).
+## Governance, release, and license
 
-If you are contributing a direct patch, follow the structured release path:
+The intended public course repository is an NVIDIA-owned Full-OSS-Project, OSS Type I. That
+classification applies only to this DLI course repository. The governing system must approve it
+before public cutover.
 
-1. Create a branch for one coherent release concern.
-2. Update the source surface and every declared blast-radius file.
-3. Add or update validators when the same class of problem should not recur.
-4. Run the validation ladder above.
-5. Open an MR that says `Addresses #N` unless the change truly closes the issue.
+[`docs/release_playbook.md`](docs/release_playbook.md) owns maintainer roles, public GitHub setup,
+protected publication, and internal integration cadence. [`CHANGELOG.md`](CHANGELOG.md) records
+version history. [`docs/product-design.md`](docs/product-design.md) defines the release boundary,
+and [`docs/security-design.md`](docs/security-design.md) defines its trust boundaries.
 
-The full external-release operating model lives in [`docs/release_playbook.md`](docs/release_playbook.md). Source and licensing rules live in [`scripts/compliance/docs/vendor_policy.md`](scripts/compliance/docs/vendor_policy.md)
-and [`scripts/compliance/docs/open_source_readiness.md`](scripts/compliance/docs/open_source_readiness.md).
-
-## Layout
-
-```text
-.
-├── web/                    browser courses and browser-owned runtime assets
-├── docs/                   operating docs
-├── scripts/                build, validation, runtime, compliance, and material tooling
-├── SKILL.html              root ontology beacon served at /lab/static/SKILL.html
-└── AGENTS.md               cross-harness agent contract
-```
-
-## License
-
-The proposed external release uses the [Apache License 2.0](LICENSE). Contributions use the same
-inbound license plus [Developer Certificate of Origin](DCO.md) signoff; this Apache-2.0 project does
-not require a separate CLA. Start with the root
-[third-party notices](THIRD-PARTY-NOTICES.md), which point to the static software and material
-inventory, checked-in browser license texts, per-artifact transformation status, SBOM evidence, and
-source-specific attribution. The complete
-[third-party software and material inventory](THIRD_PARTY_LICENSES.md) remains directly available
-for reviewers and generated exports.
+The proposed public release uses the [Apache License 2.0](LICENSE). Contributions use the same
+inbound license with DCO signoff; this project does not require a separate CLA.
