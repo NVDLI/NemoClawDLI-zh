@@ -17,7 +17,7 @@ from urllib.parse import unquote, urlsplit
 CONFIG_RE = re.compile(
     r'<script[^>]*id="explorer-config"[^>]*>(.*?)</script>', re.DOTALL
 )
-FENCE_RE = re.compile(r"(?:^|\n)(?:```|~~~).*?(?=\n(?:```|~~~)(?:\n|$))", re.DOTALL)
+FENCE_LINE_RE = re.compile(r"^\s{0,3}(`{3,}|~{3,})")
 INLINE_LINK_RE = re.compile(r"!?\[[^\]\n]*\]\(\s*(<[^>\n]+>|[^)\s]+)")
 REFERENCE_LINK_RE = re.compile(r"^\s{0,3}\[[^\]\n]+\]:\s*(<[^>\n]+>|\S+)", re.MULTILINE)
 DOC_KINDS = {"authored", "canonical", "generated"}
@@ -42,7 +42,20 @@ def explorer_config(skill: Path) -> dict:
 
 def local_markdown_targets(path: Path) -> list[str]:
     """Return local inline/image/reference targets from one rendered Markdown file."""
-    text = FENCE_RE.sub("\n", path.read_text(encoding="utf-8"))
+    visible: list[str] = []
+    fence_char = ""
+    for line in path.read_text(encoding="utf-8").splitlines():
+        marker = FENCE_LINE_RE.match(line)
+        if marker:
+            current = marker.group(1)[0]
+            if not fence_char:
+                fence_char = current
+            elif current == fence_char:
+                fence_char = ""
+            continue
+        if not fence_char:
+            visible.append(line)
+    text = "\n".join(visible)
     raw_targets = [match.group(1) for match in INLINE_LINK_RE.finditer(text)]
     raw_targets.extend(match.group(1) for match in REFERENCE_LINK_RE.finditer(text))
     targets: list[str] = []
@@ -244,6 +257,14 @@ def self_test() -> list[str]:
             (audit_catalog(skill, root) == (4, 2), "catalog and graph counts"),
         ]
         failures.extend(label for passed, label in checks if not passed)
+
+        (docs / "fenced.md").write_text(
+            "```text\n[ignored](missing.md)\n```\n\n[visible](test-plan.md)\n",
+            encoding="utf-8",
+        )
+        if local_markdown_targets(docs / "fenced.md") != ["test-plan.md"]:
+            failures.append("fenced Markdown hid or exposed the wrong target")
+        (docs / "fenced.md").unlink()
 
         (docs / "design.md").write_text(
             "[tests](test-plan.md) [missing](../missing.json)\n", encoding="utf-8"

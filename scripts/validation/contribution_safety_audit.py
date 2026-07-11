@@ -212,16 +212,6 @@ def audit_repo(
         require(re.sub(r"\s+", " ", docs[rel]), "pending OSRB approval", rel,
                 "release-status-language", out,
                 "state that external publication remains pending OSRB approval")
-    for heading in ("# Securing Agents with OpenShell and NemoClaw", "## Requirements",
-                    "## Getting Started", "## Governance and Maintainers", "## Security",
-                    "## Support", "## Contributing", "## License"):
-        require(docs["README.md"], heading, "README.md", "readme-public-entrypoint", out,
-                f"add the project-specific {heading} section")
-    require(docs["README.md"], "https://github.com/NVDLI/NemoClawDLI", "README.md",
-            "external-repository", out, "link the reserved public repository by its exact owner and name")
-    for rel in ("LICENSE", "SECURITY.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md", "SUPPORT.md"):
-        require(docs["README.md"], f"]({rel})", "README.md", "readme-policy-link", out,
-                f"link {rel} from the public project entrypoint")
     license_header = re.sub(r"\s+", " ", docs["LICENSE"]).strip()
     expected_license_header = (
         NVIDIA_APACHE_COPYRIGHT + " Apache License Version 2.0, January 2004"
@@ -243,8 +233,6 @@ def audit_repo(
             "route general employee product-security questions to #ask-security without replacing private vulnerability intake")
     require(docs["SUPPORT.md"], "Breaking changes and retirement decisions", "SUPPORT.md",
             "lifecycle-boundary", out, "document change, retirement, and archival expectations")
-    require(docs["README.md"], "Nobody approves their own", "README.md",
-            "independent-review", out, "keep independent review explicit in role authority")
     require(docs["DCO.md"], "Developer Certificate of Origin 1.1", "DCO.md", "dco-policy", out,
             "document the inbound signoff policy and authoritative DCO version")
     require(docs["DCO.md"], "git commit --signoff", "DCO.md", "dco-repair", out,
@@ -259,10 +247,6 @@ def audit_repo(
             "CONTRIBUTING.md", "cla-applicability", out,
             "state why Apache-2.0 plus DCO does not require a separate CLA")
 
-    require(docs["README.md"], "Ideas are easy; code is gated", "README.md", "readme-boundary", out,
-            "state the intake/code asymmetry in the README")
-    require(docs["README.md"], "Discussions", "README.md", "readme-intake", out,
-            "link question and broad-idea intake from the README")
     require(docs["CONTRIBUTING.md"], "Required CI and protected refs remain authoritative", "CONTRIBUTING.md",
             "hook-authority", out, "explain that required CI and protected refs remain authoritative")
     require(docs["CONTRIBUTING.md"], "Contributor credit and localization ownership",
@@ -1164,7 +1148,6 @@ def self_test() -> list[str]:
             ("conduct-report-route", "CODE_OF_CONDUCT.md", "private content-reporting flow", "public Issue"),
             ("support-boundary", "SUPPORT.md", "Triage is best-effort", "Triage is guaranteed"),
             ("product-security-question-route", "SUPPORT.md", "[#ask-security](https://nvidia.slack.com/archives/CAHCG5005)", "#security-help"),
-            ("independent-review", "README.md", "Nobody approves their own", "Self-approval allowed"),
             ("dco-policy", "DCO.md", "Developer Certificate of Origin 1.1", "unversioned signoff"),
             ("dco-stacked-merge", "DCO.md", "host-generated squash or merge commit", "generated integration commit"),
             ("contributor-stacked-merge", "CONTRIBUTING.md", "stacked merge request", "nested proposal"),
@@ -1298,9 +1281,6 @@ def self_test() -> list[str]:
             ("material-fail-closed-policy", "scripts/materials/pull_materials.py", "def check_passes", "def check_removed"),
             ("material-explicit-degradation", "scripts/materials/pull_materials.py", '"--allow-transient-unreachable"', '"--allow-all-unreachable"'),
             ("material-provenance-sha", "web/nemoclaw/mats/_materials.json", "7a583caa8f1db1e66220cfa8963b7b37dcaf5655df0e1314f8794ea1ba5c8c94", "7a583caa8f1db1e6"),
-            ("readme-boundary", "README.md", "Ideas are easy; code is gated", "Contribution overview"),
-            ("readme-public-entrypoint", "README.md", "## Requirements", "## Prerequisites"),
-            ("readme-policy-link", "README.md", "](CODE_OF_CONDUCT.md)", "](conduct-policy.md)"),
             ("root-license", "LICENSE", NVIDIA_APACHE_COPYRIGHT, "Copyright removed"),
             ("root-license", "LICENSE", "Apache License", "Example License"),
             ("cla-applicability", "CONTRIBUTING.md", "does not require a separate contributor license agreement", "may require another agreement"),

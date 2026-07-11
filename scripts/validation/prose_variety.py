@@ -1445,8 +1445,8 @@ def _pages(scope: str):
 
     ``course`` is the canonical learner journey: its landing page and numbered modules only.
     ``ship`` adds other authored browser pages and every repository SKILL contract. ``all`` also
-    considers eligible Markdown outside scripts/ and docs/. Generated app hubs, vendored mats, and
-    the license (a different genre where terseness and lists are expected) are skipped.
+    considers root policies and direct ``docs/`` Markdown. Generated reports, script references,
+    vendored materials, and the license use different genres and stay outside this prose signal.
     """
     if scope == "course":
         course_root = TASK1 / "web" / "nemoclaw"
@@ -1469,7 +1469,9 @@ def _pages(scope: str):
             if f.name != "SKILL.html" and not rel.startswith("web/"):
                 continue
         elif suf == ".md":
-            if scope != "all" or rel.startswith(("scripts/", "docs/")):
+            if scope != "all" or rel.startswith("scripts/"):
+                continue
+            if rel.startswith("docs/") and f.parent != TASK1 / "docs":
                 continue
         else:
             continue

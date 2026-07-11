@@ -32,6 +32,7 @@
     "CODE_OF_CONDUCT.md",
     "SUPPORT.md",
     "CHANGELOG.md",
+    "docs/agentic-compliance-suite.md",
     "docs/release_playbook.md",
     ".github/ISSUE_TEMPLATE/bug.yml",
     ".github/ISSUE_TEMPLATE/feature.yml",

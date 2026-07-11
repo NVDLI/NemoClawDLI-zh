@@ -83,6 +83,8 @@ substitute for the host audit log or a human review of who holds the named roles
 
 Surface ownership and task-specific gates live in the root `SKILL.html`, `docs/SKILL.html`,
 and nearest directory beacon.
+[`agentic-compliance-suite.md`](agentic-compliance-suite.md) explains why those discovery layers,
+deterministic checks, evidence, and protected decisions remain separate.
 
 ## Maintainer operating plan
 
@@ -120,6 +122,24 @@ Required constraints:
   publication, initialize the external repository from the validated release tree instead of
   copying internal commit history.
 - Do not mirror CI secrets, DLI deploy credentials, model keys, Cloudflare headers, or private launch URLs.
+
+### Welcoming public entrypoint
+
+Prepare the entrypoint before enabling public intake. This is a host setup task, not permission to
+publish during the write hold.
+
+1. Set the repository description to one plain sentence about the DLI course. Set the website to the
+   reviewed course landing page and use only accurate NVIDIA-approved topics.
+2. Confirm that the rendered README gives a newcomer three immediate routes: take the course, run it
+   locally, or contribute. Keep detailed procedures in their canonical documents.
+3. Enable the checked-in Issue forms and pull-request template. Pin a short Discussion welcome that
+   links to contribution, support, conduct, and private security reporting.
+4. Configure branch, tag, environment, dependency, code-scanning, and secret controls before
+   announcing the repository. Do not invite contributions while required checks are advisory.
+5. Review the repository in a signed-out browser. Every first-touch link must resolve without
+   internal access, and no page may expose private hosts, credentials, or prepublication evidence.
+6. Record the anonymous check, live ruleset state, and named owner in the cutover evidence. A green
+   repository audit does not verify unversioned host settings.
 
 ## Dual-repository integration cadence
 
@@ -288,6 +308,7 @@ live in [`issue_standards.md`](issue_standards.md).
 Before public mirror:
 
 - [ ] Public README explains surface separation, local bring-up, and contribution routes.
+- [ ] Repository description, website, topics, and signed-out README review match the approved public scope.
 - [ ] `CONTRIBUTING.md` has issue-first and structured patch paths.
 - [ ] This playbook is linked from docs SKILL and root SKILL.
 - [ ] GitLab issue/MR templates exist.
@@ -328,20 +349,7 @@ Before student PR intake:
 - [ ] Release note owner exists for each milestone.
 - [ ] Security/private reports have a non-public contact path.
 
-## Sources used
-
-- GitLab repository mirroring supports private-to-open-source mirroring, protected-branch-only mirroring, and divergent-ref protection.
-- GitLab description templates live under `.gitlab/issue_templates/` and `.gitlab/merge_request_templates/`.
-- GitHub CODEOWNERS can request owner review and can be required by branch protection.
-- GitHub Actions deployments support environments, protection rules, concurrency, and deployment history.
-- GitHub Discussions is for transparent community conversations that are not tracked code work.
-- GitHub Projects can provide board-style planning for issues and pull requests.
-- GitHub dependency graph is available for public repositories by default and can export SBOMs.
-- GitHub dependency review and dependency-review-action are available for public repositories and can block vulnerable dependency additions.
-- GitHub code scanning is available for public repositories, with CodeQL or SARIF-uploaded third-party tools.
-- GitHub secret scanning runs automatically for public repositories and can be extended with custom patterns and validity checks where available.
-
-Operator references:
+## Operator references
 
 - [GitHub ruleset rules](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets)
 - [GitHub ruleset management and Rule Insights](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/managing-rulesets-for-a-repository)
