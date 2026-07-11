@@ -42,7 +42,7 @@ def resolve_node_path() -> str:
     node_path = Path(os.environ.get("NODE_PATH", str(RUNTIME_NODE_MODULES))).resolve()
     if not (node_path / "playwright-core" / "package.json").is_file():
         raise BrowserRuntimeError(
-            "playwright-core is missing; run: pnpm install --dir scripts/runtime --frozen-lockfile --ignore-scripts"
+            "playwright-core is missing; run: (cd scripts/runtime && corepack enable && pnpm install --frozen-lockfile --ignore-scripts)"
         )
     return str(node_path)
 

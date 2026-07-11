@@ -136,7 +136,7 @@ def audit(root: Path = ROOT) -> list[dict[str, str]]:
 
     for token in (
         "npm audit --prefix scripts/browser-vendor --package-lock-only",
-        "pnpm audit --dir scripts/runtime --audit-level=moderate",
+        "pnpm audit --audit-level=moderate",
         "scripts/runtime/pnpm-lock.yaml",
         ".sca-tools-venv/bin/python -m pip install --require-hashes --no-deps --only-binary=:all: -q -r scripts/security/requirements-sca.lock",
         ".sca-tools-venv/bin/pip-audit -r scripts/materials/requirements.lock",

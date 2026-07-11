@@ -73,7 +73,7 @@ workflow:
       fi
       if [ "${BROWSER_TOOLS_REQUIRED:-0}" = "1" ]; then
         corepack enable
-        pnpm install --dir scripts/runtime --frozen-lockfile --ignore-scripts
+        (cd scripts/runtime && pnpm install --frozen-lockfile --ignore-scripts)
       fi
 
 test:
@@ -391,7 +391,7 @@ theme_runtime:
       - scheduler_failure
   before_script:
     - corepack enable
-    - pnpm install --dir scripts/runtime --frozen-lockfile --ignore-scripts
+    - '(cd scripts/runtime && pnpm install --frozen-lockfile --ignore-scripts)'
   script:
     - |
       set -eu

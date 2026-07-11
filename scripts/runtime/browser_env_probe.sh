@@ -33,7 +33,7 @@ echo
 
 if [[ -z "$node_bin" || ! -x "$node_bin" ]]; then echo "FAIL: install Node.js 20+ or set NODE_BIN" >&2; exit 2; fi
 if [[ ! -f "$node_path/playwright-core/package.json" ]]; then
-  echo "FAIL: run pnpm install --dir scripts/runtime --frozen-lockfile --ignore-scripts" >&2
+  echo "FAIL: run (cd scripts/runtime && corepack enable && pnpm install --frozen-lockfile --ignore-scripts)" >&2
   exit 2
 fi
 if [[ -z "$chrome_bin" ]]; then

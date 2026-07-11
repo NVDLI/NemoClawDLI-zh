@@ -35,7 +35,7 @@ if [[ -z "$NODE_BIN" || ! -x "$NODE_BIN" ]]; then
 fi
 if [[ ! -f "$NODE_PATH/playwright-core/package.json" ]]; then
   echo "browser runtime: playwright-core is missing" >&2
-  echo "run: pnpm install --dir scripts/runtime --frozen-lockfile --ignore-scripts" >&2
+  echo "run: (cd scripts/runtime && corepack enable && pnpm install --frozen-lockfile --ignore-scripts)" >&2
   exit 2
 fi
 CHROME_BIN=$(find_chrome) || {

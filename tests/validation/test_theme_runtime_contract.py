@@ -101,7 +101,7 @@ class ThemeRuntimeContractTests(unittest.TestCase):
         )
         self.assertIn(f"image: {image}", test_job)
         self.assertIn('BROWSER_TOOLS_REQUIRED: "1"', test_job)
-        self.assertIn('pnpm install --dir scripts/runtime --frozen-lockfile --ignore-scripts', core)
+        self.assertIn('cd scripts/runtime && pnpm install --frozen-lockfile --ignore-scripts', core)
 
     def test_manifest_rewrites_reproject_every_discovered_mirror(self) -> None:
         pages = core_job("pages", "pages_smoke")
@@ -234,11 +234,11 @@ class ScaTriggerContractTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertIn(f"- {path}", job)
         self.assertIn(
-            "pnpm install --dir scripts/runtime --frozen-lockfile --ignore-scripts",
+            "cd scripts/runtime && pnpm install --frozen-lockfile --ignore-scripts",
             job,
         )
         self.assertIn(
-            "pnpm audit --dir scripts/runtime --audit-level=moderate",
+            "cd scripts/runtime && pnpm audit --audit-level=moderate",
             job,
         )
         self.assertIn("runtime-pnpm-audit.json", job)

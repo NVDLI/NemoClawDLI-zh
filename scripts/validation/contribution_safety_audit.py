@@ -671,7 +671,7 @@ def audit_repo(
     )
     if (not test_job or pinned_browser_image not in test_job.group(1)
             or 'BROWSER_TOOLS_REQUIRED: "1"' not in test_job.group(1)
-            or "pnpm install --dir scripts/runtime --frozen-lockfile --ignore-scripts" not in gitlab):
+            or "cd scripts/runtime && pnpm install --frozen-lockfile --ignore-scripts" not in gitlab):
         out.append(finding("gitlab-report-browser-runtime", ".gitlab-ci.yml",
                            "the validation-report producer lacks the pinned browser runtime",
                            "run the ship gate with the locked Playwright API and digest-pinned browser image"))
@@ -757,7 +757,7 @@ def audit_repo(
                 f"rerun {job_name} when its self-contained scanner policy changes")
     browser_scan = re.search(r"(?ms)^security_browser_sca:\n(.*?)(?=^[A-Za-z0-9_.-]+:\n|\Z)", gitlab_sca)
     browser_body = browser_scan.group(1) if browser_scan else ""
-    for token in ("scripts/runtime/pnpm-lock.yaml", "pnpm audit --dir scripts/runtime --audit-level=moderate"):
+    for token in ("scripts/runtime/pnpm-lock.yaml", "cd scripts/runtime && pnpm audit --audit-level=moderate"):
         require(browser_body, token, ".gitlab/ci/sca.yml", "gitlab-runtime-sca", out,
                 "scan the locked host-browser validation dependency when it changes")
 
@@ -1270,7 +1270,7 @@ def self_test() -> list[str]:
             ("gitlab-protected-root-worktree", ".gitlab/ci/core.yml", 'git worktree add --quiet --detach /tmp/nemoclaw-prod-root "origin/$prod_ref"', 'git archive "origin/$prod_ref" | tar -x -C /tmp/nemoclaw-prod-root'),
             ("gitlab-image-pin", ".gitlab/ci/core.yml", "node:20-bookworm-slim@sha256:25070a03f077f5860e4f2db8d147380678ed40ead415a21eaffd5a6208f61948", "node:20-bookworm-slim"),
             ("gitlab-report-browser-runtime", ".gitlab/ci/core.yml", "mcr.microsoft.com/playwright:v1.61.1-noble@sha256:5b8f294aff9041b7191c34a4bab3ac270157a28774d4b0660e9743297b697e48", "mcr.microsoft.com/playwright:v1.61.1-noble"),
-            ("gitlab-runtime-sca", ".gitlab/ci/sca.yml", "pnpm audit --dir scripts/runtime --audit-level=moderate", "echo runtime-audit-skipped"),
+            ("gitlab-runtime-sca", ".gitlab/ci/sca.yml", "cd scripts/runtime && pnpm audit --audit-level=moderate", "echo runtime-audit-skipped"),
             ("gitlab-infrastructure-retry", ".gitlab/ci/core.yml", "runner_system_failure", "runner_unsupported"),
             ("gitlab-script-retry", ".gitlab/ci/core.yml", "runner_system_failure", "script_failure"),
             ("gitlab-material-install", ".gitlab/ci/core.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),

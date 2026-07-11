@@ -13,7 +13,7 @@ Install the pinned browser API without downloading another browser:
 
 ```sh
 corepack enable
-pnpm install --dir scripts/runtime --frozen-lockfile --ignore-scripts
+(cd scripts/runtime && corepack enable && pnpm install --frozen-lockfile --ignore-scripts)
 ```
 
 Use a Python 3.12 virtual environment for Python tooling. This avoids changing host-managed packages,

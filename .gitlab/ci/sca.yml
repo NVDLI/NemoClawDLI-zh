@@ -45,8 +45,8 @@ security_browser_sca:
     # npm retries transport failures internally; advisory findings still fail immediately.
     - npm audit --prefix scripts/browser-vendor --package-lock-only --audit-level=moderate --json --fetch-retries=3 --fetch-retry-mintimeout=2000 --fetch-retry-maxtimeout=10000 --fetch-timeout=30000 > scripts/security/reports/browser-npm-audit.json
     - corepack enable
-    - pnpm install --dir scripts/runtime --frozen-lockfile --ignore-scripts
-    - pnpm audit --dir scripts/runtime --audit-level=moderate --json > scripts/security/reports/runtime-pnpm-audit.json
+    - '(cd scripts/runtime && pnpm install --frozen-lockfile --ignore-scripts)'
+    - '(cd scripts/runtime && pnpm audit --audit-level=moderate --json > ../security/reports/runtime-pnpm-audit.json)'
     - python3 scripts/validation/course_dependency_integrity.py
   artifacts:
     when: always
