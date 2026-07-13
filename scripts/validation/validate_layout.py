@@ -45,12 +45,13 @@ class Result:
     def ok(self): return not self.failures
 
 
-def check_links(res: Result):
+def check_links(res: Result, report=None):
     """Verify local links through the shared projection engine."""
     try:
-        add_script_paths(TASK1 / "scripts")
-        import link_projection as lp
-        report = lp.check(lp.Projection())
+        if report is None:
+            add_script_paths(TASK1 / "scripts")
+            import link_projection as lp
+            report = lp.check(lp.Projection())
         stats = report["stats"]
         res.note(f"links: static projection checked {stats['pages']} pages and {stats['links']} links")
         blocking = stats["blocking_failures"] + stats["blocking_asset_leaks"] + stats["blocking_cross_course"]
@@ -159,33 +160,39 @@ def check_skills(res: Result):
                 res.fail("skills", line)
 
 
-def main():
-    """Run the fixed battery and exit nonzero naming each failing
-    item. This gate exists so a broken link, a returned runtime surface, a moved served
-    directory, or a drifted SKILL beacon is reported with the exact bad path, not left for someone to
-    hunt down. Notes (skips, crawl counts) print on success; failures print to stderr and return 1."""
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--quiet", action="store_true")
-    a = ap.parse_args()
+def run(*, quiet: bool = False, link_report=None) -> Result:
+    """Run the fixed battery and return its result.
+
+    ``link_report`` lets an orchestrator reuse an exact projection it already computed. The
+    standalone command leaves it unset and therefore retains the same exhaustive discovery.
+    """
     res = Result()
-    check_links(res)                              # local links through the shared static projection
+    check_links(res, report=link_report)          # local links through the shared static projection
     check_course_assets(res)                      # course runtime scripts/styles interface
     check_runtime_boundary(res)                    # repository-owned runtime surfaces stay retired
     check_release_scaffold(res)                    # external mirror intake/review scaffolding
     check_skill_asset_coverage(res)               # asset/mat SKILL pages directly link governed files
     check_skills(res)                             # SKILL.html beacons that drifted from their directory
 
-    if not a.quiet:
+    if not quiet:
         for nt in res.notes:
             print(f"  · {nt}")
     if res.ok:
-        if not a.quiet:
+        if not quiet:
             print("validate_layout: ✅ all checks pass")
-        return 0
+        return res
     print("validate_layout: ✗ FAILURES", file=sys.stderr)
     for check, msg in res.failures:
         print(f"  [{check}] {msg}", file=sys.stderr)
-    return 1
+    return res
+
+
+def main():
+    """Run the standalone fixed battery and return a process exit status."""
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--quiet", action="store_true")
+    a = ap.parse_args()
+    return 0 if run(quiet=a.quiet).ok else 1
 
 
 if __name__ == "__main__":

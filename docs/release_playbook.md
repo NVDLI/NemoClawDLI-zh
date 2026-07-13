@@ -274,19 +274,20 @@ run the corresponding external review and scan steps again before publication.
 GitHub Pages, the protected release workflow, and local contributors:
 
 ```bash
-python3 scripts/validation/release_gate.py --tier fast --no-write --changed-since origin/main
-python3 scripts/validation/release_gate.py --tier ship --no-write --changed-since origin/main
+python3 scripts/validation/release_gate.py --tier fast --no-write --changed-since origin/main --jobs 4
+python3 scripts/validation/release_gate.py --tier ship --no-write --changed-since origin/main --jobs 4
 ```
 
-Proposal gates always run complete current-tree audits. They skip only unaffected mutation suites,
-record per-command timing in CI, and keep exact history/metadata checks in host context. Local
+Proposal gates always run complete current-tree audits. They skip only unaffected mutation suites.
+Every add, delete, rename, copy, or unclaimed path selects the full mutation matrix; modified paths
+may narrow only when a specialized detector explicitly owns them. CI records per-command timing and keeps exact history/metadata checks in host context. Local
 pre-push may reuse an identical clean-commit success. CI never trusts that workstation cache.
 Release-candidate and tagged-release workflows omit `--changed-since` and run every mutation.
 
-Pages builds normally regenerate the validation report. A downstream build job may reuse the
-required upstream report only after checking its schema, commit, ship scope, required findings,
-suite status, and clean source tree. This removes a duplicate full scan without weakening artifact
-authorization.
+The required GitLab test worker builds the Pages candidate after the gate passes. It reuses the
+upstream report only after checking its schema, commit, ship scope, required findings, suite status,
+and clean source tree. The manual Pages job copies that candidate rather than rebuilding it. This
+keeps one worker startup and one proposal build without weakening artifact authorization.
 
 Every shared gate verifies committed material snapshots and full SHA-256 provenance without network
 access. Host workflows add bounded live-source retries: schedules and protected releases remain

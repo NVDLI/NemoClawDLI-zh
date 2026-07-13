@@ -79,11 +79,12 @@ for source pages. No service stack is part of this repository gate.
 The deployment path has four ordered stages. Security SCA jobs also run in the test
 stage when their rules select them.
 
-1. **Static gate** runs on every selected branch or merge-request pipeline. It writes
-   the gate report to `docs/validation/` as a build artifact.
-2. **Pages build** is manual. Production refs publish the root site; ordinary branches
-   publish an isolated preview path beside a root rebuilt from an approved production ref.
-   The job calls `scripts/build/build_pages.sh public` and publishes the `public/` artifact.
+1. **Static gate and candidate build** share the required `test` worker. After validation,
+   that already-initialized worker assembles `candidate/` once and uploads it with the gate report.
+   This avoids both a second proposal build and another runner startup.
+2. **Pages publication** is manual. Production refs copy the candidate to the root site;
+   ordinary branches copy it to an isolated preview path beside a root rebuilt from an approved
+   production ref. Deployment-specific manifests and available CI evidence are then projected.
 3. **Pages verification** checks the deployed manifest and every advertised course URL,
    then renders every generated HTML file at desktop and narrow widths in dark and light mode without an allowlist.
 4. **Human review** becomes available only after the exact commit passes the static gate,
@@ -92,8 +93,10 @@ stage when their rules select them.
 ### GitLab Pages (private pre-release)
 
 The inert `.gitlab-ci.yml` includes owner-gated core and SCA modules. `.gitlab/ci/core.yml`
-defines `test`, `deploy`, `verify`, and `review` stages. The manual
-`pages` job builds `public/` and publishes either a production ref or a branch preview.
+defines `test`, `deploy`, `verify`, and `review` stages. The required `test` job builds the
+proposal candidate after its gates pass; the manual `pages` job copies those bytes into either a
+production root or branch preview instead of rebuilding the proposal.
+
 GitLab Pages serves the private pre-release review surface under repository access
 controls. `pages_smoke` checks the live result and `theme_runtime` checks every generated
 HTML file at desktop and narrow widths in dark and light mode before `human_review` can be played.

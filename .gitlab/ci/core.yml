@@ -1,7 +1,7 @@
 # Core GitLab CI for the NemoClaw course: static gates plus isolated GitLab Pages deploys.
 #
 # Jobs:
-#   test            runs the static gate headless under node. No lab, GPU, or browser.
+#   test            runs the static gate and assembles its exact Pages candidate on one worker.
 #   pages           deploys production manually, or deploys a manual branch preview on the
 #                   same Pages host under $CI_PAGES_URL/$CI_COMMIT_REF_SLUG/web/nemoclaw/.
 #   theme_runtime   renders every generated HTML file wide/narrow and dark/light with no opt-outs.
@@ -24,6 +24,9 @@ variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   MATERIAL_TOOLS_REQUIRED: "0"
   BROWSER_TOOLS_REQUIRED: "0"
+  # Only registry-declared mutation suites may overlap. Current-tree scans and report writers
+  # remain serial, so worker count changes latency without changing coverage or evidence order.
+  REACS_JOBS: "4"
 
 # Open merge requests run one MR-context pipeline so the submission contract sees
 # the actual MR body. Branch pipelines remain available before an MR exists.
@@ -94,7 +97,7 @@ test:
       GATE_BASE="${CI_MERGE_REQUEST_DIFF_BASE_SHA:-${CI_COMMIT_BEFORE_SHA:-}}"
       GATE_ARGS=()
       case "$GATE_BASE" in ""|0000000000000000000000000000000000000000) ;; *) GATE_ARGS+=(--changed-since "$GATE_BASE");; esac
-      python3 scripts/validation/release_gate.py --tier ship "${GATE_ARGS[@]}" \
+      python3 scripts/validation/release_gate.py --tier ship --jobs "$REACS_JOBS" "${GATE_ARGS[@]}" \
         --timing-report docs/validation/release-gate-timings.json
     - 'if [ -n "${CI_MERGE_REQUEST_IID:-}" ]; then python3 scripts/validation/contribution_safety_audit.py --submission-env CI_MERGE_REQUEST_DESCRIPTION; else echo "Submission contract: no merge-request context in this pipeline; protected-ref policy remains authoritative."; fi'
     - 'if [ -n "${CI_MERGE_REQUEST_DIFF_BASE_SHA:-}" ]; then python3 scripts/validation/contribution_safety_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"; else echo "DCO signoff: no merge-request commit range in this pipeline; pre-push and protected-ref policy remain authoritative."; fi'
@@ -115,11 +118,42 @@ test:
         echo "Skipping live materials drift check on branch '${B:-detached}' to avoid rate-limiting external sources."
         echo "Full-SHA offline provenance already passed inside release_gate.py."
       fi
+    # Build once on the worker that already owns the validated checkout and installed tools.
+    # Adding a separate build stage costs more runner-queue latency than the build itself.
+    - |
+      B="${CI_COMMIT_BRANCH:-${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-}}"
+      CANDIDATE_PREFIX=""
+      if [ "$B" != "${CI_DEFAULT_BRANCH:-main}" ] && [ "$B" != "nemoclaw-only" ]; then
+        CANDIDATE_PREFIX="web"
+      fi
+      candidate_source=/tmp/nemoclaw-candidate-source
+      git worktree prune
+      git worktree add --quiet --detach "$candidate_source" "$CI_COMMIT_SHA"
+      cp -a docs/validation/. "$candidate_source/docs/validation/"
+      if ! (cd "$candidate_source" && \
+        BUILD_PAGES_COURSE_PREFIX="$CANDIDATE_PREFIX" \
+          BUILD_PAGES_PULL_MATERIALS=0 \
+          BUILD_PAGES_REUSE_VALIDATION=1 \
+          bash scripts/build/build_pages.sh "$CI_PROJECT_DIR/candidate"); then
+        git worktree remove --force "$candidate_source" >/dev/null 2>&1 || true
+        exit 1
+      fi
+      git worktree remove --force "$candidate_source"
+      test -f candidate/index.html
+      test -f "candidate/${CANDIDATE_PREFIX:+$CANDIDATE_PREFIX/}nemoclaw/index.html"
+      python3 scripts/validation/artifact_link_audit.py candidate
+      python3 scripts/validation/pages_artifact_integrity.py \
+        --root candidate --expect-sha "$CI_COMMIT_SHA" \
+        --course-prefix "$CANDIDATE_PREFIX" --write-manifest candidate/pages-sha256.txt
+      python3 scripts/validation/pages_artifact_integrity.py \
+        --root candidate --expect-sha "$CI_COMMIT_SHA" \
+        --course-prefix "$CANDIDATE_PREFIX" --check-manifest candidate/pages-sha256.txt
   artifacts:
     when: always
     name: "gate-$CI_COMMIT_SHORT_SHA"
     paths:
       - docs/validation/
+      - candidate/
     expire_in: 30 days
 
 external_integration_audit:
@@ -191,18 +225,28 @@ pages:
           --ci-pipeline-url "$CI_PIPELINE_URL" \
           --ci-commit "$CI_COMMIT_SHA"
       }
-      build_branch_preview() {
+      install_branch_candidate() {
         test -n "$CI_COMMIT_REF_SLUG"
         preview_ref="${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-$CI_COMMIT_REF_NAME}"
         case "$CI_COMMIT_REF_SLUG" in *..*|*/*|*\*) echo "unsafe CI_COMMIT_REF_SLUG=$CI_COMMIT_REF_SLUG" >&2; exit 1;; esac
         preview_remote_ref="$(refresh_branch_ref "$preview_ref")"
         remote_sha="$(git rev-parse "$preview_remote_ref^{commit}")"
         test "$remote_sha" = "$CI_COMMIT_SHA" || { echo "refusing stale preview: pipeline=$CI_COMMIT_SHA remote=$remote_sha" >&2; exit 1; }
-        export BUILD_PAGES_COURSE_PREFIX="web"
-        BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"
+        test -f candidate/web/nemoclaw/index.html
+        python3 scripts/validation/pages_artifact_integrity.py \
+          --root candidate --expect-sha "$CI_COMMIT_SHA" \
+          --course-prefix web --check-manifest candidate/pages-sha256.txt
+        mkdir -p "public/$CI_COMMIT_REF_SLUG"
+        cp -a candidate/. "public/$CI_COMMIT_REF_SLUG/"
         write_ci_sbom_links "public/$CI_COMMIT_REF_SLUG"
         python3 scripts/build/build_branch_manifest.py --out "public/$CI_COMMIT_REF_SLUG/branches.json" --current-ref "$preview_ref" --current-slug "$CI_COMMIT_REF_SLUG" --site-root-prefix ../
         python3 scripts/build/project_artifact_manifests.py public --manifest-root "public/$CI_COMMIT_REF_SLUG"
+        python3 scripts/validation/pages_artifact_integrity.py \
+          --root "public/$CI_COMMIT_REF_SLUG" --expect-sha "$CI_COMMIT_SHA" \
+          --course-prefix web --write-manifest "public/$CI_COMMIT_REF_SLUG/pages-sha256.txt"
+        python3 scripts/validation/pages_artifact_integrity.py \
+          --root "public/$CI_COMMIT_REF_SLUG" --expect-sha "$CI_COMMIT_SHA" \
+          --course-prefix web --check-manifest "public/$CI_COMMIT_REF_SLUG/pages-sha256.txt"
         test -f "public/$CI_COMMIT_REF_SLUG/index.html"
         test -f "public/$CI_COMMIT_REF_SLUG/branches.json"
         test -f "public/$CI_COMMIT_REF_SLUG/languages.json"
@@ -248,13 +292,24 @@ pages:
         rm -rf public
         export BUILD_PAGES_PULL_MATERIALS=0
         build_production_root_from_ref
-        build_branch_preview
+        install_branch_candidate
         python3 scripts/validation/branch_preview_manifest_audit.py --artifact-root public --manifest public/branches.json --expect-preview "$preview_ref=$CI_COMMIT_REF_SLUG"
         python3 scripts/validation/branch_preview_manifest_audit.py --artifact-root public --manifest "public/$CI_COMMIT_REF_SLUG/branches.json" --expect-preview "$preview_ref=$CI_COMMIT_REF_SLUG"
         python3 scripts/validation/artifact_link_audit.py "public/$CI_COMMIT_REF_SLUG"
       else
-        BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh public
+        rm -rf public
+        test -f candidate/nemoclaw/index.html
+        python3 scripts/validation/pages_artifact_integrity.py \
+          --root candidate --expect-sha "$CI_COMMIT_SHA" \
+          --check-manifest candidate/pages-sha256.txt
+        cp -a candidate public
         write_ci_sbom_links public
+        python3 scripts/validation/pages_artifact_integrity.py \
+          --root public --expect-sha "$CI_COMMIT_SHA" \
+          --write-manifest public/pages-sha256.txt
+        python3 scripts/validation/pages_artifact_integrity.py \
+          --root public --expect-sha "$CI_COMMIT_SHA" \
+          --check-manifest public/pages-sha256.txt
         test -f public/nemoclaw/index.html
         test -f public/branches.json
         test -f public/languages.json
@@ -353,11 +408,25 @@ pages_smoke:
   script:
     - |
       set -eu
+      # This GitLab instance reports CI_PAGES_URL with http:// even though the
+      # deployed review surface is HTTPS. The integrity checker intentionally
+      # rejects plaintext live verification, so normalize before every probe.
+      pages_base_url="${CI_PAGES_URL/http:/https:}"
       if [ "${PAGES_PREVIEW:-0}" = "1" ]; then
         preview_ref="${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-$CI_COMMIT_REF_NAME}"
-        python3 scripts/validation/branch_preview_manifest_audit.py --base-url "$CI_PAGES_URL/" --expect-preview "$preview_ref=$CI_COMMIT_REF_SLUG" --expect-git-sha "$CI_COMMIT_SHORT_SHA" --attempts 30 --delay 5
+        python3 scripts/validation/branch_preview_manifest_audit.py --base-url "$pages_base_url/" --expect-preview "$preview_ref=$CI_COMMIT_REF_SLUG" --expect-git-sha "$CI_COMMIT_SHORT_SHA" --attempts 30 --delay 5
+        python3 scripts/validation/pages_artifact_integrity.py \
+          --base-url "$pages_base_url/$CI_COMMIT_REF_SLUG/" \
+          --root "public/$CI_COMMIT_REF_SLUG" \
+          --expect-sha "$CI_COMMIT_SHA" --course-prefix web \
+          --check-manifest "public/$CI_COMMIT_REF_SLUG/pages-sha256.txt" \
+          --attempts 30 --delay 5
       else
-        python3 scripts/validation/branch_preview_manifest_audit.py --base-url "$CI_PAGES_URL/" --expect-git-sha "$CI_COMMIT_SHORT_SHA" --attempts 30 --delay 5
+        python3 scripts/validation/branch_preview_manifest_audit.py --base-url "$pages_base_url/" --expect-git-sha "$CI_COMMIT_SHORT_SHA" --attempts 30 --delay 5
+        python3 scripts/validation/pages_artifact_integrity.py \
+          --base-url "$pages_base_url/" --root public \
+          --expect-sha "$CI_COMMIT_SHA" \
+          --check-manifest public/pages-sha256.txt --attempts 30 --delay 5
       fi
   rules:
     - if: '$CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_BRANCH != "nemoclaw-only" && $CI_COMMIT_BRANCH !~ /^translate-/ && $CI_PIPELINE_SOURCE != "schedule"'
@@ -438,9 +507,10 @@ human_review:
       set -eu
       test -n "${CI_MERGE_REQUEST_IID:-}"
       test -n "${CI_COMMIT_SHA:-}"
+      pages_base_url="${CI_PAGES_URL/http:/https:}"
       preview_ref="${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-$CI_COMMIT_REF_NAME}"
       if ! python3 scripts/validation/branch_preview_manifest_audit.py \
-        --base-url "$CI_PAGES_URL/" \
+        --base-url "$pages_base_url/" \
         --expect-preview "$preview_ref=$CI_COMMIT_REF_SLUG" \
         --expect-git-sha "$CI_COMMIT_SHORT_SHA" \
         --attempts 1 --delay 0; then

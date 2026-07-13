@@ -92,7 +92,7 @@ instructions. Use the rules below when a change also affects repository-wide ter
 ## Validation ladder
 
 - Always run `git diff --check`.
-- Run validator fixtures through `python3 -m unittest -v tests/validation`. Framework discovery
+- Run validator fixtures through `python3 -m unittest discover -v -s tests/validation`. Framework discovery
   owns test accounting and failure rendering. Do not print hand-maintained fractions, literal
   mutation totals, or fixed totals minus a failure count from validator code.
 - Treat `docs/validation/latest.md` and `latest.json` as the current finding inventory.
@@ -102,10 +102,11 @@ instructions. Use the rules below when a change also affects repository-wide ter
 - Use advisory findings to locate passages for review. A lower count matters only when the diff is
   clearer and preserves the underlying claim. The rewrite must preserve security and maintainability.
 - For branch feedback, run
-  `python3 scripts/validation/release_gate.py --tier fast --no-write --changed-since origin/main`.
+  `python3 scripts/validation/release_gate.py --tier fast --no-write --changed-since origin/main --jobs 4`.
   Before push, run the ship tier once while retaining complete current-tree audits.
   The `--changed-since` option skips only detector mutation suites whose implementation and contract
-  inputs did not change. Omit it for release-candidate validation.
+  inputs did not change. Adds, deletes, renames, copies, and paths with no declared detector ownership
+  select the full mutation matrix automatically. Omit it for release-candidate validation.
 - Use standalone validators while editing or to diagnose the named shared-gate failure. Do not run a
   full list of constituents and then rerun the gate that already composes them.
 - Pre-push classifies external release follow-ups over `origin/main..HEAD`. Carry reported

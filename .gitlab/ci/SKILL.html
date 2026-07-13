@@ -22,7 +22,7 @@
 <h1>GitLab CI trust-boundary modules</h1>
 <p>The root CI file contains only approved module includes. Add Python tests under <code>tests/</code> and register them in the release gate without editing the GitLab workflow.</p>
 <ul>
-  <li><a href="core.yml"><code>core.yml</code></a> owns the required gate, Pages preview, rendered theme matrix, and human-review sequence.</li>
+  <li><a href="core.yml"><code>core.yml</code></a> owns the required gate, builds its Pages candidate on the same worker, verifies the copied candidate, renders every HTML page, and then exposes human review.</li>
   <li><a href="sca.yml"><code>sca.yml</code></a> rejects inherited defaults and variables, pins its image, and owns all scanner jobs.</li>
 </ul>
 <pre><code>python3 scripts/validation/gitlab_ci_policy.py --self-test

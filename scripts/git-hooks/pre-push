@@ -62,7 +62,7 @@ fi
 # result instead of replaying several minutes. Fresh CI never receives the worktree cache.
 GATE="$T1/scripts/validation/release_gate.py"
 if [ -f "$GATE" ] \
-   && ! python3 "$GATE" --tier ship --no-write --changed-since origin/main --reuse-success; then
+   && ! python3 "$GATE" --tier ship --no-write --changed-since origin/main --reuse-success --jobs 4; then
     echo "pre-push: REFUSING PUSH - canonical ship gate failed."
     exit 1
 fi

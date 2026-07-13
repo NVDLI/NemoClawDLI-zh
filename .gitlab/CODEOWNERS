@@ -6,6 +6,8 @@
 /scripts/validation/contribution_safety_audit.py @vkudlay
 /scripts/validation/gitlab_governance_audit.py @vkudlay
 /scripts/validation/release_gate.py @vkudlay
+/scripts/validation/reacs_registry.py @vkudlay
+/scripts/validation/reacs_registry.json @vkudlay
 /scripts/git-hooks/ @vkudlay
 /.github/workflows/ @vkudlay
 /scripts/build/vendor_browser_dependencies.mjs @vkudlay

@@ -28,6 +28,8 @@ OWNER_PATHS = (
     "/scripts/validation/contribution_safety_audit.py",
     "/scripts/validation/gitlab_governance_audit.py",
     "/scripts/validation/release_gate.py",
+    "/scripts/validation/reacs_registry.py",
+    "/scripts/validation/reacs_registry.json",
     "/scripts/git-hooks/",
     "/.github/workflows/",
 )

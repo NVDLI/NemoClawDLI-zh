@@ -78,6 +78,8 @@ CONTRACT_FILES = (
     "scripts/validation/sensitive-content-policy.json",
     "scripts/validation/release_change_reminder.py",
     "scripts/validation/release_gate.py",
+    "scripts/validation/reacs_registry.py",
+    "scripts/validation/reacs_registry.json",
     "scripts/validation/validation_report_audit.py",
     "scripts/validation/pages_artifact_integrity.py",
     "scripts/validation/validate_bundle.py",
@@ -665,11 +667,15 @@ def audit_repo(
             ".gitlab-ci.yml", "gitlab-gate-timing", out,
             "retain per-command gate timing evidence")
     for token in (
-        'BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"',
-        "BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh public",
+        "BUILD_PAGES_PULL_MATERIALS=0 \\",
+        "BUILD_PAGES_REUSE_VALIDATION=1 \\",
+        'bash scripts/build/build_pages.sh "$CI_PROJECT_DIR/candidate"',
+        'git worktree add --quiet --detach "$candidate_source" "$CI_COMMIT_SHA"',
+        'cp -a candidate/. "public/$CI_COMMIT_REF_SLUG/"',
+        "cp -a candidate public",
     ):
         require(gitlab, token, ".gitlab-ci.yml", "gitlab-immutable-report-reuse", out,
-                "build committed snapshots before reusing the required same-commit report")
+                "build the candidate once on the required worker and copy it during publication")
     require(gitlab, 'git worktree add --quiet --detach /tmp/nemoclaw-prod-root "origin/$prod_ref"',
             ".gitlab-ci.yml", "gitlab-protected-root-worktree", out,
             "build protected-root previews from a real detached worktree so Git-backed audits remain available")
@@ -1249,7 +1255,7 @@ def self_test() -> list[str]:
             ("gitlab-change-aware-gate", ".gitlab/ci/core.yml", 'GATE_ARGS+=(--changed-since "$GATE_BASE")', 'GATE_ARGS=() # no change selection'),
             ("gitlab-gate-timing", ".gitlab/ci/core.yml", "--timing-report docs/validation/release-gate-timings.json", "--no-timing-report"),
             ("gitlab-report-browser-runtime", ".gitlab/ci/core.yml", 'BROWSER_TOOLS_REQUIRED: "1"', 'BROWSER_TOOLS_REQUIRED: "0"'),
-            ("gitlab-immutable-report-reuse", ".gitlab/ci/core.yml", 'BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"', 'BUILD_PAGES_REUSE_VALIDATION=1 bash scripts/build/build_pages.sh "public/$CI_COMMIT_REF_SLUG"'),
+            ("gitlab-immutable-report-reuse", ".gitlab/ci/core.yml", 'bash scripts/build/build_pages.sh "$CI_PROJECT_DIR/candidate"', 'bash scripts/build/build_pages.sh "$CI_PROJECT_DIR/rebuilt-candidate"'),
             ("gitlab-protected-root-worktree", ".gitlab/ci/core.yml", 'git worktree add --quiet --detach /tmp/nemoclaw-prod-root "origin/$prod_ref"', 'git archive "origin/$prod_ref" | tar -x -C /tmp/nemoclaw-prod-root'),
             ("gitlab-image-pin", ".gitlab/ci/core.yml", "node:20-bookworm-slim@sha256:25070a03f077f5860e4f2db8d147380678ed40ead415a21eaffd5a6208f61948", "node:20-bookworm-slim"),
             ("gitlab-report-browser-runtime", ".gitlab/ci/core.yml", "mcr.microsoft.com/playwright:v1.61.1-noble@sha256:5b8f294aff9041b7191c34a4bab3ac270157a28774d4b0660e9743297b697e48", "mcr.microsoft.com/playwright:v1.61.1-noble"),
