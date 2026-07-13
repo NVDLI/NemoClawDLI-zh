@@ -24,6 +24,7 @@ import os
 import re
 import subprocess
 import sys
+from functools import lru_cache
 from pathlib import Path
 
 HERE = Path(__file__).resolve()
@@ -159,11 +160,20 @@ def _iter_pages(task1: Path):
                         yield f
 
 
+@lru_cache(maxsize=2048)
+def _read_snapshot(path: str, modified_ns: int, size: int) -> str:
+    """Read one immutable file snapshot; stat identity prevents stale in-process reuse."""
+    del modified_ns, size
+    return Path(path).read_text(errors="ignore")
+
+
 def _read_for_links(f: Path):
     """(text, effective_suffix). Notebooks contribute MARKDOWN cell sources only."""
+    stat = f.stat()
+    raw = _read_snapshot(str(f), stat.st_mtime_ns, stat.st_size)
     if f.suffix.lower() == ".ipynb":
         try:
-            nb = json.loads(f.read_text(errors="ignore"))
+            nb = json.loads(raw)
         except Exception:
             return "", ".md"
         md = []
@@ -172,7 +182,7 @@ def _read_for_links(f: Path):
                 s = c.get("source", "")
                 md.append("".join(s) if isinstance(s, list) else (s or ""))
         return "\n\n".join(md), ".md"
-    return f.read_text(errors="ignore"), f.suffix.lower()
+    return raw, f.suffix.lower()
 
 
 def _clamp(base_dir: str, tgt: str) -> str:

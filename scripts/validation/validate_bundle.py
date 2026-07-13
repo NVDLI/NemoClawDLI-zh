@@ -133,6 +133,7 @@ import agent_process_audit as apa  # noqa: E402
 import course_contract as cca  # noqa: E402
 import concept_order_audit as coa  # noqa: E402
 import skill_contract as skc  # noqa: E402
+import validate_layout as layout_validator  # noqa: E402
 import course_content_contract as cc  # noqa: E402
 import course_dependency_integrity as cdi  # noqa: E402
 import html_structure_audit as hsa  # noqa: E402
@@ -433,12 +434,11 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     rep = engine_bundle["check"]
     s = rep["stats"]
 
-    # validate_layout (static links + retired-runtime boundary + SKILL beacons)
-    vl = subprocess.run([sys.executable, str(SCRIPTS / "validation" / "validate_layout.py"), "--quiet"],
-                        capture_output=True, text=True)
-    vl_ok = vl.returncode == 0
-    vl_fail = [ln for ln in vl.stdout.splitlines() + vl.stderr.splitlines()
-               if ln.strip().startswith("[")]
+    # validate_layout (static links + retired-runtime boundary + SKILL beacons). Reuse the exact
+    # projection above; spawning the standalone CLI here used to crawl every page a second time.
+    vl = layout_validator.run(quiet=True, link_report=rep)
+    vl_ok = vl.ok
+    vl_fail = [f"[{check}] {message}" for check, message in vl.failures]
     # which suites could NOT run (crashed / skipped). A degraded suite must never read as
     # "clean": the report shows it amber so a green checkmark always means the check truly ran.
     suite_errors = {}

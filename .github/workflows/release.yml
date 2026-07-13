@@ -55,7 +55,7 @@ jobs:
         run: python3 scripts/materials/pull_materials.py --check --fetch-attempts 4 --retry-backoff 2 --host-delay 3
       - name: Required release gate
         run: |
-          python3 scripts/validation/release_gate.py --tier ship --timing-report docs/validation/release-gate-timings.json
+          python3 scripts/validation/release_gate.py --tier ship --jobs 4 --timing-report docs/validation/release-gate-timings.json
           python3 scripts/compliance/sbom_evidence.py --check-external-links
       - name: Scan pinned Python material tools and emit SBOM
         run: |

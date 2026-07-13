@@ -152,10 +152,11 @@ Store links, identifiers, named reviewers, and detailed reports outside the publ
 ## Execution order
 
 1. Run focused tests while editing.
-2. Run `release_gate.py --tier ship --no-write --changed-since origin/main` once before pushing. A01 through
+2. Run `release_gate.py --tier ship --no-write --changed-since origin/main --jobs 4` once before pushing. A01 through
    A10 map claims inside that gate; they are not a second command checklist.
-3. Build the complete multilingual Pages tree and run A11. Reuse a prior report only when the
-   fail-closed report audit proves the same commit, ship scope, clean source tree, and required pass.
+3. Build the complete multilingual Pages candidate on the gate worker and run A11. Reuse its report
+   only when the fail-closed audit proves the same commit, ship scope, clean source tree, and required
+   pass. Publication copies this candidate. It does not rebuild the proposal.
 4. Run A12 when the diff touches browser behavior.
 5. Push the issue-linked branch and require CI on the submitted commit.
 6. Preview the tested commit and complete M01 through M06 far enough to expose review gaps.
@@ -165,7 +166,9 @@ Store links, identifiers, named reviewers, and detailed reports outside the publ
 10. Complete M10a, then obtain M11. Publish only after the publication state and protected
     environment permit it.
 
-Release candidates omit `--changed-since` so every detector mutation runs. CI retains per-command
+Release candidates omit `--changed-since` so every detector mutation runs. Proposal selection also
+runs every mutation after an add, delete, rename, copy, or change with no specialized owner. Standard
+Python test discovery makes new validator modules executable without registry bookkeeping. CI retains per-command
 timing evidence; recurring high-latency checks should be optimized at their canonical owner, not
 copied into a second abbreviated gate.
 

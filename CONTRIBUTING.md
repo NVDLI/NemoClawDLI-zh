@@ -126,18 +126,19 @@ allows hooks to be bypassed. Protected human review and release actions complete
 ## Validate Before Pushing
 
 ```bash
-python3 scripts/validation/release_gate.py --tier fast --no-write --changed-since origin/main
+python3 scripts/validation/release_gate.py --tier fast --no-write --changed-since origin/main --jobs 4
 ```
 
-Run `python3 scripts/validation/release_gate.py --tier ship --no-write --changed-since origin/main` once before
+Run `python3 scripts/validation/release_gate.py --tier ship --no-write --changed-since origin/main --jobs 4` once before
 pushing a proposal. The gate always audits the complete current tree and skips only unaffected
-detector mutation suites. Omit `--changed-since` for a release candidate. Use constituent commands
+detector mutation suites. New, deleted, renamed, copied, and otherwise unclaimed paths automatically
+select the full mutation matrix, regardless of directory or extension. Omit `--changed-since` for a release candidate. Use constituent commands
 only for focused iteration or diagnosis; the shared gate already composes them. See
 [`docs/release-test-plan.md`](docs/release-test-plan.md) for claim and evidence mapping.
 
 Python validator fixtures use standard-library `unittest` discovery, while JavaScript fixtures use
-Node's built-in `node:test`. Add framework-visible tests under `tests/`, where the shared harness
-can discover them. Do not maintain numeric totals in CLI output; the harness rejects fixed
+Node's built-in `node:test`. Add framework-visible tests under `tests/validation`; the shared gate
+discovers them without a registry edit whenever tests change and on every release candidate. Do not maintain numeric totals in CLI output; the harness rejects fixed
 denominators in shared fast and ship gates.
 
 For browser or Studio changes, also run the browser harness described in

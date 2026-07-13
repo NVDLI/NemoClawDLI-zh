@@ -51,7 +51,7 @@ jobs:
           if [ "$EVENT_NAME" = "push" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then GATE_BASE="$BEFORE_SHA"; fi
           GATE_ARGS=()
           if [ -n "$GATE_BASE" ]; then GATE_ARGS+=(--changed-since "$GATE_BASE"); fi
-          python3 scripts/validation/release_gate.py --tier ship "${GATE_ARGS[@]}" \
+          python3 scripts/validation/release_gate.py --tier ship --jobs 4 "${GATE_ARGS[@]}" \
             --timing-report docs/validation/release-gate-timings.json
       - name: Pull request submission contract
         if: github.event_name == 'pull_request'

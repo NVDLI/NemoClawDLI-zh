@@ -25,16 +25,25 @@ from urllib.request import Request, urlopen
 
 MANIFEST_NAME = "pages-sha256.txt"
 MANIFEST_SCHEMA = "nemoclaw-pages-sha256/1"
-REQUIRED = (
+REQUIRED_ROOT = (
     "index.html",
     "branches.json",
     "languages.json",
     "gate.json",
+)
+REQUIRED_COURSE = (
     "nemoclaw/index.html",
     "nemoclaw/scripts/_shared.js",
     "nemoclaw/vendor/browser-dependencies.json",
     "nemoclaw/vendor/browser-sbom.cdx.json",
 )
+
+
+def required_paths(course_prefix: str = "") -> tuple[str, ...]:
+    prefix = course_prefix.strip("/")
+    if prefix not in {"", "web"}:
+        raise ValueError("course prefix must be empty or 'web'")
+    return REQUIRED_ROOT + tuple(f"{prefix}/{path}" if prefix else path for path in REQUIRED_COURSE)
 SHA = re.compile(r"[0-9a-f]{7,40}")
 MIB = 1024 * 1024
 MAX_FILE_COUNT = 10_000
@@ -125,14 +134,17 @@ def manifest_text(root: Path, expected_sha: str) -> str:
     return "\n".join(rows) + "\n"
 
 
-def audit(root: Path, expected_sha: str, manifest: Path | None = None) -> list[str]:
+def audit(
+    root: Path, expected_sha: str, manifest: Path | None = None, *, course_prefix: str = "",
+) -> list[str]:
     findings: list[str] = []
     if not SHA.fullmatch(expected_sha):
         return ["expected commit must be a 7-40 character lowercase hexadecimal SHA"]
     if not root.is_dir():
         return [f"artifact root is not a directory: {root}"]
 
-    for rel in REQUIRED:
+    required = required_paths(course_prefix)
+    for rel in required:
         if not (root / rel).is_file():
             findings.append(f"missing required artifact file: {rel}")
 
@@ -160,7 +172,7 @@ def audit(root: Path, expected_sha: str, manifest: Path | None = None) -> list[s
             except (OSError, UnicodeError) as exc:
                 findings.append(f"cannot parse HTML {rel}: {exc}")
             findings.extend(f"{rel}: {item}" for item in parser.findings)
-    if files < len(REQUIRED):
+    if files < len(required):
         findings.append(f"artifact file count is implausibly small: {files}")
     findings.extend(resource_findings(resource_rows))
 
@@ -290,7 +302,7 @@ def parse_manifest(text: str, expected_sha: str) -> tuple[list[str], list[tuple[
         seen.add(rel)
         entries.append((digest_value, rel))
     findings.extend(resource_findings([(rel, 0) for _, rel in entries]))
-    if len(entries) < len(REQUIRED):
+    if len(entries) < len(required_paths()):
         findings.append(f"integrity manifest file count is implausibly small: {len(entries)}")
     return findings, entries
 
@@ -339,7 +351,7 @@ def fetch_deployed(base_url: str, rel: str, *, max_bytes: int = MAX_FILE_BYTES) 
 
 def verify_deployment(
     base_url: str, root: Path, manifest: Path, expected_sha: str, *,
-    attempts: int = 18, delay: float = 5.0,
+    attempts: int = 18, delay: float = 5.0, course_prefix: str = "",
 ) -> list[str]:
     parsed = urlsplit(base_url)
     if parsed.scheme != "https" or not parsed.netloc:
@@ -351,7 +363,7 @@ def verify_deployment(
     findings, entries = parse_manifest(expected_text, expected_sha)
     if findings:
         return findings
-    local_findings = audit(root, expected_sha, manifest)
+    local_findings = audit(root, expected_sha, manifest, course_prefix=course_prefix)
     if local_findings:
         return [f"reviewed artifact: {item}" for item in local_findings]
     expected_sizes = {rel: (root / rel).stat().st_size for _, rel in entries}
@@ -396,7 +408,7 @@ def self_test() -> list[str]:
     }
     with tempfile.TemporaryDirectory(prefix="pages-artifact-integrity-") as tmp:
         root = Path(tmp) / "baseline"
-        for rel in REQUIRED:
+        for rel in required_paths():
             path = root / rel
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("<html></html>\n" if path.suffix == ".html" else "{}\n", encoding="utf-8")
@@ -405,6 +417,17 @@ def self_test() -> list[str]:
         manifest.write_text(manifest_text(root, "abc1234"), encoding="utf-8")
         if audit(root, "abc1234", manifest):
             failures.append("clean fixture was rejected")
+
+        preview = Path(tmp) / "preview-prefix"
+        shutil.copytree(root, preview)
+        (preview / "web").mkdir()
+        shutil.move(str(preview / "nemoclaw"), str(preview / "web" / "nemoclaw"))
+        preview_manifest = preview / MANIFEST_NAME
+        preview_manifest.write_text(manifest_text(preview, "abc1234"), encoding="utf-8")
+        if audit(preview, "abc1234", preview_manifest, course_prefix="web"):
+            failures.append("clean web-prefixed preview fixture was rejected")
+        if not audit(preview, "abc1234", preview_manifest):
+            failures.append("web-prefixed preview escaped the default production-root contract")
 
         mutations = (
             ("missing file", lambda fixture: (fixture / "nemoclaw/index.html").unlink()),
@@ -485,6 +508,7 @@ def main() -> int:
     parser.add_argument("--expect-sha")
     parser.add_argument("--write-manifest", type=Path)
     parser.add_argument("--check-manifest", type=Path)
+    parser.add_argument("--course-prefix", choices=("", "web"), default="")
     parser.add_argument("--archive", type=Path)
     parser.add_argument("--extract-to", type=Path)
     parser.add_argument("--base-url")
@@ -514,7 +538,7 @@ def main() -> int:
             parser.error("--base-url requires --root, --check-manifest, and --expect-sha")
         findings = verify_deployment(
             args.base_url, args.root.resolve(), args.check_manifest.resolve(), args.expect_sha,
-            attempts=args.attempts, delay=args.delay,
+            attempts=args.attempts, delay=args.delay, course_prefix=args.course_prefix,
         )
         if findings:
             print(f"Deployed Pages integrity: FAIL ({len(findings)})")
@@ -526,7 +550,7 @@ def main() -> int:
     if not args.root or not args.expect_sha:
         parser.error("--root and --expect-sha are required")
     root = args.root.resolve()
-    findings = audit(root, args.expect_sha, args.check_manifest)
+    findings = audit(root, args.expect_sha, args.check_manifest, course_prefix=args.course_prefix)
     if findings:
         print(f"Pages artifact integrity: FAIL ({len(findings)})")
         for finding in findings:

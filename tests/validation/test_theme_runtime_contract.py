@@ -103,6 +103,23 @@ class ThemeRuntimeContractTests(unittest.TestCase):
         self.assertIn('BROWSER_TOOLS_REQUIRED: "1"', test_job)
         self.assertIn('cd scripts/runtime && pnpm install --frozen-lockfile --ignore-scripts', core)
 
+    def test_required_worker_builds_the_candidate_once_for_pages(self) -> None:
+        core = (ROOT / ".gitlab/ci/core.yml").read_text(encoding="utf-8")
+        test_job = core_job("test", "external_integration_audit")
+        pages = core_job("pages", "pages_smoke")
+        self.assertIn('bash scripts/build/build_pages.sh "$CI_PROJECT_DIR/candidate"', test_job)
+        self.assertIn('git worktree add --quiet --detach "$candidate_source" "$CI_COMMIT_SHA"', test_job)
+        self.assertIn('cp -a docs/validation/. "$candidate_source/docs/validation/"', test_job)
+        self.assertIn("- candidate/", test_job)
+        self.assertIn('cp -a candidate/. "public/$CI_COMMIT_REF_SLUG/"', pages)
+        self.assertIn("cp -a candidate public", pages)
+        self.assertIn('--expect-sha "$CI_COMMIT_SHA"', test_job)
+        self.assertIn('--expect-sha "$CI_COMMIT_SHA"', pages)
+        self.assertNotIn("build_pages.sh public", pages)
+        self.assertNotIn('build_pages.sh "public/$CI_COMMIT_REF_SLUG"', pages)
+        self.assertIn("stages: [test, deploy, verify, review]", core)
+        self.assertNotIn("stage: build", core)
+
     def test_manifest_rewrites_reproject_every_discovered_mirror(self) -> None:
         pages = core_job("pages", "pages_smoke")
         self.assertIn(
@@ -175,6 +192,17 @@ class ThemeRuntimeContractTests(unittest.TestCase):
     def test_live_pages_smoke_is_bound_to_the_exact_commit(self) -> None:
         job = core_job("pages_smoke", "theme_runtime")
         self.assertIn('--expect-git-sha "$CI_COMMIT_SHORT_SHA"', job)
+
+    def test_live_pages_jobs_normalize_the_instance_url_to_https(self) -> None:
+        canonicalization = 'pages_base_url="${CI_PAGES_URL/http:/https:}"'
+        smoke = core_job("pages_smoke", "theme_runtime")
+        human = (ROOT / ".gitlab/ci/core.yml").read_text(encoding="utf-8")
+        human = human[human.index("human_review:\n") :]
+        for name, job in (("pages_smoke", smoke), ("human_review", human)):
+            with self.subTest(job=name):
+                self.assertIn(canonicalization, job)
+                self.assertIn('--base-url "$pages_base_url/"', job)
+                self.assertNotIn('--base-url "$CI_PAGES_URL/"', job)
 
     def test_sbom_runtime_accepts_zero_only_when_the_rendered_count_agrees(self) -> None:
         renderer = (ROOT / "scripts/compliance/third_party_export_ui.js").read_text(encoding="utf-8")
