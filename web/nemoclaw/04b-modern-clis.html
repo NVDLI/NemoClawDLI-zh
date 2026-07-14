@@ -85,10 +85,6 @@
   <p>Each product runs a model in a loop with tools. Defaults and built-in capabilities
      differ. Implementation detail varies too. Their combined cost and convenience form
      the <em>harness weight</em> used below.</p>
-  <p>Hermes differs from the editor CLIs because skill creation, persistent memory,
-     cron, and the messaging gateway are normal operating paths in its public docs.
-     Other agents can still rewrite their own beacons or skills when file edits are
-     allowed, so the risk is not unique to Hermes.</p>
   <ul class="cli-list">
     <li><a href="https://docs.claude.com/en/docs/claude-code" target="_blank" rel="noopener"><strong>Claude Code</strong></a> (Anthropic).
         Beacon <code>CLAUDE.md</code> at the project root, plus <code>~/.claude/CLAUDE.md</code> for user-wide rules.
@@ -112,11 +108,16 @@
         regardless of what the model decides.</li>
   </ul>
 
+  <p>Note that Hermes seems to differ from the editor CLIs because "automatic learning"
+    is supported by default as a flagship feature. This system still uses the same fundamental
+    primitives as the other agents (skills/cron/memory updates with write permissions),
+    so the risk is not unique to Hermes.</p>
+
   <div class="callout">
     <strong>OpenShell can host this class of agent application; NemoClaw is the
     reference stack this course runs.</strong> The same OpenShell integration is documented by
     NVIDIA for Codex, Cursor, and OpenCode. The CLI you pick decides the starting
-    defaults, while the OpenShell wrapper around it finally governs how far
+    defaults, while the OpenShell wrapper around it governs how far
     any of those defaults are permitted to reach.
   </div>
 

@@ -408,6 +408,12 @@ helpers.viz.scoreBarChart(
   [{ score: 5, label: "accuracy" }, { score: 3, label: "relevance" }, { score: 2, label: "concision" }],
   { threshold: 3, title: "Rubric scores" }
 );`,
+    "viz.lineChart": `// Draw a numeric sequence while keeping the source data available.
+const values = [3, 4, 5, 6, 7, 8, 9, 8, 7];
+helpers.viz.lineChart(values, {
+  title: "Position by tick", xLabel: "tick", yLabel: "position", min: 0, max: 9,
+});
+return values;`,
     "viz.messageList": `// Render LLM messages as color-coded cards.
 // Pass the same message objects you send to the LLM API.
 helpers.viz.messageList(state.messages, "Memory grows with each turn");`,

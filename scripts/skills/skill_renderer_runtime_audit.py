@@ -41,7 +41,7 @@ const { chromium } = require('playwright-core');
 
 const root = process.env.SITE_ROOT || '/site';
 const htmlFiles = JSON.parse(fs.readFileSync(process.env.HTML_FILES || '/tmp/html-files.json', 'utf8'));
-const port = 4214;
+let port = 0;
 const mime = {
   '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8',
   '.mjs':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8',
@@ -158,6 +158,16 @@ async function inspect(browser, file) {
   }
   try {
     const response = await page.goto(`http://127.0.0.1:${port}/${file}`, { waitUntil:'domcontentloaded', timeout:30000 });
+    // Generated aliases use document-declared redirects. Playwright resolves the initial
+    // document before that navigation begins, so wait on the redirect contract itself before
+    // evaluating the final page. This applies to every discovered HTML file without naming or
+    // exempting an alias path.
+    await page.waitForFunction(() =>
+      !document.querySelector('meta[http-equiv="refresh" i]'),
+      null,
+      { timeout:10000 }
+    );
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(500);
     isSkill = await page.evaluate(() =>
       /(?:^|\/)SKILL\.html$/.test(location.pathname) || !!document.getElementById('skill-meta')
@@ -770,7 +780,14 @@ async function inspect(browser, file) {
 }
 
 (async () => {
-  await new Promise(resolve => server.listen(port, '127.0.0.1', resolve));
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      server.off('error', reject);
+      port = server.address().port;
+      resolve();
+    });
+  });
   const browser = await chromium.launch({
     headless:true,
     executablePath:process.env.CHROME_BIN || undefined,

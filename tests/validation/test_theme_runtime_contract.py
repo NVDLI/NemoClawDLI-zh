@@ -10,7 +10,11 @@ import unittest
 from pathlib import Path
 
 from scripts.skills import skill_renderer_runtime_audit as theme_runtime
-from scripts.validation import cell_ui_runtime_audit as cell_runtime
+from scripts.validation import (
+    cell_ui_runtime_audit as cell_runtime,
+    helper_notebook_runtime_audit as helper_notebook,
+    learner_flow_audit as learner_flow,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -171,6 +175,42 @@ class ThemeRuntimeContractTests(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(token, source)
         self.assertNotIn("anchor.dataset.evidenceLink === 'local'", source)
+
+    def test_runtime_settles_declared_redirects_without_a_path_exemption(self) -> None:
+        source = theme_runtime.RUNTIME_JS
+        self.assertIn('meta[http-equiv="refresh" i]', source)
+        self.assertIn("await page.waitForLoadState('domcontentloaded');", source)
+        self.assertNotIn("file.endsWith('standalone/SKILL.html')", source)
+
+    def test_runtime_uses_an_ephemeral_server_port(self) -> None:
+        source = theme_runtime.RUNTIME_JS
+        self.assertIn("server.listen(0, '127.0.0.1'", source)
+        self.assertIn("port = server.address().port", source)
+        self.assertNotIn("const port = 4214", source)
+
+    def test_long_returned_sequences_need_visual_evidence_without_an_authored_marker(self) -> None:
+        path = ROOT / "web/nemoclaw/fixture.html"
+        safe = '''<script>mountCanvasFlow("#cell", { nodes: [{ id:"trace", code: `
+            const values = [];
+            for (let i = 0; i < 25; i++) values.push(i);
+            helpers.viz.lineChart(values);
+            return { values };
+        `}]});</script>'''
+        missing_visual = safe.replace("helpers.viz.lineChart(values);", "")
+        short_sequence = missing_visual.replace("i < 25", "i < 8")
+        self.assertEqual([], learner_flow.audit_learning_evidence(path, safe))
+        findings = learner_flow.audit_learning_evidence(path, missing_visual)
+        self.assertTrue(any("returns long sequence" in finding for finding in findings), findings)
+        self.assertEqual([], learner_flow.audit_learning_evidence(path, short_sequence))
+        source = (ROOT / "scripts/validation/learner_flow_audit.py").read_text(encoding="utf-8")
+        self.assertNotIn("data-learning-evidence", source)
+
+    def test_helper_visual_audit_discovers_all_theme_aware_svg_output(self) -> None:
+        source = helper_notebook.RUNTIME_JS
+        self.assertIn('.helper-notebook svg.gfx-dark[role="img"]', source)
+        self.assertIn("const badVisuals = lightVisuals.filter", source)
+        self.assertNotIn("position by tick", source)
+        self.assertNotIn("line chart is not visible", source)
 
     def test_runtime_rejects_nested_controls_after_page_mount(self) -> None:
         source = theme_runtime.RUNTIME_JS

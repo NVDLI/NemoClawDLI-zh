@@ -219,7 +219,7 @@ helpers.log.svg('<svg viewBox="0 0 240 54" xmlns="http://www.w3.org/2000/svg" st
 helpers.log.draw(260, 100, '<circle cx="70" cy="55" r="26" fill="#76b900"/><text x="135" y="60" fill="#f2f2f2" font-family="ui-monospace,monospace" font-size="13">log.draw</text>', { title: "inline marks" });
 return { wrote: Object.keys(state), traceEvents: state.__trace.length, logApi: ["log", "h", "json", "kv", "details", "html", "svg", "draw", "clear"] };
 `},
-    { id: "viz", icon: "V", title: "Visualization helpers", x: 2, y: 1, summary: "Render diagrams, message timelines, bars, diffs, and retrieval scores.", code: `
+    { id: "viz", icon: "V", title: "Visualization helpers", x: 2, y: 1, summary: "Render diagrams, numeric traces, messages, bars, diffs, and retrieval scores.", code: `
 helpers.viz.diagram({
   title: "helper families",
   nodes: [
@@ -228,6 +228,9 @@ helpers.viz.diagram({
     { id: "lab", label: "lab", kind: "agent", x: 3, y: 1, lines: ["terminal", "OpenClaw"] },
   ],
   edges: [{ from: "local", to: "live", label: "optional key" }, { from: "live", to: "lab", label: "launchable" }],
+});
+helpers.viz.lineChart([3, 4, 5, 6, 7, 8, 9, 8, 7], {
+  title: "position by tick", xLabel: "tick", yLabel: "position", min: 0, max: 9,
 });
 helpers.viz.messageList([
   { role: "system", content: "Classify helper surface." },

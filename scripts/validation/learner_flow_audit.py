@@ -32,6 +32,7 @@ LAUNCHABLE_HELPER_RE = re.compile(
 )
 MODEL_HELPER_RE = re.compile(r"(?:helpers\.)?(?:chat|chatStream)\s*\(|helpers\.mountAgentChat\s*\(")
 MAX_DEFAULT_OPEN_LINES = 60
+LONG_SEQUENCE_MIN_ITERATIONS = 12
 LEARNING_VIEW_REQUIRED = {"01a-loop.html", "01b-react.html", "01c-tools.html", "02b-rag.html"}
 LEARNING_VIEW_MIN_BLOCKS = {
     "01a-loop.html": 5,
@@ -725,6 +726,34 @@ def _mount_blocks(text: str) -> list[tuple[int, str, bool]]:
     return blocks
 
 
+def audit_learning_evidence(
+    path: Path, text: str, blocks: list[tuple[int, str, bool]] | None = None
+) -> list[str]:
+    """Discover long returned sequences and require compact visual evidence beside the raw data."""
+    findings: list[str] = []
+    rel = path.relative_to(ROOT).as_posix()
+    mount_blocks = _mount_blocks(text) if blocks is None else blocks
+    long_loop = re.compile(r"\bfor\s*\([^;]*;[^;]*<\s*(\d+)\s*;[^)]*\)", re.S)
+    empty_array = re.compile(r"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*\[\s*\]")
+    returned = re.compile(r"\breturn\s+([^;]+)", re.S)
+    for start, source, _is_run_cell in mount_blocks:
+        line = text.count("\n", 0, start) + 1
+        for node_index, node_source in enumerate(CODE_RE.findall(source), 1):
+            bounds = [int(value) for value in long_loop.findall(node_source)]
+            if not bounds or max(bounds) < LONG_SEQUENCE_MIN_ITERATIONS:
+                continue
+            return_values = returned.findall(node_source)
+            sequences = [name for name in empty_array.findall(node_source)
+                         if re.search(rf"\b{re.escape(name)}\.push\s*\(", node_source)
+                         and any(re.search(rf"\b{re.escape(name)}\b", value) for value in return_values)]
+            if sequences and "helpers.viz." not in node_source:
+                findings.append(
+                    f"{rel}:{line}: runnable step {node_index} returns long sequence(s) "
+                    f"{', '.join(sequences)} after {max(bounds)} iterations without compact helpers.viz evidence"
+                )
+    return findings
+
+
 def _mask_js_literals(text: str) -> str:
     """Blank strings, templates, and comments while preserving syntax positions."""
     chars = list(text)
@@ -798,6 +827,7 @@ def audit_lesson(path: Path, text: str) -> list[str]:
     findings: list[str] = []
     rel = path.relative_to(ROOT).as_posix()
     blocks = _mount_blocks(text)
+    findings.extend(audit_learning_evidence(path, text, blocks))
     model_call = MODEL_HELPER_RE.search(text)
     if model_call:
         model_markers = [text.find('id="key-status"'), text.find('data-prerequisite="model"')]

@@ -1,5 +1,5 @@
 {
-  "Environment and agent connected by perception and action arrows.": "Ambiente e agente conectados por setas de percepção e ação.",
+  "Observations flow from the environment to the agent. Actions flow from the agent to the environment.": "As observações fluem do ambiente para o agente. As ações fluem do agente para o ambiente.",
   "Environment": "Ambiente",
   "world state": "estado do mundo",
   "sensors read it": "sensores fazem a leitura",
@@ -8,8 +8,8 @@
   "perceives the world": "percebe o mundo",
   "chooses the next action": "escolhe a próxima ação",
   "acts back on the world": "age sobre o mundo",
-  "perceive": "perceber",
-  "act": "agir",
+  "observation": "observação",
+  "action": "ação",
   "Four agent architectures from Russell and Norvig: reflex, goal-based, utility-based, and learning agents. Each names its idea in three lines and carries a small block diagram of its internal data flow from sensors through reasoning to actuators.": "Quatro arquiteturas de agentes de Russell e Norvig: agentes reflexos, orientados a objetivos, baseados em utilidade e com aprendizado. Cada uma resume sua ideia em três linhas e mostra o fluxo interno dos sensores, passando pelo raciocínio, até os atuadores.",
   "01 . Reflex Agents": "01 · Agentes reflexos",
   "• Maps inputs directly to actions, ignoring history.": "• Mapeiam entradas direto para ações.",

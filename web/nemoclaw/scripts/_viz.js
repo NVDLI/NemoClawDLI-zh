@@ -15,6 +15,54 @@ export function makeViz(log) {
         /* @doc <code>helpers.viz.diagram(spec)</code> :: Auto-themed node/edge figure from a data spec. <code>spec</code> is <code>{title?, caption?, nodes:[{id, label, kind, x, y, lines?}], edges:[{from, to, label?}]}</code>; <code>kind &isin; env|agent|tool|data|model|neutral</code>; <code>x</code>/<code>y</code> are grid columns/rows. */
         log.svg(diagramSVG(spec));
       },
+      lineChart(values, opts = {}) {
+        /* @doc <code>helpers.viz.lineChart(values, opts)</code> :: Static line chart for a numeric sequence. <code>opts</code> is <code>{title?, xLabel?, yLabel?, min?, max?, width?}</code>. The SVG includes point values in its accessible label; return the source array separately when learners need the exact data. */
+        const series = Array.from(values || [], Number);
+        if (!series.length || series.some(value => !Number.isFinite(value))) {
+          throw new TypeError("helpers.viz.lineChart expects one or more finite numbers");
+        }
+        const esc = value => String(value == null ? "" : value).replace(/[<>&\"]/g, char => ({
+          "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;",
+        }[char]));
+        const W = Math.max(420, Number(opts.width) || 640);
+        const H = 270, PAD_L = 56, PAD_R = 24, PAD_T = 46, PAD_B = 54;
+        const title = opts.title || "Values by step";
+        const xLabel = opts.xLabel || "step";
+        const yLabel = opts.yLabel || "value";
+        let low = Number.isFinite(Number(opts.min)) ? Number(opts.min) : Math.min(...series);
+        let high = Number.isFinite(Number(opts.max)) ? Number(opts.max) : Math.max(...series);
+        if (high < low) [low, high] = [high, low];
+        if (high === low) { low -= 1; high += 1; }
+        const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+        const x = index => PAD_L + (series.length === 1 ? plotW / 2 : index * plotW / (series.length - 1));
+        const y = value => PAD_T + (high - value) * plotH / (high - low);
+        const fmt = value => Number.isInteger(value) ? String(value) : value.toFixed(2);
+        const ticks = Array.from({ length: 5 }, (_, index) => high - index * (high - low) / 4);
+        const xTickIndexes = [...new Set([0, ...Array.from({ length: 3 }, (_, index) =>
+          Math.round((index + 1) * (series.length - 1) / 4)), series.length - 1])];
+
+        let body = "";
+        for (const tick of ticks) {
+          const py = y(tick);
+          body += `<line x1="${PAD_L}" y1="${py}" x2="${W - PAD_R}" y2="${py}" stroke="var(--gfx-line,#3a3a3a)" stroke-width="1"/>`;
+          body += `<text x="${PAD_L - 9}" y="${py + 4}" text-anchor="end" font-size="10" font-family="ui-monospace,monospace" fill="var(--gfx-sub,#a5a5a5)">${esc(fmt(tick))}</text>`;
+        }
+        for (const index of xTickIndexes) {
+          body += `<text x="${x(index)}" y="${H - 30}" text-anchor="middle" font-size="10" font-family="ui-monospace,monospace" fill="var(--gfx-sub,#a5a5a5)">${index + 1}</text>`;
+        }
+        const points = series.map((value, index) => `${x(index)},${y(value)}`).join(" ");
+        body += `<polyline points="${points}" fill="none" stroke="var(--gfx-green,#76b900)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`;
+        series.forEach((value, index) => {
+          body += `<circle cx="${x(index)}" cy="${y(value)}" r="3.5" fill="var(--gfx-bg,#0d0d0d)" stroke="var(--gfx-green,#aee23a)" stroke-width="2"><title>${esc(`${xLabel} ${index + 1}: ${fmt(value)}`)}</title></circle>`;
+        });
+        const description = `${title}. ${series.map((value, index) => `${xLabel} ${index + 1}: ${fmt(value)}`).join("; ")}.`;
+        log.svg(`<svg class="gfx-dark" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${esc(description)}" style="max-width:100%;background:var(--gfx-bg,#0d0d0d);border:1px solid var(--gfx-line,#2a2a2a);border-radius:6px">
+          <text x="${W / 2}" y="25" text-anchor="middle" font-size="13" font-family="ui-monospace,monospace" fill="var(--gfx-green,#aee23a)" font-weight="700">${esc(title)}</text>
+          ${body}
+          <text x="${PAD_L + plotW / 2}" y="${H - 8}" text-anchor="middle" font-size="10" font-family="ui-monospace,monospace" fill="var(--gfx-sub,#a5a5a5)">${esc(xLabel)}</text>
+          <text x="15" y="${PAD_T + plotH / 2}" text-anchor="middle" font-size="10" font-family="ui-monospace,monospace" fill="var(--gfx-sub,#a5a5a5)" transform="rotate(-90 15 ${PAD_T + plotH / 2})">${esc(yLabel)}</text>
+        </svg>`);
+      },
       scoreBarChart(scored, opts = {}) {
         /* @doc <code>helpers.viz.scoreBarChart(scored, opts)</code> :: 1-to-5 score bar chart with threshold and mean overlay. <code>scored</code> is an array of <code>{score, label?}</code>; <code>opts</code> is <code>{threshold, title, width}</code>. */
         const { threshold = 3, title = "Score comparison", width = DEFAULT_CHART_WIDTH } = opts;

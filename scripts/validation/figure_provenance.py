@@ -45,6 +45,24 @@ def svg_modes() -> dict[str, str]:
     return modes
 
 
+def svg_semantic_contracts() -> dict[str, dict[str, object]]:
+    """Map attributed SVGs to optional, machine-readable meaning contracts."""
+    contracts: dict[str, dict[str, object]] = {}
+    for row in figure_rows():
+        name = str(row.get("file", ""))
+        contract = row.get("semantic_contract")
+        if contract is None:
+            continue
+        if not name.endswith(".svg"):
+            raise ValueError(f"semantic figure contract must target an SVG: {name}")
+        if not isinstance(contract, dict):
+            raise ValueError(f"semantic figure contract must be an object: {name}")
+        if name in contracts:
+            raise ValueError(f"duplicate semantic figure contract: {name}")
+        contracts[name] = contract
+    return contracts
+
+
 def fixed_white_figures() -> frozenset[str]:
     """Derive paper conversions from provenance instead of maintaining an exception list."""
     return frozenset(name for name, mode in svg_modes().items() if mode == "fixed-white")
