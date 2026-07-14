@@ -136,7 +136,7 @@ y <a href="https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-wi
   <p>
   MCP le proporciona a un sistema de recuperación una interfaz definida para descubrir y consultar fuentes de contexto externas. Sin embargo, el agente todavía necesita un motor de ejecución que decida cuándo recuperar esa información, valide los resultados y los integre con el estado actual de la tarea en curso. Otras interfaces se encargan de los componentes restantes del sistema: los paquetes de habilidades (skills) agrupan instrucciones de capacidades reutilizables, el sistema A2A (Agent-to-Agent) puede derivar el trabajo a especialistas remotos, y los protocolos de interfaz de usuario transmiten en tiempo real (stream) el estado generado de vuelta a la aplicación.</p>
   <p>
- La figura separa esas fronteras. Léela de izquierda a derecha para seguir la entrada de contexto mediante MCP y la entrega de tareas mediante A2A; de abajo arriba, para seguir la intermediación de capacidades mediante skills, la ejecución en el runtime y la experiencia generada.</p>
+ La figura separa esas fronteras. Léela de izquierda a derecha para seguir la entrada de contexto mediante MCP y la entrega de tareas mediante A2A; de abajo arriba, para seguir la intermediación de capacidades mediante skills, la ejecución en el runtime y la experiencia generada. Elige la frontera que corresponda al paquete y al estado del sistema que debe transportar.</p>
   <figure style="margin:1.4em 0 1.8em">
     <div class="fig-embed" data-svg-src="assets/figures/02b-retrieval-boundaries.svg" style="aspect-ratio:1100 / 460"></div>
     <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">
@@ -165,7 +165,7 @@ y <a href="https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-wi
   </table>
 
   <p>
- Este módulo muestra el ejemplo de la <strong>prosa no estructurada</strong>, desde el corpus hasta la respuesta, y ejecuta el flujo básico de recuperación y generación.
+ El ejemplo de <strong>prosa no estructurada</strong> lleva un corpus a través de la recuperación y la generación hasta obtener una respuesta fundamentada.
  </p>
   <figure style="margin:1.4em 0">
     <div class="fig-embed" data-svg-src="assets/figures/02b-rag-2.svg" style="aspect-ratio:900 / 420"></div>
@@ -379,7 +379,7 @@ const ranked = CORPUS
   .sort((a, b) => b.score - a.score);
 
 const topK = ranked.slice(0, TOP_K);
-helpers.log("top-K retrieved:", topK.map(d => d.text.slice(0, 40) + "…"));
+helpers.log("resultados top-K recuperados:", topK.map(d => d.text.slice(0, 40) + "…"));
 
 const basicResp = await helpers.chat({
   messages: [
@@ -407,7 +407,7 @@ for (const name of communities) {
   });
   summaries.push({ name, summary: resp.choices[0].message.content });
 }
-helpers.log("community summaries:", summaries.map(s => s.name));
+helpers.log("resúmenes de comunidades:", summaries.map(s => s.name));
 
 // REDUCE: answer from the community summaries only, never the raw chunks.
 // Every family rides in through its summary, so the answer covers all of them.
@@ -437,7 +437,7 @@ helpers.log.html(
   '</div>'
 );
 
-helpers.log("Notice the global theme top-K misses but the community pass recovers.");
+helpers.log("Observa el tema global que top-K omite y que el análisis por comunidades recupera.");
 `,
     });
   </script>
@@ -504,7 +504,7 @@ async function loadIndex() {
   try {
     const m = await (await helpers.fetch("assets/rag_index.json")).json();
     const ok = m.model === MODEL_PIN;
-    if (!ok) helpers.log("prebuilt index was built for " + m.model + ", not " + MODEL_PIN + "; embedding live instead.");
+    if (!ok) helpers.log("el índice preconstruido usa " + m.model + ", no " + MODEL_PIN + "; se generarán los embeddings en directo.");
     _index = ok
       ? { byDoc: new Map(m.docs.map(d => [d.text, d.vec])), byQuery: new Map(m.queries.map(q => [q.text, q.vec])) }
       : { byDoc: new Map(), byQuery: new Map() };
@@ -516,12 +516,12 @@ async function loadIndex() {
 
 helpers.mountChatUI("#rag-artifact", {
   memory: true,
-  greeting: "Ask about anything from this course. I embed your question, rank a small corpus by cosine similarity, and answer from the best matches. Follow-ups keep the conversation (each still retrieves fresh); the 🧠 toggle clears it, and ✎ edit rewinds.",
+  greeting: "Pregunta sobre cualquier tema del curso. Genero el embedding de tu pregunta, ordeno un corpus pequeño por similitud coseno y respondo con las mejores coincidencias. Los mensajes posteriores conservan la conversación, aunque cada uno realiza una recuperación nueva; el control 🧠 la borra y ✎ editar retrocede hasta ese turno.",
   models: [
-    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
-    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
+    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · rápido" },
+    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · más potente" },
   ],
-  examples: ["What is retrieval-augmented generation?", "Why use cosine similarity?", "How does the ReAct loop work?", "What is a tool, mechanically?", "What does the OpenShell sandbox do?", "What is a deep research agent?"],
+  examples: ["¿Qué es la generación aumentada por recuperación?", "¿Por qué se usa la similitud coseno?", "¿Cómo funciona el bucle ReAct?", "¿Qué es una herramienta desde el punto de vista mecánico?", "¿Qué hace el sandbox de OpenShell?", "¿Qué es un agente de investigación profunda?"],
   respond: async (text, ctx) => {
     const idx = await loadIndex();
     // corpus vectors come from the prebuilt index; only passages it does not cover (edits) embed live
@@ -547,7 +547,7 @@ helpers.mountChatUI("#rag-artifact", {
     if (s.usage) ctx.view.usage({ input: s.usage.prompt_tokens, output: s.usage.completion_tokens, model: s.model });
   },
 });
-helpers.log("rendered below. Edit the config and Run.");
+helpers.log("artefacto renderizado abajo. Edita la configuración y vuelve a ejecutar.");
 
 // The panel calls helpers.embed(), ranks with helpers.cosineSim(), then answers.
 `,

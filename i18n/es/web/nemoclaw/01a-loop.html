@@ -277,12 +277,12 @@ El bucle, el laberinto, la percepción y la acción permanecen iguales; solament
 
 helpers.mountChatUI("#loop-artifact", {
   memory: true,
-  greeting: "Memory is on, so I follow the whole conversation. Tell me your name, then ask what it is. Flip 🧠 memory off and I answer each message cold, a stateless function with no recall of the last.",
+  greeting: "La memoria está activada, así que sigo la conversación completa. Dime tu nombre y después pregúntame cuál es. Desactiva 🧠 memoria para que responda cada mensaje de forma aislada, como una función sin estado que no recuerda el turno anterior.",
   models: [
-    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
-    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
+    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · rápido" },
+    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · más potente" },
   ],
-  examples: ["My name is Ada. Remember it.", "What is my name?", "What is the capital of France?", "Explain the agent loop in two sentences", "Why does an agent need a loop instead of one call?"],
+  examples: ["Me llamo Ada. Recuérdalo.", "¿Cómo me llamo?", "¿Cuál es la capital de Francia?", "Explica el bucle del agente en dos frases", "¿Por qué necesita un agente un bucle en lugar de una sola llamada?"],
   respond: async (text, ctx) => {
     // ctx.history holds prior turns when memory is on.
     const messages = [...(ctx.history || []), { role: "user", content: text }];
@@ -291,7 +291,7 @@ helpers.mountChatUI("#loop-artifact", {
     if (s.usage) ctx.view.usage({ input: s.usage.prompt_tokens, output: s.usage.completion_tokens, model: s.model });
   },
 });
-helpers.log("rendered below. Edit the config and Run.");
+helpers.log("artefacto renderizado abajo. Edita la configuración y vuelve a ejecutar.");
 
 // mountChatUI renders the chat view; this cell supplies respond().
 `,
@@ -579,7 +579,7 @@ async function animRun(grid, start, goal, getDir, maxSteps, elId, msPerStep) {
   let steps = 0, won = false;
   for (let i = 0; i < maxSteps; i++) {
     const el = document.getElementById(elId);
-    if (el) el.innerHTML = renderMaze(grid, pos, goal, visited, \`step \${i + 1}\`);
+    if (el) el.innerHTML = renderMaze(grid, pos, goal, visited, \`paso \${i + 1}\`);
     await helpers.delay(msPerStep);
     const dir = getDir(i, pos, validMoves(grid, pos));
     const rv = doMove(grid, pos, dir);
@@ -589,7 +589,7 @@ async function animRun(grid, start, goal, getDir, maxSteps, elId, msPerStep) {
   }
 
   const el = document.getElementById(elId);
-  if (el) el.innerHTML = renderMaze(grid, pos, goal, visited, \`\${steps} steps · solved: \${won}\`);
+  if (el) el.innerHTML = renderMaze(grid, pos, goal, visited, \`\${steps} pasos · resuelto: \${won}\`);
   return { pos, visited, steps, won };
 }
 
@@ -603,7 +603,7 @@ async function animStall(grid, start, goal, dir, elId, msPerStep) {
   let pos = [...start]; const visited = [[...pos]]; let moves = 0;
   for (;;) {
     const el = document.getElementById(elId);
-    if (el) el.innerHTML = renderMaze(grid, pos, goal, visited, \`'always \${dir}' · move \${moves + 1}\`);
+    if (el) el.innerHTML = renderMaze(grid, pos, goal, visited, \`«siempre \${dir}» · movimiento \${moves + 1}\`);
     await helpers.delay(msPerStep);
     const rv = doMove(grid, pos, dir);
     if (!rv.ok) break;
@@ -612,7 +612,7 @@ async function animStall(grid, start, goal, dir, elId, msPerStep) {
   }
   const el = document.getElementById(elId);
   if (el) el.innerHTML = renderMaze(grid, pos, goal, visited,
-    \`'always \${dir}' stalls after \${moves} move\${moves === 1 ? '' : 's'} · a fixed heading cannot solve a maze\`);
+    \`«siempre \${dir}» se detiene tras \${moves} movimiento\${moves === 1 ? '' : 's'} · una dirección fija no puede resolver un laberinto\`);
   return { moves };
 }
 const mazeR = await animStall(state.grid, state.start, state.goal, 'east', randId, 120);
@@ -626,7 +626,7 @@ return { corridorSolved: corrR.won, mazeStalledAfter: mazeR.moves };
       summary: "La función dfs(pos), recogida por patrón, registra un avance al entrar en la rama y el movimiento inverso durante el retroceso. Abre el nodo para inspeccionar la recursión.",
       code: `// DFS is the depth-first version of the same agent loop. It first builds a full
 // move list, including backtracking moves, then replays that list as an animation.
-if (!state.fn) { helpers.log("Run the 'Maze + constant reasoner' node first."); return; }
+if (!state.fn) { helpers.log("Ejecuta primero el nodo «Laberinto + razonador constante»."); return; }
 const { fn, grid, start, goal } = state;
 const LDIR = {north:[0,-1],south:[0,1],east:[1,0],west:[-1,0]};
 const REV  = {north:'south',south:'north',east:'west',west:'east'};
@@ -658,7 +658,7 @@ helpers.log.html(\`<div id="\${UID}" style="margin:6px 0"></div>\`);
 
 for (const dir of steps) {
   const el = document.getElementById(UID);
-  if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, visited, \`DFS · step \${stepCount + 1}\`);
+  if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, visited, \`DFS · paso \${stepCount + 1}\`);
   await helpers.delay(55);
   const rv = fn.doMove(grid, pos, dir);
   pos = rv.pos; stepCount++;
@@ -668,7 +668,7 @@ for (const dir of steps) {
 
 const elF = document.getElementById(UID);
 if (elF) elF.innerHTML = fn.renderMaze(grid, pos, goal, visited,
-  \`DFS · \${stepCount} total steps (incl. backtracks)\`);
+  \`DFS · \${stepCount} pasos totales (incluidos los retrocesos)\`);
 return { stepsTotal: stepCount };
 `,
     },
@@ -678,7 +678,7 @@ return { stepsTotal: stepCount };
       summary: "El código BFS está oculto por defecto. Al expandirlo se pueden observar dos fases: primero marca las celdas examinadas; luego recorre el camino más corto encontrado.",
       code: `// BFS is split into two readable phases: show the expanding frontier, then walk
 // the shortest path that came back from fn.bfsExplore(...).
-if (!state.fn) { helpers.log("Run the 'Maze + constant reasoner' node first."); return; }
+if (!state.fn) { helpers.log("Ejecuta primero el nodo «Laberinto + razonador constante»."); return; }
 const { fn, grid, start, goal } = state;
 const { path, exploreOrder } = fn.bfsExplore(grid, start, goal);
 
@@ -692,7 +692,7 @@ for (const cell of exploreOrder) {
   explored.add(\`\${cell[0]},\${cell[1]}\`);
   const el = document.getElementById(UID);
   if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, [],
-    \`BFS searching · \${explored.size} of \${exploreOrder.length} cells\`, explored);
+    \`BFS buscando · \${explored.size} de \${exploreOrder.length} celdas\`, explored);
   await helpers.delay(32);
 }
 
@@ -701,7 +701,7 @@ let visited = [[...pos]], steps = 0;
 for (const dir of path) {
   const el = document.getElementById(UID);
   if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, visited,
-    \`BFS walking · step \${steps + 1} of \${path.length}\`, explored);
+    \`BFS recorriendo · paso \${steps + 1} de \${path.length}\`, explored);
   await helpers.delay(90);
   const rv = fn.doMove(grid, pos, dir);
   pos = rv.pos; steps++;
@@ -711,7 +711,7 @@ for (const dir of path) {
 
 const elF = document.getElementById(UID);
 if (elF) elF.innerHTML = fn.renderMaze(grid, pos, goal, visited,
-  \`BFS · \${steps} steps path · \${exploreOrder.length} cells searched\`, explored);
+  \`BFS · ruta de \${steps} pasos · \${exploreOrder.length} celdas examinadas\`, explored);
 state.bfsSteps = steps;
 return { steps, examined: exploreOrder.length };
 `,
@@ -722,7 +722,7 @@ return { steps, examined: exploreOrder.length };
       summary: "El código A* comienza contraído. Al abrirlo, observa que el bucle de animación es casi igual al de la BFS; la diferencia está en el planificador que produce el camino.",
       code: `// A* reuses the same animation loop shape as BFS. The planner changed, not the
 // surrounding perceive-act loop that displays each move.
-if (!state.fn) { helpers.log("Run the 'Maze + constant reasoner' node first."); return; }
+if (!state.fn) { helpers.log("Ejecuta primero el nodo «Laberinto + razonador constante»."); return; }
 const { fn, grid, start, goal } = state;
 const path = fn.astarPath(grid, start, goal);
 let pos = [...start], visited = [[...pos]], steps = 0;
@@ -733,7 +733,7 @@ helpers.log.html(\`<div id="\${UID}" style="margin:6px 0"></div>\`);
 for (const dir of path) {
   const el = document.getElementById(UID);
   if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, visited,
-    \`A* · step \${steps + 1} of \${path.length}\`);
+    \`A* · paso \${steps + 1} de \${path.length}\`);
   await helpers.delay(85);
   const rv = fn.doMove(grid, pos, dir);
   pos = rv.pos; steps++;
@@ -743,7 +743,7 @@ for (const dir of path) {
 
 const elF = document.getElementById(UID);
 if (elF) elF.innerHTML = fn.renderMaze(grid, pos, goal, visited,
-  \`A* · \${steps} steps · Manhattan heuristic · same path as BFS: \${steps === state.bfsSteps}\`);
+  \`A* · \${steps} pasos · heurística Manhattan · misma ruta que BFS: \${steps === state.bfsSteps}\`);
 return { steps, won: true };
 `,
     },
@@ -1187,18 +1187,18 @@ state.runMaze = async function(h, state, opts) {
 
   var modelName = MODEL.id.split('/').pop();
   var modeStr = [includeText ? 'text' : null, includeImage ? 'image' : null].filter(Boolean).join('+') || 'none';
-  show('ready · ' + modeStr + (includeHistory ? ' · history' : ' · stateless'));
-  info('<strong style="color:#76b900">' + modelName + '</strong> · input: ' + modeStr
-    + ' · ' + (includeHistory ? 'with history' : 'stateless')
-    + ' · ' + (advanced ? 'advanced 15x11' : 'simple 11x9') + ' maze'
-    + ' · tool-spec in system: ' + (toolSpecInSystem ? 'yes' : 'no'));
+  show('listo · ' + modeStr + (includeHistory ? ' · con historial' : ' · sin estado'));
+  info('<strong style="color:#76b900">' + modelName + '</strong> · entrada: ' + modeStr
+    + ' · ' + (includeHistory ? 'con historial' : 'sin estado')
+    + ' · laberinto ' + (advanced ? 'avanzado 15x11' : 'simple 11x9')
+    + ' · especificación de herramienta en system: ' + (toolSpecInSystem ? 'sí' : 'no'));
 
   var history = [];  // accumulated turns (used only when includeHistory)
 
   try {
     if (await corridorWalk('corridor')) {
-      show('goal in corridor · ' + visited.length + ' steps');
-      info('<span style="color:#76b900">goal reached in the opening corridor (no LLM needed)</span>');
+      show('objetivo en el pasillo · ' + visited.length + ' pasos');
+      info('<span style="color:#76b900">objetivo alcanzado en el pasillo inicial (sin necesidad de un LLM)</span>');
       return { decisions: 0, steps: visited.length, won: true };
     }
 
@@ -1226,17 +1226,17 @@ state.runMaze = async function(h, state, opts) {
 
       var req = { model: MODEL.id, messages: sent, tools: [DECISION_TOOL], max_tokens: MODEL.maxTok, temperature: MODEL.temp };
       if (MODEL.extra_body) req.extra_body = MODEL.extra_body;
-      info('<strong style="color:#eee">decision ' + decision + '</strong> · ' + modelName + ' at ' + JSON.stringify(pos) + ' avail: [' + availStr(pos) + '] · ' + sent.length + ' msgs');
+      info('<strong style="color:#eee">decisión ' + decision + '</strong> · ' + modelName + ' en ' + JSON.stringify(pos) + ' disponibles: [' + availStr(pos) + '] · ' + sent.length + ' mensajes');
       log.html(renderRequest({ pos: pos, trail: trail, ascii: ascii, imageUrl: imageUrl }, sent, req));   // full context BEFORE the model responds
-      show('decision ' + decision + ': asking model...');
+      show('decisión ' + decision + ': consultando al modelo...');
       var summary;
       try {
         summary = await abortable(h.chatStream(req, null, { onReasoning: makeReasonStream(log) }));
       } catch (e) {
-        if (e.name === 'AbortError' || sig.aborted) { info('<span style="color:#777">stopped</span>'); break; }
+        if (e.name === 'AbortError' || sig.aborted) { info('<span style="color:#777">detenido</span>'); break; }
         info('<span style="color:#f87171">error: ' + e.message + '</span>');
         if (includeImage && /image|vision|multimodal|content/i.test(e.message))
-          info('<span style="color:#fbbf24">hint: the image was rejected on this turn. Try again, set includeImage:false to send text alone, or pick another multimodal model (vision / qwenVision).</span>');
+          info('<span style="color:#fbbf24">pista: la imagen fue rechazada en este turno. Inténtalo de nuevo, usa includeImage:false para enviar solo texto o elige otro modelo multimodal (vision / qwenVision).</span>');
         break;
       }
 
@@ -1244,7 +1244,7 @@ state.runMaze = async function(h, state, opts) {
       var split = splitThink(summary.content || '');   // qwen puts reasoning in <think>...</think>
       var replyText = split.content;
       if (split.reasoning && !summary.reasoning)
-        info('<details style="margin:2px 0"><summary style="cursor:pointer;color:#555;font-size:11px">reasoning (' + split.reasoning.length + ' chars)</summary><div style="font:11px/1.5 ui-monospace,monospace;color:#7a9;background:#040d08;padding:8px;border-radius:4px;max-height:200px;overflow:auto;white-space:pre-wrap">' + escH(split.reasoning) + '</div></details>');
+        info('<details style="margin:2px 0"><summary style="cursor:pointer;color:#555;font-size:11px">razonamiento (' + split.reasoning.length + ' caracteres)</summary><div style="font:11px/1.5 ui-monospace,monospace;color:#7a9;background:#040d08;padding:8px;border-radius:4px;max-height:200px;overflow:auto;white-space:pre-wrap">' + escH(split.reasoning) + '</div></details>');
 
       var tcs = summary.tool_calls || [];
       var toolId = tcs.length ? tcs[0].id : null;
@@ -1280,11 +1280,11 @@ state.runMaze = async function(h, state, opts) {
       }
 
       if (!steps) {
-        info('<span style="color:#fbbf24">no usable direction, so asking again</span>');
+        info('<span style="color:#fbbf24">no se obtuvo una dirección válida; se volverá a preguntar</span>');
         reply('No direction parsed from your reply. Call choose_direction with one of: ' + availStr(pos) + '.');
         continue;
       }
-      if (fromText) info('<span style="color:#9cf">honored text-form call → ' + escH(steps) + '</span>');
+      if (fromText) info('<span style="color:#9cf">llamada en formato de texto aceptada → ' + escH(steps) + '</span>');
 
       var pathStr = '', done = false, walled = null, s;
       for (s = 0; s < steps.length; s++) {
@@ -1292,24 +1292,24 @@ state.runMaze = async function(h, state, opts) {
         var mv2 = doMove(grid, pos, L2D[steps[s]]);
         if (!mv2.ok) { walled = L2D[steps[s]]; break; }
         pathStr += steps[s]; prevPos = pos; pos = mv2.pos; visited.push([pos[0], pos[1]]); actions.push(steps[s]);
-        show('decision ' + decision + ' · ' + pathStr);
+        show('decisión ' + decision + ' · ' + pathStr);
         await h.delay(80);
         if (mv2.done) { done = true; break; }
       }
 
       if (done) {
-        show('solved · ' + decision + ' decisions · ' + visited.length + ' steps');
-        info('<span style="color:#76b900">goal in ' + decision + ' decisions (' + visited.length + ' steps) · path: ' + pathStr + '</span>');
+        show('resuelto · ' + decision + ' decisiones · ' + visited.length + ' pasos');
+        info('<span style="color:#76b900">objetivo alcanzado en ' + decision + ' decisiones (' + visited.length + ' pasos) · ruta: ' + pathStr + '</span>');
         reply('Reached G. Done.');
         return { decisions: decision, steps: visited.length, won: true };
       }
-      info('moved: <code style="color:#76b900;background:#0d1f00;padding:1px 4px;border-radius:3px">' + (pathStr || '(none)') + '</code>' + (walled ? ' then hit a wall going ' + walled : ''));
+      info('movimiento: <code style="color:#76b900;background:#0d1f00;padding:1px 4px;border-radius:3px">' + (pathStr || '(ninguno)') + '</code>' + (walled ? '; después chocó con una pared hacia ' + walled : ''));
 
       // Auto-walk before feedback so the model sees the actual new position.
       var pw = [pos[0], pos[1]];
       if (await corridorWalk('walk')) {
-        show('goal via corridor · ' + visited.length + ' steps');
-        info('<span style="color:#76b900">goal reached while auto-walking</span>');
+        show('objetivo alcanzado por el pasillo · ' + visited.length + ' pasos');
+        info('<span style="color:#76b900">objetivo alcanzado durante el recorrido automático</span>');
         reply('Executed ' + (pathStr || '(none)') + ', then auto-walked to the goal.');
         return { decisions: decision, steps: visited.length, won: true };
       }
@@ -1325,11 +1325,11 @@ state.runMaze = async function(h, state, opts) {
   } finally {
     if (wrap) wrap.style.display = 'none';
   }
-  if (!sig.aborted) { info('<span style="color:#f87171">gave up after ' + cfg.max + ' decisions</span>'); show('gave up after ' + cfg.max + ' decisions'); }
+  if (!sig.aborted) { info('<span style="color:#f87171">se abandonó tras ' + cfg.max + ' decisiones</span>'); show('se abandonó tras ' + cfg.max + ' decisiones'); }
   return { decisions: cfg.max, won: false };
 };
 
-log("Maze engine ready.");
+log("Motor del laberinto listo.");
 `,
     },
     {
@@ -1337,7 +1337,7 @@ log("Maze engine ready.");
       x: 1, y: 0,
       showCode: true,
       summary: "Esta es la ejecución editable. Cambia primero DIRECTIVE y luego una opción por vez: model, advanced, includeText, includeImage, includeHistory, includeCoords o toolSpecInSystem.",
-      code: `if (!state.runMaze) { helpers.log("Run the 'Maze engine' node first."); return; }
+      code: `if (!state.runMaze) { helpers.log("Ejecuta primero el nodo «Motor del laberinto»."); return; }
 
 // ── Edit this freely: it becomes the CORE of the system message. ──
 const DIRECTIVE = \`You are navigating a maze.
@@ -1392,11 +1392,11 @@ const fr = reply.choices[0].finish_reason;
 log("finish_reason:", fr);
 log("");
 if (m.reasoning_content) {
-  log.h("reasoning_content (model's notes)");
+  log.h("reasoning_content (notas del modelo)");
   log(m.reasoning_content);
 }
-log.h("content (the actual answer)");
-log(m.content || "(no content; the model used its whole budget thinking, so raise max_tokens)");
+log.h("content (respuesta efectiva)");
+log(m.content || "(sin content; el modelo agotó el presupuesto razonando, así que aumenta max_tokens)");
 return { finish_reason: fr, content: m.content };
 `,
 });
@@ -1415,7 +1415,7 @@ const url = cfg.url + "/chat/completions";
 const headers = { "Content-Type": "application/json" };
 if (cfg.needsKey) {
   const KEY = helpers.getKey();
-  if (!KEY) { log("Save your nvapi- key on the course home page first."); return; }
+  if (!KEY) { log("Guarda primero tu clave nvapi- en la página inicial del curso."); return; }
   headers.Authorization = "Bearer " + KEY;
 }
 const body = {
@@ -1428,7 +1428,7 @@ const body = {
 
 // What goes OUT, with the key redacted so a screenshot never leaks it.
 log("→ POST " + url);
-log.details("request (key redacted)", { headers: { ...headers, Authorization: "Bearer nvapi-...redacted" }, body });
+log.details("request (clave omitida)", { headers: { ...headers, Authorization: "Bearer nvapi-...redacted" }, body });
 
 // 2) Send it, then read what comes BACK.
 const r = await helpers.browserChatFetch()(url, { method: "POST", headers, body: JSON.stringify(body) });
@@ -1436,7 +1436,7 @@ log("← HTTP " + r.status + " " + r.statusText);
 // Check HTTP status before parsing so failures show the real response body.
 if (!r.ok) {
   const errText = await r.text();
-  log.details("error body", errText);
+  log.details("cuerpo del error", errText);
   throw new Error("HTTP " + r.status + " " + r.statusText + ": " + errText.slice(0, 300));
 }
 const reply = await r.json();

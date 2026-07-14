@@ -43,6 +43,10 @@ def findings(data: dict, expected_sha: str) -> list[str]:
     out: list[str] = []
     if data.get("schema") != SCHEMA:
         out.append("unsupported or missing report schema")
+    if not re.fullmatch(r"[0-9a-f]{40}", str(data.get("git_sha", ""))):
+        out.append("report commit is not a full 40-character Git object ID")
+    if not re.fullmatch(r"[0-9a-f]{40}", str(expected_sha or "")):
+        out.append("expected commit is not a full 40-character Git object ID")
     if data.get("git_sha") != expected_sha:
         out.append(f"report commit {data.get('git_sha')!r} does not match {expected_sha!r}")
     if data.get("scope") != "ship" or data.get("lang") != "en":
@@ -77,9 +81,10 @@ def read_report(path: Path) -> dict:
 
 
 def self_test() -> list[str]:
+    commit = "a" * 40
     valid = {
         "schema": SCHEMA,
-        "git_sha": "abc1234",
+        "git_sha": commit,
         "scope": "ship",
         "lang": "en",
         "ok": True,
@@ -103,13 +108,17 @@ def self_test() -> list[str]:
     resolved = current_sha()
     if not re.fullmatch(r"[0-9a-f]{40}", resolved):
         failures.append("current commit identity is not a full 40-character Git object ID")
-    if findings(valid, "abc1234"):
+    if findings(valid, commit):
         failures.append("valid fixture was rejected")
     for label, mutate in mutations:
         row = copy.deepcopy(valid)
         mutate(row)
-        if not findings(row, "abc1234"):
+        if not findings(row, commit):
             failures.append(f"missed {label} mutation")
+    abbreviated = copy.deepcopy(valid)
+    abbreviated["git_sha"] = commit[:8]
+    if "report commit is not a full 40-character Git object ID" not in findings(abbreviated, commit):
+        failures.append("abbreviated report commit escaped detector")
     from validate_bundle import _span
     multiline = [
         "def audit_contract(",

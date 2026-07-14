@@ -11,6 +11,7 @@ are defined in [`docs/release_artifacts.md`](docs/release_artifacts.md).
 - Replaced the duplicated checked-in standalone build with deterministic release-time generation and
   added a compact public entrypoint, agent workflow design note, and repository-prose checks.
 - Thanks to Juan Jose Durillo Barrionuevo for the expert Spanish course translation and developer-language review.
+- Refined Spanish runtime labels and course parity while retaining Juan Jose Durillo Barrionuevo's reviewed prose baseline.
 
 At release time, move accepted entries under the immutable version tag and keep the remaining work
 under `Unreleased`.

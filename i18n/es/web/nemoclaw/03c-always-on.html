@@ -152,12 +152,12 @@ Cuando el usuario pregunte por un incidente de producción o pegue una línea de
 // Edit the greeting, examples, or respond logic, then Run to re-render.
 helpers.mountChatUI("#alwayson-artifact", {
   disabled: () => { const c = helpers.getOpenClawConnection(); return !(c.token && c.rawUrl); },
-  disabledMsg: "Connect your launchable in Module 3a first. This panel needs its URL and token.",
-  greeting: "Connect on the Kickstart page, then send something that matches a skill, such as “checkout-service is throwing 502s in us-east-1, what do I do?”",
-  examples: ["checkout-service is throwing 502s in us-east-1", "What skills are you configured with?", "Walk me through your incident runbook", "What cron jobs do you have scheduled?", "How would you triage a sudden latency spike?", "Summarize what you would do if paged at 3am"],
+  disabledMsg: "Conecta primero tu launchable en el Módulo 3a. Este panel necesita su URL y su token.",
+  greeting: "Conéctate en la página Kickstart y envía algo que coincida con una skill, por ejemplo: «checkout-service devuelve errores 502 en us-east-1, ¿qué hago?»",
+  examples: ["checkout-service devuelve errores 502 en us-east-1", "¿Qué skills tienes configuradas?", "Guíame por tu runbook de incidentes", "¿Qué tareas cron tienes programadas?", "¿Cómo harías el triaje de un aumento repentino de la latencia?", "Resume qué harías si recibieras una alerta a las tres de la mañana"],
   respond: async (text, ctx) => { await helpers.openclawChat(text, { session: "art-" + ctx.thread, view: ctx.view, signal: ctx.signal }); },
 });
-helpers.log("rendered below. Edit the config and Run.");
+helpers.log("artefacto renderizado abajo. Edita la configuración y vuelve a ejecutar.");
 
 // The panel is helpers.mountChatUI and it streams through helpers.openclawChat; open the helpers tab above to read either one's source.
 `,
@@ -375,10 +375,10 @@ mountCanvasFlow("#cell-skill", {
       showCode: false,
       summary: "Examina la respuesta del agente para localizar los cuatro pasos de la skill: confirmar el alcance, abrir el runbook, proponer una mitigación reversible y detenerse antes de Jira.",
       code: `// Inspect the latest reply for signs that the skill recipe shaped it.
-helpers.log.details("agent reply", state.out);
+helpers.log.details("respuesta del agente", state.out);
 const r = (state.out || "").toLowerCase();
 const hits = ["runbook", "reversible", "confirm", "jira"].filter(w => r.includes(w));
-helpers.log("skill steps echoed in the reply: " + (hits.join(", ") || "(none this run)"));
+helpers.log("pasos de la skill reflejados en la respuesta: " + (hits.join(", ") || "(ninguno en esta ejecución)"));
 return { matched_steps: hits };
 `,
     },
@@ -406,11 +406,11 @@ mountCanvasFlow("#probe-cron", {
       showCode: false,
       summary: "Llama a cron.list para ver lo que ya está programado. Cada tarea contiene un id asignado por el servidor, una programación estructurada y un payload estructurado.",
       code: `// Use the gateway socket to list scheduled jobs without changing anything.
-if (!state.call) { helpers.log("Run Connect first."); return; }
+if (!state.call) { helpers.log("Ejecuta primero Conectar."); return; }
 const pl = await state.call("cron.list");
 const jobs = pl?.jobs || [];
 if (!jobs.length) {
-  helpers.log("(no cron jobs installed)");
+  helpers.log("(no hay tareas cron instaladas)");
 } else {
   jobs.forEach(j => {
     const schedule = j.schedule?.kind === "cron" ? j.schedule.expr : JSON.stringify(j.schedule || {});
@@ -418,7 +418,7 @@ if (!jobs.length) {
     helpers.log(j.id + "  " + schedule + "  " + message.slice(0, 60));
   });
 }
-helpers.log.details("raw cron.list", pl);
+helpers.log.details("datos sin procesar de cron.list", pl);
 return { count: jobs.length };
 `,
     },
@@ -427,7 +427,7 @@ return { count: jobs.length };
       showCode: false,
       summary: "Llama a cron.add con nombre, programación estructurada, sesión aislada y payload del turno del agente. El gateway asigna el id que se usa después para eliminar la tarea.",
       code: `// Install one short-lived demo cron job so the unattended path is visible.
-if (!state.call) { helpers.log("Run Connect first."); return; }
+if (!state.call) { helpers.log("Ejecuta primero Conectar."); return; }
 const name = "quick-3c-demo";
 const before = await state.call("cron.list");
 let added = (before?.jobs || []).find(job => job.name === name);
@@ -459,10 +459,10 @@ state.demoCronBaselineRunAt = Math.max(
   ...historyEntries.map(entry => Math.max(Number(entry.ts || 0), Number(entry.runAtMs || 0)))
 );
 helpers.log("instaló " + name + " como " + added.id + " (se ejecuta cada minuto)");
-helpers.log.details("raw cron.add", added);
+helpers.log.details("datos sin procesar de cron.add", added);
 const pl = await state.call("cron.list");
 helpers.log("tareas cron actuales: " + (pl?.jobs || []).map(j => j.name + " (" + j.id + ")").join(", "));
-helpers.log.details("raw cron.list", pl);
+helpers.log.details("datos sin procesar de cron.list", pl);
 return { installed: added.id, name };
 `,
     },
@@ -547,17 +547,17 @@ return {
       showCode: false,
       summary: "Llama a cron.remove con el id asignado por cron.add. Si la página se recargó, recupera ese id por nombre antes de eliminar la tarea.",
       code: `// Remove the demo cron so the launchable does not keep running it.
-if (!state.call) { helpers.log("Run Connect first."); return; }
+if (!state.call) { helpers.log("Ejecuta primero Conectar."); return; }
 const before = await state.call("cron.list");
 const job = (before?.jobs || []).find(j => j.id === state.demoCronId || j.name === "quick-3c-demo");
 if (!job) { helpers.log("quick-3c-demo ya no está instalada"); return { remaining: (before?.jobs || []).map(j => j.id) }; }
 const removed = await state.call("cron.remove", { id: job.id });
 helpers.log("eliminó quick-3c-demo (" + job.id + ")");
-helpers.log.details("raw cron.remove", removed);
+helpers.log.details("datos sin procesar de cron.remove", removed);
 const pl = await state.call("cron.list");
 const remaining = (pl?.jobs || []).map(j => j.id);
-helpers.log("cron jobs remaining: " + (remaining.length ? remaining.join(", ") : "(none)"));
-helpers.log.details("raw cron.list", pl);
+helpers.log("tareas cron restantes: " + (remaining.length ? remaining.join(", ") : "(ninguna)"));
+helpers.log.details("datos sin procesar de cron.list", pl);
 return { remaining };
 `,
     },

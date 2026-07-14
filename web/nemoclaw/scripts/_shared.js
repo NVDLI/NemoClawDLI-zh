@@ -1345,6 +1345,11 @@ export function mountHeadingLinks() {
   const occupied = new Set([...document.querySelectorAll("[id]")].map((node) => node.id));
   main.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((heading) => {
     if (heading.classList.contains("heading-link-target")) return;
+    // A heading inside any interactive surface already inherits that surface's
+    // action. Adding a permalink would create competing nested controls: linked
+    // cards would scroll instead of opening, and summary/button clicks would be
+    // ambiguous for keyboard and pointer users.
+    if (heading.closest('a[href], button, summary, [role="button"], [role="link"]')) return;
     if (!heading.id) heading.id = headingId(heading.textContent, occupied);
     else occupied.add(heading.id);
 

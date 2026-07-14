@@ -147,6 +147,8 @@ from collections import defaultdict  # noqa: E402
 
 def _git_sha() -> str:
     try:
+        # Abbreviation length changes when CI fetches another ref with the same prefix. Reports
+        # are reused across jobs, so bind them to the stable full object ID.
         return subprocess.run(["git", "-C", str(TASK1), "rev-parse", "HEAD"],
                               capture_output=True, text=True, timeout=10).stdout.strip() or "?"
     except Exception:

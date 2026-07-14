@@ -619,6 +619,14 @@ async function inspect(browser, file) {
           return `${raw} ${error.message || String(error)}`;
         }
       }));
+      const interactiveSelector = 'a[href],button,input:not([type="hidden"]),select,textarea,summary,[role="button"],[role="link"]';
+      const interactiveNesting = Array.from(document.querySelectorAll(interactiveSelector)).flatMap(outer =>
+        Array.from(outer.querySelectorAll(interactiveSelector)).map(inner => ({
+          outer:`${outer.tagName.toLowerCase()}${outer.id ? `#${outer.id}` : ''}.${String(outer.className || '').trim().replace(/\s+/g, '.')}`,
+          inner:`${inner.tagName.toLowerCase()}${inner.id ? `#${inner.id}` : ''}.${String(inner.className || '').trim().replace(/\s+/g, '.')}`,
+          text:(inner.textContent || inner.getAttribute('aria-label') || '').trim().slice(0,80),
+        }))
+      ).slice(0,12);
       return {
         isSkill,
         meta: !isSkill || !!meta,
@@ -638,6 +646,7 @@ async function inspect(browser, file) {
         gone: document.querySelectorAll('.sx-dot.gone').length,
         exports,
         deadInternalUrls:internalUrlChecks.filter(Boolean),
+        interactiveNesting,
         sbomEvidence: sbomEvidence ? {
           ready:sbomEvidence.dataset.sbomEvidenceReady === '1',
           error:sbomEvidence.dataset.sbomEvidenceError || '',
@@ -703,6 +712,7 @@ async function inspect(browser, file) {
     }
     if (!state.visibleText) errors.push('renderer produced no visible text');
     if (state.deadInternalUrls.length) errors.push(`internal URLs failed: ${state.deadInternalUrls.join('; ')}`);
+    if (state.interactiveNesting.length) errors.push(`nested interactive controls: ${JSON.stringify(state.interactiveNesting)}`);
     if (state.isSkill && state.explorer && !state.mounted) errors.push('shared explorer did not mount');
     if (state.isSkill && state.gone) errors.push(`${state.gone} configured file(s) did not load`);
     if (state.isSkill) state.exports.forEach(item => {
