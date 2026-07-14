@@ -395,6 +395,13 @@ for (let t = 0; t < 25; t++) {
   trace.push(state.env.position);
 }
 
+helpers.viz.lineChart(trace, {
+  title: "Posição por iteração",
+  xLabel: "iteração",
+  yLabel: "posição",
+  min: state.env.leftWall,
+  max: state.env.rightWall,
+});
 return { ticks: trace.length, finalPosition: state.env.position, trace };
 `,
     },

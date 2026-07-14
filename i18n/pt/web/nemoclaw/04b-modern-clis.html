@@ -74,7 +74,6 @@
 
   <h2>Mesmo ciclo, diferentes padrões da aplicação</h2>
   <p>Cada produto executa um modelo em um ciclo com ferramentas. Os padrões e recursos nativos variam, assim como os detalhes de implementação. O custo e a conveniência combinados formam o <em>peso do harness</em> usado abaixo.</p>
-  <p>O Hermes se diferencia das CLIs de editores porque criação de skills, memória persistente, cron e gateway de mensagens são fluxos normais de operação em sua documentação pública. Outros agentes também podem reescrever seus próprios arquivos de orientação ou skills quando têm permissão para editar arquivos. Portanto, esse risco não é exclusivo do Hermes.</p>
   <ul class="cli-list">
     <li><a href="https://docs.claude.com/en/docs/claude-code" target="_blank" rel="noopener"><strong>Claude Code</strong></a> (Anthropic). Usa <code>CLAUDE.md</code> na raiz do projeto e <code>~/.claude/CLAUDE.md</code> para regras do usuário. Oferece um conjunto amplo de recursos (edição, bash, web, subagentes e tarefas longas), com hooks que interceptam chamadas de ferramentas, e padrões conservadores: o acesso mais amplo a arquivos e à rede exige sua autorização.</li>
     <li><a href="https://github.com/openai/codex" target="_blank" rel="noopener"><strong>Codex CLI</strong></a> (OpenAI). Usa <code>AGENTS.md</code>. O sandbox padrão opera com aprovações: cada gravação ou comando de shell aguarda sua confirmação, a menos que você passe <code>--full-auto</code>. O conjunto de ferramentas se concentra no shell; até a edição de arquivos passa por ele.</li>
@@ -82,6 +81,8 @@
     <li><a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener"><strong>Hermes</strong></a> (Nous Research). É um agente de terminal que evolui com o uso: <em>cria skills a partir da experiência</em>, mantém memória entre sessões, executa cron nativo e pode ser acessado por Telegram, Discord e Slack através do gateway. Tem a mesma forma de aplicação do OpenClaw, com automodificação e interface de mensagens ativadas.</li>
     <li><a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener"><strong>OpenClaw</strong></a> (no NVIDIA NemoClaw). É o agente usado neste curso. Seus arquivos de orientação ocupam toda a pasta <code>workspace/</code> (SOUL.md, AGENTS.md, IDENTITY.md e os demais). Ele aceita operação autônoma por gatilhos gerenciados pelo gateway. Na stack de referência do NemoClaw, é executado <em>dentro</em> do sandbox OpenShell; assim, uma política do kernel restringe suas ferramentas independentemente do que o modelo decida.</li>
   </ul>
+
+  <p>O Hermes se diferencia das CLIs de editores porque criação de skills, memória persistente, cron e gateway de mensagens são fluxos normais de operação em sua documentação pública. Outros agentes também podem reescrever seus próprios arquivos de orientação ou skills quando têm permissão para editar arquivos. Portanto, esse risco não é exclusivo do Hermes.</p>
 
   <div class="callout"><strong>O OpenShell pode hospedar essa classe de aplicação de agente.</strong> O NemoClaw é a stack de referência usada no curso. A NVIDIA documenta integrações do OpenShell com Codex, Cursor e OpenCode. A CLI define os padrões iniciais. O wrapper do OpenShell determina até onde eles podem chegar.</div>
 

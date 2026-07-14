@@ -95,7 +95,14 @@
       "license": "Apache-2.0",
       "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
       "connection": "original",
-      "used_by": "01a-loop.html"
+      "used_by": "01a-loop.html",
+      "semantic_contract": {
+        "type": "directed-flow",
+        "flows": [
+          {"from": "environment", "to": "agent", "label": "observation"},
+          {"from": "agent", "to": "environment", "label": "action"}
+        ]
+      }
     },
     {
       "file": "figures/01a-loop-1.svg",
@@ -476,6 +483,7 @@
   <div class="pv-meta"><span>Connection</span>original</div>
   <div class="pv-meta"><span>Source</span>original course diagram</div>
   <div class="pv-meta"><span>License</span>Apache-2.0</div>
+  <div class="pv-meta"><span>Semantics</span>observation: environment → agent; action: agent → environment</div>
 </article>
 <article class="pv-card" data-asset="figures/01a-loop-1.svg" data-course-use="01a-loop.html">
   <div class="pv-prev"><div data-svg-src="figures/01a-loop-1.svg"></div></div>

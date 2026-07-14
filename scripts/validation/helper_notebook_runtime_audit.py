@@ -185,6 +185,26 @@ function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
   const body = await page.locator('body').innerText();
   const runtimeFailures = results.filter(r => r.failed);
   const textFailure = body.match(/✗ stopped:[^\n]*|TypeError[^\n]*|ReferenceError[^\n]*/g) || [];
+  const lightVisuals = await page.evaluate(() => {
+    document.documentElement.dataset.theme = 'light';
+    return Array.from(document.querySelectorAll('.helper-notebook svg.gfx-dark[role="img"]')).map(svg => {
+      const stroke = svg.querySelector('polyline, line, path');
+      const label = svg.querySelector('text');
+      return {
+        label: svg.getAttribute('aria-label') || '',
+        background: getComputedStyle(svg).backgroundColor,
+        stroke: stroke ? getComputedStyle(stroke).stroke : '',
+        text: label ? getComputedStyle(label).fill : '',
+      };
+    });
+  });
+  const badVisuals = lightVisuals.filter(visual =>
+    !visual.label || visual.background !== 'rgb(255, 255, 255)' ||
+    !visual.stroke || visual.stroke === visual.background ||
+    !visual.text || visual.text === visual.background);
+  if (!lightVisuals.length || badVisuals.length) {
+    throw new Error(`helper SVG output is not visible in light theme: ${JSON.stringify({ lightVisuals, badVisuals })}`);
+  }
   await browser.close();
   server.close();
   if (runtimeFailures.length || pageErrors.length || textFailure.length) {
@@ -309,8 +329,10 @@ def static_audit(skill_path: Path = SKILL) -> list[str]:
             findings.append(f"helper notebook must show {token} in both CanvasFlow and RunCell examples")
     if "helpers.log.h(\"UI helper dry run\")" not in raw or "helpers.log.h(\"shared log surfaces\")" not in raw:
         findings.append("helper notebook must retain log heading examples in both RunCell and CanvasFlow")
-    if "helpers.viz.scoreBarChart(" not in raw or "helpers.viz.diffTable(" not in raw:
-        findings.append("CanvasFlow visualization examples must retain chart and diff coverage")
+    if any(token not in raw for token in (
+        "helpers.viz.lineChart(", "helpers.viz.scoreBarChart(", "helpers.viz.diffTable(",
+    )):
+        findings.append("CanvasFlow visualization examples must retain trace, chart, and diff coverage")
     if "helpers.coursePages()" not in raw or "helpers.formatSearchResults(" not in raw:
         findings.append("retrieval/context examples must retain coursePages and formatSearchResults coverage")
     if "helpers.fetchRetry(" not in raw or "helpers.browserChatFetch()" not in raw:

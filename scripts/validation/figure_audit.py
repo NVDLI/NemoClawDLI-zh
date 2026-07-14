@@ -25,9 +25,9 @@ for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
         sys.path.insert(0, str(_p / "scripts")); break
 from _bootstrap import add_script_paths, find_repo_root
 try:
-    from .figure_provenance import fixed_white_figures, svg_modes
+    from .figure_provenance import fixed_white_figures, svg_modes, svg_semantic_contracts
 except ImportError:
-    from figure_provenance import fixed_white_figures, svg_modes
+    from figure_provenance import fixed_white_figures, svg_modes, svg_semantic_contracts
 
 HERE = Path(__file__).resolve()
 TASK1 = find_repo_root(HERE)
@@ -399,6 +399,76 @@ def _provenance_theme_contract() -> list[tuple[str, str]]:
     return findings
 
 
+def _semantic_contract_findings(
+    contracts: dict[str, dict[str, object]],
+    figure_sources: dict[str, str],
+) -> list[tuple[str, str]]:
+    """Verify meaning declared in provenance against inspectable SVG structure."""
+    findings: list[tuple[str, str]] = []
+    directed_flow = re.compile(r"\bdata-flow-(?:from|to|label)\s*=", re.I)
+    for name, source in sorted(figure_sources.items()):
+        if directed_flow.search(source) and name not in contracts:
+            findings.append((name, "marked directed flow lacks an image-provenance semantic contract"))
+    for name, contract in sorted(contracts.items()):
+        source = figure_sources.get(name)
+        if source is None:
+            findings.append((name, "semantic contract points to a missing SVG"))
+            continue
+        if contract.get("type") != "directed-flow":
+            findings.append((name, f"unsupported semantic contract type: {contract.get('type')!r}"))
+            continue
+        flows = contract.get("flows")
+        if not isinstance(flows, list) or not flows:
+            findings.append((name, "directed-flow contract needs at least one flow"))
+            continue
+        root = re.search(r"<svg\b[^>]*>", source, re.I | re.S)
+        aria = _attrs(root.group(0)).get("aria-label", "").lower() if root else ""
+        path_attrs = [_attrs(match.group(0)) for match in re.finditer(r"<path\b[^>]*>", source, re.I)]
+        text_nodes = []
+        for match in re.finditer(r"<text\b[^>]*>(.*?)</text>", source, re.I | re.S):
+            text_nodes.append((_attrs(match.group(0)), re.sub(r"\s+", " ", match.group(1)).strip().lower()))
+        seen: set[tuple[str, str, str]] = set()
+        for index, raw_flow in enumerate(flows, 1):
+            if not isinstance(raw_flow, dict):
+                findings.append((name, f"directed-flow entry {index} must be an object"))
+                continue
+            start = str(raw_flow.get("from", "")).strip().lower()
+            end = str(raw_flow.get("to", "")).strip().lower()
+            label = str(raw_flow.get("label", "")).strip().lower()
+            key = (start, end, label)
+            if not all(key):
+                findings.append((name, f"directed-flow entry {index} needs from, to, and label"))
+                continue
+            if key in seen:
+                findings.append((name, f"duplicate directed flow: {start} -> {end} ({label})"))
+                continue
+            seen.add(key)
+            matching_paths = [attrs for attrs in path_attrs if (
+                attrs.get("data-flow-from", "").lower(),
+                attrs.get("data-flow-to", "").lower(),
+                attrs.get("data-flow-label", "").lower(),
+            ) == key]
+            if len(matching_paths) != 1:
+                findings.append((name, f"expected one marked path for {start} -> {end} ({label}); found {len(matching_paths)}"))
+            visible = [text for attrs, text in text_nodes
+                       if attrs.get("data-flow-label", "").lower() == label and text == label]
+            if len(visible) != 1:
+                findings.append((name, f"flow {label!r} needs one matching visible text label; found {len(visible)}"))
+            if not all(term in aria for term in key):
+                findings.append((name, f"SVG aria-label must name {label}, {start}, and {end}"))
+    return findings
+
+
+def _semantic_contract() -> list[tuple[str, str]]:
+    """Audit every semantic contract discovered from figure provenance."""
+    figure_root = WEB / "nemoclaw" / "assets" / "figures"
+    figures = {
+        path.relative_to(figure_root.parent).as_posix(): path.read_text(errors="ignore")
+        for path in sorted(figure_root.rglob("*.svg"))
+    }
+    return _semantic_contract_findings(svg_semantic_contracts(), figures)
+
+
 def audit_file(path: Path):
     """Run render-size, legibility, and a11y checks on one page. This catches both inline
     SVG and fetched <div data-svg-src=...> course figures before they ship."""
@@ -476,6 +546,7 @@ def run(verbose=True):
         dark += d; style_scope += ss; canvas += c; crowded += cr; embedded_caption += ec
     mobile_zoom = _mobile_zoom_contract()
     theme_contract = _provenance_theme_contract()
+    semantic_contract = _semantic_contract()
     style_scope += _injected_style_scope_contract()
     if verbose:
         if tiny:
@@ -530,19 +601,24 @@ def run(verbose=True):
             print(f"[figure provenance/theme contract] {len(theme_contract)}")
             for rel, message in theme_contract:
                 print(f"        {rel}  {message}")
+        if semantic_contract:
+            print(f"[figure semantic contract] {len(semantic_contract)}")
+            for rel, message in semantic_contract:
+                print(f"        {rel}  {message}")
         total = (len(tiny) + len(small) + len(flex_parent) + len(noaria) + len(over) + len(imgs)
                  + len(blanks) + len(dark) + len(style_scope) + len(canvas) + len(crowded) + len(embedded_caption)
-                 + len(mobile_zoom) + len(theme_contract))
+                 + len(mobile_zoom) + len(theme_contract) + len(semantic_contract))
         print(f"\nfigure_audit: {total} finding(s) "
               f"(tiny {len(tiny)}, small {len(small)}, flex-parent {len(flex_parent)}, "
               f"overflow {len(over)}, no-aria {len(noaria)}, img-alt {len(imgs)}, blank-link {len(blanks)}, "
               f"dark-mode {len(dark)}, style-scope {len(style_scope)}, canvas {len(canvas)}, crowded {len(crowded)}, "
               f"embedded-caption {len(embedded_caption)}, mobile-zoom {len(mobile_zoom)}, "
-              f"theme-contract {len(theme_contract)})")
+              f"theme-contract {len(theme_contract)}, semantic-contract {len(semantic_contract)})")
     return {"tiny": tiny, "small_render": small, "flex_parent": flex_parent, "overflow": over,
             "no_aria": noaria, "img_no_alt": imgs, "blank_link": blanks, "dark_mode": dark,
             "style_scope": style_scope, "canvas": canvas, "crowded": crowded, "embedded_caption": embedded_caption,
-            "mobile_zoom": mobile_zoom, "theme_contract": theme_contract}
+            "mobile_zoom": mobile_zoom, "theme_contract": theme_contract,
+            "semantic_contract": semantic_contract}
 
 
 if __name__ == "__main__":
