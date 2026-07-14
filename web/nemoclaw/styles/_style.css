@@ -655,7 +655,7 @@ pre:has(> code) > code {
   gap: 12px; flex-wrap: wrap; margin-bottom: 10px;
   min-width: 0;
 }
-.cf-actions { flex: 1 1 auto; min-width: 0; justify-content: flex-end; flex-wrap: wrap; }
+.cf-actions { flex: 1 1 auto; min-width: 0; justify-content: flex-end; }
 .cf-label {
   font-family: ui-monospace, "SF Mono", Consolas, monospace;
   font-size: .76rem; color: var(--gs);
@@ -737,6 +737,14 @@ body.python-mode .cf-btn-reset-kernel:hover:not([disabled]) {
   flex-wrap: wrap;
 }
 .cell-spacer { flex: 1 1 auto; min-width: 24px; }
+.cell-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
 .rc-label {
   color: var(--gs);
   text-transform: uppercase;
@@ -745,6 +753,10 @@ body.python-mode .cf-btn-reset-kernel:hover:not([disabled]) {
 }
 .rc-lang-sub { color: var(--tf); }
 .cell-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
   background: #161616;
   color: var(--tx);
   border: 1px solid var(--bd);
@@ -1057,7 +1069,7 @@ body.python-mode .cf-btn-reset-kernel:hover:not([disabled]) {
 .cf-helpers > summary {
   cursor: pointer;
   padding: 10px 14px;
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   user-select: none;
   list-style: none;
 }
@@ -1088,9 +1100,15 @@ body.python-mode .cf-btn-reset-kernel:hover:not([disabled]) {
 .cf-helpers-sig code { background: #1a1a1a; padding: 1px 5px; border-radius: 3px; font-size: .82em; color: var(--gs); }
 .cf-helpers-meta {
   font-size: .74rem; color: var(--tf);
-  white-space: nowrap;
+  min-width: 0;
+  text-align: right;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .cf-helpers-meta code { background: #1a1a1a; padding: 1px 5px; border-radius: 3px; font-size: .9em; color: var(--gs); }
+@media(max-width:640px) {
+  .cf-helpers-meta { flex: 1 1 100%; text-align: left; padding-left: 20px; }
+}
 /* Horizontal scroll wrapper around the helpers table. When the canvas is
    embedded in a narrow frame (edX iframe, mobile) the two-column table
    would otherwise overflow and cut off the descriptions. */

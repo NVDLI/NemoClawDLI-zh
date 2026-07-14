@@ -269,12 +269,12 @@ const SPECIALISTS = {
 
 helpers.mountChatUI("#router-artifact", {
   memory: true,
-  greeting: "Ask a support question (billing, a technical error, your account…). I classify it, route it to a specialist, and answer in that voice. Follow-ups keep the conversation; the 🧠 toggle clears it, and ✎ edit rewinds.",
+  greeting: "Formula una consulta de soporte sobre facturación, un error técnico o tu cuenta. La clasifico, la dirijo a un especialista y respondo con esa voz. Los mensajes posteriores conservan la conversación; el control 🧠 la borra y ✎ editar retrocede hasta ese turno.",
   models: [
-    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
-    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
+    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · rápido" },
+    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · más potente" },
   ],
-  examples: ["I was double charged on my invoice", "The app crashes every time I log in", "How do I reset my password?", "I want a refund for last month's subscription", "The API returns 500 errors since this morning", "How do I update my email address?"],
+  examples: ["Me han cobrado dos veces en la factura", "La aplicación se bloquea cada vez que inicio sesión", "¿Cómo restablezco mi contraseña?", "Quiero el reembolso de la suscripción del mes pasado", "La API devuelve errores 500 desde esta mañana", "¿Cómo actualizo mi dirección de correo?"],
   respond: async (text, ctx) => {
     const r = await helpers.chat({ messages: [
       { role: "system", content: "Classify the user's question into ONE category and reply with ONLY that word.\\nbilling = payments, charges, double charges, refunds, invoices, subscriptions\\ntechnical = errors, bugs, setup, configuration, how-to\\naccount = login, password, profile, security, access\\nother = anything that fits none of the above" },
@@ -291,7 +291,7 @@ helpers.mountChatUI("#router-artifact", {
     if (inTok || outTok) ctx.view.usage({ input: inTok, output: outTok, model: s.model });
   },
 });
-helpers.log("rendered below. Edit the config and Run.");
+helpers.log("artefacto renderizado abajo. Edita la configuración y vuelve a ejecutar.");
 
 /* mountChatUI renders the panel; respond() makes one classify call and one answer call. */
 `,
@@ -412,7 +412,7 @@ state.searches = await Promise.all(
 const wall = ((performance.now() - t0) / 1000).toFixed(2);
 const unreachable = state.searches.filter(s => s.unreachable);
 if (unreachable.length) {
-  helpers.log("⚠ search service unreachable for", unreachable.length, "of", state.searches.length,
+  helpers.log("⚠ servicio de búsqueda inaccesible para", unreachable.length, "de", state.searches.length,
     "queries; check your network connection and try again");
 }
 helpers.log("ran", state.searches.length, "searches concurrently in", wall + "s");
@@ -471,7 +471,7 @@ queries.forEach((q, i) => {
 edges.unshift({ from: "goal", to: "planner" });
 
 helpers.viz.diagram({
-  title: "ReWOO pipeline · plan → parallel searches → synthesize",
+  title: "Pipeline ReWOO · planificar → búsquedas en paralelo → sintetizar",
   nodes, edges,
 });
 
@@ -707,7 +707,7 @@ state.createSpecialist = function({ role, systemPrompt, tools = [] }) {
   };
 };
 
-helpers.log("factory ready: createSpecialist({ role, systemPrompt, tools })");
+helpers.log("fábrica lista: createSpecialist({ role, systemPrompt, tools })");
 return { factory: "createSpecialist" };
 `,
     },
@@ -732,7 +732,7 @@ state.translator = state.createSpecialist({
   ].join(" "),
 });
 
-helpers.log("built 2 specialists ·", state.arithmetician.role, "·", state.translator.role);
+helpers.log("2 especialistas creados ·", state.arithmetician.role, "·", state.translator.role);
 return { specialists: [state.arithmetician.role, state.translator.role] };
 `,
     },

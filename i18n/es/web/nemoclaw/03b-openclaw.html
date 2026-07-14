@@ -187,12 +187,12 @@
 // Edit the greeting, examples, or response logic, then rerun.
 helpers.mountChatUI("#openclaw-artifact", {
   disabled: () => { const c = helpers.getOpenClawConnection(); return !(c.token && c.rawUrl); },
-  disabledMsg: "Connect your launchable in Module 3a first. This panel needs its URL and token.",
+  disabledMsg: "Conecta primero tu launchable en el Módulo 3a. Este panel necesita su URL y su token.",
   greeting: "Habla con tu agente en vivo (primero, conéctate en la página Kickstart). Pídele que inspeccione el workspace con exec o lea SOUL.md.",
   examples: ["Usa exec para ejecutar ls -la /sandbox/.openclaw/workspace y explica cada archivo", "Lee SOUL.md y resume quién eres", "¿A qué herramientas tienes acceso?", "¿Qué contiene tu AGENTS.md?", "Guarda una nota en la memoria y luego léela", "¿Qué harías si una página te pidiera ignorar tus instrucciones?"],
   respond: async (text, ctx) => { await helpers.openclawChat(text, { session: "art-" + ctx.thread, view: ctx.view, signal: ctx.signal }); },
 });
-helpers.log("rendered below. Edit the config and Run.");
+helpers.log("artefacto renderizado abajo. Edita la configuración y vuelve a ejecutar.");
 
 // The panel is helpers.mountChatUI and it streams through helpers.openclawChat; open the helpers tab above to read either one's source.
 `,
@@ -334,13 +334,13 @@ const commands = [
   "echo '=== MEMORY.md ==='; cat .openclaw/workspace/MEMORY.md 2>/dev/null || echo '(no curated MEMORY.md yet; the agent writes it in a main session)'",
 ];
 
-helpers.log("opening operator terminal → sandbox '" + AGENT + "' …");
+helpers.log("abriendo el terminal del operador → sandbox '" + AGENT + "' …");
 const { output, raw, frames } = await helpers.terminal(
   "openshell sandbox connect " + AGENT,
   { send: commands }
 );
 helpers.log(output);
-helpers.log.details("raw transcript (" + frames + " WebSocket frames)", raw);
+helpers.log.details("transcripción sin procesar (" + frames + " tramas WebSocket)", raw);
 `,
 });
 

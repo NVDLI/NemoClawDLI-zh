@@ -174,8 +174,8 @@ const clearSel = () => { selected.clear(); FW.forEach((f) => btnFor[f.id].classL
 
 helpers.mountChatUI("#clis-artifact", {
   growLog: true,   // flow with the page instead of an internal 480px scroll that traps the wheel
-  greeting: "Tell me a task and where it runs. I will show the one core loop all of these CLIs would run for it, then weigh each from its docs, rather than crowning a single winner. Toggle a README above to hand me its full text for your next question.",
-  examples: ["Refactor a large repo unattended overnight", "A personal assistant I message from my phone", "Triage prod incidents on a server 24/7"],
+  greeting: "Describe una tarea y dónde se ejecuta. Mostraré el bucle central que usarían todos estos agentes CLI y después compararé cada uno a partir de su documentación, sin declarar un ganador único. Selecciona un README para incluir su texto completo en la siguiente pregunta.",
+  examples: ["Refactoriza un repositorio grande durante la noche sin supervisión", "Un asistente personal al que escribo desde el teléfono", "Realiza el triaje de incidentes de producción en un servidor las 24 horas del día"],
 
   respond: async (text, ctx) => {
     let primer = "";
@@ -191,7 +191,7 @@ helpers.mountChatUI("#clis-artifact", {
     clearSel();                                   // deselect so the same README never double-injects
   },
 });
-helpers.log("rendered below. Toggle a README to add it as context, then ask.");
+helpers.log("artefacto renderizado abajo. Selecciona un README para añadirlo como contexto y después formula una pregunta.");
 
 /* mountChatUI renders the panel; respond() streams one chat call. */
 `,
@@ -241,14 +241,14 @@ async function runJS(code) {
 
 helpers.mountChatUI("#jsagent-artifact", {
   growLog: true,   // flow with the page instead of an internal 480px scroll that traps the wheel
-  greeting: "Give me a goal. My shell is this page's JavaScript runtime, so I act by running JS right here in your tab.",
+  greeting: "Indica un objetivo. Mi shell es el motor de JavaScript de esta página, así que actúo ejecutando JS directamente en tu pestaña.",
   examples: [
-    "How many code editors are on this page?",
-    "List the H2 section headings on this page.",
-    "Fetch assets/rag_index.json and report the embed model and how many docs it pins.",
-    "How many links on this page open in a new tab?",
-    "Compute the 12th Fibonacci number and return it.",
-    "Which keys are in localStorage right now?",
+    "¿Cuántos editores de código hay en esta página?",
+    "Enumera los encabezados H2 de esta página.",
+    "Obtén assets/rag_index.json e indica el modelo de embeddings y cuántos documentos incluye.",
+    "¿Cuántos enlaces de esta página se abren en una pestaña nueva?",
+    "Calcula el duodécimo número de Fibonacci y devuélvelo.",
+    "¿Qué claves hay ahora mismo en localStorage?",
   ],
   respond: async (goal, ctx) => {
     const messages = [
@@ -305,7 +305,7 @@ helpers.mountChatUI("#jsagent-artifact", {
     }
   },
 });
-helpers.log("CLI agent mounted below. Give it a goal and watch it drive the runtime.");
+helpers.log("agente de CLI montado abajo. Indica un objetivo y observa cómo controla el runtime.");
 `,
     });
   </script>
@@ -338,11 +338,11 @@ function launchableUrl() {
 const SUGGESTIONS = ["help", "openshell sandbox list", "openshell status", "openshell --help", "agent ls", "agent ls -a", "agent pwd"];
 // Interactive sessions a one-shot terminal cannot drive: steer the student to the chat panel or to exec.
 const INTERACTIVE = ["openshell term", "openshell sandbox connect", "nemoclaw", "openclaw chat", "openclaw tui", "openclaw configure"];
-const HELP = 'This is your launchable host shell. The host carries the openshell CLI; your agent runs inside a sandbox. On the host, try: openshell sandbox list, openshell status, openshell --help. To run a command inside your agent, prefix it with "agent", for example: agent ls. To chat with the agent, use the panel below this terminal. Type clear to empty the screen.';
+const HELP = 'Este es el shell del host de tu launchable. El host incluye el CLI openshell y el agente se ejecuta dentro de un sandbox. En el host, prueba openshell sandbox list, openshell status u openshell --help. Para ejecutar un comando dentro del agente, antepón "agent"; por ejemplo, agent ls. Para conversar con el agente, usa el panel situado bajo esta terminal. Escribe clear para vaciar la pantalla.';
 
 function hintFor(output) {
   if (/execvp|command not found|No such file or directory/i.test(String(output || ""))) {
-    return "Not a command on the launchable host. The host carries openshell, so try openshell --help or openshell sandbox list, or run it inside your agent with: agent <command>.";
+    return "Ese comando no existe en el host del launchable. El host incluye openshell; prueba openshell --help u openshell sandbox list, o ejecútalo dentro del agente con: agent <comando>.";
   }
   return "";
 }
@@ -351,20 +351,20 @@ async function run(cmd, con, ctx) {
   const t = cmd.trim();
   if (t === "/help" || t === "help" || t === "?") return con.write(HELP, "da-dim");
   if (t === "/clear" || t === "clear") return con.clear();
-  if (t.charAt(0) === "/") return con.write("Slash commands belong to the chat panel below or the openclaw tui, not this host shell. Type a command without the slash, or help.", "da-dim");
+  if (t.charAt(0) === "/") return con.write("Los comandos con barra pertenecen al panel de chat inferior o a openclaw tui, no a este shell del host. Escribe un comando sin la barra o usa help.", "da-dim");
   if (t === "agent" || t.indexOf("agent ") === 0) {
     const inner = t.slice(5).trim();
-    if (!inner) return con.write('usage: agent <command>   runs <command> inside your agent sandbox, for example: agent ls', "da-dim");
+    if (!inner) return con.write('uso: agent <comando>   ejecuta <comando> dentro del sandbox del agente; por ejemplo: agent ls', "da-dim");
     let r;
     try { r = await helpers.sandboxExec(inner, { signal: ctx.signal }); } catch (e) {
       con.write(String((e && e.message) || e), "da-err");
       return { status: "error", message: "El comando falló. Lee el mensaje e inténtalo de nuevo." };
     }
-    con.write((r.output || "").trimEnd() || "(no output)");
+    con.write((r.output || "").trimEnd() || "(sin salida)");
     const h = hintFor(r.output); if (h) con.write(h, "da-dim");
     return;
   }
-  if (INTERACTIVE.some(function (x) { return t.indexOf(x) === 0; })) return con.write('That starts an interactive session this one-shot terminal cannot hold open. To chat with your agent, use the panel below. For a one-shot command inside the agent, use: agent <command>.', "da-dim");
+  if (INTERACTIVE.some(function (x) { return t.indexOf(x) === 0; })) return con.write('Ese comando inicia una sesión interactiva que esta terminal de una sola ejecución no puede mantener abierta. Para conversar con el agente, usa el panel inferior. Para ejecutar un solo comando dentro del agente, usa: agent <comando>.', "da-dim");
   let got = false, captured = "";
   try {
     await helpers.terminal(t, { totalMs: 120000, idleMs: 8000, signal: ctx.signal, onChunk: function (c) { if (c) { got = true; captured += c; con.raw(c); } } });
@@ -372,7 +372,7 @@ async function run(cmd, con, ctx) {
     con.write(String((e && e.message) || e), "da-err");
     return { status: "error", message: "Falló la conexión del terminal. Vuelve a autenticarte e inténtalo de nuevo." };
   }
-  if (!got) con.write("(no output)", "da-dim");
+  if (!got) con.write("(sin salida)", "da-dim");
   const h = hintFor(captured); if (h) con.write(h, "da-dim");
 }
 
@@ -381,11 +381,11 @@ helpers.mountConsole("#deepagents-artifact", {
   prompt: "$",
   suggestions: SUGGESTIONS,
   disabled: !connected,
-  disabledMsg: "No launchable connected. Open Module 3a (Kickstart), connect your launchable, then return here.",
-  greeting: connected ? "Connected to your launchable host shell. It carries the openshell CLI; your agent runs in a sandbox. Type help, click a chip, or press Tab to autocomplete." : "",
+  disabledMsg: "No hay un launchable conectado. Abre el Módulo 3a, conecta tu launchable y vuelve aquí.",
+  greeting: connected ? "Conectado al shell del host de tu launchable. El host incluye el CLI openshell y el agente se ejecuta en un sandbox. Escribe help, selecciona una sugerencia o pulsa Tab para autocompletar." : "",
   onSubmit: run,
 });
-helpers.log("launchable terminal mounted below. If it says no launchable, connect on Module 3a.");
+helpers.log("terminal del launchable montada abajo. Si indica que no hay un launchable, conéctalo en el Módulo 3a.");
 `,
     });
   </script>

@@ -52,6 +52,15 @@ const PT_TEXT = new Map(Object.entries({
   "↺ Reset": "↺ Restaurar",
   "↺ Reset code": "↺ Restaurar código",
   "Ready": "Pronto",
+  "clear": "limpar",
+  "■ stop": "■ parar",
+  "Stopping…": "Parando…",
+  "+ branch": "+ ramificação",
+  "Connect your launchable on Module 3a first (its URL and token), then your agent is reachable here.": "Primeiro conecte seu launchable no Módulo 3a com a URL e o token. Depois disso, o agente ficará acessível aqui.",
+  "Connected to your agent over the gateway. Ask anything, type /help, click a prompt, or press Tab to autocomplete.": "Conectado ao agente pelo gateway. Faça uma pergunta, digite /help, selecione uma sugestão ou pressione Tab para autocompletar.",
+  "Use /commands for the live gateway list. /clear empties this screen; /new and /branch manage independent agent sessions. Text without a slash is sent to the active agent session.": "Use /commands para listar os comandos atuais do gateway. /clear limpa a tela; /new e /branch gerenciam sessões independentes. Texto sem barra é enviado à sessão ativa.",
+  "No commands reported by the gateway.": "O gateway não informou comandos.",
+  "setting up this session (the first reply takes a moment)…": "preparando esta sessão (a primeira resposta pode demorar)…",
   "empty until you Run": "vazio até executar",
   "reset. empty until you Run": "restaurado; vazio até executar",
   "javascript · editable · re-run": "javascript · editável · execute novamente",
@@ -116,6 +125,11 @@ const PT_TEXT = new Map(Object.entries({
 }));
 
 const PT_PREFIXES = new Map(Object.entries({
+  "Prerequisite: ": "Pré-requisito: ",
+  "running ": "executando ",
+  "commands.list failed: ": "commands.list falhou: ",
+  "branches: ": "ramificações: ",
+  "Branch '": "Ramificação '",
   "✓ Connected. Model replied: ": "✓ Conectado. O modelo respondeu: ",
   "Connection failed: ": "Falha na conexão: ",
   "Model ID is not served by this endpoint. Choose one of: ": "O ID do modelo não é servido por este endpoint. Escolha um destes: ",
@@ -152,6 +166,12 @@ const ES_TEXT = new Map(Object.entries({
   "Ask a question…": "Escriba una pregunta…", "Send": "Enviar", "⏹ Stop": "⏹ Detener",
   "▶ Run": "▶ Ejecutar", "▶ Run all": "▶ Ejecutar todo", "⏳ Running…": "⏳ Ejecutando…",
   "↺ Reset": "↺ Restablecer", "↺ Reset code": "↺ Restablecer código", "Ready": "Listo",
+  "clear": "borrar", "■ stop": "■ detener", "Stopping…": "Deteniendo…", "+ branch": "+ rama",
+  "Connect your launchable on Module 3a first (its URL and token), then your agent is reachable here.": "Conecta primero tu launchable en el Módulo 3a con su URL y su token. Después podrás acceder al agente desde aquí.",
+  "Connected to your agent over the gateway. Ask anything, type /help, click a prompt, or press Tab to autocomplete.": "Conectado a tu agente mediante el gateway. Formula una pregunta, escribe /help, elige una sugerencia o pulsa Tab para autocompletar.",
+  "Use /commands for the live gateway list. /clear empties this screen; /new and /branch manage independent agent sessions. Text without a slash is sent to the active agent session.": "Usa /commands para consultar la lista activa del gateway. /clear vacía la pantalla; /new y /branch administran sesiones independientes. El texto sin barra se envía a la sesión activa.",
+  "No commands reported by the gateway.": "El gateway no ha informado de ningún comando.",
+  "setting up this session (the first reply takes a moment)…": "preparando esta sesión (la primera respuesta puede tardar un momento)…",
   "empty until you Run": "vacío hasta ejecutar", "reset. empty until you Run": "restablecido; vacío hasta ejecutar",
   "click to collapse": "pulse para contraer", "click to expand": "pulse para ampliar",
   "✓ API key saved for this browser": "✓ Clave de API guardada en este navegador",
@@ -195,6 +215,11 @@ const ES_TEXT = new Map(Object.entries({
 }));
 
 const ES_PREFIXES = new Map(Object.entries({
+  "Prerequisite: ": "Requisito previo: ",
+  "running ": "ejecutando ",
+  "commands.list failed: ": "commands.list falló: ",
+  "branches: ": "ramas: ",
+  "Branch '": "Rama '",
   "✓ Connected. Model replied: ": "✓ Conectado. El modelo respondió: ",
   "Connection failed: ": "Error de conexión: ",
   "Model ID is not served by this endpoint. Choose one of: ": "El ID del modelo no se sirve en este endpoint. Elija uno de estos: ",
@@ -214,7 +239,7 @@ const ES_ATTRS = new Map(Object.entries({
   "the saved nvapi key was refused (401/403). Re-enter it on Module 1a.": "la clave nvapi guardada fue rechazada (401/403). Introdúzcala de nuevo en el Módulo 1a."
 }));
 
-const LOCALIZED_UI = "#journey-map,.topbar,.cf-wrap,.rc-card,.chatui,.key-panel,.claw-probe";
+const LOCALIZED_UI = "#journey-map,.topbar,.cf-wrap,.rc-card,.chatui,.key-panel,.claw-probe,.da-term";
 
 function localeMaps() {
   const locale = document.documentElement.lang.toLowerCase();
@@ -235,6 +260,10 @@ function translatedText(value) {
     if (value.startsWith(prefix)) return replacement + value.slice(prefix.length);
   }
   return value;
+}
+
+export function localizeCourseUiText(value) {
+  return translatedText(String(value == null ? "" : value));
 }
 
 function localizeUi(root = document.body) {

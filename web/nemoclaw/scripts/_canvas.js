@@ -320,7 +320,7 @@ export function mountCanvasFlow(targetSel, opts) {
   wrap.innerHTML = `
     <div class="cf-header">
       <span class="cf-label">${label || ""}</span>
-      <div class="cf-actions">
+      <div class="cf-actions cell-actions">
         ${_cellBtnHTML("reset", "↺ Reset code", "cf-btn cf-btn-reset", "Restore every node's code to its original")}
         ${_cellBtnHTML("run", "▶ Run all", "cf-btn cf-btn-run", "Run every node in order")}
       </div>
@@ -641,9 +641,11 @@ helpers.viz.sideBySide(
         <span class="cf-panel-icon">${node.icon || "●"}</span>
         <span class="cf-panel-title">${node.title || ""}</span>
         ${node.summary ? `<span class="cf-panel-summary">${node.summary}</span>` : ""}
-        <span class="cf-panel-status-dot" data-status></span>
-        ${_cellBtnHTML("reset", "↺ Reset", "cf-panel-reset", "Restore this node's original code and clear its output")}
-        ${_cellBtnHTML("run", "▶ Run", "cf-panel-runone", "Run this node")}
+        <span class="cell-actions">
+          <span class="cf-panel-status-dot" data-status></span>
+          ${_cellBtnHTML("reset", "↺ Reset", "cf-panel-reset", "Restore this node's original code and clear its output")}
+          ${_cellBtnHTML("run", "▶ Run", "cf-panel-runone", "Run this node")}
+        </span>
       </div>
       <div class="cf-panel-overview"></div>
       <details class="cf-panel-det cf-panel-code-det"${_showCode ? " open" : ""}>
@@ -1483,8 +1485,10 @@ export function mountRunCell(targetSel, opts) {
         <span class="cf-det-chip cell-lang-chip rc-lang" data-lang-chip>JS</span>
         <span class="rc-lang-sub">javascript · editable · re-run</span>
         <span class="cell-spacer"></span>
-        ${_cellBtnHTML("reset", "↺ Reset", "rc-reset", "Restore this cell's original code and clear its output")}
-        ${_cellBtnHTML("run", runLabel(), "rc-run", "Run this cell")}
+        <span class="cell-actions">
+          ${_cellBtnHTML("reset", "↺ Reset", "rc-reset", "Restore this cell's original code and clear its output")}
+          ${_cellBtnHTML("run", runLabel(), "rc-run", "Run this cell")}
+        </span>
       </div>
       ${opts.intro ? `<div class="cf-intro rc-intro">${escapeHtml(opts.intro)}</div>` : ""}
       ${_rcHelpersHTML}

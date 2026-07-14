@@ -13,7 +13,6 @@ cues, and actual run output on the helper notebook.
 from __future__ import annotations
 
 import argparse
-import os
 import subprocess
 import sys
 import tempfile
@@ -28,7 +27,7 @@ from _bootstrap import find_repo_root
 ROOT = find_repo_root(Path(__file__).resolve())
 sys.path.insert(0, str(ROOT))
 from scripts.runtime.host_browser import BrowserRuntimeError, environment, run_node
-DEFAULT_EXTRA_PAGES = ("/nemoclaw/scripts/SKILL.html",)
+DEFAULT_EXTRA_PAGES = ("scripts/SKILL.html",)
 INTERACTIVE_MARKERS = ("mountCanvasFlow(", "mountRunCell(", "mountDiagram(")
 
 RUNTIME_JS = r"""
@@ -172,6 +171,21 @@ async function inspectPage(page, pagePath, vp, theme) {
       }).slice(0, 8).map(el => ({ tag: el.tagName, cls: String(el.className || '').slice(0, 80), text: (el.textContent || '').trim().slice(0, 80) })),
       themeMismatchSurfaces: wrongToneSurfaces(),
       minCellButton: Math.min(...Array.from(document.querySelectorAll('.cell-btn')).map(b => Math.min(b.getBoundingClientRect().width, b.getBoundingClientRect().height)).filter(Number.isFinite), 999),
+      cellActionLayout: Array.from(document.querySelectorAll('.cell-actions')).map(group => {
+        const buttons = Array.from(group.querySelectorAll('.cell-btn'));
+        const buttonRows = new Set(buttons.map(button => Math.round(button.getBoundingClientRect().top)));
+        const wrappedLabels = buttons.filter(button => {
+          const range = document.createRange();
+          range.selectNodeContents(button);
+          const lines = new Set(Array.from(range.getClientRects()).map(rect => Math.round(rect.top)));
+          return getComputedStyle(button).whiteSpace !== 'nowrap' || lines.size > 1;
+        });
+        return {
+          buttons: buttons.length,
+          rows: buttonRows.size,
+          wrappedLabels: wrappedLabels.map(button => button.textContent.trim()),
+        };
+      }),
       artifacts,
     };
     return output;
@@ -297,6 +311,8 @@ async function inspectPage(page, pagePath, vp, theme) {
   if (initial.themeMismatchSurfaces.length) failures.push(`${theme} theme wrong-tone cell/graph surfaces ${JSON.stringify(initial.themeMismatchSurfaces)}`);
   if (finalInfo.themeMismatchSurfaces.length) failures.push(`${theme} theme wrong-tone expanded surfaces ${JSON.stringify(finalInfo.themeMismatchSurfaces)}`);
   if (initial.minCellButton < 28) failures.push(`tiny cell button dimension ${initial.minCellButton}`);
+  const badActionLayout = initial.cellActionLayout.filter(group => group.rows > 1 || group.wrappedLabels.length);
+  if (badActionLayout.length) failures.push(`cell actions split or wrapped ${JSON.stringify(badActionLayout)}`);
   const badArtifacts = initial.artifacts.filter(a => !a.marked || !a.label || !a.cue.includes(a.label) || a.railWidth < 2 || /rgba?\(0,\s*0,\s*0,\s*0\)/.test(a.rail) || (a.surface && (a.maxHeight === 'none' || !/auto|scroll/.test(a.overflowY))));
   if (badArtifacts.length) failures.push(`live artifact cue missing ${JSON.stringify(badArtifacts)}`);
   const badRuns = runResults.filter(r => !r.hasOutput || r.badText);
@@ -365,12 +381,17 @@ def discover_default_pages(site_root: Path) -> list[str]:
     figures and later diagrams. Discovering from the built/source HTML is what makes a future graph
     page enter the dark/light matrix without a validator edit.
     """
-    course = site_root / "nemoclaw"
-    pages = list(DEFAULT_EXTRA_PAGES)
-    for html in sorted(course.glob("*.html")):
-        text = html.read_text(errors="ignore")
-        if any(marker in text for marker in INTERACTIVE_MARKERS):
-            pages.append(f"/nemoclaw/{html.name}")
+    course_roots = [site_root / "nemoclaw", *sorted(site_root.glob("*/nemoclaw"))]
+    pages: list[str] = []
+    for course in course_roots:
+        if not course.is_dir():
+            continue
+        prefix = "/" + course.relative_to(site_root).as_posix()
+        pages.extend(f"{prefix}/{extra}" for extra in DEFAULT_EXTRA_PAGES if (course / extra).is_file())
+        for html in sorted(course.glob("*.html")):
+            text = html.read_text(errors="ignore")
+            if any(marker in text for marker in INTERACTIVE_MARKERS):
+                pages.append(f"{prefix}/{html.name}")
     return list(dict.fromkeys(pages))
 
 

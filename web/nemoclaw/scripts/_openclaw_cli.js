@@ -5,6 +5,8 @@
 // This module keeps gateway transport and session tabs out of the student editing surface.
 // The exported mount function remains an inspectable boundary for lessons and tests.
 
+import { localizeCourseUiText } from "./_locale.js";
+
 const CALL_TIMEOUT_MS = 20000;
 const CONNECT_TIMEOUT_MS = 15000;
 const STORAGE_KEY = "nemoclaw_branches";
@@ -229,14 +231,14 @@ export function mountOpenClawCliRuntime(targetSel, runtime) {
     prompt: "you",
     suggestions: SUGGESTIONS,
     disabled: !connected(),
-    disabledMsg: "Connect your launchable on Module 3a first (its URL and token), then your agent is reachable here.",
+    disabledMsg: localizeCourseUiText("Connect your launchable on Module 3a first (its URL and token), then your agent is reachable here."),
     greeting: connected()
-      ? "Connected to your agent over the gateway. Ask anything, type /help, click a prompt, or press Tab to autocomplete."
+      ? localizeCourseUiText("Connected to your agent over the gateway. Ask anything, type /help, click a prompt, or press Tab to autocomplete.")
       : "",
     onSubmit: async (input, consoleView, context) => {
       const message = input.trim();
       if (message === "/help" || message === "?") {
-        consoleView.write("Use /commands for the live gateway list. /clear empties this screen; /new and /branch manage independent agent sessions. Text without a slash is sent to the active agent session.", "da-dim");
+        consoleView.write(localizeCourseUiText("Use /commands for the live gateway list. /clear empties this screen; /new and /branch manage independent agent sessions. Text without a slash is sent to the active agent session."), "da-dim");
         return;
       }
       if (message === "/clear") return consoleView.clear();
@@ -245,7 +247,7 @@ export function mountOpenClawCliRuntime(targetSel, runtime) {
         try {
           const result = await gateway.call("commands.list", {}, context.signal);
           const commands = result?.commands || [];
-          if (!commands.length) return consoleView.write("No commands reported by the gateway.", "da-dim");
+          if (!commands.length) return consoleView.write(localizeCourseUiText("No commands reported by the gateway."), "da-dim");
           commands.slice().sort((left, right) =>
             (left.category || "").localeCompare(right.category || "")
             || (left.name || "").localeCompare(right.name || "")
@@ -263,7 +265,7 @@ export function mountOpenClawCliRuntime(targetSel, runtime) {
       if (message === "/branch" || message.startsWith("/branch ")) return handleBranch(message, consoleView);
 
       if (!message.startsWith("/") && !warmedSessions.has(activeSession)) {
-        consoleView.write("setting up this session (the first reply takes a moment)…", "da-dim");
+        consoleView.write(localizeCourseUiText("setting up this session (the first reply takes a moment)…"), "da-dim");
         await warm(activeSession);
       }
       const command = message.startsWith("/");

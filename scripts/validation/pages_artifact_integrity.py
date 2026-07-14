@@ -394,9 +394,10 @@ def verify_deployment(
 
 def self_test() -> list[str]:
     failures: list[str] = []
+    fixture_sha = "a" * 40
     valid_report = {
         "schema": "bundle-validation/1",
-        "git_sha": "abc1234",
+        "git_sha": fixture_sha,
         "scope": "ship",
         "lang": "en",
         "ok": True,
@@ -414,8 +415,8 @@ def self_test() -> list[str]:
             path.write_text("<html></html>\n" if path.suffix == ".html" else "{}\n", encoding="utf-8")
         (root / "gate.json").write_text(json.dumps(valid_report), encoding="utf-8")
         manifest = root / MANIFEST_NAME
-        manifest.write_text(manifest_text(root, "abc1234"), encoding="utf-8")
-        if audit(root, "abc1234", manifest):
+        manifest.write_text(manifest_text(root, fixture_sha), encoding="utf-8")
+        if audit(root, fixture_sha, manifest):
             failures.append("clean fixture was rejected")
 
         preview = Path(tmp) / "preview-prefix"
@@ -423,16 +424,16 @@ def self_test() -> list[str]:
         (preview / "web").mkdir()
         shutil.move(str(preview / "nemoclaw"), str(preview / "web" / "nemoclaw"))
         preview_manifest = preview / MANIFEST_NAME
-        preview_manifest.write_text(manifest_text(preview, "abc1234"), encoding="utf-8")
-        if audit(preview, "abc1234", preview_manifest, course_prefix="web"):
+        preview_manifest.write_text(manifest_text(preview, fixture_sha), encoding="utf-8")
+        if audit(preview, fixture_sha, preview_manifest, course_prefix="web"):
             failures.append("clean web-prefixed preview fixture was rejected")
-        if not audit(preview, "abc1234", preview_manifest):
+        if not audit(preview, fixture_sha, preview_manifest):
             failures.append("web-prefixed preview escaped the default production-root contract")
 
         mutations = (
             ("missing file", lambda fixture: (fixture / "nemoclaw/index.html").unlink()),
             ("remote script", lambda fixture: (fixture / "index.html").write_text('<script src="https://evil.invalid/x.js"></script>', encoding="utf-8")),
-            ("wrong gate SHA", lambda fixture: (fixture / "gate.json").write_text(json.dumps({**valid_report, "git_sha": "def5678"}), encoding="utf-8")),
+            ("wrong gate SHA", lambda fixture: (fixture / "gate.json").write_text(json.dumps({**valid_report, "git_sha": "b" * 40}), encoding="utf-8")),
             ("changed after manifest", lambda fixture: (fixture / "languages.json").write_text('{"changed":true}\n', encoding="utf-8")),
             ("symlink", lambda fixture: (fixture / "injected-link").symlink_to(fixture / "index.html")),
         )
@@ -440,7 +441,7 @@ def self_test() -> list[str]:
             fixture = Path(tmp) / f"case-{label.replace(' ', '-')}"
             shutil.copytree(root, fixture)
             mutate(fixture)
-            if not audit(fixture, "abc1234", fixture / MANIFEST_NAME):
+            if not audit(fixture, fixture_sha, fixture / MANIFEST_NAME):
                 failures.append(f"mutation escaped: {label}")
 
         archive_path = Path(tmp) / "artifact.tar.gz"
@@ -452,7 +453,7 @@ def self_test() -> list[str]:
             failures.append(f"clean archive was rejected: {archive_findings}")
         extracted = Path(tmp) / "extracted"
         extract_findings = safe_extract_archive(archive_path, extracted)
-        if extract_findings or audit(extracted, "abc1234", extracted / MANIFEST_NAME):
+        if extract_findings or audit(extracted, fixture_sha, extracted / MANIFEST_NAME):
             failures.append(f"clean archive extraction was rejected: {extract_findings}")
 
         traversal = Path(tmp) / "traversal.tar"
@@ -480,8 +481,8 @@ def self_test() -> list[str]:
         if len(synthetic_bounds) < 3:
             failures.append("artifact resource-bound mutation escaped")
 
-        expected_text = manifest_text(root, "abc1234")
-        parse_findings, entries = parse_manifest(expected_text, "abc1234")
+        expected_text = manifest_text(root, fixture_sha)
+        parse_findings, entries = parse_manifest(expected_text, fixture_sha)
         if parse_findings:
             failures.append(f"clean manifest parse was rejected: {parse_findings}")
         payloads = {
@@ -497,7 +498,7 @@ def self_test() -> list[str]:
         if not compare_deployed_files(entries, payloads.__getitem__, workers=2):
             failures.append("deployed-byte substitution mutation escaped")
         unsafe_manifest = expected_text + f"{'0' * 64}  ../escape\n"
-        if not parse_manifest(unsafe_manifest, "abc1234")[0]:
+        if not parse_manifest(unsafe_manifest, fixture_sha)[0]:
             failures.append("unsafe manifest path mutation escaped")
     return failures
 

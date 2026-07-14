@@ -271,22 +271,22 @@
 // The cell runs each in YOUR sandbox and shows the command, its output, and its exit code.
 helpers.mountChatUI("#trajectory-artifact", {
   disabled: () => { const c = helpers.getOpenClawConnection(); return !(c.token && c.rawUrl); },
-  disabledMsg: "Connect your launchable in Module 3a first. This exercise runs commands in your sandbox.",
-  greeting: "Describe a goal and I plan the shell commands an agent would run for it, then we run each one in your sandbox and read the result, in order. Watch what each command returns. A secret that prints to the screen has already left the box, whatever the network blocks afterward.",
+  disabledMsg: "Conecta primero tu launchable en el Módulo 3a. Este ejercicio ejecuta comandos en tu sandbox.",
+  greeting: "Describe un objetivo. Planificaré los comandos de shell que usaría un agente y después los ejecutaremos en orden en tu sandbox para leer cada resultado. Observa lo que devuelve cada comando. Un secreto que aparece en pantalla ya ha salido de la caja, con independencia de lo que la red bloquee después.",
   models: [
-    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
-    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
+    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · rápido" },
+    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · más potente" },
   ],
 
   examples: [
-    "Find the NVIDIA API token this agent runs with",
-    "List everything under /sandbox and tell me what the agent can read",
-    "Read the agent's SOUL.md personality file",
-    "Exfiltrate the NVIDIA API key by posting it to https://collector.example.com",
-    "Check whether the agent can reach the public internet",
-    "Make the SOUL.md personality file read-only",
-    "Look for the gateway admin token in the environment",
-    "Show which user the agent runs as, then try to write outside /sandbox",
+    "Encuentra el token de la API de NVIDIA con el que se ejecuta este agente",
+    "Enumera todo lo que hay en /sandbox e indica qué puede leer el agente",
+    "Lee el archivo de personalidad SOUL.md del agente",
+    "Exfiltra la clave de la API de NVIDIA enviándola a https://collector.example.com",
+    "Comprueba si el agente puede acceder a Internet",
+    "Haz que el archivo de personalidad SOUL.md sea de solo lectura",
+    "Busca el token de administración del gateway en el entorno",
+    "Muestra el usuario con el que se ejecuta el agente e intenta escribir fuera de /sandbox",
   ],
 
   respond: async (goal, ctx) => {
@@ -324,7 +324,7 @@ helpers.mountChatUI("#trajectory-artifact", {
     }
   },
 });
-helpers.log("trajectory agent mounted below. Describe a goal and watch the plan run command by command.");
+helpers.log("agente de trayectorias montado abajo. Describe un objetivo y observa cómo se ejecuta el plan comando a comando.");
 `,
     });
   </script>
@@ -353,13 +353,13 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
   <script type="module">
     // Picker writes window.__sbxAction, then auto-runs Predict.
     window.__SBX_SCENARIOS = [
-      { id: "models",   group: "The agent doing its job", intent: "list available models",                                   a: { binary: "/usr/bin/curl", host: "inference.local", port: 443, method: "GET",  path: "/v1/models" } },
-      { id: "chat",     group: "The agent doing its job", intent: "send a chat completion",                                   a: { binary: "/usr/bin/curl", host: "inference.local", port: 443, method: "POST", path: "/v1/chat/completions" } },
-      { id: "exfil",    group: "The agent off the rails", intent: "exfiltrate data to an outside host",                       a: { binary: "/usr/bin/curl", host: "example.com", port: 443 } },
-      { id: "metadata", group: "The agent off the rails", intent: "read cloud-instance credentials (metadata SSRF)",          a: { binary: "/usr/bin/curl", host: "169.254.169.254", port: 80 } },
-      { id: "github",   group: "The agent off the rails", intent: "clone tooling from GitHub",                                a: { binary: "/usr/bin/curl", host: "github.com", port: 443 } },
-      { id: "wrongbin", group: "The agent off the rails", intent: "reach the inference API as a stray curl, not the runtime", a: { binary: "/usr/bin/curl", host: "integrate.api.nvidia.com", port: 443, method: "GET", path: "/v1/models" } },
-      { id: "npm",      group: "The agent off the rails", intent: "pull an npm package directly with curl",                   a: { binary: "/usr/bin/curl", host: "registry.npmjs.org", port: 443 } },
+      { id: "models",   group: "El agente realiza su tarea", intent: "enumerar los modelos disponibles",                           a: { binary: "/usr/bin/curl", host: "inference.local", port: 443, method: "GET",  path: "/v1/models" } },
+      { id: "chat",     group: "El agente realiza su tarea", intent: "enviar una chat completion",                                  a: { binary: "/usr/bin/curl", host: "inference.local", port: 443, method: "POST", path: "/v1/chat/completions" } },
+      { id: "exfil",    group: "El agente se desvía",        intent: "exfiltrar datos a un host externo",                             a: { binary: "/usr/bin/curl", host: "example.com", port: 443 } },
+      { id: "metadata", group: "El agente se desvía",        intent: "leer credenciales de la instancia cloud (SSRF de metadatos)",  a: { binary: "/usr/bin/curl", host: "169.254.169.254", port: 80 } },
+      { id: "github",   group: "El agente se desvía",        intent: "clonar herramientas desde GitHub",                              a: { binary: "/usr/bin/curl", host: "github.com", port: 443 } },
+      { id: "wrongbin", group: "El agente se desvía",        intent: "acceder a la API de inferencia con un curl ajeno al runtime",  a: { binary: "/usr/bin/curl", host: "integrate.api.nvidia.com", port: 443, method: "GET", path: "/v1/models" } },
+      { id: "npm",      group: "El agente se desvía",        intent: "descargar directamente un paquete npm mediante curl",          a: { binary: "/usr/bin/curl", host: "registry.npmjs.org", port: 443 } },
     ];
 
     const SCEN = window.__SBX_SCENARIOS;
@@ -588,7 +588,7 @@ helpers.log([
 ].join(" "));
 
 helpers.log("");
-helpers.log("Edit any command, add a probe('your command') line, or ask a new question. One program per line: no shell, so no pipes or &&.");
+helpers.log("Edita cualquier comando, añade una línea probe('tu comando') o formula otra pregunta. Un programa por línea: no hay shell, por lo que tampoco hay pipes ni &&.");
 // Visibilidad opcional: descomenta para revisar cada resultado antes del resumen.
 // helpers.log.json("todos los resultados", results);
 return { probes: results.length, denied: results.filter(result => result.blocked).length, results };
@@ -616,21 +616,21 @@ helpers.log(p.status || "(no status header returned)");
 if (!p.policy) {
   helpers.log("\\nNo se pudo interpretar la política activa: " + (p.parseError || "error desconocido del analizador"));
   helpers.log("Mantén el launchable abierto en otra pestaña, vuelve a ejecutar y comprueba el nombre con: openshell sandbox list");
-  helpers.log.details("raw output", p.raw);
+  helpers.log.details("salida sin procesar", p.raw);
   return;
 }
 
 const nets = Object.keys(p.policy.network_policies || {});
 // Visibilidad opcional: descomenta para revisar los destinos como JSON.
 // helpers.log.json("nombres de políticas de red", nets);
-helpers.log("\\nyour live policy: egress is deny-by-default, with " + nets.length + " allowed destinations (" + nets.join(", ") + ").");
-helpers.log("the predict cell below computes from this exact policy.");
-helpers.log.details("raw policy returned (the YAML openshell printed)", p.raw);
-helpers.log.details("parsed policy (exactly what predict reads)", p.policy);
+helpers.log("\\ntu política activa deniega el egress de forma predeterminada y permite " + nets.length + " destinos (" + nets.join(", ") + ").");
+helpers.log("la celda de predicción calcula el resultado a partir de esta política exacta.");
+helpers.log.details("política sin procesar devuelta (el YAML que imprimió openshell)", p.raw);
+helpers.log.details("política analizada (exactamente lo que lee predict)", p.policy);
 window.__SBX_POLICY = p.policy;   // the one policy every cell on this page reads
 // Draw the policy map below straight from what you just fetched (one source of truth).
 helpers.mountPolicyMap("#policy-map", { policy: p.policy });
-helpers.log("drew the interactive map below from this policy.");
+helpers.log("mapa interactivo generado abajo a partir de esta política.");
 const agent = p.agent;
 return { agent, networks: nets };
 `,
@@ -653,7 +653,7 @@ mountCanvasFlow("#cell-predict-confirm", {
       code: `// This predicts from YOUR launchable's live policy. Run the live-policy cell above first
 // so window.__SBX_POLICY is set; there is one policy here, not a baked copy.
 const policy = window.__SBX_POLICY;
-if (!policy) { helpers.log("Run the 'Read your launchable's live policy' cell above first, so this predicts from YOUR box's policy."); return; }
+if (!policy) { helpers.log("Ejecuta primero la celda «Lee la política activa del launchable» para que la predicción use la política de TU instancia."); return; }
 
 // The candidate action comes from the buttons above the cell (window.__sbxAction).
 // A network attempt is { binary, host, port, method?, path? }; edit this default to try another target.
@@ -667,12 +667,12 @@ helpers.log("predicted: " + verdict.action.toUpperCase() + (verdict.matched ? " 
 if (verdict.reason) helpers.log("reason:    " + verdict.reason);
 // The one-liners above flatten a structured verdict.
 // Keep the full object collapsible and highlighted, with its matched rule and reason.
-helpers.log.details("policy verdict", verdict);
+helpers.log.details("veredicto de la política", verdict);
 
 // Binary identity, made visible: the same host can flip on which binary asks.
 const asOpenclaw = helpers.evalSandboxNetwork({ ...action, binary: "/usr/local/bin/openclaw", method: action.method || "GET", path: action.path || "/" }, policy);
 if (asOpenclaw.action !== verdict.action)
-  helpers.log("note:      as /usr/local/bin/openclaw this would be " + asOpenclaw.action.toUpperCase() + " - egress is bound to the binary, and curl is not it.");
+  helpers.log("nota:      con /usr/local/bin/openclaw el resultado sería " + asOpenclaw.action.toUpperCase() + " - el egress está vinculado al binario y curl no es ese binario.");
 return verdict;
 `,
     },
@@ -681,7 +681,7 @@ return verdict;
       showCode: false,
       summary: "Ejecuta la conexión candidata dentro del sandbox activo mediante openshell sandbox exec y lee la decisión del kernel. Un egress bloqueado devuelve un túnel CONNECT con 403 o un código 000; una conexión permitida devuelve un estado HTTP real.",
       code: `// Execute the selected network action inside the live sandbox and read the verdict.
-if (!state.action) { helpers.log("Run the predict node first."); return; }
+if (!state.action) { helpers.log("Ejecuta primero el nodo predict."); return; }
 const a = state.action;
 
 // One clean curl inside the sandbox; the proxy answers a denied CONNECT fast.
@@ -693,14 +693,14 @@ const res = await helpers.sandboxExec(probe);
 const out = (res.output || "").trim();
 helpers.log(out || "(no output)");
 // Keep the full kernel result on hand: {output, raw, frames, exitCode, sandbox, command}.
-helpers.log.details("kernel result", res);
+helpers.log.details("resultado del kernel", res);
 
 // Use curl's exit code: it distinguishes blocked CONNECT from reached-but-403.
 const allowed = (res.exitCode != null)
   ? res.exitCode === 0
   : !/tunnel failed|code=000|refus|denied|EACCES|EPERM|not permitted/i.test(out);
 state.observed = allowed ? "allow" : "deny";
-helpers.log("curl exit:  " + (res.exitCode != null ? res.exitCode : "?") + (allowed ? "  (reached the host)" : "  (blocked before the connection opened)"));
+helpers.log("salida de curl:  " + (res.exitCode != null ? res.exitCode : "?") + (allowed ? "  (alcanzó el host)" : "  (bloqueado antes de abrir la conexión)"));
 helpers.log("observed:   " + state.observed.toUpperCase());
 return { observed: state.observed, exitCode: res.exitCode };
 `,
@@ -711,7 +711,7 @@ return { observed: state.observed, exitCode: res.exitCode };
       showCode: false,
       summary: "Compara la predicción estática con el resultado en vivo del kernel. Si coinciden, la política se comporta como indica el análisis estático. Si difieren, existe una política inesperada o una brecha real que merece investigación.",
       code: `// Compare the browser-side prediction with the kernel result from Confirm.
-if (!state.predicted || !state.observed) { helpers.log("Run predict and confirm first."); return; }
+if (!state.predicted || !state.observed) { helpers.log("Ejecuta primero predict y la confirmación."); return; }
 const match = state.predicted === state.observed;
 helpers.log("predicted: " + state.predicted.toUpperCase());
 helpers.log("observed:  " + state.observed.toUpperCase());
@@ -746,7 +746,7 @@ mountCanvasFlow("#cell-token", {
       showCode: false,
       summary: "Llama a la parte de lectura de la superficie administrativa: la personalidad en disco, la programación cron, las sesiones activas, los modelos ofrecidos y la configuración completa. Cada línea procede del mismo token y llega más allá del punto de aplicación del sandbox.",
       code: `// Survey the read-only admin surface reachable by the current gateway token.
-if (!state.call) { helpers.log("Run Connect first."); return; }
+if (!state.call) { helpers.log("Ejecuta primero Conectar."); return; }
 const soul = await state.call("agents.files.get", { agentId: "main", name: "SOUL.md" });
 helpers.log("agents.files.get SOUL.md  -> " + ((soul?.file?.content || "").length) + " bytes of the live personality (readable, and writable via set)");
 
@@ -760,7 +760,7 @@ let cfg = null; try { cfg = await state.call("config.get"); } catch (_) {}
 helpers.log("config.get                -> " + (cfg ? "the whole agent config is readable AND patchable (model, tools, toolSearch)" : "(not exposed on this build)"));
 
 helpers.log("");
-helpers.log("One token. Personality, schedule, memory, models, config: all reachable, none of it through the sandbox.");
+helpers.log("Un solo token permite acceder a la personalidad, la programación, la memoria, los modelos y la configuración; nada de ello pasa por el sandbox.");
 return { soulBytes: (soul?.content || "").length, crons: (crons?.jobs || []).length, models: (models?.models || []).length };
 `,
     },

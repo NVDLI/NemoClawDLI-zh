@@ -176,11 +176,11 @@ para búsquedas en el glosario de NVIDIA incluido en la página. Pide un número
 // Edit the system prompt or the tools, then Run to re-render.
 helpers.mountAgentChat("#tools-artifact", {
   models: [
-    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
-    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
+    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · rápido" },
+    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · más potente" },
   ],
-  greeting: "I can do arithmetic and search NVIDIA's glossary. Try 'what is 17.5% of 2,480?', 'what is a vector database?', or 'explain vector databases in depth'.",
-  examples: ["What is 17.5% of 2,480?", "What is a vector database?", "Explain vector databases in depth", "Define agentic AI", "What does GPU stand for, and what is it for?", "What is 2,480 divided by 17, rounded?"],
+  greeting: "Puedo hacer cálculos y buscar en el glosario de NVIDIA. Prueba con «¿cuánto es el 17,5 % de 2480?», «¿qué es una base de datos vectorial?» o «explica en profundidad las bases de datos vectoriales».",
+  examples: ["¿Cuánto es el 17,5 % de 2480?", "¿Qué es una base de datos vectorial?", "Explica en profundidad las bases de datos vectoriales", "Define la IA de agentes", "¿Qué significa GPU y para qué sirve?", "¿Cuánto es 2480 dividido entre 17, redondeado?"],
   system: "You are a helpful assistant. Use calculate for any arithmetic and glossary_search for definitions of AI and accelerated-computing terms. For a quick definition, call glossary_search normally; when the user wants depth on a single term, call it with full=true to read the whole article. Ground factual claims in the results; if a search returns nothing, say so rather than answering from memory. Keep answers brief unless the user asks for depth.",
   recursionLimit: 24,   // room for several search-then-read rounds before the safety cap
   buildTools: ({ tool, z }) => [
@@ -206,7 +206,7 @@ helpers.mountAgentChat("#tools-artifact", {
          }) }),
   ],
 });
-helpers.log("rendered below. Edit the config and Run.");
+helpers.log("artefacto renderizado abajo. Edita la configuración y vuelve a ejecutar.");
 
 /* mountAgentChat builds one LangChain agent per model and streams tool calls plus answers. */
 `,
@@ -726,7 +726,7 @@ return {
       summary: "Cuando el agente principal llama a la herramienta, el flujo envía la pregunta al subagente, añade su respuesta al historial y solicita una respuesta final para el usuario.",
       code: `// Handle the tool-call result from the previous model turn.
 if (!state.s1.tool_calls.length) {
-  helpers.log("main agent answered directly without using the sub-agent");
+  helpers.log("el agente principal respondió directamente sin usar el subagente");
   return { final: state.s1.content || "(empty)" };
 }
 state.mainMessages.push({
@@ -736,16 +736,16 @@ state.mainMessages.push({
 });
 for (const tc of state.s1.tool_calls) {
   const args   = JSON.parse(tc.function.arguments || "{}");
-  helpers.log("main → sub: " + (args.question || "?"));
+  helpers.log("principal → subagente: " + (args.question || "?"));
   const answer = await state.queryCustomerDB(args.question || "");
-  helpers.log.details("sub → main", answer);
+  helpers.log.details("subagente → principal", answer);
   state.mainMessages.push({ role: "tool", tool_call_id: tc.id, content: answer });
 }
 const s2 = await helpers.chatStream({
   messages: state.mainMessages, tools: state.TOOLS, max_tokens: 8196,
 });
 
-helpers.log("note: the main agent never saw the rows; only the sub-agent's natural-language summary");
+helpers.log("nota: el agente principal no vio las filas, solo el resumen en lenguaje natural del subagente");
 
 return s2.content || s2.reasoning || "(empty)";
 `,

@@ -10,6 +10,7 @@ import unittest
 from pathlib import Path
 
 from scripts.skills import skill_renderer_runtime_audit as theme_runtime
+from scripts.validation import cell_ui_runtime_audit as cell_runtime
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -170,6 +171,33 @@ class ThemeRuntimeContractTests(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(token, source)
         self.assertNotIn("anchor.dataset.evidenceLink === 'local'", source)
+
+    def test_runtime_rejects_nested_controls_after_page_mount(self) -> None:
+        source = theme_runtime.RUNTIME_JS
+        self.assertIn("interactiveSelector", source)
+        self.assertIn("nested interactive controls", source)
+
+    def test_cell_discovery_includes_every_language_root(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for prefix in ("", "es", "pt"):
+                course = root / prefix / "nemoclaw"
+                (course / "scripts").mkdir(parents=True)
+                (course / "scripts" / "SKILL.html").write_text("<!doctype html>", encoding="utf-8")
+                (course / "lesson.html").write_text("<script>mountRunCell('#cell', {})</script>", encoding="utf-8")
+            self.assertEqual(
+                cell_runtime.discover_default_pages(root),
+                [
+                    "/nemoclaw/scripts/SKILL.html", "/nemoclaw/lesson.html",
+                    "/es/nemoclaw/scripts/SKILL.html", "/es/nemoclaw/lesson.html",
+                    "/pt/nemoclaw/scripts/SKILL.html", "/pt/nemoclaw/lesson.html",
+                ],
+            )
+
+    def test_cell_runtime_rejects_split_action_groups(self) -> None:
+        source = cell_runtime.RUNTIME_JS
+        self.assertIn("cellActionLayout", source)
+        self.assertIn("cell actions split or wrapped", source)
 
     def test_pages_build_has_an_unconditional_artifact_boundary_gate(self) -> None:
         source = (ROOT / "scripts/build/build_pages.sh").read_text(encoding="utf-8")

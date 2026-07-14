@@ -122,6 +122,20 @@ RUNTIME_UI_TRANSLATION_KEYS = (
     "model key verified this session",
     "the saved nvapi key was refused (401/403). Re-enter it on Module 1a.",
 )
+RUNNABLE_UI_FIELD_RE = re.compile(
+    r'\b(?:label|intro|title|summary|greeting|disabledMsg|kicker|socket)\s*:\s*(["\'])(.*?)(?<!\\)\1',
+    re.S,
+)
+RUNNABLE_UI_LOG_RE = re.compile(
+    r'\b(?:helpers\.log|log(?:\.h|\.details|\.html)?|info|show)\s*\(\s*(["\'])(.*?)(?<!\\)\1',
+    re.S,
+)
+RUNNABLE_UI_EXAMPLES_RE = re.compile(r'\bexamples\s*:\s*\[(.*?)\]', re.S)
+RUNNABLE_UI_STRING_RE = re.compile(r'(["\'])(.*?)(?<!\\)\1', re.S)
+SHARED_RUNTIME_FIELD_RE = re.compile(
+    r'\b(?:greeting|disabledMsg)\s*:\s*(?:[^"\']*?\?\s*)?(["\'])(.*?)(?<!\\)\1',
+    re.S,
+)
 
 
 class ReaderText(HTMLParser):
@@ -195,6 +209,22 @@ def scripted_ui_text(raw: str) -> str:
     values = [item.text.replace("\\n", " ") for item in extract_segments(raw)
               if item.kind == "script-ui"]
     return re.sub(r"\s+", " ", " ".join(values)).strip()
+
+
+def runnable_code_ui_strings(raw: str) -> list[str]:
+    """Extract learner-facing strings from editable code without scanning model prompts.
+
+    Keep each value separate: joining a translated greeting to one untranslated example can
+    dilute the English function-word density and let the smaller residue disappear.
+    """
+    values: list[str] = []
+    for body in code_templates(raw):
+        values.extend(match.group(2) for match in RUNNABLE_UI_FIELD_RE.finditer(body))
+        values.extend(match.group(2) for match in RUNNABLE_UI_LOG_RE.finditer(body))
+        for array in RUNNABLE_UI_EXAMPLES_RE.finditer(body):
+            values.extend(match.group(2) for match in RUNNABLE_UI_STRING_RE.finditer(array.group(1)))
+    return [re.sub(r"\s+", " ", value.replace("\\n", " ")).strip()
+            for value in values if value.strip()]
 
 
 def editorial_pattern_quality(text: str, profile: dict) -> list[dict[str, str]]:
@@ -508,16 +538,24 @@ def interface_findings(root: Path) -> list[dict[str, str]]:
     locale_path = root / "web/nemoclaw/scripts/_locale.js"
     if locale_path.is_file():
         locale_raw = locale_path.read_text(encoding="utf-8")
+        runtime_paths = (
+            root / "web/nemoclaw/scripts/_keypanel.js",
+            root / "web/nemoclaw/scripts/_openclaw.js",
+            root / "web/nemoclaw/scripts/_shared.js",
+            root / "web/nemoclaw/scripts/_openclaw_cli.js",
+        )
         runtime_raw = html.unescape("\n".join(
             path.read_text(encoding="utf-8")
-            for path in (
-                root / "web/nemoclaw/scripts/_keypanel.js",
-                root / "web/nemoclaw/scripts/_openclaw.js",
-                root / "web/nemoclaw/scripts/_shared.js",
-            )
+            for path in runtime_paths
             if path.is_file()
         ))
-        for key in RUNTIME_UI_TRANSLATION_KEYS:
+        runtime_keys = set(RUNTIME_UI_TRANSLATION_KEYS)
+        cli_path = root / "web/nemoclaw/scripts/_openclaw_cli.js"
+        if cli_path.is_file():
+            runtime_keys.update(match.group(2) for match in SHARED_RUNTIME_FIELD_RE.finditer(
+                cli_path.read_text(encoding="utf-8")
+            ) if match.group(2))
+        for key in sorted(runtime_keys):
             needle = json.dumps(key, ensure_ascii=False) + ":"
             if locale_raw.count(needle) < 2:
                 out.append({
@@ -572,6 +610,12 @@ def page_quality(source_raw: str, target_raw: str, profile: dict, *, skill: bool
                                        f"(minimum ratio {minimum_ratio:.2f})")})
                 break
     ui_text = scripted_ui_text(target_raw)
+    source_runnable_ui = set(runnable_code_ui_strings(source_raw))
+    runnable_ui = runnable_code_ui_strings(target_raw)
+    localized_runtime_refs = {
+        html.unescape(re.sub(r"<[^>]+>", "", value)).strip()
+        for value in re.findall(r"<(?:em|code)\b[^>]*>.*?</(?:em|code)>", target_raw, re.I | re.S)
+    }
     visible = reader_text(target_raw) + " " + ui_text
     # Preserve segment boundaries for voice rules. Concatenating blocks and UI
     # fields with spaces can hide an imperative that begins a later segment.
@@ -630,6 +674,26 @@ def page_quality(source_raw: str, target_raw: str, profile: dict, *, skill: bool
         out.extend(mixed_language_quality(visible, profile))
         out.extend(foreign_language_quality(visible, profile))
         out.extend(repetition_quality(repetition_text, profile))
+    # A style reference pins editorial prose, not executable UI. Locales that require reviewed
+    # target hashes promise complete runnable UI too, including on the pinned style-reference page.
+    if profile.get("reviewed_target_hashes"):
+        for value in runnable_ui:
+            for item in mixed_language_quality(value, profile):
+                out.append({"code": "locale-code-mixed-language", "detail": item["detail"]})
+            # Exact source/target equality is stronger evidence than a language-density guess.
+            # Ignore unfinished markup and code-shaped output while rejecting ordinary labels.
+            plain_value = html.unescape(re.sub(r"<[^>]*>", " ", value))
+            words = re.findall(r"\b[A-Za-z]+\b", plain_value)
+            unfinished_markup = value.startswith("<") and ">" not in value
+            english_cues = {word.lower() for word in profile.get("english_function_words", [])}
+            has_english_cue = any(word.lower() in english_cues for word in words)
+            code_shaped = bool(re.search(r"(?:\w\.){1,}|->|--|[<>{}=]", plain_value))
+            if (value in source_runnable_ui and plain_value.strip() not in localized_runtime_refs
+                    and not unfinished_markup and len(words) >= 2
+                    and any(word[:1].islower() for word in words)
+                    and (has_english_cue or not code_shaped)):
+                out.append({"code": "locale-code-untranslated",
+                            "detail": f"learner-facing runnable-code text matches English source: {value!r}"})
     return out
 
 
@@ -1080,6 +1144,37 @@ def self_test() -> list[str]:
         code_target = '<html lang="pt-BR"><script>const x={code:`return 2;`}</script></html>'
         if "code-cell-drift" not in {item["code"] for item in page_quality(code_source, code_target, code_profile)}:
             failures.append("localized runnable-code mutation escaped detector")
+        code_ui_source = (
+            '<html lang="en"><script>const x={code:`helpers.mountChatUI("#x", '
+            '{disabledMsg: "Connect your launchable to the gateway before using this panel."});'
+            '`}</script></html>'
+        )
+        code_ui_target = code_ui_source.replace('lang="en"', 'lang="pt-BR"')
+        if "locale-code-mixed-language" not in {
+                item["code"] for item in page_quality(
+                    code_ui_source, code_ui_target, mixed_profile)}:
+            failures.append("English runnable-code UI escaped locale detector")
+        localized_code_ui = code_ui_target.replace(
+            "Connect your launchable to the gateway before using this panel.",
+            "Conecte o launchable ao gateway antes de usar este painel.",
+        )
+        if "locale-code-mixed-language" in {
+                item["code"] for item in page_quality(
+                    code_ui_source, localized_code_ui, mixed_profile)}:
+            failures.append("localized runnable-code UI was misclassified as English")
+        terse_source = ('<html lang="en"><script>const x={code:`'
+                        'helpers.log("raw output");`}</script></html>')
+        terse_target = terse_source.replace('lang="en"', 'lang="es-ES"')
+        if "locale-code-untranslated" not in {
+                item["code"] for item in page_quality(
+                    terse_source, terse_target, mixed_profile)}:
+            failures.append("terse English runnable-code label escaped exact-source detector")
+        referenced_target = terse_target.replace(
+            '<script>', '<p>Abre <em>raw output</em> para inspeccionarlo.</p><script>')
+        if "locale-code-untranslated" in {
+                item["code"] for item in page_quality(
+                    terse_source, referenced_target, mixed_profile)}:
+            failures.append("human-referenced canonical runtime label was rejected")
         concat_source = '<html lang="en"><script>const x={code: PREFIX + `return 1;`}</script></html>'
         concat_target = '<html lang="pt-BR"><script>const x={code: PREFIX + `return 2;`}</script></html>'
         if "code-cell-drift" not in {item["code"] for item in page_quality(concat_source, concat_target, code_profile)}:

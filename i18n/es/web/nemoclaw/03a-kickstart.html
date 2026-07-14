@@ -184,11 +184,11 @@
     <div class="callout warn"><strong>Si la sonda de OpenClaw agota el tiempo de espera o devuelve 502.</strong> Es probable que el runtime del agente aún esté arrancando: el launchable puede haberse iniciado antes de que OpenClaw terminara de cargar su política YAML. Espera 30 segundos y vuelve a ejecutar la sonda. Si sigue sin responder, usa la celda Recuperar en la sección del gateway antes de continuar.</div>
 
     <h3>La solicitud de la sonda como código editable</h3>
-    <p>Esta celda realiza la misma llamada que la prueba, pero exponiendo el código. Reutiliza la URL, el token y el JWT de Cloudflare que guardó la prueba. Edita <code>PATH</code>, <code>METHOD</code> y <code>BODY</code> para enviar otras solicitudes. El estado, los encabezados y el cuerpo aparecen debajo.</p>
+    <p>El código expuesto realiza la misma solicitud que la sonda. Reutiliza la URL, el token, el proveedor de acceso y la sesión que guardó la sonda. Edita <code>PATH</code>, <code>METHOD</code> y <code>BODY</code> para enviar otras solicitudes. El estado, los encabezados y el cuerpo aparecen debajo.</p>
     <p><code>TRANSPORT</code> controla cómo llegan las credenciales al launchable:</p>
     <ul>
       <li><code>"configured"</code> sigue la opción de gateway guardada arriba. Brev entre orígenes usa el relay de NVIDIA de forma predeterminada.</li>
-      <li><code>"direct"</code> llama al origen del launchable con <code>credentials:&nbsp;"include"</code> y sin JWT, apoyándose en la cookie de Cloudflare Access que ya posee el navegador.</li>
+      <li><code>"direct"</code> llama al origen del launchable con <code>credentials:&nbsp;"include"</code> y utiliza la cookie correspondiente que ya posee el navegador.</li>
     </ul>
     <p>
       Los launchables con Pomerium conservan su sesión firmada en el navegador. El curso usa sus WebSockets
@@ -296,7 +296,7 @@
 // streams the reply into the view and fires a chip per tool call.
 helpers.mountChatUI("#kickstart-artifact", {
   disabled: () => { const c = helpers.getOpenClawConnection(); return !(c.token && c.rawUrl); },
-  disabledMsg: "Connect the launchable in the probe above. This panel unlocks as soon as its URL and token are saved.",
+  disabledMsg: "Conecta el launchable en la sonda anterior. El panel se desbloquea cuando se guardan la URL y el token.",
   greeting: "Conecta tu launchable en el probe de arriba. Después, saluda o pide al agente que ejecute whoami y pwd con exec.",
   examples: [
     "Usa la herramienta exec para ejecutar whoami y pwd y comunica ambos resultados",
@@ -308,7 +308,7 @@ helpers.mountChatUI("#kickstart-artifact", {
   ],
   respond: async (text, ctx) => { await helpers.openclawChat(text, { session: "art-" + ctx.thread, view: ctx.view, signal: ctx.signal }); },
 });
-helpers.log("rendered below. Edit the config and Run.");
+helpers.log("artefacto renderizado abajo. Edita la configuración y vuelve a ejecutar.");
 
 // The panel is helpers.mountChatUI and it streams through helpers.openclawChat; open the helpers tab above to read either one's source.
 `,
@@ -398,7 +398,7 @@ sonda reutilizan el valor. El proxy para iframe solo está disponible con el end
 
         token: `<p><strong>Qué es:</strong> la clave bearer guardada con el endpoint activo.
 Las claves de la API de NVIDIA empiezan por <code>nvapi-</code>.</p>
-<p><strong>Cómo obtener una:</strong> inicie sesión en <a href="${NVIDIA_BUILD_URL}" target="_blank" rel="noopener">build.nvidia.com</a>
+<p><strong>Cómo obtener una:</strong> inicia sesión en <a href="${NVIDIA_BUILD_URL}" target="_blank" rel="noopener">build.nvidia.com</a>
 y elige API Keys → Generate Key.</p>
 <p><strong>Ejecución local:</strong> la misma clave funciona en todos los entornos. Guárdala en la variable de entorno
 <code>NVIDIA_API_KEY</code>, en lugar de pegarla en el código.</p>`,
@@ -441,20 +441,20 @@ const ENDPOINT = CFG.url.replace(/\\/+$/, "");
 const KEY    = localStorage.getItem("nvapi") || "";
 
 if (!KEY) {
-  helpers.log("No API key saved. Go to the course home and save the endpoint and key first.");
+  helpers.log("No hay una clave de API guardada. Ve a la página inicial del curso y guarda primero el endpoint y la clave.");
   return;
 }
 const r = await helpers.browserChatFetch()(ENDPOINT + "/models", {
   headers: { Authorization: "Bearer " + KEY },
 });
 
-if (!r.ok) { helpers.log("models fetch failed: HTTP " + r.status); return; }
+if (!r.ok) { helpers.log("error al obtener los modelos: HTTP " + r.status); return; }
 const { data } = await r.json();
 // Visibilidad opcional: descomenta para revisar todos los identificadores antes del filtro.
 // helpers.log.json("todos los modelos", data.map(model => model.id));
 const models = data.map(m => m.id).filter(id => FILTER.some(s => id.toLowerCase().includes(s.toLowerCase())));
 if (!models.length) {
-  helpers.log("No models matched filter: " + FILTER.join(", "));
+  helpers.log("Ningún modelo coincide con el filtro: " + FILTER.join(", "));
   return;
 }
 helpers.log(models.length + " model(s) to bench:\\n  " + models.join("\\n  "));
@@ -467,7 +467,7 @@ return { count: models.length };`,
     mountRunCell("#bench-measure-models", {
       label: "Mide el TTFT por modelo",
       code: `// Stream one prompt through each selected model and measure first-token latency.
-if (!state.models?.length) { helpers.log("Run 'Fetch matching models' first."); return; }
+if (!state.models?.length) { helpers.log("Ejecuta primero «Obtener modelos coincidentes»."); return; }
 const PROMPT       = "List five prime numbers.";
 // Try another prompt (uncomment one) to compare how the models behave on different work:
 // const PROMPT    = "Explain step by step why the sky is blue.";                // a reasoning task
@@ -558,14 +558,14 @@ for (let i = 0; i < pending.length; i++) {
   const raw = res.text
     ? res.text
     : (res.think ? "(no answer: the model used all " + MAX_TOKENS + " tokens thinking; raise MAX_TOKENS)\\n\\n" + res.think : "(empty response)");
-  helpers.log.details("raw output · " + res.model, raw);
+  helpers.log.details("salida sin procesar · " + res.model, raw);
 }
 
 // Rank survivors by TTFT, the metric that matters when streaming to a user.
 // A model that never produced a token (ttft null) sorts last, not first.
 const ok = results.filter(r => !r.err).sort((a, b) => (a.ttft ?? Infinity) - (b.ttft ?? Infinity));
 if (ok.length) {
-  helpers.log("\\n── ranked by TTFT ──────────────────────────");
+  helpers.log("\\n── ordenados por TTFT ──────────────────────");
   ok.forEach((r, i) => helpers.log(
     String(i + 1).padStart(2) + ". " + r.model.padEnd(46) +
     String(r.ttft ?? "n/a").padStart(5) + "ms · " + String(r.avgGap ?? "n/a").padStart(4) + "ms/tok · " + r.tokens + " tok"));
@@ -627,7 +627,7 @@ const url   = connection.rawUrl;             // launchable origin, direct
 const token = connection.token;
 const provider = connection.resolvedAccessProvider;
 const session  = connection.accessSession;
-if (!url) return helpers.log('Run the probe above first.');
+if (!url) return helpers.log('Ejecuta primero la prueba anterior.');
 
 const METHOD    = 'GET';
 const PATH      = '/api/agent';   // read-only bootstrap endpoint
@@ -838,21 +838,21 @@ if (!_text.trim() && !_didResult && _toolStarts > 0) {
           showCode: false,
           summary: "Dos llamadas JSON-RPC pasan por la conexión abierta: models.list enumera los modelos que ofrece el runtime y cron.list informa de las tareas programadas.",
           code: `// Use the existing gateway socket to list models and scheduled jobs.
-if (!state.call) { helpers.log("Run the Connect node first."); return; }
+if (!state.call) { helpers.log("Ejecuta primero el nodo Conectar."); return; }
 
 const models = await state.call("models.list");
 helpers.log("models (" + (models?.models?.length || 0) + "):");
 (models?.models || []).slice(0, 8).forEach(m =>
   helpers.log("  " + m.id + (m.provider ? "  [" + m.provider + "]" : ""))
 );
-helpers.log.details("raw models.list", models);
+helpers.log.details("datos sin procesar de models.list", models);
 
 const crons = await state.call("cron.list");
 const jobs  = crons?.jobs || [];
-helpers.log("\\ncron jobs: " + (jobs.length
+helpers.log("\\ntareas cron: " + (jobs.length
   ? jobs.map(j => j.id + " @ " + j.schedule).join(", ")
   : "(none)"));
-helpers.log.details("raw cron.list", crons);
+helpers.log.details("datos sin procesar de cron.list", crons);
 return { models: models?.models?.length, cronJobs: jobs.length };
 `,
         },
@@ -889,12 +889,12 @@ message = "Use your exec tool to run \`whoami\` and \`pwd\` in your sandbox, the
           showCode: false,
           summary: "Envía dos turnos con la misma sessionKey. El segundo contiene únicamente una pregunta de recuperación; el gateway restaura el primer turno antes de ejecutar el modelo. Una clave distinta identifica otro historial.",
           code: GW_CONNECT + `
-helpers.log("turn 1 · plant a fact");
+helpers.log("turno 1 · registrar un dato");
 {
 ${gwChat("quick-3a-memory", "Remember this for later: my access code is BLUEJAY-7. Just acknowledge it in a few words.")}
 }
 
-helpers.log("turn 2 · ask it back (only the question is sent)");
+helpers.log("turno 2 · vuelve a preguntarlo (solo se envía la pregunta)");
 {
 ${gwChat("quick-3a-memory", "What access code did I give you earlier? Reply with just the code.")}
 }
@@ -912,13 +912,13 @@ helpers.log(/BLUEJAY-7/i.test(state.out)
           code: GW_CONNECT + `
 // One call wipes the conversation the gateway holds for this key.
 const sessionKey = "quick-3a-memory";
-helpers.log("🧹 clearing session memory for " + sessionKey + " …");
+helpers.log("🧹 borrando la memoria de la sesión " + sessionKey + " …");
 const res = await state.call("sessions.reset", { key: sessionKey });
 helpers.log(res && res.ok
   ? "✓ cleared; that session now has no history."
   : "✗ sessions.reset returned an unexpected payload (see below).");
-helpers.log.details("sessions.reset response", res);
-helpers.log("Re-run the recall turn above and the planted code is gone.");
+helpers.log.details("respuesta de sessions.reset", res);
+helpers.log("Vuelve a ejecutar el turno de recuerdo anterior para comprobar que el código introducido ya no aparece.");
 `,
         },
 
