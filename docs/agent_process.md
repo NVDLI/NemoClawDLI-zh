@@ -67,8 +67,13 @@ Runtime checks live in [`lab_runtime_testing.md`](lab_runtime_testing.md).
   release. Unresolved evidence or an unwired validator has the same effect.
 - A new threat or security requirement updates `docs/security-control-disposition.md` and its
   enforcement surface together. Run `python3 -m unittest discover -v -s tests/validation`, followed
-  by `python3 scripts/validation/threat_control_audit.py`. Do not present a host or provider
-  requirement as a client-side mitigation.
+  by `python3 scripts/validation/threat_control_audit.py`. Verify the report's embedded architecture
+  fingerprint and flow/objective register before interpreting findings. Collapse duplicate
+  requirements, keep human reviewers out of the deployed topology, and name the enforceable defense
+  for every open item. A human referral is not a defense. Do not present a host or provider
+  requirement as a client-side mitigation. Keep release blocked unless the defense is Verified.
+  The private-decision retrieval and exact artifact comparison required for a future exception path
+  are not implemented.
 
 ## Course title, abstract, and objectives
 

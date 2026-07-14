@@ -93,6 +93,7 @@ test:
   script:
     # The canonical English course and sparse same-branch locale overlays ship together.
     # release_gate.py owns the deterministic sequence shared with GitHub and local runs.
+    - python3 scripts/validation/pages_artifact_integrity.py --source-root .
     - |
       GATE_BASE="${CI_MERGE_REQUEST_DIFF_BASE_SHA:-${CI_COMMIT_BEFORE_SHA:-}}"
       GATE_ARGS=()

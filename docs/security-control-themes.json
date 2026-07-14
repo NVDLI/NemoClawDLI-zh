@@ -21,12 +21,15 @@
     "explicit_facts": [
       "Course source and released static artifacts are public; their confidentiality is not a security objective.",
       "Proposed-change build and validation jobs hold no signing key, model API credential, runtime credential, production-service secret, or deployment key.",
-      "Artifact signing and provenance attestation are not implemented.",
+      "Builders hold no OIDC; a later job compares manifests. Signing and deploy jobs execute no repository source. No live run has proved this.",
       "CI does not write Git refs or repository content; logs and test results are job artifacts or external records.",
       "A protected-environment reviewer is a human actor, not a system component.",
+      "Release owners and legal, export, privacy, or security reviewers are evidence-workflow actors, not deployed components or runtime data flows.",
       "The static host serves bytes; repository workflows, not the host, enforce build and deployment gates.",
       "Branch and merge-request validation is normal; protected annotated tags identify release candidates only.",
       "Model, relay, launchable, runtime, and live-host controls remain unknown without current operator evidence.",
+      "Public static hosting may use reviewed cross-origin relays; the co-located launchable route is same-origin and direct to the runtime.",
+      "Interactive exercises send learner-provided prompts, credentials, agent commands, events, and workspace results to selected external services; service-side retention and privacy controls require operator and Privacy evidence.",
       "Host Python, Node.js, and Chromium are authoring and validation dependencies, not production components. Repository-owned container definitions are prohibited and would expand the reviewed scope."
     ]
   },
@@ -35,12 +38,50 @@
     "A future candidate is not implemented and cannot support a Mitigated status.",
     "An external control without current operator evidence remains Not Mitigated.",
     "A contradiction between a claimed mitigation and the Target of Evaluation resolves to the conservative status.",
-    "A human reviewer or release owner is an actor, not a system component or automated control."
+    "A component cannot mitigate a requirement it cannot enforce, and a route outside the architecture cannot support a mitigation claim.",
+    "A human reviewer or release owner is an actor, not a system component or automated control.",
+    "Human approval required is a release-blocking state; referral, attendance, a checkbox, or generated rationale does not change it.",
+    "An unresolved control must be implemented or covered by an evidence-bound decision naming the exact source and artifact, independent owner and approver roles, evidence fingerprints, residual risk, current mitigation, rejected alternatives, remediation, rollback trigger, and expiry.",
+    "A risk exception records deliberate acceptance but does not convert a missing control into an implemented mitigation.",
+    "A generated Mitigated label is not evidence of a live external control.",
+    "Exact or semantic duplicate requirements receive one disposition; duplication does not create additional risk or evidence."
   ],
+  "assessment_review_steps": [
+    "Verify the report's embedded architecture fingerprint and flow/objective register against the submitted design and diagram before interpreting findings; a missing or mismatched binding makes the report input Unknown.",
+    "Normalize and compare private threat, requirement, and architecture content with the prior assessment; a metadata-only rerender does not justify public-document churn.",
+    "Correct Target of Evaluation scope, facts, and ownership before interpreting generated risk labels or statuses.",
+    "Check each security objective, enforcement owner, architecture route, and duplicate before disposition; reject requirements assigned to a component that cannot enforce them or to a route that does not exist.",
+    "For every Not verified, Unknown, or Human approval required item, identify the enforceable defense and its owner; referral to a reviewer is not a defense.",
+    "Assign every private requirement exactly one disposition: verified repository control, open repository action, external evidence required, architecture decision required, or not applicable with a recorded reason.",
+    "Keep release blocked until the defense is verified or the deny-by-default release guard retrieves the authorized private decision and compares its bindings with the exact built artifact; that automated comparison is not implemented.",
+    "Use current evidence for status; a generated Mitigated label for a live external control remains open until its operator supplies evidence.",
+    "Collapse exact and semantic duplicate requirements to one disposition, then map repeated findings to aggregate control themes instead of copying private rows into the public repository.",
+    "Update public sources and regenerate the package only when scope, architecture, a current control, evidence, or an open decision changed."
+  ],
+  "evidence_contract": {
+    "required_fields": [
+      "issuer_role",
+      "subject",
+      "scope",
+      "release_binding",
+      "control_claims",
+      "evidence_fingerprints",
+      "observed_at",
+      "expires_at",
+      "result",
+      "limitations"
+    ],
+    "authority_rule": "A repository test can certify only repository-owned controls. External host, launchable, relay, model-service, runtime, privacy, legal, and release claims require evidence issued by the accountable owner or authoritative system.",
+    "binding_rule": "The record must identify the exact source commit, artifact digest, service release, configuration digest, and environment that apply; fields that do not apply require a reason.",
+    "failure_state": "Missing, stale, self-issued, unbound, ambiguous, or unverifiable evidence is Unknown and release-blocking."
+  },
   "themes": [
     {
       "id": "source-ci-trust",
       "title": "Source and CI trust",
+      "threat_ids": [
+        "TR-01"
+      ],
       "state": "shared-verification-required",
       "owner": "repository and source-host administrators",
       "current_control": "Read-only contribution jobs receive no deployment credentials; workflows use immutable action pins, required validation, DCO, and job timeouts.",
@@ -56,37 +97,46 @@
     {
       "id": "build-supply-chain",
       "title": "Build supply chain",
+      "threat_ids": [
+        "TR-02"
+      ],
       "state": "partially-verified",
       "owner": "repository and release owners",
-      "current_control": "Python and browser dependencies use exact locks; browser bundles have license, source-reference, and SHA-256 inventories; SCA and SBOM checks are release gates.",
+      "current_control": "Validation emits lock/SCA/SBOM evidence without signing authority. Two package-free jobs assemble and compare; no-checkout signing receives only the manifest. Live execution is not verified.",
       "evidence": [
         "scripts/browser-vendor/package-lock.json",
         "scripts/validation/course_dependency_integrity.py",
         "scripts/validation/container_boundary_audit.py",
         "scripts/security/run_full_sca.py"
       ],
-      "future_candidate": "NOT IMPLEMENTED. If release policy requires stronger dependency-origin guarantees, the release owner would need to adopt an approved package mirror or offline cache and a hermetic, reproducible builder.",
+      "future_candidate": "NOT IMPLEMENTED. Python locks lack artifact hashes, runner egress is open, and ordinary jobs are not trusted; stronger policy needs hashed inputs and an isolated builder.",
       "trigger": "When dependency sources, build runners, package registries, or release assurance requirements change.",
       "verification": "Rebuild the same ref in two clean approved environments; compare artifacts, dependency closure, SBOMs, and provenance records."
     },
     {
       "id": "artifact-integrity",
       "title": "Artifact integrity and publication",
+      "threat_ids": [
+        "TR-03"
+      ],
       "state": "partially-verified",
       "owner": "repository, release, and Product Security owners",
-      "current_control": "One bounded artifact is safely extracted, reverified against its complete SHA-256 inventory, deployed without rebuilding, and compared byte-for-byte with the live site.",
+      "current_control": "Bounded artifacts retain SHA-256 continuity. A post-build job compares manifests; a no-checkout signer verifies provenance before a source-free deploy job gains authority. Live execution is not verified.",
       "evidence": [
         "scripts/validation/pages_artifact_integrity.py",
         ".github/workflows/pages.yml",
         "docs/release_artifacts.md"
       ],
-      "future_candidate": "NOT IMPLEMENTED. If checksum continuity is insufficient for release policy, the release owner would need to add an approved signing identity and verifiable artifact attestation.",
-      "trigger": "Before release if Product Security or release policy requires cryptographic provenance.",
-      "verification": "Verify signature and attestation subject, issuer, source ref, workflow identity, and artifact digest before promotion."
+      "future_candidate": "NOT IMPLEMENTED. Ordinary workflows can attest attacker-chosen bytes; stronger policy needs an approved trusted builder or equivalent isolation.",
+      "trigger": "Before release or after workflow, runner, or attestation changes.",
+      "verification": "Run protected refs; verify subject, issuer, source, signer workflow, hosted runner, and pre-authority ordering; decide whether the builder satisfies policy."
     },
     {
       "id": "static-host-browser",
       "title": "Static host and browser execution",
+      "threat_ids": [
+        "TR-04"
+      ],
       "state": "shared-verification-required",
       "owner": "repository and static-host operators",
       "current_control": "Course checks reject remote executable dependencies and unsafe URLs; untrusted model output is rendered through reviewed text or sanitization paths.",
@@ -102,6 +152,9 @@
     {
       "id": "browser-credentials",
       "title": "Browser-held credentials",
+      "threat_ids": [
+        "TR-05"
+      ],
       "state": "architecture-decision-required",
       "owner": "hosting, credential-issuer, service, Privacy, and Product Security owners",
       "current_control": "The static client uses password inputs, visible destinations, explicit save and clear actions, and route-specific credentials. Browser-readable localStorage is documented as an untrusted boundary.",
@@ -117,6 +170,9 @@
     {
       "id": "relay-boundary",
       "title": "Relay boundary",
+      "threat_ids": [
+        "TR-06"
+      ],
       "state": "external-evidence-required",
       "owner": "relay operators",
       "current_control": "The course selects reviewed routes and sends only route-specific authentication, but repository fixtures do not attest the hosted relay.",
@@ -132,6 +188,9 @@
     {
       "id": "model-service-boundary",
       "title": "Model-service boundary",
+      "threat_ids": [
+        "TR-07"
+      ],
       "state": "external-evidence-required",
       "owner": "model-service and credential-issuer operators",
       "current_control": "The course shows the selected endpoint, constrains endpoint registration, and treats prompts, outputs, and credentials as untrusted service traffic.",
@@ -147,6 +206,9 @@
     {
       "id": "launchable-runtime-boundary",
       "title": "Launchable and runtime boundary",
+      "threat_ids": [
+        "TR-08"
+      ],
       "state": "external-evidence-required",
       "owner": "launchable and NemoClaw runtime operators",
       "current_control": "The course documents same-origin co-located routing and expected sandbox behavior; it does not deploy or attest the launchable or runtime.",
@@ -162,6 +224,9 @@
     {
       "id": "availability-resource-controls",
       "title": "Availability and resource controls",
+      "threat_ids": [
+        "TR-09"
+      ],
       "state": "shared-verification-required",
       "owner": "repository, host, relay, model-service, and runtime operators",
       "current_control": "Repository jobs and static artifacts have time, file-count, file-size, total-size, depth, archive-size, and expansion-ratio bounds.",
@@ -170,24 +235,27 @@
         ".github/workflows/pages.yml",
         ".github/workflows/release.yml"
       ],
-      "future_candidate": "NO LIVE EVIDENCE. External operators would need to demonstrate per-identity request, payload, token, concurrency, connection, CPU, memory, disk, spend, and egress limits with safe backpressure.",
+      "future_candidate": "NOT IMPLEMENTED. Repository owners must inventory every generated-evidence parser and add input-byte, nesting, item-count, recursion, and entity-expansion bounds. External operators must separately demonstrate per-identity request, payload, token, concurrency, connection, CPU, memory, disk, spend, and egress limits with safe backpressure.",
       "trigger": "Before production load and after traffic, capacity, pricing, or service-topology changes.",
-      "verification": "Run bounded load and abuse tests; retain quota, timeout, backpressure, alert, and recovery evidence from each operator."
+      "verification": "Run parser-bomb mutation tests plus bounded load and abuse tests; retain quota, timeout, backpressure, alert, and recovery evidence from each operator."
     },
     {
       "id": "assessment-fidelity",
       "title": "Assessment fidelity",
-      "state": "human-review-required",
+      "threat_ids": [
+        "TR-10"
+      ],
+      "state": "not-verified-release-blocking",
       "owner": "release owner and Product Security reviewer",
-      "current_control": "The package separates repository ownership from external dependencies and publishes aggregate themes rather than private finding rows.",
+      "current_control": "Generated analysis has no release effect by itself. Unknown, Not verified, and Human approval required items remain blocking. The release guard also blocks structured decisions because private evidence retrieval and exact artifact comparison are not implemented.",
       "evidence": [
         "docs/security-design.md",
         "docs/security-control-disposition.md",
         "scripts/build/build_security_review_package.py"
       ],
-      "future_candidate": "NOT IMPLEMENTED. Before accepting generated risk output, a human reviewer would need to correct scope, ownership, facts, and statuses and keep unresolved external controls open until evidence exists.",
+      "future_candidate": "NOT IMPLEMENTED. Automated retrieval of authorized private evidence could reduce manual transcription while preserving the same deny-by-default decision contract.",
       "trigger": "For every generated assessment and after any architecture or control change.",
-      "verification": "A human reviewer maps each private finding to one aggregate theme, records evidence and owner, and rejects unsupported mitigated claims."
+      "verification": "Verify each enforceable defense directly. For accepted residual risk, validate the private-record fingerprint, exact source and artifact digests, independent roles, evidence fingerprints, substantive rationale fields, rollback trigger, remediation, and unexpired decision before release."
     }
   ]
 }

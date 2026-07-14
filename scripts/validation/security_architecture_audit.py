@@ -23,7 +23,7 @@ from _bootstrap import add_script_paths, find_repo_root  # noqa: E402
 
 ROOT = find_repo_root(Path(__file__).resolve())
 add_script_paths(ROOT / "scripts")
-from render_security_architecture import edge_path, render  # noqa: E402
+from render_security_architecture import edge_path, model_digest, render  # noqa: E402
 
 MODEL = ROOT / "docs" / "security-architecture.json"
 SVG = ROOT / "docs" / "security-architecture.svg"
@@ -35,6 +35,24 @@ TOE_NODE_IDS = {"source", "artifact", "browser"}
 EXTERNAL_NODE_IDS = {"ci", "pages_host", "launchable_host", "model_api", "nemoclaw"}
 TOE_ASSURANCE = "REPOSITORY EVIDENCE"
 EXTERNAL_ASSURANCE = "NO LIVE EVIDENCE FROM EXTERNAL OPERATOR"
+ALLOWED_SECURITY_OBJECTIVES = {"confidentiality", "integrity", "availability"}
+EXPECTED_EDGE_IDS = {
+    "source_to_ci",
+    "ci_to_artifact",
+    "artifact_to_pages",
+    "artifact_to_launchable",
+    "pages_to_browser",
+    "launchable_to_browser",
+    "browser_to_models",
+    "browser_to_nemoclaw",
+}
+EXPECTED_EXCLUDED_INTERACTIONS = {
+    "relay_to_model",
+    "relay_to_nemoclaw",
+    "launchable_to_nemoclaw",
+    "launchable_to_model",
+    "reviewer_handoff",
+}
 URL_HOST_RE = re.compile(r"(?:https?|wss?)://[A-Za-z0-9][A-Za-z0-9._-]*", re.I)
 DECLARED_URL_RE = re.compile(
     r"(?:const|let|var)\s+[A-Z0-9_]*(?:URL|URI|BASE|ORIGIN|ENDPOINT|PROXY)[A-Z0-9_]*\s*=\s*[\"'`](?P<url>(?:https?|wss?)://[A-Za-z0-9][A-Za-z0-9._-]*)",
@@ -257,6 +275,45 @@ def audit_model(model: dict, *, root: Path = ROOT, svg_text: str | None = None) 
             "ownership-rule", "docs/security-architecture.json",
             "diagram does not state the fail-closed ownership rule",
         ))
+    threat_enumeration = system.get("threat_enumeration") or {}
+    if "only for the declared edges" not in str(threat_enumeration.get("rule", "")) or "Do not infer" not in str(
+        threat_enumeration.get("rule", "")
+    ):
+        out.append(finding(
+            "threat-enumeration", "docs/security-architecture.json",
+            "threat enumeration is not limited to the canonical declared edges",
+        ))
+    if "remain one Target of Evaluation boundary flow" not in str(
+        threat_enumeration.get("route_consolidation", "")
+    ):
+        out.append(finding(
+            "route-consolidation", "docs/security-architecture.json",
+            "direct and relayed route variants are not consolidated",
+        ))
+    objective_rules = threat_enumeration.get("objective_rules") or []
+    objective_text = " ".join(str(value) for value in objective_rules)
+    if not all(token in objective_text for token in (
+        "Confidentiality is not a security objective for public course source",
+        "Integrity applies to course source",
+        "Availability applies to course validation",
+    )):
+        out.append(finding(
+            "objective-rules", "docs/security-architecture.json",
+            "security objectives do not preserve the public-source and external-ownership boundary",
+        ))
+    excluded = threat_enumeration.get("excluded_external_interactions") or []
+    excluded_ids = {row.get("id") for row in excluded if isinstance(row, dict)}
+    if excluded_ids != EXPECTED_EXCLUDED_INTERACTIONS or len(excluded_ids) != len(excluded):
+        out.append(finding(
+            "excluded-interactions", "docs/security-architecture.json",
+            "external-internal and human-workflow exclusions changed",
+        ))
+    for row in excluded:
+        if not isinstance(row, dict) or not str(row.get("interaction", "")).strip() or not str(row.get("reason", "")).strip():
+            out.append(finding(
+                "excluded-interaction-shape", "docs/security-architecture.json",
+                "each excluded interaction needs an id, interaction, and reason",
+            ))
     forbidden_metadata = {"program", "nspect_id", "version", "release_type"}
     leaked = sorted(forbidden_metadata.intersection(model) | forbidden_metadata.intersection(system))
     if leaked:
@@ -344,6 +401,27 @@ def audit_model(model: dict, *, root: Path = ROOT, svg_text: str | None = None) 
         for key in ("protocol", "data", "auth", "trust_boundary"):
             if not str(edge.get(key, "")).strip():
                 out.append(finding("edge-field", "docs/security-architecture.json", f"{edge_id}.{key} is required"))
+        objectives = edge.get("security_objectives")
+        if (
+            not isinstance(objectives, list)
+            or not objectives
+            or len(objectives) != len(set(objectives))
+            or not set(objectives).issubset(ALLOWED_SECURITY_OBJECTIVES)
+        ):
+            out.append(finding(
+                "edge-objectives", "docs/security-architecture.json",
+                f"{edge_id} must list unique applicable confidentiality, integrity, or availability objectives",
+            ))
+        elif "confidentiality" in objectives and not edge.get("sensitive"):
+            out.append(finding(
+                "public-confidentiality", "docs/security-architecture.json",
+                f"{edge_id} assigns confidentiality to public, non-sensitive course data",
+            ))
+        elif edge.get("sensitive") and "confidentiality" not in objectives:
+            out.append(finding(
+                "sensitive-confidentiality", "docs/security-architecture.json",
+                f"{edge_id} carries sensitive data without a confidentiality objective",
+            ))
         if source.get("zone") != target.get("zone") and edge.get("auth") in (None, "", "unknown"):
             out.append(finding("boundary-auth", "docs/security-architecture.json", f"{edge_id} crosses zones without explicit authentication"))
         if edge.get("sensitive") and (not edge.get("data") or edge.get("auth") in (None, "", "none")):
@@ -444,17 +522,13 @@ def audit_model(model: dict, *, root: Path = ROOT, svg_text: str | None = None) 
     for node_id in ("model_api", "nemoclaw"):
         if node_id not in nodes or nodes[node_id].get("conditional"):
             out.append(finding("required-service", "docs/security-architecture.json", f"{node_id} must remain a required, non-conditional service"))
-    route_contract = {
-        "source_to_ci": False,
-        "ci_to_artifact": False,
-        "artifact_to_pages": False,
-        "artifact_to_launchable": False,
-        "pages_to_browser": False,
-        "launchable_to_browser": False,
-        "browser_to_models": False,
-        "browser_to_nemoclaw": False,
-    }
+    route_contract = {edge_id: False for edge_id in EXPECTED_EDGE_IDS}
     indexed_edges = {edge.get("id"): edge for edge in edges}
+    if set(indexed_edges) != EXPECTED_EDGE_IDS:
+        out.append(finding(
+            "threat-edge-scope", "docs/security-architecture.json",
+            "declared threat edges differ from the reviewed course boundary",
+        ))
     for edge_id, conditional in route_contract.items():
         edge = indexed_edges.get(edge_id)
         if not edge or bool(edge.get("conditional")) != conditional:
@@ -525,6 +599,9 @@ def audit_model(model: dict, *, root: Path = ROOT, svg_text: str | None = None) 
         "COURSE-OWNED",
         "EXTERNAL DEPENDENCY",
         "LIVE CONTROLS NOT ATTESTED",
+        "THREAT ENUMERATION BOUNDARY · DECLARED FLOWS ONLY",
+        "Only numbered flows and listed objectives are enumerated",
+        f"model fingerprint: {model_digest(model)[:16]}",
         f'<title id="title">{EXPECTED_SVG_TITLE}</title>',
         f'<text class="title" x="48" y="48">{EXPECTED_SVG_TITLE}</text>',
     ):
@@ -575,6 +652,14 @@ def self_test() -> list[str]:
     mutation = copy.deepcopy(base)
     mutation["system"]["target_of_evaluation"] = mutation["system"]["target_of_evaluation"][1:]
     cases.append(("cross-document TOE", mutation, expected_svg, "toe-cross-document"))
+
+    mutation = copy.deepcopy(base)
+    mutation["system"].pop("threat_enumeration")
+    cases.append(("missing threat enumeration boundary", mutation, expected_svg, "threat-enumeration"))
+
+    mutation = copy.deepcopy(base)
+    mutation["system"]["threat_enumeration"]["excluded_external_interactions"].pop()
+    cases.append(("missing external interaction exclusion", mutation, expected_svg, "excluded-interactions"))
 
     mutation = copy.deepcopy(base)
     external = next(node for node in mutation["nodes"] if node["id"] == "model_api")
@@ -647,6 +732,20 @@ def self_test() -> list[str]:
     cases.append(("boundary authentication", mutation, expected_svg, "edge-field"))
 
     mutation = copy.deepcopy(base)
+    next(edge for edge in mutation["edges"] if edge["id"] == "source_to_ci").pop("security_objectives")
+    cases.append(("missing edge objectives", mutation, expected_svg, "edge-objectives"))
+
+    mutation = copy.deepcopy(base)
+    next(edge for edge in mutation["edges"] if edge["id"] == "source_to_ci")["security_objectives"].append("confidentiality")
+    cases.append(("public source confidentiality", mutation, expected_svg, "public-confidentiality"))
+
+    mutation = copy.deepcopy(base)
+    extra_edge = copy.deepcopy(next(edge for edge in mutation["edges"] if edge["id"] == "browser_to_models"))
+    extra_edge.update({"id": "relay_to_model", "from": "model_api", "to": "nemoclaw", "route": {}})
+    mutation["edges"].append(extra_edge)
+    cases.append(("inferred external-to-external edge", mutation, expected_svg, "threat-edge-scope"))
+
+    mutation = copy.deepcopy(base)
     next(edge for edge in mutation["edges"] if edge["id"] == "browser_to_nemoclaw")["data"] = ""
     cases.append(("sensitive flow", mutation, expected_svg, "sensitive-flow"))
 
@@ -671,6 +770,9 @@ def self_test() -> list[str]:
             failures.append(f"detector missed {label}: expected {wanted}, got {sorted(codes)}")
     if "stale-svg" not in {row["code"] for row in audit_model(base, svg_text=expected_svg.replace("Flow register", "Flow registry", 1))}:
         failures.append("detector missed stale SVG")
+    missing_fingerprint = expected_svg.replace(f"model fingerprint: {model_digest(base)[:16]}", "model fingerprint: missing", 1)
+    if "svg-accessibility" not in {row["code"] for row in audit_model(base, svg_text=missing_fingerprint)}:
+        failures.append("detector missed visible model-fingerprint drift")
     wrong_title = expected_svg.replace(EXPECTED_SVG_TITLE, "NemoClaw course security architecture")
     if "scope-title" not in {row["code"] for row in audit_model(base, svg_text=wrong_title)}:
         failures.append("detector missed product-like diagram title")

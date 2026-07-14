@@ -25,8 +25,6 @@ from pathlib import Path
 from threading import Lock
 from typing import Iterable
 
-import requests
-
 for _p in (Path(__file__).resolve(), *Path(__file__).resolve().parents):
     if (_p / "scripts" / "_bootstrap.py").exists():
         sys.path.insert(0, str(_p / "scripts"))
@@ -47,6 +45,12 @@ JS_STRING_RE = re.compile(r'(["\'])(.*?)(?<!\\)\1', re.S)
 UI_CALL_RE = re.compile(r'\b(?:helpers\.log|log(?:\.h|\.details|\.html)?|info|show)\s*\((.*?)\)\s*;', re.S)
 SCRIPT_RE = re.compile(r'<script\b([^>]*)>(.*?)</script>', re.S | re.I)
 PLACEHOLDER_RE = re.compile(r'(?:<code\b[^>]*>.*?</code>|<kbd\b[^>]*>.*?</kbd>|\\?\$\{[^}]+\}|\{\{[^}]+\}\}|https?://[^\s<"\']+|nvapi-|&[A-Za-z0-9#]+;|<[^>]+>)', re.S | re.I)
+
+
+def requests_client():
+    """Load the network client only for authoring operations that call the translation API."""
+    import requests  # type: ignore[import-not-found]
+    return requests
 
 
 @dataclass(frozen=True)
@@ -316,6 +320,7 @@ def parse_json_array(content: str) -> list[dict[str, str]]:
 
 def translate_batch(batch: list[tuple[str, ...]], profile: dict, model: str, key: str, polish: bool,
                     ledger: UsageLedger, page: str) -> dict[str, str]:
+    requests = requests_client()
     terminology = "; ".join(f"{source} => {target}" for source, target in profile.get("preferred_terms", {}).items())
     rejected = "; ".join(f"{phrase} ({fix})" for phrase, fix in profile.get("unfit_phrases", {}).items())
     revising = bool(batch and len(batch[0]) == 3)
@@ -466,6 +471,7 @@ def translate_page(source_path: Path, target_path: Path, profile: dict, model: s
     print(f"{label}: {len(segments)} segments, {len(distinct)} distinct, {len(missing)} API", flush=True)
     if dry_run:
         return len(segments), len(missing)
+    requests = requests_client()
     key = api_key()
     work = list(enumerate(batches(missing), 1))
 

@@ -11,7 +11,7 @@
   "node_type": "directory-explorer",
   "title": "docs/ contributor, release, and design evidence",
   "source_dir": "docs/",
-  "summary": "Task-routed operating notes with one owner per concern. Start with agent_process and issue_standards for changes; pages_deploy and lab_runtime_testing for execution; product-design and release-test-plan for release evidence; release_playbook for host settings; security-design for trust boundaries; security-control-themes for aggregate mitigations; security-control-disposition for the short human status view. Generate security-review-design.md when one self-contained public-safe design and verification record is needed.",
+  "summary": "Task-routed operating notes with one owner per concern. Start with agent_process and issue_standards for changes; pages_deploy and lab_runtime_testing for execution; product-design and release-test-plan for release evidence; release_playbook for host settings and threat-driven promotion; security-design for trust boundaries and the threat register; security-control-themes for aggregate mitigations; security-control-disposition for the deny-by-default human status view. Generate security-review-design.md when one self-contained public-safe design, digest-bound diagram, threat register, exhaustive flow/objective boundary, and verification record is needed.",
   "related": [
     "docs/pages_deploy.md",
     "docs/lab_runtime_testing.md",
@@ -142,7 +142,7 @@
       "path": "security-design.md",
       "kind": "authored",
       "role": "review-neutral security design and graph guide",
-      "desc": "Production scope, routing, trust boundaries, controls, public evidence limits, reconstruction, and graph regeneration without program metadata."
+      "desc": "Production scope, routing, digest-bound threat-enumeration edges and objectives, trust boundaries, controls, public evidence limits, reconstruction, and graph regeneration without program metadata."
     },
     {
       "path": "security-control-disposition.md",
@@ -154,7 +154,7 @@
       "path": "security-control-themes.json",
       "kind": "canonical",
       "role": "aggregate security control register",
-      "desc": "Machine-readable Target of Evaluation ownership, current controls, anticipated mitigations, triggers, and verification expectations used by the self-contained review design."
+      "desc": "Machine-readable Target of Evaluation ownership, assessment reconciliation steps, current controls, future candidates, triggers, and verification expectations used by the self-contained review design."
     },
     {
       "path": "security-architecture.json",
@@ -253,7 +253,13 @@
 </header>
 <section class="security-review-build" aria-labelledby="security-review-build-title">
   <h1 id="security-review-build-title">Security review package</h1>
-  <p>Generate one supporting design. Pair it with the existing <a href="security-architecture.svg">security architecture diagram</a>. The design defines the review scope and data assumptions while recording each control beside its mitigation trigger and expected verification. Repository paths preserve traceability from every claim to its evidence. The ignored archive contains exactly two upload files.</p>
+  <p>Generate one supporting design and pair it with the existing <a href="security-architecture.svg">security architecture diagram</a>. Their recorded digests bind the two upload files, and the visible model fingerprint detects a stale embedded diagram.</p>
+  <ul>
+    <li>Define the review scope, exhaustive flow/objective boundary, and data assumptions.</li>
+    <li>Record each control beside its mitigation trigger and expected verification.</li>
+    <li>Keep publication blocked until the defense is verified; human referral does not close an open control.</li>
+  </ul>
+  <p>Private-decision retrieval and exact artifact comparison are not implemented. Repository paths preserve traceability from every claim to its evidence, and the ignored archive contains exactly the two upload files.</p>
   <code>python3 scripts/build/build_security_review_package.py --package</code>
   <code>python3 scripts/build/build_security_review_package.py --self-test &amp;&amp; python3 scripts/figures/render_security_architecture.py --check &amp;&amp; python3 scripts/validation/security_architecture_audit.py</code>
 </section>

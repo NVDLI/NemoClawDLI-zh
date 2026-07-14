@@ -32,7 +32,14 @@ browser, with no server logic:
 | `public/link-graph.html` + `engine.js` | the link-graph viewer (engine runs in-browser; offline uses the embedded snapshot) |
 | `public/tests.html` | the client-side test runner (below) |
 | `public/validation.html` + `gate.json` | the CI gate report, rendered from `docs/validation/latest.json` |
+| `public/source/github/` + `public/source/gitlab/` | public-safe routes for the projected workflow and host-configuration explorers |
 | `public/LICENSE` + `THIRD_PARTY_LICENSES.md` | Apache-2.0 terms and the static third-party package/license/material inventory |
+
+GitLab Pages does not preserve HTML responses under dot-prefixed directories byte-for-byte.
+`project_source_tree.py` therefore moves `.github/` and `.gitlab/` to the two `source/` routes
+above and rewrites local HTML and JSON evidence links before the exhaustive browser, artifact,
+and deployed-byte checks run.
+The source files remain at their normal repository paths; only the static projection changes.
 
 The course pages inline their own CSS and JS and use relative links, so the course directory works
 from a Pages subpath. Live model calls use the student's own NVIDIA key and call NVIDIA model
@@ -162,21 +169,21 @@ separate staging project or true parallel Pages deployments when the host suppor
 `.github/workflows/pages.yml` runs the identical gate, then separates artifact creation
 from deployment on pushes to the default branch. The read-only `build-and-verify` job
 builds `public/`, verifies that `gate.json` names the same commit, rejects symlinks and
-remote executable references, writes a SHA-256 inventory, and exercises the generated
-tree in Chromium. The artifact gate also caps file count, individual and total size,
-directory depth, archive size, and expansion ratio. Only that immutable `github-pages`
-artifact can reach the `deploy` job.
+remote executable references, writes a SHA-256 inventory, and exercises the generated tree in
+Chromium. A second clean runner independently assembles the tree without package installation.
+Neither builder has OIDC or attestation authority. A later job requires identical manifests,
+then passes only that inventory to a no-checkout signing job. The signer verifies its subject,
+source/ref, workflow, and hosted runner without executing repository source. Only then can the
+protected `deploy` job request authority.
 
 Protect the `github-pages` environment with required reviewers and prevent self-review.
-The reviewer inspects the completed build, browser logs, and downloadable artifact before
-approving deployment. After approval, the deploy job downloads the same Actions artifact,
-rejects traversal, links, devices, duplicate members, unsupported types, and resource-bound
-violations before extraction, then verifies its embedded SHA-256 inventory again before `deploy-pages` receives
-write and OIDC permissions. A source checkout or a newly rebuilt tree is never substituted at
-that boundary. A separate read-only job waits for the HTTPS deployment, requires the live
+The reviewer inspects the build, browser logs, artifact, and provenance verification before
+approving deployment. The deploy job has no checkout or shell step; with write and OIDC permissions
+it invokes only the commit-pinned `deploy-pages` action on the previously uploaded artifact. A
+separate read-only job then waits for HTTPS, safely extracts that artifact, requires the live
 manifest to equal the reviewed manifest, and downloads every listed object to compare its digest.
-Artifact checks reduce accidental or unauthorized execution paths; the required human review
-remains responsible for judging the intended HTML and JavaScript behavior.
+This proves repeatability, workflow identity, and byte continuity, not that two ordinary runners
+behaved honestly. Trusted-builder policy remains open; human review cannot replace it.
 
 This is the first-class public course. A future `docs.nvidia.com/learning/nemoclaw` entry
 will route learners into this low-friction static experience.

@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
 import os
 import re
@@ -24,6 +25,22 @@ from _bootstrap import find_repo_root
 
 ROOT = find_repo_root(Path(__file__).resolve())
 NVIDIA_APACHE_COPYRIGHT = "Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+DECISION_FIELDS = (
+    "kind", "record_fingerprint", "source_commit", "artifact_sha256", "scope",
+    "owner_role", "approver_role", "evidence_fingerprints", "residual_risk",
+    "mitigation", "alternatives_rejected", "remediation", "rollback_trigger", "expires",
+)
+DECISION_POLICY = {
+    "default": "deny",
+    "human_review_effect": "no-state-change-without-evidence-bound-decision",
+    "private_record": "authorized-external-system",
+    "repository_record": "opaque-fingerprints-and-release-binding",
+    "external_evidence_verification": "not-implemented-release-blocking",
+    "artifact_binding_required": True,
+    "independent_approver_required": True,
+    "expiry_required": True,
+    "required_decision_fields": list(DECISION_FIELDS),
+}
 
 CONTRACT_FILES = (
     "RELEASE_STATUS.json",
@@ -121,6 +138,15 @@ def top_permissions(workflow: str) -> str:
     return match.group(1) if match else ""
 
 
+def workflow_job(workflow: str, name: str) -> str:
+    """Return one top-level GitHub Actions job without relying on token counts."""
+    match = re.search(
+        rf"(?ms)^  {re.escape(name)}:\n(.*?)(?=^  [A-Za-z0-9_-]+:\n|\Z)",
+        workflow,
+    )
+    return match.group(0) if match else ""
+
+
 def audit_workflow_pins(
     root: Path, text_overrides: dict[str, str] | None = None,
 ) -> list[dict[str, str]]:
@@ -149,6 +175,93 @@ def audit_workflow_pins(
     return out
 
 
+def decision_record_findings(status: dict, *, today: dt.date | None = None) -> list[dict[str, str]]:
+    """Reject approval labels that lack an artifact-bound, independently owned decision."""
+    out: list[dict[str, str]] = []
+    today = today or dt.date.today()
+    if status.get("decision_policy") != DECISION_POLICY:
+        out.append(finding(
+            "decision-policy", "RELEASE_STATUS.json",
+            "release decision policy is missing or weakened",
+            "restore the deny-by-default evidence, artifact-binding, independence, and expiry contract",
+        ))
+    decision = status.get("publication_decision")
+    if not isinstance(decision, dict):
+        return out + [finding(
+            "decision-record", "RELEASE_STATUS.json",
+            "approved publication lacks a structured decision record",
+            "bind the authorized private decision to the exact source and artifact with independent ownership and expiry",
+        )]
+    missing = sorted(set(DECISION_FIELDS) - set(decision))
+    unknown = sorted(set(decision) - set(DECISION_FIELDS))
+    if missing or unknown:
+        out.append(finding(
+            "decision-record", "RELEASE_STATUS.json",
+            f"decision fields differ from the required contract; missing={missing}, unknown={unknown}",
+            "record every required field and no unreviewed substitute fields",
+        ))
+    if decision.get("kind") not in {"approval", "risk-exception"}:
+        out.append(finding("decision-record", "RELEASE_STATUS.json", "decision kind is unsupported",
+                           "use approval or risk-exception"))
+    for field, pattern in (
+        ("record_fingerprint", r"[0-9a-f]{64}"),
+        ("source_commit", r"[0-9a-f]{40}"),
+        ("artifact_sha256", r"[0-9a-f]{64}"),
+    ):
+        if not re.fullmatch(pattern, str(decision.get(field, ""))):
+            out.append(finding("decision-record", "RELEASE_STATUS.json", f"{field} is not an immutable digest",
+                               f"bind {field} to the reviewed decision or artifact"))
+    evidence = decision.get("evidence_fingerprints")
+    if (
+        not isinstance(evidence, list)
+        or not evidence
+        or len(evidence) != len(set(str(value) for value in evidence))
+        or any(not re.fullmatch(r"[0-9a-f]{64}", str(value)) for value in evidence)
+    ):
+        out.append(finding(
+            "decision-record", "RELEASE_STATUS.json",
+            "evidence_fingerprints must contain unique lowercase SHA-256 values",
+            "fingerprint every evidence item considered by the decision",
+        ))
+    for field in ("owner_role", "approver_role"):
+        if not isinstance(decision.get(field), str) or not decision[field].strip():
+            out.append(finding("decision-record", "RELEASE_STATUS.json", f"{field} is empty",
+                               "name the accountable role without embedding a private identity"))
+    if decision.get("owner_role") == decision.get("approver_role"):
+        out.append(finding(
+            "decision-record", "RELEASE_STATUS.json",
+            "risk owner and approver roles are identical",
+            "require an independent approver role for the exact release decision",
+        ))
+    for field in (
+        "scope", "residual_risk", "mitigation", "alternatives_rejected",
+        "remediation", "rollback_trigger",
+    ):
+        value = decision.get(field)
+        if not isinstance(value, str) or len(value.strip()) < 20:
+            out.append(finding(
+                "decision-record", "RELEASE_STATUS.json",
+                f"{field} is absent or too shallow to support a deliberate decision",
+                f"record a substantive public-safe {field.replace('_', ' ')} summary",
+            ))
+    try:
+        expiry = dt.date.fromisoformat(str(decision.get("expires", "")))
+    except ValueError:
+        expiry = None
+        out.append(finding("decision-record", "RELEASE_STATUS.json", "expires must be YYYY-MM-DD",
+                           "set a review date for the decision"))
+    if expiry is not None and expiry <= today:
+        out.append(finding("decision-record", "RELEASE_STATUS.json", "release decision is expired",
+                           "re-evaluate the exact artifact with current evidence"))
+    if status.get("decision_policy", {}).get("external_evidence_verification") != "implemented":
+        out.append(finding(
+            "decision-verification", "RELEASE_STATUS.json",
+            "private evidence retrieval and artifact-digest comparison are not implemented",
+            "keep publication blocked until an automated guard compares the authorized decision with the exact built artifact",
+        ))
+    return out
+
+
 def audit_publication_approval(root: Path = ROOT) -> list[dict[str, str]]:
     try:
         status = json.loads((root / "RELEASE_STATUS.json").read_text(encoding="utf-8"))
@@ -160,7 +273,7 @@ def audit_publication_approval(root: Path = ROOT) -> list[dict[str, str]]:
         return [finding("publication-approval", "RELEASE_STATUS.json",
                         "external publication is not approved",
                         "complete OSRB approval, then update release status in a reviewed change")]
-    return []
+    return decision_record_findings(status)
 
 
 def audit_repo(
@@ -199,6 +312,18 @@ def audit_repo(
             out.append(finding("release-status", "RELEASE_STATUS.json",
                                f"{key} must be {expected!r} before external approval",
                                "update publication state only in an OSRB-approved release change"))
+    if status.get("decision_policy") != DECISION_POLICY:
+        out.append(finding(
+            "decision-policy", "RELEASE_STATUS.json",
+            "deny-by-default release decision policy changed or is incomplete",
+            "restore evidence binding, independent approval, and expiry requirements",
+        ))
+    if status.get("publication_state") == "pending-osrb-approval" and status.get("publication_decision") is not None:
+        out.append(finding(
+            "decision-record", "RELEASE_STATUS.json",
+            "pending publication carries a premature decision record",
+            "keep the record null until the authorized decision covers the exact release",
+        ))
     notice_required = status.get("notice_required")
     if not isinstance(notice_required, bool):
         out.append(finding("notice-state", "RELEASE_STATUS.json",
@@ -235,6 +360,10 @@ def audit_repo(
             "route general employee product-security questions to #ask-security without replacing private vulnerability intake")
     require(docs["SUPPORT.md"], "Breaking changes and retirement decisions", "SUPPORT.md",
             "lifecycle-boundary", out, "document change, retirement, and archival expectations")
+    require(docs["README.md"], "may approve its own protected merge or release", "README.md",
+            "independent-review", out, "keep independent review explicit in role authority")
+    require(docs["README.md"], "approval does not replace a missing control", "README.md",
+            "approval-not-control", out, "keep unresolved release risk blocked until defended or deliberately accepted")
     require(docs["DCO.md"], "Developer Certificate of Origin 1.1", "DCO.md", "dco-policy", out,
             "document the inbound signoff policy and authoritative DCO version")
     require(docs["DCO.md"], "git commit --signoff", "DCO.md", "dco-repair", out,
@@ -245,6 +374,9 @@ def audit_repo(
     require(docs["CONTRIBUTING.md"], "stacked merge request", "CONTRIBUTING.md",
             "contributor-stacked-merge", out,
             "put the signed-commit preservation rule in contributor first-touch guidance")
+    require(docs["CONTRIBUTING.md"], "Human review identifies accountability but is not a compensating",
+            "CONTRIBUTING.md", "approval-not-control", out,
+            "state that review ownership does not replace an enforceable defense")
     require(docs["CONTRIBUTING.md"], "does not require a separate contributor license agreement",
             "CONTRIBUTING.md", "cla-applicability", out,
             "state why Apache-2.0 plus DCO does not require a separate CLA")
@@ -260,6 +392,12 @@ def audit_repo(
     require(docs["docs/agent_process.md"], "Preserve contributor and locale ownership",
             "docs/agent_process.md", "agent-localization-ownership", out,
             "keep contributor credit and locale ownership in the agent handoff checklist")
+    require(docs["docs/agent_process.md"], "A human referral is not a defense",
+            "docs/agent_process.md", "approval-not-control", out,
+            "require an enforceable defense or a validated evidence-bound decision")
+    require(docs["docs/release_playbook.md"], "Protected approval identifies who is accountable; it is not a compensating control",
+            "docs/release_playbook.md", "approval-not-control", out,
+            "keep plain approval from bypassing unresolved release controls")
     require(docs["docs/course-prose-style.md"], "Course prose writing contract",
             "docs/course-prose-style.md", "course-prose-contract", out,
             "keep durable learner-facing prose rules in one neutral contract")
@@ -300,6 +438,9 @@ def audit_repo(
         require(docs[rel], "localized learner prose changed", rel,
                 "localization-ownership-template", out,
                 "ask who reviewed localized prose and where the contributor is credited")
+        require(docs[rel], "review text is not a compensating control", rel,
+                "submission-risk-decision", out,
+                "require the exact artifact-bound decision fields when unresolved risk is accepted")
     retired_scope_tokens = (
         "`cpu/`", "`workspace/`", "`deploy/`", "Shared service stack",
         "Compose or nginx deployment", "Local authoring services",
@@ -435,33 +576,90 @@ def audit_repo(
         out.append(finding("github-global-permissions", ".github/workflows/pages.yml",
                            "workflow-level permissions are not read-only",
                            "keep contents: read globally and grant Pages writes only to the deploy job"))
-    if pages.count("if: github.event_name != 'pull_request'") < 2:
-        out.append(finding("pr-deploy-boundary", ".github/workflows/pages.yml",
-                           "both artifact creation and deployment must exclude pull-request runs",
-                           "prevent pull-request runs from building or deploying the production Pages artifact"))
-    if pages.count("github.ref == 'refs/heads/main'") < 2:
-        out.append(finding("pages-main-only", ".github/workflows/pages.yml",
-                           "both artifact creation and deployment must require refs/heads/main",
-                           "prevent workflow_dispatch or non-main refs from building or deploying Pages"))
+    production_condition = "if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'"
+    for job_name in ("build-and-verify", "rebuild-for-comparison", "compare-builds", "attest-provenance", "deploy"):
+        block = workflow_job(pages, job_name)
+        if production_condition not in block:
+            out.append(finding("pr-deploy-boundary", ".github/workflows/pages.yml",
+                               f"production job {job_name} is not excluded from pull requests",
+                               "bind every production artifact and deploy job to non-PR main runs"))
+            out.append(finding("pages-main-only", ".github/workflows/pages.yml",
+                               f"production job {job_name} is not bound to refs/heads/main",
+                               "bind every production artifact and deploy job to non-PR main runs"))
     require(pages, "release_gate.py --tier ship", ".github/workflows/pages.yml",
             "github-safety-selftest", out, "run detector mutations in GitHub CI")
+    require(pages, "pages_artifact_integrity.py --source-root .", ".github/workflows/pages.yml",
+            "github-source-resource-preflight", out,
+            "bound proposed source before dependency installation and expensive analysis")
     require(pages, '--changed-since "$GATE_BASE"', ".github/workflows/pages.yml",
             "github-change-aware-gate", out, "skip only unaffected mutation fixtures on proposal commits")
     require(pages, "--timing-report docs/validation/release-gate-timings.json",
             ".github/workflows/pages.yml", "github-gate-timing", out,
             "retain per-command gate timing evidence")
-    require(pages, "BUILD_PAGES_REUSE_VALIDATION=1", ".github/workflows/pages.yml",
-            "github-report-reuse", out,
-            "reuse the required same-commit gate report instead of rescanning during build")
-    require(pages, "BUILD_PAGES_PULL_MATERIALS=0 BUILD_PAGES_REUSE_VALIDATION=1",
-            ".github/workflows/pages.yml", "github-immutable-report-reuse", out,
-            "build committed material snapshots before reusing the same-commit report")
+    for job_name in ("build-and-verify", "rebuild-for-comparison"):
+        block = workflow_job(pages, job_name)
+        require(block, "BUILD_PAGES_REUSE_VALIDATION=1", ".github/workflows/pages.yml",
+                "github-report-reuse", out,
+                f"make {job_name} consume the required same-commit gate report")
+        require(block, "BUILD_PAGES_PULL_MATERIALS=0", ".github/workflows/pages.yml",
+                "github-immutable-report-reuse", out,
+                f"make {job_name} assemble only committed material snapshots")
     require(pages, "contribution_safety_audit.py --require-publication-approved",
             ".github/workflows/pages.yml", "publication-deploy-guard", out,
             "refuse external Pages deployment until publication is approved")
-    require(pages, "needs: build-and-verify", ".github/workflows/pages.yml",
+    require(pages, "needs: [build-and-verify, rebuild-for-comparison]", ".github/workflows/pages.yml",
             "github-reviewed-artifact-handoff", out,
-            "make the protected deployment consume only the completed artifact-verification job")
+            "make provenance consume canonical and independently rebuilt artifacts")
+    for token in (
+        "actions/attest@a1948c3f048ba23858d222213b7c278aabede763",
+        "subject-path: reviewed-pages/pages-sha256.txt",
+        "compare-builds:",
+        "attest-provenance:",
+        "needs: compare-builds",
+        "needs: attest-provenance",
+        "pages-reviewed-manifest-${{ github.sha }}",
+        "pages-comparison-${{ github.sha }}",
+        "cmp reviewed-public/pages-sha256.txt",
+        '--signer-workflow "$GITHUB_REPOSITORY/.github/workflows/pages.yml"',
+        '--source-digest "$GITHUB_SHA" --source-ref "$GITHUB_REF"',
+        "--deny-self-hosted-runners",
+    ):
+        require(pages, token, ".github/workflows/pages.yml", "github-pages-provenance", out,
+                f"retain pre-authority Pages provenance control: {token}")
+    signing_tokens = ("id-token: write", "attestations: write", "artifact-metadata: write")
+    for job_name in ("build-and-verify", "rebuild-for-comparison", "compare-builds"):
+        block = workflow_job(pages, job_name)
+        for token in signing_tokens:
+            if token in block:
+                out.append(finding(
+                    "github-pages-build-authority", ".github/workflows/pages.yml",
+                    f"artifact builder {job_name} has signing authority: {token}",
+                    "keep artifact generation unable to mint attestations or deployment identity",
+                ))
+        if "pip install" in block or "npm ci" in block:
+            out.append(finding(
+                "github-pages-build-dependency-isolation", ".github/workflows/pages.yml",
+                f"Pages assembly job {job_name} installs executable package dependencies",
+                "install dependencies only in validation; assemble from source and retained evidence",
+            ))
+    for token in signing_tokens:
+        require(workflow_job(pages, "attest-provenance"), token,
+                ".github/workflows/pages.yml", "github-pages-provenance-authority", out,
+                f"grant {token} only to the post-build Pages provenance job")
+    signing_block = workflow_job(pages, "attest-provenance")
+    if "actions/checkout@" in signing_block or "scripts/" in signing_block:
+        out.append(finding(
+            "github-pages-signing-source-execution", ".github/workflows/pages.yml",
+            "the provenance job can execute repository-controlled source while holding signing authority",
+            "pass only the reviewed manifest into a no-checkout provenance job",
+        ))
+    deploy_block = workflow_job(pages, "deploy")
+    if "actions/checkout@" in deploy_block or "run:" in deploy_block or "scripts/" in deploy_block:
+        out.append(finding(
+            "github-pages-deploy-source-execution", ".github/workflows/pages.yml",
+            "the deployment job can execute repository-controlled source while holding deployment authority",
+            "make the protected deploy job invoke only the pinned deploy action",
+        ))
     require(pages, "name: github-pages", ".github/workflows/pages.yml",
             "github-pages-review-environment", out,
             "gate the deploy job behind the protected github-pages environment")
@@ -471,12 +669,23 @@ def audit_repo(
     require(pages, "--write-manifest public/pages-sha256.txt",
             ".github/workflows/pages.yml", "github-pages-artifact-integrity", out,
             "hash and inspect the generated Pages tree before uploading it")
-    if pages.count("--check-manifest reviewed-public/pages-sha256.txt") < 3:
-        out.append(finding(
-            "github-pages-artifact-reverification", ".github/workflows/pages.yml",
-            "deployment, post-deployment extraction, and live-site checks do not all verify the reviewed Pages manifest",
-            "reverify the immutable artifact before deployment, after bounded extraction, and against the live site",
-        ))
+    for path, workflow in (
+        (".github/workflows/pages.yml", pages),
+        (".github/workflows/release.yml", docs[".github/workflows/release.yml"]),
+    ):
+        if "GITHUB_SHA::7" in workflow:
+            out.append(finding(
+                "artifact-full-commit-binding", path,
+                "artifact validation abbreviates the source commit identity",
+                "bind generated reports, manifests, and attestations to the full GITHUB_SHA",
+            ))
+    for job_name in ("compare-builds", "verify-deployment"):
+        if "--check-manifest reviewed-public/pages-sha256.txt" not in workflow_job(pages, job_name):
+            out.append(finding(
+                "github-pages-artifact-reverification", ".github/workflows/pages.yml",
+                f"job {job_name} does not verify the reviewed Pages manifest",
+                "reverify the artifact before authority and against the live site",
+            ))
     require(pages, "--submission-env CONTRIBUTION_BODY", ".github/workflows/pages.yml",
             "github-submission-contract", out, "validate the live pull-request body")
     require(pages, "--commit-range \"$DCO_RANGE\"", ".github/workflows/pages.yml",
@@ -497,6 +706,15 @@ def audit_repo(
         out.append(finding("github-material-lock", ".github/workflows/pages.yml",
                            "the live material check must install tooling once from the reviewed lock",
                            "install scripts/materials/requirements.lock in the test job only"))
+    if not re.search(
+        r"pip install[^\n]*--no-deps[^\n]*--only-binary=:all:[^\n]*scripts/materials/requirements\.lock",
+        workflow_job(pages, "test"),
+    ):
+        out.append(finding(
+            "github-binary-lock-install", ".github/workflows/pages.yml",
+            "Pages validation may resolve undeclared dependencies or execute a source build",
+            "install the complete material lock with --no-deps --only-binary=:all:",
+        ))
     for rel in (".github/workflows/pages.yml", ".github/workflows/release.yml",
                 ".github/workflows/codeql.yml", ".github/workflows/dependency-review.yml"):
         checkout_count = docs[rel].count("uses: actions/checkout@")
@@ -507,6 +725,9 @@ def audit_repo(
                                "set persist-credentials: false on every checkout step"))
 
     release = docs[".github/workflows/release.yml"]
+    require(release, "pages_artifact_integrity.py --source-root .", ".github/workflows/release.yml",
+            "release-source-resource-preflight", out,
+            "bound release source before dependency installation and expensive analysis")
     require(release, "  workflow_dispatch:", ".github/workflows/release.yml", "release-manual", out,
             "make release preparation an explicit operator action")
     require(release, "name: github-release", ".github/workflows/release.yml", "release-environment", out,
@@ -528,12 +749,52 @@ def audit_repo(
             "release-immutable", out, "refuse to update a published release")
     require(release, 'git cat-file -t "refs/tags/$RELEASE_TAG"', ".github/workflows/release.yml",
             "release-annotated-tag", out, "refuse lightweight release tags")
+    for token in (
+        "dispatch the workflow from the exact release tag",
+        "subject-checksums: release-assets/SHA256SUMS",
+        "release-provenance.sigstore.json",
+        '--signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"',
+        '--source-digest "$SOURCE_COMMIT" --source-ref "refs/tags/$RELEASE_TAG"',
+        "--deny-self-hosted-runners",
+    ):
+        require(release, token, ".github/workflows/release.yml", "release-provenance", out,
+                f"retain release provenance control: {token}")
+    for token in signing_tokens:
+        require(workflow_job(release, "attest-and-verify"), token,
+                ".github/workflows/release.yml", "release-provenance-authority", out,
+                f"grant {token} only to the post-build release provenance job")
+    for job_name in ("validate-and-scan", "build-and-package", "rebuild-for-comparison"):
+        block = workflow_job(release, job_name)
+        for token in signing_tokens:
+            if token in block:
+                out.append(finding(
+                    "release-build-authority", ".github/workflows/release.yml",
+                    f"release pre-attestation job {job_name} has signing authority: {token}",
+                    "keep validation and artifact generation unable to mint attestations or deployment identity",
+                ))
+    for job_name in ("build-and-package", "rebuild-for-comparison"):
+        block = workflow_job(release, job_name)
+        if "pip install" in block or "npm ci" in block:
+            out.append(finding(
+                "release-assembly-dependency-isolation", ".github/workflows/release.yml",
+                f"final assembly job {job_name} installs executable package dependencies",
+                "install and scan dependencies only in validation; assemble from source and retained evidence",
+            ))
+    for token in (
+        "release-inputs-${{ inputs.tag }}",
+        "release-comparison-${{ inputs.tag }}",
+        "needs: [build-and-package, rebuild-for-comparison]",
+        "cmp release-evidence/pages-sha256.txt",
+        "needs: attest-and-verify",
+    ):
+        require(release, token, ".github/workflows/release.yml", "release-independent-rebuild", out,
+                f"retain independent release assembly and comparison control: {token}")
     require(release, "release_gate.py --tier ship", ".github/workflows/release.yml",
             "release-shared-gate", out, "run the shared deterministic gate before packaging")
     require(release, "pull_materials.py --check --fetch-attempts", ".github/workflows/release.yml",
             "release-live-material-check", out,
             "require a retried, strict live material check before release packaging")
-    for token in ("release-manifest.json", "SHA256SUMS", "python-env.cdx.json", "release-assets/*"):
+    for token in ("test -f release-assets/release-manifest.json", "SHA256SUMS", "python-env.cdx.json", "release-assets/*"):
         require(release, token, ".github/workflows/release.yml", "release-artifact-set", out,
                 f"retain required release artifact contract token: {token}")
     require(release, "contribution_safety_audit.py --require-publication-approved",
@@ -547,6 +808,20 @@ def audit_repo(
             "release-material-sbom", out, "scan the pinned material-tool closure")
     require(release, "scripts/security/requirements-sca.lock", ".github/workflows/release.yml",
             "release-sca-lock", out, "install scanners from their isolated reviewed lock")
+    validation_block = workflow_job(release, "validate-and-scan")
+    for lock in (
+        "scripts/materials/requirements.lock",
+        "scripts/security/requirements-sca.lock",
+    ):
+        if not re.search(
+            rf"pip install[^\n]*--no-deps[^\n]*--only-binary=:all:[^\n]*{re.escape(lock)}",
+            validation_block,
+        ):
+            out.append(finding(
+                "release-binary-lock-install", ".github/workflows/release.yml",
+                f"validation lock may resolve undeclared dependencies or execute a source build: {lock}",
+                "install the complete reviewed lock with --no-deps --only-binary=:all:",
+            ))
     require(release, "--report release-security/sbom-policy.json", ".github/workflows/release.yml",
             "release-sbom-policy", out, "evaluate and retain SBOM policy evidence before release")
     for token in ("python-sbom-evidence.json", "python-license-appendix.md", "sbom-evidence-catalog.json"):
@@ -661,6 +936,9 @@ def audit_repo(
         out.append(finding("gitlab-report-browser-runtime", ".gitlab-ci.yml",
                            "the validation-report producer lacks the pinned browser runtime",
                            "run the ship gate with the locked Playwright API and digest-pinned browser image"))
+    require(gitlab_core, "pages_artifact_integrity.py --source-root .", ".gitlab/ci/core.yml",
+            "gitlab-source-resource-preflight", out,
+            "bound proposed source before the canonical expensive gate")
     require(gitlab, 'GATE_ARGS+=(--changed-since "$GATE_BASE")', ".gitlab-ci.yml",
             "gitlab-change-aware-gate", out, "skip only unaffected mutation fixtures on proposal commits")
     require(gitlab, "--timing-report docs/validation/release-gate-timings.json",
@@ -1189,6 +1467,7 @@ def self_test() -> list[str]:
             ("mutable-action-ref", ".github/workflows/pages.yml", "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683", "actions/checkout@v4"),
             ("unpinned-workflow-install", ".github/workflows/pages.yml", "--requirement scripts/materials/requirements.lock", "requests beautifulsoup4 markdownify lxml"),
             ("github-material-lock", ".github/workflows/pages.yml", "scripts/materials/requirements.lock", "scripts/materials/requirements.txt"),
+            ("github-binary-lock-install", ".github/workflows/pages.yml", "python3 -m pip install --require-hashes --no-deps --only-binary=:all:", "python3 -m pip install --require-hashes"),
             ("shared-material-provenance", "scripts/validation/release_gate.py", 'py("scripts/materials/pull_materials.py", "--verify-committed")', 'py("scripts/materials/pull_materials.py", "--list")'),
             ("shared-material-selftest", "scripts/validation/release_gate.py", 'unit_test("materials")', 'py("scripts/materials/pull_materials.py", "--help")'),
             ("shared-local-path-selftest", "scripts/validation/release_gate.py", 'unit_test("local_path_leak_audit")', 'py("scripts/validation/local_path_leak_audit.py", "--help")'),
@@ -1212,22 +1491,40 @@ def self_test() -> list[str]:
             ("dependency-update-coverage", ".github/dependabot.yml", "package-ecosystem: npm", "package-ecosystem: unsupported"),
             ("release-draft", ".github/workflows/release.yml", "--draft --verify-tag", "--verify-tag"),
             ("release-annotated-tag", ".github/workflows/release.yml", 'git cat-file -t "refs/tags/$RELEASE_TAG"', 'git cat-file -t "$RELEASE_TAG^{commit}"'),
-            ("release-artifact-set", ".github/workflows/release.yml", "release-assets/release-manifest.json", "release-assets/manifest.json"),
+            ("release-artifact-set", ".github/workflows/release.yml", "test -f release-assets/release-manifest.json", "test -f release-assets/manifest.json"),
             ("release-package-contract", "scripts/build/package_release.py", "mtime=0", "mtime=None"),
             ("release-malware-evidence-contract", "scripts/build/package_release.py", '"malware_scan_required"', '"scan_optional"'),
             ("release-malware-evidence-doc", "docs/release_artifacts.md", "required-before-publication", "optional-after-publication"),
             ("release-build-epoch", "scripts/build/build_branch_manifest.py", 'os.environ.get("SOURCE_DATE_EPOCH")', 'os.environ.get("BUILD_TIME")'),
             ("publication-release-guard", ".github/workflows/release.yml", "contribution_safety_audit.py --require-publication-approved", "contribution_safety_audit.py"),
             ("publication-deploy-guard", ".github/workflows/pages.yml", "contribution_safety_audit.py --require-publication-approved", "contribution_safety_audit.py"),
-            ("github-reviewed-artifact-handoff", ".github/workflows/pages.yml", "needs: build-and-verify", "needs: test"),
+            ("github-reviewed-artifact-handoff", ".github/workflows/pages.yml", "needs: [build-and-verify, rebuild-for-comparison]", "needs: build-and-verify"),
             ("github-pages-browser-review", ".github/workflows/pages.yml", "runtime_integration_browser_audit.py --site-root public --timeout-ms 180000", "runtime_integration_browser_audit.py --site-root web --timeout-ms 180000"),
             ("github-pages-artifact-integrity", ".github/workflows/pages.yml", "--write-manifest public/pages-sha256.txt", "--write-manifest web/pages-sha256.txt"),
+            ("artifact-full-commit-binding", ".github/workflows/pages.yml", '--expect-sha "$GITHUB_SHA"', '--expect-sha "${GITHUB_SHA::7}"'),
             ("github-pages-artifact-reverification", ".github/workflows/pages.yml", "--check-manifest reviewed-public/pages-sha256.txt", "--write-manifest reviewed-public/pages-sha256.txt"),
             ("release-material-sbom", ".github/workflows/release.yml", "pip-audit -r scripts/materials/requirements.lock", "pip-audit -r scripts/materials/requirements.txt"),
+            ("github-pages-provenance", ".github/workflows/pages.yml", "subject-path: reviewed-pages/pages-sha256.txt", "subject-path: reviewed-pages/unreviewed.txt"),
+            ("github-pages-provenance", ".github/workflows/pages.yml", "needs: attest-provenance", "needs: build-and-verify"),
+            ("github-pages-provenance", ".github/workflows/pages.yml", "cmp reviewed-public/pages-sha256.txt", "echo comparison-skipped"),
+            ("github-pages-provenance-authority", ".github/workflows/pages.yml", "      attestations: write\n      artifact-metadata: write", "      attestations: read\n      artifact-metadata: read"),
+            ("github-pages-build-authority", ".github/workflows/pages.yml", "    needs: test\n    runs-on: ubuntu-latest\n    timeout-minutes: 45\n    steps:", "    needs: test\n    runs-on: ubuntu-latest\n    timeout-minutes: 45\n    permissions:\n      id-token: write\n    steps:"),
+            ("github-pages-build-dependency-isolation", ".github/workflows/pages.yml", "      - name: Build the client-side static site\n", "      - name: Build the client-side static site\n        run: npm ci\n"),
+            ("github-pages-signing-source-execution", ".github/workflows/pages.yml", "    needs: compare-builds\n    runs-on: ubuntu-latest\n", "    needs: compare-builds\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@bad\n"),
+            ("github-pages-deploy-source-execution", ".github/workflows/pages.yml", "    steps:\n      - id: deploy\n", "    steps:\n      - run: python3 scripts/steal_token.py\n      - id: deploy\n"),
+            ("github-source-resource-preflight", ".github/workflows/pages.yml", "pages_artifact_integrity.py --source-root .", "pages_artifact_integrity.py --help"),
+            ("release-source-resource-preflight", ".github/workflows/release.yml", "pages_artifact_integrity.py --source-root .", "pages_artifact_integrity.py --help"),
             ("release-live-material-check", ".github/workflows/release.yml", "pull_materials.py --check --fetch-attempts", "pull_materials.py --list --fetch-attempts"),
             ("release-sca-lock", ".github/workflows/release.yml", "scripts/security/requirements-sca.lock", "pip-audit cyclonedx-bom"),
+            ("release-binary-lock-install", ".github/workflows/release.yml", ".release-scan-venv/bin/python -m pip install --require-hashes --no-deps --only-binary=:all:", ".release-scan-venv/bin/python -m pip install --require-hashes"),
             ("release-sbom-policy", ".github/workflows/release.yml", "--report release-security/sbom-policy.json", "--report release-security/unchecked-policy.json"),
             ("release-sbom-evidence-generation", ".github/workflows/release.yml", "--manifest-out release-security/python-sbom-evidence.json", "--manifest-out release-security/unchecked-evidence.json"),
+            ("release-provenance", ".github/workflows/release.yml", "subject-checksums: release-assets/SHA256SUMS", "subject-checksums: release-assets/unchecked"),
+            ("release-provenance", ".github/workflows/release.yml", "dispatch the workflow from the exact release tag", "dispatch accepted from any ref"),
+            ("release-provenance-authority", ".github/workflows/release.yml", "      attestations: write\n      artifact-metadata: write", "      attestations: read\n      artifact-metadata: read"),
+            ("release-independent-rebuild", ".github/workflows/release.yml", "cmp release-evidence/pages-sha256.txt", "echo comparison-skipped"),
+            ("release-build-authority", ".github/workflows/release.yml", "  build-and-package:\n    needs: validate-and-scan\n", "  build-and-package:\n    needs: validate-and-scan\n    permissions:\n      id-token: write\n"),
+            ("release-assembly-dependency-isolation", ".github/workflows/release.yml", "      - name: Assemble without installed validation dependencies\n", "      - name: Assemble without installed validation dependencies\n        run: npm ci\n"),
             ("discussion-route", ".github/ISSUE_TEMPLATE/config.yml", "/discussions", "/issues"),
             ("external-repository", ".github/ISSUE_TEMPLATE/config.yml", "https://github.com/NVDLI/NemoClawDLI/discussions", "https://github.com/example/incorrect/discussions"),
             ("issue-production-scope", ".github/ISSUE_TEMPLATE/runtime-deploy.yml", "static `web/nemoclaw/` course", "CPU service stack"),
@@ -1252,6 +1549,7 @@ def self_test() -> list[str]:
             ("prepush-canonical-gate", "scripts/git-hooks/pre-push", '--tier ship --no-write --changed-since origin/main --reuse-success', '--tier fast'),
             ("worktree-hook-dispatch", "scripts/build/install-hooks.sh", 'hook="$content_root/scripts/git-hooks/$name"', 'hook="$HERE/git-hooks/$name"'),
             ("gitlab-safety-selftest", ".gitlab/ci/core.yml", "release_gate.py --tier ship", "release_gate.py --tier fast"),
+            ("gitlab-source-resource-preflight", ".gitlab/ci/core.yml", "pages_artifact_integrity.py --source-root .", "pages_artifact_integrity.py --help"),
             ("gitlab-change-aware-gate", ".gitlab/ci/core.yml", 'GATE_ARGS+=(--changed-since "$GATE_BASE")', 'GATE_ARGS=() # no change selection'),
             ("gitlab-gate-timing", ".gitlab/ci/core.yml", "--timing-report docs/validation/release-gate-timings.json", "--no-timing-report"),
             ("gitlab-report-browser-runtime", ".gitlab/ci/core.yml", 'BROWSER_TOOLS_REQUIRED: "1"', 'BROWSER_TOOLS_REQUIRED: "0"'),
@@ -1305,16 +1603,24 @@ def self_test() -> list[str]:
             ("material-fail-closed-policy", "scripts/materials/pull_materials.py", "def check_passes", "def check_removed"),
             ("material-explicit-degradation", "scripts/materials/pull_materials.py", '"--allow-transient-unreachable"', '"--allow-all-unreachable"'),
             ("material-provenance-sha", "web/nemoclaw/mats/_materials.json", "7a583caa8f1db1e66220cfa8963b7b37dcaf5655df0e1314f8794ea1ba5c8c94", "7a583caa8f1db1e6"),
+            ("approval-not-control", "README.md", "approval does not replace a missing control", "approval completes the control"),
             ("root-license", "LICENSE", NVIDIA_APACHE_COPYRIGHT, "Copyright removed"),
             ("root-license", "LICENSE", "Apache License", "Example License"),
             ("cla-applicability", "CONTRIBUTING.md", "does not require a separate contributor license agreement", "may require another agreement"),
+            ("approval-not-control", "CONTRIBUTING.md", "Human review identifies accountability but is not a compensating", "Human review is a compensating"),
             ("agent-dco", "AGENTS.md", "Every proposed commit", "Every release"),
             ("release-status", "RELEASE_STATUS.json", '"pending-osrb-approval"', '"published"'),
             ("release-status", "RELEASE_STATUS.json", '"reserved-not-populated"', '"not-published"'),
             ("release-status", "RELEASE_STATUS.json", '"maintenance_status": "release-candidate"', '"maintenance_status": "archived"'),
+            ("decision-policy", "RELEASE_STATUS.json", '"human_review_effect": "no-state-change-without-evidence-bound-decision"', '"human_review_effect": "approval-is-sufficient"'),
+            ("decision-record", "RELEASE_STATUS.json", '"publication_decision": null', '"publication_decision": {}'),
             ("notice-state", "RELEASE_STATUS.json", '"notice_required": false', '"notice_required": true'),
             ("release-playbook", "docs/release_playbook.md", "Host settings are not versioned by this repository", "Host settings checklist"),
             ("container-boundary-detector", "scripts/validation/container_boundary_audit.py", 'FORBIDDEN_NAMES = {".dockerignore", "Dockerfile", "Containerfile"', "FORBIDDEN_NAMES = set() #"),
+            ("approval-not-control", "docs/release_playbook.md", "Protected approval identifies who is accountable; it is not a compensating control", "Protected approval completes the control"),
+            ("approval-not-control", "docs/agent_process.md", "A human referral is not a defense", "A human referral closes the concern"),
+            ("submission-risk-decision", ".github/PULL_REQUEST_TEMPLATE.md", "review text is not a compensating control", "review text completes the control"),
+            ("submission-risk-decision", ".gitlab/merge_request_templates/Default.md", "review text is not a compensating control", "review text completes the control"),
         )
         originals = {
             rel: (fixture / rel).read_text(encoding="utf-8")
@@ -1340,9 +1646,39 @@ def self_test() -> list[str]:
         status_path = fixture / "RELEASE_STATUS.json"
         approved = json.loads(status_path.read_text(encoding="utf-8"))
         approved["publication_state"] = "approved-for-publication"
+        approved["publication_decision"] = {
+            "kind": "approval",
+            "record_fingerprint": "a" * 64,
+            "source_commit": "b" * 40,
+            "artifact_sha256": "c" * 64,
+            "scope": "Exact tagged public course source and generated static release artifact.",
+            "owner_role": "DLI course release owner",
+            "approver_role": "Independent product security approver",
+            "evidence_fingerprints": ["d" * 64, "e" * 64],
+            "residual_risk": "External service controls remain bounded by the recorded operator evidence.",
+            "mitigation": "Repository and host controls listed in the bound evidence remain active.",
+            "alternatives_rejected": "Publication without exact artifact binding or independent review was rejected.",
+            "remediation": "Reassess or withdraw the release when evidence, topology, or controls change.",
+            "rollback_trigger": "Digest mismatch, expired evidence, or failed live verification triggers rollback.",
+            "expires": "2099-12-31",
+        }
         status_path.write_text(json.dumps(approved, indent=2) + "\n", encoding="utf-8")
-        if audit_publication_approval(fixture):
-            failures.append("approved release rejected by the external publication guard")
+        baseline_codes = {item["code"] for item in audit_publication_approval(fixture)}
+        if baseline_codes != {"decision-verification"}:
+            failures.append("structured decision did not remain blocked solely on unimplemented evidence verification")
+        for label, expected, mutate in (
+            ("missing decision", "decision-record", lambda value: value.update(publication_decision=None)),
+            ("self approval", "decision-record", lambda value: value["publication_decision"].update(
+                approver_role=value["publication_decision"]["owner_role"]
+            )),
+            ("expired decision", "decision-record", lambda value: value["publication_decision"].update(expires="2020-01-01")),
+            ("shallow rationale", "decision-record", lambda value: value["publication_decision"].update(residual_risk="accepted")),
+        ):
+            invalid = json.loads(json.dumps(approved))
+            mutate(invalid)
+            status_path.write_text(json.dumps(invalid, indent=2) + "\n", encoding="utf-8")
+            if expected not in {item["code"] for item in audit_publication_approval(fixture)}:
+                failures.append(f"{label} escaped the external publication guard")
 
     good = """## Summary\nBound the release path.\n## Issue link\nCloses #12\n## Surfaces touched\n- [x] `scripts/`\n## Blast radius checked\nHooks and CI.\n## Validation evidence\nPASS: audit.\n## Human ownership\nRelease manager reviews.\n## Risk and rollback\nRevert commit.\n## Out of scope\nHost settings.\n"""
     if audit_submission(good):

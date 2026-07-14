@@ -185,6 +185,7 @@
         "docs/product-design.md",
         "docs/security-design.md",
         "docs/security-control-disposition.md",
+        "docs/security-control-themes.json",
         "docs/release-test-plan.md",
         "docs/SKILL.html",
         "scripts/build/SKILL.html"
@@ -427,7 +428,13 @@
         ".gitlab-ci.yml",
         ".gitlab/ci/*",
         "docs/release_playbook.md",
-        "docs/security-control-disposition.md"
+        "docs/release-test-plan.md",
+        "docs/security-design.md",
+        "docs/security-control-disposition.md",
+        "docs/security-control-themes.json",
+        "RELEASE_STATUS.json",
+        "scripts/build/build_security_review_package.py",
+        "scripts/validation/security_architecture_audit.py"
       ]
     },
     {
@@ -1767,8 +1774,12 @@
         "scripts/build/package_release.py",
         "scripts/validation/release_gate.py",
         "scripts/validation/contribution_safety_audit.py",
+        "scripts/validation/container_boundary_audit.py",
+        "scripts/validation/reacs_registry.json",
+        "scripts/validation/reacs_registry.py",
         "scripts/security/*",
-        "workspace/*"
+        "scripts/runtime/package.json",
+        "scripts/runtime/pnpm-lock.yaml"
       ]
     },
     {

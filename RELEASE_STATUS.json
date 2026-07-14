@@ -15,6 +15,33 @@
   "community_intake": "disabled-pending-publication-approval",
   "target_license": "Apache-2.0",
   "notice_required": false,
+  "decision_policy": {
+    "default": "deny",
+    "human_review_effect": "no-state-change-without-evidence-bound-decision",
+    "private_record": "authorized-external-system",
+    "repository_record": "opaque-fingerprints-and-release-binding",
+    "external_evidence_verification": "not-implemented-release-blocking",
+    "artifact_binding_required": true,
+    "independent_approver_required": true,
+    "expiry_required": true,
+    "required_decision_fields": [
+      "kind",
+      "record_fingerprint",
+      "source_commit",
+      "artifact_sha256",
+      "scope",
+      "owner_role",
+      "approver_role",
+      "evidence_fingerprints",
+      "residual_risk",
+      "mitigation",
+      "alternatives_rejected",
+      "remediation",
+      "rollback_trigger",
+      "expires"
+    ]
+  },
+  "publication_decision": null,
   "released_courses": [
     "nemoclaw"
   ]

@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import io
 import json
 import sys
@@ -25,7 +26,9 @@ PACKAGE = ROOT / "artifacts" / "security-review" / "securing-agents-dli-course-s
 DIAGRAM = ROOT / "docs" / "security-architecture.svg"
 ANALYSIS_SOURCE = ROOT / "docs" / "security-design.md"
 CONTROL_SOURCE = ROOT / "docs" / "security-control-themes.json"
+ARCHITECTURE_SOURCE = ROOT / "docs" / "security-architecture.json"
 CANONICAL_SOURCES = (
+    "RELEASE_STATUS.json",
     "docs/product-design.md",
     "docs/security-design.md",
     "docs/security-control-disposition.md",
@@ -62,11 +65,71 @@ def evidence_list(values: list[str]) -> str:
     return ", ".join(f"`{value}`" for value in values)
 
 
+def markdown_cell(value: object) -> str:
+    return str(value).replace("|", "\\|").replace("\n", " ")
+
+
+def human_list(values: list[str]) -> str:
+    """Render a short list as readable prose."""
+    labels = [value.title() for value in values]
+    if len(labels) < 2:
+        return "".join(labels)
+    if len(labels) == 2:
+        return " and ".join(labels)
+    return ", ".join(labels[:-1]) + ", and " + labels[-1]
+
+
+def sha256_bytes(value: bytes) -> str:
+    """Return a lowercase SHA-256 digest."""
+    return hashlib.sha256(value).hexdigest()
+
+
+def canonical_json_bytes(value: dict) -> bytes:
+    """Match the architecture renderer's canonical JSON encoding."""
+    return (json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n").encode()
+
+
 def render() -> str:
     control_data = json.loads(CONTROL_SOURCE.read_text(encoding="utf-8"))
+    architecture = json.loads(ARCHITECTURE_SOURCE.read_text(encoding="utf-8"))
     target = control_data["target_of_evaluation"]
+    nodes = {node["id"]: node for node in architecture["nodes"]}
+    enumeration = architecture["system"]["threat_enumeration"]
+    architecture_digest = sha256_bytes(canonical_json_bytes(architecture))
+    diagram_bytes = DIAGRAM.read_bytes()
+    if f"model-sha256:{architecture_digest}".encode() not in diagram_bytes:
+        raise ValueError("security architecture SVG is stale relative to its canonical JSON model")
+    diagram_digest = sha256_bytes(diagram_bytes)
+    objective_count = sum(len(edge["security_objectives"]) for edge in architecture["edges"])
+    ownership_names = {"toe": "course-owned", "external": "external"}
+    flow_rows = []
+    for edge in architecture["edges"]:
+        source = nodes[edge["from"]]
+        destination = nodes[edge["to"]]
+        ownership = (
+            f'{ownership_names[source["ownership"]]} to '
+            f'{ownership_names[destination["ownership"]]}'
+        )
+        objective_values = edge["security_objectives"]
+        objectives = human_list(objective_values)
+        if "confidentiality" not in objective_values:
+            objective_scope = (
+                f"{objectives} are the only applicable objectives. Confidentiality is explicitly "
+                "Not applicable because the transferred material is public."
+            )
+        else:
+            objective_scope = f"{objectives} apply."
+        flow_rows.append(
+            "- `" + markdown_cell(edge["id"]) + "` carries " + markdown_cell(edge["data"])
+            + " from " + markdown_cell(source["label"]) + " to "
+            + markdown_cell(destination["label"]) + " using " + markdown_cell(edge["protocol"])
+            + ". It crosses the " + markdown_cell(ownership) + " boundary. " + objective_scope
+        )
     invariants = section_body(
         ANALYSIS_SOURCE.read_text(encoding="utf-8"), "Threat-analysis invariants"
+    )
+    threat_register = section_body(
+        ANALYSIS_SOURCE.read_text(encoding="utf-8"), "Threat register"
     )
     parts = [
         "# Security review design for the DLI course Securing Agents with OpenShell and NemoClaw",
@@ -75,9 +138,18 @@ def render() -> str:
         "",
         "## Document contract",
         "",
-        "This is the self-contained supporting design. Repository paths below are evidence labels, not required reading. Submit `security-architecture.svg` separately as the diagram. Keep program identifiers, private finding rows, scan output, credentials, reviewer records, and approval state in the authorized review system.",
+        "This supporting design is self-contained. Repository paths below are evidence labels, not required reading. Submit `security-architecture.svg` separately. Keep private identifiers, findings, scans, credentials, reviews, and approvals in the authorized system.",
         "",
-        "Generated risk labels and mitigation statuses are advisory. A human reviewer must correct scope or ownership drift and must not mark an external control complete without operator evidence.",
+        "Generated risk and mitigation labels are advisory. Reviewers must correct scope or ownership drift; external controls require operator evidence.",
+        "",
+        "## Submission binding",
+        "",
+        "The design and diagram are one evidence pair. Reports must preserve the visible model fingerprint and flow/objective register. With missing or different values, report input identity is Unknown.",
+        "",
+        f"- Architecture model SHA-256: `{architecture_digest}`",
+        f"- Diagram SHA-256: `{diagram_digest}`",
+        f"- Declared flows: {len(architecture['edges'])}",
+        f"- Applicable security objectives: {objective_count}",
         "",
         "## Target of Evaluation",
         "",
@@ -105,6 +177,10 @@ def render() -> str:
         "",
         invariants,
         "",
+        "## Threat register",
+        "",
+        threat_register,
+        "",
         "## Architecture and sensitive data",
         "",
         "- Public path: a protected workflow builds one static artifact, a static host serves it, and the learner browser calls model and NemoClaw services directly or through a reviewed relay route.",
@@ -116,20 +192,41 @@ def render() -> str:
         "- Cryptography: the course implements no custom cryptographic algorithm. TLS protects transport. SHA-256 inventories provide integrity continuity but are not signatures or provenance attestations.",
         "- Retention: browser state belongs to the learner browser. Host logs and service-side prompts, outputs, runtime state, and logs belong to their external operators and require separate evidence.",
         "",
-        "## Aggregate control and mitigation register",
+        "## Interactions and Data Flow",
         "",
+        "This section is the normative and exhaustive threat-enumeration boundary. "
+        + enumeration["rule"],
+        "",
+        enumeration["route_consolidation"],
+        "",
+        "Apply only these objectives:",
+        "",
+        *bullets(enumeration["objective_rules"]),
+        "",
+        *flow_rows,
+        "",
+        "Do not create separate course threats for these excluded interactions:",
+        "",
+        *[
+            f"- `{row['id']}`: {row['interaction']}. {row['reason']}."
+            for row in enumeration["excluded_external_interactions"]
+        ],
+        "",
+        "## Aggregate control and mitigation register",
         "Each theme covers recurring findings without copying private assessment rows into the public repository. Apply these status rules before interpreting any theme:",
         "",
         *bullets(control_data["assessment_status_rules"]),
+        "",
+        "## Assessment reconciliation procedure",
+        *[f"{index}. {step}" for index, step in enumerate(control_data["assessment_review_steps"], 1)],
     ]
     for theme in control_data["themes"]:
         parts.extend(
             (
                 "",
                 f"### {theme['title']} — {theme['state']}",
-                "",
                 f"- Owner: {theme['owner']}",
-                f"- Current status: {theme['state']}",
+                f"- Threat coverage: {', '.join(theme['threat_ids'])}",
                 f"- Evidence-backed current control: {theme['current_control']}",
                 f"- Future candidate: {theme['future_candidate']}",
                 f"- Trigger: {theme['trigger']}",
@@ -142,29 +239,9 @@ def render() -> str:
             "",
             "## Release decision",
             "",
-            "Repository validation can verify only source-tree and built-artifact controls. Publication remains blocked until the authorized owners resolve live source-host rules, artifact-signing policy, static-host headers and availability, browser-credential architecture, relay and service controls, launchable/runtime isolation, authoritative scans, and final human review for the exact release artifact.",
+            "Repository validation covers source-tree and built-artifact controls only. Unresolved host, service, credential, signing, or scan controls remain release-blocking; human review does not substitute.",
             "",
-            "A release exception must name the affected artifact, accountable owner, current mitigation, remediation plan, source, and expiry. Unknown, partially verified, architecture-decision, shared-verification, and human-review states are not mitigated states.",
-            "",
-            "## Verification commands",
-            "",
-            "```text",
-            "python3 scripts/build/build_security_review_package.py --self-test",
-            "python3 scripts/figures/render_security_architecture.py --check",
-            "python3 scripts/validation/security_architecture_audit.py --self-test",
-            "python3 scripts/validation/security_architecture_audit.py",
-            "python3 scripts/validation/threat_control_audit.py --self-test",
-            "python3 scripts/validation/threat_control_audit.py",
-            "python3 scripts/validation/release_evidence_audit.py --self-test",
-            "python3 scripts/validation/release_evidence_audit.py",
-            "python3 scripts/validation/release_gate.py --tier ship --no-write",
-            "```",
-            "",
-            "## Canonical source basis",
-            "",
-            "The generated file embeds the facts needed for review. These paths identify the versioned sources used to generate and validate it:",
-            "",
-            *bullets([f"`{path}`" for path in CANONICAL_SOURCES]),
+            "An exception requires exact source and artifact bindings, independent roles, fingerprinted private evidence, residual risk, mitigation, rejected alternatives, remediation, rollback, and expiry. It records acceptance, not control implementation. Private-decision retrieval and artifact comparison are not implemented, so every exception and unresolved state remains blocking.",
         )
     )
     return "\n".join(parts).rstrip() + "\n"
@@ -196,6 +273,11 @@ def display(path: Path) -> str:
 def self_test() -> int:
     sample = "# Example\n\n## Chosen\n\nKeep me.\n\n## Other\n\nSkip me.\n"
     assert section_body(sample, "Chosen") == "Keep me."
+    assert human_list(["integrity", "availability"]) == "Integrity and Availability"
+    assert human_list(["confidentiality", "integrity", "availability"]) == (
+        "Confidentiality, Integrity, and Availability"
+    )
+    assert sha256_bytes(b"example") == "50d858e0985ecc7f60418aaf0cc5ab587f42c2570a884095a9e8ccacd0f6545c"
     assert all((ROOT / path).is_file() for path in CANONICAL_SOURCES)
     assert DIAGRAM.is_file()
     document = render()
@@ -204,17 +286,49 @@ def self_test() -> int:
     )
     assert "# NemoClaw security review design" not in document
     assert "## Aggregate control and mitigation register" in document
+    assert "## Assessment reconciliation procedure" in document
+    assert "a metadata-only rerender does not justify public-document churn" in document
+    assert "Check each security objective, enforcement owner, architecture route, and duplicate" in document
+    assert "Assign every private requirement exactly one disposition" in document
+    assert "A component cannot mitigate a requirement it cannot enforce" in document
     assert "Anticipated mitigation" not in document
     assert "A future candidate is not implemented and cannot support a Mitigated status." in document
     assert "An external control without current operator evidence remains Not Mitigated." in document
-    assert "Generated risk labels and mitigation statuses are advisory" in document
+    assert "Generated risk and mitigation labels are advisory" in document
+    assert "human review does not substitute" in document
+    assert "It records acceptance, not control implementation." in document
+    assert "Private-decision retrieval and artifact comparison are not implemented" in document
+    assert "## Submission binding" in document
+    assert "report input identity is Unknown" in document
+    assert "- Declared flows: 8" in document
+    assert "- Applicable security objectives: 19" in document
     assert "Repository paths below are evidence labels, not required reading" in document
     assert "## Threat-analysis invariants" in document
+    assert "## Threat register" in document
+    assert all(f"TR-{index:02d}" in document for index in range(1, 11))
+    assert "Repository tests cannot certify external systems" in document
+    assert "Missing, stale, self-issued, unbound, or unverifiable evidence is Unknown" in document
+    assert "## Interactions and Data Flow" in document
+    architecture = json.loads(ARCHITECTURE_SOURCE.read_text(encoding="utf-8"))
+    control_data = json.loads(CONTROL_SOURCE.read_text(encoding="utf-8"))
+    assert architecture["system"]["target_of_evaluation"] == control_data["target_of_evaluation"]["owned"]
+    for edge in architecture["edges"]:
+        assert f"- `{edge['id']}` carries" in document
+        assert all(value.title() in document for value in edge["security_objectives"])
+        if "confidentiality" not in edge["security_objectives"]:
+            assert (
+                "Confidentiality is explicitly Not applicable because the transferred material "
+                "is public."
+            ) in document
+    for row in architecture["system"]["threat_enumeration"]["excluded_external_interactions"]:
+        assert f"`{row['id']}`" in document
+    assert "This section is the normative and exhaustive threat-enumeration boundary" in document
+    assert "Primary: GitHub Pages" not in document
     assert "bearer credentials are JavaScript-readable" in document
     assert "values retained in `localStorage`" in document
     assert "published course artifact are public" in document
     assert "hold no signing key, model API credential, runtime credential" in document
-    assert "Artifact signing and provenance attestation are not implemented." in document
+    assert "Builders hold no OIDC" in document
     assert "CI does not write Git refs or repository content" in document
     assert "reviewer is a human actor, not a system component" in document
     assert "static host serves bytes" in document
@@ -222,14 +336,14 @@ def self_test() -> int:
     assert "Repository-owned local production services: none" in document
     assert "solid green nodes are Target of Evaluation components" in document
     assert "external-to-external internals are excluded" in document
-    assert "Cryptographic signing or provenance attestation is Not verified" in document
+    assert "No live run has proved" in document
     assert "does not assume mTLS, DPoP, zero-retention model processing" in document
     assert "### Source and CI trust — shared-verification-required" in document
-    assert "### Assessment fidelity — human-review-required" in document
+    assert "### Assessment fidelity — not-verified-release-blocking" in document
     for theme in json.loads(CONTROL_SOURCE.read_text(encoding="utf-8"))["themes"]:
         assert theme["future_candidate"].startswith(("NOT IMPLEMENTED. ", "NO LIVE EVIDENCE. "))
     assert "## Part 1:" not in document
-    assert len(document.splitlines()) < 260
+    assert len(document.splitlines()) < 300
     assert len(document.split()) < 4000
     first = package_bytes(document)
     assert first == package_bytes(render())

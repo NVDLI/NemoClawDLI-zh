@@ -12,15 +12,35 @@ authorized review system. Scope and trust-boundary detail remains in the
 - **Partially verified:** repository evidence covers only part of the boundary.
 - **External evidence required:** an operator must prove the live control.
 - **Architecture decision required:** mitigation would change the static-client design.
-- **Human review required:** an accountable reviewer must reconcile evidence and status.
+- **Human approval required:** release remains blocked. Referral or approval alone has no effect.
+  The defense must be verified. The future exception verifier is not implemented.
 - **Not applicable:** the control cannot meet the stated objective in this product boundary.
 
 Current status and evidence take precedence over future work. A future candidate is not
 implemented and cannot support a Mitigated status. An external control without current operator
-evidence remains Not Mitigated; contradictions resolve to the conservative status.
+evidence remains Not Mitigated; contradictions resolve to the conservative status. A component
+cannot mitigate a requirement it cannot enforce, and a route outside the architecture cannot
+support a mitigation claim.
 
 Repository evidence does not grant Legal, open-source, Export, Privacy, Product Security, source-host,
 host, service, or release approval.
+
+## Decision resistance
+
+The safe default is no release. A human handoff does not defend a threat and cannot change an
+Unknown or Not verified control into a pass. Implement and verify the enforceable defense first.
+When policy permits residual-risk acceptance, the private decision must bind the exact source
+commit and artifact digest. It must identify distinct owner and approver roles. It also records:
+
+- fingerprints for the decision and its evidence;
+- the residual risk, current mitigation, and rejected safer alternatives;
+- the remediation and rollback trigger; and
+- an expiry date.
+
+The repository stores only public-safe fields and opaque fingerprints. A risk exception records
+accountability; it does not pretend the missing control exists. Publication remains blocked until
+an automated guard retrieves the authorized private decision and compares its bindings with the
+exact built artifact. That comparison is not implemented.
 
 ## Review synthesis
 
@@ -29,15 +49,38 @@ boundary. Correct scope, evidence, ownership, and status before accepting their 
 
 Public evidence stays aggregated by control theme. Do not version private review rows one-to-one.
 
+## Assessment reconciliation
+
+1. Compare the report's embedded diagram fingerprint and flow/objective register with the submitted
+   design and diagram. Treat a missing or mismatched binding as Unknown input identity.
+2. Normalize and compare the private report's threats, requirements, and architecture with the
+   previous report. A new timestamp, layout, or submission wrapper is not a new finding.
+3. Correct the Target of Evaluation, facts, and ownership before interpreting risk or status.
+4. Check the security objective, enforcement owner, architecture route, and duplicates. Reject a
+   requirement assigned to a component that cannot enforce it or to a route that does not exist.
+5. Give each private requirement exactly one disposition: verified repository control, open
+   repository action, external evidence required, architecture decision required, or not applicable
+   with a recorded reason.
+6. Name the enforceable defense and its owner for every open item. Referral to a reviewer is not a
+   defense.
+7. Keep a generated Mitigated label open when it depends on a live external control without current
+   operator evidence. The label is not evidence.
+8. Keep release blocked until the defense is Verified. The future exception path must retrieve and
+   compare the exact, independent, evidence-bound, expiring decision, but that verifier is not
+   implemented.
+9. Collapse exact and semantic duplicates to one disposition, then map repeats to the aggregate
+   themes below. If scope, architecture, current controls, evidence, or open decisions changed,
+   update the public sources. Regenerate the review package from those sources.
+
 | Theme | State | Why it remains open |
 |---|---|---|
 | Source and CI trust | Shared verification required | Repository workflows are reviewable; live identity, branch, bypass, and reviewer settings are host evidence. |
 | Build supply chain | Partially verified | Exact locks, inventories, SCA, and SBOM exist; hermetic or reproducible build assurance is a release-policy decision. |
-| Artifact integrity | Partially verified | Byte continuity is verified; cryptographic signature and provenance attestation are not verified. |
+| Artifact integrity | Partially verified | Byte continuity is verified; workflow-defined provenance has no live evidence, and the ordinary builder is not a trusted builder. |
 | Static host and browser | Shared verification required | Static code checks are verified; response headers, WAF, cache policy, and availability are host controls. |
 | Browser-held credentials | Architecture decision required | JavaScript-readable credentials are inherent to direct browser calls; a broker or proof-of-possession changes other systems. |
 | Relay, model, launchable, and runtime | External evidence required | The repository tests client contracts but cannot attest deployed service authorization, isolation, quotas, or retention. |
-| Assessment fidelity | Human review required | Generated scope, ownership, and statuses must be reconciled with evidence. |
+| Assessment fidelity | Not verified and release-blocking | Generated scope, ownership, and statuses require evidence reconciliation; review alone cannot close them. |
 
 ## Source and contribution controls
 
@@ -53,7 +96,11 @@ Public evidence stays aggregated by control theme. Do not version private review
 
 - Verified: exact dependency locks, dependency inventories, bounded artifacts, safe extraction,
   complete SHA-256 inventory, single-artifact promotion, and post-deploy byte comparison.
-- Not verified: an approved signing identity and cryptographic provenance attestation.
+- Workflow-defined, not live-verified: dependency-executing validation has no signing authority.
+  Two clean jobs assemble and compare without package installation. The no-checkout signer receives
+  only their manifest; the deploy job runs only a pinned action. Their identities remain separate.
+- Residual risk: Python validation locks lack artifact hashes, runner egress is unrestricted, and
+  two ordinary runners are not an approved trusted builder.
 - Conditional next step: add a hermetic, reproducible builder and approved package mirror if release
   policy requires stronger dependency-origin assurance.
 
@@ -87,7 +134,7 @@ service evidence into a mitigation.
 Before publication, authorized owners must resolve:
 
 - Live source-host rules, identities, reviewers, bypasses, and scheduled public-to-internal sync.
-- Artifact signing and provenance policy.
+- Live provenance evidence and the trusted-builder policy decision.
 - Static-host security-header, cache, WAF, capacity, and availability decisions.
 - Browser credential lifetime, audience, revocation, replay, storage, and shared-device behavior.
 - Relay, model-service, launchable, and runtime evidence listed above.

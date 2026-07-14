@@ -56,18 +56,26 @@ Each public draft receives:
   CI-generated, and conditional component evidence
 - `SHA256SUMS`: digest list for every published asset
 
-Validation reports and the full `pip-audit` result remain workflow evidence. They stay with the
-transfer artifact for 30 days but are not public release assets. This retains operator evidence
-without presenting scanner detail as a supported product interface.
+Validation reports, the Sigstore bundle and verification log, and the full `pip-audit` result remain
+workflow evidence. They are retained with the transfer artifact for 30 days but are not public release assets. This keeps operator evidence
+available without publishing noisy scanner detail as a supported product interface.
 
-The source-backed security architecture and generated SVG remain versioned under `docs/` so a
-reviewer can trace system boundaries to the exact source tag. They are engineering evidence, not
-runtime interfaces, internal submissions, or approval records. The tagged source also versions
-`docs/product-design.md`, `docs/release-test-plan.md`, and `docs/release-evidence.json`.
+The source-backed security architecture and generated SVG remain versioned under `docs/` so a reviewer
+can trace system boundaries to the exact source tag. They are engineering evidence rather than
+supported runtime interfaces and do not encode internal submissions or approval records.
 
-Reviewers link those files at the exact release commit and retain private scanner, reviewer, and
-approval records in the authorized release system. The workflow installs pinned scanner tools in a
-separate environment, so scanner dependencies do not enter the runtime SBOM.
+The tagged source also versions `docs/product-design.md`, `docs/release-test-plan.md`, and
+`docs/release-evidence.json`. Reviewers link those files at the exact release commit, then retain
+private scanner, reviewer, and approval records in the authorized release system.
+
+The workflow installs scanner tools in a separate environment, so scanner dependencies do not
+pollute the runtime SBOM. Scanner versions are pinned in the workflow so the same environment is
+serialized consistently until an explicit dependency update changes the tooling.
+
+The static release does not include local-authoring images. If a later release adds one, the draft
+must also carry that image's immutable registry digest, component SBOM, evidence manifest, and
+license appendix.
+
 ## External artifact evidence
 
 Packaging writes `external_evidence.policy` as `required-before-publication` and lists the course
@@ -106,7 +114,8 @@ release attestation.
 2. Merge through protected `main` after required CI and human acceptance.
 3. Update `RELEASE_STATUS.json` only after OSRB approval.
 4. Create the protected annotated version tag on the accepted `main` commit.
-5. Run the release workflow. It rebuilds, scans, packages, and prepares a draft.
+5. Dispatch from that tag. Validation emits evidence without signing authority; two clean jobs
+   assemble and compare the static tree; a later job attests it and prepares a protected draft.
 6. Review release notes, workflow evidence, manifest, SBOM, and checksums.
 7. Publish once immutable-release settings are confirmed.
 
@@ -119,15 +128,15 @@ The checked-in `.github/workflows/release.yml` prepares a release but cannot aut
 
 1. Merge the candidate through protected `main` after required checks pass on the reviewed SHA.
 2. A release manager creates a protected annotated SemVer tag on a commit contained in `main`.
-3. Run the release workflow with that tag. The read-only job verifies the tag and builds the
-   archive, manifest, browser and Python SBOMs, checksums, and operator evidence.
-4. The write job waits on the protected `github-release` environment. An eligible reviewer checks
-   the SHA, tag, evidence, known issues, and release notes before write authority is granted.
-5. The workflow creates or refreshes a draft release; it never publishes directly.
-6. Read `release-manifest.json.external_evidence`, submit every listed artifact, and retain the
+3. Select that tag as workflow ref and input. Validation and scanning run without signing authority.
+4. Two clean jobs install no packages while independently assembling the tree. A mismatch blocks.
+5. A separate job attests and verifies every checksummed subject. It cannot publish a release.
+6. The protected `github-release` job reverifies provenance before gaining write authority.
+7. The workflow creates or refreshes a draft release; it never publishes directly.
+8. Read `release-manifest.json.external_evidence`, submit every listed artifact, and retain the
    authoritative disposition against the exact checksums.
-7. A release manager reviews the draft, verifies attached assets and external evidence, and publishes it.
-8. Review deployment history and ruleset insight. Record any authorized bypass with owner and reason.
+9. A release manager reviews the draft, verifies attached assets and external evidence, and publishes it.
+10. Review deployment history and ruleset insight. Record any authorized bypass with owner and reason.
 
 Enable immutable releases before the first publication. If validation fails, fix through a new
 issue-linked change and create a new tag after merge. Never move or reuse a published tag.

@@ -11,6 +11,9 @@ Terms such as `released course` elsewhere in the repository identify courses sel
 learner foyer; they do not assert public publication.
 The GitHub Pages and release workflows must run
 `contribution_safety_audit.py --require-publication-approved` before external writes.
+That guard currently blocks even a complete structured decision because automated retrieval of the
+authorized private record and comparison with the exact artifact are not implemented. Human
+approval cannot lift this technical hold.
 
 ## Public GitHub write hold
 
@@ -251,6 +254,27 @@ Issue and patch flow live in [`issue_standards.md`](issue_standards.md) and
 in [`release-test-plan.md`](release-test-plan.md). Use those contracts rather than maintaining a
 second checklist here.
 
+### Threat-driven release sequence
+
+The threat IDs come from [`security-design.md`](security-design.md). Each step must preserve the
+same candidate identity. Starting a new build, changing a ref, or replacing evidence restarts the
+sequence.
+
+| Order | Threats constrained | Required release behavior |
+|---|---|---|
+| 1. Freeze | TR-01, TR-10 | Select one protected commit. Record open threats and owners. A review comment or generated status cannot change their state. |
+| 2. Build without authority | TR-01, TR-02, TR-09 | Bound source first. Validate dependencies without signing authority. Assemble twice in clean jobs that install no packages and hold no OIDC. Mismatch blocks. |
+| 3. Bind evidence | TR-02, TR-03, TR-10 | After comparison, attest the commit and complete manifest; bind SBOM, scans, and architecture fingerprints. Evidence from another candidate is invalid. |
+| 4. Verify external boundaries | TR-04 through TR-09 | Obtain current operator evidence for each applicable host or service control. Missing, stale, or ambiguous evidence remains blocking. |
+| 5. Promote one artifact | TR-03, TR-04 | Transfer the reviewed artifact without rebuilding it. A no-checkout signer verifies its subject, source, ref, workflow, and hosted runner. The deploy job executes only a pinned action; a read-only job compares live bytes. |
+| 6. Decide and publish | TR-10 | Require independent roles and an unexpired evidence-bound decision. The automated private-record and artifact comparison is not implemented, so this step currently fails closed. |
+
+The protected environment reviewer confirms accountability and checks evidence. That action is a
+separate signal, not a defense and not authority to skip an earlier step.
+Every control certification or attestation must satisfy the evidence contract in
+[`security-control-themes.json`](security-control-themes.json). A checklist, repository test, or
+reviewer statement cannot certify an external host, service, launchable, relay, or runtime.
+
 ## Hotfix workflow
 
 Use a hotfix only for an urgent defect in a supported tagged release. Security reports stay in the
@@ -304,6 +328,14 @@ live in [`pages_deploy.md`](pages_deploy.md). Host-native browser execution live
 [`lab_runtime_testing.md`](lab_runtime_testing.md). Tracker labels and discussion routing
 live in [`issue_standards.md`](issue_standards.md).
 
+Protected approval identifies who is accountable; it is not a compensating control. When a release
+still contains an unresolved concern, the release guard rejects a plain status change or checkbox.
+A future exception path must retrieve the authorized private decision, bind it to the exact source
+and artifact, separate owner and approver roles, fingerprint the considered evidence, and record
+residual risk, mitigation, rejected alternatives, remediation, rollback, and expiry. The retrieval
+and comparison are not implemented. Therefore every exception currently fails closed, including a
+record that is otherwise complete.
+
 ## Kickstart settings checklist
 
 Before public mirror:
@@ -325,7 +357,7 @@ Before public mirror:
 - [ ] Dependency graph, Dependabot alerts, dependency review, code scanning, and secret scanning are enabled or explicitly deferred with a reason.
 - [x] Repo-owned Dependabot, dependency-review, and CodeQL workflows exist with immutable action pins and fork-safe permissions.
 - [ ] Host dependency graph, alerts, code-scanning upload, secret scanning, and push protection are enabled and smoke-tested.
-- [ ] Release draft contains the deterministic archive, manifest, resolved-environment SBOM, and `SHA256SUMS`.
+- [ ] Release workflow is dispatched from the exact protected annotated tag; its draft contains the deterministic archive, manifest, resolved-environment SBOM, `SHA256SUMS`, and Sigstore bundle.
 - [ ] External repository has Discussions enabled, with pinned welcome guidance.
 - [ ] CODEOWNERS is added after org/team handles are real.
 - [ ] Mirror is protected-branch/tag-only until public contribution intake is ready.
@@ -334,7 +366,8 @@ Before public mirror:
 - [ ] The Monday 09:00 UTC GitLab schedule is enabled with a named reconciliation owner and notifications.
 - [ ] Public Pages deploy uses environment protection and concurrency.
 - [ ] `github-pages` and `github-release` require a reviewer, prevent self-review, and disallow admin bypass.
-- [ ] The Pages reviewer inspects the completed generated-tree browser job and immutable artifact SHA-256 inventory before approving `github-pages`; the deploy job's manifest recheck passes.
+- [ ] The release guard retrieves the authorized private decision and compares its source and artifact bindings; until implemented, publication stays blocked.
+- [ ] The no-checkout signer verifies the Pages inventory's Sigstore subject, source, ref, workflow, and hosted runner; the reviewer inspects it; the deploy job contains only the pinned deploy action.
 - [ ] The read-only post-deployment job confirms every published object matches the reviewed manifest.
 - [ ] A test release produced a Draft release, checksum, validation report, and Rule Insights record.
 

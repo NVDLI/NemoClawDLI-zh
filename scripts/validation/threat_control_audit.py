@@ -28,8 +28,13 @@ REQUIRED_THEME_IDS = {
     "assessment-fidelity",
 }
 REQUIRED_THEME_FIELDS = {
-    "id", "title", "state", "owner", "current_control", "evidence",
+    "id", "title", "threat_ids", "state", "owner", "current_control", "evidence",
     "future_candidate", "trigger", "verification",
+}
+EXPECTED_THREAT_IDS = {f"TR-{index:02d}" for index in range(1, 11)}
+EXPECTED_EVIDENCE_FIELDS = {
+    "issuer_role", "subject", "scope", "release_binding", "control_claims",
+    "evidence_fingerprints", "observed_at", "expires_at", "result", "limitations",
 }
 ALLOWED_THEME_STATES = {
     "partially-verified",
@@ -37,6 +42,7 @@ ALLOWED_THEME_STATES = {
     "architecture-decision-required",
     "shared-verification-required",
     "human-review-required",
+    "not-verified-release-blocking",
 }
 EXPECTED_OWNED = {
     "DLI course source and repository CI definitions",
@@ -57,17 +63,38 @@ EXPECTED_STATUS_RULES = {
     "A future candidate is not implemented and cannot support a Mitigated status.",
     "An external control without current operator evidence remains Not Mitigated.",
     "A contradiction between a claimed mitigation and the Target of Evaluation resolves to the conservative status.",
+    "A component cannot mitigate a requirement it cannot enforce, and a route outside the architecture cannot support a mitigation claim.",
     "A human reviewer or release owner is an actor, not a system component or automated control.",
+    "Human approval required is a release-blocking state; referral, attendance, a checkbox, or generated rationale does not change it.",
+    "An unresolved control must be implemented or covered by an evidence-bound decision naming the exact source and artifact, independent owner and approver roles, evidence fingerprints, residual risk, current mitigation, rejected alternatives, remediation, rollback trigger, and expiry.",
+    "A risk exception records deliberate acceptance but does not convert a missing control into an implemented mitigation.",
+    "A generated Mitigated label is not evidence of a live external control.",
+    "Exact or semantic duplicate requirements receive one disposition; duplication does not create additional risk or evidence.",
 }
+EXPECTED_REVIEW_STEPS = [
+    "Verify the report's embedded architecture fingerprint and flow/objective register against the submitted design and diagram before interpreting findings; a missing or mismatched binding makes the report input Unknown.",
+    "Normalize and compare private threat, requirement, and architecture content with the prior assessment; a metadata-only rerender does not justify public-document churn.",
+    "Correct Target of Evaluation scope, facts, and ownership before interpreting generated risk labels or statuses.",
+    "Check each security objective, enforcement owner, architecture route, and duplicate before disposition; reject requirements assigned to a component that cannot enforce them or to a route that does not exist.",
+    "For every Not verified, Unknown, or Human approval required item, identify the enforceable defense and its owner; referral to a reviewer is not a defense.",
+    "Assign every private requirement exactly one disposition: verified repository control, open repository action, external evidence required, architecture decision required, or not applicable with a recorded reason.",
+    "Keep release blocked until the defense is verified or the deny-by-default release guard retrieves the authorized private decision and compares its bindings with the exact built artifact; that automated comparison is not implemented.",
+    "Use current evidence for status; a generated Mitigated label for a live external control remains open until its operator supplies evidence.",
+    "Collapse exact and semantic duplicate requirements to one disposition, then map repeated findings to aggregate control themes instead of copying private rows into the public repository.",
+    "Update public sources and regenerate the package only when scope, architecture, a current control, evidence, or an open decision changed.",
+]
 REQUIRED_EXPLICIT_FACTS = {
     "Course source and released static artifacts are public; their confidentiality is not a security objective.",
     "Proposed-change build and validation jobs hold no signing key, model API credential, runtime credential, production-service secret, or deployment key.",
-    "Artifact signing and provenance attestation are not implemented.",
+    "Builders hold no OIDC; a later job compares manifests. Signing and deploy jobs execute no repository source. No live run has proved this.",
     "CI does not write Git refs or repository content; logs and test results are job artifacts or external records.",
     "A protected-environment reviewer is a human actor, not a system component.",
+    "Release owners and legal, export, privacy, or security reviewers are evidence-workflow actors, not deployed components or runtime data flows.",
     "The static host serves bytes; repository workflows, not the host, enforce build and deployment gates.",
     "Branch and merge-request validation is normal; protected annotated tags identify release candidates only.",
     "Model, relay, launchable, runtime, and live-host controls remain unknown without current operator evidence.",
+    "Public static hosting may use reviewed cross-origin relays; the co-located launchable route is same-origin and direct to the runtime.",
+    "Interactive exercises send learner-provided prompts, credentials, agent commands, events, and workspace results to selected external services; service-side retention and privacy controls require operator and Privacy evidence.",
     "Host Python, Node.js, and Chromium are authoring and validation dependencies, not production components. Repository-owned container definitions are prohibited and would expand the reviewed scope.",
 }
 
@@ -75,6 +102,8 @@ REQUIRED_TOKENS = {
     DISPOSITION: (
         "## Status vocabulary",
         "## Review synthesis",
+        "## Decision resistance",
+        "## Assessment reconciliation",
         "## Source and contribution controls",
         "## Build and artifact controls",
         "## Static hosting and browser controls",
@@ -82,13 +111,27 @@ REQUIRED_TOKENS = {
         "## Publication blockers and retained risks",
         "security-control-themes.json",
         "Do not version private review rows one-to-one",
-        "cryptographic signature and provenance attestation are not verified",
+        "Workflow-defined, not live-verified",
+        "Python validation locks lack artifact hashes",
+        "two ordinary runners are not an approved trusted builder",
         "The intended OSS Type I classification applies only to the NemoClaw DLI course repository",
         "It does not classify or release the NemoClaw product, launchable",
         "The course repository can test route selection and client behavior",
         "Unknown, partial, architecture-decision, shared-verification, and human-review states remain open",
         "A future candidate is not",
         "external control without current operator",
+        "safe default is no release",
+        "human handoff does not defend a threat",
+        "future exception verifier is not implemented",
+        "automated guard retrieves the authorized private decision",
+        "does not pretend the missing",
+        "control exists",
+        "A new timestamp, layout, or submission wrapper is not a new finding",
+        "embedded diagram fingerprint",
+        "missing or mismatched binding as Unknown input identity",
+        "Give each private requirement exactly one disposition",
+        "Collapse exact and semantic duplicates to one disposition",
+        "component that cannot enforce it",
     ),
     "docs/product-design.md": (
         "The Type I subject is only the DLI course repository",
@@ -98,6 +141,12 @@ REQUIRED_TOKENS = {
     ),
     "docs/security-design.md": (
         "## Threat-analysis invariants",
+        "## Threat register",
+        "whether the triggering action is malicious, careless, or delegated to an agent",
+        "The state is evidence status, not a risk rating",
+        "The latter path is not implemented",
+        "do not certify signing, provenance, SRI, CSP, mTLS, quotas, or external authorization",
+        "## Threat enumeration boundary",
         "canonical Target of Evaluation summary",
         "published course artifact are public",
         "bearer credentials are JavaScript-readable",
@@ -106,14 +155,27 @@ REQUIRED_TOKENS = {
         "CI does not write Git refs or repository content",
         "fail-closed boundary audit rejects their reintroduction",
         "reviewer is a human actor, not a component",
+        "evidence-workflow actors",
+        "Human review identifies accountability but supplies no technical defense",
+        "decision records residual-risk acceptance",
+        "does not implement the missing",
+        "missing or different fingerprint",
+        "Unknown input",
+        "identity and cannot support a current disposition",
         "static host serves bytes",
         "protected annotated tags only",
         "only solid green nodes are Target of Evaluation components",
         "External-to-external internals are excluded",
-        "Cryptographic signing or provenance attestation is Not verified",
+        "No live run has proved",
+        "not trusted builders",
         "does not assume mTLS, DPoP, zero-retention model processing",
         "live relay enforcement is Unknown",
         "deployed state is Unknown",
+        "host-native tools or containers without adding",
+        "repository-owned service, image, or deployment path is a scope",
+        "uses only the edges and security objectives declared",
+        "Public source and released static assets",
+        "Relay-to-upstream hops and launchable control-plane startup are external",
     ),
     "scripts/validation/pages_artifact_integrity.py": (
         "MAX_FILE_COUNT",
@@ -122,6 +184,9 @@ REQUIRED_TOKENS = {
         "MAX_DIRECTORY_DEPTH",
         "MAX_ARCHIVE_BYTES",
         "MAX_EXPANSION_RATIO",
+        "source_tree_findings",
+        '"ls-files", "-z", "--cached", "--others", "--exclude-standard"',
+        'label="source tree"',
         "safe_extract_archive",
         "verify_deployment",
         "deployed file digest differs from reviewed artifact",
@@ -151,10 +216,36 @@ REQUIRED_TOKENS = {
         "verify-deployment:",
         "--base-url \"${{ needs.deploy.outputs.page_url }}\"",
         "--check-manifest reviewed-public/pages-sha256.txt",
+        "pages_artifact_integrity.py --source-root .",
+        "actions/attest@a1948c3f048ba23858d222213b7c278aabede763",
+        "subject-path: reviewed-pages/pages-sha256.txt",
+        "rebuild-for-comparison:",
+        "needs: [build-and-verify, rebuild-for-comparison]",
+        "cmp reviewed-public/pages-sha256.txt",
+        "compare-builds:",
+        "attest-provenance:",
+        "needs: compare-builds",
+        "needs: attest-provenance",
+        "pages-reviewed-manifest-${{ github.sha }}",
+        "--signer-workflow \"$GITHUB_REPOSITORY/.github/workflows/pages.yml\"",
+        "--source-digest \"$GITHUB_SHA\" --source-ref \"$GITHUB_REF\"",
+        "--deny-self-hosted-runners",
     ),
     ".github/workflows/release.yml": (
         "cd release-assets && sha256sum --check SHA256SUMS",
+        "pages_artifact_integrity.py --source-root .",
         "timeout-minutes:",
+        "dispatch the workflow from the exact release tag",
+        "subject-checksums: release-assets/SHA256SUMS",
+        "validate-and-scan:",
+        "build-and-package:",
+        "needs: [build-and-package, rebuild-for-comparison]",
+        "cmp release-evidence/pages-sha256.txt",
+        "needs: attest-and-verify",
+        "release-provenance.sigstore.json",
+        "--signer-workflow \"$GITHUB_REPOSITORY/.github/workflows/release.yml\"",
+        "--source-digest \"$SOURCE_COMMIT\" --source-ref \"refs/tags/$RELEASE_TAG\"",
+        "--deny-self-hosted-runners",
     ),
     ".gitlab/ci/core.yml": (
         "external_integration_audit:",
@@ -162,6 +253,7 @@ REQUIRED_TOKENS = {
         "https://github.com/NVDLI/NemoClawDLI.git",
         "repository_sync_audit.py",
         "refs/remotes/external/main",
+        "pages_artifact_integrity.py --source-root .",
     ),
     "docs/release_playbook.md": (
         "## Public GitHub write hold",
@@ -177,18 +269,40 @@ REQUIRED_TOKENS = {
         "intended as **OSS Type I**",
         "This classification is limited to `NVDLI/NemoClawDLI`",
         "classify or release the NemoClaw product",
+        "### Threat-driven release sequence",
+        "Starting a new build, changing a ref, or replacing evidence restarts the sequence",
+        "The automated private-record and artifact comparison is not implemented",
+        "separate signal, not a defense",
+        "Every control certification or attestation must satisfy the evidence contract",
     ),
     "docs/release-test-plan.md": (
         "| M10a | Generated threat-analysis reconciliation |",
-        "The Target of Evaluation matches the canonical invariants",
+        "the Target of Evaluation matches the canonical invariants",
+        "Missing or mismatched attachment identity remains Unknown",
+        "exact and semantic duplicates receive one disposition",
+        "Human review is not a compensating control",
+        "does not claim the missing control was implemented",
         "public repository contains no private row-by-row assessment",
-        "Complete M10a, then obtain M11",
+        "metadata-only rerenders cause no public-document churn",
+        "verified repository control, open repository action, external evidence requirement",
+        "reject stale attachments",
+        "inferred external internals",
+        "impossible enforcement owners",
+        "runtime and release-flow threats map to declared edges and objectives",
+        "TR-10 remains an evidence-workflow threat",
+        "M11 remains release-blocking",
+        "A reviewer approval without that automated comparison does not satisfy",
+        "Each retained certification or attestation must record the issuer role",
+        "Missing or mismatched context is Unknown",
     ),
     "scripts/build/build_security_review_package.py": (
         "Aggregate control and mitigation register",
-        "self-contained supporting design",
+        "supporting design is self-contained",
         "evidence labels, not required reading",
-        "Generated risk labels and mitigation statuses are advisory",
+        "Generated risk and mitigation labels are advisory",
+        "Submission binding",
+        "report input identity is Unknown",
+        "Applicable security objectives",
         "A future candidate is not implemented and cannot support a Mitigated status",
         "An external control without current operator evidence remains Not Mitigated",
         "Future candidate",
@@ -197,7 +311,15 @@ REQUIRED_TOKENS = {
         "section_body",
         '"Threat-analysis invariants"',
         "security-control-themes.json",
-        "len(document.splitlines()) < 260",
+        "ARCHITECTURE_SOURCE",
+        "Interactions and Data Flow",
+        "normative and exhaustive threat-enumeration boundary",
+        "Confidentiality is explicitly",
+        "Not applicable because the transferred material",
+        "excluded_external_interactions",
+        "Assessment reconciliation procedure",
+        'control_data["assessment_review_steps"]',
+        "len(document.splitlines()) < 300",
     ),
     "RELEASE_STATUS.json": (
         '"publication_state": "pending-osrb-approval"',
@@ -208,6 +330,11 @@ REQUIRED_TOKENS = {
         '"NemoClaw product"',
         '"NemoClaw launchable"',
         '"NemoClaw runtime"',
+        '"default": "deny"',
+        '"human_review_effect": "no-state-change-without-evidence-bound-decision"',
+        '"external_evidence_verification": "not-implemented-release-blocking"',
+        '"independent_approver_required": true',
+        '"publication_decision": null',
     ),
 }
 
@@ -241,8 +368,9 @@ def audit(*, text_overrides: dict[str, str] | None = None) -> list[dict[str, str
             findings.append(finding("missing-control-file", path, "required control evidence file is absent"))
             continue
         text = read(path, overrides)
+        normalized_text = " ".join(text.split())
         for token in tokens:
-            if token not in text:
+            if " ".join(token.split()) not in normalized_text:
                 findings.append(finding("missing-control-token", path, f"missing control evidence: {token}"))
 
     try:
@@ -285,6 +413,36 @@ def audit(*, text_overrides: dict[str, str] | None = None) -> list[dict[str, str
             "assessment-status-rules", CONTROL_REGISTER,
             "status precedence does not fail closed",
         ))
+    if register.get("assessment_review_steps") != EXPECTED_REVIEW_STEPS:
+        findings.append(finding(
+            "assessment-review-steps", CONTROL_REGISTER,
+            "assessment reconciliation procedure changed or is incomplete",
+        ))
+
+    evidence_contract = register.get("evidence_contract") or {}
+    if set(evidence_contract.get("required_fields") or []) != EXPECTED_EVIDENCE_FIELDS:
+        findings.append(finding(
+            "evidence-contract", CONTROL_REGISTER,
+            "certification and attestation fields changed or are incomplete",
+        ))
+    for field, token in (
+        ("authority_rule", "repository test can certify only repository-owned controls"),
+        ("binding_rule", "exact source commit, artifact digest, service release, configuration digest, and environment"),
+        ("failure_state", "Unknown and release-blocking"),
+    ):
+        if token not in str(evidence_contract.get(field, "")):
+            findings.append(finding(
+                "evidence-contract", CONTROL_REGISTER,
+                f"evidence contract lacks its {field.replace('_', ' ')}",
+            ))
+
+    security_design = read("docs/security-design.md", overrides)
+    threat_ids = re.findall(r"(?m)^\| (TR-[0-9]{2}) \|", security_design)
+    if set(threat_ids) != EXPECTED_THREAT_IDS or len(threat_ids) != len(EXPECTED_THREAT_IDS):
+        findings.append(finding(
+            "threat-register", "docs/security-design.md",
+            "threat register must contain each canonical threat ID exactly once",
+        ))
 
     themes = register.get("themes") or []
     theme_ids = [row.get("id") for row in themes if isinstance(row, dict)]
@@ -292,6 +450,16 @@ def audit(*, text_overrides: dict[str, str] | None = None) -> list[dict[str, str
         findings.append(finding("theme-duplicate", CONTROL_REGISTER, "control theme IDs repeat"))
     for theme_id in sorted(REQUIRED_THEME_IDS - set(theme_ids)):
         findings.append(finding("theme-missing", CONTROL_REGISTER, f"missing control theme: {theme_id}"))
+    mapped_threats = [
+        threat_id
+        for row in themes if isinstance(row, dict)
+        for threat_id in (row.get("threat_ids") or [])
+    ]
+    if set(mapped_threats) != EXPECTED_THREAT_IDS or len(mapped_threats) != len(EXPECTED_THREAT_IDS):
+        findings.append(finding(
+            "theme-threat-map", CONTROL_REGISTER,
+            "every canonical threat must map to exactly one aggregate control theme",
+        ))
     for index, row in enumerate(themes):
         if not isinstance(row, dict):
             findings.append(finding("theme-shape", CONTROL_REGISTER, f"theme {index} is not an object"))
@@ -338,6 +506,9 @@ def audit(*, text_overrides: dict[str, str] | None = None) -> list[dict[str, str
             r"\b(?:signed|signature|attestation|provenance)\b",
             current,
             re.IGNORECASE,
+        ) and not (
+            "Live execution is not verified" in current
+            and ("Workflow definitions" in current or "post-build job" in current)
         ):
             findings.append(finding(
                 "unsupported-signing-claim", CONTROL_REGISTER,
@@ -401,7 +572,7 @@ def self_test() -> list[str]:
             f"baseline is not clean: {item['code']} {item['path']} {item['detail']}"
             for item in baseline
         ]
-        return 0, 0, failures
+        return failures
     tests: list[tuple[str, dict[str, str], str]] = []
     pages = read(".github/workflows/pages.yml", {})
     release = read(".github/workflows/release.yml", {})
@@ -428,6 +599,15 @@ def self_test() -> list[str]:
         "release timeout",
         {".github/workflows/release.yml": release.replace("    timeout-minutes:", "    timeout-removed:", 1)},
         "missing-job-timeout",
+    ))
+    tests.append((
+        "source resource preflight",
+        {".github/workflows/pages.yml": pages.replace(
+            "pages_artifact_integrity.py --source-root .",
+            "pages_artifact_integrity.py --help",
+            1,
+        )},
+        "missing-control-token",
     ))
     tests.append((
         "sync cadence",
@@ -471,9 +651,31 @@ def self_test() -> list[str]:
         )},
         "missing-control-token",
     ))
+    tests.append((
+        "missing explicit threat",
+        {"docs/security-design.md": re.sub(
+            r"(?m)^\| TR-10 \|.*\n", "", security_design, count=1
+        )},
+        "threat-register",
+    ))
+    tests.append((
+        "release sequence loses candidate identity",
+        {"docs/release_playbook.md": playbook.replace(
+            "Starting a new build",
+            "Reusing an older build",
+            1,
+        )},
+        "missing-control-token",
+    ))
     value = mutated_register()
     value["themes"] = [row for row in value["themes"] if row["id"] != "relay-boundary"]
     tests.append(("missing aggregate theme", {CONTROL_REGISTER: json.dumps(value)}, "theme-missing"))
+    value = mutated_register()
+    value["themes"][0]["threat_ids"] = []
+    tests.append(("unmapped threat", {CONTROL_REGISTER: json.dumps(value)}, "theme-threat-map"))
+    value = mutated_register()
+    value["evidence_contract"]["required_fields"].remove("expires_at")
+    tests.append(("unbounded certification", {CONTROL_REGISTER: json.dumps(value)}, "evidence-contract"))
     value = mutated_register()
     value["themes"][0]["state"] = "mitigated"
     tests.append(("blanket mitigated state", {CONTROL_REGISTER: json.dumps(value)}, "theme-state"))
@@ -498,6 +700,67 @@ def self_test() -> list[str]:
         "missing conservative status precedence",
         {CONTROL_REGISTER: json.dumps(value)},
         "assessment-status-rules",
+    ))
+    value = mutated_register()
+    value["assessment_status_rules"].remove(
+        "A generated Mitigated label is not evidence of a live external control."
+    )
+    tests.append((
+        "generated external mitigation accepted as evidence",
+        {CONTROL_REGISTER: json.dumps(value)},
+        "assessment-status-rules",
+    ))
+    value = mutated_register()
+    value["assessment_status_rules"].remove(
+        "Exact or semantic duplicate requirements receive one disposition; duplication does not create additional risk or evidence."
+    )
+    tests.append((
+        "duplicate requirement counted independently",
+        {CONTROL_REGISTER: json.dumps(value)},
+        "assessment-status-rules",
+    ))
+    value = mutated_register()
+    value["assessment_status_rules"].remove(
+        "Human approval required is a release-blocking state; referral, attendance, a checkbox, or generated rationale does not change it."
+    )
+    tests.append((
+        "human referral accepted as a mitigation",
+        {CONTROL_REGISTER: json.dumps(value)},
+        "assessment-status-rules",
+    ))
+    value = mutated_register()
+    value["assessment_review_steps"] = value["assessment_review_steps"][1:]
+    tests.append((
+        "missing assessment reconciliation step",
+        {CONTROL_REGISTER: json.dumps(value)},
+        "assessment-review-steps",
+    ))
+    value = mutated_register()
+    value["assessment_review_steps"].remove(
+        "For every Not verified, Unknown, or Human approval required item, identify the enforceable defense and its owner; referral to a reviewer is not a defense."
+    )
+    tests.append((
+        "open concern lacks an enforceable defense",
+        {CONTROL_REGISTER: json.dumps(value)},
+        "assessment-review-steps",
+    ))
+    value = mutated_register()
+    value["target_of_evaluation"]["explicit_facts"].remove(
+        "Release owners and legal, export, privacy, or security reviewers are evidence-workflow actors, not deployed components or runtime data flows."
+    )
+    tests.append((
+        "human review actor promoted into topology",
+        {CONTROL_REGISTER: json.dumps(value)},
+        "toe-explicit-facts",
+    ))
+    value = mutated_register()
+    value["assessment_review_steps"][2] = (
+        "Accept every generated requirement without checking its owner or route."
+    )
+    tests.append((
+        "impossible enforcement owner accepted",
+        {CONTROL_REGISTER: json.dumps(value)},
+        "assessment-review-steps",
     ))
     value = mutated_register()
     value["target_of_evaluation"]["explicit_facts"][0] = (

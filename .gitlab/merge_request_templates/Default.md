@@ -56,6 +56,8 @@ review records in the authorized release system.
 Who reviewed the complete diff and can explain every surviving line? Who owns merge and release
 approval? Agent output does not satisfy this section.
 
+Unresolved risk must satisfy `RELEASE_STATUS.json`; review text is not a compensating control.
+
 Every commit must include a matching `Signed-off-by` trailer under `DCO.md`. CI checks the complete
 merge-request range; a description claim does not replace commit-level signoff.
 

@@ -18,6 +18,14 @@ from scripts.validation.artifact_link_audit import audit
 
 
 class ArtifactNavigationProjectionTests(unittest.TestCase):
+    def test_source_projection_runs_after_docs_projection(self):
+        """A docs link must not restore repository-only routes after public projection."""
+        root = Path(__file__).resolve().parents[2]
+        build = (root / "scripts/build/build_pages.sh").read_text(encoding="utf-8")
+        docs = build.index('python3 "$T1/scripts/build/project_docs_explorer.py"')
+        source = build.index('python3 "$T1/scripts/build/project_source_tree.py"')
+        self.assertLess(docs, source)
+
     def test_nested_preview_manifest_describes_real_combined_tree_paths(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "topic" / "branches.json"

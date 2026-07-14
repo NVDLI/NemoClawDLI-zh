@@ -136,7 +136,14 @@ mkdir -p "$OUT/scripts/compliance/docs"
 cp "$T1/scripts/compliance/docs/sbom_generation.md" "$OUT/scripts/compliance/docs/sbom_generation.md"
 cp "$T1/scripts/compliance/docs/sbom_evidence.json" "$OUT/scripts/compliance/docs/sbom_evidence.json"
 
-# ── 2b. SKILL explorers: project authoring sources, including proposed files.
+# ── 2b. Docs and SKILL explorers.
+# Resolve the docs catalog first. It may discover a repository-root file through a Markdown link;
+# the exhaustive source projection must run last so its public-route rewrites remain authoritative.
+python3 "$T1/scripts/build/project_docs_explorer.py" \
+    --source-skill "$T1/docs/SKILL.html" \
+    --source-root "$T1" \
+    --artifact-root "$OUT"
+
 # Every source directory owns a SKILL.html and every explorer must retain the files it documents.
 # A shallow top-level copy leaves nested renderers present but unusable, so the projection is
 # exhaustive and byte-verified while generated standalone delivery output is rebuilt only at its
@@ -162,14 +169,6 @@ for locale_source in "$OUT"/i18n/*/web/nemoclaw; do
     cp "$T1/web/_skill_explorer.js" "$(dirname "$locale_source")/_skill_explorer.js"
 done
 echo "[build_pages] source explorers -> public/ ($(find "$OUT" -name SKILL.html -type f | wc -l) SKILL contracts)"
-
-# Project every docs explorer declaration from source. Then inspect every declared Markdown
-# document and project its local link/image targets. This checks the final Pages tree rather than
-# assuming that a source-tree link remains valid after selective artifact assembly.
-python3 "$T1/scripts/build/project_docs_explorer.py" \
-    --source-skill "$T1/docs/SKILL.html" \
-    --source-root "$T1" \
-    --artifact-root "$OUT"
 
 if [ -f "$T1/docs/repository-overview.slides.json" ]; then
     test -f "$OUT/docs/repository-overview.html"
