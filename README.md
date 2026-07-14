@@ -48,6 +48,7 @@ Issue or Discussion.
 Code remains an untrusted proposal until required checks and an authorized human review accept it.
 Every patch needs an Issue, a declared blast radius, validation evidence, and DCO signoff. No
 contributor, maintainer, or agent may approve its own protected merge or release.
+Human approval does not replace a missing control or resolve unverified release risk.
 
 Start with [`CONTRIBUTING.md`](CONTRIBUTING.md). It owns setup, issue and patch paths, signoff,
 validation, localization ownership, and contributor credit. The
@@ -66,6 +67,15 @@ python3 scripts/validation/release_gate.py --tier fast --no-write
 Use `--tier ship` before release or after a cross-cutting contract change. The
 [`release test plan`](docs/release-test-plan.md) maps claims to evidence. Browser prerequisites and
 render checks live in [`docs/lab_runtime_testing.md`](docs/lab_runtime_testing.md).
+
+Release threat-model evidence lives in [`docs/security-design.md`](docs/security-design.md).
+Its source-backed graph covers the learner runtime and release supply chain. CI rejects missing
+services, unlabeled trust-boundary flows, broken evidence, connector collisions, and stale output.
+The generated review design and diagram carry matching architecture fingerprints. A report that
+does not preserve that binding remains Unknown until the submitted attachments are confirmed.
+Repository-owned mitigations, unresolved host or provider requirements, residual risks, and
+non-applicable recommendations are separated in
+[`docs/security-control-disposition.md`](docs/security-control-disposition.md).
 
 ## How the repository guides agents
 

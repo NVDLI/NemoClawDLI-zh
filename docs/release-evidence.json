@@ -248,8 +248,7 @@
       "owner": "shared",
       "automated_commands": [
         "python3 -m unittest -v tests/validation/test_embedded_validator_suites.py tests/validation/test_test_harness_contract.py",
-        "python3 scripts/validation/threat_control_audit.py",
-        "python3 -m unittest -v tests/validation/test_embedded_validator_suites.py tests/validation/test_test_harness_contract.py"
+        "python3 scripts/validation/threat_control_audit.py"
       ],
       "external_evidence": "operator-required"
     },

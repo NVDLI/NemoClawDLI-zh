@@ -13,6 +13,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import tarfile
 import tempfile
 import time
@@ -73,22 +74,24 @@ def safe_relative_path(value: str) -> PurePosixPath | None:
     return candidate
 
 
-def resource_findings(rows: list[tuple[str, int]], *, archive_bytes: int | None = None) -> list[str]:
+def resource_findings(
+    rows: list[tuple[str, int]], *, archive_bytes: int | None = None, label: str = "artifact",
+) -> list[str]:
     findings: list[str] = []
     files = len(rows)
     total = sum(size for _, size in rows)
     if files > MAX_FILE_COUNT:
-        findings.append(f"artifact has {files} files; limit is {MAX_FILE_COUNT}")
+        findings.append(f"{label} has {files} files; limit is {MAX_FILE_COUNT}")
     if total > MAX_TOTAL_BYTES:
-        findings.append(f"artifact expands to {total} bytes; limit is {MAX_TOTAL_BYTES}")
+        findings.append(f"{label} totals {total} bytes; limit is {MAX_TOTAL_BYTES}")
     for rel, size in rows:
         if size > MAX_FILE_BYTES:
-            findings.append(f"artifact file exceeds {MAX_FILE_BYTES} bytes: {rel} ({size})")
+            findings.append(f"{label} file exceeds {MAX_FILE_BYTES} bytes: {rel} ({size})")
         path = safe_relative_path(rel)
         if path is None:
-            findings.append(f"artifact path is unsafe: {rel}")
+            findings.append(f"{label} path is unsafe: {rel}")
         elif len(path.parts) > MAX_DIRECTORY_DEPTH:
-            findings.append(f"artifact path depth exceeds {MAX_DIRECTORY_DEPTH}: {rel}")
+            findings.append(f"{label} path depth exceeds {MAX_DIRECTORY_DEPTH}: {rel}")
     if archive_bytes is not None:
         if archive_bytes > MAX_ARCHIVE_BYTES:
             findings.append(f"archive is {archive_bytes} bytes; limit is {MAX_ARCHIVE_BYTES}")
@@ -99,6 +102,31 @@ def resource_findings(rows: list[tuple[str, int]], *, archive_bytes: int | None 
                 f"archive expansion ratio is {total / archive_bytes:.1f}; limit is {MAX_EXPANSION_RATIO}"
             )
     return findings
+
+
+def source_tree_findings(root: Path) -> list[str]:
+    """Bound proposed tracked and unignored source before expensive analysis."""
+    result = subprocess.run(
+        ["git", "-C", str(root), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+        capture_output=True,
+    )
+    if result.returncode:
+        detail = result.stderr.decode("utf-8", errors="replace").strip() or "git ls-files failed"
+        return [f"cannot enumerate proposed source tree: {detail}"]
+    rows: list[tuple[str, int]] = []
+    findings: list[str] = []
+    for raw in result.stdout.split(b"\0"):
+        if not raw:
+            continue
+        rel = raw.decode("utf-8", errors="surrogateescape")
+        path = root / rel
+        try:
+            size = path.lstat().st_size
+        except OSError as exc:
+            findings.append(f"cannot inspect source tree path {rel}: {exc}")
+            continue
+        rows.append((rel, size))
+    return findings + resource_findings(rows, label="source tree")
 
 
 def remote(value: str) -> bool:
@@ -480,6 +508,11 @@ def self_test() -> list[str]:
         )
         if len(synthetic_bounds) < 3:
             failures.append("artifact resource-bound mutation escaped")
+        source_label = resource_findings(
+            [("deep/" * MAX_DIRECTORY_DEPTH + "file", 0)], label="source tree"
+        )
+        if not source_label or "source tree" not in source_label[0]:
+            failures.append("source-tree resource preflight label escaped")
 
         expected_text = manifest_text(root, fixture_sha)
         parse_findings, entries = parse_manifest(expected_text, fixture_sha)
@@ -506,6 +539,7 @@ def self_test() -> list[str]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path)
+    parser.add_argument("--source-root", type=Path)
     parser.add_argument("--expect-sha")
     parser.add_argument("--write-manifest", type=Path)
     parser.add_argument("--check-manifest", type=Path)
@@ -523,6 +557,15 @@ def main() -> int:
         for finding in failures:
             print("  " + finding)
         return 1 if failures else 0
+    if args.source_root:
+        findings = source_tree_findings(args.source_root.resolve())
+        if findings:
+            print(f"Source tree resource preflight: FAIL ({len(findings)})")
+            for finding in findings:
+                print("  " + finding)
+            return 1
+        print("Source tree resource preflight: PASS")
+        return 0
     if args.archive:
         if not args.extract_to:
             parser.error("--archive requires --extract-to")

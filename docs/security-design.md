@@ -28,6 +28,10 @@ Contributors run the static checks with host Python, Node.js, and Chromium. Exte
 operator-owned; the repository owns no container topology or image. The
 architecture validator rejects unreviewed production dependencies.
 
+The authoring and validation implementation may use host-native tools or containers without adding
+either to the production boundary. A repository-owned service, image, or deployment path is a scope
+change and requires architecture and security-control review before it can enter a release path.
+
 ## Threat-analysis invariants
 
 Use these statements as the canonical Target of Evaluation summary. A generated summary that
@@ -47,23 +51,79 @@ accepted.
   issuer and service support.
 - Proposed-change validation executes untrusted repository code only in read-only jobs. Those jobs
   hold no signing key, model API credential, runtime credential, production-service secret, or
-  deployment key. The workflow separates artifact build from a deployment job configured for
-  short-lived GitHub OIDC, serialized publication, artifact re-verification, and live-byte
-  comparison. Required protected-environment review is live host evidence, not a repository fact.
+  deployment key. A no-checkout job receives only the compared manifest before requesting signing
+  OIDC. The protected deploy job executes only a pinned action; a later read-only job compares live
+  bytes. Required protected-environment review is live host evidence, not a repository fact.
 - CI does not write Git refs or repository content. Logs and test results are job artifacts or
   external records. Branch and merge-request validation is normal; protected annotated tags only
   identify release candidates.
-- A protected-environment reviewer is a human actor, not a component. A static host serves bytes;
-  repository workflows, not the host, enforce build and deployment gates.
+- A protected-environment reviewer is a human actor, not a component. Release owners and legal,
+  export, privacy, or security reviewers are evidence-workflow actors too. They are not deployed
+  components or runtime data flows. A static host serves bytes; repository workflows, not the host,
+  enforce build and deployment gates.
+- Human review identifies accountability but supplies no technical defense. An open concern remains
+  release-blocking until its defense is Verified. A future exception path must use the exact,
+  artifact-bound, independently owned, evidence-backed, expiring decision required by
+  `RELEASE_STATUS.json`. The decision records residual-risk acceptance; it does not implement the missing control.
+- The repository does not yet retrieve the authorized private decision or compare its bindings with
+  the exact built artifact. Publication therefore remains blocked even when a structured decision
+  record is present.
 - In the architecture diagram, only solid green nodes are Target of Evaluation components. Dashed
   gray nodes are external context with no live-control attestation. Edges state expected integration
   routes and data, not verified external configuration. External-to-external internals are excluded.
-- The repository records a complete SHA-256 inventory and preserves one reviewed artifact through
-  deployment. Cryptographic signing or provenance attestation is Not verified; a checksum is not a
-  signature.
+- Two package-free jobs assemble the same tree without OIDC; a later job compares them. Signing and
+  deployment jobs execute no repository source. No live run has proved this, and ordinary runners
+  are not trusted builders.
 - Live host, launchable, relay, model-service, and runtime controls are Unknown until their owners
   supply evidence. This design does not assume mTLS, DPoP, zero-retention model processing,
   prompt-injection detection, private Git networking, or a curated private package registry.
+- The submitted design and diagram form one evidence pair. The generated design records the full
+  architecture-model and diagram digests, while the diagram shows the model fingerprint. A report
+  with a missing or different fingerprint, flow register, or objective list has Unknown input
+  identity and cannot support a current disposition.
+
+## Threat register
+
+These are security threats whether the triggering action is malicious, careless, or delegated to
+an agent that produces plausible but unsupported output. The state is evidence status, not a risk
+rating. A threat remains open until its defense is Verified or an implemented release guard
+validates authoritative residual-risk acceptance. The latter path is not implemented.
+
+| ID | Threat event | Boundary | Current state and control theme |
+|---|---|---|---|
+| TR-01 | Untrusted source changes inject executable course behavior or weaken its detectors. | Contributor to source and CI | Shared verification required; Source and CI trust |
+| TR-02 | A dependency, build tool, package source, or runner changes the generated course. | Source and CI to build artifact | Partially verified; Build supply chain |
+| TR-03 | A stale, substituted, replayed, or differently built artifact is promoted. | Build artifact to static host or release | Partially verified; Artifact integrity and publication |
+| TR-04 | Hosting, cache, or same-origin script mutation changes code executed by learners. | Static host to learner browser | Shared verification required; Static host and browser execution |
+| TR-05 | Browser-visible credentials are stolen, replayed, overscoped, or retained on a shared device. | Learner browser to external services | Architecture decision required; Browser-held credentials |
+| TR-06 | Relay routing or authorization permits destination abuse, unsafe parsing, or cross-user access. | Browser through external relay | External evidence required; Relay boundary |
+| TR-07 | Model credentials, prompts, or responses are misused, over-retained, or charged without adequate limits. | Browser to model service | External evidence required; Model-service boundary |
+| TR-08 | Launchable or runtime authorization, isolation, or sandbox enforcement permits cross-tenant access or escape. | Browser to launchable and runtime | External evidence required; Launchable and runtime boundary |
+| TR-09 | Requests exhaust host, relay, model, runtime, storage, or spend capacity. | All served and interactive routes | Shared verification required; Availability and resource controls |
+| TR-10 | Generated analysis, stale evidence, a checkbox, or reviewer deference launders an open concern into approval. | Assessment and release decision | Not verified and release-blocking; Assessment fidelity |
+
+A certification has effect only when its authority binds claims and evidence fingerprints to the
+exact subject, environment, release, observation time, expiry, result, and limitations required by
+`security-control-themes.json`. Repository tests cannot certify external systems. Checksums, HTTPS,
+and review do not certify signing, provenance, SRI, CSP, mTLS, quotas, or external authorization.
+Missing, stale, self-issued, unbound, or unverifiable evidence is Unknown and release-blocking.
+
+## Threat enumeration boundary
+
+Runtime and release-flow threat enumeration uses only the edges and security objectives declared
+in [`security-architecture.json`](security-architecture.json). The list is exhaustive for deployed
+and publication data flows. TR-10 is an evidence-workflow threat, not a deployed flow, so it is
+controlled by the release decision guard rather than an invented architecture edge. Do not infer a
+new course flow from external context or mechanically assign confidentiality, integrity, and
+availability to every edge. Public source and released static assets have no confidentiality objective.
+
+Direct and operator-relayed variants from course client code to the same external service are one
+course boundary flow. Relay-to-upstream hops and launchable control-plane startup are external
+operator internals, not additional course flows. A launchable-provided credential still travels on
+the browser-to-model flow when course client code sends the model request. Human review and approval
+are evidence workflows, not deployed components or runtime data flows.
+Exact and semantic duplicate requirements receive one disposition. Repetition does not create a
+new threat, mitigation, or evidence claim.
 
 ## Browser routing by host
 

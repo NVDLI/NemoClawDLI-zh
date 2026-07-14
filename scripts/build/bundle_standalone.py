@@ -617,7 +617,8 @@ def _project_skill_config(config: dict, out: Path, skill: Path) -> dict:
         while parent == out or out in parent.parents:
             candidate = parent / "SKILL.html"
             if candidate.is_file():
-                nav["up"] = {"label": candidate.parent.name or "Course map", "href": _relative_url(candidate, skill)}
+                label = "Course map" if candidate == root_skill else candidate.parent.name
+                nav["up"] = {"label": label, "href": _relative_url(candidate, skill)}
                 break
             if parent == out:
                 break
@@ -858,7 +859,15 @@ def _self_test() -> int:
             '</script></body>',
             encoding="utf-8",
         )
+        child = bundle / "docs" / "SKILL.html"
+        child.parent.mkdir()
+        child.write_text(
+            '<script type="application/json" id="explorer-config">'
+            '{"title":"docs","files":[]}</script>', encoding="utf-8",
+        )
         project_artifact_navigation(bundle)
+        assert '"label": "Course map"' in child.read_text(encoding="utf-8")
+        assert bundle.name not in child.read_text(encoding="utf-8")
         assert not artifact_link_audit.audit(bundle)
         broken = (bundle / "SKILL.html").read_text(encoding="utf-8").replace('href="index.html"', 'href="../index.html"', 1)
         (bundle / "SKILL.html").write_text(broken, encoding="utf-8")

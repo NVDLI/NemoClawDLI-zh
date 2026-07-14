@@ -121,7 +121,10 @@ This resolves Git's real hook directory, including linked worktrees, then instal
   success; required CI always reruns on the submitted commit.
 
 Local hooks provide early feedback. Required CI and protected refs remain authoritative because Git
-allows hooks to be bypassed. Protected human review and release actions complete that boundary.
+allows hooks to be bypassed. Human review identifies accountability but is not a compensating
+control. An unresolved release concern stays blocked until its defense is verified or the protected
+release guard retrieves the authorized decision and compares it with the exact artifact. That
+automated comparison is not implemented, so a decision record cannot unlock publication today.
 
 ## Validate Before Pushing
 
