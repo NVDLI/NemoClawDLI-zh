@@ -335,31 +335,42 @@ def parse_manifest(text: str, expected_sha: str) -> tuple[list[str], list[tuple[
     return findings, entries
 
 
-def compare_deployed_files(
+def deployed_file_findings(
     entries: list[tuple[str, str]], fetch: Callable[[str], bytes], *,
     expected_sizes: dict[str, int] | None = None, workers: int = DOWNLOAD_WORKERS,
-) -> list[str]:
-    def check(row: tuple[str, str]) -> str | None:
+) -> dict[str, str]:
+    def check(row: tuple[str, str]) -> tuple[str, str | None]:
         expected_digest, rel = row
         try:
             body = fetch(rel)
         except Exception as exc:  # network errors are findings, never a skipped check
-            return f"cannot fetch deployed file {rel}: {exc}"
+            return rel, f"cannot fetch deployed file {rel}: {exc}"
         if len(body) > MAX_FILE_BYTES:
-            return f"deployed file exceeds {MAX_FILE_BYTES} bytes: {rel}"
+            return rel, f"deployed file exceeds {MAX_FILE_BYTES} bytes: {rel}"
         if expected_sizes is not None and len(body) != expected_sizes.get(rel):
-            return f"deployed file size differs from reviewed artifact: {rel}"
+            return rel, f"deployed file size differs from reviewed artifact: {rel}"
         actual = hashlib.sha256(body).hexdigest()
         if actual != expected_digest:
-            return f"deployed file digest differs from reviewed artifact: {rel}"
-        return None
+            return rel, f"deployed file digest differs from reviewed artifact: {rel}"
+        return rel, None
 
-    findings: list[str] = []
+    findings: dict[str, str] = {}
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
-        for result in pool.map(check, entries):
-            if result:
-                findings.append(result)
+        for rel, finding in pool.map(check, entries):
+            if finding:
+                findings[rel] = finding
     return findings
+
+
+def compare_deployed_files(
+    entries: list[tuple[str, str]], fetch: Callable[[str], bytes], *,
+    expected_sizes: dict[str, int] | None = None, workers: int = DOWNLOAD_WORKERS,
+) -> list[str]:
+    return list(
+        deployed_file_findings(
+            entries, fetch, expected_sizes=expected_sizes, workers=workers,
+        ).values()
+    )
 
 
 def fetch_deployed(base_url: str, rel: str, *, max_bytes: int = MAX_FILE_BYTES) -> bytes:
@@ -380,6 +391,10 @@ def fetch_deployed(base_url: str, rel: str, *, max_bytes: int = MAX_FILE_BYTES) 
 def verify_deployment(
     base_url: str, root: Path, manifest: Path, expected_sha: str, *,
     attempts: int = 18, delay: float = 5.0, course_prefix: str = "",
+    fetcher: Callable[..., bytes] = fetch_deployed,
+    sleeper: Callable[[float], None] = time.sleep,
+    workers: int = DOWNLOAD_WORKERS,
+    progress: Callable[[str], None] = print,
 ) -> list[str]:
     parsed = urlsplit(base_url)
     if parsed.scheme != "https" or not parsed.netloc:
@@ -395,29 +410,39 @@ def verify_deployment(
     if local_findings:
         return [f"reviewed artifact: {item}" for item in local_findings]
     expected_sizes = {rel: (root / rel).stat().st_size for _, rel in entries}
-    live_text = ""
-    last_error = ""
-    for attempt in range(1, max(1, attempts) + 1):
+    pending = entries
+    last_findings = ["deployed integrity manifest differs from the reviewed artifact"]
+    limit = max(1, attempts)
+    for attempt in range(1, limit + 1):
         try:
-            live_text = fetch_deployed(
+            live_text = fetcher(
                 base_url, MANIFEST_NAME, max_bytes=max(MIB, len(expected_text.encode("utf-8"))),
             ).decode("utf-8")
-            last_error = ""
         except (OSError, UnicodeError, RuntimeError) as exc:
-            last_error = str(exc)
-        if not last_error and live_text == expected_text:
-            break
-        if attempt < attempts:
-            time.sleep(max(0.0, delay))
-    if last_error:
-        return [f"cannot fetch deployed integrity manifest: {last_error}"]
-    if live_text != expected_text:
-        return ["deployed integrity manifest differs from the reviewed artifact"]
-    return compare_deployed_files(
-        entries,
-        lambda rel: fetch_deployed(base_url, rel, max_bytes=expected_sizes[rel]),
-        expected_sizes=expected_sizes,
-    )
+            pending = entries
+            last_findings = [f"cannot fetch deployed integrity manifest: {exc}"]
+        else:
+            if live_text != expected_text:
+                pending = entries
+                last_findings = ["deployed integrity manifest differs from the reviewed artifact"]
+            else:
+                findings_by_path = deployed_file_findings(
+                    pending,
+                    lambda rel: fetcher(base_url, rel, max_bytes=expected_sizes[rel]),
+                    expected_sizes=expected_sizes,
+                    workers=workers,
+                )
+                if not findings_by_path:
+                    return []
+                pending = [row for row in pending if row[1] in findings_by_path]
+                last_findings = list(findings_by_path.values())
+        if attempt < limit:
+            progress(
+                f"deployed Pages attempt {attempt}/{limit} not ready "
+                f"({len(last_findings)} finding(s)); retrying"
+            )
+            sleeper(max(0.0, delay))
+    return last_findings
 
 
 def self_test() -> list[str]:
@@ -530,6 +555,40 @@ def self_test() -> list[str]:
         payloads[entries[0][1]] += b"changed"
         if not compare_deployed_files(entries, payloads.__getitem__, workers=2):
             failures.append("deployed-byte substitution mutation escaped")
+        payloads = {rel: (root / rel).read_bytes() for _, rel in entries}
+        stale_rel = entries[0][1]
+        calls: dict[str, int] = {}
+
+        def converging_fetch(_base: str, rel: str, *, max_bytes: int) -> bytes:
+            del max_bytes
+            if rel == MANIFEST_NAME:
+                return expected_text.encode("utf-8")
+            calls[rel] = calls.get(rel, 0) + 1
+            if rel == stale_rel and calls[rel] == 1:
+                return payloads[rel] + b"stale"
+            return payloads[rel]
+
+        if verify_deployment(
+            "https://example.test/", root, manifest, fixture_sha,
+            attempts=2, delay=0, fetcher=converging_fetch, sleeper=lambda _delay: None,
+            workers=1, progress=lambda _message: None,
+        ):
+            failures.append("partially propagated deployment did not converge on retry")
+
+        def stale_fetch(_base: str, rel: str, *, max_bytes: int) -> bytes:
+            del max_bytes
+            if rel == MANIFEST_NAME:
+                return expected_text.encode("utf-8")
+            if rel == stale_rel:
+                return payloads[rel] + b"stale"
+            return payloads[rel]
+
+        if not verify_deployment(
+            "https://example.test/", root, manifest, fixture_sha,
+            attempts=2, delay=0, fetcher=stale_fetch, sleeper=lambda _delay: None,
+            workers=1, progress=lambda _message: None,
+        ):
+            failures.append("persistent deployed-byte substitution escaped retry exhaustion")
         unsafe_manifest = expected_text + f"{'0' * 64}  ../escape\n"
         if not parse_manifest(unsafe_manifest, fixture_sha)[0]:
             failures.append("unsafe manifest path mutation escaped")
