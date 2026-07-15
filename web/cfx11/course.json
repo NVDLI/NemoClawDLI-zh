@@ -9414,7 +9414,7 @@
       "source_path": "task1/dli/3-Prompting-With-Messages/36-Chatbots.ipynb",
       "source_sha256": "48640f3d55bc45019348e15fcd0b98d2a6e065e7d6b68693197660e768d8099f",
       "markdown_path": "content/3-Prompting-With-Messages/36-Chatbots.md",
-      "markdown_sha256": "07f0538f7aa16ce81c7240a8aaf49720fed0cef4047502854060065b4665cb6d",
+      "markdown_sha256": "477c13c55633f0131f10369866486e9b4ab4de28f2d70b54147ec780bafcb223",
       "cells": [
         {
           "id": "3-Prompting-With-Messages/36-Chatbots:0",
@@ -10031,9 +10031,14 @@
           "id": "3-Prompting-With-Messages/36-Chatbots:76",
           "index": 76,
           "type": "markdown",
-          "source_sha256": "36fbbf2de0109959505aa56a5bc701e41977d17c33105601ac7efd6fb8a2873e",
-          "source_bytes": 673,
-          "source_ends_with_newline": false
+          "source_sha256": "0c832ed52a095532c7d4ad4d171d1211efdb5d7a6c441b5cdbbb7f2ea895f65a",
+          "source_bytes": 770,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "36fbbf2de0109959505aa56a5bc701e41977d17c33105601ac7efd6fb8a2873e",
+            "reason": "Point the source-code reference to the upstream repository because the unresolved helper file is not copied into this internal candidate."
+          }
         },
         {
           "id": "3-Prompting-With-Messages/36-Chatbots:77",

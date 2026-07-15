@@ -500,12 +500,12 @@ print(increased_vocabulary_chatbot.chat("What would you consider a good morning 
 ## Gradio
 <!-- /dli-course-cell -->
 
-<!-- dli-course-cell {"id":"3-Prompting-With-Messages/36-Chatbots:76","index":76,"schema":"dli-course-cell/1.0","source_sha256":"36fbbf2de0109959505aa56a5bc701e41977d17c33105601ac7efd6fb8a2873e","type":"markdown"} -->
+<!-- dli-course-cell {"id":"3-Prompting-With-Messages/36-Chatbots:76","index":76,"schema":"dli-course-cell/1.0","source_sha256":"0c832ed52a095532c7d4ad4d171d1211efdb5d7a6c441b5cdbbb7f2ea895f65a","type":"markdown"} -->
 _"Gradio is the fastest way to demo your machine learning model with a friendly web interface so that anyone can use it, anywhere!"_
 
 If you find yourself building chatbots, especially for prototypes or even personal use chatbots, you might consider [Gradio](https://www.gradio.app/), which makes it easy to setup a pleasant chat interface, including in Jupyter environments.
 
-Pass a `chatbot` instance (created with either the `Chatbot` class or `ChatbotWithRole` class) into the following `create_chatbot_interface` function and have a conversation. If you're interested, check out [chat_helpers/gradio_interface.py](chat_helpers/gradio_interface.py) for the source code.
+Pass a `chatbot` instance (created with either the `Chatbot` class or `ChatbotWithRole` class) into the following `create_chatbot_interface` function and have a conversation. If you're interested, check out [chat_helpers/gradio_interface.py](https://gitlab.com/nvidia/dli/content/c-fx-11-v1/-/blob/main/task1/dli/3-Prompting-With-Messages/chat_helpers/gradio_interface.py) for the source code.
 <!-- /dli-course-cell -->
 
 <!-- dli-course-cell {"id":"3-Prompting-With-Messages/36-Chatbots:77","index":77,"schema":"dli-course-cell/1.0","source_sha256":"a787c55696916400f174a8449475fbfd9dba6968c0496a4c5984b759e65c98d7","type":"code"} -->

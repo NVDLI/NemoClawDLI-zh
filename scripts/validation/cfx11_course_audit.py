@@ -133,8 +133,8 @@ def audit(course: Path = COURSE) -> list[str]:
                 findings.append(f"{relative}: cell {expected.get('index')} newline state differs from manifest")
             patch = expected.get("source_patch")
             if patch is not None:
-                if expected.get("type") != "code":
-                    findings.append(f"{relative}: cell {expected.get('index')} applies a source patch to a non-code cell")
+                if expected.get("type") not in {"code", "markdown"}:
+                    findings.append(f"{relative}: cell {expected.get('index')} applies a source patch to an unsupported cell type")
                 if not isinstance(patch, dict) or set(patch) != {"schema", "upstream_source_sha256", "reason"}:
                     findings.append(f"{relative}: cell {expected.get('index')} source patch is malformed")
                 else:

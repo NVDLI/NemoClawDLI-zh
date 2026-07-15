@@ -62,6 +62,20 @@ class NotebookCourseImporterTests(unittest.TestCase):
             self.assertIn("value = 6\nvalue * 7", markdown)
             self.assertNotIn("not imported", markdown)
 
+    def test_reviewed_source_patches_fail_closed_on_upstream_drift(self):
+        relative = Path("3-Prompting-With-Messages/36-Chatbots.ipynb")
+        patch = IMPORTER.SOURCE_PATCHES[(relative.as_posix(), 76)]
+        source = f"Read [the helper]{patch['before']}"
+        patch["upstream_source_sha256"] = IMPORTER.sha256_text(source)
+        try:
+            projected, record = IMPORTER.project_source(relative, 76, "markdown", source)
+            self.assertIn("https://gitlab.com/nvidia/dli/content/c-fx-11-v1", projected)
+            self.assertEqual(IMPORTER.sha256_text(source), record["upstream_source_sha256"])
+            with self.assertRaisesRegex(ValueError, "no longer matches"):
+                IMPORTER.project_source(relative, 76, "markdown", source + " drift")
+        finally:
+            patch["upstream_source_sha256"] = "36fbbf2de0109959505aa56a5bc701e41977d17c33105601ac7efd6fb8a2873e"
+
     def test_audit_detects_cell_and_support_file_mutations(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -150,6 +164,18 @@ class CommittedCourseTests(unittest.TestCase):
             manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
             findings = cfx11_course_audit.audit(course)
             self.assertTrue(any("distinct upstream digest" in finding for finding in findings), findings)
+
+    def test_unlicensed_helper_source_remains_an_upstream_link(self):
+        manifest = json.loads((ROOT / "web/cfx11/course.json").read_text(encoding="utf-8"))
+        self.assertFalse(any(str(row["path"]).endswith(".py") for row in manifest["supporting_files"]))
+        lesson = ROOT / "web/cfx11/content/3-Prompting-With-Messages/36-Chatbots.md"
+        text = lesson.read_text(encoding="utf-8")
+        self.assertNotIn("](chat_helpers/gradio_interface.py)", text)
+        self.assertIn(
+            "](https://gitlab.com/nvidia/dli/content/c-fx-11-v1/-/blob/main/"
+            "task1/dli/3-Prompting-With-Messages/chat_helpers/gradio_interface.py)",
+            text,
+        )
 
 
 if __name__ == "__main__":

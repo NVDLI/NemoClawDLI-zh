@@ -22,6 +22,22 @@ from pathlib import Path, PurePosixPath
 SCHEMA = "dli-markdown-course/1.0"
 CELL_MARKER = "dli-course-cell"
 SUPPORT_SUFFIXES = {".gif", ".jpeg", ".jpg", ".json", ".png", ".svg", ".webp"}
+SOURCE_PATCHES = {
+    ("1-Intro-to-Prompting/15-Iterative-Prompting.ipynb", 69): {
+        "type": "code",
+        "upstream_source_sha256": "5f3a6324a6eb3b2a150244af8388dac9048789a32be55a0a3e3c86132f684ba8",
+        "before": 'Portland, OR 97203""""""',
+        "after": 'Portland, OR 97203"""',
+        "reason": "Remove the accidental second triple-quote opener that makes the original exercise cell invalid Python.",
+    },
+    ("3-Prompting-With-Messages/36-Chatbots.ipynb", 76): {
+        "type": "markdown",
+        "upstream_source_sha256": "36fbbf2de0109959505aa56a5bc701e41977d17c33105601ac7efd6fb8a2873e",
+        "before": "](chat_helpers/gradio_interface.py)",
+        "after": "](https://gitlab.com/nvidia/dli/content/c-fx-11-v1/-/blob/main/task1/dli/3-Prompting-With-Messages/chat_helpers/gradio_interface.py)",
+        "reason": "Point the source-code reference to the upstream repository because the unresolved helper file is not copied into this internal candidate.",
+    },
+}
 
 
 def sha256_bytes(value: bytes) -> str:
@@ -39,6 +55,23 @@ def source_text(cell: dict) -> str:
     if isinstance(source, str):
         return source
     raise ValueError(f"cell source must be a string or list, got {type(source).__name__}")
+
+
+def project_source(relative: Path, index: int, kind: str, source: str) -> tuple[str, dict | None]:
+    patch = SOURCE_PATCHES.get((relative.as_posix(), index))
+    if patch is None:
+        return source, None
+    upstream_sha256 = sha256_text(source)
+    if kind != patch["type"] or upstream_sha256 != patch["upstream_source_sha256"]:
+        raise ValueError(f"{relative}: reviewed source patch no longer matches cell {index}")
+    if source.count(patch["before"]) != 1:
+        raise ValueError(f"{relative}: reviewed source patch target is not unique in cell {index}")
+    projected = source.replace(patch["before"], patch["after"], 1)
+    return projected, {
+        "schema": "dli-course-source-patch/1.0",
+        "upstream_source_sha256": upstream_sha256,
+        "reason": patch["reason"],
+    }
 
 
 def code_fence(source: str) -> str:
@@ -80,7 +113,7 @@ def render_notebook(source_path: Path, relative: Path) -> tuple[str, dict]:
         kind = cell.get("cell_type")
         if kind not in {"markdown", "code", "raw"}:
             raise ValueError(f"{relative}: unsupported cell type {kind!r} at {index}")
-        source = source_text(cell)
+        source, source_patch = project_source(relative, index, kind, source_text(cell))
         cell_id = f"{relative.with_suffix('').as_posix()}:{index}"
         record = {
             "id": cell_id,
@@ -92,6 +125,8 @@ def render_notebook(source_path: Path, relative: Path) -> tuple[str, dict]:
         }
         if cell.get("metadata"):
             record["metadata"] = cell["metadata"]
+        if source_patch:
+            record["source_patch"] = source_patch
         cells.append(record)
         marker = json.dumps({
             "schema": "dli-course-cell/1.0",
