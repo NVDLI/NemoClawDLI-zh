@@ -108,6 +108,12 @@ class ThemeRuntimeContractTests(unittest.TestCase):
         self.assertIn('BROWSER_TOOLS_REQUIRED: "1"', test_job)
         self.assertIn('cd scripts/runtime && pnpm install --frozen-lockfile --ignore-scripts', core)
 
+    def test_cfx11_browser_audit_resolves_the_pinned_repository_runtime(self) -> None:
+        source = (ROOT / "tests/runtime/test_cfx11_browser.mjs").read_text(encoding="utf-8")
+        self.assertIn('"../../scripts/runtime/node_modules/playwright-core"', source)
+        self.assertIn("require(repositoryPlaywright)", source)
+        self.assertNotIn('require("playwright-core")', source)
+
     def test_required_worker_builds_the_candidate_once_for_pages(self) -> None:
         core = (ROOT / ".gitlab/ci/core.yml").read_text(encoding="utf-8")
         test_job = core_job("test", "external_integration_audit")

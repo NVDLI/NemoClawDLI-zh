@@ -351,6 +351,9 @@ export function createCourseFetch({ fetchImpl = fetch, relayUrl, allowedOrigins 
       <tr><td><a href="cookbook-use-cases.json">cookbook-use-cases.json</a></td><td>Maps every reviewed cookbook group and shared runtime behavior to executable cells or implementation code.</td></tr>
       <tr><td><a href="integration-blueprint.md">integration-blueprint.md</a></td><td>Short implementation notes, acquisition steps, and test checklist.</td></tr>
       <tr><td><a href="candidate-components.json">candidate-components.json</a></td><td>Exact evaluated dependency versions, artifact hashes, and license evidence.</td></tr>
+      <tr><td><a href="candidate-components.json">c-fx-11 browser package boundary</a></td><td>Records the exact course wheel-lock path, pinned runtime, and distribution relationship without escaping this review artifact.</td></tr>
+      <tr><td><a href="verify_cfx11_wheels.py">verify_cfx11_wheels.py</a></td><td>Rejects missing, extra, renamed, re-versioned, or hash-drifted course wheels.</td></tr>
+      <tr><td><a href="patches/SKILL.html">patches/</a></td><td>Indexes the digest-bound source patch used to build the CPython 3.14-compatible browser wheel.</td></tr>
       <tr><td><a href="integration_audit.py">integration_audit.py</a></td><td>Rejects undocumented dependency drift or accidental runtime distribution.</td></tr>
       <tr><td><a href="examples/SKILL.html">examples/SKILL.html</a></td><td>Direct file index for the course-authored examples.</td></tr>
     </tbody>
@@ -358,7 +361,7 @@ export function createCourseFetch({ fetchImpl = fetch, relayUrl, allowedOrigins 
 
   <h2>Reference and distribution boundary</h2>
   <p>The behavior above was synthesized from the task-supplied local reference files <code>vendor-pyodide.mjs</code>, <code>python-worker.ts</code>, <code>client.ts</code>, <code>proxy-fetch.ts</code>, and <code>coding-harness-chat.ts</code>. No reference file, runtime binary, wheel, or deployment URL is copied into this course contribution.</p>
-  <p>The page fetches the pinned core runtime only after the reader selects Run. The repository does not copy the runtime binary. Before vendoring it into a learner bundle, update the component inventory, distribute the applicable notices, generate the SBOM, and run the browser matrix. <a href="candidate-components.json">candidate-components.json</a> supplies the exact supporting dependency evidence.</p>
+  <p>This cookbook page fetches its pinned core runtime only after the reader selects Run, and the repository does not copy that runtime binary. The separate internal c-fx-11 course candidate fetches Pyodide 314.0.2 core and ships its real Python packages from the wheel lock named in <a href="candidate-components.json">the candidate inventory</a>. Before external distribution, resolve the source-course terms, review every copied wheel, distribute the applicable notices, generate the SBOM, and run the browser matrix.</p>
 
   <h2>Checks</h2>
   <pre><code class="language-bash">python3 scripts/pyodide/integration_audit.py --self-test

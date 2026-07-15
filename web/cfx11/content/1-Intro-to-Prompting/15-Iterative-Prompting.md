@@ -396,12 +396,12 @@ For this exercise, you'll attempt a toy problem that will force you to work on y
 Your goal is to write a prompt that will get the model to respond with the following exact text.
 <!-- /dli-course-cell -->
 
-<!-- dli-course-cell {"id":"1-Intro-to-Prompting/15-Iterative-Prompting:69","index":69,"schema":"dli-course-cell/1.0","source_sha256":"5f3a6324a6eb3b2a150244af8388dac9048789a32be55a0a3e3c86132f684ba8","type":"code"} -->
+<!-- dli-course-cell {"id":"1-Intro-to-Prompting/15-Iterative-Prompting:69","index":69,"schema":"dli-course-cell/1.0","source_sha256":"e4fdd056c6d4374b07b380d88b333e3bf9d161c1b35edc4def5df94b80235194","type":"code"} -->
 ```python
 target_address = """\
 Some Company
 12345 NW Green Meadow Drive
-Portland, OR 97203""""""
+Portland, OR 97203"""
 
 ## TIP: You could make a function to mutate the llm response as well...
 ```

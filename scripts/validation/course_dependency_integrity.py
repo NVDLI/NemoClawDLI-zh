@@ -113,14 +113,17 @@ def inventory_size() -> int:
     )
 
 
-def approved_runtime_package_urls() -> set[tuple[str, str]]:
+def approved_runtime_package_urls(candidate_data: dict | None = None) -> set[tuple[str, str]]:
     """Return exact inventory-bound package-CDN uses; everything else stays forbidden."""
-    try:
-        candidate = json.loads(PYODIDE_CANDIDATE.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return set()
+    if candidate_data is None:
+        try:
+            candidate = json.loads(PYODIDE_CANDIDATE.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return set()
+    else:
+        candidate = candidate_data
     course = candidate.get("course_candidate") or {}
-    version = str((candidate.get("runtime") or {}).get("pyodide") or "")
+    version = str((course.get("runtime") or {}).get("pyodide") or "")
     entrypoint = str(course.get("entrypoint") or "")
     base_url = str(course.get("base_url") or "")
     if not entrypoint or not re.fullmatch(r"\d+\.\d+\.\d+", version):
@@ -537,6 +540,21 @@ def self_test() -> list[str]:
         probe_path = Path(probe.name)
         if probe_path in browser_projection_sources():
             failures.append("working-tree discovery: transient figure shim was examined")
+    candidate = json.loads(PYODIDE_CANDIDATE.read_text(encoding="utf-8"))
+    expected_runtime = {(
+        "web/cfx11/runtime/worker.js",
+        "https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/",
+    )}
+    if approved_runtime_package_urls(candidate) != expected_runtime:
+        failures.append("inventory-bound runtime: exact course record was not approved")
+    changed_candidate = copy.deepcopy(candidate)
+    changed_candidate["course_candidate"]["runtime"]["pyodide"] = "314.0.1"
+    if approved_runtime_package_urls(changed_candidate):
+        failures.append("inventory-bound runtime: mismatched version and base URL were approved")
+    changed_candidate = copy.deepcopy(candidate)
+    changed_candidate["course_candidate"]["base_url"] = "https://example.invalid/pyodide/"
+    if approved_runtime_package_urls(changed_candidate):
+        failures.append("inventory-bound runtime: unreviewed host was approved")
     return failures
 
 

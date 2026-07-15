@@ -12,8 +12,13 @@ import re
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.pyodide.verify_cfx11_wheels import audit as audit_wheels
+
+
 COURSE = ROOT / "web/cfx11"
 SCHEMA = "dli-markdown-course/1.0"
 MARKER = re.compile(
@@ -126,6 +131,20 @@ def audit(course: Path = COURSE) -> list[str]:
                 findings.append(f"{relative}: cell {expected.get('index')} source differs from imported notebook")
             if source.endswith("\n") != expected.get("source_ends_with_newline"):
                 findings.append(f"{relative}: cell {expected.get('index')} newline state differs from manifest")
+            patch = expected.get("source_patch")
+            if patch is not None:
+                if expected.get("type") != "code":
+                    findings.append(f"{relative}: cell {expected.get('index')} applies a source patch to a non-code cell")
+                if not isinstance(patch, dict) or set(patch) != {"schema", "upstream_source_sha256", "reason"}:
+                    findings.append(f"{relative}: cell {expected.get('index')} source patch is malformed")
+                else:
+                    if patch.get("schema") != "dli-course-source-patch/1.0":
+                        findings.append(f"{relative}: cell {expected.get('index')} source patch schema is unsupported")
+                    upstream = str(patch.get("upstream_source_sha256") or "")
+                    if not re.fullmatch(r"[0-9a-f]{64}", upstream) or upstream == expected.get("source_sha256"):
+                        findings.append(f"{relative}: cell {expected.get('index')} source patch does not bind a distinct upstream digest")
+                    if len(str(patch.get("reason") or "").strip()) < 24:
+                        findings.append(f"{relative}: cell {expected.get('index')} source patch lacks a concrete reason")
             counted["cells"] += 1
             if expected.get("type") == "code":
                 counted["code_cells"] += 1
@@ -152,30 +171,47 @@ def audit(course: Path = COURSE) -> list[str]:
     runtime = (course / "runtime/worker.js").read_text(encoding="utf-8")
     client = (course / "course.js").read_text(encoding="utf-8")
     compatibility = (course / "runtime/course_compat.py").read_text(encoding="utf-8")
-    boundary = runtime + client + compatibility
+    learner_shell = (course / "index.html").read_text(encoding="utf-8")
+    boundary = runtime + client + compatibility + learner_shell
     if boundary.count("https://integrate.api.nvidia.com/v1") < 2:
         findings.append("direct NVIDIA API boundary is not explicit in both runtime and learner settings")
     forbidden = ["openclaw-cors-proxy", "nvidia-api-cors-proxy", "CF_Authorization", "_pomerium"]
     for token in forbidden:
         if token in boundary:
             findings.append(f"course runtime must not depend on unrelated proxy or launchable credential: {token}")
-    if re.search(r"(?:nvapi-|Bearer\s+[A-Za-z0-9_-]{20,})", boundary):
+    if re.search(r"(?:nvapi-[A-Za-z0-9_-]{16,}|Bearer\s+[A-Za-z0-9_-]{20,})", boundary):
         findings.append("course runtime contains a credential-shaped literal")
     for contract in ("primary product category", "counterfactual product category", "input sensitivity"):
         if contract not in compatibility:
             findings.append(f"assessment middleware omits required behavior check: {contract}")
-    if "courseNvidiaChat" not in compatibility or "fetch(`${NVIDIA_BASE}/chat/completions`" not in runtime:
-        findings.append("model cells are not connected to the real direct NVIDIA transport")
+    for contract in (
+        "from openai import OpenAI", "BrowserHTTPXTransport", "_browser_openai_init",
+        "from langchain_nvidia_ai_endpoints import ChatNVIDIA",
+    ):
+        source = compatibility if contract != "from langchain_nvidia_ai_endpoints import ChatNVIDIA" else "".join(
+            path.read_text(encoding="utf-8") for path in (course / "content").rglob("*.md")
+        )
+        if contract not in source:
+            findings.append(f"real upstream model transport contract is missing: {contract}")
     if "new CoursePythonRunner" not in client or "buildXBlocks" not in client:
         findings.append("Markdown code cells are not upgraded through the shared executable XBlock path")
     for contract in (
-        "application/x-course-chat+json", "coursePublicJson", "draw_mermaid_png",
-        "additional_kwargs", '_install_module("wikipediaapi"',
+        "application/x-course-chat+json", "courseHttpRequest", "_browser_wikipedia_init",
+        "_assert_upstream_packages", "await micropip.install(__course_local_wheels.to_py(), deps=False",
     ):
         if contract not in boundary:
             findings.append(f"browser compatibility layer omits required source-course behavior: {contract}")
-    if "cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/" not in runtime or 'PYODIDE_VERSION = "0.27.7"' not in runtime:
+    if "cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/" not in runtime or 'PYODIDE_VERSION = "314.0.2"' not in runtime:
         findings.append("Pyodide runtime URL must remain version-pinned")
+    public_shims = set(re.findall(r'_owned_module\("([^"]+)"', compatibility)) - {
+        "assessment_helper", "chat_helpers.gradio_interface",
+    }
+    if public_shims:
+        findings.append(f"course compatibility layer replaces public packages: {sorted(public_shims)}")
+    for forbidden_shim in ("langchain", "langchain_core", "langgraph", "openai", "wikipediaapi", "contractions"):
+        if re.search(rf'(?:ModuleType|_owned_module)\(["\']{re.escape(forbidden_shim)}["\']', compatibility):
+            findings.append(f"course compatibility layer mimics upstream package: {forbidden_shim}")
+    findings.extend(f"browser wheel evidence: {finding}" for finding in audit_wheels(course / "runtime"))
     if "source license is unresolved" not in (course / "SOURCE_PROVENANCE.md").read_text(encoding="utf-8").lower():
         findings.append("source provenance must fail closed on the unresolved source-course license")
 
@@ -186,7 +222,16 @@ def audit(course: Path = COURSE) -> list[str]:
         findings.append(f"cannot load browser-Python component evidence: {error}")
         candidate = {}
     adopted = candidate.get("course_candidate", {})
-    if adopted.get("entrypoint") != "web/cfx11/runtime/worker.js" or adopted.get("direct_packages") != ["pydantic", "requests"]:
+    direct_packages = {
+        "contractions", "langchain", "langchain-core", "langchain-nvidia-ai-endpoints",
+        "langgraph", "openai", "pydantic", "requests", "Wikipedia-API",
+    }
+    if (
+        adopted.get("entrypoint") != "web/cfx11/runtime/worker.js"
+        or (adopted.get("runtime") or {}).get("pyodide") != "314.0.2"
+        or adopted.get("wheel_lock") != "web/cfx11/runtime/wheels.lock.json"
+        or set(adopted.get("direct_packages") or []) != direct_packages
+    ):
         findings.append("browser-Python evidence does not match the course worker's direct package set")
 
     shared_path = ROOT / "web/shared/vendor/browser-dependencies.json"

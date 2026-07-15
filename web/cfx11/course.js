@@ -4,6 +4,13 @@
 import { marked } from "../shared/vendor/marked-14.1.4.esm.js";
 import { CoursePythonRunner } from "./runtime/runner.js";
 
+const SOURCE_ASSET_REPLACEMENTS = Object.freeze(new Map([
+  [
+    "https://dli-lms.s3.amazonaws.com/assets/general/nvidia-logo.png",
+    new URL("./assets/nvidia-logo.png", import.meta.url).href,
+  ],
+]));
+
 const state = {
   manifest: null,
   lesson: null,
@@ -29,6 +36,8 @@ function safeUrl(raw, base) {
   try {
     const url = new URL(raw, base);
     if (!["http:", "https:"].includes(url.protocol)) return "";
+    const localAsset = SOURCE_ASSET_REPLACEMENTS.get(url.href);
+    if (localAsset) return localAsset;
     if (url.hostname === "build.nvidia.com" && !url.searchParams.has("ncid")) {
       url.searchParams.set("ncid", "ref-dli-146986");
     }
@@ -136,6 +145,15 @@ function renderDisplay(record) {
     figure.append(sanitizeHtml(record.data, location.href));
     return figure;
   }
+  if (type === "image/png" || type === "image/jpeg") {
+    const figure = document.createElement("figure");
+    figure.className = "graph-output raster-output";
+    const image = document.createElement("img");
+    image.alt = "Generated computational graph";
+    image.src = `data:${type};base64,${record.data}`;
+    figure.append(image);
+    return figure;
+  }
   if (type === "application/json" || type === "text/x-code") {
     const pre = document.createElement("pre");
     const code = document.createElement("code");
@@ -236,6 +254,11 @@ function appendChannel(output, label, value, className = "") {
 }
 
 function renderReply(block, reply) {
+  if (reply.batch_mode === "gil-locked-threads") {
+    elements["runtime-status"].textContent = "Python ready · batches use GIL-locked threads";
+  } else if (reply.batch_mode === "ordered-browser-fallback") {
+    elements["runtime-status"].textContent = "Python ready · batches run in order in this browser";
+  }
   block.output.replaceChildren();
   block.editor.clearGutter?.("course-errors");
   block.editor.eachLine?.(line => block.editor.removeLineClass(line, "background", "course-error-line"));

@@ -1634,7 +1634,7 @@
       "source_path": "task1/dli/1-Intro-to-Prompting/15-Iterative-Prompting.ipynb",
       "source_sha256": "65a6a0f82bf6f3eb8c2ea514dbf1416692395622f6a2c1263b6f194da12c94e9",
       "markdown_path": "content/1-Intro-to-Prompting/15-Iterative-Prompting.md",
-      "markdown_sha256": "47909e956068210e1a48557952b7fd0988b3e752c4f48e44e63c99b846334e2e",
+      "markdown_sha256": "fe259980ca154a863d605f6caae6f2a9590b181b8bffa762b656ddb8578dedac",
       "cells": [
         {
           "id": "1-Intro-to-Prompting/15-Iterative-Prompting:0",
@@ -2192,9 +2192,14 @@
           "id": "1-Intro-to-Prompting/15-Iterative-Prompting:69",
           "index": 69,
           "type": "code",
-          "source_sha256": "5f3a6324a6eb3b2a150244af8388dac9048789a32be55a0a3e3c86132f684ba8",
-          "source_bytes": 160,
-          "source_ends_with_newline": false
+          "source_sha256": "e4fdd056c6d4374b07b380d88b333e3bf9d161c1b35edc4def5df94b80235194",
+          "source_bytes": 157,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "5f3a6324a6eb3b2a150244af8388dac9048789a32be55a0a3e3c86132f684ba8",
+            "reason": "Remove the accidental second triple-quote opener that makes the original exercise cell invalid Python."
+          }
         },
         {
           "id": "1-Intro-to-Prompting/15-Iterative-Prompting:70",

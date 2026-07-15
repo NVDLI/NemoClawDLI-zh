@@ -5,11 +5,16 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
+const repositoryPlaywright = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../scripts/runtime/node_modules/playwright-core",
+);
 let chromium;
-try { ({ chromium } = require("/opt/nemoclaw-runtime/node_modules/playwright-core")); }
-catch (_) { ({ chromium } = require("playwright-core")); }
+try { ({ chromium } = require(repositoryPlaywright)); }
+catch (_) { ({ chromium } = require("/opt/nemoclaw-runtime/node_modules/playwright-core")); }
 
 const root = path.resolve(process.env.SITE_ROOT || ".");
 const port = Number(process.env.SITE_PORT || 4211);
@@ -81,9 +86,21 @@ try {
   check(await page.locator("#api-key").inputValue() === "", "the learner API key must not be prefilled");
   for (const index of [7, 14, 16, 20, 21]) {
     const block = await runCell(page, index);
-    check(await block.getAttribute("data-state") === "passed", `source cell ${index} did not execute`);
+    const output = await block.locator(".cell-output").innerText();
+    check(await block.getAttribute("data-state") === "passed", `source cell ${index} did not execute:\n${output}`);
   }
   check((await page.locator('.xblock[data-cell-id$=":21"] .cell-output').innerText()).includes("12"), "persistent Python state did not return 12");
+
+  const batchBlock = await runCell(page, 21, "from langchain_core.runnables import RunnableLambda\nRunnableLambda(lambda value: value * 2).batch([2, 4, 6])");
+  const batchOutput = await batchBlock.locator(".cell-output").innerText();
+  check(await batchBlock.getAttribute("data-state") === "passed", `real LangChain batch failed in the current browser runtime:\n${batchOutput}`);
+  check(batchOutput.includes("4") && batchOutput.includes("8") && batchOutput.includes("12"), "real LangChain batch returned the wrong values");
+  check(await page.locator("#runtime-status").innerText() === "Python ready · batches run in order in this browser", "the runtime did not disclose Pyodide's batch scheduler");
+
+  const capabilityBlock = await runCell(page, 21, "import sys\n{'pthreads': bool(sys._emscripten_info.pthreads), 'batch_mode': COURSE_BATCH_MODE}");
+  const capabilityOutput = await capabilityBlock.locator(".cell-output").innerText();
+  check(await capabilityBlock.getAttribute("data-state") === "passed", `Pyodide capability probe failed:\n${capabilityOutput}`);
+  check(capabilityOutput.includes("false") && capabilityOutput.includes("ordered-browser-fallback"), `the runtime capability and selected scheduler disagree:\n${capabilityOutput}`);
 
   const errorBlock = await runCell(page, 21, "values = [1]\nvalues[9]");
   check(await errorBlock.getAttribute("data-state") === "failed", "runtime error did not fail the cell");
@@ -99,21 +116,42 @@ try {
 
   const graphSource = `from IPython.display import Image, display\ngraph_chain = RunnableLambda(lambda value: value) | RunnableLambda(lambda value: value)\ndisplay(Image(graph_chain.get_graph().draw_mermaid_png()))`;
   const graphBlock = await runCell(page, 21, graphSource);
-  check(await graphBlock.locator(".graph-output svg").count() === 1, "graph compatibility output did not render as SVG");
+  const graphImage = graphBlock.locator(".graph-output img");
+  check(await graphImage.count() === 1, "the real LangChain graph did not render as a PNG");
+  check((await graphImage.getAttribute("src")).startsWith("data:image/png;base64,"), "graph output was not a safe PNG data URL");
+  const graphPayload = await graphImage.evaluate(image => {
+    const encoded = image.src.split(",", 2)[1] || "";
+    const decoded = atob(encoded);
+    return { encodedLength: encoded.length, signature: Array.from(decoded.slice(0, 8), character => character.charCodeAt(0)) };
+  });
+  check(JSON.stringify(graphPayload.signature) === JSON.stringify([137, 80, 78, 71, 13, 10, 26, 10]), `graph output did not contain PNG bytes: ${JSON.stringify(graphPayload)}`);
+  await graphImage.evaluate(image => image.decode());
   for (const colorScheme of ["dark", "light"]) {
     await page.emulateMedia({ colorScheme });
-    const graphColors = await graphBlock.locator(".graph-output svg").evaluate(svg => {
-      const rect = getComputedStyle(svg.querySelector("rect"));
-      const text = getComputedStyle(svg.querySelector("text"));
-      const arrow = getComputedStyle(svg.querySelector(":scope > path"));
-      const marker = getComputedStyle(svg.querySelector("marker path"));
-      return { fill: rect.fill, text: text.fill, stroke: rect.stroke, arrow: arrow.stroke, marker: marker.fill };
+    const graphLayout = await graphImage.evaluate(image => {
+      const style = getComputedStyle(image);
+      return {
+        complete: image.complete,
+        naturalWidth: image.naturalWidth,
+        naturalHeight: image.naturalHeight,
+        renderedWidth: image.getBoundingClientRect().width,
+        maxWidth: style.maxWidth,
+      };
     });
-    check(graphColors.fill !== graphColors.text, `${colorScheme} graph text and box fill have no contrast`);
-    check(graphColors.stroke !== "none" && graphColors.arrow !== "none" && graphColors.marker !== "none", `${colorScheme} graph connectors are not visible`);
+    check(graphLayout.complete && graphLayout.naturalWidth > 100 && graphLayout.naturalHeight > 50, `${colorScheme} graph PNG did not decode`);
+    check(graphLayout.renderedWidth > 100 && graphLayout.renderedWidth <= 1200, `${colorScheme} graph PNG escaped its responsive output bounds`);
   }
 
   let modelRequest = null;
+  let modelListingRequest = null;
+  await page.route("https://integrate.api.nvidia.com/v1/models", async route => {
+    modelListingRequest = { headers: route.request().headers() };
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ object: "list", data: [{ id: "nvidia/test-model", object: "model", created: 0, owned_by: "nvidia" }] }),
+    });
+  });
   await page.route("https://integrate.api.nvidia.com/v1/chat/completions", async route => {
     const request = route.request();
     modelRequest = { headers: request.headers(), body: request.postDataJSON() };
@@ -133,22 +171,27 @@ try {
   await page.getByRole("button", { name: "Close settings" }).click();
   const modelSource = `from langchain_nvidia_ai_endpoints import ChatNVIDIA\n"".join(chunk.content for chunk in ChatNVIDIA(model="nvidia/test-model").stream("hello"))`;
   const modelBlock = await runCell(page, 21, modelSource);
-  check(await modelBlock.getAttribute("data-state") === "passed", "direct NVIDIA streaming compatibility call failed");
+  const modelOutput = await modelBlock.locator(".cell-output").innerText();
+  check(await modelBlock.getAttribute("data-state") === "passed", `direct NVIDIA streaming compatibility call failed:\n${modelOutput}`);
   check((await modelBlock.locator(".cell-output").innerText()).includes("browser stream"), "streaming model result was not returned to Python");
+  check(modelListingRequest?.headers.authorization === "Bearer browser-test-key", "learner key was not sent on the real package's model discovery request");
   check(modelRequest?.headers.authorization === "Bearer browser-test-key", "learner key was not sent only as the NVIDIA authorization header");
   check(modelRequest?.body?.stream === true && modelRequest?.body?.model === "nvidia/test-model", "streaming model request changed its source-cell parameters");
   await page.getByRole("button", { name: "Course settings" }).click();
   await page.locator("#api-key").fill("");
   await page.getByRole("button", { name: "Close settings" }).click();
+  await page.unroute("https://integrate.api.nvidia.com/v1/models");
   await page.unroute("https://integrate.api.nvidia.com/v1/chat/completions");
 
   const wikipediaSource = `import wikipediaapi\npage = wikipediaapi.Wikipedia(user_agent="DLI-course-test/1.0").page("Paris")\n{"exists": page.exists(), "mentions_france": "France" in page.summary}`;
   const wikipediaBlock = await runCell(page, 21, wikipediaSource);
-  check((await wikipediaBlock.locator(".cell-output").innerText()).includes('"mentions_france": true'), "live Wikipedia compatibility request did not return source data");
+  const wikipediaOutput = await wikipediaBlock.locator(".cell-output").innerText();
+  check(wikipediaOutput.includes('"mentions_france": true'), `live Wikipedia compatibility request did not return source data:\n${wikipediaOutput}`);
 
   const airSource = `import requests\nresponse = requests.get("https://air-quality-api.open-meteo.com/v1/air-quality", params={"latitude": 19.076, "longitude": 72.8777, "hourly": "european_aqi"})\nresponse.raise_for_status()\n{"hourly": "hourly" in response.json(), "status": response.status_code}`;
   const airBlock = await runCell(page, 21, airSource);
-  check((await airBlock.locator(".cell-output").innerText()).includes('"hourly": true'), "live Open-Meteo request did not return source data");
+  const airOutput = await airBlock.locator(".cell-output").innerText();
+  check(airOutput.includes('"hourly": true'), `live Open-Meteo request did not return source data:\n${airOutput}`);
 
   await page.goto(`http://127.0.0.1:${port}/web/cfx11/index.html?lesson=3-Prompting-With-Messages%2F36-Chatbots`, { waitUntil: "domcontentloaded", timeout });
   const helperLink = page.getByRole("link", { name: "chat_helpers/gradio_interface.py" });
@@ -173,7 +216,7 @@ run_assessment(InputSensitiveChain())`;
   check(assessmentOutput.includes("Assessment passed"), "assessment did not return its learner-facing pass evidence");
   check(errors.length === 0, `page errors: ${JSON.stringify(errors)}`);
   check(failures.length === 0, `request failures: ${JSON.stringify(failures)}`);
-  console.log(`cfx11_browser_audit: PASS (${manifest.lessons.length} lessons, source-cell order, theme-safe Markdown, persistent Pyodide, error line, chat widget, dark/light graph contrast, direct NVIDIA streaming contract, live public APIs, upstream helper link, assessment middleware)`);
+  console.log(`cfx11_browser_audit: PASS (${manifest.lessons.length} lessons, source-cell order, theme-safe Markdown, persistent Pyodide, error line, chat widget, real LangChain graph PNG, direct NVIDIA streaming contract, live public APIs, upstream helper link, assessment middleware)`);
 } finally {
   await browser?.close();
   server.close();

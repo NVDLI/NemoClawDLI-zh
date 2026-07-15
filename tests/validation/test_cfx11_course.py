@@ -6,6 +6,7 @@ from __future__ import annotations
 import importlib.util
 import json
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
 
@@ -21,6 +22,12 @@ SPEC.loader.exec_module(IMPORTER)
 
 
 class NotebookCourseImporterTests(unittest.TestCase):
+    def install_runtime_shell(self, destination: Path) -> None:
+        source = ROOT / "web/cfx11"
+        for relative in ("index.html", "course.css", "course.js", "SOURCE_PROVENANCE.md"):
+            shutil.copy2(source / relative, destination / relative)
+        shutil.copytree(source / "runtime", destination / "runtime", dirs_exist_ok=True)
+
     def fixture(self, root: Path) -> Path:
         source = root / "source"
         source.mkdir()
@@ -31,6 +38,7 @@ class NotebookCourseImporterTests(unittest.TestCase):
             "cells": [
                 {"cell_type": "markdown", "metadata": {}, "source": ["# Exact prose\n", "Two spaces stay.  \n"]},
                 {"cell_type": "code", "metadata": {}, "execution_count": 9, "outputs": [{"output_type": "stream", "text": "not imported"}], "source": ["value = 6\n", "value * 7"]},
+                {"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [], "source": ["from langchain_nvidia_ai_endpoints import ChatNVIDIA"]},
             ],
         }
         (source / "01-Exact.ipynb").write_text(json.dumps(notebook), encoding="utf-8")
@@ -60,39 +68,14 @@ class NotebookCourseImporterTests(unittest.TestCase):
             source = self.fixture(root)
             course = root / "course"
             IMPORTER.import_course(source, course, "b" * 64)
-            runtime_contract = (
-                "source license is unresolved\n"
-                "https://integrate.api.nvidia.com/v1\n"
-                "new CoursePythonRunner\n"
-                "buildXBlocks\n"
-                "courseNvidiaChat\n"
-                "fetch(`${NVIDIA_BASE}/chat/completions`\n"
-                "primary product category\n"
-                "counterfactual product category\n"
-                "input sensitivity\n"
-                "cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/\n"
-                'PYODIDE_VERSION = "0.27.7"\n'
-                "application/x-course-chat+json\n"
-                "coursePublicJson\n"
-                "draw_mermaid_png\n"
-                "additional_kwargs\n"
-                '_install_module("wikipediaapi"\n'
-            )
-            for required in (
-                "index.html", "course.css", "course.js", "SOURCE_PROVENANCE.md",
-                "runtime/runner.js", "runtime/worker.js", "runtime/course_compat.py",
-            ):
-                target = course / required
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text(runtime_contract, encoding="utf-8")
-            with (course / "index.html").open("a", encoding="utf-8") as index:
-                index.write('"../shared/vendor/codemirror-5.65.21.js"\n')
+            self.install_runtime_shell(course)
             self.assertEqual([], cfx11_course_audit.audit(course))
             markdown = course / "content/01-Exact.md"
             markdown.write_text(markdown.read_text().replace("value * 7", "value * 8"), encoding="utf-8")
             findings = cfx11_course_audit.audit(course)
             self.assertTrue(any("digest differs" in finding or "source differs" in finding for finding in findings), findings)
             IMPORTER.import_course(source, course, "b" * 64)
+            self.install_runtime_shell(course)
             (course / "asset.json").write_text("not used", encoding="utf-8")
             support = course / "content/asset.json"
             support.write_text("mutated", encoding="utf-8")
@@ -120,8 +103,53 @@ class CommittedCourseTests(unittest.TestCase):
         worker = (ROOT / "web/cfx11/runtime/worker.js").read_text(encoding="utf-8")
         self.assertIn("response.body.getReader()", worker)
         self.assertIn("await reader.read()", worker)
-        self.assertIn("await parseEventStream(response)", worker)
-        self.assertNotIn("parseEventStream(await response.text())", worker)
+        self.assertIn("applyEventBlock(pending.slice", worker)
+        self.assertIn("decoder.decode(value, { stream: !done })", worker)
+        self.assertNotIn("await response.text()", worker)
+
+    def test_upstream_packages_cannot_be_replaced_by_course_shims(self):
+        compatibility = (ROOT / "web/cfx11/runtime/course_compat.py").read_text(encoding="utf-8")
+        for package in ("langchain", "langchain_core", "langgraph", "openai", "wikipediaapi", "contractions"):
+            self.assertNotIn(f'_owned_module("{package}"', compatibility)
+            self.assertNotIn(f'types.ModuleType("{package}"', compatibility)
+        self.assertIn('_owned_module("assessment_helper"', compatibility)
+        self.assertIn('_owned_module(\n    "chat_helpers.gradio_interface"', compatibility)
+
+    def test_every_repository_wheel_is_locked(self):
+        from scripts.pyodide.verify_cfx11_wheels import audit
+
+        self.assertEqual([], audit())
+
+    def test_browser_wheel_build_patch_is_digest_bound(self):
+        from scripts.pyodide.verify_cfx11_wheels import audit
+
+        with tempfile.TemporaryDirectory() as temporary:
+            runtime = Path(temporary) / "runtime"
+            shutil.copytree(ROOT / "web/cfx11/runtime", runtime)
+            lock_path = runtime / "wheels.lock.json"
+            lock = json.loads(lock_path.read_text(encoding="utf-8"))
+            patched = next(package for package in lock["packages"] if package.get("patch"))
+            patched["patch_sha256"] = "0" * 64
+            lock_path.write_text(json.dumps(lock, indent=2) + "\n", encoding="utf-8")
+            findings = audit(runtime)
+            self.assertTrue(any("build patch hash differs" in finding for finding in findings), findings)
+
+    def test_source_patch_must_bind_a_distinct_upstream_cell(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            course = Path(temporary) / "cfx11"
+            shutil.copytree(ROOT / "web/cfx11", course)
+            manifest_path = course / "course.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            patched = next(
+                cell
+                for lesson in manifest["lessons"]
+                for cell in lesson["cells"]
+                if "source_patch" in cell
+            )
+            patched["source_patch"]["upstream_source_sha256"] = patched["source_sha256"]
+            manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+            findings = cfx11_course_audit.audit(course)
+            self.assertTrue(any("distinct upstream digest" in finding for finding in findings), findings)
 
 
 if __name__ == "__main__":

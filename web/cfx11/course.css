@@ -127,6 +127,7 @@ main { min-width: 0; padding: clamp(1rem, 3vw, 3rem) clamp(1rem, 5vw, 5rem) 6rem
 .model-stream:empty { display: none; }
 .graph-output { margin: 0; overflow: auto; }
 .graph-output svg { display: block; width: min(100%, 760px); height: auto; margin: 0 auto; }
+.graph-output img { display: block; width: min(100%, 1200px); height: auto; margin: 0 auto; }
 .graph-output rect { fill: var(--panel-raised); stroke: var(--green); stroke-width: 2; }
 .graph-output text { fill: var(--text); font: 16px var(--sans); }
 .graph-output svg > path { fill: none; stroke: var(--green); stroke-width: 2; }
