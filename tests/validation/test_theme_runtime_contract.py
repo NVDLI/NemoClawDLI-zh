@@ -340,10 +340,14 @@ class ScaTriggerContractTests(unittest.TestCase):
             job,
         )
         self.assertIn(
-            "cd scripts/runtime && pnpm audit --audit-level=moderate",
+            "npm audit --prefix .cache/runtime-npm-audit --package-lock-only --audit-level=moderate",
             job,
         )
-        self.assertIn("runtime-pnpm-audit.json", job)
+        self.assertIn("runtime-npm-audit.json", job)
+        self.assertIn(
+            "- scripts/security/reports/runtime-npm-audit.json",
+            job,
+        )
 
     def test_expensive_scans_remain_optional_in_unrelated_merge_requests(self) -> None:
         optional_rule = """- if: '$CI_PIPELINE_SOURCE == "merge_request_event"'

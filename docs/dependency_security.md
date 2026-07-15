@@ -41,7 +41,8 @@ evidence manifest. The release workflow repeats that scan for the tagged source.
 2. Run the fast checks above.
 3. Rebuild browser vendor output when the browser lock changed.
 4. Run the applicable SCA job and review the evidence rather than only its exit code. The browser
-   job scans both npm and pnpm locks.
+   job installs the frozen pnpm lock, then audits its exact Playwright declaration
+   through npm's supported bulk-advisory endpoint. Both npm audit reports are retained.
 5. Record a time-bounded waiver only when a specific finding has an accountable owner and control.
 
 External isolation runs the same pinned commands and remains outside this repository's distributed

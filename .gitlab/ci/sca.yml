@@ -46,13 +46,21 @@ security_browser_sca:
     - npm audit --prefix scripts/browser-vendor --package-lock-only --audit-level=moderate --json --fetch-retries=3 --fetch-retry-mintimeout=2000 --fetch-retry-maxtimeout=10000 --fetch-timeout=30000 > scripts/security/reports/browser-npm-audit.json
     - corepack enable
     - '(cd scripts/runtime && pnpm install --frozen-lockfile --ignore-scripts)'
-    - '(cd scripts/runtime && pnpm audit --audit-level=moderate --json > ../security/reports/runtime-pnpm-audit.json)'
+    # pnpm 10 still installs the reviewed Node 20 lock, but its audit client calls
+    # registry endpoints retired in 2026. Project the exact single-package runtime
+    # declaration into an npm lock so npm can query the supported bulk endpoint.
+    - rm -rf .cache/runtime-npm-audit
+    - mkdir -p .cache/runtime-npm-audit
+    - cp scripts/runtime/package.json .cache/runtime-npm-audit/package.json
+    - npm install --prefix .cache/runtime-npm-audit --package-lock-only --ignore-scripts --no-audit --fund=false
+    - npm audit --prefix .cache/runtime-npm-audit --package-lock-only --audit-level=moderate --json > scripts/security/reports/runtime-npm-audit.json
     - python3 scripts/validation/course_dependency_integrity.py
   artifacts:
     when: always
     name: "security-browser-sca-$CI_COMMIT_SHORT_SHA"
     paths:
       - scripts/security/reports/browser-npm-audit.json
+      - scripts/security/reports/runtime-npm-audit.json
     expire_in: 30 days
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
