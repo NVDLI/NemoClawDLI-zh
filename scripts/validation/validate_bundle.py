@@ -674,13 +674,19 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
     # Color theme (required): inline literals, undefined vars, and render-time color bakes block.
     try:
         ct_find = ct.run(verbose=False)
-        ct_inline, ct_undef, ct_bake = len(ct_find["inline"]), len(ct_find["undefined_var"]), len(ct_find.get("bake", []))
-        if ct_inline + ct_undef + ct_bake:
+        ct_inline = len(ct_find["inline"])
+        ct_undef = len(ct_find["undefined_var"])
+        ct_bake = len(ct_find.get("bake", []))
+        ct_palette = len(ct_find.get("palette", []))
+        if ct_inline + ct_undef + ct_bake + ct_palette:
             vl_ok = False
             ok = False
-            vl_fail.append(f"color theme: {ct_inline + ct_undef + ct_bake} non-theme-dynamic color use(s)")
+            vl_fail.append(
+                f"color theme: {ct_inline + ct_undef + ct_bake + ct_palette} non-theme-dynamic color use(s)"
+            )
     except Exception as e:
-        ct_find, ct_inline, ct_undef, ct_bake = {"inline": [], "undefined_var": [], "bake": []}, 0, 0, 0
+        ct_find = {"inline": [], "undefined_var": [], "bake": [], "palette": []}
+        ct_inline = ct_undef = ct_bake = ct_palette = 0
         suite_errors["color_theme"] = str(e); vl_fail.append(f"color theme error: {e}")
 
     # figure audit (advisory): render-aware tiny text, figure-bounds overflow, missing a11y affordances.
@@ -1133,7 +1139,11 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                         + [D(f, "render-time color bake", REQUIRED,
                              f"{reason}. {snippet} — this output ignores the theme toggle and freezes on the "
                              f"theme that was active when it rendered.")
-                           for f, snippet, reason in ct_find.get("bake", [])]),
+                           for f, snippet, reason in ct_find.get("bake", [])]
+                        + [D(f, "theme palette ignores the course toggle", REQUIRED,
+                             f"{reason}. Add an explicit :root[data-theme=\"light\"] palette; keep the operating-system "
+                             f"media query only as the no-preference fallback.")
+                           for f, reason in ct_find.get("palette", [])]),
         "figure_audit": [_fig(k, t) for k, items in fa_find.items() for t in items],
         "cell_audit": [_cell(k, t) for k, items in ca_find.items() for t in items],
         "learner_flow": [D("web/nemoclaw", x, REQUIRED,
@@ -1295,7 +1305,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
                           "flagged_pages": [{"path": r["path"], "score": r["score"], "tells": r["tells"]}
                                             for r in pv_flagged],
                           "antithesis": pv_antithesis},
-        "color_theme": {"inline": ct_inline, "undefined_var": ct_undef, "bake": ct_bake},
+        "color_theme": {"inline": ct_inline, "undefined_var": ct_undef, "bake": ct_bake,
+                        "palette": ct_palette},
         "code_hygiene": {"files": ch_scanned, "findings": len(ch_rows),
                          "by_kind": {k: sum(1 for r in ch_rows if r["kind"] == k)
                                      for k in sorted({r["kind"] for r in ch_rows})}},
@@ -1355,8 +1366,8 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
             for a in pv_antithesis[:6]:
                 snip = a["sentence"][:88] + ("…" if len(a["sentence"]) > 88 else "")
                 print(f"      [{a['kind']}] {a['page'].split('/')[-1]}: {snip}")
-    print(f"  color theme     : {ct_inline + ct_undef + ct_bake} non-theme-dynamic color(s) "
-          f"(inline {ct_inline}, undefined-var {ct_undef}, render-bake {ct_bake})")
+    print(f"  color theme     : {ct_inline + ct_undef + ct_bake + ct_palette} non-theme-dynamic color(s) "
+          f"(inline {ct_inline}, undefined-var {ct_undef}, render-bake {ct_bake}, palette {ct_palette})")
     print(f"  figure audit    : {fa_total} legibility/format finding(s) "
           f"(tiny-text {len(fa_find.get('tiny', []))}, small-render {len(fa_find.get('small_render', []))}, "
           f"flex-parent {len(fa_find.get('flex_parent', []))}, overflow {len(fa_find.get('overflow', []))}, "

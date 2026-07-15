@@ -18,6 +18,17 @@ class ColorThemeTests(unittest.TestCase):
         names = {path.name for path in color_theme.chrome_js()}
         self.assertIn("studio_main.js", names)
 
+    def test_stylesheet_discovery_includes_every_web_course(self) -> None:
+        paths = {path.relative_to(color_theme.WEB).as_posix() for path in color_theme.style_files()}
+        self.assertIn("cfx11/course.css", paths)
+        self.assertIn("nemoclaw/styles/_style.css", paths)
+
+    def test_os_only_palette_is_rejected(self) -> None:
+        source = '@media (prefers-color-scheme: light) { :root { --bg: #fff; } }'
+        self.assertTrue(color_theme.scan_palette_contract(source))
+        source += ':root[data-theme="light"] { --bg: #fff; }'
+        self.assertFalse(color_theme.scan_palette_contract(source))
+
     def test_inline_literal_is_rejected(self) -> None:
         self.assertTrue(color_theme.scan_inline('<div style="color:#f2f2f2">text</div>'))
 
