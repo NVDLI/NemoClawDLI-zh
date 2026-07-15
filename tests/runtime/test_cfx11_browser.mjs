@@ -1,0 +1,180 @@
+// Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
+import fs from "node:fs";
+import http from "node:http";
+import path from "node:path";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+let chromium;
+try { ({ chromium } = require("/opt/nemoclaw-runtime/node_modules/playwright-core")); }
+catch (_) { ({ chromium } = require("playwright-core")); }
+
+const root = path.resolve(process.env.SITE_ROOT || ".");
+const port = Number(process.env.SITE_PORT || 4211);
+const timeout = Number(process.env.AUDIT_TIMEOUT_MS || 180000);
+const mime = {
+  ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
+  ".json": "application/json; charset=utf-8", ".md": "text/markdown; charset=utf-8",
+  ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".ico": "image/x-icon",
+};
+
+const server = http.createServer((request, response) => {
+  const relative = decodeURIComponent(new URL(request.url, "http://localhost").pathname).replace(/^\/+/, "");
+  let file = path.resolve(root, relative || "web/cfx11/index.html");
+  if (file !== root && !file.startsWith(root + path.sep)) return response.writeHead(403).end("forbidden");
+  if (fs.existsSync(file) && fs.statSync(file).isDirectory()) file = path.join(file, "index.html");
+  fs.readFile(file, (error, body) => {
+    if (error) return response.writeHead(404).end("not found");
+    response.writeHead(200, { "content-type": mime[path.extname(file)] || "application/octet-stream" });
+    response.end(body);
+  });
+});
+
+function check(value, message) { if (!value) throw new Error(message); }
+function listen() { return new Promise(resolve => server.listen(port, "127.0.0.1", resolve)); }
+
+async function runCell(page, index, replacement = null) {
+  const block = page.locator(`.xblock[data-cell-id$=":${index}"]`);
+  await block.waitFor();
+  if (replacement !== null) {
+    await block.locator(".CodeMirror").evaluate((element, source) => element.CodeMirror.setValue(source), replacement);
+  }
+  await block.getByRole("button", { name: "Run", exact: true }).click();
+  await page.waitForFunction(cellIndex => {
+    const element = document.querySelector(`.xblock[data-cell-id$=":${cellIndex}"]`);
+    return ["passed", "failed"].includes(element?.dataset.state);
+  }, index, { timeout });
+  return block;
+}
+
+await listen();
+let browser;
+try {
+  browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_BIN || undefined });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, colorScheme: "dark" });
+  const errors = [];
+  const failures = [];
+  page.on("pageerror", error => errors.push(error.message));
+  page.on("requestfailed", request => failures.push(`${request.url()}: ${request.failure()?.errorText}`));
+  const url = `http://127.0.0.1:${port}/web/cfx11/index.html?lesson=2-Chains%2F22-Runnable-Functions`;
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout });
+  await page.locator(".xblock").first().waitFor({ timeout });
+  const manifest = await page.evaluate(() => fetch("course.json").then(response => response.json()));
+  for (const lesson of manifest.lessons) {
+    const lessonUrl = `http://127.0.0.1:${port}/web/cfx11/index.html?lesson=${encodeURIComponent(lesson.id)}`;
+    await page.goto(lessonUrl, { waitUntil: "domcontentloaded", timeout });
+    await page.waitForFunction(expected => document.querySelector("#lesson-title")?.textContent === expected, lesson.title, { timeout });
+    const expectedCells = lesson.cells.filter(cell => cell.type === "code");
+    check(await page.locator(".xblock").count() === expectedCells.length, `${lesson.id} did not expose every source code cell`);
+    const actualIds = await page.locator(".xblock").evaluateAll(nodes => nodes.map(node => node.dataset.cellId));
+    check(JSON.stringify(actualIds) === JSON.stringify(expectedCells.map(cell => cell.id)), `${lesson.id} changed source-cell order`);
+    const sourceThemeOverrides = await page.locator("#lesson-body style, #lesson-body [style], #lesson-body [color], #lesson-body [bgcolor]")
+      .evaluateAll(nodes => nodes.filter(node => !node.closest(".xblock")).length);
+    check(sourceThemeOverrides === 0, `${lesson.id} retained a source-controlled theme override`);
+  }
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout });
+  await page.locator(".xblock").first().waitFor({ timeout });
+  check(await page.locator(".xblock").count() === 23, "Runnable Functions must expose all 23 original code cells");
+  check(await page.locator("#api-key").inputValue() === "", "the learner API key must not be prefilled");
+  for (const index of [7, 14, 16, 20, 21]) {
+    const block = await runCell(page, index);
+    check(await block.getAttribute("data-state") === "passed", `source cell ${index} did not execute`);
+  }
+  check((await page.locator('.xblock[data-cell-id$=":21"] .cell-output').innerText()).includes("12"), "persistent Python state did not return 12");
+
+  const errorBlock = await runCell(page, 21, "values = [1]\nvalues[9]");
+  check(await errorBlock.getAttribute("data-state") === "failed", "runtime error did not fail the cell");
+  check(await errorBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.lineInfo(1)?.bgClass?.includes("course-error-line")), "runtime error did not highlight line 2");
+
+  const widgetSource = `class DummyChat:\n    def chat(self, prompt):\n        return "echo: " + prompt\napp = create_chatbot_interface_from_bot(DummyChat())\napp.launch()`;
+  const widgetBlock = await runCell(page, 21, widgetSource);
+  const widget = widgetBlock.locator(".course-chat");
+  await widget.waitFor();
+  await widget.getByLabel("Chat message").fill("hello browser");
+  await widget.getByRole("button", { name: "Send" }).click();
+  await page.waitForFunction(() => document.querySelector(".chat-message.assistant")?.textContent.includes("echo: hello browser"), null, { timeout });
+
+  const graphSource = `from IPython.display import Image, display\ngraph_chain = RunnableLambda(lambda value: value) | RunnableLambda(lambda value: value)\ndisplay(Image(graph_chain.get_graph().draw_mermaid_png()))`;
+  const graphBlock = await runCell(page, 21, graphSource);
+  check(await graphBlock.locator(".graph-output svg").count() === 1, "graph compatibility output did not render as SVG");
+  for (const colorScheme of ["dark", "light"]) {
+    await page.emulateMedia({ colorScheme });
+    const graphColors = await graphBlock.locator(".graph-output svg").evaluate(svg => {
+      const rect = getComputedStyle(svg.querySelector("rect"));
+      const text = getComputedStyle(svg.querySelector("text"));
+      const arrow = getComputedStyle(svg.querySelector(":scope > path"));
+      const marker = getComputedStyle(svg.querySelector("marker path"));
+      return { fill: rect.fill, text: text.fill, stroke: rect.stroke, arrow: arrow.stroke, marker: marker.fill };
+    });
+    check(graphColors.fill !== graphColors.text, `${colorScheme} graph text and box fill have no contrast`);
+    check(graphColors.stroke !== "none" && graphColors.arrow !== "none" && graphColors.marker !== "none", `${colorScheme} graph connectors are not visible`);
+  }
+
+  let modelRequest = null;
+  await page.route("https://integrate.api.nvidia.com/v1/chat/completions", async route => {
+    const request = route.request();
+    modelRequest = { headers: request.headers(), body: request.postDataJSON() };
+    await route.fulfill({
+      status: 200,
+      contentType: "text/event-stream",
+      body: [
+        'data: {"choices":[{"delta":{"content":"browser "}}]}',
+        'data: {"choices":[{"delta":{"content":"stream"}}]}',
+        "data: [DONE]",
+        "",
+      ].join("\n\n"),
+    });
+  });
+  await page.getByRole("button", { name: "Course settings" }).click();
+  await page.locator("#api-key").fill("browser-test-key");
+  await page.getByRole("button", { name: "Close settings" }).click();
+  const modelSource = `from langchain_nvidia_ai_endpoints import ChatNVIDIA\n"".join(chunk.content for chunk in ChatNVIDIA(model="nvidia/test-model").stream("hello"))`;
+  const modelBlock = await runCell(page, 21, modelSource);
+  check(await modelBlock.getAttribute("data-state") === "passed", "direct NVIDIA streaming compatibility call failed");
+  check((await modelBlock.locator(".cell-output").innerText()).includes("browser stream"), "streaming model result was not returned to Python");
+  check(modelRequest?.headers.authorization === "Bearer browser-test-key", "learner key was not sent only as the NVIDIA authorization header");
+  check(modelRequest?.body?.stream === true && modelRequest?.body?.model === "nvidia/test-model", "streaming model request changed its source-cell parameters");
+  await page.getByRole("button", { name: "Course settings" }).click();
+  await page.locator("#api-key").fill("");
+  await page.getByRole("button", { name: "Close settings" }).click();
+  await page.unroute("https://integrate.api.nvidia.com/v1/chat/completions");
+
+  const wikipediaSource = `import wikipediaapi\npage = wikipediaapi.Wikipedia(user_agent="DLI-course-test/1.0").page("Paris")\n{"exists": page.exists(), "mentions_france": "France" in page.summary}`;
+  const wikipediaBlock = await runCell(page, 21, wikipediaSource);
+  check((await wikipediaBlock.locator(".cell-output").innerText()).includes('"mentions_france": true'), "live Wikipedia compatibility request did not return source data");
+
+  const airSource = `import requests\nresponse = requests.get("https://air-quality-api.open-meteo.com/v1/air-quality", params={"latitude": 19.076, "longitude": 72.8777, "hourly": "european_aqi"})\nresponse.raise_for_status()\n{"hourly": "hourly" in response.json(), "status": response.status_code}`;
+  const airBlock = await runCell(page, 21, airSource);
+  check((await airBlock.locator(".cell-output").innerText()).includes('"hourly": true'), "live Open-Meteo request did not return source data");
+
+  await page.goto(`http://127.0.0.1:${port}/web/cfx11/index.html?lesson=3-Prompting-With-Messages%2F36-Chatbots`, { waitUntil: "domcontentloaded", timeout });
+  const helperLink = page.getByRole("link", { name: "chat_helpers/gradio_interface.py" });
+  await helperLink.waitFor();
+  check((await helperLink.getAttribute("href")).startsWith("https://gitlab.com/nvidia/dli/content/c-fx-11-v1/"), "unlicensed helper source must remain an upstream link");
+
+  await page.goto(`http://127.0.0.1:${port}/web/cfx11/index.html?lesson=6-Assessment%2F61-Assessment`, { waitUntil: "domcontentloaded", timeout });
+  const assessmentSource = `from assessment_helper import run_assessment
+
+class InputSensitiveChain:
+    def invoke(self, messages):
+        joined = " ".join(messages).lower()
+        if "shirt tore" in joined:
+            return "clothing, Dallas"
+        return "furniture, New York"
+
+run_assessment(InputSensitiveChain())`;
+  const assessmentBlock = await runCell(page, 32, assessmentSource);
+  check(await assessmentBlock.getAttribute("data-state") === "passed", "assessment middleware did not accept an input-sensitive chain");
+  const assessmentOutput = await assessmentBlock.locator(".cell-output").innerText();
+  check(assessmentOutput.includes('"input sensitivity": true'), "assessment output omitted the counterfactual sensitivity check");
+  check(assessmentOutput.includes("Assessment passed"), "assessment did not return its learner-facing pass evidence");
+  check(errors.length === 0, `page errors: ${JSON.stringify(errors)}`);
+  check(failures.length === 0, `request failures: ${JSON.stringify(failures)}`);
+  console.log(`cfx11_browser_audit: PASS (${manifest.lessons.length} lessons, source-cell order, theme-safe Markdown, persistent Pyodide, error line, chat widget, dark/light graph contrast, direct NVIDIA streaming contract, live public APIs, upstream helper link, assessment middleware)`);
+} finally {
+  await browser?.close();
+  server.close();
+}

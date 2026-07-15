@@ -42,6 +42,14 @@ SUMMARIES = {
     "web/nemoclaw/mats/glossary_raw/images": "Images retained with the versioned glossary source material.",
     "web/nemoclaw/vendor": "Pinned same-origin browser dependencies, generated metadata, and license evidence.",
     "web/nemoclaw/vendor/licenses": "Exact license texts shipped for pinned browser dependencies.",
+    "scripts/notebook-import": "Deterministic Jupyter-to-Markdown projection with cell-level source fidelity evidence.",
+    "web/cfx11": "Internal browser candidate for c-fx-11-v1, with reviewed Markdown source, executable XBlocks, and direct learner-owned NVIDIA API access.",
+    "web/cfx11/content": "Verbatim notebook cells projected into Markdown and bound to the reviewed source archive by course.json.",
+    "web/cfx11/runtime": "Pyodide worker, execution client, and narrow compatibility layer that run the imported Python against the direct NVIDIA API.",
+    "web/cfx11/content/6-Assessment/data": "Reviewed synthetic assessment emails copied from the source archive and mounted read-only into the browser Python lesson.",
+    "web/shared": "Pinned browser libraries shared by independent web courses without creating sibling-course dependencies.",
+    "web/shared/vendor": "Byte-identical publisher browser assets with version, license, digest, and reviewed-copy evidence.",
+    "web/shared/vendor/licenses": "Complete upstream license texts for the shared browser assets.",
 }
 
 

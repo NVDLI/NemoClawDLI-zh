@@ -20,6 +20,9 @@ frontend-sdxl/frontend_js/out
 **/node_modules
 
 **/data
+# Reviewed learner input imported with the c-fx-11-v1 source archive.
+!web/cfx11/content/6-Assessment/data/
+!web/cfx11/content/6-Assessment/data/emails.json
 **/.ipynb_checkpoints
 **/models
 **/results

@@ -1316,7 +1316,7 @@
         "fast"
       ],
       "order": {
-        "fast": 57
+        "fast": 58
       },
       "mode": "current-tree",
       "argv": [
@@ -2016,7 +2016,7 @@
         "ship"
       ],
       "order": {
-        "ship": 84
+        "ship": 86
       },
       "mode": "current-tree",
       "argv": [
@@ -2031,6 +2031,42 @@
       ],
       "exclusive_resources": [
         "validation-report"
+      ]
+    },
+    {
+      "id": "cfx11-course-audit",
+      "tiers": [
+        "fast",
+        "ship"
+      ],
+      "order": {
+        "fast": 57,
+        "ship": 84
+      },
+      "mode": "current-tree",
+      "argv": [
+        "{python}",
+        "scripts/validation/cfx11_course_audit.py"
+      ],
+      "parallel_safe": false
+    },
+    {
+      "id": "cfx11-browser-audit",
+      "tiers": [
+        "ship"
+      ],
+      "order": {
+        "ship": 85
+      },
+      "mode": "current-tree",
+      "argv": [
+        "bash",
+        "scripts/runtime/run_node.sh",
+        "tests/runtime/test_cfx11_browser.mjs"
+      ],
+      "parallel_safe": false,
+      "exclusive_resources": [
+        "browser"
       ]
     }
   ]

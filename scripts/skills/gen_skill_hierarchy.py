@@ -42,6 +42,7 @@ except Exception:
 
 # Human-facing one-liner for the web bundle's released course. nemoclaw is what the release foyer surfaces.
 WEB_COURSE_DESC = {
+    "cfx11":         "Building LLM Applications With Prompt Engineering: an internal Markdown-first browser candidate that preserves the reviewed notebook cells, runs Python in Pyodide, and calls NVIDIA models with a learner-owned key.",
     "nemoclaw":      "Securing Agents: a browser-first course that runs against the lab's model gateway "
                      "and OpenClaw runtime. The pages build the agent loop, tools, retrieval, planning, "
                      "and sandbox controls as live artifacts. Learner-selected views collapse explicitly "
@@ -177,6 +178,8 @@ def courses_in(surface: str):
         return []
     out = []
     for d in sorted(p for p in root.iterdir() if p.is_dir() and not p.name.startswith(".")):
+        if surface == "web" and d.name == "shared":
+            continue
         if (d / "SKILL.html").is_file():
             out.append((d.name, f"{d.name}/SKILL.html"))
         else:
@@ -317,8 +320,11 @@ def gen_task():
             ("scripts/compliance/docs/vendor_policy.md", "scripts/compliance/docs/vendor_policy.md", "Source and vendor-ingestion policy."),
             ("SKILL_CONTRACT.md", "SKILL_CONTRACT.md", "The SKILL.html beacon spec.")]
     docs = [(n, h, d) for n, h, d in docs if (TASK1 / h).is_file()]
+    document_descriptions = {
+        "agentic-compliance-suite.md": "How repository contracts guide agents from discovery through deterministic checks and protected human decisions.",
+    }
     for p in (sorted((TASK1 / "docs").glob("*.md")) if (TASK1 / "docs").is_dir() else []):
-        docs.append((f"docs/{p.name}", f"docs/{p.name}", ""))
+        docs.append((f"docs/{p.name}", f"docs/{p.name}", document_descriptions.get(p.name, "")))
 
     # The release foyer is the CURATED student entry: it surfaces only the released courses (RELEASED).
     # This beacon documents the whole ontology; the foyer ships a subset.
@@ -373,6 +379,10 @@ def gen_surface(surface: str):
                    if (TASK1 / "web" / n).is_file()]
         if landing:
             sections.append(("Landing pages", None, landing))
+        shared = TASK1 / "web" / "shared" / "SKILL.html"
+        if shared.is_file():
+            sections.append(("Shared browser infrastructure", "Course-neutral browser assets used without linking one course to another.",
+                             [("shared/", "shared/SKILL.html", "Pinned browser libraries, license evidence, and common NVIDIA favicon provenance.")]))
         nav = [(n, f"../scripts/{n}", d) for n, d in
                [("edx_navigator_quick.html", "Course LMS navigator."),
                 ("edx_getting_started.html", "LMS getting-started page.")]
@@ -383,7 +393,9 @@ def gen_surface(surface: str):
             if surface == "web" else SURFACE_LEAD.get(surface, f"Courses on the {surface} surface."))
     meta = {"node_type": "hub", "level": "surface", "surface": surface, "title": f"{surface} surface",
             "self_path": f"{surface}/SKILL.html",
-            "children": [{"name": n, "path": f"{surface}/{h}"} for n, h in cs]}
+            "children": ([{"name": n, "path": f"{surface}/{h}"} for n, h in cs]
+                         + ([{"name": "shared", "path": "web/shared/SKILL.html"}]
+                            if surface == "web" and (TASK1 / "web" / "shared" / "SKILL.html").is_file() else []))}
     write(TASK1 / surface / "SKILL.html",
           framer_page(meta, f"{surface}/ · surface hub", sections, summary=lead,
                       nav=_nav(surface, "SKILL.html", "task1"),

@@ -16,11 +16,13 @@ COPYRIGHT = "Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights rese
 SPDX = "SPDX-License-Identifier: Apache-2.0"
 AUTHORED_ROOTS = {"scripts", "web", "tests", "cpu", "workspace"}
 COMMENT_PREFIX = {".py": "#", ".js": "//", ".mjs": "//"}
-NON_AUTHORED_PREFIXES = ("web/nemoclaw/vendor/",)
+NON_AUTHORED_PREFIXES = ("web/nemoclaw/vendor/", "web/shared/vendor/")
 NOTICE_LINKS = (
     "THIRD_PARTY_LICENSES.md",
     "web/nemoclaw/vendor/browser-dependencies.json",
     "web/nemoclaw/vendor/licenses/",
+    "web/shared/vendor/browser-dependencies.json",
+    "web/shared/vendor/licenses/",
     "scripts/compliance/docs/browser_vendor_exceptions.json",
     "scripts/browser-vendor/embedded-component-evidence.json",
     "scripts/compliance/docs/vendor_policy.md",
@@ -349,6 +351,41 @@ def audit(
         )
     if verify_browser_upstream and not upstream_verification_failed:
         successes.append("browser vendor: every non-exception asset matches its publisher file byte-for-byte")
+
+    shared_manifest_path = root / "web/shared/vendor/browser-dependencies.json"
+    try:
+        shared_manifest = json.loads(shared_manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        failures.append(f"shared browser vendor: unreadable browser-dependencies.json: {error}")
+        shared_manifest = {}
+    if shared_manifest.get("schema") != "dli-shared-browser-dependencies/1":
+        failures.append("shared browser vendor: unexpected or missing manifest schema")
+    shared_assets = shared_manifest.get("assets") or []
+    described = {str(asset.get("file") or "") for asset in shared_assets}
+    delivered_files = {
+        path.name for path in (root / "web/shared/vendor").iterdir()
+        if path.is_file() and path.suffix.lower() in {".css", ".js", ".mjs"}
+    } if (root / "web/shared/vendor").is_dir() else set()
+    if not shared_assets or described != delivered_files:
+        failures.append("shared browser vendor: manifest must exhaustively describe every delivered asset")
+    shared_packages = {f"{item.get('name')}@{item.get('version')}": item for item in shared_manifest.get("packages") or []}
+    for package_id, package in shared_packages.items():
+        license_file = root / "web/shared/vendor" / str(package.get("license_file") or "")
+        if not package.get("license") or not license_file.is_file() or not license_file.stat().st_size:
+            failures.append(f"shared browser vendor: missing license evidence for {package_id}")
+    for asset in shared_assets:
+        filename = str(asset.get("file") or "")
+        delivered = root / "web/shared/vendor" / filename
+        reviewed = root / str(asset.get("reviewed_copy") or "")
+        package_id = str(asset.get("package") or "")
+        if package_id not in shared_packages:
+            failures.append(f"shared browser vendor: {filename} names an unrecorded package {package_id}")
+        if not delivered.is_file() or sha256(delivered) != asset.get("sha256") or delivered.stat().st_size != asset.get("bytes"):
+            failures.append(f"shared browser vendor: delivered asset hash or size differs from manifest: {filename}")
+        elif not reviewed.is_file() or reviewed.read_bytes() != delivered.read_bytes():
+            failures.append(f"shared browser vendor: {filename} differs from its reviewed publisher copy")
+    if shared_assets and not any(item.startswith("shared browser vendor:") for item in failures):
+        successes.append(f"shared browser vendor: {len(shared_assets)} byte-identical reviewed asset(s) covered")
 
     return failures, successes
 

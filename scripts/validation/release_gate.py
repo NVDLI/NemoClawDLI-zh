@@ -135,6 +135,7 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     THEME_RUNTIME_CONTRACT_TESTS,
     py("scripts/validation/color_theme.py"),
     STANDARD_TEST_DISCOVERY,
+    py("scripts/validation/cfx11_course_audit.py"),
     py("scripts/validation/validate_bundle.py", "--scope", "ship", "--no-write"),
 )
 
@@ -230,6 +231,8 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     THEME_RUNTIME_CONTRACT_TESTS,
     py("scripts/validation/color_theme.py"),
     STANDARD_TEST_DISCOVERY,
+    py("scripts/validation/cfx11_course_audit.py"),
+    ("bash", "scripts/runtime/run_node.sh", "tests/runtime/test_cfx11_browser.mjs"),
     py("scripts/validation/validate_bundle.py", "--scope", "ship"),
 )
 

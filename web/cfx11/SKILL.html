@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<!-- hand-authored course integration contract; child directory beacons remain generated -->
+<title>web/cfx11 directory contract</title>
+<script type="application/json" id="skill-meta">
+{
+  "schema": "dir-skill/1.0",
+  "node_type": "directory-explorer",
+  "title": "web/cfx11",
+  "source_dir": "web/cfx11/",
+  "summary": "Internal browser candidate for c-fx-11-v1, with reviewed Markdown source, executable XBlocks, and direct learner-owned NVIDIA API access.",
+  "explorer": "../_skill_explorer.js",
+  "source_contract": {
+    "provenance": "SOURCE_PROVENANCE.md",
+    "manifest": "course.json",
+    "importer": "scripts/notebook-import/import_course.py",
+    "fidelity": "Every notebook, cell, and support file is digest-bound. Cell text is not formatted during import.",
+    "license_state": "unresolved-in-source-archive",
+    "release_scope": "internal-branch-staging-only"
+  },
+  "interfaces": [
+    {
+      "name": "Markdown course shell",
+      "entry": "web/cfx11/index.html",
+      "contract": "Load one reviewed Markdown lesson, preserve source links, and upgrade each Python fence through the same XBlock path."
+    },
+    {
+      "name": "Browser Python",
+      "entry": "web/cfx11/runtime/worker.js",
+      "contract": "Run original cells in a persistent Pyodide worker and keep errors, stdout, rich values, model streams, and traces separate."
+    },
+    {
+      "name": "NVIDIA model transport",
+      "entry": "web/cfx11/runtime/course_compat.py",
+      "contract": "Use a learner-supplied key only for direct integrate.api.nvidia.com calls. Do not add a proxy or launchable credential."
+    },
+    {
+      "name": "Assessment middleware",
+      "entry": "web/cfx11/runtime/course_compat.py",
+      "contract": "Evaluate the submitted chain on the source emails and a counterfactual set, then require both expected behavior and input sensitivity."
+    }
+  ],
+  "tests": [
+    "python3 scripts/validation/cfx11_course_audit.py",
+    "python3 -m unittest -v tests.validation.test_cfx11_course",
+    "python3 scripts/validation/release_gate.py --tier fast --no-write --changed-since origin/main"
+  ]
+}
+</script>
+<script type="application/json" id="explorer-config">
+{
+  "title": "web/cfx11",
+  "summary": "Internal browser candidate for c-fx-11-v1, with reviewed Markdown source, executable XBlocks, and direct learner-owned NVIDIA API access.",
+  "model": "nvidia/nemotron-3-nano-30b-a3b",
+  "ties": [
+    "build"
+  ],
+  "nav": {
+    "home": "../index.html",
+    "up": {
+      "label": "parent",
+      "href": "../SKILL.html"
+    }
+  },
+  "files": [
+    {
+      "path": "SOURCE_PROVENANCE.md",
+      "role": "documentation",
+      "desc": "Documentation in web/cfx11/."
+    },
+    {
+      "path": "course.css",
+      "role": "stylesheet",
+      "desc": "Stylesheet in web/cfx11/."
+    },
+    {
+      "path": "course.js",
+      "role": "JavaScript source",
+      "desc": "Javascript source in web/cfx11/."
+    },
+    {
+      "path": "course.json",
+      "role": "structured data",
+      "desc": "Structured data in web/cfx11/."
+    },
+    {
+      "path": "index.html",
+      "role": "HTML source",
+      "desc": "Html source in web/cfx11/."
+    }
+  ],
+  "related": [
+    {
+      "label": "content",
+      "href": "content/SKILL.html"
+    },
+    {
+      "label": "runtime",
+      "href": "runtime/SKILL.html"
+    }
+  ]
+}
+</script>
+<style data-skill-static="1">
+.skill-static{padding:24px clamp(18px,4vw,44px);border-bottom:1px solid #2a2a2a;background:#0d0d0d;color:#f2f2f2;font:15px/1.55 system-ui,sans-serif}
+.skill-static a{color:#76b900}.skill-static h1{color:#76b900}.skill-static code{font-family:ui-monospace,Consolas,monospace}
+.skill-columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px}.skill-columns ul{padding-left:1.2rem}
+</style>
+</head>
+<body>
+<section class="skill-static" aria-labelledby="skill-title">
+  <header data-skill-header="1">
+  <nav aria-label="Skill navigation"><a href="../index.html">Course home</a> · <a href="../SKILL.html">Parent contract</a> · <a data-skill-nav="map" href="../../SKILL.html">Repository map</a></nav>
+  </header>
+  <h1 id="skill-title">web/cfx11</h1>
+  <p>Internal browser candidate for c-fx-11-v1, with reviewed Markdown source, executable XBlocks, and direct learner-owned NVIDIA API access.</p>
+  <p><strong>Start with <a href="SOURCE_PROVENANCE.md">source provenance</a> and <a href="course.json">the fidelity manifest</a>.</strong> The imported course is an internal review candidate until its source license is confirmed. Open <a href="runtime/SKILL.html">runtime/</a> for the browser implementation. The <a href="content/SKILL.html">content/</a> directory holds the original cells and support files.</p>
+  <div class="skill-columns">
+    <section><h2>Files</h2><ul>
+      <li><a href="SOURCE_PROVENANCE.md"><code>SOURCE_PROVENANCE.md</code></a></li>
+      <li><a href="course.css"><code>course.css</code></a></li>
+      <li><a href="course.js"><code>course.js</code></a></li>
+      <li><a href="course.json"><code>course.json</code></a></li>
+      <li><a href="index.html"><code>index.html</code></a></li>
+    </ul></section>
+    <section><h2>Child directories</h2><ul>
+      <li><a href="content/SKILL.html"><code>content/</code></a></li>
+      <li><a href="runtime/SKILL.html"><code>runtime/</code></a></li>
+    </ul></section>
+  </div>
+</section>
+<div id="explorer"></div>
+<noscript><section class="skill-static"><p>The directory index above remains usable without JavaScript.</p></section></noscript>
+<script src="../_skill_explorer.js"></script>
+</body>
+</html>

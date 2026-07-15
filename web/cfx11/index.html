@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>Building LLM Applications With Prompt Engineering</title>
+  <link rel="icon" href="../shared/favicon.ico">
+  <link rel="stylesheet" href="../shared/vendor/codemirror-5.65.21.css">
+  <link rel="stylesheet" href="../shared/vendor/highlight-github-dark-11.10.0.min.css">
+  <link rel="stylesheet" href="course.css">
+</head>
+<body>
+  <header class="course-header">
+    <a class="brand" href="../index.html" aria-label="NVIDIA DLI course foyer">
+      <span class="brand-mark" aria-hidden="true">NVIDIA</span>
+      <span>Deep Learning Institute</span>
+    </a>
+    <div class="header-actions">
+      <span id="runtime-status">Python loads when you run a cell</span>
+      <button id="open-settings" type="button">Course settings</button>
+    </div>
+  </header>
+
+  <div class="course-shell">
+    <aside class="course-rail">
+      <div class="rail-intro">
+        <span class="eyebrow">Browser course · c-fx-11-v1</span>
+        <h1>Building LLM Applications With Prompt Engineering</h1>
+        <p>Original course text and Python, projected into runnable Markdown.</p>
+      </div>
+      <div class="course-progress">
+        <progress id="progress-value" value="0" max="1"></progress>
+        <span id="progress-label">No cells run yet.</span>
+      </div>
+      <nav id="course-nav" aria-label="Course lessons"></nav>
+    </aside>
+
+    <main>
+      <div class="lesson-toolbar">
+        <div>
+          <span class="eyebrow">Current lesson</span>
+          <h2 id="lesson-title">Loading course</h2>
+          <p id="lesson-meta"></p>
+        </div>
+        <div class="runtime-actions">
+          <button id="run-all" type="button">Run lesson</button>
+          <button id="stop-runtime" type="button">Stop</button>
+          <button id="reset-runtime" type="button">Reset Python</button>
+        </div>
+      </div>
+      <article id="lesson-body" class="lesson-body" aria-live="polite">
+        <p>Loading the reviewed Markdown source for this lesson…</p>
+      </article>
+      <nav class="lesson-pagination" aria-label="Previous and next lessons">
+        <a id="previous-lesson" href="#">Previous</a>
+        <a id="next-lesson" href="#">Next</a>
+      </nav>
+    </main>
+  </div>
+
+  <dialog id="settings-dialog">
+    <form method="dialog">
+      <div class="dialog-heading">
+        <div>
+          <span class="eyebrow">Learner-owned connection</span>
+          <h2>Course settings</h2>
+        </div>
+        <button value="close" aria-label="Close settings">Close</button>
+      </div>
+      <label for="api-key">NVIDIA API key</label>
+      <input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="nvapi-…">
+      <p id="api-status">No key is stored in this browser tab.</p>
+      <p>The key stays in this browser tab. Python receives it only for the active model call, and the course sends requests directly to <code>https://integrate.api.nvidia.com/v1</code>.</p>
+      <p><a href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener noreferrer">Create or manage a key on build.nvidia.com</a></p>
+    </form>
+  </dialog>
+
+  <script src="../shared/vendor/codemirror-5.65.21.js"></script>
+  <script src="../shared/vendor/codemirror-mode-python-5.65.21.js"></script>
+  <script src="../shared/vendor/highlight-11.10.0.min.js"></script>
+  <script type="module" src="course.js"></script>
+</body>
+</html>

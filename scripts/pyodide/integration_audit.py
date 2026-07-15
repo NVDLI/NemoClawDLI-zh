@@ -2,7 +2,7 @@
 # Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Audit the planned Pyodide integration boundary and its review evidence."""
+"""Audit Pyodide runtime adoption, distribution boundaries, and review evidence."""
 from __future__ import annotations
 
 import argparse
@@ -86,7 +86,7 @@ EXAMPLE_MARKERS = {
 # These sentences are safety claims, not writing prompts.
 # The audit aligns the blueprint with the machine-readable state boundary.
 REQUIRED_BLUEPRINT_TEXT = (
-    "The learner course does not contain or distribute Pyodide",
+    "The repository does not copy Pyodide",
     "Start with the browser-only runtime. Add the HTTP/API package set only when a named lesson requires outbound requests",
     "Do not use unrestricted `micropip.install()`",
     "Stop terminates the worker. Reset starts a new worker",
@@ -123,7 +123,7 @@ def read_json(path: Path) -> dict:
 
 def snapshot_digest(data: dict) -> str:
     """Bind the reviewed runtime facts, profiles, assets, and components as one record."""
-    fields = ("source_pattern", "runtime", "live_demo", "profiles", "core_assets", "live_core_assets", "components")
+    fields = ("source_pattern", "runtime", "live_demo", "course_candidate", "profiles", "core_assets", "live_core_assets", "components")
     payload = {field: data.get(field) for field in fields}
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     return hashlib.sha256(canonical.encode()).hexdigest()
@@ -187,8 +187,8 @@ def audit(
     # The status fields prevent design evidence from being mistaken for approval.
     if data.get("schema") != "pyodide-candidate-components/1.0":
         findings.append("Pyodide candidate inventory schema is missing or unsupported")
-    if data.get("status") != "planned-not-distributed":
-        findings.append("Pyodide candidate inventory no longer states that it is not distributed")
+    if data.get("status") != "runtime-fetched-not-repository-copied":
+        findings.append("Pyodide inventory no longer states its runtime-fetch and repository-copy boundary")
     if data.get("review_state") != "human-approval-required":
         findings.append("Pyodide candidate inventory overstates or omits human review ownership")
 
@@ -230,6 +230,23 @@ def audit(
         findings.append("Pyodide live demo CDN or pinned version drifted")
     if live_demo.get("profile") != "core" or "not copied into this repository" not in str(live_demo.get("distribution", "")):
         findings.append("Pyodide live demo distribution boundary drifted")
+    course_candidate = data.get("course_candidate") or {}
+    expected_direct = {"pydantic", "requests"}
+    expected_resolved = {
+        "pyodide", "cpython-standard-library", "annotated-types", "certifi",
+        "charset-normalizer", "idna", "pydantic", "pydantic-core", "requests",
+        "typing-extensions", "urllib3",
+    }
+    if course_candidate.get("entrypoint") != "web/cfx11/runtime/worker.js":
+        findings.append("Pyodide course candidate entrypoint drifted")
+    if course_candidate.get("base_url") != "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/":
+        findings.append("Pyodide course candidate CDN or pinned version drifted")
+    if "not copied into this repository" not in str(course_candidate.get("distribution", "")):
+        findings.append("Pyodide course candidate distribution boundary drifted")
+    if set(course_candidate.get("direct_packages") or []) != expected_direct:
+        findings.append("Pyodide course candidate direct package set drifted")
+    if set(course_candidate.get("resolved_components") or []) != expected_resolved:
+        findings.append("Pyodide course candidate resolved component closure drifted")
 
     # Validate every serialized component uniformly.
     # The digest catches changes without a second package list in code.
@@ -412,7 +429,7 @@ def audit(
         if marker not in smoke_source:
             findings.append(f"Pyodide runtime verifier lost an assertion: {marker}")
 
-    # Path and source scans prove that the current learner tree remains runtime-free.
+    # Path scans reject copied runtime binaries. Source scans permit one declared loader.
     paths = source_paths() if paths is None else paths
     for path in paths:
         if path.startswith("scripts/pyodide/"):
@@ -430,9 +447,15 @@ def audit(
                 runtime_texts[path] = (ROOT / path).read_text(encoding="utf-8", errors="replace")
             except OSError:
                 continue
+    declared_entrypoint = str(course_candidate.get("entrypoint") or "")
     for path, text in runtime_texts.items():
         if any(marker in text for marker in RUNTIME_MARKERS):
-            findings.append(f"course source loads Pyodide while the candidate remains planned: {path}")
+            if path != declared_entrypoint:
+                findings.append(f"course source loads Pyodide outside the declared entrypoint: {path}")
+            else:
+                for marker in ('PYODIDE_VERSION = "0.27.7"', 'loadPackage(["pydantic", "requests"])'):
+                    if marker not in text:
+                        findings.append(f"declared Pyodide course entrypoint lost its reviewed runtime contract: {marker}")
     return findings
 
 
@@ -457,8 +480,8 @@ def self_test() -> list[str]:
     # Mutations cover scope, package, license, integrity, runtime, and approval drift.
     cases = []
     changed = copy.deepcopy(base)
-    changed["status"] = "distributed"
-    cases.append(("distributed status", changed, blueprint, skill, [], {}, implementation, use_cases))
+    changed["status"] = "repository-copied"
+    cases.append(("distribution status", changed, blueprint, skill, [], {}, implementation, use_cases))
     changed = copy.deepcopy(base)
     changed["components"] = changed["components"][:-1]
     cases.append(("missing component", changed, blueprint, skill, [], {}, implementation, use_cases))
@@ -470,6 +493,9 @@ def self_test() -> list[str]:
     cases.append(("hash drift", changed, blueprint, skill, [], {}, implementation, use_cases))
     cases.append(("runtime artifact", base, blueprint, skill, ["web/nemoclaw/pyodide.asm.wasm"], {}, implementation, use_cases))
     cases.append(("runtime loader", base, blueprint, skill, [], {"web/nemoclaw/example.js": "loadPyodide({})"}, implementation, use_cases))
+    changed = copy.deepcopy(base)
+    changed["course_candidate"]["direct_packages"].append("openai")
+    cases.append(("undeclared direct course package", changed, blueprint, skill, [], {}, implementation, use_cases))
     changed = copy.deepcopy(base)
     changed["review_state"] = "approved"
     cases.append(("approval overclaim", changed, blueprint, skill, [], {}, implementation, use_cases))

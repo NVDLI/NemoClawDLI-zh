@@ -123,18 +123,19 @@ from the preserved-comment file.
 `Python-2.0` is the package's declared license identifier; no Python interpreter or Python package
 is included in the browser bundle by that dependency.
 
-## Evaluated browser-Python components, not distributed in the learner artifact
+## Browser-Python components fetched from upstream at runtime
 
-The course does not currently contain or ship the components in this section. They are listed so a
-reviewer can evaluate a specific future browser-Python option without reconstructing its package
-closure. [`scripts/pyodide/candidate-components.json`](scripts/pyodide/candidate-components.json)
-records the exact artifact filenames, SHA-256 values, source pattern, and review boundary.
+The repository does not copy the components in this section into its static artifacts. The Pyodide
+documentation page and internal `c-fx-11-v1` branch-staging candidate fetch pinned files from
+jsDelivr only after a reader runs Python. [`scripts/pyodide/candidate-components.json`](scripts/pyodide/candidate-components.json)
+records exact artifact filenames, SHA-256 values, runtime profiles, and the review boundary.
 
-The separate demonstration needs only the browser-Python runtime and standard library. A second set
-records packages considered for a future activity that would make outbound HTTPS requests or call an
-OpenAI-compatible model API; the current demonstration does not load that set. Adding any of these
-files to the learner artifact still requires final component, security, privacy, relay, and distribution
-decisions from the authorized reviewers. A version or package change requires refreshed evidence.
+The separate documentation demonstration needs only the browser-Python runtime and standard library.
+The internal course candidate additionally loads `pydantic`, `requests`, and their exact recorded
+closure. Other network-profile rows remain candidates and are not loaded. Copying any runtime file
+into the repository or an externally released learner artifact still requires the applicable
+component, security, privacy, and distribution decisions. A version or package change requires
+refreshed evidence.
 
 The runnable documentation page under `scripts/pyodide/` fetches the pinned Core runtime from
 jsDelivr after a reader selects Run. It executes those files in the browser but does not copy them

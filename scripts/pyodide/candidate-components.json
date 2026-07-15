@@ -1,9 +1,9 @@
 {
   "schema": "pyodide-candidate-components/1.0",
-  "status": "planned-not-distributed",
+  "status": "runtime-fetched-not-repository-copied",
   "review_state": "human-approval-required",
-  "reviewed_snapshot_sha256": "c9e9f2d0532d06a23eaa2eea34b045fc54039a58c587cba491816ae0b3143cc5",
-  "purpose": "Exact candidate inventory for a future browser-Python course integration. These files are not present in or shipped by the current learner course.",
+  "reviewed_snapshot_sha256": "f69ee3a0aa24d6053f2a43d17ce68039a5c70ca556ac11125a91522f83285884",
+  "purpose": "Exact inventory for browser-Python demonstrations and the internal c-fx-11-v1 course candidate. The files are fetched from the pinned upstream CDN at runtime and are not copied into this repository.",
   "source_pattern": {
     "kind": "task-supplied-local-reference",
     "license": "MIT",
@@ -30,6 +30,18 @@
     "distribution": "fetched by the browser at runtime; not copied into this repository",
     "profile": "core"
   },
+  "course_candidate": {
+    "entrypoint": "web/cfx11/runtime/worker.js",
+    "trigger": "learner runs a Python cell in the internal c-fx-11-v1 branch-staging candidate",
+    "base_url": "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/",
+    "distribution": "fetched by the learner browser at runtime; not copied into this repository",
+    "direct_packages": ["pydantic", "requests"],
+    "resolved_components": [
+      "pyodide", "cpython-standard-library", "annotated-types", "certifi",
+      "charset-normalizer", "idna", "pydantic", "pydantic-core", "requests",
+      "typing-extensions", "urllib3"
+    ]
+  },
   "profiles": {
     "acquisition": {
       "description": "Download helper considered for a future asset-preparation tool. It would run only while preparing browser files and would not be included in the learner course.",
@@ -40,7 +52,7 @@
       "components": ["pyodide", "cpython-standard-library"]
     },
     "network": {
-      "description": "Packages considered only for a future browser-Python activity that makes outbound HTTPS requests or calls an OpenAI-compatible model API. The current demonstration does not load them. Adoption requires separate open-source, security, privacy, and relay review.",
+      "description": "Exact packages reviewed for browser-Python HTTPS and OpenAI-compatible API activities. The internal c-fx-11-v1 candidate loads only pydantic, requests, and their recorded closure; the other rows remain unadopted candidates.",
       "root_packages": ["requests", "pyodide-http", "openai"],
       "components": [
         "annotated-types", "anyio", "certifi", "charset-normalizer", "distro", "httpx", "idna",

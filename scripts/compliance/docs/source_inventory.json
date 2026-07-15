@@ -253,6 +253,24 @@
       "kind": "vendored-browser-dependencies",
       "license": "mixed-per-browser-dependencies-manifest",
       "disposition": "same-origin publisher file copies, one unminified browser-compatibility bundle, package inventory, artifact hashes, and per-package license evidence"
+    },
+    {
+      "path": "web/shared/vendor",
+      "kind": "shared-vendored-browser-dependencies",
+      "license": "mixed-per-browser-dependencies-manifest",
+      "disposition": "course-neutral byte-identical copies of reviewed CodeMirror, Highlight.js, and Marked publisher assets with complete license and digest evidence"
+    },
+    {
+      "path": "web/shared/favicon.ico",
+      "kind": "shared-course-asset",
+      "license": "external-terms",
+      "disposition": "unmodified NVIDIA corporate favicon; NVIDIA Logo and Brand Guidelines and trademark rights apply"
+    },
+    {
+      "path": "web/cfx11",
+      "kind": "internal-source-course-projection",
+      "license": "unresolved-source-course-terms",
+      "disposition": "internal branch-staging candidate only; imported notebook cells and support data are archive-digest bound and excluded from external release until owner and OSRB confirmation"
     }
   ],
   "forbidden_private_link_regexes": [

@@ -32,9 +32,12 @@ with real Pyodide, proves persistent state, JSON/code/Markdown/HTML/table/artifa
 helper overrides, background task completion and cancellation, captures stdout, and
 requires an `IndexError` traceback with its source line through the stderr result.
 
-The learner course does not contain or distribute Pyodide, CPython WebAssembly, Python wheels, or
-the assets named in [`candidate-components.json`](candidate-components.json). This scripts page
-fetches the pinned core runtime from the documented CDN only when a reader runs a cell.
+The repository does not copy Pyodide, CPython WebAssembly, Python wheels, or the runtime assets
+named in [`candidate-components.json`](candidate-components.json). This scripts page fetches the
+pinned core runtime from the documented CDN only when a reader runs a cell. The internal
+`c-fx-11-v1` branch-staging candidate uses the same pinned runtime and loads only `pydantic`,
+`requests`, and their recorded closure. Its source course terms and external-release decision
+remain unresolved.
 
 ## Integration order
 
@@ -44,7 +47,7 @@ outbound requests or an OpenAI-compatible Python client.
 | Evaluated use | Includes | Use it for |
 |---|---|---|
 | Browser-only runtime (`core`) | Pyodide 0.27.7 and CPython 3.12.7 standard library | Python exercises that do not make network requests |
-| Future HTTP/API support (`network`) | Browser-only runtime plus the exact reviewed wheel closure | A future lesson that explicitly needs `requests` or an OpenAI-compatible Python client |
+| HTTP/API support (`network`) | Browser-only runtime plus the exact reviewed wheel closure | The internal course candidate loads the recorded `pydantic` and `requests` subset; other rows remain future options |
 
 Keep the interpreter in a module worker. The page sends plain source and inputs, then receives a
 plain result. Stop terminates the worker. Reset starts a new worker and clears Python globals,
