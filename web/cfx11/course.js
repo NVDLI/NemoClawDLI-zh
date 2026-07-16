@@ -3,12 +3,18 @@
 
 import { marked } from "../shared/vendor/marked-14.1.4.esm.js";
 import { CoursePythonRunner } from "./runtime/runner.js";
+import { ObservableOperations, formatDuration } from "./runtime/operations.js";
 
 const MODEL_BASES = Object.freeze({
   direct: "https://integrate.api.nvidia.com/v1",
   proxy: "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1",
 });
 const BILLING_SOURCE = "dli-cfx11-web";
+const MODEL_PROBE_CANDIDATES = Object.freeze([
+  "nvidia/nemotron-nano-12b-v2-vl",
+  "nvidia/nemotron-3-nano-30b-a3b",
+  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+]);
 
 const SOURCE_ASSET_REPLACEMENTS = Object.freeze(new Map([
   [
@@ -31,6 +37,9 @@ const state = {
   streams: [],
   agentRequestId: null,
   rawMarkdown: "",
+  operations: new ObservableOperations(),
+  verifiedModel: sessionStorage.getItem("cfx11-verified-model") || "",
+  lastQueueStatus: "",
 };
 
 const elements = Object.fromEntries([
@@ -42,6 +51,7 @@ const elements = Object.fromEntries([
   "runtime-panel-title", "close-runtime-panel", "kernel-started", "start-runtime",
   "dock-stop-runtime", "clear-runtime-streams", "runtime-streams", "runtime-environment",
   "environment-settings", "runtime-agent-form", "runtime-agent-input", "runtime-agent-history",
+  "operation-badge", "operation-summary", "runtime-operations", "clear-runtime-operations",
 ].map(id => [id, document.getElementById(id)]));
 
 function selectedModelBase() {
@@ -53,6 +63,9 @@ function runnerConfiguration(lesson = state.lesson) {
     lessonDirectory: lesson.id.includes("/") ? lesson.id.slice(0, lesson.id.lastIndexOf("/")) : "introduction",
     files: filesForLesson(lesson),
     modelBaseUrl: selectedModelBase(),
+    modelCandidates: state.verifiedModel
+      ? [state.verifiedModel, ...MODEL_PROBE_CANDIDATES.filter(model => model !== state.verifiedModel)]
+      : [...MODEL_PROBE_CANDIDATES],
   };
 }
 
@@ -334,7 +347,7 @@ function renderChatWidget(raw) {
     send.disabled = true;
     state.activeChat = response;
     try {
-      const reply = await state.runner.chat(payload.chat_id, prompt, elements["api-key"].value.trim());
+      const reply = await state.runner.chat(payload.chat_id, prompt, elements["api-key"].value.trim(), { label: "Course chat response" });
       response.parentElement.dataset.pending = "false";
       response.textContent = reply.ok ? String(reply.value ?? reply.display ?? "") : reply.stderr;
     } catch (error) {
@@ -531,6 +544,7 @@ function resetKernelView() {
 }
 
 function restartRuntime() {
+  const operationId = state.operations.begin("Restart Python", { kind: "runtime", detail: "Cancelling queued and running work" });
   state.runner.reset(runnerConfiguration());
   resetKernelView();
   for (const block of state.blocks) {
@@ -539,6 +553,7 @@ function restartRuntime() {
     block.output.replaceChildren();
   }
   elements["runtime-status"].textContent = "Python restarted · variables cleared";
+  state.operations.settle(operationId, "succeeded", "Namespace cleared and worker replaced");
 }
 
 async function runBlock(block) {
@@ -549,7 +564,9 @@ async function runBlock(block) {
   stream.className = "model-stream";
   block.output.append(stream);
   try {
-    const execution = state.runner.run(block.editor.getValue(), elements["api-key"].value.trim());
+    const execution = state.runner.run(block.editor.getValue(), elements["api-key"].value.trim(), {
+      label: `${state.lesson?.title || "Lesson"} · cell ${block.article.dataset.cellId.split(":").at(-1)}`,
+    });
     state.requestBlocks.set(execution.requestId, block);
     const reply = await execution;
     renderReply(block, reply);
@@ -678,10 +695,10 @@ function openLesson(lesson, { replace = false } = {}) {
   return loadLesson(lesson);
 }
 
-async function initialize() {
+async function initialize(signal) {
   const [manifestResponse, contentResponse] = await Promise.all([
-    fetch(new URL("course.json", location.href), { credentials: "omit" }),
-    fetch(new URL("content-bundle.json", location.href), { credentials: "omit" }),
+    fetch(new URL("course.json", location.href), { credentials: "omit", signal }),
+    fetch(new URL("content-bundle.json", location.href), { credentials: "omit", signal }),
   ]);
   if (!manifestResponse.ok) throw new Error(`Could not load the course manifest (${manifestResponse.status}).`);
   if (!contentResponse.ok) throw new Error(`Could not load the reviewed lesson bundle (${contentResponse.status}).`);
@@ -721,11 +738,21 @@ state.runner.addEventListener("job-start", event => {
 });
 
 state.runner.addEventListener("queue-change", event => {
-  const { active, queued } = event.detail;
+  const { active, activeLabel, queued } = event.detail;
   elements["queue-status"].textContent = active
-    ? `${queued} waiting · 1 running`
+    ? `${queued} waiting · running: ${activeLabel || "Python job"}`
     : queued ? `${queued} waiting` : "Queue empty";
-  if (active || queued) recordRuntimeEvent("queue", active ? `${queued} waiting; one job running` : `${queued} waiting`);
+  const summary = active ? `${queued} waiting; running ${activeLabel || "Python job"}` : queued ? `${queued} waiting` : "Queue empty";
+  if (summary !== state.lastQueueStatus) {
+    state.lastQueueStatus = summary;
+    recordRuntimeEvent("queue", summary);
+  }
+});
+
+state.runner.addEventListener("job-state", event => state.operations.ingest(event.detail));
+state.runner.addEventListener("operation-note", event => {
+  state.operations.update(`python-${event.detail.requestId}`, event.detail.text);
+  recordRuntimeEvent("connection", event.detail.text);
 });
 
 state.runner.addEventListener("input-request", event => {
@@ -757,6 +784,42 @@ state.runner.addEventListener("input-request", event => {
   input.focus();
 });
 
+function renderOperations(records = state.operations.snapshot()) {
+  if (!elements["runtime-operations"]) return;
+  const active = records.filter(record => ["queued", "running"].includes(record.state));
+  const latestFailure = records.find(record => ["failed", "timed-out"].includes(record.state));
+  const badge = active.length ? `${active.length} active` : latestFailure ? "Needs attention" : "Idle";
+  elements["operation-badge"].textContent = badge;
+  elements["operation-badge"].dataset.state = active.length ? "running" : latestFailure ? "failed" : "idle";
+  elements["operation-summary"].textContent = active.length
+    ? `${active.length} operation${active.length === 1 ? " is" : "s are"} visible and still active.`
+    : latestFailure ? `No work is running. Latest issue: ${latestFailure.label}.` : "No work is running.";
+  if (!records.length) {
+    const empty = document.createElement("li");
+    empty.textContent = "No operations yet.";
+    elements["runtime-operations"].replaceChildren(empty);
+    return;
+  }
+  elements["runtime-operations"].replaceChildren(...records.map(record => {
+    const item = document.createElement("li");
+    item.dataset.state = record.state;
+    const heading = document.createElement("div");
+    const label = document.createElement("strong");
+    label.textContent = record.label;
+    const status = document.createElement("span");
+    status.textContent = record.state.replace("-", " ");
+    heading.append(label, status);
+    const detail = document.createElement("p");
+    const elapsedTo = record.finishedAt || Date.now();
+    detail.textContent = `${record.detail || "No additional detail"} · ${formatDuration(elapsedTo - (record.queuedAt || elapsedTo))}`;
+    item.append(heading, detail);
+    return item;
+  }));
+}
+
+state.operations.addEventListener("change", event => renderOperations(event.detail));
+renderOperations();
+
 function currentTheme() {
   return document.documentElement.dataset.theme
     || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
@@ -774,7 +837,7 @@ function applyTheme(theme) {
 }
 
 function openRuntimePanel(name) {
-  const titles = { session: "Session", variables: "Variables", streams: "Streams", environment: "Environment", agent: "Runtime guide" };
+  const titles = { session: "Session", activity: "Activity", variables: "Variables", streams: "Streams", environment: "Environment", agent: "Runtime guide" };
   elements["runtime-panel"].hidden = false;
   elements["runtime-panel-title"].textContent = titles[name] || "Runtime";
   document.querySelectorAll("[data-panel-view]").forEach(view => { view.hidden = view.dataset.panelView !== name; });
@@ -834,6 +897,53 @@ elements["clear-api-key"].addEventListener("click", () => {
   elements["api-key"].dispatchEvent(new Event("input"));
   elements["api-key"].focus();
 });
+
+async function probeModelConnection(key) {
+  const route = elements["model-route"]?.value || "direct";
+  const baseUrl = MODEL_BASES[route] || MODEL_BASES.direct;
+  return state.operations.run("Test NVIDIA model connection", async ({ signal, update }) => {
+    const attempts = [];
+    for (const [index, model] of MODEL_PROBE_CANDIDATES.entries()) {
+      update(`Trying ${index + 1} of ${MODEL_PROBE_CANDIDATES.length}: ${model}`);
+      elements["api-status"].textContent = `Checking model ${index + 1} of ${MODEL_PROBE_CANDIDATES.length}: ${model}…`;
+      let response;
+      try {
+        response = await fetch(`${baseUrl}/chat/completions`, {
+          method: "POST",
+          credentials: "omit",
+          signal,
+          headers: modelHeaders(key, route),
+          body: JSON.stringify({
+            model,
+            messages: [{ role: "user", content: "Reply OK." }],
+            max_tokens: 1,
+            stream: false,
+            temperature: 0,
+          }),
+        });
+      } catch (error) {
+        if (signal.aborted) throw error;
+        attempts.push(`${model}: network error`);
+        recordRuntimeEvent("connection", `${model} could not be reached; trying the next bounded candidate.`);
+        continue;
+      }
+      if (response.ok) {
+        state.verifiedModel = model;
+        sessionStorage.setItem("cfx11-verified-model", model);
+        state.runner.configure(runnerConfiguration());
+        recordRuntimeEvent("connection", `NVIDIA connection verified with ${model}.`);
+        return model;
+      }
+      if ([401, 403].includes(response.status)) {
+        throw new Error(`NVIDIA rejected this key (${response.status}). Check or replace it.`);
+      }
+      attempts.push(`${model}: HTTP ${response.status}`);
+      recordRuntimeEvent("connection", `${model} returned HTTP ${response.status}; trying the next bounded candidate.`);
+    }
+    throw new Error(`No connection-test model responded. ${attempts.join("; ")}.`);
+  }, { timeoutMs: 30_000, kind: "model-probe" });
+}
+
 elements["test-api-key"].addEventListener("click", async () => {
   const key = elements["api-key"].value.trim();
   if (!key) {
@@ -842,35 +952,33 @@ elements["test-api-key"].addEventListener("click", async () => {
     return;
   }
   elements["test-api-key"].disabled = true;
-  elements["api-status"].textContent = "Checking NVIDIA API access…";
+  elements["api-status"].textContent = "Checking NVIDIA API access with bounded fallback…";
   try {
-    const response = await fetch(`${selectedModelBase()}/chat/completions`, {
-      method: "POST",
-      credentials: "omit",
-      headers: modelHeaders(key),
-      body: JSON.stringify({
-        model: "nvidia/nemotron-nano-12b-v2-vl",
-        messages: [{ role: "user", content: "Reply OK." }],
-        max_tokens: 1,
-        stream: false,
-        temperature: 0,
-      }),
-    });
-    elements["api-status"].textContent = response.ok
-      ? "Connected. Model cells can use this key."
-      : [401, 403].includes(response.status)
-        ? `NVIDIA rejected this key (${response.status}). Check or replace it.`
-        : `NVIDIA rejected the test request (${response.status}). Check the course model or try again.`;
+    const model = await probeModelConnection(key);
+    elements["api-status"].textContent = `Connected with ${model}. Lesson cells keep their explicit model choices.`;
   } catch (error) {
-    const origin = location.origin === "null" ? "a local file" : location.origin;
-    elements["api-status"].textContent = `This origin (${origin}) cannot reach NVIDIA's API. Open the published HTTPS course.`;
+    elements["api-status"].textContent = error.message;
   } finally {
     elements["test-api-key"].disabled = false;
   }
 });
 elements["run-all"].addEventListener("click", async () => {
   if (!confirm(`Run ${state.blocks.length} cells in order? Model cells can consume NVIDIA API quota.`)) return;
-  for (const block of state.blocks) if (!(await runBlock(block))) break;
+  elements["run-all"].disabled = true;
+  const operationId = state.operations.begin("Run lesson", { kind: "lesson", detail: `${state.blocks.length} cells in order` });
+  let completed = 0;
+  try {
+    for (const block of state.blocks) {
+      if (!(await runBlock(block))) throw new Error(`Stopped after ${completed} completed cells because a cell failed.`);
+      completed += 1;
+      state.operations.update(operationId, `${completed} of ${state.blocks.length} cells completed`);
+    }
+    state.operations.settle(operationId, "succeeded", `${completed} cells completed`);
+  } catch (error) {
+    state.operations.settle(operationId, "failed", error.message);
+  } finally {
+    elements["run-all"].disabled = false;
+  }
 });
 elements["stop-runtime"].addEventListener("click", () => {
   state.runner.stop();
@@ -884,7 +992,7 @@ elements["start-runtime"].addEventListener("click", async () => {
   elements["start-runtime"].disabled = true;
   elements["runtime-status"].textContent = "Starting Python…";
   try {
-    const reply = await state.runner.preload();
+    const reply = await state.runner.preload({ label: "Start Python runtime" });
     if (!reply.ok) throw new Error(reply.stderr || "Python could not start.");
     renderKernel(reply.kernel);
     elements["runtime-status"].textContent = "Python ready";
@@ -898,11 +1006,23 @@ elements["start-runtime"].addEventListener("click", async () => {
 });
 elements["inspect-runtime"].addEventListener("click", async () => {
   elements["inspect-runtime"].disabled = true;
+  elements["inspect-runtime"].textContent = "Refreshing…";
+  elements["kernel-variables"].setAttribute("aria-busy", "true");
   try {
-    const reply = await state.runner.inspect();
+    const reply = await state.runner.inspect({ label: "Refresh runtime variables" });
+    if (!reply.ok) throw new Error(reply.stderr || "Variable refresh failed.");
     if (reply.kernel) renderKernel(reply.kernel);
+    recordRuntimeEvent("session", "Runtime variables refreshed");
+  } catch (error) {
+    recordRuntimeEvent("stderr", error.message);
+    const message = document.createElement("p");
+    message.className = "inline-error";
+    message.textContent = `Refresh failed: ${error.message}`;
+    elements["kernel-variables"].replaceChildren(message);
   } finally {
     elements["inspect-runtime"].disabled = false;
+    elements["inspect-runtime"].textContent = "Refresh";
+    elements["kernel-variables"].removeAttribute("aria-busy");
   }
 });
 document.querySelectorAll("[data-runtime-panel]").forEach(button => button.addEventListener("click", () => openRuntimePanel(button.dataset.runtimePanel)));
@@ -916,6 +1036,7 @@ document.querySelectorAll("[data-variable-view]").forEach(button => button.addEv
   if (state.latestKernel) renderKernel(state.latestKernel);
 }));
 elements["clear-runtime-streams"].addEventListener("click", () => { state.streams = []; renderRuntimeStreams(); });
+elements["clear-runtime-operations"].addEventListener("click", () => state.operations.clearSettled());
 elements["environment-settings"].addEventListener("click", () => elements["settings-dialog"].showModal());
 elements["runtime-agent-form"].addEventListener("submit", async event => {
   event.preventDefault();
@@ -933,7 +1054,7 @@ elements["runtime-agent-form"].addEventListener("submit", async event => {
   const submit = elements["runtime-agent-form"].querySelector('button[type="submit"]');
   submit.disabled = true;
   try {
-    const execution = state.runner.assistant(prompt, runtimeGuideContext(), key);
+    const execution = state.runner.assistant(prompt, runtimeGuideContext(), key, { label: "Runtime guide response" });
     state.agentRequestId = execution.requestId;
     const reply = await execution;
     pending.dataset.agentPending = "false";
@@ -963,9 +1084,15 @@ document.addEventListener("click", event => {
 window.addEventListener("popstate", () => {
   const requested = new URL(location.href).searchParams.get("lesson");
   const lesson = state.manifest?.lessons.find(item => item.id === requested) || state.manifest?.lessons[0];
-  if (lesson) loadLesson(lesson);
+  if (lesson) loadLesson(lesson).catch(error => {
+    recordRuntimeEvent("stderr", error.message);
+    elements["lesson-body"].innerHTML = `<section class="fatal"><h2>Lesson could not open</h2><pre>${escapeHtml(error.stack || error.message)}</pre></section>`;
+  });
 });
 
-initialize().catch(error => {
+state.operations.run("Open course", ({ signal, update }) => {
+  update("Loading the reviewed manifest and lesson bundle");
+  return initialize(signal);
+}, { timeoutMs: 30_000, kind: "course-load" }).catch(error => {
   elements["lesson-body"].innerHTML = `<section class="fatal"><h2>Course could not start</h2><pre>${escapeHtml(error.stack || error.message)}</pre></section>`;
 });

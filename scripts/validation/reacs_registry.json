@@ -1316,7 +1316,7 @@
         "fast"
       ],
       "order": {
-        "fast": 58
+        "fast": 59
       },
       "mode": "current-tree",
       "argv": [
@@ -2016,7 +2016,7 @@
         "ship"
       ],
       "order": {
-        "ship": 86
+        "ship": 87
       },
       "mode": "current-tree",
       "argv": [
@@ -2051,12 +2051,35 @@
       "parallel_safe": false
     },
     {
+      "id": "cfx11-workflow-lifecycle",
+      "tiers": [
+        "fast",
+        "ship"
+      ],
+      "order": {
+        "fast": 58,
+        "ship": 85
+      },
+      "mode": "mutation",
+      "argv": [
+        "bash",
+        "scripts/runtime/run_node.sh",
+        "tests/runtime/test_cfx11_workflow.mjs"
+      ],
+      "parallel_safe": true,
+      "impacts": [
+        "web/cfx11/runtime/runner.js",
+        "web/cfx11/runtime/operations.js",
+        "tests/runtime/test_cfx11_workflow.mjs"
+      ]
+    },
+    {
       "id": "cfx11-browser-audit",
       "tiers": [
         "ship"
       ],
       "order": {
-        "ship": 85
+        "ship": 86
       },
       "mode": "current-tree",
       "argv": [

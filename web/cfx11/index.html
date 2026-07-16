@@ -63,7 +63,7 @@
           <div>
             <span class="eyebrow">Your model connection</span>
             <h3 id="runtime-console-title">Connect to NVIDIA</h3>
-            <p>Paste your key here before a model cell; this tab sends it only to NVIDIA's API. Testing sends a one-token prompt to the course model.</p>
+            <p>Paste your key here before a model cell; this tab sends it only to NVIDIA's API. Testing tries a short, bounded list of lightweight models and stops after the first one-token response. Lesson cells keep their explicit model choices.</p>
           </div>
           <div class="key-entry">
             <label for="api-key">NVIDIA API key</label>
@@ -95,6 +95,7 @@
 
   <aside id="runtime-dock" class="runtime-dock" aria-label="Python runtime controls">
     <nav class="runtime-dock-actions" aria-label="Runtime views">
+      <button type="button" data-runtime-panel="activity" aria-controls="runtime-panel" title="Activity">Activity <span id="operation-badge" class="operation-badge" data-state="idle">Idle</span></button>
       <button type="button" data-runtime-panel="session" aria-controls="runtime-panel" title="Session">Session</button>
       <button type="button" data-runtime-panel="variables" aria-controls="runtime-panel" title="Variables">Variables</button>
       <button type="button" data-runtime-panel="streams" aria-controls="runtime-panel" title="Streams">Streams</button>
@@ -106,6 +107,12 @@
         <div><span class="eyebrow">Live Python runtime</span><h2 id="runtime-panel-title">Session</h2></div>
         <button id="close-runtime-panel" type="button" aria-label="Close runtime panel">Close</button>
       </header>
+      <section data-panel-view="activity" hidden>
+        <p id="operation-summary" class="operation-summary" aria-live="polite">No work is running.</p>
+        <p>Every queued, running, completed, cancelled, failed, or timed-out course workflow appears here—even after you change lessons.</p>
+        <div class="kernel-actions"><button id="clear-runtime-operations" type="button">Clear finished</button></div>
+        <ol id="runtime-operations" class="runtime-operations"><li>No operations yet.</li></ol>
+      </section>
       <section data-panel-view="session">
         <p>Cells share one kernel across lessons in this tab. Reload or restart clears it.</p>
         <dl class="runtime-facts">
@@ -162,7 +169,7 @@
         <button value="close" aria-label="Close settings">Close</button>
       </div>
       <p>Use the visible key field above the lesson. Python receives the value only for an active model call. Direct mode calls <code>https://integrate.api.nvidia.com/v1</code>; relay mode uses the DLI browser relay without changing the learner-owned credential.</p>
-      <p>Run buttons join a single ordered queue. Python <code>input()</code> opens an answer field in the requesting cell. The session panel shows what is running and which variables remain in memory.</p>
+      <p>Run buttons join a single ordered queue. Python <code>input()</code> opens an answer field in the requesting cell. Activity remains visible across lessons and reports queue waits, execution, cancellation, failure, and timeouts.</p>
     </form>
   </dialog>
 

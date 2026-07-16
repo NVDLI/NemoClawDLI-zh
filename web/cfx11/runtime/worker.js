@@ -431,32 +431,45 @@ async function runAssistant(message) {
   const modelBaseUrl = selectedModelBase(message.configuration);
   activeModelBase = modelBaseUrl;
   const url = new URL(`${modelBaseUrl}/chat/completions`);
-  const headers = new Headers({
-    Accept: "text/event-stream",
-    Authorization: `Bearer ${key}`,
-    "Content-Type": "application/json",
-  });
-  applyBillingHeaders(headers, url);
+  const candidates = [...new Set((message.configuration?.modelCandidates || []).map(String).filter(Boolean))];
+  if (!candidates.length) throw new Error("No bounded runtime-guide model candidates are configured.");
   activeRequestId = message.id;
   try {
-    const response = await fetch(url, {
-      method: "POST",
-      credentials: "omit",
-      headers,
-      body: JSON.stringify({
-        model: "nvidia/nemotron-3-nano-30b-a3b",
-        messages: [
-          { role: "system", content: "You are a concise course runtime guide. Explain the active lesson, Python session, errors, and variables from the supplied context. Never claim to run a cell or reveal a credential." },
-          { role: "user", content: String(message.context || "").slice(0, 9000) + "\n\nQuestion: " + String(message.prompt || "").slice(0, 2000) },
-        ],
-        max_tokens: 384,
-        stream: true,
-        temperature: 0.1,
-      }),
-    });
-    const bytes = await readResponseBytes(response, response.ok);
-    if (!response.ok) throw new Error(`NVIDIA rejected the runtime-guide request (${response.status}).`);
-    return { ok: true, value: collectModelText(bytes), execution_count: executionCount };
+    const failures = [];
+    for (const [index, model] of candidates.entries()) {
+      self.postMessage({ type: "operation-note", requestId: message.id, text: `Trying runtime-guide model ${index + 1} of ${candidates.length}: ${model}` });
+      const headers = new Headers({
+        Accept: "text/event-stream",
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      });
+      applyBillingHeaders(headers, url);
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          credentials: "omit",
+          headers,
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: "system", content: "You are a concise course runtime guide. Explain the active lesson, Python session, errors, and variables from the supplied context. Never claim to run a cell or reveal a credential." },
+              { role: "user", content: String(message.context || "").slice(0, 9000) + "\n\nQuestion: " + String(message.prompt || "").slice(0, 2000) },
+            ],
+            max_tokens: 384,
+            stream: true,
+            temperature: 0.1,
+          }),
+        });
+        const bytes = await readResponseBytes(response, response.ok);
+        if (response.ok) return { ok: true, value: collectModelText(bytes), execution_count: executionCount, model };
+        if ([401, 403].includes(response.status)) throw new Error(`NVIDIA rejected the runtime-guide credential (${response.status}).`);
+        failures.push(`${model}: HTTP ${response.status}`);
+      } catch (error) {
+        if (/credential \((401|403)\)/.test(error?.message || "")) throw error;
+        failures.push(`${model}: ${error?.message || "network error"}`);
+      }
+    }
+    throw new Error(`No runtime-guide model responded. ${failures.join("; ")}.`);
   } finally {
     activeRequestId = null;
   }

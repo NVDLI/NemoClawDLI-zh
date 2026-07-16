@@ -147,6 +147,40 @@ class CommittedCourseTests(unittest.TestCase):
                 findings = cfx11_course_audit.audit(course)
                 self.assertTrue(any(expected in finding for finding in findings), findings)
 
+    def test_async_workflow_contract_rejects_silent_or_unbounded_work(self):
+        mutations = [
+            ("course.js", 'signal,\n          headers: modelHeaders(key, route)', 'headers: modelHeaders(key, route)', "abortable model probe"),
+            ("runtime/runner.js", "this.armTimeout(job, this.queueTimeoutMs", "this.removedTimeout(job, this.queueTimeoutMs", "queue-wait deadline"),
+            ("runtime/runner.js", 'new CustomEvent("job-state"', 'new CustomEvent("hidden-state"', "complete job lifecycle"),
+            ("index.html", 'data-runtime-panel="activity"', 'data-runtime-panel="hidden"', "visible workflow activity"),
+            ("course.js", 'message.textContent = `Refresh failed:', 'message.textContent = `Silent refresh:', "observable variable refresh failure"),
+        ]
+        for relative, before, after, expected in mutations:
+            with self.subTest(relative=relative, expected=expected), tempfile.TemporaryDirectory() as temporary:
+                course = Path(temporary) / "cfx11"
+                shutil.copytree(ROOT / "web/cfx11", course)
+                path = course / relative
+                source = path.read_text(encoding="utf-8")
+                self.assertIn(before, source)
+                path.write_text(source.replace(before, after, 1), encoding="utf-8")
+                findings = cfx11_course_audit.audit(course)
+                self.assertTrue(any(expected in finding for finding in findings), findings)
+
+    def test_model_probe_requires_more_than_one_distinct_candidate(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            course = Path(temporary) / "cfx11"
+            shutil.copytree(ROOT / "web/cfx11", course)
+            client = course / "course.js"
+            source = client.read_text(encoding="utf-8")
+            source = source.replace(
+                '  "nvidia/nemotron-3-nano-30b-a3b",\n  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",\n',
+                "",
+                1,
+            )
+            client.write_text(source, encoding="utf-8")
+            findings = cfx11_course_audit.audit(course)
+            self.assertTrue(any("multiple distinct" in finding for finding in findings), findings)
+
     def test_dynamic_content_keeps_a_strict_url_and_theme_boundary(self):
         client = (ROOT / "web/cfx11/course.js").read_text(encoding="utf-8")
         styles = (ROOT / "web/cfx11/course.css").read_text(encoding="utf-8")

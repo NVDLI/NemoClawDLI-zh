@@ -259,6 +259,9 @@ dialog p { color: var(--muted); font-size: .9rem; }
 .runtime-dock-actions { display: flex; flex-direction: column; gap: .3rem; padding: .4rem; border-radius: .75rem; }
 .runtime-dock-actions button { width: 6.2rem; padding: .45rem .35rem; font-size: .72rem; }
 .runtime-dock-actions button[aria-pressed="true"] { border-color: var(--green); background: color-mix(in srgb, var(--green) 15%, var(--panel)); }
+.operation-badge { display: block; margin-top: .18rem; color: var(--quiet); font: .62rem/1.2 var(--mono); }
+.operation-badge[data-state="running"] { color: var(--blue); }
+.operation-badge[data-state="failed"] { color: var(--error); }
 .runtime-panel { width: min(28rem, calc(100vw - 9rem)); max-height: min(42rem, calc(100vh - 6rem)); overflow: auto; padding: 1rem; border-radius: .9rem; }
 .runtime-panel[hidden] { display: none; }
 .runtime-panel > header { position: sticky; top: -1rem; z-index: 1; display: flex; justify-content: space-between; gap: 1rem; align-items: start; margin: -1rem -1rem 1rem; padding: 1rem; border-bottom: 1px solid var(--line); background: var(--panel); }
@@ -275,6 +278,16 @@ dialog p { color: var(--muted); font-size: .9rem; }
 .runtime-streams li[data-channel="model"] { border-left-color: var(--green); }
 .runtime-streams span { display: block; color: var(--quiet); font: .68rem/1.4 var(--mono); text-transform: uppercase; }
 .runtime-streams pre { max-height: 9rem; margin: .25rem 0 0; overflow: auto; white-space: pre-wrap; font: .75rem/1.45 var(--mono); }
+.operation-summary { padding: .55rem .65rem; border-left: 3px solid var(--green); background: var(--bg); color: var(--text) !important; }
+.runtime-operations { display: grid; gap: .5rem; max-height: 30rem; margin: 0; padding: 0; overflow: auto; list-style: none; }
+.runtime-operations li { padding: .6rem .7rem; border: 1px solid var(--line); border-left: 4px solid var(--quiet); border-radius: .45rem; background: var(--bg); }
+.runtime-operations li[data-state="running"], .runtime-operations li[data-state="queued"] { border-left-color: var(--blue); }
+.runtime-operations li[data-state="succeeded"] { border-left-color: var(--green); }
+.runtime-operations li[data-state="failed"], .runtime-operations li[data-state="timed-out"] { border-left-color: var(--error); }
+.runtime-operations li > div { display: flex; justify-content: space-between; gap: .6rem; }
+.runtime-operations li span { color: var(--quiet); font: .68rem/1.4 var(--mono); text-transform: uppercase; }
+.runtime-operations li p { margin: .35rem 0 0; color: var(--muted); font-size: .78rem; }
+.inline-error { padding: .65rem; border-left: 4px solid var(--error); background: color-mix(in srgb, var(--error) 9%, var(--panel)); color: var(--text); }
 .runtime-agent-history { display: grid; gap: .6rem; max-height: 21rem; overflow: auto; }
 .agent-message { max-width: 92%; padding: .65rem .75rem; border: 1px solid var(--line); border-radius: .65rem; background: var(--bg); }
 .agent-message.user { justify-self: end; border-color: var(--green); }

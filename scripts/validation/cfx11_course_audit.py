@@ -82,7 +82,7 @@ def audit(course: Path = COURSE) -> list[str]:
     findings: list[str] = []
     required = [
         "index.html", "course.css", "course.js", "course.json", "content-bundle.json", "SOURCE_PROVENANCE.md",
-        "runtime/runner.js", "runtime/worker.js", "runtime/course_compat.py",
+        "runtime/runner.js", "runtime/worker.js", "runtime/operations.js", "runtime/course_compat.py",
     ]
     for relative in required:
         if not (course / relative).is_file():
@@ -206,11 +206,13 @@ def audit(course: Path = COURSE) -> list[str]:
         findings.append("content bundle lesson paths do not exactly match course.json")
 
     runtime = (course / "runtime/worker.js").read_text(encoding="utf-8")
+    runner = (course / "runtime/runner.js").read_text(encoding="utf-8")
+    operations = (course / "runtime/operations.js").read_text(encoding="utf-8")
     client = (course / "course.js").read_text(encoding="utf-8")
     compatibility = (course / "runtime/course_compat.py").read_text(encoding="utf-8")
     learner_shell = (course / "index.html").read_text(encoding="utf-8")
     styles = (course / "course.css").read_text(encoding="utf-8")
-    boundary = runtime + client + compatibility + learner_shell
+    boundary = runtime + runner + operations + client + compatibility + learner_shell
     if boundary.count("https://integrate.api.nvidia.com/v1") < 2:
         findings.append("direct NVIDIA API boundary is not explicit in both runtime and learner settings")
     forbidden = ["openclaw-cors-proxy", "CF_Authorization", "_pomerium"]
@@ -237,11 +239,16 @@ def audit(course: Path = COURSE) -> list[str]:
         findings.append("lesson delivery must use the digest-checked Pages-safe content bundle rather than runtime Markdown fetches")
     if course == COURSE:
         findings.extend(audit_discovery())
+    probe_start = client.find("async function probeModelConnection")
+    probe_end = client.find('elements["test-api-key"].addEventListener', probe_start)
+    probe_source = client[probe_start:probe_end] if probe_start >= 0 and probe_end > probe_start else ""
     runtime_contracts = {
         "visible learner key entry": (learner_shell, 'id="api-key"'),
         "visible model connection test": (learner_shell + client, 'id="test-api-key"'),
-        "auth-sensitive model connection test": (client, '`${selectedModelBase()}/chat/completions`'),
+        "auth-sensitive model connection test": (client, '`${baseUrl}/chat/completions`'),
         "one-token model connection test": (client, "max_tokens: 1"),
+        "bounded model fallback": (client + runtime, "MODEL_PROBE_CANDIDATES"),
+        "abortable model probe": (probe_source, 'credentials: "omit",\n          signal,'),
         "explicit theme control": (learner_shell, 'id="theme-toggle"'),
         "focus-aware kernel variable panel": (learner_shell + client + compatibility, 'data-variable-view="focused"'),
         "complete kernel namespace option": (learner_shell, 'data-variable-view="all"'),
@@ -249,8 +256,14 @@ def audit(course: Path = COURSE) -> list[str]:
         "bounded runtime stream view": (client, "state.streams.length > 160"),
         "NVIDIA-backed runtime guide": (client + runtime, "state.runner.assistant"),
         "serialized execution queue": (client, 'addEventListener("queue-change"'),
+        "visible workflow activity": (learner_shell + client, 'data-runtime-panel="activity"'),
+        "workflow lifecycle ledger": (client + operations, "ObservableOperations"),
+        "queue-wait deadline": (runner, "this.armTimeout(job, this.queueTimeoutMs"),
+        "execution deadline": (runner, "this.armTimeout(job, this.runTimeoutMs"),
+        "complete job lifecycle": (runner, 'new CustomEvent("job-state"'),
+        "observable variable refresh failure": (client, 'message.textContent = `Refresh failed:'),
         "in-cell Python input": (client + runtime + compatibility, 'addEventListener("input-request"'),
-        "kernel inspection": (client + runtime, 'state.runner.inspect()'),
+        "kernel inspection": (client + runtime, 'state.runner.inspect('),
         "cross-lesson kernel configuration": (client, "state.runner.configure(runnerConfiguration"),
         "stable NVIDIA request headers": (runtime, '["accept", "authorization", "content-type"]'),
         "origin-specific transport error": (runtime, "published HTTPS course"),
@@ -270,6 +283,13 @@ def audit(course: Path = COURSE) -> list[str]:
     for label, (source, marker) in runtime_contracts.items():
         if marker not in source:
             findings.append(f"browser course omits {label}")
+    candidate_match = re.search(r"const MODEL_PROBE_CANDIDATES = Object\.freeze\(\[(.*?)\]\);", client, re.DOTALL)
+    candidate_models = re.findall(r'"(nvidia/[^"\s]+)"', candidate_match.group(1) if candidate_match else "")
+    if len(set(candidate_models)) < 2:
+        findings.append("browser course model probe must retain multiple distinct bounded candidates")
+    lifecycle_states = set(re.findall(r'"(queued|running|succeeded|failed|timed-out|cancelled)"', runner + operations))
+    if lifecycle_states != {"queued", "running", "succeeded", "failed", "timed-out", "cancelled"}:
+        findings.append("browser workflow lifecycle must surface queued, running, succeeded, failed, timed-out, and cancelled states")
     for contract in (
         "application/x-course-chat+json", "courseHttpRequest", "_browser_wikipedia_init",
         "_assert_upstream_packages", "await micropip.install(__course_local_wheels.to_py(), deps=False",

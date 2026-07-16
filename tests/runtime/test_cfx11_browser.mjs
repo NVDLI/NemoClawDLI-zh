@@ -218,7 +218,7 @@ try {
   }
 
   let modelRequest = null;
-  let keyTestRequest = null;
+  let keyTestRequests = null;
   let modelListingRequest = null;
   await page.route("https://integrate.api.nvidia.com/v1/models", async route => {
     modelListingRequest = { headers: route.request().headers() };
@@ -230,12 +230,16 @@ try {
   });
   await page.evaluate(() => {
     window.__cfx11OriginalFetch = window.fetch.bind(window);
+    window.__cfx11KeyTestRequests = [];
     window.fetch = async (input, init = {}) => {
       if (String(input) === "https://integrate.api.nvidia.com/v1/chat/completions") {
-        window.__cfx11KeyTestRequest = {
+        window.__cfx11KeyTestRequests.push({
           headers: Object.fromEntries(new Headers(init.headers || {}).entries()),
           body: JSON.parse(String(init.body || "{}")),
-        };
+        });
+        if (window.__cfx11KeyTestRequests.length === 1) {
+          return new Response(JSON.stringify({ error: "candidate unavailable" }), { status: 503, headers: { "Content-Type": "application/json" } });
+        }
         return new Response(JSON.stringify({ choices: [{ message: { role: "assistant", content: "OK" }, finish_reason: "stop" }] }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
@@ -246,12 +250,14 @@ try {
   });
   await page.locator("#api-key").fill("browser-test-key");
   await page.getByRole("button", { name: "Test key" }).click();
-  await page.waitForFunction(() => document.querySelector("#api-status")?.textContent.startsWith("Connected."), null, { timeout });
-  keyTestRequest = await page.evaluate(() => window.__cfx11KeyTestRequest);
+  await page.waitForFunction(() => !document.querySelector("#test-api-key")?.disabled, null, { timeout: 35_000 });
+  const keyStatus = await page.locator("#api-status").innerText();
+  check(keyStatus.startsWith("Connected"), `bounded connection test failed visibly: ${keyStatus}; page errors: ${JSON.stringify(errors)}`);
+  keyTestRequests = await page.evaluate(() => window.__cfx11KeyTestRequests);
   await page.evaluate(() => {
     window.fetch = window.__cfx11OriginalFetch;
     delete window.__cfx11OriginalFetch;
-    delete window.__cfx11KeyTestRequest;
+    delete window.__cfx11KeyTestRequests;
   });
   await page.route("https://integrate.api.nvidia.com/v1/chat/completions", async route => {
     const request = route.request();
@@ -272,10 +278,16 @@ try {
   const modelOutput = await modelBlock.locator(".cell-output").innerText();
   check(await modelBlock.getAttribute("data-state") === "passed", `direct NVIDIA streaming compatibility call failed:\n${modelOutput}`);
   check((await modelBlock.locator(".cell-output").innerText()).includes("browser stream"), "streaming model result was not returned to Python");
-  check(keyTestRequest?.headers.authorization === "Bearer browser-test-key", "learner key was not sent on the auth-sensitive model test");
-  check(keyTestRequest?.headers["x-billing-source"] === "dli-cfx11-web", "key test omitted the stable billing source");
-  check(keyTestRequest?.headers["x-billing-invoke-origin"] === `http://127.0.0.1:${port}`, "direct key test omitted trusted page-origin attribution");
-  check(keyTestRequest?.body?.max_tokens === 1 && keyTestRequest?.body?.stream === false, "key test was not bounded to one non-streaming output token");
+  check(keyTestRequests?.length === 2, `connection test did not fall back once after a model outage: ${JSON.stringify(keyTestRequests)}`);
+  check(keyTestRequests[0].body.model !== keyTestRequests[1].body.model, "connection-test fallback retried the same model");
+  check(keyTestRequests[1]?.headers.authorization === "Bearer browser-test-key", "learner key was not sent on the auth-sensitive model test");
+  check(keyTestRequests[1]?.headers["x-billing-source"] === "dli-cfx11-web", "key test omitted the stable billing source");
+  check(keyTestRequests[1]?.headers["x-billing-invoke-origin"] === `http://127.0.0.1:${port}`, "direct key test omitted trusted page-origin attribution");
+  check(keyTestRequests.every(request => request.body?.max_tokens === 1 && request.body?.stream === false), "key test fallback was not bounded to one non-streaming output token per candidate");
+  await page.getByRole("button", { name: "Activity", exact: false }).click();
+  check((await page.locator("#runtime-operations").innerText()).includes("Test NVIDIA model connection"), "connection fallback was absent from workflow activity");
+  check((await page.locator("#operation-summary").innerText()).includes("No work is running"), "completed connection test remained falsely active");
+  await page.locator("#close-runtime-panel").click();
   check(modelListingRequest?.headers.authorization === "Bearer browser-test-key", "learner key was not sent on the real package's model discovery request");
   check(modelRequest?.headers.authorization === "Bearer browser-test-key", "learner key was not sent only as the NVIDIA authorization header");
   check(modelRequest?.headers["x-billing-source"] === "dli-cfx11-web", "Python model request omitted billing source");
@@ -296,7 +308,8 @@ try {
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ choices: [{ message: { content: "OK" } }] }) });
   });
   await page.getByRole("button", { name: "Test key" }).click();
-  await page.waitForFunction(() => document.querySelector("#api-status")?.textContent.startsWith("Connected."), null, { timeout });
+  await page.waitForFunction(() => !document.querySelector("#test-api-key")?.disabled, null, { timeout: 35_000 });
+  check((await page.locator("#api-status").innerText()).startsWith("Connected"), "relay connection test did not settle successfully");
   check(proxyKeyRequest?.headers["x-billing-source"] === "dli-cfx11-web", "relay request omitted billing source");
   check(!("x-billing-invoke-origin" in proxyKeyRequest.headers), "relay accepted caller-controlled billing-origin attribution");
   await page.locator("#model-route").selectOption("direct");
