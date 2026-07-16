@@ -67,7 +67,7 @@ await listen();
 let browser;
 try {
   browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_BIN || undefined });
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, colorScheme: "dark" });
+  const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, colorScheme: "dark" });
   const errors = [];
   const failures = [];
   page.on("pageerror", error => errors.push(error.message));
@@ -98,6 +98,8 @@ try {
   check(await page.locator("#api-key").inputValue() === "", "the learner API key must not be prefilled");
   check(await page.locator("#api-key").isVisible(), "the learner API key field must be visible in the lesson flow");
   check(await page.locator("#theme-toggle").isVisible(), "the course must expose an explicit theme control");
+  await page.getByRole("button", { name: "Test key" }).click();
+  check(await page.locator("#api-status").innerText() === "Paste a key before testing the connection.", "the visible API-key action was not usable at a 1280x720 learner viewport");
   for (const index of [7, 14, 16, 20, 21]) {
     const block = await runCell(page, index);
     const output = await block.locator(".cell-output").innerText();
